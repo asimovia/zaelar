@@ -107,8 +107,8 @@ def test_the_first_value_of_a_slot_passes(fresh_db):
 
 def test_the_same_value_again_passes(fresh_db):
     """Repeating a fact is reinforcement, not a conflict — it has to keep reaching the slot's dedup."""
-    _establish("operator.email", "Su correo es rj@example.com.", "rj@example.com")
-    out = MA._slot_supersede_guard(_atom("operator.email", "RJ@example.com", "Su correo es RJ@example.com."),
+    _establish("operator.email", "Su correo es operator@example.com.", "operator@example.com")
+    out = MA._slot_supersede_guard(_atom("operator.email", "OPERATOR@Example.com", "Su correo es OPERATOR@Example.com."),
                                    is_correction=False)
     assert out["slot"] == "operator.email"
 
