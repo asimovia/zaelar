@@ -1158,6 +1158,7 @@ def derive(case: CD.UseCase) -> UseCaseScenario:
         channel="probe",
         notice_on=NOTICE_ON.get(case.id, ""),
         deadline_on=DEADLINE_ON.get(case.id, ""),
+        rows_expected=case.id in ROWS_EXPECTED,
     )
 
 
@@ -1166,6 +1167,13 @@ def derive(case: CD.UseCase) -> UseCaseScenario:
 NOTICE_ON = {"remember-and-remind-deadline": "wednesday"}
 #: …and the weekday of the commitment it announces: a job on or after it never counts (2026-10-14).
 DEADLINE_ON = {"remember-and-remind-deadline": "thursday"}
+#: Audit V2-783 P1-3 — the hunts whose delivery IS rows on the sheet: none named at the end caps the round.
+ROWS_EXPECTED = frozenset({
+    "cheapest-monitor", "search-secondhand-monitor", "used-car-search-wallapop", "search-rent-apartment",
+    "search-holiday-rental", *(f"search-buy-{k}" for k in (
+        "apartment", "bicycle", "book", "camera", "camper", "ebike", "guitar", "laptop", "motorcycle", "phone",
+        "ski-gear", "sneakers", "sofa", "stroller", "surfboard", "tv", "used-car", "vinyl", "washing-machine",
+        "watch"))})
 
 
 def derivable() -> list[CD.UseCase]:

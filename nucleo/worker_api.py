@@ -164,46 +164,8 @@ async def _exec_allow(action: str, payload: dict, rec) -> dict:
         # shape by construction rather than by filtering — which is the version that cannot rot.
         return {"ok": True, "result": dict(decision)}
     if action == "use_tool" and payload.get("tool") == "web_search":
-        # V2-644 — the query key is forgiving, but an EMPTY query refuses loudly. Measured 2026-09-09: a worker
-        # sent its query under another key, got back `{"results": [], "source": "none"}` twice, concluded «the
-        # search bridge returns nothing» and drove the browser for four minutes. The silent echo blamed the
-        # module; the real fault was the payload shape, which only an error naming the key could have said.
-        args = payload.get("args") or {}
-        q = ""
-        for key in ("query", "q", "text", "search", "consulta"):
-            q = str(args.get(key) or payload.get(key) or "").strip()
-            if q:
-                break
-        if not q:
-            return {"ok": False, "error": "falta `query`: la búsqueda va en "
-                                          "{\"tool\":\"web_search\",\"args\":{\"query\":\"…\"}} — no adivino "
-                                          "qué buscar con una query vacía."}
-        try:
-            # V2-782 — through the SERVICE (route, candidates vs pages, what no row shows); `raw` = the chain's dict.
-            from search import find as _find
-            from nucleo.picture_errand import search_route as _route_of   # a picture errand searches IMAGES
-            _sr = await asyncio.to_thread(_find, str(q), route=_route_of(rec), proposal="web_search",
-                                          k=int((args.get("k") or payload.get("k") or 6)))
-            res = dict(_sr.raw or {"query": q, "answer": "", "results": [], "source": "none"})
-            res.update({"route": _sr.route, "candidates": _sr.rows(), "pages": [{"title": p.title, "url": p.url,
-                        "why": p.why} for p in _sr.pages], "unshown": list(_sr.unshown),
-                        **({"failure": _sr.failure} if _sr.failure and not res.get("failure") else {})})
-            # V2-236: and what the search brings goes INTO THE CONVERSATION immediately, not when the worker delivers
-            # it — which failed to happen in 5 of 8 measured sessions. Same remedy V2-223 gave to what the browser
-            # extracts through the other gate: this is OUR search, lent to the worker.
-            try:
-                from nucleo.workers import findings
-                findings.hand_web_finding(getattr(rec, "task_id", ""), findings.render_search(res),
-                                          getattr(rec, "goal", ""))
-                # V2-320 — …and INTO THE SHEET, where the operator looks. A worker that solves by searching (without
-                # a browser) ALWAYS left the sheet empty: the return only had a path to the note. Same gate as
-                # the browser (V2-257) and the same rows carried by the note.
-                findings.hand_search_rows(rec, res)
-            except Exception:  # noqa: BLE001
-                pass
-            return {"ok": True, "result": res}
-        except Exception as e:  # noqa: BLE001
-            return {"ok": False, "error": f"web_search falló: {e}"}
+        from nucleo.workers import web_search_bridge
+        return await web_search_bridge.run(payload, rec)
     if action == "schedule":
         # V2-249 — the SCHEDULED reminder must really exist, or it must not be claimed. A worker told
         # «remind him on Wednesday» could not do it (the capability did not exist) and durably wrote in memory

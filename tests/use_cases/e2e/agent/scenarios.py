@@ -82,6 +82,11 @@ class UseCaseScenario:
     # The weekday of the commitment that notice announces («el jueves tengo que…»): a job on or after it never
     # counts for `notice_on` (2026-10-14 — asked on the Wednesday itself, next week's rang after the deadline).
     deadline_on: str = ""
+    # Audit V2-783 P1-3 — gates on DATA, not prose. `rows_expected`: a hunt whose sheet ends with no named row
+    # (read, not unreadable) is capped, whatever the judge scored. `meeting_on`: «+N» days from the round — the
+    # date the agenda must hold a meeting on; a meeting written on another day is the dates-shifted family.
+    rows_expected: bool = False
+    meeting_on: str = ""
 
 
 SCENARIOS: list[UseCaseScenario] = [
@@ -158,6 +163,7 @@ SCENARIOS: list[UseCaseScenario] = [
         id="search-buy-used-car",
         locale="es",
         tier=2,
+        rows_expected=True,
         opening_line="Búscame un coche de segunda mano, que no sea muy viejo, diésel, y que no pase de 12 mil euros.",
         persona_brief=(
             "Eres una persona real buscando coche de segunda mano. A PROPÓSITO no has dado ciudad ni "
@@ -218,6 +224,7 @@ SCENARIOS: list[UseCaseScenario] = [
         id="cheapest-monitor",
         locale="es",
         tier=2,
+        rows_expected=True,
         opening_line="Búscame un monitor bueno para trabajar, que no sea carísimo.",
         persona_brief=(
             "Eres una persona real buscando un monitor para trabajar, sin dar detalles técnicos todavía. Si "
@@ -309,6 +316,7 @@ SCENARIOS: list[UseCaseScenario] = [
         id="dentist-appointment-into-agenda",
         locale="es",
         tier=1,
+        meeting_on="+10",          # {FECHA_FUTURA_CERCANA} / {NEAR_FUTURE_DATE}
         opening_line=(
             "Oye, apúntate que tenemos cita para llevar a los niños al dentista el {FECHA_FUTURA_CERCANA} "
             "a las tres de la tarde."
@@ -353,6 +361,7 @@ SCENARIOS: list[UseCaseScenario] = [
         id="dentist-appointment-into-agenda__us",
         locale="us",
         tier=1,
+        meeting_on="+10",          # {FECHA_FUTURA_CERCANA} / {NEAR_FUTURE_DATE}
         opening_line=(
             "Hey, jot this down: the kids have a dentist appointment on {NEAR_FUTURE_DATE} at three in "
             "the afternoon."

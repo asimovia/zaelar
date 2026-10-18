@@ -9,6 +9,10 @@ itself in the findings (`gate: <name>`), so a reader sees which number came from
     resultado/mecanismo/overall ≤ 2, whatever the judge scored.
     With `deadline_on` («el jueves tengo que…»), a day on or after that deadline never counts.
   · `reply_language` — a zaelar line clearly in the other language ⇒ naturalidad ≤ 2, overall ≤ 3.
+  · `rows_on_sheet` (audit V2-783 P1-3) — a hunt (`rows_expected`) whose sheet was READ and holds no named row
+    ⇒ resultado/overall ≤ 2. An unreadable sheet is not an empty one: the gate stays out.
+  · `meeting_on` (audit V2-783 P1-1) — «+N»: the agenda, read, holds no meeting on the round's day + N
+    ⇒ resultado ≤ 2, overall ≤ 3 (a meeting on the wrong day is the dates-shifted family, 25 findings).
 """
 from __future__ import annotations
 
@@ -103,10 +107,47 @@ def _language_gate(scenario, run: dict, verdict: dict) -> dict | None:
     return {"want": want, "ok": False, "turns": [n for n, _ in wrong]}
 
 
+def _rows_gate(scenario, run: dict, verdict: dict) -> dict | None:
+    if not getattr(scenario, "rows_expected", False):
+        return None
+    sh = (run.get("mechanism_report") or {}).get("results_sheet") or {}
+    if not sh.get("read"):
+        return {"read": False}
+    n = int(sh.get("n_named") or 0)
+    if n:
+        return {"n_named": n, "ok": True}
+    _cap(verdict, {"resultado": 2}, 2)
+    verdict.setdefault("findings", []).append({
+        "turno": "zaelar", "gravedad": "alta", "gate": "rows_on_sheet",
+        "problema": "[gate] the case is a hunt and its sheet, read at the end, holds no named row: nothing was "
+                    "delivered, whatever was said."})
+    return {"n_named": 0, "ok": False}
+
+
+def _meeting_gate(scenario, run: dict, verdict: dict) -> dict | None:
+    want = str(getattr(scenario, "meeting_on", "") or "")
+    if not want.startswith("+"):
+        return None
+    meetings = (run.get("mechanism_report") or {}).get("agenda_meetings")
+    if meetings is None:
+        return {"read": False}
+    day = (round_day(run.get("transcript") or []) + _dt.timedelta(days=int(want[1:]))).isoformat()
+    dates = [str((m or {}).get("date") or "") for m in meetings if isinstance(m, dict)]
+    if day in dates:
+        return {"day": day, "ok": True}
+    _cap(verdict, {"resultado": 2}, 3)
+    verdict.setdefault("findings", []).append({
+        "turno": "zaelar", "gravedad": "alta", "gate": "meeting_on",
+        "problema": f"[gate] the case dictates a meeting on {day} and the agenda holds none that day "
+                    f"(dates: {dates or 'none'})."})
+    return {"day": day, "dates": dates, "ok": False}
+
+
 def apply(scenario, run: dict, verdict: dict) -> dict:
     """Run every gate over `verdict` (mutated and returned). Records what each gate saw under `gates`."""
     seen = {}
-    for name, gate in (("notice_on", _notice_gate), ("reply_language", _language_gate)):
+    for name, gate in (("notice_on", _notice_gate), ("reply_language", _language_gate),
+                       ("rows_on_sheet", _rows_gate), ("meeting_on", _meeting_gate)):
         try:
             got = gate(scenario, run or {}, verdict)
         except Exception as e:  # noqa: BLE001 — a broken gate is reported, never silently passes or fails a round

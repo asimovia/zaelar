@@ -74,9 +74,14 @@ def test_el_worker_api_lo_llama_donde_entrega_la_nota():
     """WIRING guard by AST: the function can be perfect and still be useless if the seam that
     receives the return does not call it — which is literally the defect this fixes."""
     import ast
-    src = ast.parse(open("nucleo/worker_api.py", encoding="utf8").read())
+    api = ast.parse(open("nucleo/worker_api.py", encoding="utf8").read())
+    allow = next(n for n in ast.walk(api)
+                 if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name == "_exec_allow")
+    assert any(isinstance(c, ast.Attribute) and c.attr == "run" and getattr(c.value, "id", "") == "web_search_bridge"
+               for c in ast.walk(allow)), "the worker's web_search no longer reaches its bridge (V2-783 extraction)"
+    src = ast.parse(open("nucleo/workers/web_search_bridge.py", encoding="utf8").read())
     fn = next(n for n in ast.walk(src)
-              if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name == "_exec_allow")
+              if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name == "run")
     llamadas = [getattr(c.func, "attr", getattr(c.func, "id", "")) for c in ast.walk(fn) if isinstance(c, ast.Call)]
     assert "hand_web_finding" in llamadas, "¿la nota desapareció? eso es OTRA regresión (V2-236)"
     assert "hand_search_rows" in llamadas, \
