@@ -375,6 +375,8 @@ def _clean_criteria(raw) -> dict:
             clean = [str(x)[:_MAX_CRIT_CHARS] for x in v if x not in (None, "")][:_MAX_CRIT]
             if clean:
                 out[k] = clean
+    if isinstance(raw.get("subjects"), (list, tuple)):       # declared by the brief; empty = it named none
+        out["subjects"] = [str(x)[:60] for x in raw["subjects"] if str(x or "").strip()][:6]
     n = _num(raw.get("min_candidates"))
     if n is not None and n > 0:
         out["min_candidates"] = int(n)

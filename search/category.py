@@ -63,13 +63,16 @@ def _price(row: dict) -> float | None:
     return v if v and v > 0 else None             # «0 €» is a row without a price, not a free car
 
 
-def asked_from(asked: str = "", context=()) -> dict:
+def asked_from(asked: str = "", context=(), declared=None) -> dict:
     """Everything this module reads from the request side, once per batch.
 
     `asked` = the operator's OWN words (his ask, his corrections): the only source of subjects and specs — a sheet
     title the model wrote («Monitor purchase for work», «Best-Value 27" Monitors») is Titlecase by style, and read
     as a subject it rejected every real row of four recorded sheets. `context` = the sheet's title, goal and
-    criteria changes: enough to know the category, the ceiling and what was ruled out."""
+    criteria changes: enough to know the category, the ceiling and what was ruled out.
+
+    `declared` = the subjects the errand's brief DECLARED (a list, possibly empty), or None when no brief said:
+    declared, they replace the capitals reading — kept only where his own words name them (`asked.declared`)."""
     own = " ".join(str(asked or "").split())
     request = " ".join([own] + [str(t or "") for t in (context or ()) if t])
     n = _asked.norm(request)
@@ -77,7 +80,8 @@ def asked_from(asked: str = "", context=()) -> dict:
         "norm": n,
         "ceiling": _asked.ceiling(own) or _asked.ceiling(request),
         "vehicle": bool(_w.VEHICLE_ASK.search(n) and _w.BUYING.search(n) and not _w.NOT_BUYING.search(n)),
-        "subjects": _place.not_places(_route.not_places(_asked.subjects(own))),   # a route, a date, a city
+        "subjects": (_asked.declared(declared, own) if declared is not None else
+                     _place.not_places(_route.not_places(_asked.subjects(own)))),   # a route, a date, a city
         "size": _asked.size_inches(own),
         "size_min": _floor.size_floor(own),     # «27 al menos»: a floor, not an exact size (three-tasks 2026-10-11)
         "uhd": _asked.wants_4k(own),
@@ -142,10 +146,10 @@ def why_off(row: dict, ask: dict) -> str:
     return ""
 
 
-def split(items: list[dict], asked: str = "", context=()) -> tuple[list[dict], list[dict]]:
+def split(items: list[dict], asked: str = "", context=(), declared=None) -> tuple[list[dict], list[dict]]:
     """(on, off) for one batch — see `asked_from` for the two request sides. `off` rows carry `why`, the sheet's
     REJECTED shape. With no request text at all, nothing is off."""
-    ask = asked_from(asked, context)
+    ask = asked_from(asked, context, declared)
     if not ask["norm"]:
         return list(items or []), []
     on, off = [], []

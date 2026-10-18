@@ -3570,6 +3570,12 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/browser/unit/agenda/test_a_time_of_day_is_not_a_date.py"]},
         {"id": "2.747", "title": "A line the turn owes to a data-op («Done.», «I've gone ahead») waits for the op's answer and is never said over a refusal; the voice's rotating ack is checked against the cards like the text channel's (V2-783 P0-2)",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_a_tail_owed_to_an_op_waits_for_its_answer.py"]},
+        {"id": "2.748", "title": "A live sheet keeps what its own errand delivered: a re-worded goal on a named sheet, an inherited listing re-run; the delivery backstop reads the errand he is looking at (V2-783 P1-2)",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_a_live_sheet_survives_its_own_errand.py"]},
+        {"id": "2.749", "title": "One errand runs at most the measured p95 of web searches; spent, the worker is told to deliver with what it has (V2-783 P1-6)",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/workers/test_an_errand_has_a_search_budget.py"]},
+        {"id": "2.750", "title": "The harness caps a round on data it read: an empty hunt sheet, a dictated meeting on another day; an unreadable sheet or agenda stays out (V2-783 P1-3)",
+            "ch": UNIT, "paths": ["tests/use_cases/unit/test_the_harness_gates_read_the_sheet_and_the_agenda.py"]},
         {"id": "2.201", "title": "A data-op that did not run is said, and «Done.» never stands over it",
             "ch": UNIT,
             "paths": ["tests/voice/unit/test_an_op_that_did_not_run_is_said.py"]},
@@ -6979,6 +6985,8 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/search/live/test_live_canary.py"]},
         {"id": "12.12", "title": "A subject is any of the names he offered, siglas included («Samsung o LG» kept only Samsung); the sheet's `asked` keeps the sentence that opened the hunt when it has to be cut (V2-783 P0-1)",
             "ch": UNIT, "paths": ["tests/search/unit/test_a_subject_is_any_name_he_offered.py"]},
+        {"id": "12.13", "title": "The sheet's subject is what the errand's brief DECLARED, kept where his own words name it — lowercase «rosalía» has its subject, a stray capital is none (V2-783 P0-1)",
+            "ch": UNIT, "paths": ["tests/search/unit/test_the_subject_is_what_the_brief_declared.py"]},
     ]},
 ]
 

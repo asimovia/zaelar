@@ -46,6 +46,15 @@ def _own(data: dict, payload: dict) -> str:
     return " ".join([str(data.get("asked") or "")] + changes).strip()
 
 
+def _declared(data: dict, payload: dict):
+    """The subjects the errand's brief DECLARED (`criteria.subjects`), or None when no brief declared any list."""
+    for src in ((payload.get("criteria") if isinstance(payload.get("criteria"), dict) else None),
+                data.get("criteria")):
+        if isinstance(src, dict) and isinstance(src.get("subjects"), list):
+            return [str(s) for s in src["subjects"] if str(s or "").strip()]
+    return None
+
+
 def _attribute(change: str) -> str:
     head, sep, _ = change.partition(":")
     return change.lower() if sep and 0 < len(head.split()) <= 3 else change
@@ -109,7 +118,8 @@ def gate(data: dict, items: list[dict], payload: dict, prior=()) -> tuple[list[d
     """(rows that are candidates, extra for the action's reply). Off rows are filed in `data["rejected"]`.
     `prior`: the rows already on the sheet, for an `append` (a second copy of one of them is off)."""
     own, ctx = _own(data, payload), _context(data, payload)
-    on, off = _fit.split(items, own, ctx, raw_items=payload.get("items"), prior=prior)
+    on, off = _fit.split(items, own, ctx, raw_items=payload.get("items"), prior=prior,
+                         declared=_declared(data, payload))
     if not off:
         return on, {}
     _file(data, off)
@@ -138,7 +148,7 @@ def recheck(sheet: str, correction: str, *, relayed: bool = False) -> int:
     elif text:
         data["asked"] = _fit_asked((str(data.get("asked") or "") + " " + text).strip())
     own, ctx = _own(data, {}), _context(data, {})
-    on, off = _fit.split(data.get("items") or [], own, ctx)
+    on, off = _fit.split(data.get("items") or [], own, ctx, declared=_declared(data, {}))
     if off:
         data["items"] = on
         _file(data, off)

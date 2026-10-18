@@ -157,6 +157,7 @@ def parse(raw: str, request: str = "") -> dict | None:
         "goal": str(p.get("goal") or "").strip()[:400],
         "domain": str(p.get("domain") or "").strip()[:120],
         "hard": _strlist(p.get("hard")),
+        **({"subjects": _strlist(p["subjects"], cap=6, chars=60)} if isinstance(p.get("subjects"), list) else {}),
         "soft": _strlist(p.get("soft")),
         "assumed": _strlist(p.get("assumed")),
         "enrichments": _strlist(p.get("enrichments")),
@@ -447,6 +448,8 @@ def to_criteria(brief: dict) -> dict:
     out = {"goal": brief["goal"], "round": int(brief.get("round") or 1)}
     if brief.get("domain"):
         out["domain"] = brief["domain"]
+    if isinstance(brief.get("subjects"), list):      # the sheet's door reads these, never a sentence's capitals
+        out["subjects"] = list(brief["subjects"])
     for k in ("hard", "soft", "assumed", "enrichments", "quality_bar"):
         if brief.get(k):
             out[k] = list(brief[k])

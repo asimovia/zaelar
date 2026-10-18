@@ -114,6 +114,20 @@ def subjects(text) -> list[str]:
     return out
 
 
+def declared(names, own) -> list[str]:
+    """The subjects a brief DECLARED (`criteria.subjects`, written by the research brief from his request), kept only
+    when his own words name them too — accent- and case-free, so «rosalía» typed or transcribed lowercase still names
+    «Rosalía». Audit V2-783 P0-1: the subject is a datum, never read from the capitals of a sentence (lowercase STT
+    gave no subject; a relay's «Drop» or a hotel named in a DESCARTAR list became one)."""
+    said = f" {norm(own)} "
+    out: list[str] = []
+    for n in names or ():
+        s = norm(n)
+        if s and len(s) >= 2 and f" {s} " in said and s not in out:
+            out.append(s)
+    return out
+
+
 _INCH = r"(?:\"|''|”|pulgadas|inch(?:es)?|in\b|-inch)"
 
 

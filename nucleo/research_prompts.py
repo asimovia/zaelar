@@ -37,6 +37,9 @@ Si SÍ lo es, devuelve:
              el objetivo termina en «presentar las mejores opciones».",
   "domain": "de qué campo es esto (2-6 palabras)",
   "hard": ["criterios NO NEGOCIABLES: si un candidato los incumple, queda DESCALIFICADO"],
+  "subjects": ["los NOMBRES que un candidato tiene que llevar para ser lo que pidió (una marca, un artista, un modelo, un
+               título), escritos como él los dijo. VACÍO si no nombró ninguno: una categoría («un monitor»), un sitio,
+               una tienda o la persona con la que viaja NO son sujetos"],
   "soft": ["preferencias que PUNTÚAN pero no descalifican"],
   "assumed": ["datos que el operador NO dio y has tenido que asumir, con el valor asumido — para poder decírselo"],
   "enrichments": ["lo que un EXPERTO de este dominio añadiría y el operador no pensó en pedir, con su porqué"],

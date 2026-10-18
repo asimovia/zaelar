@@ -14,9 +14,11 @@ from search import route_fit as _route
 from search import spec_gates as _specs
 
 
-def split(items: list[dict], asked: str = "", context=(), raw_items=None, prior=()) -> tuple[list[dict], list[dict]]:
-    """(on, off) for one batch; `off` rows carry `why`, the sheet's REJECTED shape."""
-    on, off = _category.split(items, asked, context)
+def split(items: list[dict], asked: str = "", context=(), raw_items=None, prior=(),
+          declared=None) -> tuple[list[dict], list[dict]]:
+    """(on, off) for one batch; `off` rows carry `why`, the sheet's REJECTED shape. `declared`: the subjects the
+    errand's brief declared (see `category.asked_from`)."""
+    on, off = _category.split(items, asked, context, declared)
     on, off = _route.split(on, off, asked, context, raw_items=raw_items)
     on, off = _ceiling.split(on, off, asked, context)
     on, off = _place.split(on, off, asked, context)
