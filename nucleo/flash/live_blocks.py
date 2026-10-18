@@ -468,17 +468,24 @@ def any_stalled_task() -> tuple[str, int, str]:
 
 
 def any_live_task_rows(n: int = 3) -> tuple[str, list[str]]:
-    """`(goal, rows)` — the top NAMED rows of the FIRST live browser task whose sheet already has them, plus
-    that task's goal. The reader the delivery backstop (V2-305, `delivery.sheet_delivery_backstop`)
-    needs: same source as the face (`_sheet_top_rows`), so the backstop can never announce rows the prompt
-    itself would not carry; the GOAL travels with them because the backstop's freshness test excludes the
-    errand's own words (the category noun is in every turn by definition)."""
+    """`(goal, rows)` — the top NAMED rows of a live task whose sheet already has them, plus that task's goal.
+    The reader the delivery backstop (V2-305, `delivery.sheet_delivery_backstop`) needs: same source as the face
+    (`_sheet_top_rows`), so the backstop can never announce rows the prompt itself would not carry; the GOAL
+    travels with them because the backstop's freshness test excludes the errand's own words (the category noun
+    is in every turn by definition).
+
+    WHICH task, when several have rows (audit V2-783 P1-2): the one whose card the previous turn acted on —
+    the card he is looking at — else the first, as before. Reading always the first put the rows of one errand
+    in the reply about another («the result in another card», a judge family)."""
+    found: list[tuple[str, list[str], list[str]]] = []      # (goal, rows, its card ids)
     try:
         from widgets.navegador import tasks as _nt
+        from widgets.results import sheet_names as _sn
         for _tid, _g in _nt.active_summaries():
             rows = _sheet_top_rows(_tid, n)
             if rows:
-                return str(_g or ""), [r.strip("«»") for r in rows]
+                found.append((str(_g or ""), [r.strip("«»") for r in rows],
+                              [_sn.instance_id(c) for c in boxes_of_tab(_tid)]))
         # …and the errand's OWN sheet, the source the TAREAS DE FONDO block shows (V2-781 T528: no browser task,
         # rows on the sheet for 151 s, `rows: 0` on every waiting reply).
         from nucleo import dispatch as _disp
@@ -487,12 +494,25 @@ def any_live_task_rows(n: int = 3) -> tuple[str, list[str]]:
         for t in _disp.pending_summaries() or []:
             if _sf.opens_doc(str(t.get("surface") or "")):
                 continue                    # a report's working rows are not its delivery (V2-781)
-            rows = _es.rows_of_sheet(str(t.get("sheet") or ""), n) if t.get("sheet") else []
+            sheet = str(t.get("sheet") or "")
+            rows = _es.rows_of_sheet(sheet, n) if sheet else []
             if rows:
-                return str(t.get("request") or t.get("goal") or ""), [r.strip("«»") for r in rows]
+                found.append((str(t.get("request") or t.get("goal") or ""), [r.strip("«»") for r in rows],
+                              [_sn.instance_id(sheet)]))
     except Exception:  # noqa: BLE001 — a backstop that cannot read stays out of the reply
         __import__("logging").getLogger("zaelar.flash").warning("any_live_task_rows failed", exc_info=True)
-    return "", []
+    if not found:
+        return "", []
+    if len(found) > 1:
+        try:
+            from nucleo import canvas_focus
+            focus = canvas_focus.last_turn_card([c for _g, _r, cards in found for c in cards])
+            for goal, rows, cards in found:
+                if focus and focus in cards:
+                    return goal, rows
+        except Exception:  # noqa: BLE001 — no focus reading: the first, as before
+            __import__("logging").getLogger("zaelar.flash").debug("focus not read", exc_info=True)
+    return found[0][0], found[0][1]
 
 
 

@@ -366,7 +366,7 @@ def run(query: str, *, price_max=None, price_min=None, condition: str = "",
             # «estrenar = borrar» failure V2-259 closed. The deep pass this branch escalates to will write.
             sheet_mod.rename_task(title, sheet=sid)
         else:
-            sheet_mod.begin_task(title, fresh=True, sheet=sid)
+            (sheet_mod.rename_task if inherited else sheet_mod.begin_task)(title, sheet=sid)   # inherited: its criteria stay
             payload: dict = {"sheet": sid, "items": [_to_row(i) for i in items],
                              "sources": _source_rows(res.get("sources") or []),
                              "criteria": {"objective": operator_text or query}, "asked": operator_text or query}

@@ -87,14 +87,14 @@ def _is_yes(got) -> bool:
 # place, and it costs the caller a lazy import per gate on top.
 
 
-def _widget_gate():
+def _widget_gate(brief=None):
     def _open():
         from widgets import confirm as _c
         return bool(_c.pending())
 
     def _do(text):
         from widgets import confirm as _c
-        return _c.answers_pending(text)
+        return _c.answers_pending(text, brief)      # the verdict on both channels (audit V2-783 P0-3)
     return (_open, _do)
 
 
@@ -234,6 +234,6 @@ def resolve_all(text: str, *, widget: bool = False, brief=None) -> Answered:
     verdict handle: the task gate reads it when a long reply cannot be judged (`task_reply`).
     """
     return resolve(text,
-                   widget=_widget_gate() if widget else None,
+                   widget=_widget_gate(brief) if widget else None,
                    task=_task_gate(brief) if brief is not None else _task_gate(),
                    browser=_browser_gate())

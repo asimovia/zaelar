@@ -146,7 +146,8 @@ def test_an_inherited_sheet_is_reused_never_reminted(rig):
     out = listing_turn.run("catamaranes 45 pies Barcelona", operator_text="la caza afinada",
                            sheet="results--heredada")
     assert out["sheet"] == "results--heredada"
-    assert calls["begin"] and calls["begin"][0]["sheet"] == "results--heredada"
+    assert not calls["begin"] and calls["rename"][0]["sheet"] == "results--heredada", \
+        "the same hunt refined: renamed, never opened fresh — its criteria and rejected rows stay (V2-783 P1-2)"
     assert calls["present"][0]["payload"]["sheet"] == "results--heredada"
 
 

@@ -323,6 +323,11 @@ def _a_criteria(action, payload, sheet) -> dict:
     new_goal = (upd.get("goal") or "").strip().lower()
     old_goal = (cur.get("goal") or "").strip().lower()
     fresh = bool(new_goal and old_goal and new_goal != old_goal)
+    # …but only on the shared sheet. A NAMED sheet belongs to one errand (V2-276: `sheet_id_for(task_id)`), so a
+    # goal that changes there is the same errand re-worded — wiping its delivered rows for a paraphrase was the
+    # audit's P1-2 (V2-783). Another investigation gets another sheet; an explicit `reset` still wins.
+    if fresh and sheet and data.get("items"):
+        fresh = False
     if payload.get("reset") is not None:
         fresh = bool(payload.get("reset"))
     if fresh:
