@@ -320,13 +320,11 @@ async def hold_the_model_to_its_words(*, _apply_widget_data, _brief, _data_ops_h
             search_req["v"] = None
     # A QUESTION answered by a lens alone gets its answer read from that card (C1/Z1, `question_left_to_a_lens`).
     if _op_answer is not None:
-        import json as _json_oa
         from nucleo.flash import widget_read as _wread_oa
         emit("brain", "📖 la data-op DEVOLVIÓ datos y el turno debe palabras — contesto con ellos",
              text=f"{_op_answer[0]} ← {_op_text[:100]}", role="system", extra={"cat": "flash", "widget": _op_answer[0]})
-        await speak(_wread_oa.compose_system(_prompt_mod._lang_lock(), _op_text, _op_answer[0], _op_text,
-                                             _json_oa.dumps(_op_answer[1], ensure_ascii=False, default=str)[:3500],
-                                             answered=True, on_screen=_pst._direct_action.on_screen_now(_op_answer[0])),
+        await speak(_wread_oa.op_answer_system(_prompt_mod._lang_lock(), _op_text, _op_answer[0], _op_answer[1],
+                                               data_done.get("ops"), on_screen=_pst._direct_action.on_screen_now(_op_answer[0])),
                     _op_text, 220, "op answer compose")
         spoken_text = "".join(spoken).strip()
     elif read_req["v"] is None and escalate_req["v"] is None and search_req["v"] is None and not clarify["msg"]:

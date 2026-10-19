@@ -374,15 +374,13 @@ async def answer_in_words(parte: dict, operator_text: str, spec=None, *, asked: 
     if not answers or not (asked or _asked_something(operator_text)):
         return ""
     try:
-        import json as _json
         from nucleo.flash import data_ops as _do, direct_action as _da, prompt as _prompt
         from nucleo.flash import second_pass as _sp, widget_read as _wr
-        pick = _do.answer_to_speak(answers, [(o.get("widget"), o.get("act")) for o in parte.get("ops") or []])
+        pick = _do.answer_to_speak(answers, _ops := [(o.get("widget"), o.get("act")) for o in parte.get("ops") or []])
         if not pick:
             return ""
-        sys2 = _wr.compose_system(_prompt._lang_lock(), operator_text, pick[0], operator_text,
-                                  _json.dumps(pick[1], ensure_ascii=False, default=str)[:3500], answered=True,
-                                  on_screen=_da.on_screen_now(pick[0]))
+        sys2 = _wr.op_answer_system(_prompt._lang_lock(), operator_text, pick[0], pick[1], _ops,
+                                    on_screen=_da.on_screen_now(pick[0]))
         return (await _sp.collect(sys2, operator_text, spec, max_tokens=220) or "").strip()
     except Exception:  # noqa: BLE001 — the plain ack still answers
         return ""

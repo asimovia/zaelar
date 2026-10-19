@@ -229,6 +229,32 @@ def compose_system(lang_lock: str, operator_text: str, wid: str, question: str, 
     )
 
 
+def op_answer_system(lang_lock: str, operator_text: str, wid: str, data, ops, on_screen: bool = False) -> str:
+    """The second pass that answers a question from what a data-op RETURNED — both channels compose through here.
+
+    Demo pass 143 (2026-10-19), E1 on its second round: «check my email, did inworld send me something?» → the model
+    called `mensajeria:show_view {platform: email}`, the PENDING lens, and the receipt had left it when E3 forwarded
+    it. The op's rows were composed as THE RECORD (`answered=True`) and the reply was «nothing from Inworld». A lens
+    the card declares `subset` (its rows are a filtered slice of the store) proves no absence: the card's own
+    `read_query` answer for his words rides with it, and with no rows the pass is told it looked at a slice."""
+    import json
+    block = json.dumps(data, ensure_ascii=False, default=str)[:3500]
+    answered = True
+    try:
+        from widgets import runtime
+        base = str(wid or "").split("::", 1)[0].strip().lower()
+        acts = (runtime.get(base) or {}).get("actions") or {}
+        if any(str(w or "").split("::", 1)[0].strip().lower() == base and (acts.get(a) or {}).get("subset")
+               for w, a in (ops or ())):
+            rows = lookup(base, operator_text)
+            answered = bool(rows)
+            block = f"{block}\n\n{rows}" if rows else block
+    except Exception as e:  # noqa: BLE001 — the op's own rows still answer
+        from loguru import logger
+        logger.warning(f"op answer: no record read for {wid} ({type(e).__name__}: {e})")
+    return compose_system(lang_lock, operator_text, wid, operator_text, block, answered=answered, on_screen=on_screen)
+
+
 def cover_target(args: dict, operator_text: str) -> str:
     """The card's own TITLE, for the voice channel's WORK COVER (V2-669). Resolved BEFORE the read so the
     cover can name WHERE we are looking while the read and the second pass run — the one thing the blind

@@ -71,7 +71,8 @@
         "window_h": "number opcional (horas de la ventana de actividad; 72 = 3 días; 0 = quitar el criterio)"
       },
       "safe": true,
-      "view": true
+      "view": true,
+      "subset": true
     },
     "open": {
       "ref": "name",

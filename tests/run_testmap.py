@@ -3580,6 +3580,8 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_a_lens_over_a_named_row_goes_where_the_row_is.py"]},
         {"id": "2.752", "title": "An address that belongs to a contact he named is HIS recipient on every door (one reading, `leave_gate.is_his`); every payload-writing repair pass names the session language (demo pass 141, E3)",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_an_address_of_a_contact_he_named_is_his_recipient.py"]},
+        {"id": "2.753", "title": "A lens the card declares `subset` (mensajeria `show_view`, the pending slice) proves no absence: the op answer carries the card's `read_query` rows for his words, and with none the pass is told it saw a slice; both channels compose through `widget_read.op_answer_system` (demo pass 143, E1)",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_a_slice_of_the_inbox_proves_no_absence.py"]},
         {"id": "2.201", "title": "A data-op that did not run is said, and «Done.» never stands over it",
             "ch": UNIT,
             "paths": ["tests/voice/unit/test_an_op_that_did_not_run_is_said.py"]},
