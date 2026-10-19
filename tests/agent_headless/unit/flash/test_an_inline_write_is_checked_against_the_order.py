@@ -1,6 +1,6 @@
 """An inline write is checked against the end state his words name, and completed once (demo pass 144, INIT).
 
-«Save Ethan and Andrew in my contacts…» made ONE `add_contact`; the step said «Done.» and every later send to the
+«Save Quinn and Rowan in my contacts…» made ONE `add_contact`; the step said «Done.» and every later send to the
 second person was refused. The turn now infers the order's end state, keeps only rows that must be present on the
 card it wrote to, attests it, and lets one pass repeat ONLY an action this turn already ran there.
 """

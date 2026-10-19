@@ -3584,6 +3584,8 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_a_slice_of_the_inbox_proves_no_absence.py"]},
         {"id": "2.754", "title": "An inline write is checked against the end state his words name (`spec.infer` → rows that must be present on the card written → attest) and completed once by a pass that may only repeat an action the turn already ran there, never one that leaves; a row's `title` also reads the collection's declared label (demo pass 144, INIT contacts)",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_an_inline_write_is_checked_against_the_order.py"]},
+        {"id": "2.755", "title": "A second pass never says again what the turn already said: the voice holds it while it only repeats, word for word, the words already spoken, and a pass that ends held is never spoken (demo pass 144, E1)",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_a_second_pass_never_says_it_twice.py"]},
         {"id": "2.201", "title": "A data-op that did not run is said, and «Done.» never stands over it",
             "ch": UNIT,
             "paths": ["tests/voice/unit/test_an_op_that_did_not_run_is_said.py"]},

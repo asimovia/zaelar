@@ -698,8 +698,8 @@ class NucleoLLMStream(llm.LLMStream):
                             emit("brain", "🤐 segundo pase: SKIP — lo ya dicho contestaba", role="system",
                                  text=f"{what}: {_said[:120]}", extra={"cat": "flash"})
                             return
-                        if len(head) < 4 and "SKIP".startswith(head):
-                            return                               # still could be SKIP: keep holding
+                        if __import__("nucleo.flash.second_pass", fromlist=["x"]).still_held(_held[0].strip(), _said):
+                            return                               # still could be SKIP, or only repeats what was said: hold
                         piece, _held[0] = _held[0], False
                 if piece and _lead[0]:
                     piece, _lead[0] = _lead[0] + piece, ""

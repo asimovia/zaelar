@@ -29,4 +29,5 @@ def test_a_card_nobody_brought_is_not(closed_report):
 def test_the_voice_answer_reads_it():
     import pathlib
     src = _vts.read(pathlib.Path(__file__).resolve().parents[3] / "voice/engine/llm/providers/nucleo.py")
-    assert "answered=True, on_screen=_direct_action.on_screen_now(_op_answer[0])" in src
+    # the op answer composes through `widget_read.op_answer_system` (demo pass 143: a slice proves no absence)
+    assert "op_answer_system(" in src and "on_screen=_direct_action.on_screen_now(_op_answer[0])" in src

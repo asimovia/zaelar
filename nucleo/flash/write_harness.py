@@ -1,8 +1,8 @@
 """nucleo/flash/write_harness.py — an inline WRITE is checked against the end state his words name, and completed once.
 
-Demo pass 144 (2026-10-19), INIT step «Save Ethan and Andrew in my contacts: Ethan's Telegram is @…, and Andrew's
-email is …». The model made ONE `add_contact` (Ethan) and the step said «Done.»; p142 and p143 had made two. Andrew
-was never saved, and every E3 of the run then refused «Andrew isn't in your contacts». A per-call `done_when` cannot
+Demo pass 144 (2026-10-19), INIT step «Save Quinn and Rowan in my contacts: Quinn's Telegram is @…, and Rowan's
+email is …». The model made ONE `add_contact` (Quinn) and the step said «Done.»; p142 and p143 had made two. Rowan
+was never saved, and every send to him later in the run was refused «Rowan isn't in your contacts». A per-call `done_when` cannot
 see this: it attests the calls that were made, never the one that was not. The errand path has the loop (goal →
 spec → check → retry, V2-776 L1); a turn that wrote on a card in-line had no goal at all.
 
@@ -59,8 +59,8 @@ def after_turn(order_text: str, ops, *, spec=None) -> None:
         t = asyncio.ensure_future(check(order, writes, spec=spec))
         _BG.add(t)
         t.add_done_callback(_BG.discard)
-    except RuntimeError:
-        return                                   # no loop: nothing to schedule on
+    except RuntimeError as e:
+        logger.debug(f"write harness: no running loop to schedule on ({e})")
     except Exception as e:  # noqa: BLE001
         logger.warning(f"write harness not scheduled: {type(e).__name__}: {e}")
 

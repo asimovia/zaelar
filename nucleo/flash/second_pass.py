@@ -27,6 +27,21 @@ import asyncio
 from loguru import logger
 
 
+def still_held(head: str, said: str) -> bool:
+    """Keep holding a second pass that has said nothing new yet: it could still be the SKIP word, or it is so far
+    a repetition, from its first word, of what this turn already said. Demo pass 144, E1: the op-answer pass was asked to answer SKIP
+    when the words already said answered, and spoke them again verbatim — «Yep — they did… Yep — they did…».
+    A pass that ends while still held is never spoken. Deterministic: the model is asked, the engine checks."""
+    import re
+    if len(head) < 4 and "SKIP".startswith(head.upper()):
+        return True
+    hw, sw = (re.sub(r"[^\w]+", " ", str(t or "").lower()).split() for t in (head, said))
+    if not hw or len(hw) > len(sw) or hw[:-1] != sw[:len(hw) - 1]:
+        return False
+    last_done = not str(head)[-1:].isalnum()      # a word followed by a space or a stop is whole, not a prefix
+    return hw[-1] == sw[len(hw) - 1] if last_done else sw[len(hw) - 1].startswith(hw[-1])
+
+
 async def collect(sys2: str, user_text: str, spec, max_tokens: int = 240) -> str:
     """Stream one (system, user) exchange through the fast client and return the joined text, raw."""
     from nucleo.flash.fast_client import FastClient
