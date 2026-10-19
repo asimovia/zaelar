@@ -3576,6 +3576,8 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/agent_headless/unit/workers/test_an_errand_has_a_search_budget.py"]},
         {"id": "2.750", "title": "The harness caps a round on data it read: an empty hunt sheet, a dictated meeting on another day; an unreadable sheet or agenda stays out (V2-783 P1-3)",
             "ch": UNIT, "paths": ["tests/use_cases/unit/test_the_harness_gates_read_the_sheet_and_the_agenda.py"]},
+        {"id": "2.751", "title": "A lens over a row his words name goes where the ROW is: the card declares `by_row` on the lens (agenda `show_day` → `open_meeting`), and the day comes off the data, never off a stumbled sentence (demo pass 140, R2)",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_a_lens_over_a_named_row_goes_where_the_row_is.py"]},
         {"id": "2.201", "title": "A data-op that did not run is said, and «Done.» never stands over it",
             "ch": UNIT,
             "paths": ["tests/voice/unit/test_an_op_that_did_not_run_is_said.py"]},

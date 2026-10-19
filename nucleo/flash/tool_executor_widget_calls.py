@@ -223,7 +223,7 @@ def _apply_widget_data(wid: str, action_name: str, payload: dict, ref: str='', *
              role="system", extra={"cat": "flash", "why": _frag_why,
                                    "id": wid, "action": action_name})
         return
-    payload = _txw._said_day.payload(wid, action_name, payload, _txw._bnotes.operator_half(text))   # the day he said (2026-10-14)
+    action_name, payload = _txw._row_lens.retarget(wid, action_name, _txw._said_day.payload(wid, action_name, payload, _txw._bnotes.operator_half(text)), _txw._bnotes.operator_half(text))   # the day he said; the row he named, on ITS day (pass 140)
     mode = _frontend.action_mode_now(wid, action_name, payload)   # V2-712: decidido para ESTA llamada
     # TWO READERS DISAGREE ON AN ACT THAT LEAVES (demo pass 2026-09-28, full12 E3): «draft a short reply
     # saying i'll send the meet link…» — the verdict read `mensajeria:draft` at 1.00, the model called

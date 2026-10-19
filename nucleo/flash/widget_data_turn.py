@@ -57,6 +57,7 @@ def plan_dry(tool_calls: list, text: str = "", brief=None) -> None:
             pl = a.get("payload") if isinstance(a.get("payload"), dict) else {}
             wid, act, pl2 = _vcard.retarget(brief, str(a.get("widget_id") or "").strip().lower(),
                                             str(a.get("action") or "").strip(), pl, order)
+            act, pl2 = __import__("widgets.row_lens", fromlist=["x"]).retarget(wid, act, pl2, order)
             if (wid, act) != (str(a.get("widget_id") or "").strip().lower(), str(a.get("action") or "").strip()):
                 t["args"] = {**a, "widget_id": wid, "action": act, "payload": pl2}
     except Exception:  # noqa: BLE001 — a dry report keeps the model's calls
@@ -71,7 +72,7 @@ async def execute(tool_calls: list, text: str = "", brief=None) -> dict:
     exact duplicate no (the double quote), and a different action on the same widget neither (the listing).
     """
     from nucleo.flash import data_ops as _rg, frontend as _fe
-    from widgets import actions as _wa
+    from widgets import actions as _wa, row_lens as _row_lens
     from nucleo.flash import agenda_said_day as _sday, reply_or_forward as _rof, verdict_card as _vcard  # noqa: F401
     todas = [t.get("args") or {} for t in (tool_calls or []) if t.get("name") == "widget_data"]
     admitidas: list[dict] = []
@@ -139,7 +140,7 @@ async def execute(tool_calls: list, text: str = "", brief=None) -> dict:
                     pl = {**pl, _campo: _ref}
             except Exception:  # noqa: BLE001
                 pl = {**pl, "item": _ref}
-        wid, act, pl = _sday.align(*_vcard.retarget(brief, wid, act, pl, _order), _order)   # 110 E3 · 114 I3 · said day
+        wid, act, pl = _sday.align(*_vcard.retarget(brief, wid, act, pl, _order), _order); act, pl = _row_lens.retarget(wid, act, pl, _order)   # 110 E3 · 114 I3 · said day · the row he named (140 R2)
         if (_to := _relay.relay(wid, act, _order)):    # his words, for the worker (search-buy-watch, 2026-10-14)
             hechas.append({"widget": wid, "act": act, "relayed_to": _to}); continue
         mode = _fe.action_mode(wid, act)

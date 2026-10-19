@@ -218,7 +218,8 @@
       "payload": {
         "day": "«hoy», «mañana», «pasado mañana», un día de la semana, YYYY-MM-DD, o «semana»/«mes»/«lista» para esas vistas (también valen las claves view/mode/vista)"
       },
-      "view": true
+      "view": true,
+      "by_row": "open_meeting"
     },
     "add_task": {
       "positional": true,
