@@ -207,7 +207,7 @@ async def execute(tool_calls: list, text: str = "", brief=None) -> dict:
     # Singular `widget`/`act` are preserved: this is how the report and previous guards already read them,
     # and changing them to a list would break reading without warning. The new data goes alongside them.
     parte = {"executed": "widget_data", "widget": hechas[0]["widget"], "act": hechas[0]["act"],
-             "ops": hechas, "answers": answers}
+             "ops": hechas, "answers": answers}; __import__("nucleo.flash.write_harness", fromlist=["x"]).after_turn(_order, [(h["widget"], h["act"]) for h in hechas])   # the order's end state, checked (p144)
     # What was NOT done is STATED, rather than leaving the report to count only what went well.
     if len(todas) > len(hechas):
         parte["descartadas"] = len(todas) - len(hechas)

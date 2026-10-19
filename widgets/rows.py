@@ -244,7 +244,23 @@ def group(widget_id: str, collection: str, payload: dict | None) -> list[dict]:
 
 
 def select(widget_id: str, collection: str, where: dict | None) -> list[dict]:
+    where = relabel(where, spec(widget_id, collection))
     return [r for r in _rows(widget_id, collection) if matches(r, where)]
+
+
+def relabel(where, cspec: dict):
+    """`title` is the grammar's word for a row's NAME; a collection that declares its own `label` (contactos: `name`)
+    is read there too. Demo pass 144 (2026-10-19): the inferred end state of «save Quinn and Rowan in my contacts» said
+    `contacts[title~=Quinn]` and a contact on file would have read as missing — every row stores `name`."""
+    lab = str((cspec or {}).get("label") or "")
+    if not (lab and lab != "title" and isinstance(where, dict)):
+        return where
+    out = {}
+    for key, want in where.items():
+        field, op = _split(key)
+        suffix = str(key)[len(field):]
+        out["|".join(f"title|{lab}" if f == "title" else f for f in field.split("|")) + suffix] = want   # both: never less
+    return out
 
 
 def _label(cspec: dict, row: dict) -> str:
