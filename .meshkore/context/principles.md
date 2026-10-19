@@ -65,6 +65,33 @@ between them is not closed, so preferences keep being converted into constants i
 is the single highest-value thing missing from the philosophy above, and it is why the same kind of
 question keeps reaching him.
 
+## Fix the class, never the case (CRIT-W10, 2026-10-19)
+
+> «No más arreglos para que tests individuales funcionen. Tenemos que hacer mejoras a nivel estructural que
+> arreglen el sistema y como resultado los tests funcionen. Esto es un producto global, que debe poder atender
+> cualquier request.» — the operator, after the 72-hour audit V2-783 classified 30 of 99 product commits as a
+> regex, a word table or a net over the model's words, each born from one recorded case.
+
+The tests and the judge are a SAMPLE of the requests the product will meet. Green on the sample is the
+consequence of a sound system, never the target. So:
+
+1. **Name the class before touching code.** «The sheet rejects LG rows» is a case; «the sheet's subject is read
+   from capital letters» is the class. If you cannot name the class, you have not found the cause yet.
+2. **Reach for structure in this order:** a verdict the turn already pays (Jev, the brief) → a datum someone
+   declares (a manifest action, the research brief, the connector catalogue) → one door / one reader that every
+   route crosses → and only then language data, in `i18n/`, for every language at once.
+3. **The test proves the class, not the case:** it carries at least one variant the failing case did not — the
+   other language, a reworded request, another domain, an input shape nobody recorded.
+4. **Forbidden, whatever the deadline:** a regex or word list added so one case passes; a case id or a fixture's
+   string in product code; weakening or rewriting an assertion to go green (an assertion changes only when the
+   behaviour changed on purpose, and the commit says so); raising any ratchet ceiling.
+5. **When the structural fix does not fit the batch,** the test stays red (or `xfail` with the class as its
+   reason) and the class goes into the initiative. An honest red beats a patched green: a patched green hides the
+   class from the next person and from the judge.
+
+Enforced, not just written: `tests/infrastructure/unit/test_words_never_fix_a_case.py` (node 7.73) — the count
+of `re.compile` calls and module-level word tables in product code may only fall.
+
 ## How to tell you are violating this
 
 Before writing the change, ask the two questions the Brain Worker doctrine already asks
@@ -74,3 +101,4 @@ Before writing the change, ask the two questions the Brain Worker doctrine alrea
 - Does it work for a task nobody has written yet?
 - **Is what I am adding a sentence about how to behave?** If yes, it is a rail on judgement. Delete it and
   find the mechanism it was standing in for.
+- **Would this change exist if that one test did not?** If no, it is a patch for the test (CRIT-W10).

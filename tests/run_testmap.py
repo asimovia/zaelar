@@ -5898,6 +5898,8 @@ DOMAINS: list[dict] = [
         {"id": "7.61", "title": "What leaves the machine is scrubbed: feedback evidence drops system events and masks secrets; "
                                 "the prompt capture is scrubbed, under the workspace, capped, and off in a hosted account",
             "ch": UNIT, "paths": ["tests/infrastructure/unit/core/test_what_leaves_the_machine_is_scrubbed.py"]},
+        {"id": "7.73", "title": "A fix is a mechanism, never a word: regexes and word tables in product code only get rarer (CRIT-W10)",
+            "ch": UNIT, "paths": ["tests/infrastructure/unit/test_words_never_fix_a_case.py"]},
         {"id": "7.60", "title": "The public repo: Castilian comments only shrink, and the roadmap/logs/reports are not tracked",
             "ch": UNIT, "paths": ["tests/infrastructure/unit/test_the_public_repo_speaks_english_and_keeps_our_diary_private.py"]},
         {"id": "7.59", "title": "Voice turn and text probe import the same brain modules, or the difference is declared (ALERT 5)",

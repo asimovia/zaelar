@@ -290,6 +290,10 @@ http://localhost:43917 · https://local.zaelar.com:44317. `make restart` para re
 
 Esto es lo que él ha pedido explícitamente, repetido y por escrito. Está arriba del todo porque es lo que más se incumple.
 
+- **Se arregla la CLASE, nunca el caso (CRIT-W10).** Nada de arreglos para que pase un test: el verde es la
+  consecuencia de un sistema sano. Nombra la clase; arréglala con veredicto → dato declarado → una puerta; el test
+  lleva otra variante (idioma, redacción, dominio); si no cabe, el test queda ROJO. Regex y tablas de palabras del
+  producto solo bajan (nodo 7.73). Completo en `.meshkore/context/principles.md`.
 - **Respuestas hipercomprimidas.** Al grano, sin narrar el proceso, lo esencial en pocas líneas; el detalle
   solo si lo pide. Al CERRAR una tanda —no en cada turno— se acaba con un bloque de **una línea por tarea
   completada**, lo último de todo: él trabaja con muchas pestañas abiertas y lee solo el final para saber qué
@@ -572,10 +576,6 @@ a «¿funciona todo bien?» y se pagó el 2026-09-15: un agente la lanzó por le
 LEER el mapa sin correrlo: `tests/run_testmap.py --list`. Para comprobar que tu test está en él, el fichero
 `tests/infrastructure/unit/test_a_test_outside_the_map_is_not_a_test.py` a solas. **«¿Funciona todo bien?» se
 la pides a ÉL.**
-
-**La pasada ancha se lanza con `tests/watchdog.py`** (primera de las «Hard rules»): detecta y NOMBRA el test
-que se cuelga, mata el grupo de procesos y no admite dos barridos a la vez. Mientras iteras sigue siendo el
-FICHERO que has tocado y su DESARME; `pytest` a pelo sobre el árbol, nunca.
 
 **Un rojo que no se reproduce en aislamiento es contaminación entre tests, no un fallo de tu código.** La
 causa es siempre la misma familia: algo que toca estado compartido y no lo devuelve. El `conftest.py` raíz

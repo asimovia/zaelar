@@ -255,6 +255,15 @@ below is the first kind, or it names the mechanism that replaced the second.
   gone is red, and a file answers one deterministic node. — since 2026-09-30 · nodes 7.32, 7.56.
 - **CRIT-W8 · Public and private.** `engine/` describes mechanism, never product; neither our past nor our future
   is published (roadmap, module logs, test reports stay local and untracked). — since 2026-10-01 · nodes 7.60.
+- **CRIT-W10 · Fix the class, never the case.** A red test or a judge finding is the SYMPTOM of a class; the fix is
+  named by the class it closes and its test carries a variant the failing case did not (the other language, a
+  reworded request, another domain). Never: a word, regex or literal so one recorded case passes; a test id or a
+  fixture's string in product code; an assertion weakened to go green (it changes only when the behaviour changed
+  on purpose, said in the commit); a ratchet ceiling raised. Reach, in order: a verdict already paid → a declared
+  datum (manifest, brief, catalogue) → a structure (one door, one reader) → language data in `i18n/`. Too big for
+  the batch: the test stays RED and the class goes to the initiative — an honest red beats a patched green.
+  Product regexes and word tables only fall (555 / 514 on 2026-10-19). — since 2026-10-19 · nodes 7.73 ·
+  `.meshkore/context/principles.md` §«Fix the class».
 - **CRIT-W9 · Closing a batch:** the node in the map, the WHY in the diary, the operator's words in the module
   log — and a line HERE only when a rule changed. — since 2026-09-29 · ⚠ sin test.
 
