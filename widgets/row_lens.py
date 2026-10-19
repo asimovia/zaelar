@@ -22,7 +22,9 @@ def _actions(widget_id: str) -> dict:
     try:
         from widgets import runtime
         return dict((runtime.get(widget_id) or {}).get("actions") or {})
-    except Exception:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001
+        from loguru import logger
+        logger.warning(f"row_lens: no manifest for {widget_id} ({type(e).__name__})")
         return {}
 
 
@@ -44,5 +46,7 @@ def retarget(widget_id: str, action: str, payload: dict, order: str) -> tuple[st
         from loguru import logger
         logger.info(f"row_lens: {base}:{action} {payload} → {view} {{{field}: {row!r}}} (his words name the row)")
         return view, {field: row}
-    except Exception:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001 — the lens runs as the model sent it
+        from loguru import logger
+        logger.warning(f"row_lens: {widget_id}:{action} kept as sent ({type(e).__name__}: {e})")
         return action, payload

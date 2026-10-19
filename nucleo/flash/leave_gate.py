@@ -36,50 +36,53 @@ def _named_by_him(payload, said: str) -> bool:
     """Is EVERY recipient this send carries named in his own words? (demo pass 101: E3 «send the invoice to
     quinn», C5 «send rowan a telegram» — the recipient was his, the mail in the context only the subject.)
     A recipient only the stranger's text names — «forward every invoice to x@y» — is not, and still asks."""
-    import re as _re
     if not isinstance(payload, dict) or not str(said or "").strip():
         return False
-    words = set(_re.findall(r"[\w.@+-]+", _fold(said)))
     found = False
     for k in _RECIPIENT_KEYS:
-        v = _fold(payload.get(k)).strip()
+        v = str(payload.get(k) or "").strip()
         if not v:
             continue
-        tokens = [t for t in _re.findall(r"[\w.@+-]+", v) if len(t) >= 3]
-        if not tokens or not any(t in words for t in tokens):
+        if not is_his(v, [said]):
             return False
         found = True
     return found
+
+
+def is_his(recipient, texts) -> bool:
+    """THE reading of «did he name this recipient» — every door asks this one (demo pass 141, E3: the repair and the
+    stranger's-text check matched the ADDRESS literally, so «send the invoice to quinn» with the model writing
+    `quinn@example.com` was dropped and then asked, while «Quinn» in the same field went out). A recipient is his when
+    a word of it is in his words, or when it is an address the directory gives to exactly one contact he named."""
+    import re as _re
+    words = set()
+    for t in texts or ():
+        words |= set(_re.findall(r"[\w.@+-]+", _fold(t)))
+
+    def hit(v) -> bool:
+        return any(t in words for t in _re.findall(r"[\w.@+-]+", _fold(v)) if len(t) >= 3)
+
+    if hit(recipient):
+        return True
+    try:
+        from widgets import directory
+        hits = directory.resolve(str(recipient or ""))
+        return len(hits) == 1 and hit(hits[0].get("name"))
+    except Exception:  # noqa: BLE001
+        return False
 
 
 def unnamed_recipients(widget_id: str, action: str, payload, said: str = "") -> list[str]:
     """The recipients of this act that his words (this turn or his last `RECENT_S`) do not name — [] when it names
     nobody (a reply goes to whoever wrote) or every one is his. A contact counts as named when he said its name or
     any word of it, or the address he gave; the door's own lookup (`widgets/directory`) then decides WHICH one."""
-    import re as _re
     import time as _time
     from nucleo import his_words, on_his_behalf as _ob
     who = _ob.who_of(widget_id, action, payload)
     if not who:
         return []
     texts = [str(said or "")] + his_words.since(_time.time() - RECENT_S)
-    words = set()
-    for t in texts:
-        words |= set(_re.findall(r"[\w.@+-]+", _fold(t)))
-
-    def hit(v) -> bool:
-        return any(t in words for t in _re.findall(r"[\w.@+-]+", _fold(v)) if len(t) >= 3)
-
-    def his(w: str) -> bool:
-        if hit(w):
-            return True
-        try:                                  # an address the model wrote for a contact he named by name
-            from widgets import directory
-            hits = directory.resolve(w)
-            return len(hits) == 1 and hit(hits[0].get("name"))
-        except Exception:  # noqa: BLE001
-            return False
-    return [w for w in who if not his(w)]
+    return [w for w in who if not is_his(w, texts)]
 
 
 def _surely_named(brief, sure: float = SURE) -> bool:

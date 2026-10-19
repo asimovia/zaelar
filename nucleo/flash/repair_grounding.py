@@ -40,7 +40,9 @@ def recipient_was_named(wid: str, action: str, payload: dict, operator_text: str
         if not _fx.carries(wid, action, _fx.EXTERNAL_SEND):
             return True
         who = str(payload.get("contact") or payload.get("to") or "").strip().lower()
-        return not who or who in _heard(operator_text, window).lower()
+        heard = _heard(operator_text, window)
+        from nucleo.flash import leave_gate as _lg          # one reading of «his recipient» (demo pass 141, E3)
+        return not who or who in heard.lower() or _lg.is_his(who, [operator_text, heard])
     except Exception:  # noqa: BLE001
         return True
 
@@ -77,3 +79,20 @@ def refusal_fix_grounded(wid: str, action: str, fixed: dict, operator_text: str,
         from loguru import logger
         logger.debug(f"repair_grounding note: {e}")
     return False
+
+
+def session_lang() -> str:
+    """The session's language by name (demo pass 102: «the operator's language» let a Spanish refusal win)."""
+    try:
+        from i18n import langs as _lg
+        return str(_lg.current_language().name or "the operator's language")
+    except Exception as e:  # noqa: BLE001
+        from loguru import logger
+        logger.warning(f"session language unreadable ({type(e).__name__}) — the prompt says «the operator's language»")
+        return "the operator's language"
+
+
+def in_his_lang(template: str) -> str:
+    """«The OPERATOR's language», NAMED, in every repair pass that writes a payload (pass 141, E3: a commission note
+    came out Spanish in an English session — only the refusal pass named it, since pass 102)."""
+    return template.replace("OPERATOR's language", f"OPERATOR's language ({session_lang()})")

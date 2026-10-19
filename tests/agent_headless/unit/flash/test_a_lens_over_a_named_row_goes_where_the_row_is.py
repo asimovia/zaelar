@@ -11,7 +11,7 @@ from widgets import refs, row_lens
 
 ROWS = [{"id": t, "label": t, "field": "title", "hint": h} for t, h in [
     ("ZAELAR weekly review", "appointment 2026-10-20 09:00"), ("Product meeting", "appointment 2026-10-20 11:00"),
-    ("Catch up with Ethan", "appointment 2026-10-20 16:30"), ("Call with accountant", "appointment 2026-10-22 10:00"),
+    ("Catch up with Rowan", "appointment 2026-10-20 16:30"), ("Call with accountant", "appointment 2026-10-22 10:00"),
     ("Anna vacation", "appointment 2026-12-20"), ("Viaje a Roma", "cita 2027-03-04"),
     ("Lunch with Laura", "appointment 2026-10-25 13:00"), ("Lunch with Lars", "appointment 2026-10-26 13:00")]]
 

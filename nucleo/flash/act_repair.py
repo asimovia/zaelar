@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import json, re
 from . import commission_keep as _keep   # a commission whose deliverable is a sheet keeps its worker
+from .repair_grounding import in_his_lang as _in_his_lang, session_lang as _session_lang  # noqa: F401 — pass 102/141
 
 #: What the repair tells the model. Short on purpose: the ask is «make the call you promised», not a new turn.
 _SYS = (
@@ -195,7 +196,7 @@ async def call_for_promise(operator_text: str, reply: str, widget_id: str, spec=
         card = (_CARD.format(wid=wid, digest=digest) if digest else "") + _days()
         from nucleo.flash.fast_client import FastClient
         await FastClient().complete(
-            [{"role": "system", "content": _SYS.format(wid=wid, actions=_actions_block(manifest), card=card)},
+            [{"role": "system", "content": _in_his_lang(_SYS).format(wid=wid, actions=_actions_block(manifest), card=card)},
              {"role": "user", "content": f"Operator: «{operator_text.strip()[:400]}»\n"
                                          f"Your reply (no call): «{(reply or '').strip()[:300]}»"
                                          + conversation(window)}],
@@ -320,7 +321,7 @@ async def call_for_repeated_view(operator_text: str, widget_id: str, repeated: s
         got: list[tuple[str, dict]] = []
         from nucleo.flash.fast_client import FastClient
         await FastClient().complete(
-            [{"role": "system", "content": (_sys or _SYS_REPEAT).format(wid=wid, repeated=repeated, verdict=verdict,
+            [{"role": "system", "content": _in_his_lang(_sys or _SYS_REPEAT).format(wid=wid, repeated=repeated, verdict=verdict,
                                                                      actions=_actions_block(manifest), card=card)},
              {"role": "user", "content": f"Operator: «{operator_text.strip()[:400]}»" + conversation(window)}],
             spec=spec, max_tokens=400, tools=[tool], no_thinking=True,
@@ -373,7 +374,7 @@ async def call_after_read(operator_text: str, read_widget: str, widget_id: str, 
         got: list[tuple[str, dict]] = []
         from nucleo.flash.fast_client import FastClient
         await FastClient().complete(
-            [{"role": "system", "content": _SYS_AFTER_READ.format(wid=wid, read=rid, block=block,
+            [{"role": "system", "content": _in_his_lang(_SYS_AFTER_READ).format(wid=wid, read=rid, block=block,
                                                                   actions=_actions_block(manifest), card=card)},
              {"role": "user", "content": f"Operator: «{operator_text.strip()[:400]}»" + conversation(window)}],
             spec=spec, max_tokens=400, tools=[tool], no_thinking=True,
@@ -497,7 +498,7 @@ async def call_after_search(operator_text: str, answer: str, brief, spec=None, *
         got: list[tuple[str, dict]] = []
         from nucleo.flash.fast_client import FastClient
         await FastClient().complete(
-            [{"role": "system", "content": _SYS_AFTER_SEARCH.format(wid=wid, answer=said, actions=_actions_block(manifest),
+            [{"role": "system", "content": _in_his_lang(_SYS_AFTER_SEARCH).format(wid=wid, answer=said, actions=_actions_block(manifest),
                                                                     card=card)},
              {"role": "user", "content": f"Operator: «{operator_text.strip()[:400]}»" + conversation(window)}],
             spec=spec, max_tokens=400, tools=[tool], no_thinking=True,
@@ -655,7 +656,7 @@ async def call_or_read_for_commission(operator_text: str, commission: str, widge
         card = (_CARD.format(wid=wid, digest=digest) if digest else "") + _other_open_cards(wid)
         got: list[tuple[str, dict]] = []
         from nucleo.flash.fast_client import FastClient
-        _msgs = [{"role": "system", "content": _SYS_COMMISSION.format(wid=wid, actions=_actions_block(manifest), card=card)},
+        _msgs = [{"role": "system", "content": _in_his_lang(_SYS_COMMISSION).format(wid=wid, actions=_actions_block(manifest), card=card)},
                  {"role": "user", "content": f"Operator: «{operator_text.strip()[:400]}»\n"
                                              f"The commission that was going to a worker: «{(commission or '').strip()[:300]}»"
                                              + _verdict_hint(verdict_action, manifest)
@@ -711,15 +712,6 @@ def _days() -> str:
     days = "; ".join(f"{_t.strftime('%A', _t.localtime(now + i * 86400)).lower()} "
                      f"{_t.strftime('%Y-%m-%d', _t.localtime(now + i * 86400))}" for i in range(0, 8))
     return f"\n\nToday first, then the next days: {days}."
-
-
-def _session_lang() -> str:
-    """The session's language by name (demo pass 102: «the operator's language» let a Spanish refusal win)."""
-    try:
-        from i18n import langs as _lg
-        return str(_lg.current_language().name or "the operator's language")
-    except Exception:  # noqa: BLE001
-        return "the operator's language"
 
 
 def _same_card(asked: str, wid: str) -> bool:
