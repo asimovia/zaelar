@@ -296,7 +296,7 @@ async def run_turn(text: str, *, sid: str = "default", ingest: bool = True, mode
     spoken = dialog.sanitize_reply(spoken)
 
     # (e) acción derivada. V2-658/V2-660: lo que el turno DEBE lo decide la costura compartida y se sintetiza
-    await _ht_p.mirror_probe(tool_calls, tags, spoken, text, llm_metrics)
+    await _ht_p.mirror_probe(tool_calls, tags, spoken, text, llm_metrics); await __import__("nucleo.flash.card_commission", fromlist=["x"]).probe_after_show(tool_calls, tags, spoken, brief=locals().get("_tbrief"), operator_text=text, spec=spec)   # the show is not the act (p145)
     # Demo pass 82, I1 — mirror of the voice executor: `imagenes:show` with no pictures is the picture SEARCH.
     if "show_images" not in [t.get("name") for t in tool_calls]:
         from nucleo.flash import card_commission as _cc_pic

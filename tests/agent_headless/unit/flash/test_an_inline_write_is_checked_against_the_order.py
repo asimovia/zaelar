@@ -20,9 +20,18 @@ ORDER = "Save Quinn and Rowan in my contacts: Quinn's Telegram is @quinn_q, and 
 
 
 def test_the_goal_is_only_rows_that_must_be_present_on_the_card_written():
-    goal = wh.goal_on(GOAL, "contactos")
+    goal = wh.goal_on(GOAL, "contactos", ORDER)
     assert [c["where"]["title~"] for c in goal["all"]] == ["Quinn", "Rowan"]
-    assert wh.goal_on({"all": [{"widget": "documento", "field": "empty", "is": "false"}]}, "agenda") is None
+    assert wh.goal_on({"all": [{"widget": "documento", "field": "empty", "is": "false"}]}, "agenda", ORDER) is None
+
+
+def test_a_row_his_words_never_named_is_never_owed():
+    said = "Remember: the Tesla insurance renews on March 12, 2027; the vehicle registration renews in May 2027."
+    inferred = {"all": [{"widget": "agenda", "collection": "meetings", "where": {"title~": "Tesla next service"}},
+                        {"widget": "agenda", "collection": "meetings", "where": {"title~": "Ducati insurance renewal"}}]}
+    assert wh.goal_on(inferred, "agenda", said) is None
+    assert wh.goal_on({"all": [{"widget": "contactos", "collection": "contacts", "where": {"title~": "rowan"}}]},
+                      "contactos", "guarda a Rowan en mis contactos")
 
 
 def test_views_and_acts_that_leave_are_never_the_turns_writes():

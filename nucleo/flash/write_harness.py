@@ -65,14 +65,19 @@ def after_turn(order_text: str, ops, *, spec=None) -> None:
         logger.warning(f"write harness not scheduled: {type(e).__name__}: {e}")
 
 
-def goal_on(done_when, card: str) -> dict | None:
-    """The inferred end state, cut to rows that must be PRESENT on `card` — the only part this turn can owe."""
+def goal_on(done_when, card: str, order: str = "") -> dict | None:
+    """The inferred end state, cut to rows that must be PRESENT on `card` and that HIS words name — the only part this
+    turn can owe. Demo pass 145, INIT: «Remember: … the Tesla insurance renews on March 12…» inferred four agenda
+    rows («Ducati insurance renewal», «Tesla next service»…) and the harness wrote three meetings nobody asked for;
+    a row is owed only when every value that names it is in what he said."""
     from nucleo import verify as _verify
     if not done_when:
         return None
+    said = " ".join(str(order or "").lower().split())
     kept = [c for c in _verify._clauses(done_when)[1]
             if _verify.kind_of(c) == "rows" and _base(c.get("widget")) == card
-            and str(c.get("expect") or "present") == "present"]
+            and str(c.get("expect") or "present") == "present"
+            and all(" ".join(str(v).lower().split()) in said for v in (c.get("where") or {}).values() if isinstance(v, str))]
     return {"all": kept} if kept else None
 
 
@@ -81,7 +86,7 @@ async def check(order: str, writes: list, *, spec=None, settle_s: float = SETTLE
     try:
         from nucleo import spec as _spec, verify as _verify
         card = writes[0][0]
-        goal = goal_on(await _spec.infer(order), card)
+        goal = goal_on(await _spec.infer(order), card, order)
         if not goal:
             return 0
         await asyncio.sleep(settle_s)

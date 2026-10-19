@@ -494,6 +494,28 @@ async def after_show(acted: dict, *, brief, operator_text: str, spoken_text: str
         return False
 
 
+async def probe_after_show(tool_calls: list, tags: list, spoken: str, *, brief, operator_text: str, spec,
+                           window=None) -> bool:
+    """The text channel's half of `after_show` (V2-252 parity). Demo pass 145, INIT: «Save Quinn and Rowan in my
+    contacts…» (a list step, so the text channel) came back as a SHOW of the contacts card and «I've opened it, though
+    there's nothing in it yet» — the voice channel repairs exactly that turn, this one never asked. The same decision;
+    its call joins the turn's tool calls. True when one was added. Never raises."""
+    try:
+        from voice.observer import emit
+        shown = [str((t.get("extra") or {}).get("id") or "") for t in (tags or []) if t.get("action") == "show"]
+        busy = {str((t.get("args") or {}).get("widget_id") or "").split("::", 1)[0] for t in tool_calls or ()
+                if t.get("name") == "widget_data"} | ({"*"} if any(t.get("name") == "escalate_to_slowbrain" for t in tool_calls or ()) else set())
+        wid = next((w for w in shown if w and "*" not in busy and w.split("::", 1)[0] not in busy), "")
+        if not wid:
+            return False
+        add = lambda w, a, p: tool_calls.append({"name": "widget_data", "args": {"widget_id": w, "action": a, "payload": p}})  # noqa: E731
+        return await after_show({"widget_id": wid}, brief=brief, operator_text=operator_text, spoken_text=spoken, spec=spec,
+                                emit=emit, present=lambda *a, **k: True, apply_widget_data=add, window=window)
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"probe after-show skipped: {type(e).__name__}: {e}")
+        return False
+
+
 def _a_question_writing(brief, got: dict, emit) -> bool:
     """A QUESTION (the verdict, sure) never gets a WRITE from this repair — only a view. Demo pass 134 (2026-10-15),
     R2: «and when does anna's vacation start? show me in the calendar» opened the agenda, and the repair added
