@@ -10,7 +10,8 @@ WHY THIS EXISTS
     is shared between installs.
 
 WHAT IT DECIDES (one of three, see `decide`)
-    · `use`       — a certificate + key are already in the cert dir and the certificate has not expired.
+    · `use`       — a certificate + key are already in the cert dir and the certificate is not within
+                    `RENEW_BEFORE_S` of expiring.
     · `generate`  — they are missing (or expired) and `mkcert` is installed: issue one for
                     local.zaelar.com, localhost and 127.0.0.1.
     · `http-only` — they are missing and there is no mkcert: the engine runs on plain HTTP (http://localhost works,
@@ -60,15 +61,29 @@ def paths(directory: str) -> tuple[str, str]:
     return os.path.join(directory, CERT_NAME), os.path.join(directory, KEY_NAME)
 
 
-def _expired(certfile: str, now: float | None = None) -> bool:
-    """True only when the certificate is READABLE and past its notAfter. Anything we cannot parse counts as valid:
-    the server's own TLS setup is the authority on a broken file, and refusing a good one here would be worse."""
+# Renewed this long BEFORE it expires (2026-10-20): the check only runs at start, so «expired» alone meant an engine
+# started the day before kept serving a certificate that died mid-session — measured on the operator's machine, the
+# browser lost the engine at 16:37 with the page open and the panel stuck on «Checking…».
+RENEW_BEFORE_S = 14 * 86400
+
+
+def expires_at(certfile: str) -> float | None:
+    """The certificate's notAfter as epoch seconds, or None when it cannot be read."""
     try:
         info = ssl._ssl._test_decode_cert(certfile)  # type: ignore[attr-defined]  # stdlib, no cryptography dep
-        not_after = ssl.cert_time_to_seconds(info["notAfter"])
+        return ssl.cert_time_to_seconds(info["notAfter"])
     except Exception:  # noqa: BLE001
+        return None
+
+
+def _expired(certfile: str, now: float | None = None) -> bool:
+    """True when the certificate is READABLE and expires within `RENEW_BEFORE_S` (or already has). Anything we cannot
+    parse counts as valid: the server's own TLS setup is the authority on a broken file, and refusing a good one here
+    would be worse."""
+    not_after = expires_at(certfile)
+    if not_after is None:
         return False
-    return not_after <= (time.time() if now is None else now)
+    return not_after <= (time.time() if now is None else now) + RENEW_BEFORE_S
 
 
 def decide(directory: str, mkcert: str | None, *, expired: Callable[[str], bool] = _expired) -> str:

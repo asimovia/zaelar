@@ -17,6 +17,8 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlparse
 
+from loguru import logger
+
 CACHE_S = 10.0
 CONNECT_TIMEOUT_S = 1.5
 _cache: dict = {"at": 0.0, "ok": False}
@@ -36,7 +38,8 @@ def _connects(host: str) -> bool:
     try:
         with socket.create_connection((host, 443), timeout=CONNECT_TIMEOUT_S):
             return True
-    except OSError:
+    except OSError as e:
+        logger.debug(f"net_probe: {host} does not answer ({e})")
         return False
 
 
@@ -51,7 +54,8 @@ def back() -> bool:
         hosts = _hosts()
         with ThreadPoolExecutor(max_workers=max(1, len(hosts))) as pool:
             ok = bool(hosts) and all(pool.map(_connects, hosts))
-    except Exception:  # noqa: BLE001 — a probe that cannot run proves nothing either way
+    except Exception as e:  # noqa: BLE001 — a probe that cannot run proves nothing either way
+        logger.debug(f"net_probe: could not run ({e})")
         ok = False
     _cache.update(at=now, ok=ok)
     return ok

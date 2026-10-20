@@ -55,9 +55,14 @@ if __name__ == "__main__":
     # INSTALL — issued by `scripts/tls_cert.py` (mkcert, local CA) from the launchers, never shipped in the repo.
     # Purely additive: internal loopback callers (nucleo/*_cli.py bridges) keep using the plain HTTP port above.
     # No-op if the pair isn't present (no mkcert): the plain HTTP port runs as always.
-    cert_dir = os.getenv("ZAELAR_TLS_CERT_DIR", os.path.join(ROOT, "certs", "local.zaelar.com"))
-    certfile, keyfile = os.path.join(cert_dir, "fullchain.pem"), os.path.join(cert_dir, "privkey.pem")
-    if os.path.exists(certfile) and os.path.exists(keyfile):
+    # And only with a certificate that has NOT expired (`server/tls.py`): an expired one is worse than none.
+    from server import tls as _tls
+    certfile, keyfile = _tls.pair()
+    if not _tls.usable(certfile, keyfile):
+        if os.path.exists(certfile):
+            logger.warning(f"HTTPS off: the certificate in {os.path.dirname(certfile)} has expired — "
+                           f"open http://localhost:{port} (scripts/tls_cert.py renews it when mkcert is installed)")
+    else:
         tls_port = int(os.getenv("ZAELAR_TLS_PORT", "44317"))
         logger.info(f"Assistant ALSO on https://local.zaelar.com:{tls_port} (per-install cert)")
         servers.append(uvicorn.Server(uvicorn.Config(
