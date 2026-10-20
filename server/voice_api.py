@@ -157,6 +157,13 @@ async def status():
     def has(*keys):
         return any(os.getenv(k) for k in keys)
 
+    # A network error is re-checked against the network before anything reads it (see `nucleo/net_probe.py`).
+    try:
+        from nucleo import net_probe
+        await asyncio.to_thread(health_state.revalidate_network, net_probe.back)
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"status: network revalidation skipped: {e}")
+
     # V2-778 F1 — the brain, the voice and its providers in the status live in `server/voice_status.py`.
     _blk = await _vstatus.brain_and_voice(
         SETTINGS=SETTINGS,

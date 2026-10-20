@@ -199,3 +199,13 @@ def _the_errand_registries_start_empty():
     if ended is not None:
         ended._ENDED_SESSIONS.clear()
     yield
+
+
+@pytest.fixture(autouse=True)
+def _the_network_probe_never_reaches_the_network(monkeypatch):
+    """`nucleo.net_probe.back()` connects to the model table's hosts so the status can drop a network-class failure
+    once the network answers (2026-10-20). Inside the suite it says «still down»: a test that recorded a failure must
+    see it, whatever the machine's Wi-Fi is doing. Tests of the probe itself patch the socket, not this."""
+    from nucleo import net_probe
+    monkeypatch.setitem(net_probe._cache, "at", float("inf"))
+    monkeypatch.setitem(net_probe._cache, "ok", False)
