@@ -25,9 +25,10 @@ _ENGINE = Path(__file__).resolve().parents[4]
 _WIDGETS_DIR = _ENGINE / "widgets"
 
 # `ctx.t("widgets.x.y")` / `tr("widgets.x.y")` — the V2-613 pilots' shape, full keys.
-_FULL_RE = re.compile(r"\b(?:ctx\.t|tr|t)\(\s*[\"']([a-zA-Z0-9_.]+)[\"']")
+_FULL_RE = re.compile(r"\b(?:ctx\.t|tr|t)\(\s*[\"']([a-zA-Z0-9_.]+)[\"'](?!\s*\+)")
 # `tt("short_key", …)` — the shape every widget migrated in V2-694 uses; the prefix comes from its own helper.
-_SHORT_RE = re.compile(r"\b(?:tt|tr)\(\s*(?:ctx\s*,\s*)?[\"']([a-zA-Z0-9_]+)[\"']")
+# A literal followed by `+` is a COMPUTED key (`tt("flag_" + f)`): its prefix is not a key, so neither regex reads it.
+_SHORT_RE = re.compile(r"\b(?:tt|tr)\(\s*(?:ctx\s*,\s*)?[\"']([a-zA-Z0-9_]+)[\"'](?!\s*\+)")
 # Both helper shapes in the catalog: `_T("widgets.x." + key)` and documento's
 # `const k = "widgets.documento." + key` (it takes `ctx` as its first argument).
 _PREFIX_RE = re.compile(r"[=(]\s*[\"'](widgets\.[a-z0-9_-]+\.)[\"']\s*\+\s*key")
