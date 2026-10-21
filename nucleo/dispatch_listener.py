@@ -90,7 +90,7 @@ async def run_listener(stop: "asyncio.Event | None" = None) -> None:
                 except Exception:
                     pass
                 try:
-                    await _fold_into(dup, request, key)      # a refinement of the live session (no relaunch)
+                    await _fold_into(dup, request, key, ctx)  # a refinement of the live session (no relaunch)
                 except Exception as e:  # noqa: BLE001
                     logger.warning(f"dispatch: inject de dedup a {dup} falló: {e}")
                 # Same task, proven by the dedup match → ONE flow (V2-123). Only when the fuse didn't happen does
@@ -229,7 +229,7 @@ async def run_listener(stop: "asyncio.Event | None" = None) -> None:
         logger.info("dispatch: listener de escalados detenido")
 
 
-async def _fold_into(dup: str, request: str, key: str) -> None:
+async def _fold_into(dup: str, request: str, key: str, ctx: dict | None = None) -> None:
     """The escalation became a REFINEMENT of the live errand `dup`: inject it, and close the escalation itself.
 
     best-plumber-same-day ES (2026-10-14): «…si esto no sale hoy me lanzo a llamar…» was folded into the live
@@ -240,6 +240,8 @@ async def _fold_into(dup: str, request: str, key: str) -> None:
     joined, never a second one."""
     await _d.inject(dup, request)
     _close_folded(key)
+    from nucleo.turn import flow_of as _flow
+    _flow.late_fold(dup, ctx or {})          # V2-784 — an alarm now, and the duplicate's sheet does not stay behind
 
 
 def _absorb_into(pdup: str, request: str, key: str) -> str:

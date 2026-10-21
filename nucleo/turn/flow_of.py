@@ -100,3 +100,32 @@ async def join(text: str) -> dict:
         except Exception as e:  # noqa: BLE001 — a failed inject falls back to its sheet, never to a second one
             logger.warning(f"flow_of: inject into {flow.get('id')} failed — {type(e).__name__}: {e}")
     return {"flow": flow["id"], "sheet": str(flow.get("sheet") or "")} if flow.get("sheet") else {}
+
+
+def late_fold(target: str, ctx: dict) -> str:
+    """The dispatcher folded an escalation into live errand `target` AFTER the turn acted (V2-784 F3/F4).
+
+    That fold is a backstop now: with `flow_of` asked first it should not fire, so it is an ALARM with its
+    evidence, not a silent merge. And it no longer leaks: the escalation's own sheet, when it is not the
+    target's, is closed instead of left on screen with nobody writing into it (the 19:23 «Searching in depth…»
+    card). Returns the sheet it closed, "" when none. Never raises."""
+    own = str((ctx or {}).get("sheet") or "").strip()
+    try:
+        from nucleo import dispatch as _d
+        rec = _d.get_record(target)
+        theirs = str(_d.sheet_of(rec) or "") if rec is not None else ""
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"flow_of: late fold into {target} — target unreadable: {e}")
+        theirs = ""
+    orphan = own if own and own != theirs else ""
+    try:
+        from voice.observer import emit
+        emit("alert", "🧵 fusión tardía: la petición llegó al despachador sin pasar por su flujo", role="system",
+             text=f"→ {target}" + (f" · hoja huérfana {orphan} cerrada" if orphan else ""),
+             extra={"cat": "flash", "flow": target, "orphan_sheet": orphan, "v": "V2-784"})
+        if orphan:
+            from widgets.results import data as _sheet
+            emit("widget", "close", extra={"id": _sheet.instance_id(orphan), "src": "flow_of"})
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"flow_of: could not report/close the late fold into {target}: {e}")
+    return orphan

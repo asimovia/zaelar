@@ -90,3 +90,37 @@ def test_a_word_about_the_weather_in_between_does_not_hide_the_hunt(hunts, monke
 def test_a_new_hunt_is_a_new_flow(hunts, monkeypatch):
     launches.opened(FRAGMENT, "S1")
     assert asyncio.run(flow_of.flow_of("find me a used acoustic guitar in Madrid")) is None
+
+
+# ── F3/F4 · the dispatcher's late fold is an alarm, and it no longer leaves a sheet behind ──────────────────
+
+def test_a_late_fold_closes_the_duplicates_sheet_and_says_so(monkeypatch):
+    from types import SimpleNamespace
+
+    from voice import observer
+    seen = []
+    monkeypatch.setattr(observer, "emit", lambda *a, **kw: seen.append((a, kw)))
+    monkeypatch.setattr("nucleo.dispatch.get_record", lambda tid: SimpleNamespace(sheet="ls1"))
+    monkeypatch.setattr("nucleo.dispatch.sheet_of", lambda rec: rec.sheet)
+    assert flow_of.late_fold("7", {"sheet": "ls2"}) == "ls2"
+    assert any(a[:2] == ("widget", "close") and kw["extra"]["id"] == "results::ls2" for a, kw in seen), \
+        "the folded duplicate's sheet stayed on screen with nobody writing into it"
+    assert any(a[0] == "alert" for a, _ in seen), "a late fold means the flow door missed — it must be SAID"
+
+
+def test_a_late_fold_into_the_same_sheet_closes_nothing(monkeypatch):
+    from types import SimpleNamespace
+
+    from voice import observer
+    seen = []
+    monkeypatch.setattr(observer, "emit", lambda *a, **kw: seen.append((a, kw)))
+    monkeypatch.setattr("nucleo.dispatch.get_record", lambda tid: SimpleNamespace(sheet="ls1"))
+    monkeypatch.setattr("nucleo.dispatch.sheet_of", lambda rec: rec.sheet)
+    assert flow_of.late_fold("7", {"sheet": "ls1"}) == ""
+    assert not any(a[:2] == ("widget", "close") for a, _ in seen)
+
+
+def test_the_dispatcher_hands_the_escalation_context_to_the_fold():
+    from pathlib import Path
+    src = (Path(__file__).resolve().parents[4] / "nucleo" / "dispatch_listener.py").read_text("utf-8")
+    assert "await _fold_into(dup, request, key, ctx)" in src and "_flow.late_fold(dup, ctx or {})" in src
