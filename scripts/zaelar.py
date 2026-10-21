@@ -52,6 +52,9 @@ IS_WINDOWS = platform.system() == "Windows"
 # The full local surface. `role` is what a human should read when something is still holding a port.
 PORTS = [
     (43917, "app (HTTP — internal bridges talk to this one)"),
+    # The voice worker's health server, fixed at app port + 1000 (`voice/engine/pipeline/agent.py`). It used to take
+    # a random port at each start, so `stop` could not name it and `status` could not see a leftover one.
+    (44917, "voice worker health (127.0.0.1 only)"),
     (7880, "livekit-server (voice signalling)"),
     # ⚠️ NAMES WHAT IT DOES, not what it is FOR. This line used to read "files + the browser that passes
     # CAPTCHAs" — the browser is P2 and does not exist, so `./zaelar status` was announcing a capability

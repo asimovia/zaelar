@@ -45,7 +45,8 @@ if __name__ == "__main__":
     import asyncio
     import uvicorn
 
-    # zaelar's fixed local port (43917): the system always starts here unless PORT is overridden (prod sets 8080).
+    # zaelar's FIXED local port (43917): it always starts here — never a random port — unless PORT is overridden
+    # (prod sets 8080). Every other port the instance opens is fixed too; the list is `scripts/zaelar.py::PORTS`.
     host = os.getenv("HOST", "localhost"); port = int(os.getenv("PORT", "43917"))
     logger.info(f"Assistant (voice) on http://{host}:{port}")
     servers = [uvicorn.Server(uvicorn.Config(app, host=host, port=port, log_level="warning"))]

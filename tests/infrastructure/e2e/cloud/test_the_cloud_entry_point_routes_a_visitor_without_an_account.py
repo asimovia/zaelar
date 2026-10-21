@@ -1,21 +1,21 @@
 """The cloud entry point, as a visitor WITHOUT a session sees it (LIVE — read-only, opt-in).
 
 `my.zaelar.com` is a routing edge, not a server: with a session cookie it replays the request to that account's
-Machine, and with NO cookie it falls back to the "smart entry" — an interstitial that sends the visitor to the
-engine on their own computer. That behaviour is deliberate and it is the ONLY part of the cloud surface that can
-be checked without spending money, provisioning a Machine or leaving an account behind.
+Machine, and with NO cookie it sends the visitor to the login (2026-10-21; until then it guessed they were a
+self-hoster and bounced them to an engine on their own computer). The login brings them back with `next`. That is
+the ONLY part of the cloud surface that can be checked without spending money, provisioning a Machine or leaving
+an account behind.
 
 WHY IT IS WORTH A TEST. The unauthenticated fallback is what every stranger who types the address gets, and it
 fails in a way nobody would notice from inside: a routing change turns it into a 404, a 500 or — worse — into
 something that serves real content to someone with no account, and the engine's own suite has no opinion about
 it because the engine is not what answers.
 
-⚠️ AND THE TRAP IT PINS, measured 2026-09-04. WITHOUT a session cookie the edge answers this same HTML for
-EVERY path on the origin — `/m`, `/manifest.webmanifest` and `/sw.js` included, all `200 text/html`. So a
-browser with no account cannot install the PWA and cannot register a service worker, because the files it needs
-are not JavaScript or JSON at that moment; the manifest and the worker only become real once the cookie routes
-the request to the account's Machine. That is correct (a visitor with no account has nothing to install) and it
-is exactly the shape that reads as "the PWA is broken" to whoever debugs it from a logged-out browser.
+⚠️ AND THE TRAP IT PINS, measured 2026-09-04. WITHOUT a session cookie the edge answers EVERY path on the
+origin the same way — `/m`, `/manifest.webmanifest` and `/sw.js` included. So a browser with no account cannot
+install the PWA and cannot register a service worker: the manifest and the worker only become real once the cookie
+routes the request to the account's Machine. That is correct (a visitor with no account has nothing to install)
+and it is exactly the shape that reads as "the PWA is broken" to whoever debugs it from a logged-out browser.
 
 READ-ONLY and OPT-IN: nothing but GETs, no account, no session, no writes. Built whole and SKIPPED unless the
 runner asks for it (`ZAELAR_CLOUD_LIVE=1`) — the same shape as the connectors' live round-trip, and for the same
@@ -51,60 +51,49 @@ _UA = ("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1
        "Version/17.0 Mobile/15E148 Safari/604.1")
 
 
-def _get(path: str) -> tuple[int, str, str]:
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, *a, **k):
+        return None
+
+
+_OPENER = urllib.request.build_opener(_NoRedirect)
+
+
+def _get(path: str) -> tuple[int, dict, str]:
+    """One GET, redirects NOT followed — the redirect is what is under test."""
     req = urllib.request.Request(CLOUD + path, headers={"User-Agent": _UA})
     try:
-        with urllib.request.urlopen(req, timeout=20) as r:
-            return r.status, r.headers.get("Content-Type", ""), r.read().decode("utf-8", "replace")
+        with _OPENER.open(req, timeout=20) as r:
+            return r.status, dict(r.headers), r.read().decode("utf-8", "replace")
     except urllib.error.HTTPError as e:
-        return e.code, e.headers.get("Content-Type", ""), e.read().decode("utf-8", "replace")
+        return e.code, dict(e.headers), e.read().decode("utf-8", "replace")
     except Exception as e:                      # noqa: BLE001 — no network is not a product failure
         pytest.skip(f"{CLOUD} unreachable: {type(e).__name__}: {e}")
 
 
-def test_the_entry_point_answers_at_all():
-    """A dead entry point is the one outage a customer notices before we do."""
-    status, _, _ = _get("/")
-    assert status == 200, f"{CLOUD}/ answered {status}"
+def _login_target(path: str) -> str:
+    status, headers, _ = _get(path)
+    assert status == 302, f"{CLOUD}{path} answered {status} to a visitor without a session, not a redirect"
+    return headers.get("Location", "")
 
 
-def test_a_visitor_without_a_session_is_sent_to_their_own_computer():
-    """The smart entry: no cookie means no account to route to, so the visitor is handed to the engine on their
-    own machine instead of an error page."""
-    status, ctype, body = _get("/m")
-    assert status == 200 and "text/html" in ctype
-    assert "localhost:43917" in body, (
-        "the unauthenticated fallback no longer points at the local engine — a routing change would strand "
-        "every visitor without an account on a page that does nothing"
-    )
-    assert "location.replace" in body or "<a href" in body, "the redirect has to actually happen"
+@pytest.mark.parametrize("path", ["/", "/m"])
+def test_a_visitor_without_a_session_is_sent_to_the_login_and_back(path):
+    """No cookie means no account to route to: the visitor is sent to log in, and the login is told where to
+    bring them back — the same shell they asked for (/m stays /m)."""
+    import urllib.parse
+    loc = _login_target(path)
+    parsed = urllib.parse.urlparse(loc)
+    assert parsed.path.rstrip("/").endswith("/login"), loc
+    nxt = urllib.parse.parse_qs(parsed.query).get("next", [""])[0]
+    assert nxt == CLOUD + path, f"the login would not bring them back to {path}: next={nxt!r}"
 
 
-def test_the_fallback_page_gives_a_visitor_a_way_forward_without_javascript():
-    """A `location.replace` alone is a dead end for anyone whose browser did not run it."""
-    _, _, body = _get("/m")
-    assert "<a href" in body and "localhost:43917" in body
-
-
-def test_the_fallback_leaks_nothing_about_anybody():
-    """It is served to strangers, so what it may contain is: an explanation and a link."""
-    _, _, body = _get("/m")
-    assert len(body) < 4000, "the fallback grew past an interstitial; check what it is serving now"
-    for leak in ("zaelar_cloud_session", "@", "api_key", "sk-", "Bearer "):
-        assert leak not in body, f"the unauthenticated entry page contains {leak!r}"
-
-
-@pytest.mark.parametrize("path", ["/manifest.webmanifest", "/sw.js"])
-def test_the_pwa_files_are_NOT_served_to_a_visitor_without_a_session(path):
-    """Pins the trap in this module's docstring rather than leaving it to be rediscovered.
-
-    These two are what a phone needs to install the app, and unauthenticated they come back as the SAME HTML
-    interstitial — so "the PWA will not install" is the expected answer for somebody with no account, not a
-    defect. If this ever starts returning real JavaScript or JSON to a stranger, that is the thing to look at:
-    it would mean the edge is serving an account's files without a cookie."""
-    status, ctype, body = _get(path)
-    assert status == 200
-    assert "text/html" in ctype and "localhost:43917" in body, (
-        f"{path} no longer falls back to the interstitial for an anonymous visitor — the edge may be serving "
-        f"a real Machine's file without a session (content-type: {ctype})"
-    )
+@pytest.mark.parametrize("path", ["/manifest.webmanifest", "/sw.js", "/api/status"])
+def test_nothing_of_an_account_is_served_to_a_visitor_without_a_session(path):
+    """Pins the trap in this module's docstring: the PWA files and the API answer a stranger with the same
+    redirect, never with a real Machine's file."""
+    status, headers, body = _get(path)
+    assert status == 302 and "/login" in headers.get("Location", ""), (path, status, headers.get("Location"))
+    for leak in ("zaelar_cloud_session", "api_key", "sk-", "Bearer "):
+        assert leak not in body, f"{path} contains {leak!r}"

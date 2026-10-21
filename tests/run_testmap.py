@@ -5910,6 +5910,8 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/infrastructure/unit/core/test_what_leaves_the_machine_is_scrubbed.py"]},
         {"id": "7.73", "title": "A fix is a mechanism, never a word: regexes and word tables in product code only get rarer (CRIT-W10)",
             "ch": UNIT, "paths": ["tests/infrastructure/unit/test_words_never_fix_a_case.py"]},
+        {"id": "7.74", "title": "The engine always starts on the same ports, on this machine only: the voice worker's health server is fixed at app port + 1000 on 127.0.0.1 (it was random, on every interface) and `stop` names every port",
+            "ch": UNIT, "paths": ["tests/infrastructure/unit/test_the_engine_always_starts_on_the_same_ports.py"]},
         {"id": "7.60", "title": "The public repo: Castilian comments only shrink, and the roadmap/logs/reports are not tracked",
             "ch": UNIT, "paths": ["tests/infrastructure/unit/test_the_public_repo_speaks_english_and_keeps_our_diary_private.py"]},
         {"id": "7.59", "title": "Voice turn and text probe import the same brain modules, or the difference is declared (ALERT 5)",

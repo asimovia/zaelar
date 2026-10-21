@@ -59,6 +59,23 @@ Identical on macOS, Linux and Windows (use `.\zaelar.ps1` instead of `./zaelar` 
 
 Working on the code? `make start` / `make stop` / `make restart` / `make status` do the same thing.
 
+### Always the same ports
+
+Zaelar starts on the **same fixed ports every time** — never a random one. The app and its helpers answer only on
+your own machine (`127.0.0.1`). Open **http://localhost:43917**; bookmark it, it will not move.
+
+| Port | What |
+|---|---|
+| **43917** | the app — the only address you open |
+| 44917 | the voice worker's health check (app port + 1000) |
+| 7880 · 7881 | the local LiveKit server (voice signalling · media over TCP) |
+| 45817 | the local daemon (the folders you allow it to read) |
+| 3111 | the WhatsApp bridge, when connected |
+
+`./zaelar start` on a running instance says so instead of starting a second one, and `./zaelar stop` frees every
+port in this list — so a stopped Zaelar leaves nothing behind. Another port for the app? `PORT=…`; the worker
+follows it (+1000). The list lives in `scripts/zaelar.py` (`PORTS`).
+
 ## Your own files
 
 Zaelar can read the folders you choose on your own computer. That is done by a small companion service, the

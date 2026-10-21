@@ -498,6 +498,15 @@ async def request_fnc(req: JobRequest) -> None:
         await req.reject()
 
 
+def worker_health_port() -> int:
+    """The voice worker's health port: the app port + 1000 (43917 → 44917), so every instance — and every second
+    instance on another app port — lands on a fixed, predictable port. `ZAELAR_WORKER_PORT` overrides it."""
+    explicit = (os.getenv("ZAELAR_WORKER_PORT") or "").strip()
+    if explicit:
+        return int(explicit)
+    return int((os.getenv("PORT") or "43917").strip()) + 1000
+
+
 def make_server() -> AgentServer:
     """Build the embeddable ``AgentServer`` (zaelar runs this in-process).
 
@@ -528,6 +537,12 @@ def make_server() -> AgentServer:
         ws_url=SETTINGS.livekit_url,
         api_key=SETTINGS.livekit_api_key,
         api_secret=SETTINGS.livekit_api_secret,
+        # FIXED PORT, THIS MACHINE ONLY (2026-10-21). The worker opens a small health server (`/`, `/worker`); in
+        # dev mode LiveKit's default is port 0 on every interface — a NEW random port at each start, reachable
+        # from the local network, and impossible for `stop` to name, so a dead instance's port went unnoticed.
+        # The engine always starts on the same ports: see `worker_health_port()` and `scripts/zaelar.py::PORTS`.
+        host="127.0.0.1",
+        port=worker_health_port(),
     )
     # on_request = request_fnc: only service zaelar's own rooms (room isolation when
     # a local LiveKit dev server is shared with other projects, e.g. voice-lab-2).
