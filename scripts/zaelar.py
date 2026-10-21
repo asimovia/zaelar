@@ -22,8 +22,8 @@ WHAT IT FIXES, LEARNED THE HARD WAY (2026-08-10/12)
 DESIGN NOTES
     · Standard library only. No psutil, no extra install step.
     · Ports are declared ONCE (`PORTS`). Adding a listener means adding a line here, not hunting through scripts.
-    · Platform-specific bits (who owns a port, how to kill hard) are isolated in two functions with one interface
-      each. Everything else is platform-neutral.
+    · Platform-specific bits (who owns a port, whether a pid lives, how to kill hard) are isolated in three
+      functions with one interface each. Everything else is platform-neutral.
     · Never guesses by process name: `pkill -f "python -m server"` silently matched nothing on this very machine
       because the real command line differed. Ownership is resolved by PORT (the thing we actually care about) and
       by the pids we ourselves recorded.
@@ -75,6 +75,15 @@ APP_PORT = 43917
 DAEMON_PORT = 45817
 
 
+def _one_engine():
+    """`nucleo/one_engine.py`, loaded by path: a standard-library file, so the launcher still needs no venv."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("zaelar_one_engine", os.path.join(ROOT, "nucleo", "one_engine.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
 def _open_line() -> str:
     """The URL to hand a person. A local install is plain HTTP on localhost: browsers treat it as a secure context
     (microphone included) and nothing leaves the machine — no certificate to issue, install or renew."""
@@ -111,6 +120,25 @@ def pids_on_port(port: int) -> list[int]:
         return sorted({int(x) for x in out.split() if x.strip().isdigit()})
     except Exception:
         return []
+
+
+def pid_alive(pid: int) -> bool:
+    """Is this process still there? The second platform-specific spot: on Windows `os.kill` with any signal
+    TERMINATES the process, so existence is asked to `tasklist` instead. When it cannot tell, it says alive, so the
+    stop escalates rather than walking away from a live process."""
+    alive = True
+    try:
+        if IS_WINDOWS:
+            out = subprocess.run(["tasklist", "/FI", f"PID eq {pid}", "/NH"],
+                                 capture_output=True, text=True, timeout=10).stdout
+            alive = str(pid) in out
+        else:
+            os.kill(pid, 0)
+    except ProcessLookupError:
+        alive = False
+    except (OSError, subprocess.SubprocessError) as e:
+        _say(f"  pid {pid}: could not tell whether it lives ({e}) — treating it as alive")
+    return alive
 
 
 def kill_pid(pid: int, hard: bool = False) -> None:
@@ -207,27 +235,49 @@ def _stop_port(port: int, role: str, grace: float) -> bool:
         _say(f"  {port}: busy but the owner could not be identified — leaving it alone")
         return False
 
+    # Done means the OWNERS are gone, not the port. On SIGTERM the server closes its listener first and then waits
+    # on its shutdown, which can hang for good (a voice-worker drain, an open socket): measured 2026-10-21, the port
+    # was free in a second, `stop` called it stopped, and the old process lived on beside the new one — still in the
+    # voice room and polling the connectors, so the person spoke and nobody answered.
+    def ended() -> bool:
+        return not port_busy(port) and not any(pid_alive(p) for p in owners)
+
     for pid in owners:
         kill_pid(pid, hard=False)
     deadline = time.time() + grace
     while time.time() < deadline:
-        if not port_busy(port):
+        if ended():
             _say(f"  {port}: stopped ({role})")
             return True
         time.sleep(0.3)
 
-    # It ignored SIGTERM. This is not hypothetical: a hung voice-worker thread did exactly this.
-    _say(f"  {port}: ignored the polite stop, forcing it")
+    # It ignored SIGTERM, or freed the port and hung in its shutdown. Neither is hypothetical.
+    _say(f"  {port}: did not end on the polite stop, forcing it")
     for pid in owners:
-        kill_pid(pid, hard=True)
+        if pid_alive(pid):
+            kill_pid(pid, hard=True)
     deadline = time.time() + 5
     while time.time() < deadline:
-        if not port_busy(port):
+        if ended():
             _say(f"  {port}: stopped, forced ({role})")
             return True
         time.sleep(0.3)
     _say(f"  {port}: STILL BUSY — something else owns it")
     return False
+
+
+def _end_pid(pid: int, grace: float) -> bool:
+    """TERM, wait for it to be gone, then KILL. True when it ended."""
+    kill_pid(pid, hard=False)
+    for hard, wait in ((False, grace), (True, 5.0)):
+        if hard and pid_alive(pid):
+            kill_pid(pid, hard=True)
+        deadline = time.time() + wait
+        while time.time() < deadline:
+            if not pid_alive(pid):
+                return True
+            time.sleep(0.3)
+    return not pid_alive(pid)
 
 
 def _unload_ollama() -> None:
@@ -284,6 +334,17 @@ def cmd_stop(keep_livekit: bool = False, grace: float = 6.0) -> int:
         if keep_livekit and port in KEPT_ON_RESTART:
             continue
         ok = _stop_port(port, role, grace) and ok
+
+    # The engine that holds the one-engine lock, even with every port already let go: that is the wedged shutdown
+    # that left two engines in the voice room. Only one of OURS — a copy elsewhere is named, never killed.
+    other = _one_engine().holder()
+    if other and other.get("pid"):
+        if os.path.abspath(str(other.get("root") or "")) == ROOT:
+            _say(f"  engine pid {other['pid']}: still alive without its ports, ending it")
+            ok = _end_pid(int(other["pid"]), grace) and ok
+        else:
+            _say(f"  another zaelar engine runs from {other.get('root')} (pid {other['pid']}) — stop it from there")
+            ok = False
 
     # Children we launched ourselves that hold no port of their own (the livekit wrapper, mostly).
     rec = load_pids()
@@ -343,6 +404,13 @@ def cmd_start(wait: float = 180.0, brain: str = "nucleo") -> int:
             return 0
         # Port taken but not answering: exactly the state that used to look like "it won't start".
         _say("port 43917 is taken but the app is not answering — a previous instance is wedged.")
+        _say("  run `make stop` first (or `make restart`, which does it for you).")
+        return 1
+    other = _one_engine().holder()
+    if other:
+        # No port answers, yet an engine is alive: wedged on its way out, or a second copy of the repo.
+        _say(f"another zaelar engine is alive (pid {other.get('pid')}, from {other.get('root')}) — "
+             "two cannot share the voice, the ports or the connectors.")
         _say("  run `make stop` first (or `make restart`, which does it for you).")
         return 1
 

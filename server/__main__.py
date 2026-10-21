@@ -39,6 +39,17 @@ from nucleo import workspace as _workspace  # noqa: E402
 
 _workspace.ensure()
 
+# ONE ENGINE PER MACHINE, checked before anything starts a poller or registers a voice worker. A cloud Machine is one
+# engine by construction, so only a local run takes the lock (`nucleo/one_engine.py` says why a port is not enough).
+if __name__ == "__main__" and not (os.getenv("ZAELAR_USER_ID") or "").strip():
+    from nucleo import one_engine as _one  # noqa: E402
+
+    _other = _one.hold(ROOT)
+    if _other is not None:
+        sys.exit(f"another zaelar engine is already running on this machine (pid {_other.get('pid')}, "
+                 f"from {_other.get('root')}, since {_other.get('since')}). Two cannot share the voice, the ports "
+                 "or the connectors. Stop it first:  make stop   (or: python scripts/zaelar.py stop)")
+
 from server import app  # noqa: E402
 
 if __name__ == "__main__":

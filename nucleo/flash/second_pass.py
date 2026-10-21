@@ -439,3 +439,10 @@ async def answered_from_state(verdict: dict | None, operator_text: str, window: 
     except Exception as e:  # noqa: BLE001
         logger.debug(f"answered_from_state: {e}")
         return ""
+
+
+async def speak_answered_from_state(verdict: dict | None, operator_text: str, window: list, spec, *, send, spoken: list) -> None:
+    """`answered_from_state`, said: the voice turn's one call, so the turn keeps a single branch for it."""
+    if ans := await answered_from_state(verdict, operator_text, window, spec):
+        send(ans)
+        spoken.append(" " + ans)
