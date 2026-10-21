@@ -83,11 +83,16 @@ def _migrate(code: str, name: str) -> None:
 
 
 def read_json(path: Path) -> dict:
+    """A pack file, or {} when it does not exist yet (the normal state of a language not generated)."""
+    if not path.is_file():
+        return {}
     try:
         d = json.loads(path.read_text(encoding="utf-8"))
-        return d if isinstance(d, dict) else {}
-    except (OSError, ValueError):
-        return {}
+    except (OSError, ValueError) as e:
+        from loguru import logger
+        logger.warning(f"i18n.packs: unreadable pack {path}: {e}")
+        d = {}
+    return d if isinstance(d, dict) else {}
 
 
 def write_json(path: Path, data: dict) -> None:

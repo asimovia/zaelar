@@ -215,10 +215,25 @@ async def voice_turn(req: dict, operator_text: str, *, spec=None, on_delta=None,
     `CancelledError` is re-raised on purpose: a cancelled turn must not look like a failed search.
     """
     import asyncio
+
+    from nucleo.turn import flow_of as _flow, launches as _launches
+    # V2-784 — the open flow this hunt belongs to, asked BEFORE anything is opened: a live worker takes it as a
+    # refinement, a pass in flight or just delivered is re-run into ITS sheet. Only a new flow mints a sheet.
+    joined = await _flow.join(operator_text)
+    if joined.get("injected"):
+        line = "" if (already_said or "").strip() else _taken_line()
+        if line and on_delta is not None:
+            on_delta(line)
+        return {"delivered": False, "n": 0, "escalated": 0, "ctx": "", "sheet": joined.get("sheet", ""),
+                "pending": True, "joined": joined["flow"]}, line
+    inherit = str(joined.get("sheet") or "")
+    new_sheet = "" if inherit else fresh_sheet()
+    lid = _launches.opened(operator_text or str(req.get("query") or ""), inherit or new_sheet)
     task = asyncio.ensure_future(asyncio.to_thread(
         run, str(req.get("query") or ""), price_max=req.get("price_max"),
         price_min=req.get("price_min"), condition=str(req.get("condition") or "").strip(),
-        operator_text=operator_text))
+        operator_text=operator_text, sheet=inherit, new_sheet=new_sheet))
+    task.add_done_callback(lambda _t: _launches.closed(lid))   # by then its delivery or escalation carries it
     done, _pending = await asyncio.wait({task}, timeout=FAST_PASS_BUDGET_S)
     if not done:
         # The search is still on the network (demo pass 52, 2026-09-29, A1: the ads index took ~40 s and the turn
@@ -306,8 +321,19 @@ def compose_face(res: dict, operator_text: str) -> str:
             + (f"\n\nANUNCIOS PROVISIONALES YA EN SU HOJA ({res.get('n')}):\n{ctx}" if tiene else ""))
 
 
+def fresh_sheet() -> str:
+    """A new fast-pass sheet id. Minted BEFORE the pass runs, so the launch is a flow with its sheet from the start."""
+    try:
+        from nucleo.runtime_ids import next_seq
+        from nucleo.sheets import sheet_id_for
+        return sheet_id_for(f"ls{next_seq('listing.fast')}")
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"listing_turn: could not mint a sheet id ({e!r})")
+        return ""
+
+
 def run(query: str, *, price_max=None, price_min=None, condition: str = "",
-        operator_text: str = "", budget_s: float = _BUDGET_S, sheet: str = "") -> dict:
+        operator_text: str = "", budget_s: float = _BUDGET_S, sheet: str = "", new_sheet: str = "") -> dict:
     """The fast pass, start to verdict. Never raises; BLOCKING (call via `asyncio.to_thread` from the loop).
 
     Returns `{delivered, n, sheet, escalated, reason, ms, ctx}`:
@@ -346,15 +372,7 @@ def run(query: str, *, price_max=None, price_min=None, condition: str = "",
 
     # ONE sheet from first finding to final report. Its id must NOT derive from the errand (none exists yet):
     # the escalation inherits it precisely because it is not its own (`_sheet_open`'s relay rule).
-    if inherited:
-        sid = str(sheet).strip()
-    else:
-        try:
-            from nucleo.runtime_ids import next_seq
-            from nucleo.sheets import sheet_id_for
-            sid = sheet_id_for(f"ls{next_seq('listing.fast')}")
-        except Exception:  # noqa: BLE001
-            sid = ""
+    sid = str(sheet).strip() if inherited else (new_sheet or fresh_sheet())
     out["sheet"] = sid
 
     try:
