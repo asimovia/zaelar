@@ -36,7 +36,8 @@ def _list(lid, title, goal, ago, steps_done, steps):
 def test_a_list_from_yesterday_is_in_the_turn_with_its_steps(goal):
     _list("lista:y", "26 × Assistant name Johnny", goal, 26 * 3600, 25, 26)
     [line] = tb.earlier_lines()
-    assert "26 × Assistant name Johnny" in line and "(25/26 pasos hechos)" in line
+    assert "26 × Assistant name Johnny" in line and "una lista de 26 tareas" in line and "(25/26 hechas)" in line
+    assert goal[:20] in line, "what it was, in his words — a composed title does not answer «the long prompt I sent»"
     import datetime as dt
     day = dt.datetime.fromtimestamp(time.time() - 26 * 3600)
     assert day.strftime("%A %Y-%m-%d") in line, "the line names its day — weekday AND date — so «yesterday» resolves"

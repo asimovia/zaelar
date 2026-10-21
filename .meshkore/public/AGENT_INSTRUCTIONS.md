@@ -302,7 +302,7 @@ Esto es lo que él ha pedido explícitamente, repetido y por escrito. Está arri
   últimos eventos de `.meshkore/logs/sessions/` (si hay `transcript`/`brain` recientes, hay alguien hablando)
   y `curl -s localhost:43917/api/tasks` (si `sessions` no está vacío, hay trabajo en vuelo). Un reinicio mata
   su sesión de LiveKit y cancela los workers en curso. Pagado dos veces: 2026-07-14 y 2026-09-15.
-- **Una pasada ancha se lanza con `tests/watchdog.py`, no con `pytest` a pelo.** Ver la primera de las «Hard rules».
+- **Tras un cambio, solo tests de SEGUNDOS (el fichero tocado y su desarme); una pasada larga se PREGUNTA antes: «¿hago la ronda de tests ahora o la dejamos para más adelante?»** — él encadena cambios y cada ronda le interrumpe (2026-10-21). Si se lanza: `tests/watchdog.py`, nunca `pytest` a pelo.
 - **Commitea con pathspec** (`git commit -- <rutas>`), tras comprobar que `git diff --cached --name-only` está
   VACÍO. Hay varias sesiones sobre el MISMO checkout y el índice es compartido. Ver «Hard rules».
 - **Los commits llevan `Co-Authored-By`.** Override del operador a §9.1 del preámbulo (que lo prohíbe): cada commit añade, tras los trailers MeshKore, `Co-Authored-By: <quién escribió el cambio>` (el agente/CLI que redactó el commit). El operador lo daba por supuesto desde el principio (2026-09-19).

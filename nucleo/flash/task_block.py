@@ -367,7 +367,11 @@ def earlier_lines(now: float | None = None) -> list[str]:
         bit = f"{_when_label(float(r.get('created_at') or when), now)} · «{name}» · {_STATE_WORD.get(state, state)}"
         kids = st.tasks_children(str(r.get("id") or ""))     # a list: its steps are its children
         if kids:
-            bit += f" ({sum(1 for k in kids if k.get('state') == 'done')}/{len(kids)} pasos hechos)"
+            # What it WAS, in his words: a composed title («26 × Assistant name Johnny») does not answer «the long
+            # prompt with several tasks I sent you» — «a list of 26 tasks» that began «DEMO INITIALIZATION» does.
+            head = _short_note(" ".join(str(r.get("goal") or "").split()), 60)
+            bit += (f" — una lista de {len(kids)} tareas que empezaba «{head}» "
+                    f"({sum(1 for k in kids if k.get('state') == 'done')}/{len(kids)} hechas)")
         elif r.get("outcome"):
             bit += f" · {_short_note(str(r['outcome']), 80)}"
         if used + len(bit) > EARLIER_MAX_CHARS and out:

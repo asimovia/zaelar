@@ -412,3 +412,30 @@ async def hollow_repairs(text: str, spoken_text: str, window: list, spec, *,
     except Exception:
         pass
     return spoken_text
+
+
+async def answered_from_state(verdict: dict | None, operator_text: str, window: list, spec) -> str:
+    """The answer a commission was annulled FOR (`escalation_guard.ANSWERED`): his question, composed from the turn's
+    own state — the clock line, the request record (recent and the days before), what is running — and the
+    conversation, with the model the turn already pays (2026-10-21). When the state does not hold what he asks, it
+    says so the way a person would — naming the day or the thing — and offers to look further, instead of a worker
+    hunting for minutes. Returns "" for any other verdict or on failure; the caller keeps what it had."""
+    if not verdict or verdict.get("disposition") != "answered":
+        return ""
+    try:
+        from nucleo.flash import dialog, prompt as _prompt
+        ctx = "\n".join(f"{m.get('role', '?')}: {str(m.get('content', ''))[:300]}"
+                        for m in (window or [])[-8:] if isinstance(m, dict))
+        sys2 = (_prompt._lang_lock()
+                + "\nEl operador ha hecho una PREGUNTA que se contesta con lo que ya tienes: tu ESTADO (abajo) y la "
+                  "conversación. Contéstala AHORA, en 1-3 frases habladas y naturales, con esos datos. Si pregunta "
+                  "por un día, sitúalo (qué día de la semana y qué fecha es) y di lo que hubo; si el estado no tiene "
+                  "lo que pregunta, dilo nombrando el día o la cosa y ofrece mirar otra fecha o buscarlo — nunca "
+                  "prometas que ya estás en ello.\n\n"
+                + f"ESTADO:\n{_prompt.live_state()}\n\nPREGUNTA DEL OPERADOR: {operator_text}"
+                + ("\n\nCONVERSACIÓN RECIENTE:\n" + ctx if ctx else ""))
+        raw = await collect(sys2, operator_text, spec, max_tokens=240)
+        return dialog.sanitize_reply(raw).strip()
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"answered_from_state: {e}")
+        return ""

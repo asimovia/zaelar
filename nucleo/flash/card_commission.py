@@ -317,6 +317,16 @@ async def probe_escalation(tool_calls: list, action: str, spoken: str, *, text: 
         from nucleo.flash import act_repair as _ar_esc, direct_action as _da_esc
         if _danger.is_dangerous(operator_text):
             return action, spoken
+        # A question the state answers is no errand (`escalation_guard.ANSWERED`) — the voice's gate, here too.
+        from nucleo.flash import escalation_guard as _eg, second_pass as _sp
+        from voice.observer import emit as _emit
+        _req = {"v": operator_text, "more": []}
+        _ans = await _sp.answered_from_state(_eg.settle_commission(
+            _req, brief=brief, operator_text=operator_text, reply=spoken or "", acted=False, anything_running=False,
+            emit=_emit), operator_text, [], spec)
+        if _ans:
+            tool_calls[:] = [t for t in tool_calls if t.get("name") != "escalate_to_slowbrain"]
+            return "chat", _ans
         _owner, _owner_act = _da_esc.from_brief(brief)
         if _owner:
             _ar = await _ar_esc.call_for_promise_or_order(operator_text, spoken or text, _owner, _owner_act,

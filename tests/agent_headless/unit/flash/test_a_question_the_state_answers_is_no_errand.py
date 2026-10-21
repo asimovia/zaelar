@@ -1,0 +1,69 @@
+"""A question the verdict reads as «question · tell · handle_inline» is answered from the turn's state, never
+delegated to a worker — whatever it asks and in whatever language (2026-10-21).
+
+Manual session 374a2ae2: «did I send you a long prompt yesterday?» — the brief read all three, the model called
+`escalate_to_slowbrain` anyway with «let me get that», and the commission gate kept it because the reply PROMISED.
+A worker then spent four minutes failing to find what the turn's own record held. The verdict decides, not the
+words: a fourth disposition, ANSWERED, annuls the commission and a second pass composes the answer from the state.
+"""
+import asyncio
+
+import pytest
+
+from nucleo.flash import escalation_guard as eg
+from nucleo.flash import second_pass as sp
+
+SURE = {"request_type": "question", "wants_words": "tell", "escalate_or_inline": "handle_inline"}
+
+
+@pytest.fixture
+def brief(monkeypatch):
+    verdicts = dict(SURE)
+    from nucleo.flash import turn_brief as tb
+    monkeypatch.setattr(tb, "read", lambda handle, key, fallback, **k: (verdicts.get(key, fallback), None))
+    return verdicts
+
+
+def _settle(reply="Let me get that — I'm running it now.", acted=False):
+    req = {"v": "recover what the assistant did yesterday", "more": []}
+    v = eg.settle_commission(req, brief=object(), operator_text="what did you do yesterday?", reply=reply,
+                             acted=acted, anything_running=False, emit=lambda *a, **k: None)
+    return v, req
+
+
+def test_a_question_the_state_answers_annuls_even_a_promised_commission(brief):
+    v, req = _settle()
+    assert v["disposition"] == eg.ANSWERED and req["v"] is None, "the worker is not spent on a question"
+
+
+@pytest.mark.parametrize("key,other", [("request_type", "order"), ("wants_words", "act"),
+                                       ("escalate_or_inline", "escalate")])
+def test_any_verdict_short_of_all_three_keeps_todays_path(brief, key, other):
+    brief[key] = other
+    v, req = _settle()
+    assert v["disposition"] != eg.ANSWERED and req["v"] is not None, f"{key}={other} is not a question to answer"
+
+
+def test_a_turn_that_acted_is_not_turned_into_an_answer(brief):
+    v, _ = _settle(acted=True)
+    assert v["disposition"] != eg.ANSWERED
+
+
+def test_the_answer_pass_runs_only_for_that_disposition(monkeypatch):
+    calls = []
+
+    async def _collect(sys2, user_text, spec, max_tokens=240):
+        calls.append(sys2)
+        return "Yesterday, Tuesday 20 October, you gave me a list of 26 tasks and all of them were done."
+
+    monkeypatch.setattr(sp, "collect", _collect)
+    assert asyncio.run(sp.answered_from_state({"disposition": eg.PROMISED}, "q", [], None)) == ""
+    out = asyncio.run(sp.answered_from_state({"disposition": eg.ANSWERED}, "what did you do yesterday?", [], None))
+    assert "26 tasks" in out and calls and "ESTADO" in calls[0], "the pass is given the turn's state to answer from"
+
+
+def test_both_channels_wire_it():
+    voice = open("nucleo/flash/post_stream_words.py", encoding="utf8").read()
+    text = open("nucleo/flash/card_commission.py", encoding="utf8").read()
+    assert "answered_from_state(_settled" in voice, "the voice settles and never composes the answer"
+    assert "answered_from_state(" in text, "the text channel spends the worker the voice would not"

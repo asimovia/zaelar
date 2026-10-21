@@ -11,6 +11,7 @@ from nucleo.flash import agenda_claims as _agc   # «I've removed it» with no c
 from nucleo.flash import card_commission as _cardc_ws
 from nucleo.flash import note_backstop as _nb    # the dated-note backstop's one decision, both channels
 from nucleo.flash import post_stream as _pst
+from nucleo.flash import second_pass as _second_pass   # a question the state answers, composed (2026-10-21)
 from nucleo.flash import reminder_backing as _rback   # promise → job, claim → checked (both halves)
 from nucleo.flash import verdict_card as _vcard     # a sure close that an inner order outranks is not owed
 from nucleo.turn import split_by_errand as _sbe   # a sentence about several errands goes part by part (2.643)
@@ -128,11 +129,13 @@ async def hold_the_model_to_its_words(*, _apply_widget_data, _brief, _data_ops_h
     # `escalation_guard.annulment_verdict`; every commission ends with a DISPOSITION, emitted,
     # because one that simply disappears is the failure this whole gate was meant to prevent.
     if escalate_req["v"] is not None:
-        _pst._eguard.settle_commission(
+        _settled = _pst._eguard.settle_commission(
             escalate_req, brief=_brief, operator_text=operator_text, reply="".join(spoken),
             acted=bool(acted["widget"] or data_done["v"] or listing_req["v"]
                        or music_req["v"] or search_req["v"]),
             anything_running=bool(_has_workers), emit=emit)
+        if (_ans := await _second_pass.answered_from_state(_settled, operator_text, list(brain._window), spec)):
+            send(speech.sanitize(_ans, drop_metadata=False)); spoken.append(" " + _ans)   # a question, answered
 
     # BACKSTOP PROMESA-SIN-ACCIÓN UNIFICADO 2026-07-19 (mar de testing): ante fraseo CORTÉS/subjuntivo
     # («¿podrías…?», «deberías…», «sería genial que hicieras…», «me haría falta…») el modelo CHARLA una promesa

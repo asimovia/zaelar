@@ -178,6 +178,22 @@ DELEGATED = "delegated"                  # a worker was launched: the task row o
 HANDLED_INLINE = "handled_inline"        # the turn produced a concrete result of its own
 PROMISED = "promised"                    # the reply committed to it: it may NOT be annulled
 UNRESOLVED = "unresolved"                # nothing acted, nothing promised: kept, which escalates
+ANSWERED = "answered"                    # a question the state answers: the caller composes it (`second_pass`)
+
+
+def a_question_the_state_answers(brief) -> bool:
+    """The verdict reads the turn as a QUESTION that wants WORDS and needs no worker — all three sure (2026-10-21).
+
+    Manual session 374a2ae2: «did I send you a long prompt yesterday?» → the brief said question · tell ·
+    handle_inline, the model called `escalate_to_slowbrain` anyway and replied «let me get that», and a worker spent
+    four minutes failing to find what the turn's own record held. The reply PROMISED, so the gate below kept the
+    commission. A question is not an errand: what it asks is answered from the turn's own state — any question,
+    in any language, about anything the state holds — and the promise is honoured by that answer, not by a worker.
+    Read from the verdict, never from the words."""
+    from nucleo.flash import turn_brief as _tb
+    return (_tb.read(brief, _tb.REQUEST_KEY, "")[0] == "question"
+            and _tb.read(brief, _tb.WORDS_KEY, "")[0] == "tell"
+            and _tb.read(brief, _tb.ESCALATE_KEY, "")[0] == "handle_inline")
 
 
 def covered_by_live_work(commission: str, *, anything_running: bool) -> bool:
@@ -215,7 +231,7 @@ def covered_by_live_work(commission: str, *, anything_running: bool) -> bool:
 
 
 def annulment_verdict(jev_choice: str, *, reply: str, acted: bool,
-                      anything_running: bool, commission: str = "") -> dict:
+                      anything_running: bool, commission: str = "", answerable: bool = False) -> dict:
     """May a confident `handle_inline` annul this commission? `{annul, disposition, why}`.
 
     THE DEFECT THIS EXISTS FOR (V2-726 audit, finding 4). The gate ran AFTER the model had answered
@@ -241,6 +257,8 @@ def annulment_verdict(jev_choice: str, *, reply: str, acted: bool,
     """
     if (jev_choice or "") != "handle_inline":
         return {"annul": False, "disposition": DELEGATED, "why": "verdict-keeps-it"}
+    if answerable and not acted:
+        return {"annul": True, "disposition": ANSWERED, "why": "a-question-the-state-answers"}
     if reply_promises(reply, acted=acted, anything_running=anything_running):
         return {"annul": False, "disposition": PROMISED, "why": "reply-promised"}
     if acted:
@@ -325,7 +343,8 @@ def settle_commission(escalate_req: dict, *, brief, operator_text: str, reply: s
     try:
         verdict = annulment_verdict(choice, reply=reply, acted=acted,
                                     anything_running=anything_running,
-                                    commission=str(escalate_req.get("v") or ""))
+                                    commission=str(escalate_req.get("v") or ""),
+                                    answerable=a_question_the_state_answers(brief))
     except Exception:  # noqa: BLE001 — the gate may never break the turn
         verdict = {"annul": False, "disposition": DELEGATED, "why": "verdict-error"}
     try:

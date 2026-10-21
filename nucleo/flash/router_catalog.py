@@ -53,7 +53,7 @@ TOOLS: list[dict] = [
                 "Delega a un worker. "
                 "SÍ: investigar/informe/comparativa; operar una web/marketplace "
                 "(anuncios→search_listings); "
-                "el CÓDIGO de un widget; recordar OTRAS sesiones; "
+                "el CÓDIGO de un widget; "
                 "HACER/DESHACER un compromiso en un SITIO sin conector "
                 "(reservar, pagar, dar de baja). "
                 "NO: charla; un dato (web_search); un aviso ([[cron.create]]); ESCRIBIR a un contacto o "

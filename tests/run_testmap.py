@@ -3592,6 +3592,8 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/agent_headless/unit/test_a_network_error_ends_when_the_network_answers.py"]},
         {"id": "2.758", "title": "The days before the recent window are one line per request in the turn (`task_block.earlier_lines`, 7 days, a list once with its N/M steps): «did I give you a list yesterday?» is answered from the record, not by a worker digging for minutes (manual session 374a2ae2)",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/test_the_days_before_are_read_from_the_record.py"]},
+        {"id": "2.759", "title": "A question the verdict reads as question · tell · handle_inline is answered from the turn's state, never delegated: a fourth commission disposition (ANSWERED) annuls even a promised worker and a second pass composes the answer — saying so, by day or thing, when the state does not hold it; both channels (manual session 374a2ae2)",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_a_question_the_state_answers_is_no_errand.py"]},
         {"id": "2.201", "title": "A data-op that did not run is said, and «Done.» never stands over it",
             "ch": UNIT,
             "paths": ["tests/voice/unit/test_an_op_that_did_not_run_is_said.py"]},
