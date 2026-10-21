@@ -31,8 +31,8 @@ def _isolate(monkeypatch, tmp_path):
     monkeypatch.setattr(urllib.request, "urlopen", lambda req, timeout=6: io.BytesIO(
         json.dumps({"title": "Vídeo", "author_name": "Canal"}).encode()))
     monkeypatch.setattr(late_report, "_last_agent_order", {})
-    from widgets import hint_lang
-    monkeypatch.setattr(hint_lang, "en", lambda: False)        # the measured session spoke Spanish
+    from i18n import langs
+    monkeypatch.setattr(langs, "current_code", lambda: "es")   # the measured session spoke Spanish
 
 
 @pytest.fixture
@@ -70,8 +70,8 @@ def test_a_pasted_link_that_cannot_play_is_told():
 
 
 def test_an_english_session_hears_it_in_english(monkeypatch):
-    from widgets import hint_lang
-    monkeypatch.setattr(hint_lang, "en", lambda: True)
+    from i18n import langs
+    monkeypatch.setattr(langs, "current_code", lambda: "en")
     _the_measured_list()
     yt.apply_action("player_error", {"code": "150", "videoId": _V1})
     assert "can't be played here" in yt.apply_action("player_error", {"code": "150", "videoId": _V2}).get("tell", "")

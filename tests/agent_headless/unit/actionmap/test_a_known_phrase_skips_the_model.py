@@ -232,7 +232,8 @@ def test_the_allowlist_refuses_what_it_must(action, why_hint):
 
 def test_every_shipped_seed_entry_validates():
     import json
-    for pack in sorted(store.SEEDS_DIR.glob("*.json")):
+    from i18n import packs as _packs
+    for pack in sorted(_packs.GENESIS.glob("*/actionmap.json")):
         entries = json.loads(pack.read_text(encoding="utf-8"))["entries"]
         assert entries, f"{pack.name}: empty pack"
         seen = set()
@@ -246,13 +247,11 @@ def test_every_shipped_seed_entry_validates():
 def test_a_bad_seed_is_refused_loudly_not_swallowed(fresh_map, monkeypatch, tmp_path):
     """The born-dead lesson: a refused seed raises an ALERT event and the good rows still load."""
     import json
-    pack_dir = tmp_path / "seeds"
-    pack_dir.mkdir()
-    (pack_dir / "es.json").write_text(json.dumps({"entries": [
+    pack = {"entries": [
         {"phrase": "abre la agenda", "action": {"do": "show_widget", "widget": "agenda"}},
         {"phrase": "borra la agenda", "action": {"do": "delete_widget", "widget": "agenda"}},
-    ]}), encoding="utf-8")
-    monkeypatch.setattr(store, "SEEDS_DIR", pack_dir)
+    ]}
+    monkeypatch.setattr(store, "seed_pack", lambda lang: pack if lang == "es" else {})
     alerts = []
     monkeypatch.setattr(store, "_emit", lambda kind, label, **kw: alerts.append((kind, label)))
     _lang(monkeypatch, "es")
@@ -411,7 +410,7 @@ def test_a_better_pack_reaches_an_already_seeded_install(fresh_map, monkeypatch)
     assert actionmap.match("abre la agenda") is not None            # current pack imported by the fixture
     # The SHIPPED version, read from the pack rather than pinned: this test is about the upgrade PATH, and a
     # pinned literal turned every legitimate pack bump (v3: the V2-567 open/close grids) into a red herring.
-    _shipped = int(json.loads((store.SEEDS_DIR / "es.json").read_text(encoding="utf-8"))["version"])
+    _shipped = int(store.seed_pack("es")["version"])
     assert _mapi.action_map_seed_version("es") == _shipped
 
     old = json.dumps({"do": "show_widget", "widget": "mensajeria"}, ensure_ascii=False)
@@ -482,7 +481,7 @@ def test_the_measured_media_orders_are_deterministic_now():
             ("es", "pasa a la siguiente canción", "musica", "next"),
             ("es", "canción anterior", "musica", "previous"),
             ("en", "next song", "musica", "next")):
-        d = json.loads((root / f"nucleo/actionmap/seeds/{lang}.json").read_text(encoding="utf-8"))
+        d = json.loads((root / f"i18n/genesis/{lang}/actionmap.json").read_text(encoding="utf-8"))
         by_phrase = {normalize(e["phrase"]): e["action"] for e in d["entries"]}
         got = by_phrase.get(normalize(phrase))
         assert got == {"do": "widget_data", "widget": widget, "action": action}, (phrase, got)
@@ -526,7 +525,7 @@ def test_minimise_those_puts_every_open_card_on_the_rail(monkeypatch):
     import json as _json
     for lang, phrase in (("en", "minimise those while you work"), ("es", "minimiza todo")):
         import pathlib as _pl
-        pack = _json.loads((_pl.Path(__file__).resolve().parents[4] / f"nucleo/actionmap/seeds/{lang}.json").read_text("utf-8"))
+        pack = _json.loads((_pl.Path(__file__).resolve().parents[4] / f"i18n/genesis/{lang}/actionmap.json").read_text("utf-8"))
         assert any(e.get("phrase") == phrase and e.get("action", {}).get("do") == "minimize_all" for e in pack["entries"]), (lang, phrase)
 
 
@@ -545,7 +544,7 @@ def test_exit_fullscreen_steps_the_maximised_card_down(monkeypatch):
     assert executor.execute({"do": "unfullscreen"}, emit, phrase="exit fullscreen") is False
     import json as _json, pathlib as _pl
     for lang, phrase in (("en", "exit fullscreen"), ("es", "sal de pantalla completa")):
-        pack = _json.loads((_pl.Path(__file__).resolve().parents[4] / f"nucleo/actionmap/seeds/{lang}.json").read_text("utf-8"))
+        pack = _json.loads((_pl.Path(__file__).resolve().parents[4] / f"i18n/genesis/{lang}/actionmap.json").read_text("utf-8"))
         assert any(e.get("phrase") == phrase and e.get("action", {}).get("do") == "unfullscreen" for e in pack["entries"]), (lang, phrase)
 
 
@@ -570,7 +569,7 @@ def test_minimise_that_targets_the_card_in_front(monkeypatch):
     assert seen == [("minimize", "youtube")], "at full screen, «that» is the one filling the screen"
     import json as _json, pathlib as _pl
     for lang, phrase in (("en", "minimise that while you work"), ("es", "minimiza eso")):
-        pack = _json.loads((_pl.Path(__file__).resolve().parents[4] / f"nucleo/actionmap/seeds/{lang}.json").read_text("utf-8"))
+        pack = _json.loads((_pl.Path(__file__).resolve().parents[4] / f"i18n/genesis/{lang}/actionmap.json").read_text("utf-8"))
         assert any(e.get("phrase") == phrase and e.get("action") == {"do": "minimize", "widget": "*"} for e in pack["entries"]), (lang, phrase)
 
 

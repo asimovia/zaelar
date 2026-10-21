@@ -102,9 +102,10 @@ def test_el_guarda_no_mata_a_quien_acaba_de_contestar():
 
 
 # ── GUARD 1: the classifier decides the kind, not the backstop ─────────────────────────────────────────────────
-def test_la_peticion_de_la_agenda_NO_es_una_tarea_web():
+def test_la_peticion_de_la_agenda_NO_es_una_tarea_web(monkeypatch):
     """The real classifier always knew the truth: for this phrase it returns `generic`. `kind:"web"` was hardcoded
     in the backstop, which produced the two browsers and the “Searching the web…” label."""
+    monkeypatch.setenv("ZAELAR_LANGUAGE", "es")      # the label is said in the instance's language
     from nucleo import dispatch
 
     peticion = ("Vale, pues hazme un favor, lees lo que hay en la agenda. Lo borras y luego compruebas "

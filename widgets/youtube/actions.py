@@ -248,9 +248,9 @@ def _a_play_result(action, p, db) -> dict:
     if i is None:
         if str(ref or "").strip().isdigit():
             return {"ok": False, "error": "bad_index", "count": len(res),
-                    "message": _d._hl.pick(f"Solo hay {len(res)} resultados.", f"There are only {len(res)} results.")}
+                    "message": _d._langs.words("youtube.results.only_n", default="").format(n=len(res))}
         return {"ok": False, "error": "item_not_found", "item": ref, "count": len(res),
-                "message": _d._hl.pick("No sé cuál de los resultados es ese.", "I can't tell which of the results that is.")}
+                "message": _d._langs.words("youtube.results.which", default="")}
     it = res[i]
     _d._swap_to(db, it)   # V2-634: the shared field-set (pick_explicit=False and queue position inside)
     _d._goto(db, "player")                              # V2-755: he asked to watch it, so show it

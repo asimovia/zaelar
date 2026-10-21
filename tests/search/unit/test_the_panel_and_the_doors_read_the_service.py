@@ -6,6 +6,7 @@ from search import api as _api
 
 
 def test_the_status_line_says_who_is_live_and_who_is_not(monkeypatch):
+    monkeypatch.setenv("ZAELAR_LANGUAGE", "es")          # the line is in the instance language
     monkeypatch.setattr(_api, "_health_cache", {"at": 0.0, "rows": []})
     assert _api.status_item()["detail"] == "sin sondear todavía"
     rows = [{"provider": "zai", "kind": "results", "state": "live", "why": "", "paid": True, "key": "Z_AI_API_KEY", "ok": True, "latency_ms": 1},
@@ -22,6 +23,7 @@ def test_the_status_line_says_who_is_live_and_who_is_not(monkeypatch):
 
 def test_prime_cache_never_raises_and_fills_the_rows(monkeypatch):
     from search import health
+    monkeypatch.setenv("ZAELAR_LANGUAGE", "es")          # the line is in the instance language
     monkeypatch.setattr(_api, "_health_cache", {"at": 0.0, "rows": []})
     monkeypatch.setattr(health, "probe_all", lambda names=None, parallel=True: [{"provider": "ddg", "kind": "results",
                                                                                   "state": "live", "why": "", "paid": False,

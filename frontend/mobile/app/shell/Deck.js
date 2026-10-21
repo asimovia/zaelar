@@ -310,7 +310,7 @@ export class Deck {
         body: JSON.stringify({ id: rid, spec }) }).then(r => r.json());
       this._ids = null; this._meta = null;
       if (r && r.ok) { this.close(rid); await this.show(r.id || rid, { q: spec }); }
-      else this._mountError(w, rid, (r && r.error) || "generate failed");
+      else this._mountError(w, rid, (r && r.error) || tr("desktop.generate_failed"));
     } catch (e) { this._mountError(w, rid, String((e && e.message) || e)); }
   }
 

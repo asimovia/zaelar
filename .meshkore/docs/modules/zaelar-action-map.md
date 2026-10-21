@@ -126,7 +126,7 @@ model.
 
 ### Seeding: the Genesis pack, and how it upgrades
 
-`nucleo/actionmap/seeds/<lang>.json` ships with the repo and is imported lazily the first time that language is
+`i18n/genesis/<lang>/actionmap.json` ships with the repo and is imported lazily the first time that language is
 indexed — the `widgets/agenda/seed.json` convention.
 
 A pack carries `entries` (literal phrase → action) and `grids`. A **grid** is a verb × object table for one

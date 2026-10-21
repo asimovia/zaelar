@@ -25,8 +25,8 @@ def test_a_waiting_reply_goes_out_with_the_step(monkeypatch):
     monkeypatch.setattr(live_blocks, "any_stalled_task", lambda: ("", 0, ""))
     monkeypatch.setattr(dispatch, "pending_summaries", lambda: [
         {"id": "2", "uid": "u", "goal": "Verified Amalfi photos", "title": "Ferrari Amalfi official photos",
-         "phase": "entrando en media.ferrari.com", "note": "", "plan": [], "done": 0, "waiting_on": ""}])
-    monkeypatch.setattr("i18n.langs.current_code", lambda: "en")
+         "phase": "going into media.ferrari.com", "note": "", "plan": [], "done": 0, "waiting_on": ""}])
+    monkeypatch.setattr("i18n.langs.current_code", lambda: "en")   # an English instance wrote its phase in English
     out = delivery.apply_to_reply("Will do — I'll come back to you.", [], heard_now="ok, keep me posted",
                                   brief=brief(wants_words="tell"))
     assert out.startswith("Will do") and "going into media.ferrari.com" in out, out

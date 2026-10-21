@@ -37,23 +37,16 @@ ORIGINS = ("web", "listing", "local", "browser", "mesh", "images", "worker")
 
 def _labels() -> dict:
     """The sheet's fact labels in the engine's language. The sheet shows them to the operator, so they are
-    product text (i18n), not vocabulary — `candidacy` reads them in BOTH languages regardless."""
-    try:
-        from i18n import langs as _langs
-        es = (_langs.current_code() or "es").lower() == "es"
-    except Exception:  # noqa: BLE001 — a row must never fail to build because the language is unreadable
-        es = True
-    if es:
-        return {"origin": "Origen", "phone": "Teléfono", "rating": "Valoración", "availability": "Disponibilidad"}
-    return {"origin": "Origin", "phone": "Phone", "rating": "Rating", "availability": "Availability"}
+    product text (the `voice` pack's `search.fact_labels`), not vocabulary — `candidacy` reads them back."""
+    from i18n import langs as _langs
+    return _langs.words("search.fact_labels", default={})
 
 
-#: What each origin says in the Origin fact — the value `hand_search_rows` has written since V2-376, kept so the
-#: rows already on operators' sheets and the new ones read the same.
-_ORIGIN_VALUES = {"es": {"web": "búsqueda web", "listing": "anuncio", "local": "directorio", "browser": "navegador",
-                         "mesh": "agente de la red", "images": "imágenes", "worker": "worker"},
-                  "en": {"web": "web search", "listing": "listing", "local": "directory", "browser": "browser",
-                         "mesh": "network agent", "images": "images", "worker": "worker"}}
+def _origin_values(code: str | None = None) -> dict:
+    """What each origin says in the Origin fact — the value `hand_search_rows` has written since V2-376, kept so
+    the rows already on operators' sheets and the new ones read the same (`search.origin_values`)."""
+    from i18n import langs as _langs
+    return _langs.words("search.origin_values", code=code, default={})
 
 
 @dataclass
@@ -89,8 +82,7 @@ class Candidate:
             facts.append({"label": lab["availability"], "value": str(self.availability)[:60]})
         facts.extend(f for f in (self.facts or []) if isinstance(f, dict) and f.get("label"))
         if self.origin:
-            code = "es" if lab["origin"] == "Origen" else "en"
-            facts.append({"label": lab["origin"], "value": _ORIGIN_VALUES[code].get(self.origin, self.origin)})
+            facts.append({"label": lab["origin"], "value": _origin_values().get(self.origin, self.origin)})
         if facts:
             row["facts"] = facts[:8]
         return row
@@ -193,8 +185,9 @@ def candidate_from_row(row: dict, origin: str = "") -> Candidate:
 
 def _origin_code(value: str) -> str:
     low = str(value or "").strip().lower()
-    for code in ("es", "en"):
-        for k, v in _ORIGIN_VALUES[code].items():
+    from i18n import langs as _langs
+    for code in ("es", "en", _langs.current_code()):     # rows written in either product language, or his
+        for k, v in _origin_values(code).items():
             if v == low:
                 return k
     return ""

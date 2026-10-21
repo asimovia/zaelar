@@ -724,7 +724,7 @@ no existe `OPENAI_API_KEY`**, así que la llamada habría fallado en silencio (f
 
 **Sonda de i18n — al tamaño REAL del lote.** No es un bench de los de §12 (una tarea que se ejecuta una vez por
 idioma no justifica 3 pasadas × 21 candidatos); es la comprobación de que mover el endpoint no rompe la tarea.
-Corpus: claves REALES de `i18n/bundles/en.json`, **50 por lote (`_BATCH`)** con 15 que llevan `{placeholder}`,
+Corpus: claves REALES de `i18n/genesis/en/ui.json`, **50 por lote (`_BATCH`)** con 15 que llevan `{placeholder}`,
 hacia **japonés y árabe** (los scripts no-latinos son lo que discrimina). Ejes: cobertura (¿devuelve TODAS las
 claves?), placeholders intactos, y script destino correcto.
 

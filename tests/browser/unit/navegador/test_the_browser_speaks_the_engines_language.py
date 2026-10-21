@@ -33,11 +33,12 @@ def test_the_spanish_engine_keeps_the_behaviour_of_always(monkeypatch):
     assert owner._browser_locale() == ("es-ES", "Europe/Madrid")
 
 
-def test_an_unreadable_language_falls_back_to_spanish(monkeypatch):
+def test_an_unreadable_language_falls_back_to_english(monkeypatch):
+    """The product default is English: an unreadable language never silently becomes Spanish."""
     _clean(monkeypatch)
     from voice.engine.core import langs
     monkeypatch.setattr(langs, "current_code", lambda: (_ for _ in ()).throw(RuntimeError()))
-    assert owner._browser_locale() == ("es-ES", "Europe/Madrid")
+    assert owner._browser_locale() == ("en-US", "America/New_York")
 
 
 def test_the_env_escape_hatches_win(monkeypatch):

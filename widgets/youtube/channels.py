@@ -39,6 +39,7 @@ _UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTM
 # (measured 2026-09-29). The two languages' counts and relative dates («2,3 K», «hace 1 h» / «2.3K», «1h
 # ago») are parsed into numbers here and formatted by the card; sections are recognised by their URL, never
 # by their translated title.
+# Kept es|en on purpose: the count/relative-date parsers below only read those two languages' formats.
 _HL = {"hl": "es"}
 
 

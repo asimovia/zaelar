@@ -95,7 +95,7 @@ def test_any_google_service_opens_the_one_google_connector_with_that_service_pic
 
 @pytest.mark.parametrize("bundle", ["es", "en"])
 def test_every_step_has_its_words_in_both_bundles(run, bundle):
-    b = json.loads((ENGINE / "i18n" / "bundles" / f"{bundle}.json").read_text(encoding="utf-8"))
+    b = json.loads((ENGINE / "i18n" / "genesis" / bundle / "ui.json").read_text(encoding="utf-8"))
     keys = {f"config.cxw.{k}.{part}" for k in run["keys"] for part in ("title", "body")}
     keys |= set(re.findall(r'"(config\.cxw\.[a-z_]+)"', WIZ.read_text(encoding="utf-8")))
     keys |= set(re.findall(r'"(config\.cxw\.[a-z_]+)"', PANEL))

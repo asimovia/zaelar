@@ -11,7 +11,7 @@ import urllib.parse
 import urllib.request
 
 from .. import store
-from widgets import hint_lang as _hl   # V2-778 F3-30: hints are read back aloud, in the agent's language
+from i18n import langs as _langs   # V2-778 F3-30: hints are read back aloud, in the agent's language
 from . import account, channels, library     # channels: the followed channels as cards and pages
 from .helpers import (  # noqa: E402,F401 — V2-778 F1: moved, imported back under their names
     _RESULTS_RE, _SEED, _YT_RE, _bump, _drop_blocked, _extract_id, _goto, _index_list, _is_blocked, _norm,
@@ -58,6 +58,19 @@ def _unesc(s: str) -> str:
     return re.sub(r"\\u([0-9a-fA-F]{4})", lambda m: chr(int(m.group(1), 16)), s or "")
 
 
+def _accept_language() -> str:
+    """Search results (and their titles) in the INSTANCE language — never a hardcoded Spanish: "fr" -> "fr,en;q=0.5",
+    bare "es" -> "es-ES,es;q=0.9". English when the language is unknown."""
+    try:
+        from i18n import runtime as _rt
+        code = str(_rt.active_code() or "en").lower()
+    except Exception:
+        code = "en"
+    if code == "es":
+        return "es-ES,es;q=0.9"
+    return "en-US,en;q=0.9" if code == "en" else f"{code},en;q=0.5"
+
+
 def _search_many(q: str, n: int = 5) -> list:
     """Best-effort: top-N DISTINCT videos for a phrase, in the results-page order. Stdlib, 6s, fail-open ([]).
 
@@ -77,7 +90,7 @@ def _search_many(q: str, n: int = 5) -> list:
         req = urllib.request.Request(url, headers={
             "User-Agent": ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
                            "(KHTML, like Gecko) Chrome/122.0 Safari/537.36"),
-            "Accept-Language": "es-ES,es;q=0.9",
+            "Accept-Language": _accept_language(),
         })
         html = urllib.request.urlopen(req, timeout=6).read().decode("utf-8", "ignore")
     except Exception:
@@ -251,9 +264,7 @@ def ref_index() -> list:
             continue
         _estado = ""
         if i == cur:
-            _estado = (_hl.pick("no se puede reproducir aquí (el sitio bloquea la inserción); ofrécele otra o el "
-                                "enlace", "cannot play here (the site blocks embedding); offer another or the link")
-                       if roto else _hl.pick("la que suena", "the one playing"))
+            _estado = _langs.words("hints.cannot_play" if roto else "hints.playing", default="")
         _estado = _estado or _plays.hint(db, it)    # a refused row is still in the list (2026-10-11)
         pistas = [p for p in (str(it.get("channel") or "").strip(), _estado) if p]
         out.append({"id": str(i + 1), "label": titulo[:80], "field": "item",

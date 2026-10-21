@@ -41,19 +41,23 @@ def prime_cache() -> None:
 
 def status_item() -> dict:
     """The ONE line of the status panel (V2-782 T2.2): live providers by name, or what is wrong."""
+    from config.balances import say as _say
+
     from . import health as _health
     rows = cached_rows()
     if not rows:
-        return {"key": "search", "label": "Búsqueda · proveedores", "state": "warn", "detail": "sin sondear todavía"}
+        return {"key": "search", "label": _say("status.search.label", "Search · providers"), "state": "warn",
+                "detail": _say("status.search.unprobed", "not probed yet")}
     s = _health.summary(rows)
     failing = ", ".join(f"{f['provider']} {f['state']}" for f in s["failing"])
+    label = _say("status.search.label", "Search · providers")
     if not s["can_answer"]:
-        return {"key": "search", "label": "Búsqueda · proveedores", "state": "error",
-                "detail": ("ninguno contesta · " + failing) if failing else "ninguno contesta"}
-    detail = "vivos: " + ", ".join(s["live"])
+        none = _say("status.search.none", "none answering")
+        return {"key": "search", "label": label, "state": "error", "detail": (none + " · " + failing) if failing else none}
+    detail = _say("status.search.live", "live: {names}", names=", ".join(s["live"]))
     if failing:
         detail += " · " + failing
-    return {"key": "search", "label": "Búsqueda · proveedores", "state": "warn" if s["failing"] else "ok", "detail": detail}
+    return {"key": "search", "label": label, "state": "warn" if s["failing"] else "ok", "detail": detail}
 
 
 @router.get("/api/search/health")

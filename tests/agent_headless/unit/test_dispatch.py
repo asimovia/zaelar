@@ -555,9 +555,10 @@ def test_the_research_budget_was_reserved_for_a_kind_nobody_assigned():
     assert L._budget_for("research") > L._budget_for("generic") * 1.5
 
 
-def test_a_directed_investigation_is_not_billed_as_a_generic_task(fresh_db):
+def test_a_directed_investigation_is_not_billed_as_a_generic_task(fresh_db, monkeypatch):
     """The seam: as soon as preflight composes a BRIEF, the task IS research and its record says so —
     the only thing the supervisor checks when deciding how much time to grant it."""
+    monkeypatch.setenv("ZAELAR_LANGUAGE", "es")      # the label is said in the instance's language
     rec = dispatch.SessionRecord(task_id="9", goal="busca vacaciones en Baleares", kind="generic")
     dispatch._SESSIONS["9"] = rec
     try:

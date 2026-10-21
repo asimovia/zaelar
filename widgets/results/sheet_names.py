@@ -133,7 +133,7 @@ def card_face(instance: str = "") -> dict:
     except Exception:  # noqa: BLE001
         return {}
     title = str(view.get("title") or "").strip()
-    if title.lower() == "resultados":
+    if title.lower() in ("resultados", "results", _data.default_title().lower()):
         title = ""
     return {"label": title, "blank": not view.get("items")}
 

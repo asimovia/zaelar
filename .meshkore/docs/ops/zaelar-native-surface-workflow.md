@@ -44,13 +44,13 @@ UNREACHABLE**, and an unreachable surface gets diagnosed as «the model did not 
 | 3 | `frontend/app/core/store.js` — `_TABS` (and any sub-tab signal / aliases) | `setChatTab("<id>")` silently falls back to Chat |
 | 4 | `frontend/app/lib/icons.js` — an icon that does not collide with another surface's meaning | two icons read as the same action (V2-761: dots, because the rail's arrange buttons are squares) |
 | 5 | the wall's width thresholds (`TABS_NARROW_BELOW`, `TABS_TIGHT_BELOW`) — **measure every tab's box at 260-800px** | a tab sits behind the strip's hidden scrollbar (measured: it already happened with four tabs) |
-| 6 | `i18n/bundles/en.json` **and** `es.json` — every label, empty state and tooltip, plus `surfaces.<id>.name` | `t()` returns the KEY, which is truthy — the raw key is painted |
+| 6 | `i18n/genesis/en/ui.json` **and** `es.json` — every label, empty state and tooltip, plus `surfaces.<id>.name` | `t()` returns the KEY, which is truthy — the raw key is painted |
 | 7 | `frontend/app/core/system-surfaces.js` — the entry with `name` + `aliases` (`phase: "tab"` when it is not mounted on its own) | the voice cannot name it |
 | 8 | `widgets/system_surfaces.py` — the backend mirror (the sync test fails if you skip it) | the resolver does not know it |
 | 9 | `voice/engine/llm/providers/nucleo.py` **and** `nucleo/flash/probe.py` — a `show_widget` that names the surface must route to it, not ask «which widget?» | the model picks `show_widget` and the turn ends in a clarifying question |
 | 10 | `nucleo/flash/panel_canon.py` — the `show_panel` argument → tab id | the model's argument lands on the default tab |
 | 11 | `nucleo/flash/router_catalog.py` — the `show_panel` description names it (**paid for by compressing, never by raising a ceiling**: `test_router.py` + `test_the_prompt_prose_only_shrinks.py`) | the model has no reason to call the tool for it |
-| 12 | `nucleo/actionmap/executor.py::_PANEL_TABS` + `nucleo/actionmap/seeds/{es,en}.json` with the pack `version` **bumped** | whole-utterance orders fall through to the model — and new phrases in an old version reach no existing install |
+| 12 | `nucleo/actionmap/executor.py::_PANEL_TABS` + `i18n/genesis/{es,en}/actionmap.json` with the pack `version` **bumped** | whole-utterance orders fall through to the model — and new phrases in an old version reach no existing install |
 | 13 | `tests/run_testmap.py` — the rendered test and the voice test, each with its node | the tests exist and nobody runs them |
 
 ## 3. Aliases: measure the NEIGHBOURHOOD, not the phrase

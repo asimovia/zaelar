@@ -20,6 +20,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from connectors.contacts import oauth, providers
+from connectors.oauth_callback import text as _ocb_text
 
 router = APIRouter()
 
@@ -54,14 +55,16 @@ async def connect(request: Request, payload: dict | None = None):
 @router.get("/api/contacts/callback")
 async def callback(code: str = "", state: str = "", error: str = ""):
     if error:
-        return HTMLResponse(_page(False, f"Google devolvió un error: {error}"), status_code=400)
+        return HTMLResponse(_page(False, _ocb_text("oauth.err.google", "Google returned an error: {error}",
+                                                        error=error)), status_code=400)
     res = oauth.exchange_code(code, state)
     # V2-700 — the CARD has to notice. See connectors/oauth_callback.announce().
     if res.get("ok"):
         from connectors import oauth_callback as _ocb
         _ocb.announce("contactos")
     return HTMLResponse(
-        _page(bool(res.get("ok")), "" if res.get("ok") else str(res.get("error") or "no se pudo completar")),
+        _page(bool(res.get("ok")), "" if res.get("ok") else str(res.get("error") or _ocb_text("oauth.err.incomplete",
+                                                              "the connection could not be completed"))),
         status_code=200 if res.get("ok") else 400)
 
 
@@ -82,4 +85,5 @@ def _page(ok: bool, detail: str) -> str:
     «Conectar». See `connectors/oauth_callback.py`."""
     from connectors import oauth_callback
     return oauth_callback.page(ok, detail, family='contactos', label='Google Contacts',
-                               done='Vuelve a la tarjeta de Contactos y pulsa «Sincronizar contactos».')
+                               done=_ocb_text("oauth.contacts.done",
+                                             "Go back to the Contacts card and press «Sync contacts»."))

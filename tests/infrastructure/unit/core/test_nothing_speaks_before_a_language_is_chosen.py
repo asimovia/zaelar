@@ -309,7 +309,7 @@ def test_the_lock_accepts_a_regional_code_and_works_on_the_language(monkeypatch)
     monkeypatch.setattr(_mem, "set_state", lambda d: None)
     from i18n import init as init_pkg
 
-    async def _prep(code):
+    async def _prep(code, on_step=None):
         calls.append({"prepare": code})
         return {}
     monkeypatch.setattr(init_pkg, "prepare", _prep)

@@ -24,7 +24,7 @@ from playwright.sync_api import sync_playwright
 from tests.waiting import until_sync  # noqa: E402
 
 _ENGINE = pathlib.Path(__file__).resolve().parents[4]
-_ES = json.loads((_ENGINE / "i18n/bundles/es.json").read_text())
+_ES = json.loads((_ENGINE / "i18n/genesis/es/ui.json").read_text())
 TODAY = dt.date.today()
 TUE = TODAY + dt.timedelta(days=(1 - TODAY.weekday()) % 7 or 7)
 UNTIL = TUE + dt.timedelta(weeks=30)

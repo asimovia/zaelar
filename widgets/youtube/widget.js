@@ -463,7 +463,7 @@ function applyTabClass(root){
   _TABS.forEach((id) => root.classList.toggle("hb-yt-t-" + id, _tab === id));
 }
 let _syncAsked = 0;         // last time this card asked for a platform re-sync (guards against loops)
-let _connErr = "";          // why a source on the shelf cannot open — never a stale stored one (V2-582)
+let _connErr = "", _connErrTip = "";          // why a source on the shelf cannot open — never a stale stored one (V2-582)
 
 // Brand mark, inline SVG (simple-icons outline path, CC0) — never a CDN: widget.js touches no network.
 const _BRAND = {
@@ -547,16 +547,18 @@ function renderConn(E, root, data, ctx){
           : tt("st_soon", null, "No disponible aún")));
       bx.addEventListener("click", () => {
         if(usable){ ctx.openConnector(rw.id); return; }
-        _connErr = (rw.label || rw.id) + ": " + (rw.note ||
-          (rw.id === "youtube"
+        // `rw.note` is the catalog's own wording (Castilian): the reason is said in HIS language, the note is the tooltip
+        _connErr = (rw.label || rw.id) + ": " + (rw.id === "youtube"
             ? tt("why_impossible", null, "de momento no es posible conectar la cuenta — falta registrar el cliente OAuth.")
-            : tt("why_soon", null, "todavía no está construido.")));
+            : rw.state === "not-possible" ? tt("st_impossible", null, "No es posible")
+            : tt("why_soon", null, "todavía no está construido."));
+        _connErrTip = rw.note || "";
         repaint();
       });
       grid.appendChild(bx);
     });
     box.appendChild(grid);
-    if(_connErr) box.appendChild(el("div", "hb-yt-shnote", _connErr));
+    if(_connErr) box.appendChild(el("div", "hb-yt-shnote", _connErr)).title = _connErrTip;
   }
 }
 
@@ -633,7 +635,7 @@ let _chBusy = "";           // "" | "refresh" | "more" | "tab" — drives the lo
 let _chSyncAsked = 0;
 const DAY = 86400;
 
-function hl(ctx){ const l = String((ctx && ctx.lang) || document.documentElement.lang || "es"); return l.slice(0, 2); }
+function hl(ctx){ const l = String((ctx && ctx.lang) || document.documentElement.lang || "en"); return l.slice(0, 2); }
 function fmtNum(n, ctx){
   try{ return new Intl.NumberFormat(hl(ctx), {notation: "compact", maximumFractionDigits: 1}).format(n); }
   catch(_){ return String(n); }

@@ -16,50 +16,10 @@ from .client import SpotifyError
 
 logger = logging.getLogger("zaelar.music.spotify")
 
-_M = {
-    "es": {
-        "play": "Suena {label}.",
-        "resume": "Sigo con la música.",
-        "pause": "Pausado.",
-        "next": "Siguiente.",
-        "previous": "Anterior.",
-        "volume": "Volumen al {n} por ciento.",
-        "seek": "En el {t}.",
-        "no_track": "No he encontrado «{q}» en Spotify.",
-        "no_device": ("No veo ningún dispositivo de Spotify activo. Abre Spotify en el móvil o el ordenador y te "
-                      "lo pongo enseguida."),
-        "premium": "Controlar la reproducción de Spotify necesita una cuenta Premium.",
-        "not_connected": "Necesito que conectes tu cuenta de Spotify primero, desde la configuración.",
-        "error": "No he podido con Spotify ahora mismo.",
-    },
-    "en": {
-        "play": "Now playing {label}.",
-        "resume": "Resuming.",
-        "pause": "Paused.",
-        "next": "Next track.",
-        "previous": "Previous track.",
-        "volume": "Volume at {n} percent.",
-        "seek": "At {t}.",
-        "no_track": "I couldn't find \"{q}\" on Spotify.",
-        "no_device": "I don't see an active Spotify device. Open Spotify on your phone or computer and I'll play it.",
-        "premium": "Controlling Spotify playback needs a Premium account.",
-        "not_connected": "Connect your Spotify account first, from settings.",
-        "error": "Spotify didn't respond just now.",
-    },
-}
-
-
-def _lang() -> str:
-    try:
-        from voice.engine.core import langs
-        code = (langs.current_code() or "es").lower()
-        return code if code in _M else "es"
-    except Exception:
-        return "es"
-
-
 def _t(key: str, **kw) -> str:
-    return _M[_lang()][key].format(**kw)
+    """A speakable line in the active language — the `voice` pack's `music.spotify.<key>`."""
+    from i18n import langs as _langs
+    return _langs.words(f"music.spotify.{key}", default="").format(**kw)
 
 
 def _clock(ms: int) -> str:

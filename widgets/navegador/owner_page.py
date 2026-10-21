@@ -8,7 +8,7 @@ stays the owner's: what was `global` there is `_o.<name>` here.
 """
 from __future__ import annotations
 
-from widgets.navegador import owner as _o
+from widgets.navegador import launch_env as _launch_env, owner as _o
 
 
 async def _ensure_page():
@@ -58,7 +58,7 @@ async def _ensure_page():
                 raise
         _o._browser = None                               # the persistent context IS the browser (no separate object)
         try:
-            await _o._context.add_init_script(_o._STEALTH_JS)   # stealth: browse like a human, not like a scraper
+            await _o._context.add_init_script(_launch_env.stealth_js())   # stealth: browse like a human, not like a scraper
         except Exception:
             pass
         _o._context.set_default_navigation_timeout(_o._NAV_TIMEOUT)

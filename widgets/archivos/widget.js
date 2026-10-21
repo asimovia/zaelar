@@ -210,7 +210,7 @@ function humanDate(iso) {
   const now = new Date();
   const sameYear = d.getFullYear() === now.getFullYear();
   try {
-    return d.toLocaleDateString(undefined,
+    return d.toLocaleDateString(_LANG,
       sameYear ? { day: "numeric", month: "short" } : { day: "numeric", month: "short", year: "numeric" });
   } catch (_) { return ""; }
 }
@@ -246,7 +246,7 @@ function ensureTierObserver(root) {
 // The fallback is, byte for byte, the string that used to be hardcoded here — so a widget rendered outside the
 // engine (a render test, a headless DOM stub) shows exactly what it showed before, and only an engine with a
 // bundle loaded shows the operator's own language.
-let _T = null;
+let _T = null, _LANG = "en";   // instance language (ctx.lang) — dates never follow the browser locale
 function tt(key, params, fb){
   try{
     if(_T){ const s=_T("widgets.archivos."+key, params); if(s && s!=="widgets.archivos."+key) return s; }
@@ -274,6 +274,7 @@ let _openCx = () => {};
 
 export function render(root, data, ctx) {
   _T = (ctx && typeof ctx.t === "function") ? ctx.t : null;
+  _LANG = (ctx && ctx.lang) || "en";
   _openCx = id => { try { ctx.openConnector(id || ""); } catch (_) {} };
   if (!document.getElementById(STYLE_ID)) {
     const s = document.createElement("style");
@@ -965,7 +966,7 @@ function torrentTabs(d, act) {
 function torrentBody(d, act, ui) {
   const box = el("div", "arx-body");
   const tor = d.torrents || {};
-  if (tor.error) box.appendChild(el("div", "arx-tnote", tor.error));
+  if (tor.error) box.appendChild(el("div", "arx-tnote", tt("action_failed", null, "No se ha podido hacer"))).title = String(tor.error);
   if (tor.tab === "descargas" || tor.tab === "semillas") {
     if (!tor.available) {
       box.appendChild(el("div", "arx-tnote", tor.unavailable_reason || tt("tor_unavailable", null, "El cliente de descargas no está disponible.")));
@@ -983,7 +984,7 @@ function torrentBody(d, act, ui) {
     return box;
   }
   const cat = tor.catalog || {};
-  if (cat.error) box.appendChild(el("div", "arx-tnote", cat.error));
+  if (cat.error) box.appendChild(el("div", "arx-tnote", tt("action_failed", null, "No se ha podido hacer"))).title = String(cat.error);
   const rels = cat.releases || [];
   if (!rels.length) {
     if (!cat.error) box.appendChild(el("div", "arx-tnote", tt("tor_empty_catalog", null,

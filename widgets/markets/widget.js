@@ -72,12 +72,12 @@ function drawChart(box, pts, up, rng, lang){
   path.setAttribute("d", line); path.setAttribute("fill", "none"); path.setAttribute("stroke", color);
   path.setAttribute("stroke-width", "2.5"); path.setAttribute("vector-effect", "non-scaling-stroke");
   svg.appendChild(area); svg.appendChild(path); box.appendChild(svg);
-  const nf = new Intl.NumberFormat(lang || undefined, { maximumFractionDigits: hi >= 1000 ? 0 : 2 });
+  const nf = new Intl.NumberFormat(lang || "en", { maximumFractionDigits: hi >= 1000 ? 0 : 2 });
   const hiL = txt("div", "mktlbl", nf.format(hi)); hiL.style.top = "6px"; hiL.style.right = "10px";
   const loL = txt("div", "mktlbl", nf.format(lo)); loL.style.bottom = "6px"; loL.style.right = "10px";
   const fmt = rng === "1d" ? { hour: "2-digit", minute: "2-digit" }
             : (rng === "1y" || rng === "5y") ? { month: "short", year: "2-digit" } : { day: "numeric", month: "short" };
-  const df = new Intl.DateTimeFormat(lang || undefined, fmt);
+  const df = new Intl.DateTimeFormat(lang || "en", fmt);
   const t0 = txt("div", "mktlbl", df.format(new Date(pts[0][0] * 1000))); t0.style.bottom = "6px"; t0.style.left = "10px";
   const t1 = txt("div", "mktlbl", df.format(new Date(pts[pts.length-1][0] * 1000))); t1.style.top = "6px"; t1.style.left = "10px";
   box.appendChild(hiL); box.appendChild(loL); box.appendChild(t0); box.appendChild(t1);
@@ -85,7 +85,7 @@ function drawChart(box, pts, up, rng, lang){
 
 export function render(el, data, ctx){
   _T = (ctx && typeof ctx.t === "function") ? ctx.t : null;
-  const lang = (ctx && ctx.lang) || undefined;
+  const lang = (ctx && ctx.lang) || "en";   // instance language, never the browser's
   injectStyles();
   el.className = "hb-mkt";
   el.textContent = "";

@@ -826,8 +826,9 @@ function renderImportBox(el, data, ctx, p, redraw){
   if(st.last){ bits.push(tt("import_added", {n: st.added || 0}, (st.added || 0) + " nuevos en la última pasada")); }
   if(p.id === "whatsapp"){ bits.push(tt("import_partial", null,
     "WhatsApp va entregando su libreta a medida que el móvil la sincroniza: esto es lo conocido hasta ahora")); }
-  if(st.error){ bits.push(String(st.error)); }
-  if(bits.length){ box.appendChild(el2("div","ctsyncwhen", bits.join(" · "))); }
+  if(st.error){ bits.push(tt("sync_failed", null, "La última sincronización falló")); }
+  if(bits.length){ const w=box.appendChild(el2("div","ctsyncwhen", bits.join(" · ")));
+    if(st.error) w.title=String(st.error); }
   return box;
 }
 
@@ -895,12 +896,12 @@ function renderSyncBox(el, data, ctx, sync, redraw){
   foot.appendChild(go);
   const when = el2("div","ctsyncwhen");
   when.appendChild(el2("div",null, sync.last
-    ? tt("sync_last", {when: new Date(sync.last*1000).toLocaleString()},
-         "Última vez: " + new Date(sync.last*1000).toLocaleString())
+    ? tt("sync_last", {when: new Date(sync.last*1000).toLocaleString(_LANG)},
+         "Última vez: " + new Date(sync.last*1000).toLocaleString(_LANG))
     : tt("sync_never", null, "Todavía no se ha sincronizado")));
   const r = sync.lastResult || {};
   if(r.error){
-    when.appendChild(el2("div",null, String(r.error)));
+    when.appendChild(el2("div",null, tt("sync_failed", null, "La última sincronización falló"))).title=String(r.error);
   } else if(sync.last){
     const bits = [];
     if(r.added) bits.push(tt("sync_added", {n:r.added}, r.added + " nuevos"));
@@ -920,7 +921,7 @@ function renderSyncBox(el, data, ctx, sync, redraw){
 // The fallback is, byte for byte, the string that used to be hardcoded here — so a widget rendered outside the
 // engine (a render test, a headless DOM stub) shows exactly what it showed before, and only an engine with a
 // bundle loaded shows the operator's own language.
-let _T = null;
+let _T = null, _LANG = "en";   // instance language (ctx.lang) — dates never follow the browser locale
 function tt(key, params, fb){
   try{
     if(_T){ const s=_T("widgets.contactos."+key, params); if(s && s!=="widgets.contactos."+key) return s; }
@@ -1120,6 +1121,7 @@ const PAGE = 120;
 
 export function render(el, data, ctx){
   _T = (ctx && typeof ctx.t === "function") ? ctx.t : null;
+  _LANG = (ctx && ctx.lang) || "en";
   injectStyles();
 
   // A VIEW PUSHED FROM VOICE (`show_view` / `show_contact` / `show_sources`). Applied only when its
@@ -1248,7 +1250,8 @@ export function render(el, data, ctx){
 
   // A failed action says so where the gesture happened, instead of leaving the card looking unchanged.
   if(data.ok===false && data.error){
-    const w=el2("div","ctnote",String(data.error)); w.style.color="var(--hb-danger,#D9534F)";
+    const w=el2("div","ctnote",tt("action_failed", null, "No se ha podido hacer")); w.style.color="var(--hb-danger,#D9534F)";
+    w.title=String(data.error);
     el.appendChild(w);
   }
 }

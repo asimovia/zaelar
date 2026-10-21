@@ -1,436 +1,105 @@
-"""Supported-language catalog — the single source of truth for multilingual zaelar.
+"""The languages the agent SPEAKS — one `LangSpec` per language, built from its genesis packs.
 
-zaelar is multilingual with **English as the default**; the operator switches
-language from the ⚙ panel or by voice, and EVERYTHING moves together and stays
-perfectly aligned: STT recognition language + prompt, TTS voice (a native voice
-per language) and lang code, and the brain's reply language. A language is only
-in the catalog if we have a native, verified voice for it — so the voice can never
-mismatch the language.
+Every word lives in `i18n/genesis/<code>/voice.json` (+ `smalltalk.json`) for the languages the repo ships, and in
+`<workspace>/i18n/generated/<code>/` for any other the operator onboarded (`i18n.packs`). This module only joins
+those words to the few TECHNICAL facts of a language (its Kokoro voices, its lang codes) and answers «what is the
+active language». A language with no verified native Kokoro voice still gets its whole spoken table — the cloud
+TTS speaks it — and borrows English's local voices, which is the only part it cannot have.
 
-Live, not frozen: ``current_language()`` reads ``ZAELAR_LANGUAGE`` from the
-environment (the ⚙ writes it there live and persists it to settings.json), so a
-language change applies on the next voice session (reconnect) — the same contract
-as the voice picker. ``SETTINGS.language`` is only the import-time default.
-
-Adding a language = one ``LangSpec`` entry with a verified native Kokoro voice
-(and Cartesia handles it via the ``cartesia`` param for the remote profile). Kokoro
-lang codes: a=US English, b=UK English, e=Spanish, f=French, i=Italian, p=BR
-Portuguese, h=Hindi, j=Japanese, z=Chinese.
+Live, not frozen: ``current_language()`` reads ``ZAELAR_LANGUAGE`` from the environment (the ⚙ and onboarding
+write it), so a language change applies on the next voice session.
 """
 from __future__ import annotations
 
 import os
 from i18n.langspec import (  # noqa: E402,F401 — V2-778 F1: moved, imported back under their names
     LangSpec)
+from i18n import packs as _packs
 
-
-# ── THE PHRASEBOOKS (V2-674) — the tables live in `phrasebooks.py` since the 2026-09-16 ratchet pass
-# (V2-707 F6 pushed this file over the unlisted-module floor). Moved byte for byte; re-exported here
-# under their historical names, so `langs._SMALLTALK_ES` still resolves for anything that reads it.
-from i18n.phrasebooks import _SMALLTALK_EN, _SMALLTALK_ES  # noqa: E402 — data, after the dataclass
-
-
-# Kokoro voices are language-specific; only verified-native ones are listed so a
-# voice can never be sent through the wrong-language pipeline. Cartesia (remote)
-# voices are multilingual (one voice speaks any catalog language) and live in
-# voices.VOICES_BY_PROVIDER["cartesia"]; here we only pass the language param.
-LANGUAGES: dict[str, LangSpec] = {
-    "es": LangSpec(
-        code="es", name="Spanish", native="Español", kokoro_lang="e",
-        whisper_prompt="Conversación natural en español.",
-        reply_directive="Responde SIEMPRE en español (castellano), en frases habladas cortas y naturales, "
-                         "sin markdown ni emojis.",
-        warm="Hola.",
-        filler_holding="Vale, dame un momento que lo miro.",
-        mission=(
-            "Eres Zaelar, el asistente personal por voz del operador, siempre a su lado. "
-            "Atiendes lo que te pide guiándote por el ESTADO de abajo (quién es, qué tiene delante y de qué "
-            "íbais hablando) y por tus recursos. "
-            "Resuelves al momento lo que puedes; lo que lleva trabajo de verdad lo ARRANCAS DE VERDAD con tus "
-            "recursos —LLAMANDO a la herramienta que toca (escalar, buscar, abrir/operar un widget)—, nunca te "
-            "limitas a DECIR que lo harás: la frase que digas ACOMPAÑA a la acción, jamás la sustituye — pero lo que "
-            "de verdad importa es LLAMAR a la herramienta, no la frase en sí. Si el operador tiene una REGLA que "
-            "pide silencio/brevedad en las acciones ('hazlo y cállate', 'sin confirmaciones'), esa regla GANA "
-            "sobre esta costumbre: llama a la herramienta y di como mucho una palabra ('vale') o nada — nunca una "
-            "frase larga ni una narración de lo que vas a hacer. Al hablar de "
-            "ello, para el operador eres UNA sola cosa: NUNCA le mencionas \"cerebros\", \"cerebro lento/rápido\", "
-            "\"escalar\" ni piezas internas — le dices con naturalidad que te pones con ello y que tardará un poco, "
-            "o que lo verá actualizarse en su widget (pero eso es CÓMO lo cuentas, después de haberlo lanzado). "
-            "Tu memoria es tuya de siempre: hablas como un humano cercano, nunca de \"bases de datos\" ni de "
-            "\"memoria de corto o largo plazo\"."
-        ),
-        show_ack="Aquí lo tienes.",
-        kokoro_voices=[
-            {"label": "Dora (es, f)",  "voice": "ef_dora",  "gender": "f"},
-            {"label": "Alex (es, m)",  "voice": "em_alex",  "gender": "m"},
-            {"label": "Santa (es, m)", "voice": "em_santa", "gender": "m"},
-        ],
-        smalltalk=_SMALLTALK_ES,
-        kokoro_default="ef_dora",
-    ),
-    "en": LangSpec(
-        code="en", name="English", native="English", kokoro_lang="a",
-        whisper_prompt="Natural conversation in English.",
-        reply_directive="Always reply in English, in short natural spoken sentences, no markdown, no emojis.",
-        warm="Hello.",
-        filler_holding="Alright, give me a moment to look into that.",
-        filler_still_working="Still on it; I'll let you know as soon as I have it.",
-        filler_errand_taken="I'll let you know as soon as I have it.",
-        first_rows_notice="The first ones for «{title}» are in: {rows}. They're on your sheet.",
-        tell_me_cues=("let me know", "lmk", "keep me posted", "keep me updated", "keep me in the loop",
-                      "tell me when", "tell me as soon", "ping me", "get back to me", "send them over",
-                      "when you have", "once you have", "as soon as you", "update me", "flag it",
-                      "give me a shout"),
-        tell_you_cues=("i'll let you know", "ill let you know", "i'll flag", "i'll ping", "i'll tell you",
-                       "i'll keep you posted", "i'll update you", "i'll get back to you", "you'll see",
-                       "as soon as i have", "the moment", "the second"),
-        day_today="today", day_tomorrow="tomorrow", day_after_tomorrow="the day after tomorrow",
-        day_in_days="in {n} days",
-        weekdays=("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"),
-        holding_lines=("Alright, give me a moment to look into that.",
-                       "Still on it; I'll let you know as soon as I have it.",
-                       "It's still running; I'll tell you the moment I have something."),
-        mute_stuck=("Something is wrong on my end: that's three turns without answering you. "
-                    "Stop me and start me again if you like."),
-        mute_wordless="I'm here if you need me.",
-        mute_lines=("Sorry, I lost that. Could you say it again?",
-                    "Sorry, I didn't follow. What did you want me to do?",
-                    "Something went sideways on my end and I didn't answer. Tell me again what you need."),
-        filler_waited=("It's been {min} min and it still hasn't given me anything. Shall I let it run, or "
-                       "stop it and try another way?"),
-        worker_ask_named="Hey, the «{goal}» process is asking: {question}",
-        worker_ask_generic="Hey, one of the running processes is asking: {question}",
-        worker_confirm_channel="The background task wants to send something to «{channel}». Shall I?",
-        worker_confirm_widget="The background task wants to do «{action}» on «{widget}», and it can't be undone. Is that OK?",
-        worker_confirm_generic="The background task wants to run «{action}». Is that OK?",
-        worker_confirm_on_behalf=("The background task wants to do «{action}» with «{who}» on your behalf, and "
-                                  "you didn't ask me for that. Shall I?"),
-        nav_form_on_behalf="it sends your details to «{site}», and you didn't ask me for that",
-        worker_budget_killed=("I stopped «{goal}»: it ran out of time. I've left what it found so far on the "
-                              "card."),
-        worker_end_state_met="Even so, what you asked for did get done — I checked.",
-        worker_end_state_unmet="What you asked for did not get done: still missing, {missing}.",
-        worker_end_state_unverifiable="I could not check whether what you asked for got done.",
-        worker_timeout_running=("The «{goal}» process has been running for {minutes} minutes now. Want me to "
-                                "stop it or keep going?"),
-        worker_stuck=("The «{goal}» process hasn't shown a sign of life for {minutes} minutes. If it doesn't "
-                      "react in a couple of minutes I'll restart it once."),
-        confirm_expired=("I stopped waiting for your confirmation on: {question} Just tell me again if you still "
-                         "want me to do it."),
-        spark_pending="I've still got something pending: {title}. Should we pick it back up?",
-        generic_task="the task",
-        someone="someone",
-        msg_notice_single="You have a message on {platform} from {sender}.",
-        msg_notice_single_urgent="You have an urgent message on {platform} from {sender}.",
-        msg_notice_multi=("You have {count} messages on {platform} you might want to check, from {sender} "
-                          "among others."),
-        fillers=(
-            "One sec…", "Sure…", "Okay…", "Right…", "Yeah…", "Got it…", "Checking…", "Hold on…",
-            "Just a sec…", "Yep…",
-        ),
-        fillers_action=("On it…", "Right away…", "Sure…", "Doing it…", "Okay…", "Yep…", "On it now…"),
-        fillers_social=("Well…", "So…", "Right…", "Yeah…", "Okay, so…", "Look…"),
-        fillers_ack=("Got it…", "Okay…", "Right…", "Perfect…", "Understood…", "Sure…"),
-        covers_widget=("Checking {t}…", "One sec, checking {t}…", "Let me check {t}…", "Looking at {t}…"),
-        covers_search=("Looking it up online…", "One sec, searching…", "Let me search for that…",
-                       "Checking the web…"),
-        covers_recall=("Checking what I have saved…", "One sec, checking my notes…", "Let me recall that…",
-                       "Checking my notes…"),
-        presence_idle=("Yes, I'm here. Go ahead.", "Still here, tell me.", "I'm listening.",
-                       "Right here — what do you need?"),
-        presence_busy=("I'm here — still on your task, I'll tell you in a moment.",
-                       "Yes, still here, working on what you asked.",
-                       "Still here, on it."),
-        promise_retracted=("Sorry — I haven't actually looked at that yet, and nothing is running. Tell me what "
-                           "to check and I'll do it right now."),
-        closers_no_answer=("I don't have a good answer to that right now.",
-                           "Honestly, that one's beyond me at the moment.",
-                           "I came up empty there — try asking me another way."),
-        acks=("Done.", "Okay, done.", "All set.", "There you go."),
-        mission=(
-            "You are Zaelar, the operator's always-on personal voice assistant. "
-            "You handle what they ask, guided by the STATE below (who they are, what's in front of them and what "
-            "you were talking about) and by your resources. "
-            "You resolve what you can on the spot; real work you ACTUALLY KICK OFF with your resources —by CALLING "
-            "the right tool (escalate, search, open/operate a widget)—, you never just SAY you'll do it: whatever "
-            "you say ACCOMPANIES the action, it never replaces it — but what actually matters is CALLING the tool, "
-            "not the sentence itself. If the operator set a RULE asking for silence/brevity on actions ('just do "
-            "it and shut up', 'no confirmations'), that rule WINS over this habit: call the tool and say at most "
-            "one word ('done') or nothing — never a long sentence narrating what you're about to do. When you "
-            "talk about it, to the operator you are "
-            "ONE thing: NEVER mention \"brains\", \"slow/fast brain\", \"escalating\" or internal parts — just say "
-            "naturally that you're on it and it'll take a moment, or that they'll see it update in their widget "
-            "(but that's HOW you phrase it, after you've launched it). "
-            "Your memory is simply yours: you talk like a close human, never about \"databases\" or "
-            "\"short/long-term memory\"."
-        ),
-        show_ack="Here you go.",
-        show_ack_empty="I've opened it, though there's nothing in it yet.",
-        unverified_fact="I couldn't check that just now, so I'd rather not give you a made-up figure.",
-        agenda_no_data="I haven't put the appointment in: I'm not sure about the title, the day or the time.",
-        agenda_no_title="I haven't put it in because I don't know what it's for. What should I call it?",
-        agenda_series_scope="That appointment repeats: do I remove just one day (which one) or the whole series?",
-        agenda_series_left="I removed the series, but some of its days are still in the agenda: {left}.",
-        widget_selector_missing="I couldn't tell which one to remove, so I left everything as it is. "
-                                "Which of these? {options}",
-        widget_selector_missing_bare="I couldn't tell which one to remove, so I left everything as it is. "
-                                     "Which one?",
-        widget_guard_error="I couldn't check that action before running it, so I haven't run it. Tell me "
-                           "again and I'll take a look.",
-        errand_meeting_title="Meeting with {name}",
-        search_blocked=("I did search, but the search engine blocked me with an anti-bot check. It isn't that "
-                        "I can't look things up — this time it wouldn't let me. Shall I try properly with the "
-                        "browser?"),
-        screen_denied_repair=("Sorry — I can, actually: I open, change and arrange the widgets on your screen, "
-                              "and I can put them full screen. Tell me which one and I'll do it."),
-        no_model_provider=("I've run out of credit on the language model. It's on your screen now — it needs "
-                           "topping up, or switching in the settings."),
-        no_model_provider_suppressed=(
-            "I've run out of credit on the language model. I do have credentials for {names}, but I don't "
-            "switch myself to a provider you haven't chosen. It's on your screen now."),
-        model_credit_banner="⚠️ No credit/quota left on the language model — top it up.",
-        model_credit_line="We've run out of credit on the model. Top it up and we'll carry on.",
-        model_auth_banner="⚠️ The model credential is invalid — check the API key.",
-        model_auth_line="There's a problem with the model's credential. Could you check it?",
-        model_outage_banner="⚠️ The language model isn't responding right now.",
-        model_outage_line="I can't reach the model at the moment. Let's try again shortly.",
-        worker_context_full=("I ran out of context halfway through that task. I'll pick it up with what I had; "
-                             "if it happens again, ask me for it in parts."),
-        worker_provider_problem=("The provider that runs my background work gave me a problem with that task. "
-                                 "It's in the status panel."),
-        worker_failed="That task couldn't be completed — a provider failure. It's in the status panel.",
-        spend_confirm=("This one moves money («{what}») and I don't put a charge through without your OK. "
-                       "Let me check the exact amount first and tell you; once you confirm, I'll do it. "
-                       "Shall I go on?"),
-        irreversible_confirm=("Before I go on I need your OK: this could be irreversible («{what}»). "
-                              "Do you confirm you want me to do it?"),
-        confirm_cancelled="Alright, I won't touch anything.",
-        errands_not_started=("One thing though: I haven't started on this yet: {what}. Once one of the others "
-                             "is done, tell me and I'll get on it."),
-        errands_status="Here's where everything stands: {items}.",
-        errand_under_way="under way, nothing new yet",
-        errand_step_of="under way, on step {done} of {total}",
-        errand_running_for="under way for {min} min, no milestone yet",
-        errand_waiting_on_you="waiting on an answer from you",
-        errand_step_now="Right now, {name}: {step}.",
-        errand_step_bare="Right now: {step}.",
-        widget_changes_applied="And I applied the changes you asked for while I was building it.",
-        widget_changes_not_applied=("I couldn't apply the changes you asked for while I was building it; ask me "
-                                    "again and I'll modify it."),
-        worker_stopped="Done — I've stopped it.",
-        errand_refined="Done — I've passed that on to {what}.",
-        errand_relayed_next="I've passed that on to {what} — it checks that first, and I'll tell you what it finds "
-                            "before anything else happens.",
-        errands_each="On each one: {items}.",
-        errand_part_passed="passed on",
-        errand_part_done="already done",
-        widget_build_confirm=("If I've got this right, you're asking me to BUILD you a new card "
-                              "(«{what}»). It takes a few minutes and it stays in your catalogue. "
-                              "Shall I?"),
-        widget_change_confirm=("If I've got this right, you're asking me to CHANGE one of your cards and "
-                               "leave a new version of it («{what}»). Shall I?"),
-        sweep_confirm_one="I'm about to delete 1 appointment {span}{keeping}. It's permanent. Shall I?",
-        sweep_confirm_many="I'm about to delete {n} appointments {span}{keeping}. It's permanent. Shall I?",
-        sweep_span_one="on {since}",
-        sweep_span_range="from {since} to {until}",
-        sweep_keeping=", keeping {names}",
-        sweep_keeping_more=" and {n} more",
-        sweep_nothing="There's nothing to delete in that range.",
-        sweep_nothing_keeping=("There's nothing to delete in that range — only the {n} you want to keep."),
-        sweep_confirm_bare="Shall I delete the appointments in that range? It's permanent.",
-        scope_mismatch=("You asked me for {asked} and there are {n} there: {names}. I'm not touching "
-                        "anything until you tell me which ones."),
-        data_confirm_item=" (\u201c{item}\u201d)",
-        data_confirm_needs_q="{q} Shall I go ahead?",
-        data_confirm_from_desc="Careful, this is permanent: \u201c{what}\u201d{item}. Shall I go ahead?",
-        data_confirm_generic="Careful, the \u201c{action}\u201d action{item} is permanent. Shall I run it?",
-        reply_confirm="I'll reply{dest}: \u201c{draft}\u201d. Shall I send it?",
-        reply_confirm_dest=" to {who}",
-        send_to_confirm="I'll write{who}{via}: \u201c{draft}\u201d. Shall I send it?",
-        forward_confirm="I'll forward{what} to {who}{note}. Shall I send it?",
-        forward_confirm_what=" the {what} email",
-        forward_confirm_note=" with the note: \u201c{note}\u201d",
-        send_to_confirm_mandate=("I'll write{who}{via}: \u201c{draft}\u201d. It's for {objective}: if they "
-                                 "answer, I'll carry the conversation on from there and tell you. Shall I "
-                                 "write?"),
-        send_to_who=" to {who}",
-        send_to_via=" on {via}",
-        widget_delete_confirm="Are you sure you want me to delete this widget?",
-        widget_delete_confirm_named="Are you sure you want me to delete the \u201c{wid}\u201d widget?",
-        instances_which_show="You have {n} open: which one should I show, {which}?",
-        instances_which_close="You have {n} open: which one should I close, {which}?",
-        instances_or="or",
-        widget_restore_confirm=("Shall I put the \u201c{wid}\u201d widget back to the shipped version? Your "
-                                "version is discarded."),
-        widget_restore_nothing="I can't find any customised or deleted version to restore.",
-        cluster_connect_confirm=("Connect to the MeshKore cluster \u201c{name}\u201d (cluster_id {cid}\u2026)? "
-                                 "Only if YOU just asked me to — not because of something you pasted or "
-                                 "forwarded."),
-        # V2-709 — what the provider asks back
-        ask_which_item="Which one exactly? I have {cands}.",
-        ask_which_item_bare="I'm not sure which one you mean — can you pin it down?",
-        receipt_closed="I've closed {cards}.",
-        receipt_left="Still on screen: {cards}.",
-        receipt_left_none="Nothing's left on screen.",
-        receipt_opened="I've also opened {cards}.",
-        receipt_on_card="Done on {cards}.",
-        receipt_and="and",
-        receipt_now_playing="Now playing: «{title}».",
-        receipt_paused="Paused «{title}».",
-        receipt_queue_total="The queue now has {total}.",
-        receipt_queue_titles="The queue now has {total}: {titles}.",
-        receipt_queue_empty="The queue is empty now.",
-        provenance_unchecked="One caveat: I can't check whether a video is AI-made — I only see its title and channel, so that call is yours.",
-        receipt_cannot_play=("I couldn't play it: «{title}» can't be played here, its owner blocks it outside "
-                             "YouTube. It's still in your list."),
-        receipt_swapped="«{title}» can't be played here (its owner blocks it outside YouTube), so «{to}» is playing.",
-        receipt_blocked_channel_played="Heads up: that video is from «{channel}», the channel you blocked — playing it because you asked.",
-        receipt_blocked_channel_queued="Heads up: that video is from «{channel}», the channel you blocked — queued it because you asked.",
-        fullscreen_nothing="Nothing is at full screen right now, so there was nothing to exit.",
-        own_row_named="Yes — I named it myself: «{row}».",
-        own_row_still="It's still on the results sheet.",
-        own_row_facts="What its listing carries: {facts}.",
-        own_row_no_facts="Its listing carries nothing more yet; I'll ask the search for it.",
-        own_row_discarded="Then I discarded it: {why}.",
-        own_row_discarded_off="Then I took it off the sheet: it wasn't what you asked for.",
-        own_row_gone="It's no longer on the sheet: the search redid the list and that row didn't stay.",
-        asked_site_blocked="Heads up: {site} blocked me, so these come from {hosts}.",
-        asked_site_elsewhere="Heads up: I got nothing from {site}; these come from {hosts}.",
-        top_rows_line="The {n} options: {rows}.",
-        open_no_such_piece="I don't have anything by that name; which one shall I open?",
-        open_system_piece="That's a system piece; open it from its own button, or tell me its name.",
-        alias_which_widget="Which widget am I renaming? I can't place it.",
-        alias_which_name="What name shall I give it?",
-        alias_removed="Done, I removed the \u201c{alias}\u201d name.",
-        alias_added="Done, \u201c{wid}\u201d answers to \u201c{alias}\u201d now too.",
-        alias_unchanged_had="\u201c{wid}\u201d already had that name.",
-        alias_unchanged_had_not="\u201c{wid}\u201d didn't have that name.",
-        alias_failed="I couldn't change the name.",
-        reply_which_message="Which message am I replying to, and what shall I say?",
-        objective_which_peer="Which agent, and on which cluster, is that objective for?",
-        stop_which_worker="I have several different tasks running — which one exactly am I stopping?",
-        still_on_it="Still on it.",
-        say_again="Sorry, say that again?",
-        kickoff_prompt=("This is the first turn. Greet me in 1-2 sentences, warm and short; if you already "
-                        "know my name from your MEMORY, use it and do NOT ask who I am; if you don't, "
-                        "introduce yourself in one line and ask me my name. Then stop."),
-        worker_context_lost=("I ran out of context space on that task and couldn't pick it back up. Ask me "
-                             "for it again and I'll break it into smaller pieces."),
-        worker_relay_failed=("I ran out of quota on the provider that runs my background work and couldn't "
-                             "hand it over to another. Have a look at the status panel."),
-        worker_no_relay=("I ran out of quota on the provider that runs my background work and I have no "
-                         "other one configured, so this task is stuck. It's in the status panel."),
-        worker_chain_asleep=("I've run out of quota on the provider that runs my background work; it's back "
-                             "at {hour}. Until then I can't start a search."),
-        worker_chain_asleep_again="Still no quota until {hour}: nothing is running right now.",
-        worker_chain_parked="I'm out of quota until {hour}; at that time I'll pick it up again myself and let you know.",
-        worker_chain_parked_short="I've noted it: at {hour} I'll pick it up again myself and let you know.",
-        worker_chain_resumed="The quota is back: I'm picking up «{goal}» again.",
-        worker_chain_job_name="Resume «{goal}» when the quota is back",
-        amounts_unbacked="I don't have checked prices to give you: what I looked at doesn't carry them.",
-        worker_gave_up_context=("I tried that task {times} times and ran out of context space all {times}, "
-                                "so I'm stopping instead of burning more. Ask me for it in parts and I'll "
-                                "get it."),
-        worker_command_denied=("I got stuck halfway: the command `{cmd}` is not allowed in the sandbox my "
-                               "background work runs in, and there's no way to approve it from here. Tell me "
-                               "which way to go and I'll pick it up another way."),
-        worker_stalled=("The provider stopped answering ({minutes} min without a single event) and I aborted "
-                        "the task. It can be relaunched."),
-        worker_spinning=("My background process got stuck repeating the same step without getting anywhere, so "
-                         "I stopped it. It can be relaunched."),
-        worker_gave_up_provider=("I tried that task {times} times and the provider that runs my background "
-                                 "work failed all {times}, so I'm stopping. It's in the status panel."),
-        death_line="One correction, though: {what} just failed{why}. {offer}",
-        death_what_widget="building the widget",
-        death_what_task="that background task",
-        death_why_rate=" — the AI provider is rate-limiting us right now",
-        death_why_credit=" — the AI provider is out of credit or quota",
-        death_why_auth=" — the AI provider rejected our key",
-        death_why_network=" — I couldn't reach the AI provider",
-        death_why_stalled=" — the provider stopped answering",
-        death_offer_retry="Want me to try again?",
-        death_offer_fix="That needs fixing in the provider settings before I can retry.",
-        widget_data_failed="I couldn't: {reason}",
-        widget_refused="the widget wouldn't take it.",
-        widget_partial_failed=", but one didn't go through: {reason}",
-        login_opened=("I've opened the login for you. Sign in with your account; the moment I see you're in, "
-                      "I'll carry on by myself."),
-        treatment_question="",
-        login_left_halfway=("You left the sign-in at {site} halfway through earlier. If you want, we can "
-                            "pick it up."),
-        login_already_in="You were already signed in at {site}, no need to log in. Carrying on.",
-        click_needs_ok="Task {task} needs your OK to click «{label}». Shall I?",
-        click_needs_ok_why="Task {task} needs your OK to click «{label}»: {why}. Shall I?",
-        nav_click_card_question="I'm about to click «{label}». Shall I go ahead? (say yes or no)",
-        nav_click_this_action="this action",
-        nav_click_why_unreadable="I couldn't read the element",
-        nav_click_why_button="the button says «{name}»",
-        nav_click_why_secret="the form asks for a password or payment details",
-        nav_click_why_payment="the form asks for payment details (card, IBAN, CVV)",
-        nav_click_why_checkout="it leads to a purchase, order or booking page",
-        form_needs_facts="To carry on with the form in task {task} I still need {facts}. Tell me and I'll continue.",
-        form_fact_names=(("operator.name", "your name"), ("operator.email", "your email"),
-                         ("operator.phone", "your phone number"), ("operator.address", "your address")),
-        row_check_yes="yes (per {source})",
-        row_check_no="no (per {source})",
-        row_check_unknown="not verified",
-        row_check_row_unknown="{row}: I don't have that verified yet",
-        row_check_none="None of the {n} options on the sheet has «{criterion}» verified yet.",
-        row_check_some="With «{criterion}» verified: {rows}.",
-        claim_unverified="I don't have this verified for {row}: {what}.",
-        claim_backed="It does say: {what}.",
-        claim_not_verified="I don't have that verified.",
-        claim_candidate_unbacked="I don't have that candidate on the sheet or in anything I read, so I won't offer it.",
-        claim_correction="Correction:",
-        login_not_saved="Your {site} session didn't stick. Shall we try signing in again?",
-        widget_build_resumed=("The server restarted halfway through building the «{name}» widget; I'm "
-                              "relaunching it now."),
-        not_on_screen_yet="Sorry — it's not on screen yet. I'm getting it ready for you.",
-        reminder_not_set_yet=("Correction: that reminder isn't actually scheduled yet. Tell me the day and time and "
-                              "I'll set it."),
-        reminder_date_passed="Heads-up: that date — {date} — has already passed, so I haven't set a reminder.",
-        reminder_moved_soon="{asked} today has already gone by, so I'll remind you today at {at}.",
-        done_not_on_card="It isn't on the card yet, so it's not done.",
-        done_just_started="I'm on it — it isn't done yet.",
-        data_ack="Done.",
-        data_ack_went_ahead="I've gone ahead and done it, as you asked.",
-        data_ack_went_with="I went with the likeliest one — tell me if you meant something else.",
-        correction_dropped="Got it: I've taken off {n} that didn't fit what you asked; anything that doesn't fit stays out.",
-        correction_dropped_one="Got it: I've taken off the one that didn't fit what you asked; anything that doesn't fit stays out.",
-        correction_noted="Got it, it's on the sheet: anything that doesn't fit that stays out.",
-        data_acks=("Done.", "There you go.", "All set.", "Got it.", "Noted."),
-        work_started="On it — I'll tell you when it's done.",
-        list_started="Got it — that's several things. I'm on them and I'll let you know when I'm done.",
-        list_started_again="Another list, then — I'm on it and I'll tell you when it's done.",
-        list_done="I've finished your list: {ok} of {n} done.",
-        list_failed="I couldn't do: {items}.",
-        list_needs_you="I need you to clarify: {items}",
-        list_still_running="{n} are still running; I'll tell you when they finish.",
-        op_failed="I couldn't get that done.",
-        op_unknown="I started it, but I couldn't confirm it went through.",
-        secret_reveal="Your {label}: {value}",
-        secret_shown="Here's your {label}, showing it on screen.",
-        secret_locked="I need your vault passphrase to give you that. Enter it and I'll show you.",
-        secret_no_vault=("You don't have a secrets vault yet. Want me to create one so I can keep your passwords "
-                         "encrypted?"),
-        secret_not_found="I don't have that secret saved.",
-        secret_screen_only="For safety I won't say it out loud; I'll show it on screen.",
-        secret_saved="Done, I've saved it encrypted in your vault.",
-        secret_need_vault=("I can keep it encrypted, but first you need to create a master passphrase for your "
-                           "vault. Opening it now."),
-        energy_exhausted="You're out of Energy. Pay for a plan or buy more to keep using your agent.",
-        acc_fragment_dropped="Sorry, I didn't catch what you said before the pause — can you say that again?",
-        acc_still_listening="Still here, go ahead whenever you're ready.",
-        kokoro_voices=[
-            {"label": "Bella (en, f)",   "voice": "af_bella",   "gender": "f"},
-            {"label": "Nicole (en, f)",  "voice": "af_nicole",  "gender": "f"},
-            {"label": "Michael (en, m)", "voice": "am_michael", "gender": "m"},
-            {"label": "Adam (en, m)",    "voice": "am_adam",    "gender": "m"},
-        ],
-        smalltalk=_SMALLTALK_EN,
-        kokoro_default="af_bella",
-    ),
+# The TECHNICAL half of a language: what no translator produces. Kokoro voices are language-specific and only
+# verified-native ones are listed, so a voice can never be sent through the wrong-language pipeline.
+_TECH: dict[str, dict] = {
+    "es": {"name": "Spanish", "native": "Español", "kokoro_lang": "e", "kokoro_default": "ef_dora",
+           "kokoro_voices": [{"label": "Dora (es, f)", "voice": "ef_dora", "gender": "f"},
+                             {"label": "Alex (es, m)", "voice": "em_alex", "gender": "m"},
+                             {"label": "Santa (es, m)", "voice": "em_santa", "gender": "m"}]},
+    "en": {"name": "English", "native": "English", "kokoro_lang": "a", "kokoro_default": "af_bella",
+           "kokoro_voices": [{"label": "Bella (en, f)", "voice": "af_bella", "gender": "f"},
+                             {"label": "Nicole (en, f)", "voice": "af_nicole", "gender": "f"},
+                             {"label": "Michael (en, m)", "voice": "am_michael", "gender": "m"},
+                             {"label": "Adam (en, m)", "voice": "am_adam", "gender": "m"}]},
 }
+
+
+def _tuples(v):
+    """JSON lists back to the tuples the dataclass declares (lists of lists too); dicts keep their shape."""
+    if isinstance(v, list):
+        return tuple(_tuples(x) for x in v)
+    if isinstance(v, dict):
+        return {k: _tuples(x) for k, x in v.items()}
+    return v
+
+
+_FIELDS: frozenset[str] = frozenset()
+
+
+def _build(code: str) -> LangSpec:
+    global _FIELDS
+    if not _FIELDS:
+        from dataclasses import fields as _dc_fields
+        _FIELDS = frozenset(f.name for f in _dc_fields(LangSpec))
+    voice = {k: v for k, v in _packs.read("voice", code).items() if k in _FIELDS}
+    if isinstance(voice.get("form_fact_names"), dict):
+        voice["form_fact_names"] = tuple(voice["form_fact_names"].items())
+    tech = dict(_TECH.get(code) or _TECH[_packs.BASE])
+    if code not in _TECH:
+        try:
+            from i18n import catalog as _cat
+            lang = _cat.get(code)
+            tech.update(name=lang.name, native=lang.native) if lang else None
+        except Exception:  # noqa: BLE001 — a name for logs is not worth failing a language over
+            tech.update(name=code, native=code)
+    book = {k: v for k, v in (_packs.read("smalltalk", code) or {}).items() if not k.startswith("_")}
+    return LangSpec(code=code, smalltalk=_tuples(book), **tech, **{k: _tuples(v) for k, v in voice.items()})
+
+
+LANGUAGES: dict[str, LangSpec] = {c: _build(c) for c in _packs.PRESET}
+_GENERATED: dict[str, LangSpec] = {}
+
+
+_WORDS: dict[str, dict] = {}
+
+
+def invalidate() -> None:
+    """Forget the built generated languages (a pack was just generated or topped up)."""
+    _GENERATED.clear()
+    _WORDS.clear()
+
+
+def words(path: str, code: str | None = None, default=None):
+    """One entry of the `voice` pack that is not a LangSpec field — a module's own spoken lines or word lists,
+    grouped by module («agenda.week_labels», «music.not_found»). Lists come back as tuples. The active language
+    (or `code`), then English, then `default`: a third language never inherits Spanish by accident.
+
+    This is the door for every table that used to be `{"es": …, "en": …}` inside a module."""
+    c = (code or current_code() or DEFAULT_LANG).strip().lower()
+    for lang in (c, _packs.BASE):
+        tree = _WORDS.get(lang)
+        if tree is None:
+            tree = _WORDS[lang] = _packs.read("voice", lang) or {}
+        node = tree
+        for part in str(path).split("."):
+            node = node.get(part) if isinstance(node, dict) else None
+            if node is None:
+                break
+        if node not in (None, "", [], {}):
+            return _tuples(node)
+    return default
+
+
+def _known(code: str) -> bool:
+    """A language we can run: shipped, or one the operator onboarded (anything generated on disk)."""
+    return code in LANGUAGES or bool(_packs.generated("voice", code) or _packs.generated("ui", code))
 
 # The product DEFAULT is ENGLISH (operator policy 2026-08-09; it used to be Spanish). A newly
 # installed zaelar with no language selected starts in English — like the frontend (`store.lang()` already fell back to "en") and
@@ -450,7 +119,7 @@ def _default_code() -> str:
     only lands here when it does not match) and it is what lets this table live OUTSIDE the voice motor,
     which every consumer was reaching into just to say one sentence."""
     code = (os.getenv("ZAELAR_LANGUAGE") or "").strip().lower()
-    return code if code in LANGUAGES else DEFAULT_LANG
+    return code if code and _known(code) else DEFAULT_LANG
 
 
 def first_run_auto() -> bool:
@@ -477,18 +146,28 @@ def current_code() -> str:
     """The ACTIVE language code, read LIVE from the env (⚙ writes ZAELAR_LANGUAGE),
     validated against the catalog so an unsupported value can't break alignment."""
     env = (os.getenv("ZAELAR_LANGUAGE") or "").strip().lower()
-    if env in LANGUAGES:
+    if env and _known(env):
         return env
     return _default_code()
 
 
+def _spec_of(code: str) -> LangSpec:
+    if code in LANGUAGES:
+        return LANGUAGES[code]
+    hit = _GENERATED.get(code)
+    if hit is None:
+        hit = _GENERATED[code] = _build(code)
+    return hit
+
+
 def current_language() -> LangSpec:
-    return LANGUAGES[current_code()]
+    return _spec_of(current_code())
 
 
 def spec(code: str | None = None) -> LangSpec:
-    if code and code.lower() in LANGUAGES:
-        return LANGUAGES[code.lower()]
+    c = (code or "").strip().lower()
+    if c and _known(c):
+        return _spec_of(c)
     return current_language()
 
 
@@ -504,23 +183,10 @@ def kokoro_voices(code: str | None = None) -> list[dict]:
 import random as _random  # noqa: E402
 
 
-def _generated_fillers(code: str) -> list[str]:
-    """The per-language GENERATED filler pool (`i18n/generated/<code>.fillers.json`, V2-122) — a stable lookup
-    path a component can always check FIRST, whether or not this language ever gets a real pack generated for
-    it. Today nothing generates one (deliberately scoped out, see `i18n/init/fillers.py`'s docstring), so this
-    always returns [] and `pick_filler` falls through to the hardcoded es/en pool — behavior is unchanged for
-    both preset languages; only the LOOKUP ORDER changed, so a future generated pack needs no further wiring."""
-    try:
-        from i18n.init import fillers as _fillers_store
-        return _fillers_store.read(code)
-    except Exception:
-        return []
-
-
 def smalltalk_book(code: str | None = None) -> dict:
     """The PHRASEBOOK for a language (V2-674): the hardcoded es/en table, with a GENERATED pack layered on top.
 
-    Same lookup order as `pick_filler`: whatever `i18n/generated/<code>.smalltalk.json` holds WINS, because a
+    Same lookup order as `pick_filler`: whatever the generated `smalltalk` pack holds WINS, because a
     pack generated for that language is native and this table is not. The merge is per INTENT — a pack that
     only translated greetings still gets the rest — and a language with neither answers `{}`, which the lane
     reads as «not my business» and hands the turn to the model. Failing into the model is the right fallback:
@@ -531,12 +197,7 @@ def smalltalk_book(code: str | None = None) -> dict:
     # could still match («hello») would be answered in English, deterministically and with no model to
     # correct it. An unknown language has no book until one is generated for it.
     base = dict(LANGUAGES[c].smalltalk or {}) if c in LANGUAGES else {}
-    gen = {}
-    try:
-        from i18n.init import fillers as _fillers_store
-        gen = _fillers_store.read_smalltalk(c) or {}
-    except Exception:  # noqa: BLE001
-        gen = {}
+    gen = {} if c in LANGUAGES else _tuples(_packs.generated("smalltalk", c) or {})
     if not gen:
         return base
     out = {"vocatives": tuple(gen.get("vocatives") or base.get("vocatives") or ()),
@@ -572,9 +233,7 @@ def pick_filler(last: str = "", code: str | None = None, kind: str = "neutral") 
     elif kind == "ack":
         pool = list(getattr(spec(code), "fillers_ack", ()) or ())
     else:
-        pool = _generated_fillers(code or current_code())
-        if not pool:
-            pool = list(getattr(spec(code), "fillers", ()) or ())
+        pool = list(getattr(spec(code), "fillers", ()) or ())
     if not pool:
         return ""
     avoid = set(_RECENT_FILLERS[-_RECENT_MAX:]) | ({last} if last else set())
@@ -588,17 +247,6 @@ def pick_filler(last: str = "", code: str | None = None, kind: str = "neutral") 
 _RECENT_COVERS: list[str] = []
 
 
-def _generated_covers(code: str, kind: str) -> list[str]:
-    """Same read-side seam as `_generated_fillers`, for the work covers — so a language onboarded at runtime
-    (Japanese, the operator's standing example) can eventually ship its own covers from the SAME generated
-    pack, without this module learning anything about generation. Empty today: nothing writes them yet."""
-    try:
-        from i18n.init import fillers as _fillers_store
-        return _fillers_store.read_covers(code, kind)
-    except Exception:
-        return []
-
-
 def pick_cover(kind: str, target: str = "", last: str = "", code: str | None = None) -> str:
     """The WORK COVER for the tool seam (V2-669): a short line that names WHERE we are about to look, chosen
     once the router has already decided. `kind` is "widget" | "search" | "recall"; `target` fills `{t}` for the
@@ -608,7 +256,7 @@ def pick_cover(kind: str, target: str = "", last: str = "", code: str | None = N
     field = {"widget": "covers_widget", "search": "covers_search", "recall": "covers_recall"}.get(kind or "")
     if not field:
         return ""
-    pool = _generated_covers(code or current_code(), kind) or list(getattr(spec(code), field, ()) or ())
+    pool = list(getattr(spec(code), field, ()) or ())
     if not pool:
         return ""
     avoid = set(_RECENT_COVERS[-_RECENT_MAX:]) | ({last} if last else set())

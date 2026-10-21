@@ -83,10 +83,10 @@ def catalogue_names(widget_id: str) -> list[str]:
         import json
         import pathlib
         root = pathlib.Path(__file__).resolve().parents[1] / "i18n"
-        files = list((root / "bundles").glob("*.json"))
+        files = list((root / "genesis").glob("*/ui.json"))
         try:
-            from i18n import store as _i18n_store
-            files += [_i18n_store._path(c) for c in _i18n_store.codes()]
+            from i18n import packs as _i18n_packs
+            files += [_i18n_packs.generated_path(c, "ui") for c in _i18n_packs.generated_codes()]
         except Exception:  # noqa: BLE001
             pass
         for f in files:

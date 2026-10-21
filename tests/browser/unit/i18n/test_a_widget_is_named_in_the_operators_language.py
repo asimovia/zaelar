@@ -184,9 +184,10 @@ def test_a_GENERATED_language_renames_the_cards_and_the_vocabulary_with_them(tmp
     assert {r["id"]: r["name"] for r in registry.registry()}["mensajeria"] == "Mensajería"
     assert runtime.identify("installationsguide").get("system") is None, "precondition: Swedish is not loaded"
 
-    from i18n import store as i18n_store, runtime as i18n_runtime
-    monkeypatch.setattr(i18n_store, "_GEN_DIR", tmp_path)
-    (tmp_path / "sv.json").write_text(json.dumps({"version": 1, "src": {}, "strings": {
+    from i18n import packs as i18n_packs, runtime as i18n_runtime
+    monkeypatch.setattr(i18n_packs, "_workspace_generated", lambda: tmp_path)
+    (tmp_path / "sv").mkdir()
+    (tmp_path / "sv" / "ui.json").write_text(json.dumps({"version": 1, "src": {}, "strings": {
         "widgets.mensajeria.name": "Meddelanden",
         "surfaces.wizard.name": "Installationsguide",
     }}, ensure_ascii=False), encoding="utf-8")

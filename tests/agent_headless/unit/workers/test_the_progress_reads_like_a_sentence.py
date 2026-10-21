@@ -15,6 +15,12 @@ from nucleo.workers import progress as P
 from nucleo.workers.claude_session import _tool_phase
 
 
+@pytest.fixture(autouse=True)
+def _spanish_instance(monkeypatch):
+    """The phases are produced in the instance's language (`progress.say`); this file pins the Castilian ones."""
+    monkeypatch.setenv("ZAELAR_LANGUAGE", "es")
+
+
 # ── B1: la frase nombra el SITIO y la COSA ───────────────────────────────────────────────────────────────────
 @pytest.mark.parametrize("cmd,expected", [
     ("-m nucleo.nav_cli navigate https://www.booking.com/searchresults?ss=Sevilla", "entrando en booking.com…"),
@@ -167,7 +173,7 @@ in Los Angeles. It knows about browsers, memory, widgets, and files; nothing abo
     # the operator's examples (hotels, a house in Los Angeles, `ss=Sevilla` in a sample URL)
     # to say that none of them may appear in a sentence.
     said = " ".join([f(t) for table in P._SAY.values() for f in table.values() for t in ("", "X")]).lower()
-    said += " " + " ".join(P._BY_WHERE.values()).lower()
+    said += " " + " ".join(P.say(*v) for v in P._BY_WHERE.values()).lower()
     said += " " + " ".join([P.found(0), P.found(3), P.still_alive("leyendo", 30)]).lower()
     for domain in ("hotel", "restaurante", "coche", "casa", "vuelo", "wallapop", "sevilla", "booking"):
         assert domain not in said, f"«{domain}» en una frase de progreso: lo general convertido en atajo"

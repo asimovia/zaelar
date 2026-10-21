@@ -14,7 +14,7 @@ Two clearly-separated sides (this is the architecture the whole subsystem is org
 
   • i18n.store  — persistence of GENERATED bundles (workspace, out of the repo).
 
-Data (source of truth): i18n/bundles/en.json = English manifest (every key → English); i18n/bundles/es.json =
+Data (source of truth): i18n/genesis/en/ui.json = English manifest (every key → English); i18n/genesis/es/ui.json =
 preset Spanish. Adding a UI string ⇒ add its key to en.json (+ es.json for the preset); every other language is
 regenerated from it on next init.
 """

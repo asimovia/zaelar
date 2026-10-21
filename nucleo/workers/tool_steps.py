@@ -32,32 +32,36 @@ def _tool_phase(tool: str, tin: dict | None = None) -> str:
             return _said + "…"
     except Exception:  # noqa: BLE001
         pass
+    from nucleo.workers.progress import say as _say
     t = (tool or "").lower()
     if "webfetch" in t or "websearch" in t:
-        return "buscando en la web…"
+        return _say("web_search", "searching the web") + "…"
     if t.startswith("bash"):
         c = str((tin or {}).get("command") or "").lower()
         if "nav_cli" in c:
-            for verb, label in (("snapshot", "mirando la página…"), ("navigate", "abriendo una página…"),
-                                ("click", "interactuando con la página…"), ("type", "escribiendo en la página…"),
-                                ("scroll", "recorriendo la página…"), ("extract", "recogiendo resultados…")):
+            for verb, key, en in (("snapshot", "nav_look", "looking at the page"),
+                                  ("navigate", "nav_navigate", "opening a page"),
+                                  ("click", "nav_interact", "interacting with the page"),
+                                  ("type", "nav_type", "typing on the page"),
+                                  ("scroll", "nav_scroll", "scrolling through the page"),
+                                  ("extract", "nav_collect", "collecting results")):
                 if f" {verb}" in c:
-                    return label
-            return "conduciendo el navegador…"
+                    return _say(key, en) + "…"
+            return _say("nav_drive", "driving the browser") + "…"
         if "agent_report" in c:
             return ""                                   # la fase la pone el propio hbnote (más rica) — no pisar
         if "mem_cli" in c:
-            return "consultando la memoria…"
+            return _say("mem_recall", "checking memory") + "…"
         if "widget_cli" in c:
-            return "actualizando un widget…"
+            return _say("widget_update", "updating a widget") + "…"
         if "worker_bridge" in c:
-            return "consultando con zaelar…"
-        return "ejecutando un paso…"
+            return _say("zaelar_consult", "checking with zaelar") + "…"
+        return _say("system_step", "running a step") + "…"
     if t in ("write", "edit", "multiedit"):
-        return "escribiendo cambios…"
+        return _say("edit_write", "writing changes") + "…"
     if t == "read":
-        return "leyendo…"
-    return f"usando {tool}…" if tool else "trabajando…"
+        return _say("reading", "reading") + "…"
+    return (_say("using", "using {action}", action=tool) if tool else _say("working", "working")) + "…"
 
 
 # ── V2-048: observabilidad RICA — cada tool_use → DÓNDE + QUÉ concreto ────────────────────────────────────────

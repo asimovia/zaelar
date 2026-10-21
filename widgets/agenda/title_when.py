@@ -8,19 +8,28 @@ appointment was later moved to 17:00 and the title still said ten in the morning
 Only COMPLETE date and time expressions are cut — a lead word («el», «a las», «on», «at») plus a day/month or an
 hour — so a title that merely carries a number («Clase 3 de piano», «Room 101», «Revisión de los 10.000 km»,
 «Meeting at 10 Downing Street») keeps it. A time phrase is cut only when its hour can be READ, and the hour is
-handed back so the caller can store it: the title is never the place an hour is lost from. Stdlib only.
+handed back so the caller can store it: the title is never the place an hour is lost from.
 """
 from __future__ import annotations
 
 import re
 
-_MONTHS_ES = r"(?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)"
-_MONTHS_EN = (r"(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|"
-              r"oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)")
-_DAYS_ES = r"(?:lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo)"
-_DAYS_EN = r"(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)"
-_WORDS_ES = ("una", "dos", "tres", "cuatro", "cinco", "seis", "siete", "ocho", "nueve", "diez", "once", "doce")
-_WORDS_EN = ("one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve")
+from i18n import langs as _langs
+
+
+def _alt(code: str, key: str) -> str:
+    """One word list of the `voice` pack (`agenda.when.<key>`) as a regex alternation, longest first so the
+    alternation prefers the whole word exactly as the hand-written optional suffixes did («sept» before «sep»).
+    Each grammar below reads ITS language's list: the Spanish lead words with the Spanish months, the English
+    ones with the English months — the two languages the cuts have always matched, whatever the agent speaks."""
+    words = _langs.words(f"agenda.when.{key}", code=code, default=())
+    return "(?:" + "|".join(re.escape(w) for w in sorted(words, key=len, reverse=True)) + ")"
+
+
+_MONTHS_ES, _MONTHS_EN = _alt("es", "months"), _alt("en", "months")
+_DAYS_ES, _DAYS_EN = _alt("es", "weekdays"), _alt("en", "weekdays")
+_WORDS_ES = tuple(_langs.words("agenda.when.hour_words", code="es", default=()))
+_WORDS_EN = tuple(_langs.words("agenda.when.hour_words", code="en", default=()))
 _HOUR_WORDS = {**{w: i + 1 for i, w in enumerate(_WORDS_ES)}, **{w: i + 1 for i, w in enumerate(_WORDS_EN)},
                "noon": 12, "midnight": 0}
 # What may follow a time phrase: the end, punctuation, or the next WHEN word. Without it «at 10 Downing Street»

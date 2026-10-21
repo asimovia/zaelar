@@ -37,6 +37,7 @@ def test_reactive_credit_overrides_ok(monkeypatch):
     # collection order.
     monkeypatch.setitem(sys.modules, "voice.health_state", _HS)
     monkeypatch.setattr(voice, "health_state", _HS, raising=False)
+    monkeypatch.setenv("ZAELAR_LANGUAGE", "es")      # the line follows the instance language; this reads the Spanish
     out = {s["key"]: s for s in balances.summary()}
     assert out["aimlapi"]["state"] == "error"
     assert "SIN SALDO" in out["aimlapi"]["detail"]

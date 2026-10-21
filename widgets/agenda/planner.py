@@ -33,24 +33,11 @@ def project_roi(p: dict) -> float:
 ENERGY_RANK = {"low": 0, "medium": 1, "high": 2}
 
 # V2-639 — the plan's own words follow the active language. The planner stays PURE (lang is an argument,
-# the caller reads the engine's current code); only the strings the planner INVENTS are here — titles the
-# operator dictated pass through untouched, they are data.
-_L = {
-    "es": {"block": "Bloque", "meeting": "Reunión", "task": "Tarea", "lunch": "Comida",
-           "exercise": "Ejercicio", "break": "Descanso", "summary": "{n} tareas planificadas",
-           "overflow": "No cabe hoy: «{t}» ({d}m) — coste de oportunidad.",
-           "avoid": "Llevas evitando «{t}» — ¿de verdad te interesa, o lo quitamos del scope?",
-           "advance": "avanza {p} (prioridad {pr})", "priority": "prioridad"},
-    "en": {"block": "Block", "meeting": "Meeting", "task": "Task", "lunch": "Lunch",
-           "exercise": "Exercise", "break": "Break", "summary": "{n} tasks planned",
-           "overflow": "Does not fit today: “{t}” ({d}m) — opportunity cost.",
-           "avoid": "You keep avoiding “{t}” — do you actually want it, or shall we drop it?",
-           "advance": "advances {p} (priority {pr})", "priority": "priority"},
-}
-
-
+# the caller reads the engine's current code); only the strings the planner INVENTS are translated — titles the
+# operator dictated pass through untouched, they are data. The words live in the `voice` pack (`agenda.plan`).
 def _lbl(lang: str) -> dict:
-    return _L.get((lang or "es").lower()[:2], _L["es"])
+    from i18n import langs as _langs
+    return _langs.words("agenda.plan", code=(lang or "").lower()[:2] or None, default={})
 
 
 def plan_day(db: dict, date: str = "", now: str = "", lang: str = "") -> dict:

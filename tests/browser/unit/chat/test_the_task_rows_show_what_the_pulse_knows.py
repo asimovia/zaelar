@@ -19,7 +19,7 @@ import pytest
 from tests.waiting import until_sync
 
 ENGINE = Path(__file__).resolve().parents[4]
-_ES = json.loads((ENGINE / "i18n/bundles/es.json").read_text(encoding="utf-8"))
+_ES = json.loads((ENGINE / "i18n/genesis/es/ui.json").read_text(encoding="utf-8"))
 _NOW = int(time.time())
 _ROWS = {
     "live": [{"id": "abcdef-1", "title": "Widget de contabilidad", "goal": "g", "state": "running",

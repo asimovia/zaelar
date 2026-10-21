@@ -54,7 +54,7 @@ def display_name(kind: str, wid: str, fallback: str) -> str:
 
     A manifest's `name` is written once, by whoever built the widget, in whatever language they wrote it — ours
     are Castilian, and that is exactly what an English session was reading on every card header. The label is a
-    UI string like any other, so it lives where every other UI string lives: `i18n/bundles/en.json` (the source
+    UI string like any other, so it lives where every other UI string lives: `i18n/genesis/en/ui.json` (the source
     of truth) + `es.json`, under `widgets.<id>.name` / `surfaces.<id>.name`, which means a language onboarded
     later gets it translated by the SAME generation pass as the rest of the interface, for free.
 

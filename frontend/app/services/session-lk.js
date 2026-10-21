@@ -693,7 +693,8 @@ function _armWakeEar() {
   // paid STT was running. A feature that degrades into the old behaviour without saying so is the one
   // shape of failure nobody reports.
   wake.install({
-    getLang: () => store.lang && store.lang() ? String(store.lang()).slice(0, 2) === "es" ? "es-ES" : store.lang() : "es-ES",
+    // Speech-recognition locale = the instance language (bare "es" maps to Spain Spanish); English when unknown.
+    getLang: () => { const l = String((store.lang && store.lang()) || "en"); return l === "es" ? "es-ES" : l; },
     getNames: () => wake.wakeNames(store.assistantName && store.assistantName()),
     onSpot: (spot) => {
       // The SPOT (an interim) is the one that has to be instant: open the tap and light the ring before

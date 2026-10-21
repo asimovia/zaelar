@@ -19,22 +19,68 @@ DELIBERATELY decoupled from the UI language: `i18n.runtime.active_code()` reads 
 code) so the UI can be Arabic while STT/TTS fall back to the es/en catalog. They coincide for es/en. Adding full
 spoken support for a new language = one `LangSpec` + a native voice (separate, larger task).
 
+## ONE FOLDER PER LANGUAGE — the genesis packs (2026-10-21)
+
+Every word meant for a human language lives in ONE place, with the same files for every language:
+
+```
+i18n/genesis/<code>/                      the languages the repo SHIPS: en (= the manifest of every pack), es
+    ui.json          flat {key: text} — everything the SCREEN shows, the engine's own text for it included
+    voice.json       what the agent SAYS and the words its detectors READ: one LangSpec field per key, plus
+                     per-module groups («agenda», «music», …) read with `langs.words("agenda.week_labels")`
+    smalltalk.json   the phrasebook of the conversational lane (cues + reply pools)
+    actionmap.json   whole-utterance commands → direct actions (only the words travel; actions are code)
+<workspace>/i18n/generated/<code>/        any other language: the same files, generated at onboarding
+    ui.json · voice.json · actionmap.json → {"version", "strings": {path: text}, "src": {path: english}}
+    smalltalk.json · aliases.json          → generated whole by their own prompt (no English to translate)
+```
+
+- **The registry** is `i18n/packs.py` (`PACKS`, in the order onboarding prepares them). It owns every path, the
+  one reader `packs.read(name, code)` (shipped file, or English rebuilt with the generated strings), and the
+  flatten/rebuild that lets ONE translator and ONE upgrade diff serve every pack.
+- **Readers**: screen → `t(key)` (frontend) / `i18n.runtime.text(key)` (server); spoken → `langs.spec()` fields and
+  `langs.words(path)`; phrasebook → `langs.smalltalk_book()`; commands → `nucleo/actionmap/store.seed_pack()`.
+  Fallback is always the active language → English → a default. **Never Spanish** for a third language.
+- **`i18n/langspec.py` is a SCHEMA**: its fields document each spoken line, their defaults are empty. The words
+  are in `voice.json`; `langs.py` only joins them to the technical facts of a language (Kokoro voices).
+- **The rule that keeps it**: `tests/infrastructure/unit/core/test_every_language_is_one_folder_of_packs.py`
+  (every shipped language has every pack with the same shape; onboarding generates every pack; a third language
+  never inherits Spanish) and `test_every_word_lives_in_a_language_pack.py` (a new `{"es": …, "en": …}` table or
+  `_ES`/`_EN` word list in product code fails; the declared exceptions below can only shrink).
+- **Declared exceptions** (a separate initiative, they carry incident history): the regex safety/routing guards —
+  `voice/attention.py` (STOP), `nucleo/flash/router_guards.py`, `nucleo/memory_agent/lang_marks.py`,
+  `nucleo/flash/segmenter.py`, `nucleo/flash/reminder_promise.py`, `search/category_words.py`,
+  `nucleo/flash/outgoing_lang.py`, `voice/engine/speech/say_numbers.py` — and the model-facing prompt prose
+  (`nucleo/dispatch_prompts.py`, `nucleo/research_prompts.py`), which no operator reads. A non-preset language
+  falls back to the model for what those accelerate.
+
+## Onboarding: the language is READY before the screen switches
+
+`POST /api/i18n/choose/{code}` → `i18n/init/detect.py::lock()` → `i18n.init.pending(code)` (file reads only:
+which packs still have work; empty = nothing to show) → priority strings for the veil → `i18n.init.prepare(code)`
+walks every pack in `PACKS` order (progress per pack) → SSE `ready` → the frontend `applyLang(code)`. The UI does
+NOT switch at `detected` any more: it switches once every pack exists, so it is never a half-translated mix. A ⚙
+switch takes the same path (every pack), only without the veil. The boot top-up (`server/boot_halves.py`) runs
+`prepare(active_code())` after an upgrade: only strings whose English changed are re-translated.
+
 ## INITIALIZATION vs EXECUTION (the organizing principle)
 
 The subsystem is split so nobody inherits a tangle of "when does this run":
 
 ```
 i18n/                         self-contained package
-├─ bundles/                   DATA (repo, source of truth): en.json = manifest, es.json = preset
-├─ runtime.py                 EXECUTION — hot path. Import-cheap, deterministic, NO LLM. Serves UI strings for
-│                             the active language, reports state, diffs missing keys. All the running server touches.
-├─ store.py                   persistence of GENERATED bundles (<workspace>/i18n/generated/, gitignored)
+├─ genesis/<code>/            DATA (repo, source of truth): every pack of en (= manifest) and es (= preset)
+├─ packs.py                   THE registry: pack list, every path, the one reader, flatten/rebuild
+├─ runtime.py                 EXECUTION — hot path, UI strings. Import-cheap, deterministic, NO LLM.
+├─ langs.py · langspec.py     EXECUTION — what the agent says: LangSpec built from the voice pack; `words()`
+├─ store.py                   persistence of GENERATED packs (<workspace>/i18n/generated/<code>/, gitignored)
 └─ init/                      INITIALIZATION — occasional, may call an LLM/STT, runs at boot/first-run/switch/upgrade
-    ├─ __init__.py            prepare(code) — THE ONE idempotent entry the boot/switch/upgrade path calls
-    ├─ ensure.py              ensure_language(code): diff manifest vs generated → decide what to (re)generate
-    ├─ generate.py            LLM translation of missing/changed keys (nucleo.memllm "i18n" task, default gpt-4o)
-    ├─ detect.py              first-run language detection + lock() — the onboarding sequencing lives here too
-    └─ aliases.py             (V2-101) per-language voice-command alias packs for the system surfaces
+    ├─ __init__.py            prepare(code) / pending(code) — walks every pack in `packs.PACKS` order
+    ├─ ensure.py              ensure_pack(code, name): diff English vs generated → translate what is missing/changed
+    ├─ generate.py            LLM translation (register "ui" or "speech"; nucleo.memllm "i18n" task)
+    ├─ smalltalk.py           the phrasebook pack, generated whole by its own prompt
+    ├─ aliases.py             voice words for the system surfaces AND every widget (`widget:<id>`)
+    └─ detect.py              first-run language detection + lock() — the onboarding sequencing lives here too
 ```
 
 - **Execution** = `i18n.runtime` + the frontend `core/i18n.js` `t()`. Never blocks, never calls an LLM.
@@ -107,7 +153,7 @@ first-ever boot — `i18n.init.detect`:
 inside a `dom.js` function-prop/child re-renders the instant the language changes. Resolution:
 active-language bundle → English base → the key itself (English is always a safe net). Bundles are fetched from
 the backend and localStorage-cached. `initI18n()` reconciles the UI language with the backend's active language at
-boot. All 564 UI keys live in `i18n/bundles/en.json` (+ es.json); the parity test
+boot. All 564 UI keys live in `i18n/genesis/en/ui.json` (+ es.json); the parity test
 `tests/browser/unit/i18n/test_bundles.py` guards en/es key/placeholder alignment.
 
 ## Multilingual MATCHING vocab (aliases / router / wake-words) — the strategy
@@ -177,6 +223,13 @@ indexes in `widgets/runtime.py` are keyed on the active language for the same re
 missing from either bundle, on an unwrapped accented literal, and — language-independently — on ANY literal
 assigned to `textContent`/`title`/`placeholder`/`alt`/`ariaLabel`.
 
+**The `tt()` fallbacks are a floor for rendering OUTSIDE the engine, never a language choice.** Many of them are
+still Spanish literals (the strings that used to be hardcoded); that is harmless because inside the engine
+`ctx.t` resolves active language → English → key, and `test_widget_keys.py` guarantees every key exists in both
+the `en` and `es` bundles, so a fallback never reaches the operator's screen. Dates, numbers, collation and the
+speech-recognition locale follow the same rule: they read `ctx.lang` (widgets) or `store.lang()` (app), default
+`"en"`, and never the browser locale — `test_dates_and_sorting_follow_the_instance_language.py` guards it.
+
 ## Changing the language AFTER first run
 
 Operator's rule (2026-09-14): **manually, from ⚙, and never by voice.** «Hay que hacer todas las traducciones
@@ -195,7 +248,8 @@ de todos los prompts, de todos los widgets… no es una cosa que vamos a permiti
 
 ## Adding a UI string / shipping a widget with new words
 
-Add the key to `i18n/bundles/en.json` (+ the Spanish in `es.json`). That's it: every generated language picks up
+Add the key to `i18n/genesis/en/ui.json` (+ the Spanish in `i18n/genesis/es/ui.json`); a spoken line or word list
+goes to `voice.json` the same way. That's it: every generated language picks up
 the new/changed keys on its next `prepare()` (boot/upgrade) — widget labels and widget NAMES included, since
 they are ordinary rows in the same file. Bump `MANIFEST_VERSION` when the key set changes so browser caches
 refresh.

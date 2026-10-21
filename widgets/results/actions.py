@@ -55,7 +55,7 @@ def _a_present(action, payload, sheet) -> dict:
         payload = {"items": prev["items"], "title": prev.get("title"), "subtitle": prev.get("subtitle"), **payload}
     items, pages = _cand.split(_d._clean_items(payload.get("items")))
     data = {
-        "title": _d._clip(payload.get("title") or "Resultados", "sheet_title"),
+        "title": _d._clip(payload.get("title") or _d.default_title(), "sheet_title"),
         "subtitle": _d._clip(payload.get("subtitle"), "sheet_subtitle"),
         "items": items,
     }
@@ -92,7 +92,7 @@ def _a_present(action, payload, sheet) -> dict:
     if payload.get("choosable"):
         data["choosable"] = True
     if not items:
-        data["note"] = _d._clip(payload.get("note") or "Sin resultados.", "sheet_subtitle")
+        data["note"] = _d._clip(payload.get("note") or _d.note_text("note_none", "No results."), "sheet_subtitle")
     # A `present` may also deliver the other sections (delivering everything at once is one less round trip for
     # the worker). They are MERGED over existing data, not blindly replaced.
     _d._merge_sections(data, payload)
@@ -335,7 +335,7 @@ def _a_criteria(action, payload, sheet) -> dict:
         # CLIPPED: the brief `goal` is a self-contained paragraph ("...and report each consulted source's state"),
         # not a headline. Placed raw as the sheet title, it took five lines before showing anything. The full text
         # remains complete in the CRITERIA tab, which is where it belongs.
-        data["title"] = _d._clip(upd.get("goal") or "Resultados", "sheet_title") or "Resultados"
+        data["title"] = _d._clip(upd.get("goal") or _d.default_title(), "sheet_title") or _d.default_title()
         cur = {}
     cur.update(upd)
     for k in _d._CRIT_LISTS:                    # lists are REPLACED except `changes`, which accumulates

@@ -199,5 +199,9 @@ def code_change_question(request: str) -> str:
 
 
 def default_label(kind: str, request: str = "") -> str:
-    return {"web": "Buscando en la web…", "code": "Trabajando en un widget…",
-            "memory": "Actualizando la memoria…", "research": "Investigando…"}.get(kind, "Pensando…")
+    """The task row's label before the worker says anything, in the instance's language."""
+    from nucleo.workers.progress import say as _say
+    key, en = {"web": ("label_web", "Searching the web…"), "code": ("label_code", "Working on a widget…"),
+               "memory": ("label_memory", "Updating memory…"),
+               "research": ("label_research", "Researching…")}.get(kind, ("label_generic", "Thinking…"))
+    return _say(key, en)

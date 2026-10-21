@@ -214,7 +214,7 @@ def test_the_seed_packs_carry_the_sessions_missing_phrases_in_both_languages():
                                   "cierra el video")),
                           ("en", ("minimize the video", "put the video in full screen",
                                   "close the video"))):
-        pack = json.loads((ENGINE / f"nucleo/actionmap/seeds/{lang}.json").read_text(encoding="utf-8"))
+        pack = json.loads((ENGINE / f"i18n/genesis/{lang}/actionmap.json").read_text(encoding="utf-8"))
         assert pack["version"] >= 6, "the packs must re-import on upgrade"
         have = {e.get("phrase"): (e.get("action") or {}).get("do") for e in pack["entries"]}
         assert have.get(phrases[0]) == "minimize", lang

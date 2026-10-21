@@ -63,8 +63,8 @@ def test_a_refusal_names_the_missing_half(queue, payload, code):
 
 
 def test_every_refusal_speaks_in_both_product_languages():
-    es = json.loads((_ENGINE / "i18n/bundles/es.json").read_text(encoding="utf-8"))
-    en = json.loads((_ENGINE / "i18n/bundles/en.json").read_text(encoding="utf-8"))
+    es = json.loads((_ENGINE / "i18n/genesis/es/ui.json").read_text(encoding="utf-8"))
+    en = json.loads((_ENGINE / "i18n/genesis/en/ui.json").read_text(encoding="utf-8"))
     for code in mv._REFUSALS:
         key = f"widgets.youtube.move_{code}"
         assert es.get(key) and en.get(key), key

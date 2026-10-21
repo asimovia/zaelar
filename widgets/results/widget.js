@@ -1072,7 +1072,7 @@ function paintResults(panel, data, ctx, nav){
   // Faithful count: if the real pushed results exceed what we render, say so — never silently drop
   // obtained data (the operator asked for a REAL search; the interface must reflect its true size).
   if(total > all.length){
-    const more = elem("div","hr-sub", `Mostrando ${all.length} de ${total} resultados.`);
+    const more = elem("div","hr-sub", tt("showing_n_of_total", {n: all.length, total}, `Mostrando ${all.length} de ${total} resultados.`));
     more.style.marginTop = "10px";
     panel.appendChild(more);
   }
@@ -1535,7 +1535,7 @@ export function render(el, data, ctx){
   // text twice 4px apart: noise, and one lost line of height in the most valuable part of the sheet. Own rendering is
   // kept as BACKUP: if this surface is ever mounted without the canvas header, the task cannot disappear.
   if(el.dataset.hostTitle !== "1"){
-    top.appendChild(elem("div","hr-hd", data.title || "Resultados"));
+    top.appendChild(elem("div","hr-hd", data.title || tt("name", null, "Resultados")));
   }
   if(data.subtitle){
     // The header is STICKY: every line it occupies is taken away from results throughout scrolling. A real subtitle

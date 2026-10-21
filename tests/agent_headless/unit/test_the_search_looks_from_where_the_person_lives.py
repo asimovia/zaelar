@@ -54,9 +54,9 @@ def test_the_web_search_header_follows_too(monkeypatch):
     assert W._accept_language().startswith("es-ES")
 
 
-def test_and_an_unreadable_language_falls_back_to_spanish_rather_than_dying(monkeypatch):
-    """Fail-open, and in the direction of the behaviour of always: a search must never die because the
-    language could not be read."""
+def test_and_an_unreadable_language_falls_back_to_english_rather_than_dying(monkeypatch):
+    """Fail-open, towards the product default (English, never a silent Spanish): a search must never die
+    because the language could not be read."""
     W = _fresh(monkeypatch, "nucleo.websearch", "es")
     monkeypatch.setattr("voice.engine.core.langs.current_code", lambda: (_ for _ in ()).throw(RuntimeError("x")))
-    assert W._accept_language().startswith("es-ES")
+    assert W._accept_language().startswith("en-US")

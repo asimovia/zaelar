@@ -40,11 +40,11 @@ def trimming_on(monkeypatch):
     for the stronger reason that nothing is trimmed at all."""
     monkeypatch.setenv("ZAELAR_TOOL_SELECTION", "1")
 
-SEEDS = Path(__file__).resolve().parents[4] / "nucleo" / "actionmap" / "seeds"
+SEEDS = Path(__file__).resolve().parents[4] / "i18n" / "genesis"
 
 
 def _table(lang: str) -> dict:
-    pack = json.loads((SEEDS / f"{lang}.json").read_text(encoding="utf-8"))
+    pack = json.loads((SEEDS / lang / "actionmap.json").read_text(encoding="utf-8"))
     return {normalize(e["phrase"]): e["action"] for e in _pack_entries(pack)}
 
 
@@ -85,7 +85,7 @@ def test_one_phrase_still_holds_one_opinion():
     messaging LENS grid owns «my messages» (it opens the card AND sets the lens), so the show grid must not
     claim it — this is the collision the first draft of this change introduced and this case caught."""
     for lang in ("es", "en"):
-        pack = json.loads((SEEDS / f"{lang}.json").read_text(encoding="utf-8"))
+        pack = json.loads((SEEDS / lang / "actionmap.json").read_text(encoding="utf-8"))
         seen: dict[str, str] = {}
         for e in _pack_entries(pack):
             ph, a = normalize(e["phrase"]), json.dumps(e["action"], sort_keys=True)

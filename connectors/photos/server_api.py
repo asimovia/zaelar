@@ -24,6 +24,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 
 from connectors import oauth_base as _b
 from connectors.photos import oauth, providers, service, store
+from connectors.oauth_callback import text as _ocb_text
 
 router = APIRouter()
 
@@ -56,14 +57,16 @@ async def connect(request: Request, payload: dict | None = None):
 @router.get("/api/photos/callback")
 async def callback(code: str = "", state: str = "", error: str = ""):
     if error:
-        return HTMLResponse(_page(False, f"el proveedor devolvió un error: {error}"))
+        return HTMLResponse(_page(False, _ocb_text("oauth.err.provider", "the provider returned an error: {error}",
+                                                        error=error)))
     res = oauth.exchange_code(code, state)
     # V2-700 — the CARD has to notice. See connectors/oauth_callback.announce().
     if res.get("ok"):
         from connectors import oauth_callback as _ocb
         _ocb.announce("fotos")
     return HTMLResponse(
-        _page(bool(res.get("ok")), "" if res.get("ok") else str(res.get("error") or "no se pudo completar")),
+        _page(bool(res.get("ok")), "" if res.get("ok") else str(res.get("error") or _ocb_text("oauth.err.incomplete",
+                                                              "the connection could not be completed"))),
         status_code=200 if res.get("ok") else 400)
 
 
@@ -97,4 +100,5 @@ def _page(ok: bool, detail: str) -> str:
     «Conectar». See `connectors/oauth_callback.py`."""
     from connectors import oauth_callback
     return oauth_callback.page(ok, detail, family='fotos', label='Google Photos',
-                               done='Ya puedes elegir tus fotos desde la tarjeta de zaelar.')
+                               done=_ocb_text("oauth.photos.done",
+                                              "You can now pick your photos from the zaelar card."))

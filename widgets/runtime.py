@@ -9,6 +9,8 @@ import os
 import re
 import unicodedata
 
+from loguru import logger
+
 from widgets import hidden, paths
 
 HERE = paths.BUILTIN_ROOT      # kept for callers that import it; new code asks `paths` instead
@@ -137,6 +139,17 @@ def _display_name(kind: str, wid: str, fallback: str) -> str:
         return fallback
 
 
+def _generated_aliases(wid: str) -> list[str]:
+    """The onboarded language's own words for this card (`aliases` pack, `widget:<id>`), added to the manifest's."""
+    try:
+        from i18n import packs as _packs, runtime as _rt
+        code = _rt.active_code()
+        return [] if code in _packs.PRESET else list(_packs.read("aliases", code).get(f"widget:{wid}") or [])
+    except Exception as e:  # noqa: BLE001 — the manifest's words still open the card
+        logger.debug(f"widgets.runtime: no generated aliases for {wid}: {e}")
+        return []
+
+
 def _aliases_of(w: dict) -> list[str]:
     """Widget IDENTITY aliases (V2-082): `name`|`title`|id + manifest `aliases` (or legacy `keywords` as seed —
     keyword ≡ alias). ONLY opening signal; description no longer opens anything. Normalized, deduped.
@@ -151,7 +164,7 @@ def _aliases_of(w: dict) -> list[str]:
     shown = _display_name("widgets", str(w.get("id") or ""), native)
     seed = w.get("aliases") or w.get("keywords") or []
     out, seen = [], set()
-    for a in [shown, native, *seed]:
+    for a in [shown, native, *seed, *_generated_aliases(str(w.get("id") or ""))]:
         a = _norm(a)
         if a and a not in seen:
             seen.add(a)

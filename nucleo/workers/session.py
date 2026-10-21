@@ -58,7 +58,7 @@ class SessionRecord:
     kind: str = "generic"
     backend: str = ""
     label: str = ""
-    phase: str = "en cola"
+    phase: str = field(default_factory=lambda: _progress.say("queued", "queued"))
     status: str = "queued"        # queued | running | done | error | cancelled
     started: float = field(default_factory=time.time)
     native_sid: str = ""
@@ -197,7 +197,7 @@ class WorkerSession(SessionNotes):
         rec = self._rec
         rec.status = "running"
         rec.backend = self._b.name
-        rec.phase = "arrancando"
+        rec.phase = _progress.say("starting", "starting")
         try:    # V2-776 D1 — the durable row says it too, or the store reads «pending» for the whole run
             from nucleo import tasks as _tasks
             _tasks.started(rec)
@@ -638,8 +638,8 @@ class WorkerSession(SessionNotes):
 
 
 def _default_label(kind: str) -> str:
-    return {"web": "Buscando en la web…", "code": "Trabajando en un widget…",
-            "memory": "Actualizando la memoria…", "research": "Investigando…"}.get(kind, "Pensando…")
+    from nucleo.errand_kind import default_label
+    return default_label(kind)
 
 
 # V2-276 — the two text builders (`operator_safe_summary`, `context_handoff`) have lived in

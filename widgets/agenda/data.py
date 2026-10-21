@@ -82,22 +82,14 @@ def _spoken(field: str) -> str:
 
 
 def _lang() -> str:
-    """Active engine language code ('es'/'en'…), best-effort — V2-639: the plan speaks the operator's language."""
-    try:
-        from voice.engine.core import langs as _langs
-        return (_langs.current_code() or "es").lower()
-    except Exception:  # noqa: BLE001
-        return "es"
+    """Active engine language code — V2-639: the plan speaks the operator's language."""
+    from i18n import langs as _langs
+    return (_langs.current_code() or "en").lower()
 
 
 def compute_plan(db: dict | None = None) -> dict:
     # PURE: derive the day plan; do NOT persist on read (avoids read-modify-write races; GET stays idempotent).
     return planner.plan_day(db or load_db(), date=_today(), now=_now(), lang=_lang())
-
-
-_WEEK_LABELS = {"es": ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"],
-                "en": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]}
-_DAY_WORDS = {"es": ("Hoy", "Mañana"), "en": ("Today", "Tomorrow")}
 
 
 def _horizon(db: dict, span: int = 7) -> list[dict]:
@@ -107,8 +99,9 @@ def _horizon(db: dict, span: int = 7) -> list[dict]:
     today = _today()
     base = _t.mktime(_t.localtime())
     lang = _lang()
-    wk = _WEEK_LABELS.get(lang[:2], _WEEK_LABELS["es"])
-    words = _DAY_WORDS.get(lang[:2], _DAY_WORDS["es"])
+    from i18n import langs as _langs
+    wk = _langs.words("agenda.week_labels", code=lang[:2] or None, default=())
+    words = _langs.words("agenda.day_words", code=lang[:2] or None, default=())
     out: list[dict] = []
     for i in range(span):
         d = _t.localtime(base + i * 86400)

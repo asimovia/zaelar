@@ -281,7 +281,7 @@ def test_seed_packs_carry_the_operators_view_phrases():
                               ("es", "ensename la agenda de manana", "manana"),
                               ("en", "put the agenda in month view", "mes"),
                               ("en", "show me the agenda for today", "hoy")):
-        pack = json.loads((ENGINE / "nucleo/actionmap/seeds" / f"{lang}.json").read_text())
+        pack = json.loads((ENGINE / "i18n/genesis" / lang / "actionmap.json").read_text())
         assert pack["version"] >= 7
         hit = [e for e in pack["entries"] if e["phrase"] == phrase]
         assert hit, f"{lang}: {phrase!r} not seeded"

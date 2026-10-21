@@ -260,6 +260,6 @@ def test_the_config_panel_offers_the_system():
     for call in ("setThemeProfile", "setThemeCustom"):
         assert f"themeSvc.{call}" in src, f"controls must go through the theme service: {call}"
     for lang in ("es", "en"):
-        bundle = json.loads(pathlib.Path(f"i18n/bundles/{lang}.json").read_text(encoding="utf-8"))
+        bundle = json.loads(pathlib.Path(f"i18n/genesis/{lang}/ui.json").read_text(encoding="utf-8"))
         assert bundle.get("config.tab.apariencia"), f"{lang}: the tab label must exist"
         assert bundle.get("config.theme.title"), f"{lang}: the pane strings must exist"

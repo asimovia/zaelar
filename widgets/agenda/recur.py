@@ -315,39 +315,34 @@ def on_date(meetings: list[dict], date: str) -> list[dict]:
                   date, date)
 
 
-_WD = {"es": ["lunes", "martes", "miércoles", "jueves", "viernes", "sábados", "domingos"],
-       "en": ["Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays", "Sundays"]}
-
-
 def describe(rep: dict, lang: str = "es") -> str:
     """The rule in one phrase, for what the BRAIN reads (digest, query) — «todos los martes hasta el
-    2027-06-30». The card paints its own label from the translated bundle; this is prose for the model."""
+    2027-06-30». The card paints its own label from the translated bundle; this is prose for the model.
+    The words are the `voice` pack's `agenda.recur` in `lang` (English when that language has none)."""
     if not isinstance(rep, dict):
         return ""
-    en = (lang or "es")[:2] == "en"
+    from i18n import langs as _langs
+    W = _langs.words("agenda.recur", code=(lang or "")[:2] or None, default={})
     iv = int(rep.get("interval") or 1)
     f = rep.get("freq")
     if f == "weekly":
-        names = [_WD["en" if en else "es"][d] for d in rep.get("days") or []]
-        who = (", ".join(names[:-1]) + (" and " if en else " y ") + names[-1]) if len(names) > 1 else (
+        names = [W["weekdays_plural"][d] for d in rep.get("days") or []]
+        who = (", ".join(names[:-1]) + f" {W['and']} " + names[-1]) if len(names) > 1 else (
             names[0] if names else "")
-        s = (f"every {who}" if iv == 1 else f"every {iv} weeks on {who}") if en else (
-            (f"todos los {who}" if iv == 1 else f"cada {iv} semanas, los {who}"))
+        s = W["weekly_one"].format(who=who) if iv == 1 else W["weekly_many"].format(n=iv, who=who)
     elif f == "daily":
-        s = ("every day" if iv == 1 else f"every {iv} days") if en else (
-            "todos los días" if iv == 1 else f"cada {iv} días")
+        s = W["daily_one"] if iv == 1 else W["daily_many"].format(n=iv)
     else:
-        s = ("every month" if iv == 1 else f"every {iv} months") if en else (
-            "todos los meses" if iv == 1 else f"cada {iv} meses")
+        s = W["monthly_one"] if iv == 1 else W["monthly_many"].format(n=iv)
     if rep.get("until"):
-        s += (f" until {rep['until']}" if en else f" hasta el {rep['until']}")
+        s += " " + W["until"].format(date=rep["until"])
     else:
-        s += " (no end date)" if en else " (sin fecha de fin)"
+        s += " " + W["no_end"]
     if rep.get("skip"):
         # WHICH days, not how many (V2-770): with «1 día anulado» on the page the model answered «el martes 6
         # no hay clase» with «ese día ya está anulado» — the cancelled one was the 29th — and wrote nothing.
         days = ", ".join(sorted(rep["skip"])[:6]) + ("…" if len(rep["skip"]) > 6 else "")
-        s += f", except {days}" if en else f", salvo {days} (anulados)"
+        s += ", " + W["except"].format(days=days)
     return s
 
 

@@ -146,7 +146,7 @@ def test_no_word_on_the_setup_panel_offers_a_local_or_cloud_choice():
     back as code: a hint that still says «Perfil local» is the same question asked in prose."""
     import json
     for lang in ("es", "en"):
-        b = json.loads((ROOT / "i18n" / "bundles" / f"{lang}.json").read_text(encoding="utf-8"))
+        b = json.loads((ROOT / "i18n" / "genesis" / lang / "ui.json").read_text(encoding="utf-8"))
         offenders = {k: v for k, v in b.items()
                      if (k.startswith("wizard.") or k == "topbar.wizard.title")
                      and ("perfil" in v.lower() or "profile" in v.lower())}

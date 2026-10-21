@@ -89,17 +89,12 @@ def test_onboarding_lock_for_a_new_language_translates_the_loading_line_before_t
 
     from i18n import init as init_pkg
 
-    async def _fake_prepare(code):
-        order.append("prepare")
+    async def _fake_prepare(code, on_step=None):
+        order.append("prepare")                     # every pack, in one walk (`i18n.init.prepare`)
+        for name in detect._pending_steps(code):
+            on_step(name)
         return {}
     monkeypatch.setattr(init_pkg, "prepare", _fake_prepare)
-
-    from i18n.init import aliases
-
-    async def _fake_ensure_aliases(code):
-        order.append("aliases")
-        return {"code": code, "generated": 2}
-    monkeypatch.setattr(aliases, "ensure_aliases", _fake_ensure_aliases)
 
     from i18n import runtime as rt
     monkeypatch.setattr(rt, "strings", lambda code: {"onboarding.confirmSpoken": "準備完了です。"})
@@ -114,7 +109,7 @@ def test_onboarding_lock_for_a_new_language_translates_the_loading_line_before_t
 
     res = asyncio.run(detect.lock("ja", onboarding=True))
 
-    assert order == ["priority", "prepare", "aliases"], "must translate the loading line BEFORE the slow full prepare"
+    assert order == ["priority", "prepare"], "must translate the loading line BEFORE the slow full prepare"
     assert res["confirm_text"] == "準備完了です。"
     phases = [kw.get("extra", {}).get("phase") for _, kw in events]
     assert phases[0] == "detected" and phases[-1] == "ready", f"wrong order: {phases}"
@@ -140,14 +135,14 @@ def test_onboarding_lock_for_a_new_language_translates_the_loading_line_before_t
 
 
 def test_plain_non_onboarding_lock_never_touches_the_alias_pack(monkeypatch):
-    """A manual ⚙ switch (or a repeat background detection) must stay exactly as cheap as it always was —
-    alias-pack generation is scoped to the onboarding ceremony only, never a side effect of every lock()."""
+    """A manual ⚙ switch goes through the SAME `prepare` as onboarding (every pack, 2026-10-21: a language is
+    ready only when all its words are) — the lock itself never calls a pack generator directly."""
     from i18n.init import detect
 
     _isolate_lock_side_effects(monkeypatch)
 
     from i18n import init as init_pkg
-    monkeypatch.setattr(init_pkg, "prepare", lambda code: asyncio.sleep(0))
+    monkeypatch.setattr(init_pkg, "prepare", lambda code, on_step=None: asyncio.sleep(0))
 
     alias_calls = []
     from i18n.init import aliases
@@ -171,7 +166,8 @@ def test_plain_non_onboarding_lock_never_touches_the_alias_pack(monkeypatch):
 def test_ensure_aliases_generates_once_then_is_a_cheap_no_op(monkeypatch, tmp_path):
     from i18n.init import aliases
 
-    monkeypatch.setattr(aliases, "_GEN_DIR", tmp_path)
+    from i18n import packs
+    monkeypatch.setattr(packs, "_workspace_generated", lambda: tmp_path)
 
     calls = []
 
@@ -195,7 +191,8 @@ def test_ensure_aliases_generates_once_then_is_a_cheap_no_op(monkeypatch, tmp_pa
 def test_ensure_aliases_fails_open_to_an_empty_pack(monkeypatch, tmp_path):
     from i18n.init import aliases
 
-    monkeypatch.setattr(aliases, "_GEN_DIR", tmp_path)
+    from i18n import packs
+    monkeypatch.setattr(packs, "_workspace_generated", lambda: tmp_path)
 
     async def _boom(code):
         raise RuntimeError("model unavailable")

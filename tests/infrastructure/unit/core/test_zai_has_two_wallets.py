@@ -9,7 +9,15 @@ work can still go well.
 """
 from __future__ import annotations
 
+import pytest
+
 from config import balances
+
+
+@pytest.fixture(autouse=True)
+def _spanish(monkeypatch):
+    """The panel's lines follow the instance language; these assertions read the Spanish preset."""
+    monkeypatch.setenv("ZAELAR_LANGUAGE", "es")
 
 
 def test_the_verdict_reads_the_wire_not_hopes():

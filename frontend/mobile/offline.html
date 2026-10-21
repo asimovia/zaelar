@@ -26,10 +26,27 @@
 <body>
 <div class="card">
   <div class="dot"></div>
-  <h1>zaelar is out of reach</h1>
-  <p>This phone has no connection right now. Your agent keeps running — nothing was lost, and the conversation
+  <h1 data-k="mobile.offline.title">zaelar is out of reach</h1>
+  <p data-k="mobile.offline.body">This phone has no connection right now. Your agent keeps running — nothing was lost, and the conversation
      picks up where it stopped as soon as you are back online.</p>
-  <button onclick="location.replace('/m')">Try again</button>
+  <button data-k="mobile.offline.retry" onclick="location.replace('/m')">Try again</button>
 </div>
+<script>
+  // THE INSTANCE'S LANGUAGE, read from the mirror `core/i18n.js` keeps (`hb_lang` + `hb_i18n_<code>`), exactly
+  // like `core/preboot.js`: no request can be made here. The English above is the floor (first visit, no mirror).
+  (function () {
+    var dict = {};
+    try {
+      var code = localStorage.getItem("hb_lang") || "en";
+      dict = JSON.parse(localStorage.getItem("hb_i18n_" + code) || "{}") || {};
+      document.documentElement.lang = code;
+    } catch (_) { dict = {}; }
+    var els = document.querySelectorAll("[data-k]");
+    for (var i = 0; i < els.length; i++) {
+      var v = dict[els[i].getAttribute("data-k")];
+      if (typeof v === "string" && v.trim()) els[i].textContent = v;
+    }
+  })();
+</script>
 </body>
 </html>

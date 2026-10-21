@@ -28,6 +28,12 @@ from nucleo import sheets as SH
 from widgets.navegador import act_api
 
 
+@pytest.fixture(autouse=True)
+def _spanish_instance(monkeypatch):
+    """The phases are produced in the instance's language (`progress.say`); this file pins the Castilian ones."""
+    monkeypatch.setenv("ZAELAR_LANGUAGE", "es")
+
+
 class _Tab:
     async def ensure(self):
         return None

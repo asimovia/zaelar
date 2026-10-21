@@ -1,0 +1,135 @@
+{
+ "_comment": "The Spanish phrasebook of the conversational lane (V2-674): cues as `smalltalk._norm` leaves them (lowercase, no accents, no punctuation), matched WHOLE; replies are pools.",
+ "vocatives": [
+  "tio",
+  "tia",
+  "hombre",
+  "mujer",
+  "chaval",
+  "colega",
+  "maquina",
+  "campeon",
+  "crack",
+  "amigo",
+  "amiga",
+  "jefe",
+  "jefa"
+ ],
+ "joiners": [
+  "y",
+  "e"
+ ],
+ "intents": {
+  "greeting": {
+   "cues": [
+    "hola",
+    "buenas",
+    "muy buenas",
+    "buenos dias",
+    "buen dia",
+    "buenas tardes",
+    "buenas noches",
+    "hey",
+    "ey",
+    "holi",
+    "que hay",
+    "hola que hay",
+    "hola buenas"
+   ],
+   "replies": [
+    "¡Hola! Dime.",
+    "Hola, cuéntame.",
+    "¡Hola! ¿En qué andamos?",
+    "Buenas. Tú dirás.",
+    "Hola. Aquí estoy."
+   ]
+  },
+  "how_are_you": {
+   "cues": [
+    "que tal",
+    "que tal estas",
+    "como estas",
+    "como te va",
+    "como vas",
+    "como andas",
+    "que tal todo",
+    "como lo llevas",
+    "que tal te va",
+    "que tal andas",
+    "todo bien"
+   ],
+   "replies": [
+    "Muy bien, gracias. ¿Y tú qué tal?",
+    "De maravilla. ¿Tú cómo vas?",
+    "Bien, con ganas. ¿Y tú?",
+    "Todo en orden por aquí. ¿Y tú qué tal?",
+    "Estupendamente. ¿Y tú cómo andas?"
+   ],
+   "bounces": true
+  },
+  "im_fine": {
+   "cues": [
+    "bien",
+    "muy bien",
+    "bien gracias",
+    "muy bien gracias",
+    "todo bien",
+    "genial",
+    "estupendo",
+    "de maravilla",
+    "aqui andamos",
+    "tirando",
+    "no me quejo",
+    "fenomenal"
+   ],
+   "replies": [
+    "Me alegro. ¿Qué necesitas?",
+    "Perfecto. Tú dirás.",
+    "Me alegro mucho. ¿En qué te ayudo?",
+    "Estupendo. Cuando quieras, dime."
+   ],
+   "after_bounce": true
+  },
+  "thanks": {
+   "cues": [
+    "gracias",
+    "muchas gracias",
+    "mil gracias",
+    "muchisimas gracias",
+    "te lo agradezco",
+    "gracias por todo",
+    "muy amable",
+    "gracias eh"
+   ],
+   "replies": [
+    "A ti.",
+    "De nada.",
+    "Para eso estoy.",
+    "Un placer.",
+    "Cuando quieras."
+   ]
+  },
+  "goodbye": {
+   "cues": [
+    "adios",
+    "hasta luego",
+    "hasta ahora",
+    "hasta manana",
+    "hasta pronto",
+    "nos vemos",
+    "chao",
+    "chau",
+    "me voy",
+    "me piro",
+    "luego hablamos"
+   ],
+   "replies": [
+    "Hasta luego.",
+    "Nos vemos. Aquí estaré.",
+    "Hasta ahora.",
+    "Cuídate.",
+    "Venga, hasta luego."
+   ]
+  }
+ }
+}

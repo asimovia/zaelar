@@ -48,7 +48,7 @@ def test_both_seed_packs_carry_arrange_phrases_and_the_pack_version_moved():
     """A pack fixed later reaches nobody unless the version moves (V2-545's re-import rule)."""
     import json
     for lang in ("es", "en"):
-        d = json.loads((ENGINE / f"nucleo/actionmap/seeds/{lang}.json").read_text(encoding="utf-8"))
+        d = json.loads((ENGINE / f"i18n/genesis/{lang}/actionmap.json").read_text(encoding="utf-8"))
         assert d["version"] >= 4, f"{lang} pack version did not move — existing installs never re-import"
         arr = [e for e in d["entries"] if (e.get("action") or {}).get("do") == "arrange"]
         assert arr, f"{lang} pack has no arrange phrases"

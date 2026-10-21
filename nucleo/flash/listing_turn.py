@@ -371,7 +371,7 @@ def run(query: str, *, price_max=None, price_min=None, condition: str = "",
                              "sources": _source_rows(res.get("sources") or []),
                              "criteria": {"objective": operator_text or query}, "asked": operator_text or query}
             if not items:
-                payload["note"] = "Buscando a fondo…" if not delivered else "Sin resultados."
+                payload["note"] = sheet_mod.note_text(*(("note_none", "No results.") if delivered else ("note_searching_deep", "Searching in depth…")))
             sheet_mod.apply_action("present", payload)
         sheet_mod.prune_sheets()
         try:

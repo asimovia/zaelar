@@ -107,7 +107,7 @@ def test_the_sentence_he_hears_comes_from_the_language_table(agenda, monkeypatch
     """V2-676/V2-689: a refusal is a text the operator HEARS, so it lives in the table that gets translated."""
     from i18n import langs
     en = contract.guard("agenda", "cancel_meeting", {})["message"]
-    monkeypatch.setattr(langs, "spec", lambda code=None: langs.LangSpec())      # the Castilian defaults
+    monkeypatch.setattr(langs, "spec", lambda code=None: langs.LANGUAGES["es"])   # the Castilian pack
     es = contract.guard("agenda", "cancel_meeting", {})["message"]
     assert en != es and "Dentist" in en and "Dentist" in es
     assert "which one" in en.lower() or "which of these" in en.lower()
@@ -154,7 +154,7 @@ def test_the_sentence_for_a_blind_guard_comes_from_the_language_table(monkeypatc
     from widgets import runtime
     monkeypatch.setattr(runtime, "get", lambda wid: (_ for _ in ()).throw(RuntimeError("boom")))
     en = contract.guard("agenda", "cancel_meeting", {"title": "x"})["message"]
-    monkeypatch.setattr(langs, "spec", lambda code=None: langs.LangSpec())      # the Castilian defaults
+    monkeypatch.setattr(langs, "spec", lambda code=None: langs.LANGUAGES["es"])   # the Castilian pack
     es = contract.guard("agenda", "cancel_meeting", {"title": "x"})["message"]
     assert en != es and en and es
 

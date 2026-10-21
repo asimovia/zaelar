@@ -62,7 +62,7 @@ _STEALTH_JS = """
 (() => {
   try { Object.defineProperty(navigator, 'webdriver', {get: () => undefined}); } catch (e) {}
   try { window.chrome = window.chrome || { runtime: {}, app: {}, csi: () => {}, loadTimes: () => {} }; } catch (e) {}
-  try { Object.defineProperty(navigator, 'languages', {get: () => ['es-ES','es','en']}); } catch (e) {}
+  try { Object.defineProperty(navigator, 'languages', {get: () => __LANGS__}); } catch (e) {}
   try { Object.defineProperty(navigator, 'plugins', {get: () => [1,2,3,4,5]}); } catch (e) {}
   try {
     const gp = WebGLRenderingContext.prototype.getParameter;
@@ -88,7 +88,7 @@ def _browser_locale() -> tuple:
     session 79bfd2ce), Amazon.com served product pages in SPANISH on the US agent and Best Buy answered
     «Select your Country» — a site localizes by what the browser declares, and the declaration outranked
     the engine. Same reason and same shape as websearch's Accept-Language fix (V2-411): engine language,
-    env escape hatches (NAVEGADOR_LOCALE / NAVEGADOR_TZ), Spanish as the fallback of always. Read at
+    env escape hatches (NAVEGADOR_LOCALE / NAVEGADOR_TZ), English when the language cannot be read. Read at
     LAUNCH: a language switch mid-session applies when the persistent context is next recreated.
     """
     env_loc = os.environ.get("NAVEGADOR_LOCALE", "").strip()
@@ -97,11 +97,20 @@ def _browser_locale() -> tuple:
         return env_loc, (env_tz or ("Europe/Madrid" if env_loc.startswith("es") else "America/New_York"))
     try:
         from voice.engine.core import langs as _langs
-        code = (_langs.current_code() or "es").lower()
+        code = (_langs.current_code() or "en").lower()
     except Exception:  # noqa: BLE001 — the browser must never die because the language is unreadable
-        code = "es"
+        code = "en"
     if code == "en":
         return "en-US", (env_tz or "America/New_York")
     if code == "es":
         return "es-ES", (env_tz or "Europe/Madrid")
     return f"{code}-{code.upper()}", (env_tz or "Europe/Madrid")
+
+
+def stealth_js() -> str:
+    """The stealth script with `navigator.languages` matching the locale the context presents (`_browser_locale`):
+    a context that says en-US while its navigator says es-ES is itself a fingerprint."""
+    import json as _json
+    loc = str(_browser_locale()[0] or "en-US")
+    langs = list(dict.fromkeys([loc, loc.split("-")[0], "en"]))
+    return _STEALTH_JS.replace("__LANGS__", _json.dumps(langs))

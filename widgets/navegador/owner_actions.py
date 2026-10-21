@@ -7,6 +7,7 @@ the owner imports them back under their names.
 """
 from __future__ import annotations
 
+from nucleo.workers.progress import say as _say
 from widgets.navegador import owner as _o
 
 
@@ -21,7 +22,7 @@ async def _automate(goal: str, plan: str = "", task_id: str = "") -> None:
     if not task_id:
         task_id = tasks.create(goal)
     tasks.set_status(task_id, "working")
-    tasks.set_phase(task_id, "buscando resultados", True)     # PHASE (spinner): the operator sees the PROCESS, not clicks
+    tasks.set_phase(task_id, _say("nav_hunt", "looking for results"), True)     # PHASE (spinner): the operator sees the PROCESS, not clicks
     tb = _o.TaskBrowser(task_id)
     _o._task_browsers[task_id] = tb
     # ROBUSTNESS (V2-035): if the plan includes an already FILTERED results URL (first line `URL: …`, composed by the

@@ -280,5 +280,10 @@ MODULES = [
 
 
 def snapshot() -> dict:
-    """Full frontend view — read-only; none of this is saved from here."""
-    return {"updated": UPDATED, "source_doc": SOURCE_DOC, "modules": MODULES}
+    """Full frontend view — read-only; none of this is saved from here. Each module's prose (label, role, why,
+    hallucination note) is served in the INSTANCE language from `bench.mod.<id>.<field>` in the ui pack, with the
+    Castilian above as the last fallback; the candidate tables are measurement notes and stay as written."""
+    from i18n import runtime as _rt
+    fields = ("label", "role", "why", "hallucination_note")
+    mods = [{**m, **{f: _rt.text(f"bench.mod.{m['id']}.{f}", m[f]) for f in fields if m.get(f)}} for m in MODULES]
+    return {"updated": UPDATED, "source_doc": SOURCE_DOC, "modules": mods}

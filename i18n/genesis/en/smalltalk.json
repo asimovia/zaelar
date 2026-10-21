@@ -1,0 +1,133 @@
+{
+ "_comment": "The English phrasebook of the conversational lane (V2-674): cues as `smalltalk._norm` leaves them (lowercase, no accents, no punctuation), matched WHOLE; replies are pools.",
+ "vocatives": [
+  "mate",
+  "man",
+  "buddy",
+  "dude",
+  "pal",
+  "bro",
+  "friend",
+  "boss",
+  "champ",
+  "folks"
+ ],
+ "joiners": [
+  "and"
+ ],
+ "intents": {
+  "greeting": {
+   "cues": [
+    "hello",
+    "hi",
+    "hey",
+    "hiya",
+    "yo",
+    "howdy",
+    "good morning",
+    "morning",
+    "good afternoon",
+    "good evening",
+    "hello there",
+    "hi there",
+    "hey there",
+    "good day"
+   ],
+   "replies": [
+    "Hi! Go ahead.",
+    "Hello — what's up?",
+    "Hey! What can I do?",
+    "Hi there. I'm listening.",
+    "Hello. Tell me."
+   ]
+  },
+  "how_are_you": {
+   "cues": [
+    "how are you",
+    "how are you doing",
+    "how is it going",
+    "hows it going",
+    "how you doing",
+    "how are things",
+    "how do you do",
+    "you all right",
+    "you alright",
+    "you ok",
+    "you okay",
+    "how have you been",
+    "hows everything"
+   ],
+   "replies": [
+    "Great, thanks — how about you?",
+    "Doing well. And you?",
+    "All good here. How are you?",
+    "Pretty good. What about you?",
+    "Very well, thanks. How's your day going?"
+   ],
+   "bounces": true
+  },
+  "im_fine": {
+   "cues": [
+    "fine",
+    "im fine",
+    "good",
+    "im good",
+    "very well",
+    "great",
+    "all good",
+    "not bad",
+    "pretty good",
+    "fine thanks",
+    "good thanks",
+    "cant complain"
+   ],
+   "replies": [
+    "Glad to hear it. What do you need?",
+    "Good. Go ahead.",
+    "Happy to hear that. How can I help?",
+    "Great. Tell me whenever."
+   ],
+   "after_bounce": true
+  },
+  "thanks": {
+   "cues": [
+    "thanks",
+    "thank you",
+    "thanks a lot",
+    "thank you very much",
+    "many thanks",
+    "cheers",
+    "much appreciated",
+    "appreciate it",
+    "thanks so much"
+   ],
+   "replies": [
+    "Anytime.",
+    "You're welcome.",
+    "That's what I'm here for.",
+    "My pleasure.",
+    "Sure thing."
+   ]
+  },
+  "goodbye": {
+   "cues": [
+    "bye",
+    "goodbye",
+    "see you",
+    "see you later",
+    "see ya",
+    "talk later",
+    "catch you later",
+    "im off",
+    "good night",
+    "later"
+   ],
+   "replies": [
+    "See you.",
+    "Talk soon — I'll be here.",
+    "Bye for now.",
+    "Take care."
+   ]
+  }
+ }
+}

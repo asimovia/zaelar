@@ -11,6 +11,7 @@ import pytest
 
 from nucleo import dispatch
 from nucleo.flash import step_line
+from nucleo.workers import progress as P
 
 from ._brief import brief
 
@@ -20,8 +21,11 @@ TELL = brief(wants_words="tell")
 @pytest.fixture
 def errand(monkeypatch):
     step_line.forget()
+    # The engine writes the phase in the instance's language (`progress.say`): an English instance's is English.
+    monkeypatch.setenv("ZAELAR_LANGUAGE", "en")
+    going = P.phrase({"where": "navegador", "action": "navigate", "target": "https://media.ferrari.com/x"})
     live = {"id": "2", "uid": "u-2", "goal": "Get real, verified photos of the NEW Ferrari Amalfi",
-            "title": "Ferrari Amalfi official photos", "phase": "entrando en media.ferrari.com", "note": "",
+            "title": "Ferrari Amalfi official photos", "phase": going, "note": "",
             "plan": ["Check the agent network", "Open Ferrari's official site"], "done": 1, "waiting_on": ""}
     monkeypatch.setattr(dispatch, "pending_summaries", lambda: [live])
     monkeypatch.setattr("i18n.langs.current_code", lambda: "en")
@@ -65,7 +69,9 @@ def test_an_idle_phase_is_no_step(errand):
 
 def test_a_spanish_session_hears_the_phase_as_it_is(errand, monkeypatch):
     monkeypatch.setattr("i18n.langs.current_code", lambda: "es")
-    errand.update(plan=[])
+    monkeypatch.setenv("ZAELAR_LANGUAGE", "es")
+    errand.update(plan=[], phase=P.phrase({"where": "navegador", "action": "navigate",
+                                           "target": "https://media.ferrari.com/x"}))
     assert "entrando en media.ferrari.com" in step_line.owed("Vale, te aviso.", TELL)
 
 

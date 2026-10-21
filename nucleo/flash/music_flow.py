@@ -33,21 +33,6 @@ _EXTRACT_SYS = (
     "ni explicación). Si los resultados no permiten identificarla con claridad, responde exactamente NO."
 )
 
-_ASK_MORE = {
-    "es": "No he dado con esa canción. ¿Me dices el artista o alguna palabra más de la letra?",
-    "en": "I couldn't pin down that song. Can you give me the artist or a few more words from the lyrics?",
-}
-
-
-def _lang() -> str:
-    try:
-        from voice.engine.core import langs
-        code = (langs.current_code() or "es").lower()
-        return code if code in _ASK_MORE else "es"
-    except Exception:
-        return "es"
-
-
 def _parse_canonical(reply: str) -> str:
     """`Artist - Title` from the extractor response; '' if it said NO / was malformed."""
     line = (reply or "").strip().splitlines()[0].strip().strip('"«»') if (reply or "").strip() else ""
@@ -163,8 +148,6 @@ async def run(action: str, query: str, *, extract=None):
     # unresolved → the activity remains ISOLATED (with the track + attempts) to resume with more data
     await asyncio.to_thread(acts.fail, "music.search",
                             f"probado: {canonical}" if canonical else "la web no la identificó")
-    try:
-        res.message = _ASK_MORE[_lang()]
-    except Exception:
-        pass
+    from i18n import langs as _langs
+    res.message = _langs.words("music.ask_more", default="") or res.message
     return res

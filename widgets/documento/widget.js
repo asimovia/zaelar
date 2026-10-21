@@ -319,7 +319,7 @@ export function render(root, data, ctx){
   if(d.error){
     const box = root.appendChild(el("div","hbd-blank"));
     box.appendChild(el("b", null, tr(ctx,"error_title","No se pudo abrir el documento")));
-    box.appendChild(el("span", null, String(d.error)));
+    box.title = String(d.error);       // the engine's own wording, often written for the brain — kept, not shown
     return;
   }
 

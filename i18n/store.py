@@ -1,50 +1,36 @@
 """
-i18n.store — persistence of GENERATED language bundles (V2-089).
+i18n.store — persistence of the GENERATED `ui` pack (V2-089), on top of `i18n.packs`.
 
-Preset bundles (en/es) are DATA in the repo at i18n/bundles/. GENERATED bundles (any other language the LLM
-produced) are RUNTIME data: they live in the workspace, out of the repo, and are written by i18n.init and read
-by i18n.runtime. This module owns those paths + atomic IO — nothing else touches the generated store directly.
+Preset UI strings (en/es) are DATA in the repo at i18n/genesis/<code>/ui.json. GENERATED ones (any other language
+the LLM produced) are RUNTIME data in the workspace — `<workspace>/i18n/generated/<code>/ui.json` — written by
+i18n.init and read by i18n.runtime. The paths themselves are `i18n.packs`'s, the one place that knows them.
 
-A generated bundle on disk:
+A generated pack on disk (every pack, not only this one):
   {"version": <manifest version it was built at>,
    "strings": {key: translated-text},
    "src":     {key: the ENGLISH text it was translated FROM}}   ← lets the upgrade diff detect changed sources
 """
 from __future__ import annotations
 
-import json
-import os
 from pathlib import Path
 
-from nucleo import workspace as _workspace
-
-_GEN_DIR = _workspace.root() / "i18n" / "generated"
+from i18n import packs as _packs
 
 
 def _path(code: str) -> Path:
-    return _GEN_DIR / f"{code}.json"
+    return _packs.generated_path(code, "ui")
 
 
-def read(code: str) -> dict:
-    """The generated bundle for `code` (or {} if it hasn't been generated yet)."""
-    try:
-        return json.loads(_path(code).read_text(encoding="utf-8"))
-    except Exception:
-        return {}
+def read(code: str, name: str = "ui") -> dict:
+    """The generated pack for `code` (or {} if it hasn't been generated yet)."""
+    return _packs.generated(name, code)
 
 
-def save(code: str, version: int, strings: dict, src: dict) -> None:
-    """Persist a generated bundle atomically (tmp + os.replace) so a crash mid-write can't corrupt it."""
-    _GEN_DIR.mkdir(parents=True, exist_ok=True)
-    payload = {"version": version, "strings": strings, "src": src}
-    tmp = _path(code).with_suffix(".json.tmp")
-    tmp.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    os.replace(tmp, _path(code))
+def save(code: str, version: int, strings: dict, src: dict, name: str = "ui") -> None:
+    """Persist a generated pack atomically so a crash mid-write can't corrupt it."""
+    _packs.write_json(_packs.generated_path(code, name), {"version": version, "strings": strings, "src": src})
 
 
 def codes() -> list[str]:
-    """Language codes that have a generated bundle on disk."""
-    try:
-        return sorted(f.stem.lower() for f in _GEN_DIR.glob("*.json"))
-    except Exception:
-        return []
+    """Language codes that have something generated on disk."""
+    return _packs.generated_codes()

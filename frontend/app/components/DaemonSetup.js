@@ -86,7 +86,12 @@ export function DaemonSetup() {
     setBusy(path); setProblem("");
     const r = await fn(path);
     setBusy("");
-    if (!r.ok) setProblem(r.message || t("daemon.err.generic"));
+    // The engine answers with a stable CODE (`not_installed`, `not_running`…) when it never reached the daemon;
+    // a code with a sentence under `daemon.err.<code>` is shown as that sentence. The daemon's own refusal
+    // text has no such key and is passed through unchanged (see server/daemon_api.py::_permissions).
+    const key = "daemon.err." + (r.message || "");
+    const said = r.message && t(key) !== key ? t(key) : r.message;
+    if (!r.ok) setProblem(said || t("daemon.err.generic"));
     else if (pathEl) pathEl.value = "";
   };
 

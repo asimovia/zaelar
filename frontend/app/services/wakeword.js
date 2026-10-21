@@ -234,7 +234,7 @@ function _spin() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   let r;
   try { r = new SR(); } catch (_) { _dead = true; _disarm("construct-failed"); return; }
-  r.lang = (_deps.getLang && _deps.getLang()) || "es-ES";
+  r.lang = (_deps.getLang && _deps.getLang()) || "en";   // the instance language decides; English when unknown
   r.continuous = true;
   r.interimResults = true;           // the spot lives here — see the note above `_MAX_TAIL`
   r.onstart = _arm;

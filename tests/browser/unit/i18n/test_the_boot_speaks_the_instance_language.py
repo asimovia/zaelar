@@ -18,7 +18,7 @@ PREBOOT = ENGINE / "frontend" / "app" / "core" / "preboot.js"
 
 
 def _bundle(code: str) -> dict:
-    return json.loads((ENGINE / "i18n" / "bundles" / f"{code}.json").read_text(encoding="utf-8"))
+    return json.loads((ENGINE / "i18n" / "genesis" / code / "ui.json").read_text(encoding="utf-8"))
 
 
 def _title(lang: str, browser: str) -> str:

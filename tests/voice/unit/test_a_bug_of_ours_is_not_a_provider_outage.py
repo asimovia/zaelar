@@ -402,7 +402,7 @@ def test_the_panel_draws_the_ladder_for_BOTH_rows():
 @pytest.mark.parametrize("lang", ["es", "en"])
 def test_every_ladder_line_has_its_string(lang):
     import json
-    b = json.loads(_vts.read(ENGINE / f"i18n/bundles/{lang}.json"))
+    b = json.loads(_vts.read(ENGINE / f"i18n/genesis/{lang}/ui.json"))
     for k in ("status.llm_titular_ok", "status.llm_titular_down", "status.llm_serving", "status.llm_standby"):
         assert b.get(k), f"{lang}: falta «{k}» — the panel would render a raw key"
 

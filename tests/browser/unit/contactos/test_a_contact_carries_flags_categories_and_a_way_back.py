@@ -107,5 +107,5 @@ def test_the_manifest_and_the_card_carry_it():
     js = (_DIR / "widget.js").read_text("utf-8")
     assert "sel.flag" in js and "c.flags" in js, "a flag pushed by voice must filter the card, and show on the row"
     for lang in ("es", "en"):
-        bundle = json.loads((_DIR.parents[1] / "i18n" / "bundles" / f"{lang}.json").read_text("utf-8"))
+        bundle = json.loads((_DIR.parents[1] / "i18n" / "genesis" / lang / "ui.json").read_text("utf-8"))
         assert bundle.get("widgets.contactos.flag_closed"), lang

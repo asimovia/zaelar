@@ -419,10 +419,11 @@ def _item_step(kind: str, it: dict):
         # Un comando que ES un puente se atribuye a SU lugar (memoria/navegador/widget/zaelar), igual que el Bash
         # acotado de Claude Code: si no, todo el trabajo de un worker de Codex se ve como «sistema».
         low = cmd.lower()
-        for needle, where, phase in (("nav_cli", "navegador", "conduciendo el navegador…"),
-                                     ("mem_cli", "memoria", "consultando la memoria…"),
-                                     ("widget_cli", "widget", "actualizando un widget…"),
-                                     ("worker_bridge", "zaelar", "consultando con zaelar…"),
+        from nucleo.workers.progress import say as _say
+        for needle, where, phase in (("nav_cli", "navegador", _say("nav_drive", "driving the browser") + "…"),
+                                     ("mem_cli", "memoria", _say("mem_recall", "checking memory") + "…"),
+                                     ("widget_cli", "widget", _say("widget_update", "updating a widget") + "…"),
+                                     ("worker_bridge", "zaelar", _say("zaelar_consult", "checking with zaelar") + "…"),
                                      ("agent_report", "", "")):
             if needle in low:
                 if not where:
@@ -430,7 +431,7 @@ def _item_step(kind: str, it: dict):
                 return {"where": where, "action": "puente", "target": _cmd_head(cmd),
                         "_phase": phase, "_tool": "Bash"}
         return {"where": "sistema", "action": "ejecuta", "target": _cmd_head(cmd),
-                "_phase": "ejecutando un paso…", "_tool": "Bash"}
+                "_phase": _say("system_step", "running a step") + "…", "_tool": "Bash"}
     if kind in ("file_change", "patch_apply", "apply_patch"):
         changes = it.get("changes") or it.get("files") or []
         first = ""

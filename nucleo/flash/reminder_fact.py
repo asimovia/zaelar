@@ -41,12 +41,6 @@ _NOT_A_FACT_RE = _re.compile(
 # A sentence ends at . ! ? … before a capital — but not after an initial («Michael C. Hall»).
 _SENTENCE_RE = _re.compile(r"(?<=[.!?…])(?<!\b[A-Z]\.)\s+(?=[¡¿«\"(A-ZÁÉÍÓÚÑ0-9])")
 _TRAILING_AND_RE = _re.compile(r"(?:^|\s+)(?:y|e|and)\s*$", _re.I)
-_INTENT = {
-    "es": "comprueba primero lo que te pidió averiguar y díselo: «{q}»",
-    "en": "first check what he asked you to find out and tell him: «{q}»",
-}
-
-
 def is_lookup(clause: str) -> bool:
     """Does this clause ASK for something to be found out, rather than state a commitment?"""
     n = _norm_txt(clause or "")
@@ -102,20 +96,13 @@ def _bounded(text: str) -> str:
     return text[:_BODY_MAX].rsplit(" ", 1)[0].rstrip(" ,.;:") + "…"
 
 
-def _lang() -> str:
-    try:
-        from i18n import langs as _lg
-        return _lg.current_code()
-    except Exception:  # noqa: BLE001 — a notice in the wrong language beats a lost notice
-        return "es"
-
-
 def lookup_intent(clause: str, lang: str = "") -> str:
     """The lookup said as a whole instruction: the question quoted, closed if its «¿» lost its «?»."""
     q = tidy_clause(clause)
     if "¿" in q and not q.endswith("?"):
         q += "?"
-    tpl = _INTENT.get((lang or _lang())[:2], _INTENT["en"])
+    from i18n import langs as _langs
+    tpl = _langs.words("reminder.lookup_intent", code=(lang or "")[:2] or None, default="«{q}»")
     return tpl.format(q=_bounded(q))
 
 

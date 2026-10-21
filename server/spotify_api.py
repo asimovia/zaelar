@@ -11,9 +11,12 @@ Flow:
 Loopback (single-user local desktop app), like the rest of the zaelar API. The generic music seam
 (`GET /api/music/state`) remains for the music widget (SEPARATE piece) and diagnostics.
 """
+import html
+
 from fastapi import APIRouter
 from fastapi.responses import HTMLResponse, JSONResponse
 
+from connectors import oauth_callback as _ocb
 from connectors.spotify import auth
 
 router = APIRouter()
@@ -46,10 +49,12 @@ async def connect(payload: dict | None = None):
 async def callback(code: str = "", state: str = "", error: str = ""):
     """Return from Spotify after consent. Exchanges the code and shows a closing page."""
     if error:
-        return HTMLResponse(_page(False, f"Spotify devolvió un error: {error}"))
+        return HTMLResponse(_page(False, _ocb.text("oauth.spotify.err", "Spotify returned an error: {error}",
+                                                  error=error)))
     res = auth.complete_login(code, state)
     ok = bool(res.get("ok"))
-    return HTMLResponse(_page(ok, "" if ok else res.get("error", "no se pudo completar la conexión")),
+    return HTMLResponse(_page(ok, "" if ok else res.get("error") or _ocb.text("oauth.err.incomplete",
+                                                                            "the connection could not be completed")),
                         status_code=200 if ok else 400)
 
 
@@ -66,12 +71,17 @@ async def music_state():
 
 
 def _page(ok: bool, detail: str) -> str:
-    title = "Spotify conectado" if ok else "No se pudo conectar"
+    # Instance language, keyed strings — same seam as every other OAuth door (connectors/oauth_callback.py).
+    title = html.escape(_ocb.text("oauth.spotify.connected", "Spotify connected") if ok
+                        else _ocb.text("oauth.page.failed", "Could not connect"))
     icon = "✅" if ok else "⚠️"
-    body = ("Ya puedes pedirle música a zaelar por voz. Puedes cerrar esta pestaña."
-            if ok else f"Detalle: {detail}. Cierra esta pestaña e inténtalo de nuevo desde la configuración.")
+    body = html.escape(_ocb.text("oauth.spotify.done",
+                                  "You can now ask zaelar for music by voice. You can close this tab.")
+                       if ok else _ocb.text("oauth.spotify.detail",
+                                            "Detail: {detail}. Close this tab and try again from the settings.",
+                                            detail=detail))
     return (
-        "<!doctype html><html lang='es'><head><meta charset='utf-8'>"
+        f"<!doctype html><html lang='{html.escape(_ocb.lang())}'><head><meta charset='utf-8'>"
         "<meta name='viewport' content='width=device-width,initial-scale=1'>"
         f"<title>{title}</title>"
         "<style>body{font-family:system-ui,-apple-system,sans-serif;background:#0f1115;color:#e6e6e6;"

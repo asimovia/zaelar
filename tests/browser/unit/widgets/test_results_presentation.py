@@ -743,7 +743,7 @@ def test_the_title_is_said_once_not_twice():
     assert 'el.dataset.hostTitle !== "1"' in src
     assert 'w.body.dataset.hostTitle = "1"' in DESKTOP_JS.read_text()
     # …pero se conserva el respaldo: si la superficie se monta sin cabecera del canvas, la tarea no desaparece
-    assert 'elem("div","hr-hd", data.title || "Resultados")' in src
+    assert 'elem("div","hr-hd", data.title || tt("name", null, "Resultados"))' in src
 
 
 def test_the_header_does_not_run_under_the_window_buttons():

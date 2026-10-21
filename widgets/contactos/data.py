@@ -12,7 +12,7 @@ import re
 import time
 
 from .. import store
-from widgets import hint_lang as _hl   # V2-778 F3-30: hints are read back aloud, in the agent's language
+from i18n import langs as _langs   # V2-778 F3-30: hints are read back aloud, in the agent's language
 from . import gcontacts
 from . import model
 
@@ -309,8 +309,8 @@ def ref_index() -> list[dict]:
             # label he types are two different things, and the menu has to be able to tell them apart.
             n = len(c.get("members") or [])
             hint = " · ".join(x for x in (str(c.get("platform") or ""),
-                                          (_hl.pick(f"{n} miembros", f"{n} members") if n else "")) if x) \
-                or _hl.pick("grupo", "group")
+                                          (_langs.words("hints.members", default="{n}").format(n=n) if n else "")) if x) \
+                or _langs.words("hints.group", default="")
         else:
             hint = ", ".join(c.get("groups") or []) or str(c.get("kind") or "")
         out.append({"id": c["id"], "label": label, "field": "contactId", "hint": hint})

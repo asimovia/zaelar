@@ -1800,10 +1800,9 @@ DOMAINS: list[dict] = [
             "cmd": "./.venv/bin/python -m tests.voice.e2e.agent.cloud_smoke"},
         {"id": "3.7", "title": "Relleno de espera: suena MIENTRAS se espera (fuera del stream del modelo)",
             "ch": VOICE, "paths": ["tests/voice/unit/test_lead_in.py",
-                                    # V2-122 (2026-08-17): el pool de rellenos ya no es solo un literal hardcodeado
-                                    # — pick_filler() mira PRIMERO un pack generado por idioma antes de caer al
-                                    # catálogo es/en; este test file nuevo cubre esa ruta de lectura.
-                                    "tests/voice/unit/test_lang_fillers_store.py"]},
+                                    # The filler pools are fields of the `voice` pack (2026-10-21): a generated
+                                    # language gets its own with the rest of what the agent says.
+                                    "tests/infrastructure/unit/core/test_every_language_is_one_folder_of_packs.py"]},
         # V2-220 (2026-08-20): la OTRA entrega fuera de banda, y llevaba rota para medio producto. La nota al
         # cerebro de `proactive.notify` vivía DENTRO del `if speak and _speaker is not None`, así que sin sesión
         # de voz viva —el canal de TEXTO, que es lo que conduce el arnés y lo que usa un operador en chat— un
@@ -3213,6 +3212,13 @@ DOMAINS: list[dict] = [
                                   "tests/browser/unit/i18n/test_cold_start_floor.py",
                                   # The boot screen speaks the instance's language, never the browser's.
                                   "tests/browser/unit/i18n/test_the_boot_speaks_the_instance_language.py",
+                                  "tests/browser/unit/i18n/test_dates_and_sorting_follow_the_instance_language.py",
+                                  "tests/infrastructure/unit/core/test_every_language_is_one_folder_of_packs.py",
+                                  "tests/infrastructure/unit/test_every_word_lives_in_a_language_pack.py",
+                                  "tests/infrastructure/unit/core/test_the_status_and_settings_speak_the_instance_language.py",
+                                  "tests/infrastructure/unit/core/test_errors_and_account_pages_speak_the_instance_language.py",
+                                  "tests/infrastructure/unit/core/test_the_errand_narration_speaks_the_instance_language.py",
+                                  "tests/infrastructure/unit/core/test_a_third_language_never_inherits_spanish.py",
                                   # V2-613: el ratchet de claves del CATÁLOGO DE WIDGETS — cada `ctx.t("widgets.…")`
                                   # tiene que existir en AMBOS bundles, hermano del que ya vigilaba solo el shell móvil.
                                   # V2-695 lo ENSANCHA a los 15 widgets (antes solo veía la clave COMPLETA, así que

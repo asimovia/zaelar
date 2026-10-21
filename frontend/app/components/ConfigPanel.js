@@ -822,7 +822,7 @@ export function ConfigPanel() {
   // ═══ PESTAÑA WIDGETS (V2-083) — a sola lista alfabética with badge de-serie/tuyo ═══════════════════════
   function sec_widgets() {
     const ws = (cfg.widgets || []).filter(w => w.surface === "user")
-      .sort((a, b) => String(a.name || a.id).localeCompare(String(b.name || b.id), "es"));
+      .sort((a, b) => String(a.name || a.id).localeCompare(String(b.name || b.id), store.lang() || "en"));
     if (!ws.length) return `<p class="cf-loading">${t("config.widgets.load_error")}</p>`;
     const rows = ws.map(w => {
       const kind = w.origin === "builtin"

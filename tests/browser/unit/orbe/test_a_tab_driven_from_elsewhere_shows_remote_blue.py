@@ -43,5 +43,5 @@ def test_the_power_button_is_blue_and_blinks():
 
 def test_its_title_is_translated():
     for lang in ("es", "en"):
-        b = json.loads((ROOT / "i18n" / "bundles" / f"{lang}.json").read_text(encoding="utf-8"))
+        b = json.loads((ROOT / "i18n" / "genesis" / lang / "ui.json").read_text(encoding="utf-8"))
         assert b.get("orb.power_remote"), lang

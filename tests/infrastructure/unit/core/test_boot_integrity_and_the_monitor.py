@@ -92,6 +92,7 @@ def test_the_close_handler_is_wired_to_session_health():
 def test_api_status_says_the_voice_session_died(monkeypatch):
     from voice import health_state
     from server.voice_api import status
+    monkeypatch.setenv("ZAELAR_LANGUAGE", "es")      # the row follows the instance language; this reads the Spanish
     health_state.record("voice", "dead", "unrecoverable LLM error")
     try:
         body = json.loads(asyncio.run(status()).body)

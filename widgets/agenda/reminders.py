@@ -50,17 +50,13 @@ def _schedule_reminder(title: str, date: str, start: str, at: str = "", before_m
     if when <= _t.time() or target <= _t.time() - 60:
         return "", "el instante ya pasó"
     stamp = _t.strftime("%Y-%m-%d %H:%M", _t.localtime(when))
-    try:
-        # The LOW layer, not the motor's internals: `i18n.langs` is the facade every widget reads the
-        # language through (the direction ratchet, test_dependency_directions_only_improve). The byte-for-
-        # byte extraction from data.py carried the old reach along and CI went red on it (2026-09-15).
-        from i18n import langs as _langs
-        _en = (_langs.current_code() or "es").lower() == "en"
-    except Exception:  # noqa: BLE001
-        _en = False
+    # The LOW layer, not the motor's internals: `i18n.langs` is the facade every widget reads the language
+    # through (the direction ratchet, test_dependency_directions_only_improve). The words are the `voice`
+    # pack's, so a generated language gets its own and an unknown one English, never Spanish.
+    from i18n import langs as _langs
     # an all-day item has no hour to say (the 23:59 above is only the «already over» line)
-    prompt = (f"Remind the operator: «{title}» on {date}" + (f" at {said}." if said else ".")
-              if _en else f"Recuérdale al operador: «{title}» el {date}" + (f" a las {said}." if said else "."))
+    prompt = (_langs.words("agenda.remind_prompt_at", default="").format(title=title, date=date, time=said) if said
+              else _langs.words("agenda.remind_prompt", default="").format(title=title, date=date))
     try:
         from nucleo import scheduler as _sched
         # `origin="agenda"` keeps this notice OUT of the calendar's system-task band (V2-728): it already

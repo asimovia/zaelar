@@ -1,7 +1,7 @@
 """
 i18n.init.generate — LLM translation of UI strings into a new language (V2-089).
 
-INITIALIZATION only (never the hot path). Given a batch of {key: english}, translate to the target language and
+INITIALIZATION only (never the hot path). Given a batch of {key: english} from any pack, translate to the target language and
 return {key: translated}, preserving {placeholders}, punctuation, emoji, and technical tokens. Off-hot-path, so
 quality wins over latency: a strong model (config §memory.i18n_model, default deepseek-v4-pro on the DIRECT
 broker) through the shared off-path caller (nucleo.memllm). Runs inside asyncio.to_thread so it doesn't block
@@ -35,10 +35,14 @@ def language_name(code: str) -> str:
     return _LANG_NAMES.get((code or "").strip().lower(), (code or "").strip())
 
 
-def _system(code: str) -> str:
+def _system(code: str, register: str = "ui") -> str:
     name = language_name(code)
+    what = ("short product-UI strings" if register == "ui" else
+            "what a personal voice assistant SAYS out loud (short spoken lines, fillers, confirmations) and the "
+            "everyday words people say to it (detector vocabulary: translate each into what a native speaker "
+            "would naturally SAY, lowercase when the English is lowercase)")
     return (
-        f"You are a professional software UI localizer. Translate short product-UI strings from English into "
+        f"You are a professional software localizer. Translate {what} from English into "
         f"{name}. You will receive a JSON object mapping opaque KEYS to English text. Return ONLY a JSON object "
         f"with the SAME keys, each mapped to the {name} translation — no prose, no code fences.\n"
         "RULES: (1) Keep every {placeholder} token EXACTLY as-is (same name, same braces) — they are interpolated "
@@ -73,22 +77,23 @@ def _parse(raw: str) -> dict:
         return {}
 
 
-def _translate_batch_sync(code: str, batch: dict[str, str]) -> dict[str, str]:
+def _translate_batch_sync(code: str, batch: dict[str, str], register: str = "ui") -> dict[str, str]:
     from nucleo import memllm
-    raw = memllm.chat_sync("i18n", _system(code), json.dumps(batch, ensure_ascii=False),
+    raw = memllm.chat_sync("i18n", _system(code, register), json.dumps(batch, ensure_ascii=False),
                            max_tokens=4000, temperature=0.2, timeout=90.0)
     out = _parse(raw or "")
     return {k: out[k] for k in batch if k in out and isinstance(out[k], str) and out[k].strip()}
 
 
-async def translate(code: str, missing: dict[str, str]) -> dict[str, str]:
-    """Translate {key: english} → {key: target}. Batched; fail-open per batch."""
+async def translate(code: str, missing: dict[str, str], register: str = "ui") -> dict[str, str]:
+    """Translate {key: english} → {key: target}. Batched; fail-open per batch. `register` is "ui" (screen
+    labels) or "speech" (what the agent says and the words it listens for)."""
     keys = list(missing.keys())
     result: dict[str, str] = {}
     for start in range(0, len(keys), _BATCH):
         chunk = {k: missing[k] for k in keys[start:start + _BATCH]}
         try:
-            got = await asyncio.to_thread(_translate_batch_sync, code, chunk)
+            got = await asyncio.to_thread(_translate_batch_sync, code, chunk, register)
             result.update(got)
         except Exception as e:  # noqa: BLE001
             logger.warning(f"i18n.generate[{code}]: batch {start//_BATCH} failed: {str(e)[:160]}")

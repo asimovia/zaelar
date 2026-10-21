@@ -173,7 +173,7 @@ export function ChatWall() {
       (typeof task.pct === "number" && task.pct >= 0 ? task.pct + "%" : ""),
       task.startedAt ? t("chat.procElapsed", { t: dur(nowS() - task.startedAt) }) : "",
       task.startedAt ? t("chat.procSince", {
-        t: new Date(task.startedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) }) : "",
+        t: new Date(task.startedAt).toLocaleTimeString(store.lang() || "en", { hour: "2-digit", minute: "2-digit" }) }) : "",
       // V2-776 D5 — the pulse's view, on the row: a worker quiet for a minute or more says so, and one the pulse
       // restarted says how many times. Both come from the durable row (`silent_s` merged live, `attempts`).
       (task.silentS >= 60 ? t("chat.procSilent", { t: dur(task.silentS * 1000) }) : ""),
@@ -254,7 +254,7 @@ export function ChatWall() {
     const next = sch.next_run ? new Date(sch.next_run * 1000) : null;
     const meta = [
       when,
-      next ? t("chat.taskNextRun", { t: next.toLocaleString([], { weekday: "short", hour: "2-digit", minute: "2-digit" }) }) : "",
+      next ? t("chat.taskNextRun", { t: next.toLocaleString(store.lang() || "en", { weekday: "short", hour: "2-digit", minute: "2-digit" }) }) : "",
     ].filter(Boolean).join(" · ");
     return h("div", { class: "cw-proc-row sched" },
       h("span", { class: "cw-proc-dot" }, "⏱"),
@@ -418,7 +418,8 @@ export function ChatWall() {
   const connWishRow = (m) => {
     const impossible = m.state === "not-possible";
     const requested = connRequested().has(m.id);
-    return h("div", { class: "cl-row" + (impossible ? " cn-imposs" : ""), title: impossible ? (m["why-not"] || "") : "" },
+    return h("div", { class: "cl-row" + (impossible ? " cn-imposs" : ""), title: impossible  // pack `ui` key; the manifest's sentence only for an entry with no key yet
+        ? ((k) => t(k) !== k ? t(k) : (m["why-not"] || ""))("connectors." + m.id + ".why_not") : "" },
       h("div", { class: "cl-main" },
         h("div", { class: "cl-name" }, h("span", { class: "cl-dot" }), m.label || m.id),
         h("div", { class: "cl-meta" },

@@ -48,7 +48,7 @@ from __future__ import annotations
 import time
 
 from .. import store
-from widgets import hint_lang as _hl   # V2-778 F3-30: hints are read back aloud, in the agent's language
+from i18n import langs as _langs   # V2-778 F3-30: hints are read back aloud, in the agent's language
 from . import torrents as _tor
 
 WIDGET_ID = "archivos"
@@ -167,8 +167,8 @@ def ref_index() -> list[dict]:
         if not eid:
             continue
         is_folder = str(e.get("kind")) == "folder"
-        hint = _hl.pick("carpeta", "folder") if is_folder else (str(e.get("file_kind") or "").strip()
-                                            or str(e.get("mime") or "").split("/")[-1] or _hl.pick("archivo", "file"))
+        hint = _langs.words("hints.folder", default="") if is_folder else (str(e.get("file_kind") or "").strip()
+                                            or str(e.get("mime") or "").split("/")[-1] or _langs.words("hints.file", default=""))
         out.append({"id": eid, "label": str(e.get("name") or ""),
                     "field": "folderId" if is_folder else "fileId", "hint": hint})
     return out
@@ -283,7 +283,8 @@ def _relist_local(db: dict, folder_id: str) -> dict:
         db["entries"] = []
         db["trail"] = []
         db["folder_id"] = ""
-        db["error"] = f"no existe la carpeta «{fid}»"
+        from i18n import runtime as _rt
+        db["error"] = _rt.text("widgets.archivos.err_no_folder", default="folder «{id}» does not exist").replace("{id}", fid)
         return db
     recs = _shelf_listing(kind)
     db["entries"] = [_local_row(r) for r in recs]

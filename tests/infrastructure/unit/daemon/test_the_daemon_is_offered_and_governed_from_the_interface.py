@@ -362,7 +362,7 @@ def test_no_label_on_the_daemon_screen_shows_a_raw_key():
                  if m.startswith("daemon.") or m == "topbar.daemon.title"}
     assert len(used) >= 20, f"only {len(used)} keys found — the scan stopped matching the source"
     for lang in ("en", "es"):
-        bundle = json.loads((ENGINE / "i18n" / "bundles" / f"{lang}.json").read_text(encoding="utf-8"))
+        bundle = json.loads((ENGINE / "i18n" / "genesis" / lang / "ui.json").read_text(encoding="utf-8"))
         missing = sorted(used - set(bundle))
         assert not missing, f"{lang}.json is missing {missing}"
 
@@ -418,8 +418,8 @@ def test_nothing_user_facing_promises_the_browser_that_is_not_built():
     surfaces = {
         "scripts/zaelar.py": ENGINE / "scripts" / "zaelar.py",
         "scripts/run-livekit.sh": ENGINE / "scripts" / "run-livekit.sh",
-        "en.json": ENGINE / "i18n" / "bundles" / "en.json",
-        "es.json": ENGINE / "i18n" / "bundles" / "es.json",
+        "en.json": ENGINE / "i18n" / "genesis" / "en" / "ui.json",
+        "es.json": ENGINE / "i18n" / "genesis" / "es" / "ui.json",
     }
     for label, path in surfaces.items():
         text = path.read_text(encoding="utf-8")
@@ -455,7 +455,7 @@ def test_the_screen_admits_what_it_cannot_do_from_the_cloud():
     the daemon today; wiring it to the cloud agent is the relay, which is not built. A download screen that
     implied otherwise would be the fastest possible way to earn "it doesn't work"."""
     for lang in ("en", "es"):
-        bundle = json.loads((ENGINE / "i18n" / "bundles" / f"{lang}.json").read_text(encoding="utf-8"))
+        bundle = json.loads((ENGINE / "i18n" / "genesis" / lang / "ui.json").read_text(encoding="utf-8"))
         limit = bundle["daemon.remote.limit"]
         assert len(limit) > 40 and ("built" in limit or "construyendo" in limit), limit
 

@@ -151,15 +151,11 @@ def tell_for(db: dict) -> str:
     `build-a-video-playlist-from-links` (2026-10-10): «Ponla ya» → «Voy con ella.», then both videos of the list came
     back 150 and the notice went `exhausted` with nobody told. A swap keeps something playing, so only the two
     terminal kinds speak; the card's own `late_report` seam decides whether an agent order is being contradicted."""
-    from widgets import hint_lang as _hl
+    from i18n import langs as _langs
     bn = db.get("blocked_notice") or {}
     title = str(bn.get("from") or "")[:100]
     if bn.get("kind") == "exhausted":
-        return _hl.pick(f"No he podido ponerlo: «{title}» no se puede reproducir aquí (su propietario bloquea verlo "
-                        "fuera de YouTube) y no me queda otro vídeo que sí se pueda.",
-                        f"I couldn't play it: «{title}» can't be played here (its owner blocks it outside YouTube) "
-                        "and there's no other video left that can.")
+        return _langs.words("youtube.exhausted", default="").format(title=title)
     if bn.get("kind") == "explicit":
-        return _hl.pick(f"«{title}» no se puede reproducir aquí: su propietario solo deja verlo en YouTube.",
-                        f"«{title}» can't be played here: its owner only allows it on YouTube.")
+        return _langs.words("youtube.explicit", default="").format(title=title)
     return ""

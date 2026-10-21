@@ -73,7 +73,7 @@ async def vault_change(request: Request, old: str = Body(..., embed=True), new: 
     try:
         _vault.change_passphrase(old, new)
     except _vault.WrongPassphrase:
-        raise HTTPException(status_code=403, detail="passphrase actual incorrecta")
+        raise HTTPException(status_code=403, detail=_vault._msg("vault.err.bad_current_passphrase", "The current passphrase is wrong"))
     except _vault.VaultError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return {"ok": True, **_vault.status()}
@@ -136,7 +136,7 @@ async def vault_reveal(request: Request, memory_id: int = Body(..., embed=True),
         # señal para el frontend: abre el modal de passphrase
         raise HTTPException(status_code=423, detail="locked")   # 423 Locked
     except _vault.WrongPassphrase:
-        raise HTTPException(status_code=403, detail="passphrase incorrecta")
+        raise HTTPException(status_code=403, detail=_vault._msg("vault.err.bad_passphrase", "Wrong passphrase"))
     except _vault.VaultError as e:
         raise HTTPException(status_code=404, detail=str(e))
     return {"memory_id": memory_id, "value": value}

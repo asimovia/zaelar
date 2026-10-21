@@ -583,7 +583,7 @@ function injectStyles(){
 }
 
 // ── i18n seam (V2-613): `ctx.t` for our own chrome, `ctx.lang` for locale SHAPE (Intl) ────────────────
-let _T = null, _LANG = "es";
+let _T = null, _LANG = "en";
 function tt(key, params, fb){
   try{
     if(_T){ const s=_T("widgets.agenda."+key, params); if(s && s!=="widgets.agenda."+key) return s; }
@@ -1553,7 +1553,7 @@ export function render(el, data, ctx){
   injectStyles();
   if(el._timer){ clearInterval(el._timer); el._timer=null; }
   _T = (ctx && typeof ctx.t === "function") ? ctx.t : null;
-  _LANG = (ctx && ctx.lang) || "es";
+  _LANG = (ctx && ctx.lang) || "en";
 
   const today = data.date || ymd(new Date());
   // V2-744 — `sec` is WHICH OF THE TWO THINGS this card is showing (the calendar or his task lists), and

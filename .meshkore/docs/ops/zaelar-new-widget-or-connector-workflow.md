@@ -148,7 +148,7 @@ una superficie vacía o una capacidad invisible.
 | 3 | `widgets/registry.py::_BUILTINS` | el widget se marca «tuyo» en vez de «de serie» |
 | 4 | `ConfigPanel.js` → tarjeta del conector **y la lista `fams`** | las tarjetas existen y NADIE las renderiza |
 | 5 | `frontend/app/services/api.js` | el botón del panel no tiene a quién llamar |
-| 6 | `i18n/bundles/en.json` **y** `es.json` | `t()` devuelve la CLAVE, que es truthy: sale `config.cx.fam_files` en pantalla |
+| 6 | `i18n/genesis/en/ui.json` **y** `es.json` | `t()` devuelve la CLAVE, que es truthy: sale `config.cx.fam_files` en pantalla |
 | 7 | `widgets/validator.py::_STDLIB_EXEMPT` si `data.py` importa un conector | `make test-widgets` en rojo para todo el mundo |
 | 8 | `tests/run_testmap.py` | los tests existen y **no los corre nadie** |
 | 9 | `connectors/catalog/<id>.json` con `state: "built"` | el conector no aparece en la búsqueda por capacidad, y si estaba `planned` sigue ofreciéndose como pendiente |

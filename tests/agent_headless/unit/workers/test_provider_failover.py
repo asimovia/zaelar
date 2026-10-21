@@ -221,6 +221,7 @@ def test_clear_lets_the_operator_resume_after_topping_up(monkeypatch):
 
 # ── and make sure the PANEL knows (what was missing) ───────────────────────────────────────────────────────
 def test_the_alerts_panel_surfaces_an_exhausted_worker_provider(monkeypatch):
+    monkeypatch.setenv("ZAELAR_LANGUAGE", "es")          # the panel speaks the instance language
     _cfg(monkeypatch)
     monkeypatch.setenv("Z_AI_API_KEY", "k")
     from config import balances
@@ -411,6 +412,7 @@ def test_the_panel_does_not_claim_a_provider_is_working_when_it_is_not(monkeypat
     """The row said «IN USE · available» for a tier serving nobody: after failover, the failover tier is working,
     and the one that would be chosen becomes the first again when its cooldown expires. These are two different
     questions, and the panel must distinguish them."""
+    monkeypatch.setenv("ZAELAR_LANGUAGE", "es")          # the panel speaks the instance language
     import config.balances as balances
 
     _cfg(monkeypatch)

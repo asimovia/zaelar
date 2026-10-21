@@ -82,7 +82,7 @@ def test_every_agent_state_has_a_title_in_both_bundles():
     """An amber icon without an explanation is useless: the operator must be able to read WHAT is happening."""
     import json
     for lang in ("en", "es"):
-        b = json.loads((ENGINE / "i18n" / "bundles" / f"{lang}.json").read_text(encoding="utf-8"))
+        b = json.loads((ENGINE / "i18n" / "genesis" / lang / "ui.json").read_text(encoding="utf-8"))
         for st in ("off", "live", "starting", "stalled"):
             k = f"orb.power_{st}"
             assert k in b and b[k].strip(), f"falta {k} en {lang}"
@@ -309,7 +309,7 @@ def test_pausing_has_a_title_in_every_bundle():
     """Same contract as `test_every_agent_state_has_a_title_in_both_bundles`, extended to the new state — an
     amber icon with no explanation is useless."""
     import json
-    for path in (ENGINE / "i18n" / "bundles" / "en.json", ENGINE / "i18n" / "bundles" / "es.json"):
+    for path in (ENGINE / "i18n" / "genesis" / "en" / "ui.json", ENGINE / "i18n" / "genesis" / "es" / "ui.json"):
         b = json.loads(path.read_text(encoding="utf-8"))
         assert b.get("orb.power_pausing", "").strip(), f"missing orb.power_pausing in {path.name}"
 

@@ -71,6 +71,16 @@ class WrongPassphrase(VaultError):
     """La passphrase (o el material de desbloqueo) no abre la clave privada."""
 
 
+def _msg(key: str, default: str, **params) -> str:
+    """An error text the vault modal shows VERBATIM, in the instance language (pack `ui`, English fallback).
+    Resolved when raised, so the exception carries the sentence the screen will print."""
+    from i18n import runtime as _rt
+    out = _rt.text(key, default=default)
+    for k, v in params.items():
+        out = out.replace("{" + k + "}", str(v))
+    return out
+
+
 # ── helpers de KDF / envoltura ──────────────────────────────────────────────────────────────────────────────
 def _derive_kek(passphrase: str, salt: bytes, ops: int, mem: int) -> bytes:
     """Argon2id(passphrase, salt) → clave de 32 bytes que envuelve/desenvuelve la privada."""
@@ -98,7 +108,7 @@ def _unwrap_passphrase(wrap: dict, passphrase: str) -> bytes:
     try:
         return SecretBox(kek).decrypt(b64decode(wrap["wrapped_sk"]))
     except CryptoError as e:  # MAC inválido = clave equivocada
-        raise WrongPassphrase("passphrase incorrecta") from e
+        raise WrongPassphrase(_msg("vault.err.bad_passphrase", "Wrong passphrase")) from e
 
 
 # ── metadatos de la bóveda (fila única) ───────────────────────────────────────────────────────────────────
@@ -131,9 +141,9 @@ def create(passphrase: str) -> None:
     """Crea la bóveda: genera el par de claves, envuelve la privada con la passphrase, persiste. La privada NO se
     guarda en claro en ningún momento. Idempotencia dura: si ya existe, error (usar change_passphrase para rotar)."""
     if not passphrase or len(passphrase) < 4:
-        raise VaultError("la passphrase debe tener al menos 4 caracteres")
+        raise VaultError(_msg("vault.err.short_passphrase", "The passphrase must be at least 4 characters long"))
     if exists():
-        raise VaultError("la bóveda ya existe")
+        raise VaultError(_msg("vault.err.exists", "The vault already exists"))
     sk = PrivateKey.generate()
     pk_bytes = bytes(sk.public_key)
     wrap = _passphrase_wrap(bytes(sk), passphrase)
@@ -164,7 +174,7 @@ def unlock(passphrase: str, *, hold: bool = True) -> bool:
     lanza VaultError si no hay bóveda."""
     meta = _load_meta()
     if not meta:
-        raise VaultError("no hay bóveda creada")
+        raise VaultError(_msg("vault.err.no_vault", "No vault has been created"))
     for wrap in meta["wraps"]:
         if wrap.get("method") != "passphrase":
             continue
@@ -196,7 +206,7 @@ def seal(plaintext: str) -> bytes:
     """Cifra un texto a la clave PÚBLICA de la bóveda (NO requiere desbloqueo). Devuelve el ciphertext opaco."""
     meta = _load_meta()
     if not meta:
-        raise VaultError("no hay bóveda creada")
+        raise VaultError(_msg("vault.err.no_vault", "No vault has been created"))
     return SealedBox(PublicKey(meta["public_key"])).encrypt(plaintext.encode("utf-8"))
 
 
@@ -214,7 +224,7 @@ def store_secret(label: str, value: str, *, slot: str | None = None, sensitivity
     `slot` (p.ej. `secret:netflix:password`) permite SUPERSEDE: re-guardar la misma etiqueta reutiliza la píldora
     (mismo id) y REEMPLAZA el ciphertext → 'el más reciente manda', sin duplicar."""
     if not exists():
-        raise VaultError("no hay bóveda creada — créala antes de guardar secretos")
+        raise VaultError(_msg("vault.err.no_vault_for_secrets", "No vault has been created — create it before saving secrets"))
     ciphertext = seal(value)
     meta = {"vault": 1, "sensitivity": sensitivity, "label": label}
     mid = _writer.insert_memory(
@@ -237,14 +247,14 @@ def open_secret(memory_id: int, *, passphrase: str | None = None) -> str:
     si el secreto no existe."""
     row = _db.get_db().query_one("SELECT ciphertext FROM vault_secrets WHERE memory_id=?", (memory_id,))
     if not row:
-        raise VaultError(f"no hay secreto sellado para la píldora {memory_id}")
+        raise VaultError(_msg("vault.err.no_sealed_secret", "There is no sealed secret for item {id}", id=memory_id))
     ciphertext = bytes(row["ciphertext"])
     sk_bytes = _cached_sk()
     if sk_bytes is None and passphrase is not None:
         # desbloqueo transitorio (no cachea): desenvuelve, usa, descarta
         meta = _load_meta()
         if not meta:
-            raise VaultError("no hay bóveda creada")
+            raise VaultError(_msg("vault.err.no_vault", "No vault has been created"))
         for wrap in meta["wraps"]:
             if wrap.get("method") != "passphrase":
                 continue
@@ -256,13 +266,13 @@ def open_secret(memory_id: int, *, passphrase: str | None = None) -> str:
                 sk_bytes = cand
                 break
         if sk_bytes is None:
-            raise WrongPassphrase("passphrase incorrecta")
+            raise WrongPassphrase(_msg("vault.err.bad_passphrase", "Wrong passphrase"))
     if sk_bytes is None:
-        raise VaultLocked("la bóveda está bloqueada — hace falta la passphrase")
+        raise VaultLocked(_msg("vault.err.locked", "The vault is locked — the passphrase is needed"))
     try:
         return _open_with_sk(ciphertext, sk_bytes)
     except CryptoError as e:
-        raise VaultError("no se pudo descifrar el secreto") from e
+        raise VaultError(_msg("vault.err.decrypt_failed", "The secret could not be decrypted")) from e
 
 
 def list_secrets() -> list[dict]:
@@ -286,10 +296,10 @@ def list_secrets() -> list[dict]:
 def change_passphrase(old: str, new: str) -> None:
     """Rota la passphrase: re-envuelve SOLO su sobre (los secretos y el par de claves NO se tocan)."""
     if not new or len(new) < 4:
-        raise VaultError("la nueva passphrase debe tener al menos 4 caracteres")
+        raise VaultError(_msg("vault.err.short_new_passphrase", "The new passphrase must be at least 4 characters long"))
     meta = _load_meta()
     if not meta:
-        raise VaultError("no hay bóveda creada")
+        raise VaultError(_msg("vault.err.no_vault", "No vault has been created"))
     sk_bytes = None
     for wrap in meta["wraps"]:
         if wrap.get("method") != "passphrase":
@@ -300,7 +310,7 @@ def change_passphrase(old: str, new: str) -> None:
         except WrongPassphrase:
             continue
     if sk_bytes is None:
-        raise WrongPassphrase("la passphrase actual no es correcta")
+        raise WrongPassphrase(_msg("vault.err.bad_current_passphrase", "The current passphrase is wrong"))
     wraps = [w for w in meta["wraps"] if w.get("method") != "passphrase"]
     wraps.append(_passphrase_wrap(sk_bytes, new))
     _save_meta(meta["public_key"], wraps, create=False)
@@ -352,10 +362,10 @@ def add_passkey(prf_secret: bytes, cred_id: str) -> None:
     (la privada en RAM) — así solo quien ya tiene acceso puede añadir un método. Dedup por `cred_id`."""
     meta = _load_meta()
     if not meta:
-        raise VaultError("no hay bóveda creada")
+        raise VaultError(_msg("vault.err.no_vault", "No vault has been created"))
     sk_bytes = _cached_sk()
     if sk_bytes is None:
-        raise VaultLocked("desbloquea la bóveda antes de añadir una passkey")
+        raise VaultLocked(_msg("vault.err.unlock_before_passkey", "Unlock the vault before adding a passkey"))
     kek = _prf_kek(prf_secret)
     wrapped = SecretBox(kek).encrypt(sk_bytes)
     wraps = [w for w in meta["wraps"] if not (w.get("method") == "passkey" and w.get("cred_id") == cred_id)]
@@ -367,7 +377,7 @@ def unlock_with_prf(prf_secret: bytes, *, hold: bool = True) -> bool:
     """Desbloquea con el secreto PRF de una passkey. Igual que `unlock` pero con KEK del PRF."""
     meta = _load_meta()
     if not meta:
-        raise VaultError("no hay bóveda creada")
+        raise VaultError(_msg("vault.err.no_vault", "No vault has been created"))
     kek = _prf_kek(prf_secret)
     for wrap in meta["wraps"]:
         if wrap.get("method") != "passkey":
@@ -388,9 +398,9 @@ def remove_passkey(cred_id: str) -> None:
     """Revoca un aparato (quita su sobre). No toca los secretos ni los demás métodos."""
     meta = _load_meta()
     if not meta:
-        raise VaultError("no hay bóveda creada")
+        raise VaultError(_msg("vault.err.no_vault", "No vault has been created"))
     wraps = [w for w in meta["wraps"] if not (w.get("method") == "passkey" and w.get("cred_id") == cred_id)]
     if not any(w.get("method") == "passphrase" for w in wraps) and \
             not any(w.get("method") == "passkey" for w in wraps):
-        raise VaultError("no puedes quitar el último método de desbloqueo")
+        raise VaultError(_msg("vault.err.last_method", "You cannot remove the last unlock method"))
     _save_meta(meta["public_key"], wraps, create=False)

@@ -173,6 +173,6 @@ def test_the_dialog_paints_four_boxes_and_forwards_all_four():
 def test_both_new_boxes_have_words_in_both_languages():
     keys = ("reset.confirm.wipeProfile", "reset.confirm.wipeFiles")
     for code in ("es", "en"):
-        d = json.loads((ROOT / "i18n" / "bundles" / f"{code}.json").read_text(encoding="utf-8"))
+        d = json.loads((ROOT / "i18n" / "genesis" / code / "ui.json").read_text(encoding="utf-8"))
         for k in keys:
             assert d.get(k, "").strip(), f"[{code}] {k} missing — an unlabelled checkbox is a trap"

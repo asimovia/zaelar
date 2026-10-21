@@ -288,8 +288,8 @@ async def connectors_voice_and_health(*, _first_lifespan_entry, _identity, activ
             try:
                 from i18n import init as _i18n_init
                 r = await _i18n_init.prepare(code)
-                if int(r.get("generated") or 0):
-                    _bt._srv.logger.info(f"i18n: '{code}' topped up after an update — {r['generated']} new keys translated")
+                if n := sum(int((v or {}).get("generated") or 0) for v in (r.get("packs") or {}).values()):
+                    _bt._srv.logger.info(f"i18n: '{code}' topped up after an update — {n} new strings translated")
             except Exception as e:  # noqa: BLE001
                 _bt._srv.logger.warning(f"i18n top-up for '{code}' failed (UI keeps the keys it had): {e!r}")
 

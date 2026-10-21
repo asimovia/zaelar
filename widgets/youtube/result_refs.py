@@ -93,10 +93,9 @@ def nothing_queued() -> dict:
     el de José Manuel y el de Jaén» reached `clear_list`, the empty queue stayed empty, and «Hecho.» was said twice
     over three videos that were never added. The refusal is TRUE and names the card's two writes that act on the
     band (`redirect`), so the same-turn correction (`nucleo/flash/refusal_redirect.py`) may run one of them."""
-    from widgets import hint_lang as _hl
+    from i18n import langs as _langs
     return {"ok": False, "error": "queue_empty", "redirect": list(REDIRECT),
-            "message": _hl.pick("La cola ya está vacía: no había nada que quitar.",
-                                "The queue is already empty: there was nothing to remove.")}
+            "message": _langs.words("youtube.queue_empty", default="")}
 
 
 def queue_line(db: dict) -> str:

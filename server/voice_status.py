@@ -5,14 +5,15 @@
 # `voice_api` is read through it (`_va.<name>`), so a patch on `voice_api` still governs them.
 from __future__ import annotations
 
+from config.balances import say as _t   # every row's words in the INSTANCE language, never a fixed Castilian
 from server import voice_api as _va
 
 
 async def brain_and_voice(*, SETTINGS, active, has, health_state) -> dict:
     # ── Server (FastAPI) ──────────────────────────────────────────────────────────────────────────────────────
     # If this responds at all the server is up — but the operator asked to SEE it listed, so we surface it plainly.
-    items = [{"key": "server", "label": "Servidor · FastAPI",
-              "state": "ok", "detail": f"en línea · puerto {_va.os.getenv('PORT', '43917')}"}]
+    items = [{"key": "server", "label": _t("statussvc.server_label", "Server · FastAPI"),
+              "state": "ok", "detail": _t("status.detail.server_online", "online · port {port}", port=_va.os.getenv('PORT', '43917'))}]
 
     # ── Version (V2-074) — which code runs on THIS instance (certainty that restart loaded the new code) ──────
     try:
@@ -20,16 +21,17 @@ async def brain_and_voice(*, SETTINGS, active, has, health_state) -> dict:
         _vi = _ver.info()
         _up = _vi["uptime_s"]
         _up_s = f"{_up // 3600}h {(_up % 3600) // 60}m" if _up >= 3600 else f"{_up // 60}m {_up % 60}s"
-        items.append({"key": "version", "label": "Versión", "state": "ok",
-                      "detail": f"{_vi['short']} · activa {_up_s}", "extra": _vi})
+        items.append({"key": "version", "label": _t("status.row.version", "Version"), "state": "ok",
+                      "detail": _t("status.detail.version_up", "{version} · up {uptime}", version=_vi['short'], uptime=_up_s), "extra": _vi})
     except Exception as e:  # noqa: BLE001
-        items.append({"key": "version", "label": "Versión", "state": "warn", "detail": f"desconocida ({e})"})
+        items.append({"key": "version", "label": _t("status.row.version", "Version"), "state": "warn", "detail": _t("status.detail.version_unknown", "unknown ({error})", error=e)})
 
     # ── «Colmena» brain ───────────────────────────────────────────────────────────────────────────────────────
     from config.v2 import active_brain
     brain = active_brain()
-    _brain_detail = {"nucleo": "«Colmena» · FlashBrain + brain workers + memoria propia"}.get(brain, f"modo {brain}")
-    items.append({"key": "brain", "label": "Cerebro", "state": "ok", "detail": _brain_detail})
+    _brain_detail = (_t("status.detail.brain_nucleo", "«Colmena» · FlashBrain + brain workers + its own memory") if brain == "nucleo"
+                     else _t("status.detail.brain_mode", "mode {mode}", mode=brain))
+    items.append({"key": "brain", "label": _t("status.row.brain", "Brain"), "state": "ok", "detail": _brain_detail})
 
     # ── Voice session ─────────────────────────────────────────────────────────────────────────────────────────
     try:
@@ -43,12 +45,12 @@ async def brain_and_voice(*, SETTINGS, active, has, health_state) -> dict:
     # (StatusPanel.js) deliberately does NOT overwrite an error state on this row.
     vdead = health_state.get("voice")
     if vdead:
-        items.append({"key": "voice", "label": "Sistema de voz", "state": "error",
-                      "detail": "la sesión MURIÓ — reciclando el motor; recarga la página si no vuelve"})
+        items.append({"key": "voice", "label": _t("status.row.voice", "Voice system"), "state": "error",
+                      "detail": _t("status.detail.voice_dead", "the session DIED — recycling the engine; reload the page if it does not come back")})
     else:
-        items.append({"key": "voice", "label": "Sistema de voz",
+        items.append({"key": "voice", "label": _t("status.row.voice", "Voice system"),
                       "state": "ok" if live else "off",
-                      "detail": "sesión activa" if live else "en espera · se activa al abrir la web"})
+                      "detail": _t("status.detail.voice_active", "session active") if live else _t("statussvc.standby", "on standby")})
 
     # ── LLM provider (the fast-layer model driving the conversation) ─────────────────────────────────────────
     # With BRAIN=nucleo, the fast-layer model is PER INVOCATION (config/v2 `fast`, UI-managed); here we show the
@@ -56,7 +58,7 @@ async def brain_and_voice(*, SETTINGS, active, has, health_state) -> dict:
     llm_err = health_state.get("llm")
     # REAL provider + key from the fast-layer ModelSpec (provider-agnostic: xAI / Groq / AIMLAPI / Gemini /
     # Ollama-local) — do not hardcode "AIMLAPI" (invariant: status reflects the provider in use).
-    prov_label = "nube"; llm_key = True; model_name = SETTINGS.llm_model or _va.os.getenv("LLM_MODEL", "?")
+    prov_label = _cloud = _t("status.detail.cloud", "cloud"); llm_key = True; model_name = SETTINGS.llm_model or _va.os.getenv("LLM_MODEL", "?")
     if brain == "nucleo":
         try:
             from nucleo.flash.fast_client import spec_from_config
@@ -66,10 +68,10 @@ async def brain_and_voice(*, SETTINGS, active, has, health_state) -> dict:
             prov_label = ("Ollama·local" if _spec.is_local() else "DeepSeek" if "deepseek" in _url
                           else "xAI" if "x.ai" in _url
                           else "Groq" if "groq" in _url else "Gemini" if "googleapis" in _url or "generativelanguage" in _url
-                          else "nube")
+                          else _cloud)
             llm_key = _spec.is_local() or bool(_spec.resolved_api_key())
         except Exception:
-            prov_label = "nube"
+            prov_label = _cloud
     else:
         llm_key = has("AIMLAPI_KEY", "LLM_API_KEY")
     llm_detail = f"{model_name} · {prov_label}"
@@ -77,12 +79,13 @@ async def brain_and_voice(*, SETTINGS, active, has, health_state) -> dict:
         # ONE STUCK TURN ≠ PROVIDER NOT RESPONDING (2026-08-12). The turn silence deadline recorded the cut as if
         # the model were down → the ◉ stayed RED with "not responding" while the model answered perfectly before
         # and after. This is a WARNING with the concrete fact, not an outage diagnosis.
-        state = "warn"; llm_detail += " · " + (llm_err.get("text") or "un turno se atascó")
+        state = "warn"; llm_detail += " · " + (llm_err.get("text") or _t("status.detail.turn_stuck", "one turn got stuck"))
     elif llm_err:
         state = "error"
-        llm_detail += " · " + {"credit": "SIN SALDO/cuota", "auth": "credencial inválida"}.get(llm_err["kind"], "no responde")
+        llm_detail += " · " + ({"credit": _t("status.detail.no_credit", "NO BALANCE/quota"), "auth": _t("status.detail.bad_credential", "invalid credential")}
+                               .get(llm_err["kind"]) or _t("status.detail.not_responding", "not responding"))
     elif not llm_key:
-        state = "warn"; llm_detail += " · falta API key"
+        state = "warn"; llm_detail += " · " + _t("status.detail.missing_api_key", "API key missing")
     else:
         state = "ok"; llm_detail += " · key ✓"
     # V2-750 — AMBER IS NOT RED, AND THE BOX SAYS WHO IS ANSWERING. Operator, 2026-09-22: «más que ponerse en
@@ -96,7 +99,7 @@ async def brain_and_voice(*, SETTINGS, active, has, health_state) -> dict:
     #
     # The two lines travel as DATA (`extra.titular` / `extra.serving`), not as a composed sentence: the panel
     # writes them in the operator's own language from the i18n table, which is where a sentence he reads
-    # belongs (the V2-676 lesson — this row's own `detail` is still a Spanish literal, older debt, untouched).
+    # belongs (the V2-676 lesson — and since 2026-10-21 every label and detail here reads the i18n table too).
     # V2-758 — THE LADDER IS READ ON EVERY POLL, NOT ONLY WHEN THE LIGHT IS ALREADY ON. Operator, 2026-09-23:
     # «tiene que haber una cajita solo para el flash brain que se muestre que estamos llamando al v4 flash como
     # principal, y también tiene que haber el modelo failover… cuando falla el primero pones el segundo y ya me
@@ -131,7 +134,7 @@ async def brain_and_voice(*, SETTINGS, active, has, health_state) -> dict:
                 llm_extra["standby"] = {"model": _ch[1].get("model"), "provider": _ch[1].get("provider")}
     except Exception:  # noqa: BLE001 — a status row must never be the thing that breaks
         llm_extra = None
-    _llm_item = {"key": "llm", "label": "Cerebro rápido · FlashBrain", "state": state, "detail": llm_detail}
+    _llm_item = {"key": "llm", "label": _t("status.row.llm", "Fast brain · FlashBrain"), "state": state, "detail": llm_detail}
     if llm_extra:
         _llm_item["extra"] = llm_extra
     items.append(_llm_item)
@@ -142,8 +145,8 @@ async def brain_and_voice(*, SETTINGS, active, has, health_state) -> dict:
     # between «tengo que saber qué pasa» and the five days this defect went unnoticed under a provider's name.
     _eng = health_state.get("engine")
     if _eng:
-        items.append({"key": "engine", "label": "Motor · fallo interno", "state": "error",
-                      "detail": (_eng.get("text") or "un turno falló dentro del motor")[:160]})
+        items.append({"key": "engine", "label": _t("status.row.engine", "Engine · internal fault"), "state": "error",
+                      "detail": (_eng.get("text") or _t("status.detail.engine_fault", "a turn failed inside the engine"))[:160]})
     _out = locals()
     return {k: _out[k] for k in ('brain', 'items', ) if k in _out}
 
@@ -170,17 +173,17 @@ async def the_rest_and_the_light(*, SETTINGS, brain, has, health_state, items) -
         _mem_says = (mem_err or {}).get("text") or ""
         if _mp.get("degraded"):
             mem_state = "error"
-            mem_detail = f"{_mp['model']} · {_mp['fail_streak']} fallos — escribiendo por heurística"
+            mem_detail = _t("status.detail.mem_degraded", "{model} · {n} failures — writing by heuristics", model=_mp['model'], n=_mp['fail_streak'])
         elif mem_err and mem_err.get("kind") == "outage":
             mem_state = "error"
-            mem_detail = f"{_mp['model']} · {_mem_says or 'sin proveedor'}"[:160]
+            mem_detail = f"{_mp['model']} · {_mem_says or _t('status.detail.no_provider', 'no provider')}"[:160]
         elif _mp.get("fail_streak"):
-            mem_state, mem_detail = "warn", f"{_mp['model']} · {_mp['fail_streak']} fallo(s) recientes"
+            mem_state, mem_detail = "warn", _t("status.detail.mem_recent_failures", "{model} · {n} recent failure(s)", model=_mp['model'], n=_mp['fail_streak'])
         elif mem_err:
             # V2-762 — NOT prefixed with the heart's model: a slow recall (remote embeddings), a degraded vector
             # space or REM is not the distiller, and «deepseek-flash · el recall no cerró» blamed it by position.
             mem_state = "warn"
-            mem_detail = (_mem_says or "degradada")[:160]
+            mem_detail = (_mem_says or _t("status.detail.degraded", "degraded"))[:160]
         else:
             mem_state, mem_detail = "ok", f"{_mp['model']}"
         # Whether the heart's TITULAR is answering is the heart's own fact — never the row's colour. Derived from
@@ -210,12 +213,12 @@ async def the_rest_and_the_light(*, SETTINGS, brain, has, health_state, items) -
                                             "provider": _rungs[1].get("provider")}
         except Exception:  # noqa: BLE001 — a status row must never be the thing that breaks
             mem_extra = None
-        _mem_item = {"key": "memory", "label": "Memoria · CORAZÓN", "state": mem_state, "detail": mem_detail}
+        _mem_item = {"key": "memory", "label": _t("status.row.memory", "Memory · HEART"), "state": mem_state, "detail": mem_detail}
         if mem_extra:
             _mem_item["extra"] = mem_extra
         items.append(_mem_item)
     except Exception:
-        items.append({"key": "memory", "label": "Memoria · CORAZÓN", "state": "warn", "detail": "no disponible"})
+        items.append({"key": "memory", "label": _t("status.row.memory", "Memory · HEART"), "state": "warn", "detail": _t("status.detail.unavailable", "unavailable")})
 
     # ── STT / TTS (from the LiveKit engine SETTINGS) ─────────────────────────────────────────────────────────
     stt_prov = SETTINGS.stt_provider
@@ -224,10 +227,10 @@ async def the_rest_and_the_light(*, SETTINGS, brain, has, health_state, items) -
     if stt_err:
         stt_state, stt_detail = "error", f"{stt_prov} · {stt_err['kind']}"
     elif stt_needs and not has(stt_needs):
-        stt_state, stt_detail = "warn", f"{stt_prov} · falta {stt_needs}"
+        stt_state, stt_detail = "warn", _t("status.detail.missing_env", "{provider} · missing {env}", provider=stt_prov, env=stt_needs)
     else:
-        stt_state, stt_detail = "ok", f"{stt_prov}" + (" · key ✓" if stt_needs else " · local/gratis")
-    items.append({"key": "stt", "label": "STT · voz→texto", "state": stt_state, "detail": stt_detail})
+        stt_state, stt_detail = "ok", f"{stt_prov} · " + ("key ✓" if stt_needs else _t("status.detail.local_free", "local/free"))
+    items.append({"key": "stt", "label": _t("status.row.stt", "STT · speech→text"), "state": stt_state, "detail": stt_detail})
 
     try:
         from voice.engine.speech.voices import tts_provider, voices_for
@@ -245,17 +248,17 @@ async def the_rest_and_the_light(*, SETTINGS, brain, has, health_state, items) -
     if tts_err:
         tts_state, tts_detail = "error", f"{prov} · {tts_err['kind']}"
     elif needs_key and not has(needs_key):
-        tts_state, tts_detail = "warn", f"{prov} · falta {needs_key}"
+        tts_state, tts_detail = "warn", _t("status.detail.missing_env", "{provider} · missing {env}", provider=prov, env=needs_key)
     else:
         tts_state, tts_detail = "ok", f"{prov} · {cur}"
-    items.append({"key": "tts", "label": "TTS · texto→voz", "state": tts_state, "detail": tts_detail})
+    items.append({"key": "tts", "label": _t("status.row.tts", "TTS · text→speech"), "state": tts_state, "detail": tts_detail})
 
     # ── the search providers (V2-782 T2.2): one line, from the last probe, never probing on a poll ──────────
     try:
         from search import api as _search_api
         items.append(_search_api.status_item())
     except Exception as e:  # noqa: BLE001 — a broken probe is a row that SAYS so, never a crash in /api/status
-        items.append({"key": "search", "label": "Búsqueda · proveedores", "state": "warn", "detail": f"sin sonda ({type(e).__name__})"})
+        items.append({"key": "search", "label": _t("status.row.search", "Search · providers"), "state": "warn", "detail": _t("status.detail.no_probe", "no probe ({error})", error=type(e).__name__)})
 
     # ── OS audio output (operator request 2026-09-10: the monitor must catch «volume at zero») ──────────────
     try:
@@ -273,21 +276,21 @@ async def the_rest_and_the_light(*, SETTINGS, brain, has, health_state, items) -
             from nucleo import scheduler
             running = nucleo_loop.is_running()
             n = len(scheduler.list_jobs(active_only=True))
-            cron_detail = (f"loop activo · {n} tarea{'s' if n != 1 else ''} programada{'s' if n != 1 else ''}"
-                           if running else "loop detenido")
-            items.append({"key": "cron", "label": "Crons · proactividad",
+            cron_detail = (_t("status.detail.cron_running_" + ("one" if n == 1 else "many"), "loop running · {n} scheduled task(s)", n=n)
+                           if running else _t("status.detail.cron_stopped", "loop stopped"))
+            items.append({"key": "cron", "label": _t("status.row.cron", "Crons · proactivity"),
                           "state": "ok" if running else "warn", "detail": cron_detail})
         except Exception:
-            items.append({"key": "cron", "label": "Crons · proactividad", "state": "warn", "detail": "no disponible"})
+            items.append({"key": "cron", "label": _t("status.row.cron", "Crons · proactivity"), "state": "warn", "detail": _t("status.detail.unavailable", "unavailable")})
 
     # ── Widgets (full-stack service) ─────────────────────────────────────────────────────────────────────────
     try:
         from widgets import runtime as widgets_runtime
         wcount = len(widgets_runtime.catalog())
         items.append({"key": "widgets", "label": "Widgets",
-                      "state": "ok", "detail": f"{wcount} disponible" + ("s" if wcount != 1 else "")})
+                      "state": "ok", "detail": _t("status.detail.widgets_" + ("one" if wcount == 1 else "many"), "{n} available", n=wcount)})
     except Exception:
-        items.append({"key": "widgets", "label": "Widgets", "state": "off", "detail": "sin catálogo"})
+        items.append({"key": "widgets", "label": "Widgets", "state": "off", "detail": _t("status.detail.no_catalog", "no catalog")})
 
     # ── MeshKore cluster ─────────────────────────────────────────────────────────────────────────────────────
     try:
@@ -297,11 +300,11 @@ async def the_rest_and_the_light(*, SETTINGS, brain, has, health_state, items) -
         clusters = []
     if clusters:
         conn = [c for c in clusters if c.get("connected")]
-        cl_detail = ", ".join(f"{c['name']}·{'/'.join(c.get('online') or []) or 'sin peers'}" for c in conn) or "sin conexión"
+        cl_detail = ", ".join(f"{c['name']}·{'/'.join(c.get('online') or []) or _t('status.detail.no_peers', 'no peers')}" for c in conn) or _t("status.detail.no_connection", "not connected")
         items.append({"key": "cluster", "label": "Cluster MeshKore",
                       "state": "ok" if conn else "off", "detail": cl_detail})
     else:
-        items.append({"key": "cluster", "label": "Cluster MeshKore", "state": "off", "detail": "sin clusters"})
+        items.append({"key": "cluster", "label": "Cluster MeshKore", "state": "off", "detail": _t("status.detail.no_clusters", "no clusters")})
 
     # ── Registro (V2-711 T0.5) — what the instrument could not keep ──────────────────────────────────────
     # The durable log and the timeline writer are both BEST-EFFORT by design: bounded queues, dropped
@@ -317,17 +320,17 @@ async def the_rest_and_the_light(*, SETTINGS, brain, has, health_state, items) -
         _ws = _obs.writer_stats()
         _lost = int(_ls.get("dropped") or 0) + int(_ls.get("insert_failed") or 0) \
             + int(_ws.get("queue_full") or 0) + int(_ws.get("write_failed") or 0)
-        _detail = f"{_ls.get('rows', 0)} eventos"
+        _detail = _t("status.detail.log_rows", "{n} events", n=_ls.get('rows', 0))
         if _ls.get("suppressed"):
-            _detail += f" · {_ls['suppressed']} repeticiones de estado plegadas"
+            _detail += " · " + _t("status.detail.log_folded", "{n} repeated states folded", n=_ls['suppressed'])
         if _lost:
-            _detail += f" · ⚠️ {_lost} perdidos (cola llena o escritura fallida)"
-        items.append({"key": "eventlog", "label": "Registro · observabilidad",
+            _detail += " · " + _t("status.detail.log_lost", "⚠️ {n} lost (queue full or write failed)", n=_lost)
+        items.append({"key": "eventlog", "label": _t("status.row.eventlog", "Log · observability"),
                       "state": "warn" if _lost else "ok", "detail": _detail,
                       "extra": {"log": _ls, "timeline": _ws}})
     except Exception as e:  # noqa: BLE001
-        items.append({"key": "eventlog", "label": "Registro · observabilidad",
-                      "state": "warn", "detail": f"no medido ({e})"})
+        items.append({"key": "eventlog", "label": _t("status.row.eventlog", "Log · observability"),
+                      "state": "warn", "detail": _t("status.detail.not_measured", "not measured ({error})", error=e)})
 
     # Group items so the panel can show the CORE (what you boot from the terminal — must be up for zaelar to work)
     # above the fold, and SECONDARY features (proactivity, widgets, cluster) below in a quieter section.

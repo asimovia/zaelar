@@ -35,24 +35,22 @@ def test_an_already_initialized_language_has_nothing_to_prepare():
     Measured against the real module, not its source: a preset is zero steps by
     construction, and a language we would have to build is not.
     """
-    from i18n import runtime as rt
-    from i18n.init import aliases, detect, fillers
+    from i18n import init, packs
+    from i18n.init import detect
 
     assert detect._pending_steps("en") == [], "en is initialized — there is nothing to show a screen for"
     assert detect._pending_steps("es") == [], "es likewise"
-    assert "en" in rt.PRESET and "es" in rt.PRESET, "and they are zero by CONSTRUCTION, not by disk state"
+    assert "en" in packs.PRESET and "es" in packs.PRESET, "and they are zero by CONSTRUCTION, not by disk state"
 
-    # The opposite case is stated, not sampled: `i18n/generated/` is NOT sandboxed by the root conftest
-    # (measured 2026-09-20), so asking the disk here would make the verdict depend on which languages this
-    # machine happens to have tried.
+    # The opposite case is stated, not sampled: the generated store is a disk state, so the verdict must not
+    # depend on which languages this machine happens to have tried.
     with pytest.MonkeyPatch.context() as mp:
-        mp.setattr(rt, "missing_keys", lambda code: ["boot.encendiendo"])
-        mp.setattr(aliases, "read", lambda code: {})
-        mp.setattr(fillers, "read_smalltalk", lambda code: {})
-        assert detect._pending_steps("ja") == ["bundle", "aliases", "smalltalk"], \
-            "a language with no bundle, no alias pack and no phrasebook is three real pieces of work"
-        mp.setattr(rt, "missing_keys", lambda code: [])
-        mp.setattr(aliases, "read", lambda code: {"agenda": ["yotei"]})
+        mp.setattr(init, "missing", lambda code, name: ["x"])
+        mp.setattr(packs, "generated", lambda name, code: {})
+        assert detect._pending_steps("ja") == list(packs.NAMES), \
+            "a language with nothing generated is one real piece of work per pack"
+        mp.setattr(init, "missing", lambda code, name: [])
+        mp.setattr(packs, "generated", lambda name, code: {"x": 1} if name == "aliases" else {})
         assert detect._pending_steps("ja") == ["smalltalk"], \
             "and one that only lacks its phrasebook is ONE — the count is of work, not of languages"
 
@@ -60,18 +58,19 @@ def test_an_already_initialized_language_has_nothing_to_prepare():
 def test_each_check_mirrors_the_early_return_of_the_step_it_stands_for():
     """The count cannot claim work that will not happen, and cannot miss work that will.
 
-    Each `ensure_*` returns immediately when its artefact is already on disk;
-    `_pending_steps` asks the same question with the same reader. If one of them
+    Each generator returns immediately when its pack is complete; `i18n.init.pending` asks the same question
+    with the same reader (`missing` for translated packs, the generated file for whole ones). If one of them
     grows a second reason to no-op, this is the test that should fail.
     """
     src = DETECT.read_text(encoding="utf-8")
     body = src[src.index("def _pending_steps("):src.index("async def lock(")]
-    assert "_rt.PRESET" in body and "missing_keys" in body, "the bundle's own early returns"
-    assert "_aliases.read(" in body, "the alias pack is asked whether it exists"
-    assert "read_smalltalk" in body, "so is the phrasebook"
-    # an unreadable store means UNKNOWN, and unknown means we are going to work — never the other way
-    assert body.count("steps.append") == 6, \
-        "every check appends on failure too: a missed step is a wait with no screen"
+    assert "_init.pending(" in body, "the screen counts what prepare will do, with prepare's own reader"
+    assert "list(_packs.NAMES)" in body, "an unreadable store means UNKNOWN, and unknown means every pack"
+    init_src = (DETECT.parent / "__init__.py").read_text(encoding="utf-8")
+    pend = init_src[init_src.index("def pending("):init_src.index("async def _generate(")]
+    assert "missing(code, p.name)" in pend and "_has(p.name, code)" in pend
+    ensure_src = (DETECT.parent / "ensure.py").read_text(encoding="utf-8")
+    assert "todo = missing(code, name)" in ensure_src, "ensure_pack's early return is the same `missing`"
     assert '"phase": "progress"' in src, "each finished step has to be reported"
     assert '"total": steps_total' in src, "the first event carries the denominator"
 

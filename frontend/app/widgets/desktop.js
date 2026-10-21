@@ -633,7 +633,7 @@ export class Desktop {
     // The canonical name remains one gesture away, not deleted: it is how the piece is addressed by voice.
     const reg = await this._ensureRegistry();
     const name = (reg[baseId] && reg[baseId].name) || baseId;
-    w.nameBtn.title = `${title}\n(${name} — click to view/edit its aliases)`;
+    w.nameBtn.title = `${title}\n(` + tr("desktop.live_name_tooltip", {name}) + `)`;
   }
   async refreshRegistry(){                              // SSE widget/alias → repinta nombres + panel abierto
     await this._ensureRegistry(true);
@@ -854,7 +854,7 @@ export class Desktop {
       const ctx={ action:async(name,payload)=>{ try{return await fetch(`/widgets/${baseId}/action`,{method:"POST",
           headers:{"Content-Type":"application/json"},body:JSON.stringify({action:name,payload:{...(payload||{}),q}})}).then(r=>r.json());}catch(_){return null;} },
         // V2-613 — a SYSTEM widget's own UI chrome (button labels, headers, empty states) can be translated the
-        // same way the rest of the app is: `i18n/bundles/en.json`+`es.json` under a `widgets.<id>.*` key, read
+        // same way the rest of the app is: `i18n/genesis/en/ui.json`+`es.json` under a `widgets.<id>.*` key, read
         // through this ONE synchronous, in-memory lookup — never a network call, never an import of frontend
         // internals from inside widget.js (that boundary stays `ctx`-only, like `action`/`close`/`running`).
         // Falls back to English, then to the literal key, so an untranslated string is visible rather than blank.

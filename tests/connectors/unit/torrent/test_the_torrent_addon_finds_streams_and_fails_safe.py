@@ -310,8 +310,8 @@ def test_ref_index_lists_live_rows_by_title(monkeypatch, wdata):
     fake.put("A", kind="video", name="The Movie")
     monkeypatch.setattr(wdata, "_svc", lambda: fake)
     idx = wdata.ref_index()
-    from widgets import hint_lang as _hl  # V2-778 F3-30: the hint is in the agent's language (the suite runs an English agent)
-    assert idx == [{"id": "A", "label": "The Movie", "field": "id", "hint": _hl.pick("descarga", "download")}]
+    from i18n import langs as _langs  # V2-778 F3-30: the hint is in the agent's language (the suite runs an English agent)
+    assert idx == [{"id": "A", "label": "The Movie", "field": "id", "hint": _langs.words("hints.download")}]
 
 
 def test_view_data_reports_unavailable_with_a_reason(monkeypatch, wdata):

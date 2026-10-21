@@ -376,13 +376,13 @@ _LINK_RE = _re.compile(r'result__a[^>]*href="(.*?)"[^>]*>(.*?)</a>', _re.S)
 def _accept_language() -> str:
     """The header that tells a site which country it is serving. It was pinned to `es-ES` for everybody, and a
     header outranks the words of the query: measured 2026-08-27, a US search for hotels under $150 came back
-    priced in euros. Follows the engine's own language, with Spanish as the fallback when it cannot be read —
-    the behaviour of always, for the deployment that had it right."""
+    priced in euros. Follows the engine's own language, with English when it cannot be read (the product
+    default — an unreadable language never silently becomes Spanish)."""
     try:
         from i18n import langs as _langs
-        code = (_langs.current_code() or "es").lower()
+        code = (_langs.current_code() or "en").lower()
     except Exception:  # noqa: BLE001 — a web search must never die because the language is unreadable
-        code = "es"
+        code = "en"
     if code == "es":
         return "es-ES,es;q=0.9,en;q=0.8"
     return f"{code}-US,{code};q=0.9" if code == "en" else f"{code},{code};q=0.9,en;q=0.8"

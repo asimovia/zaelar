@@ -28,7 +28,7 @@ from tests.waiting import until_sync
 from server import feedback_api as fb
 
 ENGINE = pathlib.Path(__file__).resolve().parents[4]
-_ES = json.loads((ENGINE / "i18n/bundles/es.json").read_text(encoding="utf-8"))
+_ES = json.loads((ENGINE / "i18n/genesis/es/ui.json").read_text(encoding="utf-8"))
 
 
 
@@ -219,7 +219,7 @@ def widget():
     until_sync(lambda: _listening(port), "the static server to accept connections", timeout_s=10)
     # The shape `/api/i18n/bundle/<code>` really answers: {strings: {...}}. A bare bundle loads nothing and
     # every string comes back as its raw key.
-    es = json.dumps({"strings": json.loads((ENGINE / "i18n/bundles/es.json").read_text(encoding="utf-8"))})
+    es = json.dumps({"strings": json.loads((ENGINE / "i18n/genesis/es/ui.json").read_text(encoding="utf-8"))})
     try:
         with sync_playwright() as pw:
             b = pw.chromium.launch()

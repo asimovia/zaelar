@@ -476,10 +476,6 @@ Turno del operador: "Que no, que he dicho Kafe Antzokia, con zeta. Búscalo bien
 _FEWSHOT_ASSISTANT_9 = """[{"text":"Su bar favorito de Bilbao se llama Kafe Antzokia.","dest":"long","kind":"pref","importance":0.7,"ttl_days":null,"slot":null,"change":"correction","supersedes":[841],"concepts":["ocio"],"state_patch":{}}]"""
 
 
-_LANG_NAME = {"es": "castellano", "en": "English", "de": "Deutsch", "fr": "français", "it": "italiano",
-              "pt": "português", "ca": "català"}
-
-
 def _default_code() -> str:
     try:
         from voice.engine.core import langs
@@ -499,7 +495,8 @@ def _render(text: str, state: dict | None) -> str:
     # Same fix as memllm: no hardcoded language. An unseeded state must not silently mean Spanish — that is
     # what committed a brand-new account's memory to a language its owner had not chosen.
     code = st.get("language") or _default_code()
-    lang = _LANG_NAME.get(code, _LANG_NAME["en"])
+    from i18n import catalog as _cat              # the ONE catalog: a 7-name table wrote a ja memory in English
+    lang = (_cat.get(code) or _cat.get("en")).native
     return (f"ESTADO actual: {snap}\n"
             f"FECHA Y HORA ACTUAL: {_now_stamp()}\n"
             f"IDIOMA DE LA MEMORIA: {lang}. Escribe SIEMPRE las píldoras en {lang}, aunque el operador hable en "

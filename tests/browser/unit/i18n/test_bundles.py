@@ -8,11 +8,11 @@ import re
 from pathlib import Path
 
 ENGINE = Path(__file__).resolve().parents[4]
-_BUNDLES = ENGINE / "i18n" / "bundles"
+_BUNDLES = ENGINE / "i18n" / "genesis"
 
 
 def _load(code: str) -> dict:
-    return json.loads((_BUNDLES / f"{code}.json").read_text(encoding="utf-8"))
+    return json.loads((_BUNDLES / code / "ui.json").read_text(encoding="utf-8"))
 
 
 def _placeholders(s: str) -> set[str]:
@@ -57,7 +57,7 @@ def test_el_suelo_del_arranque_en_frio_dice_lo_MISMO_que_el_bundle_base():
     suelo = dict(re.findall(r'"([^"]+)":\s*"([^"]*)"', bloque.group(1)))
     assert suelo, "BOOT_FLOOR quedó vacío: el arranque en frío volvería a enseñar claves"
 
-    base = json.loads((raiz / "i18n" / "bundles" / "en.json").read_text(encoding="utf-8"))
+    base = json.loads((raiz / "i18n" / "genesis" / "en" / "ui.json").read_text(encoding="utf-8"))
     for clave, texto in suelo.items():
         assert clave in base, f"{clave} está en el suelo y NO en el bundle base — cadena huérfana"
         assert texto == base[clave], (

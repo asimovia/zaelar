@@ -34,25 +34,25 @@ SCHEMA = 2
 # Catalog of keys the system understands, WHAT each enables, and which profile it is RELEVANT for. The web uses it
 # to ask only for what the chosen profile lacks. `env` = variable(s) that provide it (the 1st non-empty one counts).
 CREDENTIALS = [
-    {"key": "aimlapi", "env": ["AIMLAPI_KEY", "FAST_API_KEY"], "enables": "FlashBrain en la nube (escalón de relevo del broker)",
+    {"key": "aimlapi", "env": ["AIMLAPI_KEY", "FAST_API_KEY"], "enables": "Cloud FlashBrain (the broker's fallback tier)",
      "profiles": ["cloud"]},
-    {"key": "deepgram", "env": ["DEEPGRAM_API_KEY"], "enables": "STT/TTS Deepgram (nube)", "profiles": ["cloud"]},
-    {"key": "mistral", "env": ["MISTRAL_API_KEY"], "enables": "STT Voxtral (Mistral, nube)", "profiles": ["cloud"]},
-    {"key": "cartesia", "env": ["CARTESIA_API_KEY"], "enables": "TTS Cartesia Sonic (nube)", "profiles": ["cloud"]},
-    {"key": "inworld", "env": ["INWORLD_API_KEY"], "enables": "TTS Inworld (nube, titular · V2-774)",
+    {"key": "deepgram", "env": ["DEEPGRAM_API_KEY"], "enables": "Deepgram STT/TTS (cloud)", "profiles": ["cloud"]},
+    {"key": "mistral", "env": ["MISTRAL_API_KEY"], "enables": "Voxtral STT (Mistral, cloud)", "profiles": ["cloud"]},
+    {"key": "cartesia", "env": ["CARTESIA_API_KEY"], "enables": "Cartesia Sonic TTS (cloud)", "profiles": ["cloud"]},
+    {"key": "inworld", "env": ["INWORLD_API_KEY"], "enables": "Inworld TTS (cloud, default · V2-774)",
      "profiles": ["cloud"]},
-    {"key": "elevenlabs", "env": ["ELEVENLABS_API_KEY"], "enables": "TTS ElevenLabs (nube, segunda opción)",
+    {"key": "elevenlabs", "env": ["ELEVENLABS_API_KEY"], "enables": "ElevenLabs TTS (cloud, second choice)",
      "profiles": ["cloud"]},
-    {"key": "openai", "env": ["OPENAI_API_KEY"], "enables": "reranker/embeddings en la nube (opcional)",
+    {"key": "openai", "env": ["OPENAI_API_KEY"], "enables": "cloud reranker/embeddings (optional)",
      "profiles": ["cloud"]},
-    {"key": "gemini", "env": ["GEMINI_API_KEY"], "enables": "FlashBrain Gemini (alternativa nube)",
+    {"key": "gemini", "env": ["GEMINI_API_KEY"], "enables": "Gemini FlashBrain (cloud alternative)",
      "profiles": []},
-    {"key": "perplexity", "env": ["PERPLEXITY_API_KEY", "PPLX_API_KEY"], "enables": "búsqueda web con síntesis (mejor)",
+    {"key": "perplexity", "env": ["PERPLEXITY_API_KEY", "PPLX_API_KEY"], "enables": "web search with synthesis (best)",
      "profiles": []},
-    {"key": "tavily", "env": ["TAVILY_API_KEY"], "enables": "búsqueda web (alternativa)", "profiles": []},
-    {"key": "brave", "env": ["BRAVE_SEARCH_KEY", "BRAVE_API_KEY"], "enables": "búsqueda web (snippets)",
+    {"key": "tavily", "env": ["TAVILY_API_KEY"], "enables": "web search (alternative)", "profiles": []},
+    {"key": "brave", "env": ["BRAVE_SEARCH_KEY", "BRAVE_API_KEY"], "enables": "web search (snippets)",
      "profiles": []},
-    {"key": "spotify", "env": ["SPOTIFY_CLIENT_ID"], "enables": "música por voz (Spotify, V2-041)",
+    {"key": "spotify", "env": ["SPOTIFY_CLIENT_ID"], "enables": "voice music (Spotify, V2-041)",
      "profiles": []},
 ]
 
@@ -65,7 +65,8 @@ def credentials() -> list[dict]:
     """REDACTED state for each known credential: `{key, enables, profiles, set: bool, env}`. `set` is only the FACT
     that a value exists — the secret NEVER leaves. Reads the env chain already loaded by `server/common.py`
     (credential store > .env > process)."""
-    return [{"key": c["key"], "enables": c["enables"], "profiles": c["profiles"],
+    from config.balances import say as _say
+    return [{"key": c["key"], "enables": _say(f"config.cred.{c['key']}.enables", c["enables"]), "profiles": c["profiles"],
              "env": c["env"], "set": _key_present(c)} for c in CREDENTIALS]
 
 

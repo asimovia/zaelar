@@ -380,7 +380,8 @@ def test_a_stalled_turn_is_a_warning_not_a_dead_provider():
         health_state.clear("llm")
 
 
-def test_a_real_provider_failure_still_goes_red():
+def test_a_real_provider_failure_still_goes_red(monkeypatch):
+    monkeypatch.setenv("ZAELAR_LANGUAGE", "es")          # the status row speaks the instance language
     """The counterweight to the previous test: downgrading a stall must not downgrade a real outage."""
     import asyncio
     import json

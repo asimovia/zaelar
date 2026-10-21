@@ -19,7 +19,7 @@ pytest.importorskip("playwright.sync_api")
 from playwright.sync_api import sync_playwright
 
 _ENGINE = pathlib.Path(__file__).resolve().parents[4]
-_EN = json.loads((_ENGINE / "i18n/bundles/en.json").read_text())
+_EN = json.loads((_ENGINE / "i18n/genesis/en/ui.json").read_text())
 
 
 def _free_port() -> int:

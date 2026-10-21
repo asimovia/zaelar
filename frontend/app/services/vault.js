@@ -50,7 +50,7 @@ export async function enrollPasskey() {
       publicKey: {
         challenge: crypto.getRandomValues(new Uint8Array(32)),
         rp: { name: "Zaelar", id: location.hostname },
-        user: { id: userId, name: "zaelar-vault", displayName: "Zaelar vault" },
+        user: { id: userId, name: "zaelar-vault", displayName: t("vault.passkey_name") },
         pubKeyCredParams: [{ type: "public-key", alg: -7 }, { type: "public-key", alg: -257 }],
         authenticatorSelection: { residentKey: "preferred", userVerification: "required" },
         extensions: { prf: { eval: { first: salt } } },

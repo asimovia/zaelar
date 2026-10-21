@@ -72,9 +72,6 @@ _MOTOR_REACH: set[tuple[str, str]] = {
     ("config/settings.py", "voice.engine.speech.tts"),
     ("config/settings.py", "voice.engine.speech.voices"),
     ("connectors/messaging/notify.py", "voice.engine.core"),
-    ("connectors/music/__init__.py", "voice.engine.core"),
-    ("connectors/music/youtube_audio.py", "voice.engine.core"),
-    ("connectors/spotify/provider.py", "voice.engine.core"),
     ("i18n/runtime.py", "voice.engine.core"),
     ("memory/state.py", "voice.engine.core"),
     ("nucleo/actionmap/store.py", "voice.engine.core"),
@@ -84,7 +81,6 @@ _MOTOR_REACH: set[tuple[str, str]] = {
     ("nucleo/flash/image_turn.py", "voice.engine.core"),
     ("nucleo/flash/listing_turn.py", "voice.engine.core"),
     ("nucleo/flash/memory_cache.py", "voice.engine.core"),
-    ("nucleo/flash/music_flow.py", "voice.engine.core"),
     ("nucleo/flash/probe.py", "voice.engine.core"),
     ("nucleo/flash/prompt.py", "voice.engine.core"),
     ("nucleo/flash/reminder_guards.py", "voice.engine.core"),
@@ -103,7 +99,6 @@ _MOTOR_REACH: set[tuple[str, str]] = {
     ("server/voice_api.py", "voice.engine.core.config"),
     ("server/voice_api.py", "voice.engine.speech.voices"),
     ("server/voice_status.py", "voice.engine.speech.voices"),   # V2-778 F1: moved with the status halves
-    ("widgets/agenda/data.py", "voice.engine.core"),
     ("widgets/navegador/launch_env.py", "voice.engine.core"),
 }
 

@@ -22,7 +22,7 @@ State lives in Archivos' own store under `db["torrents"]` and `db["section"]`; t
 caller does, once, like every other action of the widget.
 """
 from __future__ import annotations
-from widgets import hint_lang as _hl   # V2-778 F3-30: hints are read back aloud, in the agent's language
+from i18n import langs as _langs   # V2-778 F3-30: hints are read back aloud, in the agent's language
 
 import re
 import time
@@ -137,10 +137,10 @@ def refs(db: dict) -> list[dict]:
     out = []
     for i, r in enumerate((state(db).get("catalog") or {}).get("releases") or []):
         out.append({"id": str(i + 1), "label": str(r.get("title") or ""), "field": "item",
-                    "hint": _hl.pick("catálogo", "catalogue")})
+                    "hint": _langs.words("hints.catalogue", default="")})
     for r in live_rows(db):
         out.append({"id": r["id"], "label": r["title"], "field": "id",
-                    "hint": _hl.pick("semilla", "seeding") if r["group"] == "seed" else _hl.pick("descarga", "download")})
+                    "hint": _langs.words("hints.seeding" if r["group"] == "seed" else "hints.download", default="")})
     return out
 
 
@@ -290,7 +290,9 @@ def handle(db: dict, act: str, payload: dict) -> dict | None:
             magnet, title = rels[idx].get("magnet") or "", rels[idx].get("title") or ""
         res = _svc().add_magnet(magnet, keep=_keep(payload))
         if not res.get("ok"):
-            t["error"] = res.get("error") or "no pude iniciar la descarga"
+            from i18n import runtime as _rt
+            t["error"] = res.get("error") or _rt.text("widgets.archivos.err_download_start",
+                                                      default="could not start the download")
             return {"ok": False, "error": t["error"]}
         active = {r["id"] for r in live_rows(db)}
         _remember_title(t, res.get("id") or "", title, active)

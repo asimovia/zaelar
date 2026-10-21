@@ -224,42 +224,16 @@ async def _priority_translate(code: str) -> dict:
 
 
 def _pending_steps(code: str) -> list[str]:
-    """What locking `code` will actually have to GENERATE — the list is the preparing screen's reason to
-    exist (V2-731/V2-732).
-
-    Empty means the language is already initialized and locking it is bookkeeping: settings, the memory's
-    canonical language and an SSE event, all of which take a millisecond. The operator must then see NO
-    screen at all — his words, after being shown one for two seconds with nothing behind it: *«si no hay
-    que hacer nada para idiomas inicializados, mejor no mostrar NADA en ese caso»*.
-
-    Every check here is a cheap read that mirrors the early return of the step it stands for, so the count
-    cannot claim work that will not happen: `ensure_language` returns immediately for a PRESET or a bundle
-    with no missing keys, `ensure_aliases` when a pack is already on disk, `ensure_smalltalk` when a
-    phrasebook is. Asking each of them is a file read; getting it wrong is a screen that lies.
-    """
-    from i18n import runtime as _rt
-
-    if code in _rt.PRESET:
-        return []
-    steps: list[str] = []
+    """What locking `code` will actually have to GENERATE — `i18n.init.pending`, the preparing screen's reason to
+    exist (V2-731/V2-732). Empty means the language is ready and the operator must see NO screen at all: *«si no
+    hay que hacer nada para idiomas inicializados, mejor no mostrar NADA en ese caso»*."""
     try:
-        if _rt.missing_keys(code):
-            steps.append("bundle")
-    except Exception:  # noqa: BLE001 — unreadable means unknown, and unknown means we ARE going to work
-        steps.append("bundle")
-    try:
-        from i18n.init import aliases as _aliases
-        if not _aliases.read(code):
-            steps.append("aliases")
-    except Exception:  # noqa: BLE001
-        steps.append("aliases")
-    try:
-        from i18n.init import fillers as _fillers
-        if not (_fillers.read_smalltalk(code) or {}).get("intents"):
-            steps.append("smalltalk")
-    except Exception:  # noqa: BLE001
-        steps.append("smalltalk")
-    return steps
+        from i18n import init as _init
+        return _init.pending(code)
+    except Exception as e:  # noqa: BLE001 — unreadable means unknown, and unknown means we ARE going to work
+        logger.warning(f"i18n.detect: could not count the pending packs of '{code}': {e}")
+        from i18n import packs as _packs
+        return [] if code in _packs.PRESET else list(_packs.NAMES)
 
 
 async def lock(code: str, *, onboarding: bool = False) -> dict:
@@ -348,27 +322,13 @@ async def lock(code: str, *, onboarding: bool = False) -> dict:
         except Exception:
             pass
 
+    # EVERY pack, on every lock — onboarding and a ⚙ switch alike: a language is ready when the screen, what the
+    # agent says and what it understands are all in it, and the UI switches only after that (`ready` below).
     try:
         from i18n import init as _init
-        await _init.prepare(code)                   # generate/upgrade the UI bundle (preset → instant)
+        await _init.prepare(code, on_step=_step)
     except Exception as e:  # noqa: BLE001
         logger.warning(f"i18n.detect: prepare('{code}') failed: {e}")
-    _step("bundle")
-    # Alias-pack generation (V2-101) is scoped to ONBOARDING only, not every lock() — a plain ⚙ switch or a
-    # repeat background detection must stay exactly as cheap as it always was; this is deliberately not
-    # "whenever the language changes" but "as part of the first-run setup ceremony".
-    if onboarding:
-        try:
-            from i18n import runtime as _rt
-            if code not in _rt.PRESET:
-                from i18n.init import aliases as _aliases
-                await _aliases.ensure_aliases(code)      # the widget-name voice-command pack
-                _step("aliases")
-                from i18n.init import smalltalk as _smalltalk
-                await _smalltalk.ensure_smalltalk(code)  # the phrasebook (V2-674) — greetings, thanks, goodbye
-                _step("smalltalk")
-        except Exception as e:  # noqa: BLE001
-            logger.warning(f"i18n.detect: language packs for '{code}' failed: {e}")
 
     confirm_text = None
     try:

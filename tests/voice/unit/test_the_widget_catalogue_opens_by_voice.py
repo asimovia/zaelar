@@ -142,7 +142,7 @@ def test_the_tool_description_names_the_tab():
                                          ("es", "que widgets tengo disponibles"), ("en", "open the widget catalog"),
                                          ("en", "what apps do i have")])
 def test_the_seed_packs_carry_the_phrases_and_they_execute(lang, phrase):
-    pack = json.loads((ENGINE / f"nucleo/actionmap/seeds/{lang}.json").read_text(encoding="utf-8"))
+    pack = json.loads((ENGINE / f"i18n/genesis/{lang}/actionmap.json").read_text(encoding="utf-8"))
     hit = next((e for e in pack["entries"] if e.get("phrase") == phrase), None)
     assert hit, f"{lang}: no seed for {phrase!r}"
     assert hit["action"] == {"do": "show_panel", "tab": "apps", "action": "open"}
@@ -152,7 +152,7 @@ def test_the_seed_packs_carry_the_phrases_and_they_execute(lang, phrase):
 def test_the_packs_were_versioned_so_existing_installs_import_them():
     """A pack only re-imports on a version bump (`store.seed`) — new phrases in an old version reach nobody."""
     for lang in ("es", "en"):
-        pack = json.loads((ENGINE / f"nucleo/actionmap/seeds/{lang}.json").read_text(encoding="utf-8"))
+        pack = json.loads((ENGINE / f"i18n/genesis/{lang}/actionmap.json").read_text(encoding="utf-8"))
         assert pack["version"] >= 10, f"{lang}: the pack carries the apps phrases under an old version"
 
 

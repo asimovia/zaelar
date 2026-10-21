@@ -65,55 +65,79 @@ def _readable(target: str) -> str:
     return "" if (not t or _REF_RE.match(t)) else t
 
 
+def say(key: str, default: str, **params) -> str:
+    """One phase line in the INSTANCE's language (`task.phase.<key>` of the `ui` pack), English floor.
+
+    The phase is text the engine writes FOR THE SCREEN (task row, Process tab, the alive line), so it is produced
+    already in his language: an English instance read «buscando «X» en la memoria» on every row before this.
+    Placeholders are substituted literally — a target may carry braces of its own."""
+    try:
+        from i18n import runtime as _rt
+        tpl = _rt.text(f"task.phase.{key}", default=default)
+    except Exception:  # noqa: BLE001
+        tpl = default
+    for k, v in params.items():
+        tpl = tpl.replace("{" + k + "}", str(v))
+    return tpl
+
+
 # where → action → how to say it. A callable gets the target; a plain string ignores it.
 _SAY = {
     "navegador": {
-        "navigate": lambda t: f"entrando en {host_of(t)}" if t else "abriendo una página",
-        "click": lambda t: f"pulsando {_q(t)}" if _readable(t) else "pulsando en la página",
-        "type": lambda t: f"escribiendo {_q(t)}" if _readable(t) else "escribiendo en la página",
-        "scroll": lambda t: "recorriendo la página",
-        "snapshot": lambda t: "leyendo la página",
-        "look": lambda t: "mirando la página",
-        "extract": lambda t: "recogiendo lo que hay en la página",
-        "press": lambda t: "usando el teclado",
-        "back": lambda t: "volviendo atrás",
-        "conduce": lambda t: "conduciendo el navegador",
+        "navigate": lambda t: say("nav_navigate_to", "going into {host}", host=host_of(t)) if t
+        else say("nav_navigate", "opening a page"),
+        "click": lambda t: say("nav_click_on", "clicking {q}", q=_q(t)) if _readable(t)
+        else say("nav_click", "clicking on the page"),
+        "type": lambda t: say("nav_type_into", "typing {q}", q=_q(t)) if _readable(t)
+        else say("nav_type", "typing on the page"),
+        "scroll": lambda t: say("nav_scroll", "scrolling through the page"),
+        "snapshot": lambda t: say("nav_snapshot", "reading the page"),
+        "look": lambda t: say("nav_look", "looking at the page"),
+        "extract": lambda t: say("nav_extract", "collecting what's on the page"),
+        "press": lambda t: say("nav_press", "using the keyboard"),
+        "back": lambda t: say("nav_back", "going back"),
+        "conduce": lambda t: say("nav_drive", "driving the browser"),
     },
     "web": {
-        "web_search": lambda t: f"buscando {_q(t)}" if t else "buscando en la web",
-        "fetch": lambda t: f"leyendo {host_of(t)}" if t else "leyendo una página",
+        "web_search": lambda t: say("web_search_for", "searching for {q}", q=_q(t)) if t
+        else say("web_search", "searching the web"),
+        "fetch": lambda t: say("web_fetch_from", "reading {host}", host=host_of(t)) if t
+        else say("web_fetch", "reading a page"),
     },
     "memoria": {
-        "recall": lambda t: f"buscando {_q(t)} en la memoria" if t else "consultando la memoria",
-        "guarda": lambda t: "guardando lo que ha averiguado",
-        "memoria": lambda t: "consultando la memoria",
+        "recall": lambda t: say("mem_recall_for", "searching memory for {q}", q=_q(t)) if t
+        else say("mem_recall", "checking memory"),
+        "guarda": lambda t: say("mem_save", "saving what it found out"),
+        "memoria": lambda t: say("mem_recall", "checking memory"),
     },
     "widget": {
-        "read": lambda t: f"mirando {_q(t)}" if t else "mirando un widget",
-        "data": lambda t: f"escribiendo en {_q(t)}" if t else "escribiendo en un widget",
-        "show": lambda t: f"abriéndote {_q(t)}" if t else "abriéndote un widget",
-        "close": lambda t: f"cerrando {_q(t)}" if t else "cerrando un widget",
-        "opera": lambda t: "trabajando con un widget",
+        "read": lambda t: say("widget_read_of", "looking at {q}", q=_q(t)) if t else say("widget_read", "looking at a widget"),
+        "data": lambda t: say("widget_data_of", "writing in {q}", q=_q(t)) if t else say("widget_data", "writing in a widget"),
+        "show": lambda t: say("widget_show_of", "opening {q} for you", q=_q(t)) if t
+        else say("widget_show", "opening a widget for you"),
+        "close": lambda t: say("widget_close_of", "closing {q}", q=_q(t)) if t else say("widget_close", "closing a widget"),
+        "opera": lambda t: say("widget_work", "working with a widget"),
     },
     "zaelar": {
-        "ask": lambda t: "preguntándote algo",
-        "act": lambda t: "usando una herramienta de zaelar",
-        "say": lambda t: "contándote cómo va",
-        "consulta": lambda t: "consultando con zaelar",
+        "ask": lambda t: say("zaelar_ask", "asking you something"),
+        "act": lambda t: say("zaelar_act", "using a zaelar tool"),
+        "say": lambda t: say("zaelar_say", "telling you how it's going"),
+        "consulta": lambda t: say("zaelar_consult", "checking with zaelar"),
     },
     "archivo": {
-        "lee": lambda t: f"leyendo {t}" if t else "leyendo un fichero",
-        "busca": lambda t: f"buscando {_q(t)}" if t else "buscando en los ficheros",
+        "lee": lambda t: say("file_read_of", "reading {t}", t=t) if t else say("file_read", "reading a file"),
+        "busca": lambda t: say("web_search_for", "searching for {q}", q=_q(t)) if t else say("file_search", "searching the files"),
     },
-    "codigo": {"escribe": lambda t: f"escribiendo {t}" if t else "escribiendo código"},
-    "sistema": {"ejecuta": lambda t: "ejecutando un paso"},
+    "codigo": {"escribe": lambda t: say("code_write_of", "writing {t}", t=t) if t else say("code_write", "writing code")},
+    "sistema": {"ejecuta": lambda t: say("system_step", "running a step")},
 }
 
 #: What to say when we have a `where` we know and an action we do not.
 _BY_WHERE = {
-    "navegador": "conduciendo el navegador", "web": "buscando en la web", "memoria": "consultando la memoria",
-    "widget": "trabajando con un widget", "zaelar": "consultando con zaelar", "archivo": "leyendo",
-    "codigo": "escribiendo código", "sistema": "ejecutando un paso",
+    "navegador": ("nav_drive", "driving the browser"), "web": ("web_search", "searching the web"),
+    "memoria": ("mem_recall", "checking memory"), "widget": ("widget_work", "working with a widget"),
+    "zaelar": ("zaelar_consult", "checking with zaelar"), "archivo": ("reading", "reading"),
+    "codigo": ("code_write", "writing code"), "sistema": ("system_step", "running a step"),
 }
 
 
@@ -132,8 +156,8 @@ def phrase(step) -> str:
     if say is not None:
         return say(target)
     if where in _BY_WHERE:
-        return _BY_WHERE[where]
-    return f"usando {action}" if action else "trabajando"
+        return say(*_BY_WHERE[where])
+    return say("using", "using {action}", action=action) if action else say("working", "working")
 
 
 def found(n: int) -> str:
@@ -145,8 +169,8 @@ def found(n: int) -> str:
     """
     n = max(0, int(n or 0))
     if n == 0:
-        return "sin resultados en esta página"
-    return f"{n} resultado{'s' if n != 1 else ''} en la página"
+        return say("found_none", "no results on this page")
+    return say("found_one", "{n} result on the page", n=n) if n == 1 else say("found_many", "{n} results on the page", n=n)
 
 
 def still_alive(phase: str, seconds: int) -> str:
@@ -155,12 +179,20 @@ def still_alive(phase: str, seconds: int) -> str:
     A card frozen on “browsing the page” for ninety seconds is indistinguishable from a dead worker, and
     that ambiguity is the whole reason the operator asked for this: silence reads as broken.
     """
-    p = " ".join(str(phase or "").split()) or "trabajando"
+    p = " ".join(str(phase or "").split()) or say("working", "working")
     p = p.rstrip("…").rstrip()
     if seconds >= 60:
-        m = seconds // 60
-        return f"{p} — lleva {m} min"
-    return f"{p} — lleva {max(1, seconds)}s"
+        return say("alive_min", "{phase} — {m} min so far", phase=p, m=seconds // 60)
+    return say("alive_s", "{phase} — {s}s so far", phase=p, s=max(1, seconds))
+
+
+def _alive_cut(phase: str) -> str:
+    """`phase` without the age `still_alive` appended (« — lleva 2 min», « — 2 min so far»)."""
+    p = " ".join(str(phase or "").split())
+    for sep in (" — lleva ", say("alive_s", "{phase} — {s}s so far").split("{phase}")[-1].split("{")[0]):
+        if sep.strip() and sep in p:
+            p = p.split(sep)[0]
+    return p
 
 
 def narration_out(task_id: str, model: str, text: str, first_output_ms=None) -> None:
@@ -205,14 +237,14 @@ def is_mechanical(phase: str) -> bool:
     next to the embedded browser, and wrong in a sentence: rental-car-automatic-airport (2026-10-11) answered «¿cómo
     va?» with «Así va todo: … — pulsando en la página». Read off the table above, so a step added there is known
     here too; the worker's own milestone note is what a status sentence says instead."""
-    p = " ".join(str(phase or "").split()).split(" — lleva ")[0].rstrip("…. ").strip()
+    p = _alive_cut(phase).rstrip("…. ").strip()
     if not p:
         return False
-    for say in _SAY["navegador"].values():
-        bare = say("").rstrip("…. ")
-        probe = say("\x01")
+    for line in _SAY["navegador"].values():
+        bare = line("").rstrip("…. ")
+        probe = line("\x01")
         cut = probe.find("\x01")
         stem = probe[:cut].rstrip("«\"' ") if cut > 0 else ""
         if p == bare or (stem and p.startswith(stem)):
             return True
-    return p == _BY_WHERE["navegador"]
+    return p == say(*_BY_WHERE["navegador"])

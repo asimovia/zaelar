@@ -253,10 +253,29 @@ def _detected_code_agents() -> dict:
     return det
 
 
+def _localized(catalog: dict) -> dict:
+    """The catalog's human prose (labels, notes, preset costs) in the INSTANCE language: `config.catalog.<section>…`
+    in the ui pack, with the English literal above as the fallback. Ids, models and URLs are never translated, and a
+    pure brand label simply has no key. Copies all the way down: the module catalog is a constant."""
+    from i18n import runtime as _rt
+
+    def words(d: dict, base: str) -> dict:
+        return {**d, **{f: _rt.text(f"{base}.{f}", d[f]) for f in ("label", "note", "cost") if d.get(f)}}
+
+    out = {}
+    for sec, conf in catalog.items():
+        c = words(conf, f"config.catalog.{sec}")
+        for lst in ("providers", "presets"):
+            if lst in c:
+                c[lst] = [words(p, f"config.catalog.{sec}.{lst[:-1]}.{p['id']}") for p in c[lst]]
+        out[sec] = c
+    return out
+
+
 def _catalog_for_ui() -> dict:
-    """The catalog with CLI detection INJECTED into each `code_agent` provider (shallow copy: the module catalog is
-    a constant and is not mutated)."""
-    cat = dict(_PROVIDER_CATALOG)
+    """The catalog, in the instance language, with CLI detection INJECTED into each `code_agent` provider (copies:
+    the module catalog is a constant and is not mutated)."""
+    cat = _localized(_PROVIDER_CATALOG)
     try:
         det = _detected_code_agents()
         ca = dict(cat["code_agent"])

@@ -12,9 +12,16 @@
 #
 from __future__ import annotations
 
+from i18n import runtime as _rt
+
 # Descriptor for each connector:
 #   id · label · family (mensajeria|musica|infra) · auth (qr|app-password|oauth|token|cluster)
 #   connected (bool) · detail (human str) · config (REDACTED dict) · [clusters] (meshkore only)
+
+
+def _label(cid: str, default: str) -> str:
+    """A connector name the screen shows, in the instance language: `connectors.<id>.label` in pack `ui`."""
+    return _rt.text(f"connectors.{cid}.label", default=default)
 
 
 def _messaging() -> list[dict]:
@@ -54,7 +61,8 @@ def _music() -> list[dict]:
     # V2-631: the DEFAULT free source is a row too — the tab is the operator's source catalog, and the source
     # everything actually plays through was invisible in it. Always connected (no login, no key); the priority
     # rule lives in connectors/music/registry.py: a connected Spotify outranks it, YouTube-audio never goes away.
-    yt_row = {"id": "youtube-audio", "label": "YouTube (audio gratis)", "family": "musica", "auth": "none",
+    yt_row = {"id": "youtube-audio", "label": _label("youtube-audio", "YouTube (free audio)"),
+              "family": "musica", "auth": "none",
               "connected": True, "status": "connected",
               "detail": "Default free source — plays without an account. A connected Spotify takes priority.",
               "config": {}}
@@ -96,7 +104,7 @@ def _files() -> list[dict]:
                                    "default_tier": cat.get("default_tier") or ""}})
         return out
     except Exception as e:
-        return [{"id": "files", "label": "Archivos en la nube", "family": "archivos", "auth": "oauth",
+        return [{"id": "files", "label": _label("files", "Cloud files"), "family": "archivos", "auth": "oauth",
                  "connected": False, "status": "error", "detail": str(e), "config": {}}]
 
 
@@ -121,7 +129,7 @@ def _photos() -> list[dict]:
                                    "default_tier": cat.get("default_tier") or ""}})
         return out
     except Exception as e:
-        return [{"id": "photos", "label": "Fotos", "family": "fotos", "auth": "oauth",
+        return [{"id": "photos", "label": _label("photos", "Photos"), "family": "fotos", "auth": "oauth",
                  "connected": False, "status": "error", "detail": str(e), "config": {}}]
 
 
@@ -147,7 +155,7 @@ def _videoaccounts() -> list[dict]:
                                    "default_tier": cat.get("default_tier") or ""}})
         return out
     except Exception as e:
-        return [{"id": "youtube", "label": "YouTube (cuenta)", "family": "video", "auth": "oauth",
+        return [{"id": "youtube", "label": _label("youtube", "YouTube (account)"), "family": "video", "auth": "oauth",
                  "connected": False, "status": "error", "detail": str(e), "config": {}}]
 
 
@@ -237,20 +245,25 @@ def _google() -> list[dict]:
         # id "google-account", NOT "google": `_calendar()` already ships a row keyed "google" (its provider
         # id, which `widgets/agenda/data.py::_CALENDARS` matches on). Two rows with one id is a collision the
         # tab resolves by showing whichever it saw last — the account row would have eaten the calendar card.
-        return [{"id": "google-account", "label": "Google (cuenta)", "family": "infra", "auth": "oauth",
+        return [{"id": "google-account", "label": _label("google-account", "Google (account)"),
+                 "family": "infra", "auth": "oauth",
                  "connected": bool(live),
                  "status": "connected" if live else ("off" if configured else "unconfigured"),
-                 "detail": ("Una sola cuenta para Gmail, Calendar, Meet, Drive, Fotos y YouTube."
+                 "detail": (_rt.text("connectors.google-account.detail",
+                                     default="One account for Gmail, Calendar, Meet, Drive, Photos and YouTube.")
                             if configured else
-                            "Falta el cliente OAuth de Google: deja el client_secret_*.json de Google Cloud "
-                            "en .meshkore/credentials/ y se activan las seis puertas a la vez."),
+                            _rt.text("connectors.google-account.detail_unconfigured",
+                                     default="The Google OAuth client is missing: put the client_secret_*.json "
+                                             "from Google Cloud in .meshkore/credentials/ and all six doors "
+                                             "turn on at once.")),
                  "config": {"app_configured": configured, "source": st.get("source") or "",
                             "project_id": st.get("project_id") or "",
                             "web_client": bool(st.get("web_client")),
                             "redirect_uris": st.get("redirect_uris") or [],
                             "services": gsvc.public_list(), "connected_services": sorted(set(live))}}]
     except Exception as e:                                 # noqa: BLE001
-        return [{"id": "google-account", "label": "Google (cuenta)", "family": "infra", "auth": "oauth",
+        return [{"id": "google-account", "label": _label("google-account", "Google (account)"),
+                 "family": "infra", "auth": "oauth",
                  "connected": False, "status": "error", "detail": str(e), "config": {}}]
 
 

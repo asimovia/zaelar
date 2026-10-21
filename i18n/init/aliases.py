@@ -19,33 +19,20 @@ Deliberately scoped to the SYSTEM SURFACES only — never `voice/attention.py`'s
 from __future__ import annotations
 
 import json
-import os
-from pathlib import Path
+
 
 from loguru import logger
 
-from nucleo import workspace as _workspace
-
-_GEN_DIR = _workspace.root() / "i18n" / "generated"
-
-
-def _path(code: str) -> Path:
-    return _GEN_DIR / f"{code}.aliases.json"
+from i18n import packs as _packs
 
 
 def read(code: str) -> dict[str, list[str]]:
     """The generated alias pack for `code` — {surface_id: [alias, ...]}, or {} if never generated."""
-    try:
-        return json.loads(_path(code).read_text(encoding="utf-8"))
-    except Exception:
-        return {}
+    return _packs.generated("aliases", code)
 
 
 def _save(code: str, pack: dict[str, list[str]]) -> None:
-    _GEN_DIR.mkdir(parents=True, exist_ok=True)
-    tmp = _path(code).with_suffix(".aliases.json.tmp")
-    tmp.write_text(json.dumps(pack, ensure_ascii=False, indent=2), encoding="utf-8")
-    os.replace(tmp, _path(code))
+    _packs.write_json(_packs.generated_path(code, "aliases"), pack)
 
 
 def _system(lang_name: str) -> str:
@@ -91,8 +78,19 @@ def _generate_sync(code: str) -> dict[str, list[str]]:
     from widgets.system_surfaces import SYSTEM_SURFACES
 
     payload = {sid: {"name": s["name"], "examples": s["aliases"][:4]} for sid, s in SYSTEM_SURFACES.items()}
+    # The widgets too (2026-10-21): a card answered only to the es/en words in its manifest, so a French
+    # operator could read its translated name and not open it with a word of his own. Keyed `widget:<id>`.
+    try:
+        from widgets import runtime as _wrt
+        for w in _wrt.catalog():
+            wid = str(w.get("id") or "")
+            if wid and not wid.startswith("_"):
+                payload[f"widget:{wid}"] = {"name": str(w.get("name") or wid),
+                                            "examples": list(w.get("aliases") or w.get("keywords") or [])[:4]}
+    except Exception as e:  # noqa: BLE001 — the system surfaces alone are still worth a pack
+        logger.warning(f"i18n.aliases: widget catalog unavailable, surfaces only: {e}")
     raw = memllm.chat_sync("i18n", _system(language_name(code)), json.dumps(payload, ensure_ascii=False),
-                           max_tokens=2000, temperature=0.2, timeout=60.0)
+                           max_tokens=4000, temperature=0.2, timeout=90.0)
     return _parse(raw or "")
 
 

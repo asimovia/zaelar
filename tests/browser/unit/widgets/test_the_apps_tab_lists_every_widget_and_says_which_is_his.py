@@ -23,7 +23,7 @@ import pytest
 from tests.waiting import until_sync
 
 ENGINE = Path(__file__).resolve().parents[4]
-_ES = json.loads((ENGINE / "i18n/bundles/es.json").read_text(encoding="utf-8"))
+_ES = json.loads((ENGINE / "i18n/genesis/es/ui.json").read_text(encoding="utf-8"))
 
 _REGISTRY = {"registry": [
     {"id": "musica", "name": "Música", "aliases": [], "surface": "user", "origin": "builtin", "forked": False},

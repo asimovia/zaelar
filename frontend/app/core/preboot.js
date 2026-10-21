@@ -38,7 +38,7 @@
   // keeps of the engine's active language and its bundle, so a reload speaks what the agent speaks — Chinese
   // included — before a single request. It used to read `navigator.language`: an English instance in a Spanish
   // browser booted in Spanish. With no mirror yet (the very first visit) it is English, the product's default.
-  // The English floor below must equal `preboot.*` in i18n/bundles/en.json (test_the_boot_speaks_the_instance_language).
+  // The English floor below must equal `preboot.*` in i18n/genesis/en/ui.json (test_the_boot_speaks_the_instance_language).
   var FLOOR = {
     "preboot.wake.title": "Waking up your agent",
     "preboot.boot.title": "Getting your agent ready",

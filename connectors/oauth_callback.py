@@ -38,6 +38,22 @@ import json
 _CLOSE_AFTER_MS = 2500
 
 
+def lang() -> str:
+    """The instance language code — what the page declares in `<html lang>`, so the browser reads it right."""
+    from i18n import runtime as _rt
+    return _rt.active_code()
+
+
+def text(key: str, default: str, **params) -> str:
+    """One sentence of an account page, in the instance language (pack `ui`, English fallback). Every door's
+    label, success line and error detail goes through here, so no page is left speaking a hardcoded language."""
+    from i18n import runtime as _rt
+    out = _rt.text(key, default=default)
+    for k, v in params.items():
+        out = out.replace("{" + k + "}", str(v))
+    return out
+
+
 def page(ok: bool, detail: str, *, family: str, provider: str = "", label: str = "",
          done: str = "", close_after_ms: int = _CLOSE_AFTER_MS) -> str:
     """The callback page, identical for every door.
@@ -46,14 +62,16 @@ def page(ok: bool, detail: str, *, family: str, provider: str = "", label: str =
     `archivos`) — the canvas routes the refresh by it. `label` names the service to the operator; `done`
     overrides the success sentence when a connector has something more useful to say.
     """
-    label = label or "La cuenta"
-    title = f"{label} conectado" if ok else "No se pudo conectar"
+    label = label or text("oauth.page.account", "The account")
+    title = text("oauth.page.connected", "{label} connected", label=label) if ok else \
+        text("oauth.page.failed", "Could not connect")
     icon = "✅" if ok else "⚠️"
-    body = (done or "Ya puedes volver a la tarjeta de zaelar. Esta ventana se cierra sola.") if ok else \
-        f"Detalle: {detail}. Cierra esta ventana e inténtalo de nuevo desde la tarjeta."
+    body = (done or text("oauth.page.done", "You can go back to your zaelar card. This window closes by itself.")) \
+        if ok else text("oauth.page.detail", "Detail: {detail}. Close this window and try again from the card.",
+                        detail=detail)
     msg = json.dumps({"zaelar": "connector", "family": family, "provider": provider, "ok": bool(ok)})
     return (
-        "<!doctype html><html lang='es'><head><meta charset='utf-8'>"
+        f"<!doctype html><html lang='{html.escape(lang())}'><head><meta charset='utf-8'>"
         "<meta name='viewport' content='width=device-width,initial-scale=1'>"
         f"<title>{html.escape(title)}</title>"
         "<style>body{font-family:system-ui,-apple-system,sans-serif;background:#0f1115;color:#e6e6e6;"

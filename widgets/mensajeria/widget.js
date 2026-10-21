@@ -648,9 +648,9 @@ function fmtWhen(ts){
   const t = Number(ts||0);
   if(!t) return "";
   const d = new Date(t*1000), now = new Date();
-  const hm = d.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
+  const hm = d.toLocaleTimeString(_LANG, {hour:"2-digit", minute:"2-digit"});
   if(d.toDateString() === now.toDateString()) return hm;
-  return d.toLocaleDateString([], {day:"numeric", month:"short"}) + " " + hm;
+  return d.toLocaleDateString(_LANG, {day:"numeric", month:"short"}) + " " + hm;
 }
 
 // V2-616 F5 — a real seek control, wide, FIXED width regardless of the clip's length. The operator: WhatsApp's
@@ -826,7 +826,7 @@ function settingsPanel(platforms, data, ctx, rerender){
       const win = cfg.hours ? (" · " + cfg.hours) : "";
       chip.append(document.createTextNode("🤖 " + ((PLAT[p]||{}).label||p) + win + " — «" +
                                           String(cfg.text||"").slice(0,80) + "»"));
-      const off = el("span","lk","quitar");
+      const off = el("span","lk",tt("autoresp_remove", null, "quitar"));
       off.onclick = ()=>{ off.textContent="…"; ctx.action("clear_autoresponder", {platform: p}); };
       chip.append(document.createTextNode(" · "), off);
       box.appendChild(chip);
@@ -840,7 +840,7 @@ function settingsPanel(platforms, data, ctx, rerender){
     const row = el("div","conns");
     muted.forEach(m=>{
       const chip=el("span","ok"); chip.append(document.createTextNode("🔇 "+m.group));
-      const lk=el("span","lk","reactivar");
+      const lk=el("span","lk",tt("unhide", null, "reactivar"));
       // ZAELAR-FIX (2026-07-08): previously chatId:null was sent, so unhide never reactivated anything because
       // data.py requires chat_id is not None. m.chatId comes from view_data itself and must be sent back.
       lk.onclick=()=>{ lk.textContent="…"; ctx.action("unhide", {platform:m.platform, chatId:m.chatId}); };
@@ -1433,7 +1433,7 @@ function connectPrompt(platforms, ctx){
 // The fallback is, byte for byte, the string that used to be hardcoded here — so a widget rendered outside the
 // engine (a render test, a headless DOM stub) shows exactly what it showed before, and only an engine with a
 // bundle loaded shows the operator's own language.
-let _T = null;
+let _T = null, _LANG = "en";   // instance language (ctx.lang) — dates never follow the browser locale
 function tt(key, params, fb){
   try{
     if(_T){ const s=_T("widgets.mensajeria."+key, params); if(s && s!=="widgets.mensajeria."+key) return s; }
@@ -1445,6 +1445,7 @@ function tt(key, params, fb){
 
 export function render(root, data, ctx){
   _T = (ctx && typeof ctx.t === "function") ? ctx.t : null;
+  _LANG = (ctx && ctx.lang) || "en";
   injectStyles();
   root.className="hb-msg";
   root.textContent="";

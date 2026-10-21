@@ -81,7 +81,7 @@ export function StatusPanel() {
         let items = (store.status().items || []).map((it) =>
           (it.key === "voice" && it.state !== "error" ? { ...it, ...voiceStatus() } : it));
         if (!items.some((it) => it.key === "voice")) {
-          items = [...items, { key: "voice", label: "Voice system", group: "core", ...voiceStatus() }];
+          items = [...items, { key: "voice", label: t("status.row.voice"), group: "core", ...voiceStatus() }];
         }
         if (!items.length) return h("div", { class: "cron-empty" }, () => t("status.checking"));
         const core = items.filter((it) => (it.group || "core") === "core");

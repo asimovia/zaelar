@@ -86,7 +86,7 @@ def test_every_live_family_has_a_name_in_BOTH_bundles(bundle):
     """`t()` returns the KEY when a string is missing and the key is truthy, so a family with no entry
     renders the literal `chat.connFamily.video` on screen — V2-538 already paid for that exact trap, and
     `connFamilySections`'s own comment forbids a `|| fam` fallback that would hide it again."""
-    data = json.loads((ENGINE / "i18n" / "bundles" / f"{bundle}.json").read_text(encoding="utf-8"))
+    data = json.loads((ENGINE / "i18n" / "genesis" / bundle / "ui.json").read_text(encoding="utf-8"))
     missing = [f for f in _families() if f"chat.connFamily.{f}" not in data]
     assert not missing, f"[{bundle}] live families with no name: {missing}"
 

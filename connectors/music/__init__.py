@@ -18,33 +18,11 @@ logger = logging.getLogger("zaelar.music")
 _CONTROL = {"pause", "resume", "next", "previous", "stop"}
 _VOLUME = {"volume_up", "volume_down", "set_volume"}
 
-# Speakable messages by operator language (monolingual, V2-013; es/en are the verified voice languages). The provider
-# fills its own `message`; these cover seam cases (no provider / unsupported language).
-_MSG = {
-    "es": {
-        "no_provider": ("No tengo ninguna cuenta de música conectada. Conéctame Spotify (u otra) desde la "
-                        "configuración y podré ponerte lo que quieras."),
-        "done": "Hecho.",
-    },
-    "en": {
-        "no_provider": ("I don't have a music account connected yet. Connect Spotify (or another) from settings "
-                        "and I'll play whatever you like."),
-        "done": "Done.",
-    },
-}
-
-
-def _lang() -> str:
-    try:
-        from voice.engine.core import langs
-        code = (langs.current_code() or "es").lower()
-        return code if code in _MSG else "es"
-    except Exception:
-        return "es"
-
-
 def _msg(key: str) -> str:
-    return _MSG[_lang()][key]
+    """A seam line (no provider / a provider failure) in the active language — the words live in the `voice`
+    pack (`music.<key>`), so a generated language says its own and never inherits Spanish."""
+    from i18n import langs as _langs
+    return _langs.words(f"music.{key}", default="")
 
 
 def active_provider(prefer: str = "") -> "MusicProvider | None":

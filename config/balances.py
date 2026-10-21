@@ -18,10 +18,22 @@ import time
 
 import httpx
 
+from i18n import runtime as _rt
+
 _TTL = 300.0                       # s — each balance is probed at most every 5 min
 _TIMEOUT = 6.0
 _lock = threading.Lock()
 _cache: dict[str, tuple[float, dict]] = {}    # service -> (ts, result)
+
+
+def say(key: str, default: str, **params) -> str:
+    """One line the status surfaces show, in the INSTANCE language (active → English → `default`), with `{name}`
+    params. A generated bundle that mangled a placeholder must not take a status read down: it falls back to `default`."""
+    s = _rt.text(key, default)
+    try:
+        return s.format(**params) if params else s
+    except (KeyError, IndexError, ValueError):
+        return default.format(**params) if params else default
 
 
 # ── provider probes (only those that EXPOSE balance) ───────────────────────────────────────────────────────
@@ -36,7 +48,7 @@ def _probe_elevenlabs(key: str) -> dict | None:
             # read permission" (unknown). Only a REAL auth failure is an error.
             body = (r.text or "").lower()
             if "missing_permission" in body or "user_read" in body or "permission" in body:
-                return {"state": "unknown", "detail": "activa · la key no puede leer el saldo (permiso user_read)"}
+                return {"state": "unknown", "detail": say("status.bal.scoped_key", "active · the key cannot read the balance (user_read permission)")}
             # A GENUINELY dead key must also reach the ◉ TTS row, not only the APIs section (2026-09-10):
             # with only the presence check, the panel said «ok · Voz ElevenLabs» over a key every synthesis
             # would 401 — the exact «up and green while broken» shape the monitor exists to prevent.
@@ -45,11 +57,11 @@ def _probe_elevenlabs(key: str) -> dict | None:
                 health_state.record("tts", "auth", "clave de ElevenLabs inválida o caducada")
             except Exception:
                 pass
-            return {"state": "error", "detail": "credencial inválida o caducada"}
+            return {"state": "error", "detail": say("status.bal.bad_or_expired", "invalid or expired credential")}
         if r.status_code == 429:
-            return {"state": "error", "detail": "SIN SALDO/cuota"}
+            return {"state": "error", "detail": say("status.detail.no_credit", "NO BALANCE/quota")}
         if r.status_code >= 400:
-            return {"state": "unknown", "detail": "no se pudo consultar"}
+            return {"state": "unknown", "detail": say("status.bal.unreadable", "could not be checked")}
         d = r.json()
         used = int(d.get("character_count") or 0)
         limit = int(d.get("character_limit") or 0)
@@ -60,9 +72,10 @@ def _probe_elevenlabs(key: str) -> dict | None:
             state = "error"                       # exhausted
         elif pct is not None and pct >= 0.85:
             state = "warn"                         # nearly exhausted
+        unit = say("status.bal.characters", "characters")
         return {"state": state, "used": used, "limit": limit, "remaining": remaining,
-                "unit": "caracteres", "tier": d.get("tier"),
-                "detail": (f"{used:,}/{limit:,} caracteres" if limit else f"{used:,} caracteres")}
+                "unit": unit, "tier": d.get("tier"),
+                "detail": (f"{used:,}/{limit:,} {unit}" if limit else f"{used:,} {unit}")}
     except Exception:
         return None                                # fail-open → unknown
 
@@ -70,13 +83,13 @@ def _probe_elevenlabs(key: str) -> dict | None:
 def _zai_credits_verdict(status_code: int, body: str) -> dict:
     """Map the 1-token probe's answer to a wallet state. Pure, so the mapping is testable without a network."""
     if status_code == 200:
-        return {"state": "ok", "detail": "con saldo · MEDIDO: sirve completions (cartera de PAGO POR USO)"}
+        return {"state": "ok", "detail": say("status.bal.zai_ok", "has balance · MEASURED: serves completions (PAY-PER-USE wallet)")}
     low = (body or "").lower()
     if "1113" in low or "insufficient" in low:
-        return {"state": "error", "detail": "sin saldo (1113) · cartera de pago por uso"}
+        return {"state": "error", "detail": say("status.bal.zai_dry", "no balance (1113) · pay-per-use wallet")}
     if status_code in (401, 403):
-        return {"state": "error", "detail": "credencial inválida para paas/v4"}
-    return {"state": "unknown", "detail": f"no se pudo medir (HTTP {status_code})"}
+        return {"state": "error", "detail": say("status.bal.zai_bad_key", "invalid credential for paas/v4")}
+    return {"state": "unknown", "detail": say("status.bal.unmeasurable", "could not be measured (HTTP {code})", code=status_code)}
 
 
 def _probe_zai_credits(key: str) -> dict | None:
@@ -115,17 +128,17 @@ def balance(service: str, refresh: bool = False) -> dict:
     """Balance for ONE service (cached). `{state: ok|warn|error|unknown|no_key, ...}`. Never raises."""
     envs, probe = _PROBES.get(service, (None, None))
     if probe is None:
-        return {"state": "unknown", "detail": "el proveedor no expone saldo"}
+        return {"state": "unknown", "detail": say("status.bal.no_balance_api", "the provider does not expose a balance")}
     key = _key_for(envs)
     if not key:
-        return {"state": "no_key", "detail": "sin credencial"}
+        return {"state": "no_key", "detail": say("status.bal.no_credential", "no credential")}
     now = time.time()
     if not refresh:
         with _lock:
             hit = _cache.get(service)
         if hit and (now - hit[0]) < _TTL:
             return hit[1]
-    res = probe(key) or {"state": "unknown", "detail": "no se pudo consultar"}
+    res = probe(key) or {"state": "unknown", "detail": say("status.bal.unreadable", "could not be checked")}
     with _lock:
         _cache[service] = (now, res)
     return res
@@ -156,11 +169,13 @@ _REACTIVE_MAP = {
     "aimlapi": ["llm"], "xai": ["llm"], "groq": ["llm"], "gemini": ["llm"],
     "deepgram": ["stt", "tts"], "mistral": ["stt"], "cartesia": ["tts"], "elevenlabs": ["tts"], "inworld": ["tts"],
 }
-_CREDIT_KIND = {"credit": ("error", "SIN SALDO/cuota"), "auth": ("error", "credencial inválida"),
-                "outage": ("warn", "el proveedor no responde"),
+# (state, i18n key, English default) — resolved at READ time, so the line follows the instance language.
+_CREDIT_KIND = {"credit": ("error", "status.detail.no_credit", "NO BALANCE/quota"),
+                "auth": ("error", "status.detail.bad_credential", "invalid credential"),
+                "outage": ("warn", "status.bal.provider_down", "the provider is not responding"),
                 # `slow` (2026-08-12) = ONE turn got stuck and was cut. It is a warning, not a provider outage:
                 # saying "not responding" about something that answers before and after sends us hunting a non-bug.
-                "slow": ("warn", "un turno se atascó")}
+                "slow": ("warn", "status.detail.turn_stuck", "one turn got stuck")}
 
 
 def summary(refresh: bool = False) -> list[dict]:
@@ -179,7 +194,7 @@ def summary(refresh: bool = False) -> list[dict]:
                 "state": "off", "detail": ""}
         if not c.get("set"):
             item["state"] = "off"
-            item["detail"] = "sin credencial"
+            item["detail"] = say("status.bal.no_credential", "no credential")
             out.append(item)
             continue
         # 1) proactive balance if the provider exposes it
@@ -190,13 +205,13 @@ def summary(refresh: bool = False) -> list[dict]:
             item["balance"] = {k: bal[k] for k in ("used", "limit", "remaining", "unit", "tier") if k in bal}
         else:
             item["state"] = "ok"
-            item["detail"] = "activa" + (" · no expone saldo" if svc not in _PROBES else "")
+            item["detail"] = say("status.bal.active", "active") + (" · " + say("status.bal.no_balance_short", "does not expose a balance") if svc not in _PROBES else "")
         # 2) reactive: a recent error (credit/auth) WINS over "ok"
         react = _reactive(_REACTIVE_MAP.get(svc, []))
         if react:
-            st, txt = _CREDIT_KIND.get(react["kind"], ("warn", "problema reciente"))
+            st, key, default = _CREDIT_KIND.get(react["kind"], ("warn", "status.bal.recent_problem", "recent problem"))
             item["state"] = st
-            item["detail"] = txt
+            item["detail"] = say(key, default)
             item["last_error"] = (react.get("text") or "")[:120]
         out.append(item)
     return out
@@ -218,8 +233,9 @@ def worker_providers() -> list[dict]:
         # "IN USE" means it is WORKING, not that it would be chosen — those are two different things, and confusing
         # them made the row lie in both halves: it said "IN USE · available" for a provider that was serving nobody
         # (the relay had moved it aside) and whose window was still exhausted.
-        mark = "EN USO · " if t.get("serving") else ("PRÓXIMO · " if t.get("active") else "")
-        out.append({"key": f"worker:{t['name']}", "enables": f"procesos de fondo · {t.get('plan', '')}",
+        mark = (say("status.bal.in_use", "IN USE") + " · " if t.get("serving")
+                else (say("status.bal.next", "NEXT") + " · " if t.get("active") else ""))
+        out.append({"key": f"worker:{t['name']}", "enables": say("status.bal.background", "background processes") + f" · {t.get('plan', '')}",
                     "set": True, "state": t["state"], "detail": mark + t.get("detail", "")})
     # V2-517 (operator, 2026-08-31): z.ai has TWO wallets — the coding-plan quota and the pay-per-use
     # credits (paas/v4). A flat red "z.ai out of quota" reads as "z.ai dead", which is false when the OTHER
@@ -232,17 +248,17 @@ def worker_providers() -> list[dict]:
         if bal.get("state") not in (None, "no_key"):
             # The good news must survive the alerts() filter (the panel only shows warn/error rows), so it
             # rides ON the plan's red row — one row, the complete truth — besides its own summary row.
-            note = {"ok": " · la 2ª cartera (pago por uso) CON saldo ✓ — medido",
-                    "error": " · la 2ª cartera (pago por uso) también sin saldo"}.get(bal.get("state"), "")
+            note = {"ok": " · " + say("status.bal.zai_second_ok", "the 2nd wallet (pay-per-use) HAS balance ✓ — measured"),
+                    "error": " · " + say("status.bal.zai_second_dry", "the 2nd wallet (pay-per-use) is out of balance too")}.get(bal.get("state"), "")
             if note:
                 for r in out:
                     if r["key"] == "worker:z.ai":
                         r["detail"] += note
-            out.append({"key": "worker:z.ai-creditos", "enables": "la SEGUNDA cartera de z.ai (paas/v4)",
+            out.append({"key": "worker:z.ai-creditos", "enables": say("status.bal.zai_second_wallet", "z.ai's SECOND wallet (paas/v4)"),
                         "set": True, "state": bal.get("state", "unknown"), "detail": bal.get("detail", "")})
     if tiers and all(t["state"] != "ok" for t in tiers):
-        out.append({"key": "worker:sin-relevo", "enables": "procesos de fondo", "set": True, "state": "error",
-                    "detail": "NINGÚN proveedor con cuota — los procesos de fondo no pueden correr"})
+        out.append({"key": "worker:sin-relevo", "enables": say("status.bal.background", "background processes"), "set": True, "state": "error",
+                    "detail": say("status.bal.workers_none", "NO provider with quota — background processes cannot run")})
     # BLIND ≠ DOWN (2026-08-10). Separate row because it is a different problem with a different fix: the provider's
     # model responds, but its search/read tools are out of quota → the worker reasons without being able to inspect
     # anything. Without this row, the panel said "everything ok" while the worker delivered conclusions without
@@ -251,8 +267,8 @@ def worker_providers() -> list[dict]:
         from voice import health_state
         rec = health_state.get("worker_tools")
         if rec:
-            out.append({"key": "worker:tools", "enables": "búsqueda y lectura web DE los workers", "set": True,
-                        "state": "error", "detail": rec.get("text") or "herramientas del proveedor sin cuota"})
+            out.append({"key": "worker:tools", "enables": say("status.bal.worker_tools", "the workers' web search and reading"), "set": True,
+                        "state": "error", "detail": rec.get("text") or say("status.bal.worker_tools_dry", "the provider's tools are out of quota")})
     except Exception:
         pass
     return out
@@ -270,12 +286,12 @@ def cluster_providers() -> list[dict]:
         return []
     out = []
     for t in tiers:
-        out.append({"key": f"cluster:{t['name']}", "enables": f"cerebro de cluster (off-voz) · {t.get('plan', '')}",
+        out.append({"key": f"cluster:{t['name']}", "enables": say("status.bal.cluster_brain_offvoice", "cluster brain (off-voice)") + f" · {t.get('plan', '')}",
                     "set": True, "state": t["state"],
-                    "detail": ("EN USO · " if t.get("active") else "") + t.get("detail", "")})
+                    "detail": (say("status.bal.in_use", "IN USE") + " · " if t.get("active") else "") + t.get("detail", "")})
     if tiers and all(t["state"] != "ok" for t in tiers):
-        out.append({"key": "cluster:sin-relevo", "enables": "cerebro de cluster", "set": True, "state": "error",
-                    "detail": "NINGÚN proveedor con cuota — el canal de cluster no puede responder"})
+        out.append({"key": "cluster:sin-relevo", "enables": say("status.bal.cluster_brain", "cluster brain"), "set": True, "state": "error",
+                    "detail": say("status.bal.cluster_none", "NO provider with quota — the cluster channel cannot answer")})
     return out
 
 

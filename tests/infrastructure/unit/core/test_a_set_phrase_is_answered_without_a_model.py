@@ -152,14 +152,15 @@ def test_normalization_does_not_delete_a_non_latin_script():
         assert smalltalk._norm(text), f"{text!r} normalized to nothing"
 
 
-def test_a_generated_pack_wins_over_the_hardcoded_table(monkeypatch):
-    fake = {"vocatives": ["tio"], "joiners": ["y"],
-            "intents": {"greeting": {"cues": ["buenas"], "replies": ["¡Muy buenas!"]}}}
-    monkeypatch.setattr("i18n.init.fillers.read_smalltalk", lambda code: fake)
-    book = langs.smalltalk_book("es")
-    assert book["intents"]["greeting"]["replies"] == ["¡Muy buenas!"]
-    # …and an intent the pack did NOT translate keeps the hardcoded one instead of disappearing.
-    assert book["intents"]["thanks"]["replies"]
+def test_a_generated_pack_is_the_book_of_its_language(monkeypatch):
+    """A shipped language reads its genesis book; any other reads the one generated for it at onboarding."""
+    from i18n import packs
+    fake = {"vocatives": ["mec"], "joiners": ["et"],
+            "intents": {"greeting": {"cues": ["salut"], "replies": ["Salut !"]}}}
+    monkeypatch.setattr(packs, "generated", lambda name, code: fake if (name, code) == ("smalltalk", "fr") else {})
+    book = langs.smalltalk_book("fr")
+    assert book["intents"]["greeting"]["replies"] == ("Salut !",)
+    assert langs.smalltalk_book("es")["intents"]["thanks"]["replies"], "a shipped book is never replaced"
 
 
 def test_the_generated_pack_never_carries_the_behavioural_flags():

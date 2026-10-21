@@ -31,7 +31,7 @@ def in_language(text: str, code: str, *, strict: bool = False) -> bool:
     translates our own phases itself)."""
     from nucleo.flash import outgoing_lang as _ol
     lang = _ol.language_of(text)
-    code = str(code or "es")[:2]
+    code = str(code or "en")[:2]
     if code == "es":
         return lang != "en"
     if code == "en" and not strict:

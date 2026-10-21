@@ -1,45 +1,64 @@
 """
-i18n.init.ensure — the idempotent language readiness check (V2-089).
+i18n.init.ensure — the idempotent readiness check of a TRANSLATED pack (V2-089; every pack since 2026-10-21).
 
-ONE function, run at boot / after a language switch / after an upgrade: does the active language have every
-manifest key at its CURRENT English source? If yes → instant no-op. If not (brand-new language, or new keys
-shipped in an update), translate JUST the missing/changed keys with the LLM and persist them. First-run and
-upgrade take the exact same path — the difference is only how many keys are missing.
+ONE function, run at boot / after a language switch / after an upgrade: does the language have every string of
+the English pack at its CURRENT English source? If yes → instant no-op. If not (brand-new language, or new keys
+shipped in an update), translate JUST the missing/changed strings with the LLM and persist them. First-run and
+upgrade take the exact same path — the difference is only how many strings are missing.
+
+A pack is flattened to its string leaves («mute_lines.2», «chat.send») so the UI table and the agent's spoken
+table go through the same diff and the same translator; what is not a string (flags, numbers) is never sent.
 
 This is INITIALIZATION, not execution: it may call an LLM and take a few seconds, so callers gate it behind the
-'preparing language' boot veil. The hot path (i18n.runtime) never touches this.
+'preparing language' veil. The hot path (i18n.runtime, i18n.langs) never touches this.
 """
 from __future__ import annotations
 
 from loguru import logger
 
-from i18n import runtime as _rt, store as _store
+from i18n import packs as _packs, runtime as _rt, store as _store
 
 
-async def ensure_language(code: str) -> dict:
-    """Make `code` complete against the manifest. Returns {code, generated, total, missing_before}."""
-    code = (code or _rt.BASE).strip().lower()
-    man = _rt.manifest()
-    total = len(man)
+def manifest(name: str) -> dict[str, str]:
+    """The English strings of a pack, flat: {path: english}."""
+    return _rt.manifest() if name == "ui" else _packs.texts(name, _packs.preset(name, _packs.BASE))
 
-    if code in _rt.PRESET:
-        return {"code": code, "generated": 0, "total": total, "missing_before": 0}
 
-    missing = _rt.missing_keys(code)
-    if not missing:
-        return {"code": code, "generated": 0, "total": total, "missing_before": 0}
+def missing(code: str, name: str) -> list[str]:
+    """Strings `code` still needs in pack `name`: absent, or whose English changed since it was translated."""
+    code = (code or _packs.BASE).strip().lower()
+    if code in _packs.PRESET:
+        return []
+    man = manifest(name)
+    gen = _store.read(code, name)
+    strings, src = gen.get("strings") or {}, gen.get("src") or {}
+    return [k for k, en in man.items() if k not in strings or src.get(k) != en]
 
-    logger.info(f"i18n.init: language '{code}' missing {len(missing)}/{total} keys — generating…")
+
+async def ensure_pack(code: str, name: str) -> dict:
+    """Make pack `name` of `code` complete against English. Returns {code, pack, generated, total, missing_before}."""
+    code = (code or _packs.BASE).strip().lower()
+    man = manifest(name)
+    todo = missing(code, name)
+    if not todo:
+        return {"code": code, "pack": name, "generated": 0, "total": len(man), "missing_before": 0}
+
+    logger.info(f"i18n.init: '{code}' {name} missing {len(todo)}/{len(man)} strings — generating…")
     from i18n.init import generate
-    translated = await generate.translate(code, {k: man[k] for k in missing})
-
-    gen = _store.read(code)
-    strings = dict(gen.get("strings", {}))
-    src = dict(gen.get("src", {}))
+    translated = await generate.translate(code, {k: man[k] for k in todo},
+                                          register="ui" if name == "ui" else "speech")
+    gen = _store.read(code, name)
+    strings, src = dict(gen.get("strings") or {}), dict(gen.get("src") or {})
     for k, v in (translated or {}).items():
         if isinstance(v, str) and v.strip():
             strings[k] = v
             src[k] = man[k]                       # snapshot the English we translated FROM (upgrade diff)
-    _store.save(code, _rt.MANIFEST_VERSION, strings, src)
-    logger.info(f"i18n.init: language '{code}' generated {len(translated or {})} keys.")
-    return {"code": code, "generated": len(translated or {}), "total": total, "missing_before": len(missing)}
+    _store.save(code, _rt.MANIFEST_VERSION, strings, src, name=name)
+    logger.info(f"i18n.init: '{code}' {name} generated {len(translated or {})} strings.")
+    return {"code": code, "pack": name, "generated": len(translated or {}), "total": len(man),
+            "missing_before": len(todo)}
+
+
+async def ensure_language(code: str) -> dict:
+    """The UI pack — the historical name every caller of the first version still uses."""
+    return await ensure_pack(code, "ui")

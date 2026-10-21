@@ -273,8 +273,8 @@ check("every card presents the SAME box, whatever the widget's size",
 // missing, and a key is TRUTHY — so `t("x") || "fallback"` is dead code that READS like a working fallback, and
 // the phone renders a literal `mobile.empty_title` on screen. Checking the base bundle also covers GENERATED
 // languages, since i18n init diffs against English.
-const EN = JSON.parse(read("i18n", "bundles", "en.json"));
-const ES = JSON.parse(read("i18n", "bundles", "es.json"));
+const EN = JSON.parse(read("i18n", "genesis", "en", "ui.json"));
+const ES = JSON.parse(read("i18n", "genesis", "es", "ui.json"));
 const shellFiles = readdirSync(join(ENGINE, "frontend", "mobile", "app", "shell"))
   .filter((f) => f.endsWith(".js"))
   .map((f) => ["frontend", "mobile", "app", "shell", f]);

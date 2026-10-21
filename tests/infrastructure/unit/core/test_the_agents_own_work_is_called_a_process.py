@@ -30,7 +30,7 @@ import re
 import pytest
 
 ENGINE = pathlib.Path(__file__).resolve().parents[4]
-BUNDLES = ENGINE / "i18n" / "bundles"
+BUNDLES = ENGINE / "i18n" / "genesis"
 
 #: Key PREFIXES where «tarea»/«task» means the OPERATOR's own task and is therefore correct.
 _HIS_OWN = ("widgets.agenda.", "reset.confirm.body", "memory.zone_long_sub")
@@ -40,7 +40,7 @@ _EN = re.compile(r"\btasks?\b", re.I)
 
 
 def _bundle(lang: str) -> dict:
-    return json.loads((BUNDLES / f"{lang}.json").read_text(encoding="utf-8"))
+    return json.loads((BUNDLES / lang / "ui.json").read_text(encoding="utf-8"))
 
 
 @pytest.mark.parametrize("lang,rx", [("es", _ES), ("en", _EN)])

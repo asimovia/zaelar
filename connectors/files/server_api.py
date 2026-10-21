@@ -22,6 +22,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 
 from connectors import oauth_base as _b
 from connectors.files import oauth, providers, service
+from connectors.oauth_callback import text as _ocb_text
 
 router = APIRouter()
 
@@ -59,7 +60,8 @@ async def connect(request: Request, payload: dict | None = None):
 @router.get("/api/cloudfiles/callback")
 async def callback(code: str = "", state: str = "", error: str = ""):
     if error:
-        return HTMLResponse(_page(False, f"el proveedor devolvió un error: {error}"))
+        return HTMLResponse(_page(False, _ocb_text("oauth.err.provider", "the provider returned an error: {error}",
+                                                        error=error)))
     res = oauth.exchange_code(code, state)
     # V2-700 — the CARD has to notice. See connectors/oauth_callback.announce().
     if res.get("ok"):
@@ -68,8 +70,9 @@ async def callback(code: str = "", state: str = "", error: str = ""):
     ok = bool(res.get("ok"))
     label = (providers.get(res.get("provider") or "") or None)
     return HTMLResponse(
-        _page(ok, "" if ok else str(res.get("error") or "no se pudo completar la conexión"),
-              label.label if label else "tus archivos"),
+        _page(ok, "" if ok else str(res.get("error") or _ocb_text("oauth.err.incomplete",
+                                                              "the connection could not be completed")),
+              label.label if label else ""),
         status_code=200 if ok else 400)
 
 
@@ -85,12 +88,13 @@ async def disconnect(payload: dict | None = None):
     return JSONResponse(_r)
 
 
-def _page(ok: bool, detail: str, label: str = 'tus archivos') -> str:
+def _page(ok: bool, detail: str, label: str = '') -> str:
     """The shared callback page (V2-700) — it is what tells the CARD the connection landed.
 
     Hand-rolled here until V2-700, in five near-identical copies that all had the same defect: they
     told the operator it had worked and told the widget nothing, so the card went on offering
     «Conectar». See `connectors/oauth_callback.py`."""
     from connectors import oauth_callback
-    return oauth_callback.page(ok, detail, family='archivos', label=label,
+    return oauth_callback.page(ok, detail, family='archivos',
+                               label=label or _ocb_text("oauth.files.account", "your files"),
                                done='')

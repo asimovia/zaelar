@@ -15,6 +15,12 @@ from nucleo import dispatch
 from nucleo.turn import errands_of_a_turn as E
 from nucleo.workers import progress as P
 
+
+@pytest.fixture(autouse=True)
+def _spanish_instance(monkeypatch):
+    """The phases are produced in the instance's language (`progress.say`); this file pins the Castilian ones."""
+    monkeypatch.setenv("ZAELAR_LANGUAGE", "es")
+
 ERRAND = "Buscar alquiler de coche automático en el aeropuerto de Málaga"
 NOTE = "Kayak descartado (carrusel sin filtro de cambio); DiscoverCars a punto de buscar"
 

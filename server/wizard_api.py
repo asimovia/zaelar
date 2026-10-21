@@ -140,6 +140,15 @@ async def report(refresh: bool = Body(True, embed=True)) -> dict:
 # from `config/profiles.py`; nothing writes it from the UI.
 
 
+def _err(key: str, default: str, **params) -> str:
+    """An error the wizard shows VERBATIM, in the instance language (pack `ui`, English fallback)."""
+    from i18n import runtime as _rt
+    out = _rt.text(key, default=default)
+    for k, v in params.items():
+        out = out.replace("{" + k + "}", str(v))
+    return out
+
+
 @router.post("/api/wizard/credential")
 async def credential(key: str = Body("", embed=True), provider: str = Body("", embed=True),
                      value: str = Body("", embed=True)) -> dict:
@@ -152,7 +161,7 @@ async def credential(key: str = Body("", embed=True), provider: str = Body("", e
         if spec and spec.get("env"):
             env_name = spec["env"][0]
     if not env_name:
-        return {"ok": False, "error": "falta 'key' o 'provider' conocido"}
+        return {"ok": False, "error": _err("wizard.err.missing_key", "missing 'key' or a known 'provider'")}
     res = credentials.set_key(env_name, value)
     return res
 
@@ -163,16 +172,17 @@ async def install(id: str = Body(..., embed=True), model: str = Body("", embed=T
     is system-level. Catalog ids only (allowlist) — never an arbitrary command."""
     spec = _installer(id)
     if not spec:
-        return {"ok": False, "error": f"instalador desconocido: {id}"}
+        return {"ok": False, "error": _err("wizard.err.unknown_installer", "unknown installer: {id}", id=id)}
     if not spec.get("runnable"):
         return {"ok": True, "runnable": False, "command": spec.get("cmd", "")}
     if spec.get("needs") and not shutil.which(spec["needs"]):
-        return {"ok": False, "error": f"falta '{spec['needs']}' — instálalo primero"}
+        return {"ok": False, "error": _err("wizard.err.needs_tool", "'{tool}' is missing — install it first",
+                                            tool=spec["needs"])}
     argv = list(spec["run"])
     if "{model}" in argv:
         m = (model or "").strip()
         if not m:
-            return {"ok": False, "error": "falta 'model' para el pull de Ollama"}
+            return {"ok": False, "error": _err("wizard.err.missing_model", "missing 'model' for the Ollama pull")}
         argv = [m if a == "{model}" else a for a in argv]
     _job_seq["n"] += 1
     job_id = f"job{_job_seq['n']}"
@@ -185,7 +195,7 @@ async def install(id: str = Body(..., embed=True), model: str = Body("", embed=T
 async def install_status(job: str) -> dict:
     j = _JOBS.get(job)
     if not j:
-        return {"ok": False, "error": "job desconocido"}
+        return {"ok": False, "error": _err("wizard.err.unknown_job", "unknown job")}
     return {"ok": True, **j}
 
 

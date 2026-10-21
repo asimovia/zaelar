@@ -67,6 +67,7 @@ def test_a_recall_that_missed_its_budget_is_amber_and_says_so(monkeypatch):
 
 
 def test_the_hearts_own_outage_keeps_the_red_and_its_narrative(monkeypatch):
+    monkeypatch.setenv("ZAELAR_LANGUAGE", "es")           # the row speaks the instance language; this pins Spanish
     """The counterweight: the fix must not buy honesty by going quiet on the failure the row exists for."""
     sick = {**_HEALTHY, "fail_streak": 3, "degraded": True}
     row = _memory_row(monkeypatch, heart=sick,
@@ -88,6 +89,7 @@ def test_an_outage_that_is_not_the_hearts_is_red_in_its_own_words(monkeypatch):
 
 @pytest.mark.parametrize("streak", [0, 2])
 def test_a_healthy_memory_shows_the_model_and_nothing_else(monkeypatch, streak):
+    monkeypatch.setenv("ZAELAR_LANGUAGE", "es")
     """Green when nothing is wrong; amber with the COUNT when the heart has stumbled but not given up."""
     row = _memory_row(monkeypatch, heart={**_HEALTHY, "fail_streak": streak}, recorded=None)
     if streak:

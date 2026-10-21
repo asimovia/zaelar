@@ -16,6 +16,8 @@ from __future__ import annotations
 
 import re
 
+from i18n import langs as _langs
+
 from . import blocked_order as _bo
 from . import data as _d
 
@@ -24,8 +26,10 @@ _POINTER = re.compile(r"\b(este|ese|esta|esa|aquel|aquella|el|la|del|de|canal|ca
                       r"this|that|the|one|channel|current|actual|video's|videos)\b")
 
 
-def _pick(es: str, en: str) -> str:
-    return _d._hl.pick(es, en)
+def _say(key: str, **kw) -> str:
+    """The line in the agent's language — the `voice` pack's `youtube.block.<key>`."""
+    from i18n import langs as _langs
+    return _langs.words(f"youtube.block.{key}", default="").format(**kw)
 
 
 def _on_screen(db: dict) -> list:
@@ -56,8 +60,7 @@ def resolve(p: dict, db: dict) -> "tuple[str, dict | None]":
         if ch:
             return ch, None
         return "", {"ok": False, "error": "no_channel",
-                    "message": _pick(f"No hay ninguna fila {raw} con canal en pantalla: dime qué canal bloqueo.",
-                                     f"There is no row {raw} with a channel on screen: tell me which channel to block.")}
+                    "message": _say("no_row", raw=raw)}
     if raw and _POINTER.sub(" ", _d._norm(raw)).strip(" .,'¿?¡!"):
         seen = [c for c in _on_screen(db) if _d._is_blocked(c, [raw])]
         return (seen[0] if len(seen) == 1 else raw), None
@@ -70,11 +73,9 @@ def resolve(p: dict, db: dict) -> "tuple[str, dict | None]":
     if seen:
         names = ", ".join(f"«{c}»" for c in seen[:4])
         return "", {"ok": False, "error": "which_channel", "candidates": seen[:4],
-                    "message": _pick(f"¿Qué canal bloqueo? En pantalla hay {names}.",
-                                     f"Which channel should I block? On screen there are {names}.")}
+                    "message": _say("which", names=names)}
     return "", {"ok": False, "error": "no_channel",
-                "message": _pick("No veo ningún canal en pantalla: dime su nombre, como sale en la lista.",
-                                 "I don't see any channel on screen: tell me its name, as it shows in the list.")}
+                "message": _say("none_on_screen")}
 
 
 def block(action, p, db) -> dict:
@@ -88,7 +89,7 @@ def block(action, p, db) -> dict:
     if any(_d._norm(b) == _d._norm(ch) for b in blocked):
         _d.store.save(_d.WID, db)
         return {"ok": True, "already_blocked": True, "channel": ch, "blocked": list(blocked),
-                "message": _pick(f"«{ch}» ya estaba bloqueado.", f"«{ch}» was already blocked.")}
+                "message": _say("already", ch=ch)}
     blocked.append(ch)
     lst = db.get("list") or []
     cur = lst[int(db.get("pos", -1))] if 0 <= int(db.get("pos", -1)) < len(lst) else None
@@ -101,8 +102,7 @@ def block(action, p, db) -> dict:
     swept += len(sug) - len(db["suggested"])
     _d.store.save(_d.WID, db)
     return {"ok": True, "channel": ch, "removed_from_list": swept, "blocked": list(blocked),
-            "message": _pick(f"Bloqueado «{ch}»: ya no saldrá en búsquedas ni en sugerencias.",
-                             f"Blocked «{ch}»: it won't show up in searches or suggestions any more.")}
+            "message": _say("done", ch=ch)}
 
 
 def unblock(action, p, db) -> dict:
@@ -114,8 +114,8 @@ def unblock(action, p, db) -> dict:
         hit = blocked[0]                       # «desbloquéalo» with ONE blocked channel names that one
     if hit is None:
         return {"ok": False, "error": "not_blocked", "channel": ch, "blocked": list(blocked),
-                "message": "Ese canal no está bloqueado." if blocked
-                           else "No hay ningún canal bloqueado."}
+                "message": _langs.words("youtube.unblock.not_blocked" if blocked else "youtube.unblock.none_blocked",
+                                        default="")}
     blocked.remove(hit)
     _d.store.save(_d.WID, db)
     return {"ok": True, "channel": hit, "blocked": list(blocked)}
@@ -141,9 +141,7 @@ def explicit_link_notice(db: dict, explicit: bool, channel: str, title: str, que
     _bo.stamp(db, channel, title, queued)
     if queued:
         return {"notice": "channel_blocked", "channel": channel,
-                "message": _pick(f"Lo añado a la cola, aunque es de «{channel}», un canal que tienes bloqueado.",
-                                 f"Queued it, though it's from «{channel}», a channel you blocked.")}
+                "message": _say("queued_anyway", channel=channel)}
     db["blocked_notice"] = {"kind": "channel_blocked", "from": str(title or "")[:100], "channel": channel[:80]}
     return {"notice": "channel_blocked", "channel": channel,
-            "message": _pick(f"Lo pongo, aunque es de «{channel}», un canal que tienes bloqueado.",
-                             f"Playing it, though it's from «{channel}», a channel you blocked.")}
+            "message": _say("playing_anyway", channel=channel)}

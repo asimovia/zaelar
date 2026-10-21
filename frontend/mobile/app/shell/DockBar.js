@@ -107,7 +107,7 @@ function showDesk() {
 export function DockBar() {
   // Built ONCE, outside the reactive tree, because the visualiser holds this canvas by reference.
   const ORB = OrbMini();
-  return h("nav", { class: "zm-dock", "aria-label": "zaelar controls" },
+  return h("nav", { class: "zm-dock", "aria-label": t("mobile.dock_label") },
 
     // ── LEFT of the orb: the two SURFACES — the conversation, and the dashboards ──
     // These two are the WHOLE footer navigation, no matter how many cards are open (operator, 2026-09-04:

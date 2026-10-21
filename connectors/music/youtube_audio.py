@@ -35,22 +35,6 @@ def _yt_thumb(video_id: str) -> str:
     vid = str(video_id or "").strip()
     return f"https://i.ytimg.com/vi/{vid}/hqdefault.jpg" if vid else ""
 
-_MSG = {
-    "es": {"play": "Suena {label}.", "pause": "Pausado.", "resume": "Sigo.", "volume": "Volumen al {n} por ciento.",
-           "no_track": "No he encontrado «{q}».", "done": "Hecho.",
-           "no_next": "No hay más canciones en la cola; dime qué pongo.",
-           "no_prev": "No hay canción anterior a la que volver.",
-           "already": "Ya está sonando {label}.", "queued": "Vale, después pongo {label}.",
-           "seek": "Ahí va.", "seek_to": "En el {t}."},
-    "en": {"play": "Now playing {label}.", "pause": "Paused.", "resume": "Resuming.", "volume": "Volume at {n} percent.",
-           "no_track": "I couldn't find \"{q}\".", "done": "Done.",
-           "no_next": "Nothing else queued; tell me what to play.",
-           "no_prev": "There is no previous track to go back to.",
-           "already": "{label} is already playing.", "queued": "Got it, I'll play {label} next.",
-           "seek": "There you go.", "seek_to": "At {t}."},
-}
-
-
 def _norm_q(s: str) -> str:
     """Normalize a query for comparison (F5 no-restart): lowercase, no accents, no extra spaces."""
     import unicodedata
@@ -59,16 +43,13 @@ def _norm_q(s: str) -> str:
 
 
 def _lang() -> str:
-    try:
-        from voice.engine.core import langs
-        code = (langs.current_code() or "es").lower()
-        return code if code in _MSG else "es"
-    except Exception:
-        return "es"
+    from i18n import langs as _langs
+    return (_langs.current_code() or "en").lower()
 
 
 def _t(key: str, **kw) -> str:
-    return _MSG[_lang()][key].format(**kw)
+    from i18n import langs as _langs
+    return _langs.words(f"music.youtube.{key}", default="").format(**kw)
 
 
 def _clock(seconds: float) -> str:

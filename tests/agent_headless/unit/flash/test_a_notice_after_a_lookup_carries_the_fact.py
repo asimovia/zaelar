@@ -86,7 +86,8 @@ def test_a_bare_request_for_the_day_just_named_rings_with_that_day_s_fact(monkey
      "premieres»"),
 ])
 def test_without_an_answer_the_lookup_is_said_whole_in_his_language(monkeypatch, lang, clause, want):
-    monkeypatch.setattr(F, "_lang", lambda: lang)
+    from i18n import langs
+    monkeypatch.setattr(langs, "current_code", lambda: lang)
     assert F.reminder_body(clause, [], "Te aviso el 30 de octubre.", "2026-10-30 09:00") == want
 
 

@@ -29,6 +29,7 @@ def ref_index() -> list[dict]:
     Only current items are exposed; completed/dropped tasks are no longer referenceable."""
     from . import tasklists
     from .data import _today, load_db
+    from i18n import langs as _langs
 
     db = load_db()
     # V2-744 — a task is named by its LIST and its NUMBER as often as by its title («la 2 de la compra»),
@@ -39,7 +40,7 @@ def ref_index() -> list[dict]:
         if p.get("status") == "frozen":
             continue
         out.append({"id": p["id"], "label": p.get("name") or p["id"], "field": "projectId",
-                    "hint": "project" if _en() else "proyecto"})
+                    "hint": _langs.words("hints.project", default="")})
     # V2-639 — meetings are referenceable too («la cita del dentista» -> payload.title), so set_reminder /
     # cancel_meeting / move_meeting resolve a spoken reference without the model re-typing the title. Only
     # today-or-future ones: a past appointment is history, not a target.
@@ -59,33 +60,22 @@ def ref_index() -> list[dict]:
         label = m.get("title") or "Cita"
         # V2-778 F3-30 — the hints are SPOKEN (`widget_data_turn.named_ack` reads them back after an edit), so they
         # are in the agent's language: an English agent said «(cita … · todos los miércoles hasta el …)» live.
-        _rule = (f" · {recur.describe(m['repeat'], 'en' if _en() else 'es')}"
+        _rule = (f" · {recur.describe(m['repeat'], _langs.current_code())}"
                  if isinstance(m.get("repeat"), dict) else "")
+        _kind = _langs.words("hints.appointment", default="")
         out.append({"id": label, "label": label, "field": "title",
-                    "hint": f"{'appointment' if _en() else 'cita'} {nxt} {m.get('startTime', '')}".strip() + _rule})
+                    "hint": f"{_kind} {nxt} {m.get('startTime', '')}".strip() + _rule})
     return out
-
-
-_WEEKDAYS = ("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")
-
-
-def _en() -> bool:
-    from widgets import hint_lang as _hl
-    return _hl.en()
 
 
 def _day_words():
     """(today, tomorrow, day after, «in {n} days», weekdays) in the language the agent speaks — the catalog's own
-    words, with the Spanish defaults when the catalog cannot be read."""
-    try:
-        from i18n.langs import current_language
-        L = current_language()
-        wds = tuple(getattr(L, "weekdays", ()) or ())
-        if len(wds) == 7:
-            return (L.day_today, L.day_tomorrow, L.day_after_tomorrow, L.day_in_days, wds)
-    except Exception:  # noqa: BLE001
-        pass
-    return ("hoy", "mañana", "pasado mañana", "en {n} días", _WEEKDAYS)
+    words, English's when the language has no seven of its own."""
+    from i18n import langs as _langs
+    L = _langs.current_language()
+    if len(tuple(L.weekdays or ())) != 7:
+        L = _langs.LANGUAGES["en"]
+    return (L.day_today, L.day_tomorrow, L.day_after_tomorrow, L.day_in_days, tuple(L.weekdays))
 
 
 def _day_label(day: str, today: str) -> str:

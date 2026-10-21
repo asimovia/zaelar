@@ -28,7 +28,7 @@ import pytest
 from tests.waiting import until_sync
 
 ENGINE = Path(__file__).resolve().parents[4]
-_EN = json.loads((ENGINE / "i18n/bundles/en.json").read_text(encoding="utf-8"))
+_EN = json.loads((ENGINE / "i18n/genesis/en/ui.json").read_text(encoding="utf-8"))
 
 pytest.importorskip("playwright.sync_api")
 

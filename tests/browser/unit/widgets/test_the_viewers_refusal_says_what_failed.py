@@ -30,7 +30,7 @@ def _refusals(d):
 
 
 def test_every_empty_viewer_refusal_names_a_bundle_key(data):
-    bundles = {c: json.loads((ENGINE / "i18n" / "bundles" / f"{c}.json").read_text("utf-8")) for c in ("es", "en")}
+    bundles = {c: json.loads((ENGINE / "i18n" / "genesis" / c / "ui.json").read_text("utf-8")) for c in ("es", "en")}
     for r in _refusals(data):
         assert r["ok"] is False and r.get("say", "").startswith("widgets.imagenes."), r
         for code, b in bundles.items():

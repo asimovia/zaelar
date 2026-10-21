@@ -58,7 +58,7 @@ def _widget_js_files() -> list[Path]:
 
 
 def _bundle(code: str) -> dict:
-    return json.loads((_ENGINE / "i18n" / "bundles" / f"{code}.json").read_text(encoding="utf-8"))
+    return json.loads((_ENGINE / "i18n" / "genesis" / code / "ui.json").read_text(encoding="utf-8"))
 
 
 def _prefix_of(src: str) -> str:
@@ -292,7 +292,7 @@ def test_no_widget_ships_text_the_operators_language_cannot_change():
             offenders[str(f.relative_to(_ENGINE))] = bad
     assert not offenders, (
         "a widget still paints Castilian text that no language can change — wrap it in "
-        "`tt(\"key\", params, \"<the literal>\")` and add the row to i18n/bundles/en.json + es.json:\n"
+        "`tt(\"key\", params, \"<the literal>\")` and add the row to i18n/genesis/en/ui.json + es.json:\n"
         + "\n".join(f"  {k}\n    " + "\n    ".join(v) for k, v in offenders.items()))
 
 

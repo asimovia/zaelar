@@ -121,12 +121,19 @@ def load_into_env():
         logger.info(f"settings: overrides aplicados desde settings.json → {applied}")
 
 
-# Labels for the LiveKit engine's STT/TTS providers (engine names → human labels for the ⚙ dropdowns).
+# Labels for the LiveKit engine's STT/TTS providers (engine names → human labels for the ⚙ dropdowns). These are
+# the ENGLISH defaults; the label shown is `config.stt.<name>` / `config.tts.<name>` in the instance language.
 _STT_LABELS = {"voxtral": "Voxtral · Mistral (cloud)", "deepgram": "Deepgram Nova-3 (cloud)",
-               "whisper_local": "Whisper local (privado · gratis)"}
-_TTS_LABELS = {"cartesia": "Cartesia Sonic (cloud)", "kokoro_local": "Kokoro local (privado · gratis)",
-               "elevenlabs": "ElevenLabs (cloud · voz nativa por idioma)",
-               "inworld": "Inworld (cloud · titular · voz nativa por idioma)"}
+               "whisper_local": "Whisper local (private · free)"}
+_TTS_LABELS = {"cartesia": "Cartesia Sonic (cloud)", "kokoro_local": "Kokoro local (private · free)",
+               "elevenlabs": "ElevenLabs (cloud · native voice per language)",
+               "inworld": "Inworld (cloud · primary · native voice per language)"}
+
+
+def _say(key: str, default: str) -> str:
+    """A ⚙ label in the INSTANCE language (active → English → `default`) — never a fixed Castilian."""
+    from i18n import runtime as _rt
+    return _rt.text(key, default)
 
 
 def _current_locale() -> str:
@@ -177,8 +184,8 @@ def effective() -> dict:
     from voice.engine.speech.tts import available as tts_available
     from voice.engine.speech.voices import tts_provider, voices_for
 
-    stt_opts = [(_STT_LABELS.get(n, n), n) for n in stt_available()]
-    tts_opts = [(_TTS_LABELS.get(n, n), n) for n in tts_available()]
+    stt_opts = [(_say(f"config.stt.{n}", _STT_LABELS.get(n, n)), n) for n in stt_available()]
+    tts_opts = [(_say(f"config.tts.{n}", _TTS_LABELS.get(n, n)), n) for n in tts_available()]
 
     # Voice knob: options = the CURRENT provider's voices; value = whichever is active (server.state index, the
     # same one the orb cycles). voices_by_provider lets the front repopulate the list when the provider dropdown
@@ -203,13 +210,13 @@ def effective() -> dict:
                 "options": [{"label": l, "value": v} for l, v in options], "applies": applies, "note": note}
 
     knobs = [
-        knob("stt_provider", "STT · voz→texto", os.getenv("ZAELAR_STT", SETTINGS.stt_provider), stt_opts,
-             "session", "STT server-side (LiveKit). Whisper local = gratis y privado."),
-        knob("tts_provider", "TTS · texto→voz", os.getenv("ZAELAR_TTS", SETTINGS.tts_provider), tts_opts,
-             "session", "Cartesia = cloud (multilingüe); Kokoro = local gratis."),
-        knob("assistant_voice", "Voz · dentro del proveedor", vs[cur_idx]["voice"] if vs else "", voice_opts,
-             "session", "elige la voz (se aplica al reconectar; también puedes rotarla tocando el orbe). "
-                        "Con ElevenLabs y Kokoro la lista son voces NATIVAS de tu idioma primero"),
+        knob("stt_provider", _say("status.row.stt", "STT · speech→text"), os.getenv("ZAELAR_STT", SETTINGS.stt_provider), stt_opts,
+             "session", _say("config.knob.stt_note", "Server-side STT (LiveKit). Local Whisper = free and private.")),
+        knob("tts_provider", _say("status.row.tts", "TTS · text→speech"), os.getenv("ZAELAR_TTS", SETTINGS.tts_provider), tts_opts,
+             "session", _say("config.knob.tts_note", "Cartesia = cloud (multilingual); Kokoro = local and free.")),
+        knob("assistant_voice", _say("config.knob.voice_label", "Voice · within the provider"), vs[cur_idx]["voice"] if vs else "", voice_opts,
+             "session", _say("config.knob.voice_note", "pick the voice (applied on reconnect; you can also cycle it by tapping the orb). "
+                                                      "With ElevenLabs and Kokoro the list shows voices NATIVE to your language first")),
         # V2-672 — the SAME catalog the first-run picker offers (`i18n/catalog.py`, 40 languages), not
         # `langs.supported()`. Those are two answers to one question and they disagreed: onboarding could
         # lock German and the ⚙ could not switch back to it, because `langs` only lists the languages we
@@ -219,21 +226,21 @@ def effective() -> dict:
         # V2-734 — the value is the FULL code («es-ES»), because the options are regional variants now and
         # a dropdown whose current value matches none of its options shows the operator a blank where
         # their own choice should be. `update()` splits it again on the way back in.
-        knob("stt_language", "Idioma", _current_locale(),
+        knob("stt_language", _say("config.knob.language_label", "Language"), _current_locale(),
              [(f"{row['flag']} {row['native']}", row["code"]) for row in _ui_languages()], "session",
-             "multilingüe; al cambiar, STT, voz TTS y respuestas se re-alinean al idioma (aplica al reconectar)"),
-        knob("attention_mode", "Atención · micro abierto", os.getenv("ZAELAR_ATTENTION", "always"),
-             [("Inteligente (wake-word + conversación)", "smart"),
-              ("Solo wake-word («zaelar»)", "wakeword"),
-              ("Pulsar para hablar", "ptt"),
-              ("Siempre activo (todo es orden)", "always")], "live",
-             "smart = solo actúa si le hablas a zaelar («zaelar») o sigues una conversación; el resto lo ignora (ambiente)"),
+             _say("config.knob.language_note", "multilingual; on change, STT, the TTS voice and replies re-align to the language (applies on reconnect)")),
+        knob("attention_mode", _say("config.knob.attention_label", "Attention · open mic"), os.getenv("ZAELAR_ATTENTION", "always"),
+             [(_say("config.knob.attention_smart", "Smart (wake-word + conversation)"), "smart"),
+              (_say("config.knob.attention_wakeword", "Wake-word only («zaelar»)"), "wakeword"),
+              (_say("config.knob.attention_ptt", "Push to talk"), "ptt"),
+              (_say("config.knob.attention_always", "Always on (everything is a command)"), "always")], "live",
+             _say("config.knob.attention_note", "smart = it only acts if you speak to zaelar («zaelar») or continue a conversation; the rest it ignores (ambient)")),
         # ⚠️ 5s is a HARD ceiling in smart mode (operator rule 2026-09-10: no pause over 5 seconds) — the
         # engine clamps whatever this knob says (voice/attention.py::window_s), so the options only shorten.
-        knob("attention_window", "Atención · ventana de conversación", os.getenv("ZAELAR_ATTENTION_WINDOW", "5"),
-             [("3 s", "3"), ("4 s", "4"), ("5 s (máximo)", "5")], "live",
-             "segundos que sigue atendiendo sin repetir «zaelar» tras dirigirte a él (modo inteligente); "
-             "tope duro de 5 s"),
+        knob("attention_window", _say("config.knob.window_label", "Attention · conversation window"), os.getenv("ZAELAR_ATTENTION_WINDOW", "5"),
+             [("3 s", "3"), ("4 s", "4"), (_say("config.knob.window_max", "5 s (maximum)"), "5")], "live",
+             _say("config.knob.window_note", "seconds it keeps listening without you repeating «zaelar» after addressing it (smart mode); "
+                                             "hard ceiling of 5 s")),
     ]
     # Read-only, for the orb's 🤖 tooltip (2026-09-09): the wake-word IS the current spoken name (renamed via
     # voice, `nucleo/flash/identity_actions.py`), not the literal "zaelar" the tooltip used to hardcode.
@@ -448,7 +455,7 @@ def update(payload: dict) -> dict:
         applied.append("assistant_voice"); needs_reconnect = True
     if d:
         _write(d)
-    note = "recarga la sesión de voz (Reconnect) para aplicar STT/TTS/voz/idioma" if needs_reconnect else "sin cambios"
+    note = _say("config.knob.reconnect_note", "reload the voice session (Reconnect) to apply STT/TTS/voice/language") if needs_reconnect else _say("config.msg.no_changes", "no changes")
     return {"ok": bool(applied), "applied": applied, "needs_reconnect": needs_reconnect, "note": note}
 
 

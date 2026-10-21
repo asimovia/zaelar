@@ -191,12 +191,12 @@ def test_there_is_one_file_widget_and_its_torrent_words_open_the_section():
     runtime.invalidate()
     assert runtime.get("torrent") is None, "the separate torrent widget is still in the catalogue"
     for lang in ("es", "en"):
-        pack = json.loads((ENGINE / f"nucleo/actionmap/seeds/{lang}.json").read_text(encoding="utf-8"))
+        pack = json.loads((ENGINE / f"i18n/genesis/{lang}/actionmap.json").read_text(encoding="utf-8"))
         assert '"widget": "torrent"' not in json.dumps(pack), f"{lang}: a seed still targets the retired widget"
     from nucleo.actionmap import store
     from nucleo.actionmap.normalize import normalize
     es = {normalize(e["phrase"]): e["action"] for e in store._pack_entries(
-        json.loads((ENGINE / "nucleo/actionmap/seeds/es.json").read_text(encoding="utf-8")))}
+        json.loads((ENGINE / "i18n/genesis/es/actionmap.json").read_text(encoding="utf-8")))}
     assert es["abreme los torrents"] == {"do": "widget_data", "widget": "archivos", "action": "show_section",
                                          "payload": {"section": "torrents"}}
     assert es["ensename las semillas"]["payload"] == {"tab": "semillas"}

@@ -195,7 +195,7 @@ def test_the_blocking_fault_is_wired_from_the_engine_to_a_translated_screen():
     assert "setConfigOpen(true)" in modal, "the operator asked for a button that opens the settings"
     # Every word on that screen must be a key, never a literal the engine sent.
     import json
-    keys = json.loads((ENGINE / "i18n/bundles/en.json").read_text(encoding="utf-8"))
+    keys = json.loads((ENGINE / "i18n/genesis/en/ui.json").read_text(encoding="utf-8"))
     for k in ("fault.no_model.title", "fault.no_model.body", "fault.no_model.open_config",
               "fault.no_model.suppressed", "fault.no_model.fix"):
         assert k in keys, f"{k} missing from the manifest — a generated language would never get it"
@@ -347,8 +347,8 @@ def test_every_confirm_GATED_action_of_every_shipped_widget_has_its_key():
     """The measurement, not one example: a `confirm:true` action whose question is only in the manifest is
     a sentence the operator hears in Castilian whatever language he chose."""
     import json
-    keys = json.loads((ENGINE / "i18n/bundles/en.json").read_text(encoding="utf-8"))
-    es_keys = json.loads((ENGINE / "i18n/bundles/es.json").read_text(encoding="utf-8"))
+    keys = json.loads((ENGINE / "i18n/genesis/en/ui.json").read_text(encoding="utf-8"))
+    es_keys = json.loads((ENGINE / "i18n/genesis/es/ui.json").read_text(encoding="utf-8"))
     from widgets import actions as wa
     missing = []
     for man in sorted((ENGINE / "widgets").glob("*/manifest.json")):

@@ -53,7 +53,7 @@ import time as _tm
 import unicodedata as _ud
 
 from .. import store
-from widgets import hint_lang as _hl   # V2-778 F3-30: hints are read back aloud, in the agent's language
+from i18n import langs as _langs   # V2-778 F3-30: hints are read back aloud, in the agent's language
 from .sheet_names import (  # noqa: F401 — re-export: this module IS the sheet contract
     WIDGET_ID, _INSTANCE_SEP, _MAX_SHEETS, _safe_sheet, card_face, instance_id, prune_sheets, recent_faces,  # noqa: F401
     sheet_key, sheets)
@@ -386,8 +386,26 @@ def _clean_criteria(raw) -> dict:
     return out
 
 
+def default_title() -> str:
+    """The filler title of a sheet nothing named, in the instance's language («Results» / «Resultados»)."""
+    try:
+        from i18n import runtime as _rt
+        return _rt.text("widgets.results.name", default="Results")
+    except Exception:  # noqa: BLE001
+        return "Results"
+
+
+def note_text(key: str, default: str) -> str:
+    """One of the sheet's own notes («No results.», «Searching in depth…») in the instance's language."""
+    try:
+        from i18n import runtime as _rt
+        return _rt.text(f"widgets.results.{key}", default=default)
+    except Exception:  # noqa: BLE001
+        return default
+
+
 def _empty() -> dict:
-    return {"title": "Resultados", "subtitle": "", "items": []}
+    return {"title": default_title(), "subtitle": "", "items": []}
 
 
 # The live PROCESS lives in `widgets/results/live.py` (V2-296): everything there is derived from the dispatcher's
@@ -428,7 +446,7 @@ def view_data(q: str = "") -> dict:
     if not isinstance(db, dict):
         db = _empty()
     data = dict(db)
-    data.setdefault("title", "Resultados")
+    data.setdefault("title", default_title())
     data["items"] = _clean_items(data.get("items"))
     data["sources"] = _clean_sources(data.get("sources"))
     data["summary"] = _clean_summary(data.get("summary"))
@@ -443,7 +461,7 @@ def view_data(q: str = "") -> dict:
             data.pop("scroll", None)
     data["empty"] = not data["items"]                # V2-776 L2 — the harness reads emptiness, never guesses it
     if not data["items"]:
-        data.setdefault("note", "Sin resultados todavía.")
+        data.setdefault("note", note_text("no_results", "No results yet."))
         data.pop("view", None)                   # no items ⇒ there is nothing to be showing the detail OF
         data.pop("focus", None)
     stored = _clean_phases(data.get("process"))
@@ -590,7 +608,7 @@ def ref_index(sheet=None) -> list[dict]:
         for n, it in enumerate(data.get("items", []), 1):
             bits = [f"#{n}"]
             if varias and titulo:
-                bits.append(_hl.pick(f"de «{titulo}»", f"from «{titulo}»"))
+                bits.append(_langs.words("hints.from_sheet", default="«{title}»").format(title=titulo))
             if it.get("price"):
                 bits.append(it["price"])
             if it.get("parts"):

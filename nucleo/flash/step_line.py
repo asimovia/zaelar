@@ -10,8 +10,8 @@ he asked to be told — code guarantees it, not the temperature.
 Gate: the brief's sure verdict that he wants to be TOLD (`wants_words=tell`), exactly one live errand (several
 are the status line's job, `errands_of_a_turn.status_owed`), and a concrete step this errand has not been heard
 saying yet. Nothing is appended when the reply already names it. The step is said in HIS language: the worker's
-own note when it is in that language, else the engine's phase (which is written in Spanish) translated from our
-OWN phase vocabulary (`workers/progress.py`, never his words), else the plan step the worker is on.
+own note when it is in that language, else the engine's phase (written in the instance's language from our OWN
+phase vocabulary, `workers/progress.say`, never his words), else the plan step the worker is on.
 """
 from __future__ import annotations
 
@@ -24,24 +24,13 @@ from nucleo.flash.speakable_note import speakable as _speakable
 #: errand id → steps already appended for it. A step is said once; the next wait says the next one or nothing.
 _SAID: dict[str, set] = {}
 
-#: Our OWN phase vocabulary (`workers/progress._SAY`) → English. Longest prefix first; the rest of the phase
-#: (a host, a quoted query) is kept as it is.
-_PHASE_EN = (
-    ("recogiendo lo que hay en la página", "collecting what's on the page"),
-    ("conduciendo el navegador", "driving the browser"),
-    ("recorriendo la página", "scrolling through the page"),
-    ("pulsando en la página", "clicking on the page"),
-    ("escribiendo en la página", "typing on the page"),
-    ("abriendo una página", "opening a page"),
-    ("leyendo la página", "reading the page"),
-    ("mirando la página", "looking at the page"),
-    ("buscando en la web", "searching the web"),
-    ("entrando en", "going into"),
-    ("leyendo", "reading"),
-    ("buscando", "searching for"),
-    ("pulsando", "clicking"),
-)
-#: Phases that say no step at all (queued, starting, thinking) or quote one of our card ids.
+#: Phases that say no step at all (queued, starting, thinking, a bare «running a step»), as `ui` pack keys of
+#: `workers/progress.say`: read in the instance's language, so the gate holds in any of them, not just Castilian.
+_EMPTY_PHASE_KEYS = (("starting", "starting"), ("queued", "queued"), ("label_generic", "Thinking…"),
+                     ("system_step", "running a step"), ("working", "working"), ("web_search", "searching the web"),
+                     ("zaelar_act", "using a zaelar tool"), ("web_search_for", "searching for {q}"),
+                     ("mem_recall_for", "searching memory for {q}"))
+#: The Castilian floor (records written before the phases were keyed) and our card ids quoted in a phase.
 _EMPTY_PHASE_RE = re.compile(r"^(arrancando|en cola|pensando|ejecutando un paso|trabajando|buscando|usando una "
                              r"herramienta)\b|«(results|documento|navegador|widget)(::[^»]*)?»", re.I)
 _HOST_RE = re.compile(r"\b[a-z0-9-]+(?:\.[a-z0-9-]+)+\b", re.I)
@@ -51,19 +40,25 @@ def _clean(text: str) -> str:
     return " ".join(str(text or "").split()).strip().rstrip("…. ")
 
 
-def _phase_for(phase: str, code: str) -> str:
-    p = _clean(phase)
-    if not p or _EMPTY_PHASE_RE.search(p):
-        return ""
-    if code == "es":
-        return p
-    if code != "en":
-        return ""
+def _empty_phase(p: str) -> bool:
+    if _EMPTY_PHASE_RE.search(p):
+        return True
+    from nucleo.workers.progress import say
     low = p.lower()
-    for es, en in _PHASE_EN:
-        if low.startswith(es):
-            return (en + p[len(es):]).strip()
-    return ""
+    for key, en in _EMPTY_PHASE_KEYS:
+        stem = _clean(say(key, en).split("{")[0]).lower()
+        if stem and low.startswith(stem):
+            return True
+    return False
+
+
+def _phase_for(phase: str, code: str) -> str:
+    """The engine's phase is written in the instance's language (`workers/progress.say`), which is the
+    session's: said as it is, unless it names no step at all."""
+    p = _clean(phase)
+    if not p or _empty_phase(p):
+        return ""
+    return p
 
 
 def candidates(errand: dict, code: str) -> list[str]:
@@ -77,7 +72,7 @@ def candidates(errand: dict, code: str) -> list[str]:
         out.append(phase)
     plan, done = list(errand.get("plan") or []), int(errand.get("done") or 0)
     step = _clean(plan[done]) if 0 <= done < len(plan) else ""
-    if _speakable(step, code) and not _EMPTY_PHASE_RE.search(step):
+    if _speakable(step, code) and not _empty_phase(step):
         out.append(step)
     return [s for i, s in enumerate(out) if s and s not in out[:i]]
 

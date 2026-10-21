@@ -8,15 +8,13 @@ apart here: «there is nothing after this one» and «the next one is here but c
 """
 from __future__ import annotations
 
-from widgets import hint_lang as _hl
-
 from . import availability as _av
 
 
 def _say(key: str, **kw) -> str:
     """The operator-facing line in the agent's language (bundle `widgets.youtube.<key>`)."""
     from i18n import runtime as _rt
-    line = _rt.text(f"widgets.youtube.{key}", "", code="en" if _hl.en() else "es")
+    line = _rt.text(f"widgets.youtube.{key}", "")
     for k, v in kw.items():
         line = line.replace("{" + k + "}", str(v))
     return line

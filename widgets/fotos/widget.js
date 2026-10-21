@@ -113,7 +113,7 @@ function connectPanel(d, act, ctx) {
   const b = el("button", "fts-btn", tt("connect", null, "Conectar Google Photos"));
   b.onclick = () => ctx.openConnector("google-photos");
   box.appendChild(b);
-  if (d.error) box.appendChild(el("p", "fts-note bad", d.error));
+  if (d.error) box.appendChild(el("p", "fts-note bad", tt("action_failed", null, "No se ha podido hacer"))).title = String(d.error);
   return box;
 }
 
@@ -155,7 +155,7 @@ function toolbar(d, act, ctx) {
   };
   bar.appendChild(addBtn);
 
-  bar.appendChild(el("span", "fts-count", `${d.total || 0} fotos`));
+  bar.appendChild(el("span", "fts-count", tt("count", {n: d.total || 0}, `${d.total || 0} fotos`)));
   return bar;
 }
 

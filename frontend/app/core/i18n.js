@@ -110,6 +110,8 @@ export async function applyLang(code) {
   await loadBundle(code);
   const final = BUNDLES[code] ? code : "en";
   store.setLang(final);
+  // <html lang> follows the instance language (screen readers, hyphenation, `document.documentElement.lang` readers).
+  try { document.documentElement.lang = final; } catch (_) {}
   try { localStorage.setItem("hb_lang", final); } catch (_) {}
   return final;
 }

@@ -23,14 +23,14 @@ import pytest
 
 from nucleo.actionmap import executor
 from nucleo.actionmap.normalize import normalize
-from nucleo.actionmap.store import SEEDS_DIR, _pack_entries
+from nucleo.actionmap.store import _pack_entries, seed_pack
 from nucleo.flash import router
 
 ENGINE = Path(__file__).resolve().parents[3]
 
 
 def _expanded(lang: str) -> dict[str, dict]:
-    pack = json.loads((SEEDS_DIR / f"{lang}.json").read_text(encoding="utf-8"))
+    pack = seed_pack(lang)
     out: dict[str, dict] = {}
     for e in _pack_entries(pack):
         out[normalize(e["phrase"])] = e["action"]
@@ -77,7 +77,7 @@ def test_one_phrase_one_opinion():
     """A phrase that expands from two places with two different actions is a coin toss at import order.
     The pack must hold ONE opinion per normalized phrase, per language."""
     for lang in ("es", "en"):
-        pack = json.loads((SEEDS_DIR / f"{lang}.json").read_text(encoding="utf-8"))
+        pack = seed_pack(lang)
         seen: dict[str, str] = {}
         for e in _pack_entries(pack):
             ph = normalize(e["phrase"])

@@ -130,7 +130,7 @@ def test_no_scroll_following_machinery_comes_back():
         "el scroll es del operador: no lo escuchamos para decidir nada"
     import json
     for lang in ("en", "es"):
-        b = json.loads((ENGINE / "i18n" / "bundles" / f"{lang}.json").read_text(encoding="utf-8"))
+        b = json.loads((ENGINE / "i18n" / "genesis" / lang / "ui.json").read_text(encoding="utf-8"))
         for k in ("debug.follow_on", "debug.follow_off"):
             assert k not in b, f"{k} sigue en {lang}: ya no hay estado de seguimiento que rotular"
 

@@ -6,7 +6,7 @@ All DB access goes through the `memory.api` facade (memory-boundary contract); t
 `memory/schema.py::ACTION_MAP`.
 
 Seeding follows the `widgets/agenda/seed.json` convention: the pack ships with the repo
-(`nucleo/actionmap/seeds/<lang>.json`), is imported lazily the first time that language is indexed, and
+(`i18n/genesis/<lang>/actionmap.json`, or the generated one for any other language), is imported lazily the first time that language is indexed, and
 NEVER overwrites a row the user's system has touched — a disabled seed row stays disabled across release
 upgrades (UNIQUE(lang, phrase) + INSERT OR IGNORE in the facade). Import problems are LOUD (alert
 event), never swallowed: a map whose seeds silently failed to load is a module born dead.
@@ -15,13 +15,20 @@ from __future__ import annotations
 
 import json
 import logging
-from pathlib import Path
 
 from .normalize import normalize
 
 logger = logging.getLogger("zaelar.actionmap")
 
-SEEDS_DIR = Path(__file__).resolve().parent / "seeds"
+def seed_pack(lang: str) -> dict:
+    """The language's genesis pack (`i18n/genesis/<lang>/actionmap.json`), or the one generated for it at onboarding.
+    A language with no translation yet has NO pack — English phrases must never be indexed for a French operator."""
+    from i18n import packs as _packs
+    if lang in _packs.PRESET:
+        return _packs.preset("actionmap", lang)
+    if not (_packs.generated("actionmap", lang).get("strings")):
+        return {}
+    return _packs.read("actionmap", lang)
 
 # Process cache: {"lang": str, "index": dict[str, dict]}. Invalidated on writes and lang change.
 _cache: dict = {"lang": None, "index": {}}
@@ -84,10 +91,9 @@ def ensure_seeded(lang: str) -> None:
     map learned, is never moved (V2-545)."""
     try:
         from memory import api as _mapi
-        path = SEEDS_DIR / f"{lang}.json"
-        if not path.exists():
-            return  # no pack for this language yet — the map simply stays empty (generated packs: Phase 3)
-        pack = json.loads(path.read_text(encoding="utf-8"))
+        pack = seed_pack(lang)
+        if not pack:
+            return  # no pack for this language yet — the map stays empty until onboarding generates it
         version = int(pack.get("version") or 1)
         have = _mapi.action_map_seed_version(lang)
         if have >= version:

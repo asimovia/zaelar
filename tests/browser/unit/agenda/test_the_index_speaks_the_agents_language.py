@@ -17,7 +17,7 @@ _SPANISH = re.compile(r"\b(cita|proyecto|todos|hasta|semanas|meses|días|fecha d
 def _index(monkeypatch, code):
     from i18n import langs
     from widgets.agenda import data as AD, index as IX
-    monkeypatch.setattr(langs, "current_language", lambda: langs.LANGUAGES[code])
+    monkeypatch.setattr(langs, "current_code", lambda: code)
     import datetime as _dt
     soon = _dt.date.today() + _dt.timedelta(days=5)        # relative: a fixture date never goes stale
     db = {"projects": [{"id": "p1", "name": "Website", "status": "active"}],
@@ -41,12 +41,12 @@ def test_a_spanish_agent_keeps_its_own(monkeypatch):
     assert "cita" in hints and "todos los" in hints, hints
 
 
-# ── the same class in every widget whose hints are read back (one helper: `widgets/hint_lang.py`) ──────────
+# ── the same class in every widget whose hints are read back (the `voice` pack's `hints.*`) ──────────
 
 @pytest.fixture
 def english(monkeypatch):
     from i18n import langs
-    monkeypatch.setattr(langs, "current_language", lambda: langs.LANGUAGES["en"])
+    monkeypatch.setattr(langs, "current_code", lambda: "en")
 
 
 def test_a_playlist_counts_songs_in_english(english, monkeypatch):

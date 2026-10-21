@@ -349,7 +349,9 @@ export function routeEvent(desktop, d) {
       // per step for a screen that is only reporting how far along it is.
       store.setLangOnboardProgress({ done: d.done | 0, total: d.total | 0 });
     } else if (d.kind === "language") {                                          // V2-089 P3: detected/changed language → the entire UI changes LIVE
-      if (d.code) applyLang(d.code);                                             // fetches whatever the bundle has now — presets instant, a generating one falls back to English for missing keys until "ready"
+      // The UI switches when the language is READY, never at "detected": by then every pack of it exists, so
+      // the screen never shows a half-translated mix. The onboarding veil speaks the early priority strings.
+      if (d.code && d.phase !== "detected") applyLang(d.code);
       // V2-101: the first-run onboarding modal tracks phases on TOP of the plain applyLang above — "detected"
       // shows the (already-translated) loading line while the full bundle/alias-pack finish in the background,
       // "ready" closes it. A plain language switch (⚙, or a repeat detection with no onboarding) never sets
