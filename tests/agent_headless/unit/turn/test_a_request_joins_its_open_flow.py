@@ -120,7 +120,15 @@ def test_a_late_fold_into_the_same_sheet_closes_nothing(monkeypatch):
     assert not any(a[:2] == ("widget", "close") for a, _ in seen)
 
 
-def test_the_dispatcher_hands_the_escalation_context_to_the_fold():
-    from pathlib import Path
-    src = (Path(__file__).resolve().parents[4] / "nucleo" / "dispatch_listener.py").read_text("utf-8")
-    assert "await _fold_into(dup, request, key, ctx)" in src and "_flow.late_fold(dup, ctx or {})" in src
+def test_the_dispatchers_fold_runs_the_late_fold_with_the_escalation_context(monkeypatch):
+    from nucleo import dispatch_listener as _dl
+    got = []
+
+    async def fake_inject(which, message):
+        return [which]
+
+    monkeypatch.setattr("nucleo.dispatch.inject", fake_inject)
+    monkeypatch.setattr(_dl, "_close_folded", lambda key: None)
+    monkeypatch.setattr(flow_of, "late_fold", lambda target, ctx: got.append((target, ctx)) or "")
+    asyncio.run(_dl._fold_into("7", "under 400", "k1", {"sheet": "ls2"}))
+    assert got == [("7", {"sheet": "ls2"})], "the fold dropped the escalation's sheet again"
