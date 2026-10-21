@@ -3590,6 +3590,8 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_the_show_is_not_the_act_on_the_text_channel.py"]},
         {"id": "2.757", "title": "A network-class failure ends when the network answers: the status re-checks it against every remote host the model table declares (one host answering is not enough — a refused connection can be one provider down); the suite pins the probe to «still down» (Wi-Fi switch, 2026-10-20)",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/test_a_network_error_ends_when_the_network_answers.py"]},
+        {"id": "2.758", "title": "The days before the recent window are one line per request in the turn (`task_block.earlier_lines`, 7 days, a list once with its N/M steps): «did I give you a list yesterday?» is answered from the record, not by a worker digging for minutes (manual session 374a2ae2)",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/test_the_days_before_are_read_from_the_record.py"]},
         {"id": "2.201", "title": "A data-op that did not run is said, and «Done.» never stands over it",
             "ch": UNIT,
             "paths": ["tests/voice/unit/test_an_op_that_did_not_run_is_said.py"]},

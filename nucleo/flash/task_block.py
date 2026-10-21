@@ -317,3 +317,69 @@ def recent_lines(now: float | None = None) -> list[str]:
         return []
     return ["LO ÚLTIMO QUE TE HA PEDIDO (registro de peticiones, lo más reciente primero): " + " | ".join(out) + "."]
 
+
+
+#: 2026-10-21 — BEFORE the recent window: one line per request of the last days, so «did I give you a list
+#: yesterday?» / «what did you do yesterday?» is answered from the record in the turn, not by a worker digging
+#: through files for minutes (manual session 374a2ae2: the agent answered «no» to a 26-step list it had finished
+#: the day before, then spent four minutes failing to find it). The record knew; the 6 h window did not reach it.
+EARLIER_WINDOW_S = 7 * 86400.0
+EARLIER_MAX = 5
+EARLIER_MAX_CHARS = 420
+
+
+def _day(ts: float) -> str:
+    """A calendar day the way a person names it — weekday AND date («Tuesday 2026-10-20»), so «yesterday» resolves
+    to a day and a question about one can be answered for that day, including «nothing that day»."""
+    import datetime as _dt
+    return _dt.datetime.fromtimestamp(ts).strftime("%A %Y-%m-%d")
+
+
+def _when_label(ts: float, now: float) -> str:
+    import datetime as _dt
+    return f"{_day(ts)} {_dt.datetime.fromtimestamp(ts).strftime('%H:%M')}"
+
+
+def earlier_lines(now: float | None = None) -> list[str]:
+    """The operator's requests from before `RECENT_WINDOW_S` back to `EARLIER_WINDOW_S`, newest first, one line
+    each — what it was, when, how it ended, and for a list how many of its steps were done. FACTS ONLY, like
+    `recent_lines`; a list counts once (its steps are its children)."""
+    import time as _t
+    now = float(now if now is not None else _t.time())
+    try:
+        from nucleo import tasks as _tasks
+        st = _tasks.store()
+        rows = st.tasks_where(states=("pending", "running", "waiting", "done", "failed", "cancelled"),
+                              modes=("now",), visible_only=True, limit=EARLIER_MAX * 4, newest_first=True,
+                              exclude_kinds=("inline",), since=now - EARLIER_WINDOW_S)
+    except Exception as e:  # noqa: BLE001 — a record that cannot be read adds nothing, and never breaks the turn
+        from loguru import logger
+        logger.debug(f"earlier_lines: the request record could not be read: {e}")
+        return []
+    out: list[str] = []
+    used = 0
+    for r in rows:
+        when = float(r.get("finished_at") or r.get("started_at") or r.get("created_at") or now)
+        if r.get("parent_id") or now - when < RECENT_WINDOW_S:
+            continue                      # a list's step, or already in the recent block
+        name = _short_note(str(r.get("title") or r.get("goal") or "una petición"), 70)
+        state = str(r.get("state") or "")
+        bit = f"{_when_label(float(r.get('created_at') or when), now)} · «{name}» · {_STATE_WORD.get(state, state)}"
+        kids = st.tasks_children(str(r.get("id") or ""))     # a list: its steps are its children
+        if kids:
+            bit += f" ({sum(1 for k in kids if k.get('state') == 'done')}/{len(kids)} pasos hechos)"
+        elif r.get("outcome"):
+            bit += f" · {_short_note(str(r['outcome']), 80)}"
+        if used + len(bit) > EARLIER_MAX_CHARS and out:
+            break
+        out.append(bit)
+        used += len(bit)
+        if len(out) >= EARLIER_MAX:
+            break
+    # The range is part of the fact (today's date is in the clock line): a day inside it with no line here or in the
+    # recent block has nothing on record — the answer to «what did you do yesterday?» when that is the case.
+    import datetime as _dt
+    since = _dt.datetime.fromtimestamp(now - EARLIER_WINDOW_S).strftime("%Y-%m-%d")
+    if not out:
+        return [f"Peticiones desde {since}: ninguna."]
+    return [f"Peticiones desde {since} (día sin línea = ninguna): " + " | ".join(out) + "."]
