@@ -56,8 +56,8 @@ from .daemon_api import router as daemon_router  # V2-575 P1: status + folder pe
 
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
-    # TWO listeners share this SAME app (43917 HTTP + 44317 HTTPS, "public domains → local engine" decision) —
-    # each `uvicorn.Server` fires the ASGI lifespan independently, so this body runs TWICE per process. Most
+    # More than one listener can share this SAME app (`server/__main__.py` keeps a list of servers) — each
+    # `uvicorn.Server` fires the ASGI lifespan independently, so this body can run more than once per process. Most
     # pieces are already idempotent (for example the orchestrator loop checks `self._task is not None`), but the
     # bus→SSE bridges below (memory, heartbeat) had no guard: each entry created a NEW subscription to the same
     # topic → duplicated events in /events (2026-07-22 testing-marathon finding, confirmed on a clean boot:

@@ -145,7 +145,7 @@ def test_another_site_cannot_add_a_folder_on_the_users_behalf(client, headers, m
 def test_our_own_page_is_not_locked_out_by_the_guard(client, headers, monkeypatch):
     """THE COUNTERWEIGHT, and the failure direction a leak test never catches: a guard comparing `Origin`
     against a hardcoded hostname would pass every hostile case above and lock the user out of their own
-    interface, because this engine is reached as localhost, as local.zaelar.com and as whatever a cloud
+    interface, because this engine is reached as localhost, as 127.0.0.1 and as whatever a cloud
     account resolves to."""
     seen = []
 

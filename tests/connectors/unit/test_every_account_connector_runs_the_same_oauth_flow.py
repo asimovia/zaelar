@@ -73,7 +73,7 @@ def test_the_consent_returns_to_the_origin_the_operator_is_on_and_the_exchange_s
 @pytest.mark.parametrize("name,pid", CONNECTORS)
 def test_this_engines_own_listeners_and_a_forged_origin_return_to_loopback(flow, name, pid):
     o = flow(name)
-    for origin in ("https://local.zaelar.com:44317", "https://evil.example.com/path?x=1", ""):
+    for origin in ("http://localhost:43917", "https://evil.example.com/path?x=1", ""):
         assert o.redirect_uri(origin).startswith("http://127.0.0.1:"), (origin, o.redirect_uri(origin))
 
 

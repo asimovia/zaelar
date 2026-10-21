@@ -37,10 +37,9 @@ cd zaelar
 Then open **http://localhost:43917** and follow the on-screen setup — nothing else to install; the microphone
 works there because browsers treat `localhost` as secure. Add your AI keys **in the app** — no `.env` editing, no config files to touch.
 
-> **HTTPS is optional and off by default.** If you already use [mkcert](https://github.com/FiloSottile/mkcert),
-> Zaelar issues itself a per-install certificate and also answers on `https://local.zaelar.com:44317` (a public DNS
-> name for 127.0.0.1 — your own machine). Nobody needs it: no key ships in this repo, and `http://localhost:43917`
-> is the address.
+> **No HTTPS, on purpose.** A local install is plain HTTP on `localhost`: browsers treat it as a secure context and
+> nothing leaves your machine, so there is no certificate to issue, install or renew. Want another name for it? Map
+> one yourself (a hosts entry, a local proxy) — the engine does not need to know.
 
 ## Commands
 

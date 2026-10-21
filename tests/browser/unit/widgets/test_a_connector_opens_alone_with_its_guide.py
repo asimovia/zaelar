@@ -24,7 +24,7 @@ PANEL = (APP / "components" / "ConfigPanel.js").read_text(encoding="utf-8")
 STORE = (APP / "core" / "store.js").read_text(encoding="utf-8")
 
 _RUN = r"""
-globalThis.location = { origin: "https://local.zaelar.com:44317" };
+globalThis.location = { origin: "http://localhost:43917" };
 const W = await import(process.argv[1]);
 const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const ui = { t: (k, p) => k + (p ? JSON.stringify(p) : ""), esc, badge: c => `[${c.connected ? "on" : "off"}]` };
@@ -49,7 +49,7 @@ CS = [{"id": "whatsapp", "label": "WhatsApp", "family": "mensajeria", "connected
        "qr": "data:image/png;base64,AAAA"},
       {"id": "telegram", "label": "Telegram", "family": "mensajeria", "connected": False, "status": "off"},
       {"id": "google-account", "label": "Google", "family": "google", "connected": False, "status": "off",
-       "config": {"app_configured": False, "redirect_uris": ["https://local.zaelar.com:44317/api/calendar/callback"]}},
+       "config": {"app_configured": False, "redirect_uris": ["http://localhost:43917/api/calendar/callback"]}},
       {"id": "google", "label": "Google Calendar", "family": "agenda", "connected": False, "status": "off",
        "config": {"app_configured": False}}]
 
@@ -81,7 +81,7 @@ def test_the_last_step_is_the_form_and_the_qr_it_never_drew(run):
 
 def test_a_google_guide_names_its_api_and_the_redirect_to_register(run):
     assert run["gcal"][0]["params"]["api"] == "Google Calendar API"
-    assert run["gcal"][1]["code"] == "https://local.zaelar.com:44317/api/calendar/callback"
+    assert run["gcal"][1]["code"] == "http://localhost:43917/api/calendar/callback"
     assert run["gcalReady"] == [], "a registered app skips the Cloud Console half"
 
 

@@ -145,7 +145,7 @@ def _same_origin(request: Request) -> bool:
 
     `Sec-Fetch-Site` is the direct answer when the browser sends it. `Origin` is the fallback, compared against
     the `Host` the request arrived on rather than a configured hostname — the engine is reached as
-    `localhost:43917`, as `local.zaelar.com`, and as whatever a cloud account resolves to, and a guard that
+    `localhost:43917`, as `127.0.0.1:43917`, and as whatever a cloud account resolves to, and a guard that
     only knew one of those would lock the user out of their own interface, which is the failure direction that
     never shows up in a leak test."""
     site = (request.headers.get("sec-fetch-site") or "").strip().lower()

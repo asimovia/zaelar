@@ -80,9 +80,9 @@ def test_there_is_one_door_and_the_card_is_not_it():
     assert gcal.ui_action("connect", {"provider": "google", "origin": "https://zaelar.example.com", "force": True}, {}) is None
 
 
-@pytest.mark.parametrize("origin", ["https://local.zaelar.com:44317", "http://127.0.0.1:43917"])
+@pytest.mark.parametrize("origin", ["http://localhost:43917", "http://127.0.0.1:43917"])
 def test_a_local_listener_returns_to_the_LOOPBACK_whichever_one_he_opened(calendar, origin):
-    """The second defect. Both listeners are the same process, the same token store and the same
+    """The second defect. Both names are the same listener, the same token store and the same
     self-contained callback page, so returning to loopback changes nothing he can observe — and it is the
     only one of the two that Google lets a self-hoster register at all."""
     assert _door(calendar, origin) == _LOOPBACK + "/api/calendar/callback"
@@ -99,7 +99,7 @@ def test_the_same_collapse_applies_to_the_video_door(calendar):
     """`video` is the other connector that derives from the origin, and it was the ORIGINAL home of V2-603.
     Fixing calendar alone would recreate, one connector over, the exact split this file opens with."""
     voauth = pytest.importorskip("connectors.video.oauth")
-    assert voauth.redirect_uri("https://local.zaelar.com:44317") == _LOOPBACK + "/api/video/callback"
+    assert voauth.redirect_uri("http://localhost:43917") == _LOOPBACK + "/api/video/callback"
     assert voauth.redirect_uri("https://zaelar.example.com") == "https://zaelar.example.com/api/video/callback"
 
 
@@ -138,7 +138,7 @@ def test_what_the_operator_PASTES_is_one_list_of_five_that_google_can_accept():
     assert len(todo) == len(app.CALLBACK_PATHS) == 6   # + /api/contacts/callback (V2-699)
     assert len(todo) == len(set(todo)), "a duplicate would be pasted twice into the console"
     assert all(u.startswith(_LOOPBACK + "/") for u in todo), todo
-    assert not any(app.LOCAL_TLS_HOST in u for u in todo), "a domain nobody self-hosting can verify"
+    assert not any("localhost" in u for u in todo), "one list: localhost collapses onto the loopback address"
     assert app.redirect_uris("https://zaelar.example.com")[0].startswith("https://zaelar.example.com/")
 
 
@@ -147,9 +147,8 @@ def test_the_listeners_are_read_from_the_env_the_server_honours(monkeypatch):
     `server/__main__.py` reads, and the collapse has to follow the port, not a frozen 43917."""
     from connectors.google import app
     monkeypatch.setenv("ZAELAR_PORT", "8080")
-    monkeypatch.setenv("ZAELAR_TLS_PORT", "8443")
-    assert app.served_origins() == ["http://127.0.0.1:8080", f"https://{app.LOCAL_TLS_HOST}:8443"]
-    assert app.normalize_origin(f"https://{app.LOCAL_TLS_HOST}:8443") == "http://127.0.0.1:8080"
+    assert app.served_origins() == ["http://127.0.0.1:8080", "http://localhost:8080"]
+    assert app.normalize_origin("http://localhost:8080") == "http://127.0.0.1:8080"
     assert app.uris_to_register()[0].startswith("http://127.0.0.1:8080/")
 
 

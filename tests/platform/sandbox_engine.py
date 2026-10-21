@@ -35,8 +35,6 @@ What makes the isolation real (each of these was verified against the code that 
   · `ZAELAR_ENGINE=off` — skips the embedded LiveKit worker AND the `livekit_api` router
     (`server/__init__.py`, `!= "livekit"`). The probe channel does not need LiveKit at all: `/api/flash/say`
     mounts on `active_brain() == "nucleo"` alone, which is what makes a headless sandbox possible.
-  · `ZAELAR_TLS_CERT_DIR` → a nonexistent dir, so the second HTTPS listener (44317) never binds and cannot
-    clash with the operator's live engine.
 
 Credentials are deliberately NOT isolated: `server/common.py` loads `.env` + `.meshkore/credentials/` from
 the repo root, so the sandbox uses the operator's real API keys. That's intended — the point is a clean
@@ -210,7 +208,6 @@ def spawn_engine(*, workspace: Path, port: int, log_path: Path | None = None,
         "ZAELAR_WORKSPACE": str(workspace),
         "ZAELAR_DB": str(workspace / "memory" / "_data" / "sandbox.db"),
         "ZAELAR_LOG_DIR": str(logs),       # keeps the operator's real timeline clean — see module docstring
-        "ZAELAR_TLS_CERT_DIR": str(workspace / "no-tls"),
         "ZAELAR_HOMEOSTASIS": "0",         # no engine-recycling/log-rotation watchdog in a throwaway
         "MESHKORE_AUTORECONNECT": "0",     # never dial the operator's real clusters
         "WA_ENABLED": "0", "TG_ENABLED": "0", "EMAIL_ENABLED": "0",

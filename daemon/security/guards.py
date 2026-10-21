@@ -41,9 +41,8 @@ from __future__ import annotations
 import hmac
 from typing import NamedTuple
 
-# Exactly the names a loopback request can legitimately carry. `local.zaelar.com` is in the engine's list
-# because a real DNS A record pins it to 127.0.0.1; the daemon is never addressed that way, so it is not here —
-# the shortest correct list is the one that ages best.
+# Exactly the names a loopback request can legitimately carry — the shortest correct list is the one that ages
+# best.
 _LOOPBACK_HOSTS = frozenset({"127.0.0.1", "localhost", "::1", "[::1]"})
 
 # Content types a JSON body may legitimately arrive with. Anything else is either a simple request (guard 4's

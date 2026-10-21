@@ -287,7 +287,7 @@ detecta), siempre activo. STT → **cerebro propio «Colmena»** → TTS, sobre 
 externo.
 
 **Arrancar:** `make run` (= `BRAIN=nucleo`) → stack LiveKit nativo (sin Docker) + web con worker embebido, en
-http://localhost:43917 · https://local.zaelar.com:44317. `make restart` para recoger cambios en `.py`.
+http://localhost:43917 (sin HTTPS: una instalación local no lleva certificado). `make restart` para recoger cambios en `.py`.
 `make status` para saber si está arriba. Instalación completa para quien clona: `README.md`.
 
 ## Cómo se trabaja aquí — las normas del operador

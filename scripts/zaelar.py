@@ -13,8 +13,7 @@ WHY THIS EXISTS
 WHAT IT FIXES, LEARNED THE HARD WAY (2026-08-10/12)
     · `start` is IDEMPOTENT. Launching over a live instance used to leave the ports taken, the new process dying on a
       silent EADDRINUSE, and the app looking started while nothing worked. Now it detects the live instance and says so.
-    · `stop` covers BOTH listeners. The old script only freed 43917 and never touched 44317 (the HTTPS one), so half
-      an instance survived every stop.
+    · `stop` covers every port the instance holds (see PORTS), not just the app's.
     · `stop` ESCALATES. A wedged process ignores SIGTERM — that happened for real: the voice worker thread hung and
       the process had to be killed hard. TERM, wait, then KILL, and report which one it took.
     · `status` answers "is what I am running the code I just wrote?" by comparing the live build against git HEAD.
@@ -53,7 +52,6 @@ IS_WINDOWS = platform.system() == "Windows"
 # The full local surface. `role` is what a human should read when something is still holding a port.
 PORTS = [
     (43917, "app (HTTP — internal bridges talk to this one)"),
-    (44317, "app (HTTPS — https://local.zaelar.com:44317)"),
     (7880, "livekit-server (voice signalling)"),
     # ⚠️ NAMES WHAT IT DOES, not what it is FOR. This line used to read "files + the browser that passes
     # CAPTCHAs" — the browser is P2 and does not exist, so `./zaelar status` was announcing a capability
@@ -62,35 +60,22 @@ PORTS = [
     # The WhatsApp bridge (node, Baileys). Measured 2026-09-15: a bridge from 00:21 had outlived every
     # `stop` of the day (this list did not name its port), so each `start` spawned a second one that died
     # with EADDRINUSE while the orphan kept answering /health — WhatsApp worked through a process no
-    # restart controlled. Same class as the 44317 lesson above. Default mirrors connectors/whatsapp/config.py.
+    # restart controlled. Default mirrors connectors/whatsapp/config.py.
     (int(os.getenv("WA_BRIDGE_PORT", "3111")), "whatsapp bridge (node — kept across a restart, like livekit)"),
 ]
 #: Sidecars a RESTART keeps warm and a full STOP ends: they hold a session worth not re-pairing.
 KEPT_ON_RESTART = {7880, int(os.getenv("WA_BRIDGE_PORT", "3111"))}
 APP_PORT = 43917
-HTTPS_PORT = 44317
 # Kept a literal on purpose: this file is standard-library-only and imports nothing from the engine, which is what
 # lets a Windows user with no venv still start and stop their instance. `daemon/__init__.py` owns the number;
 # `tests/infrastructure/unit/daemon/test_the_boot_knows_about_the_daemon.py` fails if the two ever disagree.
 DAEMON_PORT = 45817
 
 
-def _open_line(https: bool) -> str:
-    """The URL to hand a person. HTTPS only when this install has its certificate (scripts/tls_cert.py)."""
-    if https:
-        return f"  open:  https://local.zaelar.com:{HTTPS_PORT}/   ·   http://127.0.0.1:{APP_PORT}/"
+def _open_line() -> str:
+    """The URL to hand a person. A local install is plain HTTP on localhost: browsers treat it as a secure context
+    (microphone included) and nothing leaves the machine — no certificate to issue, install or renew."""
     return f"  open:  http://localhost:{APP_PORT}/"
-
-
-def _ensure_tls() -> bool:
-    """Per-install certificate for local.zaelar.com (mkcert). Never fails a start: no cert = HTTP only + one hint."""
-    try:
-        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-        import tls_cert
-        return tls_cert.ensure(say=_say) == tls_cert.USE
-    except Exception as e:  # noqa: BLE001
-        _say(f"  (TLS certificate check skipped: {e})")
-        return False
 
 
 # ── tiny helpers ──────────────────────────────────────────────────────────────────────────────────────────────────
@@ -204,7 +189,7 @@ def cmd_status() -> int:
         _say("\n  zaelar is not running.  Start it with:  make start   (or: python scripts/zaelar.py start)")
         return 1
     if APP_PORT in up:
-        _say("\n" + _open_line(HTTPS_PORT in up))
+        _say("\n" + _open_line())
     return 0
 
 
@@ -350,7 +335,7 @@ def cmd_start(wait: float = 180.0, brain: str = "nucleo") -> int:
         build = live_build()
         if build:
             _say(f"zaelar is already running ({build}).")
-            _say(_open_line(port_busy(HTTPS_PORT)))
+            _say(_open_line())
             _say("  to load new code:  make restart")
             return 0
         # Port taken but not answering: exactly the state that used to look like "it won't start".
@@ -399,7 +384,6 @@ def cmd_start(wait: float = 180.0, brain: str = "nucleo") -> int:
     else:
         _say("zaelar-daemon already up, reusing it.")
 
-    https = _ensure_tls()
     _say("starting zaelar…")
     pid = _spawn([py, "-m", "server"], "server.log", env)
     if not pid:
@@ -424,7 +408,7 @@ def cmd_start(wait: float = 180.0, brain: str = "nucleo") -> int:
     _say(f"\nzaelar is up  ({build})")
     if head and head not in build:
         _say(f"  ⚠ git HEAD is {head}: the instance is NOT running your latest commit")
-    _say(_open_line(https))
+    _say(_open_line())
     return 0
 
 

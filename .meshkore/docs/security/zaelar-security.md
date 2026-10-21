@@ -302,7 +302,7 @@ its DNS name to 127.0.0.1 could also read the answers. One middleware now decide
 
 | Deployment | Rule |
 |---|---|
-| Self-hosted | `Host` must name this engine (localhost · 127.0.0.1 · ::1 · local.zaelar.com) on every `/api/*`; the peer must be loopback; a mutating request whose `Origin` is another site, or whose `Sec-Fetch-Site` is `cross-site`, is refused. |
+| Self-hosted | `Host` must name this engine (localhost · 127.0.0.1 · ::1) on every `/api/*`; the peer must be loopback; a mutating request whose `Origin` is another site, or whose `Sec-Fetch-Site` is `cross-site`, is refused. |
 | Self-hosted, opened to a network | Set `ZAELAR_API_TOKEN`; a caller presenting it in `X-Zaelar-Token` passes the rules above (constant-time compare). Unset = closed. A browser on another device does not send that header — opening the UI itself to a LAN is not covered yet. |
 | Cloud account process | The session gate (`server/ingress.py`) already admitted the request; a mutation must also come from the account's own site: `Origin` equal to `Host` (or `X-Forwarded-Host`), never `cross-site`. Not verified live against the platform proxy. |
 

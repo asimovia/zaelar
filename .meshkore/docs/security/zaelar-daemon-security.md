@@ -167,7 +167,7 @@ That makes the proxy a second front door, so it is guarded as one:
   so it never needs to. Fire and forget is enough to put a folder on somebody's allowlist with nothing on
   screen to show for it. The guard is `Sec-Fetch-Site` first, `Origin` compared against the request's own
   `Host` second — not a configured hostname, because this engine is reached as `localhost:43917`, as
-  `local.zaelar.com` and as whatever a cloud account resolves to, and a guard that knew only one of those would
+  `127.0.0.1:43917` and as whatever a cloud account resolves to, and a guard that knew only one of those would
   lock the user out of their own interface with every escape test still green.
 - **No token means no probe.** `/health` answers without a credential, so an engine with no `daemon.json`
   probing anyway would report "connected" on the strength of a daemon it cannot authenticate to — a green icon

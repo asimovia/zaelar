@@ -21,7 +21,7 @@ def _d(**kw):
 
 def test_the_engines_own_page_and_its_own_tools_pass():
     assert _d(origin="http://127.0.0.1:43917", fetch_site="same-origin")[0]
-    assert _d(host="local.zaelar.com:44317", origin="https://local.zaelar.com:44317")[0]
+    assert _d(host="localhost:43917", origin="http://localhost:43917")[0]
     assert _d(host="localhost:43917")[0], "a CLI or the bridge sends no Origin"
     assert _d(method="GET", path="/api/tasks")[0]
 

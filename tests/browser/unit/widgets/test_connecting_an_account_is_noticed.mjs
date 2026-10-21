@@ -38,7 +38,7 @@ function fakeWin(opts = {}) {
     addEventListener: (k, fn) => { (listeners[k] ||= []).push(fn); },
     removeEventListener: (k, fn) => { listeners[k] = (listeners[k] || []).filter(f => f !== fn); },
     fire: (k, ev) => (listeners[k] || []).slice().forEach(fn => fn(ev)),
-    location: { origin: "https://local.zaelar.com:44317" },
+    location: { origin: "http://localhost:43917" },
   };
 }
 

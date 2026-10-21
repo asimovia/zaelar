@@ -73,7 +73,7 @@ def test_a_visitor_without_a_session_is_sent_to_their_own_computer():
     own machine instead of an error page."""
     status, ctype, body = _get("/m")
     assert status == 200 and "text/html" in ctype
-    assert "local.zaelar.com" in body, (
+    assert "localhost:43917" in body, (
         "the unauthenticated fallback no longer points at the local engine — a routing change would strand "
         "every visitor without an account on a page that does nothing"
     )
@@ -83,7 +83,7 @@ def test_a_visitor_without_a_session_is_sent_to_their_own_computer():
 def test_the_fallback_page_gives_a_visitor_a_way_forward_without_javascript():
     """A `location.replace` alone is a dead end for anyone whose browser did not run it."""
     _, _, body = _get("/m")
-    assert "<a href" in body and "local.zaelar.com" in body
+    assert "<a href" in body and "localhost:43917" in body
 
 
 def test_the_fallback_leaks_nothing_about_anybody():
@@ -104,7 +104,7 @@ def test_the_pwa_files_are_NOT_served_to_a_visitor_without_a_session(path):
     it would mean the edge is serving an account's files without a cookie."""
     status, ctype, body = _get(path)
     assert status == 200
-    assert "text/html" in ctype and "local.zaelar.com" in body, (
+    assert "text/html" in ctype and "localhost:43917" in body, (
         f"{path} no longer falls back to the interstitial for an anonymous visitor — the edge may be serving "
         f"a real Machine's file without a session (content-type: {ctype})"
     )

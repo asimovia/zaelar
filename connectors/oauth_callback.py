@@ -16,7 +16,7 @@ This page is OURS and it runs in a window WE opened, so it can talk to its opene
     window.opener.postMessage({zaelar: "connector", family, provider, ok}, "*")
 
 ⚠️ **`"*"` is deliberate and it is safe HERE, in this direction.** The engine serves two local origins
-(`127.0.0.1:43917` and `local.zaelar.com:44317`) and the callback is normalized onto loopback, so the
+(`127.0.0.1:43917` and `localhost:43917`) and the callback is normalized onto loopback, so the
 opener is frequently on the OTHER one — naming a single target origin would silently drop the message in
 exactly the case it is needed. What travels is three flags and no secret: the worst a listener could learn
 is that a connection finished, which it is about to learn anyway.

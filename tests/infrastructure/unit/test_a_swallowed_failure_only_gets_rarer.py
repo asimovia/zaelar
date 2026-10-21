@@ -378,7 +378,6 @@ PER_FILE: dict[str, int] = {
     'nucleo/workspace.py': 1,
     'observability/evidence.py': 1,
     'observability/identity.py': 7,
-    'scripts/tls_cert.py': 2,
     'scripts/zaelar.py': 10,
     'search/asked.py': 1,
     'search/browser.py': 12,

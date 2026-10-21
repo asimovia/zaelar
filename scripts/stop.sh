@@ -2,8 +2,7 @@
 # stop.sh — DELEGATOR. The stopping logic now lives in `scripts/zaelar.py` (2026-08-12).
 #
 # Why it was moved: this script was bash with lsof/pkill/pgrep, so it did not work on Windows—and zaelar is a PUBLIC
-# project that people self-host. It also only freed port 43917 and never 44317 (the HTTPS listener), so half an
-# instance survived every stop, and it did not escalate to kill when the process ignored SIGTERM (which really
+# project that people self-host. It also did not free every port the instance holds, and it did not escalate to kill when the process ignored SIGTERM (which really
 # happens: a hung voice-worker thread does not die from a TERM).
 #
 # This file is retained so as not to break anyone who calls it by name. Recommended entry point:

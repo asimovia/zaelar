@@ -117,7 +117,7 @@ async def canvas_state(payload: dict):
         pass
     # DESKTOP REHYDRATION (2026-08-12): the frontend also sends GEOMETRY (which card, where, with which query) and
     # it is saved as a SAFETY NET for `localStorage`, which is where restoration normally comes from. localStorage is
-    # per-ORIGIN and per-browser: the same zaelar served at `https://local.zaelar.com:44317` and
+    # per-ORIGIN and per-browser: the same zaelar opened as `http://127.0.0.1:43917` and
     # `http://localhost:43917` are two different desktops, and another browser/profile has none. When the operator
     # thinks "the desktop was lost", they are almost always looking at an empty store that is not theirs. It goes to
     # `sys_kv` (UI state, NOT the root state that travels in every prompt: the brain does not care about a card's
@@ -215,7 +215,7 @@ async def canvas_layout():
     """The desktop AS the operator left it (cards + positions) PLUS `live`, the instance cards of errands
     running right now (V2-351). Restoration fallback when browser `localStorage` does not have it — another
     browser, another profile, or the same zaelar through another origin (localhost:43917 vs
-    local.zaelar.com:44317, two distinct stores for the same desktop). Read-only."""
+    127.0.0.1:43917, two distinct stores for the same desktop). Read-only."""
     live = _live_canvas_instances()
     sheets = _sheet_ids_on_disk()     # V2-773: the sheets a browser may keep — a `results::` id off this list is a ghost
     try:

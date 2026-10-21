@@ -187,40 +187,28 @@ def redirect_uris(origin: str = "") -> list[str]:
     return [base + path for path in CALLBACK_PATHS]
 
 
-#: The host of the engine's HTTPS listener. It is a DNS alias of 127.0.0.1 (`dig local.zaelar.com` → the
-#: loopback address) carrying a per-install certificate (`scripts/tls_cert.py`, mkcert), so that a LOCAL engine
-#: can be opened over TLS. For Google it is not a second machine — it is the same machine by another name.
-LOCAL_TLS_HOST = "local.zaelar.com"
-
-
 def loopback_origin() -> str:
     import os
     return "http://127.0.0.1:" + (os.getenv("ZAELAR_PORT") or "43917").strip()
 
 
 def served_origins() -> list[str]:
-    """The origins a LOCAL engine actually answers on — both listeners of the same app (`server/__main__.py`:
-    HTTP on 43917, and the shared-cert HTTPS one on local.zaelar.com, ports overridable by env)."""
-    import os
-    tls_port = (os.getenv("ZAELAR_TLS_PORT") or "44317").strip()
-    return [loopback_origin(), f"https://{LOCAL_TLS_HOST}:{tls_port}"]
+    """The origins a LOCAL engine answers on — ONE listener (`server/__main__.py`, plain HTTP) under the two names a
+    browser uses for it. `localhost` is what the launchers hand a person (2026-10-21: HTTPS on a public name was
+    retired), so a browser there must collapse onto the loopback address Google was asked to register — without it
+    the redirect named `localhost` and Google answered `redirect_uri_mismatch`."""
+    port = loopback_origin().rsplit(":", 1)[1]
+    return [loopback_origin(), f"http://localhost:{port}"]
 
 
 def normalize_origin(origin: str) -> str:
-    """Collapse this engine's TWO local listeners into the ONE address Google is asked to return to.
+    """Collapse this engine's local names into the ONE address Google is asked to return to.
 
-    A browser on `https://local.zaelar.com:44317` is on the same process, the same port-neighbour and the
-    same token store as one on `http://127.0.0.1:43917`; the callback page is self-contained («conectado,
-    cierra esta pestaña») and reads nothing from the origin's session, so which of the two Google returns
-    to changes nothing the operator can observe.
-
-    What it DOES change is whether the address can be registered at all. Google exempts the loopback
-    address from domain ownership: `127.0.0.1` needs no verification, no HTTPS and no consent-screen
-    authorized domain. `local.zaelar.com` is a domain — OURS, shipped with the engine — so registering it
-    would require whoever self-hosts to verify a domain they do not own. Deriving the redirect from
-    whichever listener the operator happened to open therefore made half the attempts unregistrable, and
-    the remedy V2-687 reached for (print TEN URIs instead of five) asked him to register five addresses
-    that cannot be registered.
+    A browser on `http://localhost:43917` is on the same process and the same token store as one on
+    `http://127.0.0.1:43917`; the callback page is self-contained («conectado, cierra esta pestaña») and reads
+    nothing from the origin's session, so which of the two Google returns to changes nothing the operator can
+    observe. What it DOES change is whether the address is registered: Google exempts the loopback address from
+    domain ownership, and ONE list of callbacks is what the operator registers (V2-687).
 
     A genuinely remote origin — a managed deployment on its own verified domain — is NOT one of
     `served_origins()` and passes through untouched, which is the whole of V2-603's finding and stays true.
@@ -234,7 +222,7 @@ def uris_to_register() -> list[str]:
 
     ⚠️ It is not `redirect_uris()`, and the difference cost the first real connect (V2-687, 2026-09-14):
     the redirect is DERIVED from the origin the browser is on. Since `normalize_origin()` collapses this
-    engine's two local listeners onto loopback, that is once again ONE list of five — but five that Google
+    engine's local names onto loopback, that is once again ONE list of five — but five that Google
     will actually accept, which the ten never were.
     """
     out: list[str] = []

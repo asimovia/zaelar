@@ -5,7 +5,7 @@ Incident on 2026-08-12: with a search in progress, the canvas contained `['naveg
 reloaded and it came back blank. It was not a saving failure — it was the DESIGN: `_persist()` excluded `navegador` by
 name, namely the widget that is on screen during a web task. And the only storage was `localStorage`,
 which is **per-origin and per-browser**: the same zaelar at `http://localhost:43917` and at
-`https://local.zaelar.com:44317` are two different desktops, so changing the entry point also looks like data loss.
+`http://127.0.0.1:43917` are two different desktops, so changing the entry point also looks like data loss.
 This fixes the three pieces: what is saved, where it is restored from, and that Processes does not lie
 about what was interrupted.
 """

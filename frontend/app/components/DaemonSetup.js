@@ -50,8 +50,8 @@ export function DaemonSetup() {
   const [copied, setCopied] = createSignal(false);
   let pathEl;
 
-  // `navigator.clipboard` needs a secure context, and this app is served over plain http on 43917 as well as
-  // https on 44317 — so on the http origin the modern API simply is not there. The old `execCommand` path is
+  // `navigator.clipboard` needs a secure context, and a local install is served over plain http
+  // — so outside localhost the modern API simply is not there. The old `execCommand` path is
   // the fallback, and the button says what happened either way: a copy button that silently does nothing is
   // worse than no button, because the user walks away believing they have the command.
   const copy = async (text) => {

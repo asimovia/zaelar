@@ -41,8 +41,7 @@ help:
 # Lo que arregla, aprendido a golpes (2026-08-10/12):
 #   · `start` es IDEMPOTENTE — arrancar encima de una instancia viva dejaba los puertos ocupados, el proceso nuevo
 #     moría con un EADDRINUSE silencioso y la app PARECÍA arrancada sin funcionar.
-#   · `stop` cubre los DOS listeners (43917 y 44317). El `stop.sh` viejo solo liberaba el 43917: media instancia
-#     sobrevivía a cada parada.
+#   · `stop` cubre todos los puertos de la instancia (ver PORTS en scripts/zaelar.py), no solo el de la app.
 #   · `stop` ESCALA a kill: un proceso encallado ignora SIGTERM. Pasó de verdad (el hilo del worker de voz se colgó).
 #   · `status` compara la build VIVA contra `git HEAD` — reiniciar y CREER que reinició ha costado horas aquí.
 start:

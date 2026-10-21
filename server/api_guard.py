@@ -12,8 +12,8 @@ name to 127.0.0.1 can also READ the answers. Only the MeshKore control plane had
 ## The rule (the operator's choices, 2026-10-02)
 
 Self-hosted (a process that is not part of account routing):
-  · every `/api/*` request must name this engine in `Host` — localhost, 127.0.0.1, ::1 or local.zaelar.com
-    (its DNS pins to 127.0.0.1 by design). A DNS-rebound page names the attacker's domain there;
+  · every `/api/*` request must name this engine in `Host` — localhost, 127.0.0.1 or ::1. A DNS-rebound page
+    names the attacker's domain there;
   · every `/api/*` request must come from the machine itself (a loopback peer);
   · a MUTATING request (POST/PUT/PATCH/DELETE) that a browser sent from another site is refused: its `Origin`
     must be one of the names above, and `Sec-Fetch-Site: cross-site` is refused outright;
@@ -37,7 +37,7 @@ import os
 from urllib.parse import urlparse
 
 #: The names this engine answers to on its own machine (see `connectors/google/app.served_origins`).
-LOCAL_NAMES = frozenset({"localhost", "127.0.0.1", "::1", "local.zaelar.com"})
+LOCAL_NAMES = frozenset({"localhost", "127.0.0.1", "::1"})
 MUTATING = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 TOKEN_ENV = "ZAELAR_API_TOKEN"
 TOKEN_HEADER = "x-zaelar-token"
@@ -58,7 +58,7 @@ def guarded(path: str, method: str) -> bool:
 
 def _hostname(raw_host: str) -> str:
     h = (raw_host or "").strip().lower()
-    if h.startswith("["):                                   # [::1]:44317
+    if h.startswith("["):                                   # [::1]:43917
         return h[1:h.index("]")] if "]" in h else h
     return h.rsplit(":", 1)[0] if h.count(":") == 1 else h
 

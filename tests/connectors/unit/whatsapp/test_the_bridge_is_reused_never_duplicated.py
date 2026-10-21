@@ -1,7 +1,7 @@
 """The WhatsApp bridge is a sidecar: reused when it already answers, owned by `stop`, kept by `restart`.
 
 Measured 2026-09-15. A `node bridge.js --port 3111` from 00:21 (PPID 1) had outlived every `make stop` of
-the day — `scripts/zaelar.py` freed 43917/44317/45817/7880 and never named the bridge's port — so every
+the day — `scripts/zaelar.py` freed 43917/45817/7880 and never named the bridge's port — so every
 restart spawned a SECOND bridge that died with `EADDRINUSE`, while `wait_connected` went green because the
 orphan answered `/health`. WhatsApp worked through a process no restart controlled: the same class the
 Makefile already paid for with «media instancia sobrevivía a cada parada».

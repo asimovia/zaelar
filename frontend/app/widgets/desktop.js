@@ -487,7 +487,7 @@ export class Desktop {
   // cerebro ("modifica el widget de X" sin preguntar) y se vean en el mapa. Debounce ligero (los arrastres/moves
   // llaman _persist a ráfagas) + best-effort. Envía this.list() crudo; el servidor normaliza (navegador::t3→navegador).
   // Lleva ADEMÁS la geometría, que el server guarda como red de seguridad del localStorage (que es per-origen y
-  // per-navegador: el mismo zaelar por :43917 y por :44317 son dos escritorios distintos). Ver `restore()`.
+  // per-navegador: el mismo zaelar por localhost y por 127.0.0.1 son dos escritorios distintos). Ver `restore()`.
   _reportOpen(){
     try{ document.dispatchEvent(new CustomEvent("hb:canvas-changed")); }catch(_){}   // V2-537 (closeAll/restore too)
     clearTimeout(this._openTimer);
@@ -521,7 +521,7 @@ export class Desktop {
     }catch(_){}
     let items=[]; try{ items=JSON.parse(localStorage.getItem("hb_desktop")||"[]"); }catch(_){ items=[]; }
     // REHIDRATACIÓN: sin nada guardado AQUÍ, preguntamos al server por el último escritorio conocido. El
-    // localStorage es per-origen y per-navegador — abrir el mismo zaelar por otro origen (:43917 ↔ :44317), en otro
+    // localStorage es per-origen y per-navegador — abrir el mismo zaelar por otro origen (localhost ↔ 127.0.0.1), en otro
     // navegador o en otro perfil enseña un escritorio vacío que parece pérdida de datos y no lo es. El server
     // conserva la geometría (`/api/canvas/layout`) y la devuelve para reconstruirlo. Solo como FALLBACK: si este
     // navegador tiene su propio estado, MANDA él (el frontend sigue siendo autoritativo del canvas), y la época de
@@ -1121,8 +1121,8 @@ export class Desktop {
   // re-renders only if it actually changed. That is what makes the postMessage safe to accept loosely — it
   // is a HINT to go and look, never the answer itself, so a forged one buys a refresh and nothing more.
   _connectOrigins(){
-    // Our own origin, plus the engine's two local listeners: the callback is normalized onto loopback
-    // (`connectors/google/app.py::normalize_origin`), so a card opened on `local.zaelar.com` receives its
+    // Our own origin, plus the engine's two local names: the callback is normalized onto loopback
+    // (`connectors/google/app.py::normalize_origin`), so a card opened on `localhost` receives its
     // message from `127.0.0.1` — the frequent case, not the exotic one.
     return (o)=>{ try{
       if(o === location.origin) return true;

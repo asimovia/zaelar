@@ -94,7 +94,7 @@ def redirect_uri(m, origin: str = "") -> str:
     """Where the provider sends the operator back — DERIVED from the origin they are actually on (V2-603).
 
     An explicit `<PREFIX>_OAUTH_REDIRECT` wins (a deployment that knows its public address). Otherwise the
-    origin, with this engine's two local listeners collapsed onto loopback (`google/app.normalize_origin`:
+    origin, with this engine's local names collapsed onto loopback (`google/app.normalize_origin`:
     Google exempts `127.0.0.1` from domain ownership, V2-687), accepted only if it LOOKS like an origin. With
     no usable origin, the loopback listener — which is what a hardcoded `127.0.0.1:43917` meant, minus the
     port it could not see."""

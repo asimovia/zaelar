@@ -13,7 +13,6 @@ async def brain_and_voice(*, SETTINGS, active, has, health_state) -> dict:
     # If this responds at all the server is up — but the operator asked to SEE it listed, so we surface it plainly.
     items = [{"key": "server", "label": "Servidor · FastAPI",
               "state": "ok", "detail": f"en línea · puerto {_va.os.getenv('PORT', '43917')}"}]
-    items.extend(filter(None, [_tls_item()]))   # the HTTPS certificate, only when it needs a person
 
     # ── Version (V2-074) — which code runs on THIS instance (certainty that restart loaded the new code) ──────
     try:
@@ -342,36 +341,3 @@ async def the_rest_and_the_light(*, SETTINGS, brain, has, health_state, items) -
     _out = locals()
     return {k: _out[k] for k in ('overall', ) if k in _out}
 
-
-def _tls_item() -> dict | None:
-    """The HTTPS certificate, only when it needs a person (2026-10-20). The launcher renews it at start, but an engine
-    that runs for days outlives that check, and an expired certificate shows up in the browser as a page that stops
-    talking to the engine with no reason given. None while it is fine, or when there is no HTTPS listener."""
-    import time as _t
-    from server import tls as _tls_mod
-    certfile, _key = _tls_mod.pair()
-    if not _va.os.path.isfile(certfile):
-        return None
-    try:
-        tls = _load_tls()
-        not_after = tls.expires_at(certfile)
-    except Exception as e:  # noqa: BLE001 — the status never fails over a certificate it cannot read
-        _va.logger.debug(f"status: TLS certificate unreadable: {e}")
-        return None
-    if not_after is None:
-        return None
-    left = not_after - _t.time()
-    if left > tls.RENEW_BEFORE_S:
-        return None
-    port = _va.os.getenv("PORT", "43917")
-    if left <= 0:
-        return {"key": "https", "label": "HTTPS · certificado", "state": "error", "group": "core",
-                "detail": f"certificado CADUCADO — https apagado; abre http://localhost:{port} (los datos no salen del equipo)"}
-    return {"key": "https", "label": "HTTPS · certificado", "state": "warn", "group": "core",
-            "detail": f"caduca en {int(left // 86400)} días — reinicia el motor para renovarlo (necesita mkcert)"}
-
-
-
-def _load_tls():
-    from server import tls as _tls_mod
-    return _tls_mod.load()

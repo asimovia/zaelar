@@ -69,7 +69,7 @@ VERSION = "0.2.2"
 #   · not in /etc/services (verified 2026-09-04) — no known service to collide with;
 #   · below 49152, the ephemeral floor on macOS/Linux, so an outbound connection can never steal it while the
 #     daemon is down and make the next start fail with EADDRINUSE;
-#   · far from everything this project already binds — 43917/44317 (engine), 7880 (livekit), 9222/9200 (browser
+#   · far from everything this project already binds — 43917 (engine), 7880 (livekit), 9222/9200 (browser
 #     debug) — and from 5570 (the MeshKore daemon this is not).
 PORT = 45817
 

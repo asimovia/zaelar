@@ -4,7 +4,7 @@
 # re-resolved to 127.0.0.1) sends NO Origin header at all, so it sailed past: the request arrives from loopback,
 # originless, and /api/meshkore/status disclosed clusters + peer handles + engagement to a page the operator
 # merely visited. What betrays the rebind is the Host header: the browser still names the site it THINKS it is
-# on. Exact hostname match against the loopback names (plus local.zaelar.com, pinned to 127.0.0.1 by design).
+# on. Exact hostname match against the loopback names.
 #
 # Run: .venv/bin/pytest tests/cluster/unit/test_rebind_residual_get.py -q
 import asyncio
@@ -40,7 +40,7 @@ def test_a_single_label_attacker_host_is_refused_too(monkeypatch):
     assert _get("/api/meshkore/status", host="testserver") == 403
 
 
-@pytest.mark.parametrize("host", ["localhost:43917", "127.0.0.1:43917", "local.zaelar.com:44317", "[::1]:43917"])
+@pytest.mark.parametrize("host", ["localhost:43917", "127.0.0.1:43917", "[::1]:43917"])
 def test_the_legitimate_loopback_names_still_pass(monkeypatch, host):
     """Counterweight: the frontend (both origins) and the internal bridges keep working — the route answers,
     whatever its payload, instead of 403."""
