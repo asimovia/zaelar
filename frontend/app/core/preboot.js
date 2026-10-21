@@ -19,10 +19,10 @@
  *   · past the expected window it stops narrating and starts reporting: the real elapsed seconds, and that this
  *     is longer than usual. An honest "this is slow" keeps more people than a confident fiction.
  *
- * It carries its own strings instead of reading `/api/i18n/bundle`, and that is deliberate: the bundle needs a
- * session AND the engine to be up, which is the very thing being waited for. That circularity is what made the
- * cold start show raw keys like `boot.encendiendo` (INI-024's known blemish); carrying two languages inline
- * costs ~1 KB and removes it.
+ * It never FETCHES `/api/i18n/bundle`, and that is deliberate: the bundle needs a session AND the engine to be up,
+ * which is the very thing being waited for. That circularity is what made the cold start show raw keys like
+ * `boot.encendiendo` (INI-024's known blemish). It reads the bundle the last visit cached instead, with an
+ * English floor inline.
  *
  * Loaded as a CLASSIC script (not a module) from both shells so there is ONE definition. Safe because by the
  * time this runs the engine has already served the HTML from the same origin — a Machine that has not woken at
@@ -34,55 +34,46 @@
   var host = document.getElementById("preboot");
   if (!host) return;
 
-  var ES = (navigator.language || "en").toLowerCase().indexOf("es") === 0;
+  // THE INSTANCE'S LANGUAGE, never the browser's. `hb_lang` and `hb_i18n_<code>` are the mirror `core/i18n.js`
+  // keeps of the engine's active language and its bundle, so a reload speaks what the agent speaks — Chinese
+  // included — before a single request. It used to read `navigator.language`: an English instance in a Spanish
+  // browser booted in Spanish. With no mirror yet (the very first visit) it is English, the product's default.
+  // The English floor below must equal `preboot.*` in i18n/bundles/en.json (test_the_boot_speaks_the_instance_language).
+  var FLOOR = {
+    "preboot.wake.title": "Waking up your agent",
+    "preboot.boot.title": "Getting your agent ready",
+    "preboot.slow": "This is taking longer than usual · {s}s",
+    "preboot.ready": "Ready",
+    "preboot.wake.1": "Reaching your machine",
+    "preboot.wake.2": "Reserving its CPU and memory",
+    "preboot.wake.3": "Mounting your private volume",
+    "preboot.wake.4": "Starting the engine",
+    "preboot.boot.1": "Loading the interface",
+    "preboot.boot.2": "Connecting to the engine",
+    "preboot.boot.3": "Opening your session",
+    "preboot.boot.4": "Preparing the voice stack",
+    "preboot.boot.5": "Loading the card catalogue",
+    "preboot.boot.6": "Connecting to the models",
+    "preboot.boot.7": "Opening your memory",
+    "preboot.boot.8": "Restoring your desktop",
+    "preboot.boot.9": "Recovering your conversations",
+    "preboot.boot.10": "Checking your energy",
+    "preboot.boot.11": "Reviewing your agenda",
+    "preboot.boot.12": "Almost there"
+  };
+  var DICT = {};
+  try {
+    var code = localStorage.getItem("hb_lang") || "en";
+    DICT = JSON.parse(localStorage.getItem("hb_i18n_" + code) || "{}") || {};
+  } catch (_) { DICT = {}; }
+  function tr(key) { return DICT[key] || FLOOR[key]; }
+  function list(prefix, n) { var out = []; for (var i = 1; i <= n; i++) out.push(tr(prefix + i)); return out; }
 
   // The phases, in the order a boot actually goes through them. `wake` only appears when the engine is not
   // answering yet — on a warm reload it never shows, which is why the warm path stays quiet and quick.
   var PHASES = {
-    wake: {
-      title: ES ? "Arrancando tu agente personal" : "Waking up your agent",
-      steps: ES ? [
-        "Contactando con tu máquina",
-        "Reservando su CPU y memoria",
-        "Montando tu volumen privado",
-        "Encendiendo el motor",
-      ] : [
-        "Reaching your machine",
-        "Reserving its CPU and memory",
-        "Mounting your private volume",
-        "Starting the engine",
-      ],
-    },
-    boot: {
-      title: ES ? "Preparando tu agente" : "Getting your agent ready",
-      steps: ES ? [
-        "Cargando la interfaz",
-        "Conectando con el motor",
-        "Abriendo tu sesión",
-        "Preparando la voz",
-        "Cargando el catálogo de tarjetas",
-        "Conectando con los modelos",
-        "Abriendo tu memoria",
-        "Restaurando tu escritorio",
-        "Recuperando tus conversaciones",
-        "Comprobando tu energía",
-        "Revisando tu agenda",
-        "Casi listo",
-      ] : [
-        "Loading the interface",
-        "Connecting to the engine",
-        "Opening your session",
-        "Preparing the voice stack",
-        "Loading the card catalogue",
-        "Connecting to the models",
-        "Opening your memory",
-        "Restoring your desktop",
-        "Recovering your conversations",
-        "Checking your energy",
-        "Reviewing your agenda",
-        "Almost there",
-      ],
-    },
+    wake: { title: tr("preboot.wake.title"), steps: list("preboot.wake.", 4) },
+    boot: { title: tr("preboot.boot.title"), steps: list("preboot.boot.", 12) },
   };
 
   // ~35 s is what a genuinely cold Machine takes to become usable, measured on this deployment. The ring is
@@ -166,9 +157,7 @@
 
     if (elapsed > EXPECTED_MS) {
       var s = Math.round(elapsed / 1000);
-      slow.textContent = ES
-        ? "Está tardando más de lo normal · " + s + " s"
-        : "This is taking longer than usual · " + s + "s";
+      slow.textContent = tr("preboot.slow").replace("{s}", String(s));
     }
     setTimeout(tick, 250);
   }
@@ -190,7 +179,7 @@
     if (done) return;
     done = true;
     paintRing(1);
-    setStep(ES ? "Listo" : "Ready");
+    setStep(tr("preboot.ready"));
     slow.textContent = "";
   };
 

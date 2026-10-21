@@ -3211,6 +3211,8 @@ DOMAINS: list[dict] = [
                                   # que el primer pantallazo de una PWA recién instalada salía como
                                   # `boot.encendiendo`. Suelo estrecho + la leyenda resuelta en cada pintado.
                                   "tests/browser/unit/i18n/test_cold_start_floor.py",
+                                  # The boot screen speaks the instance's language, never the browser's.
+                                  "tests/browser/unit/i18n/test_the_boot_speaks_the_instance_language.py",
                                   # V2-613: el ratchet de claves del CATÁLOGO DE WIDGETS — cada `ctx.t("widgets.…")`
                                   # tiene que existir en AMBOS bundles, hermano del que ya vigilaba solo el shell móvil.
                                   # V2-695 lo ENSANCHA a los 15 widgets (antes solo veía la clave COMPLETA, así que
