@@ -332,6 +332,8 @@
   "Aquí sigo, trabajando en ello."
  ],
  "promise_retracted": "Perdona — en realidad no lo he mirado todavía y no hay nada en marcha. Dime qué quieres que compruebe y lo hago ahora.",
+ "promise_retracted_busy": "Perdona — en realidad no lo he mirado todavía. Dime qué quieres que compruebe y lo hago ahora.",
+ "still_running_truth": "Para que conste, esto sigue en marcha: {titles}. Dime «páralo» y lo paro.",
  "first_rows_notice": "Ya tengo los primeros para «{title}»: {rows}. Los tienes en la hoja.",
  "tell_me_cues": [
   "avisame",

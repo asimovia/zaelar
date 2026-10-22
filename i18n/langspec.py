@@ -526,6 +526,11 @@ class LangSpec:
     # V2-717 — spoken when the reply PROMISED to look and the turn looked at nothing we can read: honest, and
     # it names the state (nothing running) so the operator is not left waiting on a look that never started.
     promise_retracted: str = ("")
+    #: …and while a worker IS running (2026-10-22: «…and nothing is running» was said over two live workers). It
+    #: retracts the look only and says nothing about the state — the live list is the panel's to show.
+    promise_retracted_busy: str = ("")
+    #: Said when the reply claimed work stopped / nothing running and the task record says otherwise. `{titles}`.
+    still_running_truth: str = ("")
     #: The FIRST backed rows of an errand he asked to be told about, said once (`nucleo/turn/first_rows_notice`).
     #: Measured 2026-10-14: boats landed 34 s and kid-friendly activities 18 s after his last turn, and nothing
     #: reached him. The cues are DATA (accent-free, lowercase, matched as substrings): his «tell me» and our «I'll

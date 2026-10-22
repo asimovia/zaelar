@@ -92,10 +92,16 @@ def named_or_catalogue(brief, operator_text: str, *, wait_s: float = 3.5) -> str
             from nucleo.flash import player_control as _pc
             _ids = brief.get("open_ids") if isinstance(brief, dict) and brief.get("open_ids") else None
             named = _pc.open_player_owns(named, operator_text, open_ids=_ids)
+        # A guess on his words alone may not contradict the end state the brief already named (`spec`).
+        from nucleo import spec as _spec
+        _against = _spec.card_contradicts(brief, named) if named else ""
+        if _against:
+            named = ""
         try:
             from voice.observer import emit as _emit
             _emit("brain", "🧭 catálogo tardío (la pantalla dijo «none»)", role="system",
-                  text=f"{cat or '?'} ({conf:.2f}) → {named or 'nadie'}", extra={"cat": "flash", "card": named, "choice": cat, "confidence": conf})
+                  text=f"{cat or '?'} ({conf:.2f}) → {named or 'nadie'}" + (f" · {_against}" if _against else ""),
+                  extra={"cat": "flash", "card": named, "choice": cat, "confidence": conf})
         except Exception:  # noqa: BLE001
             pass
         return named

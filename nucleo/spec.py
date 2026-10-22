@@ -251,6 +251,24 @@ def end_state_verdict(brief) -> str:
         return ""
 
 
+def card_contradicts(brief, wid: str) -> str:
+    """Why `wid` cannot be the card of this order, or "" when it can (demo 2026-10-22).
+
+    «…to make it happen. I need the plan of five days.» — the brief named the end state `results:empty` (a Brain
+    Worker's sheet), and the LATE catalogue, asked on the words alone, named `agenda` at 0.77: the promise repair
+    then wrote «happen. I need the plan of five days.» into his agenda as a task. A card none of whose declared
+    actions attests the end state the brief named is not the order's card. No end-state verdict → no objection."""
+    want = end_state_verdict(brief)
+    base = str(wid or "").split("::", 1)[0].strip().lower()
+    if not want or not base or want.split(":", 1)[0] == base:
+        return ""
+    for name, spec in (_manifest(base).get("actions") or {}).items():
+        if isinstance(spec, dict) and isinstance(spec.get(TEMPLATE_KEY), (dict, list)) \
+                and target_of(spec[TEMPLATE_KEY]) == want:
+            return ""
+    return f"the phrase's end state is «{want}» and no action of {base} attests it"
+
+
 def gate_completion(brief, wid: str, action: str) -> str:
     """Why a verdict COMPLETION of `wid:action` must not fire, or "" when it may.
 

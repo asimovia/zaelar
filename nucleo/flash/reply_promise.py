@@ -30,8 +30,21 @@ CHOICES = {
 INSTRUCTIONS = ("Classify the assistant's REPLY (any language). The operator's request is context only. "
                 "Choose act if the reply promises to carry out a task (future or in progress), ask_first if it holds that task "
                 "until the operator says yes, music if it promises to play music, none otherwise. A refusal, a negated action, or a report of something ALREADY done is none.")
+#: A second question in the SAME trip (2026-10-22): does the reply tell him work was stopped/cleared or that nothing
+#: runs? Checkable against the task record, so `second_pass` can say what is still running when it is not true —
+#: «Nothing left running — I've cleared it» was said twice over the monitor search, live and on screen.
+STATE_KEY = "reply_state"
+STATE_CHOICES = {
+    "quiet": "tells the operator that some work, task or process was stopped, cancelled or cleared, or that "
+             "nothing is running any more («it's stopped», «I've cleared it», «nothing left running», «lo he "
+             "parado», «ya no hay nada en marcha»)",
+    "other": "anything else, including a task reported as finished with its result, a promise, a question or an answer",
+}
+STATE_INSTRUCTIONS = ("Classify the assistant's REPLY (any language). The operator's request is context only. Choose "
+                      "quiet only when the reply itself says work was stopped/cancelled/cleared or nothing is running.")
 TTL_S = 120.0
 _CACHE: dict[str, tuple[str, float]] = {}
+_STATE: dict[str, tuple[str, float]] = {}
 _MAX = 64
 
 
@@ -43,6 +56,7 @@ def _key(reply) -> str:
 
 def reset() -> None:
     _CACHE.clear()
+    _STATE.clear()
 
 
 def _remember(k: str, choice: str) -> None:
@@ -57,7 +71,8 @@ def _ask(reply, operator_text: str):
     frozen by `test_no_new_blocking_jev_call`."""
     from nucleo import jev
     state = f"REPLY: {str(reply)[:500]}\nOperator said: {str(operator_text or '')[:160]}"
-    return jev.ask_many(state, {"reply_promise": {"instructions": INSTRUCTIONS, "criteria": CHOICES}},
+    return jev.ask_many(state, {"reply_promise": {"instructions": INSTRUCTIONS, "criteria": CHOICES},
+                                STATE_KEY: {"instructions": STATE_INSTRUCTIONS, "criteria": STATE_CHOICES}},
                         name="reply-promise", question_id="reply_promise")
 
 
@@ -68,6 +83,10 @@ ASK_FIRST_MIN = 0.85
 
 def _settle(k: str, handle) -> str | None:
     from nucleo import jev
+    st, _st_info = jev.read(handle, STATE_KEY, "")
+    _STATE[k] = (st if st in STATE_CHOICES else "", time.time())
+    for old in sorted(_STATE, key=lambda x: _STATE[x][1])[: max(0, len(_STATE) - _MAX)]:
+        _STATE.pop(old, None)
     choice, info = jev.read(handle, "reply_promise", "")
     choice = choice if choice in CHOICES else ""
     if choice == "ask_first" and float((info or {}).get("confidence") or 0.0) < ASK_FIRST_MIN:
@@ -116,6 +135,12 @@ def read_now(reply, operator_text: str = "") -> str | None:
     except Exception:  # noqa: BLE001
         _remember(k, "")
         return None
+
+
+def claims_quiet(reply) -> bool:
+    """The reply SAYS work was stopped/cleared or that nothing runs — sure verdict only; False when unsure/absent."""
+    hit = _STATE.get(_key(reply))
+    return bool(hit) and time.time() - hit[1] < TTL_S and hit[0] == "quiet"
 
 
 def verdict(reply) -> str | None:

@@ -287,6 +287,26 @@ async def promise_repair(operator_text: str, reply: str, window: list, spec, emi
         return ""
 
 
+def still_running_truth(spoken: str, *, did_act: bool, spec=None) -> str:
+    """The reply said work was stopped/cleared or that nothing runs, this turn stopped nothing, and the record still
+    has live work of his: the sentence that names it. DETERMINISTIC, like `continuity_truth` — the state is ours to
+    say. «Nothing left running — I've cleared it» was said with the monitor search live and on his screen
+    (2026-10-22); the claim is read by a verdict (`reply_promise.claims_quiet`), the truth by the task record.
+    Returns "" when any of the three does not hold."""
+    try:
+        from nucleo.flash import reply_promise as _rp
+        if did_act or not _rp.claims_quiet(spoken):
+            return ""
+        from nucleo import tasks as _tasks
+        titles = [str(r.get("title") or r.get("goal") or "").strip()[:80] for r in _tasks.board("live")]
+        titles = [t for t in titles if t][:3]
+        tpl = _lang_text(spec, "still_running_truth")
+        return tpl.format(titles=", ".join(f"«{t}»" for t in titles)) if titles and tpl else ""
+    except Exception as e:  # noqa: BLE001 — a repair never takes down a turn
+        logger.debug(f"still_running_truth: {e}")
+        return ""
+
+
 def continuity_truth() -> str:
     """The honest sentence for «are you still on it?» when nothing runs (V2-645) — DETERMINISTIC, never
     composed: the state is ours to say, and a second model pass over the same window that produced the lie
@@ -330,7 +350,9 @@ async def probe_hollow_repairs(operator_text: str, spoken: str, window: list, sp
         if _ag.a_promise_left_hanging(operator_text, spoken, acted=False, anything_running=running):
             rep = await promise_repair(operator_text, spoken, _dialog.prune_window(window), spec,
                                        lambda *a, **k: None, channel="probe")      # V2-717 mirror
-            return (spoken + " " + (rep or _lang_text(spec, "promise_retracted") or "")).strip()
+            return (spoken + " " + (rep or _lang_text(spec, "promise_retracted_busy" if running else "promise_retracted") or "")).strip()
+        if (rep := still_running_truth(spoken, did_act=False, spec=spec)):       # a «chat» turn acted on nothing
+            return (spoken + " " + rep).strip()
     except Exception:  # noqa: BLE001
         pass
     return spoken
@@ -393,10 +415,15 @@ async def hollow_repairs(text: str, spoken_text: str, window: list, spec, *,
                  text=spoken_text[:160], role="system", extra={"cat": "flash"})
             rep = await promise_repair(text, spoken_text, list(window), spec, emit, channel="voice")
             if not rep:
-                rep = _lang_text(spec, "promise_retracted") or ""
+                rep = _lang_text(spec, "promise_retracted_busy" if running else "promise_retracted") or ""
             if rep:
                 speak(rep)
                 return (spoken_text + " " + rep).strip()
+        elif (rep := still_running_truth(spoken_text, did_act=did_act, spec=spec)):
+            emit("brain", "🚧 dijo que estaba parado/vacío y el registro tiene trabajo vivo — digo cuál",
+                 text=rep[:160], role="system", extra={"cat": "flash"})
+            speak(rep)
+            return (spoken_text + " " + rep).strip()
         elif _ag.a_cover_left_hanging(text, spoken_text, covered=covered, acted=did_act):
             emit("brain", "🚧 turno MUDO tras el nexo — compongo el cierre que falta",
                  text=text[:160], role="system", extra={"cat": "flash", "covered": covered})

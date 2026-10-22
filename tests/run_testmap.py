@@ -2049,6 +2049,11 @@ DOMAINS: list[dict] = [
                                  "por nuestra cuenta), nunca a la respuesta que se está emitiendo",
             "ch": UNIT,
             "paths": ["tests/agent_headless/unit/flash/test_a_yes_answers_the_question_we_asked.py"]},
+        {"id": "2.764", "title": "Lo que la respuesta AFIRMA se contrasta: un catálogo tardío no contradice el estado final "
+                                 "del brief, una retractación no dice «nada en marcha» con trabajo vivo, «parado/vacío» "
+                                 "sobre trabajo vivo dice cuál sigue",
+            "ch": UNIT,
+            "paths": ["tests/agent_headless/unit/flash/test_a_claim_is_held_to_the_record.py"]},
     ]},
     {"id": "4", "name": "WIDGETS", "nodes": [
         {"id": "4.1", "title": "Ciclo de vida / acciones / refs / generador / background", "ch": UNIT, "paths": [

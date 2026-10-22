@@ -13,6 +13,8 @@ just ask him something?» reads THIS, never the live `_last_reply`.
 """
 from __future__ import annotations
 
+from loguru import logger
+
 
 def snapshot(brain, window) -> str:
     """Freeze the last assistant line of the window as the line this turn answers. Returns it."""
@@ -24,8 +26,8 @@ def snapshot(brain, window) -> str:
                 break
     try:
         brain._prior_line = line
-    except Exception:  # noqa: BLE001 — a brain without attributes still runs its turn
-        pass
+    except Exception as e:  # noqa: BLE001 — a brain without attributes still runs its turn
+        logger.debug(f"prior_line: no snapshot on {type(brain).__name__}: {e}")
     return line
 
 
@@ -46,5 +48,6 @@ def answers_our_question(brief, prior: str) -> bool:
         from nucleo.flash import canvas_license as _lic, turn_brief as _tb
         kind, _info = _tb.read(brief, _tb.REQUEST_KEY, "")
         return str(kind or "") == "answer" and _lic.answered_an_offer(prior)
-    except Exception:  # noqa: BLE001 — a classifier may never break a turn
+    except Exception as e:  # noqa: BLE001 — a classifier may never break a turn
+        logger.debug(f"prior_line: answer verdict unreadable: {e}")
         return False
