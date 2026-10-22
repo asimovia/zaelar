@@ -2058,6 +2058,14 @@ DOMAINS: list[dict] = [
                                  "silencio empieza cuando corre",
             "ch": UNIT,
             "paths": ["tests/agent_headless/unit/test_a_queued_errand_is_waiting_not_stuck.py"]},
+        {"id": "2.766", "title": "Un encargo parado antes de correr no deja «Working…» (su hoja se asienta, vacía se va) y "
+                                 "una queja sobre un cierre no cierra nada (veredicto canvas=neither)",
+            "ch": UNIT,
+            "paths": ["tests/agent_headless/unit/test_a_stopped_errand_leaves_no_working_sheet.py"]},
+        {"id": "2.767", "title": "Un texto que el modelo puede ESCRIBIR se escribe en una sola petición sobre la tarjeta que "
+                                 "lo aloja, no con un Brain Worker; si falla, va al worker como antes",
+            "ch": UNIT,
+            "paths": ["tests/agent_headless/unit/flash/test_a_text_the_model_can_write_is_written_in_one_request.py"]},
     ]},
     {"id": "4", "name": "WIDGETS", "nodes": [
         {"id": "4.1", "title": "Ciclo de vida / acciones / refs / generador / background", "ch": UNIT, "paths": [

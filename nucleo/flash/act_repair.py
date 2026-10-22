@@ -645,6 +645,9 @@ async def call_or_read_for_commission(operator_text: str, commission: str, widge
         from nucleo.flash import widget_read as _wr0
         tools = [t for t in (_tool_named("widget_data"),
                              _tool_named("read_widget") if (may_read and _wr0.can_answer(wid)) else None) if t]
+        from nucleo.flash import compose_rung as _compose
+        if tools and _compose.prose_action(wid):
+            tools.append(_compose.tool())   # a card that holds prose: its text may be WRITTEN now (2026-10-22)
         if not manifest or not tools:
             return None
         digest = ""
@@ -679,6 +682,8 @@ async def call_or_read_for_commission(operator_text: str, commission: str, widge
         for name, args in got:
             if str(args.get("widget_id") or "").strip().lower() != wid:
                 continue
+            if (_c := _compose.decision(name, args, wid)):
+                return _c
             if name == "read_widget":
                 q = str(args.get("question") or "").strip() or operator_text.strip()
                 return {"kind": "read", "widget_id": wid, "question": q[:300]}

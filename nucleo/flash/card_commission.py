@@ -18,6 +18,7 @@ the voice provider for the reason the architecture ratchet keeps giving: that fi
 """
 from __future__ import annotations
 
+import asyncio
 import re
 
 from typing import Callable
@@ -306,10 +307,12 @@ async def probe_instead_of_a_worker(tool_calls: list, commission: str, *, brief,
         except Exception:  # noqa: BLE001
             pass
         return False
-    if not got or got.get("kind") != "call":
+    if not got or got.get("kind") not in ("call", "compose"):
         return False
+    # a composed text is recorded as the card's call with its title — the probe decides, it does not write a page
+    payload = got["payload"] if got["kind"] == "call" else {"title": got["title"], "_compose": True}
     tool_calls.append({"name": "widget_data", "args": {"widget_id": got["widget_id"], "action": got["action"],
-                                                       "payload": got["payload"], "_repair": True}})
+                                                       "payload": payload, "_repair": True}})
     return True
 
 
@@ -375,6 +378,17 @@ async def before_worker(escalate_req: dict, read_req: dict, *, brief, operator_t
             escalate_req["v"], escalate_req["more"] = None, []
             emit("brain", "🎯 acción declarada en vez de un worker (la tarjeta del catálogo)",
                  text=f"{got['widget_id']}:{got['action']}", role="system",
+                 extra={"cat": "flash", "widget": got["widget_id"], "action": got["action"]})
+            return "call"
+        if got["kind"] == "compose":
+            # written in ONE request in the background; any failure hands it back to the worker (`compose_rung`)
+            from nucleo.flash import compose_rung as _compose
+            _commission = str(escalate_req.get("v") or "")
+            escalate_req["v"], escalate_req["more"] = None, []
+            asyncio.ensure_future(_compose.run(got, commission=_commission, operator_text=operator_text, spec=spec,
+                                               window=window, emit=emit))
+            emit("brain", "✍️ se redacta en una sola petición en vez de un worker", role="system",
+                 text=f"{got['widget_id']}:{got['action']} «{got['title']}»",
                  extra={"cat": "flash", "widget": got["widget_id"], "action": got["action"]})
             return "call"
         if got["kind"] == "read":

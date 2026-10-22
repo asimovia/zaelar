@@ -531,6 +531,8 @@ class LangSpec:
     promise_retracted_busy: str = ("")
     #: Said when the reply claimed work stopped / nothing running and the task record says otherwise. `{titles}`.
     still_running_truth: str = ("")
+    #: Said when a document was written in one request and is on screen (`compose_rung`). `{title}`.
+    composed_on_screen: str = ("")
     #: The FIRST backed rows of an errand he asked to be told about, said once (`nucleo/turn/first_rows_notice`).
     #: Measured 2026-10-14: boats landed 34 s and kid-friendly activities 18 s after his last turn, and nothing
     #: reached him. The cues are DATA (accent-free, lowercase, matched as substrings): his «tell me» and our «I'll
