@@ -31,6 +31,7 @@
 import { h } from "../core/dom.js?v=2";
 import * as store from "../core/store.js?v=2";
 import { t } from "../core/i18n.js?v=1";
+import { accountLink } from "../core/account-link.js?v=1";
 
 const SLOTS = 50;                 // huecos de la pila LLENA
 const DEMO_SLOTS = 10;            // los de un grant de demo (banda propia: no es una compra)
@@ -68,6 +69,16 @@ export function scale(balance, capacity) {
            lit: Math.min(SLOTS, Math.floor(bal / per)) };
 }
 
+// V2-785 — the battery is the door to buying more: in a cloud account it is a LINK to the account page's top-up
+// section (new tab, keyboard-reachable because it is a real <a href>), with a translated label. Without an account
+// url it stays a plain <div>, exactly as before.
+function shell(cls, title, ticks) {
+  const href = accountLink(store.accountUrl(), "buy");
+  const props = { class: cls, title };
+  if (href) Object.assign(props, { href, target: "_blank", rel: "noopener", "aria-label": t("energy.buy_aria") });
+  return h(href ? "a" : "div", props, ...ticks);
+}
+
 export function EnergyGauge() {
   return () => {
     const e = store.energy() || {};
@@ -76,8 +87,8 @@ export function EnergyGauge() {
     // (it arrives in each usage-report response), so render an OFF battery with its notice, never
     // an empty one — that would say "you are out" when it is not true.
     if (!e.known) {
-      return h("div", { class: "eg eg-unknown", title: () => t("energy.unknown") },
-        ...Array.from({ length: DEMO_SLOTS }, () => h("i", { class: "eg-t eg-off" })));
+      return shell("eg eg-unknown", t("energy.unknown"),
+        Array.from({ length: DEMO_SLOTS }, () => h("i", { class: "eg-t eg-off" })));
     }
     const s = scale(e.balance, e.capacity);
     if (!s) return null;
@@ -87,10 +98,9 @@ export function EnergyGauge() {
       .replace("{per}", String(Math.round(s.per)))
       .replace("{lit}", String(s.lit))
       .replace("{slots}", String(s.slots));
-    return h("div", { class: "eg " + s.cls + (s.lit ? "" : " eg-dead"), title: tip },
-      // Ticks are rendered from LEFT to RIGHT and spent from the RIGHT (the one nearest 👤 falls first),
-      // keeping the consumption front beside the account icon, where users look.
-      ...Array.from({ length: s.slots }, (_, i) =>
-        h("i", { class: "eg-t" + (i < s.lit ? "" : " eg-spent") })));
+    // Ticks are rendered from LEFT to RIGHT and spent from the RIGHT (the one nearest 👤 falls first),
+    // keeping the consumption front beside the account icon, where users look.
+    return shell("eg " + s.cls + (s.lit ? "" : " eg-dead"), tip,
+      Array.from({ length: s.slots }, (_, i) => h("i", { class: "eg-t" + (i < s.lit ? "" : " eg-spent") })));
   };
 }

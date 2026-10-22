@@ -33,6 +33,7 @@ import { Alert } from "../../../app/components/Alert.js?v=2";
 import { BootOverlay } from "../../../app/components/BootOverlay.js?v=2";
 import { LanguageOnboarding } from "../../../app/components/LanguageOnboarding.js?v=1";
 import { UpdateSurface } from "../../../app/update/UpdateSurface.js?v=1";
+import { EnergyNotice } from "../../../app/components/EnergyNotice.js?v=1";
 import { ChatSheet } from "./ChatSheet.js?v=1";
 import { DockBar } from "./DockBar.js?v=2";
 import { MenuSheet } from "./MenuSheet.js?v=1";
@@ -61,6 +62,8 @@ export const MOBILE_SURFACES = [
   // always-on version badge from BOTH shells' canvas); where the build number belongs on a phone — this
   // shell has no Settings screen yet — is still open.
   { id: "update",          comp: UpdateSurface, target: "body", phase: "overlay", label: "«New version — reload» bar", shared: true },
+  // V2-785 — out of Energy, on screen, with the top-up button (the voice alone used to say it).
+  { id: "energy-notice",   comp: EnergyNotice,  target: "body", phase: "overlay", label: "Out of Energy + top up", shared: true },
 ];
 
 const _IDS = new Set(MOBILE_SURFACES.map((s) => s.id));

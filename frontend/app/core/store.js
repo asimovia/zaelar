@@ -576,6 +576,10 @@ export const [accountOpen, setAccountOpen]   = createSignal(false);        // ac
 // NOT the same as zero: the battery renders dimmed, never empty. main.js seeds it from /api/energy and SSE refreshes
 // it (`kind:"energy"`) whenever the agent spends, so it drops LIVE without anyone asking. ----
 export const [energy, setEnergy] = createSignal({ cloud: false, known: false, balance: null, capacity: null });
+// V2-785 — the account page the engine names (`account_url` in /api/config and /api/energy; "" on self-host), and
+// the out-of-energy reason whose notice the person closed (a new exhaustion opens it again).
+export const [accountUrl, setAccountUrl] = createSignal("");
+export const [energyNoticeClosed, setEnergyNoticeClosed] = createSignal("");
 
 // ---- system status (ⓘ panel: Hermes / voz / LLM / STT / TTS / cluster · credit + health) ----
 export const [statusOpen, setStatusOpen] = createSignal(false);            // status panel visible?

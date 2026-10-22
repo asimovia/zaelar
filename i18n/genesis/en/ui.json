@@ -1902,5 +1902,10 @@
  "status.search.label": "Search · providers",
  "status.search.unprobed": "not probed yet",
  "status.search.none": "none answering",
- "status.search.live": "live: {names}"
+ "status.search.live": "live: {names}",
+ "energy.buy_aria": "Buy Energy — opens your account page",
+ "energy.out.title": "You're out of Energy",
+ "energy.out.body": "Your agent has stopped because your account has no Energy left. Top up or start a plan and it comes back on its own.",
+ "energy.out.top_up": "Top up",
+ "energy.out.close": "Close"
 }

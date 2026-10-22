@@ -81,7 +81,10 @@ try { document.getElementById("preboot")?.remove(); } catch { /* noop */ }
 // `cloudProfile` false FOREVER and the menu would hide the account row on a paying account. ----
 (async () => {
   for (let i = 0; i < 45; i++) {
-    try { const cfg = await api.getConfig(); if (cfg) { store.setCloudProfile(!!cfg.cloud_profile); return; } }
+    try {
+      const cfg = await api.getConfig();
+      if (cfg) { store.setCloudProfile(!!cfg.cloud_profile); store.setAccountUrl(cfg.account_url || ""); return; }
+    }
     catch { /* 503 while the Machine boots: retry */ }
     await new Promise((r) => setTimeout(r, 2000));
   }
@@ -90,7 +93,12 @@ try { document.getElementById("preboot")?.remove(); } catch { /* noop */ }
   for (let i = 0; i < 45; i++) {
     try {
       const r = await fetch("/api/energy", { cache: "no-store" });
-      if (r.ok) { store.setEnergy(await r.json()); return; }
+      if (r.ok) {
+        const e = await r.json();
+        store.setEnergy(e);
+        if (e.account_url) store.setAccountUrl(e.account_url);
+        return;
+      }
     } catch { /* still booting: retry */ }
     await new Promise((r) => setTimeout(r, 2000));
   }

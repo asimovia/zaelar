@@ -32,6 +32,7 @@ import { DaemonSetup } from "../components/DaemonSetup.js?v=1";
 import { DebugPanel } from "../components/DebugPanel.js?v=4";
 import { FeedbackWidget } from "../components/FeedbackWidget.js?v=1";
 import { FaultModal } from "../components/FaultModal.js?v=1";
+import { EnergyNotice } from "../components/EnergyNotice.js?v=1";
 import { LanguageOnboarding } from "../components/LanguageOnboarding.js?v=1";
 import { MemoryMap } from "../components/MemoryMap.js?v=2";
 import { Orb } from "../components/Orb.js?v=3";
@@ -145,6 +146,12 @@ export const SYSTEM_SURFACES = [
   // voice-addressable: it appears when the agent cannot speak, so «open the fault» could never be said.
   { id: "fault",      comp: FaultModal,   target: "body", phase: "overlay", kind: "modal",
     toggle: "store.showFault (the agent cannot work — e.g. no model credit)", label: "Blocking fault",
+    name: null, aliases: null },
+  // V2-785 — out of Energy, on screen, with a button to the account page's top-up section. Until then running
+  // out was only SPOKEN, and the screen gave no hint of where to go. Shared with the phone (CSS in
+  // `core/shared-surfaces.css`); not voice-addressable — it appears when the agent has stopped.
+  { id: "energy-notice", comp: EnergyNotice, target: "body", phase: "overlay", kind: "modal",
+    toggle: "store.energy().exhausted (SSE kind:energy · /api/energy)", label: "Out of Energy + top up",
     name: null, aliases: null },
   { id: "boot",       comp: BootOverlay,  target: "body", phase: "overlay", kind: "transient",
     toggle: "store.bootReady (startup veil)", label: "Startup splash",

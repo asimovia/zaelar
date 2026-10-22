@@ -14,6 +14,7 @@ import { t } from "../core/i18n.js?v=1";
 import { BUG_ICON, GEAR_ICON, COMPASS_ICON, MOON_ICON, USER_ICON, MEM_ICON, DESKTOP_ICON } from "../lib/icons.js?v=2";
 import * as daemon from "../services/daemon.js?v=1";
 import { EnergyGauge } from "./EnergyGauge.js?v=1";
+import { accountLink } from "../core/account-link.js?v=1";
 
 // Status dot is a plain filled circle (see .statusBtn svg below) — recolors via the SAME --hb-ok/--hb-warn/--hb-risk
 // tokens the rest of the app uses for health state, instead of a one-off emoji/dingbat only this button had.
@@ -142,10 +143,9 @@ function ResetConfirm() {
   return ovl;
 }
 
-// Panel of CUENTA (icono 👤, only cloud). Reutiliza the overlay of the Reset (`ovl rc-ovl` + `rc-box`) para
-// no añadir CSS. Balance/plan/facturación en detalle no se muestran AQUÍ (eso pediría un endpoint propio del
-// motor); this panel es only the punto of salida — un enlace of vuelta a where esos data SÍ viven. The URL es un
-// literal fijo, no a env var: no depende of qué despliegue sea, así that no hace falta configurarlo.
+// ACCOUNT panel (👤 icon, cloud only). Reuses the Reset overlay (`ovl rc-ovl` + `rc-box`) so it adds no CSS. It
+// shows no balance or billing detail itself; it is the way out to the page where those live. V2-785: the url is
+// the engine's (`account_url` from /api/config), no longer a literal here — one place knows it.
 function AccountPanel() {
   const close = () => store.setAccountOpen(false);
   let ovl;
@@ -159,7 +159,7 @@ function AccountPanel() {
       h("div", { class: "rc-actions" },
         h("a", {
           class: "rc-btn rc-yes",
-          href: "https://zaelar.com/account",
+          href: () => accountLink(store.accountUrl()) || null,
           target: "_blank",
           rel: "noopener",
         }, () => t("account.manage")),

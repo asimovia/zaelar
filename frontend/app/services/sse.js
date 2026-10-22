@@ -449,10 +449,16 @@ export function routeEvent(desktop, d) {
     } else if (d.kind === "energy") {                                             // Energy balance → the BATTERY drops LIVE
       // The balance is pushed; there is no notice to go fetch it: the integer fits in the event, so the battery
       // drops while the worker runs, without a fetch for every spend.
-      const balance = field(d, "balance"), capacity = field(d, "capacity");
+      const balance = field(d, "balance"), capacity = field(d, "capacity"), exhausted = field(d, "exhausted");
       if (typeof balance === "number") {
-        store.setEnergy({ cloud: true, known: true, balance,
-                          capacity: typeof capacity === "number" ? capacity : (store.energy() || {}).capacity });
+        const cur = store.energy() || {};
+        store.setEnergy({ ...cur, cloud: true, known: true, balance,
+                          capacity: typeof capacity === "number" ? capacity : cur.capacity });
+      }
+      // V2-785 — out of energy (a reason) or back (""): the notice opens and closes from this one field.
+      if (typeof exhausted === "string") {
+        store.setEnergy({ ...(store.energy() || {}), cloud: true, exhausted: exhausted ? { reason: exhausted } : null });
+        if (!exhausted) store.setEnergyNoticeClosed("");
       }
     } else if (d.kind === "run") {                                                // V2-092: the GLOBAL switch changed
       // The server (nucleo/runstate.py) holds the truth of «is the agent stopped?», and this event is how

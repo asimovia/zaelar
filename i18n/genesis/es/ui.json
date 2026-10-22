@@ -1902,5 +1902,10 @@
  "status.search.label": "Búsqueda · proveedores",
  "status.search.unprobed": "sin sondear todavía",
  "status.search.none": "ninguno contesta",
- "status.search.live": "vivos: {names}"
+ "status.search.live": "vivos: {names}",
+ "energy.buy_aria": "Comprar energía — abre la página de tu cuenta",
+ "energy.out.title": "Te has quedado sin energía",
+ "energy.out.body": "Tu agente se ha parado porque en tu cuenta no queda energía. Recarga o contrata un plan y volverá solo.",
+ "energy.out.top_up": "Recargar",
+ "energy.out.close": "Cerrar"
 }

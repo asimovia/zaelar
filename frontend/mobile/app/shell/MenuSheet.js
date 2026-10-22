@@ -25,6 +25,7 @@ import * as api from "../../../app/services/api.js?v=2";
 import { listFeedback, sendFeedback } from "../../../app/services/feedback-api.js?v=1";
 import { sendOutcome, listOutcome, lineFor } from "../../../app/services/feedback-state.js?v=1";
 import { t } from "../../../app/core/i18n.js?v=1";
+import { accountLink } from "../../../app/core/account-link.js?v=1";
 import * as daemon from "../../../app/services/daemon.js?v=1";
 
 // The daemon poll runs here too: the desktop starts it from the setup surface, which this shell does not
@@ -112,7 +113,9 @@ export function MenuSheet() {
       //    rather than rendered and dead: a control that does nothing teaches the operator to distrust the others.
       () => store.cloudProfile()
         ? Row(() => t("mobile.account"), () => t("mobile.account_sub"),
-            () => { location.href = "/account"; })
+            // V2-785: the engine's account url, never a relative "/account" — in a hosted deployment that is
+            // this agent's own origin, where no account page exists.
+            () => { const u = accountLink(store.accountUrl()); if (u) window.open(u, "_blank", "noopener"); })
         : null,
 
       Row(() => t("mobile.voice"), () => (store.voices()[store.voiceIdx()] || {}).label || "",
