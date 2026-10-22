@@ -80,7 +80,7 @@ def test_redacts_did_key_fingerprint():
 
 
 def test_model_names_are_NOT_redacted():
-    # Ricart decision 2026-07: model/framework names are a legitimate topic of conversation → do NOT redact them
+    # Operator decision 2026-07: model/framework names are a legitimate topic of conversation → do NOT redact them
     # (self-disclosure is governed by the security trailer, not a regex). See security.py.
     msg = "which do you prefer for this task, gpt-4 or claude? I compare models a lot."
     safe, blocked = security.scan_outbound(msg)
@@ -88,10 +88,10 @@ def test_model_names_are_NOT_redacted():
 
 
 def test_extra_terms_via_env_are_redacted(monkeypatch):
-    monkeypatch.setenv("MESHKORE_SECRET_TERMS", "Ricart,Charms")
-    safe, blocked = security.scan_outbound("this belongs to Ricart at Charms")
+    monkeypatch.setenv("MESHKORE_SECRET_TERMS", "Alexis,Northwind")
+    safe, blocked = security.scan_outbound("this belongs to Alexis at Northwind")
     assert blocked is None
-    assert "ricart" not in safe.lower() and "charms" not in safe.lower()
+    assert "alexis" not in safe.lower() and "northwind" not in safe.lower()
     assert "[redacted]" in safe
 
 
@@ -251,7 +251,7 @@ def test_rest_guard_token_mode(monkeypatch):
 # V2-010. The neutralization/redaction/allowlist tests below (independent of Hermes) are retained.
 
 
-# ── INI-007 · adversarial regression tests (each is RED against pre-fix code, GREEN against the fix) ───────────
+# ── security hardening · adversarial regression tests (each is RED against pre-fix code, GREEN against the fix) ───────────
 
 # S-01/S-02 · identity strings (peer handles, cluster names) are neutralized before they reach a prompt.
 def test_neutralize_identity_strips_fence_and_trailer_forgery():

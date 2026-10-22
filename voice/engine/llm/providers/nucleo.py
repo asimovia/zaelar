@@ -189,9 +189,9 @@ class NucleoLLM(llm.LLM):
         self._acc_gen: int = 0             # accumulator chain generation (2026-08-15, see `_schedule_acc_nudge`):
         #                                    bumped every time a chain resolves or gets dropped, so a nudge
         #                                    scheduled for it and now stale doesn't fire late
-        self._turn_count = 0                # turnos conversacionales completados esta sesión (INI-018 T6, demo cap)
+        self._turn_count = 0                # turnos conversacionales completados esta sesión (per-session turn limit)
         self._last_action = ""              # route/surface del turno anterior para referencias deícticas
-        self._session_started_at = time.time()  # arranque de la sesión (INI-018 T6, demo TTL)
+        self._session_started_at = time.time()  # arranque de la sesión (per-session TTL)
 
     @property
     def label(self) -> str:

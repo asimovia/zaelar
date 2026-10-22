@@ -24,7 +24,7 @@ _DISPATCH_SRC = _vts.read(_ENGINE / "nucleo" / "dispatch.py")
 
 
 def _rec(**over):
-    base = dict(task_id="t9", title="Informe: operator Salvador SL", goal="informe de la empresa",
+    base = dict(task_id="t9", title="Informe: Acme Ventures SL", goal="informe de la empresa",
                 surface="informe", status="running", phases=[{"t": 1.0, "s": "abriendo einforma"},
                                                              {"t": 2.0, "s": "NIF confirmado"}],
                 nav_task="", sheet="")
@@ -110,7 +110,7 @@ def test_commissioning_binds_the_sheet_and_puts_it_on_screen(doc_data, monkeypat
     db = doc_data.view_data()
     assert db["empty"] is True, "the report sheet starts BLANK — the old document must not pose as the answer"
     proc = db["process"]
-    assert proc is not None and proc["title"] == "Informe: operator Salvador SL"
+    assert proc is not None and proc["title"] == "Informe: Acme Ventures SL"
     assert any((k.get("extra") or {}).get("id") == "documento" for _, k in shown), \
         "the sheet must be SHOWN at commission time — opening late is the blank-screen problem again"
 
@@ -118,10 +118,10 @@ def test_commissioning_binds_the_sheet_and_puts_it_on_screen(doc_data, monkeypat
 def test_the_composed_name_reaches_the_process_header_but_only_for_its_errand(doc_data):
     from nucleo import docsheet
     docsheet.doc_open(_rec(task_id="t9", title="provisional"))
-    docsheet.doc_retitle(_rec(task_id="t9", title="Informe: operator Salvador SL"))
-    assert doc_data.view_data()["process"]["title"] == "Informe: operator Salvador SL"
+    docsheet.doc_retitle(_rec(task_id="t9", title="Informe: Acme Ventures SL"))
+    assert doc_data.view_data()["process"]["title"] == "Informe: Acme Ventures SL"
     docsheet.doc_retitle(_rec(task_id="OTHER", title="ajena"))
-    assert doc_data.view_data()["process"]["title"] == "Informe: operator Salvador SL"
+    assert doc_data.view_data()["process"]["title"] == "Informe: Acme Ventures SL"
 
 
 def test_finishing_persists_the_narrative_and_releases_the_binding(doc_data):

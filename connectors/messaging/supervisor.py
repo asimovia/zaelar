@@ -1,5 +1,5 @@
 #
-# supervisor.py — WIDGET -> connectors bridge (INI-015). The messaging widget CANNOT fetch (widget isolation
+# supervisor.py — WIDGET -> connectors bridge. The messaging widget CANNOT fetch (widget isolation
 # contract: no client-side network), so when the user clicks "Connect Telegram/WhatsApp" the widget enqueues the
 # order via ctx.action -> data.apply_action -> store (pending_control). This supervisor runs in the server lifespan,
 # drains those orders every ~1s, and executes the real connect/disconnect (control.py: persists config in

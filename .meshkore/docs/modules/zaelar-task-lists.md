@@ -39,7 +39,7 @@ None of them was wrong. The message was not a turn.
    (`list_started`) — that it is a list and work has started. Never the list read back, no count (the count
    needs the split, and the receipt must not wait ~5 s for it).
 3. **Split** (background). `split.split` — one `memllm` call, task `batch_split` (DeepSeek direct, reasoning
-   off, `gpt-4.1-mini` stand-in, billed to Energy). Steps are SELF-CONTAINED, first person, in the message's
+   off, `gpt-4.1-mini` stand-in, usage metered via `energy_meter`). Steps are SELF-CONTAINED, first person, in the message's
    language, references resolved, one calendar entry each, ≤ 560 chars (the distiller's window). A step over
    the ceiling is split at sentence boundaries, never cut. Fails open: the message's own numbered sections →
    one step holding the whole message (today's single turn). An acknowledged list is never dropped.

@@ -44,7 +44,7 @@ from nucleo import mem_processor
      False, "C-control: tarea concreta se conserva"),
     ({"slot": None, "text": "El operador quiere que su hijo estudie medicina.", "kind": "fact"},
      False, "C-control: deseo de vida (no asistente)"),
-    ({"slot": "operator.name", "value": "Ricart operator", "text": "El operador se llama Ricart operator."},
+    ({"slot": "operator.name", "value": "Alex Moreno", "text": "El operador se llama Alex Moreno."},
      False, "control: nombre real"),
     ({"slot": None, "text": "El operador prefiere que le escriban al correo por la mañana.", "kind": "pref"},
      False, "A-control: preferencia que MENCIONA correo (no es un email)"),

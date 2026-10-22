@@ -194,7 +194,7 @@ def test_the_calendar_connectors_are_readable_rows_with_real_logos(playwright_av
 
 def test_the_panel_tells_the_TRUTH_that_none_is_built_yet(playwright_available):
     """`connectors/` holds six connectors and not one is a calendar. Every row must read as not linked, and
-    saying WHY out loud is deliberate (INI-027: the wishlist is public)."""
+    saying WHY out loud is deliberate (the connector-catalogue rule: the wishlist is public)."""
     m = _open_calendars()
     # The presence assertion is not decoration: without it, a panel that painted NOTHING would satisfy both
     # lines below vacuously (`all([])` is True) and this test would guard an empty screen.

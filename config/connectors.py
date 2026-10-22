@@ -1,5 +1,5 @@
 #
-# connectors.py — connector config MANAGED BY THE INTERFACE (INI-015). zaelar product principle:
+# connectors.py — connector config MANAGED BY THE INTERFACE. zaelar product principle:
 # **the user installs the product ONCE and from then on EVERYTHING is managed from the interface** — they never edit
 # environment files. When they say "connect me to Telegram", the messaging widget guides them step by step
 # (credential form if needed → QR → connected), and these variables are persisted HERE, not in `.env`.

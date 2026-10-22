@@ -1,5 +1,5 @@
 #
-# Messaging widget data layer (INI-015). Reads/mutates the unified store (widgets/_data/mensajeria.json), written
+# Messaging widget data layer. Reads/mutates the unified store (widgets/_data/mensajeria.json), written
 # by connector engines (connectors/whatsapp/service.py and connectors/telegram/service.py through
 # connectors/messaging/store.py). The widget is the face; connectors are the engines. One list for all platforms.
 #

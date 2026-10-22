@@ -37,8 +37,7 @@ ALLOWED = {
     # short pointer to it, for every other tool. A sixth file per new CLI is not the answer either.
     ".dockerignore", ".gitignore", "AGENTS.md", "CLAUDE.md", "Dockerfile",
     "LICENSE.md", "Makefile", "README.md",
-    # No fly*.toml: how a hosted deployment is configured is not the engine's business, and it lives in the
-    # private repo that deploys it (moved out 2026-10-22). The Dockerfile stays — it is the engine's own image.
+    # Deployment configs live with whoever deploys; the Dockerfile stays — it is the engine's own image.
     "conftest.py", "constraints.txt", "requirements.txt", "ruff.toml",
     "version.py", "zaelar", "zaelar.ps1",
 }

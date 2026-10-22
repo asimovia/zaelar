@@ -2,10 +2,10 @@
 
 WHY A NEW RUNG. Measured 2026-10-10 over the whole V2-781 sweep: the inline chain had no paid key at all and
 fell to DuckDuckGo every time; the listing pass discovered through the same free chain, hit Google's captcha,
-and ended `n=0` in 5-13 s on all six hunts; and the workers' own built-in search (`web_search_prime`, the
-coding plan's MCP quota) answered «Weekly/Monthly Limit Exhausted» eighteen times across ten cases. The engine
-already holds a Z.ai key — the same one the fast model uses — and Z.ai sells web search as a separate, pay-per-
-call API on a different wallet from that MCP quota (`zaelar-model-allocation.md`). One POST, 2.7 s measured,
+and ended `n=0` in 5-13 s on all six hunts; and the workers' own built-in search (`web_search_prime`, an
+MCP tool with its own quota) answered «Weekly/Monthly Limit Exhausted» eighteen times across ten cases. The engine
+can reuse the Z.ai key the fast model reads, and Z.ai offers web search as a separate, per-call API that does not
+draw on that MCP quota. One POST, 2.7 s measured,
 real pages back. It is a `results` provider: good for discovering listing pages and local businesses, where an
 `answer` provider's redirect links are useless.
 

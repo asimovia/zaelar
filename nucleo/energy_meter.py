@@ -1,41 +1,26 @@
 #
-# ENERGY METERING (INI-018, added 2026-07-24; extended 2026-08-05 — INI-019 addenda) — real usage →
-# real cost → "Energy" units.
+# ENERGY METERING — real usage → real cost → "Energy" units.
 #
-# Zaelar's product concept of "Energy" (web/src/components/Pricing.astro/Energy.astro,
-# project/concept/docs/product/energy-model.md) had NO real conversion rate or ledger anywhere —
-# confirmed by a full repo search before writing this. This module converts ACTUAL provider usage
-# (LLM tokens, TTS characters, STT audio-seconds, Brain Worker tokens) into a real €-cost estimate,
-# then into Energy units, and reports it fire-and-forget to the control-plane's persistent
-# per-account ledger (see _post_usage_cloud_account).
+# Converts ACTUAL provider usage (LLM tokens, TTS characters, STT audio-seconds, Brain Worker tokens,
+# transport participant-seconds) into a cost estimate, then into Energy units, and reports it
+# fire-and-forget to a usage ledger endpoint (see _post_usage_cloud_account).
 #
-# SCOPE: fires for real cloud accounts (`ZAELAR_USER_ID` — nucleo/cloud_account.py, wired
-# 2026-08-05). The operator's own local install and every self-host install don't set it →
-# enabled() False → zero cost, zero network calls.
+# SCOPE: only active when `ZAELAR_USER_ID` is set (nucleo/cloud_account.py). A self-host install
+# doesn't set it → enabled() False → zero cost, zero network calls.
 #
-# 2026-08-05 FINDING (see INI-019 addenda for the full incident writeup): report_llm_usage() was only
-# ever called from the FlashBrain's voice turn (nucleo/flash/fast_client.py), and the rate table only
-# covered "x.ai"/"api.openai.com" — but the FlashBrain's actual production model runs on AIMLAPI
-# (a multi-model broker, config/v2.json §fast), which matched NEITHER row. Every real voice turn was
-# metering silently to zero cost. Fixed by: (a) per-MODEL rates for the AIMLAPI broker (a single
-# base_url covers dozens of differently-priced models — a base_url-only table cannot express that),
-# (b) a non-None FALLBACK rate for any (base_url, model) this table doesn't yet know about, so a
-# future unlisted provider degrades to "probably overcharges a little" instead of "silently free" —
-# under-metering loses real money, over-metering by a small margin on a rare/unknown provider does not.
-# Brain Workers (nucleo/workers/, Claude Code CLI relayed to Z.AI/Moonshot/local license) are metered
-# too (report_worker_usage) — they were computing real usage/cost already (claude_session.py's stream-
-# json "result" message) but discarding it into a UI chip, never into Energy.
+# Rates are resolved per MODEL first (a single broker base_url can serve dozens of differently-priced
+# models), then per base_url, then a non-None FALLBACK rate for any (base_url, model) this table doesn't
+# know — so an unlisted provider degrades to "probably over-meters a little" instead of "silently free".
+# Brain Workers (nucleo/workers/, Claude Code CLI) are metered too (report_worker_usage), from the
+# stream-json "result" usage.
 #
-# NUMBERS BELOW ARE DEFAULTS, NOT FINAL PRICING — flagged explicitly wherever they are business
-# decisions, not technical facts:
-#   - Per-provider/per-model $/token rates: real published pricing as of 2026-08-05 (web search) —
-#     re-verify against the provider's own pricing page periodically, don't treat as permanently
-#     accurate. Same norm as the rest of the repo (see V2-035's "never assume, verify" note).
-#   - EUR_PER_ENERGY_UNIT (1 Energy = €0.01) and MARGIN_MULTIPLIER (4x raw cost) are OPERATOR
-#     business decisions defaulted here for a working system — confirm/adjust, don't treat as final.
-#   - The FALLBACK rate for an unmapped (base_url, model) is a deliberate business choice: better to
-#     mildly over-meter an unknown provider (logged loudly so it gets a real rate added) than to ever
-#     silently meter it as free.
+# NUMBERS BELOW ARE DEFAULTS:
+#   - Per-provider/per-model $/token rates: public provider pricing at the time of writing — re-verify
+#     against each provider's pricing page periodically.
+#   - EUR_PER_ENERGY_UNIT and MARGIN_MULTIPLIER are defaults; a deployment overrides them via
+#     ENERGY_EUR_PER_UNIT / ENERGY_MARGIN_MULTIPLIER.
+#   - The FALLBACK rate for an unmapped (base_url, model) deliberately over-meters (and is logged
+#     loudly so a real rate gets added) rather than ever metering as free.
 #
 import functools
 import os
@@ -87,9 +72,8 @@ _MODEL_RATES: dict[str, tuple[float, float]] = {
     # instead of over-charging. Both errors come from the same cause: a price written once and never
     # re-read against the provider's page.
     "deepseek-v4-pro": (1.32, 3.96),
-    # The OLD broker route (AIMLAPI `deepseek/deepseek-v4-flash`), kept because Machines created before
-    # 2026-08-30 still run it — see the master's «Las superficies». Its price is the broker's, not
-    # DeepSeek's, so it does NOT move with the rows above.
+    # The broker route (AIMLAPI `deepseek/deepseek-v4-flash`), kept because older configs may still use
+    # it. Its price is the broker's, not DeepSeek's, so it does NOT move with the rows above.
     "deepseek-v4-flash": (0.14, 0.28),
     # The memory's EMBEDDINGS (V2-501, 2026-08-30). They have no output tokens at all — an embedding is not
     # generated text — so the output rate is a real zero and not a placeholder. A row is needed even though the
@@ -124,9 +108,7 @@ _MODEL_RATES: dict[str, tuple[float, float]] = {
     # `glm-5.3` es HOY el titular del Brain Worker en la tabla. Acertaba de rebote por la fila de
     # `api.z.ai`, no por su nombre: un worker servido por otro endpoint (o un relevo) habría caído al
     # catch-all. Precio verificado en docs.z.ai/guides/overview/pricing el 2026-09-25 — idéntico al de
-    # 5.2. ⚠️ Esto tarifa el plan de PAGO POR TOKEN de Z.AI; el worker corre hoy con el FORFAIT del plan
-    # de código, cuyo coste marginal real es la cuota, no el token (ver la nota de este panel en
-    # `.meshkore/docs/ops/zaelar-energy-accounting.md` — decisión de negocio, no técnica).
+    # 5.2. This is Z.AI's pay-per-token price.
     "glm-5.3": (1.40, 4.40),
     "glm-5.2": (1.40, 4.40),
     "kimi-k2.6": (0.95, 4.00),
@@ -142,14 +124,14 @@ _MODEL_RATES: dict[str, tuple[float, float]] = {
 _FALLBACK_RATE_USD: tuple[float, float] = (1.00, 5.00)
 _warned_unmapped: set[str] = set()
 
-# Business decisions (see module docstring) — single constants, easy to tune without touching the
-# calculation logic below.
-EUR_PER_ENERGY_UNIT = float(os.getenv("ENERGY_EUR_PER_UNIT", "0.01"))   # 1 Energy = €0.01 (default)
-MARGIN_MULTIPLIER = float(os.getenv("ENERGY_MARGIN_MULTIPLIER", "4.0"))  # retail vs raw compute cost
+# Defaults; a deployment overrides them via the env vars — single constants, easy to tune without
+# touching the calculation logic below.
+EUR_PER_ENERGY_UNIT = float(os.getenv("ENERGY_EUR_PER_UNIT", "0.01"))   # default; ENERGY_EUR_PER_UNIT overrides
+MARGIN_MULTIPLIER = float(os.getenv("ENERGY_MARGIN_MULTIPLIER", "4.0"))  # default; ENERGY_MARGIN_MULTIPLIER overrides
 
 
 def enabled() -> bool:
-    """Energy metering exists for real cloud accounts (ZAELAR_USER_ID set, 2026-08-05). Routes
+    """Energy metering is active only when ZAELAR_USER_ID is set. Routes
     through the single-purpose accessor so neither this module nor its callers need to know the
     shape of the gate."""
     from nucleo import cloud_account
@@ -200,21 +182,10 @@ def _resolve_tokens(
 def _broker_markup(base_url: str, model: str) -> float:
     """The BROKER's cut, as a multiplier on the native model rate.
 
-    Every row in the tables above is the price the MODEL'S OWN provider charges — that is what makes the
-    candidates comparable to each other in the benchmarks. But production does not buy from the provider: the
-    FlashBrain's titular goes through AIMLAPI, which resells at a margin. The tables were therefore correct as a
-    RANKING and wrong as a BILL, and the difference was invisible because both routes resolve to the same row —
-    `deepseek-v4-flash` bills $0.14/1M whether it came from `api.deepseek.com` or from the broker that charges
-    $0.182 for it. That is a ~30% UNDER-charge on the busiest call in the product, which is the wrong direction:
-    the standing policy (2026-08-13) is to over-charge slightly rather than under-charge.
-
-    Measured margins (verified 2026-08-09, `tests/memory/e2e/bot/prices.json`): they are NOT a constant — the
-    broker's cut depends on the model (deepseek-v4-flash ×1.30, grok-4-fast ×1.05,
-    gemini-2.5-flash ×1.00). An unknown model on the broker takes the WORST observed margin, for the same
-    never-silently-cheap reason as `_FALLBACK_RATE_USD`.
-
-    This also answers, in code, why the direct endpoint is not just faster: it is ~30% CHEAPER than the same
-    model through the broker.
+    Every row in the tables above is the price the MODEL'S OWN provider charges. A call routed through a
+    reseller (AIMLAPI) pays that reseller's markup on top, which depends on the model; this returns that
+    multiplier (1.0 for a direct endpoint). An unknown model on the broker takes the highest observed markup,
+    for the same never-silently-cheap reason as `_FALLBACK_RATE_USD`.
     """
     if "aimlapi" not in (base_url or "").lower():
         return 1.0
@@ -349,14 +320,8 @@ def llm_cost_to_energy(
     return retail_eur / EUR_PER_ENERGY_UNIT
 
 
-# VOICE RATES MOVED OUT (2026-08-16) — they now live in `nucleo/energy_tariffs.py`, resolved PER
-# PROVIDER and authored centrally by the operator (backoffice → control-plane → piggybacked on the
-# lease). They used to be two flat constants here, and that shape was the defect: nothing tied either
-# one to the provider actually running, so the STT billed Deepgram's $0.0048/min while production ran
-# Voxtral at $0.006/min — 80% of cost, silently, for as long as nobody compared the two by hand. It is
-# the same failure as the base_url-only LLM table that metered the entire voice path at zero in August.
-# The env overrides (`ENERGY_TTS_USD_PER_1K_CHARS`/`ENERGY_STT_USD_PER_MIN`) are gone with them: an env
-# var is per-Machine and invisible, which is what made the drift impossible to notice.
+# VOICE RATES live in `nucleo/energy_tariffs.py`, resolved PER PROVIDER from a tariff table that can be
+# delivered with the usage lease. A flat constant here could not follow the provider actually running.
 
 
 def tts_cost_to_energy(*, characters: int | None, provider: str) -> float:
@@ -384,7 +349,7 @@ def stt_cost_to_energy(*, audio_seconds: float | None, provider: str) -> float:
 def transport_cost_to_energy(*, participant_seconds: float | None, provider: str = "livekit") -> float:
     """Pure given the tariff table. Energy for real-time transport, billed per PARTICIPANT-minute.
 
-    A voice session has two participants (operator + agent), so the caller passes the summed
+    A voice session has two participants (user + agent), so the caller passes the summed
     participant-seconds — putting that multiplication here would hide it from whoever later reads a
     bill and wonders why it is double the wall-clock."""
     secs = participant_seconds or 0.0
@@ -433,19 +398,12 @@ async def _post_usage(energy: float, kind: str, meta: dict | None = None) -> Non
 
 
 async def _post_usage_cloud_account(energy: float, kind: str, meta: dict | None = None) -> None:
-    """Reports to the control-plane's PERSISTENT per-user Energy ledger (cloud/control-plane's
-    POST /usage). The control-plane writes this SAME call into zaelar_user_events too (INI-019
-    addenda, "Cambio A") — so `meta` (model/base_url ONLY — never content) doubles as the per-user
-    activity timeline the backoffice reads. CONTROL_PLANE_URL/CONTROL_PLANE_SERVICE_TOKEN are
-    injected by the provisioner at Machine creation
-    (cloud/provisioner/src/machineConfig.js::accountMachineConfig) — guarded-until-configured:
-    missing either → no-op, never raises.
+    """Reports usage to the ledger at CONTROL_PLANE_URL (POST /usage). `meta` carries model/base_url
+    only — never content. Missing CONTROL_PLANE_URL or a user id → no-op, never raises.
 
-    2026-08-09: the response already carries the account's new `balance` (control-plane's own
-    /usage handler has always returned it) — this used to be discarded. Reading it here is the WHOLE
-    gate: no separate balance-check endpoint was needed, just stop throwing the answer away. A
-    depleted balance (nucleo/account_limits.should_close) requests the session close, fire-and-forget
-    (nucleo/account_limits.py) — a failed close request never breaks the turn that triggered it."""
+    The response carries the account's new `balance`; a depleted balance
+    (nucleo/account_limits.should_close) requests the session close, fire-and-forget — a failed close
+    request never breaks the turn that triggered it."""
     from nucleo import account_limits, cloud_account
 
     control_plane_url = (os.getenv("CONTROL_PLANE_URL") or "").strip()
@@ -532,7 +490,7 @@ def _load_once() -> None:
 
 
 def note_balance(balance) -> None:
-    """Registra el saldo que acaba de decir el control-plane. Nunca lanza: es contabilidad de PRESENTACIÓN,
+    """Registra el saldo que acaba de decir el ledger. Nunca lanza: es contabilidad de PRESENTACIÓN,
     y un fallo aquí no puede tocar el turno ni el worker que la disparó."""
     try:
         if balance is None:
@@ -600,7 +558,7 @@ def _fire_and_forget(energy: float, kind: str, meta: dict | None = None) -> None
         pass
     # No loop in THIS thread — the caller is inside `asyncio.to_thread` (V2-102: `nucleo/memllm.chat_sync` is
     # documented to run there, and every one of its callers metered through this path silently lost their
-    # report — the local lease deduction above still happened, only the control-plane POST vanished). Same
+    # report — the local lease deduction above still happened, only the ledger POST vanished). Same
     # bridge `nucleo/browser_search.py::set_loop`/`run_coroutine_threadsafe` already uses for the identical
     # problem. No loop captured yet (`set_loop` not called — e.g. a unit test) → drop, same as before.
     if _loop is not None:
@@ -705,8 +663,8 @@ def report_worker_usage(
     report_llm_usage — a worker call IS an LLM call, just reached via the Claude Code CLI subprocess
     instead of an HTTP client. Deliberately does NOT use the CLI's own `total_cost_usd`: that figure is
     computed by the CLI against OFFICIAL Anthropic pricing, which is meaningless once the call was
-    relayed to a flat-rate subscription tier (Z.AI/Moonshot, see nucleo/workers/providers.py) — pricing
-    by our own per-model table keeps worker Energy consistent with every other metered call."""
+    relayed to another provider (Z.AI/Moonshot, see nucleo/workers/providers.py) — pricing
+    by the per-model table keeps worker Energy consistent with every other metered call."""
     if not enabled():
         return
     pt, ct, estimated = _resolve_tokens(base_url, model, prompt_tokens, completion_tokens)
@@ -728,7 +686,7 @@ def report_tts_usage(*, characters: int | None, provider: str) -> None:
     contract as report_llm_usage.
 
     The RAW UNITS travel in `meta` alongside the Energy, deliberately: Energy is the price applied to
-    them, and a price can be wrong. Without the units the control-plane can only ever say what we
+    them, and a price can be wrong. Without the units the ledger can only ever say what was
     charged, never what it should have been — so a tariff fixed later could not be applied backwards,
     and a bill could not be checked against the provider's own dashboard. Same reason report_llm_usage
     already sends {model, base_url}. No content, ever — a character COUNT, never the text."""
@@ -773,9 +731,8 @@ def report_transport_usage(*, participant_seconds: float | None, provider: str =
 # TRIP and not per question on purpose, because that is how it bills and how it is used: one call
 # carries the whole turn's questions (1 question 800 ms, 100 questions 1041 ms — `nucleo/jev.py:16`).
 #
-# ⚠️ MEASURED, NOT PUBLISHED: $0.0005 comes from the repo's own measurement of 2026-09-20 (one trip,
-# 100 candidates, `nucleo/jev.py:356`), the same stance as grok's cached-read rate. Re-verify against
-# the provider's invoice — this is the only rate here with no pricing page behind it.
+# ⚠️ ESTIMATED, NOT PUBLISHED: $0.0005 is an estimate (one trip, 100 candidates, `nucleo/jev.py`), the
+# same stance as grok's cached-read rate — this is the only rate here with no pricing page behind it.
 _DECISION_USD_PER_REQUEST: dict[str, float] = {
     "typesafe": 0.0005,
     "": 0.0005,
@@ -791,8 +748,7 @@ def decision_cost_to_energy(*, provider: str = "typesafe") -> float:
 @_never_raises
 def report_decision_usage(*, provider: str = "typesafe", questions: int = 1) -> None:
     """Call after a Jev round trip answered. It is the ONLY paid provider the meter did not know
-    about (found 2026-09-25): ~1.4 trips per voice turn, every turn, billing to nobody. Small per
-    call and not small per month — and the rule of this module is that nothing paid is ever free.
+    about: ~1.4 trips per voice turn. The rule of this module is that nothing paid is ever metered free.
 
     `questions` travels for the ledger's detail only: the price is the trip."""
     if not enabled():

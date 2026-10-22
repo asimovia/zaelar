@@ -84,7 +84,7 @@ async def _run_session(task: "Task") -> None:
     # IT GOES HERE, AND THE PLACE IS HALF THE REPAIR. The generator is reached from six different doors —
     # the voice turn, the text channel, the probe, V2-118's create-widget backstop, the promise backstop,
     # and a turn promoted from an injection — and a rule every caller has to remember to apply is not a
-    # rule (`zaelar-signup-and-access.md`, same lesson). `_run_session` is the ONLY door that starts a
+    # rule. `_run_session` is the ONLY door that starts a
     # worker, and `kind` is already classified by the time it runs: `kind == "code"` IS «this is going to
     # write or rewrite a card's code», decided by `errand_kind` and not by a verb list of this file's own.
     #
@@ -129,7 +129,7 @@ async def _run_session(task: "Task") -> None:
         _d.logger.warning(f"dispatch: tarea {key} NO se lanza — cadena de proveedores agotada")
         try:
             from voice.observer import emit
-            # `provider_asleep` and not a plain `end`: the round did not fail, it never started. The Master and
+            # `provider_asleep` and not a plain `end`: the round did not fail, it never started. Observability and
             # the harness both need to tell «we tried and it broke» from «we knew it was pointless», or an
             # exhausted quota keeps being scored as a broken product.
             emit("task", "provider_asleep", role="system", text=req[:120],

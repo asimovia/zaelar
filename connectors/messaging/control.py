@@ -1,5 +1,5 @@
 #
-# control.py — CONNECT/DISCONNECT logic for a connector from the UI (INI-015), in one place. Used by TWO entries:
+# control.py — CONNECT/DISCONNECT logic for a connector from the UI, in one place. Used by TWO entries:
 # (a) the HTTP API (server_api.py, for programmatic use) and (b) the supervisor (supervisor.py), which drains orders
 # the WIDGET enqueues in the store (the widget can only speak through ctx.action -> data.py -> store; it cannot fetch,
 # by the widget isolation contract). Both converge here -> one source of truth.

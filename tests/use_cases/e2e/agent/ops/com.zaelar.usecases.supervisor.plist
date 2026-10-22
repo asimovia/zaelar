@@ -5,36 +5,34 @@
   <key>Label</key>
   <string>com.zaelar.usecases.supervisor</string>
 
-  <!-- El envoltorio levanta los platós y luego ENTRA al bucle con exec, para que launchd vigile
-       al supervisor de verdad y no a un shell padre que ya terminó. -->
+  <!-- Replace /path/to/zaelar/engine with your engine checkout before loading this agent.
+       The wrapper brings the studios up and then ENTERS the loop with exec, so launchd watches
+       the supervisor itself and not a parent shell that has already exited. -->
   <key>ProgramArguments</key>
   <array>
-    <string>/Users/ricartoperator/Documents/Prj/asimovia/zaelar/engine/tests/use_cases/e2e/agent/supervisor_24x7.sh</string>
+    <string>/path/to/zaelar/engine/tests/use_cases/e2e/agent/supervisor_24x7.sh</string>
   </array>
 
   <key>WorkingDirectory</key>
-  <string>/Users/ricartoperator/Documents/Prj/asimovia/zaelar/engine</string>
+  <string>/path/to/zaelar/engine</string>
 
-  <!-- ESTO es «el cron que no para»: launchd lo arranca al iniciar sesión y lo vuelve a arrancar
-       cada vez que muera, por lo que sea. Un `crontab` cada N minutos dejaría huecos de N minutos
-       y podría solapar dos supervisores sobre UN solo navegador por plató. -->
+  <!-- This is "the cron that never stops": launchd starts it at login and restarts it every
+       time it dies, for whatever reason. A `crontab` every N minutes would leave N-minute gaps
+       and could overlap two supervisors on the ONE browser each studio has. -->
   <key>RunAtLoad</key>
   <true/>
   <key>KeepAlive</key>
   <true/>
 
-  <!-- Respiro ante un fallo de arranque en bucle (venv roto, repo movido): sin esto launchd
-       reintentaría en caliente y llenaría el disco de logs en minutos. -->
-
-  <!-- Respiro ante un fallo de arranque en bucle (venv roto, repo movido): sin esto launchd
-       reintentaría en caliente y llenaría el disco de logs en minutos. -->
+  <!-- Back-off for a start-up failure loop (broken venv, moved repo): without it launchd would
+       retry hot and fill the disk with logs in minutes. -->
   <key>ThrottleInterval</key>
   <integer>60</integer>
 
   <key>StandardOutPath</key>
-  <string>/Users/ricartoperator/Documents/Prj/asimovia/zaelar/engine/tests/runs/use_cases/supervisor/launchd.out.log</string>
+  <string>/path/to/zaelar/engine/tests/runs/use_cases/supervisor/launchd.out.log</string>
   <key>StandardErrorPath</key>
-  <string>/Users/ricartoperator/Documents/Prj/asimovia/zaelar/engine/tests/runs/use_cases/supervisor/launchd.err.log</string>
+  <string>/path/to/zaelar/engine/tests/runs/use_cases/supervisor/launchd.err.log</string>
 
   <key>ProcessType</key>
   <string>Background</string>

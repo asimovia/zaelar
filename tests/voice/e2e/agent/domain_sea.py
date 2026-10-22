@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Testing sea by DOMAINS (INI-013) — part of the conversation simulation universe.
+"""Testing sea by DOMAINS — part of the conversation simulation universe.
 Testing sea by domain — conversation simulation through the PROBE channel (fast, high volume).
 Generates N NATURAL paraphrases per seed (via AIMLAPI, like real users) → exercises the SAME FlashBrain,
 router, rails, tools, state memory, and Whisper → automatically flags routing failures. Usage:

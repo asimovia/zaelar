@@ -110,7 +110,7 @@ interacciones de arriba. Sigue como siempre.
 2. **`CLAUDE.md`**: la decisión clave "Memoria central" + el bullet del módulo `memory/`/`nucleo/` + (si es un
    invariante nuevo) su regla dura. **Explica cómo se usa la memoria desde otros módulos** — es mandatorio que esté
    al día (guardar Y leer).
-3. **Diagrama público** `web/src/pages/technology/memory.astro` + `web/src/lib/diagrams/memory.ts` (antes
+3. **Diagrama público** `/technology/memory`, fuera de este repo (antes
    `frontend/pages/architecture.html` pestaña Memoria, retirado el 2026-07-24 — paso MANUAL, ningún workflow lo
    sincroniza solo): piezas + **modelos en uso** (el modelo del procesador de escritura, embeddings, etc.) +
    coste (local/gratis vs nube), solo si el cambio es significativo de cara a fuera. Si el operador ve un

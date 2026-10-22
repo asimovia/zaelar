@@ -15,7 +15,7 @@ card's feed and nothing else. `active_progress()` does carry both into the promp
 only helps when the operator ASKS how it is going; if he says nothing, nothing reaches him.
 
 So the missing half is a note that enters the NEXT turn on its own. It is the seam a FINISHED task has used
-since INI-016 (`owner.py`), for the same reason: a fact the operator can act on has to arrive by itself.
+since the browser-agent work (`owner.py`), for the same reason: a fact the operator can act on has to arrive by itself.
 
 It has to be `brain_notes` and not `proactive.notify`: that one's brain-note fallback lives inside
 `if speak and _speaker is not None`, so on the TEXT channel a proactive delivery reaches the observability

@@ -89,8 +89,8 @@ def test_the_redirect_follows_the_origin_the_operator_is_actually_on(sandbox):
     """Hardcoded loopback is only right for a desktop opened on the same machine as the engine. On a managed
     deployment `127.0.0.1:43917` is the OPERATOR's own computer, which has never heard of the pending state,
     so the consent could not complete and the connector looked broken."""
-    assert oauth.redirect_uri("https://my.zaelar.com") == "https://my.zaelar.com/api/video/callback"
-    assert oauth.redirect_uri("https://my.zaelar.com/") == "https://my.zaelar.com/api/video/callback"
+    assert oauth.redirect_uri("https://agent.example.com") == "https://agent.example.com/api/video/callback"
+    assert oauth.redirect_uri("https://agent.example.com/") == "https://agent.example.com/api/video/callback"
 
 
 @pytest.mark.parametrize("hostile", [
@@ -111,11 +111,11 @@ def test_the_exchange_reuses_the_REDIRECT_THAT_WAS_AUTHORIZED(sandbox, monkeypat
     derived per request, recomputing it at callback time could differ — and the provider would reject the
     exchange with a mismatch no one could read. So it rides under the state."""
     _with_builtin(monkeypatch)
-    res = oauth.authorize_url("youtube", origin="https://my.zaelar.com")
+    res = oauth.authorize_url("youtube", origin="https://agent.example.com")
     assert res["ok"]
     state = res["url"].split("state=")[1].split("&")[0]
     pend = oauth._load()["pending"][state]
-    assert pend["redirect"] == "https://my.zaelar.com/api/video/callback"
+    assert pend["redirect"] == "https://agent.example.com/api/video/callback"
     assert pend["verifier"]                                    # PKCE still stashed alongside it
 
 

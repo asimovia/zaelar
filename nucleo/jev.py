@@ -228,10 +228,9 @@ def _post_question(answer_key: str, state: str, instructions: str, criteria: dic
 
 
 def _meter(questions: int) -> None:
-    """Report the round trip to Energy. Jev is a PAID provider and until 2026-09-25 it was the only
-    one the meter did not know about — roughly 1.4 trips per voice turn, every turn, billed to
-    nobody. Reported after the answer, like every other call site: a trip that never came back is
-    not a trip anybody charges us for. Never raises: metering must not be able to break a verdict."""
+    """Report the round trip to Energy. Jev is a PAID provider — roughly 1.4 trips per voice
+    turn. Reported after the answer, like every other call site: a trip that never came back is
+    not a billed trip. Never raises: metering must not be able to break a verdict."""
     try:
         from nucleo import energy_meter
         energy_meter.report_decision_usage(provider="typesafe", questions=questions)

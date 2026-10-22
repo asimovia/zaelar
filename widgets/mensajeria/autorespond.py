@@ -1,6 +1,6 @@
 #
 # autorespond.py — WHETHER an arriving message gets an automatic reply (V2-624, the go-ahead for what
-# connectors/whatsapp/client.py has called "Phase 4" since INI-014).
+# connectors/whatsapp/client.py has long called "Phase 4").
 #
 # Same placement contract as policy.py: a ZERO-import module inside the widget package, so the stdlib-only
 # data.py and the connector-side owner read the SAME rule — a decision that exists twice is a decision that

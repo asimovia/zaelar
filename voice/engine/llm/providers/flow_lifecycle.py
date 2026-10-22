@@ -139,7 +139,7 @@ def _flow_should_close(tid: str, acc_trace_id: str, confirm_trace_ids, has_live_
     dispatch/confirm modules (see `tests/voice/unit/providers/test_nucleo_trace_merge.py`).
 
     A plain conversational turn never gets its own explicit close from anywhere else — only a worker-spawned flow
-    does (`dispatch.py`'s `_run_session` finally block). Without this, the master can only guess "is this flow
+    does (`dispatch.py`'s `_run_session` finally block). Without this, a flow viewer can only guess "is this flow
     still active?" from RECENCY (`last_ms` within a window), which is wrong the instant a turn finishes: a
     completed kickoff/reply looks identical to a genuinely stuck one until the window expires minutes later —
     reported live by the operator ("he reiniciado el sistema... pero hay siete procesos activos").
@@ -167,7 +167,7 @@ def _flow_should_close(tid: str, acc_trace_id: str, confirm_trace_ids, has_live_
 
 
 # Turn TEXT can finish generating well before its own TTS finishes narrating it — closing the flow right then
-# made the master board's column vanish while the agent was still audibly speaking (operator report, 2026-08-16:
+# made the flow board's column vanish while the agent was still audibly speaking (operator report, 2026-08-16:
 # "le he hecho una pregunta... el turno ha desaparecido... la gente todavía me está contestando"). `_run()`'s
 # success branch used to close immediately; now, if the bot is still speaking, it only QUEUES the close here and
 # `agent.py`'s `on_state_change` drains the queue on the next speaking→idle transition (real audio playout done,
@@ -236,7 +236,7 @@ def _maybe_close_flow(brain: "NucleoLLM") -> None:
 
 
 def _release_acc_trace_if_fresh(brain: "NucleoLLM") -> None:
-    """Real bug diagnosed live (2026-08-16): "cierra todos los widgets" turns sat "EN CURSO" in the master
+    """Real bug diagnosed live (2026-08-16): "cierra todos los widgets" turns sat "EN CURSO" in the flow viewer
     forever despite doing their job — closing the widgets — correctly. `_begin_or_adopt_trace()` sets
     `brain._acc_trace_id` for EVERY fresh (non-continuation) turn, on the assumption that the accumulator's
     `offer()` call further down `_run_inner` will clear it once the utterance resolves as complete. Three

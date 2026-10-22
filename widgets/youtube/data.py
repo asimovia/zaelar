@@ -180,7 +180,7 @@ def view_data(q: str = "") -> dict:
     # e1acdcca). DERIVED from the connector, so it turns on by itself the day a client id lands.
     out["accounts_enabled"] = _accounts_enabled()
     # V2-632 — the connector SHELF: what video sources exist, live or not, with their honest state. The card's
-    # 🔌 screen renders it exactly like messaging's — including the shut doors, on purpose (INI-027's wishlist
+    # 🔌 screen renders it exactly like messaging's — including the shut doors, on purpose (the wishlist
     # rule: what we do NOT have is shown, never narrated). Composed from the V2-526 catalog (data, stdlib json)
     # merged with the live platform rows; fail-soft to [] — a broken catalog must not blank the player.
     out["connector_shelf"] = _sources.connector_shelf(db)

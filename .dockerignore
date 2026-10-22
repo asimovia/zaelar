@@ -8,16 +8,15 @@ tests/runs
 .ruff_cache
 .mypy_cache
 
-# Runtime-generated per-install state (gitignored too) — a cloud image must boot CLEAN for every
-# new tenant/demo session, never with the operator's own personal memory/config baked in. Found
-# 2026-07-23 (INI-018 T1): the image was shipping the operator's real memory.db + config/*.json.
+# Runtime-generated per-install state (gitignored too) — an image must boot CLEAN, never with the
+# builder's own local memory.db or config/*.json baked in.
 memory/_data
 widgets/_data/*/
 config/*.json
 # …EXCEPT the model table (V2-500), which is the opposite kind of file: tracked, public, and READ AT BOOT by
 # config/models.py, provider_chain, workers/providers and memory/embeddings. The rule above exists to keep the
-# OPERATOR'S per-install json (settings/connectors/v2, all gitignored) out of a tenant image; this one has to be
-# in it. Without this line the image builds perfectly and every Machine dies on the first read with
+# per-install json (settings/connectors/v2, all gitignored) out of the image; this one has to be
+# in it. Without this line the image builds perfectly and every container dies on the first read with
 # `FileNotFoundError: config/models.default.json` — `config/models.py` fails loudly on purpose.
 !config/models.default.json
 .meshkore/credentials

@@ -3,7 +3,7 @@
   "id": "live-v2-play-the-second-one",
   "lang": "en",
   "phrase": "play the second one",
-  "source": "TMP/demo/run-p124..p131 (2026-10-14): the steps that held some passes and not others",
+  "source": "demo run-p124..p131 (2026-10-14): the steps that held some passes and not others",
   "screen": {
    "open": [
     "youtube"
@@ -83,8 +83,8 @@
  {
   "id": "live-e3-send-the-invoice-to-quinn",
   "lang": "en",
-  "phrase": "send the invoice to quinn, tell him we're already trying inworld and he should book it",
-  "source": "TMP/demo/run-p124..p131 (2026-10-14): the steps that held some passes and not others",
+  "phrase": "send the invoice to quinn, tell him we're already trying acme and he should book it",
+  "source": "demo run-p124..p131 (2026-10-14): the steps that held some passes and not others",
   "screen": {
    "open": [
     "mensajeria"
@@ -111,37 +111,37 @@
      },
      {
       "platform": "email",
-      "chatId": "billing@inworld.example",
-      "messageId": "220440",
-      "senderId": "billing@inworld.example",
-      "from": "Inworld AI",
-      "subject": "Your receipt from Inworld AI #2281-4878",
-      "body": "Thanks for your payment of $25.00 on September 27, 2026.",
+      "chatId": "billing@acme-cloud.example",
+      "messageId": "100001",
+      "senderId": "billing@acme-cloud.example",
+      "from": "Acme Cloud",
+      "subject": "Your receipt from Acme Cloud #1000-0001",
+      "body": "Thanks for your payment of $9.99 on September 27, 2026.",
       "media": [
        {
-        "url": "/widgets/mensajeria/asset/eml_220440_1_Receipt-2281-4878.pdf",
+        "url": "/widgets/mensajeria/asset/eml_100001_1_Receipt-1000-0001.pdf",
         "type": "document",
-        "name": "eml_220440_1_Receipt-2281-4878.pdf"
+        "name": "eml_100001_1_Receipt-1000-0001.pdf"
        }
       ],
       "ts": 1790548017
      }
     ],
     "threads": {
-     "email|billing@inworld.example": {
+     "email|billing@acme-cloud.example": {
       "msgs": [
        {
-        "id": "220440",
+        "id": "100001",
         "dir": "in",
-        "who": "Inworld AI",
+        "who": "Acme Cloud",
         "ts": 1790548017,
-        "subject": "Your receipt from Inworld AI #2281-4878",
-        "body": "[Subject: Your receipt from Inworld AI #2281-4878] Thanks for your payment of $25.00.",
+        "subject": "Your receipt from Acme Cloud #1000-0001",
+        "body": "[Subject: Your receipt from Acme Cloud #1000-0001] Thanks for your payment of $9.99.",
         "media": [
          {
-          "url": "/widgets/mensajeria/asset/eml_220440_1_Receipt-2281-4878.pdf",
+          "url": "/widgets/mensajeria/asset/eml_100001_1_Receipt-1000-0001.pdf",
           "type": "document",
-          "name": "eml_220440_1_Receipt-2281-4878.pdf"
+          "name": "eml_100001_1_Receipt-1000-0001.pdf"
          }
         ]
        }
@@ -150,7 +150,7 @@
     },
     "active_chat": {
      "platform": "email",
-     "chatId": "billing@inworld.example"
+     "chatId": "billing@acme-cloud.example"
     }
    },
    "contactos": {
@@ -182,11 +182,11 @@
   "history": [
    {
     "role": "user",
-    "text": "check my email, did inworld send me something?"
+    "text": "check my email, did acme send me something?"
    },
    {
     "role": "assistant",
-    "text": "Yes — Inworld AI sent you a receipt on September 27, 2026: $25.00, invoice 2281-4878."
+    "text": "Yes — Acme Cloud sent you a receipt on September 27, 2026: $9.99, invoice 1000-0001."
    },
    {
     "role": "user",
@@ -204,8 +204,8 @@
  {
   "id": "live-e4-leave-it-unread",
   "lang": "en",
-  "phrase": "oh and leave that inworld one as unread",
-  "source": "TMP/demo/run-p124..p131 (2026-10-14): the steps that held some passes and not others",
+  "phrase": "oh and leave that acme one as unread",
+  "source": "demo run-p124..p131 (2026-10-14): the steps that held some passes and not others",
   "screen": {
    "open": [
     "mensajeria"
@@ -229,37 +229,37 @@
      },
      {
       "platform": "email",
-      "chatId": "billing@inworld.example",
-      "messageId": "220440",
-      "senderId": "billing@inworld.example",
-      "from": "Inworld AI",
-      "subject": "Your receipt from Inworld AI #2281-4878",
-      "body": "Thanks for your payment of $25.00 on September 27, 2026.",
+      "chatId": "billing@acme-cloud.example",
+      "messageId": "100001",
+      "senderId": "billing@acme-cloud.example",
+      "from": "Acme Cloud",
+      "subject": "Your receipt from Acme Cloud #1000-0001",
+      "body": "Thanks for your payment of $9.99 on September 27, 2026.",
       "media": [
        {
-        "url": "/widgets/mensajeria/asset/eml_220440_1_Receipt-2281-4878.pdf",
+        "url": "/widgets/mensajeria/asset/eml_100001_1_Receipt-1000-0001.pdf",
         "type": "document",
-        "name": "eml_220440_1_Receipt-2281-4878.pdf"
+        "name": "eml_100001_1_Receipt-1000-0001.pdf"
        }
       ],
       "ts": 1790548017
      }
     ],
     "threads": {
-     "email|billing@inworld.example": {
+     "email|billing@acme-cloud.example": {
       "msgs": [
        {
-        "id": "220440",
+        "id": "100001",
         "dir": "in",
-        "who": "Inworld AI",
+        "who": "Acme Cloud",
         "ts": 1790548017,
-        "subject": "Your receipt from Inworld AI #2281-4878",
-        "body": "[Subject: Your receipt from Inworld AI #2281-4878] Thanks for your payment of $25.00.",
+        "subject": "Your receipt from Acme Cloud #1000-0001",
+        "body": "[Subject: Your receipt from Acme Cloud #1000-0001] Thanks for your payment of $9.99.",
         "media": [
          {
-          "url": "/widgets/mensajeria/asset/eml_220440_1_Receipt-2281-4878.pdf",
+          "url": "/widgets/mensajeria/asset/eml_100001_1_Receipt-1000-0001.pdf",
           "type": "document",
-          "name": "eml_220440_1_Receipt-2281-4878.pdf"
+          "name": "eml_100001_1_Receipt-1000-0001.pdf"
          }
         ]
        }
@@ -268,7 +268,7 @@
     },
     "active_chat": {
      "platform": "email",
-     "chatId": "billing@inworld.example"
+     "chatId": "billing@acme-cloud.example"
     }
    },
    "contactos": {
@@ -300,11 +300,11 @@
   "history": [
    {
     "role": "user",
-    "text": "check my email, did inworld send me something?"
+    "text": "check my email, did acme send me something?"
    },
    {
     "role": "assistant",
-    "text": "Yes — Inworld AI sent you a receipt on September 27, 2026: $25.00, invoice 2281-4878."
+    "text": "Yes — Acme Cloud sent you a receipt on September 27, 2026: $9.99, invoice 1000-0001."
    },
    {
     "role": "user",
@@ -316,11 +316,11 @@
    },
    {
     "role": "user",
-    "text": "send the invoice to quinn, tell him we're already trying inworld and he should book it"
+    "text": "send the invoice to quinn, tell him we're already trying acme and he should book it"
    },
    {
     "role": "assistant",
-    "text": "Sent the Inworld invoice to Quinn."
+    "text": "Sent the Acme invoice to Quinn."
    }
   ]
  },
@@ -328,7 +328,7 @@
   "id": "live-c3-ok-book-it",
   "lang": "en",
   "phrase": "ok book it, call it catch up with rowan",
-  "source": "TMP/demo/run-p124..p131 (2026-10-14): the steps that held some passes and not others",
+  "source": "demo run-p124..p131 (2026-10-14): the steps that held some passes and not others",
   "screen": {
    "open": [
     "agenda"
@@ -411,7 +411,7 @@
   "id": "live-c4-move-it-half-an-hour",
   "lang": "en",
   "phrase": "actually move it half an hour later",
-  "source": "TMP/demo/run-p124..p131 (2026-10-14): the steps that held some passes and not others",
+  "source": "demo run-p124..p131 (2026-10-14): the steps that held some passes and not others",
   "screen": {
    "open": [
     "agenda"
@@ -514,7 +514,7 @@
   "id": "live-c5-telegram-the-new-time",
   "lang": "en",
   "phrase": "send rowan a telegram with the new time",
-  "source": "TMP/demo/run-p124..p131 (2026-10-14): the steps that held some passes and not others",
+  "source": "demo run-p124..p131 (2026-10-14): the steps that held some passes and not others",
   "screen": {
    "open": [
     "agenda"
@@ -625,7 +625,7 @@
   "id": "live-i3-open-the-second-picture",
   "lang": "en",
   "phrase": "open the second one",
-  "source": "TMP/demo/run-p124..p131 (2026-10-14): the steps that held some passes and not others",
+  "source": "demo run-p124..p131 (2026-10-14): the steps that held some passes and not others",
   "screen": {
    "open": [
     "imagenes"
@@ -728,7 +728,7 @@
   "id": "live-u1-play-some-madonna",
   "lang": "en",
   "phrase": "play some madonna",
-  "source": "TMP/demo/run-p124..p131 (2026-10-14): the steps that held some passes and not others",
+  "source": "demo run-p124..p131 (2026-10-14): the steps that held some passes and not others",
   "screen": {
    "open": []
   },
@@ -741,7 +741,7 @@
  },
  {
   "lang": "en",
-  "source": "TMP/demo/run-p135 (2026-10-15): an errand's unprompted report crossed his order about the photos; the window places it ahead of that order (`dialog._place`)",
+  "source": "demo run-p135 (2026-10-15): an errand's unprompted report crossed his order about the photos; the window places it ahead of that order (`dialog._place`)",
   "screen": {
    "open": [
     "results::t135",
@@ -863,7 +863,7 @@
  },
  {
   "lang": "en",
-  "source": "TMP/demo/run-p135 (2026-10-15): an errand's unprompted report crossed his order about the photos; the window places it ahead of that order (`dialog._place`)",
+  "source": "demo run-p135 (2026-10-15): an errand's unprompted report crossed his order about the photos; the window places it ahead of that order (`dialog._place`)",
   "screen": {
    "open": [
     "results::t135",

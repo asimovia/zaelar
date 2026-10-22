@@ -30,8 +30,8 @@ from nucleo.flash import router
 from nucleo.flash.fast_client import FastClient, spec_from_config
 
 SPEC = spec_from_config()
-SYS = ("Eres Zaelar, el asistente por voz de Ricart. Responde breve y natural.\n"
-       "El operador se llama Ricart. Widgets ABIERTOS ahora: results.\n")
+SYS = ("Eres Zaelar, el asistente por voz de Alex. Responde breve y natural.\n"
+       "El operador se llama Alex. Widgets ABIERTOS ahora: results.\n")
 
 
 def _chars(tools) -> int:

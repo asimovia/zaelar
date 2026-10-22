@@ -15,8 +15,8 @@ async def identity_bus_memory_and_workers(*, app) -> dict:
     # ask, 2026-08-16): a fresh self-hosted install used to get its UUID4 the first time ANY code happened to
     # call user_id() (an event emit, a session report…) — it worked, but the id stayed invisible until
     # something incidental triggered it. Calling it here, once, guarantees config/identity.json exists and is
-    # logged the moment the server comes up, matching the explicitness a cloud Machine already gets for free
-    # (its ZAELAR_USER_ID arrives pre-set by the provisioner). On a cloud Machine this just confirms the
+    # logged the moment the server comes up, matching an instance that runs with ZAELAR_USER_ID pre-set in its
+    # environment. There this just confirms the
     # override (cloud_account.my_user_id()) resolves — user_id() already prefers it over the local file.
     if _first_lifespan_entry:
         try:
@@ -329,7 +329,7 @@ async def connectors_voice_and_health(*, _first_lifespan_entry, _identity, activ
         widget_background.start()
     except Exception as e:
         _bt._srv.logger.warning(f"background-widget scheduler start failed (voice/chat unaffected): {e}")
-    # LiveKit engine (INI-012): run the AgentServer EMBEDDED in this process (job_executor_type=THREAD), so the
+    # LiveKit engine: run the AgentServer EMBEDDED in this process (job_executor_type=THREAD), so the
     # voice job shares the bus/observer-SSE queue, the central memory, the orchestrator loop and brain_notes with
     # the «Colmena» brain (nucleo/). Gated by ZAELAR_ENGINE=livekit.
     if _bt._srv.os.getenv("ZAELAR_ENGINE", "livekit").lower() == "livekit":
@@ -395,9 +395,9 @@ async def connectors_voice_and_health(*, _first_lifespan_entry, _identity, activ
             app.state.titular_watch_task = asyncio.create_task(titular_watch.run())
     except Exception as e:
         _bt._srv.logger.warning(f"titular watch skipped (the light may stay stale): {e}")
-    # ENERGY LEASE (ADR-0005) — request it at boot, alongside the rest of the warm-up and BEFORE the user can speak,
+    # ENERGY LEASE — request it at boot, alongside the rest of the warm-up and BEFORE the user can speak,
     # which is when they are already waiting anyway. Instant no-op on self-host. It is a TASK, not an `await`: if the
-    # control plane is slow, boot does not hang — without a lease `allowed()` already says no, so waiting here would
+    # lease endpoint is slow, boot does not hang — without a lease `allowed()` already says no, so waiting here would
     # not buy any safety.
     try:
         import asyncio
@@ -406,7 +406,7 @@ async def connectors_voice_and_health(*, _first_lifespan_entry, _identity, activ
             app.state.energy_lease_task = asyncio.create_task(energy_lease.ensure(reason="boot"))
     except Exception as e:
         _bt._srv.logger.warning(f"energy lease at boot skipped: {e}")
-    # Messaging (INI-014 WhatsApp + INI-015 Telegram) — MANAGED FROM THE UI, not .env. The supervisor (a) re-starts
+    # Messaging (WhatsApp + Telegram) — MANAGED FROM THE UI, not .env. The supervisor (a) re-starts
     # whatever the user left connected in config/connectors.json after a restart, and (b) drains the connect/
     # disconnect orders the widget enqueues (the widget can't fetch → it posts via ctx.action → store → supervisor).
     # Both connectors triage LOCALLY and write the UNIFIED store (widgets/_data/mensajeria.json); the single

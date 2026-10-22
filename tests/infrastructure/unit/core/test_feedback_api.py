@@ -71,7 +71,7 @@ def test_self_host_submit_goes_to_the_anonymous_route_with_the_install_id(monkey
 
 def test_cloud_account_submit_goes_to_the_machine_route_with_the_service_token(monkeypatch):
     monkeypatch.setenv("ZAELAR_USER_ID", "did:key:z6MkExample")
-    monkeypatch.setenv("CONTROL_PLANE_URL", "https://zaelar-control-plane.example.workers.dev")
+    monkeypatch.setenv("CONTROL_PLANE_URL", "https://control-plane.example.com")
     monkeypatch.setenv("CONTROL_PLANE_SERVICE_TOKEN", "wl-secret")
 
     captured = {}
@@ -81,7 +81,7 @@ def test_cloud_account_submit_goes_to_the_machine_route_with_the_service_token(m
     )
     r = _client().post("/api/feedback", json={"message": "slow to reply", "email": "op@example.com"})
     assert r.status_code == 200
-    assert captured["url"] == "https://zaelar-control-plane.example.workers.dev/feedback"
+    assert captured["url"] == "https://control-plane.example.com/feedback"
     assert captured["headers"] == {"X-Service-Token": "wl-secret"}
     assert captured["json"]["message"] == "slow to reply"
     assert captured["json"]["email"] == "op@example.com"

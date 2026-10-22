@@ -75,8 +75,8 @@ _PROFILES: dict[str, dict] = {
             #
             # V2-657: aligned to the canonical model table (config/models.default.json §voice_brain, V2-500) —
             # DeepSeek DIRECT. The old value here was the broker, with a rationale («the cloud's secrets lack
-            # the direct key») that stopped being true when `fly.accounts.toml` pinned `FAST_*` to the direct
-            # endpoint and the provisioner started passing `DEEPSEEK_API_KEY` — so re-applying the profile
+            # the direct key») that stopped being true once deployments pinned `FAST_*` to the direct
+            # endpoint and passed `DEEPSEEK_API_KEY` — so re-applying the profile
             # kept writing a stale broker label into the operator's `config/v2.json`, and observability
             # printed that name on every turn while the traffic went elsewhere.
             # V2-750 — READ from the table, not copied from it. The comment above says «aligned to the
@@ -108,15 +108,15 @@ DEFAULT = "cloud"
 
 
 def deployment() -> str:
-    """WHERE this process runs — `cloud` on a real account Machine, `self_host` otherwise.
+    """WHERE this process runs — `cloud` when ZAELAR_USER_ID is set, `self_host` otherwise.
 
     The operator's rule (2026-09-11): *«el paso de si quiero una instalación local o remota es absurdo porque
     tú ya sabes si estás corriendo en el ordenador del cliente o la versión de la nube»*. He is right about the
     question and it is worth being precise about WHY, because the two things share a word: this function
     answers where the process runs, and the PROFILE answers which providers it uses. They are independent —
     a self-hosted engine on a laptop runs the cloud-provider profile perfectly well, and that is the default.
-    The deployment is therefore never asked; it is read from the one thing that can tell, the env var the
-    provisioner injects.
+    The deployment is therefore never asked; it is read from the one thing that can tell, the env var a
+    hosted deployment sets.
     """
     from nucleo import cloud_account
     return "cloud" if cloud_account.is_cloud_account() else "self_host"

@@ -44,18 +44,12 @@ _session: dict = {"id": None, "started_ms": None, "source": ""}
 IDLE_TIMEOUT_MS = int(os.getenv("ZAELAR_SESSION_IDLE_MIN", "5")) * 60_000
 _last_real_activity_ms: dict = {"v": None}
 
-# HEARTBEAT to the control-plane (2026-08-15, operator's proposal). The explicit session close
-# (`_report_to_control_plane("end", ...)`) is best-effort: if the Machine dies hard (OOM, `kill -9`) it never
-# arrives, and the backoffice (`cloud/backoffice/src/flyQuery.js`) had to GUESS "is this account still alive?"
-# from the timestamp of the most recent event in the account's own SQLite — a 60s window polluted by background
-# noise (homeostasis/cron), not a signal designed for this. No need to invent anything: the same "start" report
-# already sent on open (`_report_to_control_plane`) already touches `last_seen_at` on the control-plane
-# (`userSessions.touch`, idempotent — no new row, no `energy`/`events` duplication with `energy=0`). Repeating
-# it every `_HEARTBEAT_INTERVAL_S` while the session stays open gives that mark the precision it was missing,
-# with no new verb on the control-plane. Still a total no-op on a local install without
-# `CONTROL_PLANE_URL`/`ZAELAR_USER_ID` (same guard as `_report_to_control_plane`) — one single piece of code
-# serves both the self-hosted engine and the one deployed on Fly. Do NOT confuse this with the 4s heartbeat in
-# `server/livekit_api.py` (an in-memory "one tab per machine" lock, no control-plane involved).
+# HEARTBEAT to the session-report endpoint. The explicit session close (`_report_to_control_plane("end", ...)`)
+# is best-effort: if the process dies hard (OOM, `kill -9`) it never arrives. Repeating the same idempotent
+# "start" report every `_HEARTBEAT_INTERVAL_S` while the session stays open gives the receiver a reliable
+# last-seen mark. Still a total no-op without `CONTROL_PLANE_URL`/`ZAELAR_USER_ID` (same guard as
+# `_report_to_control_plane`). Do NOT confuse this with the 4s heartbeat in `server/livekit_api.py` (an
+# in-memory "one tab per machine" lock, nothing external involved).
 _HEARTBEAT_INTERVAL_S = float(os.getenv("ZAELAR_SESSION_HEARTBEAT_S", "15"))
 _heartbeat: dict = {"task": None}
 
@@ -112,11 +106,8 @@ def _announce(info: dict) -> None:
 
     There are two doors into a new session — the explicit `begin_session()` and the lazy self-open below — and
     only the first one used to announce itself, so a session born lazily existed locally and was invisible to
-    the central activity registry: `POST /session` only ever arrived with `event="end"`, and closing a row that
-    was never opened is an UPDATE matching nothing. Measured 2026-09-03 on the real control-plane:
-    `zaelar_user_sessions` held **0 rows for every account since the table was created**, while every Machine's
-    `/session` call returned 200. The registry that exists precisely to survive a Machine being destroyed was
-    recording nobody, and nothing failed.
+    the session-report endpoint: `POST /session` only ever arrived with `event="end"`, and closing a record that
+    was never opened matches nothing — the receiver recorded no sessions at all, and nothing failed.
 
     So the announcement is not the caller's to remember: a session cannot be born without it. Called OUTSIDE
     `_lock` on purpose — reporting talks to the network and starting the heartbeat touches the event loop."""
@@ -149,7 +140,7 @@ def begin_session(source: str = "frontend", force: bool = False) -> dict:
 
     **A STOPPED agent has no work session at all**: with ⏻ off this opens nothing and returns `{}`. Measured on
     the operator's engine 2026-08-31 — with the agent stopped, pressing Reset minted a brand-new session that
-    then sat "EN CURSO" in the master indefinitely, holding nothing but the browser tab's own background noise
+    then sat "EN CURSO" in the observability viewer indefinitely, holding nothing but the browser tab's own background noise
     (7 events, 0 flows, no work). `voice/observer.py::stamp_identity` has refused to let an EVENT self-open a
     session while stopped since 2026-08-16; this closes the OTHER door, the explicit `begin_session` calls (the
     reset, the frontend endpoint), which walked straight past that guard. “Stopping means stopped” (V2-092): the session
@@ -186,8 +177,8 @@ def end_session(reason: str = "frontend") -> dict:
 
 
 # Real-time transport (LiveKit) is billed per PARTICIPANT-minute and a voice session has TWO of them
-# (the operator and the agent), so the session's wall-clock is doubled here. It is charged per SESSION
-# rather than per turn because the room is up — and billing — during the silences between turns too,
+# (the user and the agent), so the session's wall-clock is doubled here. It is metered per SESSION
+# rather than per turn because the room is up — and costing — during the silences between turns too,
 # which is exactly the part no per-turn hook would ever see.
 #
 # Only the duration crosses this seam: whether that costs anything, and how much, is the tariff's
@@ -239,7 +230,7 @@ def close_if_idle() -> bool:
     """Closes the open session once it has gone longer than `IDLE_TIMEOUT_MS` with no REAL activity. Same
     decision as `note_real_activity`, taken from the other side: THAT one can only fire when activity comes
     BACK, so a session nobody ever returns to (the operator walks away, a tab dies without `pagehide`) stayed
-    open forever and read "EN CURSO" in the master with nothing happening inside it. The pulse calls this
+    open forever and read "EN CURSO" in the observability viewer with nothing happening inside it. The pulse calls this
     (`nucleo/loop.py::tick`). It only ever CLOSES — it never opens a session and never touches the activity
     clock — so an idle machine closes once and then has nothing left to close.
 
@@ -331,8 +322,8 @@ def _start_heartbeat(info: dict) -> None:
         except RuntimeError:
             # Same reason as `_report_to_control_plane`: a lazily-opened session is born on whatever thread
             # emitted the first event, and that thread has no loop of its own. Without the bridge the session
-            # would report its start once and then never refresh `last_seen_at`, so a long quiet session would
-            # look abandoned to the master. `call_soon_threadsafe` (not `run_coroutine_threadsafe`) so the task
+            # would report its start once and then never refresh its last-seen mark, so a long quiet session would
+            # look abandoned to the receiver. `call_soon_threadsafe` (not `run_coroutine_threadsafe`) so the task
             # HANDLE lands in `_heartbeat` and `_stop_heartbeat` can still cancel it.
             loop = _loop
             if loop is None:

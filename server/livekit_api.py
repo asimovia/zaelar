@@ -1,5 +1,5 @@
 #
-# LiveKit control-plane HTTP (INI-012): mints room-join tokens + exposes the non-secret connect config.
+# LiveKit HTTP: mints room-join tokens + exposes the non-secret connect config.
 #
 # Audio NEVER flows through here — it rides WebRTC directly between the browser and the LiveKit server. This
 # process just hands the browser a short-lived JWT + the LiveKit ws URL + room name, and the browser's LiveKit

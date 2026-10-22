@@ -1,12 +1,12 @@
 #
-# service.py — WhatsApp connector ENGINE integrated into zaelar (INI-014; unified store in INI-015). Runs in the
+# service.py — WhatsApp connector ENGINE integrated into zaelar (unified store in connectors/messaging). Runs in the
 # server lifespan (gated by WA_ENABLED, always-on). Starts the bridge (observe), then loops: reads state+QR, triages
 # new messages with the SHARED LOCAL model, and WRITES the UNIFIED messaging store
 # (widgets/_data/mensajeria.json, platform="whatsapp") — the same one Telegram also writes. Also drains operator
 # orders (pending_read for its platform) by calling the bridge (actual mark-read).
 #
 # Boundary: none of this touches ~/.hermes/hermes-agent (vendored bridge). Triage does NOT go through the Hermes
-# agent (privacy + voice ACP invariant). See .meshkore/docs/architecture/zaelar-hermes-federation.md.
+# agent (privacy + voice ACP invariant).
 #
 import asyncio
 

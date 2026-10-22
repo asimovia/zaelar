@@ -41,10 +41,10 @@ tener que recordar cada vez qué hay que hacer al cerrar un cambio mayor.
   (`id, title, status, priority, owner, initiative, created, updated`) + cuerpo
   (Qué se hizo · Ficheros tocados · Verificación).
 - **Iniciativa**: anclar la tarea a una iniciativa de `.meshkore/roadmap/initiatives/`. Si es trabajo nuevo,
-  crear `INI-00N-<slug>.md`. Actualizar `status`/`updated` de la iniciativa afectada.
+  crear `V2-NNN-<slug>.md`. Actualizar `status`/`updated` de la iniciativa afectada.
 - **NO** editar `.meshkore/roadmap/state.json` a mano (artefacto generado por el daemon).
 - **Contexto canónico** (`.meshkore/docs/<categoría>/`): actualizar SOLO si el cambio introdujo
-  decisiones, criterios, settings o cambios de estructura. Categorías: architecture, product, deploy, ops,
+  decisiones, criterios, settings o cambios de estructura. Categorías: architecture, product, ops,
   conventions, modules, security. Si es un módulo nuevo, declararlo en `cluster.yaml`.
 - **`CLAUDE.md`**: añadir a "Decisiones clave" cualquier decisión o invariante nuevo que deba sobrevivir.
 - **Memoria**: guardar como `feedback`/`project` lo no obvio (síntoma→causa→invariante) para no repetir el error.
@@ -58,14 +58,8 @@ tener que recordar cada vez qué hay que hacer al cerrar un cambio mayor.
 - Regla dura: `require_operator_approval_for_push` (cluster.yaml). No hay push sin OK explícito.
 - Remote configurado: `origin` (github.com:meshkore/zaelar). Con OK del operador: `git push origin main --tags`.
 
-### 7. Deploy (condicional — cuesta dinero)
-- **Estado actual: sin prod.** Las apps de Fly.io fueron destruidas por ahorro de costes (2026-06-30, ver
-  `zaelar-deploy.md`). Este paso se **omite por defecto**.
-- Solo re-provisionar prod con go-ahead explícito del operador (implica coste). Manifiestos listos:
-  `Dockerfile` + `fly.toml`. Comando: ver `.meshkore/docs/deploy/zaelar-deploy.md`.
-
 ---
 
 ## Resumen para el operador (al terminar)
 Reportar en una línea por ítem: qué se hizo, qué se verificó, qué versión, qué se documentó, y qué quedó
-**pendiente de tu decisión** (típicamente: push si no hay remote, deploy si no hay prod).
+**pendiente de tu decisión** (típicamente: push si no hay remote).

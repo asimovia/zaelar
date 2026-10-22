@@ -41,7 +41,7 @@ _INGEST_LOCK = asyncio.Lock()
 # messaging) — and an `asyncio.Lock` cannot span loops: reproduced by the audit, an UNCONTENDED cross-loop
 # acquire never breaks (why this never blew up loudly), but a CONTENDED one hangs the waiter forever and
 # poisons the lock, after which every contended ingest raises RuntimeError inside a fire-and-forget task —
-# memory writes silently lost until restart. The engine's own rule since INI-012 is that cross-loop delivery
+# memory writes silently lost until restart. The engine's own rule is that cross-loop delivery
 # marshals (`call_soon_threadsafe` / `run_coroutine_threadsafe`, the browser_search/energy_meter/identity
 # pattern): every ingest now RUNS on the one home loop the lifespan registers, so the lock only ever lives on
 # one loop. `set_loop` never called (unit tests, standalone) → single-loop process → behavior unchanged.
@@ -186,7 +186,7 @@ async def _write_atom(atom: dict, *, raw: str = "") -> None:
     # The atom's canonical `value` is PERSISTED (P0d, 2026-08-19). It was computed by the distiller, used to build
     # `state_patch`, and then thrown away — so for the five identity slots with no `state_field`
     # (birthday/phone/email/address/diet) nothing on the row recorded WHAT value the slot holds, only a sentence
-    # containing it. Comparing sentences instead is not a substitute: "Su cumpleaños es el 12 de febrero" and "El
+    # containing it. Comparing sentences instead is not a substitute: "Su cumpleaños es el 3 de marzo" and "El
     # cumpleaños de Marta es el 3 de mayo" share the token "cumpleaños", which the refinement test reads as the
     # same entity. The value is the thing the slot is ABOUT; without it the supersede guard below cannot exist.
     _val = atom.get("value")

@@ -1,4 +1,4 @@
-"""Tests for the browser's login-wall detector (INI-016, auth) — the fix that prevents inventing credentials
+"""Tests for the browser's login-wall detector (auth) — the fix that prevents inventing credentials
 (bug 2026-07-10: the loop typed user@gmail.com into Google's login). DETERMINISTIC, with no network or model."""
 from widgets.navegador import agent
 

@@ -17,7 +17,7 @@ from nucleo import workspace as _workspace
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 # `<workspace>/widgets/_data` — `<workspace>` is the repo root unless `ZAELAR_WORKSPACE` points at a
-# mounted volume (Phase 3, real paid accounts). Unset (self-host, today's behavior) this is BYTE
+# mounted volume (e.g. a container deployment). Unset (self-host, today's behavior) this is BYTE
 # IDENTICAL to the old `HERE/_data` (workspace.root() falls back to the engine repo root, and `HERE`
 # already lives one level inside it at `widgets/`).
 DATA_DIR = os.path.join(str(_workspace.root()), "widgets", "_data")

@@ -17,9 +17,7 @@ external agent in the loop.
 - **Self-hosted, free**: clone `github.com/meshkore/zaelar` (Sustainable Use License 1.0, fair-code — `LICENSE.md`;
   never call it «open source» or «MIT»), `make run`, open `http://localhost:43917`. Your memory is one file on your
   machine; only the questions sent to your AI provider leave it.
-- **Hosted (Zaelar Cloud)**: live in early access at zaelar.com — sign-up is open, each account gets its own
-  isolated machine and storage, reached from the browser (`my.zaelar.com`) or installed on the phone as a PWA.
-  Plans and pricing are on zaelar.com, not in this repo.
+- **Hosted**: a hosted version exists — see zaelar.com.
 
 **What it does today** (built and in use): voice in English and Spanish with barge-in and corrections; agenda with
 spoken reminders that fire; WhatsApp / Telegram / email / Google connectors; a canvas of built-in widgets (agenda,

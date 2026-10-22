@@ -45,12 +45,12 @@ def test_the_token_opens_the_door_only_when_he_set_one():
 
 
 def test_in_the_cloud_a_mutation_must_come_from_the_accounts_own_site():
-    cloud = dict(cloud=True, peer="172.16.0.9", host="my.zaelar.com")
-    assert _d(origin="https://my.zaelar.com", **cloud)[0]
+    cloud = dict(cloud=True, peer="172.16.0.9", host="agent.example.com")
+    assert _d(origin="https://agent.example.com", **cloud)[0]
     assert _d(**cloud)[0], "no Origin: not a browser on another site (the session gate already ran)"
     assert not _d(origin="https://evil.example", **cloud)[0]
-    assert not _d(origin="https://my.zaelar.com", fetch_site="cross-site", **cloud)[0]
-    assert _d(origin="https://my.zaelar.com", forwarded_host="my.zaelar.com",
+    assert not _d(origin="https://agent.example.com", fetch_site="cross-site", **cloud)[0]
+    assert _d(origin="https://agent.example.com", forwarded_host="agent.example.com",
               **{**cloud, "host": "internal.flycast"})[0]
     assert _d(method="GET", path="/api/tasks", origin="https://evil.example", **cloud)[0], \
         "reads in the cloud are the session gate's business"

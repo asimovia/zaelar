@@ -224,7 +224,7 @@ TOOLS: list[dict] = [
                 # filled. «Sal de pantalla completa» names no widget, `widget_id` was REQUIRED, and the
                 # model answered «Hecho.» having called nothing (measured live 2026-09-07). The verb
                 # mapped fine — «quita la pantalla completa» worked nine seconds later — so the fix goes
-                # in the ARGUMENT, not here: the catalogue is paid on every voice turn (INI-027) and this
+                # in the ARGUMENT, not here: the catalogue is paid on every voice turn and this
                 # one was three characters under its ceiling.
                 # V2-759: IT IS NO LONGER A TOGGLE, and that is what pays for `mode` below. The same failure as
                 # V2-609 came back on 2026-09-24 («Y sal de pantalla completa.» → «Ya está» with nothing
@@ -646,7 +646,7 @@ TOOLS: list[dict] = [
         "type": "function",
         "function": {
             "name": "set_cluster_objective",
-            # T-02 (audit 2026-07-26, INI-020 remediation): the `perms.gate_dev_by_objective` guard (V2-076)
+            # T-02 (audit 2026-07-26): the `perms.gate_dev_by_objective` guard (V2-076)
             # requires the OPERATOR to set the objective of a cluster relationship before an allowed 'code'
             # permission may launch a dev-worker — but until this tool there was NO way to set it
             # (capsule.objective was only READ, never WRITTEN). Operator-only by construction: the cluster turn

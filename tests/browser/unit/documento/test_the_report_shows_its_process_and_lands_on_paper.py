@@ -84,7 +84,7 @@ _PHASES = ["Buscando la empresa en einforma", "NIF B16713539 confirmado", "Revis
 
 
 def test_a_working_report_opens_on_its_process_with_the_live_narrative(page):
-    _mount(page, _view(process={"alive": True, "phases": _PHASES, "title": "Informe: operator"}))
+    _mount(page, _view(process={"alive": True, "phases": _PHASES, "title": "Informe: Acme Ventures"}))
     tabs = page.locator(".hbd-tab")
     assert tabs.all_inner_texts() == ["Proceso", "Documento"]
     assert "on" in (page.locator(".hbd-tab[data-tab=proc]").get_attribute("class") or "")

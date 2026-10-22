@@ -76,8 +76,8 @@ def apply_voice(voice_id: str, lang: str | None = None) -> bool:
     inner = getattr(tts, "_tts_instances", None)
     names = getattr(tts, "_zaelar_providers", None)
     if inner and names and len(inner) == len(names):
-        # The failover TTS (V2-778 F0-7) has no update_options of its own: «a Briton speaking Spanish» on a new
-        # cloud account (2026-10-04). Each voice inside is re-pointed — the titular to `voice_id`, a stand-in to
+        # The failover TTS (V2-778 F0-7) has no update_options of its own: «a Briton speaking Spanish» on a fresh
+        # install (2026-10-04). Each voice inside is re-pointed — the titular to `voice_id`, a stand-in to
         # its own provider's voice for the language (an Inworld name means nothing to ElevenLabs).
         from . import voices as _v
         took = False

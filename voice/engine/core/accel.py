@@ -11,7 +11,7 @@ chain (metal → cuda → cpu). AMD/ROCm has no bundled STT backend yet, so thos
 machines land on CPU — adding a whisper.cpp-Vulkan/ROCm backend is a welcome PR:
 add a detector here + a branch in the STT factory.
 
-Ported from voice-lab-2 (INI-012 upgrade); only the logger name changed.
+Ported from voice-lab-2; only the logger name changed.
 """
 from __future__ import annotations
 

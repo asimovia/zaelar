@@ -1,38 +1,15 @@
 #
-# ARRIENDO DE ENERGÍA — el techo que la propia máquina se vigila (2026-08-13).
+# ENERGY LEASE — a local spending ceiling the instance enforces on itself.
 #
-# EL PROBLEMA. `energy_meter` reporta cada gasto y lee el saldo que le devuelve la respuesta; si llega a
-# cero, cierra la sesión. Eso funciona MIENTRAS el enlace con la nube esté vivo. Cuando no lo está —y
-# alguna vez no lo estará— `balance` viene a `None`, `account_limits.should_close(None)` dice que no (y
-# hace bien: un timeout no es una autorización), y esta máquina **sigue gastando sin techo** hasta que
-# alguien lo note. El radio de daño no está acotado por nada.
+# When a usage lease endpoint is configured (CONTROL_PLANE_URL + ZAELAR_USER_ID), it grants a LEASE: an
+# amount of Energy and an expiry. While the lease lasts, every metered operation is a subtraction on an
+# in-process counter — zero network on the hot path. Renewal is requested in the background once a
+# fraction of the lease is spent (ENERGY_LEASE_RENEW_AT). If the lease runs out with no renewal, the
+# instance STOPS ITSELF via `nucleo/runstate.stop()` — the same switch as the user's ⏻ — so an
+# unreachable endpoint caps spend at one lease instead of leaving it unbounded. If the lease stopped the
+# instance, a renewal restarts it; a stop by the user is never undone here.
 #
-# LO QUE NO SE HACE, Y POR QUÉ. Lo obvio sería pedir permiso antes de cada operación. Se descartó: mete
-# una ida y vuelta de red en el camino crítico de CADA frase de voz para ganar una precisión que, con el
-# margen de este negocio, no vale nada. Una frase cuesta céntimos; pasarse un poco es barato, esperar es
-# caro.
-#
-# LO QUE SE HACE. La nube concede un ARRIENDO —una cantidad de Energy y una fecha— y mientras quede,
-# esta máquina **gasta sin preguntar a nadie**: cada operación es una resta en un contador en proceso.
-# Cero red en régimen. La renovación se pide de fondo al llegar a la mitad, así que nunca se espera por
-# ella. Y si el arriendo se agota sin que llegue el siguiente, la máquina **se para a sí misma**.
-#
-# Eso último es lo que convierte «reactivo» de una renuncia en un diseño: el fail-closed vive DENTRO del
-# inquilino, no en el gateway. Si la nube se cae, el usuario sigue trabajando con lo que le quede y luego
-# corta — no gasta sin techo hasta que nos enteremos. Pérdida máxima en el peor caso = un arriendo, que
-# es un número que se decide, no una esperanza.
-#
-# EL MARGEN NO ESTÁ AQUÍ. La nube corta la suma de arriendos un poco antes del saldo real, para que el
-# exceso inevitable caiga DENTRO de la ventana autorizada. Este lado no conoce ese margen a propósito: si
-# lo conociera, un motor comprometido podría gastárselo.
-#
-# SE REUTILIZA EL INTERRUPTOR QUE YA EXISTE. Agotarse no inventa una forma nueva de parar: llama a
-# `nucleo/runstate.stop()`, la misma que el ⏻ del operador (V2-092), que ya congela workers y suspende
-# los widgets que producen. Con una asimetría deliberada: si paramos NOSOTROS por energía, al renovar
-# arrancamos solos; si paró el OPERADOR, no lo tocamos. La intención es de quien la tuvo.
-#
-# SELF-HOST NO EXISTE AQUÍ. `enabled()` es falso sin cuenta de nube → `allowed()` siempre True, cero
-# estado, cero red. Quien se auto-hospeda paga sus propias APIs y no le arrienda energía nadie.
+# Without ZAELAR_USER_ID (self-host) `enabled()` is False → `allowed()` is always True, no state, no network.
 #
 from __future__ import annotations
 
@@ -45,7 +22,7 @@ from loguru import logger
 
 from nucleo import energy_tariffs
 
-# Quién nos paró. Sirve para no pisar una parada del operador al renovar (ver la asimetría de arriba).
+# Quién nos paró. Sirve para no pisar una parada del operador al renovar (the lease only restarts a stop it caused itself).
 STOP_SRC = "energy_lease"
 
 # Se pide renovación al consumir esta fracción. La mitad da margen de sobra para una ida y vuelta lenta
@@ -129,7 +106,7 @@ def allowed() -> bool:
 
     Sin cuenta de nube, siempre. Con cuenta de nube, **solo con arriendo vivo**: sin arriendo la
     respuesta es NO, no «adelante hasta que alguien diga lo contrario». Es la diferencia entre
-    fail-closed y el `guarded-until-configured` que nos costó nueve días de nube abierta."""
+    fail-closed y `guarded-until-configured`."""
     if not enabled():
         return True
     return remaining() > 0 and not expired()
@@ -358,9 +335,8 @@ async def _request(reason: str) -> bool:
         logger.warning(f"energy_lease: renovación fallida ({reason}), se sigue con lo que quede: {e}")
         return remaining() > 0
 
-    # TARIFAS AL VUELO. La respuesta del arriendo trae los precios que el operador tiene puestos en el
-    # master, y se adoptan ANTES de mirar el veredicto: son válidos igualmente si la nube niega el
-    # arriendo, y perderlos por un «no gastes» dejaría a la Machine facturando con precios viejos en
+    # TARIFFS ON THE FLY. The lease response may carry a tariff table, which is adopted ANTES de mirar el veredicto: son válidos igualmente si la nube niega el
+    # arriendo, y perderlos por un «no gastes» dejaría a la instancia midiendo con precios viejos en
     # cuanto volviera a haber saldo. Viajan aquí, y no por un endpoint propio, porque el arriendo es la
     # única llamada periódica que el motor YA hace: un `GET /tarifas` añadiría una llamada de red, un
     # modo de fallo y un reloj nuevos para mover un puñado de números que cambian una vez al mes.

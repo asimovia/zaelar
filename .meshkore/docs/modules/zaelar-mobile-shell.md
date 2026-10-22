@@ -12,8 +12,8 @@ status: current
 phone home screen as a Progressive Web App (Android and iOS, no app store involved) and it drives the **same
 engine**: same services, same store, same widget catalog, same backend. There is no mobile backend and no mobile API.
 
-Delivered by **V2-124**. The product/cloud side (where it is served, who pays for what, the home-computer bridge)
-lives in the workspace root's private repo — see the public/private boundary in `CLAUDE.md`.
+Delivered by **V2-124**. Deployment-specific policy is out of scope here — see the public/private boundary in
+`CLAUDE.md`.
 
 ## Why a second shell rather than media queries
 

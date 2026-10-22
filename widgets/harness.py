@@ -1,5 +1,5 @@
 #
-# widgets/harness.py — the per-widget mini-harness (INI-006 · W-6). Runs OUTSIDE the server, from the repo root:
+# widgets/harness.py — the per-widget mini-harness. Runs OUTSIDE the server, from the repo root:
 #
 #   ./.venv/bin/python -m widgets.harness            # every widget in the catalog
 #   ./.venv/bin/python -m widgets.harness agenda …   # just these

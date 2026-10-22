@@ -2,7 +2,7 @@
 
 The PROBLEM it solves: fixing the FlashBrain conversation required a SUPER-FAST way to inject text and read its
 response WITHOUT voice, the interface, or a LiveKit room — so real examples could be iterated from Claude Code
-and evaluated immediately. The other two channels (memory tests; the INI-013 end-to-end voice tester) are slower
+and evaluated immediately. The other two channels (memory tests; the end-to-end voice tester) are slower
 and include STT noise.
 
 This channel runs INSIDE the server's live process (which already has memory/bus/state/widgets initialized by the

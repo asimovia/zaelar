@@ -22,7 +22,7 @@
 | `musica_spotify_connect` | voz | "conéctame Spotify" | ABRE el widget `musica` con la tarjeta de conexión guiada; NO abre navegador ni inventa credenciales ni escala |
 | `widget_conducciones` | voz | MOSTRAR + OPERAR datos + CREAR + CERRAR en una charla | cada conducción por su vía (rail fundacional V2-042): mostrar=canvas al instante; operar=`widget_data`→apply_action sin escalar (id correcto, no inventado); crear=escala UNA vez con id sensato; cerrar=`[[close:ID]]` correcto; sin widgets basura ni dobles workers |
 
-## Prioridad 1 — Navegación web profunda / marketplace (INI-016, ✋ comparación)
+## Prioridad 1 — Navegación web profunda / marketplace (✋ comparación)
 | id | canal | qué prueba | éxito |
 |---|---|---|---|
 | `navegador_moto` | voz | "búscame una moto naked <3000 € cerca" → automate_web | escala al SlowBrain, abre Chromium backed en 2º plano (tarjeta de tarea), NO crea widget ni responde de memoria; resultado asíncrono con anuncios reales ✋ |

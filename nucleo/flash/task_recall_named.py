@@ -6,7 +6,7 @@ confidence of 0.19 — under the 0.5 floor — so nothing was picked and the tur
 word he had already said. The model was not needed: «gracia» appears in ONE candidate's title and in no
 other's, which is the index answering the question on its own.
 
-The rule, lexical and without a model (INI-027 §7 — the index narrows, a model only chooses): a word of his that
+The rule, lexical and without a model (the index narrows, a model only chooses): a word of his that
 appears in exactly one candidate's TITLE is DISTINCTIVE. When every distinctive word he said points at the
 same candidate, that is the one. Words both candidates share («piso», «alquiler», «apartment») tell nothing apart
 and are ignored; distinctive words pointing at two different candidates are a contradiction, and contradiction is

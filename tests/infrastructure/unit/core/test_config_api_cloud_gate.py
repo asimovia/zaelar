@@ -1,6 +1,5 @@
-"""server/config_api.py — cloud profile locks provider/model selection (INI-019 addenda "Change B",
-2026-08-05). Self-host (ZAELAR_USER_ID unset) must be COMPLETELY unaffected — this only restricts
-hosted cloud accounts, never the OSS product.
+"""server/config_api.py — cloud profile locks provider/model selection (2026-08-05).
+Self-host (ZAELAR_USER_ID unset) must be COMPLETELY unaffected — this only restricts hosted accounts.
 
 ⚠️ **This file wrote to the OPERATOR'S OWN `config/v2.json` until 2026-09-11.** It isolated nothing, and
 `test_set_v2_allowed_for_self_host` posts a REAL save: every run of this node made AIMLAPI — the broker,

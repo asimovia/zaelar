@@ -276,7 +276,7 @@ def _mark_fail(err: str) -> None:
 # ── CONSUMO REAL (2026-08-09) — el CORAZÓN es una llamada LLM de nube como cualquier otra, y hasta hoy era la
 # ÚNICA que no reportaba a Energy: `report_llm_usage` solo se llamaba desde `flash/fast_client.py`, los Brain
 # Workers y el generador de widgets. En una cuenta cloud eso significaba destilar cada turno GRATIS en el
-# contador — exactamente el agujero que la addenda de INI-019 cerró para la voz. Mismo contrato que el resto:
+# contador. Mismo contrato que el resto:
 # fire-and-forget, fail-open, no-op fuera de demo/cuenta cloud. `last_usage()` además expone los tokens reales
 # al bench de destilación (§12.3), que calcula el $/1k turnos con números medidos, no estimados.
 _last_usage: dict = {}

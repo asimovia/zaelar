@@ -1,4 +1,4 @@
-// account-link.js — the link to the cloud account page, built from the ONE url the engine knows (V2-785).
+// account-link.js — the link to an account page (when ZAELAR_ACCOUNT_URL is set), built from the ONE url the engine knows (V2-785).
 //
 // The engine owns the url (`nucleo/cloud_account.account_url`, env `ZAELAR_ACCOUNT_URL`) and hands it to the
 // interface in `/api/config` and `/api/energy`. Nothing here carries its own literal: until 2026-10-22 the desktop
@@ -14,7 +14,7 @@ export function accountLink(url, fragment = "") {
 
 /** The reason the out-of-energy notice should be open for, or "" when it should not. Pure: the decision the
  *  rendered test (and anyone reading the notice) relies on. A notice the person closed stays closed for THAT
- *  reason; a new exhaustion (a different reason, or after a top-up and a second run-out) opens it again. */
+ *  reason; a new exhaustion (a different reason, or after the balance recovers and runs out again) opens it again. */
 export function noticeReason(energy, closedFor = "") {
   const e = energy || {};
   if (!e.cloud || !e.exhausted) return "";

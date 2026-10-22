@@ -102,7 +102,7 @@ CASES: list[UseCase] = [
             "the agent's claim. No third-party site, login or payment involved, which is why this is a fair "
             "test of the generation path itself.",
             status="promoted"),
-    # Added 2026-08-29 (INI-026, B1 front): the operator's agenda bar, LITERALLY. It differs from
+    # Added 2026-08-29 (B1 front): the operator's agenda bar, LITERALLY. It differs from
     # `remember-and-remind-deadline` in the two things that case does not measure: the reminder must be
     # created BY DEFAULT (nobody asks for it), and the appointment must be MANIPULABLE by voice after creation.
     UseCase("dentist-appointment-into-agenda", "es", 1, "Una cita dictada entra entera en la agenda",
@@ -631,7 +631,7 @@ CASES: list[UseCase] = [
             "content; and a follow-up voice adjustment («better remind me at noon») is applied for real.",
             status="promoted"),
     # US twins of the 2026-08-31 messaging basics — the two where language most shapes the behavior (the
-    # honest refusal and the state read-back), per INI-026's two-studio rule.
+    # honest refusal and the state read-back), per the launch scope's two-studio rule.
     UseCase("show-my-messages", "us", 1, "Show my messages — the most basic messaging behavior",
             "Hey, do I have any new WhatsApp messages?",
             "The messaging card OPENS (a real widget/show), nothing internal reaches the voice, and the "
@@ -1105,7 +1105,7 @@ CASES: list[UseCase] = [
 # never a one-shot snippet lookup. It mixes the pre-existing search cases with the new verticals so
 # the set covers what people actually search for: vehicles, boats, property, electronics, sports,
 # home, fashion, collectibles, kids, leisure and travel. ES ids (the commercial market measures
-# first, INI-026); the us mirrors of the shared ids belong to the same class when promoted.
+# first); the us mirrors of the shared ids belong to the same class when promoted.
 DEEP_SEARCH_SET: tuple[str, ...] = (
     # vehicles & boats
     "search-buy-used-car", "search-buy-motorcycle", "search-buy-camper", "search-buy-ebike",

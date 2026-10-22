@@ -112,7 +112,7 @@ is wired **only** through its boundary module (`connectors/`, `nucleo/agentes/`,
 
 ## Configuration is UI-managed (install once, then everything from the interface)
 
-**Product invariant (INI-015).** A zaelar user installs the product **once** and from then on manages **everything
+**Product invariant.** A zaelar user installs the product **once** and from then on manages **everything
 from the interface** — they never open a terminal or edit an env/config file. Any capability that needs turning on
 or credentials (a connector, an integration, a key) MUST expose that setup as a **guided in-app flow**, not as a
 documentation step that says "put X in `.env`".

@@ -17,7 +17,7 @@ from loguru import logger
 # CALENDAR CONNECTORS shown in the agenda's header (V2-540). Deliberately a READ of the real inventory, never
 # a hardcoded «off»: the day a calendar connector is registered under this family it lights up here with
 # nothing else to change. V2-679 built exactly one of the three (Google) — the honest answer for the other
-# two stays «not built yet», and per INI-027 showing what we do NOT have is the point, not an embarrassment.
+# two stays «not built yet», and showing what we do NOT have is the point, not an embarrassment.
 #
 # WHY THESE THREE and not the famous ones: Google Calendar is the one everybody has; iCloud's CALENDAR is
 # reachable over CalDAV with an app-specific password (unlike iCloud Drive, which CloudKit makes impossible);

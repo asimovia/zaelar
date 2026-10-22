@@ -2,8 +2,7 @@
 
 **Trigger**: a provider announces a new/renamed model, retires one, or changes pricing, and the engine's
 model allocation must follow. This doc is the ENGINE half (mechanism — which files hold model identity and
-how to verify a change); anything about a managed deployment's accounts, billing or fleet lives outside this
-repo.
+how to verify a change).
 
 **The rule that governs the whole doc: a model id is switched only after it is MEASURED as served — never on
 an announcement.** Measured 2026-09-09: DeepSeek announced V4.1 Flash "around September 10"; on the 9th the
@@ -52,18 +51,8 @@ prompt/docs mentions are cosmetic, config hits are load-bearing.
    `curl -X POST 127.0.0.1:43917/api/flash/say -d '{"text":"contesta solo: pong","ingest":false}'` — the
    response's `spec` field names the provider/model that actually served the turn.
 4. If the memory writer changed: run one `tests run memory --case memory::group::1.4::v4 --no-open`.
-5. Pricing changed too? A managed deployment meters energy per model — that table is not in this repo, but
-   the change is not DONE until whoever operates one has updated their rates.
-
-## 3 · Reaching a managed fleet
-
-The image ships `config/models.default.json`, so a release (tag → pipeline) carries the change to NEW
-machines. **An existing machine keeps its old image until recycled** — cutting a release updates nobody who
-is already running (the V2-553 lesson: their old number is *correct*, they run the old engine). Recycle (or
-wait for natural recycle) and verify from inside the account, not from the config.
-
-Also verify the target environment actually HOLDS the credential the new row's `key_env` names — a row
-pointing at an endpoint whose key is absent fails only at the first real call.
+5. Verify the environment actually HOLDS the credential the new row's `key_env` names — a row pointing at
+   an endpoint whose key is absent fails only at the first real call.
 
 ## Known traps (each one paid)
 

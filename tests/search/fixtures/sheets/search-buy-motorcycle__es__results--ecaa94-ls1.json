@@ -276,7 +276,7 @@
     },
     {
       "name": "Red de agentes (mesh)",
-      "url": "https://ybana.rjj.workers.dev",
+      "url": "https://agent.example.org",
       "status": "partial",
       "detail": "El agente disponible solo devolvía piezas y accesorios de eBay, no motos completas.",
       "found": 0

@@ -355,8 +355,8 @@ carga en frío. Observabilidad: `status()` (proveedor/modelo/latencia).
 >    detecta hechos no recuperables y los **REPARA** (refuerza, añade aristas, indexa paráfrasis, marca re-embed).
 > - ✅ **Consolidación SEMÁNTICA** — cablear el hook `summarize_fn` (hoy no-op, V2-006): fusionar píldoras
 >    casi-duplicadas por embedding descongestiona el espacio vectorial. Y **aristas temporales** (Graphiti, T151).
-> - 🔒 **Reranker/embedding EXTERNO** = solo tier PREMIUM (nunca default, insostenible en coste): `rerank_provider=`
->    `openai`/`cohere`/`voyage`, o los mismos modelos LOCALES en nuestro **VPS con GPU**. Ya enchufado por config.
+> - 🔒 **Reranker/embedding EXTERNO** = opt-in, nunca default: `rerank_provider=`
+>    `openai`/`cohere`/`voyage`. Ya enchufado por config.
 >
 > ⚠️ **Caveat de método (V2-031 T1):** el test bot SIEMBRA con embeddings `hash` (léxicos, deterministas y rápidos,
 > `runner.py:702`); medir el recall SEMÁNTICO exige **re-embeber** el corpus con el modelo real (embeddinggemma/
@@ -379,7 +379,7 @@ traversal directo → encaja con la regla de oro.
 > Mem0-grafo→Neo4j, Letta) rompen las restricciones DURAS de zaelar: 100% local/offline, core SIN Docker, un
 > proceso/fichero, y **cero LLM en el read path** (la regla de oro de latencia de voz — casi todas meten LLM en el
 > search). Seguimos robando IDEAS del SOTA (aristas temporales de Graphiti para T151, linking emergente de A-MEM),
-> no su infra. Se re-evaluaría solo ante un pivote a **SaaS cloud multi-tenant**.
+> no su infra.
 >
 > **Re-evaluación puntual (2026-07-23):** revisado el plugin Mem0 para Pi Code (memoria SaaS para agentes de
 > código: scopes project/session/global por git-root, captura automática, "dream consolidation"). Confirma la
@@ -591,18 +591,18 @@ truncaba el REM. `gemini-2.5-flash` tampoco: una pasada de árabe devolvió 0 de
 
 ### Ningún camino sale por OpenAI directo (norma del operador, 2026-08-09)
 
-**TODO pasa por el broker AIMLAPI** — una sola cuenta de API que gestionar. Z.AI (Brain Workers) y Groq/xAI van
+**TODO pasa por el broker AIMLAPI** — una sola credencial que configurar. Z.AI (Brain Workers) y Groq/xAI van
 aparte y solo donde hacen falta, con su propia credencial. Que un modelo se llame `openai/gpt-4.1-mini` NO
 significa cuenta de OpenAI: es el broker sirviendo ese modelo. Cuando se cerró la elección de modelos quedaban
-DOS restos apuntando a `api.openai.com`, los dos con el mismo defecto latente —en la nube no existe
+DOS restos apuntando a `api.openai.com`, los dos con el mismo defecto latente —sin
 `OPENAI_API_KEY`, así que habrían fallado en silencio como falló el REM—: la tarea **i18n** de `memllm` y el
 **Susurro** (`config/v2.py §susurro`). Ambos movidos al broker; el Susurro conserva su modelo exacto
 (`gpt-4.1-mini`), así que no hay calidad que re-medir, solo camino.
 
 Comprobación de que no vuelve a colarse uno — **mira los DEFAULTS, no las menciones**: `api.openai.com` sigue
 apareciendo a propósito en el catálogo de opciones de la UI (`server/config_api.py`, por si alguien QUIERE
-elegirlo), en la resolución de key por endpoint (`fast_client`, `susurro/client`) y en la tabla de tarifas de
-Energy. Lo que no puede volver a aparecer es en un valor por defecto:
+elegirlo), en la resolución de key por endpoint (`fast_client`, `susurro/client`) y en la tabla de tarifas del
+metering. Lo que no puede volver a aparecer es en un valor por defecto:
 
 ```bash
 cd engine && ./.venv/bin/python - <<'PY'
@@ -625,8 +625,7 @@ PY
   no ensuciar con descartes (100% los dos)—, no porque sea "mejor".
 - **REM → manda la CALIDAD.** `rem.py` manda TODOS los grupos en **UNA llamada**, con topes `MAX_GROUPS=8` ×
   `pills[:12]`, **una vez al día**: ~365 llamadas al año con la entrada ACOTADA por diseño. **El coste NO escala
-  con el tamaño de la memoria** — todo el barrido de 11 candidatos cabía entre **$0,14 y $2,17 AL AÑO** por
-  usuario. Optimizar precio ahí sería optimizar ruido; en cambio un insight malo se escribe como píldora DURABLE
+  con el tamaño de la memoria**. Optimizar precio ahí sería optimizar ruido; en cambio un insight malo se escribe como píldora DURABLE
   (`slot=insight:<concepto>`) que el retriever puede devolver como si fuera un hecho del operador.
 
 ### Los vetos — por qué NO usamos el más barato ni el más potente
@@ -692,13 +691,12 @@ re-verificarlas por web sin tocar el arnés (los precios de LLM cambian sin avis
 va muy limitada de tasa — con 6 llamadas en vuelo devolvió HTTP 429 en 21 de 102, hundiendo el score de un modelo
 por una razón que no era el modelo (y explicando de paso un p50 de 20s). Un rate-limit se disfraza de mala calidad.
 
-### Consumo: las dos tareas REPORTAN a Energy
+### Consumo: las dos tareas REPORTAN uso
 
 Desde 2026-08-09 el CORAZÓN (`mem_processor`) y el router de memoria (`memllm`, que sirve REM e i18n) capturan el
-bloque `usage` de la respuesta y lo reportan a `nucleo/energy_meter.py` (fire-and-forget, fail-open). **Antes eran
-las únicas llamadas LLM de nube sin metering**: en una cuenta cloud, destilar y consolidar contaban CERO. La
-tarifa del titular y la de toda la cadena de fallback están en `_AIMLAPI_MODEL_RATES`, para que un failover no
-meter por la tarifa genérica.
+bloque `usage` de la respuesta and report it to `nucleo/energy_meter` when metering is enabled (fire-and-forget,
+fail-open). The rate of the titular model and of its whole fallback chain are in `_AIMLAPI_MODEL_RATES`, so a
+failover is not metered at the generic rate.
 
 ## API interna de la memoria
 
@@ -818,7 +816,7 @@ Ciclo de vida de un **widget** (implementado en `widgets/lifecycle.py`, disparad
 | **MODIFICAR** | SlowBrain (agente de código) | (el resultado de la tarea ya se recuerda por el dispatcher) |
 | **BORRAR** | **FlashBrain, determinista** (rm carpeta + store), tras **confirmación** | `delete_widget()` → **lápida** `[widget:<id>] «X» BORRADO el <fecha> a petición del operador` (histórico conservado) |
 
-**Autenticación del navegador ↔ memoria** (`widgets/navegador/auth_memory.py`, INI-016): mismo reparto memoria↔storage.
+**Autenticación del navegador ↔ memoria** (`widgets/navegador/auth_memory.py`): mismo reparto memoria↔storage.
 El **secreto NUNCA entra en memoria** (las cookies viven en el perfil de Chromium `widgets/_data/navegador/profile/`,
 cifrado en reposo por el SO — la memoria es buscable y aflora en prompts/recall/visor, un secreto ahí se filtraría).
 La memoria solo guarda lo que zaelar debe RECORDAR: **el HECHO de la sesión** (`record_session_established(site)` →
@@ -987,8 +985,8 @@ voz — regla de V2-011). El "corazón" que decide, por cada cosa que dice el op
   `grok-4-fast-non-reasoning` (metadato 100%). ⛔ `gpt-4o-mini`, aún más barato, está **VETADO**: a una alergia
   dicha en inglés le pone `slot=operator.diet` (3/3 pasadas) y un slot invalida todo lo anterior con ese slot →
   un futuro cambio de dieta borraría la alergia. La **OPCIÓN local** (qwen vía Ollama) sigue disponible apuntando
-  `base_url` a Ollama, para batería/privacidad. **Consume Energy** como cualquier otra llamada de nube
-  (`energy_meter.report_llm_usage`, cableado 2026-08-09: antes era la única que no metraba). Env `MEM_PROCESSOR_MODEL/URL/KEY` = fallback power-user; modelo por invocación. La
+  `base_url` a Ollama, para batería/privacidad. Reports usage to `nucleo/energy_meter` when metering is enabled
+  (`energy_meter.report_llm_usage`, wired 2026-08-09). Env `MEM_PROCESSOR_MODEL/URL/KEY` = fallback power-user; modelo por invocación. La
   **credencial se resuelve POR ENDPOINT** (`mem_processor._key` → `_endpoint_key`, mismo patrón que
   `fast_client.resolved_api_key` — la key sigue a la URL, nunca al revés; fix del incidente 2026-07-17→19: una key
   rancia de env enviada al endpoint equivocado dejó el CORAZÓN **2 días caído EN SILENCIO**, todo escribiéndose por
@@ -1205,7 +1203,7 @@ Dos superficies para VER la memoria trabajar en tiempo real:
 > superpoderes". Para llegar ahí hay que **probarla A FONDO, de forma original y bien estructurada**, deduciendo
 > cómo se pone a prueba una memoria y **aplicando lo que dice la literatura**. Esta sección es la TEORÍA canónica;
 > el mapa operativo vive en `tests/memory/e2e/bot/TAXONOMY.md` (dimensiones + cobertura) y `EXIGENCIA.md` (control
-> de calidad cada 50 casos). Registro de oleadas: `.meshkore/roadmap/initiatives/INI-013-voice-tester.md`.
+> de calidad cada 50 casos).
 
 **Qué mide la literatura (WebSearch 2026-07-11).** El campo converge en unas **habilidades núcleo**: los benchmarks
 LongMemEval (ICLR 2025), LoCoMo, MemBench, **MemoryAgentBench** (ICLR 2026), MemConflict, BEAM, STALE, Mem2ActBench.
@@ -1233,7 +1231,7 @@ un juez-LLM no puede decidir):
   olvido sin confundir una regresión del lifecycle con variación del modelo extractor.
 - **pytest** (`tests/`, `tests/memory/integration/test_memory_agent.py`): guards deterministas de las piezas (backstops, forget/unforget,
   concept vocab, aviso de backend degradado…) — la red de regresión que corre en cada cambio.
-- **Tester en vivo** (INI-013): lo que es comportamiento del LLM del turno (abstención query-time, resolución de un
+- **Tester en vivo**: lo que es comportamiento del LLM del turno (abstención query-time, resolución de un
   conflicto, ironía) NO es del membot (que lee sin LLM) → se prueba con el agente que HABLA con zaelar y un juez.
 
 **Qué MODELO corre en cada capa (para no confundir con lo que haya suelto en Ollama).** Este repo puede tener
@@ -1242,8 +1240,7 @@ list` muestre algo no significa que la memoria lo use. La memoria tiene DOS fami
 completamente separadas:
 
 1. **Embeddings (vectores del retriever)** — `memory/embeddings.py`, config `§memory.embed_provider/embed_model`.
-   Es **LOCAL a propósito, en self-host Y en nube** (principio de tiers de `V2-031`: "mañana los MISMOS pesos en
-   nuestro VPS con GPU" — no es un embedding comercial hoy ni está previsto). Default `embeddinggemma` vía Ollama,
+   Es **LOCAL a propósito** (no es un embedding comercial hoy ni está previsto). Default `embeddinggemma` vía Ollama,
    fallback determinista `fastembed`→`hash` si Ollama no responde (nunca mezcla espacios vectoriales en silencio,
    `writer.py::_embed_sig_ok()`). **No participa en escribir/razonar sobre lo que se recuerda** — solo convierte
    texto a vector para la búsqueda semántica.
@@ -1285,7 +1282,7 @@ parentesco, promesas/deudas, procedimientos, superlativos, errores, decisiones, 
 **Disciplina de calidad (`EXIGENCIA.md`).** Objetivo: 1000 casos ORIGINALES, sin duplicar. Cada 50 casos se pasa un
 control: ¿duplicamos? ¿variedad (longitud de input / volumen / las 3 velocidades)? ¿qué falta? ¿cambio de approach?
 ¿buscar munición nueva en la literatura? ¿EVOLUCIONAR la memoria (machacar→detectar→mejorar→machacar)? De 400 a 1000
-son 12 controles fechados en INI-013.
+son 12 controles fechados en el registro del tester.
 
 **Fronteras conocidas (cazadas por los tests, pendientes de una sesión dedicada — ver `V2-021`).** T175 (el CORAZÓN
 infra-asigna `slot` → supersede/dedup en cadena incompletos), T177 (retrieval multi-hop limitado a ~1 salto de

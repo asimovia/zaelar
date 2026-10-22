@@ -8,7 +8,7 @@ __pycache__/
 .mypy_cache/
 config/settings.json
 config/meshkore.json
-# connector config MANAGED FROM THE UI (INI-015): enable flags + credentials (Telegram api_id/api_hash) the user
+# connector config MANAGED FROM THE UI: enable flags + credentials (Telegram api_id/api_hash) the user
 # enters in the messaging widget. Personal secrets → NEVER commit.
 config/connectors.json
 config/v2.json
@@ -44,7 +44,7 @@ config/daemon/
 .meshkore/.runtime/
 .meshkore/**/*.env
 
-# voice-lab-2 is its OWN git repo (reference engine for the LiveKit migration, INI-012) — not tracked here
+# voice-lab-2 is its OWN git repo (reference engine for the LiveKit migration) — not tracked here
 voice-lab-2/
 # local backup of prior voice-lab experiments
 .bkp/
@@ -67,12 +67,12 @@ zaelar.db-shm
 # Curated voice history lives in tests/voice/e2e/agent/reports/ and remains versioned.
 tests/runs/
 
-# WhatsApp connector (INI-014): npm-installed deps of the vendored bridge, and the
+# WhatsApp connector: npm-installed deps of the vendored bridge, and the
 # WhatsApp pairing session (personal credentials — NEVER commit) + triage state.
 connectors/whatsapp/bridge/node_modules/
 connectors/whatsapp/_session/
 connectors/whatsapp/_data/
-# Telegram connector (INI-015): userbot login session (personal credentials — NEVER commit).
+# Telegram connector: userbot login session (personal credentials — NEVER commit).
 connectors/telegram/_session/
 # files/ module: flat inbox of whatever the operator pastes/drops onto the frontend — personal content, never commit.
 files/uploads/

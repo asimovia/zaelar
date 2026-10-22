@@ -23,10 +23,9 @@ from fastapi.responses import JSONResponse
 
 router = APIRouter()
 
-# Sections of config/v2.json that pick a PROVIDER/model (as opposed to `flags`, which doesn't). In the
-# cloud profile (ZAELAR_USER_ID set) these are centrally managed by the operator, not user-editable —
-# see INI-019 addenda "Cambio B", 2026-08-05. Self-host is completely unaffected (is_cloud_account()
-# is always False there) — this NEVER restricts the OSS product, only the hosted cloud accounts.
+# Sections of config/v2.json that pick a PROVIDER/model (as opposed to `flags`, which doesn't). When
+# ZAELAR_USER_ID is set these are locked (not user-editable). Self-host is completely unaffected
+# (is_cloud_account() is always False there).
 _CLOUD_LOCKED_V2_SECTIONS = frozenset({"fast", "code_agent", "memory", "triage", "susurro"})
 
 
@@ -72,7 +71,7 @@ _PROVIDER_CATALOG = {
         ],
         "closed_models": True,      # the UI renders a dropdown, not a text field
         "note": "NON-reasoners only (the voice turn must close fast) and only benchmark-endorsed ones. "
-                "deepseek-v4-pro DIRECT = production default (operator's norm, 2026-08-19: it is the titular and "
+                "deepseek-v4-pro DIRECT = default (it is the titular and "
                 "the only endpoint that actually obeys `thinking:disabled`). deepseek-v4-flash routed 12/12 in "
                 "§9. The broker entries carry the `deepseek/` prefix and the direct ones do not — that is the "
                 "provider's catalog, not a typo. Endpoint comes from the provider: there is no URL to type.",
@@ -98,7 +97,7 @@ _PROVIDER_CATALOG = {
                         "glm-5.3", "glm-5.2", "glm-4.6", "kimi-k2.6"],
              "note": "Can restrict Bash to our bridges only (single-writer invariant) → the only backend valid for "
                      "untrusted input (deny_tools) and cluster dev workers. The glm-*/kimi-* entries belong to the "
-                     "relay tiers (Z.AI / Moonshot subscription plans): they only work while that endpoint is the "
+                     "relay tiers (Z.AI / Moonshot coding plans): they only work while that endpoint is the "
                      "active tier — see workers/providers.py."},
             {"id": "codex", "label": "Codex (CLI)", "cloud": True,
              # VERIFIED against the list returned by the model server itself (2026-08-12): these are the three.
@@ -123,7 +122,7 @@ _PROVIDER_CATALOG = {
             {"id": "cc_zai", "label": "Claude Code + Z.AI (GLM-5.2)", "provider": "claude_code",
              "base_url": "https://api.z.ai/api/anthropic", "model": "glm-5.2", "key_env": "Z_AI_API_KEY",
              "billing": "subscription", "cost": "GLM coding plan (flat rate)",
-             "note": "The operator's rule: subscription plans, never pay-per-token. Quota is WEEKLY and when it "
+             "note": "Flat-rate coding plan, not pay-per-token. Quota is WEEKLY and when it "
                      "runs out everything on this tier dies at once — that is what the relay chain exists for."},
             {"id": "cc_deepseek", "label": "Claude Code + DeepSeek V4", "provider": "claude_code",
              "base_url": "https://api.deepseek.com/anthropic", "model": "deepseek-v4-flash",
@@ -140,7 +139,7 @@ _PROVIDER_CATALOG = {
                      "model if quality beats cost."},
             {"id": "cc_local", "label": "Claude Code + local licence", "provider": "claude_code",
              "base_url": "", "model": "", "key_env": "",
-             "billing": "licence", "cost": "the operator's own Claude licence",
+             "billing": "licence", "cost": "your own Claude licence",
              "note": "LOCAL ONLY — a browser login does not exist inside a container, so this tier cannot be the "
                      "cloud's coverage. It is the last rung of the relay chain."},
         ],

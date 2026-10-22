@@ -44,7 +44,7 @@ import datetime as _dt
 _AHEAD = (_dt.date.today() + _dt.timedelta(days=3)).isoformat()
 _MEETING = {"title": "Meeting with Ivan Mikushin", "date": _AHEAD, "startTime": "22:00",
             "endTime": "23:00", "source": "google", "googleId": "ev1", "googleCalendarId": "primary",
-            "meetLink": "https://meet.google.com/ydi-zeaz-tri"}
+            "meetLink": "https://meet.google.com/xyz-abcd-efg"}
 _IVAN = {"id": "c1", "kind": "person", "name": "Ivan Mikushin", "email": "", "emails": [],
          "channels": [{"platform": "telegram", "handle": "@imikushin", "chatId": "21045673"}]}
 

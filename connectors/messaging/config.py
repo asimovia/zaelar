@@ -1,5 +1,5 @@
 #
-# config.py — SHARED knobs for the messaging classifier (INI-015).
+# config.py — SHARED knobs for the messaging classifier.
 #
 # HISTORICAL NOTE: the classifier DEFAULTED to the LOCAL model (Ollama qwen2.5:3b) for PRIVACY (nothing personal left
 # the machine). The operator requested ZERO local execution (battery, 2026-07-17) -> DEFAULT is now EXTERNAL

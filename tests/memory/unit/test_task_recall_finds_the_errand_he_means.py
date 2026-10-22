@@ -2,7 +2,7 @@
 
 Nothing in this engine could answer that. Disambiguation reached what is on screen (`widgets/instances.py`)
 or the six-entry `recent_widgets` MRU; a commission that closed last week is neither, and its sheet may have
-been pruned by the eight-sheet cap. The shape is the operator's own rule (INI-027 §7): an INDEX narrows, a
+been pruned by the eight-sheet cap. The shape is the operator's own rule (the connector-catalogue rule): an INDEX narrows, a
 MODEL chooses — and with several equally good candidates, nobody chooses and we ask.
 """
 import pytest
@@ -54,7 +54,7 @@ def _done(tid, title, goal, outcome="", created=1000):
 
 # ── the index half: no model, ≤5 ────────────────────────────────────────────────────────────────────────
 def test_the_candidate_search_never_calls_a_model(fresh_db, monkeypatch):
-    """The rule is not «cheap», it is «no model». A classifier in the narrowing step is what INI-027 §7 bans."""
+    """The rule is not «cheap», it is «no model». A classifier in the narrowing step is what the connector-catalogue rule bans."""
     import nucleo.jev as jev
     calls = []
     monkeypatch.setattr(jev, "select_many_status", lambda *a, **k: calls.append(1) or ([], jev.NO_MATCH))

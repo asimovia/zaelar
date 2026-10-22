@@ -2,14 +2,13 @@
 
 > **Propósito**: la "parada de benchmarkings". Un ÚNICO sitio donde viven TODAS las pruebas de modelos de lenguaje
 > (FlashBrain, navegador, tester), sus latencias reales, y las decisiones tomadas — para no re-experimentar
-> y poder decidir con conocimiento de causa al cambiar de modelo. Antes estaba repartido entre INI-008 (Fases 2d/2e)
-> e INI-013; esto lo consolida. **Mantener vivo**: cada prueba de modelo nueva AÑADE una fila/entrada fechada aquí.
+> y poder decidir con conocimiento de causa al cambiar de modelo. **Mantener vivo**: cada prueba de modelo nueva AÑADE una fila/entrada fechada aquí.
 > Detalle narrativo de cada ronda → sigue en la iniciativa correspondiente; la TABLA de resultados vive aquí.
 >
 > **RÉPLICA VISIBLE AL USUARIO (V2-077, 2026-07-26):** `engine/config/model_benchmarks.py` (sirve
 > `GET /api/config/benchmarks`, pintado por `engine/frontend/app/components/BenchmarksPanel.js` — botón "¿Quieres
 > ver los benchmarks…?" al fondo de Config → Cerebro rápido) es un resumen CURADO de este doc para el operador,
-> igual que `web/technology` es una foto curada de la arquitectura — no un parser automático. **Toda decisión de
+> igual que `/technology` del sitio público es una foto curada de la arquitectura — no un parser automático. **Toda decisión de
 > modelo nueva que añadas aquí, añádela TAMBIÉN allí** (coste, latencia, tool-calling/alucinación, veredicto) o la
 > réplica queda desactualizada silenciosamente.
 >
@@ -40,8 +39,8 @@ diseño: sacar el LLM de la GPU local (capa rápida a una API cloud) libera la G
 ## 1. Capa rápida (FlashBrain) — modelos LOCALES (Ollama), M4 Max / 48 GB
 
 Arnés: prompt real (`build_flash_system`) + las 2 funciones reales (`escalate_to_slowbrain`/`set_style_directive`),
-13+2 casos (oleada A de INI-013) salvo nota. "Fiabilidad tool-calling" = % que invocó la función nativa cuando
-debía. Detalle: INI-008 Fases 2d/2e.
+13+2 casos (oleada A del tester) salvo nota. "Fiabilidad tool-calling" = % que invocó la función nativa cuando
+debía.
 
 | Modelo | Disco | Fiabilidad tool-calling | TTFT (caliente) | Veredicto |
 |---|---|---|---|---|
@@ -120,7 +119,7 @@ aviso de la §2: 4/7, no invoca las tools. **Decisión: capa rápida → `x-ai/g
   vía AIMLAPI (un cerebro barato DEDICADO, NO el SlowBrain de `nucleo/`). Es un modelo cloud decente ya; el fallo de
   la sesión `105150` NO fue del automatizador sino de la CAPA RÁPIDA (FlashBrain) enrutando mal (mandó la tarea a
   `browse_web/search`→Bing en vez de `automate_web` sobre Wallapop).
-- **Tester (INI-013)**: DRIVE = DeepSeek vía AIMLAPI (barato); JUEZ = GLM-4.6 vía Z.AI (fallback DeepSeek).
+- **Tester**: DRIVE = DeepSeek vía AIMLAPI (barato); JUEZ = GLM-4.6 vía Z.AI (fallback DeepSeek).
 - **Reasoners (GLM-4.6/5.2)**: NUNCA en el path de voz. Solo cluster/uso específico async.
 
 ---
@@ -212,7 +211,7 @@ latencia posible por cambio de proveedor — grok es ~1 s por sí mismo; el prox
 
 ## Metodología (para no sobre-interpretar)
 - Latencia ABSOLUTA de un candidato solo es fiable si es el ÚNICO modelo cargado y la GPU no está saturada por
-  otra ronda (cargar/descargar muchos modelos infla picos aislados; ver nota INI-008 Fase 2e).
+  otra ronda (cargar/descargar muchos modelos infla picos aislados).
 - Ollama descarga el modelo tras ~5 min idle → `keep_alive:"30m"` en cada turno (ya en `nucleo/flash/fast_client.py`).
 - La comparación de TASA DE ACIERTOS (tool-calling) entre modelos sí es válida bajo misma metodología imperfecta.
 - Para cloud: medir TTFT REAL por AIMLAPI (no el nativo) antes de tomarlo como definitivo.
@@ -274,9 +273,9 @@ indexada la BD** (`memory/reembed.py::signature()` / `<db>.embedsig`).
 
 ## 8. Catálogo SOTA de recuperación por TIER (embeddings + rerankers, 2026) — V2-031 T6
 
-Referencia para elegir modelo de memoria sin re-investigar. **Regla de producto:** LOCAL por defecto (gratis,
-model-agnostic vía `config/v2.py §memory`); los MISMOS pesos abiertos en nuestro **VPS-GPU** cuando escale; los
-**externos de pago SOLO para un tier premium** (nunca default — insostenible en coste). Todo se cambia por config,
+Referencia para elegir modelo de memoria sin re-investigar. **Regla:** LOCAL por defecto (gratis,
+model-agnostic vía `config/v2.py §memory`); the same open weights can be served on a self-hosted GPU; paid external
+APIs are opt-in, never the default. Todo se cambia por config,
 sin refactor. Recuerda el hallazgo T1: a la escala de un perfil personal, un embedding mayor **no** subió el techo
 (el cuello es write-completeness + retrieval), así que el salto de tier es sobre TODO escala/serving, no recall en
 perfiles pequeños.
@@ -286,16 +285,16 @@ perfiles pequeños.
 |---|---|---|---|---|
 | **LOCAL (actual)** | `embeddinggemma` (Ollama) | 768 | Gemma | en producción; multilingüe, on-device, gratis |
 | LOCAL (candidatos) | `Qwen3-Embedding-0.6B` · `bge-m3` | 1024 | Apache-2.0 · MIT | **#1 MTEB multilingüe** (familia Qwen3) / workhorse dense+sparse+multivector. `bge-m3` medido ≈ embeddinggemma a nuestra escala (§7) |
-| **VPS-GPU propio** | `Qwen3-Embedding-4B/8B` · `bge-m3` | 1024–4096 | Apache-2.0 · MIT | mismos pesos servidos por nosotros (TEI en GPU); Qwen3-Embedding-8B lidera MTEB v2 (~70.6 multiling.); 100+ idiomas, 32K ctx; coste/llamada 0, datos NO salen |
-| **PREMIUM externo** | OpenAI `text-embedding-3-large` · Cohere `embed-4` · `voyage-3` | var. | API pago | máxima calidad gestionada; €/llamada + datos a la nube. SOLO tier premium |
+| **Self-hosted GPU** | `Qwen3-Embedding-4B/8B` · `bge-m3` | 1024–4096 | Apache-2.0 · MIT | mismos pesos servidos en GPU (TEI); Qwen3-Embedding-8B lidera MTEB v2 (~70.6 multiling.); 100+ idiomas, 32K ctx; coste/llamada 0, datos NO salen |
+| **External API** | OpenAI `text-embedding-3-large` · Cohere `embed-4` · `voyage-3` | var. | API pago | máxima calidad gestionada; €/llamada + datos a la nube. Opt-in |
 
 ### Rerankers (cross-encoder)
 | Tier | Modelo | Licencia | Nota |
 |---|---|---|---|
 | **LOCAL (actual)** | `jina-reranker-v2-base-multilingual` (fastembed ONNX/CPU) | Apache-2.0 | en producción (V2-030); multilingüe, cero GPU, recall@1 42→56% |
 | LOCAL (candidatos) | `bge-reranker-v2-m3` · `Qwen3-Reranker-0.6B` · `mxbai-rerank-large-v2` | MIT/Apache-2.0 | `bge-reranker-v2-m3` = default seguro self-host (ligero, multilingüe, TEI); `Qwen3-Reranker` = 1er open a probar (100+ idiomas, 32K); comparar en T3 |
-| **VPS-GPU propio** | `Qwen3-Reranker-4B` · `bge-reranker-v2-m3` | Apache-2.0/MIT | mismos, servidos en GPU (TEI); más calidad, coste/llamada 0, datos NO salen |
-| **PREMIUM externo** | Cohere `Rerank 3.5/4` · `voyage rerank-2.5` | API pago | ~595–603 ms; SLA gestionado. SOLO tier premium (ya enchufado: `rerank_provider=cohere/voyage`) |
+| **Self-hosted GPU** | `Qwen3-Reranker-4B` · `bge-reranker-v2-m3` | Apache-2.0/MIT | mismos, servidos en GPU (TEI); más calidad, coste/llamada 0, datos NO salen |
+| **External API** | Cohere `Rerank 3.5/4` · `voyage rerank-2.5` | API pago | ~595–603 ms; SLA gestionado. Opt-in (ya enchufado: `rerank_provider=cohere/voyage`) |
 
 **Cómo se cambia de tier:** `config/v2.py §memory` (`embed_provider`/`embed_model`, `rerank_provider`/`rerank_model`).
 Cambiar de embedding EXIGE re-embed (`memory/reembed.py`, firma de modelo). El reranker es hot-swap (fail-open).
@@ -366,7 +365,7 @@ V2-031).
 > ⚠️ **SECCIÓN HISTÓRICA — superada por §12.3 (2026-08-09) y por la directriz del 2026-09-10.** El titular es hoy
 > **`gpt-4.1-mini` por OpenAI DIRECTO** (directriz del operador 2026-09-10: los servicios de memoria llevan
 > OpenAI directo como titular; DeepSeek directo de relevo, el broker de tercero como mucho y nunca titular — el
-> titular DeepSeek devolvía un 200 VACÍO en cada ciclo de REM y con AIMLAPI sin fondos la escalera murió entera).
+> titular DeepSeek devolvía un 200 VACÍO en cada ciclo de REM y con el broker caído la escalera murió entera).
 > Entre el 2026-08-09 y el 2026-09-10 fue `deepseek-v4-flash`, y la **directriz «SIEMPRE OpenAI» estuvo DEROGADA**: se tomó cuando
 > el único contendiente barato medido era `gpt-4o-mini` sobre 16 casos. El barrido de 21 candidatos × 34 casos
 > encontró modelos no-OpenAI que igualan la calidad útil a menos de la mitad de precio. También caduca la fila de
@@ -389,7 +388,7 @@ mensajes personales SALEN a la nube.
 
 | Modelo | Veredicto |
 |---|---|
-| **grok-4.20-0309-non-reasoning** (xAI) | ✅ **EN USO** — barato, aprovecha el saldo xAI; clasificación simple donde su debilidad de routing no aplica. |
+| **grok-4.20-0309-non-reasoning** (xAI) | ✅ **EN USO** — barato; clasificación simple donde su debilidad de routing no aplica. |
 | gpt-4o-mini (OpenAI) | ✅ alternativa fiable. |
 | qwen2.5:3b (local) | ⛔ retirado (regla cero-local); era el más PRIVADO. |
 
@@ -463,12 +462,12 @@ cálculo/charla). **Titular: `gpt-4o-mini`.** Tabla única — NO re-litigar est
 | **gpt-4o-mini (OpenAI) — TITULAR** | ~660-1098 ms | 0/6 ✅ | 7/7 ✅ | 1× ($0.15/$0.60) | **SE QUEDA** — rápido+fiable+barato |
 | **gemini-2.5-flash (vía AIMLAPI)** | full ~1.1-1.5 s | 0/6 ✅ | 6/6 ✅ | output más caro ($2.50) | ✅ **FALLBACK validado de un clic** (thinking OFF). No migrar: ni más rápido ni más barato + AIMLAPI tras Cloudflare (403 intermitente) |
 | gpt-4.1-mini (OpenAI) | ~540-576 ms ⚡ | 0/6 ✅ | 7/7 ✅ | **~2.7×** ($0.40/$1.60) | ⚠️ superior técnicamente pero no compensa 2.7× por ~140 ms en cada turno. Promover solo si el coste deja de importar |
-| grok-4.20-0309-non-reasoning (xAI) | ~530-826 ms ⚡ | **2/6 MAL** ❌ | 7/7 | funded | ❌ **BANEADO** — dice `widget_data`/"Hecho" a una PREGUNTA (causa de conversaciones absurdas) |
-| grok-4.3 / grok-4.5 (xAI) | 2633 / 3501 ms 🐢 | 0/6 ✅ | — | funded | ❌ RAZONADORES (rutean bien pero 3-5× más lentos; sin variante `-non-reasoning`) — violan "voz=no-razonador" |
-| grok-3-mini (xAI) | 3442 ms 🐢 | — | — | funded | ❌ razonador |
+| grok-4.20-0309-non-reasoning (xAI) | ~530-826 ms ⚡ | **2/6 MAL** ❌ | 7/7 | — | ❌ **BANEADO** — dice `widget_data`/"Hecho" a una PREGUNTA (causa de conversaciones absurdas) |
+| grok-4.3 / grok-4.5 (xAI) | 2633 / 3501 ms 🐢 | 0/6 ✅ | — | — | ❌ RAZONADORES (rutean bien pero 3-5× más lentos; sin variante `-non-reasoning`) — violan "voz=no-razonador" |
+| grok-3-mini (xAI) | 3442 ms 🐢 | — | — | — | ❌ razonador |
 | gemini-3.5-flash / 3-flash (AIMLAPI) | — | — | — | barato | ❌ 3.5 trae **thinking ON** (no se apaga vía AIMLAPI); 3-flash da 404 |
-| Groq LPU llama (api.groq.com ≠ xAI) | ~300-500 ms típico (sin medir) | — | — | barato | ⏸️ el ÚNICO genuinamente más rápido, pero `GROQ_API_KEY` da **403**. Acción operador: refrescar para A/B |
-| gemini-3.5-flash (Google directo) | — | — | — | barato | ⏸️ `GEMINI_API_KEY` da **429** (sin billing). Acción operador: poner saldo |
+| Groq LPU llama (api.groq.com ≠ xAI) | ~300-500 ms típico (sin medir) | — | — | barato | ⏸️ el ÚNICO genuinamente más rápido, pero `GROQ_API_KEY` da **403** |
+| gemini-3.5-flash (Google directo) | — | — | — | barato | ⏸️ `GEMINI_API_KEY` da **429** |
 
 **Reglas duras (para no re-probar):**
 - **grok NUNCA en el fast layer de voz**: el único rápido (4.20-nr) mis-rutea memoria; los correctos (4.3/4.5) razonan → lentos. No existe un grok rápido Y correcto.
@@ -604,22 +603,17 @@ completeness, es `x-ai/grok-4-fast-non-reasoning` ($0,762, 100% en precisión y 
 **Derogó la directriz «memoria = SIEMPRE OpenAI»** (§9.2, 2026-07-17): se tomó cuando el único contendiente barato
 medido era `gpt-4o-mini` sobre 16 casos. Con 21 candidatos y 34 casos, hay modelos no-OpenAI que igualan la calidad
 útil a menos de la mitad de precio. **Nota 2026-09-10: la directriz vuelve, acotada a los servicios de memoria**
-(corazón/REM/embeddings con OpenAI DIRECTO de titular, tras el 200 vacío del titular DeepSeek en cada ciclo de REM
-con AIMLAPI sin fondos detrás). Lo que se mantiene como regla dentro de esa frontera: **el destilador se elige con
+(corazón/REM/embeddings con OpenAI DIRECTO de titular, tras el 200 vacío del titular DeepSeek en cada ciclo de REM). Lo que se mantiene como regla dentro de esa frontera: **el destilador se elige con
 el bench, nunca por reputación del proveedor.**
 
-**Notas de coste.** Los $/1k son con tarifa NATIVA del proveedor (`prices.json`, verificada por web el 2026-08-09);
-AIMLAPI cobra encima un margen de ~1,0-1,3× según modelo, común a todos los candidatos → no altera el ranking, sí
-el absoluto (el titular real en nube ≈ $0,88/1k). `deepseek-v4-flash` DIRECTO (`api.deepseek.com`, sin el margen del
-broker) ahorraría otro ~30%, pero no hay `DEEPSEEK_API_KEY` — pendiente, igual que en §9.1 para el FlashBrain.
+**Notas de coste.** Los $/1k son con tarifa NATIVA (de lista) del proveedor (`prices.json`, verificada por web el
+2026-08-09); a broker may add its own markup, common to every candidate → it does not change the ranking.
 **Palanca no explorada, mayor que el cambio de modelo:** el prompt son ~3.700 tokens de input FIJOS por turno
 (system + 8 pares de few-shot); un proveedor con *prompt caching* recortaría el coste bastante más que cualquier
 sustitución de modelo.
 
-**Gap de facturación cerrado de paso:** el CORAZÓN era la ÚNICA llamada LLM de nube que no reportaba a Energy
-(`report_llm_usage` solo se llamaba desde `fast_client`, los Brain Workers y el generador de widgets) → en una
-cuenta cloud destilaba gratis en el contador. Ya reporta, y `energy_meter` lleva la tarifa del titular y de toda la
-cadena de fallback. **Bug de producción encontrado por el preflight:** AIMLAPI devuelve **HTTP 201** con un cuerpo
+**Usage reporting:** the CORAZÓN now reports usage to `nucleo/energy_meter` when metering is enabled, with the
+rate of the titular and of its whole fallback chain. **Bug de producción encontrado por el preflight:** AIMLAPI devuelve **HTTP 201** con un cuerpo
 válido para algunos modelos (`zhipu/glm-4.7`); el CORAZÓN exigía `== 200` → lo trataba como error y caía a la
 heurística lossy en silencio, en cada turno. Ahora acepta cualquier 2xx.
 
@@ -644,8 +638,7 @@ observabilidad. Se anota aquí porque en el log no se encuentra buscando "REM".
 **Por qué aquí manda la CALIDAD y no el precio — al revés que en §12.3.** No es criterio, es la forma del código:
 `rem.py` manda **TODOS los grupos en UNA sola llamada**, con `MAX_GROUPS=8` × `pills[:12]`, **una vez al día**
 (`rem_every_hours=24`). Son ~365 llamadas al año con la entrada ACOTADA por diseño: **el coste NO escala con el
-tamaño de la memoria** (la preocupación razonable del operador la resuelven ya los topes). Todo el barrido cabe
-entre **$0,14 y $2,17 AL AÑO** por usuario — el modelo más caro cuesta dos euros anuales. En cambio un insight malo
+tamaño de la memoria** (la preocupación razonable del operador la resuelven ya los topes). En cambio un insight malo
 se escribe como píldora durable con `slot=insight:<concepto>` y el retriever puede devolverlo como si fuera un
 hecho del operador. Con ese reparto, optimizar el precio aquí sería optimizar el ruido.
 
@@ -705,17 +698,17 @@ ese eje queda `n/a` y no promedia.
 ### §12.5 — Los DOS restos de OpenAI directo, y el modelo de i18n (2026-08-09)
 
 Cerrada la elección de modelos de la memoria, el operador fija la norma general: **nada sale por OpenAI directo;
-todo pasa por el broker AIMLAPI** (una sola cuenta de API que gestionar). Z.AI y Groq/xAI van aparte, con su
+todo pasa por el broker AIMLAPI** (una sola credencial que configurar). Z.AI y Groq/xAI van aparte, con su
 propia credencial, y solo donde hacen falta. Un modelo llamado `openai/gpt-4.1-mini` servido por el broker NO es
 una cuenta de OpenAI — la confusión es fácil y conviene decirlo por escrito.
 
-Quedaban DOS apuntando a `api.openai.com`, los dos con el defecto latente que ya había matado al REM: **en la nube
-no existe `OPENAI_API_KEY`**, así que la llamada habría fallado en silencio (fail-open, sin error visible).
+Quedaban DOS apuntando a `api.openai.com`, los dos con el defecto latente que ya había matado al REM: **sin
+`OPENAI_API_KEY`**, así que la llamada habría fallado en silencio (fail-open, sin error visible).
 
 - **Susurro** (`config/v2.py §susurro`) → movido al broker **conservando su modelo exacto** (`openai/gpt-4.1-mini`).
   Cambia el camino, no el modelo: no hay calidad que re-medir. Verificado con una llamada real (auditoría de un
   tramo con fricción, 2.927 ms, 1.431 in / 136 out, diagnóstico correcto). El `§10` de este doc —elegir el modelo
-  del Susurro con datos— sigue PENDIENTE; esto no lo resuelve, solo lo saca de una cuenta que no existe en la nube.
+  del Susurro con datos— sigue PENDIENTE; esto no lo resuelve, solo cambia el camino.
   De paso, su cliente manda ya el User-Agent de navegador como los demás; **comprobado que el UA por defecto de
   `aiohttp` SÍ pasa el Cloudflare de AIMLAPI** (HTTP 200) — el que se bloqueaba era el de `urllib`. Se manda igual
   porque el fail-open del Susurro es silencioso por diseño y no conviene depender de la política de un CDN.
@@ -741,10 +734,10 @@ y no hay una segunda pasada que lo arregle. El de `deepseek` es el perfil que ya
 a ese precio la fiabilidad se paga sola.
 
 Con esto los CUATRO caminos de LLM off-hot-path (CORAZÓN · REM · i18n · Susurro) salen por el mismo broker, más el
-FlashBrain que ya estaba. Fuera del broker quedan, a propósito: `code_agent` (Z.AI, plan de suscripción) y
-`triage` (xAI, crédito propio). **La sonda correcta mira los DEFAULTS resueltos, no las menciones en el código**:
+FlashBrain que ya estaba. Fuera del broker quedan, a propósito: `code_agent` (Z.AI) y
+`triage` (xAI). **La sonda correcta mira los DEFAULTS resueltos, no las menciones en el código**:
 `api.openai.com` sigue apareciendo a propósito en el catálogo de opciones de la UI, en la resolución de key por
-endpoint y en la tabla de tarifas de Energy. El script de verificación está en `zaelar-memory.md §Ningún camino
+endpoint y en la tabla de tarifas del metering. El script de verificación está en `zaelar-memory.md §Ningún camino
 sale por OpenAI directo`; debe imprimir `api.aimlapi.com` en las cuatro tareas, con y sin `config/v2.json`
 (comprobado en las dos formas el 2026-08-09, incluida la de repo recién clonado).
 
@@ -836,8 +829,7 @@ sea la tarea; escala con cuántas vueltas dé. Un worker que se desorienta es ca
 
 ### 14.3 Los escalones de razonamiento (endpoint + modelo)
 
-- **Z.AI / GLM coding plan** (`api.z.ai/api/anthropic`) — **suscripción**, que es la regla del operador (forfait,
-  nunca por token). Su cuota es SEMANAL y cuando se agota todo el escalón muere de golpe: es justo para eso que
+- **Z.AI / GLM coding plan** (`api.z.ai/api/anthropic`) — quota-based rather than per token. Su cuota es SEMANAL y cuando se agota todo el escalón muere de golpe: es justo para eso que
   existe la cadena de relevo de `workers/providers.py`. Ojo, tiene DOS cuotas independientes (los prompts del
   modelo y sus tools MCP internas) y solo la primera la ve la cadena.
 - **DeepSeek** (`api.deepseek.com/anthropic`) — pago por token, el más barato (~$0,14/$0,28 por Mtok en v4-flash).
@@ -846,7 +838,7 @@ sea la tarea; escala con cuántas vueltas dé. Un worker que se desorienta es ca
   pelo no es lo que espera. Va DESPUÉS de los planes de suscripción por ser por-token.
 - **Grok 4.5 / 4.6** vía Grok Build — por token; 4.6 son $2/$6 por Mtok con 500k de contexto y razonamiento.
 - **Licencia local de Claude Code** — último escalón y **SOLO en local**: un login de navegador no existe dentro de
-  un contenedor, así que en la nube la cobertura la tienen que dar tokens de suscripción, nunca la licencia.
+  un contenedor, así que dentro de un contenedor la cobertura la tienen que dar otros escalones, nunca la licencia.
 
 ### 14.4 El banco: una tarea REAL de varias piezas, cada preset por turno (2026-08-13)
 
@@ -876,11 +868,11 @@ marcado como provisional lo que vive dentro del motor de reservas (horarios exac
 hotel que estimó. Un worker que hubiera rellenado esos huecos habría producido una entrega **más bonita y peor que
 nada**, porque el operador la usaría para reservar.
 
-**Y lo hizo con la búsqueda web AGOTADA.** La cuota MCP de Z.AI estaba consumida hasta el 2026-08-30
+**Y lo hizo con la búsqueda web AGOTADA.** La cuota MCP del proveedor estaba agotada
 (`MCP error -429 … Weekly/Monthly Limit Exhausted`), así que sus dos tools de servidor —`web_search_prime` y
 `webReader`— devolvían el error. El worker lo leyó, lo dijo («no hay problema: ataco directamente las webs con
 WebFetch») y siguió a mano: 403 de DirectFerries, 403 de Baleària, Booking sirviendo la búsqueda por JS, 404 de dos
-agregadores, y sacó el dato de Ferryhopper y TripAdvisor. **Dato de producto: son DOS cuotas independientes** —la de
+agregadores, y sacó el dato de Ferryhopper y TripAdvisor. **Dato: son DOS cuotas independientes** —la de
 los prompts del modelo y la de sus tools MCP— y la cadena de relevo de `workers/providers.py` solo ve la primera. Un
 candidato que solo funcione con la búsqueda buena no vale; este siguió con la mala.
 
@@ -894,7 +886,7 @@ Ninguno de estos se ve leyendo código; los cuatro salieron de correrlo:
 
 1. **La hoja de resultados enrutaba al GENERADOR de widgets.** Pedir la entrega «en el widget results» hacía que
    `looks_like_create_widget` viera una orden de CREAR un widget → se generó el widget basura
-   `prepara-ricart-viaje` en vez de investigar. La hoja de resultados es la superficie de entrega de **toda**
+   `prepara-<nombre>-viaje` en vez de investigar. La hoja de resultados es la superficie de entrega de **toda**
    investigación, así que esto estaba en el camino más transitado del sistema. Arreglado en `flash/router.py`
    neutralizando el widget de DESTINO antes de clasificar (familia V2-081).
 2. **Susurro inventó una acción y la EJECUTÓ.** Con el buffer conversacional vacío la ventana de auditoría salió sin
@@ -917,7 +909,7 @@ Ninguno de estos se ve leyendo código; los cuatro salieron de correrlo:
 
 - **1 · Claude Code + Z.AI** — la única PROBADA de punta a punta sobre una tarea real. Es la de producción.
 - **2 · Claude Code + DeepSeek** — **sin probar, y es la que más interesa**: 10 veces más barata que las otras dos.
-  Bloqueada por credencial (no hay ninguna `DEEPSEEK_API_KEY` en ningún store).
+  Bloqueada por credencial.
 - **3 · Grok Build + grok-4.5** — el backend ya es correcto (traduce su stream, usa los puentes, trae evidencia real,
   lee la memoria del operador) y los tres defectos del adaptador están arreglados con guards. Falta una entrega
   completa medida para poder compararlo de verdad.

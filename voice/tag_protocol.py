@@ -72,8 +72,8 @@ CRON_CANCEL_RE = re.compile(r"\[\[\s*cron\.cancel\s*(?::\s*([a-zA-Z0-9_-]+))?\s*
 # body may be empty (the duo processor then falls back to the raw user utterance). Never spoken.
 DEEP_RE = re.compile(r"\[\[\s*deep\s*\]\](.*?)\[\[\s*/\s*deep\s*\]\]", re.S | re.I)
 # Safety net: a fast/non-reasoning brain can answer a data question with raw JSON(-ish) prose instead of wrapping
-# it in a proper tag (seen live: BRAIN=duo describing the widget catalog as spoken JSON — INI-008 follow-up
-# 2026-07-05; a botched tool-call attempt writing `{q: "..."}` with an UNQUOTED key — INI-013 2026-07-08 early morning,
+# it in a proper tag (seen live: BRAIN=duo describing the widget catalog as spoken JSON —
+# 2026-07-05; a botched tool-call attempt writing `{q: "..."}` with an UNQUOTED key — 2026-07-08 early morning,
 # deep-dive wave A). Never speak that. Matches the OPENING of an object with a key (quoted `{"title":` or
 # a bare identifier `{q:`) — a pattern that's essentially never legitimate prose in any of our target languages.
 JSON_LEAK_RE = re.compile(r'\{\s*(?:"[^"{}]{1,60}"|[A-Za-z_][A-Za-z0-9_]{0,30})\s*:')
@@ -87,7 +87,7 @@ JSON_LEAK_RE = re.compile(r'\{\s*(?:"[^"{}]{1,60}"|[A-Za-z_][A-Za-z0-9_]{0,30})\
 # only at what's landed so far — `[[push:x]]` alone is indistinguishable from an invented self-closing tag. The
 # negative lookahead excludes every known block-tag prefix so this pass NEVER deletes a real opener: the
 # existing hold-back logic below (the `for marker, closer in (...)` loop) keeps protecting it until its closer
-# arrives, exactly like before this safety net existed. A REAL bug fixed 2026-07-08 (INI-013 code review):
+# arrives, exactly like before this safety net existed. A REAL bug fixed 2026-07-08 (code review):
 # without the exclusion, `[[widget.data:agenda]]` streamed as its own chunk got deleted as "unknown" before its
 # `[[/widget.data]]` closer ever arrived — silently breaking every widget mutation, cluster/cron/architect
 # dispatch, and duo's own escalation under normal token-by-token streaming (verified with a live repro).
@@ -99,7 +99,7 @@ UNKNOWN_BRACKET_RE = re.compile(
 # Architect provider: ask carries a plain-text intent (project ids may have dots/hyphens); new carries JSON.
 ARCH_ASK_RE = re.compile(r"\[\[\s*architect\.ask\s*:\s*([a-zA-Z0-9_.-]+)\s*\]\](.*?)\[\[\s*/\s*architect\.ask\s*\]\]", re.S | re.I)
 ARCH_NEW_RE = re.compile(r"\[\[\s*architect\.new\s*\]\](.*?)\[\[\s*/\s*architect\.new\s*\]\]", re.S | re.I)
-# Unified messaging (connectors/messaging/, INI-015): operator-only, self-closing. read/dismiss carry the item
+# Unified messaging (connectors/messaging/): operator-only, self-closing. read/dismiss carry the item
 # number (the numbered COMBINED list — WhatsApp+Telegram+… — the brain sees in the messaging brief); clear marks
 # everything shown as read. The action routes to the right connector by the item's platform. Never spoken.
 MSG_RE = re.compile(r"\[\[\s*msg\.(read|dismiss|clear|open|close|readchat)\s*(?::\s*(\d+))?\s*\]\]", re.I)

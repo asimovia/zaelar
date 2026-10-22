@@ -83,7 +83,7 @@ A relay carries `task_uid` in its escalation context and UPDATES that row instea
 
 ## Finding one again (V2-728 F5)
 
-The operator's rule, INI-027 §7: **an index narrows, a model chooses.**
+The operator's rule: **an index narrows, a model chooses.**
 
 1. `tasks_store.task_search` — FTS5 over title+goal, OR-matched (a reference is a paraphrase, not a
    quotation), ranked by bm25, ≤5 candidates. **No model, no network.**
@@ -175,6 +175,3 @@ the calendar for a meeting already on it. `scheduler.create(origin=…)` is what
 - **It does not own the scheduler's storage.** Scheduled jobs stay in `journal` and are MIRRORED here
   (`scheduled_mirrored`, plus `reconcile_board()` at startup). Moving live standing reminders risks the one
   failure nobody notices until the day it fails to sound (V2-121).
-- **It is not on the cloud Master.** `cloud/backoffice/` reads `events` and `sys_kv` from the same
-  `zaelar.db` and is unaffected by any of this — it never read the retired worker ledger. Showing the task
-  board there is a new screen, not an alignment fix.

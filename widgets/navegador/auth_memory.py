@@ -1,5 +1,5 @@
 #
-# auth_memory.py: browser-auth MEMORY crumbs (INI-016, auth).
+# auth_memory.py: browser-auth MEMORY crumbs (auth).
 #
 # Memory <-> storage split (`zaelar-memory.md` actions <-> memory protocol): the SECRET itself (cookies/tokens)
 # NEVER enters memory. It lives in Chromium's persistent on-disk profile (`widgets/_data/navegador/profile/`),

@@ -6,7 +6,7 @@ and orchestration. On top it adds ONLY observers: the 5-state machine and the
 debug bus (per-session logs + live contract messages to the UI). The engine
 (STT/LLM/TTS/VAD/turn) is untouched.
 
-zaelar (INI-012): the engine runs EMBEDDED in the zaelar web server process.
+zaelar: the engine runs EMBEDDED in the zaelar web server process.
 ``make_server()`` returns an ``AgentServer`` with ``job_executor_type=THREAD`` so
 the voice job runs in a thread of THIS process and can share state with the brain.
 
@@ -53,7 +53,7 @@ _kickoff_recent, _mark_kickoff = kickoff_recent, mark_kickoff
 
 def _endpointing_opts() -> dict:
     """How much silence closes a turn. The values live in `voice/endpointing.py` — the SINGLE source of truth for
-    this decision, written from real sessions (INI-009) and orphaned until now. Env overrides allow hot adjustment
+    this decision, written from real sessions and orphaned until now. Env overrides allow hot adjustment
     without touching code."""
     from voice import endpointing as _ep
 
@@ -91,7 +91,7 @@ async def entrypoint(ctx: JobContext) -> None:
     except Exception:
         pass
 
-    # Prewarm reuse check (INI-013 2026-07-08): a warm session reuses the idle executor's
+    # Prewarm reuse check (2026-07-08): a warm session reuses the idle executor's
     # userdata (all True); if any is False the session is paying a cold rebuild → investigate
     # prewarm (num_idle_processes exhausted, prewarm timed out, etc). Kept as a permanent probe.
     _ud = ctx.proc.userdata
@@ -192,7 +192,7 @@ async def entrypoint(ctx: JobContext) -> None:
     # dictated sentence with the natural pauses of someone thinking while speaking gets split into several turns, and the agent
     # answers half-sentences: in the 13:20:50 session, a single ferry request produced 8 final transcriptions,
     # and one of them —“...from Denia to”— asked for the destination the operator was saying.
-    # The values are NOT invented: they come from `voice/endpointing.py`, written for THIS bug (INI-009) from
+    # The values are NOT invented: they come from `voice/endpointing.py`, written for THIS bug from
     # real in-car sessions… and ORPHANED since then — the engine moved to LiveKit and nobody wired it,
     # so its only reference in the repo was its own test. Now it is the source of truth, and
     # `mode:"dynamic"` (moving average of observed pauses, between min and max) makes native what `hold_secs()`

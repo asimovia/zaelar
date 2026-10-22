@@ -393,8 +393,8 @@ class WorkerSession(SessionNotes):
         self._bus("worker.done", {"id": rec.task_id, "ok": rec.ok, "status": rec.status})
         # TOKENS ARE ALWAYS CHARGED, even if the session was CANCELLED (2026-08-13). This lived inside the
         # `if rec.status != "cancelled"` below, which exists for an INTERFACE reason (do not paint two contradictory
-        # `end` rows) and swept away an unrelated BILLING concern: a worker killed by budget had consumed REAL tokens
-        # and was metered at ZERO. Measured in the database: 704 s, 256 steps, ~$0.20 of xAI tokens → €0 billed.
+        # `end` rows) and swept away an unrelated METERING concern: a worker killed by budget had consumed REAL tokens
+        # and was metered at ZERO (e.g. 704 s, 256 steps, ~$0.20 of provider tokens → 0 Energy).
         # Two distinct concerns in one `if`; they are separated.
         u = self._usage or self._usage_partial or {}
         pt, ct = u.get("input_tokens"), u.get("output_tokens")

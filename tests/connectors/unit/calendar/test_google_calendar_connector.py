@@ -57,7 +57,7 @@ def test_authorize_url_carries_pkce_and_the_scope(sandbox, monkeypatch):
 def test_redirect_uri_falls_back_to_loopback_without_a_valid_origin():
     assert oauth.redirect_uri("") == "http://127.0.0.1:43917/api/calendar/callback"
     assert oauth.redirect_uri("javascript:alert(1)") == "http://127.0.0.1:43917/api/calendar/callback"
-    assert oauth.redirect_uri("https://my.zaelar.com") == "https://my.zaelar.com/api/calendar/callback"
+    assert oauth.redirect_uri("https://agent.example.com") == "https://agent.example.com/api/calendar/callback"
 
 
 # ── event <-> meeting normalization ──────────────────────────────────────────────────────────────────────
@@ -127,11 +127,11 @@ def test_a_guest_whose_answer_google_does_not_report_is_not_counted_as_accepted(
 def test_the_organizer_is_marked_on_the_roster_row_that_holds_it():
     ev = {"id": "ev3d", "status": "confirmed",
           "start": {"dateTime": "2026-09-15T11:30:00+02:00"}, "end": {"dateTime": "2026-09-15T12:30:00+02:00"},
-          "organizer": {"displayName": "Gavin Hale", "email": "g@z.com"},
+          "organizer": {"displayName": "Laura Vidal", "email": "g@z.com"},
           "attendees": [{"email": "me@x.com", "self": True, "responseStatus": "accepted"},
                         {"email": "g@z.com", "responseStatus": "accepted", "organizer": True}]}
     m = gc.event_to_meeting(ev, "primary")
-    assert m["organizer"] == "Gavin Hale"           # absent when it is OURS — that is the «who invited me»
+    assert m["organizer"] == "Laura Vidal"           # absent when it is OURS — that is the «who invited me»
     assert m["guests"][0]["organizer"] is True
     assert m["guests"][0]["name"] == "g@z.com"       # no displayName → the address is the only honest name
 
@@ -144,8 +144,8 @@ def test_a_join_link_that_is_not_http_never_reaches_the_card():
     hostile = dict(base, conferenceData={"entryPoints": [
         {"entryPointType": "video", "uri": "javascript:alert(1)"}]})
     assert "meetLink" not in gc.event_to_meeting(hostile, "primary")
-    good = dict(base, hangoutLink="https://meet.google.com/cgh-pouq-gje")
-    assert gc.event_to_meeting(good, "primary")["meetLink"] == "https://meet.google.com/cgh-pouq-gje"
+    good = dict(base, hangoutLink="https://meet.google.com/abc-defg-hij")
+    assert gc.event_to_meeting(good, "primary")["meetLink"] == "https://meet.google.com/abc-defg-hij"
 
 
 def test_a_phone_bridge_is_never_offered_as_a_way_in():

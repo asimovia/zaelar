@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# zaelar over LiveKit (INI-012) — starts the new voice stack:
+# zaelar over LiveKit — starts the new voice stack:
 #   1) LiveKit dev server   2) agent worker (EMBEDDED voice/engine)   3) zaelar web server (FastAPI)
 # Ctrl-C tears everything down. The LiveKit server uses the NATIVE BINARY (without Docker) if installed
 # (`make install-livekit` / `brew install livekit`); Docker is only an optional FALLBACK.
@@ -78,7 +78,7 @@ for _ in $(seq 1 12); do nc -z 127.0.0.1 7880 2>/dev/null || break; sleep 0.5; d
 # pin anything and leave enumeration dynamic. Signaling remains on `--bind 127.0.0.1` (private, not LAN).
 # Power-user escape hatch / unusual environments: `ZAELAR_LIVEKIT_NODE_IP=<ip>` restores the old pin.
 # PRODUCTION (real deploy, not local): LiveKit Cloud or coturn/Cloudflare TURN → relay candidate with a stable IP,
-# independent of the node IP and the client's NAT. See zaelar-deploy.md. Detail: research 2026-07-29.
+# independent of the node IP and the client's NAT.
 LK_NODE_IP_ARG=""
 if [[ -n "${ZAELAR_LIVEKIT_NODE_IP:-}" ]]; then
   LK_NODE_IP_ARG="--node-ip=${ZAELAR_LIVEKIT_NODE_IP}"

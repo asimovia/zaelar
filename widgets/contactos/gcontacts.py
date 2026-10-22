@@ -29,7 +29,7 @@ from loguru import logger
 #
 # WHY THESE THREE: Google is the address book most people already have; iCloud is the other one anybody
 # carries, reachable over CardDAV with an app-specific password; and a generic CardDAV covers
-# Outlook/Fastmail/Nextcloud with one connector instead of three brands. Per INI-027, showing what we do
+# Outlook/Fastmail/Nextcloud with one connector instead of three brands. Showing what we do
 # NOT have is the point rather than an embarrassment.
 # V2-714 — Telegram and WhatsApp are here because a connector may serve more than one family now
 # (`registry.serves`), and because he asked for it by name: «en el widget de contactos quiero que aparezcan

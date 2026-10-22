@@ -253,7 +253,7 @@
     },
     {
       "name": "Red de agentes (eBay)",
-      "url": "https://ebay-finder.rjj.workers.dev",
+      "url": "https://agent.example.org",
       "status": "partial",
       "detail": "solo segunda mano y fuera de foco (uno era un monitor de constantes vitales); descartado",
       "found": 0

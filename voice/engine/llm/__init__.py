@@ -3,7 +3,7 @@
 The pipeline depends only on ``build_llm``; each vendor is a builder function in
 ``providers/`` returning a LiveKit ``llm.LLM``. Adding a vendor = one file there.
 
-zaelar note (INI-012): the hermes/duo/direct providers are added later by another
+zaelar note: the hermes/duo/direct providers are added later by another
 change; ``providers/__init__`` only imports the vendor providers ported here.
 """
 from __future__ import annotations

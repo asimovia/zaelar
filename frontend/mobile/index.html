@@ -45,7 +45,7 @@
 
 <style>
   /* PREBOOT splash — inline ON PURPOSE, exactly as on the desktop: it paints on the FIRST byte, BEFORE any ES
-     module loads. On a cold account Machine the modules take tens of seconds and the user would stare at black
+     module loads. On a cold-started instance the modules take tens of seconds and the user would stare at black
      until the BootOverlay (drawn by JS) mounts. mobile/app/main.js removes it as soon as the app is up; if main.js
      failed to load it stays, which is the right failure — a loader beats a black screen. Zero dependency on
      /static (colours inline), so it works even if the stylesheets are still in flight. */

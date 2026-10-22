@@ -1,6 +1,6 @@
 #
 # supervisor.py — HOST for "backed" widgets (kind:"backed"), designed in zaelar-modules.md §Widget-apps and built
-# with the browser (INI-016, first backed widget). A "passive" widget (the usual kind) has no process: view_data reads
+# with the browser (first backed widget). A "passive" widget (the usual kind) has no process: view_data reads
 # on demand and its only writer is its own ctx.action or Hermes. A "backed" widget is a small APP with a live backend
 # (the browser has a headless Chromium inside): its folder provides an `owner.py` with
 # `async start()/stop()/handle(action,payload)`, and THIS supervisor —started in server lifespan, in the SAME loop as

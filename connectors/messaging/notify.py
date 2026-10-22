@@ -1,5 +1,5 @@
 #
-# notify.py — shared PROACTIVE NOTICE (INI-015, promoted from connectors/whatsapp.service._announce). When something
+# notify.py — shared PROACTIVE NOTICE (promoted from connectors/whatsapp.service._announce). When something
 # relevant arrives from ANY platform and the operator does not have the widget in front: voice via voice/proactive
 # (shared throttle ~45s) + [SYSTEM] note via voice/brain_notes (ALWAYS, so the brain does not invent the outcome).
 #

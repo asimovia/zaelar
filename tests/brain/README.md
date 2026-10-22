@@ -8,9 +8,8 @@ V2-776 scope A1, the net under which the brain is compacted (scope B): a guard l
 green through the new decision step, and **a new failure of the brain is written as a CASE here, never as a
 guard** (operator's rule, 2026-09-27).
 
-**Where the turns come from.** The session files (`.meshkore/logs/sessions/*.jsonl`, the operator's real
-phrases with what the engine did), the demo scripts (`TMP/demo/` at the workspace root, with the v1-v5 pass
-results), and the decision entries of `.meshkore/docs/decisions.md` (V2-753 … V2-756, each phrase quoted with
+**Where the turns come from.** The operator's own sessions (his real phrases with what the engine did, anonymised),
+the demo scripts with their pass results, and the decision log entries (V2-753 … V2-756, each phrase quoted with
 its verdict). Every case says where it came from in `source`.
 
 ## Run
@@ -43,7 +42,7 @@ One JSON object per case, grouped in `cases/*.json` by origin (`demo-v2.json`, `
   "id": "demo-v7-stop-it-and-close-the-video",
   "lang": "en",
   "phrase": "Stop it and close the video widget.",
-  "source": "TMP/demo/02-demo-script-v2.txt V7 · 03-results v5: closed and the model REOPENED it",
+  "source": "demo script v2 V7 · demo results v5: closed and the model REOPENED it",
   "screen": {"open": ["youtube"]},
   "memory": {"agenda": [{"title": "Dentist", "day": "+1", "start": "09:30", "end": "10:00"}]},
   "model": {"say": "Done.", "tools": [{"name": "show_widget", "args": {"widget_id": "youtube"}}]},

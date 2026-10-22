@@ -1,4 +1,4 @@
-# zaelar — Observabilidad y depuración (INI-013)
+# zaelar — Observabilidad y depuración
 
 > Regla de oro: **no hace falta mirar la pantalla para depurar zaelar**. TODO lo que pasa (voz, frontend/widgets,
 > cerebro «Colmena», llamadas a modelos LLM y por qué API) deja rastro en un **registro único de eventos**. Este
@@ -285,8 +285,8 @@ Diseño: `.meshkore/roadmap/initiatives/V2-048-observabilidad-workers.md`.
   incidente 2026-07-25 (el worker LiveKit embebido se degradó tras ~7h → voz/chat mudos hasta reinicio manual).
 - **`actionmap`** (V2-539, family `flash`) — the deterministic layer in FRONT of the FlashBrain
   (`nucleo/actionmap/`, doc `.meshkore/docs/modules/zaelar-action-map.md`). It answers **which layer resolved
-  this turn**, which used to be unanswerable: ten real voice turns were served by the map while the viewer, the
-  Master and the Susurro all reported the model. Labels: **`⚡ action map: direct action (no model)`** (a hit —
+  this turn**, which used to be unanswerable: ten real voice turns were served by the map while the viewer
+  and the Susurro both reported the model. Labels: **`⚡ action map: direct action (no model)`** (a hit —
   with `action`, `entry`, `source`, `match_ms` and the phrase that produced it), **`🕵️ map candidate…`** (the
   model resolved a turn with a single canvas action, i.e. what the table is MISSING; `known_entry` tells a
   missing entry from one that exists and did not fire), **`🗺️ action map WATCHING`** (`watch.py` subscribed to
@@ -448,7 +448,7 @@ lleva `op`+`ids` afectados (`services/sse.js` → `store.pushMemPulse`). Fuente:
    (modelo poco capaz o prompt) — NO es el frontend.
 4. ¿zaelar mudo? Suele ser: (a) el FlashBrain devuelve 4xx del proveedor rápido (mira el log de zaelar
    `fast brain error`), (b) TTS Metal tropieza el bug de shapes de mlx-audio y el fallback Kokoro-FastAPI no está
-   arriba. Ver INI-012 §TTS.
+   arriba.
 5. ⚠️ **¿Un widget se comporta como si tu arreglo no existiera? Mira QUÉ FICHERO CORRE** (V2-757).
    `widgets/_user/<id>/` ensombrece a `widgets/<id>/` en el catálogo, en `identify`, en el `widget.js` que
    se sirve y en los **imports de Python** (`widgets/paths.roots()` pone el generado primero), y está
@@ -479,7 +479,7 @@ lleva `op`+`ids` afectados (`services/sse.js` → `store.pushMemPulse`). Fuente:
    Y la fila de memoria conserva su propio `detail` (ahí vive «el recall no cerró en 0.8s», que es un hecho
    distinto de qué modelo escribe).
 
-## El tester independiente (INI-013) usa esta observabilidad
+## El tester independiente usa esta observabilidad
 
 `tests/voice/e2e/agent/interlocutor/trace.py` se **suscribe a `/events`** y captura la traza por escenario; el **juez GLM** (Z.AI)
 la lee para verificar el comportamiento OBSERVABLE (acciones de frontend + cerebro), no solo el transcript. Los
@@ -495,6 +495,6 @@ DeepSeek). **Gemini free-tier = NO usable** (cuota 20/día, da 429). Claves en `
 - `tests/voice/e2e/agent/overnight.sh` — bucle: rota escenarios + goals creativos contra zaelar vivo, escribe informes.
 - `tests/voice/e2e/agent/guard.sh` — idempotente: levanta zaelar (`make run`, LiveKit nativo sin Docker) y el bucle si están caídos.
 - El loop autónomo (`/loop <intervalo> <prompt>`, skill `loop`) re-invoca al agente para: guard → leer último
-  informe → arreglar el top bug → reprobar → documentar en INI-013 → repetir.
+  informe → arreglar el top bug → reprobar → documentar → repetir.
 
-Ver también: `.meshkore/roadmap/initiatives/INI-013-voice-tester.md`, INI-012 (motor de voz), `voice/observer.py`.
+Ver también: `voice/observer.py`.

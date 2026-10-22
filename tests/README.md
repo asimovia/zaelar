@@ -113,7 +113,7 @@ checkout still fight over CPU, ports and Chromium (measured 2026-09-15: 1222 s a
 take 9 minutes alone). Seeing both is not permission to launch both.
 
 **Set `ZAELAR_TEST_ACTOR`.** It is the name the operator reads in the agents box — with it the row says
-`claude-code · voz`, without it `ricartoperator@/bin/zsh`, three times over, and he cannot tell which of his
+`claude-code · voz`, without it `user@host`, three times over, and he cannot tell which of his
 tabs is busy.
 
 ## Source of truth
@@ -338,11 +338,8 @@ the hole was in the one nobody re-read. A new isolation need belongs HERE, once.
 Credentials are deliberately NOT isolated (`server/common.py` loads `.env` + `.meshkore/credentials/` from
 the repo root): the point is a clean DATABASE, not a crippled engine that cannot call a model.
 
-**Known limits, written down rather than discovered twice:** the operator's Master
-(`cloud/backoffice/`) does NOT see sandbox engines — it reaches exactly one local agent hardcoded to
-`127.0.0.1:43917` plus cloud accounts, so a use-case or journey run never appears on its Sessions screen;
-and a sandbox identity is a bare UUID4 with no email or `test` marker, so it is indistinguishable from a
-real self-host if it ever did show up. Both are open (2026-08-20).
+**Known limit, written down rather than discovered twice:** a sandbox identity is a bare UUID4 with no
+email or `test` marker, so it is indistinguishable from a real self-host install. Open (2026-08-20).
 
 **Where the scenarios come from.** Nine are hand-written (`scenarios.py`); the other 110 are DERIVED from
 the catalog (`derived.py`) — shared persona scaffolding written once, plus per-case specifics (what the
@@ -420,14 +417,12 @@ engine bug; correlate the transcript, `/events`, actions and judge report first.
   not embedding credentials inside arbitrary text.
 - Live connectors or purchases/messages require explicit authorization and test accounts.
 - **Every suite here targets a LOCAL engine** (`127.0.0.1:43917`/`8765`) with an isolated DB (fixture `tmp_path`,
-  or a dedicated fixture/timeline DB per the sections above) — never a deployed cloud account. An install's
+  or a dedicated fixture/timeline DB per the sections above) — never a deployed environment. An install's
   identity in these runs is a throwaway id scoped to that isolated DB, generated the same lazy way a fresh
   self-hosted install would (`observability.identity.user_id()`); it never reaches any shared/central system,
   so it needs no special marker.
-- Verifying a change against a real DEPLOYED cloud environment (not this local harness) is a different activity
-  with a different identity boundary — that account belongs to a separate identity class this repo does not
-  document (cloud/business concerns live outside this public repo). Do not improvise a throwaway signup against
-  a live deployed environment without following that convention; ask the operator if unsure.
+- Verifying a change against a deployed environment (not this local harness) is out of scope for this repo;
+  do not improvise throwaway identities against one — ask the operator.
 
 ## Observatory lifecycle and durable evidence
 

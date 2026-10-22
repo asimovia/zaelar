@@ -24,7 +24,7 @@ def prewarm(proc: JobProcess) -> None:
     (this runs there), so a session connects and the agent joins fast instead of
     paying the ~6s cold start (VAD + Whisper model load + Ollama) on the first turn.
 
-    CONFIRMED WORKING (2026-07-08, INI-013): this runs in the ``job_thread_runner``
+    CONFIRMED WORKING (2026-07-08): this runs in the ``job_thread_runner``
     thread of THIS process (THREAD executor); the very session that connects reuses
     THIS proc's ``userdata`` (``entrypoint`` reports ``vad_hit/stt_hit/tts_hit=True``).
     An earlier note claimed "prewarm never fires" — that was a FALSE NEGATIVE: the

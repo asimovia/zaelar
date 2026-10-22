@@ -11,7 +11,7 @@ from . import PROVIDERS
 
 
 def spendable() -> bool:
-    """May a PAID index be asked right now? The energy lease's answer (always yes without a cloud account)."""
+    """May a PAID index be asked right now? The energy lease's answer (always yes when no lease is configured)."""
     from nucleo import energy_lease
     return energy_lease.check("search")
 

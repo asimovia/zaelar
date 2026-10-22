@@ -79,7 +79,7 @@ def test_ask_happy_path_delivers_note_and_voice(monkeypatch, fast_polls):
 
     async def fake_poll(project, rid):
         calls["polls"] += 1
-        return {"status": "done", "result_text": "Roadmap: INI-010 en curso."} if calls["polls"] >= 2 \
+        return {"status": "done", "result_text": "Roadmap: phase 2 en curso."} if calls["polls"] >= 2 \
             else {"status": "running"}
 
     monkeypatch.setattr(client, "ask", fake_ask)
@@ -90,8 +90,8 @@ def test_ask_happy_path_delivers_note_and_voice(monkeypatch, fast_polls):
     asyncio.run(service.ask("zaelar", "estado del roadmap"))
 
     notes = brain_notes.drain()
-    assert any("ha terminado" in n and "INI-010" in n for n in notes)
-    assert spoken and spoken[0][0] == "Architect · zaelar" and "INI-010" in spoken[0][1]
+    assert any("ha terminado" in n and "phase 2" in n for n in notes)
+    assert spoken and spoken[0][0] == "Architect · zaelar" and "phase 2" in spoken[0][1]
     assert not service.inflight()            # the job is unregistered when it finishes
 
 

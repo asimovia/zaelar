@@ -356,7 +356,7 @@
     },
     {
       "name": "Red de agentes",
-      "url": "https://ybana.rjj.workers.dev",
+      "url": "https://agent.example.org",
       "status": "error",
       "detail": "No hay agente de coches. El que respondió devolvió despieces, motores sueltos y maquetas a escala: nada de vehículos.",
       "found": 0

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# cron_tick.sh — ONE use-case test tick, same shape as tests/voice/e2e/agent/cron_tick.sh (INI-013's
+# cron_tick.sh — ONE use-case test tick, same shape as tests/voice/e2e/agent/cron_tick.sh (the voice tester's
 # cron test→fix loop), adapted for this suite:
 #   1) ensure zaelar is UP
 #   2) if the operator is LIVE in a voice session, SKIP (don't contend the single worker)

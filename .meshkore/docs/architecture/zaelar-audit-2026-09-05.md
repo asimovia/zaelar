@@ -34,7 +34,7 @@ fail-open asymmetry: the "a failure never touches the voice" policy is applied ~
 but only the memory subsystem internalized the second half ("a failure never stays a warning" →
 health_state); the server lifespan still degrades a failed subsystem mount to one WARNING among hundreds of
 INFO lines. Legal: the repo declares itself open source with no LICENSE file and redistributes MIT-vendored
-code without the upstream license text — an operator decision already pending in INI-027 §9.
+code without the upstream license text — an operator decision already pending.
 
 ## Verdict highlights by domain
 

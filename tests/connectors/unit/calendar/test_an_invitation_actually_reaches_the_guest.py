@@ -62,7 +62,7 @@ _LIVE = {
 _MEETING = {"googleId": "ev1", "googleCalendarId": "primary", "source": "google",
             "title": "Meeting with Ivan Mikushin", "date": "2026-09-17",
             "startTime": "22:00", "endTime": "23:00",
-            "meetLink": "https://meet.google.com/ydi-zeaz-tri"}
+            "meetLink": "https://meet.google.com/xyz-abcd-efg"}
 
 
 @pytest.fixture
@@ -140,7 +140,7 @@ def test_the_invitation_object_says_when_the_meeting_is_in_UTC():
 def test_the_invitation_carries_the_meeting_link_where_a_calendar_shows_it():
     text = ics.build(_MEETING, organizer="me@x.com", attendees=["ivan@example.com"], offset_minutes=120)
     unfolded = text.replace("\r\n ", "")
-    assert "meet.google.com/ydi-zeaz-tri" in unfolded
+    assert "meet.google.com/xyz-abcd-efg" in unfolded
     assert "LOCATION:" in unfolded
 
 

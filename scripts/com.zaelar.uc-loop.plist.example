@@ -3,7 +3,7 @@
 <!--
   Keepalive for the use-case battery. NOT a cron that runs a round: the supervisor is already an endless
   loop, so this only asks every 5 minutes «is it alive?» and starts it if not. `uc-loop.sh` holds the lock
-  (pgrep on the module) and refuses to start with both provider wallets down.
+  (pgrep on the module) and refuses to start with both providers down.
 
   Install (from the engine root — this file is a TEMPLATE, __ENGINE__ is filled in at install time; the
   rendered plist is per-machine state and stays out of this PUBLIC repo, see .gitignore):

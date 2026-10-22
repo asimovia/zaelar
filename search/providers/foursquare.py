@@ -6,10 +6,10 @@ rows were presented as if they met it. A places directory is the one kind of pro
 and the open-now flag as fields, so the sheet can show them and `candidacy.unshown_criteria` can stop saying
 they are missing.
 
-STATUS (2026-10-10): the engine holds `FOURSQUARE_SERVICE_KEY` and the account has **no API credits** — the probe
-answered HTTP 429 «Your account has no API credits remaining». The parser below is written against the Places
-API documentation (`X-Places-Api-Version: 2025-06-17`), not against a recorded live payload; the health probe
-reports the provider as `exhausted` until the operator adds credits, and `find()` falls back to the web chain
+STATUS (2026-10-10): the parser below is written against the Places API documentation
+(`X-Places-Api-Version: 2025-06-17`), not against a recorded live payload. When the key in
+`FOURSQUARE_SERVICE_KEY` has no API credits the API answers HTTP 429 «Your account has no API credits remaining»;
+the health probe then reports the provider as `exhausted`, and `find()` falls back to the web chain
 for a local service. Verifying the parser against a real payload is the first thing to do the day it answers.
 
 Rate: `energy_meter._SEARCH_USD_PER_REQUEST["foursquare"]` per successful search.

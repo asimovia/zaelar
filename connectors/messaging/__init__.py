@@ -1,5 +1,5 @@
 #
-# messaging — SHARED layer for triaged personal messaging (INI-015). One mental model for ANY platform (WhatsApp,
+# messaging — SHARED layer for triaged personal messaging. One mental model for ANY platform (WhatsApp,
 # Telegram and, later, email): per-platform connectors (connectors/whatsapp, connectors/telegram) handle transport +
 # pairing; THIS layer provides what is common to all:
 #
@@ -10,7 +10,7 @@
 #   · notify.py  — the shared proactive notice (voice + [SYSTEM] note) and "what deserves attention" filter.
 #   · brief.py   — the combined NUMBERED brief the brain sees (one list -> [[msg.read:N]] maps correctly).
 #
-# Boundary with Hermes (doc: .meshkore/docs/architecture/zaelar-hermes-federation.md): the classifier is LOCAL and
+# Boundary with Hermes: the classifier is LOCAL and
 # NEVER goes through the Hermes agent; no personal data leaves the machine.
 #
 

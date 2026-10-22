@@ -12,7 +12,7 @@ later — along with the model routing the Reset dialog promises in writing is n
 
 Two things are pinned here, and they are different in kind:
 
-  1. NOBODY IS ASKED. The deployment knows where it runs (the provisioner's env var) and the canonical table
+  1. NOBODY IS ASKED. The deployment knows where it runs (an env var it sets) and the canonical table
      knows which providers we run. Neither is a question for a human who has not even chosen a language yet.
   2. ONE DEFAULT. `config/profiles.py` said `local` while `voice/engine/core/profile.py` said `remote` — two
      defaults for one concept, in two files, and the disagreement is what made the wizard's answer damaging

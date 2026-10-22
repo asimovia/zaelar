@@ -44,7 +44,7 @@ def _emit(action: str, wid: str, extra: dict | None = None) -> None:
 
 def _close_flow(trace_id: str, reason: str) -> None:
     """Emits the explicit flow-close for a confirmation's ASKING trace once it's superseded or expired
-    (2026-08-16). Without this, that flow shows "EN CURSO" in the master forever: the turn that opened it made
+    (2026-08-16). Without this, that flow shows "EN CURSO" in the flow viewer forever: the turn that opened it made
     its ONE close decision (`nucleo.py::_maybe_close_flow`, at the moment IT finished) and correctly chose not
     to close while its confirmation was alive — nothing ever revisits that decision afterward, so once the
     confirmation disappears from `_PENDING` (superseded by a new ask on the same widget, or TTL-expired) the
@@ -137,7 +137,7 @@ def request(action: str, widget_id: str, question: str = "", op: dict | None = N
     if not wid:
         return None
     # Observability (V2-090 addenda, 2026-08-15): the OPERATOR's yes/no reply lands in its OWN turn — a different
-    # trace than the one that asked — and today those show up as two unrelated flows in the master. Capturing the
+    # trace than the one that asked — and today those show up as two unrelated flows in the flow viewer. Capturing the
     # asking turn's trace here lets `resolve()` hand it back so the resolver can adopt it: the confirmation's
     # whole life (ask → answer → executed action) reads as ONE flow, not two.
     try:

@@ -329,7 +329,7 @@ Esto es lo que él ha pedido explícitamente, repetido y por escrito. Está arri
 | El **contexto invariante** del proyecto (visión, producto, stack, arquitectura, restricciones, glosario) | `.meshkore/context/` |
 | Los **roles de agente** — qué hace cada miembro del equipo, a quién delega, qué no toca nunca | `.meshkore/team/*.md` (una ficha por rol, con su `owns:` y sus `refs:`) |
 | Las **tareas** por módulo | `.meshkore/modules/<módulo>/tasks/` |
-| El **plan**: iniciativas `V2-xxx` / `INI-xxx` | `.meshkore/roadmap/initiatives/` |
+| El **plan**: iniciativas `V2-xxx` | `.meshkore/roadmap/initiatives/` |
 | La **bitácora** de cada módulo (las palabras del operador, lo medido, los commits) | `.meshkore/modules/<módulo>/logs/<YYYY-MM>/` |
 | Cómo se **prueba** | `tests/README.md` y la sección «Testing» de abajo |
 
@@ -372,8 +372,7 @@ context and stays in Spanish on purpose.
 > y `STANDARD_VERSION`: quien clone el repo dice «carga el estándar MeshKore» y tiene todo el contexto y las tareas.
 > Lo que se ignora (`.gitignore`) es solo el estado runtime PRIVADO del self-hoster (`credentials/`, `logs/`,
 > `timeline/`, `snapshots/`, `.runtime/`, `agents/`) — sus propias claves/logs, nunca al repo.
-> **Lo que NO vive aquí:** la gestión de NEGOCIO/proyecto entero (cloud/GTM, `launch-readiness`, coordinación
-> engine+web+cloud) vive en `../.meshkore/` de la RAÍZ del workspace (repo aparte, privado) — ver `../CLAUDE.md`.
+> **Lo que NO vive aquí:** business context lives in a private repo, outside this one.
 
 > ⚠️ **NI NUESTRO PASADO NI NUESTRO FUTURO SE PUBLICAN** (2026-08-14, norma del operador). Este repo guarda lo
 > que ayuda a entender y correr el motor **HOY**. Lo que cuenta cómo llegamos o a dónde vamos existe en local
@@ -446,7 +445,6 @@ Instalación y arranque para quien clona: **[`README.md`](README.md)** (multi-pl
 | **⭐ Prompt que pertenece a una FASE (context packs) — leer ANTES de añadir una frase al prompt del turno** | `.meshkore/docs/architecture/zaelar-context-packs.md` |
 | **El PRIMER ARRANQUE de punta a punta (idioma → carpeta → voz → saludo)** | `.meshkore/docs/modules/zaelar-first-run.md` |
 | Product / Context | `.meshkore/docs/product/zaelar-product.md` |
-| Deploy | `.meshkore/docs/deploy/zaelar-deploy.md` |
 | Ops / Setup | `.meshkore/docs/ops/zaelar-ops.md` |
 | Conventions | `.meshkore/docs/conventions/zaelar-conventions.md` |
 | Modules | `.meshkore/docs/modules/zaelar-modules.md` |
@@ -476,9 +474,9 @@ Los pasos NO se recuerdan de memoria: viven en su doc. Cada fila es un procedimi
 
 | Cuando el operador dice… | Ejecutar |
 |---|---|
-| «pasa el protocolo» | `.meshkore/docs/ops/zaelar-change-protocol.md` — reiniciar+verificar → versión → diario/iniciativa/contexto → commit → push → deploy |
+| «pasa el protocolo» | `.meshkore/docs/ops/zaelar-change-protocol.md` — reiniciar+verificar → versión → diario/iniciativa/contexto → commit → push |
 | «pasa la auditoría» / «audita el sistema» | `.meshkore/docs/ops/zaelar-audit-workflow.md` — reconocimiento → fan-out por 4 dominios → síntesis → informe + plan P0-P3 |
-| (todo cambio de ESTRUCTURA o de invariantes) | `.meshkore/docs/ops/zaelar-docs-sync.md` — README, `CLAUDE.md`, `cluster.yaml`, doc de categoría, diagramas de `web/` |
+| (todo cambio de ESTRUCTURA o de invariantes) | `.meshkore/docs/ops/zaelar-docs-sync.md` — README, `CLAUDE.md`, `cluster.yaml`, doc de categoría, diagramas de la web pública |
 | «pasa la revisión de alineación» (al cerrar un cambio de arquitectura/módulo/flujo) | `.meshkore/docs/ops/zaelar-alignment-review.md` — código ↔ contexto ↔ docs ↔ diagramas ↔ roadmap ↔ tests cuentan la MISMA historia |
 | «pasa el workflow de widgets» (cambio del SISTEMA de widgets) | `.meshkore/docs/ops/zaelar-widgets-workflow.md` — «qué tocaste → qué actualizar»; un cambio trivial dentro de un widget no lo dispara |
 | «añade un conector de X» / «haz un widget de Y» | `.meshkore/docs/ops/zaelar-new-widget-or-connector-workflow.md` — las cuatro decisiones previas, los 14 puntos de cableado que fallan VACÍOS, el último metro, declararlo HECHO, diez traps medidos |
@@ -498,7 +496,7 @@ gitignoreada, en la lengua del operador).
 memoria real si hay fixture; todo test nuevo bajo `tests/<suite>/`; lo que cruce memoria + conversación +
 widgets/workers se cierra además con `-m tests run journey --no-open`.
 
-> Los diagramas de arquitectura viven como contenido público en `web/src/pages/technology/*.astro` (foto curada,
+> Los diagramas de arquitectura viven como contenido público en zaelar.com/technology, maintained outside this repo (foto curada,
 > NO espejo del código); `frontend/pages/architecture.html` se retiró el 2026-07-24. Si tocas topología, modelo o
 > proveedor, actualízalos a mano; la fuente detallada sigue siendo `.meshkore/docs/architecture/`.
 
@@ -602,28 +600,21 @@ Esa regla se ha pagado ya cinco veces (328 citas de prueba en su agenda, su rout
 motor reiniciado); cada vez el remedio fue «que un fichero se acuerde», y por eso vive en el `conftest.py` raíz
 y no en cada test.
 
-## Deploy (producción)
+## Deploy
 
-Ver `.meshkore/docs/deploy/zaelar-deploy.md` — instrucciones completas para Fly.io + CloudFlare TURN.
-Estado actual: **sin deploy en prod** (destruido por ahorro de costes).
+Container image: `Dockerfile`. Hosting a deployment is out of scope for this repo.
 
 ## Frontera PÚBLICO/PRIVADO — este repo es público (fair-code) y se lee desde fuera
 
 **`engine/` es el repo PÚBLICO.** Su código y su `.meshkore/` los lee cualquiera que clone zaelar. Por eso:
 
-- **NUNCA se documenta aquí nada de la NUBE ni del NEGOCIO**: control-plane, provisioner, facturación, backoffice,
-  tablas de la base central, precios, políticas de las cuentas de pago, decisiones de privacidad del producto
-  comercial. Eso vive en el `.meshkore/` de la RAÍZ del workspace (repo privado aparte) — ver `../CLAUDE.md`.
+- **NUNCA se documenta aquí nada de la NUBE ni del NEGOCIO**: how a hosted deployment is operated, billed or
+  priced, and its deployment policy, live in a private repo — not here.
 - **El código puede tener costuras que un despliegue use y otro no** (una URL de servicio en una variable de
   entorno, un id de usuario que venga del entorno). Lo que NO puede es NARRAR para qué sirven en un producto de
   pago. La regla práctica: describe el MECANISMO («si `X_URL` está configurada, avisa a ese servicio; sin ella es
-  un no-op»), nunca el PRODUCTO («el provisioner inyecta esto en la Machine de cada cliente»).
+  un no-op»), nunca el PRODUCTO («un despliegue gestionado usa esto para…»).
 - Ante la duda, la pregunta es: *¿esto le sirve a alguien que se auto-hospeda?* Si la respuesta es no, no va aquí.
-
-⚠️ **Deuda conocida (2026-08-09):** este `CLAUDE.md` y varios docs de `.meshkore/` arrastran menciones a
-`INI-019`/`INI-020`, control-plane, provisioner y backoffice de ANTES de fijar esta regla, y el repo **ya está
-publicado**, así que el historial de git las conserva aunque se limpien hoy. Limpiar lo que queda es una tarea
-abierta (`V2-091`); a partir de ahora, no añadir más.
 
 ## Hard rules
 
@@ -681,7 +672,7 @@ abierta (`V2-091`); a partir de ahora, no añadir más.
 - No editar `.meshkore/roadmap/state.json` a mano — es un artefacto generado.
 - No crear carpetas `docs/` ad-hoc — toda la documentación va en `.meshkore/docs/<categoría>/`.
 - **El CORE de zaelar NO debe requerir Docker.** El servidor LiveKit corre desde el binario nativo `livekit-server`
-  (`make install-livekit`); Docker es solo un fallback opcional. El **sistema de testing (INI-013) SÍ puede usar
+  (`make install-livekit`); Docker es solo un fallback opcional. El **sistema de testing SÍ puede usar
   Docker** — esa es la única parte donde Docker es aceptable.
 
 

@@ -97,7 +97,7 @@ import time
 #
 # V2-562 — a cloud Volume mounts EMPTY, and `workspace.root()` only ever answered WHERE a path lives, never
 # whether it EXISTS. On a self-host clone git ships `config/`, `credentials/` and `i18n/`, so no writer ever
-# needed a mkdir; measured on a real account 2026-09-03, `/data` held only `memory/` and `widgets/` — the two
+# needed a mkdir; `/data` held only `memory/` and `widgets/` — the two
 # writers that happen to makedirs — and the other three were simply absent. Every write into them raised
 # inside code that treats persistence as best-effort, so it was caught, logged at WARNING and stepped over:
 # the visible symptom was the language onboarding running again on EVERY cold boot, because `settings.json`
@@ -106,8 +106,7 @@ import time
 #
 # And the other half of the same class: a work session is usually born LAZILY, from whatever thread emits the
 # first event, and only the EXPLICIT door announced itself. So the central activity registry only ever
-# received `event="end"` — and closing a row nothing opened updates nothing. `zaelar_user_sessions` held zero
-# rows for every account since the table was created, while every Machine's `POST /session` returned 200.
+# received `event="end"` — and closing a record nothing opened updates nothing, so no session was ever recorded.
 #
 VERSION = "3.41"
 

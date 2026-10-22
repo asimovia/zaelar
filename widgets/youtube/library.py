@@ -2,8 +2,8 @@
 # youtube/library — the widget's OWN library: followed channels, watch history, preferences and saved lists.
 #
 # Operator's standing rule (2026-09-06): "our core, our engine, our memory, our widget are the ones who have
-# control". None of this depends on a connector. The account connector, when its door can finally open
-# (INI-032), only EXTENDS what lives here — it never becomes the source of truth, and nothing here degrades
+# control". None of this depends on a connector. The account connector, when its door can finally open,
+# only EXTENDS what lives here — it never becomes the source of truth, and nothing here degrades
 # when it is absent, because nothing here ever asks it anything.
 #
 # It lives beside data.py rather than inside it for the reason the architecture ratchet exists: data.py was
@@ -49,7 +49,7 @@ def seed_fields() -> dict:
         # pointer lives here; the pages themselves are cached per channel outside the state (channels.py).
         "channel_view": {},
         # What was actually PLAYED, recorded by the player itself. This is the piece the YouTube API can
-        # never give us (watchHistory has returned empty for every account since 2016, INI-032 §6): we own
+        # never give us (watchHistory has returned empty for every account since 2016): we own
         # it precisely BECAUSE we are the ones playing the video.
         "history": [],            # [{videoId, title, channel, url, played_at, quality}]
         # Enforceable preferences (see _ENFORCEABLE) — the filters the operator sets by voice.

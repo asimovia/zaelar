@@ -29,7 +29,7 @@ def test_defaults(v2):
     # 2026-08-15) measured exactly what the default comment required to promote it — “run it for 3 rounds and if it
     # holds up, switch to it.” Pro held up (41/42, the same as the broker), and direct Flash did NOT (38/42, it failed
     # `show widget` 3 out of 3 times: that is not variance, it is a defect). The cost: a voice turn goes from ~0.5 to
-    # ~1 Energy, and that was the missing PRICING decision, not another measurement.
+    # ~1 Energy — a cost trade-off, not another measurement.
     # Primary-model history: an Anthropic model via broker (V2-034, 2026-07-12) → deepseek-v4-flash via broker (2026-08-14) →
     # this. The previous two remain valid broker options.
     # V2-750 — leído DE la tabla. Este literal ha tenido que editarse en cada promoción (broker →

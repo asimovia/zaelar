@@ -24,10 +24,6 @@ build, so when such a request carries a session it is still handed to the proces
 
 The decision itself (`decide`) is a pure function of five inputs, so the interesting part is testable
 without a server, a network or a clock.
-
-Before 2026-08-13 the middleware this replaces called `call_next()` on all four of the refusal paths
-above. That was not a theoretical weakness: a plain unauthenticated GET to the shared hostname
-returned tenant data.
 """
 from __future__ import annotations
 
@@ -43,7 +39,7 @@ from loguru import logger
 # `/m` is the MOBILE shell (V2-124) — a second HTML file, held by nobody, identical in every process, exactly
 # like `/`. `/manifest.webmanifest` and `/sw.js` are its PWA plumbing and must be served from the root: a
 # manifest's scope has to be reachable from where it lives, and a service worker can only control its own
-# directory downwards. All three are build constants; adding them opens no tenant data, which is the only
+# directory downwards. All three are build constants; adding them opens no account data, which is the only
 # question this allowlist asks.
 PUBLIC_EXACT = frozenset({
     "/", "/healthz", "/favicon.ico",
@@ -106,7 +102,7 @@ def decide(
             return REPLAY, "session_owned_elsewhere"
         return SERVE, "public_path"
 
-    # A process that cannot ask "whose session is this?" cannot answer a tenant request either. This
+    # A process that cannot ask "whose session is this?" cannot answer an account request either. This
     # used to serve the request; a missing environment variable was silently the most permissive
     # configuration available.
     if not resolver_configured or not mine:

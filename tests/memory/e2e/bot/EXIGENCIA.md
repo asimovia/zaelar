@@ -11,7 +11,7 @@
 ## Cuándo se dispara
 
 En cada iteración autónoma, tras correr la tanda: si `len(CASES)` ha cruzado un múltiplo de 50 desde la última vez
-→ **antes de seguir**, ejecuta este audit y escribe su veredicto (5-8 líneas) en `INI-013` con fecha. Si no lo ha
+→ **antes de seguir**, ejecuta este audit y escribe su veredicto (5-8 líneas) en el registro del tester con fecha. Si no lo ha
 cruzado, sigue con la iteración normal.
 
 ## La checklist (respóndela por ESCRITO, sin autocomplacencia)
@@ -35,7 +35,7 @@ cruzado, sigue con la iteración normal.
 
 4. **¿CAMBIO DE APPROACH?** ¿El harness sigue siendo fiel al camino real (`_brain_view` = lo que ve el FlashBrain,
    sin LLM)? ¿Hay un tipo de fallo que el harness ACTUAL no puede ver (p. ej. abstención query-time, que es
-   comportamiento del LLM → no del membot → va al tester en vivo INI-013)? Si un test no puede afirmar algo real,
+   comportamiento del LLM → no del membot → va al tester en vivo)? Si un test no puede afirmar algo real,
    NO lo escribas: documenta el límite.
 
 5. **¿BUSCAR MÁS MUNICIÓN?** Cada 100 casos (o si la checklist huele a agotamiento de ideas): **WebSearch** de
@@ -51,7 +51,7 @@ cruzado, sigue con la iteración normal.
 7. **HIGIENE**: pytest verde (`tests/test_memory_*.py` + `test_memory_agent.py`). `--coverage` actualizado en
    `TAXONOMY.md`. Anclas inequívocas (marker/want único del dato objetivo, sin colisiones). Cada caso con su `dim`.
 
-## Veredicto (formato para pegar en INI-013)
+## Veredicto (formato para pegar en el registro del tester)
 
 ```
 ### Audit de exigencia @N casos — <fecha>

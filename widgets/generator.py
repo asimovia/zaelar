@@ -370,7 +370,7 @@ def _run_agent_once(prompt: str, token: str = "", *, target: str) -> tuple[bool,
         cls = classify(reason)
         logger.warning(f"widget-agent: claude exited {p.returncode} [{cls}]: {reason[:300]}")
         return False, f"agent failed [{cls}]: {reason[:240]}", tier
-    # Energy metering (2026-08-05, closes the gap noted in INI-019 addenda): `--output-format json` already includes
+    # Energy metering (2026-08-05): `--output-format json` already includes
     # `usage`/`model`, with the same shape as the stream-json "result" metered for interactive Brain Workers (see
     # nucleo/workers/session.py). Previously stdout was discarded unread, so widget generation/modification never
     # charged Energy despite costing real tokens. Best-effort: non-JSON stdout or missing `usage` must not break a
@@ -488,8 +488,8 @@ def _folder_ref(d: str) -> str:
     """The target folder as the headless agent must address it: ABSOLUTE, always. The agent's cwd is a private
     scratch directory since V2-601 T-04 (it used to be the repo root — see `_run_agent`), so a relative path
     would resolve against a folder that holds nothing. Before V2-515 the prompts hardcoded `widgets/<id>/`,
-    which silently pointed the agent at ENGINE SOURCE whenever the real target was the generated root — in the
-    cloud that meant every generated widget landed in the ephemeral checkout instead of the Volume."""
+    which silently pointed the agent at ENGINE SOURCE whenever the real target was the generated root — with a
+    mounted workspace that meant every generated widget landed in the ephemeral checkout instead of the volume."""
     return os.path.realpath(d)
 
 

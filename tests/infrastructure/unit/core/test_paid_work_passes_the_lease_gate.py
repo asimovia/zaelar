@@ -1,10 +1,9 @@
 """Paid work asks the energy lease BEFORE it starts (V2-785).
 
 THE FAILURE. `energy_lease.allowed()` — «may this machine start something that costs money?» — existed from
-the day the lease was written, and nothing in production asked it: every paid call started first and was
-subtracted afterwards. Measured 2026-10-22 on a hosted deployment: a brand-new account with nothing to lease,
-that nobody had opened, spent an LLM call (~52 s after its machine was created) and two web searches (~95 s)
-and went negative. On top of that, a denied boot lease never stopped anything: the denial ran inside the very
+the day the lease was written, and no paid path asked it: every paid call started first and was subtracted
+afterwards. So an engine with nothing to lease, that nobody had opened, could still spend an LLM call and two
+web searches at start-up and go negative. On top of that, a denied boot lease never stopped anything: the denial ran inside the very
 request `_blow_fuse` exempts as «still asking».
 
 WHAT IS PINNED HERE:

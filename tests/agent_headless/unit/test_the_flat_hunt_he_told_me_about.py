@@ -13,7 +13,7 @@ where the pieces have to agree about the same task, and nothing was asserting th
      kind that runs on every turn without being asked — can reach it.
   4. EIGHT MORE SEARCHES HAPPEN. The sheet cap prunes his report off disk. This is not a hypothetical: it
      is the defect the operator reported, and before V2-728 the report was simply gone at this line.
-  5. Weeks later: «enséñame lo del piso que te dije». No model narrows it (INI-027 §7), and what comes back
+  5. Weeks later: «enséñame lo del piso que te dije». No model narrows it (the connector-catalogue rule), and what comes back
      is the report — kept, rejected and criteria — rebuilt from the task.
 
 WHY HERE and not in `tests/use_cases/`. That suite drives a LIVE engine with real models over LiveKit, so it

@@ -22,7 +22,7 @@ la mitad de este documento es una lista de sitios que tocar, no de código que e
 | cambiar el SISTEMA de widgets (contrato de manifest, despacho, storage, gate) | `zaelar-widgets-workflow.md` |
 | añadir una superficie NATIVA (panel, pestaña del muro, overlay de sistema) | `zaelar-native-surface-workflow.md` |
 | cambiar un widget que ya existe, dentro de su carpeta | su `notes.md` y nada más |
-| cerrar cualquier tanda que cambie comportamiento | `../../../.meshkore/docs/ops/zaelar-initiative-closure.md` (raíz) |
+| cerrar cualquier tanda que cambie comportamiento | `.meshkore/docs/conventions/closure-protocol.md` |
 
 ---
 
@@ -239,8 +239,8 @@ La regla, entonces:
    curada `_STDLIB_EXEMPT` **con su motivo escrito**, y deja el import DIFERIDO dentro de las funciones para
    que el import del módulo —y por tanto el catálogo, y por tanto cada prompt— no pague `httpx`.
 6. **Cada widget escribe solo en `widgets/_data/<su-id>/`.** Nunca fuera.
-7. **Frontera público/privado**: `engine/` es PÚBLICO. Aquí se describe el MECANISMO; los precios, las
-   políticas de cuenta y lo que la nube puede o no contratar van al `.meshkore/` de la RAÍZ.
+7. **Frontera público/privado**: `engine/` es PÚBLICO. Aquí se describe el MECANISMO; deployment-specific
+   policy is out of scope for this repo.
 
 ---
 
@@ -340,8 +340,7 @@ Esto es lo que se salta cuando la parte técnica ya funciona y parece que se ha 
    (`.meshkore/modules/connectors/logs/<YYYY-MM>/T-NNN-<slug>.md`, gitignoreada): la lista es lo que se lee
    para saber qué hay; la bitácora es lo único que guarda las PALABRAS del operador, lo MEDIDO antes de
    tocar nada y los COMMITS. `ls` antes de coger un número `T-NNN` — la numeración es GLOBAL entre módulos.
-5. Si la pieza cruza a la nube o al negocio, **parte en dos**: el mecanismo aquí, el producto en
-   `.meshkore/roadmap/initiatives/INI-xxx` de la RAÍZ.
+5. Si la pieza tiene una parte que no es del motor, aquí solo va el mecanismo.
 
 ---
 
@@ -452,7 +451,7 @@ TESTS
 DOCS
 [ ] doc de módulo   [ ] iniciativa V2-NNN (número reservado)   [ ] CLAUDE.md   [ ] notes.md
 [ ] fila en zaelar-connectors-inventory.md   [ ] bitácora del módulo (T-NNN, número global)
-[ ] mecanismo aquí / producto en la raíz privada
+[ ] solo mecanismo aquí
 
 CIERRE
 [ ] add+commit en UN comando, con pathspec · push

@@ -28,7 +28,7 @@ anti-alucinación (AA), validez temporal/as-of (AB), identidad cross-sesión (AC
 ./.venv/bin/python -m tests.memory.e2e.bot.runner --catalog         # regenera CATALOG.md
 ```
 
-**DOS corpus (auditoría 2026-07-14):** `--corpus v1` (def) = la GOLD histórica `cases.py` (persona Ricart, 1032);
+**DOS corpus (auditoría 2026-07-14):** `--corpus v1` (def) = la GOLD histórica `cases.py` (the operator persona, 1032);
 `--corpus v2` = el corpus NUEVO `cases2.py` (persona Amaia Etxeberria de Logroño — genericidad/multi-operador +
 las 4 dimensiones nuevas AD–AG: señal `change` multiidioma, colapso de linajes por alias de slot, escritura de
 workers `remember_external`, y `heal_slots`). BD/progreso/catálogo AISLADOS por corpus → correr uno no pisa al
@@ -42,7 +42,7 @@ lánzala con `python -u` (unbuffered) para ver el progreso, y vigila que no se c
 ## El CICLO (loop autónomo `/loop 10m`, estrategia AVANZAR-PRIMERO)
 
 Cada iteración (10 min): **guard anti-solape** (`pgrep -f memory.bot.runner`; solo UN runner) → avanza una ola de
-80 (`--next 80`) → **triaja SOLO los ❌ de esa ola** → `pytest -k memory` verde → commit → entrada en INI-013. Al
+80 (`--next 80`) → **triaja SOLO los ❌ de esa ola** → `pytest -k memory` verde → commit → entrada en la bitácora del tester. Al
 llegar a `done_upto ≥ corpus` entra en **MODO GOLD**: `--fresh --range 0 <N>` en background, triaja su report,
 RE-lanza, hasta **0 ❌** → entregables + PARA el loop.
 
@@ -84,7 +84,7 @@ Distinguir bien es el corazón del ciclo: un bug se arregla en código; un flaky
    (git log --since). Si falta, añadir el escenario ANTES.
 2. Lanzar el loop `/loop 10m <prompt del ciclo>` (rama dedicada `feat/memoria-<algo>`). Avanzar-primero.
 3. Al cerrar la GOLD en verde: archivar el report en `resultados/<fecha>-ciclo-1000/`, regenerar la tabla HTML
-   (`~/.meshkore/tmp/zaelar-ciclo-1000-memoria.html`), documentar en INI-013, y **revisión de alineación**.
+   (`~/.meshkore/tmp/zaelar-ciclo-1000-memoria.html`), documentar en la bitácora del tester, y **revisión de alineación**.
 
 ## Artefactos de la corrida 2026-07-12
 
@@ -94,4 +94,4 @@ Distinguir bien es el corazón del ciclo: un bug se arregla en código; un flaky
   (operación) · backstop de salud (fisioterapia) · backfill de conceptos al grafo · descarte determinista de relleno
   · backstop de ubicación habitual de objetos · unforget con fallback token-AND · eviction protege hechos salientes
   (SOTA) · backstop de perfil durable biográfico · forget/unforget unen contiguo+token-AND.
-- Bitácora por ola: INI-013 (§ Ciclo de 1000, 2026-07-12).
+- Bitácora por ola: la del tester (§ Ciclo de 1000, 2026-07-12).

@@ -247,7 +247,7 @@ def active_sessions() -> list[dict]:
             # the hot detail to the row in `tasks`, and a relay carries the same one as its parent.
             "uid": str(getattr(r, "uid", "") or ""),
             # V2-530 — the NAME, beside the brief and never instead of it: `goal` still carries the
-            # operator's own words (dedup compares them, the Master audits them) and `title` is what a
+            # operator's own words (dedup compares them, observability audits them) and `title` is what a
             # human reads or hears. Falls back to the brief, so a consumer can use it unconditionally.
             "title": _sheets.title_of(r),
             "phase": r.phase, "status": r.status, "age_s": int(now - r.started), "paused": r.paused,
@@ -816,12 +816,11 @@ async def dispatch(task: "Task") -> str:
 def _merge_dedup_flow(ctx: dict, dup: str) -> bool:
     """An escalation was just absorbed as a refinement of the live session `dup` — which is PROOF, not a guess,
     that the two are the same task (`find_duplicate` demands 60% content-word overlap with its goal). Fuse this
-    turn's flow into the live task's so the master paints ONE chronological thread (V2-123). Returns True when the
+    turn's flow into the live task's so the observability viewer paints ONE chronological thread (V2-123). Returns True when the
     caller must NOT emit its own `flow/end`.
 
     Why the close is skipped once merged: the reader folds an absorbed flow into its titular and a close counts for
-    the COMBINED row (`cloud/backoffice/src/flowAttribution.js::_absorb` sums `ended_events` — "closed if EITHER
-    closed", correct when both halves are turns of one sentence). Closing here would therefore mark a task that is
+    the COMBINED row (it sums `ended_events` — "closed if EITHER closed", correct when both halves are turns of one sentence). Closing here would therefore mark a task that is
     still working as finished and drop it off the board — losing sight of live work, which is worse than the stray
     open flow this close exists to prevent. The live session's own end (`_run_session`'s finally block) owns it,
     the same rule as everywhere else: the flow belongs to whoever is still working.

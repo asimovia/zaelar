@@ -24,9 +24,8 @@ import urllib.request
 from loguru import logger
 
 # Last-resort fallback (if `config §memory` cannot be read). Must match the default in
-# `config/v2.py §memory`. CLOUD: the provisioner has injected OPENAI_API_KEY since V2-501 (embeddings), so
-# the OpenAI titular serves there too — the 2026-08-09 incident (an OpenAI titular failing SILENTLY in a
-# cloud with no key) predates both that secret and the credential-gated ladder.
+# `config/v2.py §memory`. The OpenAI titular only serves when OPENAI_API_KEY is present; the ladder is
+# credential-gated, so a deployment without that key falls through to the next rung.
 # Each entry: (base_url, model, disable_thinking). `disable_thinking` is a PER-TASK decision, not inferred
 # from the endpoint — see the routing policy note below `_ENDPOINTS` in `nucleo/provider_keys.py`. Getting this
 # wrong is a real correctness bug, not just a style choice: §12.3/§12.4 of `zaelar-model-benchmarks.md` crowned

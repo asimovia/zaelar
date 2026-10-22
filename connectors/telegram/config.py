@@ -1,5 +1,5 @@
 #
-# config.py — Telegram connector knobs (INI-015). Everything through .env (gitignored); sane defaults.
+# config.py — Telegram connector knobs. Everything through .env (gitignored); sane defaults.
 #
 # Telegram = USERBOT with Telethon (operator's PERSONAL account), NOT the Bot API — the only way to read personal
 # chats. Credentials from my.telegram.org (TG_API_ID + TG_API_HASH). The classifier is shared

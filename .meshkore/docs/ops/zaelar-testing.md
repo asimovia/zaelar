@@ -14,7 +14,6 @@
 El bot se prueba **solo, sin micrófono humano**: un agente **tester** (`tests/voice/e2e/agent/`) se une a la sala LiveKit como 2º
 participante, HABLA por TTS y ESCUCHA por STT; un **JUEZ** (GLM-4.6 vía Z.AI, fallback DeepSeek) evalúa el
 comportamiento OBSERVABLE (acciones de frontend, tags del cerebro, escaladas, latencias) leyendo `GET /events`.
-Detalle del arnés: **INI-013** (`.meshkore/roadmap/initiatives/INI-013-voice-tester.md`).
 
 > **Entrada unificada + visor realtime (V2-077)** — `./.venv/bin/python -m tests run <suite>` ejecuta memoria,
 > agent-headless, voz, browser, conectores, cluster o infraestructura con el mismo contrato. En local abre
@@ -255,7 +254,7 @@ El contrato completo vive en `engine/tests/README.md`; el nodo **7.53** vigila a
 - **Un escenario suelto**: `./.venv/bin/python -m tests run voice --case voice::scenario::<id> --no-open`
   (acción canónica observable), o directamente
   `./.venv/bin/python -m tests.voice.e2e.agent.run --scenario <id> --no-open --hold 0` para diagnosticar el arnés.
-- **Loop autónomo test→fix cada 15 min** (cron de sesión): ver INI-013 §"Cron test→fix loop" (`cron_tick.sh` +
+- **Loop autónomo test→fix cada 15 min** (cron de sesión): ver la bitácora del tester §"Cron test→fix loop" (`cron_tick.sh` +
   prompt del cron). Cada disparo prueba UN caso, el juez puntúa, y el agente ARREGLA el código si hay bug real.
 
 Requisitos: zaelar UP (Paso 0) + claves del tester en `.env`/`.meshkore/credentials/tester.env`

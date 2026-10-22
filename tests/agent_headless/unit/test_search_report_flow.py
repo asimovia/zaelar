@@ -196,7 +196,7 @@ def test_entering_a_real_site_still_goes_to_the_browser():
 ])
 def test_a_widget_named_as_a_destination_is_not_code(text, is_create):
     """A travel investigation (ferry+hotel+restaurant) ended up in the WIDGET GENERATOR, writing the code
-    for a new `prepara-ricart-viaje` widget instead of searching. Sole cause: the escalation ended with «Entrega
+    for a new `prepara-viaje` widget instead of searching. Sole cause: the escalation ended with «Entrega
     el resultado MONTADO en el widget results», and `mont\\w*` is a creation verb with `widget` nine characters away.
 
     In other words, asking for delivery IN THE RESULTS SHEET diverted the task to the generator — and the results

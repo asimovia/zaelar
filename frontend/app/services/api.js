@@ -37,7 +37,7 @@ export async function iceServers() {
   return servers;
 }
 export const sttMode = () => fetch("/api/stt-mode").then(json);
-// LiveKit engine (INI-012): fetch a room-join token {token, url, room}. Carries `ok` (the HTTP status) alongside
+// LiveKit engine: fetch a room-join token {token, url, room}. Carries `ok` (the HTTP status) alongside
 // the body so a caller can tell a real token apart from a refusal (409 `{error:"engine_stopped"}` while the ⏻
 // global switch is off, see server/livekit_api.py::token()) — the body alone has no `token` either way, so
 // checking for its mere presence would silently try to connect a room with `token: undefined`.

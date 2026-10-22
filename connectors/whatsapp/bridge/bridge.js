@@ -29,7 +29,7 @@ import { randomBytes, createHash } from 'crypto';
 import { execSync } from 'child_process';
 import { tmpdir } from 'os';
 import qrcode from 'qrcode-terminal';
-import QRCode from 'qrcode';  // ZAELAR-PATCH (INI-014): render the pairing QR as a data-URI PNG for the web widget
+import QRCode from 'qrcode';  // ZAELAR-PATCH: render the pairing QR as a data-URI PNG for the web widget
 import { matchesAllowedUser, parseAllowedUsers } from './allowlist.js';
 
 // Parse CLI args
@@ -70,7 +70,7 @@ try {
     .slice(0, 16);
 } catch {}
 const PAIR_ONLY = args.includes('--pair-only');
-const WHATSAPP_MODE = getArg('mode', process.env.WHATSAPP_MODE || 'self-chat'); // "bot" | "self-chat" | "observe" (ZAELAR-PATCH INI-014)
+const WHATSAPP_MODE = getArg('mode', process.env.WHATSAPP_MODE || 'self-chat'); // "bot" | "self-chat" | "observe" (ZAELAR-PATCH)
 const ALLOWED_USERS = parseAllowedUsers(process.env.WHATSAPP_ALLOWED_USERS || '');
 const DEFAULT_REPLY_PREFIX = '⚕ *Hermes Agent*\n────────────\n';
 const REPLY_PREFIX = process.env.WHATSAPP_REPLY_PREFIX === undefined
@@ -247,7 +247,7 @@ async function groupSubject(chatId) {
   } catch { return ''; }
 }
 let connectionState = 'disconnected';
-let currentQR = null;  // ZAELAR-PATCH (INI-014): latest pairing QR as a data-URI PNG (null once connected)
+let currentQR = null;  // ZAELAR-PATCH: latest pairing QR as a data-URI PNG (null once connected)
 
 async function startSocket() {
   const { state, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
@@ -279,7 +279,7 @@ async function startSocket() {
       console.log('\n📱 Scan this QR code with WhatsApp on your phone:\n');
       qrcode.generate(qr, { small: true });
       console.log('\nWaiting for scan...\n');
-      // ZAELAR-PATCH (INI-014): also expose the QR as a data-URI PNG so the zaelar
+      // ZAELAR-PATCH: also expose the QR as a data-URI PNG so the zaelar
       // widget can render it in the canvas (the operator scans it there, not in a terminal).
       QRCode.toDataURL(qr, { margin: 1, width: 320 })
         .then((uri) => { currentQR = uri; })
@@ -304,7 +304,7 @@ async function startSocket() {
       }
     } else if (connection === 'open') {
       connectionState = 'connected';
-      currentQR = null;  // ZAELAR-PATCH (INI-014): clear the QR once paired
+      currentQR = null;  // ZAELAR-PATCH: clear the QR once paired
       console.log('✅ WhatsApp connected!');
       if (PAIR_ONLY) {
         console.log('✅ Pairing complete. Credentials saved.');
@@ -353,14 +353,14 @@ async function startSocket() {
 
         // ZAELAR-PATCH (V2-546): observe mode now DOES forward our own outgoing messages, tagged
         // `direction:'out'`. Baileys has always delivered them — a message sent from the operator's phone
-        // arrives here as an upsert with fromMe:true — and INI-014 dropped them on the floor, which is why a
+        // arrives here as an upsert with fromMe:true — and the first version of this patch dropped them on the floor, which is why a
         // chat he had already answered elsewhere kept looking pending in the widget. They never reach triage
         // or notification on the Python side: they join the conversation and mark that chat as seen.
         // Groups and status broadcasts stay out, as before (the `continue` above).
         if (WHATSAPP_MODE !== 'observe') {
           // Self-chat mode: only allow messages in the user's own self-chat
           // WhatsApp now uses LID (Linked Identity Device) format: 67427329167522@lid
-          // AND classic format: 34652029134@s.whatsapp.net
+          // AND classic format: 34600000000@s.whatsapp.net
           // sock.user has both: { id: "number:10@s.whatsapp.net", lid: "lid_number:10@lid" }
           const myNumber = (sock.user?.id || '').replace(/:.*@/, '@').replace(/@.*/, '');
           const myLid = (sock.user?.lid || '').replace(/:.*@/, '@').replace(/@.*/, '');
@@ -376,7 +376,7 @@ async function startSocket() {
       // Python gateway, otherwise a pairing-code reply fires in response
       // to arbitrary incoming messages (#8389).
       if (!msg.key.fromMe) {
-        // ZAELAR-PATCH (INI-014): observe mode forwards ALL inbound to /messages
+        // ZAELAR-PATCH: observe mode forwards ALL inbound to /messages
         // (no self-chat filter, no allowlist) so zaelar can triage the full stream.
         // The bridge never auto-replies; suppression of responses is zaelar-side
         // (it simply does not call POST /send in read-only + mark-read mode).
@@ -850,7 +850,7 @@ app.post('/typing', async (req, res) => {
   }
 });
 
-// ZAELAR-PATCH (INI-014): mark conversation(s) as read. Upstream has no such
+// ZAELAR-PATCH: mark conversation(s) as read. Upstream has no such
 // endpoint. Accepts { chatId, messageId, senderId? } or { keys: [{chatId,
 // messageId, senderId?}, ...] } and calls sock.readMessages() with reconstructed
 // Baileys message keys (remoteJid = chatId, id = messageId, participant = senderId
@@ -920,7 +920,7 @@ app.get('/health', (req, res) => {
     queueLength: messageQueue.length,
     uptime: process.uptime(),
     scriptHash: SCRIPT_HASH,
-    qr: currentQR,  // ZAELAR-PATCH (INI-014): data-URI PNG of the pairing QR (null once connected)
+    qr: currentQR,  // ZAELAR-PATCH: data-URI PNG of the pairing QR (null once connected)
   });
 });
 

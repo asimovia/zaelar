@@ -1,8 +1,8 @@
 """Tariffs: the rates Energy is computed from (nucleo/energy_tariffs.py).
 
 THE RATCHET LIVES HERE. The defect these tests exist for was never a wrong number — it was that
-nothing tied a number to the provider actually running, so the STT billed Deepgram's rate while
-Voxtral ran and no test, log or alarm noticed for months. Fixing the number alone would leave the
+nothing tied a number to the provider actually running, so the STT was metered at Deepgram's rate while
+Voxtral ran and no test, log or alarm noticed. Fixing the number alone would leave the
 mechanism that produced it completely intact.
 """
 import json
@@ -13,10 +13,9 @@ import pytest
 
 from nucleo import energy_tariffs
 
-# The provisioner's config is the source of truth for what runs inside every tenant Machine. It is
-# JavaScript, so it is read as TEXT rather than imported — the alternative (a hand-kept copy of the
-# provider names on this side) is the very duplication that caused the drift.
-# parents: [0]=core [1]=unit [2]=infrastructure [3]=tests [4]=engine [5]=el workspace zaelar/
+# A deployment repo checked out alongside the engine may declare the same provider keys; when it does,
+# its config is read as TEXT (it is JavaScript) rather than kept as a hand copy here. Skipped when absent.
+# parents: [0]=core [1]=unit [2]=infrastructure [3]=tests [4]=engine [5]=the parent folder
 _MACHINE_CONFIG = Path(__file__).resolve().parents[5] / "cloud" / "provisioner" / "src" / "machineConfig.js"
 
 
@@ -27,7 +26,7 @@ def _clean(monkeypatch):
     Clearing only the process cache is not enough, as was discovered in the worst possible way:
     `update()` PERSISTS, so the first tests wrote to the operator's real `zaelar.db` and the next one
     read it back — two failures that were not caused by the code but by the test contaminating itself…
-    and, incidentally, dirtying production's memory. A test cannot depend on or write to a shared store.
+    and, incidentally, dirtying a real install's memory. A test cannot depend on or write to a shared store.
     """
     store: dict[str, str] = {}
     from memory import api as memory
@@ -38,8 +37,8 @@ def _clean(monkeypatch):
     energy_tariffs._reset_for_tests()
 
 
-def _cloud_provider(var: str) -> str | None:
-    """The value BASE_PROVIDER_ENV assigns to `var`, straight out of the provisioner's source."""
+def _deployed_provider(var: str) -> str | None:
+    """The value BASE_PROVIDER_ENV assigns to `var` in the deployment config, read as text."""
     if not _MACHINE_CONFIG.exists():
         return None
     for line in _MACHINE_CONFIG.read_text(encoding="utf-8").splitlines():
@@ -54,26 +53,26 @@ def _cloud_provider(var: str) -> str | None:
 
 
 @pytest.mark.parametrize("var,family", [("ZAELAR_STT", "stt"), ("ZAELAR_TTS", "tts")])
-def test_every_provider_the_cloud_actually_runs_has_its_own_rate(var, family):
-    """THE RATCHET. Changing the voice provider in the provisioner without giving it a rate breaks here,
-    at the moment of the change — not three weeks later while looking at an invoice that does not add up.
+def test_every_provider_a_deployment_runs_has_its_own_rate(var, family):
+    """THE RATCHET. Changing the voice provider in a deployment config without giving it a rate breaks
+    here, at the moment of the change — not later, while looking at numbers that do not add up.
 
-    Without this, a new provider falls into the catch-all: it charges, but at a price that is not its own,
-    and the only symptom is a plausible number."""
-    provider = _cloud_provider(var)
+    Without this, a new provider falls into the catch-all: it is metered, but at a price that is not its
+    own, and the only symptom is a plausible number."""
+    provider = _deployed_provider(var)
     if provider is None:
-        pytest.skip(f"{_MACHINE_CONFIG.name} no está disponible (repo cloud aparte)")
+        pytest.skip(f"{_MACHINE_CONFIG.name} is not available (no deployment repo alongside)")
     table = {"stt": energy_tariffs.DEFAULT_STT_USD_PER_MIN,
              "tts": energy_tariffs.DEFAULT_TTS_USD_PER_1K_CHARS}[family]
     assert provider in table, (
-        f"La nube corre {var}={provider!r} y no hay tarifa para él en energy_tariffs.py. "
-        f"Añádela a DEFAULT_{family.upper()}_* — si no, se factura al catch-all y el precio es ficción."
+        f"The deployment runs {var}={provider!r} and energy_tariffs.py has no rate for it. "
+        f"Add it to DEFAULT_{family.upper()}_* — otherwise it is metered at the catch-all rate."
     )
 
 
 def test_an_unknown_provider_is_never_free():
-    """Undercharging silently loses real money; overcharging a rare provider is visible on the next
-    invoice and can be corrected. The default failure mode goes toward the visible side."""
+    """Under-metering is silent; over-metering a rare provider is visible and can be corrected. The
+    default failure mode goes toward the visible side."""
     rate = energy_tariffs.rate_for("stt", "un-proveedor-que-no-existe")
     assert rate > 0
     assert rate == max(energy_tariffs.DEFAULT_STT_USD_PER_MIN.values())
@@ -102,7 +101,7 @@ def test_a_partial_central_table_does_not_erase_what_it_does_not_mention():
 
 def test_an_empty_payload_is_refused_instead_of_wiping_the_rates():
     """A half-migrated, misconfigured, or buggy control plane may return `{}`. Adopting it would leave
-    the Machine billing EVERYTHING at the catch-all rate. Absence is not an instruction."""
+    the engine metering EVERYTHING at the catch-all rate. Absence is not an instruction."""
     energy_tariffs.update({"stt": {"voxtral": 0.010}})
     assert energy_tariffs.update({}) is False
     assert energy_tariffs.update(None) is False
@@ -134,7 +133,7 @@ def test_snapshot_says_where_the_rates_came_from():
 def test_the_lease_carries_the_tariffs(monkeypatch):
     """The coupling that holds everything together: the rates arrive piggybacked on the lease, the only
     periodic call the engine already makes. If someone stops reading them there, the central prices stop
-    arriving and nobody notices — the Machine keeps billing, using those from months ago."""
+    arriving and nobody notices — the engine keeps metering with stale ones."""
     import nucleo.energy_lease as lease
     src = Path(lease.__file__).read_text(encoding="utf-8")
     assert "energy_tariffs.update(" in src, (

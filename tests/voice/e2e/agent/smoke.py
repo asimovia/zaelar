@@ -1,5 +1,5 @@
 """Smoke test of the voice loop: the tester joins zaelar's room, hears the greeting, says one line, and
-transcribes zaelar's reply. Proves the whole LiveKit voice loop end-to-end (and validates INI-012).
+transcribes zaelar's reply. Proves the whole LiveKit voice loop end-to-end.
 
 Run (with zaelar up on the LiveKit engine):  ./.venv/bin/python -m tests.voice.e2e.agent.smoke
 """

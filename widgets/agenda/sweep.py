@@ -22,7 +22,7 @@ from . import gcal
 def keep_list(payload: dict) -> list[dict]:
     """What the operator asked to KEEP, as rows of `{title?, date?, time?}`.
 
-    Three shapes reach here and all three are how a person says it: a plain string («el zerohash»), a list of
+    Three shapes reach here and all three are how a person says it: a plain string («el kickoff»), a list of
     strings, or rows carrying a date and an hour («mañana a las 15h»). Anything unreadable is DROPPED rather
     than guessed — a keeper we cannot read must never silently become a deletion."""
     from . import data as _data
@@ -65,7 +65,7 @@ def kept(m: dict, keep: list[dict]) -> bool:
         if "title" in k and not _data._titles_overlap(k["title"], m.get("title")):
             # `_titles_overlap` and NOT plain containment: it is this widget's OWN judgement (V2-473 round 6,
             # reused by the twin settlement), it drops the filler words a person says, and it is what makes
-            # «el zerohash» find «Gavin/Ricart zerohash blockchain intro». A containment test fails on that
+            # «el kickoff» find «Laura/Alex kickoff product intro». A containment test fails on that
             # exact sentence, which is the one he actually said.
             continue
         return True

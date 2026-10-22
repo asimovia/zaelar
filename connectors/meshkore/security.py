@@ -135,7 +135,7 @@ def _luhn(digits: str) -> bool:
     return chk % 10 == 0
 
 
-# IDENTITY -> redaction. IMPORTANT (Ricart, 2026-07): model/framework NAMES (gpt-4, claude, gemini, hermes, openai,
+# IDENTITY -> redaction. IMPORTANT (operator, 2026-07): model/framework NAMES (gpt-4, claude, gemini, hermes, openai,
 # whisper...) are LEGITIMATE conversation TOPICS in the cluster — agents literally compare models. Blanket-redacting
 # them turned real collaboration into "[redacted]" spam. SELF-disclosure ("I run on X") is governed by the security
 # TRAILER (the brain decides), not a blind regex. Here we only redact cryptographic fingerprints that are NEVER a

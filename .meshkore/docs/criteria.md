@@ -223,17 +223,17 @@ below is the first kind, or it names the mechanism that replaced the second.
   that cannot be built (no key) is replaced at boot, and LiveKit's `FallbackAdapter` switches on a synthesis that
   fails for good (a 402); the meter bills the provider that spoke. — since 2026-09-30 · nodes 2.202 ·
   `voice/engine/speech/tts/__init__.py`.
-- **CRIT-R6 · A hosted account runs no torrent client** unless the deployment sets `ZAELAR_TORRENT_IN_CLOUD=1`;
-  self-host keeps the operator's switch. — since 2026-09-30 · nodes 5.61 · `connectors/torrent/service.py`.
+- **CRIT-R6 · With `ZAELAR_USER_ID` set, no torrent client runs** unless `ZAELAR_TORRENT_IN_CLOUD=1` is also
+  set; without it, the operator's switch decides. — since 2026-09-30 · nodes 5.61 · `connectors/torrent/service.py`.
 - **CRIT-R7 · What leaves the machine is scrubbed.** The feedback evidence never carries `system` events (the
   forensic turn holds the whole prompt) and every string goes through one scrubber (vault detector + token
   shapes; a scrubber failure withholds, never passes); the full prompt capture is scrubbed, under the
-  workspace, capped per session, and OFF in a hosted account unless `ZAELAR_LOG_PROMPTS=1`. — since 2026-10-01 ·
+  workspace, capped per session, and OFF when `ZAELAR_USER_ID` is set unless `ZAELAR_LOG_PROMPTS=1`. — since 2026-10-01 ·
   nodes 7.61 · `observability/scrub.py`, `server/feedback_api.py`, `voice/observer.py`.
-- **CRIT-R8 · Paid work asks the energy lease BEFORE it starts.** With a lease to obey and none usable, a paid
-  call is refused (`OutOfEnergy`, never a provider failure: no relay, no light), the fuse stops the agent, and the
-  out-of-energy state is shown on screen with a link to the account page (`ZAELAR_ACCOUNT_URL`); self-host always
-  admits. A boot probe never pays. — since 2026-10-22 · nodes 8.21, 4.247 · `nucleo/energy_lease.py::check`.
+- **CRIT-R8 · Paid work asks the usage lease BEFORE it starts.** If a usage lease is configured and exhausted, a
+  paid call is refused (`OutOfEnergy`, never a provider failure: no relay, no light), the fuse stops the agent, and
+  the UI shows the exhausted state with a link to `ZAELAR_ACCOUNT_URL` when set; with no lease configured, every
+  call is admitted. A boot probe never pays. — since 2026-10-22 · nodes 8.21, 4.247 · `nucleo/energy_lease.py::check`.
 
 ## 7 · Working here
 

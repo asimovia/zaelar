@@ -59,7 +59,7 @@ async def close_the_turn(*, send, _acc_ms, _amap_ms, _brief, _busy_at_start, _di
         _dialog.record_silent_action(brain._window, _p._say().data_ack)
     del brain._window[:-_p._WINDOW_MAX]
     if not first_turn:
-        brain._turn_count += 1   # INI-018 T6: solo turnos conversacionales reales cuentan para el cap demo
+        brain._turn_count += 1   # only real conversational turns count toward the per-session turn limit
 
     # GATE de los FALLBACKS deterministas: el safety-net de widget y el login-fallback son SOLO para PURA CHARLA
     # en la que el modelo se olvidó de emitir la tag. Si el turno YA se resolvió por CUALQUIER tool (música,

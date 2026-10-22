@@ -89,7 +89,7 @@ export function MenuSheet() {
     ),
 
     h("div", { class: "zm-rows" },
-      // ── ENERGY: the balance is the one number a paying user checks, so it is the first row and it shows the
+      // ── ENERGY: the balance is the one number a hosted user checks, so it is the first row and it shows the
       //    value inline instead of hiding it one tap deep. `known:false` (self-host, or the machine still booting)
       //    renders "—", never a fabricated 0 — a wrong balance is worse than no balance.
       h("div", { class: () => "zm-energy" + (store.energy().cloud ? "" : " hide") },

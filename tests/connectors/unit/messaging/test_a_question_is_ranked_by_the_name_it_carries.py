@@ -1,9 +1,9 @@
 #
 # test_a_question_is_ranked_by_the_name_it_carries.py — demo pass 35 (2026-09-29), E1.
 #
-# «Is there any email from Inworld (inworld.ai) in the inbox? What is it about and when did it arrive?» ranked four
+# «Is there any email from Acme (acme-cloud.example) in the inbox? What is it about and when did it arrive?» ranked four
 # long Telegram posts first: BM25 over the OR of every word adds the filler up, and a busy channel holds plenty
-# of it. The answer said «nothing from Inworld» with the receipt in the archive. The word that names a sender is
+# of it. The answer said «nothing from Acme» with the receipt in the archive. The word that names a sender is
 # found by the sender column and by being uncommon here — no list of filler words, in any language.
 #
 import pytest
@@ -12,7 +12,7 @@ from connectors.messaging import archive
 
 _FILLER = ("Good morning everyone, what is there to say about the market when it did what it did, and any trader "
            "from any desk knows the inbox of the week is about when to arrive and when to leave. ")
-_WORDS = ["there", "any", "email", "from", "inworld", "the", "inbox", "what", "about", "and", "when", "did", "arrive"]
+_WORDS = ["there", "any", "email", "from", "acme", "the", "inbox", "what", "about", "and", "when", "did", "arrive"]
 
 
 @pytest.fixture(autouse=True)
@@ -25,9 +25,9 @@ def isolated_archive(tmp_path, monkeypatch):
     for i in range(20):
         archive.record("email", f"shop{i}@x.invalid", [{"id": f"m{i}", "body": f"Your order {i} from the shop",
                                                           "ts": 2000 + i, "from": f"Shop {i}"}], direction="in")
-    archive.record("email", "invoice@inworld.ai", [{"id": "inw", "ts": 3000, "from": "Inworld AI",
-                                                    "body": "[Asunto: Your receipt from Inworld AI #2281-4878] $25.00"}],
-                   direction="in", chat_name="Inworld AI")
+    archive.record("email", "invoice@acme-cloud.example", [{"id": "inw", "ts": 3000, "from": "Acme Cloud",
+                                                    "body": "[Asunto: Your receipt from Acme Cloud #1000-0001] $9.99"}],
+                   direction="in", chat_name="Acme Cloud")
     yield
     archive.reset()
 
@@ -47,7 +47,7 @@ def test_a_question_that_names_nobody_still_ranks_everything():
 
 
 def test_a_sender_mentioned_in_many_forwards_is_still_a_name(tmp_path, monkeypatch):
-    """Demo pass 46 (2026-09-29), E1: «inworld» had grown to 21 messages — every earlier forward of the receipt
+    """Demo pass 46 (2026-09-29), E1: «acme» had grown to 21 messages — every earlier forward of the receipt
     mentions it — past the question's median word, and stopped being read as a sender, so the receipt was never
     brought to the card. A word in under 2% of the whole archive is not filler whatever the question around it."""
     monkeypatch.setattr(archive, "_db_path", lambda: str(tmp_path / "big.db"))
@@ -56,15 +56,15 @@ def test_a_sender_mentioned_in_many_forwards_is_still_a_name(tmp_path, monkeypat
         archive.record("telegram", "-1", [{"id": f"x{i}", "body": f"market chatter number {i}", "ts": i}], direction="in")
     for i in range(12):
         archive.record("email", "ago@x.invalid", [{"id": f"fw{i}", "ts": 2000 + i,
-                       "body": "Hi Quinn, forwarding the Inworld invoice"}], direction="out")
+                       "body": "Hi Quinn, forwarding the Acme invoice"}], direction="out")
     # the question's other words, each in a handful of messages (as in the real archive: 3-10) — so the median
-    # word sits below the 13 messages that mention Inworld
+    # word sits below the 13 messages that mention Acme
     for w, n in (("yes", 8), ("give", 8), ("sender", 4), ("subject", 10), ("date", 7), ("short", 3)):
         for i in range(n):
             archive.record("email", f"{w}@x.invalid", [{"id": f"{w}{i}", "ts": 4000 + i, "body": f"a note with {w}"}],
                            direction="in")
-    archive.record("email", "invoice@inworld.ai", [{"id": "orig", "ts": 3000, "from": "Inworld AI",
-                   "body": "Your receipt"}], direction="in", chat_name="Inworld AI")
-    words = ["has", "any", "email", "arrived", "from", "inworld", "yes", "give", "sender", "subject", "date", "short"]
-    assert "inworld" in archive._naming_terms(archive._conn(), words)
+    archive.record("email", "invoice@acme-cloud.example", [{"id": "orig", "ts": 3000, "from": "Acme Cloud",
+                   "body": "Your receipt"}], direction="in", chat_name="Acme Cloud")
+    words = ["has", "any", "email", "arrived", "from", "acme", "yes", "give", "sender", "subject", "date", "short"]
+    assert "acme" in archive._naming_terms(archive._conn(), words)
     archive.reset()

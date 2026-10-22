@@ -416,7 +416,7 @@ CREATE TABLE IF NOT EXISTS task_artifacts (
 
 # v7 → v8 (V2-776 D1, 2026-09-27): the LIVE STATE of a worker, durable. Before this the phase, the progress and
 # «when did it last show a sign of life» lived only in RAM (`dispatch._SESSIONS`), so the only thing the pulse,
-# FlashBrain and the Master could read durably was `state` — which read `pending` for a whole run. Written by the
+# FlashBrain and the flow viewer could read durably was `state` — which read `pending` for a whole run. Written by the
 # pulse's 15-second beat, never per event: a row still changes a handful of times a minute, not per second.
 #   · `phase`        the worker's readable phase («mirando results»)
 #   · `progress`     JSON {done, total, pct, note, plan, waiting_on, ask, backend}
@@ -454,7 +454,7 @@ TASKS_INDEXES = [
 # them in sync on every UPDATE, and `tasks` is updated from several places (the dispatcher, the worker, the
 # scheduler); an index that silently drifts is worse here than one extra copy of two short strings. It is what
 # turns «the flat-hunting task I told you about» into ≤5 candidates WITHOUT a model — the lexical half of the
-# rule the operator set in INI-027 §7.
+# operator's rule for candidate search.
 FTS_TASKS = (
     "CREATE VIRTUAL TABLE IF NOT EXISTS fts_tasks "
     "USING fts5(task_id UNINDEXED, title, goal, tokenize=\"unicode61 remove_diacritics 2\")"

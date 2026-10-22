@@ -21,5 +21,5 @@ status: stable
 - **Personal Operating System**: the public positioning (zaelar.com) — one voice agent + a canvas of apps (widgets).
 - **Apps**: where generated widgets are kept; «describe it and it writes the widget» (beta).
 - **MeshKore network**: our own agent network; Zaelar finds free live agents through the **Oracle** (`nucleo/mesh_agents.py`) and talks to peers over **clusters** (`connectors/meshkore/`).
-- **Self-hosted / hosted**: the same engine run locally (`make run`, free, fair-code) or as Zaelar Cloud (one isolated machine per account, browser + PWA).
+- **Self-hosted / hosted**: the same engine run locally (`make run`, free, fair-code) or as the hosted version (see zaelar.com).
 - **PWA** (`frontend/mobile/`): the phone shell, installed from the browser; the voice lives on one device at a time.

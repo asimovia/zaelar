@@ -588,7 +588,7 @@ def stamp_identity(ev: dict) -> dict:
             # 2026-08-16, real finding #2: the `cat` check alone wasn't enough — reloading the browser tab with
             # the agent globally STOPPED (⏻ off, `runstate.stopped()`) still fired ordinary `widget`/`ui` state
             # transitions (cat="widget", not system/pulse), and THOSE self-opened a brand-new "live" session
-            # via `session_id()` below, immediately re-appearing in the backoffice master as "EN CURSO" the
+            # via `session_id()` below, immediately re-appearing in the flow viewer as "EN CURSO" the
             # instant the page was refreshed. “Stopped means stopped” (V2-092) has to mean nothing self-opens a
             # session while stopped, independent of what category the triggering event happens to carry.
             ev.setdefault("sid", _ident.session_info().get("session_id") or "")
@@ -682,7 +682,7 @@ def rotate_session(reason: str = "reset") -> dict:
     try:
         # A reset in front of a STOPPED agent (⏻ off) opens NOTHING — `begin_session` returns `{}` and this
         # returns `{}` too, so the RESET event announces no session rather than a fresh one that would then sit
-        # "EN CURSO" in the master with the agent visibly off (measured 2026-08-31; see `identity.begin_session`).
+        # "EN CURSO" in the flow viewer with the agent visibly off (measured 2026-08-31; see `identity.begin_session`).
         # The blank slate still happens: the log above was already cleared. The next session is born when the
         # operator presses ⏻ ON, which is what “we start with a blank slate” means with a stopped agent.
         if not _ident.begin_session(source=reason, force=True):
@@ -694,7 +694,7 @@ def rotate_session(reason: str = "reset") -> dict:
         return {}
 
 
-# NOTE (INI-012): the Pipecat frame observers (TimelineObserver, AudioProbe) that used to live here were
+# NOTE: the Pipecat frame observers (TimelineObserver, AudioProbe) that used to live here were
 # removed with the Pipecat engine. The pure SSE/event machinery above is engine-agnostic — it's what the
 # LiveKit engine, widgets, connectors, brain and voice_api all consume. Turn/latency + mic-arrival
 # instrumentation now lives in the LiveKit pipeline (voice/engine/pipeline/instrument.py), which calls emit()
@@ -703,6 +703,6 @@ def rotate_session(reason: str = "reset") -> dict:
 
 def _removed_pipecat_observers():  # pragma: no cover
     raise NotImplementedError(
-        "TimelineObserver/AudioProbe were removed with Pipecat (INI-012); "
+        "TimelineObserver/AudioProbe were removed with Pipecat; "
         "instrumentation lives in voice/engine/pipeline/instrument.py"
     )

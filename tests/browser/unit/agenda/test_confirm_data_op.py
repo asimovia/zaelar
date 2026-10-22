@@ -209,8 +209,8 @@ def test_confirm_q_esta_declarada_donde_se_pide_confirmacion():
 # ── V2-693 · «MENOS ESTOS DOS» ES OTRA ACCIÓN, Y LA PREGUNTA DICE CUÁNTAS SE LLEVA ──────────────────────
 
 def test_clear_range_borra_el_tramo_y_conserva_lo_que_el_NOMBRA(agenda):
-    """⚠️ Su orden, 2026-09-14: «limpia todo los items de esta semana, menos lo de mañana a las 15h y el
-    inicio de instituto de lunes». La única herramienta en bloque era `clear_all`, cuyo alcance es TODO y
+    """⚠️ The operator's order (paraphrased): «limpia todo lo de esta semana, menos lo de mañana a las 15h y el
+    taller del lunes». La única herramienta en bloque era `clear_all`, cuyo alcance es TODO y
     para siempre — así que el modelo la eligió y describió un borrado selectivo que esa acción no sabe
     hacer. De haberse confirmado, las dos citas que pidió CONSERVAR se habrían ido igual."""
     from widgets.agenda import data as ag
@@ -219,19 +219,19 @@ def test_clear_range_borra_el_tramo_y_conserva_lo_que_el_NOMBRA(agenda):
     db["meetings"] = [
         {"title": "Dentista", "date": "2026-09-15", "startTime": "17:00", "endTime": "18:00"},
         {"title": "Dentista", "date": "2026-09-16", "startTime": "10:00", "endTime": "11:00"},
-        {"title": "Gavin/Ricart zerohash blockchain intro", "date": "2026-09-15", "startTime": "15:00"},
-        {"title": "Inicio curso instituto", "date": "2026-09-14"},
-        {"title": "Notario", "date": "2026-10-02", "startTime": "17:00"},   # FUERA del tramo
+        {"title": "Laura/Alex northwind platform intro", "date": "2026-09-15", "startTime": "15:00"},
+        {"title": "Taller de pintura", "date": "2026-09-14"},
+        {"title": "Gestoría", "date": "2026-10-02", "startTime": "17:00"},   # FUERA del tramo
     ]
     store.save(ag.WIDGET_ID, db)
 
     r = ag.apply_action("clear_range", {"from": "2026-09-14", "to": "2026-09-20",
                                         "keep": [{"date": "2026-09-15", "time": "15:00"},
-                                                 {"title": "Inicio curso instituto"}]})
+                                                 {"title": "Taller de pintura"}]})
 
     assert r["ok"] and r["result"]["removed"] == 2
     left = sorted(m["title"] for m in ag.load_db()["meetings"])
-    assert left == ["Gavin/Ricart zerohash blockchain intro", "Inicio curso instituto", "Notario"], left
+    assert left == ["Gestoría", "Laura/Alex northwind platform intro", "Taller de pintura"], left
 
 
 def test_un_tramo_NUNCA_toca_lo_de_fuera(agenda):
@@ -248,17 +248,17 @@ def test_un_tramo_NUNCA_toca_lo_de_fuera(agenda):
 
 
 def test_un_keeper_por_TITULO_encuentra_la_cita_aunque_el_nombre_sea_mas_largo(agenda):
-    """«el zerohash» tiene que encontrar «Gavin/Ricart zerohash blockchain intro» — se compara como en el
+    """«el northwind» tiene que encontrar «Laura/Alex northwind platform intro» — se compara como en el
     resto de este widget: sin acentos, sin mayúsculas y por contención."""
     from widgets.agenda import data as ag
     from widgets import store
     db = ag.load_db()
-    db["meetings"] = [{"title": "Gavin/Ricart zerohash blockchain intro", "date": "2026-09-15",
+    db["meetings"] = [{"title": "Laura/Alex northwind platform intro", "date": "2026-09-15",
                        "startTime": "15:00"},
                       {"title": "Dentista", "date": "2026-09-15", "startTime": "17:00"}]
     store.save(ag.WIDGET_ID, db)
-    ag.apply_action("clear_range", {"from": "2026-09-14", "to": "2026-09-20", "keep": "el zerohash"})
-    assert [m["title"] for m in ag.load_db()["meetings"]] == ["Gavin/Ricart zerohash blockchain intro"]
+    ag.apply_action("clear_range", {"from": "2026-09-14", "to": "2026-09-20", "keep": "el northwind"})
+    assert [m["title"] for m in ag.load_db()["meetings"]] == ["Laura/Alex northwind platform intro"]
 
 
 def test_un_keeper_con_HORA_no_salva_el_resto_de_su_dia(agenda):
@@ -288,20 +288,20 @@ def test_the_question_says_HOW_MANY_it_takes_and_WHAT_it_keeps(agenda):
     db = ag.load_db()
     db["meetings"] = [{"title": "Dentista", "date": "2026-09-15", "startTime": "17:00"},
                       {"title": "Consejo", "date": "2026-09-16", "startTime": "10:00"},
-                      {"title": "Zerohash", "date": "2026-09-15", "startTime": "15:00"}]
+                      {"title": "Northwind", "date": "2026-09-15", "startTime": "15:00"}]
     store.save(ag.WIDGET_ID, db)
-    payload = {"from": "2026-09-14", "to": "2026-09-20", "keep": "Zerohash"}
+    payload = {"from": "2026-09-14", "to": "2026-09-20", "keep": "Northwind"}
 
     with speaking("es"):
         q = _human_confirm_question("agenda", "clear_range", payload)
     assert "2 citas" in q, q
-    assert "«Zerohash»" in q, "lo que se conserva se NOMBRA, o no se puede comprobar antes de decir que sí"
+    assert "«Northwind»" in q, "lo que se conserva se NOMBRA, o no se puede comprobar antes de decir que sí"
     assert "permanente" in q.lower() and q.strip().endswith("?")
 
     with speaking("en"):
         q_en = _human_confirm_question("agenda", "clear_range", payload)
     assert "2 appointments" in q_en, q_en
-    assert "Zerohash" in q_en and "permanent" in q_en.lower() and q_en.strip().endswith("?")
+    assert "Northwind" in q_en and "permanent" in q_en.lower() and q_en.strip().endswith("?")
     assert "citas" not in q_en, "the operator asked, out loud, not to be spoken to in Spanish"
 
 
@@ -318,9 +318,9 @@ def test_an_EMPTY_range_says_so_instead_of_asking_permission_for_nothing(agenda)
 def test_una_confirmacion_abierta_no_puede_quedarse_MUDA_bajo_la_frase_del_modelo():
     """⚠️ Medido el 2026-09-14 en su sesión, y es la razón por la que creyó que la agenda se había limpiado.
 
-        él      «limpia todo los items de esta semana, mnos lo de mañana a las 15h y el inicio de instituto»
+        él      «limpia todo los items de esta semana, menos lo de mañana a las 15h y el taller del lunes»
         sistema  data:clear_all (mode=confirm) → abre «¿Vacío la agenda entera? Es permanente.»
-        zaelar  «Clearing this week from your calendar — keeping tomorrow at 15:00 and the school start…»
+        zaelar  «Clearing this week from your calendar — keeping tomorrow at 15:00 and the Monday workshop…»
         (nada se borró, y la pregunta no se dijo NUNCA)
 
     La condición exigía `not spoken_text`, razonando «si el modelo ya dijo algo, ya formuló él la pregunta».

@@ -92,9 +92,9 @@ for (const s of SYSTEM_SURFACES.filter(s => s.phase === "overlay")) {
 try { window.__zaelarPrebootDone?.(); } catch { /* noop */ }
 try { document.getElementById("preboot")?.remove(); } catch { /* noop */ }
 
-// ---- CLOUD profile (paid account): /api/config exposes `cloud_profile` (= ZAELAR_USER_ID set by the
-// provisioner). In cloud the header is reduced to PROFILE + theme (TopBar gates it); in self-host it is false and nothing changes.
-// RETRY (2026-08-13): during a cold START of the account Machine, /api/config returns 503 until
+// ---- CLOUD profile: /api/config exposes `cloud_profile` (= ZAELAR_USER_ID set in the
+// environment). In cloud the header is reduced to PROFILE + theme (TopBar gates it); in self-host it is false and nothing changes.
+// RETRY (2026-08-13): during a cold START of the instance, /api/config returns 503 until
 // FastAPI finishes starting. With one failed attempt, cloud_profile stayed false FOREVER and the header
 // rendered the LOCAL menu in the cloud. Retry until it responds — the actual state prevails. ----
 (async () => {
@@ -103,14 +103,14 @@ try { document.getElementById("preboot")?.remove(); } catch { /* noop */ }
       const cfg = await api.getConfig();
       if (cfg) { store.setCloudProfile(!!cfg.cloud_profile); store.setAccountUrl(cfg.account_url || ""); return; }
     }
-    catch { /* 503 while the Machine starts: retry */ }
+    catch { /* 503 while the instance starts: retry */ }
     await new Promise((r) => setTimeout(r, 2000));
   }
 })();
 
 // ---- ENERGY BALANCE: seeds the top bar's STACK (EnergyGauge.js). Afterwards it lives off SSE (`kind:"energy"`),
 // which brings the new balance with each spend — so it drops live without any polling. Same retry as above, for the
-// same reason: on a cold Machine startup the endpoint is not available yet. ----
+// same reason: on a cold instance startup the endpoint is not available yet. ----
 (async () => {
   for (let i = 0; i < 45; i++) {
     try {
@@ -121,7 +121,7 @@ try { document.getElementById("preboot")?.remove(); } catch { /* noop */ }
         if (e.account_url) store.setAccountUrl(e.account_url);
         return;
       }
-    } catch { /* the Machine is still starting: retry */ }
+    } catch { /* the instance is still starting: retry */ }
     await new Promise((r) => setTimeout(r, 2000));
   }
 })();

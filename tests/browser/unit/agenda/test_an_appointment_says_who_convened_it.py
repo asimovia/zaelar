@@ -1,6 +1,6 @@
 """V2-697 — the appointment card, RENDERED.
 
-The operator opened the detail card for a real invitation — an intro somebody at zerohash convened — and put
+The operator opened the detail card for a real invitation — an intro somebody at another company convened — and put
 it beside Google's own popover for the same event. Ours showed a title, a date, one bare address and a chip
 reading «Confirmed». Google's showed the Meet link, both guests with their answers, who organized it, and
 buttons to say whether he was going.
@@ -59,13 +59,13 @@ def _data(**over):
 
 #: The operator's own event, as the connector stores it after V2-697.
 def _invitation(**over):
-    m = {"title": "Gavin/Ricart zerohash blockchain intro", "date": _d(), "startTime": "15:00",
+    m = {"title": "Laura/Alex northwind platform intro", "date": _d(), "startTime": "15:00",
          "endTime": "15:30", "source": "google", "googleId": "ev1", "googleCalendarId": "primary",
-         "attendees": ["Gavin Hale"],
-         "guests": [{"name": "Gavin Hale", "email": "gavin.hale@example.net",
+         "attendees": ["Laura Vidal"],
+         "guests": [{"name": "Laura Vidal", "email": "laura.vidal@example.net",
                      "rsvp": "accepted", "organizer": True}],
-         "organizer": "Gavin Hale", "selfEmail": "me@x.com", "myRsvp": "needsAction",
-         "meetLink": "https://meet.google.com/cgh-pouq-gje", "status": "confirmed"}
+         "organizer": "Laura Vidal", "selfEmail": "me@x.com", "myRsvp": "needsAction",
+         "meetLink": "https://meet.google.com/abc-defg-hij", "status": "confirmed"}
     m.update(over)
     return m
 
@@ -123,7 +123,7 @@ def test_the_card_offers_the_google_meet_link(_page):
     _open_detail(_page, _invitation())
     link = _page.locator(".agpmeet")
     assert link.count() == 1, "the join link is the thing he asked for first"
-    assert link.get_attribute("href") == "https://meet.google.com/cgh-pouq-gje"
+    assert link.get_attribute("href") == "https://meet.google.com/abc-defg-hij"
     assert link.get_attribute("target") == "_blank"
     assert "noopener" in (link.get_attribute("rel") or "")
 
@@ -144,9 +144,9 @@ def test_the_card_never_offers_a_phone_bridge_or_a_pin(_page):
 
 def test_an_external_invitation_says_WHO_convened_it(_page):
     _open_detail(_page, _invitation())
-    assert "Gavin Hale" in _page.locator(".agpanel").inner_text()
+    assert "Laura Vidal" in _page.locator(".agpanel").inner_text()
     rows = _page.locator(".agprow").all_inner_texts()
-    assert any("Gavin Hale" in r and ("invit" in r.lower()) for r in rows), \
+    assert any("Laura Vidal" in r and ("invit" in r.lower()) for r in rows), \
         "«a veces es una invitación externa» — the card has to say so"
 
 
@@ -160,12 +160,12 @@ def test_an_appointment_WE_created_does_not_name_an_organizer(_page):
 
 def test_each_guest_is_listed_with_the_answer_they_gave(_page):
     _open_detail(_page, _invitation(guests=[
-        {"name": "Gavin Hale", "email": "g@z.com", "rsvp": "accepted", "organizer": True},
+        {"name": "Laura Vidal", "email": "g@z.com", "rsvp": "accepted", "organizer": True},
         {"name": "Marta", "email": "m@z.com", "rsvp": "declined"},
         {"name": "Luis", "email": "l@z.com"},
     ]))
     names = _page.locator(".agpgn").all_inner_texts()
-    assert names == ["Gavin Hale", "Marta", "Luis"]
+    assert names == ["Laura Vidal", "Marta", "Luis"]
     marks = _page.locator(".agpgm").evaluate_all("els => els.map(e => e.className)")
     assert marks == ["agpgm accepted", "agpgm declined", "agpgm unknown"], \
         "an answer Google did not report reads as unknown, never as a yes"
@@ -177,7 +177,7 @@ def test_each_guest_is_listed_with_the_answer_they_gave(_page):
 def test_your_own_answer_and_theirs_are_two_separate_statements(_page):
     """The card showed «Confirmed» over an invitation he had merely been sent, because `status` carried HIS
     responseStatus under a label about the other party."""
-    _open_detail(_page, _invitation())                          # he has NOT answered; Gavin has accepted
+    _open_detail(_page, _invitation())                          # he has NOT answered; Laura has accepted
     chips = _page.locator(".agpstate").all_inner_texts()
     assert len(chips) == 2, "his answer and theirs are two facts, not one"
     joined = " · ".join(chips).lower()
@@ -225,7 +225,7 @@ def test_an_appointment_nobody_invited_him_to_offers_no_rsvp(_page):
 
 # ── a proposal is a QUESTION, not an entry ──────────────────────────────────────────────────────────────
 
-_PROPOSAL = {"errand_id": "e1", "party": "Gavin Hale", "objective": "una intro de blockchain",
+_PROPOSAL = {"errand_id": "e1", "party": "Laura Vidal", "objective": "una intro de producto",
              "date": _d(1), "startTime": "15:00", "endTime": "15:30", "at": f"{_d(1)} 15:00",
              "asked_at": 1}
 
@@ -235,7 +235,7 @@ def test_a_proposal_is_shown_apart_from_the_calendar_with_who_and_when(_page):
     band = _page.locator(".agprop")
     assert band.count() == 1
     text = band.inner_text()
-    assert "Gavin Hale" in text and "15:00" in text and "una intro de blockchain" in text
+    assert "Laura Vidal" in text and "15:00" in text and "una intro de producto" in text
     # It is NOT on the calendar, so it must not be painted as an appointment on it.
     assert _page.locator(".agev").count() == 0
 

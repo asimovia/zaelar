@@ -31,7 +31,7 @@ class TesterBrain:
         path = os.path.join(HERE, "personas", f"{persona}.md")
         persona_txt = open(path, encoding="utf-8").read() if os.path.exists(path) else (
             "Eres una persona real hablando con tu asistente de voz personal, zaelar. Habla con naturalidad.")
-        persona_name = "Ricart"   # the human user portrayed by the tester (real profile: Ricart, Soria, ES)
+        persona_name = "Ricart"   # the human user portrayed by the tester
         # HARD role anchor (2026-07-07): the DRIVE model (qwen) was reversing the roles — since zaelar arrives with
         # the 'user' role and the tester's lines with the 'assistant' role, the model thought it was the ASSISTANT ("I
         # am zaelar, how can I help?", "would you like me to show a screen?"). That invalidates the test. This anchor

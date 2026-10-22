@@ -48,7 +48,7 @@ def tg(monkeypatch):
 def test_a_first_message_is_sent_VERBATIM(tg, monkeypatch):
     monkeypatch.setattr(service, "_send_inbox", _Inbox([
         {"ref": "r1", "to": "@alguien", "chatId": "", "name": "Alguien",
-         "text": "Nos vemos el martes.\n\nhttps://meet.google.com/erp-tuzi-gog"}]))
+         "text": "Nos vemos el martes.\n\nhttps://meet.google.com/qrs-tuvw-xyz"}]))
     monkeypatch.setattr(service.ingest, "publish_msg_out", lambda *a, **k: None)
 
     asyncio.run(service._drain_sends())
@@ -56,7 +56,7 @@ def test_a_first_message_is_sent_VERBATIM(tg, monkeypatch):
     assert len(tg.calls) == 1
     assert tg.calls[0]["parse_mode"] is None, \
         "markdown parsing is what made the URL arrive as unclickable text"
-    assert tg.calls[0]["text"].endswith("https://meet.google.com/erp-tuzi-gog")
+    assert tg.calls[0]["text"].endswith("https://meet.google.com/qrs-tuvw-xyz")
 
 
 def test_an_underscore_in_a_name_is_not_formatting(tg, monkeypatch):

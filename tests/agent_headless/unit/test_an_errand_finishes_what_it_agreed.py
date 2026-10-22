@@ -253,13 +253,13 @@ def test_a_link_the_MODEL_typed_is_taken_back_and_replaced_by_the_ENGINE_S(env):
     already been deleted, and the engine appended the real one underneath. One message, two different links,
     one of them dead. A rule the model can break is not a guard."""
     from nucleo.errands import wake as wake_mod
-    real = "https://meet.google.com/erp-tuzi-gog"
-    say = "Here's the Google Meet link for the call: https://meet.google.com/ucn-tixn-mbj"
+    real = "https://meet.google.com/qrs-tuvw-xyz"
+    say = "Here's the Google Meet link for the call: https://meet.google.com/mno-pqrs-tuv"
 
     out = wake_mod._with_link(say, real)
 
     assert out.count("meet.google.com") == 1, "exactly one link leaves this house"
-    assert "ucn-tixn-mbj" not in out and out.endswith("\n\n" + real)
+    assert "mno-pqrs-tuv" not in out and out.endswith("\n\n" + real)
     del env
 
 

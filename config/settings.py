@@ -78,8 +78,8 @@ def _read() -> dict:
 def _write(d: dict):
     # The parent is created HERE and not only at boot (`nucleo/workspace.ensure`). A directory can be removed
     # while the process lives, and this write is best-effort at every call site: the caller logs a WARNING and
-    # steps over it, so a missing parent costs the operator a preference that will not stick — measured on a
-    # cloud Machine 2026-09-03, where `/data/config` never existed and the language onboarding therefore ran
+    # steps over it, so a missing parent costs the operator a preference that will not stick — e.g. a container
+    # on an empty volume, where `/data/config` never existed and the language onboarding therefore ran
     # again on EVERY cold boot. Cheap (`exist_ok`), and it makes the failure impossible rather than unlikely.
     SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
     SETTINGS_FILE.write_text(json.dumps(d, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -88,7 +88,7 @@ def _write(d: dict):
 def load_into_env():
     """Boot hook: apply persisted overrides to os.environ BEFORE the voice pipeline reads them."""
     d = _read()
-    # Reconcile Pipecat-era persisted provider names with the LiveKit engine (INI-012): map legacy aliases,
+    # Reconcile Pipecat-era persisted provider names with the LiveKit engine: map legacy aliases,
     # drop values the engine can't build so they don't poison ZAELAR_STT/ZAELAR_TTS (would break STT/TTS).
     if d.get("tts_provider") in _LEGACY_TTS_ALIAS:
         d["tts_provider"] = _LEGACY_TTS_ALIAS[d["tts_provider"]]
@@ -256,7 +256,7 @@ def effective() -> dict:
 import re as _re
 
 # Appearance (V2-617): the ⚙ Apariencia tab persists the design profile + custom knobs HERE so the choice
-# belongs to the ACCOUNT (settings.json travels with a cloud Machine's Volume), not to one browser's
+# belongs to the ACCOUNT (settings.json travels with the install's data volume), not to one browser's
 # localStorage. The backend stores and sanitizes; the CATALOG of valid profiles/fonts lives in the frontend
 # (app/core/themes.js), which already falls back to the default on an id it does not know — so a slug is
 # validated for SHAPE here, never against a mirrored list that would drift.

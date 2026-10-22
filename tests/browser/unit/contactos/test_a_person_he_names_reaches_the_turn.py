@@ -13,7 +13,7 @@ def cd(tmp_path, monkeypatch):
     monkeypatch.setattr(store, "DATA_DIR", str(tmp_path))
     from widgets.contactos import data
     data.apply_action("add_contact", {"name": "Quinn", "email": "quinn@example.com", "preferred": "email"})
-    data.apply_action("add_contact", {"name": "Josep Solá Fabá", "email": "j@example.com"})
+    data.apply_action("add_contact", {"name": "Samuel Ortíz Galán", "email": "j@example.com"})
     data.apply_action("add_contact", {"name": "Al", "email": "al@example.com"})
     return data
 
@@ -25,7 +25,7 @@ def test_a_first_name_in_the_order_finds_the_row_with_its_channels(cd):
 
 
 def test_a_whole_name_wins_and_a_word_is_not_a_person(cd):
-    assert [r["name"] for r in cd.people_named("write to Josep Solá Fabá")] == ["Josep Solá Fabá"]
+    assert [r["name"] for r in cd.people_named("write to Samuel Ortíz Galán")] == ["Samuel Ortíz Galán"]
     assert cd.people_named("play some madonna, al fresco") == []
 
 

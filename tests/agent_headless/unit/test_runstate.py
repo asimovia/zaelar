@@ -329,7 +329,7 @@ def test_with_no_turns_in_flight_stopping_is_instant_as_always(piezas):
 # ── stopping closes the observability session (2026-08-16) ───────────────────────────────────────────────
 # Real: with the agent stopped and the browser tab left open, background noise (the ~1Hz loop heartbeat,
 # the RAM→state projection) kept landing on whatever session was already open when ⏻ was pressed — nothing
-# ever closed it, so the backoffice master showed it "EN CURSO" indefinitely, with its flow/event counts
+# ever closed it, so any session viewer showed it "EN CURSO" indefinitely, with its flow/event counts
 # still climbing. `_do_stop` now closes the observability session; background noise afterward gets no
 # session at all (`stamp_identity`'s system/pulse guard only READS the current session, never reopens it).
 def test_stopping_closes_the_open_observability_session(piezas):

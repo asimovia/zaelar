@@ -37,7 +37,7 @@ def test_dev_prompt_scopes_to_repo_and_bridge():
 
 # ── REAL confinement guard + cleanup (audit 2026-07-26 — closes "prompt convention only") ──────────
 def test_dev_worker_wires_confinement_guard_and_cleans_up(fresh_db, fake_backend):
-    """Integration with dispatch._run_session through the fake backend (never launches a real `claude`, INI-006-style)."""
+    """Integration with dispatch._run_session through the fake backend (never launches a real `claude`)."""
     import asyncio
     import os
 

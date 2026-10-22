@@ -145,7 +145,7 @@ _CREATE_WIDGET_RE = _re.compile(
 # A WIDGET NAMED AS A DESTINATION IS NOT A WIDGET THAT MUST BE PROGRAMMED (2026-08-13).
 #
 # Motivating incident: travel research (ferry + hotel + restaurant) ended up in the WIDGET GENERATOR, which
-# started writing code for a new widget called `prepara-ricart-viaje` instead of searching. Sole cause: the last
+# started writing code for a new widget called `prepara-viaje` instead of searching. Sole cause: the last
 # escalation sentence was «Entrega el resultado MONTADO en el widget results…». `mont\w*` is a create verb and
 # `widget` was nine characters away → CREATE. In other words, **asking for the result to be delivered in the
 # results sheet diverted the task to the generator**, while that sheet is PRECISELY the delivery surface for all

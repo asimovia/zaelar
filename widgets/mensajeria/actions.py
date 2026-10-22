@@ -81,7 +81,7 @@ def _a_fetch_now(action, payload) -> dict:
             **_d.view_data()}
 
 
-# THE AUTORESPONDER (V2-624 — the INI-014 «Phase 4» go-ahead). Config only: the decision runs in
+# THE AUTORESPONDER (V2-624 — the «Phase 4» go-ahead). Config only: the decision runs in
 # autorespond.py at the owner's ingest, the send travels the same reply seam a dictated reply uses.
 def _a_set_autoresponder(action, payload) -> dict:
     from . import autorespond
@@ -453,7 +453,7 @@ def _a_open(action, payload) -> dict:
     elif name:
         match = _d._find_chat_by_name(db, name)
         # Demo pass 66, E2: «open it» came as open {name: "Inworld invoice"} — the thread is named by its address
-        # (invoice+statements@inworld.ai), so no chat matched and the turn needed a second try. A name that shares
+        # (a vendor's invoice address), so no chat matched and the turn needed a second try. A name that shares
         # a word with what the archive last found means that mail.
         if match is None and _lf:
             import re as _re

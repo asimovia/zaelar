@@ -1,6 +1,6 @@
 """zaelar server (package). FastAPI app: the frontend + the voice control plane.
 
-Voice engine: LiveKit Agents (INI-012), run EMBEDDED in this process (AgentServer, job_executor_type=THREAD) so
+Voice engine: LiveKit Agents, run EMBEDDED in this process (AgentServer, job_executor_type=THREAD) so
 the voice job shares the bus/observer-SSE queue, the central memory, the orchestrator loop and the brain_notes
 mailbox with the «Colmena» brain (nucleo/) and everything else. Gated by ZAELAR_ENGINE (default 'livekit'; set
 'off' to skip the worker, e.g. for CI import checks). Session state lives in server/state.py.
@@ -240,7 +240,7 @@ def create_app() -> FastAPI:
 
     # meshkore_router is NATIVE (a channel like voice/chat), so it is always mounted regardless of BRAIN.
     # messaging_router is the UI-managed connect/disconnect API for the messaging connectors (WhatsApp/Telegram):
-    # the whole point of INI-015 is that a user connects them from the widget, never by editing .env.
+    # the whole point is that a user connects them from the widget, never by editing .env.
     # cron_router = the «Colmena» brain's OWN proactivity (nucleo/cron_api.py over nucleo/scheduler.py) — replaces
     # Hermes' old /api/cron; the same frontend ⏰ panel consumes it.
     routers = [pages_router, voice_router, canvas_router, widgets_router, meshkore_router, messaging_router,
@@ -249,7 +249,7 @@ def create_app() -> FastAPI:
                obs_router, feedback_router, update_router, cloudfiles_router, photos_router, contacts_router,
                videoacct_router, calendar_router, torrent_router, library_router, daemon_router,
                tasks_router]
-    # LiveKit control plane (token + connect config + session.js swap) — the default engine (INI-012).
+    # LiveKit control plane (token + connect config + session.js swap), the default engine.
     if os.getenv("ZAELAR_ENGINE", "livekit").lower() == "livekit":
         from .livekit_api import router as livekit_router
         routers.append(livekit_router)

@@ -516,7 +516,7 @@ function renderConn(E, root, data, ctx){
   box.appendChild(crumb);
 
   // THE SHELF (V2-632): every video source, live or not, with its honest state — the messaging igrid
-  // language. YouTube disabled says WHY (INI-032: no OAuth client yet); a planned provider says it is not
+  // language. YouTube disabled says WHY (no OAuth client yet); a planned provider says it is not
   // built. Nothing here pretends: a box that cannot open never wears an active face.
   if(_screen.view === "shelf"){
     const grid = el("div", "hb-yt-igrid");
@@ -1208,7 +1208,7 @@ export function render(root, data, ctx){
   if(!data.accounts_enabled){
     if(E.dots){ E.dots.textContent = ""; E.dots.style.display = "none"; }
     // V2-632: the SHELF survives the gate — the operator asked to SEE the sources, disabled and honest
-    // (INI-032's note included).
+    // (its note included).
     renderConn(E, root, data, ctx);
   } else {
   if(E.dots) E.dots.style.display = "";

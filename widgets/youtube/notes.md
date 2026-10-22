@@ -1,19 +1,18 @@
 # youtube — notas
 
-- 2026-07-20 (susurro): el operador (Ricart) pidió "el último vídeo de José Luis Cárpatos" y el widget traía
+- 2026-07-20 (susurro): the operator asked for the latest video of a channel y el widget traía
   el PRIMER resultado por relevancia (no el más reciente). Fix quirúrgico en `data.py::_search_id`: si la frase
   pide el vídeo MÁS RECIENTE (`_LATEST_RE`: último/reciente/nuevo/latest/…) se ordena por fecha de subida
   (`&sp=CAI%3D`). Intención clave del operador: "el último de <persona>" = su vídeo más nuevo, no uno cualquiera.
-- 2026-07-23: pidió el último vídeo de "las cuatro claves de la semana" de José Luis Cárpatos. La búsqueda+
+- 2026-07-23: the operator asked again for the latest video of a channel's weekly series. La búsqueda+
   reproducción ya la resolvió el sistema en vivo (`_search_id` + `apply_action("load")`, sin cambio de código).
-  Actualizada la `_SEED` por defecto a este vídeo ("Momento Kimi para la IA…", `6V2lKeUE8YA`) como el que se
-  muestra al operador, sustituyendo la semilla anterior (gol de Maradona).
-- 2026-07-23 (repetición): nueva petición de "busca y carga el vídeo solicitado por Ricart" sin id/URL concretos
+  Actualizada la `_SEED` por defecto a ese vídeo, sustituyendo la semilla anterior.
+- 2026-07-23 (repetición): nueva petición de "busca y carga el vídeo solicitado por el operador" sin id/URL concretos
   en el ticket — de nuevo la resuelve el flujo en vivo existente (`load` → `_search_id` si no hay URL/id →
   `apply_action` actualiza `videoId`/título/canal/`published` y el widget recarga el iframe). No hace falta
   ningún cambio de código: el mecanismo de búsqueda+carga+verificación (canal/fecha en pantalla, V2-057) ya
   cubre este caso; no tocar `data.py`/`widget.js` sin un vídeo concreto que difiera del comportamiento actual.
-- 2026-07-23 (sin sonido en el dispositivo de Ricart): causa raíz — el vídeo arranca `muted=1` (autoplay lo exige)
+- 2026-07-23 (sin sonido en el dispositivo del operador): causa raíz — el vídeo arranca `muted=1` (autoplay lo exige)
   y el "unmute" pedido POR VOZ no lleva ningún gesto real de usuario en la página; Chrome puede bloquear el audio
   al desmutear por script sin gesto y el widget queda mostrando "🔊 Sonido" mientras el vídeo sigue mudo de verdad
   (estado engañoso). Fix quirúrgico en `widget.js`: (1) el botón "🔇 Silencio"/"🔊 Sonido" ahora dispara el
@@ -22,17 +21,17 @@
   frame, visible SOLO mientras `data.muted` es true, con el mismo click directo — cubre el caso "unmute" pedido
   por voz: el operador ve el aviso y con un toque real se oye. No se tocó `data.py` (el estado/comandos servidor
   ya eran correctos); es puramente el gesto de usuario que exige el navegador para audio no-mudo.
-- 2026-07-23 (arranque en blanco): pedido explícito de Ricart — el reproductor NO debe traer ningún vídeo
+- 2026-07-23 (arranque en blanco): pedido explícito del operador — el reproductor NO debe traer ningún vídeo
   precargado al abrirse por primera vez. Fix quirúrgico en `data.py::_SEED`: videoId/title/url/channel/published
-  vacíos, `latest=False`, `paused=True`, `last_cmd=""` (antes traía semilla fija "Momento Kimi…"). `widget.js` no
+  vacíos, `latest=False`, `paused=True`, `last_cmd=""` (antes traía una semilla fija). `widget.js` no
   necesitó cambios: ya pintaba el estado vacío ("No hay ningún vídeo cargado. Dime qué quieres ver.") cuando
   `videoId` está vacío. Un store existente con un vídeo ya cargado no se resetea (`store.load` solo aplica la
   semilla si no hay estado previo); esto afecta a instalaciones NUEVAS o tras borrar el widget.
-- 2026-07-23 (aplicación real, para Ricart): el fix de `_SEED` de arriba no bastaba porque el store PERSISTIDO
-  (`widgets/_data/youtube/state.json`) ya tenía cargado "Las 4 claves de la semana" (`6V2lKeUE8YA`) de la petición
+- 2026-07-23 (aplicación real, para el operador): el fix de `_SEED` de arriba no bastaba porque el store PERSISTIDO
+  (`widgets/_data/youtube/state.json`) ya tenía cargado el vídeo de la petición
   anterior — `store.load` no reaplica la semilla sobre un estado existente. Se limpió a mano ese `state.json` a
   los mismos valores en blanco de `_SEED` (videoId/title/url/channel/published vacíos, `muted=true`,
-  `paused=true`, `last_cmd=""`) para que el canvas de Ricart muestre YA el estado vacío ("No hay ningún vídeo
+  `paused=true`, `last_cmd=""`) para que el canvas del operador muestre YA el estado vacío ("No hay ningún vídeo
   cargado…") sin esperar a una reinstalación. No se tocó código: `data.py`/`widget.js`/`manifest.json` sin cambios.
 - 2026-07-23 (verificación): re-solicitud del mismo cambio ("que el reproductor empiece en blanco, reflejado en
   la config real"). Verificado: `data.py::_SEED` ya en blanco Y `widgets/_data/youtube/state.json` ya coincide
@@ -125,7 +124,7 @@ the missing manifest height visible). What changed:
   voice; `prompt_digest()` hands the numbered rows to the brain so «el tercero» resolves.
 - The queue rows carry thumbnails; Suscripciones/Listas got their own tabs (library data unchanged, V2-604).
 - `follow_channel` with no name follows the CURRENT video's author («sigue a este canal»).
-- The 🔌 button shows the connector SHELF (messaging igrid language): YouTube disabled with its INI-032
+- The 🔌 button shows the connector SHELF (messaging igrid language): YouTube disabled with its
   reason, Vimeo/Dailymotion/Twitch as honest shut doors (`connector_shelf` from the V2-526 catalog).
 - Player placeholder when nothing is loaded (title «Sin vídeo» + the 16:9 frame kept, marked).
 Node 4.138 (9 rendered cases) + updated 4.4/4.52/4.53 files; golden re-recorded (40 keys).

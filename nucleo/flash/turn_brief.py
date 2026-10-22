@@ -270,7 +270,7 @@ CATALOG_INSTRUCTIONS = (
     "products, a trip) or fits no widget.")
 
 #: A catalogue question is worth one when the whole catalogue fits in it. Past this the answer is
-#: retrieval, not a bigger enumeration (INI-027 §7: an index narrows, a model chooses).
+#: retrieval, not a bigger enumeration (an index narrows, a model chooses).
 MAX_CATALOG_CANDIDATES = 40
 
 

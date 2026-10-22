@@ -1,4 +1,4 @@
-# Messaging Widget: Context / Decisions (INI-015)
+# Messaging Widget: Context / Decisions
 
 Single, first-class, hand-built widget (like `agenda`) that unifies the operator's personal messaging:
 **WhatsApp + Telegram** today, with **email** as a future slot. Replaces the old `whatsapp` widget (deleted). It is

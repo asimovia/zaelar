@@ -1,5 +1,5 @@
 #
-# service.py — Telegram connector ENGINE integrated into zaelar (INI-015). Runs IN-PROCESS in the server lifespan
+# service.py — Telegram connector ENGINE integrated into zaelar. Runs IN-PROCESS in the server lifespan
 # (gated by TG_ENABLED, always-on), as an asyncio task — Telethon is a pure asyncio client, with NO Node subprocess
 # or bridge to vendor (unlike WhatsApp). Telegram is "black-box lib": a third-party library (Telethon), with no Hermes
 # dependency.

@@ -49,7 +49,7 @@ from nucleo.runtime_ids import next_seq as _next_seq, reset_seq as _reset_named_
 # `active()` is the answer: an EXPLICIT pointer (not a ContextVar), kept current by `begin()`/`adopt()`, and
 # deliberately read by those handlers instead of trusting the ambient ContextVar. It expires (`max_age_s`, by
 # defecto 3s): un evento que llega mucho después de que el último trace se fijara no se le cuelga a un turno que
-# probablemente ya cerró —eso reabriría en el master un flujo "cerrado" con actividad fantasma, justo el bug que
+# probablemente ya cerró —eso reabriría en el flow viewer un flujo "cerrado" con actividad fantasma, justo el bug que
 # `_maybe_close_flow`/`drain_pending_flow_closes` (mismo día) arreglaron por el otro lado— y cae al trace GENERAL
 # de la sesión (`_general`, fijado por el kickoff) en su lugar: "se atribuye a la charla general, bienvenida, etc"
 # es literalmente lo que pidió el operador para lo que no tiene tarea propia, no un cajón sin fondo — sigue
@@ -57,9 +57,9 @@ from nucleo.runtime_ids import next_seq as _next_seq, reset_seq as _reset_named_
 #
 # Deliberately NOT used for the operator's FINAL transcript or fragments: that text causes
 # de que el turno empiece, así que en el instante en que se emite el trace del turno TODAVÍA no existe —
-# adjuntarle `active()` ahí le pegaría el trace del turno ANTERIOR, que es peor que no llevar ninguno. Ese caso
-# se resuelve en el master, en lectura (`cloud/backoffice/src/flowAttribution.js::attributeOrphans`), que sí
-# conoce ambos lados de la ventana temporal y por eso puede decidir bien.
+# adjuntarle `active()` ahí le pegaría el trace del turno ANTERIOR, que es peor que no llevar ninguno.
+# That case is resolved at read time by the flow reader, which knows both sides of the time window and can
+# therefore decide correctly.
 _active: str = ""
 _active_at: float = 0.0
 _general: str = ""   # el trace de "charla general" (el kickoff) — suelo de active() una vez arrancada la sesión
@@ -135,9 +135,8 @@ def merge(a: str, b: str) -> str:
     NO reescribe nada ya escrito — el archivo de eventos es append-only a propósito (ver `bus/log.py`: "un JSON
     por línea... se lee con grep/jq diez años después"). En su lugar emite un MARCADOR (`kind="trace",
     label="merge"`, sellado con el trace NUEVO vía `extra={"trace": ...}` — nunca ambiente, para que el marcador
-    aparezca bajo el id que se está fundiendo, no bajo el titular) que el lector resuelve: ver
-    `cloud/backoffice/src/flowAttribution.js::resolveMerges` (local) y su equivalente en `observability/
-    flows.py` para sesiones de nube. Best-effort, nunca lanza. Devuelve el id TITULAR."""
+    aparezca bajo el id que se está fundiendo, no bajo el titular) que el lector resuelve: see
+    `observability/flows.py`. Best-effort, nunca lanza. Devuelve el id TITULAR."""
     a, b = (a or "").strip(), (b or "").strip()
     if not a or not b or a == b:
         return a or b

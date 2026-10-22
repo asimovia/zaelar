@@ -1,7 +1,6 @@
 """config/model_benchmarks.py — CURATED, user-visible replica of system model decisions (V2-077, 2026-07-26).
-DETAILED source of truth: `.meshkore/docs/ops/zaelar-model-benchmarks.md` (internal, dense, with traces/incidents).
-This module does NOT parse it — it is a manual summary, just like `web/src/pages/technology/` is a curated snapshot
-of the internal architecture, not an automatic mirror. When touching a model decision (new routing, new benchmark,
+DETAILED source of truth: `.meshkore/docs/ops/zaelar-model-benchmarks.md` (dense, with traces/incidents).
+This module does NOT parse it — it is a manual summary, not an automatic mirror. When touching a model decision (new routing, new benchmark,
 discarded/adopted candidate), update BOTH the dense doc AND this summary — they are linked both ways (see the
 header of `zaelar-model-benchmarks.md`).
 

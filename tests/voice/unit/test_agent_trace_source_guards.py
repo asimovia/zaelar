@@ -10,9 +10,8 @@ that fixes this — but ONLY for events that describe something about a trace th
 because the turn has already generated text, a barge-in that interrupts an ongoing utterance, the assistant item
 added after the LLM+TTS chain). Those that PRECEDE their own trace (the operator transcript, "voice detected",
 "end of voice", STT metrics) are deliberately left WITHOUT forcing: attaching active() to them would attach
-the PREVIOUS conversation's trace more often than the correct one — THAT case is resolved by
-`cloud/backoffice/src/flowAttribution.js::attributeOrphans` at read time, which does know both sides of the
-temporal window.
+the PREVIOUS conversation's trace more often than the correct one — THAT case is resolved by whoever reads
+the flows, at read time, which does know both sides of the temporal window.
 
 These tests establish that boundary so it does not inadvertently blur in a future change."""
 from pathlib import Path

@@ -3,7 +3,7 @@
     python -m update           what this tree would report (JSON, exactly the endpoint's payload)
     python -m update bump      raise the build number by one and print it
 
-`bump` is step 3 of the release procedure (`.meshkore/docs/ops/zaelar-cloud-release.md`): bump, commit,
+`bump` is a step of the release procedure: bump, commit,
 then tag. The tag gate in `.github/workflows/release.yml` refuses a release whose build number did not
 move, so forgetting it fails loudly at the door instead of silently shipping «version 24» twice.
 """

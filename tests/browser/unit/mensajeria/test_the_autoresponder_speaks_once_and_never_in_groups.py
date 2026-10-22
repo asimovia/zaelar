@@ -1,4 +1,4 @@
-"""V2-624 — the autoresponder: the «Phase 4» the WhatsApp client has named since INI-014, now shipped with
+"""V2-624 — the autoresponder: the «Phase 4» the WhatsApp client has named since it was first written, now shipped with
 its go-ahead. The rules under test are the ones that keep an automatic mouth safe:
 
   · NEVER a group — an auto-reply in a group answers people who were not talking to him;

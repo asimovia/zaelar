@@ -43,9 +43,9 @@ def test_a_query_under_a_sibling_key_still_searches(monkeypatch):
 def test_the_canonical_top_level_query_still_works(monkeypatch):
     monkeypatch.setattr("nucleo.websearch.search", lambda q, *a, **k:
                         {"query": q, "answer": "", "results": [], "source": "test", "ai": False})
-    out = _run({"tool": "web_search", "query": "operator Salvador SL"})
+    out = _run({"tool": "web_search", "query": "Acme Ventures SL"})
     assert out.get("ok") is True
-    assert out["result"]["query"] == "operator Salvador SL"
+    assert out["result"]["query"] == "Acme Ventures SL"
 
 
 def test_whitespace_is_still_empty():

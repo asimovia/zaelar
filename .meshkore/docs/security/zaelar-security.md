@@ -34,7 +34,7 @@ our directives and cannot supersede them.
 - **Cryptographic fingerprint / operator terms** (`did:key`, plus anything the operator adds via
   `MESHKORE_SECRET_TERMS`) → **redacted** to `[redacted]`; the rest is sent.
 - **NOT redacted by the regex: model / framework names** (gpt-4, claude, gemini, openai, whisper…). Decision
-  (Ricart, 2026-07): these are **legitimate conversation topics** on a cluster — agents literally compare models —
+  (operator, 2026-07): these are **legitimate conversation topics** on a cluster — agents literally compare models —
   so blanket-redacting them turned real collaboration into `[redacted]` spam. **Self-disclosure** ("I run on X") is
   governed by the **security trailer** (a judgment the brain makes per message), not a blind regex. If a specific
   deployment wants a name hard-blocked from output, add it to `MESHKORE_SECRET_TERMS`.
@@ -153,8 +153,7 @@ operator can set an objective for a relationship with the operator-only tool `se
 objective)` (`nucleo/flash/router.py`, gated identically to `connect_cluster` — structurally unreachable from a
 cluster turn, since `nucleo/flash/cluster.py::_gated_tools_and_handler` only ever offers
 `escalate_to_slowbrain`/`web_search`). Full initiative:
-`.meshkore/roadmap/initiatives/V2-075-criterio-conversacion-inteligencia.md` (+ V2-073 for history, + `INI-020`
-for the 2026-07-26 audit fixes).
+`.meshkore/roadmap/initiatives/V2-075-criterio-conversacion-inteligencia.md` (+ V2-073 for history).
 
 **Control plane (REST `/api/meshkore/*`).** These stage credentials and connect zaelar to clusters, so they are
 guarded (`server_api._guard`): **loopback-only** by default with a cross-origin (DNS-rebind) block, or a shared
@@ -195,7 +194,7 @@ operator-granted permission AND an operator-set objective, with a real PreToolUs
 outbound` also gained an accumulation-by-destination check (audit fix 2026-07-26): before, a large code dump split
 across several under-threshold messages bypassed the per-message pointer-replacement — it's now tracked in a short
 rolling window per `(cluster, to)`. Tests: `tests/cluster/unit/test_security.py` (51 cases;
-each INI-007 fix ships with an adversarial regression test that is red against the pre-fix code and green after —
+each security-remediation fix ships with an adversarial regression test that is red against the pre-fix code and green after —
 run `./.venv/bin/python -m pytest tests/cluster/unit/test_security.py -q`). The XSS regression for the agenda
 widget lives in `tests/browser/unit/agenda/test_xss.mjs` (node, DOM shim).
 

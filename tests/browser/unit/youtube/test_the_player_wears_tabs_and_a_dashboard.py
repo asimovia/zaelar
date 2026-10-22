@@ -1,7 +1,7 @@
 # V2-632 — the video widget becomes a real player: top TABS (Inicio · Reproductor · Cola · Suscripciones ·
 # Listas), a dashboard whose TOP band is the current search (numbered, voice-steerable), a placeholder that
 # marks where the video will live, and a connectors SHELF behind the 🔌 that shows every source honestly —
-# YouTube disabled WITH its reason (INI-032), the world's other providers as shut doors. None of it is
+# YouTube disabled WITH its reason (no OAuth client registered yet), the world's other providers as shut doors. None of it is
 # testable from source: tabs, CSS-driven visibility, the auto-jump on a video's arrival and the shelf's
 # disabled faces all live client-side — every case RENDERS the real widget.js.
 from __future__ import annotations
@@ -41,7 +41,7 @@ def _data(**over):
          "accounts_enabled": False,
          "connector_shelf": [
              {"id": "youtube", "label": "YouTube", "state": "planned", "connected": False,
-              "note": "falta registrar el cliente OAuth (INI-032)"},
+              "note": "falta registrar el cliente OAuth"},
              {"id": "vimeo", "label": "Vimeo", "state": "planned", "connected": False,
               "note": "aún no construido"}]}
     d.update(over)
@@ -175,8 +175,8 @@ def test_the_lists_tab_opens_and_saves(_page):
 
 
 def test_the_shelf_shows_every_source_disabled_with_its_reason(_page):
-    """INI-027's wishlist rule on this widget: what we do NOT have is SHOWN — YouTube disabled says WHY
-    (INI-032), a planned provider says it is not built. A box that cannot open never wears an active face."""
+    """The wishlist rule on this widget: what we do NOT have is SHOWN — YouTube disabled says WHY
+    (no OAuth client yet), a planned provider says it is not built. A box that cannot open never wears an active face."""
     _mount(_page, _data())
     _page.click(".hb-yt-plug")
     boxes = _page.locator(".hb-yt-ibox")

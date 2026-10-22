@@ -1,5 +1,5 @@
 #
-# owner.py — live BACKEND for the "navegador" widget (kind:"backed", INI-016). It is the ONLY writer to
+# owner.py — live BACKEND for the "navegador" widget (kind:"backed"). It is the ONLY writer to
 # widgets/_data/navegador/ (widget-app contract: zaelar-modules.md §Widget-apps). The supervisor
 # (widgets/supervisor.py) starts it in the server loop and passes mailbox commands to handle().
 #

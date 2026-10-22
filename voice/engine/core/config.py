@@ -3,7 +3,7 @@
 Reads the environment via ``core.env`` and the profile defaults via
 ``core.profile``. Components read ``SETTINGS``; nothing else parses the env.
 
-zaelar adaptations (INI-012):
+zaelar adaptations:
   * env knob prefix ``VL2_`` -> ``ZAELAR_``; provider API keys keep zaelar's
     existing standard names (OPENAI_API_KEY, AIMLAPI_KEY, CARTESIA_API_KEY,
     MISTRAL_API_KEY, DEEPGRAM_API_KEY, GEMINI_API_KEY). Z.AI NO: it is only for the Brain Worker
@@ -45,7 +45,7 @@ class Settings:
     profile: str = PROFILE                                # remote | local
     vad_provider: str = env("ZAELAR_VAD", "silero")       # local in both profiles
     # Endpointing. The LiveKit ML turn model ('livekit', MultilingualModel) needs its InferenceRunner registered on
-    # the MAIN thread, which the embedded THREAD job executor (INI-012) cannot provide → it crashes ("InferenceRunner
+    # the MAIN thread, which the embedded THREAD job executor cannot provide → it crashes ("InferenceRunner
     # must be registered on the main thread"; re-verified 2026-08-14). That is why this defaulted to 'disabled' for
     # a long time, leaving end-of-turn as pure VAD — silence only, blind to whether the sentence was FINISHED.
     #

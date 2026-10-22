@@ -4,7 +4,7 @@
 # widgets ctx.ingest, messaging) — and its serializing `asyncio.Lock` cannot span loops: the audit reproduced
 # that an UNCONTENDED cross-loop acquire never breaks (why this never blew up loudly), while a CONTENDED one
 # hangs the waiter forever and poisons the lock — after which every contended ingest raises RuntimeError inside
-# a fire-and-forget task, i.e. memory writes silently lost until restart. The fix is the engine's own INI-012
+# a fire-and-forget task, i.e. memory writes silently lost until restart. The fix is the engine's own
 # rule: cross-loop work MARSHALS (`run_coroutine_threadsafe`, the browser_search/energy_meter/identity pattern)
 # onto the home loop the server lifespan registers.
 #

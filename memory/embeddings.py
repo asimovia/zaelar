@@ -5,10 +5,10 @@ always-available one, resolved lazily and cached:
 
   1. **cloud, OpenAI `/embeddings` protocol** — the TITULAR (`config/models.default.json` §embeddings:
      `text-embedding-3-small`, 768 dims requested via `dimensions`). It is the only one that runs identically
-     on a laptop and inside a Fly container, which is the operator's rule: *local must measure what the cloud
-     measures*. Chosen by measurement, not by catalogue — the numbers are in that row's `why`.
+     on a laptop and inside a container, which is the rule: *local must measure what a container
+     deployment measures*. Chosen by measurement, not by catalogue — the numbers are in that row's `why`.
   2. **Ollama** — `embeddinggemma`. NO LONGER THE DEFAULT: it is a local server, it does not exist in the
-     cloud, and an install using it measured something other than the cloud did. Kept because databases are
+     container, and an install using it measured something other than a container deployment did. Kept because databases are
      sealed with its signature and because a self-hoster with a GPU may prefer it (chosen in the panel).
   3. **fastembed** — ONNX-Runtime, no server. A safety net, NOT a titular: its default model
      (`BAAI/bge-small-en-v1.5`) is ENGLISH ONLY and scores 7/12 on Spanish recall where the titular scores 12.
@@ -370,10 +370,10 @@ def _cloud_embed(texts: list[str], *, timeout: float | None = None) -> list[list
         out = [list(map(float, it["embedding"])) for it in rows]
         if len(out) != len(texts):
             return None
-        # THE BILLING GATE. Deferred import, and it is a deliberate exception to "memory/ does not import
+        # THE METERING HOOK. Deferred import, and it is a deliberate exception to "memory/ does not import
         # nucleo/" — the same trade already written down for `memory/rerank.py`: a register-a-callback design
-        # reopens the hole for any process that forgets to register, and what leaks through that hole is real
-        # money, silently. Here the argument is stronger than for the reranker, which is dormant: this runs on
+        # reopens the hole for any process that forgets to register, and what leaks through that hole is unmetered
+        # usage, silently. Here the argument is stronger than for the reranker, which is dormant: this runs on
         # every insert AND every query. Metering never takes down the metered (V2-097), hence the swallow.
         try:
             from nucleo.energy_meter import meter_openai_response

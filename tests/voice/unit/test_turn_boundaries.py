@@ -99,7 +99,7 @@ def test_a_turn_is_not_superseded_by_a_different_sentence():
 # ── 3. Turn boundaries: the values come from the module written for this purpose ─────────────────────────────────
 
 def test_endpointing_uses_the_measured_values_not_livekit_defaults():
-    """`voice/endpointing.py` was born from real sessions (INI-009) and remained ORPHANED: the engine moved to LiveKit
+    """`voice/endpointing.py` was born from real sessions and remained ORPHANED: the engine moved to LiveKit
     and nobody wired it in, so the turn closed with the 0.5 s default. It is now the source of truth."""
     from voice import endpointing as ep
     from voice.engine.pipeline.agent import _endpointing_opts

@@ -12,5 +12,3 @@ What this repo adds on top of it (the operator's rules win over the preamble):
 3. **The module log** under `.meshkore/modules/<module>/logs/<YYYY-MM>/` (gitignored on purpose).
 4. **Commit with a pathspec** (`git commit -- <paths>`) after checking `git diff --cached --name-only` is empty,
    with the three MeshKore trailers **plus** `Co-Authored-By:` (operator override of §9.1, 2026-09-19), then push.
-
-The full eight-step closure for changes that also touch the website lives in the private workspace root.

@@ -30,7 +30,7 @@ def test_the_free_default_source_is_a_visible_connected_row():
 
 def test_every_shut_door_names_its_reason():
     """A `not-possible` source without a why-not is indistinguishable from one nobody bothered to build —
-    the wishlist exists to show what we do NOT have, on purpose (INI-027's rule)."""
+    the wishlist exists to show what we do NOT have, on purpose (the connector-catalogue rule)."""
     for m in _music_manifests():
         if m.get("state") == "not-possible":
             assert m.get("why-not", "").strip(), f"{m['id']} is not-possible with no reason"

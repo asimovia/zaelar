@@ -19,9 +19,8 @@ _ROOT = Path(__file__).resolve().parents[2]
 
 
 def _key_file() -> Path:
-    # Same reasoning as config/credentials.py's _store_path(): `ZAELAR_WORKSPACE` SET (Fase 3, real
-    # cloud Machine) drops the `.meshkore` segment entirely — a deployed container never has the
-    # dev-only `engine/.meshkore -> ../.meshkore` symlink. UNSET (self-host, today) stays
+    # Same reasoning as config/credentials.py's _store_path(): `ZAELAR_WORKSPACE` SET (e.g. a
+    # container with a mounted workspace) drops the `.meshkore` segment entirely. UNSET (self-host) stays
     # byte-identical to the path this module has always used.
     if os.getenv("ZAELAR_WORKSPACE"):
         return _workspace.root() / "credentials" / "meshkore_ed25519.pem"

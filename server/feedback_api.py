@@ -1,22 +1,20 @@
 """server/feedback_api.py — send a suggestion/bug report straight to the developers (V2-100, 2026-08-16).
 
-The one new class of outbound call a self-hosted install makes: every other "phone home" path in this
+The one class of outbound call a self-hosted install makes: every other "phone home" path in this
 repo (`nucleo/energy_meter.py`, `observability/identity.py::_report_to_control_plane`) is gated on
-`CONTROL_PLANE_URL`/`ZAELAR_USER_ID`, which only a cloud-provisioned Machine has. Feedback needs to work
-for a self-hoster with no account at all, so it gets its own endpoint default (`ZAELAR_FEEDBACK_URL`)
-and a fully separate, unauthenticated ingestion path on the control-plane
-(`cloud/control-plane/src/index.js::handleFeedbackAnonymous`, rate-limited there — not this repo's
-business what the caps are).
+`CONTROL_PLANE_URL`/`ZAELAR_USER_ID`, which a self-host install does not set. Feedback needs to work
+for a self-hoster with no account at all, so it gets its own endpoint (`ZAELAR_FEEDBACK_URL`), which
+receives it unauthenticated and rate-limits it on its side.
 
-Two branches, same shape as `energy_meter._post_usage_cloud_account`: a cloud engine (workload
-credential already present) reports itself and gets tied to the real account; a self-hosted engine
+Two branches, same shape as `energy_meter._post_usage_cloud_account`: an engine with an account
+credential (CONTROL_PLANE_URL + ZAELAR_USER_ID) reports itself and gets tied to the real account; a self-hosted engine
 reports only its stable per-install id (`observability.identity.user_id()` — already existed for
 observability, no new "keypair on first boot" needed).
 
 The optional "attach this session" evidence bundle is built by calling `observability.flows` directly
 — IN-PROCESS, not over `/api/observability/*` — because that HTTP surface is loopback/token-guarded
 (`observability/api.py::_allowed()`) and the frontend never sends `X-Observability-Token`, so a browser
-call to it would silently 403 on a cloud deployment. Running server-side sidesteps the guard entirely.
+call to it would silently 403 on a hosted deployment. Running server-side sidesteps the guard entirely.
 """
 from __future__ import annotations
 
@@ -30,7 +28,7 @@ router = APIRouter()
 _FEEDBACK_URL_DEFAULT = "https://zaelar-control-plane.rjj.workers.dev"
 #: What a report may SAY it is. Anything else becomes «issue» rather than travelling unrecognised.
 # V2-760 — `thumbs_down` is the one-click «this went wrong» marker: no text from the operator, the session
-# bundle is the whole report. A separate kind so the backoffice can list the marks on their own and send
+# bundle is the whole report. A separate kind so the receiver can list the marks on their own and send
 # each one straight to the session it points at.
 # V2-766 — `thumbs_up` is its mirror, «everything is going well», pressed from the same form footer.
 _KINDS = ("issue", "idea", "thumbs_down", "thumbs_up")
@@ -41,12 +39,10 @@ _MAX_SHOT_BYTES = 180_000
 _MAX_SHOTS_BYTES = 600_000
 _SHOT_MIMES = ("image/webp", "image/jpeg", "image/png", "image/gif")
 _MAX_EVIDENCE_EVENTS = 200
-# The ingestion endpoint rejects a bundle over 40_000 bytes with a flat 400 (`_MAX_EVIDENCE_BYTES` in
-# `cloud/control-plane/src/index.js`), and its comment there claimed "generous margin over the ~30KB the
-# engine caps itself to" — a self-cap that was never written. Measured 2026-08-31 on the operator's own
-# session: 200 events serialised to 212_037 bytes, 5.3× the ceiling, so EVERY submission that ticked
-# "include this session" was refused and the operator's message was lost with it. The engine caps itself
-# by BYTES here, and the count stays as the cheap first cut.
+# The ingestion endpoint rejects a bundle over 40_000 bytes with a flat 400. 200 events can serialise to
+# ~212_000 bytes, so without a byte cap every submission that ticked "include this session" would be
+# refused and the user's message lost with it. The engine caps itself by BYTES here, and the count stays as
+# the cheap first cut.
 _MAX_EVIDENCE_BYTES = 30_000
 _TIMEOUT_S = 5.0
 
@@ -252,10 +248,8 @@ async def _deliver(body: dict, evidence) -> dict:
 
 
 # ── V2-760 · THE THUMBS-DOWN: «this went wrong», in one click ────────────────────────────────────────────────
-# The operator, 2026-09-24: «cada vez que la gente detecte un fallo, les pediré que clique en este pulgar hacia
-# abajo… así el usuario no tiene que estar rellenando un mail o un texto de descripción… quedará vinculado por
-# ID de agente personal en nuestro backoffice, con los datos de observabilidad… así sabremos que de ahí para
-# atrás la gente tiene que leer la observabilidad».
+# One click instead of writing a description: the report is tied to the install/account id and carries the
+# observability data, so whoever receives it reads the session instead of a free-text report.
 #
 # So the report IS the session: the same capped bundle the form attaches, plus a MARKER that says exactly where
 # in it the click landed (session, last turn's trace, time). The message is composed here from his last turn

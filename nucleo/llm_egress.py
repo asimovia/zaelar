@@ -35,10 +35,9 @@ _TOKEN_ENV = "CONTROL_PLANE_SERVICE_TOKEN"
 # `_headers` then sends NO `X-Zaelar-Provider`, and mediated egress falls back to ITS default — so the call is
 # billed to, and answered by, a provider nobody chose.
 #
-# Measured 2026-09-03 on a real account. `deepseek.com` was absent while every Machine is provisioned with
-# FAST_BASE_URL=https://api.deepseek.com, so every cloud voice turn silently went to the gateway's default
-# (AIMLAPI), which had run out of funds — and the user was told there were no credits, on top of a DeepSeek
-# account with balance. Nothing was red: the header is optional by design, so its absence is indistinguishable
+# Example: with `deepseek.com` absent from this table while FAST_BASE_URL=https://api.deepseek.com, every voice
+# turn silently went to the gateway's default provider instead — and when that one had run out of funds the user
+# was told there were no credits, although the DeepSeek account had balance. Nothing was red: the header is optional by design, so its absence is indistinguishable
 # from "no preference". `test_llm_egress_names_every_provider_it_ships_with` now pins this against the shipped
 # allocation table so the two cannot drift apart again.
 _PROVIDER_BY_HOST = (
@@ -122,9 +121,9 @@ def bills_upstream() -> bool:
     """Who records the expense in the ledger?
 
     With mediated egress, the party that actually made the call — not this process. Counting it here as well
-    would duplicate the charge, and a client paying twice per turn is a worse failure than not charging.
+    would duplicate the record.
     What this process DOES continue to do is deduct from its local lease (`energy_lease`): that
-    counter is a safety ceiling, not an invoice, and must keep working even when the link
-    to the cloud is down.
+    counter is a safety ceiling, not a ledger, and must keep working even when the link
+    to the lease endpoint is down.
     """
     return mediated()

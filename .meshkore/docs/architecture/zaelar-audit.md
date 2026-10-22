@@ -2,7 +2,7 @@
 
 > **HISTÓRICO** — snapshot pre-restructura (2026-06-30) y pre-auditoría global (2026-07-02). Los paths y
 > claims de este documento reflejan el árbol antiguo (`voice/hermes_*`, `static/`, «cero cross-imports»).
-> La foto vigente: `harbee-audit-2026-07-02.md` + `zaelar-architecture.md`. Remediación: INI-006/INI-007.
+> La foto vigente: `harbee-audit-2026-07-02.md` + `zaelar-architecture.md`. Remediación: cerrada en sus iniciativas.
 
 Revisión profunda del proyecto contra sus objetivos: piezas independientes, interacción limpia, escalabilidad
 (miles de widgets), y **actualización de módulos externos (Hermes) sin interferir**. Incluye una auditoría

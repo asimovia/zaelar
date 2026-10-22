@@ -309,7 +309,7 @@ SCENARIOS: list[UseCaseScenario] = [
         turns=8,
         channel="probe",
     ),
-    # ── INI-026 B1 front: the operator's agenda bar, literally (2026-08-29) ─────────────────────
+    # ── the launch scope front: the operator's agenda bar, literally (2026-08-29) ─────────────────────
     # What `remember-and-remind-deadline` does NOT measure: the reminder must be born BY DEFAULT (no one
     # asks for it), and the appointment must be manipulable by voice after it is created.
     UseCaseScenario(
@@ -356,7 +356,7 @@ SCENARIOS: list[UseCaseScenario] = [
         turns=8,
         channel="probe",
     ),
-    # US twin of the agenda litmus — same three properties, English persona (INI-026 B1).
+    # US twin of the agenda litmus — same three properties, English persona (the launch scope).
     UseCaseScenario(
         id="dentist-appointment-into-agenda__us",
         locale="us",
@@ -399,7 +399,7 @@ SCENARIOS: list[UseCaseScenario] = [
         turns=8,
         channel="probe",
     ),
-    # INI-026 · v1's CENTER after the operator's 2026-08-29 directive — "let's focus on supporting ONE
+    # the launch scope · v1's CENTER after the operator's 2026-08-29 directive — "let's focus on supporting ONE
     # person: memory, the agenda, and the agent remembering who we are and what we want".
     # The catalog had no case measuring that: `remember-and-remind-deadline` measures RECORDING and ALERTING,
     # not REMEMBERING who you are. It is seeded in a SEPARATE session (`memory_seed`) precisely so remembering
@@ -487,7 +487,7 @@ SCENARIOS: list[UseCaseScenario] = [
         turns=6,
         channel="probe",
     ),
-    # INI-026 A8bis · part A — "find out when it comes out and remind me". The operator requested it with
+    # the launch scope · part A — "find out when it comes out and remind me". The operator requested it with
     # their own example (a series premiering a season) on 2026-08-29. It measures something the engine has
     # NEVER measured together, although all three pieces exist separately: find a FUTURE FACT externally
     # (not a price, not a product), record it, and schedule an alert for when it arrives. The part about
@@ -1327,7 +1327,7 @@ SCENARIOS: list[UseCaseScenario] = [
         turns=6,
         channel="probe",
     ),
-    # ── Agenda: the full lifecycle and honest reading (INI-026 B1, second batch 2026-08-31) ─────────
+    # ── Agenda: the full lifecycle and honest reading (second batch 2026-08-31) ─────────
     # `dentist-appointment-into-agenda` measures creating + default reminder + moving the REMINDER. What no
     # case measured: moving the APPOINTMENT without duplicating it, canceling it along with its alarm (V2-473:
     # an orphaned alarm triggers a phantom appointment), and reading the agenda truthfully — including when

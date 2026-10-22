@@ -33,7 +33,7 @@ async def healthz():
 
 # ── THE MOBILE SHELL (V2-124) ────────────────────────────────────────────────────────────────────────────────
 # Three routes, and all three are byte-identical on every Machine — which is exactly the test server/ingress.py
-# applies before a path may answer without a session (see its PUBLIC_EXACT allowlist). No tenant data crosses here.
+# applies before a path may answer without a session (see its PUBLIC_EXACT allowlist). No account data crosses here.
 
 
 @router.get("/m")

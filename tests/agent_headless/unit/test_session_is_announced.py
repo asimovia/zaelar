@@ -2,9 +2,9 @@
 
 There are TWO doors into a new session — the explicit `begin_session()` and the lazy self-open inside
 `session_id()` — and only the first announced itself. So the central activity registry only ever received
-`event="end"`, and closing a row that was never opened updates nothing: measured 2026-09-03 against the real
-control-plane, `zaelar_user_sessions` held **0 rows for every account, ever**, while every `POST /session`
-returned 200. The registry built to survive a Machine being destroyed was recording nobody, silently.
+`event="end"`, and closing a row that was never opened updates nothing: measured 2026-09-03 against a real
+registry, it held **0 session rows, ever**, while every `POST /session` returned 200. The registry was
+recording nobody, silently.
 
 These tests drive the real functions and read what actually left the module — never a reimplementation of the
 rule, which would keep passing while production reported nothing.

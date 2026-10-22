@@ -1,6 +1,6 @@
 # Brief de re-simulación — sesión 2026-07-15 (widget YouTube por voz)
 
-**Para el test agent (INI-013) + el juez.** El operador hizo una sesión de voz REAL (construir un widget de
+**Para el test agent + el juez.** El operador hizo una sesión de voz REAL (construir un widget de
 YouTube que reproduzca vídeos, por voz) que reveló un racimo de fallos. Se han arreglado (P0+P1). **Repite un flujo
 equivalente y comprueba que ya NO ocurren.** El micro sigue SIEMPRE abierto (`attention=always`, decisión del
 operador) → parte de la prueba es que la voz AMBIENTE no dispare acciones.
@@ -20,7 +20,7 @@ operador) → parte de la prueba es que la voz AMBIENTE no dispare acciones.
    - Observabilidad: fase del worker `modificando el widget «youtube»…`; NO se crea `widgets/<slug-de-la-frase>/`.
 
 3. **Nombres de widget sensatos** (`generator._concise_id`).
-   - ✅ Esperado: si SÍ se crea uno nuevo, su id son 2-3 palabras de contenido (`tiempo-soria`), nunca la
+   - ✅ Esperado: si SÍ se crea uno nuevo, su id son 2-3 palabras de contenido (`tiempo-ciudad`), nunca la
      instrucción entera.
 
 4. **"Cierra el resto / los demás / menos X"** (disciplina de prompt).

@@ -64,7 +64,7 @@ async def handled(brain, text: str, emit, *, first_turn: bool, t_entry: float, w
         return False
     _desc = _amap.describe(_amap_hit)
     # `engine: "actionmap"` is not decoration: the viewer's LAYER column reads exactly this field
-    # (`DebugPanel.brainName`) and the Master reads it too. Without it a map turn was painted «FlashBrain» /
+    # (`DebugPanel.brainName`) and other flow viewers read it too. Without it a map turn was painted «FlashBrain» /
     # tagged «LLM» — the timeline claimed the model resolved a turn it never saw, which is the one thing this
     # whole mechanism must not make harder to audit. `origin` is the normalized field both surfaces group and
     # count by.

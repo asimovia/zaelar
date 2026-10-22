@@ -11,7 +11,7 @@ status: current
 `search/` (engine). Opened by **V2-782** on 2026-10-10 from the V2-781 sweep: 25 failing use cases, most of them
 searches, and no single place that answered «this request → this module». This document is the MAP the
 initiative asked for (T1.1): entry points, providers, caches, timeouts, fail-open rules, and what each one
-returns. Mechanism only — what the product does with it lives in the private workspace.
+returns. Mechanism only.
 
 ## The one door
 
@@ -71,7 +71,7 @@ every test that patches through them keeps working. New code imports `search.*`.
 | images | images | — | no | Google → Yandex → Bing in our Chromium |
 
 Every paid provider has a rate in `search/providers/__init__.py::USD_PER_REQUEST` (beside its declaration; `nucleo/energy_meter`
-reads it and adds the catch-all row; the Energy coverage gate fails otherwise) and meters only what ANSWERED. Timeouts: `WEBSEARCH_TIMEOUT` (12 s; Gemini +6), `LISTING_SEARCH_TIMEOUT`,
+reads it and adds the catch-all row; the metering coverage gate fails otherwise) and meters only what ANSWERED. Timeouts: `WEBSEARCH_TIMEOUT` (12 s; Gemini +6), `LISTING_SEARCH_TIMEOUT`,
 `BROWSER_SEARCH_TIMEOUT`.
 
 ## How the turn uses it today (2026-10-10)

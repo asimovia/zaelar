@@ -1,9 +1,6 @@
 #
-# ACCOUNT LIMITS (2026-08-09) — a cloud account has NO turn/TTL cap by design (accountMachineConfig's
-# docstring: "bounded by Energy balance, not a hard cap") — the only thing that ends a session here
-# is running OUT of Energy. Operator's own words: "cuando se gasta, se acabó" — a hard, uniform
-# cutoff (trial or a subscriber between renewals, same rule; see the INI-019-adjacent addenda for why
-# this supersedes energy-model.md's older soft-degrade language). Self-host never calls this
+# ACCOUNT LIMITS — when ZAELAR_USER_ID is set there is NO turn/TTL cap: the only thing that ends a
+# session here is running OUT of Energy — a hard, uniform cutoff. Self-host never calls this
 # (is_cloud_account() is False there) — same no-op-by-construction idiom as everywhere else.
 #
 # Closer registry: the live voice session (voice/engine/pipeline/agent.py) registers a closer gated

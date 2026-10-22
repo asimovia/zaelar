@@ -1,6 +1,6 @@
 # navegador: Context Notes
 
-Web browser inside zaelar. **First `kind:"backed"` widget** (INI-016), introducing the live-backend widget-app
+Web browser inside zaelar. **First `kind:"backed"` widget**, introducing the live-backend widget-app
 infrastructure designed in `zaelar-modules.md` Widget-apps section.
 
 ## Why a Backend, Not an Iframe
@@ -26,7 +26,7 @@ capture. Operator clicks/scrolls map back to page coordinates -> Chromium -> new
 Exception: a capture does not play video/audio, so the owner resolves `videoId` by scraping result HTML with no API
 key, and the widget mounts the real embed player (`youtube-nocookie`). `open` detects YouTube URLs.
 
-## Authentication: Sessions With the Operator's Account (INI-016)
+## Authentication: Sessions With the Operator's Account
 Many tasks need the operator's account (creating a Google Cloud API key, buying on Wallapop, reading email). The
 headless Chromium starts **without a session**. Solution: its own profile + one manual login, NOT copying cookies
 from system Chrome because they are Keychain-encrypted and fragile.

@@ -178,7 +178,7 @@ underneath and comes back when the screen closes. His words: «se desactiva el f
 
 ⚠️ **«You have not linked it» and «we have not built it» are different sentences, and showing the first
 when the second is true is the same class of lie as promising a view** (V2-540). A source with no
-connector is VISIBLE and INERT — no button, no handler. Per INI-027, showing what we do not have yet is
+connector is VISIBLE and INERT — no button, no handler. Showing what we do not have yet is
 the point rather than an embarrassment.
 
 ⚠️ **The list is a READ of the real inventory, never a hardcoded «off».** Each widget derives it from

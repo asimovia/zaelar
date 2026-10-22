@@ -1,5 +1,5 @@
 #
-# tasks.py — browser TASK REGISTRY (INI-016, multi-task phase). Each task = one objective driven in ITS OWN tab, with
+# tasks.py — browser TASK REGISTRY (multi-task phase). Each task = one objective driven in ITS OWN tab, with
 # a live feed (events), structured results, and an optional question for the operator.
 #
 # Split (decided with the operator on 2026-07-08): the ORCHESTRATOR (fast layer, brains/duo) owns the FLEET — creates

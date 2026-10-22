@@ -15,7 +15,7 @@ está en `.meshkore/docs/architecture/zaelar-architecture.md`; el detalle por m�
 Antes de crear un módulo nuevo, declararlo en `.meshkore/public/cluster.yaml`. Raíz SIN `.py`/`.html` sueltos;
 arranque `make run` → `python -m server`.
 
-- `voice/` — **motor LiveKit** en `voice/engine/` (INI-012): `AgentSession` (streaming, turnos, VAD, barge-in,
+- `voice/` — **motor LiveKit** en `voice/engine/`: `AgentSession` (streaming, turnos, VAD, barge-in,
   preemptive-gen) + registry de providers + perfiles remote/local (`core/`, `speech/`, `llm/`, `pipeline/agent.py`
   con `make_server()` embebible, `speech/voices.py`). El turn-taking/VAD/barge-in los gobierna LiveKit (VAD Silero +
   turn-detector `MultilingualModel` + `allow_interruptions`). Nivel superior = contrato del cerebro **puro y
@@ -111,8 +111,7 @@ arranque `make run` → `python -m server`.
   QUÉ pasa) con los ejes para ANALIZARLO: `identity.py` (**`user_id`** estable por instalación —UUID4 aleatorio
   en `config/identity.json` gitignored, con **INIT EXPLÍCITO en el lifespan del server** desde 2026-08-16 (antes
   se generaba solo, la primera vez que CUALQUIER código llamara a `user_id()`; ahora queda creado y logueado en
-  el arranque, igual de visible que el `ZAELAR_USER_ID` que una Machine de nube ya trae puesto) — en la nube
-  MANDA ese `ZAELAR_USER_ID` del provisioner, `user_id()` lo prefiere sobre el fichero local— y **`session_id`**
+  el arranque) — `ZAELAR_USER_ID`, when set, wins over the file— y **`session_id`**
   por SESIÓN DE TRABAJO del operador: arranca al conectar, se cierra con ⏻ o al cerrar la pestaña, y una
   reconexión NO la parte en dos) · `flows.py` (lectura por **CORRELATION ID**: flujos con duración real de punta
   a punta, familias, actores, tokens y errores; detalle cronológico; sesiones; cobertura) · `api.py`
@@ -136,11 +135,11 @@ arranque `make run` → `python -m server`.
   confirm.py::request()` captures `trace.current()`, `_resolve_confirm()` adopts it before executing/cancelling)
   — the ask/answer/action of an irreversible confirm-gate now reads as one flow even across a barge-in-cancelled
   reply attempt in between. `flows()`'s SQL exposes `origin` (the `trace.begin(origin=...)` argument: `turno`/
-  `kickoff`/`ui`/`cron`/`proactivo`/`cluster`/`probe`) and `title` (that root event's text) per flow — what the
-  master's column-board (`cloud/backoffice`, private repo) uses to tell a real task apart from session
+  `kickoff`/`ui`/`cron`/`proactivo`/`cluster`/`probe`) and `title` (that root event's text) per flow — what a
+  flow viewer uses to tell a real task apart from session
   initialization (kickoff greeting, canvas-restore reconciliation within the session's first ~10s) and to label
   each column/rail item with more than a bare corr_id. **A plain conversational flow now closes EXPLICITLY too**
-  (2026-08-15): only a worker-spawned flow had an explicit close before this; the master could only guess
+  (2026-08-15): only a worker-spawned flow had an explicit close before this; a viewer could only guess
   liveness from recency, and guessed wrong the instant a turn finished (reported live: "restarted the system…
   still shows seven active flows"). `_run`'s success path (never the `CancelledError` branch — a barge-in
   cancellation may still get continued by the next fragment) calls `_maybe_close_flow()`, which closes the
@@ -157,7 +156,7 @@ arranque `make run` → `python -m server`.
   `widgets/agenda/manifest.json`, per an explicit operator request — "the agenda widget is voice-only"): the
   confirmation itself, and voice resolution, are completely unchanged — only the SSE emit that paints the card
   overlay is skipped. SOLO LECTURA: el único escritor de `events` sigue siendo
-  el sink del bus. Fase LOCAL entregada; nube + privacidad en `INI-021` (raíz del workspace).
+  el sink del bus.
 - `bus/` — **Sistema Nervioso**: pub/sub de señales in-process (asyncio, patrones fnmatch + `emit_sync`
   loop-agnóstico vía `call_soon_threadsafe` para entrega cross-loop job-thread↔uvicorn). `bus/log.py` = log durable
   de eventos en SQLite (`zaelar.db`, tabla `events`, WAL). `bus/sse.py` = puente SSE al frontend (`GET /events`).
@@ -219,10 +218,10 @@ arranque `make run` → `python -m server`.
   iniciativa de DISEÑO `V2-052` (pendiente de OK del operador).**
 - `tests/agent_headless/harness/` — harness de evaluación conversacional sintética + juez.
 - `tests/voice/e2e/mic/` — self-test headless del transporte micrófono→STT por WebRTC.
-- `tests/voice/e2e/agent/` — tester de voz (INI-013): 2º participante LiveKit que HABLA con zaelar y un JUEZ que evalúa lo que HACE.
+- `tests/voice/e2e/agent/` — tester de voz: 2º participante LiveKit que HABLA con zaelar y un JUEZ que evalúa lo que HACE.
 
 `files/` quedó plegado en la capa episódica de `memory/` (shim de compatibilidad). Raíz (no-módulos): `README.md`,
-`Makefile`, `requirements.txt` + `.venv/`, `Dockerfile`/`fly.toml`/`.dockerignore`, `scripts/` (tooling de
+`Makefile`, `requirements.txt` + `.venv/`, `Dockerfile`/`.dockerignore`, `scripts/` (tooling de
 instalación por-OS), `CLAUDE.md`. **Logging → `.meshkore/logs/`** (no crear `logs/` en la raíz).
 
 Also declared in `cluster.yaml` (2026-09-30, V2-778 F7): `i18n/` (multilingual runtime + language preparation),

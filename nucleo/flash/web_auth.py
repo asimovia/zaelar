@@ -33,7 +33,7 @@ logger = logging.getLogger("zaelar.flash.web_auth")
 
 def _emit(label: str, text: str = "", **extra) -> None:
     """Observability row, best-effort. Emitted HERE so both channels leave the same trace: the operator watching
-    the Master should not be able to tell which brain drove the handoff."""
+    observability should not be able to tell which brain drove the handoff."""
     try:
         from voice.observer import emit
         emit("brain", label, text=text[:200], role="system", extra=extra or None)

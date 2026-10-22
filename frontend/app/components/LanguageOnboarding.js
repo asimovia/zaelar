@@ -27,7 +27,7 @@
 // real wait for anything else. V2-672 puts the SECOND question in that gap, which is the operator's own
 // sequencing: *«eso podría ser el paso número dos, en el idioma correspondiente… y eso sucedería mientras se
 // está haciendo la traducción»*. So the wait is spent asking where his files should live (self-host only —
-// a cloud account's Volume IS the storage) instead of watching a spinner, and its words arrive ALREADY
+// a hosted deployment provides its own storage) instead of watching a spinner, and its words arrive ALREADY
 // TRANSLATED on the same SSE event (i18n/init/detect.py's priority pass).
 //
 // Which means "ready" can no longer close this on its own: it may land with an unanswered question on

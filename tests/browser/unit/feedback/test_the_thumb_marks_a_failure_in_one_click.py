@@ -1,17 +1,12 @@
 """V2-760 — the thumbs-down marks «this went wrong» in ONE click, and the report is the session itself.
 
-The operator, 2026-09-24:
-
-    «cada vez que la gente detecte un fallo, les pediré que clique en este pulgar hacia abajo… en el registro
-    de feedback va a salir… en este momento el usuario había pedido alguna cosa y el agente personal no lo ha
-    hecho bien, revisarlo… así el usuario no tiene que estar rellenando un mail o un texto de descripción…
-    quedará vinculado por ID de agente personal en nuestro backoffice, con los datos de observabilidad… y
-    cuando se clique saldrá un mensaje hacia la izquierda… dura dos o tres segundos… y desaparece en un
-    fundido… y el icono vuelve al color original.» — and: «tendrá que funcionar tanto en agentes locales como
-    en la nube».
+The operator's requirement (2026-09-24): when someone spots a failure they click the thumb once — no mail, no
+description to fill in. The report is linked to the agent's id together with its observability data; a short
+confirmation slides in for two or three seconds and fades, and the icon returns to its colour. It has to work on
+local and hosted engines alike.
 
 Building it exposed a defect under EVERY feedback report: `flows.events(limit=200)` returns the FIRST 200
-events of a session. Measured on his session `ee542271` (621 events, 12:26:54-12:29:12): the evidence any
+events of a session. Measured on one session (621 events, 12:26:54-12:29:12): the evidence any
 report carried was 12:26:54-12:27:33 — the first 39 seconds. A report sent at the end never contained the
 failure it described, and for a button whose whole point is «from here backwards», that is fatal.
 """
@@ -193,7 +188,7 @@ def test_a_tail_read_asks_for_the_newest_and_returns_them_in_order(monkeypatch):
 
 
 def test_the_default_read_is_unchanged(monkeypatch):
-    """The cursor readers (`since_id`, the backoffice's live follow) walk forward and must keep doing so."""
+    """The cursor readers (`since_id`, a viewer's live follow) walk forward and must keep doing so."""
     from observability import flows
     seen = {}
     monkeypatch.setattr(flows, "_rows", lambda sql, args: seen.update(sql=sql) or [{"id": 1}, {"id": 2}])

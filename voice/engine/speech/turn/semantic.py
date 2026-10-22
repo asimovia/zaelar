@@ -133,13 +133,13 @@ def build():
     only when explicitly requested.
 
     ONNX is **behind an env var and OFF by default** because it cannot work in this architecture, and this is
-    measured, not assumed: the job runs in a THREAD (`job_executor_type=THREAD`, INI-012) and `MultilingualModel()`
+    measured, not assumed: the job runs in a THREAD (`job_executor_type=THREAD`) and `MultilingualModel()`
     requires registering its `InferenceRunner` on the MAIN thread — it fails with «InferenceRunner must be registered on
     the main thread». Trying it in every session only left a noisy log error that looks like a failure but is not one.
     The lexical layer needs no inference runner, so it runs where the model cannot.
 
     `ZAELAR_TURN_ONNX=1` retries it, for the day inference is registered on the main thread before
-    starting the worker (the INI-012 follow-up). If it fails, it falls back to the lexical layer alone — which is
+    starting the worker (a follow-up). If it fails, it falls back to the lexical layer alone — which is
     still infinitely better than silence alone.
     """
     inner = None

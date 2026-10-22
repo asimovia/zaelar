@@ -2,7 +2,7 @@
 
 «draft a short reply saying i'll send the meet link right after our call»: the verdict read `mensajeria:draft` at
 1.00, the model called `reply` (which SENDS), V2-712 ran it without a question (clear order, resolved target) and
-«Hi Josep, thanks for the note. I'll send the Meet link right after our call.» went to jsola@renta4.es. V2-754 lets a
+«Hi Sam, thanks for the note. I'll send the Meet link right after our call.» went to x@example.com. V2-754 lets a
 valid model call beat a disagreeing verdict because a wrong verdict costs a reversible view; for an act that leaves
 (consent level ≥ sensitive) the costs are reversed. When the two readers disagree, the verdict's action runs with the
 model's content, or he is asked; agreement, or no verdict, changes nothing (C5's Telegram to Rowan still goes)."""

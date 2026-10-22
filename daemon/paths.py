@@ -13,7 +13,7 @@ The daemon has to work in two worlds that do not overlap:
 Everything the daemon owns lives under ONE directory (`state_dir()`): its config, its audit log, and later the
 browser profile. In-repo that directory is `config/daemon/` — a subdirectory of `config/`, which is already
 declared in `workspace.SUBDIRS`, so `tests/agent_headless/unit/test_workspace_tree.py` stays satisfied and a
-fresh cloud Volume gets the parent created for it at boot like everything else.
+fresh mounted workspace gets the parent created for it at boot like everything else.
 """
 from __future__ import annotations
 
@@ -54,7 +54,7 @@ def _install_root() -> Path | None:
 
 
 def workspace_root() -> Path:
-    """The per-tenant data root, with the SAME semantics as `nucleo.workspace.root()`.
+    """The data root, with the SAME semantics as `nucleo.workspace.root()`.
 
     Kept byte-compatible with the engine's rule on purpose: a self-host user who sets `ZAELAR_WORKSPACE` for the
     engine and not for the daemon would otherwise end up with two different config trees and no way to tell.

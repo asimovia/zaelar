@@ -228,7 +228,7 @@ def on_state_change(state: "_ag.State", *, _ONSET_MAX_S, _STATE_TRACE_SAFE, _air
         pass
     # Nothing is still sounding at this instant — this is the safe point to close any flow that finished
     # generate text WHILE the bot was still narrating the response (operator report, 2026-08-16: the turn
-    # disappeared from the master during TTS). See `nucleo.py::_maybe_close_flow`/`drain_pending_flow_closes`.
+    # disappeared from the flow viewer during TTS). See `nucleo.py::_maybe_close_flow`/`drain_pending_flow_closes`.
     if not speaking:
         try:
             from voice.engine.llm.providers.nucleo import drain_pending_flow_closes

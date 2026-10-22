@@ -267,7 +267,7 @@ class _Owner:
                 await notify.announce(_LABEL.get(platform, platform), notice)
 
     def _auto_reply(self, platform: str, items: list[dict]) -> int:
-        """V2-624 — the autoresponder (the 'Phase 4' the WhatsApp client has named since INI-014, now with its
+        """V2-624 — the autoresponder (the 'Phase 4' the WhatsApp client has long named, now with its
         go-ahead). The DECISION lives whole in `widgets/mensajeria/autorespond.py` (zero-import, like policy.py):
         never a group, email only when addressed to him, inside the configured hours, once per chat per 24 h
         against a DURABLE ledger. The reply travels the SAME `msg.reply` seam a dictated reply uses — each

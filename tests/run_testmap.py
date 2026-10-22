@@ -631,10 +631,10 @@ DOMAINS: list[dict] = [
         {"id": "2.13", "title": "Modelo rápido: latencia + enrutado + paralelo (prompt real)", "ch": UNIT,
             "live": True,
             "cmd": "./.venv/bin/python -m tests.agent_headless.e2e.prompt_cost.bench_fast_model"},
-        # 2026-08-14: un turno CANCELADO (38 de 54 en la sesión b70a45d0) ya se le pidió al proveedor y ya se pagó,
-        # pero su `usage` real viaja en el ÚLTIMO chunk del stream y nunca llega → lo factura un ESTIMADO. Este nodo
-        # fija las dos ramas (cancelado→estimado, completo→verdad del proveedor) y la DENSIDAD del estimado, que
-        # asumía 4 chars/token (inglés) cuando el input real va a 3,36 y cobraba un 16% de menos.
+        # 2026-08-14: a CANCELLED turn was already sent to the provider and already cost tokens, but its real
+        # `usage` travels in the LAST stream chunk and never arrives → it is metered by an ESTIMATE. This node pins
+        # both branches (cancelled→estimate, complete→provider's truth) and the estimate's DENSITY, which assumed
+        # 4 chars/token (English) when the real input runs at 3.36 and under-metered by 16%.
         {"id": "2.24", "title": "Un turno CANCELADO también se factura (y con el estimado bien calibrado)",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_cancelled_turn_billing.py"]},
         # 2026-10-14: every text-channel perf row said `cache_hit_tokens: null` while DeepSeek reported the hit — the
@@ -1790,14 +1790,6 @@ DOMAINS: list[dict] = [
         {"id": "3.14", "title": "«páralo» lleva objeto: no es un barge-in · y «párate» lo sigue siendo",
             "ch": UNIT,
             "paths": ["tests/voice/unit/test_paralo_lleva_objeto.py"]},
-        # 2026-09-04 — el bucle de voz ENTERO contra una Machine REAL de la nube (no localhost): arranca su propia
-        # sesión en `my.zaelar.com`, entra en su sala LiveKit como tester, oye el saludo, dice una frase y
-        # transcribe la respuesta. Existía desde INI-013 y NO estaba en el mapa, así que `tests run all` no lo
-        # nombraba nunca — el nodo 7.17 ya dejó escrito que un test fuera del mapa AFIRMA que corrió. LIVE y con
-        # coste: gasta Energy de una cuenta de verdad y provisiona sesión, así que se lanza a mano, jamás en CI.
-        {"id": "3.21", "title": "Nube: el bucle de voz completo contra una Machine real (my.zaelar.com)",
-            "ch": VOICE, "live": True,
-            "cmd": "./.venv/bin/python -m tests.voice.e2e.agent.cloud_smoke"},
         {"id": "3.7", "title": "Relleno de espera: suena MIENTRAS se espera (fuera del stream del modelo)",
             # The filler pools are fields of the `voice` pack (2026-10-21); their test maps once, on the i18n node.
             "ch": VOICE, "paths": ["tests/voice/unit/test_lead_in.py"]},
@@ -2758,7 +2750,7 @@ DOMAINS: list[dict] = [
         # · Cola · Suscripciones · Listas), la búsqueda como banda NUMERADA del dashboard (se pilota por voz:
         # play_result/add_results), placeholder donde vivirá el vídeo, salto automático al reproductor cuando
         # llega uno, miniaturas en la cola, y la estantería 🔌 de fuentes con su verdad (YouTube desactivado con
-        # su porqué INI-032; Vimeo/Dailymotion/Twitch como puertas aún cerradas). Elegir pestaña es UNA
+        # su porqué (falta el cliente OAuth); Vimeo/Dailymotion/Twitch como puertas aún cerradas). Elegir pestaña es UNA
         # transición (la regla V2-626 aplicada de nacimiento) y sobrevive al siguiente render.
         {"id": "4.138", "title": "El reproductor de vídeo lleva pestañas y un dashboard: búsqueda numerada "
                                  "pilotable, placeholder, cola con miniaturas y la estantería honesta de fuentes",
@@ -3317,11 +3309,10 @@ DOMAINS: list[dict] = [
         {"id": "4.127", "title": "Widgets piloto de i18n: timer (ctx.t) y clock (ctx.lang + Intl)",
             "ch": UNIT, "paths": ["tests/browser/unit/timer/test_the_timer_follows_the_operators_language.py",
                                   "tests/browser/unit/clock/test_the_clock_reads_the_operators_locale.py"]},
-        # LA PILA de Energy (2026-08-13). El operador se quedó sin energía a mitad de trabajo y se enteró por un
-        # cartel, sin haber visto nunca cuánta le quedaba. Aquí se guarda la ESCALA —huecos fijos y valor por
-        # rayita variable, con el color atado a la CAPACIDAD y no al saldo para que no cambie mientras gastas—
-        # con los casos que dio él: demo 10, cuota $10 → 10 de un dólar, $50 → los 50, $100 → 50 de dos dólares,
-        # techo en $250. Es pura, así que falla sola y sin navegador.
+        # The Energy gauge (2026-08-13): an engine ran out of energy mid-task and the only sign was a banner,
+        # with no prior view of how much was left. This pins the SCALE — fixed slots and a variable value per
+        # tick, with the colour tied to CAPACITY rather than balance so it does not change as you spend — one
+        # case per tier boundary. It is pure, so it fails on its own and without a browser.
         {"id": "4.15", "title": "Pila de Energy: la escala (huecos fijos · valor por rayita · color por capacidad)",
             "ch": UNIT, "paths": ["tests/browser/unit/energy/test_energy_scale.py"]},
         # V2-092 — PARAR ES PARAR. El operador vio, con el agente parado: un vídeo reproduciéndose, que volvía a
@@ -5795,7 +5786,7 @@ DOMAINS: list[dict] = [
         # navegador emitiendo 74 eventos en esa misma corrida.
         {"id": "7.20", "title": "La captura forense de un turno guarda el ESTADO, no solo la persona",
             "ch": UNIT, "paths": ["tests/infrastructure/unit/core/test_turn_capture_keeps_the_state.py"]},
-        # INI-021 (2026-08-09): la observabilidad pasa de «ver líneas» a «analizar procesos». Un estímulo y todo
+        # process-level observability (2026-08-09): la observabilidad pasa de «ver líneas» a «analizar procesos». Un estímulo y todo
         # lo que desencadena comparten CORRELATION ID; cada evento dice de qué instalación y de qué sesión de
         # trabajo salió; y todo eso es consultable por columnas indexadas, no escaneando JSON.
         {"id": "7.7", "title": "Flujos por correlation ID + identidad de instalación + sesión de trabajo",
@@ -5880,12 +5871,11 @@ DOMAINS: list[dict] = [
         {"id": "7.25", "title": "Un perfil de equipo no arranca a su agente con rutas muertas",
          "ch": UNIT,
          "paths": ["tests/infrastructure/unit/test_a_team_profile_points_at_real_docs.py"]},
-        # V2-500 (2026-08-30): el reparto de modelos vivía en SEIS sitios que nadie comparaba, así que la
-        # norma acababa solo en el config LOCAL del operador —gitignorado— y la nube arrancaba con otro.
-        # Ahora hay UNA tabla pública (`config/models.default.json`); los cuatro consumidores de Python la
-        # LEEN, y las dos superficies de nube (TOML de Fly + JS del provisioner) son copias que este nodo
-        # vigila. Incluye la norma: UN solo failover, nada que dependa de un servidor local, Z.AI solo en
-        # el worker, y lo retirado no vuelve.
+        # V2-500 (2026-08-30): the model allocation lived in SIX places nobody compared, so the rule ended up
+        # only in a gitignored LOCAL config. Now there is ONE public table (`config/models.default.json`); the
+        # four Python consumers READ it, and any deployment config checked out alongside is a copy this node
+        # watches (skipped when absent). It also pins the rule: ONE failover, nothing that depends on a local
+        # server, Z.AI only in the worker, and what was retired does not come back.
         {"id": "7.26", "title": "El reparto de modelos vive en UNA tabla y las copias de nube no derivan",
          "ch": UNIT,
          "paths": ["tests/infrastructure/unit/test_the_three_surfaces_say_the_same.py"]},
@@ -6015,8 +6005,8 @@ DOMAINS: list[dict] = [
         # 2026-08-15 (V2-092 addenda): la sesión de trabajo se cierra por techo de INACTIVIDAD REAL (el ruido de
         # fondo no cuenta ni para el reloj ni, desde este cambio, para reabrir una sesión que se acaba de cerrar
         # — hallazgo real: el propio evento "end" resucitaba una sesión nueva en el acto) y se anuncia al
-        # control-plane con un LATIDO periódico mientras siga abierta (reemplaza la adivinanza-por-ruido de la
-        # nube por una señal pensada para esto). Este nodo faltaba del mapa — ninguno de los dos ficheros estaba
+        # control-plane con un LATIDO periódico mientras siga abierta (reemplaza la adivinanza-por-ruido por una
+        # señal pensada para esto). Este nodo faltaba del mapa — ninguno de los dos ficheros estaba
         # registrado — así que "tests run infrastructure" nunca los ejecutaba pese a existir.
         {"id": "7.21", "title": "Sesión de trabajo: cierre por inactividad real + latido hacia el control-plane",
             "ch": UNIT, "paths": ["tests/infrastructure/unit/core/test_session_idle_rollover.py",
@@ -6175,23 +6165,6 @@ DOMAINS: list[dict] = [
                       # V2-658 — el gestor de archivos unificado añade rename/copy/delete a la biblioteca y
                       # el hand-off `nucleo/library_router.py` (mismo molde que `nucleo/torrent_router.py`).
                       "tests/infrastructure/unit/core/test_library_router_hands_a_file_to_its_player.py"]},
-        # 2026-09-04 — LA NUBE, por lo único que se puede comprobar sin gastar dinero ni dejar una cuenta detrás:
-        # `my.zaelar.com` es un BORDE de ruteo, y sin cookie de sesión cae a la «entrada inteligente» que manda al
-        # visitante al motor de su propio ordenador. Eso es lo que ve cualquiera que escriba la dirección, y falla
-        # de una forma que desde dentro no se nota: un cambio de ruteo lo convierte en un 404 o en algo que sirve
-        # contenido real a quien no tiene cuenta, y la suite del motor no tiene opinión porque no es el motor quien
-        # contesta. Fija además la trampa medida ese día: sin sesión, el borde devuelve ESA MISMA página para
-        # `/manifest.webmanifest` y `/sw.js`, así que desde un navegador sin cuenta la PWA no puede instalarse — es
-        # correcto, y es justo la forma que se lee como «el móvil está roto». LIVE (sale a internet de verdad) y
-        # SOLO LECTURA: ni una escritura, ni una cuenta, ni una sesión.
-        # NO es un nodo `live` a propósito, aunque salga a internet: un nodo live queda FUERA de la corrida
-        # determinista, que es la tercera forma de desaparecer del trinquete 7.17. El fichero se construye entero
-        # y SALTA solo (`ZAELAR_CLOUD_LIVE=1` lo enciende), igual que la ida y vuelta viva de conectores — saltado
-        # se ve en el informe, ausente no.
-        {"id": "7.38", "title": "Nube: el borde rutea a un visitante SIN cuenta (entrada inteligente · sin fugas)",
-            "ch": HTTP,
-            "paths": ["tests/infrastructure/e2e/cloud/"
-                      "test_the_cloud_entry_point_routes_a_visitor_without_an_account.py"]},
         {"id": "7.39", "title": "CLAUDE.md cabe en contexto: techo de tamaño + archivo sin perder citas (V2-601 T-18)",
             "ch": UNIT, "paths": ["tests/infrastructure/unit/test_claude_md_ratchet.py"]},
     ]},

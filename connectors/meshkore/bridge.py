@@ -33,7 +33,7 @@ DEDUP_SECS = float(os.getenv("MESHKORE_DEDUP_SECS", "60"))
 def _close_cluster_flow(trace_id: str) -> None:
     """Every cluster turn opens a trace via `trace.begin()` but this whole path — unlike the voice provider's
     `_run` — never explicitly closed it (found live 2026-08-16: an idle heartbeat nudge sat "en curso" in the
-    master with nothing happening, and the operator had asked for nothing in minutes). Nothing here chains
+    flow viewer with nothing happening, and the operator had asked for nothing in minutes). Nothing here chains
     fragments across turns the way voice does, so the close condition is simple: this turn is done, close its
     flow UNLESS `escalate_to_slowbrain` spawned a worker that is still running on it — that worker owns the
     close instead (same invariant as the voice path: a live worker's flow NEVER closes out from under it)."""
@@ -384,8 +384,8 @@ class ClusterBridge:
                           peer_text: str | None = None, origin: str = "cluster"):
         # TRACEABILITY (V2-044): a peer message is also a stimulus -> it starts with its trace. `origin` defaults
         # to "cluster" (a REAL inbound peer message/reconnect) but `_heartbeat_nudge` passes "pulso" — WE decided
-        # to check in, nothing came in from the peer, and that distinction is what lets the master (and
-        # `flowIsInit`, cloud/backoffice) tell a real task apart from housekeeping instead of dimming/conflating
+        # to check in, nothing came in from the peer, and that distinction is what lets a flow viewer
+        # tell a real task apart from housekeeping instead of dimming/conflating
         # a genuine cluster conversation with our own idle nudging (2026-08-16 operator finding: a heartbeat nudge
         # was opening a visible "en curso" flow after minutes of total silence — the pulse must not manufacture
         # tasks just because it has a loop running; see CLAUDE.md's "a task/flow only ever opens from one of
@@ -810,7 +810,7 @@ class ClusterBridge:
                 ps["paused"] = True            # stop replying until the evaluator sees real progress
                 if not ps["alerted"]:
                     ps["alerted"] = True
-                    # T-03 (2026-07-26 audit, INI-020 remediation): GENERAL objective-ownership guard — previously
+                    # T-03 (2026-07-26 audit remediation): GENERAL objective-ownership guard — previously
                     # `off_track` alerted with the SAME generic message as `dead_end` ("no progress"), without
                     # distinguishing "the other side is not following" from "the other side is taking me somewhere
                     # ELSE". A peer trying to redirect the collaboration is exactly the case the operator wants

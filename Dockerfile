@@ -1,12 +1,10 @@
-# zaelar — personal voice assistant. FastAPI + LiveKit Agents (INI-012), cerebro propio «Colmena» (BRAIN=nucleo).
+# zaelar — personal voice assistant. FastAPI + LiveKit Agents, cerebro propio «Colmena» (BRAIN=nucleo).
 # Build from the repo root:  docker build -t zaelar .
 #
-# PERFIL EN LA NUBE (V2-040): esta imagen Linux x86 NO trae las rutas de modelo LOCAL (mlx Metal es darwin-only
-# y se salta en el pip install; no hay Ollama ni binario livekit-server). SÍ trae (desde 2026-08-05) el **CLI de
-# Claude Code** (brain workers) y el **Chromium de Playwright** (navegador) para que cloud tenga la MISMA
-# capacidad que local. El deploy corre con el **perfil `cloud`**: STT/TTS/cerebro/memoria por proveedores de nube
-# (claves como secretos de Fly: AIMLAPI_KEY para la memoria —CORAZÓN de escritura Y sueño REM, ambos por AIMLAPI
-# desde 2026-08-09—, Z_AI_API_KEY para los workers, etc.).
+# CLOUD PROFILE: this Linux x86 image does NOT carry the LOCAL model routes (mlx Metal is darwin-only and is
+# skipped by pip; no Ollama, no livekit-server binary). It DOES carry the Claude Code CLI (brain workers) and
+# Playwright's Chromium (browser widget). It runs with the `cloud` profile: STT/TTS/brain/memory through cloud
+# providers, with their API keys provided via environment variables.
 FROM python:3.12-slim
 
 # System deps: ffmpeg/libsndfile for aiortc (WebRTC) + resampling; build tools for pyrnnoise.
@@ -20,23 +18,15 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# NOTE — baking the ONNX models (fastembed embedding + jina reranker) into the image was TRIED here
-# 2026-08-05 to kill the per-boot HuggingFace download, but the RUN step did NOT persist on Fly's
-# remote builder (the model download didn't survive into the image layer — verified: /root/.cache is
-# empty on the resulting image, while the SAME download works fine at runtime). So it's left OUT rather
-# than shipped as a silently-failing `|| true` no-op. The per-boot download is already neutralized for
-# the demo where it mattered: demo/pool machines run MEMORY_RERANK=off (so the 1.1GB reranker is never
-# loaded — see cloud/provisioner/src/machineConfig.js) and the small embedding download is hidden by
-# the pre-booted warm pool. FOLLOW-UP for real paying accounts (which keep the reranker ON): bake via a
-# LOCAL build (`flyctl deploy --local-only`, where the builder has normal network) or cache the models
-# on the per-account Fly Volume so they download once, not per boot.
+# NOTE — the ONNX models (fastembed embedding + jina reranker) are NOT baked into the image: they are
+# downloaded at runtime on first use. Set MEMORY_RERANK=off to skip loading the ~1.1GB reranker, or mount a
+# persistent volume over the model cache so they download once instead of per boot.
 
-# CLAUDE CODE CLI + CHROMIUM — the two runtime engines the cloud image was missing (2026-08-05). The
-# brain workers (nucleo/workers/) DRIVE the `claude` CLI, and the navegador widget drives a real
-# headless Chromium via Playwright; without these in the image, cloud could only do voice — no brain
-# workers, no web browsing. Node 20 (NodeSource) provides `claude`; workers point it at Z.ai via
-# ANTHROPIC_BASE_URL/AUTH_TOKEN (resolved from CODE_AGENT_BASE_URL + the Z_AI_API_KEY secret, injected
-# per machine — see cloud/provisioner/src/machineConfig.js). Then Playwright's Chromium + its OS deps.
+# CLAUDE CODE CLI + CHROMIUM — the brain workers (nucleo/workers/) drive the `claude` CLI, and the navegador
+# widget drives a real headless Chromium via Playwright; without these the image could only do voice. Node 20
+# (NodeSource) provides `claude`; workers can point it at an Anthropic-compatible endpoint via
+# ANTHROPIC_BASE_URL/AUTH_TOKEN (resolved from CODE_AGENT_BASE_URL + the provider key in the environment).
+# Then Playwright's Chromium + its OS deps.
 RUN apt-get update && apt-get install -y --no-install-recommends curl gnupg \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y --no-install-recommends nodejs \
@@ -73,10 +63,8 @@ COPY update ./update
 # pytest-only and must stay out.
 COPY version.py .
 # ⚠️ These COPYs are BY NAME — every top-level runtime package must be listed here, or the image
-# ships without it and the engine crash-loops on boot (ModuleNotFoundError). This bit us on
-# 2026-08-04: V2-089 added the `i18n/` package + `server/i18n_api.py` (imported unconditionally by
-# server/__init__.py) but nobody added `COPY i18n` here → the whole cloud demo crash-looped
-# "No module named 'i18n'" for days. When you add a new top-level module, add its COPY here.
+# ships without it and the engine crash-loops on boot (ModuleNotFoundError) — e.g. a missing
+# `COPY i18n` once crash-looped the image with "No module named 'i18n'". When you add a new top-level module, add its COPY here.
 
 ENV HOST=0.0.0.0 \
     PORT=8080 \
@@ -84,7 +72,7 @@ ENV HOST=0.0.0.0 \
     ZAELAR_ENGINE=livekit \
     ZAELAR_PROFILE=remote \
     DEPLOY_ENV="fly·cdg"
-# NOTE (found 2026-07-24, INI-018): `ZAELAR_PROFILE=cloud` was the default here before, but
+# NOTE: `ZAELAR_PROFILE=cloud` was the default here before, but
 # voice/engine/core/profile.py only recognizes "remote"/"local" (a DIFFERENT, lower-level profile
 # system than config/profiles.py's UI-facing "local"/"cloud" package, which explicitly translates
 # "cloud" → engine_profile "remote"). "cloud" silently fell back to profile.py's "remote" defaults
@@ -92,5 +80,5 @@ ENV HOST=0.0.0.0 \
 # actually understands; fixed for clarity, not because behavior changed.
 EXPOSE 8080
 
-# Keys (DEEPGRAM/AIMLAPI/...) + CF_TURN_* + WEBRTC_HOST are injected as Fly secrets (see fly.toml / deploy).
+# Keys (DEEPGRAM/AIMLAPI/...) + CF_TURN_* + WEBRTC_HOST are provided via environment variables.
 CMD ["python", "-m", "server"]

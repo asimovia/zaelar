@@ -1,8 +1,7 @@
 # Speaker identity — knowing WHO is talking (V2-651)
 
 **Status: F0 only — SHADOW MEASUREMENT. Nothing is gated, no memory is written, no prompt changes.**
-This document describes the MECHANISM. What the product does with it (account policy, privacy of the
-commercial offering) is not described here — see the workspace root's private context.
+This document describes the MECHANISM. Deployment-specific policy is out of scope here.
 
 ## Why it exists
 

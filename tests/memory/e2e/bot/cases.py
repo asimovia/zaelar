@@ -1138,9 +1138,9 @@ BATCH_40 = [  # dim A — EL NOMBRE (bug en vivo 2026-07-10): decir el nombre de
     {"t": "query", "dim": "A", "q": "oye, ¿te acuerdas de mi nombre?", "via": "state", "want": ["ricart"],
      "note": "identidad con muletilla — sigue disponible en el bloque"},
     # variante de fraseo: "soy X" (la heurística la excluye por ambigua, pero el CORAZÓN LLM la capta)
-    {"t": "save", "dim": "A", "text": "por cierto, soy Ricart operator", "marker": "operator",
+    {"t": "save", "dim": "A", "text": "por cierto, soy Ricart Moreno", "marker": "moreno",
      "any": ["state", "long"], "note": "apellido por 'soy X' → perfil (state o durable)"},
-    {"t": "query", "dim": "A", "q": "¿sabes mi apellido?", "via": "long", "want": ["operator"],
+    {"t": "query", "dim": "A", "q": "¿sabes mi apellido?", "via": "long", "want": ["moreno"],
      "note": "recall del apellido"},
 ]
 

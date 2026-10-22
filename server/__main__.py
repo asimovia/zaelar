@@ -29,9 +29,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
-# THE PER-TENANT TREE, BEFORE ANYTHING READS A PATH (V2-562). `server/__init__` pulls in config/settings.py,
+# THE PER-INSTALL TREE, BEFORE ANYTHING READS A PATH (V2-562). `server/__init__` pulls in config/settings.py,
 # which loads `settings.json` at import time, and everything downstream resolves its own persistent path the same
-# way. On a self-host clone those directories come from git; on a cloud Machine the mounted Volume starts EMPTY,
+# way. On a self-host clone those directories come from git; in a container a mounted volume may start EMPTY,
 # and every one of those writers then fails best-effort and steps over it. This one line is what makes a first
 # boot on an empty disk indistinguishable from every later one — so it has to run BEFORE the import below, not
 # inside a FastAPI startup hook that fires after it.
@@ -39,7 +39,7 @@ from nucleo import workspace as _workspace  # noqa: E402
 
 _workspace.ensure()
 
-# ONE ENGINE PER MACHINE, checked before anything starts a poller or registers a voice worker. A cloud Machine is one
+# ONE ENGINE PER MACHINE, checked before anything starts a poller or registers a voice worker. An instance with ZAELAR_USER_ID set is one
 # engine by construction, so only a local run takes the lock (`nucleo/one_engine.py` says why a port is not enough).
 if __name__ == "__main__" and not (os.getenv("ZAELAR_USER_ID") or "").strip():
     from nucleo import one_engine as _one  # noqa: E402

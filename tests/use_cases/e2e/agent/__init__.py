@@ -3,6 +3,6 @@
 whatever zaelar asks back, and verifying not just what zaelar SAID but what actually fired (a Brain Worker
 spawned, a browser really navigated, real data came back) via the durable observability flow API.
 
-Sibling of tests/voice/e2e/agent/ (INI-013) — same DRIVE+JUDGE shape, reused deliberately rather than
+Sibling of tests/voice/e2e/agent/ — same DRIVE+JUDGE shape, reused deliberately rather than
 reinvented. See tests/use_cases/CASES.md for the tier taxonomy and why this suite exists.
 """

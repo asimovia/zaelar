@@ -40,7 +40,7 @@ def _data(**over):
          "accounts_enabled": False,
          "connector_shelf": [
              {"id": "youtube", "label": "YouTube", "state": "planned", "connected": False,
-              "note": "falta registrar el cliente OAuth (INI-032)"},
+              "note": "falta registrar el cliente OAuth"},
              {"id": "vimeo", "label": "Vimeo", "state": "planned", "connected": False,
               "note": "aún no construido"}]}
     d.update(over)

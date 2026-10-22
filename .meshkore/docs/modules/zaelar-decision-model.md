@@ -78,7 +78,7 @@ presented as one the chooser had narrowed.
 |---|---|---|
 | the voice turn | `turn_brief.ask_for_turn` at the ADMITTED sentence | one brief per turn; readers `peek` |
 | the cover phrase | the same brief (`request_type`) | it used to open a second socket for the same words |
-| memory / task recall | `select_many_status` | narrows with a lexical index FIRST (INI-027 §7) |
+| memory / task recall | `select_many_status` | narrows with a lexical index FIRST |
 | a Brain Worker | `worker_bridge decide @file.json` → `/api/worker/act` | ONE allowed action, behind the task token |
 | the probe / text channel | `choose_sync`, `classify_sync` | blocking, and has no event loop to freeze |
 

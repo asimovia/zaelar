@@ -247,7 +247,7 @@ has a ☾/☀ toggle icon; `services/theme.js` applies the choice as `<html data
 app-internal-vs-widget alias layer: the app chrome and every widget read the exact same variables (see §Widgets
 below). `styles.css §WIDGET KIT` also has optional `hbk-*` helper classes (`hbk-card`, `hbk-hd`, `hbk-empty`,
 `hbk-chip`, `hbk-btn`, …) for the layout patterns that repeat across widgets, to keep new widgets' own CSS small.
-(Tailwind was evaluated for this and declined — INI-011 — it would require either a build step, breaking the
+(Tailwind was evaluated for this and declined — it would require either a build step, breaking the
 "no build/no npm" architecture above, or a CDN/runtime JIT, breaking widgets' "self-contained/no CDN" rule; a
 plain CSS variable is also simply less code than a `dark:` utility pair per element.)
 
@@ -504,7 +504,7 @@ On the client, `widget.js` gets `ctx.running` (a live getter from the canvas): `
 never autoplay on mount — and for an `<iframe>` keep `autoplay=0` **out of the `src` itself**, because a pause sent
 afterwards arrives late and the first instant is audible.
 
-### Widget-apps ("backed" widgets) — INI-016, users `navegador` + `mensajeria`
+### Widget-apps ("backed" widgets) — users `navegador` + `mensajeria`
 
 Everything above describes a **passive** widget: one writer (the widget's own `ctx.action`, or the brain), no
 background process, view_data computes/reads on demand. That model does not fit a widget that is really a small
@@ -583,7 +583,7 @@ widget (last bullets).
   turn. Not designed in detail yet; revisit when the catalog grows enough that the current unconditional brief
   becomes a real prompt-size problem, or when it's needed to disambiguate action names that collide across widgets.
 
-### Navegador (`widgets/navegador/`) — a real web browser + web-task agent inside zaelar (first `backed` widget, INI-016)
+### Navegador (`widgets/navegador/`) — a real web browser + web-task agent inside zaelar (first `backed` widget)
 
 A REAL browser inside zaelar that the voice layer orchestrates: it opens sites, and it runs **autonomous web
 TASKS** ("in Wallapop, find me an enduro bike under 5000€ and give me the best ones") — each task studies the page,
@@ -663,7 +663,7 @@ SlowBrain; the mechanical loop runs cheap off-path). **Confirm-gate**: before cl
 (timeout → doesn't act). **Q&A by voice**: a task can ask (`tasks.ask` → status `needs_input`); the fast prompt
 surfaces the waiting task; the operator's reply is routed via the `answer_web_task` tool → `tasks.answer`.
 
-**AUTHENTICATION — logging into the operator's own accounts (INI-016; approach = open a REAL browser, 2026-07-10).**
+**AUTHENTICATION — logging into the operator's own accounts (approach = open a REAL browser, 2026-07-10).**
 To use the operator's account (Wallapop, Google, LinkedIn…) we do **NOT** inherit cookies from the operator's system
 Chrome (Chrome encrypts cookies with the macOS Keychain and locks its profile while running — fragile, invasive).
 Instead we log in ONCE in OUR persistent profile (`widgets/_data/navegador/profile/`) and reuse it. Flow:
@@ -708,7 +708,7 @@ for it to close).
 `python -m playwright install chromium` (~150 MB); without it the owner disables itself (supervised), taking nothing
 else down.
 
-**Pending (planned, INI-016):** cheap/local per-listing STUDY engine (open each listing → parse with a local model,
+**Pending (planned):** cheap/local per-listing STUDY engine (open each listing → parse with a local model,
 one paid call for the final judgment) with a Chromium context per task; UI toggle for headless/visible.
 
 **Reserved ids** (never a widget): `generator`, `server_api`, `runtime`, `store`, `brief`, `supervisor`, `_data`,
@@ -944,7 +944,7 @@ non-widget **rail** (§Nucleo → Rails); `nucleo/flash/music_flow.py` drives th
   across re-renders so pause/volume don't restart the song) when not. It talks only to `connectors/music` — a future
   provider needs no widget change. **NOT** the `youtube` widget (that's video); the two never mix.
 
-Enabling a connector is **UI-managed** (INI-015): the operator never edits `.env`. `config/connectors.json`
+Enabling a connector is **UI-managed**: the operator never edits `.env`. `config/connectors.json`
 (written by the `mensajeria` widget's guided flow) holds the enable flags + Telegram credentials, with a redacted
 public view (secrets never returned to the frontend). Future channels (email, X, LinkedIn) join `mensajeria`, never
 their own widget.

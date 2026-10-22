@@ -122,8 +122,8 @@ def signature_lines() -> list[str]:
 
     NOT importable from the real account: Gmail's own signature lives in Gmail account settings, reachable
     only through the Gmail API's `gmail.settings.basic` OAuth scope — a scope this connector does not
-    request and IMAP/SMTP never expose (measured 2026-09-07, INI-032's own finding about this account
-    applies here too: some Google-side facts are simply not on the wire this connector speaks)."""
+    request and IMAP/SMTP never expose (measured 2026-09-07; the same holds for other Google
+    account data: some Google-side facts are simply not on the wire this connector speaks)."""
     v = _cfg().get("signature_lines")
     return [str(x) for x in v if str(x).strip()] if isinstance(v, list) else []
 

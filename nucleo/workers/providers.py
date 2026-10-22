@@ -220,7 +220,7 @@ def relayed() -> bool:
 
 def unrouted_refusal(task_id: str = "") -> str:
     """Why a worker is not launched in a container with no routed tier (V2-778 F5-40), said as an `alert` the
-    operator's view and the Master read. Returns the sentence the session ends with."""
+    operator's view and the observability viewer read. Returns the sentence the session ends with."""
     why = ("no hay ningún proveedor de worker disponible en este contenedor (cadena agotada o sin clave): "
            "el worker no se lanza sin enrutar")
     try:

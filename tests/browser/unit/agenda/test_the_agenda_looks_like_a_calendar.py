@@ -332,7 +332,7 @@ def test_a_HALF_HOUR_event_does_not_spill_its_own_chip(_page):
     15:00–15:30 appointment is a 21px chip, and it was being given a title line PLUS an hour line — about
     36px of content — so overflow:hidden cut the second one through the middle of its glyphs. His rule:
     «si no caben todos pues solo se muestra un trozo o las tres primeras letras, pero no así de mal»."""
-    _mount(_page, _data(meetings=[_meet("Gavin/Ricart zerohash blockchain intro",
+    _mount(_page, _data(meetings=[_meet("Laura/Alex northwind platform intro",
                                         day=1, start="15:00", end="15:30")]))
     geo = _page.evaluate(
         """() => { const c = document.querySelector('.agev');

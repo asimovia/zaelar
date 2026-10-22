@@ -26,7 +26,7 @@ verificación: `tests/voice/e2e/agent/loop_cycle.py` (routing + memoria, headles
    `usage` del widget, o PROMPT del worker. Guard de EJECUCIÓN solo para invariantes duros.
 5. **Re-verifica**: reinicia si tocaste `.py`/manifest (comprobando antes voice.state), re-corre ese check.
    Verde → **commit** honesto (Co-Authored-By Opus 4.8). **NO push.**
-6. **Documenta** una línea fechada en INI-013 (o `tests/voice/e2e/agent/reports/<fecha>-loop/`) y **repite otra ronda dentro
+6. **Documenta** una línea fechada en el registro del tester (o `tests/voice/e2e/agent/reports/<fecha>-loop/`) y **repite otra ronda dentro
    del mismo disparo** si queda tiempo/bugs; si no, cede (el cron re-dispara en 20 min).
 
 ## Objetivos vivos (ir cerrando)

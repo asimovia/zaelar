@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Overnight autonomous test loop (INI-013). Runs the tester against a LIVE zaelar in a loop, rotating scenarios
+# Overnight autonomous test loop. Runs the tester against a LIVE zaelar in a loop, rotating scenarios
 # + free-form creative goals, so reports keep accumulating in tests/runs/agent/ for debugging. Robust: never crashes the
 # loop on a single failure; sleeps between cycles. Stop: `pkill -f tests.voice.e2e.agent.overnight` or remove the cron.
 #

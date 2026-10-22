@@ -4,7 +4,7 @@ import pytest
 from nucleo import account_routing
 
 
-CP = "https://zaelar-control-plane.example.workers.dev"
+CP = "https://control-plane.example.com"
 
 
 @pytest.fixture(autouse=True)
@@ -47,8 +47,8 @@ def test_my_machine_id_none_by_default(monkeypatch):
 
 
 def test_my_machine_id_reads_the_fly_runtime_var(monkeypatch):
-    monkeypatch.setenv("FLY_MACHINE_ID", "080d69da092648")
-    assert account_routing.my_machine_id() == "080d69da092648"
+    monkeypatch.setenv("FLY_MACHINE_ID", "m-0001")
+    assert account_routing.my_machine_id() == "m-0001"
 
 
 def test_is_account_routing_machine_false_on_selfhost_and_demo(monkeypatch):

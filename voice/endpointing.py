@@ -1,7 +1,7 @@
 #
 # endpointing.py — PURE decision logic for the turn layer (no pipecat, no I/O, fully unit-testable).
 #
-# Born from the 2026-07-05 car sessions (INI-009): the old turn layer closed a turn at the browser VAD's first
+# Born from the 2026-07-05 car sessions: the old turn layer closed a turn at the browser VAD's first
 # ~1.1s pause (→ one thought chopped into 3 turns, a reply per fragment), and its 800ms barge-in timer could
 # NEVER be cancelled in time because the browser's stop signal takes 1100ms of silence to fire (800 < 1100 →
 # every backchannel cut the bot). This module holds the redesigned decisions; voice/turn_control.py executes them.

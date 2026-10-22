@@ -46,10 +46,10 @@ _DEFAULT_COOLDOWN_S = 30 * 60          # no explicit reset date: half an hour, t
 _DEPLETED_COOLDOWN_S = 20 * 60         # V2-243 set this to 6 h (“a balance does not replenish itself”). True except
                                        # in the ONE case that matters: the operator TOPS UP — exactly what the alert
                                        # exists to provoke. Measured 2026-08-27: the 18:55 402 punished the primary
-                                       # past midnight; the operator topped up at 19:40, but the engine kept sending
+                                       # past midnight; the balance was restored at 19:40, but the engine kept sending
                                        # everything to the relay. When that relay also fell, the brain went SILENT
                                        # with a healthy primary beside it, and there was no way to tell it there was
-                                       # balance again. A top-up is invisible here: the only way to learn is to retry.
+                                       # balance again. Restored balance is invisible here: the only way to learn is to retry.
                                        # The cost of probation is ~3 failed calls per hour while there truly is no
                                        # balance; the cost of not having it was six hours of silence.
 _BROKEN_COOLDOWN_S = 15 * 60           # V2-682: a REJECTED request is our config or their deploy, and both
@@ -84,7 +84,7 @@ ROLE_VOICE = "voice"
 # 3. **TURN CEILING on relay.** A latency relay triggers precisely on DIFFICULT turns, which are the ones that
 #    más tokens gastan — el peor perfil de coste posible. Pasados `_RELAY_TURN_BUDGET` turnos se vuelve al titular
 #    aunque siga lento: preferimos un turno lento a una factura sorpresa. (En la nube el salto de DeepSeek a un
-#    escalón grande puede ser de 14× el input; ver `.meshkore/docs/ops/zaelar-energy-accounting.md` en la raíz.)
+#    escalón grande puede ser de 14× el input.)
 _SLOW_COOLDOWN_S = 5 * 60
 _SLOW_STREAK = 2
 _RELAY_TURN_BUDGET = 40
@@ -99,9 +99,8 @@ def _known_chain() -> list[dict]:
 
     V2-500 — they come from `config/models.default.json`, the single public table. Previously this was a catalog
     written here, with five tiers (Z.AI, its credits, AIMLAPI, xAI, Groq) that nobody compared with anything:
-    the operator's rule lived only in its gitignored `config/v2.json`, so a new installation—and the cloud—started
-    with a different allocation. The first of those five was Z.AI, which is how its wallet ended up paying for
-    unauthorized cluster turns.
+    the real allocation lived only in a gitignored `config/v2.json`, so a new installation started
+    with a different allocation.
 
     **One failover only** is also policy (2026-08-30): a chain of four cannot be reasoned about or debugged, and
     los dos últimos escalones que había aquí estaban muertos sin que nadie lo supiera — xAI sin créditos (403)

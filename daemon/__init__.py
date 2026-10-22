@@ -8,7 +8,7 @@ component that runs on the end user's own computer. Package and binary are calle
 45817, never 5570, and it has nothing to do with MeshKore.
 
 WHY IT EXISTS
-    The CLOUD engine — the paid one — cannot pass a CAPTCHA or authenticate on a user's site. The local engine
+    An engine running in a CONTAINER cannot pass a CAPTCHA or authenticate on a user's site. The local engine
     can (it opens a real Chromium, the user signs in once, the session survives in a persistent profile), but
     inside a container there is no window to open and no user keyboard to reach, so the cloud agent hits the wall
     and stops. `widgets/navegador/owner.py` says it out loud: `_in_container()` → "I cannot do that from the

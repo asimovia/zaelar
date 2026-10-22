@@ -451,7 +451,7 @@ def test_the_readme_tells_a_self_hoster_there_is_nothing_to_install():
 
 
 def test_the_screen_admits_what_it_cannot_do_from_the_cloud():
-    """The conservative-documentation rule (INI-026 B5) applied to a product screen. A cloud user can download
+    """The conservative-documentation rule (the launch scope) applied to a product screen. A cloud user can download
     the daemon today; wiring it to the cloud agent is the relay, which is not built. A download screen that
     implied otherwise would be the fastest possible way to earn "it doesn't work"."""
     for lang in ("en", "es"):

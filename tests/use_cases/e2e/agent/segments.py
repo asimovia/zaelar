@@ -111,13 +111,13 @@ SEGMENTS: dict[str, Segment] = {
     # the result. That is why it is the clean case for measuring WHERE it appears and WHEN (V2-457).
     "show-real-photo-of-a-new-car": _done(),
     "remember-and-remind-deadline": _done(),
-    # INI-026 B1 (2026-08-29): calendar + default alert + voice manipulation — all within the engine,
+    # the launch scope (2026-08-29): calendar + default alert + voice manipulation — all within the engine,
     # with no login, payment, or third party: completable end to end.
     "dentist-appointment-into-agenda": _done(),
-    # INI-026 A8bis-A (2026-08-29): look up a FUTURE FACT externally (release date), state it with its source,
+    # the launch scope (2026-08-29): look up a FUTURE FACT externally (release date), state it with its source,
     # and set up the alert. Completable: the search is public; there is no credential, payment, or third party.
     "find-a-future-release-and-remind-me": _done(),
-    # INI-026, the center of v1 after the 2026-08-29 directive: the agent should remember who you are. Everything
+    # the launch scope, the center of v1 after the 2026-08-29 directive: the agent should remember who you are. Everything
     # is within the engine (seeding + recall + one response), with no credential, payment, or third party.
     "knows-who-i-am-without-being-told-again": _done(),
     "build-workout-tracker-widget": _done(),

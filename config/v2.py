@@ -158,17 +158,15 @@ _DEFAULTS: dict[str, dict] = {
         #     prompt warns about, and in personal memory it is silent data loss, not a percentage point.
         #   · Ladder (≤3 levels, operator 2026-09-10): OpenAI direct → DeepSeek direct → broker DeepSeek
         #     (`nucleo/memllm.py::_FAILOVER`); the gemini rung was trimmed with the four-level chain.
-        #   · SAME model in self-host and cloud (operator decision 2026-08-09: one commercial model that works in
-        #     both places). The sites that set it by env in cloud —`engine/fly.accounts.toml` and
-        #     `cloud/provisioner/src/machineConfig.js`— are synchronized with this default.
+        #   · SAME model in self-host and cloud (one model that works in both places). A deployment that sets
+        #     it by env should stay synchronized with this default.
         #   · The LOCAL option (Ollama) remains available by pointing `mem_processor_base_url` to `localhost:11434`.
         # Titular flows from THE TABLE (`config/models.default.json` §memory_writer): OpenAI DIRECT
         # `gpt-4.1-mini` since 2026-09-10 (operator directive — the memory services run on OpenAI direct;
         # supersedes both the 2026-08-21 no-OpenAI removal and the older AIMLAPI-by-default reasoning that
-        # used to live in this comment). CLOUD: the provisioner has injected OPENAI_API_KEY since V2-501
-        # (embeddings), so the titular serves there too; DEEPSEEK_API_KEY is still absent, so the ladder in
-        # `nucleo/memllm.py::_FAILOVER` skips the DeepSeek rung in the cloud and the broker rung remains the
-        # cloud's only stand-in — keep one in the chain or a cloud provider outage means no memory writes.
+        # used to live in this comment). The ladder in `nucleo/memllm.py::_FAILOVER` is credential-gated: a
+        # deployment without DEEPSEEK_API_KEY skips the DeepSeek rung and the broker rung is its only
+        # stand-in — keep one in the chain or a provider outage means no memory writes.
         "mem_processor_model": _t("memory_writer", "model"),     # empty = env MEM_PROCESSOR_MODEL or fallback
         "mem_processor_base_url": _t("memory_writer", "base_url"),  # endpoint OpenAI-compatible; a Ollama = local
         "mem_processor_api_key": "",                     # secret (redacted); empty = PER-ENDPOINT key (AIMLAPI_KEY)
@@ -178,9 +176,8 @@ _DEFAULTS: dict[str, dict] = {
         # 2026-07-20 → see zaelar-model-benchmarks.md §12.2.
         # Titular flows from THE TABLE (§memory_rem): OpenAI DIRECT `gpt-4.1-mini` since 2026-09-10 — the model
         # §12.2 measured at 100% on this task, back on the seat by operator directive (memory services run on
-        # OpenAI direct). History worth keeping: it left this seat on 2026-08-09 because back then the cloud
-        # had no OPENAI_API_KEY and a titular with no credential failed SILENTLY; since V2-501 the provisioner
-        # injects that key (embeddings), so the titular serves the cloud too. REM still **has no environment
+        # OpenAI direct). History worth keeping: a titular with no credential used to fail SILENTLY; the ladder
+        # is now credential-gated. REM still **has no environment
         # variable** (not in _ENV_MAP), so this default plus the `_FAILOVER` ladder IS the cloud behavior —
         # keep a broker rung in the chain or a cloud provider outage means no deep sleep.
         "rem_model": _t("memory_rem", "model"),

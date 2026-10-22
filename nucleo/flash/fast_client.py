@@ -77,7 +77,7 @@ def _drop_tool_call(metrics: dict, name: str, raw_args: str) -> None:
 
     It used to be a bare `continue` under a `logger.warning`, and that is why V2-171 was invisible for three
     days: the user was told «te pongo con ello», nothing ran, and neither the operator, nor the judge, nor the
-    Master had any way to know. From a conversation log it reads as the assistant lying. It did not lie — its
+    observability viewer had any way to know. From a conversation log it reads as the assistant lying. It did not lie — its
     action was thrown away.
 
     Raising the cap (see `_DEFAULT_MAX_TOKENS`) removes the cause that was measured, but not the class: any
@@ -208,8 +208,7 @@ from nucleo.flash.model_spec import (  # noqa: F401 — re-export
 #
 # Importa porque este estimado NO es solo observabilidad: es lo que FACTURA un turno cancelado, donde el `usage` del
 # proveedor nunca llega (viaja en el último chunk). Con el 4.0 se cobraba **un 16% de menos** en el 70% de los turnos
-# de una sesión real de dictado. Va contra la política fijada el 2026-08-13 al cerrar los cuatro agujeros de Energy:
-# *«perder dinero por sub-cobrar es peor que sobre-cobrar un poco»*.
+# de una sesión real de dictado. The metering rule is to over-meter slightly rather than under-meter.
 #
 # Se deja en 3,3 y no en 3,36 a propósito: redondear hacia ABAJO el divisor estima de MÁS (~2%), que es el lado
 # seguro y el mismo criterio que la tarifa de seguridad del medidor.
@@ -820,7 +819,7 @@ class FastClient:
                     m["usage_source"] = "estimate"
             except Exception:
                 pass
-            # ENERGY METERING (INI-018, 2026-07-24) — no-op everywhere except a demo Machine (see
+            # ENERGY METERING — no-op unless ZAELAR_USER_ID is set (see
             # nucleo/energy_meter.py). Uses REAL provider usage when available, falls back to the
             # char-based estimate already computed above (m["*_tokens_est"]) otherwise — some real
             # signal beats none for a cost meter, even if provider usage never arrived this call.

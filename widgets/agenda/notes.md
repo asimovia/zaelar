@@ -39,7 +39,7 @@
 - Widget side is already complete and correct: `add_meeting` exists in `data.py:apply_action`, is declared in `manifest.json`, and correctly normalizes speech. `_resolve_date` maps a tomorrow utterance to +1d (2026-08-01), `_resolve_time` maps a five-in-the-evening utterance to 17:00 (default 17:00, 1-7 without meridiem -> afternoon), and the default end time is 18:00. That is the reflection primitive, not the real action.
 - For the real booking to happen and be reflected: FlashBrain must escalate to a worker (`escalate_to_slowbrain` -> `hbweb`/phone, V2-061) that performs the real booking and then calls `widget_data:agenda action=add_meeting`. FlashBrain/the operator decides that, not this code agent. `data.py`/`widget.js`/`manifest.json` were not touched; they are already complete. The store was not touched either because it is outside `widgets/agenda/`, and mutating it would be exactly the "only modified a local widget" failure the operator rejected. Repeating this request to this agent will not complete it.
 
-## Session 2026-07-31 (fifth repeated request): "real appointment tomorrow 17:00 in Ricart's agenda", no code change
+## Session 2026-07-31 (fifth repeated request): "real appointment tomorrow 17:00 in the operator's agenda", no code change
 - Widget side is already complete (verified): `add_meeting` exists and normalizes speech correctly (tomorrow -> 2026-08-01, five in the evening -> 17:00, default end 18:00). The widget already reflects any appointment through `data.meetings` (`renderMonth`/`renderWeek`). There is nothing to edit in `data.py`/`widget.js`/`manifest.json`.
 - A "REAL appointment" remains unreachable for this agent: it is scoped to `widgets/agenda/` with no Bash/browser/network, the store lives outside that scope (`widgets/_data/agenda/state.json`), and the operator already rejected a local write in the previous session because it would only modify a widget, not execute the real action. Also, the request does not specify which service/center to book with, so there is nothing concrete to reserve.
 - Real path, decided by FlashBrain rather than this agent: escalate a worker (`escalate_to_slowbrain` -> `hbweb`/phone, V2-061) that books on the real site and then reflects it with `widget_data:agenda action=add_meeting`. If the operator only wants it in the local agenda, FlashBrain can call `add_meeting`, which is also outside this code agent. In no case is this a widget code edit.
@@ -65,7 +65,7 @@
 ## 2026-09-12 (V2-679): Google Calendar sync — a real connector, not just the header placeholder
 - Operator's directive: put the three calendar-provider icons already in the header to work, keep only Google
   active (iCloud/CalDAV stay visible and INERT, per the shelf pattern already used elsewhere in this codebase
-  — showing what we do NOT have on purpose, INI-027), add the "conectores" button like messaging/video/photos
+  — showing what we do NOT have on purpose), add the "conectores" button like messaging/video/photos
   have, and build a REAL Google Calendar connector: OAuth, and once connected it becomes the SOLE source of
   truth for meetings — several Google calendars merge into one view with a chosen default for new writes, and
   sync has to be "lo más rápido posible" (his own acceptance test: dictate an appointment by voice, see it in
@@ -178,7 +178,7 @@
   including the architecture ratchet (data.py landed at exactly 900 LOC, same ceiling it started this feature
   at) and the testmap-completeness ratchet.
 - **NOT verified live** — needs a real Google OAuth client registered (the `builtin_client_id` field is
-  empty, exactly like video's own INI-032 status; the operator's own acceptance test — dictate an appointment,
+  empty, exactly like the video connector's status; the operator's own acceptance test — dictate an appointment,
   watch it appear in the real Google Calendar on another machine — needs that alta done first) plus an engine
   restart and a page reload.
 

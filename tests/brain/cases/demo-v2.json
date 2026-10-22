@@ -3,7 +3,7 @@
   "id": "demo-a2-minimise-that",
   "lang": "en",
   "phrase": "Minimise that while you work.",
-  "source": "TMP/demo/02-demo-script-v2.txt A2 · 03-results v5: «¿qué quieres que minimice?» → seeds v14 `minimize *` = the card in front",
+  "source": "demo script v2 A2 · demo results v5: «¿qué quieres que minimice?» → seeds v14 `minimize *` = the card in front",
   "screen": {
    "open": [
     "results"
@@ -19,7 +19,7 @@
   "id": "demo-v1-starship-catalog",
   "lang": "en",
   "phrase": "Show me a catalog of SpaceX Starship test videos.",
-  "source": "TMP/demo/02-demo-script-v2.txt V1",
+  "source": "demo script v2 V1",
   "screen": {
    "open": []
   },
@@ -44,7 +44,7 @@
   "id": "demo-v2-play-video-number-2",
   "lang": "en",
   "phrase": "Play video number 2.",
-  "source": "TMP/demo/02-demo-script-v2.txt V2",
+  "source": "demo script v2 V2",
   "screen": {
    "open": [
     "youtube"
@@ -73,7 +73,7 @@
   "id": "demo-v4-exit-fullscreen",
   "lang": "en",
   "phrase": "Exit fullscreen.",
-  "source": "TMP/demo/02-demo-script-v2.txt V4 · 03-results v4: «exit fullscreen» is deterministic",
+  "source": "demo script v2 V4 · demo results v4: «exit fullscreen» is deterministic",
   "screen": {
    "open": [
     "youtube"
@@ -89,7 +89,7 @@
   "id": "demo-v5-go-back-to-the-catalog",
   "lang": "en",
   "phrase": "Go back to the catalog.",
-  "source": "TMP/demo/02-demo-script-v2.txt V5 · V2-742/V2-753: the player has faces, `show_tab` is the way back",
+  "source": "demo script v2 V5 · V2-742/V2-753: the player has faces, `show_tab` is the way back",
   "screen": {
    "open": [
     "youtube"
@@ -120,7 +120,7 @@
   "id": "demo-v7-stop-it-and-close-the-video",
   "lang": "en",
   "phrase": "Stop it and close the video widget.",
-  "source": "TMP/demo/02-demo-script-v2.txt V7 · 03-results v5: closed and the model REOPENED it → a close verdict discards the show",
+  "source": "demo script v2 V7 · demo results v5: closed and the model REOPENED it → a close verdict discards the show",
   "screen": {
    "open": [
     "youtube"
@@ -147,7 +147,7 @@
   "id": "demo-i3-open-the-second-one",
   "lang": "en",
   "phrase": "Open the second one.",
-  "source": "TMP/demo/02-demo-script-v2.txt I3 · 03-results pass 1: it opened an agenda appointment instead → `imagenes.select` descriptor (f3cc34e9)",
+  "source": "demo script v2 I3 · demo results pass 1: it opened an agenda appointment instead → `imagenes.select` descriptor (f3cc34e9)",
   "screen": {
    "open": [
     "imagenes"
@@ -176,7 +176,7 @@
   "id": "demo-i3-open-the-second-one-model-picks-the-wrong-card",
   "lang": "en",
   "phrase": "Open the second one.",
-  "source": "TMP/demo/03-results.md pass 1 I3: the model aimed at the agenda while only the images were open; the screen verdict names the card that IS open (V2-754: the verdict completes the model)",
+  "source": "demo results pass 1 I3: the model aimed at the agenda while only the images were open; the screen verdict names the card that IS open (V2-754: the verdict completes the model)",
   "screen": {
    "open": [
     "imagenes"
@@ -212,7 +212,7 @@
   "id": "demo-m1-apple-chart-today",
   "lang": "en",
   "phrase": "Show me a chart of Apple stock today.",
-  "source": "TMP/demo/02-demo-script-v2.txt M1 · 03-results v5: the card opened EMPTY when the show was silent → a view op on a closed card brings it up with its data",
+  "source": "demo script v2 M1 · demo results v5: the card opened EMPTY when the show was silent → a view op on a closed card brings it up with its data",
   "screen": {
    "open": []
   },
@@ -242,7 +242,7 @@
   "id": "demo-m4-close-the-chart",
   "lang": "en",
   "phrase": "Close the chart.",
-  "source": "TMP/demo/02-demo-script-v2.txt M4",
+  "source": "demo script v2 M4",
   "screen": {
    "open": [
     "markets"
@@ -258,7 +258,7 @@
   "id": "demo-u3-pause-it",
   "lang": "en",
   "phrase": "Pause it.",
-  "source": "TMP/demo/02-demo-script-v2.txt U3",
+  "source": "demo script v2 U3",
   "screen": {
    "open": [
     "musica"
@@ -285,7 +285,7 @@
   "id": "demo-c1-show-me-tomorrow",
   "lang": "en",
   "phrase": "Johnny, show me tomorrow in my calendar.",
-  "source": "TMP/demo/02-demo-script-v2.txt C1",
+  "source": "demo script v2 C1",
   "screen": {
    "open": []
   },
@@ -314,7 +314,7 @@
   "id": "demo-c4-move-it-30-minutes-later",
   "lang": "en",
   "phrase": "Move it 30 minutes later.",
-  "source": "TMP/demo/02-demo-script-v2.txt C4 · 03-results pass 1: it LENGTHENED the meeting instead of moving it (d08e026b)",
+  "source": "demo script v2 C4 · demo results pass 1: it LENGTHENED the meeting instead of moving it (d08e026b)",
   "screen": {
    "open": [
     "agenda"
@@ -356,7 +356,7 @@
   "id": "demo-c5-message-rowan-on-telegram",
   "lang": "en",
   "phrase": "Message Rowan on Telegram and tell him the new meeting time.",
-  "source": "TMP/demo/02-demo-script-v2.txt C5 · 03-results final pass K1: it went to a 2-minute WORKER; messaging had to reach the catalogue question (1.0)",
+  "source": "demo script v2 C5 · demo results final pass K1: it went to a 2-minute WORKER; messaging had to reach the catalogue question (1.0)",
   "screen": {
    "open": [
     "agenda"
@@ -389,7 +389,7 @@
   "id": "demo-r1-tesla-insurance-answered-from-memory",
   "lang": "en",
   "phrase": "When does my Tesla insurance renew?",
-  "source": "TMP/demo/02-demo-script-v2.txt R1",
+  "source": "demo script v2 R1",
   "screen": {
    "open": []
   },
@@ -408,7 +408,7 @@
   "id": "demo-r1-tesla-insurance-answered-then-escalated",
   "lang": "en",
   "phrase": "When does my Tesla insurance renew?",
-  "source": "TMP/demo/03-results.md v5 R1: correct answer AND a spurious web worker (a question already answered) → fixed the same day",
+  "source": "demo results v5 R1: correct answer AND a spurious web worker (a question already answered) → fixed the same day",
   "screen": {
    "open": []
   },
@@ -434,7 +434,7 @@
   "id": "demo-w2-highlight-the-second-one",
   "lang": "en",
   "phrase": "Highlight the second one.",
-  "source": "TMP/demo/02-demo-script-v2.txt W2 · 03-results v4: highlights Mount Baldy",
+  "source": "demo script v2 W2 · demo results v4: highlights Mount Baldy",
   "screen": {
    "open": [
     "map"
@@ -463,7 +463,7 @@
   "id": "demo-e2-open-the-most-important-one",
   "lang": "en",
   "phrase": "Open the most important one.",
-  "source": "TMP/demo/02-demo-script-v2.txt E2 · 03-results v5 pending: the model calls `show_view` while the verdict says `open` (V2-776 absorbs it as a CASE, not a guard)",
+  "source": "demo script v2 E2 · demo results v5 pending: the model calls `show_view` while the verdict says `open` (V2-776 absorbs it as a CASE, not a guard)",
   "screen": {
    "open": [
     "mensajeria"
@@ -501,7 +501,7 @@
   "id": "demo-e5-close-my-messages-model-reopens-it",
   "lang": "en",
   "phrase": "Close my messages.",
-  "source": "TMP/demo/02-demo-script-v2.txt E5 · 03-results v5: «E5 se reabría» → fixed",
+  "source": "demo script v2 E5 · demo results v5: «E5 se reabría» → fixed",
   "screen": {
    "open": [
     "mensajeria"
@@ -528,7 +528,7 @@
   "id": "demo-z1-whats-on-my-plate-tomorrow",
   "lang": "en",
   "phrase": "What's on my plate tomorrow?",
-  "source": "TMP/demo/02-demo-script-v2.txt Z1 · 03-results v5: said the wrong hours — answered from memory instead of reading the agenda (V2-776 C2: source of truth by kind)",
+  "source": "demo script v2 Z1 · demo results v5: said the wrong hours — answered from memory instead of reading the agenda (V2-776 C2: source of truth by kind)",
   "screen": {
    "open": []
   },
@@ -557,7 +557,7 @@
   "id": "demo-z2-close-everything",
   "lang": "en",
   "phrase": "Close everything.",
-  "source": "TMP/demo/02-demo-script-v2.txt Z2",
+  "source": "demo script v2 Z2",
   "screen": {
    "open": [
     "agenda",
@@ -574,7 +574,7 @@
   "id": "demo-a1-monitors-errand",
   "lang": "en",
   "phrase": "Johnny, find me three 27-inch 4K monitors under 400 dollars — show me when you have them.",
-  "source": "TMP/demo/02-demo-script-v2.txt A1 · the one slow errand of the demo, started in the first minute",
+  "source": "demo script v2 A1 · the one slow errand of the demo, started in the first minute",
   "screen": {
    "open": []
   },
@@ -600,7 +600,7 @@
   "id": "demo-t1-trip-errand",
   "lang": "en",
   "phrase": "Johnny, plan a 5-day warm-weather trip for Anna and me from LAX, December 21st to 25th, under 2000 dollars total — show me when it's ready.",
-  "source": "TMP/demo/02-demo-script-v2.txt T1 · 03-results v4: T1 never started the errand (the engine died); v5: delivered",
+  "source": "demo script v2 T1 · demo results v4: T1 never started the errand (the engine died); v5: delivered",
   "screen": {
    "open": []
   },
@@ -626,7 +626,7 @@
   "id": "demo-z3-thanks-thats-all",
   "lang": "en",
   "phrase": "Thanks, that's all for today.",
-  "source": "TMP/demo/02-demo-script-v2.txt Z3",
+  "source": "demo script v2 Z3",
   "screen": {
    "open": []
   },
@@ -646,7 +646,7 @@
   "id": "demo-b1-wallpaper-is-a-widgets-postcondition-not-a-worker",
   "lang": "en",
   "phrase": "now let's make it prettier, find me the wallpaper cosmic eye in the sky by tyler young, the orion nebula",
-  "source": "TMP/demo/run-full60 B1 (2026-09-29): the model called escalate_to_slowbrain «Find the wallpaper/artwork…» over a brief that said handle_inline 0.78 / use_existing 0.62; passes 56/58/59 did it inline through imagenes. A valid model call beats a disagreeing verdict (direct_action.py:790), so a 50-60 s worker searched art, and the wallpaper was set 20 minutes later by that worker",
+  "source": "demo run-full60 B1 (2026-09-29): the model called escalate_to_slowbrain «Find the wallpaper/artwork…» over a brief that said handle_inline 0.78 / use_existing 0.62; passes 56/58/59 did it inline through imagenes. A valid model call beats a disagreeing verdict (direct_action.py:790), so a 50-60 s worker searched art, and the wallpaper was set 20 minutes later by that worker",
   "screen": {
    "open": [
     "results"
@@ -692,7 +692,7 @@
   "id": "demo-b2-background-is-not-the-results-sheets-choose",
   "lang": "en",
   "phrase": "set the first one as my background",
-  "source": "TMP/demo/run-full60 B2 (2026-09-29): imagenes was still closed (B1 had gone to a worker), the only open card was the monitors sheet, and the screen verdict completed the empty turn as results:choose over the first MONITOR; U2 then had the worker asking for an OK to click a Dell · L1: the brief's end_state names desktop:wallpaper (the spec B1 left open); results:choose attests nothing of it",
+  "source": "demo run-full60 B2 (2026-09-29): imagenes was still closed (B1 had gone to a worker), the only open card was the monitors sheet, and the screen verdict completed the empty turn as results:choose over the first MONITOR; U2 then had the worker asking for an OK to click a Dell · L1: the brief's end_state names desktop:wallpaper (the spec B1 left open); results:choose attests nothing of it",
   "screen": {
    "open": [
     "results"
@@ -732,7 +732,7 @@
   "id": "demo-s1-a-docked-sheet-is-not-on-screen",
   "lang": "en",
   "phrase": "so how did the monitors go, show me",
-  "source": "TMP/demo/run-full59 S1 (2026-09-29): the sheet had been minimised at A2; done_ops said «results:present hace 140s… cuéntalo como hecho» and the results digest said the links were «ya en pantalla»; the model answered «Done.» with no tool and S2/S3 acted on an invisible card. Prompt fixed in 9b2a9f76; the decision itself is still the model's",
+  "source": "demo run-full59 S1 (2026-09-29): the sheet had been minimised at A2; done_ops said «results:present hace 140s… cuéntalo como hecho» and the results digest said the links were «ya en pantalla»; the model answered «Done.» with no tool and S2/S3 acted on an invisible card. Prompt fixed in 9b2a9f76; the decision itself is still the model's",
   "screen": {
    "open": [
     "results"
@@ -775,7 +775,7 @@
   "id": "demo-v3-make-it-bigger-is-fullscreen-not-a-replay",
   "lang": "en",
   "phrase": "can you make it bigger, like full screen",
-  "source": "TMP/demo/run-full71 V3 (2026-09-30): the model went fullscreen and a repair pass («abrió la tarjeta y prometió más — la llamada, en una segunda pasada») fired youtube:play_result of the video already playing",
+  "source": "demo run-full71 V3 (2026-09-30): the model went fullscreen and a repair pass («abrió la tarjeta y prometió más — la llamada, en una segunda pasada») fired youtube:play_result of the video already playing",
   "screen": {
    "open": [
     "youtube"
@@ -820,7 +820,7 @@
   "id": "demo-e1-did-inworld-send-me-something-is-a-search",
   "lang": "en",
   "phrase": "check my email, did inworld send me something?",
-  "source": "TMP/demo/run-full71 E1 (2026-09-30): the model called mensajeria:show_view and answered «nothing from Inworld» over an archive that held the receipt; pass 70 searched the archive and found it",
+  "source": "demo run-full71 E1 (2026-09-30): the model called mensajeria:show_view and answered «nothing from Inworld» over an archive that held the receipt; pass 70 searched the archive and found it",
   "screen": {
    "open": []
   },
@@ -865,7 +865,7 @@
   "id": "demo-z1-whats-on-my-plate-is-read-from-the-agenda",
   "lang": "en",
   "phrase": "what's on my plate tomorrow",
-  "source": "TMP/demo/run-full72 Z1 (2026-09-30): the model answered «tomorrow's wide open — no meetings» without reading the agenda, with four meetings booked; catalog_widget agenda 0.99, request_type question 0.80, wants_words tell 0.99",
+  "source": "demo run-full72 Z1 (2026-09-30): the model answered «tomorrow's wide open — no meetings» without reading the agenda, with four meetings booked; catalog_widget agenda 0.99, request_type question 0.80, wants_words tell 0.99",
   "screen": {
    "open": []
   },
@@ -905,7 +905,7 @@
   "id": "demo-e2-open-the-most-important-one-opens-the-mail-not-the-sheet",
   "lang": "en",
   "phrase": "Open the most important one.",
-  "source": "TMP/demo/run-v2a E2 (2026-09-30): inbox on screen after «only the emails from today that need my attention», the monitors sheet also open; the model called nothing and said «It's open — that's the invoice from Miguel Ángel»; the verdict mensajeria:open 0.75 was vetoed by end_state results:view 0.94, and the second pass fired mensajeria:show_view — nothing opened",
+  "source": "demo run-v2a E2 (2026-09-30): inbox on screen after «only the emails from today that need my attention», the monitors sheet also open; the model called nothing and said «It's open — that's the invoice from Miguel Ángel»; the verdict mensajeria:open 0.75 was vetoed by end_state results:view 0.94, and the second pass fired mensajeria:show_view — nothing opened",
   "screen": {
    "open": [
     "results",
@@ -960,7 +960,7 @@
   "id": "demo-s3-the-best-deal-is-the-top-ranked-pick",
   "lang": "en",
   "phrase": "open the one that's the best deal",
-  "source": "TMP/demo/run-v1-p76 S3 (2026-10-03): the monitors sheet held three RANKED picks (1. Dell $268.99); the model called nothing and asked «I need to know which of the three you mean — Dell's the cheapest, but you decide»; the verdict results:detail 0.97 completed it without an item, was rejected («pasa el title o index»), corrected in the same turn and opened — so the screen did it while the words asked",
+  "source": "demo run-v1-p76 S3 (2026-10-03): the monitors sheet held three RANKED picks (1. Dell $268.99); the model called nothing and asked «I need to know which of the three you mean — Dell's the cheapest, but you decide»; the verdict results:detail 0.97 completed it without an item, was rejected («pasa el title o index»), corrected in the same turn and opened — so the screen did it while the words asked",
   "screen": {
    "open": [
     "results"
@@ -1002,7 +1002,7 @@
   "id": "demo-c4-move-it-is-the-meeting-just-booked",
   "lang": "en",
   "phrase": "actually move it half an hour later",
-  "source": "TMP/demo/run-v1-p84 C4 (2026-10-03): «Catch up with Quinn» booked at 4:00 the turn before; the model called nothing and said «Wait — which one? I had \"Catch up with Quinn\" at 4:00 PM on Sunday. Moving it to 4:30 PM. Just tell me and I'll move it.»; screen_action agenda:move_meeting 0.99 could not be completed (two keys: which meeting and the new time) and the meeting stayed at 4:00. Passes 77/80/81/83 moved it",
+  "source": "demo run-v1-p84 C4 (2026-10-03): «Catch up with Quinn» booked at 4:00 the turn before; the model called nothing and said «Wait — which one? I had \"Catch up with Quinn\" at 4:00 PM on Sunday. Moving it to 4:30 PM. Just tell me and I'll move it.»; screen_action agenda:move_meeting 0.99 could not be completed (two keys: which meeting and the new time) and the meeting stayed at 4:00. Passes 77/80/81/83 moved it",
   "screen": {
    "open": [
     "agenda"
@@ -1040,7 +1040,7 @@
   "id": "demo-i3-the-second-one-is-the-picture-he-was-looking-at",
   "lang": "en",
   "phrase": "open the second one",
-  "source": "TMP/demo/run-v1-p85 I3 (2026-10-03): the previous turn added F40 photos to the viewer; the monitors sheet was also on screen (A1 had just delivered). Verdict imagenes:select 0.97 and the canvas focus (last turn's card) both named the viewer; the model called results:detail index 2 and said «opening the Acer Nitro XV275K V3». A valid call on ANOTHER card runs (CRIT-K2 compares same-card only), so the monitor opened",
+  "source": "demo run-v1-p85 I3 (2026-10-03): the previous turn added F40 photos to the viewer; the monitors sheet was also on screen (A1 had just delivered). Verdict imagenes:select 0.97 and the canvas focus (last turn's card) both named the viewer; the model called results:detail index 2 and said «opening the Acer Nitro XV275K V3». A valid call on ANOTHER card runs (CRIT-K2 compares same-card only), so the monitor opened",
   "screen": {
    "open": [
     "results",
@@ -1132,7 +1132,7 @@
   "id": "demo-c5-send-a-telegram-is-a-send-not-a-draft",
   "lang": "en",
   "phrase": "send rowan a telegram with the new time",
-  "source": "TMP/demo/run-p111 C5 (2026-10-05): «Sure — I'll draft it for you to okay before it goes out.» then the promise repair called mensajeria:draft; the late catalogue named mensajeria 0.99, screen_action none 0.63",
+  "source": "demo run-p111 C5 (2026-10-05): «Sure — I'll draft it for you to okay before it goes out.» then the promise repair called mensajeria:draft; the late catalogue named mensajeria 0.99, screen_action none 0.63",
   "screen": {
    "open": [
     "agenda"
@@ -1170,7 +1170,7 @@
   "id": "demo-v7-close-youtube-is-not-left-open-in-words",
   "lang": "en",
   "phrase": "ok stop the video and close youtube",
-  "source": "TMP/demo/run-p112 V7 (2026-10-05): «Two things: stopping the video, but I'll leave the YouTube card on your screen — just say the word and I take it down.» — the model called youtube:close (in-card) and the verdict closed the card (closes_the_named_card) with no line after it",
+  "source": "demo run-p112 V7 (2026-10-05): «Two things: stopping the video, but I'll leave the YouTube card on your screen — just say the word and I take it down.» — the model called youtube:close (in-card) and the verdict closed the card (closes_the_named_card) with no line after it",
   "screen": {
    "open": [
     "youtube"
@@ -1213,7 +1213,7 @@
   "id": "demo-e4-unread-words-invent-what-was-opened",
   "lang": "en",
   "phrase": "oh and leave that inworld one as unread",
-  "source": "TMP/demo/run-p113 E4 (2026-10-05): «Here's the text you'd use to reproduce this turn: I didn't open the original Orion receipt — the one I opened was your own email…» — E2 had opened the receipt itself; the promise repair ran mensajeria:unread on the right mail",
+  "source": "demo run-p113 E4 (2026-10-05): «Here's the text you'd use to reproduce this turn: I didn't open the original Orion receipt — the one I opened was your own email…» — E2 had opened the receipt itself; the promise repair ran mensajeria:unread on the right mail",
   "screen": {
    "open": [
     "mensajeria"
@@ -1247,7 +1247,7 @@
   "id": "demo-c5-explicit-send-held-for-a-go-ahead",
   "lang": "en",
   "phrase": "send rowan a telegram with the new time",
-  "source": "TMP/demo/run-p124 C5 (2026-10-14): «One thing, Richard — I don't write messages on my own. Say the word and I'll send Rowan the note on Telegram…» with no call; the promise repair sent it (spec met). E3 the same pass: «I won't send that until you confirm, since telling him to book it is a real commitment»",
+  "source": "demo run-p124 C5 (2026-10-14): «One thing, Richard — I don't write messages on my own. Say the word and I'll send Rowan the note on Telegram…» with no call; the promise repair sent it (spec met). E3 the same pass: «I won't send that until you confirm, since telling him to book it is a real commitment»",
   "screen": {
    "open": [
     "agenda"
@@ -1281,7 +1281,7 @@
   "id": "demo-e3-read-pass-denies-the-send",
   "lang": "en",
   "phrase": "send the invoice to quinn, tell him we're already trying inworld and he should book it",
-  "source": "TMP/demo/run-p130 E3 (2026-10-14): the brief was unsure on every key (request_type answer 0.46, screen_action mensajeria:forward 0.45); the model read the mail card and the read pass, which has no tools, said «I can't actually send anything from here — I can only see what's in your messages». Nothing was sent",
+  "source": "demo run-p130 E3 (2026-10-14): the brief was unsure on every key (request_type answer 0.46, screen_action mensajeria:forward 0.45); the model read the mail card and the read pass, which has no tools, said «I can't actually send anything from here — I can only see what's in your messages». Nothing was sent",
   "screen": {
    "open": [
     "mensajeria"

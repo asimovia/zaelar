@@ -145,7 +145,7 @@ def _a_add_meeting(action, payload, db, _extra) -> dict:
             # `dentist-appointment-into-agenda` round 2: asked for a notice, the model escalated to a
             # WORKER that died on Google's login screen, said «Hecho», and `scheduled_jobs` stayed
             # empty. Telling the agent an appointment schedules its notice (~2h before) with nobody
-            # asking (INI-026 A2); moving it is `set_reminder`. Best-effort: a scheduler failure must
+            # asking; moving it is `set_reminder`. Best-effort: a scheduler failure must
             # not lose the WRITE — but it is stored on the meeting, so the state never claims a notice
             # that does not exist.
             _rday = _d.recur.next_occurrence(_new, _d._today()) or date

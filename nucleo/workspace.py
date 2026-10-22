@@ -1,12 +1,11 @@
 #
-# WORKSPACE ROOT (Phase 3 M0) — one mountable root for every per-tenant persistent path.
+# WORKSPACE ROOT — one mountable root for every per-install persistent path.
 #
-# The engine is coded as a single-tenant process (one operator, one machine) and stays that way —
-# it must NEVER become multi-tenant-aware. What changes for the real cloud (1 Fly Machine + 1 Fly
-# Volume per paying user, see the Phase 3 plan) is WHERE its own data lands: today every module
-# resolves its own path relative to `Path(__file__)` (repo root), which only works because there's
-# exactly one tenant on one disk. This module gives every one of those call sites a single override
-# knob instead of each inventing its own — set `ZAELAR_WORKSPACE=/data` (a mounted Fly Volume) and
+# The engine is coded as a single-user process (one user, one machine) and stays that way —
+# it must NEVER become multi-user-aware. What a container deployment needs to change is WHERE its
+# data lands: by default every module resolves its own path relative to `Path(__file__)` (repo root).
+# This module gives every one of those call sites a single override
+# knob instead of each inventing its own — set `ZAELAR_WORKSPACE=/data` (a mounted volume) and
 # memory/widgets/config/credentials all land under that root; leave it unset and behavior is BYTE
 # IDENTICAL to before this module existed (falls back to the repo root, today's default).
 #
@@ -21,20 +20,18 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
 def root() -> Path:
-    """The per-tenant data root. `ZAELAR_WORKSPACE` unset (self-host, the operator's own machine,
-    every self-host install) → the repo root, today's exact behavior. Set (real cloud Machine,
-    pointed at its own mounted Volume) → every persistent path below moves under it, with zero
+    """The per-install data root. `ZAELAR_WORKSPACE` unset (every self-host install) → the repo
+    root. Set (a container pointed at its own mounted volume) → every persistent path below moves under it, with zero
     other code change needed at any call site beyond reading this instead of `Path(__file__)`."""
     env = (os.getenv("ZAELAR_WORKSPACE") or "").strip()
     return Path(env) if env else _REPO_ROOT
 
 
-# THE PER-TENANT TREE (V2-562). `root()` alone is not enough: it answers "where", never "does it exist".
+# THE PER-INSTALL TREE (V2-562). `root()` alone is not enough: it answers "where", never "does it exist".
 # On self-host the answer was free — the repo root ships `config/`, `i18n/`, `memory/` and `widgets/` in git, so
-# every writer found its parent already there and no call site ever needed a `mkdir`. A cloud Machine mounts an
-# EMPTY Volume, and there the same code writes into directories that were never created: measured on a real
-# account 2026-09-03, `/data` held only `memory/` and `widgets/` (made by the two writers that happen to mkdir),
-# while `config/`, `credentials/` and `i18n/` were simply absent.
+# every writer found its parent already there and no call site ever needed a `mkdir`. A container that mounts an
+# EMPTY volume writes into directories that were never created: `/data` ended up holding only `memory/` and
+# `widgets/` (made by the two writers that happen to mkdir), while `config/`, `credentials/` and `i18n/` were absent.
 #
 # The failure mode is what makes this worth a module-level guarantee instead of seven local fixes: writing into a
 # missing directory raises `FileNotFoundError` INSIDE code that treats persistence as best-effort, so it is caught,
@@ -65,11 +62,11 @@ SUBDIRS = (
 
 
 def ensure() -> Path:
-    """Create the per-tenant tree if it is not there yet, and return the root. Idempotent and NEVER raises.
+    """Create the per-install tree if it is not there yet, and return the root. Idempotent and NEVER raises.
 
     Called once at boot (`server/__main__.py`) BEFORE anything reads or writes a persistent path. It is not a
     substitute for a writer creating its own parent — a directory can be removed while the process lives, and
-    each writer still guards itself — it is the guarantee that a Machine's FIRST boot on an empty Volume starts
+    each writer still guards itself — it is the guarantee that a FIRST boot on an empty volume starts
     with somewhere to put its data.
 
     Never raises on purpose: a read-only or exotic filesystem must not stop the agent from booting. A directory

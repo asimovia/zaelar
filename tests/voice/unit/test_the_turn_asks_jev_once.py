@@ -483,7 +483,7 @@ def test_the_catalogue_question_carries_the_words_he_CALLS_them(wire):
 
 
 def test_an_oversized_catalogue_is_retrieval_not_a_bigger_question(wire, monkeypatch):
-    """INI-027 §7, the operator's own rule: an index narrows, a model chooses. Past the cap the
+    """the connector-catalogue rule, the operator's own rule: an index narrows, a model chooses. Past the cap the
     answer is not a longer enumeration — so the question is simply not asked, and the turn keeps
     exactly what it does today."""
     from widgets import runtime

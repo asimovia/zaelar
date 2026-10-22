@@ -6,7 +6,7 @@ profile = one entry in ``_DEFAULTS``. The profile only sets DEFAULTS; an explici
 env override for any component always wins, which is what makes hybrids possible
 (e.g. local STT+TTS + remote LLM on a weak machine).
 
-zaelar note (INI-012): the ``llm`` default here is only a fallback. In practice
+zaelar note: the ``llm`` default here is only a fallback. In practice
 ``config._llm_provider_default`` lets the ``BRAIN`` env (hermes|duo|direct)
 override it, so these values apply when BRAIN is unset.
 

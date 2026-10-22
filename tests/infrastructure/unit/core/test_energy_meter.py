@@ -12,7 +12,7 @@ def test_disabled_by_default(monkeypatch):
 
 
 def test_enabled_when_cloud_account_set(monkeypatch):
-    """2026-08-05: a real paying account (ZAELAR_USER_ID set by the provisioner) is metered."""
+    """With ZAELAR_USER_ID set by the deployment, the engine meters usage."""
     monkeypatch.setenv("ZAELAR_USER_ID", "did:key:z6MkExample")
     assert energy_meter.enabled() is True
 
@@ -20,8 +20,8 @@ def test_enabled_when_cloud_account_set(monkeypatch):
 def test_llm_cost_to_energy_xai(monkeypatch):
     monkeypatch.setenv("ENERGY_EUR_PER_UNIT", "0.01")
     monkeypatch.setenv("ENERGY_MARGIN_MULTIPLIER", "4.0")
-    # 1M prompt + 1M completion tokens on x.ai: $0.20 + $0.50 = $0.70 raw, *4 margin = €2.80 retail
-    # (treating USD≈EUR) / €0.01 per unit = 280 Energy.
+    # 1M prompt + 1M completion tokens on x.ai: $0.20 + $0.50 = $0.70 raw, × the configured multiplier (4)
+    # / the configured unit price (0.01) = 280 Energy.
     energy = energy_meter.llm_cost_to_energy(
         base_url="https://api.x.ai/v1", prompt_tokens=1_000_000, completion_tokens=1_000_000
     )
@@ -30,8 +30,8 @@ def test_llm_cost_to_energy_xai(monkeypatch):
 
 def test_llm_cost_to_energy_aimlapi_uses_per_model_rate(monkeypatch):
     """2026-08-05 fix: AIMLAPI is a multi-model broker — a bare base_url match would be wrong for it
-    (dozens of models at very different prices). This is the exact call shape the FlashBrain makes in
-    production (config/v2.json §fast: provider=aimlapi, model=deepseek/deepseek-v4-flash) — before the
+    (dozens of models at very different prices). This is the call shape of a FlashBrain routed through
+    it (config/v2.json §fast: provider=aimlapi, model=deepseek/deepseek-v4-flash) — before the
     fix this silently returned None (zero Energy) because "aimlapi" wasn't in the old base_url table."""
     monkeypatch.setenv("ENERGY_EUR_PER_UNIT", "0.01")
     monkeypatch.setenv("ENERGY_MARGIN_MULTIPLIER", "4.0")
@@ -41,14 +41,12 @@ def test_llm_cost_to_energy_aimlapi_uses_per_model_rate(monkeypatch):
         prompt_tokens=1_000_000,
         completion_tokens=1_000_000,
     )
-    # $0.14 + $0.28 = $0.42 NATIVE, × the broker's ×1.30 markup = $0.546 · × 4 commercial margin = €2.184
-    # / €0,01 = 218,4 Energy — NOT None, NOT zero.
+    # $0.14 + $0.28 = $0.42 NATIVE, × the broker's ×1.30 markup = $0.546 · × the configured multiplier (4)
+    # / the configured unit price (0.01) = 218.4 Energy — NOT None, NOT zero.
     #
-    # The previous 168 (2026-08-05 → 2026-08-15) was DeepSeek's NATIVE rate charged for a call purchased
-    # through AIMLAPI. The table is from the provider so candidates can be compared with one another in the
-    # benchmarks; the INVOICE must also include what the reseller charges on top (measured on 2026-08-09:
-    # 0.14 → 0.182). This line made the gap invisible because it declared as correct exactly the number
-    # that undercharged by 30% on the product's most frequent call.
+    # The previous 168 was DeepSeek's NATIVE rate applied to a call routed through AIMLAPI. The table is from
+    # the provider so candidates can be compared with one another in the benchmarks; the metered cost must also
+    # include what the reseller adds on top (measured: 0.14 → 0.182).
     assert energy == pytest.approx(218.4)
 
 
@@ -94,7 +92,7 @@ def test_llm_cost_to_energy_handles_none_tokens():
 
 
 def test_tts_cost_to_energy():
-    # 2000 chars @ $0.05/1k (ElevenLabs Flash v2.5) = $0.10 raw, *4 margin = €0.40 / €0.01 = 40 Energy.
+    # 2000 chars @ $0.05/1k (ElevenLabs Flash v2.5) = $0.10 raw, × the configured multiplier / unit price = 40 Energy.
     assert energy_meter.tts_cost_to_energy(characters=2000, provider="elevenlabs") == pytest.approx(40.0)
 
 
@@ -103,7 +101,7 @@ def test_tts_cost_to_energy_handles_none_characters():
 
 
 def test_stt_cost_to_energy():
-    # 60 min @ $0.006/min (Voxtral realtime) = $0.36 raw, *4 margin = €1.44 / €0.01 = 144 Energy.
+    # 60 min @ $0.006/min (Voxtral realtime) = $0.36 raw, × the configured multiplier / unit price = 144 Energy.
     assert energy_meter.stt_cost_to_energy(audio_seconds=3600, provider="voxtral") == pytest.approx(144.0)
 
 
@@ -112,8 +110,8 @@ def test_stt_cost_to_energy_handles_none_seconds():
 
 
 def test_the_stt_rate_FOLLOWS_the_provider_instead_of_being_one_flat_number():
-    """The defect that prompted all this: there was ONE flat STT rate, and it was Deepgram's, so
-    production billed Voxtral for months at another provider's price — 80% of the cost, without anything failing.
+    """The defect that prompted all this: there was ONE flat STT rate, and it was Deepgram's, so the
+    meter priced Voxtral at another provider's rate — 80% of the cost, without anything failing.
 
     Two providers with different prices must produce different numbers. If this test starts to
     see the same result for both, someone has collapsed the table back into a constant."""
@@ -123,7 +121,7 @@ def test_the_stt_rate_FOLLOWS_the_provider_instead_of_being_one_flat_number():
 
 
 def test_transport_is_billed_per_participant_minute():
-    # 10 min of session × 2 participants = 20 participant-min @ $0.0004 = $0.008, *4 = €0.032 = 3.2 Energy.
+    # 10 min of session × 2 participants = 20 participant-min @ $0.0004 = $0.008 → 3.2 Energy at the configured ratio.
     energy = energy_meter.transport_cost_to_energy(participant_seconds=1200, provider="livekit")
     assert energy == pytest.approx(3.2)
 
@@ -209,7 +207,7 @@ def test_fire_and_forget_still_takes_the_fast_path_when_a_loop_IS_running(monkey
 @pytest.mark.anyio
 async def test_post_usage_fails_open_on_network_error(monkeypatch):
     monkeypatch.setenv("ZAELAR_USER_ID", "did:key:z6MkExample")
-    monkeypatch.setenv("CONTROL_PLANE_URL", "https://zaelar-control-plane.example.workers.dev")
+    monkeypatch.setenv("CONTROL_PLANE_URL", "https://control-plane.example.com")
 
     class _FakeClient:
         async def __aenter__(self):
@@ -228,10 +226,9 @@ async def test_post_usage_fails_open_on_network_error(monkeypatch):
 
 @pytest.mark.anyio
 async def test_post_usage_routes_cloud_account_to_control_plane(monkeypatch):
-    """2026-08-05: a real account (ZAELAR_USER_ID set) must post to CONTROL_PLANE_URL/usage with
-    {user_id, energy, kind}."""
+    """With ZAELAR_USER_ID set, usage is posted to CONTROL_PLANE_URL/usage with {user_id, energy, kind}."""
     monkeypatch.setenv("ZAELAR_USER_ID", "did:key:z6MkExample")
-    monkeypatch.setenv("CONTROL_PLANE_URL", "https://zaelar-control-plane.example.workers.dev")
+    monkeypatch.setenv("CONTROL_PLANE_URL", "https://control-plane.example.com")
     monkeypatch.setenv("CONTROL_PLANE_SERVICE_TOKEN", "shh-secret")
     captured = {}
 
@@ -249,10 +246,9 @@ async def test_post_usage_routes_cloud_account_to_control_plane(monkeypatch):
 
     monkeypatch.setattr(httpx, "AsyncClient", lambda **kw: _FakeClient())
     await energy_meter._post_usage(12.5, "worker")
-    assert captured["url"] == "https://zaelar-control-plane.example.workers.dev/usage"
-    # `session_id` (2026-08-09, INI-021): EVENTS do not leave the user's machine, but the central ACTIVITY
-    # record (who uses the system, when, and how much they spend) needs to know which work session each
-    # charge belongs to. It travels in THIS same report so we do not open a new ingestion path.
+    assert captured["url"] == "https://control-plane.example.com/usage"
+    # `session_id`: events never leave the user's machine; the usage report carries only the id of the work
+    # session each charge belongs to, in this same payload, so no new ingestion path is opened.
     from observability import identity as _ident
     assert captured["json"] == {"user_id": "did:key:z6MkExample", "energy": 12.5, "kind": "worker",
                                 "session_id": _ident.session_id()}
@@ -277,7 +273,7 @@ async def test_post_usage_cloud_account_requests_close_when_balance_depleted(mon
     (<=0) must request the session close via nucleo.account_limits, following the operator's
     "when it is spent, it is over" rule."""
     monkeypatch.setenv("ZAELAR_USER_ID", "did:key:z6MkExample")
-    monkeypatch.setenv("CONTROL_PLANE_URL", "https://zaelar-control-plane.example.workers.dev")
+    monkeypatch.setenv("CONTROL_PLANE_URL", "https://control-plane.example.com")
 
     class _FakeResp:
         status_code = 200
@@ -313,7 +309,7 @@ async def test_post_usage_cloud_account_requests_close_when_balance_depleted(mon
 @pytest.mark.anyio
 async def test_post_usage_cloud_account_does_not_close_with_energy_left(monkeypatch):
     monkeypatch.setenv("ZAELAR_USER_ID", "did:key:z6MkExample")
-    monkeypatch.setenv("CONTROL_PLANE_URL", "https://zaelar-control-plane.example.workers.dev")
+    monkeypatch.setenv("CONTROL_PLANE_URL", "https://control-plane.example.com")
 
     class _FakeResp:
         status_code = 200
@@ -375,10 +371,8 @@ def test_the_most_specific_model_pattern_wins():
 
 # ── The BROKER markup (2026-08-15) ───────────────────────────────────────────────────────────────────────────
 # The rate tables are from the NATIVE provider, because that makes candidates comparable in the benchmarks.
-# But production does not buy from the provider: the FlashBrain account holder goes through AIMLAPI, which resells
-# with a markup. Both routes fell into the same row, so the same model was billed identically regardless of its
-# source — an undercharge of ~30% on the product's most frequent call, in the direction PROHIBITED by the
-# 2026-08-13 policy (overcharging slightly is preferable to undercharging).
+# A call routed through a reseller (AIMLAPI) carries the reseller's markup on top. Both routes fell into the same
+# row, so the same model was metered identically regardless of its route — under-metering the routed call.
 def test_el_broker_cobra_su_margen_y_el_directo_no():
     """The SAME model through two routes no longer costs the same, which is precisely what made the gap invisible."""
     directo = energy_meter._rate_for("https://api.deepseek.com", "deepseek-v4-flash")
@@ -415,8 +409,8 @@ def test_an_unknown_model_still_costs_something_and_says_so(caplog):
 
 
 def test_one_energy_unit_is_a_quarter_of_a_cent_of_raw_compute():
-    """The whole ratio in one assertion, so a change to margin or unit price is never silent: 1 Energy =
-    €0.01 retail at a 4x margin => $0.0025 of raw model cost. Hence grok-4.5 = 800 Energy per 1M input tokens
+    """The whole ratio in one assertion, so a change to the configured multiplier or unit price is never
+    silent: with the defaults, 1 Energy = $0.0025 of raw model cost. Hence grok-4.5 = 800 Energy per 1M input tokens
     and 2400 per 1M output; deepseek-v4-flash = 56 / 112 — a 14x spread between the two ends of the catalogue."""
     assert energy_meter.EUR_PER_ENERGY_UNIT == 0.01
     assert energy_meter.MARGIN_MULTIPLIER == 4.0

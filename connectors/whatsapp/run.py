@@ -1,5 +1,5 @@
 #
-# run.py — STANDALONE Phase 1 runnable (INI-014): starts the bridge, shows the QR to link WhatsApp, then reads your
+# run.py — STANDALONE Phase 1 runnable: starts the bridge, shows the QR to link WhatsApp, then reads your
 # inbox, triages each batch with the LOCAL model, and prints a digest of "only what matters", marking already
 # summarized content as read. Does NOT reply to anyone (read-only + mark-read).
 #

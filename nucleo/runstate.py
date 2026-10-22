@@ -243,7 +243,7 @@ async def _do_stop(src: str = "operator") -> dict:
        the stop.
     2. **The observability session is closed** (2026-08-16, real finding: with the agent stopped and the browser
        open, background noise —~1Hz pulse, state projection— kept reaching the session that was already open and
-       kept it “IN PROGRESS” forever in the master, with its flows growing). `end_session` emits its own closing
+       kept it “IN PROGRESS” forever in the observability viewer, with its flows growing). `end_session` emits its own closing
        `system` event —`stamp_identity` only READS the session for that category; it never reopens it—so anything
        arriving AFTER the stop remains sessionless, as a deliberate stop should be.
     3. **Workers** (SIGSTOP, reversible) — frozen at the exact spot, not dead.

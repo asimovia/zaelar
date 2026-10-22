@@ -1,21 +1,12 @@
-"""V2-500 — the model allocation lives in ONE place, and the cloud surfaces are copies that cannot diverge.
+"""V2-500 — the model allocation lives in ONE place: `config/models.default.json`.
 
-Operator rule (2026-08-30): *“the configuration must be in one default file, public and in the
-repository… I want that file to be unique, and I do not want this data to be in a thousand places at once.”*
+Operator rule (2026-08-30): the configuration lives in one default file, public and in the repository, and
+nowhere else. Every engine module that needs the allocation READS that table, so it cannot diverge by
+construction.
 
-They were in SIX: `config/v2.py::_DEFAULTS`, `nucleo/flash/provider_chain.py`,
-`nucleo/workers/providers.py`, `voice/engine/core/config.py`, `engine/fly.accounts.toml`, and
-`cloud/provisioner/src/machineConfig.js`. The first four already READ the table, so they cannot diverge by
-construction. The last two are not Python —they are a Fly TOML file and a JS module from another repo— so the only
-way to keep them from diverging is to check them, which is why this file exists.
-
-And they really did diverge: on 2026-08-30, despite the rule “DeepSeek direct primary, AIMLAPI failover only” being
-stated several times, the cloud had **AIMLAPI as the voice primary** and memory went through the broker on both sides.
-Nobody compared anything, so the rule lived only in the operator’s `config/v2.json` — gitignored, and
-therefore invisible to any new installation.
-
-The cloud file may not be present (it is another, private repo): in that case it is SKIPPED; a green result is never
-invented.
+A deployment repo checked out alongside the engine may declare the same keys in its own config files (TOML or
+JS). Those cannot import the table, so the only way to keep them from diverging is to check them — which is
+what this file does. When no such repo is present the checks are SKIPPED; a green result is never invented.
 """
 import json
 import re
@@ -25,8 +16,9 @@ import pytest
 
 ENGINE = Path(__file__).resolve().parents[3]
 TABLA = ENGINE / "config" / "models.default.json"
-FLY = ENGINE.parent / "cloud" / "infra" / "fly" / "fly.accounts.toml"
-CLOUD = ENGINE.parent / "cloud" / "provisioner" / "src" / "machineConfig.js"
+# Optional deployment configs from a repo checked out alongside (skipped when absent).
+DEPLOY_TOML = ENGINE.parent / "cloud" / "infra" / "fly" / "fly.accounts.toml"
+DEPLOY_JS = ENGINE.parent / "cloud" / "provisioner" / "src" / "machineConfig.js"
 
 
 def _titular(servicio: str, campo: str) -> str:
@@ -34,7 +26,7 @@ def _titular(servicio: str, campo: str) -> str:
     return str(t.get(campo) or "")
 
 
-#: What the two cloud surfaces must say, taken from the table.
+#: What a deployment config must say, taken from the table.
 def _esperado() -> dict[str, str]:
     return {
         "FAST_PROVIDER": _titular("voice_brain", "provider"),
@@ -46,8 +38,8 @@ def _esperado() -> dict[str, str]:
         "MEM_PROCESSOR_MODEL": _titular("memory_writer", "model"),
         "ZAELAR_STT": _titular("stt", "provider"),
         "ZAELAR_TTS": _titular("tts", "provider"),
-        # The vector space is the piece that costs MOST when local and cloud differ: it does not fail, it simply
-        # finds something else. That is why all three surfaces name it identically, even though the engine
+        # The vector space is the piece that costs MOST when two installs differ: it does not fail, it simply
+        # finds something else. That is why every surface names it identically, even though the engine
         # carries its own default.
         "ZAELAR_EMBED_BACKEND": _titular("embeddings", "provider"),
         "ZAELAR_EMBED_MODEL": _titular("embeddings", "model"),
@@ -66,10 +58,10 @@ def _leidos(texto: str) -> dict[str, str]:
     return out
 
 
-@pytest.mark.parametrize("fichero", [FLY, CLOUD], ids=["fly.accounts.toml", "cloud/machineConfig.js"])
-def test_la_superficie_de_nube_dice_lo_MISMO_que_la_tabla(fichero):
+@pytest.mark.parametrize("fichero", [DEPLOY_TOML, DEPLOY_JS], ids=["deployment-toml", "deployment-js"])
+def test_a_deployment_config_says_the_SAME_as_the_table(fichero):
     if not fichero.exists():
-        pytest.skip(f"{fichero.name} no está aquí (repo privado): no se puede comprobar, y no se inventa")
+        pytest.skip(f"{fichero.name} is not present (no deployment repo alongside): nothing to check, nothing invented")
     leidos, esperado = _leidos(fichero.read_text(encoding="utf-8")), _esperado()
     difiere = {k: (v, esperado[k]) for k, v in leidos.items() if v != esperado[k]}
     assert not difiere, (
@@ -77,12 +69,12 @@ def test_la_superficie_de_nube_dice_lo_MISMO_que_la_tabla(fichero):
         f"es `config/models.default.json` y esto es una copia suya.")
 
 
-@pytest.mark.parametrize("fichero", [FLY, CLOUD], ids=["fly.accounts.toml", "cloud/machineConfig.js"])
+@pytest.mark.parametrize("fichero", [DEPLOY_TOML, DEPLOY_JS], ids=["deployment-toml", "deployment-js"])
 def test_la_superficie_NOMBRA_lo_que_tiene_que_nombrar(fichero):
     """Sensitivity: if the regex stopped matching, the above would pass with an empty dictionary — the exact
     form of a test that thinks it is green because it measured nothing."""
     if not fichero.exists():
-        pytest.skip("repo privado")
+        pytest.skip("no deployment repo alongside")
     faltan = set(_esperado()) - set(_leidos(fichero.read_text(encoding="utf-8")))
     assert not faltan, f"{fichero.name} no declara {sorted(faltan)}: la máquina saldría con otro reparto"
 

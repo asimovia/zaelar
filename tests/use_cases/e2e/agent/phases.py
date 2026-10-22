@@ -1,4 +1,4 @@
-"""Launch phases — the OPERATOR-OWNED boundary of what production v1 promises (INI-026, 2026-08-29).
+"""Launch phases — the OPERATOR-OWNED boundary of what production v1 promises (2026-08-29).
 
 “Have somewhere I can say: this is EVERYTHING that can be done in the production version” — this
 module is that place. PHASE 1 is the delimited v1 scope: the feature set the product guarantees at launch,
@@ -25,7 +25,7 @@ PHASE1: frozenset[str] = frozenset({
     "build-workout-tracker-widget",
     # facts in the turn
     "quick-fact-opening-hours",
-    # agenda + reminders (the INI-026 A2 litmus)
+    # agenda + reminders (the launch-scope litmus)
     "remember-and-remind-deadline",
     "dentist-appointment-into-agenda",
     # several errands at once

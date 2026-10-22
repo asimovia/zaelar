@@ -587,7 +587,7 @@ export const [restarting, setRestarting] = createSignal(false);
 // first startup (unvalidated config) and can be reopened from the TopBar (🧭). ----
 export const [wizardOpen, setWizardOpen] = createSignal(false);
 
-// ---- CLOUD profile: in a paid account (cloud_profile from /api/config, = ZAELAR_USER_ID set), the header is
+// ---- CLOUD profile: when cloud_profile is set (from /api/config, = ZAELAR_USER_ID set), the header is
 // reduced to theme + profile; in self-host it is always false and the header does not change (zero regression). main.js seeds it
 // al arrancar desde /api/config. ----
 export const [cloudProfile, setCloudProfile] = createSignal(false);        // cloud account? (reduced header)
@@ -643,7 +643,7 @@ export function openChatFrom(from, tab) {
 // The OLD NAMES still arrive, from three directions that cannot be changed at once: the voice router
 // (`nucleo/flash/panel_canon`), the action map, and the localStorage of every operator who left the wall on
 // one of them. So this setter NORMALISES instead of the callers doing it — a rule each caller has to
-// remember is a rule that ends up missing from one of them, which is the same lesson the signup doors cost.
+// remember is a rule that ends up missing from one of them, which is a lesson already learned elsewhere.
 // `crons` lands on «Procesos ▸ Periódicos», which is where it now lives. `tareas` is kept here, and ONLY
 // here, for the rows an operator's own action map already stored: it is the same object he meant then.
 const [chatTab, _setChatTab] = createSignal("chat");

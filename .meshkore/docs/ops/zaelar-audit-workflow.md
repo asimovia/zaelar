@@ -35,7 +35,7 @@ verificar que **el código, la arquitectura, la documentación canónica y el m�
    agente principal **sintetiza**, no re-hace el trabajo.
 4. **Alineación en tres capas.** Todo lo que se descubra debe coincidir con: (a) el **diagrama + módulos** de
    `.meshkore/docs/architecture` y `modules`, (b) el **contexto** de `.meshkore/docs/product` + `security`, y (c)
-   los **diagramas públicos** de `/technology` (`web/src/pages/technology/*.astro`), que son doc de cara al
+   los **diagramas públicos** de `/technology` (sitio público, fuera de este repo), que son doc de cara al
    usuario y deben reflejar el estado actual (aunque, desde 2026-07-24, su sync ya no es automático — es un paso
    MANUAL; una deriva aquí es de menor urgencia que en el resto, ver nota abajo). Toda deriva se reporta como fix concreto.
 5. **Salida = informe + plan priorizado.** El entregable es un informe con hallazgos por severidad y un **plan de
@@ -59,7 +59,7 @@ Leer, en este orden, para cargar el modelo mental antes de tocar nada:
    - `security/zaelar-security.md` — modelo de amenaza y controles del canal de cluster (el módulo de seguridad).
 4. **Estructura real del repo** — listar ficheros fuente (excluyendo `.venv/.git/.pytest_cache/node_modules`) y
    `git status --short` (para detectar trabajo sin commitear, p. ej. widgets nuevos).
-5. **Los diagramas públicos** — `web/src/pages/technology/*.astro` + `web/src/lib/diagrams/*.ts` (el panel interno
+5. **Los diagramas públicos** — `/technology/*`, fuera de este repo (el panel interno
    `frontend/pages/architecture.html` se RETIRÓ el 2026-07-24): doc curada de cara a fuera, entra en la
    comparación de alineación (§4) pero con prioridad menor — ya no es un espejo automático del código.
 
@@ -79,7 +79,7 @@ zaelar se audita en **cuatro dominios**. Son los mismos cuatro cada vez — se a
 | A | **Núcleo voz + cerebro (nucleo) + memory + bus + server** | `voice/`, `nucleo/` (FlashBrain + SlowBrain), `memory/`, `bus/`, `server/`, `config/` — pipeline, dos velocidades, escalado, memoria central, sistema nervioso, routers, settings | architecture §0-8, memory (todo), product §2/§4/§5 |
 | B | **Frontend + widgets** | `frontend/`, `widgets/` — shell reactivo, aislamiento de widgets, contrato de widget, generador, SSE | modules §Frontend, architecture §1-5, product §2/§4/§6, `widgets/AGENTS.md` |
 | C | **Seguridad del canal cluster** | `connectors/meshkore/` (canal en perfil untrusted: `brain.py`→`nucleo/flash/cluster.py`, tools off) + controles duros en `security.py`, `bridge.py`, `voice/tag_protocol.py` | security (todo), logs MK-003/MK-004 |
-| D | **Alineación docs ↔ código ↔ cluster.yaml** | los `.meshkore/docs/`, `cluster.yaml`, roadmap/initiatives, los diagramas de `/technology` (web/), `CLAUDE.md`, `.env.example`, Makefile | modules, product, architecture, ops, todo el estándar |
+| D | **Alineación docs ↔ código ↔ cluster.yaml** | los `.meshkore/docs/`, `cluster.yaml`, roadmap/initiatives, los diagramas de `/technology` (sitio público), `CLAUDE.md`, `.env.example`, Makefile | modules, product, architecture, ops, todo el estándar |
 
 **Regla del estándar MeshKore:** cada dominio mapea a los módulos declarados en `cluster.yaml`. Si se declara un
 módulo nuevo (p. ej. `importers/` cuando exista), **añadir su chequeo al dominio correspondiente** aquí.
@@ -200,13 +200,13 @@ explicación de una línea**, y al final una lista de **Findings ordenados por s
    (declarados y no existen) y directorios raíz no declarados; `git status` para trabajo sin commitear.
 2. **Coherencia de versión**: `cluster.yaml version` = git tag = commits; `state.json` (generado, NO editar a mano);
    routing real de modelos (`config/v2.json` secciones `fast`/`code_agent`) vs lo que dicen las docs (nota de routing
-   de `CLAUDE.md`, `zaelar-model-benchmarks.md`, los diagramas de `web/src/pages/technology/`.
-3. **Los diagramas públicos** (`web/src/pages/technology/*.astro` + `web/src/lib/diagrams/*.ts`): comparar su
+   de `CLAUDE.md`, `zaelar-model-benchmarks.md`, los diagramas de `/technology` (sitio público, fuera de este repo).
+3. **Los diagramas públicos** (`/technology/*`, fuera de este repo): comparar su
    narrativa/topología contra `architecture.md` + `modules.md`. Citar cada fragmento obsoleto. Es contenido
    curado y RECORTADO a propósito para audiencia externa (sin rutas de fichero internas, sin incidentes/costes) —
    no esperar el mismo detalle que en las docs canónicas; solo señalar si cuenta una arquitectura YA SUPERADA
    (p.ej. si describiera un "SlowBrain" separado, o no reflejara que el cluster comparte el mismo motor).
-4. **Roadmap/initiatives**: estados coherentes con la realidad (INI-005 WIP, INI-003 parked, INI-004 done…);
+4. **Roadmap/initiatives**: estados coherentes con la realidad (WIP / parked / done…);
    iniciativa que diga done-pero-no o active-pero-stale.
 5. **Ops/deploy/conventions/change-protocol/audit**: contenido obsoleto (paths que ya no existen, comandos que no
    casan con el Makefile — cruzar cada `make` citado, env vars vs `config/.env.example`).
@@ -239,13 +239,13 @@ Cuando los cuatro subagentes devuelven, el agente principal **cruza y consolida*
 - **Efímero para el operador (opcional):** el mismo contenido como HTML en `~/.meshkore/tmp/zaelar-audit-<fecha>.html`
   (ver [[feedback-reports-local]]) si el operador quiere leerlo en el navegador.
 
-**B) Plan de mejora priorizado — como INICIATIVA de roadmap (obligatorio):** crear `INI-00N-audit-remediation.md`
+**B) Plan de mejora priorizado — como INICIATIVA de roadmap (obligatorio):** crear `V2-NNN-audit-remediation.md`
 en `.meshkore/roadmap/initiatives/` con las tareas **una por una** (checkbox `[ ]`, id `T-NN`), cada una anclada a
 un hallazgo del informe (`fichero:línea` + fix + si requiere decisión del operador), agrupadas por prioridad:
 - **P0 — Seguridad** (bypass de controles duros, XSS, exfiltración, fuga de credenciales). Se arregla primero.
 - **P1 — Bugs de arquitectura / correctitud** (event-loop stalls, update que no reinicia el brain, races, fire-and-forget).
 - **P2 — Deriva doc ↔ código** (`cluster.yaml` primero por ser lo que lee el daemon, luego docs `.md`,
-  `CLAUDE.md`, `.env.example`; los diagramas de `web/` van últimos — su sync ya es manual por diseño).
+  `CLAUDE.md`, `.env.example`; los diagramas del sitio público van últimos — su sync ya es manual por diseño).
 - **P3 — Cosmético / dead code / housekeeping.**
 
 Así el trabajo de remediación queda en el roadmap y no se pierde; cada tarea se cierra individualmente con [[zaelar-change-protocol]].

@@ -6,7 +6,7 @@ last week is neither, and its sheet may well have been pruned by the eight-sheet
 resolved to nothing, and the turn either opened the wrong card or searched the web again for something the
 operator had already paid for.
 
-THE SHAPE IS THE OPERATOR'S OWN RULE (INI-027 §7, 2026-08-31): **an index narrows, a model chooses.**
+THE SHAPE IS A DESIGN RULE: **an index narrows, a model chooses.**
 
   1. `memory.tasks_store.task_search` — FTS5 over the title and the goal of every task, accent-insensitive,
      OR-matched and ranked by bm25. No model, no network, ≤5 candidates.
@@ -26,7 +26,7 @@ from __future__ import annotations
 
 from nucleo import tasks as _tasks
 
-#: How many candidates the index may hand to the chooser. Five is the operator's number (INI-027 §7) and it
+#: How many candidates the index may hand to the chooser. Five is the chosen number and it
 #: is also the point past which ASKING stops being usable: a question listing eight reports is not a question.
 MAX_CANDIDATES = 5
 

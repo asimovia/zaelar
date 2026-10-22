@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# cron_tick.sh — ONE test tick for the 15-minute test→fix cron (INI-013 §Cron test→fix loop).
+# cron_tick.sh — ONE test tick for the 15-minute test→fix cron (the voice tester test→fix loop).
 # Deterministic half of the loop (the Claude agent does the judging/fixing half):
 #   1) ensure zaelar is UP on :43917 (make run + readiness wait if down)
 #   2) if the operator is LIVE in a voice session, SKIP this tick (don't contend the single THREAD worker)

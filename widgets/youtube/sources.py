@@ -45,7 +45,7 @@ def connector_shelf(db: dict) -> list:
     """The 🔌 screen: what video sources exist, live or not, with their honest state (V2-632).
 
     Composed from the V2-526 catalog (data, stdlib json) merged with the live platform rows; fail-soft to []
-    — a broken catalog must not blank the player. The shut doors are shown ON PURPOSE (INI-027's wishlist
+    — a broken catalog must not blank the player. The shut doors are shown ON PURPOSE (the wishlist
     rule: what we do NOT have is shown, never narrated)."""
     rows = []
     try:

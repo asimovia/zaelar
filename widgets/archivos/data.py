@@ -380,7 +380,7 @@ def _handle_local_nav(db: dict, act: str, payload: dict) -> dict:
 def _same_machine() -> bool:
     """Is the browser reading this card on the SAME machine the engine runs on? Self-host: yes, always — the
     engine process already IS the operator's own computer, so opening a Finder/Explorer window on it shows
-    the operator something real. A cloud Machine: no — there is no local disk of the operator's to reveal, and
+    the operator something real. A container deployment: no — there is no local disk of the operator's to reveal, and
     trying would open a window on a remote, usually headless, server nobody is looking at."""
     try:
         from nucleo.cloud_account import is_cloud_account

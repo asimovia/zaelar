@@ -205,7 +205,7 @@ async def run_it_to_its_delivery(*, _dev, _dev_settings_path, _wd, brief, escala
         # EXPLICIT flow-close signal (observability, V2-090): without this a flow only ever looks "closed" by
         # the ABSENCE of new events — an inference from silence, never a fact. The task row above already
         # records this worker session's own end; this event is for the FLOW (`corr_id`) that spawned it, so the
-        # master's board can mark the column closed for real instead of guessing from recency.
+        # observability board can mark the column closed for real instead of guessing from recency.
         if getattr(rec, "trace_id", ""):
             try:
                 from voice import trace as _trace2

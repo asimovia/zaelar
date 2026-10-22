@@ -479,7 +479,7 @@ effect on the next voice reconnect.
 
 So an `es` case and a `us` case **cannot run concurrently against one live server** — this is not a
 suite-design gap, it's how the engine works today. Two ways to run both silos, already precedented by
-the voice tester's multi-language wave (INI-013, wave H):
+the voice tester's multi-language wave (wave H):
 - **Sequential, one process**: set `ZAELAR_LANGUAGE=es`, reconnect, run the `es` batch; flip to `en`,
   reconnect, run the `us` batch; flip back. This is exactly what wave H did, including reverting the
   setting afterward so the live install wasn't left in the wrong language.

@@ -25,7 +25,7 @@ export function TopBar() {
     // System status: the health beacon lives at the LEFT extreme of the toolbar. A dot that greens/ambers/reds
     // (blinks on error) so a problem (no saldo, Hermes caído, cluster desconectado) grabs attention without
     // opening anything. Click → the status panel with the per-item detail.
-    // CLOUD (cuenta of pago): the header se reduce a PERFIL + tema. En cuanto /api/config dice cloud_profile (=
+    // CLOUD profile (ZAELAR_USER_ID set): the header se reduce a PERFIL + tema. En cuanto /api/config dice cloud_profile (=
     // ZAELAR_USER_ID puesto) se ocultan estado/observabilidad/config/wizard/reset. En self-host cloudProfile es
     // false and the header no cambia (cero regresión). The gate es reactivo: si the config tarda, aparecen and se ocultan.
     () => store.cloudProfile() ? null : h("button", {
@@ -54,7 +54,7 @@ export function TopBar() {
       onClick: () => { const v = !store.daemonSetupOpen(); store.setDaemonSetupOpen(v); api.uiEvent("topbar:daemon", { state: v ? "open" : "close" }); },
     }, raw(DESKTOP_ICON)),
     EnergyGauge(),
-    // 👤 Perfil of the CUENTA (SOLO cloud): the data of the cuenta of pago (usuario/energía/plan) — distinto of la
+    // 👤 Perfil of the CUENTA (SOLO cloud): the hosted account's data (user/energy) — distinto of la
     // persona of the operador, that vive en the orbe. En self-host NO aparece (instalación puramente local, no hace falta).
     // Contenido by definir; hoy abre un panel placeholder.
     () => store.cloudProfile() ? h("button", { class: () => "ic" + (store.accountOpen() ? " on" : ""), id: "acctBtn",
@@ -144,7 +144,7 @@ function ResetConfirm() {
 }
 
 // ACCOUNT panel (👤 icon, cloud only). Reuses the Reset overlay (`ovl rc-ovl` + `rc-box`) so it adds no CSS. It
-// shows no balance or billing detail itself; it is the way out to the page where those live. V2-785: the url is
+// shows no account detail itself; it is the way out to the page where those live. V2-785: the url is
 // the engine's (`account_url` from /api/config), no longer a literal here — one place knows it.
 function AccountPanel() {
   const close = () => store.setAccountOpen(false);

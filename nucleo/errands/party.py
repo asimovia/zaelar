@@ -8,7 +8,7 @@ ways an errand requires, both written down rather than left implicit:
 
   · **Identity is disclosed BY MANDATE, and only that much**: the assistant's name, the operator's first
     name, and that it is writing on his behalf. That is the errand — «hola, soy Johnny, el asistente de
-    Ricart» — and it is the whole reason a cluster-style profile cannot simply be reused. Nothing else of
+    Alex» — and it is the whole reason a cluster-style profile cannot simply be reused. Nothing else of
     `compose_state` is read: not his address, not his agenda, not another contact's number.
   · **Language follows the PARTY**: whatever they last wrote in, and before they have written, the
     operator's own (a first message in the wrong language is the V2-678 defect aimed outward).

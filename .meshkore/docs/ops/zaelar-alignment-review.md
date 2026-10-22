@@ -45,7 +45,7 @@ Un cambio trivial dentro de un solo fichero sin efecto en flujo/contrato NO lo d
 
 ### B · Tests
 - [ ] `./.venv/bin/pytest` de lo tocado en verde; sin regresión en la suite adyacente.
-- [ ] Si el cambio tiene superficie observable, se **ejercitó de verdad** (tester INI-013 o prueba manual), no solo unit.
+- [ ] Si el cambio tiene superficie observable, se **ejercitó de verdad** (tester de voz o prueba manual), no solo unit.
 
 ### C · Contexto (`CLAUDE.md`)
 - [ ] La descripción del/los módulo(s) afectado(s) refleja **cómo funciona hoy** (no cómo funcionaba antes).
@@ -53,34 +53,17 @@ Un cambio trivial dentro de un solo fichero sin efecto en flujo/contrato NO lo d
 - [ ] Las **hard rules** siguen correctas. La tabla de docs canónicas no apunta a ficheros borrados.
 
 ### D · Docs canónicas (`.meshkore/docs/<categoría>/`)
-- [ ] El doc de la categoría tocada (architecture / modules / product / ops / security / conventions / deploy) está al día.
+- [ ] El doc de la categoría tocada (architecture / modules / product / ops / security / conventions) está al día.
 - [ ] **Sin legacy**: nada de "de dónde venimos"/historia de arquitecturas anteriores en la doc VIVA (los informes
       fechados de auditoría son la excepción — son registro, no se reescriben).
 
-### E · Diagramas públicos (`web/src/pages/technology/*.astro` + `web/src/lib/diagrams/*.ts`)
-> **Actualizado 2026-07-26** (auditoría): el panel interno `frontend/pages/architecture.html` (ruta `/architecture`
-> del motor) se **retiró el 2026-07-24** — ya no tiene sentido servir un panel con editor de modelos en vivo desde
-> el propio motor. Los diagramas viven ahora como contenido PÚBLICO, curado y en inglés bajo `/technology`
-> (`web/src/pages/technology/{architecture,flashbrain,brainworkers,memory,widgets}.astro` +
-> `web/src/lib/diagrams/*.ts`), con rutas de código internas y detalle de incidentes/costes RECORTADOS a propósito
-> (audiencia externa). **Ya NO es un espejo automático del código** — es una foto seleccionada a mano, y NINGÚN
-> workflow la actualiza sola: es un paso MANUAL cuando tocas topología/modelo/proveedor de forma significativa.
-- [ ] **`architecture.ts`/`.astro`** (diagrama total): nodos/aristas reflejan el flujo actual.
-- [ ] **`memory.ts`/`.astro`**: el flujo de escritura/lectura de memoria (retriever, caché, consolidador) está al día.
-- [ ] **`flashbrain.ts`/`.astro`**: el camino del turno, el escalado y el routing de modelos actual.
-- [ ] **`brainworkers.ts`/`.astro`**: brain workers interactivos, dev-worker/permisos si el cambio los toca.
-- [ ] **`widgets.ts`/`.astro`** (si aplica).
-- [ ] **Modelos-en-uso** (capa rápida, code-agent, STT, TTS) + nota de **coste** (local/gratis vs API) correctos.
-- [ ] Si tocaste `web/`: `cd web && npm run build` (falla si hay error de tipos/sintaxis) + deploy
-      (`npx wrangler pages deploy dist --project-name=zaelar`) y reporta la URL estable `https://zaelar.pages.dev`.
-
-### F · Roadmap (el estado ES la cola, lo sirve el daemon al Architect)
+### E · Roadmap (el estado ES la cola, lo sirve el daemon al Architect)
 - [ ] Las tareas del cambio están en **`status: done`** en su `.md` fuente (`.meshkore/modules/<m>/tasks/T*.md`),
       con `completed_at` + `commit_shas`. El daemon auto-archiva la iniciativa cuando TODAS sus tareas están done.
 - [ ] Línea fechada en la **## Bitácora** de la iniciativa. **No** se edita `state.json` a mano.
 - [ ] Si el cambio no estaba en el roadmap, se abrió su iniciativa/tarea ANTES (visible en el Architect en vivo).
 
-### G · Regla de oro
+### F · Regla de oro
 - [ ] **Contexto + docs + arquitectura (diagrama) cuentan lo mismo que el código.** Si algo aparece en uno, aparece
       en los tres. Si el operador viera `/technology` (web) o CLAUDE.md, no encontraría nada obsoleto.
 
@@ -90,12 +73,9 @@ Un cambio trivial dentro de un solo fichero sin efecto en flujo/contrato NO lo d
 
 ```bash
 # Legacy/dirty en la doc viva (debe salir solo lo VIGENTE):
-grep -rinE "pipecat|hermes|BRAIN=duo| duo |razonador" CLAUDE.md .meshkore/docs web/src/pages/technology web/src/lib/diagrams
+grep -rinE "pipecat|hermes|BRAIN=duo| duo |razonador" CLAUDE.md .meshkore/docs
 # Símbolos retirados por este cambio (rellena) → 0 hits en código vivo:
 grep -rn "<símbolo_retirado>" --include=*.py . | grep -v .venv
-# Diagramas web: build limpio (falla si hay error de tipos/sintaxis en los .ts/.astro tocados):
-cd web && npm run build
-# render real: abrir https://zaelar.pages.dev/technology/architecture (o el que toques) tras deployar
 # Roadmap: tareas del cambio done + iniciativa al día (lo sirve el daemon):
 grep -h "^status:" .meshkore/modules/*/tasks/T*.md | sort | uniq -c
 ```

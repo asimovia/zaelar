@@ -40,7 +40,7 @@ class _Ledger:
         return dict(self.rows[eid])
 
 
-_ERRAND = {"id": "e1", "objective": "una intro de blockchain", "title": "Intro zerohash",
+_ERRAND = {"id": "e1", "objective": "una intro de producto", "title": "Intro northwind",
            "mandate": {"may": ["message"]}, "state": "contacting", "done_when": {}}
 
 _DECISION = {"agreed": {"start": "2026-09-16 15:00", "end": "2026-09-16 15:30", "medium": "videollamada"}}
@@ -57,14 +57,14 @@ def ledger(monkeypatch):
 
 
 def test_an_agreement_we_may_not_book_is_PARKED_instead_of_dropped(ledger):
-    res = book.book(dict(_ERRAND), _DECISION, party="Gavin Hale")
+    res = book.book(dict(_ERRAND), _DECISION, party="Laura Vidal")
     assert res["ok"] is False                      # nothing was written to the calendar, which is correct
     assert res["parked"] is True                   # …and the agreement was NOT lost, which is the fix
     row = ledger.get("e1")
     assert row["state"] == proposals.STATE
     p = row["done_when"]["proposal"]
     assert p["date"] == "2026-09-16" and p["startTime"] == "15:00" and p["endTime"] == "15:30"
-    assert p["party"] == "Gavin Hale"
+    assert p["party"] == "Laura Vidal"
 
 
 def test_the_operator_is_TOLD_and_the_notice_says_it_is_not_in_the_calendar(monkeypatch):
@@ -72,25 +72,25 @@ def test_the_operator_is_TOLD_and_the_notice_says_it_is_not_in_the_calendar(monk
     monkeypatch.setattr(proposals, "_errands", lambda: lg)
     pushed = []
     monkeypatch.setattr("voice.brain_notes.push", lambda text, key="": pushed.append((text, key)))
-    book.book(dict(_ERRAND), _DECISION, party="Gavin Hale")
+    book.book(dict(_ERRAND), _DECISION, party="Laura Vidal")
     assert pushed, "a parked proposal that nobody is told about is a dropped one with extra steps"
     text, key = pushed[0]
-    assert "Gavin Hale" in text and "2026-09-16 15:00" in text
+    assert "Laura Vidal" in text and "2026-09-16 15:00" in text
     assert "no está en el calendario" in text      # the claim that must never be made by omission
     assert key == "proposal:e1"
 
 
 def test_a_parked_proposal_is_offered_to_the_operator_with_who_when_and_what_for(ledger):
-    book.book(dict(_ERRAND), _DECISION, party="Gavin Hale")
+    book.book(dict(_ERRAND), _DECISION, party="Laura Vidal")
     rows = proposals.pending()
     assert len(rows) == 1
-    assert rows[0]["party"] == "Gavin Hale"
-    assert rows[0]["objective"] == "una intro de blockchain"
+    assert rows[0]["party"] == "Laura Vidal"
+    assert rows[0]["objective"] == "una intro de producto"
     assert rows[0]["errand_id"] == "e1"
 
 
 def test_HIS_YES_is_the_grant_that_was_missing_and_the_meeting_is_written(ledger, monkeypatch):
-    book.book(dict(_ERRAND), _DECISION, party="Gavin Hale")
+    book.book(dict(_ERRAND), _DECISION, party="Laura Vidal")
     booked = {}
 
     def _fake_book(errand, decision, party=""):
@@ -106,21 +106,21 @@ def test_HIS_YES_is_the_grant_that_was_missing_and_the_meeting_is_written(ledger
     assert "schedule" in booked["errand"]["mandate"]["may"]
     assert booked["decision"]["agreed"]["start"] == "2026-09-16 15:00"
     assert booked["decision"]["agreed"]["end"] == "2026-09-16 15:30"
-    assert booked["party"] == "Gavin Hale"
+    assert booked["party"] == "Laura Vidal"
     assert "proposal" not in ledger.get("e1")["done_when"]   # it stops being a question once he answers
 
 
 def test_a_NO_closes_the_errand_and_writes_nothing(ledger, monkeypatch):
-    book.book(dict(_ERRAND), _DECISION, party="Gavin Hale")
+    book.book(dict(_ERRAND), _DECISION, party="Laura Vidal")
     monkeypatch.setattr(book, "book", lambda *a, **k: pytest.fail("a declined proposal must book NOTHING"))
     res = proposals.decline("e1")
-    assert res["ok"] and res["party"] == "Gavin Hale"
+    assert res["ok"] and res["party"] == "Laura Vidal"
     assert "e1" in ledger.closed
     assert proposals.pending() == []
 
 
 def test_a_proposal_that_was_already_answered_cannot_be_answered_again(ledger, monkeypatch):
-    book.book(dict(_ERRAND), _DECISION, party="Gavin Hale")
+    book.book(dict(_ERRAND), _DECISION, party="Laura Vidal")
     proposals.decline("e1")
     assert proposals.accept("e1")["ok"] is False
 
@@ -136,7 +136,7 @@ def test_a_proposal_waiting_for_the_operator_is_NEVER_verified_as_done(monkeypat
 
 
 def test_an_agreement_with_no_hour_is_not_a_proposal(ledger):
-    res = book.book(dict(_ERRAND), {"agreed": {"medium": "videollamada"}}, party="Gavin Hale")
+    res = book.book(dict(_ERRAND), {"agreed": {"medium": "videollamada"}}, party="Laura Vidal")
     assert res["ok"] is False and not res.get("parked")
     assert proposals.pending() == []
 

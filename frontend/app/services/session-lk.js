@@ -1,5 +1,5 @@
 // ============================================================================
-// session-lk.js — the voice session ENGINE on LiveKit (INI-012).
+// session-lk.js — the voice session ENGINE on LiveKit.
 //
 // Drop-in replacement for session.js: SAME export surface (components import it
 // unchanged), but the transport is a LiveKit Room instead of a raw RTCPeer-
@@ -17,7 +17,7 @@
 //     commented in start()/toggleCam() for an eventual re-enable.
 //
 // Loaded instead of session.js when the backend runs the LiveKit engine
-// (main.js picks the engine from /api/livekit). See INI-012.
+// (main.js picks the engine from /api/livekit).
 // ============================================================================
 import { Room, RoomEvent, LocalAudioTrack, ConnectionState } from "../../vendor/livekit-client.esm.js";
 import * as store from "../core/store.js?v=2";
@@ -410,7 +410,7 @@ export async function start() {
   // reaches here just the same while the engine is stopped elsewhere. Without this gate, the mic is already
   // requested and `api.obsSessionStart()` (below) already opens a real observability session BEFORE main.js's
   // async reconciliation (which runs in parallel, not before) finds out the server is stopped and tears it
-  // down — that's the ghost session the master used to show. Asking the server's truth HERE, before touching
+  // down — that's the ghost session the flow viewer used to show. Asking the server's truth HERE, before touching
   // anything, makes "stopped" mean nothing happens, not "something happens and gets undone afterwards".
   try {
     // Stamp BEFORE asking, and drop the reply if the operator commanded ⏻ meanwhile — the same rule main.js's
@@ -866,7 +866,7 @@ export async function reconnect() {
 }
 
 // ---- text channel: publish a typed/pasted message; the embedded agent injects it as a user turn ----
-// NOTE (INI-012 remaining wiring): the agent entrypoint must subscribe to this data topic and call
+// NOTE (remaining wiring): the agent entrypoint must subscribe to this data topic and call
 // session.generate_reply(user_input=text). Until then, chat text is delivered best-effort over the room data.
 //
 // Bug real 2026-07-24 (reporte del operador, con timeline confirmado): mandar un mensaje justo cuando la sala

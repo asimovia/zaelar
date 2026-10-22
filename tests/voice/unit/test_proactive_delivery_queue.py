@@ -168,7 +168,7 @@ def test_the_quiet_check_runs_after_winning_the_turn_not_before(monkeypatch):
 
 
 def test_after_a_live_speech_there_is_a_breath_before_the_next():
-    """`_BOT_GRACE_SECS` had been defined since INI-008 and used by NOBODY — with the queue serializing, B
+    """`_BOT_GRACE_SECS` had been defined since the proactive-delivery work and used by NOBODY — with the queue serializing, B
     would start the very instant A's playout ends, two notices in a burst that sound like one. The breath is
     only paid coming out of live speech; an already-quiet floor speaks immediately."""
     spk = _RecordingSpeaker(secs=0.15)

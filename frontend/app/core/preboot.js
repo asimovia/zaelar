@@ -2,7 +2,7 @@
  * frontend/app/core/preboot.js — the boot narration, for BOTH shells (V2-558).
  *
  * WHY IT EXISTS. The splash was a spinning ring and one fixed sentence, "Starting up zaelar…", held until
- * `main.js` finished loading. On a cold account Machine that is tens of seconds, and the operator measured the
+ * `main.js` finished loading. On a cold-started instance that is tens of seconds, and the operator measured the
  * result on his own first run: over a minute of a spinner that says nothing, on the very first impression the
  * product ever makes. "El usuario se puede impacientar" — and an unattended spinner is indistinguishable from a
  * hang, so the reasonable thing for a person to do is close the tab.
@@ -21,12 +21,12 @@
  *
  * It never FETCHES `/api/i18n/bundle`, and that is deliberate: the bundle needs a session AND the engine to be up,
  * which is the very thing being waited for. That circularity is what made the cold start show raw keys like
- * `boot.encendiendo` (INI-024's known blemish). It reads the bundle the last visit cached instead, with an
+ * `boot.encendiendo`. It reads the bundle the last visit cached instead, with an
  * English floor inline.
  *
  * Loaded as a CLASSIC script (not a module) from both shells so there is ONE definition. Safe because by the
- * time this runs the engine has already served the HTML from the same origin — a Machine that has not woken at
- * all never gets this far; that case is the edge's own recovery page (web/functions/_middleware.js).
+ * time this runs the engine has already served the HTML from the same origin — an instance that has not woken at
+ * all never gets this far; that case is for whatever sits in front of the engine to handle.
  */
 (function () {
   "use strict";
@@ -76,7 +76,7 @@
     boot: { title: tr("preboot.boot.title"), steps: list("preboot.boot.", 12) },
   };
 
-  // ~35 s is what a genuinely cold Machine takes to become usable, measured on this deployment. The ring is
+  // ~35 s is what a genuinely cold-started instance takes to become usable, as measured. The ring is
   // shaped around that, not around a guess, and it does NOT finish when the clock does — see EASE below.
   var EXPECTED_MS = 35000;
   var STEP_MS = 2200;
@@ -163,7 +163,7 @@
   }
 
   // ── the real signal ──────────────────────────────────────────────────────────────────────────────────────
-  // If the engine's liveness probe does not answer promptly we are on a Machine that is still coming up, and
+  // If the engine's liveness probe does not answer promptly we are on an instance that is still coming up, and
   // the narration switches to the wake-up story the operator asked for. `/healthz` is public and says nothing
   // about anyone's data, which is why it can be asked before a session exists (server/pages.py).
   var probe = setTimeout(function () { phase = "wake"; }, 1200);

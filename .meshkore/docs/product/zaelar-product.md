@@ -219,10 +219,10 @@ zaelar/
   widgets/       WIDGETS full-stack per folder (manifest.json + widget.js + data.py) + runtime, store, server_api, brief, supervisor; _data/
   config/        .env.example · settings.py → settings.json (⚙ STT/TTS/voice/language) · v2.py (model routing + active_brain)
   tests/agent_headless/harness/       dev/eval: run.py, user_sim.py, judge.py, personas/  (not shipped)
-  tests/voice/e2e/agent/        voice tester (INI-013): 2nd LiveKit participant that SPEAKS + LISTENS
+  tests/voice/e2e/agent/        voice tester: 2nd LiveKit participant that SPEAKS + LISTENS
   scripts/       install tooling (install-stt/tts-*.sh/.ps1)
   .meshkore/     MeshKore Standard v27 — public/cluster.yaml, docs/, modules/, roadmap/; logs → .meshkore/logs/
-  Dockerfile · fly.toml · .dockerignore · Makefile · requirements.txt · CLAUDE.md   (root manifests; .venv shared)
+  Dockerfile · .dockerignore · Makefile · requirements.txt · CLAUDE.md   (root manifests; .venv shared)
 ```
 **Ours vs external:** the brain (`nucleo/`) and memory (`memory/`) are FIRST-PARTY — zaelar does not depend on an
 external agent. The remaining external pieces are (a) the SlowBrain CodeAgent CLIs (Claude Code / Codex, invoked by

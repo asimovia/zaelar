@@ -35,7 +35,7 @@ def _token() -> dict:
 
 
 def _dispatch_looks_dead(run_data: dict) -> bool:
-    """Total silence signature of a LiveKit dispatch failure (INI-013, 2026-07-07: zaelar's agent never joined the
+    """Total silence signature of a LiveKit dispatch failure (2026-07-07: zaelar's agent never joined the
     room at all — NOT a slow/wrong turn) — every single zaelar transcript entry is empty/missing, across the WHOLE
     scenario. A real content/quality problem still gets at least SOME text back; this is specifically "nobody home"."""
     zaelar_turns = [t for t in run_data.get("transcript", []) if t.get("who") == "zaelar"]
@@ -168,7 +168,7 @@ async def run(args) -> None:
         else:
             def on_ev(kind, label, **f):
                 obs.push({"kind": kind, "label": label, **f})
-            # RETRY ONCE on total silence (INI-013, 2026-07-07): LiveKit's embedded worker sometimes registers fine
+            # RETRY ONCE on total silence (2026-07-07): LiveKit's embedded worker sometimes registers fine
             # but never gets OFFERED the job for a specific new room (a still-open dispatch race, distinct from the
             # earlier "worker never registers" bug scripts/run-livekit.sh's settle-wait already covers) — the room
             # sits open with zaelar's agent never joining at all, so EVERY turn times out and the report reads

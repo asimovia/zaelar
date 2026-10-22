@@ -30,7 +30,7 @@ def build(results: list[dict], stamp: str, out_dir: Path) -> Path:
     improvements.sort(key=lambda x: x["_sev"])
 
     lines = [f"# zaelar — informe de testing de voz ({stamp})", "",
-             "Generado por el tester independiente (INI-013). El usuario lo simula un bot; se juzga a ZAELAR por su "
+             "Generado por el tester independiente. El usuario lo simula un bot; se juzga a ZAELAR por su "
              "comportamiento observable. Entrega este archivo al equipo de código para ir mejorando zaelar.", "",
              "## Resumen por escenario", "",
              "| escenario | canal | overall | latencia | veredicto |", "|---|---|---|---|---|"]
@@ -62,7 +62,7 @@ def build(results: list[dict], stamp: str, out_dir: Path) -> Path:
         if r.get("run", {}).get("dispatch_dead_after_retry"):
             lines.append("⚠️ **silencio total incluso tras reintentar con una sala nueva** — descarta ruido de un "
                          "solo intento; muy probablemente un fallo real de dispatch de LiveKit o de zaelar, no del "
-                         "guion del escenario (ver INI-013 §dispatch intermitente).")
+                         "guion del escenario (ver el registro del tester, dispatch intermitente).")
         for f in v.get("findings", []):
             lines.append(f"- [{f.get('gravedad','?')}] {f.get('turno','')}: {f.get('problema','')}")
         # short transcript

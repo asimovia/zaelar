@@ -36,7 +36,7 @@ def flows(limit: int = 50, session_id: str = "", user_id: str = "") -> list[dict
     distinto de `cluster`, que es un peer diciendo algo de verdad) — hay como mucho UNA fila `kind='trace'` por
     `corr_id` (el evento raíz), así que `MAX(CASE...)` la
     aísla sin un JOIN. `title` es el texto de ESE mismo evento raíz (lo que disparó el flujo): deja que quien
-    lo muestra (el tablero del master) rotule la columna sin adivinar de qué iba mirando el resto de eventos."""
+    lo muestra (el tablero de observabilidad) rotule la columna sin adivinar de qué iba mirando el resto de eventos."""
     where = ["corr_id IS NOT NULL", "corr_id != ''"]
     args: list = []
     if session_id:
@@ -81,8 +81,8 @@ def flows(limit: int = 50, session_id: str = "", user_id: str = "") -> list[dict
                -- WHICH flow this one was merged into, if any (`voice/trace.py::merge`). A reader needs it to show a
                -- merged pair as ONE thread instead of two: the merge machinery has existed since V2-105 but this
                -- projection never exposed the relation, so every consumer kept treating the absorbed trace as a
-               -- flow of its own. Kept in sync with `cloud/backoffice/src/flyQuery.js`, which mirrors this SQL for
-               -- the cloud path — the two-surfaces rule: a column added on one side only fails by coming out EMPTY.
+               -- flow of its own. Any external reader that mirrors this SQL must add the same column, or it comes
+               -- out EMPTY.
                MAX(CASE WHEN kind = 'trace' AND label = 'merge'
                         THEN json_extract(payload, '$.merge_into') END) AS merge_into,
                MAX(session_id)                    AS session_id,

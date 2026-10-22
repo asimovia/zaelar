@@ -1,4 +1,4 @@
-# Dependencias de zaelar (Python 3.12). Motor de voz: LiveKit Agents (INI-012 — Pipecat retirado).
+# Dependencias de zaelar (Python 3.12). Motor de voz: LiveKit Agents (Pipecat retirado).
 #
 # --- Motor de voz LiveKit ---------------------------------------------------------------------------------------
 livekit-agents[silero,turn-detector]>=1.6,<2   # AgentSession: streaming, turnos, VAD, barge-in, preemptive-gen
@@ -32,14 +32,14 @@ websockets                        # cliente WS async del conector MeshKore (vers
 httpx                             # búsqueda web factual del FlashBrain (nucleo/flash/websearch.py, V2-022); versión la resuelve openai/livekit
 pypdf==6.13.3                     # extraer texto de PDF (informe profundo)
 #
-# --- Conectores de mensajería (INI-015) -------------------------------------------------------------------------
+# --- Conectores de mensajería -------------------------------------------------------------------------
 # Telegram = userbot Telethon (cuenta personal, NO Bot API) → lee chats personales; puro Python in-process (sin
 # Node). segno = QR (data-URI PNG, pura Python) para el login por QR pintado en el widget. Solo se usan si
 # TG_ENABLED=1; el conector auto-instala si faltan (make install-telegram). WhatsApp usa su bridge Node vendorizado.
 telethon>=1.36                    # Telegram userbot (MTProto) — connectors/telegram/
 segno>=1.6                        # QR PNG puro-Python para el login por QR de Telegram
 #
-# --- Widget "navegador" (INI-016, primer widget kind:"backed") --------------------------------------------------
+# --- Widget "navegador" (primer widget kind:"backed") --------------------------------------------------
 # Navegador web dentro de zaelar: casi ninguna web se deja incrustar en un iframe (X-Frame-Options/CSP), así que
 # el navegador REAL es un Chromium headless en el servidor (widgets/navegador/owner.py) que navega, fotografía la
 # página y el widget muestra la captura. Tras instalar: `python -m playwright install chromium` (baja el binario).

@@ -1,7 +1,7 @@
 """Forwarding what arrived, and leaving the original unread (operator, 2026-09-28).
 
-The demo he asked for: open the unread Inworld AI receipt, take its invoice and send it to Quinn with a short
-note («we're already trying Inworld, please book the invoice») — and at the end leave the original UNREAD, never
+The demo he asked for: open the unread Acme Cloud receipt, take its invoice and send it to Quinn with a short
+note («we're already trying Acme, please book the invoice») — and at the end leave the original UNREAD, never
 archived, because the same rehearsal runs again. None of it existed: `send_to` carried text only, the email
 connector's first message was a «Re:» with no files, and nothing could put a mail back to unread.
 
@@ -27,12 +27,12 @@ def box(tmp_path, monkeypatch):
     cd.apply_action("add_contact", {"name": "Quinn", "email": "quinn@example.com"})
     media = store.data_dir("mensajeria")
     os.makedirs(media, exist_ok=True)
-    name = "eml_220440_0_Invoice-INW-263277.pdf"
+    name = "eml_100001_0_Invoice-ACM-100001.pdf"
     with open(os.path.join(media, name), "wb") as fh:
         fh.write(b"%PDF-1.4 invoice")
     db = md.load_db()
-    db["items"] = [{"platform": "email", "chatId": "billing@inworld.ai", "messageId": "220440",
-                    "senderId": "billing@inworld.ai", "from": "Inworld AI", "subject": "Your receipt",
+    db["items"] = [{"platform": "email", "chatId": "billing@acme-cloud.example", "messageId": "100001",
+                    "senderId": "billing@acme-cloud.example", "from": "Acme Cloud", "subject": "Your receipt",
                     "body": "Thanks", "media": [{"url": f"/widgets/mensajeria/asset/{name}", "type": "document",
                                                   "name": name}]}]
     store.save("mensajeria", db)
@@ -40,13 +40,13 @@ def box(tmp_path, monkeypatch):
 
 
 def test_the_invoice_of_the_message_on_the_list_travels_with_the_send(box):
-    r = box.apply_action("send_to", {"contact": "Quinn", "channel": "email", "subject": "Inworld invoice",
-                                     "text": "We're already testing Inworld — please book this invoice.",
+    r = box.apply_action("send_to", {"contact": "Quinn", "channel": "email", "subject": "Acme invoice",
+                                     "text": "We're already testing Acme — please book this invoice.",
                                      "attach_from": 1})
     assert r["ok"] and r["result"]["attachments"] == 1, r
     order = box.load_db()["pending_send"][0]
     assert order["to"] == "quinn@example.com"
-    assert [os.path.basename(a) for a in order["attachments"]] == ["eml_220440_0_Invoice-INW-263277.pdf"]
+    assert [os.path.basename(a) for a in order["attachments"]] == ["eml_100001_0_Invoice-ACM-100001.pdf"]
 
 
 def test_asked_for_and_absent_is_a_refusal_not_a_mail_without_its_file(box):
@@ -58,8 +58,8 @@ def test_asked_for_and_absent_is_a_refusal_not_a_mail_without_its_file(box):
 def test_the_original_goes_back_to_unread_in_his_app(box):
     r = box.apply_action("unread", {"n": 1})
     assert r["ok"], r
-    assert box.load_db()["pending_unread"] == [{"platform": "email", "chatId": "billing@inworld.ai",
-                                                 "messageId": "220440", "senderId": "billing@inworld.ai"}]
+    assert box.load_db()["pending_unread"] == [{"platform": "email", "chatId": "billing@acme-cloud.example",
+                                                 "messageId": "100001", "senderId": "billing@acme-cloud.example"}]
 
 
 def test_the_connector_sends_a_new_mail_with_the_file_and_takes_seen_off(tmp_path, monkeypatch):
@@ -77,14 +77,14 @@ def test_the_connector_sends_a_new_mail_with_the_file_and_takes_seen_off(tmp_pat
     mb.address = "me@example.com"
     monkeypatch.setattr(mbx.Mailbox, "_connect_smtp", lambda self: _SMTP())
     monkeypatch.setattr(mbx.Mailbox, "_smtp_login", lambda self, s: None)
-    pdf = tmp_path / "eml_220440_0_Invoice-INW-263277.pdf"
+    pdf = tmp_path / "eml_100001_0_Invoice-ACM-100001.pdf"
     pdf.write_bytes(b"%PDF-1.4 invoice")
-    ok, _ = mb.send_message("quinn@example.com", "Inworld invoice", "please book it", [str(pdf)])
+    ok, _ = mb.send_message("quinn@example.com", "Acme invoice", "please book it", [str(pdf)])
     assert ok
     msg = email.message_from_string(sent[0].as_string())
-    assert msg["Subject"] == "Inworld invoice", "a forward is a NEW mail, never a «Re:»"
+    assert msg["Subject"] == "Acme invoice", "a forward is a NEW mail, never a «Re:»"
     names = [p.get_filename() for p in msg.walk() if p.get_filename()]
-    assert names == ["Invoice-INW-263277.pdf"]
+    assert names == ["Invoice-ACM-100001.pdf"]
     ok, why = mb.send_message("quinn@example.com", "x", "y", [str(tmp_path / "missing.pdf")])
     assert not ok and "adjunto" in why
 
@@ -100,8 +100,8 @@ def test_the_connector_sends_a_new_mail_with_the_file_and_takes_seen_off(tmp_pat
         def logout(self):
             pass
     monkeypatch.setattr(mbx.Mailbox, "_imap", lambda self: _IMAP())
-    assert mb.mark_unseen(["220440"])
-    assert stored == [("store", "220440", "-FLAGS", "(\\Seen)")]
+    assert mb.mark_unseen(["100001"])
+    assert stored == [("store", "100001", "-FLAGS", "(\\Seen)")]
 
 
 def test_the_owner_flushes_unread_orders_to_the_bus():
@@ -121,19 +121,19 @@ def test_forward_is_one_name_for_a_send_with_the_files(box):
 
 
 def test_a_message_named_by_who_sent_it_is_found_in_its_thread_too(box):
-    """Demo pass 2026-09-28: the model forwarded `n: 2`, a guess — the Inworld invoice was not on the visible list,
-    and n 2 was somebody else's mail. Naming it («Inworld») finds it in the list or in the conversations kept."""
+    """Demo pass 2026-09-28: the model forwarded `n: 2`, a guess — the Acme invoice was not on the visible list,
+    and n 2 was somebody else's mail. Naming it («Acme») finds it in the list or in the conversations kept."""
     from widgets import store
     db = box.load_db()
     item = db["items"].pop()
-    db.setdefault("threads", {})["email|billing@inworld.ai"] = {"msgs": [{
-        "id": "220440", "dir": "in", "who": "Inworld AI", "subject": "Your receipt", "ts": 1.0,
-        "media": item["media"], "senderId": "billing@inworld.ai"}]}
+    db.setdefault("threads", {})["email|billing@acme-cloud.example"] = {"msgs": [{
+        "id": "100001", "dir": "in", "who": "Acme Cloud", "subject": "Your receipt", "ts": 1.0,
+        "media": item["media"], "senderId": "billing@acme-cloud.example"}]}
     store.save("mensajeria", db)
-    r = box.apply_action("forward", {"contact": "Quinn", "from": "inworld", "text": "Please book it."})
+    r = box.apply_action("forward", {"contact": "Quinn", "from": "acme", "text": "Please book it."})
     assert r["ok"] and r["result"]["attachments"] == 1, r
-    r2 = box.apply_action("unread", {"from": "Inworld"})
-    assert r2["ok"] and box.load_db()["pending_unread"][0]["messageId"] == "220440"
+    r2 = box.apply_action("unread", {"from": "Acme"})
+    assert r2["ok"] and box.load_db()["pending_unread"][0]["messageId"] == "100001"
 
 
 def test_a_mail_from_his_own_address_is_his_echo_not_mail_for_him(monkeypatch):
@@ -145,24 +145,24 @@ def test_a_mail_from_his_own_address_is_his_echo_not_mail_for_him(monkeypatch):
     raw = (b"From: Me <me@example.com>\r\nTo: quinn@example.com\r\nSubject: Fwd: Your receipt\r\n"
            b"Message-ID: <a@b>\r\n\r\nHi Quinn, forwarding the receipt.\r\n")
     assert mbx.parse_message("9", raw) is None
-    other = raw.replace(b"From: Me <me@example.com>", b"From: Inworld AI <billing@inworld.ai>")
-    assert (mbx.parse_message("10", other) or {}).get("senderId") == "billing@inworld.ai"
+    other = raw.replace(b"From: Me <me@example.com>", b"From: Acme Cloud <billing@acme-cloud.example>")
+    assert (mbx.parse_message("10", other) or {}).get("senderId") == "billing@acme-cloud.example"
 
 
 def test_the_mail_he_names_is_the_one_that_opens(box):
-    """Demo pass 2026-09-28 (full13 E2): «open it» after «did inworld send me something?» reached
-    `open` with `item: "Inworld AI"` and an EMPTY payload — `open` never said which key names a chat, so the
+    """Demo pass 2026-09-28 (full13 E2): «open it» after «did acme send me something?» reached
+    `open` with `item: "Acme Cloud"` and an EMPTY payload — `open` never said which key names a chat, so the
     reference fell on the floor and the card showed the list instead of the receipt."""
     from widgets import refs
-    res = refs.resolve("mensajeria", "open", "Inworld AI", {})
-    assert res.ok and res.payload == {"name": "Inworld AI"}, res
-    assert refs.resolve("mensajeria", "unread", "Inworld", {}).payload == {"from": "Inworld"}
+    res = refs.resolve("mensajeria", "open", "Acme Cloud", {})
+    assert res.ok and res.payload == {"name": "Acme Cloud"}, res
+    assert refs.resolve("mensajeria", "unread", "Acme", {}).payload == {"from": "Acme"}
     r = box.apply_action("open", res.payload)
     assert r.get("ok") is not False, r
 
 
 def test_open_it_after_talking_about_one_mail_is_declared_that_mail():
-    """Demo pass 2026-09-28 (full14 E2): «open it», right after «Inworld AI sent you a receipt», reached
+    """Demo pass 2026-09-28 (full14 E2): «open it», right after «Acme Cloud sent you a receipt», reached
     `show_view {platform: email}` — the inbox, not the receipt. The only text the model reads about `open` never
     said that «it» after one mail is that mail."""
     import json
@@ -172,14 +172,14 @@ def test_open_it_after_talking_about_one_mail_is_declared_that_mail():
 
 
 def test_a_message_named_in_the_payload_is_not_a_loose_pronoun(monkeypatch):
-    """Demo pass 2026-09-28 (full16 E2): «open it» right after the Inworld invoice was talked about — the model
-    called `open {name: "Inworld AI"}` with an empty `item`, the card was not on screen, and the guard against a
+    """Demo pass 2026-09-28 (full16 E2): «open it» right after the Acme invoice was talked about — the model
+    called `open {name: "Acme Cloud"}` with an empty `item`, the card was not on screen, and the guard against a
     loose pronoun on an absent card escalated it instead of opening the mail. The name in the payload IS the
     anchor; a truly empty call on an absent card still escalates."""
     from memory import api as _mem
     monkeypatch.setattr(_mem, "state", lambda: {"open_widgets": []})
     from nucleo.flash import frontend as fe
-    assert not fe.absent_widget_misroute("mensajeria", "open", "", payload={"name": "Inworld AI"})
+    assert not fe.absent_widget_misroute("mensajeria", "open", "", payload={"name": "Acme Cloud"})
     assert fe.absent_widget_misroute("mensajeria", "open", "", payload={})
     from pathlib import Path
     root = Path(__file__).resolve().parents[4]
@@ -205,26 +205,26 @@ def test_a_forward_of_a_message_without_files_is_refused_before_it_is_queued(box
 
 
 def test_a_forward_of_the_message_with_the_invoice_passes_the_pre_check(box):
-    r = box.answer_action("forward", {"from": "Inworld AI", "contact": "Quinn", "text": "please book it"})
+    r = box.answer_action("forward", {"from": "Acme Cloud", "contact": "Quinn", "text": "please book it"})
     assert r and r["ok"], r
 
 
 # ── demo pass 52 (2026-09-29), E3: a description, a `note`, and the stand-in it led to ─────────────────────────
-# The model sent `forward {to, note}` with the mail in `item`: «Inworld invoice email from September 27, 2026». `note`
+# The model sent `forward {to, note}` with the mail in `item`: «Acme invoice email from September 27, 2026». `note`
 # was not read as the text, and the description matched no sender as one string, so the same-turn correction guessed
-# `from: Soporte de OVHcloud`. `note` is the text, `item` lands in `from`, and a description finds the message that
+# `from: Soporte de HostCo`. `note` is the text, `item` lands in `from`, and a description finds the message that
 # carries most of its words.
 
 def test_a_description_finds_the_message_it_describes(box):
     from widgets import store
     db = box.load_db()
-    db["items"].insert(0, {"platform": "email", "chatId": "support@ovh.invalid", "messageId": "501",
-                           "senderId": "support@ovh.invalid", "from": "Soporte de OVHcloud",
+    db["items"].insert(0, {"platform": "email", "chatId": "support@hosting.example", "messageId": "501",
+                           "senderId": "support@hosting.example", "from": "Soporte de HostCo",
                            "subject": "Your invoice is available", "body": "x"})
     store.save("mensajeria", db)
     from widgets.mensajeria import outbound
-    hit = outbound._message_ref(box.load_db(), {"from": "the receipt email from Inworld of September 27, 2026"})
-    assert hit and hit["messageId"] == "220440", hit
+    hit = outbound._message_ref(box.load_db(), {"from": "the receipt email from Acme of September 27, 2026"})
+    assert hit and hit["messageId"] == "100001", hit
 
 
 def test_note_is_the_text_and_item_is_the_from():
@@ -235,19 +235,19 @@ def test_note_is_the_text_and_item_is_the_from():
 
 def test_a_description_finds_a_mail_that_only_lives_in_its_thread(box):
     """Demo pass 53, E3: the receipt came back from the history into its THREAD, not the visible list, and
-    «Inworld AI receipt invoice2281-4878» was scored against the list only — nothing matched, nothing was sent."""
+    «Acme Cloud receipt invoice1000-0001» was scored against the list only — nothing matched, nothing was sent."""
     from widgets import store
     db = box.load_db()
     item = db["items"].pop()
-    db["items"] = [{"platform": "email", "chatId": "support@ovh.invalid", "messageId": "501", "from": "Soporte de OVHcloud",
+    db["items"] = [{"platform": "email", "chatId": "support@hosting.example", "messageId": "501", "from": "Soporte de HostCo",
                     "subject": "Your invoice is available", "body": "x"}]
-    db.setdefault("threads", {})["email|billing@inworld.ai"] = {"msgs": [
-        {"id": "220440", "dir": "in", "who": "Inworld AI", "ts": 1.0,
-         "body": "[Asunto: Your receipt from Inworld AI #2281-4878] Thanks", "media": item["media"]}]}
+    db.setdefault("threads", {})["email|billing@acme-cloud.example"] = {"msgs": [
+        {"id": "100001", "dir": "in", "who": "Acme Cloud", "ts": 1.0,
+         "body": "[Asunto: Your receipt from Acme Cloud #1000-0001] Thanks", "media": item["media"]}]}
     store.save("mensajeria", db)
     from widgets.mensajeria import outbound
-    hit = outbound._message_ref(box.load_db(), {"from": "Inworld AI receipt invoice2281-4878"})
-    assert hit and hit["messageId"] == "220440", hit
+    hit = outbound._message_ref(box.load_db(), {"from": "Acme Cloud receipt invoice1000-0001"})
+    assert hit and hit["messageId"] == "100001", hit
 
 
 # ── demo passes 38-53 (2026-09-29), E3: the mail on the card came WITHOUT its files ──────────────────────────────
@@ -262,10 +262,10 @@ class _Mailbox:
 
     def fetch_older(self, address, before_uid, limit=30, media_dir=None):
         self.log.append((address, before_uid, limit))
-        path = os.path.join(media_dir, "eml_220440_0_Invoice-INW-263277.pdf")
+        path = os.path.join(media_dir, "eml_100001_0_Invoice-ACM-100001.pdf")
         with open(path, "wb") as fh:
             fh.write(b"%PDF-1.4 invoice")
-        return [{"messageId": "220440", "subject": "Your receipt", "mediaUrls": [path]}], True
+        return [{"messageId": "100001", "subject": "Your receipt", "mediaUrls": [path]}], True
 
 
 def test_a_mail_on_the_card_without_its_files_gets_them_from_the_mailbox_in_the_turn(box, monkeypatch):
@@ -273,22 +273,22 @@ def test_a_mail_on_the_card_without_its_files_gets_them_from_the_mailbox_in_the_
     from widgets.mensajeria import outbound
     db = box.load_db()
     db["items"] = []
-    db.setdefault("threads", {})["email|billing@inworld.ai"] = {"msgs": [
-        {"id": "220440", "dir": "in", "who": "Inworld AI", "ts": 1.0, "subject": "Your receipt",
-         "body": "Your receipt from Inworld AI\nThanks"}]}
+    db.setdefault("threads", {})["email|billing@acme-cloud.example"] = {"msgs": [
+        {"id": "100001", "dir": "in", "who": "Acme Cloud", "ts": 1.0, "subject": "Your receipt",
+         "body": "Your receipt from Acme Cloud\nThanks"}]}
     store.save("mensajeria", db)
-    os.remove(os.path.join(store.data_dir("mensajeria"), "eml_220440_0_Invoice-INW-263277.pdf"))
+    os.remove(os.path.join(store.data_dir("mensajeria"), "eml_100001_0_Invoice-ACM-100001.pdf"))
     asked = []
     from connectors.email import config as ecfg
     monkeypatch.setattr(ecfg, "mailbox", lambda: _Mailbox(asked))
     outbound._MAILBOX_FILES.clear()
-    r = box.answer_action("forward", {"from": "Inworld AI", "contact": "Quinn", "text": "please book it"})
+    r = box.answer_action("forward", {"from": "Acme Cloud", "contact": "Quinn", "text": "please book it"})
     assert r and r["ok"], r
-    r2 = box.apply_action("forward", {"from": "Inworld AI", "contact": "Quinn", "text": "please book it"})
+    r2 = box.apply_action("forward", {"from": "Acme Cloud", "contact": "Quinn", "text": "please book it"})
     assert r2["ok"] and r2["result"]["attachments"] == 1, r2
     order = box.load_db()["pending_send"][0]
-    assert [os.path.basename(a) for a in order["attachments"]] == ["eml_220440_0_Invoice-INW-263277.pdf"]
-    assert asked == [("billing@inworld.ai", "220441", 1)], "one fetch by the mail's own UID; the send reuses it"
+    assert [os.path.basename(a) for a in order["attachments"]] == ["eml_100001_0_Invoice-ACM-100001.pdf"]
+    assert asked == [("billing@acme-cloud.example", "100002", 1)], "one fetch by the mail's own UID; the send reuses it"
 
 
 def test_a_mail_only_the_archive_knows_is_fetched_by_its_archived_uid(box, monkeypatch):
@@ -298,21 +298,21 @@ def test_a_mail_only_the_archive_knows_is_fetched_by_its_archived_uid(box, monke
     from widgets.mensajeria import outbound
     from connectors.messaging import archive
     db = box.load_db()
-    db["items"] = [{"platform": "email", "chatId": "support@ovh.invalid", "messageId": "501", "from": "Soporte de OVHcloud",
+    db["items"] = [{"platform": "email", "chatId": "support@hosting.example", "messageId": "501", "from": "Soporte de HostCo",
                     "subject": "Your invoice is available", "body": "x"}]
     db["threads"] = {}
     store.save("mensajeria", db)
-    os.remove(os.path.join(store.data_dir("mensajeria"), "eml_220440_0_Invoice-INW-263277.pdf"))
-    archive.record("email", "billing@inworld.ai", [{"messageId": "220440", "body": "Your receipt from Inworld AI",
-                                                      "ts": 1.0, "from": "Inworld AI"}], direction="in",
-                   chat_name="Inworld AI")
+    os.remove(os.path.join(store.data_dir("mensajeria"), "eml_100001_0_Invoice-ACM-100001.pdf"))
+    archive.record("email", "billing@acme-cloud.example", [{"messageId": "100001", "body": "Your receipt from Acme Cloud",
+                                                      "ts": 1.0, "from": "Acme Cloud"}], direction="in",
+                   chat_name="Acme Cloud")
     asked = []
     from connectors.email import config as ecfg
     monkeypatch.setattr(ecfg, "mailbox", lambda: _Mailbox(asked))
     outbound._MAILBOX_FILES.clear()
-    r = box.answer_action("forward", {"from": "Inworld AI", "contact": "Quinn", "text": "please book it"})
+    r = box.answer_action("forward", {"from": "Acme Cloud", "contact": "Quinn", "text": "please book it"})
     assert r and r["ok"], r
-    assert asked == [("billing@inworld.ai", "220441", 1)]
+    assert asked == [("billing@acme-cloud.example", "100002", 1)]
 
 
 def test_two_contacts_with_one_address_are_one_recipient(box):
@@ -327,39 +327,39 @@ def test_two_contacts_with_one_address_are_one_recipient(box):
 
 
 # ── demo passes 122-124 (2026-10-06 → 10-14), E3: a description in another language than the mail ────────────────
-# E2 opened the Inworld conversation, and E3's forward described the mail as «el recibo de Inworld». Only one of its
+# E2 opened the Acme conversation, and E3's forward described the mail as «el recibo de Acme». Only one of its
 # words is in the (English) mail, so the description found nothing — and a `from` that finds nothing never looked at
 # the conversation that was OPEN, which is what «this one» means. Three passes in a row refused the forward. The open
 # conversation answers only when it is the sender he described: never a stand-in.
 
-def _open_inworld(box, active_chat):
+def _open_acme(box, active_chat):
     from widgets import store
     db = box.load_db()
     item = db["items"].pop()
-    db["items"] = [{"platform": "email", "chatId": "support@ovh.invalid", "messageId": "501", "from": "Soporte de OVHcloud",
+    db["items"] = [{"platform": "email", "chatId": "support@hosting.example", "messageId": "501", "from": "Soporte de HostCo",
                     "subject": "Your invoice is available", "body": "x"}]
     db.setdefault("threads", {})["email|billing@example.invalid"] = {"msgs": [
-        {"id": "220440", "dir": "in", "who": "Inworld AI", "ts": 1.0,
-         "body": "[Asunto: Your receipt from Inworld AI #2281-4878] Thanks", "media": item["media"]}]}
-    db.setdefault("threads", {})["email|support@ovh.invalid"] = {"msgs": [
-        {"id": "501", "dir": "in", "who": "Soporte de OVHcloud", "ts": 2.0, "body": "Your invoice is available"}]}
+        {"id": "100001", "dir": "in", "who": "Acme Cloud", "ts": 1.0,
+         "body": "[Asunto: Your receipt from Acme Cloud #1000-0001] Thanks", "media": item["media"]}]}
+    db.setdefault("threads", {})["email|support@hosting.example"] = {"msgs": [
+        {"id": "501", "dir": "in", "who": "Soporte de HostCo", "ts": 2.0, "body": "Your invoice is available"}]}
     db["active_chat"] = active_chat
     store.save("mensajeria", db)
 
 
 def test_a_description_that_finds_nothing_falls_to_the_open_conversation_of_that_sender(box):
     from widgets.mensajeria import outbound
-    _open_inworld(box, {"platform": "email", "chatId": "billing@example.invalid"})
-    hit = outbound._message_ref(box.load_db(), {"from": "el recibo de Inworld"})
-    assert hit and hit["messageId"] == "220440", hit
-    r = box.answer_action("forward", {"from": "el recibo de Inworld", "contact": "Quinn", "text": "please book it"})
+    _open_acme(box, {"platform": "email", "chatId": "billing@example.invalid"})
+    hit = outbound._message_ref(box.load_db(), {"from": "el recibo de Acme"})
+    assert hit and hit["messageId"] == "100001", hit
+    r = box.answer_action("forward", {"from": "el recibo de Acme", "contact": "Quinn", "text": "please book it"})
     assert r and r["ok"], r
 
 
 def test_the_open_conversation_of_another_sender_is_never_the_stand_in(box):
     from widgets.mensajeria import outbound
-    _open_inworld(box, {"platform": "email", "chatId": "support@ovh.invalid", "name": "Soporte de OVHcloud"})
-    assert outbound._message_ref(box.load_db(), {"from": "el recibo de Inworld"}) is None
+    _open_acme(box, {"platform": "email", "chatId": "support@hosting.example", "name": "Soporte de HostCo"})
+    assert outbound._message_ref(box.load_db(), {"from": "el recibo de Acme"}) is None
 
 
 # ── demo pass 127 (2026-10-14), E3: the receipt went to Quinn TWICE ─────────────────────────────────────────────
@@ -370,9 +370,9 @@ def test_the_open_conversation_of_another_sender_is_never_the_stand_in(box):
 def test_the_same_files_to_the_same_person_go_out_once(box):
     from widgets.contactos import data as cd
     cd.apply_action("add_contact", {"name": "Rowan", "email": "rowan@example.com"})
-    first = box.apply_action("forward", {"from": "Inworld AI", "contact": "Quinn", "text": "please book it"})
-    again = box.apply_action("forward", {"from": "Inworld AI", "contact": "Quinn", "text": "We're trying it — book it."})
-    other = box.apply_action("forward", {"from": "Inworld AI", "contact": "Rowan", "text": "fyi"})
+    first = box.apply_action("forward", {"from": "Acme Cloud", "contact": "Quinn", "text": "please book it"})
+    again = box.apply_action("forward", {"from": "Acme Cloud", "contact": "Quinn", "text": "We're trying it — book it."})
+    other = box.apply_action("forward", {"from": "Acme Cloud", "contact": "Rowan", "text": "fyi"})
     assert first["ok"] and again["ok"] and other["ok"], (first, again, other)
     assert again["result"].get("already_sent") and not other["result"].get("already_sent")
     assert [o["to"] for o in box.load_db()["pending_send"]] == ["quinn@example.com", "rowan@example.com"]

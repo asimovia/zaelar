@@ -39,7 +39,7 @@ class CalendarProvider:
     extra_auth_params: dict = field(default_factory=dict)
     note: str = ""
     #: OAuth client SHIPPED with the engine (mirrors video's `builtin_client_id`, V2-603). EMPTY until Zaelar
-    #: registers its own Google OAuth client — see INI-032 for the sibling video alta. A client_id is not a
+    #: registers its own Google OAuth client (same situation as the video connector). A client_id is not a
     #: secret for an installed app (PKCE protects the exchange), which is why this can ship in a public repo.
     builtin_client_id: str = ""
 

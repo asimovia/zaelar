@@ -6,7 +6,7 @@ most recent MANDA", the operator's row went `valid=0`, and `query("When is my bi
 date. The operator's own birthday, silently gone from recall.
 
 Why no existing gate caught it. `_plausibility_demote` (P0b) protects the `state` and does that well — verified in
-the same run: `operator_name` stayed Ricart and `birthday` stayed 12 February. But the destructive operation is
+the same run: `operator_name` stayed the operator's name and `birthday` stayed 21 October. But the destructive operation is
 the SLOT supersede, and P0b cannot see it: it returns early on `dest != "state"` and then requires the slot to
 have a `state_field`. A third-party fact fails BOTH conditions. Five identity slots therefore had no contradiction
 protection at all — `birthday`, `phone`, `email`, `address`, `diet` — because the guard is keyed on having a state
@@ -67,7 +67,7 @@ def _atom(slot: str, value: str, text: str, dest: str = "long") -> dict:
 
 # ── the bug ──────────────────────────────────────────────────────────────────────────────────────────────────
 def test_a_third_partys_value_does_not_supersede_the_operators_identity(fresh_db):
-    _establish("operator.birthday", "Su cumpleaños es el 12 de febrero.", "12 de febrero")
+    _establish("operator.birthday", "Su cumpleaños es el 21 de octubre.", "21 de octubre")
     out = MA._slot_supersede_guard(_atom("operator.birthday", "3 de mayo",
                                         "El cumpleaños de Marta es el 3 de mayo."), is_correction=False)
     assert out["slot"] is None, "con slot puesto el writer invalidaría la píldora del operador"
@@ -93,14 +93,14 @@ def test_the_five_slots_with_no_state_field_are_the_ones_this_covers(fresh_db):
 def test_an_explicit_correction_still_supersedes(fresh_db):
     """The operator saying "no, my birthday is May 3" MUST overwrite. A guard that blocks corrections
     freezes the first thing it ever heard, which is a worse failure than the one it prevents."""
-    _establish("operator.birthday", "Su cumpleaños es el 12 de febrero.", "12 de febrero")
+    _establish("operator.birthday", "Su cumpleaños es el 21 de octubre.", "21 de octubre")
     out = MA._slot_supersede_guard(_atom("operator.birthday", "3 de mayo", "Su cumpleaños es el 3 de mayo."),
                                    is_correction=True)
     assert out["slot"] == "operator.birthday"
 
 
 def test_the_first_value_of_a_slot_passes(fresh_db):
-    out = MA._slot_supersede_guard(_atom("operator.birthday", "12 de febrero", "Su cumpleaños es el 12 de febrero."),
+    out = MA._slot_supersede_guard(_atom("operator.birthday", "21 de octubre", "Su cumpleaños es el 21 de octubre."),
                                    is_correction=False)
     assert out["slot"] == "operator.birthday"
 
@@ -135,9 +135,9 @@ def test_a_slot_that_evolves_by_rephrasing_is_untouched(fresh_db):
 
 def test_no_declared_value_leaves_behaviour_unchanged(fresh_db):
     """Fail-open on the question itself. Without a `value` there is nothing to compare, and comparing SENTENCES
-    instead would misfire: "Su cumpleaños es el 12 de febrero" and "El cumpleaños de Marta es el 3 de mayo" share
+    instead would misfire: "Su cumpleaños es el 21 de octubre" and "El cumpleaños de Marta es el 3 de mayo" share
     the token "cumpleaños", which the refinement test reads as the same entity."""
-    _establish("operator.birthday", "Su cumpleaños es el 12 de febrero.", "12 de febrero")
+    _establish("operator.birthday", "Su cumpleaños es el 21 de octubre.", "21 de octubre")
     atom = _atom("operator.birthday", "", "El cumpleaños de Marta es el 3 de mayo.")
     assert MA._slot_supersede_guard(atom, is_correction=False)["slot"] == "operator.birthday"
 
@@ -145,7 +145,7 @@ def test_no_declared_value_leaves_behaviour_unchanged(fresh_db):
 def test_an_established_pill_from_before_P0d_declines_to_act(fresh_db):
     """Rows written before P0d carry no `meta.value`. The guard must decline rather than guess — and it must not
     fall back to text comparison, for the reason in the test above."""
-    memwriter.insert_memory("Su cumpleaños es el 12 de febrero.", level="long", kind="profile",
+    memwriter.insert_memory("Su cumpleaños es el 21 de octubre.", level="long", kind="profile",
                             slot="operator.birthday", meta={"source": "voice", "path": "llm"})
     out = MA._slot_supersede_guard(_atom("operator.birthday", "3 de mayo",
                                         "El cumpleaños de Marta es el 3 de mayo."), is_correction=False)
@@ -165,7 +165,7 @@ def test_the_guard_is_VISIBLE_when_it_fires(fresh_db, monkeypatch):
     seen = []
     import voice.observer as OBS
     monkeypatch.setattr(OBS, "emit", lambda *a, **k: seen.append((a, k)))
-    _establish("operator.birthday", "Su cumpleaños es el 12 de febrero.", "12 de febrero")
+    _establish("operator.birthday", "Su cumpleaños es el 21 de octubre.", "21 de octubre")
     MA._slot_supersede_guard(_atom("operator.birthday", "3 de mayo", "El cumpleaños de Marta es el 3 de mayo."),
                              is_correction=False)
     assert seen, "el gate saltó sin dejar rastro"
@@ -185,11 +185,11 @@ def test_write_atom_persists_the_canonical_value(fresh_db):
     orig, _MA.remember = _MA.remember, _fake_remember
     try:
         asyncio.run(_MA._write_atom(
-            _atom("operator.birthday", "12 de febrero", "Su cumpleaños es el 12 de febrero."),
-            raw="mi cumpleaños es el 12 de febrero"))
+            _atom("operator.birthday", "21 de octubre", "Su cumpleaños es el 21 de octubre."),
+            raw="mi cumpleaños es el 21 de octubre"))
     finally:
         _MA.remember = orig
-    assert written["meta"]["value"] == "12 de febrero"
+    assert written["meta"]["value"] == "21 de octubre"
 
 
 def test_no_value_is_persisted_for_a_slot_less_pill(fresh_db):

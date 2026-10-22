@@ -111,7 +111,7 @@ def run(url):
         check("al avisar la app, el arco SÍ se cierra", arc2["frac"] > 0.99, f"frac={arc2['frac']:.3f}")
 
         # Spanish browser, Spanish narration — the boot screen cannot read /api/i18n/bundle (it needs the very
-        # engine being waited for), which is why it carries its own strings. INI-024's raw-keys blemish.
+        # engine being waited for), which is why it carries its own strings. The mobile shell's raw-keys blemish.
         check("narra en el idioma del navegador", "Listo" in pg.evaluate(STEP) or "ready" not in pg.evaluate(STEP).lower(),
               repr(pg.evaluate(STEP)))
         check("nunca enseña una clave i18n cruda", "boot." not in (title + second), repr(title + " / " + second))

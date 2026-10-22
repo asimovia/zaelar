@@ -133,8 +133,8 @@ def status_written(live: dict, *, now: float | None = None) -> None:
 
     The pulse calls this on its 15-second beat — the same clock that already speaks «sigue con ello» — so the
     row changes a few times a minute, never per event (`tasks_store`'s «two write rates» rule holds). What it
-    buys: the pulse, FlashBrain and the Master read ONE durable answer to «where is this worker and when did it
-    last show a sign of life», instead of a RAM dict a restart empties and the Master cannot see at all."""
+    buys: the pulse, FlashBrain and observability read ONE durable answer to «where is this worker and when did it
+    last show a sign of life», instead of a RAM dict a restart empties and observability cannot see at all."""
     uid = str((live or {}).get("uid") or "")
     if not uid or _ts.task_get(uid) is None:
         return

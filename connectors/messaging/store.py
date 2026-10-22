@@ -1,5 +1,5 @@
 #
-# store.py — the UNIFIED messaging store (INI-015). ONE file (widgets/_data/mensajeria.json) where ALL connectors
+# store.py — the UNIFIED messaging store. ONE file (widgets/_data/mensajeria.json) where ALL connectors
 # (WhatsApp, Telegram, ...) write, and which the single widget READS. Reuses the atomic primitive from
 # widgets/store.py (tmp+rename write -> readers never see a half-written file).
 #

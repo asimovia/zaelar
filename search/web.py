@@ -261,9 +261,8 @@ _PAID_BACKENDS = frozenset({"perplexity", "tavily", "brave", "openai", "gemini",
 
 
 def _meter_search(src: str) -> None:
-    """A ENERGY (2026-08-13). This family is billed PER REQUEST, not by tokens. Only what ANSWERED is charged: a
-    backend that fails before answering is not billed (if it failed after the provider had already counted it,
-    reconciliation would detect it). Gemini and Z.ai meter INSIDE their own module (`search/providers/*`), where
+    """A ENERGY (2026-08-13). This family is metered PER REQUEST, not by tokens. Only what ANSWERED is metered: a
+    backend that fails before answering is not metered. Gemini and Z.ai meter INSIDE their own module (`search/providers/*`), where
     the host string the Energy coverage gate greps for lives; they are listed in `_PAID_BACKENDS` so the gate
     that demands a rate for every paid backend still sees them."""
     if src not in _PAID_BACKENDS or src in ("openai", "gemini", "zai"):

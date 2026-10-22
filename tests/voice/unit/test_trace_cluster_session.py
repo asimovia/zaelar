@@ -6,7 +6,7 @@ a cluster-originated stimulus inherited `cat="flash"` from `kind="trace"`, indep
 
 Second, broader finding the SAME day: the `cat` check alone wasn't enough. Reloading the browser tab with the
 agent globally STOPPED (`runstate.stopped()`) fired ordinary `widget`/`ui` state transitions (cat="widget"),
-and THOSE self-opened a fresh session too — reappearing in the backoffice master as "EN CURSO" instantly on
+and THOSE self-opened a fresh session too — reappearing in the session viewer as "EN CURSO" instantly on
 page refresh, even with the ⏻ badge correctly showing "off" right next to it. `stamp_identity()` now also
 checks `runstate.stopped()`, independent of category.
 """

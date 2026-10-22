@@ -39,7 +39,7 @@ def _emit_bus(topic: str, payload: dict) -> None:
 # model did not fill in `request`, use the turn's text», and that text ALREADY has the note attached in front. In
 # the run's task log: of seven tasks, THREE had «[SISTEMA] Brain worker · Tarea completada: …» as their objective
 # — in other words, a worker launched to «make» the delivery message from the previous worker. It costs money,
-# pollutes the live-task count, and reads as a meaningless objective in the master.
+# pollutes the live-task count, and reads as a meaningless objective in the observability viewer.
 #
 # It is cleaned HERE rather than in each fallback because this is the single gateway through which all escalation
 # passes: a new call site inherits the cleanup without having to remember it.

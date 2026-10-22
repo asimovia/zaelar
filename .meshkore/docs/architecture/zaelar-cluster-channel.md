@@ -243,4 +243,4 @@ abrir la puerta de par en par:
   y `zaelar-modules.md`.
 - Iniciativas de diseño: `V2-021` (observación pasiva), `V2-069` (una sola mente), `V2-071` (protección de
   recursos), `V2-072` (pacto), `V2-075` (evaluador), `V2-076` (permisos + dev-worker + sandbox),
-  `INI-020` (remediación de la auditoría 2026-07-26, incl. el jail de filesystem y el guard de objetivo).
+  y la remediación de la auditoría 2026-07-26 (incl. el jail de filesystem y el guard de objetivo).

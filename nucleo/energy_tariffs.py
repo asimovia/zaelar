@@ -1,31 +1,26 @@
 #
-# ENERGY TARIFFS — the prices Energy is computed from, authored CENTRALLY and cached locally.
+# ENERGY TARIFFS — the prices Energy is computed from, delivered remotely and cached locally.
 #
-# WHY THIS MODULE EXISTS. Every rate used to be a constant compiled into the engine, so changing a
-# price meant a release that had to reach every tenant Machine — and a release does NOT reach them
-# automatically (a `flyctl deploy` only updates the process-group machine). The prices therefore
-# drifted from reality in silence, which is the exact failure this codebase has now paid for three
-# times: the LLM table that didn't cover the broker and metered 100% of voice traffic at zero, the
-# master's hand-written provider map, and the STT rate that billed Deepgram while Voxtral ran.
-#
-# So the AUTHORITY for prices moves to the control-plane (the operator edits them in the backoffice)
-# and this module is the engine's side of that: it takes whatever the cloud last told us, keeps it in
-# `sys_kv`, and answers a rate lookup from it.
+# WHY THIS MODULE EXISTS. Rates compiled into the engine can only change with a release, and running
+# instances do not pick a release up until they are recycled — so prices drift from reality silently.
+# When a usage lease endpoint is configured, it can deliver a tariff table; this module is the engine's
+# side of that: it takes whatever the lease response last carried, keeps it in `sys_kv`, and answers a
+# rate lookup from it.
 #
 # WHAT THIS MODULE MUST NOT DO — and the constraint that shapes the whole design: it must NEVER make
-# a network call to answer a price. The energy lease (ADR-0005) exists precisely so a Machine spends
+# a network call to answer a price. The energy lease exists precisely so an instance spends
 # against a LOCAL counter with zero network in the steady state; if pricing needed a round trip, every
 # metered call would put one back on the hot path. Hence: the tariff table arrives PIGGYBACKED on the
 # lease response the engine already fetches periodically (`nucleo/energy_lease.py`), is cached in
 # `sys_kv`, and lookups are pure dictionary reads against that cache.
 #
 # THE THREE LAYERS, most-authoritative first:
-#   1. what the cloud sent (cached in sys_kv, survives restarts)
+#   1. what the lease response sent (cached in sys_kv, survives restarts)
 #   2. the DEFAULTS bundled below — real published pricing, used until the first lease lands, and the
 #      only thing a self-host install ever sees (it never leases, and never meters either)
 #   3. the never-silently-free catch-all inside each lookup
 #
-# Layer 2 is NOT redundant with layer 1: a brand-new Machine meters real usage during the seconds
+# Layer 2 is NOT redundant with layer 1: a brand-new instance meters real usage during the seconds
 # before its first lease arrives, and a fleet that has never leased (self-host) must still import
 # this module without exploding.
 #
@@ -38,8 +33,8 @@ from loguru import logger
 
 # ── DEFAULTS ────────────────────────────────────────────────────────────────────────────────────
 #
-# Real published pricing. These are the FALLBACK, not the authority — the operator's values in the
-# backoffice win. Keep them honest anyway: they are what a Machine bills with before its first lease.
+# Real published pricing. These are the FALLBACK, not the authority — a tariff table delivered with the
+# lease wins. Keep them honest anyway: they are what an instance meters with before its first lease.
 #
 # Sources verified 2026-08-16:
 #   voxtral   — mistral.ai/news/voxtral-transcribe-2 ($0.006/min realtime, $0.003/min batch; the
@@ -72,18 +67,16 @@ DEFAULT_TTS_USD_PER_1K_CHARS: dict[str, float] = {
 # ⚠️ THIS IS THE ONE RATE MOST LIKELY TO BE WRONG BY DESIGN, and it is why rates had to become
 # editable. LiveKit's tiers bundle an INCLUDED QUOTA (the free Build tier alone carries 5,000 WebRTC
 # minutes/month), so while a deployment sits inside its quota the true MARGINAL cost of one more
-# minute is zero, and billing customers $0.0004 for it would be inventing a cost that isn't being
-# paid. Above the quota this rate is real. Which of the two applies is a fact about the OPERATOR'S
-# PLAN, not about the code — so the operator sets it in the master (0 while inside the quota) and the
-# default here is the honest pay-as-you-go price rather than a zero that would look like "free".
+# minute is zero. Above the quota this rate is real. Which of the two applies depends on the
+# deployment's LiveKit plan, not on the code — so a delivered tariff table can set it (0 while inside
+# the quota) and the default here is the honest pay-as-you-go price rather than a zero that would look like "free".
 DEFAULT_TRANSPORT_USD_PER_MIN: dict[str, float] = {
     "livekit": 0.0004,
 }
 
 # The catch-all per family: an unmapped provider bills at the MOST EXPENSIVE known rate and says so
 # once. Same stance as `_FALLBACK_RATE_USD` and the `""` row of `_SEARCH_USD_PER_REQUEST` in
-# `energy_meter`: under-billing loses real money silently, over-billing a rare provider is visible on
-# the next invoice and gets corrected.
+# `energy_meter`: under-metering is silent, over-metering a rare provider is visible and gets corrected.
 _FAMILIES: dict[str, dict[str, float]] = {
     "stt": DEFAULT_STT_USD_PER_MIN,
     "tts": DEFAULT_TTS_USD_PER_1K_CHARS,
@@ -122,10 +115,10 @@ def _describe(fams: dict[str, dict[str, float]]) -> str:
 
 
 def update(families: dict | None, *, source: str = "lease") -> bool:
-    """Store the rates the cloud just sent. Returns True if anything was stored.
+    """Store the rates the lease response just sent. Returns True if anything was stored.
 
-    Rejects a malformed or EMPTY payload rather than adopting it: a control-plane that answers `{}`
-    (misconfigured, mid-migration, or a bug) must not silently wipe the rates a Machine is billing
+    Rejects a malformed or EMPTY payload rather than adopting it: an endpoint that answers `{}`
+    (misconfigured, mid-migration, or a bug) must not silently wipe the rates an instance is metering
     with and drop it to the catch-all for everything. Absence is not an instruction.
     """
     global _tariffs, _fetched_at
@@ -175,7 +168,7 @@ def rate_for(family: str, provider: str | None) -> float:
     if key in table:
         return float(table[key])
     # Fall back to the bundled default before the catch-all: the cloud may have sent a partial table
-    # (it only stores what the operator edited) and a provider it didn't mention is not unknown to US.
+    # (it only carries the rows that were set) and a provider it didn't mention is not unknown to US.
     if key in defaults:
         return float(defaults[key])
     warn_key = f"{fam}:{key}"
@@ -183,14 +176,14 @@ def rate_for(family: str, provider: str | None) -> float:
         _warned.add(warn_key)
         logger.warning(
             f"energy_tariffs: no {fam} rate for provider={provider!r} — billing at the most expensive "
-            f"known rate. Add it in the master (Tarifas) or to DEFAULT_* in energy_tariffs.py."
+            f"known rate. Add a tariff row for it, or add it to DEFAULT_* in energy_tariffs.py."
         )
     pool = table or defaults
     return max(pool.values()) if pool else 0.0
 
 
 def snapshot() -> dict:
-    """What this Machine is billing with right now — for /api/energy and the observability panel."""
+    """What this instance is metering with right now — for /api/energy and the observability panel."""
     _load_once()
     return {
         "source": "central" if _tariffs else "bundled_defaults",

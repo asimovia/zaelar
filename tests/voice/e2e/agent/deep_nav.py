@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Harness for REAL deep-navigation EXECUTION (V2-057 · INI-013): escalates a MARKETPLACE objective
+"""Harness for REAL deep-navigation EXECUTION (V2-057 · the voice tester): escalates a MARKETPLACE objective
 (Idealista/coches.net/AutoScout/Wallapop/Milanuncios/Amazon) through the PROBE channel with execute=true → the server
 launches a REAL Brain Worker that DRIVES the browser (the owner's Chromium) against the live site → we observe the
 timeline: recorded escalation · browser card · phases (cookies/navigate/extract) · extracted listings ·

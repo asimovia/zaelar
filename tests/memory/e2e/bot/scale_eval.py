@@ -156,7 +156,7 @@ def _superseded_blob() -> str:
     `operator.hardware`/`operator.name`/`operator.phone` accumulates up to 15 values over the battery
     (batteries from different sessions testing "the current value" without knowing that another session would keep changing it
     afterward) — without this, every intermediate value was counted as a "write miss" against the FINAL state. Detected by
-    hand several times (Toyota/Ford/Deloitte/teacher/operator/Richi) before generalizing it here."""
+    hand several times (Toyota/Ford/Deloitte/teacher/Moreno/Richi) before generalizing it here."""
     from memory import db as _db
     d = _db.get_db()
     valid_slots = {r["slot"] for r in d.query(

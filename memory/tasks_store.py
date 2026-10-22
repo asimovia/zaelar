@@ -290,7 +290,7 @@ def tasks_due(now: float | None = None, limit: int = 20) -> list[dict]:
 def task_search(query: str, limit: int = 5) -> list[dict]:
     """Candidate tasks for a fuzzy reference («the flat-hunting task I told you about»), NEWEST FIRST.
 
-    LEXICAL ONLY, and that is the requirement, not a shortcut: the operator's rule (INI-027 §7) is that the
+    LEXICAL ONLY, and that is the requirement, not a shortcut: the operator's rule is that the
     candidate search costs no model — an index narrows to ≤5 and a model only CHOOSES among those. The
     chooser is `nucleo/jev.py::select_many`; it is not called from here, because storage does not decide.
 

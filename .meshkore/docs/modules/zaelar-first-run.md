@@ -1,7 +1,6 @@
 # The first run — what happens between opening Zaelar and it speaking your language
 
-*Mechanism, public. The product decisions behind it live in the operator's private workspace; what is
-described here is what the code does, which is what somebody self-hosting needs.*
+*Mechanism, public: what is described here is what the code does, which is what somebody self-hosting needs.*
 
 A brand-new install has no language, no voice, no memory and no idea where to put a file. This document is
 the whole ceremony in order, what gates each step, and the two rules that shaped it.

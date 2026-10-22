@@ -26,11 +26,9 @@ _ROOT = _HERE.parent
 
 
 def _store_path() -> Path:
-    # `ZAELAR_WORKSPACE` SET (Phase 3, real cloud machine on its own mounted volume) → the store moves
-    # to `<workspace>/credentials/zaelar.env`, dropping the `.meshkore` segment entirely: a deployed
-    # container never has the dev-only `engine/.meshkore -> ../.meshkore` symlink this path used to
-    # depend on (see root CLAUDE.md — that symlink only makes sense for the local monorepo layout).
-    # UNSET (self-host, the operator's own machine, every install today) → byte-identical to the
+    # `ZAELAR_WORKSPACE` SET (a container on its own mounted volume) → the store moves
+    # to `<workspace>/credentials/zaelar.env`, dropping the `.meshkore` segment entirely.
+    # UNSET (self-host) → byte-identical to the
     # path this module has always used — do not disturb a real, currently-loaded credential store.
     if os.getenv("ZAELAR_WORKSPACE"):
         return _workspace.root() / "credentials" / "zaelar.env"

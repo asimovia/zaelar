@@ -10,8 +10,8 @@
 # a kill -9 and a full disk, which a pidfile does not.
 #
 # Refuses to start when the providers are down, and says so: a battery with no brain produces INFRA rounds at
-# ~6 min each and a bill for nothing (measured 2026-08-30 — every worker case INFRA while both wallets were
-# empty). The probe is one cheap call.
+# ~6 min each and a bill for nothing (measured 2026-08-30 — every worker case INFRA while both providers were
+# out of quota). The probe is one cheap call.
 set -eu
 
 ENGINE="$(cd "$(dirname "$0")/.." && pwd)"

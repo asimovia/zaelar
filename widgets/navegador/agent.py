@@ -1,5 +1,5 @@
 #
-# agent.py: browser AUTOMATOR (INI-016, Milestone 2): a goal-driven, DOM-first loop that drives the owner's
+# agent.py: browser AUTOMATOR (Milestone 2): a goal-driven, DOM-first loop that drives the owner's
 # Chromium to complete a natural-language goal. HYBRID approach decided with the operator on 2026-07-08:
 #
 #   - DOM-first (cheap): each step passes the model a TEXT SNAPSHOT of the page's interactive elements

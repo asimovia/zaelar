@@ -14,7 +14,7 @@ that this file's first case was patching a RE-EXPORT and stubbing nothing at all
 Two facts this file pins that are easy to get wrong later:
 
   * The history is ours BECAUSE WE PLAY THE VIDEO. It is not a copy of anything: YouTube's own API has
-    returned an empty watch history for every account since 2016 (INI-032 §6), so this is the one video fact
+    returned an empty watch history for every account since 2016 (the YouTube OAuth registration), so this is the one video fact
     a connector could never hand us. It is recorded at the two moments a video really starts, and nowhere else.
   * A "minimum 720p" rule can only be checked when the PLAYER has the video. The results page does not
     publish definition (measured 2026-09-07: of ~20 hits only 4K carries a badge at all), so the rule WARNS

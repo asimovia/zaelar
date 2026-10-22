@@ -117,7 +117,7 @@ async def _summarize(peer: str, prev: str, inbound: str, outbound: str) -> str |
         # ENERGY (2026-08-13). Local by default -> `energy_meter` returns None and costs nothing.
         # Reported because the endpoint is CONFIGURABLE and because this distiller is triggered by an external PEER,
         # not the operator: it is the only paid system call whose pace is set by someone outside. Without measuring
-        # it, a chatty peer could spend the operator's balance without leaving a trace.
+        # it, a chatty peer could drive paid usage without leaving a trace.
         from nucleo import energy_meter as _energy
         _energy.meter_openai_response(data, base_url=url, model=_model())
     except Exception as e:  # noqa: BLE001

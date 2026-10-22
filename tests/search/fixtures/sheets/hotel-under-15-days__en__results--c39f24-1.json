@@ -307,7 +307,7 @@
   "sources": [
     {
       "name": "RoomRover (LiteAPI: Booking, Expedia, RateHawk)",
-      "url": "https://roomrover.rjj.workers.dev",
+      "url": "https://agent.example.org",
       "status": "ok",
       "detail": "Live quotes for 16–20 Oct, 2 adults, USD",
       "found": 18

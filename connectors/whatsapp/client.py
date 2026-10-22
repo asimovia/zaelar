@@ -1,7 +1,7 @@
 #
 # client.py — HTTP client (loopback) for the vendored Baileys bridge (connectors/whatsapp/bridge/).
 #
-# The bridge binds ONLY 127.0.0.1 and validates the Host header (anti DNS-rebind). Endpoints used in INI-014
+# The bridge binds ONLY 127.0.0.1 and validates the Host header (anti DNS-rebind). Endpoints used
 # (read-only + mark-read): GET /messages (drains inbound queue), POST /mark-read (marks read), GET /health. We do
 # NOT use /send in this initiative (autoresponder is Phase 4, with separate go-ahead).
 #

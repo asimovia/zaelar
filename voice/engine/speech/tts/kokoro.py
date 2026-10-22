@@ -9,7 +9,7 @@ perceived); on Apple Silicon the Metal backend brings it back to ~0.3s. English
 voices: af_heart / af_bella / am_michael. Talks to Kokoro's OpenAI-compatible
 ``/v1/audio/speech`` for raw PCM (24 kHz mono s16le) on the FastAPI path.
 
-Ported from voice-lab-2 (INI-012 upgrade). zaelar keeps the operator's ⚙-picked
+Ported from voice-lab-2. zaelar keeps the operator's ⚙-picked
 voice (``selected_voice``) in BOTH backends; lang code defaults to English.
 """
 from __future__ import annotations

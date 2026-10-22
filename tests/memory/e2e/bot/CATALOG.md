@@ -370,8 +370,8 @@
 | 358 | query | ❓ ¿cómo me llamo? | devolver: `ricart` (fuente esperada: ESTADO (siempre en prompt)) | EL BUG: el cerebro debe VER el nombre en su bloque (estado), no responder 'no lo tengo en corto plazo' |
 | 359 | query | ❓ ¿cuál es mi nombre? | devolver: `ricart` (fuente esperada: ESTADO (siempre en prompt)) | otra fórmula de la misma pregunta de identidad |
 | 360 | query | ❓ oye, ¿te acuerdas de mi nombre? | devolver: `ricart` (fuente esperada: ESTADO (siempre en prompt)) | identidad con muletilla — sigue disponible en el bloque |
-| 361 | save | por cierto, soy Ricart operator | **DESCARTE** (no debe quedar en ninguna capa) | apellido por 'soy X' → perfil (state o durable) |
-| 362 | query | ❓ ¿sabes mi apellido? | devolver: `operator` (fuente esperada: LARGO (durable)) | recall del apellido |
+| 361 | save | por cierto, soy Ricart Moreno | **DESCARTE** (no debe quedar en ninguna capa) | apellido por 'soy X' → perfil (state o durable) |
+| 362 | query | ❓ ¿sabes mi apellido? | devolver: `moreno` (fuente esperada: LARGO (durable)) | recall del apellido |
 | 363 | save | trabajo en una empresa que se llama Telefónica | **DESCARTE** (no debe quedar en ninguna capa) | hecho inicial de trabajo |
 | 364 | save | corrijo, ya no trabajo en Telefónica, ahora estoy en Amazon | **DESCARTE** (no debe quedar en ninguna capa) | CORRECCIÓN: cambio de trabajo → debe superseder |
 | 365 | query | ❓ ¿en qué empresa trabajo ahora? | devolver: `amazon` (fuente esperada: LARGO (durable)) | el trabajo ACTUAL es Amazon (el viejo se olvida; puede quedar 'ya no en Telefónica' como historia correcta, por eso no se usa not_want aquí — el forget limpio lo valida el pet case #367 Toby→Nala) |

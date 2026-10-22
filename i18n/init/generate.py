@@ -48,7 +48,7 @@ def _system(code: str, register: str = "ui") -> str:
         "RULES: (1) Keep every {placeholder} token EXACTLY as-is (same name, same braces) — they are interpolated "
         "at runtime. (2) Preserve punctuation, the middot ' · ', ellipses, emoji and leading/trailing spacing. "
         "(3) Do NOT translate technical/brand tokens: API, STT, TTS, LLM, URL, IMAP, SMTP, OAuth, QR, WhatsApp, "
-        "Telegram, Spotify, YouTube, MeshKore, zaelar, Fly, LiveKit, Kokoro, and product names. "
+        "Telegram, Spotify, YouTube, MeshKore, zaelar, LiveKit, Kokoro, and product names. "
         # The PROPER NAMES of system components (operator rule, 2026-08-12): FlashBrain and Brain Workers
         # are written the SAME in Spanish, English, or Chinese. Translating them (“fast brain,” “code agents”) breaks
         # conversations with the operator and the documentation, which names them this way in every language.

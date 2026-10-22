@@ -162,7 +162,7 @@ def test_an_empty_payload_writes_nothing_and_says_why(agenda):
 # ── V2-473 (b): the default reminder is the AGENDA's job, not the model's conduct ───────────────────────────
     # Round 2 measured the alternative: to create the requested reminder the model escalated to a WORKER that died on
 # Google's login screen, said «Done», and `scheduled_jobs.created` stayed empty. The operator's mandate
-# (INI-026 A2) is literal: telling the agent an appointment schedules default notice (~2h before) with no one
+# is literal: telling the agent an appointment schedules default notice (~2h before) with no one
 # asking — so the write itself schedules it, and moving it is vocabulary (`set_reminder`), the clear_all
 # lesson: when a frequent intention has no action, the model cannot get it right.
 

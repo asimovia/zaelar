@@ -14,7 +14,7 @@ def _schedule_reminder(title: str, date: str, start: str, at: str = "", before_m
     """Schedule the appointment's notice. Returns (job_id, display) — ("", reason) when nothing was scheduled.
 
     V2-473: by default it falls `before_minutes` before the appointment (the operator's «avisos por
-    defecto, en plan, dos horas antes», INI-026 A2); `at` overrides with an absolute «YYYY-MM-DD HH:MM».
+    defecto, en plan, dos horas antes»); `at` overrides with an absolute «YYYY-MM-DD HH:MM».
     The prompt is RESOLVED content — what to say when it fires — never the user's raw sentence (the
     remember-and-remind lesson: a raw prompt re-asks the agent to schedule instead of reminding). A notice
     whose instant already passed is not scheduled: an alarm for the past is a fabrication with a bell.

@@ -43,8 +43,8 @@ const SECTIONS = [
   { id: "apis", icon: SERVER_ICON },
 ];
 
-// Sections that PICK a provider/model — centrally managed in the cloud profile, hidden there (V2-043 area
-// stays intact for self-host; see INI-019 addenda "Cambio B", 2026-08-05 and server/config_api.py's
+// Sections that PICK a provider/model — hidden in the cloud profile, where the deployment sets them (V2-043 area
+// stays intact for self-host; see server/config_api.py's
 // matching _CLOUD_LOCKED_V2_SECTIONS backend gate). `apis` (balance/status) stays visible either way —
 // it's read-only information, not a choice.
 const CLOUD_LOCKED_NAV_SECTIONS = new Set(["fast", "code", "memory"]);

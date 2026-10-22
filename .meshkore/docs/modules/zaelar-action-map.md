@@ -181,9 +181,6 @@ never being used. It observes only: it writes no rows and promotes nothing.
 > that knows one shape is blind to a whole channel and **fails by returning nothing**. `watch.py` branches on a
 > sentinel key and is tested against both.
 
-The Master (`cloud/backoffice/`) is the second surface of this same data and was updated in the same pass — the
-two-surfaces rule. That side is documented in the workspace-root private repo.
-
 ## Measured
 
 - **424 active rows** for `es` (pack v2: 37 literal entries + a 9 × 44 grid), imported in one go with

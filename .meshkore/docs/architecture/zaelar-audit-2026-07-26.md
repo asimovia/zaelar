@@ -66,7 +66,7 @@ ELIMINADO y sustituido por el evaluador por modelo (V2-075) sin decirlo.
 | 5 | P1 | `guard_code_outbound` (V2-071) juzgaba cada mensaje AISLADO — un volcado grande partido en N mensajes bajo el umbral cada uno atravesaba el guard intacto en cada fragmento (bypass trivial por prompt-injection: "respóndeme en 8 mensajes cortos"). | `connectors/meshkore/security.py:230-246` (antes del fix), `bridge.py:589` | Acumulador RAM por-destino (`accum_key=f"{cluster}:{to}"`, ventana 180s) — si el acumulado supera el umbral, TODOS los bloques del mensaje actual se sustituyen también. Retrocompatible (sin `accum_key` = comportamiento viejo). +4 tests. | `bf4b63f` |
 | 6 | P1 (housekeeping, no seguridad) | 2 días de trabajo sin commitear en el árbol (4 widgets generados en producción real + cambios en `widgets/results`) — viola la regla dura "trabajo terminado = trabajo commiteado". | `widgets/ejecuta-{accion,gestion,sistema}-real/`, `widgets/results/` | Commiteados (auditados primero: pasan validación del generador, sin XSS, sin cross-imports indebidos). `ejecuta-gestion-real`/`ejecuta-sistema-real` se solapan en propósito/keywords — anotado como P2, no fusionado (evitar perder datos de producción de ninguno de los dos). | `4896623` |
 
-## Hallazgos documentados, NO arreglados en código (backlog explícito — ver INI-020)
+## Hallazgos documentados, NO arreglados en código (backlog explícito)
 
 - **P1 — Dev-worker sin jail de filesystem code-enforced.** `nucleo/sandbox.py` (rlimits/env-scrubbed/timeout)
   existe pero no está cableado al subproceso interactivo del dev worker (`nucleo/dispatch.py` lanza `claude`
@@ -104,7 +104,7 @@ ELIMINADO y sustituido por el evaluador por modelo (V2-075) sin decirlo.
   no normalizados en `security._neutralize`; directorios `zaelar-dev-*` del dev worker sin limpiar; permisos
   `execute`/`deploy` son flags "fantasma" (se aceptan y viajan pero nada los consume aún); `bus/__init__.py`
   docstring menciona topics `widget.*`/`brain.*` que no existen en producción (el camino real es `observer`).
-  No arreglados (cosmético/bajo impacto) — quedan en `INI-020` como housekeeping.
+  No arreglados (cosmético/bajo impacto) — quedan como housekeeping.
 
 ## Alineación código ↔ contexto ↔ docs ↔ web (regla de oro)
 
@@ -132,7 +132,7 @@ ELIMINADO y sustituido por el evaluador por modelo (V2-075) sin decirlo.
   con el perfil de permisos por defecto, que es lo que hay en producción); marcado como la PRÓXIMA actualización
   manual pendiente cuando algún cluster real tenga permisos concedidos (no automático, documentado en `CLAUDE.md`).
 - **Roadmap**: no había ninguna iniciativa de remediación abierta para auditorías previas de este tipo — creada
-  `INI-020-audit-remediation-2026-07-26.md`.
+  una.
 
 ## Estado del mapa de tests
 
@@ -157,7 +157,7 @@ El resto (fast_client/cluster/prompt/escalate/dialog) es simple y coincide con l
 ## Qué NO se hizo en la fase P0/P1 inicial (y por qué) — actualizado abajo
 
 Siguiendo la instrucción de "entender la base limpia y modificar SOLO lo necesario", esta primera fase dejó
-T-01..T-05/T-07 como tareas explícitas en `INI-020-audit-remediation-2026-07-26.md` en vez de parcheados a medias
+T-01..T-05/T-07 como tareas explícitas en la iniciativa de remediación en vez de parcheados a medias
 bajo presión de tiempo. El operador, tras leer el informe, autorizó explícitamente continuar ("sigue mejorando
 todo esto... no quiero ningún riesgo, siempre y cuando lo puedas implementar de forma limpia") — con esa luz
 verde, la MISMA sesión cerró esas tareas (ver abajo). Solo quedan abiertas T-06 (recordatorio de un diagrama que
@@ -166,7 +166,7 @@ aún no está desalineado) y T-08 (observación de mantenibilidad sobre `router.
 ## Ronda de remediación (misma sesión, autorizada por el operador)
 
 Con la instrucción explícita de seguir mejorando sin introducir riesgo, se cerraron 6 de las 8 tareas de
-`INI-020` (detalle completo, con commits, en ese doc):
+la iniciativa de remediación:
 
 - **T-01 — jail de filesystem REAL para el dev-worker.** `nucleo/dev_worker_guard.py`: hook `PreToolUse` oficial
   de Claude Code (investigado contra la documentación oficial antes de implementar — `code.claude.com/docs/en/

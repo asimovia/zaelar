@@ -1,7 +1,6 @@
 <!--
 Canonical module doc for the cloud-file connectors + the `archivos` explorer (V2-557, 2026-09-02).
-PUBLIC repo: this describes the MECHANISM. What the paid product may or may not ship, and what an audit
-costs, is business and lives in the workspace root's private `.meshkore/` (INI-027).
+PUBLIC repo: this describes the MECHANISM only.
 -->
 
 # Archivos en la nube — conectores + explorador

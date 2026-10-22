@@ -14,7 +14,7 @@ WHAT IT PUBLISHES, and why each field is the shape it is:
     blocks, and it does not answer «am I newer than my colleague?» at a glance. This one does: 24 is one
     update after 23. It lives in a text FILE (`update/BUILD`) rather than being derived from git, because
     the cloud image has no repository at all — `.git` is not COPYed, so `version.sha()` returns "nogit"
-    inside every Machine. A file is the only source of truth that survives to production intact.
+    inside every container. A file is the only source of truth that survives to production intact.
 
   · `ui_rev` — a digest of the bytes THE BROWSER EXECUTES (`frontend/**` with a browser-fetchable
     extension). This is the field that decides whether a reload is worth asking for. The operator was
@@ -47,7 +47,7 @@ _HERE = Path(__file__).resolve().parent
 _ENGINE = _HERE.parent
 
 #: The build number, as shipped. Bump with `python -m update bump` — the release procedure does this
-#: BEFORE cutting the tag (`.meshkore/docs/ops/zaelar-cloud-release.md`, step 3).
+#: BEFORE cutting the tag.
 BUILD_FILE = _HERE / "BUILD"
 
 _UI_ROOT = _ENGINE / "frontend"
@@ -110,7 +110,7 @@ def state() -> dict:
         "short": version.short(),
         "ui_rev": ui_rev(),
         "started_ms": version.started_ms(),
-        # Which DEPLOYMENT answered. Set by the Dockerfile ("fly·cdg"); absent on a self-hosted engine.
+        # Which DEPLOYMENT answered. Set by the Dockerfile (DEPLOY_ENV); absent on a self-hosted engine.
         # It costs nothing and it is the field that makes «is this the cloud one or mine?» answerable
         # from the same place as the version.
         "deploy": os.getenv("DEPLOY_ENV", "").strip() or "local",

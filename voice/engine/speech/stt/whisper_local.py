@@ -12,7 +12,7 @@ so Silero segments speech and each segment is transcribed. To add a backend
 (e.g. AMD/ROCm via whisper.cpp-Vulkan) implement one ``stt.STT`` class + a branch
 in ``_make_backend`` — a welcome PR, nothing else changes.
 
-Ported from voice-lab-2 (INI-012 upgrade); zaelar is English, so the decode
+Ported from voice-lab-2; zaelar is English, so the decode
 ``initial_prompt`` and logger name are the only substantive local changes.
 """
 from __future__ import annotations

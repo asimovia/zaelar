@@ -1,7 +1,7 @@
 #
 # bridge_proc.py — lifecycle for the Baileys bridge Node process (vendored, connectors/whatsapp/bridge/).
 #
-# Starts `node bridge.js --mode observe` (our INI-014 patch: forwards ALL inbound content to triage, without
+# Starts `node bridge.js --mode observe` (our ZAELAR-PATCH: forwards ALL inbound content to triage, without
 # replying). The first time it prints a QR in the terminal -> the operator scans it with WhatsApp (Settings ->
 # Linked devices). The session stays in connectors/whatsapp/_session/ (gitignored) and no longer asks for QR. We
 # inherit stdout so the QR is visible; with WHATSAPP_DEBUG=1 the bridge adds JSON event logs.

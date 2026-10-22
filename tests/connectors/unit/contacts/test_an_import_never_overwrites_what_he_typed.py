@@ -61,8 +61,8 @@ def test_a_row_with_neither_a_name_nor_an_email_is_not_a_contact():
 
 def test_an_email_only_row_is_named_after_its_address():
     c = gp.person_to_contact({"resourceName": "people/x",
-                              "emailAddresses": [{"value": "gavin.hale@example.net"}]})
-    assert c["name"] == "gavin.hale"
+                              "emailAddresses": [{"value": "laura.vidal@example.net"}]})
+    assert c["name"] == "laura.vidal"
 
 
 def test_his_star_in_google_is_his_star_here():
@@ -331,7 +331,7 @@ def test_a_refused_push_does_not_cancel_the_pull(ct, monkeypatch):
     monkeypatch.setattr(svc, "can_write", lambda provider_id="google-contacts", **kw: True)
     monkeypatch.setattr(svc, "push", lambda rows, pid="google-contacts", **kw: {"ok": False, "error": "solo lectura"})
     monkeypatch.setattr(svc, "fetch", lambda provider_id="google-contacts", **kw: {
-        "ok": True, "contacts": [{"name": "Gavin", "kind": "person", "email": "g@x.com", "phone": "",
+        "ok": True, "contacts": [{"name": "Laura", "kind": "person", "email": "g@x.com", "phone": "",
                                   "city": "", "address": "", "notes": "", "groups": [],
                                   "favorite": False, "googleId": "people/c1"}]})
     ct.apply_action("add_contact", {"name": "Marta Ruiz"})     # something for the push half to refuse on

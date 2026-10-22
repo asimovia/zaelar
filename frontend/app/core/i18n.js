@@ -57,7 +57,7 @@ export function available() { return Object.keys(BUNDLES); }
 //
 // `t()` falls back to the English bundle and, if that is missing too, shows the KEY—intentionally visible, because
 // a missing string must be seen. This works on an already-loaded screen and fails where it matters most: during a
-// Machine cold start, `/api/i18n/bundle` has not answered yet, so the FIRST screen someone who just installed the
+// cold start, `/api/i18n/bundle` has not answered yet, so the FIRST screen someone who just installed the
 // PWA sees is `boot.encendiendo`. The product's first impression.
 //
 // The floor is DELIBERATELY narrow: only strings rendered BEFORE the engine answers. It is not a second vocabulary—

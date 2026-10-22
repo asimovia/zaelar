@@ -13,7 +13,7 @@
        3. otherwise: narrow viewport AND a coarse pointer -> /m. BOTH conditions, deliberately: a narrow desktop
           window is still a mouse, and a 13" tablet with a trackpad is still a desktop. Getting this wrong in the
           permissive direction would strand a laptop user in a one-widget-at-a-time shell with no way back.
-     `/` must keep answering 200 with HTML for Fly's health check, so the redirect happens in the CLIENT, never as
+     `/` must keep answering 200 with HTML for a platform health check, so the redirect happens in the CLIENT, never as
      an HTTP 302 from the server (server/pages.py). */
   (function () {
     try {
@@ -37,7 +37,7 @@
 <link rel="stylesheet" href="/static/app/styles.css?v=4"/>
 <style>
   /* PREBOOT splash — deliberately inline in the HTML: paints on the FIRST byte, BEFORE ES modules load.
-     On a cold account Machine, modules take tens of seconds; without this the user saw a BLACK screen
+     On a cold-started instance, modules take tens of seconds; without this the user saw a BLACK screen
      until BootOverlay (the neural veil, painted by JS) mounted. Its sole purpose is to entertain from
      second 1. `main.js` removes it as soon as the app mounts. Zero dependency on /static (inline colors). */
   #preboot { position:fixed; inset:0; z-index:9998; display:flex; flex-direction:column; align-items:center;

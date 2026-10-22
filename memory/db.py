@@ -31,7 +31,7 @@ logger = logging.getLogger("zaelar.memory.db")
 def db_path() -> Path:
     """Shared SQLite file path. Override with `ZAELAR_DB` (power-user/headless/tests); default
     `<workspace>/memory/_data/zaelar.db` (gitignored) — `<workspace>` is the repo root unless `ZAELAR_WORKSPACE`
-    points to a mounted volume (Phase 3, real paid accounts) — without that env var this is BYTE-IDENTICAL to the
+    points to a mounted volume (e.g. a container deployment) — without that env var this is BYTE-IDENTICAL to the
     previous path. Directory is created lazily. SAME path as `bus/log.py`."""
     env = os.getenv("ZAELAR_DB")
     if env:

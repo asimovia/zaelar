@@ -1,4 +1,4 @@
-"""zaelar LiveKit voice engine (INI-012).
+"""zaelar LiveKit voice engine.
 
 Ported from voice-lab-2 (LiveKit Agents 1.6.4). Runs EMBEDDED in the zaelar web
 server process via ``AgentServer(job_executor_type=JobExecutorType.THREAD)`` so

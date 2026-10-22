@@ -6,8 +6,8 @@
 // INLINE custom properties on <html> so they beat the stylesheet and repaint every token reader at once.
 //
 // Persistence is TWO layers, deliberately: localStorage paints instantly at boot (no flash of the wrong
-// skin), and config/settings.json (via /api/settings) makes the choice durable per ACCOUNT — a cloud
-// Machine's browser cache is not where a preference should live. Boot order: localStorage first, then one
+// skin), and config/settings.json (via /api/settings) makes the choice durable per ACCOUNT — a hosted
+// instance's browser cache is not where a preference should live. Boot order: localStorage first, then one
 // reconcile fetch; the server wins when they disagree, because it is the copy that survives a new browser.
 import { theme, setTheme } from "../core/store.js?v=2";
 import { createEffect } from "../core/reactive.js?v=2";

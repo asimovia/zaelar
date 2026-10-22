@@ -67,7 +67,7 @@ createEffect(() => { try { botAudio.muted = store.botMuted(); } catch (_) {} });
 for (const s of MOBILE_SURFACES.filter((s) => s.phase === "scaffold")) mount(s.comp(), s.target === "deck" ? wrap : undefined);
 for (const s of MOBILE_SURFACES.filter((s) => s.phase === "overlay")) mount(s.comp(), s.target === "deck" ? wrap : undefined);
 
-// The inline splash in mobile/index.html did its job (a loader from the FIRST byte, which on a cold account Machine
+// The inline splash in mobile/index.html did its job (a loader from the FIRST byte, which on a cold-started instance
 // is tens of seconds); the BootOverlay takes over. If this module had failed to load, #preboot would stay — better
 // a loader than a black screen.
 // V2-558 — the ring closes on a FACT, not on a clock: `__zaelarPrebootDone` paints it full and says
@@ -77,15 +77,15 @@ try { window.__zaelarPrebootDone?.(); } catch { /* noop */ }
 try { document.getElementById("preboot")?.remove(); } catch { /* noop */ }
 
 // ---- CLOUD profile + Energy balance: same retry loop as the desktop, for the same reason. On the COLD START of an
-// account Machine these endpoints answer 503 until FastAPI finishes coming up; a single failed attempt would leave
-// `cloudProfile` false FOREVER and the menu would hide the account row on a paying account. ----
+// instance these endpoints answer 503 until FastAPI finishes coming up; a single failed attempt would leave
+// `cloudProfile` false FOREVER and the menu would hide the account row when ZAELAR_USER_ID is set. ----
 (async () => {
   for (let i = 0; i < 45; i++) {
     try {
       const cfg = await api.getConfig();
       if (cfg) { store.setCloudProfile(!!cfg.cloud_profile); store.setAccountUrl(cfg.account_url || ""); return; }
     }
-    catch { /* 503 while the Machine boots: retry */ }
+    catch { /* 503 while the instance boots: retry */ }
     await new Promise((r) => setTimeout(r, 2000));
   }
 })();
@@ -120,7 +120,7 @@ async function _langStateUntilAnswered() {
     try {
       const r = await fetch("/api/i18n/state", { cache: "no-store" });
       if (r.ok) return await r.json();
-    } catch { /* the Machine is still waking */ }
+    } catch { /* the instance is still waking */ }
     await new Promise((res) => setTimeout(res, 2000));
   }
   return null;

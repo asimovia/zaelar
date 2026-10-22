@@ -205,7 +205,7 @@ async def notify(title: str, text: str, *, speak: bool = True, kind: str = "noti
     spoken = speech.sanitize(text)
     if not spoken:
         return False
-    # PREEMPTION (INI-008 F2) + QUEUE (2026-08-31): the OPERATOR's voice takes precedence, and proactive messages
+    # PREEMPTION + QUEUE (2026-08-31): the OPERATOR's voice takes precedence, and proactive messages
     # go ONE AT A TIME and in arrival order — see the ticket queue below. Each message waits for its turn, and then
     # waits for a silent opening; if the total allows no respite, the message is NOT lost: it becomes a [SISTEMA]
     # note for the next turn (the brain will say it itself, in context). The UI already showed it above.
@@ -232,7 +232,7 @@ async def notify(title: str, text: str, *, speak: bool = True, kind: str = "noti
         if not await _wait_for_quiet(max(0.0, left)):
             _degrade("no hubo silencio para hablarla")
             return False
-        # THE BREATH between two queued deliveries (`_BOT_GRACE_SECS` — defined since INI-008, used by nobody
+        # THE BREATH between two queued deliveries (`_BOT_GRACE_SECS` — defined long ago, used by nobody
         # until 2026-08-31). Back-to-back, message B would start the very instant A's playout ends: two notices
         # in a burst that sound like one. Only paid when the previous delivery just ended; a floor that has
         # been quiet for a while speaks immediately.
@@ -270,7 +270,7 @@ async def notify(title: str, text: str, *, speak: bool = True, kind: str = "noti
         # VISIBLE, not just logged (operator, 2026-08-31: “if you need more observability into voice handling, add
         # it”). A delivery that died mid-say was a WARNING line in server.log and nothing anywhere the
         # operator looks — today's cut («A coroutine object is required») sat there for an hour while the session
-        # timeline showed a normal-looking say. An error event lands in the session file and the master.
+        # timeline showed a normal-looking say. An error event lands in the session file and the flow viewer.
         try:
             from voice.observer import emit as _emit_err
             _emit_err("error", "⚠️ entrega proactiva por VOZ falló a media locución", text=str(e)[:200],
@@ -372,7 +372,7 @@ async def _wait_for_quiet(timeout: float | None = None) -> bool:
         except Exception:
             busy = False
         if not busy:
-            # THE BREATH (2026-08-31): `_BOT_GRACE_SECS` had been defined since INI-008 and NOBODY used it —
+            # THE BREATH (2026-08-31): `_BOT_GRACE_SECS` had been defined long ago and NOBODY used it —
             # the “pause after the bot's voice” mentioned above was dead text. With the serialized queue it would
             # matter in practice: message B would start at the EXACT instant utterance A ends, two burst notices
             # that sound like one. It is paid only when coming from a live utterance (saw_busy); an opening that

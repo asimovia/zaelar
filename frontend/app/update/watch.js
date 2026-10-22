@@ -40,7 +40,7 @@ export async function check() {
   let s;
   try {
     const r = await fetch("/api/update", { cache: "no-store" });
-    if (!r.ok) return;                       // 503 on a cold Machine, 401 mid-session: silence, never alarm
+    if (!r.ok) return;                       // 503 on a cold start, 401 mid-session: silence, never alarm
     s = await r.json();
   } catch (_) { return; }                    // engine restarting → the absence of an answer is not news
   setInfo(s);

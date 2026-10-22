@@ -1,21 +1,16 @@
 #
-# ACCOUNT SESSION ROUTING (2026-08-09) — fly-replay support for real, persistent account Machines:
-# `zaelar-accounts` is ONE Fly app with MANY Machines (one per user), all sharing one public
-# hostname — Fly's edge picks whichever is available for a plain request, not necessarily the
-# visitor's OWN one. Fix: whichever Machine picks up a request first tells Fly's proxy "replay this
-# on machine X" via the `fly-replay` response header.
+# ACCOUNT SESSION ROUTING — for a multi-instance deployment where many per-user instances sit behind
+# ONE public hostname and the edge proxy may hand a request to any of them. Whichever instance picks
+# up a request first tells the proxy "replay this on instance X" via the `fly-replay` response header.
 #
-# An account Machine's identity is FIXED forever (no warm-pool pinning needed). The routing key
-# carried by the browser (the zaelar_cloud_session cookie) is an OPAQUE session token — resolving
-# "which Fly Machine does this token belong to" means asking the control-plane (POST /session/verify,
-# which already returns the account's `fly_machine_id`). `FLY_MACHINE_ID` — this Machine's OWN id —
-# is injected automatically by Fly on every Machine, so "is this request mine?" is a plain string
-# compare, no lookup needed for the common case (only a MISROUTED request pays the control-plane
-# round-trip).
+# The routing key carried by the browser (the session cookie) is an OPAQUE session token; resolving
+# "which instance does this token belong to" is a call to the configured session resolver
+# (POST /session/verify). `FLY_MACHINE_ID` — this instance's OWN id, set by the runtime — makes
+# "is this request mine?" a plain string compare, so only a MISROUTED request pays the resolver
+# round-trip.
 #
-# A Machine that isn't an account Machine at all (ZAELAR_USER_ID unset — self-host) never enters any
-# of this — my_machine_id() below is only ever consulted when cloud_account.is_cloud_account() is
-# True.
+# An instance without an account identity (ZAELAR_USER_ID unset — self-host) never enters any of
+# this — my_machine_id() below is only ever consulted when cloud_account.is_cloud_account() is True.
 #
 # 2026-08-13 — RESOLUTION IS NOW A THREE-WAY ANSWER, NOT AN OPTIONAL STRING. `find_machine_for_session`
 # returned `None` both for "the resolver says this token is not a live session" and for "we could not
@@ -47,9 +42,7 @@ def is_account_routing_machine() -> bool:
     """True on any Machine that should PARTICIPATE in account routing — a real account Machine
     (ZAELAR_USER_ID set) OR the always-on base "router" (ZAELAR_ACCOUNT_ROUTER=1). Without the
     router flag, a request that lands on the base Machine (which has no account identity of its
-    own) would just serve its OWN generic content instead of ever attempting a fly-replay — found
-    live 2026-08-09: the base Machine answered a cookie meant for a different account's Machine,
-    silently, because nothing told it to even TRY routing."""
+    own) would just serve its OWN generic content instead of ever attempting a fly-replay."""
     from nucleo import cloud_account
 
     if cloud_account.is_cloud_account():
@@ -74,7 +67,7 @@ _INFLIGHT: dict[str, "asyncio.Future"] = {}
 
 
 def my_machine_id() -> str | None:
-    """This Machine's own Fly id — auto-injected by the Fly runtime, not something we set."""
+    """This instance's own id — set by the runtime (FLY_MACHINE_ID), not something we set."""
     return (os.getenv("FLY_MACHINE_ID") or "").strip() or None
 
 

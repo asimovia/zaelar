@@ -1,11 +1,9 @@
-"""nucleo/cloud_account.py — "is this process a real paying cloud account" accessor (Fase 3, INI-019
-addenda 2026-08-05). A single truthy env check behind one accessor, so every gate that needs to
-distinguish "a real customer's own Fly Machine" from "self-host" (energy metering, centralized
-observability, provider control) reads the SAME function instead of each re-parsing ZAELAR_USER_ID
-on its own.
+"""nucleo/cloud_account.py — "does this process run with an account identity" accessor. A single
+truthy env check behind one accessor, so every gate that needs to distinguish "a hosted account
+instance" from "self-host" (energy metering, centralized observability, provider control) reads the
+SAME function instead of each re-parsing ZAELAR_USER_ID on its own.
 
-ZAELAR_USER_ID is injected by the provisioner at Machine creation
-(cloud/provisioner/src/machineConfig.js::accountMachineConfig) — self-host and the demo never set it.
+ZAELAR_USER_ID is set by the hosting deployment's environment — self-host never sets it.
 """
 from __future__ import annotations
 
@@ -20,7 +18,7 @@ def my_user_id() -> str:
     return (os.getenv("ZAELAR_USER_ID") or "").strip()
 
 
-# Where the holder of a cloud account manages it (balance top-ups, plan, receipts). ONE place knows it; the
+# Where the holder of an account manages it. ONE place knows it; the
 # interface reads it from `/api/config` and `/api/energy` instead of carrying its own literal, so a deployment
 # that serves its account page elsewhere sets `ZAELAR_ACCOUNT_URL` and every link follows.
 _ACCOUNT_URL_ENV = "ZAELAR_ACCOUNT_URL"

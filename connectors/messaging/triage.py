@@ -1,5 +1,5 @@
 #
-# triage.py — SHARED classifier (promoted from connectors/whatsapp, INI-015). Given a batch of inbound messages from
+# triage.py — SHARED classifier (promoted from connectors/whatsapp). Given a batch of inbound messages from
 # ANY platform (WhatsApp, Telegram, ...), returns for each one whether it DESERVES the operator's attention and
 # whether it is ADDRESSED to them. DIRECT call to a model (LOCAL by default, Ollama) through an OpenAI-compatible
 # endpoint — does NOT go through the Hermes agent (privacy + voice ACP invariant intact).
@@ -33,11 +33,11 @@ Responde SOLO con un array JSON, un objeto por mensaje, en el MISMO orden, con l
 Sin texto fuera del JSON. Ejemplo de formato:
 [{"i":0,"importante":true,"dirigido_a_mi":true,"urgencia":"alta","motivo":"te pide confirmar la cena de hoy"}]"""
 
-_FEWSHOT_USER = """Dueño: Ricart.
+_FEWSHOT_USER = """Dueño: Alex.
 Mensajes:
 [0] (DM de Mamá) "¿Vienes a comer el domingo? dime algo que compro"
 [1] (grupo 'Ofertas Chollos', 47 personas) "🔥🔥 -70% en zapatillas, corre https://bit.ly/xy"
-[2] (grupo 'Proyecto Zaelar') "@Ricart puedes revisar el PR antes de las 5?"
+[2] (grupo 'Proyecto Zaelar') "@Alex puedes revisar el PR antes de las 5?"
 [3] (DM de Juan) "jajaja brutal el video"
 [4] (grupo 'Familia', sin mención) "buenos días a todos ☀️" """
 
@@ -105,7 +105,7 @@ async def classify(messages: list[dict], operator_name: str | None = None) -> li
         verdicts = _parse(content)
         # ENERGY (2026-08-13). The default is LOCAL (Ollama) and `energy_meter` returns None for a local endpoint, so
         # the normal case still costs zero and makes no network call. Still reported because `MSG_TRIAGE_MODEL` may
-        # point at a REMOTE endpoint — and there is no Ollama in the cloud: without this, moving that variable turns
+        # point at a REMOTE endpoint — and a container deployment may have no local Ollama: without this, moving that variable turns
         # triage into invisible spend, and triage runs for EVERY inbound message batch, not by operator request.
         from nucleo import energy_meter as _energy
         _energy.meter_openai_response(data, base_url=url, model=config.triage_model())

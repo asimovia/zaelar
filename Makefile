@@ -23,8 +23,8 @@ help:
 	@echo "  make install-livekit- install the native LiveKit server binary (so 'make run' needs NO Docker)"
 	@echo "  make install-stt    - install FREE LOCAL speech-to-text (Whisper) — private, no per-use cost"
 	@echo "  make install-tts    - install FREE LOCAL text-to-speech (Kokoro) — private (default stays Aura-2)"
-	@echo "  make install-whatsapp - one-time: install the vendored WhatsApp bridge deps (INI-014; WA_ENABLED=1 in .env)"
-	@echo "  make install-telegram - one-time: install the Telegram userbot deps (telethon+segno) (INI-015; TG_ENABLED=1 in .env)"
+	@echo "  make install-whatsapp - one-time: install the vendored WhatsApp bridge deps (WA_ENABLED=1 in .env)"
+	@echo "  make install-telegram - one-time: install the Telegram userbot deps (telethon+segno) (TG_ENABLED=1 in .env)"
 	@echo "  make reset-restart  - borra la MEMORIA HUMANA + observabilidad (conserva credenciales/auth/cookies) y RE-ARRANCA de cero"
 	@echo "  make reset          - solo borra la memoria humana (no arranca); 'make reset-dry' = ver qué haría sin tocar nada"
 	@echo "  make doctor         - analiza el sistema (hardware/Ollama/claude/keys) → informe para el wizard de config (V2-040)"
@@ -55,7 +55,7 @@ restart:
 status:
 	@$(PY) scripts/zaelar.py status || true
 
-# Voice app on LiveKit (INI-012): servidor LiveKit (binario NATIVO, sin Docker) + web con worker EMBEBIDO.
+# Voice app on LiveKit: servidor LiveKit (binario NATIVO, sin Docker) + web con worker EMBEBIDO.
 # Docker es solo fallback si no está el binario → `make install-livekit`.
 # Cerebro = «Colmena» PROPIO (BRAIN=nucleo, EPIC-v2-colmena): FlashBrain (nucleo/) + memoria central + SlowBrain,
 # SIN Hermes. Modelo rápido POR INVOCACIÓN (config/v2, gestionado por la UI).
@@ -187,14 +187,14 @@ install-stt:
 install-tts:
 	bash scripts/install-tts-mac.sh   # Windows: ./scripts/install-tts-win.ps1 (PowerShell)
 
-# WhatsApp triage connector (INI-014): one-time install of the VENDORED Baileys bridge's Node deps. After this,
+# WhatsApp triage connector: one-time install of the VENDORED Baileys bridge's Node deps. After this,
 # set WA_ENABLED=1 in .env and `make run` starts everything (the server spawns the bridge as a child process —
 # no separate command). `make run` also self-heals this install if node_modules is missing.
 install-whatsapp:
 	cd connectors/whatsapp/bridge && npm install
 	@echo "✅ WhatsApp bridge listo. Pon WA_ENABLED=1 en .env y arranca con 'make run' → di 'muéstrame WhatsApp'."
 
-# Telegram triage connector (INI-015): one-time install of the userbot deps (Telethon + segno for the QR). Telegram
+# Telegram triage connector: one-time install of the userbot deps (Telethon + segno for the QR). Telegram
 # is a PURE-PYTHON in-process connector (no Node bridge). After this, get TG_API_ID/TG_API_HASH from
 # my.telegram.org, set them + TG_ENABLED=1 in .env, and `make run` starts everything (the server spawns the userbot
 # task — no separate command). The service also self-heals this install if the deps are missing at boot.

@@ -19,8 +19,8 @@
 // **CAPACITY fixes the value and color, not the balance.** If it depended on the balance, the color would change as
 // you spend and the battery would stop reading as a battery: it would be a tier indicator dropping in rank.
 //
-// Capacity below the ladder's lowest tier × 10 cannot come from a top-up (there is no top-up that small): it is an
-// initial grant, drawn in its own 10-slot band with its color. The battery therefore does NOT need the account plan;
+// Capacity below the ladder's lowest tier × 10 is treated as a small starting allowance and drawn in its own
+// 10-slot band with its color. The battery therefore does NOT need the account plan;
 // it only needs the balance and the starting capacity.
 //
 // The ladder ceiling (50 slots × the highest tier) is deliberate: above it the battery is capped instead of growing,
@@ -34,10 +34,10 @@ import { t } from "../core/i18n.js?v=1";
 import { accountLink } from "../core/account-link.js?v=1";
 
 const SLOTS = 50;                 // huecos de la pila LLENA
-const DEMO_SLOTS = 10;            // los de un grant de demo (banda propia: no es una compra)
-const ENERGY_PER_USD = 100;       // 1 Energy = €0,01 (nucleo/energy_meter.EUR_PER_ENERGY_UNIT)
+const DEMO_SLOTS = 10;            // slots of the small-allowance band
+const ENERGY_PER_USD = 100;       // Energy units per ladder unit (see nucleo/energy_meter)
 
-// The ladder. `usd` = the value of one tick; `cls` = its color in styles.css. Ascending in perceived value:
+// The ladder. `usd` = the value of one tick, in ladder units; `cls` = its color in styles.css. Ascending in perceived value:
 // green (healthy) → orange → the three metals. Green→yellow→orange as an ASCENT would read as worsening, the
 // opposite of what a higher tier means.
 const LADDER = [
@@ -57,8 +57,8 @@ export function scale(balance, capacity) {
   const bal = Math.max(0, Number.isFinite(Number(balance)) ? Number(balance) : 0);
   const capUsd = cap / ENERGY_PER_USD;
   if (capUsd < LADDER[0].usd * DEMO_SLOTS) {
-    // DEMO BAND: the entire battery is 10 grant-sized ticks, not dollar-sized — a $2.50 grant must
-    // appear FULL at the start (10 of 10), not as a half quota (2 of 10), which would be misleading.
+    // SMALL-ALLOWANCE BAND: the entire battery is 10 ticks sized to the capacity — a small starting allowance
+    // must appear FULL at the start (10 of 10), not as a fraction of the lowest tier, which would be misleading.
     const per = cap / DEMO_SLOTS;
     return { slots: DEMO_SLOTS, per, cls: DEMO.cls, demo: true,
              lit: Math.min(DEMO_SLOTS, Math.floor(bal / per)) };
@@ -69,7 +69,7 @@ export function scale(balance, capacity) {
            lit: Math.min(SLOTS, Math.floor(bal / per)) };
 }
 
-// V2-785 — the battery is the door to buying more: in a cloud account it is a LINK to the account page's top-up
+// V2-785 — when an account url is configured the battery is a LINK to the account page's energy
 // section (new tab, keyboard-reachable because it is a real <a href>), with a translated label. Without an account
 // url it stays a plain <div>, exactly as before.
 function shell(cls, title, ticks) {

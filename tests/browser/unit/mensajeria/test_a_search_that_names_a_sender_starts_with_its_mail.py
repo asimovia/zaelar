@@ -1,9 +1,9 @@
 #
 # test_a_search_that_names_a_sender_starts_with_its_mail.py — demo pass 37 (2026-09-29), E1-E3.
 #
-# «check my email, did inworld send me something?» → `search_archive {"query": "inworld"}`. Newest first, the top
+# «check my email, did acme send me something?» → `search_archive {"query": "acme"}`. Newest first, the top
 # rows were our own forwards of the receipt to Quinn from earlier runs; «open it» then opened our mail to Quinn
-# and the forward went out with the wrong message. The receipt FROM Inworld was in the archive, below them. A
+# and the forward went out with the wrong message. The receipt FROM Acme was in the archive, below them. A
 # query that names a sender starts with that sender's own messages.
 #
 import pytest
@@ -17,12 +17,12 @@ from widgets.mensajeria import views
 def _isolated_store(tmp_path, monkeypatch):
     monkeypatch.setattr(wstore, "DATA_DIR", str(tmp_path))
     archive.reset()
-    archive.record("email", "invoice@inworld.ai", [{"id": "orig", "ts": 1000, "from": "Inworld AI",
-                   "body": "[Asunto: Your receipt from Inworld AI #2281-4878] $25.00"}], direction="in",
-                   chat_name="Inworld AI")
+    archive.record("email", "invoice@acme-cloud.example", [{"id": "orig", "ts": 1000, "from": "Acme Cloud",
+                   "body": "[Asunto: Your receipt from Acme Cloud #1000-0001] $9.99"}], direction="in",
+                   chat_name="Acme Cloud")
     for i in range(10):
         archive.record("email", "ago@x.invalid", [{"id": f"fw{i}", "ts": 2000 + i,
-                       "body": "Hi Quinn, forwarding the Inworld invoice — please book it."}], direction="out")
+                       "body": "Hi Quinn, forwarding the Acme invoice — please book it."}], direction="out")
     archive.record("email", "news@x.invalid", [{"id": "n1", "ts": 1500, "from": "Newsletter",
                    "body": "Weekly digest"}], direction="in")
     yield
@@ -30,7 +30,7 @@ def _isolated_store(tmp_path, monkeypatch):
 
 
 def test_the_named_senders_mail_comes_first():
-    rows = views.archive_rows({"query": "inworld"})
+    rows = views.archive_rows({"query": "acme"})
     assert rows[0]["msg_id"] == "orig", [(r["direction"], r["body"][:30]) for r in rows[:3]]
     assert any(r["msg_id"].startswith("fw") for r in rows), "the other matches are still there, after it"
 

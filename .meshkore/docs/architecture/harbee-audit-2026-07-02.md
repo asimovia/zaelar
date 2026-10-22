@@ -13,7 +13,7 @@ method: .meshkore/docs/ops/harbee-audit-workflow.md
 > Ejecutada con el workflow [[harbee-audit-workflow]] (reconocimiento → fan-out por 4 dominios → síntesis).
 > Verificado contra el código en `7cffe23` (v0.7.0); los cambios sin commitear posteriores (v0.7.1 + mejoras del
 > panel de estado, cache-control) son **aditivos y no alteran ningún hallazgo**. Las tareas de remediación viven
-> en [[INI-006]]. **La auditoría no arregló nada** — solo reporta. Los fixes se cierran con [[harbee-change-protocol]].
+> en su iniciativa de remediación. **La auditoría no arregló nada** — solo reporta. Los fixes se cierran con [[harbee-change-protocol]].
 
 ## Resumen ejecutivo
 
@@ -105,7 +105,7 @@ Severidad: **2 críticas/altas de seguridad de cluster · 2 XSS · 6 bugs de arq
 
 Tests: **24 passed** (`tests/cluster/unit/test_security.py`), coincide con la doc. Cobertura ciega en V1-V6.
 
-> **Actualización 2026-07-03 (INI-007 aplicada):** V1-V10 remediados (S-01…S-08, S-10) con tests adversariales (rojo pre-fix / verde post-fix); ahora **51 passed**. S-09 (tirith `fail_open:false`) queda pendiente del operador (requiere `brew install sheeki03/tap/tirith` primero). Ver INI-007 + diarios en `.meshkore/modules/{connectors,widgets}/logs/2026-07/`.
+> **Actualización 2026-07-03 (remediación aplicada):** V1-V10 remediados (S-01…S-08, S-10) con tests adversariales (rojo pre-fix / verde post-fix); ahora **51 passed**. S-09 (tirith `fail_open:false`) queda pendiente del operador (requiere `brew install sheeki03/tap/tirith` primero). Ver diarios en `.meshkore/modules/{connectors,widgets}/logs/2026-07/`.
 
 | Claim | Veredicto | Nota |
 |---|---|---|
@@ -152,7 +152,7 @@ Tests: **24 passed** (`tests/cluster/unit/test_security.py`), coincide con la do
 | D.1 | Módulos declarados vs realidad | DRIFT — `importers/` fantasma (declarado, no existe); `conexiones/`+`cluster-informe/` sin commitear |
 | D.2 | Coherencia de versión | DRIFT — modelo real `deepseek/deepseek-v4-flash` vs gpt-4.1 en ~20 sitios; `state.json` obsoleto |
 | D.3 | Página servida `/architecture` | BROKEN — muy desfasada (ver lista) |
-| D.4 | Roadmap/initiatives | OK salvo INI-001 (paths muertos) + state.json |
+| D.4 | Roadmap/initiatives | OK salvo una iniciativa con paths muertos + state.json |
 | D.5 | Ops/deploy/conventions/protocol | DRIFT — 6 ítems concretos |
 | D.6 | CLAUDE.md vs realidad | OK salvo modelo + importers |
 | D.7 | Higiene estándar | OK salvo asimetría importers |
@@ -166,8 +166,8 @@ Tests: **24 passed** (`tests/cluster/unit/test_security.py`), coincide con la do
   connectors/meshkore, sección seguridad, brains pluggability + self-update, ChatWall, importers/harness, caja
   cluster en el diagrama; STT "MLX (Mac)/faster-whisper (Win)" (:159).
 - **D2 (P2) — `importers/` fantasma:** crear el dir o quitar la declaración de `cluster.yaml:31-33` + `modules.md:18` + CLAUDE.md.
-- **D3 (P2) — commitear `widgets/conexiones/` + `widgets/cluster-informe/`** (anclar a INI-005) o borrar si abandonados.
-- **D4 (P2) — `state.json` obsoleto:** regenerar vía daemon (NO editar a mano) — faltan INI-003/004/005; ids `brain`/`hermes` obsoletos.
+- **D3 (P2) — commitear `widgets/conexiones/` + `widgets/cluster-informe/`** (anclar a su iniciativa) o borrar si abandonados.
+- **D4 (P2) — `state.json` obsoleto:** regenerar vía daemon (NO editar a mano) — faltan tres iniciativas; ids `brain`/`hermes` obsoletos.
 - **D5 (P2) — barrido de nombre de modelo gpt-4.1 → `deepseek/deepseek-v4-flash`** (como actual; gpt-4.1 como ejemplo
   validado): `harbee-ops.md`, `harbee-product.md`, `harbee-architecture.md`, `harbee-deploy.md`, `.env.example:38`, `CLAUDE.md:80`.
 - **D6 (P2) — `harbee-change-protocol.md:59`** "no hay remote" es falso (origin existe desde `42b5f49`).
@@ -177,7 +177,7 @@ Tests: **24 passed** (`tests/cluster/unit/test_security.py`), coincide con la do
 - **D10 (P2) — claims desfasadas:** "one warm hermes acp per connection" → process-wide; "cron via gateway launchd" →
   ticker in-process; orden del pipeline omite `EchoSuppressor`+`ClientTextInjector`; UI no consulta `/api/brain`.
 - **D11 (P3) — `harbee-audit.md`** marcar histórico (2026-06-27, paths pre-restructura); `conventions.md` trailer
-  claim vs `Co-Authored-By`; `INI-001` paths muertos; `make test-hermes` inexistente (implementar o relabelar).
+  claim vs `Co-Authored-By`; paths muertos en una iniciativa; `make test-hermes` inexistente (implementar o relabelar).
 
 ---
 

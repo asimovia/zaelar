@@ -161,7 +161,7 @@ export function routeEvent(desktop, d) {
       // V2-047 F9 («two browsers, one blank») and only INSTRUMENTED, never closed.
       //
       // It is cut off here, at the ONLY place where both hosts (desktop and mobile) receive this, rather than in
-      // the route: the audit must keep emitting with its label so observability and the Master continue counting
+      // the route: the audit must keep emitting with its label so observability continues counting
       // it the same way. The missing rule concerns the report, not the event: **a report of what already happened
       // is not an order**, and the sender is precisely the one who has nothing to do with it.
       const _eco = d.src === "user";

@@ -48,9 +48,9 @@ REPORT_DEMAND = ("INFORME DE ESTADO OBLIGATORIO: llevas un rato sin decir dónde
 
 
 def _observe(label: str, text: str = "", **extra) -> None:
-    """V2-776 D5 — a pulse decision about a worker, on the OBSERVER timeline (family `task` → the Master's
-    «Brain Workers» column and the local ◷ viewer). The bus signal above is for in-process listeners; the
-    operator and the Master read this one. Observability is always two surfaces over one datum."""
+    """V2-776 D5 — a pulse decision about a worker, on the OBSERVER timeline (family `task` → the
+    «Brain Workers» column of the ◷ observability viewer). The bus signal above is for in-process listeners; the
+    observability viewer reads this one."""
     try:
         from voice.observer import emit
         emit("task", label, role="system", text=text[:200], extra=extra)
@@ -126,7 +126,7 @@ class OrchestratorLoop:
         # WORKER_BUDGET_WEB_SECS still takes precedence; phase 1 (nudge "deliver now") + partial card delivery are retained.
         self._kind_budget_default = {"web": 1200.0, "research": 1200.0}
         # CLOSING CONVERSATIONAL flows that kept waiting for the operator, who never returned (2026-08-16,
-        # live diagnosis: the operator saw "6 active" in the master for a conversation abandoned a while ago).
+        # live diagnosis: the operator saw "6 active" in the observability viewer for a conversation abandoned a while ago).
         # "The ball is in the people's court" applies only while SOMEONE IS working on it — a live Brain Worker
         # (`dispatch.has_live_trace`) is NEVER touched here, no matter how much time passes; this is only for the
         # turn that already answered and was left waiting for the operator to resume the topic.
@@ -214,7 +214,7 @@ class OrchestratorLoop:
         """Closes the observability session when nothing real has happened in it for a while
         (`observability/identity.py::close_if_idle` owns the decision and the clock; this only offers the
         pulse). Until 2026-08-31 the idle ceiling could only fire when activity came BACK, so a session the
-        operator simply walked away from stayed open forever and read "EN CURSO" in the master with nothing
+        operator simply walked away from stayed open forever and read "EN CURSO" in the observability viewer with nothing
         happening in it. Pure RAM arithmetic, and it never OPENS a session or extends the clock — a pulse must
         be able to end an idle stretch without ever being mistaken for work."""
         try:
@@ -362,7 +362,7 @@ class OrchestratorLoop:
                     dispatch.session_alive(tid)
                 except Exception:
                     pass
-                try:    # V2-776 D1 — the same beat makes the worker's state durable (pulse, FlashBrain, Master)
+                try:    # V2-776 D1 — the same beat makes the worker's state durable (pulse, FlashBrain, observability)
                     from nucleo import tasks as _tasks
                     _tasks.status_written(s, now=now)
                 except Exception:  # noqa: BLE001
@@ -415,7 +415,7 @@ class OrchestratorLoop:
         (2026-08-16, operator request after a diagnosed real incident: two turns asked the same "delete all my
         agenda data" confirmation on the same widget — split by the segmenter — and both sat stuck with no way
         to answer either one, and no signal that anything had gone wrong). `widgets/confirm.py` already closes
-        the orphaned/expired confirmation's flow synchronously (so the master stops showing it "EN CURSO"
+        the orphaned/expired confirmation's flow synchronously (so the observability viewer stops showing it "EN CURSO"
         forever); this is the other half — telling the operator, over the SAME proactive rails (voice+chat) a
         stuck/timed-out worker already uses just above, so the task doesn't just quietly stay undone."""
         try:
@@ -447,7 +447,7 @@ class OrchestratorLoop:
 
     async def _supervise_stale_flows(self, now: float) -> None:
         """Closes a CONVERSATIONAL flow the operator started and then walked away from (2026-08-16, operator
-        request after a diagnosed real incident — the master kept showing several "en curso" flows from a
+        request after a diagnosed real incident — the observability viewer kept showing several "en curso" flows from a
         session the operator had abandoned minutes earlier). `_maybe_close_flow` (the per-turn path in
         `voice/engine/llm/providers/nucleo.py`) only ever gets ONE chance to close a flow, right when its own
         turn finishes; if that turn correctly deferred (an accumulator chain, a pending confirmation, a live

@@ -37,8 +37,7 @@ Si la respuesta es sí a cualquiera de estas, aplica el workflow completo:
 - El modelo de almacenamiento (`widgets/store.py`) — formato en disco, ubicación, migración.
 - El mecanismo de refresco (`frontend/app/widgets/desktop.js`, `frontend/app/services/sse.js`).
 - El gate de validación del generador (`widgets/generator.py`).
-- La casa de la documentación pública del sistema (diagrama `web/src/pages/technology/widgets.astro` +
-  `web/src/lib/diagrams/widgets.ts` — retirado el panel interno `frontend/pages/architecture.html` el 2026-07-24,
+- La casa de la documentación pública del sistema (el diagrama público `/technology/widgets`, fuera de este repo — retirado el panel interno `frontend/pages/architecture.html` el 2026-07-24,
   ver la nota de `CLAUDE.md` sobre el traslado; paso MANUAL, ningún workflow lo sincroniza solo — actualízalo solo
   si el cambio es significativo de cara a fuera, no para cada detalle interno — `widgets/AGENTS.md`,
   `zaelar-modules.md §Widgets`).
@@ -51,7 +50,7 @@ falta nada más de este documento.
 
 | Tocaste | Actualiza también |
 |---|---|
-| Tag nuevo o cambio de sintaxis (`tag_protocol.py`) | `widgets/brief.py` (`TAG_PROTOCOL`) · `nucleo/flash/prompt.py` si el FlashBrain debe conocerlo o quedar bloqueado de él · `zaelar-modules.md §Widgets` · diagrama público (`web/src/pages/technology/widgets.astro` + `.ts`, solo si es un cambio significativo de cara a fuera) |
+| Tag nuevo o cambio de sintaxis (`tag_protocol.py`) | `widgets/brief.py` (`TAG_PROTOCOL`) · `nucleo/flash/prompt.py` si el FlashBrain debe conocerlo o quedar bloqueado de él · `zaelar-modules.md §Widgets` · diagrama público (`/technology` (sitio público, fuera de este repo) + `.ts`, solo si es un cambio significativo de cara a fuera) |
 | Campo nuevo en `manifest.json` (p.ej. `actions`, `safe`, `kind`) | `widgets/AGENTS.md` (contrato para quien edita a mano) · `widgets/generator.py` → `_CONTRACT`/`_CREATE_PROMPT`/`_MODIFY_PROMPT` (contrato para el agente de código) · `widgets/brief.py` si el cerebro debe leerlo |
 | Modelo de storage (`widgets/store.py`) | migración **perezosa y automática**, nunca script manual ni pérdida de datos (mismo patrón que la migración `_v` de esquema) · `widgets/AGENTS.md` · `_CONTRACT` del generador · doc + diagrama |
 | Gobernanza cerebro↔widget (quién muta qué) | `voice/engine/llm/providers/nucleo.py` + `nucleo/flash/router.py` (despacho + declaración de tools `escalate_to_slowbrain`/`set_style_directive`) · `nucleo/dispatch.py` (SlowBrain) · `nucleo/flash/prompt.py` · `widgets/brief.py` · doc + diagrama |
@@ -82,7 +81,7 @@ concreto:
   es grande, puede merecer su propia sub-sección (como "Widget-apps ('backed' widgets)").
 - **`CLAUDE.md`** — un bullet CONCISO en "Decisiones clave" que apunte al detalle de arriba. Nunca dupliques el
   detalle aquí, solo la decisión + una frase de por qué + dónde está el resto.
-- **`web/src/pages/technology/widgets.astro` + `web/src/lib/diagrams/widgets.ts` — EL DIAGRAMA Y LA TEORÍA, LOS
+- **el diagrama público `/technology/widgets` (fuera de este repo) — EL DIAGRAMA Y LA TEORÍA, LOS
   DOS.** (Antes `frontend/pages/architecture.html` → pestaña Widgets, retirado el 2026-07-24 — el mismo riesgo de
   "actualicé la teoría y olvidé el SVG" aplica igual aquí, ahora en TypeScript en vez de HTML embebido). Es fácil
   actualizar solo la prosa del `.astro` y olvidar los nodos del `build()` en el `.ts` (pasó de verdad el
@@ -107,8 +106,7 @@ concreto:
   (SlowBrain) directamente para confirmar que ambas velocidades se comportan como se espera con el prompt/brief
   nuevos, y que `escalate_to_slowbrain` escala lo que debe. Limpia cualquier dato de prueba que quede en los stores
   reales al terminar (no dejes "Reunión de prueba" en la agenda del operador).
-- Si tocaste `web/src/lib/diagrams/widgets.ts` o `web/src/pages/technology/widgets.astro`: `cd web && npm run
-  build` (falla en error de tipos/sintaxis) y, si tocaste la geometría del SVG, valida a ojo en el navegador
+- Si tocaste el diagrama público de widgets: build del sitio (falla en error de tipos/sintaxis) y, si tocaste la geometría del SVG, valida a ojo en el navegador
   (ninguna caja se sale de su grupo, el texto cabe en la altura de la caja según su número de líneas, ninguna
   etiqueta de flecha se sale del canvas) antes de deployar.
 
@@ -117,10 +115,9 @@ concreto:
 - ¿Tocaste algún `.py`? → **sí** hace falta reiniciar el servidor (no hay hot-reload; `make run` = `BRAIN=nucleo`,
   el cerebro por defecto — compruébalo con `GET /api/brain` ANTES de matar el proceso, para relanzar exactamente
   igual).
-- ¿Tocaste solo un widget (`.js`/`.css` de frontend, o el diagrama en `web/`)? → **no** hace falta reiniciar el
-  motor — el frontend se sirve con `Cache-Control: no-store` (recargar la página basta) y `web/` es un sitio
-  aparte que se deploya independientemente (`cd web && npm run build && npx wrangler pages deploy dist
-  --project-name=zaelar`).
+- ¿Tocaste solo un widget (`.js`/`.css` de frontend, o el diagrama del sitio público)? → **no** hace falta reiniciar el
+  motor — el frontend se sirve con `Cache-Control: no-store` (recargar la página basta); el sitio público vive
+  fuera de este repo.
 - Para reiniciar: identifica el árbol de procesos (`livekit-server` + `python -m server`, ambos hijos del
   `bash scripts/run-livekit.sh`), `SIGTERM` primero; si no responde en unos segundos (ha pasado), `SIGKILL`. Tras
   un `SIGKILL`, revisa procesos huérfanos que puedan haber quedado colgados de un hijo (p.ej. el bridge de

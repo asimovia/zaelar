@@ -1,5 +1,5 @@
 #
-# server_api.py — HTTP control API for messaging (INI-015). PROGRAMMATIC entry to connect/disconnect (control.py).
+# server_api.py — HTTP control API for messaging. PROGRAMMATIC entry to connect/disconnect (control.py).
 # NOTE: the WIDGET does not call this API (it cannot fetch — isolation contract); the widget enqueues the order via
 # ctx.action -> data.py -> store, and the supervisor drains it and calls the same control.py. This API remains for
 # programmatic/external use and for `GET /api/messaging/state` (redacted config + live state).

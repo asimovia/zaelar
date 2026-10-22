@@ -1,4 +1,4 @@
-"""Voice HTTP API (LiveKit engine, INI-012).
+"""Voice HTTP API (LiveKit engine).
 
 The WebRTC transport, ICE/TURN negotiation and the audio pipeline are owned by the LiveKit engine now
 (voice/engine/ + the embedded worker + server/livekit_api.py). This module keeps only the engine-agnostic
@@ -50,10 +50,10 @@ async def test_voice(payload: dict):
     """▶ test button in the ⚙ voice picker: WOULD synthesize a short sample for {provider, voice}.
     Not available yet on the LiveKit engine (the old voice/tts/sample.py path is gone). Degrades gracefully
     so the ⚙ picker still works (the voice change applies on reconnect); this is a nice-to-have audition only."""
-    # TODO INI-012: audition a voice over the LiveKit TTS plugins (Cartesia/Kokoro) without spinning up a full
+    # TODO: audition a voice over the LiveKit TTS plugins (Cartesia/Kokoro) without spinning up a full
     # AgentSession — e.g. call the plugin's synthesize() into an in-memory buffer and return it as audio.
     return JSONResponse(
-        {"error": "audición de voz no disponible aún en el motor LiveKit (INI-012)"},
+        {"error": "audición de voz no disponible aún en el motor LiveKit"},
         status_code=501,
     )
 

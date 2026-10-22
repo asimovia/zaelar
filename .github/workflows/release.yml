@@ -1,20 +1,18 @@
-# Engine release trigger → hands off to the private cloud deploy pipeline.
+# Engine release trigger → runs a test gate on a version tag and, if green, notifies a downstream repo.
 #
-# This is the ONLY piece of the deploy story that lives in the PUBLIC engine repo, on purpose kept
-# minimal and secret-free: it runs a pre-deploy test gate and, if green, tells the private
-# zaelar-cloud repo to deploy this tag. It contains NO Fly token, NO app/region names, NO deploy
-# logic — all of that stays private (cloud/.github/workflows/deploy-engine-to-fly.yml).
+# Kept minimal and secret-free on purpose: it runs a pre-release test gate and, if green, sends a
+# repository_dispatch for this tag to the repo named in CLOUD_REPO. It contains no deployment
+# credentials and no deployment logic — whatever consumes the dispatch lives elsewhere.
 #
-# 0-CLICK, ON YOUR DEMAND: pushing a version tag IS the demand. From there it's automatic —
+# Pushing a version tag is the trigger —
 #   git tag v2.78 && git push origin v2.78
-# → this gate runs → on green, the cloud pipeline deploys + runs the e2e smoke + auto-rolls-back on
-# failure. Nothing else to click.
+# → this gate runs → on green, the dispatch is sent.
 #
-# PREREQUISITE (operator): a repo secret CLOUD_DISPATCH_TOKEN — a fine-grained PAT scoped to ONLY the
-# private cloud repo with "contents: read" + "metadata: read" + permission to create a
+# PREREQUISITE: a repo secret CLOUD_DISPATCH_TOKEN — a fine-grained PAT scoped to ONLY the
+# downstream repo with "contents: read" + "metadata: read" + permission to create a
 # repository_dispatch. Set CLOUD_REPO below to that repo's full name once it exists.
 #
-# ALTERNATIVE (zero public footprint): instead of this file, a scheduled poller inside the cloud repo
+# ALTERNATIVE (zero public footprint): instead of this file, a scheduled poller inside the downstream repo
 # that watches this repo's tags. Cleaner boundary, ~poll-interval latency. Not used here because the
 # tag→dispatch path is immediate and needs no "what's already deployed" bookkeeping. Ask to switch.
 

@@ -84,9 +84,9 @@ _DURABLE_PREF_MARKER_RE = re.compile(
 
 
 # (P0c) FORMAT VALIDITY of a TYPED slot (V2-050): an identity value with canonical format (email, phone)
-# whose VALUE is malformed is NOT a durable fact — it is STT garble ("mi email es rjj.com" → 'rjj.com' without @
+# whose VALUE is malformed is NOT a durable fact — it is STT garble ("mi email es abc.com" → 'abc.com' without @
 # is not an email). Without this, the broken value was stored in the slot and competed with the good one (ITV bug:
-# rjj.com overwriting operator@example.com). Deterministic FORMAT validation, keyed ONLY by the slot already assigned by
+# abc.com overwriting operator@example.com). Deterministic FORMAT validation, keyed ONLY by the slot already assigned by
 # the processor → does NOT touch preferences ("prefiere el correo por la mañana" has no operator.email slot, so it
 # is not filtered).
 _EMAIL_OK_RE = re.compile(r"[^@\s]+@[^@\s]+\.[a-z]{2,}", re.I)
@@ -176,7 +176,7 @@ def _slot_supersede_guard(atom: dict, *, is_correction: bool) -> dict:
     """(P0d, 2026-08-19) A contradicting value must not SUPERSEDE an established identity pill.
 
     `_plausibility_demote` (P0b) protects the `state`, and it does that job well — verified: after "El cumpleaños
-    de Marta es el 3 de mayo", `operator_name` stayed Ricart and `birthday` stayed 12 February. But the
+    de Marta es el 3 de mayo", `operator_name` stayed Alex and `birthday` stayed 3 March. But the
     destructive operation is not the state write, it is the **slot supersede**, and P0b cannot see it: it returns
     early on `dest != "state"`, and it then requires `_SLOT_TO_STATE_FIELD[slot]` to exist. A third party's fact
     arrives as `dest="long"` with `slot="operator.birthday"` — failing BOTH conditions — and the writer's "the

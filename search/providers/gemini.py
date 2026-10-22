@@ -1,7 +1,7 @@
 """search/providers/gemini.py — Gemini with Google Search grounding: a cited answer from Google's index (V2-782 F2).
 
-The `websearch` docstring named «Gemini grounding» as an AI-answer provider in July and nobody wired it, while
-the engine held a Gemini key the whole time. Measured 2026-10-10: «¿A qué hora abre el Museo del Prado hoy?» →
+The `websearch` docstring named «Gemini grounding» as an AI-answer provider in July and nobody wired it, even
+though the engine already reads a Gemini key. Measured 2026-10-10: «¿A qué hora abre el Museo del Prado hoy?» →
 a one-sentence answer with the day and the hour plus three cited domains (museodelprado.es first), in 2.6 s,
 over an API that was never blocked by a captcha. It sits ABOVE the free scrapers in the fact chain because for
 a fact the operator speaks the answer is what matters and this one arrives already synthesised and grounded.
@@ -12,9 +12,9 @@ they are never written to the sheet as candidates — this is an `answer` provid
 it (`web.search(mode="results")`).
 
 Model: `GEMINI_SEARCH_MODEL` (default `gemini-2.5-flash`; grounding is a tool, any current model takes it).
-Rate: `energy_meter._SEARCH_USD_PER_REQUEST["gemini"]` per grounded call (Google bills grounded prompts, not
+Rate: `energy_meter._SEARCH_USD_PER_REQUEST["gemini"]` per grounded call (metered per grounded prompt, not
 tokens; the tokens are a few hundred and go unmetered on purpose — a second meter would double-count a request
-already paid as one search).
+already metered as one search).
 """
 from __future__ import annotations
 

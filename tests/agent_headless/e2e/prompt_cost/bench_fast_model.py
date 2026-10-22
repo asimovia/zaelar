@@ -73,8 +73,8 @@ CANDIDATES: list[tuple[str, ModelSpec]] = [
     ("xai·grok-4.5", ModelSpec("grok-4.5", XAI, provider="xai")),
     ("xai·grok-4.3", ModelSpec("grok-4.3", XAI, provider="xai")),
     ("aiml·grok-4-1-fast-non-reas", ModelSpec("x-ai/grok-4-1-fast-non-reasoning", AIML, provider="aimlapi")),
-    # Gemini DIRECT: the fastest in the benchmark, but the operator's key is on the free tier (20 req/day) → 429.
-    # It remains declared so it can be measured again when billing is enabled.
+    # Gemini DIRECT: the fastest in the benchmark, but a free-tier key (20 req/day) answers 429.
+    # It remains declared so it can be measured again with a paid key.
     ("gemini·2.5-flash (free)", ModelSpec("gemini-2.5-flash", GEMINI, provider="gemini")),
 ]
 

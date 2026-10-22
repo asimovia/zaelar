@@ -12,14 +12,14 @@ THE LADDER (cheap → expensive, each rung optional and fail-open to the next):
      Google JSON, geo-targeted per country — quality choice, operator 2026-09-02), else the free
      chain we already own (`websearch.search`: warm Chromium → DDG).
   2. **Fetch** — each candidate page over plain HTTP, through Bright Data Web Unlocker when a token
-     is present (bot walls become 200s; billed per SUCCESS) — with per-domain rate limiting either way.
+     is present (bot walls become 200s; metered per SUCCESS) — with per-domain rate limiting either way.
   3. **Extract** — `search/extract.py`: JSON-LD / OpenGraph, normalize, price-filter, dedup.
   4. **Give up honestly** — `needs_browser: True` + reason. This module NEVER spawns a worker and
      never drives a browser: spend authority and operator messaging stay in FlashBrain/dispatch.
 
-MONEY. Every successful Bright Data request is metered (`energy_meter.report_search_usage`), same
+METERING. Every successful Bright Data request is metered (`energy_meter.report_search_usage`), same
 contract as websearch's paid backends: rates live in `_SEARCH_USD_PER_REQUEST` with source+date, and
-a provider without a rate bills at the catch-all, loudly. No token → the whole module runs free.
+a provider without a rate is metered at the catch-all, loudly. No token → the whole module runs free.
 
 BLOCKING, like `websearch`: callers use `asyncio.to_thread`. Results carry a `sources` audit — one
 row per rung tried, feeding the Results widget's SOURCES tab («I found nothing» must be auditable).
@@ -172,8 +172,8 @@ def _remember(q: ListingQuery, result: dict) -> None:
 
 # ── rung 1: discovery ────────────────────────────────────────────────────────────────────────────
 def _bd_request(payload: dict, *, provider: str) -> str:
-    """One Bright Data `/request` call, metered ON SUCCESS only (their billing counts successes;
-    so does ours). Raises on anything but 200 — callers fail open to the next rung."""
+    """One Bright Data `/request` call, metered ON SUCCESS only (only successes
+    count). Raises on anything but 200 — callers fail open to the next rung."""
     import httpx
     headers = {"Authorization": f"Bearer {_bd_token()}", "Content-Type": "application/json"}
     with httpx.Client(timeout=_TIMEOUT) as client:

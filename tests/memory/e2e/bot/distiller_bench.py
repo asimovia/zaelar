@@ -71,8 +71,8 @@ os.environ["MEM_PROCESSOR_PIN_TITULAR"] = "1"
 from nucleo import mem_processor as mp  # noqa: E402
 
 # ── candidatos ──────────────────────────────────────────────────────────────────────────────────────────────
-# The AIMLAPI broker is the endpoint the cloud ALREADY uses (fly.accounts.toml + provisioner), so a winner living
-# there requires no new endpoint or secret; DIRECT endpoints are measured to determine the cost of the broker hop.
+# The AIMLAPI broker is an endpoint the engine already supports, so a winner living there requires no new endpoint
+# or secret; DIRECT endpoints are measured to determine the cost of the broker hop.
 #
 # ⚠️ **THE LOCAL PATH RETURNS (2026-08-19, operator decision)**, and this is an explicit REVERSAL, not an oversight:
 # on 2026-08-09 it was removed («ONE model that works equally in self-host and cloud», because it required two different

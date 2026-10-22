@@ -34,7 +34,7 @@ def _keyword_collisions(wid: str, keywords: list) -> dict:
     return out
 
 
-# ── static house-rules scan (SEC-3 / INI-007 S-10) ──────────────────────────────────────────────────────────
+# ── static house-rules scan (SEC-3) ──────────────────────────────────────────────────────────
 # The runtime smoke-test proves view_data() RUNS; it does NOT prove the code obeys the isolation/no-network/no-XSS
 # house rules (AGENTS.md). A headless agent can still emit innerHTML-with-interpolation (XSS), fetch/WebSocket
 # (network from the client), dynamic import()/eval (dynamic code), or a non-stdlib import / hardcoded secret in

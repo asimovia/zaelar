@@ -7,8 +7,8 @@ page, so the same call serves a FACT (the answer) and LEADS (the cited pages). I
 also counts for `results`.
 
 Model: `OPENAI_SEARCH_MODEL` (default `gpt-4.1-mini`); tool `web_search_preview`. Rate:
-`energy_meter._SEARCH_USD_PER_REQUEST["openai"]` per call (the tool call is billed per 1k calls plus a few
-hundred tokens; the rate is the per-call ceiling, tokens are not metered twice).
+`energy_meter._SEARCH_USD_PER_REQUEST["openai"]` per call (the rate is a per-call upper bound that covers the
+tool call and its few hundred tokens; tokens are not metered twice).
 """
 from __future__ import annotations
 

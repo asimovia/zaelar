@@ -88,7 +88,7 @@ alcance, olvido selectivo, y **organización de la estructura** (el grafo de con
 
 Mapa habilidad↔dim y los HUECOS que abrió esta revisión: ver `EXIGENCIA.md §Mapa de habilidades`. Lo que faltaba
 y ya se ataca: **U** (multi-hop), **V** (verbosidad/extracción), **W** (instrucciones permanentes), **K graduado**
-(harness `scale` con falsos-amigos). Lo que es límite del membot y va al tester en vivo (INI-013): **abstención
+(harness `scale` con falsos-amigos). Lo que es límite del membot y va al tester en vivo: **abstención
 query-time** (es comportamiento del LLM, no de la lectura sin-LLM) y **conflicto multi-fuente** (MemConflict) que
 aún debemos añadir como sharpening de M×G.
 
@@ -286,7 +286,7 @@ pensados, no improvisados.
 
 Cada vez que `len(CASES)` cruza un múltiplo de 50, ANTES de seguir se pasa el **`EXIGENCIA.md`** (checklist de
 calidad: ¿duplicamos? ¿variedad? ¿qué falta? ¿cambio de approach? ¿buscar munición web? ¿mejorar la memoria?) y se
-escribe su veredicto fechado en INI-013. De 400 a 1000 son 12 controles. No es opcional.
+escribe su veredicto fechado en el registro del tester. De 400 a 1000 son 12 controles. No es opcional.
 
 ## Reglas para no duplicar (LÉELAS antes de añadir una tanda)
 
@@ -298,4 +298,4 @@ escribe su veredicto fechado en INI-013. De 400 a 1000 son 12 controles. No es o
 5. **Autocontenida** salvo que la dimensión sea de RETENCIÓN PROFUNDA (C) o CRONOLOGÍA (J), que exigen replay largo
    (`--range 0 N`), no aislado.
 6. **Incisivo, no amable**: busca romper la memoria (edge cases, ruido, contradicción, escala), no confirmarla.
-7. Al añadir una tanda, **actualiza el mapa de cobertura** de este doc y su nota en INI-013 / el batch header.
+7. Al añadir una tanda, **actualiza el mapa de cobertura** de este doc y su nota en el registro del tester / el batch header.

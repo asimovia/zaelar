@@ -1,4 +1,4 @@
-"""Voice catalog for the LiveKit engine (INI-012).
+"""Voice catalog for the LiveKit engine.
 
 Ported from the old Pipecat ``voice/agent.py`` (``VOICES_BY_PROVIDER`` /
 ``voices_for`` / ``tts_provider``) when Pipecat was retired. Consumed by:

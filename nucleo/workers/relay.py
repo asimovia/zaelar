@@ -150,7 +150,7 @@ def restart_stalled(rec) -> None:
         rec.ok = False
         rec.handoff = "sin señales → reiniciada una vez con lo aprendido"
         logger.warning(f"worker[{rec.task_id}]: stalled → restarted once (task {uid})")
-        try:    # V2-776 D5 — on the observer timeline too (the Master's «Brain Workers» column)
+        try:    # V2-776 D5 — on the observer timeline too (the «Brain Workers» column)
             from voice.observer import emit
             emit("task", "🔁 worker reiniciado tras colgarse", role="system", text=(rec.goal or "")[:200],
                  extra={"id": str(rec.task_id), "uid": uid, "attempt": int(row.get("attempts") or 0) + 1})
