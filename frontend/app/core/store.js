@@ -295,11 +295,29 @@ const _startedAt = (s, fallback) => {
   if (s && typeof s.age_s === "number" && s.age_s >= 0) return Date.now() - s.age_s * 1000;
   return fallback;
 };
+// A live row answers to TWO ids: its durable `id` (the board, V2-728) and the per-process `session` id every SSE
+// `task` event carries. Keyed on one only, the chip an event made and the chip a reconcile made were two chips for
+// one task — the bar said «4» over a list of one, and a task's `end` cleared only one of its twins (demo
+// 2026-10-22). The session id comes first: it is what the events that follow will name.
+const _idsOf = (s) => [s && s.session, s && s.id].filter(v => v !== undefined && v !== null && v !== "").map(String);
 export const reconcileTasks = (sessions) => {
-  const live = new Map((sessions || []).filter(_isLive).map(s => [String(s.id), s]));
+  const rows = (sessions || []).filter(_isLive);
+  const live = new Map();
+  for (const s of rows) for (const k of _idsOf(s)) if (!live.has(k)) live.set(k, s);
   setTasks(xs => {
-    // preserve/update the live ones; mark done (→ clear) those no longer in the truth
-    const kept = xs.filter(t => t.done || live.has(String(t.id))).map(t => {
+    // preserve/update the live ones; mark done (→ clear) those no longer in the truth — and ONE chip per row: twins
+    // left by an earlier reconcile (one per id) collapse onto the first, the one the events name.
+    const ids = new Set(xs.map(t => String(t.id)));
+    const seen = new Set();
+    const kept = xs.filter(t => {
+      if (t.done) return true;
+      const s = live.get(String(t.id));
+      if (!s) return false;
+      const first = _idsOf(s).find(k => ids.has(k));      // the chip the events name, when it exists
+      if (seen.has(s) || String(t.id) !== first) return false;
+      seen.add(s);
+      return true;
+    }).map(t => {
       const s = live.get(String(t.id));
       // The server is the one that knows the settled NAME (`title`, V2-530) and the real start (`age_s`) —
       // a chip created from an SSE event mid-flight only knows when IT first heard of the task.
@@ -313,8 +331,11 @@ export const reconcileTasks = (sessions) => {
     const known = new Set(kept.map(t => String(t.id)));
     const added = [];
     let i = kept.filter(t => !t.done).length;
-    for (const [id, s] of live) {
-      if (known.has(id)) continue;
+    for (const s of rows) {
+      const ids = _idsOf(s);
+      if (!ids.length || ids.some(k => known.has(k))) continue;
+      const id = ids[0];
+      known.add(id);
       added.push({ id, title: s.title || s.goal || "", note: s.phase || s.note || "", done: false,
                    startedAt: _startedAt(s, Date.now()), internal: s.visible === false,
                    side: (i++ % 2 === 0) ? "l" : "r", delay: 0, hue: 0,
