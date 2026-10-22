@@ -178,8 +178,8 @@ async def run_the_light_lanes(*, FastClient, _apply_widget_data, _brief, _buf_ad
         except Exception:
             _cw = None
         # sin nombre resuelto: solo el caso corto genérico ("ciérralo") con un único widget abierto.
-        if not _cw and not _vc and _pst._closeg.is_short_order(text) and len(_openw) == 1:
-            _cw = _openw[0]
+        if not _cw and not _vc:
+            _cw = _pst._closeg.the_only_card(text, _openw, brief=_brief)
         if _cw := _pst._closeg.unless_a_row(_cw, text, _idc):   # V2-781: «quita el tercero» is a row
             _t = _close_target(_cw, text)
             if _t["ask"]:                           # V2-259 F3

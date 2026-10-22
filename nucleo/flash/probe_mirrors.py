@@ -219,8 +219,8 @@ async def mirror_the_voice_backstops(*, _akp, _cw, _hw, _router, _rt, _sp, _tbri
                         _cw = _idc.get("match")
                 except Exception:
                     _cw = None
-                if not _cw and _closeg.is_short_order(text) and len(_ow) == 1:
-                    _cw = _ow[0]
+                if not _cw:
+                    _cw = _closeg.the_only_card(text, _ow, brief=_tbrief)
                 if _cw := _closeg.unless_a_row(_cw, text, _idc):   # V2-781: «quita el tercero» is a row
                     tags.append({"action": "close", "extra": {"id": _cw, "backstop": True}})
                     action = "canvas:close:" + _cw

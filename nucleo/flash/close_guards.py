@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import re as _re
 
+from loguru import logger as _logger
+
 from .text_norm import _norm_txt
 
 _CLOSE_VERB_RE = _re.compile(r"\b(cierr\w*|cerr\w*|ocult\w*|escond\w*|apag\w*|quit\w*|close|hide|turn\s+off)\b")
@@ -127,6 +129,29 @@ def is_short_order(text: str) -> bool:
     different way. This answers only about LENGTH.
     """
     return len((text or "").split()) <= _SHORT_ORDER_WORDS
+
+
+def the_only_card(text: str, open_widgets, *, brief=None):
+    """The one open card a short UNNAMED close («ciérralo») takes, or None.
+
+    Nothing in his words names a card here, so the grammar is the only reader — and it cannot tell an order
+    from a report of one. Measured 2026-10-22: the STT split «Yes, please. I did close the results a long time
+    ago» and the turn began on «please. I I did close.» — a narration. The brief had landed and was UNSURE
+    (canvas 0.52, request_type complaint), the model called nothing, and the backstop closed his only card.
+    So once the brief has landed, an unnamed close needs its SURE close verdict; a brief that never landed
+    keeps today's behaviour, so the engine is never deaf to «ciérralo»."""
+    ow = list(open_widgets or [])
+    if not is_short_order(text) or len(ow) != 1:
+        return None
+    if brief is not None:
+        try:
+            from nucleo.flash import turn_brief as _tb
+            verb, info = _tb.read(brief, _tb.CANVAS_KEY, "", min_confidence=0.9)
+            if info is not None and str(verb or "") != "close":
+                return None
+        except Exception as e:  # noqa: BLE001 — a classifier may never break a turn
+            _logger.debug(f"close_guards: canvas verdict unreadable: {e}")
+    return ow[0]
 
 
 def dataop_close_licensed(text: str, widget_id: str, *, brief=None, emit=None) -> bool:

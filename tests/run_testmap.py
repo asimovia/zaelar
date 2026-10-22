@@ -2066,6 +2066,10 @@ DOMAINS: list[dict] = [
                                  "lo aloja, no con un Brain Worker; si falla, va al worker como antes",
             "ch": UNIT,
             "paths": ["tests/agent_headless/unit/flash/test_a_text_the_model_can_write_is_written_in_one_request.py"]},
+        {"id": "2.768", "title": "Un cierre corto SIN tarjeta nombrada solo se lleva la única abierta si el veredicto que "
+                                 "llegó dice «close» seguro — contar un cierre ya hecho no cierra nada",
+            "ch": UNIT,
+            "paths": ["tests/agent_headless/unit/flash/test_a_report_of_a_close_closes_nothing.py"]},
     ]},
     {"id": "4", "name": "WIDGETS", "nodes": [
         {"id": "4.1", "title": "Ciclo de vida / acciones / refs / generador / background", "ch": UNIT, "paths": [
