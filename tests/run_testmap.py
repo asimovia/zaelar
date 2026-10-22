@@ -2826,6 +2826,10 @@ DOMAINS: list[dict] = [
                                  "actividad debajo, y estado + progreso + tiempo en su línea",
             "ch": UNIT,
             "paths": ["tests/browser/unit/widgets/test_a_process_title_holds_still.py"]},
+        {"id": "4.247", "title": "Una tarea es UNA ficha: los eventos (id de sesión) y el tablero (id durable) se "
+                                 "reconcilian por los dos ids — la barra no cuenta gemelos",
+            "ch": UNIT,
+            "paths": ["tests/browser/unit/widgets/test_one_task_is_one_chip.py"]},
         # V2-608, orden del operador 2026-09-07: «cuando se hace un reset, quiero que el orbe vuelva a su
         # posición inicial». El Reset ya limpiaba lienzo/log/chat, pero un orbe arrastrado se quedaba donde
         # el arrastre lo dejó — y `hb_pos_orb` lo devolvía ahí en CADA carga futura. `resetDraggable()`

@@ -473,7 +473,10 @@ def board(scope: str = "live", *, show_all: bool = False) -> list[dict]:
             r = {**r, "has_results": bool(reopenable(str(r.get("id") or "")))}
         det = live.get(str(r.get("id") or ""))
         if det:
-            r = {**r, "phase": det.get("phase", ""), "note": det.get("note", ""),
+            # `session` — the per-process id every SSE `task` event carries. The row's `id` is the durable one, so a
+            # client that keys chips on the events and reconciles on the rows needs both, or each task is TWO chips
+            # (demo 2026-10-22: «four processes» on the bar over one in the list).
+            r = {**r, "session": str(det.get("id") or ""), "phase": det.get("phase", ""), "note": det.get("note", ""),
                  "pct": det.get("pct", -1), "plan": det.get("plan", []), "total": det.get("total", 0),
                  "done_steps": det.get("done", 0), "steps": det.get("steps", []),
                  "waiting_on": det.get("waiting_on", ""), "ask": det.get("ask", ""),
