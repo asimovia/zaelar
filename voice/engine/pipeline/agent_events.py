@@ -143,15 +143,38 @@ def _on_data(packet, *, _emit, _json, _wake, session) -> None:
             # `sse.js` had been waiting for a `text-injected` transcript nobody emitted. Same shape as the
             # STT's final transcript, so a typed order and a spoken one leave the same trace on screen.
             _emit("transcript", "text-injected chat", text=txt, role="user")
-            # generate_reply() is SYNC (returns a SpeechHandle and schedules the reply itself); calling it
-            # directly (wrapping in create_task raised "a coroutine was expected"). (fix 2026-07-07)
-            try:
-                session.generate_reply(user_input=txt)
-            except Exception as ge:
-                _emit("alert", "chat/paste generate_reply falló", text=str(ge)[:160])
-                _ag.logger.warning("chat-text generate_reply failed: %s", ge)
+            # Turns run in the order he STARTED them: a sentence he began saying before this text is still a
+            # turn-to-be, and its end-of-turn would interrupt this one (`typed_order`, 2026-10-22).
+            from voice.engine.pipeline import typed_order as _order
+            _since = _ag.time.monotonic()
+            if _order.must_wait(_since):
+                _emit("brain", "⏸ texto en espera: la voz empezó antes", text=txt, role="system",
+                      extra={"cat": "flash"})
+                _ag.asyncio.ensure_future(_typed_after_voice(txt, _since, _emit=_emit, session=session))
+            else:
+                _inject_typed(txt, _emit=_emit, session=session)
     except Exception as e:
         _ag.logger.warning("chat-text data handler: %s", e)
+
+
+def _inject_typed(txt: str, *, _emit, session) -> None:
+    # generate_reply() is SYNC (returns a SpeechHandle and schedules the reply itself); calling it
+    # directly (wrapping in create_task raised "a coroutine was expected"). (fix 2026-07-07)
+    try:
+        session.generate_reply(user_input=txt)
+    except Exception as ge:
+        _emit("alert", "chat/paste generate_reply falló", text=str(ge)[:160])
+        _ag.logger.warning("chat-text generate_reply failed: %s", ge)
+
+
+async def _typed_after_voice(txt: str, since: float, *, _emit, session) -> None:
+    """Hold a typed order until the utterance that began before it is a turn, then queue it behind that turn."""
+    from voice.engine.pipeline import typed_order as _order
+    while _order.must_wait(since, _ag.time.monotonic()):
+        await _ag.asyncio.sleep(0.1)
+    _emit("brain", "▶️ texto en cola tras la voz", text=txt, role="system",
+          extra={"cat": "flash", "held_ms": round((_ag.time.monotonic() - since) * 1000)})
+    _inject_typed(txt, _emit=_emit, session=session)
 
 
 def on_state_change(state: "_ag.State", *, _ONSET_MAX_S, _STATE_TRACE_SAFE, _air, _busy, _emit, _onset) -> None:
@@ -241,6 +264,8 @@ def _on_user_state(ev, *, _busy, _emit, _onset, sm) -> None:
             _attn_onset.note_speech_onset()
         except Exception:
             pass
+        from voice.engine.pipeline import typed_order as _order_on
+        _order_on.note_onset()
     elif new == "listening":
         _emit("vad", "… fin de voz", role="user", extra={"edge": "off"})
         _onset["voice_ended"] = _ag.time.monotonic()   # the near end of the wait the operator is about to live
@@ -250,6 +275,8 @@ def _on_user_state(ev, *, _busy, _emit, _onset, sm) -> None:
             _attn_end.note_speech_end()
         except Exception:
             pass
+        from voice.engine.pipeline import typed_order as _order_end
+        _order_end.note_end()
 
 
 def _int_kwargs() -> dict:
@@ -328,6 +355,9 @@ def _on_close(ev, *, _account_limits, _close_account_session, _emit, _proactive,
 def _on_item(ev, *, _emit) -> None:
     item = ev.item
     role, text = getattr(item, "role", None), getattr(item, "text_content", None)
+    if role == "user":
+        from voice.engine.pipeline import typed_order as _order
+        _order.note_committed()   # whatever he was saying is a turn now: a typed order held behind it may go
     # V2-773 — already on the wall because the voice could not say it (reply_wall.surface): not twice.
     if role == "assistant" and text and not _ag._reply_wall.already_surfaced(text):
         # SAFE to label with active() (source audit 2026-08-16, unlike the OPERATOR transcript below in

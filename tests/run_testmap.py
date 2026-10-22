@@ -4775,6 +4775,10 @@ DOMAINS: list[dict] = [
                                 "— y un trozo que el STT devuelve más largo REEMPLAZA, no se duplica",
             "ch": UNIT,
             "paths": ["tests/voice/unit/test_a_fragment_is_not_glued_to_whatever_comes_next.py"]},
+        {"id": "2.761", "title": "Los turnos van en el orden en que EMPEZARON: un texto pegado mientras una frase de voz "
+                                 "empezada antes aún no es turno espera a que lo sea y entra en cola tras ella (con tope)",
+            "ch": UNIT,
+            "paths": ["tests/voice/unit/test_a_typed_order_waits_for_the_voice_begun_before_it.py"]},
         {"id": "4.210", "title": "Una línea que la voz NUNCA dijo no se escribe — y el registro hablado, que "
                                  "llega hasta 20,8 s tarde, encuentra SU fila por trace en vez de duplicarla",
             "ch": UNIT,
