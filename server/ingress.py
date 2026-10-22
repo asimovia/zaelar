@@ -19,7 +19,8 @@ Everything else is refused. In particular:
 `ZAELAR_INGRESS_PUBLIC` (below) is the whole list of paths that answer without a session, and it is
 an ALLOWLIST on purpose: a route added tomorrow is closed until someone puts it here deliberately.
 The list holds the app shells (desktop and mobile), the mobile PWA's manifest and service worker, the
-static assets and a liveness probe — bytes that are identical in every process and belong to nobody.
+static assets and a liveness probe — bytes that belong to nobody. They are identical only within one
+build, so when such a request carries a session it is still handed to the process that owns it.
 
 The decision itself (`decide`) is a pure function of five inputs, so the interesting part is testable
 without a server, a network or a clock.
@@ -49,9 +50,20 @@ PUBLIC_EXACT = frozenset({
     "/m", "/manifest.webmanifest", "/sw.js",
 })
 
-# Prefixes. Static assets are byte-identical everywhere, so routing them is pointless and refusing
-# them would only break the shell that is already public.
+# Prefixes. Static assets belong to nobody, so refusing them would only break the shell that is already public.
 PUBLIC_PREFIXES = ("/static/",)
+
+# Public bytes are identical only between processes running the SAME build. Processes on one hostname are
+# upgraded one at a time, so a shell fetched from one build and its modules from another is a page that
+# does not load (measured live 2026-10-22: a module new in the release answered 404 from a process still on
+# the previous build, and the shell hung on its boot veil). So a public request that CARRIES a session goes
+# to the process that owns it, like any other request; without a session it is served wherever it lands.
+# `/healthz` is the platform's probe of THIS process and is never handed over.
+_NEVER_REPLAYED = frozenset({"/healthz"})
+
+# A shared edge cache keys these paths by URL alone, so it would hand one build's bytes (or one build's 404)
+# to a visitor whose process runs another. The edge must not keep them; browsers still revalidate by ETag.
+EDGE_NO_STORE = {"CDN-Cache-Control": "no-store"}
 
 # Decisions `decide` can return.
 SERVE = "serve"              # this process owns the request
@@ -86,6 +98,12 @@ def decide(
     from nucleo import account_routing as ar
 
     if is_public_path(path):
+        # Same build as the shell that asked for it: hand it over when the session lives elsewhere. Any
+        # other outcome serves it here — these bytes hold no one's data, so an unanswered lookup is no
+        # reason to refuse them.
+        if (path not in _NEVER_REPLAYED and has_cookie and mine and outcome == ar.RESOLVED
+                and target and target != mine):
+            return REPLAY, "session_owned_elsewhere"
         return SERVE, "public_path"
 
     # A process that cannot ask "whose session is this?" cannot answer a tenant request either. This
@@ -148,12 +166,15 @@ def install(app) -> None:
             return await call_next(request)
 
         path = request.url.path
-        if is_public_path(path):
-            return await call_next(request)
-
+        public = is_public_path(path)
         resolver_url = (os.getenv("CONTROL_PLANE_URL") or "").strip()
         mine = ar.my_machine_id()
         token = request.cookies.get(ar.SESSION_COOKIE)
+
+        if public and (path in _NEVER_REPLAYED or not token):
+            response = await call_next(request)
+            response.headers.update(EDGE_NO_STORE)
+            return response
 
         outcome: str | None = None
         target: str | None = None
@@ -172,11 +193,14 @@ def install(app) -> None:
         )
 
         if action == SERVE:
-            return await call_next(request)
+            response = await call_next(request)
+            if public:
+                response.headers.update(EDGE_NO_STORE)
+            return response
         if action == REPLAY:
             from starlette.responses import Response
 
-            return Response(status_code=307, headers={"fly-replay": f"instance={target}"})
+            return Response(status_code=307, headers={"fly-replay": f"instance={target}", **EDGE_NO_STORE})
 
         status = 401 if action == DENY else 503
         # Logged at debug for DENY: an internet-facing hostname collects these continuously, and a

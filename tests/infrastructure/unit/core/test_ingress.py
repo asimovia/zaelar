@@ -109,3 +109,56 @@ def test_reasons_are_stable_slugs_and_never_echo_the_request():
         _, reason = _decide(path=secret_ish, **kw)
         assert reason.replace("_", "").isalpha(), reason
         assert "abc123" not in reason and "/" not in reason
+
+
+# --- public bytes come from the build that served the shell (2026-10-22) -------------------------
+
+
+@pytest.mark.parametrize("path", ["/", "/m", "/static/app/components/EnergyNotice.js"])
+def test_a_public_request_with_a_session_owned_elsewhere_is_handed_over(path):
+    """Processes on one hostname run different builds while a release rolls out: a module new in the
+    release answered 404 from a process still on the previous one, and the shell never loaded."""
+    assert _decide(path=path, target=OTHER) == (ingress.REPLAY, "session_owned_elsewhere")
+
+
+@pytest.mark.parametrize("outcome,target", [
+    (ar.UNAVAILABLE, None), (ar.NO_SESSION, None), (ar.RESOLVED, MINE), (ar.RESOLVED, None),
+])
+def test_a_public_request_is_never_refused_whatever_the_lookup_says(outcome, target):
+    assert _decide(path="/static/app/main.js", outcome=outcome, target=target) == (
+        ingress.SERVE, "public_path",
+    )
+
+
+def test_the_liveness_probe_answers_for_this_process_even_with_a_foreign_session():
+    assert _decide(path="/healthz", target=OTHER) == (ingress.SERVE, "public_path")
+
+
+def test_the_middleware_hands_over_a_foreign_sessions_asset_and_keeps_it_off_the_edge(monkeypatch):
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    async def _resolve(token, control_plane_url):
+        return (ar.RESOLVED, OTHER) if token == "theirs" else (ar.RESOLVED, MINE)
+
+    monkeypatch.setattr(ar, "is_account_routing_machine", lambda: True)
+    monkeypatch.setattr(ar, "my_machine_id", lambda: MINE)
+    monkeypatch.setattr(ar, "resolve_session_machine", _resolve)
+    monkeypatch.setenv("CONTROL_PLANE_URL", "http://resolver.invalid")
+
+    app = FastAPI()
+
+    @app.get("/static/app/x.js")
+    def _asset():
+        return "bytes"
+
+    ingress.install(app)
+    client = TestClient(app)
+
+    handed = client.get("/static/app/x.js", cookies={ar.SESSION_COOKIE: "theirs"}, follow_redirects=False)
+    assert handed.status_code == 307 and handed.headers["fly-replay"] == f"instance={OTHER}"
+
+    for cookies in ({ar.SESSION_COOKIE: "mine"}, {}):
+        served = client.get("/static/app/x.js", cookies=cookies)
+        assert served.status_code == 200
+        assert served.headers["cdn-cache-control"] == "no-store"
