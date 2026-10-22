@@ -97,8 +97,7 @@ def _boot_port(monkeypatch, tmp_path, locale: str) -> int:
     monkeypatch.setattr(config, "machine_stamp", lambda: {"n": 0})
     monkeypatch.setattr(SE, "sandbox_engine", _fake_engine)
     monkeypatch.setattr(PORTS, "busy_refusal", lambda port, **kw: "")
-    monkeypatch.setattr(R, "brain_preflight", lambda **kw: "")
-    monkeypatch.setattr(R, "bridge_allowlist_refusal", lambda **kw: "")
+    monkeypatch.setattr(R, "cannot_measure", lambda lang: "")
     monkeypatch.setattr(R, "_run_batch", lambda *a, **k: 0)
     R._sandbox_batch([_scn(locale)], argparse.Namespace(no_file=True, stop_after_failures=0))
     return got["port"]

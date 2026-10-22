@@ -471,8 +471,8 @@ def test_five_errands_never_run_more_than_two_at_a_time(monkeypatch):
     asyncio.run(_go())
     monkeypatch.setattr(dispatch, "_sem", None)
     assert inside == {"now": 0, "max": 2, "done": 5}
-    src = _vts.read(ROOT / "nucleo/dispatch.py")
-    assert "async with _pool():" in src            # the gate every worker session passes through
+    src = _vts.read(ROOT / "nucleo/dispatch_session.py")
+    assert "async with _a_slot(" in src and "_pool().acquire()" in src   # the gate every worker session passes through
 
 
 def test_a_timed_alert_that_was_only_remembered_is_not_done(monkeypatch):

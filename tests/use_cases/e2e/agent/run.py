@@ -1522,6 +1522,14 @@ def brain_preflight(*, timeout: float = 210.0, lang: str = "es") -> str:
 
 
 
+def cannot_measure(lang: str) -> str:
+    """Every «NO SE PUEDE MEDIR» check, in order, or "" — one door, so a new check never leaves a caller (or a test
+    that stubs the checks) behind. The brain must speak (`brain_preflight`); if it speaks but the worker can touch
+    nothing, nothing is measured either (`bridge_allowlist_refusal`); and if nothing can SEARCH, a search case
+    would be graded on a dead layer (V2-782 T2.3). All three mean exit 4 — distinct from 3, the dirty tree."""
+    return brain_preflight(lang=lang) or bridge_allowlist_refusal() or search_preflight()
+
+
 def search_preflight(*, timeout: float = 90.0) -> str:
     """CAN THE ENGINE SEARCH AT ALL? Returns "" when at least one provider answers, or the refusal to print.
 
@@ -1877,20 +1885,9 @@ def _sandbox_batch(chosen: list, args: argparse.Namespace, *, verify_tasks: dict
         config.SANDBOX_DB = str(eng.workspace / "memory" / "_data" / "sandbox.db")
         # ONE THROWAWAY TURN before the batch: see `brain_preflight`. Exit 4 keeps it apart from the
         # dirty-tree refusal (3) so a caller can tell «I must not measure» from «I cannot measure».
-        _pf = brain_preflight(lang=lang)
+        _pf = cannot_measure(lang)
         if _pf:
             print(_pf)
-            raise SystemExit(4)
-        # …y si el cerebro habla pero el worker no puede tocar nada, tampoco se mide. Mismo código de salida:
-        # las dos dicen NO SE PUEDE MEDIR, que es distinto de NO SE DEBE (3, árbol sucio).
-        _br = bridge_allowlist_refusal()
-        if _br:
-            print(_br)
-            raise SystemExit(4)
-        # …and if nothing can SEARCH, a search case would be graded on a dead layer (V2-782 T2.3). Same exit code.
-        _sp = search_preflight()
-        if _sp:
-            print(_sp)
             raise SystemExit(4)
         try:
             return _run_batch(chosen, sandboxed=True, args_no_file=args.no_file,

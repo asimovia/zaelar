@@ -1799,10 +1799,8 @@ DOMAINS: list[dict] = [
             "ch": VOICE, "live": True,
             "cmd": "./.venv/bin/python -m tests.voice.e2e.agent.cloud_smoke"},
         {"id": "3.7", "title": "Relleno de espera: suena MIENTRAS se espera (fuera del stream del modelo)",
-            "ch": VOICE, "paths": ["tests/voice/unit/test_lead_in.py",
-                                    # The filler pools are fields of the `voice` pack (2026-10-21): a generated
-                                    # language gets its own with the rest of what the agent says.
-                                    "tests/infrastructure/unit/core/test_every_language_is_one_folder_of_packs.py"]},
+            # The filler pools are fields of the `voice` pack (2026-10-21); their test maps once, on the i18n node.
+            "ch": VOICE, "paths": ["tests/voice/unit/test_lead_in.py"]},
         # V2-220 (2026-08-20): la OTRA entrega fuera de banda, y llevaba rota para medio producto. La nota al
         # cerebro de `proactive.notify` vivía DENTRO del `if speak and _speaker is not None`, así que sin sesión
         # de voz viva —el canal de TEXTO, que es lo que conduce el arnés y lo que usa un operador en chat— un

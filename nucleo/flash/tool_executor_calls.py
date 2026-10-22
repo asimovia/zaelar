@@ -202,10 +202,10 @@ def _on_tool_call(name: str, args: dict, *, _apply_widget_data, _brief, _closed_
         # V2-778 F1 — the body lives in `nucleo/flash/tool_executor_calls.py`; this branch passes what it reads.
         return _t_send_to_worker(args=args, emit=emit, worker_acted=worker_acted, fired=_tool_fired)
     elif name == "stop_worker":
+        _prior = _prior_line.of(brain)      # outside the call: a source guard unlifts a call with no nested parens
         # V2-778 F1 — the body lives in `nucleo/flash/tool_executor_calls.py`; this branch passes what it reads.
-        return _t_stop_worker(
-            args=args, _norm_nfkd=_norm_nfkd, _say=_say, _says_stop=_says_stop, clarify=clarify, emit=emit, text=text,
-            worker_acted=worker_acted, brief=_brief, prior=_prior_line.of(brain))
+        return _t_stop_worker(args=args, _norm_nfkd=_norm_nfkd, _say=_say, _says_stop=_says_stop, clarify=clarify,
+                              emit=emit, text=text, worker_acted=worker_acted, brief=_brief, prior=_prior)
     elif name == "answer_worker":
         # V2-778 F1 — the body lives in `nucleo/flash/tool_executor_calls.py`; this branch passes what it reads.
         return _t_answer_worker(args=args, emit=emit, worker_acted=worker_acted, fired=_tool_fired)

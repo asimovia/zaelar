@@ -87,7 +87,7 @@ def test_el_dispatcher_LO_CONSULTA():
                     if not ln.strip().startswith("#"))
     assert "exhausted_reason()" in src, "el dispatcher dejó de preguntar si la cadena está dormida"
     i_ask = src.find("exhausted_reason()")
-    i_pool = src.find("async with _pool()")
+    i_pool = src.find("async with _a_slot(")          # the pool is taken inside `_a_slot` (queued ≠ stuck)
     assert 0 <= i_ask < i_pool, "se pregunta DESPUÉS de coger el pool: la espera de 30 s se paga igual"
 
 

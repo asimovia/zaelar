@@ -76,14 +76,14 @@ def test_the_handler_queues_the_paste_behind_the_voice_turn():
         agent_events._on_user_state(SimpleNamespace(new_state="speaking"), _busy={"bot": False, "user": False},
                                     _emit=emit, _onset={"voice_ended": 0.0},
                                     sm=SimpleNamespace(on_user_state=lambda *_: None))
-        agent_events._on_data(_packet("find me the helix nebula wallpaper"), _emit=emit, _json=json, _wake={},
+        agent_events._on_data(_packet("find me the orion nebula wallpaper"), _emit=emit, _json=json, _wake={},
                               session=s)
         await asyncio.sleep(0.25)
         assert s.replies == [], "the paste ran before the sentence he had begun saying"
         agent_events._on_item(SimpleNamespace(item=SimpleNamespace(role="user", text_content="put that away")),
                               _emit=emit)
         await asyncio.sleep(0.25)
-        assert s.replies == ["find me the helix nebula wallpaper"]
+        assert s.replies == ["find me the orion nebula wallpaper"]
     asyncio.run(run())
 
 
