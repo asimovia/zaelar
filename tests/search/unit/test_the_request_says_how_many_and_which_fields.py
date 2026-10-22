@@ -56,3 +56,21 @@ def test_the_fields_he_asked_for(phrase, fields):
 def test_for_request_bundles_everything():
     out = criteria.for_request("dame tres hoteles baratos")
     assert out["n_final"] == 3 and out["fields"] == ["price"] and out["hard"] == ["price"]
+
+
+@pytest.mark.parametrize("phrase,n", [
+    ("can you find me like three 27 inch 4k monitors, under 400 bucks or so? show me when you've got them", 3),
+    ("búscame tres monitores 4k de 27 pulgadas", 3), ("two 4k tvs", 2), ("dame dos 4k baratas", 2),
+])
+def test_a_measure_between_the_count_and_the_thing_is_not_the_count(phrase, n):
+    """Demo 2026-10-22: «three 27 inch 4k monitors» read «27 inch» as the count — the errand became a top-ten
+    over 25 candidates and ran 21 minutes until the budget killed it, with nothing delivered."""
+    assert criteria.breadth(phrase)["n_final"] == n, (phrase, criteria.breadth(phrase))
+
+
+def test_the_brief_takes_the_count_over_a_model_that_kept_the_default():
+    from nucleo import research
+    raw = ('{"research": true, "goal": "monitors", "breadth": {"min_candidates": 40}, '
+           '"deliverable": {"widget": "results", "n_final": 10}}')
+    b = research.parse(raw, request="can you find me like three 27 inch 4k monitors, under 400 bucks or so?")
+    assert b["deliverable"]["n_final"] == 3 and b["breadth"]["min_candidates"] <= 12

@@ -40,6 +40,9 @@ _COUNTED = re.compile(
     r"\b(?:(?:dame|ponme|busca(?:me)?|quiero|necesito|encuentra(?:me)?|tráeme|traeme|pull|find(?: me)?|give me|"
     r"show me|get me|i need|i want|the|los|las|el|la|unas?|unos?)\s+)?"
     r"(\d{1,2}|" + "|".join(sorted(_NUMBER_WORDS, key=len, reverse=True)) + r")\s+"
+    # «three 27 inch 4k monitors»: the measures between the count and the thing are not the count (demo
+    # 2026-10-22 — «27 inch» became a top-ten and a 21-minute errand for three monitors).
+    r"(?:\d[\w.,\-\"'″]*\s+)*"
     r"(?:mejores|best|top|cheapest|good|buenas?|buenos?|opciones|options|"
     r"[a-záéíóúñü]{3,}(?:es|s)?)\b", re.I)
 #: A single pick: «one good one», «the best one», «el mejor», «la más barata», «uno bueno».

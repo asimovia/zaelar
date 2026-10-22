@@ -135,3 +135,38 @@ def test_zai_is_declared_blind_because_it_was_measured_blind():
     zai = next(k for k in providers.KNOWN if k["name"] == "z.ai")
     assert zai.get("vision") is False
     assert providers.vision_env(zai) == {"ZAELAR_NAV_VISION": "0"}
+
+
+def _openai_kwargs_sent(monkeypatch, spec) -> dict:
+    seen = {}
+
+    class _Completions:
+        async def create(self, **kw):
+            seen.update(kw)
+            raise _Captured(kw)
+
+    class _Chat:
+        completions = _Completions()
+
+    class _Client:
+        chat = _Chat()
+
+    monkeypatch.setattr(FastClient, "_client_for", lambda self, s: _Client())
+    with pytest.raises(_Captured):
+        asyncio.run(FastClient().complete([{"role": "user", "content": "hola"}], spec=spec, max_tokens=1600,
+                                          no_thinking=True))
+    return seen
+
+
+def test_an_endpoint_that_rejects_the_field_never_gets_it(monkeypatch):
+    """Measured 2026-10-22: the composer's relay to OpenAI answered «Unrecognized request argument supplied:
+    thinking» (400) every time — the brief was lost and a healthy tier went on cooldown."""
+    sent = _openai_kwargs_sent(monkeypatch, ModelSpec(model="gpt-4.1-mini", base_url="https://api.openai.com/v1",
+                                                      api_key="k"))
+    assert "thinking" not in (sent.get("extra_body") or {})
+
+
+def test_an_endpoint_that_obeys_it_still_gets_it(monkeypatch):
+    sent = _openai_kwargs_sent(monkeypatch, ModelSpec(model="deepseek-flash", base_url="https://api.deepseek.com",
+                                                      api_key="k"))
+    assert sent["extra_body"]["thinking"] == {"type": "disabled"}

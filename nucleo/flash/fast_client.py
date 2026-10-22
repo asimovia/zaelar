@@ -378,10 +378,10 @@ class FastClient:
         r = spec.reasoning_effort()
         if r:
             extra_body["reasoning_effort"] = r
-        if no_thinking:
+        if no_thinking and spec.takes_thinking_field():
             # The caller wants the ANSWER, not the deliberation — see `no_thinking` in the docstring. Same field
             # and same caveat as the voice path below: the broker accepts it and reasons anyway, the direct
-            # endpoint obeys it.
+            # endpoint obeys it. OpenAI 400s on it (2026-10-22: every composer relay to gpt-4.1-mini failed).
             extra_body.setdefault("thinking", {"type": "disabled"})
         if spec.is_local():
             extra_body["keep_alive"] = "30m"

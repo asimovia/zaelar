@@ -82,6 +82,11 @@ class ModelSpec:
         is NOT cosmetic: here the no-reasoning parameter is obeyed, while the broker does not. See `reasoning_effort`."""
         return "api.deepseek.com" in self.resolved_base_url().lower()
 
+    def takes_thinking_field(self) -> bool:
+        """Whether the request may carry `thinking:{type:disabled}`. OpenAI rejects the unknown field with a 400,
+        and Gemini turns reasoning off through `reasoning_effort` instead."""
+        return not (self._is_openai() or self._is_gemini())
+
     def reasoning_effort(self) -> str:
         """``reasoning_effort='none'`` apaga el thinking en GEMINI (su extensión) y también en DEEPSEEK DIRECTO.
 
