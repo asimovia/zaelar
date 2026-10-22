@@ -16,6 +16,14 @@ You speak, it answers in under a second, remembers what matters, and goes off to
 ![License: Sustainable Use](https://img.shields.io/badge/license-Sustainable%20Use%201.0-6E56CF)
 ![No Docker](https://img.shields.io/badge/docker-not%20required-2496ED)
 
+<br>
+
+<a href="https://www.youtube.com/watch?v=CPPmHjkYxfw" title="Watch the Zaelar demo on YouTube">
+  <img src="https://img.youtube.com/vi/CPPmHjkYxfw/maxresdefault.jpg" alt="Zaelar first demo — watch on YouTube" width="720">
+</a>
+
+**▶ [Watch the demo](https://www.youtube.com/watch?v=CPPmHjkYxfw)** · more on [YouTube](https://www.youtube.com/@zaelar_ai)
+
 </div>
 
 ---
