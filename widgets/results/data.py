@@ -53,7 +53,7 @@ import time as _tm
 import unicodedata as _ud
 
 from .. import store
-from i18n import langs as _langs   # V2-778 F3-30: hints are read back aloud, in the agent's language
+from i18n import langs as _langs, runtime as _i18n_rt   # V2-778 F3-30: hints are read back aloud, in the agent's language
 from .sheet_names import (  # noqa: F401 — re-export: this module IS the sheet contract
     WIDGET_ID, _INSTANCE_SEP, _MAX_SHEETS, _safe_sheet, card_face, instance_id, prune_sheets, recent_faces,  # noqa: F401
     sheet_key, sheets)
@@ -389,8 +389,7 @@ def _clean_criteria(raw) -> dict:
 def default_title() -> str:
     """The filler title of a sheet nothing named, in the instance's language («Results» / «Resultados»)."""
     try:
-        from i18n import runtime as _rt
-        return _rt.text("widgets.results.name", default="Results")
+        return _i18n_rt.text("widgets.results.name", default="Results")
     except Exception:  # noqa: BLE001
         return "Results"
 
@@ -398,8 +397,7 @@ def default_title() -> str:
 def note_text(key: str, default: str) -> str:
     """One of the sheet's own notes («No results.», «Searching in depth…») in the instance's language."""
     try:
-        from i18n import runtime as _rt
-        return _rt.text(f"widgets.results.{key}", default=default)
+        return _i18n_rt.text(f"widgets.results.{key}", default=default)
     except Exception:  # noqa: BLE001
         return default
 

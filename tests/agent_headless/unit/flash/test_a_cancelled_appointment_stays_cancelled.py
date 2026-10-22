@@ -14,9 +14,18 @@ Node 2.400 (the backstop); 2.401 (the title) and 2.402 (the claim) live in their
 """
 from __future__ import annotations
 
+import datetime as _dt
 import time
 
 import pytest
+
+
+def _oct_20() -> str:
+    """The date «el 20 de octubre» means TODAY: this year's, or next year's once it has passed (the test was
+    pinned to 2026-10-20 and went red on the 21st)."""
+    today = _dt.date.today()
+    d = _dt.date(today.year, 10, 20)
+    return (d if d >= today else d.replace(year=today.year + 1)).isoformat()
 
 T1_ES = "Apúntame una revisión del coche en el taller el 20 de octubre a las diez de la mañana."
 WINDOW_ES = [
@@ -50,7 +59,7 @@ def _trash(title, date, start="17:00", age=20.0):
 
 def test_the_measured_transcript_writes_nothing_after_the_cancellation(agenda):
     from nucleo.flash import note_backstop as nb
-    agenda({"meetingTrash": [_trash("Revisión del coche en el taller", "2026-10-20")]})
+    agenda({"meetingTrash": [_trash("Revisión del coche en el taller", _oct_20())]})
     assert nb.note_to_file(*FAREWELL, window=WINDOW_ES) is None
 
 
@@ -60,7 +69,7 @@ def test_without_the_cancellation_the_backstop_still_backs_the_promise(agenda):
     from nucleo.flash import note_backstop as nb
     agenda({})
     note = nb.note_to_file(*FAREWELL, window=WINDOW_ES)
-    assert note and note["date"] == "2026-10-20"
+    assert note and note["date"] == _oct_20()
     assert note["title"].lower() == "revision del coche en el taller" and note["startTime"] == "10:00"
 
 

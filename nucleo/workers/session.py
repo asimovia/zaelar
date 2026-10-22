@@ -22,6 +22,7 @@ from . import progress as _progress
 from .session_notes import _PLACE, SessionNotes  # noqa: F401 — V2-778 F1: the session's notes; _PLACE re-exported
 from . import stall as _stall
 from .base import WorkerBackend, WorkerSpec
+from nucleo import errand_kind as _errand_kind
 from .goal import check_and_relay as _harness
 from .relay import _say
 from .relay import relay_out_of_fuel as _relay_out_of_fuel
@@ -638,8 +639,7 @@ class WorkerSession(SessionNotes):
 
 
 def _default_label(kind: str) -> str:
-    from nucleo.errand_kind import default_label
-    return default_label(kind)
+    return _errand_kind.default_label(kind)
 
 
 # V2-276 — the two text builders (`operator_safe_summary`, `context_handoff`) have lived in
