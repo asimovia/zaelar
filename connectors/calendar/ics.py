@@ -3,7 +3,7 @@
 ## Why this exists
 
 The operator, 2026-09-17, after his assistant negotiated a meeting on Telegram and the other party asked
-«can you send me a calendar invite to: dev@example.dev»:
+«can you send me a calendar invite to: ivan@example.com»:
 
 > «Entiendo que si vas a usar el conector de Gmail para mandar ese email hay una forma de mandar una
 > invitación de Google Calendar que quizás se manda desde Google Calendar para que llegue y él la pueda

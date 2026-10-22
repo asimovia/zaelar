@@ -4,7 +4,7 @@
 
 The operator, 2026-09-17, reading the Telegram thread where his assistant had just negotiated a meeting,
 agreed a time, minted a Meet link and written it into the agenda — and where the other party's last message
-was «can you send me a calendar invite to: dev@example.dev», unanswered:
+was «can you send me a calendar invite to: ivan@example.com», unanswered:
 
 > «Lógicamente si tenemos acceso a ese email y al conector de email y a las acciones y todo, deberíamos
 > ejecutar esa petición de Ivan. […] Pero no crees un guardarraíl o un workflow solo para eso: intenta

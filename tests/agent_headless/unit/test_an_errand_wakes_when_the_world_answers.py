@@ -317,7 +317,7 @@ def test_nothing_in_a_playbook_names_a_person_or_a_company(env):
     import json
     from nucleo.errands import playbooks
     blob = json.dumps(playbooks.playbooks(), ensure_ascii=False).lower()
-    for banned in ("iván", "ivan Petrenko", "google meet", "zoom", "ricart"):
+    for banned in ("iván", "ivan petrenko", "google meet", "zoom", "ricart"):
         assert banned not in blob
 
 

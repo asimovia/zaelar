@@ -20,15 +20,15 @@ from widgets import textmatch as tm
 
 def test_fold_strips_accents_case_and_punctuation():
     assert tm.fold("Crùz, José-Mª ") == "cruz jose ma"
-    assert tm.fold("@northfund_demo!") == "cryptonite fund"
+    assert tm.fold("@Northfund_Demo!") == "northfund demo"
     assert tm.fold("") == "" and tm.fold(None) == ""
 
 
 # ── spans: decoration peeled, most specific first ───────────────────────────────────────────────────────
 
 def test_spans_peel_decoration_but_keep_the_whole_first():
-    s = tm.spans("Kryptonite (Telegram @cryptonitefund)")
-    assert s[0] == "Kryptonite (Telegram @cryptonitefund)" and "Kryptonite" in s
+    s = tm.spans("Kryptonite (Telegram @northfunddemo)")
+    assert s[0] == "Kryptonite (Telegram @northfunddemo)" and "Kryptonite" in s
 
 
 def test_spans_take_the_head_before_a_clause():

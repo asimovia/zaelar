@@ -204,8 +204,8 @@ def test_a_stored_phone_never_becomes_a_whatsapp(_page):
 
 def test_a_stored_email_IS_the_email_channel(_page):
     """The other half of the same asymmetry — and it must be the SAME address, not a second one."""
-    _open_card(_page, _cryptonite(email="hello@example.org"))
-    assert _row_for(_page, "Email").locator(".ctfv").inner_text().strip() == "hello@example.org"
+    _open_card(_page, _cryptonite(email="hola@example.org"))
+    assert _row_for(_page, "Email").locator(".ctfv").inner_text().strip() == "hola@example.org"
 
 
 # ── editing in place ────────────────────────────────────────────────────────────────────────────────────
@@ -256,7 +256,7 @@ def test_clearing_a_channel_removes_it(_page):
 
 
 def test_starring_a_channel_makes_it_preferred(_page):
-    _open_card(_page, _cryptonite(email="hello@example.org"))
+    _open_card(_page, _cryptonite(email="hola@example.org"))
     _row_for(_page, "Email").locator(".ctpref").click()
     assert ["set_channel", {"contactId": "c1", "platform": "email",
                             "preferred": True}] in _calls(_page)
@@ -299,7 +299,7 @@ def test_a_list_row_says_how_to_reach_him(_page):
 def test_the_search_matches_a_channel_handle(_page):
     """He knows people by their account as often as by their name."""
     _mount(_page, _data())
-    _page.locator(".ctbar .ctsearch input").fill("cryptonite_fund")
+    _page.locator(".ctbar .ctsearch input").fill("northfund_demo")
     assert _page.locator(".ctrow").count() == 1
 
 

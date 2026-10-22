@@ -224,7 +224,7 @@ navegación para volver atrás… Ahora este botón de conectar a Google Calenda
 
 Su encargo con Ivan había salido bien de punta a punta —negociado por Telegram, hora acordada, enlace de
 Meet creado, cita escrita y sincronizada con Google— y el último mensaje de Ivan era «can you send me a
-calendar invite to: dev@example.dev». No pasó nada: **la agenda podía crear una cita, editarla, responder a
+calendar invite to: ivan@example.com». No pasó nada: **la agenda podía crear una cita, editarla, responder a
 la invitación de otro y borrarla, y no tenía forma de invitar a nadie a la suya.**
 
 ### La trampa que hacía imposible resolverlo aunque el verbo hubiera existido

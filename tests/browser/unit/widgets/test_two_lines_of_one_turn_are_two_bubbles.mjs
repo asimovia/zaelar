@@ -22,7 +22,7 @@ globalThis.document = { documentElement: { lang: "en", setAttribute(){}, style: 
 globalThis.window = { addEventListener(){}, location: { href: "http://localhost/" } };
 
 const store = await import("../../../../frontend/app/core/store.js?v=2");
-const Marisa = "Yeah — there's no Marisa in your chat list, though. Tell me the number she shows under and I'll open it.";
+const MARISA = "Yeah — there's no Marisa in your chat list, though. Tell me the number she shows under and I'll open it.";
 const agents = () => store.chatMsgs().filter(m => m.role === "agent");
 // the ChatWall's own rule for «this bubble is the line being said»
 const crawling = () => {
@@ -36,12 +36,12 @@ store.noteVoiceStarted("T54");
 store.pushCaptionSeg("s1", "Done.", true);
 
 // line 2 of the SAME turn starts sounding
-store.pushAgentChat(Marisa, { voiced: true, trace: "T54" });
+store.pushAgentChat(MARISA, { voiced: true, trace: "T54" });
 store.noteVoiceStarted("T54");
 store.pushCaptionSeg("s2", "Yeah — there's no Marisa in your chat list, though.", false);
 
 assert.equal(crawling().length, 1, `the crawl is drawn in ${crawling().length} bubbles: ${JSON.stringify(crawling())}`);
-assert.equal(crawling()[0].text, Marisa);
+assert.equal(crawling()[0].text, MARISA);
 
 // it is cut mid-sentence: the trim lands on ITS row, and «Done.» stays «Done.»
 store.settleAgentSpoken();

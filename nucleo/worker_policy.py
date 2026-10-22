@@ -104,8 +104,8 @@ def classify_act(action: str, payload: dict) -> str:
         # READ the widget first.
         # V2-719 — decided for THIS CALL, by the same rule the voice channel uses (`action_mode_now`, V2-712),
         # not for the action in the abstract. Measured 2026-09-17 21:26 (session 923f0adc, task «Invite Ivan
-        # via Gmail»): the worker had read the chat, found «send me a calendar invite to: dev@example.dev»,
-        # composed `agenda.invite {who: dev@example.dev, meeting: Ivan, date: 2026-09-17}` — and this branch
+        # via Gmail»): the worker had read the chat, found «send me a calendar invite to: ivan@example.com»,
+        # composed `agenda.invite {who: ivan@example.com, meeting: Ivan, date: 2026-09-17}` — and this branch
         # parked it on «¿Lo autorizas?» because `action_mode` reads the manifest flag alone. The voice channel,
         # asked the same call, answers FAST: level standard, one named recipient, no class rule. Two answers
         # to one call is exactly what «una sola regla de consentimiento» forbade; the operator, who had said

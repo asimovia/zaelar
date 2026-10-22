@@ -62,7 +62,7 @@ def _invitation(**over):
     m = {"title": "Gavin/Ricart zerohash blockchain intro", "date": _d(), "startTime": "15:00",
          "endTime": "15:30", "source": "google", "googleId": "ev1", "googleCalendarId": "primary",
          "attendees": ["Gavin Hale"],
-         "guests": [{"name": "Gavin Hale", "email": "gavin.hale@example.org",
+         "guests": [{"name": "Gavin Hale", "email": "gavin.hale@example.net",
                      "rsvp": "accepted", "organizer": True}],
          "organizer": "Gavin Hale", "selfEmail": "me@x.com", "myRsvp": "needsAction",
          "meetLink": "https://meet.google.com/cgh-pouq-gje", "status": "confirmed"}

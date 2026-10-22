@@ -50,7 +50,7 @@ _IVAN = {"id": "c1", "kind": "person", "name": "Ivan Mikushin", "email": "", "em
 
 
 def _world(monkeypatch, *, meeting=None, contacts=(_IVAN,), said=("can you send me a calendar invite to: "
-                                                                  "dev@example.dev",)):
+                                                                  "ivan@example.com",)):
     """The three pieces of data the criterion reads, and nothing else."""
     import widgets.store as store
     db = ad.load_db()
@@ -73,8 +73,8 @@ def test_sending_the_invitation_to_the_address_he_gave_us_just_happens(monkeypat
     """«Esto no nos hace ningún daño»: the meeting was agreed WITH this person, and the address is the one
     they typed into the conversation themselves."""
     _world(monkeypatch)
-    assert ad.consent_scope("invite", {"who": "dev@example.dev"})["class"] == "calendar.invite_agreed"
-    assert _verdict({"who": "dev@example.dev"})["verdict"] == consent.RUN
+    assert ad.consent_scope("invite", {"who": "ivan@example.com"})["class"] == "calendar.invite_agreed"
+    assert _verdict({"who": "ivan@example.com"})["verdict"] == consent.RUN
 
 
 def test_moving_an_hour_only_he_is_holding_just_happens(monkeypatch):
@@ -142,9 +142,9 @@ def test_an_address_nobody_ever_gave_us_is_a_stranger_even_with_the_right_name(m
 def test_two_contacts_with_the_same_name_are_DOUBT_not_membership(monkeypatch):
     """Walking the directory for any name that is a substring of the title is how a meeting «with Ivan
     Mikushin» quietly adopted a different contact called just «Ivan». Doubt is not membership."""
-    other = {"id": "c2", "kind": "person", "name": "Ivan", "email": "dev@example.net", "emails": []}
+    other = {"id": "c2", "kind": "person", "name": "Ivan", "email": "ivan@example.org", "emails": []}
     _world(monkeypatch, contacts=(_IVAN, other))
-    assert ad.consent_scope("invite", {"who": "dev@example.net"})["class"] == "calendar.invite_new_party"
+    assert ad.consent_scope("invite", {"who": "ivan@example.org"})["class"] == "calendar.invite_new_party"
 
 
 # ── the rule stays the operator's, not the code's ─────────────────────────────────────────────────────────
@@ -156,7 +156,7 @@ def test_the_operator_can_flip_either_of_these_by_saying_so(monkeypatch):
     consent.set_class("calendar.invite_new_party", "allow")
     assert _verdict({"who": "otro@example.com"})["verdict"] == consent.RUN
     consent.set_class("calendar.invite_agreed", "ask")
-    assert _verdict({"who": "dev@example.dev"})["verdict"] == consent.ASK_CONSENT
+    assert _verdict({"who": "ivan@example.com"})["verdict"] == consent.ASK_CONSENT
 
 
 def test_a_widget_that_says_nothing_keeps_the_class_its_manifest_declares(monkeypatch):
@@ -164,13 +164,13 @@ def test_a_widget_that_says_nothing_keeps_the_class_its_manifest_declares(monkey
     behave exactly as it did before this seam existed."""
     _world(monkeypatch)
     monkeypatch.delattr(ad, "consent_scope")
-    v = _verdict({"who": "dev@example.dev"})
+    v = _verdict({"who": "ivan@example.com"})
     assert v["verdict"] == consent.ASK_CONSENT, "falls back to the manifest's own class, which asks"
     def _boom(*a, **k):
         raise RuntimeError("boom")
 
     monkeypatch.setattr(ad, "consent_scope", _boom, raising=False)
-    assert _verdict({"who": "dev@example.dev"})["verdict"] == consent.ASK_CONSENT
+    assert _verdict({"who": "ivan@example.com"})["verdict"] == consent.ASK_CONSENT
 
 
 def test_the_invitation_is_a_declared_action_so_the_voice_can_ask_for_it():

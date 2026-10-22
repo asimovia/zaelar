@@ -72,7 +72,7 @@ def wired(monkeypatch, tmp_path):
     return None
 
 
-def _run(monkeypatch, responses, emails=("dev@example.dev",), meeting=None):
+def _run(monkeypatch, responses, emails=("ivan@example.com",), meeting=None):
     client = _Client(responses)
     monkeypatch.setattr(httpx, "Client", lambda *a, **k: client)
     res = service.invite(dict(meeting or _MEETING), list(emails))
@@ -88,8 +88,8 @@ def _echo_with(*mails):
 # ── the mail that does not arrive without one parameter ───────────────────────────────────────────────────
 
 def test_google_is_ASKED_to_tell_the_guest(wired, monkeypatch):
-    res, client = _run(monkeypatch, [_R(200, _LIVE), _R(200, _echo_with("dev@example.dev"))])
-    assert res["ok"] and res["added"] == ["dev@example.dev"]
+    res, client = _run(monkeypatch, [_R(200, _LIVE), _R(200, _echo_with("ivan@example.com"))])
+    assert res["ok"] and res["added"] == ["ivan@example.com"]
     params = [c for c in client.calls if c[0] == "patch"][0][3] or {}
     assert params.get("sendUpdates") == "all", \
         "without sendUpdates Google adds the guest and sends them nothing — a 200 that invited nobody"
@@ -98,17 +98,17 @@ def test_google_is_ASKED_to_tell_the_guest(wired, monkeypatch):
 def test_adding_a_guest_never_deletes_the_others(wired, monkeypatch):
     live = dict(_LIVE)
     live["attendees"] = [dict(a) for a in _LIVE["attendees"]] + [{"email": "otro@x.com"}]
-    res, client = _run(monkeypatch, [_R(200, live), _R(200, _echo_with("otro@x.com", "dev@example.dev"))])
+    res, client = _run(monkeypatch, [_R(200, live), _R(200, _echo_with("otro@x.com", "ivan@example.com"))])
     assert res["ok"]
     sent = [c for c in client.calls if c[0] == "patch"][0][2]
-    assert [a["email"] for a in sent["attendees"]] == ["me@x.com", "otro@x.com", "dev@example.dev"]
+    assert [a["email"] for a in sent["attendees"]] == ["me@x.com", "otro@x.com", "ivan@example.com"]
     assert set(sent) == {"attendees"}, "nothing else about the event is re-sent"
 
 
 def test_somebody_already_invited_is_not_invited_twice(wired, monkeypatch):
-    live = _echo_with("dev@example.dev")
+    live = _echo_with("ivan@example.com")
     res, client = _run(monkeypatch, [_R(200, live)])
-    assert res["ok"] and res["added"] == [] and res["already"] == ["dev@example.dev"]
+    assert res["ok"] and res["added"] == [] and res["already"] == ["ivan@example.com"]
     assert not [c for c in client.calls if c[0] == "patch"], \
         "re-patching would re-notify every guest of a meeting that did not change"
 
@@ -128,17 +128,17 @@ def test_a_meeting_with_no_calendar_behind_it_is_the_other_rung(wired, monkeypat
 # ── the second rung: an invitation we build ourselves ─────────────────────────────────────────────────────
 
 def test_the_invitation_object_says_when_the_meeting_is_in_UTC():
-    text = ics.build(_MEETING, organizer="me@x.com", attendees=["dev@example.dev"], offset_minutes=120)
+    text = ics.build(_MEETING, organizer="me@x.com", attendees=["ivan@example.com"], offset_minutes=120)
     assert "METHOD:REQUEST" in text
     assert "DTSTART:20260917T200000Z" in text, "22:00 in a UTC+2 install is 20:00Z — an hour off is the bug"
     assert "DTEND:20260917T210000Z" in text
     assert "ORGANIZER:mailto:me@x.com" in text
     assert "RSVP=TRUE" in text.replace("\r\n ", "")
-    assert "mailto:dev@example.dev" in text.replace("\r\n ", ""), "folded lines still say the address"
+    assert "mailto:ivan@example.com" in text.replace("\r\n ", ""), "folded lines still say the address"
 
 
 def test_the_invitation_carries_the_meeting_link_where_a_calendar_shows_it():
-    text = ics.build(_MEETING, organizer="me@x.com", attendees=["dev@example.dev"], offset_minutes=120)
+    text = ics.build(_MEETING, organizer="me@x.com", attendees=["ivan@example.com"], offset_minutes=120)
     unfolded = text.replace("\r\n ", "")
     assert "meet.google.com/ydi-zeaz-tri" in unfolded
     assert "LOCATION:" in unfolded
@@ -181,8 +181,8 @@ def test_the_mail_is_shaped_like_an_invitation_not_like_an_attachment(monkeypatc
     box.address = "me@x.com"
     monkeypatch.setattr(mb.Mailbox, "_connect_smtp", lambda self: _SMTP())
     monkeypatch.setattr(mb.Mailbox, "_smtp_login", lambda self, s: None)
-    text = ics.build(_MEETING, organizer="me@x.com", attendees=["dev@example.dev"], offset_minutes=120)
-    ok, _mid = box.send_invitation("dev@example.dev", "Meeting with Ivan Mikushin", "Te paso la invitación.",
+    text = ics.build(_MEETING, organizer="me@x.com", attendees=["ivan@example.com"], offset_minutes=120)
+    ok, _mid = box.send_invitation("ivan@example.com", "Meeting with Ivan Mikushin", "Te paso la invitación.",
                                    text)
     assert ok
     parts = list(sent["msg"].walk())

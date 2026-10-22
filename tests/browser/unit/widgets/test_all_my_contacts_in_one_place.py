@@ -5,7 +5,7 @@
 `c20123ab`, 2026-09-16. He tried to write to somebody on Telegram and could not:
 
     i=344/351  «I wanna write to my contact Ivan. In Telegram.»
-    i=436      zaelar «Ivan does exist in your contacts, and his email is dev@example.net…»
+    i=436      zaelar «Ivan does exist in your contacts, and his email is ivan@example.org…»
     i=441      «This is not my Ivan.»   i=483 «My Ivan is called Ivan Mushikin. And I got him in my
                                                Telegram contacts.»
     i=1020     «We didn't have that. I just see Google and Apple and another one. But no WhatsApp or
@@ -39,7 +39,7 @@ from widgets.contactos import data, imports
 BASE = {
     "contacts": [
         {"id": "c1", "kind": "person", "name": "Iván Mushkin", "city": "", "phone": "+34 600 11 22 33",
-         "email": "dev@example.net", "notes": "el del taller", "groups": [], "favorite": False,
+         "email": "ivan@example.org", "notes": "el del taller", "groups": [], "favorite": False,
          "channels": [], "preferred": "", "parentId": "", "created": "2026-01-01", "updated": "2026-01-01",
          "source": "google", "googleId": "g1", "externalIds": {"google": "g1"}},
         {"id": "c2", "kind": "person", "name": "Marta Ruiz", "city": "Soria", "phone": "", "email": "",
@@ -113,7 +113,7 @@ def test_an_import_NEVER_overwrites_what_he_wrote():
                                  "email": "otro@sitio.com", "notes": "otra nota",
                                  "externalIds": {"telegram": "777"}}], source="telegram")
     c = db["contacts"][0]
-    assert (c["name"], c["email"], c["notes"]) == ("Iván Mushkin", "dev@example.net", "el del taller")
+    assert (c["name"], c["email"], c["notes"]) == ("Iván Mushkin", "ivan@example.org", "el del taller")
 
 
 def test_it_DOES_fill_a_blank():

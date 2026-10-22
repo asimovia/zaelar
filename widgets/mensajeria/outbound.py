@@ -109,7 +109,7 @@ def _resolve_recipient(who: str):
     """Resolve a recipient reference to its directory contacts, tolerating the DECORATION the model appends.
 
     Measured 2026-09-15 (the manual meeting test): `send_to` was called with «Kryptonite (Telegram
-    @cryptonitefund)» — name plus its channel note — and the send failed «no tengo a … en el directorio»
+    @northfunddemo)» — name plus its channel note — and the send failed «no tengo a … en el directorio»
     over a contact that was right there. The name is the durable part; the parenthetical and trailing
     clauses are decoration. Peeled through the ONE shared matcher (`widgets/textmatch.spans`, V2-705), so
     «write to X (…)» resolves the same way «the meeting with X (…)» does. The FIRST span that resolves wins,

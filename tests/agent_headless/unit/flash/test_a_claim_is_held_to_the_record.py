@@ -61,14 +61,14 @@ def test_a_card_that_attests_the_end_state_is_never_contradicted():
 
 # ── a look-promise: the reply's sure verdict decides, the table only proposes ─────────────────────────────────
 
-Marisa = ("Yeah — there's no Marisa in your chat list, though. Tell me the number she shows under or the exact "
+MARISA = ("Yeah — there's no Marisa in your chat list, though. Tell me the number she shows under or the exact "
            "name as it appears and I'll open it.")
 
 
 def test_a_held_act_is_no_promise_left_hanging():
-    assert _ag.a_promise_left_hanging("It was called Marisa.", Marisa, acted=False, anything_running=False)
-    _rp._remember(_rp._key(Marisa), "ask_first")
-    assert not _ag.a_promise_left_hanging("It was called Marisa.", Marisa, acted=False, anything_running=False)
+    assert _ag.a_promise_left_hanging("It was called Marisa.", MARISA, acted=False, anything_running=False)
+    _rp._remember(_rp._key(MARISA), "ask_first")
+    assert not _ag.a_promise_left_hanging("It was called Marisa.", MARISA, acted=False, anything_running=False)
 
 
 def test_the_retraction_does_not_say_nothing_runs_while_something_does(monkeypatch):

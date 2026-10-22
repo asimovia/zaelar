@@ -51,9 +51,9 @@ _LIVE = {
     "id": "ev1", "status": "confirmed",
     "start": {"dateTime": "2026-09-15T15:00:00+02:00"},
     "end": {"dateTime": "2026-09-15T15:30:00+02:00"},
-    "organizer": {"displayName": "Gavin Hale", "email": "gavin@example.org"},
+    "organizer": {"displayName": "Gavin Hale", "email": "gavin@example.net"},
     "attendees": [
-        {"email": "gavin@example.org", "responseStatus": "accepted", "organizer": True},
+        {"email": "gavin@example.net", "responseStatus": "accepted", "organizer": True},
         {"email": "me@x.com", "self": True, "responseStatus": "needsAction"},
         {"email": "third@x.com", "responseStatus": "accepted"},
     ],
@@ -85,7 +85,7 @@ def test_the_whole_roster_travels_back_with_only_our_own_answer_changed(wired, m
     assert res["ok"]
     sent = [c for c in client.calls if c[0] == "patch"][0][2]
     # EVERY guest is still there — this is the assertion the feature exists for.
-    assert [a["email"] for a in sent["attendees"]] == ["gavin@example.org", "me@x.com", "third@x.com"]
+    assert [a["email"] for a in sent["attendees"]] == ["gavin@example.net", "me@x.com", "third@x.com"]
     assert [a["responseStatus"] for a in sent["attendees"]] == ["accepted", "accepted", "accepted"]
     # …and nothing ELSE about somebody else's event was re-sent.
     assert set(sent) == {"attendees"}
@@ -100,7 +100,7 @@ def test_declining_sets_only_our_row(wired, monkeypatch):
     assert res["ok"]
     sent = [c for c in client.calls if c[0] == "patch"][0][2]
     by_mail = {a["email"]: a["responseStatus"] for a in sent["attendees"]}
-    assert by_mail == {"gavin@example.org": "accepted", "me@x.com": "declined", "third@x.com": "accepted"}
+    assert by_mail == {"gavin@example.net": "accepted", "me@x.com": "declined", "third@x.com": "accepted"}
 
 
 def test_an_answer_we_do_not_understand_never_reaches_google(wired, monkeypatch):

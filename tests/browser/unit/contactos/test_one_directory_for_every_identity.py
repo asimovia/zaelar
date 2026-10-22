@@ -289,7 +289,7 @@ def test_a_second_NAME_for_an_account_we_already_hold_is_the_SAME_contact(ct):
     ct.apply_action("add_contact", _as_the_canvas_sends_it(
         {"name": "Pruebas Zaelar", "channels": {"platform": "telegram", "handle": "@northfund_demo"}}))
     res = ct.apply_action("add_contact", _as_the_canvas_sends_it(
-        {"name": "Cryptonite", "channels": {"platform": "telegram", "handle": "cryptonite_fund"}}))
+        {"name": "Cryptonite", "channels": {"platform": "telegram", "handle": "northfund_demo"}}))
     assert res["ok"] and res["result"]["updated"] is True, res.get("result")
     assert ct.view_data()["count"] == 1, "one Telegram account cannot be two contacts"
 

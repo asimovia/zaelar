@@ -5,9 +5,9 @@
 Session `923f0adc`, 2026-09-17 21:20-21:27. The operator: «Ivan did tell us to send him an invite to Gmail, so
 can you please do it?» — and, to this session's agent, «asegúrate de que termine el proceso sin intervención
 humana». The worker did everything right: read the Telegram archive, found «can you send me a calendar invite
-to: dev@example.dev» (18:16), found the 22:00 meeting, composed the one correct call:
+to: ivan@example.com» (18:16), found the 22:00 meeting, composed the one correct call:
 
-    agenda.invite {who: "dev@example.dev", meeting: "Ivan", date: "2026-09-17"}
+    agenda.invite {who: "ivan@example.com", meeting: "Ivan", date: "2026-09-17"}
 
 …and `worker_policy.classify_act` parked it on «El worker quiere hacer «invite» en el widget «agenda» (acción
 irreversible). ¿Lo autorizas?» — `waiting_on: user`, no TTL, the task at 60 % with its one remaining step
@@ -27,7 +27,7 @@ import pytest
 from nucleo.worker_policy import ALLOW, CONFIRM, DENY, classify_act
 
 INVITE = {"widget_id": "agenda", "action": "invite",
-          "payload": {"who": "dev@example.dev", "meeting": "Ivan", "date": "2026-09-17"}}
+          "payload": {"who": "ivan@example.com", "meeting": "Ivan", "date": "2026-09-17"}}
 
 
 @pytest.fixture
@@ -43,7 +43,7 @@ def agenda(tmp_path, monkeypatch):
         # the address Ivan gave us himself is on the roster → `calendar.invite_agreed` (V2-718's hook), and
         # that class is `allow` in genesis. The SAME call to a stranger's address is `invite_new_party` → ask.
         {"id": "m1", "title": "Meeting with Ivan Mikushin", "date": "2026-09-17", "startTime": "22:00",
-         "attendees": ["Ivan Mikushin", "dev@example.dev"]},
+         "attendees": ["Ivan Mikushin", "ivan@example.com"]},
         {"id": "m2", "title": "Dentist", "date": "2026-09-18", "startTime": "17:00"},
     ]
     store.save(ag.WIDGET_ID, db)

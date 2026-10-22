@@ -123,7 +123,7 @@ def test_the_one_he_actually_USES_wins_when_nothing_was_fixed(ct, dr):
 
 def test_a_name_said_in_part_finds_the_contact(ct, dr):
     ct.apply_action("add_contact", {"name": "Iván Petrenko"})
-    assert [c["name"] for c in dr.resolve("Petrenko")] == ["Iván Petrenko"]
+    assert [c["name"] for c in dr.resolve("petrenko")] == ["Iván Petrenko"]
     assert [c["name"] for c in dr.resolve("ivan")] == ["Iván Petrenko"]
 
 

@@ -1,7 +1,7 @@
 """A worker sends to somebody HE named without a second question (V2-719 kept beside the new gate).
 
 V2-719 (2026-09-17, «Invite Ivan via Gmail»): the operator had written «send me a calendar invite to:
-dev@example.dev» and said «asegúrate de que termine sin intervención humana»; the worker's invite parked on
+ivan@example.com» and said «asegúrate de que termine sin intervención humana»; the worker's invite parked on
 «¿Lo autorizas?» anyway. The gate that stops a worker writing to a plumber he never named must not bring that
 question back: a recipient named in his own words — by address, by number, by name — is his order.
 """
@@ -32,8 +32,8 @@ def _q(widget, action, payload):
 
 
 def test_an_address_he_wrote_is_his_order():
-    his_words.note("send me a calendar invite to: dev@example.dev")
-    assert _q("agenda", "invite", {"who": "dev@example.dev", "meeting": "Ivan"}) == ""
+    his_words.note("send me a calendar invite to: ivan@example.com")
+    assert _q("agenda", "invite", {"who": "ivan@example.com", "meeting": "Ivan"}) == ""
 
 
 def test_a_number_he_said_is_his_order_even_with_a_prefix_he_did_not_say():
@@ -47,8 +47,8 @@ def test_a_name_he_said_is_his_order():
 
 
 def test_one_name_he_said_does_not_carry_another():
-    his_words.note("invita a dev@example.dev a la reunión")
-    assert _q("agenda", "invite", {"who": "dev@example.dev, otro@ajeno.com", "meeting": "Ivan"}) != ""
+    his_words.note("invita a ivan@example.com a la reunión")
+    assert _q("agenda", "invite", {"who": "ivan@example.com, otro@ajeno.com", "meeting": "Ivan"}) != ""
 
 
 def test_a_name_that_only_shares_his_words_is_not_his():

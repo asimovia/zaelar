@@ -61,8 +61,8 @@ def test_a_row_with_neither_a_name_nor_an_email_is_not_a_contact():
 
 def test_an_email_only_row_is_named_after_its_address():
     c = gp.person_to_contact({"resourceName": "people/x",
-                              "emailAddresses": [{"value": "gavin.hale@example.org"}]})
-    assert c["name"] == "gavin.hayes"
+                              "emailAddresses": [{"value": "gavin.hale@example.net"}]})
+    assert c["name"] == "gavin.hale"
 
 
 def test_his_star_in_google_is_his_star_here():
@@ -210,9 +210,9 @@ def test_one_email_address_is_one_person(ct, monkeypatch):
     """The rule V2-693 already settled for Telegram: an address is an account, so two rows sharing one are
     one person — even when the names do not match at all."""
     ct.apply_action("add_contact", {"name": "Cryptonite",
-                                    "channels": [{"platform": "email", "handle": "hello@example.org"}]})
+                                    "channels": [{"platform": "email", "handle": "hola@example.org"}]})
     _imported(monkeypatch, [{"name": "Cryptonite Fund SL", "kind": "person",
-                             "email": "hello@example.org", "phone": "+34600", "city": "", "address": "",
+                             "email": "hola@example.org", "phone": "+34600", "city": "", "address": "",
                              "notes": "", "groups": [], "favorite": False, "googleId": "people/c9"}])
     ct.apply_action("import_google", {})
     assert len(ct.load_db()["contacts"]) == 1
