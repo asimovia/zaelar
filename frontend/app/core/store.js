@@ -973,6 +973,12 @@ export const pushAgentChat = (text, opts) => {
   // row — is for the channels that are NOT the voice's own line: the late spoken record, a filler, a cron's
   // proactive push, the probe's text turn.
   if (o.voiced) {
+    // ONE TURN, TWO LINES (demo 2026-10-22, Marisa). A continuation merged into the turn before it keeps that
+    // turn's trace, so «Done.» and «Yeah — there's no Marisa…» were both `T54`: the wall drew the crawl of the
+    // second in BOTH bubbles, and the settle trimmed the first row found by trace — the old one. The line that was
+    // already settled gives its identity up to the one the voice now owes; it stays in the history as it was.
+    if (o.trace) setChatMsgs(xs => xs.some(m => m.role === "agent" && m.trace === o.trace)
+      ? xs.map(m => (m.role === "agent" && m.trace === o.trace ? { ...m, trace: o.trace + "~" } : m)) : xs);
     _pendingVoiced = { full: text, heard: "", capAt: _capSeq, trace: o.trace || "", painted: false };
     _setVoicedLine(null);
     return;

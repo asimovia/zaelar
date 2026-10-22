@@ -2830,6 +2830,10 @@ DOMAINS: list[dict] = [
                                  "reconcilian por los dos ids — la barra no cuenta gemelos",
             "ch": UNIT,
             "paths": ["tests/browser/unit/widgets/test_one_task_is_one_chip.py"]},
+        {"id": "4.248", "title": "Dos líneas de un mismo turno son dos burbujas: la ya asentada cede el trace a la que la "
+                                 "voz está diciendo (nada de la misma frase dibujada dos veces)",
+            "ch": UNIT,
+            "paths": ["tests/browser/unit/widgets/test_two_lines_of_one_turn_are_two_bubbles.py"]},
         # V2-608, orden del operador 2026-09-07: «cuando se hace un reset, quiero que el orbe vuelva a su
         # posición inicial». El Reset ya limpiaba lienzo/log/chat, pero un orbe arrastrado se quedaba donde
         # el arrastre lo dejó — y `hb_pos_orb` lo devolvía ahí en CADA carga futura. `resetDraggable()`
