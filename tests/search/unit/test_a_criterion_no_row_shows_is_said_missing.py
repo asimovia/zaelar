@@ -10,13 +10,14 @@ import json
 from pathlib import Path
 
 from search import candidacy
+from tests.search.sheets import sheet
 
 SHEETS = Path(__file__).resolve().parents[1] / "fixtures" / "sheets"
 CRIT = {"hard": ["rating / reviews", "availability (when)"]}
 
 
 def test_names_only_rows_cannot_show_any_criterion():
-    items = json.loads(next(SHEETS.glob("best-plumber-same-day__es*.json")).read_text(encoding="utf-8"))["items"]
+    items = sheet("best-plumber-same-day__es")["items"]
     names_only = [i for i in items if not i.get("price") and all(f.get("label") == "Origen" for f in i.get("facts") or [])]
     assert len(names_only) >= 5, "the network agent's rows: a name, a link, nothing else"
     assert candidacy.unshown_criteria(names_only, CRIT) == CRIT["hard"]
@@ -24,7 +25,7 @@ def test_names_only_rows_cannot_show_any_criterion():
 
 
 def test_one_row_with_a_datum_is_enough_to_stop_saying_it():
-    items = json.loads(next(SHEETS.glob("best-plumber-same-day__en*.json")).read_text(encoding="utf-8"))["items"]
+    items = sheet("best-plumber-same-day__en")["items"]
     assert candidacy.unshown_criteria(items, CRIT) == []
 
 

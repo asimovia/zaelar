@@ -10,12 +10,13 @@ import json
 from pathlib import Path
 
 from search import asked, category
+from tests.search.sheets import sheet
 
 SHEETS = Path(__file__).resolve().parents[1] / "fixtures" / "sheets"
 
 
 def test_rows_that_do_not_name_the_artist_leave():
-    d = json.loads(next(SHEETS.glob("find-concert-tickets__es*offsubject.json")).read_text(encoding="utf-8"))
+    d = sheet("find-concert-tickets__es*offsubject")
     on, off = category.split(d["items"], "Búscame entradas para un concierto de Rosalía en Madrid este mes", [d["title"]])
     gone = {o["title"] for o in off}
     assert {"El Cascanueces - Classic Stage", "DJ Symphonic"} <= gone

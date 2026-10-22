@@ -13,6 +13,7 @@ from pathlib import Path
 import pytest
 
 from search import category
+from tests.search.sheets import sheet
 
 SHEETS = Path(__file__).resolve().parents[1] / "fixtures" / "sheets"
 CAR_ES = "Búscame un coche de segunda mano, que no sea muy viejo, diésel, y que no pase de 12 mil euros."
@@ -20,7 +21,7 @@ CAR_EN = "Find me a used car, diesel or hybrid, under 60k miles and under $14,00
 
 
 def _sheet(name: str) -> dict:
-    return json.loads(next(SHEETS.glob(name + "*.json")).read_text(encoding="utf-8"))
+    return sheet(name)
 
 
 def test_the_spanish_junk_leaves_and_every_car_stays():

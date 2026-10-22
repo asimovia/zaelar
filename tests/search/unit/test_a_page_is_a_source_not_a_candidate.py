@@ -13,13 +13,13 @@ from pathlib import Path
 import pytest
 
 from search import candidacy
+from tests.search.sheets import sheet
 
 SHEETS = Path(__file__).resolve().parents[1] / "fixtures" / "sheets"
 
 
 def _items(name: str) -> list[dict]:
-    path = next(SHEETS.glob(name + "*.json"))
-    return json.loads(path.read_text(encoding="utf-8")).get("items") or []
+    return sheet(name).get("items") or []
 
 
 def test_the_rental_car_rankings_leave_the_list_es():
@@ -46,8 +46,8 @@ def test_the_license_page_leaves_the_insurance_list_en():
 
 
 @pytest.mark.parametrize("sheet,n", [
-    ("cheapest-monitor__es", 7), ("cheapest-monitor__en", 5), ("hotel-under-15-days__en__results--", 7),
-    ("search-buy-used-car__es", 10), ("search-buy-used-car__en__results--", 3), ("search-buy-motorcycle__es", 8),
+    ("cheapest-monitor__es", 7), ("cheapest-monitor__en__results--f09d92", 5), ("hotel-under-15-days__en__results--", 7),
+    ("search-buy-used-car__es__results--108172", 10), ("search-buy-used-car__en__results--56d117", 3), ("search-buy-motorcycle__es", 8),
     ("best-plumber-same-day__en", 5), ("knows-who-i-am__en__results--", 3),
 ])
 def test_real_candidates_with_a_datum_all_stay(sheet, n):
