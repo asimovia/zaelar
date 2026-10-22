@@ -45,7 +45,8 @@ def choose_folder(prompt: str = "") -> str:
         return ""
     try:
         out = subprocess.run(cmd, capture_output=True, text=True, timeout=TIMEOUT_S, check=False)
-    except (OSError, subprocess.SubprocessError):
+    except (OSError, subprocess.SubprocessError) as e:
+        print(f"zaelar-daemon: the folder dialog could not open ({type(e).__name__}: {e})", file=sys.stderr)
         return ""
     if out.returncode != 0:
         return ""
