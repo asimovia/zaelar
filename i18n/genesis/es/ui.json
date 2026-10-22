@@ -1776,6 +1776,7 @@
  "task.phase.alive_min": "{phase} — lleva {m} min",
  "task.phase.alive_s": "{phase} — lleva {s}s",
  "task.phase.queued": "en cola",
+ "task.phase.queued_behind": "en cola — esperando hueco detrás de: {names}",
  "task.phase.starting": "arrancando",
  "task.phase.label_web": "Buscando en la web…",
  "task.phase.label_code": "Trabajando en un widget…",

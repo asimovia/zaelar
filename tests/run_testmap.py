@@ -2054,6 +2054,10 @@ DOMAINS: list[dict] = [
                                  "sobre trabajo vivo dice cuál sigue",
             "ch": UNIT,
             "paths": ["tests/agent_headless/unit/flash/test_a_claim_is_held_to_the_record.py"]},
+        {"id": "2.765", "title": "Un encargo EN COLA espera, no está atascado: dice detrás de qué espera y el reloj de "
+                                 "silencio empieza cuando corre",
+            "ch": UNIT,
+            "paths": ["tests/agent_headless/unit/test_a_queued_errand_is_waiting_not_stuck.py"]},
     ]},
     {"id": "4", "name": "WIDGETS", "nodes": [
         {"id": "4.1", "title": "Ciclo de vida / acciones / refs / generador / background", "ch": UNIT, "paths": [
@@ -2826,7 +2830,7 @@ DOMAINS: list[dict] = [
                                  "actividad debajo, y estado + progreso + tiempo en su línea",
             "ch": UNIT,
             "paths": ["tests/browser/unit/widgets/test_a_process_title_holds_still.py"]},
-        {"id": "4.247", "title": "Una tarea es UNA ficha: los eventos (id de sesión) y el tablero (id durable) se "
+        {"id": "4.249", "title": "Una tarea es UNA ficha: los eventos (id de sesión) y el tablero (id durable) se "
                                  "reconcilian por los dos ids — la barra no cuenta gemelos",
             "ch": UNIT,
             "paths": ["tests/browser/unit/widgets/test_one_task_is_one_chip.py"]},

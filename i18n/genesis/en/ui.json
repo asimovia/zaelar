@@ -1776,6 +1776,7 @@
  "task.phase.alive_min": "{phase} — {m} min so far",
  "task.phase.alive_s": "{phase} — {s}s so far",
  "task.phase.queued": "queued",
+ "task.phase.queued_behind": "queued — waiting for a free slot behind: {names}",
  "task.phase.starting": "starting",
  "task.phase.label_web": "Searching the web…",
  "task.phase.label_code": "Working on a widget…",

@@ -307,8 +307,8 @@ class OrchestratorLoop:
         # (3) stuck + timeout (warns, offers to stop; does NOT kill alone) + HARD BUDGET (2 phases).
         for s in sessions:
             tid, age = s["id"], int(s.get("age_s") or 0)
-            if s.get("waiting_on") == "user":
-                continue                            # not stuck: waiting for the operator
+            if s.get("waiting_on") == "user" or s.get("status") == "queued":
+                continue                            # not stuck: waiting for the operator, or for a free slot (2026-10-22)
             budget = self._budget_for(s.get("kind") or "")
             if budget > 0 and age >= budget + self._budget_grace:
                 # PHASE 2: budget + grace expired without closing → KILLED with partial delivery (the card

@@ -7,6 +7,8 @@ helpers…) is read through the module (`_d.<name>`), so a patch on `nucleo.disp
 """
 from __future__ import annotations
 
+import contextlib
+import time
 from typing import TYPE_CHECKING
 
 from nucleo import dispatch as _d
@@ -143,7 +145,7 @@ async def _run_session(task: "Task") -> None:
         _d.sync_state()
         return
 
-    async with _d._pool():
+    async with _a_slot(_d, key, rec):
         if rec.status == "cancelled":         # cancelada mientras esperaba el pool
             _d._SESSIONS.pop(key, None)
             _d._task_row("ended_early", rec, state="cancelled")
@@ -221,3 +223,34 @@ async def _run_session(task: "Task") -> None:
 
 
 from nucleo import dispatch_session_steps as _dss  # noqa: E402 — V2-778 F1, reads this module back
+
+
+@contextlib.asynccontextmanager
+async def _a_slot(_d, key, rec):
+    """The worker pool, entered the way the operator should see it: a commission that waits says behind what, and
+    its silence starts when it RUNS, never while it waited for a slot (the loop's stuck clock reads it)."""
+    _say_queued_behind(_d, key)
+    async with _d._pool():
+        rec.last_event_at = time.time()
+        yield
+
+
+def _say_queued_behind(_d, key) -> None:
+    """A commission that has to WAIT for a slot says so, and behind what (demo 2026-10-22).
+
+    Two run at a time (`code_agent.max_parallel`); the trip plan sat «queued» for four minutes behind a 14-minute
+    monitor search and the Bitcoin summary, the agent told him it was «stuck», and «restarting» it only cancelled the
+    one in the queue. The phase now names the work it waits behind, so the row, the prompt and the agent all read the
+    same fact. Never raises: a phase that cannot be written leaves the plain «queued»."""
+    try:
+        if not _d._pool().locked():
+            return
+        from nucleo.workers import progress as _progress, reports as _reports
+        ahead = [str(x.get("title") or x.get("goal") or "")[:60] for x in _d.active_sessions()
+                 if str(x.get("id")) != str(key) and x.get("status") == "running"]
+        ahead = [a for a in ahead if a]
+        if ahead:
+            _reports.session_phase(key, _progress.say("queued_behind", "queued — waiting for a free slot behind: {names}",
+                                                  names=" · ".join(ahead)))
+    except Exception as e:  # noqa: BLE001
+        _d.logger.debug(f"dispatch: queued phase not written for {key}: {e}")
