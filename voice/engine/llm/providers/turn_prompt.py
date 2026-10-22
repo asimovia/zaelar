@@ -115,6 +115,8 @@ async def compose_the_prompt(*, brain, emit, operator_text, self, text) -> dict:
         pass
     messages = [{"role": "system", "content": system}]
     _dialog.drain_spoken(brain._window)      # what we said on our own since the last turn (a list's end, a report)
+    from nucleo.flash import prior_line as _prior_line
+    _prior_line.snapshot(brain, brain._window)   # the line this turn answers, frozen before the reply streams
     messages += _dialog.prune_window(brain._window)[-_p._WINDOW_MAX:]   # colapsa turnos gemelos (anti-degeneración)
     messages.append({"role": "user", "content": text})
     _out = locals()
