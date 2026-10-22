@@ -487,7 +487,7 @@ def _resolve_canvas_verb_single(handle: dict | None, *, min_confidence: float | 
     return _jev.resolve_choice(handle, "neither", min_confidence=mc)
 
 
-def close_has_order(text: str, canvas_handle: dict | None = None) -> tuple[bool, str]:
+def close_has_order(text: str, canvas_handle: dict | None = None, *, brief=None) -> tuple[bool, str]:
     """The ONE close-order reader for both channels' [[close]] guards (V2-635 and its probe mirror).
 
     Grammar first: `looks_like_close` saying yes ends the question. A deterministic NEGATED or
@@ -500,6 +500,12 @@ def close_has_order(text: str, canvas_handle: dict | None = None) -> tuple[bool,
     """
     from . import close_guards as _cg
     if _cg.looks_like_close(text):
+        # …unless the turn's SURE canvas verdict says it is no close at all (`canvas_license.close_license`, the
+        # backstop's rule): «You did close the document of Bitcoin without me telling you» read as an order, and
+        # the model's [[close]] closed the document he was complaining about (demo 2026-10-22).
+        from . import canvas_license as _lic
+        if brief is not None and not _lic.close_license(text, brief=brief):
+            return False, "verdict"
         return True, "grammar"
     if _cg.is_negated_or_narrated(text):
         return False, "none"

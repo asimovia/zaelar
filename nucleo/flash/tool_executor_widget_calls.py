@@ -124,11 +124,11 @@ def _tag_emit(action: str, extra: dict, *, _apply_widget_data, _brief, _is_meta_
              text=(text or "")[:120], role="system", extra={"cat": "flash", "kind_diag": "close_inside_card"})
         deduped["v"] = True
         return
-    if action == "close" and not _txw._closeg.looks_like_close(text):
+    if action == "close" and not _txw._canvas_lic.close_license(text, brief=_brief):
         # ...unless the shared reader licenses it: Jev independently reads a close order with
         # confidence (T-jev-show-close) — two readers agreeing forgives a grammar miss. A "neither"
         # or unsure verdict keeps the discard below, bit-for-bit.
-        _has_order, _order_src = _txw._show_target.close_has_order(text, canvas_h)
+        _has_order, _order_src = _txw._show_target.close_has_order(text, canvas_h, brief=_brief)
         if not _has_order:
             emit("brain", "🛡️ close ignorado — el operador no ha pedido cerrar nada (context-bleed)",
                  text=(text or "")[:120], role="system", extra={"cat": "flash", "kind_diag": "close_without_order"})

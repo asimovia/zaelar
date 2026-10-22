@@ -7,6 +7,7 @@ helpers…) is read through the module (`_d.<name>`), so a patch on `nucleo.disp
 """
 from __future__ import annotations
 
+import asyncio
 import contextlib
 import time
 from typing import TYPE_CHECKING
@@ -146,7 +147,7 @@ async def _run_session(task: "Task") -> None:
         return
 
     async with _a_slot(_d, key, rec):
-        if rec.status == "cancelled":         # cancelada mientras esperaba el pool
+        if rec.status == "cancelled":         # cancelada mientras esperaba el pool (its surface: `_a_slot`)
             _d._SESSIONS.pop(key, None)
             _d._task_row("ended_early", rec, state="cancelled")
             return
@@ -230,9 +231,40 @@ async def _a_slot(_d, key, rec):
     """The worker pool, entered the way the operator should see it: a commission that waits says behind what, and
     its silence starts when it RUNS, never while it waited for a slot (the loop's stuck clock reads it)."""
     _say_queued_behind(_d, key)
-    async with _d._pool():
+    try:
+        await _d._pool().acquire()
+    except asyncio.CancelledError:          # stopped while it waited: it never ran, so its finally never will
+        _settle_unrun(_d, rec, key)
+        raise
+    try:
         rec.last_event_at = time.time()
+        if getattr(rec, "status", "") == "cancelled":
+            _settle_unrun(_d, rec, key)     # stopped while it waited, noticed only now: same leftovers
         yield
+    finally:
+        _d._pool().release()
+
+
+def _settle_unrun(_d, rec, key) -> None:
+    """A commission stopped before it ever RAN leaves no «Working…» behind (demo 2026-10-22).
+
+    The trip plan was cancelled while queued; the cancel came through `asyncio` at the pool's door, outside the
+    session's `finally` — the only place a sheet is closed — so its card said «Working…» for good, on top of the
+    document he was reading. The sheet's loader stops as at any end, and a sheet with nothing in it leaves the screen;
+    one that holds rows stays, it is his. Never raises."""
+    try:
+        surf = getattr(rec, "surface", "")
+        if _d.surfaces.opens_sheet(surf):
+            _d._sheet_close(rec)
+            from widgets.results import data as _sheet
+            sid = _d.sheet_of(rec)
+            if sid and not (_sheet.view_data(sid).get("items") or []):
+                from voice.observer import emit
+                emit("widget", "close", extra={"id": _sheet.instance_id(sid), "src": f"worker:{key}"})
+        elif _d.surfaces.opens_doc(surf):
+            _d._docsheet.doc_close(rec)
+    except Exception as e:  # noqa: BLE001
+        _d.logger.debug(f"dispatch: the unrun {key} left its surface as it was: {e}")
 
 
 def _say_queued_behind(_d, key) -> None:

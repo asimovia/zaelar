@@ -218,7 +218,7 @@ async def run_turn(text: str, *, sid: str = "default", ingest: bool = True, mode
             from nucleo.flash import agenda_close_is_a_cancel as _cic, show_target as _st_close
             if _cic.inside_or_cancelled(_tbrief, operator_text, extra, lambda c: tool_calls.append({"name": "widget_data", "args": c})):
                 return                           # V2-770 — the order is an action inside the card, not this tag
-            _has_order, _order_src = _st_close.close_has_order(text, canvas_h)
+            _has_order, _order_src = _st_close.close_has_order(text, canvas_h, brief=_tbrief)
             if not _has_order:
                 return
             if _order_src == "jev":

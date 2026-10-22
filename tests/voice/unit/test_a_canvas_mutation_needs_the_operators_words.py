@@ -162,7 +162,9 @@ def test_fullscreen_dispatch_routes_by_direction_and_discards_the_drag(monkeypat
 
 def test_the_voice_provider_gates_model_closes_and_delegates_the_bodies():
     src = _vts.read(ENGINE / "voice/engine/llm/providers/nucleo.py")
-    assert 'if action == "close" and not _closeg.looks_like_close(text):' in src, \
+    # 2026-10-22 — the same gate through `close_license` (grammar AND the turn's sure canvas verdict): a complaint
+    # about a close («you did close the document») is no order either.
+    assert 'if action == "close" and not _canvas_lic.close_license(text, brief=_brief):' in src, \
         "a model-emitted [[close]] with no close order in the turn is drag (the «eres tonto» close)"
     # V2-753 — the data-op close keeps needing a license; what changed is WHO grants it. The bare
     # verb table was the sole decider here and it ate «Páralo, y vuelve al inicio» five times in one
