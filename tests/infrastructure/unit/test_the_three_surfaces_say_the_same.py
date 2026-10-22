@@ -25,7 +25,7 @@ import pytest
 
 ENGINE = Path(__file__).resolve().parents[3]
 TABLA = ENGINE / "config" / "models.default.json"
-FLY = ENGINE / "fly.accounts.toml"
+FLY = ENGINE.parent / "cloud" / "infra" / "fly" / "fly.accounts.toml"
 CLOUD = ENGINE.parent / "cloud" / "provisioner" / "src" / "machineConfig.js"
 
 
