@@ -20,6 +20,8 @@ def test_the_spawn_env_carries_the_chain_and_not_the_host(monkeypatch, tmp_path)
     monkeypatch.setattr(P, "env_for_worker", lambda: {"ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
                                                       "ANTHROPIC_AUTH_TOKEN": "chain-token"})
     monkeypatch.setattr(P, "pick", lambda: {"name": "z.ai", "model": "glm-x"})
+    # A runner without the CLI returned before the spawn («CLI not found»), so the env was never built (CI).
+    monkeypatch.setattr(G, "_find_claude", lambda: "/usr/local/bin/claude")
     seen = {}
 
     class _P:

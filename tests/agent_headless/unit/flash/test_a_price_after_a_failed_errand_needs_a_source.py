@@ -53,7 +53,11 @@ def test_his_own_number_is_not_a_price_backing_a_thousandfold_one(failed):
     assert not amount_gate.backed("17000", {"17", "256"})
 
 
-def test_with_nothing_live_or_failed_an_amount_is_just_an_answer(monkeypatch):
+def test_with_nothing_live_or_failed_an_amount_is_just_an_answer(monkeypatch, tmp_path):
+    # «Nothing live» includes no results sheet written minutes ago (`claim_backing.in_errand`): in a batch an
+    # earlier test's sheet in the shared store made this a shortlist turn and the amount was cut (CI, 2026-10-22).
+    from widgets import store
+    monkeypatch.setattr(store, "DATA_DIR", str(tmp_path))
     monkeypatch.setattr(dispatch, "pending_summaries", lambda: [])
     monkeypatch.setattr(dispatch, "recently_ended_sessions", lambda *a, **k: [])
     from nucleo.flash import live_blocks
