@@ -149,7 +149,7 @@ def test_our_own_page_is_not_locked_out_by_the_guard(client, headers, monkeypatc
     account resolves to."""
     seen = []
 
-    async def _ok(cfg, path, payload=None):
+    async def _ok(cfg, path, payload=None, **_kw):
         seen.append(path)
         return 200, {"ok": True, "roots": ["/tmp"]}
     monkeypatch.setattr(daemon_api, "_call", _ok)
@@ -168,9 +168,14 @@ def test_the_engine_never_proxies_a_file_route():
     what is inside them — and the agent reads files server-side, in-process. If a future change needs a file
     route on this surface, that change needs a threat model, not a test edit."""
     paths = {route.path for route in daemon_api.router.routes}
+    # 2026-10-22, threat-modelled: `start` launches the daemon this engine carries (local only, same-origin, no
+    # input reaches the command), and `pick` is `grant` with the system's own folder dialog choosing the path —
+    # the daemon's boundary applies to it unchanged and it returns the allowlist, never a file's contents.
     assert paths == {"/api/daemon/status",
                      "/api/daemon/permissions/grant",
-                     "/api/daemon/permissions/revoke"}, f"the daemon proxy grew a route: {sorted(paths)}"
+                     "/api/daemon/permissions/revoke",
+                     "/api/daemon/permissions/pick",
+                     "/api/daemon/start"}, f"the daemon proxy grew a route: {sorted(paths)}"
     source = (ENGINE / "server" / "daemon_api.py").read_text(encoding="utf-8")
     assert "/files/" not in source.split("SAME-ORIGIN")[-1].split('"""', 1)[-1], (
         "the proxy references a daemon file route outside its own docstring"
@@ -181,7 +186,7 @@ def test_the_refusal_the_daemon_wrote_is_the_one_the_user_reads(client, monkeypa
     """`daemon/fs/roots.py` goes to real trouble to say "that is your entire home folder — choose the folders
     you actually want me to work with". Collapsing that into "could not add folder" throws away the only part
     of the answer the user can act on, which is the whole V2-421/V2-507 lesson."""
-    async def _refuse(cfg, path, payload=None):
+    async def _refuse(cfg, path, payload=None, **_kw):
         return 403, {"ok": False, "error": "too_broad", "message": "'/Users/x' is your entire home folder."}
     monkeypatch.setattr(daemon_api, "_call", _refuse)
     monkeypatch.setattr(daemon_api, "_daemon_config", lambda: {"port": 45817, "token": "x" * 64})
@@ -331,14 +336,19 @@ def test_the_screen_leads_with_the_command_and_not_with_a_download_button():
 
 # ── the interface: the icon, the screen, the words ────────────────────────────────────────────────────────
 
-def test_the_icon_is_visible_to_the_people_who_most_need_it():
-    """⚠️ Every other control in the TopBar is hidden behind `store.cloudProfile()`, and copying that pattern
-    here would hide the daemon from exactly the audience that cannot solve the problem any other way: somebody
-    on a cloud account, whose own computer is the one thing the cloud agent cannot reach."""
+def test_the_icon_is_offered_only_where_it_can_work():
+    """Operator, 2026-10-22: a cloud engine cannot reach the user's computer until the outbound relay (P3) is
+    built, so the icon there sold an install that connected to nothing. It is shown only by an engine on this
+    computer — and not before the first status, so a cloud page never flashes it. Same rule on the phone row."""
+    service = (ENGINE / "frontend" / "app" / "services" / "daemon.js").read_text(encoding="utf-8")
+    offered = service.split("export function isOffered()")[1].split("\n")[0]
+    assert '!!s' in offered and 'state !== "remote"' in offered, offered
     topbar = (ENGINE / "frontend" / "app" / "components" / "TopBar.js").read_text(encoding="utf-8")
     block = topbar.split('id: "daemonBtn"')[0].rsplit('h("button"', 1)[-1]
-    assert "cloudProfile" not in block, "the daemon icon was gated on the profile that needs it most"
-    assert "daemonBtn" in topbar and "DESKTOP_ICON" in topbar
+    assert "daemon.isOffered()" in block and "is-off" in block, "the icon is no longer gated on where it can work"
+    sheet = (ENGINE / "frontend" / "mobile" / "app" / "shell" / "MenuSheet.js").read_text(encoding="utf-8")
+    assert "daemon.isOffered()" in sheet.split("daemon.mobile.row")[0].rsplit('h("div"', 1)[-1]
+    assert ".daemonBtn.is-off{display:none}" in (ENGINE / "frontend" / "app" / "styles.css").read_text(encoding="utf-8")
 
 
 def test_the_setup_screen_is_a_registered_surface_and_not_voice_addressable():

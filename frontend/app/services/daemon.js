@@ -53,6 +53,9 @@ export function iconState() {
   return s.state || "off";
 }
 
+// Offered only by an engine that can reach this computer — never from the cloud (no relay yet), and not before
+// the first answer, so the icon cannot flash on a cloud page.
+export function isOffered() { const s = status(); return !!s && s.state !== "remote"; }
 export function isRemote() { const s = status(); return !!s && s.state === "remote"; }
 export function isConnected() { const s = status(); return !!s && !!s.reachable; }
 
@@ -87,6 +90,37 @@ async function _permissions(action, path) {
 }
 
 export const grant  = (path) => _permissions("grant", path);
+
+// The system's own folder dialog, opened by the daemon on this desktop. A cancel is not an error.
+export async function pick(prompt) {
+  let body = {};
+  try {
+    const r = await fetch("/api/daemon/permissions/pick", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt }),
+    });
+    body = await r.json();
+  } catch (_) { return { ok: false, message: "" }; }
+  if (body.cancelled) return { ok: true, cancelled: true };
+  if (!body.ok) return { ok: false, message: body.message || body.error || "" };
+  await check();
+  return { ok: true, roots: body.roots || [] };
+}
+
+// «Conectar»: the engine starts the daemon it carries; the screen then watches for it to answer (≤ 20 s).
+export async function connect() {
+  let body = {};
+  try {
+    const r = await fetch("/api/daemon/start", { method: "POST" });
+    body = await r.json();
+  } catch (_) { return { ok: false, message: "" }; }
+  if (!body.ok) return { ok: false, message: body.message || body.error || "" };
+  for (let i = 0; i < 20; i++) {
+    await check();
+    if (isConnected()) return { ok: true };
+    await new Promise((res) => setTimeout(res, 1000));
+  }
+  return { ok: false, message: "start_timeout" };
+}
 export const revoke = (path) => _permissions("revoke", path);
 
 export function start() {

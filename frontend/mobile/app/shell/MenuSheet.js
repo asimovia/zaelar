@@ -26,7 +26,7 @@ import { listFeedback, sendFeedback } from "../../../app/services/feedback-api.j
 import { sendOutcome, listOutcome, lineFor } from "../../../app/services/feedback-state.js?v=1";
 import { t } from "../../../app/core/i18n.js?v=1";
 import { accountLink } from "../../../app/core/account-link.js?v=1";
-import * as daemon from "../../../app/services/daemon.js?v=1";
+import * as daemon from "../../../app/services/daemon.js?v=2";
 
 // The daemon poll runs here too: the desktop starts it from the setup surface, which this shell does not
 // mount. Without this the row would always read "not connected", which is a wrong answer rather than a
@@ -128,7 +128,7 @@ export function MenuSheet() {
       //    has no chevron and no click: it REPORTS. It is here because "is my computer connected?" is a
       //    question somebody asks from wherever they are, and a mobile shell that simply omitted the answer
       //    would read as "this device has no daemon" rather than "you cannot set it up from here".
-      h("div", { class: "zm-row zm-row-static" },
+      h("div", { class: () => "zm-row zm-row-static" + (daemon.isOffered() ? "" : " is-off") },   // never from the cloud
         h("span", { class: "zm-row-t" },
           h("b", null, () => t("daemon.mobile.row")),
           h("small", null, () => (daemon.isConnected() ? t("daemon.ok.lead") : t("daemon.mobile.hint"))),

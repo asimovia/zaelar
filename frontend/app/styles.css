@@ -1657,6 +1657,7 @@ body.dbg-open .orbwrap{left:calc(50% - var(--dbg-w) / 2)}
 .daemonBtn.st-warn{color:var(--hb-warn)}
 .daemonBtn.st-off,.daemonBtn.st-remote,.daemonBtn.st-unknown{color:var(--hb-muted-2)}
 
+.daemonBtn.is-off{display:none}
 .dsx-ovl{align-items:center}
 .dsx-box{width:min(680px,100%);max-height:min(86vh,760px);display:flex;flex-direction:column;
   background:var(--hb-bg);border:1px solid var(--hb-line);border-radius:var(--hb-r-l);box-shadow:var(--hb-shadow-2)}
@@ -1694,6 +1695,11 @@ body.dbg-open .orbwrap{left:calc(50% - var(--dbg-w) / 2)}
   border:1px solid var(--hb-line);color:var(--hb-ink);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
   font-size:0.75rem;overflow-x:auto;white-space:pre}
 .dsx-link{color:var(--hb-accent)}
+.dsx-intro{margin:0 0 var(--sp-4);color:var(--hb-muted);font-size:0.875rem;line-height:1.55}
+.dsx-primary{display:inline-block;margin-top:var(--sp-2);background:var(--hb-accent);color:var(--canvas);border:none;
+  border-radius:var(--hb-r-m);padding:10px 18px;font-size:0.9375rem;font-weight:600;cursor:pointer}
+.dsx-primary:disabled{opacity:.6;cursor:default}
+.dsx-recheck{display:block;margin-top:var(--sp-4);background:none;border:none;padding:0;font-size:0.8125rem;cursor:pointer}
 .dsx-mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:0.8125rem}
 .dsx-h3{margin:0 0 6px;font-size:0.9375rem;color:var(--hb-ink)}
 .dsx-list{list-style:none;margin:var(--sp-3) 0 0;padding:0;display:flex;flex-direction:column;gap:6px}

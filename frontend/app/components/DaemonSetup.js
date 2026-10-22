@@ -24,9 +24,9 @@ import { h, raw } from "../core/dom.js?v=2";
 import { createSignal } from "../core/reactive.js?v=2";
 import * as store from "../core/store.js?v=2";
 import * as api from "../services/api.js?v=2";
-import * as daemon from "../services/daemon.js?v=1";
+import * as daemon from "../services/daemon.js?v=2";
 import { t } from "../core/i18n.js?v=1";
-import { CLOSE_ICON, REFRESH_ICON, DESKTOP_ICON } from "../lib/icons.js?v=2";
+import { CLOSE_ICON, DESKTOP_ICON } from "../lib/icons.js?v=2";
 
 // The poll starts with the surface, which is mounted for the whole life of the page (system-surfaces.js) —
 // the icon has to be coloured correctly whether or not anybody ever opens this screen.
@@ -48,6 +48,7 @@ export function DaemonSetup() {
   const [busy, setBusy] = createSignal("");
   const [chosen, setChosen] = createSignal("");      // which platform's instructions are showing
   const [copied, setCopied] = createSignal(false);
+  const [connecting, setConnecting] = createSignal(false);
   let pathEl;
 
   // `navigator.clipboard` needs a secure context, and a local install is served over plain http
@@ -93,6 +94,24 @@ export function DaemonSetup() {
     const said = r.message && t(key) !== key ? t(key) : r.message;
     if (!r.ok) setProblem(said || t("daemon.err.generic"));
     else if (pathEl) pathEl.value = "";
+  };
+
+  // «Conectar»: the engine starts the daemon it carries — no terminal. The manual way stays under the details.
+  const doConnect = async () => {
+    setConnecting(true); setProblem("");
+    const r = await daemon.connect();
+    setConnecting(false);
+    api.uiEvent("daemon:connect", { ok: !!r.ok });
+    if (!r.ok) setProblem(t("daemon.err.start_failed"));
+  };
+
+  // The system's own folder dialog, opened on this desktop by the daemon; a cancel says nothing.
+  const doPick = async () => {
+    setBusy("pick"); setProblem("");
+    const r = await daemon.pick(t("daemon.pick.prompt"));
+    setBusy("");
+    const key = "daemon.err." + (r.message || "");
+    if (!r.ok) setProblem(r.message && t(key) !== key ? t(key) : (r.message || t("daemon.err.generic")));
   };
 
   const platform = () => chosen() || (daemon.status() || {}).platform || "macos";
@@ -143,6 +162,8 @@ export function DaemonSetup() {
     return h("div", { class: "dsx-folders" },
       h("h3", { class: "dsx-h3" }, () => t("daemon.folders.title")),
       h("p", { class: "dsx-note" }, () => t("daemon.folders.body")),
+      h("button", { class: "dsx-primary", disabled: () => busy() === "pick", onClick: doPick },
+        () => t("daemon.folders.pick")),
       roots.length
         ? h("ul", { class: "dsx-list" }, ...roots.map((path) =>
             h("li", { class: "dsx-item" },
@@ -191,19 +212,23 @@ export function DaemonSetup() {
     if (!s.reachable) {
       return h("div", {},
         h("p", { class: "dsx-lead" }, () => t("daemon.local.lead")),
-        h("div", { class: "dsx-dl-row" }, ...Object.keys(SOURCE_COMMANDS).map((name) =>
-          h("button", {
-            class: () => "dsx-dl-btn" + (platform() === name ? " on" : ""),
-            onClick: () => { setChosen(name); api.uiEvent("daemon:platform", { platform: name }); },
-          }, PLATFORM_LABEL[name] || name))),
-        h("p", { class: "dsx-note" }, () => t("daemon.local.body")),
-        h("div", { class: "dsx-cmd-row" },
-          h("code", { class: "dsx-cmd" }, () => SOURCE_COMMANDS[platform()] || SOURCE_COMMANDS.macos),
-          h("button", { class: "dsx-copy",
-            onClick: () => copy(SOURCE_COMMANDS[platform()] || SOURCE_COMMANDS.macos),
-          }, () => copied() ? t("daemon.cmd.copied") : t("daemon.cmd.copy"))),
-        h("p", { class: "dsx-note" }, () => t("daemon.local.hint")),
-        h("p", { class: "dsx-waiting" }, () => t("daemon.absent.waiting")));
+        h("button", { class: "dsx-primary", disabled: () => connecting(), onClick: doConnect },
+          () => connecting() ? t("daemon.connecting") : t("daemon.connect")),
+        // The terminal way, for when the button cannot: folded, because nobody should need it.
+        h("details", { class: "dsx-more" },
+          h("summary", {}, () => t("daemon.details")),
+          h("p", { class: "dsx-note" }, () => t("daemon.local.body")),
+          h("div", { class: "dsx-dl-row" }, ...Object.keys(SOURCE_COMMANDS).map((name) =>
+            h("button", {
+              class: () => "dsx-dl-btn" + (platform() === name ? " on" : ""),
+              onClick: () => { setChosen(name); api.uiEvent("daemon:platform", { platform: name }); },
+            }, PLATFORM_LABEL[name] || name))),
+          h("div", { class: "dsx-cmd-row" },
+            h("code", { class: "dsx-cmd" }, () => SOURCE_COMMANDS[platform()] || SOURCE_COMMANDS.macos),
+            h("button", { class: "dsx-copy",
+              onClick: () => copy(SOURCE_COMMANDS[platform()] || SOURCE_COMMANDS.macos),
+            }, () => copied() ? t("daemon.cmd.copied") : t("daemon.cmd.copy"))),
+          h("p", { class: "dsx-note" }, () => t("daemon.local.hint"))));
     }
     return h("div", {},
       h("p", { class: "dsx-lead" }, () => t("daemon.ok.lead")),
@@ -219,15 +244,15 @@ export function DaemonSetup() {
       h("div", { class: "dsx-head" },
         h("span", { class: "dsx-mark" }, raw(DESKTOP_ICON)),
         h("h2", { class: "dsx-title" }, () => t("daemon.title")),
-        h("button", { class: "dsx-icon", title: () => t("daemon.refresh"),
-                      onClick: () => daemon.check() }, raw(REFRESH_ICON)),
         h("button", { class: "dsx-icon", title: () => t("daemon.close"), onClick: close }, raw(CLOSE_ICON))),
       // `body` and not `body()`: passed as a FUNCTION it is a reactive child, so the screen becomes the
       // connected one by itself the moment the daemon answers — which is the whole "install it and watch this
       // turn green" step. Called, it would render once and never change again.
       h("div", { class: "dsx-scroll" },
+        h("p", { class: "dsx-intro" }, () => t("daemon.intro")),
         body,
-        () => problem() ? h("p", { class: "dsx-problem" }, problem()) : null),
+        () => problem() ? h("p", { class: "dsx-problem" }, problem()) : null,
+        h("button", { class: "dsx-link dsx-recheck", onClick: () => daemon.check() }, () => t("daemon.refresh"))),
     ),
   );
 }

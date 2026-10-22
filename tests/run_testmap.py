@@ -6148,7 +6148,9 @@ DOMAINS: list[dict] = [
         {"id": "7.44", "title": "Daemon local: se instala con UNA línea (sin aviso de seguridad) y se gobierna "
                                 "desde la interfaz — sin que el proxy del motor sea un atajo a los ficheros",
             "ch": UNIT,
-            "paths": ["tests/infrastructure/unit/daemon/test_the_daemon_is_offered_and_governed_from_the_interface.py"]},
+            "paths": ["tests/infrastructure/unit/daemon/test_the_daemon_is_offered_and_governed_from_the_interface.py",
+                      # 2026-10-22: «Conectar» starts it and «Elegir carpeta…» opens the system dialog — no terminal
+                      "tests/infrastructure/unit/daemon/test_the_computer_connects_with_one_click.py"]},
         # V2-638 — EL SISTEMA DE ARCHIVOS DEL AGENTE: un solo árbol que comparten todos los widgets, en vez de
         # que cada uno guarde en su rincón. Lo que se fija, por orden de daño: la FRONTERA (`paths.resolve()` es
         # la única puerta y toda ruta que llega es no fiable — magnet, salida del modelo, query string; una

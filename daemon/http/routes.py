@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from .. import VERSION, audit, config
 from ..fs import listing, reading, searching
+from .. import picker
 from ..fs import roots as folders
 from ..fs.entries import LIST_DEFAULT_LIMIT, LIST_MAX_LIMIT, MAX_READ_BYTES
 
@@ -71,6 +72,17 @@ def grant(request, payload: dict) -> dict:
     return {"ok": True, "roots": granted}
 
 
+def pick(request, payload: dict) -> dict:
+    """Open the system's folder dialog on this desktop and grant what the person chose — through `grant`, so the
+    same boundary holds. A cancel is not a refusal: `cancelled` and the allowlist unchanged."""
+    path = picker.choose_folder(_as_text(payload, "prompt"))
+    if not path:
+        return {"ok": False, "cancelled": True, "roots": folders.roots()}
+    granted = folders.grant(path)
+    audit.record("permissions.pick", caller=request._caller(), path=path, outcome="ok")
+    return {"ok": True, "roots": granted, "path": path}
+
+
 def revoke(request, payload: dict) -> dict:
     path = _as_text(payload, "path")
     remaining = folders.revoke(path)
@@ -116,6 +128,7 @@ TABLE: dict[tuple[str, str], object] = {
     ("GET", "/permissions"): permissions,
     ("POST", "/permissions/grant"): grant,
     ("POST", "/permissions/revoke"): revoke,
+    ("POST", "/permissions/pick"): pick,
     ("POST", "/files/list"): list_dir,
     ("POST", "/files/read"): read_file,
     ("POST", "/files/search"): search,

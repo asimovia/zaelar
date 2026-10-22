@@ -116,7 +116,7 @@ def _port(cfg: dict) -> int:
     return port if 1 <= port <= 65535 else _DEFAULT_PORT
 
 
-async def _call(cfg: dict, path: str, payload: dict | None = None) -> tuple[int, dict]:
+async def _call(cfg: dict, path: str, payload: dict | None = None, *, timeout: float = _TIMEOUT_S) -> tuple[int, dict]:
     """One request to the daemon. Returns `(status, body)`; `(0, {})` when it could not be reached at all, which
     is what "not installed" and "not running" both look like from here and neither is an error."""
     port = _port(cfg)
@@ -124,7 +124,7 @@ async def _call(cfg: dict, path: str, payload: dict | None = None) -> tuple[int,
     headers = {"Authorization": f"Bearer {token}"} if token else {}
     url = f"http://127.0.0.1:{port}{path}"
     try:
-        async with httpx.AsyncClient(timeout=_TIMEOUT_S, trust_env=False) as client:
+        async with httpx.AsyncClient(timeout=timeout, trust_env=False) as client:
             if payload is None:
                 response = await client.get(url, headers=headers)
             else:
@@ -285,7 +285,56 @@ async def daemon_revoke(request: Request, body: dict = Body(default={})):
     return await _permissions(request, "/permissions/revoke", body)
 
 
-async def _permissions(_request: Request, path: str, body: dict) -> JSONResponse:
+@router.post("/api/daemon/permissions/pick")
+async def daemon_pick(request: Request, body: dict = Body(default={})):
+    """The system's folder dialog, opened by the daemon on this desktop; what the person picks is granted through
+    the daemon's own boundary. The wait is the person browsing, so the timeout is theirs, not a network one."""
+    if not _same_origin(request):
+        return _CROSS_SITE
+    return await _permissions(request, "/permissions/pick", body, timeout=_PICK_TIMEOUT_S)
+
+
+_PICK_TIMEOUT_S = 320.0          # the daemon's own dialog bound (`daemon.fs.picker.TIMEOUT_S`) plus slack
+_START_COOLDOWN_S = 20.0
+_last_start = [0.0]
+
+
+@router.post("/api/daemon/start")
+async def daemon_start(request: Request):
+    """«Conectar»: start the daemon this engine carries, as the launcher does (`python -m daemon`, its log in
+    `.meshkore/logs/daemon.log`). Local only — a cloud engine has no desktop to start it on. A daemon already
+    answering is left alone, and a second click inside the cooldown does not start a second one on the same port."""
+    import subprocess
+    import time
+    if not _same_origin(request):
+        return _CROSS_SITE
+    if _is_cloud():
+        return JSONResponse({"ok": False, "error": "no_daemon_from_cloud"}, status_code=409)
+    cfg = _daemon_config()
+    if cfg.get("token"):
+        status, health = await _call(cfg, "/health")
+        if status == 200 and health.get("ok"):
+            return JSONResponse({"ok": True, "started": False})
+    if time.time() - _last_start[0] < _START_COOLDOWN_S:
+        return JSONResponse({"ok": True, "started": False, "starting": True})
+    root = Path(__file__).resolve().parent.parent
+    logs = root / ".meshkore" / "logs"
+    try:
+        logs.mkdir(parents=True, exist_ok=True)
+        log = open(logs / "daemon.log", "ab", buffering=0)   # noqa: SIM115 — handed to the child, which keeps it
+        kwargs: dict = {"cwd": str(root), "stdout": log, "stderr": subprocess.STDOUT}
+        if sys.platform.startswith("win"):
+            kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
+        else:
+            kwargs["start_new_session"] = True              # outlives an engine restart, like the launcher's
+        subprocess.Popen([sys.executable, "-m", "daemon"], **kwargs)
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse({"ok": False, "error": "start_failed", "message": str(e)[:200]}, status_code=500)
+    _last_start[0] = time.time()
+    return JSONResponse({"ok": True, "started": True})
+
+
+async def _permissions(_request: Request, path: str, body: dict, *, timeout: float = _TIMEOUT_S) -> JSONResponse:
     """A folder in, the new allowlist out. The daemon's refusal text is passed through UNCHANGED: it names the
     boundary ("that is your home folder", "that folder holds credentials") and rewriting it here would turn a
     sentence the user can act on into a generic failure — the V2-421/V2-507 lesson, and the reason the daemon
@@ -295,8 +344,9 @@ async def _permissions(_request: Request, path: str, body: dict) -> JSONResponse
     cfg = _daemon_config()
     if not cfg:
         return JSONResponse({"ok": False, "error": "not_installed"}, status_code=409)
-    folder = body.get("path")
-    status, result = await _call(cfg, path, {"path": folder if isinstance(folder, str) else ""})
+    folder, prompt = body.get("path"), body.get("prompt")
+    status, result = await _call(cfg, path, {"path": folder if isinstance(folder, str) else "",
+                                             "prompt": prompt if isinstance(prompt, str) else ""}, timeout=timeout)
     if status == 0:
         return JSONResponse({"ok": False, "error": "not_running"}, status_code=409)
     return JSONResponse(result, status_code=status)

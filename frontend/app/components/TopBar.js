@@ -12,7 +12,7 @@ import { overallStatus } from "../services/status.js?v=2";
 import { toggleTheme } from "../services/theme.js?v=2";
 import { t } from "../core/i18n.js?v=1";
 import { BUG_ICON, GEAR_ICON, COMPASS_ICON, MOON_ICON, USER_ICON, MEM_ICON, DESKTOP_ICON } from "../lib/icons.js?v=2";
-import * as daemon from "../services/daemon.js?v=1";
+import * as daemon from "../services/daemon.js?v=2";
 import { EnergyGauge } from "./EnergyGauge.js?v=1";
 import { accountLink } from "../core/account-link.js?v=1";
 
@@ -43,13 +43,13 @@ export function TopBar() {
     // LA PILA of Energy, pegada a the IZQUIERDA of the 👤 (EnergyGauge.js, 2026-08-13). Se gatea sola by the `cloud` de
     // /api/energy and NO by `cloudProfile`: es the mismo hecho by dos vías, and the pila tiene that creerle al endpoint
     // that le da the saldo, no a otro. En self-host devuelve null and here no aparece nada.
-    // 🖥 THE LOCAL DAEMON (V2-575 P1). The one icon here that is NOT gated on `cloudProfile`, and that is the
-    // whole point of it: a cloud account is precisely the case where the user's own computer is unreachable —
-    // no window to open, no CAPTCHA to pass, no documents — and this is where they get the installer for it.
-    // Hiding it in cloud would hide it from the only people who cannot solve the problem any other way.
-    // Same visual language as the ◉ (`.st-ok/.st-warn`), because it answers the same shape of question.
+    // 🖥 THE LOCAL DAEMON (V2-575 P1). Shown only where it can work: an engine on this computer. A cloud engine
+    // cannot reach the user's computer until the outbound relay (P3) exists, so offering it there sold an
+    // install that connected to nothing (operator, 2026-10-22). Hidden too until the first status arrives, so a
+    // cloud page never flashes it. Same visual language as the ◉ (`.st-ok/.st-warn`).
     h("button", {
-      class: () => "ic daemonBtn st-" + daemon.iconState() + (store.daemonSetupOpen() ? " on" : ""),
+      class: () => "ic daemonBtn st-" + daemon.iconState() + (store.daemonSetupOpen() ? " on" : "")
+        + (daemon.isOffered() ? "" : " is-off"),
       id: "daemonBtn", title: () => t("topbar.daemon.title"),
       onClick: () => { const v = !store.daemonSetupOpen(); store.setDaemonSetupOpen(v); api.uiEvent("topbar:daemon", { state: v ? "open" : "close" }); },
     }, raw(DESKTOP_ICON)),
