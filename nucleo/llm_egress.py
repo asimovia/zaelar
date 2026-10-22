@@ -78,8 +78,16 @@ def route(base_url: str, api_key: str) -> tuple[str, str, dict]:
 
     Without mediated egress, returns exactly what it was given — self-host remains byte-identical. A LOCAL endpoint
     (Ollama) is also never touched: it costs no money and there is nothing to mediate.
+
+    THE LEASE GATE. Every hosted-model call resolves its destination here, which makes this the door where a
+    machine that holds no energy lease is told no BEFORE the request leaves (`energy_lease.admit` raises
+    `OutOfEnergy`; always admits without a cloud account).
     """
-    if is_local_endpoint(base_url) or not mediated():
+    if is_local_endpoint(base_url):
+        return base_url, api_key, {}
+    from nucleo import energy_lease
+    energy_lease.admit("llm")
+    if not mediated():
         return base_url, api_key, {}
 
     token = (os.getenv(_TOKEN_ENV) or "").strip()

@@ -82,6 +82,9 @@ async def classify(messages: list[dict], operator_name: str | None = None) -> li
     url = config.triage_url()
     local = "11434" in url or "localhost" in url or "127.0.0.1" in url
     try:
+        if not local:                     # the energy lease gate: a remote triage model is paid work
+            from nucleo import energy_lease
+            energy_lease.admit("llm")
         async with aiohttp.ClientSession(timeout=to) as s:
             async with s.post(url.rstrip("/") + "/chat/completions",
                               headers={"Authorization": f"Bearer {config.triage_key()}"},

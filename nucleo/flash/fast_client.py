@@ -365,12 +365,12 @@ class FastClient:
         REASONING tier (GLM-5.2 via AIMLAPI) emits NO deltas until it finishes thinking → with `stream=True` the call
         appears to hang (measured: >115s vs 3.4s without streaming). Raises the provider error just like `stream`.
 
-        Si se pasan `tools` (function-calling OpenAI-compatible, V2-076), se ofrecen con `tool_choice='auto'` y, al
-        volver, `on_tool_call(name, args_dict)` se dispara una vez por llamada del modelo (best-effort: una con JSON
-        inválido se salta, nunca lanza). Es el mismo mecanismo que `stream()` pero sin trocear — para que el turno de
-        cluster (que DEBE ir no-streaming por el reasoner) pueda REUSAR el catálogo del FlashBrain. Sin `tools` el
-        comportamiento es byte-idéntico a antes (cero regresión)."""
+        `tools` (V2-076) work as in `stream()` — `on_tool_call(name, args)` once per call, bad JSON skipped — so the
+        cluster turn (non-streaming because of the reasoner) reuses the FlashBrain catalog."""
         spec = spec or spec_from_config()
+        if not spec.is_local():                 # the lease gate, as in `stream()` — Z.AI direct never routes
+            from nucleo import energy_lease
+            energy_lease.admit("llm")
         if spec._is_zai():
             return await self._complete_zai(messages, spec, max_tokens, tools=tools, on_tool_call=on_tool_call,
                                             no_thinking=no_thinking)
@@ -574,15 +574,15 @@ class FastClient:
         role: str = "voice",          # V2-758: which ladder the in-turn relay walks (`provider_chain.ROLE_*`)
         **kwargs: Any,
     ) -> AsyncIterator[str]:
-        """Thin wrapper over `_stream_inner()` that tracks "a real model request is in flight" for
-        `nucleo.runstate`'s deferred stop (V2-092 addenda, 2026-08-15): the ⏻ switch must never cut a request
-        mid network-call, but the wait is NOT a timer — it is this counter reaching zero, which only ever
-        happens when a real stream actually ends (success, provider error, or cancellation). One choke point
-        for both branches of `_stream_inner` (the Z.AI SSE path and the OpenAI-compatible path), since a
-        `try/finally` around a delegating `async for` covers whatever the inner generator does, wherever inside
-        it something raises. See `_stream_inner` for the unchanged streaming logic."""
-        from nucleo import runstate
+        """Thin wrapper over `_stream_inner()`, the one choke point for both of its branches (Z.AI SSE and
+        OpenAI-compatible). It tracks "a real model request is in flight" for `runstate`'s deferred stop (V2-092
+        addenda): the ⏻ never cuts a request mid-call, and the wait is this counter reaching zero, not a timer.
+        And it asks the energy lease FIRST: a refused call raises `OutOfEnergy` here, before the relay loop
+        inside could mistake it for a provider outage and mark a healthy tier."""
+        from nucleo import energy_lease, runstate
 
+        if not (spec or spec_from_config()).is_local():
+            energy_lease.admit("llm")
         runstate.enter_inflight()
         try:
             async for chunk in self._stream_inner(

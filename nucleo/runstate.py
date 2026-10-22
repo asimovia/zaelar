@@ -183,7 +183,12 @@ def blocks_new_work(*, who: str = "") -> bool:
     Medido 2026-09-10: con `{"state":"stopped","src":"operator"}` persistido, el arranque re-escaló un encargo
     viejo y levantó un Brain Worker con GLM."""
     try:
-        return stopped()
+        if stopped():
+            return True
+        # Opening a worker is the most expensive thing the engine starts, so it asks the energy lease too:
+        # without a usable lease a cloud machine opens nothing new (always admits without a cloud account).
+        from nucleo import energy_lease
+        return not energy_lease.check("worker")
     except Exception as e:  # noqa: BLE001
         logger.warning(f"runstate: interruptor ILEGIBLE ({e!r}) — {who or 'quien pregunta'} no abre trabajo nuevo")
         return True

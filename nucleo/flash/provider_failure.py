@@ -78,6 +78,11 @@ def handle(err_text: str, *, role: str, stalled: bool = False, spec=None) -> dic
     """
     from nucleo.flash import provider_chain as pc
 
+    # The energy lease refused the call before it left: no provider was asked, so there is nothing to mark,
+    # no light to paint and no relay that could do better — every tier would be refused the same way.
+    from nucleo import energy_lease
+    if energy_lease.is_refusal(err_text):
+        return {"relay": None, "dry": False}
     relay = None
     culpable = tier_for(spec, role)          # the one that ACTUALLY ran; None → let `pick()` decide, as before
     try:

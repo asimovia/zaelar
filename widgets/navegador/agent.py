@@ -126,6 +126,11 @@ _client: AsyncOpenAI | None = None
 
 def _c() -> AsyncOpenAI:
     global _client
+    # Asked on EVERY step, not only when the client is built: the client is cached for the life of the process,
+    # so the egress gate in `llm_egress.route` below would otherwise see the first call and none of the rest.
+    from nucleo import energy_lease, llm_egress
+    if not llm_egress.is_local_endpoint(_base_url()):
+        energy_lease.admit("llm")
     if _client is None:
         key = _api_key()
         if not key:

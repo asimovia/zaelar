@@ -18,6 +18,8 @@ makes ONE minimal real call per provider and says, per provider, one of:
   blocked    a bot challenge instead of results (captcha)
   network    timeout / no route
   down       any other error
+  unfunded   paid, and this machine holds no energy lease to pay with — not asked, nothing spent
+  unprobed   paid, and the boot probe of a leased deployment does not spend on it (asked on demand)
   engine     needs the running engine (the warm Chromium lives on the server loop) — `--engine` asks it
 
 Names only: the key's env var NAME travels in the report, its value never leaves the provider's HTTP header.
@@ -120,6 +122,9 @@ def probe(name: str) -> dict:
     if p.env_switch[0] and (os.getenv(p.env_switch[0]) or "") == p.env_switch[1]:
         row.update(state="off", why=f"{p.env_switch[0]}={p.env_switch[1]}")
         return row
+    if p.paid and not _keys.spendable():
+        row.update(state="unfunded", why="no energy lease — a paid index is not asked")
+        return row
     if p.keys and not _keys.key(name):
         row.update(state="missing", why=f"set {row['key']} to enable it")
         return row
@@ -153,7 +158,7 @@ def summary(rows: list[dict]) -> dict:
         "live": live,
         "missing": [r["provider"] for r in rows if r["state"] == "missing"],
         "failing": [{"provider": r["provider"], "state": r["state"], "why": r["why"][:120]} for r in rows
-                    if r["state"] not in ("live", "missing", "off", "engine")],
+                    if r["state"] not in ("live", "missing", "off", "engine", "unfunded", "unprobed")],
         "can_answer": bool(kinds_live & {"answer", "results"}),
         "can_discover": "results" in kinds_live,
         "can_place": "places" in kinds_live,
@@ -162,7 +167,7 @@ def summary(rows: list[dict]) -> dict:
 
 
 _MARK = {"live": "✓", "missing": "·", "off": "·", "exhausted": "✗", "credential": "✗", "blocked": "✗", "network": "✗",
-         "down": "✗", "engine": "?"}
+         "down": "✗", "engine": "?", "unfunded": "·", "unprobed": "·"}
 
 
 def render(rows: list[dict]) -> str:

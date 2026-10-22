@@ -84,7 +84,8 @@ class ListingQuery:
 
 # ── keys ─────────────────────────────────────────────────────────────────────────────────────────
 def _bd_token() -> str:
-    return (os.getenv("BRIGHTDATA_API_TOKEN") or "").strip()
+    from search.providers import keys as _keys     # the one door for paid keys (and the energy lease gate)
+    return _keys.key("brightdata_serp")
 
 
 def _bd_zone_serp() -> str:

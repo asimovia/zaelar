@@ -304,11 +304,14 @@ async def energy():
 
     On self-host it returns `cloud:false` and the frontend renders nothing: there is no balance to spend."""
     try:
-        from nucleo import energy_lease, energy_meter
+        from nucleo import account_limits, cloud_account, energy_lease, energy_meter
         # The LEASE travels alongside the balance because they are the same question seen at two distances: the
         # balance is what the ACCOUNT has left, while the lease is what THIS machine may spend before asking again.
         # With the link down, only the second one is a locally verifiable fact.
-        return JSONResponse({**energy_meter.snapshot(), "lease": energy_lease.snapshot()},
+        # `exhausted` and `account_url` ride here so a page opened AFTER the energy ran out still shows the notice
+        # and where to top up — the SSE event that announced it is gone by then.
+        return JSONResponse({**energy_meter.snapshot(), "lease": energy_lease.snapshot(),
+                             "exhausted": account_limits.exhausted(), "account_url": cloud_account.account_url()},
                             headers={"Cache-Control": "no-cache"})
     except Exception:
         return JSONResponse({"cloud": False, "known": False}, headers={"Cache-Control": "no-cache"})

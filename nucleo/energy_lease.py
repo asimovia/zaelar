@@ -135,6 +135,72 @@ def allowed() -> bool:
     return remaining() > 0 and not expired()
 
 
+# ── THE GATE IN FRONT OF PAID WORK ───────────────────────────────────────────────────────────────────────────
+# `allowed()` existed from day one and nothing in production asked it: every paid call started first and was
+# subtracted afterwards, so a machine with no lease at all — a brand-new account with nothing to lease — spent
+# freely until the first report came back. `check()` is the question asked BEFORE starting something that costs
+# money, and `admit()` is the same question for a caller that must not proceed on a no. The doors are the
+# places paid work already passes on its way out: the model egress (`llm_egress.route`), the hot model client
+# (`FastClient.stream/complete`, asked before its relay loop), the paid search keys (`search/providers/keys.key`),
+# the one answer for opening a worker (`runstate.blocks_new_work`), and the few metered callers that do not route
+# (decision model, cloud embeddings, browser agent, remote triage/distiller). `test_paid_work_passes_the_lease_gate`
+# pins that every file that METERS paid spend also passes a door.
+
+# The refusal's own words. Error handlers that only receive the TEXT of an exception (the provider ladder)
+# recognise it by this mark, so a refusal never opens a cooldown on a healthy tier.
+REFUSAL_MARK = "no energy lease"
+
+
+class OutOfEnergy(RuntimeError):
+    """A paid call was refused BEFORE it started because this machine holds no usable lease. It is nobody's
+    failure — not the provider's, not ours — and callers must not treat it as an outage (no relay, no light)."""
+
+
+def is_refusal(err) -> bool:
+    """Is this exception (or its text) the lease gate saying no, rather than a provider failing?"""
+    return isinstance(err, OutOfEnergy) or REFUSAL_MARK in str(err or "")
+
+
+_refused_log_at: dict = {}
+
+
+def check(kind: str = "") -> bool:
+    """May this machine START a paid operation of `kind` now? Never raises; True without a cloud account.
+
+    Three cases beyond the plain `allowed()`:
+      · a lease request is IN FLIGHT and none was ever granted (boot) → no, quietly: the answer is seconds away
+        and stopping the agent for it would be the flicker `_blow_fuse` already refuses;
+      · the lease EXPIRED with energy left (an idle machine) → yes, and ask for a renewal now; whatever the
+        renewal says decides the next call (`_renew_or_blow`), so the stale lease covers at most what is in
+        flight while the cloud answers — the same bound `note_spend` already accepts;
+      · otherwise no lease → no, and the fuse blows, so the refusal reaches the operator as the out-of-energy
+        state rather than as a pile of failed calls."""
+    try:
+        if allowed():
+            return True
+        if _renewing and not float(_state["granted"]):
+            return False
+        if remaining() > 0 and expired():
+            if not _renewing:
+                _schedule(_renew_or_blow())
+            return True
+        now = time.time()
+        if now - _refused_log_at.get(kind, 0.0) > 60:
+            _refused_log_at[kind] = now
+            logger.warning(f"energy_lease: no usable lease — refusing paid work ({kind or 'unspecified'})")
+        _blow_fuse()
+        return False
+    except Exception as e:  # noqa: BLE001 — a broken gate fails CLOSED where there is a lease to obey
+        logger.warning(f"energy_lease.check failed ({e!r}) — refusing paid work")
+        return not enabled()
+
+
+def admit(kind: str = "") -> None:
+    """`check()` for a caller that must not proceed on a no: raises `OutOfEnergy`."""
+    if not check(kind):
+        raise OutOfEnergy(f"{REFUSAL_MARK} for {kind or 'paid work'}")
+
+
 def note_spend(energy: float) -> None:
     """Descuenta del contador local. Se llama en el MISMO gesto que reportar el consumo a la nube, pero
     sin esperar a la respuesta: es una resta, no una consulta. Nunca lanza."""
@@ -183,7 +249,7 @@ def _schedule(coro) -> None:
     asyncio.create_task(coro)
 
 
-def _blow_fuse() -> None:
+def _blow_fuse(*, verdict: bool = False) -> None:
     """Se acabó el arriendo y no ha llegado otro. Para de verdad, y que se VEA — un corte silencioso es
     la peor versión de esto (el operador se enteró una vez por un cartel, sin haber visto nunca el
     saldo bajar).
@@ -193,15 +259,17 @@ def _blow_fuse() -> None:
     para que `_maybe_resume` lo volviera a arrancar un segundo después. Ese parpadeo no protege de nada
     y da la peor impresión posible. Mientras la petición está EN VUELO se deja pasar: el sobregasto
     posible es de una operación, que es exactamente el orden de magnitud que este diseño presupuesta."""
-    if _renewing and not float(_state["granted"]):
+    # `verdict`: the cloud ANSWERED no. The in-flight exception is for a request with no answer yet; the denial
+    # itself runs inside that request (`_renewing` is still True), and without this flag a denied boot lease
+    # never stopped anything — measured 2026-10-22 on an account with nothing to lease.
+    if _renewing and not float(_state["granted"]) and not verdict:
         logger.debug("energy_lease: sin arriendo todavía pero se está pidiendo — no se para")
         return
     try:
         from nucleo import runstate
-        if runstate.stopped():
-            return
-        logger.warning("energy_lease: arriendo agotado — PARANDO las operaciones de pago")
-        _schedule(runstate.stop(src=STOP_SRC))
+        if not runstate.stopped():     # already stopped: the notice and the retry below still have to happen
+            logger.warning("energy_lease: arriendo agotado — PARANDO las operaciones de pago")
+            _schedule(runstate.stop(src=STOP_SRC))
     except Exception as e:  # noqa: BLE001
         logger.warning(f"energy_lease: no se pudo parar por arriendo agotado: {e}")
     try:
@@ -315,7 +383,7 @@ async def _request(reason: str) -> bool:
         logger.warning(f"energy_lease: la nube NIEGA el arriendo ({motivo}) — se paran las operaciones de pago")
         _state.update({"granted": 0.0, "spent": 0.0, "expires_at": 0.0, "at": time.time()})
         _persist()
-        _blow_fuse()
+        _blow_fuse(verdict=True)
         return False
 
     ttl = float(data.get("ttl_s") or 1800)
@@ -325,6 +393,11 @@ async def _request(reason: str) -> bool:
     logger.info(f"energy_lease: arriendo de {granted:.2f} Energy por {ttl:.0f}s ({reason}), "
                 f"user={cloud_account.my_user_id()}")
     _maybe_resume()
+    try:
+        from nucleo import account_limits
+        account_limits.clear_exhausted()            # a lease is the end of "out of energy", whatever caused it
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"energy_lease: could not clear the out-of-energy state: {e!r}")
     return True
 
 
@@ -355,3 +428,4 @@ def _reset_for_tests() -> None:
     _state.update({"lease_id": None, "granted": 0.0, "spent": 0.0, "expires_at": 0.0, "at": 0.0})
     _loaded = False
     _renewing = False
+    _refused_log_at.clear()

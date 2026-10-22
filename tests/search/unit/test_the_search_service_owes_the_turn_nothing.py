@@ -17,7 +17,8 @@ ENGINE = Path(__file__).resolve().parents[3]
 SEARCH = ENGINE / "search"
 
 FORBIDDEN_PREFIXES = ("nucleo.flash", "voice", "widgets", "server", "memory", "connectors", "frontend")
-ALLOWED_NUCLEO = {"nucleo.errors", "nucleo.workspace", "nucleo.energy_meter"}
+# `nucleo.energy_lease` (V2-785): the gate asked BEFORE a paid index is called — the meter's twin, and a leaf.
+ALLOWED_NUCLEO = {"nucleo.errors", "nucleo.workspace", "nucleo.energy_meter", "nucleo.energy_lease"}
 
 
 def _imports(path: Path):

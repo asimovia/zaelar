@@ -106,6 +106,9 @@ async def _summarize(peer: str, prev: str, inbound: str, outbound: str) -> str |
     local = any(h in url for h in ("11434", "localhost", "127.0.0.1"))
     t0 = time.time()
     try:
+        if not local:                     # the energy lease gate: a remote distiller is paid work
+            from nucleo import energy_lease
+            energy_lease.admit("llm")
         to = aiohttp.ClientTimeout(total=_TIMEOUT)
         async with aiohttp.ClientSession(timeout=to) as s:
             async with s.post(url, headers={"Authorization": f"Bearer {_key()}"}, json=payload) as r:

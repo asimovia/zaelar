@@ -190,8 +190,8 @@ def enabled() -> bool:
     """False silences the whole module: no thread, no HTTP, callers keep their local verdict."""
     if (os.getenv("ZAELAR_JEV", "") or "").strip().lower() in ("0", "off", "no", "false"):
         return False
-    if _breaker_open():
-        return False                      # the provider is down: no thread, no socket, today's path
+    if _breaker_open() or not __import__("nucleo.energy_lease", fromlist=["check"]).check("decision"):
+        return False                      # provider down, or no energy lease: no thread, no socket, today's path
     return bool(_read_key())
 
 

@@ -230,6 +230,10 @@ below is the first kind, or it names the mechanism that replaced the second.
   shapes; a scrubber failure withholds, never passes); the full prompt capture is scrubbed, under the
   workspace, capped per session, and OFF in a hosted account unless `ZAELAR_LOG_PROMPTS=1`. — since 2026-10-01 ·
   nodes 7.61 · `observability/scrub.py`, `server/feedback_api.py`, `voice/observer.py`.
+- **CRIT-R8 · Paid work asks the energy lease BEFORE it starts.** With a lease to obey and none usable, a paid
+  call is refused (`OutOfEnergy`, never a provider failure: no relay, no light), the fuse stops the agent, and the
+  out-of-energy state is shown on screen with a link to the account page (`ZAELAR_ACCOUNT_URL`); self-host always
+  admits. A boot probe never pays. — since 2026-10-22 · nodes 8.21, 4.247 · `nucleo/energy_lease.py::check`.
 
 ## 7 · Working here
 

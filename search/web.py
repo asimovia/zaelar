@@ -45,17 +45,10 @@ _MAX_RESULTS = 5
 
 
 # ── keys / provider selection ────────────────────────────────────────────────────────────────────────────
-def _key(*names: str) -> str:
-    for n in names:
-        v = (os.getenv(n) or "").strip()
-        if v:
-            return v
-    return ""
-
-
-def perplexity_key() -> str: return _key("PERPLEXITY_API_KEY", "PPLX_API_KEY")
-def tavily_key() -> str: return _key("TAVILY_API_KEY")
-def brave_key() -> str: return _key("BRAVE_SEARCH_KEY", "BRAVE_API_KEY")
+# Through `providers.keys.key`, the one door every paid index's key passes (and where the energy lease says no).
+def perplexity_key() -> str: return _keys.key("perplexity")
+def tavily_key() -> str: return _keys.key("tavily")
+def brave_key() -> str: return _keys.key("brave")
 
 
 def _google_on() -> bool:

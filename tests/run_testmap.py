@@ -5376,6 +5376,13 @@ DOMAINS: list[dict] = [
                                  "ES el mandato) antes de que salga nada",
             "ch": UNIT, "paths": [
                 "tests/browser/unit/mensajeria/test_writing_to_a_person_who_has_not_written.py"]},
+        # V2-785 — running out of Energy was only SPOKEN. Rendered: the notice painted with translated words,
+        # its Top up link and the battery both pointing at the ENGINE's account url (#buy), keyboard-reachable.
+        # Disarmed 2026-10-22 (notice never gets `.on`) → red.
+        {"id": "4.247", "title": "Sin energía RENDERIZADO: aviso visible y traducido, «Recargar» y la pila enlazan "
+                                "a la cuenta del motor (#buy)",
+            "ch": UNIT, "live": True,
+            "cmd": "./.venv/bin/python tests/browser/e2e/energy/render_out_of_energy.py"},
         {"id": "4.34", "title": "El aviso de fallo del feedback RENDERIZADO: conectado, con caja, traducido y "
                                 "nombrando el 401 · y el gracias visible en la pestaña a la que se salta",
             "ch": UNIT, "live": True,
@@ -6168,7 +6175,10 @@ DOMAINS: list[dict] = [
             # cuota" read as "z.ai dead" while the credits purse served completions. Measured, not read.
             "tests/infrastructure/unit/core/test_zai_has_two_wallets.py"]},
         {"id": "8.21", "title": "Arriendo de energía: techo local y fusible", "ch": UNIT, "paths": [
-            "tests/infrastructure/unit/core/test_energy_lease.py"]},
+            "tests/infrastructure/unit/core/test_energy_lease.py",
+            # V2-785 — the lease is asked BEFORE paid work starts (egress, hot client, search keys, workers,
+            # decision model, boot probe), a denied boot lease stops, every metering file passes a door; disarmed.
+            "tests/infrastructure/unit/core/test_paid_work_passes_the_lease_gate.py"]},
         {"id": "8.22", "title": "Egress de modelos: un código, dos despliegues", "ch": UNIT, "paths": [
             "tests/infrastructure/unit/core/test_llm_egress.py"]},
         {"id": "8.23", "title": "Tarifas: el precio SIGUE al proveedor que corre", "ch": UNIT, "paths": [

@@ -10,7 +10,24 @@ from __future__ import annotations
 from voice.engine.llm.providers import nucleo as _p
 
 
+def _refused_for_energy(err_exc, err_text, emit, send) -> bool:
+    """The energy lease refused the model call before it left. Not an outage and not our bug: no ladder, no
+    light. The out-of-energy state is already on screen (the gate's fuse recorded it); the voice says it unless
+    the session closer is about to say it on its way out — once is the message, twice is a stutter."""
+    from nucleo import account_limits, energy_lease
+    if not energy_lease.is_refusal(err_exc if err_exc is not None else err_text):
+        return False
+    emit("alert", "Out of energy — the model call was not started.", text=(err_text or "")[:200],
+         extra={"cat": "energy", "exhausted": (account_limits.exhausted() or {}).get("reason") or ""})
+    if not account_limits.close_requested():
+        from i18n import langs
+        send(langs.current_language().energy_exhausted)
+    return True
+
+
 async def say_the_turn_failed(*, emit, err_exc, err_text, errored, llm_metrics, send, spec, stalled) -> dict:
+    if errored and _refused_for_energy(err_exc, err_text, emit, send):
+        return {"__return__": True}
     if errored:
         # DEGRADED: sin Hermes al que caer — frase de reserva segura (nunca el error crudo, nunca mudo).
         # CLASIFICA el error (V2-043): SIN SALDO/cuota (credit) · credencial (auth) · caída (outage) — así el

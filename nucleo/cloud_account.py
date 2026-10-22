@@ -18,3 +18,17 @@ def is_cloud_account() -> bool:
 
 def my_user_id() -> str:
     return (os.getenv("ZAELAR_USER_ID") or "").strip()
+
+
+# Where the holder of a cloud account manages it (balance top-ups, plan, receipts). ONE place knows it; the
+# interface reads it from `/api/config` and `/api/energy` instead of carrying its own literal, so a deployment
+# that serves its account page elsewhere sets `ZAELAR_ACCOUNT_URL` and every link follows.
+_ACCOUNT_URL_ENV = "ZAELAR_ACCOUNT_URL"
+_DEFAULT_ACCOUNT_URL = "https://zaelar.com/account"
+
+
+def account_url() -> str:
+    """The account page, or `""` without a cloud account — self-host has no account page to link to."""
+    if not is_cloud_account():
+        return ""
+    return (os.getenv(_ACCOUNT_URL_ENV) or "").strip() or _DEFAULT_ACCOUNT_URL

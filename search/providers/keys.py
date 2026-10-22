@@ -10,8 +10,26 @@ import os
 from . import PROVIDERS
 
 
+def spendable() -> bool:
+    """May a PAID index be asked right now? The energy lease's answer (always yes without a cloud account)."""
+    from nucleo import energy_lease
+    return energy_lease.check("search")
+
+
+def leased() -> bool:
+    """Is this deployment's spending bounded by an energy lease? Then a probe nobody asked for is not paid for."""
+    from nucleo import energy_lease
+    return energy_lease.enabled()
+
+
 def key(provider: str) -> str:
-    """The key VALUE for `provider` — for the provider module's own HTTP call, nothing else."""
+    """The key VALUE for `provider` — for the provider module's own HTTP call, nothing else.
+
+    THE LEASE GATE for paid search. Every paid index reads its key here immediately before its request, so a
+    machine with no usable energy lease gets no key: the chain skips the paid rungs exactly as it skips an
+    unkeyed one and degrades to the free ones, the probe says `unfunded`, and nothing is spent."""
+    if PROVIDERS[provider].paid and not spendable():
+        return ""
     for name in PROVIDERS[provider].keys:
         v = (os.getenv(name) or "").strip()
         if v:

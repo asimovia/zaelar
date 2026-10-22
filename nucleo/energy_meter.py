@@ -481,8 +481,7 @@ async def _post_usage_cloud_account(energy: float, kind: str, meta: dict | None 
             )
         balance = (resp.json() or {}).get("balance") if resp.status_code < 400 else None
         note_balance(balance)
-        if account_limits.should_close(balance):
-            account_limits.request_close("balance_depleted")
+        account_limits.on_balance(balance)        # depleted → close the session; back above zero → end the notice
     except Exception as e:  # noqa: BLE001
         logger.warning(f"energy_meter: cloud-account usage report failed (non-fatal): {e}")
 

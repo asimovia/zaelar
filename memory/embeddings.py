@@ -349,6 +349,11 @@ def _cloud_embed(texts: list[str], *, timeout: float | None = None) -> list[list
     key = _cloud_key()
     if not key:
         return None
+    # The energy lease gate (deferred import, same trade as the meter below): no lease → no paid request, and
+    # None is the same deferred-vector path as a 429 — the space never changes.
+    from nucleo import energy_lease
+    if not energy_lease.check("embed"):
+        return None
     body: dict = {"model": _cloud_model(), "input": list(texts)}
     dims = _cloud_dims()
     if dims:

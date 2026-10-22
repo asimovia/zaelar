@@ -53,6 +53,10 @@ INVERSE_IMPORTS_DEBT: dict[tuple[str, str], str] = {
         "meters the CLOUD embedding call (V2-501). Same trade as rerank above, and the argument is stronger "
         "here: the reranker is dormant, this runs on every insert AND every query. Deferred import inside the "
         "cloud branch, right after a successful response; the local backends never reach it.",
+    ("memory/embeddings.py", "nucleo.energy_lease"):
+        "the energy lease gate in front of the CLOUD embedding call (V2-785). The meter's twin: one counts the "
+        "spend after it, this refuses it before it when the machine holds no lease. Same deferred import, same "
+        "cloud branch, and the same reason a callback would not do — a process that forgot to register would spend.",
 }
 
 _FROM_DOTTED_RE = re.compile(r"^[ \t]*from[ \t]+nucleo\.([a-z_]+)")           # from nucleo.workers import ledger

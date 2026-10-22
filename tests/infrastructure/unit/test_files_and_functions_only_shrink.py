@@ -36,7 +36,7 @@ FILES = {
     'connectors/meshkore/bridge.py': 891,
     'memory/api.py': 891,
     'nucleo/dispatch.py': 921,
-    'nucleo/energy_meter.py': 813,
+    'nucleo/energy_meter.py': 812,
     'nucleo/flash/act_repair.py': 802,
     'nucleo/flash/fast_client.py': 866,
     'nucleo/flash/prompt.py': 816,

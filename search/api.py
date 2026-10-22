@@ -30,10 +30,20 @@ def cached_rows() -> list[dict]:
 
 
 def prime_cache() -> None:
-    """One probe at boot (a few paid calls, once), so the panel has something to say before anyone asks."""
+    """One probe at boot, so the panel has something to say before anyone asks.
+
+    Where spending is bounded by an energy lease, the boot probe asks only the FREE indexes. Every paid probe is
+    a real paid request, and a boot is not something anyone asked for: measured 2026-10-22, a brand-new account
+    nobody had opened was billed for two web searches ~95 s after its machine started — this probe. The paid
+    rows say `unprobed` until someone asks (`/api/search/health?fresh=1` or the CLI)."""
     from . import health as _health
+    from .providers import PROVIDERS
+    from .providers import keys as _keys
     try:
-        rows = _health.probe_all()
+        skip = {n for n, p in PROVIDERS.items() if p.paid} if _keys.leased() else set()
+        rows = _health.probe_all([n for n in PROVIDERS if n not in skip])
+        rows += [{"provider": n, "kind": PROVIDERS[n].kind, "paid": True, "key": _keys.key_name(n), "ok": False,
+                  "latency_ms": 0, "state": "unprobed", "why": "paid: probed on demand"} for n in sorted(skip)]
         _health_cache.update(at=time.time(), rows=rows)
     except Exception as e:  # noqa: BLE001 — a failed priming leaves the cache empty; the panel says «sin sondear»
         logger.warning(f"search.api: the boot probe failed ({e!r}); the panel will say «sin sondear todavía»")
