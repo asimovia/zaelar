@@ -212,3 +212,6 @@ tester/anexos/brief-*
 informe.json
 # Certificates and their private keys never enter the repo (the engine serves plain HTTP on localhost).
 certs/
+
+# Claude Code per-machine state (scheduler locks, agent worktrees) — never part of the project.
+.claude/
