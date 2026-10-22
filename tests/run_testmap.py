@@ -2041,6 +2041,10 @@ DOMAINS: list[dict] = [
         {"id": "3.89", "title": "Una orden cuyo turno murió SIN contestar no se pela como «ya contestada»: «So "
                                 "open me a video.» sobrevive a la frase partida (sesión 3a9a082c, 12:39)",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_an_unanswered_order_is_not_peeled.py"]},
+        {"id": "2.762", "title": "Un turno especulativo sustituido antes de su primera palabra no contesta nada: el que "
+                                 "lo reemplaza recibe la frase ENTERA, mueran y nazcan en el orden que sea",
+            "ch": UNIT,
+            "paths": ["tests/agent_headless/unit/flash/test_a_speculative_turn_does_not_answer_the_sentence.py"]},
     ]},
     {"id": "4", "name": "WIDGETS", "nodes": [
         {"id": "4.1", "title": "Ciclo de vida / acciones / refs / generador / background", "ch": UNIT, "paths": [

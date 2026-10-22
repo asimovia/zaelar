@@ -44,7 +44,10 @@ def held(monkeypatch):
 
 
 def _offer(a, text, t):
-    return asyncio.run(a.offer(text, now=t))
+    out = asyncio.run(a.offer(text, now=t))
+    if out[0] == "act":
+        a.answered()   # in 981dd54c each delivered half WAS answered: its turn spoke before the STT reopened
+    return out
 
 
 # ── the measured turn, step by step ───────────────────────────────────────────────────────────────────

@@ -224,6 +224,26 @@ class Accumulator:
     #: Cleared the moment an incoming no longer starts with it — that is a different turn, and every word
     #: of a different turn is new.
     consumed_head: str = ""
+    #: The delivery whose turn has not said a word yet (2026-10-22): `(incoming, state before that offer)`.
+    #: LiveKit starts a SPECULATIVE turn on every STT final and, when more words come, replaces it with one
+    #: carrying the whole sentence. The replacement's `offer` runs BEFORE the replaced turn's cancellation reaches
+    #: `unanswered` — measured 17 ms ahead in the demo of 2026-10-22: «…show me some videos of the SpaceX» was
+    #: marked answered, «…SpaceX Starship tests.» arrived and was peeled to «Starship tests.», and the context-
+    #: bleed guard dropped the model's correct `play_video`. An offer that EXTENDS a delivery still in flight
+    #: supersedes it: the state goes back to before that delivery, whatever order the two turns die and start in.
+    inflight: tuple | None = None
+
+    def answered(self) -> None:
+        """The turn that took the last delivery said its first word: those words are answered for good."""
+        self.inflight = None
+
+    def _supersede_unanswered(self, incoming: str) -> None:
+        if self.inflight is None:
+            return
+        prev, snap = self.inflight
+        self.inflight = None
+        if prev and len(incoming) > len(prev) and incoming.startswith(prev):
+            (self.fragments[:], self.first_at, self.last_at, self.consumed_at, self.consumed_head) = snap
 
     # ── consulta ────────────────────────────────────────────────────────────────────────────────────────────
     def pending(self) -> bool:
@@ -300,6 +320,13 @@ class Accumulator:
         incoming = (incoming or "").strip()
         if not incoming:
             return "act", incoming, "", ""
+        self._supersede_unanswered(incoming)
+        snap = (list(self.fragments), self.first_at, self.last_at, self.consumed_at, self.consumed_head)
+        out = await self._offer(incoming, now)
+        self.inflight = (incoming, snap) if out[0] == "act" else None
+        return out
+
+    async def _offer(self, incoming: str, now: float) -> tuple[str, str, str, str]:
 
         # THE SAME SENTENCE, ONCE AND IN ORDER (V2-747) — both repairs are about the acoustic layer handing
         # the SAME turn back bigger, and both have to run before any decision reads the text.
@@ -516,6 +543,13 @@ def set_judge(fn) -> None:
     `segmenter.judge`."""
     global _judge
     _judge = fn or _default_judge
+
+
+def answered_by(brain) -> None:
+    """The voice provider's door to `Accumulator.answered` — the turn's first spoken chunk. Fail-soft."""
+    acc = getattr(brain, "_acc", None)
+    if acc is not None:
+        acc.answered()
 
 
 def unanswered_by(brain, text: str) -> None:

@@ -574,6 +574,7 @@ class NucleoLLMStream(llm.LLMStream):
                 return
             if first_ms is None:
                 first_ms = round((time.time() - t0) * 1000)
+                _acc_mod.answered_by(brain)   # its words are answered now, not when the turn began
             spoken.append(txt)
             # ANTI-ECO (FASE 2): recuerda lo ÚLTIMO que zaelar dice + cuándo, para descartar el eco que el mic
             # recaptura como turno del operador. Se actualiza en CADA salida de voz (respuesta, filler, degradado).

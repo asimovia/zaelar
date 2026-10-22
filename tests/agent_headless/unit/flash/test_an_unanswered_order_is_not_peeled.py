@@ -43,6 +43,8 @@ def _replay(a, *, the_turn_died: bool):
     assert _offer(a, "So open me a video.", 100.0)[0] == "act"
     if the_turn_died:
         _died(a, "So open me a video.")
+    else:
+        acc.answered_by(type("B", (), {"_acc": a})())   # its turn said its first word (2026-10-22 contract)
     action, text, _, _ = _offer(a, "So open me a video. Of the", 103.0)
     if the_turn_died:
         # Unanswered, the order is offered to the brain AGAIN (the tail waits as the buffer) — and he is still
