@@ -273,7 +273,9 @@ def test_both_channels_hand_over_what_we_said():
     prov = _vts.read(ENGINE / "voice/engine/llm/providers/nucleo.py")
     probe = _vts.read(ENGINE / "nucleo/flash/probe.py")
     arb = (ENGINE / "nucleo/canvas_arbiter.py").read_text(encoding="utf-8")
-    assert "last_reply=brain._last_reply" in prov
+    # 2026-10-22 — the line BEFORE his turn, frozen when the window is built; `_last_reply` is the reply being
+    # streamed by the time a tool runs (`prior_line`).
+    assert "last_reply=_prior_line.of(brain)" in prov
     # V2-741 — the call gained the turn's brief so a verdict can overrule the verb table. This
     # channel fires no brief yet, so the argument is what keeps the two from drifting apart.
     assert "video_license(text, _last_assistant_line(sess.window), brief=" in probe

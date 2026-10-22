@@ -80,7 +80,7 @@ async def hold_the_model_to_its_words(*, _apply_widget_data, _brief, _data_ops_h
 
     # GHOST-WORKER guard, plus the «Sí» that has no directive either — in `escalation_guard`.
     _pst._eguard.drop_if_fragment(escalate_req, operator_text=operator_text, brief=_brief,
-                             last_reply=brain._last_reply or "", emit=emit)
+                             last_reply=_pst._prior_line.of(brain), emit=emit)
 
     # V2-741 · THE THIRD RUNG — a declared action BEFORE anything may cost minutes: a catalogue of
     # videos became a worker that took 195 s to reach the `youtube:search` the brief had named.

@@ -143,18 +143,21 @@ def _on_data(packet, *, _emit, _json, _wake, session) -> None:
             # `sse.js` had been waiting for a `text-injected` transcript nobody emitted. Same shape as the
             # STT's final transcript, so a typed order and a spoken one leave the same trace on screen.
             _emit("transcript", "text-injected chat", text=txt, role="user")
-            # Turns run in the order he STARTED them: a sentence he began saying before this text is still a
-            # turn-to-be, and its end-of-turn would interrupt this one (`typed_order`, 2026-10-22).
-            from voice.engine.pipeline import typed_order as _order
-            _since = _ag.time.monotonic()
-            if _order.must_wait(_since):
-                _emit("brain", "⏸ texto en espera: la voz empezó antes", text=txt, role="system",
-                      extra={"cat": "flash"})
-                _ag.asyncio.ensure_future(_typed_after_voice(txt, _since, _emit=_emit, session=session))
-            else:
-                _inject_typed(txt, _emit=_emit, session=session)
+            _route_typed(txt, _emit=_emit, session=session)
     except Exception as e:
         _ag.logger.warning("chat-text data handler: %s", e)
+
+
+def _route_typed(txt: str, *, _emit, session) -> None:
+    """Turns run in the order he STARTED them: a sentence he began saying before this text is still a
+    turn-to-be, and its end-of-turn would interrupt this one (`typed_order`, 2026-10-22)."""
+    from voice.engine.pipeline import typed_order as _order
+    _since = _ag.time.monotonic()
+    if _order.must_wait(_since):
+        _emit("brain", "⏸ texto en espera: la voz empezó antes", text=txt, role="system", extra={"cat": "flash"})
+        _ag.asyncio.ensure_future(_typed_after_voice(txt, _since, _emit=_emit, session=session))
+    else:
+        _inject_typed(txt, _emit=_emit, session=session)
 
 
 def _inject_typed(txt: str, *, _emit, session) -> None:

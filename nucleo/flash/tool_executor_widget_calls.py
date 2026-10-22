@@ -7,6 +7,7 @@ closure has. Module-level names of `tool_executor_widget` are read through it (`
 """
 from __future__ import annotations
 
+from nucleo.flash import prior_line as _prior_line
 from nucleo.flash import tool_executor_widget as _txw
 
 
@@ -217,7 +218,7 @@ def _apply_widget_data(wid: str, action_name: str, payload: dict, ref: str='', *
     # The why and the measurement: `direct_action.a_fragment_moves_nothing`.
     if (_frag_why := _txw._direct_action.a_fragment_moves_nothing(
             _txw._bnotes.operator_half(text), brief=_brief,
-            last_reply=getattr(brain, "_last_reply", "") or "")):
+            last_reply=_prior_line.of(brain))):
         emit("brain", "🧩 trozo de frase — no mueve nada en pantalla",
              text=f"{_txw._bnotes.operator_half(text).strip()[:80]} → {wid}:{action_name}",
              role="system", extra={"cat": "flash", "why": _frag_why,

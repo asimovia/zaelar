@@ -2045,6 +2045,10 @@ DOMAINS: list[dict] = [
                                  "lo reemplaza recibe la frase ENTERA, mueran y nazcan en el orden que sea",
             "ch": UNIT,
             "paths": ["tests/agent_headless/unit/flash/test_a_speculative_turn_does_not_answer_the_sentence.py"]},
+        {"id": "2.763", "title": "Un «sí» contesta a la pregunta que le HICIMOS antes de su turno (también la que dijimos "
+                                 "por nuestra cuenta), nunca a la respuesta que se está emitiendo",
+            "ch": UNIT,
+            "paths": ["tests/agent_headless/unit/flash/test_a_yes_answers_the_question_we_asked.py"]},
     ]},
     {"id": "4", "name": "WIDGETS", "nodes": [
         {"id": "4.1", "title": "Ciclo de vida / acciones / refs / generador / background", "ch": UNIT, "paths": [

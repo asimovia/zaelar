@@ -8,6 +8,7 @@ thin closure that stays in `build`, at CALL time — the same late binding a clo
 from __future__ import annotations
 
 from nucleo.flash import player_control as _player_control
+from nucleo.flash import prior_line as _prior_line
 from nucleo.flash import tool_executor as _tx
 from nucleo.turn import errands_of_a_turn as _eot
 from nucleo.turn import split_by_errand as _sbe   # a send beside a status question is said (2.644)
@@ -128,7 +129,7 @@ def _on_tool_call(name: str, args: dict, *, _apply_widget_data, _brief, _closed_
         if "play_video" not in _tool_fired:
             _tool_fired.add("play_video")
             _tx._video_turn.voice_execute(args, text, emit, _apply_widget_data, deduped,
-                                      last_reply=brain._last_reply or "", brief=_brief)
+                                      last_reply=_prior_line.of(brain), brief=_brief)
     elif name == "show_images":
         # V2-457: FOTOS = visor `imagenes` (VER), tercera hermana de play_music/play_video. Una por
         # turno; se EJECUTA tras el stream (buscar es red) y se dice allí si el modelo calló.
@@ -204,7 +205,7 @@ def _on_tool_call(name: str, args: dict, *, _apply_widget_data, _brief, _closed_
         # V2-778 F1 — the body lives in `nucleo/flash/tool_executor_calls.py`; this branch passes what it reads.
         return _t_stop_worker(
             args=args, _norm_nfkd=_norm_nfkd, _say=_say, _says_stop=_says_stop, clarify=clarify, emit=emit, text=text,
-            worker_acted=worker_acted)
+            worker_acted=worker_acted, brief=_brief, prior=_prior_line.of(brain))
     elif name == "answer_worker":
         # V2-778 F1 — the body lives in `nucleo/flash/tool_executor_calls.py`; this branch passes what it reads.
         return _t_answer_worker(args=args, emit=emit, worker_acted=worker_acted, fired=_tool_fired)
@@ -598,7 +599,8 @@ def _t_send_to_worker(*, args, emit, worker_acted, fired=None):
 
 
 # V2-778 F1 — the `stop_worker` arm of `_on_tool_call`, moved verbatim.
-def _t_stop_worker(*, args, _norm_nfkd, _say, _says_stop, clarify, emit, text, worker_acted):
+def _t_stop_worker(*, args, _norm_nfkd, _say, _says_stop, clarify, emit, text, worker_acted, brief=None,
+                   prior: str = ""):
     which = (args.get("which") or "").strip()
     # ── GUARD 1: NO SE MATA A QUIEN ACABAS DE CONTESTAR (2026-08-14, sesión b70a45d0) ──────────────
     # El turno emitió `answer_worker` con la autorización que el worker llevaba 30 s esperando («Sí,
@@ -618,7 +620,10 @@ def _t_stop_worker(*, args, _norm_nfkd, _say, _says_stop, clarify, emit, text, w
     # OJO con «para»: en castellano es preposición mucho más a menudo que verbo («para nada», «para
     # ti»), y por eso no entra suelto — de hecho «para» a secas solo calla la voz, nunca para tareas
     # (regla del operador). Se piden formas inequívocas.
-    if not _says_stop(text):
+    # …unless his turn ANSWERS a question we just put to him (demo 2026-10-22: «…running for 15 minutes now. Want
+    # me to stop it or keep going?» → «Yes, please» was refused here, and the search ran on). The order to stop
+    # was in OUR sentence; the model read his yes and chose the stop. That is not drag from an earlier turn.
+    if not _says_stop(text) and not _prior_line.answers_our_question(brief, prior):
         emit("brain", "🛡️ stop_worker ignorado — el operador no ha pedido parar nada (context-bleed)",
              text=(text or "")[:120], role="system",
              extra={"cat": "flash", "kind_diag": "stop_without_order", "which": which or "todo"})

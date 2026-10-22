@@ -90,6 +90,8 @@ async def compose_the_turn(*, build_flash_system, compose_recent_block, dialog, 
     messages = [{"role": "system", "content": system}]
     # V2-778 F2-21 — what the agent said out loud is part of THIS conversation too (the voice turn does the same)
     dialog.drain_spoken(sess.window, channel=f"text:{id(sess)}")
+    from nucleo.flash import prior_line as _prior_line
+    _prior_line.snapshot(sess, sess.window)   # the line this turn answers — the same snapshot the voice turn takes
     messages += dialog.prune_window(sess.window)[-_probe._WINDOW_MAX:]
     messages.append({"role": "user", "content": text})
     # The prompt for THIS turn is now assembled from the window as it was, so the line can go in without

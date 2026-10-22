@@ -580,13 +580,9 @@ class NucleoLLMStream(llm.LLMStream):
             # recaptura como turno del operador. Se actualiza en CADA salida de voz (respuesta, filler, degradado).
             brain._last_spoken = "".join(spoken)
             brain._last_spoke_at = time.time()
-            # `_last_reply` es el mismo texto pero SOLO pasa por aquí (nunca por el camino del filler, hoy
-            # `voice/engine/speech/filler_audio.py`) — es el contexto que `evaluate_content()` necesita para juzgar si el
-            # siguiente turno va dirigido. Un filler ("Pues…", "Mmm…") no lleva ningún tema: si se dejaba pisar
-            # `_last_spoken` con él, el juez recibía "Se estaba haciendo: Pues…" justo tras una pregunta real y
-            # clasificaba el siguiente turno del operador como ambiente (bug real, sesión 2026-08-17: 4 preguntas
-            # de seguimiento — incluida la queja «te acabo de hacer preguntas ahora» — descartadas de seguido,
-            # cada una justo tras un filler).
+            # `_last_reply`: the same text, but never a filler (`filler_audio.py`) — the context `evaluate_content()`
+            # judges the NEXT turn's address with (2026-08-17: four follow-ups after a filler read as ambient). It is
+            # THIS reply while it streams: «what we said before his turn» is `prior_line`, never this field.
             brain._last_reply = "".join(spoken)
             # A real reply KEEPS THE CONVERSATION ALIVE (2026-09-01): the attention window opens on the
             # operator's handled turn, but a long narration can outlast `window_s()` — and then his answer to
