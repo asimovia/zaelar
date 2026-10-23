@@ -21,3 +21,9 @@ config/*.json
 !config/models.default.json
 .meshkore/credentials
 .meshkore/logs
+
+# The WhatsApp bridge's node_modules are built INSIDE the image (Dockerfile); a host's copy carries the host's
+# native binaries and must never be copied over them.
+connectors/whatsapp/bridge/node_modules
+connectors/whatsapp/_session
+connectors/telegram/_session

@@ -34,12 +34,12 @@ def enabled() -> bool:
     return _store.enabled("whatsapp")
 
 
-def _set_status(status: str, qr=None) -> None:
+def _set_status(status: str, qr=None, detail=None) -> None:
     try:
         if ingest.v2_enabled():
-            ingest.publish_status(PLATFORM, status, qr)     # stateless: widget reflects state+QR
+            ingest.publish_status(PLATFORM, status, qr, detail)   # stateless: widget reflects state+QR+reason
         else:
-            store.set_platform_status(PLATFORM, status, qr)
+            store.set_platform_status(PLATFORM, status, qr, detail)
     except Exception as e:
         logger.debug(f"WhatsApp set_status: {e}")
 
@@ -346,12 +346,21 @@ async def _loop() -> None:
     try:
         await bridge.start()
     except Exception as e:
+        # The reason travels to the card. An «off» with no reason is how a bridge that could never start in a
+        # container stayed invisible: the card said «Preparando la conexión…» forever.
         logger.error(f"WhatsApp: no se pudo arrancar el bridge: {e}")
-        _set_status("off", None)
+        _set_status("error", None, str(e))
         return
     connected = False
     while True:
         try:
+            if bridge.proc is not None and bridge.proc.returncode is not None:
+                # The bridge died under us. Nothing else restarts it, and the card would wait on a QR that no
+                # process is going to produce — relaunch it; the paired session on disk makes that silent.
+                logger.warning(f"WhatsApp: el bridge murió (exit {bridge.proc.returncode}) — lo relanzo")
+                connected = False
+                _set_status("connecting", None)
+                await bridge.start()
             h = await client.health()
             st = (h or {}).get("status", "connecting")
             if st == "connected":

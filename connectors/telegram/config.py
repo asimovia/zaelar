@@ -38,8 +38,15 @@ def has_credentials() -> bool:
 def session_dir() -> Path:
     # OWN login session (personal credentials, gitignored). Telethon stores the QR-linked userbot .session
     # (StringSession in a file) here.
-    d = os.getenv("TG_SESSION_DIR") or str(_HERE / "_session")
-    return Path(d)
+    # Follows `ZAELAR_WORKSPACE` for the same reason as WhatsApp's (connectors/whatsapp/config.py): the code
+    # directory of a container is not where anything that must survive a restart can live.
+    d = os.getenv("TG_SESSION_DIR")
+    if d:
+        return Path(d)
+    if os.getenv("ZAELAR_WORKSPACE"):
+        from nucleo import workspace as _workspace
+        return _workspace.root() / "connectors" / "telegram" / "_session"
+    return _HERE / "_session"
 
 
 def session_path() -> str:

@@ -83,8 +83,23 @@ def user_client_id_set() -> bool:
     return bool((os.getenv("SPOTIFY_CLIENT_ID") or "").strip())
 
 
-def redirect_uri() -> str:
-    return (os.getenv("SPOTIFY_REDIRECT_URI") or _DEFAULT_REDIRECT).strip()
+def redirect_uri(origin: str = "") -> str:
+    """Where Spotify sends the person back. An explicit `SPOTIFY_REDIRECT_URI` wins; otherwise DERIVED from the
+    origin the browser is on, exactly like every other account connector (`connectors/oauth_base.redirect_uri`):
+    a fixed loopback address sent a hosted engine's code back to the visitor's own computer, where nothing
+    listens. With no usable origin, the loopback address it always used."""
+    env = (os.getenv("SPOTIFY_REDIRECT_URI") or "").strip()
+    if env:
+        return env
+    try:
+        from connectors import oauth_base
+        from connectors.google import app as _google
+        o = _google.normalize_origin((origin or "").strip().rstrip("/"))
+        if o and oauth_base._ORIGIN_RE.match(o):
+            return o + "/api/spotify/callback"
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"spotify: redirect derivation failed: {type(e).__name__}")
+    return _DEFAULT_REDIRECT
 
 
 # ── token store (chmod 600, atomic) ──────────────────────────────────────────────────────────────────────
@@ -103,7 +118,7 @@ def _save(data: dict) -> None:
 
 
 # ── login (2 steps: authorize URL -> callback) ───────────────────────────────────────────────────────────
-def begin_login() -> dict:
+def begin_login(origin: str = "") -> dict:
     """Step 1: generate verifier/challenge/state, save them as `pending`, and return the authorization URL opened by
     the frontend in a window. `{ok, url}` or `{ok:False, error}`."""
     cid = client_id()
@@ -112,12 +127,15 @@ def begin_login() -> dict:
     verifier, _challenge_value = _make_pkce()
     state = base64.urlsafe_b64encode(os.urandom(16)).decode("ascii").rstrip("=")
     data = _load()
-    data["pending"] = {"verifier": verifier, "state": state, "ts": int(time.time())}
+    # The return address is stored with the verifier: the exchange must present the SAME one the consent was
+    # asked with, and the callback request alone cannot say which origin that was.
+    ruri = redirect_uri(origin)
+    data["pending"] = {"verifier": verifier, "state": state, "ts": int(time.time()), "redirect": ruri}
     _save(data)
     params = {
         "client_id": cid,
         "response_type": "code",
-        "redirect_uri": redirect_uri(),
+        "redirect_uri": ruri,
         "scope": _SCOPE,
         "state": state,
         "code_challenge_method": "S256",
@@ -140,7 +158,7 @@ def complete_login(code: str, state: str) -> dict:
             "client_id": client_id(),
             "grant_type": "authorization_code",
             "code": code,
-            "redirect_uri": redirect_uri(),
+            "redirect_uri": pending.get("redirect") or redirect_uri(),
             "code_verifier": pending.get("verifier", ""),
         }, timeout=15)
     except Exception as e:  # noqa: BLE001

@@ -45,6 +45,8 @@ def root() -> Path:
 SUBDIRS = (
     "config",            # settings.json · v2.json · connectors.json · identity.json · meshkore.json
     "credentials",       # zaelar.env · meshkore_ed25519.pem
+    "connectors/whatsapp/_session",   # the paired WhatsApp device (re-pairing is a QR the person scans again)
+    "connectors/telegram/_session",   # the logged-in Telegram session
     "memory/_data",      # zaelar.db (memory + the durable event log)
     "widgets/_data",     # generated widgets, their state, _jobs.json, _system/hidden.json
     "i18n/generated",    # generated fillers + aliases

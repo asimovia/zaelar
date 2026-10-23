@@ -21,8 +21,16 @@ def bridge_url() -> str:
 
 def session_dir() -> Path:
     # zaelar's OWN pairing session (personal credentials, gitignored). We do not share Hermes's.
-    d = os.getenv("WA_SESSION_DIR") or str(_HERE / "_session")
-    return Path(d)
+    # With `ZAELAR_WORKSPACE` set the session lives in the workspace like every other per-install credential: a
+    # container whose code directory is rebuilt on each image would otherwise lose the pairing on every restart,
+    # and re-pairing is a QR the person has to scan again.
+    d = os.getenv("WA_SESSION_DIR")
+    if d:
+        return Path(d)
+    if os.getenv("ZAELAR_WORKSPACE"):
+        from nucleo import workspace as _workspace
+        return _workspace.root() / "connectors" / "whatsapp" / "_session"
+    return _HERE / "_session"
 
 
 def bridge_dir() -> Path:

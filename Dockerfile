@@ -47,6 +47,17 @@ COPY search ./search
 COPY memory ./memory
 COPY bus ./bus
 COPY connectors ./connectors
+# The WhatsApp bridge's Node deps are installed HERE, at build time. Left to the runtime self-heal in
+# connectors/whatsapp/bridge_proc.py, `npm install` ran inside the container and failed every time: two deps are
+# pinned to git commits (`git+ssh://` in the lockfile) and the image had neither git nor an ssh key, so the bridge
+# never started and the QR never appeared. `npm ci` against the lockfile, with GitHub's ssh URLs read as https;
+# git leaves the image afterwards.
+RUN apt-get update && apt-get install -y --no-install-recommends git \
+    && git config --global url."https://github.com/".insteadOf "ssh://git@github.com/" \
+    && cd connectors/whatsapp/bridge && npm ci --omit=dev && npm cache clean --force \
+    && git config --global --unset-all url."https://github.com/".insteadOf \
+    && apt-get purge -y git && apt-get autoremove -y && rm -rf /var/lib/apt/lists/* \
+    && test -d node_modules/@whiskeysockets/baileys
 COPY widgets ./widgets
 COPY config ./config
 COPY frontend ./frontend

@@ -16,10 +16,13 @@ widget, the music widget and a document fetch.
 """
 from __future__ import annotations
 
+import logging
 import os
 
 from . import search, session
 
+
+logger = logging.getLogger("zaelar.torrent")
 
 def enabled() -> bool:
     """The operator's switch (`config/connectors.json`), default ON — except in a hosted account.
@@ -46,6 +49,13 @@ def available() -> bool:
 
 
 def unavailable_reason() -> str:
+    try:
+        from nucleo import cloud_account as _acct
+        if _acct.is_cloud_account() and os.getenv("ZAELAR_TORRENT_IN_CLOUD", "").strip() != "1":
+            # Not «switched off in the settings»: there is no switch the person could turn on here.
+            return "las descargas no están disponibles en un agente alojado: solo en tu propio ordenador"
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"torrent: hosted check failed: {type(e).__name__}")
     if not enabled():
         return "el cliente de descargas está desactivado en la configuración"
     return session.import_error() or "el cliente de torrent no está disponible en esta instalación"

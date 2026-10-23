@@ -542,6 +542,26 @@ async def architect_connect(payload: dict):
     url = str((payload or {}).get("url") or "").strip()
     if url:
         patch["url"] = url
+    from nucleo import cloud_account as _acct
+    if _acct.is_cloud_account():
+        # A hosted engine is not the person's computer: loopback here is the engine's own container, where no
+        # daemon runs. It needs the daemon's public HTTPS address, and it is saved only once that daemon answers —
+        # a token alone used to read «connected» while every call failed.
+        from urllib.parse import urlparse
+        from connectors.architect import client
+        host = (urlparse(url).hostname or "").lower() if url else ""
+        if not url.startswith("https://") or host in ("127.0.0.1", "localhost", "::1", ""):
+            return JSONResponse({"ok": False, "error": "hosted_needs_public_url"}, status_code=400)
+        previous = dict(cfg.get("architect") or {})
+        cfg.set("architect", patch)
+        try:
+            await client.list_projects()
+        except Exception as e:  # noqa: BLE001 — reported to the person, and the previous setting restored
+            cfg.set("architect", {"token": previous.get("token", ""), "url": previous.get("url", ""),
+                                  "enabled": bool(previous.get("enabled"))})
+            return JSONResponse({"ok": False, "error": "daemon_unreachable", "detail": str(e)[:200]},
+                                status_code=400)
+        return JSONResponse({"ok": True, "id": "architect", "config": cfg.public("architect")})
     cfg.set("architect", patch)
     return JSONResponse({"ok": True, "id": "architect", "config": cfg.public("architect")})
 

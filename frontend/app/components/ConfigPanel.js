@@ -19,7 +19,7 @@ import { theme as themeSignal, setTheme } from "../core/store.js?v=2";
 // configuración»): same signals `update/UpdateSurface.js` already read, so the number keeps updating live
 // while Settings is open instead of freezing at whatever it was on open.
 import { build as updBuild, info as updInfo, check as updCheck } from "../update/watch.js?v=1";
-import { connectorList, connectorWizard, isSettling, groupGoogle, focusOf, GOOGLE } from "./ConnectorWizard.js?v=3";
+import { connectorList, connectorWizard, isSettling, groupGoogle, focusOf, GOOGLE } from "./ConnectorWizard.js?v=4";
 
 const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const opt = (list, sel) => (list || []).map(o => `<option value="${esc(o.value != null ? o.value : o)}"${(o.value != null ? o.value : o) === sel ? " selected" : ""}>${esc(o.label != null ? o.label : o)}</option>`).join("");
@@ -96,7 +96,8 @@ export function ConfigPanel() {
     const tabsBar = TABS.map(tab => `<button type="button" class="cf-tab${tab.id === activeTab ? " on" : ""}" data-tab="${tab.id}">${esc(t("config.tab." + tab.id))}</button>`).join("");
     let pane;
     if (activeTab === "conectores") {
-      pane = `<div class="cf-tabpane"><div class="cf-scroll"><div class="cf-panel">${sec_connectors()}</div></div></div>`;
+      // Left-aligned at the tabs' gutter, not a centred column (operator 2026-10-23: «pegados a la izquierda»).
+      pane = `<div class="cf-tabpane"><div class="cf-scroll cf-scroll--cx"><div class="cf-panel cf-panel--cx">${sec_connectors()}</div></div></div>`;
     } else if (activeTab === "apariencia") {
       pane = `<div class="cf-tabpane"><div class="cf-scroll"><div class="cf-panel">${sec_apariencia()}</div></div></div>`;
     } else if (activeTab === "widgets") {
@@ -725,7 +726,9 @@ export function ConfigPanel() {
       } else if (act === "architect-save") {
         const token = val("cx_arch_token"), url = val("cx_arch_url");
         const r = await api.architectConnect({ token, url });
-        msg(r.ok ? t("config.msg.token_saved") : ("✗ " + (r.error || t("config.msg.error")))); await reloadConnectors();
+        // A hosted agent needs the daemon's public address and checks it answers; its two refusals are sentences.
+        const why = { hosted_needs_public_url: "config.msg.architect_public_url", daemon_unreachable: "config.msg.architect_unreachable" };
+        msg(r.ok ? t("config.msg.token_saved") : ("✗ " + (why[r.error] ? t(why[r.error]) : (r.error || t("config.msg.error"))))); await reloadConnectors();
       } else if (act === "mesh-add") {
         const r = await api.meshkoreAdd({ name: val("cx_mk_name"), cluster_id: val("cx_mk_cid"), token: val("cx_mk_token"), handle: val("cx_mk_handle") });
         msg(r.ok ? t("config.msg.cluster_added") : ("✗ " + (r.error || t("config.msg.error")))); await reloadConnectors();

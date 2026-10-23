@@ -19,6 +19,7 @@ Fail-safe like the copies were: nothing raises to the caller; a missing app leav
 """
 from __future__ import annotations
 
+import logging
 import os
 import re
 import time
@@ -30,6 +31,7 @@ from connectors.secure_json_store import SecureJsonStore
 #: scheme://host[:port] and nothing else — no path, no query, no control characters. The origin arrives from a
 #: request header, so it is untrusted input that ends up inside a URL handed to the provider.
 _ORIGIN_RE = re.compile(r"^https?://[A-Za-z0-9.\-]+(?::\d{1,5})?$")
+_log = logging.getLogger("zaelar.oauth")
 PENDING_TTL = 900          # a consent started and never finished stops being acceptable after 15 minutes
 REFRESH_SKEW = 120         # refresh two minutes before the access token expires
 
@@ -70,22 +72,62 @@ def _builtin(m, provider_id: str) -> str:
     return (getattr(p, "builtin_client_id", "") or "").strip() if p else ""
 
 
+def _family(m, provider_id: str) -> str:
+    """The broker family of this provider (`connectors/oauth_broker.py`), by the host of its token URL."""
+    p = m._pv.get(provider_id)
+    if not _capable(m, p):
+        return ""
+    try:
+        from connectors import oauth_broker
+        return oauth_broker.family_of(_spec(m, p, "")[1])
+    except Exception as e:  # noqa: BLE001
+        _log.warning(f"oauth: no broker family for {provider_id}: {type(e).__name__}")
+        return ""
+
+
+def brokered_client(m, provider_id: str) -> str:
+    """The client id a configured token broker holds for this provider's family, or ""."""
+    try:
+        from connectors import oauth_broker
+        return oauth_broker.client_id(_family(m, provider_id)) if oauth_broker.enabled() else ""
+    except Exception as e:  # noqa: BLE001
+        _log.warning(f"oauth: broker client lookup failed for {provider_id}: {type(e).__name__}")
+        return ""
+
+
 def client_id(m, provider_id: str) -> str:
     """The OAuth client this install uses: the operator's OWN always wins; otherwise one the provider table
-    ships, otherwise Zaelar's shared Google app. "" when none exists — the connector then stays dormant."""
+    ships, otherwise Zaelar's shared Google app, otherwise a token broker's (last: a client this install holds
+    never gives way to one it does not). "" when none exists — the connector then stays dormant."""
     return (m._cred(_key_name(m, provider_id, "CLIENT_ID")) or _builtin(m, provider_id)
-            or m._shipped_google(provider_id, secret=False))
+            or m._shipped_google(provider_id, secret=False) or brokered_client(m, provider_id))
 
 
 def uses_builtin_app(m, provider_id: str) -> bool:
     """True when this install rides a shipped client rather than one the operator registered — what decides
     whether the wizard is one consent step or the whole bring-your-own-app road."""
     return not m._cred(_key_name(m, provider_id, "CLIENT_ID")) and bool(
-        _builtin(m, provider_id) or m._shipped_google(provider_id, secret=False))
+        _builtin(m, provider_id) or m._shipped_google(provider_id, secret=False) or brokered_client(m, provider_id))
 
 
 def client_secret(m, provider_id: str) -> str:
     return m._cred(_key_name(m, provider_id, "CLIENT_SECRET")) or m._shipped_google(provider_id, secret=True)
+
+
+def _post_token(m, provider_id: str, token_url: str, body: dict) -> dict:
+    """ONE token call (code exchange or refresh). Straight to the provider, unless the client in use is a token
+    broker's and this install holds no secret for it — then the broker makes the call and adds the secret it
+    keeps. Returns the provider's JSON; raises only what httpx raises, like the direct call always did."""
+    import httpx
+    if "client_secret" not in body:
+        try:
+            from connectors import oauth_broker
+            fam = oauth_broker.family_of(token_url)
+            if oauth_broker.enabled() and oauth_broker.owns(fam, body.get("client_id", "")):
+                return oauth_broker.token(fam, body)
+        except Exception as e:  # noqa: BLE001 — no broker answer: the direct call below, as before
+            _log.warning(f"oauth: broker routing skipped for {provider_id}: {type(e).__name__}")
+    return httpx.post(token_url, data=body, timeout=30).json()
 
 
 # ── the return address ────────────────────────────────────────────────────────────────────────────────────
@@ -118,6 +160,11 @@ def request_origin(request) -> str:
         o = (request.headers.get("origin") or "").strip()
         if o:
             return o
+        # Behind a proxy the Host is the proxy's upstream name; the address the browser used is forwarded.
+        fwd = (request.headers.get("x-forwarded-host") or "").split(",")[0].strip()
+        if fwd:
+            proto = (request.headers.get("x-forwarded-proto") or "https").split(",")[0].strip()
+            return f"{proto}://{fwd}"
         host = (request.headers.get("host") or "").strip()
         if host:
             return f"{request.url.scheme}://{host}"
@@ -216,7 +263,6 @@ def authorize_url(m, provider_id: str, tier_id: str = "", origin: str = "", *,
 def exchange_code(m, code: str, state: str, key_of) -> dict:
     """Callback: swap `code` for tokens using the pending `state`. `key_of(pending)` names the account the
     tokens belong to. Returns {ok, provider, tier, pending} — the connector shapes its own answer."""
-    import httpx
     data = m._load()
     pend = (data.get("pending", {}) or {}).pop(state, None)
     m._save(data)
@@ -233,8 +279,7 @@ def exchange_code(m, code: str, state: str, key_of) -> dict:
     if sec:
         body["client_secret"] = sec
     try:
-        r = httpx.post(token_url, data=body, timeout=30)
-        tok = r.json()
+        tok = _post_token(m, p.id, token_url, body)
     except Exception as e:  # noqa: BLE001 — the provider's failure is reported, not raised
         return {"ok": False, "error": f"intercambio falló: {e}"}
     if "access_token" not in tok:
@@ -249,7 +294,6 @@ def access_token(m, provider_id: str, key: str, acct: dict) -> str | None:
     """A VALID access token (refreshed when it is about to expire) or None, for the account `acct` stored under
     `key` (read by the connector, through its own `account`). On a failed refresh the stale token is returned
     rather than nothing, as every copy did — the caller's request then fails visibly."""
-    import httpx
     if not acct:
         return None
     if acct.get("access_token") and int(acct.get("expires_at", 0) or 0) - REFRESH_SKEW > time.time():
@@ -265,8 +309,7 @@ def access_token(m, provider_id: str, key: str, acct: dict) -> str | None:
     if sec:
         body["client_secret"] = sec
     try:
-        r = httpx.post(token_url, data=body, timeout=30)
-        tok = r.json()
+        tok = _post_token(m, provider_id, token_url, body)
     except Exception as e:  # noqa: BLE001
         m.logger.warning(f"{m.ENV_PREFIX.lower()} oauth refresh failed ({provider_id}): {e}")
         return acct.get("access_token") or None

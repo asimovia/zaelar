@@ -84,13 +84,17 @@ export function guideSteps(c) {
 const avatar = (label, esc, small) =>
   `<span class="cf-cx-avatar${small ? " cf-cx-avatar--sm" : ""}" aria-hidden="true">${esc(String(label || "?").trim().charAt(0).toUpperCase())}</span>`;
 
-/** The tab with nothing chosen: one compact row per connector, grouped by family. Nothing is open yet. */
+/** The tab with nothing chosen: per family, a heading and a ROW of cards — one card per connector (mark, name,
+ * state, action), left-aligned and wrapping. Nothing is open yet. The operator (2026-10-23): «ordenados por filas:
+ * Google este; Mensajería y los tres iconos por separado en cajitas; Música, dos iconos… todo pegado a la
+ * izquierda». It was one full-width stacked list per family, centred in the panel. */
 export function connectorList(cs, fams, { t, esc, badge }) {
   const rows = fams.map(([f, title]) => {
     const items = cs.filter(c => c.family === f);
     if (!items.length) return "";
-    return `<h3 class="cf-fam">${esc(title)}</h3><div class="cf-cx-list">${items.map(c =>
-      `<button type="button" class="cf-cx-row" data-cx="${esc(c.id)}">${avatar(c.label, esc, true)}<span class="cf-cx-name">${esc(c.label)}</span>${badge(c)}` +
+    return `<h3 class="cf-fam">${esc(title)}</h3><div class="cf-cx-grid">${items.map(c =>
+      `<button type="button" class="cf-cx-card" data-cx="${esc(c.id)}"><span class="cf-cx-card-top">${avatar(c.label, esc, true)}` +
+      `<span class="cf-cx-name">${esc(c.label)}</span></span><span class="cf-cx-card-state">${badge(c)}</span>` +
       `<span class="cf-cx-go">${esc(c.connected ? t("config.cxw.manage") : t("config.cxw.configure"))} ›</span></button>`).join("")}</div>`;
   }).join("");
   return `<p class="cf-cx-intro">${esc(t("config.cxw.choose"))}</p>${rows}`;
@@ -153,6 +157,9 @@ function liveState(c, { t, esc }) {
     return `<div class="cf-wiz-qr"><img alt="QR" src="${esc(qr)}"/><p>${esc(t(cap))}</p><p>${esc(t("config.cxw.qr_rotates"))}</p></div>`;
   }
   if (c.status === "connecting" || c.status === "starting") return `<p class="cf-wiz-wait">${esc(t("config.cxw.qr_wait"))}</p>`;
+  // A failure says WHY, in the card the person is looking at: a wait that never ends is what an unexplained
+  // failure looked like before (the bridge could not start, the card kept «Preparando…»).
+  if (c.status === "error") return `<p class="cf-wiz-err">${esc(t("config.cxw.failed"))}${c.detail ? ` — ${esc(c.detail)}` : ""}</p>`;
   return "";
 }
 

@@ -13,7 +13,7 @@ Loopback (single-user local desktop app), like the rest of the zaelar API. The g
 """
 import html
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from connectors import oauth_callback as _ocb
@@ -28,7 +28,7 @@ async def status():
 
 
 @router.post("/api/spotify/connect")
-async def connect(payload: dict | None = None):
+async def connect(request: Request, payload: dict | None = None):
     """Save the client_id (if provided) and start PKCE login. Returns the authorization URL to open."""
     payload = payload or {}
     cid = (payload.get("client_id") or "").strip()
@@ -38,7 +38,8 @@ async def connect(payload: dict | None = None):
             credentials.set_key("SPOTIFY_CLIENT_ID", cid)
         except Exception as e:  # noqa: BLE001
             return JSONResponse({"ok": False, "error": f"credential_store:{e}"[:120]}, status_code=500)
-    res = auth.begin_login()
+    from connectors import oauth_base
+    res = auth.begin_login(oauth_base.request_origin(request))
     if not res.get("ok"):
         code = 400 if res.get("error") == "no_client_id" else 500
         return JSONResponse(res, status_code=code)

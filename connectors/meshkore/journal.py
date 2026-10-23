@@ -13,7 +13,15 @@ from pathlib import Path
 
 from connectors.meshkore import store
 
-LOG_FILE = Path(__file__).resolve().parents[2] / ".meshkore" / "logs" / "meshkore.jsonl"
+def _log_file() -> Path:
+    # In the workspace (`ZAELAR_WORKSPACE`), like every file that must outlive the process: in a container the
+    # code directory is replaced on each start, and `last_exchange` — rebuilding which messages went unanswered —
+    # reads this file precisely after a restart. Unset, the workspace is the checkout: the same path as before.
+    from nucleo import workspace as _workspace
+    return _workspace.root() / ".meshkore" / "logs" / "meshkore.jsonl"
+
+
+LOG_FILE = _log_file()
 
 
 def record(event: dict):

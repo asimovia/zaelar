@@ -36,12 +36,12 @@ def enabled() -> bool:
     return config.enabled()
 
 
-def _set_status(status: str, qr=None) -> None:
+def _set_status(status: str, qr=None, detail=None) -> None:
     try:
         if ingest.v2_enabled():
-            ingest.publish_status("telegram", status, qr)   # stateless: widget reflects state+QR
+            ingest.publish_status("telegram", status, qr, detail)   # stateless: widget reflects state+QR+reason
         else:
-            store.set_platform_status("telegram", status, qr)
+            store.set_platform_status("telegram", status, qr, detail)
     except Exception as e:
         logger.debug(f"Telegram set_status: {e}")
 
@@ -584,7 +584,12 @@ async def _login_qr() -> bool:
         except SessionPasswordNeededError:
             logger.error("Telegram: la cuenta tiene 2FA (contraseña). El login por QR no la cubre — "
                          "desactívala temporalmente o loguea a mano una vez; luego la sesión persiste.")
-            _set_status("no_creds", None)
+            # Its own reason, not «no_creds»: the card read «missing credentials» to someone whose credentials
+            # were fine and whose account simply has a password.
+            from i18n import runtime as _rt
+            _set_status("error", None, _rt.text("config.cxw.tg_2fa", default=(
+                "Your Telegram account has a two-step password, which the QR login does not cover. Turn it off "
+                "for a moment, scan again, and turn it back on: the session is kept.")))
             return False
         except Exception as e:
             logger.warning(f"Telegram QR login: {e}")
@@ -594,18 +599,20 @@ async def _login_qr() -> bool:
 async def _loop() -> None:
     global _client
     if not _ensure_deps():
-        _set_status("off", None)
+        _set_status("error", None, "telethon missing")
         return
     from telethon import TelegramClient, events
 
     config.session_dir().mkdir(parents=True, exist_ok=True)
     _set_status("starting", None)
-    _client = TelegramClient(config.session_path(), config.api_id(), config.api_hash())
+    # `catch_up`: what arrived while this process was not running is fetched on reconnect. An instance that is
+    # stopped while idle and started on the next visit would otherwise never see those messages.
+    _client = TelegramClient(config.session_path(), config.api_id(), config.api_hash(), catch_up=True)
     try:
         await _client.connect()
     except Exception as e:
         logger.error(f"Telegram: no pude conectar: {e}")
-        _set_status("off", None)
+        _set_status("error", None, str(e))
         return
 
     if not await _client.is_user_authorized():

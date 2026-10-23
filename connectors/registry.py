@@ -12,7 +12,11 @@
 #
 from __future__ import annotations
 
+import logging
+
 from i18n import runtime as _rt
+
+logger = logging.getLogger("zaelar.connectors.registry")
 
 # Descriptor for each connector:
 #   id · label · family (mensajeria|musica|infra) · auth (qr|app-password|oauth|token|cluster)
@@ -55,6 +59,15 @@ def _messaging() -> list[dict]:
         out.append({"id": "messaging", "label": "Messaging", "family": "mensajeria", "auth": "app-password",
                     "connected": False, "status": "error", "detail": f"registry unavailable: {e}", "config": {}})
     return out
+
+
+def _broker_enabled() -> bool:
+    try:
+        from connectors import oauth_broker
+        return oauth_broker.enabled()
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"registry: broker state unreadable: {type(e).__name__}")
+        return False
 
 
 def _music() -> list[dict]:
@@ -252,6 +265,11 @@ def _google() -> list[dict]:
                  "detail": (_rt.text("connectors.google-account.detail",
                                      default="One account for Gmail, Calendar, Meet, Drive, Photos and YouTube.")
                             if configured else
+                            # A hosted instance has no file to drop anywhere: its client comes from a token broker
+                            # (`connectors/oauth_broker.py`), and the instructions below would be wrong to show there.
+                            _rt.text("connectors.google-account.detail_hosted",
+                                     default="Google connection is not available on this server yet.")
+                            if _broker_enabled() else
                             _rt.text("connectors.google-account.detail_unconfigured",
                                      default="The Google OAuth client is missing: put the client_secret_*.json "
                                              "from Google Cloud in .meshkore/credentials/ and all six doors "

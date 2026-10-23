@@ -140,7 +140,7 @@ canvas#viz{position:absolute;left:0;right:0;bottom:0;width:100%;height:30px;disp
    «full screen» started at the docked chat's right edge, the chat stayed on top, and only the rail and the
    orb (which live INSIDE #desk) were covered. Dropping the transform only while something is full screen
    hands the fixed card the viewport; every other card slides by the chat's width, underneath, unseen.
-   9300 is deliberate: above the chat, the panels and the feedback button (9001-9200); BELOW the memory map,
+   9300 is deliberate: above the chat and the panels (9001); BELOW the memory map,
    the settings, the vault and every modal (9500+), which he opens on purpose and must never land under a
    video. */
 body:has(.hb-win.hb-cinema, .hb-win.hb-fullwide) #desk{transform:none;z-index:9300}
@@ -974,15 +974,28 @@ canvas#orb.frozen{opacity:.32;filter:grayscale(1)}
    2026-10-04 — one column, one thing at a time, no box inside a box: a hero (mark · name · state · one line), a
    VERTICAL stepper whose open step carries its text and its Back/Next, and the form flat on the last step. Every
    size and colour is a house token so a profile swap repaints this too. */
+/* 2026-10-23 — LEFT-aligned at the tabs' gutter (operator: «pegados a la izquierda… el breadcrumb siempre tiene que
+   ir a la izquierda»), not the centred 640px column every other tab uses. The list takes the width it needs; the
+   one-connector page keeps a reading measure. */
+.cf-scroll--cx{padding-left:var(--sp-5);padding-right:var(--sp-5);padding-bottom:96px} /* the last card scrolls clear of the feedback button */
+.cf-panel--cx{max-width:none;margin:0}
+.cf-panel--cx>.cf-wiz,.cf-panel--cx>.cf-crumb{max-width:720px}
 .cf-cx-intro{margin:0 0 4px;font-size:0.8125rem;color:var(--hb-muted-2)}
-.cf-cx-list{display:flex;flex-direction:column;background:var(--hb-bg-soft);border:1px solid var(--hb-line);border-radius:var(--hb-r-l);overflow:hidden}
-.cf-cx-row{display:flex;align-items:center;gap:12px;padding:11px 16px;background:none;border:none;border-bottom:1px solid var(--hb-line);
-  color:var(--hb-ink);font:inherit;text-align:left;cursor:pointer}
-.cf-cx-row:last-child{border-bottom:none}
-.cf-cx-row:hover{background:var(--hb-hover)}
-.cf-cx-row:focus-visible{outline:none;box-shadow:inset var(--hb-focus-ring)}
+/* the list: per family a ROW of cards, one per connector, wrapping — never stretched across the panel */
+.cf-cx-grid{display:grid;grid-template-columns:repeat(auto-fill,220px);gap:var(--sp-3)}
+.cf-cx-card{display:flex;flex-direction:column;align-items:flex-start;gap:var(--sp-2);min-width:0;padding:14px 16px;
+  background:var(--hb-bg-soft);border:1px solid var(--hb-line);border-radius:var(--hb-r-l);
+  color:var(--hb-ink);font:inherit;text-align:left;cursor:pointer;transition:border-color .15s ease,background .15s ease}
+.cf-cx-card:hover{background:var(--hb-hover);border-color:var(--hb-line-strong)}
+.cf-cx-card:focus-visible{outline:none;box-shadow:var(--hb-focus-ring)}
+.cf-cx-card-top{display:flex;align-items:center;gap:10px;min-width:0;width:100%}
+.cf-cx-card-top .cf-cx-name{min-width:0;line-height:1.3;overflow-wrap:anywhere}
+.cf-cx-card .cf-cx-go{margin-left:0;margin-top:auto}
 .cf-cx-name{font-size:0.875rem;font-weight:600}
 .cf-cx-go{margin-left:auto;font-size:0.8125rem;color:var(--hb-accent);font-weight:600;white-space:nowrap}
+@media(max-width:520px){
+  .cf-cx-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
 .cf-cx-avatar{flex:none;display:inline-grid;place-items:center;width:44px;height:44px;border-radius:var(--hb-r-m);
   background:color-mix(in srgb,var(--hb-accent) 14%,transparent);color:var(--hb-accent);font-weight:700;font-size:1.125rem;letter-spacing:.02em}
 .cf-cx-avatar--sm{width:30px;height:30px;font-size:0.875rem;border-radius:var(--hb-r-s)}
@@ -1052,6 +1065,7 @@ canvas#orb.frozen{opacity:.32;filter:grayscale(1)}
 .cf-wiz-qr{text-align:center;padding:6px 0}
 .cf-wiz-qr img{width:220px;max-width:70vw;border-radius:12px;background:#fff;padding:8px}
 .cf-wiz-qr p,.cf-wiz-wait{margin:8px 0 0;font-size:0.8125rem;color:var(--hb-muted-2);line-height:1.5}
+.cf-wiz-err{margin:8px 0 0;font-size:0.8125rem;color:var(--hb-risk);line-height:1.5;overflow-wrap:anywhere}
 .cf-wiz-nav{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:4px}
 .cf-wiz-blocked{display:flex;flex-direction:column;align-items:flex-start;gap:8px;margin-top:10px;padding:10px 12px;border:1px solid var(--hb-line);border-radius:var(--hb-r-m);background:var(--hb-warn-bg)}
 .cf-wiz-blocked .cf-wiz-text{color:var(--hb-warn-ink)}
@@ -1097,6 +1111,7 @@ canvas#orb.frozen{opacity:.32;filter:grayscale(1)}
   .cf-nav{flex-direction:row;flex:0 0 auto;overflow-x:auto;border-right:none;border-bottom:1px solid var(--hb-line)}
   .cf-nav-item span{display:none}
   .cf-scroll{padding:20px}
+  .cf-scroll--cx{padding-left:var(--sp-5);padding-right:var(--sp-5)}
   .cf-row2{flex-direction:column;align-items:stretch;gap:6px}
   .cf-row2-ctl{width:100%;align-items:stretch}
   .cf-hint{text-align:left}
@@ -1483,11 +1498,16 @@ body.dbg-open .orbwrap{left:calc(50% - var(--dbg-w) / 2)}
 .cf-preset-h { font-weight: 600; }
 .cf-preset .cf-hint { margin: 0; }
 
-/* ── Feedback widget (V2-099): floating launcher + panel, self-contained/deletable module. z-index
-   below the full-screen overlays (memmap/cfgfull/vault-modal, 9500-9600) so it never pokes through
-   one of those, above the docked panels (chatwall/cronpanel/statuspanel, 9001). ─────────────────── */
+/* ── Feedback widget (V2-099): floating launcher + panel, self-contained/deletable module.
+   2026-10-23 — the TOP layer, above EVERY panel, overlay and modal. It used to sit at 9200, deliberately below
+   the full-screen surfaces (settings 9600, memory map, vault, debug, every modal), so opening ⚙ hid it — and ⚙
+   is exactly where a failing connector sends him. The operator: «no esconder nunca el icono de feedback, porque
+   si me está fallando el conector de WhatsApp tengo que poder avisar». The number is above the highest layer in
+   the app, including the ones injected from JS (update bar 100200, a full-screen card's stage 100500); `.fw-wrap`
+   is the stacking context, so the panel rides with it.
+   A test pins it (tests/browser/unit/feedback/test_the_feedback_button_is_never_hidden.py). ─────────── */
 /* V2-623: the bottom system bar owns the bottom edge — the launcher floats just above it. */
-.fw-wrap{position:fixed;right:20px;bottom:calc(16px + var(--wrail-h,58px));z-index:9200}
+.fw-wrap{position:fixed;right:20px;bottom:calc(16px + var(--wrail-h,58px));z-index:101000}
 /* V2-619: the launcher wears the skin — the ACCENT, solid, like every interactive piece (the old
    accent→teal gradient was the last pre-V2-617 look on screen). */
 .fw-launcher{width:58px;height:58px;border-radius:50%;border:none;cursor:pointer;color:var(--canvas);

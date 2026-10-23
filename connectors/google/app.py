@@ -140,9 +140,20 @@ def _from_file() -> dict:
     return {}
 
 
+def _brokered() -> str:
+    """4. A token broker's Google client (`connectors/oauth_broker.py`) — for a deployment whose instances must
+    not hold the app's secret. Last on purpose: anything this install holds wins over it."""
+    try:
+        from connectors import oauth_broker
+        return oauth_broker.client_id("google") if oauth_broker.enabled() else ""
+    except Exception as e:                 # noqa: BLE001
+        logger.warning(f"google: broker client lookup failed: {type(e).__name__}")
+        return ""
+
+
 def client_id() -> str:
     """The OAuth client this install uses for Google, or "" when there is none."""
-    return _cred("GOOGLE_CLIENT_ID") or str(_from_file().get("client_id") or "")
+    return _cred("GOOGLE_CLIENT_ID") or str(_from_file().get("client_id") or "") or _brokered()
 
 
 def client_secret() -> str:
@@ -164,10 +175,13 @@ def is_web_client() -> bool:
 
 def source() -> str:
     """WHERE the client came from: `operator` (their own, in the store), `shipped` (the console JSON in
-    `.meshkore/credentials/`), or "" (none — every Google connector is dormant). Never the value."""
+    `.meshkore/credentials/`), `broker` (a token broker holds it), or "" (none — every Google connector is
+    dormant). Never the value."""
     if _cred("GOOGLE_CLIENT_ID"):
         return "operator"
-    return "shipped" if _from_file().get("client_id") else ""
+    if _from_file().get("client_id"):
+        return "shipped"
+    return "broker" if _brokered() else ""
 
 
 def project_id() -> str:

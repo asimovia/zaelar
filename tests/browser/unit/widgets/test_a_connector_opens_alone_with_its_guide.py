@@ -64,9 +64,26 @@ def run():
     return json.loads(p.stdout)
 
 
-def test_the_list_opens_nothing_and_offers_one_row_per_connector(run):
-    assert run["list"].count('class="cf-cx-row"') == 3, "WhatsApp, Telegram and the Google services folded into ONE row"
+def test_the_list_opens_nothing_and_offers_one_card_per_connector(run):
+    assert run["list"].count('class="cf-cx-card"') == 3, "WhatsApp, Telegram and the Google services folded into ONE card"
     assert "<FORM" not in run["list"] and "cx_tg_api_id" not in run["list"]
+
+
+def test_each_family_is_a_heading_followed_by_a_row_of_cards(run):
+    """Operator 2026-10-23: «Google este; Mensajería y los tres iconos por separado en cajitas». Each family is
+    its heading and then ONE grid holding that family's cards, in order — not a stacked full-width list."""
+    groups = re.findall(r'<h3 class="cf-fam">([^<]+)</h3><div class="cf-cx-grid">(.*?)</div>(?=<h3|$)', run["list"])
+    assert [(t, g.count('class="cf-cx-card"')) for t, g in groups] == [("Mensajería", 2), ("Google", 1)]
+    assert 'data-cx="whatsapp"' in groups[0][1] and 'data-cx="telegram"' in groups[0][1]
+    assert "cf-cx-row" not in run["list"] and "cf-cx-list" not in run["list"]
+
+
+def test_the_connectors_tab_is_left_aligned_and_its_cards_wrap():
+    css = (APP / "styles.css").read_text(encoding="utf-8")
+    assert 'class="cf-scroll cf-scroll--cx"><div class="cf-panel cf-panel--cx">' in PANEL
+    assert ".cf-panel--cx{max-width:none;margin:0}" in css, "the centred column (margin:0 auto) is overridden"
+    assert re.search(r"\.cf-cx-grid\{display:grid;grid-template-columns:repeat\(auto-fill,", css), "cards wrap"
+    assert re.search(r"@media\(max-width:520px\)\{\s*\.cf-cx-grid\{grid-template-columns:repeat\(2,", css)
 
 
 def test_one_connector_has_its_breadcrumb_and_a_way_back(run):

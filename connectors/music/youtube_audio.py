@@ -121,7 +121,11 @@ def _resolve_scrape(query: str) -> tuple:
             # functions above for its own sentences. So the provider answered in Spanish whatever the
             # operator speaks, and the agent spoke the Spanish title back: measured live 2026-09-12
             # (session 352268b5, 11:00:11), an English session got «Now playing 75 vídeos.»
-            "Accept-Language": _accept_language()})
+            "Accept-Language": _accept_language(),
+            # The consent choice already made. From an EU address without it the results page is a consent
+            # interstitial with no video in it, and the search came back empty — which is where a hosted
+            # instance in an EU region sits. Changes nothing where no interstitial is served.
+            "Cookie": "SOCS=CAI; CONSENT=YES+"})
         html = urllib.request.urlopen(req, timeout=6).read().decode("utf-8", "ignore")
         m = _YT_ID_RE.search(html)
         if not m:

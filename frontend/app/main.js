@@ -21,7 +21,7 @@ import { initI18n, t } from "./core/i18n.js?v=1";
 // core/system-surfaces.js — main.js MOUNTS them from there (with no duplicated list). `submitChat` is the only symbol
 // from a component that main.js uses apart from mounting (the clipboard-paste handler).
 import { submitChat } from "./components/ChatWall.js?v=6";
-import { SYSTEM_SURFACES } from "./core/system-surfaces.js?v=3";
+import { SYSTEM_SURFACES } from "./core/system-surfaces.js?v=4";
 import * as api from "./services/api.js?v=2";
 
 import { Desktop } from "./widgets/desktop.js?v=8";
