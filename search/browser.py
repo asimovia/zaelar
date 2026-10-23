@@ -159,12 +159,14 @@ _EXTRACT_JS = r"""
   const txt = el => el ? clean(el.innerText) : '';
   let answer = '';
   // ---- 1) WIDGET DEL TIEMPO (respuesta exacta, IDs estables) ----
-  const wt = document.querySelector('#wob_tm');
-  if (wt) {
+  // The card holds the temperature in BOTH units (#wob_tm, #wob_ttm) and shows one: read the shown one and the
+  // unit marked active. Writing «°C» by hand read «65°C» for a Barcelona that was 18 °C / 65 °F.
+  const shown = [...document.querySelectorAll('#wob_tm, #wob_ttm')].find(e => getComputedStyle(e).display !== 'none');
+  if (shown) {
     const loc = txt(document.querySelector('#wob_loc'));
     const cond = txt(document.querySelector('#wob_dc'));
-    const unit = (document.querySelector('.wob_t[style*="inline"]') ? '' : '');
-    answer = clean(`${loc ? loc + ': ' : ''}${txt(wt)}°C${cond ? ', ' + cond : ''}`);
+    const u = [...document.querySelectorAll('[aria-disabled="true"]')].map(e => txt(e)).find(t => /^°[CF]$/.test(t)) || '';
+    answer = clean(`${loc ? loc + ': ' : ''}${txt(shown)}${u}${cond ? ', ' + cond : ''}`);
   }
   // ---- 2) RESULTADO DEPORTIVO (tarjeta de partido: "Real Madrid 4 - 2 Athletic, Finalizado") ----
   if (!answer) {
@@ -183,17 +185,71 @@ _EXTRACT_JS = r"""
   for (const h3 of document.querySelectorAll('a h3')) {
     const a = h3.closest('a');
     if (!a || !a.href) continue;
-    if (/^https?:\/\/(www\.)?google\./.test(a.href)) continue;
+    // Google's own pages are not results — but its result REDIRECTS are (`/goto?url=`, `/url?q=`): since 2026-10
+    // every organic link is one, and dropping them left this extractor with zero rows on every query.
+    if (/^https?:\/\/(www\.)?google\./.test(a.href) && !/^https?:\/\/(www\.)?google\.[^/]+\/(goto|url)\?/.test(a.href)) continue;
     if (seen.has(a.href)) continue; seen.add(a.href);
-    let blk = a;
-    for (let i=0;i<5 && blk.parentElement;i++){ blk = blk.parentElement; if ((blk.innerText||'').length > (h3.innerText||'').length + 40) break; }
-    const snip = clean((blk.innerText||'').replace(h3.innerText||'','')).slice(0,320);
+    // The anchor's block is the HEADER (title, site name, cite). The description is a sibling further up: climb
+    // from the header until the text grows past it, never into a block that holds another result.
+    const head = a.parentElement || a;
+    let blk = head;
+    for (let i=0;i<6 && blk.parentElement && blk.parentElement.querySelectorAll('a h3').length === 1;i++){
+      blk = blk.parentElement; if ((blk.innerText||'').length > (head.innerText||'').length + 40) break;
+    }
+    let body = (blk.innerText||'').replace(head.innerText||'','').replace(h3.innerText||'','');
+    for (const t of blk.querySelectorAll('a[href*="translate.google"]')) body = body.replace(t.innerText||'', '');
+    const snip = clean(body.replace(/^[\s·]+/, '')).slice(0,320);
     out.push({title: clean(h3.innerText), url: a.href, snippet: snip});
     if (out.length >= 8) break;
   }
   return {answer: answer.slice(0,600), results: out};
 }
 """
+
+
+def _redirect_target(url: str) -> str:
+    """The page a Google result redirect points at, when the link itself says it (`/url?q=…`); "" when it must be
+    asked (`/goto?url=<opaque>`) or the url is not a Google redirect. Pure."""
+    from urllib.parse import parse_qs, urlparse
+    if not _is_redirect(url):
+        return ""
+    q = parse_qs(urlparse(url).query)
+    for name in ("q", "url"):
+        v = (q.get(name) or [""])[0]
+        if v.startswith(("http://", "https://")):
+            return v
+    return ""
+
+
+def _is_redirect(url: str) -> bool:
+    from urllib.parse import urlparse
+    u = urlparse(url or "")
+    return ".google." in f".{u.netloc}" and u.path in ("/url", "/goto")
+
+
+async def _unwrap_redirects(results: list[dict]) -> None:
+    """Rewrites each Google redirect to the page it lands on, IN PLACE. A row's url is the page (the sheet, the
+    dedupe and the domain checks all read its host); an opaque `/goto` is asked once without following it — its
+    302 `Location` is the page. A redirect that cannot be read keeps its own url: it still lands on the page."""
+    import httpx
+
+    async def one(c, row):
+        url = row.get("url") or ""
+        if not _is_redirect(url):
+            return
+        target = _redirect_target(url)
+        if not target:
+            try:
+                r = await c.get(url)
+                loc = r.headers.get("location") or ""
+                target = loc if loc.startswith(("http://", "https://")) else ""
+            except Exception:  # noqa: BLE001 — the redirect itself still works as a link
+                target = ""
+        if target:
+            row["url"] = target
+
+    async with httpx.AsyncClient(timeout=4.0, follow_redirects=False, headers={"User-Agent": _UA}) as c:
+        await asyncio.gather(*(one(c, r) for r in results))
 
 
 async def search_google(query: str, k: int = 5) -> dict:
@@ -217,6 +273,7 @@ async def search_google(query: str, k: int = 5) -> dict:
         data = await page.evaluate(_EXTRACT_JS)
         results = [{"title": r.get("title", ""), "snippet": r.get("snippet", ""), "url": r.get("url", "")}
                    for r in (data.get("results") or [])[:k]]
+        await _unwrap_redirects(results)
         answer = (data.get("answer") or "").strip()
         if not results and not answer:
             raise RuntimeError("google: sin resultados parseables")

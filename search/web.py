@@ -228,7 +228,7 @@ def search(query: str, k: int = _MAX_RESULTS, mode: str = "answer") -> dict:
     _why: list[str] = []
     for src in (_order() if mode == "answer" else _order(mode)):
         try:
-            r = _BACKENDS[src](q, k)
+            r = _within(_RUNG_WALL_S, _BACKENDS[src], q, k)
             if r["results"] or r["answer"]:
                 # respect the `ai` flag set by the backend (google marks ai=True if it returns AI Overview/featured);
                 # by default, the rest are only the paid AI-answer providers.
@@ -241,6 +241,7 @@ def search(query: str, k: int = _MAX_RESULTS, mode: str = "answer") -> dict:
         except Exception as e:  # noqa: BLE001
             logger.warning(f"websearch backend '{src}' falló, siguiente: {e}")
             _why.append(f"{src}: {_brief(e, 120)}")
+            _set_aside_if_lasting(src, str(e))
     # THE CHAIN COLLAPSED. Recorded, not just logged — see `note_failure`. An empty result on its own cannot tell
     # the brain whether the world has nothing or our searching is broken, and those two deserve opposite replies.
     detail = " · ".join(_why)
@@ -283,7 +284,61 @@ def _order(mode: str = "answer") -> list[str]:
     return chain
 
 
+# ── A RUNG HAS A WALL CLOCK (2026-10-23) ─────────────────────────────────────────────────────────────────────
+# An httpx timeout bounds each PHASE (connect, every read), not the call: a server that keeps a trickle of bytes
+# coming never trips it. Measured on a grounded Gemini call: 204 s for one rung, with an 18 s timeout set, while
+# the turn waited for a fact. The bound belongs to the CHAIN, so every index — the ones declared today and the
+# next one — gets it without remembering to: past `_RUNG_WALL_S` the rung counts as failed and the next one is
+# asked. The abandoned call finishes on its own daemon thread; nothing waits for it.
+_RUNG_WALL_S = float(os.getenv("WEBSEARCH_RUNG_WALL_S", str(_TIMEOUT + 10.0)))
+
+
+def _within(wall_s: float, fn, *args):
+    """`fn(*args)` bounded by `wall_s` seconds of wall clock. Raises `TimeoutError` past it; re-raises fn's error."""
+    import threading
+    box: dict = {}
+
+    def run():
+        try:
+            box["ok"] = fn(*args)
+        except BaseException as e:  # noqa: BLE001 — handed back to the caller's thread as is
+            box["err"] = e
+
+    t = threading.Thread(target=run, daemon=True, name="websearch-rung")
+    t.start()
+    t.join(wall_s)
+    if t.is_alive():
+        raise TimeoutError(f"rung over its wall clock ({wall_s:.0f} s)")
+    if "err" in box:
+        raise box["err"]
+    return box["ok"]
+
+
+# ── A LASTING REFUSAL SETS THE INDEX ASIDE (2026-10-23) ──────────────────────────────────────────────────────
+# A quota refusal, a captcha or a refused key does not clear in the next second, yet every search asked the same
+# index again first and paid its refusal before moving on (measured: Gemini on a free-tier key answered 429 from
+# the 7th call of a minute on). Such an index is skipped for `_ASIDE_S`, then asked again — a quota that reset
+# comes back on its own. A network blip or an empty answer is not lasting and sets nothing aside. The keyless last
+# resort (`ddg`) is always appended by `_order`, aside or not: an empty chain is worse than one more try.
+_ASIDE_S = float(os.getenv("WEBSEARCH_ASIDE_S", "120"))
+_LASTING = ("quota", "captcha", "credential")
+_aside: dict[str, float] = {}
+
+
+def _set_aside_if_lasting(src: str, detail: str, now: float | None = None) -> None:
+    if _classify_failure(detail) in _LASTING:
+        _aside[src] = (_time.time() if now is None else now) + _ASIDE_S
+
+
+def set_aside(now: float | None = None) -> dict[str, float]:
+    """Indexes currently set aside → seconds left. For the health line and whoever audits a round."""
+    now = _time.time() if now is None else now
+    return {s: round(t - now, 1) for s, t in _aside.items() if t > now}
+
+
 def _usable(src: str) -> bool:
+    if _aside.get(src, 0.0) > _time.time():
+        return False
     if src == "google":
         return _google_on()
     if src == "ddg":

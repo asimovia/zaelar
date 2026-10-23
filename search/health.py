@@ -101,8 +101,10 @@ def _call(name: str) -> tuple[bool, str]:
         if _browser._loop is None or not _browser._loop.is_running():
             raise _NeedsEngine()
         if name == "google":
+            # ROWS, not an answer: «wikipedia» fills the answer from its knowledge panel, and that kept this probe
+            # `live` for an extractor that read zero results on every query (2026-10-23).
             r = _browser.search_sync("wikipedia", 1)
-            return bool(r.get("results") or r.get("answer")), ""
+            return bool(r.get("results")), ""
         r = _browser.images_sync("wikipedia logo", 3)
         if r.get("blocked"):
             raise RuntimeError("captcha: the image index served a bot challenge")
