@@ -165,12 +165,16 @@ def token(identity: str = "operator", name: str = "You") -> JSONResponse:
     grant = api.VideoGrants(
         room_join=True, room=room, can_publish=True, can_subscribe=True
     )
-    jwt = (
+    tok = (
         api.AccessToken(SETTINGS.livekit_api_key, SETTINGS.livekit_api_secret)
         .with_identity(f"{identity}-{uuid.uuid4().hex[:4]}")
         .with_name(name)
         .with_grants(grant)
         .with_ttl(timedelta(hours=1))
-        .to_jwt()
     )
+    from voice.engine.core.config import dispatch_agent_name
+    if dispatch_agent_name():          # named dispatch: this engine's worker, and only it, joins the room
+        tok = tok.with_room_config(api.RoomConfiguration(
+            agents=[api.RoomAgentDispatch(agent_name=dispatch_agent_name())]))
+    jwt = tok.to_jwt()
     return JSONResponse({"token": jwt, "url": SETTINGS.livekit_url, "room": room})

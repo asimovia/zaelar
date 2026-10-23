@@ -547,7 +547,8 @@ def make_server() -> AgentServer:
     )
     # on_request = request_fnc: only service zaelar's own rooms (room isolation when
     # a local LiveKit dev server is shared with other projects, e.g. voice-lab-2).
-    server.rtc_session(entrypoint, on_request=request_fnc)
+    from voice.engine.core.config import dispatch_agent_name
+    server.rtc_session(entrypoint, on_request=request_fnc, agent_name=dispatch_agent_name())
     return server
 
 

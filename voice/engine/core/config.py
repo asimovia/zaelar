@@ -36,6 +36,15 @@ def default_room_prefix() -> str:
     return f"zaelar-{machine}" if machine else "zaelar"
 
 
+def dispatch_agent_name() -> str:
+    """The agent name this engine's voice worker registers under, or "" for LiveKit's automatic dispatch.
+
+    On a Fly Machine the worker registers by name and each session token names it, so LiveKit hands the room to
+    exactly this engine: automatic dispatch offers a room to one worker at a time, and a refusal elsewhere does not
+    guarantee the owner is ever asked. A self-host install keeps automatic dispatch (one worker, nothing to pick)."""
+    return default_room_prefix() if (os.environ.get("FLY_MACHINE_ID") or "").strip() else ""
+
+
 def accepts_room(prefix: str, room: str) -> bool:
     """A room this worker owns: its prefix exactly, or the prefix plus «-<suffix>» (`server/livekit_api.py`)."""
     return room == prefix or room.startswith(prefix + "-")
