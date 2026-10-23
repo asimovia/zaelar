@@ -221,3 +221,44 @@ def test_each_voice_provider_opens_through_egress(mediated, monkeypatch, module,
     assert seen["api_key"] == TOKEN
     if "ws_url" in seen:
         assert seen["ws_url"].startswith("wss://egress.example/"), seen["ws_url"]
+
+
+# ── LiveKit (T305, 2026-10-23): the secret signs a token for ANY room, so a mediated instance does not hold it ──
+
+def test_the_browsers_room_token_is_signed_by_egress(mediated, monkeypatch):
+    import httpx
+    from livekit import api
+    from server import livekit_api
+    from nucleo import runstate
+    seen = {}
+
+    def post(url, json=None, headers=None, timeout=None):
+        seen.update(url=url, auth=headers["Authorization"], body=json)
+        return httpx.Response(200, json={"token": "t", "url": "wss://lk.example", "room": "zaelar-u-1-ab"})
+
+    def never(*a, **k):
+        raise AssertionError("a mediated instance signed a LiveKit token itself")
+
+    monkeypatch.setattr(runstate, "stopped", lambda: False)
+    monkeypatch.setattr(httpx, "post", post)
+    monkeypatch.setattr(api, "AccessToken", never)
+    res = livekit_api.token(identity="op", name="Ricart")
+    assert res.status_code == 200 and json.loads(res.body)["room"] == "zaelar-u-1-ab"
+    assert seen["url"] == f"{GW}/livekit/token" and seen["auth"] == f"Bearer {TOKEN}"
+
+
+def test_the_voice_worker_registers_through_egress(mediated, monkeypatch):
+    from voice.engine.pipeline import agent
+    seen = {}
+
+    class Server:
+        def __init__(self, **kw):
+            seen.update(kw)
+
+        def rtc_session(self, *a, **k):
+            return None
+
+    monkeypatch.setattr(agent, "AgentServer", Server)
+    agent.make_server()
+    assert seen["ws_url"] == "wss://egress.example/livekit"
+    assert seen["api_key"] == TOKEN and seen["api_secret"] == TOKEN, "the worker holds no LiveKit secret"

@@ -528,6 +528,14 @@ def make_server() -> AgentServer:
                            load_fnc=None, ws_url=None, api_key=None, api_secret=None, ...)
       AgentServer.rtc_session(self, func=None, *, agent_name="", type=ROOM, ...)
     """
+    # MEDIATED: the worker registers THROUGH egress, which holds the LiveKit secret. The SDK signs its own JWT with
+    # whatever key it is given, so it is given this instance's egress credential: egress reads who it is from the
+    # token's `iss`, signs the real registration and lets it through only under this instance's own agent name.
+    from nucleo import llm_egress
+    lk_url, lk_key, lk_secret = SETTINGS.livekit_url, SETTINGS.livekit_api_key, SETTINGS.livekit_api_secret
+    if llm_egress.mediated():
+        lk_url = llm_egress.root().replace("https://", "wss://", 1) + "/livekit"
+        lk_key = lk_secret = llm_egress.credential()
     server = AgentServer(
         job_executor_type=JobExecutorType.THREAD,
         setup_fnc=prewarm,                      # prewarm is `setup_fnc` on AgentServer
@@ -535,9 +543,9 @@ def make_server() -> AgentServer:
         # connect joins fast; the ProcPool warms it for the THREAD executor too.
         num_idle_processes=1,
         initialize_process_timeout=90,          # prewarm loads Whisper (+ Ollama on local)
-        ws_url=SETTINGS.livekit_url,
-        api_key=SETTINGS.livekit_api_key,
-        api_secret=SETTINGS.livekit_api_secret,
+        ws_url=lk_url,
+        api_key=lk_key,
+        api_secret=lk_secret,
         # FIXED PORT, THIS MACHINE ONLY (2026-10-21). The worker opens a small health server (`/`, `/worker`); in
         # dev mode LiveKit's default is port 0 on every interface — a NEW random port at each start, reachable
         # from the local network, and impossible for `stop` to name, so a dead instance's port went unnoticed.

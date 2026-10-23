@@ -149,6 +149,17 @@ _STANDS_IN_FOR: tuple[str, ...] = tuple(dict.fromkeys(
     env for needle, env in _KEYS_BY_ENDPOINT if any(needle in base for _name, base in _UPSTREAMS)))
 
 
+def root() -> str:
+    """Egress's own address, without the OpenAI-compatible `/v1` the chat SDKs compose on."""
+    gateway = (os.getenv(_URL_ENV) or "").strip().rstrip("/")
+    return gateway[:-3] if gateway.endswith("/v1") else gateway
+
+
+def credential() -> str:
+    """This process's egress credential — the account's own, never a provider's."""
+    return (os.getenv(_TOKEN_ENV) or "").strip()
+
+
 def base_of(family: str) -> str:
     """The provider's own base for `family` — what a call site starts from before `route_url`. Pure."""
     return dict(_UPSTREAMS)[family]
@@ -175,10 +186,7 @@ def route_url(url: str, key: str) -> tuple[str, str]:
     if not name:
         logger.error(f"llm_egress: {url.split('?')[0][:80]} is not a family egress carries — the call is not routed")
         return url, key
-    gateway = (os.getenv(_URL_ENV) or "").strip().rstrip("/")
-    if gateway.endswith("/v1"):
-        gateway = gateway[:-3]
-    return f"{gateway}/p/{name}{url.strip()[len(base):]}", (os.getenv(_TOKEN_ENV) or "").strip()
+    return f"{root()}/p/{name}{url.strip()[len(base):]}", credential()
 
 
 def stand_in_for_provider_keys() -> list[str]:

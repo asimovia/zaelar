@@ -137,6 +137,17 @@ def livekit_config() -> dict:
     }
 
 
+def _token_from_egress(identity: str, name: str) -> JSONResponse:
+    import httpx
+    try:
+        from nucleo import llm_egress
+        r = httpx.post(f"{llm_egress.root()}/livekit/token", json={"identity": identity, "name": name},
+                       headers={"Authorization": f"Bearer {llm_egress.credential()}"}, timeout=10.0)
+        return JSONResponse(r.json(), status_code=r.status_code)
+    except Exception as e:  # noqa: BLE001 — the browser gets a visible failure, never a token we could not sign
+        return JSONResponse({"error": "token_unavailable", "detail": str(e)[:160]}, status_code=502)
+
+
 @router.get("/api/token")
 def token(identity: str = "operator", name: str = "You") -> JSONResponse:
     """Mint a join token for a FRESH per-session room.
@@ -160,6 +171,13 @@ def token(identity: str = "operator", name: str = "You") -> JSONResponse:
     from nucleo import runstate
     if runstate.stopped():
         return JSONResponse({"error": "engine_stopped"}, status_code=409)
+
+    # MEDIATED: the room token is signed by egress, which holds the LiveKit secret and decides the room and the agent
+    # (this instance's own). A process that can sign a token can sign one for ANY room of the project — so in a
+    # deployment where other people's code may run, it does not hold the secret at all.
+    from nucleo import llm_egress
+    if llm_egress.mediated():
+        return _token_from_egress(identity, name)
 
     room = f"{SETTINGS.room_name}-{uuid.uuid4().hex[:8]}"
     grant = api.VideoGrants(
