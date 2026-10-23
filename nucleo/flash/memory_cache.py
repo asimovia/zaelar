@@ -69,9 +69,18 @@ def _compose() -> tuple[str, str]:
     # The attention gate's wake-word tracks a rename (2026-09-09): this refresh already runs off the hot
     # path and re-fires on `memory.updated` (a rename fires it immediately), so it is the natural place to
     # keep `voice.attention` in sync without giving that module its OWN memory read — see its docstring.
+    # It is also where the SCREEN learns the name. Four writers rename the assistant (voice tool, fast lane,
+    # text probe, memory processor) and only two of them told the interface, so after a rename by chat the 🤖
+    # hint kept saying «Zaelar» until a reload. Every writer lands in `state`, and this refresh fires on each
+    # of them, so announcing a CHANGE here covers all four without any writer having to remember to.
     try:
         from voice import attention
-        attention.set_assistant_name(memory.state().get("assistant_name"))
+        before = attention.assistant_name()
+        name = str(memory.state().get("assistant_name") or "").strip()
+        attention.set_assistant_name(name)
+        if name and name != before:
+            from voice.observer import emit
+            emit("ui", "orb:name", extra={"name": name})
     except Exception:
         pass
     return block, op

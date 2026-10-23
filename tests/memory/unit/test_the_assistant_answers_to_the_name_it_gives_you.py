@@ -72,3 +72,30 @@ def test_the_name_in_state_is_what_the_microphone_answers_to():
         assert attention.has_wakeword("zaelar, ¿sigues ahí?"), "the default never stops working (habit)"
     finally:
         attention.set_assistant_name("")
+
+
+def test_a_rename_that_reaches_state_by_any_writer_is_announced_to_the_screen(monkeypatch):
+    """The 🤖 hint says the word that wakes the agent. Two of the four rename writers never told the
+    interface, so a rename typed in the chat left the hint on the default until a reload. The memory refresh
+    sees every writer's result; it announces a CHANGE once, and stays silent while the name holds."""
+    from types import SimpleNamespace
+    import memory.api as mem_api
+    import voice.observer as observer
+    from nucleo.flash import memory_cache
+
+    state = {"assistant_name": "Johnny"}
+    monkeypatch.setattr(mem_api, "compose_state", lambda **_: ("", "", {}))
+    monkeypatch.setattr(mem_api, "state", lambda: state)
+    sent = []
+    monkeypatch.setattr(observer, "emit", lambda kind, label, text="", role="", extra=None:
+                        sent.append((kind, label, (extra or {}).get("name"))))
+    try:
+        attention.set_assistant_name("")
+        memory_cache._compose()
+        memory_cache._compose()
+        assert sent == [("ui", "orb:name", "Johnny")], sent
+        state["assistant_name"] = "Max"
+        memory_cache._compose()
+        assert sent[-1] == ("ui", "orb:name", "Max")
+    finally:
+        attention.set_assistant_name("")
