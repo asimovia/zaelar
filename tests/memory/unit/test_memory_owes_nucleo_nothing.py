@@ -57,6 +57,11 @@ INVERSE_IMPORTS_DEBT: dict[tuple[str, str], str] = {
         "the energy lease gate in front of the CLOUD embedding call (V2-785). The meter's twin: one counts the "
         "spend after it, this refuses it before it when the machine holds no lease. Same deferred import, same "
         "cloud branch, and the same reason a callback would not do — a process that forgot to register would spend.",
+    ("memory/embeddings.py", "nucleo.llm_egress"):
+        "WHERE the cloud embedding call goes (2026-10-23): in a mediated deployment it leaves through egress with "
+        "the account's own credential instead of a provider key held in this process. Same pair as rerank above "
+        "(egress travels with the meter), same deferred import in the same cloud branch; a callback a process could "
+        "forget to register would send the call out with a master key.",
 }
 
 _FROM_DOTTED_RE = re.compile(r"^[ \t]*from[ \t]+nucleo\.([a-z_]+)")           # from nucleo.workers import ledger

@@ -56,8 +56,10 @@ def search(q: str, k: int = 8) -> dict:
         return {"query": q, "answer": "", "results": [], "source": "zai"}
     payload = {"search_engine": os.getenv("ZAI_SEARCH_ENGINE", "search-prime"), "search_query": q,
                "count": max(1, min(int(k), 20)), "content_size": "medium"}
+    from nucleo import llm_egress
+    url, key = llm_egress.route_url(_ENDPOINT, key)
     with httpx.Client(timeout=_TIMEOUT) as c:
-        resp = c.post(_ENDPOINT, headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+        resp = c.post(url, headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
                       json=payload)
     if resp.status_code != 200:
         raise RuntimeError(f"zai web_search: HTTP {resp.status_code} {resp.text[:160]}")

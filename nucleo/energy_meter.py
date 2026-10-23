@@ -415,7 +415,9 @@ async def _post_usage_cloud_account(energy: float, kind: str, meta: dict | None 
     # desde aquí cobraría dos veces el mismo turno. El descuento del arriendo local NO pasa por aquí
     # (va en `_fire_and_forget`, antes), así que el techo de seguridad sigue funcionando igual.
     from nucleo import llm_egress
-    if kind in ("llm", "worker") and llm_egress.bills_upstream():
+    # Paid search joined on 2026-10-23, when its three indexes started going out through egress too. Voice (`tts`,
+    # `stt`, `transport`) is still metered here: it does not go through egress.
+    if kind in ("llm", "worker", "search") and llm_egress.bills_upstream():
         return
     service_token = (os.getenv("CONTROL_PLANE_SERVICE_TOKEN") or "").strip()
     headers = {"X-Service-Token": service_token} if service_token else {}
@@ -582,7 +584,7 @@ def _observe_charge(energy: float, kind: str, meta: dict | None) -> None:
         extra = {"charge": kind, "energy": round(e, 4),
                  "raw_usd": round(e * EUR_PER_ENERGY_UNIT / MARGIN_MULTIPLIER, 8), "margin": MARGIN_MULTIPLIER}
         upstream = False
-        if kind in ("llm", "worker"):
+        if kind in ("llm", "worker", "search"):
             from nucleo import llm_egress
             upstream = llm_egress.bills_upstream()
         extra["billed_by"] = "egress" if upstream else "engine"

@@ -39,6 +39,11 @@ from nucleo import workspace as _workspace  # noqa: E402
 
 _workspace.ensure()
 
+# NO PROVIDER KEY IS READ IN A MEDIATED DEPLOYMENT — decided here, before any module caches one (`llm_egress`).
+from nucleo import llm_egress as _egress  # noqa: E402
+
+_egress.stand_in_for_provider_keys()
+
 # ONE ENGINE PER MACHINE, checked before anything starts a poller or registers a voice worker. An instance with ZAELAR_USER_ID set is one
 # engine by construction, so only a local run takes the lock (`nucleo/one_engine.py` says why a port is not enough).
 if __name__ == "__main__" and not (os.getenv("ZAELAR_USER_ID") or "").strip():

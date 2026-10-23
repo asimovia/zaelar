@@ -1744,6 +1744,7 @@
  "status.bal.zai_bad_key": "invalid credential for paas/v4",
  "status.bal.unmeasurable": "could not be measured (HTTP {code})",
  "status.bal.no_balance_api": "the provider does not expose a balance",
+ "status.bal.held_by_egress": "paid through this deployment's egress, not with a key of this instance",
  "status.bal.no_credential": "no credential",
  "status.bal.provider_down": "the provider is not responding",
  "status.bal.recent_problem": "recent problem",

@@ -6215,7 +6215,10 @@ DOMAINS: list[dict] = [
             # decision model, boot probe), a denied boot lease stops, every metering file passes a door; disarmed.
             "tests/infrastructure/unit/core/test_paid_work_passes_the_lease_gate.py"]},
         {"id": "8.22", "title": "Egress de modelos: un código, dos despliegues", "ch": UNIT, "paths": [
-            "tests/infrastructure/unit/core/test_llm_egress.py"]},
+            "tests/infrastructure/unit/core/test_llm_egress.py",
+            # 2026-10-23 — no provider key is read in a mediated deployment: the account's egress credential stands in
+            # for every key egress carries, and embeddings, paid search, triage and the Brain Worker go through it.
+            "tests/infrastructure/unit/core/test_no_provider_key_is_read_in_a_mediated_deployment.py"]},
         {"id": "8.23", "title": "Tarifas: el precio SIGUE al proveedor que corre", "ch": UNIT, "paths": [
             "tests/infrastructure/unit/core/test_energy_tariffs.py"]},
         # V2-767 — el otro lado del 8.20: no basta con que nadie gaste FUERA del contador, hace falta

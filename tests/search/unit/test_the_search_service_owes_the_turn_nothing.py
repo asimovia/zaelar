@@ -18,7 +18,10 @@ SEARCH = ENGINE / "search"
 
 FORBIDDEN_PREFIXES = ("nucleo.flash", "voice", "widgets", "server", "memory", "connectors", "frontend")
 # `nucleo.energy_lease` (V2-785): the gate asked BEFORE a paid index is called — the meter's twin, and a leaf.
-ALLOWED_NUCLEO = {"nucleo.errors", "nucleo.workspace", "nucleo.energy_meter", "nucleo.energy_lease"}
+# `nucleo.llm_egress` (2026-10-23): the door a paid index's URL passes in a mediated deployment — the lease's twin
+# for WHERE the call goes, and a leaf like it.
+ALLOWED_NUCLEO = {"nucleo.errors", "nucleo.workspace", "nucleo.energy_meter", "nucleo.energy_lease",
+                  "nucleo.llm_egress"}
 
 
 def _imports(path: Path):

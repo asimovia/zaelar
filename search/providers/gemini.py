@@ -67,6 +67,8 @@ def search(q: str, k: int = 5) -> dict:
             "contents": [{"parts": [{"text": q}]}],
             "tools": [{"google_search": {}}],
             "generationConfig": _budget.generation_config(_model())}
+    from nucleo import llm_egress
+    url, key = llm_egress.route_url(url, key)
     with httpx.Client(timeout=_TIMEOUT) as c:
         resp = c.post(url, headers={"x-goog-api-key": key, "Content-Type": "application/json"}, json=body)
     if resp.status_code != 200:

@@ -117,6 +117,83 @@ def _headers(base_url: str) -> dict:
     return {"X-Zaelar-Provider": p} if p else {}
 
 
+# ── EVERY PAID CALL, NOT JUST CHAT (2026-10-23) ─────────────────────────────────────────────────────────────
+# `route()` covers the OpenAI-shaped chat calls. Embeddings, search, the triage model and the Brain Worker's
+# Anthropic-shaped endpoint spoke to their providers directly, with a provider key read from the environment —
+# in the one process where the code a user asked for also runs. Mediated egress now carries them through ONE
+# convention: `<egress>/p/<family>/<the provider's own path>`. Egress keeps a closed list of paths per family;
+# the call site keeps its provider's URL and hands it to `route_url`.
+#
+# The families egress can carry, by the base each provider's own SDK or call site already uses. LONGEST FIRST:
+# `api.deepseek.com/anthropic` must win over `api.deepseek.com`.
+_UPSTREAMS: tuple[tuple[str, str], ...] = (
+    ("zai_anthropic", "https://api.z.ai/api/anthropic"),
+    ("deepseek_anthropic", "https://api.deepseek.com/anthropic"),
+    ("zai", "https://api.z.ai/api/paas/v4"),
+    ("openai", "https://api.openai.com/v1"),
+    ("gemini", "https://generativelanguage.googleapis.com/v1beta"),
+    ("xai", "https://api.x.ai/v1"),
+    ("deepseek", "https://api.deepseek.com"),
+)
+
+#: The provider keys this process's own egress credential STANDS IN FOR (see `stand_in_for_provider_keys`): the
+#: key of every endpoint (`provider_keys`) whose host is one egress carries. Only those: a key whose calls cannot
+#: be routed yet (the voice providers' streaming sockets) is left alone, because standing in for it would break
+#: the feature, not protect the key.
+from nucleo.provider_keys import _ENDPOINTS as _KEYS_BY_ENDPOINT  # noqa: E402
+
+_STANDS_IN_FOR: tuple[str, ...] = tuple(dict.fromkeys(
+    env for needle, env in _KEYS_BY_ENDPOINT if any(needle in base for _name, base in _UPSTREAMS)))
+
+
+def upstream_of(url: str) -> tuple[str, str]:
+    """`(family, base)` of a provider URL, or `("", "")` when egress does not carry it. Pure."""
+    low = (url or "").strip().lower()
+    for name, base in _UPSTREAMS:
+        if low == base or low.startswith(base + "/") or low.startswith(base + "?") or low.startswith(base + ":"):
+            return name, base
+    return "", ""
+
+
+def route_url(url: str, key: str) -> tuple[str, str]:
+    """Effective `(url, key)` for a call to a provider's FULL url (or the base an SDK composes on).
+
+    Self-host: unchanged. Mediated: `<egress>/p/<family><rest of the url>` with this process's egress credential.
+    A provider egress does not carry comes back unchanged — and, in a mediated deployment, its key is the stand-in
+    token, so the provider answers 401: a visible failure, never a call paid with a master key."""
+    if is_local_endpoint(url) or not mediated():
+        return url, key
+    name, base = upstream_of(url)
+    if not name:
+        logger.error(f"llm_egress: {url.split('?')[0][:80]} is not a family egress carries — the call is not routed")
+        return url, key
+    gateway = (os.getenv(_URL_ENV) or "").strip().rstrip("/")
+    if gateway.endswith("/v1"):
+        gateway = gateway[:-3]
+    return f"{gateway}/p/{name}{url.strip()[len(base):]}", (os.getenv(_TOKEN_ENV) or "").strip()
+
+
+def stand_in_for_provider_keys() -> list[str]:
+    """In a mediated deployment, make this process's egress credential stand in for every provider key egress
+    can carry. Called once at boot, before anything reads a key. Returns the NAMES it replaced.
+
+    Why at the door and not at each reader: «is there a key for X?» is asked in a dozen places (the model chains,
+    the search health, the worker tiers, the panels), and each of them would otherwise conclude that a provider
+    whose key was taken away no longer exists. With the stand-in every one of them keeps working, every routed
+    call goes through egress with the right credential, and an unrouted one carries a token that is worthless
+    outside egress. The real key is never read again by this process, whether or not it is still in the
+    environment — removing it from the deployment then changes nothing that works."""
+    if not mediated():
+        return []
+    token = (os.getenv(_TOKEN_ENV) or "").strip()
+    if not token:
+        logger.error(f"llm_egress: mediated egress without {_TOKEN_ENV} — provider keys are not stood in for")
+        return []
+    for name in _STANDS_IN_FOR:
+        os.environ[name] = token
+    return list(_STANDS_IN_FOR)
+
+
 def bills_upstream() -> bool:
     """Who records the expense in the ledger?
 

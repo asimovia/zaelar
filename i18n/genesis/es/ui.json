@@ -1744,6 +1744,7 @@
  "status.bal.zai_bad_key": "credencial inválida para paas/v4",
  "status.bal.unmeasurable": "no se pudo medir (HTTP {code})",
  "status.bal.no_balance_api": "el proveedor no expone saldo",
+ "status.bal.held_by_egress": "se paga por la salida de este despliegue, no con una clave de esta instancia",
  "status.bal.no_credential": "sin credencial",
  "status.bal.provider_down": "el proveedor no responde",
  "status.bal.recent_problem": "problema reciente",

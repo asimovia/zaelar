@@ -37,6 +37,7 @@ from nucleo.errors import brief as _brief
 
 from . import hooks as _hooks
 from .providers import keys as _keys
+from .providers import paid as _paid_providers
 
 _UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
        "(KHTML, like Gecko) Chrome/120.0 Safari/537.36")
@@ -259,10 +260,10 @@ def search(query: str, k: int = _MAX_RESULTS, mode: str = "answer") -> dict:
 
 
 # PAID ones, by backend name. `google` (our Chromium) and `ddg` are NOT included and therefore are not
-# charged — being free is a property of the provider, not a zero fee someone could misread. Adding a paid
-# search engine requires adding it here AND giving it a rate in `energy_meter._SEARCH_USD_PER_REQUEST`;
-# the Energy coverage gate fails otherwise.
-_PAID_BACKENDS = frozenset({"perplexity", "tavily", "brave", "openai", "gemini", "zai"})
+# charged — being free is a property of the provider, declared ONCE in `search/providers` (`paid=True`), not a
+# zero fee someone could misread. A paid search engine also needs a rate in
+# `energy_meter._SEARCH_USD_PER_REQUEST`; the Energy coverage gate fails otherwise.
+_PAID_BACKENDS = _paid_providers()
 
 
 def _meter_search(src: str) -> None:
@@ -333,7 +334,7 @@ def _within(wall_s: float, fn, *args):
 _ASIDE_S = float(os.getenv("WEBSEARCH_ASIDE_S", "120"))
 _ASIDE_MAX_S = float(os.getenv("WEBSEARCH_ASIDE_MAX_S", "3600"))
 _NO_FUNDS_S = float(os.getenv("WEBSEARCH_NO_FUNDS_S", str(6 * 3600)))
-_LASTING = ("quota", "captcha", "credential")
+_LASTING = tuple(kind for kind, _ in _FAIL_KINDS if kind != "network")   # a blip clears by itself
 #: The wording providers use for an EMPTY WALLET (HTTP 402, billing pages) — not a rate limit that resets.
 #: Not «billing»: Gemini's per-minute 429 says «check your plan and billing details».
 _NO_FUNDS = ("http 402", "no api credits", "credits remaining", "out of funds", "insufficient balance",

@@ -358,8 +358,12 @@ def _cloud_embed(texts: list[str], *, timeout: float | None = None) -> list[list
     dims = _cloud_dims()
     if dims:
         body["dimensions"] = dims
+    # EGRESS (deferred import, the same trade as the meter below): a mediated deployment sends this through egress
+    # with its own credential; self-host gets its URL and key back untouched.
+    from nucleo import llm_egress
+    url, key = llm_egress.route_url(_cloud_base_url().rstrip("/") + "/embeddings", key)
     req = urllib.request.Request(
-        _cloud_base_url().rstrip("/") + "/embeddings",
+        url,
         data=json.dumps(body).encode("utf-8"),
         headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}"},
     )

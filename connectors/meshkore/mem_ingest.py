@@ -110,8 +110,11 @@ async def _summarize(peer: str, prev: str, inbound: str, outbound: str) -> str |
             from nucleo import energy_lease
             energy_lease.admit("llm")
         to = aiohttp.ClientTimeout(total=_TIMEOUT)
+        from nucleo import llm_egress
+        base, key, extra = llm_egress.route(_url(), _key())
         async with aiohttp.ClientSession(timeout=to) as s:
-            async with s.post(url, headers={"Authorization": f"Bearer {_key()}"}, json=payload) as r:
+            async with s.post(base.rstrip("/") + "/chat/completions",
+                              headers={"Authorization": f"Bearer {key}", **extra}, json=payload) as r:
                 data = await r.json()
         out = (data["choices"][0]["message"]["content"] or "").strip()
         # ENERGY (2026-08-13). Local by default -> `energy_meter` returns None and costs nothing.

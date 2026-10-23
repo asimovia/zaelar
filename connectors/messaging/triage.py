@@ -85,9 +85,11 @@ async def classify(messages: list[dict], operator_name: str | None = None) -> li
         if not local:                     # the energy lease gate: a remote triage model is paid work
             from nucleo import energy_lease
             energy_lease.admit("llm")
+        from nucleo import llm_egress
+        base, key, extra = llm_egress.route(url, config.triage_key())
         async with aiohttp.ClientSession(timeout=to) as s:
-            async with s.post(url.rstrip("/") + "/chat/completions",
-                              headers={"Authorization": f"Bearer {config.triage_key()}"},
+            async with s.post(base.rstrip("/") + "/chat/completions",
+                              headers={"Authorization": f"Bearer {key}", **extra},
                               json=payload) as r:
                 status = r.status
                 data = await r.json(content_type=None)
