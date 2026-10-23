@@ -363,7 +363,7 @@ async def ensure(*, reason: str = "boot", force: bool = False) -> bool:
         return True
     _load_once()
     if not force and remaining() > 0 and not _near_expiry() and \
-            float(_state["spent"]) < float(_state["granted"]) * _RENEW_AT:
+            float(_state["spent"]) < float(_state["granted"]) * _RENEW_AT and _gauge_knows():
         return True
     if _renewing:
         return remaining() > 0
@@ -372,6 +372,17 @@ async def ensure(*, reason: str = "boot", force: bool = False) -> bool:
         return await _request(reason)
     finally:
         _renewing = False
+
+
+def _gauge_knows() -> bool:
+    """Does the Energy gauge know the balance? Only a lease ANSWER tells it, so a Machine that boots on a lease it
+    persisted would show an unlit gauge until the next renewal — up to half an hour. Not knowing is a reason to ask."""
+    try:
+        from nucleo import energy_meter
+        return bool(energy_meter.snapshot().get("known"))
+    except Exception as e:  # noqa: BLE001 — unreadable means «ask», the safe side for a display
+        logger.debug(f"energy_lease: gauge state unreadable: {e!r}")
+        return False
 
 
 async def _request(reason: str) -> bool:

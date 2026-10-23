@@ -80,3 +80,21 @@ def test_without_gauge_facts_the_capacity_is_the_highest_balance_seen():
     energy_lease._gauge_from_lease({"balance": 800})
     energy_lease._gauge_from_lease({"balance": 600})
     assert energy_meter.snapshot()["capacity"] == 800
+
+
+def test_a_machine_booting_on_a_persisted_lease_still_asks_when_the_gauge_knows_nothing(monkeypatch):
+    """Only a lease ANSWER tells the gauge the balance: booting on a still-valid lease must not leave it unlit."""
+    asked = []
+    _lease_answer(monkeypatch, {"ok": True, "lease_id": "L2", "energy": 40, "ttl_s": 1800, "balance": 397})
+    energy_lease._state.update({"lease_id": "L1", "granted": 40.0, "spent": 1.0,
+                                "expires_at": __import__("time").time() + 1500})
+    real = energy_lease._request
+
+    async def counting(reason):
+        asked.append(reason)
+        return await real(reason)
+    monkeypatch.setattr(energy_lease, "_request", counting)
+    asyncio.run(energy_lease.ensure(reason="boot"))
+    assert asked == ["boot"] and energy_meter.snapshot()["balance"] == 397
+    asyncio.run(energy_lease.ensure(reason="boot"))
+    assert asked == ["boot"], "once the gauge knows, a valid lease is not asked for again"
