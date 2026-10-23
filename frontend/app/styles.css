@@ -1658,6 +1658,7 @@ body.dbg-open .orbwrap{left:calc(50% - var(--dbg-w) / 2)}
 .daemonBtn.st-off,.daemonBtn.st-remote,.daemonBtn.st-unknown{color:var(--hb-muted-2)}
 
 .daemonBtn.is-off{display:none}
+.tr.is-pending{visibility:hidden}
 .dsx-ovl{align-items:center}
 .dsx-box{width:min(680px,100%);max-height:min(86vh,760px);display:flex;flex-direction:column;
   background:var(--hb-bg);border:1px solid var(--hb-line);border-radius:var(--hb-r-l);box-shadow:var(--hb-shadow-2)}

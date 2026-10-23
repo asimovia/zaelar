@@ -589,8 +589,9 @@ export const [wizardOpen, setWizardOpen] = createSignal(false);
 
 // ---- CLOUD profile: when cloud_profile is set (from /api/config, = ZAELAR_USER_ID set), the header is
 // reduced to theme + profile; in self-host it is always false and the header does not change (zero regression). main.js seeds it
-// al arrancar desde /api/config. ----
-export const [cloudProfile, setCloudProfile] = createSignal(false);        // cloud account? (reduced header)
+// al arrancar desde /api/config. `null` = not known yet: the header renders NOTHING until the engine says which
+// profile it is, so a cloud page never flashes the local header first. ----
+export const [cloudProfile, setCloudProfile] = createSignal(null);         // cloud account? null = unknown yet
 export const [accountOpen, setAccountOpen]   = createSignal(false);        // account panel (profile icon, cloud only)
 
 // ---- ENERGY BALANCE (the top-bar BATTERY, cloud only). `known:false` = we do not know the balance yet, which is

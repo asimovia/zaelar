@@ -21,13 +21,15 @@ import { accountLink } from "../core/account-link.js?v=1";
 const STATUS_ICON = `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill="currentColor"/></svg>`;
 
 export function TopBar() {
-  return h("div", { class: "tr" },
+  // Nothing is shown until /api/config has said cloud or local (`cloudProfile() === null`): no default header that
+  // is then swapped for the right one.
+  return h("div", { class: () => "tr" + (store.cloudProfile() === null ? " is-pending" : "") },
     // System status: the health beacon lives at the LEFT extreme of the toolbar. A dot that greens/ambers/reds
     // (blinks on error) so a problem (no saldo, Hermes caído, cluster desconectado) grabs attention without
     // opening anything. Click → the status panel with the per-item detail.
     // CLOUD profile (ZAELAR_USER_ID set): the header se reduce a PERFIL + tema. En cuanto /api/config dice cloud_profile (=
     // ZAELAR_USER_ID puesto) se ocultan estado/observabilidad/config/wizard/reset. En self-host cloudProfile es
-    // false and the header no cambia (cero regresión). The gate es reactivo: si the config tarda, aparecen and se ocultan.
+    // false. Until the config arrives the whole bar is hidden (`is-pending`), so neither set flashes.
     () => store.cloudProfile() ? null : h("button", {
       class: () => "ic statusBtn st-" + overallStatus(),   // worst(server, voz of the browser, offline) → color + parpadeo
       id: "statusBtn", title: () => t("topbar.status.title"),
