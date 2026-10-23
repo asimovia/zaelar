@@ -7,7 +7,7 @@ import importlib
 import os
 from concurrent.futures import ThreadPoolExecutor
 
-from fastapi import APIRouter
+from fastapi import APIRouter, File, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from loguru import logger
 
@@ -437,6 +437,43 @@ def _payload_digest(payload) -> dict:
         elif isinstance(v, (list, tuple)):
             out[str(k)[:40]] = f"[{len(v)}]"
     return out
+
+
+_UPLOAD_MAX_BYTES = 64 * 1024 * 1024        # a phone video; more than that is not a message attachment
+
+
+@router.post("/widgets/{wid}/upload")
+async def widget_upload(wid: str, file: UploadFile = File(...)):
+    """A file the operator picked in a card (a photo or a document to send), saved into THAT widget's data dir
+    so its asset route can show it and its actions can name it. Only for a widget whose manifest declares
+    `"uploads": true`: no card gets a place to write files by accident. The name is generated (`up_<random>_`
+    + the sanitized original), so nothing about the path comes from the browser. Returns {name, url, type,
+    size}; the widget then names the file in an action."""
+    wid = _safe(wid)
+    if not (runtime.get(wid) or {}).get("uploads"):
+        return JSONResponse({"error": "this widget does not take uploads"}, status_code=403)
+    data = await file.read()
+    if not data:
+        return JSONResponse({"error": "empty file"}, status_code=400)
+    if len(data) > _UPLOAD_MAX_BYTES:
+        return JSONResponse({"error": "file too large"}, status_code=413)
+    import re as _re
+    import secrets as _secrets
+    from widgets import store as _wstore
+    base = _re.sub(r"[^A-Za-z0-9._-]", "_", os.path.basename(file.filename or "file"))[-80:].lstrip(".") or "file"
+    name = f"up_{_secrets.token_hex(6)}_{base}"
+    path = os.path.join(_wstore.data_dir(wid), name)
+    await asyncio.to_thread(_write_bytes, path, data)
+    mime = (file.content_type or "").lower()
+    kind = ("image" if mime.startswith("image/") else "video" if mime.startswith("video/")
+            else "audio" if mime.startswith("audio/") else "document")
+    return JSONResponse({"name": name, "url": f"/widgets/{wid}/asset/{name}", "type": kind, "size": len(data),
+                         "original": file.filename or base})
+
+
+def _write_bytes(path: str, data: bytes) -> None:
+    with open(path, "wb") as f:
+        f.write(data)
 
 
 @router.post("/widgets/{wid}/action")

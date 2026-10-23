@@ -44,6 +44,21 @@ async def send_message(chat_id: str, text: str, reply_to: str | None = None) -> 
     return await _request("POST", "/send", body=body, timeout=45.0)
 
 
+async def send_media(chat_id: str, path: str, caption: str = "") -> dict:
+    """Send one file through the bridge's POST /send-media: an image, video or voice note goes as that kind (the
+    bridge infers it from the extension), anything else as a document with its own name."""
+    import os
+    body = {"chatId": chat_id, "filePath": path, "fileName": os.path.basename(path).split("_", 2)[-1]}
+    if caption:
+        body["caption"] = caption
+    return await _request("POST", "/send-media", body=body, timeout=120.0)
+
+
+async def create_group(subject: str, participants: list[str]) -> dict:
+    """Create a WhatsApp group with these JIDs: {id, subject}."""
+    return await _request("POST", "/group", body={"subject": subject, "participants": participants}, timeout=60.0)
+
+
 async def get_contacts() -> dict:
     """The address book the bridge has accumulated (V2-714). A SNAPSHOT, not a drain: WhatsApp cannot be
     asked for everything, so the same rows come back every pass and the import is idempotent by design."""

@@ -129,6 +129,7 @@ async def _ingest_new() -> None:
 
 _contacts_inbox = None           # V2-714: msg.contacts subscription
 _chats_inbox = None              # msg.chats: one page of the chat list
+_group_inbox = None              # msg.group: creating a group
 _widget_asked: dict[str, float] = {}   # chats whose scrollback the operator asked for, until when
 
 
@@ -205,6 +206,35 @@ def _chat_row(c: dict) -> dict | None:
             "lastId": str(c.get("lastId") or "")}
 
 
+async def _drain_groups() -> None:
+    """Create the groups the operator asked for. Members arrive resolved (a JID, or a phone that `_jid` turns
+    into one); the new group is handed back as a chat-list row, and a first message goes in if there was one."""
+    if _group_inbox is None:
+        return
+    for order in _group_inbox.drain():
+        members = [m for m in (str((x or {}).get("chatId") or "").strip() or _jid((x or {}).get("to"))
+                               for x in order.get("members") or []) if m]
+        name = str(order.get("name") or "").strip()
+        try:
+            got = await client.create_group(name, members)
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"WhatsApp: no pude crear el grupo {name}: {e}")
+            ingest.publish_send_failed(order, str(e))
+            _note(f"[SISTEMA] No pude crear el grupo de WhatsApp «{name}» ({e}). Díselo al operador.")
+            continue
+        gid = str((got or {}).get("id") or "")
+        logger.info(f"WhatsApp: grupo creado {gid} con {len(members)} miembro(s)")
+        ingest.publish_chats(PLATFORM, [{"chatId": gid, "name": name, "kind": "group", "ts": time.time(),
+                                         "preview": ""}])
+        text, files = str(order.get("text") or "").strip(), order.get("attachments") or []
+        if gid and (text or files):
+            try:
+                await _send(gid, text, files)
+            except Exception as e:  # noqa: BLE001
+                logger.warning(f"WhatsApp: grupo creado, primer mensaje no enviado: {e}")
+        _note(f"[SISTEMA] Grupo de WhatsApp «{name}» creado con {len(members)} persona(s). Díselo al operador.")
+
+
 async def _drain_chats() -> None:
     """Serve one page of the chat list. WhatsApp keeps no server-side list a linked device can page through:
     the bridge answers from the book it has been told since pairing (see `client.get_chats`)."""
@@ -245,6 +275,26 @@ async def _drain_reads() -> None:
             store.requeue_pending_read(keys)
 
 
+_NO_CAPTION = (".ogg", ".opus", ".mp3", ".m4a", ".wav", ".aac")
+
+
+async def _send(chat_id: str, text: str, files: list[str], reply_to: str | None = None) -> dict:
+    """One message as the native app sends it: the files, the text as the FIRST file's caption when that file
+    can carry one (a voice note cannot), otherwise the text on its own. Returns the last send's answer."""
+    files = store.sendable(files)
+    if not files:
+        return await client.send_message(chat_id, text, reply_to=reply_to) or {}
+    res: dict = {}
+    caption_used = False
+    for i, path in enumerate(files):
+        cap = text if (i == 0 and text and not path.lower().endswith(_NO_CAPTION)) else ""
+        caption_used = caption_used or bool(cap)
+        res = await client.send_media(chat_id, path, caption=cap) or {}
+    if text and not caption_used:
+        res = await client.send_message(chat_id, text, reply_to=reply_to) or res
+    return res
+
+
 async def _drain_replies() -> None:
     """Drain dictated replies (V2-521 — the email connector had this since V2-051; WhatsApp only ever read).
     The widget's reply action already enqueued mark-read for the original, so this only SENDS. A failure is
@@ -255,10 +305,11 @@ async def _drain_replies() -> None:
     for r in _reply_inbox.drain():
         chat_id = str(r.get("chatId") or r.get("to") or "").strip()
         text = (r.get("text") or "").strip()
-        if not chat_id or not text:
+        files = r.get("attachments") or []
+        if not chat_id or not (text or files):
             continue
         try:
-            await client.send_message(chat_id, text, reply_to=r.get("messageId") or None)
+            await _send(chat_id, text, files, reply_to=r.get("messageId") or None)
             logger.info(f"WhatsApp: respuesta enviada a {chat_id}")
             _note(f"[SISTEMA] WhatsApp enviado a {r.get('to') or chat_id}. Confírmaselo al operador de forma natural.")
         except Exception as e:  # noqa: BLE001
@@ -290,10 +341,11 @@ async def _drain_sends() -> None:
     for r in _send_inbox.drain():
         chat_id = str(r.get("chatId") or "").strip() or _jid(r.get("to"))
         text = (r.get("text") or "").strip()
-        if not chat_id or not text:
+        files = r.get("attachments") or []
+        if not chat_id or not (text or files):
             continue
         try:
-            res = await client.send_message(chat_id, text)
+            res = await _send(chat_id, text, files)
         except Exception as e:  # noqa: BLE001
             logger.warning(f"WhatsApp: fallo al escribir a {chat_id}: {e}")
             ingest.publish_send_failed(r, str(e))
@@ -309,7 +361,9 @@ async def _drain_sends() -> None:
                 "chatId": chat_id, "messageId": (res or {}).get("messageId") or f"sent:{_t.time():.0f}",
                 "ref": r.get("ref"), "from": "", "body": text, "timestamp": _t.time(),
                 "contactId": r.get("contactId") or "",
-                "chatName": r.get("name") or ""})
+                "chatName": r.get("name") or "",
+                **({"media": store.media_refs(store.sendable(files)),
+                    "mediaType": store.kind_of(files[0])} if files else {})})
         except Exception as e:  # noqa: BLE001
             logger.warning(f"WhatsApp: enviado, pero no pude registrar la conversación: {e}")
 
@@ -384,12 +438,14 @@ def _note(text: str) -> None:
 
 
 async def _loop() -> None:
-    global _mark_inbox, _reply_inbox, _send_inbox, _history_inbox, _contacts_inbox, _chats_inbox
+    global _mark_inbox, _reply_inbox, _send_inbox, _history_inbox, _contacts_inbox, _chats_inbox, _group_inbox
     _set_status("starting", None)
     if _contacts_inbox is None:
         _contacts_inbox = ingest.ContactsInbox(PLATFORM)   # V2-714: the address book
     if _chats_inbox is None:
         _chats_inbox = ingest.ChatsInbox(PLATFORM)         # the chat list
+    if _group_inbox is None:
+        _group_inbox = ingest.GroupInbox(PLATFORM)         # new groups
     if ingest.v2_enabled() and _mark_inbox is None:
         _mark_inbox = ingest.MarkReadInbox(PLATFORM)     # subscription in THIS loop (server) -> direct delivery
         _reply_inbox = ingest.ReplyInbox(PLATFORM)       # V2-521: dictated replies, same delivery path
@@ -426,6 +482,7 @@ async def _loop() -> None:
                 for what, fn in (("sends", _drain_sends),
                                  ("read marks", _drain_external_reads), ("history", _drain_history),
                                  ("contacts", _drain_contacts), ("chats", _drain_chats),
+                                 ("groups", _drain_groups),
                                  ("history walk", _backfill.walker.tick)):
                     try:
                         await fn()

@@ -37,6 +37,37 @@ def _media_dir() -> str:
     return store.data_dir(WIDGET_ID)
 
 
+def sendable(paths) -> list[str]:
+    """The attachments of a send order that may actually leave: files inside the messaging widget's own data
+    dir (uploads and downloads), nothing else. The order came over the bus from the widget, but a send is the
+    one thing that takes a file OFF this machine, so the connector checks again where it is."""
+    base = os.path.realpath(_media_dir())
+    out = []
+    for p in paths or []:
+        real = os.path.realpath(str(p or ""))
+        if os.path.dirname(real) == base and os.path.isfile(real):
+            out.append(real)
+    return out
+
+
+_KIND_BY_EXT = {"jpg": "image", "jpeg": "image", "png": "image", "webp": "image", "gif": "image", "heic": "image",
+                "mp4": "video", "mov": "video", "mkv": "video", "webm": "video",
+                "ogg": "ptt", "opus": "ptt", "mp3": "audio", "m4a": "audio", "wav": "audio", "aac": "audio"}
+
+
+def kind_of(path: str) -> str:
+    """image | video | ptt | audio | document, from the file name — the vocabulary every connector speaks."""
+    return _KIND_BY_EXT.get(str(path).rsplit(".", 1)[-1].lower(), "document")
+
+
+def media_refs(paths) -> list[dict]:
+    """The `media` entries of a message WE sent with these files, so the conversation shows what went."""
+    out = []
+    for p in paths or []:
+        out += _media_entries({"mediaUrls": [p], "mediaType": kind_of(p)})
+    return out
+
+
 def _media_entries(m: dict) -> list[dict]:
     """Local media paths → asset URLs the widget can render. A file already inside the widget's data dir is
     referenced in place; one elsewhere (e.g. a legacy ~/.hermes cache from an old bridge process) is COPIED
@@ -490,6 +521,16 @@ def add_chats(platform: str, ev: dict) -> dict:
     idx.pop("asked_at", None)
     db["updated"] = _now()
     return save(db)
+
+
+def take_pending_group() -> list[dict]:
+    """Return (and REMOVE) group-creation orders enqueued by the widget's `create_group`."""
+    db = load()
+    pending = db.get("pending_group", [])
+    if pending:
+        db["pending_group"] = []
+        save(db)
+    return list(pending)
 
 
 def take_pending_chats() -> list[dict]:

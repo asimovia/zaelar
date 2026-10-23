@@ -32,6 +32,7 @@ _history_inbox = None            # V2-546: msg.history subscription (created in 
 _fetch_inbox = None              # V2-624: msg.fetch subscription (platform-wide pull)
 _contacts_inbox = None           # V2-714: msg.contacts subscription (the ADDRESS BOOK, not the messages)
 _chats_inbox = None              # msg.chats: one page of the chat list
+_group_inbox = None              # msg.group: creating a group
 
 
 def enabled() -> bool:
@@ -441,6 +442,44 @@ async def _drain_fetch() -> None:
               f"{hours:.0f} h. Díselo al operador tal cual.")
 
 
+async def _drain_groups() -> None:
+    """Create the groups the operator asked for, as Telegram's «New group» does today: a supergroup with these
+    people invited. Members arrive resolved (an id we hold, or a @username / phone Telethon resolves)."""
+    if _group_inbox is None:
+        return
+    from telethon.tl.functions.channels import CreateChannelRequest, InviteToChannelRequest
+    for order in _group_inbox.drain():
+        name = str(order.get("name") or "").strip()[:128]
+        try:
+            peers = []
+            for m in order.get("members") or []:
+                cid = str((m or {}).get("chatId") or "").strip()
+                ref = int(cid) if cid.lstrip("-").isdigit() else str((m or {}).get("to") or "").strip()
+                if ref:
+                    peers.append(await _client.get_input_entity(ref))
+            res = await _client(CreateChannelRequest(title=name, about="", megagroup=True))
+            channel = res.chats[0]
+            if peers:
+                await _client(InviteToChannelRequest(channel, peers))
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"Telegram: no pude crear el grupo {name}: {e}")
+            ingest.publish_send_failed(order, str(e))
+            _note(f"[SISTEMA] No pude crear el grupo de Telegram «{name}» ({e}). Díselo al operador.")
+            continue
+        from telethon import utils
+        gid = utils.get_peer_id(channel)
+        logger.info(f"Telegram: grupo creado {gid} con {len(peers)} miembro(s)")
+        ingest.publish_chats("telegram", [{"chatId": str(gid), "name": name, "kind": "group",
+                                            "ts": time.time(), "preview": ""}])
+        text, files = str(order.get("text") or "").strip(), order.get("attachments") or []
+        if text or files:
+            try:
+                await _send(gid, text, files)
+            except Exception as e:  # noqa: BLE001
+                logger.warning(f"Telegram: grupo creado, primer mensaje no enviado: {e}")
+        _note(f"[SISTEMA] Grupo de Telegram «{name}» creado con {len(peers)} persona(s). Díselo al operador.")
+
+
 async def _walk_tick() -> None:
     """The history walk (backfill.py): one page per tick, on its own task."""
     from connectors.telegram import backfill as _backfill
@@ -542,7 +581,8 @@ async def _drain_replies() -> None:
             chat_id = int(r.get("chatId"))
         except (TypeError, ValueError):
             continue
-        if not text:
+        files = r.get("attachments") or []
+        if not (text or files):
             continue
         reply_to = _tg_msg_id(r.get("messageId"))   # composite-aware: replies land THREADED, not loose
         try:
@@ -552,12 +592,33 @@ async def _drain_replies() -> None:
             # Telegram does NOT run its URL auto-detection over. The operator measured it on the Meet
             # link: «sale el embedding conforme ha reconocido el link pero no es clicable». Our text is
             # prose a model wrote for a human, never markup; an underscore in it is an underscore.
-            await _client.send_message(chat_id, text, reply_to=reply_to, parse_mode=None)
+            await _send(chat_id, text, files, reply_to=reply_to)
             logger.info(f"Telegram: respuesta enviada a {chat_id}")
             _note(f"[SISTEMA] Telegram enviado a {r.get('to') or chat_id}. Confírmaselo al operador de forma natural.")
         except Exception as e:  # noqa: BLE001
             logger.warning(f"Telegram: fallo al enviar a {chat_id}: {e}")
             _note(f"[SISTEMA] No se pudo enviar el Telegram a {r.get('to') or chat_id} ({e}). Avísale al operador.")
+
+
+async def _send(peer, text: str, files: list[str], reply_to=None):
+    """One message as the native app sends it: the files (several photos/videos go as ONE album, the text as
+    its caption), a voice note as a voice note, or the text alone. Returns the last sent Message."""
+    files = store.sendable(files)
+    if not files:
+        return await _client.send_message(peer, text, reply_to=reply_to, parse_mode=None)
+    voice = [f for f in files if store.kind_of(f) == "ptt"]
+    rest = [f for f in files if f not in voice]
+    sent = None
+    if rest:
+        sent = await _client.send_file(peer, rest if len(rest) > 1 else rest[0], caption=text or None,
+                                       reply_to=reply_to, parse_mode=None, force_document=False)
+        if isinstance(sent, list):
+            sent = sent[-1] if sent else None
+    for f in voice:
+        sent = await _client.send_file(peer, f, voice_note=True, reply_to=reply_to)
+    if text and not rest:
+        sent = await _client.send_message(peer, text, reply_to=reply_to, parse_mode=None)
+    return sent
 
 
 async def _drain_sends() -> None:
@@ -574,14 +635,15 @@ async def _drain_sends() -> None:
     for r in _send_inbox.drain():
         to = str(r.get("to") or "").strip()
         text = (r.get("text") or "").strip()
-        if not to or not text:
+        files = r.get("attachments") or []
+        if not to or not (text or files):
             continue
         try:
             # An id we already hold travels as an int (that IS the conversation); a handle stays a string for
             # Telethon to resolve. Sending to the wrong peer because «600111222» was read as a user id is
             # exactly the mistake this door cannot make.
             peer = int(r["chatId"]) if str(r.get("chatId") or "").strip().lstrip("-").isdigit() else to
-            sent = await _client.send_message(peer, text, parse_mode=None)   # see the drain above
+            sent = await _send(peer, text, files)   # parse_mode=None: see the reply drain
         except Exception as e:  # noqa: BLE001
             logger.warning(f"Telegram: fallo al escribir a {to}: {e}")
             ingest.publish_send_failed(r, str(e))
@@ -604,7 +666,9 @@ async def _drain_sends() -> None:
                     "chatId": chat_id, "messageId": f"{chat_id}:{getattr(sent, 'id', 0)}",
                     "ref": r.get("ref"), "from": "", "body": text,
                     "contactId": r.get("contactId") or "",
-                    "timestamp": _sent_ts(sent), "chatName": r.get("name") or ""})
+                    "timestamp": _sent_ts(sent), "chatName": r.get("name") or "",
+                    **({"media": store.media_refs(store.sendable(files)),
+                        "mediaType": store.kind_of(files[0])} if files else {})})
         except Exception as e:  # noqa: BLE001
             logger.warning(f"Telegram: enviado, pero no pude registrar la conversación: {e}")
 
@@ -707,6 +771,7 @@ async def _loop() -> None:
             logger.debug(f"Telegram read receipt: {e}")
 
     global _mark_inbox, _reply_inbox, _send_inbox, _history_inbox, _fetch_inbox, _contacts_inbox, _chats_inbox
+    global _group_inbox
     if ingest.v2_enabled() and _mark_inbox is None:
         _mark_inbox = ingest.MarkReadInbox("telegram")   # subscription in THIS loop (server) -> direct delivery
     if ingest.v2_enabled() and _reply_inbox is None:
@@ -721,6 +786,8 @@ async def _loop() -> None:
         _contacts_inbox = ingest.ContactsInbox("telegram")    # V2-714: the address book
     if _chats_inbox is None:
         _chats_inbox = ingest.ChatsInbox("telegram")          # the chat list
+    if _group_inbox is None:
+        _group_inbox = ingest.GroupInbox("telegram")          # new groups
     _set_status("connected", None)
     # Telethon dispatches updates only while the loop runs; this batching task coexists with that delivery.
     while True:
@@ -746,7 +813,7 @@ async def _loop() -> None:
         for what, fn in (("sends", _drain_sends), ("outbox", _drain_outbox),
                          ("read marks", _drain_read_marks),
                          ("history", _drain_history), ("fetch", _drain_fetch),
-                         ("contacts", _drain_contacts), ("chats", _drain_chats),
+                         ("contacts", _drain_contacts), ("chats", _drain_chats), ("groups", _drain_groups),
                          ("history walk", _walk_tick)):
             try:
                 await fn()

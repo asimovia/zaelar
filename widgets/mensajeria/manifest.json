@@ -202,7 +202,8 @@
         "channel": "opcional: whatsapp | telegram | email — sin esto va por su canal preferido",
         "subject": "opcional, solo email",
         "objective": "opcional: si esto abre una gestión que habrá que seguir («organizar una reunión esta tarde»), para qué, con las palabras del operador",
-        "attach_from": "opcional: el mensaje cuyos ADJUNTOS van en el envío — su `n` en la lista, {\"messageId\": …}, o {} para el correo que está ABIERTO (solo por email)"
+        "attach_from": "opcional: el mensaje cuyos ADJUNTOS van en el envío — su `n` en la lista, {\"messageId\": …}, o {} para el que está ABIERTO; por cualquier canal",
+        "files": "opcional: ficheros que el operador adjuntó en la tarjeta (sus nombres); una foto sola también es un mensaje"
       },
       "confirm": false,
       "usage": "Si no tienes su canal guardado, guárdalo antes con contactos/set_channel. Si no sabes a cuál de dos se refiere, PREGÚNTASELO: nunca escribas a alguien por parecido. NO se pide confirmación para esto (V2-692): quien la llama está ejecutando una orden que el operador acaba de dar, y su permiso ya viene con la orden — preguntarle otra vez es hacerle dar el mismo permiso dos veces. `reply` SÍ la sigue pidiendo: contestar a algo que llegó no es una orden suya.",
@@ -218,6 +219,20 @@
         }
       }
     },
+    "create_group": {
+      "desc": "CREA UN GRUPO nuevo en WhatsApp o Telegram con esas personas (del directorio), y opcionalmente le escribe el primer mensaje. Para «crea un grupo con Ana y Luis que se llame Viaje». No crea nada si alguien no se encuentra o es ambiguo",
+      "payload": {
+        "platform": "'whatsapp' | 'telegram'",
+        "name": "nombre del grupo",
+        "members": "lista de nombres de contactos",
+        "text": "opcional: primer mensaje"
+      },
+      "confirm": false,
+      "effects": [
+        "present.mount",
+        "external.send"
+      ]
+    },
     "forward": {
       "ref": "from",
       "desc": "REENVÍA por correo un mensaje que llegó, con sus ADJUNTOS (factura, PDF…), a una PERSONA: «mándale a Quinn la factura de este correo». Sin `n`, el correo ABIERTO. No es `reply`",
@@ -226,7 +241,8 @@
         "text": "string (la nota corta que acompaña)",
         "from": "de QUIÉN es o de QUÉ va el correo a reenviar, tal como lo dijo («Inworld», «la factura de Vodafone») — lo más fiable",
         "n": "opcional: número del mensaje en la lista SOLO si lo ves en ella (sin n ni from, el que está abierto)",
-        "subject": "opcional (por defecto «Fwd: …» del original)"
+        "subject": "opcional (por defecto «Fwd: …» del original)",
+        "channel": "opcional: whatsapp | telegram | email (por defecto email)"
       },
       "confirm": false,
       "effects": [
@@ -390,5 +406,6 @@
       ]
     }
   },
-  "security": "standard"
+  "security": "standard",
+  "uploads": true
 }

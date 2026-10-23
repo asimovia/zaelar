@@ -206,7 +206,8 @@ def _a_draft(action, payload) -> dict:
     if target is None:
         return {"ok": False, "error": "no_target",
                  "message": "No sé a qué conversación o mensaje se refiere el borrador."}
-    out = _d._drafts.write(db, target, str(payload.get("text") or ""), bool(payload.get("reply_all")))
+    out = _d._drafts.write(db, target, str(payload.get("text") or ""), bool(payload.get("reply_all")),
+                           files=payload.get("files"))
     _d.store.save(_d.WIDGET_ID, db)
     return out
 
@@ -223,7 +224,8 @@ def _a_send_draft(action, payload) -> dict:
             key = _d._drafts.key(t)
     draft = _d._drafts.pick(db, key)
     text = str(draft.get("text") or "").strip()
-    if not text:
+    files = _d._media.local_paths(_d.store.data_dir(_d.WIDGET_ID), draft.get("files"))
+    if not text and not files:
         return {"ok": False, "error": "no_draft", "message": "No hay ningún borrador que enviar."}
     stored = draft.get("target") or {}
     # Re-resolve against the LIVE item, so a target that changed since the draft was written (answered
@@ -232,11 +234,11 @@ def _a_send_draft(action, payload) -> dict:
     # conversation's own platform/chatId are still enough to send to, even with no pending item left.
     target = _d._outbound.resolve_reply_target(db, stored.get("n"), stored.get("messageId")) or stored
     cc = _d._drafts.cc_for(draft)
-    _d._outbound.enqueue_reply(db, target, text, cc=cc)
+    _d._outbound.enqueue_reply(db, target, text, cc=cc, attachments=files)
     _d._drafts.forget(db, draft.get("key") or key)
     _d.store.save(_d.WIDGET_ID, db)
     return {"ok": True, "to": target.get("senderId") or target.get("chatId"), "text": text,
-            "cc": list(cc)}
+            "cc": list(cc), "attachments": len(files)}
 
 
 def _a_send_to(action, payload) -> dict:
@@ -260,9 +262,10 @@ def _a_send_to(action, payload) -> dict:
         if not atts:
             return {"ok": False, "error": "no_attachment",
                     "message": "Ese mensaje no tiene adjuntos que pueda enviar — ábrelo o dime cuál es."}
-        if t.get("platform") != "email":
-            return {"ok": False, "error": "attachments_need_email",
-                    "message": "Solo sé enviar adjuntos por correo — dime su dirección de email."}
+    # Files the operator picked in the card (uploads) travel the same way, on every platform.
+    if payload.get("files"):
+        atts += [p for p in _d._media.local_paths(_d.store.data_dir(_d.WIDGET_ID), payload.get("files"))
+                 if p not in atts]
     # A chat message is written on screen before it leaves (`_composing`); an email is a document, not a
     # line typed into a conversation, and goes straight out.
     if atts and (dup := _d._outbound.same_files_just_sent(db, t, atts)):
@@ -295,7 +298,9 @@ def _a_forward(action, payload) -> dict:
     orig = _d._outbound._message_ref(db0, src) or {}
     subj = str(payload.get("subject") or "").strip() or (f"Fwd: {orig.get('subject')}" if orig.get("subject") else "Fwd")
     text = str(payload.get("text") or "").strip() or subj
-    return _d.apply_action("send_to", {"contact": payload.get("contact") or payload.get("to"), "channel": "email",
+    # The channel is the one he names («por WhatsApp»); mail when he names none, as it always was.
+    channel = str(payload.get("channel") or payload.get("platform") or "email").strip().lower()
+    return _d.apply_action("send_to", {"contact": payload.get("contact") or payload.get("to"), "channel": channel,
                                     "text": text, "subject": subj, "attach_from": src})
 
 
@@ -541,6 +546,45 @@ def _a_load_more(action, payload) -> dict:
     return {"ok": True,
             "result": {"asked": limit, "platform": platform,
                        "detail": "se los he pedido a la app; aparecerán arriba en cuanto lleguen"},
+            **_d.view_data()}
+
+
+# CREATE A GROUP («crea un grupo con Ana y Luis que se llame Viaje»). Every member resolves through the same
+# door a send does — one unresolved or ambiguous person and nothing is created, with the reason: a group with
+# the wrong person in it is a message to the wrong person.
+_GROUP_PLATFORMS = ("whatsapp", "telegram")
+
+
+def _a_create_group(action, payload) -> dict:
+    raw = str(payload.get("platform") or payload.get("channel") or "").strip().lower()
+    platform = _d._PLAT_ALIASES.get(raw, raw)
+    name = str(payload.get("name") or payload.get("title") or "").strip()
+    members = payload.get("members") or payload.get("contacts") or []
+    if isinstance(members, str):
+        members = [m.strip() for m in members.replace(" y ", ",").replace(" and ", ",").split(",") if m.strip()]
+    if platform not in _GROUP_PLATFORMS:
+        return {"ok": False, "error": "create_group necesita `platform`: 'whatsapp' o 'telegram'"}
+    if not name or not members:
+        return {"ok": False, "error": "create_group necesita `name` (cómo se llama el grupo) y `members` "
+                                      "(los nombres de las personas)"}
+    resolved, problems = [], []
+    for who in members[:50]:
+        t = _d._outbound.resolve_target({"contact": who, "channel": platform, "text": "·"})
+        if t.get("ok"):
+            resolved.append({"to": t.get("to"), "chatId": t.get("chatId"), "name": t.get("name"),
+                             "contactId": t.get("contactId") or ""})
+        else:
+            problems.append(f"{who}: {t.get('error')}")
+    if problems:
+        return {"ok": False, "error": "no creo el grupo hasta tener a todos: " + " | ".join(problems)}
+    db = _d.load_db()
+    files = _d._media.local_paths(_d.store.data_dir(_d.WIDGET_ID), payload.get("files"))
+    order = {"platform": platform, "ref": _d._outbound.new_ref(), "name": name, "members": resolved,
+             "text": str(payload.get("text") or "").strip(), "attachments": files}
+    db.setdefault("pending_group", []).append(order)
+    _d.store.save(_d.WIDGET_ID, db)
+    return {"ok": True, "result": {"platform": platform, "name": name, "members": [m["name"] for m in resolved],
+                                   "ref": order["ref"], "detail": "pedido a la app; aparecerá en la lista de chats"},
             **_d.view_data()}
 
 

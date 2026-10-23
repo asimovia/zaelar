@@ -323,7 +323,7 @@ from .actions import (  # noqa: E402,F401
     _a_search_archive, _a_peek, _a_reply, _a_draft, _a_send_draft, _a_send_to, _a_forward,
     _a_unread, _a_set_signature, _a_set_signature_line, _a_clear_signature, _a_hide, _a_set_notify, _a_unhide,
     _a_open, _a_close, _a_load_more, _a_readchat, _a_archive, _a_chats_more,
-    _a_set_media_days)
+    _a_set_media_days, _a_create_group)
 
 
 # V2-778 F1-12 — one function per action (in `actions.py`), and `apply_action` is the table lookup. Each body
@@ -356,6 +356,7 @@ ACTIONS = {
     "load_more": _a_load_more,
     "chats_more": _a_chats_more,
     "set_media_days": _a_set_media_days,
+    "create_group": _a_create_group,
     "readchat": _a_readchat,
     "archive": _a_archive,
     "trash": _a_archive,

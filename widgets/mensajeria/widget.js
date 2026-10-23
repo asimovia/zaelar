@@ -283,6 +283,27 @@ function injectStyles(){
   .hb-msg .composeside{display:flex;flex-direction:column;gap:6px;flex:0 0 auto;justify-content:flex-end}
   .hb-msg .composeside .bt{white-space:nowrap}
   .hb-msg .composerow{display:flex;justify-content:flex-end;margin-top:6px}
+  /* Attachments picked in the card: a row of chips (a thumbnail for a picture), each removable. */
+  .hb-msg .attrow{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 6px}
+  .hb-msg .attchip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--hb-line,#e3e8f0);
+    border-radius:8px;padding:3px 6px;font-size:12px;max-width:220px;background:var(--hb-bg,#fff)}
+  .hb-msg .attchip img{width:32px;height:32px;object-fit:cover;border-radius:4px}
+  .hb-msg .attchip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .hb-msg .attchip button{border:0;background:transparent;cursor:pointer;color:var(--hb-muted-2,#9aa7b8)}
+  .hb-msg .attbtn{display:inline-flex;align-items:center;padding:5px 9px;color:var(--hb-muted,#6b7b92)}
+  .hb-msg .attbtn.busy{opacity:.5}
+  .hb-msg .composetools{display:flex;align-items:flex-start;gap:8px;margin-top:6px}
+  .hb-msg .composetools .attrow{margin:0}
+  .hb-msg .cxnewbt{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--hb-muted,#6b7b92)}
+  .hb-msg .cxtag svg{vertical-align:-2px}
+  /* «Nuevo chat» / «Nuevo grupo» on a platform's chat list. */
+  .hb-msg .cxnew{display:flex;gap:6px;margin:0 0 6px}
+  .hb-msg .newform{display:flex;flex-direction:column;gap:6px;border:1px solid var(--hb-line,#e3e8f0);
+    border-radius:10px;padding:10px;margin:0 0 8px}
+  .hb-msg .newform input,.hb-msg .newform textarea{box-sizing:border-box;width:100%;border:1px solid var(--hb-line,#e3e8f0);
+    border-radius:8px;padding:6px 10px;font:inherit;font-size:13px;background:var(--hb-bg,#fff);color:var(--hb-ink,#26313d)}
+  .hb-msg .newform .row{display:flex;gap:6px;justify-content:flex-end;align-items:center}
+  .hb-msg .newerr{color:var(--hb-risk,#e5484d);font-size:12px}
   /* The reply / reply-all selector, ABOVE the box (email only — the other platforms have no second
      recipient to include). A segmented control, the same .seg language the settings panel already uses. */
   .hb-msg .composetop{display:flex;align-items:center;gap:9px;margin-bottom:7px;flex-wrap:wrap}
@@ -547,6 +568,20 @@ const ACTION_SVG = {
             ["path", {d: "M10 11v6"}], ["path", {d: "M14 11v6"}]],
   mute:    [["path", {d: "M11 5 6 9H2v6h4l5 4V5z"}],
             ["path", {d: "m22 9-6 6"}], ["path", {d: "m16 9 6 6"}]],
+  // Composing and the chat list — same 24px stroke language.
+  clip:    [["path", {d: "m21.4 11.6-8.5 8.5a5.5 5.5 0 0 1-7.8-7.8l8.5-8.5a3.7 3.7 0 0 1 5.2 5.2l-8.5 8.5a1.8 1.8 0 0 1-2.6-2.6l7.8-7.8"}]],
+  pencil:  [["path", {d: "M12 20h9"}], ["path", {d: "M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"}]],
+  users:   [["path", {d: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"}], ["circle", {cx: "9", cy: "7", r: "4"}],
+            ["path", {d: "M22 21v-2a4 4 0 0 0-3-3.9"}], ["path", {d: "M16 3.1a4 4 0 0 1 0 7.8"}]],
+  image:   [["rect", {x: "3", y: "3", width: "18", height: "18", rx: "2"}], ["circle", {cx: "9", cy: "9", r: "2"}],
+            ["path", {d: "m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"}]],
+  video:   [["path", {d: "m16 13 5.2 3.5a.5.5 0 0 0 .8-.4V7.9a.5.5 0 0 0-.8-.4L16 11"}],
+            ["rect", {x: "2", y: "6", width: "14", height: "12", rx: "2"}]],
+  mic:     [["path", {d: "M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"}], ["path", {d: "M19 10v2a7 7 0 0 1-14 0v-2"}],
+            ["path", {d: "M12 19v3"}]],
+  file:    [["path", {d: "M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"}], ["path", {d: "M14 2v4a2 2 0 0 0 2 2h4"}]],
+  bellOff: [["path", {d: "M8.7 3A6 6 0 0 1 18 8a21.3 21.3 0 0 0 .6 5"}], ["path", {d: "M17 17H3s3-2 3-9a4.7 4.7 0 0 1 .3-1.7"}],
+            ["path", {d: "M10.3 21a1.9 1.9 0 0 0 3.4 0"}], ["path", {d: "m2 2 20 20"}]],
 };
 function actionIcon(name){
   const svg=document.createElementNS(SVG_NS,"svg");
@@ -938,6 +973,8 @@ function richList(items, ctx){
 // voice dictation and the visible box in sync (whichever wrote it last is what the box shows); `send_draft`
 // is the one deliberate act that actually queues a real send, on the SAME text the box displays — never a
 // value cached from an earlier keystroke, so an edit made after dictation is what actually goes out.
+const _draftFiles = {};   // key -> [{name,url,type,original}] attached in the card, not yet sent
+const _newForm = {};      // platform -> "chat" | "group" | null — the «Nuevo» form open on that platform's list
 const _draftLocal = {};   // key -> text not yet round-tripped to the server (keystroke buffer, per screen)
 let _draftTimer = null;
 
@@ -973,6 +1010,49 @@ const _replyAll = {};
 function _otherRecipients(it){
   const r = (it && it.recipients) || [];
   return Array.isArray(r) ? r.filter(a => typeof a === "string" && a.trim()) : [];
+}
+
+// ATTACHING, the way every messaging app does it: the clip opens the file picker, each file is uploaded by the canvas
+// (`ctx.upload` — this widget never touches the network) and shows as a chip; the chips' NAMES travel in the
+// action that sends. `files` is the list being edited; `onChange` re-syncs whatever owns it.
+function attachControls(ctx, files, onChange){
+  const row = el("div","attrow");
+  const paint = ()=>{
+    row.replaceChildren();
+    files.forEach((f, i)=>{
+      const chip = el("span","attchip");
+      if(f.type === "image" && String(f.url||"").startsWith("/widgets/")){
+        const img = document.createElement("img"); img.src = f.url; img.alt = ""; chip.appendChild(img);
+      } else {
+        chip.appendChild(actionIcon(f.type === "video" ? "video" : (f.type === "audio" ? "mic" : "file")));
+      }
+      chip.appendChild(el("span", null, f.original || f.name));
+      const x = el("button", null, "✕"); x.title = tt("attach_remove", null, "Quitar");
+      x.onclick = ()=>{ files.splice(i, 1); paint(); onChange(); };
+      chip.appendChild(x);
+      row.appendChild(chip);
+    });
+    row.style.display = files.length ? "" : "none";
+  };
+  const input = document.createElement("input");
+  input.type = "file"; input.multiple = true; input.style.display = "none";
+  const btn = el("button","bt attbtn"); btn.appendChild(actionIcon("clip"));
+  btn.title = tt("attach", null, "Adjuntar foto, vídeo o archivo"); btn.setAttribute("aria-label", btn.title);
+  btn.onclick = ()=> input.click();
+  input.onchange = async ()=>{
+    const picked = Array.from(input.files || []);
+    input.value = "";
+    if(!picked.length || typeof ctx.upload !== "function") return;
+    btn.disabled = true; btn.classList.add("busy");
+    for(const file of picked){
+      const r = await ctx.upload(file);
+      if(r && r.name) files.push({name: r.name, url: r.url, type: r.type, original: r.original || file.name});
+    }
+    btn.disabled = false; btn.classList.remove("busy");
+    paint(); onChange();
+  };
+  paint();
+  return {row, btn, input};
 }
 
 function composeBar(ctx, data, targetPayload, activeChat, rerender, mailItem){
@@ -1018,10 +1098,17 @@ function composeBar(ctx, data, targetPayload, activeChat, rerender, mailItem){
   const send = el("button","bt bt-primary",tt("send", null, "Enviar ➤"));
   const save = el("button","bt",tt("save_draft", null, "Guardar borrador"));
   save.title = tt("save_draft_hint", null, "Guardar lo escrito sin enviarlo (también se guarda solo al dejar de escribir)");
-  const syncBtn = () => { send.disabled = !box.value.trim(); };
+  if(!(key in _draftFiles)){
+    const saved = (stored && Array.isArray(stored.files)) ? stored.files : [];
+    _draftFiles[key] = saved.map(n=>({name: n, url: "/widgets/mensajeria/asset/" + n, original: String(n).split("_").slice(2).join("_") || n,
+                                      type: /\.(jpe?g|png|webp|gif|heic)$/i.test(n) ? "image" : "document"}));
+  }
+  const files = _draftFiles[key];
+  const syncBtn = () => { send.disabled = !box.value.trim() && !files.length; };
   syncBtn();
 
-  const payload = () => ({...targetPayload, reply_all: replyAll});
+  const payload = () => ({...targetPayload, reply_all: replyAll, files: files.map(f=>f.name)});
+  const att = attachControls(ctx, files, ()=>{ syncBtn(); ctx.action("draft", {...payload(), text: box.value}); });
   box.addEventListener("input", () => {
     _draftLocal[key] = box.value;
     syncBtn();
@@ -1040,7 +1127,7 @@ function composeBar(ctx, data, targetPayload, activeChat, rerender, mailItem){
   };
   send.onclick = async () => {
     const text = box.value;
-    if(!text.trim()) return;
+    if(!text.trim() && !files.length) return;
     clearTimeout(_draftTimer);
     send.disabled = true;
     delete _draftLocal[key];
@@ -1050,11 +1137,14 @@ function composeBar(ctx, data, targetPayload, activeChat, rerender, mailItem){
     // The send NAMES its conversation (V2-680): with a draft per conversation, a bare send_draft would
     // reach for the most recently TOUCHED one, which is not necessarily the screen this button is on.
     await ctx.action("send_draft", {...targetPayload});
+    _draftFiles[key] = [];
     rerender();
   };
   side.append(send, save);
   main.append(box, side);
+  const tools = el("div","composetools"); tools.append(att.btn, att.input, att.row);
   wrap.appendChild(main);
+  wrap.appendChild(tools);
   const c = data.composing;
   if(c && activeChat && c.platform === activeChat.platform && String(c.chatId) === String(activeChat.chatId))
     _playCompose(c, box, send);
@@ -1385,7 +1475,7 @@ function platformChatRows(platform, rows, ctx){
     if(c.kind === "group") head.appendChild(el("span","tpara", c.forum ? tt("forum", null, "· grupo con temas") : tt("group", null, "· grupo")));
     if(c.kind === "channel") head.appendChild(el("span","tpara", tt("channel", null, "· canal")));
     if(c.forMe) head.appendChild(el("span","tpara",tt("dot_for_you", null, "· para ti")));
-    if(c.muted) head.appendChild(el("span","cxtag","🔕"));
+    if(c.muted){ const m = el("span","cxtag"); m.appendChild(actionIcon("bellOff")); m.title = tt("muted_chat", null, "Silenciado"); head.appendChild(m); }
     if(c.archived) head.appendChild(el("span","cxtag",tt("archived", null, "archivado")));
     const when = fmtWhen(c.ts);
     if(when) head.appendChild(el("span","twhen", when));
@@ -1399,9 +1489,61 @@ function platformChatRows(platform, rows, ctx){
   return wrap;
 }
 
+// «Nuevo chat» / «Nuevo grupo»: the same doors the voice uses (`send_to`, `create_group`), with the same
+// resolution of who is who — an unknown or ambiguous name comes back as the action's own sentence, shown here.
+function newForm(platform, mode, ctx, close){
+  const f = el("div","newform");
+  const err = el("div","newerr");
+  const files = [];
+  const name = document.createElement("input");
+  const who = document.createElement("input");
+  const text = document.createElement("textarea"); text.rows = 3;
+  if(mode === "group"){
+    name.placeholder = tt("group_name", null, "Nombre del grupo");
+    who.placeholder = tt("group_members", null, "Personas (separadas por comas)");
+    text.placeholder = tt("group_first", null, "Primer mensaje (opcional)");
+    f.append(name, who, text);
+  } else {
+    who.placeholder = tt("new_to", null, "Para: nombre del contacto");
+    text.placeholder = tt("new_text", null, "Mensaje");
+    f.append(who, text);
+  }
+  const att = attachControls(ctx, files, ()=>{});
+  const go = el("button","bt bt-primary", mode === "group" ? tt("group_create", null, "Crear grupo") : tt("send", null, "Enviar ➤"));
+  const cancel = el("button","bt", tt("cancel", null, "Cancelar"));
+  cancel.onclick = close;
+  go.onclick = async ()=>{
+    err.textContent = ""; go.disabled = true;
+    const names = files.map(x=>x.name);
+    const res = mode === "group"
+      ? await ctx.action("create_group", {platform, name: name.value.trim(),
+          members: who.value.split(",").map(x=>x.trim()).filter(Boolean), text: text.value.trim(), files: names})
+      : await ctx.action("send_to", {contact: who.value.trim(), channel: platform, text: text.value.trim(), files: names});
+    go.disabled = false;
+    if(res && res.ok === false){ err.textContent = res.message || res.error || tt("new_failed", null, "No se ha podido"); return; }
+    close();
+  };
+  const row = el("div","row"); row.append(err, att.btn, att.input, cancel, go);
+  f.append(att.row, row);
+  return f;
+}
+
 // The first screen of a platform, like its own app: the conversations, not only what is unread.
 function platformChats(platform, v, ctx){
   const box = el("div","cxwrap");
+  const nb = el("div","cxnew");
+  const formSlot = el("div");
+  const openForm = (mode)=>{
+    _newForm[platform] = _newForm[platform] === mode ? null : mode;
+    formSlot.replaceChildren();
+    if(_newForm[platform]) formSlot.appendChild(newForm(platform, mode, ctx, ()=>{ _newForm[platform] = null; formSlot.replaceChildren(); }));
+  };
+  const iconBtn = (icon, label)=>{ const b = el("button","bt cxnewbt"); b.append(actionIcon(icon), el("span", null, label)); return b; };
+  const nc = iconBtn("pencil", tt("new_chat", null, "Nuevo chat")); nc.onclick = ()=> openForm("chat");
+  const ng = iconBtn("users", tt("new_group", null, "Nuevo grupo")); ng.onclick = ()=> openForm("group");
+  nb.append(nc, ng);
+  box.append(nb, formSlot);
+  if(_newForm[platform]) formSlot.appendChild(newForm(platform, _newForm[platform], ctx, ()=>{ _newForm[platform] = null; formSlot.replaceChildren(); }));
   const bar = el("div","cxbar");
   const chips = el("div","cxchips");
   const kind = _chatKind[platform] || "all";

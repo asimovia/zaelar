@@ -56,6 +56,9 @@ TOPIC_CONTACTS = "connector.contacts"
 # person (`connector.contacts`).
 TOPIC_CHATS_ASK = "msg.chats"
 TOPIC_CHATS = "connector.chats"
+# Creating a GROUP: {platform, ref, name, members: [{to, chatId, name}], text}. Answered with a chat-list row
+# for the new group (`connector.chats`) and, when it fails, `msg.send_failed` with the reason.
+TOPIC_GROUP = "msg.group"
 
 
 def v2_enabled() -> bool:
@@ -345,3 +348,15 @@ def publish_chats(platform: str, chats: list, *, before=None, next_before=None, 
                                     "error": str(error or "")})
     except Exception as e:  # noqa: BLE001
         _log.warning(f"chat list page not published: {type(e).__name__}")
+
+
+class GroupInbox(_PlatformInbox):
+    """Per-platform subscription to `msg.group`: the operator creating a group on this platform."""
+    _TOPIC = TOPIC_GROUP
+
+
+def publish_group(order: dict) -> None:
+    try:
+        bus.emit_sync(TOPIC_GROUP, dict(order or {}))
+    except Exception as e:  # noqa: BLE001
+        _log.warning(f"group order not published: {type(e).__name__}")

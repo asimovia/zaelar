@@ -890,6 +890,12 @@ export class Desktop {
         // whole tab in contacts). `widget.js` never touches the network, and this does not change that —
         // the widget still only names an action.
         connect:(action, payload, opts)=>desk._connectFlow(id, action, payload, opts),
+        // A FILE the operator picked in the card (a photo to send): the canvas uploads it to the widget's own
+        // data dir and hands back {name, url, type, size}; the widget then only NAMES it in an action. Same
+        // boundary as `action`: widget.js never touches the network. Only widgets declaring `uploads` get it.
+        upload:async(file)=>{ try{ const fd=new FormData(); fd.append("file", file);
+          const r=await fetch(`/widgets/${baseId}/upload`,{method:"POST",body:fd}); return await r.json(); }
+          catch(_){ return {error:"upload failed"}; } },
         // 2026-10-04 — THE door a card uses to reach ITS connector: the ⚙ Conectores section opened on that
         // connector alone, with its guide. Cards no longer carry connect screens of their own — the voice
         // would not know which of the two to open — so a plug button, a dimmed provider icon or a «connect»

@@ -83,7 +83,8 @@ def resolve_reply_target(db: dict, n=None, mid: str | None = None) -> dict | Non
     return {"platform": key[0], "chatId": key[1]}
 
 
-def enqueue_reply(db: dict, target: dict, text: str, cc: list | None = None) -> None:
+def enqueue_reply(db: dict, target: dict, text: str, cc: list | None = None,
+                  attachments: list | None = None) -> None:
     """The one place a reply/draft actually gets queued for the connector to send for real. A real item
     ALWAYS carries `messageId` (set on ingestion, by every connector) — including one resolved via `reply`'s
     own chat-grouping fallback, which never goes through `_renumber` and so never has `n` set either, which
@@ -99,6 +100,8 @@ def enqueue_reply(db: dict, target: dict, text: str, cc: list | None = None) -> 
         # V2-680 — reply-ALL. Empty (the default, and every caller that does not pass it) is a plain reply,
         # so the queued shape is unchanged for `reply` and for every connector that ignores the field.
         "cc": [str(a) for a in (cc or []) if str(a).strip()],
+        # Local paths inside the widget's data dir (media.local_paths): photos, voice notes, documents.
+        "attachments": [str(a) for a in (attachments or []) if str(a).strip()],
     })
     if target.get("messageId") is not None:
         db.setdefault("pending_read", []).append(_d._key(target))
@@ -162,7 +165,7 @@ def resolve_target(payload: dict | None = None) -> dict:
     if want and want not in PLATFORMS:
         return {"ok": False, "error": f"no reconozco el canal «{want}» — send_to admite whatsapp, telegram "
                                       f"o email"}
-    if not text:
+    if not text and not payload.get("files") and "attach_from" not in payload:   # a photo alone is a message
         return {"ok": False, "error": "no me ha llegado el mensaje — vuelve a llamar a send_to con `text` "
                                       "(lo que hay que decirle), sin volver a preguntárselo al operador si "
                                       "ya te lo dijo"}

@@ -45,14 +45,15 @@ def trim(drafts: dict) -> None:
         drafts.pop(k, None)
 
 
-def write(db: dict, target: dict, text: str, reply_all: bool) -> dict:
+def write(db: dict, target: dict, text: str, reply_all: bool, files: list | None = None) -> dict:
     """Store (or clear) the draft for `target`'s conversation. Returns the action's result payload.
 
     `db["draft"]` stays the MOST RECENT one, unchanged in shape: it is what a voice «envíalo» with no
     conversation named resolves to, and what every older reader of this payload already expects."""
     k = key(target)
     drafts = db.setdefault("drafts", {})
-    if not text.strip():
+    files = [str(f) for f in (files or []) if str(f).strip()][:10]
+    if not text.strip() and not files:
         drafts.pop(k, None)
         if (db.get("draft") or {}).get("key") == k:
             db["draft"] = None
@@ -62,11 +63,13 @@ def write(db: dict, target: dict, text: str, reply_all: bool) -> dict:
              "target": {f: target.get(f) for f in _TARGET_FIELDS},
              "reply_all": bool(reply_all),
              "recipients": [str(a) for a in (target.get("recipients") or []) if str(a).strip()][:25],
+             # Files the operator attached in the card (uploads, by name): a photo can be the whole message.
+             "files": files,
              "at": int(time.time())}
     drafts[k] = entry
     trim(drafts)
     db["draft"] = entry
-    return {"ok": True, "text": entry["text"], "key": k}
+    return {"ok": True, "text": entry["text"], "key": k, "files": files}
 
 
 def pick(db: dict, k: str | None) -> dict:

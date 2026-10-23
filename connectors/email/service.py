@@ -273,7 +273,10 @@ async def _drain_replies(mb) -> None:
         # V2-680 — reply-ALL travels as a list of addresses, decided in the widget and resolved from the
         # ORIGINAL message's own recipients. An empty list is a plain reply, which is every other caller.
         cc = [str(a) for a in (r.get("cc") or []) if str(a).strip()]
-        ok, info = await asyncio.to_thread(mb.send_reply, to, subject, text, in_reply_to, cc)
+        files = store.sendable(r.get("attachments") or [])
+        # Files only when there are any: a plain reply calls exactly as it always did.
+        extra = {"attachments": files} if files else {}
+        ok, info = await asyncio.to_thread(mb.send_reply, to, subject, text, in_reply_to, cc, **extra)
         if ok:
             logger.info(f"Email: respuesta enviada a {to}")
             # V2-546 — record it in the conversation. Unlike WhatsApp and Telegram, sent mail does not come
@@ -322,7 +325,7 @@ async def _drain_sends(mb) -> None:
         # recipient or the words, it is that the message has a calendar object inside it that the other
         # person's client can accept. Anything without `ics` takes the byte-identical path it always took.
         ics = str(r.get("ics") or "")
-        atts = [str(a) for a in (r.get("attachments") or []) if str(a).strip()]
+        atts = store.sendable(r.get("attachments") or [])
         if ics.strip():
             ok, info = await asyncio.to_thread(mb.send_invitation, to, subject, text, ics,
                                                str(r.get("ics_method") or "REQUEST"), None)

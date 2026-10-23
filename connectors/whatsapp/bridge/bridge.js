@@ -820,6 +820,26 @@ app.get('/chats', (req, res) => {
   res.json({ chats: page, complete: rows.length <= limit, known: chatBook.size });
 });
 
+// ZAELAR-PATCH (groups): create a group with these participants, as the phone's «New group» does.
+app.post('/group', async (req, res) => {
+  if (!sock || connectionState !== 'connected') {
+    return res.status(503).json({ error: 'Not connected to WhatsApp' });
+  }
+  const { subject, participants } = req.body || {};
+  const people = (participants || []).filter((p) => typeof p === 'string' && p.includes('@'));
+  if (!subject || !people.length) {
+    return res.status(400).json({ error: 'subject and at least one participant are required' });
+  }
+  try {
+    const md = await sock.groupCreate(String(subject).slice(0, 100), people);
+    groupSubjects.set(md.id, md.subject || subject);
+    rememberChat(md.id, { name: md.subject || subject, ts: Math.floor(Date.now() / 1000) });
+    res.json({ id: md.id, subject: md.subject || subject });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ZAELAR-PATCH (V2-546): chats read on another device, since the last poll.
 app.get('/reads', (req, res) => {
   res.json(readQueue.splice(0, readQueue.length));

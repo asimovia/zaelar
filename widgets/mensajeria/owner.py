@@ -420,6 +420,12 @@ class _Owner:
                 ingest.publish_fetch(order)
         except Exception as e:
             logger.debug(f"mensajeria fetch flush: {e}")
+        # And for new groups (create_group).
+        try:
+            for order in msgstore.take_pending_group():
+                ingest.publish_group(order)
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"mensajeria group flush: {e}")
         # And for chat-list pages: entering a platform, or «Cargar más» at the bottom of its list.
         try:
             for order in msgstore.take_pending_chats():

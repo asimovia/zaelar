@@ -730,26 +730,15 @@ class Mailbox:
         `attachments` are local paths; each travels with its own filename and a type guessed from it. A path that
         cannot be read fails the send rather than dropping the file in silence: a mail announcing an invoice
         that arrives without it is the failure this exists to avoid. Returns (ok, message_id|error)."""
-        import mimetypes
-        import os
-        from email.mime.application import MIMEApplication
+        from connectors.email import attachments as _att
         to_addr = (to_addr or "").strip()
         if not to_addr:
             return False, "sin destinatario"
         msg = MIMEMultipart("mixed")
         msg.attach(MIMEText(body or "", "plain", "utf-8"))
-        for path in attachments or []:
-            try:
-                with open(path, "rb") as fh:
-                    data = fh.read()
-            except OSError as e:
-                return False, f"no puedo leer el adjunto {os.path.basename(str(path))}: {e}"
-            name = os.path.basename(str(path))
-            name = name.split("_", 3)[-1] if name.startswith("eml_") and name.count("_") >= 3 else name
-            ctype = mimetypes.guess_type(name)[0] or "application/octet-stream"
-            part = MIMEApplication(data, _subtype=ctype.split("/", 1)[1])
-            part.add_header("Content-Disposition", "attachment", filename=name)
-            msg.attach(part)
+        err = _att.attach(msg, attachments)
+        if err:
+            return False, err
         msg["From"] = self.address
         msg["To"] = to_addr
         msg["Subject"] = subject or ""
@@ -772,7 +761,7 @@ class Mailbox:
             return False, str(e)
 
     def send_reply(self, to_addr: str, subject: str, body: str, in_reply_to: str = "",
-                   cc: list | None = None) -> tuple[bool, str]:
+                   cc: list | None = None, attachments: list | None = None) -> tuple[bool, str]:
         """Send a reply by SMTP with correct threading (In-Reply-To/References, subject Re:). Returns
         (ok, message_id|error).
 
@@ -786,6 +775,12 @@ class Mailbox:
         if not subj.lower().startswith("re:"):
             subj = f"Re: {subj}" if subj else "Re:"
         msg = MIMEText(body or "", "plain", "utf-8")
+        if attachments:                   # files picked in the card travel with the reply too
+            from connectors.email import attachments as _att
+            msg = MIMEMultipart("mixed")
+            msg.attach(MIMEText(body or "", "plain", "utf-8"))
+            if (err := _att.attach(msg, attachments)):
+                return False, err
         msg["From"] = self.address
         msg["To"] = to_addr
         # The Cc HEADER is what the recipients see, and `send_message` derives the envelope from To+Cc+Bcc

@@ -21,7 +21,7 @@ DEFAULT_DAYS = 14
 CHOICES = (7, 14, 30, 90, 0)          # 0 = keep forever
 SWEEP_EVERY_S = 3600
 #: The files connectors write here — and nothing else in the dir (state.json, the archive, …) is ever touched.
-PREFIXES = ("img_", "vid_", "aud_", "doc_", "tg_", "eml_")
+PREFIXES = ("img_", "vid_", "aud_", "doc_", "tg_", "eml_", "up_")
 
 
 def days(db: dict) -> int:
@@ -109,3 +109,16 @@ def sweep(db: dict, folder: str, now: float | None = None) -> dict:
                 touched += 1
     db["media_swept_at"] = now
     return {"files": len(gone), "bytes": freed, "messages": touched}
+
+
+def local_paths(folder: str, names) -> list[str]:
+    """The files named in an action, as paths inside this widget's data dir — and ONLY there: a name is reduced
+    to its basename and must be a connector download or an upload (PREFIXES) that exists. Anything else is
+    dropped, so an action can never point a send at a file elsewhere on the machine."""
+    out = []
+    for n in names or []:
+        base = os.path.basename(str(n or "")).strip()
+        path = os.path.join(folder, base)
+        if base and base.startswith(PREFIXES) and os.path.isfile(path) and path not in out:
+            out.append(path)
+    return out
