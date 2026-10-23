@@ -10,6 +10,7 @@
 """
 from __future__ import annotations
 
+import datetime as dt
 import threading
 
 import pytest
@@ -28,7 +29,10 @@ def test_the_rung_opens_the_one_row_his_sentence_names():
         from memory import api as memapi
         from widgets.agenda import data as ag
         memapi.set_state({"open_widgets": ["agenda"]})
-        ag.apply_action("add_meeting", {"title": "Dentista", "date": "2026-10-22", "startTime": "10:00",
+        # A date relative to today: a fixed one turned into a PAST meeting the day after it, and the row stopped
+        # being one the sentence could name.
+        upcoming = (dt.date.today() + dt.timedelta(days=7)).isoformat()
+        ag.apply_action("add_meeting", {"title": "Dentista", "date": upcoming, "startTime": "10:00",
                                         "endTime": "11:00"})
         ev = threading.Event()
         ev.set()

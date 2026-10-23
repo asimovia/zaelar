@@ -160,7 +160,7 @@ def test_settings_is_the_last_icon_before_reset():
     the middle of a row of controls they do not. Read by ORDER OF APPEARANCE in the row's source, which is the
     order the DOM gets — the row is one flat h() call with no reordering anywhere."""
     src = (ROOT / "frontend" / "app" / "components" / "TopBar.js").read_text(encoding="utf-8")
-    row = src[src.index('h("div", { class: "tr" }'):src.index("ResetConfirm(),")]
+    row = src[src.index("export function TopBar()"):src.index("ResetConfirm(),")]
     cfg, reset = row.index('id: "cfgBtn"'), row.index('id: "reset"')
     assert cfg < reset, "settings must come before Reset in the row"
     later = [tok for tok in ('id: "statusBtn"', 'id: "debugBtn"', 'id: "daemonBtn"', 'id: "acctBtn"',

@@ -20,10 +20,19 @@ def test_lee_los_numeros_del_LOG_no_solo_los_del_disco():
     assert all(isinstance(x, int) and 0 < x < 1000 for x in n)
 
 
-def test_los_numeros_MEDIDOS_estan_reclamados():
-    """314 and 315 were committed without an initiative file: they are exactly the case that creates this loophole."""
+def test_los_numeros_MEDIDOS_estan_reclamados(monkeypatch):
+    """314 and 315 were committed without an initiative file: they are exactly the case that creates this loophole.
+    The log is given, not read from this clone: the public history no longer carries those subjects, so asserting
+    them against the real log only held on the machine that wrote them."""
+    class _R:
+        returncode = 0
+        stdout = ("fix(use_cases): a round without quota measured nothing (V2-314)\n\n"
+                  "fix(navegador,workers): V2-315 — two paths that left the sheet empty\n")
+    import subprocess
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: _R())
     n = I._numbers_claimed_by_commits()
     assert 314 in n and 315 in n
+    assert not list(I.INITIATIVES.rglob("V2-314-*.md")), "the case is a number with NO file"
 
 
 def test_el_siguiente_numero_los_RESPETA():
