@@ -1,4 +1,4 @@
-"""«Conecta tu ordenador» without a terminal and without typing a path (operator, 2026-10-22).
+"""«Conecta tu ordenador» without a terminal and without typing a path.
 
 The screen used to send a person to a terminal (`./zaelar restart`, `make daemon`) and make them paste a folder's
 full path. Now «Conectar» asks the engine to start the daemon it carries, and «Elegir carpeta…» asks the daemon
@@ -111,9 +111,9 @@ def test_the_picked_folder_goes_through_the_same_boundary(monkeypatch):
 
 
 def test_a_cloud_account_is_recognised_without_a_stub(monkeypatch):
-    """Live 2026-10-23: `_is_cloud` imported a module that does not exist, so it always said «local» and the cloud
-    showed the icon and the self-host screen. Every other test here stubs `_is_cloud`; this one does not."""
-    monkeypatch.setenv("ZAELAR_USER_ID", "f075b277-0000-0000-0000-000000000000")
+    """`_is_cloud` once imported a module that does not exist and so always answered «local». Every other test here
+    stubs `_is_cloud`; this one does not."""
+    monkeypatch.setenv("ZAELAR_USER_ID", "00000000-0000-4000-8000-000000000001")
     assert daemon_api._is_cloud() is True
     monkeypatch.delenv("ZAELAR_USER_ID")
     assert daemon_api._is_cloud() is False

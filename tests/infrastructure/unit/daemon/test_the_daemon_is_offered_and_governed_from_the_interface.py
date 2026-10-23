@@ -337,8 +337,8 @@ def test_the_screen_leads_with_the_command_and_not_with_a_download_button():
 # ── the interface: the icon, the screen, the words ────────────────────────────────────────────────────────
 
 def test_the_icon_is_offered_only_where_it_can_work():
-    """Operator, 2026-10-22: a cloud engine cannot reach the user's computer until the outbound relay (P3) is
-    built, so the icon there sold an install that connected to nothing. It is shown only by an engine on this
+    """A remote engine cannot reach the user's computer until the outbound relay (P3) is built, so the icon is
+    not offered there. It is shown only by an engine on this
     computer — and not before the first status, so a cloud page never flashes it. Same rule on the phone row."""
     service = (ENGINE / "frontend" / "app" / "services" / "daemon.js").read_text(encoding="utf-8")
     offered = service.split("export function isOffered()")[1].split("\n")[0]

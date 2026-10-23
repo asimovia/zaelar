@@ -51,11 +51,10 @@ class Settings:
     livekit_url: str = env("LIVEKIT_URL", "ws://127.0.0.1:7880")
     livekit_api_key: str = env("LIVEKIT_API_KEY", "devkey")
     livekit_api_secret: str = env("LIVEKIT_API_SECRET", "secret")
-    # ONE ROOM PREFIX PER MACHINE (2026-10-23). Every cloud Machine registers its voice worker with the SAME LiveKit
-    # project, and LiveKit offers a new room to any worker whose `request_fnc` accepts it. With one shared prefix
-    # every Machine accepted every account's room: measured live, a new account's voice landed on the base
-    # Machines and on ANOTHER account's Machine — never on its own, so it neither heard nor answered. Fly sets
-    # `FLY_MACHINE_ID` on every Machine; a self-host install has none and keeps «zaelar».
+    # ONE ROOM PREFIX PER ENGINE. Several engines can register their voice worker with one LiveKit project, and
+    # LiveKit offers a new room to any worker whose `request_fnc` accepts it — with a shared prefix, an engine could
+    # take a room minted by another one. On a Fly Machine the prefix carries `FLY_MACHINE_ID`; elsewhere it stays
+    # «zaelar», and `ZAELAR_ROOM` overrides both.
     room_name: str = env("ZAELAR_ROOM", default_room_prefix())
 
     # --- Profile + component selection --------------------------------------

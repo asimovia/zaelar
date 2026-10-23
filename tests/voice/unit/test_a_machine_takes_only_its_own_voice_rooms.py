@@ -1,9 +1,8 @@
-"""A cloud Machine takes only its OWN voice rooms (live, 2026-10-23).
+"""An engine takes only its OWN voice rooms.
 
-Every cloud Machine registers its voice worker with the same LiveKit project, and every one used the prefix
-«zaelar», so every Machine accepted every account's room. Measured: a new account's voice sessions were taken by
-the two base Machines and by ANOTHER account's Machine — never its own — so the person spoke and nothing heard
-them, and another account's engine received their audio. The prefix is now per Machine.
+Several engines can register with one LiveKit project, and LiveKit offers a room to any worker that accepts it. With
+one shared prefix an engine would accept a room another engine minted; the prefix is therefore per engine
+(`FLY_MACHINE_ID` on a Fly Machine, «zaelar» elsewhere) and the match is exact.
 """
 from __future__ import annotations
 
@@ -25,7 +24,7 @@ def test_a_machine_refuses_another_machines_room():
     mine, theirs = "zaelar-0a1b2c3d4e5f60", "zaelar-9f8e7d6c5b4a30"
     assert config.accepts_room(mine, mine + "-ab12cd34")
     assert not config.accepts_room(theirs, mine + "-ab12cd34")
-    assert not config.accepts_room("zaelar-6835", "zaelar-0a1b2c3d4e5f60-ab12cd34")   # a prefix of an id is not it
+    assert not config.accepts_room("zaelar-0a1b", "zaelar-0a1b2c3d4e5f60-ab12cd34")   # a prefix of an id is not it
 
 
 def test_the_worker_and_the_token_use_the_same_rule():
