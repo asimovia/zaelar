@@ -43,10 +43,20 @@
 // THE ONE FAILURE THAT MATTERS IS DEAFNESS. A parked tap over a spotter that is
 // not actually running is an agent that cannot hear at all — worse than any
 // bill. So parking is not a mode, it is a CONSEQUENCE of the spotter being
-// demonstrably alive: `armed()` only answers true after the recogniser's own
-// `onstart` fired, and any error that is not transient disarms it for the rest
-// of the session. Disarmed, this module changes nothing whatsoever and the
-// engine behaves exactly as it did before it existed.
+// demonstrably alive: `armed()` only answers true once the recogniser has
+// returned at least one RESULT, and any error that is not transient disarms it
+// for the rest of the session. Disarmed, this module changes nothing whatsoever
+// and the engine behaves exactly as it did before it existed.
+//
+// ⚠️ `onstart` IS NOT PROOF OF HEARING (V2-786). The first build took the
+// recogniser's own `onstart` as the licence. Measured 2026-10-23 on a real
+// install, six sessions in a row: «oído local armado», the tap parked, and the
+// ear never returned a single word — Chrome's recogniser was cycling start → end
+// with no result and NO error, every run restarting inside the grace, so the
+// ear looked alive forever while the operator typed «parece que no escuchas el
+// micro». Reproduced in headless Chrome against a fake microphone: `start`,
+// `end`, nothing in between. So the licence is now a RESULT, and a recogniser
+// whose runs keep ending empty within seconds is called deaf and gives it back.
 //
 // Dependency-free matching on purpose (the V2-647 lesson): `normalize` and
 // `spotIn` are the production rules, and the test drives THEM, not a copy.
@@ -82,6 +92,10 @@ const _RESTART_MS = 400;         // the recogniser stops by itself constantly (s
 // grace is bounded and stated: a name said inside a restart gap can be missed, once, and he says it again.
 const _GRACE_MS = 1500;
 const _FATAL = new Set(["not-allowed", "service-not-allowed", "audio-capture"]);
+// A run that ends empty this fast did not listen: a working continuous recogniser stays up through many
+// seconds of quiet. Three of those in a row and the ear is DEAF, whatever its `onstart` says (V2-786).
+const _SHORT_RUN_MS = 2000;
+const _DEAF_RUNS = 3;
 
 // Lowercase, accent-free — byte-for-byte the rule `voice/attention.py::_norm`
 // applies, so a name that matches here matches there. Without the NFD pass
@@ -127,12 +141,15 @@ export function paintsProvisional(mode, hit) {
 
 // ── the live ear ────────────────────────────────────────────────────────────
 let _rec = null;          // the browser recogniser, while one exists
-let _armed = false;       // its `onstart` fired and no fatal error since — the ONLY licence to park
+let _armed = false;       // it has returned a result and has not gone deaf since — the ONLY licence to park
 let _dead = false;        // a fatal error: this session never arms again
 let _tail = [];           // {at, text} of local utterances that carried no name
 let _deps = null;         // injected: { getLang, getNames, onSpot, onArmed, log }
 let _restartT = null;
 let _wantRunning = false;
+let _runStart = 0;        // when the current recogniser run started
+let _runHeard = false;    // the current run returned at least one result
+let _emptyRuns = 0;       // consecutive short runs that returned nothing
 
 export function supported() {
   try { return !!(window.SpeechRecognition || window.webkitSpeechRecognition); } catch (_) { return false; }
@@ -217,7 +234,21 @@ function _arm() {
   clearTimeout(_graceT); _graceT = null;
   if (_armed) return;
   _armed = true;
-  if (_deps && _deps.onArmed) { try { _deps.onArmed(true, "started"); } catch (_) {} }
+  if (_deps && _deps.onArmed) { try { _deps.onArmed(true, "heard"); } catch (_) {} }
+}
+
+// A run started. It forgives the restart gap (the grace) but grants nothing: see the V2-786 note at the top.
+function _onRunStart() {
+  clearTimeout(_graceT); _graceT = null;
+  _runStart = Date.now();
+  _runHeard = false;
+}
+
+// The recogniser produced something — the only evidence that audio is reaching it.
+function _onHeard() {
+  _runHeard = true;
+  _emptyRuns = 0;
+  _arm();
 }
 
 export function install(deps) { _deps = deps || null; }
@@ -237,8 +268,9 @@ function _spin() {
   r.lang = (_deps.getLang && _deps.getLang()) || "en";   // the instance language decides; English when unknown
   r.continuous = true;
   r.interimResults = true;           // the spot lives here — see the note above `_MAX_TAIL`
-  r.onstart = _arm;
+  r.onstart = _onRunStart;
   r.onresult = e => {
+    _onHeard();
     for (let i = e.resultIndex; i < e.results.length; i++) {
       const res = e.results[i];
       const text = (res[0] && res[0].transcript) || "";
@@ -263,6 +295,11 @@ function _spin() {
   r.onend = () => {
     _rec = null;
     if (!_wantRunning || _dead) { _disarm("ended"); return; }
+    if (!_runHeard && _runStart && (Date.now() - _runStart) < _SHORT_RUN_MS) {
+      if (++_emptyRuns >= _DEAF_RUNS) _disarm("deaf");
+    } else {
+      _emptyRuns = 0;
+    }
     // A routine end. Rearm at once and only call it an outage if the rearm does not arrive — see
     // `_GRACE_MS`. An outage that outlives the grace unparks, because a gap is cheaper than deafness.
     clearTimeout(_graceT);
@@ -289,4 +326,5 @@ export function _reset() {
   _rec = null; _armed = false; _dead = false; _tail = []; _deps = null; _spotted = false;
   _wantRunning = false; clearTimeout(_restartT); _restartT = null;
   clearTimeout(_graceT); _graceT = null;
+  _runStart = 0; _runHeard = false; _emptyRuns = 0;
 }

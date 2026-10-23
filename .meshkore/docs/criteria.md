@@ -53,6 +53,10 @@ below is the first kind, or it names the mechanism that replaced the second.
 - **CRIT-V9 · A phase pack rides only a FREE turn.** A question, an order or a long sentence gets its answer and
   no introduction block that turn (`nucleo/context_packs/free_turn.py`, `context_packs.compose(turn_text)`).
   — since 2026-10-11 · nodes 2.474.
+- **CRIT-V10 · The microphone is only parked over an ear that has HEARD.** In a wake-word mode the browser's
+  recogniser may close the paid tap only after it has returned a result; its `onstart` proves nothing, and
+  runs that keep ending empty within seconds give the licence back (`frontend/app/services/wakeword.js`).
+  — since 2026-10-23 · nodes 4.208.
 
 ## 2 · Consent — act or ask
 

@@ -16,8 +16,9 @@
 //
 // ⚠️ THE GROUP THAT MATTERS MOST IS THE LAST ONE. Parking the microphone over an ear that is not actually
 // listening is an agent that cannot hear at all — a worse failure than any bill, and one that would look
-// like a dead product rather than a bug. `armed()` is the licence, and it is only granted by the
-// recogniser's OWN `onstart`.
+// like a dead product rather than a bug. `armed()` is the licence, and it is only granted by a RESULT —
+// the recogniser's `onstart` proves nothing (V2-786: six measured sessions parked over an ear that
+// cycled start → end and never returned a word).
 import assert from "node:assert/strict";
 
 // A recogniser under our control: the real one is the browser's, and everything this module promises is
@@ -108,7 +109,7 @@ assert.equal(wake.paintsProvisional("smart", false), false, "cold in wake-word m
 assert.equal(wake.paintsProvisional("wakeword", false), false);
 assert.equal(wake.paintsProvisional("smart", true), true, "the ring is lit — his name was heard, so it writes");
 
-// ══ 6 · ⚠️ THE PARK LICENCE IS THE RECOGNISER'S OWN «I AM RUNNING» ═══════════════════════════════════
+// ══ 6 · ⚠️ THE PARK LICENCE IS A RESULT, NOT THE RECOGNISER'S «I AM RUNNING» ═══════════════════════════════════
 wake._reset();
 assert.equal(wake.armed(), false, "nothing installed, nothing running: never park");
 assert.equal(wake.start(), false, "no deps = no ear");
@@ -120,8 +121,11 @@ assert.equal(wake.armed(), false, "installed is not running");
 assert.equal(wake.start(), true);
 assert.equal(wake.armed(), false, "…and start() is not onstart(): the browser has not confirmed anything yet");
 await tick();
-assert.equal(wake.armed(), true, "now, and only now, the tap may close");
-assert.deepEqual(armedLog.at(-1), [true, "started"],
+assert.equal(wake.armed(), false,
+  "V2-786: `onstart` fired and that is all — an ear that has not returned a word has proved nothing");
+FakeSR.last.partial("hola");
+assert.equal(wake.armed(), true, "it HEARD something: now, and only now, the tap may close");
+assert.deepEqual(armedLog.at(-1), [true, "heard"],
   "the arming PUSHES its own news: `armed()` is not a signal, so nothing is subscribed to it and an effect " +
   "that only polled it would park a beat late or never");
 
@@ -186,8 +190,10 @@ const armEvents = [];
 wake.install({ getNames: () => ["johnny"], onSpot: () => {}, onArmed: (ok, why) => armEvents.push([ok, why]) });
 wake.start();
 await tick();
+FakeSR.last.partial("ruido de fondo");
 assert.equal(wake.armed(), true);
 assert.equal(armEvents.length, 1, "one transition, one notification");
+await wait(2100);                                     // a run that LISTENED for a while before ending
 FakeSR.last.stop();                                   // Chrome ending a quiet stretch
 assert.equal(wake.armed(), true, "still armed through the gap — the tap must not flap on silence");
 // Long enough for the rearm to actually HAPPEN (its `onstart` fires again) and still inside the grace.
@@ -220,9 +226,38 @@ globalThis.window = { SpeechRecognition: FakeSR };
 wake.install({ getNames: () => ["johnny"], onSpot: () => {} });
 wake.start();
 await tick();
+FakeSR.last.partial("hola");
 assert.equal(wake.armed(), true);
 wake.stop();
 assert.equal(wake.armed(), false);
+
+// ══ 6b · ⚠️ THE MEASURED DEAFNESS: START → END, NO RESULT, NO ERROR (V2-786) ═══════════════════════════
+// Measured 2026-10-23: «🔇 grifo aparcado» + «👂 oído local armado» in six sessions in a row, and not one
+// word from the ear — the operator typing «he estado hablando 10 segundos y no me oyes». Headless Chrome on
+// a fake microphone reproduces it exactly: the recogniser starts and ends at once, with no result and no
+// error, so every run restarted inside the grace and the ear looked alive forever.
+wake._reset();
+globalThis.window = { SpeechRecognition: FakeSR };
+const deafLog = [];
+wake.install({ getNames: () => ["johnny"], onSpot: () => {}, onArmed: (ok, why) => deafLog.push([ok, why]) });
+wake.start();
+for (let i = 0; i < 4; i++) { await tick(); FakeSR.last.stop(); await wait(450); }
+assert.equal(wake.armed(), false, "an ear that never returned a word never closes the microphone");
+assert.deepEqual(deafLog, [], "…and it never claimed to be armed, so nothing parked in the first place");
+
+// An ear that DID hear, and then falls into that same empty loop, gives the licence back.
+wake._reset();
+globalThis.window = { SpeechRecognition: FakeSR };
+wake.install({ getNames: () => ["johnny"], onSpot: () => {}, onArmed: (ok, why) => deafLog.push([ok, why]) });
+wake.start();
+await tick();
+FakeSR.last.partial("hola");
+assert.equal(wake.armed(), true);
+FakeSR.last.stop();                                   // the run that heard ends normally
+for (let i = 0; i < 3; i++) { await wait(450); FakeSR.last.stop(); }   // then three empty, instant runs
+assert.equal(wake.armed(), false, "three empty runs in a row: deaf, and the tap has to open");
+assert.deepEqual(deafLog.at(-1), [false, "deaf"]);
+wake._reset();
 
 // ══ 7 · A BROWSER WITHOUT THE API CHANGES NOTHING AT ALL ═════════════════════════════════════════════
 // Firefox, an old Safari, a locked-down install. The mode must behave exactly as it did before this
