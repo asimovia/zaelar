@@ -24,7 +24,7 @@ import { h, raw } from "../core/dom.js?v=2";
 import { createSignal } from "../core/reactive.js?v=2";
 import * as store from "../core/store.js?v=2";
 import * as api from "../services/api.js?v=2";
-import * as daemon from "../services/daemon.js?v=2";
+import * as daemon from "../services/daemon.js?v=3";
 import { t } from "../core/i18n.js?v=1";
 import { CLOSE_ICON, DESKTOP_ICON } from "../lib/icons.js?v=2";
 

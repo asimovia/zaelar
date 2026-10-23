@@ -53,9 +53,9 @@ export function iconState() {
   return s.state || "off";
 }
 
-// Offered only by an engine that can reach this computer — never from the cloud (no relay yet), and not before
-// the first answer, so the icon cannot flash on a cloud page.
-export function isOffered() { const s = status(); return !!s && s.state !== "remote"; }
+// Offered on every engine once the first status has arrived. On a cloud account (`remote`) it is where the user
+// gets the installer, and the setup screen says plainly what it can and cannot reach from there.
+export function isOffered() { return !!status(); }
 export function isRemote() { const s = status(); return !!s && s.state === "remote"; }
 export function isConnected() { const s = status(); return !!s && !!s.reachable; }
 

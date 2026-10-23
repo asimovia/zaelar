@@ -336,16 +336,18 @@ def test_the_screen_leads_with_the_command_and_not_with_a_download_button():
 
 # ── the interface: the icon, the screen, the words ────────────────────────────────────────────────────────
 
-def test_the_icon_is_offered_only_where_it_can_work():
-    """A remote engine cannot reach the user's computer until the outbound relay (P3) is built, so the icon is
-    not offered there. It is shown only by an engine on this
-    computer — and not before the first status, so a cloud page never flashes it. Same rule on the phone row."""
+def test_the_icon_is_offered_on_every_engine_once_status_arrives():
+    """The icon is offered on every engine, cloud included: on a cloud account it is where the user gets the
+    installer for their own computer, and the setup screen's `remote` branch says what it can reach from there.
+    Hidden only before the first status, so it never flashes. Same rule on the phone row."""
     service = (ENGINE / "frontend" / "app" / "services" / "daemon.js").read_text(encoding="utf-8")
     offered = service.split("export function isOffered()")[1].split("\n")[0]
-    assert '!!s' in offered and 'state !== "remote"' in offered, offered
+    assert "!!status()" in offered and "remote" not in offered, offered
+    setup = (ENGINE / "frontend" / "app" / "components" / "DaemonSetup.js").read_text(encoding="utf-8")
+    assert 's.state === "remote"' in setup and "daemon.remote.limit" in setup, "the cloud screen no longer explains its limit"
     topbar = (ENGINE / "frontend" / "app" / "components" / "TopBar.js").read_text(encoding="utf-8")
     block = topbar.split('id: "daemonBtn"')[0].rsplit('h("button"', 1)[-1]
-    assert "daemon.isOffered()" in block and "is-off" in block, "the icon is no longer gated on where it can work"
+    assert "daemon.isOffered()" in block and "is-off" in block, "the icon is no longer gated on the first status"
     sheet = (ENGINE / "frontend" / "mobile" / "app" / "shell" / "MenuSheet.js").read_text(encoding="utf-8")
     assert "daemon.isOffered()" in sheet.split("daemon.mobile.row")[0].rsplit('h("div"', 1)[-1]
     assert ".daemonBtn.is-off{display:none}" in (ENGINE / "frontend" / "app" / "styles.css").read_text(encoding="utf-8")
