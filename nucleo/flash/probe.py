@@ -307,7 +307,7 @@ async def run_turn(text: str, *, sid: str = "default", ingest: bool = True, mode
                     str(_blk.get("operator_text") or "") or text)):
                 tool_calls[_i] = {"name": "show_images", "args": {"query": _pic["query"]}}
                 break
-    names = [t["name"] for t in tool_calls]
+    names = _probe_decide._reply_as_card_call([t["name"] for t in tool_calls], tool_calls)   # wire BOTH
     reveal_out = None                       # V2-060: desenlace de reveal_secret (sin el valor — lo sirve la API)
     music_req = None                        # V2-380: lo que pidió `play_music`, para EJECUTARLO abajo
     video_req = None                        # V2-383: lo que pidió `play_video`, para EJECUTARLO abajo

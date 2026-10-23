@@ -385,7 +385,10 @@ body.chatdock-r .statuspanel,body.chatdock-r .cronpanel{right:calc(18px + var(--
    Reset keeps its word (an unlabelled destructive button is worse than a labelled one) and gives up every
    other difference: same height, same radius, same hover, separated from the icons by the toolbar rule —
    a separator EARNS its place when the purpose of the row changes, and it changes there. */
-.tr{position:fixed;top:calc(16px + var(--banner-h));right:18px;z-index:20;
+/* The wrapper is what is fixed: the Energy gauge on the background, then the box of controls (2026-10-24). */
+.trw{position:fixed;top:calc(16px + var(--banner-h));right:18px;z-index:20;
+    display:flex;align-items:center;gap:14px;transition:top .2s}
+.tr{position:relative;
     display:flex;align-items:center;gap:2px;padding:var(--sp-1);
     background:var(--hb-bg);border:1px solid var(--hb-line-win);border-radius:var(--hb-r-l);
     box-shadow:var(--hb-shadow-win);transition:top .2s}
@@ -410,31 +413,31 @@ body.chatdock-r .statuspanel,body.chatdock-r .cronpanel{right:calc(18px + var(--
    EnergyGauge.js), and silver/gold are intentionally WIDER: someone who paid more must be able to see it.
    `max-width` + `flex-shrink` on each bar: in a narrow window the stack compresses instead of pushing icons
    outside the bar — 50 gold bars are 300px, and 300px is not always available. */
-.eg{display:flex;align-items:flex-end;gap:1px;height:18px;max-width:min(300px,32vw);overflow:hidden;
-    padding:0 4px;cursor:default}
-.eg-t{display:block;width:3px;flex:0 1 3px;min-width:1px;height:12px;border-radius:1px;background:var(--eg-c,var(--hb-ok));
-      transition:background .25s,height .25s}
-/* SPENT: pale gray and slightly shorter — the gap remains (it is a stack, not a list) but does not compete. */
-.eg-t.eg-spent{background:var(--hb-neutral);opacity:.45;height:9px}
-.eg-t.eg-off{background:var(--hb-neutral);opacity:.25;height:9px}
-/* Tiers. Amber = demo; then green (healthy) → orange → bronze → silver → gold. */
-.eg-demo{--eg-c:#d99a2b}
-.eg-u1{--eg-c:#2fbf6b}
-.eg-u2{--eg-c:#e8873a}
-.eg-u3{--eg-c:#b06a34}
-.eg-u4{--eg-c:#c9d2dc}
-.eg-u5{--eg-c:#e3b341}
-/* SILVER and GOLD: wider bar + glow, so a large allotment is PERCEIVED as more (operator request). */
-.eg-u4 .eg-t,.eg-u5 .eg-t{width:5px;flex:0 1 5px;height:14px}
-.eg-u4 .eg-t:not(.eg-spent){box-shadow:0 0 3px rgba(201,210,220,.55)}
-.eg-u5 .eg-t:not(.eg-spent){box-shadow:0 0 4px rgba(227,179,65,.6)}
-/* DEPLETED: the entire stack pulses red. The “your energy has run out” notice already existed; this is what was
-   missing so it does not come as a surprise. */
-.eg-dead .eg-t{background:var(--hb-risk);opacity:.9;animation:eg-pulse 1.6s ease-in-out infinite}
+.eg{display:flex;align-items:flex-end;gap:3px;height:22px;padding:0 2px;cursor:default}
+/* One bar: a small column with a soft top light and a shadow at its foot, so the row has some relief on the
+   background instead of reading as a flat barcode. */
+.eg-t{display:block;width:4px;height:18px;border-radius:2px;box-sizing:border-box;
+      transition:background .3s,border-color .3s,box-shadow .3s}
+@media (max-width:899px){.eg-t{width:5px}}
+/* LIT: the plan's colour, lighter at the top. */
+.eg-t.eg-on{background:linear-gradient(to bottom,color-mix(in srgb,var(--eg-c) 70%,#fff) 0%,var(--eg-c) 45%,
+      color-mix(in srgb,var(--eg-c) 80%,#000) 100%);box-shadow:0 1px 2px rgba(0,0,0,.35),0 0 4px color-mix(in srgb,var(--eg-c) 35%,transparent)}
+/* SPENT (part of this cycle, used): a grey box with a firmer grey edge — the battery shows what it held. */
+.eg-t.eg-spent{background:color-mix(in srgb,var(--hb-neutral) 22%,transparent);
+      border:1px solid color-mix(in srgb,var(--hb-neutral) 70%,transparent)}
+/* BEYOND THIS CYCLE (a bigger plan would light it) and NOT KNOWN YET: a faint outline only. */
+.eg-t.eg-free{background:transparent;border:1px solid color-mix(in srgb,var(--hb-neutral) 35%,transparent)}
+/* The plan's colour: green for the first tiers (healthy), then teal, blue, and gold for the biggest. */
+.eg-tier0,.eg-tier1{--eg-c:#2fbf6b}
+.eg-tier2{--eg-c:#1fb5a3}
+.eg-tier3{--eg-c:#4f8ef7}
+.eg-tier4{--eg-c:#e3b341}
+/* DEPLETED: the cycle's boxes pulse red. The «out of Energy» notice still opens; this is so it is no surprise. */
+.eg-dead .eg-t.eg-spent{border-color:var(--hb-risk);animation:eg-pulse 1.6s ease-in-out infinite}
 @keyframes eg-pulse{0%,100%{opacity:.9}50%{opacity:.35}}
-/* V2-785 — in a cloud account the battery is a LINK to the top-up section: a hand, no underline, a visible focus. */
+/* In a cloud account the battery is a LINK to the top-up section: a hand, no underline, a visible focus. */
 a.eg{cursor:pointer;text-decoration:none;color:inherit}
-a.eg:focus-visible{outline:2px solid var(--hb-accent);outline-offset:2px;border-radius:4px}
+a.eg:focus-visible{outline:2px solid var(--hb-accent);outline-offset:3px;border-radius:4px}
 
 /* shared UTILITY icon-button (2026-07-22 frontend pass): close/refresh/delete-style controls in panels/modals —
    ChatWall/StatusPanel/CronPanel/MemoryMap/DebugPanel all converge here instead of 4 slightly-different sizes
@@ -1452,7 +1455,7 @@ body.dbg-resizing{cursor:ew-resize;user-select:none}
 
 /* when the column is open, offset the fixed layout by its width so nothing hides under it */
 body.dbg-open .canvas{right:var(--dbg-w)}
-body.dbg-open .tr{right:calc(18px + var(--dbg-w))}
+body.dbg-open .trw{right:calc(18px + var(--dbg-w))}
 body.dbg-open .statuspanel,body.dbg-open .cronpanel{right:calc(18px + var(--dbg-w))}
 body.dbg-open .orbwrap{left:calc(50% - var(--dbg-w) / 2)}
 
@@ -1678,7 +1681,7 @@ body.dbg-open .orbwrap{left:calc(50% - var(--dbg-w) / 2)}
 .daemonBtn.st-off,.daemonBtn.st-remote,.daemonBtn.st-unknown{color:var(--hb-muted-2)}
 
 .daemonBtn.is-off{display:none}
-.tr.is-pending{visibility:hidden}
+.trw.is-pending{visibility:hidden}
 .dsx-ovl{align-items:center}
 .dsx-box{width:min(680px,100%);max-height:min(86vh,760px);display:flex;flex-direction:column;
   background:var(--hb-bg);border:1px solid var(--hb-line);border-radius:var(--hb-r-l);box-shadow:var(--hb-shadow-2)}

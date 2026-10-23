@@ -452,8 +452,10 @@ export function routeEvent(desktop, d) {
       const balance = field(d, "balance"), capacity = field(d, "capacity"), exhausted = field(d, "exhausted");
       if (typeof balance === "number") {
         const cur = store.energy() || {};
+        const plan = field(d, "plan");
         store.setEnergy({ ...cur, cloud: true, known: true, balance,
-                          capacity: typeof capacity === "number" ? capacity : cur.capacity });
+                          capacity: typeof capacity === "number" ? capacity : cur.capacity,
+                          plan: plan && typeof plan === "object" ? plan : cur.plan });
       }
       // V2-785 — out of energy (a reason) or back (""): the notice opens and closes from this one field.
       if (typeof exhausted === "string") {

@@ -178,6 +178,67 @@ def admit(kind: str = "") -> None:
         raise OutOfEnergy(f"{REFUSAL_MARK} for {kind or 'paid work'}")
 
 
+def _gauge_from_lease(data: dict) -> None:
+    """The lease answer is where the balance arrives now: with the lease a Machine no longer reports each charge,
+    so the usage-report response that used to carry it never comes, and an account with Energy saw an unlit
+    gauge. The answer may also carry the plan's gauge facts — `cycle_energy` (what this cycle made available),
+    `scale` (the gauge's full scale) and `tier` — which make the gauge «the plan's Energy minus what was spent»
+    instead of a guess from the highest balance ever seen. Never raises: presentation bookkeeping."""
+    try:
+        if not isinstance(data, dict) or data.get("balance") is None:
+            return
+        b = float(data["balance"])
+        plan = data.get("plan") if isinstance(data.get("plan"), dict) else {}
+    except (TypeError, ValueError) as e:
+        logger.debug(f"energy_lease: unreadable balance in the lease answer: {e!r}")
+        return
+    from nucleo import energy_meter as _em
+    _em._load_once()
+    _st = _em._state
+    cap = _st.get("capacity")
+    cycle = plan.get("cycle_energy")
+    if isinstance(cycle, (int, float)) and cycle > 0:
+        cap = float(cycle)
+    elif cap is None or _st.get("balance") is None or b > float(_st["balance"]):
+        cap = b
+    gauge = {k: plan.get(k) for k in ("key", "name", "tier", "scale") if plan.get(k) is not None}
+    _st.update({"balance": b, "capacity": cap, "at": time.time(), "src": "lease", "plan": gauge or None})
+    try:
+        from memory import api as memory
+        import json as _json
+        memory.kv_set(_em._KV_KEY, _json.dumps({k: _st[k] for k in ("balance", "capacity", "at", "src", "plan")}))
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"energy_lease: gauge balance not persisted: {e!r}")
+    try:
+        from voice.observer import emit
+        # The fresh balance as granted: the lease's spend counter is reset right after this, so subtracting the
+        # previous lease's spend here would show a dip that never happened.
+        emit("energy", "saldo", extra={**_em.snapshot(), "balance": b})
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"energy_lease: gauge event not emitted: {e!r}")
+
+
+_GAUGE_EVERY_S = 3.0
+_gauge_told = {"at": 0.0}
+
+
+def _tell_gauge() -> None:
+    """The gauge goes down as the agent works: one `energy` event at most every few seconds, carrying the balance
+    the gauge would read now (`energy_meter.snapshot`). A spend is local under a lease, so nothing else tells it."""
+    now = time.time()
+    if now - _gauge_told["at"] < _GAUGE_EVERY_S:
+        return
+    _gauge_told["at"] = now
+    try:
+        from nucleo import energy_meter
+        from voice.observer import emit
+        snap = energy_meter.snapshot()
+        if snap.get("known"):
+            emit("energy", "saldo", extra={"balance": snap["balance"], "capacity": snap["capacity"]})
+    except Exception as e:  # noqa: BLE001 — the gauge is presentation; a spend never fails for it
+        logger.debug(f"energy_lease: gauge not told: {e!r}")
+
+
 def note_spend(energy: float) -> None:
     """Descuenta del contador local. Se llama en el MISMO gesto que reportar el consumo a la nube, pero
     sin esperar a la respuesta: es una resta, no una consulta. Nunca lanza."""
@@ -187,6 +248,7 @@ def note_spend(energy: float) -> None:
         _load_once()
         _state["spent"] = float(_state["spent"]) + float(energy)
         _persist()
+        _tell_gauge()
         if remaining() <= 0:
             _blow_fuse()                              # truly exhausted: no leased energy left
         elif expired():
@@ -345,6 +407,8 @@ async def _request(reason: str) -> bool:
         energy_tariffs.update(data.get("tariffs"), source="lease")
     except Exception as e:  # noqa: BLE001
         logger.warning(f"energy_lease: no se pudieron aplicar las tarifas centrales: {e}")
+    # …and the balance (with the plan's gauge facts), which the gauge has no other way to learn under a lease.
+    _gauge_from_lease(data)
 
     granted = float(data.get("energy") or 0.0)
     if not data.get("ok") or granted <= 0:

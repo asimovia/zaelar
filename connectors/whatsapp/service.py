@@ -295,9 +295,6 @@ async def _drain_reads() -> None:
             store.requeue_pending_read(keys)
 
 
-_NO_CAPTION = (".ogg", ".opus", ".mp3", ".m4a", ".wav", ".aac")
-
-
 async def _send(chat_id: str, text: str, files: list[str], reply_to: str | None = None) -> dict:
     """One message as the native app sends it: the files, the text as the FIRST file's caption when that file
     can carry one (a voice note cannot), otherwise the text on its own. Returns the last send's answer."""
@@ -307,7 +304,7 @@ async def _send(chat_id: str, text: str, files: list[str], reply_to: str | None 
     res: dict = {}
     caption_used = False
     for i, path in enumerate(files):
-        cap = text if (i == 0 and text and not path.lower().endswith(_NO_CAPTION)) else ""
+        cap = text if (i == 0 and text and store.kind_of(path) not in ("ptt", "audio")) else ""
         caption_used = caption_used or bool(cap)
         res = await client.send_media(chat_id, path, caption=cap) or {}
     if text and not caption_used:

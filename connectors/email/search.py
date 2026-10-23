@@ -7,7 +7,6 @@ can live, not into the file the ratchet is asking to shrink. It uses the mailbox
 from __future__ import annotations
 
 import logging
-import re
 
 from connectors.email.mailbox import parse_message
 
@@ -16,7 +15,6 @@ _log = logging.getLogger("zaelar.email.search")
 
 #: Special-use folders (RFC 6154) that hold mail no longer in the INBOX: Gmail's «All Mail», an «Archive».
 _ARCHIVE_FLAGS = ("\\All", "\\Archive")
-_LIST_RE = re.compile(r'^\((?P<flags>[^)]*)\) (?:"[^"]*"|NIL) (?P<name>.+)$')
 
 
 def _archive_folder(im) -> str | None:
@@ -29,11 +27,16 @@ def _archive_folder(im) -> str | None:
         return None
     found = {}
     for row in (rows or []) if st == "OK" else []:
-        m = _LIST_RE.match(row.decode("utf-8", "replace") if isinstance(row, bytes) else str(row))
-        if m:
-            for flag in _ARCHIVE_FLAGS:
-                if flag in m.group("flags").split():
-                    found.setdefault(flag, m.group("name").strip().strip('"'))
+        # `(\HasNoChildren \All) "/" "[Gmail]/All Mail"` — flags in parentheses, the delimiter, the name.
+        line = row.decode("utf-8", "replace") if isinstance(row, bytes) else str(row)
+        head, sep, rest = line.partition(") ")
+        parts = rest.split(" ", 1)
+        if not sep or len(parts) < 2:
+            continue
+        flags, name = head.lstrip("(").split(), parts[1].strip().strip('"')
+        for flag in _ARCHIVE_FLAGS:
+            if flag in flags:
+                found.setdefault(flag, name)
     return next((found[f] for f in _ARCHIVE_FLAGS if f in found), None)
 
 

@@ -16,6 +16,8 @@ import pytest
 pytest.importorskip("playwright.sync_api")
 from playwright.sync_api import sync_playwright
 
+from tests.waiting import until_sync
+
 _ENGINE = pathlib.Path(__file__).resolve().parents[4]
 
 
@@ -32,12 +34,13 @@ def page():
     port = _free_port()
     srv = subprocess.Popen([sys.executable, "-m", "http.server", str(port), "--bind", "127.0.0.1"],
                            cwd=_ENGINE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    for _ in range(50):
+    def up():
         try:
             socket.create_connection(("127.0.0.1", port), 0.2).close()
-            break
+            return True
         except OSError:
-            time.sleep(0.1)
+            return False
+    until_sync(up, "the static server to answer", timeout_s=15)
     try:
         with sync_playwright() as pw:
             browser = pw.chromium.launch()

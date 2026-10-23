@@ -1,11 +1,11 @@
-// THE STACK SCALE (EnergyGauge.scale) — contract for the tiers the gauge draws.
+// THE STACK SCALE (EnergyGauge.scale) — the contract the gauge draws (2026-10-24).
 //
-// It is tested in Node rather than in a browser because `scale` is deliberately PURE: it is the only piece of the
-// stack with rules, so it can fail on its own, without the DOM, and that is where it should fail.
+// Tested in Node rather than in a browser because `scale` is deliberately PURE: it is the only piece of the gauge
+// with rules, so it can fail on its own, without the DOM.
 //
-// The problem it solves: a balance grows without limit, but a bar does not. The solution is TWO axes — fixed slots and
-// the variable VALUE of each tick, with the color indicating how much it is worth. The cases below pin each tier
-// boundary, and the top tier (50 slots × 5 units) is where the scale stops growing.
+// The rule: the SAME number of bars for every account (more and thinner on a wider screen), each worth the gauge's
+// full scale divided by the bars. A cycle owns `capacity / per` of them and lights `balance / per` — «the cycle's
+// Energy minus what was spent» — so a small plan lights part of the gauge and the biggest one all of it.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -14,76 +14,50 @@ import path from "node:path";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const src = readFileSync(path.join(here, "../../../../frontend/app/components/EnergyGauge.js"), "utf8");
 
-// The pure function is extracted: importing the entire module would pull in dom.js/store.js/i18n.js, which require a
-// browser. The extraction is honest — if `scale` stops existing under that name, this fails here.
-const i = src.indexOf("const SLOTS");
-const j = src.indexOf("export function EnergyGauge");
-assert.ok(i > 0 && j > i, "no encuentro la escala en EnergyGauge.js — ¿se renombró?");
-const mod = await import("data:text/javascript," + encodeURIComponent(src.slice(i, j)));
-const { scale } = mod;
+// The pure functions are extracted: importing the module would pull in dom.js/store.js/i18n.js, which need a browser.
+const i = src.indexOf("export function barsFor");
+const j = src.indexOf("// When an account url");
+assert.ok(i > 0 && j > i, "the scale is not where it was in EnergyGauge.js — renamed?");
+const { scale, barsFor } = await import("data:text/javascript," + encodeURIComponent(src.slice(i, j)));
 
-const USD = 100;   // one display unit = 100 Energy
+const FULL = 13000;            // the gauge's full scale as the cloud sends it (the biggest cycle)
+const WIDE = 1400;
 
-// ── one case per tier boundary ────────────────────────────────────────────────────────────────────────────────────
-// a small starter balance lights 10 slots
-let s = scale(250, 250);
-assert.equal(s.slots, 10, "starter: 10 slots");
-assert.equal(s.lit, 10, "a fresh starter balance is full, not half");
-assert.equal(s.cls, "eg-demo");
-assert.ok(s.demo);
-
-// a capacity of 10 units: 10 slots, one unit each
-s = scale(10 * USD, 10 * USD);
-assert.equal(s.slots, 10, "10 units: 10 slots");
-assert.equal(s.lit, 10);
-assert.equal(s.per, 1 * USD, "10 units: each tick is worth one unit");
-assert.equal(s.cls, "eg-u1", "…in the one-unit colour, NOT the starter one");
-
-// 50 units, same one-unit colour, fill all 50
-s = scale(50 * USD, 50 * USD);
-assert.equal(s.slots, 50);
-assert.equal(s.lit, 50);
-assert.equal(s.per, 1 * USD);
-assert.equal(s.cls, "eg-u1", "50 units is still the one-unit colour");
-
-// 100 units: the colour changes and each tick is worth two
-s = scale(100 * USD, 100 * USD);
-assert.equal(s.slots, 50, "100 units also fit in 50 slots");
-assert.equal(s.per, 2 * USD, "100 units: two-unit ticks");
-assert.equal(s.cls, "eg-u2");
-
-// the top tier: 50 slots × 5 units, gold
-s = scale(250 * USD, 250 * USD);
-assert.equal(s.slots, 50);
-assert.equal(s.per, 5 * USD);
-assert.equal(s.cls, "eg-u5", "250 units is the top of the ladder: gold");
-
-// ── make the stack read as a STACK ─────────────────────────────────────────────────────────────────────────
-// THE COLOR COMES FROM CAPACITY, NOT THE BALANCE. If it came from the balance, the color would CHANGE as you spend and
-// it would stop being a stack: it would be a tier indicator that drops in category. A nearly empty 100-unit capacity
-// must continue to look like a 100-unit capacity.
-const gastando = [100, 60, 20, 1].map(pct => scale(pct / 100 * 100 * USD, 100 * USD));
-for (const g of gastando) {
-  assert.equal(g.cls, "eg-u2", "el color no se mueve al gastar");
-  assert.equal(g.per, 2 * USD);
-  assert.equal(g.slots, 50, "los huecos tampoco: lo gastado se queda en gris, no desaparece");
+// ── the same bars for everyone, by screen ──────────────────────────────────────────────────────────────────────
+assert.equal(barsFor(1400), 30);
+assert.equal(barsFor(1000), 20);
+assert.equal(barsFor(400), 12);
+for (const cap of [500, 1300, 3000, 13000]) {
+  assert.equal(scale(cap, cap, { scale: FULL }, WIDE).bars, 30, `every plan draws 30 bars on a wide screen (${cap})`);
 }
-assert.deepEqual(gastando.map(g => g.lit), [50, 30, 10, 0], "solo bajan las ENCENDIDAS");
 
-// A half-spent starter balance decreases in the same way
-assert.equal(scale(150, 250).lit, 6, "starter at 150 of 250: 6 ticks of 10");
+// ── a small plan owns part of the gauge, the biggest all of it ─────────────────────────────────────────────────
+let s = scale(1300, 1300, { scale: FULL, tier: 1 }, WIDE);
+assert.equal(s.own, 3, "a 1300 cycle owns 3 of 30");
+assert.equal(s.lit, 3, "…and a full cycle lights all of its own");
+s = scale(13000, 13000, { scale: FULL, tier: 4 }, WIDE);
+assert.equal(s.own, 30);
+assert.equal(s.lit, 30);
+assert.equal(s.tier, 4);
 
-// ── edge cases that must not render a misleading stack ───────────────────────────────────────────────────────────
-assert.equal(scale(0, 10 * USD).lit, 0, "a cero: ninguna encendida (y la UI la pinta en rojo)");
-assert.equal(scale(-5, 10 * USD).lit, 0, "un saldo negativo no enciende nada");
-assert.equal(scale(10, null), null, "sin capacidad no hay pila que dibujar");
-assert.equal(scale(10, 0), null);
-assert.equal(scale(10, "no-es-un-numero"), null);
-// Recharging above the ceiling does not overflow the bar or leave it blank.
-s = scale(400 * USD, 400 * USD);
-assert.equal(s.slots, 50, "above the top tier it caps at 50 slots instead of growing");
-assert.equal(s.cls, "eg-u5");
-// It never lights more slots than exist, even with a balance above its capacity.
-assert.ok(scale(999 * USD, 10 * USD).lit <= 50);
+// ── lit = what is left, proportionally ─────────────────────────────────────────────────────────────────────────
+s = scale(1500, 3000, { scale: FULL, tier: 2 }, WIDE);
+assert.equal(s.own, 7, "3000 of 13000 is 7 of 30");
+assert.equal(s.lit, 3, "1500 left is 3 bars");
 
-console.log("ok — the stack scale meets every tier case");
+// ── any Energy left lights a bar; none lights nothing ──────────────────────────────────────────────────────────
+s = scale(397, 500, { scale: FULL, tier: 0 }, WIDE);
+assert.equal(s.own, 1);
+assert.equal(s.lit, 1, "397 left is NOT an empty gauge");
+assert.equal(scale(0, 500, { scale: FULL }, WIDE).lit, 0);
+
+// ── an older control plane sends no scale: the cycle fills the gauge ───────────────────────────────────────────
+s = scale(397, 500, null, WIDE);
+assert.equal(s.own, 30);
+assert.equal(s.lit, 24, "397 of 500 is 24 of 30");
+
+// ── nothing to draw without a capacity; the tier is clamped to the colours there are ───────────────────────────
+assert.equal(scale(10, 0, null, WIDE), null);
+assert.equal(scale(10, 10, { tier: 9 }, WIDE).tier, 4);
+
+console.log("energy scale: ok");

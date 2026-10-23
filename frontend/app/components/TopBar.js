@@ -13,7 +13,7 @@ import { toggleTheme } from "../services/theme.js?v=2";
 import { t } from "../core/i18n.js?v=1";
 import { BUG_ICON, GEAR_ICON, COMPASS_ICON, MOON_ICON, USER_ICON, MEM_ICON, DESKTOP_ICON } from "../lib/icons.js?v=2";
 import * as daemon from "../services/daemon.js?v=3";
-import { EnergyGauge } from "./EnergyGauge.js?v=1";
+import { EnergyGauge } from "./EnergyGauge.js?v=2";
 import { accountLink } from "../core/account-link.js?v=1";
 
 // Status dot is a plain filled circle (see .statusBtn svg below) — recolors via the SAME --hb-ok/--hb-warn/--hb-risk
@@ -23,7 +23,11 @@ const STATUS_ICON = `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill
 export function TopBar() {
   // Nothing is shown until /api/config has said cloud or local (`cloudProfile() === null`): no default header that
   // is then swapped for the right one.
-  return h("div", { class: () => "tr" + (store.cloudProfile() === null ? " is-pending" : "") },
+  // The Energy gauge sits OUTSIDE the box of controls, to its left and straight on the background (2026-10-24):
+  // it is information, not a control, and inside the box its bars competed with the icons for the same width.
+  return h("div", { class: () => "trw" + (store.cloudProfile() === null ? " is-pending" : "") },
+    EnergyGauge(),
+    h("div", { class: "tr" },
     // System status: the health beacon lives at the LEFT extreme of the toolbar. A dot that greens/ambers/reds
     // (blinks on error) so a problem (no saldo, Hermes caído, cluster desconectado) grabs attention without
     // opening anything. Click → the status panel with the per-item detail.
@@ -42,9 +46,6 @@ export function TopBar() {
     }, raw(BUG_ICON)),
     // ☾ tema: MOVIDO here from the ojo (Orb.js, 2026-08-09) — junto a ⚙, a operator request. ONE icon (moon),
     // blue=dark/grey=light — mismo lenguaje on/off that the resto of controles, nunca se cambia by un icono of sol.
-    // LA PILA of Energy, pegada a the IZQUIERDA of the 👤 (EnergyGauge.js, 2026-08-13). Se gatea sola by the `cloud` de
-    // /api/energy and NO by `cloudProfile`: es the mismo hecho by dos vías, and the pila tiene that creerle al endpoint
-    // that le da the saldo, no a otro. En self-host devuelve null and here no aparece nada.
     // 🖥 THE LOCAL DAEMON (V2-575 P1). Shown on every engine, cloud included: there it is where the user gets
     // the installer for their own computer. Hidden only until the first status arrives. Same visual language
     // as the ◉ (`.st-ok/.st-warn`): grey until a daemon answers.
@@ -54,7 +55,6 @@ export function TopBar() {
       id: "daemonBtn", title: () => t("topbar.daemon.title"),
       onClick: () => { const v = !store.daemonSetupOpen(); store.setDaemonSetupOpen(v); api.uiEvent("topbar:daemon", { state: v ? "open" : "close" }); },
     }, raw(DESKTOP_ICON)),
-    EnergyGauge(),
     // 👤 Perfil of the CUENTA (SOLO cloud): the hosted account's data (user/energy) — distinto of la
     // persona of the operador, that vive en the orbe. En self-host NO aparece (instalación puramente local, no hace falta).
     // Contenido by definir; hoy abre un panel placeholder.
@@ -91,6 +91,7 @@ export function TopBar() {
     ResetConfirm(),
     RestartingOverlay(),
     AccountPanel(),
+    ),
   );
 }
 

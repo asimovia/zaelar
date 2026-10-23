@@ -461,7 +461,7 @@ async def _post_usage_cloud_account(energy: float, kind: str, meta: dict | None 
 # como «Clave: valor.», así que un saldo ahí viajaría en todos los turnos de voz (misma razón que en
 # `nucleo/rehydrate.py`).
 _KV_KEY = "energy:balance"
-_state: dict = {"balance": None, "capacity": None, "at": 0.0}
+_state: dict = {"balance": None, "capacity": None, "at": 0.0, "src": "", "plan": None}
 _loaded = False
 
 # The server's event loop (V2-102), for the SAME cross-thread bridge problem `nucleo/browser_search.py::set_loop`
@@ -486,7 +486,7 @@ def _load_once() -> None:
         d = memory.kv_get(_KV_KEY)          # kv_get/kv_set ya hacen el JSON: se guarda el dict tal cual
         if isinstance(d, dict):
             _state.update({"balance": d.get("balance"), "capacity": d.get("capacity"),
-                           "at": float(d.get("at") or 0.0)})
+                           "at": float(d.get("at") or 0.0), "src": d.get("src") or "", "plan": d.get("plan")})
     except Exception:
         pass
 
@@ -506,7 +506,7 @@ def note_balance(balance) -> None:
     # Una RECARGA es un saldo que sube (o el primer saldo que vemos). Gastar no cambia de cuánto se partía.
     if cap is None or prev is None or b > float(prev):
         cap = b
-    _state.update({"balance": b, "capacity": cap, "at": time.time()})
+    _state.update({"balance": b, "capacity": cap, "at": time.time(), "src": "report"})
     try:
         from memory import api as memory
         import json as _json
@@ -527,13 +527,21 @@ def snapshot() -> dict:
     «no lo sé» y «se te acabó» no pueden verse igual."""
     _load_once()
     b, cap = _state.get("balance"), _state.get("capacity")
+    if b is not None and _state.get("src") == "lease":
+        # The account's balance when the lease was granted, minus what THIS Machine has spent of that lease since:
+        # the gauge goes down live, with no network, exactly as the lease itself does.
+        try:
+            from nucleo import energy_lease
+            b = max(0.0, float(b) - float(energy_lease._state.get("spent") or 0.0))
+        except Exception as e:  # noqa: BLE001
+            logger.debug(f"energy_meter: lease spend unreadable: {e!r}")
     return {"cloud": enabled(), "known": b is not None, "balance": b, "capacity": cap,
-            "at": _state.get("at") or 0.0}
+            "plan": _state.get("plan"), "at": _state.get("at") or 0.0}
 
 
 def _reset_for_tests() -> None:
     global _loaded
-    _state.update({"balance": None, "capacity": None, "at": 0.0})
+    _state.update({"balance": None, "capacity": None, "at": 0.0, "src": "", "plan": None})
     _loaded = False
 
 
