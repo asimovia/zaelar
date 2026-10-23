@@ -38,6 +38,11 @@ _ENDPOINTS: tuple[tuple[str, str], ...] = (
     ("gemini", "GEMINI_API_KEY"),
     ("moonshot", "MOONSHOT_API_KEY"),
     ("deepseek.com", "DEEPSEEK_API_KEY"),
+    # Voice (2026-10-23): read by the voice builders through SETTINGS, listed here so a mediated deployment's egress
+    # credential stands in for them too (`llm_egress.stand_in_for_provider_keys`).
+    ("deepgram.com", "DEEPGRAM_API_KEY"),
+    ("elevenlabs.io", "ELEVENLABS_API_KEY"),
+    ("inworld.ai", "INWORLD_API_KEY"),
 )
 
 

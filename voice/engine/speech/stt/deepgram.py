@@ -26,9 +26,13 @@ def build(vad=None):
         if boost:
             opts["keyterm"] = boost
 
+    # EGRESS: a mediated deployment opens the socket through egress with its own credential (`nucleo.llm_egress`).
+    from nucleo import llm_egress
+    base_url, api_key = llm_egress.route_url(llm_egress.base_of("deepgram") + "/listen", SETTINGS.deepgram_api_key or "")
     return _deepgram.STT(
         model=model,
-        api_key=SETTINGS.deepgram_api_key or None,
+        api_key=api_key or None,
+        base_url=base_url,
         # FIRST RUN → `"multi"` (multilingual nova-3, with code-switching): with no language chosen yet, we cannot
         # pin one down, or `i18n.init.detect`'s auto-detection would receive the operator's sentence transcribed
         # through the wrong model and there would be nothing left to classify. NOTE: omitting the parameter does not

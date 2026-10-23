@@ -35,9 +35,17 @@ DEFAULT_MODEL = "inworld-tts-2"
 
 @registry.register("inworld")
 def build():
+    # EGRESS: a mediated deployment speaks through egress with its own credential (`nucleo.llm_egress`). The plugin
+    # joins ABSOLUTE paths (`urljoin(base, "/tts/v1/…")`), which drops any path in the base: egress recognises
+    # `/tts/v1/` as Inworld's own, so only the host of the routed URL matters here.
+    from nucleo import llm_egress
+    key = (os.getenv("INWORLD_API_KEY") or getattr(SETTINGS, "inworld_api_key", "") or "").strip()
+    base_url, key = llm_egress.route_url(llm_egress.base_of("inworld") + "/", key)
     kwargs = dict(
         model=os.getenv("ZAELAR_INWORLD_TTS_MODEL", "").strip() or DEFAULT_MODEL,
-        api_key=(os.getenv("INWORLD_API_KEY") or getattr(SETTINGS, "inworld_api_key", "") or "").strip() or None,
+        api_key=key or None,
+        base_url=base_url,
+        ws_url=base_url.replace("https://", "wss://", 1).replace("http://", "ws://", 1),
     )
     # Voice: the operator's ⚙ pick (only if it is an Inworld voice of this language) > the variant's pinned
     # default. Without either, the plugin's own default is an English voice — never what a Spanish turn wants.

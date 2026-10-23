@@ -134,16 +134,24 @@ _UPSTREAMS: tuple[tuple[str, str], ...] = (
     ("gemini", "https://generativelanguage.googleapis.com/v1beta"),
     ("xai", "https://api.x.ai/v1"),
     ("deepseek", "https://api.deepseek.com"),
+    # Voice: the streaming sockets go through egress too (it opens its own socket to the provider with the key).
+    ("deepgram", "https://api.deepgram.com/v1"),
+    ("elevenlabs", "https://api.elevenlabs.io/v1"),
+    ("inworld", "https://api.inworld.ai"),
 )
 
 #: The provider keys this process's own egress credential STANDS IN FOR (see `stand_in_for_provider_keys`): the
-#: key of every endpoint (`provider_keys`) whose host is one egress carries. Only those: a key whose calls cannot
-#: be routed yet (the voice providers' streaming sockets) is left alone, because standing in for it would break
-#: the feature, not protect the key.
+#: key of every endpoint (`provider_keys`) whose host is one egress carries. Only those: a key whose calls egress
+#: cannot route is left alone, because standing in for it would break the feature, not protect the key.
 from nucleo.provider_keys import _ENDPOINTS as _KEYS_BY_ENDPOINT  # noqa: E402
 
 _STANDS_IN_FOR: tuple[str, ...] = tuple(dict.fromkeys(
     env for needle, env in _KEYS_BY_ENDPOINT if any(needle in base for _name, base in _UPSTREAMS)))
+
+
+def base_of(family: str) -> str:
+    """The provider's own base for `family` — what a call site starts from before `route_url`. Pure."""
+    return dict(_UPSTREAMS)[family]
 
 
 def upstream_of(url: str) -> tuple[str, str]:

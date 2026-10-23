@@ -65,6 +65,8 @@ def test_the_stand_in_replaces_every_carried_key(mediated):
     import os
     names = llm_egress.stand_in_for_provider_keys()
     assert set(names) == set(llm_egress._STANDS_IN_FOR)
+    assert {"OPENAI_API_KEY", "DEEPSEEK_API_KEY", "Z_AI_API_KEY", "GEMINI_API_KEY", "DEEPGRAM_API_KEY",
+            "ELEVENLABS_API_KEY", "INWORLD_API_KEY"} <= set(names), names
     assert all(os.environ[n] == TOKEN for n in names)
     from nucleo.provider_keys import key_for_endpoint
     assert key_for_endpoint("https://api.deepseek.com") == TOKEN, "the model chains still see a usable rung"
@@ -190,3 +192,32 @@ def test_the_balance_panel_does_not_probe_a_wallet_this_instance_does_not_hold(m
     for service, (envs, probe) in balances._PROBES.items():
         if probe and any(e in llm_egress._STANDS_IN_FOR for e in envs):
             assert balances.balance(service)["state"] == "unknown"
+
+
+# ── voice (2026-10-23): the streaming sockets go through egress too ────────────────────────────────────────────
+
+@pytest.mark.parametrize("module,attr,cls,expect", [
+    ("voice.engine.speech.stt.deepgram", "_deepgram", "STT", "/p/deepgram/listen"),
+    ("voice.engine.speech.tts.elevenlabs", "_eleven", "TTS", "/p/elevenlabs"),
+    ("voice.engine.speech.tts.inworld", "_inworld", "TTS", "/p/inworld/"),
+])
+def test_each_voice_provider_opens_through_egress(mediated, monkeypatch, module, attr, cls, expect):
+    import importlib
+    mod = importlib.import_module(module)
+    llm_egress.stand_in_for_provider_keys()
+    seen = {}
+
+    class Fake:
+        def __init__(self, **kw):
+            seen.update(kw)
+
+    monkeypatch.setattr(getattr(mod, attr), cls, Fake)
+    import dataclasses
+    fields = {f: TOKEN for f in ("deepgram_api_key", "elevenlabs_api_key", "inworld_api_key")
+              if hasattr(mod.SETTINGS, f)}
+    monkeypatch.setattr(mod, "SETTINGS", dataclasses.replace(mod.SETTINGS, **fields))   # SETTINGS is frozen
+    mod.build()
+    assert seen["base_url"].startswith(GW + expect), seen.get("base_url")
+    assert seen["api_key"] == TOKEN
+    if "ws_url" in seen:
+        assert seen["ws_url"].startswith("wss://egress.example/"), seen["ws_url"]
