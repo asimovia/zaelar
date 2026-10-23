@@ -677,6 +677,7 @@ export function ChatWall() {
 
   function applyDock(side, w) {
     dockSide = side;
+    placed = true;                              // a docked wall HAS a place: first-open auto-placement must not move it
     lastDockSide = side;                        // the ⧉ toggle re-docks a floating box to this side (V2-621)
     const width = Math.max(DOCK_MIN_W, _num(w, DOCK_DEF_W));
     dockW = width;
@@ -925,7 +926,10 @@ export function ChatWall() {
   // on first open with NO saved geometry: auto-place like a widget, then focus the input (Chat only)
   createEffect(() => {
     if (!store.chatOpen()) return;
-    if (!placed) requestAnimationFrame(() => { placeWall(wallEl); placed = true; });
+    // Checked again INSIDE the frame: opening from the bar docks the wall in an effect that runs in the same
+    // tick, and placeWall writes an inline `left` the docked CSS does not override — the column stayed full
+    // height but shifted right, over the desk, until a reload restored it from DOCK_KEY.
+    if (!placed) requestAnimationFrame(() => { if (!placed && !dockSide) placeWall(wallEl); placed = true; });
     if (inputEl && store.chatTab() === "chat") inputEl.focus();
   });
 

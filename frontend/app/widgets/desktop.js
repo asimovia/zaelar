@@ -513,7 +513,7 @@ export class Desktop {
         localStorage.removeItem("hb_desktop");
         // The chat wall remembers being open since V2-550, and a wipe has to reach it too — otherwise a reset
         // leaves a desktop that is blank except for the one panel that outlived it.
-        try{ const m = await import("../components/ChatWall.js?v=5"); m.forgetChatPlacement && m.forgetChatPlacement(); }catch(_){}
+        try{ const m = await import("../components/ChatWall.js?v=6"); m.forgetChatPlacement && m.forgetChatPlacement(); }catch(_){}
         localStorage.setItem("hb_desktop_epoch", String(epoch));
         this._reportOpen();               // the server STATE is also cleared
         return;                           // starts with no widgets

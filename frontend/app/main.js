@@ -20,7 +20,7 @@ import { initI18n, t } from "./core/i18n.js?v=1";
 // NATIVE frontend SURFACES (untouchable SYSTEM widgets): the SINGLE CANONICAL LIST lives in
 // core/system-surfaces.js — main.js MOUNTS them from there (with no duplicated list). `submitChat` is the only symbol
 // from a component that main.js uses apart from mounting (the clipboard-paste handler).
-import { submitChat } from "./components/ChatWall.js?v=5";
+import { submitChat } from "./components/ChatWall.js?v=6";
 import { SYSTEM_SURFACES } from "./core/system-surfaces.js?v=3";
 import * as api from "./services/api.js?v=2";
 
