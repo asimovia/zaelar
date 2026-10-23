@@ -64,9 +64,9 @@ def test_the_inbox_and_the_archive_folder_are_asked_by_any_field_and_read_only()
     assert hits[1]["folder"] == "[Gmail]/All Mail"
 
 
-def test_email_is_never_walked_and_the_chat_platforms_are():
+def test_email_is_never_walked_and_only_telegram_is():
     assert history.mode("email") == "on_demand" and not history.walk_enabled("email")
-    assert history.mode("whatsapp") == history.mode("telegram") == "walk"
+    assert history.mode("telegram") == "walk" and history.mode("whatsapp") == "at_link"
 
 
 def test_a_search_answer_says_how_far_each_platforms_past_reaches(tmp_path, monkeypatch):
@@ -76,10 +76,10 @@ def test_a_search_answer_says_how_far_each_platforms_past_reaches(tmp_path, monk
     monkeypatch.setattr(wstore, "DATA_DIR", str(tmp_path))
     archive.reset()
     monkeypatch.setattr(views, "mailbox_fill", lambda terms: 0)
-    archive.backfill_mark("whatsapp", "a@s.whatsapp.net", done=True)
-    archive.backfill_mark("whatsapp", "b@s.whatsapp.net", page=True)
+    archive.backfill_mark("telegram", "1", done=True)
+    archive.backfill_mark("telegram", "2", page=True)
     res = views._search_archive_answer({"q": "barco"})["result"]
-    assert res["history"]["email"]["mode"] == "on_demand"
-    assert res["history"]["whatsapp"] == {"mode": "walk", "done": 1, "started": 2, "messages": 0}
-    assert "whatsapp: 1 de 2 chats" in res["detail"], "«nothing found» must say the walk is still going"
+    assert res["history"]["email"]["mode"] == "on_demand" and res["history"]["whatsapp"]["mode"] == "at_link"
+    assert res["history"]["telegram"] == {"mode": "walk", "done": 1, "started": 2, "messages": 0}
+    assert "telegram: 1 de 2 chats" in res["detail"], "«nothing found» must say the walk is still going"
     archive.reset()

@@ -73,6 +73,11 @@ async def get_chats(before: float | None = None, limit: int = 20) -> dict:
     return await _request("GET", "/chats" + q)
 
 
+async def get_sync() -> list[dict]:
+    """Return (and clear) up to 2000 messages of the history WhatsApp sent when this device was paired."""
+    return await _request("GET", "/sync") or []
+
+
 async def get_reads() -> list[dict]:
     """Return (and clear) the chats the operator read on ANOTHER device since the last poll (V2-546). Each
     entry: {chatId, at}. WhatsApp gives a per-chat counter, not a per-message watermark, so the bridge only

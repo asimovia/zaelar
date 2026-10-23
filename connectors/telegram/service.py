@@ -747,7 +747,10 @@ async def _loop() -> None:
     _set_status("starting", None)
     # `catch_up`: what arrived while this process was not running is fetched on reconnect. An instance that is
     # stopped while idle and started on the next visit would otherwise never see those messages.
-    _client = TelegramClient(config.session_path(), config.api_id(), config.api_hash(), catch_up=True)
+    # How this session is named in the operator's Telegram («Active sessions»): Zaelar, never the library's default.
+    from version import VERSION as _ver
+    _client = TelegramClient(config.session_path(), config.api_id(), config.api_hash(), catch_up=True,
+                             device_model="Zaelar Agent", system_version="Zaelar", app_version=str(_ver))
     try:
         await _client.connect()
     except Exception as e:

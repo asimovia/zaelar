@@ -11,7 +11,7 @@ _HERE = Path(__file__).resolve().parent
 
 
 def bridge_port() -> int:
-    # 3111 by default to avoid colliding with the `hermes gateway` bridge (which uses :3000).
+    # 3111 by default: away from :3000, where other local tools tend to listen.
     return int(os.getenv("WA_BRIDGE_PORT", "3111"))
 
 
@@ -20,7 +20,7 @@ def bridge_url() -> str:
 
 
 def session_dir() -> Path:
-    # zaelar's OWN pairing session (personal credentials, gitignored). We do not share Hermes's.
+    # zaelar's OWN pairing session (personal credentials, gitignored), shared with no other tool.
     # With `ZAELAR_WORKSPACE` set the session lives in the workspace like every other per-install credential: a
     # container whose code directory is rebuilt on each image would otherwise lose the pairing on every restart,
     # and re-pairing is a QR the person has to scan again.
@@ -67,9 +67,3 @@ def operator_name() -> str:
 def poll_interval() -> float:
     return float(os.getenv("WA_POLL_INTERVAL", "5"))
 
-
-def backfill_enabled() -> bool:
-    """Walk every chat back to its beginning into the communications archive (connectors/whatsapp/backfill.py).
-    The policy is shared with every messaging platform: `connectors/messaging/history.py`."""
-    from connectors.messaging import history
-    return history.walk_enabled("whatsapp")

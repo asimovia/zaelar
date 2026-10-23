@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Hermes Agent WhatsApp Bridge
+ * Zaelar WhatsApp bridge (Baileys) — derived from an MIT bridge, see LICENSE and VENDORED_FROM.md
  *
  * Standalone Node.js process that connects to WhatsApp via Baileys
  * and exposes HTTP endpoints for the Python gateway adapter.
@@ -15,7 +15,7 @@
  *   GET  /health         - Health check
  *
  * Usage:
- *   node bridge.js --port 3000 --session ~/.hermes/whatsapp/session
+ *   node bridge.js --port 3111 --session ~/.zaelar/whatsapp/session
  */
 
 import { makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, downloadMediaMessage } from '@whiskeysockets/baileys';
@@ -46,21 +46,21 @@ const WHATSAPP_DEBUG =
   ['1', 'true', 'yes', 'on'].includes(process.env.WHATSAPP_DEBUG.toLowerCase());
 
 const PORT = parseInt(getArg('port', '3000'), 10);
-const SESSION_DIR = getArg('session', path.join(process.env.HOME || '~', '.hermes', 'whatsapp', 'session'));
+const SESSION_DIR = getArg('session', path.join(process.env.HOME || '~', '.zaelar', 'whatsapp', 'session'));
 // Cache directories: the Python gateway passes the profile-aware paths via
-// env (HERMES_HOME-aware, new cache/ layout).  Fall back to the legacy
+// env (ZAELAR_*_CACHE_DIR).  Fall back to the
 // hardcoded locations for bridges launched outside the gateway.
-const IMAGE_CACHE_DIR = process.env.HERMES_IMAGE_CACHE_DIR
-  || path.join(process.env.HOME || '~', '.hermes', 'image_cache');
-const DOCUMENT_CACHE_DIR = process.env.HERMES_DOCUMENT_CACHE_DIR
-  || path.join(process.env.HOME || '~', '.hermes', 'document_cache');
-const AUDIO_CACHE_DIR = process.env.HERMES_AUDIO_CACHE_DIR
-  || path.join(process.env.HOME || '~', '.hermes', 'audio_cache');
+const IMAGE_CACHE_DIR = process.env.ZAELAR_IMAGE_CACHE_DIR
+  || path.join(process.env.HOME || '~', '.zaelar', 'image_cache');
+const DOCUMENT_CACHE_DIR = process.env.ZAELAR_DOCUMENT_CACHE_DIR
+  || path.join(process.env.HOME || '~', '.zaelar', 'document_cache');
+const AUDIO_CACHE_DIR = process.env.ZAELAR_AUDIO_CACHE_DIR
+  || path.join(process.env.HOME || '~', '.zaelar', 'audio_cache');
 
 // Self-hash of this script file.  Reported in /health so the Python gateway
 // can detect a running bridge that predates the current bridge.js and
 // restart it instead of silently reusing stale code (stale-bridge trap:
-// `hermes update` updates bridge.js on disk but a long-lived bridge process
+// an update writes bridge.js on disk but a long-lived bridge process
 // keeps serving the old behavior forever).
 let SCRIPT_HASH = '';
 try {
@@ -70,9 +70,11 @@ try {
     .slice(0, 16);
 } catch {}
 const PAIR_ONLY = args.includes('--pair-only');
+// ZAELAR-PATCH: how this linked device is named on the operator's phone.
+const DEVICE_NAME = process.env.ZAELAR_DEVICE_NAME || 'Zaelar Agent';
 const WHATSAPP_MODE = getArg('mode', process.env.WHATSAPP_MODE || 'self-chat'); // "bot" | "self-chat" | "observe" (ZAELAR-PATCH)
 const ALLOWED_USERS = parseAllowedUsers(process.env.WHATSAPP_ALLOWED_USERS || '');
-const DEFAULT_REPLY_PREFIX = '⚕ *Hermes Agent*\n────────────\n';
+const DEFAULT_REPLY_PREFIX = '';
 const REPLY_PREFIX = process.env.WHATSAPP_REPLY_PREFIX === undefined
   ? DEFAULT_REPLY_PREFIX
   : process.env.WHATSAPP_REPLY_PREFIX.replace(/\\n/g, '\n');
@@ -189,12 +191,15 @@ const logger = pino({ level: 'warn' });
 
 // Message queue for polling
 const messageQueue = [];
-// ZAELAR-PATCH (history backfill): pages of 50 scrollback messages land here too, so the queue must hold
-// several polls' worth; at 100 a page could push out the live messages waiting beside it.
+// ZAELAR-PATCH: «load previous» pages of 50 land here too, so the queue must hold several polls' worth; at 100
+// a page could push out the live messages waiting beside it.
 const MAX_QUEUE_SIZE = 2000;
 // ZAELAR-PATCH (V2-546): chats the operator read on another device, drained by GET /reads. Kept SEPARATE from
 // messageQueue on purpose — a read receipt is not a message, and mixing them would put it through triage.
 const readQueue = [];
+// ZAELAR-PATCH: messages of the pairing history sync, drained by GET /sync into the archive.
+const syncQueue = [];
+const SYNC_QUEUE_MAX = 100000;
 // ZAELAR-PATCH (V2-546): chats we have just asked the PHONE for history about, with an expiry. The phone answers
 // with ordinary upserts, so without this the scrollback of a conversation would be triaged as if it had all
 // just arrived — and the operator would be interrupted about messages from weeks ago because he pressed
@@ -358,7 +363,8 @@ async function startSocket() {
     auth: state,
     logger,
     printQRInTerminal: false,
-    browser: ['Hermes Agent', 'Chrome', '120.0'],
+    // ZAELAR-PATCH: the name the operator's phone shows for this linked device («Google Chrome (Zaelar Agent)»).
+    browser: [DEVICE_NAME, 'Chrome', '120.0'],
     syncFullHistory: false,
     markOnlineOnConnect: false,
     // Required for Baileys 7.x: without this, incoming messages that need
@@ -605,7 +611,7 @@ async function startSocket() {
         body = `[${mediaType} received]`;
       }
 
-      // Ignore Hermes' own reply messages in self-chat mode to avoid loops.
+      // Ignore the agent's own reply messages in self-chat mode to avoid loops.
       // ZAELAR-PATCH (V2-546): NOT in observe mode. There the loop is impossible by construction — an outgoing
       // message is published on a topic that feeds neither triage nor any reply path — and a reply the operator
       // dictated to zaelar is precisely something he should see in the conversation afterwards.
@@ -697,7 +703,26 @@ async function startSocket() {
         fromMe: last ? !!last.key?.fromMe : undefined, lastId: last?.key?.id, sender: last?.pushName || '',
       });
     }
-    if (syncType !== 6) return;            // proto.HistorySync.HistorySyncType.ON_DEMAND
+    if (syncType !== 6) {
+      // ZAELAR-PATCH: the sync the phone sends at PAIRING (bootstrap / recent) — the account's past as WhatsApp
+      // offers it, once, with no notification per page. Its messages go to the archive (GET /sync), never to the
+      // inbox or the conversations on screen.
+      for (const m of messages || []) {
+        const chatId = m?.key?.remoteJid;
+        if (!m?.message || !isListedChat(chatId)) continue;
+        const g = messageGist(m);
+        if (!g.body && !g.mediaType) continue;
+        syncQueue.push({
+          messageId: m.key.id, chatId, isGroup: chatId.endsWith('@g.us'),
+          chatName: chatId.endsWith('@g.us') ? (groupSubjects.get(chatId) || '') : (chatBook.get(chatId)?.name || ''),
+          senderName: m.key.fromMe ? '' : (m.pushName || (m.key.participant || chatId).replace(/@.*/, '')),
+          body: g.body || `[${g.mediaType} received]`, mediaType: g.mediaType,
+          timestamp: tsNum(m.messageTimestamp), direction: m.key.fromMe ? 'out' : 'in',
+        });
+      }
+      if (syncQueue.length > SYNC_QUEUE_MAX) syncQueue.splice(0, syncQueue.length - SYNC_QUEUE_MAX);
+      return;
+    }
     for (const m of messages || []) {
       const chatId = m?.key?.remoteJid;
       if (!m?.message || !isListedChat(chatId)) continue;
@@ -838,6 +863,11 @@ app.post('/group', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+// ZAELAR-PATCH: up to 2000 messages of the pairing history sync per call, oldest first.
+app.get('/sync', (req, res) => {
+  res.json(syncQueue.splice(0, 2000));
 });
 
 // ZAELAR-PATCH (V2-546): chats read on another device, since the last poll.
@@ -1013,7 +1043,7 @@ app.post('/send-media', async (req, res) => {
         const needsConversion = !['ogg', 'opus'].includes(ext);
         let tmpPath = null;
         if (needsConversion) {
-          tmpPath = path.join(tmpdir(), `hermes_voice_${randomBytes(6).toString('hex')}.ogg`);
+          tmpPath = path.join(tmpdir(), `zaelar_voice_${randomBytes(6).toString('hex')}.ogg`);
           try {
             execSync(
               `ffmpeg -y -i ${JSON.stringify(filePath)} -ar 48000 -ac 1 -c:a libopus ${JSON.stringify(tmpPath)}`,
