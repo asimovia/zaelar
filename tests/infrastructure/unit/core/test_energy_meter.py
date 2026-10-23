@@ -550,3 +550,22 @@ def test_el_estimado_no_se_beneficia_del_descuento_de_cache():
         em.llm_cost_to_energy = orig
     if seen:      # no-op if the account is not metered; if called, the hit must NOT have been sent
         assert seen[0].get("cache_hit_tokens") is None
+
+
+def test_every_charge_leaves_an_observability_event_with_its_units(monkeypatch):
+    """Prices are corrected against reality from these rows, so each charge carries the units the provider
+    billed (tokens and their cache split), the price applied (raw USD, margin) and who bills it. The text
+    shown has no decimals; the data keeps them."""
+    monkeypatch.setenv("ZAELAR_USER_ID", "u")
+    seen = []
+    import voice.observer as observer
+    monkeypatch.setattr(observer, "emit", lambda kind, label, text="", role="", extra=None: seen.append((kind, label, text, extra)))
+    monkeypatch.setattr(energy_meter, "_loop", None)
+    energy_meter.report_llm_usage(base_url="https://api.deepseek.com/v1", model="deepseek-flash",
+                                  prompt_tokens=12000, completion_tokens=80, cache_hit_tokens=11500)
+    kind, label, text, extra = next(e for e in seen if e[0] == "energy" and e[1] == "llm")
+    assert extra["prompt_tokens"] == 12000 and extra["cache_hit_tokens"] == 11500
+    assert extra["completion_tokens"] == 80 and extra["model"] == "deepseek-flash"
+    assert extra["energy"] > 0 and extra["raw_usd"] > 0 and extra["margin"] == energy_meter.MARGIN_MULTIPLIER
+    assert extra["billed_by"] in ("engine", "egress")
+    assert text.startswith("−") and "." not in text.split("⚡")[0], text

@@ -550,6 +550,8 @@ def _fire_and_forget(energy: float, kind: str, meta: dict | None = None) -> None
     except Exception:  # noqa: BLE001
         pass
 
+    _observe_charge(energy, kind, meta)
+
     try:
         asyncio.get_running_loop()
         asyncio.create_task(_post_usage(energy, kind, meta))
@@ -566,6 +568,31 @@ def _fire_and_forget(energy: float, kind: str, meta: dict | None = None) -> None
             asyncio.run_coroutine_threadsafe(_post_usage(energy, kind, meta), _loop)
         except Exception:  # noqa: BLE001
             pass
+
+
+def _observe_charge(energy: float, kind: str, meta: dict | None) -> None:
+    """One observability event per charge, with everything known about it: the raw units the provider
+    billed (tokens with their cache split, characters, seconds), the price applied (raw USD and margin) and
+    whether the ledger takes this figure or the upstream egress meters it itself (`billed_by`). Prices get
+    corrected against reality from these rows, so they carry the units, not just the result. The display
+    text has no decimals; the data keeps them. Never raises."""
+    try:
+        from voice.observer import emit
+        e = float(energy)
+        extra = {"charge": kind, "energy": round(e, 4),
+                 "raw_usd": round(e * EUR_PER_ENERGY_UNIT / MARGIN_MULTIPLIER, 8), "margin": MARGIN_MULTIPLIER}
+        upstream = False
+        if kind in ("llm", "worker"):
+            from nucleo import llm_egress
+            upstream = llm_egress.bills_upstream()
+        extra["billed_by"] = "egress" if upstream else "engine"
+        for k, v in (meta or {}).items():
+            extra.setdefault(k, v)
+        shown = f"{round(e)}" if e >= 0.5 else "<1"
+        what = (meta or {}).get("model") or (meta or {}).get("provider") or ""
+        emit("energy", kind, text=f"−{shown} ⚡ {kind}{' · ' + str(what) if what else ''}", extra=extra)
+    except Exception as e:  # noqa: BLE001 — observing a charge can never break the charge
+        logger.debug(f"energy_meter: charge not observed ({kind}): {e!r}")
 
 
 def _never_raises(fn):
@@ -607,7 +634,9 @@ def report_llm_usage(
                                 cache_hit_tokens=None if estimated else cache_hit_tokens)
     if energy is None:
         return
-    meta = {"model": model, "base_url": base_url}
+    meta = {"model": model, "base_url": base_url, "prompt_tokens": pt, "completion_tokens": ct}
+    if cache_hit_tokens and not estimated:
+        meta["cache_hit_tokens"] = int(cache_hit_tokens)
     if estimated:
         meta["estimated"] = True
     _fire_and_forget(energy, "llm", meta)
@@ -673,7 +702,9 @@ def report_worker_usage(
     )
     if energy is None:
         return
-    meta = {"model": model, "base_url": base_url}
+    meta = {"model": model, "base_url": base_url, "prompt_tokens": pt, "completion_tokens": ct}
+    if cached_tokens:
+        meta["cached_tokens"] = int(cached_tokens)
     if estimated:
         meta["estimated"] = True
     _fire_and_forget(energy, "worker", meta)
