@@ -509,8 +509,7 @@ def note_balance(balance) -> None:
     _state.update({"balance": b, "capacity": cap, "at": time.time(), "src": "report"})
     try:
         from memory import api as memory
-        import json as _json
-        memory.kv_set(_KV_KEY, _json.dumps({"balance": b, "capacity": cap, "at": _state["at"]}))
+        memory.kv_set(_KV_KEY, {"balance": b, "capacity": cap, "at": _state["at"], "src": "report"})
     except Exception:
         pass
     # EN VIVO: la pila baja mientras el agente trabaja, sin que el frontend pregunte. Un `emit` no bloquea.

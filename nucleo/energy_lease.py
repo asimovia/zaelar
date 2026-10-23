@@ -205,8 +205,8 @@ def _gauge_from_lease(data: dict) -> None:
     _st.update({"balance": b, "capacity": cap, "at": time.time(), "src": "lease", "plan": gauge or None})
     try:
         from memory import api as memory
-        import json as _json
-        memory.kv_set(_em._KV_KEY, _json.dumps({k: _st[k] for k in ("balance", "capacity", "at", "src", "plan")}))
+        # kv_set encodes JSON itself: a string here came back as a string and was never restored.
+        memory.kv_set(_em._KV_KEY, {k: _st[k] for k in ("balance", "capacity", "at", "src", "plan")})
     except Exception as e:  # noqa: BLE001
         logger.debug(f"energy_lease: gauge balance not persisted: {e!r}")
     try:

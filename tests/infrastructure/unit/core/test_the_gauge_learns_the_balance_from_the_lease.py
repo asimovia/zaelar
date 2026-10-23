@@ -98,3 +98,14 @@ def test_a_machine_booting_on_a_persisted_lease_still_asks_when_the_gauge_knows_
     assert asked == ["boot"] and energy_meter.snapshot()["balance"] == 397
     asyncio.run(energy_lease.ensure(reason="boot"))
     assert asked == ["boot"], "once the gauge knows, a valid lease is not asked for again"
+
+
+def test_the_gauge_state_survives_a_restart(monkeypatch):
+    """`kv_set` encodes JSON itself; the state was stored as an already-encoded string, so it came back as a string
+    and a restarted engine never restored it."""
+    stored = {}
+    from memory import api as memory
+    monkeypatch.setattr(memory, "kv_set", lambda k, v: stored.__setitem__(k, v))
+    energy_lease._gauge_from_lease({"balance": 397, "plan": {"name": "Free", "cycle_energy": 500}})
+    assert isinstance(stored[energy_meter._KV_KEY], dict)
+    assert stored[energy_meter._KV_KEY]["balance"] == 397 and stored[energy_meter._KV_KEY]["capacity"] == 500
