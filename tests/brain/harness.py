@@ -53,7 +53,10 @@ DECISIONS = re.compile(
 FORBIDS = ("worker", "search", "show", "close", "data-op", "second-card", "model", "ask")
 
 CASE_KEYS = {"id", "lang", "phrase", "source", "screen", "memory", "model", "brief", "expect", "also",
-             "forbid", "open", "note", "file", "widgets", "history", "live_only", "accept", "focus"}
+             "forbid", "open", "note", "file", "widgets", "history", "live_only", "accept", "focus", "connectors"}
+
+#: Connectors a case may declare enabled; every other one is OFF for that case.
+CONNECTOR_IDS = ("whatsapp", "telegram", "email")
 
 
 def load_cases(pattern: str = "*.json", *, live: bool = False) -> list[dict]:
@@ -112,6 +115,9 @@ def validate(case: dict) -> None:
     widgets = case.get("widgets") or {}
     if not isinstance(widgets, dict) or any(not isinstance(v, dict) for v in widgets.values()):
         raise ValueError(f"{case['id']}: widgets is {{card id: its store document}}")
+    conns = case.get("connectors") or []
+    if not isinstance(conns, list) or any(c not in CONNECTOR_IDS for c in conns):
+        raise ValueError(f"{case['id']}: connectors is a list of {CONNECTOR_IDS}")
 
 
 # ── the outcome and its judge ─────────────────────────────────────────────────────────────────────────────
@@ -339,6 +345,10 @@ class Isolated:
             data_dir = os.path.join(self.tmp, "widgets")
             os.makedirs(data_dir, exist_ok=True)
             self._set(store, "DATA_DIR", data_dir)
+            # The connectors' flags too: their path is fixed when `config.connectors` is imported, so the workspace
+            # env alone would leave a case reading — and a seed WRITING — the install's real file.
+            from config import connectors as _conns
+            self._set(_conns, "_PATH", Path(self.tmp) / "connectors.json")
             from nucleo.actionmap import store as amstore
             amstore.invalidate()
             from nucleo import scheduler
@@ -422,6 +432,9 @@ class Isolated:
         from widgets import store
         for wid, doc in (case.get("widgets") or {}).items():
             store.save(wid, json.loads(json.dumps(doc)))
+        from config import connectors as _conns           # isolated in __enter__: never the install's file
+        for c in CONNECTOR_IDS:
+            _conns.set(c, {"enabled": c in (case.get("connectors") or [])})
         from nucleo import canvas_focus
         canvas_focus._reset()
         if case.get("focus"):                           # the card his previous turn acted on, as the event funnel leaves it

@@ -1108,6 +1108,25 @@ app.post('/mark-read', async (req, res) => {
   }
 });
 
+// ZAELAR-PATCH: put a chat back to UNREAD, as the phone's «Mark as unread» does. WhatsApp marks the CHAT, anchored
+// on its last message.
+app.post('/mark-unread', async (req, res) => {
+  if (!sock || connectionState !== 'connected') {
+    return res.status(503).json({ error: 'Not connected' });
+  }
+  const { chatId, messageId, senderId, ts } = req.body || {};
+  if (!chatId || !messageId) return res.status(400).json({ error: 'chatId and messageId are required' });
+  const key = { remoteJid: chatId, id: messageId, fromMe: false };
+  if (String(chatId).endsWith('@g.us') && senderId) key.participant = senderId;
+  try {
+    await sock.chatModify({ markRead: false, lastMessages: [{ key, messageTimestamp: Number(ts) || Math.floor(Date.now() / 1000) }] }, chatId);
+    rememberChat(chatId, { unread: Math.max(1, chatBook.get(chatId)?.unread || 0) });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, error: String(err?.message || err) });
+  }
+});
+
 // Chat info
 app.get('/chat/:id', async (req, res) => {
   const chatId = req.params.id;

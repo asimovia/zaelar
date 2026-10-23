@@ -15,8 +15,8 @@
     "gate": "nucleo"
   },
   "title": "Mensajería",
-  "description": "WhatsApp, Telegram y correo en un sitio: leer, filtrar y ENVIAR o contestar mensajes («message Rowan on Telegram», «escríbele a Anna», «reply to that email»), ya triado a lo que va dirigido a ti. Se vinculan por QR (WhatsApp/Telegram) o correo + contraseña de aplicación; puedes dictar una respuesta y mandarla.",
-  "whenToUse": "Cuando pide ver sus mensajes, quién le ha escrito, su WhatsApp/Telegram/correo, responder o mandar un mensaje, RESUMIR un chat, buscar mensajes PASADOS en el archivo («¿cuándo me escribió X?»), el AUTORRESPONDEDOR o su firma. CONECTAR un canal NO es aquí: show_panel(panel='conectores', connector=…)",
+  "description": "WhatsApp, Telegram y correo en un sitio: leer, filtrar y ENVIAR o contestar mensajes («message Rowan on Telegram», «escríbele a Anna», «reply to that email»), ya triado a lo que va dirigido a ti. Se vinculan en Conectores; puedes dictar una respuesta y mandarla, con fotos o archivos, y crear grupos.",
+  "whenToUse": "Ver quién le ha escrito, buscar, resumir, responder o mandar mensajes de WhatsApp/Telegram/correo (con adjuntos), crear grupos, su archivo pasado («¿cuándo me escribió X?»), el AUTORRESPONDEDOR o su firma. CONECTAR un canal NO es aquí: show_panel(panel='conectores', connector=…)",
   "keywords": [
     "mensajes",
     "mensajeria",
@@ -99,7 +99,7 @@
     },
     "unread": {
       "ref": "from",
-      "desc": "Deja SIN LEER en su app real (correo) el mensaje N de la lista, o el que está ABIERTO si no dices cuál — «déjalo como no leído», «márcalo sin leer»",
+      "desc": "Deja SIN LEER en su app real (WhatsApp, Telegram o correo) el mensaje N de la lista, o el que está ABIERTO si no dices cuál — «déjalo como no leído», «márcalo sin leer»",
       "payload": {
         "from": "de quién es o de qué va («el de Inworld»)",
         "n": "opcional: número en la lista, solo si lo ves",
@@ -268,7 +268,7 @@
       "usage": "«Avísame cada vez que llegue un mensaje» → set_notify {platform:'email', notify:'all'}. «De Telegram avísame solo de mensajes directos» → {platform:'telegram', notify:'direct'}. «Que WhatsApp no me interrumpa hablando» → {platform:'whatsapp', speak:false}. «Enséñame también lo importante en la lista principal» → {platform:'email', highlight:'important'}. Para silenciar UN chat concreto usa hide, no esto."
     },
     "load_more": {
-      "desc": "Trae MENSAJES ANTERIORES de la conversación abierta desde la app real (Telegram/correo/WhatsApp). Úsala cuando el operador pida ver lo de antes («cárgame los anteriores», «¿qué me dijo la semana pasada?») y el widget diga que ahí empieza lo guardado. No inventa nada: se los pide al conector",
+      "desc": "Trae MENSAJES ANTERIORES de la conversación abierta desde la app real (Telegram/correo/WhatsApp): «cárgame los anteriores», «tráeme los mensajes de antes», «¿qué me dijo la semana pasada?». No inventa nada: se los pide al conector",
       "payload": {
         "limit": "int opcional (cuántos, por defecto 30)"
       },
@@ -386,7 +386,11 @@
     "mail",
     "gmail",
     "outlook",
-    "inbox"
+    "inbox",
+    "chat de",
+    "chat con",
+    "conversación con",
+    "chat with"
   ],
   "usage": "Para VER mensajes basta con mostrar la tarjeta. Para NAVEGARLA por voz: «vuelve a la lista principal / enséñame la lista general» → show_view {platform:'all'}; «ábreme/muéstrame/enséñame el WhatsApp | el Telegram | el correo» (lleve o no «solo los mensajes de») → show_view con esa plataforma: WhatsApp, Telegram y el correo NO son tarjetas, son VISTAS de ésta, así que mostrar el widget otra vez NO cambia nada (contesta con los chats que casan en result.chats); «abre el chat de X» → open {name:'X'}; «vuelve atrás» desde un chat → close. Marcar leído (read/readchat/clear) o dejarlo SIN LEER (unread: «leave it as unread», funciona con un correo ya abierto) PROPAGA a la app real. Para CONECTAR un canal («conéctame el correo», «vincula mi Gmail», «añade WhatsApp») usa show_panel(panel='conectores', connector='email'|'whatsapp'|'telegram'): abre el asistente de ESE conector en la sección Conectores. Email cubre Gmail, Outlook/Hotmail y cualquier otro por IMAP — el asistente pregunta cuál, así que no lo preguntes tú.",
   "collections": {

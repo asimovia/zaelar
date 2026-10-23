@@ -410,10 +410,10 @@ TOOLS: list[dict] = [
             "name": "reply_message",
             "description": (
                 "Responde un mensaje del buzón de MENSAJERÍA del operador ('responde a…', 'dile que…'). `n` = el "
-                "número del mensaje/chat en la lista de mensajería de tu estado (con un chat abierto es el nº del "
-                "MENSAJE; si no, el del CHAT); `text` = la respuesta redactada en su nombre. No envía a la brava: se "
+                "número del CHAT en la lista de mensajería de tu estado; con una conversación ABIERTA, omítelo y "
+                "va a esa conversación. `text` = la respuesta redactada en su nombre. No envía a la brava: se "
                 "pide confirmación antes de mandarlo. Solo para RESPONDER a algo del buzón. Si no está claro "
-                "cuál, pregunta el número."
+                "cuál, pregunta."
             ),
             "parameters": {
                 "type": "object",
@@ -423,7 +423,7 @@ TOOLS: list[dict] = [
                     "text": {"type": "string",
                              "description": "el texto de la respuesta, redactado en nombre del operador"},
                 },
-                "required": ["n", "text"],
+                "required": ["text"],
             },
         },
     },

@@ -91,6 +91,11 @@ async def fetch_history(chat_id: str, oldest_id: str, oldest_ts: float, limit: i
         "oldestFromMe": bool(oldest_from_me), "includeAnchor": bool(include_anchor)})
 
 
+async def mark_unread(key: dict) -> dict:
+    """Put a chat back to unread on the phone, anchored on one of its messages: {chatId, messageId, senderId?, ts?}."""
+    return await _request("POST", "/mark-unread", body={k: key.get(k) for k in ("chatId", "messageId", "senderId", "ts")})
+
+
 async def mark_read(keys: list[dict]) -> dict:
     """Mark the indicated messages as read. Each key: {chatId, messageId, senderId?}."""
     if not keys:

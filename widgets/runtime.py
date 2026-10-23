@@ -379,8 +379,13 @@ def identify(query: str, open_ids: list | None = None, recent_ids: list | None =
 
     # 3) a named system surface beats a WEAK widget: if the system scores >= the best widget, do NOT return a widget
     #    (prevents 'open chat' from landing on a widget with 'chats' as alias).
-    if system_id is not None and system_score >= top_score:
+    #    A TIE is not a win: «muéstrame la conversación con Luis» names the wall («conversación») and a messaging
+    #    conversation («conversación con») equally, and a lane acting on either is a coin toss. Ambiguous → no lane
+    #    acts on a name; the turn is decided with the whole sentence.
+    if system_id is not None and system_score > top_score:
         match, ambiguous = None, False
+    elif system_id is not None and top is not None and system_score == top_score:
+        match, ambiguous = None, True
 
     # 4) CONTEXT fallback: without alias or surface match, if there is ONE open widget, operate on it (what is IN
     #    FRONT of the operator) — NEVER a blind open of the "most similar" one.

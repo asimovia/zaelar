@@ -425,6 +425,9 @@ def _t_reply_message(*, args, _apply_widget_data, _say, _tool_fired, clarify):
         _rtext = (args.get("text") or "").strip()
         if _n is not None and _rtext:
             _apply_widget_data("mensajeria", "reply", {"n": _n, "text": _rtext})
+        elif _rtext:
+            # No number: the card resolves it to the conversation that is OPEN, or refuses with what is missing.
+            _apply_widget_data("mensajeria", "reply", {"text": _rtext})
         else:
             clarify["msg"] = _say().reply_which_message
 

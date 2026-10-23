@@ -33,6 +33,7 @@ _fetch_inbox = None              # V2-624: msg.fetch subscription (platform-wide
 _contacts_inbox = None           # V2-714: msg.contacts subscription (the ADDRESS BOOK, not the messages)
 _chats_inbox = None              # msg.chats: one page of the chat list
 _group_inbox = None              # msg.group: creating a group
+_unread_inbox = None             # msg.mark_unread: «déjalo como no leído»
 
 
 def enabled() -> bool:
@@ -442,6 +443,22 @@ async def _drain_fetch() -> None:
               f"{hours:.0f} h. Díselo al operador tal cual.")
 
 
+async def _drain_unread() -> None:
+    """Put dialogs back to unread («déjalo como no leído»), as the app's «Mark as unread» does."""
+    if _unread_inbox is None:
+        return
+    from telethon.tl.functions.messages import MarkDialogUnreadRequest
+    from telethon.tl.types import InputDialogPeer
+    for k in _unread_inbox.drain():
+        try:
+            peer = await _client.get_input_entity(int(k.get("chatId")))
+            await _client(MarkDialogUnreadRequest(peer=InputDialogPeer(peer), unread=True))
+            logger.info(f"Telegram: chat {k.get('chatId')} marcado como no leído")
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"Telegram: no pude marcar como no leído {k.get('chatId')}: {e}")
+            _note(f"[SISTEMA] No pude dejar como no leído ese chat de Telegram ({e}). Díselo al operador.")
+
+
 async def _drain_groups() -> None:
     """Create the groups the operator asked for, as Telegram's «New group» does today: a supergroup with these
     people invited. Members arrive resolved (an id we hold, or a @username / phone Telethon resolves)."""
@@ -771,7 +788,7 @@ async def _loop() -> None:
             logger.debug(f"Telegram read receipt: {e}")
 
     global _mark_inbox, _reply_inbox, _send_inbox, _history_inbox, _fetch_inbox, _contacts_inbox, _chats_inbox
-    global _group_inbox
+    global _group_inbox, _unread_inbox
     if ingest.v2_enabled() and _mark_inbox is None:
         _mark_inbox = ingest.MarkReadInbox("telegram")   # subscription in THIS loop (server) -> direct delivery
     if ingest.v2_enabled() and _reply_inbox is None:
@@ -788,6 +805,8 @@ async def _loop() -> None:
         _chats_inbox = ingest.ChatsInbox("telegram")          # the chat list
     if _group_inbox is None:
         _group_inbox = ingest.GroupInbox("telegram")          # new groups
+    if _unread_inbox is None:
+        _unread_inbox = ingest.MarkUnreadInbox("telegram")    # back to unread
     _set_status("connected", None)
     # Telethon dispatches updates only while the loop runs; this batching task coexists with that delivery.
     while True:
@@ -814,6 +833,7 @@ async def _loop() -> None:
                          ("read marks", _drain_read_marks),
                          ("history", _drain_history), ("fetch", _drain_fetch),
                          ("contacts", _drain_contacts), ("chats", _drain_chats), ("groups", _drain_groups),
+                         ("unread", _drain_unread),
                          ("history walk", _walk_tick)):
             try:
                 await fn()

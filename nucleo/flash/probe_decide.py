@@ -176,6 +176,15 @@ async def name_the_action(*, _hard, _router, _tbrief, _vault_gate, ingest, names
     elif "arrange_canvas" in names:
         # V2-588 — espejo del provider (cablear en AMBOS): ordenar el canvas es una acción global, sin id.
         action = "canvas:arrange"
+    elif "reply_message" in names and "widget_data" not in names:
+        # Mirror of the voice's `_t_reply_message` (wire BOTH): the tool converges on mensajeria's `reply` data-op,
+        # with or without `n` (no `n` = the conversation that is open). Without this the text channel answered
+        # «Sorry, I lost that» to every reply the model chose, and the decision bank could not see one.
+        _rm = next(t for t in tool_calls if t["name"] == "reply_message")
+        _rargs = {k: v for k, v in (_rm.get("args") or {}).items() if k in ("n", "text") and v not in (None, "")}
+        tool_calls.append({"name": "widget_data",
+                           "args": {"widget_id": "mensajeria", "action": "reply", "payload": _rargs}})
+        action = "widget_data"
     elif "widget_data" in names:
         # ESPEJO de la voz (`_handle_widget_data_tool`, impl PARALELA — cablear en AMBOS): la voz NO ejecuta a
         # ciegas el nombre de la tool — resuelve el widget, consulta `action_mode` y (diag sesiones-largas

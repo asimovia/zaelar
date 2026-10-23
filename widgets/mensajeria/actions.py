@@ -170,6 +170,15 @@ def _a_reply(action, payload) -> dict:
     if n is not None and not text:
         return _d.view_data()                      # nothing dictated: nothing to send and nothing to claim
     db = _d.load_db()
+    if text and db.get("active_chat") is not None:
+        # No number, a conversation OPEN: «contéstale que sí» means the person on screen — the same resolution
+        # the compose box uses (`resolve_reply_target`). Without it the model had to invent an `n` for a chat
+        # it was already inside, and a reply dictated there was lost.
+        target = _d._outbound.resolve_reply_target(db)
+        if target is not None:
+            _d._outbound.enqueue_reply(db, target, text)
+            _d.store.save(_d.WIDGET_ID, db)
+            return _d.view_data()
     return {"ok": False, "error": _NO_TARGET_FOR_THE_MODEL, "message": _no_reply_target(db), "say": _no_reply_say(db)}
 
 
@@ -311,7 +320,8 @@ def _a_unread(action, payload) -> dict:
     m = _d._outbound._message_ref(db, payload)
     if not m or not m.get("messageId"):
         return {"ok": False, "error": "no_message", "message": "Dime qué mensaje dejo sin leer."}
-    db.setdefault("pending_unread", []).append(_d._key(m))
+    # The message's time anchors WhatsApp's «mark as unread»; only carried when there is one.
+    db.setdefault("pending_unread", []).append({**_d._key(m), **({"ts": m["ts"]} if m.get("ts") else {})})
     _d.store.save(_d.WIDGET_ID, db)
     return {"ok": True, "result": {"unread": 1, "from": m.get("from") or m.get("who") or "",
                                    "subject": m.get("subject") or ""}}

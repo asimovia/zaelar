@@ -117,3 +117,30 @@ def test_a_group_that_cannot_be_created_says_why(files, monkeypatch):
     monkeypatch.setattr(service, "_group_inbox", _Inbox([{"name": "X", "members": [{"to": "+34600111222"}]}]))
     asyncio.run(service._drain_groups())
     assert failed and "bad participant" in failed[0]
+
+
+def test_mark_as_unread_reaches_whatsapp_and_telegram(monkeypatch):
+    """«Déjalo como no leído» was email-only, so on WhatsApp the model reached for `dismiss` — the opposite.
+    Both apps mark a CHAT unread; each connector now does it."""
+    from connectors.telegram import service as tg
+    from connectors.whatsapp import client, service as wa
+    got = []
+
+    async def mark_unread(key):
+        got.append(("wa", key["chatId"], key["messageId"]))
+        return {"success": True}
+    monkeypatch.setattr(client, "mark_unread", mark_unread)
+    monkeypatch.setattr(wa, "_unread_inbox", _Inbox([{"platform": "whatsapp", "chatId": "1@s.whatsapp.net",
+                                                      "messageId": "M1", "ts": 1}]))
+    asyncio.run(wa._drain_unread())
+
+    class _C:
+        async def get_input_entity(self, ref):
+            return SimpleNamespace(ref=ref)
+
+        async def __call__(self, req):
+            got.append(("tg", type(req).__name__, req.unread, req.peer.peer.ref))
+    monkeypatch.setattr(tg, "_client", _C())
+    monkeypatch.setattr(tg, "_unread_inbox", _Inbox([{"platform": "telegram", "chatId": "-1001", "messageId": "-1001:7"}]))
+    asyncio.run(tg._drain_unread())
+    assert got == [("wa", "1@s.whatsapp.net", "M1"), ("tg", "MarkDialogUnreadRequest", True, -1001)]

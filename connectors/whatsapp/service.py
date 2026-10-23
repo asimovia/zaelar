@@ -130,6 +130,7 @@ async def _ingest_new() -> None:
 _contacts_inbox = None           # V2-714: msg.contacts subscription
 _chats_inbox = None              # msg.chats: one page of the chat list
 _group_inbox = None              # msg.group: creating a group
+_unread_inbox = None             # msg.mark_unread: «déjalo como no leído»
 _widget_asked: dict[str, float] = {}   # chats whose scrollback the operator asked for, until when
 
 
@@ -204,6 +205,19 @@ def _chat_row(c: dict) -> dict | None:
             "mediaType": str(c.get("mediaType") or ""), "fromMe": bool(c.get("fromMe")),
             "archived": bool(c.get("archived")), "pinned": bool(c.get("pinned")), "muted": bool(c.get("muted")),
             "lastId": str(c.get("lastId") or "")}
+
+
+async def _drain_unread() -> None:
+    """Put chats back to unread on the phone («déjalo como no leído»). Told once on failure, never retried."""
+    if _unread_inbox is None:
+        return
+    for k in _unread_inbox.drain():
+        try:
+            await client.mark_unread(k)
+            logger.info(f"WhatsApp: chat {k.get('chatId')} marcado como no leído")
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"WhatsApp: no pude marcar como no leído {k.get('chatId')}: {e}")
+            _note(f"[SISTEMA] No pude dejar como no leído ese chat de WhatsApp ({e}). Díselo al operador.")
 
 
 async def _drain_groups() -> None:
@@ -439,6 +453,7 @@ def _note(text: str) -> None:
 
 async def _loop() -> None:
     global _mark_inbox, _reply_inbox, _send_inbox, _history_inbox, _contacts_inbox, _chats_inbox, _group_inbox
+    global _unread_inbox
     _set_status("starting", None)
     if _contacts_inbox is None:
         _contacts_inbox = ingest.ContactsInbox(PLATFORM)   # V2-714: the address book
@@ -446,6 +461,8 @@ async def _loop() -> None:
         _chats_inbox = ingest.ChatsInbox(PLATFORM)         # the chat list
     if _group_inbox is None:
         _group_inbox = ingest.GroupInbox(PLATFORM)         # new groups
+    if _unread_inbox is None:
+        _unread_inbox = ingest.MarkUnreadInbox(PLATFORM)   # back to unread
     if ingest.v2_enabled() and _mark_inbox is None:
         _mark_inbox = ingest.MarkReadInbox(PLATFORM)     # subscription in THIS loop (server) -> direct delivery
         _reply_inbox = ingest.ReplyInbox(PLATFORM)       # V2-521: dictated replies, same delivery path
@@ -482,7 +499,7 @@ async def _loop() -> None:
                 for what, fn in (("sends", _drain_sends),
                                  ("read marks", _drain_external_reads), ("history", _drain_history),
                                  ("contacts", _drain_contacts), ("chats", _drain_chats),
-                                 ("groups", _drain_groups),
+                                 ("groups", _drain_groups), ("unread", _drain_unread),
                                  ("history walk", _backfill.walker.tick)):
                     try:
                         await fn()
