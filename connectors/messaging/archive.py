@@ -47,6 +47,14 @@ CREATE INDEX IF NOT EXISTS idx_messages_chat ON messages(platform, chat_id, ts);
 CREATE INDEX IF NOT EXISTS idx_messages_ts   ON messages(ts);
 CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts USING fts5(
   body, sender, chat_name, content='messages', content_rowid='id');
+CREATE TABLE IF NOT EXISTS backfill(
+  platform  TEXT NOT NULL,
+  chat_id   TEXT NOT NULL,
+  done      INTEGER NOT NULL DEFAULT 0,
+  pages     INTEGER NOT NULL DEFAULT 0,
+  updated   REAL NOT NULL DEFAULT 0,
+  PRIMARY KEY(platform, chat_id)
+);
 CREATE TRIGGER IF NOT EXISTS messages_ai AFTER INSERT ON messages BEGIN
   INSERT INTO messages_fts(rowid, body, sender, chat_name)
   VALUES (new.id, new.body, new.sender, new.chat_name);
@@ -312,6 +320,67 @@ def chats(platform: str, limit: int = 600) -> list[dict]:
                     "preview": (r["body"] or "")[:160], "mediaType": r["media_type"] or "",
                     "fromMe": r["direction"] == "out", "lastId": r["msg_id"] or ""})
     return out
+
+
+# ── history backfill: which chats have been walked back to their beginning ─────────────────────────────
+def oldest(platform: str, chat_id) -> dict | None:
+    """The OLDEST message held of one chat — the anchor a backfill asks the platform to go back from."""
+    try:
+        row = _conn().execute("SELECT msg_id, direction, ts FROM messages WHERE platform=? AND chat_id=? "
+                              "ORDER BY ts LIMIT 1", (str(platform), str(chat_id))).fetchone()
+        return dict(row) if row else None
+    except Exception as e:  # noqa: BLE001
+        import logging
+        logging.getLogger("zaelar.messaging.archive").warning(f"archive oldest unreadable: {type(e).__name__}")
+        return None
+
+
+def count(platform: str, chat_id) -> int:
+    try:
+        return int(_conn().execute("SELECT COUNT(*) FROM messages WHERE platform=? AND chat_id=?",
+                                   (str(platform), str(chat_id))).fetchone()[0])
+    except Exception as e:  # noqa: BLE001 — an unreadable count reads as nothing held
+        import logging
+        logging.getLogger("zaelar.messaging.archive").warning(f"archive count unreadable: {type(e).__name__}")
+        return 0
+
+
+def backfill_state(platform: str, chat_id) -> dict:
+    try:
+        row = _conn().execute("SELECT done, pages, updated FROM backfill WHERE platform=? AND chat_id=?",
+                              (str(platform), str(chat_id))).fetchone()
+        return dict(row) if row else {"done": 0, "pages": 0, "updated": 0.0}
+    except Exception:  # noqa: BLE001 — unknown state reads as «not walked yet»
+        return {"done": 0, "pages": 0, "updated": 0.0}
+
+
+def backfill_mark(platform: str, chat_id, *, done: bool | None = None, page: bool = False) -> None:
+    """Record progress on one chat's walk back: one more page arrived, or the walk is over."""
+    try:
+        with _LOCK:
+            conn = _conn()
+            with conn:
+                conn.execute("INSERT OR IGNORE INTO backfill(platform, chat_id, updated) VALUES (?,?,?)",
+                             (str(platform), str(chat_id), time.time()))
+                conn.execute("UPDATE backfill SET pages=pages+?, done=COALESCE(?, done), updated=? "
+                             "WHERE platform=? AND chat_id=?",
+                             (1 if page else 0, None if done is None else (1 if done else 0), time.time(),
+                              str(platform), str(chat_id)))
+    except Exception as e:  # noqa: BLE001
+        import logging
+        logging.getLogger("zaelar.messaging.archive").warning(f"backfill state not saved: {type(e).__name__}")
+
+
+def backfill_stats(platform: str) -> dict:
+    """How far the walk back has gone: chats finished, chats started, messages held."""
+    try:
+        c = _conn()
+        done = c.execute("SELECT COUNT(*) FROM backfill WHERE platform=? AND done=1", (platform,)).fetchone()[0]
+        started = c.execute("SELECT COUNT(*) FROM backfill WHERE platform=?", (platform,)).fetchone()[0]
+        msgs = c.execute("SELECT COUNT(*) FROM messages WHERE platform=?", (platform,)).fetchone()[0]
+        return {"done": int(done), "started": int(started), "messages": int(msgs)}
+    except Exception:  # noqa: BLE001 — a stats line never breaks its caller
+        return {"done": 0, "started": 0, "messages": 0}
 
 
 def stats() -> dict:

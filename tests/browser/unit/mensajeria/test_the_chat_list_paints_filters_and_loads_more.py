@@ -112,3 +112,12 @@ def test_load_more_and_opening_a_chat_are_the_declared_actions(page):
 def test_while_the_first_page_travels_the_list_says_so(page):
     _mount(page, _data([], loading=True, asked=True))
     assert "Cargando" in page.locator(".cxlist").inner_text()
+
+
+def test_the_media_window_is_chosen_in_settings(page):
+    _mount(page, {**_data(_ROWS), "media_days": 14})
+    page.locator("button.gear").click()
+    active = page.locator(".settings .segbtn.active").all_inner_texts()
+    assert "14 días" in active
+    page.locator(".settings .segbtn", has_text="30 días").click()
+    assert page.evaluate("window.__calls")[-1] == ["set_media_days", {"days": 30}]

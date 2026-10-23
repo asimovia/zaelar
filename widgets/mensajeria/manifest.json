@@ -265,6 +265,13 @@
       },
       "safe": true
     },
+    "set_media_days": {
+      "desc": "Cuántos DÍAS se guardan en este dispositivo las fotos, vídeos, audios y adjuntos descargados de la mensajería; los más antiguos se borran de aquí y siguen en el móvil. Para «guarda las fotos un mes», «no borres los vídeos» (0 = siempre)",
+      "payload": {
+        "days": "7 | 14 | 30 | 90 | 0 (0 = guardar siempre)"
+      },
+      "safe": true
+    },
     "set_signature": {
       "desc": "Fija la firma de EMAIL entera, una línea por elemento (ej. nombre / cargo / contacto). Se añade sola a cada correo que se envíe, nunca por el operador ni por Gmail — no lo prometas dos veces",
       "payload": {

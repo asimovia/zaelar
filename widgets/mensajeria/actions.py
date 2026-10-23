@@ -544,6 +544,21 @@ def _a_load_more(action, payload) -> dict:
             **_d.view_data()}
 
 
+# How long downloaded media stays on this device (media.py): «guarda las fotos 30 días», or Ajustes.
+def _a_set_media_days(action, payload) -> dict:
+    from . import media as _media
+    db = _d.load_db()
+    raw = payload.get("days")
+    if str(raw).strip().lower() in ("siempre", "always", "forever", "never"):
+        raw = 0
+    d = _media.set_days(db, raw)
+    if d is None:
+        return {"ok": False,
+                "error": "days tiene que ser 7, 14, 30, 90 o 0 (0 = guardar siempre)", **_d.view_data()}
+    _d.store.save(_d.WIDGET_ID, db)
+    return {"ok": True, "result": {"media_days": d}, **_d.view_data()}
+
+
 # «Cargar más» at the bottom of a platform's chat list (button or voice: «enséñame más chats de WhatsApp»).
 def _a_chats_more(action, payload) -> dict:
     db = _d.load_db()

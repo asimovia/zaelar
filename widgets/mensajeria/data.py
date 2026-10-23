@@ -12,6 +12,7 @@ import time
 
 from .. import store
 from . import chatlist as _chatlist
+from . import media as _media
 from . import drafts as _drafts
 from . import outbound as _outbound
 from . import sent as _sent
@@ -242,6 +243,7 @@ def view_data(q: str = "") -> dict:
                       if (db.get("platforms") or {}).get(p, {}).get("status") == "connected"
                       or (db.get("chat_index") or {}).get(p)},
         "opening": still_opening,
+        "media_days": _media.days(db),
     }
 
 
@@ -320,7 +322,8 @@ from .actions import (  # noqa: E402,F401
     _a_show_view, _a_fetch_now, _a_set_autoresponder, _a_clear_autoresponder,
     _a_search_archive, _a_peek, _a_reply, _a_draft, _a_send_draft, _a_send_to, _a_forward,
     _a_unread, _a_set_signature, _a_set_signature_line, _a_clear_signature, _a_hide, _a_set_notify, _a_unhide,
-    _a_open, _a_close, _a_load_more, _a_readchat, _a_archive, _a_chats_more)
+    _a_open, _a_close, _a_load_more, _a_readchat, _a_archive, _a_chats_more,
+    _a_set_media_days)
 
 
 # V2-778 F1-12 — one function per action (in `actions.py`), and `apply_action` is the table lookup. Each body
@@ -352,6 +355,7 @@ ACTIONS = {
     "close": _a_close,
     "load_more": _a_load_more,
     "chats_more": _a_chats_more,
+    "set_media_days": _a_set_media_days,
     "readchat": _a_readchat,
     "archive": _a_archive,
     "trash": _a_archive,

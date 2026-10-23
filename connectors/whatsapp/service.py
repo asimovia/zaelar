@@ -9,10 +9,12 @@
 # agent (privacy + voice ACP invariant).
 #
 import asyncio
+import time
 
 from loguru import logger
 
 from connectors.messaging import ingest, notify, store, triage
+from connectors.whatsapp import backfill as _backfill
 from connectors.whatsapp import client, config
 from connectors.whatsapp.bridge_proc import bridge
 
@@ -63,8 +65,17 @@ async def _ingest_new() -> None:
         by_chat: dict[str, list[dict]] = {}
         for m in backfill:
             by_chat.setdefault(str(m.get("chatId")), []).append(m)
+        now = time.time()
         for chat_id, rows in by_chat.items():
-            ingest.publish_history(PLATFORM, chat_id, [_history_entry(m) for m in rows])
+            entries = [_history_entry(m) for m in rows]
+            # The history WALK (backfill.py) archives its pages and nothing else; a page the operator asked for
+            # («load previous») also joins the conversation on screen. A chat both asked for goes both ways.
+            if _backfill.walker.owns(chat_id):
+                _backfill.walker.landed(chat_id, entries, name=str(rows[0].get("chatName") or ""),
+                                        is_group=bool(rows[0].get("isGroup")))
+                if now >= _widget_asked.get(chat_id, 0.0):
+                    continue
+            ingest.publish_history(PLATFORM, chat_id, entries)
     # The bridge also tags each message with its DIRECTION. An outbound one (the operator wrote from his own
     # phone, or zaelar sent it for him) must never reach triage or notification: it is not news and it is not a
     # decision. It goes to the conversation and marks that chat as seen.
@@ -118,6 +129,7 @@ async def _ingest_new() -> None:
 
 _contacts_inbox = None           # V2-714: msg.contacts subscription
 _chats_inbox = None              # msg.chats: one page of the chat list
+_widget_asked: dict[str, float] = {}   # chats whose scrollback the operator asked for, until when
 
 
 def _wa_person(c: dict) -> dict | None:
@@ -357,6 +369,7 @@ async def _drain_history() -> None:
             ingest.publish_history(PLATFORM, chat_id, [],
                                    error=(ack or {}).get("error") or "tu WhatsApp no me deja pedir el histórico")
             continue
+        _widget_asked[str(chat_id)] = time.time() + 180
         # Asked, not answered: nothing to publish. The phone replies with upserts that flow through _ingest_new
         # like any other message, so the thread fills itself on the next tick.
         logger.info(f"WhatsApp: pedidos {ack.get('requested')} mensajes anteriores de {chat_id}")
@@ -412,7 +425,8 @@ async def _loop() -> None:
                 await _drain_replies()
                 for what, fn in (("sends", _drain_sends),
                                  ("read marks", _drain_external_reads), ("history", _drain_history),
-                                 ("contacts", _drain_contacts), ("chats", _drain_chats)):
+                                 ("contacts", _drain_contacts), ("chats", _drain_chats),
+                                 ("history walk", _backfill.walker.tick)):
                     try:
                         await fn()
                     except Exception as e:  # noqa: BLE001

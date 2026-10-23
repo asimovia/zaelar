@@ -10,7 +10,10 @@
 #
 # Same widget-package contract as data.py: stdlib plus the `widgets` package, never `connectors`.
 #
+import logging
 import time
+
+_log = logging.getLogger("zaelar.mensajeria.chatlist")
 
 LIST_PLATFORMS = ("whatsapp", "telegram")
 RECENT_H = 72
@@ -28,6 +31,7 @@ def _loading(idx: dict) -> bool:
     try:
         return bool(idx.get("asked_at")) and time.time() - float(idx["asked_at"]) < ASK_TIMEOUT_S
     except (TypeError, ValueError):
+        _log.warning("chat list: unreadable ask time, treated as not loading")
         return False
 
 
@@ -48,7 +52,7 @@ def ask(db: dict, platform: str, *, older: bool = False) -> bool:
             if idx.get("answered_at") and time.time() - float(idx["answered_at"]) < REFRESH_S:
                 return False
         except (TypeError, ValueError):
-            pass
+            _log.warning("chat list: unreadable answer time, refreshing")
         before = None
     db.setdefault("pending_chats", []).append({"platform": platform, "before": before, "limit": PAGE})
     idx["asked_at"] = time.time()

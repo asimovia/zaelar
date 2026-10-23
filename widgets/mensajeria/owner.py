@@ -140,7 +140,7 @@ class _Owner:
             # already dealt with.
             for what, fn in (("outbound", self._apply_outbound), ("read", self._apply_external_reads),
                              ("history", self._apply_history), ("chats", self._apply_chats),
-                             ("queues", self._flush_queues)):
+                             ("media", self._sweep_media), ("queues", self._flush_queues)):
                 try:
                     fn()
                 except Exception as e:  # noqa: BLE001
@@ -206,6 +206,19 @@ class _Owner:
             msgstore.add_history(platform, ev.get("chatId"), ev.get("msgs") or [],
                                  complete=bool(ev.get("complete")),
                                  name=ev.get("name") or "", is_group=ev.get("isGroup"))
+
+    def _sweep_media(self) -> None:
+        """Once an hour: downloaded media older than the operator's window leaves this device (media.py)."""
+        from widgets import store as _wstore
+        from . import media as _media
+        db = msgstore.load()
+        if not _media.due(db):
+            return
+        res = _media.sweep(db, _wstore.data_dir("mensajeria"))
+        msgstore.save(db)
+        if res["files"] or res["messages"]:
+            logger.info(f"mensajeria: media older than {_media.days(db)} d removed — {res['files']} file(s), "
+                        f"{res['bytes'] / 1e6:.0f} MB, {res['messages']} message(s) now point to the phone")
 
     def _apply_chats(self) -> None:
         """One page of a platform's chat list. An error is kept on the index, so the list can say why it is

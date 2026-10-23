@@ -189,7 +189,9 @@ const logger = pino({ level: 'warn' });
 
 // Message queue for polling
 const messageQueue = [];
-const MAX_QUEUE_SIZE = 100;
+// ZAELAR-PATCH (history backfill): pages of 50 scrollback messages land here too, so the queue must hold
+// several polls' worth; at 100 a page could push out the live messages waiting beside it.
+const MAX_QUEUE_SIZE = 2000;
 // ZAELAR-PATCH (V2-546): chats the operator read on another device, drained by GET /reads. Kept SEPARATE from
 // messageQueue on purpose — a read receipt is not a message, and mixing them would put it through triage.
 const readQueue = [];
@@ -293,6 +295,16 @@ function rememberChat(id, patch) {
   }
   chatBook.set(id, next);
   saveChatBookSoon();
+}
+
+// ZAELAR-PATCH: a message timestamp as unix seconds. History-sync messages carry protobuf Longs ({low, high}),
+// which JSON turns into an object the Python side cannot read — it fell back to «now» and filed two-year-old
+// messages as just received.
+function tsNum(v) {
+  if (typeof v === 'number') return v;
+  if (v && typeof v.toNumber === 'function') return v.toNumber();
+  if (v && typeof v === 'object' && 'low' in v) return (v.low >>> 0) + (v.high >>> 0) * 4294967296;
+  return Number(v) || 0;
 }
 
 // Text and media kind of one message WITHOUT downloading anything: what a list row or a scrollback line needs.
@@ -423,7 +435,7 @@ async function startSocket() {
         const g = messageGist(msg);
         if (g.body || g.mediaType) {
           rememberChat(chatId, {
-            ts: Number(msg.messageTimestamp) || 0, preview: g.body, mediaType: g.mediaType, fromMe: !!msg.key.fromMe,
+            ts: tsNum(msg.messageTimestamp), preview: g.body, mediaType: g.mediaType, fromMe: !!msg.key.fromMe,
             lastId: msg.key.id, sender: msg.key.fromMe ? '' : (msg.pushName || ''),
             name: !chatId.endsWith('@g.us') && !msg.key.fromMe ? msg.pushName : undefined,
           });
@@ -635,7 +647,7 @@ async function startSocket() {
         quotedRemoteJid,
         hasQuotedMessage,
         botIds,
-        timestamp: msg.messageTimestamp,
+        timestamp: tsNum(msg.messageTimestamp),
         // ZAELAR-PATCH (V2-546): which WAY this message went. The Python side routes on it — "in" is triaged
         // and may interrupt the operator, "out" only joins the conversation and marks the chat as seen.
         direction: msg.key.fromMe ? 'out' : 'in',
@@ -670,6 +682,8 @@ async function startSocket() {
   // `fetchMessageHistory` — those messages never arrive as upserts, so «load previous» was only ever an
   // acknowledgement until this listened. On-demand messages are forwarded as `history:true` scrollback.
   sock.ev.on('messaging-history.set', ({ chats, contacts, messages, syncType }) => {
+    console.log(JSON.stringify({ event: 'history', syncType, chats: (chats || []).length,
+                                 messages: (messages || []).length }));
     (contacts || []).forEach(rememberContact);
     for (const c of chats || []) {
       const last = c.messages?.[0]?.message;
@@ -678,7 +692,7 @@ async function startSocket() {
         name: c.name || c.displayName || '', unread: typeof c.unreadCount === 'number' ? c.unreadCount : undefined,
         archived: c.archived === true ? true : undefined, pinned: c.pinned ? true : undefined,
         muted: c.muteEndTime && Number(c.muteEndTime) > Date.now() / 1000 ? true : undefined,
-        ts: Number(c.conversationTimestamp) || (last ? Number(last.messageTimestamp) : 0) || 0,
+        ts: tsNum(c.conversationTimestamp) || (last ? tsNum(last.messageTimestamp) : 0) || 0,
         preview: g ? g.body : undefined, mediaType: g ? g.mediaType : undefined,
         fromMe: last ? !!last.key?.fromMe : undefined, lastId: last?.key?.id, sender: last?.pushName || '',
       });
@@ -696,7 +710,7 @@ async function startSocket() {
         senderName: m.pushName || senderId.replace(/@.*/, ''),
         chatName: isGroup ? (groupSubjects.get(chatId) || chatId.split('@')[0]) : (chatBook.get(chatId)?.name || ''),
         isGroup, body: g.body || `[${g.mediaType} received]`, hasMedia: !!g.mediaType, mediaType: g.mediaType,
-        mediaUrls: [], mentionedIds: [], botIds: [], timestamp: m.messageTimestamp,
+        mediaUrls: [], mentionedIds: [], botIds: [], timestamp: tsNum(m.messageTimestamp),
         direction: m.key.fromMe ? 'out' : 'in', history: true,
       });
       if (messageQueue.length > MAX_QUEUE_SIZE) messageQueue.shift();
@@ -704,7 +718,7 @@ async function startSocket() {
   });
 
   sock.ev.on('chats.upsert', (rows) => {
-    for (const c of rows || []) rememberChat(c.id, { name: c.name || '', ts: Number(c.conversationTimestamp) || 0 });
+    for (const c of rows || []) rememberChat(c.id, { name: c.name || '', ts: tsNum(c.conversationTimestamp) });
   });
 
   sock.ev.on('chats.update', (updates) => {
@@ -790,7 +804,7 @@ app.get('/contacts', (req, res) => {
 // means the book has nothing older, and the book itself starts at pairing.
 app.get('/chats', (req, res) => {
   const before = Number(req.query.before) || Infinity;
-  const limit = Math.max(1, Math.min(100, Number(req.query.limit) || 20));
+  const limit = Math.max(1, Math.min(2000, Number(req.query.limit) || 20));
   const kind = String(req.query.kind || '');
   const rows = Array.from(chatBook.values())
     .filter((c) => (Number(c.ts) || 0) < before)
@@ -846,8 +860,10 @@ app.post('/history', async (req, res) => {
     // The phone answers ASYNCHRONOUSLY, as ordinary upserts of type 'append' — they land in messageQueue
     // through the handler above and reach the widget on the next poll. There is nothing to return here but
     // the acknowledgement that we asked.
+    // ZAELAR-PATCH: the phone expects the anchor's time in MILLISECONDS; callers speak unix seconds.
+    const ts = Number(oldestTs) || 0;
     await sock.fetchMessageHistory(count, { remoteJid: chatId, id: oldestId, fromMe: !!oldestFromMe },
-                                   Number(oldestTs) || 0);
+                                   ts && ts < 1e12 ? Math.round(ts * 1000) : ts);
     res.json({ available: true, requested: count });
   } catch (err) {
     res.status(500).json({ available: false, error: err.message });

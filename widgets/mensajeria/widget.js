@@ -387,6 +387,7 @@ function injectStyles(){
   .hb-msg .cxtag{font-size:11.5px;color:var(--hb-muted-2,#9aa7b8);font-weight:400}
   .hb-msg .trow.cxarch{opacity:.6}
   .hb-msg .cxmore{display:block;margin:8px auto 2px;font-size:12.5px;padding:5px 14px}
+  .hb-msg .snote{font-size:11.5px;color:var(--hb-muted-2,#9aa7b8);margin:4px 0 8px}
   .hb-msg .cxnote{text-align:center;color:var(--hb-muted-2,#9aa7b8);font-size:12px;padding:8px 0 2px}
 
   /* NARROW SCREENS (V2-559). MEASURED FIRST, and the measurement removed most of what was written here:
@@ -753,7 +754,10 @@ function audioPlayer(url){
 
 function mediaBlock(it){
   const list = it.media || [];
-  if(!list.length) return null;
+  if(!list.length){
+    // Downloaded once and later removed from this device by the media window: say where it still is.
+    return it.mediaGone ? el("span","mdoc",tt("media_gone", null, "Ya no está en este dispositivo — sigue en tu móvil")) : null;
+  }
   const w = el("div","mediaw");
   list.forEach(u=>{
     const url = String((u&&u.url)||"");
@@ -852,6 +856,20 @@ function settingsPanel(platforms, data, ctx, rerender){
     });
     wrap.appendChild(box);
   }
+
+  // How long downloaded media stays on this device (widgets/mensajeria/media.py). Older pictures, videos and
+  // voice notes leave this device and stay on the phone; the message keeps saying what was there.
+  wrap.appendChild(el("div","stitle",tt("media_keep", null, "Multimedia en este dispositivo")));
+  const mseg = el("div","seg");
+  const cur = Number(data.media_days == null ? 14 : data.media_days);
+  [[7,tt("media_7", null, "7 días")],[14,tt("media_14", null, "14 días")],[30,tt("media_30", null, "30 días")],
+   [90,tt("media_90", null, "90 días")],[0,tt("media_always", null, "Siempre")]].forEach(([d,label])=>{
+    const b = el("button","segbtn"+(cur===d?" active":""), label);
+    b.onclick=()=>{ if(cur!==d) ctx.action("set_media_days", {days: d}); };
+    mseg.appendChild(b);
+  });
+  wrap.appendChild(mseg);
+  wrap.appendChild(el("div","snote",tt("media_keep_hint", null, "Lo más antiguo se borra de aquí; sigue en tu móvil.")));
 
   const muted = data.muted_channels||[];
   if(muted.length){
