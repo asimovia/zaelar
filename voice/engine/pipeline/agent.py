@@ -69,6 +69,14 @@ def _endpointing_opts() -> dict:
     return {"mode": "dynamic", "min_delay": lo, "max_delay": max(lo, hi)}
 
 
+def _session_start_opts() -> dict:
+    """Extra `AgentSession.start` options. A MEDIATED instance holds no LiveKit key (see `make_server`), and the SDK
+    uploads a session's recording, traces and logs to the provider's observability endpoint signed with that key:
+    every session would end in a 401 and an ERROR. So it does not record. Elsewhere the SDK default stands."""
+    from nucleo import llm_egress
+    return {"record": False} if llm_egress.mediated() else {}
+
+
 async def entrypoint(ctx: JobContext) -> None:
     setup_console_logging()
     await ctx.connect()
@@ -410,7 +418,7 @@ async def entrypoint(ctx: JobContext) -> None:
     from .zaelar_agent import ZaelarAgent
 
     agent = ZaelarAgent(instructions=SETTINGS.system_prompt + " " + _lang.reply_directive)
-    await session.start(room=ctx.room, agent=agent)
+    await session.start(room=ctx.room, agent=agent, **_session_start_opts())
     logger.info("Session started.")
     from .session_health import on_session_alive
     on_session_alive()   # a session that just STARTED supersedes any recorded death

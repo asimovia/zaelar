@@ -262,3 +262,12 @@ def test_the_voice_worker_registers_through_egress(mediated, monkeypatch):
     agent.make_server()
     assert seen["ws_url"] == "wss://egress.example/livekit"
     assert seen["api_key"] == TOKEN and seen["api_secret"] == TOKEN, "the worker holds no LiveKit secret"
+
+
+def test_a_mediated_voice_session_does_not_record_to_the_provider(mediated, monkeypatch):
+    """Recording uploads are signed with the LiveKit key a mediated instance does not hold: each would be a 401."""
+    from nucleo import llm_egress
+    from voice.engine.pipeline import agent
+    assert agent._session_start_opts() == {"record": False}
+    monkeypatch.setattr(llm_egress, "mediated", lambda: False)
+    assert agent._session_start_opts() == {}, "a self-hosted instance keeps the SDK default"
