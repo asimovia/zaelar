@@ -238,6 +238,7 @@ def search(query: str, k: int = _MAX_RESULTS, mode: str = "answer") -> dict:
                 r["ai"] = bool(r.get("ai")) or src in ("perplexity", "tavily", "openai", "gemini")
                 _meter_search(src)
                 note_success()
+                _answered(src)
                 _remember_answer(q if mode == "answer" else f"{mode}:{q}", r)
                 return r
             _why.append(f"{src}: sin resultados")
@@ -320,17 +321,55 @@ def _within(wall_s: float, fn, *args):
 # ── A LASTING REFUSAL SETS THE INDEX ASIDE (2026-10-23) ──────────────────────────────────────────────────────
 # A quota refusal, a captcha or a refused key does not clear in the next second, yet every search asked the same
 # index again first and paid its refusal before moving on (measured: Gemini on a free-tier key answered 429 from
-# the 7th call of a minute on). Such an index is skipped for `_ASIDE_S`, then asked again — a quota that reset
-# comes back on its own. A network blip or an empty answer is not lasting and sets nothing aside. The keyless last
-# resort (`ddg`) is always appended by `_order`, aside or not: an empty chain is worse than one more try.
+# the 7th call of a minute on). Such an index is skipped for a window, then asked again — a quota that reset comes
+# back on its own. How long:
+#   1. the wait the PROVIDER names, when it names one (`retryDelay`, `Retry-After`, «try again in 20s»);
+#   2. an account with no funds left does not refill by itself: `_NO_FUNDS_S`;
+#   3. otherwise `_ASIDE_S`, doubled on each refusal in a row (an index still refusing after its window is
+#      probably refusing for longer) up to `_ASIDE_MAX_S`; one answer clears the count.
+# A network blip or an empty answer is not lasting and sets nothing aside. The keyless last resort (`ddg`) is always
+# appended by `_order`, aside or not: an empty chain is worse than one more try. The memory is per process: a
+# restart asks every index again, once.
 _ASIDE_S = float(os.getenv("WEBSEARCH_ASIDE_S", "120"))
+_ASIDE_MAX_S = float(os.getenv("WEBSEARCH_ASIDE_MAX_S", "3600"))
+_NO_FUNDS_S = float(os.getenv("WEBSEARCH_NO_FUNDS_S", str(6 * 3600)))
 _LASTING = ("quota", "captcha", "credential")
+#: The wording providers use for an EMPTY WALLET (HTTP 402, billing pages) — not a rate limit that resets.
+#: Not «billing»: Gemini's per-minute 429 says «check your plan and billing details».
+_NO_FUNDS = ("http 402", "no api credits", "credits remaining", "out of funds", "insufficient balance",
+             "insufficient_quota", "payment required")
+_WAIT_RE = _re.compile(r'(?:retry[-_ ]?after|retrydelay|try again in)["\s:=]*"?(\d+(?:\.\d+)?)\s*(ms|s|m|h)?',
+                       _re.I)
 _aside: dict[str, float] = {}
+_strikes: dict[str, int] = {}
+
+
+def _named_wait(detail: str) -> float:
+    """Seconds the provider said to wait, 0 when it did not say. Pure."""
+    m = _WAIT_RE.search(detail or "")
+    if not m:
+        return 0.0
+    n, unit = float(m.group(1)), (m.group(2) or "s").lower()
+    return n / 1000 if unit == "ms" else n * {"s": 1, "m": 60, "h": 3600}[unit]
+
+
+def _aside_window(src: str, detail: str) -> float:
+    named = _named_wait(detail)
+    if named > 0:
+        return min(max(named, 30.0), _NO_FUNDS_S)
+    if any(n in (detail or "").lower() for n in _NO_FUNDS):
+        return _NO_FUNDS_S
+    return min(_ASIDE_S * 2 ** (_strikes.get(src, 1) - 1), _ASIDE_MAX_S)
 
 
 def _set_aside_if_lasting(src: str, detail: str, now: float | None = None) -> None:
-    if _classify_failure(detail) in _LASTING:
-        _aside[src] = (_time.time() if now is None else now) + _ASIDE_S
+    if _classify_failure(detail) in _LASTING or any(n in (detail or "").lower() for n in _NO_FUNDS):
+        _strikes[src] = _strikes.get(src, 0) + 1
+        _aside[src] = (_time.time() if now is None else now) + _aside_window(src, detail)
+
+
+def _answered(src: str) -> None:
+    _strikes.pop(src, None)
 
 
 def set_aside(now: float | None = None) -> dict[str, float]:
