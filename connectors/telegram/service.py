@@ -441,6 +441,12 @@ async def _drain_fetch() -> None:
               f"{hours:.0f} h. Díselo al operador tal cual.")
 
 
+async def _walk_tick() -> None:
+    """The history walk (backfill.py): one page per tick, on its own task."""
+    from connectors.telegram import backfill as _backfill
+    await _backfill.walker.tick(_client)
+
+
 def _dialog_row(dialog) -> dict:
     """One dialog in the platform-agnostic shape of `ingest.publish_chats`."""
     msg = dialog.message
@@ -740,7 +746,8 @@ async def _loop() -> None:
         for what, fn in (("sends", _drain_sends), ("outbox", _drain_outbox),
                          ("read marks", _drain_read_marks),
                          ("history", _drain_history), ("fetch", _drain_fetch),
-                         ("contacts", _drain_contacts), ("chats", _drain_chats)):
+                         ("contacts", _drain_contacts), ("chats", _drain_chats),
+                         ("history walk", _walk_tick)):
             try:
                 await fn()
             except Exception as e:  # noqa: BLE001

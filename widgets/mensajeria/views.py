@@ -408,6 +408,20 @@ def _search_archive_answer(payload: dict) -> dict:
                   f"Para indexar el pasado de UN chat: load_more con ese chat (o fetch_now con platform en "
                   f"telegram/email) y repite esta búsqueda")
     result = {"matches": matches, "count": len(matches), "archive_since": coverage, "detail": detail}
+    # How each platform's PAST reaches the archive (connectors/messaging/history.py): WhatsApp and Telegram are
+    # walked back once, the mailbox is asked on demand. Without it, «nothing found» over a walk still running
+    # reads as «it never happened».
+    try:
+        from connectors.messaging import history as _history
+        result["history"] = _history.coverage()
+        walking = [f"{p}: {c.get('done', 0)} de {c.get('started', 0)} chats ya completos"
+                   for p, c in result["history"].items() if c.get("mode") == "walk"]
+        if not matches and walking:
+            result["detail"] += ("; el historial de " + ", ".join(walking) + " (se sigue bajando en segundo "
+                                 "plano); el correo no se copia: se busca en el buzón cuando hace falta")
+    except Exception as e:  # noqa: BLE001 — the coverage line is a courtesy, never a reason to fail the answer
+        import logging
+        logging.getLogger("zaelar.mensajeria.views").warning(f"archive coverage unavailable: {type(e).__name__}")
     # F2 — the answered state: «¿lo llegamos a contestar?» is a JOIN, never a memory. On request, the
     # newest INBOUND match is checked for the first outgoing message in the same chat after its instant.
     if payload.get("check_reply") and rows:

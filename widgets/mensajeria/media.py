@@ -11,8 +11,11 @@
 #
 # Same widget-package contract as data.py: stdlib plus the `widgets` package.
 #
+import logging
 import os
 import time
+
+_log = logging.getLogger("zaelar.mensajeria.media")
 
 DEFAULT_DAYS = 14
 CHOICES = (7, 14, 30, 90, 0)          # 0 = keep forever
@@ -25,6 +28,7 @@ def days(db: dict) -> int:
     try:
         d = int(db.get("media_days", DEFAULT_DAYS))
     except (TypeError, ValueError):
+        _log.warning("media window unreadable, using the default")
         return DEFAULT_DAYS
     return d if d in CHOICES else DEFAULT_DAYS
 
@@ -34,6 +38,7 @@ def set_days(db: dict, value) -> int | None:
     try:
         d = int(value)
     except (TypeError, ValueError):
+        _log.info(f"media window: {value!r} is not a number of days")
         return None
     if d not in CHOICES:
         return None
@@ -46,6 +51,7 @@ def due(db: dict, now: float | None = None) -> bool:
     try:
         return (now or time.time()) - float(db.get("media_swept_at") or 0) >= SWEEP_EVERY_S
     except (TypeError, ValueError):
+        _log.warning("media sweep time unreadable, sweeping now")
         return True
 
 
@@ -77,7 +83,8 @@ def sweep(db: dict, folder: str, now: float | None = None) -> dict:
         cutoff = now - keep_days * 86400
         try:
             names = os.listdir(folder)
-        except OSError:
+        except OSError as e:
+            _log.warning(f"media sweep: cannot list the media folder: {e}")
             names = []
         for name in names:
             if not name.startswith(PREFIXES):
@@ -89,7 +96,8 @@ def sweep(db: dict, folder: str, now: float | None = None) -> dict:
                     os.remove(path)
                     gone.add(name)
                     freed += st.st_size
-            except OSError:
+            except OSError as e:
+                _log.warning(f"media sweep: {name} not removed: {e}")
                 continue
     touched = 0
     for it in db.get("items") or []:

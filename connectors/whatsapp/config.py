@@ -70,5 +70,6 @@ def poll_interval() -> float:
 
 def backfill_enabled() -> bool:
     """Walk every chat back to its beginning into the communications archive (connectors/whatsapp/backfill.py).
-    On by default; `WA_BACKFILL=0` turns it off (power-user fallback)."""
-    return os.getenv("WA_BACKFILL", "1") != "0"
+    The policy is shared with every messaging platform: `connectors/messaging/history.py`."""
+    from connectors.messaging import history
+    return history.walk_enabled("whatsapp")

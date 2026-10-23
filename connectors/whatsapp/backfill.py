@@ -18,7 +18,7 @@ import time
 
 from loguru import logger
 
-from connectors.messaging import archive
+from connectors.messaging import archive, history
 from connectors.whatsapp import client, config
 
 PLATFORM = "whatsapp"
@@ -27,7 +27,7 @@ WAIT_S = 40               # how long a page may take before the request counts a
 GAP_S = 4                 # between requests: one walk, paced like a person scrolling
 OWN_S = 180               # scrollback for a chat asked this recently is the walk's, not the widget's
 RELIST_S = 600            # the chat book is re-read this often for chats that appeared since
-MAX_PER_CHAT = 20000      # a chat holding this many messages is left where it is
+MAX_PER_CHAT = history.MAX_PER_CHAT
 SILENT_BEFORE_PAUSE = 3   # this many unanswered first requests with no answer anywhere = the phone is away
 PAUSE_S = 1800
 
