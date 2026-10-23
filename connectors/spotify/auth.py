@@ -194,7 +194,11 @@ def _refresh(tokens: dict) -> dict:
         return {}
     if r.status_code >= 400:
         logger.warning(f"refresh Spotify {r.status_code}: {r.text[:120]}")
-        return {}
+        try:
+            revoked = (r.json() or {}).get("error") == "invalid_grant"
+        except Exception:  # noqa: BLE001 — an unreadable error body is a plain failure
+            revoked = False
+        return {"revoked": True} if revoked else {}
     tok = r.json()
     now = int(time.time())
     updated = dict(tokens)
@@ -213,6 +217,12 @@ def access_token() -> str:
         return ""
     if int(time.time()) >= int(tokens.get("expires_at", 0)) - _REFRESH_SKEW:
         updated = _refresh(tokens)
+        if updated.get("revoked"):
+            # The grant is gone for good (revoked or expired): dead tokens would keep the card «connected»
+            # while every call fails; dropping them makes it offer to connect again.
+            logger.warning("refresh Spotify: grant revoked, account disconnected")
+            disconnect()
+            return ""
         if updated:
             data["tokens"] = updated
             _save(data)

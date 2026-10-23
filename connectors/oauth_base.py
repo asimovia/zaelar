@@ -316,4 +316,11 @@ def access_token(m, provider_id: str, key: str, acct: dict) -> str | None:
     if "access_token" in tok:
         store_tokens(m, key, acct.get("tier") or "", tok)
         return tok["access_token"]
+    if tok.get("error") == "invalid_grant":
+        # The grant is gone for good (revoked by the person, expired, password changed): keeping the dead tokens
+        # leaves the card saying «connected» while every call fails. Dropping them makes the card offer to
+        # connect again, which is the only thing that can fix it.
+        m.logger.warning(f"{m.ENV_PREFIX.lower()} oauth grant revoked ({provider_id}): account disconnected")
+        forget(m, key)
+        return None
     return acct.get("access_token") or None

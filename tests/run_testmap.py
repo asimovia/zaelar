@@ -2558,6 +2558,12 @@ DOMAINS: list[dict] = [
         {"id": "3.115", "title": "An isolated workspace holds its own OAuth tokens — a use-case sandbox wrote a reminder "
                                   "into the operator's real Google Calendar (V2-781, 2026-10-09)",
             "ch": UNIT, "paths": ["tests/connectors/unit/test_an_isolated_workspace_holds_its_own_oauth_tokens.py"]},
+        {"id": "3.116", "title": "An OAuth app this install does not hold is used through a broker; a held client never leaves",
+            "ch": UNIT, "paths": ["tests/infrastructure/unit/test_an_oauth_app_held_by_a_broker.py"]},
+        {"id": "3.117", "title": "A hosted Spotify login returns to the origin the browser is on, not to loopback",
+            "ch": UNIT, "paths": ["tests/infrastructure/unit/test_a_hosted_spotify_login_returns_to_its_own_origin.py"]},
+        {"id": "3.118", "title": "A refresh answered with invalid_grant disconnects the account so the card offers to connect again",
+            "ch": UNIT, "paths": ["tests/infrastructure/unit/test_a_revoked_grant_disconnects_the_account.py"]},
         {"id": "3.94", "title": "El reset nunca borra la base bajo un servidor vivo",
             "ch": UNIT, "paths": ["tests/infrastructure/unit/config/test_a_reset_never_deletes_under_a_live_server.py"]},
         # V2-627 (2026-09-09): y AUN ASÍ hacían falta DOS pulsaciones. Los dos arreglos del nodo de arriba son
@@ -4278,6 +4284,10 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ['tests/search/unit/test_a_grounded_answer_has_room_to_finish.py']},
         {"id": "2.581", "title": "A cut answer is not an answer: a `MAX_TOKENS` stump is dropped and the fact chain asks the next index, so the reader never composes from half a sentence (quick-fact-opening-hours ES)",
             "ch": UNIT, "paths": ['tests/search/unit/test_a_cut_answer_asks_the_next_index.py']},
+        {"id": "2.583", "title": "A rung that hangs or refuses for a lasting reason does not hold the fact chain: past its wall clock the next index is asked (a grounded call took 204 s with an 18 s httpx timeout), and a quota refusal, captcha or refused key sets that index aside for a window instead of being paid again on every search",
+            "ch": UNIT, "paths": ['tests/search/unit/test_a_lasting_refusal_or_a_hang_does_not_hold_the_chain.py']},
+        {"id": "2.584", "title": "A Google result behind Google's own redirect (`/goto?url=`, `/url?q=`) is still a row, rewritten to the page it lands on; its snippet is the description, not the header; the weather card reads the unit it shows (zero rows on 12/12 fact questions, «65°C» for an 18 °C Barcelona)",
+            "ch": UNIT, "paths": ['tests/search/unit/test_a_google_result_behind_a_redirect_is_still_a_result.py']},
         {"id": "2.582", "title": "An answer with no ranked pages is not an empty search: the composing pass is not told «no ha devuelto nada útil… ofrécete con el navegador», the line that turned a fact into a Brain Worker on his «sí»",
             "ch": UNIT, "paths": ['tests/agent_headless/unit/flash/test_an_answer_without_pages_is_not_an_empty_search.py']},
         # direct flight and a price he asked about (2026-10-14): other routes on the sheet, a Buy ping instead of the answer
@@ -5354,6 +5364,8 @@ DOMAINS: list[dict] = [
         # (a bare ternary read once while the tree was built, and its home inside `.fw-new`, which a successful
         # send hides by switching tabs). And an unreachable list was painted as "nothing sent yet" — not a
         # smaller truth, a different and false one.
+        {"id": "4.250", "title": "The feedback button is never hidden under another layer",
+            "ch": UNIT, "paths": ["tests/browser/unit/feedback/test_the_feedback_button_is_never_hidden.py"]},
         {"id": "4.33", "title": "Un envío de feedback que falla lo DICE (y una lista inalcanzable no es una "
                                 "lista vacía) · una sola lectura para móvil y escritorio",
             "ch": UNIT,
