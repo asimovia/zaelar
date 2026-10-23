@@ -106,3 +106,34 @@ def test_restart_keeps_the_bridge_and_stop_ends_it():
     assert "7880" in kept and "WA_BRIDGE_PORT" in kept, "livekit and the bridge both hold a session worth keeping"
     body = src[src.index("def cmd_stop("):src.index("def _venv_python(")]
     assert "port in KEPT_ON_RESTART" in body, "the keep decision reads the set, not a hardcoded livekit port"
+
+
+def test_a_bridge_running_OLD_code_is_retired_and_replaced(monkeypatch, no_spawn, tmp_path):
+    """Kept warm across restarts, the bridge also outlived every update of bridge.js: /health reports the hash
+    of the code it runs, and a hash that is not the file's means the update would never take effect."""
+    from connectors.whatsapp import bridge_proc, client
+    (tmp_path / "bridge.js").write_text("// the new code\n")
+    state = {"up": True, "retired": 0}
+
+    async def _health():
+        if not state["up"]:
+            raise ConnectionError("refused")
+        return {"status": "connected", "scriptHash": "0000000000000000"}
+
+    async def _retire(self):
+        state["retired"] += 1
+        state["up"] = False
+    monkeypatch.setattr(client, "health", _health)
+    monkeypatch.setattr(bridge_proc._Bridge, "_retire_stale", _retire)
+    with pytest.raises(_Spawned):
+        asyncio.run(bridge_proc._Bridge().start())
+    assert state["retired"] == 1
+
+    state.update(up=True, retired=0)
+    current = bridge_proc._Bridge.disk_hash()
+
+    async def _same():
+        return {"status": "connected", "scriptHash": current}
+    monkeypatch.setattr(client, "health", _same)
+    asyncio.run(bridge_proc._Bridge().start())             # same code: reused, nothing retired or spawned
+    assert state["retired"] == 0

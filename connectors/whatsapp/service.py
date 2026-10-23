@@ -117,6 +117,7 @@ async def _ingest_new() -> None:
 
 
 _contacts_inbox = None           # V2-714: msg.contacts subscription
+_chats_inbox = None              # msg.chats: one page of the chat list
 
 
 def _wa_person(c: dict) -> dict | None:
@@ -177,6 +178,40 @@ async def _drain_contacts() -> None:
             logger.warning(err)
         ingest.publish_contacts("whatsapp", people, groups, partial=partial, error=err)
         logger.info(f"WhatsApp contactos → {len(people)} personas, {len(groups)} grupos (parcial={partial})")
+
+
+def _chat_row(c: dict) -> dict | None:
+    """A chat-book row in the platform-agnostic shape of `ingest.publish_chats`."""
+    cid = str(c.get("id") or "").strip()
+    if not cid:
+        return None
+    return {"chatId": cid, "name": str(c.get("name") or cid.split("@")[0]),
+            "kind": "group" if c.get("isGroup") else "person", "unread": int(c.get("unread") or 0),
+            "ts": float(c.get("ts") or 0), "preview": str(c.get("preview") or ""),
+            "mediaType": str(c.get("mediaType") or ""), "fromMe": bool(c.get("fromMe")),
+            "archived": bool(c.get("archived")), "pinned": bool(c.get("pinned")), "muted": bool(c.get("muted")),
+            "lastId": str(c.get("lastId") or "")}
+
+
+async def _drain_chats() -> None:
+    """Serve one page of the chat list. WhatsApp keeps no server-side list a linked device can page through:
+    the bridge answers from the book it has been told since pairing (see `client.get_chats`)."""
+    if _chats_inbox is None:
+        return
+    for order in _chats_inbox.drain():
+        before = order.get("before")
+        try:
+            limit = max(1, min(100, int(order.get("limit") or 20)))
+            got = await client.get_chats(before, limit)
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"WhatsApp chat list: {e}")
+            ingest.publish_chats(PLATFORM, [], before=before, error=str(e))
+            continue
+        rows = [r for c in got.get("chats") or [] if (r := _chat_row(c))]
+        nxt = min((r["ts"] for r in rows if r["ts"]), default=None)
+        ingest.publish_chats(PLATFORM, rows, before=before, next_before=nxt,
+                             complete=bool(got.get("complete")))
+        logger.info(f"WhatsApp: chat list page → {len(rows)} of {got.get('known')} known")
 
 
 async def _drain_reads() -> None:
@@ -311,7 +346,9 @@ async def _drain_history() -> None:
             continue
         try:
             ack = await client.fetch_history(str(chat_id), str(oldest), float(order.get("beforeTs") or 0),
-                                             int(order.get("limit") or 30))
+                                             int(order.get("limit") or 30),
+                                             oldest_from_me=bool(order.get("beforeFromMe")),
+                                             include_anchor=bool(order.get("includeAnchor")))
         except Exception as e:  # noqa: BLE001
             logger.warning(f"WhatsApp historial de {chat_id}: {e}")
             ingest.publish_history(PLATFORM, chat_id, [], error=str(e))
@@ -334,10 +371,12 @@ def _note(text: str) -> None:
 
 
 async def _loop() -> None:
-    global _mark_inbox, _reply_inbox, _send_inbox, _history_inbox, _contacts_inbox
+    global _mark_inbox, _reply_inbox, _send_inbox, _history_inbox, _contacts_inbox, _chats_inbox
     _set_status("starting", None)
     if _contacts_inbox is None:
         _contacts_inbox = ingest.ContactsInbox(PLATFORM)   # V2-714: the address book
+    if _chats_inbox is None:
+        _chats_inbox = ingest.ChatsInbox(PLATFORM)         # the chat list
     if ingest.v2_enabled() and _mark_inbox is None:
         _mark_inbox = ingest.MarkReadInbox(PLATFORM)     # subscription in THIS loop (server) -> direct delivery
         _reply_inbox = ingest.ReplyInbox(PLATFORM)       # V2-521: dictated replies, same delivery path
@@ -373,7 +412,7 @@ async def _loop() -> None:
                 await _drain_replies()
                 for what, fn in (("sends", _drain_sends),
                                  ("read marks", _drain_external_reads), ("history", _drain_history),
-                                 ("contacts", _drain_contacts)):
+                                 ("contacts", _drain_contacts), ("chats", _drain_chats)):
                     try:
                         await fn()
                     except Exception as e:  # noqa: BLE001

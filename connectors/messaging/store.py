@@ -366,6 +366,11 @@ def apply_external_read(platform: str, chat_id, upto_ts: float | None = None, id
     db = load()
     cleared = _clear_chat_items(db, platform, chat_id, upto_ts=upto_ts, ids=ids)
     marked = _thread().mark_read(db, platform, chat_id, upto_ts=upto_ts, ids=ids)
+    # The chat list's counter came from the app; a whole-chat read there zeroes it here too.
+    row = (((db.get("chat_index") or {}).get(platform) or {}).get("rows") or {}).get(str(chat_id))
+    if row and upto_ts is None and not ids and row.get("unread"):
+        row["unread"] = 0
+        marked = marked or 1
     if not (cleared or marked):
         return db
     db["updated"] = _now()
@@ -430,6 +435,72 @@ def take_pending_history(platform: str | None = None) -> list[dict]:
         db["pending_history"] = rest
         save(db)
     return mine
+
+
+#: Rows kept per platform in the chat index. Enough for months of an active account; the oldest go first.
+CHAT_INDEX_MAX = 600
+_CHAT_FIELDS = ("name", "kind", "unread", "ts", "preview", "mediaType", "fromMe", "archived", "pinned", "muted",
+                "forum", "lastId")
+
+
+def add_chats(platform: str, ev: dict) -> dict:
+    """Fold one page of a connector's chat list into `chat_index[platform]`.
+
+    The cursor only moves when the page answered IS the deepest one asked for: a refresh of the first page (on
+    entering the platform again) must not throw away the pages the operator already walked back through."""
+    db = load()
+    idx = db.setdefault("chat_index", {}).setdefault(platform, {})
+    rows = idx.setdefault("rows", {})
+    incoming = list(ev.get("chats") or [])
+    if ev.get("before") is None and not idx.get("archive_seeded"):
+        # Once per platform: what the archive already holds fills in what the connector can no longer list.
+        # Connector rows go AFTER, so a name or counter the app sent wins over the archive's.
+        try:
+            from connectors.messaging import archive
+            incoming = archive.chats(platform) + incoming
+            idx["archive_seeded"] = True
+        except Exception as e:  # noqa: BLE001
+            import logging
+            logging.getLogger("zaelar.messaging.store").warning(f"chat list archive seed: {type(e).__name__}")
+    for c in incoming:
+        cid = str(c.get("chatId") or "").strip()
+        if not cid:
+            continue
+        row = dict(rows.get(cid) or {})
+        newer = float(c.get("ts") or 0) >= float(row.get("ts") or 0)
+        for k in _CHAT_FIELDS:
+            if k not in c or c[k] is None or c[k] == "":
+                continue
+            if k in ("ts", "preview", "mediaType", "fromMe", "lastId") and not newer:
+                continue                     # the last message only moves forward
+            row[k] = c[k]
+        row["chatId"] = cid
+        rows[cid] = row
+    if len(rows) > CHAT_INDEX_MAX:
+        keep = sorted(rows.values(), key=lambda r: -float(r.get("ts") or 0))[:CHAT_INDEX_MAX]
+        idx["rows"] = {r["chatId"]: r for r in keep}
+    before, cursor = ev.get("before"), idx.get("cursor")
+    if (before is None and cursor is None) or (before is not None and before == cursor):
+        idx["cursor"] = ev.get("nextBefore")
+        idx["complete"] = bool(ev.get("complete"))
+    elif before is None and ev.get("complete"):
+        idx["complete"] = True
+    idx["error"] = str(ev.get("error") or "")
+    idx["answered_at"] = time.time()
+    idx.pop("asked_at", None)
+    db["updated"] = _now()
+    return save(db)
+
+
+def take_pending_chats() -> list[dict]:
+    """Return (and REMOVE) chat-list page orders: {platform, before, limit}. Enqueued by the widget, published to
+    `msg.chats` by the owner, served by that platform's connector."""
+    db = load()
+    pending = db.get("pending_chats", [])
+    if pending:
+        db["pending_chats"] = []
+        save(db)
+    return list(pending)
 
 
 def take_pending_fetch() -> list[dict]:

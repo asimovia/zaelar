@@ -5364,6 +5364,11 @@ DOMAINS: list[dict] = [
         # (a bare ternary read once while the tree was built, and its home inside `.fw-new`, which a successful
         # send hides by switching tabs). And an unreachable list was painted as "nothing sent yet" — not a
         # smaller truth, a different and false one.
+        {"id": "4.251", "title": "A messaging platform opens on its chat list: recent window, load more, open from it",
+            "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_a_platform_opens_on_its_chat_list.py",
+                                  "tests/connectors/unit/messaging/test_a_connector_pages_its_chat_list.py"]},
+        {"id": "4.252", "title": "The chat list paints, filters by kind and name, loads more and opens a chat (RENDERED)",
+            "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_the_chat_list_paints_filters_and_loads_more.py"]},
         {"id": "4.250", "title": "The feedback button is never hidden under another layer",
             "ch": UNIT, "paths": ["tests/browser/unit/feedback/test_the_feedback_button_is_never_hidden.py"]},
         {"id": "4.33", "title": "Un envío de feedback que falla lo DICE (y una lista inalcanzable no es una "

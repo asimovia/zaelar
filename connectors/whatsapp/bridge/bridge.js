@@ -237,6 +237,94 @@ function rememberContact(c) {
   }
   contactBook.set(c.id, next);
 }
+// ZAELAR-PATCH (chat list): the CHATS this device knows, for a list of conversations that does not depend on
+// what triage kept. WhatsApp tells a linked device its chats ONCE, in the history sync right after pairing
+// (`messaging-history.set`); after that it only reports changes. So the book is persisted next to the session:
+// a bridge restart that started empty would show an empty list until each chat happened to move again.
+// Groups are also seeded from `groupFetchAllParticipating` on connect, which WhatsApp does answer at any time.
+const CHAT_BOOK_FILE = path.join(SESSION_DIR, 'zaelar-chats.json');
+const chatBook = new Map();
+try {
+  for (const r of JSON.parse(readFileSync(CHAT_BOOK_FILE, 'utf8')) || []) {
+    if (r && r.id) chatBook.set(r.id, r);
+  }
+} catch {}
+let chatBookTimer = null;
+let groupsSeeded = false;
+
+function saveChatBookSoon() {
+  if (chatBookTimer) return;
+  chatBookTimer = setTimeout(() => {
+    chatBookTimer = null;
+    try { writeFileSync(CHAT_BOOK_FILE, JSON.stringify(Array.from(chatBook.values()))); }
+    catch (err) { console.error('[bridge] chat book not saved:', err.message); }
+  }, 2000);
+}
+
+function isListedChat(id) {
+  return !!id && !id.includes('status') && !id.endsWith('@newsletter') && !id.endsWith('@broadcast');
+}
+
+// `unread` is ABSOLUTE (history sync, read marks); `unreadDelta` is what a live message adds.
+function rememberChat(id, patch) {
+  if (!isListedChat(id)) return;
+  const prev = chatBook.get(id) || { id, isGroup: id.endsWith('@g.us') };
+  const next = { ...prev };
+  for (const k of ['name', 'archived', 'pinned', 'muted']) {
+    if (patch[k] !== undefined && patch[k] !== null && patch[k] !== '') next[k] = patch[k];
+  }
+  if (typeof patch.unread === 'number') next.unread = Math.max(0, patch.unread);
+  if (typeof patch.unreadDelta === 'number') next.unread = Math.max(0, (next.unread || 0) + patch.unreadDelta);
+  // The last message only moves FORWARD: a history page arriving after a live message must not repaint the row
+  // with something older.
+  const ts = Number(patch.ts) || 0;
+  if (ts && ts >= (Number(prev.ts) || 0)) {
+    next.ts = ts;
+    if (patch.preview !== undefined) next.preview = String(patch.preview || '').slice(0, 160);
+    if (patch.mediaType !== undefined) next.mediaType = patch.mediaType || '';
+    if (patch.fromMe !== undefined) next.fromMe = !!patch.fromMe;
+    if (patch.lastId) {
+      // The whole last message, so a chat opened from the list can show it: the phone answers a history
+      // request with what came BEFORE the anchor, never the anchor itself. Not sent with /chats pages.
+      next.lastId = patch.lastId;
+      next.last = { body: String(patch.preview || '').slice(0, 4000), mediaType: patch.mediaType || '',
+                    fromMe: !!patch.fromMe, sender: patch.sender || '', ts };
+    }
+  }
+  chatBook.set(id, next);
+  saveChatBookSoon();
+}
+
+// Text and media kind of one message WITHOUT downloading anything: what a list row or a scrollback line needs.
+function messageGist(msg) {
+  const c = getMessageContent(msg);
+  const text = c.conversation || c.extendedTextMessage?.text || '';
+  for (const [key, kind] of [['imageMessage', 'image'], ['videoMessage', 'video'], ['pttMessage', 'ptt'],
+                             ['audioMessage', 'audio'], ['documentMessage', 'document'],
+                             ['stickerMessage', 'sticker']]) {
+    if (c[key]) {
+      const mediaType = key === 'audioMessage' && c[key].ptt ? 'ptt' : kind;
+      return { body: c[key].caption || '', mediaType };
+    }
+  }
+  return { body: text, mediaType: '' };
+}
+
+async function seedGroups() {
+  if (groupsSeeded || !sock) return;
+  try {
+    const all = await sock.groupFetchAllParticipating();
+    for (const g of Object.values(all || {})) {
+      if (!g?.id) continue;
+      if (g.subject) groupSubjects.set(g.id, g.subject);
+      rememberChat(g.id, { name: g.subject || '' });
+    }
+    groupsSeeded = true;
+  } catch (err) {
+    console.error('[bridge] group list not fetched:', err.message);
+  }
+}
+
 async function groupSubject(chatId) {
   if (groupSubjects.has(chatId)) return groupSubjects.get(chatId);
   try {
@@ -306,6 +394,7 @@ async function startSocket() {
       connectionState = 'connected';
       currentQR = null;  // ZAELAR-PATCH: clear the QR once paired
       console.log('✅ WhatsApp connected!');
+      seedGroups();      // ZAELAR-PATCH (chat list)
       if (PAIR_ONLY) {
         console.log('✅ Pairing complete. Credentials saved.');
         // Give Baileys a moment to flush creds, then exit cleanly
@@ -328,6 +417,18 @@ async function startSocket() {
       if (!msg.message) continue;
 
       const chatId = msg.key.remoteJid;
+      // ZAELAR-PATCH (chat list): every real message moves its chat, groups and our own included — the filters
+      // below decide what is FORWARDED, not what the operator's chat list shows.
+      {
+        const g = messageGist(msg);
+        if (g.body || g.mediaType) {
+          rememberChat(chatId, {
+            ts: Number(msg.messageTimestamp) || 0, preview: g.body, mediaType: g.mediaType, fromMe: !!msg.key.fromMe,
+            lastId: msg.key.id, sender: msg.key.fromMe ? '' : (msg.pushName || ''),
+            name: !chatId.endsWith('@g.us') && !msg.key.fromMe ? msg.pushName : undefined,
+          });
+        }
+      }
       if (WHATSAPP_DEBUG) {
         try {
           console.log(JSON.stringify({
@@ -564,10 +665,61 @@ async function startSocket() {
   sock.ev.on('contacts.upsert', (rows) => { (rows || []).forEach(rememberContact); });
   sock.ev.on('contacts.update', (rows) => { (rows || []).forEach(rememberContact); });
 
+  // ZAELAR-PATCH (chat list): the history sync. Right after pairing it carries the device's chats (absolute
+  // unread counters, names, archive/pin state); later, with syncType ON_DEMAND, it is how the PHONE answers
+  // `fetchMessageHistory` — those messages never arrive as upserts, so «load previous» was only ever an
+  // acknowledgement until this listened. On-demand messages are forwarded as `history:true` scrollback.
+  sock.ev.on('messaging-history.set', ({ chats, contacts, messages, syncType }) => {
+    (contacts || []).forEach(rememberContact);
+    for (const c of chats || []) {
+      const last = c.messages?.[0]?.message;
+      const g = last ? messageGist(last) : null;
+      rememberChat(c.id, {
+        name: c.name || c.displayName || '', unread: typeof c.unreadCount === 'number' ? c.unreadCount : undefined,
+        archived: c.archived === true ? true : undefined, pinned: c.pinned ? true : undefined,
+        muted: c.muteEndTime && Number(c.muteEndTime) > Date.now() / 1000 ? true : undefined,
+        ts: Number(c.conversationTimestamp) || (last ? Number(last.messageTimestamp) : 0) || 0,
+        preview: g ? g.body : undefined, mediaType: g ? g.mediaType : undefined,
+        fromMe: last ? !!last.key?.fromMe : undefined, lastId: last?.key?.id, sender: last?.pushName || '',
+      });
+    }
+    if (syncType !== 6) return;            // proto.HistorySync.HistorySyncType.ON_DEMAND
+    for (const m of messages || []) {
+      const chatId = m?.key?.remoteJid;
+      if (!m?.message || !isListedChat(chatId)) continue;
+      const g = messageGist(m);
+      if (!g.body && !g.mediaType) continue;
+      const isGroup = chatId.endsWith('@g.us');
+      const senderId = m.key.participant || chatId;
+      messageQueue.push({
+        messageId: m.key.id, chatId, senderId,
+        senderName: m.pushName || senderId.replace(/@.*/, ''),
+        chatName: isGroup ? (groupSubjects.get(chatId) || chatId.split('@')[0]) : (chatBook.get(chatId)?.name || ''),
+        isGroup, body: g.body || `[${g.mediaType} received]`, hasMedia: !!g.mediaType, mediaType: g.mediaType,
+        mediaUrls: [], mentionedIds: [], botIds: [], timestamp: m.messageTimestamp,
+        direction: m.key.fromMe ? 'out' : 'in', history: true,
+      });
+      if (messageQueue.length > MAX_QUEUE_SIZE) messageQueue.shift();
+    }
+  });
+
+  sock.ev.on('chats.upsert', (rows) => {
+    for (const c of rows || []) rememberChat(c.id, { name: c.name || '', ts: Number(c.conversationTimestamp) || 0 });
+  });
+
   sock.ev.on('chats.update', (updates) => {
     for (const u of updates || []) {
       const chatId = u?.id;
       if (!chatId || chatId.includes('status')) continue;
+      // ZAELAR-PATCH (chat list): a live message reports +1 here; a read mark reports 0, «mark as unread» -1.
+      if (u.unreadCount === 0) rememberChat(chatId, { unread: 0 });
+      else if (u.unreadCount === -1) rememberChat(chatId, { unread: Math.max(1, chatBook.get(chatId)?.unread || 0) });
+      else if (typeof u.unreadCount === 'number' && u.unreadCount > 0) rememberChat(chatId, { unreadDelta: u.unreadCount });
+      if (u.archived !== undefined || u.pinned !== undefined) {
+        rememberChat(chatId, { archived: u.archived === true ? true : undefined, pinned: u.pinned ? true : undefined });
+        const row = chatBook.get(chatId);
+        if (row && u.archived === false) { delete row.archived; saveChatBookSoon(); }
+      }
       const unread = u?.unreadCount;
       if (unread === 0 || unread === null) {
         readQueue.push({ chatId, at: Math.floor(Date.now() / 1000) });
@@ -633,6 +785,27 @@ app.get('/contacts', (req, res) => {
   });
 });
 
+// ZAELAR-PATCH (chat list): one page of the chat book, newest first. `before` (unix seconds) walks backwards;
+// `kind` is person | group. A chat WhatsApp never told this device about cannot be listed: `complete` only
+// means the book has nothing older, and the book itself starts at pairing.
+app.get('/chats', (req, res) => {
+  const before = Number(req.query.before) || Infinity;
+  const limit = Math.max(1, Math.min(100, Number(req.query.limit) || 20));
+  const kind = String(req.query.kind || '');
+  const rows = Array.from(chatBook.values())
+    .filter((c) => (Number(c.ts) || 0) < before)
+    .filter((c) => !kind || (kind === 'group' ? c.isGroup : !c.isGroup))
+    .sort((a, b) => (Number(b.ts) || 0) - (Number(a.ts) || 0));
+  const page = rows.slice(0, limit).map((c) => {
+    const contact = contactBook.get(c.id) || {};
+    const name = c.isGroup ? (groupSubjects.get(c.id) || c.name)
+                           : (contact.name || c.name || contact.notify || contact.verifiedName);
+    const { last, ...row } = c;
+    return { ...row, name: name || c.id.split('@')[0] };
+  });
+  res.json({ chats: page, complete: rows.length <= limit, known: chatBook.size });
+});
+
 // ZAELAR-PATCH (V2-546): chats read on another device, since the last poll.
 app.get('/reads', (req, res) => {
   res.json(readQueue.splice(0, readQueue.length));
@@ -648,7 +821,7 @@ app.post('/history', async (req, res) => {
   if (!sock || connectionState !== 'connected') {
     return res.status(503).json({ error: 'Not connected to WhatsApp' });
   }
-  const { chatId, oldestId, oldestTs, limit } = req.body || {};
+  const { chatId, oldestId, oldestTs, limit, oldestFromMe, includeAnchor } = req.body || {};
   if (!chatId || !oldestId) {
     return res.status(400).json({ error: 'chatId and oldestId are required' });
   }
@@ -659,10 +832,21 @@ app.post('/history', async (req, res) => {
   try {
     const count = Math.max(1, Math.min(100, Number(limit) || 30));
     historyWanted.set(chatId, Date.now() + HISTORY_WINDOW_MS);
+    const book = chatBook.get(chatId);
+    if (includeAnchor && book?.last && book.lastId === oldestId) {
+      const isGroup = chatId.endsWith('@g.us');
+      messageQueue.push({
+        messageId: oldestId, chatId, senderId: chatId, senderName: book.last.sender || book.name || '',
+        chatName: isGroup ? (groupSubjects.get(chatId) || book.name || '') : (book.name || ''), isGroup,
+        body: book.last.body || `[${book.last.mediaType} received]`, hasMedia: !!book.last.mediaType,
+        mediaType: book.last.mediaType, mediaUrls: [], mentionedIds: [], botIds: [],
+        timestamp: book.last.ts, direction: book.last.fromMe ? 'out' : 'in', history: true,
+      });
+    }
     // The phone answers ASYNCHRONOUSLY, as ordinary upserts of type 'append' — they land in messageQueue
     // through the handler above and reach the widget on the next poll. There is nothing to return here but
     // the acknowledgement that we asked.
-    await sock.fetchMessageHistory(count, { remoteJid: chatId, id: oldestId, fromMe: false },
+    await sock.fetchMessageHistory(count, { remoteJid: chatId, id: oldestId, fromMe: !!oldestFromMe },
                                    Number(oldestTs) || 0);
     res.json({ available: true, requested: count });
   } catch (err) {

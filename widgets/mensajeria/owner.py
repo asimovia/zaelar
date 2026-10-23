@@ -74,6 +74,7 @@ class _Owner:
         self._out_sub = None              # V2-546: what the operator sent from his own app
         self._read_sub = None             # V2-546: what he read there
         self._history_sub = None          # V2-546: older messages a connector went and fetched
+        self._chats_sub = None            # one page of a platform's chat list
         self._task: asyncio.Task | None = None
         self._triage_task: asyncio.Task | None = None
         # NOTE (V2-607): the in-memory `_seen` set that used to live here is gone. It claimed to stop resurrecting
@@ -95,6 +96,8 @@ class _Owner:
             self._read_sub = bus.subscribe(ingest.TOPIC_READ)
         if self._history_sub is None:
             self._history_sub = bus.subscribe(ingest.TOPIC_HISTORY)
+        if self._chats_sub is None:
+            self._chats_sub = bus.subscribe(ingest.TOPIC_CHATS)
         if self._task is None or self._task.done():
             self._task = asyncio.create_task(self._consume())
         logger.info("mensajeria owner started (triage in widget; stateless connectors)")
@@ -106,14 +109,15 @@ class _Owner:
         if self._triage_task:
             self._triage_task.cancel()
             self._triage_task = None
-        for sub in (self._msg_sub, self._status_sub, self._out_sub, self._read_sub, self._history_sub):
+        for sub in (self._msg_sub, self._status_sub, self._out_sub, self._read_sub, self._history_sub,
+                    self._chats_sub):
             try:
                 if sub is not None:
                     sub.close()
             except Exception:
                 pass
         self._msg_sub = self._status_sub = None
-        self._out_sub = self._read_sub = self._history_sub = None
+        self._out_sub = self._read_sub = self._history_sub = self._chats_sub = None
 
     # Bus consumption: incoming messages + status.
     async def _consume(self) -> None:
@@ -135,7 +139,8 @@ class _Owner:
             # tick it would otherwise have been surfaced in, not one tick later as a notification he has
             # already dealt with.
             for what, fn in (("outbound", self._apply_outbound), ("read", self._apply_external_reads),
-                             ("history", self._apply_history), ("queues", self._flush_queues)):
+                             ("history", self._apply_history), ("chats", self._apply_chats),
+                             ("queues", self._flush_queues)):
                 try:
                     fn()
                 except Exception as e:  # noqa: BLE001
@@ -201,6 +206,16 @@ class _Owner:
             msgstore.add_history(platform, ev.get("chatId"), ev.get("msgs") or [],
                                  complete=bool(ev.get("complete")),
                                  name=ev.get("name") or "", is_group=ev.get("isGroup"))
+
+    def _apply_chats(self) -> None:
+        """One page of a platform's chat list. An error is kept on the index, so the list can say why it is
+        short instead of looking like an account with no conversations."""
+        for ev in self._drain(self._chats_sub):
+            platform = (ev or {}).get("platform")
+            if platform:
+                msgstore.add_chats(platform, ev)
+                if ev.get("error"):
+                    logger.warning(f"mensajeria: {platform} chat list page failed: {ev['error']}")
 
     def _apply_status(self) -> None:
         """Reflect pending connector.status events into the UI store; the owner is the only writer."""
@@ -392,6 +407,12 @@ class _Owner:
                 ingest.publish_fetch(order)
         except Exception as e:
             logger.debug(f"mensajeria fetch flush: {e}")
+        # And for chat-list pages: entering a platform, or «Cargar más» at the bottom of its list.
+        try:
+            for order in msgstore.take_pending_chats():
+                ingest.publish_chats_ask(order)
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"mensajeria chats flush: {e}")
 
 
 # Single instance governed by the supervisor (contract: async start()/stop()/handle(action,payload)).

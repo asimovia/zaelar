@@ -258,6 +258,13 @@
       },
       "safe": true
     },
+    "chats_more": {
+      "desc": "Enseña MÁS CHATS en la lista de conversaciones de WhatsApp o Telegram: los siguientes, más antiguos. Para «enséñame más chats», «carga más conversaciones»; no son los mensajes de un chat abierto (eso es load_more)",
+      "payload": {
+        "platform": "'whatsapp' | 'telegram' (opcional: el canal que se está viendo)"
+      },
+      "safe": true
+    },
     "set_signature": {
       "desc": "Fija la firma de EMAIL entera, una línea por elemento (ej. nombre / cargo / contacto). Se añade sola a cada correo que se envíe, nunca por el operador ni por Gmail — no lo prometas dos veces",
       "payload": {

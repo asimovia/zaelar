@@ -50,6 +50,14 @@ async def get_contacts() -> dict:
     return await _request("GET", "/contacts")
 
 
+async def get_chats(before: float | None = None, limit: int = 20) -> dict:
+    """One page of the chat book, newest first: {chats, complete, known}. The book starts at pairing — WhatsApp
+    tells a linked device its chats once, then only what changes — so `complete` means «nothing older that this
+    device was told about», not «the account's first chat»."""
+    q = f"?limit={int(limit)}" + (f"&before={float(before)}" if before else "")
+    return await _request("GET", "/chats" + q)
+
+
 async def get_reads() -> list[dict]:
     """Return (and clear) the chats the operator read on ANOTHER device since the last poll (V2-546). Each
     entry: {chatId, at}. WhatsApp gives a per-chat counter, not a per-message watermark, so the bridge only
@@ -58,12 +66,14 @@ async def get_reads() -> list[dict]:
     return reads or []
 
 
-async def fetch_history(chat_id: str, oldest_id: str, oldest_ts: float, limit: int = 30) -> dict:
+async def fetch_history(chat_id: str, oldest_id: str, oldest_ts: float, limit: int = 30,
+                        oldest_from_me: bool = False, include_anchor: bool = False) -> dict:
     """Ask the operator's PHONE for messages older than the ones we hold (V2-546). It answers asynchronously —
     the messages arrive as ordinary upserts on the next poll — so the return value is only the acknowledgement,
     and `available: False` means this build or this phone cannot serve it."""
     return await _request("POST", "/history", timeout=30.0, body={
-        "chatId": chat_id, "oldestId": oldest_id, "oldestTs": oldest_ts, "limit": limit})
+        "chatId": chat_id, "oldestId": oldest_id, "oldestTs": oldest_ts, "limit": limit,
+        "oldestFromMe": bool(oldest_from_me), "includeAnchor": bool(include_anchor)})
 
 
 async def mark_read(keys: list[dict]) -> dict:

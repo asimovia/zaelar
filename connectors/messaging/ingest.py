@@ -12,9 +12,12 @@
 # usual DIRECT path (service.py -> triage+store+notify), intact and live-verified. The v2 path runs in parallel,
 # without regression, until cutover. See EPIC §2 (migration invariants).
 #
+import logging
 import os
 
 import bus
+
+_log = logging.getLogger("zaelar.messaging.ingest")
 
 TOPIC_MSG = "connector.msg"
 TOPIC_STATUS = "connector.status"
@@ -48,6 +51,11 @@ TOPIC_FETCH = "msg.fetch"
 # same boundary `gcontacts.py` keeps.
 TOPIC_CONTACTS_ASK = "msg.contacts"
 TOPIC_CONTACTS = "connector.contacts"
+# The CHAT LIST of a platform — every conversation the account has, newest first, one page at a time —
+# independent of what triage kept. Its own pair: a chat row is neither a message (`connector.history`) nor a
+# person (`connector.contacts`).
+TOPIC_CHATS_ASK = "msg.chats"
+TOPIC_CHATS = "connector.chats"
 
 
 def v2_enabled() -> bool:
@@ -310,3 +318,30 @@ def publish_history(platform: str, chat_id, msgs: list[dict], complete: bool = F
         bus.emit_sync(TOPIC_HISTORY, ev)
     except Exception:
         pass
+
+
+class ChatsInbox(_PlatformInbox):
+    """Per-platform subscription to `msg.chats`: the widget asking for one page of this platform's chat list."""
+    _TOPIC = TOPIC_CHATS_ASK
+
+
+def publish_chats_ask(order: dict) -> None:
+    """Widget asks a connector for a page of chats: {platform, before (unix seconds, absent = newest), limit}."""
+    try:
+        bus.emit_sync(TOPIC_CHATS_ASK, dict(order or {}))
+    except Exception as e:  # noqa: BLE001
+        _log.warning(f"chat list ask not published: {type(e).__name__}")
+
+
+def publish_chats(platform: str, chats: list, *, before=None, next_before=None, complete: bool = False,
+                  error: str = "") -> None:
+    """A connector answering with one page of its chat list. Each row:
+    {chatId, name, kind: person|group|channel, unread, ts, preview, mediaType, fromMe, archived, pinned, muted,
+    forum, lastId}. `next_before` is the cursor for the next page (the connector knows it: Telegram floats pinned
+    chats to the top, so «the oldest row of this page» is not it); `complete` = nothing older exists."""
+    try:
+        bus.emit_sync(TOPIC_CHATS, {"platform": platform, "chats": list(chats or []), "before": before,
+                                    "nextBefore": next_before, "complete": bool(complete),
+                                    "error": str(error or "")})
+    except Exception as e:  # noqa: BLE001
+        _log.warning(f"chat list page not published: {type(e).__name__}")

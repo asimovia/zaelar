@@ -26,7 +26,16 @@ class _Bridge:
         # /health — a process no restart controlled was the one carrying WhatsApp. Since that day `stop`
         # owns the port and `restart` keeps the bridge warm on purpose (it holds the paired session, and
         # re-pairing is a QR the operator has to scan), so «already up» is now the ORDINARY restart case.
-        if await self._already_up():
+        up = await self._already_up()
+        if up and await self._is_stale(up):
+            # Kept warm across restarts on purpose, the bridge also outlives every update of bridge.js: its
+            # /health reports the hash of the code it RUNS, and a different hash from the file on disk means
+            # the update would never take effect. Retire it; the paired session is on disk, so the new one
+            # reconnects without a QR.
+            logger.warning("WhatsApp bridge en marcha con código viejo — lo relevo por el actual")
+            await self._retire_stale()
+            up = await self._already_up()
+        if up:
             logger.info(f"WhatsApp bridge ya contesta en :{config.bridge_port()} — lo reutilizo, no lanzo otro")
             self.proc = None
             return
@@ -72,15 +81,56 @@ class _Bridge:
             # inherited stdout/stderr -> pairing QR is visible in the terminal.
         )
 
-    async def _already_up(self) -> bool:
-        """Is a bridge answering /health on our port right now? Its OWN shape (a dict with `status`), so a
-        stranger squatting the port is not mistaken for it. Any failure means «no»: spawning is the safe
-        default when nothing answers."""
+    async def _already_up(self) -> dict | None:
+        """The /health of a bridge answering on our port right now, or None. Its OWN shape (a dict with
+        `status`), so a stranger squatting the port is not mistaken for it. Any failure means «no»: spawning is
+        the safe default when nothing answers."""
         try:
             h = await client.health()
         except Exception:  # noqa: BLE001
-            return False
-        return isinstance(h, dict) and "status" in h
+            return None
+        return h if isinstance(h, dict) and "status" in h else None
+
+    @staticmethod
+    def disk_hash() -> str:
+        """The hash the bridge reports for itself (`scriptHash`): sha256 of bridge.js, first 16 hex chars."""
+        import hashlib
+        try:
+            return hashlib.sha256((config.bridge_dir() / "bridge.js").read_bytes()).hexdigest()[:16]
+        except OSError as e:
+            logger.warning(f"WhatsApp bridge.js unreadable: {e}")
+            return ""
+
+    async def _is_stale(self, health: dict) -> bool:
+        running, disk = str(health.get("scriptHash") or ""), self.disk_hash()
+        return bool(running and disk and running != disk)
+
+    async def _retire_stale(self) -> None:
+        """Stop the bridge process listening on our port — only if its command line IS the bridge."""
+        import signal
+        try:
+            p = await asyncio.create_subprocess_exec(
+                "lsof", "-ti", f"tcp:{config.bridge_port()}", "-sTCP:LISTEN",
+                stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL)
+            out, _ = await p.communicate()
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"WhatsApp: cannot find the stale bridge's process: {e}")
+            return
+        for pid in {int(x) for x in out.split() if x.strip().isdigit()}:
+            try:
+                ps = await asyncio.create_subprocess_exec("ps", "-o", "command=", "-p", str(pid),
+                                                          stdout=asyncio.subprocess.PIPE)
+                cmd, _ = await ps.communicate()
+                if b"bridge.js" not in cmd:
+                    logger.warning(f"WhatsApp: port {config.bridge_port()} is held by something else ({pid})")
+                    continue
+                os.kill(pid, signal.SIGTERM)
+            except (ProcessLookupError, PermissionError, OSError) as e:
+                logger.warning(f"WhatsApp: could not stop the stale bridge {pid}: {e}")
+        for _ in range(50):
+            if await self._already_up() is None:
+                return
+            await asyncio.sleep(0.2)
 
     async def wait_connected(self, timeout: float = 180.0) -> bool:
         """Wait until the bridge reports 'connected' (after scanning the QR the first time)."""

@@ -12,6 +12,7 @@
 import asyncio
 import base64
 import io
+import time
 
 from loguru import logger
 
@@ -30,6 +31,7 @@ _send_inbox = None               # V2-683: msg.send — writing to somebody who 
 _history_inbox = None            # V2-546: msg.history subscription (created in the loop)
 _fetch_inbox = None              # V2-624: msg.fetch subscription (platform-wide pull)
 _contacts_inbox = None           # V2-714: msg.contacts subscription (the ADDRESS BOOK, not the messages)
+_chats_inbox = None              # msg.chats: one page of the chat list
 
 
 def enabled() -> bool:
@@ -249,6 +251,8 @@ async def _drain_history() -> None:
         except (TypeError, ValueError):
             limit = 30
         offset_id = _tg_msg_id(order.get("beforeId")) or 0
+        if offset_id and order.get("includeAnchor"):
+            offset_id += 1                 # a chat opened from the list: its last message is the anchor itself
         try:
             msgs = await _client.get_messages(int(chat_id), limit=limit, offset_id=offset_id)
         except Exception as e:  # noqa: BLE001
@@ -435,6 +439,55 @@ async def _drain_fetch() -> None:
               if total else
               f"[SISTEMA] Traída de Telegram hecha: no hay conversaciones con actividad en las últimas "
               f"{hours:.0f} h. Díselo al operador tal cual.")
+
+
+def _dialog_row(dialog) -> dict:
+    """One dialog in the platform-agnostic shape of `ingest.publish_chats`."""
+    msg = dialog.message
+    mtype = _tg_media_type(msg) if msg is not None else None
+    kind = "channel" if dialog.is_channel and not dialog.is_group else ("group" if dialog.is_group else "person")
+    muted = False
+    try:
+        until = dialog.dialog.notify_settings.mute_until
+        muted = bool(until) and (until.timestamp() if hasattr(until, "timestamp") else float(until)) > time.time()
+    except Exception as e:  # noqa: BLE001 — a dialog without notify settings is simply not muted
+        logger.debug(f"Telegram dialog mute state unreadable: {type(e).__name__}")
+    return {"chatId": str(dialog.id), "name": dialog.name or "", "kind": kind,
+            "unread": int(dialog.unread_count or 0), "ts": dialog.date.timestamp() if dialog.date else 0.0,
+            "preview": ((getattr(msg, "message", "") or "") if msg is not None else "")[:160],
+            "mediaType": mtype or "", "fromMe": bool(getattr(msg, "out", False)),
+            "archived": bool(getattr(dialog, "archived", False)), "pinned": bool(dialog.pinned), "muted": muted,
+            "forum": bool(getattr(dialog.entity, "forum", False)),
+            "lastId": str(getattr(msg, "id", "") or "")}
+
+
+async def _drain_chats() -> None:
+    """Serve one page of the chat list. Telegram lists the account's dialogs exactly, so this walks the real
+    list, newest first, `before` (unix seconds) as the offset. Pinned dialogs float to the head of the FIRST
+    page whatever their age, so the cursor for the next page is the oldest UNPINNED dialog seen, not the last
+    row — or every pinned chat would push the next page back to the date it was last used."""
+    if _chats_inbox is None:
+        return
+    import datetime as _dt
+    for order in _chats_inbox.drain():
+        before = order.get("before")
+        try:
+            limit = max(1, min(100, int(order.get("limit") or 20)))
+        except (TypeError, ValueError):
+            limit = 20
+        offset = _dt.datetime.fromtimestamp(float(before), _dt.timezone.utc) if before else None
+        rows, cursor = [], None
+        try:
+            async for dialog in _client.iter_dialogs(limit=limit, offset_date=offset):
+                rows.append(_dialog_row(dialog))
+                if not dialog.pinned and dialog.date is not None:
+                    cursor = dialog.date.timestamp()
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"Telegram chat list: {e}")
+            ingest.publish_chats("telegram", rows, before=before, error=str(e))
+            continue
+        ingest.publish_chats("telegram", rows, before=before, next_before=cursor, complete=len(rows) < limit)
+        logger.info(f"Telegram: chat list page → {len(rows)} dialog(s)")
 
 
 def _tg_msg_id(raw) -> int | None:
@@ -647,7 +700,7 @@ async def _loop() -> None:
         except Exception as e:  # noqa: BLE001
             logger.debug(f"Telegram read receipt: {e}")
 
-    global _mark_inbox, _reply_inbox, _send_inbox, _history_inbox, _fetch_inbox, _contacts_inbox
+    global _mark_inbox, _reply_inbox, _send_inbox, _history_inbox, _fetch_inbox, _contacts_inbox, _chats_inbox
     if ingest.v2_enabled() and _mark_inbox is None:
         _mark_inbox = ingest.MarkReadInbox("telegram")   # subscription in THIS loop (server) -> direct delivery
     if ingest.v2_enabled() and _reply_inbox is None:
@@ -660,6 +713,8 @@ async def _loop() -> None:
         _fetch_inbox = ingest.FetchInbox("telegram")     # V2-624: platform-wide pull
     if _contacts_inbox is None:
         _contacts_inbox = ingest.ContactsInbox("telegram")    # V2-714: the address book
+    if _chats_inbox is None:
+        _chats_inbox = ingest.ChatsInbox("telegram")          # the chat list
     _set_status("connected", None)
     # Telethon dispatches updates only while the loop runs; this batching task coexists with that delivery.
     while True:
@@ -685,7 +740,7 @@ async def _loop() -> None:
         for what, fn in (("sends", _drain_sends), ("outbox", _drain_outbox),
                          ("read marks", _drain_read_marks),
                          ("history", _drain_history), ("fetch", _drain_fetch),
-                         ("contacts", _drain_contacts)):
+                         ("contacts", _drain_contacts), ("chats", _drain_chats)):
             try:
                 await fn()
             except Exception as e:  # noqa: BLE001

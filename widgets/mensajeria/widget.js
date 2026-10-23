@@ -73,7 +73,12 @@ let _settingsOpen = false;
 // one state instead of diverging.
 let _platFilter = null;
 let _viewN = 0;                      // last applied view token (module-lived)
-let _openMail = null;   // mailKey() of the single EMAIL item shown in the detail screen (V2-610), or null = list
+let _openMail = null;
+// CHAT LIST lens state, per platform and cosmetic only (which rows of the server's list are on screen): the
+// kind filter and the name search. The list itself — window, «Cargar más», what the connector sent — is server
+// state, so voice and clicks agree on it.
+const _chatKind = {};
+const _chatQuery = {};   // mailKey() of the single EMAIL item shown in the detail screen (V2-610), or null = list
 const _expanded = new Set();   // message keys with the body expanded
 
 // ONE DOOR for «the widget is now on channel X» (V2-626). Choosing a channel is a single STATE TRANSITION,
@@ -369,6 +374,20 @@ function injectStyles(){
   .hb-msg .critoff{flex:0 0 auto;border:0;background:transparent;cursor:pointer;font-size:13px;
     color:var(--hb-muted-2,#9aa7b8);padding:2px 4px}
   .hb-msg .critoff:hover{color:var(--hb-risk,#e5484d)}
+
+  /* CHAT LIST of a platform: what the real app shows first — every conversation, newest first, a kind filter,
+     a name search and «Cargar más». */
+  .hb-msg .cxbar{display:flex;flex-direction:column;gap:6px;margin:2px 0 6px}
+  .hb-msg .cxchips{display:flex;gap:6px;flex-wrap:wrap}
+  .hb-msg .cxchip{border:1px solid var(--hb-line,#e3e8f0);background:transparent;color:var(--hb-muted,#6b7b92);
+    border-radius:999px;font-size:12px;padding:3px 10px;cursor:pointer}
+  .hb-msg .cxchip.on{background:var(--hb-ink,#26313d);border-color:var(--hb-ink,#26313d);color:var(--hb-bg,#fff)}
+  .hb-msg .cxsearch{width:100%;box-sizing:border-box;border:1px solid var(--hb-line,#e3e8f0);border-radius:8px;
+    padding:6px 10px;font-size:13px;background:var(--hb-bg,#fff);color:var(--hb-ink,#26313d)}
+  .hb-msg .cxtag{font-size:11.5px;color:var(--hb-muted-2,#9aa7b8);font-weight:400}
+  .hb-msg .trow.cxarch{opacity:.6}
+  .hb-msg .cxmore{display:block;margin:8px auto 2px;font-size:12.5px;padding:5px 14px}
+  .hb-msg .cxnote{text-align:center;color:var(--hb-muted-2,#9aa7b8);font-size:12px;padding:8px 0 2px}
 
   /* NARROW SCREENS (V2-559). MEASURED FIRST, and the measurement removed most of what was written here:
      rendered at 375px in six states (connect panel with three failures, both wizards, the QR, the chat list
@@ -1316,6 +1335,104 @@ function activityList(rows, ctx){
   return wrap;
 }
 
+const KIND_FILTERS = {
+  whatsapp: ["all", "unread", "person", "group"],
+  telegram: ["all", "unread", "person", "group", "channel"],
+};
+
+function chatRowMatches(r, kind, q){
+  if(kind === "unread" && !(r.unread || r.pending)) return false;
+  if(kind === "person" || kind === "group" || kind === "channel"){ if((r.kind || "person") !== kind) return false; }
+  if(q){
+    const hay = ((r.name || "") + " " + (r.preview || "")).toLowerCase();
+    if(!hay.includes(q)) return false;
+  }
+  return true;
+}
+
+function platformChatRows(platform, rows, ctx){
+  const wrap = el("div","tl");
+  rows.forEach(c=>{
+    const row = el("div","trow chatrow" + (c.archived ? " cxarch" : ""));
+    row.title = tt("open_chat", null, "Abrir conversación");
+    const lead = el("span","tlead");
+    lead.style.background = c.urgent ? "var(--hb-risk,#e5484d)"
+      : ((c.forMe || c.unread) ? "var(--hb-accent,#3D6FE0)" : "transparent");
+    row.appendChild(lead);
+    const main = el("div","tmain");
+    const head = el("div","thead");
+    head.appendChild(el("span","tfrom", c.name));
+    const count = c.unread || c.pending || 0;
+    if(count) head.appendChild(el("span","tcount", String(count)));
+    if(c.kind === "group") head.appendChild(el("span","tpara", c.forum ? tt("forum", null, "· grupo con temas") : tt("group", null, "· grupo")));
+    if(c.kind === "channel") head.appendChild(el("span","tpara", tt("channel", null, "· canal")));
+    if(c.forMe) head.appendChild(el("span","tpara",tt("dot_for_you", null, "· para ti")));
+    if(c.muted) head.appendChild(el("span","cxtag","🔕"));
+    if(c.archived) head.appendChild(el("span","cxtag",tt("archived", null, "archivado")));
+    const when = fmtWhen(c.ts);
+    if(when) head.appendChild(el("span","twhen", when));
+    main.appendChild(head);
+    const mine = c.fromMe ? tt("you_prefix", null, "Tú: ") : "";
+    main.appendChild(el("div","tprev", mine + displayBody(c.preview, c.mediaType)));
+    row.appendChild(main);
+    row.onclick = ()=> { ctx.top(); ctx.action("open", {platform: platform, chatId: c.chatId}); };
+    wrap.appendChild(row);
+  });
+  return wrap;
+}
+
+// The first screen of a platform, like its own app: the conversations, not only what is unread.
+function platformChats(platform, v, ctx){
+  const box = el("div","cxwrap");
+  const bar = el("div","cxbar");
+  const chips = el("div","cxchips");
+  const kind = _chatKind[platform] || "all";
+  const labels = {all: tt("kind_all", null, "Todos"), unread: tt("kind_unread", null, "No leídos"),
+                  person: tt("kind_person", null, "Personas"), group: tt("kind_group", null, "Grupos"),
+                  channel: tt("kind_channel", null, "Canales")};
+  const listBox = el("div","cxlist");
+  const fill = ()=>{
+    const k = _chatKind[platform] || "all";
+    const q = (_chatQuery[platform] || "").trim().toLowerCase();
+    const rows = (v.rows || []).filter(r=> chatRowMatches(r, k, q));
+    listBox.replaceChildren();
+    if(rows.length) listBox.appendChild(platformChatRows(platform, rows, ctx));
+    else if(v.loading || !v.asked) listBox.appendChild(el("div","empty",tt("chats_loading", null, "Cargando tus chats…")));
+    else listBox.appendChild(el("div","empty", (q || k !== "all")
+      ? tt("chats_none_match", null, "Ningún chat de los cargados coincide")
+      : tt("chats_none", null, "No hay chats todavía")));
+  };
+  (KIND_FILTERS[platform] || KIND_FILTERS.whatsapp).forEach(k=>{
+    const b = el("button","cxchip" + (k === kind ? " on" : ""), labels[k]);
+    b.onclick = ()=>{ _chatKind[platform] = k; chips.querySelectorAll(".cxchip").forEach(x=>x.classList.remove("on"));
+      b.classList.add("on"); fill(); };
+    chips.appendChild(b);
+  });
+  bar.appendChild(chips);
+  const search = el("input","cxsearch");
+  search.type = "search";
+  search.placeholder = tt("chats_search", null, "Buscar un chat");
+  search.value = _chatQuery[platform] || "";
+  search.oninput = ()=>{ _chatQuery[platform] = search.value; fill(); };
+  bar.appendChild(search);
+  box.appendChild(bar);
+  box.appendChild(listBox);
+  fill();
+  if(v.error) box.appendChild(el("div","cxnote", tt("chats_error", null, "La app no me ha dado más chats: ") + v.error));
+  if(v.more){
+    const more = el("button","bt bt-ghost cxmore", v.loading ? tt("chats_loading_more", null, "Cargando…") : tt("chats_more", null, "Cargar más"));
+    more.disabled = !!v.loading;
+    more.onclick = ()=>{ more.disabled = true; more.textContent = tt("chats_loading_more", null, "Cargando…");
+      ctx.action("chats_more", {platform: platform}); };
+    box.appendChild(more);
+  } else if((v.rows || []).length){
+    box.appendChild(el("div","cxnote", platform === "whatsapp"
+      ? tt("chats_end_whatsapp", null, "Son todos los chats que WhatsApp ha pasado a este dispositivo")
+      : tt("chats_end", null, "No hay más chats")));
+  }
+  return box;
+}
+
 function chatList(chats, ctx){
   const wrap = el("div","tl");
   chats.forEach(c=>{
@@ -1595,6 +1712,11 @@ export function render(root, data, ctx){
     return;
   }
 
+  const lensList = _platFilter ? (data.chat_list || {})[_platFilter] : null;
+  if(lensList){
+    root.appendChild(platformChats(_platFilter, lensList, ctx));
+    return;
+  }
   const chats = (data.chats || []).filter(c=> _platFilter ? c.platform===_platFilter : c.highlight);
   if(chats.length) root.appendChild(chatList(chats, ctx));
   else root.appendChild(el("div","empty",emptyMsg));

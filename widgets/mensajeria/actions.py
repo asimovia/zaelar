@@ -7,6 +7,7 @@ still governs every call.
 """
 from __future__ import annotations
 
+from . import chatlist as _cl
 from . import data as _d
 
 
@@ -40,6 +41,9 @@ def _a_show_view(action, payload) -> dict:
         else:
             crit.pop(platform, None)
     _d._push_view(db, platform)
+    # Entering WhatsApp or Telegram shows its chat list; the first page is (re)asked from the connector here,
+    # so the voice and the header icon both get it.
+    _cl.ask(db, platform)
     _d.store.save(_d.WIDGET_ID, db)
     out = _d.view_data()
     chats = [c for c in out.get("chats", []) if not platform or c.get("platform") == platform]
@@ -443,6 +447,25 @@ def _a_open(action, payload) -> dict:
             _th.mark_read(db, key_[0], key_[1])
             _d.store.save(_d.WIDGET_ID, db)
             return _d.view_data()
+        listed = _cl.row(db, *key_)
+        if listed is not None:
+            # A chat from the CHAT LIST that this widget holds nothing of yet: open it and ask the app for its
+            # latest messages. The thread is created with the list's name, so the screen is labelled while
+            # they arrive, and `opening` keeps it from auto-closing as empty in the meantime.
+            th = _th._thread(db, *key_)
+            th["name"] = th.get("name") or listed.get("name") or ""
+            if listed.get("kind") == "group":
+                th["isGroup"] = True
+            db["active_chat"] = {"platform": key_[0], "chatId": key_[1]}
+            db["opening"] = {"key": _th.key(*key_), "at": _d.time.time()}
+            if key_[0] in _d._HISTORY_PLATFORMS:
+                db.setdefault("pending_history", []).append({
+                    "platform": key_[0], "chatId": key_[1], "limit": _d._HISTORY_LIMIT,
+                    "beforeTs": float(listed.get("ts") or 0) + 1, "beforeId": listed.get("lastId") or "",
+                    "beforeFromMe": bool(listed.get("fromMe")), "includeAnchor": True,
+                })
+            _d.store.save(_d.WIDGET_ID, db)
+            return _d.view_data()
         return {"ok": False, "error": "no tengo esa conversación guardada", **_d.view_data()}
     chats = _d._group_chats(_d._visible_items(db))
     match = None
@@ -519,6 +542,26 @@ def _a_load_more(action, payload) -> dict:
             "result": {"asked": limit, "platform": platform,
                        "detail": "se los he pedido a la app; aparecerán arriba en cuanto lleguen"},
             **_d.view_data()}
+
+
+# «Cargar más» at the bottom of a platform's chat list (button or voice: «enséñame más chats de WhatsApp»).
+def _a_chats_more(action, payload) -> dict:
+    db = _d.load_db()
+    raw = str(payload.get("platform") or (db.get("view") or {}).get("platform") or "").strip().lower()
+    platform = _d._PLAT_ALIASES.get(raw, raw)
+    if platform not in _cl.LIST_PLATFORMS:
+        return {"ok": False,
+                "error": "la lista de chats existe para 'whatsapp' y 'telegram' — vuelve a llamar a chats_more "
+                         "con `platform`",
+                **_d.view_data()}
+    res = _cl.more(db, platform)
+    _d.store.save(_d.WIDGET_ID, db)
+    out = _d.view_data()
+    rows = (out.get("chat_list") or {}).get(platform, {}).get("rows") or []
+    return {"ok": True, "result": {**res, "platform": platform,
+                                   "chats": [{"name": r.get("name"), "kind": r.get("kind"),
+                                              "unread": r.get("unread")} for r in rows[-_cl.PAGE:]]},
+            **out}
 
 
 # Mark an entire chat read without opening it (voice: [[msg.readchat:N]], N = the CHAT `n`).

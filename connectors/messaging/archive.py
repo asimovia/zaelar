@@ -289,6 +289,31 @@ def replied(platform: str, chat_id, after_ts: float) -> dict | None:
         return None
 
 
+def chats(platform: str, limit: int = 600) -> list[dict]:
+    """Every conversation of `platform` this log has a message of, newest first, with its LAST message — the
+    chat list's memory of what the connector can no longer enumerate (WhatsApp tells a device its chats once)."""
+    try:
+        rows = _conn().execute(
+            "SELECT m.chat_id, m.chat_name, m.is_group, m.ts, m.body, m.media_type, m.direction, m.msg_id "
+            "FROM messages m JOIN (SELECT chat_id, MAX(ts) ts FROM messages WHERE platform=? GROUP BY chat_id) l "
+            "ON m.chat_id=l.chat_id AND m.ts=l.ts WHERE m.platform=? ORDER BY m.ts DESC LIMIT ?",
+            (str(platform), str(platform), int(limit))).fetchall()
+    except Exception as e:  # noqa: BLE001
+        import logging
+        logging.getLogger("zaelar.messaging.archive").warning(f"archive chats unreadable: {type(e).__name__}")
+        return []
+    out, seen = [], set()
+    for r in rows:
+        if r["chat_id"] in seen:
+            continue
+        seen.add(r["chat_id"])
+        out.append({"chatId": r["chat_id"], "name": r["chat_name"] or "",
+                    "kind": "group" if r["is_group"] else "person", "ts": float(r["ts"] or 0),
+                    "preview": (r["body"] or "")[:160], "mediaType": r["media_type"] or "",
+                    "fromMe": r["direction"] == "out", "lastId": r["msg_id"] or ""})
+    return out
+
+
 def stats() -> dict:
     """Row count and time span — the health line a brief or a doctor can print."""
     try:
