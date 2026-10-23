@@ -108,7 +108,7 @@ import time
 # first event, and only the EXPLICIT door announced itself. So the central activity registry only ever
 # received `event="end"` — and closing a record nothing opened updates nothing, so no session was ever recorded.
 #
-VERSION = "3.43"
+VERSION = "3.44"
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _CACHE: dict = {}
