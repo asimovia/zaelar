@@ -13,9 +13,13 @@ from voice.engine.core import config
 _ENGINE = pathlib.Path(__file__).resolve().parents[3]
 
 
-def test_each_fly_machine_has_its_own_prefix(monkeypatch):
+def test_each_engine_has_its_own_prefix(monkeypatch):
+    monkeypatch.delenv("ZAELAR_USER_ID", raising=False)
     monkeypatch.setenv("FLY_MACHINE_ID", "0a1b2c3d4e5f60")
     assert config.default_room_prefix() == "zaelar-0a1b2c3d4e5f60"
+    monkeypatch.setenv("ZAELAR_USER_ID", "00000000-0000-4000-8000-000000000001")   # the agent's id wins
+    assert config.default_room_prefix() == "zaelar-00000000-0000-4000-8000-000000000001"
+    monkeypatch.delenv("ZAELAR_USER_ID")
     monkeypatch.delenv("FLY_MACHINE_ID")
     assert config.default_room_prefix() == "zaelar"                    # self-host: unchanged
 
@@ -41,6 +45,7 @@ def test_on_a_machine_the_session_token_names_this_engines_worker(monkeypatch):
     import json
 
     from server import livekit_api
+    monkeypatch.delenv("ZAELAR_USER_ID", raising=False)
     monkeypatch.setenv("FLY_MACHINE_ID", "0a1b2c3d4e5f60")
     assert config.dispatch_agent_name() == "zaelar-0a1b2c3d4e5f60"
     monkeypatch.setattr(livekit_api.SETTINGS.__class__, "room_name", "zaelar-0a1b2c3d4e5f60", raising=False)

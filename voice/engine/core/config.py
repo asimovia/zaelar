@@ -30,19 +30,26 @@ def _llm_provider_default() -> str:
     return env("BRAIN") or pick("ZAELAR_LLM_PROVIDER", "llm")
 
 
+def _engine_id() -> str:
+    """This engine's unique id where it has one: the agent's own id (`ZAELAR_USER_ID`), else the host's
+    (`FLY_MACHINE_ID`), else "" — a single local install needs none."""
+    return ((os.environ.get("ZAELAR_USER_ID") or "").strip()
+            or (os.environ.get("FLY_MACHINE_ID") or "").strip())
+
+
 def default_room_prefix() -> str:
-    """«zaelar-<FLY_MACHINE_ID>» on a Fly Machine, «zaelar» anywhere else (see `Settings.room_name`)."""
-    machine = (os.environ.get("FLY_MACHINE_ID") or "").strip()
-    return f"zaelar-{machine}" if machine else "zaelar"
+    """«zaelar-<engine id>» where the engine has an id, «zaelar» anywhere else (see `Settings.room_name`)."""
+    eid = _engine_id()
+    return f"zaelar-{eid}" if eid else "zaelar"
 
 
 def dispatch_agent_name() -> str:
     """The agent name this engine's voice worker registers under, or "" for LiveKit's automatic dispatch.
 
-    On a Fly Machine the worker registers by name and each session token names it, so LiveKit hands the room to
+    Where the engine has a unique id the worker registers by name and each session token names it, so LiveKit hands the room to
     exactly this engine: automatic dispatch offers a room to one worker at a time, and a refusal elsewhere does not
     guarantee the owner is ever asked. A self-host install keeps automatic dispatch (one worker, nothing to pick)."""
-    return default_room_prefix() if (os.environ.get("FLY_MACHINE_ID") or "").strip() else ""
+    return default_room_prefix() if _engine_id() else ""
 
 
 def accepts_room(prefix: str, room: str) -> bool:
@@ -62,8 +69,8 @@ class Settings:
     livekit_api_secret: str = env("LIVEKIT_API_SECRET", "secret")
     # ONE ROOM PREFIX PER ENGINE. Several engines can register their voice worker with one LiveKit project, and
     # LiveKit offers a new room to any worker whose `request_fnc` accepts it — with a shared prefix, an engine could
-    # take a room minted by another one. On a Fly Machine the prefix carries `FLY_MACHINE_ID`; elsewhere it stays
-    # «zaelar», and `ZAELAR_ROOM` overrides both.
+    # take a room minted by another one. The prefix carries the engine's unique id (`_engine_id`); without one it
+    # stays «zaelar», and `ZAELAR_ROOM` overrides both.
     room_name: str = env("ZAELAR_ROOM", default_room_prefix())
 
     # --- Profile + component selection --------------------------------------
