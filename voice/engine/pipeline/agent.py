@@ -492,7 +492,8 @@ async def request_fnc(req: JobRequest) -> None:
     server; without this our worker would also grab e.g. a voice-lab-2 room from
     another session (auto-dispatch = all rooms) and step on it. Per-session tokens
     mint ``<room_name>-<uuid>`` (server/livekit_api.py), so the prefix matches."""
-    if req.room.name.startswith(SETTINGS.room_name):
+    from voice.engine.core.config import accepts_room
+    if accepts_room(SETTINGS.room_name, req.room.name):
         await req.accept()
     else:
         await req.reject()

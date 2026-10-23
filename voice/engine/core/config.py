@@ -16,6 +16,7 @@ zaelar adaptations:
 """
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -29,6 +30,17 @@ def _llm_provider_default() -> str:
     return env("BRAIN") or pick("ZAELAR_LLM_PROVIDER", "llm")
 
 
+def default_room_prefix() -> str:
+    """«zaelar-<FLY_MACHINE_ID>» on a Fly Machine, «zaelar» anywhere else (see `Settings.room_name`)."""
+    machine = (os.environ.get("FLY_MACHINE_ID") or "").strip()
+    return f"zaelar-{machine}" if machine else "zaelar"
+
+
+def accepts_room(prefix: str, room: str) -> bool:
+    """A room this worker owns: its prefix exactly, or the prefix plus «-<suffix>» (`server/livekit_api.py`)."""
+    return room == prefix or room.startswith(prefix + "-")
+
+
 @dataclass(frozen=True)
 class Settings:
     # --- Web / token server -------------------------------------------------
@@ -39,7 +51,12 @@ class Settings:
     livekit_url: str = env("LIVEKIT_URL", "ws://127.0.0.1:7880")
     livekit_api_key: str = env("LIVEKIT_API_KEY", "devkey")
     livekit_api_secret: str = env("LIVEKIT_API_SECRET", "secret")
-    room_name: str = env("ZAELAR_ROOM", "zaelar")
+    # ONE ROOM PREFIX PER MACHINE (2026-10-23). Every cloud Machine registers its voice worker with the SAME LiveKit
+    # project, and LiveKit offers a new room to any worker whose `request_fnc` accepts it. With one shared prefix
+    # every Machine accepted every account's room: measured live, a new account's voice landed on the base
+    # Machines and on ANOTHER account's Machine — never on its own, so it neither heard nor answered. Fly sets
+    # `FLY_MACHINE_ID` on every Machine; a self-host install has none and keeps «zaelar».
+    room_name: str = env("ZAELAR_ROOM", default_room_prefix())
 
     # --- Profile + component selection --------------------------------------
     profile: str = PROFILE                                # remote | local

@@ -108,3 +108,12 @@ def test_the_picked_folder_goes_through_the_same_boundary(monkeypatch):
     monkeypatch.setattr(picker, "choose_folder", lambda prompt="": "")
     monkeypatch.setattr(roots, "roots", lambda: [])
     assert routes.pick(type("R", (), {"_caller": lambda self: "test"})(), {})["cancelled"] is True
+
+
+def test_a_cloud_account_is_recognised_without_a_stub(monkeypatch):
+    """Live 2026-10-23: `_is_cloud` imported a module that does not exist, so it always said «local» and the cloud
+    showed the icon and the self-host screen. Every other test here stubs `_is_cloud`; this one does not."""
+    monkeypatch.setenv("ZAELAR_USER_ID", "f075b277-0000-0000-0000-000000000000")
+    assert daemon_api._is_cloud() is True
+    monkeypatch.delenv("ZAELAR_USER_ID")
+    assert daemon_api._is_cloud() is False

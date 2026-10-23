@@ -2060,6 +2060,10 @@ DOMAINS: list[dict] = [
                                  "llegó dice «close» seguro — contar un cierre ya hecho no cierra nada",
             "ch": UNIT,
             "paths": ["tests/agent_headless/unit/flash/test_a_report_of_a_close_closes_nothing.py"]},
+        {"id": "2.769", "title": "Una Machine de la nube solo acepta SUS salas de voz (prefijo por Machine): la voz de una "
+                                 "cuenta nunca la coge otra Machine",
+            "ch": UNIT,
+            "paths": ["tests/voice/unit/test_a_machine_takes_only_its_own_voice_rooms.py"]},
     ]},
     {"id": "4", "name": "WIDGETS", "nodes": [
         {"id": "4.1", "title": "Ciclo de vida / acciones / refs / generador / background", "ch": UNIT, "paths": [
