@@ -36,14 +36,11 @@ So «did it sync?» is always a COUNT the widget produced, never one claimed fro
 
 ## Who wins — the one rule
 
-The operator asked for a two-way link:
-
-> «Si se modifica algo en nuestro agente, un nombre, un teléfono, también se modifica en Google. Eso sería
-> lo más interesante, lo más simple a nivel gráfico y lo más fácil de comprender por parte de los usuarios.
-> Además estaría unificado como por ejemplo en la agenda, Google Calendar.»
+The link is two-way: a name or a phone changed in the agent is changed in Google too, the same way the
+agenda mirrors Google Calendar.
 
 That makes «who wins» a question every pass has to answer, and the answer is **whoever touched the row
-last** — which `updated` has recorded since V2-541.
+last** — which each row's `updated` records.
 
 ```
   ┌── PUSH ──┐  rows whose `touchedAt` is newer than their `pushedAt` — he changed it, Google has not
@@ -54,14 +51,10 @@ last** — which `updated` has recorded since V2-541.
              └→ _merge_imported · _drop_deleted
 ```
 
-## It stays on (V2-701)
+## It stays on
 
-> «El tema de la sincronización de contactos no es algo que deberíamos hacer de forma puntual, deberíamos
-> realmente marcar un botón de sincronización y eso debería quedarse conectado de forma permanente.»
->
-> «La sincronización es bidireccional una vez está activa, se modifica en un sitio o en otro, todo se
-> sincroniza linealmente y es un espejo nuestro sistema, así como Google Contacts. Entiendo que si eso está
-> conectado a un teléfono y se modifica en el teléfono, todo el sistema se sincronizará.»
+Sync is not a one-off import: once switched on it stays connected, both ways, so the agent and Google
+Contacts mirror each other — including changes made on a phone that syncs to the same Google account.
 
 The control is a **switch**, not a button: a button is a one-off by its grammar, whatever its label says.
 `sync.auto` is the state, `set_auto` writes it (declared, so it is reachable by voice), and
@@ -71,10 +64,10 @@ card reopening never triggers a pass and the interval can change in one place. T
 `sync_state().every` rather than carrying a number nobody keeps in step.
 
 ⚠️ **It is a POLL because the People API has no push for a personal account.** «Permanently connected» is,
-physically, a cheap question asked on a timer — and the SYNC TOKEN is what makes it cheap. His address book
-is 2 685 people, six pages; a full re-read every minute is a request budget spent to learn that nothing
-happened. With a token a quiet minute is ONE round-trip that returns no people. Without it this would have
-had to stay a button, which is the shape he rejected.
+physically, a cheap question asked on a timer — and the SYNC TOKEN is what makes it cheap. A large address
+book spans several pages; a full re-read every minute is a request budget spent to learn that nothing
+happened. With a token a quiet minute is ONE round-trip that returns no people. A change lands within one
+period rather than instantly.
 
 Two rules of Google's govern the token, and both are load-bearing:
 
@@ -92,9 +85,8 @@ never asked.
 ### The clock that stops the storm
 
 ⚠️ **`updated` is a DATE, and a date cannot say «he changed it after we last sent it».** It says «today»
-for the rest of the day. That was survivable while syncing was a button pressed now and then; on a timer it
-is a PATCH per edited contact per minute, and nobody would ever have noticed — every one of those writes
-succeeds and writes the same values. So a local write stamps `touchedAt` and a successful push stamps
+for the rest of the day. On a timer, a date rule would mean a PATCH per edited contact per minute — each one
+succeeding and writing the same values. So a local write stamps `touchedAt` and a successful push stamps
 `pushedAt`, and «ours» is one comparison of two clocks. Rows written before either existed fall back to the
 date rule ONCE, and the push that follows moves them onto the precise path.
 
@@ -143,24 +135,24 @@ Four keys, descending by how much they PROVE. Each one can be right while the on
 
 1. **`googleId`** — the same resource as last time. Survives him renaming the person here.
 2. **the email address**, wherever it lives (the stored field or an email channel). An address is an
-   account, so two rows sharing one are one person — V2-693's Telegram rule.
+   account, so two rows sharing one are one person — the same rule the Telegram import follows.
 3. **name + city** — `add_contact`'s own rule, so the two doors agree.
 4. **the name ALONE, only when exactly one contact here carries it.** This is what makes a re-import
    idempotent: Google routinely knows a city he never typed, so name+city alone would import a second
    «Marta Ruiz» on every pass. When two contacts share the name it stops — adding a duplicate he can merge
    beats silently folding two people into one, which he cannot undo.
 
-## Two traps in the People API, both already paid for elsewhere
+## Two People API rules the code is built around
 
 ⚠️ **An update needs the person's current `etag`**, and that is a feature: it is what stops us overwriting
-an edit he made on his phone since we last read. Every update is a READ-MODIFY-WRITE — the shape V2-697's
-calendar RSVP had to become when a PATCH carrying an array silently replaced it.
+an edit he made on his phone since we last read. Every update is a READ-MODIFY-WRITE — the same shape the
+calendar RSVP uses, because a PATCH carrying an array silently replaces it.
 
 ⚠️ **`updatePersonFields` is a whitelist and everything listed is REPLACED.** A field we name but do not
 send is CLEARED on Google's side. So the body is built from the values present and the mask from the body,
 never from a constant — a constant mask would delete, on Google, every field that happens to be empty here.
 
-## Scopes, and the one thing still missing
+## Scopes
 
 | Tier | Scopes | Google's tier |
 |---|---|---|
@@ -172,15 +164,11 @@ Read-only is the default on purpose: nobody gets write without choosing it. `ser
 flag off the **granted** tier, never off a guess — the widget has to be able to say «solo puedo traer»
 honestly.
 
-⚠️ **The `sync` tier does not work yet.** As of 2026-09-15 the consent screen carries `contacts.readonly`
-and `contacts.other.readonly` only; `https://www.googleapis.com/auth/contacts` must be added in the Google
-Cloud console before anyone can consent to it. The card says so out loud rather than offering a promise
-Google would refuse. Everything else is built and tested.
+⚠️ **The `sync` tier needs the `contacts` scope on the consent screen.** The Google OAuth client in use must
+list `https://www.googleapis.com/auth/contacts` (Google Cloud console) before anyone can consent to it; when
+it is absent the card says so rather than offering a write Google would refuse.
 
-## What is NOT built
+## Extension point
 
-- **A genuinely live link.** There is none to have: the People API has no push for a personal account, so
-  the permanent sync is a `syncToken` poll (above) and a change lands within one period, not instantly.
-- **iCloud and CardDAV.** Visible in the strip, inert, and honest about it (see the header standard).
-- **Live verification of the WRITE half.** 2 685 contacts have come in; nothing has gone out,
-  because the `sync` tier is still missing from the consent screen.
+The provider strip already reserves places for **iCloud and CardDAV** (see the header standard); a new source
+plugs in as a provider in `connectors/contacts/providers.py` behind the same fetch/push boundary.

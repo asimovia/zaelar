@@ -7,11 +7,11 @@ the whole ceremony in order, what gates each step, and the two rules that shaped
 
 ## The two rules
 
-1. **Nothing speaks before a language is chosen** (2026-09-11, V2-672). The engine used to greet in English
-   and ask, out loud, which language you wanted — so the one sentence a person might not understand was the
-   one asking which language they understand. The voice session still starts (the microphone has to be live
+1. **Nothing speaks before a language is chosen.** Greeting in a default language and asking out loud which
+   language you want would make the one sentence a person might not understand the one asking which language
+   they understand. The voice session still starts (the microphone has to be live
    to hear a spoken answer); it simply says nothing until a language exists.
-2. **Nobody is asked what the deployment already knows** (V2-671). Whether this process runs on somebody's
+2. **Nobody is asked what the deployment already knows.** Whether this process runs on somebody's
    laptop or on a hosted Machine is readable (`config/profiles.deployment()`); which providers it uses comes
    from the canonical model table (`config/models.default.json`). Neither is a question for a person who has
    not even chosen a language yet.
@@ -79,10 +79,9 @@ container, SSH. The typed path goes through the same validator, so nothing depen
 The step is skippable, the choice is undoable (an empty value restores the default), and `base()`
 re-validates on every read: an unplugged disk falls back to the workspace instead of writing into nowhere.
 
-**The veil is held BEFORE the language POST, not after it (V2-772).** For a preset language (en/es) the engine
-has nothing to generate, so its `ready` lands while the click's POST is still in flight. Held only after the
-POST, the close was already scheduled and the folder step flashed for a second and went — the operator, after a
-reset: *«la ha mostrado durante un segundo y ha pasado de ella directamente al escritorio»*. The delayed close
+**The veil is held BEFORE the language POST, not after it.** For a preset language (en/es) the engine has
+nothing to generate, so its `ready` lands while the click's POST is still in flight. Held only after the POST,
+the close would already be scheduled and the folder step would flash for a second and go. The delayed close
 also re-checks the holds when it fires.
 
 ### 5 · The voice
@@ -99,13 +98,12 @@ not right for it, for whichever TTS provider is live:
 
 The question asked is `voices.voice_is_aligned(provider, voice, lang)`, which is **not** "is it in the list":
 the ElevenLabs list deliberately keeps fallbacks, so a Castilian voice IS in the English list and a
-membership check would find it and change nothing — which is exactly the defect this replaced.
+membership check would find it and change nothing.
 
-**One pinned default per shipped variant (V2-772).** The ElevenLabs default used to be «the first native voice
-with the region's accent» in the API's own order — the account list as returned, then the Voice Library sorted
-by *trending*, re-fetched weekly — so it moved, and a library voice that stopped trending was dropped and
-replaced. It is now a table, `elevenlabs_voices._PINNED`, chosen against the live library (2026-09-25) as one
-coherent set: middle-aged male, CONVERSATIONAL use case, native to the variant, each synthesis-tested.
+**One pinned default per shipped variant.** Picking «the first native voice with the region's accent» in the
+API's own order would let the default drift — the Voice Library is sorted by *trending* and re-fetched weekly.
+The default is therefore a table, `elevenlabs_voices._PINNED`, chosen against the live library as one coherent
+set: middle-aged male, CONVERSATIONAL use case, native to the variant, each synthesis-tested.
 
 | Variant | Voice | Id | Source |
 |---|---|---|---|
@@ -119,24 +117,22 @@ pinned voice is never «not on today's list». The accent-preference rule stays 
 without a pin. Changing a default is editing this table; the operator's own choice in the ⚙ always wins.
 
 **The prewarmed TTS is re-pointed when the session starts.** The TTS is built in `prewarm`, in the idle worker,
-before any language exists, and the session reuses it. Measured on a factory reset: worker built 21:29:38,
-language locked 21:29:55, job 21:29:57 — no session existed at lock time for `live_tts.apply_voice` to reach, so
-that session spoke with the voice of an older state (heard as «random»). `agent.py` now calls
-`live_tts.apply_current()` right after `attach`.
+before any language exists, and the session reuses it. On a first run the language can be locked before any
+session exists for `live_tts.apply_voice` to reach, so `agent.py` calls `live_tts.apply_current()` right after
+`attach` — the session always speaks with the voice of the current state.
 
 **The ⚙ says what each voice is**: `voices.describe_voice()` → «Eric · English (US) ♂», with the variant's
-native name from the picker catalog. A bare «Elena» hid that she is Peruvian.
+native name from the picker catalog — a bare name would hide the voice's accent.
 
 ### 6 · The greeting
 
 `onboarding.confirmSpoken`, in the chosen language, spoken by `server/i18n_api.py` after the lock. On a
 normal (non-first) start the kickoff is the memory-aware greeting in `voice/engine/pipeline/agent.py`.
 
-## What any reset puts back (V2-772)
+## What any reset puts back
 
-*«Después de un reset o una inicialización de cero, el agente empieza arrancado: el orbe escuchando, el
-micrófono activo, el altavoz activo y el word activation desactivado… aunque estuviera antes diferente.»*
-Three places hold those switches, and every reset — not only «start from zero» — resets all three:
+After a reset or a from-scratch initialisation the agent starts running: orb listening, microphone on, speaker
+on and wake-word activation off — whatever they were before. Three places hold those switches, and every reset — not only «start from zero» — resets all three:
 
 | Switch | Lives in | Reset by |
 |---|---|---|
@@ -145,12 +141,12 @@ Three places hold those switches, and every reset — not only «start from zero
 | mic/speaker mute, orb dock, layout | the browser's `localStorage` | `first-run.js::takeoverOnReset` — the reset bumps a wipe epoch; each shell sweeps our namespace once per epoch and reloads |
 
 After the language is chosen the engine emits `run start` with `src: "language"` and the shells unmute. The bus
-payload is FLAT (`observer.emit` merges `extra` into the event): the reader looked for `d.extra.src`, never
-found it, and the mic and speaker stayed muted until clicked by hand. `sse.js::field()` reads the flat field.
+payload is FLAT (`observer.emit` merges `extra` into the event), so `sse.js::field()` reads the flat field —
+a reader looking for `d.extra.src` would never find it and leave the mic and speaker muted.
 
-## What is NOT part of the first run
+## Outside the first run
 
-- **Choosing a profile.** Retired (V2-671). The panel is still reachable from the TopBar's 🧭 for someone who
+- **Choosing a profile.** The deployment decides it. The panel is still reachable from the TopBar's 🧭 for someone who
   deliberately wants to move their models onto their own machine.
 - **Credentials.** They live in the ⚙, under the connector that needs them, at the moment it is connected —
   not in front of somebody who has not seen the product yet.

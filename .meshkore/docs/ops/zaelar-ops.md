@@ -70,7 +70,7 @@ Key choices:
 - **Runtime ⚙**: STT/TTS/language/fast-model can be set BY HAND from the gear panel (in both the assistant and
   `/architecture` headers) without editing files — persisted to `config/settings.json` / `config/v2.json`, applied
   on the next reconnect.
-- **Architect (proveedor de código/proyectos)**: `ARCHITECT_URL` + `ARCHITECT_TOKEN` + `ARCHITECT_PARENT` — see
+- **Architect (code/project provider)**: `ARCHITECT_URL` + `ARCHITECT_TOKEN` + `ARCHITECT_PARENT` — see
   **§4** (what it is, where the token lives, how to test it).
 
 A **maximally-free** start: `make install-stt` (Whisper local) + `make install-tts` (Kokoro local TTS) + a LOCAL
@@ -101,101 +101,103 @@ FTS5 keyword + RRF fusion + a small graph + Ebbinghaus-style forgetting. It abso
 **episodic** layer: `POST /api/files/upload` (`memory/server_api.py`) writes the bytes into the memory data-dir plus
 a searchable summary. Embeddings come from `embeddinggemma` via Ollama (fallback fastembed).
 
-**No external profile seed.** The one-shot `~/.hermes` importer was retired in V2-778 (nothing called it). The file
+**No external profile seed.** The memory starts empty and grows from conversation. A file such as
 `~/.hermes/memories/USER.md`, if present on a machine, is personal and **must never be committed**.
 
-## 4. Architect daemon (MeshKore remote control) — proveedor de código/proyectos por voz
+## 4. Architect daemon (MeshKore remote control) — code/project provider by voice
 
-**Qué es.** El daemon MeshKore es un servicio **único y compartido de esta máquina** (NO lo arranca zaelar) que
-sirve a TODOS los proyectos del operador (ikamiro, cavioca, reddit, …). Cada proyecto tiene un manager
-(**architect-master**) que planifica, ancla tareas en su roadmap y despacha agentes de código; toda la actividad
-es visible en el cockpit del Architect. zaelar lo consume como **proveedor de código/proyectos**: por voz, el brain
-transmite la intención del operador con las tags silenciosas `[[architect.ask:<proyecto>]]…` /
-`[[architect.new]]{json}` y el resultado (asíncrono, 30s-10min) vuelve por voz proactiva + nota `[SISTEMA]`.
-Código: `connectors/architect/` (client REST · service ask→poll→entrega · brief con la lista de proyectos viva).
-Doc completa: `zaelar-modules.md §Architect` · seguridad: `zaelar-security.md §Architect provider channel`.
+**What it is.** The MeshKore daemon is a **single service shared by the whole machine** (zaelar does NOT start
+it) that serves ALL of the operator's projects. Each project has a manager (**architect-master**) that plans,
+anchors tasks in its roadmap and dispatches coding agents; all activity is visible in the Architect cockpit.
+zaelar consumes it as a **code/project provider**: by voice, the brain passes the operator's intent on with the
+silent tags `[[architect.ask:<project>]]…` / `[[architect.new]]{json}`, and the result (asynchronous, 30 s–10 min)
+comes back through proactive voice + a `[SISTEMA]` note.
+Code: `connectors/architect/` (REST client · ask→poll→deliver service · brief with the live project list).
+Full doc: `zaelar-modules.md §Architect` · security: `zaelar-security.md §Architect provider channel`.
 
-**Cómo nos conectamos (contrato del daemon):**
-- Base: `ARCHITECT_URL` (def **`https://127.0.0.1:5573`**, TLS **autofirmado** — el cliente solo relaja la
-  verificación para hosts loopback; una URL no-loopback exige certificado válido).
-- Cada request lleva `Authorization: Bearer $ARCHITECT_TOKEN` y, para operar sobre un proyecto,
+**How we connect (the daemon's contract):**
+- Base: `ARCHITECT_URL` (default **`https://127.0.0.1:5573`**, **self-signed** TLS — the client only relaxes
+  verification for loopback hosts; a non-loopback URL requires a valid certificate).
+- Every request carries `Authorization: Bearer $ARCHITECT_TOKEN` and, to act on a project,
   `X-MeshKore-Project: <id>`.
-- Endpoints que usamos: `GET /projects` (lista viva — **cambia**, re-listar siempre) ·
+- Endpoints we use: `GET /projects` (live list — **it changes**, always re-list) ·
   `POST /team/architect-master/ask` `{"text": …}` → `202 {request_id}` ·
   `GET /team/requests/<id>` → `{status: queued|running|done|error, result_text}` ·
-  `POST /projects` `{"parent","name"}` (crear proyecto).
-- **Un ask a la vez por proyecto** (429 = ocupado); el conector NO encola un segundo — lo rebota con nota.
+  `POST /projects` `{"parent","name"}` (create a project).
+- **One ask at a time per project** (429 = busy); the connector does NOT queue a second one — it bounces it with
+  a note.
 
-**El token — dónde vive y cómo se rota.** `ARCHITECT_TOKEN` en **`.env` en la raíz del repo** (gitignored; JAMÁS
-se commitea, ni aparece en briefs/notas/voz — regla dura del conector). Si se filtra o llega un **401/403**, el
-operador lo **rota en el cockpit del Architect → Config → Remote control** y se pega el nuevo en `.env` (reiniciar
-zaelar para recargarlo). Variables (documentadas sin valores en `config/.env.example`):
-`ARCHITECT_URL` · `ARCHITECT_TOKEN` · `ARCHITECT_PARENT` (carpeta por defecto para `[[architect.new]]`) ·
-`ARCHITECT_ASK_TIMEOUT` (def 900s). Las tags `[[architect.*]]` son **operator-only** — la allowlist del bridge de
-cluster no las admite, así que un peer no confiable jamás dirige los proyectos del operador.
+**The token — where it lives and how it is rotated.** `ARCHITECT_TOKEN` in **`.env` at the repo root**
+(gitignored; NEVER committed, and never in briefs/notes/voice — a hard rule of the connector). If it leaks or a
+**401/403** arrives, the operator **rotates it in the Architect cockpit → Config → Remote control** and pastes
+the new one into `.env` (restart zaelar to reload it). Variables (documented without values in
+`config/.env.example`): `ARCHITECT_URL` · `ARCHITECT_TOKEN` · `ARCHITECT_PARENT` (default folder for
+`[[architect.new]]`) · `ARCHITECT_ASK_TIMEOUT` (default 900 s). The `[[architect.*]]` tags are **operator-only** —
+the cluster bridge's allowlist does not admit them, so an untrusted peer can never direct the operator's projects.
 
-**Smoke test (sin voz, 10 segundos):**
+**Smoke test (no voice, 10 seconds):**
 ```
 ./.venv/bin/python -c "
 import asyncio, server.common
 from connectors.architect import client
 print(asyncio.run(client.list_projects()))"
-# → lista de {id,name,path}.
+# → a list of {id,name,path}.
 ```
 
-**Prueba por voz.** Con zaelar corriendo, decir p. ej. *«pregúntale al arquitecto de ikamiro qué hay en el
-roadmap»* → el brain emite `[[architect.ask:ikamiro]]…`; zaelar dice que lo pone en marcha; al terminar el
-manager, la respuesta llega sola por voz (y como nota si estás hablando). Observabilidad: eventos `🏗️ Architect`
-en `/debug`; los encargos en curso salen en el brief del brain (responde «¿cómo va?» sin inventar).
+**Voice test.** With zaelar running, say e.g. *«pregúntale al arquitecto de <proyecto> qué hay en el roadmap»* →
+the brain emits `[[architect.ask:<project>]]…`; zaelar says it is starting it; when the manager finishes, the
+answer arrives on its own by voice (and as a note if you are talking). Observability: `🏗️ Architect` events in
+`/debug`; errands in flight appear in the brain's brief (it answers «¿cómo va?» without inventing).
 
-**Troubleshooting:** `401/403` → token rotado (ver arriba) · `429` → ese proyecto ya tiene un turno en curso,
-esperar · sin respuesta tras 15 min → el encargo puede seguir vivo en el cockpit; preguntar de nuevo con otro
-`[[architect.ask]]` · `ARCHITECT_TOKEN no configurado` → falta la var en `.env`. Tests del conector:
+**Troubleshooting:** `401/403` → token rotated (see above) · `429` → that project already has a turn in flight,
+wait · no answer after 15 min → the errand may still be alive in the cockpit; ask again with another
+`[[architect.ask]]` · `ARCHITECT_TOKEN no configurado` → the var is missing from `.env`. Connector tests:
 `./.venv/bin/pytest connectors/architect/ -q`.
 
 ## 5. Run
 ```
 make run                 # = BRAIN=nucleo scripts/run-livekit.sh → http://localhost:43917 (Chrome)
 ```
-`make run` levanta el stack completo: el **servidor LiveKit nativo** (`make install-livekit`; Docker solo fallback)
-+ la web con el **agent worker EMBEBIDO** en el proceso, con el cerebro «Colmena» (`BRAIN=nucleo`). Aliases:
-`make run-nucleo` (idéntico) · `make run-lk` (override `BRAIN=…`). Depurar por separado: `make lk-server` (solo el
-servidor LiveKit dev) · `make agent-worker` (solo el worker contra un LiveKit ya arriba).
+`make run` brings up the full stack: the **native LiveKit server** (`make install-livekit`; Docker only as a
+fallback) + the web app with the **agent worker EMBEDDED** in the process, with the «Colmena» brain
+(`BRAIN=nucleo`). Aliases: `make run-nucleo` (identical) · `make run-lk` (override `BRAIN=…`). Debugging the halves
+separately: `make lk-server` (the LiveKit dev server only) · `make agent-worker` (the worker only, against a
+LiveKit that is already up).
 
 Open **http://localhost:43917 in Chrome** (mic needs localhost or HTTPS). `/architecture` = live diagram + docs ·
 `/debug` = live event timeline. Self-test (no browser): `./.venv/bin/python -m tests.voice.e2e.mic.mic_selftest`.
 
-### Reset de memoria — empezar un test de cero (`make reset-restart`)
+### Memory reset — starting a test from zero (`make reset-restart`)
 ```
-make reset-dry           # muestra qué borraría/conservaría SIN tocar nada
-make reset               # borra SOLO la memoria humana (no arranca)
-make reset-restart       # borra + re-arranca el stack de cero (make run)
+make reset-dry           # shows what it would delete/keep WITHOUT touching anything
+make reset               # deletes ONLY the human memory (does not start)
+make reset-restart       # deletes + restarts the stack from zero (make run)
 ```
-Para probar la memoria **desde cero** ("¿cómo te llamas?", "¿dónde vives?") **sin re-autenticar** Telegram/WhatsApp/
-Wallapop/cluster en cada prueba. `scripts/reset-memory.sh` (auto-documentado; portable a bash 3.2) borra la
-**memoria humana** (`memory/_data/zaelar.db` +wal/shm — incluye el log durable de eventos del bus —, episódica,
-stores de contenido de widgets/mensajes) **y la observabilidad** (`.meshkore/logs/sessions/` + `timeline-latest.jsonl`,
-para poder AUDITAR el test contra la BD a cero), y **CONSERVA** credenciales/auth/cookies:
+To test memory **from zero** ("what's your name?", "where do you live?") **without re-authenticating**
+Telegram/WhatsApp/Wallapop/cluster on every run. `scripts/reset-memory.sh` (self-documented; portable to bash 3.2)
+deletes the **human memory** (`memory/_data/zaelar.db` +wal/shm — including the bus's durable event log —,
+episodic, widget/message content stores) **and the observability** (`.meshkore/logs/sessions/` +
+`timeline-latest.jsonl`, so the test can be AUDITED against the zeroed DB), and **KEEPS** credentials/auth/cookies:
 `connectors/whatsapp/_session` (Baileys) · `connectors/telegram/_session` · `widgets/_data/navegador/profile`
-(cookies Wallapop/Google) · `memory/_data/search_browser` · `config/*.json` (tokens WS del cluster) · `.env` ·
-`.meshkore/credentials/`. La frontera funciona porque el storage está **separado por directorio** (`.gitignore`); el
-script usa rutas EXPLÍCITAS (nunca `rm -rf` sobre un padre compartido — p.ej. `memory/_data/` contiene la BD **y** el
-perfil de búsqueda). Tras el reset, zaelar arranca con `operator_name=None` y la memoria a 0 → el perfil crece durante
-el test y se puede comparar observabilidad ↔ BD.
+(Wallapop/Google cookies) · `memory/_data/search_browser` · `config/*.json` (cluster WS tokens) · `.env` ·
+`.meshkore/credentials/`. The boundary works because storage is **separated by directory** (`.gitignore`); the
+script uses EXPLICIT paths (never `rm -rf` on a shared parent — e.g. `memory/_data/` holds the DB **and** the
+search profile). After the reset, zaelar starts with `operator_name=None` and memory at 0 → the profile grows
+during the test and observability can be compared against the DB.
 
 ## 6. Defaults at a glance
-| Función | Default | Gratis? | Alternativas (en código) |
+| Function | Default | Free? | Alternatives (in code) |
 |---|---|---|---|
-| STT | **Whisper local** (`auto`) | **sí·local** | browser (free), deepgram, groq (free-tier), aiml (opt-in router) |
-| TTS | **Deepgram Aura-2** | free-tier | **kokoro** (gratis·local), cartesia, elevenlabs |
-| Brain | **nucleo** («Colmena», propio, in-process) | — | direct/local (baselines OpenAI-compat). NO usar modelos de razonamiento en la capa de voz |
-| Fast model | por invocación (`config/v2`) | según proveedor | local Ollama (gratis) · AIMLAPI/Grok (nube) — non-reasoning obligatorio |
-| Memory embeddings | embeddinggemma (Ollama) | **sí·local** | fastembed (fallback) |
-| VAD/turno | LiveKit (Silero + turn-detector) | sí·local | — |
-| WebRTC TURN | Cloudflare/STUN | sí | — |
+| STT | **Whisper local** (`auto`) | **yes·local** | browser (free), deepgram, groq (free-tier), aiml (opt-in router) |
+| TTS | **Deepgram Aura-2** | free-tier | **kokoro** (free·local), cartesia, elevenlabs |
+| Brain | **nucleo** («Colmena», own, in-process) | — | direct/local (OpenAI-compatible baselines). NO reasoning models on the voice layer |
+| Fast model | per invocation (`config/v2`) | depends on provider | local Ollama (free) · AIMLAPI/Grok (cloud) — non-reasoning mandatory |
+| Memory embeddings | embeddinggemma (Ollama) | **yes·local** | fastembed (fallback) |
+| VAD/turn | LiveKit (Silero + turn-detector) | yes·local | — |
+| WebRTC TURN | Cloudflare/STUN | yes | — |
 | Widget code-gen / SlowBrain | Claude Code headless | — | Codex |
 
-## 7. Distribution / installer TODOs (so it reproduces everywhere)
+## 7. Distribution notes (so it reproduces everywhere)
 - **Bundle vs download**: keep models OUT of git. Local backends already shipped as one-command installers
   (`make install-stt` → MLX/faster-whisper offline STT; `make install-tts` → Kokoro offline TTS), models download on
   first use. Cross-platform (`scripts/install-stt-mac.sh` / `install-stt-win.ps1`; TTS analogously). Each turns a

@@ -4,13 +4,13 @@
 date or hour) · `widgets/agenda/planner.py` (what may be placed in a day) · `widgets/agenda/index.py` (what
 the brain reads) · `widgets/agenda/widget.js` (the section)
 **Store:** the agenda widget's own isolated file, `db["taskLists"]` + `db["tasks"]`, schema **v2**
-**Initiative:** V2-744 · **Sibling doc:** `zaelar-jobs.md` — the other thing that used to be called a
+**Sibling doc:** `zaelar-jobs.md` — the other thing that could be called a
 «tarea», and is not one.
 
 ## The vocabulary, because it is the whole point
 
-The operator, 2026-09-21: *«a las tareas que yo hago las llamo **procesos** (jobs en inglés) y las separo
-de las **tareas personales del operador**, que van en su agenda»*.
+The work the agent does is called a **job** (*proceso*); the operator's own **tasks** (*tareas*) are kept
+separate and live in his agenda.
 
 | | what it is | where it lives | how it is opened |
 |---|---|---|---|
@@ -42,12 +42,11 @@ wearing the face of a fresh start.
 
 ### 2 · The planner places only what says how long it takes
 
-`tasklists.plannable(t)` = a duration, an hour, or a project. Before V2-744 `plan_day` read
-`int(t.get("estimateMinutes", 30))`, so **anything without a duration was scheduled as half an hour**. That
-was invisible while every task came from the coach; with a shopping list in the same array it becomes
-visible immediately — «Pan» takes the 9:00 slot and «Leche» the 9:30.
+`tasklists.plannable(t)` = a duration, an hour, or a project. `plan_day` never assumes a default duration:
+defaulting a missing `estimateMinutes` to half an hour would schedule every shopping item as a meeting —
+«Pan» taking the 9:00 slot and «Leche» the 9:30.
 
-It is not a special case for lists. It is V2-652's rule — *a missing fact is a fact, not a slot for a
+It is not a special case for lists. It is the engine-wide rule — *a missing fact is a fact, not a slot for a
 default* — applied to the one field the planner cannot work without. A task that DOES declare
 `estimateMinutes` is still planned exactly as before.
 
@@ -56,8 +55,8 @@ default* — applied to the one field the planner cannot work without. A task th
 He asked for numbering so he can say «la lista número 3, el ítem número 2». A number stored on the row
 would drift from what he is reading the moment anything is deleted, so `no` is **derived on every read** —
 and `tasklists.digest()`, what the brain sees, is built by the same function the render reads.
-`index.py` exists because two views of one card once disagreed about what «next» meant; building the second
-view out of the first is the fix that nobody has to remember.
+`index.py` builds the second view out of the first so two views of one card can never disagree about what
+«next» means — a guarantee nobody has to remember.
 
 ## Driving it by voice
 

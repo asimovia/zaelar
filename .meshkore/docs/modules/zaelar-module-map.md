@@ -1,234 +1,217 @@
-# Mapa de módulos — qué hay dentro de cada uno
+# Module map — what lives inside each module
 
-**Qué es esto.** El inventario DENSO: por cada módulo declarado en `.meshkore/public/cluster.yaml`, qué piezas
-lo forman, qué decide cada una y por qué está donde está. Vivía dentro de `CLAUDE.md` y salió de ahí el
-2026-09-15: `CLAUDE.md` es de reglas y punteros, y esto es documentación de arquitectura.
+**What this is.** The DENSE inventory: for every module declared in `.meshkore/public/cluster.yaml`, which pieces
+make it up, what each one decides and why it lives where it does. `CLAUDE.md` holds rules and pointers; this is
+architecture documentation.
 
-El mapa CORTO (una línea por módulo, para orientarse) sigue en `CLAUDE.md`. La arquitectura con sus diagramas
-está en `.meshkore/docs/architecture/zaelar-architecture.md`; el detalle por módulo, en
-`.meshkore/docs/modules/zaelar-modules.md`. Las decisiones que trajeron cada pieza aquí, en
-`.meshkore/docs/decisions.md` (solo en local, gitignoreado desde 2026-10-10; lo vigente y público está en
-`.meshkore/docs/criteria.md`).
+The SHORT map (one line per module, for orientation) is in `CLAUDE.md`. The architecture with its diagrams is in
+`.meshkore/docs/architecture/zaelar-architecture.md`; the per-module detail, in
+`.meshkore/docs/modules/zaelar-modules.md`. The rules the engine follows today are in
+`.meshkore/docs/criteria.md`.
 
-## Módulos declarados (`.meshkore/public/cluster.yaml`)
+## Declared modules (`.meshkore/public/cluster.yaml`)
 
-Antes de crear un módulo nuevo, declararlo en `.meshkore/public/cluster.yaml`. Raíz SIN `.py`/`.html` sueltos;
-arranque `make run` → `python -m server`.
+Before creating a new module, declare it in `.meshkore/public/cluster.yaml`. No loose `.py`/`.html` at the root;
+start with `make run` → `python -m server`.
 
-- `voice/` — **motor LiveKit** en `voice/engine/`: `AgentSession` (streaming, turnos, VAD, barge-in,
-  preemptive-gen) + registry de providers + perfiles remote/local (`core/`, `speech/`, `llm/`, `pipeline/agent.py`
-  con `make_server()` embebible, `speech/voices.py`). El turn-taking/VAD/barge-in los gobierna LiveKit (VAD Silero +
-  turn-detector `MultilingualModel` + `allow_interruptions`). Nivel superior = contrato del cerebro **puro y
-  agnóstico del transporte**: `tag_protocol.py`, `speech.py`, `brain_notes.py`, `proactive.py`, `prompt.py`,
-  `health_state.py`, `llm_health.py`, `observer.py` (SSE), `attention.py` (gate de atención V2-015 — decide qué
-  turno va dirigido a zaelar; ambient vs atendiendo).
-- `nucleo/` — **cerebro propio «Colmena»**: FlashBrain ORQUESTADOR + workers Claude Code (V2-036; el "SlowBrain
-  cerebro aparte" se disolvió). Se expone al motor como provider
-  `livekit.agents.llm.LLM` (`voice/engine/llm/providers/nucleo.py`, `BRAIN=nucleo` = default). `nucleo/flash/` =
-  **FlashBrain** reflejo sub-segundo (`router.py` clasifica el input + `fast_client.py` cliente de modelo rápido
-  no-razonador **por invocación** + `frontend.py` gestor de frontend/widgets + `procs.py` lanzador de procesos +
-  `escalate.py` escalado + `prompt.py` [ensambla el prompt del turno V2-027: ESTADO compuesto + capa TERSA de
-  recursos, ~30 líneas] + `memory_cache.py` [cachea `memory.compose_state()` fuera del turno + siembra la misión] +
-  `prewarm.py` [calienta FlashBrain+browser en el arranque, V2-024] + `dialog.py` [estabilidad conversacional V2-032:
-  break-loop + poda de historial + anti-degeneración, COMPARTIDO por voz y probe] + `probe.py` [canal de PRUEBA
-  headless, 3ª forma de testing: `POST /api/flash/say`]). La **búsqueda** vive desde V2-782 en su propio paquete `search/` (`web.py` = la cadena compartida por los dos cerebros,
-  V2-022; `browser.py` = Google GRATIS vía Chromium persistente, V2-024; `nucleo.websearch`/`nucleo.browser_search` son alias) — mapa en `zaelar-search.md`. **Latencia — la memoria NO está en el turno síncrono**
-  (V2-011): el bloque de ESTADO (nombre/trato/temas) sale de `memory_cache` (caché de sesión, TTL + refresco async
-  + invalidación por `memory.updated`), y el recall semántico (`prompt.compose_recall`) es **bajo demanda**
-  (`prompt.needs_recall`) y **fuera del event loop** (`asyncio.to_thread`) — el turno de charla nunca dispara el
-  retriever. `nucleo/loop.py` (~1 Hz) + `nucleo/scheduler.py` (**cron PROPIO** respaldado
-  por `memory.journal`) + `nucleo/cron_api.py` (`/api/cron`, panel ⏰) + `nucleo/sparks.py` (chispas doble-gate) =
-  **loop orquestador** (tareas programadas + proactividad + dispara el consolidador de memoria off-hot-path + reporta
-  por voz+UI; montado en el lifespan con `BRAIN=nucleo`). `nucleo/dispatch.py` (dispatcher: compone prompt
-  [contexto+tarea] → CodeAgent con modelo por invocación, consume `escalate.requested` del bus, entrega por voz+UI) +
-  `nucleo/memory_agent.py` ★ (agente de MEMORIA, único escritor a `memory/`; su `compose_context` = **dossier v2
-  multi-eje** del worker V2-056: perfil sin misión + reglas + ⚠️ críticos SIEMPRE + recall + `by_concepts` + agenda,
-  solo durables, `to_thread`) + `nucleo/mem_processor.py` ★ (el CORAZÓN de escritura V2-013:
-  **`deepseek/deepseek-v4-flash` DIRECTO** (`api.deepseek.com` desde 2026-08-16; antes vía AIMLAPI) por config
-  `§memory` desde 2026-08-09 — bench §12.3: iguala a
-  `gpt-4.1-mini` en completeness (98,5 vs 98,9%) y precisión (100%) por **−55% de coste**; `gpt-4o-mini` VETADO
-  (mete una alergia en inglés en `slot=operator.diet`, que la borraría al cambiar de dieta); key
-  POR ENDPOINT + salud con alerta por racha de fallos [incidente 2026-07-17/19: 2 días caído en silencio];
-  escribir puede ser lento, prioriza escribir BIEN — DESTILA cada turno en píldoras curadas — dato+metadatos,
-  decide DESCARTAR/ESTADO/CORTO/LARGO + importancia + `slot`; off-hot-path, fail-open a la heurística [que ya NO
-  ensucia: degrada a short+TTL]; **GATES de PRECISIÓN deterministas V2-033**:
-  descarta peticiones/preguntas/ack reificadas, no deja que un nombre garbleado del STT pise la identidad del `state`
-  —cuarentena— y no hace durable una preferencia efímera) + **`nucleo/workers/`** (**Brain Workers V2-038** —
-  sustrato AGNÓSTICO: `base.py` [`WorkerBackend`/`WorkerEvent`/`WorkerSpec`], `claude_session.py` [stream-json vivo],
-  `generator_session.py` [widgets, envuelve el generador matable], `codex_session.py` [Codex CLI, `exec --json`],
-  **`grok_session.py`** [Grok Build; HEREDA de `claude_session` porque su wire format es el MISMO, ver decisión clave],
-  `registry.py`
-  [`get_backend` por config, mezclable], `session.py` [`WorkerSession` + `SessionRecord`], **`providers.py`**
-  [CADENA de endpoints Anthropic-compatible + relevo por cuota agotada, ver decisión clave]) = capa de trabajo async
-  INTERACTIVA. `nucleo/agentes/` (interfaz `CodeAgent` one-shot V2-036 — `worker/web/web_cc/otros.py` **PARKEADOS**
-  en V2-038; solo se reutilizan sus helpers de detección de widget). **Puentes de los workers**: `nucleo/mem_cli.py`
-  (`hbmem` — memoria serial, recall/remember por HTTP) · `nucleo/agent_report.py`+`nucleo/agent_api.py` (`hbnote` —
-  reporte de fase al bus) · **`nucleo/worker_bridge.py`+`nucleo/worker_api.py`** (`hbask`/`hbact`/`hbsay` —
-  pregunta/pide-tool/dice al usuario, plano request/response V2-038, `/api/worker/act`, política + piggyback + token) ·
-  `nucleo/nav_cli.py`+`widgets/navegador/act_api.py` (`hbweb` — conducir el navegador) · **`nucleo/widget_cli.py`**
-  (`hbwidget` — LEER/OPERAR un widget del canvas: `read`/`data`/`show`/`close`, acción `widget_data` de
-  `/api/worker/act` con gate del catálogo canónico + provenance worker; V2-061, el PUENTE que refleja en los widgets
-  lo hecho en la realidad). `nucleo/danger.py` = gate de
-  acciones irreversibles. **`nucleo/susurro/`** (V2-053) = **auto-auditoría conversacional «Susurro»** — enchufado
-  SOLO por el bus (topic `turn.completed` + fricción), modelo potente configurable §susurro, correcciones de
-  catálogo cerrado (ver decisión clave). **`nucleo/homeostasis.py`** (V2-070) = **LATIDO AUTÓNOMO** — el tercer
-  nivel, HERMANO del cerebro (no parte de él): mantiene la MÁQUINA sana (recicla el motor LiveKit degradado cuando es
-  seguro, rota logs, evicta cápsulas muertas), determinista y SIN LLM, `start()/stop()` en el lifespan como los otros
-  supervisores; ver decisión clave «Homeostasis».
-- `memory/` — **memoria central** tipo humana, SUBSTRATO 100% local (los LLM de escritura van por API — ver
-  decisión clave), un solo fichero SQLite `zaelar.db` (WAL, en
-  `memory/_data/`): substrato compartido que escriben el FlashBrain, el agente de memoria y los widgets, y lee el
-  retriever en la ruta caliente (ms). **`memory.compose_state()`** (V2-027) compone el **ESTADO COMPARTIDO** que
-  ven los dos cerebros — misión (`state.mission`) + situacional + conversación reciente sintetizada — como lectura
-  DIRECTA (µs, sin LLM ni retriever); lo cachea `nucleo/flash/memory_cache` fuera del turno. Cada recuerdo es una
-  **PÍLDORA**: dato canónico (`text`) + metadatos (`slot`/`meta`, schema v2). **`slot`** = clave canónica del hecho singular (`operator.name`, `goal.current`…) →
-  el writer hace **supersede/dedup EXACTO sin LLM** ("el más reciente MANDA": mismo dato = refuerza; dato cambiado =
-  invalida TODOS los vigentes — auto-curativo). El **vocabulario de slots vive en el REGISTRO ÚNICO
-  `memory/slots.py`** (auditoría 2026-07-14): alias + campo de `state` + flag de identidad, consumido por writer
-  (`canon_slot`), memory_agent (gate P0b) y el prompt del procesador (catálogo GENERADO) — las tres capas no pueden
-  divergir; el consolidador añade `heal_slots()` (normaliza legacy + colapsa multi-vigentes en cada sueño). El
-  **contrato v2 del átomo** añade `value` (→ `state_patch` sintetizado MECÁNICAMENTE del registro) y `change:
-  none|update|correction` (señal de cambio del PROPIO procesador multilingüe → el gate anti-garble la consume; las
-  regex es/en quedan de backstop, no de mecanismo único). Tablas `state·memories·vec_memories·fts_memories·edges·episodic·journal` ·
-  cola + writer (único escritor, embeddings al insertar) · embeddings (embeddinggemma 768 vía Ollama, fallback
-  fastembed; provider configurable `memory.embed_*` + `memory/reembed.py` con firma de modelo) · retriever
-  (sqlite-vec + FTS5 → RRF k=60 → score α·rel+β·rec+γ·imp+δ·uso → **reranker** cross-encoder local `memory/rerank.py`
-  → graph_expand) · grafo ·
-  consolidador (sueño LIGERO: decay Ebbinghaus POR VENTANA + dedup + prune_invalid + eviction por peso, pinned
-  intocable) · **`memory/rem.py`** (V2-056: sueño PROFUNDO «fase REM» diario — repara vectores `embed_pending` +
-  dedup SEMÁNTICO por coseno + INSIGHTS por concepto [`slot=insight:<c>`, hook LLM inyectado desde
-  `nucleo/memllm.py`, **`deepseek-v4-flash` vía AIMLAPI** desde 2026-08-09 — bench §12.4] + higiene con alerta;
-  kill-switch `ZAELAR_REM`. ⚠️ Esta fase estuvo MUERTA semanas: `.format()` sobre un prompt con llaves literales
-  lanzaba `KeyError` y el `except` lo volvía un warning — ver la decisión «Memoria central») · capa **episódica** (absorbió el
-  antiguo `files/`: paste/drop → `memory/server_api.py` → `memory.write_episode`, binario + resumen buscable, carga
-  lazy) · fachada + señal `memory.updated` por el bus.
-  **`memory/vault.py`** ★ (V2-060:
-  BÓVEDA de secretos del operador CIFRADOS — cripto asimétrica sealed box vía PyNaCl + sobre passphrase Argon2id +
-  passkeys WebAuthn PRF; tablas `vault_meta`/`vault_secrets`), **`memory/secrets.py`** (detección FAIL-CLOSED +
-  redacción) y **`memory/vault_api.py`** (`/api/vault/*`, loopback) — ver la decisión clave «Bóveda de secretos».
-  Diseño en `zaelar-memory.md`.
-- `observability/` — **QUIÉN · CUÁNDO · en qué FLUJO** (V2-090). Completa el registro de eventos (que ya contaba
-  QUÉ pasa) con los ejes para ANALIZARLO: `identity.py` (**`user_id`** estable por instalación —UUID4 aleatorio
-  en `config/identity.json` gitignored, con **INIT EXPLÍCITO en el lifespan del server** desde 2026-08-16 (antes
-  se generaba solo, la primera vez que CUALQUIER código llamara a `user_id()`; ahora queda creado y logueado en
-  el arranque) — `ZAELAR_USER_ID`, when set, wins over the file— y **`session_id`**
-  por SESIÓN DE TRABAJO del operador: arranca al conectar, se cierra con ⏻ o al cerrar la pestaña, y una
-  reconexión NO la parte en dos) · `flows.py` (lectura por **CORRELATION ID**: flujos con duración real de punta
-  a punta, familias, actores, tokens y errores; detalle cronológico; sesiones; cobertura) · `api.py`
-  (`/api/observability/*`). **El correlation id NO es un id nuevo: es el `trace` de V2-044 PROMOVIDO** de campo
-  del JSON a columna indexada (`events.corr_id`) — un segundo id paralelo se habría separado del primero en la
-  primera costura cross-loop sin coser. Un flujo nuevo nace con cada petición del operador; lo que continúa un
-  flujo vivo hereda el suyo. **A correction spoken while a task is still live MERGES into that task's `corr_id`
-  instead of opening a new one** (2026-08-15): `send_to_worker`'s handler (`nucleo.py::_on_tool_call`) already
-  resolves its target via `dispatch.resolve_sessions()`; when that resolves to exactly one live session, this
-  turn adopts its `trace_id` (`dispatch.trace_of` + `trace.adopt`) instead of keeping the fresh one `trace.begin()`
-  opened at turn start. With several live sessions and no unambiguous match, nothing merges — a stray extra flow
-  beats guessing which task a correction belongs to. A flow's end is now also EXPLICIT (`kind="flow"`, emitted
-  where the worker session that spawned it finishes), not just inferred from silence. **A single utterance split
-  across several LiveKit turns also merges (2026-08-15):** LiveKit closes one turn per STT-final segment, so a
-  long sentence spoken without pauses used to open a fresh trace per fragment — `_begin_or_adopt_trace()`
-  (`nucleo.py`) checks the V2-096 accumulator's `pending()` instead: while a fragment chain is open, the next
-  turn ADOPTS its trace rather than opening one, cleared once the chain resolves. Known limit, not solved here: if
-  the accumulator judges a sentence complete (a closing period) and the operator keeps talking about the same
-  thing right after, that reopens as a NEW chain/trace — a real improvement, not a guarantee of one flow per
-  real-world task. **A pending confirmation's answer also merges into the turn that asked** (`widgets/
-  confirm.py::request()` captures `trace.current()`, `_resolve_confirm()` adopts it before executing/cancelling)
-  — the ask/answer/action of an irreversible confirm-gate now reads as one flow even across a barge-in-cancelled
-  reply attempt in between. `flows()`'s SQL exposes `origin` (the `trace.begin(origin=...)` argument: `turno`/
-  `kickoff`/`ui`/`cron`/`proactivo`/`cluster`/`probe`) and `title` (that root event's text) per flow — what a
-  flow viewer uses to tell a real task apart from session
-  initialization (kickoff greeting, canvas-restore reconciliation within the session's first ~10s) and to label
-  each column/rail item with more than a bare corr_id. **A plain conversational flow now closes EXPLICITLY too**
-  (2026-08-15): only a worker-spawned flow had an explicit close before this; a viewer could only guess
-  liveness from recency, and guessed wrong the instant a turn finished (reported live: "restarted the system…
-  still shows seven active flows"). `_run`'s success path (never the `CancelledError` branch — a barge-in
-  cancellation may still get continued by the next fragment) calls `_maybe_close_flow()`, which closes the
-  current trace UNLESS the V2-096 accumulator still expects more on it, a confirmation asked on it is still
-  pending, or a worker is still running on it (`dispatch.has_live_trace`, the reverse of `trace_of`) — that
-  worker owns the close instead. **A confirmation's "sí"/"no" is now resolved BEFORE any slow work, not only
-  after** (2026-08-15): the old deterministic backstop (`classify_reply` + resolve) only ran after the model's
-  full response streamed — a turn cancelled by barge-in before reaching it lost the answer in total silence,
-  leaving the confirmation pending forever with the widget untouched (reproduced live: operator confirmed
-  clearing the agenda by voice, the reply's turn got barge-in-cancelled, and the agenda never changed, with zero
-  trace of it in the log). A clear yes/no is now resolved right after the hard-interrupt check, before the model
-  is even called; ambiguous replies still fall through to the old late-stage backstop. **A widget can opt out of
-  the visual Sí/No overlay** (`"confirm_ui": false` in its manifest, `nucleo.py::_confirm_ui_paints`; e.g.
-  `widgets/agenda/manifest.json`, per an explicit operator request — "the agenda widget is voice-only"): the
-  confirmation itself, and voice resolution, are completely unchanged — only the SSE emit that paints the card
-  overlay is skipped. SOLO LECTURA: el único escritor de `events` sigue siendo
-  el sink del bus.
-- `bus/` — **Sistema Nervioso**: pub/sub de señales in-process (asyncio, patrones fnmatch + `emit_sync`
-  loop-agnóstico vía `call_soon_threadsafe` para entrega cross-loop job-thread↔uvicorn). `bus/log.py` = log durable
-  de eventos en SQLite (`zaelar.db`, tabla `events`, WAL). `bus/sse.py` = puente SSE al frontend (`GET /events`).
-  Transporte HÍBRIDO: llamadas directas en la ruta caliente de voz + eventos para lo async/fan-out. **Nada de
-  Kafka/broker.**
-- `frontend/` — interfaz como app de **módulos ES sin build**, migrable a Solid (core reactivo + services +
-  components + widget desktop). Voz vía **cliente LiveKit** (`services/session-lk.js` + SDK vendorizado en
-  `frontend/vendor/`). Ver `zaelar-modules.md §Frontend`. **SUPERFICIES NATIVAS del frontend = «widgets de
-  SISTEMA», INTOCABLES** (V2-080): su LISTA CANÓNICA ÚNICA vive en **`frontend/app/core/system-surfaces.js`**
-  (`SYSTEM_SURFACES` + `isSystemSurface()`) — panal de actividad, cámara/mic, orbe, TopBar, estado de conexión,
-  chat (Chat/Procesos/Crons), panel de estado ◉, config ⚙, benchmarks, debug ◷, mapa de memoria 🧠, wizard 🧭,
-  bóveda 🔐, banner de aviso y splash de arranque. `main.js` las MONTA desde esa lista (sin duplicar). El
-  generador/`lifecycle` NUNCA las tocan (solo tocan `widgets/<id>/`). **Todo lo demás en pantalla son WIDGETS DE
-  USUARIO** (catálogo `widgets/<id>/`, full-stack `manifest.json`+`data.py`+`widget.js`), variables y creados
-  por/para el usuario **aunque se distribuyan de serie** — como los conectores. Añadir una superficie nativa nueva
-  = añadirla a `system-surfaces.js`. **V2-082:** cada superficie dirigible por voz lleva `name` + `aliases` FIJOS
-  (hardcodeados en el front, NO editables) — espejados en el backend `widgets/system_surfaces.py` (test de sincronía)
-  para que el resolver de nombres las conozca. Cada tarjeta de widget de usuario pinta un HEADER genérico (en
-  `desktop.js`, sin tocar su `widget.js`) con el NOMBRE + un ⚙ que despliega sus ALIAS editables.
-- `server/` — FastAPI app + routers + entrypoint (`server/__main__.py`); corre el **agent worker de LiveKit
-  EMBEBIDO** en el proceso (lifespan), y arranca en ese mismo lifespan el loop de `nucleo/`, el supervisor de
-  widgets `backed` y el consumidor de la cola de memoria. Routers: `livekit_api` (token + config + swap de
-  session.js), `voice_api`, `cron_api` (`/api/cron`), `wizard_api` (V2-040), `spotify_api` (V2-041), `config_api`
-  (V2-043: `/api/config*` — el área de configuración full-screen), **`memory/vault_api`** (V2-060: `/api/vault/*` —
-  bóveda de secretos, montado siempre), widgets, pages.
-- `widgets/` — widgets full-stack (`data.py` + `widget.js` por carpeta), generador, catálogo, runtime.
-  Dos *kinds* en `manifest.json`: `passive` (por defecto) y **`backed`**: un widget con proceso propio (`owner.py`)
-  supervisado por `widgets/supervisor.py` (mailbox + reinicio con backoff + desactivar tras N fallos, aislado de la
-  voz). Widgets backed = **`navegador`** (un navegador web real dentro de zaelar) y **`mensajeria`** (mensajería
-  unificada WhatsApp+Telegram; su owner triaja en el propio widget con un modelo LOCAL, gated `"gate":"nucleo"`).
-  **`widgets/background.py`** (V2-034) = planificador de **ejecución en BACKGROUND con ciclo**: un widget declara
-  `"background": {"every": "1m"}` y sigue trabajando OFF-SCREEN en su periodo (mínimo 1s) — `data.py:tick(ctx)` de
-  un passive corrido en un hilo, o un comando `tick` encolado a un owner backed — para refrescar datos y **volcar
-  a memoria** lo que el operador pueda preguntar por voz (ver decisión). `widgets/actions.py` = semántica de
-  acciones (V2-025); `widgets/refs.py` = resolución de referencias a items (V2-026).
-- `config/` — settings runtime gestionados por la UI (gitignored): `settings.json` (⚙ STT/TTS/voz/idioma),
-  `connectors.json` (flags+credenciales de conectores), `v2.json` (routing de modelos `fast`/`code_agent` +
-  **`memory`** [reranker + embedding, V2-030] + `active_brain()`), `meshkore.json`. Cada uno con su módulo dueño
-  (`settings.py`/`connectors.py`/`v2.py`) y **vista pública redactada** (secretos → `<clave>_set: bool`; cualquier
-  clave que termine en `api_key` se redacta). `profiles.py`+`doctor.py` = perfiles coordinados + detector (wizard
-  V2-040); `credentials.py` = único escritor del credential store. **`balances.py`** (V2-043) = saldo de APIs
-  externas (proactivo donde se expone —ElevenLabs—, reactivo por error clasificado para el resto). El **área de
-  configuración full-screen** (⚙, V2-043) se sirve por `server/config_api.py` (elige API/modelo por PIEZA) +
-  `frontend/app/components/ConfigPanel.js`; sus alertas de saldo salen en el diálogo de estado (◉).
-- `connectors/` — conectores externos; **`connectors/files/` = archivos en la NUBE** (Google Drive +
-  OneDrive, V2-557: registro tipado de proveedores + PKCE compartido + un cliente por proveedor tras la
-  **fachada agnóstica** `service.py`, que devuelve UNA forma normalizada — un tercer proveedor no toca el
-  widget; doc `zaelar-cloud-files.md`); `connectors/meshkore/` = canal nativo de clusters (3er I/O junto a voz+chat),
-  conducido por el **motor del FlashBrain en perfil UNTRUSTED** (V2-069: `brain.py` adapta el canal al motor →
-  `nucleo/flash/cluster.py`, tools off + system identidad-safe) con **cápsula** de conversación (`capsule.py`);
-  `connectors/architect/` = proveedor de código/proyectos sobre el
-  daemon MeshKore compartido (tags `[[architect.*]]`, operator-only); `connectors/whatsapp/` = WhatsApp personal
-  (bridge Baileys vendorizado); `connectors/telegram/` = Telegram personal (userbot Telethon); `connectors/email/` =
-  **email personal** (V2-051, IMAP/SMTP **stdlib puro**, lógica vendorizada del adaptador de Hermes — leer+triar+
-  **responder** por SMTP con threading; app-password + presets Gmail/Outlook/otro; el más limpio de los tres);
-  `connectors/messaging/` = **capa compartida** de mensajería (ahora con OUTBOUND: cola `pending_reply` + `msg.reply`
-  → tool `reply_message` con confirm-gate). Ver `zaelar-modules.md §Connectors`. Slots futuros: LinkedIn, X.
-  **Contactos como memoria + envío-a-persona (mándale un mensaje a X) + conectores Apple/Google + red de agentes =
-  iniciativa de DISEÑO `V2-052` (pendiente de OK del operador).**
-- `tests/agent_headless/harness/` — harness de evaluación conversacional sintética + juez.
-- `tests/voice/e2e/mic/` — self-test headless del transporte micrófono→STT por WebRTC.
-- `tests/voice/e2e/agent/` — tester de voz: 2º participante LiveKit que HABLA con zaelar y un JUEZ que evalúa lo que HACE.
+- `voice/` — **LiveKit engine** in `voice/engine/`: `AgentSession` (streaming, turns, VAD, barge-in,
+  preemptive generation) + provider registry + remote/local profiles (`core/`, `speech/`, `llm/`,
+  `pipeline/agent.py` with an embeddable `make_server()`, `speech/voices.py`). Turn-taking/VAD/barge-in are governed
+  by LiveKit (Silero VAD + `MultilingualModel` turn detector + `allow_interruptions`). The layer above is the brain
+  contract, **pure and transport-agnostic**: `tag_protocol.py`, `speech.py`, `brain_notes.py`, `proactive.py`,
+  `prompt.py`, `health_state.py`, `llm_health.py`, `observer.py` (SSE), `attention.py` (the attention gate — decides
+  which turn is addressed to zaelar; ambient vs attending).
+- `nucleo/` — **the engine's own brain, «Colmena»**: an ORCHESTRATING FlashBrain + Claude Code workers. It is exposed
+  to the engine as a `livekit.agents.llm.LLM` provider (`voice/engine/llm/providers/nucleo.py`, `BRAIN=nucleo` =
+  default). `nucleo/flash/` = **FlashBrain**, the sub-second reflex (`router.py` classifies the input +
+  `fast_client.py` fast non-reasoning model client **per invocation** + `frontend.py` frontend/widget manager +
+  `procs.py` process launcher + `escalate.py` escalation + `prompt.py` [assembles the turn prompt: composed STATE +
+  a TERSE resources layer, ~30 lines] + `memory_cache.py` [caches `memory.compose_state()` outside the turn + seeds
+  the mission] + `prewarm.py` [warms FlashBrain + browser at startup] + `dialog.py` [conversational stability:
+  break-loop + history pruning + anti-degeneration, SHARED by voice and probe] + `probe.py` [headless TEST channel,
+  the third way of testing: `POST /api/flash/say`]). **Search** lives in its own `search/` package (`web.py` = the
+  chain shared by both brains; `browser.py` = Google via a persistent Chromium; `nucleo.websearch` /
+  `nucleo.browser_search` are aliases) — map in `zaelar-search.md`. **Latency — memory is NOT in the synchronous
+  turn**: the STATE block (name/register/topics) comes from `memory_cache` (session cache, TTL + async refresh +
+  invalidation on `memory.updated`), and semantic recall (`prompt.compose_recall`) is **on demand**
+  (`prompt.needs_recall`) and **off the event loop** (`asyncio.to_thread`) — a chit-chat turn never triggers the
+  retriever. `nucleo/loop.py` (~1 Hz) + `nucleo/scheduler.py` (**the engine's OWN cron**, backed by
+  `memory.journal`) + `nucleo/cron_api.py` (`/api/cron`, the ⏰ panel) + `nucleo/sparks.py` (double-gated sparks) =
+  the **orchestrator loop** (scheduled tasks + proactivity + triggers the memory consolidator off the hot path +
+  reports by voice and UI; mounted in the lifespan with `BRAIN=nucleo`). `nucleo/dispatch.py` (dispatcher: composes
+  the prompt [context + task] → CodeAgent with a per-invocation model, consumes `escalate.requested` from the bus,
+  delivers by voice and UI) + `nucleo/memory_agent.py` ★ (the MEMORY agent, the single writer to `memory/`; its
+  `compose_context` is the worker's **multi-axis dossier**: profile without mission + rules + ⚠️ critical items
+  ALWAYS + recall + `by_concepts` + agenda, durables only, `to_thread`) + `nucleo/mem_processor.py` ★ (the WRITE
+  heart: a fast non-reasoning model configured under `§memory` — default `deepseek/deepseek-v4-flash`, chosen by the
+  distiller benchmark in `zaelar-model-benchmarks.md` §12.3 for matching completeness and precision at a lower cost;
+  `gpt-4o-mini` is excluded because it writes facts in the wrong language into identity slots. Key PER ENDPOINT +
+  health tracking with an alert on a streak of failures, so a dead writer never goes unnoticed; writing may be slow,
+  it prioritises writing WELL — it DISTILLS every turn into curated pills — datum + metadata, decides
+  DISCARD/STATE/SHORT/LONG + importance + `slot`; off the hot path, fail-open to the heuristic [which degrades to
+  short + TTL rather than polluting]; **deterministic PRECISION gates**: discards reified requests/questions/acks,
+  never lets an STT-garbled name overwrite the identity in `state` — quarantine — and never makes an ephemeral
+  preference durable) + **`nucleo/workers/`** (**Brain Workers** — an AGNOSTIC substrate: `base.py`
+  [`WorkerBackend`/`WorkerEvent`/`WorkerSpec`], `claude_session.py` [live stream-json], `generator_session.py`
+  [widgets, wraps the killable generator], `codex_session.py` [Codex CLI, `exec --json`], **`grok_session.py`**
+  [Grok Build; INHERITS from `claude_session` because its wire format is the SAME], `registry.py` [`get_backend` by
+  config, mixable], `session.py` [`WorkerSession` + `SessionRecord`], **`providers.py`** [a CHAIN of
+  Anthropic-compatible endpoints + hand-over when a quota is exhausted]) = the INTERACTIVE async work layer.
+  `nucleo/agentes/` (the one-shot `CodeAgent` interface — `worker/web/web_cc/otros.py` are **parked**; only their
+  widget-detection helpers are reused). **Worker bridges**: `nucleo/mem_cli.py` (`hbmem` — serial memory,
+  recall/remember over HTTP) · `nucleo/agent_report.py` + `nucleo/agent_api.py` (`hbnote` — phase report to the bus)
+  · **`nucleo/worker_bridge.py` + `nucleo/worker_api.py`** (`hbask`/`hbact`/`hbsay` — ask / request a tool / speak
+  to the user, a request/response plane, `/api/worker/act`, policy + piggyback + token) ·
+  `nucleo/nav_cli.py` + `widgets/navegador/act_api.py` (`hbweb` — drive the browser) · **`nucleo/widget_cli.py`**
+  (`hbwidget` — READ/OPERATE a canvas widget: `read`/`data`/`show`/`close`, the `widget_data` action of
+  `/api/worker/act` gated by the canonical catalog + worker provenance; the BRIDGE that reflects in the widgets what
+  was done in the real world). `nucleo/danger.py` = the gate for irreversible actions. **`nucleo/susurro/`** =
+  **conversational self-audit «Susurro»** — plugged in ONLY through the bus (topic `turn.completed` + friction), a
+  configurable stronger model under `§susurro`, closed-catalog corrections. **`nucleo/homeostasis.py`** = the
+  **AUTONOMOUS HEARTBEAT** — the third level, a SIBLING of the brain (not part of it): keeps the MACHINE healthy
+  (recycles a degraded LiveKit engine when safe, rotates logs, evicts dead capsules), deterministic and with NO LLM,
+  `start()/stop()` in the lifespan like the other supervisors.
+- `memory/` — **central, human-like memory**, a 100% local SUBSTRATE (the write-side LLMs go through an API), one
+  SQLite file `zaelar.db` (WAL, in `memory/_data/`): a shared substrate written by the FlashBrain, the memory agent
+  and the widgets, and read by the retriever on the hot path (ms). **`memory.compose_state()`** composes the
+  **SHARED STATE** both brains see — mission (`state.mission`) + situational + synthesized recent conversation — as
+  a DIRECT read (µs, no LLM, no retriever); `nucleo/flash/memory_cache` caches it outside the turn. Every memory is
+  a **PILL**: canonical datum (`text`) + metadata (`slot`/`meta`, schema v2). **`slot`** = the canonical key of a
+  singular fact (`operator.name`, `goal.current`…) → the writer does **EXACT supersede/dedup with no LLM** ("the most
+  recent one WINS": same datum = reinforce; changed datum = invalidate ALL current ones — self-healing). The **slot
+  vocabulary lives in the SINGLE REGISTRY `memory/slots.py`**: aliases + `state` field + identity flag, consumed by
+  the writer (`canon_slot`), the memory agent (gate P0b) and the processor prompt (GENERATED catalog) — the three
+  layers cannot diverge; the consolidator adds `heal_slots()` (normalizes legacy slots + collapses multiple current
+  rows on every sleep). The **atom contract v2** adds `value` (→ a `state_patch` synthesized MECHANICALLY from the
+  registry) and `change: none|update|correction` (a change signal from the multilingual processor ITSELF → the
+  anti-garble gate consumes it; the es/en regexes remain a backstop, not the only mechanism). Tables
+  `state·memories·vec_memories·fts_memories·edges·episodic·journal` · queue + writer (single writer, embeddings on
+  insert) · embeddings (embeddinggemma 768 via Ollama, fastembed fallback; provider configurable via
+  `memory.embed_*` + `memory/reembed.py` with a model signature) · retriever (sqlite-vec + FTS5 → RRF k=60 → score
+  α·rel+β·rec+γ·imp+δ·use → local cross-encoder **reranker** `memory/rerank.py` → graph_expand) · graph ·
+  consolidator (LIGHT sleep: Ebbinghaus decay PER WINDOW + dedup + prune_invalid + eviction by weight, pinned rows
+  untouchable) · **`memory/rem.py`** (DEEP sleep, the daily «REM phase» — repairs `embed_pending` vectors + SEMANTIC
+  dedup by cosine + INSIGHTS per concept [`slot=insight:<c>`, an LLM hook injected from `nucleo/memllm.py`,
+  configurable model — benchmarks §12.4] + hygiene with an alert; kill-switch `ZAELAR_REM`) · **episodic** layer
+  (it absorbed the old `files/`: paste/drop → `memory/server_api.py` → `memory.write_episode`, binary + searchable
+  summary, lazy load) · facade + `memory.updated` signal on the bus.
+  **`memory/vault.py`** ★ (the operator's ENCRYPTED secrets VAULT — asymmetric sealed-box crypto via PyNaCl + an
+  Argon2id passphrase envelope + WebAuthn PRF passkeys; tables `vault_meta`/`vault_secrets`), **`memory/secrets.py`**
+  (FAIL-CLOSED detection + redaction) and **`memory/vault_api.py`** (`/api/vault/*`, loopback). Design in
+  `zaelar-memory.md`.
+- `observability/` — **WHO · WHEN · in which FLOW**. It completes the event log (which already recorded WHAT
+  happens) with the axes to ANALYZE it: `identity.py` (a stable **`user_id`** per installation — a random UUID4 in
+  the gitignored `config/identity.json`, created and logged **explicitly in the server lifespan** at startup;
+  `ZAELAR_USER_ID`, when set, wins over the file — and a **`session_id`** per operator WORK SESSION: it starts on
+  connect, closes with ⏻ or when the tab closes, and a reconnection does NOT split it in two) · `flows.py` (reading
+  by **CORRELATION ID**: flows with their real end-to-end duration, families, actors, tokens and errors;
+  chronological detail; sessions; coverage) · `api.py` (`/api/observability/*`). **The correlation id is NOT a new
+  id: it is the turn's `trace` PROMOTED** from a JSON field to an indexed column (`events.corr_id`) — a second,
+  parallel id would drift from the first at the first unstitched cross-loop seam. A new flow is born with every
+  operator request; whatever continues a live flow inherits its id.
+  **A correction spoken while a task is still live MERGES into that task's `corr_id`** instead of opening a new
+  one: `send_to_worker`'s handler (`nucleo.py::_on_tool_call`) already resolves its target via
+  `dispatch.resolve_sessions()`; when that resolves to exactly one live session, this turn adopts its `trace_id`
+  (`dispatch.trace_of` + `trace.adopt`) instead of keeping the fresh one `trace.begin()` opened at turn start. With
+  several live sessions and no unambiguous match, nothing merges — an extra flow beats guessing which task a
+  correction belongs to. A flow's end is EXPLICIT (`kind="flow"`, emitted where the worker session that spawned it
+  finishes), not inferred from silence.
+  **A single utterance split across several LiveKit turns also merges:** LiveKit closes one turn per STT-final
+  segment, so `_begin_or_adopt_trace()` (`nucleo.py`) checks the fragment accumulator's `pending()`: while a
+  fragment chain is open, the next turn ADOPTS its trace rather than opening one, cleared once the chain resolves.
+  If the accumulator judges a sentence complete and the operator keeps talking about the same thing, that opens a
+  new chain/trace — the design favours one flow per sentence chain.
+  **A pending confirmation's answer also merges into the turn that asked** (`widgets/confirm.py::request()`
+  captures `trace.current()`, `_resolve_confirm()` adopts it before executing/cancelling) — the ask/answer/action of
+  an irreversible confirm-gate reads as one flow even across a barge-in-cancelled reply attempt in between.
+  `flows()`'s SQL exposes `origin` (the `trace.begin(origin=...)` argument: `turno`/`kickoff`/`ui`/`cron`/
+  `proactivo`/`cluster`/`probe`) and `title` (that root event's text) per flow — what a flow viewer uses to tell a
+  real task apart from session initialization (kickoff greeting, canvas-restore reconciliation within the session's
+  first ~10 s) and to label each column/rail item with more than a bare corr_id.
+  **A plain conversational flow closes EXPLICITLY too**, so a viewer never has to guess liveness from recency:
+  `_run`'s success path (never the `CancelledError` branch — a barge-in cancellation may still get continued by the
+  next fragment) calls `_maybe_close_flow()`, which closes the current trace UNLESS the fragment accumulator still
+  expects more on it, a confirmation asked on it is still pending, or a worker is still running on it
+  (`dispatch.has_live_trace`, the reverse of `trace_of`) — that worker owns the close instead.
+  **A confirmation's "sí"/"no" is resolved BEFORE any slow work**: a clear yes/no is resolved right after the
+  hard-interrupt check, before the model is even called, so a turn cancelled by barge-in can never lose the answer
+  and leave the confirmation pending; ambiguous replies fall through to the late-stage deterministic backstop
+  (`classify_reply` + resolve) after the model's response.
+  **A widget can opt out of the visual Sí/No overlay** (`"confirm_ui": false` in its manifest,
+  `nucleo.py::_confirm_ui_paints`; e.g. `widgets/agenda/manifest.json`, a voice-only card): the confirmation
+  itself, and voice resolution, are unchanged — only the SSE emit that paints the card overlay is skipped.
+  READ-ONLY: the only writer of `events` is still the bus sink.
+- `bus/` — **the nervous system**: in-process signal pub/sub (asyncio, fnmatch patterns + a loop-agnostic
+  `emit_sync` via `call_soon_threadsafe` for cross-loop delivery job-thread↔uvicorn). `bus/log.py` = durable event
+  log in SQLite (`zaelar.db`, table `events`, WAL). `bus/sse.py` = SSE bridge to the frontend (`GET /events`).
+  HYBRID transport: direct calls on the voice hot path + events for async/fan-out. **No Kafka/broker.**
+- `frontend/` — the interface as a **build-less ES-module** app, migratable to Solid (reactive core + services +
+  components + widget desktop). Voice through the **LiveKit client** (`services/session-lk.js` + the SDK vendored in
+  `frontend/vendor/`). See `zaelar-modules.md §Frontend`. **The frontend's NATIVE surfaces = «SYSTEM widgets»,
+  UNTOUCHABLE**: their SINGLE CANONICAL LIST lives in **`frontend/app/core/system-surfaces.js`**
+  (`SYSTEM_SURFACES` + `isSystemSurface()`) — activity honeycomb, camera/mic, orb, TopBar, connection state, chat
+  (Chat/Processes/Crons), status panel ◉, config ⚙, benchmarks, debug ◷, memory map 🧠, wizard 🧭, vault 🔐, notice
+  banner and boot splash. `main.js` MOUNTS them from that list (no duplication). The generator/`lifecycle` NEVER
+  touch them (they only touch `widgets/<id>/`). **Everything else on screen is a USER WIDGET** (catalog
+  `widgets/<id>/`, full-stack `manifest.json` + `data.py` + `widget.js`), variable and created by/for the user
+  **even when shipped by default** — like the connectors. Adding a new native surface = adding it to
+  `system-surfaces.js`. Every voice-addressable surface carries a FIXED `name` + `aliases` (hardcoded in the front,
+  NOT editable) — mirrored in the backend `widgets/system_surfaces.py` (sync test) so the name resolver knows them.
+  Every user-widget card paints a generic HEADER (in `desktop.js`, without touching its `widget.js`) with the NAME +
+  a ⚙ that unfolds its editable ALIASES.
+- `server/` — FastAPI app + routers + entrypoint (`server/__main__.py`); runs the **LiveKit agent worker EMBEDDED**
+  in the process (lifespan), and starts in that same lifespan the `nucleo/` loop, the supervisor of `backed` widgets
+  and the memory-queue consumer. Routers: `livekit_api` (token + config + session.js swap), `voice_api`, `cron_api`
+  (`/api/cron`), `wizard_api`, `spotify_api`, `config_api` (`/api/config*` — the full-screen configuration area),
+  **`memory/vault_api`** (`/api/vault/*` — the secrets vault, always mounted), widgets, pages.
+- `widgets/` — full-stack widgets (`data.py` + `widget.js` per folder), generator, catalog, runtime. Two *kinds* in
+  `manifest.json`: `passive` (default) and **`backed`**: a widget with its own process (`owner.py`) supervised by
+  `widgets/supervisor.py` (mailbox + restart with backoff + disable after N failures, isolated from voice). Backed
+  widgets = **`navegador`** (a real web browser inside zaelar) and **`mensajeria`** (unified WhatsApp + Telegram
+  messaging; its owner triages inside the widget itself with a LOCAL model, gated `"gate":"nucleo"`).
+  **`widgets/background.py`** = the **BACKGROUND execution scheduler with a cycle**: a widget declares
+  `"background": {"every": "1m"}` and keeps working OFF-SCREEN at its period (minimum 1 s) — a passive widget's
+  `data.py:tick(ctx)` run in a thread, or a `tick` command queued to a backed owner — to refresh data and **write to
+  memory** what the operator may ask about by voice. `widgets/actions.py` = action semantics; `widgets/refs.py` =
+  resolving references to items.
+- `config/` — runtime settings managed by the UI (gitignored): `settings.json` (⚙ STT/TTS/voice/language),
+  `connectors.json` (connector flags + credentials), `v2.json` (model routing `fast`/`code_agent` + **`memory`**
+  [reranker + embedding] + `active_brain()`), `meshkore.json`. Each with its owner module
+  (`settings.py`/`connectors.py`/`v2.py`) and a **redacted public view** (secrets → `<key>_set: bool`; any key ending
+  in `api_key` is redacted). `profiles.py` + `doctor.py` = coordinated profiles + detector (the setup wizard);
+  `credentials.py` = the single writer of the credential store. **`balances.py`** = external API balances
+  (proactive where the provider exposes it — ElevenLabs — and reactive through a classified error for the rest). The
+  **full-screen configuration area** (⚙) is served by `server/config_api.py` (choose API/model per PIECE) +
+  `frontend/app/components/ConfigPanel.js`; its balance alerts appear in the status dialog (◉).
+- `connectors/` — external connectors; **`connectors/files/` = files in the CLOUD** (Google Drive + OneDrive: a
+  typed provider registry + shared PKCE + one client per provider behind the **agnostic facade** `service.py`, which
+  returns ONE normalized shape — a third provider does not touch the widget; doc `zaelar-cloud-files.md`);
+  `connectors/meshkore/` = the native cluster channel (a third I/O next to voice + chat), driven by the
+  **FlashBrain engine in the UNTRUSTED profile** (`brain.py` adapts the channel to the engine →
+  `nucleo/flash/cluster.py`, tools off + identity-safe system prompt) with a conversation **capsule**
+  (`capsule.py`); `connectors/architect/` = a code/projects provider over the shared MeshKore daemon
+  (`[[architect.*]]` tags, operator-only); `connectors/whatsapp/` = personal WhatsApp (vendored Baileys bridge);
+  `connectors/telegram/` = personal Telegram (Telethon userbot); `connectors/email/` = **personal email** (IMAP/SMTP
+  in **pure stdlib**, logic vendored from the Hermes adapter — read + triage + **reply** over SMTP with threading;
+  app password + Gmail/Outlook/other presets); `connectors/messaging/` = the **shared messaging layer** (with
+  OUTBOUND: a `pending_reply` queue + `msg.reply` → the `reply_message` tool behind the confirm-gate). See
+  `zaelar-modules.md §Connectors`. Beyond its own connectors, zaelar orchestrates external services: the MeshKore
+  network's agents, external MCP servers and third-party APIs give it access to bookings and a wide range of
+  external services.
+- `tests/agent_headless/harness/` — synthetic conversational evaluation harness + judge.
+- `tests/voice/e2e/mic/` — headless self-test of the microphone→STT transport over WebRTC.
+- `tests/voice/e2e/agent/` — voice tester: a second LiveKit participant that TALKS to zaelar and a JUDGE that
+  evaluates what it DOES.
 
-`files/` quedó plegado en la capa episódica de `memory/` (shim de compatibilidad). Raíz (no-módulos): `README.md`,
-`Makefile`, `requirements.txt` + `.venv/`, `Dockerfile`/`.dockerignore`, `scripts/` (tooling de
-instalación por-OS), `CLAUDE.md`. **Logging → `.meshkore/logs/`** (no crear `logs/` en la raíz).
+`files/` was folded into the episodic layer of `memory/` (a compatibility shim). Root (non-modules): `README.md`,
+`Makefile`, `requirements.txt` + `.venv/`, `Dockerfile`/`.dockerignore`, `scripts/` (per-OS install tooling),
+`CLAUDE.md`. **Logging → `.meshkore/logs/`** (do not create `logs/` at the root).
 
-Also declared in `cluster.yaml` (2026-09-30, V2-778 F7): `i18n/` (multilingual runtime + language preparation),
-`update/` (the user-visible build number and the reload signal), `daemon/` (the LOCAL daemon of V2-575, not the
-shared MeshKore one), `tools/` (developer review aids), `files/` (the compatibility shim above) and `scripts/`.
+Also declared in `cluster.yaml`: `i18n/` (multilingual runtime + language preparation), `update/` (the
+user-visible build number and the reload signal), `daemon/` (the LOCAL daemon, not the shared MeshKore one),
+`tools/` (developer review aids), `files/` (the compatibility shim above) and `scripts/`.
 
-## A request's life and the spoken rules (V2-776 L/M/H)
+## A request's life and the spoken rules
 
 - `nucleo/spec.py` — a request is born with its END STATE (manifest `done_when`, the escalate call's `done_when`,
   the brief's `end_state`); RAM ledger + the task row's `spec` artifact.
@@ -241,7 +224,7 @@ shared MeshKore one), `tools/` (developer review aids), `files/` (the compatibil
 
 Architecture: `zaelar-architecture.md` §5h (the request) and §5i (the turn's doors, in order).
 
-## Pieces split out of oversized files (V2-778 F1, 2026-09-30)
+## Pieces split out of larger files
 
 Each one is a verbatim move with no behaviour change; the source module imports the names back, so callers and
 monkeypatches keep working. Look here before grepping for a name that seems to have disappeared.
@@ -288,7 +271,5 @@ files from growing back.
 | Mobile shell (PWA) | `.meshkore/docs/modules/zaelar-mobile-shell.md` |
 | Update channel | `.meshkore/docs/modules/zaelar-update-channel.md` |
 | Local daemon: build/release, threat model | `.meshkore/docs/ops/zaelar-daemon-build.md`, `.meshkore/docs/security/zaelar-daemon-security.md` |
-| Config tabs + connector registry (V2-083), widget naming (V2-082) | `.meshkore/docs/architecture/zaelar-config-connectors-v2083.md`, `.meshkore/docs/architecture/zaelar-widget-naming-v2082.md` |
+| Config tabs + connector registry, widget naming | `.meshkore/docs/architecture/zaelar-config-connectors-v2083.md`, `.meshkore/docs/architecture/zaelar-widget-naming-v2082.md` |
 | Memory re-verification cycle | `.meshkore/docs/ops/anexos/zaelar-memory-cycle-playbook.md` |
-| Comment-language migration | `.meshkore/docs/ops/comment-language-migration.md` |
-| Past audits (historical, not current state) | `.meshkore/docs/architecture/zaelar-audit.md`, `harbee-audit-2026-07-02.md`, `zaelar-audit-2026-07-26.md`, `zaelar-audit-2026-09-05.md` |

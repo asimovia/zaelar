@@ -1,114 +1,120 @@
 ---
-title: Monitorización de conversaciones de cluster — criterios de evaluación
+title: Cluster conversation monitoring — evaluation criteria
 category: ops
 updated: 2026-07-26
 owner: ricart
 status: current
 ---
 
-# Cómo monitorizamos las conversaciones de cluster (agente-agente) y bajo qué criterios
+# How cluster (agent-to-agent) conversations are monitored, and against which criteria
 
-**Objetivo:** que nuestro agente conduzca una conversación con OTRO agente **como lo haría un humano** — sabiendo con
-quién habla, si la cosa avanza, sin dejarse robar recursos, acordando cómo trabajar, y **sabiendo cuándo parar**.
+**Goal:** our agent conducts a conversation with ANOTHER agent **the way a human would** — knowing who it is
+talking to, whether things are moving forward, not letting its resources be taken, agreeing on how to work
+together, and **knowing when to stop**.
 
-**Frontera dura:** esto aplica SOLO al canal **agente-agente (cluster)**. Con el **operador** (voz/chat) y con
-**humanos** (WhatsApp/email) la conversación debe **fluir siempre** — nada de esto la frena. El túnel entre modelos es
-el único que necesita regularse (capacidades desiguales, riesgo de perder el tiempo o de aprovechamiento).
+**Hard boundary:** this applies ONLY to the **agent-to-agent (cluster)** channel. With the **operator**
+(voice/chat) and with **humans** (WhatsApp/email) the conversation must **always flow** — nothing here slows it
+down. The model-to-model tunnel is the only one that needs regulating (unequal capabilities, risk of wasted time
+or of being exploited).
 
-## Cómo se monitoriza (dos capas + observabilidad)
+## How it is monitored (two layers + observability)
 
-1. **Capa determinista, en el bridge (tiempo real, cada turno).** Barata, sin LLM, fail-open. Es el reflejo: mide,
-   decide y actúa en el momento (`connectors/meshkore/bridge.py` + `capsule.py` + `security.py`).
-2. **Capa semántica, cron cada minuto (`39704ee7`, de sesión).** Un modelo lee el intercambio reciente y juzga con
-   criterio lo que la heurística no caza (sinsentido, desajuste de capacidad). Interviene/avisa si va a ninguna parte.
-   *(F1: promoverla a pieza DURABLE como homeostasis — hoy muere al cerrar la sesión de Claude.)*
-3. **Observabilidad.** Todo deja rastro en el timeline (`kind:cluster` con `pace`/`stall`, `kind:resource`,
-   `kind:homeostasis`), y **cada evento lleva `ver`** (V2-074) → se sabe qué versión evaluó cada línea. El watchdog de
-   salud (`f2b5904a`, cada 15 min) vigila que el canal siga en pie.
+1. **Deterministic layer, in the bridge (real time, every turn).** Cheap, no LLM, fail-open. It is the reflex:
+   it measures, decides and acts in the moment (`connectors/meshkore/bridge.py` + `capsule.py` + `security.py`).
+2. **Semantic layer, on the heartbeat.** A model reads the recent exchange and judges what a heuristic cannot
+   catch (nonsense, capability mismatch). It intervenes or warns when the conversation is going nowhere
+   (`connectors/meshkore/evaluator.py`, see criterion 2).
+3. **Observability.** Everything leaves a trace in the timeline (`kind:cluster` with `pace`/`stall`,
+   `kind:resource`, `kind:homeostasis`), and **every event carries `ver`** → you know which version evaluated each
+   line.
 
-## LOS CRITERIOS (la lista con la que se evalúa)
+## THE CRITERIA (the evaluation checklist)
 
-Cada criterio = **comportamiento humano** que emula · **mecanismo** · **señal/umbral** · **qué hace** · **a mejorar**.
+Each criterion = the **human behaviour** it emulates · **mechanism** · **signal/threshold** · **what it does**.
 
-### 1. ¿Sé con quién hablo y en qué punto estamos? — SITUACIÓN (V2-069, cápsula)
-- **Humano:** recuerdas quién es cada uno, de qué hablasteis, qué quedó pendiente y en qué fase estáis.
-- **Mecanismo:** cápsula por-peer (dossier + objetivo + bucles abiertos + FASE saludo→sondeo→trabajo→cierre).
-- **Señal:** fase derivada del estado de la relación.
-- **Hace:** no re-presentarse en trabajo/sondeo; conducir hacia el objetivo; no re-negociar lo ya decidido.
+### 1. Do I know who I am talking to and where we are? — SITUATION (capsule)
+- **Human:** you remember who everyone is, what you talked about, what was left open and which phase you are in.
+- **Mechanism:** per-peer capsule (dossier + objective + open loops + PHASE greeting→probing→work→closing).
+- **Signal:** phase derived from the state of the relationship.
+- **Does:** no re-introductions during work/probing; steers toward the objective; does not re-negotiate what was
+  already decided.
 
-### 2. ¿La conversación FLUYE o no tiene sentido? — SALUD por INTELIGENCIA (V2-075; antes V2-073)
-- **Humano:** das un paso atrás y valoras si la charla merece la pena; si el otro no te sigue, se repite, está
-  bloqueado o dice cosas sin sentido, PARAS y cedes el turno.
-- **Mecanismo (CLAVE):** el juicio semántico lo hace un **MODELO**, no patrones hardcodeados (`evaluator.py`):
-  evaluador INDEPENDIENTE, read-only, catálogo CERRADO `health`(flowing/stuck/dead_end/imbalanced/off_track) ×
-  `action`(continue/concise/hand_back/pause), fail-open. Genérico → sirve para CUALQUIER agente y CUALQUIER forma de
-  degenerar. Único apoyo determinista: repetición EXACTA (dedup, tokens) + `near_repeat` (casi-repetición, señal).
-- **Cuándo:** off-hot-path, en el heartbeat, throttle `MESHKORE_EVAL_SECS`, solo charlas ACTIVAS (no re-juzga una
-  muerta). Es un juicio de «paso atrás», no un reflejo por turno.
-- **Hace:** aplica el veredicto del modelo — `hand_back` (cede el turno con una frase y espera) · `pause` (calla +
-  avisa al operador 1×) · `concise` (el próximo turno va breve) · `continue` (no interrumpe). Evento `dir:eval` con
-  el veredicto en el timeline.
+### 2. Does the conversation FLOW, or has it stopped making sense? — HEALTH by INTELLIGENCE
+- **Human:** you step back and judge whether the conversation is worth it; if the other side does not follow,
+  repeats itself, is blocked or says things that make no sense, you STOP and hand back the turn.
+- **Mechanism (KEY):** the semantic judgement is made by a **MODEL**, not by hardcoded patterns (`evaluator.py`):
+  an INDEPENDENT, read-only evaluator with a CLOSED catalog `health`
+  (flowing/stuck/dead_end/imbalanced/off_track) × `action` (continue/concise/hand_back/pause), fail-open. Being
+  generic, it works for ANY agent and ANY way a conversation can degenerate — a phrase regex would only fit one
+  peer and miss the next. The only deterministic support: EXACT repetition (dedup, tokens) + `near_repeat`
+  (near-repetition, as a signal).
+- **When:** off the hot path, on the heartbeat, throttled by `MESHKORE_EVAL_SECS`, only for ACTIVE conversations
+  (it does not re-judge a dead one). It is a «step back» judgement, not a per-turn reflex.
+- **Does:** applies the model's verdict — `hand_back` (yields the turn with one sentence and waits) · `pause`
+  (goes quiet + notifies the operator once) · `concise` (the next turn is short) · `continue` (no interruption).
+  A `dir:eval` event with the verdict lands in the timeline.
 
-### 3. ¿Hay EQUILIBRIO de recursos? — NO NOS ROBAN TOKENS (V2-071)
-- **Humano:** no dejas que te endosen todo el trabajo; colaboras de igual a igual.
-- **Mecanismo:** balance por-peer (`given`/`received`/`offloads`/`code_out`) + `looks_like_offload` (peticiones de
-  producir) + `guard_code_outbound` (volcado de código → puntero al repo).
-- **Umbral:** `equilibrado` <3× · `sesgado` ≥3×+offload · `explotación` ≥6×+offload sostenido (min turns 4, given 1500).
-- **Hace:** silencio hacia el peer + sé breve · código por el repo · aviso al operador 1× en explotación. Eventos
-  `kind:resource`.
+### 3. Is there a BALANCE of resources? — NO ONE DRAINS OUR TOKENS
+- **Human:** you do not let others dump all the work on you; you collaborate as equals.
+- **Mechanism:** per-peer balance (`given`/`received`/`offloads`/`code_out`) + `looks_like_offload` (requests to
+  produce) + `guard_code_outbound` (code dump → pointer to the repo).
+- **Threshold:** `equilibrado` <3× · `sesgado` ≥3× + offload · `explotación` ≥6× + sustained offload (min turns
+  4, given 1500).
+- **Does:** silence toward the peer + keep it short · code goes through the repo · notifies the operator once on
+  `explotación`. `kind:resource` events.
 
-### 4. ¿Hemos ACORDADO cómo trabajar? — PACTO (V2-072)
-- **Humano:** pactas normas de trabajo con el otro y las respetas mientras convenga.
-- **Mecanismo:** pacto por-peer (cadencia/medio/alcance), vocabulario CERRADO; tag `[[cluster.pact]]`; se propone al
-  saludar; jerarquía **sistema > operador > pacto** (un pacto nunca afloja lo de arriba).
-- **Hace:** inyecta las normas en el turno + **cadencia REAL** (throttle en `cluster.send` → no bombardear).
+### 4. Have we AGREED on how to work? — PACT
+- **Human:** you agree on working norms with the other side and respect them while they make sense.
+- **Mechanism:** per-peer pact (cadence/medium/scope), CLOSED vocabulary; tag `[[cluster.pact]]`; proposed when
+  greeting; hierarchy **system > operator > pact** (a pact never loosens what is above it).
+- **Does:** injects the norms into the turn + **REAL cadence** (throttle in `cluster.send` → no flooding).
 
-### 5. ¿Es SEGURO? — PROTECCIÓN (seguridad del cluster)
-- **Humano:** no te fías de un desconocido: no revelas lo tuyo, no actúas por él.
-- **Mecanismo:** tools APAGADAS (perfil untrusted) · identidad-safe (no PII del operador) · `scan_outbound`
-  (bloquea secretos) · fence + trailer al final (anti-inyección) · allowlist de tags · flood cap.
+### 5. Is it SAFE? — PROTECTION (cluster security)
+- **Human:** you do not trust a stranger: you do not reveal what is yours, you do not act on their behalf.
+- **Mechanism:** tools OFF (untrusted profile) · identity-safe (no operator PII) · `scan_outbound` (blocks
+  secrets) · fence + trailer at the end (anti-injection) · tag allowlist · flood cap.
+- **Development work for a peer** is a separate, explicitly granted path: a per-cluster `code` permission plus
+  an operator-set objective (`capsule.objective`, tool `set_cluster_objective`, guard
+  `perms.gate_dev_by_objective`) enable a bounded dev-worker (temporary cwd + git to the authorized repo + real
+  Read/Write/Edit confinement via `nucleo/dev_worker_guard.py`, a PreToolUse hook — see
+  [`zaelar-security.md`](../security/zaelar-security.md)).
 
-### 6. ¿La MÁQUINA está sana? — HOMEOSTASIS (V2-070)
-- **Humano:** tu cuerpo se mantiene solo (no piensas el latido). Sostiene el canal, no es de conversación.
-- **Mecanismo:** recicla el motor LiveKit degradado (si es seguro), rota logs, evicta cápsulas muertas. Determinista.
+### 6. Is the MACHINE healthy? — HOMEOSTASIS
+- **Human:** your body keeps itself going (you do not think about your heartbeat). It sustains the channel; it is
+  not about the conversation.
+- **Mechanism:** recycles a degraded LiveKit engine (when safe), rotates logs, evicts dead capsules.
+  Deterministic.
 
-### 7. ¿Sé qué VERSIÓN evalúa? — TRAZABILIDAD (V2-074)
-- **Mecanismo:** `version.short()` (`2.74+sha`) en `/api/status`, en `ver` de cada evento y en el frontend (◉).
-- **Uso:** el `sha` de `/api/status` == `git HEAD` prueba que una instancia corre lo último; se auditan las líneas de
-  tiempo por versión.
+### 7. Do I know which VERSION is evaluating? — TRACEABILITY
+- **Mechanism:** `version.short()` (`2.74+sha`) in `/api/status`, in the `ver` of every event and in the frontend
+  (◉).
+- **Use:** the `sha` in `/api/status` == `git HEAD` proves an instance runs the latest code; timelines can be
+  audited per version.
 
-## Cómo se ve «todo va bien» vs «hay que intervenir»
+## What «all good» vs «intervene» looks like
 
-- **Bien:** fase coherente (no re-presentación), `no_progress` bajo, ratio de recursos <3×, sin `pace:silent` ni
-  `resource:explotación`, el peer aporta, el canal conectado, sin errores en el timeline.
-- **Intervenir:** `no_progress` subiendo → ceder turno; ratio ≥3× + offload → acortar/repo; repetición → asertivo→callar;
-  peer incoherente/desajuste de capacidad → pausar y esperar; siempre avisar al operador 1× por incidente.
+- **Good:** coherent phase (no re-introductions), low `no_progress`, resource ratio <3×, no `pace:silent` or
+  `resource:explotación`, the peer contributes, the channel is connected, no errors in the timeline.
+- **Intervene:** `no_progress` rising → hand back the turn; ratio ≥3× + offload → shorten / use the repo;
+  repetition → assertive → go quiet; incoherent peer / capability mismatch → pause and wait; always notify the
+  operator once per event.
 
-## Qué necesitamos para MEJORAR (backlog vivo, orden de valor)
+## Extension points
 
-1. **Cron de calidad → pieza DURABLE** (como homeostasis): hoy es de sesión y muere al cerrar Claude. La capa
-   determinista sí es durable; la semántica no.
-2. **El juicio semántico es por MODELO, no hardcodeado (rediseño 2026-07-26, decisión del operador).** El primer
-   intento (V2-073) usaba un regex de frases (`looks_stuck`) y, al aparecer un patrón nuevo (zalo bloqueado por su
-   dependencia «Poli»/503), la reacción instintiva fue *añadir esas frases al regex* — exactamente el error: eso solo
-   se adapta a UN peer y falla con el siguiente. **Corregido en V2-075:** el juicio lo hace `evaluator.py` (modelo,
-   genérico); el regex de frases se ELIMINÓ. A afinar aún: la ventana/throttle del evaluador, fundir la señal de
-   recursos dentro del mismo veredicto, y validar el coste del modelo periódico con varias charlas simultáneas.
-3. **Exponer el estado por-peer en `/api/meshkore/status`** (balance de recursos + pacto + salud de conversación +
-   `no_progress`) para verlo de un vistazo, no solo por el timeline.
-4. **Pacto:** endpoint para que el OPERADOR fije/consulte normas; negociación multironda; pacto a nivel de clúster.
-5. **Reciprocidad más rica** que chars (contar aportes reales del peer, p.ej. commits al repo).
-6. **peer→worker: el gate llegó (V2-076, 2026-07-26) y el jail de filesystem se cerró (auditoría 2026-07-26)** —
-   permiso `code` por-cluster + objetivo fijado por el operador (`capsule.objective`, tool `set_cluster_objective`,
-   guard `perms.gate_dev_by_objective`) habilitan un dev-worker acotado (cwd temporal + git al repo autorizado +
-   confinamiento REAL de Read/Write/Edit vía `nucleo/dev_worker_guard.py`, un hook PreToolUse — ver
-   `zaelar-security.md`). **Susurro sobre cluster** (auto-auditoría de conversaciones de cluster, distinto del
-   evaluador V2-075 que ya audita salud/ritmo) sigue SIN construir — no es lo mismo que el gate peer→worker de
-   arriba.
-7. **Métricas históricas** de calidad de conversación por-peer (tendencia, no solo instante).
+The design leaves room for:
 
-## Fuentes
+1. **Per-peer state in `/api/meshkore/status`** (resource balance + pact + conversation health + `no_progress`)
+   for an at-a-glance view alongside the timeline.
+2. **Folding the resource signal into the evaluator's verdict**, and tuning the evaluator's window/throttle for
+   many simultaneous conversations.
+3. **Pact management by the operator** (an endpoint to set/read norms), multi-round negotiation and
+   cluster-level pacts.
+4. **Richer reciprocity** than character counts (counting the peer's real contributions, e.g. commits to the
+   repo).
+5. **Self-audit of cluster conversations** by the Susurro auditor, complementary to the health evaluator.
+6. **Historical per-peer conversation-quality metrics** (trend, not only the instant).
 
-Detalle por iniciativa: `.meshkore/roadmap/initiatives/V2-069…074`. Contexto: `CLAUDE.md` (decisiones «una sola
-mente», recursos, jerarquía de reglas/pacto, ritmo, homeostasis, versión). Seguridad: `zaelar-security.md`.
-Observabilidad: `zaelar-observability.md`.
+## Sources
+
+Context: `CLAUDE.md`. Security: [`zaelar-security.md`](../security/zaelar-security.md). Observability:
+[`zaelar-observability.md`](zaelar-observability.md).

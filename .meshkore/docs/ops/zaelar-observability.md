@@ -1,500 +1,476 @@
-# zaelar — Observabilidad y depuración
+# zaelar — Observability and debugging
 
-> Regla de oro: **no hace falta mirar la pantalla para depurar zaelar**. TODO lo que pasa (voz, frontend/widgets,
-> cerebro «Colmena», llamadas a modelos LLM y por qué API) deja rastro en un **registro único de eventos**. Este
-> documento dice dónde está y cómo leerlo. Cualquier agente que cargue el contexto debe empezar por aquí para depurar.
+> Golden rule: **you do not need to look at the screen to debug zaelar**. EVERYTHING that happens (voice,
+> frontend/widgets, the «Colmena» brain, LLM calls and through which API) leaves a trace in a **single event log**.
+> This document says where it is and how to read it. Any agent that loads the context should start here to debug.
 
-## Los CUATRO ejes de un evento
+## The FOUR axes of an event
 
-Todo evento responde a cuatro preguntas, y cada una tiene su campo. Entender esto es entender el sistema entero:
+Every event answers four questions, and each one has its field. Understanding this is understanding the whole system:
 
-| Eje | Campo | Qué contesta | De dónde sale |
+| Axis | Field | What it answers | Where it comes from |
 |---|---|---|---|
-| **QUÉ** | `kind` + `label` | qué ha pasado | el sitio que lo emite |
-| **DE QUÉ PIEZA** | `cat` | FlashBrain · Brain Workers · Memoria · Widgets · Sistema · Pulso | `observer.py::_CAT` |
-| **DE QUÉ FLUJO** | `trace` → columna `corr_id` | el **correlation id**: todo lo que desencadena un estímulo, de inicio a fin | `voice/trace.py` (ContextVar) |
-| **QUIÉN y CUÁNDO** | `uid` · `sid` | la instalación y la sesión de trabajo | `observability/identity.py` |
+| **WHAT** | `kind` + `label` | what happened | the place that emits it |
+| **WHICH PIECE** | `cat` | FlashBrain · Brain Workers · Memory · Widgets · System · Pulse | `observer.py::_CAT` |
+| **WHICH FLOW** | `trace` → column `corr_id` | the **correlation id**: everything a stimulus sets off, from start to end | `voice/trace.py` (ContextVar) |
+| **WHO and WHEN** | `uid` · `sid` | the installation and the work session | `observability/identity.py` |
 
-**El correlation id no es un identificador aparte**: es el `trace` de V2-044, promovido de campo dentro del JSON a
-columna indexada. Un segundo id paralelo se habría separado del primero en la primera costura cross-loop que
-alguien olvidara coser. Cada petición del operador abre su propio flujo —aunque corrija una anterior—; lo que
-continúa un flujo vivo (un worker entregando, un paso del navegador) hereda el suyo.
+**The correlation id is not a separate identifier**: it is the turn's `trace`, promoted from a field inside the JSON
+to an indexed column. A second, parallel id would drift from the first at the first cross-loop seam someone forgot
+to stitch. Every operator request opens its own flow — even when it corrects an earlier one —; whatever continues a
+live flow (a worker delivering, a browser step) inherits its id.
 
-**La familia dice QUÉ pasó, no QUIÉN lo hizo.** Una lectura de memoria es `memory` la haga el FlashBrain o un
-worker; quién la hizo lo dice el `span` (`worker:5`, `rail:music`, `web:t2`). Para aislar por actor está la vista
-Trazas (⛓).
+**The family says WHAT happened, not WHO did it.** A memory read is `memory` whether the FlashBrain or a worker did
+it; who did it is said by the `span` (`worker:5`, `rail:music`, `web:t2`). To isolate by actor there is the Traces
+view (⛓).
 
-## Dónde se guarda
+## Where it is stored
 
-**Todo en la instalación, en un solo sitio.** No hay servicio externo ni carpeta aparte:
+**Everything on the installation, in one place.** No external service, no separate folder:
 
-- **`memory/_data/zaelar.db`** (SQLite+WAL, el MISMO fichero de la memoria) tabla `events`, escrita por el sink
-  del bus (`bus/log.py`) — escritor único. Además del `payload` JSON completo, sube a **columnas indexadas** lo
-  que hace falta para consultar: `corr_id · session_id · user_id · cat · kind · label · span · ms · model ·
-  tokens_in · tokens_out · ver`. Se añadieron con `ALTER TABLE` idempotente: una instalación viva no pierde su
-  histórico por una migración, y las filas antiguas quedan a `NULL` porque ese dato no existía.
-- **`.meshkore/logs/timeline-latest.jsonl`** (rodante) y **`.meshkore/logs/sessions/<session_id>.jsonl`** (por
-  sesión de trabajo) — el volcado crudo, para `jq`.
+- **`memory/_data/zaelar.db`** (SQLite + WAL, the SAME file as memory), table `events`, written by the bus sink
+  (`bus/log.py`) — single writer. Besides the full JSON `payload`, it lifts into **indexed columns** what is needed
+  for querying: `corr_id · session_id · user_id · cat · kind · label · span · ms · model · tokens_in · tokens_out ·
+  ver`. They are added with an idempotent `ALTER TABLE`: a live installation never loses its history to a
+  migration, and older rows stay `NULL` because that datum did not exist yet.
+- **`.meshkore/logs/timeline-latest.jsonl`** (rolling) and **`.meshkore/logs/sessions/<session_id>.jsonl`** (per
+  work session) — the raw dump, for `jq`.
 
-`GET /api/observability/*` lo lee: `flows` (resumen por flujo: duración real de punta a punta, familias, actores,
-tokens, errores), `flow/{corr_id}` (detalle cronológico), `sessions`, `catalog` (el mapa de lo filtrable),
-`identity` y `stats` (cobertura de los propios ejes). Solo lectura.
+`GET /api/observability/*` reads it: `flows` (a summary per flow: real end-to-end duration, families, actors,
+tokens, errors), `flow/{corr_id}` (chronological detail), `sessions`, `catalog` (the map of what can be filtered),
+`identity` and `stats` (coverage of the axes themselves). Read-only.
 
-**Identidad**: `user_id` es un **UUID4 aleatorio** generado la primera vez y guardado en `config/identity.json`
-(gitignored). Aleatorio y no correlativo a propósito — no identifica a nadie por sí mismo. Va a un JSON y no a la
-base de datos porque un reset con «borrar memoria» destruye `zaelar.db`, y perder la identidad al limpiar la
-memoria haría inútil cualquier análisis longitudinal. `session_id` es un UUID4 por **sesión de trabajo**: la abre
-el frontend al conectar y la cierran ⏻ o cerrar la pestaña; una reconexión NO la parte en dos. Con inactividad
-REAL más allá de `ZAELAR_SESSION_IDLE_MIN` (def. 5 min) se cierra sola (`identity.note_real_activity`) — pero
-solo la actividad REAL cuenta para ese reloj, y solo la actividad REAL puede volver a abrir una sesión que ya
-está cerrada: un evento de plomería (`cat` `system`/`pulse` — incluido el propio evento de cierre) NO reabre
-nada (V2-092 addenda, 2026-08-15; antes sí lo hacía, y una sesión terminada resucitaba en el acto de cerrarla).
+**Identity**: `user_id` is a **random UUID4** generated the first time and stored in `config/identity.json`
+(gitignored). Random and non-sequential on purpose — it identifies nobody by itself. It goes into a JSON file and
+not into the database because a «wipe memory» reset destroys `zaelar.db`, and losing the identity when clearing
+memory would make any longitudinal analysis useless. `session_id` is a UUID4 per **work session**: the frontend
+opens it on connect and ⏻ or closing the tab closes it; a reconnection does NOT split it in two. After REAL
+inactivity beyond `ZAELAR_SESSION_IDLE_MIN` (default 5 min) it closes by itself (`identity.note_real_activity`) —
+but only REAL activity counts for that clock, and only REAL activity can reopen a session that is already closed:
+a plumbing event (`cat` `system`/`pulse` — including the close event itself) reopens nothing, so a finished
+session never resurrects in the act of closing it.
 
-## El bus único de eventos
+## The single event bus
 
-**UN solo sistema de registro**: todo pasa por `voice/observer.py` → `emit(kind, label, text="", role="", extra={})`,
-expresado como un suscriptor del bus in-process (`bus/`, topic `observer`; el puente SSE `bus/sse.py` sirve
-`GET /events` idéntico). No hay 2º logger: el motor de voz (`voice/engine/pipeline/agent.py`) registra transcripts,
-estado, VAD/barge-in, métricas y errores llamando a `emit()`, igual que el cerebro, los widgets y los conectores.
-`voice/engine/pipeline/instrument.py` ya **no** registra eventos — solo guarda el handshake de arranque (topic `vl2`,
-para el splash) y una grabación de mic OPCIONAL. Cada evento se escribe a:
+**ONE logging system**: everything goes through `voice/observer.py` → `emit(kind, label, text="", role="",
+extra={})`, expressed as a subscriber of the in-process bus (`bus/`, topic `observer`; the SSE bridge `bus/sse.py`
+serves `GET /events` identically). There is no second logger: the voice engine (`voice/engine/pipeline/agent.py`)
+records transcripts, state, VAD/barge-in, metrics and errors by calling `emit()`, just like the brain, the widgets
+and the connectors. `voice/engine/pipeline/instrument.py` does **not** log events — it only keeps the startup
+handshake (topic `vl2`, for the splash) and an OPTIONAL mic recording. Every event is written to:
 
-| Destino | Qué es | Cómo leerlo |
+| Destination | What it is | How to read it |
 |---|---|---|
-| **SSE `GET /events`** | stream en vivo (`data: {json}\n\n`) | `curl -N http://localhost:43917/events` · lo consume el frontend Y el tester |
-| **`.meshkore/logs/sessions/<session_id>.jsonl`** | traza por sesión (append) | `cat` / `jq` el fichero de la sesión más reciente |
-| **`.meshkore/logs/timeline-latest.jsonl`** | traza global rodante | tail para ver el turno actual |
-| **`GET /debug`** | timeline en vivo en el navegador (anillo en memoria) | abrir en Chrome mientras hablas |
-| **`.meshkore/logs/voice/<session_id>/mic_raw.wav`** | audio de entrada, **solo si `ZAELAR_RECORD_MIC=1`** (def OFF) | reproducir para verificar STT |
+| **SSE `GET /events`** | live stream (`data: {json}\n\n`) | `curl -N http://localhost:43917/events` · consumed by the frontend AND the tester |
+| **`.meshkore/logs/sessions/<session_id>.jsonl`** | per-session trace (append) | `cat` / `jq` the most recent session file |
+| **`.meshkore/logs/timeline-latest.jsonl`** | rolling global trace | tail it to see the current turn |
+| **`GET /debug`** | live timeline in the browser (in-memory ring) | open it in Chrome while you talk |
+| **`.meshkore/logs/voice/<session_id>/mic_raw.wav`** | input audio, **only if `ZAELAR_RECORD_MIC=1`** (default OFF) | play it back to verify STT |
 
-### El visor (◷): columnas, y DOS ejes de filtro
+### The viewer (◷): columns, and the filter
 
-**Cabecera FIJA de columnas** (2026-08-09): bajo las barras de filtro hay una fila de rótulos con el **mismo grid
-exacto** que `.dbg-row` (anchos, gap, padding y el borde izquierdo de 3px) → cada rótulo cae justo encima de su
-columna sin cambiar ningún ancho. Vive **fuera** del contenedor con scroll: no scrollea, no la puede podar el
-recorte de `MAX_ROWS`, y la lista ocupa exacto desde su borde inferior hasta el fondo del panel. Rótulo que no
-cabe se recorta con `…` y el `title` (hover) lo explica. Las columnas cuentan una historia de izquierda a derecha
-—CUÁNDO · de qué FLUJO · de qué PIEZA · QUÉ tipo · cuánto tardó · con qué modelo · cuántos tokens · y qué pasó—:
-**Hora · Flujo · Familia · Tipo · ms · Motor · Tamaño · Evento**. Se oculta sola en la vista **Trazas** (árbol, sin
-columnas) y por debajo de 700px de panel, donde la container query ya colapsa las filas a flujo libre.
+**A FIXED column header**: below the filter bars there is a row of labels with **exactly the same grid** as
+`.dbg-row` (widths, gap, padding and the 3px left border) → each label sits right above its column without changing
+any width. It lives **outside** the scrolling container: it does not scroll, the `MAX_ROWS` trim cannot prune it,
+and the list fills exactly from its bottom edge to the bottom of the panel. A label that does not fit is clipped
+with `…` and its `title` (hover) explains it. The columns tell a story from left to right — WHEN · which FLOW ·
+which PIECE · what TYPE · how long it took · with which model · how many tokens · and what happened —:
+**Time · Flow · Family · Type · ms · Engine · Size · Event**. It hides itself in the **Traces** view (a tree, no
+columns) and below a 700px panel width, where the container query already collapses rows into free flow.
 
-#### El último evento va ARRIBA, y el scroll es del operador (2026-08-10)
+#### The latest event goes on TOP, and the scroll belongs to the operator
 
-**La lista crece por PREPEND**: lo recién ocurrido entra pegado a la cabecera de columnas y empuja al resto hacia
-abajo. Mirando siempre el mismo trozo de pantalla se ve lo último; bajar es ir hacia atrás en el tiempo. En la vista
-**Trazas** manda el mismo criterio —el flujo más reciente arriba— pero **dentro** de cada árbol los eventos siguen
-en orden cronológico: un flujo se lee de principio a fin, que es lo que permite ver dónde se torció.
+**The list grows by PREPEND**: what just happened enters right under the column header and pushes the rest down.
+Looking at the same patch of screen always shows the latest; scrolling down goes back in time. In the **Traces**
+view the same rule applies — the most recent flow on top — but **within** each tree events stay in chronological
+order: a flow reads from start to finish, which is what lets you see where it went wrong.
 
-Esto **sustituye al «seguir el último evento»** y no es un detalle estético, es lo que hace que la superficie no
-pueda mentir. La versión anterior fijaba el fondo en cada evento y tenía que decidir cuándo soltarse (el operador
-sube a leer) y cuándo re-engancharse: estado de seguimiento, ventana de gesto real para distinguir su scroll del
-nuestro, un `requestAnimationFrame` para medir la fila antes de fijar, y un indicador en la cabecera para que el
-estado no fuera invisible. Se reportó dos veces que «a los diez o quince mensajes deja de seguir sola», se
-endurecieron los dos caminos por los que podía perderse (el guarda de rAF que se colgaba con la pestaña en segundo
-plano; el `stick` que soltaba cualquier scroll, incluido el programático) y **aun así el estado seguía pudiendo
-mentir sobre lo que estabas viendo**. Creciendo por arriba no hay nada que perseguir: el problema no se blinda, se
-elimina, y con él ~70 líneas.
+Growing from the top means there is no "follow the latest event" state to maintain — no sticky-bottom tracking,
+no heuristics to tell the operator's scroll from ours, no indicator for an invisible state — so the surface cannot
+misrepresent what you are looking at.
 
-Lo único que queda es **una compensación de tres líneas** (`DebugPanel.prepend()`): si el operador está arriba
-(`scrollTop 0`) la fila entra y ya; si está leyendo más abajo se suma el alto que acaba de aparecer encima, para
-que lo que tiene bajo los ojos no se mueva ni un píxel. El anclaje automático del navegador se **desactiva**
-(`overflow-anchor:none` en `.dbg-list`) porque solo existe en Chrome/Firefox y su ajuste se sumaría al nuestro:
-un solo dueño, mismo comportamiento en todos los navegadores. El scroll no se toca en ningún otro sitio, salvo al
-ABRIR el panel (que es «a ver qué pasa ahora» → arriba).
+All that remains is **a three-line compensation** (`DebugPanel.prepend()`): if the operator is at the top
+(`scrollTop 0`) the row just enters; if they are reading further down, the height that just appeared above is
+added, so what is under their eyes does not move by a single pixel. The browser's automatic scroll anchoring is
+**disabled** (`overflow-anchor:none` on `.dbg-list`) because it only exists in Chrome/Firefox and its adjustment
+would add to ours: one owner, the same behaviour in every browser. Scroll is not touched anywhere else, except when
+OPENING the panel (which means «let's see what is happening now» → top).
 
-**Todo el filtro vive en UN panel PLEGABLE** (2026-08-09): en la cabecera, un botón **«Filtros (N) ▾»** —N = tipos
-marcados ahora mismo, para saber de un vistazo si estás viendo el hilo entero o uno recortado— junto a un buscador
-a media anchura. **Cerrado no deja nada en pantalla**: debajo de la cabecera van directamente los rótulos de
-columna y los eventos. Se cierra desde el mismo botón o desde «▴ Condensar», dentro del panel. Con tantas
-familias y tipos, tenerlo todo desplegado se comía la pantalla, que es para lo que se abre el visor.
+**The whole filter lives in ONE COLLAPSIBLE panel**: in the header, a **«Filters (N) ▾»** button — N = types
+currently checked, so you can tell at a glance whether you are seeing the whole thread or a trimmed one — next to a
+half-width search box. **Closed, it leaves nothing on screen**: right below the header come the column labels and
+the events. It closes from the same button or from «▴ Collapse» inside the panel. With many families and types,
+keeping everything unfolded would eat the screen, which is what the viewer is opened for.
 
-**UN SOLO EJE: el tipo.** Dentro del panel va una TABLA con el **mapa completo de lo filtrable** —una fila por
-familia, todos sus tipos a la derecha— servida por `GET /api/observability/catalog`, que lo saca de
-`observer.py::_CAT`: la MISMA fuente que sella la familia de cada evento, así que el frontend no duplica el mapa,
-lo pide. Se pinta ENTERO aunque un tipo no haya ocurrido nunca — el operador ve de una lo que puede encender.
+**ONE AXIS: the type.** Inside the panel there is a TABLE with the **complete map of what can be filtered** — one
+row per family, all its types to the right — served by `GET /api/observability/catalog`, which derives it from
+`observer.py::_CAT`: the SAME source that stamps each event's family, so the frontend does not duplicate the map,
+it asks for it. It is painted IN FULL even if a type has never occurred — the operator sees at once what can be
+switched on.
 
-- **El rótulo de la familia es su mando**: enciende o apaga todos sus tipos de golpe. En cursiva cuando la familia
-  está a medias, para que un filtro parcial no se confunda con la familia entera.
-- La barra de chips de familia que había encima **se retiró** (2026-08-09): era un SEGUNDO eje que se solapaba con
-  este y obligaba a razonar dos veces «¿esta fila no sale por la familia o por el tipo?». Con un solo eje,
-  `visible(row)` tiene una respuesta y solo una.
-- **Por defecto**: encendidas las familias de trabajo (FlashBrain · Brain Workers · Memoria · Widgets), apagadas
-  las de plomería (Sistema/Código · Pulso) — **salvo `error` y `alert`, que arrancan encendidos aunque su familia
-  esté apagada**: un error invisible es el peor modo de fallo posible. El operador puede apagarlos, pero como
-  decisión suya, no por omisión.
-- Se persisten los **apagados** (`hb_dbg_kinds_off_v2`), no los encendidos: un tipo NUEVO nace visible en vez de
-  desaparecer por una lista vieja del localStorage.
+- **The family label is its control**: it switches all its types on or off at once. Italic when the family is
+  partially on, so a partial filter is not mistaken for the whole family.
+- There is deliberately no second filter axis (no separate family chips): with a single axis, `visible(row)` has
+  one answer and only one, and nobody has to reason «is this row hidden by the family or by the type?».
+- **Defaults**: the working families are on (FlashBrain · Brain Workers · Memory · Widgets), the plumbing ones off
+  (System/Code · Pulse) — **except `error` and `alert`, which start on even when their family is off**: an
+  invisible error is the worst possible failure mode. The operator can switch them off, but as their decision, not
+  by default.
+- What is persisted is the set of **switched-off** types (`hb_dbg_kinds_off_v2`), not the switched-on ones: a NEW
+  type is born visible instead of disappearing because of an old list in localStorage.
 
-El filtro se aplica en `visible(row)` y se re-evalúa sobre TODO el log en cada cambio (`reflow()`), no solo sobre
-lo que llegue después:
+The filter is applied in `visible(row)` and re-evaluated over the WHOLE log on every change (`reflow()`), not only
+over what arrives afterwards.
 
-Las filas ocultas siguen en el DOM (encender un chip las devuelve al instante, sin recargar) y **nada de esto toca
-lo que se persiste**: los `.jsonl` y el SSE siguen llevándolo todo — el filtro es de LECTURA.
+Hidden rows stay in the DOM (switching a chip on brings them back instantly, without reloading) and **none of this
+touches what is persisted**: the `.jsonl` files and the SSE keep carrying everything — the filter is for READING.
 
-### La EVIDENCIA: qué trajo el mundo exterior (2026-08-10)
+### The EVIDENCE: what the outside world brought back
 
-Un registro que cuenta la **pregunta** y la **decisión** pero no la **prueba** sirve para saber que el sistema
-buscó, nunca si buscó BIEN. La fila decía «7 resultados» y el contenido que el modelo leyó se perdía; de un paso de
-un Brain Worker quedaba la tool y su objetivo (la query, la URL), no lo que le contestaron — así que un worker que
-trae basura y otro que trae el dato exacto dejaban **el mismo rastro**. Ahora cada punto donde entra el exterior
-guarda su evidencia:
+A log that records the **question** and the **decision** but not the **proof** tells you the system searched,
+never whether it searched WELL. So every point where the outside world enters keeps its evidence — two workers, one
+bringing back noise and one bringing back the exact datum, leave different traces:
 
-| Fila | Qué guarda de nuevo |
+| Row | What it keeps |
 |---|---|
-| `search · 🔎 resultados web` | título + **URL** + un trozo del snippet de cada resultado, y la respuesta sintetizada si el proveedor la dio |
-| `task · <lugar> ↩` | el **`tool_result`** del CLI del worker — lo que le contestó la herramienta. Antes se descartaba entero como «ruido interno» |
-| `navegador · 📋 candidatos extraídos` | los anuncios raspados de la página **con su URL**, para poder volver y comprobar precio y descripción |
-| `navegador · 🏁 hito` | los hitos de la tarea (`N encontrados`, `descartados por no encajar`), que solo iban al feed EFÍMERO de la tarjeta y morían con ella |
+| `search · 🔎 web results` | title + **URL** + a slice of each result's snippet, and the synthesized answer if the provider gave one |
+| `task · <place> ↩` | the worker CLI's **`tool_result`** — what the tool answered |
+| `navegador · 📋 extracted candidates` | the listings scraped from the page **with their URL**, so you can go back and check price and description |
+| `navegador · 🏁 milestone` | the task's milestones (`N found`, `discarded as not matching`), which otherwise only live in the card's EPHEMERAL feed |
 
-El formato y **el presupuesto** viven en `observability/evidence.py`, y sus reglas explican las decisiones raras:
+The format and **the budget** live in `observability/evidence.py`, and its rules explain the unusual decisions:
 
-- **Se recorta, no se resume.** Un resumen es una interpretación; una auditoría necesita el texto tal cual, aunque
-  sea el principio. Todo recorte deja marca visible (`…`).
-- **Cabeceras antes que cuerpos.** Título y URL no se recortan nunca (identifican la fuente y permiten volver a
-  ella); el snippet sí, y agresivo.
-- **Techo por evento, y `omitted`.** Si no caben todos, entran los primeros y se dice cuántos quedaron fuera. Un
-  recorte silencioso es peor que el recorte: quien audita creería que eso era todo lo que había.
+- **Trim, don't summarize.** A summary is an interpretation; an audit needs the text verbatim, even if only its
+  beginning. Every trim leaves a visible mark (`…`).
+- **Headers before bodies.** Title and URL are never trimmed (they identify the source and let you go back to
+  it); the snippet is, and aggressively.
+- **A ceiling per event, and `omitted`.** If not everything fits, the first ones go in and the count left out is
+  stated. A silent trim is worse than the trim: whoever audits would believe that was all there was.
+- **What the model HAD IN FRONT OF IT is never omitted.** The turn's forensic record keeps the system prompt by
+  head and tail (`voice/observer._prompt_excerpt`), and the middle is exactly where `widgets/brief` writes «items
+  ahora (de lo ABIERTO)» with what is on screen: the numbered band of the open card. That block survives the trim,
+  bounded and with its own mark, so the log can always answer whether the model had the list in front of it.
+  General rule: **a positional trim assumes the middle is filler**, and in a composed prompt the middle is where
+  the state lives.
 
-- **Lo que el modelo TENÍA DELANTE no se omite** (V2-756). El registro forense del turno guarda el
-  system prompt por cabeza y cola (`voice/observer._prompt_excerpt`), y el centro —22,7 KB en un turno
-  normal— es justo donde `widgets/brief` escribe «items ahora (de lo ABIERTO)» con lo que hay en
-  pantalla: la banda numerada de la tarjeta abierta. Es la tercera vez que ese recorte cuesta un
-  diagnóstico, y la que lo hizo evidente fue una sesión en la que el modelo repitió la misma búsqueda de
-  vídeos tres turnos seguidos en vez de reproducir el número que le pedían: **el registro no podía decir
-  si tenía la lista delante**, y la respuesta hubo que reconstruirla a mano llamando a
-  `refs.prompt_digest` contra un almacén que ya había cambiado. Ahora ese bloque sobrevive al recorte,
-  acotado y con su propia marca. Regla general: **un recorte por posición asume que el centro es
-  relleno**, y en un prompt compuesto el centro es donde vive el estado.
+The same path exists in the **probe** (`nucleo/flash/probe.py`), which is a parallel implementation of the turn:
+auditing never depends on which door the sentence came through.
 
-El mismo camino está en el **probe** (`nucleo/flash/probe.py`), que es una implementación paralela del turno: sin
-eso, auditar dependía de por dónde hubiera entrado la frase — el punto ciego exacto que esta capa existe para no
-tener.
+### Reading a whole session, live or finished
 
-### Leer una sesión entera, viva o terminada
+Two reads on top of the flow reads:
 
-Dos lecturas nuevas encima de las de flujos:
+- **`flows.session(sid)`** → the shape of ONE session (when, how long, how many flows and events, tokens, errors,
+  families touched, code version). A session that does not exist returns empty; one that looks real is never
+  fabricated.
+- **`flows.events(session_id, since_id)`** → the RAW events with their payload intact (that is where the evidence
+  lives). `since_id` is a **cursor over `id`, not a time window**: two events in the same millisecond are normal —
+  the bus delivers fast — and a time window would duplicate one or swallow one. The same route serves two purposes:
+  **following** a live session (asking for whatever comes after the last id seen) and **archiving** it whole by
+  paging from 0.
 
-- **`flows.session(sid)`** → la forma de UNA sesión (cuándo, cuánto, cuántos flujos y eventos, tokens, errores,
-  familias tocadas, versión del código). Una sesión que no existe devuelve vacío; no se fabrica una que parezca real.
-- **`flows.events(session_id, since_id)`** → los eventos EN CRUDO con su payload intacto (ahí vive la evidencia).
-  `since_id` es un **cursor sobre `id`, no una ventana de tiempo**: dos eventos en el mismo milisegundo son
-  normales —el bus reparte rápido— y una ventana temporal los duplicaría o se comería uno. La misma ruta sirve
-  para dos cosas: **seguir** una sesión viva (pidiendo lo que haya después del último id visto) y **archivarla**
-  entera paginando desde 0.
+`GET /api/observability/session/{sid}` also marks `live` by comparing with the open session, and returns `flows`
+(a number) and `flows_detail` (the list) as SEPARATE fields, so a consumer always gets the same type for each.
 
-`GET /api/observability/session/{sid}` marca además `live` comparando con la sesión abierta, y devuelve `flows`
-(número) y `flows_detail` (la lista) como campos DISTINTOS — meter la lista dentro de `flows` pisaba el contador y
-quien lo consumiera recibía a veces un número y a veces un array según la ruta.
+### Who may read the CONTENT
 
-### Quién puede leer el CONTENIDO
+In a home installation the port is only reachable from the machine itself. The same code runs in deployments where
+the port IS reachable, and there an open route would hand the conversations to anyone who finds the URL. The
+guarded-until-configured pattern, the same as the rest of the system:
 
-Estas rutas nacieron para el visor local y eran **abiertas**. En una instalación en casa da igual: el puerto solo lo
-alcanza la propia máquina. Pero el mismo código corre en despliegues donde el puerto SÍ es alcanzable, y ahí
-«abierto» significa que cualquiera que dé con la URL se lleva las conversaciones. Patrón
-guarded-until-configured, el mismo del resto del sistema:
+- **without `ZAELAR_OBS_TOKEN` → loopback only.** A local installation works exactly as expected.
+- **with `ZAELAR_OBS_TOKEN` → the `X-Observability-Token` header is required**, wherever the request comes from
+  (not even loopback passes without it: otherwise any process on the machine would still have free access to the
+  content).
+- Fail-closed (with no determinable origin, access is denied) and a **constant-time** comparison, which does not
+  leak a token's valid prefix through repeated attempts.
 
-- **sin `ZAELAR_OBS_TOKEN` → solo loopback.** Una instalación local funciona exactamente igual que antes.
-- **con `ZAELAR_OBS_TOKEN` → hace falta la cabecera `X-Observability-Token`**, venga de donde venga (ni loopback
-  pasa sin ella: si no, cualquier proceso de la máquina seguiría teniendo acceso libre al contenido).
-- Fail-closed (sin origen determinable, se deniega) y comparación en **tiempo constante**, que no filtra el prefijo
-  válido de un token a base de intentos.
+`catalog`, `identity` and `session/start|end` stay OPEN: the user's own interface uses them, which in a remote
+deployment is not loopback, and they expose no content.
 
-Quedan ABIERTAS `catalog`, `identity` y `session/start|end`: las usa la propia interfaz del usuario, que en un
-despliegue remoto no es loopback, y no exponen contenido.
+### Widget action log — tying «wrong widget» to the SENTENCE that asked for it
 
-### Registro de acciones de widget — atar «widget equivocado» con la FRASE que lo pidió
+Every order against the canvas lands in the **Widgets** category, and **every event carries the text of the turn
+that originated it**: the row already says order + target + origin + sentence, which is exactly what you need when
+the wrong widget opens.
 
-Toda orden contra el canvas queda en la categoría **Widgets**, y **cada evento se lleva el texto del turno que la
-originó** (2026-08-09). Antes había que reconstruirlo saltando al `transcript` anterior o abriendo la vista de
-trazas; ahora la fila ya dice orden + objetivo + origen + frase, que es justo lo que hace falta cuando se abre el
-widget que no era.
-
-| Fila | De dónde sale | Qué dice |
+| Row | Where it comes from | What it says |
 |---|---|---|
-| `widget · show\|close\|move` | `providers/nucleo.py` (tag `[[show]]`/`[[close]]`) | la orden de canvas + `id` + `src=flash` + **la frase** |
-| `widget · data:<acción>` | `providers/nucleo.py::_apply_widget_data` | la DATA-OP en sí (subir volumen, maximizar, marcar hecha) con su `mode` (`fast`/`confirm`/`escalate`) + **la frase** |
-| `widget · data` | `widgets/store.py::save()` | el EFECTO (el widget guardó). Sigue marcada como ruido — es consecuencia, no orden |
-| `widget · action` | `widgets/server_api.py` | el operador pulsando un botón de la tarjeta (`src=user`) |
-| `widget · show\|close` | `nucleo/worker_api.py` | lo mismo pedido por un Brain Worker (`src=worker:<id>`) |
+| `widget · show\|close\|move` | `providers/nucleo.py` (tag `[[show]]`/`[[close]]`) | the canvas order + `id` + `src=flash` + **the sentence** |
+| `widget · data:<action>` | `providers/nucleo.py::_apply_widget_data` | the DATA-OP itself (raise volume, maximize, mark done) with its `mode` (`fast`/`confirm`/`escalate`) + **the sentence** |
+| `widget · data` | `widgets/store.py::save()` | the EFFECT (the widget saved). Still marked as noise — it is a consequence, not an order |
+| `widget · action` | `widgets/server_api.py` | the operator pressing a button on the card (`src=user`) |
+| `widget · show\|close` | `nucleo/worker_api.py` | the same, requested by a Brain Worker (`src=worker:<id>`) |
 
-Con el chip de trace (V2-044) de esa misma fila se salta a la cadena completa de la frase.
+The trace chip on that same row jumps to the sentence's whole chain.
 
-## Trazabilidad texto → acción → rail → sesión → eventos (V2-044)
+## Traceability text → action → rail → session → events
 
-Cada **estímulo** que entra al sistema nace con un **trace id** (`T12·9f3a`) y TODO lo que deriva de él queda
-sellado con ese id en cada evento — la pregunta de calidad («¿esta frase cayó en el rail correcto y desembocó en
-el set de eventos que corresponde?») se responde agrupando por `trace`.
+Every **stimulus** that enters the system is born with a **trace id** (`T12·9f3a`) and EVERYTHING derived from it is
+stamped with that id on every event — the quality question («did this sentence land on the right rail and end in
+the set of events it should?») is answered by grouping by `trace`.
 
-- **Orígenes** (evento raíz `kind="trace"`, `root:true`, `origin`): `turno` (voz+chat, nace en
-  `providers/nucleo.py::_run` ANTES del gate — los descartes ambient/eco también se trazan) · `kickoff` · `probe`
-  (el probe devuelve el id en su respuesta) · `cron` (scheduler) · `proactivo` (chispas) · `ui` (taps manuales del
-  canvas) · `cluster` (mensaje de peer).
-- **Cómo viaja**: `voice/trace.py` (ContextVar) — gratis por `create_task`/`to_thread`; costuras explícitas donde
-  el contexto no cruza: la escalada lleva el trace en su payload de bus → `SessionRecord.trace_id` → el ciclo del
-  worker adopta (`span=worker:<id>`), los handlers HTTP de los CLIs puente (hbnote/hbask) resuelven la sesión y
-  sellan, el run de un rail guarda su trace (`span=rail:<kind>`), y el registro de tareas del navegador lo acarrea
-  (`span=web:<tid>`). `observer.emit` lo adjunta solo (leer el ctxvar son ns; V2-011 intacto).
-- **`span`** = ACTOR (nivel 2 del árbol): `worker:5` · `rail:music.playing` · `web:t2`.
-- **En el visor** (◷): cada fila lleva un **chip de trace** (color determinista; click → filtra la cadena entera),
-  y el botón **⛓** alterna a la vista **Trazas**: un árbol por trace — la FRASE raíz + todo lo que generó,
-  agrupado por actor. `jq` equivalente: `jq 'select(.trace=="T12·9f3a")' timeline-latest.jsonl`.
-- Diseño completo: `.meshkore/roadmap/initiatives/V2-044-trazabilidad-texto-accion-rail.md`.
+- **Origins** (root event `kind="trace"`, `root:true`, `origin`): `turno` (voice + chat, born in
+  `providers/nucleo.py::_run` BEFORE the gate — ambient/echo discards are traced too) · `kickoff` · `probe` (the
+  probe returns the id in its response) · `cron` (scheduler) · `proactivo` (sparks) · `ui` (manual canvas taps) ·
+  `cluster` (peer message).
+- **How it travels**: `voice/trace.py` (ContextVar) — free across `create_task`/`to_thread`; explicit seams where the
+  context does not cross: the escalation carries the trace in its bus payload → `SessionRecord.trace_id` → the
+  worker cycle adopts it (`span=worker:<id>`), the HTTP handlers of the bridge CLIs (hbnote/hbask) resolve the
+  session and stamp it, a rail's run keeps its trace (`span=rail:<kind>`), and the browser task registry carries it
+  (`span=web:<tid>`). `observer.emit` attaches it by itself (reading the ctxvar costs nanoseconds; the hot path is
+  untouched).
+- **`span`** = ACTOR (level 2 of the tree): `worker:5` · `rail:music.playing` · `web:t2`.
+- **In the viewer** (◷): every row carries a **trace chip** (deterministic colour; click → filters the whole chain),
+  and the **⛓** button toggles to the **Traces** view: one tree per trace — the root SENTENCE + everything it
+  generated, grouped by actor. `jq` equivalent: `jq 'select(.trace=="T12·9f3a")' timeline-latest.jsonl`.
 
-## Pasos de un Brain Worker — DÓNDE trabaja y QUÉ usa (V2-048)
+## A Brain Worker's steps — WHERE it works and WHAT it uses
 
-Un worker ya no cuenta solo fases genéricas («consultando la memoria…»). Cada `tool_use` de su stream se traduce a
-una fila RICA que dice **el LUGAR** (badge/categoría por sitio) + **la acción y su objetivo concreto**:
+A worker does not just report generic phases («consulting memory…»). Every `tool_use` in its stream is translated
+into a RICH row that says **the PLACE** (badge/category per site) + **the action and its concrete target**:
 
-- **🧠 memoria** (`kind=memory`, filtro Memoria) — `recall «query»` · `guarda [slot] …`.
-- **🧭 navegador** (`kind=navegador`, filtro Navegador) — `navigate → url` · `click [12]` · `type «texto»` ·
-  `scroll` · `extract`. Además, tras ejecutarse, el propio browser emite el **RESULTADO**: `🧭 página` con
-  `título · url` a los que llegó, y `🧭 resultados` con el nº de anuncios de `extract` (lo que el comando no dice).
+- **🧠 memory** (`kind=memory`, Memory filter) — `recall «query»` · `save [slot] …`.
+- **🧭 browser** (`kind=navegador`, Browser filter) — `navigate → url` · `click [12]` · `type «text»` · `scroll` ·
+  `extract`. In addition, after running, the browser itself emits the **RESULT**: `🧭 page` with the `title · url`
+  it reached, and `🧭 results` with the number of listings from `extract` (what the command does not say).
 - **🌐 web** (`kind=search`) — `web_search «query»` · `fetch url`.
-- **✏️ código / 📄 archivo** (`kind=task`) — `escribe fichero` · `lee fichero` · `busca patrón`.
-- **↩ zaelar** (`kind=task`) — el worker `ask`/`act`/`say` a través de los puentes.
+- **✏️ code / 📄 file** (`kind=task`) — `write file` · `read file` · `search pattern`.
+- **↩ zaelar** (`kind=task`) — the worker's `ask`/`act`/`say` through the bridges.
 
-Y dos filas de marco: al **nacer**, `worker · <backend>` con **modelo** (chip) + **capa** (chip) → qué motor/modelo
-conduce; al **terminar**, `fin` con **tokens** input/output (chip de tamaño) + **coste USD**. Todo se agrupa bajo
-`span=worker:<id>` en la vista Trazas (⛓) y se persiste en los jsonl. La fase coarse (`rec.phase`) se mantiene para
-el prompt «PROCESOS DE FONDO» del FlashBrain, pero no duplica fila. Fuente: `nucleo/workers/claude_session.py`
-(`_tool_step`) + `nucleo/workers/session.py` (`_emit_step`/`_PLACE`) + `widgets/navegador/act_api.py` (`_emit_nav`).
-Diseño: `.meshkore/roadmap/initiatives/V2-048-observabilidad-workers.md`.
+And two frame rows: at **birth**, `worker · <backend>` with **model** (chip) + **layer** (chip) → which engine/model
+drives it; at the **end**, `fin` with input/output **tokens** (size chip) + **USD cost**. Everything is grouped
+under `span=worker:<id>` in the Traces view (⛓) and persisted in the jsonl files. The coarse phase (`rec.phase`) is
+kept for the FlashBrain's «PROCESOS DE FONDO» prompt, but does not duplicate the row. Source:
+`nucleo/workers/claude_session.py` (`_tool_step`) + `nucleo/workers/session.py` (`_emit_step`/`_PLACE`) +
+`widgets/navegador/act_api.py` (`_emit_nav`).
 
-## Tipos de evento (`kind`) — qué observar
+## Event types (`kind`) — what to watch
 
-- **`susurro`** (V2-053) — el auditor conversacional, con **observabilidad TOTAL por regla del operador**: `👂
-  fricción → auditoría` (motivo + señales; la variante «en cooldown» marca `skipped`), `📤 request → LLM auditor`
-  (**`extra.request` = el payload COMPLETO enviado**, messages incluidos), `📥 response ← LLM auditor`
-  (**`extra.raw` = la respuesta CRUDA** + ms + tokens), `🩹 repair_say → brain_notes` / `📌 finding → cola
-  dev-loop` (cada corrección con su **antes/después** en `extra`), `✅ auditoría completa` (assessment + types +
-  total_ms) y `⚠️ … (fail-open)`. Todo sellado con el `trace` del estímulo que causó la fricción (span
-  `susurro`) → el visor ◷/⛓ enseña la cadena queja→auditoría→reparación. Los findings viven además en
-  `.meshkore/logs/susurro/findings.jsonl`. **Topic de bus asociado: `turn.completed`** — el cierre semántico de
-  CADA turno (voz Y probe, emitido por `observer.turn_detail`) con `{user, decision, tools, window,
-  system_prompt, trace}`; es la costura de suscripción para consumidores programáticos (depende de
-  `ZAELAR_LOG_PROMPTS=1`, def ON — apagarlo deja al Susurro solo con las señales sueltas).
-- **`homeostasis`** (V2-070, `nucleo/homeostasis.py`) — la **capa autónoma** que mantiene sana la MÁQUINA (sin
-  modelo, determinista; vive AL LADO del cerebro, fuera del bucle de voz, fail-open; gate `ZAELAR_HOMEOSTASIS`). Es
-  la fuente de verdad para "¿por qué se degradó/se recicló el motor?". Labels: **`start`** (arranque del supervisor),
-  **`degraded`** (vital en rojo detectado — p.ej. el motor LiveKit en `wait_pc_connection timed out` /
-  `entrypoint did not exit`, captado por un `logging.Handler` sobre el logger `livekit`), **`recycle`** (recicla el
-  worker LiveKit embebido — `aclose`+`make_server`+tarea nueva, sin reiniciar el proceso — SOLO cuando es seguro:
-  voz apagada + canal ocioso ≥120s, con cooldown), **`rotate`** (rota `timeline-latest.jsonl`/`meshkore.jsonl` por
-  tamaño + poda archivos viejos), **`evict`** (desaloja cápsulas concluidas/viejas, `sys_kv` `capsule:*`) y
-  **`alert`** (aviso único al operador cuando detecta degradación pero NO es seguro actuar). Motivada por el
-  incidente 2026-07-25 (el worker LiveKit embebido se degradó tras ~7h → voz/chat mudos hasta reinicio manual).
-- **`actionmap`** (V2-539, family `flash`) — the deterministic layer in FRONT of the FlashBrain
-  (`nucleo/actionmap/`, doc `.meshkore/docs/modules/zaelar-action-map.md`). It answers **which layer resolved
-  this turn**, which used to be unanswerable: ten real voice turns were served by the map while the viewer
-  and the Susurro both reported the model. Labels: **`⚡ action map: direct action (no model)`** (a hit —
-  with `action`, `entry`, `source`, `match_ms` and the phrase that produced it), **`🕵️ map candidate…`** (the
-  model resolved a turn with a single canvas action, i.e. what the table is MISSING; `known_entry` tells a
+- **`susurro`** — the conversational auditor, with **FULL observability by design**: `👂 friction → audit` (reason
+  + signals; the «in cooldown» variant marks `skipped`), `📤 request → LLM auditor` (**`extra.request` = the
+  COMPLETE payload sent**, messages included), `📥 response ← LLM auditor` (**`extra.raw` = the RAW response** + ms
+  + tokens), `🩹 repair_say → brain_notes` / `📌 finding → dev-loop queue` (every correction with its
+  **before/after** in `extra`), `✅ audit complete` (assessment + types + total_ms) and `⚠️ … (fail-open)`. All
+  stamped with the `trace` of the stimulus that caused the friction (span `susurro`) → the ◷/⛓ viewer shows the
+  complaint→audit→repair chain. Findings also live in `.meshkore/logs/susurro/findings.jsonl`. **Associated bus
+  topic: `turn.completed`** — the semantic close of EVERY turn (voice AND probe, emitted by `observer.turn_detail`)
+  with `{user, decision, tools, window, system_prompt, trace}`; it is the subscription seam for programmatic
+  consumers (it depends on `ZAELAR_LOG_PROMPTS=1`, default ON — switching it off leaves the Susurro with only the
+  loose signals).
+- **`homeostasis`** (`nucleo/homeostasis.py`) — the **autonomous layer** that keeps the MACHINE healthy (no model,
+  deterministic; it lives NEXT TO the brain, outside the voice loop, fail-open; gate `ZAELAR_HOMEOSTASIS`). It is
+  the source of truth for «why was the engine degraded/recycled?». Labels: **`start`** (supervisor start),
+  **`degraded`** (a red vital sign detected — e.g. the LiveKit engine reporting `wait_pc_connection timed out` /
+  `entrypoint did not exit`, caught by a `logging.Handler` on the `livekit` logger), **`recycle`** (recycles the
+  embedded LiveKit worker — `aclose` + `make_server` + a new task, without restarting the process — ONLY when it is
+  safe: voice off + channel idle ≥120 s, with a cooldown), **`rotate`** (rotates
+  `timeline-latest.jsonl`/`meshkore.jsonl` by size + prunes old files), **`evict`** (evicts concluded/stale
+  capsules, `sys_kv` `capsule:*`) and **`alert`** (a single notice to the operator when it detects degradation but
+  it is NOT safe to act). It exists so that a long-running embedded worker that degrades recovers by itself instead
+  of leaving voice/chat silent until a manual restart.
+- **`actionmap`** (family `flash`) — the deterministic layer in FRONT of the FlashBrain (`nucleo/actionmap/`, doc
+  `.meshkore/docs/modules/zaelar-action-map.md`). It answers **which layer resolved this turn**, so the viewer and
+  the Susurro never attribute a map-served turn to the model. Labels: **`⚡ action map: direct action (no model)`**
+  (a hit — with `action`, `entry`, `source`, `match_ms` and the phrase that produced it), **`🕵️ map candidate…`**
+  (the model resolved a turn with a single canvas action, i.e. what the table is MISSING; `known_entry` tells a
   missing entry from one that exists and did not fire), **`🗺️ action map WATCHING`** (`watch.py` subscribed to
   `turn.completed`) and the seeding line, which is an **`alert`** if the pack refused any row. Provenance is a
   FIELD, not an inference: every event stamps `engine: "actionmap"` + `origin: "actionmap"` (a model turn stamps
   `origin: "flash"`), the LAYER column of the viewer reads exactly `engine`, and the match cost is folded into
   `pre_ms` as `amap_ms`. The canvas orders it issues are ordinary `kind="widget"` events with `src="actionmap"`,
-  so «¿se abrió el widget?» keeps its single source of truth.
-- `worker_start` — arranque de sesión: `profile`, `stt`, **`stt_device`** (metal/cuda/cpu), `llm_provider`, `tts`, `turn`.
-- `state` — máquina de 5 estados (idle/listening/thinking/speaking…). Marcado "ruido" en `/debug` (colapsable).
-- `transcript` (role=user|bot) — lo que se **dijo** (STT del usuario / respuesta del brain). `interim` = parcial en vivo,
-  **efímero** (SSE-only, no toca disco ni el anillo — subtítulos/chat mientras hablas).
-- **`vad`** — actividad de voz e interrupción (barge-in), la fuente de verdad para "¿por qué se cortó la locución?":
+  so «did the widget open?» keeps its single source of truth.
+- `worker_start` — session start: `profile`, `stt`, **`stt_device`** (metal/cuda/cpu), `llm_provider`, `tts`, `turn`.
+- `state` — 5-state machine (idle/listening/thinking/speaking…). Marked as "noise" in `/debug` (collapsible).
+- `transcript` (role=user|bot) — what was **said** (the user's STT / the brain's reply). `interim` = live partial,
+  **ephemeral** (SSE-only, touches neither disk nor the ring — captions/chat while you talk).
+- **`vad`** — voice activity and interruption (barge-in), the source of truth for «why was the speech cut?»:
   "🎤 voz detectada (VAD)", "✂️ barge-in — voz pisa la locución" (`extra.over_agent`), "… fin de voz", "🤫 falsa
-  interrupción (ruido)" con **`extra.resumed`** (¿LiveKit reanudó la locución tras el ruido?), "🔊 voz solapada"
-  (`extra.is_interruption`). Barge-in tuneable por env: `ZAELAR_MIN_INTERRUPTION_SEC` (def 0.6),
+  interrupción (ruido)" with **`extra.resumed`** (did LiveKit resume the speech after the noise?), "🔊 voz solapada"
+  (`extra.is_interruption`). Barge-in tunable by env: `ZAELAR_MIN_INTERRUPTION_SEC` (default 0.6),
   `ZAELAR_MIN_INTERRUPTION_WORDS`, `ZAELAR_FALSE_INTERRUPTION_TIMEOUT`, `ZAELAR_RESUME_FALSE_INTERRUPTION`.
-- **`widget`** — acción de canvas: `label` = `show` / `close` / `move` / `resize` / `data` / `action` / `delete` /
-  `confirm` … con `extra.id`. **Ésta es la fuente de verdad para "¿se abrió el widget?"**, independiente de si el
-  TTS sonó. **PROCEDENCIA (V2-039, `extra.src`) — de dónde salió la orden**, para auditar el frontend como pieza
-  independiente: **`flash`** (el FlashBrain en un turno), **`worker:<task_id>`** (un Brain Worker vía los puentes /
-  navegador / agente de código), **`user`** (el operador tocando la UI: abrir/cerrar/arrastrar una tarjeta o pulsar
-  un botón del widget), **`system`** (ciclo de vida / background / reset / desconocido). El campo lo estampa cada
-  emit; para el ÚNICO punto ciego (el choke point de datos `widgets/store.py::save()`) lo resuelve el registro de
-  intención `widgets/provenance.py` (`note`/`who`, TTL). El dedup de `widget` clavea por `(kind,label,id,src)` — dos
-  widgets distintos (o el mismo por flash y por worker) NO se colapsan. **`kind="ui"`** = taps de iconos del orbe
-  (`orb:cron|memory|speaker|captions|attention`) y del TopBar (`topbar:status|docs|debug|theme|settings|reset`),
-  con `src="user"` (POST `/api/ui-event`). Con esto el `/debug` responde "¿quién abrió/cerró/movió/creó esto?".
-  **`kind="ui"` con `src="frontend"` (2026-08-10) = ESTADO del cliente, no actividad del operador** — ver abajo.
+- **`widget`** — canvas action: `label` = `show` / `close` / `move` / `resize` / `data` / `action` / `delete` /
+  `confirm` … with `extra.id`. **This is the source of truth for «did the widget open?»**, independent of whether
+  the TTS sounded. **PROVENANCE (`extra.src`) — where the order came from**, to audit the frontend as an independent
+  piece: **`flash`** (the FlashBrain in a turn), **`worker:<task_id>`** (a Brain Worker through the bridges /
+  browser / code agent), **`user`** (the operator touching the UI: opening/closing/dragging a card or pressing a
+  widget button), **`system`** (lifecycle / background / reset / unknown). Every emit stamps the field; for the ONE
+  blind spot (the data choke point `widgets/store.py::save()`) the intent registry `widgets/provenance.py`
+  (`note`/`who`, TTL) resolves it. `widget` dedup keys on `(kind,label,id,src)` — two different widgets (or the same
+  one by flash and by worker) do NOT collapse. **`kind="ui"`** = taps on the orb icons
+  (`orb:cron|memory|speaker|captions|attention`) and the TopBar (`topbar:status|docs|debug|theme|settings|reset`),
+  with `src="user"` (POST `/api/ui-event`). With this, `/debug` answers «who opened/closed/moved/created this?».
+  **`kind="ui"` with `src="frontend"` = CLIENT STATE, not operator activity** — see below.
 
-### Estado del CLIENTE: lo que el frontend sabe y el servidor no puede ver (2026-08-10)
+### CLIENT state: what the frontend knows and the server cannot see
 
-El log tenía la **intención** del operador (`orb:power` al pulsar ⏻) pero no la **realidad** del navegador. Por eso
-un agente CAÍDO que se pintaba vivo fue invisible en el registro: costó una sesión entera de diagnóstico y tres bugs
-reportados que no existían. Ahora las **transiciones** del cliente entran por el mismo canal
-(`api.uiState(action, {...})` → `POST /api/ui-event`, `kind="ui"`, `src="frontend"`):
+The log carries the operator's **intent** (`orb:power` when pressing ⏻) and also the browser's **reality**: the
+client's **transitions** enter through the same channel (`api.uiState(action, {...})` → `POST /api/ui-event`,
+`kind="ui"`, `src="frontend"`), so an agent that is down but painted as alive is visible in the log:
 
-| Acción | Campos | Qué contesta, que antes no se podía |
+| Action | Fields | What it answers |
 |---|---|---|
-| `agent:state` | `state` ∈ `off\|starting\|live\|stalled` · `prev` | La VERDAD del agente (`store.agentState()`, no `powerOff`, que es la intención). `stalled` con `prev:"live"` = se cayó en marcha; con `prev:"starting"` = no llegó a subir |
-| `mic:analyser` | `state` ∈ `open\|closed` · `reason` | Si el micro se libera **de verdad** al parar, no solo que el icono se apaga |
-| `audio:out` | `state` ∈ `attached\|released` | El attach ya se veía (`🔈 TrackSubscribed`); el **release** no → un altavoz zombi no dejaba rastro |
-| `tab:visibility` | `state` ∈ `hidden\|visible` | `requestAnimationFrame` NO corre en pestaña de fondo, y de rAF dependen el visualizador y varios guardas: distingue «se congeló» de «estabas en otra aplicación» |
+| `agent:state` | `state` ∈ `off\|starting\|live\|stalled` · `prev` | The agent's TRUTH (`store.agentState()`, not `powerOff`, which is the intent). `stalled` with `prev:"live"` = it went down while running; with `prev:"starting"` = it never came up |
+| `mic:analyser` | `state` ∈ `open\|closed` · `reason` | Whether the mic is **really** released on stop, not just that the icon turns off |
+| `audio:out` | `state` ∈ `attached\|released` | The attach is visible (`🔈 TrackSubscribed`); the **release** is logged too, so a zombie speaker leaves a trace |
+| `tab:visibility` | `state` ∈ `hidden\|visible` | `requestAnimationFrame` does NOT run in a background tab, and the visualizer and several guards depend on rAF: it tells «it froze» from «you were in another app» |
 
-### `🎙️ speaker` — la SOMBRA de identificación de voz (V2-651 F0, 2026-09-10)
+### `🎙️ speaker` — the voice-identification SHADOW
 
-Filas `kind="client"` con label **`🎙️ speaker`**, UNA por segmento de habla, emitidas por el NAVEGADOR
-(`frontend/app/lib/speaker-id.js` → `api.clientLog`). Son **medición pura**: no cierran ningún gate, no escriben
-memoria y no tocan el prompt. Existen para elegir, con datos del micro y la sala REALES del operador, el umbral que
-usará la fase siguiente. Se apagan con `?nospk=1` o `localStorage.zaelar_spk_shadow=0`.
+Rows `kind="client"` with label **`🎙️ speaker`**, ONE per speech segment, emitted by the BROWSER
+(`frontend/app/lib/speaker-id.js` → `api.clientLog`). They are **pure measurement**: they close no gate, write no
+memory and do not touch the prompt. They exist to choose, with the operator's REAL mic and room data, the threshold
+the next stage will use. Switch them off with `?nospk=1` or `localStorage.zaelar_spk_shadow=0`.
 
-| Campo | Qué es |
+| Field | What it is |
 |---|---|
 | `label` | `enroll` · `operator` · `other` · `known:<id>` |
-| `op_score` | el VOTO grueso contra el perfil del operador (solo vale 0, ⅓, ⅔ o 1) |
-| `d_mean` / `d_pitch` / `d_centroid` | distancias **continuas** en σ (0 = clavado en el perfil, 1 = a una desviación) |
-| `rms_ratio` | volumen frente al enrolado (≪ 1 = lejos del micro) |
-| `pitch` / `centroid` / `rms` | la instantánea cruda, para análisis offline |
+| `op_score` | the coarse VOTE against the operator's profile (only 0, ⅓, ⅔ or 1) |
+| `d_mean` / `d_pitch` / `d_centroid` | **continuous** distances in σ (0 = spot on the profile, 1 = one deviation away) |
+| `rms_ratio` | loudness relative to enrollment (≪ 1 = far from the mic) |
+| `pitch` / `centroid` / `rms` | the raw snapshot, for offline analysis |
 
-Además hay tres filas de DIAGNÓSTICO, para que el silencio del log se pueda leer (medido 2026-09-10: sesiones de
-voz reales con el micro abierto no dejaron ni una fila y no había forma de saber por qué):
-**`🎙️ speaker: armado`** (arrancó; **si NO está, la pestaña del navegador corre código viejo** — el módulo ES se
-cachea por carga de página, así que tras tocar esto hay que recargar), **`⚠️ speaker: no arrancó`** (falló al
-armar; antes se lo tragaba un `catch` mudo) y **`🎙️ speaker: nivel`** (una sola vez, a los ~25 s: el pico de
-volumen visto contra el umbral de inicio del segmentador — si `peak_rms` < `start_floor`, con ese micro no puede
-abrirse ningún segmento y lo que hay que ajustar es la calibración, no el código).
+There are also three DIAGNOSTIC rows, so that a silent log can be read:
+**`🎙️ speaker: armado`** (it started; **if it is MISSING, the browser tab is running old code** — the ES module is
+cached per page load, so after touching this you must reload), **`⚠️ speaker: no arrancó`** (it failed to arm) and
+**`🎙️ speaker: nivel`** (once, at ~25 s: the peak loudness seen against the segmenter's start threshold — if
+`peak_rms` < `start_floor`, no segment can open with that mic and what needs adjusting is the calibration, not the
+code).
 
-⚠️ **Para fijar un umbral se usa `d_mean`, NUNCA `op_score`**: el voto es de 3 criterios, así que solo puede tomar
-cuatro valores — medido sobre 60 voces sintéticas distintas devolvió exactamente TRES. Sirve para clasificar y no
-sirve para decidir dónde cortar. Detalle del mecanismo y sus límites: `docs/modules/zaelar-speaker-identity.md`.
+⚠️ **To set a threshold use `d_mean`, NEVER `op_score`**: the vote is over 3 criteria, so it can only take four
+values. It is good for classifying and useless for deciding where to cut. Mechanism detail and its limits:
+`.meshkore/docs/modules/zaelar-speaker-identity.md`.
 
-**Regla de uso, y es la que los mantiene útiles: son eventos de ESTADO, no de actividad.** Se emiten SOLO en
-transición y jamás dentro de un bucle de render. Dos consecuencias prácticas en el código: `agent:state` cuelga de un
-`createEffect` sobre una señal DERIVADA —que se re-ejecuta cuando cambia cualquiera de sus dependencias, a veces con
-el mismo valor— y por eso lleva un guarda de valor previo; y `mic:analyser`/`audio:out` viven en `services/audio.js`,
-el ÚNICO dueño de los analizadores, que es el único sitio donde «se abrió» y «se soltó» son la verdad y no una
-suposición del que llama.
+**Usage rule, and it is what keeps them useful: they are STATE events, not activity events.** They are emitted ONLY
+on transition and never inside a render loop. Two practical consequences in the code: `agent:state` hangs off a
+`createEffect` over a DERIVED signal — which re-runs whenever any of its dependencies changes, sometimes with the
+same value — and so it carries a previous-value guard; and `mic:analyser`/`audio:out` live in `services/audio.js`,
+the ONLY owner of the analysers, which is the only place where «opened» and «released» are the truth and not the
+caller's assumption.
 
-**Hizo falta un arreglo para que el evento pudiera AFIRMAR algo:** `stop()` soltaba solo el analizador del bot
-(`audio.dropBot()`) y el del micro sobrevivía con su `AudioContext` abierto — «cerrado» nunca habría ocurrido. Ahora
-suelta el grafo entero (`audio.reset(reason)`, que además cierra el contexto). De paso mata una fuga real: `initMic`
-abría un `AudioContext` nuevo por sesión sin cerrar el anterior, y Chrome corta a ~6 por página — unas cuantas
-reconexiones y `new AudioContext()` empieza a lanzar, dejando el medidor de micro y el orbe muertos para el resto de
-la vida de la pestaña.
+**`stop()` releases the whole audio graph** (`audio.reset(reason)`, which also closes the `AudioContext`), so
+«closed» is a real state and not just an icon. It also keeps contexts from accumulating: `initMic` reuses a single
+context lifecycle per session, because Chrome caps the number of `AudioContext`s per page and, once exceeded,
+`new AudioContext()` throws and the mic meter and the orb stop working for the life of the tab.
 
-El endpoint solo reenvía los campos que tiene en lista (`where`/`state`/`detail`/`prev`/`reason`/`cause` + `id`): uno
-fuera de ella se descarta **en silencio**, que es peor que no instrumentar nada porque el código parece instrumentado.
-Y `src` está acotado a `user`/`frontend` — cualquier otra cosa cae a `user`.
-- `brain` — prompts/replies del cerebro «Colmena» (FlashBrain), notas `[SISTEMA]`, escalados a SlowBrain
+The endpoint only forwards the fields on its allow-list (`where`/`state`/`detail`/`prev`/`reason`/`cause` + `id`):
+one outside it is dropped **silently** — when instrumenting, add the field to the list or it will look instrumented
+and record nothing. And `src` is bounded to `user`/`frontend` — anything else falls back to `user`.
+
+- `brain` — prompts/replies of the «Colmena» brain (FlashBrain), `[SISTEMA]` notes, escalations
   (`escalate_to_slowbrain`).
-- **`ambient`** — gate de ATENCIÓN (V2-015, `voice/attention.py`): un turno que NO iba dirigido a zaelar (sin
-  wake-word y fuera de la ventana de conversación). `label` = "🙉 ambiente — no dirigido a zaelar" con
-  `extra.mode` (`smart`/`wakeword`/`ptt`/`always`) y `extra.reason` (`ambient`); o "✋ interrupción dura atendida"
-  (`extra.cmd` = `close`/`stop`) cuando una orden dura salta el gate. **Es la fuente de verdad para "¿zaelar ignoró
-  voz ambiente?"**: si en una reunión NO hay eventos `widget`/`brain reply` sino `ambient`, el gate está haciendo su
-  trabajo. Si ves `widget`/escaladas sobre frases que no le hablaban a zaelar → revisar `ZAELAR_ATTENTION` (¿en
-  `always`?) o la ventana. El evento no lleva role de chat (no ensucia el ChatWall), solo `/debug` + SSE `/events`.
-- `bot_speech` — orbe hablando/idle. `tts` — síntesis. `metric` — métricas CRUDAS del plugin de LiveKit
-  (`STTMetrics`, `LLMMetrics ttft/dur`, `TTSMetrics ttfb`, `EOUMetrics`). ⚠️ **`VADMetrics` NO se registra**
-  (anti-flood 2026-07-12): se dispara ~2/s de forma continua (más con ruido de fondo) y no lleva latencias útiles →
-  floodeaba el stream y hacía I/O de fichero síncrono en el hilo de voz. `agent.py::_on_metrics` descarta toda
-  métrica sin números reales. ⚠️ **`metric` vive en la categoría `system`, NO en `main`** (2026-08-09, queja del
-  operador): con un STT de **streaming** (Deepgram) la métrica **no depende de que nadie hable** — el
-  `PeriodicCollector` del plugin suelta `STTMetrics: audio=5.00s` **cada 5 s mientras el micro esté abierto**, de
-  forma perpetua (~720 filas/hora en un canal ocioso). La latencia POR FRASE, que sí es señal, ya sale como
-  `stt`/`tts`/`brain` con backend, modelo y texto. Se sigue persistiendo al jsonl; solo deja de ensuciar el hilo
-  principal del visor.
-  `error` — errores de sesión. `alert` — errores hablables (p.ej. "Cerebro rápido caído"). `session` — apertura/cierre.
-- Conectores: `label` con prefijo `cluster.` / `cron.` / `architect.` / `wa.` (WhatsApp) / (Telegram) = despacho de tag.
-- **`cluster` · campo `pace` (V2-075, supersede V2-073)** — el **criterio de salud de conversación** del canal
-  agente-a-agente (SOLO cluster; con el operador la conversación fluye siempre). El primer intento (V2-073) usaba
-  un regex de frases (`capsule.looks_stuck`/`advanced`) — **eliminado** por decisión del operador (un regex solo se
-  adapta a un peer y falla con el siguiente). Hoy el juicio lo hace `connectors/meshkore/evaluator.py`: un modelo
-  INDEPENDIENTE (sin tools, read-only, seguro sobre contenido untrusted) devuelve `health` (`flowing`/`stuck`/
-  `dead_end`/`imbalanced`/`off_track`) + `action` (`continue`/`concise`/`hand_back`/`pause`) sobre la ventana
-  reciente, off-hot-path en un heartbeat throttled (`MESHKORE_EVAL_SECS`). El evento `cluster` lleva `extra.pace`
-  con la decisión APLICADA por el bridge. Es la fuente de verdad para "¿por qué zaelar dejó de responderle a este
-  peer / le devolvió el turno?". Valores: **`handback`** (le DEVOLVEMOS el turno con UN mensaje corto y paramos),
-  **`silent`/`pause`** (dejamos de responder + aviso único al operador), **`waiting`**/**concise** según el veredicto.
-  Lo determinista queda solo para lo genérico (dedup exacto, `capsule.near_repeat` como señal de entrada al
-  evaluador, no como veredicto). Iniciativa:
-  `.meshkore/roadmap/initiatives/V2-075-criterio-conversacion-inteligencia.md` (+ V2-073 histórico).
-- **`memory`** — actividad de la memoria central (V2-014). Dos orígenes:
-  1. **Mutaciones**: el server puentea la señal `memory.updated` del bus (cada mutación en `memory/api.py::_emit` —
-     write/reinforce/pin/link/state/episode/consolidate/query) al topic `observer` como `{kind:"memory", op, ids}`
-     (+ `label=op`). Alimenta el **tintado** del visor y sale como fila en la columna ◷.
-  2. **Lecturas del turno**: `voice/engine/llm/providers/nucleo.py` emite, tras componer el prompt, una fila por
-     CAPA leída: `{kind:"memory", label:"estado|corto|recall", layer:"state|short|slow", text:"petición → resultado",
-     mem_ms}`. Así se VE en ◷ qué capa se tocó, cuánto tardó y qué devolvió (nº tarjetas/chars). Columna 4 del
-     DebugPanel = la capa; latencia = `mem_ms`.
-  Gated por el flag `memory_observability` (default ON, `config/settings.py`; env `ZAELAR_MEM_OBSERVABILITY`).
-  Sale por SSE `GET /events`; el puente de mutaciones NO pasa por el ring de `/debug` (fino, cero ruido). **El
-  puente de mutaciones va COALESCADO** (anti-flood 2026-07-12): un turno dispara varias `memory.updated` (buffer
-  conv + píldoras + reinforce + state) → un **trailing-debounce** (400ms, `ZAELAR_MEM_SSE_COALESCE_MS`) las funde en
-  UNA señal SSE con la UNIÓN de ids afectados. El visor sigue en vivo (re-fetch con su propio debounce); ~1 orden de
-  magnitud menos de tráfico SSE.
+- **`ambient`** — the ATTENTION gate (`voice/attention.py`): a turn that was NOT addressed to zaelar (no wake word
+  and outside the conversation window). `label` = "🙉 ambiente — no dirigido a zaelar" with `extra.mode`
+  (`smart`/`wakeword`/`ptt`/`always`) and `extra.reason` (`ambient`); or "✋ interrupción dura atendida"
+  (`extra.cmd` = `close`/`stop`) when a hard command skips the gate. **It is the source of truth for «did zaelar
+  ignore ambient speech?»**: if in a meeting there are NO `widget`/`brain reply` events but `ambient` ones, the gate
+  is doing its job. If you see `widget`/escalations on sentences that were not addressed to zaelar → check
+  `ZAELAR_ATTENTION` (set to `always`?) or the window. The event carries no chat role (it does not clutter the
+  ChatWall), only `/debug` + SSE `/events`.
+- `bot_speech` — orb speaking/idle. `tts` — synthesis. `metric` — RAW metrics from the LiveKit plugin
+  (`STTMetrics`, `LLMMetrics ttft/dur`, `TTSMetrics ttfb`, `EOUMetrics`). ⚠️ **`VADMetrics` is NOT logged**: it fires
+  ~2/s continuously (more with background noise) and carries no useful latencies → it would flood the stream and do
+  synchronous file I/O on the voice thread. `agent.py::_on_metrics` drops every metric without real numbers.
+  ⚠️ **`metric` lives in the `system` category, NOT in `main`**: with a **streaming** STT (Deepgram) the metric does
+  **not depend on anyone speaking** — the plugin's `PeriodicCollector` emits `STTMetrics: audio=5.00s` **every 5 s
+  while the mic is open**, perpetually. The PER-SENTENCE latency, which is signal, already comes out as
+  `stt`/`tts`/`brain` with backend, model and text. It is still persisted to the jsonl; it just stays out of the
+  viewer's main thread.
+  `error` — session errors. `alert` — speakable errors (e.g. "Cerebro rápido caído"). `session` — open/close.
+- Connectors: `label` prefixed with `cluster.` / `cron.` / `architect.` / `wa.` (WhatsApp) / (Telegram) = tag
+  dispatch.
+- **`cluster` · field `pace`** — the **conversation-health criterion** of the agent-to-agent channel (cluster ONLY;
+  with the operator the conversation always flows). The judgement is made by `connectors/meshkore/evaluator.py`
+  rather than by phrase regexes (a regex adapts to one peer and breaks with the next): an INDEPENDENT model (no
+  tools, read-only, safe over untrusted content) returns `health` (`flowing`/`stuck`/`dead_end`/`imbalanced`/
+  `off_track`) + `action` (`continue`/`concise`/`hand_back`/`pause`) over the recent window, off the hot path in a
+  throttled heartbeat (`MESHKORE_EVAL_SECS`). The `cluster` event carries `extra.pace` with the decision APPLIED by
+  the bridge. It is the source of truth for «why did zaelar stop answering this peer / hand the turn back?». Values:
+  **`handback`** (we HAND BACK the turn with ONE short message and stop), **`silent`/`pause`** (we stop answering +
+  a single notice to the operator), **`waiting`**/**concise** according to the verdict. Determinism is kept only for
+  the generic parts (exact dedup, `capsule.near_repeat` as an input signal to the evaluator, not as a verdict).
+- **`memory`** — central-memory activity. Two origins:
+  1. **Mutations**: the server bridges the bus signal `memory.updated` (every mutation in `memory/api.py::_emit` —
+     write/reinforce/pin/link/state/episode/consolidate/query) to the `observer` topic as
+     `{kind:"memory", op, ids}` (+ `label=op`). It feeds the viewer's **tinting** and shows up as a row in the ◷
+     column.
+  2. **Turn reads**: `voice/engine/llm/providers/nucleo.py` emits, after composing the prompt, one row per LAYER
+     read: `{kind:"memory", label:"estado|corto|recall", layer:"state|short|slow", text:"request → result",
+     mem_ms}`. So ◷ SHOWS which layer was touched, how long it took and what it returned (number of cards/chars).
+     DebugPanel column 4 = the layer; latency = `mem_ms`.
+  Gated by the `memory_observability` flag (default ON, `config/settings.py`; env `ZAELAR_MEM_OBSERVABILITY`). It
+  goes out through SSE `GET /events`; the mutation bridge does NOT go through the `/debug` ring (fine-grained, zero
+  noise). **The mutation bridge is COALESCED**: one turn fires several `memory.updated` (conversation buffer + pills
+  + reinforce + state) → a **trailing debounce** (400 ms, `ZAELAR_MEM_SSE_COALESCE_MS`) merges them into ONE SSE
+  signal with the UNION of affected ids. The viewer stays live (re-fetch with its own debounce) with roughly an
+  order of magnitude less SSE traffic.
 
-## El visor de memoria (🧠) — ver la memoria formarse en vivo
+## The memory viewer (🧠) — watch memory form live
 
-Vista de sistema (overlay a pantalla, como `/debug`; NO un widget) que muestra **cómo se compone la memoria central
-de zaelar en tiempo real** mientras hablas. Se abre desde el **🧠 del cuenco del orbe** (`frontend/app/components/
-MemoryMap.js`). Tres **columnas proporcionales** al ancho: **ESTADO 10%** (la pila `memory/state.py`), **CORTO PLAZO
-20%** (`level=='short'`) y **LARGO PLAZO 70%** (`mid`/`long`, la que crece); las cajas rellenan el ancho de su columna
-y refluyen. Cada recuerdo = un nodo con texto ~8px + **scoring** (importance) + fecha/hora + metadatos (kind, weight,
-access, pinned), ampliable con **zoom (rueda) / pan (arrastre)**; el **grafo** de `edges` se dibuja como curvas entre
-nodos. **Tintado en vivo** (gated `memory_observability`, default ON): al escribirse un dato el nodo se tiñe **verde**
-unos segundos, al sobrescribirse **ámbar**, y una **query** ilumina **azul** las piezas que tocó — cada evento SSE
-lleva `op`+`ids` afectados (`services/sse.js` → `store.pushMemPulse`). Fuente: `GET /api/memory/map` (read-only,
-`no-cache`) → `{state, layers:{short,long}, edges, counts}` con todos los metadatos. Es la fuente de verdad para
-"¿qué recuerda zaelar y cómo lo puntúa?" — complementa a `/debug` (que es el flujo de eventos, no el estado).
+A system view (a full-screen overlay, like `/debug`; NOT a widget) that shows **how zaelar's central memory is
+composed in real time** while you talk. It opens from the **🧠 in the orb's bowl**
+(`frontend/app/components/MemoryMap.js`). Three **proportional columns**: **STATE 10%** (the `memory/state.py`
+stack), **SHORT TERM 20%** (`level=='short'`) and **LONG TERM 70%** (`mid`/`long`, the one that grows); boxes fill
+their column's width and reflow. Every memory = a node with ~8px text + **scoring** (importance) + date/time +
+metadata (kind, weight, access, pinned), expandable with **zoom (wheel) / pan (drag)**; the `edges` **graph** is
+drawn as curves between nodes. **Live tinting** (gated by `memory_observability`, default ON): when a datum is
+written the node turns **green** for a few seconds, when overwritten **amber**, and a **query** lights up in
+**blue** the pieces it touched — every SSE event carries `op` + affected `ids` (`services/sse.js` →
+`store.pushMemPulse`). Source: `GET /api/memory/map` (read-only, `no-cache`) → `{state, layers:{short,long}, edges,
+counts}` with all the metadata. It is the source of truth for «what does zaelar remember and how does it score
+it?» — it complements `/debug` (which is the flow of events, not the state).
 
-## Cómo depurar un fallo de voz (receta)
+## How to debug a voice problem (recipe)
 
-1. `ls -t .meshkore/logs/sessions/ | head` → fichero de la última sesión (o `tail -f .meshkore/logs/timeline-latest.jsonl`).
-2. Léelo: mira `worker_start` (¿qué STT/TTS/brain?), los `transcript` (¿qué oyó/dijo?), los `metric`
-   con `*Metrics` (¿dónde está la latencia: STT, LLM ttft, TTS ttfb?), los `error`/`alert`; y los `vad`
-   (¿un ruido cortó la locución? ¿`resumed`?).
-3. ¿El brain no dispara widgets? Busca eventos `widget`. Si NO hay ninguno pese a pedirlo → el brain no emitió el tag
-   (modelo poco capaz o prompt) — NO es el frontend.
-4. ¿zaelar mudo? Suele ser: (a) el FlashBrain devuelve 4xx del proveedor rápido (mira el log de zaelar
-   `fast brain error`), (b) TTS Metal tropieza el bug de shapes de mlx-audio y el fallback Kokoro-FastAPI no está
-   arriba.
-5. ⚠️ **¿Un widget se comporta como si tu arreglo no existiera? Mira QUÉ FICHERO CORRE** (V2-757).
-   `widgets/_user/<id>/` ensombrece a `widgets/<id>/` en el catálogo, en `identify`, en el `widget.js` que
-   se sirve y en los **imports de Python** (`widgets/paths.roots()` pone el generado primero), y está
-   **gitignoreado**: un fork deja `git status` limpio mientras lo que corre no es el repo. Medido el
-   2026-09-23: un Brain Worker bifurcó la tarjeta de vídeo y dos iniciativas entregadas quedaron inertes
-   varias horas sin una sola señal.
+1. `ls -t .meshkore/logs/sessions/ | head` → the latest session file (or `tail -f .meshkore/logs/timeline-latest.jsonl`).
+2. Read it: look at `worker_start` (which STT/TTS/brain?), the `transcript`s (what did it hear/say?), the `metric`s
+   with `*Metrics` (where is the latency: STT, LLM ttft, TTS ttfb?), the `error`/`alert`s; and the `vad`s (did a
+   noise cut the speech? `resumed`?).
+3. The brain does not trigger widgets? Look for `widget` events. If there are NONE despite asking → the brain did
+   not emit the tag (model not capable enough, or the prompt) — it is NOT the frontend.
+4. zaelar silent? Usually: (a) the FlashBrain gets a 4xx from the fast provider (look in zaelar's log for
+   `fast brain error`), (b) Metal TTS hits the mlx-audio shapes bug and the Kokoro-FastAPI fallback is not up.
+5. ⚠️ **A widget behaves as if your fix did not exist? Check WHICH FILE IS RUNNING.** `widgets/_user/<id>/` shadows
+   `widgets/<id>/` in the catalog, in `identify`, in the `widget.js` that is served and in the **Python imports**
+   (`widgets/paths.roots()` puts the generated root first), and it is **gitignored**: a fork leaves `git status`
+   clean while what runs is not the repo.
    `ls widgets/_user/` · `./.venv/bin/python -c "import widgets.<id>.data as m; print(m.__file__)"`.
-6. **Un error del CLIENTE no aparece donde lo buscas.** Un `widget mount failed` («Failed to fetch
-   dynamically imported module») vive en la familia `client`, que por defecto es ruido — y mientras tanto
-   la llamada del servidor que lo provocó pudo contestar `ok`. Si algo apareció roto en su pantalla y el
-   servidor dice que todo fue bien, filtra por `client` antes de dudar de él.
-7. ⚠️⚠️ **«Cerebro rápido caído» NO significa que el proveedor esté caído** (V2-758). Hasta el 2026-09-23 esa
-   alerta se disparaba ante CUALQUIER excepción del turno, incluidas las nuestras, y además viajaba con el
-   texto literal `flash layer error`, sin la causa: nueve turnos seguidos acusaron a DeepSeek mientras
-   DeepSeek contestaba, y el motivo real —un `UnboundLocalError` del motor— solo estaba en `server.log`.
-   Ahora se distinguen y se leen distinto:
-   - **fila «Motor · fallo interno» en el panel ◉ + alerta «Fallo del motor — el modelo no tiene la culpa»**
-     → es NUESTRO. La alerta y la fila NOMBRAN la excepción; ninguna escalera se toca y ninguna luz de
-     proveedor se enciende. Se arregla en el código, no cambiando de modelo.
-   - **«Cerebro rápido caído — turno degradado»** → es del proveedor, y la alerta trae ya `text` con el error
-     real y `extra.relayed_from`/`relayed_to` si se intentó el suplente dentro del mismo turno.
-   El relevo en caliente solo ocurre en la fase de CONEXIÓN: si el fallo llegó a mitad de stream el turno se
-   pierde a propósito (reintentar duplicaría lo que ya sonó).
-8. **El panel dice QUIÉN está contestando, y el ámbar no es el rojo.** Las cajas «Cerebro rápido · FlashBrain»
-   y «Memoria · CORAZÓN» nombran titular y suplente en cada sondeo — no solo cuando hay una luz encendida, que
-   era el caso invisible: en cuanto el suplente contesta, `fast_client` apaga la luz al primer chunk, así que
-   un motor relevado con éxito pintaba VERDE. Ámbar = funciona sobre el suplente; rojo = no contesta nadie.
-   Y la fila de memoria conserva su propio `detail` (ahí vive «el recall no cerró en 0.8s», que es un hecho
-   distinto de qué modelo escribe).
+6. **A CLIENT error does not show up where you look for it.** A `widget mount failed` («Failed to fetch dynamically
+   imported module») lives in the `client` family, which is noise by default — while the server call that caused
+   it may have answered `ok`. If something appeared broken on screen and the server says all went well, filter by
+   `client` before doubting it.
+7. ⚠️⚠️ **«Cerebro rápido caído» does NOT by itself mean the provider is down.** The engine tells an internal
+   exception apart from a provider failure, and they read differently:
+   - **row «Motor · fallo interno» in the ◉ panel + alert «Fallo del motor — el modelo no tiene la culpa»**
+     → it is OURS. The alert and the row NAME the exception; no ladder is touched and no provider light turns on.
+     It is fixed in the code, not by switching models.
+   - **«Cerebro rápido caído — turno degradado»** → it is the provider's, and the alert carries `text` with the
+     real error and `extra.relayed_from`/`relayed_to` if the fallback was tried within the same turn.
+   Hot hand-over only happens in the CONNECTION phase: if the failure arrived mid-stream the turn is dropped on
+   purpose (retrying would duplicate what was already spoken).
+8. **The panel says WHO is answering, and amber is not red.** The «Cerebro rápido · FlashBrain» and «Memoria ·
+   CORAZÓN» boxes name the primary and the fallback on every probe — not only when a light is on: as soon as the
+   fallback answers, `fast_client` turns the light off on the first chunk, so the name is what tells you a
+   successfully relayed engine is running on its fallback. Amber = working on the fallback; red = nobody answers.
+   And the memory row keeps its own `detail` (that is where «el recall no cerró en 0.8s» lives, which is a
+   different fact from which model writes).
 
-## El tester independiente usa esta observabilidad
+## The independent tester uses this observability
 
-`tests/voice/e2e/agent/interlocutor/trace.py` se **suscribe a `/events`** y captura la traza por escenario; el **juez GLM** (Z.AI)
-la lee para verificar el comportamiento OBSERVABLE (acciones de frontend + cerebro), no solo el transcript. Los
-informes salen a `tests/voice/e2e/agent/runs/report_*.md` con las acciones de frontend observadas por escenario.
+`tests/voice/e2e/agent/interlocutor/trace.py` **subscribes to `/events`** and captures the trace per scenario; the
+**GLM judge** (Z.AI) reads it to verify the OBSERVABLE behaviour (frontend actions + brain), not just the
+transcript. Reports go to `tests/voice/e2e/agent/runs/report_*.md` with the frontend actions observed per scenario.
 
-**Routing de modelos** (operador 2026-07-07): conducir el tester + juicio barato = **DeepSeek vía AIMLAPI**; juicio
-competente/razonamiento = **GLM vía Z.AI** (coding-plan, endpoint Anthropic `api.z.ai/api/anthropic`, con fallback a
-DeepSeek). **Gemini free-tier = NO usable** (cuota 20/día, da 429). Claves en `.env` + `.meshkore/credentials/tester.env`
-(gitignored).
+**Model routing**: driving the tester + cheap judging = **DeepSeek**; competent judging/reasoning = **GLM via Z.AI**
+(coding plan, Anthropic endpoint `api.z.ai/api/anthropic`, with fallback to DeepSeek). The Gemini free tier is not
+used (its daily quota is too low for a battery). Keys in `.env` + `.meshkore/credentials/tester.env` (gitignored).
 
-## Bucle autónomo nocturno
+## Autonomous overnight loop
 
-- `tests/voice/e2e/agent/overnight.sh` — bucle: rota escenarios + goals creativos contra zaelar vivo, escribe informes.
-- `tests/voice/e2e/agent/guard.sh` — idempotente: levanta zaelar (`make run`, LiveKit nativo sin Docker) y el bucle si están caídos.
-- El loop autónomo (`/loop <intervalo> <prompt>`, skill `loop`) re-invoca al agente para: guard → leer último
-  informe → arreglar el top bug → reprobar → documentar → repetir.
+- `tests/voice/e2e/agent/overnight.sh` — loop: rotates scenarios + creative goals against a live zaelar, writes reports.
+- `tests/voice/e2e/agent/guard.sh` — idempotent: brings up zaelar (`make run`, native LiveKit without Docker) and
+  the loop if they are down.
+- The autonomous loop (`/loop <interval> <prompt>`, skill `loop`) re-invokes the agent to: guard → read the latest
+  report → fix the top bug → re-test → document → repeat.
 
-Ver también: `voice/observer.py`.
+See also: `voice/observer.py`.

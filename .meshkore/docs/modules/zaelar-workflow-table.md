@@ -1,19 +1,18 @@
 # The workflow table — what serves this kind of errand, and is that still true?
 
 **Module:** `nucleo/workflows/` · **Table:** `workflows` (`memory/schema.py`, facade in `memory/api.py`)
-**Initiative:** V2-594 · **Sibling doc:** `zaelar-action-map.md` — read that one too, because the first
+**Sibling doc:** `zaelar-action-map.md` — read that one too, because the first
 question anyone asks here is how the two differ.
 
 ## What it answers
 
 Before an errand pays for a browser or a Brain Worker, something has to answer *«do we already know a faster
-way to do this?»*. That answer had nowhere to live. `nucleo/mesh_agents` kept a learned route, but only for
-**success**, and only under an Oracle intent it would key on — so the two most expensive cases were exactly
-the ones it could not hold:
+way to do this?»*. The workflow table is where that answer lives — including the two cases a success-only
+route cache cannot hold:
 
-- *«nobody on the mesh does wellness»* was discarded every time, so every massage errand paid the Oracle
-  round trip again **and then paid a language model to narrate the emptiness back**;
-- anything the Oracle classified `general`, which was events, shopping and wellness — most of it.
+- *«nobody on the mesh serves this domain yet»* is remembered too, so the next errand of that kind skips the
+  Oracle round trip and goes straight to the next channel;
+- domains the Oracle files under `general` (events, shopping, wellness…) get their own key here.
 
 ## Anatomy
 
@@ -26,8 +25,8 @@ the ones it could not hold:
 | table `workflows` | one row per `(domain, channel)`: `status`, `rank`, `source`, `target`, `evidence`, `ttl_s`, `checked_at`. |
 
 Channels, best first: `connector` (built into the engine) → `mesh` (an agent on the network) → `browser`
-(the trusted site) → `worker` (always available, always slowest). Today only `mesh` is written by learning
-and `browser` is derived; `connector` and `worker` are declared and unwritten.
+(the trusted site) → `worker` (always available, always slowest). `mesh` is written by learning and `browser`
+is derived; `connector` and `worker` are declared channels a row can carry.
 
 ## The three rules that keep it honest
 
@@ -44,7 +43,7 @@ car_rental, delivery, shipping, housing, home_services, image — and they are n
 intents**, so both sides of the wire share one key.
 
 One deliberate widening: the fallbacks cover `hotel` even though `category_of` demands a booking verb there
-(V2-477 kept it strict so the `hotel-under-15-days` errand stays in the research funnel with its own budget).
+(it stays strict so a hotel research errand stays in the research funnel with its own budget).
 That reasoning is about **routing** — which worker gets the task. This table never routes; it only answers
 «is there a faster channel?». So the strict rule keeps owning `kind`, and the loose one owns the cache key.
 
@@ -56,8 +55,8 @@ the mesh is known empty so the worker does not make the trip. When nothing is kn
 
 ## TTL, and why the negative one is shorter
 
-`TTL_OK_S` 7 days, `TTL_NONE_S` 3 days. A negative answer is the one most likely to stop being true: the mesh
-gained two agents (`tablescout`, `spascout`) the afternoon this was built. Rows expire ON PURPOSE, or the
+`TTL_OK_S` 7 days, `TTL_NONE_S` 3 days. A negative answer is the one most likely to stop being true: new agents
+join the MeshKore network all the time. Rows expire ON PURPOSE, or the
 system decides once, in its first week, and is wrong for ever.
 
 A row whose `source` is `operator` is never overwritten by learning — a human decision outranks a
@@ -68,12 +67,8 @@ measurement, the same invariant the action map holds for a seed row the user dis
 `find()` returns **`reached`**. A negative row is written only when the Oracle actually answered and had
 nobody. **An outage is never cached** — that would turn one bad minute into three bad days.
 
-This was not designed in, it was measured: the first version keyed on `coverage == "none"`, and the unit test
-passed because it MOCKED that value. Against the real Oracle a genuinely uncovered vertical returns an
-**empty** coverage, so the saving never fired where it mattered. Fixing that exposed that `find` had been
-flattening «answered with nobody» and «did not answer» into one empty list — the same fault V2-487 fixed a
-layer below.
+The key is `reached`, not the coverage value: against the real Oracle a genuinely uncovered vertical returns
+an **empty** coverage, and `find` keeps «answered with nobody» and «did not answer» as two distinct outcomes
+so only the first is ever cached.
 
-## Measured
-
-A plumber errand: **1.02 s cold → 0.0002 s warm**, no network and no model.
+A warm lookup answers from one indexed SELECT — no network and no model.

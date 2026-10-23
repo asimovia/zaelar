@@ -1,9 +1,8 @@
-# Task lists — a message with several tasks in it (V2-771)
+# Task lists — a message with several tasks in it
 
-> «Tanto si nos las vomita por voz como si nos las pega, el sistema tiene que ver que esto es una acción que para
-> completarse necesita realizar todo lo que se pide aquí… y cuando reciba todo esto tampoco tiene que decir
-> "he recibido tu tarea de hacer esto, hacer lo otro…". "Vale, entiendo que me pides unas cuantas cosas, me
-> pongo a trabajar en ello".» — the operator, 2026-09-25
+> Whether the operator dictates it or pastes it, a message that asks for several things is ONE action whose
+> completion requires doing everything in it. The agent does not read the list back; it acknowledges that there
+> are several things to do and gets to work.
 
 **Code:** `nucleo/batch/` (`detect.py` · `split.py` · `runner.py` · `__init__.py`) · the lanes
 `voice/engine/llm/providers/fast_lane.py::task_list` and `nucleo/flash/probe.py::_task_list` · HTTP
@@ -11,21 +10,21 @@
 **Tests:** node 4.216 (`tests/agent_headless/unit/test_a_message_with_several_tasks_is_a_list.py`), use cases
 `demo-initialization__us` and `long-commission-errands` (scripted, graded on memory, agenda and the task board).
 
-## Why it exists — the measurement
+## Why it exists
 
-A 12-section setup message (~4 000 chars: the assistant's name, ~40 facts, 7 calendar entries, reminders,
-standing rules) was ONE turn. Six limits, each correct for a turn, each dropped part of it without a word:
+A long setup message (the assistant's name, dozens of facts, several calendar entries, reminders, standing rules)
+is not a turn. Every per-turn limit is correct for a turn, and each one would drop part of such a message:
 
-| Limit | Where | What it lost |
+| Limit | Where | What a long message would lose |
 |---|---|---|
-| input clamp keeps the LAST 1 600 chars | `voice/attention.py::clamp_input` | sections 1-8 never reached the model |
-| memory distiller reads the FIRST 600 chars | `nucleo/mem_processor.py::_MAX_INPUT` | ~35 of ~40 facts |
-| 5 widget writes per turn; a 2nd action on one widget refused | `nucleo/flash/data_ops.py` | 2 of 7 entries |
+| input clamp keeps the LAST 1 600 chars | `voice/attention.py::clamp_input` | the opening sections never reach the model |
+| memory distiller reads the FIRST 600 chars | `nucleo/mem_processor.py::_MAX_INPUT` | most of the facts |
+| 5 widget writes per turn; a 2nd action on one widget refused | `nucleo/flash/data_ops.py` | calendar entries past the cap |
 | 1 + 2 escalations per turn | provider / probe | every task past the third |
 | 1 200 output tokens | `nucleo/flash/fast_client.py` | trailing tool calls |
-| rename lane owns the turn | `fast_lane.rename` | a one-line paste renamed the assistant and dropped the rest |
+| rename lane owns the turn | `fast_lane.rename` | everything after the rename |
 
-None of them was wrong. The message was not a turn.
+None of those limits is wrong. A list is simply run as a sequence of turns, each of which fits them.
 
 ## The mechanism, in the order a message meets it
 
@@ -33,16 +32,16 @@ None of them was wrong. The message was not a turn.
    ordinary turn pays nothing (below 280 chars the answer is «no» without asking). Past it, ONE Jev Choice
    question (`message_shape`: `single` / `several`, ≥ 0.7 to leave the ordinary turn). No verb table: a list
    looks like a list in every alphabet, and «one detailed request» vs «several things» is exactly the kind of
-   judgement a verb table gets wrong both ways. Jev off or failing → only an unmistakable shape (long + three
-   enumerated items) counts.
+   judgement a verb table gets wrong both ways. With Jev off or unavailable → only an unmistakable shape (long +
+   three enumerated items) counts.
 2. **Receipt.** As soon as the verdict is in (~1-2 s) the operator hears ONE line from the lang table
    (`list_started`) — that it is a list and work has started. Never the list read back, no count (the count
-   needs the split, and the receipt must not wait ~5 s for it).
+   needs the split, and the receipt must not wait for it).
 3. **Split** (background). `split.split` — one `memllm` call, task `batch_split` (DeepSeek direct, reasoning
-   off, `gpt-4.1-mini` stand-in, usage metered via `energy_meter`). Steps are SELF-CONTAINED, first person, in the message's
-   language, references resolved, one calendar entry each, ≤ 560 chars (the distiller's window). A step over
-   the ceiling is split at sentence boundaries, never cut. Fails open: the message's own numbered sections →
-   one step holding the whole message (today's single turn). An acknowledged list is never dropped.
+   off, `gpt-4.1-mini` stand-in, usage metered via `energy_meter`). Steps are SELF-CONTAINED, first person, in the
+   message's language, references resolved, one calendar entry each, ≤ 560 chars (the distiller's window). A step
+   over the ceiling is split at sentence boundaries, never cut. Fails open: the message's own numbered sections →
+   one step holding the whole message (a single turn). An acknowledged list is never dropped.
 4. **Durable.** `runner.create` writes a visible `tasks` row (`kind="lista"`, the operator's board) and a hidden
    child row per step (`parent_id`). A restart loses nothing: `resume()` at boot re-runs pending steps (and a
    step caught mid-turn, which never reported).
@@ -52,10 +51,9 @@ None of them was wrong. The message was not a turn.
    with steps 1-8 behind it). `lists=False` stops a step from being read as a list again.
 5b. **A step is not believed on its words.** An ACTION step (split kind `agenda`/`reminder`/`message`/`task`)
    whose turn EXECUTED nothing (no tool call, tag, execution, worker or lane action in the turn's own report) is
-   retried once in a fresh session, and failed if it still does nothing. Measured: «Done — Meshcore architecture
-   is on for Monday» with no call, twice per run, while nothing was open for the verdict to repair against.
-   A reply that ends in a question is asked to Jev (`step_reply`: needs an answer vs courtesy offer) before the
-   step is left for the operator.
+   retried once in a fresh session, and marked failed if it still does nothing — a «Done» reply with no call
+   behind it is not completion. A reply that ends in a question is asked to Jev (`step_reply`: needs an answer vs
+   courtesy offer) before the step is left for the operator.
 5c. **A step never eats the operator's notes and never claims a refused errand.** It runs with `lists=False`,
    which also stops it draining `brain_notes` (a worker's result or a refusal is for HIS next turn), and an
    escalation the portal refused (id 0) fails the step. A relayed worker (quota → stand-in, new id, same task row)
@@ -64,13 +62,16 @@ None of them was wrong. The message was not a turn.
    falls to a lossy heuristic when more than two writes wait (`mem_processor._QUEUE_MAX`), which a list would
    reach in seconds.
 7. **Workers.** A step that escalates hands its worker to the pool and the list moves on. The pool is **two**
-   at a time (`config/v2.py code_agent.max_parallel`, V2-771; env `CODE_AGENT_MAX_PARALLEL` overrides), the rest
-   queue FIFO. The list's report waits for its workers (up to 45 min) — «I've finished» over running work is the
-   claim V2-743 forbids — and past that names how many are still running.
+   at a time (`config/v2.py code_agent.max_parallel`; env `CODE_AGENT_MAX_PARALLEL` overrides), the rest queue
+   FIFO. The list's report waits for its workers (up to 45 min) — «I've finished» is never said over running work
+   — and past that names how many are still running.
 8. **Report.** ONE line set via `voice.proactive.notify` (spoken when a voice session is live, a system note
    otherwise): counts, then only what failed, what needs the operator (a step whose turn answered with a
    question), and what is still running. The list closes once reported.
 9. **One list at a time.** A second list queues behind the first rather than interleaving steps.
+
+The pool limit is enforced by the dispatcher's real semaphore and covered by a unit test (five sessions, never
+more than two inside, all five finish).
 
 ## Entry points
 
@@ -80,39 +81,17 @@ None of them was wrong. The message was not a turn.
 | Text channel (`/api/flash/say`) | `probe._task_list`, before `_fast_lanes`, only with `execute` | mirror of the above |
 | Anything else authorised by the operator | `POST /api/lists {"text"}` | does not ask «is it a list?» — the caller chose |
 
-## Measured live (sandbox, real models, 2026-09-25)
-
-| Run | What happened | Store checks | Judge |
-|---|---|---|---|
-| demo 1 | 25 steps in 2 min 47 s; 3 DONE steps reported as «needs you» (courtesy «?») | 12/13 | fail (that step) |
-| demo 2 | courtesy fixed; 2 of 7 calendar steps promised and called nothing, counted DONE | 11/13 | fail |
-| demo 3 | action-step retry live: 2 retries rescued «Done —» claims; 26/26 | **13/13** | **5/5 on all five** |
-
-Errands case (es, six mixed errands) exposed four defects on its first two runs, all fixed: the F1 question
-was answered inline (no queue to measure — the case now asks for three worker-sized searches); a relayed worker
-kept the list waiting on a RAM ghost; `protected_core` refused a bike comparison as «reprogram yourself» because
-the brief said «revisa autonomía, motor y batería» (repaired by subtraction: an ambiguous noun with another owner,
-or listed as a feature, is not ours); and the next step swallowed that refusal note.
-
-Errands run 5 (all fixes in): 4/4 store checks — the dinner, the allergy, the list closed, never more than two
-workers at once; the retry rescued a «voy con ello» with no call; the report said «5 of 6 done — I need to know
-where you live» (the restaurant step's own question). The judge gave 3/5 for the WORKERS' output (an invented
-product, «on screen» with the sheet closed, 41 searches) — delivery quality, open outside this mechanism. The
-queue of two was never forced live (a search answered inline, then clarifying questions); it is measured on the
-dispatcher's real semaphore instead (unit test: five sessions, never more than two inside, all five finish).
-
-## Deliberately out of scope (v1)
+## Scope and extension points
 
 - **A spoken list longer than the accumulator valve** (40 words / 1 200 chars) arrives as several turns; each
-  is handled as successive requests are today. Joining a dictated list back into one is future work.
+  is handled as a successive request. Joining a dictated list back into one is a natural extension.
 - **WhatsApp/Telegram and cluster peers are not command channels.** Messages there are triaged as third-party
   messages or answered by the untrusted cluster brain. Making the operator's own messages an order channel is a
   trust decision, not a code change here; `POST /api/lists` is the door it would use.
-- **Per-step verification against the store.** The step's state comes from the turn's own report (executed,
-  failed, question, worker). The use cases grade the store; a step-level witness (like `op_receipt`) is open.
+- **Step state comes from the turn's own report** (executed, failed, question, worker); the use cases grade the
+  store. A step-level store witness (like `op_receipt`) would slot in at 5b.
 
-## What the list exposed and fixed on the way
+## Related agenda behaviour
 
-- Agenda: `date` + an end date with NO rule and NO weekdays was a WEEKLY series; it is now a daily span
-  (`widgets/agenda/recur.py::parse`). A weekly series still names its day or its rule.
-- Worker pool default 3 → 2.
+`date` + an end date with NO rule and NO weekdays is a daily span (`widgets/agenda/recur.py::parse`). A weekly
+series names its day or its rule.

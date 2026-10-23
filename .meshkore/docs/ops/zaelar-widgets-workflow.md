@@ -6,140 +6,132 @@ owner: ricart
 status: current
 ---
 
-# Workflow de cambios en el sistema de widgets — "pasa el workflow de widgets"
+# Widget system change workflow — "run the widgets workflow"
 
-**Disparador:** cuando el operador dice **"pasa el workflow de widgets"** (o "revisa el cambio de widgets", "cierra
-el cambio de widgets"), o cuando TÚ mismo acabas de tocar algo estructural del sistema de widgets y vas a darlo por
-cerrado — ejecuta esta checklist antes de decir que has terminado.
+**Trigger:** when the operator says **"run the widgets workflow"** (or "review the widgets change", "close the
+widgets change"), or when YOU have just touched something structural in the widget system and are about to call
+it closed — run this checklist before saying you are done.
 
-> **No todo cambio en `widgets/` la dispara.** Un comentario, un renombrado interno, un ajuste de estilo dentro de
-> un widget concreto que no toca el contrato ni la arquitectura → **no hace falta este workflow**, sigue como
-> siempre. Esto es para cambios **estructurales**: nuevo tag, nuevo campo de `manifest.json`, cambio de storage,
-> cambio de quién puede mutar qué (SlowBrain/FlashBrain), cambio del mecanismo de refresco, cambio del gate de
-> validación, o un nuevo "kind" de widget. Ver [[zaelar-modules]] §Widgets para el estado actual del sistema, y
-> [[zaelar-change-protocol]] / [[zaelar-docs-sync]] para los protocolos generales de los que este es la
-> especialización para `widgets/`.
+> **Not every change under `widgets/` triggers it.** A comment, an internal rename, a style tweak inside one
+> widget that touches neither the contract nor the architecture → **this workflow is not needed**, carry on as
+> usual. It is for **structural** changes: a new tag, a new `manifest.json` field, a storage change, a change in
+> who may mutate what (SlowBrain/FlashBrain), a change in the refresh mechanism, a change in the validation gate,
+> or a new widget "kind". See [[zaelar-modules]] §Widgets for the current state of the system, and
+> [[zaelar-change-protocol]] / [[zaelar-docs-sync]] for the general protocols this one specialises for `widgets/`.
 
 ---
 
-## 0. ¿Aplica este workflow? (filtro de alcance)
+## 0. Does this workflow apply? (scope filter)
 
-Pregúntate: ¿este cambio altera algo que **cualquier widget, presente o futuro, tiene que respetar o puede usar**?
-Si la respuesta es sí a cualquiera de estas, aplica el workflow completo:
+Ask yourself: does this change alter something **any widget, present or future, has to respect or can use**?
+If the answer is yes to any of these, run the full workflow:
 
-- El contrato de `manifest.json` / `data.py` / `widget.js` (nuevo campo, nueva convención, `actions`, `usage`,
-  `confirm`/`irreversible` — modo de ejecución de una acción, `widgets/actions.py`; `background`+`tick(ctx)` —
-  ejecución off-screen con ciclo, `widgets/background.py`; `ref_index` — refs a items, `widgets/refs.py`; `kind`).
-- El protocolo de tags (`voice/tag_protocol.py`) — tag nuevo, cambio de sintaxis, cambio de qué se escapa/retiene.
-- El despacho cerebro↔widget (`voice/engine/llm/providers/nucleo.py`, `nucleo/flash/router.py`,
-  `nucleo/dispatch.py`, `widgets/__init__.py`, `widgets/server_api.py`) — quién puede crear/modificar/borrar/
-  entregar/mutar datos, y con qué condiciones.
-- El modelo de almacenamiento (`widgets/store.py`) — formato en disco, ubicación, migración.
-- El mecanismo de refresco (`frontend/app/widgets/desktop.js`, `frontend/app/services/sse.js`).
-- El gate de validación del generador (`widgets/generator.py`).
-- La casa de la documentación pública del sistema (el diagrama público `/technology/widgets`, fuera de este repo — retirado el panel interno `frontend/pages/architecture.html` el 2026-07-24,
-  ver la nota de `CLAUDE.md` sobre el traslado; paso MANUAL, ningún workflow lo sincroniza solo — actualízalo solo
-  si el cambio es significativo de cara a fuera, no para cada detalle interno — `widgets/AGENTS.md`,
-  `zaelar-modules.md §Widgets`).
+- The `manifest.json` / `data.py` / `widget.js` contract (a new field, a new convention, `actions`, `usage`,
+  `confirm`/`irreversible` — an action's execution mode, `widgets/actions.py`; `background`+`tick(ctx)` —
+  off-screen execution on a cycle, `widgets/background.py`; `ref_index` — refs to items, `widgets/refs.py`; `kind`).
+- The tag protocol (`voice/tag_protocol.py`) — a new tag, a syntax change, a change in what is escaped/held back.
+- Brain↔widget dispatch (`voice/engine/llm/providers/nucleo.py`, `nucleo/flash/router.py`, `nucleo/dispatch.py`,
+  `widgets/__init__.py`, `widgets/server_api.py`) — who may create/modify/delete/deliver/mutate data, and under
+  which conditions.
+- The storage model (`widgets/store.py`) — on-disk format, location, migration.
+- The refresh mechanism (`frontend/app/widgets/desktop.js`, `frontend/app/services/sse.js`).
+- The generator's validation gate (`widgets/generator.py`).
+- The home of the system's public documentation (the public diagram `/technology/widgets`, outside this repo — a
+  MANUAL step that no workflow syncs on its own; update it only when the change matters to an outside reader, not
+  for every internal detail — plus `widgets/AGENTS.md` and `zaelar-modules.md §Widgets`).
 
-Si el cambio es solo dentro de UN widget concreto (su `data.py`/`widget.js`/`notes.md`) y no toca nada de lo
-anterior, actualiza el `notes.md` de ESE widget (memoria por-widget, ver `widgets/AGENTS.md`) y para ahí — no hace
-falta nada más de este documento.
+If the change is only inside ONE widget (its `data.py`/`widget.js`/`notes.md`) and touches none of the above,
+update THAT widget's `notes.md` (per-widget memory, see `widgets/AGENTS.md`) and stop there — nothing else in this
+document is needed.
 
-## 1. Mapa de impacto — "si tocaste esto, actualiza aquello"
+## 1. Impact map — "if you touched this, update that"
 
-| Tocaste | Actualiza también |
+| You touched | Also update |
 |---|---|
-| Tag nuevo o cambio de sintaxis (`tag_protocol.py`) | `widgets/brief.py` (`TAG_PROTOCOL`) · `nucleo/flash/prompt.py` si el FlashBrain debe conocerlo o quedar bloqueado de él · `zaelar-modules.md §Widgets` · diagrama público (`/technology` (sitio público, fuera de este repo) + `.ts`, solo si es un cambio significativo de cara a fuera) |
-| Campo nuevo en `manifest.json` (p.ej. `actions`, `safe`, `kind`) | `widgets/AGENTS.md` (contrato para quien edita a mano) · `widgets/generator.py` → `_CONTRACT`/`_CREATE_PROMPT`/`_MODIFY_PROMPT` (contrato para el agente de código) · `widgets/brief.py` si el cerebro debe leerlo |
-| Modelo de storage (`widgets/store.py`) | migración **perezosa y automática**, nunca script manual ni pérdida de datos (mismo patrón que la migración `_v` de esquema) · `widgets/AGENTS.md` · `_CONTRACT` del generador · doc + diagrama |
-| Gobernanza cerebro↔widget (quién muta qué) | `voice/engine/llm/providers/nucleo.py` + `nucleo/flash/router.py` (despacho + declaración de tools `escalate_to_slowbrain`/`set_style_directive`) · `nucleo/dispatch.py` (SlowBrain) · `nucleo/flash/prompt.py` · `widgets/brief.py` · doc + diagrama |
-| Mecanismo de refresco (SSE/poll) | `desktop.js` · `sse.js` · `widgets/AGENTS.md` (regla "sin polling") · doc + diagrama |
-| **Cualquier cadena VISIBLE de un widget de serie** (rótulo, título, botón, estado vacío, `placeholder`, `title`) | `tt("clave", params, "<el literal>")` en el `widget.js` + la fila en `i18n/genesis/en/ui.json` **y** `es.json` · bump de `MANIFEST_VERSION` si cambia el CONJUNTO de claves · el gate del nodo 4.11 lo exige y falla el build (V2-694) |
-| **El NOMBRE de un widget o de una superficie** | `widgets.<id>.name` / `surfaces.<id>.name` en los dos bundles — NO el `manifest.json`, que se queda como fallback y como alias para que la voz siga respondiendo a la palabra de fábrica · `widgets/registry.py::display_name` es el único lector (V2-694) |
-| Gate de validación (`generator.py`) | correr `make test-widgets` contra TODOS los widgets existentes antes de dar el cambio por bueno |
-| Nuevo "kind" o capacidad estructural (p.ej. widgets "backed") | diseño completo por escrito en `zaelar-modules.md` ANTES de tocar código real · entrada en `CLAUDE.md` · no construir el mecanismo genérico sin un consumidor real que lo valide (ver la discusión de widgets "backed" del 2026-07-07) |
+| A new tag or a syntax change (`tag_protocol.py`) | `widgets/brief.py` (`TAG_PROTOCOL`) · `nucleo/flash/prompt.py` if the FlashBrain must know it or be blocked from it · `zaelar-modules.md §Widgets` · public diagram (`/technology`, outside this repo, + its `.ts`, only for a change that matters to an outside reader) |
+| A new `manifest.json` field (e.g. `actions`, `safe`, `kind`) | `widgets/AGENTS.md` (the contract for hand editors) · `widgets/generator.py` → `_CONTRACT`/`_CREATE_PROMPT`/`_MODIFY_PROMPT` (the contract for the code agent) · `widgets/brief.py` if the brain must read it |
+| The storage model (`widgets/store.py`) | a **lazy, automatic** migration, never a manual script nor data loss (same pattern as the `_v` schema migration) · `widgets/AGENTS.md` · the generator's `_CONTRACT` · doc + diagram |
+| Brain↔widget governance (who mutates what) | `voice/engine/llm/providers/nucleo.py` + `nucleo/flash/router.py` (dispatch + the declaration of the tools `escalate_to_slowbrain`/`set_style_directive`) · `nucleo/dispatch.py` (SlowBrain) · `nucleo/flash/prompt.py` · `widgets/brief.py` · doc + diagram |
+| The refresh mechanism (SSE/poll) | `desktop.js` · `sse.js` · `widgets/AGENTS.md` (the "no polling" rule) · doc + diagram |
+| **Any VISIBLE string of a built-in widget** (label, title, button, empty state, `placeholder`, `title`) | `tt("key", params, "<the literal>")` in the `widget.js` + the row in `i18n/genesis/en/ui.json` **and** `es.json` · bump `MANIFEST_VERSION` if the SET of keys changes · the gate at node 4.11 requires it and fails the build |
+| **The NAME of a widget or a surface** | `widgets.<id>.name` / `surfaces.<id>.name` in both bundles — NOT `manifest.json`, which stays as the fallback and as an alias so voice keeps answering to the factory word · `widgets/registry.py::display_name` is the only reader |
+| The validation gate (`generator.py`) | run `make test-widgets` against ALL existing widgets before calling the change good |
+| A new "kind" or structural capability (e.g. "backed" widgets) | the full design written in `zaelar-modules.md` BEFORE touching real code · a line in `.meshkore/docs/criteria.md` · do not build the generic mechanism without a real consumer that validates it |
 
-## 2. Repasa el impacto en los widgets que YA existen
+## 2. Review the impact on the widgets that ALREADY exist
 
-- Si tocaste algo que usan TODOS los widgets (contrato, store, gate de validación): corre `make test-widgets` y
-  confirma 0 fallos antes de continuar. Si algo falla, arréglalo — un cambio estructural nunca puede dejar un
-  widget existente roto.
-- Decide, widget por widget, si le corresponde adoptar la nueva capacidad (p.ej. ¿debería `mensajeria` declarar
-  `"safe"` en alguna acción ahora que existe el nivel?). No hace falta migrar todos a la vez — pero si decides NO
-  migrar uno todavía, anótalo en su `notes.md` para que quede trazado y no se re-discuta desde cero la próxima vez.
-- Si cambiaste el formato en disco (`widgets/store.py`), verifica la migración contra datos REALES de al menos un
-  widget existente (no solo un widget de prueba vacío) antes de darlo por bueno.
+- If you touched something ALL widgets use (contract, store, validation gate): run `make test-widgets` and
+  confirm zero failures before continuing. If something breaks, fix it — a structural change can never leave an
+  existing widget broken.
+- Decide, widget by widget, whether it should adopt the new capability (e.g. should `mensajeria` declare `"safe"`
+  on some action now that the level exists?). They do not all have to migrate at once — but if you decide NOT to
+  migrate one yet, note it in its `notes.md` so it is traceable and not re-argued from scratch next time.
+- If you changed the on-disk format (`widgets/store.py`), verify the migration against REAL data from at least one
+  existing widget (not only an empty test widget) before calling it good.
 
-## 3. Documenta — la regla de oro es SIEMPRE tres sitios, nunca dos de tres
+## 3. Document — the golden rule is ALWAYS three places, never two out of three
 
-Mismo principio que `zaelar-docs-sync.md`: que aparezca en **contexto (CLAUDE.md) + doc canónica
-(`zaelar-modules.md`) + el diagrama público** (si el cambio es significativo de cara a fuera). Para widgets, en
-concreto:
+Same principle as `zaelar-docs-sync.md`: it appears in **context (`CLAUDE.md` / `criteria.md`) + canonical doc
+(`zaelar-modules.md`) + the public diagram** (if the change matters to an outside reader). For widgets,
+specifically:
 
-- **`.meshkore/docs/modules/zaelar-modules.md` §Widgets** — la fuente canónica, el detalle completo. Si el cambio
-  es grande, puede merecer su propia sub-sección (como "Widget-apps ('backed' widgets)").
-- **`CLAUDE.md`** — un bullet CONCISO en "Decisiones clave" que apunte al detalle de arriba. Nunca dupliques el
-  detalle aquí, solo la decisión + una frase de por qué + dónde está el resto.
-- **el diagrama público `/technology/widgets` (fuera de este repo) — EL DIAGRAMA Y LA TEORÍA, LOS
-  DOS.** (Antes `frontend/pages/architecture.html` → pestaña Widgets, retirado el 2026-07-24 — el mismo riesgo de
-  "actualicé la teoría y olvidé el SVG" aplica igual aquí, ahora en TypeScript en vez de HTML embebido). Es fácil
-  actualizar solo la prosa del `.astro` y olvidar los nodos del `build()` en el `.ts` (pasó de verdad el
-  2026-07-07 con el archivo viejo). Repasa `build()` **nodo por nodo** — títulos, sub-líneas, y las rutas/etiquetas
-  de las flechas que referencien lo que cambiaste — no solo la prosa de arriba. Si el cambio añade una pieza nueva
-  al circuito (una carpeta, un tag, un nivel de gobernanza), esa pieza necesita SU PROPIO grupo/caja en el SVG, no
-  solo una mención en prosa. Esto es de cara a EXTERNOS (recortado a propósito, sin rutas de fichero internas) —
-  no lo dispares por cada detalle interno, solo cambios de topología/flujo que un self-hoster/visitante vería.
-- Si cambia el vocabulario de tags o el contrato que ve el cerebro: **`widgets/brief.py`** + el prompt del
-  FlashBrain (**`nucleo/flash/prompt.py`**). La persona/instrucciones vivas ya no son un fichero externo: se
-  inyectan en cada conexión desde `memory/` + `nucleo/flash/prompt.py`, así que no hay copia personal del operador
-  que tocar aquí.
-- Si cambia el contrato que ve el agente de código (Claude Code): **`widgets/AGENTS.md`** +
-  **`widgets/generator.py`** (`_CONTRACT`/`_CREATE_PROMPT`/`_MODIFY_PROMPT`).
+- **`.meshkore/docs/modules/zaelar-modules.md` §Widgets** — the canonical source, the full detail. A big change may
+  deserve its own subsection (like "Widget-apps ('backed' widgets)").
+- **`.meshkore/docs/criteria.md`** — a CONCISE line if a rule changed, pointing at the detail above. Never
+  duplicate the detail there: only the rule + where the rest lives.
+- **The public diagram `/technology/widgets` (outside this repo) — THE DIAGRAM AND THE THEORY, BOTH.** It is easy
+  to update only the prose of the `.astro` and forget the nodes in the `.ts` `build()`. Go through `build()`
+  **node by node** — titles, sub-lines, and the arrow paths/labels that refer to what you changed — not only the
+  prose above. If the change adds a new piece to the circuit (a folder, a tag, a governance level), that piece
+  needs ITS OWN group/box in the SVG, not just a mention in prose. This is for OUTSIDE readers (trimmed on
+  purpose, no internal file paths) — do not trigger it for every internal detail, only for topology/flow changes
+  a self-hoster or visitor would see.
+- If the tag vocabulary or the contract the brain sees changes: **`widgets/brief.py`** + the FlashBrain prompt
+  (**`nucleo/flash/prompt.py`**). The live persona/instructions are not an external file: they are injected on
+  every connection from `memory/` + `nucleo/flash/prompt.py`, so there is no personal copy to touch here.
+- If the contract the code agent (Claude Code) sees changes: **`widgets/AGENTS.md`** + **`widgets/generator.py`**
+  (`_CONTRACT`/`_CREATE_PROMPT`/`_MODIFY_PROMPT`).
 
-## 4. Prueba — no solo revisión de código
+## 4. Test — not just code review
 
-- `make test` (imports/salud) y `make test-widgets` (contrato + golden + parseo ES module de CADA widget) — los
-  dos en verde antes de continuar.
-- Si el cambio toca despacho/gobernanza cerebro↔widget: pruébalo **en vivo** contra el sistema real (no solo
-  lectura de código) — p.ej. invocando `nucleo.flash.fast_client.FastClient()` (FlashBrain) y `nucleo.dispatch`
-  (SlowBrain) directamente para confirmar que ambas velocidades se comportan como se espera con el prompt/brief
-  nuevos, y que `escalate_to_slowbrain` escala lo que debe. Limpia cualquier dato de prueba que quede en los stores
-  reales al terminar (no dejes "Reunión de prueba" en la agenda del operador).
-- Si tocaste el diagrama público de widgets: build del sitio (falla en error de tipos/sintaxis) y, si tocaste la geometría del SVG, valida a ojo en el navegador
-  (ninguna caja se sale de su grupo, el texto cabe en la altura de la caja según su número de líneas, ninguna
-  etiqueta de flecha se sale del canvas) antes de deployar.
+- `make test` (imports/health) and `make test-widgets` (contract + golden + ES-module parse of EVERY widget) —
+  both green before continuing.
+- If the change touches brain↔widget dispatch/governance: test it **live** against the real system (not only by
+  reading code) — e.g. by calling `nucleo.flash.fast_client.FastClient()` (FlashBrain) and `nucleo.dispatch`
+  (SlowBrain) directly to confirm both speeds behave as expected with the new prompt/brief, and that
+  `escalate_to_slowbrain` escalates what it should. Clean up any test data left in the real stores when you
+  finish (never leave a "test meeting" in the operator's agenda).
+- If you touched the public widgets diagram: build the site (it fails on type/syntax errors) and, if you touched
+  the SVG geometry, check it by eye in the browser (no box spills out of its group, text fits the box height for
+  its number of lines, no arrow label leaves the canvas) before deploying.
 
-## 5. Reinicia (si hace falta)
+## 5. Restart (if needed)
 
-- ¿Tocaste algún `.py`? → **sí** hace falta reiniciar el servidor (no hay hot-reload; `make run` = `BRAIN=nucleo`,
-  el cerebro por defecto — compruébalo con `GET /api/brain` ANTES de matar el proceso, para relanzar exactamente
-  igual).
-- ¿Tocaste solo un widget (`.js`/`.css` de frontend, o el diagrama del sitio público)? → **no** hace falta reiniciar el
-  motor — el frontend se sirve con `Cache-Control: no-store` (recargar la página basta); el sitio público vive
-  fuera de este repo.
-- Para reiniciar: identifica el árbol de procesos (`livekit-server` + `python -m server`, ambos hijos del
-  `bash scripts/run-livekit.sh`), `SIGTERM` primero; si no responde en unos segundos (ha pasado), `SIGKILL`. Tras
-  un `SIGKILL`, revisa procesos huérfanos que puedan haber quedado colgados de un hijo (p.ej. el bridge de
-  WhatsApp en el puerto 3111) — si no se limpian, el siguiente arranque choca con el puerto ocupado.
-- Verifica después: `GET /`, `GET /api/brain`, `GET /widgets` (catálogo correcto, campos nuevos presentes si
-  tocaste el manifest), y cualquier endpoint específico del cambio.
+- Did you touch any `.py`? → **yes**, the server must be restarted (no hot reload; `make run` = `BRAIN=nucleo`,
+  the default brain — check `GET /api/brain` BEFORE killing the process, to relaunch exactly the same way). Never
+  restart with someone in a live session or a task in flight (see `CLAUDE.md`).
+- Did you only touch a widget (frontend `.js`/`.css`, or the public site's diagram)? → **no** engine restart
+  needed — the frontend is served with `Cache-Control: no-store` (reloading the page is enough); the public site
+  lives outside this repo.
+- To restart: identify the process tree (`livekit-server` + `python -m server`, both children of
+  `bash scripts/run-livekit.sh`), `SIGTERM` first; if it does not respond within a few seconds, `SIGKILL`. After a
+  `SIGKILL`, check for orphaned processes left hanging from a child (e.g. the WhatsApp bridge on port 3111) — if
+  they are not cleaned up, the next start collides with the busy port.
+- Then verify: `GET /`, `GET /api/brain`, `GET /widgets` (correct catalogue, new fields present if you touched
+  the manifest), and any endpoint specific to the change.
 
-## 6. Commit / push — regla dura, se repite aquí porque es fácil olvidarla en medio de un cambio grande
+## 6. Commit / push
 
-- **NUNCA** commitear sin que el operador lo pida explícitamente, aunque el workflow esté "cerrado" en todo lo demás.
-- **NUNCA** hacer push sin confirmación explícita, ni aunque haya remote configurado.
-- Cuando el operador SÍ pida commitear: agrupa los ficheros tocados por categoría en el mensaje (código ·
-  contrato del generador · docs canónicas · arquitectura pública) para que el commit quede trazable como el
-  cambio estructural que es, no como un totum revolutum.
+- Follow the commit/push policy in `CLAUDE.md` (pathspec commits, never someone else's uncommitted work).
+- Group the touched files by category in the message (code · generator contract · canonical docs · public
+  architecture) so the commit is traceable as the structural change it is.
 
-## Resumen para el operador (al terminar)
+## Summary for the operator (at the end)
 
-Cuando termines de pasar este workflow, responde SIEMPRE con:
-- Qué cambió, en 2-3 frases (arquitectura/contrato/gobernanza — no una lista de ficheros).
-- Qué actualizaste (lista corta: contrato del generador, brief, docs canónicas, diagrama+teoría de arquitectura).
-- Qué probaste (`make test`/`test-widgets`, y si hubo prueba en vivo, contra qué).
-- Si reiniciaste o no, y por qué.
-- Qué queda pendiente (diseño sin construir, migración de un widget concreto no hecha todavía, algo que el
-  operador tiene que re-hacer a mano como re-escanear un QR).
-- Recuerda que el commit/push sigue pendiente de que el operador lo pida — no lo des por hecho.
+When you finish this workflow, ALWAYS answer with:
+- What changed, in 2-3 sentences (architecture/contract/governance — not a list of files).
+- What you updated (short list: generator contract, brief, canonical docs, architecture diagram + theory).
+- What you tested (`make test`/`test-widgets`, and if there was a live test, against what).
+- Whether you restarted or not, and why.
+- What is left open (a migration of a specific widget not done yet, something the operator has to redo by hand
+  such as re-scanning a QR).

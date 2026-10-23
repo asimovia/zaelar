@@ -1,42 +1,40 @@
 # The JOB — one durable record of a commission
 
-> ⚠️ **Vocabulary, fixed by the operator on 2026-09-21 (V2-744).** What this document describes is the
-> work the AGENT does, and its name is a **proceso** in Spanish and a **job** in English — never a
-> «tarea». A TASK is now the operator's own: a line in one of the numbered lists inside his agenda widget
-> (`zaelar-agenda-task-lists.md`). The two were called the same thing until that day, and the cost was not
-> cosmetic — the ChatWall tab's id was literally `tareas`, so «ábreme las tareas», routed correctly by
-> every layer, opened the agent's job list instead of his shopping list.
+> ⚠️ **Vocabulary.** What this document describes is the work the AGENT does, and its name is a **proceso**
+> in Spanish and a **job** in English — never a «tarea». A TASK is the operator's own: a line in one of the
+> numbered lists inside his agenda widget (`zaelar-agenda-task-lists.md`). Keeping the two names apart is not
+> cosmetic: if the ChatWall tab's id were `tareas`, «ábreme las tareas», routed correctly by every layer,
+> would open the agent's job list instead of his shopping list.
 >
 > The CODE still says `tasks` throughout (`nucleo/tasks.py`, the `tasks` table, `/api/tasks`): renaming a
-> schema and its API to follow a label is churn with a migration attached, and the rule the operator set
-> is about what he READS. This file was `zaelar-user-tasks.md` until that day, which was the one name
-> that got it exactly backwards.
+> schema and its API to follow a label is churn with a migration attached, and the vocabulary rule is about
+> what the operator READS.
 
 
 **Modules:** `nucleo/tasks.py` (the decisions) · `memory/tasks_store.py` (the storage) ·
 `nucleo/flash/task_recall.py` (finding one again) · `widgets/results/rehydrate.py` (putting it back)
 **Tables:** `tasks`, `task_artifacts`, `fts_tasks` (`memory/schema.py`, schema v7)
-**Initiative:** V2-728 · **Sibling docs:** `zaelar-workflow-table.md` (a different object with a confusing
-name — that one caches WHICH CHANNEL serves a domain; this one is the commission itself).
+**Sibling docs:** `zaelar-workflow-table.md` (a different object with a confusing name — that one caches WHICH
+CHANNEL serves a domain; this one is the commission itself).
 
 ## What it answers
 
 *«Resérvame hora en un restaurante»* — and then nothing. The operator hands the errand over and stops
 carrying it: the counter goes up, the row stays on the board, and if he wants to know how it ended he opens
-the list. **Forgetting only works if somebody else remembers**, and before this nobody did for long.
+the list. **Forgetting only works if somebody else remembers**, and the job record is that somebody.
 
-A «process» was five separate stores, none of which was the whole truth:
+A commission touches several kinds of state, and the job row is the one place that holds the whole truth
+about it:
 
-| # | what | where | durability |
-|---|---|---|---|
-| 1 | live Brain Workers | `dispatch._SESSIONS`, a RAM dict | **gone on restart** |
-| 2 | finished ones | a JSON blob in `sys_kv`, **capped at 50** | fenced by hand against a reset race |
-| 3 | third-party errands | the `errands` table | durable, but parallel |
-| 4 | crons, one-shots, agenda alerts | `journal` rows | durable, but a different object |
-| 5 | the RESULT | a widget sheet, **cap of 8**, pruned by file mtime | **the ninth search deleted the first** |
+| what | where it lives | how the job relates to it |
+|---|---|---|
+| live Brain Workers | `dispatch._SESSIONS`, a RAM dict | merged into the board on read |
+| third-party errands | the `errands` table | mirrored onto the job row |
+| crons, one-shots, agenda alerts | `journal` rows | mirrored onto the job row |
+| the RESULT | `task_artifacts` | durable, independent of any widget sheet |
 
-`/api/tasks` stitched two row shapes by hand, which is how the Processes tab and the Flows board came to
-disagree about the same work. And nothing could answer *«de la tarea de buscar piso que te dije antes»*.
+So the Processes tab and the Flows board read ONE row shape, and *«de la tarea de buscar piso que te dije
+antes»* has something to resolve against.
 
 ## Anatomy
 
@@ -64,7 +62,7 @@ step and percentage change every second and stay in `dispatch._SESSIONS`, in RAM
 - An errand says `contacting|negotiating|agreed|gathering`; all of them are `running` from where he sits.
   Which one it is belongs on the row's second line, not in a different answer to «is this still going?».
 - A schedule says `once|interval|cron`; `once` is a **scheduled** task and the other two are **recurring**.
-  Until they were two lists, «enséñame las tareas programadas» opened the things that repeat.
+  They are two lists, so «enséñame las tareas programadas» never opens the things that repeat.
 
 ### The admission gate
 
@@ -76,25 +74,24 @@ tab is the one place they can be seen, which is what a manual test needs and not
 ### One commission, one row, across a relay
 
 `escalate._seq` restarts at 0 in every process, so a `task_id` names a SESSION and never an errand — the
-defect `nucleo/runtime_ids.py` exists for, and the one that made a fresh errand land on the previous
-session's sheet and delete it (V2-259). The durable id composes `boot_id()`, exactly as `sheets.sheet_id_for`
-does, so **the sheet id and the task id are the same string** and the two are joinable by construction.
-A relay carries `task_uid` in its escalation context and UPDATES that row instead of opening a second one.
+reason `nucleo/runtime_ids.py` exists: without a boot-scoped id, a fresh errand could land on the previous
+session's sheet and overwrite it. The durable id composes `boot_id()`, exactly as `sheets.sheet_id_for` does,
+so **the sheet id and the task id are the same string** and the two are joinable by construction. A relay
+carries `task_uid` in its escalation context and UPDATES that row instead of opening a second one.
 
-## Finding one again (V2-728 F5)
+## Finding one again
 
-The operator's rule: **an index narrows, a model chooses.**
+The rule: **an index narrows, a model chooses.**
 
 1. `tasks_store.task_search` — FTS5 over title+goal, OR-matched (a reference is a paraphrase, not a
    quotation), ranked by bm25, ≤5 candidates. **No model, no network.**
-2. `jev.select_many` — ONE round trip scoring those against his actual sentence. This is its first
-   production consumer; it was built and measured under V2-726 and called by nothing but its own test.
+2. `jev.select_many` — ONE round trip scoring those against his actual sentence.
 3. **With several equally good candidates, nobody chooses.** Same rule `widgets/directory.py` keeps for
    contacts, and it matters more here: opening the wrong report looks exactly like opening the right one,
    and he would read it before noticing.
 
-A single candidate is taken WITHOUT asking Jev — paying 800 ms to confirm what nothing contradicts is the
-call V2-726 was written to stop making.
+A single candidate is taken WITHOUT asking Jev — paying a model round trip to confirm what nothing
+contradicts buys nothing.
 
 ## Traps
 
@@ -102,10 +99,9 @@ call V2-726 was written to stop making.
   this is where the proxy is wrong: a worker three hours into a hard errand while the operator runs a dozen
   quick searches beside it. There the sheet is not a view but the box the worker is WRITING INTO, and its
   snapshot does not exist yet because the errand has not closed. `prune_sheets` asks the task table.
-- **`widgets/results/prune_sheets()` is no longer destructive of DATA**, but it still deletes sheets. The
-  sheet is a VIEW; `rehydrate.sheet_from_task` rebuilds it from the artifact. Rebuilding is
-  **non-destructive**: a sheet that still exists is left alone, because overwriting it would discard
-  anything added since the errand closed — the «error de borrar búsquedas» this lineage exists to remove.
+- **`widgets/results/prune_sheets()` never destroys DATA**, but it still deletes sheets. The sheet is a VIEW;
+  `rehydrate.sheet_from_task` rebuilds it from the artifact. Rebuilding is **non-destructive**: a sheet that
+  still exists is left alone, because overwriting it would discard anything added since the errand closed.
 - **The task id and the sheet id are the same string on purpose.** If one of the two compositions ever
   changes, the other must change with it or the join silently returns nothing.
 - **A test that writes a sheet must patch `widgets.store.DATA_DIR`**, a module constant resolved at import.
@@ -122,17 +118,17 @@ A closed commission also writes ONE memory pill: `[task:<uid>] El encargo «…�
 | `task_search` (FTS5) | «which task do these WORDS name» | only once he has said he means a task |
 | recall (the pill) | «what do I know that bears on what he just said» | every turn, unasked |
 
-Before the pill, «¿encontraste algo de pisos?» — a question that never says *tarea* — retrieved the
-conversation about flats and not the errand that went and found five. The pill is a NORMAL pill: the writer
-embeds it and derives its graph edges with the same deterministic `derive_concepts` backstop every durable
-pill gets, so «que todo eso quede vinculado» is that edge set and not a bespoke join. `meta.task_id` is what
-makes it actionable rather than merely readable — and it is a field rather than an `edges` row for the
-honest reason that an edge joins two MEMORY ids and a task is not one.
+The pill is what lets «¿encontraste algo de pisos?» — a question that never says *tarea* — retrieve the errand
+that went and found flats, not just the conversation about them. It is a NORMAL pill: the writer embeds it and
+derives its graph edges with the same deterministic `derive_concepts` backstop every durable pill gets, so
+linking the job to what it touched is that edge set and not a bespoke join. `meta.task_id` is what makes it
+actionable rather than merely readable — and it is a field rather than an `edges` row because an edge joins
+two MEMORY ids and a task is not one.
 
 It SUPERSEDES its own earlier chapters (`memory.api.task_trace_ids`): a commission can close more than once
 — a relay hands the baton back, a re-dispatch reopens it — and without the chain recall would serve
 «terminó sin encontrar nada» beside «encontró 5 pisos» for the same errand, with no way to tell which is
-current. That is V2-577's failure with a different prefix.
+current.
 
 ## Getting the report back onto the screen
 
@@ -148,21 +144,21 @@ Two doors, one mechanism (`widgets/results/rehydrate.sheet_from_task`, idempoten
 
 ## The discarded ones
 
-«Me encuentra los 5 mejores y otros 50 que ha descartado, pues todo eso tiene que quedar vinculado.» Until
-V2-728 a rejection survived only as a COUNT, so «¿y por qué no este?» had no answer anywhere in the system.
+A search that returns the best five also keeps the ones it discarded, linked to the job, so «¿y por qué no
+este?» always has an answer.
 
-Getting the rows was a change to **what the worker REPORTS**, not to where anything is stored: the results
-sheet gained a `rejected` action (`{title, url, why, source}`, reported as it goes, deduped on url-or-title)
+Getting the rows is a matter of **what the worker REPORTS**, not of where anything is stored: the results
+sheet has a `rejected` action (`{title, url, why, source}`, reported as it goes, deduped on url-or-title)
 and the research brief asks for it by name. `why` is mandatory — a list of names with no reasons is not an
 audit, it is a longer list. They ride to the task in the `considered` artifact alongside the breadth, and
 come back with the report when it is rebuilt. They never enter the results LIST: the list is the selection,
 and a rejected candidate on it is the confusion the worker guide exists to prevent. They render in the
-Summary tab, under the count that was already there.
+Summary tab, under the count.
 
 ## The calendar sees the system's own work
 
-«Si te digo la semana que viene, haz esto… se puede ver perfectamente en la agenda, aunque es una tarea no
-para nosotros, sino para el sistema.» `widgets/agenda/data.py::_system_tasks` READS `mode IN
+A job scheduled for later («la semana que viene, haz esto…») is visible in the agenda, even though it is work
+for the system rather than for the operator. `widgets/agenda/data.py::_system_tasks` READS `mode IN
 ('scheduled','recurring')` and paints each one at its next moment, dotted and in its own hue — never as a
 meeting, because nobody is meeting anybody.
 
@@ -170,8 +166,8 @@ The filter is `origin != 'agenda'`, and it is the whole subtlety: every appointm
 (`reminders._schedule_reminder`), which is a scheduled task like any other and would put a second mark on
 the calendar for a meeting already on it. `scheduler.create(origin=…)` is what carries that distinction.
 
-## What it does NOT do
+## Boundaries
 
 - **It does not own the scheduler's storage.** Scheduled jobs stay in `journal` and are MIRRORED here
-  (`scheduled_mirrored`, plus `reconcile_board()` at startup). Moving live standing reminders risks the one
-  failure nobody notices until the day it fails to sound (V2-121).
+  (`scheduled_mirrored`, plus `reconcile_board()` at startup), so a standing reminder keeps the storage that
+  fires it.

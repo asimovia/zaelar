@@ -1,19 +1,17 @@
-# zaelar — subsistema de MEMORIA (arquitectura v2 «Colmena»)
+# zaelar — the MEMORY subsystem (v2 architecture, «Colmena»)
 
-> **Estado:** OPERATIVA, en evolución (V2-002 substrato · V2-011 latencia · V2-013 corazón de escritura con **LLM
-> local que destila píldoras** · V2-014 visor+observabilidad · V2-019 sueño+aislamiento tester, pendiente ·
-> auditoría 2026-07-14: registro canónico de slots + contrato v2 `value`/`change` + vía externa de workers con gates ·
-> V2-042: RAILS proyectan runs vivos a `state.rails` + writeback de música `ingest_message(source="music")` ·
-> **V2-056** (2026-07-20): F1 robustez del núcleo [decay POR VENTANA + prune_invalid + forget duro real + enforcement
-> de firma de embedding + fail-open que no ensucia] + **sueño PROFUNDO «fase REM»** (`memory/rem.py`) + **tool
-> `recall`** del FlashBrain + **dossier v2** de `compose_context` + modelos del módulo elegidos POR BENCHMARK
-> (`zaelar-model-benchmarks.md §12`)).
-> Actualizado 2026-07-20 (current-state block: 2026-09-30). Módulo top-level `memory/` — ver §Módulos.
-> **Current state — 2026-09-30 (V2-778 F7).** This block wins over older text below where they disagree.
-> - **Schema v9, 19 tables** (measured on a fresh `zaelar.db`): `state`, `memories` + `vec_memories` +
->   `fts_memories`, `edges`, `episodic`, `journal`, `sys_kv`, `tasks` + `task_artifacts` + `fts_tasks`
->   (v9 adds `tasks.verdict`), `errands` + `errand_threads`, `workflows`, `action_map`, `paraphrase_index` +
->   `vec_paraphrases`, `vault_meta` + `vault_secrets`.
+> **Status:** operational. Top-level module `memory/` — see §Modules. Key pieces: the SQLite substrate, a
+> three-speed read path, the write HEART (an LLM that distils every turn into pills), the memory map viewer and
+> observability, light and deep (REM) sleep, a canonical slot registry with the v2 `value`/`change` atom contract,
+> a gated external write path for Brain Workers, RAILS projected into `state.rails`, the `recall` tool of the
+> FlashBrain, the multi-axis worker dossier (`compose_context`), and memory models chosen by benchmark
+> (`zaelar-model-benchmarks.md §12`).
+>
+> **At a glance**
+> - **Schema v9, 19 tables** (on a fresh `zaelar.db`): `state`, `memories` + `vec_memories` + `fts_memories`,
+>   `edges`, `episodic`, `journal`, `sys_kv`, `tasks` + `task_artifacts` + `fts_tasks` (v9 adds `tasks.verdict`),
+>   `errands` + `errand_threads`, `workflows`, `action_map`, `paraphrase_index` + `vec_paraphrases`,
+>   `vault_meta` + `vault_secrets`.
 > - **Spoken rules have a scope** (`voice` · `widget:<id>` · `general`, from a fixed classifier,
 >   `nucleo/flash/rule_scope.py`) stored beside `state.rules`; each prompt surface asks `memory.api.rules_for(surface)`
 >   for its own, newest last (the newest eight reach the prompt and the worker's dossier). CRIT-M1.
@@ -22,234 +20,226 @@
 > - **Factory reset** (`scripts/reset-memory.sh`) forgets the memory and the spoken rules (their override files are
 >   in `FACTORY_PATHS`) and keeps credentials, settings and connectors; it never deletes under a live server.
 > - **Recall degrades, never vanishes**: a slow or failed embedder drops the recall to lexical (FTS, then LIKE) and
->   records `memory: degraded` in health; embeddings have no failover row (a mixed space is worse than none).
+>   records `memory: degraded` in health; embeddings have no failover row (a mixed vector space is worse than none).
 > - **The record block**: «what is going on» is read from the `tasks` rows (`task_block.recent_lines`, inline
 >   requests included), not from RAM registries. See `zaelar-architecture.md` §5h.
-> - Embeddings run on OpenAI **direct** (`config/models.default.json`, the one exception to «OpenAI never
->   titular»); the section «Ningún camino sale por OpenAI directo» below predates it.
-> **Regla de oro de latencia:** **LLM al ESCRIBIR (off-hot-path), queries DIRECTAS al LEER (sin LLM en el camino).**
-> **Diagrama vivo:** `/architecture` → pestaña **Memoria** (el diagrama central v2 solo enlaza aquí; sin duplicar el detalle).
-> **Fuente de verdad** del *cómo se construye*: este documento. Para EMPEZAR a trabajar la memoria, leer sí o sí:
-> §«Lectura en el turno — TRES velocidades», §«El CORAZÓN de escritura» y §«Observabilidad de la memoria».
+> - **Models** are declared in `config/models.default.json` (public defaults; the UI's `config/v2.json` overrides
+>   them). See §Memory models.
+>
+> **Golden latency rule:** **LLM when WRITING (off the hot path), DIRECT queries when READING (no LLM on the path).**
+> **Live diagram:** the public architecture diagrams (Memory tab) link here rather than duplicating the detail.
+> **Source of truth** for *how it is built*: this document. To START working on the memory, read at least
+> §«Reading in the turn — THREE speeds», §«The write HEART» and §«Memory observability».
 
-Memoria **tipo humana**, con el **SUBSTRATO 100% local** dentro del proceso (SQLite + lectura + embeddings +
-reranker: sin infraestructura externa, multiplataforma; móvil a futuro, tenerlo en mente). Es **nuestra** — nunca
-una caja negra. ⚠️ Matiz V2-056: los **LLM de ESCRITURA** (CORAZÓN + síntesis REM) van hoy por **API externa
-por decisión del operador** — ver §Principios.
+A **human-like** memory whose **storage and retrieval run in-process** (SQLite + read path + vector index +
+reranker: no external database or broker, cross-platform; mobile is a future target worth keeping in mind). It is
+**ours** — never a black box. The **models** the memory calls (embeddings, the write HEART, REM synthesis) are
+configurable providers: cloud by default so that every deployment measures the same system, with local options
+(Ollama) for whoever prioritises privacy or offline use — see §Design principles.
 
-## Principios de diseño (decididos, no reabrir)
+## Design principles (decided, not to be reopened)
 
-- **Local, un solo fichero.** Todo vive en un único SQLite `zaelar.db`. Sin servidor, sin broker. **Matiz de
-  alcance (decisión del operador 2026-07-17, no un abandono del principio):** el SUBSTRATO sigue 100% local —
-  BD, lectura a 3 velocidades, embeddings (embeddinggemma vía Ollama) y reranker (fastembed/CPU). Los **LLM de
-  ESCRITURA** (el CORAZÓN destilador + la síntesis del sueño REM) van por **API externa**: la calidad de escritura
-  es la palanca nº1 del recall y el modelo externo la gana con claridad. **Qué modelo, se decide con el bench, no
-  por reputación del proveedor** (2026-08-09, `zaelar-model-benchmarks.md §12.3`): hoy el destilador es
-  **`deepseek/deepseek-v4-flash`** — empata con el anterior titular `gpt-4.1-mini` en captar el hecho
-  (98,5 vs 98,9%) y en no ensuciar (100% los dos) por un 55% menos ($0,68 vs $1,516 los 1.000 turnos). Esto
-  **deroga la directriz previa «memoria SIEMPRE OpenAI»** (2026-07-17), que se tomó con un solo contendiente barato
-  medido. **Un único modelo comercial sirve self-host y nube** (decisión del operador). La **opción local** (qwen
-  vía Ollama) sigue disponible por config (`§memory.mem_processor_*`) para quien priorice privacidad/offline.
-  ⚠️ **El endpoint del CORAZÓN cambió de AIMLAPI a `api.deepseek.com` DIRECTO el 2026-08-16** (el broker dejó de
-  responder para este modelo, 12s+ sin respuesta, degradando cada escritura a la heurística con pérdida; el
-  endpoint directo además SÍ obedece `thinking:{"type":"disabled"}`, cosa que el broker ignora — mismo hallazgo
-  que V2-102). El **sueño REM sigue en AIMLAPI** (`§memory.rem_base_url`) — es un cambio acotado a la tarea de
-  escritura por turno, no a las dos.
-- **Inserción por cola async — puede ser lenta.** Todas las fuentes escriben en una **cola**; solo la cola
-  (un **único escritor**) toca la BD → cero colisiones de escritura. Los lectores van en **WAL** sin bloquear.
-- **Búsqueda en milisegundos.** Es la **ruta caliente**: llega un prompt y hay que componer el **contexto mínimo**
-  lo más rápido posible.
-- **Escritores:** FlashBrain, el agente de memoria del SlowBrain, y los widgets (p. ej. mensajería vuelca lo
-  entrante). **Lo irrelevante se descarta al vuelo**; lo relevante se guarda.
-- **MONOLINGÜE — la memoria vive en el IDIOMA DEL OPERADOR** (decisión 2026-07-10, no reabrir). El sistema entero
-  se adapta a UN idioma (el de la persona: castellano por defecto; si habla alemán, todo pasa a alemán — ver
-  `voice/engine/core/langs.py`, `ZAELAR_LANGUAGE`). La memoria NO es multilingüe por dentro: el **CORAZÓN destila
-  cada píldora en el idioma canónico** (`state.language`), **traduciendo** lo que el operador diga en otro idioma
-  — y **nunca descarta un dato durable por venir en otro idioma** (`nucleo/mem_processor._render`). Así la LECTURA
-  es siempre mismo-idioma (cero *gap* cross-lingual, cero complejidad de indexar N idiomas). El FlashBrain SÍ
-  **entiende** varias lenguas (STT + modelo) y sus gates/heurísticas son es/en tolerantes, pero lo que se GUARDA y
-  se RECUERDA queda en el idioma del operador. *Por qué:* una memoria multilingüe multiplica el coste (embeddings
-  y recall cruzando idiomas, duplicados por lengua) sin aportar al caso real — un operador con su idioma.
+- **Local, one file.** Everything lives in a single SQLite file, `zaelar.db`. No server, no broker. Storage, the
+  three-speed read path and the reranker run in-process. The **models** are a separate, configurable concern:
+  the **write LLMs** (the distilling HEART and the REM synthesis) and the **embeddings** go to an external API by
+  default, because write quality is the number-one lever of recall and the measured external models win it
+  clearly; and because a default that only exists on a laptop (a local Ollama server) would make a laptop measure
+  something different from a container. **Which model is chosen by the benchmark, not by provider reputation**
+  (`zaelar-model-benchmarks.md §12.3`). The **local option** (qwen / embeddinggemma via Ollama) stays available by
+  config (`§memory.mem_processor_*`, `§memory.embed_*`) for whoever prioritises privacy/offline use. When the
+  HEART runs on DeepSeek it uses the **direct** endpoint (`api.deepseek.com`), which honours
+  `thinking:{"type":"disabled"}` where a broker may ignore it.
+- **Insertion through an async queue — it may be slow.** Every source writes into a **queue**; only the queue
+  (a **single writer**) touches the database → zero write collisions. Readers use **WAL** and never block.
+- **Search in milliseconds.** This is the **hot path**: a prompt arrives and the **minimal context** has to be
+  composed as fast as possible.
+- **Writers:** the FlashBrain, the SlowBrain's memory agent, and widgets (e.g. messaging dumps what comes in).
+  **What is irrelevant is discarded on the fly**; what is relevant is kept.
+- **MONOLINGUAL — the memory lives in the OPERATOR'S LANGUAGE.** The whole system adapts to ONE language (the
+  person's; if they speak German, everything moves to German — see `voice/engine/core/langs.py`,
+  `ZAELAR_LANGUAGE`). The memory is NOT multilingual inside: the **HEART distils every pill in the canonical
+  language** (`state.language`), **translating** whatever the operator says in another language — and **never
+  discards a durable fact because it came in another language** (`nucleo/mem_processor._render`). So READING is
+  always same-language (no cross-lingual gap, no complexity of indexing N languages). The FlashBrain DOES
+  **understand** several languages (STT + model) and its gates/heuristics are es/en tolerant, but what is STORED
+  and RECALLED stays in the operator's language. *Why:* a multilingual memory multiplies the cost (embeddings and
+  recall across languages, duplicates per language) without helping the real case — one operator with their
+  language.
 
-## Capas (memoria tipo humana)
+## Layers (human-like memory)
 
-- **Estado** — la parte VARIABLE del contexto que **se inyecta SIEMPRE en el prompt, sin búsqueda** (lectura de
-  tabla fija, µs), frente a la parte FIJA del núcleo (instrucciones/objetivo). Es el "lo de hace dos horas está
-  prácticamente en contexto". Lleva: nombre(s) nuestro y de la persona, idioma (castellano), reglas de trato
-  (directo vs elaborado…), dónde vive, temas hablados, y el **CONTEXTO DE UI VIVO — lo que el operador tiene
-  DELANTE ahora mismo**: `open_widgets` (widgets abiertos en el canvas), `activity`/`sessions` (tareas/sesiones del
-  SlowBrain en marcha) y **`rails`** (V2-042: runs vivos de los RAILS del FlashBrain — qué se busca/suena y los
-  fallos AISLADOS `sin_resolver` reanudables — proyectados por `nucleo/rails.py`, se pintan como "Rails en curso").
-  Con eso el cerebro resuelve "modifica/abre el widget de X" mirando lo que hay en pantalla — si está
-  abierto o es el único, actúa sin preguntar. `open_widgets` lo escribe el frontend (autoritativo del canvas,
-  `POST /api/canvas/state` desde `desktop._persist()`); `activity`/`sessions` los escribe el dispatcher del
-  SlowBrain; `rails` los proyecta `nucleo/rails.py`. Y **`rules`** (V2-046 A1) = las **USER RULES**: reglas de
-  comportamiento que el operador impone hablando ("sé más directo", "responde solo sí o no") — nace en blanco,
-  persiste entre sesiones (≠ directiva de sesión). Las escribe el provider al reconocer la tool
-  `set_style_directive` vía `memory.add_user_rule` (dedup por texto normalizado, cap 8, la más reciente manda) /
-  `memory.remove_user_rule` (match difuso, "olvida esa regla", guard determinista `router.looks_like_rule_removal`);
-  las lee `compose_state §B` como línea "REGLAS DEL OPERADOR" (con `rules` vacío el prompt es byte-idéntico). Es la
-  capa APRENDIDA frente a las BRAIN RULES (genética primigenia, ver `zaelar-architecture.md §5e`). Todo es
-  visible en el mapa de la memoria (columna ESTADO). Esquema en `memory/state.py`.
-- **Corto plazo = memoria RECIENTE (corto y recencia = EL MISMO módulo, UN solo formato)** — decisión del operador
-  (2026-07-10): están tan relacionados que separarlos sería DUPLICIDAD. Es **una sola** memoria reciente, en
-  **formato MIXTO** (menos eficiente en almacenamiento, pero simple y suficiente): las filas `level='short'` que ya
-  se **leen ENTERAS** al prompt (`recent_short` → bloque "Conversación reciente"). Ese mismo bloque responde a la
-  vez "¿qué acabo de decir?" (lo más reciente) y "¿de qué hemos hablado / de qué va esto?" (conducir la
-  conversación / memoria reciente). **NO se crea un dígest aparte ni se usa `state`** (el ESTADO es permanente, no
-  tiene que ver con la última hora). Ya FUNCIONA hoy vía `recent_short`. Refinamientos (no módulos nuevos):
-  guardar el turno comprimido en vez del par crudo (V2-013 T148, eficiencia) y el **decaimiento de detalle por
-  antigüedad** vía consolidación (V2-019 T149: minutos casi literales → hora resumida → ayer titular → atrás nada,
-  o promovido a LARGO). Cubre conversación Y actividad (ficheros, widgets).
-- **Medio plazo** — resúmenes de sesión; el corto que sobrevive se archiva aquí y luego a largo.
-- **Largo plazo / almacén** — recall semántico + hechos durables.
-- **Continuidad de tarea** — journal con estado (pendiente / en progreso / hecho): "¿cómo va aquella tarea?".
-- **Episódica lazy-loaded** — ficheros/PDF subidos. Se custodian con un **resumen embebido** que SÍ participa en la
-  búsqueda; el fichero completo solo se carga bajo orden ("consulta el informe") o si el retriever lo selecciona.
-  Nunca en contexto por defecto.
+- **State** — the VARIABLE part of the context that is **ALWAYS injected into the prompt, without search** (a
+  fixed-table read, µs), as opposed to the FIXED part of the core (instructions/goal). It is the "what happened two
+  hours ago is practically in context". It carries: our name and the person's, language, rules of address (direct
+  vs elaborate…), where they live, topics discussed, and the **LIVE UI CONTEXT — what the operator has IN FRONT of
+  them right now**: `open_widgets` (widgets open on the canvas), `activity`/`sessions` (SlowBrain tasks/sessions in
+  progress) and **`rails`** (live runs of the FlashBrain RAILS — what is being searched/playing and the ISOLATED
+  `sin_resolver` failures that can be resumed — projected by `nucleo/rails.py`, rendered as "Rails in progress").
+  With that the brain resolves "modify/open the X widget" by looking at what is on screen — if it is open or the
+  only one, it acts without asking. `open_widgets` is written by the frontend (authoritative for the canvas,
+  `POST /api/canvas/state` from `desktop._persist()`); `activity`/`sessions` by the SlowBrain dispatcher; `rails`
+  is projected by `nucleo/rails.py`. And **`rules`** = the **USER RULES**: behaviour rules the operator imposes by
+  speaking ("be more direct", "answer only yes or no") — starts blank, persists across sessions (≠ a session
+  directive). The provider writes them when it recognises the `set_style_directive` tool, via
+  `memory.add_user_rule` (dedup by normalised text, cap 8, the newest wins) / `memory.remove_user_rule` (fuzzy
+  match, "forget that rule", deterministic guard `router.looks_like_rule_removal`); `compose_state §B` reads them as
+  the "OPERATOR RULES" line (with empty `rules` the prompt is byte-identical). It is the LEARNED layer, as opposed
+  to the BRAIN RULES (primordial genetics, see `zaelar-architecture.md §5e`). Everything is visible in the memory
+  map (STATE column). Schema in `memory/state.py`.
+- **Short term = RECENT memory (short term and recency are THE SAME module, ONE format).** They are so closely
+  related that separating them would be duplication. It is **one** recent memory, in a **MIXED format** (less
+  storage-efficient, but simple and sufficient): the `level='short'` rows that are **read WHOLE** into the prompt
+  (`recent_short` → "Recent conversation" block). That same block answers both "what did I just say?" (the most
+  recent) and "what have we talked about / what is this about?" (steering the conversation). **No separate digest
+  is created and `state` is not used** (STATE is permanent and has nothing to do with the last hour). Refinements
+  live inside the same module: storing the compressed turn instead of the raw pair, and **detail decay by age**
+  via consolidation (minutes almost verbatim → the hour summarised → yesterday a headline → older nothing, or
+  promoted to LONG). It covers conversation AND activity (files, widgets).
+- **Mid term** — session summaries; the short term that survives is archived here and later to long term.
+- **Long term / store** — semantic recall + durable facts.
+- **Task continuity** — a journal with status (pending / in progress / done): "how is that task going?".
+- **Lazy-loaded episodic** — uploaded files/PDFs. They are kept with an **embedded summary** that DOES take part in
+  search; the full file is only loaded on command ("look at the report") or if the retriever selects it. Never in
+  context by default.
 
-## Estados por SCOPE (una dimensión distinta de las "Capas" — auditoría 2026-07-26)
+## States by SCOPE (a dimension distinct from the "Layers")
 
-Las "Capas" de arriba organizan la memoria por **VELOCIDAD/permanencia** (estado µs → corto → medio → largo →
-episódica). Hay una segunda dimensión, ortogonal, que el código ya construye pero que ninguna doc unía en un solo
-sitio hasta ahora: el **SCOPE** — de QUIÉN/QUÉ es un dato de estado. Tres anillos, de más amplio a más estrecho:
+The "Layers" above organise the memory by **SPEED/permanence** (state µs → short → mid → long → episodic). There is
+a second, orthogonal dimension that the code builds: the **SCOPE** — WHOSE/WHAT a piece of state is about. Three
+rings, from widest to narrowest:
 
-1. **Estado GLOBAL del operador** (`memory/state.py`, tabla `state`, fila única `id=1`) — la conciencia de sí mismo
-   y del entorno que el FlashBrain lleva SIEMPRE en el prompt: identidad/misión, idioma, trato, ubicación,
-   `rules` (reglas de estilo del operador), `open_widgets`/`activity`/`sessions`/`rails` (contexto de UI vivo),
-   `security` (flags duras tipo `secrets_voice`). Hay UN solo operador y UNA sola fila — este es el anillo que
-   comparten voz y chat.
-2. **Estado por-RELACIÓN** (una conversación de cluster con OTRO agente) — vive en DOS piezas complementarias,
-   ambas indexadas por `(cluster, peer)`, nunca mezcladas con el anillo 1:
-   - **La cápsula** (`connectors/meshkore/capsule.py`, tabla genérica `sys_kv` bajo la clave
-     `capsule:<cluster>:<peer>`): estado ESTRUCTURADO de la relación — objetivo (`objective`, SOLO lo fija el
-     operador, tool `set_cluster_objective`), fase (saludo→sondeo→trabajo→cierre), bucles abiertos, contadores de
-     atasco (`turns`/`no_progress`), el medidor de balance de recursos (`given`/`received`/`offloads`/`code_out`),
-     el pacto negociado (`pact`) y flags de guard (`_objective_gate_notified`). `sys_kv` es el mecanismo GENÉRICO
-     de estado scopeado que no es la conciencia del operador (lo reusan también el consolidador y la fase REM
-     para sus propios marcadores) — no es una tabla nueva por cada scope, es UNA tabla clave→JSON con prefijos.
-   - **El dossier** (`connectors/meshkore/mem_ingest.py`): a diferencia de la cápsula (números/flags), esto es
-     PROSA — una síntesis evolutiva de "de qué habéis hablado", destilada por un modelo LOCAL tras cada
-     intercambio y guardada como una píldora NORMAL de la memoria (`slot="cluster:<cluster>:<peer>"`,
-     supersede-exacto → una sola fila viva) pero **CUARENTENADA** (`trust="untrusted"`): nunca entra en el
-     `recent_short`/recall pasivo del operador, solo aflora por consulta explícita (`recent_by_source`). La
-     cápsula y el dossier se fusionan en un único bloque de texto (`capsule.compose()`) que se antepone a CADA
-     turno de esa relación — es "lo que un humano tendría en la cabeza al retomar una conversación con alguien
-     concreto". Sobrevive a un reinicio del servidor (ambos viven en `zaelar.db`).
-3. **Estado por-TAREA** (una sesión de Brain Worker en marcha) — `nucleo/workers/session.py::SessionRecord`, en
-   el **registro RAM** `nucleo/dispatch.py::_SESSIONS` (fuente de verdad, §V2-038). Lleva `goal`/`kind`/`phase`/
-   `status`, la cola de inyecciones pendientes, y observabilidad rica (`plan`/`done`/`pct`/`steps`). Es
-   DELIBERADAMENTE efímero — no vive en `zaelar.db`, muere con la sesión o el proceso — por tres razones: (a) es
-   literalmente proceso en marcha, no un hecho a recordar; (b) solo importa mientras corre (nadie pregunta "¿en
-   qué fase estaba la tarea de ayer que ya terminó?", solo "¿cómo va la de ahora?"); (c) mezclarlo con la memoria
-   durable inflaría la BD con miles de filas de progreso transitorio. Dos puentes lo conectan con los anillos
-   1-2 sin persistirlo entero: **arriba** — `nucleo/loop.py` proyecta el registro RAM al anillo 1 (`state.sessions`,
-   ~1 Hz) para que el FlashBrain SEPA que hay tareas en marcha y pueda dirigirles follow-ups; **al terminar** — SOLO
-   el resultado final, si `ok=True`, se escribe como una píldora normal y durable vía `memory_agent.remember()`
-   (con procedencia `meta.source="worker:<id>"`) — el proceso desaparece, el HECHO que produjo queda. Una
-   sub-pieza especial (`dispatch._WEB_RESUME`, también RAM) guarda lo mínimo para REANUDAR una tarea web
-   incompleta (id de pestaña + `native_session_id` de Claude Code) — tampoco sobrevive a un reinicio del server,
-   solo a que el propio worker muera a mitad. El propio **Claude Code CLI** mantiene, fuera de nuestra memoria,
-   su histórico de sesión nativo en disco (`--resume`) — un CUARTO nivel, externo, que `nucleo/workers/
-   claude_session.py` aprovecha para continuidad de RAZONAMIENTO sin que nuestra memoria tenga que guardarlo.
+1. **The operator's GLOBAL state** (`memory/state.py`, table `state`, single row `id=1`) — the awareness of itself
+   and of its surroundings that the FlashBrain ALWAYS carries in the prompt: identity/mission, language, address,
+   location, `rules` (the operator's style rules), `open_widgets`/`activity`/`sessions`/`rails` (live UI context),
+   `security` (hard flags such as `secrets_voice`). There is ONE operator and ONE row — this is the ring that voice
+   and chat share.
+2. **Per-RELATIONSHIP state** (a cluster conversation with ANOTHER agent) — lives in TWO complementary pieces, both
+   indexed by `(cluster, peer)`, never mixed with ring 1:
+   - **The capsule** (`connectors/meshkore/capsule.py`, generic table `sys_kv` under the key
+     `capsule:<cluster>:<peer>`): the STRUCTURED state of the relationship — objective (`objective`, ONLY the
+     operator sets it, tool `set_cluster_objective`), phase (greeting→probing→work→closing), open loops, stall
+     counters (`turns`/`no_progress`), the resource-balance meter (`given`/`received`/`offloads`/`code_out`), the
+     negotiated pact (`pact`) and guard flags (`_objective_gate_notified`). `sys_kv` is the GENERIC mechanism for
+     scoped state that is not the operator's awareness (the consolidator and the REM phase also reuse it for their
+     own markers) — not a new table per scope, but ONE key→JSON table with prefixes.
+   - **The dossier** (`connectors/meshkore/mem_ingest.py`): unlike the capsule (numbers/flags), this is PROSE — an
+     evolving synthesis of "what you have talked about", distilled by a LOCAL model after each exchange and stored
+     as a NORMAL memory pill (`slot="cluster:<cluster>:<peer>"`, exact supersede → a single live row) but
+     **QUARANTINED** (`trust="untrusted"`): it never enters the operator's passive `recent_short`/recall, it only
+     surfaces on explicit query (`recent_by_source`). Capsule and dossier are merged into a single text block
+     (`capsule.compose()`) prepended to EVERY turn of that relationship — it is "what a human would have in mind when
+     resuming a conversation with a specific person". It survives a server restart (both live in `zaelar.db`).
+3. **Per-TASK state** (a Brain Worker session in progress) — `nucleo/workers/session.py::SessionRecord`, in the
+   **RAM registry** `nucleo/dispatch.py::_SESSIONS` (source of truth). It carries `goal`/`kind`/`phase`/`status`,
+   the queue of pending injections, and rich observability (`plan`/`done`/`pct`/`steps`). It is DELIBERATELY
+   ephemeral — it does not live in `zaelar.db`, it dies with the session or the process — for three reasons: (a) it
+   is literally a running process, not a fact to remember; (b) it only matters while it runs (nobody asks "what
+   phase was yesterday's finished task in?", only "how is the current one going?"); (c) mixing it with durable
+   memory would bloat the database with thousands of rows of transient progress. Two bridges connect it to rings
+   1-2 without persisting it whole: **upwards** — `nucleo/loop.py` projects the RAM registry into ring 1
+   (`state.sessions`, ~1 Hz) so the FlashBrain KNOWS there are tasks in progress and can send them follow-ups;
+   **on completion** — ONLY the final result, if `ok=True`, is written as a normal durable pill via
+   `memory_agent.remember()` (with provenance `meta.source="worker:<id>"`) — the process disappears, the FACT it
+   produced remains. A special sub-piece (`dispatch._WEB_RESUME`, also RAM) keeps the minimum needed to RESUME an
+   incomplete web task (tab id + Claude Code `native_session_id`) — it does not survive a server restart either,
+   only the worker itself dying halfway. The **Claude Code CLI** itself keeps, outside our memory, its native
+   session history on disk (`--resume`) — a FOURTH, external level that `nucleo/workers/claude_session.py` uses for
+   REASONING continuity without our memory having to store it.
 
-**Por qué tres anillos y no uno solo aplanado:** cada uno responde a una pregunta distinta y tiene un ciclo de
-vida distinto — "¿quién eres y qué tienes delante AHORA?" (anillo 1, vive mientras exista el operador),
-"¿de qué va mi relación con ESTE agente?" (anillo 2, vive mientras dure la colaboración con ese peer, sobrevive
-reinicios), "¿cómo va ESTA tarea concreta?" (anillo 3, vive lo que dure el proceso). Aplanarlos en una sola tabla
-mezclaría PII del operador con contenido de un peer no confiable (rompería la cuarentena) y llenaría el estado
-global de ruido transitorio de tareas ya terminadas. La regla de aislamiento es la misma que en el resto del
-sistema: **scope-partido, misma memoria física, JAMÁS mezclado en el prompt.**
+**Why three rings and not one flattened one:** each answers a different question and has a different life cycle —
+"who are you and what do you have in front of you NOW?" (ring 1, lives as long as the operator exists), "what is my
+relationship with THIS agent about?" (ring 2, lives as long as the collaboration with that peer lasts, survives
+restarts), "how is THIS specific task going?" (ring 3, lives as long as the process). Flattening them into a single
+table would mix the operator's PII with content from an untrusted peer (breaking the quarantine) and fill the global
+state with transient noise from finished tasks. The isolation rule is the same as in the rest of the system:
+**scope-partitioned, same physical memory, NEVER mixed in the prompt.**
 
-## Tecnologías y versiones (verificadas 2026-07-08)
+## Technologies and versions
 
-| Pieza | Versión fijada | Rol / nota |
+| Piece | Pinned version | Role / note |
 |---|---|---|
-| **SQLite** | `3.53.3` | Base única (`zaelar.db`); **WAL** para leer mientras se escribe. **FTS5 incluido** en la amalgama estándar. |
-| **sqlite-vec** (ext. C, `asg017`) | `v0.1.9` estable | Vector; **fuerza bruta** = 1-5 ms a decenas de miles de recuerdos. (Línea `0.1.10-alpha` añade índices ANN si algún día hiciera falta.) |
-| **sqlite-vec** (pip) | `0.1.9` | Carga la extensión en el `sqlite3` de Python (`sqlite_vec.load(conn)`). `pip install sqlite-vec` (sin `--pre`) da 0.1.9. |
-| **FTS5** | incluido en SQLite | Keyword exacto; se fusiona con el vector por RRF. |
-| **Embeddings locales** | `embeddinggemma` · **768 dims** | Google, vía **Ollama** (≥0.11.10) — **multilingüe** (bueno para castellano), on-device, **Matryoshka** (truncable a 512/256/128 para ahorrar en SQLite). Fallback probado: `nomic-embed-text v1.5` (768). Sin coste por inserción. |
-| **Embeddings sin server (alt.)** | `fastembed 0.8.0` | ONNX-Runtime, sin server/GPU. Modelo multilingüe p. ej. `intfloat/multilingual-e5-small` (384) o `BAAI/bge-m3` (1024). |
-| **RRF** | `k = 60` | Reciprocal Rank Fusion (Cormack et al. 2009; default de Elastic/OpenSearch/Azure/Mongo Atlas). `score = Σ 1/(k+rank)`. |
-| **Reranker** (V2-030) | `jina-reranker-v2-base-multilingual` · fastembed 0.8.0 | Cross-encoder ONNX/**CPU** (cero GPU) que reordena el top-N del RRF leyendo query+recuerdo juntos → recall@1 41.6→56.2%. **Local por defecto**, model-agnostic (`config/v2.py` §`memory`): alt. `openai` (LLM listwise, techo) / `cohere`/`voyage` (slots). Solo recall LARGO, off-hot-path, fail-open. |
+| **SQLite** | `3.53.3` | Single database (`zaelar.db`); **WAL** to read while writing. **FTS5 included** in the standard amalgamation. |
+| **sqlite-vec** (C ext., `asg017`) | `v0.1.9` stable | Vector; **brute force** = 1-5 ms at tens of thousands of memories. (The `0.1.10-alpha` line adds ANN indexes should they ever be needed.) |
+| **sqlite-vec** (pip) | `0.1.9` | Loads the extension into Python's `sqlite3` (`sqlite_vec.load(conn)`). `pip install sqlite-vec` (without `--pre`) gives 0.1.9. |
+| **FTS5** | included in SQLite | Exact keyword; fused with the vector channel by RRF. |
+| **Embeddings (default)** | `text-embedding-3-small` · **768 dims** | OpenAI `/embeddings` protocol, 768 dims requested via `dimensions` (Matryoshka). Runs identically on a laptop and in a container. Chosen by measurement (see that row's `why` in `config/models.default.json`). |
+| **Embeddings (local option)** | `embeddinggemma` · **768 dims** | Google, via **Ollama** (≥0.11.10) — **multilingual**, on-device, **Matryoshka** (truncatable to 512/256/128). Selectable in the panel for whoever prefers fully local embeddings. |
+| **Embeddings (safety nets)** | `fastembed 0.8.0` · hashing | ONNX-Runtime, no server/GPU (its default model is English-only, so it is a net, not a titular); and deterministic feature hashing, always available, lexical signal only. |
+| **RRF** | `k = 60` | Reciprocal Rank Fusion (Cormack et al. 2009; default of Elastic/OpenSearch/Azure/Mongo Atlas). `score = Σ 1/(k+rank)`. |
+| **Reranker** | `jina-reranker-v2-base-multilingual` · fastembed 0.8.0 | ONNX/**CPU** cross-encoder (zero GPU) that reorders the RRF top-N by reading query+memory together. **Off by default** (its ~1.1 GB model would dominate a cold start), turned on with `local` from the panel; model-agnostic (`config/v2.py` §`memory`): alt. `openai` (listwise LLM) / `cohere`/`voyage` (slots). LONG recall only, off the hot path, fail-open. |
 
-**Alternativa móvil / baja memoria (futuro):** **SQLite-Vector de sqlite.ai** (`sqliteai/sqlite-vector`, Marco
-Bambini) — extensión de búsqueda vectorial cross-platform orientada a móvil/embebido (~30 MB RAM por defecto) con
-cuantización fuerte (Float32/16, BF16, Int8/UInt8, 1-bit, TurboQuant 2/3/4-bit). Distinta de `asg017/sqlite-vec`.
-**Decisión:** `sqlite-vec` por defecto (simplicidad, un fichero); reevaluar `SQLite-Vector` si priorizamos móvil.
+**Mobile / low-memory alternative (future):** **SQLite-Vector by sqlite.ai** (`sqliteai/sqlite-vector`, Marco
+Bambini) — a cross-platform vector-search extension aimed at mobile/embedded (~30 MB RAM by default) with strong
+quantisation (Float32/16, BF16, Int8/UInt8, 1-bit, TurboQuant 2/3/4-bit). Distinct from `asg017/sqlite-vec`.
+**Decision:** `sqlite-vec` by default (simplicity, one file); re-evaluate `SQLite-Vector` if mobile becomes a priority.
 
-## Schema SQLite (`zaelar.db`)
+## SQLite schema (`zaelar.db`)
 
 ```sql
--- Estado: fila única, SIEMPRE en el prompt, sin búsqueda (µs)
+-- State: single row, ALWAYS in the prompt, no search (µs)
 CREATE TABLE state (
   id   INTEGER PRIMARY KEY CHECK (id = 1),
-  data JSON NOT NULL          -- nombres · idioma · reglas de trato · ubicación · recientes · temas
+  data JSON NOT NULL          -- names · language · rules of address · location · recent · topics
 );
 
--- Recuerdos (corto/medio/largo). Cada uno es una PÍLDORA: dato canónico (`text`) + metadatos. Núcleo del
--- olvido-por-peso + refuerzo. `slot`/`meta` = schema v2 (V2-013).
+-- Memories (short/mid/long). Each one is a PILL: canonical statement (`text`) + metadata. Core of
+-- forgetting-by-weight + reinforcement. `slot`/`meta` = schema v2.
 CREATE TABLE memories (
   id            INTEGER PRIMARY KEY,
   level         TEXT NOT NULL,      -- 'short' | 'mid' | 'long'
   kind          TEXT NOT NULL,      -- 'profile' | 'fact' | 'pref' | 'event' | 'msg' | 'summary' | 'insight' | 'conv' | 'result'
-  text          TEXT NOT NULL,      -- ENUNCIADO CANÓNICO (lo destila el procesador LLM; es lo que se embebe/indexa)
-  importance    REAL DEFAULT 0.5,   -- I0 base (por tipo) — relevancia CON contexto de la situación del operador
-  weight        REAL DEFAULT 0.5,   -- peso VIVO: sube con el uso, baja con el decay
+  text          TEXT NOT NULL,      -- CANONICAL STATEMENT (distilled by the LLM processor; this is what gets embedded/indexed)
+  importance    REAL DEFAULT 0.5,   -- base I0 (by type) — relevance GIVEN the context of the operator's situation
+  weight        REAL DEFAULT 0.5,   -- LIVE weight: rises with use, falls with decay
   access_count  INTEGER DEFAULT 0,
-  last_access   INTEGER,            -- epoch (para recencia y decay)
-  ttl_days      REAL,               -- NULL = infinito (hechos inmutables)
-  pinned        INTEGER DEFAULT 0,  -- 1 = NUNCA se borra (ej: clave del ledger)
-  valid         INTEGER DEFAULT 1,  -- 0 = superseded por otro
+  last_access   INTEGER,            -- epoch (for recency and decay)
+  ttl_days      REAL,               -- NULL = infinite (immutable facts)
+  pinned        INTEGER DEFAULT 0,  -- 1 = NEVER deleted (e.g. a ledger key)
+  valid         INTEGER DEFAULT 1,  -- 0 = superseded by another
   superseded_by INTEGER,
-  slot          TEXT,               -- v2: clave canónica del hecho SINGULAR (operator.name, goal.current…) → supersede/dedup EXACTO sin LLM
-  meta          TEXT,               -- v2: píldora JSON libre (entity/attribute/source/said_at/path/raw…) — no toca el hot path; alimenta visor/grafo
+  slot          TEXT,               -- v2: canonical key of the SINGULAR fact (operator.name, goal.current…) → EXACT supersede/dedup without an LLM
+  meta          TEXT,               -- v2: free JSON pill (entity/attribute/source/said_at/path/raw…) — off the hot path; feeds the viewer/graph
   created       INTEGER NOT NULL,
   updated       INTEGER NOT NULL,
-  valid_at      INTEGER,            -- v5 (V2-111 §9.2): cuándo el hecho pasó a ser CIERTO (default = created)
-  invalidated_at INTEGER            -- v5: NULL mientras valid=1; se fija UNA VEZ, nunca se vuelve a tocar
+  valid_at      INTEGER,            -- v5: when the fact became TRUE (default = created)
+  invalidated_at INTEGER            -- v5: NULL while valid=1; set ONCE, never touched again
 );
--- `slot` da el "el más reciente MANDA" DETERMINISTA: al insertar un hecho con slot, el writer invalida el vigente
--- con el mismo slot (o lo REFUERZA si el texto normalizado es idéntico → cero duplicados). SCHEMA_VERSION=2;
--- migración ALTER idempotente y NO destructiva en `memory/db.py`.
--- BI-TEMPORAL (v4→v5, V2-111 §9.2, 2026-08-17): `updated` NO sirve como "cuándo se invalidó" — lo toca también
--- el refuerzo (`writer.reinforce`) y la promoción de nivel del consolidador, así que una fila ya inválida no
--- garantiza que `updated` sea el momento de su invalidación. `valid_at`/`invalidated_at` sí lo son (fijados en
--- los 8 sitios de escritura/invalidación/restauración, nunca reutilizados para otra cosa), y permiten
--- `memory/api.py::as_of(slot, ts)` — "¿qué creíamos cierto en la fecha X?" — sin inferencia de retroactividad
--- todavía (una corrección dicha HOY se fecha HOY, no en el pasado que describe).
--- V2-038 retest (2026-07-14), dos endurecimientos del writer (`memory/writer.py`):
---   (1) `canon_slot()` — NORMALIZACIÓN de alias: el CORAZÓN (LLM) emitía slots a su aire ('location',
---       'ubicación'…) mientras la heurística usaba los canónicos ('operator.location') → DOS linajes del mismo
---       hecho que nunca se supersedían (Soria+Valencia+Bilbao vigentes A LA VEZ). El writer es el único punto de
---       paso → todos los alias colapsan al canónico ahí, para TODOS los escritores.
---   (2) el supersede invalida TODOS los vigentes del slot (antes LIMIT 1): si por cualquier vía (alias previos,
---       unforget, legacy) coexisten 2+ vigentes, la siguiente escritura los colapsa — AUTO-CURATIVO.
--- Auditoría de memoria (2026-07-14, cierre de fondo del retest):
---   (3) el VOCABULARIO de slots vive en el REGISTRO ÚNICO `memory/slots.py` (SlotSpec: clave + alias + campo de
---       state + flag identity). Lo consumen writer (canon_slot), memory_agent (_IDENTITY_SLOTS/_PATCH_TO_SLOT,
---       derivados) y el prompt del procesador (catálogo GENERADO) → las tres capas no pueden divergir. El mapa
---       _SLOT_ALIASES hardcodeado del stopgap murió aquí. Slots namespaced (cluster:*, navegador.session.*,
---       <widget>:<clave>) pasan lowercased/stripped sin registrarse.
---   (4) el SELECT de vigentes desempata por id (updated tiene resolución de segundo — mismo fix que recent_short).
---   (5) el consolidador añade `heal_slots()`: normaliza slots LEGACY (alias/mayúsculas pre-normalización) y
---       colapsa multi-vigentes del stock existente en cada ciclo de sueño (la pareja del auto-curativo del writer).
---   (6) 2ª auditoría (2026-07-14, hallazgos del auditor): el SELECT del supersede EXPANDE por ALIAS
---       (`slots.equivalent_keys`): `operator.location` colapsa también un `location`/`ubicacion` crudo que quedara
---       sin normalizar → el colapso por slot es INMEDIATO, no espera al sueño (heal_slots). Cierra el residuo de
---       "dos píldoras del mismo hecho con claves distintas conviviendo".
+-- `slot` gives a DETERMINISTIC "the newest WINS": when a fact with a slot is inserted, the writer invalidates the
+-- current one with the same slot (or REINFORCES it if the normalised text is identical → zero duplicates).
+-- Migrations are idempotent, non-destructive ALTERs in `memory/db.py`.
+-- BI-TEMPORAL (v5): `updated` cannot serve as "when it was invalidated" — reinforcement (`writer.reinforce`) and the
+-- consolidator's level promotion also touch it, so an invalid row does not guarantee that `updated` is the moment of
+-- its invalidation. `valid_at`/`invalidated_at` are (set at every write/invalidation/restore site, never reused for
+-- anything else), and they enable `memory/api.py::as_of(slot, ts)` — "what did we believe was true on date X?" —
+-- without retroactivity inference (a correction said TODAY is dated TODAY, not in the past it describes).
+-- Writer hardening (`memory/writer.py`):
+--   (1) `canon_slot()` — alias NORMALISATION: the LLM may emit slots in its own words ('location', 'ubicación'…)
+--       while the heuristic uses the canonical ones ('operator.location'); without normalisation that yields TWO
+--       lineages of the same fact that never supersede each other. The writer is the single choke point → every
+--       alias collapses to the canonical key there, for ALL writers.
+--   (2) supersede invalidates ALL current rows of the slot (not LIMIT 1): if 2+ current rows coexist by any route
+--       (old aliases, unforget, legacy), the next write collapses them — SELF-HEALING.
+--   (3) the slot VOCABULARY lives in the SINGLE REGISTRY `memory/slots.py` (SlotSpec: key + aliases + state field +
+--       identity flag). The writer (canon_slot), memory_agent (_IDENTITY_SLOTS/_PATCH_TO_SLOT, derived) and the
+--       processor prompt (GENERATED catalogue) all consume it → the three layers cannot diverge. Namespaced slots
+--       (cluster:*, navegador.session.*, <widget>:<key>) pass through lowercased/stripped without registration.
+--   (4) the SELECT of current rows breaks ties by id (`updated` has one-second resolution).
+--   (5) the consolidator's `heal_slots()` normalises LEGACY slots (aliases/uppercase from before normalisation) and
+--       collapses multiple current rows of the existing stock on every sleep cycle (the counterpart of the
+--       writer's self-healing).
+--   (6) the supersede SELECT EXPANDS by ALIAS (`slots.equivalent_keys`): `operator.location` also collapses a raw
+--       `location`/`ubicacion` left un-normalised → the collapse by slot is IMMEDIATE, it does not wait for sleep.
 
--- Vector (sqlite-vec). Fuerza bruta a nuestra escala = ms.
+-- Vector (sqlite-vec). Brute force at our scale = ms.
 CREATE VIRTUAL TABLE vec_memories USING vec0(
   memory_id INTEGER PRIMARY KEY,
-  embedding FLOAT[768]              -- embeddinggemma (truncable por Matryoshka)
+  embedding FLOAT[768]              -- 768 dims (the active provider is asked for 768 via Matryoshka)
 );
 
--- Keyword exacto (FTS5, incluido en SQLite).
+-- Exact keyword (FTS5, included in SQLite).
 CREATE VIRTUAL TABLE fts_memories USING fts5(text, content='memories', content_rowid='id');
 
--- Grafo como aristas en el MISMO fichero (nada de Neo4j).
+-- Graph as edges in the SAME file (no Neo4j).
 CREATE TABLE edges (
   from_id INTEGER NOT NULL,
   to_id   INTEGER NOT NULL,
@@ -258,16 +248,16 @@ CREATE TABLE edges (
   PRIMARY KEY (from_id, to_id, type)
 );
 
--- Episódica lazy: ficheros/PDF. Solo el RESUMEN (fila en memories) busca.
+-- Lazy episodic: files/PDFs. Only the SUMMARY (a row in memories) is searchable.
 CREATE TABLE episodic (
   id        INTEGER PRIMARY KEY,
-  path      TEXT NOT NULL,         -- ruta local al fichero
+  path      TEXT NOT NULL,         -- local path to the file
   summary   TEXT NOT NULL,
-  memory_id INTEGER,               -- resumen indexado en vec/fts vía memories
+  memory_id INTEGER,               -- summary indexed in vec/fts via memories
   bytes INTEGER, mime TEXT, created INTEGER
 );
 
--- Continuidad de tarea.
+-- Task continuity.
 CREATE TABLE journal (
   id INTEGER PRIMARY KEY, title TEXT NOT NULL,
   status TEXT NOT NULL,            -- 'pending' | 'in_progress' | 'done'
@@ -275,334 +265,304 @@ CREATE TABLE journal (
 );
 ```
 
-## Retriever híbrido (ruta caliente · ms)
+## Hybrid retriever (hot path · ms)
 
-El **estado** se inyecta siempre (sin búsqueda). Para lo demás: vector (sqlite-vec) **∥** keyword (FTS5) en
-paralelo, fusión **RRF**, y orden por score ponderado.
+**State** is always injected (no search). For everything else: vector (sqlite-vec) **∥** keyword (FTS5) in
+parallel, **RRF** fusion, and ordering by weighted score.
 
 ```
-score = α·relevancia_semántica + β·recencia + γ·importancia + δ·peso_de_uso
-por defecto:  α = 0.45   β = 0.25   γ = 0.20   δ = 0.10     (ajustables por perfil)
-RRF:          rrf(doc) = Σ_listas 1 / (k + rank_lista(doc))     con k = 60
+score = α·semantic_relevance + β·recency + γ·importance + δ·usage_weight
+defaults:  α = 0.45   β = 0.25   γ = 0.20   δ = 0.10     (tunable per profile)
+RRF:       rrf(doc) = Σ_lists 1 / (k + rank_list(doc))     with k = 60
 ```
 
 ```python
 def query(prompt, budget_tokens):
-    ctx = [ state.read() ]                      # SIEMPRE, sin búsqueda (µs)
-    q   = embed_local(prompt)
-    vec = vec_search(q, k=100)                  # sqlite-vec, fuerza bruta, ms (POOL_K, V2-031 T2: 40→100)
+    ctx = [ state.read() ]                      # ALWAYS, no search (µs)
+    q   = embed(prompt)
+    vec = vec_search(q, k=100)                  # sqlite-vec, brute force, ms (POOL_K = 100)
     kw  = fts_search(prompt, k=100)             # FTS5
-    para = vec_search_paraphrases(q, k=100)     # V2-031 T2: reformulaciones indexadas al escribir (vocab-gap)
-    cand = rrf(vec, kw, para, k=60)              # fusiona LAS TRES listas
+    para = vec_search_paraphrases(q, k=100)     # paraphrases indexed at write time (vocabulary gap)
+    cand = rrf(vec, kw, para, k=60)              # fuses THE THREE lists
     for m in cand:
         m.score = A*m.rel + B*recency(m.last_access) + G*m.importance + D*m.weight
     top = sort_desc(cand, key=score)
-    top = rerank(prompt, top)                    # RE-RANKING (V2-030): cross-encoder reordena el top-N, fail-open
-    top = graph_expand(top, edges)              # 1-hop (vecinos directos) + PPR multi-hop (V2-111 §9.1, canal
-                                                 # adicional acotado — hasta MAX_HOPS/MAX_NODES, fail-open total)
-    emit("memory.reinforce", ids(top))          # refuerzo async (no bloquea)
-    return pack(ctx + top, budget_tokens)       # trunca al presupuesto
+    top = rerank(prompt, top)                    # RE-RANKING: a cross-encoder reorders the top-N, fail-open
+    top = graph_expand(top, edges)              # 1-hop (direct neighbours) + multi-hop PPR (an additional, bounded
+                                                 # channel — up to MAX_HOPS/MAX_NODES, fully fail-open)
+    emit("memory.reinforce", ids(top))          # async reinforcement (non-blocking)
+    return pack(ctx + top, budget_tokens)       # truncates to the budget
 ```
 
-### Re-ranking del recall LARGO — model-agnostic, local por defecto (V2-030)
+### Re-ranking of LONG recall — model-agnostic, optional
 
-A ESCALA (cientos de recuerdos) el embedding local (bi-encoder, vectores independientes) ordena "borroso": la
-respuesta correcta suele estar en el top-10 pero NO en el top-1/3. Un **reranker** (cross-encoder) vuelve a puntuar
-cada candidato **leyendo query+recuerdo JUNTOS** → sube el correcto. Es la mayor palanca de recall por el menor
-coste. Medido en `tests/memory/e2e/bot/scale_eval.py` (442 durables, 281 queries de recall largo):
+At SCALE (hundreds of memories) a bi-encoder embedding (independent vectors) orders "blurrily": the right answer
+is usually in the top-10 but NOT in the top-1/3. A **reranker** (cross-encoder) re-scores each candidate **reading
+query+memory TOGETHER** → it lifts the right one. It is the biggest recall lever for the smallest cost, with a clear
+gain at recall@1 and MRR; the evaluation harness is `tests/memory/e2e/bot/scale_eval.py` and the numbers are in
+`zaelar-model-benchmarks.md`.
 
-| | baseline | **local (jina-v2-multi)** | openai (gpt-4o-mini) |
-|---|---|---|---|
-| recall@1 | 41.6% | **56.2%** | 64.8% |
-| recall@3 | 62.3% | **68.7%** | 69.0% |
-| recall@5 | 71.9% | **74.4%** | 73.0% |
-| MRR | 0.544 | 0.642 | 0.686 |
-| lat p50 | 114ms | 260ms | 849ms |
+**Architecture** (`memory/rerank.py` + `memory/rerank_local.py`, config `config/v2.py` section `memory`): the same
+LLM-agnostic pattern as the brain routing (`fast`/`code_agent`) — **provider CONFIGURABLE from the UI/config**.
+Providers: `local` (fastembed `TextCrossEncoder` `jina-reranker-v2-base-multilingual`, **ONNX/CPU → no contention
+with the GPU** that STT+TTS may already load) · `openai` (listwise LLM, or any OpenAI-compatible endpoint — quality
+ceiling, data leaves the machine) · `cohere`/`voyage` (slots for dedicated rerank APIs) · `off` (the shipped
+default, so that every deployment measures the same system; without it recall still works, just ordered less well).
 
-**Arquitectura** (`memory/rerank.py` + `memory/rerank_local.py`, config `config/v2.py` sección `memory`): mismo
-patrón LLM-agnostic que el routing del cerebro (`fast`/`code_agent`) — **proveedor CONFIGURABLE por la UI/config,
-local por defecto, cloud = cambiar `rerank_provider`**. Proveedores: `local` (default, fastembed `TextCrossEncoder`
-`jina-reranker-v2-base-multilingual`, **ONNX/CPU → cero contención con la GPU** que ya cargan STT+TTS) · `openai`
-(LLM listwise, o cualquier endpoint OpenAI-compatible — techo de calidad, datos salen a la nube) · `cohere`/`voyage`
-(slots para APIs de rerank dedicadas) · `off`.
+**Invariants** (they respect the golden latency rule): ONLY on the LONG path, **off the hot path** (long recall is
+already on demand + `asyncio.to_thread`) — **STATE/SHORT are untouched** (still direct µs reads without a model).
+**Hard FAIL-OPEN**: error/timeout/missing model → the retriever's order is returned intact (it never breaks or
+blocks). The reranker is **not generative** (it reorders already-retrieved candidates, it invents nothing → no
+hallucination risk). It is blended with recency/importance (`rerank_blend` 0.85) so as not to sink a freshly said
+fact. When enabled, the model is **warmed at boot** (`nucleo/flash/prewarm._warm_rerank`) → the first query with
+recall does not pay the cold load. Observability: `status()` (provider/model/latency).
 
-**Invariantes** (respetan la regla de oro de latencia): SOLO en la ruta LARGO, **fuera del hot path** (el recall
-largo ya va bajo demanda + `asyncio.to_thread`) — **ESTADO/CORTO NO se tocan** (siguen lectura directa µs sin
-modelo). **FAIL-OPEN duro**: error/timeout/ausencia de modelo → se devuelve el orden del retriever intacto (nunca
-rompe ni bloquea). El reranker **no es generativo** (reordena candidatos ya recuperados, no inventa → no viola la
-no-alucinación). Se funde con recencia/importancia (`rerank_blend` 0.85) para no hundir un hecho recién dicho. El
-modelo se **calienta en el arranque** (`nucleo/flash/prewarm._warm_rerank`) → la 1ª consulta con recall no paga la
-carga en frío. Observabilidad: `status()` (proveedor/modelo/latencia).
-
-> **Subir el techo del recall — iniciativa `V2-031` (memoria de fidelidad máxima).** El reranker local cierra la
-> mayor parte del hueco de ORDENACIÓN, pero el techo real es `found@10` (~82%): lo que el retriever ni trae. La
-> T1 de V2-031 midió las palancas y **reordenó las prioridades con datos** (ver `zaelar-model-benchmarks.md §6/§7/§8`
-> y `tests/memory/e2e/bot/RESEARCH.md`):
-> - ❌ **Un embedding más FUERTE NO es la palanca** (hallazgo T1): `bge-m3` (1024d SOTA multilingüe) ≈ embeddinggemma
->    (768) en found@10. El eje NO es la calidad del bi-encoder. *(Se dejó la abstracción provider-driven de dim +
->    `memory/reembed.py` para poder cambiarlo, pero no mejora el recall.)*
-> - ✅ **WRITE-completeness** — el diagnóstico de los fallos reveló que la mayoría de los "no recuperados" **no
->    están guardados** (el CORAZÓN los descartó o quedaron superseded), no son fallos de retrieval. Endurecer qué se
->    considera durable es la palanca #1.
-> - ✅ **Retrieval de lo guardado — CONSTRUIDO (T2, 2026-08-17)**: pool 40→100 (`POOL_K`, `memory/retriever.py`) +
->    **índice de PARÁFRASIS al escribir** (`memory/writer.py::index_paraphrases`, fase nueva de REM
->    `rem.py::index_paraphrases` — 1-2 reformulaciones por píldora durable generadas off-hot-path, superficie extra
->    para el vocab-gap T150 sin LLM al leer) + el grafo de conceptos. **Impacto en found@10/recall@1 sin medir de
->    forma fiable todavía** — dos bugs reales del propio arnés de medición (backend de embedding mezclado en
->    caliente, y el corpus del bot escribiéndose en inglés/con la clave del CORAZÓN sin resolver) se cerraron el
->    mismo día que T2; el número honesto queda pendiente de una corrida limpia. Ver la bitácora de `V2-031`.
-> - ✅ **Memoria AUTO-EVALUATIVA continua** (T5, la idea del operador) — un lazo *sleep-time* que se auto-sondea,
->    detecta hechos no recuperables y los **REPARA** (refuerza, añade aristas, indexa paráfrasis, marca re-embed).
-> - ✅ **Consolidación SEMÁNTICA** — cablear el hook `summarize_fn` (hoy no-op, V2-006): fusionar píldoras
->    casi-duplicadas por embedding descongestiona el espacio vectorial. Y **aristas temporales** (Graphiti, T151).
-> - 🔒 **Reranker/embedding EXTERNO** = opt-in, nunca default: `rerank_provider=`
->    `openai`/`cohere`/`voyage`. Ya enchufado por config.
+> **Raising the recall ceiling — the levers.** The reranker fixes most of the ORDERING gap; the real ceiling is
+> `found@10` — what the retriever does not bring at all. The levers, ranked by evidence (see
+> `zaelar-model-benchmarks.md §6/§7/§8` and `tests/memory/e2e/bot/RESEARCH.md`):
+> - **A STRONGER embedding is NOT the lever**: a SOTA multilingual 1024-d model (`bge-m3`) performs on par with
+>   the 768-d one on found@10. The axis is NOT the bi-encoder's quality. *(The provider-driven dimension
+>   abstraction + `memory/reembed.py` stay, so the model can be changed.)*
+> - **WRITE-completeness** — most "not retrieved" facts turn out to be **not stored** (the HEART discarded them or
+>   they were superseded), not retrieval failures. Hardening what counts as durable is lever #1.
+> - **Retrieval of what is stored — built**: a deeper pool (`POOL_K = 100`, `memory/retriever.py`) + a
+>   **PARAPHRASE index at write time** (`memory/writer.py::index_paraphrases`, also a REM phase
+>   `rem.py::index_paraphrases` — 1-2 rephrasings per durable pill generated off the hot path, extra surface for
+>   the vocabulary gap with no LLM at read time) + the concept graph.
+> - **Extension point: a continuously SELF-EVALUATING memory** — a sleep-time loop that probes itself, detects
+>   unrecoverable facts and **REPAIRS** them (reinforce, add edges, index paraphrases, mark for re-embed).
+> - **Extension point: SEMANTIC consolidation** — the `summarize_fn` hook (a no-op by default) can merge
+>   near-duplicate pills by embedding to decongest the vector space; **temporal edges** (as in Graphiti) fit the
+>   same `edges` table.
+> - **EXTERNAL reranker/embedding** = opt-in by config: `rerank_provider=openai`/`cohere`/`voyage`.
 >
-> ⚠️ **Caveat de método (V2-031 T1):** el test bot SIEMBRA con embeddings `hash` (léxicos, deterministas y rápidos,
-> `runner.py:702`); medir el recall SEMÁNTICO exige **re-embeber** el corpus con el modelo real (embeddinggemma/
-> bge-m3) por AMBOS lados — lo hace `tests/memory/e2e/bot/embed_bench.py`. No comparar query-semántica contra
-> vectores-hash (mismatch de espacio). En PRODUCCIÓN se escribe siempre con embeddinggemma.
+> **Method caveat:** the test bot SEEDS with `hash` embeddings (lexical, deterministic and fast,
+> `tests/memory/e2e/bot/runner.py`); measuring SEMANTIC recall requires **re-embedding** the corpus with the real
+> model on BOTH sides — `tests/memory/e2e/bot/embed_bench.py` does that. Never compare a semantic query against
+> hash vectors (space mismatch). In production the configured embedding provider is always used.
 
-**Grafo de CONCEPTOS** (T126, organiza la memoria conceptualmente — lo pidió el operador): al ESCRIBIR, el
-CORAZÓN etiqueta cada píldora durable con 1-3 `concepts` ligeros (salud/finanzas/deporte/familia…); el writer
-crea/reusa un **NODO-concepto** (fila `kind='concept'`, con su fila FTS+vector → recuperable) y enlaza
-**píldora↔concepto** en `edges` (bidireccional, cap 3 conceptos/píldora). Al LEER, una query de CATEGORÍA
-("¿cómo va mi salud?") casa el nodo por FTS y **`graph_expand`** aflora su cluster (alergia+operación+hábitos) —
-**SIN LLM**, traversal directo. Los vecinos de un nodo-concepto apenas se descuentan (`concept_discount`, y los
-conceptos se procesan primero) porque SON la respuesta a la categoría. Ataca T150 (el hecho aflora por la arista
-`sobre→salud`, no por embedding plano). Emergente y ACOTADO. Se puebla al escribir (off-hot-path), se lee por
-traversal directo → encaja con la regla de oro.
+**CONCEPT graph** (organises the memory conceptually): at WRITE time the HEART tags each durable pill with 1-3
+light `concepts` (health/finance/sport/family…); the writer creates/reuses a **concept NODE** (a `kind='concept'`
+row, with its own FTS+vector row → retrievable) and links **pill↔concept** in `edges` (bidirectional, cap 3
+concepts/pill). At READ time a CATEGORY query ("how is my health?") matches the node through FTS and
+**`graph_expand`** surfaces its cluster (allergy+surgery+habits) — **WITHOUT an LLM**, direct traversal. A concept
+node's neighbours are barely discounted (`concept_discount`, and concepts are processed first) because they ARE
+the answer to the category. It closes the vocabulary gap (the fact surfaces through the `about→health` edge, not
+through a flat embedding). Emergent and BOUNDED. Populated at write time (off the hot path), read by direct
+traversal → it fits the golden rule.
 
-> **Nota de decisión (substrato vs. librería externa):** el substrato es SQLite + sqlite-vec + FTS5 + RRF + `edges`
-> — los MISMOS primitivos (de producción) que usan Zep/Graphiti/Mem0 por debajo; el "grafo" son ~60 líneas sobre
-> la tabla `edges` que YA existía, NO un motor nuevo. Las alternativas "con garantías" (Zep/Graphiti→Neo4j,
-> Mem0-grafo→Neo4j, Letta) rompen las restricciones DURAS de zaelar: 100% local/offline, core SIN Docker, un
-> proceso/fichero, y **cero LLM en el read path** (la regla de oro de latencia de voz — casi todas meten LLM en el
-> search). Seguimos robando IDEAS del SOTA (aristas temporales de Graphiti para T151, linking emergente de A-MEM),
-> no su infra.
+> **Decision note (substrate vs. external library):** the substrate is SQLite + sqlite-vec + FTS5 + RRF + `edges` —
+> the SAME (production) primitives that Zep/Graphiti/Mem0 use underneath; the "graph" is ~60 lines on top of the
+> `edges` table, NOT a new engine. The "batteries-included" alternatives (Zep/Graphiti→Neo4j, Mem0-graph→Neo4j,
+> Letta) break zaelar's HARD constraints: in-process storage, a core WITHOUT Docker, one process/file, and **zero LLM
+> on the read path** (the voice golden latency rule — almost all of them put an LLM in search). We borrow IDEAS
+> from the state of the art (Graphiti's temporal edges, A-MEM's emergent linking), not its infrastructure.
 >
-> **Re-evaluación puntual (2026-07-23):** revisado el plugin Mem0 para Pi Code (memoria SaaS para agentes de
-> código: scopes project/session/global por git-root, captura automática, "dream consolidation"). Confirma la
-> decisión de arriba — es un wrapper cloud genérico para OTRO caso de uso (memoria de proyecto de un agente de
-> código, no memoria personal de un operador de voz); nuestro retriever (vec+FTS+RRF+reranker+grafo) y el CORAZÓN
-> (slot determinista + gates de precisión + REM) son más sofisticados que lo que documentan para ese plugin, y
-> somos 100% locales frente a su SaaS. Única idea con algo de mordida, sin construir: su consolidación gatea por
-> **3 condiciones** (tiempo O nº-sesiones O volumen); la fase REM de aquí solo gatea por tiempo
-> (`rem_every_hours`). Añadir gates de nº-sesiones/volumen junto al de tiempo sería un refinamiento barato si algún
-> día el volumen de escritura crece más rápido que la cadencia diaria — no hay señal hoy de que haga falta.
+> The same reasoning applies to SaaS memory plugins for coding agents (project/session/global scopes per git root,
+> automatic capture, "dream consolidation"): a generic cloud wrapper for a different use case (a coding agent's
+> project memory, not an operator's personal memory). **Extension point** worth noting from that family:
+> consolidation gated by **three conditions** (time OR number of sessions OR volume); zaelar's REM phase gates on
+> time (`rem_every_hours`), and session/volume gates could be added next to it if write volume ever outgrows the
+> daily cadence.
 
-**Gate de RECALL robusto** (`prompt.needs_recall`, tanda 29): decide si el turno dispara `compose_recall` (el
-retriever, off-loop). Antes era una WHITELIST de frases que había que ampliar sin fin. Rediseño: dispara ante
-CUALQUIER pregunta con sustancia (`¿?`/WH + ≥2 palabras) o imperativo de recuerdo ("cuéntame de…", "recuérdame…"),
-y NUNCA en saludo/asentimiento/charla trivial (`_TRIVIAL_RE`). Sesga a RECORDAR: un falso positivo = una query
-off-loop que el LLM ignora; un falso negativo = cerebro amnésico. + un backstop determinista mapea keywords→concepto
-(`memory_agent._derive_concepts`) cuando el LLM heart no etiqueta, garantizando cobertura del grafo por categoría.
+**Robust RECALL gate** (`prompt.needs_recall`): decides whether the turn triggers `compose_recall` (the retriever,
+off-loop). It is not a whitelist of phrases: it fires on ANY substantive question (`¿?`/WH + ≥2 words) or recall
+imperative ("tell me about…", "remind me…"), and NEVER on a greeting/acknowledgement/small talk (`_TRIVIAL_RE`). It
+is biased towards REMEMBERING: a false positive = an off-loop query the LLM ignores; a false negative = an amnesic
+brain. Plus a deterministic backstop maps keywords→concept (`memory_agent._derive_concepts`) when the LLM heart does
+not tag, guaranteeing graph coverage by category.
 
-**Mejoras de recuperación validadas con el test bot** (V2-013, `tests/memory/e2e/bot/`, tandas 7-15):
+**Retrieval refinements** (validated with the memory test bot, `tests/memory/e2e/bot/`):
 
-- **FTS con STEM por prefijo** (`retriever._fts_query`): el español es muy flexivo y el CORAZÓN canonicaliza
-  persona/tiempo al escribir ("estoy aprendiendo" → "aprende japonés"; "me operaron" → "se operó") → el token
-  exacto de la query NO casaba con el almacenado y, con el embedding local plano, el hecho se enterraba. Se
-  truncan los tokens de contenido (≥5) a 6 chars + `*` → `aprend*` casa aprende/aprendiendo/aprender. Solo
-  ensancha el canal FTS; la fusión RRF + el canal vectorial mantienen la precisión.
-- **Stopwords de VERBOS META** en el FTS (`recuerdas`/`acuerdas`/`dime`/`sabes`…): son meta ("¿te acuerdas
-  de…?"), NO el dato buscado. Sin filtrarlos, `recuerdas`→`recuer*` casaba con TODOS los "recuérdame…" del
-  store y tapaba la respuesta real.
-- **El recall del FlashBrain gasta su presupuesto en la memoria DURABLE** (`prompt.compose_recall`): pide un
-  POOL PROFUNDO (`limit=40`) y filtra a `mid/long`. La recencia (CORTO/conv-buffer, mensajes efímeros) YA va
-  entera en el prompt (`memory_cache`); incluirla en el recall es doble-conteo y la charla reciente ENTIERRA
-  la tarea/hecho durable que se pregunta.
-- **El BUFFER CONVERSACIONAL (`kind='conv'`) NO se embebe** (optimización 2026-07-12, `memory/writer.py`): el par
-  turno↔respuesta crudo (efímero, TTL 2d, `level='short'`) se escribe CADA turno; se lee SOLO por recencia
-  (`recent_short`, SQL directo) y el recall durable lo excluye → calcular su embedding (embeddinggemma/Ollama, GPU)
-  era gasto por turno GASTADO que además competía con el STT/TTS local y metía charla-ruido en el top del retriever.
-  El CORAZÓN ya destila lo memorable en píldoras aparte (esas SÍ se embeben). El `consolidator.promote` **excluye
-  `kind='conv'`** para que un conv nunca acabe durable sin vector. Y el descarte barato pre-LLM
-  (`memory_agent._TRIVIA_SKIP_RE`) cubre más muletillas/asentimientos ("ah/eh/mmm/ya está/bueno/venga…") → menos
-  corridas del procesador LLM local en turnos triviales (menos GPU/eventos). Regla: el CORTO es de RECENCIA, no de
-  índice — no gasta vector.
-- **`recent_short` DETERMINISTA** (`ORDER BY updated DESC, id DESC`): `updated` tiene resolución de segundo →
-  escrituras del mismo segundo empataban con desempate arbitrario y un turno más reciente podía caer fuera de
-  la ventana (rompía "el más reciente MANDA"). El desempate por `id` (orden de inserción) lo estabiliza.
-- **Gaps ABIERTOS** (techos reales, NO se falsean los tests): **T150** recall por vocabulario-gap puro
-  ("instrumento"→"guitarra", sin solape léxico, exige saber que la guitarra es un instrumento — techo del
-  embedding local); **T151** comparación CRONOLÓGICA de orden ("¿qué fue antes, X o Y?" exige co-recuperar
-  ambos eventos fechados — gap del SOTA, LongMemEval "chronological awareness" 0.20-0.29). Ambos en V2-019.
+- **FTS with prefix STEMMING** (`retriever._fts_query`): Spanish is highly inflected and the HEART canonicalises
+  person/tense at write time ("estoy aprendiendo" → "aprende japonés"; "me operaron" → "se operó") → the exact
+  query token would not match the stored one. Content tokens (≥5 chars) are truncated to 6 chars + `*` →
+  `aprend*` matches aprende/aprendiendo/aprender. It only widens the FTS channel; RRF fusion + the vector channel
+  keep precision.
+- **META-VERB stopwords** in FTS (`recuerdas`/`acuerdas`/`dime`/`sabes`…): they are meta ("¿te acuerdas de…?"), NOT
+  the data sought. Unfiltered, `recuerdas`→`recuer*` would match EVERY "recuérdame…" in the store and bury the real
+  answer.
+- **The FlashBrain's recall spends its budget on DURABLE memory** (`prompt.compose_recall`): it asks for a DEEP
+  POOL (`limit=40`) and filters to `mid/long`. Recency (SHORT/conv buffer, ephemeral messages) ALREADY goes whole
+  into the prompt (`memory_cache`); including it in recall would double-count, and recent chatter would BURY the
+  durable task/fact being asked about.
+- **The CONVERSATIONAL BUFFER (`kind='conv'`) is NOT embedded** (`memory/writer.py`): the raw turn↔reply pair
+  (ephemeral, TTL 2d, `level='short'`) is written EVERY turn; it is read ONLY by recency (`recent_short`, direct
+  SQL) and durable recall excludes it → embedding it would be a per-turn cost with no reader, and would put chatter
+  noise at the top of the retriever. The HEART already distils what is memorable into separate pills (those ARE
+  embedded). `consolidator.promote` **excludes `kind='conv'`** so a conv row never ends up durable without a
+  vector. And the cheap pre-LLM discard (`memory_agent._TRIVIA_SKIP_RE`) covers fillers/acknowledgements
+  ("ah/eh/mmm/ya está/bueno/venga…") → fewer processor runs on trivial turns. Rule: SHORT is for RECENCY, not for
+  the index — it spends no vector.
+- **Deterministic `recent_short`** (`ORDER BY updated DESC, id DESC`): `updated` has one-second resolution → writes
+  in the same second would tie, so the tie is broken by `id` (insertion order) to keep "the newest WINS" stable.
+- **Hard cases the design addresses explicitly:** recall across a pure vocabulary gap ("instrument" → "guitar",
+  with no lexical overlap) is served by the concept graph and the paraphrase index; CHRONOLOGICAL ordering
+  questions ("which came first, X or Y?") need both dated events co-retrieved, which the bi-temporal columns and
+  `as_of` support.
 
-## Olvido por peso + refuerzo (el corazón "neuronal")
+## Forgetting by weight + reinforcement (the "neural" core)
 
-Respaldado por investigación 2026 (access-frequency reinforcement, curva de Ebbinghaus, FadeMem).
+Grounded in published research (access-frequency reinforcement, the Ebbinghaus curve, FadeMem).
 
-- **Refuerzo por uso**: cada vez que un recuerdo entra en un prompt →
-  `access_count++ · last_access = now · weight = min(1, weight + step)` (el acceso **resetea** el decay).
-- **Decay temporal** (en consolidación): `I(t) = I₀·e^(−λ·Δt)`; **λ ≈ 0.001/día** (vida media ≈ **693 días** =
-  ln2/λ), ajustable por tipo de memoria. **POR VENTANA desde 2026-07-20** (fix F1, auditoría 2026-07-19): el Δt se
-  mide desde el ÚLTIMO ciclo de decay (marcador `sys_kv.decay_last_run`), no desde `last_access` en cada pasada —
-  antes cada consolidación horaria re-aplicaba el decay ACUMULADO (~24×/día: una píldora idle 30 días perdía ~51%
-  de peso POR DÍA en vez de seguir su vida media real).
-- **TTL por categoría**: hechos inmutables (nombre, restricciones) → `ttl = NULL` (∞); contexto transitorio →
-  TTL corto; preferencias → intermedio.
-- **Pinned**: `pinned = 1` → nunca se borra aunque nunca se acceda (ej: clave del Bitcoin ledger).
-- **Borrado por peso**: **SOLO** cuando se supera el límite de almacenamiento; se borran los de menor peso que no
-  estén pinned, hasta volver bajo el límite. Mientras haya espacio, no se borra nada.
+- **Reinforcement by use**: every time a memory enters a prompt →
+  `access_count++ · last_access = now · weight = min(1, weight + step)` (access **resets** the decay).
+- **Time decay** (during consolidation): `I(t) = I₀·e^(−λ·Δt)`; **λ ≈ 0.001/day** (half-life ≈ **693 days** =
+  ln2/λ), tunable per memory type. **PER WINDOW**: Δt is measured from the LAST decay cycle (marker
+  `sys_kv.decay_last_run`), not from `last_access` on every pass — otherwise each hourly consolidation would
+  re-apply the ACCUMULATED decay and an idle pill would lose weight many times faster than its real half-life.
+- **TTL by category**: immutable facts (name, restrictions) → `ttl = NULL` (∞); transient context → short TTL;
+  preferences → intermediate.
+- **Pinned**: `pinned = 1` → never deleted even if never accessed (e.g. a Bitcoin ledger key).
+- **Deletion by weight**: **ONLY** when the storage limit is exceeded; the lowest-weight non-pinned memories are
+  deleted until back under the limit. While there is room, nothing is deleted.
 
-## Consolidador ("sueño") — job periódico, sin prisa
+## Consolidator ("sleep") — periodic job, no rush
 
-Corre a intervalos (diario / horario / según tamaño y tipo de memoria). Lo dispara el **loop orquestador**.
+Runs at intervals (daily / hourly / by size and memory type). Triggered by the **orchestrator loop**.
 
 ```python
-def consolidate():                              # diario / horario / por tamaño
-    # 1. comprimir: corto que sobrevive → resumen 'mid'; mid viejo → 'long'
+def consolidate():                              # daily / hourly / by size
+    # 1. compress: surviving short → 'mid' summary; old mid → 'long'
     for c in clusters(short_older_than(T)): upsert(summarize(c), level='mid')
-    # 2. deduplicar (interferencia): fusiona recuerdos muy similares
+    # 2. deduplicate (interference): merges very similar memories
     for a, b in near_duplicates(sim > τ): merge(a, b)
-    # 3. conflictos temporales: el hecho nuevo supersede al viejo
+    # 3. temporal conflicts: the new fact supersedes the old one
     for old, new in conflicts(): old.valid = 0; old.superseded_by = new.id
-    # 4. decay: weight/importance de los NO accedidos *= e^(−λ·Δt)
+    # 4. decay: weight/importance of the NOT accessed *= e^(−λ·Δt)
     for m in memories: m.weight = decay(m)
-    # 5. borrado por peso SOLO si se excede el límite (nunca los pinned)
+    # 5. deletion by weight ONLY if the limit is exceeded (never the pinned ones)
     while store_size() > LIMIT:
         delete(lowest_weight(where pinned = 0))
 ```
 
-**Poda de índices `prune_invalid` (F1, 2026-07-20):** las píldoras invalidadas (`valid=0`, superseded) conservan su
-FILA (histórico intacto) pero, pasado un margen, salen de los índices **vec/FTS** — una cáscara invalidada no debe
-seguir compitiendo en el retriever ni ocupando espacio vectorial. Corre dentro del sueño ligero
-(`memory/consolidator.py::prune_invalid`).
+**Index pruning `prune_invalid`:** invalidated pills (`valid=0`, superseded) keep their ROW (history intact) but,
+after a margin, leave the **vec/FTS** indexes — an invalidated shell should not keep competing in the retriever or
+occupying vector space. It runs inside light sleep (`memory/consolidator.py::prune_invalid`).
 
-### Sueño PROFUNDO — fase REM (V2-056, `memory/rem.py`)
+### DEEP sleep — the REM phase (`memory/rem.py`)
 
-El consolidador clásico es el sueño **LIGERO** (mecánica barata cada hora: promote/dedup-exacto/decay/prune/evict).
-La **fase REM** es el ciclo **PROFUNDO** (diario por defecto), disparado por `nucleo/loop.py` tras el sueño ligero,
-en el que la memoria se **ORDENA, se RELACIONA y se SINTETIZA** — todo OFF-hot-path y con cada fase AISLADA (un
-fallo no tumba el sueño):
+The classic consolidator is **LIGHT** sleep (cheap mechanics every hour: promote/exact dedup/decay/prune/evict). The
+**REM phase** is the **DEEP** cycle (daily by default), triggered by `nucleo/loop.py` after light sleep, in which
+the memory is **ORDERED, RELATED and SYNTHESISED** — all off the hot path and with every phase ISOLATED (one
+failure does not bring sleep down):
 
-1. **`repair_embeddings()`** — re-embebe píldoras SIN vector o marcadas `meta.embed_pending` (las deja así el
-   enforcement de firma del writer ante modelo discordante/degradado) → el índice semántico se **auto-repara** cada
-   noche. Presupuesto configurable (**`§memory.rem_repair_limit` / `ZAELAR_REM_REPAIR_LIMIT`, def 1.000/sueño** —
-   V2-103, subido del tope fijo de 200 que no vaciaba un backlog de varios cientos en tiempo razonable; es un job
-   100% local sin coste, sin LLM).
-2. **`semantic_dedup()`** — dedup por SIGNIFICADO (coseno sobre los vectores ya calculados, **sin LLM**; umbral
-   0.86 CALIBRADO contra la BD real + **guarda de cifras en conflicto**: dos hechos con números/fechas distintos
-   jamás se fusionan): los ecos-paráfrasis de una misma tarea ("cita ITV el 23" × 8) colapsan en 1 — transfiere
-   aristas, invalida el resto con `valid=0 + superseded_by` (histórico intacto). Era el pendiente declarado de V2-013.
-   **Complementado (V2-103) por un dedup EXACTO SÍNCRONO en la propia escritura** (`writer.insert_memory`,
-   `LOWER(text)=LOWER(?)` sobre las vigentes sin slot) — el dedup exacto del consolidador solo corría cada hora,
-   ventana suficiente para que el mismo hecho literal, dicho dos turnos seguidos, quedara duplicado (auditoría en
-   vivo: "Su suegro se llama Pedro." insertado 2 veces, 3s aparte, ambas `valid=1`).
-3. **`synthesize(hook)`** — la única fase con LLM, **INYECTADA por el llamador** (la memoria NO importa cerebros;
-   el loop cablea `nucleo/memllm.synthesize_concept_groups`, mismo patrón que `summarize_fn`): agrupa durables por
-   **CONCEPTO** (grafo `edges`) y destila **1 INSIGHT de alto nivel por grupo** (`kind='insight'`,
-   **`slot=insight:<concepto>`** → se REESCRIBE en cada sueño, no se acumula). Convierte 30 hechos sueltos en "lo
-   que zaelar SABE de ti" (la reflexión de Generative Agents / sleep-time compute). Hook fail-open (`[]` = sin
-   insights, el sueño sigue). **Ya no es pura ADICIÓN (V2-103):** tras escribir el insight, llama a
-   `writer.demote_summarized(ids, insight_id)` sobre las píldoras crudas que lo alimentaron — multiplica su
-   `weight` (factor 0.6, suelo 0.05, nunca toca `pinned`) y estampa `meta.summarized_by`, **sin invalidar ni
-   borrar nada** (el histórico se conserva intacto, igual que siempre). Es la mitad que faltaba de "REM como
-   sueño que consolida": antes el insight se apilaba ENCIMA de las píldoras crudas, que seguían compitiendo a
-   peso completo para siempre. **Precisamente porque ahora DESPLAZA en vez de solo competir (V2-103), ningún
-   insight se escribe ni demota nada sin pasar un gate de fidelidad (V2-104):**
-   1. **`verify_fn`** (`nucleo/memllm.verify_insight_grounded`, cableado por el loop junto a
-      `synthesize_concept_groups`) es el **ÁRBITRO cuando está disponible**: una llamada FRESCA e independiente
-      de la que generó el insight, preguntando si cada afirmación está respaldada por los datos — fail-**CLOSED**
-      (sin respuesta clara = no fiable), al revés que el resto de tareas de memoria, porque aquí perder un
-      insight legítimo sale más barato que dejar pasar uno inventado que desplaza hechos correctos.
-   2. **`_grounded()`** (backstop determinista, sin LLM, cifras/nombres propios deben anclar en los datos) solo
-      decide cuando **NO hay `verify_fn` disponible** — red de seguridad gratis para el caso sin LLM, no un veto
-      previo. **Corregido tras validación REAL (2026-08-16, medido contra DeepSeek V4 Flash):** dejarlo vetar
-      SIEMPRE antes del LLM rechazaba de forma sistemática paráfrasis fieles — el modelo convierte de forma
-      consistente "las nueve" (fuente) → "las 9" (insight), que `_grounded()` rechaza por comparar substring
-      literal sin normalizar dígito↔palabra, mientras el verificador LLM real la aceptaba correctamente en 3/3
-      intentos. El mismo principio que V2-075 ya fijó en otro módulo: el juicio semántico lo decide un MODELO,
-      no un patrón hardcodeado — dejar que el patrón vete por delante del modelo era el error.
+1. **`repair_embeddings()`** — re-embeds pills WITHOUT a vector or marked `meta.embed_pending` (the writer's
+   signature enforcement leaves them like that when the model is mismatched/degraded) → the semantic index
+   **self-repairs** every night. Configurable budget (**`§memory.rem_repair_limit` / `ZAELAR_REM_REPAIR_LIMIT`,
+   default 1,000 per sleep**, large enough to drain a backlog of several hundred in one night; no LLM involved).
+2. **`semantic_dedup()`** — dedup by MEANING (cosine over the already computed vectors, **no LLM**; threshold 0.86,
+   CALIBRATED against a real database, + a **conflicting-figures guard**: two facts with different numbers/dates
+   are never merged): paraphrase echoes of the same task ("ITV appointment on the 23rd" × 8) collapse into 1 — it
+   transfers edges and invalidates the rest with `valid=0 + superseded_by` (history intact). **Complemented by a
+   SYNCHRONOUS exact dedup at write time** (`writer.insert_memory`, `LOWER(text)=LOWER(?)` over the current rows
+   without a slot) — the consolidator's exact dedup only runs hourly, a window wide enough for the same literal
+   fact, said two turns in a row, to be stored twice.
+3. **`synthesize(hook)`** — the only phase with an LLM, **INJECTED by the caller** (the memory does NOT import
+   brains; the loop wires `nucleo/memllm.synthesize_concept_groups`, same pattern as `summarize_fn`): it groups
+   durable pills by **CONCEPT** (the `edges` graph) and distils **1 high-level INSIGHT per group**
+   (`kind='insight'`, **`slot=insight:<concept>`** → REWRITTEN on every sleep, not accumulated). It turns 30 loose
+   facts into "what zaelar KNOWS about you" (the reflection of Generative Agents / sleep-time compute). Fail-open
+   hook (`[]` = no insights, sleep continues). **It displaces, not only adds:** after writing the insight it calls
+   `writer.demote_summarized(ids, insight_id)` on the raw pills that fed it — it multiplies their `weight` (factor
+   0.6, floor 0.05, never touches `pinned`) and stamps `meta.summarized_by`, **without invalidating or deleting
+   anything** (history is kept intact). That way the insight does not sit ON TOP of raw pills that keep competing
+   at full weight forever. **Precisely because it displaces, no insight is written and nothing is demoted without
+   passing a fidelity gate:**
+   1. **`verify_fn`** (`nucleo/memllm.verify_insight_grounded`, wired by the loop next to
+      `synthesize_concept_groups`) is the **ARBITER when available**: a FRESH call, independent of the one that
+      generated the insight, asking whether every claim is backed by the data — fail-**CLOSED** (no clear answer =
+      not trustworthy), the opposite of the other memory tasks, because losing a legitimate insight is cheaper than
+      letting an invented one through to displace correct facts.
+   2. **`_grounded()`** (deterministic backstop, no LLM: figures/proper names must anchor in the data) decides only
+      when **NO `verify_fn` is available** — a free safety net for the no-LLM case, not a prior veto. A literal
+      substring check cannot see that "las nueve" (source) and "las 9" (insight) are the same, while a model can;
+      the semantic judgement belongs to a MODEL, not to a hard-coded pattern, so the pattern never vetoes ahead of
+      the model.
 
-   Cualquier rechazo es VISIBLE (`logger.warning` + `health_state.record`, nunca silencioso) y no cuesta el
-   concepto — se reintenta en el próximo sueño. También hay un tope de longitud (`MAX_INSIGHT_CHARS=400`): antes
-   solo había mínimo, y un insight sin techo puede crecer sueño tras sueño.
-4. **`hygiene()`** — el chequeo del día: **% de escritura heurística en 24h → ALERTA si >50%** (un CORAZÓN caído
-   debe SALTAR, no otra vez 2 días en silencio — incidente 2026-07-17/19), `embed_pending` restantes, tamaños. El
-   informe vuelve al llamador (el loop decide alertar) y se emite por el bus (`memory.rem`).
+   Any rejection is VISIBLE (`logger.warning` + `health_state.record`, never silent) and does not cost the concept —
+   it is retried on the next sleep. There is also a length cap (`MAX_INSIGHT_CHARS=400`) so an insight cannot grow
+   sleep after sleep.
+4. **`hygiene()`** — the daily check: **% of heuristic writes in 24h → ALERT if >50%** (a HEART that is down must
+   SHOW, never fail quietly), remaining `embed_pending`, sizes. The report goes back to the caller (the loop decides
+   whether to alert) and is emitted on the bus (`memory.rem`).
 
-Cadencia: marcador persistente **`sys_kv.rem_last_run`** + `config §memory.rem_every_hours` (def 24h, mín 1h; env
-`ZAELAR_REM_SECS` manda si está). **Kill-switch `ZAELAR_REM=0`**. Modelo de síntesis por config
-(`§memory.rem_model/rem_base_url/rem_api_key`, default **`deepseek/deepseek-v4-flash` vía AIMLAPI** — ver
-§Modelos de la memoria) resuelto por el **router interno `nucleo/memllm.py`** (modelos POR TAREA del módulo de
-memoria, key POR ENDPOINT — lección del incidente: una key suelta enviada al endpoint equivocado tumbó el CORAZÓN
-2 días en silencio).
+Cadence: persistent marker **`sys_kv.rem_last_run`** + `config §memory.rem_every_hours` (default 24h, min 1h; env
+`ZAELAR_REM_SECS` wins if set). **Kill switch `ZAELAR_REM=0`**. Synthesis model by config
+(`§memory.rem_model/rem_base_url/rem_api_key`; defaults in `config/models.default.json` §memory_rem — see §Memory
+models), resolved by the **internal router `nucleo/memllm.py`** (models PER TASK of the memory module, key PER
+ENDPOINT — a key sent to the wrong endpoint must be impossible by construction).
 
-> ⚠️ **La fase 3 estuvo MUERTA semanas (incidente 2026-08-09).** `_REM_SYSTEM` termina con el ejemplo del contrato
-> de salida —`[{"concept": str, "insight": str|null}]`— y se interpolaba con `str.format(lang=…)`: Python lee esas
-> llaves literales como marcadores y lanza `KeyError` en CADA llamada; el `except` de `synthesize` lo convertía en
-> un `warning` y 0 insights. **Fail-open perfecto y silencioso**: el síntoma era «la memoria no consolida», nunca
-> un error. Arreglado con `.replace` (el idioma que ya usaba `mem_processor`), blindado con
-> `tests/memory/unit/test_rem_prompt.py` —que **prohíbe explícitamente** volver a `.format` sobre ese prompt— y el
-> fallo dejó de ser invisible: log a ERROR + `health_state.record("memory")` → sale en el ◉. **La lección, que ya
-> es la tercera vez en este módulo: un fallo de la memoria NUNCA puede quedarse en un `logger.warning`.**
-> Dos topes latentes del mismo sitio, que truncaban en silencio: `max_tokens` 1200→**4000** (un modelo que razona
-> agotaba el presupuesto antes de cerrar el JSON → array truncado → `[]` sin error; medido: 1 de cada 3 llamadas)
-> y `timeout` 60→**240s** (REM corre de madrugada: no hay prisa que justifique perder la consolidación).
+> **Robustness rules of the synthesis call.** `_REM_SYSTEM` ends with the output-contract example
+> (`[{"concept": str, "insight": str|null}]`), whose literal braces `str.format` would read as placeholders and
+> turn into a `KeyError` on every call — so the prompt is filled with `.replace`, never `.format`, and
+> `tests/memory/unit/test_rem_prompt.py` **explicitly forbids** going back to `.format` on it. A synthesis failure is
+> logged at ERROR + `health_state.record("memory")` → it shows in the ◉ health indicator: **a memory failure must
+> never end as a mere `logger.warning`**, because a fail-open path that is silent looks like "the memory does not
+> consolidate", never like an error. The call budget is generous on purpose — `max_tokens` **4000** (a model that
+> reasons can exhaust a small budget before closing the JSON and return a truncated array) and `timeout` **240s**
+> (REM runs at night: there is no hurry that justifies losing the consolidation).
 
 ---
 
-## Modelos de la memoria — QUÉ usamos, POR QUÉ, y dónde está la evidencia
+## Memory models — WHAT we use, WHY, and where the evidence is
 
-> **Esta sección es la respuesta canónica a «¿por qué estos modelos?».** Está pensada para no tener que repetir
-> ningún benchmark: si alguien pregunta, se responde desde aquí. El detalle denso vive en
-> `zaelar-model-benchmarks.md §12.3` (destilar) y **§12.4** (consolidar); los informes CRUDOS de cada corrida están
-> en `tests/memory/e2e/bot/resultados/` (solo en local — gitignoreado desde 2026-10-10) y los arneses son reproducibles.
+> **This section is the canonical answer to "why these models?"**, written so that no benchmark has to be repeated
+> to answer it. The dense detail lives in `zaelar-model-benchmarks.md §12.3` (distilling) and **§12.4**
+> (consolidating); the harnesses are versioned and reproducible (see below), and each run writes its raw report
+> under `tests/memory/e2e/bot/resultados/` (local output, not tracked). The effective defaults are declared, with
+> their rationale, in **`config/models.default.json`** (`memory_writer`, `memory_rem`, `embeddings`, `reranker`).
 
-> ⛔ **Y LA RESPUESTA CANÓNICA A «PONLE UN FAILOVER A LOS EMBEDDINGS» ES QUE NO SE PUEDE** (V2-758,
-> 2026-09-23, preguntado por el operador). El CORAZÓN y el REM sí relevan —son modelos de chat y el escalón
-> siguiente contesta la misma pregunta—, pero un modelo de **embeddings DEFINE el espacio vectorial** en el
-> que ya vive cada píldora de `zaelar.db`: un suplente distinto no contesta más barato, contesta en
-> coordenadas que no se pueden comparar con nada guardado. Moverlo es **re-embeber la memoria entera**
-> (`memory/reembed.py`), nunca una edición de config. El único suplente honesto es el MISMO modelo por otra
-> puerta, y hoy no existe: medido el 2026-09-23 contra las claves reales, OpenAI `text-embedding-3-small`
-> contesta 200 en 269 ms, **AIMLAPI da 403 `error code: 1010`** y DeepSeek no tiene endpoint de embeddings.
-> Así que lo que se hizo fue **hacer VISIBLE la caída** —ámbar en la caja de memoria diciendo que el recuerdo
-> se guarda SIN vector y que la búsqueda por significado cae a léxica— en vez de taparla con un sustituto que
-> envenenaría el recall en silencio. `test_the_embeddings_row_still_declares_NO_stand_in` (nodo 2.77) se pone
-> rojo el día que alguien «arregle» la tabla.
+> ⛔ **Embeddings have NO failover, by design.** The HEART and REM can fall through to a stand-in — they are chat
+> models, and the next rung answers the same question. An **embedding model DEFINES the vector space** every pill
+> in `zaelar.db` already lives in: a different stand-in does not answer more cheaply, it answers in coordinates
+> that cannot be compared with anything stored. Moving it means **re-embedding the whole memory**
+> (`memory/reembed.py`), never a config edit; the space signature lives in `<db>.embedsig`. The only honest
+> stand-in would be the SAME model behind another door. So when the provider is unavailable the failure is made
+> **VISIBLE** — amber in the memory box, saying that new memories are stored WITHOUT a vector (marked
+> `embed_pending`, repaired by REM) and that search by meaning drops to lexical — instead of hiding it behind a
+> substitute that would poison recall silently. `test_the_embeddings_row_still_declares_NO_stand_in` (node 2.77)
+> turns red the day someone "fixes" the table.
 
-**La memoria usa LLM en DOS sitios, los dos de ESCRITURA y los dos off-hot-path. LEER no usa LLM nunca** (retriever
-sqlite-vec + FTS5 + RRF + reranker CPU) — ese es el invariante que hace que la latencia de estos modelos no le
-cueste nada al turno de voz.
+**The memory uses an LLM in TWO places, both for WRITING and both off the hot path. READING never uses an LLM**
+(retriever sqlite-vec + FTS5 + RRF + CPU reranker) — that is the invariant that makes the latency of these models
+cost the voice turn nothing.
 
-| tarea | qué hace | modelo (2026-08-09) | cadencia | evidencia |
+| task | what it does | default (`config/models.default.json`) | cadence | evidence |
 |---|---|---|---|---|
-| **CORAZÓN** (`nucleo/mem_processor.py`) | destila cada turno en píldoras + metadatos | **`deepseek/deepseek-v4-flash`** DIRECTO (`api.deepseek.com`, desde 2026-08-16) | **cada turno** (miles/día) | §12.3 |
-| **Sueño REM** (`nucleo/memllm.py`) | agrupa durables por concepto → 1 insight | **`deepseek/deepseek-v4-flash`** vía AIMLAPI | **1 vez al día** | §12.4 |
+| **HEART** (`nucleo/mem_processor.py`) | distils every turn into pills + metadata | **DeepSeek Flash DIRECT** (`api.deepseek.com`), stand-in OpenAI `gpt-4.1-mini` | **every turn** | §12.3 |
+| **REM sleep** (`nucleo/memllm.py`) | groups durable pills by concept → 1 insight | **DeepSeek Flash DIRECT**, stand-in OpenAI `gpt-4.1-mini` | **once a day** | §12.4 |
+| **Embeddings** (`memory/embeddings.py`) | text → vector for semantic search | OpenAI `text-embedding-3-small` at 768 dims, **no stand-in** (see above) | every durable write + every recall | `models.default.json` §embeddings |
 
-**Mismo modelo, endpoints YA DIVERGENTES** (2026-08-16): nacieron por el mismo broker (2026-08-09) pero el CORAZÓN
-se movió a DIRECTO cuando AIMLAPI dejó de responder para este modelo; REM se queda en AIMLAPI (1 llamada/día, sin
-la misma presión de disponibilidad). Self-host y nube siguen compartiendo el MISMO modelo en las dos tareas.
+The same defaults serve every deployment, self-hosted or not; any of them can be changed from the UI.
 
-**Una tercera tarea vive en el mismo router pero NO es memoria** — conviene no confundirlas:
+**A third task lives in the same router but is NOT memory** — worth not confusing them:
 
-| tarea | qué hace | modelo (2026-08-09) | cadencia | evidencia |
+| task | what it does | default | cadence | evidence |
 |---|---|---|---|---|
-| **i18n init** (`i18n/init/generate.py`) | traduce los 514 strings del UI a un idioma nuevo | **`deepseek-v4-pro`** DIRECTO (norma del operador 2026-08-19) | **1 vez por IDIOMA** (init + upgrade) | §12.5 |
+| **i18n init** (`i18n/init/generate.py`) | translates the UI strings into a new language | **`deepseek-v4-pro`** DIRECT, stand-in `gpt-4.1-mini` | **once per LANGUAGE** (init + upgrade) | §12.5 |
 
-Está en `memllm` porque comparte la costura off-hot-path (`chat_sync` + key por endpoint), no porque escriba en la
-memoria. **Su criterio es la FIABILIDAD, no el precio ni la calidad marginal**: se paga una sola vez por idioma
-(11 lotes ≈ $0,08), y un lote perdido deja 50 strings de la UI en inglés. Por eso NO usa el `deepseek` de la
-memoria: acierta, pero razona (6.700-8.500 tokens de salida para ~1.200 de contenido) — el mismo perfil que
-truncaba el REM. `gemini-2.5-flash` tampoco: una pasada de árabe devolvió 0 de 50 con la respuesta cortada.
+It is in `memllm` because it shares the off-hot-path seam (`chat_sync` + key per endpoint), not because it writes
+to the memory. **Its criterion is RELIABILITY, not price or marginal quality**: it is paid once per language, and a
+lost batch would leave a block of UI strings in English. The candidates that reason at length or truncate their
+answer on long non-Latin batches are ruled out for that reason (§12.5).
 
-### Ningún camino sale por OpenAI directo (norma del operador, 2026-08-09)
+### Provider routing rules
 
-**TODO pasa por el broker AIMLAPI** — una sola credencial que configurar. Z.AI (Brain Workers) y Groq/xAI van
-aparte y solo donde hacen falta, con su propia credencial. Que un modelo se llame `openai/gpt-4.1-mini` NO
-significa cuenta de OpenAI: es el broker sirviendo ese modelo. Cuando se cerró la elección de modelos quedaban
-DOS restos apuntando a `api.openai.com`, los dos con el mismo defecto latente —sin
-`OPENAI_API_KEY`, así que habrían fallado en silencio como falló el REM—: la tarea **i18n** de `memllm` y el
-**Susurro** (`config/v2.py §susurro`). Ambos movidos al broker; el Susurro conserva su modelo exacto
-(`gpt-4.1-mini`), así que no hay calidad que re-medir, solo camino.
+The model table follows a few rules (stated at the top of `config/models.default.json`):
 
-Comprobación de que no vuelve a colarse uno — **mira los DEFAULTS, no las menciones**: `api.openai.com` sigue
-apareciendo a propósito en el catálogo de opciones de la UI (`server/config_api.py`, por si alguien QUIERE
-elegirlo), en la resolución de key por endpoint (`fast_client`, `susurro/client`) y en la tabla de tarifas del
-metering. Lo que no puede volver a aparecer es en un valor por defecto:
+- **A titular, ONE stand-in, and AT MOST a third rung.** Never more than three levels anywhere — a fourth cannot be
+  reasoned about, configured or debugged.
+- **The chat memory services (HEART, REM) run on a direct provider as titular**, with OpenAI `gpt-4.1-mini` as the
+  stand-in one rung below — so a titular that returns an empty `200` (a reasoning model eating `max_tokens`) falls
+  THROUGH to the stand-in instead of killing the cycle.
+- **A broker (AIMLAPI) is failover only** — second or third rung at most, never the titular of any service.
+- **Everything must be able to run in a container.** Ollama is a local server and does not exist there, which is
+  why the default embeddings go through a cloud provider; Ollama remains a panel option for self-hosters.
+- **The credential is resolved PER ENDPOINT** (`nucleo/provider_keys.py`): the key follows the URL, never the
+  other way round, so changing a model never requires touching keys.
+
+To see the endpoints the memory tasks resolve to right now (defaults plus whatever the UI changed):
 
 ```bash
 cd engine && ./.venv/bin/python - <<'PY'
@@ -610,716 +570,677 @@ from nucleo import memllm
 from nucleo.susurro import client as sus
 from config import v2
 m = v2.get("memory") or {}
-print("CORAZÓN", m.get("mem_processor_base_url"))
+print("HEART", m.get("mem_processor_base_url"))
 for t in ("rem", "i18n"):
     print(t, memllm.resolve(t)[0])
 print("susurro", (sus.cfg() or {}).get("base_url"))
 PY
 ```
 
-### Por qué el criterio es DISTINTO en cada una (y no es opinión, es la forma del código)
+### Why the criterion is DIFFERENT for each one (not opinion — it follows from the shape of the code)
 
-- **CORAZÓN → manda el PRECIO.** Corre en cada turno, así que el coste es lineal con el uso: **$0,68 por 1.000
-  turnos destilados** frente a los $1,516 del titular anterior (`gpt-4.1-mini`) = **−55%**. Se cambió porque
-  EMPATA en los dos ejes que destruyen datos —captar el hecho (98,5% vs 98,9%: un hecho de 90, dentro del ruido) y
-  no ensuciar con descartes (100% los dos)—, no porque sea "mejor".
-- **REM → manda la CALIDAD.** `rem.py` manda TODOS los grupos en **UNA llamada**, con topes `MAX_GROUPS=8` ×
-  `pills[:12]`, **una vez al día**: ~365 llamadas al año con la entrada ACOTADA por diseño. **El coste NO escala
-  con el tamaño de la memoria**. Optimizar precio ahí sería optimizar ruido; en cambio un insight malo se escribe como píldora DURABLE
-  (`slot=insight:<concepto>`) que el retriever puede devolver como si fuera un hecho del operador.
+- **HEART → PRICE decides.** It runs on every turn, so its cost is linear with use. The DeepSeek Flash model was
+  chosen because it TIES with `gpt-4.1-mini` on the two axes that destroy data — capturing the fact and not
+  polluting with discards — at roughly half the cost per thousand distilled turns; not because it is "better".
+- **REM → QUALITY decides.** `rem.py` sends ALL groups in **ONE call**, capped at `MAX_GROUPS=8` × `pills[:12]`,
+  **once a day**: the input is BOUNDED by design and **the cost does NOT scale with the size of the memory**.
+  Optimising price there would be optimising noise; a bad insight, on the other hand, is written as a DURABLE pill
+  (`slot=insight:<concept>`) that the retriever can return as if it were a fact about the operator.
 
-### Los vetos — por qué NO usamos el más barato ni el más potente
+### The vetoes — why we use neither the cheapest nor the most powerful
 
-- ⛔ **`gpt-4o-mini`** (más barato que el titular, $0,567/1k) **VETADO en el CORAZÓN**: a una alergia dicha en
-  **inglés** le pone `slot=operator.diet` — 3/3 pasadas del bench y 3/3 reproduciéndolo aparte. Un `slot`
-  **invalida todas las píldoras anteriores con ese slot**, así que un futuro «ahora soy vegetariano» borraría la
-  alergia al marisco. Es el error que el propio prompt advierte por escrito; en una memoria personal es pérdida de
-  datos silenciosa, no un punto porcentual. (La MISMA frase en castellano la resuelve bien: lo que rompe es el
-  cruce de idioma.)
-- ⛔ **Los RAZONADORES no valen para NINGUNA de las dos.** Destilando, `gpt-5-mini` y `gpt-5-nano` sacan **50-60%
-  de precisión**: captan bien pero convierten preguntas y órdenes en recuerdos — un razonador "le encuentra
-  sentido" a un turno que había que tirar. Consolidando, `gpt-5-mini` y `gemini-2.5-flash` directamente **no
-  devuelven nada usable** (validez 0%).
-- ⚠️ **"Más potente" NO es mejor aquí, y está MEDIDO.** En REM: `deepseek-v4-pro` 98,1%, `deepseek-reasoner`
-  97,1%, `gpt-4.1` 96,8%, `deepseek-thinking` 92,4% — **ninguno supera al flash** (97,8-99,0%) y cuestan de 3× a
-  9× más. La síntesis es mecánica (agrupar, abstraer, conservar claves); razonar añade verbosidad e inestabilidad,
-  no criterio.
-- ❌ **`gpt-4.1-mini` cae de REM por no saber CALLARSE**: 0% de disciplina de `null` en 3 pasadas. Ante un grupo de
-  trivialidades («tomó un café», «se le olvidó dónde dejó las llaves») SIEMPRE fabrica un insight —«experimenta
-  pequeños olvidos…»— que se consolidaría como rasgo durable del operador. Callar cuando no hay patrón es parte de
-  la tarea, no una omisión.
+- ⛔ **`gpt-4o-mini`** (cheaper than the titular) is **VETOED for the HEART**: given an allergy stated in
+  **English**, it assigns `slot=operator.diet`, consistently. A `slot` **invalidates every earlier pill with that
+  slot**, so a later "I'm vegetarian now" would erase the shellfish allergy. It is the very error the prompt warns
+  about in writing; in a personal memory it is silent data loss, not a percentage point. (The SAME sentence in
+  Spanish is handled correctly: what breaks is the language crossing.)
+- ⛔ **REASONING models fit NEITHER task.** Distilling, small reasoners capture well but turn questions and orders
+  into memories — a reasoner "finds meaning" in a turn that should have been dropped. Consolidating, several
+  reasoners return nothing usable at all.
+- ⚠️ **"More powerful" is NOT better here, and that is measured.** In REM, the larger and reasoning variants
+  (`deepseek-v4-pro`, `deepseek-reasoner`, `gpt-4.1`, thinking modes) do not beat the flash model and cost several
+  times more. Synthesis is mechanical (group, abstract, keep keys); reasoning adds verbosity and instability, not
+  judgement.
+- ⚠️ **Keeping quiet is part of the REM task.** Given a group of trivia ("had a coffee", "forgot where the keys
+  were") a good synthesiser returns `null`; one that ALWAYS fabricates an insight ("experiences small lapses…")
+  would consolidate it as a durable trait of the operator. §12.4 found `gpt-4.1-mini` weak on this `null`
+  discipline — it is the REM stand-in, so if REM starts inventing patterns while running on the stand-in, that is
+  the first seat to check.
 
-### Cadenas de FALLBACK (documentadas, no automáticas)
+### Alternatives measured as viable
 
-- **CORAZÓN:** `deepseek-v4-flash` → `google/gemini-2.5-flash` (96,7 / 100 / 100) → `openai/gpt-4.1-mini`
-  (98,9 / 100 / 100, el único con metadato perfecto y varianza cero, a 2,2× el precio).
-- **REM:** `deepseek-v4-flash` → `x-ai/grok-4-fast-non-reasoning` (97,8-98,7%, el más barato y rápido; pierde
-  algún nombre propio al sintetizar) → `zhipu/glm-4.7` (99,0%, pero 7× el precio y 49s).
-- Se cambian por config (`§memory.mem_processor_*` / `§memory.rem_*`) o por la UI. **La credencial se resuelve POR
-  ENDPOINT**, nunca a mano: cambiar de modelo NO exige tocar keys.
+Usable as a third rung by config (`§memory.mem_processor_*` / `§memory.rem_*`) or from the UI:
 
-### La REGLA que sustituye a la anterior
+- **HEART:** `google/gemini-2.5-flash`; `x-ai/grok-4-fast-non-reasoning` (conservative, perfect metadata).
+- **REM:** `x-ai/grok-4-fast-non-reasoning` (the cheapest and fastest; may drop a proper name when synthesising);
+  `zhipu/glm-4.7` (top quality, but markedly slower and more expensive).
 
-La directriz **«memoria = SIEMPRE OpenAI»** (2026-07-17) quedó **DEROGADA** el 2026-08-09 y **VUELVE, acotada,
-el 2026-09-10** (directriz del operador, reiterada dos días seguidos): **los servicios de memoria —corazón,
-REM, embeddings— llevan OpenAI DIRECTO como titular** (`gpt-4.1-mini` / `text-embedding-3-small`), con DeepSeek
-directo de relevo y el broker AIMLAPI como tercer escalón como MUCHO — nunca titular, y ninguna escalera pasa
-de tres niveles. El detonante fue medido, no de reputación: el titular DeepSeek devolvía un 200 VACÍO en cada
-ciclo de REM (el razonamiento se comía `max_tokens`) y con AIMLAPI sin fondos detrás la escalera entera murió
-en silencio (2026-09-09/10). **Sigue vigente lo demás: el bench manda para ELEGIR el modelo dentro de esa
-frontera, los hallazgos caducan, y el veto a `gpt-4o-mini` (se come la alergia vía slot) no se toca.** El
-riesgo aceptado con el cambio queda anotado en `config/model_benchmarks.py` §memory_rem: §12.4 midió que
-gpt-4.1-mini fabrica un insight ante trivialidades — si el REM empieza a inventar patrones, ese es el primer
-asiento a revisar.
+### The rule
 
-### Cómo REPRODUCIR los benchmarks (ambos arneses son versionados y deterministas en su corpus)
+The benchmark decides which model to CHOOSE within the routing rules above, and its findings expire: when a model
+or a prompt changes, re-measure rather than reasoning from reputation. The `gpt-4o-mini` veto (it eats the allergy
+through a slot) is not to be lifted without a new measurement that shows the cross-language slot error gone.
+
+### How to REPRODUCE the benchmarks (both harnesses are versioned and deterministic in their corpus)
 
 ```bash
-# CORAZÓN — 34 casos × 4 ejes (write-completeness · precisión · capa/slot · $/1k turnos)
-PYTHONPATH=. ./.venv/bin/python tests/memory/e2e/bot/distiller_bench.py --preflight        # ¿responden los ids?
+# HEART — fixed corpus × 4 axes (write-completeness · precision · layer/slot · $/1k turns)
+PYTHONPATH=. ./.venv/bin/python tests/memory/e2e/bot/distiller_bench.py --preflight        # do the ids answer?
 PYTHONPATH=. ./.venv/bin/python tests/memory/e2e/bot/distiller_bench.py --runs 3 --models deepseek-v4-flash,gpt-4.1-mini@aimlapi
 
-# SUEÑO REM — 8 grupos × 6 ejes (validez · claves · forma · null · no-invención · $/año)
+# REM SLEEP — fixed groups × 6 axes (validity · keys · shape · null · no-invention · $/year)
 PYTHONPATH=. ./.venv/bin/python tests/memory/e2e/bot/rem_synth_bench.py --runs 3 --models deepseek-v4-flash,grok-4-fast-nonreason
 ```
 
-Los dos escriben `resultados/<fecha>-<bench>[-tag]/report.{md,json}` con el detalle por caso y los **fallos
-concretos** de cada modelo. Las tarifas viven FUERA del código en `tests/memory/e2e/bot/prices.json` para poder
-re-verificarlas por web sin tocar el arnés (los precios de LLM cambian sin aviso).
+Both write `resultados/<date>-<bench>[-tag]/report.{md,json}` with per-case detail and the **concrete failures** of
+each model. Rates live OUTSIDE the code in `tests/memory/e2e/bot/prices.json`, so they can be re-verified on the
+web without touching the harness (LLM prices change without notice).
 
-⚠️ **Norma metodológica aprendida el 2026-08-09: medir SIEMPRE por el broker, no por OpenAI directo.** Esa cuenta
-va muy limitada de tasa — con 6 llamadas en vuelo devolvió HTTP 429 en 21 de 102, hundiendo el score de un modelo
-por una razón que no era el modelo (y explicando de paso un p50 de 20s). Un rate-limit se disfraza de mala calidad.
+⚠️ **Method rule: measure through an endpoint with enough rate headroom.** A rate-limited account answering HTTP
+429 under a handful of concurrent calls sinks a model's score for a reason that is not the model (and inflates its
+latency). A rate limit disguises itself as poor quality.
 
-### Consumo: las dos tareas REPORTAN uso
+### Usage: both tasks REPORT consumption
 
-Desde 2026-08-09 el CORAZÓN (`mem_processor`) y el router de memoria (`memllm`, que sirve REM e i18n) capturan el
-bloque `usage` de la respuesta and report it to `nucleo/energy_meter` when metering is enabled (fire-and-forget,
-fail-open). The rate of the titular model and of its whole fallback chain are in `_AIMLAPI_MODEL_RATES`, so a
-failover is not metered at the generic rate.
+The HEART (`mem_processor`) and the memory router (`memllm`, which serves REM and i18n) capture the `usage` block
+of the response and report it to `nucleo/energy_meter` when metering is enabled (fire-and-forget, fail-open). The
+rate of the titular model and of its stand-ins are all declared, so a failover is metered at its own rate rather
+than a generic one.
 
-## API interna de la memoria
+## Internal memory API
 
-Encaja con el transporte **híbrido** del sistema: `write`/`reinforce`/`link` = **async** (cola/eventos);
-`query`/`state`/`load_episode` = **llamada directa** (hot path). Un solo escritor (la cola) evita las colisiones
-de escritura de SQLite; los lectores van en WAL sin bloquear.
+It fits the system's **hybrid** transport: `write`/`reinforce`/`link` = **async** (queue/events);
+`query`/`state`/`load_episode` = **direct call** (hot path). A single writer (the queue) avoids SQLite write
+collisions; readers use WAL without blocking.
 
-| Operación | Ruta | Quién la usa |
+| Operation | Path | Who uses it |
 |---|---|---|
-| `memory.write(item)` | async (cola) · lenta OK | FlashBrain · agente de memoria · widgets |
-| `memory.query(prompt, budget) → ctx` | **directa · ms** (lectura), pero el FlashBrain la llama **fuera del event loop** (`asyncio.to_thread`) y **bajo demanda** (V2-011) | dispatcher del SlowBrain · FlashBrain (recall) |
-| `memory.state() → dict` | directa · µs (tabla fija) | el compositor (siempre) |
-| `memory.recent_short(limit, max_chars) → list` | directa · µs (lectura directa, SIN embeddings) | el compositor: CORTO plazo **entero** al prompt (V2-013 T146) |
-| `memory.recent_window(limit, max_chars) → [{role,content}]` | directa · µs (lectura directa, SIN embeddings) | siembra `brain._window` al arrancar + 2º pase de corto (circuito de corto plazo, 2026-07-14) |
-| `memory.reinforce(ids)` | async (evento) | lo dispara el retriever al usar recuerdos |
-| `memory.pin(id)` / `unpin(id)` | async | operador (por voz) · agente de memoria |
-| `memory.load_episode(id) → bytes/text` | directa (lazy) | agentes cuando se ordena "consulta el fichero" |
-| `memory.link(from, to, type, w)` | async | agente de memoria · consolidador |
-| `memory.consolidate()` | job periódico | el loop orquestador (sueño) |
+| `memory.write(item)` | async (queue) · slow is OK | FlashBrain · memory agent · widgets |
+| `memory.query(prompt, budget) → ctx` | **direct · ms** (read), but the FlashBrain calls it **off the event loop** (`asyncio.to_thread`) and **on demand** | SlowBrain dispatcher · FlashBrain (recall) |
+| `memory.state() → dict` | direct · µs (fixed table) | the composer (always) |
+| `memory.recent_short(limit, max_chars) → list` | direct · µs (direct read, NO embeddings) | the composer: SHORT term **whole** into the prompt |
+| `memory.recent_window(limit, max_chars) → [{role,content}]` | direct · µs (direct read, NO embeddings) | seeds `brain._window` at startup + the second short-term pass (short-term circuit) |
+| `memory.reinforce(ids)` | async (event) | fired by the retriever when memories are used |
+| `memory.pin(id)` / `unpin(id)` | async | operator (by voice) · memory agent |
+| `memory.load_episode(id) → bytes/text` | direct (lazy) | agents when told to "look at the file" |
+| `memory.link(from, to, type, w)` | async | memory agent · consolidator |
+| `memory.consolidate()` | periodic job | the orchestrator loop (sleep) |
 
-Señal que emite: `memory.updated` (para que la UI u otros refresquen).
+Signal it emits: `memory.updated` (so the UI and others can refresh).
 
-## Cómo la USA el resto del sistema (guía para quien escribe módulos)
+## How the rest of the system USES it (guide for module authors)
 
-Regla mental: **para GUARDAR, deja que el corazón decida; para LEER, elige la velocidad por lo que necesitas.**
-No inventes rutas nuevas ni toques la BD directo.
+Mental rule: **to STORE, let the heart decide; to READ, pick the speed by what you need.** Do not invent new paths
+or touch the database directly.
 
-**ESCRIBIR (todo async, por la fachada `memory/api.py` — nunca la BD directa):**
+**WRITING (all async, through the `memory/api.py` facade — never the database directly):**
 
-- **¿Es algo que dijo/escribió el operador en un turno?** → NO llames a `memory.write` a mano. Pásalo por el
-  CORAZÓN: `await nucleo.memory_agent.ingest_utterance(text)` (el FlashBrain ya lo hace en cada turno dirigido).
-  El procesador LLM decide si se guarda, dónde y cómo. Así la memoria APRENDE en vez de acumular texto crudo.
-- **¿Eres el SlowBrain / un agente y quieres recordar un resultado o un hecho concreto?** → `await
-  nucleo.memory_agent.remember({"text": …, "kind": "result"|"fact"|…})`. Es el ÚNICO escritor sancionado del
-  SlowBrain; auto-clasifica si no fijas `level`. Puedes fijar `slot` (hecho singular → supersede exacto) y `meta`.
-- **¿Eres un Brain Worker (proceso headless FUERA del server)?** → habla por HTTP con el server vivo:
-  `python -m nucleo.mem_cli recall "<consulta>"` (lee) y `… remember "<dato>" [--slot x]` (escribe vía
-  `remember_external`: token por-tarea + gates de precisión, sin acceso a `state` ni a slots de identidad).
-  Preserva el ESCRITOR ÚNICO — jamás abras `zaelar.db` desde un worker (el Bash del worker está acotado a estos
-  CLIs precisamente por eso).
-- **¿Es CONTEXTO DE UI VIVO (lo que el operador tiene delante)?** → `memory.set_state({...})` (patch superficial).
-  Lo escriben dos dueños: el **frontend** reporta los widgets abiertos (`POST /api/canvas/state` desde
-  `desktop._persist()` → `set_state({open_widgets})`) y el **dispatcher del SlowBrain** las tareas en marcha
-  (`nucleo/dispatch.py` → `set_state({activity})`). Va SIEMPRE en el prompt y se ve en el mapa. No es memoria que
-  aprende: es el reflejo del "ahora".
-- **¿Eres un CONECTOR volcando datos entrantes de una FUENTE externa (mensajería, cluster, otro agente)?** → usa
-  **`memory.ingest_message(source, entity, text, *, trust, durable, group, directed)`** — la vía TIPADA UNIFICADA
-  (multi-fuente). Da igual 2 conectores que 200, o un peer de cluster («Zalo») que un chat de WhatsApp: todos
-  entran por aquí con su `source` (whatsapp/telegram/cluster/agent/email/**music**/…) y `entity` (quién), que quedan
-  **indexados en `meta`** (→ lectura directa por tipo con `recent_by_source`) **y** en el texto (`[source] entity:
-  body`). Es también la vía de writeback de los **RAILS** (V2-042): p.ej. el rail de música escribe cada
-  reproducción con `ingest_message(source="music", entity=<artista>, durable=True)` → historial + gustos. **`trust`** es CLAVE: `operator`/`external` (datos del propio dueño) entran en el bloque pasivo del
-  FlashBrain; **`untrusted`** (peer de cluster/agente ajeno) queda en **CUARENTENA** — NUNCA se inyecta en el
-  prompt pasivo (anti prompt-injection), solo aflora por consulta EXPLÍCITA. `durable=True` → nivel `mid` (persiste
-  + conceptos para el grafo); por defecto `short` (recencia). `slot` (opcional) = clave canónica → **supersede
-  exacto**: cada ingesta con el MISMO slot SOBRESCRIBE la anterior (para una SÍNTESIS que se reescribe por
-  fuente/entidad, no una fila por mensaje).
-  - **Canal de CLUSTER (peers MeshKore) — observación PASIVA y COMPRIMIDA** (`connectors/meshkore/mem_ingest.py`,
-    V2-021 T170): el bridge NO vuelca cada frase cruda del cluster. Por cada intercambio (peer→zaelar + zaelar→peer)
-    un modelo LOCAL DESTILA off-hot-path una **síntesis evolutiva por peer** (temas/acuerdos/datos), guardada con
-    `slot="cluster:<cluster>:<peer>"` (una píldora viva que se reescribe) + `trust="untrusted"` (CUARENTENA). Así
-    "¿qué has hablado con Zalo?" se responde con `recent_by_source("cluster","Zalo")` sin que nada del peer se cuele
-    en el prompt del operador. El canal corre en perfil untrusted (tools off, identidad-safe): la memoria es un side-effect de
-    observación, no le da estado ni capacidades. Contenido REDACTADO (secretos) y handles neutralizados antes de
-    persistir. Fail-open (fusión determinista acotada si no hay modelo). Apagable con `MESHKORE_MEMORY=0`.
-- **Nunca** metas un LLM ni I/O de memoria SÍNCRONO en la ruta caliente de voz (V2-011). El write es fire-and-forget.
-- **Píldora, no párrafo**: pasa un `text` CANÓNICO y breve; para hechos singulares que se sobrescriben, dale un
-  `slot` (`operator.name`, `goal.current`…) → el writer deduplica/supersede solo.
+- **Is it something the operator said/wrote in a turn?** → do NOT call `memory.write` by hand. Pass it through the
+  HEART: `await nucleo.memory_agent.ingest_utterance(text)` (the FlashBrain already does this on every directed
+  turn). The LLM processor decides whether it is stored, where and how. That way the memory LEARNS instead of
+  accumulating raw text.
+- **Are you the SlowBrain / an agent wanting to remember a result or a specific fact?** → `await
+  nucleo.memory_agent.remember({"text": …, "kind": "result"|"fact"|…})`. It is the SlowBrain's ONLY sanctioned
+  writer; it auto-classifies if you do not set `level`. You can set `slot` (singular fact → exact supersede) and
+  `meta`.
+- **Are you a Brain Worker (a headless process OUTSIDE the server)?** → talk HTTP to the live server:
+  `python -m nucleo.mem_cli recall "<query>"` (read) and `… remember "<fact>" [--slot x]` (write via
+  `remember_external`: per-task token + precision gates, no access to `state` or identity slots). It preserves the
+  SINGLE WRITER — never open `zaelar.db` from a worker (the worker's Bash is restricted to these CLIs precisely for
+  that reason).
+- **Is it LIVE UI CONTEXT (what the operator has in front of them)?** → `memory.set_state({...})` (shallow patch).
+  Two owners write it: the **frontend** reports the open widgets (`POST /api/canvas/state` from
+  `desktop._persist()` → `set_state({open_widgets})`) and the **SlowBrain dispatcher** the tasks in progress
+  (`nucleo/dispatch.py` → `set_state({activity})`). It is ALWAYS in the prompt and visible in the map. It is not
+  memory that learns: it is the reflection of the "now".
+- **Are you a CONNECTOR dumping incoming data from an external SOURCE (messaging, cluster, another agent)?** → use
+  **`memory.ingest_message(source, entity, text, *, trust, durable, group, directed)`** — the UNIFIED TYPED path
+  (multi-source). Whether there are two connectors or many, a cluster peer («Zalo») or a WhatsApp chat: they all
+  come in here with their `source` (whatsapp/telegram/cluster/agent/email/**music**/…) and `entity` (who), which
+  are **indexed in `meta`** (→ direct read by type with `recent_by_source`) **and** in the text (`[source] entity:
+  body`). It is also the writeback path of the **RAILS**: e.g. the music rail writes every playback with
+  `ingest_message(source="music", entity=<artist>, durable=True)` → history + tastes. **`trust`** is KEY:
+  `operator`/`external` (the owner's own data) enter the FlashBrain's passive block; **`untrusted`** (a cluster
+  peer/foreign agent) stays in **QUARANTINE** — it is NEVER injected into the passive prompt (anti prompt
+  injection), it only surfaces on an EXPLICIT query. `durable=True` → level `mid` (persists + concepts for the
+  graph); `short` by default (recency). `slot` (optional) = canonical key → **exact supersede**: every ingestion
+  with the SAME slot OVERWRITES the previous one (for a SYNTHESIS that is rewritten per source/entity, not one row
+  per message).
+  - **CLUSTER channel (MeshKore peers) — PASSIVE, COMPRESSED observation** (`connectors/meshkore/mem_ingest.py`):
+    the bridge does NOT dump every raw sentence of the cluster. For each exchange (peer→zaelar + zaelar→peer) a
+    LOCAL model DISTILS, off the hot path, an **evolving synthesis per peer** (topics/agreements/data), stored with
+    `slot="cluster:<cluster>:<peer>"` (one live pill that is rewritten) + `trust="untrusted"` (QUARANTINE). So
+    "what have you talked about with Zalo?" is answered with `recent_by_source("cluster","Zalo")` without anything
+    from the peer leaking into the operator's prompt. The channel runs in an untrusted profile (tools off,
+    identity-safe): memory is a side effect of observation, it gives the peer neither state nor capabilities.
+    Content is REDACTED (secrets) and handles neutralised before persisting. Fail-open (bounded deterministic
+    merge if there is no model). Can be turned off with `MESHKORE_MEMORY=0`.
+- **Never** put an LLM or SYNCHRONOUS memory I/O on the voice hot path. The write is fire-and-forget.
+- **A pill, not a paragraph**: pass a CANONICAL, short `text`; for singular facts that get overwritten, give it a
+  `slot` (`operator.name`, `goal.current`…) → the writer deduplicates/supersedes on its own.
 
-**LEER (directo, sin LLM — elige la velocidad):**
+**READING (direct, no LLM — pick the speed):**
 
-- **ESTADO** (`memory.state()`) — µs, tabla fija. Úsalo para "quién es / en qué anda". Va SIEMPRE en el prompt (el
-  FlashBrain lo sirve cacheado por `nucleo/flash/memory_cache`). Es "abrir los ojos".
-- **CORTO** (`memory.recent_short()`) — µs, lectura directa, SIN embeddings. El working set reciente ENTERO. Para
-  "de qué hablábamos". Sobre-incluye a propósito (barato).
-- **LARGO** (`memory.query(prompt, budget)`) — ms, retriever vec+FTS→RRF. Para recall real ("dónde vivía Bartolo",
-  "un mensaje de hace meses"). Es la única capa que tolera esperas; **bajo demanda** y **fuera del event loop**
-  (`asyncio.to_thread`) desde el FlashBrain. El SlowBrain puede usar `compose_context` (recall + router LLM barato)
-  porque va off-hot-path.
-- **POR TIPO / FUENTE** (`memory.recent_by_source(source, entity)`) — µs, lectura DIRECTA por índice (json_extract
-  sobre `meta`), SIN retriever ni LLM. Es "¿qué me ha llegado por WhatsApp?" / "¿qué me dijo Zalo por el cluster?" /
-  "¿qué música he escuchado?" (`recent_by_source("music")` → historial + gustos, V2-042).
-  Escala a N fuentes cambiando solo `source`. Es la ÚNICA vía por la que aflora el contenido `untrusted`
-  (cuarentenado del bloque pasivo). El SLOT libre para el cerebro cuando el operador pregunta por una fuente.
-  El filtro por `entity` es case-**e-acento-insensitive** (función SQL `pylower`, Unicode): "María"/"maría"/"MARÍA"
-  recuperan igual — el `lower()` de SQLite es solo-ASCII y fallaría con tildes/ñ (bug T184, arreglado 2026-07-11).
-- **Mapa completo** (`memory.map()`) — solo para el visor/diagnóstico (read-only, no refuerza).
+- **STATE** (`memory.state()`) — µs, fixed table. Use it for "who they are / what they are up to". ALWAYS in the
+  prompt (the FlashBrain serves it cached through `nucleo/flash/memory_cache`). It is "opening your eyes".
+- **SHORT** (`memory.recent_short()`) — µs, direct read, NO embeddings. The WHOLE recent working set. For "what were
+  we talking about". Over-includes on purpose (cheap).
+- **LONG** (`memory.query(prompt, budget)`) — ms, retriever vec+FTS→RRF. For real recall ("where did Bartolo live",
+  "a message from months ago"). It is the only layer that tolerates waiting; **on demand** and **off the event
+  loop** (`asyncio.to_thread`) from the FlashBrain. The SlowBrain may use `compose_context` (recall + a cheap LLM
+  router) because it runs off the hot path.
+- **BY TYPE / SOURCE** (`memory.recent_by_source(source, entity)`) — µs, DIRECT read by index (`json_extract` over
+  `meta`), NO retriever or LLM. It is "what came in on WhatsApp?" / "what did Zalo tell me on the cluster?" / "what
+  music have I listened to?" (`recent_by_source("music")` → history + tastes). It scales to N sources by changing
+  only `source`. It is the ONLY path through which `untrusted` content surfaces (quarantined from the passive
+  block) — the free SLOT for the brain when the operator asks about a source. The `entity` filter is **case- and
+  accent-insensitive** (SQL function `pylower`, Unicode): "María"/"maría"/"MARÍA" retrieve the same — SQLite's
+  `lower()` is ASCII-only and would fail on accents/ñ.
+- **Full map** (`memory.map()`) — only for the viewer/diagnostics (read-only, does not reinforce).
 
-## Acciones ↔ memoria: cuándo y cómo tocar la memoria (protocolo, V2-017)
+## Actions ↔ memory: when and how to touch the memory (protocol)
 
-Regla mental: **la memoria es el "yo recuerdo" de zaelar, no el estado del sistema.** El estado de qué existe
-AHORA lo dan las fuentes vivas (el catálogo de widgets, el store de cada widget, el scheduler…). La memoria
-guarda lo que zaelar debe **recordar haber hecho o sabido** para hablar como un humano mañana. Por eso:
+Mental rule: **the memory is zaelar's "I remember", not the system's state.** The state of what exists NOW is given
+by the live sources (the widget catalogue, each widget's store, the scheduler…). The memory keeps what zaelar must
+**remember having done or known** in order to talk like a human tomorrow. Therefore:
 
-- **Toca la memoria** cuando la acción cambia algo que el operador podría preguntar/recordar más tarde: un
-  **hecho o preferencia** suya ("me llamo…", "no me narres"), un **resultado** entregado (una búsqueda, un
-  informe), un **hito del ciclo de vida** (widget creado/borrado), un episodio (paste/drop).
-- **NO toques la memoria** para lo efímero o ya derivable de una fuente viva: abrir/cerrar/mover un widget, una
-  lectura de estado, charla trivial sin dato nuevo. (La ruta caliente de voz **nunca** hace I/O de memoria
-  síncrono — V2-011.)
-- **Quién escribe**: siempre por la fachada `memory.write` (cola async, loop-agnóstica). Desde el SlowBrain lo
-  decide el **agente de memoria** (`nucleo/memory_agent.remember`, único punto de decisión). Los **widgets** y el
-  **ciclo de vida de widgets** (`widgets/lifecycle.py`) escriben directamente por la fachada (son escritores
-  sancionados).
+- **Touch the memory** when the action changes something the operator could ask about/remember later: a **fact or
+  preference** of theirs ("my name is…", "don't narrate"), a delivered **result** (a search, a report), a
+  **life-cycle milestone** (widget created/deleted), an episode (paste/drop).
+- **Do NOT touch the memory** for what is ephemeral or already derivable from a live source: opening/closing/moving
+  a widget, a state read, small talk with no new data. (The voice hot path **never** does synchronous memory I/O.)
+- **Who writes**: always through the `memory.write` facade (async queue, loop-agnostic). From the SlowBrain the
+  **memory agent** decides (`nucleo/memory_agent.remember`, the single decision point). **Widgets** and the
+  **widget life cycle** (`widgets/lifecycle.py`) write directly through the facade (they are sanctioned writers).
 
-**Regla de ORO del borrado — nunca se borra el histórico.** Borrar algo del mundo (un widget) elimina su
-código/datos, pero **escribe un evento** de que se borró; el recuerdo de su creación se conserva. Así el recall
-puede responder *"ese widget lo mandaste borrar el <fecha>"* aunque ya no exista. Para invalidar un hecho que
-quedó obsoleto (no borrarlo) está `valid=0 + superseded_by` (lo usa el consolidador ante conflictos); un
-**evento de ciclo de vida** en cambio NO invalida nada — se acumula como historia.
+**GOLDEN rule of deletion — history is never deleted.** Deleting something from the world (a widget) removes its
+code/data, but **writes an event** that it was deleted; the memory of its creation is kept. So recall can answer
+*"you had that widget deleted on <date>"* even though it no longer exists. To invalidate a fact that became obsolete
+(not delete it) there is `valid=0 + superseded_by` (used by the consolidator on conflicts); a **life-cycle event**,
+on the other hand, invalidates nothing — it accumulates as history.
 
-Ciclo de vida de un **widget** (implementado en `widgets/lifecycle.py`, disparado por el FlashBrain/SlowBrain):
+Life cycle of a **widget** (implemented in `widgets/lifecycle.py`, triggered by the FlashBrain/SlowBrain):
 
-| Acción | Ejecuta | Memoria |
+| Action | Executed by | Memory |
 |---|---|---|
-| **CREAR** | SlowBrain (agente de código headless — escribe código) | `record_created()` → evento `[widget:<id>] «X» CREADO el <fecha> para: …` |
-| **MODIFICAR** | SlowBrain (agente de código) | (el resultado de la tarea ya se recuerda por el dispatcher) |
-| **BORRAR** | **FlashBrain, determinista** (rm carpeta + store), tras **confirmación** | `delete_widget()` → **lápida** `[widget:<id>] «X» BORRADO el <fecha> a petición del operador` (histórico conservado) |
+| **CREATE** | SlowBrain (headless code agent — writes code) | `record_created()` → event `[widget:<id>] «X» CREATED on <date> for: …` |
+| **MODIFY** | SlowBrain (code agent) | (the task result is already remembered by the dispatcher) |
+| **DELETE** | **FlashBrain, deterministic** (rm folder + store), after **confirmation** | `delete_widget()` → **tombstone** `[widget:<id>] «X» DELETED on <date> at the operator's request` (history kept) |
 
-**Autenticación del navegador ↔ memoria** (`widgets/navegador/auth_memory.py`): mismo reparto memoria↔storage.
-El **secreto NUNCA entra en memoria** (las cookies viven en el perfil de Chromium `widgets/_data/navegador/profile/`,
-cifrado en reposo por el SO — la memoria es buscable y aflora en prompts/recall/visor, un secreto ahí se filtraría).
-La memoria solo guarda lo que zaelar debe RECORDAR: **el HECHO de la sesión** (`record_session_established(site)` →
-evento `mid` con `slot=navegador.session.<sitio>` → un re-login SUPERSEDE, no duplica; recall responde *"¿tengo sesión
-en Wallapop?"*) y un **checkpoint recuperable** de un login a medias (`checkpoint_auth_pending` → `set_state({auth_pendiente})`
-+ evento CORTO, calcando el `nucleo/reset.py`) que sobrevive a crash/reinicio para recordarte que lo dejaste a medias.
+**Browser authentication ↔ memory** (`widgets/navegador/auth_memory.py`): the same memory↔storage split. The
+**secret NEVER enters memory** (cookies live in the Chromium profile `widgets/_data/navegador/profile/`, encrypted at
+rest by the OS — the memory is searchable and surfaces in prompts/recall/the viewer, so a secret there would leak).
+The memory only keeps what zaelar must REMEMBER: **the FACT of the session** (`record_session_established(site)` →
+a `mid` event with `slot=navegador.session.<site>` → a re-login SUPERSEDES, it does not duplicate; recall answers
+*"do I have a session on Wallapop?"*) and a **recoverable checkpoint** of a half-finished login
+(`checkpoint_auth_pending` → `set_state({auth_pendiente})` + a SHORT event, mirroring `nucleo/reset.py`) that
+survives a crash/restart to remind you that you left it halfway.
 
-## Puntos de acceso
+## Access points
 
-- **Escriben** (vía cola, async): **FlashBrain** (lo trivial que valga la pena), **agente de memoria del SlowBrain**
-  (resultados, hechos, resúmenes), **widgets** (mensajería vuelca lo entrante) y los **Brain Workers** (V2-036/38,
-  como pieza SERIAL por HTTP: `hbmem remember` → `POST /api/memory/remember` → `remember_external` con gates +
-  token por-tarea — NUNCA abren la BD; ver §El CORAZÓN). Lo irrelevante se descarta antes de encolar.
-- **Leen** (directo, ms): el **retriever** (lo llaman el dispatcher del SlowBrain y el FlashBrain para componer el
-  contexto mínimo). **La lectura del FlashBrain NO va en el turno síncrono de voz** (V2-011, latencia): el bloque
-  de ESTADO (`memory.state()`) se **cachea por sesión** (`nucleo/flash/memory_cache.py` — TTL + refresco async +
-  invalidación por `memory.updated`), y el **recall** (`memory.query` → embeddings) es **bajo demanda**
-  (heurística `nucleo/flash/prompt.needs_recall`) y **fuera del event loop** (`asyncio.to_thread`). Así el turno
-  de charla nunca dispara el retriever ni bloquea el loop; el recall real se conserva (medido en
-  `zaelar-model-benchmarks.md §4`).
-- **Mantiene el estado**: el agente de memoria y el consolidador escriben la tabla `state`; el compositor la lee
-  en cada prompt.
+- **Writers** (through the queue, async): **FlashBrain** (whatever is worth keeping), **the SlowBrain's memory
+  agent** (results, facts, summaries), **widgets** (messaging dumps what comes in) and **Brain Workers** (as a
+  SERIAL piece over HTTP: `hbmem remember` → `POST /api/memory/remember` → `remember_external` with gates + a
+  per-task token — they NEVER open the database; see §The write HEART). What is irrelevant is discarded before
+  enqueuing.
+- **Readers** (direct, ms): the **retriever** (called by the SlowBrain dispatcher and the FlashBrain to compose the
+  minimal context). **The FlashBrain's read is NOT on the synchronous voice turn** (latency): the STATE block
+  (`memory.state()`) is **cached per session** (`nucleo/flash/memory_cache.py` — TTL + async refresh +
+  invalidation on `memory.updated`), and **recall** (`memory.query` → embeddings) is **on demand** (heuristic
+  `nucleo/flash/prompt.needs_recall`) and **off the event loop** (`asyncio.to_thread`). So a small-talk turn never
+  triggers the retriever or blocks the loop, while real recall is preserved (see `zaelar-model-benchmarks.md §4`).
+- **State maintenance**: the memory agent and the consolidator write the `state` table; the composer reads it on
+  every prompt.
 
-## Lectura en el turno — TRES velocidades (cómo se reciben peticiones y se devuelven datos)
+## Reading in the turn — THREE speeds (how requests come in and data goes back)
 
-Cuando llega un turno de voz/chat, el FlashBrain compone su prompt en `nucleo/flash/prompt.py::build_flash_system`.
-La memoria entra por **tres rutas de lectura con tres velocidades distintas, alineadas con la latencia** (el turno
-de voz NUNCA hace I/O de memoria síncrono en el event loop — V2-011).
+When a voice/chat turn arrives, the FlashBrain composes its prompt in `nucleo/flash/prompt.py::build_flash_system`.
+The memory enters through **three read paths with three different speeds, aligned with latency** (the voice turn
+NEVER does synchronous memory I/O on the event loop).
 
-> **Cada capa tiene ESTRUCTURA DE DATOS y MÉTODO DE CONSULTA propios** (aclaración del operador, 2026-07-10 — no es
-> un mecanismo único): **ESTADO** = slots clave–valor (fila fija, dict pequeño, `memory/state.py`) → lectura entera
-> directa (µs), SIEMPRE, cero búsqueda. **CORTO/reciente** = **lista cronológica** (log rodante, filas
-> `level='short'`) → se lee ENTERA, reciente-primero, SIN búsqueda (`recent_short`). **LARGO** = archivo
-> **indexado** (vector sqlite-vec + FTS5 + grafo) → **QUERY semántica** (RRF vec∥fts → score → graph_expand), bajo
-> demanda y off-loop. Estructuras y accesos distintos a propósito: cada uno optimizado para su rol y su latencia.
+> **Each layer has its OWN DATA STRUCTURE and QUERY METHOD** (it is not a single mechanism): **STATE** = key–value
+> slots (a fixed row, a small dict, `memory/state.py`) → whole direct read (µs), ALWAYS, zero search.
+> **SHORT/recent** = a **chronological list** (a rolling log, `level='short'` rows) → read WHOLE, newest first,
+> WITHOUT search (`recent_short`). **LONG** = an **indexed** archive (sqlite-vec vector + FTS5 + graph) →
+> **semantic QUERY** (RRF vec∥fts → score → graph_expand), on demand and off-loop. Different structures and access
+> paths on purpose: each one optimised for its role and its latency.
 
-| Capa | Rol | Cómo se LEE | Código |
+| Layer | Role | How it is READ | Code |
 |---|---|---|---|
-| **ESTADO** = *la pila* | Lo grabado a fuego (nombre, objetivo/proyecto, ubicación…) **+ el CONTEXTO DE UI VIVO** (widgets abiertos `open_widgets`, tareas/sesiones en marcha `activity`/`sessions`, y los RAILS vivos `rails` → "Rails en curso", V2-042): lo que el operador tiene DELANTE. Va SIEMPRE en el prompt. | **Instantánea, siempre** — string ya compuesto y **cacheado** (`memory_cache.get()`, TTL + refresco async off-loop + invalidación por `memory.updated`; el reporte del canvas dispara el refresco). Cero query. | `nucleo/flash/memory_cache.py` · `memory.state()` |
-| **CORTO PLAZO** = *working set* | Lo reciente/efímero (turnos, mensajes de hoy). Pequeño → cabe entero. | **Entera y barata** — se enchufa TODO el corto reciente al prompt SIN retriever (lectura directa µs). Fix del bug del nombre: en vez de *buscar* (poco fiable) se *lee entero*. | `memory.recent_short()` → cacheado en `memory_cache._compose()` (bloque "Conversación reciente") |
-| **LARGO PLAZO** = *el archivo* | Durable, mucha info, no cabe. | **Solo por QUERY** — retriever vec+FTS→RRF (BD, más lento), **bajo demanda** (`prompt.needs_recall` como prefetch + **tool `recall`**, V2-056) y **fuera del loop** (`asyncio.to_thread`). | `nucleo/flash/prompt.compose_recall()` → `memory.query()` → `memory/retriever.py` |
+| **STATE** = *the stack* | What is burned in (name, goal/project, location…) **+ the LIVE UI CONTEXT** (open widgets `open_widgets`, tasks/sessions in progress `activity`/`sessions`, and live RAILS `rails` → "Rails in progress"): what the operator has IN FRONT of them. ALWAYS in the prompt. | **Instant, always** — an already composed and **cached** string (`memory_cache.get()`, TTL + off-loop async refresh + invalidation on `memory.updated`; the canvas report triggers the refresh). Zero query. | `nucleo/flash/memory_cache.py` · `memory.state()` |
+| **SHORT TERM** = *working set* | What is recent/ephemeral (turns, today's messages). Small → fits whole. | **Whole and cheap** — ALL recent short term is plugged into the prompt WITHOUT the retriever (direct µs read). Reading it whole is more reliable than *searching* it for a fact just said (such as the operator's name). | `memory.recent_short()` → cached in `memory_cache._compose()` ("Recent conversation" block) |
+| **LONG TERM** = *the archive* | Durable, a lot of information, does not fit. | **Only by QUERY** — retriever vec+FTS→RRF (database, slower), **on demand** (`prompt.needs_recall` as prefetch + the **`recall` tool**) and **off the loop** (`asyncio.to_thread`). | `nucleo/flash/prompt.compose_recall()` → `memory.query()` → `memory/retriever.py` |
 
-> **Invariante:** ESTADO se lee gratis (cache), CORTO se lee entero-y-barato (cabe), LARGO se lee por query (no
-> cabe). El SlowBrain, en cambio, compone contexto con `nucleo/memory_agent.compose_context()` (dossier v2
-> multi-eje, ver §El CORAZÓN) — ese sí puede permitirse la búsqueda porque va off-hot-path.
+> **Invariant:** STATE is read for free (cache), SHORT is read whole and cheaply (it fits), LONG is read by query (it
+> does not fit). The SlowBrain, by contrast, composes context with `nucleo/memory_agent.compose_context()` (the
+> multi-axis v2 dossier, see §The write HEART) — that one can afford search because it runs off the hot path.
 
-**El gate de recall tiene DOS caminos desde V2-056** (auditoría 2026-07-19 — «quién decide buscar = el modelo»,
-V2-022, aplicado a la memoria):
-- **Prefetch heurístico** (`prompt.needs_recall`, determinista es/en) — el camino clásico, optimista y gratis.
-  Ampliado con **fraseos de planificación** («quiero irme de vacaciones», «organízame un viaje», «búscame un
-  hotel», «resérvame un restaurante»…) que antes NO disparaban recall → cerebro amnésico justo cuando iba a
-  planear algo para el operador.
-- **Tool `recall`** (`router.TOOLS`, catálogo canónico en `zaelar-architecture.md §8`) — el **MODELO decide
-  recordar**: cubre lo que el prefetch no cazó. Ruta LIGERA hermana de `web_search` en
-  `voice/engine/llm/providers/nucleo.py`: `compose_recall` off-loop (`asyncio.to_thread`) + 2º pase con el modelo
-  que el turno ya paga → los recuerdos vuelven EN el turno, sin tarjeta ni worker. Solo memoria DURABLE del
-  operador (no datos del mundo = `web_search`; no lo ya visible en ESTADO/conversación).
+**The recall gate has TWO paths** («the model decides when to search», applied to memory):
+- **Heuristic prefetch** (`prompt.needs_recall`, deterministic es/en) — the classic path, optimistic and free. It
+  includes **planning phrasings** ("I want to go on holiday", "organise a trip for me", "find me a hotel", "book me
+  a restaurant"…) so the brain recalls exactly when it is about to plan something for the operator.
+- **The `recall` tool** (`router.TOOLS`, canonical catalogue in `zaelar-architecture.md §8`) — the **MODEL decides to
+  remember**: it covers what the prefetch did not catch. A LIGHT path, sibling of `web_search` in
+  `voice/engine/llm/providers/nucleo.py`: `compose_recall` off-loop (`asyncio.to_thread`) + a second pass with the
+  model the turn already pays for → the memories come back IN the turn, without a card or a worker. Only the
+  operator's DURABLE memory (not world data = `web_search`; not what is already visible in STATE/conversation).
 
-### Circuito de CORTO PLAZO de interacción con el operador (2026-07-14)
+### The SHORT-TERM interaction circuit with the operator
 
-El FlashBrain debe estar **super situado** en cada petición (quién es el operador, qué tiene delante, de qué íbais
-hablando) SIN inflar el prompt. Tres piezas, "lo básico siempre + lo pesado bajo demanda":
+The FlashBrain must be **fully situated** on every request (who the operator is, what they have in front of them,
+what you were talking about) WITHOUT inflating the prompt. Three pieces, "the basics always + the heavy stuff on
+demand":
 
-- **Suelo de identidad SAGRADO** (`nucleo/flash/memory_cache._store`): el bloque de ESTADO cacheado **nunca se
-  sobrescribe con vacío**. `compose_state()` puede fallar transitoriamente (lectura de BD bajo contención en sesiones
-  con muchas escrituras) y devolver `('','')`; si eso pisara el caché, el FlashBrain diría *"no sé quién eres"* aunque
-  el nombre esté en el estado (bug intermitente real, 2026-07-13). La guarda mantiene el último bloque bueno y marca
-  `dirty` para reintentar. El vacío legítimo (fresh install / `reset()`) parte de un caché ya vacío, así que pasa.
-- **Ventana sembrada desde memoria** (`brain._window` ← `memory.recent_window`): la ventana de diálogo (últimos
-  `_WINDOW_MAX`=10 turnos verbatim que ve el modelo) vive en RAM y **arrancaba vacía** en cada instancia del brain
-  (reinicio/reconexión) → se perdía "de qué hablábamos". Ahora se **siembra una vez** desde el buffer conversacional
-  persistente (`kind='conv'`, con `meta.u`/`meta.a` estructurados). Cero tokens extra (la ventana ya estaba capada).
-  Cableado IDÉNTICO en la voz (`nucleo.py::_run`) y en el probe (`nucleo/flash/probe.py`) → el probe reproduce fiel
-  el arranque tras reconectar.
-- **2º pase de CORTO plazo bajo demanda** (`prompt.needs_recent` → `prompt.compose_recent_block`): cuando el turno
-  **referencia la interacción reciente** ("de qué hablábamos", "lo que te dije antes", "repite eso", "hace un rato";
-  es/en, determinista) se inyecta el buffer conversacional **AMPLIADO** (verbatim, ~20 turnos, más que la ventana
-  normal) como bloque etiquetado — **fuera del event loop** (`asyncio.to_thread`, respeta V2-011). La charla normal
-  NO lo lleva (prompt ligero); solo se carga cuando hace falta. Es el hermano de corto plazo de `needs_recall`
-  (que es para el dato DURABLE por significado, vía embeddings). Telemetría `recent_fired` en `/debug`.
+- **A SACRED identity floor** (`nucleo/flash/memory_cache._store`): the cached STATE block is **never overwritten
+  with empty**. `compose_state()` can fail transiently (a database read under contention in sessions with many
+  writes) and return `('','')`; if that overwrote the cache, the FlashBrain would say *"I don't know who you are"*
+  even though the name is in the state. The guard keeps the last good block and marks it `dirty` to retry. A
+  legitimate empty state (fresh install / `reset()`) starts from an already empty cache, so it passes.
+- **A window seeded from memory** (`brain._window` ← `memory.recent_window`): the dialogue window (the last
+  `_WINDOW_MAX`=10 verbatim turns the model sees) lives in RAM, so a new brain instance (restart/reconnection) would
+  start empty and lose "what we were talking about". It is **seeded once** from the persistent conversational buffer
+  (`kind='conv'`, with structured `meta.u`/`meta.a`). Zero extra tokens (the window was already capped). Wired
+  IDENTICALLY in voice (`nucleo.py::_run`) and in the probe (`nucleo/flash/probe.py`) → the probe faithfully
+  reproduces start-up after reconnecting.
+- **An on-demand second SHORT-TERM pass** (`prompt.needs_recent` → `prompt.compose_recent_block`): when the turn
+  **refers to the recent interaction** ("what were we talking about", "what I told you before", "repeat that", "a
+  while ago"; es/en, deterministic) the **EXTENDED** conversational buffer (verbatim, ~20 turns, more than the
+  normal window) is injected as a labelled block — **off the event loop** (`asyncio.to_thread`). Normal chat does
+  NOT carry it (a light prompt); it is only loaded when needed. It is the short-term sibling of `needs_recall`
+  (which is for the DURABLE fact by meaning, via embeddings). Telemetry `recent_fired` in `/debug`.
 
-### El ESTADO COMPUESTO — `memory.compose_state()` (contrato, V2-027)
+### The COMPOSED STATE — `memory.compose_state()` (contract)
 
-El prompt del cerebro es **[ESTADO compuesto dinámicamente] + [petición del operador]** (rediseño V2-027, ~30
-líneas frente a las ~280 de antes). La MEMORIA es la dueña de componer ese ESTADO: `memory.compose_state(*,
-mission_fallback="") -> (bloque, operator_name, stats)`. Es lo **COMPARTIDO por los dos cerebros**; los RECURSOS/tools
-divergen por cerebro (capa propia). Lectura **DIRECTA** (µs, sin LLM ni retriever) → seguro cachearla fuera del turno
-(`nucleo/flash/memory_cache` la cachea con TTL + refresco async + invalidación por `memory.updated`; el turno de voz
-NUNCA la compone sin caché — invariante V2-011). Estructura ordenada:
+The brain's prompt is **[dynamically composed STATE] + [the operator's request]** (a compact prompt of a few dozen
+lines). The MEMORY owns the composition of that STATE: `memory.compose_state(*, mission_fallback="") -> (block,
+operator_name, stats)`. It is what the **two brains SHARE**; RESOURCES/tools diverge per brain (their own layer).
+**DIRECT** read (µs, no LLM or retriever) → safe to cache outside the turn (`nucleo/flash/memory_cache` caches it
+with TTL + async refresh + invalidation on `memory.updated`; the voice turn NEVER composes it without the cache).
+Ordered structure:
 
-| Sección | Qué lleva | De dónde |
+| Section | What it carries | Where from |
 |---|---|---|
-| **A · QUIÉN ERES** | La MISIÓN/identidad (3-4 frases, idioma del operador). VIVE EN LA MEMORIA — no en un prompt inglés. | `state.mission`, sembrada al arrancar por `memory_cache.prime()` desde `langs.LangSpec.mission`; `mission_fallback` si aún no se sembró (el llamador lo pasa para no invertir la dependencia memoria→voz). |
-| **B · QUIÉN TIENES DELANTE** | Situacional VARIABLE: operador (nombre/trato/ubicación + campos durables del ESTADO), widgets ABIERTOS, tareas/sesiones EN MARCHA, **RAILS en curso** (runs vivos del FlashBrain, V2-042), y el perfil durable saliente ("lo que sabes de él"). | `memory.state()` + `memory.salient_long()` (cap terso). |
-| **C · DE QUÉ ÍBAIS HABLANDO** | Síntesis TENSA de la conversación reciente — las últimas líneas del corto plazo (cap agresivo), NO el volcado crudo entero ni la memoria de LARGO. | `memory.recent_short(limit=5, max_chars=550)`. El recorte ES la "síntesis" (sigue siendo lectura directa; una síntesis por LLM, si se quisiera, iría OFF del turno). |
+| **A · WHO YOU ARE** | The MISSION/identity (3-4 sentences, in the operator's language). It LIVES IN THE MEMORY — not in an English prompt. | `state.mission`, seeded at start-up by `memory_cache.prime()` from `langs.LangSpec.mission`; `mission_fallback` if not yet seeded (the caller passes it so as not to invert the memory→voice dependency). |
+| **B · WHO IS IN FRONT OF YOU** | VARIABLE situational data: operator (name/address/location + durable STATE fields), OPEN widgets, tasks/sessions IN PROGRESS, **RAILS in progress** (live FlashBrain runs), and the salient durable profile ("what you know about them"). | `memory.state()` + `memory.salient_long()` (terse cap). |
+| **C · WHAT YOU WERE TALKING ABOUT** | A TIGHT synthesis of the recent conversation — the last lines of short term (aggressive cap), NOT the whole raw dump nor LONG memory. | `memory.recent_short(limit=5, max_chars=550)`. The cut IS the "synthesis" (it is still a direct read; an LLM synthesis, if ever wanted, would go OFF the turn). |
 
-La misión (A) sembrada en `state.mission` es visible en el mapa de la memoria (columna ESTADO) y editable — la
-identidad deja de estar hardcodeada en `voice/prompt.py` (esa persona inglesa ya SOLO sirve a los baselines
-`BRAIN=direct|local|duo` y al harness). Sobre este ESTADO, el FlashBrain añade su capa TERSA de recursos
-(`nucleo/flash/prompt._flash_layer`) y el SlowBrain la suya; el "cuándo usar cada tool" vive en la descripción de la
-tool (`router.TOOLS`), no duplicado en prosa.
+The mission (A) seeded in `state.mission` is visible in the memory map (STATE column) and editable — identity is not
+hard-coded in `voice/prompt.py` (that English persona only serves the `BRAIN=direct|local|duo` baselines and the
+harness). On top of this STATE, the FlashBrain adds its TERSE resources layer (`nucleo/flash/prompt._flash_layer`)
+and the SlowBrain its own; "when to use each tool" lives in the tool description (`router.TOOLS`), not duplicated in
+prose.
 
-### La FORMA DE LA CLAVE decide si una píldora es un hecho sobre la PERSONA (V2-240/V2-242, 2026-08-21)
+### The SHAPE OF THE KEY decides whether a pill is a fact about the PERSON
 
-Los slots del operador usan **punto** (`operator.location`, `goal.current`); los volcados de fondo —widget, cron,
-cluster— usan **namespace con dos puntos** (`<widget>:<clave>`). No es cosmética: es lo único que distingue «un
-hecho sobre la persona» de «lo que escupió un trabajo automático», y **los dos lectores que sirven al modelo lo
-aplican**:
+The operator's slots use a **dot** (`operator.location`, `goal.current`); background dumps — widget, cron, cluster
+— use a **namespace with a colon** (`<widget>:<key>`). This is not cosmetic: it is the only thing that tells "a fact
+about the person" from "what an automatic job produced", and **both readers that serve the model apply it**:
 
-| Lector | Qué pinta | Dónde se filtra |
+| Reader | What it renders | Where it is filtered |
 |---|---|---|
-| Bloque PASIVO (cada turno) | «[Lo que sabes de él]» | `memory/api.py::salient_long` — `slot NOT LIKE '%:%'`, desde la auditoría 2026-07-14 |
-| DOSSIER del worker (por tarea) | «LO QUE SABES DEL OPERADOR (relevante a la tarea)» | `nucleo/memory_agent.py::compose_context` — desde 2026-08-21 |
+| PASSIVE block (every turn) | "[What you know about them]" | `memory/api.py::salient_long` — `slot NOT LIKE '%:%'` |
+| Worker DOSSIER (per task) | "WHAT YOU KNOW ABOUT THE OPERATOR (relevant to the task)" | `nucleo/memory_agent.py::compose_context` |
 
-**El dossier era la mitad sin blindar y es la peor donde fallar.** Medido en `best-plumber-same-day`: una píldora
-`weather:soria` (`mid/note`, importancia 0,3) que escribe cada hora `widgets/meteo-soria` salía **por encima** de
-`operator.location` = «Vive en el centro de Madrid», bajo esa cabecera, y el worker hizo tres búsquedas de
-«fontanero Soria». Ese widget **viaja tracked en el repo público**, así que no era suciedad de un test: le pasa a
-cualquiera que se autohospede.
+The dossier is where this matters most: without the filter, a background pill such as `weather:<city>` (`mid/note`,
+importance 0.3) written every hour by a weather widget could outrank `operator.location` under that heading, and a
+worker searching for a local service would search in the wrong city. Weather widgets ship in the repository, so
+this applies to every self-hosted install, not just to test data.
 
-Tres decisiones que conviene no reabrir:
+Three decisions worth not reopening:
 
-1. **La exclusión es CONDICIONAL, no un veto.** La nota de 2026-07-14 prometió que estas píldoras siguieran siendo
-   alcanzables ante una pregunta EXPLÍCITA, y la tarea de un worker puede ser legítimamente sobre esa ciudad. Una
-   píldora namespaced entra si la tarea nombra su namespace o su clave («el tiempo en Soria» sí; «busca un
-   fontanero» no).
-2. **El origen va en la CLAVE, no en `meta`.** El retriever **no devuelve `meta`** (sí `slot`, añadido en
-   `39e68a7` para esto): resolverlo por `meta['widget']` obligaría a sacar otra columna y a que cada consumidor
-   parseara JSON. El candado de escritura vive en `widgets/background.py::TickCtx._own_slot` (V2-242) — el único
-   sitio que SABE que el autor es un trabajo de fondo.
-3. **Renombrar un slot SIN migrar deja dos linajes vivos.** El supersede es por slot EXACTO, así que
-   `weather:soria` y `meteo-soria:weather:soria` quedan los dos `valid=1` y —sin TTL— el viejo compite en el
-   recall para siempre. Lo cierra la migración **v5→v6** (`memory/db.py::_namespace_widget_slots`, `6945496`):
-   espeja `_own_slot`, colapsa duplicados quedándose con la MÁS RECIENTE y **no toca ninguna fila sin
-   `meta.widget`** (un slot sin `:` y sin widget es del operador y no se mueve). El escritor viejo ya sellaba
-   `meta.widget`, así que el autor se sabe fila a fila. Una migración **congela la regla de SU versión**: si
-   `_own_slot` cambia, toca una v6→v7, no que la migración persiga al escritor.
+1. **The exclusion is CONDITIONAL, not a veto.** Namespaced pills must stay reachable on an EXPLICIT question, and a
+   worker's task can legitimately be about that city. A namespaced pill enters if the task names its namespace or
+   its key ("the weather in <city>" yes; "find a plumber" no).
+2. **The origin goes in the KEY, not in `meta`.** The retriever **does not return `meta`** (it does return `slot`):
+   resolving it through `meta['widget']` would mean pulling another column and having every consumer parse JSON.
+   The write lock lives in `widgets/background.py::TickCtx._own_slot` — the only place that KNOWS the author is a
+   background job.
+3. **Renaming a slot WITHOUT migrating leaves two live lineages.** Supersede works on the EXACT slot, so
+   `weather:<city>` and `<widget>:weather:<city>` would both stay `valid=1` and — with no TTL — the old one would
+   compete in recall forever. The **v5→v6** migration (`memory/db.py::_namespace_widget_slots`) closes it: it
+   mirrors `_own_slot`, collapses duplicates keeping the MOST RECENT, and **touches no row without `meta.widget`**
+   (a slot without `:` and without a widget belongs to the operator and does not move). The old writer already
+   stamped `meta.widget`, so the author is known row by row. A migration **freezes the rule of ITS version**: if
+   `_own_slot` changes, that calls for a v6→v7, not for the migration chasing the writer.
 
-Tests: nodo **1.1** — `tests/memory/unit/test_widget_slot_migration.py` (5 casos; 3 se ponen rojos si se quita la
-migración) y `tests/memory/integration/test_memory_agent.py` (el filtro del dossier, en las dos direcciones).
+Tests: node **1.1** — `tests/memory/unit/test_widget_slot_migration.py` (several cases go red if the migration is
+removed) and `tests/memory/integration/test_memory_agent.py` (the dossier filter, in both directions).
 
-## El CORAZÓN de escritura — el LLM que DESTILA cada dato en una píldora (V2-013)
+## The write HEART — the LLM that DISTILS every datum into a pill
 
-**Invariante de oro (aclaración del operador 2026-07-10, REAFIRMADO 2026-07-14): ESCRIBIR puede ser LENTO; LEER
-debe ser MÁXIMA VELOCIDAD.** Escribir BIEN es lo prioritario y puede tardar lo que haga falta: colocar cada dato en
-su capa (ESTADO/CORTO/LARGO), no duplicar, puntuar peso/importancia, organizar los conceptos del grafo y calcular
-embeddings/vectores — todo **off-hot-path** (cola async); no necesitamos que escritura y lectura sean inmediatas, así
-que un modelo de escritura MÁS LENTO y MÁS PRECISO es preferible (2ª auditoría 2026-07-14: el CORAZÓN pasó de
-`qwen2.5:3b` a `qwen2.5:7b-instruct` — 3/12→12/12 en write-completeness; ronda V2-056 2026-07-20: pasa a
-`deepseek-v4-flash` vía AIMLAPI — **98,5%** de write-completeness y **100%** de precisión en el bench §12.3). La
-LECTURA, en cambio, la paga el FlashBrain
-EN el turno (compone prompt, responde, actúa) → **NUNCA lleva un LLM ni I/O síncrono de memoria** (bloquearía la
-voz — regla de V2-011). El "corazón" que decide, por cada cosa que dice el operador, **si se guarda, DÓNDE
-(ESTADO/CORTO/LARGO/DESCARTAR), con qué importancia/TTL y bajo qué `slot`**, vive en `nucleo/memory_agent.py` +
-`nucleo/mem_processor.py`:
+**Golden invariant: WRITING may be SLOW; READING must be MAXIMUM SPEED.** Writing WELL is the priority and may take
+as long as it needs: placing each datum in its layer (STATE/SHORT/LONG), not duplicating, scoring weight/importance,
+organising the graph's concepts and computing embeddings/vectors — all **off the hot path** (async queue); there is
+no need for writes and reads to be immediate, so a SLOWER, MORE PRECISE write model is preferable. READING, on the
+other hand, is paid by the FlashBrain IN the turn (composing the prompt, answering, acting) → it **NEVER carries an
+LLM or synchronous memory I/O** (it would block the voice). The "heart" that decides, for each thing the operator
+says, **whether it is stored, WHERE (STATE/SHORT/LONG/DISCARD), with what importance/TTL and under which `slot`**,
+lives in `nucleo/memory_agent.py` + `nucleo/mem_processor.py`:
 
-- **`mem_processor.process(text, state) → list|None`** — el **procesador LLM**: default actual
-  **`deepseek/deepseek-v4-flash` DIRECTO** (`api.deepseek.com`, desde 2026-08-16 — antes vía AIMLAPI, movido tras
-  un cuelgue del broker para este modelo; config `§memory.mem_processor_model/_base_url/_api_key`), elegido
-  por el **bench de destilación** (`tests/memory/e2e/bot/distiller_bench.py`, `zaelar-model-benchmarks.md §12.3`,
-  ronda 2026-08-09): 21 candidatos comerciales × 34 casos × **cuatro ejes separados** (write-completeness ·
-  precisión/no-pollution · capa+slot · $/1k turnos con tokens reales). Empata con el titular anterior
-  `gpt-4.1-mini` en los dos ejes que DESTRUYEN datos —captar el hecho (98,5 vs 98,9%) y no ensuciar (100% los
-  dos)— por **$0,68 vs $1,516 los 1.000 turnos**. Escribir va off-hot-path, así que su mayor lentitud no le
-  cuesta nada al turno. Cadena de fallback: `gemini-2.5-flash` → `gpt-4.1-mini`; alternativa conservadora
-  `grok-4-fast-non-reasoning` (metadato 100%). ⛔ `gpt-4o-mini`, aún más barato, está **VETADO**: a una alergia
-  dicha en inglés le pone `slot=operator.diet` (3/3 pasadas) y un slot invalida todo lo anterior con ese slot →
-  un futuro cambio de dieta borraría la alergia. La **OPCIÓN local** (qwen vía Ollama) sigue disponible apuntando
-  `base_url` a Ollama, para batería/privacidad. Reports usage to `nucleo/energy_meter` when metering is enabled
-  (`energy_meter.report_llm_usage`, wired 2026-08-09). Env `MEM_PROCESSOR_MODEL/URL/KEY` = fallback power-user; modelo por invocación. La
-  **credencial se resuelve POR ENDPOINT** (`mem_processor._key` → `_endpoint_key`, mismo patrón que
-  `fast_client.resolved_api_key` — la key sigue a la URL, nunca al revés; fix del incidente 2026-07-17→19: una key
-  rancia de env enviada al endpoint equivocado dejó el CORAZÓN **2 días caído EN SILENCIO**, todo escribiéndose por
-  la heurística). **SALUD de 1ª clase** desde ese incidente: una **racha de fallos** dispara una alerta por el
-  observer (y aviso de recuperación al volver), y `mem_processor.status()` expone
-  modelo/racha/último-error/degradado al área de config — un CORAZÓN caído ya no puede pasar desapercibido. La
-  write-completeness es la palanca nº1 del recall (V2-031) y como escribir va off-hot-path, **preferimos el modelo
-  más preciso aunque sea más lento**. **DESTILA** el turno crudo
-  en **píldoras canónicas** (no la frase literal): `{text, dest, kind, importance, ttl_days, slot, value, change,
-  state_patch}` (contrato v2, ver §Supersede). Bajo contención de GPU los turnos ya NO se pierden: **cola diferida
-  corta** (serial — jamás dos distilaciones a la vez; espera acotada `MEM_PROCESSOR_QUEUE_WAIT`/`_MAX`, y solo al
-  agotarse cae a la heurística, de forma OBSERVABLE — auditoría 2026-07-14; antes SKIP silencioso).
-  La `importance` es **dinámica** — el prompt recibe el ESTADO actual para juzgar relevancia con contexto (estudio
-  derecho → derecho importa). Retorno con semántica: **`None`** = modelo no disponible → cae a la heurística;
-  **`[]`** = el LLM corrió y decidió DESCARTAR (se respeta); lista = píldoras a guardar. ⚠️ Con el default externo
-  el TEXTO del turno SÍ sale a la nube para destilarse (tradeoff aceptado explícitamente por el operador
-  2026-07-17); con la opción local (qwen vía Ollama) nada sale de la máquina.
-- **`ingest_utterance(text)`** — punto de entrada "algo que dijo el operador". Flujo: (1) trivia/comando obvio →
-  DESCARTE barato sin LLM (anti-ruido); (2) el procesador LLM destila píldoras; (3) **fail-open**: si el modelo no
-  está, cae a `classify()` (heurística regex) para no perder el perfil. **Cableado en cada turno dirigido** en
-  `voice/engine/llm/providers/nucleo.py` (`asyncio.create_task`, fire-and-forget → cero coste en TTFB).
-- **`classify(text)`** — heurística µs de RESERVA (regex es/en): PERFIL (nombre/ubicación/trato/hardware/coche/
-  objetivo/proyecto) → `state_patch` + traza `long` pinned con `slot`; DESEO/PREF → `long`; TRIVIA/COMANDO → skip;
-  resto → `mid`. Es el fail-open cuando el LLM no responde. **F1 (2026-07-20): el fail-open ya NO ensucia** — el
-  turno crudo degrada a `short` + TTL 3 días (NUNCA se hace durable un texto sin destilar; el incidente de 2 días
-  de heurística llenó el largo plazo de basura), y las redes deterministas (salud/compromisos/rutinas) siguen
-  rescatando lo crítico.
-- **`remember(item)`** — ÚNICO escritor del SlowBrain; acepta `slot`/`meta`/`ttl_days` (auto-clasifica si el caller
-  no fija destino). **`_write_atom(atom)`** mapea una píldora del LLM → capa (state→estado+traza long/pinned;
-  long/short→recuerdo con su ttl/slot).
-- **`compose_context(prompt)`** — el **DOSSIER v2 multi-eje** del worker (redseño V2-056): perfil del operador
-  (**sin la misión** — es identidad de zaelar, era ruido de ~900 chars en el prompt de un worker) + **reglas del
-  operador** (`state.rules`) + **⚠️ hechos críticos SIEMPRE** (`memory.critical_facts`, independientes del ranking)
-  + recall RRF + **eje por CONCEPTOS** (`memory.by_concepts` — T178/T183 por fin CABLEADA en producción: los
-  conceptos de la tarea agregan el cluster del grafo) + **agenda próxima** (read-only del widget). **Solo
-  DURABLES** (el conv-buffer crudo ya no compite por los huecos) y todo el I/O en **`asyncio.to_thread`**
-  (`_dossier_sync`). Es la ÚNICA cara del agente que puede permitirse recall+router LLM — va off-hot-path.
+- **`mem_processor.process(text, state) → list|None`** — the **LLM processor**. Default model: DeepSeek Flash
+  DIRECT (`api.deepseek.com`), stand-in OpenAI `gpt-4.1-mini` (`config/models.default.json` §memory_writer; config
+  `§memory.mem_processor_model/_base_url/_api_key`). Chosen by the **distillation bench**
+  (`tests/memory/e2e/bot/distiller_bench.py`, `zaelar-model-benchmarks.md §12.3`): many commercial candidates over a
+  fixed corpus on **four separate axes** (write-completeness · precision/no-pollution · layer+slot · $/1k turns with
+  real tokens) — see §Memory models for the reasoning and the `gpt-4o-mini` veto. Writing is off the hot path, so a
+  slower model costs the turn nothing. The **local OPTION** (qwen via Ollama) remains available by pointing
+  `base_url` at Ollama, for battery/privacy. It reports usage to `nucleo/energy_meter` when metering is enabled
+  (`energy_meter.report_llm_usage`). Env `MEM_PROCESSOR_MODEL/URL/KEY` = power-user fallback; model per invocation.
+  The **credential is resolved PER ENDPOINT** (`mem_processor._key` → `_endpoint_key`, same pattern as
+  `fast_client.resolved_api_key` — the key follows the URL, never the other way round), so a stale key can never be
+  sent to the wrong endpoint. **First-class HEALTH**: a **streak of failures** fires an alert through the observer
+  (and a recovery notice when it comes back), and `mem_processor.status()` exposes model/streak/last error/degraded
+  to the settings area — a HEART that is down cannot go unnoticed. Write-completeness is the number-one lever of
+  recall, and since writing is off the hot path, **we prefer the most precise model even if it is slower**. It
+  **DISTILS** the raw turn into **canonical pills** (not the literal sentence): `{text, dest, kind, importance,
+  ttl_days, slot, value, change, state_patch}` (v2 contract, see §Supersede). Under GPU contention turns are not
+  lost: a **short deferred queue** (serial — never two distillations at once; bounded wait
+  `MEM_PROCESSOR_QUEUE_WAIT`/`_MAX`) and only when that runs out does it fall to the heuristic, OBSERVABLY.
+  `importance` is **dynamic** — the prompt receives the current STATE to judge relevance in context (studying law
+  → law matters). Return semantics: **`None`** = model unavailable → falls to the heuristic; **`[]`** = the LLM ran
+  and decided to DISCARD (respected); a list = pills to store. ⚠️ With an external provider the turn's TEXT is sent
+  to that provider to be distilled; with the local option (qwen via Ollama) nothing leaves the machine.
+- **`ingest_utterance(text)`** — the entry point for "something the operator said". Flow: (1) obvious trivia/command
+  → cheap DISCARD without an LLM (anti-noise); (2) the LLM processor distils pills; (3) **fail-open**: if the model
+  is unavailable, it falls back to `classify()` (regex heuristic) so the profile is not lost. **Wired on every
+  directed turn** in `voice/engine/llm/providers/nucleo.py` (`asyncio.create_task`, fire-and-forget → zero cost to
+  TTFB).
+- **`classify(text)`** — the µs FALLBACK heuristic (es/en regex): PROFILE (name/location/address/hardware/car/
+  goal/project) → `state_patch` + a pinned `long` trace with `slot`; WISH/PREF → `long`; TRIVIA/COMMAND → skip;
+  everything else → `mid`. It is the fail-open when the LLM does not answer, and **it does not pollute**: the raw
+  turn degrades to `short` + a 3-day TTL (an undistilled text is NEVER made durable), while the deterministic nets
+  (health/commitments/routines) keep rescuing what is critical.
+- **`remember(item)`** — the SlowBrain's ONLY writer; accepts `slot`/`meta`/`ttl_days` (auto-classifies if the
+  caller does not set a destination). **`_write_atom(atom)`** maps an LLM pill → layer (state→state + long/pinned
+  trace; long/short→a memory with its ttl/slot).
+- **`compose_context(prompt)`** — the worker's **multi-axis v2 DOSSIER**: the operator's profile (**without the
+  mission** — that is zaelar's identity and only noise in a worker's prompt) + **operator rules** (`state.rules`) +
+  **⚠️ critical facts ALWAYS** (`memory.critical_facts`, independent of the ranking) + RRF recall + **the CONCEPTS
+  axis** (`memory.by_concepts` — the task's concepts aggregate the graph cluster) + **upcoming agenda** (read-only
+  from the widget). **DURABLE only** (the raw conv buffer does not compete for the slots) and all I/O in
+  **`asyncio.to_thread`** (`_dossier_sync`). It is the ONLY face of the agent that can afford recall + an LLM
+  router — it runs off the hot path.
 
-**Supersede/dedup por SLOT (DETERMINISTA, sin LLM)** — el "el más reciente MANDA": `memory/writer.insert_memory`,
-al recibir un `slot` (normalizado por `canon_slot` contra el registro `memory/slots.py`), mira **TODOS los
-recuerdos vigentes** con ese slot → si el texto normalizado del más reciente es idéntico lo **REFUERZA** (sube
-peso, cero duplicados) y colapsa los rezagados; si difiere, inserta el nuevo y marca **todos** los viejos
-`valid=0, superseded_by=nuevo` (auto-curativo, V2-038/auditoría 2026-07-14). Así "me llamo Ricard" dicho de tres
-formas = UN hecho reforzado, no tres filas — y un linaje históricamente duplicado se colapsa solo. El SELECT de
-vigentes **expande por ALIAS** (`slots.equivalent_keys`): escribir `operator.location` colapsa también una píldora
-legacy con clave cruda `location`/`ubicacion` → el colapso es INMEDIATO, sin esperar al `heal_slots` del sueño
-(2ª auditoría 2026-07-14, hallazgo del auditor: dos píldoras contradictorias del mismo hecho con claves distintas).
+**Supersede/dedup by SLOT (DETERMINISTIC, no LLM)** — "the newest WINS": `memory/writer.insert_memory`, on receiving
+a `slot` (normalised by `canon_slot` against the `memory/slots.py` registry), looks at **ALL current memories** with
+that slot → if the normalised text of the most recent one is identical it **REINFORCES** it (raises weight, zero
+duplicates) and collapses the stragglers; if it differs, it inserts the new one and marks **all** the old ones
+`valid=0, superseded_by=new` (self-healing). So "my name is Ricard" said three ways = ONE reinforced fact, not three
+rows — and a historically duplicated lineage collapses on its own. The SELECT of current rows **expands by ALIAS**
+(`slots.equivalent_keys`): writing `operator.location` also collapses a legacy pill with a raw `location`/`ubicacion`
+key → the collapse is IMMEDIATE, without waiting for the `heal_slots` of sleep.
 
-**Slots de FONDO SUBORDINADOS a `state.location` (`salient_long`, 2ª auditoría 2026-07-14):** el bloque pasivo del
-estado ("lo que sabes de él, dalo por sabido **sin buscar**") solo pinta hechos del OPERADOR (slots con `.`:
-`operator.*`/`goal.*`/`project.*` o sin slot). Los slots de FONDO namespaced con `:` (`weather:soria` que vuelca
-el widget meteo en background, `<widget>:<clave>`, `cluster:*`) quedan **FUERA del bloque pasivo** — antes un
-`weather:soria` saliente SECUESTRABA "¿qué tiempo hace hoy?" (el cerebro leía Soria en vez de aterrizar en
-`state.location` y buscar). Siguen **recuperables por el retriever** ante una pregunta EXPLÍCITA por esa ciudad; solo
-dejan de competir con el perfil del operador en el prompt pasivo.
+**BACKGROUND slots are SUBORDINATE to `state.location` (`salient_long`):** the passive state block ("what you know
+about them, take it as known **without searching**") only renders facts about the OPERATOR (slots with `.`:
+`operator.*`/`goal.*`/`project.*`, or no slot). Background slots namespaced with `:` (`weather:<city>` dumped by a
+weather widget in the background, `<widget>:<key>`, `cluster:*`) stay **OUT of the passive block**, so a salient
+`weather:<city>` can never hijack "what's the weather today?" (the brain lands on `state.location` and searches).
+They remain **retrievable by the retriever** on an EXPLICIT question about that city; they just do not compete with
+the operator's profile in the passive prompt.
 
-**SEGURIDAD MÉDICA — alergias ADITIVAS + siempre presentes (2ª auditoría 2026-07-14, hallazgo del corpus v3):** una
-alergia/intolerancia es un hecho médico **aditivo y crítico**. El CORAZÓN LLM la mis-asignaba al slot SINGULAR
-`operator.diet` → una **DIETA declarada después la BORRABA** (supersede por slot: "soy vegetariana" pisaba "alérgica
-a la penicilina"). Guard DETERMINISTA en el WRITER (chokepoint, `_is_critical_health`, es/en): una alergia/condición
-crítica **nunca conserva un slot de identidad singular** (queda aditiva → varias alergias coexisten; el dedup
-semántico funde repeticiones), se fija **pinned + importancia ≥0.95**, y se marca `meta.critical='health'`. En la
-LECTURA, `memory.critical_facts()` alimenta una **línea ⚠️ CRÍTICO propia** del `compose_state` que se surface
-**SIEMPRE**, independiente del ranking/cap de `salient_long` (bajo densidad la alergia se enterraba fuera del top-N).
-Olvidar una alergia es un fallo de seguridad — por eso no depende del retriever. Una dieta real (sin marca de
-alergia) sí sigue superseding normalmente a otra dieta.
+**MEDICAL SAFETY — allergies are ADDITIVE + always present:** an allergy/intolerance is an **additive and critical**
+medical fact. An LLM could mis-assign it to the SINGULAR slot `operator.diet`, and then a DIET declared later would
+ERASE it (supersede by slot: "I'm vegetarian" overwriting "allergic to penicillin"). A DETERMINISTIC guard in the
+WRITER (the choke point, `_is_critical_health`, es/en) ensures a critical allergy/condition **never keeps a singular
+identity slot** (it stays additive → several allergies coexist; semantic dedup merges repetitions), is set **pinned
++ importance ≥0.95**, and is marked `meta.critical='health'`. At READ time, `memory.critical_facts()` feeds a
+**dedicated ⚠️ CRITICAL line** of `compose_state` that surfaces **ALWAYS**, independent of the ranking/cap of
+`salient_long` (under density the allergy could otherwise fall outside the top-N). Forgetting an allergy is a safety
+failure — that is why it does not depend on the retriever. A real diet (without an allergy marker) still supersedes
+another diet normally.
 
-**Contrato v2 del átomo — `value` + `change` (auditoría 2026-07-14, cierre de fondo del retest V2-038):** el
-procesador emite, además de `slot`, (a) **`value`** = el valor escueto del hecho singular ("Valencia") → el host
-**SINTETIZA el `state_patch` MECÁNICAMENTE** del registro de slots (aunque el LLM escribiera el cambio como hecho
-suelto sin patchear el estado — la raíz del bug de la mudanza); (b) **`change: none|update|correction`** = la
-señal semántica de "esto es un cambio/corrección declarado, no un garble", que consume el gate anti-garble P0b
-**por átomo**. La señal la emite el PROPIO modelo (multilingüe por naturaleza, agnóstico del fraseo) → la familia
-de regex del host (`_RELOCATION_RE`, `_CORRECTION_*`, …) queda como **BACKSTOP del castellano**, ya no es el
-único mecanismo. Fewshots del procesador NEUTROS (persona ficticia — nunca el operador real: la memoria se sirve
-EN BLANCO) e incluyen el caso del cambio declarado.
+**v2 atom contract — `value` + `change`:** besides `slot`, the processor emits (a) **`value`** = the bare value of
+the singular fact ("Valencia") → the host **SYNTHESISES the `state_patch` MECHANICALLY** from the slot registry
+(even if the LLM wrote the change as a loose fact without patching the state); (b) **`change:
+none|update|correction`** = the semantic signal "this is a declared change/correction, not a garble", consumed by
+the P0b anti-garble gate **per atom**. The signal is emitted by the MODEL itself (multilingual by nature, agnostic to
+phrasing) → the host's regex family (`_RELOCATION_RE`, `_CORRECTION_*`, …) remains a **BACKSTOP for literal
+Spanish/English**, not the only mechanism. The processor's few-shots are NEUTRAL (a fictional persona — never the
+real operator: the memory ships BLANK) and include the declared-change case.
 
-**Escritura EXTERNA (Brain Workers) — `memory_agent.remember_external`** (auditoría 2026-07-14): la vía de los
-workers (`hbmem remember` → `POST /api/memory/remember`) exige el **token por-tarea** (`ZAELAR_TASK_TOKEN`,
-headers de `mem_cli`; escotilla dev `ZAELAR_MEM_API_OPEN=1`) y aplica los MISMOS gates que la voz: gate de
-precisión P0a, **NUNCA toca `state`** (un worker no habla por el operador), **slots de IDENTIDAD vetados**
-(degradan a hecho suelto; los de trabajo `goal.*`/namespaced pasan) y **procedencia estampada**
-(`meta.source="worker:<id>"`). El resultado de una tarea solo se recuerda si terminó **OK** (las fallidas avisan
-por voz pero no ensucian el nivel `mid`).
+**EXTERNAL writes (Brain Workers) — `memory_agent.remember_external`:** the workers' path (`hbmem remember` → `POST
+/api/memory/remember`) requires the **per-task token** (`ZAELAR_TASK_TOKEN`, headers from `mem_cli`; dev hatch
+`ZAELAR_MEM_API_OPEN=1`) and applies the SAME gates as voice: precision gate P0a, **NEVER touches `state`** (a worker
+does not speak for the operator), **IDENTITY slots vetoed** (they degrade to a loose fact; work slots `goal.*`/
+namespaced pass) and **stamped provenance** (`meta.source="worker:<id>"`). A task's result is only remembered if it
+finished **OK** (failed ones are announced by voice but do not pollute the `mid` level).
 
-**Red de BACKSTOPS DETERMINISTAS del CORAZÓN (regex es/en, sin LLM)** — el LLM local a veces DESCARTA por "charla"
-cosas que un humano SÍ recuerda, o su decisión es inconsistente. `nucleo/memory_agent.py` intercepta patrones
-inequívocos ANTES/DESPUÉS del LLM y garantiza el comportamiento correcto sin depender del fraseo (cada uno con guard
-en `tests/memory/integration/test_memory_agent.py` y batch propio en el bot de memoria):
-- **Compromisos** (`_COMMITMENT_RE`) — una petición/cita/encargo ("mi jefa me pidió el informe para el miércoles")
-  se guarda SIEMPRE aunque el LLM la canonicalice y la tire.
-- **Rutinas** (`_ROUTINE_RE`) — una costumbre recurrente ("cada lunes gimnasio") es memorable como patrón.
-- **Observaciones/autoconocimiento** (`_OBSERVATION_RE`) — "he notado que rindo por las mañanas", "cuando ceno
-  tarde duermo mal" → autoconocimiento útil para aconsejar; el LLM lo descartaba de forma inconsistente.
-- **Reversiones/cese** (`_REVERSAL_RE`) — "ya no bebo café", "ya no trabajo allí" → cambio de estado; se guarda el
-  NUEVO estado para que el cerebro sepa que eso YA NO aplica (el LLM lo tiraba).
-- **Corrección explícita** (`_CORRECTION_RE` "no es X sino Y" — captura valores que empiezan por letra O DÍGITO, para
-  PIN/códigos; `_CORRECTION_YANO_RE` "ya no … NombrePropio") → olvida (invalida) el valor erróneo y sigue para guardar
-  el nuevo.
-- **Mudanza declarada** (`_RELOCATION_RE`, round headless V2-038 2026-07-14) — "me he mudado a Valencia", "nos hemos
-  mudado a X", "I moved to X" → actualiza `location` (patch de perfil + slot `operator.location`, supersede exacto)
-  y cuenta como CORRECCIÓN para el gate P0b (un cambio de vida dicho con todas las letras no es un garble). Además,
-  **backstop de PERFIL→ESTADO**: si la heurística detectó perfil (nombre/ubicación/…) y los átomos del LLM NO
-  tocaron esos campos de `state`, el patch se aplica igualmente (el CORAZÓN tendía a escribir la mudanza como hecho
-  suelto — "ahora vive en Valencia" — SIN actualizar el estado → el tiempo respondía con la ciudad VIEJA).
-  **⚠️ Desde la auditoría 2026-07-14 esta familia es BACKSTOP, no el mecanismo primario:** la señal de cambio
-  legítimo la emite el propio procesador (`change: update|correction`, cualquier idioma/fraseo) y el patch de
-  perfil se sintetiza mecánicamente de `slot`+`value` — las regex solo cubren la ruta heurística (LLM caído) y
-  el castellano/inglés literal.
-- **Olvido a petición** (`_FORGET_RE`) — "olvida lo de X" → soft-invalida (conserva histórico). **Olvido DURO**
-  (`_FORGET_HARD_RE` "del todo / para siempre / sin dejar rastro") → `forget(hard=True)`, borrado real irreversible
-  (derecho al olvido para datos sensibles). **F1 (2026-07-20): el hard DELEGA en `writer.delete_memory`** — el
-  DELETE plano anterior dejaba **fantasmas en el índice FTS5** (el texto "borrado" seguía recuperable → rompía la
-  privacidad); el writer hace el `delete` de FTS5 CON el texto ANTES de borrar la fila (+vec +edges), índice limpio
-  de verdad. **Des-olvido** (`_UNFORGET_RE` "recupera lo de X") → revierte un soft-forget
-  (valid=1; el retriever ya filtra por valid).
-- **Abstención write-side** (`_ASSISTANT_QUERY_RE`) — una pregunta INEQUÍVOCA al asistente ("¿qué tiempo hace en X?",
-  "¿me recomiendas…?") NO es un hecho del operador → DESCARTE (evita inventar preferencias). Conservador: no toca
-  preguntas que traen un dato ("¿sabes que me mudé a Madrid?").
+**The HEART's net of DETERMINISTIC BACKSTOPS (es/en regex, no LLM)** — an LLM sometimes DISCARDS as "chatter" things a
+human DOES remember, or decides inconsistently. `nucleo/memory_agent.py` intercepts unambiguous patterns
+BEFORE/AFTER the LLM and guarantees the correct behaviour regardless of phrasing (each with a guard in
+`tests/memory/integration/test_memory_agent.py` and its own batch in the memory bot):
+- **Commitments** (`_COMMITMENT_RE`) — a request/appointment/errand ("my boss asked me for the report by
+  Wednesday") is ALWAYS stored even if the LLM canonicalises it and drops it.
+- **Routines** (`_ROUTINE_RE`) — a recurring habit ("gym every Monday") is memorable as a pattern.
+- **Observations/self-knowledge** (`_OBSERVATION_RE`) — "I've noticed I perform best in the mornings", "when I have
+  dinner late I sleep badly" → self-knowledge useful for advice, which an LLM may discard inconsistently.
+- **Reversals/cessation** (`_REVERSAL_RE`) — "I don't drink coffee any more", "I no longer work there" → a change of
+  state; the NEW state is stored so the brain knows that NO LONGER applies.
+- **Explicit correction** (`_CORRECTION_RE` "it's not X but Y" — captures values starting with a letter OR A DIGIT,
+  for PINs/codes; `_CORRECTION_YANO_RE` "ya no … ProperName") → forgets (invalidates) the wrong value and goes on to
+  store the new one.
+- **Declared relocation** (`_RELOCATION_RE`) — "me he mudado a Valencia", "we've moved to X", "I moved to X" →
+  updates `location` (profile patch + slot `operator.location`, exact supersede) and counts as a CORRECTION for the
+  P0b gate (a life change stated in so many words is not a garble). Plus a **PROFILE→STATE backstop**: if the
+  heuristic detected profile data (name/location/…) and the LLM's atoms did NOT touch those `state` fields, the
+  patch is applied anyway (otherwise a relocation written as a loose fact — "now lives in Valencia" — would leave
+  the state on the OLD city). **This family is a BACKSTOP, not the primary mechanism:** the legitimate-change
+  signal comes from the processor itself (`change: update|correction`, any language/phrasing) and the profile
+  patch is synthesised mechanically from `slot`+`value` — the regexes only cover the heuristic path (LLM down) and
+  literal Spanish/English.
+- **Forget on request** (`_FORGET_RE`) — "forget about X" → soft-invalidates (keeps history). **HARD forget**
+  (`_FORGET_HARD_RE` "completely / forever / without a trace") → `forget(hard=True)`, a real, irreversible deletion
+  (the right to be forgotten for sensitive data). The hard path **DELEGATES to `writer.delete_memory`**, which
+  issues the FTS5 `delete` WITH the text BEFORE deleting the row (+vec +edges), so no phantom remains in the FTS5
+  index and the "deleted" text is truly unrecoverable. **Un-forget** (`_UNFORGET_RE` "recover the X thing") →
+  reverts a soft forget (valid=1; the retriever already filters by valid).
+- **Write-side abstention** (`_ASSISTANT_QUERY_RE`) — an UNAMBIGUOUS question to the assistant ("what's the weather
+  in X?", "can you recommend…?") is NOT a fact about the operator → DISCARD (avoids inventing preferences).
+  Conservative: it does not touch questions that carry a datum ("did you know I moved to Madrid?").
 
-**GATES de PRECISIÓN de escritura (V2-033, 2026-07-12) — el CORAZÓN no ENSUCIA el largo plazo.** Simétricos a los
-backstops (que RESCATAN lo que el LLM tira de más), estos FILTRAN lo que el LLM guarda de más. El modelo pequeño
-reifica preguntas/peticiones como "hechos", propaga el garble del STT a `state` y sobre-generaliza directivas
-efímeras → guards DETERMINISTAS en `nucleo/memory_agent.py`, aplicados a la salida del LLM **y** de la heurística:
-- **(P0a) Peticiones/preguntas/ack → DESCARTE.** Pre-LLM: directiva/pregunta vaga sin referente (`_is_vague_request`
-  "mira eso", "¿puedes mirar eso?"). Post-LLM: `_ATOM_NONFACT_RE` tira el átomo cuyo texto canónico es una pregunta
-  reificada ("el operador pregunta si…", "quiere saber…") o interrogativo. **No** toca TAREAS CONCRETAS con dato
-  ("búscame vuelos a Tokio" → sigue recordable vía `_COMMITMENT_RE`) ni AFIRMACIONES envueltas ("recuérdame que soy
-  alérgico…" → el hecho se guarda).
-- **(P0b) Plausibilidad de IDENTIDAD** (`_plausibility_demote`): un valor de slot singular (`operator.name`…) que
-  CONTRADICE el ya establecido en `state` NO lo sobrescribe en una mención única (garble típico del STT) → se degrada
-  a `long` en **CUARENTENA** (`trust=untrusted`: recuperable solo por consulta explícita, jamás aflora en recall/
-  prompt). Las CORRECCIONES explícitas ("no me llamo X sino Y") y la MUDANZA declarada (`_RELOCATION_RE`) sí pasan
-  (ya olvidaron/superseden el valor viejo). En un
-  perfil VACÍO el primer dato entra normal (no hay conflicto). Ataca la confusión de identidad ("zaelar llegó a decir
-  «me llamo Alex Teigano»" por un `state` polucionado).
-- **(P1) Preferencias EFÍMERAS** (`_is_ephemeral_directive`): una directiva de pantalla/acción inmediata ("no me
-  muestres nada ahora", "ahora no") es estilo de sesión que ejecuta el FlashBrain — NUNCA una preferencia durable;
-  descarte pre-LLM. Solo se hace durable si trae marca de durabilidad ("prefiero/siempre/en general…").
-Verificado por `tests/memory/integration/test_write_precision_v2033.py` (16 casos, `MEM_PROCESSOR=0` → determinista
-sin GPU) + smoke con el destilador LLM real; sin regresión (291 tests de memoria). Cruza con **V2-031**: el eje del
-recall no es el embedding sino **write-completeness + PRECISIÓN** — esta es la cara "precisión".
+**Write PRECISION gates — the HEART does not POLLUTE long term.** Symmetric to the backstops (which RESCUE what the
+LLM drops too eagerly), these FILTER what the LLM keeps too eagerly. A small model may reify questions/requests as
+"facts", propagate STT garble into `state` and over-generalise ephemeral directives → DETERMINISTIC guards in
+`nucleo/memory_agent.py`, applied to the output of the LLM **and** of the heuristic:
+- **(P0a) Requests/questions/acks → DISCARD.** Pre-LLM: a vague directive/question with no referent
+  (`_is_vague_request` "look at that", "can you look at that?"). Post-LLM: `_ATOM_NONFACT_RE` drops the atom whose
+  canonical text is a reified question ("the operator asks whether…", "wants to know…") or an interrogative. It does
+  **not** touch CONCRETE TASKS with data ("find me flights to Tokyo" → still rememberable via `_COMMITMENT_RE`) or
+  WRAPPED STATEMENTS ("remind me that I'm allergic…" → the fact is stored).
+- **(P0b) IDENTITY plausibility** (`_plausibility_demote`): a singular slot value (`operator.name`…) that
+  CONTRADICTS the one already established in `state` does NOT overwrite it on a single mention (typical STT garble)
+  → it is demoted to `long` in **QUARANTINE** (`trust=untrusted`: retrievable only by explicit query, never surfaces
+  in recall/prompt). Explicit CORRECTIONS ("my name isn't X, it's Y") and a declared RELOCATION (`_RELOCATION_RE`)
+  do pass (they have already forgotten/superseded the old value). In an EMPTY profile the first datum enters
+  normally (there is no conflict). This keeps a polluted `state` from ever making the agent introduce the operator
+  by a misheard name.
+- **(P1) EPHEMERAL preferences** (`_is_ephemeral_directive`): an immediate screen/action directive ("don't show me
+  anything now", "not now") is session style that the FlashBrain executes — NEVER a durable preference; pre-LLM
+  discard. It only becomes durable if it carries a durability marker ("I prefer/always/in general…").
 
-**Estado de V2-013 (2026-07-10):** construido — schema v2 (`slot`+`meta`), procesador LLM local, supersede/dedup por
-slot, ingesta re-cableada (adiós al write crudo 0.3), CORTO como buffer conversacional limpio (`kind='conv'`, TTL).
-Pendiente en el roadmap: **dedup SEMÁNTICO** (por embedding, para lo SIN slot), **grafo de conceptos** (poblar
-`edges`), y afinar el few-shot del procesador. La **consolidación CORTO→LARGO por TTL/peso** + **aislamiento del
-tester** + limpieza de la BD se trabajan en **V2-019** (`.meshkore/roadmap/initiatives/V2-019-memoria-sueno-aislamiento.md`).
+Covered by `tests/memory/integration/test_write_precision_v2033.py` (`MEM_PROCESSOR=0` → deterministic, no GPU) +
+a smoke run with the real LLM distiller, alongside the rest of the memory suite. Together with the recall levers
+above, this is the "precision" face of the principle that recall depends on **write-completeness + PRECISION** more
+than on the embedding.
 
-**Reset duro ↔ memoria** (V2-018 `nucleo/reset.py`): al parar todo, el trabajo en curso se **CONGELA en ESTADO**
-(`set_state({trabajo_interrumpido})`) y la orden queda registrada en **CORTO** (`memory.write level='short'`) antes de
-matar los procesos. También limpia los **RAILS vivos** (`rails.clear_all` → `state.rails=[]`): un run
-(`sin_resolver`, sonando…) es estado de SESIÓN, no memoria durable — lo durable ya se volcó por su writeback tipado.
+**Hard reset ↔ memory** (`nucleo/reset.py`): when everything is stopped, the work in progress is **FROZEN in
+STATE** (`set_state({trabajo_interrumpido})`) and the order is recorded in **SHORT** (`memory.write
+level='short'`) before the processes are killed. It also clears the **live RAILS** (`rails.clear_all` →
+`state.rails=[]`): a run (`sin_resolver`, playing…) is SESSION state, not durable memory — what is durable was
+already dumped through its typed writeback.
 
-## Bóveda de secretos del operador — cifrado + storage partido (V2-060, CONSTRUIDO 2026-07-21)
+## The operator's secrets vault — encryption + split storage
 
-> Construido (rama `feat/v2-060-boveda-secretos-cifrados`). Módulos de memoria: `memory/vault.py` (cripto),
-> `memory/secrets.py` (detección), `memory/vault_api.py` (`/api/vault/*`). El flujo de lectura del cerebro vive en
-> `nucleo/flash/vault_flow.py` + la tool `reveal_secret`. Modelo de seguridad en `zaelar-security.md`, superficie de
-> config en `zaelar-conventions.md`. Aquí, lo que toca a la MEMORIA.
+> Memory modules: `memory/vault.py` (crypto), `memory/secrets.py` (detection), `memory/vault_api.py`
+> (`/api/vault/*`). The brain's read flow lives in `nucleo/flash/vault_flow.py` + the `reveal_secret` tool. Security
+> model in `zaelar-security.md`, configuration surface in `zaelar-conventions.md`. Here, what concerns the MEMORY.
 
-Los **secretos del operador** (contraseña de Netflix, IBAN/tarjeta, nº de cuenta cripto, private key de un wallet)
-no pueden vivir en una píldora en claro. La memoria gana:
+The **operator's secrets** (a Netflix password, IBAN/card, a crypto account number, a wallet's private key) cannot
+live in a pill in plain text. The memory provides:
 
-- **Gate de clasificación FAIL-CLOSED en el CORAZÓN** (`mem_processor`, §arriba): además de DESCARTAR/ESTADO/CORTO/
-  LARGO, decide **¿es un SECRETO?** — patrones deterministas (Luhn/IBAN/BIP-39/`0x…`/`sk-…`/«contraseña de …») **+**
-  LLM; **ante la duda, cifrar** (invierte el fail-open habitual: un secreto en claro = privacidad rota). El operador
-  puede forzar «guárdalo cifrado».
-- **Storage PARTIDO** (una píldora especial): **etiqueta en claro y buscable** («contraseña de Netflix» → se
-  embebe/indexa/rerankea normal, `slot=secret:*` para supersede) **+ valor cifrado opaco** (`meta.vault=1`,
-  `meta.sensitivity`). El valor NUNCA se embebe, loguea, entra en el prompt/`memory_cache`, ni va a un worker.
-- **Cifrado asimétrico** (sealed box): la **clave pública** vive en claro → **escribir un secreto NO pide desbloqueo**
-  (el CORAZÓN cifra y guarda sin más, y un worker también puede *escribir* uno); la **privada** (para LEER) va
-  envuelta por passphrase y/o passkey. Detalle cripto en `zaelar-security.md`.
-- **Lectura:** el retriever encuentra por etiqueta y devuelve la señal **«sellado → pide desbloqueo»** (nunca el
-  texto) → el FlashBrain solicita passkey/passphrase; el descifrado ocurre en el navegador (modo estricto) o en el
-  servidor un instante (modo cómodo, para TTS).
+- **A FAIL-CLOSED classification gate in the HEART** (`mem_processor`, above): besides DISCARD/STATE/SHORT/LONG, it
+  decides **is it a SECRET?** — deterministic patterns (Luhn/IBAN/BIP-39/`0x…`/`sk-…`/"password for …") **+** the
+  LLM; **when in doubt, encrypt** (this inverts the usual fail-open: a secret in plain text = broken privacy). The
+  operator can force "store it encrypted".
+- **SPLIT storage** (a special pill): a **plain, searchable label** ("Netflix password" → embedded/indexed/reranked
+  normally, `slot=secret:*` for supersede) **+ an opaque encrypted value** (`meta.vault=1`, `meta.sensitivity`).
+  The value is NEVER embedded, logged, put into the prompt/`memory_cache`, or sent to a worker.
+- **Asymmetric encryption** (sealed box): the **public key** lives in plain text → **writing a secret does NOT need
+  an unlock** (the HEART encrypts and stores without more ado, and a worker can also *write* one); the **private**
+  key (for READING) is wrapped by a passphrase and/or passkey. Crypto detail in `zaelar-security.md`.
+- **Reading:** the retriever finds by label and returns the signal **"sealed → ask for unlock"** (never the text) →
+  the FlashBrain requests the passkey/passphrase; decryption happens in the browser (strict mode) or on the server
+  for an instant (comfort mode, for TTS).
 
-## Observabilidad de la memoria (V2-014) — registro de eventos + visor
+## Memory observability — event log + viewer
 
-Dos superficies para VER la memoria trabajar en tiempo real:
+Two surfaces to SEE the memory working in real time:
 
-- **Columna de logs ◷** (`/debug` · `frontend/app/components/DebugPanel.js`): el turno emite filas `kind=memory`
-  con **módulo=memory · capa (state/short/long/slow) · petición → resultado (nº tarjetas/chars) · tiempo `mem_ms`**
-  (emitidas en `voice/engine/llm/providers/nucleo.py` tras `build_flash_system`); las escrituras/queries llegan
-  etiquetadas por el puente SSE. Detalle en `zaelar-observability.md`.
-- **Visor «Mapa de la memoria» 🧠 — DOS VISTAS** (`frontend/app/components/MemoryMap.js`, overlay a pantalla, se abre
-  desde el cuenco del orbe; redseño 2026-07-10 a petición del operador). Un **toggle** alterna dos representaciones de
-  la misma memoria; la clave del redseño: separar **CONTENIDO** de **ORGANIZACIÓN**, y NO mezclar corto con largo (son
-  storages distintos en la realidad → mapas distintos):
-  - **SLOTS** (cómo se GUARDA): tres COLUMNAS proporcionales **ESTADO 10% · CORTO 20% · LARGO 70%** (el modelo de
-    LECTURA a 3 velocidades); cada recuerdo un nodo con texto+scoring+fecha+metadatos. Es la vista con **tintado en
-    vivo** por-nodo (`[data-mid]`). La columna **ESTADO** muestra también el CONTEXTO DE UI VIVO —**widgets
-    abiertos**, **tareas en marcha** y **rails en curso** (V2-042)— así el operador VE lo que el cerebro tiene
-    delante en cada momento.
-  - **CONCEPTOS** (cómo se ORGANIZA, T126): **mapa de red** — cada concepto un **nodo circular dimensionado por su nº de
-    datos** (el número DENTRO), unido a OTROS conceptos por aristas de **co-ocurrencia** (comparten píldora; grosor = nº
-    compartido). SIN contenido. **CORTO y LARGO = DOS MAPAS SEPARADOS** (paneles apilados): el LARGO desde el grafo
-    persistido (`edges`), el CORTO derivado al vuelo (`memory/concepts.py::derive_concepts` — el corto no persiste
-    aristas). Vocabulario de conceptos centralizado en **`memory/concepts.py`** (substrato): un solo sitio para cómo se
-    ESCRIBE (backstop de `memory_agent`) y cómo se DIBUJA el mapa de corto.
-  - Datos: `GET /api/memory/map` (`memory.api.map()`, read-only, no-cache) → `{state, layers:{short,long},
+- **The ◷ logs column** (`/debug` · `frontend/app/components/DebugPanel.js`): the turn emits `kind=memory` rows with
+  **module=memory · layer (state/short/long/slow) · request → result (number of cards/chars) · time `mem_ms`**
+  (emitted in `voice/engine/llm/providers/nucleo.py` after `build_flash_system`); writes/queries arrive labelled
+  through the SSE bridge. Detail in `zaelar-observability.md`.
+- **The "Memory map" viewer 🧠 — TWO VIEWS** (`frontend/app/components/MemoryMap.js`, full-screen overlay, opened
+  from the orb's bowl). A **toggle** switches between two representations of the same memory; the key idea:
+  separating **CONTENT** from **ORGANISATION**, and NOT mixing short with long (they are different storages in
+  reality → different maps):
+  - **SLOTS** (how it is STORED): three proportional COLUMNS **STATE 10% · SHORT 20% · LONG 70%** (the three-speed
+    READ model); each memory is a node with text+scoring+date+metadata. It is the view with **live per-node
+    tinting** (`[data-mid]`). The **STATE** column also shows the LIVE UI CONTEXT — **open widgets**, **tasks in
+    progress** and **rails in progress** — so the operator SEES what the brain has in front of it at every moment.
+  - **CONCEPTS** (how it is ORGANISED): a **network map** — each concept a **circular node sized by its number of
+    data points** (the number INSIDE), joined to OTHER concepts by **co-occurrence** edges (they share a pill;
+    thickness = number shared). NO content. **SHORT and LONG = TWO SEPARATE MAPS** (stacked panels): LONG from the
+    persisted graph (`edges`), SHORT derived on the fly (`memory/concepts.py::derive_concepts` — short term does not
+    persist edges). The concept vocabulary is centralised in **`memory/concepts.py`** (substrate): one place for how
+    it is WRITTEN (the `memory_agent` backstop) and how the short-term map is DRAWN.
+  - Data: `GET /api/memory/map` (`memory.api.map()`, read-only, no-cache) → `{state, layers:{short,long},
     concept_graph:{short:{nodes[+count],links[+weight]}, long:{…}}, concepts, edges, counts}`.
-- **Tiempo real + tintado** (gated por el flag `memory_observability`, default ON, en `config/settings.py`): el
-  server puentea `memory.updated` del bus → topic `observer` → `/events` (`server/__init__.py`). Ambas vistas
-  **re-fetchean** en vivo; en SLOTS cada evento lleva `op`+`ids` → el visor **tiñe** el nodo (`[data-mid]`) unos
-  segundos: **verde**=alta (`write`), **ámbar**=sobrescritura (`supersede`/`reinforce`/`state`), **azul**=query
-  (`compose_recall` emite `op:"query"` con los ids que tocó). `services/sse.js` enruta `store.bumpMemory()` (refetch)
-  + `store.pushMemPulse({op,ids})` (tinte).
+- **Real time + tinting** (gated by the `memory_observability` flag, default ON, in `config/settings.py`): the server
+  bridges `memory.updated` from the bus → topic `observer` → `/events` (`server/__init__.py`). Both views
+  **re-fetch** live; in SLOTS each event carries `op`+`ids` → the viewer **tints** the node (`[data-mid]`) for a few
+  seconds: **green** = insert (`write`), **amber** = overwrite (`supersede`/`reinforce`/`state`), **blue** = query
+  (`compose_recall` emits `op:"query"` with the ids it touched). `services/sse.js` routes `store.bumpMemory()`
+  (refetch) + `store.pushMemPulse({op,ids})` (tint).
 
-## Evaluación de la memoria — CÓMO se prueba un sistema de memoria (teoría + práctica)
+## Evaluating the memory — HOW a memory system is tested (theory + practice)
 
-> **Encargo del operador (2026-07-10/11):** "una memoria cada vez más parecida a la de un humano pero con
-> superpoderes". Para llegar ahí hay que **probarla A FONDO, de forma original y bien estructurada**, deduciendo
-> cómo se pone a prueba una memoria y **aplicando lo que dice la literatura**. Esta sección es la TEORÍA canónica;
-> el mapa operativo vive en `tests/memory/e2e/bot/TAXONOMY.md` (dimensiones + cobertura) y `EXIGENCIA.md` (control
-> de calidad cada 50 casos).
+> The goal: "a memory ever closer to a human's, but with superpowers". Getting there requires testing it IN DEPTH,
+> in an original and well-structured way, deriving how a memory is put to the test and **applying what the
+> literature says**. This section is the canonical THEORY; the operational map lives in
+> `tests/memory/e2e/bot/TAXONOMY.md` (dimensions + coverage) and `EXIGENCIA.md` (periodic quality review of the case
+> corpus).
 
-**Qué mide la literatura (WebSearch 2026-07-11).** El campo converge en unas **habilidades núcleo**: los benchmarks
-LongMemEval (ICLR 2025), LoCoMo, MemBench, **MemoryAgentBench** (ICLR 2026), MemConflict, BEAM, STALE, Mem2ActBench.
-MemoryAgentBench las resume en **4 competencias + 1 hueco que casi nadie prueba**:
-1. **Recuperación exacta** (accurate retrieval) — el hecho sale cuando se pide.
-2. **Aprendizaje en uso** (test-time learning) — actualizar/adaptarse a lo nuevo (correcciones, reversiones).
-3. **Comprensión de largo alcance** (long-range understanding) — retención profunda + multi-hop + temporal.
-4. **Olvido selectivo** (selective forgetting) — decay, eviction, olvido a petición; NO todo se guarda para siempre.
-5. **Organización de la estructura** (structure organization) — *el hueco*: cómo se ORGANIZA la memoria (grafo de
-   conceptos), no solo qué contiene. En zaelar es el `edges`/`memory/concepts.py` y la vista CONCEPTOS del visor.
+**What the literature measures.** The field converges on a set of **core abilities**: the LongMemEval (ICLR 2025),
+LoCoMo, MemBench, **MemoryAgentBench** (ICLR 2026), MemConflict, BEAM, STALE and Mem2ActBench benchmarks.
+MemoryAgentBench summarises them as **4 competencies + 1 gap that almost nobody tests**:
+1. **Accurate retrieval** — the fact comes out when asked for.
+2. **Test-time learning** — updating/adapting to what is new (corrections, reversals).
+3. **Long-range understanding** — deep retention + multi-hop + temporal.
+4. **Selective forgetting** — decay, eviction, forgetting on request; NOT everything is kept forever.
+5. **Structure organisation** — *the gap*: how the memory is ORGANISED (a concept graph), not only what it contains.
+   In zaelar that is `edges`/`memory/concepts.py` and the viewer's CONCEPTS view.
 
-**Cómo lo probamos en zaelar (metodología).** Tres superficies, alineadas con las buenas prácticas del campo
-(interacción **incremental multi-turno** + **checks de regresión** en cada cambio + **revisión humana** para lo que
-un juez-LLM no puede decidir):
-- **Bot de memoria** (`tests/memory/e2e/bot/`, `python -m tests.memory.e2e.bot.runner`): alimenta la memoria turno a
-  turno sobre una **BD que ACUMULA** (como MemoryAgentBench: chunks incrementales), y verifica el comportamiento por
-  el CAMINO REAL — `_brain_view` reconstruye EXACTAMENTE lo que ve el FlashBrain (bloque cacheado + recall si el gate
-  `needs_recall` dispara), **sin LLM en la lectura**. Tipos de paso: `save`/`query`/`dedup`/`turn`/`connector`/
-  `source_query`/`cluster_exchange`/`forget`/`unforget`/`consolidate`/`episode`/`scale`/`recall_probe`/`weight_check`.
-- **Gateway conversacional focalizado** (`cases4.py`): es la acción primaria del Observatory. Pasa parrafadas
-  naturales por `ingest_utterance → CORAZÓN → gates → writer`, exige fuente LLM, inspecciona todas las píldoras,
-  slots y estado, y luego interroga la misma memoria. Así la extracción no queda escondida detrás de writes directos.
-- **Cronología de lifecycle** (`tests/memory/e2e/timeline/`): 966 operaciones en una BD y reloj aislados, con sueño
-  ligero y REM tras cada día simulado (180 REM). Usa átomos explícitos para medir aging, TTL, refuerzo, corrección y
-  olvido sin confundir una regresión del lifecycle con variación del modelo extractor.
-- **pytest** (`tests/`, `tests/memory/integration/test_memory_agent.py`): guards deterministas de las piezas (backstops, forget/unforget,
-  concept vocab, aviso de backend degradado…) — la red de regresión que corre en cada cambio.
-- **Tester en vivo**: lo que es comportamiento del LLM del turno (abstención query-time, resolución de un
-  conflicto, ironía) NO es del membot (que lee sin LLM) → se prueba con el agente que HABLA con zaelar y un juez.
+**How we test it in zaelar (methodology).** Several surfaces, aligned with the field's good practice (**incremental
+multi-turn** interaction + **regression checks** on every change + **human review** for what an LLM judge cannot
+decide):
+- **The memory bot** (`tests/memory/e2e/bot/`, `python -m tests.memory.e2e.bot.runner`): feeds the memory turn by
+  turn over a database that **ACCUMULATES** (as in MemoryAgentBench: incremental chunks), and checks the behaviour
+  along the REAL PATH — `_brain_view` reconstructs EXACTLY what the FlashBrain sees (cached block + recall if the
+  `needs_recall` gate fires), **with no LLM on the read**. Step types: `save`/`query`/`dedup`/`turn`/`connector`/
+  `source_query`/`cluster_exchange`/`forget`/`unforget`/`consolidate`/`episode`/`scale`/`recall_probe`/
+  `weight_check`.
+- **The focused conversational gateway** (`cases4.py`): the primary action of the Test Observatory. It passes
+  natural paragraphs through `ingest_utterance → HEART → gates → writer`, requires an LLM source, inspects every
+  pill, slot and state, and then questions the same memory. That way extraction is not hidden behind direct writes.
+- **The life-cycle timeline** (`tests/memory/e2e/timeline/`): a long sequence of operations on an isolated database
+  and clock, with light sleep and REM after every simulated day. It uses explicit atoms to measure aging, TTL,
+  reinforcement, correction and forgetting without confusing a life-cycle regression with variation in the
+  extractor model.
+- **pytest** (`tests/`, `tests/memory/integration/test_memory_agent.py`): deterministic guards of the pieces
+  (backstops, forget/unforget, concept vocabulary, degraded-backend warning…) — the regression net that runs on
+  every change.
+- **The live tester**: what is behaviour of the turn's LLM (query-time abstention, resolving a conflict, irony) is
+  NOT the membot's job (it reads without an LLM) → it is tested with the agent that TALKS to zaelar plus a judge.
 
-**Qué MODELO corre en cada capa (para no confundir con lo que haya suelto en Ollama).** Este repo puede tener
-modelos locales instalados por otras razones (self-host, pruebas ajenas al módulo de memoria) — que un `ollama
-list` muestre algo no significa que la memoria lo use. La memoria tiene DOS familias de decisión de modelo,
-completamente separadas:
+**Which MODEL runs in each layer (so as not to confuse it with whatever is installed in Ollama).** This machine may
+have local models installed for other reasons (self-hosting, tests unrelated to the memory module) — an `ollama
+list` showing something does not mean the memory uses it. The memory has TWO model-decision families, completely
+separate:
 
-1. **Embeddings (vectores del retriever)** — `memory/embeddings.py`, config `§memory.embed_provider/embed_model`.
-   Es **LOCAL a propósito** (no es un embedding comercial hoy ni está previsto). Default `embeddinggemma` vía Ollama,
-   fallback determinista `fastembed`→`hash` si Ollama no responde (nunca mezcla espacios vectoriales en silencio,
-   `writer.py::_embed_sig_ok()`). **No participa en escribir/razonar sobre lo que se recuerda** — solo convierte
-   texto a vector para la búsqueda semántica.
-2. **Escritura/síntesis (razona sobre qué guardar o qué resumir)** — el CORAZÓN (`nucleo/mem_processor.py`) y la
-   síntesis de REM (`nucleo/memllm.py`, incluido el nuevo gate de fidelidad `verify_insight_grounded` de V2-104).
-   **Esto es SIEMPRE un modelo comercial vía API, nunca local** — ver `config/v2.json §memory`: hoy
-   `mem_processor_model=deepseek-v4-flash` DIRECTO (`api.deepseek.com`) y `rem_model=deepseek/deepseek-v4-flash`
-   vía AIMLAPI. Es la MISMA familia de modelo (DeepSeek V4) que el `fast` del FlashBrain de voz, que en esta
-   instalación corre `deepseek-v4-pro` (razonador, "Thinking") — el par **Flash/no-razona vs Pro/razona ("Thinking")**
-   es una elección real dentro del catálogo DeepSeek, no dos productos distintos.
+1. **Embeddings (the retriever's vectors)** — `memory/embeddings.py`, config `§memory.embed_provider/embed_model`.
+   Default: the cloud provider declared in `config/models.default.json` §embeddings; Ollama `embeddinggemma` as a
+   panel option; `fastembed`→`hash` as safety nets (the space is never mixed silently,
+   `writer.py::_embed_sig_ok()`). **It takes no part in writing/reasoning about what is remembered** — it only turns
+   text into a vector for semantic search.
+2. **Writing/synthesis (reasoning about what to store or summarise)** — the HEART (`nucleo/mem_processor.py`) and the
+   REM synthesis (`nucleo/memllm.py`, including the fidelity gate `verify_insight_grounded`). Defaults in
+   `config/models.default.json` (§memory_writer, §memory_rem): a DeepSeek Flash model through the direct endpoint
+   with OpenAI `gpt-4.1-mini` as stand-in; a local model (qwen via Ollama) can be configured instead.
 
-**Qué corre CADA capa de test, en concreto:**
+**What EACH test layer runs, concretely:**
 
-| capa | modelo real de ESCRITURA/SÍNTESIS | corre con LLM real? | coste |
+| layer | real WRITING/SYNTHESIS model | runs with a real LLM? | cost |
 |---|---|---|---|
-| pytest (`tests/memory/unit`,`integration`) | ninguno — hooks/mocks inyectados a mano | NO | $0, cada commit |
-| bot corpus (`tests/memory/e2e/bot/`, `cases.py`/`cases2.py`/`cases3.py`) | el CORAZÓN configurado (`§memory.mem_processor_*`) | SÍ, en escritura; lectura sin LLM | real, esporádico |
-| gateway conversacional (`cases4.py`) | el CORAZÓN configurado | SÍ (extracción completa) | real, esporádico |
-| timeline (`tests/memory/e2e/timeline/`) | por defecto: hook DETERMINISTA Python puro (`_deterministic_hook`) — NO LLM real; **`--real` (V2-107, 2026-08-17) cablea el CORAZÓN + `verify_insight_grounded` + paráfrasis REALES contra DeepSeek** dentro del propio timeline | NO por defecto; SÍ con `--real` | $0 por defecto; real y esporádico con `--real` |
-| `distiller_bench.py` | BARRE candidatos comerciales para ELEGIR el CORAZÓN | SÍ, muchos modelos a la vez | real, caro, solo al re-evaluar |
-| `scale_eval.py` | ninguno — mide el retriever (embeddings+reranker), no la síntesis | NO | $0 (solo embeddings/reranker locales) |
-| tests unitarios de V2-104 (`test_rem.py`, fidelidad del insight) | `verify_fn` MOCKEADO a mano (`lambda insight, pills: True/False`) | NO — mecánica, gratis, cada commit | $0 |
-| `live_rem_faithfulness.py` (V2-104, script dedicado) | `verify_insight_grounded()` REAL contra DeepSeek — sin mock | SÍ | real, bajo (3 casos) |
+| pytest (`tests/memory/unit`,`integration`) | none — hooks/mocks injected by hand | NO | $0, every commit |
+| bot corpus (`tests/memory/e2e/bot/`, `cases.py`/`cases2.py`/`cases3.py`) | the configured HEART (`§memory.mem_processor_*`) | YES on write; read without an LLM | real, occasional |
+| conversational gateway (`cases4.py`) | the configured HEART | YES (full extraction) | real, occasional |
+| timeline (`tests/memory/e2e/timeline/`) | by default: a DETERMINISTIC pure-Python hook (`_deterministic_hook`) — no real LLM; **`--real` wires the REAL HEART + `verify_insight_grounded` + paraphrases** inside the timeline itself | NO by default; YES with `--real` | $0 by default; real and occasional with `--real` |
+| `distiller_bench.py` | SWEEPS commercial candidates to CHOOSE the HEART | YES, many models at once | real, only when re-evaluating |
+| `scale_eval.py` | none — measures the retriever (embeddings+reranker), not synthesis | NO | embeddings/reranker only |
+| insight-fidelity unit tests (`test_rem.py`) | `verify_fn` MOCKED by hand (`lambda insight, pills: True/False`) | NO — mechanics, free, every commit | $0 |
+| `live_rem_faithfulness.py` (dedicated script) | the REAL `verify_insight_grounded()` — no mock | YES | real, small |
 
-**La validación real de `verify_insight_grounded()` YA SE HIZO (2026-08-17, mismo día que V2-104)** —
-`tests/memory/e2e/bot/live_rem_faithfulness.py`, 3/3 pruebas reales en verde contra `deepseek-v4-flash`. Fue esa
-misma corrida real la que encontró el bug de orden del gate (backstop determinista vetando ANTES que el LLM,
-corregido el mismo día) — la fila ya no está pendiente; queda como referencia el script para volver a correrlo
-cuando cambie el modelo o el prompt.
+`tests/memory/e2e/bot/live_rem_faithfulness.py` validates `verify_insight_grounded()` against the real model; re-run
+it whenever the REM model or its prompt changes.
 
-**Taxonomía de 27 dimensiones (A–X + subtipos).** Cada dimensión ataca UN modo de fallo distinto y se ancla a la
-habilidad SOTA que le corresponde (tabla completa en `TAXONOMY.md`). Cubre extracción (telegráfica↔parrafada),
-estado/corto/largo, dedup/supersede, descarte/abstención, grafo/categoría, multi-fuente, cuarentena de confianza,
-intereses, temporal/orden, **escala** (needle-in-haystack a 15k, la preocupación nº1), olvido/decay, contradicciones,
-privacidad, rutinas, adversarial/STT/inyección, cross-source, multilingüe, episódica, vocab-gap, **multi-hop**,
-verbosidad, instrucciones permanentes, invalidación implícita (STALE), y ~30 escenarios humanos (memoria espacial,
-parentesco, promesas/deudas, procedimientos, superlativos, errores, decisiones, observaciones, aversiones, metas…).
+**A taxonomy of failure dimensions (A–X + subtypes).** Each dimension attacks ONE distinct failure mode and is
+anchored to the corresponding state-of-the-art ability (full table in `TAXONOMY.md`). It covers extraction
+(telegraphic↔long-winded), state/short/long, dedup/supersede, discard/abstention, graph/category, multi-source,
+trust quarantine, interests, temporal/order, **scale** (needle-in-a-haystack in a large store), forgetting/decay,
+contradictions, privacy, routines, adversarial/STT/injection, cross-source, multilingual, episodic, vocabulary gap,
+**multi-hop**, verbosity, standing instructions, implicit invalidation (STALE), and a wide set of human scenarios
+(spatial memory, kinship, promises/debts, procedures, superlatives, mistakes, decisions, observations, aversions,
+goals…).
 
-**Disciplina de calidad (`EXIGENCIA.md`).** Objetivo: 1000 casos ORIGINALES, sin duplicar. Cada 50 casos se pasa un
-control: ¿duplicamos? ¿variedad (longitud de input / volumen / las 3 velocidades)? ¿qué falta? ¿cambio de approach?
-¿buscar munición nueva en la literatura? ¿EVOLUCIONAR la memoria (machacar→detectar→mejorar→machacar)? De 400 a 1000
-son 12 controles fechados en el registro del tester.
+**Quality discipline (`EXIGENCIA.md`).** The case corpus grows with ORIGINAL cases, never duplicates. At regular
+intervals a review asks: are we duplicating? Is there variety (input length / volume / the three speeds)? What is
+missing? Should the approach change? Is there new ammunition in the literature? Should the memory EVOLVE
+(stress→detect→improve→stress)?
 
-**Fronteras conocidas (cazadas por los tests, pendientes de una sesión dedicada — ver `V2-021`).** T175 (el CORAZÓN
-infra-asigna `slot` → supersede/dedup en cadena incompletos), T177 (retrieval multi-hop limitado a ~1 salto de
-graph_expand), **T178 + T183 (misma raíz: falta EXPANSIÓN POR CONCEPTOS en el recall** → una consulta amplia/de otro
-tema no agrega ni aplica una restricción; el prerequisito de vocabulario ya está hecho), T179 (sin detección de
-invalidación IMPLÍCITA/staleness), T181 (la destilación generaliza y pierde nombres propios en input verboso — no
-prompt-tunable en el modelo local), T182 (una corrección SIN sujeto misatribuye el valor nuevo — el mem_processor
-destila un turno sin contexto de conversación). Mejoras YA aplicadas y validadas: aviso de backend degradado (T176),
-descarte de preguntas al asistente (T180), corrección de valores numéricos, olvido DURO por voz, vocabulario de
-conceptos (dietéticos), y los backstops de OBSERVACIONES y REVERSIONES.
+**Extension points the evaluation keeps an eye on:** denser slot assignment by the HEART (so chained
+supersede/dedup is complete), multi-hop retrieval beyond the bounded `graph_expand`/PPR channel, CONCEPT EXPANSION in
+recall so a broad or cross-topic query aggregates and applies a constraint (`memory.by_concepts` already does it for
+the worker dossier), detection of IMPLICIT invalidation/staleness, keeping proper names in verbose input, and giving
+the distiller conversation context so a correction without a subject is attributed correctly.
 
-## Módulos (carpetas)
+## Modules (folders)
 
-> **Decisión v2 (2026-07-09, V2-002):** la memoria es un módulo **top-level `memory/`** (hermano de `voice/`,
-> `widgets/`), **NO** `nucleo/memoria/`. Es el substrato compartido — la escriben FlashBrain, el agente de
-> memoria del SlowBrain y los widgets; no forma parte del cerebro. Los paths de abajo (y el diagrama Memoria de
-> `/architecture`) reflejan ya esta decisión.
+> **Design decision:** the memory is a **top-level `memory/`** module (a sibling of `voice/`, `widgets/`), **NOT**
+> `nucleo/memoria/`. It is the shared substrate — written by the FlashBrain, the SlowBrain's memory agent and
+> widgets; it is not part of the brain.
 
-- `memory/db.py` — conexión SQLite `zaelar.db` (WAL) + carga de `sqlite-vec` + migraciones de schema.
-- `memory/schema.py` — DDL (state · memories · vec_memories · fts_memories · edges · episodic · journal).
-- `memory/queue.py` — cola async (asyncio.Queue): todas las escrituras entran aquí.
-- `memory/writer.py` — único escritor → BD; embeddings locales al insertar. **ENFORCEMENT de firma de embedding**
-  (F1, 2026-07-20): si el modelo de embedding activo no casa con la firma de la BD (o está degradado), la píldora
-  se marca `meta.embed_pending` en vez de insertar un vector de OTRO espacio (la fase REM la repara) — nunca se
-  mezclan espacios vectoriales en silencio (incidente fastembed bge-EN, 2026-07-17/19).
-- `memory/embeddings.py` — cliente de embeddings locales (Ollama embeddinggemma 768 · fallback fastembed).
-- `memory/retriever.py` — ruta caliente: vec ∥ fts → RRF → score ponderado → graph_expand.
-- `memory/state.py` — tabla fija (lectura µs, sin búsqueda).
-- `memory/graph.py` — aristas (link/expand).
-- `memory/episodic.py` — ficheros/PDF: resumen embebido buscable + carga lazy del binario.
-- `memory/consolidator.py` — el job "sueño" LIGERO (horario: promote/dedup-exacto/decay POR VENTANA/prune_invalid/evict).
-- **`memory/rem.py`** — el sueño PROFUNDO «fase REM» (V2-056, diario): repair_embeddings + semantic_dedup +
-  synthesize (insights por concepto, hook LLM inyectado) + hygiene. Ver §Sueño PROFUNDO.
-- `memory/api.py` — fachada pública (write[+`slot`/`meta`]/write_now/query/**recent_short**/state/set_state/reinforce/pin/unpin/link/load_episode/consolidate/**map**).
-- **`nucleo/mem_processor.py`** — el procesador LLM (default `gpt-4.1-mini` vía OpenAI, opción local qwen; §12)
-  que DESTILA cada turno en píldoras; vive en `nucleo/` (es cerebro de escritura, no substrato) pero es el corazón
-  que decide qué entra a `memory/`. Ver §El CORAZÓN.
-- **`nucleo/memllm.py`** — router interno de modelos POR TAREA del módulo de memoria (V2-056: tarea `rem` +
-  futuras), config `§memory.<task>_*` + key POR ENDPOINT; la memoria recibe el hook INYECTADO (no importa cerebros).
-- Datos: `zaelar.db` (SQLite) en `memory/_data/` (gitignored). Override por `ZAELAR_DB`.
+- `memory/db.py` — SQLite connection `zaelar.db` (WAL) + loading `sqlite-vec` + schema migrations.
+- `memory/schema.py` — DDL (state · memories · vec_memories · fts_memories · edges · episodic · journal · …).
+- `memory/queue.py` — async queue (asyncio.Queue): every write goes in here.
+- `memory/writer.py` — the single writer → database; embeddings computed on insert. **Embedding SIGNATURE
+  enforcement**: if the active embedding model does not match the database's signature (or is degraded), the pill is
+  marked `meta.embed_pending` instead of inserting a vector from ANOTHER space (the REM phase repairs it) — vector
+  spaces are never mixed silently.
+- `memory/embeddings.py` — embeddings client (cloud provider by default · Ollama `embeddinggemma` option · fastembed
+  and hashing safety nets).
+- `memory/retriever.py` — hot path: vec ∥ fts ∥ paraphrases → RRF → weighted score → rerank → graph_expand.
+- `memory/state.py` — fixed table (µs read, no search).
+- `memory/graph.py` (+ `memory/graph_ppr.py`) — edges (link/expand, multi-hop PPR).
+- `memory/episodic.py` — files/PDFs: searchable embedded summary + lazy load of the binary.
+- `memory/consolidator.py` — the LIGHT "sleep" job (hourly: promote/exact dedup/decay PER WINDOW/prune_invalid/evict).
+- **`memory/rem.py`** — DEEP sleep, the "REM phase" (daily): repair_embeddings + semantic_dedup + synthesize
+  (insights per concept, injected LLM hook) + hygiene. See §DEEP sleep.
+- `memory/api.py` — the public facade (write[+`slot`/`meta`]/write_now/query/**recent_short**/state/set_state/
+  reinforce/pin/unpin/link/load_episode/consolidate/**map**).
+- **`nucleo/mem_processor.py`** — the LLM processor (defaults in `config/models.default.json` §memory_writer; local
+  qwen option) that DISTILS every turn into pills; it lives in `nucleo/` (it is write-side brain, not substrate) but
+  it is the heart that decides what goes into `memory/`. See §The write HEART.
+- **`nucleo/memllm.py`** — the internal per-TASK model router of the memory module (task `rem`, plus `i18n`), config
+  `§memory.<task>_*` + key PER ENDPOINT; the memory receives the hook INJECTED (it does not import brains).
+- Data: `zaelar.db` (SQLite) in `memory/_data/` (gitignored). Override with `ZAELAR_DB`.

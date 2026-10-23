@@ -8,9 +8,10 @@ status: current
 
 # `connectors/google/` — one account, six doors
 
-Five connectors in this engine authenticate against Google, and before V2-685 each one asked for the SAME
-OAuth client under a different name: `EMAIL_GMAIL_*`, `CALENDAR_GOOGLE_*`, `VIDEO_YOUTUBE_*`,
-`PHOTOS_GOOGLE_PHOTOS_*`, `FILES_GDRIVE_*`. Answer one and the other four stay dormant, in silence.
+Several connectors in this engine authenticate against Google — mail, calendar, video, photos, files — and
+each has its own name for the client: `EMAIL_GMAIL_*`, `CALENDAR_GOOGLE_*`, `VIDEO_YOUTUBE_*`,
+`PHOTOS_GOOGLE_PHOTOS_*`, `FILES_GDRIVE_*`. They all need the SAME OAuth client, so configuring it once has to
+reach every one of them.
 
 `connectors/google/` answers the question once. It is a **LEAF**: nothing in it imports another connector,
 because everything else imports it.
@@ -30,8 +31,7 @@ Order, and it is deliberate:
 2. `.meshkore/credentials/google-connector-client_secret_*.json` — the file the Google Cloud console hands
    you, read **verbatim**. Nothing is retyped into a source file, so no second copy can drift.
 
-Cached on `(path, mtime_ns)`: a file dropped in while the engine runs is seen without a restart. A value
-frozen at import would have meant restarting the engine to be believed.
+Cached on `(path, mtime_ns)`: a file dropped in while the engine runs is seen without a restart.
 
 `status(origin)` reports WHERE the client came from (`operator` | `shipped` | none) and **never what it is**.
 
@@ -46,8 +46,8 @@ about most.
 
 It **does not own the scopes of a connector that has its own registry**. Each already declares them next to
 the client that requests them, this package sits BELOW those connectors and cannot import them to check,
-and two copies of a scope list drift. It fills in `scopes` only for a service with no connector at all,
-which today means exactly one: Meet.
+and two copies of a scope list drift. It fills in `scopes` only for a service with no connector of its own,
+such as Meet.
 
 **Meet asks for nothing extra.** A Meet link is `conferenceData` on a calendar event, minted by the calendar
 scope the connector already holds. There IS a standalone Meet REST API behind
@@ -55,9 +55,8 @@ scope the connector already holds. There IS a standalone Meet REST API behind
 not requested** — an unused sensitive scope buys nothing today and costs a harder Google verification for
 every user of the app.
 
-⚠️ **`conferenceDataVersion=1` is the half that fails silently.** Without that query parameter Google returns
-200, creates the event, and DROPS the conference: no error, no link, and an agent that has just told the
-operator it made them a meeting room.
+⚠️ **`conferenceDataVersion=1` is mandatory.** Without that query parameter Google returns 200, creates the
+event, and DROPS the conference with no error — so the engine always sends it.
 
 ## `brain.py` — what the model is told
 
@@ -68,7 +67,7 @@ hay ninguna tool aparte».
 That sentence is load-bearing. Meet is a verb this engine has never had, so a model told only that the
 capability exists has no prior behaviour to fall back on except inventing a `create_meet` tool or promising
 a link before Google minted it. **Naming a capability without naming its mechanism is what makes a model
-improvise one** — the third payment of V2-603's receipt.
+improvise one.**
 
 Workers need no exception: they reach it through `act widget_data`, already allowed and gated on the
 widget's own manifest.
@@ -89,12 +88,12 @@ Those go in *APIs y servicios → Credenciales → el cliente → URI de redirec
 The consent itself is always the **operator's click**: the popup only survives inside the gesture that
 opened it, which is why `widget.js` opens the window synchronously and fills its `location` afterwards.
 
-So the voice does the half it can (V2-686): `agenda:connect` leaves the card ON its connect step, and the
+So the voice does the half it can: `agenda:connect` leaves the card ON its connect step, and the
 manifest tells the model to say «press Conectar Google Calendar». The URL the action returns reaches nobody
 by itself — the turn report keeps `{widget, act}` and discards the result — which is why the sentence has to
 be declared rather than returned.
 
-## Answering an invitation (V2-697)
+## Answering an invitation
 
 An RSVP is one field of one row of the event's `attendees` array — and that is exactly what makes it
 dangerous, because **in the Google API a PATCH carrying an array REPLACES it**. Sending only our own row
@@ -110,22 +109,19 @@ It needs no new scope: the connector already holds `https://www.googleapis.com/a
 
 **What the import captures, and why `attendees` did not change shape.** `event_to_meeting` writes a rich
 `guests` list (`{name, email, rsvp, organizer}`) **alongside** the plain `attendees` list of names, from the
-same roster in the same pass, so the two cannot drift. `attendees` stays `list[str]` because seven callers
-already read it that way — the voice payloads (`widgets/agenda/details.py::_norm_attendees`), the errand
+same roster in the same pass, so the two cannot drift. `attendees` stays `list[str]` because several callers
+read it that way — the voice payloads (`widgets/agenda/details.py::_norm_attendees`), the errand
 booker, the digest line, and the write direction that turns it back into Google bodies. A meeting the
 operator dictated simply has no `guests`.
 
-⚠️ **`status` changed meaning, and the change is the fix.** It used to be the OPERATOR's own
-`responseStatus` while the card labelled it «sin confirmar por la otra parte» — so an invitation he had
-accepted read as though THEY had agreed. Now `status` is about the other guests (`_others_status`) and his
-own answer is `myRsvp`. A guest whose answer Google does not report leaves the meeting **pending** on
+⚠️ **`status` is about the OTHER guests, never the operator.** `status` comes from `_others_status` and his
+own answer is `myRsvp`, so an invitation he accepted never reads as though THEY had agreed. A guest whose answer Google does not report leaves the meeting **pending** on
 purpose: not knowing is not the same as being confirmed.
 
 ⚠️ **`meetLink` is attacker-controlled.** Anybody who can send the operator an invitation writes
 `conferenceData`, and the card turns that string into an `href` — so only `http`/`https` survive the import,
-and the widget refuses it again at the sink for rows stored before that guard existed. Only a **video**
-entry point is ever stored: the phone bridge and its PIN never reach the card, by the operator's own
-scoping.
+and the widget refuses it again at the sink. Only a **video** entry point is ever stored: the phone bridge
+and its PIN never reach the card.
 
 ## Limits worth knowing
 

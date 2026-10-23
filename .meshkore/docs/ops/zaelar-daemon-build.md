@@ -62,8 +62,8 @@ sums while it is still an inert file in a temp directory**, and only then run th
 `main` so it shares the origin the user already trusted by running the line.
 
 Be exact about what that verification is: **two files from one release agreeing.** It catches a corrupt
-download and an altered mirror. It is **not provenance** — whoever can replace one can replace the other. That
-needs a signature, and it is still the work that comes before an updater.
+download and an altered mirror. It is **not provenance** — whoever can replace one can replace the other; that
+is what a signature adds (see «Signing and notarizing» below).
 
 The direct download still works and the interface still offers it, in a `<details>` that says what it costs: a
 browser saved the file, so macOS asks the user to allow it in System Settings and Windows shows SmartScreen.
@@ -90,12 +90,11 @@ The `bin` directory is the guard, not decoration. Without it a file somebody ran
 would claim `~` as its root, and an in-repo `python -m daemon` would resolve `sys.executable` to
 `.venv/bin/python` and take the **virtualenv** for its prefix.
 
-⚠️ **This is what `daemon-v0.2.2` fixes, and the bug was silent.** `_frozen()` used to be the only test for
-"installed" and a zipapp is not frozen, so an installed `.pyz` resolved its state to a directory *inside the
-archive file* — impossible to create. Every write failed, this module never raises, and so: a fresh random
-token on every start and a folder allowlist that did not survive a restart, behind a `/health` that answered
-perfectly. The archive is the fallback that exists so there is always a way to ship, which is precisely why
-nobody was looking at it.
+⚠️ **"Installed" is not the same as "frozen".** A zipapp is not frozen, so the root resolution must recognise
+an installed `.pyz` too; testing `_frozen()` alone would resolve its state to a directory *inside the archive
+file* — impossible to create. Since this module never raises, every write would fail quietly: a fresh random
+token on every start and a folder allowlist that does not survive a restart, behind a `/health` that answers
+perfectly.
 
 ### Installing from a checkout
 
@@ -160,7 +159,7 @@ git tag daemon-v0.2.0 && git push origin daemon-v0.2.0
 
 Both runners produce `zaelar-daemon.pyz`, `manifest.json` and `SHA256SUMS` under those exact names, and the
 release job flattens every downloaded artifact into a single upload — so without a rename one platform's files
-silently overwrote the other's. Each runner renames its own before uploading:
+would overwrite the other's. Each runner renames its own before uploading:
 
 | Published asset | Platform |
 |---|---|
@@ -171,14 +170,14 @@ silently overwrote the other's. Each runner renames its own before uploading:
 | `get.sh`, `get.ps1`, `zaelar-daemon-(un)install-*` | published once, architecture-independent |
 
 ⚠️ **Two Mac builds, not one.** A PyInstaller bundle carries a real interpreter compiled for one architecture
-and `macos-latest` has been arm64 since macos-14, so an Intel Mac used to be handed a binary that fails with
-"bad CPU type in executable" — which every user reads as a corrupt download. `get.sh` picks by `uname -m`,
+and `macos-latest` has been arm64 since macos-14, so a single build would hand an Intel Mac a binary that fails
+with "bad CPU type in executable" — which every user reads as a corrupt download. `get.sh` picks by `uname -m`,
 which is precisely what a download button cannot do: a user-agent does not say which Mac this is.
 
 ⚠️ **`release_names.py` owns the rename, and it RECOMPUTES the digests.** `build.py` writes `SHA256SUMS` under
-the build names while the release publishes the architecture names — so `daemon-v0.2.0` shipped a checksum
-file listing two files nobody could download, and the one-line installer refused a binary it had fetched
-perfectly. Patching the names inside that file would have been the same lie in a better disguise.
+the build names while the release publishes the architecture names, so the published sums must be computed
+over the published names — otherwise the one-line installer would refuse a binary it fetched perfectly.
+Patching the names inside the build's file is not enough: the digests are recomputed from the renamed files.
 
 **These names are a contract.** `server/daemon_api.py` builds the download links from them, and both installers
 look for them (including in `~/Downloads`, which is where a browser actually puts them). Renaming an asset
@@ -188,38 +187,36 @@ without the other two is how the download screen starts offering a 404, so node 
 
 `GET /api/daemon/status` carries a `downloads` block pinned to **the daemon's own version tag** — not
 `releases/latest`, which follows whatever was released last, including an engine release with no daemon assets
-in it. The 🖥 icon in the interface renders it; on a cloud account that is the icon's whole job, since the
-cloud engine cannot reach a daemon on somebody's desk.
+in it. The 🖥 icon in the interface renders it; when the engine runs on a remote host that is the icon's whole job,
+since a remote engine cannot reach a daemon on somebody's desk.
 
 `ZAELAR_DAEMON_DOWNLOAD_BASE` overrides the base URL for a mirror or a private build.
 
 ### Signing and notarizing
 
-Not automated, and not a side effect of a green build: it needs the operator's Apple Developer ID and
-(Windows) a code-signing certificate, which live with the operator and not in a workflow. Until then the
-installers clear quarantine on a file the user explicitly chose, which is the same consent they already gave —
-and the honest description is that the artifacts are **unsigned**.
+Not a side effect of a green build: it needs an Apple Developer ID and (Windows) a code-signing certificate,
+which live with whoever publishes the build, not in a workflow. Builds published without them are **unsigned**;
+the installers clear quarantine on a file the user explicitly chose, which is the same consent they already
+gave.
 
 ⚠️ **There is no self-updater, deliberately.** An update channel that downloads and executes without a signed
 artifact is remote code execution by design, and bolting one onto a daemon that reads somebody's documents
 would be the worst possible place to have it. What exists instead: the engine can already read the daemon's
 version over `/health` and tell the user it is out of date, `SHA256SUMS` lets a person check the file they got
 matches the file that was built (two files agreeing — **not** provenance: whoever can replace one can replace
-the other), and upgrading is re-running the installer. Building the signed channel is the work that makes an
-updater safe, and it comes first.
+the other), and upgrading is re-running the installer. A signed channel is the prerequisite for any updater.
 
 ---
 
-## 4. Verified where
+## 4. Tests
 
-| Claim | How it is known |
+| Claim | Where it is checked |
 |---|---|
 | The archive assembles, carries every module, excludes the build tooling, and **runs** | Node **7.41**, on every CI run |
 | The installed process does its whole job over real HTTP | Node **7.37** (boots a real `python -m daemon`) |
-| The guards hold against a hostile local process | Node **7.40**, seven disarms |
-| macOS install → launchd accepts, starts, defers to a running instance → uninstall leaves nothing | **By hand, 2026-09-06.** Built, installed into a temp `HOME`, `launchctl print` showed the job registered and correctly not restart-looping after it found the port taken; uninstalled and the job is gone |
-| The Windows build, the installer syntax, and the guards surviving the build | **Measured, 2026-09-14** — first run of this workflow on `windows-latest`, tag `daemon-v0.2.0`. It found a real defect on its first try: `build.py` raised `UnicodeEncodeError` printing `→` to a cp1252 console **after every artifact was written**, so the build worked and the script died on its own success line. Fixed, re-tagged, green |
-| Windows install on a real desktop | **Still not done.** CI builds the `.exe`, starts it and confirms its guards; it does not run `install.ps1` against a live user session, so the scheduled task, the Startup-shortcut fallback and Mark-of-the-Web are reasoned, not observed |
-| The download links resolve | **Measured, 2026-09-14** — the release publishes all twelve assets under the platform-distinct names `server/daemon_api.py` builds its links from |
+| The guards hold against a hostile local process | Node **7.40**, with disarms |
+| The release asset names, the download links and the installers agree | Node **7.44** |
+| The Windows and macOS builds, the installer syntax, and the guards surviving the build | `.github/workflows/daemon-artifacts.yml` on `windows-latest` / `macos-latest` |
 
-The last two rows are the shape of this document: what is measured, and what is merely written.
+The macOS install path (launchd accepts the job, starts it, defers to an already-running instance, and uninstall
+leaves nothing) can be exercised by hand by installing into a temporary `HOME` and checking `launchctl print`.

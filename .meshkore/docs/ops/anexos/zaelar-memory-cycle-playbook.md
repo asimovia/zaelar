@@ -1,97 +1,98 @@
-# Anexo — Playbook del CICLO DE 1000 (re-verificación de la memoria)
+# Annex — Playbook for the 1000-STEP CYCLE (memory re-verification)
 
-> Documento reutilizable: cómo repetir DESDE CERO el ciclo que lleva la memoria de zaelar a **≥1000 requests
-> verificadas en verde** (ESTADO/CORTO/LARGO + 26 tipologías más), en un loop autónomo. Última corrida:
-> **2026-07-12 — GOLD 1032/1032, 9 bugs de código arreglados**. Resultados fechados en
-> `tests/memory/e2e/bot/resultados/<fecha>-ciclo-1000/`.
+> Reusable document: how to repeat FROM SCRATCH the cycle that takes Zaelar's memory to **≥1000 verified
+> requests** (STATE/SHORT/LONG + the remaining typologies), in an autonomous loop. Dated results are archived
+> under `tests/memory/e2e/bot/resultados/<date>-ciclo-1000/`.
 
-## Qué prueba (y por qué)
+## What it tests (and why)
 
-El **test-bot de memoria** (`tests/memory/e2e/bot/`) role-play una PERSONA que habla con zaelar durante una
-conversación LARGA (1032 pasos) y, por cada paso, verifica que la memoria HUMANA hace lo correcto por el **camino
-REAL** (escritura por el CORAZÓN LLM local `ingest_utterance`; lectura como la del FlashBrain `_brain_view` =
-`memory_cache._compose` + `compose_recall`, SIN LLM). No mide lo que el bot DICE sino lo que la memoria HACE.
+The **memory test-bot** (`tests/memory/e2e/bot/`) role-plays a PERSONA talking to Zaelar over a LONG
+conversation and, for every step, verifies that the HUMAN-like memory does the right thing along the **REAL
+path** (writing through the local LLM CORE `ingest_utterance`; reading the way the FlashBrain's `_brain_view`
+does = `memory_cache._compose` + `compose_recall`, WITHOUT an LLM). It does not measure what the bot SAYS but
+what the memory DOES.
 
-**29 dimensiones (A–Y + Z/AA/AB/AC)** — mapa en `TAXONOMY.md`. Núcleo: **ESTADO** (A, Y), **CORTO** (B), **LARGO**
-(C). Resto: dedup/supersede (D), descarte/abstención (E), grafo/categoría (F), multi-fuente (G), cuarentena (H),
-intereses (I), temporal (J), escala (K), olvido/consolidación (L), contradicciones (M), privacidad/olvido (N),
-rutinas (O), adversarial (P), cross-source (Q), multilingüe (R), episódica (S), vocab-gap (T), multi-hop (U),
-verbosidad (V), instrucciones permanentes (W), invalidación implícita (X), y las SOTA 2026: memoria→acción (Z),
-anti-alucinación (AA), validez temporal/as-of (AB), identidad cross-sesión (AC). Fundamento SOTA en `RESEARCH.md`.
+**The dimensions (A–Y + Z/AA/AB/AC)** — map in `TAXONOMY.md`. Core: **STATE** (A, Y), **SHORT** (B), **LONG**
+(C). The rest: dedup/supersede (D), discard/abstention (E), graph/category (F), multi-source (G), quarantine (H),
+interests (I), temporal (J), scale (K), forgetting/consolidation (L), contradictions (M), privacy/forgetting (N),
+routines (O), adversarial (P), cross-source (Q), multilingual (R), episodic (S), vocab-gap (T), multi-hop (U),
+verbosity (V), standing instructions (W), implicit invalidation (X), and the state-of-the-art set:
+memory→action (Z), anti-hallucination (AA), temporal validity/as-of (AB), cross-session identity (AC). SOTA
+grounding in `RESEARCH.md`.
 
-## Cómo se ejecuta
+## How to run it
 
 ```bash
-./.venv/bin/python -m tests.memory.e2e.bot.runner --coverage        # cobertura por dimensión (elegir hueco)
-./.venv/bin/python -m tests.memory.e2e.bot.runner --next 80         # avanza 80 sobre la BD acumulada (persona coherente)
-./.venv/bin/python -m tests.memory.e2e.bot.runner --fresh --range 0 1032   # pasada de ORO (replay lineal limpio)
-./.venv/bin/python -m tests.memory.e2e.bot.runner --catalog         # regenera CATALOG.md
+./.venv/bin/python -m tests.memory.e2e.bot.runner --coverage        # coverage per dimension (pick a gap)
+./.venv/bin/python -m tests.memory.e2e.bot.runner --next 80         # advance 80 on the accumulated DB (coherent persona)
+./.venv/bin/python -m tests.memory.e2e.bot.runner --fresh --range 0 <N>   # GOLD pass (clean linear replay)
+./.venv/bin/python -m tests.memory.e2e.bot.runner --catalog         # regenerates CATALOG.md
 ```
 
-**DOS corpus (auditoría 2026-07-14):** `--corpus v1` (def) = la GOLD histórica `cases.py` (the operator persona, 1032);
-`--corpus v2` = el corpus NUEVO `cases2.py` (persona Amaia Etxeberria de Logroño — genericidad/multi-operador +
-las 4 dimensiones nuevas AD–AG: señal `change` multiidioma, colapso de linajes por alias de slot, escritura de
-workers `remember_external`, y `heal_slots`). BD/progreso/catálogo AISLADOS por corpus → correr uno no pisa al
-otro. Tipos de paso nuevos: `worker_write`, `slot_count`, `heal_slots`. `python -m …runner --corpus v2 --fresh --range 0 N`.
+**Two corpora:** `--corpus v1` (default) = the GOLD corpus `cases.py` (the operator persona); `--corpus v2` =
+`cases2.py`, a second, unrelated persona for genericity/multi-operator coverage, plus dimensions AD–AG:
+multilingual `change` signal, lineage collapse by slot alias, worker writes through `remember_external`, and
+`heal_slots`. DB/progress/catalogue are ISOLATED per corpus → running one never touches the other. Extra step
+types: `worker_write`, `slot_count`, `heal_slots`. `python -m …runner --corpus v2 --fresh --range 0 N`.
 
-Requiere **Ollama local** (CORAZÓN `qwen2.5:*`, embeddings `embeddinggemma`). BD **AISLADA**
-(`memory/_data/zaelar.membot.db`, gitignored) — nunca el perfil real. Reporte JSON + progreso en
-`.meshkore/logs/membot/`. La GOLD tarda ~30–75 min (los casos dim-K de escala siembran miles de embeddings);
-lánzala con `python -u` (unbuffered) para ver el progreso, y vigila que no se cuelgue en I/O (0% CPU sleeping).
+Requires **local Ollama** (CORE `qwen2.5:*`, embeddings `embeddinggemma`). An **ISOLATED** DB
+(`memory/_data/zaelar.membot.db`, gitignored) — never the real profile. JSON report + progress in
+`.meshkore/logs/membot/`. The GOLD pass is long (the dimension-K scale cases seed thousands of embeddings);
+launch it with `python -u` (unbuffered) to watch progress, and check that it is not stuck on I/O (0% CPU
+sleeping).
 
-## El CICLO (loop autónomo `/loop 10m`, estrategia AVANZAR-PRIMERO)
+## The CYCLE (autonomous loop `/loop 10m`, ADVANCE-FIRST strategy)
 
-Cada iteración (10 min): **guard anti-solape** (`pgrep -f memory.bot.runner`; solo UN runner) → avanza una ola de
-80 (`--next 80`) → **triaja SOLO los ❌ de esa ola** → `pytest -k memory` verde → commit → entrada en la bitácora del tester. Al
-llegar a `done_upto ≥ corpus` entra en **MODO GOLD**: `--fresh --range 0 <N>` en background, triaja su report,
-RE-lanza, hasta **0 ❌** → entregables + PARA el loop.
+Each iteration (10 min): **overlap guard** (`pgrep -f memory.bot.runner`; only ONE runner) → advance a wave of
+80 (`--next 80`) → **triage ONLY that wave's ❌** → `pytest -k memory` green → commit → entry in the tester's
+log. Once `done_upto ≥ corpus` it switches to **GOLD MODE**: `--fresh --range 0 <N>` in the background, triage
+its report, RE-launch, until **0 ❌** → deliverables + STOP the loop.
 
-**NO re-verificar prefijos tras cada ola** (el escritor LLM es no-determinista, ~1–2 % de casos flip-flop entre
-corridas frescas; re-verificar en bucle churnearía).
+**Do NOT re-verify prefixes after each wave** (the LLM writer is non-deterministic, so a small share of cases
+flip-flop between fresh runs; re-verifying in a loop would just churn).
 
-### Clasificación de cada ❌ (la decisión clave)
+### Classifying each ❌ (the key decision)
 
-- **(a) BUG REAL de memoria** → arreglar el **CÓDIGO** como mejora (`nucleo/mem_processor.py`,
+- **(a) REAL memory bug** → fix the **CODE** as an improvement (`nucleo/mem_processor.py`,
   `nucleo/memory_agent.py`, `memory/api.py`, `memory/retriever.py`, `memory/writer.py`, `memory/consolidator.py`,
-  `nucleo/flash/*`). **NUNCA ablandar el test.** Añadir guard test de regresión.
-- **(b) FLAKY** (pasaba antes en fresco, falla ahora sin cambio de código → canonicalización variable del CORAZÓN)
-  → **ancla ROBUSTA**: token estable + query con puente léxico o miembro PRIMARIO de la categoría (verificar con un
-  probe `_brain_view`, no re-correr toda la ola).
-- **(c) TEST-FLAW** (ancla mal, colisión de substring, expectativa de capa/recall irreal) → corregir el caso.
+  `nucleo/flash/*`). **NEVER soften the test.** Add a regression guard test.
+- **(b) FLAKY** (passed before on a fresh run, differs now with no code change → variable canonicalisation by
+  the CORE) → **ROBUST anchor**: a stable token + a query with a lexical bridge, or the category's PRIMARY member
+  (verify with a `_brain_view` probe, not by re-running the whole wave).
+- **(c) TEST-FLAW** (bad anchor, substring collision, unrealistic layer/recall expectation) → fix the case.
 
-Distinguir bien es el corazón del ciclo: un bug se arregla en código; un flaky/test-flaw se endurece el ancla.
+Telling them apart is the heart of the cycle: a bug is fixed in code; a flaky case or a test flaw gets a
+harder anchor.
 
-### Cada cuánto evalúa y se CUESTIONA
+### How often it evaluates and QUESTIONS itself
 
-- **Cada ~50 pasos**: releer `EXIGENCIA.md` y auditar 2–3 casos al azar (control de calidad).
-- **Cada ~100 pasos**: 1 WebSearch de un benchmark/diseño de memoria SOTA → anotar en `RESEARCH.md` y aplicar lo que
-  mejore.
-- **En cada GOLD**: la pasada de oro fresca es el juez final; su report se triaja hasta 0 ❌.
+- **Every ~50 steps**: re-read `EXIGENCIA.md` and audit 2–3 random cases (quality control).
+- **Every ~100 steps**: one web search for a state-of-the-art memory benchmark/design → note it in `RESEARCH.md`
+  and apply whatever improves the system.
+- **On every GOLD**: the fresh gold pass is the final judge; its report is triaged down to 0 ❌.
 
-## Fenómenos CONOCIDOS (no confundir con bugs)
+## KNOWN phenomena (not to be mistaken for bugs)
 
-1. **No-determinismo del CORAZÓN**: qwen2.5 (aun a temp 0) canonicaliza el mismo input con fraseo distinto entre
-   corridas → anclas al token estable + queries con puente. Es el origen del ~1–2 % flaky.
-2. **Recall-a-escala**: a cientos de memorias el embedding LOCAL (embeddinggemma) se degrada (aviso T176) → un hecho
-   GUARDADO puede no aflorar sin solape léxico. Es límite del modelo, no bug (SOTA: HippoRAG-v2 54 % en
-   FactConsolidation). Se prueba con preguntas naturales que nombran la entidad / usan el término concreto.
-3. **Colisión de ancla**: markers de 3 letras ("aja") colisionan con palabras comunes ("trAbAJA") → anclar a frase
-   distintiva o token único.
+1. **CORE non-determinism**: qwen2.5 (even at temperature 0) canonicalises the same input with different
+   wording between runs → anchor on the stable token + bridged queries. This is where flaky cases come from.
+2. **Recall at scale**: with hundreds of memories the LOCAL embedding (embeddinggemma) loses precision → a
+   SAVED fact may not surface without lexical overlap. It is a model limit, not a bug (the same limit appears in
+   the published state of the art). Test it with natural questions that name the entity / use the concrete term.
+3. **Anchor collision**: 3-letter markers ("aja") collide with common words ("trAbAJA") → anchor on a
+   distinctive phrase or a unique token.
 
-## Cómo repetir desde cero
+## How to repeat from scratch
 
-1. `--coverage` para ver el corpus y las capas. Paso 0 de ALINEACIÓN: ¿cubre los cambios de las últimas 48 h?
-   (git log --since). Si falta, añadir el escenario ANTES.
-2. Lanzar el loop `/loop 10m <prompt del ciclo>` (rama dedicada `feat/memoria-<algo>`). Avanzar-primero.
-3. Al cerrar la GOLD en verde: archivar el report en `resultados/<fecha>-ciclo-1000/`, regenerar la tabla HTML
-   (`~/.meshkore/tmp/zaelar-ciclo-1000-memoria.html`), documentar en la bitácora del tester, y **revisión de alineación**.
+1. `--coverage` to see the corpus and the layers. Step 0, ALIGNMENT: does it cover the changes of the last
+   48 h? (`git log --since`). If not, add the scenario FIRST.
+2. Launch the loop `/loop 10m <cycle prompt>` (dedicated branch `feat/memoria-<something>`). Advance first.
+3. When the GOLD closes green: archive the report under `resultados/<date>-ciclo-1000/`, regenerate the HTML
+   table (`~/.meshkore/tmp/zaelar-ciclo-1000-memoria.html`), record it in the tester's log, and run the
+   **alignment review**.
 
-## Artefactos de la corrida 2026-07-12
+## Run artefacts
 
-- GOLD **1032/1032** · report `resultados/20260712-ciclo-1000/gold-report.json`.
-- Tabla HTML de las 1032 requests (tipología·capa·ancla·resultado): `~/.meshkore/tmp/zaelar-ciclo-1000-memoria.html`.
-- **9 bugs de código** arreglados (todos con verificación; la mayoría con guard test): backstop de salud
-  (operación) · backstop de salud (fisioterapia) · backfill de conceptos al grafo · descarte determinista de relleno
-  · backstop de ubicación habitual de objetos · unforget con fallback token-AND · eviction protege hechos salientes
-  (SOTA) · backstop de perfil durable biográfico · forget/unforget unen contiguo+token-AND.
-- Bitácora por ola: la del tester (§ Ciclo de 1000, 2026-07-12).
+Each run leaves, under `resultados/<date>-ciclo-1000/`: the GOLD report (`gold-report.json`) and, outside the
+repo, an HTML table of every request (typology · layer · anchor · result) at
+`~/.meshkore/tmp/zaelar-ciclo-1000-memoria.html`. Code fixes found by a cycle land as ordinary commits, each
+with its regression guard test.

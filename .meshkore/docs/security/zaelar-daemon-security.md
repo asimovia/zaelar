@@ -92,7 +92,7 @@ is not frozen in between. Three checks:
 
 - **`O_NOFOLLOW`** — the resolved path had no symlinks left in it, so a link in the final component *now* means
   something changed in the window.
-- **`S_ISREG`** — a pipe, device or socket is not a document. Measured with the check removed: the read returns
+- **`S_ISREG`** — a pipe, device or socket is not a document. Without the check, the read returns
   an **empty string**, so the agent reports a blank document; on a blocking read with a writer that never
   writes, the thread never comes back at all. The open uses `O_NONBLOCK` so the descriptor can be inspected
   before anybody reads.
@@ -140,8 +140,8 @@ One line per operation, **allowed and refused**. Refusals are the half that earn
 `outside_allowlist` against one folder is something probing the boundary, and a run of `bad_token` is something
 talking to the daemon that has no business doing so. Both are invisible if only successes are kept.
 
-⚠️ **Unauthorized attempts used to leave no trace at all** — the old shape answered `401` before it recorded
-anything. They are recorded now, and **collapsed** by `daemon/security/throttle.py` so a flood cannot push the
+⚠️ **Unauthorized attempts are recorded too** — the record is written before the `401` is answered — and
+**collapsed** by `daemon/security/throttle.py` so a flood cannot push the
 interesting line off the end of a rotated log, with a small ramping delay that makes flooding cost the sender
 more than it costs us. There is **no lockout**: every process on this machine already runs as the user, so a ban
 would be trivially resettable by an attacker and permanently annoying for the person who mistyped their own
@@ -167,7 +167,7 @@ That makes the proxy a second front door, so it is guarded as one:
   so it never needs to. Fire and forget is enough to put a folder on somebody's allowlist with nothing on
   screen to show for it. The guard is `Sec-Fetch-Site` first, `Origin` compared against the request's own
   `Host` second — not a configured hostname, because this engine is reached as `localhost:43917`, as
-  `127.0.0.1:43917` and as whatever a cloud account resolves to, and a guard that knew only one of those would
+  `127.0.0.1:43917` and as whatever hostname a remote deployment uses, and a guard that knew only one of those would
   lock the user out of their own interface with every escape test still green.
 - **No token means no probe.** `/health` answers without a credential, so an engine with no `daemon.json`
   probing anyway would report "connected" on the strength of a daemon it cannot authenticate to — a green icon
@@ -175,8 +175,8 @@ That makes the proxy a second front door, so it is guarded as one:
   nobody out.
 - **Asking about the daemon creates nothing.** `config.load()` mints a token on first call and
   `paths.state_dir()` creates the directory, so reaching for either from the engine would leave a credential
-  file on a cloud Volume where no daemon will ever run, just because somebody opened the status icon.
-- **A cloud engine does not probe loopback at all.** The daemon is on the user's computer; 127.0.0.1 in a
+  file on a remote host's volume where no daemon will ever run, just because somebody opened the status icon.
+- **An engine running on a remote host does not probe loopback at all.** The daemon is on the user's computer; 127.0.0.1 in a
   container is at best a timeout and at worst somebody else's daemon on the same host.
 
 ---
@@ -192,7 +192,7 @@ Saying this plainly is part of the model. A limit somebody can read is a limit s
 | **Content-based secret detection** | The list is name-based. A file called `notes.txt` containing an API key is served, and should be — guessing at contents would refuse the user their own documents. |
 | **A signed update channel** | No self-updater exists, on purpose: an update path that downloads and executes without a signature is remote code execution by design. Upgrading is re-running the installer. |
 | **Rate limits per capability** | The budgets are per request (read cap, search time and file budgets), not per hour. A hostile local caller can read every allowed file slowly; it could also just read them directly. |
-| **Anything about the relay** | The cloud path does not exist yet. `X-Zaelar-Relay` is honoured in the audit log now so the trail is not retrofitted after the fact, but nothing grants a remote caller anything. |
+| **A remote relay** | `X-Zaelar-Relay` is recorded in the audit log so the trail exists from the start, but the daemon grants a remote caller nothing. |
 
 ---
 

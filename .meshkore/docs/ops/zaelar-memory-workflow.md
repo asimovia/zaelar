@@ -6,154 +6,152 @@ owner: ricart
 status: current
 ---
 
-# Workflow de cambios en la MEMORIA — "pasa el workflow de memoria"
+# MEMORY change workflow — "run the memory workflow"
 
-**Disparador:** cuando el operador dice **"pasa el workflow de memoria"** (o "revisa/cierra el cambio de memoria"),
-o cuando TÚ mismo acabas de tocar algo ESTRUCTURAL de la memoria y vas a darlo por cerrado — ejecuta esta checklist
-antes de decir que has terminado.
+**Trigger:** when the operator says **"run the memory workflow"** («pasa el workflow de memoria», or "review/close
+the memory change"), or when YOU have just touched something STRUCTURAL in memory and are about to call it done —
+run this checklist before saying you are finished.
 
-Existe porque un cambio en la memoria **irradia**: el substrato lo escriben y lo leen muchas piezas (FlashBrain,
-agente de memoria, widgets, conectores, reset, episódica, visor). Cada vez que cambia el schema, el CORAZÓN de
-escritura, el retriever o las velocidades de lectura, hay que verificar que **todas esas interacciones —al guardar Y
-al leer— siguen alineadas**, documentarlo en varios sitios, testear y commitear. Este workflow lo captura de una vez
-para no re-investigar "a quién afecta" cada vez.
+It exists because a memory change **radiates**: the substrate is written and read by many pieces (FlashBrain,
+memory agent, widgets, connectors, reset, episodic layer, viewer). Whenever the schema, the write HEART, the
+retriever or the read speeds change, you must verify that **all those interactions — on write AND on read — stay
+aligned**, document it in several places, test and commit. This workflow captures that once, so nobody has to
+re-investigate "who does this affect" every time.
 
-> Es la especialización para `memory/` de [[zaelar-change-protocol]] / [[zaelar-docs-sync]] / [[zaelar-alignment-review]].
-> Estado actual del subsistema: [[zaelar-memory]] (fuente de verdad del diseño). Diseño en curso: V2-013 (corazón de
-> escritura) y V2-019 (sueño + aislamiento del tester).
+> It is the `memory/` specialization of [[zaelar-change-protocol]] / [[zaelar-docs-sync]] /
+> [[zaelar-alignment-review]]. Current state of the subsystem: [[zaelar-memory]] (source of truth for the
+> design).
 
 ---
 
-## 0. ¿Aplica este workflow? (filtro de alcance)
+## 0. Does this workflow apply? (scope filter)
 
-Aplica si el cambio altera algo que **cualquier escritor o lector de la memoria tiene que respetar**. Sí a
-cualquiera de estas → workflow completo:
+It applies if the change alters something that **any memory writer or reader has to respect**. Yes to any of
+these → full workflow:
 
-- **Schema / píldora** — columnas de `memories` (`slot`/`meta`/…), `state`, `edges`, `episodic`, `journal`;
-  `memory/schema.py` + migración en `memory/db.py` (`SCHEMA_VERSION`).
-- **El CORAZÓN de escritura** — `nucleo/mem_processor.py` (procesador LLM: prompt, modelo, salida de píldoras) o
+- **Schema / pill** — columns of `memories` (`slot`/`meta`/…), `state`, `edges`, `episodic`, `journal`;
+  `memory/schema.py` + migration in `memory/db.py` (`SCHEMA_VERSION`).
+- **The write HEART** — `nucleo/mem_processor.py` (LLM processor: prompt, model, pill output) or
   `nucleo/memory_agent.py` (`classify`/`ingest_utterance`/`remember`/`_write_atom`/`compose_context`).
-- **Writer / cola / slots** — `memory/writer.py` (insert, supersede/dedup por slot, reinforce, delete),
-  `memory/queue.py`, y el **registro canónico `memory/slots.py`** (añadir/renombrar un slot o un alias afecta a
-  writer + memory_agent + prompt del procesador A LA VEZ — es la gracia: un solo sitio).
-- **Retriever / scoring** — `memory/retriever.py` (vec/FTS/RRF, pesos α/β/γ/δ, graph_expand), `memory/embeddings.py`.
-- **Velocidades de lectura** — `memory.state()`, `memory.recent_short()`, `memory.query()`; y el cacheo del
-  FlashBrain `nucleo/flash/memory_cache.py` + `nucleo/flash/prompt.py` (`needs_recall`/`compose_recall`).
-- **Consolidador / olvido** — `memory/consolidator.py` (promote/dedup/decay/evict) y su disparo desde `nucleo/loop.py`.
-- **Observabilidad / visor** — `memory/api.py::map`, `GET /api/memory/map`, el puente SSE `memory.updated` en
-  `server/__init__.py`, `frontend/app/components/MemoryMap.js`, filas `kind=memory` en `DebugPanel.js`.
+- **Writer / queue / slots** — `memory/writer.py` (insert, supersede/dedup by slot, reinforce, delete),
+  `memory/queue.py`, and the **canonical registry `memory/slots.py`** (adding/renaming a slot or an alias affects
+  writer + memory_agent + the processor prompt AT ONCE — that is the point: one single place).
+- **Retriever / scoring** — `memory/retriever.py` (vec/FTS/RRF, weights α/β/γ/δ, graph_expand),
+  `memory/embeddings.py`.
+- **Read speeds** — `memory.state()`, `memory.recent_short()`, `memory.query()`; and the FlashBrain cache
+  `nucleo/flash/memory_cache.py` + `nucleo/flash/prompt.py` (`needs_recall`/`compose_recall`).
+- **Consolidator / forgetting** — `memory/consolidator.py` (promote/dedup/decay/evict) and its trigger from
+  `nucleo/loop.py`.
+- **Observability / viewer** — `memory/api.py::map`, `GET /api/memory/map`, the `memory.updated` SSE bridge in
+  `server/__init__.py`, `frontend/app/components/MemoryMap.js`, `kind=memory` rows in `DebugPanel.js`.
 
-**NO lo dispara**: un comentario, un renombrado interno, un ajuste que no toca el contrato de datos ni ninguna de las
-interacciones de arriba. Sigue como siempre.
+**It is NOT triggered by**: a comment, an internal rename, a tweak that touches neither the data contract nor
+any of the interactions above. Carry on as usual.
 
 ---
 
-## 1. Mapa de impacto — "si tocaste esto, revisa/actualiza aquello"
+## 1. Impact map — "if you touched this, review/update that"
 
-### 1a. ESCRITORES de la memoria (todos por la fachada `memory/api.py`, async — nunca la BD directa)
+### 1a. Memory WRITERS (all through the `memory/api.py` facade, async — never the DB directly)
 
-| Escritor | Dónde | Qué revisar tras un cambio |
+| Writer | Where | What to review after a change |
 |---|---|---|
-| **CORAZÓN — turno del operador** | `nucleo/memory_agent.ingest_utterance` → `mem_processor.process` (LLM) / `classify` (fail-open) → `remember`/`_write_atom` | Que las píldoras nuevas respeten el schema (`slot`/`meta`/`ttl`); que el fail-open siga funcionando sin Ollama; cableado en `voice/engine/llm/providers/nucleo.py` (fire-and-forget). |
-| **Buffer conversacional de CORTO** | `voice/engine/llm/providers/nucleo.py` (`memory.write(kind='conv', level='short', ttl_days=…)`) | Que siga siendo EFÍMERO (TTL) y NO durable; que alimente `recent_short`; que no re-infle la memoria (adiós al write crudo 0.3). |
-| **SlowBrain / agentes** | `nucleo/memory_agent.remember({text,kind[,slot,meta]})` (único escritor sancionado del SlowBrain); `nucleo/dispatch.py` | Que pase `slot` para hechos singulares; que no bloquee. |
-| **Brain Workers (V2-036/38, EXTERNOS)** | `hbmem remember` (`nucleo/mem_cli.py`) → `POST /api/memory/remember` (`memory/server_api.py`) → `memory_agent.remember_external` | Que exija el token por-tarea (headers de mem_cli); que aplique gates P0a + veto de slots de identidad + `meta.source="worker:<id>"`; que NUNCA toque `state`; que el Bash del worker siga acotado a los CLIs (`dispatch._tools_for` sin "Bash" pelado). Resultado de sesión: solo si `ok` (`workers/session._deliver`). |
-| **Contexto del worker al ARRANCAR** | `nucleo/dispatch._compose_context` → `memory_agent.compose_context` | Que el bloque «CONTEXTO DE MEMORIA» del prompt del worker NO quede vacío (regresión del typo `compose_task_context`, cazada en la auditoría 2026-07-14; guard en `tests/agent_headless/unit/test_dispatch.py`). |
-| **Reset duro** | `nucleo/reset.py` (`set_state({trabajo_interrumpido})` + `memory.write(level='short')`) | Que el congelado a ESTADO + registro a CORTO sigan válidos con el schema nuevo. |
-| **Contexto de UI vivo → ESTADO** | Canvas (frontend autoritativo): `POST /api/canvas/state` (`server/canvas_api.py`) → `set_state({open_widgets})`; tareas en marcha: `nucleo/dispatch.py::_emit_activity` → `set_state({activity})` | Que el reporte normalice ids de instancia y dedup; que `set_state` NO pise otros campos (patch superficial); que dispare `memory.updated` para refrescar prompt+mapa. |
-| **Widgets / ciclo de vida** | `widgets/lifecycle.py` (`record_created`/lápida de borrado) | Que las trazas de alta/baja se escriban por la fachada; regla de oro "nunca se borra el histórico". |
-| **Conectores / mensajería** | `connectors/messaging/store.py` (`memory.write(kind='msg', level='short')`) | Que el volcado siga por la fachada; `slot` si el dato es singular. |
-| **Episódica (paste/drop)** | `memory/episodic.py` ← `memory/server_api.py` (`write_episode`) | Que el resumen buscable siga indexándose en `memories` (vec/fts). |
-| **Spoken rules (V2-776 H)** | `nucleo/flash/style_directive.py` (both channels) → `memory.api.add_user_rule(text, scope=rule_scope.scope_of(text))` / `remove_user_rule` | That the scope is stored beside `state.rules` (`rule_scopes`) and the list stays a list of strings; that every reader asks `rules_for(surface)`; that the event carries the scope. Node 2.172, 2.204. |
-| **Request rows (V2-728, V2-776 M)** | `nucleo/request_row.py` (inline ops) + `nucleo/tasks.py` (worker sessions) + `nucleo/batch/runner.py` (list steps) → `memory/tasks_store.task_put`/`task_patch`; the end state as the `spec` artifact (`artifact_put`), the verdict from `nucleo/circuit.py` | One row per request; a later op never improves a failed row; schema v9 `verdict`; the prompt's `task_block.recent_lines` still reads it. Nodes 2.194, 2.196, 2.198. |
-| **Workflow table (V2-594)** | `memory/workflows_store.workflow_upsert` / `workflow_hit` / `workflow_forget` (re-exported by `memory.api`) | That a channel that stopped serving is demoted, not kept as the first answer. |
+| **HEART — operator turn** | `nucleo/memory_agent.ingest_utterance` → `mem_processor.process` (LLM) / `classify` (fail-open) → `remember`/`_write_atom` | New pills respect the schema (`slot`/`meta`/`ttl`); fail-open still works without Ollama; wiring in `voice/engine/llm/providers/nucleo.py` (fire-and-forget). |
+| **SHORT conversational buffer** | `voice/engine/llm/providers/nucleo.py` (`memory.write(kind='conv', level='short', ttl_days=…)`) | It stays EPHEMERAL (TTL), NOT durable; it feeds `recent_short`; it does not re-inflate memory with raw writes. |
+| **SlowBrain / agents** | `nucleo/memory_agent.remember({text,kind[,slot,meta]})` (the only sanctioned SlowBrain writer); `nucleo/dispatch.py` | It passes `slot` for singular facts; it does not block. |
+| **Brain Workers (EXTERNAL)** | `hbmem remember` (`nucleo/mem_cli.py`) → `POST /api/memory/remember` (`memory/server_api.py`) → `memory_agent.remember_external` | It requires the per-task token (mem_cli headers); it applies the P0a gates + identity-slot veto + `meta.source="worker:<id>"`; it NEVER touches `state`; the worker's Bash stays limited to the CLIs (`dispatch._tools_for` without bare "Bash"). Session result: only if `ok` (`workers/session._deliver`). |
+| **Worker context at START** | `nucleo/dispatch._compose_context` → `memory_agent.compose_context` | The «CONTEXTO DE MEMORIA» block of the worker prompt is NOT empty (guard in `tests/agent_headless/unit/test_dispatch.py`). |
+| **Hard reset** | `nucleo/reset.py` (`set_state({trabajo_interrumpido})` + `memory.write(level='short')`) | Freezing to STATE + logging to SHORT stay valid with the new schema. |
+| **Live UI context → STATE** | Canvas (authoritative frontend): `POST /api/canvas/state` (`server/canvas_api.py`) → `set_state({open_widgets})`; running tasks: `nucleo/dispatch.py::_emit_activity` → `set_state({activity})` | The report normalizes instance ids and dedups; `set_state` does NOT overwrite other fields (shallow patch); it fires `memory.updated` to refresh prompt+map. |
+| **Widgets / lifecycle** | `widgets/lifecycle.py` (`record_created`/deletion tombstone) | Creation/removal traces are written through the facade; golden rule "history is never deleted". |
+| **Connectors / messaging** | `connectors/messaging/store.py` (`memory.write(kind='msg', level='short')`) | The dump still goes through the facade; `slot` if the datum is singular. |
+| **Episodic (paste/drop)** | `memory/episodic.py` ← `memory/server_api.py` (`write_episode`) | The searchable summary is still indexed in `memories` (vec/fts). |
+| **Spoken rules** | `nucleo/flash/style_directive.py` (both channels) → `memory.api.add_user_rule(text, scope=rule_scope.scope_of(text))` / `remove_user_rule` | That the scope is stored beside `state.rules` (`rule_scopes`) and the list stays a list of strings; that every reader asks `rules_for(surface)`; that the event carries the scope. Node 2.172, 2.204. |
+| **Request rows** | `nucleo/request_row.py` (inline ops) + `nucleo/tasks.py` (worker sessions) + `nucleo/batch/runner.py` (list steps) → `memory/tasks_store.task_put`/`task_patch`; the end state as the `spec` artifact (`artifact_put`), the verdict from `nucleo/circuit.py` | One row per request; a later op never improves a failed row; schema v9 `verdict`; the prompt's `task_block.recent_lines` still reads it. Nodes 2.194, 2.196, 2.198. |
+| **Workflow table** | `memory/workflows_store.workflow_upsert` / `workflow_hit` / `workflow_forget` (re-exported by `memory.api`) | That a channel that stopped serving is demoted, not kept as the first answer. |
 
-### 1b. LECTORES de la memoria (directos, SIN LLM en el camino — regla de oro V2-013/V2-011)
+### 1b. Memory READERS (direct, NO LLM on the path — golden rule)
 
-| Lector | Dónde | Qué revisar |
+| Reader | Where | What to review |
 |---|---|---|
-| **ESTADO (µs, siempre en el prompt)** | `memory.state()` → `nucleo/flash/memory_cache._compose` (incl. contexto de UI vivo: `open_widgets`/`activity`) | Que `_compose` pinte los campos nuevos (listas incluidas); invalidación por `memory.updated` intacta. |
-| **Mapa de memoria (visor)** | `memory.map()` → `MemoryMap.js::stateItems` (columna ESTADO) | Que los campos nuevos del ESTADO se pinten en el mapa (`stateItems` es whitelist explícita, hay que añadir la fila). |
-| **CORTO (µs, working set entero)** | `memory.recent_short()` → `memory_cache._compose` (bloque "Conversación reciente") | Que siga leyendo directo (sin embeddings) y acotado (limit/max_chars). |
-| **LARGO (ms, bajo demanda, off-loop)** | `nucleo/flash/prompt.compose_recall` → `memory.query` → `retriever.search` → **reranker** (`memory/rerank.py`, V2-030, fail-open); `asyncio.to_thread` + `needs_recall` | Que NUNCA entre al event loop; que el scoring siga coherente; que el reranker siga fail-open. |
-| **Brain Workers (lectura serial)** | `hbmem recall` → `POST /api/memory/recall` → `memapi.query()` | Que siga read-only y filtre `untrusted` (lo hace el retriever); que nunca abra la BD. |
-| **SlowBrain (off-hot-path, puede LLM)** | `nucleo/memory_agent.compose_context` | Única cara que puede usar un LLM de recall — verificar que sigue off-hot-path. |
-| **Visor / diagnóstico** | `memory.map()` → `GET /api/memory/map` → `MemoryMap.js` | Que exponga las columnas nuevas (`slot`/`meta`); tintado por `memory.updated` intacto. |
+| **STATE (µs, always in the prompt)** | `memory.state()` → `nucleo/flash/memory_cache._compose` (incl. live UI context: `open_widgets`/`activity`) | `_compose` renders the new fields (lists included); invalidation by `memory.updated` intact. |
+| **Memory map (viewer)** | `memory.map()` → `MemoryMap.js::stateItems` (STATE column) | New STATE fields are rendered in the map (`stateItems` is an explicit whitelist; the row has to be added). |
+| **SHORT (µs, whole working set)** | `memory.recent_short()` → `memory_cache._compose` ("Conversación reciente" block) | It still reads directly (no embeddings) and bounded (limit/max_chars). |
+| **LONG (ms, on demand, off-loop)** | `nucleo/flash/prompt.compose_recall` → `memory.query` → `retriever.search` → **reranker** (`memory/rerank.py`, fail-open); `asyncio.to_thread` + `needs_recall` | It NEVER enters the event loop; scoring stays coherent; the reranker stays fail-open. |
+| **Brain Workers (serial read)** | `hbmem recall` → `POST /api/memory/recall` → `memapi.query()` | It stays read-only and filters `untrusted` (the retriever does it); it never opens the DB. |
+| **SlowBrain (off-hot-path, may use an LLM)** | `nucleo/memory_agent.compose_context` | The only face that may use a recall LLM — verify it stays off-hot-path. |
+| **Viewer / diagnostics** | `memory.map()` → `GET /api/memory/map` → `MemoryMap.js` | It exposes the new columns (`slot`/`meta`); tinting by `memory.updated` intact. |
 
-> **Regla de oro de latencia (repetida porque es fácil romperla):** **LLM al ESCRIBIR (off-hot-path), queries
-> DIRECTAS al LEER.** Ningún cambio puede meter un LLM ni I/O de memoria SÍNCRONO en el turno de voz.
-
----
-
-## 2. Migración de schema (si tocaste columnas/tablas)
-
-- Sube `SCHEMA_VERSION` en `memory/schema.py` y añade la migración **ALTER idempotente y NO destructiva** en
-  `memory/db.py::_migrate` (SQLite no tiene `ADD COLUMN IF NOT EXISTS` → comprueba `PRAGMA table_info` antes).
-- Los índices que dependen de columnas nuevas se crean **después** del ALTER (nunca en `BASE_DDL`, que corre antes).
-- **Verifica ambas rutas**: BD nueva (desde `BASE_DDL`) y BD vieja existente (v_anterior → v_nueva) — que migra y
-  **no pierde datos**. Prueba con una BD simulada de la versión anterior.
+> **Golden latency rule (repeated because it is easy to break):** **LLM on WRITE (off-hot-path), DIRECT queries
+> on READ.** No change may put an LLM or SYNCHRONOUS memory I/O into the voice turn.
 
 ---
 
-## 3. Documenta — la regla de oro es SIEMPRE tres sitios, nunca dos de tres
+## 2. Schema migration (if you touched columns/tables)
 
-1. **`zaelar-memory.md`** (fuente de verdad): §Schema, §El CORAZÓN de escritura, §Lectura en TRES velocidades,
-   §Cómo la USA el resto del sistema, §Observabilidad — lo que hayas tocado.
-   - **Si cambiaste un MODELO de la memoria** (destilador o síntesis REM), el sitio es **§Modelos de la memoria**:
-     la tabla de las dos tareas, por qué el criterio es distinto en cada una (precio en el CORAZÓN porque corre en
-     cada turno; calidad en REM porque es 1 llamada/día con entrada acotada), los VETOS con su motivo, y las
-     cadenas de fallback. Además: **guarda el informe crudo** de la corrida en `tests/memory/e2e/bot/resultados/`
-     y añade su fila al `README.md` de esa carpeta. La norma es que nadie tenga que RE-EJECUTAR un benchmark para
-     saber por qué usamos un modelo — si hay que dar explicaciones, se dan desde el doc, no desde la memoria de
-     quien lo corrió. Los veredictos densos van a `zaelar-model-benchmarks.md §12.x` y el resumen curado que ve el
-     operador a `config/model_benchmarks.py` (los tres, o queda desalineado en silencio).
-2. **`CLAUDE.md`**: la decisión clave "Memoria central" + el bullet del módulo `memory/`/`nucleo/` + (si es un
-   invariante nuevo) su regla dura. **Explica cómo se usa la memoria desde otros módulos** — es mandatorio que esté
-   al día (guardar Y leer).
-3. **Diagrama público** `/technology/memory`, fuera de este repo (antes
-   `frontend/pages/architecture.html` pestaña Memoria, retirado el 2026-07-24 — paso MANUAL, ningún workflow lo
-   sincroniza solo): piezas + **modelos en uso** (el modelo del procesador de escritura, embeddings, etc.) +
-   coste (local/gratis vs nube), solo si el cambio es significativo de cara a fuera. Si el operador ve un
-   modelo/topología obsoleto en `/technology`, es un fallo de este workflow.
-4. **Roadmap**: marca la tarea `done` + una línea en la Bitácora de su iniciativa (V2-013/V2-019).
+- Bump `SCHEMA_VERSION` in `memory/schema.py` and add an **idempotent, NON-destructive ALTER** migration in
+  `memory/db.py::_migrate` (SQLite has no `ADD COLUMN IF NOT EXISTS` → check `PRAGMA table_info` first).
+- Indexes that depend on new columns are created **after** the ALTER (never in `BASE_DDL`, which runs before).
+- **Verify both paths**: a new DB (from `BASE_DDL`) and an existing old DB (v_previous → v_new) — it migrates and
+  **loses no data**. Test with a simulated DB of the previous version.
 
 ---
 
-## 4. Tests — no solo revisión de código
+## 3. Document — the golden rule is ALWAYS all three places, never two out of three
 
-- `.venv/bin/pytest memory/ nucleo/ -q` (con `ZAELAR_EMBED_BACKEND=hash` para no depender de Ollama).
-- Añade/ajusta tests para lo que cambiaste: schema/migración (`memory/test_pill_slot.py`), corazón
-  (`tests/memory/integration/test_memory_agent.py`), writer/retriever/consolidador.
-- **Determinismo**: el procesador LLM se apaga en tests con `MEM_PROCESSOR=0` (ruta heurística); para ejercitar el
-  LLM, mockea `mem_processor.process`.
-- Si tocaste escritores fuera de `memory/` (mensajería, widgets, reset), corre también SU suite.
-
----
-
-## 5. Reinicia y verifica en vivo (si tocaste `.py`)
-
-- `make run` y comprueba en el **visor 🧠** (cuenco del orbe) + la **columna ◷** que la memoria se forma como
-  esperas (píldoras curadas, ESTADO poblado, nada de basura cruda). El flujo de eventos `kind=memory` debe reflejar
-  el cambio.
-
----
-
-## 6. Commit / push — regla dura
-
-- `git add -A && git commit` con co-autoría; mensaje que ancle la tarea (V2-0NN · Txxx). **NO push** sin OK explícito
-  del operador.
+1. **`zaelar-memory.md`** (source of truth): §Schema, §The write HEART, §Reading at THREE speeds, §How the rest of
+   the system USES it, §Observability — whatever you touched.
+   - **If you changed a memory MODEL** (distiller or REM synthesis), the place is **§Memory models**: the table
+     of the two tasks, why the criterion differs for each (price in the HEART because it runs every turn; quality
+     in REM because it is one call per day with bounded input), the VETOES with their reason, and the fallback
+     chains. Also: **save the raw report** of the run in `tests/memory/e2e/bot/resultados/` and add its row to
+     that folder's `README.md`. The rule is that nobody should have to RE-RUN a benchmark to know why we use a
+     model — explanations come from the doc, not from the memory of whoever ran it. Dense verdicts go to
+     `zaelar-model-benchmarks.md §12.x` and the curated summary the operator sees to
+     `config/model_benchmarks.py` (all three, or they drift apart silently).
+2. **`CLAUDE.md`**: the "Central memory" key decision + the `memory/`/`nucleo/` module bullet + (if it is a new
+   invariant) its hard rule. **Explain how memory is used from other modules** — keeping it current is mandatory
+   (write AND read).
+3. **Public diagram** `/technology/memory`, maintained outside this repo (a MANUAL step — no workflow syncs it
+   automatically): pieces + **models in use** (the write processor's model, embeddings, etc.) + cost (local/free vs
+   cloud), only if the change is significant from the outside.
 
 ---
 
-## 7. Cierra con la revisión de alineación
+## 4. Tests — not just code review
 
-Ejecuta [[zaelar-alignment-review]]: **código ↔ CLAUDE.md ↔ zaelar-memory.md ↔ diagrama Memoria de `/technology`
-↔ roadmap ↔ tests** deben contar la MISMA historia (estado actual, sin dirty/legacy). Es la puerta de calidad final.
+- `.venv/bin/pytest memory/ nucleo/ -q` (with `ZAELAR_EMBED_BACKEND=hash` so it does not depend on Ollama).
+- Add/adjust tests for what you changed: schema/migration (`memory/test_pill_slot.py`), heart
+  (`tests/memory/integration/test_memory_agent.py`), writer/retriever/consolidator.
+- **Determinism**: the LLM processor is turned off in tests with `MEM_PROCESSOR=0` (heuristic path); to exercise
+  the LLM, mock `mem_processor.process`.
+- If you touched writers outside `memory/` (messaging, widgets, reset), run THEIR suite too.
 
 ---
 
-## Resumen para el operador (al terminar)
+## 5. Restart and verify live (if you touched `.py`)
 
-Reporta en 4 líneas: **(1) qué cambió** en la memoria; **(2) qué escritores/lectores revisé** y si siguen alineados;
-**(3) migración + tests** (verde/rojo, nº); **(4) docs + diagrama** actualizados y alineación pasada. Si algo quedó
-abierto (calibración, un consumidor por migrar), dilo explícitamente.
+- `make run` and check in the **🧠 viewer** (the orb's bowl) + the **◷ column** that memory forms as expected
+  (curated pills, STATE populated, no raw junk). The `kind=memory` event stream must reflect the change.
+
+---
+
+## 6. Commit / push
+
+- Commit with a pathspec (`git commit -- <paths>`) after checking that `git diff --cached --name-only` is empty,
+  with a message that names the change; then push, as described in `CLAUDE.md`.
+
+---
+
+## 7. Close with the alignment review
+
+Run [[zaelar-alignment-review]]: **code ↔ CLAUDE.md ↔ zaelar-memory.md ↔ the Memory diagram on `/technology` ↔
+tests** must tell the SAME story (current state, no dirty/legacy). It is the final quality gate.
+
+---
+
+## Summary for the operator (when done)
+
+Report in 4 lines: **(1) what changed** in memory; **(2) which writers/readers I reviewed** and whether they stay
+aligned; **(3) migration + tests** (green/red); **(4) docs + diagram** updated and alignment passed. If anything
+was left open (calibration, a consumer still to migrate), say so explicitly.

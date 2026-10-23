@@ -1,6 +1,5 @@
 ---
 title: Overview
-updated: 2026-10-22
 status: stable
 ---
 
@@ -19,16 +18,13 @@ external agent in the loop.
   machine; only the questions sent to your AI provider leave it.
 - **Hosted**: a hosted version exists — see zaelar.com.
 
-**What it does today** (built and in use): voice in English and Spanish with barge-in and corrections; agenda with
-spoken reminders that fire; WhatsApp / Telegram / email / Google connectors; a canvas of built-in widgets (agenda,
-lists, video, music, maps, markets, timers…) driven by voice; **generated widgets** — describe one and it is written
-and kept in your Apps (beta); its own **browser** for errands (beta); and **live answers from other agents on the
-MeshKore network** (hotels, flights, events — free agents found through the Oracle, no browser needed).
-
-**Not built yet — never write these as shipped**: sharing apps/widgets between users; friend clusters (private
-groups of people's agents) and posts; publishing your own agent to the mesh; two Zaelar agents negotiating with each
-other in production; agents of shops beyond the free ones on the mesh today. State table:
-`docs/architecture/zaelar-meshkore-network.md` §3.
+**What it does today**: voice in English and Spanish with barge-in and corrections; agenda with spoken reminders
+that fire; WhatsApp / Telegram / email / Google connectors; a canvas of built-in widgets (agenda, lists, video, music,
+maps, markets, timers…) driven by voice; **generated widgets** — describe one and it is written and kept in your Apps;
+its own **browser** for errands; and **external services**: the agents available on the MeshKore network, external
+MCP servers and third-party APIs, which give it access to bookings and thousands of other external services. Those
+are external services Zaelar orchestrates, not part of this repository. Network detail:
+`docs/architecture/zaelar-meshkore-network.md`.
 
 **Source of truth**: `docs/product/zaelar-product.md` (onboarding) + `docs/architecture/zaelar-architecture.md`
 (mental model). The public, curated story (and the claims we stand behind) is zaelar.com; `docs/` is the detail.

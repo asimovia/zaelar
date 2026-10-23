@@ -1,225 +1,186 @@
 ---
-title: Zaelar — Cómo se DIRIGE una investigación (brief, embudo, propuestas compuestas)
+title: Zaelar — How a research task is DIRECTED (brief, funnel, composite proposals)
 category: architecture
-updated: 2026-08-09
+updated: 2026-10-23
 owner: ricart
 status: current
 ---
 
-# Dirigir una investigación
+# Directing a research task
 
-> Doc NARRATIVA. Complementa `zaelar-architecture.md` (qué pieza es cada cosa) respondiendo a otra pregunta: **si
-> el operador pide «las mejores vacaciones» y espera algo que un profesional firmaría, qué tiene que pasar entre
-> su frase y la pantalla, en qué orden, y por qué en ese orden.**
+> NARRATIVE doc. It complements `zaelar-architecture.md` (which piece is what) by answering a different question:
+> **if the operator asks for «the best holidays» and expects something a professional would sign off on, what has
+> to happen between the sentence and the screen, in what order, and why in that order.**
 
-## 0. El fallo que motiva todo esto
+## 0. Why the research layer exists
 
-Petición real del operador (2026-08-09), resumida en su propia frase:
+> «Opening a website, setting the filters, pressing the button and returning the first three results is
+> something anyone can do.»
 
-> «Entrar en una web, poner los filtros, darle al botón y dar los tres primeros resultados lo hace cualquiera.»
+Driving a real browser, reading, extracting and verifying are resources the Brain Worker already has. What turns
+them into research is **direction**: how wide to search and against which yardstick to judge. Without it, a
+worker receiving free prose tends to settle for the minimum criterion that satisfies the literal sentence — a
+shortcut such as «conclude with the 2-3 that fit best» is right for «get me the price of X» and wrong for «choose
+the best».
 
-Eso era, literalmente, lo que hacía el sistema. Y no por falta de herramientas: el Brain Worker ya sabía conducir
-un Chromium real, leer, extraer, y verificar. Lo que **nadie le decía** era cuán ancho buscar ni con qué baremo
-juzgar — recibía prosa libre y se autoimponía el criterio mínimo que satisfacía la frase literal. Encima, el
-prompt del worker web llevaba escrito el atajo culpable: *«concluye con los 2-3 que mejor encajan»* — correcto
-para «tráeme el precio de X», ruinoso para «elige lo mejor».
+Delivery needs its own shape too: a travel proposal **is not a list of hotels**. It is a package (this hotel +
+that ferry + such a restaurant) that is compared and chosen as a whole. A flat results surface — 1 card = 1 thing
+— can only hold a package dissolved in prose, which is exactly what prevents comparing it. So results can be
+composite.
 
-Había un segundo fallo, del lado de la entrega: una propuesta de viaje **no es una lista de hoteles**. Es un
-paquete (este hotel + ese ferry + tal restaurante) que se compara y se elige como un todo. La superficie de
-resultados era plana —1 tarjeta = 1 cosa— así que un paquete solo cabía disuelto en prosa, que es justo lo que
-impide compararlo.
+## 1. The three pieces
 
-## 1. Las tres piezas
-
-| Pieza | Fichero | Qué resuelve |
+| Piece | File | What it solves |
 |---|---|---|
-| **Director de investigación** | `nucleo/research.py` | Convierte la petición cruda en un BRIEF: qué descalifica, qué puntúa, qué añade un experto, cuán ancho buscar, cómo se juzga la calidad, qué forma tiene la entrega. |
-| **Propuestas compuestas + 2ª página** | `widgets/results/` | Un resultado puede estar hecho de PIEZAS (`parts`), llevar datos duros consultables (`facts`) y fotos reales (`images`); y la hoja tiene una vista de DETALLE de un item. |
-| **El cerebro ve la pantalla** | `widgets/refs.py::prompt_digest` | Hook genérico: un widget publica un resumen de su contenido y el FlashBrain lo lleva en el prompt → puede RESPONDER sobre lo que hay en pantalla, no solo nombrarlo. |
+| **Research director** | `nucleo/research.py` | Turns the raw request into a BRIEF: what disqualifies, what scores, what an expert would add, how wide to search, how quality is judged, what shape the delivery takes. |
+| **Composite proposals + detail page** | `widgets/results/` | A result can be made of PIECES (`parts`), carry hard, queryable data (`facts`) and real photos (`images`); and the sheet has a DETAIL view of one item. |
+| **The brain sees the screen** | `widgets/refs.py::prompt_digest` | Generic hook: a widget publishes a summary of its content and the FlashBrain carries it in the prompt → it can ANSWER about what is on screen, not just name it. |
 
-## 2. El orden, y por qué
+## 2. The order, and why
 
 ```
-frase del operador
+operator's sentence
       │
       ▼
-FlashBrain (nucleo/flash/) ── responde YA («recibido, empiezo a buscar») ── milisegundos, ruta de VOZ
+FlashBrain (nucleo/flash/) ── answers NOW («got it, starting the search») ── milliseconds, VOICE path
       │  escalate_to_slowbrain(request)
       ▼
-PRE-VUELO ASÍNCRONO  ← aquí, y solo aquí, se puede PENSAR
+ASYNC PRE-FLIGHT  ← here, and only here, there is time to THINK
   nucleo/dispatch.py::_compose_brief
-      │  · ¿es una investigación? (lo decide el modelo, no una tabla de verbos)
-      │  · ¿había una ronda anterior con este objetivo? → expand() en vez de recomponer
+      │  · is it a research task? (the model decides, not a verb table)
+      │  · was there a previous round with this goal? → expand() instead of recomposing
       ▼
-  nucleo/research.py::compose  → BRIEF estructurado (techo 30s, fail-open)
+  nucleo/research.py::compose  → structured BRIEF (30 s ceiling, fail-open)
       │  research.save(task_id)  +  research.remember_round(goal_key)
       ▼
-prompt del worker = petición literal + BRIEF (to_prompt_block)
+worker prompt = literal request + BRIEF (to_prompt_block)
       │
       ▼
-Brain Worker (Claude Code + Chromium real)
-      │  embudo: reunir ≥N → filtrar duros → puntuar blandos → VERIFICAR finalistas
-      │  hbnote plan/progress/phase   → el operador ve avanzar
-      │  hbnote considered N --kept M → la selección queda AUDITABLE
-      │  widget_cli data results append → la hoja se llena EN VIVO, propuesta a propuesta
+Brain Worker (Claude Code + real Chromium)
+      │  funnel: gather ≥N → filter hard → score soft → VERIFY finalists
+      │  hbnote plan/progress/phase   → the operator watches it advance
+      │  hbnote considered N --kept M → the selection stays AUDITABLE
+      │  widget_cli data results append → the sheet fills LIVE, proposal by proposal
       ▼
-widgets/results  ── lista comparable ──▶ (voz: «detalle de la 1») ──▶ expediente completo
+widgets/results  ── comparable list ──▶ (voice: «details of number 1») ──▶ full record
       │
       ▼
-refs.prompt_digest → el FlashBrain sabe qué hay en pantalla → responde «¿tiene wifi?» sin re-buscar
+refs.prompt_digest → the FlashBrain knows what is on screen → answers «does it have wifi?» without searching again
 ```
 
-**Por qué el brief se compone en el PRE-VUELO y no en el turno de voz.** Separar criterios duros de blandos,
-deducir lo que hará falta y no se pidió, fijar la amplitud y el baremo es trabajo de razonamiento. El FlashBrain
-de voz tiene que contestar en milisegundos: ahí no cabe. La escalada, en cambio, ya es asíncrona y el operador
-sabe que tarda — es el único punto del sistema donde se puede pensar antes de empezar a trabajar.
+**Why the brief is composed in the PRE-FLIGHT and not in the voice turn.** Separating hard from soft criteria,
+deducing what will be needed but was not asked for, fixing the breadth and the yardstick is reasoning work. The
+voice FlashBrain must answer in milliseconds: there is no room for it there. The escalation, on the other hand,
+is already asynchronous and the operator knows it takes time — it is the one point in the system where there is
+time to think before starting to work.
 
-**Por qué el brief va DESPUÉS de la petición literal en el prompt.** Es la dirección de *cómo* hacerlo bien, y se
-lee mejor sabiendo ya *qué* se pide. Sin brief (una acción concreta: cancelar una cita) el bloque no aparece y el
-worker sale exactamente como salía antes.
+**Why the brief goes AFTER the literal request in the prompt.** It is the direction on *how* to do it well, and
+it reads better once *what* is being asked is known. Without a brief (a concrete action: cancel an appointment)
+the block does not appear and the worker runs exactly as it would otherwise.
 
-## 3. El embudo, que es la pieza que de verdad cambia el resultado
+## 3. The funnel — the piece that really changes the result
 
 ```
-1) REÚNE   ≥ min_candidates candidatos reales — ANTES de descartar ninguno
-2) FILTRA  por los criterios DUROS (incumplir = fuera, sin excepción)
-3) PUNTÚA  los supervivientes con los BLANDOS + los enriquecimientos
-4) VERIFICA A FONDO solo a los finalistas, contra el BAREMO ← aquí se gasta el esfuerzo
-5) ENTREGA las n_final mejores, con sus datos verificados
+1) GATHER  ≥ min_candidates real candidates — BEFORE discarding any
+2) FILTER  by the HARD criteria (failing one = out, no exceptions)
+3) SCORE   the survivors with the SOFT criteria + the enrichments
+4) VERIFY IN DEPTH only the finalists, against the YARDSTICK ← this is where the effort goes
+5) DELIVER the n_final best, with their verified data
 ```
 
-`min_candidates` tiene un **suelo de 25** en código (`_MIN_CANDIDATES_FLOOR`). Existe porque el sesgo del modelo,
-si le dejas el número, es pedir «10 candidatos» — la búsqueda superficial con otro nombre. Elegir «el mejor» entre
-8 no es elegir, es conformarse. En la primera corrida real el modelo pidió 50 por su cuenta; el suelo está para
-cuando no lo haga.
+`min_candidates` has a **floor of 25** in code (`_MIN_CANDIDATES_FLOOR`). It exists because a model left to
+choose the number tends to ask for «10 candidates» — a shallow search under another name. Choosing «the best»
+among 8 is not choosing, it is settling. Models often ask for more on their own; the floor is there for when
+they do not.
 
-Los **ángulos** importan tanto como el número: por un solo camino (un agregador) siempre ves el mismo subconjunto,
-así que 40 candidatos de una sola fuente son 40 candidatos falsos.
+The **angles** matter as much as the number: through a single path (one aggregator) you always see the same
+subset, so 40 candidates from a single source are 40 false candidates.
 
-## 4. Qué es «genérico» aquí y por qué no es un buscador de hoteles
+## 4. What «generic» means here, and why this is not a hotel finder
 
-Nada en `research.py` sabe de hoteles, ferries ni precios. El compositor pregunta: *¿qué añadiría un experto de
-ESTE dominio, cuán ancho hay que buscar, cómo se juzga la calidad?* — y esa pregunta tiene la misma forma para una
-tesis de física cuántica (¿cuántos papers antes de concluir? ¿qué hace sólida a una fuente?), para documentarse
-para escribir un libro, o para elegir una librería. El **dominio lo nombra el propio brief**; la ESTRUCTURA de
-dirigir una investigación es la misma. Un test lo guarda: si el prompt del sistema se especializa en un dominio, o
-si aparece el vocabulario del caso que motivó la pieza, falla.
+Nothing in `research.py` knows about hotels, ferries or prices. The composer asks: *what would an expert in THIS
+domain add, how wide does the search need to be, how is quality judged?* — and that question has the same shape
+for a quantum-physics thesis (how many papers before concluding? what makes a source solid?), for research to
+write a book, or for choosing a library. **The brief itself names the domain**; the STRUCTURE of directing a
+research task is the same. A test guards it: if the system prompt specialises in one domain, or the vocabulary
+of a specific use case appears in it, the test fails.
 
-Lo mismo del lado de la pantalla: `parts` son ROLES («Alojamiento», «Transporte», «Fuente», «Capítulo»,
-«Servidor»), no campos de un viaje.
+The same holds on the screen side: `parts` are ROLES («Accommodation», «Transport», «Source», «Chapter»,
+«Server»), not fields of a trip.
 
-## 5. Rondas: «esos no me valen, sigue buscando»
+## 5. Rounds: «those won't do, keep looking»
 
-La segunda frase del operador **nunca menciona la primera**. Por eso la continuidad se casa por FIRMA DEL OBJETIVO
-(solape de palabras de contenido ≥0,5, el mismo umbral que la reanudación web), no por texto exacto ni por id de
-tarea:
+The operator's second sentence **never mentions the first one**. That is why continuity is matched by GOAL
+SIGNATURE (content-word overlap ≥0.5, the same threshold as web-task resumption), not by exact text or task id:
 
-- `remember_round(goal_key, brief)` al lanzar → registro acotado (40 vivos, TTL 6h).
-- `previous_round(goal_key)` al llegar una petición nueva → si casa, `expand()`: **ronda+1, amplitud doblada,
-  criterios intactos** y el motivo del rechazo dentro del brief.
+- `remember_round(goal_key, brief)` at launch → a bounded registry (40 live, 6 h TTL).
+- `previous_round(goal_key)` when a new request arrives → if it matches, `expand()`: **round+1, breadth doubled,
+  criteria intact**, and the reason for the rejection inside the brief.
 
-Reabrir los criterios sería empezar OTRA búsqueda; doblar la amplitud es continuar ESTA. Sin esto, «busca más» se
-recomponía desde cero con la misma amplitud y devolvía lo que el operador acababa de rechazar.
+Reopening the criteria would start ANOTHER search; doubling the breadth continues THIS one, so «search more»
+never returns what the operator just rejected.
 
-**Decisión deliberada:** pedir dos veces lo mismo dentro del TTL se trata como continuación, no como búsqueda
-nueva. Pedirlo dos veces significa que la primera respuesta no sirvió.
+**Deliberate decision:** asking for the same thing twice within the TTL is treated as a continuation, not a new
+search. Asking twice means the first answer did not serve.
 
-## 6. Auditabilidad: `considered`
+## 6. Auditability: `considered`
 
 `hbnote considered <N> --kept <M>` → `dispatch.session_considered` → `SessionRecord.considered/kept` →
-`active_sessions()` / `pending_summaries()` → prompt del FlashBrain y `/api/tasks`.
+`active_sessions()` / `pending_summaries()` → the FlashBrain prompt and `/api/tasks`.
 
-Sin este dato, «te traigo las 3 mejores» es **indistinguible** de «te copio las 3 primeras», y ni el operador ni
-el cerebro pueden juzgar si conviene seguir. `-1` significa NO APLICA (una tarea que no es una investigación no ha
-«considerado 0 candidatos»).
+Without this datum, «here are the 3 best» is **indistinguishable** from «here are the first 3», and neither the
+operator nor the brain can judge whether to keep going. `-1` means NOT APPLICABLE (a task that is not research
+has not «considered 0 candidates»).
 
-## 7. Lo que NO hace, a propósito
+## 7. What it does NOT do, on purpose
 
-- **No compromete nada.** El worker tiene prohibido reservar, comprar, pagar, contratar o enviar en nombre del
-  operador, aunque encuentre la opción perfecta. Nació de un defecto real: el primer brief convirtió «busca» en
-  «encontrar y RESERVAR» — dinero irreversible por una palabra que nadie dijo. Doble red: el director no puede
-  añadir acciones no pedidas, y el bloque que lee el worker se lo repite. (Tercera red preexistente: el
-  confirm-gate de irreversibles en `nucleo/danger.py`.)
-- **No bloquea por un dato menor.** Si falta algo para poder buscar, se ASUME con el valor razonable y se anota en
-  `assumed` — y el worker debe mencionarlo al entregar. Inventar un dato que falta está bien; ocultar que lo has
-  inventado, no.
-- **No presume de lo que no verificó.** Una propuesta con un dato sin confirmar y AVISADO vale; una con un dato
-  inventado, no.
+- **It commits to nothing.** The worker is forbidden to book, buy, pay, hire or send on the operator's behalf,
+  even when it finds the perfect option: «search» must never turn into «find and BOOK» — irreversible money for a
+  word nobody said. Double net: the director cannot add actions that were not requested, and the block the worker
+  reads repeats it. (Third, pre-existing net: the confirm-gate for irreversible actions in `nucleo/danger.py`.)
+- **It does not block on a minor datum.** If something is missing to be able to search, it ASSUMES a reasonable
+  value and records it in `assumed` — and the worker must mention it on delivery. Filling a missing datum is fine;
+  hiding that you filled it is not.
+- **It does not claim what it did not verify.** A proposal with an unconfirmed datum that is FLAGGED is fine; one
+  with an invented datum is not.
 
-## 8. Kill-switch y fail-open
+## 8. Kill switch and fail-open
 
-`§research.enabled` (UI) + `ZAELAR_RESEARCH=0` (env), mismo patrón que el Susurro. Y fail-open **en todos los
-caminos**: sin proveedor, con error, o vencido el techo de 30s, el worker sale SIN brief — como salía antes — pero
-**con aviso en el log**. Un fail-open silencioso aquí esconderría que TODAS las búsquedas volvieron a ser
-superficiales, que es el fallo que esto viene a cerrar.
+`§research.enabled` (UI) + `ZAELAR_RESEARCH=0` (env), the same pattern as the Susurro. And fail-open **on every
+path**: with no provider, on error, or past the 30 s ceiling, the worker runs WITHOUT a brief — but **with a
+warning in the log**. A silent fail-open here would hide that every search had gone back to being shallow.
 
-En la sesión de test el kill-switch va apagado (`conftest.py`): «busca un piso» es una investigación, así que el
-despacho se ponía a llamar al modelo de verdad y colgaba un test que no tenía nada que ver.
+In the test session the kill switch is off (`conftest.py`): «find a flat» is a research task, so dispatch would
+otherwise call the real model from tests that have nothing to do with research.
 
-## 9. Hallazgos de la verificación en vivo (por qué se prueba en vivo y no solo con tests)
+## 9. Implementation notes
 
-Estos cuatro NO los habría encontrado ningún test de este repo; salieron de conducir la app real con Playwright:
+- **Widgets update live independently of the voice session.** The event channel (`openSSE`) is opened by
+  `main.js` at startup and lives as long as the application, so an open card keeps refreshing with the
+  microphone off or the voice stopped (⏻). *Related trap:* with the LiveKit engine, `session-lk.js` is served AT
+  the URL of `session.js` — editing `session.js` alone changes nothing at runtime (the test checks both files).
+- **Provider errors are classified, not swallowed.** `_raise_with_body` is awaited in the provider call, so a
+  429 is classified as a quota error and triggers the provider relay instead of surfacing later as a parse error.
+- **Roles are short labels.** They are painted in a badge; the prompt asks for them short and a cap guarantees
+  it, cutting at a WORD boundary (never mid-word).
 
-1. **Los widgets se actualizaban en vivo solo si la voz estaba levantada.** `openSSE` se llamaba únicamente dentro
-   del arranque de la sesión de voz, y `stop()` lo cerraba → sin micrófono, o con la voz parada a mano (⏻), una
-   tarjeta abierta se quedaba **congelada en la foto de su primer render**, sin ningún síntoma. Justo lo contrario
-   de «ver llenarse el informe en vivo». Ahora el canal lo abre `main.js` en el arranque y su vida es la de la
-   aplicación. *Trampa asociada:* con el motor LiveKit se sirve `session-lk.js` EN la URL de `session.js` — editar
-   `session.js` no cambia nada en ejecución (el test comprueba los dos ficheros).
-2. **`_raise_with_body` se llamaba sin `await`** en `_complete_zai`: un 429 de Z.AI pasaba por bueno y reventaba
-   más tarde como error de parseo, sin clasificar la cuota y por tanto sin relevo de proveedor.
-3. **El objetivo derivaba a «reservar»** (ver §7).
-4. **Los roles llegaban como frases descriptivas** en vez de etiquetas, y se pintan en una insignia. El prompt lo
-   pide corto; ahora un cap lo garantiza, cortando por PALABRA (por caracteres daba «Tarifa de ferry para 4
-   pasaj»).
+## 10. References
 
-## 10. Referencias
-
-- `nucleo/research.py` — el director (compose/parse/expand/to_prompt_block/rondas).
+- `nucleo/research.py` — the director (compose/parse/expand/to_prompt_block/rounds).
 - `nucleo/dispatch.py::_compose_brief`, `_build_prompt`, `_web_prompt`, `session_considered`.
-- `widgets/results/{data,widget}.js|py` + `manifest.json` — esquema compuesto, `facts`/`images`, `detail`/`list`.
-- `widgets/refs.py::prompt_digest` + `widgets/brief.py` — el hook genérico de «qué hay en pantalla».
-- `config/v2.py §research` — modelo y kill-switch.
+- `widgets/results/{data,widget}.js|py` + `manifest.json` — composite schema, `facts`/`images`, `detail`/`list`.
+- `widgets/refs.py::prompt_digest` + `widgets/brief.py` — the generic «what is on screen» hook.
+- `config/v2.py §research` — model and kill switch.
 - Tests: `tests/agent_headless/unit/test_research.py`, `tests/agent_headless/unit/test_dispatch.py`,
   `tests/browser/unit/widgets/test_results_presentation.py`,
   `tests/browser/unit/widgets/test_live_updates_independent_of_voice.py`.
 
-## 11. Estado de verificación (2026-08-10)
+## 11. Verifying end to end
 
-Honestidad sobre qué está probado y con qué:
-
-| Eslabón | Cómo se verificó | Estado |
-|---|---|---|
-| El compositor produce un brief de calidad experta | Dos corridas REALES contra la petición literal del operador con el modelo de razonamiento (Z.AI glm-5.2 por la cadena) | ✅ verificado |
-| El brief llega al prompt del worker (ruta genérica y ruta web) y suprime el atajo de cierre rápido | Tests deterministas | ✅ verificado |
-| Amplitud, duros/blandos, baremo, rondas, `considered`, kill-switch, fail-open | 35 tests | ✅ verificado |
-| El FlashBrain contesta al instante y escala | `POST /api/flash/say` con la petición real → «Vale, dame un momento que lo miro» + `tool_calls: escalate_to_slowbrain, show_widget` | ✅ verificado |
-| La hoja pinta propuestas compuestas, el detalle por ordinal, y se vuelve a la lista | Playwright contra el server real, con capturas | ✅ verificado |
-| El canal de eventos actualiza la pantalla sin voz | Playwright (era un bug; ver §9.1) | ✅ verificado |
-| **Un Brain Worker REAL ejecutando el brief contra webs reales y llenando la hoja** | — | ⏳ **PENDIENTE** |
-
-### Por qué el último eslabón quedó sin cerrar
-
-Dos obstáculos de TESTABILIDAD (ninguno del mecanismo en sí):
-
-1. **El chat de la UI no tiene transporte sin micrófono.** `submitChat` → `session.sendText` publica por el canal de
-   datos de LiveKit; sin sala, el texto se encola en `_pendingText` y espera. Correcto para un navegador real (el
-   operador tiene micro), inviable en headless.
-2. **La escalada emitida desde `POST /api/flash/say` no llegó al dispatcher.** El bus es IN-PROCESS y
-   `dispatch.start()` se monta en dos procesos (uvicorn y el worker del agente LiveKit) pero solo uno registra
-   «listener de escalados arrancado». El turno de voz/chat nace en el proceso del agente —el mismo que tiene el
-   listener— así que la ruta del operador no está afectada; la del probe headless, sí.
-   *Comprobado:* `/api/tasks` vacío y sin entrada nueva en `/api/workers/history` tras una escalada confirmada por
-   `tool_calls`.
-3. Lanzar el worker desde un proceso APARTE tampoco vale: los puentes (`hbnote`, `widget_cli`) se autentican con un
-   token por-tarea que vive en el registro del server, así que un worker fuera de ese proceso no puede reportar ni
-   pintar.
-
-### Cómo cerrarlo
-
-Por voz o por chat en un navegador con micrófono (la prueba que el operador iba a hacer de todos modos): la petición
-nace en el proceso del agente, que es donde está el listener. Hitos a mirar en la columna de observabilidad:
-`task/plan` → `task/progress` → `widget/data` (la hoja llenándose) → `task/considered`.
-
-Pendiente de añadir a `tests/`: un caso que ejercite la escalada COMPLETA sin depender del transporte del
-navegador — el hueco de E2E que ya documenta `.meshkore/docs/ops/zaelar-testing.md`.
+The deterministic tests above cover the brief, the funnel parameters, rounds, `considered`, the kill switch and
+fail-open; the browser tests cover the composite sheet, the detail view and live updates. The full chain — a
+Brain Worker executing a brief against real websites and filling the sheet — is exercised by voice or chat from a
+browser session, because the request is born in the agent process where the escalation listener runs. Milestones
+to watch in the observability column: `task/plan` → `task/progress` → `widget/data` (the sheet filling) →
+`task/considered`. The worker's bridges (`hbnote`, `widget_cli`) authenticate with a per-task token held in the
+server's registry, so a worker must be launched by the server to report and paint.

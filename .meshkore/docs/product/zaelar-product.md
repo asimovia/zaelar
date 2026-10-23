@@ -10,31 +10,32 @@ status: current
 
 > Read this to start from zero and continue without friction. zaelar is an **independent product**. This
 > `.meshkore/docs/` folder is the **portable knowledge** (context + diagrams + modules + decisions) that travels
-> with it. The design source of truth for the current system is `EPIC-v2-colmena` (`.meshkore/roadmap/`) + the
-> live diagram at `/architecture`.
+> with it. The design source of truth for the current system is
+> [`zaelar-architecture.md`](../architecture/zaelar-architecture.md).
 
 ## 1. What zaelar is
 A **voice-first personal-life assistant** (warm, remembers you, helps run your day). It speaks by voice, shows
 **graphical widgets** on a canvas when useful, and runs on its **OWN brain** — the `nucleo/` module («Colmena»):
 a two-speed brain (**FlashBrain** for the sub-second voice turn + **Brain Workers** for what does not fit in a turn) with its **own
-central memory** (`memory/`, SQLite) and cron/proactivity. No external agent. Runs locally at
-**http://localhost:43917** (`cd zaelar && make run`).
+central memory** (`memory/`, SQLite) and cron/proactivity. For the outside world — bookings, travel, events and
+thousands of other services — it orchestrates **external services**: the agents on the MeshKore network, external
+MCP servers and third-party APIs. Runs locally at **http://localhost:43917** (`cd zaelar && make run`).
 
-Status: voice round-trip works (STT→nucleo→TTS, streaming); memory persists across sessions (`memory/`); widgets
-(agenda coach + weather/search + navegador) work with a drag-and-drop desktop; speaker-gate v1 filters other
-voices. This repo describes the self-hosted engine; it has no production deploy of its own. Pending: more importers/connectors, wake-word, SpeakerGate v2.
+What it does: a streaming voice round-trip (STT→nucleo→TTS); memory that persists across sessions (`memory/`);
+widgets (agenda, weather, search, browser, messaging and more) on a drag-and-drop desktop; connectors to messaging,
+email and Google services; Brain Workers for long errands. This repo describes the self-hosted engine.
 
-**Voice reliability (current focus).** A recurring "zaelar doesn't hear me" has had several distinct causes;
-each was localized with the **AudioProbe RMS in `/debug`** (don't guess STT vs echo vs brain — read the meter
-first; the ladder is in §12). Settled config: the browser captures the **fully-processed mic**
+**Audio capture.** When zaelar does not seem to hear, the **AudioProbe RMS in `/debug`** localizes the layer
+(don't guess STT vs echo vs brain — read the meter first; the ladder is in §12). The browser captures the
+**fully-processed mic**
 — echoCancellation + noiseSuppression + **autoGainControl** + voiceIsolation. This is what enables CONTINUOUS
 interactive listening on speakers + barge-in: echoCancellation removes zaelar's own TTS so it doesn't transcribe
 itself, and autoGainControl re-amplifies your voice after that subtraction (echoCancellation ALONE leaves it at
 rms≈0.01 → killed → "no me escucha while it talks"). **Audio is captured separately from video** (requesting both
 can bind the mic to the camera's silent input); and the UI shows a live **mic level meter + device name + a mic
-picker**, mirrored to `/debug` via `/api/client-log`. Open edge seen in testing: a browser can deliver
-**exactly-zero** audio when macOS denies the *app* (Chrome) microphone permission at the OS level even though the
-*site* permission is granted — fixed in System Settings, not in code.
+picker**, mirrored to `/debug` via `/api/client-log`. Note: a browser delivers **exactly-zero** audio when macOS
+denies the *app* (Chrome) microphone permission at the OS level even though the *site* permission is granted —
+that is fixed in System Settings, not in code.
 
 ## 2. The pieces (and the golden rule: layers are independent)
 - **Voice core** — the LiveKit **AgentSession** engine (`voice/engine/`): STT → brain → TTS, streaming. It runs
@@ -42,7 +43,7 @@ picker**, mirrored to `/debug` via `/api/client-log`. Open edge seen in testing:
   VAD and barge-in are governed by LiveKit (Silero VAD + the `MultilingualModel` turn-detector +
   `allow_interruptions`) — no custom watchdog on the critical path; proactivity comes from the nucleo loop/cron
   instead. **STT and TTS are cloud services by default**, each with a failover so a provider outage is not a
-  silent engine (2026-09-30, `config/models.default.json` is the source of truth): STT = Deepgram → Voxtral, TTS =
+  silent engine (`config/models.default.json` is the source of truth): STT = Deepgram → Voxtral, TTS =
   Inworld → ElevenLabs. Local Whisper (`make install-stt`) and local Kokoro (`make install-tts`) remain the free,
   private options for a self-hoster. The top level of `voice/` is the
   **brain-agnostic contract** (kept pure): `tag_protocol.py`, `prompt.py`, `brain_notes.py`, `proactive.py`,
@@ -58,8 +59,8 @@ picker**, mirrored to `/debug` via `/api/client-log`. Open edge seen in testing:
   be non-reasoning** on the voice path (a reasoner adds seconds of thinking latency; see §7 decisions).
 - **Widgets** — isolated visual layer in `widgets/` + browser window-manager `frontend/app/widgets/desktop.js`. One
   folder per widget (manifest + widget.js + data.py), per-widget JSON store, catalog-driven HTTP API.
-- **Speaker gate** — `frontend/app/lib/speaker-gate.js`: learns the owner's voice on connect and filters other voices
-  before they reach the orchestrator.
+- **Speaker identity** — `frontend/app/lib/speaker-id.js`: a client-side voiceprint that labels who is speaking
+  (see [`zaelar-speaker-identity.md`](../modules/zaelar-speaker-identity.md)).
 - **Debug/observability** — every voice/turn/latency/brain/widget event flows through the event bus (`bus/`) and
   `voice/observer.py` → `/debug` (live page) and `/api/debug` (JSON); the frontend reads the `/events` SSE stream.
 - **Web UI** — the `frontend/` **ES-module app** (no build step; the browser loads the modules directly; the server
@@ -71,15 +72,15 @@ picker**, mirrored to `/debug` via `/api/client-log`. Open edge seen in testing:
   no reload, widgets repaint live too, see `.meshkore/docs/modules/zaelar-modules.md` §Frontend), and a **text chat
   wall** (type/paste to the agent via a data channel → a normal user turn; Ctrl/Cmd+V anywhere feeds it too).
   Tapping the orb cycles voices **within the current provider** (provider/language are changed in the ⚙ panel
-  below). **⚙ config panel** (gear icon in BOTH the `/architecture` header and the assistant `/` header): set STT
+  below). **⚙ config panel** (gear icon in the assistant `/` header): set STT
   provider, TTS provider, and language BY HAND at runtime (no file editing) — backed by GET/POST `/api/settings`
   (`config/settings.py`); overrides persist to `config/settings.json` (gitignored), apply to env at boot, and take
   effect on the next voice reconnect. (Brain model routing lives in `config/v2.py`, not the ⚙ panel.)
   **Mic-blocked indicator**: a red 🚫 ring over the orb when the mic is muted, occupied by another app (e.g.
   SuperWhisper), or capturing silence. **Camera/voice box** (Google-Meet style): narrower spectrum strip with a MIC
   toggle + a CAMERA toggle to its right (crossed-out red when off; state persists across refresh); drag the whole
-  unit from ANY point. Honest note: the camera is **LOCAL-only** today — vision isn't wired, zaelar can't "see" you
-  yet; the toggle is the UX foundation. **Desktop persistence**: open widgets + their positions survive
+  unit from ANY point. The camera preview is **local-only**: it is shown on screen and not sent to the brain.
+  **Desktop persistence**: open widgets + their positions survive
   refresh/reopen (`localStorage hb_desktop`; transient widgets like the activity rail are not persisted).
   **WebRTC auto-reconnect**: a dropped established connection silently reconnects. Still has a **mic diagnostics**
   path: live RMS level, active device name, mic picker, mirrored to the debug stream via `POST /api/client-log`.
@@ -146,16 +147,15 @@ entry:"widget.js"), `widget.js` (exports `render(el,data,ctx)`), and optionally 
 the brain learns it via `brief.for_brain()`; the desktop lazy-loads it. No server edits.
 
 ## 7. Decisions log (don't lose these)
-- **zaelar is independent** from the interview app; the sim harness comes from `prototype_candidate/`. zaelar
-  extracted to its own repo; `.meshkore/docs/` is the portable knowledge.
+- **zaelar is an independent product** in its own repo; `.meshkore/docs/` is the portable knowledge.
 - **The brain is zaelar's OWN** (`nucleo/`, «Colmena») — an in-process two-speed brain with its own memory
   (`memory/`) and event bus (`bus/`). No external agent, no per-turn CLI spawn: the FlashBrain is a warm streaming
   provider in the LLM slot; the SlowBrain does async work off the voice path.
 - **Language**: voice-driven and multilingual. A first boot starts in **English** and switches to the operator's
   language as soon as it is detected; a returning user is greeted in their language from memory, and it switches
   live on request. UI strings come from `i18n/` (en+es shipped, any other generated on first contact).
-- **Voice (TTS)**: Inworld first, ElevenLabs as the failover (both paid cloud); the bill follows the provider
-  that actually spoke. Kokoro local (Apache-2.0, `make install-tts`) is the free, unlimited, private option;
+- **Voice (TTS)**: Inworld first, ElevenLabs as the failover (both paid cloud); usage is attributed to the
+  provider that actually spoke. Kokoro local (Apache-2.0, `make install-tts`) is the free, unlimited, private option;
   Cartesia is also wired. Cost taxonomy used in the UI: "gratis"=local·unlimited · "free-tier"=credit then paid ·
   "pago"=paid from the start.
 - **Voice (FlashBrain) model = a NON-reasoning model.** A reasoning model on the real-time path adds seconds of
@@ -163,18 +163,18 @@ the brain learns it via `brief.for_brain()`; the desktop lazy-loads it. No serve
   in ~1s. Reasoning belongs OFF the critical path, in the SlowBrain (§5).
 - **Widgets isolated** (own layer, own store, lazy load) — designed for thousands; brain drives them via silent
   tags, not hard-coupling.
-- **Speaker gate v1** = acoustic fingerprint (pitch+centroid+loudness); v2 = Picovoice Eagle (needs AccessKey).
+- **Speaker identity** = a client-side acoustic fingerprint (pitch+centroid+loudness) behind an interface that an
+  embedding model can replace without changing callers.
 - **Cost framing**: paid hops = the brain models (DeepSeek direct for the voice turn, the memory writer and
   triage; GLM on Z.ai direct for Brain Workers), embeddings (OpenAI), STT and TTS. Each row of
   `config/models.default.json` names its titular, its failover and why. Local STT + Kokoro + a local model is
   the ~0 per-turn growth path for a self-hoster.
 
-## 8. Growth direction (roadmap)
-Next: index `identify()` + show disambiguation candidates (DONE 2026-07-03 — lexical-semantic tier); persist
-widget layout/prefs ("don't show X" → memory); approaching-agenda-item countdown widget (cron-driven); SpeakerGate
-v2 (Eagle). Then the JARVIS roadmap: importers WhatsApp→Telegram→Gmail (need accounts/auth), live channels,
-connectors X/LinkedIn, wake-word (0-token), mobile via Telegram/WhatsApp. Later: local models for cost; widget
-auto-modification via a `CodeAgent` interface.
+## 8. Extension points
+The architecture is built to grow by addition: a new widget is a folder (§6), a new connector plugs into
+`connectors/`, a new model is a row in `config/models.default.json`, and external capabilities arrive through the
+MeshKore network, MCP servers and third-party APIs without changes to the core. `identify()` resolves widgets
+through a lexical-semantic tier with disambiguation candidates.
 
 ## 9. Credentials (names only — never values, never paths)
 - Keys are entered in the ⚙ panel and kept in the gitignored credential store; `.env` is only a power-user
@@ -201,13 +201,13 @@ MeshKore modules below) — talk over WebRTC + HTTP + SSE. Entry: `make run` →
 zaelar/
   frontend/      CLIENT — self-contained ES-module app (no build), Solid-migration-ready
     index.html   thin bootstrap (link styles + <script type=module> main.js)
-    pages/       architecture.html · debug.html
+    pages/       debug.html
     app/
       main.js    entry: mounts components, creates the widget desktop, starts the visualizer
       core/      reactive.js (Solid-compatible signals) · dom.js (h() hyperscript) · store.js (reactive state)
       services/  session-lk.js (LiveKit client) · audio · sse · visualizer · voiceCommands · api
       components/ Orb · CameraUnit · TopBar · SettingsModal · ConnStatus · Alert · ChatWall
-      lib/       draggable.js · speaker-gate.js       widgets/ desktop.js (window manager)
+      lib/       draggable.js · speaker-id.js       widgets/ desktop.js (window manager)
     vendor/      vendored LiveKit browser SDK
   server/        SERVER — FastAPI app + routers + entrypoint (__main__.py); runs the LiveKit agent worker EMBEDDED
   voice/         VOICE ENGINE (server-side): engine/ (LiveKit AgentSession + STT/LLM/TTS providers, incl.
@@ -221,7 +221,7 @@ zaelar/
   tests/agent_headless/harness/       dev/eval: run.py, user_sim.py, judge.py, personas/  (not shipped)
   tests/voice/e2e/agent/        voice tester: 2nd LiveKit participant that SPEAKS + LISTENS
   scripts/       install tooling (install-stt/tts-*.sh/.ps1)
-  .meshkore/     MeshKore Standard v27 — public/cluster.yaml, docs/, modules/, roadmap/; logs → .meshkore/logs/
+  .meshkore/     MeshKore Standard — public/cluster.yaml, docs/, context/; logs → .meshkore/logs/
   Dockerfile · .dockerignore · Makefile · requirements.txt · CLAUDE.md   (root manifests; .venv shared)
 ```
 **Ours vs external:** the brain (`nucleo/`) and memory (`memory/`) are FIRST-PARTY — zaelar does not depend on an
@@ -241,11 +241,11 @@ external agent. The remaining external pieces are (a) the SlowBrain CodeAgent CL
      `client` events in `/debug`.
   3. **RMS healthy but no `transcript`** → STT layer: wrong `STT_LANGUAGE`, or a cloud provider out of funds.
   4. **transcripts but garbled / zaelar answering itself** → echo (transcribing its own TTS through speakers);
-     the browser's echoCancellation handles it (default); headphones also fix it; full fix = SpeakerGate v2.
+     the browser's echoCancellation handles it (default); headphones also fix it.
 - "voice not responding" → `/debug`: `transcript` but no `brain` prompt = turn/VAD; `brain` prompt but no
   reply/`error` = brain.
 - "doesn't remember me" → the central memory `memory/` (SQLite `zaelar.db`); the greeting must be memory-aware (it
   is).
 - "widget didn't appear" → brain tag in the reply (`/debug` shows `widget` events) or front intent; `/widgets`.
   If the brain emitted a near-miss id, `Desktop._resolve()` should map it — check the console `widget id resolved`.
-- architecture/diagram → the Docs web hub (`/architecture`) or `.meshkore/docs/architecture/zaelar-architecture.md`.
+- architecture/diagram → `.meshkore/docs/architecture/zaelar-architecture.md` (public diagrams at zaelar.com/technology).

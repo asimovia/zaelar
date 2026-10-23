@@ -1,220 +1,181 @@
-# V2-082 — Nombres + alias de widgets, certeza 100% en el enrutamiento
+# Widget names + aliases — routing with certainty
 
-> Estado: **IMPLEMENTADO** (2026-08-01, v2.82) — Fases 1-5. Aprobado por el operador con decisiones D1-D4 (ver §Decisiones).
-> Autor: sesión 2026-08-01. Sucede a [[V2-081]] (mostrar≠construir) y [[V2-078]] (acotación open>recent).
+## 0. The principle
 
-## 0. Problema y objetivo
+A widget opens **only when its name or one of its aliases is said.** Matching never falls back to «the most
+similar widget»: a lexical matcher that also scores overlap with `description`/`whenToUse` can let a widget win
+without its name being spoken, which is exactly the class of confusion this design removes.
 
-Hoy un widget se identifica por `id` (carpeta) + `title` + `keywords[]`, todo resuelto por
-**matching léxico DIFUSO** (`widgets/runtime.py::identify`, difflib cutoff 0.84) que además puntúa por
-**solape con `description`/`whenToUse`**. Está diseñado para acertar aunque el nombre sea aproximado.
-Eso es la causa raíz de las confusiones entre widgets: uno puede ganar sin que se haya dicho su nombre.
+- Every widget has a **canonical NAME** (shown in its header) + a **list of ALIASES**.
+- **If you do not say the name or an alias, the widget does NOT open.**
+- `chat` → always the main chat (a system surface). `messaging / WhatsApp / Telegram / X / Twitter / email` → the
+  `mensajeria` widget. No ambiguity.
+- A configuration control in the header of EVERY widget shows its aliases, **editable by the user by voice and by
+  text** («add the alias WhatsApp to the messaging widget» is interpreted by the FlashBrain, with no code
+  regeneration).
+- A **state catalog** lists every widget with its aliases.
+- The concepts stay **clean and unmixed**: widget vs system surface vs tool vs action/data-op vs embedding.
 
-El operador quiere lo contrario y con garantía dura:
+## 1. Conceptual model (single source, no mixing)
 
-- Cada widget tiene un **NOMBRE canónico** (se muestra como botón en el header) + una **lista de ALIAS**.
-- **Si no dices el nombre o un alias, el widget NO se abre.** Certeza 100% — con solo ~10 widgets es
-  inaceptable confundirlos.
-- `chat` → siempre el chat principal (superficie de sistema). `mensajería / WhatsApp / Telegram / X /
-  Twitter / correo` → el widget `mensajeria`. Sin ambigüedad.
-- Botón de configuración (icono) en el header de TODOS los widgets → despliega los alias, **editables por
-  el usuario por voz y por texto** ("añade el alias WhatsApp al widget de mensajería" lo interpreta el
-  FlashBrain, sin regenerar código).
-- Un **catálogo de estado** con todos los widgets y sus alias.
-- Concepto **limpio y sin mezclar**: widget vs superficie de sistema vs tool vs acción/data-op vs embedding.
-
-## 1. Modelo conceptual (fuente única, sin mezclar)
-
-Se fija de forma explícita en código + doc para acabar con la confusión:
-
-| Concepto | Qué es | Dónde vive (fuente de verdad) | ¿Tiene nombre+alias? |
+| Concept | What it is | Where it lives (source of truth) | Has name+aliases? |
 |---|---|---|---|
-| **Widget** | UI del canvas, full-stack | carpeta `widgets/<id>/` (manifest+widget.js+data.py) | **SÍ** (nuevo) |
-| **Superficie de sistema** | Nativo intocable (mic/cam, orbe, chat, debug, config…) | `frontend/app/core/system-surfaces.js` (V2-080) + espejo backend | **SÍ** (nuevo) |
-| **Tool** | Función OpenAI que invoca el FlashBrain | `nucleo/flash/router.py::TOOLS` | NO — no es identidad de usuario |
-| **Acción / data-op** | Capacidad declarada de UN widget (lo más cercano a "skill") | `manifest.json["actions"]` + `data.py::apply_action` | NO — pertenece al widget |
-| **Embedding** | Vector semántico | `memory/` exclusivamente | NO — los widgets NO tienen vector |
+| **Widget** | Canvas UI, full-stack | folder `widgets/<id>/` (manifest+widget.js+data.py) | **YES** |
+| **System surface** | Native, untouchable piece (mic/cam, orb, chat, debug, config…) | `frontend/app/core/system-surfaces.js` + backend mirror | **YES** |
+| **Tool** | OpenAI-style function the FlashBrain invokes | `nucleo/flash/router.py::TOOLS` | NO — not a user-facing identity |
+| **Action / data-op** | Declared capability of ONE widget (the closest thing to a "skill") | `manifest.json["actions"]` + `data.py::apply_action` | NO — belongs to the widget |
+| **Embedding** | Semantic vector | `memory/` exclusively | NO — widgets have no vector |
 
-**"Skill" no existe** como concepto en el código y NO lo introducimos. La palabra funcional "skill" ≡ las
-`actions` de un widget. Se documenta así en `CLAUDE.md` + `zaelar-architecture.md` para que no se vuelva a mezclar.
+**"Skill" is not a concept in the code.** The functional word "skill" ≡ a widget's `actions`. `CLAUDE.md` and
+`zaelar-architecture.md` describe it the same way so the concepts stay separate.
 
-## 2. Modelo de datos: `name` + `aliases[]`
+## 2. Data model: `name` + `aliases[]`
 
 ### 2.1 Widgets (manifest.json)
 
-Se añade contrato de identidad canónica:
+The canonical identity contract:
 
-- **`name`** (string): nombre canónico humano = lo que se muestra en el botón del header y el primer
-  término hablado. Default = `title` si falta.
-- **`aliases`** (string[]): nombres alternativos hablados, **editables por el usuario**. Es la lista que
-  aparece en el desplegable de config del header.
+- **`name`** (string): the human canonical name = what the header shows and the first spoken term. Defaults to
+  `title` if missing.
+- **`aliases`** (string[]): alternative spoken names, **editable by the user**. This is the list shown in the
+  header's config dropdown.
 
-Migración de `keywords[]`: hoy `keywords[]` ya cumple de facto el rol de alias. En la primera carga de un
-widget sin `aliases[]`, se **siembran** `aliases` desde `keywords` (dedup, normalizado). `aliases[]` pasa
-a ser el ÚNICO campo de escritura e identidad; `keywords[]` queda deprecado (se sigue leyendo como semilla,
-no se escribe). Así hay **una sola lista de identidad**, no dos.
+`keywords[]` is read only as a seed: on first load of a widget without `aliases[]`, `aliases` are **seeded** from
+`keywords` (deduplicated, normalised). `aliases[]` is the ONLY identity field that is written, so there is **one
+identity list**, not two.
 
-### 2.2 Superficies de sistema (system-surfaces.js + espejo backend)
+### 2.2 System surfaces (system-surfaces.js + backend mirror)
 
-Cada entrada de `SYSTEM_SURFACES` gana `name` + `aliases[]`. Ejemplos:
+Every `SYSTEM_SURFACES` entry carries `name` + `aliases[]`. Examples:
 - `chat`: name "Chat", aliases `["chat","muro","muro de texto","escribirte","háblame por texto"]`.
 - `config`: name "Configuración", aliases `["config","ajustes","preferencias","settings"]`.
 - `debug`: name "Debug", aliases `["debug","depuración","logs","trazas"]`.
-- `orb`, `camera`, etc. igual.
+- `orb`, `camera`, etc. likewise.
 
-**La fuente de verdad de los alias de sistema es el FRONT** (`system-surfaces.js`), hardcodeada y **NO
-editable por el usuario**: el front es "el cuerpo", su genética viene programada; si el usuario quiere
-referirse a esas piezas con otras k-words, da igual — son las que son. Como el resolver vive en backend
-(`runtime`), se añade un **espejo backend** (`widgets/system_surfaces.py`) mantenido en sincronía por un
-test que falla si divergen. Así el resolver unifica widgets de usuario + superficies de sistema en un solo
-espacio de nombres; `chat` (sistema) y `mensajeria` (usuario) conviven → desambiguación garantizada.
+**The source of truth for system aliases is the FRONTEND** (`system-surfaces.js`), hardcoded and **NOT
+user-editable**: the frontend is "the body" and its genetics are programmed. Since the resolver lives in the
+backend (`runtime`), a **backend mirror** (`widgets/system_surfaces.py`) is kept in sync by a test that fails if
+they diverge. The resolver therefore unifies user widgets + system surfaces in a single namespace; `chat`
+(system) and `mensajeria` (user) coexist → disambiguation is guaranteed.
 
-### 2.3 Catálogo de estado (proyección, NO segunda fuente de verdad)
+### 2.3 State catalog (a projection, NOT a second source of truth)
 
-El operador quiere "ver el catálogo con todos los alias en el estado". Se hace como `rails.project()`:
-un **read-model proyectado** `widgets/registry.py::registry()` que devuelve, para cada entrada:
+A **projected read-model**, `widgets/registry.py::registry()`, returns for each entry:
 
 ```
 { "id", "name", "aliases": [...], "surface": "user" | "system" }
 ```
 
-Se proyecta una versión compacta a `memory/state.py` bajo `state["widget_registry"]` (solo lectura/visibilidad,
-regenerada, nunca editada a mano) y se expone por `GET /widgets/registry`. La **fuente de verdad sigue siendo
-el manifest** (usuario) y `system-surfaces` (sistema); el estado es solo el espejo visible.
+A compact version is projected into `memory/state.py` under `state["widget_registry"]` (read-only visibility,
+regenerated, never hand-edited) and exposed at `GET /widgets/registry`. The **source of truth remains the
+manifest** (user) and `system-surfaces` (system); the state is only the visible mirror.
 
-## 3. Motor de resolución: de "difuso tolerante" a "por nombre, con certeza"
+## 3. Resolution engine: by name, with certainty
 
-### 3.0 La palabra "widget" (y el nombre de sistema) es un SELECTOR de espacio de nombres
+### 3.0 The word "widget" (and a system name) is a namespace SELECTOR
 
-Antes de puntuar, la propia frase acota el espacio de búsqueda — refuerzo clave de la certeza:
+Before scoring, the sentence itself narrows the search space:
 
-- Si la frase contiene **"widget"** (o sus sinónimos `_WIDGET_SYN`: panel/gadget/tablero/contador/…), el
-  usuario se refiere a una **pieza construida por él** → se resuelve SOLO contra el espacio de **widgets de
-  usuario**. "abre el widget de mensajería" → nunca puede caer en una superficie de sistema.
-- Si la frase nombra un **objeto de sistema** ("el chat", "la lista del cron", "la lista de tareas",
-  "config", "debug") → superficie de sistema. Para el operador, el sistema tiene sus piezas pero **no son
-  widgets**.
-- Si la frase **no dice "widget" ni nombra un objeto de sistema** ("abre los mensajes") → se resuelve por
-  k-word/alias contra AMBOS espacios; el prompt acota con la lista de widgets para intentar el match con
-  certeza; si no hay match claro → se pregunta (§3.4).
+- If the sentence contains **"widget"** (or its synonyms `_WIDGET_SYN`: panel/gadget/board/counter/…), the user
+  means a **piece built by them** → it resolves ONLY against **user widgets**. «open the messaging widget» can
+  never land on a system surface.
+- If the sentence names a **system object** («the chat», «the cron list», «the task list», «config», «debug») →
+  system surface. The system has its pieces, but **they are not widgets**.
+- If the sentence **says neither "widget" nor a system object** («open the messages») → it resolves by
+  keyword/alias against BOTH spaces; the prompt carries the widget list to match with certainty; with no clear
+  match → ask (§3.1, step 4).
 
-### 3.1 Jerarquía de resolución
+### 3.1 Resolution hierarchy
 
-`widgets/runtime.py::identify` se reescribe con esta jerarquía (para widgets + superficies de sistema):
+`widgets/runtime.py::identify` follows this hierarchy (for widgets + system surfaces):
 
-1. **Match por NOMBRE/ALIAS (k-word)** — única señal de apertura. Se normaliza acento/caso. Se tolera
-   erratas de voz con difflib **SOLO sobre los tokens de nombre/alias** (no sobre descripción). Frase de
-   alias completa alineada a palabra = match fuerte. (Para el operador, k-word ≡ alias: son las palabras
-   que responden para identificar la pieza.)
-2. **La `description`/`whenToUse` deja de abrir nada.** Puede seguir usándose para el brief del prompt, pero
-   NO como señal de match. Esto elimina la clase entera de "abrió por parecido temático".
-3. **Desempate por contexto** (se conserva de V2-078): ante empate real de alias, prioridad
-   **abiertos > recientes**; si sigue ambiguo → `ambiguous=True`.
-4. **Sin match de nombre/alias → NO abre.** Devuelve `None`. El llamante trata "None" como conversación
-   normal → el FlashBrain **pregunta con una frase natural y distinta** que venga a cuento ("perdona, no
-   localizo ese widget, ¿cuál quieres?"), **nunca** auto-abre el "más parecido" ni usa una cadena enlatada.
+1. **Match by NAME/ALIAS** — the only opening signal. Accents and case are normalised. Voice typos are tolerated
+   with difflib **ONLY over name/alias tokens** (never over the description). A full alias phrase aligned on word
+   boundaries = strong match.
+2. **`description`/`whenToUse` never open anything.** They can feed the prompt brief, but they are NOT a match
+   signal. This removes the whole class of "opened because it looked thematically similar".
+3. **Tie-break by context**: on a real alias tie, priority is **open > recent**; if it is still ambiguous →
+   `ambiguous=True`.
+4. **No name/alias match → it does NOT open.** It returns `None`. The caller treats `None` as normal conversation
+   → the FlashBrain **asks with a natural, varied sentence** that fits the moment («sorry, I can't find that
+   widget — which one do you mean?»); it **never** auto-opens the "most similar" one or uses a canned string.
 
-Resultado: un show/open sucede **solo** cuando se pronuncia un nombre/alias registrado. Con ~10 widgets, la
-colisión es imposible por diseño (ver §6, guard de unicidad de alias).
+Result: a show/open happens **only** when a registered name/alias is spoken. Collisions are impossible by design
+(see §6, the alias uniqueness guard).
 
-Se aplica en las DOS rutas (deben quedar en paridad): provider real `voice/engine/llm/providers/nucleo.py`
-(`_identify`, handler `show_widget`) y canal de prueba `nucleo/flash/probe.py` (`_identify_ctx`, branch show).
+It applies on BOTH routes, kept in parity: the real provider `voice/engine/llm/providers/nucleo.py` (`_identify`,
+`show_widget` handler) and the probe channel `nucleo/flash/probe.py` (`_identify_ctx`, show branch).
 
-## 4. Editar alias por voz y por texto (tool nueva, sin regenerar código)
+## 4. Editing aliases by voice and by text (a tool, no code regeneration)
 
-Hoy cualquier cambio de manifest pasa por `generator.modify_widget` (reescribe el widget entero con un agente).
-Eso es carísimo y arriesgado para "añade un alias". Se crea una vía determinista:
+Rewriting a manifest through `generator.modify_widget` (a full agent rewrite of the widget) is far too heavy for
+"add an alias", so aliases have a deterministic path:
 
-- **Tool nueva** en `router.TOOLS`: `manage_widget_alias(widget_id, alias, op="add"|"remove")` con descripción
-  rica en sinónimos ("añade/quita/pon/borra un alias/nombre/apodo a/de un widget"). Gating situacional
-  `has_widgets`. Se añade a `decide()` (nuevo kind `ALIAS`, prioridad media) + handlers en `nucleo.py` y
-  `probe.py`.
-- **Escritura quirúrgica del manifest**: `widgets/aliases.py::add/remove` reescribe SOLO `manifest["aliases"]`
-  atómicamente (tmp+rename), valida colisión (§6), llama `runtime.invalidate()` y emite SSE
-  `kind:"widget", action:"alias"` para que el frontend refresque.
-- El resolver del propio FlashBrain interpreta la orden: "añade el alias WhatsApp al widget de mensajería"
-  → `manage_widget_alias("mensajeria","WhatsApp","add")`. Funciona igual por voz o por texto (misma tool).
-- **Endpoints REST** para la edición desde el header (texto/click): `POST /widgets/{id}/aliases`,
-  `DELETE /widgets/{id}/aliases/{alias}`. Mismo `widgets/aliases.py` por debajo.
+- **Tool** in `router.TOOLS`: `manage_widget_alias(widget_id, alias, op="add"|"remove")` with a description rich
+  in synonyms («add/remove/set/delete an alias/name/nickname to/from a widget»). Situational gating
+  `has_widgets`. Wired into `decide()` (kind `ALIAS`, medium priority) + handlers in `nucleo.py` and `probe.py`.
+- **Surgical manifest write**: `widgets/aliases.py::add/remove` rewrites ONLY `manifest["aliases"]` atomically
+  (tmp+rename), validates collisions (§6), calls `runtime.invalidate()` and emits SSE `kind:"widget",
+  action:"alias"` so the frontend refreshes.
+- The FlashBrain's own resolver interprets the order: «add the alias WhatsApp to the messaging widget» →
+  `manage_widget_alias("mensajeria","WhatsApp","add")`. It works the same by voice or by text (same tool).
+- **REST endpoints** for editing from the header (text/click): `POST /widgets/{id}/aliases`,
+  `DELETE /widgets/{id}/aliases/{alias}`. Same `widgets/aliases.py` underneath.
 
-Las superficies de sistema: sus alias son **fijos** (definidos en `system-surfaces.js`); el desplegable de
-config los muestra en modo lectura (no editables), porque son parte del contrato nativo intocable (V2-080).
-(Decisión abierta D2 abajo.)
+System surfaces: their aliases are **fixed** (defined in `system-surfaces.js`); the config dropdown shows them
+read-only, because they are part of the untouchable native contract.
 
-## 5. Frontend: header con nombre + desplegable de alias
+## 5. Frontend: header with name + alias dropdown
 
-Hoy el "chrome" de cada widget lo dibuja el wrapper común `frontend/app/widgets/desktop.js:158-173` (grip +
-× flotando sobre una franja de 30px, sin header ni título). Se añade un **header real** en ese único sitio
-(no se toca ningún `widget.js` individual):
+The chrome of every widget is drawn by the common wrapper `frontend/app/widgets/desktop.js`, in that single place
+(no individual `widget.js` is involved):
 
-- **Botón-nombre**: muestra `_meta[id].name || title`. Es el nombre por el que se reconoce el widget.
-- **Icono config (▾/⚙)**: abre un overlay host-level (patrón `.hb-confirm` ya existente en `desktop.js:315-344`)
-  que lista los alias con:
-  - añadir alias (input de texto → `POST /widgets/{id}/aliases`),
-  - quitar alias (× por chip → `DELETE …`),
-  - para superficies de sistema: solo lectura.
-- CSS nuevo en `desktop.js::injectStyles()` (donde vive todo el chrome). El drag del grip debe ignorar clicks
-  en los botones nuevos (igual que el ChatWall ignora `.cw-x`/`.cw-tab`).
-- **Reactividad**: se añade señal de store `widgetRegistry` (poblada de `GET /widgets/registry`) para que el
-  nombre/alias del header reflejen en vivo los cambios por voz; el SSE `action:"alias"` refresca la señal.
+- **Name**: shows `_meta[id].name || title` — the name by which the widget is recognised.
+- **Config icon (⚙)**: opens a host-level overlay (the `.hb-confirm` pattern in `desktop.js`) listing the aliases
+  with:
+  - add alias (text input → `POST /widgets/{id}/aliases`),
+  - remove alias (× per chip → `DELETE …`),
+  - read-only for system surfaces.
+- CSS lives in `desktop.js::injectStyles()` (where all the chrome lives). The grip drag ignores clicks on these
+  buttons (as the ChatWall ignores `.cw-x`/`.cw-tab`).
+- **Reactivity**: a `widgetRegistry` store signal (filled from `GET /widgets/registry`) keeps the header's
+  name/aliases live when they change by voice; the SSE `action:"alias"` refreshes the signal.
 
-## 6. Unicidad e integridad (el guard que da la certeza)
+The visual shape of the header bars is specified in `.meshkore/docs/conventions/zaelar-widget-header-standard.md`.
 
-- **Colisión de alias entre widgets = rechazo.** Se generaliza `generator.py::_keyword_collisions` a un
-  validador compartido `widgets/aliases.py::check_collision(id, alias, registry)`: un alias no puede
-  pertenecer a dos entradas (widget o superficie). Al añadir por voz/texto, si colisiona → no se añade y
-  Zaelar lo dice ("ese nombre ya lo usa X").
-- **Colisión con superficie de sistema** también se rechaza (no puedes aliasar un widget como "chat").
-- El generador de widgets nuevos exige `name` + al menos 1 alias y valida colisión al crear (extiende
-  `_validate`).
+## 6. Uniqueness and integrity (the guard that gives certainty)
 
-## 7. Migración de los widgets existentes
+- **An alias collision between widgets = rejection.** The shared validator
+  `widgets/aliases.py::check_collision(id, alias, registry)` ensures an alias cannot belong to two entries
+  (widget or surface). When adding by voice/text, a colliding alias is not added and Zaelar says so («that name
+  is already used by X»).
+- **A collision with a system surface** is rejected too (a widget cannot be aliased as "chat").
+- The widget generator requires `name` + at least 1 alias and validates collisions on creation (`_validate`).
 
-Script `widgets/migrate_aliases.py` (idempotente, corre una vez): para cada widget REAL (no el detritus de
-tests) → set `name` = `title`, `aliases` = dedup(`keywords`), reporta colisiones para resolución manual.
-Widgets reales a migrar: `agenda, clock, mensajeria, meteo-soria, meteo-tarragona-grafico, musica, navegador,
-results, search, timer, temporizador-pomodoro-ayudar, youtube, futbol-champions, juego-serpiente-snake,
-cluster-registro`. El detritus generado por tests (`ejecuta-*`, `realiza-*`, `cancela-*`, `reserva-*`,
-`tarea-navegador`, `gestiona-*`, `personalizado-*`) NO se migra ni se commitea (limpieza previa).
+## 7. Migrating existing widgets
 
-Curación manual clave: `mensajeria.aliases` debe incluir `whatsapp, wasap, telegram, x, twitter, correo,
-email, mail`; y garantizar que `chat` (sistema) NO comparte ninguno → caso de aceptación del operador.
+`widgets/migrate_aliases.py` (idempotent, run once): for each real widget → set `name` = `title`, `aliases` =
+dedup(`keywords`), and report collisions for manual resolution. Widgets generated by tests are not migrated.
+
+Key curation: `mensajeria.aliases` includes `whatsapp, wasap, telegram, x, twitter, correo, email, mail`; and
+`chat` (system) shares none of them.
 
 ## 8. Testing
 
-- Unit `tests/browser/unit/widgets/test_resolver_certainty.py`: (a) frase sin nombre/alias registrado → `None` (no hijack);
-  (b) alias exacto → ese widget; (c) errata de voz sobre alias ("wasap") → mensajeria; (d) chat vs mensajeria
-  desambiguados; (e) empate open>recent.
-- Unit `tests/browser/unit/widgets/test_aliases.py`: add/remove, colisión rechazada, colisión con sistema rechazada,
-  invalidación de caché.
-- `test_router.py`: nueva tool `manage_widget_alias` en el set esperado.
-- Paridad provider/probe: escenario en `tests/voice/e2e/agent/scenarios.py` ("aliases") + "abre por nombre/alias".
-- `make test-widgets` (golden) + los 201 existentes verdes.
+- `tests/browser/unit/widgets/test_resolver_certainty.py`: (a) a sentence with no registered name/alias → `None`
+  (no hijack); (b) exact alias → that widget; (c) voice typo on an alias («wasap») → mensajeria; (d) chat vs
+  mensajeria disambiguated; (e) open > recent tie-break.
+- `tests/browser/unit/widgets/test_aliases.py`: add/remove, collision rejected, collision with a system surface
+  rejected, cache invalidation.
+- `test_router.py`: the `manage_widget_alias` tool is in the expected set.
+- Provider/probe parity: an "aliases" scenario in `tests/voice/e2e/agent/scenarios.py` + «open by name/alias».
 
-## 9. Docs
+## 9. Design decisions
 
-`CLAUDE.md` (§frontend/§widgets) + `zaelar-architecture.md §8` (tools) + este doc: fijar el modelo de 5
-conceptos, el contrato `name`+`aliases`, la regla dura "sin nombre/alias no se abre", y la tool nueva.
-
-## 10. Fases de implementación (orden propuesto)
-
-1. **Datos + registro**: contrato `name`/`aliases` en manifest, `widgets/system_surfaces.py` (espejo),
-   `widgets/registry.py`, proyección a estado, migración de existentes. (Sin cambiar comportamiento aún.)
-2. **Resolver con certeza**: reescribir `runtime.identify` (nombre/alias only, no descripción, None si nada).
-   Cablear en nucleo.py + probe.py. Tests de certeza. ← el cambio de comportamiento gordo.
-3. **Tool de alias por voz/texto**: `manage_widget_alias` + `widgets/aliases.py` + endpoints REST + SSE.
-4. **Frontend**: header con nombre + desplegable de config editable + señal de store + reactividad SSE.
-5. **Docs + release**.
-
-## Decisiones (CONFIRMADAS por el operador 2026-08-01)
-
-- **D1 — `keywords` ≡ `aliases`** ✅: unificar en una sola lista de identidad. Para el operador son lo mismo:
-  k-words que responden para identificar la pieza. `keywords` se lee solo como semilla de migración.
-- **D2 — alias de superficies de sistema FIJOS** ✅: hardcodeados en el front (`system-surfaces.js`), NO
-  editables. El front es "el cuerpo", su genética viene programada; se muestran en solo-lectura.
-- **D3 — cuando nada matchea, PREGUNTAR** ✅: el FlashBrain responde con una frase natural y distinta que
-  venga a cuento ("no localizo ese widget, ¿me lo explicas mejor?"), nunca abre el más parecido ni usa una
-  cadena enlatada. Base de la certeza 100%.
-- **D4 — la palabra "widget" acota el espacio** ✅ (§3.0): "widget" → solo widgets de usuario; nombre de
-  objeto de sistema → superficie de sistema; sin ninguna de las dos → k-word contra ambos + pregunta si no
-  hay match claro.
+- **`keywords` ≡ `aliases`**: one identity list. `keywords` is read only as a migration seed.
+- **System-surface aliases are FIXED**: hardcoded in the frontend (`system-surfaces.js`), not editable, shown
+  read-only.
+- **When nothing matches, ASK**: the FlashBrain answers with a natural, varied sentence that fits the moment;
+  it never opens the closest match or uses a canned string. This is the basis of the certainty.
+- **The word "widget" narrows the space** (§3.0): "widget" → user widgets only; a system object's name → system
+  surface; neither → keyword against both + ask when there is no clear match.

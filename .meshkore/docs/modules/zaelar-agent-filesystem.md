@@ -1,4 +1,4 @@
-# The agent's own filesystem (`library/`) — V2-638
+# The agent's own filesystem (`library/`)
 
 One root the AGENT owns, with a folder per kind of thing, shared by every widget. What a widget downloads is
 not that widget's property: a paper the `documento` widget fetched, a track the music widget got, a film the
@@ -16,8 +16,7 @@ video widget is streaming — they all live here, and any widget reaches any of 
 ## The layout is GENESIS, and the operator overrides it
 
 The factory defaults ship in `nucleo/genesis.json` under `library`; per-install overrides live in
-`<workspace>/config/library.json` and are mtime-cached, exactly the two-layer shape V2-633 uses for the style
-policy. The operator can rename a folder, move the root, rewrite the structuring guide, or flip the download
+`<workspace>/config/library.json` and are mtime-cached, exactly the two-layer shape the style policy uses. The operator can rename a folder, move the root, rewrite the structuring guide, or flip the download
 policy. `paths.set_overrides()` MERGES — renaming one folder must not silently reset the other four.
 
 A folder name is **one segment**: `_safe_segment` strips separators and dots, so a rename can never relocate
@@ -45,8 +44,8 @@ in `video/`; it is also undecodable by every mainstream browser, so it is never 
 asks to keep the file (the pendrive case). A file that is not playable is still offered — `/api/library/download`
 hands it over with any format — because refusing without a way round is how a legitimate file looks broken.
 
-⚠️ This corrected a real defect in V2-637, where `.mkv`/`.avi` were treated as playable video: the torrent
-client could pick a file it was structurally unable to show.
+⚠️ `.mkv`/`.avi` are therefore never treated as playable video, so the torrent client cannot pick a file the
+page is structurally unable to show.
 
 ## HTTP (`/api/library/*`, loopback)
 
@@ -72,6 +71,6 @@ file on disk is full of holes until it completes.
 
 Identical. The root is under `nucleo.workspace.root()`, so a cloud Machine's mounted Volume carries it; the
 tree is declared in `workspace.SUBDIRS` so a fresh Volume already has the directories, and `COPY library` is
-in the Dockerfile (the V2-554 guard caught its absence before it could break a boot).
+in the Dockerfile (a configured module that fails to mount stops the boot loudly, so a missing `COPY` cannot go unnoticed).
 
 Tests: node **7.42**.

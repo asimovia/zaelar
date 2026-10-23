@@ -1,94 +1,80 @@
 ---
 title: Zaelar Architecture
 category: architecture
-updated: 2026-09-22
+updated: 2026-10-23
 owner: ricart
 status: current
 ---
 
 # zaelar — Architecture (source of truth)
 
-> The portable mental model of what we've built. Read this to understand the whole system and its seams.
+> The portable mental model of the system. Read this to understand the whole engine and its seams.
 > Companion to [`.meshkore/docs/product/zaelar-product.md`](../product/zaelar-product.md) (onboarding/status).
 >
 > zaelar's brain is **its own**: the module `nucleo/` («Colmena», two speeds — **FlashBrain** on the voice turn +
 > **SlowBrain** async), with a **central memory** (`memory/`, SQLite) and an in-process **event bus** (`bus/`).
-> Cron/proactivity are governed by the `nucleo/` orchestrator loop. **The design source of truth is
-> `EPIC-v2-colmena` (`.meshkore/roadmap/`) + the live diagram at `/architecture`.**
+> Cron/proactivity are governed by the `nucleo/` orchestrator loop. **This document is the design source of
+> truth**; the public architecture diagrams at zaelar.com/technology are a curated picture of it.
 
-## ⛔ ALERTS — what we already tried, and what it cost
+## ⛔ ALERTS — design rules for anything that reads the operator's words
 
-> **Read this before adding a rule that reads the operator's WORDS.** Nothing enters this section on
-> taste. An entry needs a MEASURED incident with its session id, and it stays until the shape stops
-> reappearing. The list is short on purpose: a warnings page nobody finishes is a warnings page
-> nobody reads.
+> **Read this before adding a rule that reads the operator's WORDS.** Each entry is a shape that has
+> recurred in this engine, stated as the rule that prevents it. The list is short on purpose: a
+> warnings page nobody finishes is a warnings page nobody reads.
 
-**1 · A VERB TABLE IS NOT A ROUTER.** Every time a route has been decided by «does this sentence
-contain one of these verbs», it has failed in both directions, and adding entries made it worse.
+**1 · A VERB TABLE IS NOT A ROUTER.** A route decided by «does this sentence contain one of these
+verbs» fails in both directions, and adding entries makes it worse. Typical shapes:
 
-- *V2-750 (session b41925f6, 2026-09-22).* «Entonces, vamos a hacer una cosa, ábreme el widget de
-  vídeo» matched `hacer una cosa, abreme el widget` in `_CREATE_WIDGET_RE` — a create verb three
-  clauses away from the noun — and the order went to the WIDGET GENERATOR: two minutes of Brain
-  Worker, and a duplicate video player in the catalogue named `entonces-vamos-cosa`, after the
-  preamble of his order. **And the same table is Latin-script only**: «チェスのウィジェットを作って»
-  (make me a chess widget) returns False, so in Chinese, Japanese and Hindi the generator is
-  unreachable by voice — a silent absence, the failure mode nobody reports. Measured over five
-  languages: the table 35/45, the composed verdict 44/45.
-- *V2-741.* `video_license`'s conjugated-verb table had no «preparar» and no «podrías», so a polite
-  request for videos was eaten as context-bleed and became a 195-second worker.
-- *V2-748.* `danger._DANGER_RE` read «comprar el pan» — the TITLE of an agenda row — as an order to
-  buy, asked him to authorise a charge, and sent the errand to a browser.
-- *V2-753 (session 46dcfcb4, 2026-09-22).* «Páralo, y vuelve al inicio» over a playing video. The
-  model emitted the RIGHT call — `youtube:close` is declared as «lo detiene de verdad y lo quita del
-  reproductor» — and the V2-635 close guard found no verb from `_CLOSE_VERB_RE` («parar» is not a
-  close verb and must never be one) and ate it **five times in ninety seconds**, under a voice that
-  kept saying «lo paro y vuelvo al inicio».
+- A create verb several clauses away from the noun — «Entonces, vamos a hacer una cosa, ábreme el
+  widget de vídeo» — matches a create pattern and sends a plain «open» to the widget generator.
+  **And such tables are Latin-script only**: «チェスのウィジェットを作って» (make me a chess widget)
+  never matches, so in Chinese, Japanese or Hindi the capability becomes unreachable by voice — a
+  silent absence nobody reports.
+- A conjugated-verb table that lacks a polite form («podrías preparar…») discards a legitimate request.
+- A danger pattern reads the TITLE of an agenda row («comprar el pan») as an order to buy.
+- A close guard that requires a «close verb» rejects the model's correct `youtube:close` for «Páralo,
+  y vuelve al inicio» («parar» is not a close verb and must never be one).
 
 **What to do instead:** enumerate the DECLARED options and let the decision model pick among them
 (`nucleo/jev.py`, `.meshkore/docs/modules/zaelar-decision-model.md`). A grammar may still PROPOSE —
 it is free and instant — but it may not be the one that decides. `nucleo/flash/build_decision.py` is
 the worked example. And when a gate genuinely has to read text, it is repaired by **SUBTRACTING** the
-clause that is not the order, never by adding a pattern: `nucleo/danger.py` carries five of those and
-says why in its own header.
+clause that is not the order, never by adding a pattern: `nucleo/danger.py` carries several of those
+and says why in its own header.
 
-**2 · A TEXT GUARD MAY NOT OVERRULE A VERDICT THAT WAS ALREADY PAID FOR.** Three times in one month,
-identical shape: the engine asked Jev the right question, got the right answer, and a regex running
-earlier in the turn had already written the decision. V2-741 (a grammar licence ate the tool),
-V2-748 (the irreversibles gate escalated over a dispatched data-op), V2-750 (the create guard
-overruled `catalog_widget = youtube` at 1.00). **The verdict has to be read where the decision is
-made, not somewhere downstream of it.**
+**2 · A TEXT GUARD MAY NOT OVERRULE A VERDICT THAT WAS ALREADY PAID FOR.** The shape: the engine asks
+Jev the right question, gets the right answer, and a regex running earlier in the turn has already
+written the decision (a grammar licence swallowing a tool call, an irreversibles gate escalating over a
+dispatched data-op, a create guard overruling a confident `catalog_widget` verdict). **The verdict has
+to be read where the decision is made, not somewhere downstream of it.**
 
-**3 · A VERDICT THAT IS PAID FOR AND NOT READ.** `catalog_widget` was asked on every turn with
-nothing open, answered, billed — and had **no reader anywhere in the engine** until V2-750. Same
-shape as `screen_action` in V2-740. A new question is not finished when it is asked.
+**3 · A VERDICT THAT IS PAID FOR AND NOT READ.** Every question in the turn brief is asked and billed on
+every turn it applies to. A new question is not finished when it is asked — it is finished when
+something in the engine reads its answer at the point of decision (`catalog_widget`, `screen_action`).
 
-**4 · A CAPABILITY THAT IS NOT DECLARED IS NARRATED, NOT DONE (V2-540).** The model cannot pick a
-tool that is not in the catalog, so it says it did the thing. The symptom is always «dice que lo hace
-y no lo hace», and the cause is never the model.
+**4 · A CAPABILITY THAT IS NOT DECLARED IS NARRATED, NOT DONE.** The model cannot pick a tool that is
+not in the catalog, so it says it did the thing. The symptom is always «dice que lo hace y no lo hace»,
+and the cause is never the model.
 
 **5 · A RULE INSTALLED ON ONE OF TWO BRANCHES IS NOT INSTALLED.** Voice and probe are parallel
-implementations (V2-252) and have drifted apart four times. A guard added to one is invisible in the
-other until somebody notices — which is why decisions return a DECISION and the channel spends it.
-**And «two branches» is not only two channels**: in V2-753 the Jev escape hatch on the canvas
-`[[close]]` guard had existed since V2-635 and never reached the DATA-OP close eleven hundred lines
-below it — the branch that fires on a real player. When a guard goes in two places, the list of
-places is part of the guard (`looks_like_close`: six voice sites, three probe sites).
+implementations, and a guard added to one is invisible in the other — which is why decisions return a
+DECISION and the channel spends it. **And «two branches» is not only two channels**: an escape hatch on
+the canvas `[[close]]` guard must also reach the DATA-OP close path, which is the branch that fires on a
+real player. When a guard goes in several places, the list of places is part of the guard
+(`looks_like_close` and its voice and probe call sites).
 
-**6 · AN UNISOLATED TEST DOES NOT FAIL — IT LEAVES SOMETHING BEHIND.** V2-673 (`v2.json`), V2-684
-(`zaelar.db`), V2-689 (it unlinked the Google account he had just connected), V2-748 (an ad-hoc
-script, outside pytest, did it again). The isolation lives in the SUITE, so work that is not in the
-suite has none of it.
+**6 · AN UNISOLATED TEST DOES NOT FAIL — IT LEAVES SOMETHING BEHIND** (a settings file, the database, a
+connected account). The isolation lives in the SUITE (the root `conftest.py`), so work that is not in
+the suite — an ad-hoc script outside pytest — has none of it.
 
-**7 · A TRUNCATED DECLARATION ROUTES NOTHING (V2-753).** `screen_action` enumerates each open card's
-declared actions and cut every `desc` at 90 characters, which decapitated the very clause V2-742 had
-written into `youtube:show_tab` so «vuelve al catálogo» would be routable. Measured: `none` 0.77 at
-90 chars, `show_tab` 0.96 at 200, nothing else moved, no latency change. **When an action is never
-chosen, read what the question actually said about it before blaming the model** —
-`turn_brief.MAX_DESC_CHARS`.
+**7 · A TRUNCATED DECLARATION ROUTES NOTHING.** `screen_action` enumerates each open card's declared
+actions, and a `desc` cut too short can decapitate the very clause that makes an action routable
+(«vuelve al catálogo» on `youtube:show_tab`). **When an action is never chosen, read what the question
+actually said about it before blaming the model** — `turn_brief.MAX_DESC_CHARS`.
 
-**8 · A POOL TIMEOUT IS NOT A VERDICT (V2-743).** `widgets/server_api` gives up waiting after 8 s; the
-thread keeps running and usually finishes. Reading that timeout as «it failed» produced a false
-report either way.
+**8 · A POOL TIMEOUT IS NOT A VERDICT.** `widgets/server_api` gives up waiting after 8 s; the thread
+keeps running and usually finishes. Reading that timeout as «it failed» produces a false report either
+way.
 
 ## 0. Roles at a glance — client vs server
 
@@ -98,13 +84,13 @@ NOT the browser UI — the user-facing audio I/O lives in `frontend/`.
 | Piece | Side | Role |
 |---|---|---|
 | `frontend/` | **client** (browser) | The whole UI: captures mic + camera, draws the orb (agent voice) and the mic spectrum, shows widgets on the canvas, text chat wall, ☾/☀ dark/light theme (dark default, one `--hb-*` CSS variable namespace shared with widgets). No business logic — a thin reactive shell (ES modules, no build). |
-| `server/` | server | FastAPI transport: serves the frontend, the WebRTC offer/ICE, `/events` SSE, settings, the widgets HTTP API, the first-run wizard (`/api/wizard/*`), the music connector control plane (`/api/spotify/*` OAuth + `/api/music/state`) and the **full-screen config area** (`/api/config*`, V2-043: per-piece API/model + API balances). Composition root + entrypoint (`python -m server`); its lifespan also starts the LiveKit agent worker (embedded), the `nucleo/` loop, the widgets supervisor and the memory queue consumer. |
-| `voice/` | server | The voice **engine** (`voice/engine/`, LiveKit AgentSession): receives mic audio → STT → brain → TTS → back to the client. Turn-taking/VAD/barge-in are governed by LiveKit (VAD Silero + `allow_interruptions`), with a lexical semantic layer on top as the default turn-detector since 2026-08-14 (V2-095: closes a turn on SENTENCE END, not just acoustic silence — ~48% of turns need no model call at all) and a fragment accumulator (V2-096, `nucleo/flash/accumulator.py`) that holds a still-growing sentence across a pause of ANY length instead of acting on a half-finished thought. Since V2-102 (2026-08-16), when the lexical layer can't confidently call a fragment complete, a fast LLM judge (`nucleo/flash/segmenter.py::judge`, any language, no per-language word list) gets a second opinion instead of the fragment being trusted to a hand-written rule forever — resolves to act, a spoken clarifying question, or (still) accumulate. Top level = brain-agnostic contract: observer (SSE), prompt, `tag_protocol`, `brain_notes`, `proactive`, TTS/STT backends. |
+| `server/` | server | FastAPI transport: serves the frontend, the WebRTC offer/ICE, `/events` SSE, settings, the widgets HTTP API, the first-run wizard (`/api/wizard/*`), the music connector control plane (`/api/spotify/*` OAuth + `/api/music/state`) and the **full-screen config area** (`/api/config*`: per-piece API/model + API balances). Composition root + entrypoint (`python -m server`); its lifespan also starts the LiveKit agent worker (embedded), the `nucleo/` loop, the widgets supervisor and the memory queue consumer. |
+| `voice/` | server | The voice **engine** (`voice/engine/`, LiveKit AgentSession): receives mic audio → STT → brain → TTS → back to the client. Turn-taking/VAD/barge-in are governed by LiveKit (VAD Silero + `allow_interruptions`), with a lexical semantic layer on top as the default turn-detector (closes a turn on SENTENCE END, not just acoustic silence — most turns need no model call at all) and a fragment accumulator (`nucleo/flash/accumulator.py`) that holds a still-growing sentence across a pause of ANY length instead of acting on a half-finished thought. When the lexical layer can't confidently call a fragment complete, a fast LLM judge (`nucleo/flash/segmenter.py::judge`, any language, no per-language word list) gives a second opinion — resolving to act, a spoken clarifying question, or (still) accumulate. Top level = brain-agnostic contract: observer (SSE), prompt, `tag_protocol`, `brain_notes`, `proactive`, TTS/STT backends. |
 | `nucleo/` | server | zaelar's **own brain** (default `BRAIN=nucleo`). Two speeds: **FlashBrain** (`nucleo/flash/`, sub-second voice layer, non-reasoning model per-invocation) + **SlowBrain** (`nucleo/dispatch.py` + `nucleo/memory_agent.py` + `nucleo/agentes/`, async Claude Code / Codex agents behind a `CodeAgent` interface). Orchestrator loop `nucleo/loop.py` (~1 Hz) + own cron `nucleo/scheduler.py` + panel `nucleo/cron_api.py` + `nucleo/sparks.py`. Exposed to the voice engine as provider `voice/engine/llm/providers/nucleo.py`. |
-| `memory/` | server | **Central memory** — SQLite `zaelar.db` (sqlite-vec + FTS5 + RRF + graph + forgetting). Absorbed the old `files/` as an episodic layer. |
+| `memory/` | server | **Central memory** — SQLite `zaelar.db` (sqlite-vec + FTS5 + RRF + graph + forgetting). Includes an episodic layer for files. |
 | `bus/` | server | In-process **event bus** (pub/sub, generalization of `voice/observer.py`) + durable SQLite log + SSE bridge. |
 | `widgets/` | server + client | Full-stack widgets: `widget.js` renders in the client, `data.py` serves data on the server, per-widget JSON store. Isolated from the voice core. |
-| `config/` | server | Runtime settings. `config/settings.py` = STT/TTS/voice/language; `config/v2.py` = model routing (fast + code_agent + memory) + `active_brain()`; `config/credentials.py` = single writer of the credential store; `config/profiles.py`+`doctor.py` = coordinated profiles + capability detector (wizard V2-040); **`config/balances.py`** (V2-043) = external-API balances (proactive where exposed — ElevenLabs — + reactive from the last classified error). The **⚙ full-screen config area** (choose API/model per piece) is served by `server/config_api.py` (`/api/config*`); its balance alerts surface in the ◉ status dialog. |
+| `config/` | server | Runtime settings. `config/settings.py` = STT/TTS/voice/language; `config/v2.py` = model routing (fast + code_agent + memory) + `active_brain()`; `config/credentials.py` = single writer of the credential store; `config/profiles.py`+`doctor.py` = coordinated profiles + capability detector (first-run wizard); **`config/balances.py`** = external-API balances (proactive where exposed — ElevenLabs — + reactive from the last classified error). The **⚙ full-screen config area** (choose API/model per piece) is served by `server/config_api.py` (`/api/config*`); its balance alerts surface in the ◉ status dialog. |
 
 **Role of the brain (`nucleo/`):** it is zaelar's OWN brain — memory, cron/proactivity, tools, reasoning — no
 external agent. **FlashBrain** owns the hard-realtime voice turn (~sub-second); **SlowBrain** does async
@@ -148,7 +134,7 @@ drives the canvas through a thin tag contract (§2).
 events) is a **self-contained feature**. It never touches the voice core (STT/turn-taking/TTS). The agent is the
 only thing that writes new code, and only under `widgets/<id>/`.
 
-> **Note (V2-070):** these three layers describe how zaelar *thinks and acts*. **Machine health** — keeping the
+> **Note:** these three layers describe how zaelar *thinks and acts*. **Machine health** — keeping the
 > process itself alive and unclogged (LiveKit engine, logs, capsules) — is maintained by a separate **autonomic
 > homeostasis layer** (`nucleo/homeostasis.py`, deterministic, no model) that lives beside the brain. See §5g.
 
@@ -159,8 +145,8 @@ only thing that writes new code, and only under `widgets/<id>/`.
 > stays a summary of the trust-boundary MODEL; that doc walks the actual algorithm.
 
 zaelar has a **third I/O channel** next to voice + chat: the native MeshKore cluster link
-(`connectors/meshkore/`), where zaelar talks to **external agents we don't control**. Voice and chat are the
-operator's (trusted, local). The cluster is not. **One mind, two profiles** (V2-069): the SAME FlashBrain engine
+(`connectors/meshkore/`), where zaelar talks to **external agents it does not control**. Voice and chat are the
+operator's (trusted, local). The cluster is not. **One mind, two profiles**: the SAME FlashBrain engine
 conducts every conversation — operator OR agent — but a cluster turn runs in the **UNTRUSTED profile**: **tools OFF
 in code** (`nucleo/flash/cluster.py` offers none) and an **identity-safe system** (`build_cluster_system` never
 touches operator state/PII). A peer can make zaelar reason + talk, never act. The trust boundary is a **deterministic
@@ -184,20 +170,19 @@ Key invariants (full detail in `.meshkore/docs/security/zaelar-security.md`):
 - **The cluster turn runs tool-less BY DEFAULT (UNTRUSTED profile)** — there is nothing to deny on that path because
   it offers no tool/terminal/file surface, and its system prompt never exposes operator PII. Conversation state
   lives in the per-peer **capsule** (`connectors/meshkore/capsule.py`), quarantined (`trust=untrusted`) — never in
-  the operator's prompt. **V2-076 (2026-07-26) built the permission-gated version of what V2-010 scoped**: the
-  operator can grant a per-cluster permission profile (`connectors/meshkore/perms.py`+`store.py`, deny-all default)
-  that lets a cluster turn reach `escalate_to_slowbrain` → a **dev-worker** (`nucleo/dispatch.py`) scoped to a
-  disposable cwd + `Bash` only to `nucleo/git_cli.py` (clone/commit/push to the operator-authorized repo only, with
-  the real git `origin` re-verified on every commit/push). This additionally requires the operator to have set an
-  **objective** for that specific relationship (`capsule.objective`, `perms.gate_dev_by_objective`) — permission
-  alone never suffices. Zero permission = byte-identical to the tool-less path above. **Filesystem jail: closed
-  2026-07-26** — `nucleo/dev_worker_guard.py` (a real Claude Code `PreToolUse` hook) denies Read/Write/Edit/Glob/
-  Grep outside the worker's cwd (code-enforced, not prompt convention); `nucleo/sandbox.py` adds resource rlimits
-  on top (best-effort on macOS for the memory cap specifically — see zaelar-security.md for the honest platform
-  caveat).
+  the operator's prompt. **Permission-gated escalation:** the operator can grant a per-cluster permission profile
+  (`connectors/meshkore/perms.py`+`store.py`, deny-all default) that lets a cluster turn reach
+  `escalate_to_slowbrain` → a **dev-worker** (`nucleo/dispatch.py`) scoped to a disposable cwd + `Bash` only to
+  `nucleo/git_cli.py` (clone/commit/push to the operator-authorized repo only, with the real git `origin`
+  re-verified on every commit/push). This additionally requires the operator to have set an **objective** for that
+  specific relationship (`capsule.objective`, `perms.gate_dev_by_objective`) — permission alone never suffices.
+  Zero permission = byte-identical to the tool-less path above. **Filesystem jail:** `nucleo/dev_worker_guard.py`
+  (a real Claude Code `PreToolUse` hook) denies Read/Write/Edit/Glob/Grep outside the worker's cwd (code-enforced,
+  not prompt convention); `nucleo/sandbox.py` adds resource rlimits on top (best-effort on macOS for the memory cap
+  specifically — see zaelar-security.md for the platform caveat).
 - Only `cluster.send`/`cluster.done` may fire from a cluster turn; `connect`/`disconnect` are operator-only.
-- **Third rule level — the conversation pact (V2-072).** A cluster turn is governed by THREE hierarchical rule
-  levels: **(1) system/hard** (BRAIN RULES + security: trailer, tools-off, `scan_outbound`, V2-071 resource guard) >
+- **Third rule level — the conversation pact.** A cluster turn is governed by THREE hierarchical rule
+  levels: **(1) system/hard** (BRAIN RULES + security: trailer, tools-off, `scan_outbound`, resource guard) >
   **(2) operator** (`state.rules`) > **(3) pact** = communication norms NEGOTIATED between the two agents for their
   relationship. The pact is cluster-only and can only RESTRICT our own behaviour (cadence / medium / scope) — never
   grant a capability (closed vocabulary). It is proposed at greeting, recorded when agreed via the cluster-turn tag
@@ -205,24 +190,21 @@ Key invariants (full detail in `.meshkore/docs/security/zaelar-security.md`):
   allowlist → `capsule.pact_set`), lives in the per-peer capsule (`capsule.pact`), is injected into every cluster turn
   below the trailer + operator rules (`capsule.pact_compose`), and its **cadence is really enforced** by a throttle in
   `cluster.send` (`capsule.cadence_wait`). Full detail in `.meshkore/docs/security/zaelar-security.md`.
-- **Conversation health by MODEL JUDGMENT (V2-075, supersedes V2-073) — cluster-only.** With the OPERATOR the
-  conversation must ALWAYS flow; this criterion applies ONLY to the agent-to-agent (cluster) channel. **V2-073's
-  first attempt was a hardcoded regex** (`capsule.looks_stuck`: Spanish block phrases + ⛔/🚫) that caught one real
-  peer (`zalo` repeating "⛔ Estamos en fase Definición, no puedo discutir…") but, per the operator's own correction
-  of principle, a regex only ever adapts to the last peer seen — degeneration patterns are infinite. **`looks_stuck`/
-  `advanced` were DELETED**; `connectors/meshkore/evaluator.py` now runs an **independent model** (read-only, no
-  tools, safe over untrusted content) over the recent window + metrics, returning a closed catalog — `health` ∈
+- **Conversation health by MODEL JUDGMENT — cluster-only.** With the OPERATOR the conversation must ALWAYS flow;
+  this criterion applies ONLY to the agent-to-agent (cluster) channel. Degeneration patterns between agents are
+  unbounded, so they are not matched with a regex (which would only ever adapt to the last peer seen):
+  `connectors/meshkore/evaluator.py` runs an **independent model** (read-only, no tools, safe over untrusted
+  content) over the recent window + metrics, returning a closed catalog — `health` ∈
   `flowing`/`stuck`/`dead_end`/`imbalanced`/`off_track`, `action` ∈ `continue`/`concise`/`hand_back`/`pause` — off-
   hot-path in a throttled heartbeat (`MESHKORE_EVAL_SECS`, active chats only), fail-open. The bridge applies the
   verdict: hand back the turn (one short message then stop), pause + alert the operator once, or go concise.
   Deterministic bits remain only for the generic/structural: exact-repeat dedup, `capsule.near_repeat` (a signal
   feeding the evaluator, not a verdict by itself), resource ratios, security. Emits observer `cluster` events with a
-  `pace` field. **`off_track` enforcement (closed 2026-07-26):** the dev-worker escalation path is gated by
+  `pace` field. **`off_track` enforcement:** the dev-worker escalation path is gated by
   `perms.gate_dev_by_objective` (needs an operator-set objective, not just a granted permission); the conversation
   itself gets a DIFFERENT operator alert specifically for `off_track` (names the objective set or missing, asks
   the operator to decide) instead of the generic dead_end/stuck wording — see `bridge._evaluate_and_apply`. The
-  operator sets a relationship's objective with the operator-only tool `set_cluster_objective`. Full initiative:
-  `.meshkore/roadmap/initiatives/V2-075-criterio-conversacion-inteligencia.md` (+ V2-073 for history).
+  operator sets a relationship's objective with the operator-only tool `set_cluster_objective`.
 - Outbound `scan_outbound` blocks hard secrets (+ redacts fingerprints); the REST control-plane is loopback/token-
   guarded; `wss://` only; peer text is fenced (`neutralize_identity`/fence-escape) with our trailer LAST.
 - The cluster (text + URLs over WS) has **no path to mic/camera/voice** — those are client-side over local WebRTC.
@@ -253,38 +235,33 @@ A widget is a folder (catalog auto-discovers it from `manifest.json`, cached by 
   injects its own style once, **textContent for any untrusted/web data** (XSS), styled with the shared `--hb-*`
   CSS variable contract so it follows the app's dark/light theme automatically (`widgets/AGENTS.md`).
   Served with `Cache-Control: no-cache` (`widgets/server_api.py`) so an edit is never invisible behind stale
-  browser cache (W-009).
+  browser cache.
 - `data.py` — `view_data(q="") -> dict` (server-side, stdlib only; may fetch live). Optional.
 - `__init__.py` — empty (package).
 `transient:true` widgets (e.g. `search`) render in the **activity rail above the orb**; the rest are cards.
 
-## 3b. PROGRESSIVE capability selection — the prompt is O(K), not O(N) (V2-085, 2026-08-01)
+## 3b. PROGRESSIVE capability selection — the prompt is O(K), not O(N)
 
-**Measured before touching anything** (real catalog, 16 widgets): `brief.for_prompt()` put the ENTIRE catalog in
-EVERY turn's prompt (2,497 chars) and `GET /widgets` returned all 16 manifests in full (25,639 chars) to a consumer
-(`desktop.js::_resolve`) that only wanted the **ids**. Both are O(N): at 1,000 widgets a "¿qué hora es?" would drag
-~150 KB of irrelevant catalog, and at 10,000 the turn is simply not viable — cost, latency, and above all decision
-noise for a small model.
+**The rule: what the model sees is O(K).** Growing the catalog must not grow an unrelated turn. Putting the
+entire widget catalog in every turn's prompt (and returning every manifest in full from `GET /widgets`) is O(N):
+with thousands of widgets a «¿qué hora es?» would drag hundreds of KB of irrelevant catalog — cost, latency, and
+above all decision noise for a small model.
 
-**The rule: what the model sees is O(K).** Growing the catalog must not grow an unrelated turn.
-
-**`widgets/selection.py`** is the only place that decides which widgets enter a turn, in priority layers (extending
-the V2-078 ladder rather than replacing it):
+**`widgets/selection.py`** is the only place that decides which widgets enter a turn, in priority layers:
 
 | Layer | What it is | Why it can't be dropped |
 |---|---|---|
 | `open` | everything the operator has ON SCREEN | it's their screen — the source of truth |
-| `named` | what the operator NAMES this turn, resolved by `runtime.rank()` (name/alias, V2-082) | **this is what makes thousands viable** — a widget at position 9,999 is promoted into the prompt the moment it's named |
-| `recent` | the MRU `state.recent_widgets` (V2-078), capped | cross-turn continuity after it's closed |
+| `named` | what the operator NAMES this turn, resolved by `runtime.rank()` (name/alias) | **this is what makes thousands viable** — a widget at position 9,999 is promoted into the prompt the moment it's named |
+| `recent` | the MRU `state.recent_widgets`, capped | cross-turn continuity after it's closed |
 | `fill` | the rest of the catalog, in order, until the budget runs out | discoverability only — first thing to go |
 
-Hard budget `MAX_WIDGETS = 20`, chosen so **today nothing changes** (16 widgets → all fit, prompt byte-identical to
-before: zero regression for the operator) while the O(K) guarantee is written in code. The exact value barely
-matters: correctness does not depend on it, it depends on the `named` layer.
+Hard budget `MAX_WIDGETS = 20`. The exact value barely matters: correctness does not depend on it, it depends on
+the `named` layer.
 
 **What it deliberately does NOT do:** classify intent with verb/keyword tables. It does not decide whether the turn
 "is about widgets" — it only RETRIEVES plausible candidates and lets the model decide by function-calling.
-Retrieval ≠ understanding (`feedback_no_hardcoded_understand`).
+Retrieval ≠ understanding.
 
 **Why truncating is safe — the escape hatch.** `show_widget` and `widget_data` resolve their argument server-side
 with `runtime.identify()` against the FULL catalog (`providers/nucleo.py`). If a named widget somehow missed the
@@ -292,67 +269,56 @@ top-K, the model can pass the operator's own words and the server still resolves
 prompt SAYS SO, with that instruction attached — otherwise the model would either deny capabilities that do exist
 or start inventing ids. **Trimming the prompt never trims what the system can open.**
 
-**Endpoints — progressive loading.** `GET /widgets` now returns a COMPACT INDEX (id, name, title, aliases, origin,
-one-line purpose capped at 120 chars, `transient`): 25,639 → 5,142 chars on the real catalog, ~5× less, and it
-drops `actions`, payload schemas and `usage` prose entirely. Full manifests come one at a time from
+**Endpoints — progressive loading.** `GET /widgets` returns a COMPACT INDEX (id, name, title, aliases, origin,
+one-line purpose capped at 120 chars, `transient`) — several times smaller than the full manifests, without
+`actions`, payload schemas or `usage` prose. Full manifests come one at a time from
 `GET /widgets/{id}/manifest`, or via the explicit ADMIN escape hatch `?full=1` (debug/export — never the hot path).
 `?q=` + `?limit=` narrow the index server-side with the same name/alias ranking for consumers that can't take
 thousands of rows; `count` is always the real total, so nobody mistakes an extract for the inventory.
 
 **State can't swallow the catalog.** `state.widget_registry` is capped at `_REGISTRY_CAP = 200` rows + a
 `_truncated` marker. `compose_state()` does not include it today — but "today it doesn't" is not a guarantee, and a
-10,000-widget catalog leaking into a prompt through a future change would be an expensive, silent incident.
+very large catalog leaking into a prompt through a future change would be expensive and silent.
 
 **Observability per turn.** `build_flash_system` writes `widgets_n_total`, `widgets_n_selected`, `widgets_n_open` /
 `_named` / `_recent` / `_fill`, `widgets_hidden`, `widgets_selected_ids` and `sz_widgets` into `timings` — the same
 channel `/debug` already uses for the `sz_*` size breakdown. So a turn can always answer *how many widgets were
 candidates, which were selected, and why*.
 
-**Measured after** (turn that is NOT about widgets): 100 widgets → 2,763 chars · 1,000 → 2,764 · 10,000 → 2,765.
-Flat. Naming the last widget of a 10,000 catalog finds it in 4.5 ms. Pinned by
-`tests/browser/unit/widgets/test_selection_scale.py` (synthetic 100 / 1,000 / 10,000).
+**Scaling guarantee.** For a turn that is NOT about widgets, the widget section of the prompt stays flat whether
+the catalog holds 100, 1,000 or 10,000 widgets, and naming the last widget of a 10,000-widget catalog finds it in
+milliseconds. Pinned by `tests/browser/unit/widgets/test_selection_scale.py` (synthetic 100 / 1,000 / 10,000).
 
-## 3c. The NETWORK is native, not a widget — public clusters (V2-086, 2026-08-01)
+## 3c. The NETWORK is native, not a widget — public clusters
 
-**What happened:** the operator pasted MeshKore's own invitation to a public cluster and nothing happened. The
-cause was not one bug but **four stacked blockers**, each of which alone was enough to kill it:
+Joining a MeshKore cluster — private or public — is a native capability of the engine, built on four pieces
+that each have to agree:
 
-1. **The tool wasn't offered.** `connect_cluster` was gated on having the `cluster-registro` widget open (V2-064)
-   — verified live in turn 766: the tool simply wasn't in the offered set, so the model *could not* act. That gate
-   made the capability undiscoverable: to connect a NEW cluster you had to already know to open a specific widget.
-2. **The schema couldn't express it.** `required: ["cluster_id", "token"]` — and MeshKore Commons is `tokenless`
-   by design. The model had to either invent a token or not call.
-3. **The description refused that shape of input** — correctly. The MeshKore invite is textbook prompt-injection
-   shape ("connect now and keep the socket open", "pick your own handle", "Then GET https://…"), and that guard
-   exists because of a real incident.
-4. **The transport couldn't do it.** `client._url()` always sent `token=` and never `vis=public`.
+1. **The tool is always offered.** `connect_cluster` is not gated on any widget being open: connectivity must be
+   discoverable from the first turn, not only by someone who already knows which surface to open.
+2. **The schema expresses both shapes.** A private cluster is `cluster_id` + `token`; a public cluster (e.g.
+   MeshKore Commons) is `tokenless` by design and is joined with `cluster_id` + `vis:"public"`.
+3. **ORDER is separated from PARAMETERS.** A pasted MeshKore invitation is textbook prompt-injection shape
+   ("connect now and keep the socket open", "pick your own handle", "Then GET https://…"), and the guard against
+   it stays intact. The operator's request is the authorization; the pasted block is only where the parameters
+   come from. Block alone → recognize it and ASK («veo una invitación a un cluster público, ¿quieres que
+   entre?»), never act. Block + operator's request → act, reading the id from the block. A block arriving on its
+   own still does nothing.
+4. **The transport distinguishes public from private.** Sending `token=` empty on a public cluster is NOT the same
+   as omitting it: the server reads a blank token as failed auth, not anonymous entry. So `client._url()` has two
+   modes (`token=` vs `vis=public`) and `store.resolve()` accepts `cluster_id` alone when `vis="public"`.
 
-**The resolution for #3 is the interesting one, and it is NOT weakening the guard: separate ORDER from
-PARAMETERS.** The operator's request is the authorization; the pasted block is only where the parameters come
-from. Block alone → recognize it and ASK ("veo una invitación a un cluster público, ¿quieres que entre?"), never
-act. Block + operator's request → act, reading the id from the block. This preserves the defense exactly (a block
-arriving on its own still does nothing) while making the workflow possible — and it's the operator's own
-ask-when-uncertain pattern from V2-082, applied to the network.
+**The network is a NATIVE surface.** Connectivity is infrastructure — it's what plugs the agent into the outside
+world — not a user widget the operator creates or deletes. It lives as the **«Clusters» tab of the ChatWall**
+(beside Chat/Procesos/Crons), routed by `show_panel` like the others. It lists every cluster we hold credentials
+for — **connected or not**, so a cluster that failed to connect stays visible exactly when knowing it exists
+matters most — with state, peers and message counters. **No conversation is stored there**: clusters have their
+own monitor, and duplicating history would create a second source of truth.
 
-**Public vs private is a real protocol distinction, not cosmetic.** Sending `token=` empty on a public cluster is
-NOT the same as omitting it: the server reads a blank token as failed auth, not anonymous entry. So `_url()` has
-two modes and `store.resolve()` accepts `cluster_id` alone when `vis="public"`.
-
-**The network is a NATIVE surface.** The `cluster-registro` widget is **gone** (its last state is preserved in
-git at `ea49962`). Connectivity is infrastructure — it's what plugs the agent into the outside world — not a
-user widget the operator creates or deletes. It now lives as the **4th ChatWall tab** («Clusters», beside
-Chat/Procesos/Crons), routed by `show_panel` like the others. It lists every cluster we hold credentials for —
-**connected or not** (before, a cluster that failed to connect vanished from the list precisely when knowing it
-existed mattered most) — with state, peers and message counters. **No conversation is stored**: clusters have
-their own monitor, so duplicating history here would just be a second source of truth (operator's call).
-
-**Alias collision guard.** Caught by live testing: connecting to Commons, the model picked the default alias
-`meshcore` — already the operator's PRIVATE cluster — which would have overwritten its token. The alias is chosen
-by a model, so uniqueness is guaranteed in code (`store.unique_name`): same name + same cluster_id = legitimate
-reconnect; same name + different cluster_id = suffixed (`meshcore-2`).
-
-**Verified live:** connected to MeshKore Commons (`c_1b938b9ede1b436980e2`) with no token, peers
-`greeter, wanderer, zalo` visible, alongside the operator's private cluster, both rendered in the native tab.
+**Alias collision guard.** The alias of a new connection is chosen by a model, so uniqueness is guaranteed in code
+(`store.unique_name`): same name + same cluster_id = legitimate reconnect; same name + different cluster_id =
+suffixed (`meshcore-2`). A model-chosen default alias can therefore never overwrite the token of an existing
+private cluster.
 
 ## 4. The widget circuit (check → reuse / create; hide ≠ delete)
 
@@ -374,7 +340,7 @@ contract, writes `widgets/<id>/`, and exits. zaelar then `_validate`s (manifest 
 keys live in `zaelar.env` (loaded by `server/common.py` AFTER `.env` with `override=True` → the store WINS);
 `config/credentials.py` is its single writer (atomic, name-validated, redacted `status()` that returns presence
 only). Provider-specific dynamic secrets get their own file (e.g. Spotify OAuth tokens → `spotify.json`, written by
-`connectors/spotify/auth.py`). The UI-managed flow is the first-run **wizard** (V2-040, `server/wizard_api.py` +
+`connectors/spotify/auth.py`). The UI-managed flow is the first-run **wizard** (`server/wizard_api.py` +
 `config/doctor.py`) + per-connector guided cards. Config is UI-managed (product invariant); `.env` is a power-user
 fallback. If a capability still needs a key the brain doesn't have, it ASKS in conversation rather than building blind.
 
@@ -389,18 +355,22 @@ result returned as a `[SISTEMA]` note (`voice/brain_notes.py`) + proactive voice
 so the brain reports real outcomes, never assumed ones. Architect tags are operator-only (the cluster bridge
 allow-list never admits them) and the daemon token lives in `.env`.
 
-## 5b. Web search — a SHARED, model-agnostic capability (V2-022)
+Beyond its own compute, zaelar orchestrates **external services**: the live agents of the MeshKore network, external
+MCP servers and third-party APIs give it access to bookings and thousands of external services, each reached
+through the same consent and trust rules as everything else the brain does.
 
-Web search is **its own primitive** (`nucleo/websearch.py`), shared by both brains — we do NOT rely on the model
-having native search (Grok/GLM/Z.AI don't; Claude Code does). **Who decides to search = the model itself, via
-function-calling** — no separate classifier. The FlashBrain gets the question + the tool catalog and decides in one
-step: answer from memory (the STATE block is already in the prompt), do the math itself, call `web_search`, or
-escalate.
+## 5b. Web search — a SHARED, model-agnostic capability
+
+Web search is **its own primitive** (`nucleo/websearch.py`), shared by both brains — the engine does NOT rely on
+the model having native search (Grok/GLM/Z.AI don't; Claude Code does). **Who decides to search = the model itself,
+via function-calling** — no separate classifier. The FlashBrain gets the question + the tool catalog and decides
+in one step: answer from memory (the STATE block is already in the prompt), do the math itself, call `web_search`,
+or escalate.
 
 **Three search modalities, kept distinct:**
 1. **Direct datum + SYNTHESIS** (`web_search`, this module) — "who won?", weather, a price, a forecast. The
-   FlashBrain resolves it **in the same turn** (~1-2s, no card, no browser). The bug that motivated this: a football
-   score fell through to `automate_web` → the heavy browser hung on "Pensando…" for something a snippet answers.
+   FlashBrain resolves it **in the same turn** (~1-2s, no card, no browser) — a datum a snippet answers never
+   goes to the heavy browser.
 2. **Navigating a site / marketplace** (Amazon, Wallapop…) — NOT this: there's no search endpoint that returns that
    datum, you must ENTER and browse. That is the **navegador** (`widgets/navegador/`, `automate_web`, SlowBrain).
 3. **Deep research / report** (a study needing many current data points) — the **SlowBrain** CodeAgent with native
@@ -415,15 +385,16 @@ escalate.
 - `WEBSEARCH_PROVIDER` forces one. With **no keys at all it works free** on DuckDuckGo. Credentials live in
   `.meshkore/credentials/zaelar.env` (the store wins over `.env`; set from the wizard/UI, §5 credential seam).
 
-**Latency & cost**: the search is blocking network I/O → run under `asyncio.to_thread` (keeps the V2-011 invariant).
-The answer is shaped to voice/language by the **model the turn already pays for** (2nd FastClient pass — if the source
-is an AI-answer provider it only rephrases; if snippets, it synthesizes) → ≈0 marginal LLM cost, no mandatory paid MCP.
-Fail-open: providers degrade down the chain; if all fail the brain says so — never crashes, never blocks the voice.
+**Latency & cost**: the search is blocking network I/O → run under `asyncio.to_thread` (nothing blocking on the
+event loop). The answer is shaped to voice/language by the **model the turn already pays for** (2nd FastClient pass
+— if the source is an AI-answer provider it only rephrases; if snippets, it synthesizes) → ≈0 marginal LLM cost, no
+mandatory paid MCP. Fail-open: providers degrade down the chain; if all are unavailable the brain says so — never
+crashes, never blocks the voice.
 
 **Routing** is enforced in code (`router.TOOLS` + `prompt._FAST_RULES`), not just prose: factual datum → `web_search`;
 a web TASK → escalate to the navegador. Observability: `search` events on `/debug` (provider + ai flag + count + ms).
 
-## 5c. RAILS — common behaviors, deterministically CONDUCTED (V2-042)
+## 5c. RAILS — common behaviors, deterministically CONDUCTED
 
 A **RAIL** is a recurring behavior we know how to drive a fixed way — fuzzy music, video, data studies, deep
 site searches, messaging, agenda, recursive (cron+search) watches. The FlashBrain stays **non-reasoning**: it only
@@ -431,24 +402,25 @@ fires a tool; the rail *conducts* in code. Each rail has four modular pieces:
 
 1. **A deterministic resolve→validate→act chain IN CODE** (e.g. `nucleo/flash/music_flow.py`). Any 2nd model pass
    (extract/validate) reuses the model the turn already pays for (the `web_search` pattern) — no extra reasoner.
-2. **A tool** in `router.TOOLS` (the "when yes/no" lives in the tool description, not prose — V2-035).
+2. **A tool** in `router.TOOLS` (the "when yes/no" lives in the tool description, not prose).
 3. **Live RUNS in state** (`nucleo/rails.py` → `state.rails` → rendered "Rails en curso" in the composed STATE, so
-   both brains see what's being searched / playing / running). A run is a singleton per `kind`; a FAILED run is kept
-   **ISOLATED as `sin_resolver`** (label + attempts + TTL) so the *next* turn can resume it when the operator adds a
-   clue ("era de Sinatra"). Transitions emit `rail` events on `/debug`; `reset_all` clears runs (`rails.clear_all`).
+   both brains see what's being searched / playing / running). A run is a singleton per `kind`; an unresolved run is
+   kept **ISOLATED as `sin_resolver`** (label + attempts + TTL) so the *next* turn can resume it when the operator
+   adds a clue ("era de Sinatra"). Transitions emit `rail` events on `/debug`; `reset_all` clears runs
+   (`rails.clear_all`).
 4. **Typed memory writeback** (`memory.ingest_message(source=<rail>)`) → history + tastes readable via
    `recent_by_source(<rail>)`.
 
 Per-rail prompt guidance is injected **only while a run is live** (`nucleo/rails.prompt_lines` →
 `nucleo/flash/prompt._rails_directive`) — zero prompt cost at rest (same situational discipline as the contextual
-tools). The first rail is fuzzy music (§5d). **The widget circuit (§4) is the FOUNDING rail**: its V2-017/025/026
-machinery already implements the four pieces with its own channels, and it is really three separated conductions —
-operate DATA (`widget_data`→`apply_action`), create/modify CODE (escalate), canvas open/close/delete (tags). The
-unification is taxonomic, not a rewrite. Full pattern + domain map: `roadmap/initiatives/V2-042-rails-*.md`.
+tools). The first rail is fuzzy music (§5d). **The widget circuit (§4) is the FOUNDING rail**: its machinery already
+implements the four pieces with its own channels, and it is really three separated conductions — operate DATA
+(`widget_data`→`apply_action`), create/modify CODE (escalate), canvas open/close/delete (tags). The unification is
+taxonomic, not a rewrite.
 
-## 5d. Music — a provider-agnostic capability (V2-041)
+## 5d. Music — a provider-agnostic capability
 
-Playing music by voice is a first-class capability behind an agnostic seam, so a future music widget (a SEPARATE
+Playing music by voice is a first-class capability behind an agnostic seam, so a music widget (a SEPARATE
 piece) can drive **any** streaming connector:
 
 - **The seam** (`connectors/music/`): `base.py` = the `MusicProvider` contract + `Track`/`NowPlaying`/`MusicResult`;
@@ -466,39 +438,36 @@ piece) can drive **any** streaming connector:
 Music is the first non-widget **rail** (§5c): `nucleo/flash/music_flow.py` drives fuzzy requests
 (direct try → websearch on the warm Chromium → extract `Artist - Title` with the turn's model → retry → announce
 what plays), keeps its run in `state.rails`, and writes each play back to memory (`ingest_message(source="music")`)
-so tastes accrue. All I/O is off the event loop (`asyncio.to_thread`, V2-011).
+so tastes accrue. All I/O is off the event loop (`asyncio.to_thread`).
 
-## 5e. «Sistema arena» — BRAIN RULES, USER RULES, and the auto-generation path (V2-046, DESIGN)
+## 5e. «Sistema arena» — BRAIN RULES, USER RULES, and the auto-generation path
 
-Long-term vision (operator, 2026-07-16): capabilities should not require a developer to hardcode a tool + rail per
-use case (the trigger was `play_video`, V2-045) — a user-invented use case should become a **widget + its rail +
-its rules, generated on the fly**. The honest mapping (full analysis + 3-bucket plan in
-`roadmap/initiatives/V2-046-sistema-arena.md`) is that this is already half-built: the widget generator (§5)
-creates code+storage+declared actions+usage on demand; rails (§5c) are the pattern to make declarable; the brief
-is data-driven. Two named first-class concepts come out of it:
+The design goal: capabilities should not require a developer to hardcode a tool + rail per use case — a
+user-invented use case should become a **widget + its rail + its rules, generated on the fly**. Much of this is
+already in place: the widget generator (§5) creates code+storage+declared actions+usage on demand; rails (§5c) are
+the pattern to make declarable; the brief is data-driven. Two named first-class concepts come out of it:
 
 - **BRAIN RULES** = the hardcoded primal genetics every agent is born with: the language lock + operating layer
   (`nucleo/flash/prompt.py`), the per-tool "when yes/no" in `router.TOOLS` descriptions (§8), and the
   deterministic invariant guards (`hard_interrupt`, `looks_like_*`, memory precision gates, `danger.py`).
   Versioned with the code; never edited by use.
 - **USER RULES** = per-user behaviour rules that live in the **STATE** (`state.rules`, born empty), recognized by
-  the FlashBrain via the existing `set_style_directive` tool-calling seam and rendered by `compose_state` — always
-  in the prompt at µs cost, persisting across sessions (the session directive stays as the immediate layer).
-  Planned as the AHORA step of V2-046 (pending operator OK; not yet implemented).
+  the FlashBrain via the `set_style_directive` tool (§8) and rendered by `compose_state` — always in the prompt at
+  µs cost, persisting across sessions (the session directive stays as the immediate layer).
 
 **Native tool vs widget+rail — canonical criteria:** a capability earns a native §8 tool only if it is (a) an
-instinct every user wants from day 0 AND (b) needs tool-vs-tool discrimination in the turn (prose provably fails
-on the non-reasoner — the V2-045 lesson) or (c) crosses subsystems. Everything else = widget + declared data-ops
-(+ a manifest-declared rail, a V2-046 DESPUÉS step). **Transmissible genetics between networked agents** stays a
-documented placeholder: artifacts only (widgets/rail declarations — never user rules/state/memory/credentials),
-consented known peers only, imported as `trust=untrusted` through the generator's validation gate.
+instinct every user wants from day 0 AND (b) needs tool-vs-tool discrimination in the turn (prose alone is not
+reliable on the non-reasoner) or (c) crosses subsystems. Everything else = widget + declared data-ops
+(+ a manifest-declared rail). **Extension point — transmissible genetics between networked agents:** the design
+leaves room for sharing artifacts only (widgets/rail declarations — never user rules/state/memory/credentials),
+with consented known peers only, imported as `trust=untrusted` through the generator's validation gate.
 
-## 5f. «Susurro» — conversational self-audit & continuous improvement (V2-053, F1 BUILT 2026-07-17)
+## 5f. «Susurro» — conversational self-audit & continuous improvement
 
-The non-reasoning FlashBrain misroutes; the test→fix loop patches it case-by-case and does not generalize (81
-fix commits in 5 days, ~55% routing class). The missing piece is an INTERNAL AUDITOR: `nucleo/susurro/`, a
-powerful model (config `§susurro`, UI-managed; OFF the voice path, so a reasoner is allowed here) that audits a
-conversation stretch when FRICTION is detected and returns corrections from a CLOSED catalog.
+A non-reasoning FlashBrain can misroute, and case-by-case fixes do not generalize. The Susurro is an INTERNAL
+AUDITOR: `nucleo/susurro/`, a powerful model (config `§susurro`, UI-managed; OFF the voice path, so a reasoner is
+allowed here) that audits a conversation stretch when FRICTION is detected and returns corrections from a CLOSED
+catalog.
 
 - **Plugged in ONLY via the bus** (modularity doc `zaelar-modularity.md`): the semantic topic
   **`turn.completed`** — emitted by `observer.turn_detail`, the single point both the voice provider and the
@@ -511,57 +480,55 @@ conversation stretch when FRICTION is detected and returns corrections from a CL
 - **Audit window** (`window.py`): verbatim conversation (`memory.recent_window`) + per-turn decisions (from
   `turn.completed`) + filtered event ring + compact STATE — ~2-4k tokens. Operator content only; `untrusted`
   cluster content NEVER enters (anti prompt-injection).
-- **Closed catalog** (`catalog.py`): F1 applies `repair_say` (a short natural repair line → `brain_notes`
-  [SISTEMA], spoken next turn — the probe now drains notes too, so it's testable headless) and `finding`
-  (→ `.meshkore/logs/susurro/findings.jsonl`, dedup by area+title, + bus topic `susurro.finding`, consumed by
-  the dev test→fix loop). Future-phase types (user_rule / worker_action / state_patch / memory_fix) are accepted
-  from the model but DOWNGRADED to findings until their gated appliers ship (F2/F3, initiative V2-053).
-- **Total observability** (operator rule): events kind `susurro` — trigger (reason+signals), **request (the
-  exact payload SENT to the LLM)**, **response (raw)**, apply (per correction, with BEFORE/AFTER), done
-  (assessment + types + ms) — all trace-stamped (span `susurro`), on the timeline + /debug + durable bus log.
+- **Closed catalog** (`catalog.py`): `repair_say` (a short natural repair line → `brain_notes` [SISTEMA], spoken
+  next turn — the probe drains notes too, so it's testable headless) and `finding` (→
+  `.meshkore/logs/susurro/findings.jsonl`, dedup by area+title, + bus topic `susurro.finding`, consumed by the dev
+  test→fix loop). Other correction types the model may propose (user_rule / worker_action / state_patch /
+  memory_fix) are recorded as findings; the catalog is the extension point for gated appliers of those types.
+- **Total observability**: events kind `susurro` — trigger (reason+signals), **request (the exact payload SENT to
+  the LLM)**, **response (raw)**, apply (per correction, with BEFORE/AFTER), done (assessment + types + ms) — all
+  trace-stamped (span `susurro`), on the timeline + /debug + durable bus log.
 - **Hard invariant:** the Susurro NEVER modifies BRAIN RULES / the system prompt at runtime (no fixed point if
   corrupted). Improvement runs at two speeds: runtime corrections on the MUTABLE layer; findings change the
   genetics via development (git + tests + alignment review).
-- Measured e2e (probe suite `tests/agent_headless/e2e/susurro/run_probe_suite.py`, longitudinal `history.jsonl`): complaint →
-  correct diagnosis → natural spoken repair + P1 finding, full cycle ~2.5-2.9s with gpt-4.1-mini.
+- End-to-end probe suite: `tests/agent_headless/e2e/susurro/run_probe_suite.py` (longitudinal `history.jsonl`) —
+  complaint → diagnosis → natural spoken repair + finding, the full cycle.
 
-## 5g. «Homeostasis» — the autonomic / health-supervisor layer (V2-070)
+## 5g. «Homeostasis» — the autonomic / health-supervisor layer
 
 zaelar emulates a human at **THREE levels, only two of which "think":**
 
-- **Mente = FlashBrain** (`nucleo/flash/`) — the mind: conducts the conversation, uses a model (§6).
-- **Conciencia = Susurro** (`nucleo/susurro/`) — the conscience: audits the conversation, uses a model (§5f).
-- **Autónomo = Homeostasis** (`nucleo/homeostasis.py`) — the autonomic nervous system: keeps the **MACHINE**
+- **Mind = FlashBrain** (`nucleo/flash/`) — conducts the conversation, uses a model (§6).
+- **Conscience = Susurro** (`nucleo/susurro/`) — audits the conversation, uses a model (§5f).
+- **Autonomic = Homeostasis** (`nucleo/homeostasis.py`) — the autonomic nervous system: keeps the **MACHINE**
   healthy, **NO model, fully deterministic**. It thinks about nothing; it watches vitals and heals.
 
 Homeostasis lives **BESIDE the brain, never inside it** — it is off the voice loop, started in the server lifespan
 with `start(app)` / `stop()` exactly like the other supervisors (messaging, widgets), and it is **fail-open** (its
-own failure can never touch voice/chat). It exists because of a real incident: **2026-07-25 the embedded LiveKit
-worker degraded after ~7h → chat/voice stopped responding, and nothing self-healed until a manual restart.**
+own failure can never touch voice/chat). It exists because a long-running embedded LiveKit worker can degrade over
+hours of uptime, and without a supervisor only a manual restart would recover it.
 
 **Binary rule.** Each watched resource has exactly **two states — healthy or degraded**; degraded → heal. No
 gradations, no scoring, no model in the loop. **THREE checks:**
 
-1. **LiveKit engine** — the degradation the incident exposed. Homeostasis detects it **IN-PROCESS** via a
-   `logging.Handler` attached to the `livekit` logger, watching for the markers `wait_pc_connection timed out` /
-   `entrypoint did not exit`. When it is **SAFE to act** (voice OFF **and** the channel idle ≥120s) it **RECYCLES
-   the embedded worker** — `aclose()` + `make_server()` + a fresh task, **no process restart** — with a cooldown
-   between recycles. When it is NOT safe, it **ALERTS the operator once** and touches nothing (never yanks a live
-   voice turn out from under the operator).
+1. **LiveKit engine** — Homeostasis detects degradation **IN-PROCESS** via a `logging.Handler` attached to the
+   `livekit` logger, watching for the markers `wait_pc_connection timed out` / `entrypoint did not exit`. When it
+   is **SAFE to act** (voice OFF **and** the channel idle ≥120s) it **RECYCLES the embedded worker** — `aclose()` +
+   `make_server()` + a fresh task, **no process restart** — with a cooldown between recycles. When it is NOT safe,
+   it **ALERTS the operator once** and touches nothing (never yanks a live voice turn out from under the operator).
 2. **LOGS** — rotates `timeline-latest.jsonl` / `meshkore.jsonl` by **rename** when either exceeds a size cap (both
    files are opened `"a"` on every write, so the next append recreates the file — no fd juggling), and prunes old
    archives.
 3. **CAPSULES** — evicts concluded + old per-peer capsules and caps the total (the `sys_kv` `capsule:*` rows, via
-   the new facade `memory.kv_keys(prefix)` / `memory.kv_del(key)`).
+   the facade `memory.kv_keys(prefix)` / `memory.kv_del(key)`).
 
 **Invariants.** Off the voice loop; deterministic (no model, ever); fail-open; heals the machine ONLY when safe
 (never interrupts a live voice turn); one recycle per cooldown. **Kill-switch:** env `ZAELAR_HOMEOSTASIS`.
 **Observability:** it emits observer events of kind `homeostasis` (labels: `start` / `degraded` / `recycle` /
-`rotate` / `evict` / `alert`) — see `zaelar-observability.md`. **Tests:** `tests/infrastructure/unit/core/test_homeostasis.py` (13
-deterministic tests; domain 9 of the test map). Full initiative:
-`.meshkore/roadmap/initiatives/V2-070-homeostasis-anti-degeneracion.md`.
+`rotate` / `evict` / `alert`) — see `zaelar-observability.md`. **Tests:**
+`tests/infrastructure/unit/core/test_homeostasis.py` (deterministic; domain 9 of the test map).
 
-## 5h. The request: end state, circuit, verdict, row (V2-776 L/M, 2026-09-29/30)
+## 5h. The request: end state, circuit, verdict, row
 
 A request that ACTS has four parts, each owned once:
 
@@ -578,10 +545,10 @@ A request that ACTS has four parts, each owned once:
    `unverifiable` is said as such and never opens a retry; the cure is a readable widget, never a guess.
 4. **Row** — `nucleo/request_row.py` + `nucleo/tasks.py`. Every request that acts is ONE row of `tasks`, the
    inline ones included (`kind=inline`, the operator's words as `goal`); later ops of the same turn reuse it, the
-   circuit's verdict ends it (`tasks.verdict`, schema v9), and a later op never improves a failed row. The prompt
+   circuit's verdict ends it (`tasks.verdict`, schema v9), and a later op never improves a closed row. The prompt
    reads «what is going on» from this record (`task_block.recent_lines`: last six requests of six hours, facts only).
 
-Canonical lines: `criteria.md` CRIT-E9; why: `decisions.md` V2-776 L and M.
+Canonical lines: `criteria.md` CRIT-E9.
 
 ## 5i. The turn pipeline — the doors, in order
 
@@ -594,7 +561,7 @@ keeps the two from drifting):
 3. **Row begin** (`request_row.begin`) — the words this request's row will carry.
 4. **Fast lane** (`fast_lane.py`), first hit wins: several tasks → a list (`nucleo/batch`), a known phrase
    (`nucleo/actionmap`), presence knock, rename, wall tab, small talk. A hit ends the turn with no model call.
-5. **Phrase accumulator** (V2-096) — a fragment waits for its continuation instead of being acted on.
+5. **Phrase accumulator** — a fragment waits for its continuation instead of being acted on.
 6. **Turn brief** (`nucleo/flash/turn_brief.py`, Jev) — ONE call that asks every question the turn needs
    (screen action, end state, …); the verdict COMPLETES the model, never contradicts it.
 7. **Input clamp, model spec per turn, recall on demand** (`nucleo/turn/recall_budget.py`), break-loop.
@@ -617,29 +584,30 @@ is woven through voice/widgets/frontend:
   resolved **by endpoint** in `nucleo/provider_keys.py` (aimlapi→`AIMLAPI_KEY`, x.ai→`XAI_API_KEY`,
   groq.com→`GROQ_API_KEY`, gemini→`GEMINI_API_KEY`, deepseek.com→`DEEPSEEK_API_KEY`, …), so switching provider only
   needs the matching key in the credential store — that single resolver is shared by every LLM-calling module in
-  `nucleo/` (V2-098), not reimplemented per caller. **Production titular = `deepseek-v4-flash` via the AIMLAPI
-  broker.** `grok` is explicitly BANNED from the FlashBrain (mis-routes memory questions to `widget_data`) — NEVER
-  a reasoning model, NEVER local on the voice path (local qwen ≈19 s/turn under GPU contention).
-  - **Automatic latency relay (V2-094):** `nucleo/flash/provider_chain.py` watches the titular's TTFT; two slow
-    turns in a row relay to `api.deepseek.com` direct — same model family, but the DIRECT endpoint obeys the
-    "don't reason" flag the broker silently ignores (V2-097: ~8.6 s → ~1.2 s TTFT). A relay is capped (turn budget
-    + short cooldown) and reverts to the titular on its own. **Self-host ships with NO relay by default** — an
-    empty chain, so a self-hoster never gets silently switched to a provider they didn't choose; opt in via
-    `fast.providers`. Cloud gets the relay by default.
+  `nucleo/`, not reimplemented per caller. **The default is a non-reasoning DeepSeek V4 model on DeepSeek's direct
+  endpoint** (resolved from the model table in `config/v2.py`). `grok` is explicitly BANNED from the FlashBrain
+  (it mis-routes memory questions to `widget_data`) — NEVER a reasoning model, NEVER local on the voice path (a
+  local model under GPU contention is far too slow for a voice turn).
+  - **Automatic latency relay:** `nucleo/flash/provider_chain.py` watches the primary's TTFT; two slow turns in a
+    row relay to the next provider in the chain. Prefer DIRECT provider endpoints over brokers: a direct endpoint
+    honours the "don't reason" flag that a broker may silently ignore, which is what keeps TTFT low. A relay is
+    capped (turn budget + short cooldown) and reverts to the primary on its own. **Self-host ships with NO relay
+    by default** — an empty chain, so a self-hoster never gets silently switched to a provider they didn't choose;
+    opt in via `fast.providers`.
 - **Worker tier** (a.k.a. "SlowBrain" in older docs) = the async agent tier, configured in `config/v2.py`
   `code_agent` section (`CODE_AGENT_*`, Claude Code / Codex behind the `CodeAgent` interface in `nucleo/agentes/`).
-  **V2-036: there is no separate reasoning brain anymore** — escalating LAUNCHES a headless worker that drives the
-  task; the FlashBrain is the sole orchestrator. The tool that triggers this is `escalate_to_slowbrain` (legacy
-  name) — see the **canonical tool catalog in §8**.
+  **There is no separate reasoning brain** — escalating LAUNCHES a headless worker that drives the task; the
+  FlashBrain is the sole orchestrator. The tool that triggers this is `escalate_to_slowbrain` (legacy name) — see
+  the **canonical tool catalog in §8**.
 - `active_brain()` (`config/v2.py`, env-first `BRAIN`, default `nucleo`) selects the brain; `BRAIN=direct`/`local`
   are plain-model baselines.
 Everything else — the tag vocabulary (§2), the widget contract (§3), the circuit (§4), and the compute layer (§5)
 — is brain-agnostic and stays.
 
 **Hard constraint on the FlashBrain (voice) model: it MUST be non-reasoning.** A reasoning model on the real-time
-path adds seconds of thinking latency (5s+ TTFT) and, in the old ACP brain, never closed its turn → zaelar went
-silent. A non-reasoner answers in ~1s. Reasoning belongs OFF the critical path — that is exactly what the SlowBrain
-does in the background. Model routing changes apply on the next voice reconnect (`config/v2.py` is read after
+path adds seconds of thinking latency before the first token and may not close its turn in time, leaving zaelar
+silent. A non-reasoner answers in ~1s. Reasoning belongs OFF the critical path — that is exactly what the worker
+tier does in the background. Model routing changes apply on the next voice reconnect (`config/v2.py` is read after
 `config.settings.load_into_env()`).
 
 ## 7. Files map (the pieces)  ·  (see zaelar-modules.md for the full layout)
@@ -652,38 +620,33 @@ does in the background. Model routing changes apply on the next voice reconnect 
 - Self-test: `tests/voice/e2e/mic/mic_selftest.py` (headless: injects speech, checks the server pipeline).
 - Runtime config: `config/settings.py` (GET/POST `/api/settings`) → `config/settings.json` (⚙ panel: STT/TTS/voice/language); `config/v2.py` = model routing (fast + code_agent) + `active_brain()`. Both gitignored where they persist state.
 
-## 8. FlashBrain tool catalog — CANONICAL (V2-035, 2026-07-14)
+## 8. FlashBrain tool catalog — CANONICAL
 
 **This is the single source of truth for the FlashBrain's function-calling catalog** (`nucleo/flash/router.py::TOOLS`).
 The FlashBrain decides every turn **by function-calling** (§5b): it gets the composed STATE + the tool catalog and
-picks one action. The `/architecture` page (FlashBrain tab) mirrors this list. Every tool must be **justified and
-fit the V2-036 flow** — no dead/stale entries.
+picks one action. Every tool must be **justified and fit the worker flow** — no dead/stale entries. The table and
+the code must name exactly the same set of tools; `tests/infrastructure/unit/test_the_canonical_tool_catalog_is_canonical.py`
+enforces it in both directions.
 
-> **Naming note (important):** `escalate_to_slowbrain` is **legacy**. In V2-004 the "SlowBrain" was a separate
-> reasoning brain; in **V2-036 that brain was DISSOLVED**. Escalating today = `nucleo/dispatch.py` **launches a
-> headless worker** (a Claude Code agent, or whatever headless `CodeAgent` is configured) that drives the task with
-> its own intelligence (memory/tools/browser). The function name is kept as a stable model-facing contract; its
-> **description reflects the real mechanism** (it no longer says "slow brain"). Renaming would touch 6 files + the
-> model's learned behavior + tests, so it stays until a deliberate rename task.
+> **Naming note (important):** `escalate_to_slowbrain` is a **legacy name** from when the "SlowBrain" was a
+> separate reasoning brain. Escalating today = `nucleo/dispatch.py` **launches a headless worker** (a Claude Code
+> agent, or whatever headless `CodeAgent` is configured) that drives the task with its own intelligence
+> (memory/tools/browser). The function name is kept as a stable model-facing contract; its **description reflects
+> the real mechanism**. Renaming touches several files + the model's learned behavior + tests, so it stays until a
+> deliberate rename task.
 
 | Tool | What it does | Flow route | When offered |
 |---|---|---|---|
-> ⚠️ **This table decayed once and it was invisible** (found 2026-09-22): it declared itself canonical
-> while `router.TOOLS` had grown to 29 and the table listed 20 — nine tools that the document meant to
-> be the single source of truth had never heard of. A prose claim to be canonical is not one, so
-> `tests/infrastructure/unit/test_the_canonical_tool_catalog_is_canonical.py` now measures it: the
-> table and the code must name exactly the same set.
-
-| `escalate_to_slowbrain` | **Launch a Brain Worker** → `dispatch.py` starts a LIVE, interactive worker session (`nucleo/workers/`, agent-agnostic) that drives it async (memory, code, browser, reasoning). Injectable/killable; result returns by voice+UI. **V2-705 boundary (supersedes V2-061):** a widget with a CONNECTOR is the SOURCE, not a mirror — the agenda IS the calendar (two-way Google sync), messaging IS the outbox, contacts IS the directory. So creating/cancelling a cita or writing to a person is `widget_data` (or `send_to` +objective, which opens the engine's own errand), NOT escalate. Escalate ONLY for a commitment made on a SITE with no connector (a booking on a web, a subscription, an order, a payment): the action happens there, then the worker reflects it in the widget via `hbwidget`. Writing to a person is explicitly NOT an escalation any more (the V2-693 regression that sent «escríbele a X» to a shell worker). | → `nucleo/dispatch.py` → `WorkerSession` | always |
+| `escalate_to_slowbrain` | **Launch a Brain Worker** → `dispatch.py` starts a LIVE, interactive worker session (`nucleo/workers/`, agent-agnostic) that drives it async (memory, code, browser, reasoning). Injectable/killable; result returns by voice+UI. **Boundary:** a widget with a CONNECTOR is the SOURCE, not a mirror — the agenda IS the calendar (two-way Google sync), messaging IS the outbox, contacts IS the directory. So creating/cancelling a cita or writing to a person is `widget_data` (or `send_to` +objective, which opens the engine's own errand), NOT escalate. Escalate ONLY for a commitment made on a SITE with no connector (a booking on a web, a subscription, an order, a payment): the action happens there, then the worker reflects it in the widget via `hbwidget`. Writing to a person is NOT an escalation. | → `nucleo/dispatch.py` → `WorkerSession` | always |
 | `web_search` | One factual, time-changing datum answered **in the turn** (~1-2s, no card/browser). ONLY gets a datum to say — DOING something on a site (book/appointment, fill/submit a form, transact, buy) or "do it / book it for me" → `escalate` (drive the browser and complete), never advice. | → `nucleo/websearch.py` (§5b) | always |
-| `recall` | **V2-056** · Query the operator's DURABLE long-term memory (tastes, family, plans, budgets, things said days/weeks ago) when the turn needs it and it is NOT already in the STATE/recent conversation — e.g. about to plan/organize/book something ("quiero irme de vacaciones", "organízame el finde"). The V2-022 principle ("the MODEL decides to search") applied to memory: the `needs_recall` heuristic stays as optimistic PREFETCH; this tool covers what it misses. Lightweight sibling of `web_search` (`compose_recall` off-loop + 2nd pass with the turn's model — memories return IN the turn, no card/worker). NOT for world data (`web_search`), NOT for what's already visible in STATE/conversation. Never says "memory"/"database" out loud. | → `prompt.compose_recall` → `memory.query()` (off-loop) | always |
-| `reveal_secret` | **V2-060** · Retrieve an ENCRYPTED operator secret (password/IBAN/crypto account/wallet key). The model only IDENTIFIES which one (`vault_flow.py`, fuzzy match); the **value is delivered OUT-OF-BAND** — it NEVER enters the model prompt nor the observer/logs. Vault locked → asks for the passphrase/passkey (opens the native modal); no vault → offers to create it; comfort mode (default) says it by voice, hard rule `secrets_voice=False` → screen-only. NOT web_search (world data), NOT recall (that's plaintext durable memory). | → `nucleo/flash/vault_flow.py` → `memory/vault.py` → `/api/vault/reveal` (loopback) | always |
-| `play_music` | **V2-041/042** · Play/control MUSIC ("pon música", "ponme a X", "sube la música", "siguiente", "pausa"). The **music rail** (§5c/§5d) resolves fuzzy requests in the turn (off-loop); always plays something (free YouTube-audio fallback if no Spotify). Podcasts (audio) belong here too (V2-402). NOT web_search, NOT the `youtube` video widget. | → `nucleo/flash/music_flow` → `connectors/music` facade → `MusicProvider` (Spotify \| YouTube-audio) | always |
-| `play_video` | **V2-045 / V2-402** · Play a VIDEO in the `youtube` widget (SEE on screen): "pon el vídeo de…", "ponme un vídeo/tráiler/peli de…", "reproduce en youtube…", "quiero ver…". Sibling of `play_music` (SEE vs HEAR) — a **first-class tool** because the non-reasoner conflated video with music via prose alone; tool-vs-tool discriminates cleanly (no verb tables). Provider emits `[[show:youtube]]` + data-op `load(query)`. **V2-402**: `action=list` covers the SEARCH half ("búscame vídeos de…", browse-to-choose): several candidates go into the player's LIST via the widget's `search` data-op, nothing autoplays — media searches are channelled to the dedicated widget, never to the results sheet (the sheet is for information); play/list is normalized ONCE in `video_turn` and consumed by both voice and probe. NOT play_music (audio), NOT web_search, NOT escalate. | → provider → `youtube` widget `load`/`search` | always |
-| `show_widget` | **2026-07-17 · V2-082** · SHOW/open/play a widget on the canvas, incl. GAMES: "abre el reloj", "muéstrame X", "juega al snake". A **first-class tool** (sibling of `play_video`) because a text tag `[[show]]` loses to a function-calling tool when the word collides ("jugar"≈play → play_music/video hijacked it). Provider+probe converge on `[[show:id]]`; id resolved by **NOMBRE/ALIAS with CERTAINTY** via `runtime.identify` (V2-082: only name/alias open, description never does; the word "widget" scopes to user widgets; a SYSTEM surface named → routes there, not a widget; NO match → **ASK, never fabricate a widget** — the old "escalate as possible CREATE" is gone). NOT play_music/play_video (playing≠showing), NOT widget_data (data). | → provider `_tag_emit("show", id)` / clarify if unknown | when widgets exist |
-| `manage_widget_alias` | **V2-082** · ADD/REMOVE a NAME/ALIAS a widget answers to ("añade el alias WhatsApp al widget de mensajería", "quítale el apodo X"). SURGICAL manifest write (`widgets/aliases.py`), NOT regenerate the widget (not escalate) NOR change its data (not widget_data). Collision-guarded (an alias belongs to ONE piece — widget or system surface; rejects otherwise); the canonical name can't be removed. `op`='add' (default) \| 'remove'. Provider writes off-loop + emits SSE `widget/alias`; probe classifies only. | → `widgets/aliases.add/remove` + SSE | when widgets exist |
-| `widget_data` | Run ONE declared action of a widget to change its **data** (add meeting, mark task…). NOT create/modify code, NOT show/close. **V2-705:** a widget with a connector IS the source, so cancelling/moving a cita or writing to a contact is done HERE; only a commitment on an external SITE with no connector goes to `escalate`. **A DESTRUCTIVE action needs a selector:** `widgets/contract.py` (enforced in `server_api._dispatch`, the one funnel every caller uses) REFUSES a remove/cancel/delete whose declared selector arrived empty — it never widens to «all». Measured 2026-09-15: an empty `cancel_meeting` sent 147 deletes to the operator's real Google Calendar. Every save also snapshots the file it replaces (`store.history`/`restore`). | → `widgets` `apply_action` (FAST/CONFIRM gate) | when widgets exist |
-| `reply_message` | **V2-051** · Reply/answer a message in the operator's unified inbox (`mensajeria`; EMAIL today, WhatsApp/Telegram to inherit). Converges on the `reply` data-op (`confirm:true`) → the **CONFIRM gate reads the draft back and asks OK before SENDING** (not undoable). NOT for initiating a message to someone who hasn't written (contacts subsystem, V2-052); only replying to something in the inbox. | → provider → `mensajeria` `reply` → `pending_reply` → bus `msg.reply` → connector SMTP | when messaging has items |
+| `recall` | Query the operator's DURABLE long-term memory (tastes, family, plans, budgets, things said days/weeks ago) when the turn needs it and it is NOT already in the STATE/recent conversation — e.g. about to plan/organize/book something ("quiero irme de vacaciones", "organízame el finde"). The "the MODEL decides to search" principle applied to memory: the `needs_recall` heuristic stays as optimistic PREFETCH; this tool covers what it misses. Lightweight sibling of `web_search` (`compose_recall` off-loop + 2nd pass with the turn's model — memories return IN the turn, no card/worker). NOT for world data (`web_search`), NOT for what's already visible in STATE/conversation. Never says "memory"/"database" out loud. | → `prompt.compose_recall` → `memory.query()` (off-loop) | always |
+| `reveal_secret` | Retrieve an ENCRYPTED operator secret (password/IBAN/crypto account/wallet key). The model only IDENTIFIES which one (`vault_flow.py`, fuzzy match); the **value is delivered OUT-OF-BAND** — it NEVER enters the model prompt nor the observer/logs. Vault locked → asks for the passphrase/passkey (opens the native modal); no vault → offers to create it; comfort mode (default) says it by voice, hard rule `secrets_voice=False` → screen-only. NOT web_search (world data), NOT recall (that's plaintext durable memory). | → `nucleo/flash/vault_flow.py` → `memory/vault.py` → `/api/vault/reveal` (loopback) | always |
+| `play_music` | Play/control MUSIC ("pon música", "ponme a X", "sube la música", "siguiente", "pausa"). The **music rail** (§5c/§5d) resolves fuzzy requests in the turn (off-loop); always plays something (free YouTube-audio fallback if no Spotify). Podcasts (audio) belong here too. NOT web_search, NOT the `youtube` video widget. | → `nucleo/flash/music_flow` → `connectors/music` facade → `MusicProvider` (Spotify \| YouTube-audio) | always |
+| `play_video` | Play a VIDEO in the `youtube` widget (SEE on screen): "pon el vídeo de…", "ponme un vídeo/tráiler/peli de…", "reproduce en youtube…", "quiero ver…". Sibling of `play_music` (SEE vs HEAR) — a **first-class tool** because tool-vs-tool discriminates video from music cleanly where prose alone does not (no verb tables). Provider emits `[[show:youtube]]` + data-op `load(query)`. `action=list` covers the SEARCH half ("búscame vídeos de…", browse-to-choose): several candidates go into the player's LIST via the widget's `search` data-op, nothing autoplays — media searches are channelled to the dedicated widget, never to the results sheet (the sheet is for information); play/list is normalized ONCE in `video_turn` and consumed by both voice and probe. NOT play_music (audio), NOT web_search, NOT escalate. | → provider → `youtube` widget `load`/`search` | always |
+| `show_widget` | SHOW/open/play a widget on the canvas, incl. GAMES: "abre el reloj", "muéstrame X", "juega al snake". A **first-class tool** (sibling of `play_video`) because a text tag `[[show]]` loses to a function-calling tool when the word collides ("jugar"≈play → play_music/video). Provider+probe converge on `[[show:id]]`; id resolved by **NAME/ALIAS with CERTAINTY** via `runtime.identify` (only name/alias open, description never does; the word "widget" scopes to user widgets; a SYSTEM surface named → routes there, not a widget; NO match → **ASK, never fabricate a widget**). NOT play_music/play_video (playing≠showing), NOT widget_data (data). | → provider `_tag_emit("show", id)` / clarify if unknown | when widgets exist |
+| `manage_widget_alias` | ADD/REMOVE a NAME/ALIAS a widget answers to ("añade el alias WhatsApp al widget de mensajería", "quítale el apodo X"). SURGICAL manifest write (`widgets/aliases.py`), NOT regenerate the widget (not escalate) NOR change its data (not widget_data). Collision-guarded (an alias belongs to ONE piece — widget or system surface; rejects otherwise); the canonical name can't be removed. `op`='add' (default) \| 'remove'. Provider writes off-loop + emits SSE `widget/alias`; probe classifies only. | → `widgets/aliases.add/remove` + SSE | when widgets exist |
+| `widget_data` | Run ONE declared action of a widget to change its **data** (add meeting, mark task…). NOT create/modify code, NOT show/close. A widget with a connector IS the source, so cancelling/moving a cita or writing to a contact is done HERE; only a commitment on an external SITE with no connector goes to `escalate`. **A DESTRUCTIVE action needs a selector:** `widgets/contract.py` (enforced in `server_api._dispatch`, the one funnel every caller uses) REFUSES a remove/cancel/delete whose declared selector arrived empty — it never widens to «all», so an empty selector can never wipe a whole calendar. Every save also snapshots the file it replaces (`store.history`/`restore`). | → `widgets` `apply_action` (FAST/CONFIRM gate) | when widgets exist |
+| `reply_message` | Reply/answer a message in the operator's unified inbox (`mensajeria`). Converges on the `reply` data-op (`confirm:true`) → the **CONFIRM gate reads the draft back and asks OK before SENDING** (not undoable). Only for replying to something in the inbox; initiating a message to someone who hasn't written goes through the contacts subsystem. | → provider → `mensajeria` `reply` → `pending_reply` → bus `msg.reply` → connector | when messaging has items |
 | `close_widget` | CLOSE a card on the canvas, or put it aside (`mode=minimize`: «quítala de en medio»). Deletes nothing (that is `delete_widget`) and touches no data (`widget_data`); an empty `widget_id` is the card in front. Same canvas route and guards as the `[[close:id]]` tag. | → canvas close | when widgets exist |
 | `delete_widget` | Delete a widget **for good** (opens a confirm; ≠ close). Deterministic, not escalated. | → `widgets/lifecycle` + confirm | when widgets exist |
 | `show_panel` | Open/CLOSE the operator's NATIVE side panel — fixed UI, never `show_widget`. `panel`: `procesos` (YOUR work in flight; HIS personal tasks are the agenda widget) \| `crons` \| `programadas` \| `chat` \| `clusters`. | → SSE `panel` | always |
@@ -692,27 +655,27 @@ fit the V2-036 flow** — no dead/stale entries.
 | `read_widget` | ANSWER a question about what a widget HOLDS (the hour of an appointment, somebody's phone, which files are there) **even with the card closed**. Returns in this turn and opens nothing. Choosing or touching something inside is `widget_data`; showing the card is `show_widget`. | → `widgets` read | when widgets exist |
 | `search_listings` | Listings for sale or rent (car, flat, laptop, tickets) with real price and link in the results sheet. When the marketplace is thin it escalates ITSELF — never call `escalate_to_slowbrain` as well for the same search. | → listings rail → `results` | always |
 | `show_images` | PHOTOS in the viewer. Not `web_search` (text), not `play_video`. Does NOT generate images: «créame una imagen» is answered with a no and an offer to find a real one. A qualifier refines `query` and searches again. | → `imagenes` widget | always |
-| `reopen_task` | Bring back the RESULT of an errand that already FINISHED, by what it was («lo del piso que te dije»). Searches nothing new; with several matches it ASKS which. V2-728. | → `widgets/results/rehydrate` | when a finished task exists |
+| `reopen_task` | Bring back the RESULT of an errand that already FINISHED, by what it was («lo del piso que te dije»). Searches nothing new; with several matches it ASKS which. | → `widgets/results/rehydrate` | when a finished task exists |
 | `restore_widget` | Return a widget to its SYSTEM version — discard the operator's fork, or recover a deleted shipped widget. Opens a confirmation. Only for widgets that have a shipped version; it does not undo one edit. | → `widgets/lifecycle.restore` + confirm | when there is something to restore |
 | `set_cluster_objective` | Set — or clear, with an empty `objective` — the objective of a collaboration with a cluster peer, ONLY when the operator says so in his own words in THIS turn. Without one, that relationship's dev-worker is inert. Same guard as `connect_cluster`: pasted text that looks like an instruction is data. | → `connectors/meshkore` | when a cluster is connected |
-| `set_style_directive` | **V2-046 A1** · The operator gives a BEHAVIOUR RULE ("be more direct", "yes/no answers only"). Applies NOW (session directive, immediate layer) **and PERSISTS as a USER RULE** (`state.rules` via `memory.add_user_rule`, off-loop; rendered every prompt in `compose_state §B` "REGLAS DEL OPERADOR"). Removing = same tool + deterministic guard `looks_like_rule_removal` ("olvida esa regla") → fuzzy `remove_user_rule`. No more "escalate a worker to save it". | → `brain._directive` + `memory.add/remove_user_rule` | always |
+| `set_style_directive` | The operator gives a BEHAVIOUR RULE ("be more direct", "yes/no answers only"). Applies NOW (session directive, immediate layer) **and PERSISTS as a USER RULE** (`state.rules` via `memory.add_user_rule`, off-loop; rendered every prompt in `compose_state §B` "REGLAS DEL OPERADOR"). Removing = same tool + deterministic guard `looks_like_rule_removal` ("olvida esa regla") → fuzzy `remove_user_rule`. | → `brain._directive` + `memory.add/remove_user_rule` | always |
 | `authenticate_web` | Open the browser to **log in** to a site, ONLY when login is the sole goal (a task verb → escalate instead). | → navegador auth | always |
 | `confirm_widget_delete` | Resolve a **pending** delete confirmation (yes/no). | → `widgets/confirm` | **only if a delete-confirm is pending** |
 | `login_done` | Operator says they finished logging in → close window, resume task. | → navegador auth | **only if a login is in progress** |
-| `connect_cluster` | **V2-064 · rediseñada V2-086** · Connect to a MeshKore cluster — PRIVATE (`cluster_id`+`token`) or **PUBLIC/tokenless** (`cluster_id`+`vis:"public"`, e.g. MeshKore Commons). **Never connects directly** — opens a deterministic Sí/No confirm (`widgets/confirm.py`) showing the real cluster_id, now on the NATIVE «Clusters» tab. A text-only guard in the description was NOT enough (a pasted block merely MENTIONING a cluster_id made the model call it), and that confirm — not the old widget gate — is the actual protection. Only a "sí" resolves to `meshkore.dispatch_tag("cluster.connect", …)`. | → `widgets/confirm` → (on yes) `connectors.meshkore.dispatch_tag` | always |
-| `cluster_send` | **V2-086** · Send a message to a cluster you're ALREADY connected to ("dile a zalo que…", "pregunta en el cluster"). Sent instantly, no confirm (it's ordinary communication the operator just asked for). Replaces the old `widget_data(cluster-registro, send)` route, gone with the widget; the `[[cluster.send]]` tag can't serve as the primary path because its protocol lives in the MeshKore brief, which is OUTSIDE the FlashBrain's hot prompt. | → `meshkore.dispatch_tag("cluster.send:<name>")` (inherits the outbound secret guard + journal) | **only with a cluster connected** |
-| `send_to_worker` | **V2-038** · Inject a refinement into a **live** Brain Worker ("además, verde") — do NOT open another. | → `dispatch.inject_soon` (piggyback queue) | **only if workers are live** |
-| `stop_worker` | **V2-038** · **Kill** a live Brain Worker ("para eso"). ≠ close/delete a widget. | → `dispatch.cancel_soon` (killpg) | **only if workers are live** |
-| `answer_worker` | **V2-038** · Answer a Brain Worker that is **waiting** on the operator. | → `worker_api.answer_active_soon` | **only if a worker ask is pending** |
+| `connect_cluster` | Connect to a MeshKore cluster — PRIVATE (`cluster_id`+`token`) or **PUBLIC/tokenless** (`cluster_id`+`vis:"public"`, e.g. MeshKore Commons). **Never connects directly** — opens a deterministic Sí/No confirm (`widgets/confirm.py`) showing the real cluster_id, on the NATIVE «Clusters» tab. A text-only guard in the description is not enough (a pasted block merely MENTIONING a cluster_id can make the model call it), so that confirm is the actual protection. Only a "sí" resolves to `meshkore.dispatch_tag("cluster.connect", …)`. | → `widgets/confirm` → (on yes) `connectors.meshkore.dispatch_tag` | always |
+| `cluster_send` | Send a message to a cluster you're ALREADY connected to ("dile a zalo que…", "pregunta en el cluster"). Sent instantly, no confirm (it's ordinary communication the operator just asked for). The `[[cluster.send]]` tag can't serve as the primary path because its protocol lives in the MeshKore brief, which is OUTSIDE the FlashBrain's hot prompt. | → `meshkore.dispatch_tag("cluster.send:<name>")` (inherits the outbound secret guard + journal) | **only with a cluster connected** |
+| `send_to_worker` | Inject a refinement into a **live** Brain Worker ("además, verde") — do NOT open another. | → `dispatch.inject_soon` (piggyback queue) | **only if workers are live** |
+| `stop_worker` | **Kill** a live Brain Worker ("para eso"). ≠ close/delete a widget. | → `dispatch.cancel_soon` (killpg) | **only if workers are live** |
+| `answer_worker` | Answer a Brain Worker that is **waiting** on the operator. | → `worker_api.answer_active_soon` | **only if a worker ask is pending** |
 
-> **Brain Workers (V2-038):** the worker tier is now LIVE interactive sessions (`nucleo/workers/`, agent-agnostic
-> backend: Claude Code stream-json today, Codex/Cursor/Hermes tomorrow). Three channels: ↓ inject (`send_to_worker` →
-> piggyback queue), ↑ report-to-state (phase auto-derived + `hbnote`), ↑ ask/act with response (`hbask`/`hbact` →
-> `/api/worker/act`, policy ALLOW/CONFIRM/DENY, the FlashBrain lends its tools e.g. `web_search`). The RAM session
-> registry in `dispatch.py` is the source of truth; the loop supervises (stuck/timeout/relay asks). Full design:
-> `.meshkore/roadmap/initiatives/V2-038-brain-workers-interactivos.md`.
+> **Brain Workers:** the worker tier is LIVE interactive sessions (`nucleo/workers/`, agent-agnostic backend:
+> Claude Code stream-json today; the `CodeAgent` interface admits Codex/Cursor/Hermes). Three channels: ↓ inject
+> (`send_to_worker` → piggyback queue), ↑ report-to-state (phase auto-derived + `hbnote`), ↑ ask/act with response
+> (`hbask`/`hbact` → `/api/worker/act`, policy ALLOW/CONFIRM/DENY, the FlashBrain lends its tools e.g.
+> `web_search`). The RAM session registry in `dispatch.py` is the source of truth; the loop supervises
+> (stuck/timeout/relay asks).
 >
-> **Worker→widget bridge (`hbwidget`, V2-061):** `nucleo/widget_cli.py` lets a worker `read`/`data`/`show`/`close` a
+> **Worker→widget bridge (`hbwidget`):** `nucleo/widget_cli.py` lets a worker `read`/`data`/`show`/`close` a
 > canvas widget — the `widget_data` action of `/api/worker/act` applies the data-op via `widgets.brain_action` under
 > the SAME canonical FAST/CONFIRM gate the FlashBrain uses (ESCALATE/undeclared → DENY: a worker never escalates a
 > data-op nor invents an action; it reads the widget first), provenance stamped `worker:<id>`. This closes the chained
@@ -720,116 +683,100 @@ fit the V2-036 flow** — no dead/stale entries.
 > appointment from the agenda) and verifies — `dispatch._METHOD_BLOCK` drives it.
 
 **Canvas tags + `show_widget`.** Hide/move a widget = text tags `[[close]]` / `[[move:…]]` (processed by
-`frontend.py` + `voice.tag_protocol`). SHOW is available BOTH as the tag `[[show:ID]]` AND (since 2026-07-17) the
-first-class tool `show_widget` — the tool is the reliable primary path (function-calling beats a text tag when the
-verb collides with play_music/play_video), the tag is the reserve; both converge on `desktop.show(id)`. Changing a
-widget's DATA is never a canvas action — that's `widget_data`. This boundary is enforced in the prompt and the tool
-descriptions because a small model kept confusing them.
+`frontend.py` + `voice.tag_protocol`). SHOW is available BOTH as the tag `[[show:ID]]` AND the first-class tool
+`show_widget` — the tool is the reliable primary path (function-calling beats a text tag when the verb collides
+with play_music/play_video), the tag is the reserve; both converge on `desktop.show(id)`. Changing a widget's DATA
+is never a canvas action — that's `widget_data`. This boundary is enforced in the prompt and the tool descriptions
+because a small model can confuse them.
 
-**Widget NAMES + ALIASES — resolución con CERTEZA (V2-082, 2026-08-01).** Cada pieza tiene un NOMBRE canónico +
-una lista de ALIAS y se resuelve SOLO por ellos (`runtime.identify` reescrito): la `description`/`whenToUse` ya NO
-abre nada (fin del "abrió por parecido temático"), la palabra "widget" acota a widgets de usuario, las SUPERFICIES
-DE SISTEMA (chat/config/debug… en `widgets/system_surfaces.py`, espejo del front `system-surfaces.js`) viven en el
-mismo espacio de nombres pero jamás se devuelven como widget, y sin match de nombre/alias se PREGUNTA (nunca se abre
-el más parecido ni se fabrica un widget). Alias de widget EDITABLES por voz/texto (`manage_widget_alias` + REST
-`/widgets/{id}/aliases`); alias de sistema FIJOS. Registro unificado `widgets/registry.py` (`GET /widgets/registry`,
-proyectado a `state.widget_registry` para visibilidad). Concepto sin mezclar: WIDGET (catálogo, alias editables) ·
-SUPERFICIE DE SISTEMA (nativa, alias fijos) · TOOL (este §8) · ACCIÓN/data-op (≡"skill", `manifest.actions`) ·
-EMBEDDING (solo memoria). Plan: `.meshkore/docs/architecture/zaelar-widget-naming-v2082.md`.
+**Widget NAMES + ALIASES — resolution with CERTAINTY.** Every piece has a canonical NAME + a list of ALIASES and is
+resolved ONLY by them (`runtime.identify`): the `description`/`whenToUse` never opens anything (no "opened because
+the topic looked similar"), the word "widget" scopes to user widgets, the SYSTEM SURFACES (chat/config/debug… in
+`widgets/system_surfaces.py`, mirrored by the front's `system-surfaces.js`) live in the same namespace but are never
+returned as a widget, and with no name/alias match the engine ASKS (it never opens the closest match nor fabricates
+a widget). Widget aliases are EDITABLE by voice/text (`manage_widget_alias` + REST `/widgets/{id}/aliases`); system
+aliases are FIXED. Unified registry `widgets/registry.py` (`GET /widgets/registry`, projected to
+`state.widget_registry` for visibility). Concepts kept apart: WIDGET (catalog, editable aliases) · SYSTEM SURFACE
+(native, fixed aliases) · TOOL (this §8) · ACTION/data-op (≡"skill", `manifest.actions`) · EMBEDDING (memory only).
+Design: `.meshkore/docs/architecture/zaelar-widget-naming-v2082.md`.
 
-**Contextual tool set (V2-035 · extended V2-085):** `router.tools(context)` OMITS situational tools when their state
-does not apply (`confirm_widget_delete` without a pending delete, `login_done` without an active login, the widget
-tools when no widgets exist) → shorter prompt, less decision noise. The voice turn (`providers/nucleo.py`) and the
-probe (`nucleo/flash/probe.py`) build the same context so `make flash` mirrors reality. **Descriptions are
-condensed** (V2-035) but keep the routing rules that came from real bugs (reminder-simple = no tool,
-no-duplicate-task, no-answer-then-search, login-vs-task); those are marked in `router.py` comments.
+**Contextual tool set:** `router.tools(context)` OMITS situational tools when their state does not apply
+(`confirm_widget_delete` without a pending delete, `login_done` without an active login, the widget tools when no
+widgets exist) → shorter prompt, less decision noise. The voice turn (`providers/nucleo.py`) and the probe
+(`nucleo/flash/probe.py`) build the same context so `make flash` mirrors reality. **Descriptions are condensed** but
+keep the routing rules that matter (reminder-simple = no tool, no-duplicate-task, no-answer-then-search,
+login-vs-task); those are marked in `router.py` comments.
 
-**Description compaction (2026-08-02, operator request).** The catalog had grown to 31,647 chars, **70 % of it
-prose**, and it shipped on every turn. The operator's rule: *«hay que tratar las tools de menos a más como norma…
-un modelo de lenguaje ya sabe lo que es un player de música»*. So every description was rewritten terse, keeping
-only (a) what the tool does, in one clause, and (b) the **boundaries against OUR other tools** plus the hard rules
-that came from real bugs — the only things a model cannot infer. Dropped: example lists, restatements, historical
-narrative. The Python **comments stay**: they cost no tokens and hold the why. Result **31,647 → 18,926 chars
-(-41 %)**, ~7.9k → ~4.7k tokens per turn.
+**Description compaction is the norm.** The catalog ships on every turn, so every description is terse: it keeps
+only (a) what the tool does, in one clause, and (b) the **boundaries against OUR other tools** plus the hard
+routing rules — the only things a model cannot infer (a language model already knows what a music player is).
+Example lists, restatements and historical narrative are left out. The Python **comments stay**: they cost no
+tokens and hold the why. Compaction keeps routing quality intact (checked with
+`tests/agent_headless/e2e/prompt_cost/bench_fast_model.py` against the REAL composed prompt) and the saving is
+mostly input cost on every turn.
 
-Measured, not assumed (`tests/agent_headless/e2e/prompt_cost/bench_fast_model.py`, 3 rounds × 12 routing cases
-against the REAL composed prompt): `deepseek-v4-flash` scored **35/36 with the full catalog and 36/36 with the
-compact one** — routing did not regress, it improved, and the escalation turn dropped from ~10 s to ~6.4 s median.
-The saving is mostly COST (input tokens every turn, no provider-side caching), which is why compaction is the
-norm and not a one-off.
+> **Do NOT split the catalog into two calls.** An index-only first pass followed by a second call carrying the
+> chosen tool is much slower end to end: prompt size is worth only a fraction of a turn's latency, while each
+> extra round trip costs seconds. Weight and latency are different problems; compaction fixes the first, a second
+> round trip makes the second worse.
 
-> **Do NOT split the catalog into two calls.** Measured the same day: an index-only first pass (9,729 → 1,221
-> tokens) followed by a second call carrying the chosen tool costs **2-4× more wall-clock** (búsqueda 1,938 →
-> 6,208 ms), because prompt size is worth ~150 ms of a turn while each round trip costs 1.5-4.5 s. Weight and
-> latency are different problems; compaction fixes the first, a second round trip makes the second worse.
+**CAPABILITY gates** — `reply_message` (a messaging connector is enabled), `reveal_secret` (a vault exists),
+`play_video` (the `youtube` widget is in the catalog). All **fail-OPEN**: if the probe raises, the tool is offered
+anyway — a monitoring glitch must never silently take a capability away from the operator.
 
-**V2-085 adds three CAPABILITY gates** — `reply_message` (a messaging connector is enabled), `reveal_secret` (a
-vault exists), `play_video` (the `youtube` widget is in the catalog). All **fail-OPEN**: if the probe raises, the
-tool is offered anyway — a monitoring glitch must never silently take a capability away from the operator.
-
-> **Gating invariant (V2-085, hard).** A gate reads **STATE, never the words of the turn.** "Is there a live
+> **Gating invariant (hard).** A gate reads **STATE, never the words of the turn.** "Is there a live
 > worker?", "is the vault created?", "is the messaging connector connected?" are verifiable, language-agnostic
 > facts about the system. "Does the sentence contain *recuérdame*?" would be a keyword table deciding routing —
-> exactly what this brain rejects (`feedback_no_hardcoded_understand`; see the module docstring at the top of
-> `router.py`). **Who decides intent is the model, by function-calling.** A tool that cannot be switched off by
-> state is OFFERED; it is never guessed at.
+> exactly what this brain rejects (see the module docstring at the top of `router.py`). **Who decides intent is the
+> model, by function-calling.** A tool that cannot be switched off by state is OFFERED; it is never guessed at.
 
-**Tool families + budget observability (V2-085).** `router.FAMILIES` classifies every tool (core · widgets ·
-workers · cluster · messaging · media · web · memory) and `router.tools_report(offered)` returns the per-turn
-breakdown (`n_tools_offered`, `sz_tools`, `tool_families`, `tools_omitted`) into `llm_metrics`. **Measured
-2026-08-02 (after the compaction below):** the full catalog is 23 tools / 18,926 chars; the typical gated turn is
-17 tools / 15,486 chars; with no messaging, no vault and no youtube widget, 14 tools / 13,220 chars. Note the
-catalog is **O(1)** — it does NOT
-grow with the widget catalog, so it is a fixed per-turn cost, not the scalability bottleneck (that one is §3b).
-`test_router.py::test_tool_catalog_is_constant_sized` pins this: if a tool ever starts enumerating widgets in its
-description, the test fails.
+**Tool families + budget observability.** `router.FAMILIES` classifies every tool (core · widgets · workers ·
+cluster · messaging · media · web · memory) and `router.tools_report(offered)` returns the per-turn breakdown
+(`n_tools_offered`, `sz_tools`, `tool_families`, `tools_omitted`) into `llm_metrics`. The catalog is **O(1)** — it
+does NOT grow with the widget catalog, so it is a fixed per-turn cost, not the scalability bottleneck (that one is
+§3b). `test_router.py::test_tool_catalog_is_constant_sized` pins this: if a tool ever starts enumerating widgets in
+its description, the test fails.
 
 > **Change rule:** touching `router.TOOLS` (add/remove/rename a tool, change a description or its gating) MUST update
-> **this §8**, the `/architecture` FlashBrain tab, and `test_router.py`, and re-check the contextual gating in
-> `providers/nucleo.py` + `probe.py`. See `zaelar-docs-sync.md §Tools`. Sizes are observable per turn (`tools_chars`,
-> `n_tools_offered` in the `reply` event / probe).
+> **this §8**, the public FlashBrain diagram (maintained outside this repo) when the change is significant, and
+> `test_router.py`, and re-check the contextual gating in `providers/nucleo.py` + `probe.py`. See
+> `zaelar-docs-sync.md §Tools`. Sizes are observable per turn (`tools_chars`, `n_tools_offered` in the `reply`
+> event / probe).
 
-## 9. Server boot sequence — critical path vs. deferred (V2-065, 2026-07-23)
+## 9. Server boot sequence — critical path vs. deferred
 
-**Problem measured, not assumed:** the operator reported the first turn after a restart taking >30s to become
-usable, with the LiveKit room dropping and reconnecting 2-3 times before settling. Root cause found in
-`server/__init__.py::_lifespan`: everything before the generator's `yield` runs **sequentially**, and the app does
-not accept **any** HTTP/WS request — including the page load and the voice token endpoint — until `yield` is
-reached. The MeshKore cluster autoreconnect loop `await`ed each persisted cluster's WebSocket handshake **inline**,
-so a slow or unreachable cluster held the *entire* app hostage for as long as it took (unbounded — a hung TCP
-connect can be tens of seconds). Any browser tab left open across the restart would then race a half-up server,
-producing the 2-3 reconnect cycles.
+Everything in `server/__init__.py::_lifespan` before the generator's `yield` runs **sequentially**, and the app
+does not accept **any** HTTP/WS request — including the page load and the voice token endpoint — until `yield` is
+reached. Any network I/O awaited there (e.g. a cluster WebSocket handshake to a slow or unreachable host, which can
+take tens of seconds) would hold the entire app hostage, and a browser tab left open across a restart would race a
+half-up server.
 
-**Rule going forward: the lifespan has exactly TWO kinds of startup work, and they must never mix.**
+**Rule: the lifespan has exactly TWO kinds of startup work, and they must never mix.**
 1. **Critical path (`await`ed, sequential, must be FAST)** — only what voice/FlashBrain themselves need to exist:
    the memory queue consumer (`memory.api.start()`, local SQLite, sub-millisecond) and pure in-process wiring with
    zero I/O (`meshkore.init()`, `bridge.start_heartbeat()` — object construction, no network). Nothing that talks
    to a remote endpoint belongs here.
 2. **Deferred (`asyncio.create_task(...)`, fire-and-forget, own background task)** — anything that is genuine
    network I/O with unbounded latency: the MeshKore cluster **reconnect** loop, the messaging supervisor's
-   WhatsApp/Telegram reconnects (already correctly async — `connectors/messaging/supervisor.py::start()` only
-   schedules its `_loop()` task, never awaits a connect inline), widget-generation resume, the FlashBrain/browser
-   prewarm, and the **autonomic homeostasis supervisor** (`nucleo/homeostasis.py::start(app)`, §5g — a sibling of
-   the messaging and widgets supervisors: `start(app)`/`stop()`, off the voice loop, fail-open, gated by
-   `ZAELAR_HOMEOSTASIS`). A strong ref goes on `app.state.<name>_task` so the GC can't drop it (same pattern for all of these).
-   The LiveKit `AgentServer` itself (`voice/engine/pipeline/agent.py::make_server`) was ALREADY correctly deferred
-   this way — it just sat, in the source, physically *after* the blocking MeshKore loop, so it never got the
-   chance to start until that loop finished. Moving a `create_task(...)` call earlier in the function does nothing
-   by itself (it doesn't block either way) — the fix is entirely about which operations `await` vs. which ones get
-   wrapped in a task, not about reordering fire-and-forget calls.
+   WhatsApp/Telegram reconnects (`connectors/messaging/supervisor.py::start()` only schedules its `_loop()` task,
+   never awaits a connect inline), widget-generation resume, the FlashBrain/browser prewarm, the LiveKit
+   `AgentServer` (`voice/engine/pipeline/agent.py::make_server`), and the **autonomic homeostasis supervisor**
+   (`nucleo/homeostasis.py::start(app)`, §5g — a sibling of the messaging and widgets supervisors:
+   `start(app)`/`stop()`, off the voice loop, fail-open, gated by `ZAELAR_HOMEOSTASIS`). A strong ref goes on
+   `app.state.<name>_task` so the GC can't drop it (same pattern for all of these). Note that the position of a
+   `create_task(...)` call in the function does not matter by itself (it doesn't block either way) — what matters
+   is which operations `await` vs. which ones get wrapped in a task.
 
-**Verification method (repeatable, not vibes):** grep `await ` inside `_lifespan` before `yield` — today that list
-is exactly `memapi.start()` and nothing else. Confirmed via the boot log timestamps
-(`.meshkore/logs/run-*.log`): `LiveKit agent worker started EMBEDDED` now logs essentially immediately after
-`Memoria v2 montada`, **concurrently with**, not after, `MeshKore: connecting cluster 'arena'` (which itself still
-takes ~2s to complete — that's fine now, because nothing is waiting on it).
+**Verification method (repeatable):** grep `await ` inside `_lifespan` before `yield` — that list is exactly
+`memapi.start()` and nothing else. The boot log (`.meshkore/logs/run-*.log`) shows `LiveKit agent worker started
+EMBEDDED` right after `Memoria v2 montada`, **concurrently with**, not after, the MeshKore cluster connects.
 
-**Scales to more connectors:** any FUTURE connector (a new cluster type, a new messaging platform) that reconnects
+**Scales to more connectors:** any connector (a new cluster type, a new messaging platform) that reconnects
 saved credentials on boot must follow pattern 2 — wrap its reconnect loop in its own `asyncio.create_task`, never
 an inline `await` in the shared lifespan. A single slow connector must never be able to delay every other one, let
 alone voice itself.
 
-## 10. Testing control plane — terminal and Observatory (V2-077)
+## 10. Testing control plane — terminal and Observatory
 
 Testing is one platform with two clients, not separate terminal and web systems. `python -m tests` resolves the
 catalog, executes the declared action and preserves its exit code; `tests/platform/events.py` writes an append-only
@@ -862,14 +809,12 @@ memory timeline uses one isolated DB and replays the complete prefix before an i
 `tests/README.md`; diagnosis playbook: `.meshkore/docs/ops/zaelar-testing.md`; machine contract:
 `tests/platform/SCHEMA.md`.
 
-**Evidence is complete; the PRESENTATION is summarized (V2-085).** A journey `interaction.output` can carry the
-engine's whole response (tens of KB). Dumping it inline meant ONE case filled the screen and hid the rest of the
-run — what was lost wasn't the data, it was the view. Worse, `runner.py` printed
-`json.dumps(output)[:12000]`: flooding the console AND **truncating** the proof exactly when it was needed most.
-Now:
+**Evidence is complete; the PRESENTATION is summarized.** A journey `interaction.output` can carry the engine's
+whole response (tens of KB). Rendering it inline would let one case fill the screen and hide the rest of the run,
+and truncating it would lose the proof exactly when it is needed. So:
 
-- **Terminal** — on failure, `runner._dump_failure()` writes the FULL output (indented, greppable, diffable) to
-  `artifacts/journey-<case>-output.json` and prints size + the verdict fields + the path.
+- **Terminal** — when a case does not pass, `runner._dump_failure()` writes the FULL output (indented, greppable,
+  diffable) to `artifacts/journey-<case>-output.json` and prints size + the verdict fields + the path.
 - **Dashboard** — payloads over 400 chars render as a summary (verdict fields + char count) with the complete JSON
   in a collapsed `<details>`; the signals column always summarizes (it's a scanner, one line per event).
 

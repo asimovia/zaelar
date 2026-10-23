@@ -13,21 +13,20 @@ utterance is normalized and looked up, verbatim, in a per-language table of veri
 executes a direct action in **silence**, in well under a millisecond; everything else falls through to the
 model, untouched.
 
-Delivered by **V2-539** (F0+F1) and extended by **V2-545** (declared view actions, verb × object grids,
-upgradable packs). Phases 2–4 are not built — see [What is NOT built](#what-is-not-built).
+It covers direct canvas and panel actions, declared view actions on widgets, verb × object grids and
+upgradable language packs. See [Extension points](#extension-points) for where the design leaves room to grow.
 
 ## Why it exists
 
-Twenty times a day the operator says «limpia la pantalla», «abre el WhatsApp», «cierra la agenda». Every one of
-those was a full model turn: a network round-trip, a few hundred milliseconds at best, tokens spent, and a
-non-zero chance the small model narrates instead of acting — measured live in V2-545, «Ábreme el Telegram»
-called **no tool at all** and replied «Hecho, ya lo tienes filtrado a solo Telegram» over an unmoved card.
+Many times a day an operator says «limpia la pantalla», «abre el WhatsApp», «cierra la agenda». Without the map,
+every one of those is a full model turn: a network round-trip, tokens spent, and a non-zero chance that a small
+model narrates the action instead of calling the tool.
 
 A short command whose meaning has already been verified does not need to be understood again.
 
 ## The doctrine boundary — this is NOT intent classification
 
-The house rule stands (V2-095, «no hardcoded, understand»): we do not write verb tables and we do not teach the
+The house rule stands («no hardcoded, understand»): we do not write verb tables and we do not teach the
 brain to guess. The map does not violate it because of what it is *not* allowed to do:
 
 - it matches the **whole utterance**, normalized, and nothing else — no keyword spotting, no fuzzy distance, no
@@ -57,10 +56,9 @@ Both go through the one shared module; neither reimplements it. The voice hook i
 a **pending fragment chain** (`brain._acc.fragments`): mid-accumulation the utterance is not yet a whole
 utterance, so the map must not claim it.
 
-Wiring in only one channel is the single most expensive recurring mistake in this repo — the testmap node
-carries an explicit guard asserting both call sites exist. The probe also had to be taught to **run** the
-action, not merely report it: while the map only spoke canvas verbs a headless report was harmless, but the day
-it could drive a widget's data it became a false green (V2-545).
+Wiring a mechanism into only one channel is an easy mistake to make, so the testmap node carries an explicit
+guard asserting both call sites exist. The probe also **runs** the action rather than merely reporting it: once
+the map can drive a widget's data, a headless report alone would let a test pass without the data ever moving.
 
 ### The data
 
@@ -106,21 +104,22 @@ construction; nothing destructive, content-carrying or credential-adjacent is re
 says. `validate()` refuses a bad action **at import time, loudly** (an `alert` event): a module whose seeds
 silently failed to load is a module born dead.
 
-Named multi-step **workflows are deliberately not an action kind** — future scope, see below.
+Named multi-step **workflows are deliberately not an action kind** — they belong to the errand circuit, see
+[Extension points](#extension-points).
 
 Two details that are easy to get wrong and are pinned by tests:
 
-- **the phrase travels on every event.** Operator rule (2026-08-09): when the wrong widget opens, the first
-  question is always *what text produced this?* `close` / `move` / `fullscreen` used to drop it;
+- **the phrase travels on every event**, including `close` / `move` / `fullscreen`: when the wrong widget opens,
+  the first question is always *what text produced this?*;
 - **a VIEW op brings the card up as well.** `widgets/actions.py::is_view` is a second axis, orthogonal to
   FAST/CONFIRM/ESCALATE, and opt-in per action — nothing is inferred from the name, because the same `open` is
   display-only in `mensajeria` and a real-world side effect in `navegador`. «Ábreme el WhatsApp» is one order
-  with two halves: the card in front, that lens selected (V2-545). The loop is acquired **before** any emit, so
+  with two halves: the card in front, that lens selected. The loop is acquired **before** any emit, so
   a run without one falls through whole instead of half-executed.
 
 ### Target resolution
 
-Through `widgets.runtime.identify` — the one resolver the rest of the brain uses (V2-082) — with **no fuzzy
+Through `widgets.runtime.identify` — the one resolver the rest of the brain uses — with **no fuzzy
 fallback**. An entry whose widget cannot be resolved with certainty does not execute; the turn goes to the
 model.
 
@@ -135,9 +134,8 @@ into ordinary exact-match rows. It is *bookkeeping, not understanding*: nothing 
 table simply stops being written by hand. It exists because those families are exactly where a small model is
 unreliable and where the phrasings are many and boring.
 
-The pack is versioned and imports **once per pack version**, not once per install. That was a real defect: the
-importer asked «does any seed row exist» and answered *done*, so a pack fixed later reached nobody — every
-engine, including every cloud Machine, kept the phrases of the day it first booted. On an upgrade new phrases
+The pack is versioned and imports **once per pack version**, not once per install, so an improved pack reaches
+every existing engine on upgrade instead of only fresh installs. On an upgrade new phrases
 are inserted and a phrase that is still an **untouched shipped row** is retargeted; a row the operator disabled,
 or one the map learned, is never moved (`INSERT OR IGNORE` + `source='seed' AND status='active'` on the
 retarget). **A veto survives every release.**
@@ -150,8 +148,8 @@ fallback, which is why the env check is explicit and first.
 
 ## Observability — which layer acted
 
-Ten real voice turns went through the map before anything reported it honestly, and all three surfaces claimed
-the model had done the work. The origin is a **field now, not an inference**:
+Every surface must be able to tell a map turn from a model turn, so the origin is a **field, not an
+inference**:
 
 - `kind="actionmap"`, family `flash` (`voice/observer.py::_CAT`), two labels: `⚡ action map: direct action (no
   model)` and `🕵️ map candidate…`;
@@ -165,9 +163,8 @@ the model had done the work. The origin is a **field now, not an inference**:
 
 **The Susurro sees both layers.** Its window renders a map turn as `«…» → MAPA DE ACCIONES (frase conocida, SIN
 modelo)`, and its catalog says that a map fault is a `finding` with `area=routing` — not a correction addressed
-to the model. Before that it audited a perfect six-turn command sequence and praised «el cerebro rápido», which
-is the failure mode of an auditor reasoning about the wrong layer: its repair would have gone to the model for
-something the model never said.
+to the model. An auditor that reasoned about the wrong layer would send its repair to the model for something
+the model never said.
 
 **`watch.py` measures the other half of the question — what the map is MISSING.** A bus subscriber on
 `turn.completed` (the Susurro pattern: zero coupling with the voice provider). When the model resolves a turn
@@ -178,33 +175,27 @@ never being used. It observes only: it writes no rows and promotes nothing.
 
 > ⚠️ `turn_detail` is one seam but the two channels write **different decision shapes** — voice writes flags
 > (`widget_acted`, `shown_ids`, …), the probe writes a collapsed `{action, tool_calls, tags, reply}`. A reader
-> that knows one shape is blind to a whole channel and **fails by returning nothing**. `watch.py` branches on a
+> that knows one shape is blind to a whole channel and **silently returns nothing**. `watch.py` branches on a
 > sentinel key and is tested against both.
 
-## Measured
+## Tests
 
-- **424 active rows** for `es` (pack v2: 37 literal entries + a 9 × 44 grid), imported in one go with
-  `11 retargeted` on the upgrade.
-- **Match cost 0.02–0.16 ms**, against a model turn's several hundred.
-- **55 hits** on the operator's own engine at the time of writing; top phrases `abre la agenda` (10),
-  `abreme el telegram` (7), `ensename el correo` (6).
-- Live-verified in both channels: hits execute and are silent, negations and compound sentences fall through,
-  a chain of commands costs zero model calls, and the DB counters move.
-
-Tests: node **2.41** of the testmap (`tests/agent_headless/unit/actionmap/`) — hits and misses, the closed
+Node **2.41** of the testmap (`tests/agent_headless/unit/actionmap/`) — hits and misses, the closed
 allowlist, the loud seed refusal, the one-install-one-language rule, both kill switches, the candidate logic for
 both decision shapes and the wiring guard on both channels. Node **2.7** covers the auditor knowing which layer
 acted, node **2.1** the interaction with the show/`widget_data` guard.
 
-## What is NOT built
+## Extension points
 
-| Phase | What | State |
-|---|---|---|
-| 2 | `actionmap_define` router tool (create / retarget / disable **by conversation**), passive candidate capture with shadow mode, promotion on `agree ≥ 3, disagree = 0`, and the demotion path | not built |
-| 3 | generated language packs (`i18n/generated/<code>.actions.json`) | not built |
-| 4 | further declared view ops for connectors beyond messaging | partial (V2-545 covers messaging) |
-| — | **workflows** — named chains («resérvame mesa hoy»), which will fire the normal errand circuit, never a recorded macro | future scope, out of this module |
+The design leaves room for:
 
-Until Phase 2 exists the table **only grows at release time**. The auditor can name a map fault, and `watch.py`
-can point at what should probably be an entry, but nothing writes a row at runtime — a deliberate ordering, so
-that the phase which lets the system teach itself starts from measured evidence instead of intuition.
+- **Conversational definition** — a router tool that creates, retargets or disables entries by conversation,
+  with passive candidate capture in shadow mode and promotion/demotion driven by `agree` / `disagree` counters
+  (the columns already exist in the table).
+- **Generated language packs** — `i18n/generated/<code>.actions.json` alongside the shipped Genesis packs.
+- **More declared view ops** — any connector widget can declare view actions the same way messaging does.
+- **Workflows** — named chains («resérvame mesa hoy») fire the normal errand circuit, never a recorded macro, so
+  they live outside this module.
+
+Today the table grows with each release. The auditor can name a map fault and `watch.py` can point at what
+should probably be an entry, so any runtime promotion starts from observed evidence instead of intuition.

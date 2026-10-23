@@ -1,13 +1,13 @@
 # Domain stores — one canonical home per datum, and what memory is NOT for
 
-**The rule (operator directive, 2026-09-09): every domain has exactly ONE canonical store. Central memory
+**The rule: every domain has exactly ONE canonical store. Central memory
 holds only (a) distilled durable personal facts and (b) short-lived salience impressions. Widgets render
 views. Nothing permanent lives twice.**
 
 This is the guide for anyone adding or extending a widget/connector that holds data — music, video, books,
-audiobooks, whatever comes. It exists because the question «where does this datum live?» kept being answered
-ad hoc, and the one domain that answered it wrong (messages, fixed in V2-628) ended up writing every byte
-twice and keeping neither copy.
+audiobooks, whatever comes. It gives the question «where does this datum live?» one answer instead of an
+ad-hoc one per domain: a domain without a canonical store tends to write every byte twice and keep neither
+copy as the record.
 
 ## The three organs
 
@@ -25,23 +25,23 @@ store», it is a view and may expire freely.
 ## The map today
 
 - **Photos** → `widgets/_data/fotos/` (index + cached thumbnails; canonical because Google's Picker URLs die
-  in an hour — V2-564). Memory gets nothing per photo.
+  in an hour). Memory gets nothing per photo.
 - **Files (cloud)** → `connectors/files/` facade; the providers are canonical, we cache metadata.
-- **Contacts / favourites** → the unified directory (V2-541): a favourite IS a directory entry. This one
+- **Contacts / favourites** → the unified directory: a favourite IS a directory entry. This one
   legitimately lives in memory's slot machinery because it is personal-durable by nature.
-- **Messages** → the **communications archive** (`connectors/messaging/archive.py`, V2-628): append-only,
+- **Messages** → the **communications archive** (`connectors/messaging/archive.py`): append-only,
   catalogued, cross-platform (platform is a column, not a silo), fed at the store's write seams including
   outbound. The inbox/threads are expiring views; the `kind='msg'` pills are decaying salience. **Neither is
-  the record anymore.**
-- **Music** → `widgets/_data/musica/state.json` (V2-629) owns `playlists[]` (tracks:
+  the record.**
+- **Music** → `widgets/_data/musica/state.json` owns `playlists[]` (tracks:
   title/artist/album/art/query/uri/videoId), `recent[]` (cap 30, with `at`), `counts{}` (per-track play
   counters `{title, artist, album, count}` keyed by normalized `title|artist` — `top` is DERIVED from it),
   and `art_cache{}` (iTunes covers; bookkeeping stripped from `view_data` before serving). The widget writes
   ZERO rows into memory. Inferred preference («likes Madonna») is the sleep cycle's lane: REM reads `counts`
   read-only, the heart distills the `pref` pill — the widget never decides what is biographical.
-- **Video** → `widgets/_data/youtube/state.json` (V2-604 + V2-632) owns `list[]` (the queue:
+- **Video** → `widgets/_data/youtube/state.json` owns `list[]` (the queue:
   videoId/title/channel/published/url/added_at/added_seq) + `pos`, `history[]` (cap 300, per-row `played_at`
-  and `plays` — recorded ONLY when WE play, per V2-604: the platform API cannot hand this back),
+  and `plays` — recorded ONLY when Zaelar plays it: the platform API cannot hand this back),
   `channels[]` (provider-agnostic follows — our reference, never an account), `lists[]`, `prefs{}` +
   `prefs_notes[]`, `blocked_channels[]`, and the cached account layer. `search_results[]` +
   `search_query/searched_at` are a declared VIEW of the last question — replaced whole, losing them loses
@@ -52,13 +52,13 @@ store», it is a view and may expire freely.
 ## The rules that keep it clean
 
 1. **No permanent datum in two places.** An expiring cache over a canonical store is fine (that is what a
-   cache is); two expiring copies over nothing, or two permanent copies, are the two failure shapes.
+   cache is); two expiring copies over nothing, or two permanent copies, are the two shapes to avoid.
 2. **Memory never stores a domain's ROWS.** «His 40-song playlist» is domain data; «he loves this album» is a
    fact about him. The HEART distills the second from conversation — a widget must never bulk-write rows into
    memory pills. (The one sanctioned bridge: a short-lived salience impression, like `msg` pills, clearly
    decaying and never the record.)
 3. **Promotion is the heart's job.** Important data arriving THROUGH a domain (a policy number in a chat
-   message) becomes a personal fact via the distiller, with the secrets floor (V2-060) encrypting sensitive
+   message) becomes a personal fact via the distiller, with the secrets floor (the vault) encrypting sensitive
    values. A widget does not decide what is biographical.
 4. **A domain store is queryable, structured, and its OWN file** (SQLite when it needs search/joins, the
    widget `state.json` when it is small UI-shaped state). It never rides inside `zaelar.db`'s memory tables —

@@ -37,7 +37,7 @@ nodes:
   - id: architecture.full
     parent: architecture
     title: "Arquitectura completa"
-    desc: "Modelo mental portable completo + auditorías."
+    desc: "Modelo mental portable completo."
     load: on-demand
     src: docs/architecture/zaelar-architecture.md
   - id: stack

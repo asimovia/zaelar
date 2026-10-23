@@ -1,6 +1,6 @@
 ---
 title: Glossary
-updated: 2026-10-22
+updated: 2026-10-23
 status: stable
 ---
 
@@ -16,10 +16,9 @@ status: stable
 - **homeostasis** (`nucleo/homeostasis.py`): deterministic, model-free machine-health layer beside the brain.
 - **SpeakerGate** (`frontend/app/lib/speaker-gate.js`): learns the owner's voice, filters other voices.
 - **Widget** (`widgets/<id>/` + desktop.js): isolated visual unit (manifest + widget.js + data.py), voice-driven via silent tags.
-- **EPIC-v2-colmena**: design source of truth in `.meshkore/roadmap/`.
 - **/debug**: diagnostics surface (AudioProbe RMS, mic meter, client logs via `/api/client-log`).
 - **Personal Operating System**: the public positioning (zaelar.com) — one voice agent + a canvas of apps (widgets).
 - **Apps**: where generated widgets are kept; «describe it and it writes the widget» (beta).
-- **MeshKore network**: our own agent network; Zaelar finds free live agents through the **Oracle** (`nucleo/mesh_agents.py`) and talks to peers over **clusters** (`connectors/meshkore/`).
+- **MeshKore network**: an open agent network Zaelar orchestrates; it finds external live agents (bookings, searches and many other services) through the **Oracle** (`nucleo/mesh_agents.py`) and talks to peers over **clusters** (`connectors/meshkore/`).
 - **Self-hosted / hosted**: the same engine run locally (`make run`, free, fair-code) or as the hosted version (see zaelar.com).
 - **PWA** (`frontend/mobile/`): the phone shell, installed from the browser; the voice lives on one device at a time.

@@ -15,28 +15,28 @@ Some decisions in a turn are genuinely hard for a small fast model and trivial f
 three cards open, which one is «close that» about?* Those are **bounded choices**: the options exist,
 they are declared, and what is needed is a pick among them — not prose, not a plan.
 
-Paying a reasoning round trip for a bounded choice is the waste this exists to remove. Paying an
-800 ms classifier round trip for something a local lookup answers in 3 ms is the waste it can
+Paying a reasoning round trip for a bounded choice is the waste this exists to remove. Paying a
+classifier round trip for something a local lookup answers in milliseconds is the waste it could
 CREATE, which is why placement is half of this document.
 
-## THE RULE OF PLACEMENT (V2-726, measured)
+## THE RULE OF PLACEMENT
 
 > **It serves what is decided AFTER the model. What is decided before it is not its business.**
 
-| Anchor, from the turn's admission | p50 |
-|---|---|
-| prompt assembled | 3 ms |
-| tool catalogue settled | 381 ms |
-| a verdict lands | 785 ms |
-| model's first token | 1 919 ms |
-| reply complete | 4 192 ms |
+Anchors of a turn, in the order they happen from the turn's admission:
 
-A brief fired when the turn is admitted reaches a POST-model reader with seconds to spare, and can
-never reach a PRE-model one without making the model wait. That is not a tuning parameter: it is the
-reason «put the classifier in front of the model» is the opposite design, not a smaller one.
+1. the prompt is assembled (a local step, milliseconds);
+2. the tool catalogue is settled;
+3. **a verdict lands**;
+4. the model's first token arrives;
+5. the reply is complete.
 
-**And the cost is the ROUND TRIP, not the questions**: 1 question 800 ms, 4 heterogeneous 708-826 ms,
-100 candidates 1 041 ms. Everything a turn needs therefore goes in ONE call.
+A brief fired when the turn is admitted reaches a POST-model reader with time to spare, and can never
+reach a PRE-model one without making the model wait. That is not a tuning parameter: it is the reason
+«put the classifier in front of the model» is the opposite design, not a smaller one.
+
+**And the cost is the ROUND TRIP, not the questions**: one question, several heterogeneous ones, or a
+hundred candidates cost about the same single trip. Everything a turn needs therefore goes in ONE call.
 
 ## The two shapes, and the one contract
 
@@ -69,22 +69,22 @@ on and five are ABSENCES it should route around:
 | `expired` | the deadline passed, queue time included |
 | `too_big` | more candidates or evidence than the bounds allow, refused before the wire |
 
-Before this contract, all of them were `[]`, and a shortlist nobody had looked at was being
-presented as one the chooser had narrowed.
+If all of them collapsed into `[]`, a shortlist nobody had looked at would be indistinguishable from
+one the chooser had narrowed.
 
 ## Who may call it, and from where
 
 | Caller | Door | Note |
 |---|---|---|
 | the voice turn | `turn_brief.ask_for_turn` at the ADMITTED sentence | one brief per turn; readers `peek` |
-| the cover phrase | the same brief (`request_type`) | it used to open a second socket for the same words |
+| the cover phrase | the same brief (`request_type`) | no second socket for the same words |
 | memory / task recall | `select_many_status` | narrows with a lexical index FIRST |
 | a Brain Worker | `worker_bridge decide @file.json` → `/api/worker/act` | ONE allowed action, behind the task token |
 | the probe / text channel | `choose_sync`, `classify_sync` | blocking, and has no event loop to freeze |
 
 A worker is a subprocess: it reaches the engine only through that endpoint, which already carries
 the authentication, the policy and the piggyback. The payload goes by FILE, like every other payload
-on that bridge — our own permission gate rejects an argument containing braces and quotes.
+on that bridge — the engine's own permission gate rejects an argument containing braces and quotes.
 
 ## The turn's brief
 
@@ -98,91 +98,78 @@ One call, fired at the admitted sentence, carrying every question read after the
 | `screen_action` | which declared action of which OPEN CARD, keyed by instance |
 | `catalog_widget` | (when nothing is open) which widget of the catalogue is NAMED |
 
-The last two are never asked together: with cards open, the ACTION is what disambiguates (0.94
-against 0.26 for «which widget» over descriptions). The widget falls out of the action.
+The last two are never asked together: with cards open, the ACTION is what disambiguates far more
+sharply than «which widget» over descriptions. The widget falls out of the action.
 
-**The criteria text is the product surface of these decisions.** Built from a widget's `desc` alone
-the targeting scored 6/9; from «Name» + aliases + the same desc, 8/9. The words a widget answers to
-are the widget's own declaration, not a table in the engine.
+**The criteria text is the product surface of these decisions.** Targeting built from «Name» + aliases
++ the widget's `desc` is clearly sharper than from the `desc` alone. The words a widget answers to are
+the widget's own declaration, not a table in the engine.
 
-⚠️ **And only the part of a declaration that ARRIVES can decide anything** (V2-753). `screen_action`
-truncates each action's `desc` at `turn_brief.MAX_DESC_CHARS`, and while that bound was 90 it cut
-`youtube:show_tab` mid-word — throwing away the clause V2-742 had written into the manifest so that
-«vuelve al catálogo» would be routable at all. Measured against the real API: `none` 0.77 at 90
-chars, `youtube:show_tab` **0.96** at 200, with `pause` 1.00, `next` 0.94 and `search` 0.99 unmoved
-and no latency change (47 candidates, 4.7 KB → 5.8 KB, ~850 ms both). **When an action is never
-chosen, read what the question actually said about it before blaming the model.**
+⚠️ **Only the part of a declaration that ARRIVES can decide anything.** `screen_action` truncates each
+action's `desc` at `turn_brief.MAX_DESC_CHARS` (200). A description written past that bound reaches the
+question beheaded, with nothing saying so — and the clause that gets cut is usually the one that made
+the action routable (for example the clause that lets «vuelve al catálogo» reach `youtube:show_tab`).
+Raising the bound does not end the class: a declaration has to FIT the channel that decides with it.
+A ratchet (node 2.74) keeps the number of over-length descriptions from growing. **When an action is
+never chosen, read what the question actually said about it before blaming the model.**
 
-⚠️ **Raising the bound did not end that class — writing past it is the same defect** (V2-755). The
-`youtube:show_tab` description written the day the bound moved to 200 is **485 characters**, so «al
-inicio del widget de vídeo» never arrived and the phrase came back `restart` 0.69 in the next live
-session; rewritten to 199 it measures `show_tab` **0.94**. Across this house **48 of 220** declared
-actions were over the bound, reaching the question beheaded with nothing saying so; 45 remain, as
-declared debt with a ratchet (node 2.74). A declaration has to FIT the channel that decides with it.
+⚠️ **Touching one description changes its NEIGHBOURS, so measure the neighbourhood.** Fattening the
+winner of one phrase can starve the action next to it: adding «para el vídeo de verdad» to `close` can
+stop «Vale, para el vídeo» from being a pause; adding «vuelve al inicio del vídeo» to `restart` can turn
+«inicio del widget de vídeo» into a rewind. The minimum measurement is every phrase belonging to the
+actions that share vocabulary, before and after — never only the phrase being chased. And a HOMOGRAPH
+is closed by NAMING it, not by listing more synonyms: «para» is also a preposition, so «Vale, para el
+vídeo.» can read as «OK, for the video.» — a description that says «here «para» is the verb, not the
+preposition» resolves it within the same 200 characters.
 
-⚠️ **Touching one description changes its NEIGHBOURS, so measure the neighbourhood** (V2-755). Three
-times running, fattening the winner of one phrase starved the action next to it, and the symptom
-surfaced two days later in another session: «PARA el vídeo de verdad» added to `close` made «Vale,
-para el vídeo» stop being a pause (`none` 0.65, said twice); «vuelve al inicio DEL VÍDEO» added to
-`restart` made «inicio del widget de vídeo» a rewind (0.99). The minimum measurement is every phrase
-belonging to the actions that share vocabulary, before and after — never only the phrase being chased.
-And a HOMOGRAPH is closed by NAMING it, not by listing more synonyms: «para» is also a preposition,
-so «Vale, para el vídeo.» reads as «OK, for the video.» — quoting his wordings scored `none` 0.47,
-adding «ahí «para» es el verbo, no la preposición» scored `pause` **0.98**, in the same 200 characters.
+⚠️ **An UNSURE answer has no opinion; an ABSENT one still fails closed.** The gate that lets the verdict
+complete an empty turn must not read «unsure» the same as «no answer»: otherwise a torn reader (say,
+`request_type` split between answer and comment) vetoes a near-certain one (`screen_action =
+youtube:pause` with high confidence), and an order like «Para el vídeo» goes unexecuted.
 
-⚠️ **An UNSURE answer has no opinion; an ABSENT one still fails closed** (V2-756). The gate that lets
-the verdict complete an empty turn used to require a confident `order`/`answer` on `request_type`, and
-read «unsure» the same as «no answer» — so a torn reader vetoed a near-certain one: «Para el vídeo»
-measured `screen_action = youtube:pause` **0.95** with `request_type` split between answer 0.49 and
-comment 0.39, nothing fired, and the operator said «He dicho que pares el vídeo. Que no me has oído.»
+So it is a REFUSAL list (`direct_action.NOT_AIMED_AT_THE_SCREEN`), and the reason is that the SCREEN
+question already answers `none` with high confidence for ambient remarks, so the two guards agree exactly
+where it matters:
 
-It is a REFUSAL list now (`direct_action.NOT_AIMED_AT_THE_SCREEN`), and the reason is measured: the
-SCREEN question already answers `none` at **0.87-0.99** for every ambient remark tested, so the two
-guards agree exactly where it matters and only the request-type one was ever wrong.
+    «¿el siguiente es de la NASA?»   question  · screen_action none
+    «ese vídeo es antiguo»           comment   · screen_action none
+    «hoy juega el Barça»             comment   · screen_action none
+    «Bórrame los tres últimos…»      order     · screen_action remove
 
-    «¿el siguiente es de la NASA?»   question 1.00  · screen_action none 0.95
-    «ese vídeo es antiguo»           comment  0.82  · screen_action none 0.96
-    «hoy juega el Barça»             comment  1.00  · screen_action none 0.87
-    «Bórrame los tres últimos…»      order    1.00  · screen_action remove 0.98
+⚠️ **A POLITE ORDER is shaped like a question, so `question` cannot be on that list.** «¿Puedes
+enseñarme el catálogo?» is `request_type = question` and `screen_action = youtube:show_tab`; in Spanish
+that IS how orders are given. Every GENUINE question answers `none` on the screen question, so a
+`question` entry could never save a turn — while `complete` only fires where the screen question is
+CONFIDENT about a concrete action, which is exactly where such an entry would do damage. A weaker reader
+must never veto a stronger one.
 
-⚠️ **A POLITE ORDER is shaped like a question, so `question` cannot be on that list** (V2-757). The
-refusal list above shipped with `question` in it, and it cost a real order twelve hours later:
-«¿Puedes enseñarme el catálogo?» measured `screen_action = youtube:show_tab` **0.85** and
-`request_type = question` 0.64, so nothing fired, the turn promised the move instead, and he said
-«Bueno, dices que vas a hacer eso, pero no lo haces.» In Spanish that IS how he gives orders.
-
-Measured over the same 50 candidates, and this is the shape of the whole list's justification: every
-GENUINE question answers `none`, so the entry could never save a turn — while `complete` only ever
-fires where the screen question is CONFIDENT about a concrete action, which is exactly where it did
-damage. A weaker reader vetoing a stronger one, one more time.
-
-    «¿Puedes, por favor, reproducir el vídeo número dos?»  play_result 0.56   ← an order
-    «¿Me pones el siguiente?»                              next        0.75   ← an order
-    «¿Puedes parar el vídeo?»                              pause       1.00   ← an order
-    «¿el siguiente es de la NASA?»                         none        0.94
-    «¿cuántos vídeos hay en la cola?»                      none        0.78
-    «¿de qué año es este documental?»                      none        0.94
-    «¿quién sale en el vídeo?»                             none        0.91
-    «¿tú crees que llegaron a la luna de verdad?»          none        0.90
+    «¿Puedes, por favor, reproducir el vídeo número dos?»  play_result   ← an order
+    «¿Me pones el siguiente?»                              next          ← an order
+    «¿Puedes parar el vídeo?»                              pause         ← an order
+    «¿el siguiente es de la NASA?»                         none
+    «¿cuántos vídeos hay en la cola?»                      none
+    «¿de qué año es este documental?»                      none
+    «¿quién sale en el vídeo?»                             none
+    «¿tú crees que llegaron a la luna de verdad?»          none
 
 **The standing test for any entry on that list**: name a turn it would SAVE that the screen question
 does not already answer `none`. If there is none, the entry can only ever be wrong.
 
-⚠️ **A text guard may compose with the verdict, never contradict it** (V2-757). `direct_action.
+⚠️ **A text guard may compose with the verdict, never contradict it.** `direct_action.
 a_fragment_moves_nothing` is the shape that is allowed: it refuses a turn that is ONLY A NUMBER
-(«sesenta y nueve.», the tail of a sentence the acoustic layer closed early, executed as
-`set_volume 69`) — but only when the verdict ANSWERED and named nothing, and only reusing
+(«sesenta y nueve.», the tail of a sentence the acoustic layer closed early, which would otherwise be
+executed as `set_volume 69`) — but only when the verdict ANSWERED and named nothing, and only reusing
 `escalation_guard.is_a_fragment` rather than a reader of its own. Absent, failed or disabled brief →
-it stands down entirely. Its narrowing to numbers is not fastidiousness: without it the guard reaches
+it stands down entirely. Its narrowing to numbers is deliberate: without it the guard would reach
 «páusalo» and «páralo», which `too_thin_to_commission` also calls fragments (its `_ALSO_A_VERB` hatch
-matches «para» and the enclitic is a different token), and those are his commonest orders.
+matches «para» and the enclitic is a different token), and those are among the commonest orders.
 
-⚠️ **Measure against the candidate set of the turn you are repairing** (V2-756). The screen question is
+⚠️ **Measure against the candidate set of the turn you are repairing.** The screen question is
 enumerated PER CALL from what was open and possible at that moment, so a set borrowed from another
-session is a different question. «Bórrame los tres últimos de la cola» measured `clear_list` 0.59
-against a set that had no `remove` in it (the queue was empty then, so `_possible_now` had dropped it)
-and `remove` **0.98** against the set of the turn that actually failed. The candidate list is in the
-`probabilities` of that turn's brief event — take it from there, never from a neighbouring session.
+session is a different question. «Bórrame los tres últimos de la cola» against a set without `remove`
+(an empty queue, so `_possible_now` dropped it) picks `clear_list`; against the set of the actual turn
+it picks `remove`. The candidate list is in the `probabilities` of that turn's brief event — take it
+from there, never from a neighbouring session.
 
 ## The rules that do not move
 
@@ -190,17 +177,17 @@ and `remove` **0.98** against the set of the turn that actually failed. The cand
 2. **Every answer is enumerated per call from DECLARED capabilities** — manifest actions of what is
    open, the escalate pair, the catalogue. Never free text, never a table of domain verbs of ours.
 3. **Nothing it says executes anything on its own.** A confident verdict maps onto a path that already
-   exists and is already gated (`action_mode_now`, `contract.guard`, the consent flow). Since V2-754 it
-   may COMPLETE a turn — fire a declared action of an open card through that same gate — but only where
-   the model left the turn empty or its own call could not resolve, and never over a valid call: the
-   verdict completes the model, it does not overrule it (`direct_action.complete`). Measured reason: in
-   one session each reader was right exactly where the other was wrong.
+   exists and is already gated (`action_mode_now`, `contract.guard`, the consent flow). It may COMPLETE
+   a turn — fire a declared action of an open card through that same gate — but only where the model
+   left the turn empty or its own call could not resolve, and never over a valid call: the verdict
+   completes the model, it does not overrule it (`direct_action.complete`). The two readers are right in
+   different places, so each fills the other's gaps.
 4. **Every call leaves one event, and every READ leaves one too** — with `call_id`, the turn, and
    whether the verdict was used or why it was not.
 5. **`ZAELAR_JEV=0`** — and a missing key, an open breaker, a slow or unsure call — is the engine
-   exactly as it was before any of this.
-6. **Nobody waits.** Readers `peek`, never `wait`. 56 of 87 real directed turns die to barge-in
-   before they finish, so a reader that blocked would be paying for turns that no longer exist.
+   exactly as it is without the decision model.
+6. **Nobody waits.** Readers `peek`, never `wait`. Many directed turns end in barge-in before they
+   finish, so a reader that blocked would be paying for turns that no longer exist.
 7. **No router in front of it and no reasoner deciding whether to ask it.** Methods are exposed from
    evidence and capabilities, the decision model ranks them, the existing gate validates the effect.
 
@@ -212,8 +199,8 @@ share a small semaphore; the voice brief does not take it, because making the ho
 a worker's sweep is the one way this module could make a turn slower. A worker's deadline is clamped
 by us: it has no latency budget of its own but it does have a Bash timeout.
 
-A circuit breaker opens after three consecutive failures for a minute — a provider outage used to
-cost a thread and a full timeout on every turn, forever, for a verdict that was never coming.
+A circuit breaker opens after three consecutive failures for a minute, so a provider outage costs
+nothing per turn instead of a thread and a full timeout for a verdict that is not coming.
 
 ## How it is tested
 
@@ -229,10 +216,10 @@ timeline, and archives the criteria wording it measured — two runs are compara
 the same question.
 
 **The metric that governs is wrong-and-confident, not accuracy.** A verdict below the gate is
-discarded and costs nothing; a WRONG verdict above it is acted on. «Ábreme el vídeo» once scored 0/8
-at 0.52-0.61, and a bench counting hits would have reported 89% and hidden exactly that.
+discarded and costs nothing; a WRONG verdict above it is acted on. A bench that only counts hits can
+report a high accuracy while hiding a phrase that is consistently missed at middling confidence.
 
-⚠️ **A test that builds the handle by hand proves the MAPPING, never the WIRING.** One integration
-shipped in an initiative marked done and never made a single call in its life: its tests all
-constructed the verdict themselves, and the one case that touched the real entry point asserted
-`is None` — which is what the bug returned. The same `None` meant «switched off» and «broken».
+⚠️ **A test that builds the handle by hand proves the MAPPING, never the WIRING.** If every test
+constructs the verdict itself, nothing proves the real entry point ever makes a call — and a `None` that
+means both «switched off» and «broken» lets a broken integration pass. The wiring class above
+(`calls == 1` through the real door) exists for exactly that reason.

@@ -1,459 +1,445 @@
 <!--
 Canonical workflow for SHIPPING A NEW WIDGET and/or A NEW CONNECTOR, end to end.
-Written 2026-09-02 from the V2-557 build (cloud files: Google Drive + OneDrive + the `archivos` explorer),
-which is the reference implementation every step here points at. Every trap listed in §11 was hit in that
-build — they are not hypothetical, and each one costs more than the step that prevents it.
+The cloud-files family (Google Drive + OneDrive + the `archivos` explorer) is the reference implementation
+every step here points at. Each trap listed in §11 costs more than the step that prevents it.
 -->
 
-# Nuevo widget / nuevo conector — el workflow completo
+# New widget / new connector — the complete workflow
 
-**Trigger:** *«añade un conector de X»*, *«haz un widget de Y»*, *«pasa el workflow de widget nuevo»*.
+**Trigger:** *"add a connector for X"*, *"build a widget for Y"*, *"run the new-widget workflow"*.
 
-Lo que sigue son TODAS las acciones, en orden, para que una pieza nueva quede construida, conectada,
-probada, documentada y en el contexto. La regla que lo gobierna: **una pieza que no está cableada en TODOS
-sus puntos no falla con ruido — sale VACÍA**, y una superficie vacía se diagnostica como otra cosa. Por eso
-la mitad de este documento es una lista de sitios que tocar, no de código que escribir.
+What follows is EVERY action, in order, for a new piece to end up built, wired, tested, documented and in
+context. The rule behind it: **a piece that is not wired at ALL of its points does not fail loudly — it comes
+out EMPTY**, and an empty surface gets diagnosed as something else. That is why half of this document is a list
+of places to touch, not code to write.
 
-## 0. ¿Qué workflow es este? (filtro de alcance)
+## 0. Which workflow is this? (scope filter)
 
-| Si vas a… | Sigue |
+| If you are going to… | Follow |
 |---|---|
-| **crear una pieza NUEVA** (widget, conector, o los dos) | **este documento** |
-| cambiar el SISTEMA de widgets (contrato de manifest, despacho, storage, gate) | `zaelar-widgets-workflow.md` |
-| añadir una superficie NATIVA (panel, pestaña del muro, overlay de sistema) | `zaelar-native-surface-workflow.md` |
-| cambiar un widget que ya existe, dentro de su carpeta | su `notes.md` y nada más |
-| cerrar cualquier tanda que cambie comportamiento | `.meshkore/docs/conventions/closure-protocol.md` |
+| **create a NEW piece** (widget, connector, or both) | **this document** |
+| change the widget SYSTEM (manifest contract, dispatch, storage, gate) | `zaelar-widgets-workflow.md` |
+| add a NATIVE surface (panel, wall tab, system overlay) | `zaelar-native-surface-workflow.md` |
+| change an existing widget, inside its own folder | its `notes.md` and nothing else |
+| close any batch that changes behaviour | `.meshkore/docs/conventions/closure-protocol.md` |
 
 ---
 
-## 1. Antes de escribir una línea — cuatro decisiones
+## 1. Before writing a line — four decisions
 
-Contéstalas por escrito en la iniciativa. Las cuatro tienen una respuesta por defecto, y la respuesta por
-defecto es casi siempre la correcta; lo caro es no haberlas hecho.
+Answer them in writing in the piece's design notes. All four have a default answer, and the default is almost
+always right; what is expensive is not having made them.
 
-**1.1 ¿Widget, conector, o los dos?** Un CONECTOR habla con el mundo exterior y no tiene pantalla. Un WIDGET
-es una superficie y no debería saber con quién habla. Si necesitas los dos, sepáralos desde el minuto uno con
-una **fachada agnóstica del proveedor** que devuelva UNA forma normalizada (`connectors/files/service.py` es
-el modelo). La prueba de que la frontera está bien puesta: *añadir un segundo proveedor toca el registro y un
-módulo cliente, y CERO líneas del widget*.
+**1.1 Widget, connector, or both?** A CONNECTOR talks to the outside world and has no screen. A WIDGET is a
+surface and should not know whom it talks to. If you need both, separate them from minute one with a
+**provider-agnostic facade** that returns ONE normalized shape (`connectors/files/service.py` is the model). The
+proof the boundary is in the right place: *adding a second provider touches the registry and one client module,
+and ZERO lines of the widget*.
 
-**1.2 ¿Hace falta una tool nueva del FlashBrain? Casi siempre NO.** El catálogo de tools viaja ENTERO en cada
-turno, incluido el que dice «hola», y tiene techo con test. **Las acciones declaradas de un widget SON sus
-skills** — el FlashBrain las ejecuta con la tool genérica `widget_data` que ya existe, y una entrada de
-catálogo cuesta UNA línea de prompt, no una plaza de tool (V2-526). Una tool nueva solo se justifica si la
-capacidad **no tiene widget** (`web_search`, `recall`). Si añades una, hay que recortar otra: el techo está
-en `tests/agent_headless/unit/flash/test_router.py`.
+**1.2 Does the FlashBrain need a new tool? Almost always NO.** The tool catalog travels WHOLE on every turn,
+including the one that says "hi", and it has a ceiling enforced by a test. **A widget's declared actions ARE its
+skills** — the FlashBrain runs them through the generic `widget_data` tool that already exists, and a catalog
+entry costs ONE line of prompt, not a tool slot. A new tool is only justified when the capability **has no
+widget** (`web_search`, `recall`). If you add one, you must trim another: the ceiling lives in
+`tests/agent_headless/unit/flash/test_router.py`.
 
-**1.3 ¿Corre en BACKGROUND?** (V2-034 obliga a decidirlo, no a omitirlo.) ¿Cambian sus datos solos, fuera de
-pantalla, de forma que el operador podría preguntar por voz sin abrir la tarjeta? Un buzón, un feed, el
-tiempo → **sí**: declara `"background": {"every": "…"}` y escribe `tick(ctx)`, volcando a memoria por `ctx`.
-Un explorador, un buscador, un gráfico → **no**, y escríbelo con su motivo (en `archivos`: sondear la nube de
-alguien gasta cuota de API para contestar una pregunta que nadie ha hecho).
+**1.3 Does it run in the BACKGROUND?** (This must be decided, not omitted.) Does its data change on its own, off
+screen, in a way the operator might ask about by voice without opening the card? A mailbox, a feed, the weather →
+**yes**: declare `"background": {"every": "…"}` and write `tick(ctx)`, flushing to memory through `ctx`. An
+explorer, a search box, a chart → **no**, and write down why (for `archivos`: polling someone's cloud spends API
+quota to answer a question nobody asked).
 
-**1.4 ¿PRODUCE algo?** (V2-092.) ¿Sigue haciendo algo cuando el operador deja de mirar — audio, vídeo,
-grabación, un proceso vivo? Si sí, declara `runtime{output, produce[], suspend, active_when}` o tu widget
-seguirá sonando con el agente PARADO. Si no, no declares nada: un medio *recibido* (una foto, un QR) es
-contenido pasivo, no producción.
+**1.4 Does it PRODUCE something?** Does it keep doing something when the operator stops looking — audio, video,
+recording, a live process? If so, declare `runtime{output, produce[], suspend, active_when}` or your widget will
+keep playing with the agent STOPPED. If not, declare nothing: *received* media (a photo, a QR code) is passive
+content, not production.
 
 ---
 
-## 2. El conector — los ficheros y su orden
+## 2. The connector — the files and their order
 
-Se construye **de abajo arriba**, y cada capa se prueba antes de escribir la de encima.
+Built **bottom up**, and each layer is tested before writing the one above it.
 
 ```
-connectors/<familia>/
-├─ providers.py    ①  el REGISTRO tipado: un entry por proveedor con endpoints, ámbitos y capacidades
+connectors/<family>/
+├─ providers.py    ①  the typed REGISTRY: one entry per provider with endpoints, scopes and capabilities
 ├─ oauth.py        ②  the flow (if it uses OAuth) — a thin module over connectors/oauth_base.py
-├─ <proveedor>.py  ③  un cliente por proveedor: habla HTTP, devuelve la FORMA NORMALIZADA, nada más
-├─ service.py      ④  la fachada AGNÓSTICA — lo único que ve el resto del sistema
-├─ server_api.py   ⑤  el plano de control (`/api/<algo>/*`): status · connect · callback · disconnect
+├─ <provider>.py   ③  one client per provider: speaks HTTP, returns the NORMALIZED SHAPE, nothing else
+├─ service.py      ④  the AGNOSTIC facade — the only thing the rest of the system sees
+├─ server_api.py   ⑤  the control plane (`/api/<something>/*`): status · connect · callback · disconnect
 └─ __init__.py
 ```
 
-- **① `providers.py`** — todo lo que distingue a un proveedor va aquí como DATO, nunca como `if` repartido.
-  Si un proveedor tiene tramos de permiso con consecuencias distintas, **eso es un campo**, no una constante
-  (en V2-557 el tramo decide si el árbol se puede listar siquiera). `public_list()` devuelve la vista
-  redactada para el frontend: etiquetas y notas, **jamás endpoints ni credenciales**.
-- **② `oauth.py` is CONFIGURATION over `connectors/oauth_base.py` (V2-778 F1-13).** The flow — PKCE, the pending
-  states and their expiry, the exchange, the refresh, the return address derived from the operator's origin —
-  lives ONCE in the base; six copies of it had drifted into five real defects (three connectors sending the
-  consent back to a hardcoded loopback, one taking a forged origin into the redirect URL, one never expiring a
-  consent). A new connector's `oauth.py` declares `STORE`, `ENV_PREFIX`, `CALLBACK_PATH`, `_DEFAULT_REDIRECT`,
+- **① `providers.py`** — everything that distinguishes one provider from another goes here as DATA, never as
+  scattered `if`s. If a provider has permission tiers with different consequences, **that is a field**, not a
+  constant (in the cloud-files family the tier decides whether the tree can be listed at all). `public_list()`
+  returns the redacted view for the frontend: labels and notes, **never endpoints or credentials**.
+- **② `oauth.py` is CONFIGURATION over `connectors/oauth_base.py`.** The flow — PKCE, the pending states and
+  their expiry, the exchange, the refresh, the return address derived from the operator's origin — lives ONCE in
+  the base, so that every connector gets the same correct behaviour (the consent always returns to the
+  operator's own origin, a forged origin never reaches the redirect URL, every pending consent expires). A new
+  connector's `oauth.py` declares `STORE`, `ENV_PREFIX`, `CALLBACK_PATH`, `_DEFAULT_REDIRECT`,
   `_GOOGLE_PROVIDERS` and `_pv`, and its public functions are one-line calls passing the module itself
   (`connectors/photos/oauth.py` is the smallest reference; `connectors/email/oauth.py` shows a connector whose
   providers and accounts are shaped differently — `_auth_spec`, `_oauth_capable`, accounts keyed by address).
   Each connector keeps its OWN store file, callback route and credential names: nothing is shared but code.
   The base reads everything through the connector's module at call time, so a connector overrides a piece by
   defining it. `tests/connectors/unit/test_every_account_connector_runs_the_same_oauth_flow.py` (node 5.62)
-  runs the same flow against every connector — add yours to its `CONNECTORS` list. Not built on it: Spotify
-  (`connectors/spotify/auth.py`, one account, one pending, no provider table — a different shape, kept apart).
-- **② `oauth.py`** — PKCE S256 desde `connectors/oauth_pkce.py`; tokens por `SecureJsonStore` (escritura
-  atómica + chmod 600) en `.meshkore/credentials/<x>.json`, **gitignoreado**. Guarda junto al token **qué
-  permiso se concedió**: el callback solo trae `code` y `state`, así que lo que elija el operador tiene que
-  viajar en el `state`. Un `refresh` que no devuelve `refresh_token` **conserva el anterior** o desconectas al
-  operador horas después.
-- **③ los clientes** — que devuelvan las MISMAS claves. Hay un test que lo exige; sin él la fachada es una
-  ilusión. Escapa lo que el operador escribe antes de meterlo en el lenguaje de consulta del proveedor.
-- **④ `service.py`** — **fail-safe siempre**: `{"ok": False, "error": "…"}`, nunca una excepción hacia
-  arriba. Un proveedor caído degrada a una tarjeta que lo dice; jamás se lleva por delante un turno de voz.
-  Y **distingue lo que no es un error**: si una respuesta legítima produce el mismo vacío que un fallo,
-  devuelve `ok` **con un `reason`** — ver §11-T1, que es el trap más caro de esta familia.
-- **⑤ `server_api.py`** — **comprueba que el prefijo está libre antes de elegirlo**
-  (`grep -rn '"/api/<algo>' server/ connectors/`). Dos routers en un prefijo los resuelve FastAPI por orden de
-  montaje, en silencio.
+  runs the same flow against every connector — add yours to its `CONNECTORS` list. Spotify
+  (`connectors/spotify/auth.py`: one account, one pending consent, no provider table) has a different shape and
+  is deliberately kept on its own flow.
+- **② `oauth.py`, storage** — PKCE S256 from `connectors/oauth_pkce.py`; tokens through `SecureJsonStore`
+  (atomic write + chmod 600) in `.meshkore/credentials/<x>.json`, **gitignored**. Store **which permission was
+  granted** next to the token: the callback only carries `code` and `state`, so whatever the operator chose has
+  to travel inside the `state`. A `refresh` that returns no `refresh_token` **keeps the previous one**, or the
+  operator gets disconnected hours later.
+- **③ the clients** — they return the SAME keys. A test enforces it; without it the facade is an illusion.
+  Escape whatever the operator types before putting it into the provider's query language.
+- **④ `service.py`** — **always fail-safe**: `{"ok": False, "error": "…"}`, never an exception upwards. A
+  provider that is down degrades to a card that says so; it never takes a voice turn down with it. And
+  **distinguish what is not an error**: if a legitimate answer produces the same emptiness as a failure, return
+  `ok` **with a `reason`** — see §11-T1, the most expensive trap in this family.
+- **⑤ `server_api.py`** — **check the prefix is free before choosing it**
+  (`grep -rn '"/api/<something>' server/ connectors/`). FastAPI resolves two routers on one prefix by mount
+  order, silently.
 
 ---
 
-## 3. El widget — los ficheros y su orden
+## 3. The widget — the files and their order
 
 ```
 widgets/<id>/
-├─ manifest.json   identidad, acciones declaradas, alias, tamaño
+├─ manifest.json   identity, declared actions, aliases, size
 ├─ data.py         view_data · apply_action · ref_index · prompt_digest
 ├─ widget.js       render(el, data, ctx)
-├─ notes.md        el registro de decisiones de ESTE widget (léelo antes de tocarlo, escríbelo después)
-├─ golden.json     lo graba el harness solo — bórralo si cambias la forma de view_data a propósito
-└─ __init__.py     vacío
+├─ notes.md        the decision log of THIS widget (read it before touching it, write it afterwards)
+├─ golden.json     recorded by the harness itself — delete it if you change the shape of view_data on purpose
+└─ __init__.py     empty
 ```
 
-- **`view_data(q)` es la ruta CALIENTE**: corre en cada render Y otra vez en cada push de SSE. Sirve la
-  CACHÉ. Nada de red ahí dentro. Toda llamada al mundo exterior vive en `apply_action`, que corre una vez por
-  intención del operador.
-- **`apply_action` is a TABLE (V2-778 F1-12).** One `_a_<name>(action, p)` function per action, a
-  module-level `ACTIONS = {"name": fn}` literal in `data.py`, and `apply_action` is the lookup — the gate reads
-  the table's keys, and anything it cannot read fail-opens. The full rule and the reference are in
-  `widgets/AGENTS.md` (`widgets/musica/` is the worked example).
-- **`apply_action` DEVUELVE lo que encuentra.** Una acción que solo repinta deja al turno sin nada que decir:
-  «¿tengo un contrato de Axa?» es una PREGUNTA (V2-541). Devuelve `matches` y el turno puede nombrarlos.
-- **Un error de acción ENSEÑA la forma del reintento** — qué campo falta, qué acciones existen — y nombra la
-  salida. Un «no» que no dice cómo salir se diagnostica como una avería (V2-473, V2-463).
-- **`ref_index()`** si alguna acción apunta a un item por id: el modelo NUNCA inventa ids (V2-026). Da un
-  `field` DISTINTO por clase de item, o «abre el presupuesto» entrará en la carpeta que se llama como el
-  fichero.
-- **`prompt_digest()`** si con la tarjeta abierta tiene sentido contestar sobre su contenido sin ida y vuelta.
-  Acótalo y **di que está acotado** («y 12 más»): un listado truncado que no lo dice se lee como el total.
+- **`view_data(q)` is the HOT path**: it runs on every render AND again on every SSE push. It serves the
+  CACHE. No network in there. Every call to the outside world lives in `apply_action`, which runs once per
+  operator intent.
+- **`apply_action` is a TABLE.** One `_a_<name>(action, p)` function per action, a module-level
+  `ACTIONS = {"name": fn}` literal in `data.py`, and `apply_action` is the lookup — the gate reads the table's
+  keys, and anything it cannot read fail-opens. The full rule and the reference are in `widgets/AGENTS.md`
+  (`widgets/musica/` is the worked example).
+- **`apply_action` RETURNS what it finds.** An action that only repaints leaves the turn with nothing to say:
+  "do I have a contract with Axa?" is a QUESTION. Return `matches` and the turn can name them.
+- **An action error TEACHES the shape of the retry** — which field is missing, which actions exist — and names
+  the way out. A "no" that does not say how to get out reads as a breakdown.
+- **`ref_index()`** if any action points at an item by id: the model NEVER invents ids. Give a DIFFERENT `field`
+  per item class, or "open the budget" will walk into the folder named like the file.
+- **`prompt_digest()`** if, with the card open, it makes sense to answer about its content without a round trip.
+  Bound it and **say it is bounded** ("and 12 more"): a truncated listing that does not say so reads as the total.
 
 ---
 
-## 4. El cableado — la lista de sitios que fallan VACÍOS
+## 4. The wiring — the list of places that fail EMPTY
 
-**Esta es la sección que más tiempo ahorra.** Ninguno de estos puntos da error si se olvida; todos producen
-una superficie vacía o una capacidad invisible.
+**This is the section that saves the most time.** None of these points raises an error when forgotten; all of
+them produce an empty surface or an invisible capability.
 
-| # | Toca | Si lo olvidas |
+| # | Touch | If you forget it |
 |---|---|---|
-| 1 | `connectors/registry.py` → añade `_<familia>()` **y mételo en `descriptors()`** | el conector no existe para el ⚙ ni para nadie |
-| 2 | `server/__init__.py` → import + **la lista `routers`** | el plano de control contesta 404 y parece un bug de red |
-| 3 | `widgets/registry.py::_BUILTINS` | el widget se marca «tuyo» en vez de «de serie» |
-| 4 | `ConfigPanel.js` → tarjeta del conector **y la lista `fams`** | las tarjetas existen y NADIE las renderiza |
-| 5 | `frontend/app/services/api.js` | el botón del panel no tiene a quién llamar |
-| 6 | `i18n/genesis/en/ui.json` **y** `es.json` | `t()` devuelve la CLAVE, que es truthy: sale `config.cx.fam_files` en pantalla |
-| 7 | `widgets/validator.py::_STDLIB_EXEMPT` si `data.py` importa un conector | `make test-widgets` en rojo para todo el mundo |
-| 8 | `tests/run_testmap.py` | los tests existen y **no los corre nadie** |
-| 9 | `connectors/catalog/<id>.json` con `state: "built"` | el conector no aparece en la búsqueda por capacidad, y si estaba `planned` sigue ofreciéndose como pendiente |
-| 10 | `ChatWall.js::CONN_FAMILY_ORDER` si la FAMILIA es nueva | la familia cae en el cajón «alfabético al final» y el conector se pinta debajo de Infraestructura |
-| 11 | `chat.connFamily.<fam>` en `en.json` **y** `es.json` | `t()` devuelve la CLAVE: sale `chat.connFamily.agenda` como título de sección |
-| 12 | `nucleo/flash/connector_briefs.py` | el cerebro tiene el VERBO y no el ESTADO — y narra (V2-603) |
-| 13 | `.meshkore/credentials/README.md` | nadie sabe qué variable rellenar, ni dónde va el fichero de credenciales |
-| 14 | `.meshkore/docs/modules/zaelar-connectors-inventory.md` | la lista deja de contar la verdad el mismo día |
-| 15 | **`widgets.<id>.name` en `en.json` Y `es.json`** | la tarjeta se titula con el `manifest.json`, o sea en el idioma en que la escribiste, para todo el mundo |
-| 16 | **`tt("clave", params, "<el literal>")` en CADA cadena visible del `widget.js`**, con su fila en los dos bundles | una sesión en inglés lee tus botones en castellano — y el gate (nodo 4.11) te lo tumba |
+| 1 | `connectors/registry.py` → add `_<family>()` **and put it in `descriptors()`** | the connector does not exist for ⚙ or for anyone |
+| 2 | `server/__init__.py` → import + **the `routers` list** | the control plane answers 404 and it looks like a network bug |
+| 3 | `widgets/registry.py::_BUILTINS` | the widget is marked "yours" instead of "built-in" |
+| 4 | `ConfigPanel.js` → the connector card **and the `fams` list** | the cards exist and NOBODY renders them |
+| 5 | `frontend/app/services/api.js` | the panel's button has nobody to call |
+| 6 | `i18n/genesis/en/ui.json` **and** `es.json` | `t()` returns the KEY, which is truthy: `config.cx.fam_files` shows up on screen |
+| 7 | `widgets/validator.py::_STDLIB_EXEMPT` if `data.py` imports a connector | `make test-widgets` red for everybody |
+| 8 | `tests/run_testmap.py` | the tests exist and **nobody runs them** |
+| 9 | `connectors/catalog/<id>.json` with `state: "built"` | the connector does not show up in capability search, and if it was `planned` it keeps being offered as pending |
+| 10 | `ChatWall.js::CONN_FAMILY_ORDER` if the FAMILY is new | the family falls into the "alphabetical at the end" drawer and the connector is painted under Infrastructure |
+| 11 | `chat.connFamily.<fam>` in `en.json` **and** `es.json` | `t()` returns the KEY: `chat.connFamily.agenda` appears as a section title |
+| 12 | `nucleo/flash/connector_briefs.py` | the brain has the VERB but not the STATE — and narrates instead of acting |
+| 13 | `.meshkore/credentials/README.md` | nobody knows which variable to fill in, or where the credentials file goes |
+| 14 | `.meshkore/docs/modules/zaelar-connectors-inventory.md` | the list stops telling the truth the same day |
+| 15 | **`widgets.<id>.name` in `en.json` AND `es.json`** | the card is titled from `manifest.json`, i.e. in whatever language you wrote it, for everyone |
+| 16 | **`tt("key", params, "<the literal>")` on EVERY visible string in `widget.js`**, with its row in both bundles | a session in English reads your buttons in Spanish — and the gate (node 4.11) rejects it |
 
-> Los puntos 9-14 salieron del alta de Google (V2-686) **midiendo lo que había quedado suelto**, y hay
-> trinquete: `tests/connectors/unit/catalog/test_a_built_connector_is_never_on_the_wishlist.py` (nodo 5.7)
-> comprueba 9, 10 y 11 contra el registro vivo, más «ningún `built` sin fila viva» y «ningún id duplicado».
+> Points 9-14 have a ratchet: `tests/connectors/unit/catalog/test_a_built_connector_is_never_on_the_wishlist.py`
+> (node 5.7) checks 9, 10 and 11 against the live registry, plus "no `built` without a live row" and "no
+> duplicate id".
 >
-> Los **15-16 salieron de V2-694**, midiendo una sesión que el operador había iniciado en inglés y que leía
-> quince títulos en castellano. También tienen trinquete, y este SÍ falla el build:
-> `tests/browser/unit/i18n/test_widget_keys.py` (nodo 4.11) rechaza una clave ausente de cualquiera de los dos
-> bundles, un literal acentuado sin envolver, y —sin depender del idioma— **cualquier** literal asignado a
+> Points 15-16 also have a ratchet, and this one DOES fail the build:
+> `tests/browser/unit/i18n/test_widget_keys.py` (node 4.11) rejects a key missing from either bundle, an
+> unwrapped accented literal, and — independently of language — **any** literal assigned to
 > `textContent`/`title`/`placeholder`/`alt`/`ariaLabel`.
-> ⚠️ El trap que no se ve leyendo: **una TABLA de etiquetas a nivel de módulo** (`const ESTADO = {ok:"Hecho"}`)
-> se construye en el IMPORT, antes de que exista ningún `ctx`, así que congela el idioma para siempre. Hazla
-> función y resuélvela en cada pintado.
+> ⚠️ The trap you cannot see by reading: **a module-level TABLE of labels** (`const STATUS = {ok:"Done"}`) is
+> built at IMPORT time, before any `ctx` exists, so it freezes the language forever. Make it a function and
+> resolve it on every paint.
 
-**Regla de oro del cableado:** cada vez que una capa LEE un campo, comprueba que la capa que lo escribe lo
-manda. En V2-557 esto falló **tres veces seguidas** con la misma forma — el panel del widget leía `tiers`, la
-tarjeta del ⚙ leía `tiers`, y el registro no los mandaba. La comprobación es de diez segundos:
-`grep -n "<campo>"` en el productor y en el consumidor.
-
----
-
-## 5. Las skills del FlashBrain — cómo se declara la capacidad
-
-Todo esto vive en `manifest.json`, y todo esto es lo que el modelo ve.
-
-- **`actions`**: una entrada por acción, **ni una más ni una menos** que las que maneja `apply_action`. El
-  gate de validación RECHAZA cualquiera de los dos descuadres. Una acción no declarada es INVISIBLE aunque
-  funcione; una declarada que nadie maneja es una entrada muerta.
-- **`"view": true`** en toda acción que solo cambia lo que se ve. Es lo que permite que «ábreme el Drive»
-  *liste* en vez de limitarse a levantar la tarjeta (V2-545). ⚠️ **La primera pregunta al marcarlas no es
-  cuáles son lentes, sino CUÁL CONTESTA LA FRASE PARA LA QUE EXISTE EL WIDGET** — esa es justo la que una
-  pasada opt-in se salta, y saltársela deja la tarjeta abierta y vacía (V2-547).
-- **`"confirm": true`** solo si es irreversible de verdad (pagar, enviar, publicar, borrar). Lo reversible va
-  desnudo.
-- **`usage`**: cómo conducir el widget — qué acción para qué intención. Va al prompt; que sea corto.
-- **`whenToUse`**: la línea de ENRUTADO. **Tiene presupuesto: 300 caracteres** (`widgets/brief._PURPOSE_CAP`),
-  y lo que se corta es el final, que es donde está la cláusula FRONTERA. Escríbela para CABER y compruébalo
-  con un test contra `brief._purpose`, no a ojo (V2-547).
-- **`keywords` / `aliases`**: precisos y no solapados. El harness avisa de colisiones; la validación rechaza
-  un manifest cuyas keywords sean TODAS de otros.
-
-⚠️ **EL CONECTOR TIENE DOS MITADES Y LA SEGUNDA SE OLVIDA SIEMPRE: las ACCIONES y las PALABRAS que llevan a
-ellas.** Un conector nuevo añade `connect`/`disconnect` a un widget y casi nunca toca su `whenToUse` — que es
-la línea de ENRUTADO, la que el modelo lee para elegir widget. Medido en vivo el 2026-09-14 (V2-686): «open
-the google connector» abrió **MENSAJERÍA**, porque de los quince widgets del prompt el único cuya línea
-hablaba de conectar era el suyo («…o conectar un canal»), mientras el de la agenda —que es quien tiene el
-conector de Google Calendar— no decía ni «conectar», ni «Google», ni «calendario». El modelo enrutó con lo
-que había.
-
-La regla, entonces:
-
-1. La línea de rumbo **NOMBRA el servicio y el verbo de enlazar**, y cuando otro widget ya reclama palabras
-   parecidas, **dice la frontera** («es la agenda, no mensajería, quien tiene el conector de X»).
-2. Y tiene que **CABER**: el presupuesto son 300 caracteres y lo que se corta es el final, que es justo
-   donde acaba de ponerse la frontera. Se comprueba contra `brief._purpose`, no a ojo (trap T4).
-3. Las `keywords` crecen **en los DOS idiomas** — «conectar calendario» Y «connect calendar». Las dos vueltas
-   perdidas del 14-sep fueron en INGLÉS contra un widget cuyas veintiuna palabras eran castellanas salvo dos.
-   Y se AÑADEN: una palabra inglesa nunca sustituye a su equivalente castellana.
-- **`worker_guide`** si un Brain Worker debe entregar aquí: dile los DOS pasos (escribe el JSON a un fichero
-  relativo con Write, después `python -m nucleo.widget_cli data <id> <acción> @fichero`). Pegar JSON en la
-  línea de comandos lo bloquean las comillas y el guarda del shell.
+**Golden rule of wiring:** every time a layer READS a field, check that the layer that writes it sends it. The
+classic shape: the widget's panel reads `tiers`, the ⚙ card reads `tiers`, and the registry does not send them.
+The check takes ten seconds: `grep -n "<field>"` in the producer and in the consumer.
 
 ---
 
-## 6. Las fronteras que no se cruzan
+## 5. The FlashBrain's skills — how the capability is declared
 
-1. **La voz transporta INTENCIÓN, nunca una credencial** (V2-520). Ningún `payload` de acción lleva
-   `client_secret`, `token` ni `password`. El registro de la app se hace UNA vez en ⚙ → Conectores. Ponlo bajo
-   test: la voz llega exactamente a esos payloads.
-2. **`widget.js` no toca la red.** Ni `fetch`, ni WebSocket, ni `import()` dinámico. Si hace falta arrancar
-   algo exterior (un consentimiento OAuth), lo hace una **acción declarada** que devuelve la URL y el card la
-   abre. Abre la ventana SÍNCRONAMENTE en el clic y rellena su `location` después, o el navegador la bloquea.
-3. **Todo texto de fuera es UNTRUSTED**: `textContent` y `createElement`, nunca `innerHTML`. Un fichero
-   llamado `<img onerror=…>` es un nombre legal en todos los proveedores.
-4. **Los widgets no se hablan entre sí.** Devuelve los datos y que decida el CEREBRO. Nada de importar otro
-   widget desde el tuyo.
-5. **`data.py` es stdlib.** Si tu widget ES un conector y no hay equivalente de stdlib, entra en la lista
-   curada `_STDLIB_EXEMPT` **con su motivo escrito**, y deja el import DIFERIDO dentro de las funciones para
-   que el import del módulo —y por tanto el catálogo, y por tanto cada prompt— no pague `httpx`.
-6. **Cada widget escribe solo en `widgets/_data/<su-id>/`.** Nunca fuera.
-7. **Frontera público/privado**: `engine/` es PÚBLICO. Aquí se describe el MECANISMO; deployment-specific
-   policy is out of scope for this repo.
+All of this lives in `manifest.json`, and all of this is what the model sees.
+
+- **`actions`**: one entry per action, **not one more and not one fewer** than `apply_action` handles. The
+  validation gate REJECTS either mismatch. An undeclared action is INVISIBLE even if it works; a declared one
+  that nobody handles is a dead entry.
+- **`"view": true`** on every action that only changes what is seen. It is what lets "open my Drive" *list*
+  instead of just raising the card. ⚠️ **When marking them, the first question is not which ones are lenses but
+  WHICH ONE ANSWERS THE SENTENCE THE WIDGET EXISTS FOR** — that is exactly the one an opt-in pass skips, and
+  skipping it leaves the card open and empty.
+- **`"confirm": true`** only if truly irreversible (pay, send, publish, delete). Reversible actions go bare.
+- **`usage`**: how to drive the widget — which action for which intent. It goes into the prompt; keep it short.
+- **`whenToUse`**: the ROUTING line. **It has a budget: 300 characters** (`widgets/brief._PURPOSE_CAP`), and
+  what gets cut is the end, which is where the BOUNDARY clause sits. Write it to FIT and check it with a test
+  against `brief._purpose`, not by eye.
+- **`keywords` / `aliases`**: precise and non-overlapping. The harness warns about collisions; validation
+  rejects a manifest whose keywords ALL belong to other widgets.
+
+⚠️ **A CONNECTOR HAS TWO HALVES, AND THE SECOND ONE IS THE EASY ONE TO FORGET: the ACTIONS and the WORDS that
+lead to them.** A new connector adds `connect`/`disconnect` to a widget and rarely touches its `whenToUse` —
+which is the ROUTING line, the one the model reads to choose a widget. If, among all the widgets in the prompt,
+the only one whose line talks about connecting is a different one (say, messaging: "…or connect a channel"),
+then "open the google connector" routes there, even though the calendar widget is the one that owns the Google
+Calendar connector. The model routes with what it has.
+
+The rule, then:
+
+1. The routing line **NAMES the service and the linking verb**, and when another widget already claims similar
+   words, **it states the boundary** ("it is the calendar, not messaging, that owns the X connector").
+2. And it has to **FIT**: the budget is 300 characters and what gets cut is the end, which is exactly where the
+   boundary was just written. Check it against `brief._purpose`, not by eye (trap T4).
+3. `keywords` grow **in BOTH languages** — «conectar calendario» AND "connect calendar". Routing in one language
+   against a widget whose words are all in the other one fails. And they are ADDED: an English word never
+   replaces its Spanish equivalent.
+- **`worker_guide`** if a Brain Worker is meant to deliver here: tell it the TWO steps (write the JSON to a
+  relative file with Write, then `python -m nucleo.widget_cli data <id> <action> @file`). Pasting JSON on the
+  command line is blocked by the quotes and by the shell guard.
 
 ---
 
-## 7. Los tests — el set completo
+## 6. The boundaries you do not cross
 
-Son **cuatro clases** y la cuarta es la que casi siempre falta.
+1. **Voice carries INTENT, never a credential.** No action `payload` carries `client_secret`, `token` or
+   `password`. Registering the app is done ONCE in ⚙ → Connectors. Put it under test: voice reaches exactly those
+   payloads.
+2. **`widget.js` does not touch the network.** No `fetch`, no WebSocket, no dynamic `import()`. If something
+   external has to be started (an OAuth consent), a **declared action** does it and returns the URL, and the card
+   opens it. Open the window SYNCHRONOUSLY in the click and fill its `location` afterwards, or the browser blocks it.
+3. **All external text is UNTRUSTED**: `textContent` and `createElement`, never `innerHTML`. A file called
+   `<img onerror=…>` is a legal name on every provider.
+4. **Widgets do not talk to each other.** Return the data and let the BRAIN decide. Never import another widget
+   from yours.
+5. **`data.py` is stdlib.** If your widget IS a connector and there is no stdlib equivalent, it goes into the
+   curated `_STDLIB_EXEMPT` list **with its reason written down**, and keeps the import DEFERRED inside the
+   functions so that importing the module — and therefore the catalog, and therefore every prompt — does not pay
+   for `httpx`.
+6. **Each widget writes only under `widgets/_data/<its-id>/`.** Never outside.
+7. **Public/private boundary**: `engine/` is PUBLIC. Describe the MECHANISM here; deployment-specific policy is
+   out of scope for this repo.
 
-| clase | dónde | qué prueba |
+---
+
+## 7. The tests — the complete set
+
+There are **four classes**, and the fourth is the one most often missing.
+
+| class | where | what it proves |
 |---|---|---|
-| **conector** | `tests/connectors/unit/<familia>/` | el RAZONAMIENTO alrededor del HTTP: los estados que se parecen, los fallos de proveedor, la normalización |
-| **contrato del widget** | `tests/browser/unit/<id>/` | declarado==manejado · `view` · sin credenciales en payloads · `whenToUse` cabe · `view_data` no toca la red |
-| **renderizado** | `tests/browser/e2e/widgets/test_<id>_render.py` | lo que ninguna lectura del fuente puede dar (ver abajo) |
-| **VIVO** | el mismo directorio, nodo `live: True` | la ida y vuelta real contra la cuenta del operador |
+| **connector** | `tests/connectors/unit/<family>/` | the REASONING around the HTTP: states that look alike, provider failures, normalization |
+| **widget contract** | `tests/browser/unit/<id>/` | declared==handled · `view` · no credentials in payloads · `whenToUse` fits · `view_data` does not touch the network |
+| **rendering** | `tests/browser/e2e/widgets/test_<id>_render.py` | what no reading of the source can give you (see below) |
+| **LIVE** | the same directory, node `live: True` | the real round trip against the operator's account |
 
-**El renderizado no es decoración.** `t()` devuelve la CLAVE cuando falta una traducción y la clave es
-truthy; un handle de DOM escrito como `cond ? a : b` deja un canvas desconectado sin ningún error; un aviso
-puede existir en el DOM con altura CERO. Nada de eso lo ve un test de fuente. Y si tu widget pinta texto de
-fuera, **renderiza un nombre hostil y afirma que no nació ningún elemento**.
+**Rendering is not decoration.** `t()` returns the KEY when a translation is missing, and the key is truthy; a
+DOM handle written as `cond ? a : b` leaves a detached canvas with no error at all; a notice can exist in the DOM
+with ZERO height. No source test sees any of that. And if your widget paints external text, **render a hostile
+name and assert that no element was born**.
 
-**El test VIVO** — cuando la pieza necesita una cuenta real:
-- Va en un nodo **`"live": True`**, que `deterministic_paths()` excluye: no corre en CI y no se pone rojo en
-  una máquina sin cuenta.
-- **SALTA con los pasos exactos para habilitarlo.** *Pendiente* es un estado legítimo; lo que no vale es pasar
-  en vacío y confundirse con cobertura.
-- **Nunca afirma ni imprime contenido del operador.** Este repo es público y sus informes ya filtraron datos
-  personales una vez. Se afirma FORMA e INVARIANTES, jamás lo que la persona tiene.
-- Aunque no se pueda ejecutar, **el circuito se construye entero**: el día que haya credencial no hay que
-  escribir nada.
+**The LIVE test** — when the piece needs a real account:
+- It goes in a **`"live": True`** node, which `deterministic_paths()` excludes: it does not run in CI and does not
+  turn red on a machine without an account.
+- **It SKIPS with the exact steps to enable it.** *Pending* is a legitimate state; passing on empty and being
+  mistaken for coverage is not.
+- **It never asserts or prints the operator's content.** This repo is public. Assert SHAPE and INVARIANTS, never
+  what the person has.
+- Even if it cannot be executed, **the circuit is built in full**: the day a credential exists, nothing has to be
+  written.
 
-**Los desarmes son obligatorios.** Por cada decisión, rompe el código y comprueba que el test se pone ROJO —
-y **AFIRMA que la mutación se aplicó** antes de medir: un desarme verde es una mutación mal hecha hasta que
-se demuestre lo contrario. Cuenta cuántos tests corrieron; en zsh un parámetro sin comillas no se parte en
-palabras y `pytest $T` con dos rutas dentro corre *«no tests ran»* mientras parece verde.
+**Disarms are mandatory.** For every decision, break the code and check the test turns RED — and **ASSERT that
+the mutation was applied** before measuring: a green disarm is a badly applied mutation until proven otherwise.
+Count how many tests ran; in zsh an unquoted parameter is not word-split, and `pytest $T` with two paths inside
+runs *"no tests ran"* while looking green.
 
-**Registra los ficheros en `tests/run_testmap.py`.** Un fichero nuevo necesita su línea **aunque el directorio
-ya esté cubierto**: el mapa lista rutas explícitas, no hace glob. Comprueba después:
+**Register the files in `tests/run_testmap.py`.** A new file needs its line **even if the directory is already
+covered**: the map lists explicit paths, it does not glob. Check afterwards:
 
 ```bash
 ./.venv/bin/python -c "from tests.platform import catalog; p=set(catalog.deterministic_paths('all')); \
-  print('unit', '<ruta unit>' in p); print('live excluido', '<ruta live>' not in p)"
+  print('unit', '<unit path>' in p); print('live excluded', '<live path>' not in p)"
 ```
 
 ---
 
-## 7-bis. El ÚLTIMO METRO — el operador tiene que poder CONECTARLO
+## 7-bis. The LAST MILE — the operator has to be able to CONNECT it
 
-Un conector construido, cableado y verde sigue sin servir de nada hasta que el operador da su
-consentimiento. Esa parte no la puede hacer el agente, y el diseño tiene que decirlo en vez de fingir lo
-contrario.
+A connector that is built, wired and green is still useless until the operator gives consent. The agent cannot
+do that part, and the design has to say so instead of pretending otherwise.
 
-- **El consentimiento es SIEMPRE un CLIC suyo.** `window.open()` solo sobrevive dentro del gesto que lo
-  abre; una ventana abierta después de un `await` la bloquea cada navegador **en silencio**. Por eso la
-  tarjeta abre el popup SÍNCRONAMENTE en el clic y le rellena el `location` después.
-- **Por voz, la acción hace la mitad que puede: deja la tarjeta EN el paso que tiene el botón.** No sirve
-  devolver la URL: `nucleo/flash/widget_data_turn.py` se queda con `{widget, act}` y **tira el resultado de
-  la acción**, así que nada de lo que devuelvas llega al modelo ni al operador. El empujón viaja por
-  `view_data()` con la forma de token que ya usa la vista empujada — un CONTADOR (pedirlo dos veces aterriza
-  dos veces) y un `at` que CADUCA (un repintado de mañana no le abre una pantalla de setup encima).
-- **La pantalla se mueve también cuando el conector SE NIEGA.** Si el empujón dependiera de que la URL salga
-  bien, el caso que más necesita pantalla —no hay app OAuth registrada— sería justo el que no la tiene.
-- **La frase la declara el MANIFIESTO, no el resultado.** Como el resultado se descarta, la única forma de
-  que la boca sepa qué decir es el `desc` de la acción, que sí viaja en el prompt: llámala, dile que pulse
-  el botón, y **nunca dictes la URL**.
-- **Un cliente OAuth «web» exige los URI de retorno dados de alta ANTES**, o Google contesta `invalid_client`
-  al FINAL de un flujo que parece sano. Imprime la lista exacta y ponla en el README de credenciales.
+- **Consent is ALWAYS a CLICK of theirs.** `window.open()` only survives inside the gesture that opens it; a
+  window opened after an `await` is blocked by every browser **silently**. That is why the card opens the popup
+  SYNCHRONOUSLY in the click and fills its `location` afterwards.
+- **By voice, the action does the half it can: it leaves the card ON the step with the button.** Returning the
+  URL does not help: `nucleo/flash/widget_data_turn.py` keeps `{widget, act}` and **drops the action's result**,
+  so nothing you return reaches the model or the operator. The nudge travels through `view_data()` with the token
+  shape the pushed view already uses — a COUNTER (asking twice lands twice) and an `at` that EXPIRES (tomorrow's
+  repaint does not open a setup screen on top of them).
+- **The screen moves even when the connector REFUSES.** If the nudge depended on the URL coming out right, the
+  case that most needs a screen — no OAuth app registered — would be exactly the one without it.
+- **The sentence is declared by the MANIFEST, not by the result.** Since the result is dropped, the only way the
+  voice knows what to say is the action's `desc`, which does travel in the prompt: call it, tell them to press the
+  button, and **never dictate the URL**.
+- **A "web" OAuth client requires the return URIs registered BEFOREHAND**, or Google answers `invalid_client` at
+  the END of a flow that looks healthy. Print the exact list and put it in the credentials README.
 
-## 7-ter. Declararlo HECHO — los cinco sitios donde un conector deja de estar pendiente
+## 7-ter. Declaring it DONE — the five places where a connector stops being pending
 
-Esto es lo que se salta cuando la parte técnica ya funciona y parece que se ha terminado.
+This is what gets skipped once the technical part works and it feels finished.
 
-1. **`connectors/catalog/<id>.json` → `state: "built"`.** Si estaba `planned`, esto es lo que **lo quita de
-   los conectores pendientes**: el muro de chat pinta la wishlist (`planned` + `not-possible`) con un botón
-   «Lo quiero», así que un conector ya vivo que siga en `planned` le ofrece al operador algo que ya tiene.
-   ⚠️ Pasó: `youtube.json` estuvo `planned` ocho días después de que desapareciera su única razón para
-   estarlo. **Si un manifiesto aparca algo tras una CONDICIÓN, la condición va escrita en su `notes`, y
-   levantarla es el último paso de lo que la cumpla.**
-2. **El id del manifiesto = el id de su fila viva.** `catalog.search()` rankea «conectado» comparando ids
-   contra el registro; con un id distinto —aunque más bonito— el buscador nunca sabrá que está enlazado.
-3. **La fila del registro y su familia**, con la familia cableada en los puntos 10 y 11 de §4.
-4. **La lista**: una fila en `.meshkore/docs/modules/zaelar-connectors-inventory.md`, con su widget y su doc.
-5. **El cerebro**: su estado en `connector_briefs.py`, y —si estrena una capacidad que el modelo no ha visto
-   nunca— **la frase que NOMBRA su mecanismo**. Una capacidad nombrada sin su mecanismo se improvisa: el
-   modelo inventa una tool que no existe (V2-540, V2-603, V2-685).
+1. **`connectors/catalog/<id>.json` → `state: "built"`.** If it was `planned`, this is what **removes it from the
+   pending connectors**: the chat wall paints the wishlist (`planned` + `not-possible`) with an "I want it"
+   button, so a live connector still marked `planned` offers the operator something they already have. **If a
+   manifest parks something behind a CONDITION, the condition is written in its `notes`, and lifting it is the
+   last step of whatever fulfils it.**
+2. **Manifest id = the id of its live row.** `catalog.search()` ranks "connected" by comparing ids against the
+   registry; with a different id — even a nicer one — search will never know it is linked.
+3. **The registry row and its family**, with the family wired at points 10 and 11 of §4.
+4. **The list**: a row in `.meshkore/docs/modules/zaelar-connectors-inventory.md`, with its widget and its doc.
+5. **The brain**: its state in `connector_briefs.py`, and — if it introduces a capability the model has never
+   seen — **the sentence that NAMES its mechanism**. A capability named without its mechanism gets improvised: the
+   model invents a tool that does not exist.
 
-## 8. La documentación — tres sitios, nunca dos de tres
+## 8. The documentation — every place, never most of them
 
-1. **Doc de módulo** — `engine/.meshkore/docs/modules/zaelar-<pieza>.md`: anatomía, contrato, las decisiones
-   con su porqué. Público → solo mecanismo.
-2. **Iniciativa** — `engine/.meshkore/roadmap/initiatives/V2-NNN-….md`. **Reserva el número al cogerlo**
-   (`git log --all --oneline -15 | grep -oE "V2-[0-9]+"`, y anúncialo en el cluster): dos agentes con el mismo
-   número se pisan los ficheros.
-3. **`engine/CLAUDE.md`** — la decisión, en «Decisiones clave», con lo que se midió y lo que quedó abierto. Un
-   trinquete (`test_roadmap_closure.py`) exige que toda iniciativa entregada esté citada y viceversa: cualquiera
-   de las dos mitades sola deja el contexto contando media historia.
-4. Más el **`notes.md`** del widget, que es lo que impide que la próxima sesión deshaga una decisión ya tomada.
-4-bis. **La LISTA** (`.meshkore/docs/modules/zaelar-connectors-inventory.md`) y la **BITÁCORA del módulo**
-   (`.meshkore/modules/connectors/logs/<YYYY-MM>/T-NNN-<slug>.md`, gitignoreada): la lista es lo que se lee
-   para saber qué hay; la bitácora es lo único que guarda las PALABRAS del operador, lo MEDIDO antes de
-   tocar nada y los COMMITS. `ls` antes de coger un número `T-NNN` — la numeración es GLOBAL entre módulos.
-5. Si la pieza tiene una parte que no es del motor, aquí solo va el mecanismo.
+1. **Module doc** — `engine/.meshkore/docs/modules/zaelar-<piece>.md`: anatomy, contract, the decisions with
+   their why. Public → mechanism only.
+2. **`.meshkore/docs/criteria.md`** — one line, with its test node, if a rule the engine obeys changed.
+3. **The widget's `notes.md`**, which is what stops the next session from undoing a decision already taken.
+4. **The LIST** (`.meshkore/docs/modules/zaelar-connectors-inventory.md`): what is read to know what exists.
+5. If the piece has a part that is not the engine's, only the mechanism goes here.
 
 ---
 
-## 9. Commit y push — con varios agentes en el mismo árbol
+## 9. Commit and push — with several agents on the same tree
 
-El árbol lo comparten varias sesiones y **el índice de git es COMPARTIDO**.
+The tree is shared by several sessions and **the git index is SHARED**.
 
 ```bash
-git status --short                       # ¿de quién es cada cosa?
-git diff --cached --name-only            # si trae ficheros ajenos, alguien llenó el índice
-git diff <fichero>                       # el pathspec limita FICHEROS, no HUNKS
-git add <rutas nuevas> && git commit -m "…" -- <rutas>    # ⚠️ EN UN SOLO COMANDO
+git status --short                       # whose is each change?
+git diff --cached --name-only            # if it lists someone else's files, someone filled the index
+git diff <file>                          # a pathspec limits FILES, not HUNKS
+git add <new paths> && git commit -m "…" -- <paths>    # ⚠️ IN ONE COMMAND
 git push origin main
 ```
 
-- **`git commit` a secas commitea el ÍNDICE ENTERO.** Usa siempre `git commit -m "…" -- <rutas>`.
-- ⚠️ **Los ficheros NUEVOS necesitan `git add`, y ese `add` abre una ventana** en la que un `git commit` a
-  secas de OTRA sesión se los lleva dentro de su commit. Pasó en V2-557. Haz `add` y `commit` **en el mismo
-  comando** y no dejes nada preparado entre medias.
-- Las opciones van ANTES de `--`; después de `--` todo es una ruta.
-- Si ya está pusheado y la atribución quedó mal: **no se reescribe `main`**. El código no se pierde; avisa al
-  peer y sigue.
-- **Commitea pronto**, incluso antes de probar. Perder código no es reversible.
+- **A bare `git commit` commits the WHOLE INDEX.** Always use `git commit -m "…" -- <paths>`.
+- ⚠️ **NEW files need `git add`, and that `add` opens a window** in which a bare `git commit` from ANOTHER session
+  takes them into its own commit. Do `add` and `commit` **in the same command** and leave nothing staged in
+  between.
+- Options go BEFORE `--`; after `--` everything is a path.
+- If it is already pushed and the attribution came out wrong: **`main` is not rewritten**. The code is not lost;
+  tell the peer and move on.
+- **Commit early**, even before testing. Losing code is not reversible.
 
 ---
 
-## 10. Verificación en vivo
+## 10. Live verification
 
-Un test verde no es un producto que funciona.
+A green test is not a working product.
 
 ```bash
-./zaelar status                          # ¿corre HEAD?
-./zaelar restart                         # NUNCA con voz viva ni con una batería midiendo
+./zaelar status                          # is HEAD running?
+./zaelar restart                         # NEVER with live voice or with a battery measuring
 ```
 
-- Comprueba las rutas con una **petición real** (`TestClient` o `curl`), no leyendo `app.routes`: en esta
-  versión de FastAPI los routers incluidos se guardan envueltos y **parece que no hay rutas** (§11-T5).
-- Abre la tarjeta y MÍRALA.
-- Escribe qué quedó **sin verificar en vivo**. Es la mitad honesta del informe.
+- Check routes with a **real request** (`TestClient` or `curl`), not by reading `app.routes`: in this FastAPI
+  version included routers are stored wrapped and **it looks like there are no routes** (§11-T5).
+- Open the card and LOOK at it.
+- Write down what was **not verified live**. It is the honest half of the report.
 
 ---
 
-## 11. Los traps — todos medidos en V2-557
+## 11. The traps
 
-| | Trap | Qué cuesta |
+| | Trap | What it costs |
 |---|---|---|
-| **T1** | Un estado legítimo que produce el MISMO vacío que un fallo | «tu Drive está vacío» a quien lo tiene lleno, y el defecto se diagnostica como conector roto. **Devuelve `ok` + `reason`.** |
-| **T2** | Un consumidor lee un campo que su productor no manda | La superficie sale vacía, sin error. Pasó **3 veces** en un solo build. `grep` el campo en ambos lados. |
-| **T3** | Añadir la tarjeta y olvidar la lista de familias del ⚙ | La tarjeta existe y no la renderiza nadie |
-| **T4** | `whenToUse` > 300 chars | Se corta la cláusula FRONTERA y el enrutado se pierde justo donde importa |
-| **T5** | Verificar el montaje leyendo `app.routes` | Da `[]` con las rutas perfectamente montadas → «arreglas» algo que funciona |
-| **T6** | Un test que escanea el fuente y casa con sus propios COMENTARIOS | Rojo eterno en un fichero que documenta la regla. Afirma el PATRÓN (`.innerHTML =`), no la palabra |
-| **T7** | Un doble de test demasiado generoso | Mi `breadcrumb` falso devolvía 2 niveles para todo, así que el test de «subir desde 1 nivel» afirmaba el padre equivocado |
-| **T8** | `git add` en un árbol compartido | Otra sesión se lleva tus ficheros en SU commit |
-| **T9** | Fichero de test nuevo sin línea en el testmap | Verde y **nadie lo ejecuta** |
-| **T10** | Elegir un prefijo `/api/` ya usado | Dos routers, uno gana por orden de montaje, en silencio |
-| **T11** | Añadir las ACCIONES y no las PALABRAS (`whenToUse`/`keywords`) | El modelo enruta al widget vecino que sí dice «conectar», y su respuesta suena perfectamente razonable |
-| **T12** | Devolver la URL de consentimiento esperando que llegue al modelo | El informe del turno tira el resultado: la acción se ejecuta, la pantalla no se mueve y la boca calla |
-| **T13** | Dejar en `planned` un conector que ya funciona | El muro de chat le ofrece «Lo quiero» de algo que ya tiene |
-| **T14** | Un id de catálogo distinto del id de su fila viva | `search()` nunca lo rankea como conectado, y nada falla |
+| **T1** | A legitimate state that produces the SAME emptiness as a failure | "your Drive is empty" to someone whose Drive is full, and the defect gets diagnosed as a broken connector. **Return `ok` + `reason`.** |
+| **T2** | A consumer reads a field its producer does not send | The surface comes out empty, with no error. `grep` the field on both sides. |
+| **T3** | Adding the card and forgetting the ⚙ family list | The card exists and nobody renders it |
+| **T4** | `whenToUse` > 300 chars | The BOUNDARY clause is cut and routing is lost exactly where it matters |
+| **T5** | Verifying mounting by reading `app.routes` | Gives `[]` with the routes perfectly mounted → you "fix" something that works |
+| **T6** | A test that scans the source and matches its own COMMENTS | Permanently red on a file that documents the rule. Assert the PATTERN (`.innerHTML =`), not the word |
+| **T7** | A test double that is too generous | A fake `breadcrumb` that returns 2 levels for everything makes a "go up from level 1" test assert the wrong parent |
+| **T8** | `git add` on a shared tree | Another session takes your files into ITS commit |
+| **T9** | New test file without a testmap line | Green and **nobody runs it** |
+| **T10** | Choosing an `/api/` prefix already in use | Two routers, one wins by mount order, silently |
+| **T11** | Adding the ACTIONS and not the WORDS (`whenToUse`/`keywords`) | The model routes to the neighbouring widget that does say "connect", and its answer sounds perfectly reasonable |
+| **T12** | Returning the consent URL expecting it to reach the model | The turn report drops the result: the action runs, the screen does not move and the voice stays silent |
+| **T13** | Leaving a working connector as `planned` | The chat wall offers "I want it" for something the operator already has |
+| **T14** | A catalog id different from the id of its live row | `search()` never ranks it as connected, and nothing fails |
 
 ---
 
-## 12. La checklist (para copiar y pegar al cerrar)
+## 12. The checklist (copy and paste when closing)
 
 ```
-CONECTOR
-[ ] providers.py: los proveedores son DATO; las diferencias, campos
-[ ] oauth.py: PKCE compartido · tokens en el credential store (600, gitignored) · el permiso viaja con el token
+CONNECTOR
+[ ] providers.py: providers are DATA; differences are fields
+[ ] oauth.py: shared PKCE · tokens in the credential store (600, gitignored) · the permission travels with the token
 [ ] oauth.py is a thin module over connectors/oauth_base.py, and the connector is in node 5.62's CONNECTORS
-[ ] cliente por proveedor → MISMA forma normalizada (con test)
-[ ] service.py: fail-safe · lo-que-no-es-un-error devuelve ok+reason
-[ ] server_api.py: prefijo /api libre (comprobado con grep)
+[ ] one client per provider → SAME normalized shape (with a test)
+[ ] service.py: fail-safe · what-is-not-an-error returns ok+reason
+[ ] server_api.py: /api prefix free (checked with grep)
 
 WIDGET
-[ ] manifest: acciones == apply_action · view en la que CONTESTA · confirm solo si es irreversible
-[ ] whenToUse cabe en 300 (test contra brief._purpose) · usage · alias · keywords sin colisión total
-[ ] view_data barato (sin red) · apply_action devuelve lo que encuentra · errores que enseñan la forma
-[ ] apply_action is an ACTIONS = {name: fn} table, one function per action (V2-778 F1-12)
-[ ] ref_index si hay ids · prompt_digest si procede (acotado y diciendo que lo está)
-[ ] background: decidido y escrito · runtime{} si produce
-[ ] widget.js: sin fetch · sin innerHTML · textContent · clases con prefijo propio · tema por --hb-*
+[ ] manifest: actions == apply_action · view on the one that ANSWERS · confirm only if irreversible
+[ ] whenToUse fits in 300 (test against brief._purpose) · usage · aliases · keywords without total collision
+[ ] cheap view_data (no network) · apply_action returns what it finds · errors that teach the shape
+[ ] apply_action is an ACTIONS = {name: fn} table, one function per action
+[ ] ref_index if there are ids · prompt_digest if relevant (bounded, and saying so)
+[ ] background: decided and written down · runtime{} if it produces
+[ ] widget.js: no fetch · no innerHTML · textContent · classes with their own prefix · theme via --hb-*
 
-CABLEADO  (los 16 puntos de §4, uno a uno)
-[ ] registry conectores + descriptors()   [ ] server routers      [ ] _BUILTINS
-[ ] ConfigPanel tarjeta + fams            [ ] api.js              [ ] i18n en+es
-[ ] _STDLIB_EXEMPT si procede             [ ] run_testmap.py
-[ ] catalog/<id>.json state:"built", id == id de la fila viva
-[ ] CONN_FAMILY_ORDER + chat.connFamily.<fam> en los dos bundles (si la familia es nueva)
-[ ] connector_briefs.py (el ESTADO, no solo el verbo)   [ ] credentials/README.md
+WIRING  (the 16 points of §4, one by one)
+[ ] connector registry + descriptors()   [ ] server routers      [ ] _BUILTINS
+[ ] ConfigPanel card + fams              [ ] api.js              [ ] i18n en+es
+[ ] _STDLIB_EXEMPT if relevant           [ ] run_testmap.py
+[ ] catalog/<id>.json state:"built", id == id of the live row
+[ ] CONN_FAMILY_ORDER + chat.connFamily.<fam> in both bundles (if the family is new)
+[ ] connector_briefs.py (the STATE, not just the verb)   [ ] credentials/README.md
 
-RUMBO  (§5 — la mitad que se olvida)
-[ ] whenToUse nombra el servicio Y el verbo de enlazar, con su frontera, y CABE en 300
-[ ] keywords/alias en los DOS idiomas, añadidas (nunca sustituidas)
+ROUTING  (§5 — the half that gets forgotten)
+[ ] whenToUse names the service AND the linking verb, with its boundary, and FITS in 300
+[ ] keywords/aliases in BOTH languages, added (never replaced)
 
-ÚLTIMO METRO  (§7-bis)
-[ ] el consentimiento es un clic suyo · popup abierto DENTRO del clic
-[ ] por voz: la tarjeta queda EN el paso del botón (token con contador + caducidad)
-[ ] la pantalla se mueve también si el conector se niega
-[ ] el desc de la acción dice la frase · y prohíbe dictar la URL
-[ ] URI de retorno dados de alta (cliente web) e impresos en el README
+LAST MILE  (§7-bis)
+[ ] consent is the operator's click · popup opened INSIDE the click
+[ ] by voice: the card stays ON the button's step (token with counter + expiry)
+[ ] the screen moves even if the connector refuses
+[ ] the action's desc carries the sentence · and forbids dictating the URL
+[ ] return URIs registered (web client) and printed in the README
 
 TESTS
-[ ] conector · contrato · RENDERIZADO · vivo (live:True, salta con instrucciones)
-[ ] desarmes con la mutación AFIRMADA, y cuántos tests corrieron
-[ ] make test-widgets verde · el nodo nuevo en deterministic_paths, el live fuera
+[ ] connector · contract · RENDERING · live (live:True, skips with instructions)
+[ ] disarms with the mutation ASSERTED, and how many tests ran
+[ ] make test-widgets green · the new node in deterministic_paths, the live one out
 
 DOCS
-[ ] doc de módulo   [ ] iniciativa V2-NNN (número reservado)   [ ] CLAUDE.md   [ ] notes.md
-[ ] fila en zaelar-connectors-inventory.md   [ ] bitácora del módulo (T-NNN, número global)
-[ ] solo mecanismo aquí
+[ ] module doc   [ ] criteria.md (if a rule changed)   [ ] notes.md
+[ ] row in zaelar-connectors-inventory.md
+[ ] mechanism only here
 
-CIERRE
-[ ] add+commit en UN comando, con pathspec · push
-[ ] verificado en vivo, y escrito lo que NO se pudo verificar
+CLOSE
+[ ] add+commit in ONE command, with pathspec · push
+[ ] verified live, and written down what could NOT be verified
 ```

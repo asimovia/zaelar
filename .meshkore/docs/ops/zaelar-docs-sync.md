@@ -6,71 +6,71 @@ owner: ricart
 status: current
 ---
 
-# Workflow de sincronización de docs y estructura — "sincroniza la documentación"
+# Docs and structure sync workflow — "sync the documentation"
 
-**Disparador:** se ejecuta **automáticamente** siempre que un cambio toca la **estructura** del proyecto o la
-**documentación/contexto** — y bajo demanda cuando el operador dice *"sincroniza la documentación"* / *"pasa la
-sync de docs"*. El objetivo: que la documentación, el contexto (CLAUDE.md), la arquitectura (incluido su diagrama)
-y lo que lee quien clona el repo (README) **nunca se queden atrás** del código. Codifica las instrucciones que el
-operador repite una y otra vez, para no tener que darlas cada vez.
+**Trigger:** runs **automatically** whenever a change touches the project's **structure** or its
+**documentation/context** — and on demand when the operator says *"sync the documentation"* / *"run the docs
+sync"*. The goal: the documentation, the context (`CLAUDE.md`), the architecture (including its diagram) and
+what someone cloning the repo reads (`README.md`) **never fall behind** the code. It codifies these
+instructions so they do not have to be repeated each time.
 
-> Complementa a [[zaelar-change-protocol]] (que cierra **un** cambio) y a [[zaelar-audit-workflow]] (que audita
-> **todo** el sistema). Este es el paso de **coherencia docs↔estructura** que va DENTRO del change protocol
-> (su paso 4) y también puede correrse suelto.
+> Complements [[zaelar-change-protocol]] (which closes **one** change) and [[zaelar-audit-workflow]] (which
+> audits the **whole** system). This is the **docs↔structure coherence** step that runs INSIDE the change
+> protocol (its step 4) and can also be run on its own.
 
 ---
 
-## 0. Cuándo aplica (¿mi cambio toca estructura o docs?)
+## 0. When it applies (does my change touch structure or docs?)
 
-Aplica si el cambio hace CUALQUIERA de estas cosas:
-- añade/renombra/mueve un **módulo o carpeta**, o cambia el layout de la raíz;
-- añade una **dependencia o paso de instalación** (algo que alguien tendría que instalar/configurar);
-- introduce una **decisión, invariante, política de seguridad o setting** nuevo;
-- cambia un **flujo** que ya está dibujado en un diagrama o descrito en un doc canónico;
-- añade/quita una **ruta, endpoint, env var o comando** relevante.
+It applies if the change does ANY of these:
+- adds/renames/moves a **module or folder**, or changes the root layout;
+- adds a **dependency or install step** (something someone would have to install/configure);
+- introduces a new **decision, invariant, security policy or setting**;
+- changes a **flow** that is already drawn in a diagram or described in a canonical doc;
+- adds/removes a relevant **route, endpoint, env var or command**.
 
-Si NO toca nada de esto (p. ej. un fix interno sin efecto observable), este workflow no es necesario.
+If it touches none of these (e.g. an internal fix with no observable effect), this workflow is not needed.
 
-## 1. Principio rector: multi-plataforma, sin casarse con nadie
+## 1. Guiding principle: cross-platform, tied to nobody
 
-zaelar debe poder correr en **macOS, Windows y Linux**. Al documentar instalación o comandos:
-- da el comando **por-OS** cuando difiere (p. ej. `make install-stt` en mac vs `scripts/*.ps1` en Windows);
-- no asumas `brew`/`apt`/`bash` como universales — indícalo como específico de OS y ofrece la alternativa;
-- providers (STT/TTS/brain) son **intercambiables** por env/config: nunca hardcodear un vendedor en la doc.
+zaelar must run on **macOS, Windows and Linux**. When documenting installation or commands:
+- give the command **per OS** when it differs (e.g. `make install-stt` on mac vs `scripts/*.ps1` on Windows);
+- do not assume `brew`/`apt`/`bash` are universal — mark them as OS-specific and offer the alternative;
+- providers (STT/TTS/brain) are **interchangeable** through env/config: never hardcode a vendor in the docs.
 
-## 2. Checklist de sincronización (marca todo lo que aplique)
+## 2. Sync checklist (tick everything that applies)
 
-| Si el cambio… | Actualiza |
+| If the change… | Update |
 |---|---|
-| añade/quita/mueve un módulo o carpeta | `.meshkore/public/cluster.yaml` (módulos) · `CLAUDE.md` (§Módulos/layout) · `.meshkore/docs/modules/zaelar-modules.md` · el **diagrama** en `.meshkore/docs/architecture/zaelar-architecture.md` |
-| añade una dependencia o paso de instalación | **`README.md`** (raíz, por-OS) · `.meshkore/docs/ops/zaelar-ops.md` (§Prerequisites + la sección relevante) |
-| introduce una decisión/invariante | `CLAUDE.md` §"Decisiones clave" · el doc de categoría que corresponda (architecture/product/security/…) |
-| toca seguridad (canal cluster, permisos, secretos) | `.meshkore/docs/security/zaelar-security.md` · la subsección de fronteras de confianza del `zaelar-architecture.md` · `CLAUDE.md` |
-| cambia un flujo ya dibujado | el **diagrama ASCII** correspondiente en `zaelar-architecture.md` (no dejar el dibujo obsoleto) |
-| añade ruta/endpoint/env/comando | el doc que lo describa (ops/architecture) · `config/.env.example` si es una env var |
-| cambia estructura, comandos, suites, catálogo o protocolo de testing | `tests/README.md` · `.meshkore/docs/ops/zaelar-testing.md` · `tests/TESTMAP.md`/`tests/platform/SCHEMA.md` según corresponda · `CLAUDE.md` y `AGENTS.md` si cambia lo que deben hacer los agentes |
-| **toca el catálogo de TOOLS del FlashBrain** (`nucleo/flash/router.py::TOOLS`: añade/quita/renombra una tool, cambia su descripción o su gating) | la **doc canónica `zaelar-architecture.md §8`** (única fuente) · el diagrama público `/technology/flashbrain`, fuera de este repo (solo si el cambio es significativo de cara a fuera — paso MANUAL, ningún workflow lo hace solo desde 2026-07-24) · `tests/agent_headless/unit/flash/test_router.py` · re-comprobar el gating contextual en `providers/nucleo.py` + `nucleo/flash/probe.py` · `CLAUDE.md` si cambia una decisión. Toda tool debe estar JUSTIFICADA y encajar en el flujo V2-036 (nada de entradas muertas/stale). |
-| es visible para quien clona el repo | **`README.md`** (siempre que cambie qué instalar/cómo arrancar) |
+| adds/removes/moves a module or folder | `.meshkore/public/cluster.yaml` (modules) · `CLAUDE.md` (§Modules/layout) · `.meshkore/docs/modules/zaelar-modules.md` · the **diagram** in `.meshkore/docs/architecture/zaelar-architecture.md` |
+| adds a dependency or install step | **`README.md`** (root, per OS) · `.meshkore/docs/ops/zaelar-ops.md` (§Prerequisites + the relevant section) |
+| introduces a decision/invariant | `.meshkore/docs/criteria.md` · the matching category doc (architecture/product/security/…) |
+| touches security (cluster channel, permissions, secrets) | `.meshkore/docs/security/zaelar-security.md` · the trust-boundaries subsection of `zaelar-architecture.md` · `CLAUDE.md` |
+| changes a flow that is already drawn | the matching **ASCII diagram** in `zaelar-architecture.md` (never leave the drawing stale) |
+| adds a route/endpoint/env/command | the doc that describes it (ops/architecture) · `config/.env.example` if it is an env var |
+| changes the structure, commands, suites, catalogue or protocol of testing | `tests/README.md` · `.meshkore/docs/ops/zaelar-testing.md` · `tests/TESTMAP.md`/`tests/platform/SCHEMA.md` as appropriate · `CLAUDE.md` and `AGENTS.md` if what agents must do changes |
+| **touches the FlashBrain TOOL catalogue** (`nucleo/flash/router.py::TOOLS`: adds/removes/renames a tool, changes its description or gating) | the **canonical doc `zaelar-architecture.md §8`** (single source) · the public diagram `/technology/flashbrain`, outside this repo (only if the change matters to an outside reader — a MANUAL step) · `tests/agent_headless/unit/flash/test_router.py` · re-check the contextual gating in `providers/nucleo.py` + `nucleo/flash/probe.py` · `CLAUDE.md` if a rule changes. Every tool must be JUSTIFIED and fit the turn flow (no dead/stale entries). |
+| is visible to someone cloning the repo | **`README.md`** (whenever what to install/how to start changes) |
 
-## 3. Regla de oro: "que aparezca en los tres sitios"
+## 3. Golden rule: "it appears in all three places"
 
-Todo concepto que importe debe ser hallable en: **(a) el contexto** (`CLAUDE.md`), **(b) la documentación canónica**
-(`.meshkore/docs/<categoría>/`), y **(c) la arquitectura** (`zaelar-architecture.md`, incluido su diagrama si el
-concepto es estructural o de flujo). Si algo solo está en el código, no está documentado.
+Every concept that matters must be findable in: **(a) the context** (`CLAUDE.md` / `criteria.md`), **(b) the
+canonical documentation** (`.meshkore/docs/<category>/`), and **(c) the architecture** (`zaelar-architecture.md`,
+including its diagram if the concept is structural or about a flow). If something is only in the code, it is
+not documented.
 
-Para testing, la misma regla se concreta en cuatro capas sin duplicar instrucciones: `CLAUDE.md`/`AGENTS.md`
-enrutan al agente, `tests/README.md` da el contrato operativo, `zaelar-testing.md` explica el diagnóstico profundo y
-`tests/platform/SCHEMA.md` fija el contrato máquina. Un cambio de plataforma de tests debe mantener las cuatro
-coherentes.
+For testing, the same rule takes four layers without duplicating instructions: `CLAUDE.md`/`AGENTS.md` route the
+agent, `tests/README.md` gives the operational contract, `zaelar-testing.md` explains the deep diagnosis and
+`tests/platform/SCHEMA.md` fixes the machine contract. A change to the test platform must keep all four coherent.
 
-## 4. Verificación
+## 4. Verification
 
-- **Enlaces**: los `[texto](ruta)` nuevos resuelven (rutas relativas correctas). Sin referencias colgando en la
-  tabla de docs canónicos de `CLAUDE.md`.
-- **Coherencia código↔doc**: lo que dice la doc coincide con el código (nombres de fichero/env/comando reales).
-- **Multi-plataforma**: cada instrucción de instalación tiene su variante por-OS o dice explícitamente que es
-  específica de una.
-- Luego continúa con [[zaelar-change-protocol]] (versión → diario/iniciativa → commit → push si procede).
+- **Links**: new `[text](path)` links resolve (correct relative paths). No dangling references in the
+  canonical-docs table of `CLAUDE.md`.
+- **Code↔doc coherence**: what the doc says matches the code (real file/env/command names).
+- **Cross-platform**: every install instruction has its per-OS variant or says explicitly that it is specific
+  to one.
+- Then continue with [[zaelar-change-protocol]] (version → log/initiative → commit → push where applicable).
 
-## 5. Resumen para el operador
-Una línea: qué se sincronizó (README/CLAUDE/architecture/diagrama/docs de categoría), y qué quedó pendiente.
+## 5. Summary for the operator
+One line: what was synced (README/CLAUDE/architecture/diagram/category docs), and what is left open.

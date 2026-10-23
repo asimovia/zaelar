@@ -201,6 +201,10 @@ tests/use_cases/e2e/agent/private/
 .meshkore/log/
 .meshkore/docs/decisions.md
 .meshkore/docs/decisions-archive.md
+.meshkore/docs/architecture/zaelar-audit.md
+.meshkore/docs/architecture/zaelar-audit-20*.md
+.meshkore/docs/architecture/harbee-audit-*.md
+.meshkore/docs/ops/comment-language-migration.md
 tests/memory/e2e/bot/runs/
 tests/memory/e2e/bot/resultados/
 tests/use_cases/status.json

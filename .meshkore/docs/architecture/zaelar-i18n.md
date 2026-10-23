@@ -1,4 +1,4 @@
-# Multilingual (i18n) subsystem — V2-089
+# Multilingual (i18n) subsystem
 
 Zaelar adapts to **any language in the world**. English is the base; Spanish ships preset; every other language
 is **generated on the fly** by an LLM the first time an operator speaks it, and topped up on every upgrade. The
@@ -19,7 +19,7 @@ DELIBERATELY decoupled from the UI language: `i18n.runtime.active_code()` reads 
 code) so the UI can be Arabic while STT/TTS fall back to the es/en catalog. They coincide for es/en. Adding full
 spoken support for a new language = one `LangSpec` + a native voice (separate, larger task).
 
-## ONE FOLDER PER LANGUAGE — the genesis packs (2026-10-21)
+## ONE FOLDER PER LANGUAGE — the genesis packs
 
 Every word meant for a human language lives in ONE place, with the same files for every language:
 
@@ -47,7 +47,7 @@ i18n/genesis/<code>/                      the languages the repo SHIPS: en (= th
   (every shipped language has every pack with the same shape; onboarding generates every pack; a third language
   never inherits Spanish) and `test_every_word_lives_in_a_language_pack.py` (a new `{"es": …, "en": …}` table or
   `_ES`/`_EN` word list in product code fails; the declared exceptions below can only shrink).
-- **Declared exceptions** (a separate initiative, they carry incident history): the regex safety/routing guards —
+- **Declared exceptions** (safety- and routing-critical, each with its own tests): the regex safety/routing guards —
   `voice/attention.py` (STOP), `nucleo/flash/router_guards.py`, `nucleo/memory_agent/lang_marks.py`,
   `nucleo/flash/segmenter.py`, `nucleo/flash/reminder_promise.py`, `search/category_words.py`,
   `nucleo/flash/outgoing_lang.py`, `voice/engine/speech/say_numbers.py` — and the model-facing prompt prose
@@ -87,10 +87,10 @@ i18n/                         self-contained package
 - **Initialization** = `i18n.init.*`. Only runs a few times (boot, first-run detect, a language switch, an
   upgrade), behind the "preparing language…" boundary. This is where the LLM and STT live.
 
-The HTTP surface (`server/i18n_api.py`) is thin: `GET /api/i18n/state` (now also reports `chosen: bool`, V2-101 —
+The HTTP surface (`server/i18n_api.py`) is thin: `GET /api/i18n/state` (also reports `chosen: bool` —
 whether ANY language has ever been explicitly picked) + `GET /api/i18n/bundle/{code}` hit the runtime;
 `POST /api/i18n/ensure/{code}` hits init; `POST /api/i18n/choose/{code}` and `POST /api/i18n/detect-text`
-(V2-101) are the onboarding modal's two non-voice escape hatches — a quick-pick chip and typed free text.
+are the onboarding modal's two non-voice escape hatches — a quick-pick chip and typed free text.
 
 ## Best of both worlds: preset + generated
 
@@ -113,11 +113,10 @@ whether ANY language has ever been explicitly picked) + `GET /api/i18n/bundle/{c
 - Same function, same path. Preset or already-current → instant no-op. `MANIFEST_VERSION` is the coarse
   browser-cache buster.
 
-## First-run auto-detection → first-run ONBOARDING (V2-101, 2026-08-16)
+## First-run auto-detection → first-run ONBOARDING
 
-"We're an AI — we should figure out the operator's language." Used to be purely passive (guess silently from
-whatever the operator said first, no gate on the UI); is now a deliberate, blocking **ceremony** on a genuinely
-first-ever boot — `i18n.init.detect`:
+"We're an AI — we should figure out the operator's language." On a genuinely first-ever boot this is a
+deliberate, blocking **ceremony** rather than a silent guess — `i18n.init.detect`:
 
 - `should_detect()` is True only while no language has been chosen (no persisted `stt_language`). A manual ⚙
   choice or a prior lock turns it False forever — auto-detection never overrides a deliberate choice. There is
@@ -153,7 +152,7 @@ first-ever boot — `i18n.init.detect`:
 inside a `dom.js` function-prop/child re-renders the instant the language changes. Resolution:
 active-language bundle → English base → the key itself (English is always a safe net). Bundles are fetched from
 the backend and localStorage-cached. `initI18n()` reconciles the UI language with the backend's active language at
-boot. All 564 UI keys live in `i18n/genesis/en/ui.json` (+ es.json); the parity test
+boot. All UI keys live in `i18n/genesis/en/ui.json` (+ es.json); the parity test
 `tests/browser/unit/i18n/test_bundles.py` guards en/es key/placeholder alignment.
 
 ## Multilingual MATCHING vocab (aliases / router / wake-words) — the strategy
@@ -167,24 +166,23 @@ Voice-match vocabulary is a **cross-cutting concern with a clear rule**:
   **regex fast-paths** (`voiceCommands.js`, `nucleo/flash/router.py`, `voice/attention.py`) are ~50 ms **local
   accelerators**, not requirements. For an uncovered language they simply don't fire → the brain handles the
   intent (a touch slower). This is the pre-existing "es/en backstop, LLM is the multilingual mechanism" design.
-- **The system-surfaces alias-pack extension point is BUILT (V2-101, 2026-08-16).** `i18n/init/aliases.py`
+- **System-surface alias packs.** `i18n/init/aliases.py`
   (`ensure_aliases(code)`) generates, in ONE batched LLM call, 4-6 natural voice-command words per system
   surface (the 9-10 entries in `widgets/system_surfaces.py`) for any non-preset active language, persisted to
   `i18n/generated/<code>.aliases.json` (sibling to the UI bundle). `widgets/system_surfaces.py::surfaces()`
   consults it ADDITIVELY — the hardcoded es/en list is never replaced, only extended — so the resolver's
-  matching logic (`widgets/runtime.py::identify`) needed zero changes, exactly as this section originally
-  anticipated. Wired into the **first-run language onboarding** flow (`i18n/init/detect.py::lock(...,
+  matching logic (`widgets/runtime.py::identify`) needs no changes. Wired into the **first-run language onboarding** flow (`i18n/init/detect.py::lock(...,
   onboarding=True)`), not into a plain `⚙` language switch — a manual switch stays exactly as cheap as it
   always was; alias-pack generation is scoped to the setup ceremony, not a side effect of every locked language.
-- **Deliberately still NOT built: `voice/attention.py`'s hard-interrupt vocabulary and
+- **Deliberately hand-written, never auto-translated: `voice/attention.py`'s hard-interrupt vocabulary and
   `nucleo/flash/router.py`'s `looks_like_*` backstop regex.** These are safety/precision-critical
-  deterministic guards with real incident history behind them (the anti-garble identity gates, the
-  hard-stop-must-never-be-buried invariant) — auto-translating a regex that decides "does this utterance mean
-  STOP RIGHT NOW" via LLM is a materially different, higher-risk effort than translating a widget's voice
-  aliases, and deserves its own dedicated initiative with its own testing. Non-preset languages correctly fall
-  back to the LLM router for these cases today — just a bit slower, the accepted tradeoff either way.
+  deterministic guards (the anti-garble identity gates, the hard-stop-must-never-be-buried invariant) —
+  auto-translating a regex that decides "does this utterance mean STOP RIGHT NOW" via LLM is a materially
+  different, higher-risk effort than translating a widget's voice aliases, and would need its own dedicated
+  testing. Non-preset languages are served by the LLM router for these cases — a bit slower, the accepted
+  tradeoff.
 
-## The WIDGET layer (V2-613 seam, whole catalog V2-694)
+## The WIDGET layer
 
 A widget cannot import `frontend/app/core/i18n.js` — that would couple every widget to an internal frontend path
 and break the bare-`http.server` render harnesses — so the seam is on `ctx`, beside `action`/`close`/`top`:
@@ -209,8 +207,8 @@ shows the operator's own language.
 
 ⚠️ **A module-level TABLE of labels is the trap.** `const STATUS = {ok: "Hecho"}` is built once, at IMPORT
 time, before any `ctx` exists — so its text freezes in whatever language was active the first time the module
-loaded and survives every later switch. Ten of these were found across the catalog in V2-694 (source states,
-tab strips, media kinds, shelf names, wizard steps); every one became a function resolved per paint.
+loaded and survives every later switch. Such tables (source states, tab strips, media kinds, shelf names, wizard
+steps) are written as functions resolved per paint.
 
 **The NAME is a UI string too.** A widget's card title and a system surface's name come from
 `widgets.<id>.name` / `surfaces.<id>.name` (`widgets/registry.py::display_name`), not from `manifest.json`.
@@ -232,13 +230,12 @@ speech-recognition locale follow the same rule: they read `ctx.lang` (widgets) o
 
 ## Changing the language AFTER first run
 
-Operator's rule (2026-09-14): **manually, from ⚙, and never by voice.** «Hay que hacer todas las traducciones
-de todos los prompts, de todos los widgets… no es una cosa que vamos a permitir hacer con la voz.»
+**Manually, from ⚙, and never by voice.** A switch regenerates the translations of every prompt and every
+widget, so it is a deliberate settings action, not a voice command.
 
 - There is no tool that changes the language — the only doors are `POST /api/i18n/choose/{code}` and
   `config.settings.update`.
-- The desktop ⚙ → **Apariencia** carries the picker (V2-694; before that only the first-run veil and the
-  phone's sheet had one, so the answer on this shell was a factory reset). It posts to `/api/i18n/choose/{code}`
+- The desktop ⚙ → **Apariencia** carries the picker (as do the first-run veil and the phone's sheet). It posts to `/api/i18n/choose/{code}`
   and never to the raw `stt_language` knob: that endpoint is what LOCKS the choice, generates the bundle for a
   language we do not ship, realigns the TTS voice to one native to it and speaks the confirmation. It asks
   **twice** on purpose.

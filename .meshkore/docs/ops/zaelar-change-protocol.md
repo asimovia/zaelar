@@ -6,60 +6,60 @@ owner: ricart
 status: current
 ---
 
-# Protocolo de cambio de zaelar — "pasa el protocolo"
+# Zaelar change protocol — "run the protocol"
 
-**Disparador:** cuando el operador dice **"pasa el protocolo"** (o "ejecuta el protocolo", "cierra el
-cambio"), el agente ejecuta ESTA checklist de principio a fin para el cambio recién hecho. El objetivo es no
-tener que recordar cada vez qué hay que hacer al cerrar un cambio mayor.
+**Trigger:** when the operator says **"run the protocol"** (or "pasa el protocolo", "close the change"), the
+agent runs THIS checklist end to end for the change it has just made. The point is not having to remember,
+every time, what closing a major change involves.
 
-> Alcance: aplica a **cambios mayores** (feature nueva, fix sistémico, cambio de estructura/decisión).
-> Para un typo o un ajuste trivial basta con commit; el operador dirá si quiere el protocolo completo.
+> Scope: applies to **major changes** (new feature, systemic fix, change of structure/decision).
+> A typo or a trivial tweak only needs a commit; the operator will say if he wants the full protocol.
 
 ---
 
-## Checklist (en orden)
+## Checklist (in order)
 
-### 1. Reiniciar el sistema y verificar salud
-- `make run` (= `BRAIN=nucleo`, el cerebro por defecto) tras matar la instancia previa en `:43917`.
-- Verificar: `curl -sf localhost:43917/api/brain` responde, y el log muestra el arranque del cerebro sin errores.
-- El cambio debe estar **cargado y corriendo** antes de darlo por bueno.
+### 1. Restart the system and check its health
+- `make run` (= `BRAIN=nucleo`, the default brain) after stopping the previous instance on `:43917`.
+- Check: `curl -sf localhost:43917/api/brain` answers, and the log shows the brain starting with no errors.
+- The change must be **loaded and running** before it is called good.
 
-### 2. Verificar el cambio
-- Correr la verificación que aplique: `make test`, `make smoke`, o un repro dirigido contra el binario real
-  (p. ej. el harness de barge-in). **No** se cierra un cambio sin evidencia de que hace lo que dice.
-- Si toca la voz: recordar que **la voz de entrada/salida es solo la interfaz** — la conversación del brain
-  debe seguir siendo coherente y bidireccional. Ver [[bug-bargein-mute]] / decisiones clave en `CLAUDE.md`.
+### 2. Verify the change
+- Run whichever verification applies: `make test`, `make smoke`, or a targeted repro against the real binary
+  (e.g. the barge-in harness). A change is **not** closed without evidence that it does what it says.
+- If it touches voice: remember that **voice in/out is only the interface** — the brain's conversation must
+  stay coherent and two-way. See the key decisions in `CLAUDE.md`.
 
-### 3. Subir la versión (semver)
-- Versión de producto en `.meshkore/public/cluster.yaml` → campo `version:`.
-- `fix` → PATCH · `feat` → MINOR · ruptura/estructura → MAJOR (mientras <1.0, MINOR para features).
-- Etiquetar el commit: `git tag vX.Y.Z`.
+### 3. Bump the version (semver)
+- Product version in `.meshkore/public/cluster.yaml` → the `version:` field.
+- `fix` → PATCH · `feat` → MINOR · breaking/structural → MAJOR (while <1.0, MINOR for features).
+- Tag the commit: `git tag vX.Y.Z`.
 
-### 4. Documentar en el estándar MeshKore
-- **Diario de actuaciones** (obligatorio): una entrada por módulo tocado en
-  `.meshkore/modules/<módulo>/logs/<YYYY-MM>/<ID>-<slug>.md` con frontmatter
-  (`id, title, status, priority, owner, initiative, created, updated`) + cuerpo
-  (Qué se hizo · Ficheros tocados · Verificación).
-- **Iniciativa**: anclar la tarea a una iniciativa de `.meshkore/roadmap/initiatives/`. Si es trabajo nuevo,
-  crear `V2-NNN-<slug>.md`. Actualizar `status`/`updated` de la iniciativa afectada.
-- **NO** editar `.meshkore/roadmap/state.json` a mano (artefacto generado por el daemon).
-- **Contexto canónico** (`.meshkore/docs/<categoría>/`): actualizar SOLO si el cambio introdujo
-  decisiones, criterios, settings o cambios de estructura. Categorías: architecture, product, ops,
-  conventions, modules, security. Si es un módulo nuevo, declararlo en `cluster.yaml`.
-- **`CLAUDE.md`**: añadir a "Decisiones clave" cualquier decisión o invariante nuevo que deba sobrevivir.
-- **Memoria**: guardar como `feedback`/`project` lo no obvio (síntoma→causa→invariante) para no repetir el error.
+### 4. Document it in the MeshKore standard
+- **Work log** (mandatory): one entry per touched module in the module's local log folder, with front matter
+  (`id, title, status, priority, owner, initiative, created, updated`) + body (What was done · Files touched ·
+  Verification).
+- **Initiative**: anchor the task to an initiative in the local planning folder (MeshKore standard §24); for new
+  work, create one. Update the affected initiative's `status`/`updated`.
+- **Do NOT** edit the daemon-generated planning state by hand.
+- **Canonical context** (`.meshkore/docs/<category>/`): update ONLY if the change introduced decisions,
+  criteria, settings or structural changes. Categories: architecture, product, ops, conventions, modules,
+  security. A new module is declared in `cluster.yaml`.
+- **`.meshkore/docs/criteria.md`**: add a line only if a standing rule changed.
+- **Memory**: save anything non-obvious (symptom→cause→invariant) as `feedback`/`project` so the mistake is not
+  repeated.
 
 ### 5. Commit
-- Mensaje descriptivo (`feat:`/`fix:`/`refactor:`/`docs:` …), cuerpo explicando el porqué.
-- Incluir código **y** documentación en el mismo cierre de cambio (el diario y la iniciativa van commiteados).
-- Cerrar con la línea `Co-Authored-By: Claude ...`.
+- Descriptive message (`feat:`/`fix:`/`refactor:`/`docs:` …), with a body explaining the why.
+- Code **and** documentation go in the same change closure.
+- End with the trailers required by `CLAUDE.md`.
 
-### 6. Push (requiere confirmación del operador)
-- Regla dura: `require_operator_approval_for_push` (cluster.yaml). No hay push sin OK explícito.
-- Remote configurado: `origin` (github.com:meshkore/zaelar). Con OK del operador: `git push origin main --tags`.
+### 6. Push
+- Follow the push policy in `CLAUDE.md` and `cluster.yaml`.
+- Remote: `origin` (github.com:meshkore/zaelar): `git push origin main --tags`.
 
 ---
 
-## Resumen para el operador (al terminar)
-Reportar en una línea por ítem: qué se hizo, qué se verificó, qué versión, qué se documentó, y qué quedó
-**pendiente de tu decisión** (típicamente: push si no hay remote).
+## Summary for the operator (at the end)
+Report one line per item: what was done, what was verified, which version, what was documented, and what is
+**waiting on his decision**.

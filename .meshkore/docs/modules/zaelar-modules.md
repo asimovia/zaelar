@@ -9,24 +9,24 @@ status: current
 | Module     | Path           | Description                                                                 |
 |------------|----------------|-----------------------------------------------------------------------------|
 | voice      | voice/         | Voice pipeline core (LiveKit engine in `voice/engine/`): providers, turn control, observer, tag protocol, STT, audio filter, TTS |
-| nucleo     | nucleo/        | **Brain «Colmena»** (default `BRAIN=nucleo`). `flash/` = FlashBrain (sub-second voice, non-reasoning model per-invocation); `websearch.py` = SHARED web search (both brains, layered providers, V2-022); `dispatch.py`+`memory_agent.py`+`workers/` = Brain Workers (Claude Code/Codex/Grok sessions for what does not fit in a turn); a request's life: `spec.py` (born with its END STATE) → `circuit.py` (one loop, one bound, one report) → `tasks.py` (the durable row); `consent.py` = the ONE rule that decides act-or-ask; `turn/` = the decisions both channels share; `batch/` = several tasks become a LIST; `jev.py` = the Jev choice client; `context_packs/` = prompt that lives only during a phase; `susurro/` = off-hot-path conversational self-audit; `loop.py` (orchestrator ~1 Hz) + `scheduler.py` (own cron) + `cron_api.py` (`/api/cron`) + `sparks.py`. Exposed to voice as `voice/engine/llm/providers/nucleo.py`. |
-| action map | nucleo/actionmap/ | **A known phrase skips the model** (V2-539/545) — deterministic layer IN FRONT of the FlashBrain: exact whole-utterance lookup in a per-language table (`action_map` in `zaelar.db`, seeded from `seeds/<lang>.json`), executing an allowlisted direct action through the SAME emit funnels the model uses. Wired in both channels (voice provider + probe). Anything that is not a verbatim hit falls through to the model. Doc: `zaelar-action-map.md` |
-| memory     | memory/        | **Central memory** — SQLite `zaelar.db` (sqlite-vec + FTS5 + RRF + graph + forgetting). Absorbed the old `files/` as an episodic layer. `server_api.py` = `/api/files/*` + `/api/memory/map` (memory-map visualizer, V2-014). |
+| nucleo     | nucleo/        | **Brain «Colmena»** (default `BRAIN=nucleo`). `flash/` = FlashBrain (sub-second voice, non-reasoning model per-invocation); `websearch.py` = SHARED web search (both brains, layered providers); `dispatch.py`+`memory_agent.py`+`workers/` = Brain Workers (Claude Code/Codex/Grok sessions for what does not fit in a turn); a request's life: `spec.py` (born with its END STATE) → `circuit.py` (one loop, one bound, one report) → `tasks.py` (the durable row); `consent.py` = the ONE rule that decides act-or-ask; `turn/` = the decisions both channels share; `batch/` = several tasks become a LIST; `jev.py` = the Jev choice client; `context_packs/` = prompt that lives only during a phase; `susurro/` = off-hot-path conversational self-audit; `loop.py` (orchestrator ~1 Hz) + `scheduler.py` (own cron) + `cron_api.py` (`/api/cron`) + `sparks.py`. Exposed to voice as `voice/engine/llm/providers/nucleo.py`. |
+| action map | nucleo/actionmap/ | **A known phrase skips the model** — deterministic layer IN FRONT of the FlashBrain: exact whole-utterance lookup in a per-language table (`action_map` in `zaelar.db`, seeded from `seeds/<lang>.json`), executing an allowlisted direct action through the SAME emit funnels the model uses. Wired in both channels (voice provider + probe). Anything that is not a verbatim hit falls through to the model. Doc: `zaelar-action-map.md` |
+| memory     | memory/        | **Central memory** — SQLite `zaelar.db` (sqlite-vec + FTS5 + RRF + graph + forgetting). Absorbed the old `files/` as an episodic layer. `server_api.py` = `/api/files/*` + `/api/memory/map` (memory-map visualizer). |
 | bus        | bus/           | **Event bus** — in-process pub/sub (generalizes `voice/observer.py`) + durable SQLite log + SSE bridge. |
-| observability | observability/ | **WHO · WHEN · in which FLOW** (V2-090) — completes the event log (`bus/log.py`, which already records WHAT happens) with the axes needed to ANALYZE it: `identity.py` (stable per-install `user_id` + per-session `session_id`), `flows.py` (read by correlation id — end-to-end flows with real duration, families, actors, tokens, errors), `api.py` (`/api/observability/*`). Read-only: the bus's sink stays the sole writer to `events`. |
-| frontend   | frontend/      | Voice interface — self-contained ES-module app (no build), Solid-migration-ready (see §Frontend below). TWO shells over one engine: the desktop app (`frontend/app/`) and the mobile PWA (`frontend/mobile/`, V2-124) |
+| observability | observability/ | **WHO · WHEN · in which FLOW** — completes the event log (`bus/log.py`, which already records WHAT happens) with the axes needed to ANALYZE it: `identity.py` (stable per-install `user_id` + per-session `session_id`), `flows.py` (read by correlation id — end-to-end flows with real duration, families, actors, tokens, errors), `api.py` (`/api/observability/*`). Read-only: the bus's sink stays the sole writer to `events`. |
+| frontend   | frontend/      | Voice interface — self-contained ES-module app (no build), Solid-migration-ready (see §Frontend below). TWO shells over one engine: the desktop app (`frontend/app/`) and the mobile PWA (`frontend/mobile/`) |
 | mobile shell | frontend/mobile/ | **Mobile PWA** — installable on a phone home screen, no app store. A SEPARATE shell (own stylesheet, own entry point, own surfaces), not a responsive variant: full-screen widget deck with two-finger paging, every control in a bottom dock, bottom sheets for chat/menu/settings. Shares the store, the services and the whole widget catalog by satisfying the same two contracts the desktop host does. Doc: `zaelar-mobile-shell.md` |
-| update channel | update/ + frontend/app/update/ | **The version number and «there is a new version»** (V2-553) — `GET /api/update` publishes a plain incrementing `build` (the only version a user sees, from `update/BUILD`, because there is no git inside a Machine) AND a `ui_rev` content digest of the bytes the browser runs. Two fields because one cannot tell a frontend release from a backend-only one: the number always climbs, the reload bar appears only when `ui_rev` moves. Two touch points into the engine, kept that way by a test. Doc: `zaelar-update-channel.md` |
-| i18n       | i18n/          | Multilingual subsystem (V2-089): `runtime` serves UI strings for the active language from preset or generated bundles (hot path, no LLM); `init` prepares a new language off the hot path; `langspec.py` = the per-language spec. Doc: `zaelar-i18n.md` |
-| daemon     | daemon/        | The LOCAL daemon (V2-575): a process on the user's own machine for what a container cannot do (a real browser, local files). Not the shared MeshKore daemon. |
+| update channel | update/ + frontend/app/update/ | **The version number and «there is a new version»** — `GET /api/update` publishes a plain incrementing `build` (the only version a user sees, from `update/BUILD`, because there is no git inside a Machine) AND a `ui_rev` content digest of the bytes the browser runs. Two fields because one cannot tell a frontend release from a backend-only one: the number always climbs, the reload bar appears only when `ui_rev` moves. Two touch points into the engine, kept that way by a test. Doc: `zaelar-update-channel.md` |
+| i18n       | i18n/          | Multilingual subsystem: `runtime` serves UI strings for the active language from preset or generated bundles (hot path, no LLM); `init` prepares a new language off the hot path; `langspec.py` = the per-language spec. Doc: `zaelar-i18n.md` |
+| daemon     | daemon/        | The LOCAL daemon: a process on the user's own machine for what a container cannot do (a real browser, local files). Not the shared MeshKore daemon. |
 | files      | files/         | Compatibility shim for the old upload inbox; bytes live in memory's episodic layer (§Files below). |
 | tools      | tools/         | Developer review aids outside the running product (`comment_language_audit.py`). |
 | scripts    | scripts/       | Install/run/maintenance scripts: STT/TTS installers per OS, `run-livekit.sh`, `stop.sh`, `doctor.py`, `reset-memory.sh`, git hooks. |
 | server     | server/        | FastAPI app + routers + entrypoint (`python -m server`); HTTP API (voice, ICE, settings, widgets, pages) |
-| widgets    | widgets/       | Full-stack widgets (data.py + widget.js per folder), generator, catalog, runtime. Two roots (V2-515): shipped in the repo, generated/forked in `widgets/_user/` (self-host) or `<workspace>/widgets` — a fork shadows its shipped id; delete hides shipped source (never removes it); `restore_widget` returns to the newest shipped version |
+| widgets    | widgets/       | Full-stack widgets (data.py + widget.js per folder), generator, catalog, runtime. Two roots: shipped in the repo, generated/forked in `widgets/_user/` (self-host) or `<workspace>/widgets` — a fork shadows its shipped id; delete hides shipped source (never removes it); `restore_widget` returns to the newest shipped version |
 | config     | config/        | Runtime settings (persisted in settings.json)                               |
-| connectors | connectors/    | External connectors. `meshkore/` = native multi-cluster WebSocket I/O channel (see §MeshKore below). `architect/` = Architect code/project provider over the shared MeshKore daemon (see §Architect below). `whatsapp/`+`telegram/`+`email/` over `messaging/` = the unified personal inbox (see §Messaging connectors). `google/` = the ONE Google OAuth client behind Gmail, Calendar, Meet, Drive, Photos and YouTube (V2-685). `files/`+`photos/`+`video/`+`calendar/` = the cloud families. **Full roll call: `zaelar-connectors-inventory.md`** |
-| testing    | tests/         | Plataforma única: suites por dominio, catálogos schema 2, runners terminal/CI, harnesses headless/voz/browser y Test Observatory realtime en `127.0.0.1:8765`. Entrada de agentes: `tests/README.md`. |
+| connectors | connectors/    | External connectors. `meshkore/` = native multi-cluster WebSocket I/O channel (see §MeshKore below). `architect/` = Architect code/project provider over the shared MeshKore daemon (see §Architect below). `whatsapp/`+`telegram/`+`email/` over `messaging/` = the unified personal inbox (see §Messaging connectors). `google/` = the ONE Google OAuth client behind Gmail, Calendar, Meet, Drive, Photos and YouTube. `files/`+`photos/`+`video/`+`calendar/` = the cloud families. **Full roll call: `zaelar-connectors-inventory.md`** |
+| testing    | tests/         | One test platform: suites per domain, schema-2 catalogs, terminal/CI runners, headless/voice/browser harnesses and the real-time Test Observatory at `127.0.0.1:8765`. Agent entry point: `tests/README.md`. |
 
 All modules declared in `.meshkore/public/cluster.yaml`.
 
@@ -39,7 +39,7 @@ All modules declared in `.meshkore/public/cluster.yaml`.
 `nucleo/` is zaelar's brain — its own, with no external agent. Default `BRAIN=nucleo` (`config/v2.py:active_brain()`,
 env-first). It runs at two speeds:
 
-- **The action map** (`nucleo/actionmap/`, V2-539) — comes BEFORE the FlashBrain and is not a brain: a known
+- **The action map** (`nucleo/actionmap/`) — comes BEFORE the FlashBrain and is not a brain: a known
   short command, matched verbatim against a per-language table, executes its direct action in silence and the
   model is never called. Everything else — a longer phrasing, a compound sentence, a negation, anything new —
   falls through untouched: **when in doubt, the model.** Doc: `zaelar-action-map.md`.
@@ -51,7 +51,7 @@ env-first). It runs at two speeds:
   or an AIMLAPI/Grok cloud model (comparison in `.meshkore/docs/ops/zaelar-model-benchmarks.md`). It creates/cancels
   cron via `nucleo/scheduler`. **Hard constraint: the voice model MUST be non-reasoning** (a reasoner adds 5s+ of
   thinking latency to the real-time path). Reasoning belongs off the critical path — that is the SlowBrain.
-  **Memory is OUT of the synchronous turn** (V2-011): the STATE block (name/treatment/topics) comes from a
+  **Memory is OUT of the synchronous turn**: the STATE block (name/treatment/topics) comes from a
   per-session cache (`nucleo/flash/memory_cache.py` — TTL + async refresh + invalidation on the bus signal
   `memory.updated`), and semantic **recall** (`nucleo/flash/prompt.compose_recall` → embeddings) is **on demand**
   (heuristic `prompt.needs_recall`, es/en) and **off the event loop** (`asyncio.to_thread`). A chat turn never
@@ -66,7 +66,7 @@ env-first). It runs at two speeds:
 - **Escalation** — the FlashBrain calls the tool `escalate_to_slowbrain(request)` (an OpenAI-compatible function
   call, not a text tag) → the dispatcher runs the SlowBrain in the background and delivers the result via
   `voice/proactive` + a `[SISTEMA]` note, so the fast layer never blocks the turn and never claims work it didn't do.
-- **Web search — SHARED, model-agnostic capability (V2-022, `nucleo/websearch.py`)** — a **own primitive** used by
+- **Web search — SHARED, model-agnostic capability (`nucleo/websearch.py`)** — a **own primitive** used by
   **both brains** (we don't rely on model-native search; Grok/GLM/Z.AI lack it, Claude Code has it). **Who decides to
   search = the model, via function-calling** — no separate classifier. **Three modalities:** (1) direct datum +
   synthesis → the FlashBrain's `web_search(query)` tool, resolved **in the same turn** (~1-2s, no card, no browser);
@@ -79,7 +79,7 @@ env-first). It runs at two speeds:
   for** (2nd pass — rephrases an AI answer, or synthesizes from snippets) → ≈0 marginal LLM cost. Fail-open (degrades
   down the chain). Wired in `nucleo.py::_run`; routing enforced in `router.TOOLS` + `prompt._FAST_RULES`. See §5b of
   `zaelar-architecture.md`. Observability: `search` events on `/debug` (provider + ai + count + ms).
-- **Attention gate (V2-015, `voice/attention.py`)** — the mic is always open, so BEFORE the FlashBrain acts, the
+- **Attention gate (`voice/attention.py`)** — the mic is always open, so BEFORE the FlashBrain acts, the
   provider (`nucleo.py::_run`) checks whether the turn is DIRECTED at zaelar. Mode `ZAELAR_ATTENTION` (UI-managed in
   `config/settings.py`, ⚙; env fallback): `smart` (default) = directed if it carries a **wake-word** ("zaelar" +
   STT phonetic variants) or falls inside the **active-conversation window** (`ZAELAR_ATTENTION_WINDOW`, def 30s after
@@ -96,7 +96,7 @@ env-first). It runs at two speeds:
   cron backed by `memory.journal`; `nucleo/cron_api.py` exposes `/api/cron` (the ⏰ panel); `nucleo/sparks.py` fires
   scheduled tasks + double-gated "sparks", triggers the memory consolidator off the hot path, and reports by voice +
   UI. All mounted in the server lifespan under `BRAIN=nucleo`.
-- **Rails (V2-042, `nucleo/rails.py` + `nucleo/flash/music_flow.py`)** — the orchestration pattern for common
+- **Rails (`nucleo/rails.py` + `nucleo/flash/music_flow.py`)** — the orchestration pattern for common
   CONDUCTED behaviors (fuzzy music, video, deep site searches, recursive watches…). A rail = a deterministic
   resolve→validate→act chain IN CODE (the FlashBrain stays non-reasoning; any 2nd pass reuses the turn's model) +
   its tool + **live RUNS** (`nucleo/rails.py`: a RAM registry projected to `state.rails` → rendered "Rails en curso"
@@ -105,8 +105,8 @@ env-first). It runs at two speeds:
   **typed memory writeback** (`memory.ingest_message(source=<rail>)`). Per-rail prompt guidance is injected ONLY
   while a run is live (`nucleo/flash/prompt._rails_directive` ← `rails.prompt_lines`) — zero prompt cost at rest.
   First rail = fuzzy music (`music_flow.py`, §Music connectors); the **widget circuit is the founding rail**
-  (§Widgets). Pattern + domain map: `roadmap/initiatives/V2-042-rails-comportamientos-conducidos.md`.
-- **Homeostasis (V2-070, `nucleo/homeostasis.py`)** — the **autonomic health supervisor**, a **sibling of the
+  (§Widgets).
+- **Homeostasis (`nucleo/homeostasis.py`)** — the **autonomic health supervisor**, a **sibling of the
   brain, not part of it**: it runs no model and does no reasoning; it keeps the **MACHINE** healthy, deterministically.
   Mounted in the server lifespan with `start(app)`/`stop()` (like the messaging/widgets supervisors), off the voice
   loop, fail-open, gated by env `ZAELAR_HOMEOSTASIS`. Binary rule (each resource is healthy or degraded→heal), THREE
@@ -118,9 +118,9 @@ env-first). It runs at two speeds:
   capsules and caps the total (`sys_kv` `capsule:*`, via `memory.kv_keys(prefix)`/`memory.kv_del(key)`). **Distinct
   from the widgets `supervisor.py`**: the widgets supervisor watches widget *owner processes* (backed widgets);
   homeostasis watches the *machine itself* (LiveKit engine, logs, capsules). Emits observer events kind
-  `homeostasis` (labels `start`/`degraded`/`recycle`/`rotate`/`evict`/`alert`); tests `tests/infrastructure/unit/core/test_homeostasis.py`
-  (13 deterministic). Born from the 2026-07-25 incident: the embedded LiveKit worker degraded after ~7h and nothing
-  self-healed until a manual restart. Initiative: `roadmap/initiatives/V2-070-homeostasis-anti-degeneracion.md`.
+  `homeostasis` (labels `start`/`degraded`/`recycle`/`rotate`/`evict`/`alert`); tests `tests/infrastructure/unit/core/test_homeostasis.py`.
+  It exists so that a long-running engine heals itself: a worker that degrades after hours of uptime is recycled
+  without a manual restart.
 
 `BRAIN=direct`/`local` are plain-model baselines (no two-speed brain). The cluster channel uses the SAME FlashBrain
 engine (`nucleo/flash/`) in the UNTRUSTED profile — tools off + identity-safe (§MeshKore).
@@ -129,7 +129,7 @@ engine (`nucleo/flash/`) in the UNTRUSTED profile — tools off + identity-safe 
 
 One SQLite file, `zaelar.db` (WAL, in `memory/_data/`), is the shared substrate the FlashBrain, the memory agent and
 the widgets write, and the retriever reads directly (WAL, ms). The retriever does NOT run inside the synchronous
-voice turn (V2-011): the FlashBrain reads a cached state block and does on-demand recall off the event loop — see
+voice turn: the FlashBrain reads a cached state block and does on-demand recall off the event loop — see
 §Brain above. Design doc: `.meshkore/docs/architecture/zaelar-memory.md`. Pieces:
 
 - **Schema** — tables `state · memories · vec_memories · fts_memories · edges · episodic · journal`.
@@ -146,7 +146,7 @@ voice turn (V2-011): the FlashBrain reads a cached state block and does on-deman
   loads lazy). See §Files below.
 - **API** — `memory/api.py` facade + a `memory.updated` signal on the bus. `memory/api.py::map()` returns the WHOLE
   memory (state + memories grouped by layer short/long + `edges` + every per-unit metadatum) for the **memory-map
-  visualizer** (V2-014); `memory/server_api.py` serves it read-only at **`GET /api/memory/map`** (`no-cache`). Real
+  visualizer**; `memory/server_api.py` serves it read-only at **`GET /api/memory/map`** (`no-cache`). Real
   time: the server bridges `memory.updated` onto the `observer` topic (→ GET /events) as `{kind:"memory"}` so the map
   refreshes live without polling — see §Frontend (MemoryMap) + `zaelar-observability.md`.
 
@@ -167,7 +167,7 @@ the server just serves `frontend/` at `/static`. Designed so a future migration 
 ```
 frontend/
   index.html              thin bootstrap: <link> styles + vendored VAD <script>s + <script type=module> main.js
-  pages/                  architecture.html · debug.html (internal pages)
+  pages/                  debug.html (internal page)
   app/
     main.js               entry — mounts components, creates the widget desktop, starts the visualizer
     styles.css            all UI CSS (the widget desktop injects its own)
@@ -177,9 +177,9 @@ frontend/
       store.js            app-wide reactive state as signals (conn, mic, cam, botSpeaking, voices, theme, …)
     services/             framework-agnostic logic — migrates UNCHANGED
       session.js          the WebRTC/session ENGINE (start/stop/reset/reconnect, mic capture, speaker gate;
-                          camera capture disabled 2026-08-28 — code kept commented, V2-456).
+                          camera capture is disabled — the code is kept commented).
                           NOTE: on the LiveKit engine this URL serves session-lk.js (see server/livekit_api.py),
-                          which runs the V2-651 speaker-identity SHADOW off the mic analyser.
+                          which runs the speaker-identity shadow pass off the mic analyser.
       theme.js            dark/light mode — applies the `theme` signal to `<html data-theme>` + persists it
       audio.js  vad.js  stt.js  sse.js  status.js  visualizer.js  voiceCommands.js  api.js
     components/           function components (read store, build DOM via h(), run effects) — map 1:1 to Solid
@@ -187,12 +187,12 @@ frontend/
       (ChatWall = text channel: type/paste → session.sendText → data channel → server ClientTextInjector → user turn;
        Ctrl/Cmd+V anywhere feeds it. CronPanel = the `/api/cron` view onto the `nucleo/` scheduler.)
       Orb = zaelar PERSONIFIED; it owns a BOWL (concave semicircle) of FIVE frameless controls UNDER the orb —
-      L→R: ⏰ cron (opens CronPanel; MOVED here from the TopBar, V2-014) · 🧠 memory (opens the MemoryMap visualizer,
+      L→R: ⏰ cron (opens CronPanel; MOVED here from the TopBar) · 🧠 memory (opens the MemoryMap visualizer,
       store.memOpen) · 🔊 mute zaelar's voice (CENTRE, lowest) · 📝 toggle LIVE CAPTIONS · 🤖 attention gate
       (blue/ON = `wakeword`, only acts on "zaelar/harvis"; grey/OFF = `always`, listens+answers to everything,
       default) which flips `attention_mode` LIVE via the SAME settings seam the ⚙ uses (POST /api/settings;
       voice/attention.py::mode() reads ZAELAR_ATTENTION per turn → no reconnect) and reflects the real mode on load
-      (V2-016 T139/T140). All BLUE when ON/open, grey when OFF/closed; the bowl arc is pure CSS (translateY per
+      All BLUE when ON/open, grey when OFF/closed; the bowl arc is pure CSS (translateY per
       nth-child — centre dips, edges rise). These are zaelar's OWN things; the PROJECT icons (◉ status · ⌗ docs ·
       ◷ debug · ☾/☀ theme · ⚙ · Reset) stay UP in the TopBar. The caption overlay crawls above the orb
       (teleprompter, last 3 lines), driven by LiveKit's AUDIO-SYNCED transcription (RoomEvent.TranscriptionReceived
@@ -200,11 +200,10 @@ frontend/
       wall keeps the history.
       INVARIANT (product): NO floating notifications anywhere — a proactive push surfaces by voice + live caption +
       a chat-wall entry (deduped), never a toast. The old Notice toast component was removed for this.
-      MemoryMap = the 🧠 "map of zaelar's memory" (V2-014): a full-screen system view (overlay like /debug, NOT a
-      widget) of how the central memory (memory/, V2-002/003) is composed IN REAL TIME. Three SIDE-BY-SIDE COLUMNS
+      MemoryMap = the 🧠 "map of zaelar's memory": a full-screen system view (overlay like /debug, NOT a
+      widget) of how the central memory (memory/) is composed IN REAL TIME. Three SIDE-BY-SIDE COLUMNS
       (left→right, each its own block with a coloured top rail + header, nodes flowing vertically inside) —
-      ESTADO (narrow, 1 node wide; the fixed state table, near-empty until V2-013 populates it, and seeing that empty
-      is the point), CORTO PLAZO (narrow, 2 nodes wide; level 'short'), LARGO PLAZO (the WIDEST column, 4 nodes wide;
+      ESTADO (narrow, 1 node wide; the fixed state table), CORTO PLAZO (narrow, 2 nodes wide; level 'short'), LARGO PLAZO (the WIDEST column, 4 nodes wide;
       'mid'/'long', the one that grows) — each memory a node/card with tiny ~8px text +
       scoring (importance) + date/time + metadata (kind, weight bar, access_count, pinned), readable by ZOOM (wheel)
       + PAN (drag); the concept GRAPH (edges) drawn as SVG curves between nodes. Data: `GET /api/memory/map`
@@ -214,10 +213,10 @@ frontend/
       services/sse.js calls store.bumpMemory(); MemoryMap refetches (debounced) ONLY while open.
     lib/
       draggable.js        makeDraggable (drag + position persistence)
-      speaker-id.js       SPEAKER IDENTITY (V2-651 F0) — pure DSP core (pitch/centroid/rms, enroll,
+      speaker-id.js       SPEAKER IDENTITY — pure DSP core (pitch/centroid/rms, enroll,
                           multi-profile classify, energy segmenter) + the SpeakerID AnalyserNode adapter.
                           The fingerprint is computed IN THE BROWSER (the client carries the cost; only a
-                          tiny verdict would ever reach the backend). F0 is SHADOW: every speech segment is
+                          tiny verdict would ever reach the backend). It runs in SHADOW mode: every speech segment is
                           logged to observability as `🎙️ speaker` and NOTHING is gated or written.
                           Doc: docs/modules/zaelar-speaker-identity.md
       speaker-gate.js     LEGACY owner-voice acoustic gate — the orphaned predecessor of speaker-id.js.
@@ -239,7 +238,7 @@ frontend/
 is **audio I/O + a thin reactive shell around widgets that the brain (`nucleo/`) drives** — no business state lives in the client.
 
 **Theme (dark by default).** `app/core/store.js` holds a `theme` signal (`"dark"|"light"`, seeded from
-`localStorage.hb_theme`, default `"dark"` — a full-white canvas at night was the original complaint). `TopBar.js`
+`localStorage.hb_theme`, default `"dark"`). `TopBar.js`
 has a ☾/☀ toggle icon; `services/theme.js` applies the choice as `<html data-theme="…">` and persists it. All of
 `styles.css` is driven by ONE namespace of CSS custom properties on `:root` (`--hb-bg`, `--hb-ink`, `--hb-muted`,
 `--hb-line`, …, plus unprefixed app-shell vars `--canvas`/`--chrome-line`/`--mono`/`--sans`) redefined under
@@ -261,7 +260,7 @@ IMPLODES into the orb, handing off to the live voice visualiser. Pure `<canvas>`
 `memoria`/`reflejo` over the "vl2" data channel (`{type:"boot",phase}`); `listo` = init done (`{type:"ready"}`),
 with `store.bootReady` lifting the veil. **The ordering barrier is in the backend** (`voice/engine/pipeline/agent.py`):
 after `session.start` the agent emits the phase milestones and then `ready` **BEFORE** dispatching the kickoff
-greeting — so the voice never runs *under* the splash (it used to: `ready` fired ~5s after the greeting started).
+greeting — so the voice never runs *under* the splash.
 INIT (voice live + central memory composed via `memory_cache.prime` + STT/TTS warm) completes → splash implodes →
 THEN zaelar greets. A 60s safety timeout in `session-lk.js` unblocks a stuck boot; later reconnects never re-lock.
 
@@ -270,7 +269,7 @@ THEN zaelar greets. A 60s safety timeout in `session-lk.js` unblocks a stuck boo
 Widgets are zaelar's visual surface: self-contained cards on the canvas that the active brain summons by voice. The
 whole point is that there can be **thousands, all dynamic** — created / modified / shown / hidden on demand — and
 that **no single widget can ever break the rest of the system**. That isolation is the prime directive; every design
-choice below serves it. A dedicated diagram + lifecycle deep-dive lives at `/architecture` → tab **Widgets**.
+choice below serves it.
 
 **Anatomy — one folder per widget** (`widgets/<id>/`, fully independent, add/remove = drop/delete a folder):
 
@@ -285,22 +284,21 @@ choice below serves it. A dedicated diagram + lifecycle deep-dive lives at `/arc
 **Widgets are the FOUNDING rail (§Nucleo → Rails) — THREE distinct conductions, don't confuse them.** Operating a
 widget is a different behavior from creating/modifying it or opening/closing it, and all three are separated in code:
 **(1) OPERATE its DATA** — the FlashBrain runs a widget's declared action itself, instantly, via the `widget_data`
-tool → `apply_action` (FAST/CONFIRM gate, V2-025; item references resolved by `widgets/refs.py`, V2-026). Each widget
+tool → `apply_action` (FAST/CONFIRM gate; item references resolved by `widgets/refs.py`). Each widget
 declares its FUNCTIONS + conduct INSTRUCTIONS **modularly in its own `manifest.json`** (`actions` + `usage`), and its
 memory writeback goes through the sanctioned seams (`ctx.remember`/`ctx.ingest`, `memory.write` with a slot) — never
 the DB directly. **(2) CREATE / MODIFY the CODE** — escalate to a worker (the SlowBrain owns widget CODE). **(3)
-OPEN / CLOSE / DELETE on the canvas** — text tags `[[show]]`/`[[close]]`/`[[move]]` + `delete_widget` (with confirm,
-V2-017). The details:
+OPEN / CLOSE / DELETE on the canvas** — text tags `[[show]]`/`[[close]]`/`[[move]]` + `delete_widget` (with confirm). The details:
 
 **Who builds them (two speeds, don't confuse them).** The *decision* to show/create/modify/delete a widget or change
 its data only ever emits a silent tag — the brain is **never** the one writing widget code. **The SlowBrain is the
-owner of a widget's CODE** (V2-025): creating a new widget, modifying an existing one (its UI/schema/logic), or
+owner of a widget's CODE**: creating a new widget, modifying an existing one (its UI/schema/logic), or
 handing it data that must first be looked up (`[[push]]`) all require the SlowBrain. But **WORKING WITH a widget's
 DATA is NOT the SlowBrain's job** — every action a widget declares (its `apply_action` vocabulary) is a **data-op the
 FlashBrain runs itself, instantly**, via `[[widget.data:id]]` (see "Per-action execution mode" below). The
 **FlashBrain** (the fast voice layer, `nucleo/flash/`; non-reasoning model per-invocation from `config/v2.py` `fast`
 section — Ollama local or AIMLAPI/Grok cloud; full comparison in `.meshkore/docs/ops/zaelar-model-benchmarks.md`)
-handles `[[show:id]]`/`[[close:id]]`/`[[close]]`/`[[move]]`, deleting a widget (with confirmation, V2-017), AND all
+handles `[[show:id]]`/`[[close:id]]`/`[[close]]`/`[[move]]`, deleting a widget (with confirmation), AND all
 declared data actions directly — the ONLY things it escalates via `escalate_to_slowbrain` are CREATE/MODIFY-code and
 data-to-look-up. This is enforced in **code, not just the prompt** (`voice/engine/llm/providers/nucleo.py`): if the
 fast layer emits `create`/`modify`/`push` it's dropped and the turn auto-escalates; a `widget.data` tag is resolved by
@@ -320,12 +318,12 @@ programs a widget; the SlowBrain delegates to a real, sandboxed coding agent.
 `/widgets/{id}/{manifest,widget.js,data}`, `POST /widgets/{id}/action`, `POST /widgets/{generate,modify}`,
 `DELETE /widgets/{id}`). `GET /widgets/{id}/widget.js` serves with `Cache-Control: no-cache` (`widgets/server_api.py`)
 — `desktop.js`'s `import()` has no cache-busting query on first load, so without this an edited widget.js could keep
-being served stale from the browser cache indefinitely (W-009).
+being served stale from the browser cache indefinitely.
 
-**The FlashBrain works with widget DATA directly, via a generic bridge (V2-025/V2-026).** The **primary invocation
+**The FlashBrain works with widget DATA directly, via a generic bridge.** The **primary invocation
 path is a function-calling tool** `widget_data(widget_id, action, item, payload)` (`nucleo/flash/router.py`), NOT an
 inline tag: a small non-reasoning model emits function calls reliably (it calls `web_search` perfectly) but forgets
-inline `[[widget.data]]` tags and, when it does emit one, invents item ids — so V2-026 moved data-ops onto the tool
+inline `[[widget.data]]` tags and, when it does emit one, invents item ids — so data-ops run through the tool
 (the tag stays as a fallback). Both converge in the provider's `_apply_widget_data`, which routes to
 `widgets.dispatch_tag()` (`widgets/__init__.py`) → `widgets/server_api.py:brain_action()` → the SAME
 `apply_action(action, payload)` the widget's own UI buttons call (off-loop, bounded pool; a `backed` widget routes to
@@ -335,7 +333,7 @@ top-level `"usage"` guide, surfaced by `widgets/brief.py:_actions_brief()` — a
 even if `apply_action` accepts it. A widget with mutable data MUST declare it (`widgets/AGENTS.md`, `generator.py`'s
 `_CONTRACT`), and the validation gate REJECTS a declared/handled mismatch (see "Per-action execution mode").
 
-**Item references resolved to real ids — the model never invents them (V2-026, `widgets/refs.py`).** The operator
+**Item references resolved to real ids — the model never invents them (`widgets/refs.py`).** The operator
 speaks in natural language ("mark the daemon task done", "snooze the Reddit thing"), never ids. The model passes a
 natural-language `item`; `refs.resolve(widget_id, action, ref)` matches it (fuzzy, stdlib difflib + token overlap,
 accent-insensitive) against the widget's LIVE items and fills the real id. The widget exposes them via an optional
@@ -347,7 +345,7 @@ layer (`agenda.data._resolve_date/_resolve_time`), and `live_state` gives the mo
 never web-searches the date. `agenda` is the reference (`add_meeting`/`done`/`drop`/`snooze`/`not_now`/`drop_project`
 + `ref_index`). Widgets with their own connector tag (e.g. `mensajeria`'s `[[msg.*]]`) don't need this bridge.
 
-**Background execution — off-screen work on a declared cycle (V2-034, `widgets/background.py`).** A core
+**Background execution — off-screen work on a declared cycle (`widgets/background.py`).** A core
 consideration for EVERY widget: does its data change on its own, off-screen, such that the operator might ask
 about it by voice without ever opening the card? Most widgets: NO — foreground-only, `view_data()` runs on
 demand. Those that do (an inbox, a feed, weather) declare a cycle in `manifest.json`: `"background": {"every":
@@ -389,10 +387,9 @@ layer, per its mode). Neither path is a generic "edit this widget's data" UI —
 what its own `apply_action` (and declared `actions`) expose. Structural changes to the CODE (new fields, layout,
 logic) go exclusively through voice → `escalate_to_slowbrain` → the coding agent, never a data-op.
 
-**Per-action execution mode — data-op ALWAYS, irreversibility SEPARATE (V2-025).** The old `"safe": true|false` flag
-was overloaded: it conflated "can the fast layer run this?" with "is this irreversible?". So `add_meeting` sat at
-`"safe":false` and **auto-escalated to a code agent** that had nothing to build (just the same `apply_action`) — a
-trivial data mutation that took minutes and once hung >6 min. Wrong: a data mutation is never code work. The fix —
+**Per-action execution mode — data-op ALWAYS, irreversibility SEPARATE.** The legacy `"safe": true|false` flag
+conflated "can the fast layer run this?" with "is this irreversible?", which would send a plain data mutation such as
+`add_meeting` to a code agent with nothing to build. A data mutation is never code work, so there is
 one canonical resolver, `widgets/actions.py::classify(spec, name)`, read identically by the gate
 (`nucleo/flash/frontend.py::action_mode`), the provider's forced boundary, and the brief — gives each declared action
 ONE of three modes:
@@ -418,17 +415,16 @@ sub-millisecond. Today it is **lexical-semantic, stdlib-only**: accent-insensiti
 keyword-phrase hits (classic weights), fuzzy per-token match (`difflib`, catches STT typos like *tarrgona*),
 id/title dominance, and a capped description/whenToUse token-overlap signal that can tiebreak but never summon a
 widget by prose alone. The index is cached against the catalog signature (mtime), so per-call work is just the
-query — viable for catalogs of thousands. **Planned next step (when the catalog outgrows lexical recall): a true
-semantic tier** — local embeddings (e.g. a small ONNX sentence encoder) computed per manifest at catalog-index
+query — viable for catalogs of thousands. **Extension point: a semantic tier** — the design leaves room for local embeddings (e.g. a small ONNX sentence encoder) computed per manifest at catalog-index
 time and per query at ask time, cosine-ranked, with the manifest catalog remaining the single source of truth and
-the lexical scorer kept as the exact-match fast path and fallback. Same API shape (`match/ambiguous/candidates`).
+the lexical scorer kept as the exact-match fast path and fallback, behind the same API shape (`match/ambiguous/candidates`).
 
 **Generation is async + closes the loop.** Building a widget takes ~1–2 min; the `[[create]]` is fire-and-forget, so
 the brain must NOT claim "done". On completion the generate/modify endpoint pushes a one-shot `[SISTEMA]` note back
 to the brain's next turn (`voice/brain_notes.py` → drained in the brain adapter): success (with the exact id) or
-failure (+ a spoken/UI alert). The brain then stops mis-claiming and never references a widget id that didn't build.
+failure (+ a spoken/UI alert). The brain therefore never claims an unfinished build and never references a widget id that didn't build.
 
-**Storage — INDEPENDENT per widget, CODE and DATA in separate directories (revised 2026-07-07).** `widgets/store.py`
+**Storage — INDEPENDENT per widget, CODE and DATA in separate directories.** `widgets/store.py`
 gives each widget its own **directory** at `widgets/_data/<id>/` — `state.json` inside it is the primary JSON
 (`store.load(id, default)` / `store.save(id, db)`, identical contract to before), and `store.data_dir(id)` hands out
 the directory itself for anything beyond a flat file (media, attachments, a criteria doc). CODE (`widgets/<id>/`) and
@@ -452,25 +448,21 @@ side cross-widget calls; cross-module events go through the `bus/`.)
 - **Validation gate** (`generator._validate`): before a widget joins the catalog it must have a valid manifest, a
   `widget.js` with `export function render`, a `data.py` that compiles **and whose `view_data(q="")` actually runs and
   returns a dict** (runtime smoke-test). A `modify` that fails validation is rolled back to the last working version.
-- **CSS class-collision check** (`generator._scan_widget_js`, 2026-07-07): rejects a widget whose injected `<style>`
+- **CSS class-collision check** (`generator._scan_widget_js`): rejects a widget whose injected `<style>`
   uses a class name ALSO defined as a BARE (unscoped) rule in the app-wide `frontend/app/styles.css` — CSS applies
   both rules to any element with that class regardless of the widget's own wrapper scoping, so the global rule's
-  properties (position/display/etc.) silently leak onto the widget's element. This shipped live once:
-  `mensajeria`'s `.conn` (its connection-setup card) collided with the app's bare `.conn{position:fixed;left:20px;
-  bottom:14px;...}` (the mic/SSE status line) and got yanked out of the widget card to a fixed screen corner,
-  reading as a second, detached window. `mensajeria` (`.conn`→`.linkcard`, `.me`→`.mine`) and `meteo-soria`
-  (`.ic`→`.wicon`, which had been silently inheriting an unwanted bordered icon-button box) were fixed the same day.
+  properties (position/display/etc.) silently leak onto the widget's element — e.g. a widget class named like the
+  app's fixed-position status line would be pulled out of its card to a screen corner.
   `hbk-*`/`hb-*` prefixed classes are exempt (the intentionally-shared kit and widget-chrome contract).
 
-### Widgets that PRODUCE something — the `runtime` contract (V2-092, `widgets/producers.py`)
+### Widgets that PRODUCE something — the `runtime` contract (`widgets/producers.py`)
 
 A widget that keeps doing something after the operator stops looking — playing audio/video, recording, running a
-live process — is not just a view, and the system needs to be able to **stop it**. That came from a real failure
-(operator, 2026-08-13): with the agent STOPPED via ⏻, a YouTube video kept playing, **restarted itself on page
-reload**, and played on top of the music player at the same time.
+live process — is not just a view, and the system needs to be able to **stop it**: when the agent is STOPPED via ⏻,
+nothing keeps playing, nothing restarts on page reload, and two players never sound at once.
 
-The fix is not a special case per widget — widgets are GENERATED, so next month's podcast card would break the same
-way and nobody would remember to add its `if`. It is a DECLARATION in the manifest, read by `widgets/producers.py`:
+This is not a special case per widget — widgets are GENERATED, so a per-widget `if` would be missing from the next
+card someone builds. It is a DECLARATION in the manifest, read by `widgets/producers.py`:
 
 ```json
 "runtime": {
@@ -484,7 +476,7 @@ way and nobody would remember to add its `if`. It is a DECLARATION in the manife
 Three capabilities then work for **any** widget, present or future:
 
 - **Global stop** — `suspend_all()` silences everything that is producing, knowing nobody by name. Driven by
-  `nucleo/runstate.py` (the server-side ⏻; see `CLAUDE.md` §Decisiones and initiative `V2-092-parar-es-parar.md`).
+  `nucleo/runstate.py` (the server-side ⏻).
 - **Channel exclusivity** — taking `output` suspends whoever else held it. The speaker is ONE.
 - **Gate** — while the agent is stopped, `produce` actions are refused (`agent_stopped`). Everything else (navigate
   the card, change view, lower the volume) still works: stopping the agent is not freezing the UI.
@@ -513,8 +505,8 @@ request/response cycle. So there is a second, formal widget *kind* — **not a r
 addition next to it**. Its two users today are the `navegador` widget (§Navegador below) and the `mensajeria`
 widget (last bullets).
 
-- **`"kind": "passive" | "backed"`** in `manifest.json` (default `passive` — zero change for the 9 passive widgets
-  that exist today). A `backed` widget additionally declares `"backend": {"owner": "owner.py"}` — a module in its own
+- **`"kind": "passive" | "backed"`** in `manifest.json` (default `passive` — zero change for
+  passive widgets). A `backed` widget additionally declares `"backend": {"owner": "owner.py"}` — a module in its own
   folder exposing `async def start()` / `async def stop()` / `async def handle(action, payload)`, the same "drop a
   file with the right name and the host discovers it" convention `data.py`'s `view_data`/`apply_action` already use.
 - **The supervisor (`widgets/supervisor.py`), started in the server lifespan** (`server/__init__.py`, SAME event
@@ -557,10 +549,8 @@ widget (last bullets).
   to `memory/` (kind `msg`), surfaces the relevant via `voice/proactive` + `[SISTEMA]`, and on a read/clear action
   publishes `msg.mark_read` so the right connector marks it read in its app. The supervisor `"gate"` is a GENERAL
   mechanism: any backed widget can require a brain mode.
-- **Multi-platform sub-flows stay INSIDE the widget's own card, never a separate window** (operator requirement,
-  2026-07-07). `mensajeria` already does this correctly (`qrCard`/`connectCard`/`credsCard` all append into the
-  SAME root as the message list — confirmed by the `.conn` collision bug above, which only LOOKED like a second
-  detached panel; the DOM was always one card). The rule for every future multi-platform/multi-channel widget:
+- **Multi-platform sub-flows stay INSIDE the widget's own card, never a separate window.** `mensajeria` does this (`qrCard`/`connectCard`/`credsCard` all append into the
+  SAME root as the message list). The rule for every future multi-platform/multi-channel widget:
   whatever sub-view is needed (connect a new account, show a setup form, confirm an action) renders inside that
   ONE card — even filling it entirely — never a second `.hb-win`, never a fixed/floating bar elsewhere on screen.
   Voice must be able to both enter AND leave a sub-view ("conéctame WhatsApp" → shows the QR inside the card;
@@ -570,18 +560,16 @@ widget (last bullets).
   true for `mensajeria` unifying WhatsApp+Telegram): when email, X/Twitter, or anything else is added, it goes
   INTO `mensajeria` (more platforms in `PLAT`/`ORDER`, more badge colors), never a parallel `email` or `twitter`
   widget. The operator should never have to check N separate inboxes-as-widgets to see what needs attention.
-- **Per-widget voice vocabulary should be scoped to widgets CURRENTLY OPEN, not the whole catalog — not designed
-  yet** (operator requirement). Today `widgets/brief.py:_actions_brief()` lists EVERY widget's declared
-  actions on EVERY turn, unconditionally — fine at 9 widgets, won't scale to hundreds. The idea: the FlashBrain
-  prompt should only carry the action vocabulary (and any per-widget voice synonyms — "el widget de WhatsApp" / "el
+- **Extension point: scoping the voice vocabulary to widgets CURRENTLY OPEN.** `widgets/brief.py:_actions_brief()`
+  lists every widget's declared actions on every turn. The design leaves room for the FlashBrain
+  prompt to carry the action vocabulary (and any per-widget voice synonyms — "el widget de WhatsApp" / "el
   de Telegram" both meaning `mensajeria`, on top of what `runtime.identify()`'s keyword matching already gives for
-  free) for widgets that are ACTUALLY OPEN on the canvas right now — a closed widget shouldn't cost the fast brain
-  any context budget. This needs `desktop.js`'s open-widget list to reach the prompt-building step (`nucleo/flash/`
+  free) for widgets that are ACTUALLY OPEN on the canvas right now — so a closed widget costs the fast brain
+  no context budget. That takes `desktop.js`'s open-widget list to reach the prompt-building step (`nucleo/flash/`
   calls `widgets.brief.for_brain()` server-side, with no visibility into what's rendered client-side) —
   likely via the SAME live-state channel that already reports cluster/cron status, or a small
   `desktop.capabilities()`-style report pushed to the server per
-  turn. Not designed in detail yet; revisit when the catalog grows enough that the current unconditional brief
-  becomes a real prompt-size problem, or when it's needed to disambiguate action names that collide across widgets.
+  turn; it also helps disambiguate action names shared across widgets.
 
 ### Navegador (`widgets/navegador/`) — a real web browser + web-task agent inside zaelar (first `backed` widget)
 
@@ -597,7 +585,7 @@ extracts the real listings, ranks them, and returns the top picks. Files: `owner
 `GET /widgets/navegador/asset/<name>`, cache-busted by `shot_rev`). This is computer-use: the backend drives the
 page programmatically and voice/automation plug in on top.
 
-**HEADLESS by default (2026-07-08).** The Chromium runs **headless — behind the scenes, no window** — so it never
+**HEADLESS by default.** The Chromium runs **headless — behind the scenes, no window** — so it never
 steals the operator's OS focus/cursor (with a visible window the operator couldn't type on their own machine while
 the bot worked). The captures are enough. Visible mode is opt-in (store `navegador_visible=true`, env
 `ZAELAR_NAVEGADOR_VISIBLE=1`, or the runtime `_visible_override` used by login — see Authentication). There is NO
@@ -611,8 +599,7 @@ ports 9222/9200: own instance, internal pipe. A debug port is optional and confi
 lazily on the first command.
 
 > **Not the browser: a factual lookup.** A one-shot factual question ("who won the match?", the weather, a price)
-> is NOT a browser task and must NOT open the navegador — that was the original bug (it fell through to
-> `automate_web` and hung on "Pensando…"). Those go to the FlashBrain's lightweight `web_search(query)` tool
+> is NOT a browser task and must NOT open the navegador. Those go to the FlashBrain's lightweight `web_search(query)` tool
 > (`nucleo/websearch.py`, §Nucleo / §5b of the architecture doc): layered providers (AI-answer Perplexity/Tavily →
 > Brave → free DuckDuckGo), off-loop, answered in the same turn, no card. The navegador is for TASKS on a site
 > (navigate/fill/buy/compare listings) — there's no search endpoint that returns that datum.
@@ -623,8 +610,8 @@ lazily on the first command.
 - `automate_web(goal)` — a TASK. Each goal creates its own task + its own vertical card. This is the agent.
 
 **One task = one card = one browsing lane (hard, in code).** The card model is `navegador::<taskid>` (canvas
-instance ids, `desktop.js`). **V2-571 (2026-09-03): a task whose ERRAND has a results sheet no longer opens this
-card at all** — the sheet's PROCESS tab embeds the browser (capture + filters + newest-first events + the login
+instance ids, `desktop.js`). **A task whose ERRAND has a results sheet does not open this**
+card at all — the sheet's PROCESS tab embeds the browser (capture + filters + newest-first events + the login
 handoff, `dispatch.sheet_browser` → `widgets/results`), because a monitor card and a results sheet for the same
 errand are the same flow shown twice. The `navegador::tN` card remains for SHEETLESS tasks (manual browsing, an
 errand with no sheet), where it is the only surface. Internal tabs a task opens to read listings are
@@ -663,13 +650,13 @@ SlowBrain; the mechanical loop runs cheap off-path). **Confirm-gate**: before cl
 (timeout → doesn't act). **Q&A by voice**: a task can ask (`tasks.ask` → status `needs_input`); the fast prompt
 surfaces the waiting task; the operator's reply is routed via the `answer_web_task` tool → `tasks.answer`.
 
-**AUTHENTICATION — logging into the operator's own accounts (approach = open a REAL browser, 2026-07-10).**
+**AUTHENTICATION — logging into the operator's own accounts (approach = open a REAL browser).**
 To use the operator's account (Wallapop, Google, LinkedIn…) we do **NOT** inherit cookies from the operator's system
 Chrome (Chrome encrypts cookies with the macOS Keychain and locks its profile while running — fragile, invasive).
 Instead we log in ONCE in OUR persistent profile (`widgets/_data/navegador/profile/`) and reuse it. Flow:
 - **Never invents credentials.** A DETERMINISTIC login-wall detector (`agent._looks_like_login`: known login URL or a
-  password field) fires BEFORE the model can type — fixes the 2026-07-10 bug where the loop typed `user@gmail.com`
-  into Google's login and spun. The loop also has a `need_login` action for walls the URL doesn't reveal.
+  password field) fires BEFORE the model can type, so the loop never types made-up credentials into a
+  login form. The loop also has a `need_login` action for walls the URL doesn't reveal.
 - **Real window + versatile login reach** (`owner.py::_authenticate` → `_reach_login`): relaunches Chromium
   **VISIBLE** straight at the site's login — a known login URL (`_LOGIN_URLS`), or else it opens the domain and
   **clicks the "sign in" link** by text (multilingual), **avoiding the register link**. A real Chrome window appears
@@ -680,10 +667,9 @@ Instead we log in ONCE in OUR persistent profile (`widgets/_data/navegador/profi
   net (not requested). Timeout 10min → gentle reminder, never kills the task.
 - **"Already authenticated" guard** (`_already_authenticated`): before opening anything, it checks headless whether a
   session already exists (not a login page + no visible "sign in" button) → does NOT reopen the login; resumes the
-  task directly. Fixes reopening Wallapop's login while already logged in.
-- **Fallback**: `_authenticate_window` (action `auth_window`) is the same real-window flow. An interactive in-canvas
-  login (headless + forwarded input, for cloud) was prototyped but **dropped** — it only covered plain logins and
-  failed on Google/CAPTCHA/passkeys; it lives in the git reflog, not the tree.
+  task directly, so a logged-in site never shows its login again.
+- **Fallback**: `_authenticate_window` (action `auth_window`) is the same real-window flow. A real window is used
+  because it handles every login shape (SSO, CAPTCHA, passkeys) natively.
 - **Memory** (`auth_memory.py`, via the facade): the secret (cookies) NEVER enters memory (lives in the profile);
   only the FACT of the session (`record_session_established`, slot per site → supersede) and a recoverable checkpoint
   (`set_state({auth_pendiente})`). See `zaelar-memory.md §Acciones↔memoria`.
@@ -708,20 +694,15 @@ for it to close).
 `python -m playwright install chromium` (~150 MB); without it the owner disables itself (supervised), taking nothing
 else down.
 
-**Pending (planned):** cheap/local per-listing STUDY engine (open each listing → parse with a local model,
-one paid call for the final judgment) with a Chromium context per task; UI toggle for headless/visible.
-
 **Reserved ids** (never a widget): `generator`, `server_api`, `runtime`, `store`, `brief`, `supervisor`, `_data`,
 `__pycache__`.
 
 **House style & the build contract for the coding agent** live in `widgets/AGENTS.md` (palette, layout, keywords,
 persistence, isolation, comms) — the generator prompt points every headless agent at it.
 
-**TWO SCREENS, ONE WIDGET (V2-574, 2026-09-04).** The same `widget.js` renders on the desk host and on the phone
-(`frontend/mobile/`), where the widget IS the screen at ~390px. Until this was measured, nothing in the repo had
-ever rendered a widget at phone width, and the house style was actively pushing the wrong way — it said «prefer
-horizontal / grid layouts», «NEVER a tall single broken column» and `width:min(620px,90vw)`, all written before
-the phone shell existed. Three things hold the rule up now, in order of how early they catch a mistake:
+**TWO SCREENS, ONE WIDGET.** The same `widget.js` renders on the desk host and on the phone
+(`frontend/mobile/`), where the widget IS the screen at ~390px. Three things hold the rule up, in order of how early
+they catch a mistake:
 
 1. **The guide** (`widgets/AGENTS.md` §Layout) and the generation contract (`generator.py::_CONTRACT`) say to be
    FLUID — `%`, `minmax()`, `flex-wrap`, `repeat(auto-fit,minmax(140px,1fr))` — and that a single column is the
@@ -734,11 +715,9 @@ the phone shell existed. Three things hold the rule up now, in order of how earl
    screen, controls under 40px and inputs under 16px. It walks the folder, so a widget the agent generates
    tomorrow is measured the same day.
 
-What the measurement found on 2026-09-04: **widths were already fine everywhere** — nothing overflowed — and the
-break was TOUCH: six widgets carried 20-34px controls and three had inputs at 11.5-13px, below the size at which
-iOS Safari zooms the page on focus. That is fixed at the HOST, not per widget: `frontend/mobile/app/styles.css`
-applies a 44px floor and 16px inputs to everything inside a card, so it also covers widgets that do not exist
-yet. Checkboxes, radios and range tracks are excepted — a control whose size IS its meaning.
+Touch sizing is handled at the HOST, not per widget: `frontend/mobile/app/styles.css` applies a 44px floor to
+controls and 16px inputs (below that, iOS Safari zooms the page on focus) to everything inside a card, so it also
+covers widgets that do not exist yet. Checkboxes, radios and range tracks are excepted — a control whose size IS its meaning.
 
 ## Files — folded into memory's episodic layer (§Memory)
 
@@ -773,7 +752,7 @@ change. Threading the file inline into the turn as multimodal content is deliber
 asks ("resume este PDF", "mira esta captura y dime qué ves") are satisfied by a follow-up turn where the SlowBrain
 reads the file with its own tools, with zero extra surface in the LLM plumbing.
 
-**Widgets write durable data to memory (V2-003).** Beyond its UI `store.save()` (canvas SSE, unchanged), a widget
+**Widgets write durable data to memory.** Beyond its UI `store.save()` (canvas SSE, unchanged), a widget
 that produces durable data also dumps it to the central memory for brain recall. First case: `mensajeria` writes
 each new incoming message to `memory/` (kind `msg`) — fire-and-forget via the queue, best-effort, a failure never
 touches the UI store or the triage. The per-widget store stays for UI state; memory is for recall.
@@ -785,16 +764,16 @@ touches the UI store or the triage. The per-widget store stays for UI state; mem
 
 zaelar's native link to **MeshKore clusters**, so zaelar can talk to OTHER agents and run tasks collaboratively.
 It is **pure I/O + a brain-agnostic bridge** — it does NOT think. Design principle: the connector never imports a
-brain; server wiring injects one. **One mind (V2-069):** the SAME FlashBrain engine conducts a cluster turn, in the
+brain; server wiring injects one. **One mind:** the SAME FlashBrain engine conducts a cluster turn, in the
 **UNTRUSTED profile** — `connectors/meshkore/brain.py` adapts the channel to the engine (resolves the off-voice model
 tier) and delegates to `nucleo/flash/cluster.py` (**tools OFF in code** + identity-safe system that never exposes
 operator PII). A peer can make zaelar reason + talk, never act **by default**. Conversation state lives in the
-per-peer **capsule** (`capsule.py`). **V2-076** built the permission-gated version of what V2-010 scoped: an
+per-peer **capsule** (`capsule.py`). A permission-gated mode extends this: an
 operator-granted per-cluster profile (`perms.py`+`store.py`) can open `escalate_to_slowbrain` to a scoped
 dev-worker (disposable cwd, `Bash` only to `nucleo/git_cli.py`, repo-authorized), additionally gated on an
 operator-set objective per relationship (`perms.gate_dev_by_objective`, set via the operator-only tool
 `set_cluster_objective`) — see `zaelar-security.md` for the full threat model; the dev-worker's filesystem jail
-is code-enforced (`nucleo/dev_worker_guard.py`, a real Claude Code PreToolUse hook), closed 2026-07-26.
+is code-enforced (`nucleo/dev_worker_guard.py`, a real Claude Code PreToolUse hook).
 
 Files:
 - `client.py` — `MeshKoreClient`: one persistent WS to one cluster. Protocol: connect to
@@ -804,8 +783,8 @@ Files:
 - `bridge.py` — `ClusterBridge`: turns each inbound frame into a **labelled** brain input (`[cluster:acme · message
   from agent 'bravo'] …`), **prepends the per-peer capsule** (who they are, the running summary, the objective, open
   loops, and the PHASE — so it never re-introduces itself), runs it through the injected brain, parses `[[cluster.*]]`
-  tags out of the reply and routes them back to the cluster, and runs the **heartbeat**. Also the **stall guard**
-  (V2-069): when a peer keeps repeating, it sends one assertive, on-goal message, then goes silent and alerts the
+  tags out of the reply and routes them back to the cluster, and runs the **heartbeat**. Also the **stall guard**:
+  when a peer keeps repeating, it sends one assertive, on-goal message, then goes silent and alerts the
   operator once. Tracks a minimal per-cluster `engaged` flag.
 - `capsule.py` — the per-`(cluster,peer)` **conversation capsule**: relationship memory on the central store
   (`sys_kv`, `trust=untrusted`, quarantined) — dossier + summary + objective + open loops + phase + stall counters.
@@ -872,7 +851,7 @@ zaelar reads the operator's **personal** WhatsApp, Telegram and Email, unified b
 `connector.status` to the bus and drain `msg.mark_read` + **`msg.reply`** (`connectors/messaging/ingest.py`); triage +
 store live inside the `mensajeria` widget owner (backed), which classifies with a **LOCAL** model (`qwen2.5:3b` via
 Ollama — nothing personal leaves the machine) and dumps content to `memory/`. Read + mark-read + **RESPONDER**
-(V2-051, email today; auto-responder still deferred, flag OFF).
+(replies are sent on the operator's confirmation).
 
 - `connectors/whatsapp/` — reads the operator's WhatsApp (QR-linked device) via a **VENDORED Baileys bridge**
   (`connectors/whatsapp/bridge/`): a copied + patched Node bridge with `// ZAELAR-PATCH:` markers (mark-read
@@ -881,35 +860,34 @@ Ollama — nothing personal leaves the machine) and dumps content to `memory/`. 
 - `connectors/telegram/` — a **Telethon USERBOT** (the operator's personal account, NOT the Bot API, so it can read
   personal chats), linked by a QR shown IN the canvas (generated with `segno`). Pure-Python, in-process asyncio — a
   **black-box library**, nothing vendored.
-- `connectors/email/` — the operator's **personal email** (V2-051). The CLEANEST connector: **stdlib-only**
+- `connectors/email/` — the operator's **personal email**. The CLEANEST connector: **stdlib-only**
   (`imaplib`/`smtplib`), NO Node bridge (WhatsApp) NOR third-party lib (Telegram). `mailbox.py` = pure IMAP/SMTP logic
   **vendored + adapted** from Hermes' email adapter — poll with UID dedup via `BODY.PEEK` (no `\Seen` on read),
   multipart/HTML→text, noreply/bulk filter, SPF/DKIM/DMARC verdict (trust metadata, not an authz gate — we read the
   operator's OWN mailbox), SMTP reply with `In-Reply-To`/`References` threading. `config.py` = UI-managed store wins
   over `.env`, provider presets (Gmail/Outlook/iCloud/Yahoo/otro). `service.py` = asyncio engine; IMAP/SMTP always via
   `to_thread`; publishes to the bus + drains `msg.mark_read` (→ IMAP `\Seen`) and `msg.reply` (→ SMTP). Auth =
-  IMAP/SMTP + **app-password** (V2-051). **V2-055 (email connectors at max):** `providers.py` = the single
+  IMAP/SMTP + **app-password**, or OAuth2: `providers.py` = the single
   REGISTRY / list of email connectors (gmail/outlook/yahoo/icloud/generic-imap: hosts + `auth_methods` + `OAuthSpec`
   + domain deduction); `oauth.py` = OAuth2 authorization-code + PKCE (authorize URL, code exchange, token store in
   `.meshkore/credentials/email_oauth.json` chmod 600, auto-refresh), model-agnostic per provider, DORMANT until an
   app is registered (like Spotify). Transport decision: **XOAUTH2 over IMAP/SMTP** (`mailbox.xoauth2_sasl`) → Gmail
   AND Outlook reuse the SAME `mailbox.py` (token replaces password), no REST APIs. **Outlook is OAuth-ONLY**
   (Microsoft disabled basic-auth Sept-2024). `config.mailbox()` picks oauth vs password via `auth_method()`.
-  Reused: Hermes `google_chat/oauth.py` + `microsoft_graph_auth.py` patterns + our `spotify/auth.py`. Remaining
-  (per-provider app registration + server callback + widget "sign-in" UX + live verification) = initiative V2-055.
+  Reused: Hermes `google_chat/oauth.py` + `microsoft_graph_auth.py` patterns + our `spotify/auth.py`. A provider's
+  OAuth path activates once its app is registered and its callback is configured.
 - `connectors/messaging/` — the SHARED layer all build on: `triage.py` (the LOCAL platform-agnostic classifier),
   `store.py` (the unified store `widgets/_data/mensajeria.json` — per-platform link state + item list +
   `pending_read` + **`pending_reply`** queues), `notify.py` (proactive voice + `[SISTEMA]` note, shared throttle),
   `brief.py` (the combined numbered brief the brain sees), `ingest.py` (the bus seam: `connector.msg`/
   `connector.status`/`msg.mark_read`/**`msg.reply`**, `MarkReadInbox`/**`ReplyInbox`** per platform), `control.py`
-  (UI connect/disconnect), and `[[msg.*]]` dispatch routed by `item.platform`. **RESPONDER (V2-051):** the FlashBrain
+  (UI connect/disconnect), and `[[msg.*]]` dispatch routed by `item.platform`. **RESPONDER:** the FlashBrain
   tool `reply_message` → the `mensajeria` `reply` data-op (`confirm:true`) → CONFIRM gate reads the draft and asks OK
   → `pending_reply` → owner drains → `msg.reply` → the channel's connector sends. Generic across channels
-  (WhatsApp/Telegram to inherit). Initiating a message to a NAMED contact who hasn't written = **contacts subsystem
-  (V2-052, design)**: contacts as PERSON-data in central memory, channels per contact, default-channel deduction,
-  Apple/Google Contacts connectors, and eventual agent-to-agent networking.
+  (WhatsApp/Telegram reuse the same path). Writing first to a NAMED contact builds on contacts as PERSON-data in
+  central memory, with channels per contact and default-channel deduction (`zaelar-contacts-sync.md`).
 
-## Music connectors (`connectors/{music,spotify}/`) — voice-driven playback (V2-041)
+## Music connectors (`connectors/{music,spotify}/`) — voice-driven playback
 
 zaelar plays music by voice ("pon música", "ponme a Frank Sinatra", "sube la música", "siguiente", "pausa"). The
 mechanism is **connector-agnostic**: the FlashBrain tool `play_music` and the `musica` widget both talk to a single
@@ -930,9 +908,9 @@ non-widget **rail** (§Nucleo → Rails); `nucleo/flash/music_flow.py` drives th
   `server/spotify_api.py` (`/api/spotify/{status,connect,callback,disconnect}`); `provider.py` implements the
   contract. Ported+trimmed from the retired Hermes agent's Spotify plugin. ⚠️ Playback control needs **Spotify
   Premium + an active device**. The FlashBrain drives it **in-turn off the event loop** (`asyncio.to_thread`, like
-  `web_search`, V2-011). One-click connect: set `SPOTIFY_DEFAULT_CLIENT_ID` (zaelar's own app — a PKCE client_id is
+  `web_search`). One-click connect: set `SPOTIFY_DEFAULT_CLIENT_ID` (zaelar's own app — a PKCE client_id is
   not a secret) and the user just logs in; otherwise they paste their own client_id (register the app at
-  developer.spotify.com with Redirect URI `http://127.0.0.1:43917/api/spotify/callback`). Future slots: Apple, radio.
+  developer.spotify.com with Redirect URI `http://127.0.0.1:43917/api/spotify/callback`). The registry takes more providers without widget changes.
 - `connectors/music/youtube_audio.py` — the **free, no-login fallback** provider: resolves a song to a YouTube
   `videoId` (YouTube Data API if `YOUTUBE_API_KEY`, else a stdlib scrape) and plays **only its AUDIO, hidden, inside
   the `musica` widget** (never the `youtube` widget — they are SEPARATE: video vs music). It's always `connected()`
@@ -946,5 +924,5 @@ non-widget **rail** (§Nucleo → Rails); `nucleo/flash/music_flow.py` drives th
 
 Enabling a connector is **UI-managed**: the operator never edits `.env`. `config/connectors.json`
 (written by the `mensajeria` widget's guided flow) holds the enable flags + Telegram credentials, with a redacted
-public view (secrets never returned to the frontend). Future channels (email, X, LinkedIn) join `mensajeria`, never
-their own widget.
+public view (secrets never returned to the frontend). Any new messaging channel joins `mensajeria`, never
+its own widget.

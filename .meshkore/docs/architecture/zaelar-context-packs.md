@@ -4,7 +4,7 @@
 kinds of prompt it is. Three of them already had a home; this is the fourth, and putting a phase instruction
 in one of the other three is a specific, repeatable defect.
 
-Built by V2-675 (2026-09-11). Code: `nucleo/context_packs/`. Seam: `nucleo/flash/prompt.py::build_flash_system`.
+Code: `nucleo/context_packs/`. Seam: `nucleo/flash/prompt.py::build_flash_system`.
 
 ---
 
@@ -12,7 +12,7 @@ Built by V2-675 (2026-09-11). Code: `nucleo/context_packs/`. Seam: `nucleo/flash
 
 | kind | true when | lives in | cached? |
 |---|---|---|---|
-| identity + resources | ALWAYS — it is what the agent IS | `_lang_lock` + `_flash_layer` | yes, it IS the stable prefix (V2-536) |
+| identity + resources | ALWAYS — it is what the agent IS | `_lang_lock` + `_flash_layer` | yes, it IS the stable prefix |
 | style directive | a preference the operator gave this session | `_directive_block` | no |
 | **phase context** | **a STRETCH of the relationship** | **`context_packs.compose()`** | **never** |
 | live state | this second | `live_state()` | never |
@@ -22,7 +22,7 @@ The ordering in the composed prompt is: identity → memory/recall → **directi
 - A pack comes AFTER the operator's own directive because **his instruction is read last of the two**.
 - A pack comes BEFORE live state because "true for this stretch" is a weaker claim than "true right now".
 - A pack is **outside the stable prefix on purpose**. A phase ends mid-conversation; a cached block keeps
-  being spoken after its own phase is over, which is the exact failure the mechanism exists to prevent.
+  being spoken after its own phase is over, which is exactly what the mechanism exists to prevent.
 
 Every pack's contribution is wrapped in a header that says it is TEMPORARY. Without it, a model reads a phase
 instruction as a permanent fact about who it is — the one thing a pack must never become.
@@ -67,7 +67,7 @@ dropped in a folder is a prompt nobody decided to pay for.
 
 **And the one rule about content:** a pack **never re-lists what another layer already carries.** The resource
 layer puts the live widget/tool catalog in the same prompt; a second inventory written by hand is how two
-lists end up disagreeing — measured twice (V2-594, V2-603). Name the FAMILIES, which are architecture and do
+lists end up disagreeing. Name the FAMILIES, which are architecture and do
 not go stale, and point at the catalog.
 
 **Closing a phase: three exits, cheapest first.** Deterministic (a fact we can read) → a judge, off the hot
@@ -80,20 +80,20 @@ voice channel and the probe channel from one place because `observer.turn_detail
 
 ---
 
-## 4 · The pack that exists: `introduction`
+## 4 · The reference pack: `introduction`
 
 Active while `settings.intro_done` is falsy **and** a language has been chosen (while the language ceremony is
-open nobody has spoken yet — V2-672).
+open nobody has spoken yet).
 
 It tells the model to lead the conversation toward meeting each other: one thing per turn, after whatever the
 operator asked for, dropped if he deflects. It lists what is still unknown (`operator_name`, `location`,
 `treatment`) so the phase narrows as it goes, and it caps the self-description at two or three capabilities —
-the operator's own limit: *«tampoco hace falta que se pase cuatro minutos hablando»*.
+because a self-introduction should never turn into a four-minute monologue.
 
 Exits: knowing his name (free — the memory writes it on its own) · a judge after 4 turns, then one call every
 4 · a cap at 30.
 
-**The phrasebook (V2-674) stands aside while any pack is active.** During the introduction «hola» is not small
+**The phrasebook stands aside while any pack is active.** During the introduction «hola» is not small
 talk — it is the first move of a conversation that has somewhere to go. The gate lives in the LANE, not in the
 pack: a lane that never reaches a model would never read the pack's text.
 

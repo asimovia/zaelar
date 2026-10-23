@@ -1,54 +1,59 @@
-# V2-083 — Configuración en 3 pestañas + registro único de conectores + origin de widgets
+# Configuration area — tabs, the single connector registry, and widget origin
 
-> Estado: **IMPLEMENTADO** (2026-08-01, v2.83). Sucede a [[V2-082]] (nombres+alias de widgets).
-> Autor: sesión 2026-08-01.
+The full-screen Configuration area (⚙, `frontend/app/components/ConfigPanel.js`, a system surface) is organised
+in **tabs** (`TABS` in `ConfigPanel.js`):
 
-## Objetivo (pedido del operador)
+1. **Settings** — API/model per piece, voice, language, balances: the side menu of sections.
+2. **Appearance** — design profiles and custom knobs for the desktop's skin.
+3. **Connectors** — EVERY connector in the system, with its connected/authenticated state, and **connect/revoke
+   right there** (the same actions are also available from the widgets that own a connector, e.g. messaging).
+4. **Widgets** — one alphabetical list with a badge per line: **built-in** (ships with the agent) vs **yours**
+   (created by the user). Read-only.
 
-El área de Configuración full-screen (⚙, `ConfigPanel.js`, superficie de sistema) pasa a **3 pestañas
-principales**:
-1. **Ajustes** — lo de siempre (API/modelo por pieza, voz, idioma, saldos): el menú lateral de 7 secciones intacto.
-2. **Conectores** — TODOS los conectores del sistema, con estado conectado/autenticado o no, y **conectar/revocar
-   desde ahí mismo** (en los dos sitios: aquí + el widget de mensajería). También por voz (follow-up aparte).
-3. **Widgets** — una sola lista alfabética con badge por línea: **«de serie»** (vienen con el agente) vs **«tuyo»**
-   (creados por el usuario). Solo lectura.
+**Hard invariant:** connectors are NATIVE and **all their configuration and credentials are DYNAMIC, visible,
+revocable and authenticatable from the frontend — NOTHING in `.env`** (env vars are only a power-user fallback).
+Connection code lives in `connectors/<x>/`; the data (cluster tokens, the Architect token, etc.) lives in the
+agent's store and is managed from the tab.
 
-**Invariante duro del operador:** los conectores son NATIVOS y **toda su configuración/credenciales es DINÁMICA,
-visible, revocable y autenticable desde el frontend — NADA en `.env`** (env solo fallback power-user). El código de
-conexión vive en `connectors/<x>/`; los datos (tokens de cluster, token de Architect, etc.) viven en el store del
-agente, gestionables desde la pestaña.
-
-## Piezas
+## Pieces
 
 ### Backend
-- **`connectors/registry.py`** (NUEVO) — inventario ÚNICO y tipado: `descriptors()` → por conector
-  `{id, label, family (mensajería|música|infra), auth (qr|app-password|oauth|token|cluster), connected, status,
-  detail, config REDACTADA, [clusters]}`. Agrega mensajería (config+estado vivo del store), Spotify (`auth.status`),
-  Architect (`configured`), MeshKore (`manager.clusters`). Read-only; cada fuente aislada (un conector roto no tumba
-  el registro).
-- **Tokens de infra DINÁMICOS (no `.env`):** `config/connectors.py::_DEFAULTS` gana `architect: {enabled, token, url}`
-  (`token` secreto → redactado). `connectors/architect/client.py::token()/base_url()` leen el store PRIMERO, `.env`
-  solo fallback. MeshKore ya tenía store dinámico (`store.stage/resolve/save_cluster`).
-- **Endpoints** (`server/config_api.py`): `GET /api/connectors` (el registro) + `POST /api/connectors/architect/
-  connect|disconnect` (fijar/revocar token). Mensajería/Spotify/MeshKore reusan sus endpoints existentes
-  (`/api/messaging/{p}/connect|disconnect`, `/api/spotify/*`, `/api/meshkore/stage|connect|disconnect`).
-- **Widget origin:** `widgets/registry.py::origin_of` → `builtin` (lista curada `_BUILTINS` = 10 core de serie) |
-  `user`. `origin` explícito del manifest manda; el **generador estampa `origin:"user"`** en lo que crea. Propagado a
-  `registry()`/`project_state()` → `GET /widgets/registry` + `state.widget_registry`.
+
+- **`connectors/registry.py`** — the ONE typed inventory: `descriptors()` returns, per connector,
+  `{id, label, family, families, auth (qr|app-password|oauth|token|cluster), connected, status, detail,
+  REDACTED config, [clusters]}`. It aggregates every connector family (messaging, music, files, photos, video
+  accounts, calendar, contacts, Google, Architect, MeshKore). Read-only; each source is isolated, so a broken
+  connector never takes the registry down. `serves(descriptor, family)` is the single reader that decides
+  whether a connector belongs to a family, so a widget strip and the settings tab can never disagree.
+- **Dynamic infra tokens (not `.env`):** `config/connectors.py::_DEFAULTS` carries `architect: {enabled, token,
+  url}` (`token` is a secret → redacted). `connectors/architect/client.py::token()/base_url()` read the store
+  FIRST and fall back to `.env` only if it is empty. MeshKore keeps its own dynamic store
+  (`store.stage/resolve/save_cluster`).
+- **Endpoints** (`server/config_api.py`): `GET /api/connectors` (the registry), `GET /api/connectors/catalog`, and
+  `POST /api/connectors/architect/connect|disconnect` (set/revoke the token). Messaging, Spotify and MeshKore
+  reuse their own endpoints (`/api/messaging/{p}/connect|disconnect`, `/api/spotify/*`,
+  `/api/meshkore/stage|connect|disconnect`).
+- **Widget origin:** `widgets/registry.py::origin_of` → `builtin` (the curated `_BUILTINS` set) | `user`. An
+  explicit `origin` in the manifest wins; the **generator stamps `origin:"user"`** on everything it creates.
+  Propagated to `registry()`/`project_state()` → `GET /widgets/registry` + `state.widget_registry`.
 
 ### Frontend
-- **`ConfigPanel.js`**: barra de pestañas `.cf-tabs` (Ajustes/Conectores/Widgets) sobre el `.cf-tabpane`. La pestaña
-  Conectores pinta tarjetas por familia con las cajitas de conexión (QR WhatsApp/Telegram, app-password Email, OAuth
-  Spotify, token Architect, cluster MeshKore) llamando directo a los endpoints REST (poll tras conectar para pillar el
-  QR). La pestaña Widgets = lista alfabética con badge de-serie/tuyo. `api.js` gana los helpers; `styles.css` los
-  estilos (`.cf-tabs/.cf-tab/.cf-tabpane/.cf-btn/.cf-fam/.cf-wrow/.cf-wbadge`).
 
-## Split builtin/user inicial (editable en `registry._BUILTINS`)
-- **De serie:** agenda, clock, timer, search, results, navegador, mensajeria, musica, youtube, cluster-registro.
-- **Tuyo:** meteo-soria, meteo-tarragona-grafico, futbol-champions, personalizado-reproduzca-video,
-  temporizador-pomodoro-ayudar, juego-serpiente-snake.
+- **`ConfigPanel.js`**: a `.cf-tabs` bar over the `.cf-tabpane`. The Connectors tab paints cards per family with
+  the connection boxes (WhatsApp/Telegram QR, email app-password, Spotify OAuth, Architect token, MeshKore
+  cluster), calling the REST endpoints directly (with a short poll after connecting to pick up the QR). The
+  Widgets tab is the alphabetical list with the built-in/yours badge. `api.js` holds the helpers; `styles.css`
+  the styles (`.cf-tabs/.cf-tab/.cf-tabpane/.cf-btn/.cf-fam/.cf-wrow/.cf-wbadge`).
 
-## Pendiente / follow-up
-- **Conectar por voz** ("conéctame el WhatsApp") = una tool que dispare el connect — aparte, tras validar la UI.
-- El QR de WhatsApp/Telegram en la pestaña se refresca por poll corto tras conectar; podría escuchar el SSE de
-  mensajería como el widget para ser instantáneo.
+## Built-in vs user widgets
+
+The built-in set is the curated `_BUILTINS` in `widgets/registry.py` (agenda, clock, timer, search, results,
+browser, messaging, music, YouTube and the other core widgets). Everything else — anything the generator creates
+— is the user's.
+
+## Extension points
+
+- **Connecting by voice** («connect my WhatsApp») fits as a tool that triggers the same connect action; the voice
+  carries the intent, and any credential step stays in the UI.
+- The WhatsApp/Telegram QR in the tab refreshes with a short poll after connecting; it can subscribe to the
+  messaging SSE stream, as the messaging widget does, to update instantly.

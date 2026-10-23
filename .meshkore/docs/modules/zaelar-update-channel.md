@@ -8,7 +8,7 @@ status: current
 
 # The update channel — one number a person can compare, one honest «do I have to reload?»
 
-`update/` (engine) + `frontend/app/update/` (both shells). Delivered by **V2-553**.
+`update/` (engine) + `frontend/app/update/` (both shells).
 
 It answers two questions and keeps them apart on purpose:
 
@@ -79,14 +79,14 @@ elements:
 
 The bar writes `--banner-h`, a custom property that already existed in `core/palette.css` documented as
 *«height of the update banner when visible (0 when hidden) — top controls shift down by this»*, with `.tr` and
-`.me` already consuming it through a `calc()` and a 0.2 s transition. The seam was built for this banner and
-had never had a writer, so no layout CSS changed. Widget cards deliberately do not move: placement already
-reserves the top 70 px (`Desktop.tile.top`), more than the bar occupies, so V2-551's guarantee that a card is
+`.me` already consuming it through a `calc()` and a 0.2 s transition. The seam was built for this banner, so no
+layout CSS is involved. Widget cards deliberately do not move: placement already
+reserves the top 70 px (`Desktop.tile.top`), more than the bar occupies, so the guarantee that a card is
 always whole and reachable still holds with the bar up.
 
 The **mobile shell gets the bar and not the badge** (`UpdateSurface({badge:false})`): its bottom edge belongs
 to the dock. An installed PWA is the surface most likely to be running code from days ago, which is why it
-gets the bar first. Where the number belongs on a phone is still open.
+gets the bar first.
 
 ## The constraint this module was built under
 

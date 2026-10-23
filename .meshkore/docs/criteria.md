@@ -4,12 +4,11 @@
 narrative, no superseded version. When a rule changes, its line changes here and the old text is gone — the
 story of how it changed is the diary's job (`.meshkore/docs/decisions.md`, then `decisions-archive.md`). An
 agent that has read this file knows what the engine must do; an agent that wants to know why reads the diary.
-The diary is LOCAL-ONLY since 2026-10-10 (gitignored — it named people and private runs): on a clone it does not
-exist, and this file is the whole public canon.
+The diary is local-only (gitignored): on a clone it does not exist, and this file is the whole public canon.
 
 **How to read a line.** `CRIT-<group><n>` · the rule · `— since <date> · nodes <ids>` where the ids are nodes
 of `tests/run_testmap.py` that guard it, and, when it helps, the code seam that implements it. A line marked
-`⚠ sin test` names a rule nobody guards yet; it is a debt, not a decoration.
+`⚠ sin test` ("no test yet") names a rule no node guards yet; it is a debt, not a decoration.
 
 **How to change one.** Edit the line (never append a second line on the same topic), move the date, cite the
 node of the test that proves the new behaviour, and write the WHY as a diary entry. The ratchet
@@ -63,7 +62,7 @@ below is the first kind, or it names the mechanism that replaced the second.
   in its own clause is MORE friction («nunca envíes un correo sin preguntarme» → sensitive). A question only
   clarifies WHAT he wants, never asks permission: when the verdict is sure of the order and its action at
   `consent.intent_act_at` (genesis 0.7), the engine acts even if the model asked — below it the question stands.
-  — since 2026-09-17, spoken rule 2026-09-30, the 70 % 2026-10-15 · nodes 4.188, 4.185, 2.174, 2.199, 2.431, 2.728,
+  — since 2026-09-17 · nodes 4.188, 4.185, 2.174, 2.199, 2.431, 2.728,
   2.729 · `nucleo/consent.py`, `nucleo/flash/undecided.py`.
 - **CRIT-C2 · A «yes» answers ONE proposal** and spends only that proposal's authority; an order that starts with
   «ok» is not a yes to a different pending action; every pending confirmation can be answered in words. — since
@@ -75,7 +74,7 @@ below is the first kind, or it names the mechanism that replaced the second.
 - **CRIT-C4 · Building or rewriting a card of his asks first**, at the one door a worker is lit
   (`dispatch._run_session`, `kind == code`); the cluster dev-worker is exempt. — since 2026-09-23 · nodes 2.76.
 - **CRIT-C4c · Every appointment he writes carries its notice**: a timed one ~2 h before, an all-day one at 09:00 that
-  day; an asked `remind` wins; items synced from Google stay silent. — since 2026-10-10 (operator) · nodes 2.250.
+  day; an asked `remind` wins; items synced from Google stay silent. — since 2026-10-10 · nodes 2.250.
 - **CRIT-C4b · A worker never deletes a card.** Deleting is a confirmed act (`pending_confirm`, the UI's Yes/No);
   the first verb of a request names its act, so a build that mentions deleting its own entries builds. — since
   2026-10-09 · nodes 2.246.
@@ -85,7 +84,7 @@ below is the first kind, or it names the mechanism that replaced the second.
   recipient is never a doubt: one he did not name (this turn or his last 15 min) is asked «¿se lo mando a X?», a
   spelling-only near contact is named back, never written to, and the engine never turns a draft into a send to
   somebody he did not name. When it was asked, the yes is HIS words (a plain yes, or the judge's YES), never the
-  model's `confirmed=true` over a sentence about something else. — since 2026-09-29, recipient and yes 2026-10-15 ·
+  model's `confirmed=true` over a sentence about something else. — since 2026-09-29 ·
   nodes 2.106, 2.168, 2.730, 2.740 · `nucleo/flash/leave_gate.py`, `widgets/mensajeria/outbound.py`,
   `widgets/confirm.py::backs_a_yes`.
 - **CRIT-C6 · An action does not manufacture permission for its own side effects**; the confirm gate asks
@@ -107,7 +106,7 @@ below is the first kind, or it names the mechanism that replaced the second.
 - **CRIT-K2 · The verdict COMPLETES the model, never contradicts it.** A valid, resolvable model call runs (a
   discrepancy is recorded ⚖️); an empty turn or an unresolved call is filled by the verdict's declared action on
   the open card; unsure, closed card or Jev off → the model's path bit for bit. One exception: a verdict VIEW at
-  ≥ 0.95 on the card in front beats a model VIEW on ANOTHER card (pass 114 I3). — since 2026-09-23 · nodes 2.73,
+  ≥ 0.95 on the card in front beats a model VIEW on ANOTHER card. — since 2026-09-23 · nodes 2.73,
   2.121, 2.244 · `nucleo/flash/direct_action.complete`, `nucleo/flash/verdict_card.py`.
 - **CRIT-K3 · The verdict's action lands on the LIVE card**, never a bare phantom; with several cards of one type
   «close» goes to the one his last turn touched; «it» / «that» is the card his last turn acted on. — since
@@ -169,7 +168,7 @@ below is the first kind, or it names the mechanism that replaced the second.
   (nothing readable could say) or `undeclared` (the action declares no end
   state). A later op never improves a failed row; a worker's verdict comes from `circuit.close`, a list step's from
   its ops; the prompt's recent state reads these rows, facts only. An inline row carries its spec, and a live one
-  left by a previous boot is judged once from it (`met`) or closed as interrupted, silently (2026-10-01). — since
+  left by a previous boot is judged once from it (`met`) or closed as interrupted, silently. — since
   2026-09-30 · nodes 2.194, 2.196, 2.198, 3.105, 3.106, 3.113 · `nucleo/request_row.py`, `nucleo/circuit.py`,
   `nucleo/spec.py`, `nucleo/tasks.py`.
 - **CRIT-E13 · A worker's request is never his click.** On a self-hosted engine every mutation is the operator's
@@ -185,8 +184,8 @@ below is the first kind, or it names the mechanism that replaced the second.
   `nucleo/untrusted.py`, `nucleo/flash/leave_gate.py`.
 - **CRIT-E11 · A web page cannot drive the engine.** On a self-hosted engine every `/api/*` call names this engine in
   `Host` and comes from this machine, and a mutation from another site (`Origin`, `Sec-Fetch-Site: cross-site`) is
-  refused; `ZAELAR_API_TOKEN` is the only door for a caller elsewhere. On a cloud account a mutation comes from the
-  account's own site. — since 2026-10-02 · nodes 7.62 · `server/api_guard.py`, `server/__init__.py`.
+  refused; `ZAELAR_API_TOKEN` is the only door for a caller elsewhere. On a hosted deployment a mutation comes from the
+  deployment's own site. — since 2026-10-02 · nodes 7.62 · `server/api_guard.py`, `server/__init__.py`.
 - **CRIT-E10 · A worker that may write writes only inside its own workdir.** Every trusted worker with `Write` gets
   the writes-only jail (a PreToolUse hook: Write/Edit outside the workdir denied, reads free); the dev-worker keeps
   its full jail; a jail that cannot be armed takes the writing tools away, never the jail. — since 2026-10-01 ·
@@ -257,16 +256,16 @@ below is the first kind, or it names the mechanism that replaced the second.
   `ZAELAR_WORKSPACE`, so an isolated engine never holds his tokens. — since 2026-09-30 · nodes 3.94, 3.115, 7.10, 7.55.
 - **CRIT-W7 · A test outside the map does not exist**; every mechanism ships with its node; a node whose file is
   gone is red, and a file answers one deterministic node. — since 2026-09-30 · nodes 7.32, 7.56.
-- **CRIT-W8 · Public and private.** `engine/` describes mechanism, never product; neither our past nor our future
-  is published (roadmap, module logs, test reports stay local and untracked). — since 2026-10-01 · nodes 7.60.
+- **CRIT-W8 · Public and private.** `engine/` describes mechanism, never product; development history and
+  planning are not published (planning notes, module logs, test reports stay local and untracked). — since 2026-10-01 · nodes 7.60.
 - **CRIT-W10 · Fix the class, never the case.** A red test or a judge finding is the SYMPTOM of a class; the fix is
   named by the class it closes and its test carries a variant the failing case did not (the other language, a
   reworded request, another domain). Never: a word, regex or literal so one recorded case passes; a test id or a
   fixture's string in product code; an assertion weakened to go green (it changes only when the behaviour changed
   on purpose, said in the commit); a ratchet ceiling raised. Reach, in order: a verdict already paid → a declared
   datum (manifest, brief, catalogue) → a structure (one door, one reader) → language data in `i18n/`. Too big for
-  the batch: the test stays RED and the class goes to the initiative — an honest red beats a patched green.
-  Product regexes and word tables only fall (555 / 514 on 2026-10-19). — since 2026-10-19 · nodes 7.73 ·
+  the batch: the test stays RED and the class is tracked as open work — an honest red beats a patched green.
+  Product regexes and word tables only shrink. — since 2026-10-19 · nodes 7.73 ·
   `.meshkore/context/principles.md` §«Fix the class».
 - **CRIT-W9 · Closing a batch:** the node in the map, the WHY in the diary, the operator's words in the module
   log — and a line HERE only when a rule changed. — since 2026-09-29 · ⚠ sin test.
@@ -287,7 +286,7 @@ below is the first kind, or it names the mechanism that replaced the second.
   brief caps the model's own count with it. — since 2026-10-10 · nodes 12.3, 12.8 · `search/criteria.py`.
 - **CRIT-S4 · ONE place routes a search request to its module**, by precedence: the brief's sure `search_module`
   verdict → the model's named tool → the unsure verdict → escalate + surface → default fact. No verb tables; a video
-  or music request never consults it. Applied in SHADOW until the recorded sessions show zero false routes. — since
+  or music request never consults it. Applied in shadow mode: the route is recorded beside the live path before it is allowed to act. — since
   2026-10-10 · nodes 12.4, 12.8 · `search/route.py`, `nucleo/flash/search_routing.py`.
 - **CRIT-S5 · Every search provider is declared once, probed with one minimal real call, and reported by key
   NAME**: live · missing · exhausted · blocked · credential; a missing key is missing, never down. The use-case
@@ -300,7 +299,7 @@ below is the first kind, or it names the mechanism that replaced the second.
   `widgets`; what it needs from the host (status light, timeline) are hooks set at boot; the old `nucleo.*` import
   paths are aliases of the same modules. — since 2026-10-10 · nodes 12.8 · `search/hooks.py`.
 
-## Contradicciones (esta tabla tiene que estar vacía)
+## Contradicciones (contradictions — this table must stay empty)
 
 | topic | rule A | rule B | winner |
 |---|---|---|---|

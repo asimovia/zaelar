@@ -1,4 +1,4 @@
-# Fotos — Google Photos Picker connector + virtualized gallery widget (V2-564)
+# Fotos — Google Photos Picker connector + virtualized gallery widget
 
 ## Anatomy
 
@@ -66,7 +66,7 @@ bottom.
 ## Frontiers
 
 - Voice transports intent only — `connect` returns a `url` to open, never a credential; the app's
-  client_id/secret is registered once in ⚙ → Conectores (V2-520).
+  client_id/secret is registered once in ⚙ → Conectores.
 - `widget.js` never calls `fetch`/opens a socket — the picker session and paging go through declared
   actions; the only network-adjacent thing it does is set `<img src>` to our own thumb-proxy route, exactly
   like `widgets/imagenes/`.

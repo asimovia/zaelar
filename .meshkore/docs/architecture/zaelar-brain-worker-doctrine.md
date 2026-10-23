@@ -40,29 +40,26 @@ can learn and experiment**: given a goal, it finds the formula that reaches the 
 | Shape of a good change | A mechanism that works for every errand and is covered by tests | A broader prompt: formulas, resources, ways of solving — never a script |
 | Failure we accept | None. A broken resource is a bug. | An errand solved by an unexpected route is a *success*, not a deviation |
 
-Read the table as an instruction: **when something fails, first ask which half it failed in.** Almost every
-defect measured on this system so far has been a resource defect wearing the costume of a reasoning defect.
+Read the table as an instruction: **when something goes wrong, first ask which half it went wrong in.** A
+resource defect very often wears the costume of a reasoning defect.
 
 ## 3. Why fitting the use case is a regression
 
-A fix shaped like the failing scenario buys one green run and sells the next one. Concrete, all measured on this
-tree in a single day:
+A fix shaped like one scenario buys one green run and sells the next one. The deeper cause is almost never
+scenario-shaped, which is why the resource-level fix is the one to build. Typical patterns:
 
-- The worker **died learning its own CLI by trial and error** — six probes in two and a half minutes, and the
-  errand's budget gone before a single search (V2-219). The scenario-shaped fix is "make `scroll down` work". The
-  resource fix is: every bridge prints the signature it expects and its errors name the right verb. The second
-  one helps an errand nobody has written yet.
-- The research composer **read the provider chain and never wrote to it**, so its relay could not fire and *every*
-  research escalation went out undirected (V2-225). Nothing about hotels. It capped every errand that needs to
-  search anything.
-- What the browser **found never reached anyone** — extracted, printed to the worker's stdout, gone (V2-223).
-  Again: not a hotel problem. A transparency problem, and the answer was invisible for every errand.
-- A **pushed** system note is acted on in the next turn 3 times out of 3; the same fact **rendered** as a prompt
-  status line, 0 out of 13 (V2-222). That is a delivery-path fact about every message the system ever needs to
-  get to the operator, discovered while chasing one hotel.
+- **A worker spending its budget learning its own CLI by trial and error.** The scenario-shaped fix is "make
+  `scroll down` work". The resource fix is: every bridge prints the signature it expects and its errors name the
+  right verb. The second one helps an errand nobody has written yet.
+- **A composer that reads a provider chain but never writes to it**, so its relay cannot fire. That is not a
+  hotel problem — it affects every errand that needs to search anything.
+- **Findings that never reach anyone** — extracted, printed to the worker's stdout, gone. That is a transparency
+  problem, and it affects every errand.
+- **Delivery path matters.** A fact **pushed** as a system note is acted on in the next turn far more reliably
+  than the same fact **rendered** as a prompt status line. That is a property of every message the system ever
+  needs to get to the operator.
 
-The tell is always the same: the deepest cause was never scenario-shaped, and the scenario-shaped fix would have
-hidden it.
+In each case a scenario-shaped fix would have hidden the real cause.
 
 ### The test to apply to any fix
 
@@ -117,7 +114,7 @@ The worker prompt (`nucleo/dispatch_prompts.py`) is where breadth lives, and it 
 
 - `_METHOD_BLOCK` — understand (including the implicit constraints) → plan and recall → act where it truly lives →
   reflect it in the widgets → **verify for real** → iterate until certified. Generalises because it names no domain.
-  **V2-705:** a widget with a connector IS the source (the agenda IS the calendar, messaging IS the outbox), so a
+  A widget with a connector IS the source (the agenda IS the calendar, messaging IS the outbox), so a
   cita or a message is created/cancelled/sent WITH the widget (`nucleo/widget_cli`), never by driving its web; only a
   commitment made on a SITE with no connector (a booking, a subscription, a payment) is done there and then reflected.
 - `_HUMAN_NAV_GUIDE` — human rhythm, use the site's own search and filters, accept cookies, scroll gradually,
@@ -129,9 +126,9 @@ The worker prompt (`nucleo/dispatch_prompts.py`) is where breadth lives, and it 
 
 `nucleo/flash/site_catalog.py` is the sharp edge of this doctrine, and it is worth being explicit about it. Naming
 a trusted site per category is legitimate **as a starting point**: it saves the worker a decision it was making
-badly. It becomes a fence the moment an errand outside the catalog gets *less* capability than one inside it —
-today a shopping errand hitting a wall gets no alternative at all, because `category_of` deliberately does not
-detect shopping.
+badly. It would become a fence the moment an errand outside the catalog got *less* capability than one inside
+it — for example, a category that `category_of` does not detect must still have a real path when it hits a
+wall.
 
 So the rule for any hard-coded knowledge about the world:
 
@@ -145,29 +142,28 @@ The operator's own example is the measuring stick: *houses around Los Angeles, o
 there, starting with the most popular*. No catalog we write will contain that. The agent has to be able to find
 it.
 
-## 6. Instruction design (learned the hard way, twice in one day)
+## 6. Instruction design
 
 Instructions to the brain are part of the reasoning half, and they have their own rule:
 
 **One instruction per block and per note.** If the state changes the order, split the *faces* of the block and
 give each turn exactly one — and the fact that decides which face is **counted in code**, never inferred by the
-model from the conversation window. Two orders in one sentence resolve by coin flip: measured on two rounds of
-the same commit, once as a broken record and once as total silence (V2-224), and again on a note that carried
-three clauses, where the turn obeyed the middle one and reported "no results" with a result in front of it
-(V2-226).
+model from the conversation window. Two orders in one sentence resolve by coin flip — the same instruction can
+produce a broken record on one run and total silence on the next, and a note with three clauses may be obeyed
+only in its middle clause.
 
 And when splitting: **silencing the repetition is not silencing the state.** The face that stops announcing must
 keep forbidding the reassuring phrase, or fixing the broken record reopens the silence.
 
 ## 7. How this changes what you do next
 
-When a use-case round comes back failing:
+When a use case does not resolve:
 
 1. Read what actually happened — the worker's stream and the **whole** system prompt of the turns, not the line
-   you went looking for. A prompt that argues with itself is invisible otherwise (V2-222).
+   you went looking for. A prompt that argues with itself is invisible otherwise.
 2. Classify: **resource** or **reasoning**?
 3. If resource → fix the mechanism for *every* errand, and add the test that would have caught it.
 4. If reasoning → widen the method, the formulas, the ways of solving. Do not encode the scenario.
-5. If you cannot tell → it is a resource problem until proven otherwise. That has been true every time so far.
+5. If you cannot tell → treat it as a resource problem until proven otherwise.
 
 **Never** close a round by teaching the system the answer to that round.

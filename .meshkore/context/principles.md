@@ -1,31 +1,29 @@
 ---
 title: Principles
-updated: 2026-09-15
+updated: 2026-10-23
 status: stable
 ---
 
 # The base of the whole system — mechanisms, not rules
 
-The operator's own statement of it, 2026-09-15, verbatim and load-bearing:
+The founding statement, in short:
 
-> «Necesitamos un sistema que no esté educado, es decir, que sea inteligente y que sepa qué hacer. Yo no
-> puedo decirte todo caso por caso. Eso sería un sistema de if-elses. Nosotros tenemos un sistema
-> inteligente conectado a modelos de lenguaje que es capaz de entender las tareas, procesarlas y de tomar
-> sus propias decisiones. Solo necesitamos darle no solo esa libertad, sino esos mecanismos que sean
-> capaces de entender, ejecutar y comprobar, que nos permitan que cualquier tipo de tarea sea plausible y
-> realizable por parte de nuestro agente. […] Si no tiene algo claro le tendrá que preguntar al usuario, y
-> si el usuario no está tendrá que tomar una decisión, y con lo que le diga al usuario tendrá que montar
-> unas reglas dinámicas que se irán adaptando a cada operador. Al final estamos creando un SISTEMA, no una
-> banda de reglas predefinidas o de carriles preseteados. Lo único que tiene carriles son los widgets.»
+> We need a system that is not *trained by rote* but intelligent — one that knows what to do. Nobody can spell
+> out every case one by one; that would be a pile of if-elses. The engine is an intelligent system connected to
+> language models that can understand tasks, process them and make its own decisions. What it needs is not only
+> that freedom but the mechanisms to understand, execute and verify, so that any kind of task is feasible for the
+> agent. When something is unclear it asks the user; when the user is not there it decides, and what the user
+> says becomes dynamic rules that adapt to each operator. We are building a SYSTEM, not a band of predefined
+> rules or preset rails. The only things with rails are the widgets.
 
 This is not a preference about style. It is the criterion that decides whether a change belongs in this
 engine at all, and it outranks the convenience of any individual fix.
 
 ## The line that actually works
 
-«No rules» is not the rule — the destructive-action contract (V2-705) is a rule, and it is the one that
-stopped 147 DELETE requests against his real calendar. The distinction that survives contact with the code
-is **what the rule is about**:
+«No rules» is not the rule — the destructive-action contract is a rule, and it is what keeps a bulk delete
+from ever reaching the operator's real calendar. The distinction that survives contact with the code is
+**what the rule is about**:
 
 | | Rail on CONSEQUENCES — a MECHANISM, keep it | Rail on JUDGEMENT — a LIMIT, remove it |
 |---|---|---|
@@ -42,35 +40,31 @@ zero freedom of consequence. Every rail worth having has that shape.
 ## The three duties this puts on any change
 
 1. **Declare capabilities, never script behaviour.** An undeclared capability is one the model narrates
-   instead of using (V2-540); a capability it is told it lacks is one it talks the operator out of
-   (V2-692). So say what it MAY do, once — and stop there. *Measured 2026-09-15: a paragraph added the same
-   night told the party model «no discutas», «acúsale recibo en una frase» and where to put what the person
-   said. Three rails on judgement, smuggled in as help, in a fix that was otherwise a mechanism.*
+   instead of using; a capability it is told it lacks is one it talks the operator out of. So say what it MAY
+   do, once — and stop there. Watch for rails on judgement smuggled in as help: a sentence telling a model
+   «don't argue» or «acknowledge in one sentence» inside a fix that is otherwise a mechanism.
 2. **When it is not clear: ask. When nobody answers: decide, and remember what was decided.** `ask_operator`
    is the asking half. The remembering half — turning his answer into a durable policy that the NEXT
    decision of the same class consults — is the part that makes the system adapt per operator instead of
-   per release. See the gap below; until it exists, every preference he states either dies in a
-   conversation or gets frozen into a prompt by whoever was working that day.
+   per release. See the extension point below: without it, a stated preference either stays in one
+   conversation or gets frozen into a prompt.
 3. **Widgets are the only place rails belong.** A widget has a declared shape: its `manifest.json` actions
    ARE its skills, its `data.py` owns its data, its store is its state. System widgets ship that shape
    predetermined and the operator may change it. Nothing else in the engine gets to be a rail — not the
    router, not the prompts, not the playbooks.
 
-## The known gap (open)
+## Extension point: a per-operator policy store
 
-There is no **per-operator policy store**: no mechanism that takes an answer the operator gave to a
-question the system asked, and makes it the default the same class of decision reads next time. Today the
-engine can ask (`ask_operator`, the confirm gates) and can remember facts (`memory/`, pills), but the loop
-between them is not closed, so preferences keep being converted into constants in prompts and code. This
-is the single highest-value thing missing from the philosophy above, and it is why the same kind of
-question keeps reaching him.
+The engine can ask (`ask_operator`, the confirm gates) and can remember facts (`memory/`, pills). The design
+leaves room for the piece that joins them: a **per-operator policy store** that takes an answer the operator
+gave to a question the system asked and makes it the default the same class of decision reads next time. It is
+the natural next step of the philosophy above, and the right home for preferences that would otherwise be
+turned into constants in prompts and code.
 
-## Fix the class, never the case (CRIT-W10, 2026-10-19)
+## Fix the class, never the case
 
-> «No más arreglos para que tests individuales funcionen. Tenemos que hacer mejoras a nivel estructural que
-> arreglen el sistema y como resultado los tests funcionen. Esto es un producto global, que debe poder atender
-> cualquier request.» — the operator, after the 72-hour audit V2-783 classified 30 of 99 product commits as a
-> regex, a word table or a net over the model's words, each born from one recorded case.
+> No fixes whose purpose is to make individual tests pass. Improvements happen at the structural level, they fix
+> the system, and the tests pass as a result. This is a global product that must be able to serve any request.
 
 The tests and the judge are a SAMPLE of the requests the product will meet. Green on the sample is the
 consequence of a sound system, never the target. So:
@@ -86,7 +80,7 @@ consequence of a sound system, never the target. So:
    string in product code; weakening or rewriting an assertion to go green (an assertion changes only when the
    behaviour changed on purpose, and the commit says so); raising any ratchet ceiling.
 5. **When the structural fix does not fit the batch,** the test stays red (or `xfail` with the class as its
-   reason) and the class goes into the initiative. An honest red beats a patched green: a patched green hides the
+   reason) and the class is recorded as open work. An honest red beats a patched green: a patched green hides the
    class from the next person and from the judge.
 
 Enforced, not just written: `tests/infrastructure/unit/test_words_never_fix_a_case.py` (node 7.73) — the count
@@ -101,4 +95,4 @@ Before writing the change, ask the two questions the Brain Worker doctrine alrea
 - Does it work for a task nobody has written yet?
 - **Is what I am adding a sentence about how to behave?** If yes, it is a rail on judgement. Delete it and
   find the mechanism it was standing in for.
-- **Would this change exist if that one test did not?** If no, it is a patch for the test (CRIT-W10).
+- **Would this change exist if that one test did not?** If no, it is a patch for the test.

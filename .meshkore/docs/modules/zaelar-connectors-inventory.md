@@ -8,15 +8,14 @@ status: current
 
 # The connectors — the list
 
-This is the **roll call**: every connector the engine knows about, live or merely declared, with the family
-it belongs to, the widget it serves and where its truth lives. It is the answer to «what do we connect to
-today, and what is still a wish».
-
-It exists because there was no such list. Per-connector module docs existed (`zaelar-cloud-files.md`,
+This is the **roll call**: every connector the engine knows about, with the family it belongs to, the widget
+it serves and where its truth lives. Per-connector detail lives in the module docs (`zaelar-cloud-files.md`,
 `zaelar-fotos-connector-and-widget.md`, `zaelar-video-widget-and-account-connector.md`,
-`zaelar-google-connector.md`) and the connector *workflow* existed, but nothing said what the shelf HOLDS —
-so nobody could tell, at a glance, that YouTube had been parked as `planned` for eight days after the reason
-for parking it disappeared.
+`zaelar-google-connector.md`); the connector *workflow* lives in ops. This page says what the shelf HOLDS.
+
+Connectors are the operator's own accounts. Beyond them, Zaelar orchestrates EXTERNAL services — the agents of
+the MeshKore network, external MCP servers and third-party APIs — which give it access to bookings and
+thousands of external services without a connector of its own for each (`zaelar-meshkore-network.md`).
 
 > **Keep it honest by DERIVING it, never by reading this file.** Two commands print the truth:
 > ```bash
@@ -24,8 +23,7 @@ for parking it disappeared.
 > ./.venv/bin/python -c "from connectors import catalog; [print(m['state'], m['family'], m['id'], m['label']) for m in catalog.load_manifests()]"
 > ```
 > And a ratchet (`tests/connectors/unit/catalog/test_a_built_connector_is_never_on_the_wishlist.py`, node
-> 5.7) keeps the two halves from contradicting each other, which is the failure this table cannot prevent
-> on its own.
+> 5.7) keeps the two halves from contradicting each other, which this table cannot guarantee on its own.
 
 ## The two halves
 
@@ -36,16 +34,15 @@ for parking it disappeared.
 | renders in | ⚙ → Conectores, the chat wall's «Conectores» tab (live half) | the chat wall's wishlist (`planned` + `not-possible` only) |
 | `built` there means | it is real and its state is reported | «exists — let `search()` find it by its words»; it never renders |
 
-A `built` manifest whose id has no live row is **invisible everywhere but `search()`**. That is right for
-exactly two things today, and both say so in their own `notes`.
+A `built` manifest whose id has no live row is **invisible everywhere but `search()`**. That is right for a
+capability that is reached through another connector, and such a manifest says so in its own `notes`.
 
-## A source can serve MORE THAN ONE family (V2-714)
+## A source can serve MORE THAN ONE family
 
 `family` is still a single string and every view in the engine reads it unchanged; `families` is the full
-list and **`registry.serves(descriptor, family)` is the only reader**. Two connectors declare a second one
-today — Telegram and WhatsApp are contact sources as well as message channels — and they deliberately
-appear in BOTH cards, which is the operator's own call: «no me importa que el conector viva duplicado en
-varios widgets, eso le da claridad al asunto».
+list and **`registry.serves(descriptor, family)` is the only reader**. Telegram and WhatsApp, for example, are
+contact sources as well as message channels, and they deliberately appear in BOTH cards: a connector shown in
+every widget it serves is clearer than one the operator has to look for.
 
 What a contact source owes the Contactos card: a normalised `{contacts, groups}` payload published on
 `connector.contacts` when asked on `msg.contacts`, and NOTHING written to the store (`widgets/contactos/
@@ -66,11 +63,11 @@ an edit or a deletion in zaelar never travels back, and the card says so.
 | fotos | `google-photos` | Google Photos | **Google OAuth** | fotos | `zaelar-fotos-connector-and-widget.md` |
 | video | `youtube` | YouTube (account) | **Google OAuth** | youtube | `zaelar-video-widget-and-account-connector.md` |
 | agenda | `google` | Google Calendar | **Google OAuth** | agenda | `zaelar-google-connector.md` |
-| infra | `google-account` | Google (account) | **Google OAuth** | — (serves the five above) | `zaelar-google-connector.md` |
+| infra | `google-account` | Google (account) | **Google OAuth** | — (serves the Google rows above) | `zaelar-google-connector.md` |
 | infra | `architect` | Architect (code daemon) | token | — | — |
 | infra | `meshkore` | MeshKore (cluster / team) | cluster identity | — | `zaelar-meshkore-network.md` |
 
-**Five of those doors are ONE account.** Everything marked *Google OAuth* resolves its client through
+**All the Google doors are ONE account.** Everything marked *Google OAuth* resolves its client through
 `connectors/google/app.py`; the `google-account` row is that client, reported once, with no value in the
 payload. A per-connector name (`EMAIL_GMAIL_CLIENT_ID`, `CALENDAR_GOOGLE_CLIENT_ID`, …) still wins where it
 is set. See `zaelar-google-connector.md`.
@@ -79,24 +76,15 @@ is set. See `zaelar-google-connector.md`.
 scope: it is an ARGUMENT (`meet: true`) of `add_meeting`/`update_meeting`, not something the operator
 connects. `connectors/catalog/google-meet.json` exists only so `search()` finds the capability by name.
 
-## Declared and not built
+## Catalogue states
 
-`planned` = we could and have not. `not-possible` = the door is shut, and the manifest says by whom.
+Besides `built`, a manifest can be `planned` (a connector the catalogue offers for the wishlist) or
+`not-possible` (the provider exposes no third-party door, and the manifest names why). Both render only in
+the chat wall's wishlist; the second command above prints the current shelf.
 
-| state | family | id | why |
-|---|---|---|---|
-| planned | mensajeria | `slack` | — |
-| planned | musica | `apple-music` | its real gate is in the manifest |
-| planned | video | `vimeo`, `dailymotion`, `twitch` | — |
-| not-possible | musica | `amazon-music`, `deezer`, `soundcloud`, `tidal`, `youtube-music` | each names its own reason |
-| not-possible | fotos | `apple-photos`, `amazon-photos` | — |
-| not-possible | archivos | `icloud-drive` | — |
-
-⚠️ **`planned` is a promise with an expiry.** `youtube` sat in `planned` from 2026-09-06 to 2026-09-14 with a
-note saying it would be reactivated «the day a Google OAuth client exists» — the client arrived on the 12th
-and the manifest did not move, so for two days the chat wall offered the operator a **«Lo quiero»** button
-for a connector he already had. When a manifest parks something behind a CONDITION, the condition goes in
-the note, and lifting it is the last step of whatever satisfies it.
+⚠️ **When a manifest parks something behind a CONDITION, the condition goes in the note, and lifting it is
+the last step of whatever satisfies it** — otherwise the wishlist keeps offering a connector the operator
+already has.
 
 ## Where a connector is wired
 

@@ -12,18 +12,17 @@ status: current
 phone home screen as a Progressive Web App (Android and iOS, no app store involved) and it drives the **same
 engine**: same services, same store, same widget catalog, same backend. There is no mobile backend and no mobile API.
 
-Delivered by **V2-124**. Deployment-specific policy is out of scope here — see the public/private boundary in
-`CLAUDE.md`.
+Deployment-specific policy is out of scope here — see the public/private boundary in `CLAUDE.md`.
 
 ## Why a second shell rather than media queries
 
-Measured before deciding, not assumed:
+The two hosts have different subjects:
 
 | | desktop shell | mobile shell |
 |---|---|---|
-| stylesheet | `app/styles.css`, ~89 KB of 3-column desk, docking chat, draggable chrome | `mobile/app/styles.css`, ~11 KB |
-| widget host | `app/widgets/desktop.js`, 859 lines whose subject is a pointer: drag by the grip, 8 resize handles, free-space tiling, z-order on click | `mobile/app/shell/Deck.js`: one ordered deck, one card at a time, full screen |
-| controls | an arc of 7 icons above the orb + a top bar | one bottom dock of FIVE controls, orb in the CENTRE, every control within thumb reach |
+| stylesheet | `app/styles.css`, a 3-column desk, docking chat, draggable chrome | `mobile/app/styles.css`, a fraction of the size |
+| widget host | `app/widgets/desktop.js`, whose subject is a pointer: drag by the grip, 8 resize handles, free-space tiling, z-order on click | `mobile/app/shell/Deck.js`: one ordered deck, one card at a time, full screen |
+| controls | an arc of icons above the orb + a top bar | one bottom dock of FIVE controls, orb in the CENTRE, every control within thumb reach |
 | panels | several open at once, floating and dockable | mutually exclusive bottom sheets |
 
 Retrofitting the first host would put every mobile regression inside the desktop's blast radius permanently. The
@@ -42,7 +41,7 @@ show · close · closeAll · createWidget · modifyWidget · onDeleted · showCo
 move · resize · fullscreen · refreshData · refreshRegistry
 ```
 
-…plus `setRunning(on)` (V2-092, from the entry point) and `_reportOpen()` (`session-lk.js`, on reconnect).
+…plus `setRunning(on)` (from the entry point) and `_reportOpen()` (`session-lk.js`, on reconnect).
 
 Implement those and the brain drives the shell for free — voice-opened widgets, closes, irreversible-action
 confirmations, live data refresh — with **zero changes to `sse.js`**. Node 4.18 derives the required list from
@@ -83,11 +82,11 @@ frontend/mobile/
    └─ shell/
       ├─ mobile-surfaces.js canonical list of native mobile surfaces (the pattern of core/system-surfaces.js)
       ├─ Deck.js            ★ the host: full-screen cards, two-finger paging
-      ├─ DockBar.js         the bottom bar: mic · speaker · captions | ORB | chat · menu
-      ├─ OrbMini.js         the orb, and the caption band above the dock
+      ├─ DockBar.js         the bottom bar: chat · dashboards | ORB | mic · config
+      ├─ OrbMini.js         the orb
       ├─ ChatSheet.js       chat as a bottom sheet
       ├─ MenuSheet.js       energy · account · voice · settings · feedback · escape hatch
-      ├─ SettingsSheet.js   the small settings sheet (language · theme · captions · speaker)
+      ├─ SettingsSheet.js   the small settings sheet (language · theme · speaker)
       └─ VoiceHeldNotice.js "your voice is on the other device" + take it over
 ```
 
@@ -95,39 +94,37 @@ frontend/mobile/
 
 | Shared | Why a second copy would be worse than the duplication it removes |
 |---|---|
-| `app/core/store.js` | The single truth about power, energy, chat, tasks, language. Two stores would be two truths, and a state that can lie is a failure this codebase has paid for repeatedly. |
+| `app/core/store.js` | The single truth about power, energy, chat, tasks, language. Two stores would be two truths, and a state that can disagree with itself is exactly what a single store exists to prevent. |
 | `app/core/reactive.js` · `dom.js` · `i18n.js` | Primitives. A fork breaks reactivity across the shared store. |
 | `app/services/*` | `session.js` (→ `session-lk.js` via the route in `livekit_api.py`), `sse.js`, `api.js`, `visualizer.js`, `feedback-api.js`. None of them knows about layout. |
 | `app/core/palette.css` | The `--hb-*` color contract both shells and every widget read. Extracted from `app/styles.css` for exactly this reason: a second copy of the tokens would not fail loudly, it would make a widget paint wrong colors in one shell only. |
 | `app/core/shared-surfaces.css` | The CSS of the three components both shells mount verbatim — `BootOverlay`, `LanguageOnboarding`, `Alert`. Forking a first-run gate is how two shells end up disagreeing about whether onboarding happened. |
 
 `MemoryMap` is the one shareable component deliberately left out: the component would import fine, but its styling
-is a ~200-line panel UI keyed to a wide window, and re-fitting it is its own piece of work.
+is a panel UI keyed to a wide window, and re-fitting it is its own piece of work.
 
 ## Design rules specific to this shell
 
-- **Paging is two- OR three-finger** (widened 2026-09-04: «we can switch screens moving mobile screen with 2 or 3
-  fingers, right and left»). One finger belongs to the widget — scrolling a list, panning a map, dragging a
-  slider. If one finger also paged, every scrollable widget would be unusable. A single touch is never
-  intercepted. Three is not merely a looser count: it is iOS muscle memory, and it is what an intended
+- **Paging is two- OR three-finger**, left and right. One finger belongs to the widget — scrolling a list, panning
+  a map, dragging a slider. If one finger also paged, every scrollable widget would be unusable. A single touch is
+  never intercepted. Three is not merely a looser count: it is iOS muscle memory, and it is what an intended
   two-finger swipe becomes when a thumb rests on the edge. The centroid is taken over ALL active touches and
   re-baselined when the count changes mid-gesture, or a finger landing late reads as a page.
-- **Card content is TOP-aligned in a uniform box** (2026-09-04: «show widgets on top of the screen, aligned, try
-  to use fixed sizes to all. on top widgets will have tabs if needed»). It used to be `margin-block:auto`, which
-  centred anything shorter than the screen: a clock floated mid-phone, a widget whose own tabs are its first row
-  hid them away from the header, and paging between self-centring cards made the body jump under a header that
-  stays put. `min-height:100%` is the half that makes the box FIXED rather than merely top-aligned.
+- **Card content is TOP-aligned in a uniform box**, with the widget's own tabs (if any) as its first row. Centring
+  anything shorter than the screen would float a clock mid-phone, push a widget's tabs away from the header, and
+  make the body jump under a header that stays put while paging. `min-height:100%` is the half that makes the box
+  FIXED rather than merely top-aligned.
 - **A card is hidden while paging, never unmounted.** A video that keeps playing behind another card is correct;
-  re-mounting it on every swipe would cut it off. The global stop (V2-092) is what silences it.
+  re-mounting it on every swipe would cut it off. The global stop is what silences it.
 
-### Navigating the deck (V2-474, 2026-08-29)
+### Navigating the deck
 
 Four ways to see and change what is open, all host chrome, none stealing a gesture from the widget:
 
 - **The pips** sit ABOVE the dock (`bottom: calc(var(--dock-h) + safe-area)`) and each one is a 26px BUTTON
-  that jumps to its card. They shipped at `bottom:6px` — 100% under the fixed dock bar, so the only always-on
-  "there are more cards" signal did not exist on screen, with every source-level test green. Geometry is
-  measured by node 4.87, not assumed. `pointer-events` live on the buttons, never the full-width row.
+  that jumps to its card. They are the only always-on "there are more cards" signal, so their geometry is
+  checked by a rendered test (node 4.87), not assumed from the source. `pointer-events` live on the buttons,
+  never the full-width row.
 - **The `k/n` chip** in every card header is a button that opens the **deck switcher**: one row per open card,
   named by its LIVE title (same source the header paints), the current one marked, a 44px × per row, and
   "close all". It stops ON TOP of the dock like every sheet — mic and ⏻ stay reachable — and it mirrors the
@@ -136,57 +133,52 @@ Four ways to see and change what is open, all host chrome, none stealing a gestu
   so a single finger is safe to claim only there. Same thresholds as the two-finger gesture.
 - **The producing badge.** A hidden card that is PRODUCING (music behind the front card) marks its pip and its
   switcher row: sound with no visible source reads as a haunted phone. "Producing" is read from the manifest's
-  `runtime.active_when` (V2-092), evaluated with the SAME semantics as `widgets/producers.py::is_producing`
+  `runtime.active_when`, evaluated with the SAME semantics as `widgets/producers.py::is_producing`
   (`true`/`false` by truthiness, anything else by text, degraded data never produces) — never a widget-name
   list, which is exactly the per-widget `if` that contract exists to kill. One manifest fetch per base, cached.
 
-`restore()` is at parity with the desktop's V2-351 pass, and each piece bites harder on a phone: the SERVER
-fallback (`/api/canvas/layout`) because localStorage is per-browser and a phone IS a new browser — a freshly
-installed PWA used to open on an empty deck while the account had live errands; the fossil sweep (a bare BASE
-card next to its own instance resurrects an empty sheet over the full one); live errands coming back even if
-this device never saved them (start on the computer, follow on the phone); and a `navegador::tN` with no live
-task filtered out (process state, nothing to reload).
+`restore()` is at parity with the desktop's, and each piece matters more on a phone: the SERVER fallback
+(`/api/canvas/layout`) because localStorage is per-browser and a phone IS a new browser — a freshly installed PWA
+opens on the account's current deck, not an empty one; the fossil sweep (a bare BASE card next to its own instance
+would resurrect an empty sheet over the full one); live errands coming back even if this device never saved them
+(start on the computer, follow on the phone); and a `navegador::tN` with no live task filtered out (process state,
+nothing to reload).
+
 ### The dock, and why the orb is in the middle of it
 
-**Restyled 2026-09-04 (V2-573) to the operator's own layout.** Five controls in three zones —
-`chat · dashboards` | **ORB** | `mic · config`:
+Five controls in three zones — `chat · dashboards` | **ORB** | `mic · config`:
 
-- **chat / dashboards** are the WHOLE footer navigation, however many cards are open («we use only the 2 icons
-  from footer, one for chat one for dashboard, even if we have more than 2 opened»). Which card you are on is
+- **chat / dashboards** are the WHOLE footer navigation, however many cards are open. Which card you are on is
   the deck's business — its pips and its `k/n` switcher — never the bar's. *Dashboards* is not a sheet: it is
   what sits UNDER every sheet, so the button closes chat, menu and settings.
 - **the ORB is 74px and carries the mic glyph INSIDE it.** The inner mic is STATE (level while listening,
   slashed and red while muted); the mic BUTTON on the right is the control. Same relationship the desktop has
   between its orb and its arc.
-- **CAPTIONS are gone from this shell** — button and band both («deactivate subtitles. dont want icon for
-  that»). `store.captionsOn` / `captionSeg` are untouched and still drive the desktop.
-- **the SPEAKER moved into the config sheet** and the row was ADDED there in the same change. That sheet had
-  stated, correctly at the time, that a speaker row would be redundant clutter next to a dock button; shipping
-  the removal without the row would have left NO way to silence the agent from the phone. A structural check
-  now asserts the control exists somewhere in the shell.
+- **No captions in this shell** — neither button nor band. `store.captionsOn` / `captionSeg` are untouched and
+  still drive the desktop.
+- **the SPEAKER lives in the config sheet.** There must always be a way to silence the agent from the phone, so a
+  structural check asserts the control exists somewhere in the shell.
 - **the MIC is the fifth slot**, and the reason is the rule: muting your own microphone is a privacy gesture,
   and a privacy gesture that takes two taps and a sheet is not one.
 
-The old six-control bar (`mic · speaker · captions` | **ORB** | `chat · menu`) was laid out
-`minmax(0, 1fr) auto minmax(0, 1fr)`. The `minmax` floor is load-bearing: a bare `1fr` means
-`minmax(AUTO, 1fr)`, so the three-button side grows its own track past its fair share and shoves the orb off
-centre (measured at 8px). Icons are 48px because three of them plus gaps had to fit ONE side track
-(390 − 16 dock padding − 70 orb column = 152 per side; 3×48 + 2×2 = 148), still above the 44px minimum. Since
-the restyle each side carries TWO (98 of ~144 available), which is the slack that let the orb grow to 74px.
+The dock grid is laid out `minmax(0, 1fr) auto minmax(0, 1fr)`. The `minmax` floor is load-bearing: a bare `1fr`
+means `minmax(AUTO, 1fr)`, so a side with more buttons grows its own track past its fair share and shoves the orb
+off centre. Icons are 48px, above the 44px minimum; each side carries two (98px of ~144 available on a 390px
+screen), which is the slack that lets the orb be 74px.
 
 **The orb IS the switch.** Stopped, the centre slot is a ⏻ and nothing else — nothing else is true about a
 stopped agent. Running, it is zaelar's face, and tapping it stops (or, mid-`pausing`, cancels the stop). Both
 faces go through ONE handler, the same `api.runStop()`/`runStart()` + `markPowerCommand()` seam the desktop ⏻
-uses: since V2-092 the switch is the SERVER's state, so a mobile-only path that flipped a local signal would
-show "stopped" on the phone while the agent kept working.
+uses: the switch is the SERVER's state, so a mobile-only path that flipped a local signal would show "stopped" on
+the phone while the agent kept working.
 
 ⚠️ **Both faces are built ONCE and swapped by visibility — never `() => cond ? a : b`.** That reactive shape is
 the natural way to write it and it is wrong: the child function re-runs on every `agentState` change and returns
 a NEW tree, so each transition mints a fresh `OrbMini` with a fresh `<canvas>`. `main.js` hands `$("#orb")` to
 the visualiser exactly once at boot, so after one re-render that reference is a DETACHED node — the render loop
-keeps running (measured: 741 frames) painting into a canvas nobody can see, while the one on screen is never
-drawn to. Symptom: an empty hole in the middle of the bar, no error anywhere, 0 painted pixels of 9216 against
-the desktop's 10490 under the same preview. Guarded by test nodes 4.18 (structural) and 4.19 (rendered).
+keeps painting into a canvas nobody can see, while the one on screen is never drawn to. The symptom is an empty
+hole in the middle of the bar with no error anywhere. Guarded by test nodes 4.18 (structural) and 4.19 (rendered,
+counting painted pixels).
 
 The glyphs are the desktop's byte for byte, copied from `app/components/Orb.js`, and node 4.18 DERIVES its
 assertion from that file: if the desktop redraws its mic, the mobile shell goes red and somebody decides,
@@ -194,17 +186,16 @@ instead of the two drifting apart unnoticed.
 
 - **`--dock-h` is the only geometry.** Every other surface is flow layout in a full-bleed box. Cards end above the
   dock; sheets stop ON TOP of it rather than over it, so the mic and ⏻ are never more than one tap away.
-- **The phone must be able to HEAR (V2-573).** Two browser rules govern a voice app, not one: the MICROPHONE
-  needs a user gesture (solved since V2-124 by re-arming the session on `pointerdown`) and so does audio
-  PLAYBACK. The second went unhandled next to the first for six weeks: this shell connects at LOAD by design, so
-  the agent's first audio track arrives before any tap and the browser refuses it. LiveKit reports that as
-  `room.canPlaybackAudio` and clears it with `room.startAudio()` — call it from inside the gesture's own call
-  stack (awaiting anything first spends the user activation), and never rely on a bare `element.play()`, which a
-  suspended audio context rejects again. The block is painted as an amber ring on the ORB, because that is what
-  an operator who cannot hear the agent is looking at.
+- **The phone must be able to HEAR.** Two browser rules govern a voice app, not one: the MICROPHONE needs a user
+  gesture (handled by re-arming the session on `pointerdown`) and so does audio PLAYBACK. This shell connects at
+  LOAD by design, so the agent's first audio track arrives before any tap and the browser refuses it. LiveKit
+  reports that as `room.canPlaybackAudio` and clears it with `room.startAudio()` — call it from inside the
+  gesture's own call stack (awaiting anything first spends the user activation), and never rely on a bare
+  `element.play()`, which a suspended audio context rejects again. The block is painted as an amber ring on the
+  ORB, because that is what an operator who cannot hear the agent is looking at.
 - **A phone does not inherit silence.** `hb_bot_muted` is persisted by the power switch too, so a mute decided
-  in one session came back in the next one — invisible, and unreachable once the speaker left the dock. This
-  shell clears it at boot; the desktop deliberately keeps its preference.
+  in one session would otherwise come back invisibly in the next one. This shell clears it at boot; the desktop
+  deliberately keeps its preference.
 - **The app icon is a SILHOUETTE on flat black** (`mobile/icons/generate.py`): the mark is the EYE, which
   `CLAUDE.md` already fixes as zaelar's identity (the orb is the iris), drawn with the real eyelid ratios
   (±2.16·R corners, ±1.24·R apex) solved to a circular arc. Strokes, one colour, same vocabulary as every icon
@@ -216,8 +207,8 @@ instead of the two drifting apart unnoticed.
 - **Inputs are exactly 16px.** Below that, iOS Safari zooms the page on focus and the fixed layout never recovers.
 - **Reactive bindings, not snapshots.** `t()` returns the KEY when a string is missing, which is truthy — so
   `t("x") || "fallback"` is dead code, and a `textContent = t("x")` at construction time freezes whatever the
-  bundle had before its async fetch landed. Both were found by rendering the shell in a phone-sized browser, not
-  by reading the source.
+  bundle had before its async fetch landed. Rendering the shell in a phone-sized browser is what catches this;
+  reading the source does not.
 
 ## The service worker is almost empty on purpose
 
@@ -266,16 +257,15 @@ with HTML because the platform's health check fetches it — the redirect is cli
 ## One voice, two surfaces
 
 `server/livekit_api.py` allows exactly **one live voice session per machine** (heartbeat ~4s, 12s TTL): two open
-mics against the same agent break the pipeline. Until now the two surfaces that could hold that lock were two tabs
-on one computer, so "close the other one" was advice you could act on in a second. A phone and a laptop in another
-room are not two tabs.
+mics against the same agent break the pipeline. Between two tabs on one computer, "close the other one" is advice
+you can act on in a second; a phone and a laptop in another room are not two tabs.
 
-The automatic behaviour is unchanged and right: `session.start()` sets `store.micBlocked` and retries every 3s, so
-when the other surface closes, the phone picks the voice up on its own. What was missing is that `micBlocked`
-paints a 🚫 ring over the desktop orb — legible when "the other tab" is one you can see, meaningless between rooms.
+The automatic behaviour: `session.start()` sets `store.micBlocked` and retries every 3s, so when the other surface
+closes, the phone picks the voice up on its own. On the desktop `micBlocked` paints a 🚫 ring over the orb, which
+is legible when "the other tab" is one you can see but meaningless between rooms — so on the phone
 `VoiceHeldNotice` names the situation and offers the one gesture that resolves it: `POST /api/session/steal` claims
 the lock, and the previous holder's next heartbeat already knows how to stand down. The surface that loses it drops
-to chat plus observer, which has worked since V2-088.
+to chat plus observer.
 
 ## Testing
 
@@ -290,10 +280,12 @@ phone silently ignores the brain:
 - the palette and veil stylesheets are shared and the mobile stylesheet does not redefine an `--hb-*` token;
 - the mobile shell does not link the desktop layout stylesheet, and nothing in `app/` imports from `mobile/`;
 - the service worker intercepts only navigations and never calls `cache.put`;
-- the three PWA paths are in the ingress allowlist.
+- the three PWA paths are in the ingress allowlist;
+- the i18n key scan recognises both `t(` and the `tr(` alias that `Deck.js` imports, so no key the deck asks for
+  escapes the check.
 
-Verified by breaking each one: dropping a Deck method, inventing an endpoint and linking the desktop stylesheet
-each turn the node red.
+Each assertion has a disarm: dropping a Deck method, inventing an endpoint and linking the desktop stylesheet each
+turn the node red.
 
 Node **4.19** — `tests/browser/e2e/mobile/render_dock.py` renders the shell at 390×844 and measures the dock:
 orb centred and PAINTED, tap targets, sheets stopping above the dock, the stopped→⏻→painted cycle.
@@ -301,9 +293,8 @@ orb centred and PAINTED, tap targets, sheets stopping above the dock, the stoppe
 Node **4.87** — `tests/browser/e2e/mobile/render_deck.py` renders the DECK with three fake widgets served by
 Playwright route interception (catalog, data, manifest and the `widget.js` module itself) and measures the
 navigation: pips visible above the dock and jumping on tap, the producing badge following `active_when`, the
-switcher opening/jumping/closing/emptying, one-finger header paging, and `restore()`'s V2-351 parity (fossil
-sweep, live errands, server fallback on a fresh browser — that last one needs its OWN browser context, or
-page 2's localStorage leaks into "fresh install" and fails it falsely). Four disarms verified: pips back under
-the dock, fossil sweep dropped, producing evaluation shorted, header swipe unwired — each turned exactly its
-own checks red. Note for the 4.18 scan: Deck.js imports `t as tr`, and the i18n key ratchet had to learn `tr(`
-— with `t(` alone, every key that file asks for escaped the check.
+switcher opening/jumping/closing/emptying, one-finger header paging, and `restore()`'s parity with the desktop
+(fossil sweep, live errands, server fallback on a fresh browser — that last one needs its OWN browser context, or
+page 2's localStorage leaks into "fresh install"). Each of those checks has its own disarm (pips back under the
+dock, fossil sweep dropped, producing evaluation shorted, header swipe unwired), and each disarm turns exactly its
+own checks red.

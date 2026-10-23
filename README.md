@@ -46,6 +46,19 @@ your messages, your files.
   more — credentials stay on your machine.
 - **Your files, on your terms.** A tiny read-only daemon serves only the folders you allow.
 - **Speaks your language.** English and Spanish ship built in; any of forty others is generated on first run.
+- **Reaches the outside world.** For bookings, travel, events and thousands of other services, Zaelar works
+  with the agents available on the [MeshKore network](https://meshkore.com), external MCP servers and
+  third-party APIs — and falls back to its own browser for everything else.
+
+### What's in this repo, and what's external
+
+| In this repository | External services Zaelar uses |
+|---|---|
+| the voice engine, the two brains, the memory, the canvas and its apps, the connectors, the local daemon | **agents on the MeshKore network** — independent specialists Zaelar discovers and calls for an errand; the network grows on its own, no update needed here |
+| | **external MCP servers** — third-party tools the Brain Worker's agent CLI can call during a task |
+| | **third-party APIs** — language and speech models, search, and the accounts you connect (Google, Spotify, messaging…) |
+
+Zaelar orchestrates those services; it doesn't reimplement them. What they offer is defined by each provider.
 
 ## Architecture at a glance
 
