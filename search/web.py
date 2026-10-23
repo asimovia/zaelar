@@ -60,20 +60,23 @@ def _google_on() -> bool:
         return False
 
 
-#: The chain for a FACT (an answer the turn speaks), quality first: synthesised-and-cited providers, then ranked
-#: pages, then the free scrapers. Gemini (Google's index, grounded) and Z.ai (ranked pages) were added by V2-782
-#: because the engine already held their keys while the chain fell to DuckDuckGo on every call (measured
-#: 2026-10-10: not one inline search in the sweep reached anything but `ddg`).
-_ANSWER_ORDER = ("perplexity", "tavily", "openai", "gemini", "zai", "brave", "google", "ddg")
+#: The chain for a FACT (an answer the turn speaks), CHEAPEST that answers first (2026-10-23). Measured on twelve
+#: ES/EN fact questions: the warm Chromium (`google`) brought the datum in its snippets 12/12 in 1.2-2 s at no
+#: cost; Gemini grounding answers as well as OpenAI and is free within its daily quota; Z.ai returns good pages at
+#: about $0.01 a call; OpenAI wrote the best answers at about $0.025 a call — so it is the paid rung that does not
+#: fail, not the one asked every time. The fast model composes the reply from snippets in the same pass it uses
+#: for a synthesised answer, so a snippet-only rung adds no trip. A rung that refuses for a lasting reason
+#: (quota, captcha, key) is set aside for a window (`_set_aside_if_lasting`), so a blocked Chromium is not paid
+#: for on every search. Unkeyed today and kept for whoever holds their keys: perplexity, tavily, brave.
+_ANSWER_ORDER = ("google", "gemini", "zai", "perplexity", "tavily", "brave", "openai", "ddg")
 #: The chain for LEADS (pages to open: listing discovery, a local service): providers that return real urls.
 #: Perplexity and Gemini are skipped — their citations are redirects or domains, useless as pages to fetch.
 _RESULTS_ORDER = ("zai", "brave", "openai", "tavily", "google", "ddg")
 
 
 def provider(mode: str = "answer") -> str:
-    """Active provider, QUALITY first. Override with WEBSEARCH_PROVIDER (perplexity|tavily|gemini|zai|brave|google|ddg).
-    Without paid keys, the DEFAULT is **google** (free via our own Chromium, better than DDG); DDG remains the last
-    resort (fallback if Google blocks it)."""
+    """Active provider: the first usable rung of the mode's chain (a fact: cheapest first; leads: real pages first).
+    Override with WEBSEARCH_PROVIDER (perplexity|tavily|openai|gemini|zai|brave|google|ddg). DDG is the last resort."""
     forced = (os.getenv("WEBSEARCH_PROVIDER") or "").strip().lower()
     if forced:
         return forced
