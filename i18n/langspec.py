@@ -273,6 +273,9 @@ class LangSpec:
     # The FIRST TURN, spoken in the operator's own voice into the model's window. It is not an internal note
     # like the system prompt: it impersonates HIM, so a Spanish one primes a Spanish reply on turn one.
     kickoff_prompt: str = ("")
+    #: What the FIRST TURN says when the model behind it failed. The greeting answers nothing the operator
+    #: said, so the reply-shaped fallback («say that again?») asks him to repeat words he never spoke.
+    kickoff_fallback: str = ""
     # What a worker session says when it ENDS badly — `nucleo/workers/session.py`, four Spanish literals.
     worker_context_lost: str = ("")
     worker_relay_failed: str = ("")

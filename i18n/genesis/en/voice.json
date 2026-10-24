@@ -125,6 +125,7 @@
  "still_on_it": "Still on it.",
  "say_again": "Sorry, say that again?",
  "kickoff_prompt": "This is the first turn. Greet me in 1-2 sentences, warm and short; if you already know my name from your MEMORY, use it and do NOT ask who I am; if you don't, introduce yourself in one line and ask me my name. Then stop.",
+ "kickoff_fallback": "Hi, I'm here.",
  "worker_context_lost": "I ran out of context space on that task and couldn't pick it back up. Ask me for it again and I'll break it into smaller pieces.",
  "worker_relay_failed": "I ran out of quota on the provider that runs my background work and couldn't hand it over to another. Have a look at the status panel.",
  "worker_no_relay": "I ran out of quota on the provider that runs my background work and I have no other one configured, so this task is stuck. It's in the status panel.",

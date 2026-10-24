@@ -25,7 +25,22 @@ def _refused_for_energy(err_exc, err_text, emit, send) -> bool:
     return True
 
 
-async def say_the_turn_failed(*, emit, err_exc, err_text, errored, llm_metrics, send, spec, stalled) -> dict:
+def _fallback_line(first_turn: bool) -> str:
+    """The one line a failed turn says, chosen by what the turn IS (V2-789).
+
+    A reply-shaped turn answers something the operator said, so «say that again?» is the honest retry. The
+    FIRST TURN (the kickoff greeting) answers nothing: asking him to repeat words he never spoke is wrong, so it
+    gets the greeting-shaped `kickoff_fallback`. Both lines are i18n data; a language without the kickoff line
+    stays silent rather than borrowing the reply line."""
+    from i18n import langs as _lg
+    lang = _lg.current_language()
+    if first_turn:
+        return str(getattr(lang, "kickoff_fallback", "") or "")
+    return lang.say_again
+
+
+async def say_the_turn_failed(*, emit, err_exc, err_text, errored, llm_metrics, send, spec, stalled,
+                              first_turn: bool = False) -> dict:
     if errored and _refused_for_energy(err_exc, err_text, emit, send):
         return {"__return__": True}
     if errored:
@@ -67,7 +82,12 @@ async def say_the_turn_failed(*, emit, err_exc, err_text, errored, llm_metrics, 
                 _hs_mine.record("engine", "bug", _mine)
             except Exception:  # noqa: BLE001
                 pass
-            send("Uf, se me ha ido un momento. ¿Me lo repites?")
+            try:
+                _ef_line = _fallback_line(first_turn)
+            except Exception:  # noqa: BLE001
+                _ef_line = ""
+            if _ef_line:
+                send(_ef_line)
             return {"__return__": True}
 
         _v = {}
@@ -121,17 +141,17 @@ async def say_the_turn_failed(*, emit, err_exc, err_text, errored, llm_metrics, 
         # disponible», y el canario del arnés MUDO en todos los turnos hasta que él paró de medir.
         # V2-244: la composición (nombrar lo callado + su clave) vive en provider_chain.dry_chain_line.
         try:                       # demo pass 128, E1: a fixed Spanish line was said into an English session
-            from i18n import langs as _lg_line
-            _line = _lg_line.current_language().say_again
+            _line = _fallback_line(first_turn)      # V2-789: the kickoff answers nothing — never «repeat that»
         except Exception:  # noqa: BLE001
-            _line = "Perdona, ¿me lo repites?"
+            _line = ""
         if _dry:
             try:
                 _line = _pchain2.dry_chain_line(_pchain2.suppressed_relays())
             except Exception:
                 from i18n import langs as _lg_dry
                 _line = _lg_dry.current_language().no_model_provider
-        send(_line)
+        if _line:
+            send(_line)
         return {"__return__": True}
     _out = locals()
     return {k: _out[k] for k in () if k in _out}

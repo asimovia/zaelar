@@ -887,7 +887,7 @@ class NucleoLLMStream(llm.LLMStream):
         # `voice/engine/llm/providers/turn_failure.py`.
         _blk = await _turn_failure.say_the_turn_failed(
             emit=emit, err_exc=err_exc, err_text=err_text, errored=errored, llm_metrics=llm_metrics, send=send,
-            spec=locals().get('spec'), stalled=stalled,
+            spec=locals().get('spec'), stalled=stalled, first_turn=first_turn,
         )
         if _blk.get('__return__'):
             return
