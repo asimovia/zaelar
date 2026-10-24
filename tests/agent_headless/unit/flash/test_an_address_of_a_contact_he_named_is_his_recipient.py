@@ -52,8 +52,9 @@ def test_every_payload_writing_pass_names_the_session_language(monkeypatch):
              if n.startswith("_SYS") and isinstance(v, str) and "OPERATOR's language" in v]
     assert vague, "the templates moved — re-measure"
     for name in vague:
-        # formatted where it is written, or handed on as `_sys=` to the one site that formats `_sys or …`
-        lines = [ln for ln in src.splitlines() if re.search(rf"\b{name}\b(\)?\.format\(|\.replace\()", ln)
+        # formatted where it is written (alone or with a line appended), or handed on as `_sys=` to the one
+        # site that formats `_sys or …`
+        lines = [ln for ln in src.splitlines() if re.search(rf"\b{name}\b(\)?\.format\(|\.replace\(| \+ [^()]*\([^()]*\)\)\.format\()", ln)
                  or re.search(rf"\b_sys or {name}\b", ln)]
         lines = [ln if "_sys=" not in ln else next(x for x in src.splitlines() if "(_sys or " in x) for ln in lines]
         assert lines and all("_in_his_lang(" in ln for ln in lines), f"{name} is formatted unnamed: {lines}"
