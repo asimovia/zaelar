@@ -221,7 +221,63 @@ def verdict_grants(brief, widget_id: str, action: str = "") -> bool:
         return False
 
 
-def video_license(text: str, last_reply: str = "", *, brief=None) -> bool:
+_TERM_RE = _re.compile(r"\w{4,}")
+
+
+def _terms(s: str) -> set:
+    """Whole words of four letters or more, accent-folded — what can NAME a thing to play, in any
+    alphabet; short function words fall under the length, so no stop-word table of ours is needed."""
+    return {t for t in _TERM_RE.findall(_norm_txt(str(s or ""))) if not t.isdigit()}
+
+
+def _loaded_video_terms():
+    """The words of what the player holds RIGHT NOW (its title and channel, the two facts the card shows), or
+    None when the store cannot be read — and None means «assume it is the same», the guard's old answer."""
+    try:
+        from widgets import store
+        db = store.load("youtube", {}) or {}
+    except Exception:  # noqa: BLE001
+        return None
+    if not str(db.get("videoId") or "").strip():
+        return set()
+    return _terms(f"{db.get('title') or ''} {db.get('channel') or ''}")
+
+
+def names_what_to_play(query: str, text: str) -> bool:
+    """Did HIS words of this turn name what the call asks to play, and is it not what is already loaded? (V2-787)
+
+    The guard below exists against context-bleed: the model re-firing a PREVIOUS `play_video` into a turn that
+    asked for nothing. That call carries the previous query, so its content is absent from his words — and
+    that absence, not a verb, is the signature of bleed. A call whose content he named in this very turn
+    cannot be bleed: he said what to play. Reading it needs no verb table and no language: the call's own
+    query terms against his own words.
+
+    Measured: «Venga, ponnos un vídeo de Madonna.» → `play_video(query="Madonna")` was eaten because the verb
+    table had no «ponnos» and the turn verdict was off; the reply promised Madonna over an empty card, and
+    the same veto ate three follow-ups that named her again.
+
+    Two subtractions keep the protections the grammar was written for:
+      · the player's OWN declared vocabulary (manifest aliases/keywords: «vídeo», «youtube», …) names a card,
+        never content — «¿qué vídeo es este?» does not license `query="vídeo de gatos"`;
+      · a named thing that is ALREADY loaded is a replay, not a new order — praise or a complaint naming
+        what plays («qué bien suena Madonna» over a Madonna video) must not reload it. Unreadable player
+        state counts as loaded: this predicate only ever grants, so its failure returns the old veto."""
+    q = _terms(query)
+    if not q:
+        return False
+    vocab = set()
+    for v in _producing_vocabulary():
+        vocab |= _terms(v)
+    named = (q - vocab) & _terms(_his_words(text))
+    if not named:
+        return False
+    loaded = _loaded_video_terms()
+    if loaded is None:
+        return False
+    return not named <= loaded
+
+
+def video_license(text: str, last_reply: str = "", *, brief=None, query: str = "") -> bool:
     """True when the turn ASKS for media — the words that may carry a `play_video` (a load that replaces
     whatever is playing). Chatter, praise, insults and complaints about a past change license nothing.
 
@@ -230,13 +286,18 @@ def video_license(text: str, last_reply: str = "", *, brief=None) -> bool:
     direction: he can always say it with a verb.
 
     `brief` is the turn's Jev brief. When it names an action of the player, the grammar table is not the
-    last word — see `verdict_grants` for the sentence that proved it has to be that way."""
+    last word — see `verdict_grants` for the sentence that proved it has to be that way.
+
+    `query` is the call's own query: what he names in this turn licenses its own load (`names_what_to_play`)."""
     n = _NEG_MEDIA_RE.sub(" ", _norm_txt(_his_words(text)))
     if _MEDIA_REQ_RE.search(n):
         return True
     if len(n.split()) <= 4 and bool(_AFFIRM_RE.search(n)) and offer_of_media(last_reply):
         return True
     if verdict_grants(brief, "youtube"):
+        return True
+    # V2-787 — the call's own content, named in his words, is not bleed (`names_what_to_play`).
+    if query and names_what_to_play(query, text):
         return True
     # V2-752 — A CORRECTION BORROWS THE LICENCE OF WHAT IT CORRECTS. «He dicho, Apollo once.» carries no
     # media verb and no media noun, and `screen_action` answered `none` at 0.92 — both readers right, both

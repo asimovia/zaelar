@@ -36,7 +36,8 @@ async def run(action: str, tool_calls: list, text: str, *, window=None, brief=No
         from nucleo.flash import router as _router
         from nucleo.flash.show_target import last_assistant_line
         if action != "canvas:show:youtube" and "play_video" in names and canvas_license.video_license(
-                text, last_assistant_line(window), brief=brief):
+                text, last_assistant_line(window), brief=brief,
+                query=video_turn.request_from(tool_calls)["query"]):
             v = video_turn.request_from(tool_calls)
             out.append(await video_turn.execute(v["query"], v.get("action") or "play"))
         if action != "music" and "play_music" in names:

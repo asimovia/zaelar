@@ -226,7 +226,7 @@ def voice_execute(args: dict, text: str, emit, apply_widget_data, deduped: dict,
     q = (args.get("query") or "").strip()
     # V2-741 — the turn's own verdict is consulted BEFORE the veto, not after. The grammar table had
     # no «preparar» and ate a real order; the brief had already answered `youtube:search` at 0.97.
-    if not _lic.video_license(text, last_reply, brief=brief):
+    if not _lic.video_license(text, last_reply, brief=brief, query=q):
         emit("brain", "🛡️ play_video ignorado — el turno no pide ningún vídeo (context-bleed)",
              text=(text or "")[:120], role="system",
              extra={"cat": "flash", "kind_diag": "video_without_order", "query": q[:80]})

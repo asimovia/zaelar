@@ -326,13 +326,22 @@ def close_dispatch(args: dict, tag_emit, emit, text: str = "", done=None, clarif
             targets = [t for t in targets if _inst.base_of(t) not in stay]
         except Exception:  # noqa: BLE001
             pass
+    # V2-787 — ONE door decides a close: the canvas route this call goes through. When that route REFUSES
+    # (`False`: no close order in his words, or the order is an action inside the card) the close did not
+    # happen, so this branch neither claims it on the timeline nor counts the call as an act. Before, the
+    # refusal and «🪟 close_widget(close) → canvas» were logged in the same turn and the card stayed open:
+    # the trace contradicted itself and the turn was counted as having closed something.
+    refused = attempted = 0
     for t in targets:
         if t in done:
             continue
         done.add(t)
-        tag_emit("minimize" if mode == "minimize" else "close", {"id": t})
+        attempted += 1
+        if tag_emit("minimize" if mode == "minimize" else "close", {"id": t}) is False:
+            refused += 1
+            continue
         emit("brain", f"🪟 close_widget({mode}) → canvas", text=t, role="system")
-    return rid
+    return "" if attempted and refused == attempted else rid
 
 
 def fullscreen_dispatch(args: dict, text: str, tag_emit, emit, deduped: dict) -> None:

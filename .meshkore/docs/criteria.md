@@ -121,6 +121,11 @@ below is the first kind, or it names the mechanism that replaced the second.
 - **CRIT-K5 · A canvas mutation needs the operator's words.** The room is not the operator: ambient speech
   reaches neither the chat nor the canvas; a system note never names a card to close and never vetoes a show. —
   since 2026-09-09 · nodes 4.145, 2.134, 3.99.
+- **CRIT-K5b · Content he NAMES in the turn licenses its own load.** Context-bleed is a PREVIOUS call replayed, so
+  its query is absent from his words; a `play_video` whose query terms he said in this turn runs (any language,
+  no verb table), minus the player's declared vocabulary and minus what the player already holds (praise naming
+  what plays reloads nothing). A close the canvas route refuses is neither logged as done nor counted as an act. —
+  since 2026-10-24 · node 2.771 · `nucleo/flash/canvas_license.names_what_to_play`, `show_target.close_dispatch`.
 - **CRIT-K6 · The canvas that counts is the tab holding the voice session**; a fullscreen card covers everything
   and always has an exit; leaving fullscreen is its own, idempotent order. — since 2026-09-24 · nodes 2.91, 2.78,
   2.79.

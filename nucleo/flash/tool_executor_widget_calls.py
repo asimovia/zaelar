@@ -11,7 +11,7 @@ from nucleo.flash import prior_line as _prior_line
 from nucleo.flash import tool_executor_widget as _txw
 
 
-def _tag_emit(action: str, extra: dict, *, _apply_widget_data, _brief, _is_meta_widget_question, _norm_nfkd, _on_tool_call, _request_delete_confirm, _show_guard_target, _show_target_instance, _shown_ids, _spawn, acted, aside, brain, canvas_h, cron_seen, deduped, emit, escalate_req, text) -> None:
+def _tag_emit(action: str, extra: dict, *, _apply_widget_data, _brief, _is_meta_widget_question, _norm_nfkd, _on_tool_call, _request_delete_confirm, _show_guard_target, _show_target_instance, _shown_ids, _spawn, acted, aside, brain, canvas_h, cron_seen, deduped, emit, escalate_req, text) -> "bool | None":
     if action in ("deep",):
         # legacy Hermes escalation tag — el cerebro v2 no lo enseña; si aparece, se trata como escalada.
         if escalate_req["v"] is None:
@@ -123,7 +123,7 @@ def _tag_emit(action: str, extra: dict, *, _apply_widget_data, _brief, _is_meta_
         emit("brain", "🛡️ close ignorado — la orden es una acción DENTRO de la tarjeta",
              text=(text or "")[:120], role="system", extra={"cat": "flash", "kind_diag": "close_inside_card"})
         deduped["v"] = True
-        return
+        return False                  # V2-787: a refused close says so to its caller (`close_dispatch`)
     if action == "close" and not _txw._canvas_lic.close_license(text, brief=_brief):
         # ...unless the shared reader licenses it: Jev independently reads a close order with
         # confidence (T-jev-show-close) — two readers agreeing forgives a grammar miss. A "neither"
@@ -133,7 +133,7 @@ def _tag_emit(action: str, extra: dict, *, _apply_widget_data, _brief, _is_meta_
             emit("brain", "🛡️ close ignorado — el operador no ha pedido cerrar nada (context-bleed)",
                  text=(text or "")[:120], role="system", extra={"cat": "flash", "kind_diag": "close_without_order"})
             deduped["v"] = True
-            return
+            return False              # V2-787: a refused close says so to its caller (`close_dispatch`)
         emit("brain", "🔓 close licenciado por Jev (la gramática no veía orden, dos lectores de acuerdo)",
              text=(text or "")[:120], role="system", extra={"cat": "flash", "kind_diag": "close_jev_licensed"})
     if action == "show":
