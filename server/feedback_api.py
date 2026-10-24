@@ -196,12 +196,30 @@ async def submit_feedback(
     return await _deliver(body, evidence)
 
 
+def _lang() -> str | None:
+    """The language this instance is CONFIGURED in (⚙ → `ZAELAR_LANGUAGE`, validated by `i18n.langs`).
+
+    It travels with every report so whoever answers it writes back in the language the operator chose for
+    his agent — not in a language guessed from the words of the report, which a short message, a pasted
+    error or the canned thumbs text gets wrong. Fails open to `None`: a missing language must never stop
+    the report itself from sending."""
+    try:
+        from i18n import langs as _langs
+        return _langs.current_code() or None
+    except Exception:  # noqa: BLE001
+        return None
+
+
 async def _post(payload: dict):
     """ONE door out for every kind of report — a cloud engine presents its workload credential, a self-host
     one goes to the anonymous route with its install id. Shared by the form and the thumbs-down (V2-760), so
-    the two can never disagree about where a report goes."""
+    the two can never disagree about where a report goes. The configured language is added HERE, at the one
+    door, so no caller can forget it."""
     from nucleo import cloud_account
     from observability import identity as _identity
+    lang = _lang()
+    if lang:
+        payload = {**payload, "lang": lang}
     async with httpx.AsyncClient(timeout=_TIMEOUT_S) as client:
         if cloud_account.is_cloud_account() and _control_plane_url():
             return await client.post(

@@ -6064,7 +6064,8 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/agent_headless/unit/test_a_live_worker_does_not_rewrite_the_state_every_second.py"]},
         {"id": "7.3", "title": "Chat por transporte LiveKit REAL", "ch": CHAT, "live": True,
             "cmd": "./.venv/bin/python tests/infrastructure/e2e/smoke/run_chat_over_livekit.py"},
-        {"id": "7.15", "title": "El botón de sugerencias llega a alguien (y en self-host no habla con la nube)",
+        {"id": "7.15", "title": "The feedback button reaches someone (self-host never talks to the account route), and every report "
+                                "carries the instance's configured language so the answer comes back in it",
          "ch": HTTP, "paths": ["tests/infrastructure/unit/core/test_feedback_api.py"]},
         {"id": "7.31", "title": "GET /api/connectors/catalog sirve solo lo NO-live y falla abierto",
          "ch": HTTP, "paths": ["tests/infrastructure/unit/core/test_connector_catalog_route.py"]},

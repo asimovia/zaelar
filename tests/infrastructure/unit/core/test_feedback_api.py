@@ -205,3 +205,67 @@ def test_list_fails_open_to_an_empty_list_on_network_error(monkeypatch):
     r = _client().get("/api/feedback")
     assert r.status_code == 200
     assert r.json() == {"ok": False, "items": []}
+
+
+# ── Every report carries the instance's CONFIGURED language ─────────────────────────────────────────────────
+# Whoever answers a report writes back in the language the operator set his agent to. Guessing it from the
+# report's words fails on short messages, pasted errors and the canned thumbs text, so the engine says it.
+
+def _capture_posts(monkeypatch):
+    posts = []
+
+    class _Many(_FakeClient):
+        async def post(self, url, json=None, headers=None):
+            posts.append({"url": url, "json": json})
+            return _FakeResponse(200, {"id": "fb-x", "status": "received"})
+
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kw: _Many())
+    return posts
+
+
+@pytest.mark.parametrize("cloud", [False, True])
+def test_a_form_report_carries_the_configured_language_on_both_routes(monkeypatch, cloud):
+    if cloud:
+        monkeypatch.setenv("ZAELAR_USER_ID", "did:key:z6MkExample")
+        monkeypatch.setenv("CONTROL_PLANE_URL", "https://control-plane.example.com")
+        monkeypatch.setenv("CONTROL_PLANE_SERVICE_TOKEN", "wl-secret")
+    else:
+        monkeypatch.delenv("ZAELAR_USER_ID", raising=False)
+        monkeypatch.delenv("CONTROL_PLANE_URL", raising=False)
+    monkeypatch.setenv("ZAELAR_LANGUAGE", "en")
+    posts = _capture_posts(monkeypatch)
+    # Spanish words, English agent: the language is the CONFIGURED one, never the one of the text.
+    r = _client().post("/api/feedback", json={"message": "no me funciona el micro"})
+    assert r.json()["ok"] is True
+    assert posts and posts[0]["url"].endswith("/feedback" if cloud else "/feedback/anonymous")
+    assert posts[0]["json"]["lang"] == "en"
+
+
+def test_a_thumbs_report_carries_the_configured_language(monkeypatch):
+    monkeypatch.delenv("ZAELAR_USER_ID", raising=False)
+    monkeypatch.delenv("CONTROL_PLANE_URL", raising=False)
+    monkeypatch.setenv("ZAELAR_LANGUAGE", "es")
+    import server.feedback_api as fa
+    monkeypatch.setattr(fa, "_thumbs_session_id", lambda: "")
+    posts = _capture_posts(monkeypatch)
+    r = _client().post("/api/feedback/thumbs_up")
+    assert r.json()["ok"] is True
+    assert posts[0]["json"]["lang"] == "es"
+
+
+def test_the_retry_without_attachments_keeps_the_language(monkeypatch):
+    monkeypatch.delenv("ZAELAR_USER_ID", raising=False)
+    monkeypatch.delenv("CONTROL_PLANE_URL", raising=False)
+    monkeypatch.setenv("ZAELAR_LANGUAGE", "en")
+    posts = []
+
+    class _RefuseFirst(_FakeClient):
+        async def post(self, url, json=None, headers=None):
+            posts.append(json)
+            return _FakeResponse(400 if len(posts) == 1 else 200, {"id": "fb-r"})
+
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kw: _RefuseFirst())
+    shot = {"name": "a.png", "mime": "image/png", "data": "QUFB"}
+    r = _client().post("/api/feedback", json={"message": "x", "shots": [shot]})
+    assert r.json()["ok"] is True and r.json().get("shots_dropped") is True
+    assert [p.get("lang") for p in posts] == ["en", "en"]
