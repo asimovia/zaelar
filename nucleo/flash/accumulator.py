@@ -169,6 +169,19 @@ def _drop_prefix(consumed: str, incoming: str) -> str:
     return " ".join(iw[len(cw):])
 
 
+def _carried(dropped: str, carried: str) -> bool:
+    """Every word of `dropped` still travels, in order and contiguous, inside `carried` (V2-792).
+
+    A discard is a LOSS only when its words reach no turn. Measured: a long dictation was held by the acoustic layer
+    for a minute and a half, then handed back as ONE string that began with the very fragment the buffer held —
+    the gap valve discarded that fragment, the turn ran with every word of it, and the operator still heard «I did
+    not catch what you said before the pause». Exact modulo case, accents and punctuation; never fuzzy."""
+    dw = [w for w in (_strip_marks(x) for x in (dropped or "").split()) if w]
+    cw = [w for w in (_strip_marks(x) for x in (carried or "").split()) if w]
+    n = len(dw)
+    return bool(n) and any(cw[i:i + n] == dw for i in range(len(cw) - n + 1))
+
+
 # ── LA MARCA DE AGUA ───────────────────────────────────────────────────────────────────────────────────────────
 # Operator, 2026-08-21: «si de esas últimas tres palabras una era para concluir la frase anterior y otras dos para
 # empezar una nueva, no pasa nada: seteamos un punto en el tiempo y le pasamos ese texto a partir de ahí al
@@ -324,6 +337,8 @@ class Accumulator:
         snap = (list(self.fragments), self.first_at, self.last_at, self.consumed_at, self.consumed_head)
         out = await self._offer(incoming, now)
         self.inflight = (incoming, snap) if out[0] == "act" else None
+        if out[3] and _carried(out[3], (out[1] if out[0] != "hold" else "") + " " + self.text()):
+            out = (*out[:3], "")
         return out
 
     async def _offer(self, incoming: str, now: float) -> tuple[str, str, str, str]:

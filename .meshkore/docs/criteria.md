@@ -70,6 +70,10 @@ below is the first kind, or it names the mechanism that replaced the second.
   verdict holds the act for HIS word (`ask_first`, at any confidence — the verdict speaks before any table), nor
   when a claimed state is one an op of this request left on screen and nothing refused. — since 2026-10-24 ·
   nodes 2.790, 2.794.
+- **CRIT-V13 · «I didn't catch what you said before the pause» only over words that were really lost.** A
+  discarded fragment whose words still travel, in order, in the text the turn runs with (or in the buffer still
+  held) is not a loss: `Accumulator.offer` returns no `dropped`, so no timeline line and no spoken notice. A
+  fragment that reaches no turn is still reported and rescued. — since 2026-10-24 · nodes 2.795.
 
 ## 2 · Consent — act or ask
 
