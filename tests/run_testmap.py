@@ -6044,6 +6044,9 @@ DOMAINS: list[dict] = [
         {"id": "7.77", "title": "A worker reaches its own engine behind session admission: a loopback call to a worker door "
                                 "is served without a session; off the machine or to an operator route it is still refused",
             "ch": UNIT, "paths": ["tests/infrastructure/unit/core/test_a_worker_reaches_its_own_engine_behind_session_admission.py"]},
+        {"id": "7.78", "title": "A live or paused worker does not rewrite the memory state every second: the change key is "
+                                "the session projection with the clock frozen",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/test_a_live_worker_does_not_rewrite_the_state_every_second.py"]},
         {"id": "7.3", "title": "Chat por transporte LiveKit REAL", "ch": CHAT, "live": True,
             "cmd": "./.venv/bin/python tests/infrastructure/e2e/smoke/run_chat_over_livekit.py"},
         {"id": "7.15", "title": "El botón de sugerencias llega a alguien (y en self-host no habla con la nube)",

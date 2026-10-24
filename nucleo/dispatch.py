@@ -222,7 +222,7 @@ def unclosed_uids() -> set[str]:
     return {str(getattr(r, "uid", "") or "") for r in list(_SESSIONS.values())} - {""}
 
 
-def active_sessions() -> list[dict]:
+def active_sessions(now: float | None = None) -> list[dict]:
     """Serializable snapshot of LIVE sessions (without handles). Source of truth for STATE and /api/tasks.
 
     ⚠️ «VIVAS» it decia the docstring and NO it hacia the code (arreglado 2026-08-18): esto devolvia **todo**
@@ -235,7 +235,9 @@ def active_sessions() -> list[dict]:
     «in curso» — or sea that a task acabada could verse trabajando. Es the desalineacion PROCESOS↔FLUJOS that
     reporto the operator: the tablero of flujos decia «ningun flujo activo» and Procesos seguia diciendo «creando a
     widget… in curso». Lo TERMINADO is read from the `tasks` table (`nucleo/tasks.py::board`), that es su site."""
-    now = time.time()
+    # `now` is injectable so a CHANGE check can freeze the clock (`sync_state`): every field derived from it
+    # (`age_s`, `silent_s`, `unreported_s`…) is then constant, without a list of «volatile» keys to keep in step.
+    now = time.time() if now is None else now
     out = []
     for r in _SESSIONS.values():
         if r.status not in LIVE_SESSION_STATES:
@@ -424,8 +426,11 @@ def sync_state() -> None:
         # if is incluye, with a session live the snapshot difiere SIEMPRE and is reescribe the state each tick
         # (flood of MEMORY·state, the bug 2026-07-16). Comparo only the fields ESTABLES; the state escrito si
         # preserves age_s (it usa the prompt), but no dispara memory.updated if nothing relevante cambio.
-        stable = [{k: v for k, v in s.items() if k not in ("age_s", "silent_s", "secs", "updated", "ts")}
-                  for s in sess]
+        # V2-789 — the hand-kept list of clock fields (`age_s`, `silent_s`…) missed `unreported_s` when it was
+        # added, and a single live (or paused) worker rewrote the state — one `memory`/`state` event — every
+        # second for as long as it lived. The change key is now the same projection with the CLOCK FROZEN: a
+        # field computed from `now` cannot differ between two ticks, whatever it is called or whenever it is added.
+        stable = active_sessions(now=0.0)
         snap = (tuple(labels), json.dumps(stable, sort_keys=True, default=str))
         if snap == _last_sync:
             return                      # nada relevante cambió → no reescribir ni emitir memory.updated (~1 Hz)
