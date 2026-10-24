@@ -236,3 +236,31 @@ def test_the_lease_really_persists_to_sys_kv(monkeypatch):
     _REAL_PERSIST()
     assert energy_lease._KV_KEY in written, "the lease never reached sys_kv: a restart would forget it"
     assert written[energy_lease._KV_KEY]["spent"] == 3.0
+
+
+def test_a_spend_metered_in_a_worker_thread_still_asks_for_the_renewal(monkeypatch):
+    """A spend metered inside `asyncio.to_thread` has no running loop. The renewal used to be dropped there, so a
+    long background job spent the lease to zero without ever asking, and the fuse stopped an account that still
+    had 200 Energy. The renewal must reach the server's loop."""
+    import asyncio
+    import threading
+    from nucleo import energy_meter
+    _con_arriendo(monkeypatch)
+    asked = []
+
+    async def fake_ensure(*, reason="boot", force=False):
+        asked.append(reason)
+        return True
+    monkeypatch.setattr(energy_lease, "ensure", fake_ensure)
+
+    async def main():
+        monkeypatch.setattr(energy_meter, "_loop", asyncio.get_running_loop())
+        t = threading.Thread(target=energy_lease.note_spend, args=(60.0,))
+        t.start()
+        await asyncio.to_thread(t.join)
+        for _ in range(50):
+            if asked:
+                break
+            await asyncio.sleep(0.01)
+    asyncio.run(main())
+    assert asked == ["half_spent"], "a spend from a worker thread never asked for a renewal"

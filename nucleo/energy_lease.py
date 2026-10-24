@@ -279,11 +279,26 @@ async def _renew_or_blow() -> None:
         _blow_fuse()
 
 
+def _server_loop():
+    """The event loop to run lease work on when the spend happens in a worker thread. A spend metered inside
+    `asyncio.to_thread` has no running loop: dropping the renewal there let a long background job spend a lease
+    to zero with the renewal never asked, and the fuse stopped an account with 200 Energy left."""
+    try:
+        from nucleo import energy_meter
+        return energy_meter._loop
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def _schedule(coro) -> None:
     try:
         asyncio.get_running_loop()
     except RuntimeError:
-        coro.close()
+        loop = _server_loop()
+        if loop is None or loop.is_closed():
+            coro.close()
+            return
+        asyncio.run_coroutine_threadsafe(coro, loop)
         return
     asyncio.create_task(coro)
 
@@ -333,6 +348,10 @@ def _start_retry() -> None:
     try:
         loop = asyncio.get_running_loop()
     except RuntimeError:
+        loop = _server_loop()
+        if loop is None or loop.is_closed():
+            return
+        _retry_task = asyncio.run_coroutine_threadsafe(_retry_loop(), loop)
         return
     _retry_task = loop.create_task(_retry_loop())
 
