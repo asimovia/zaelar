@@ -76,6 +76,21 @@ def is_public_path(path: str) -> bool:
     return any(path.startswith(p) for p in PUBLIC_PREFIXES)
 
 
+def is_own_worker_door(path: str, peer_loopback: bool) -> bool:
+    """A worker this process spawned, calling one of its own doors back over loopback (V2-789).
+
+    The engine's workers talk to their engine through `ZAELAR_BASE` (`nucleo.engine_url`, a loopback address):
+    `agent_report`, `nav_cli`, `mem_cli`, `widget_cli`, the worker bridge. They hold no session cookie and never
+    can — the session belongs to the browser — so every such call was refused as `no_session` (401) and the
+    worker lost its reports and its browser. A loopback peer IS this process's own machine, so «whose session
+    is this?» has only one answer, and the doors (`operator_gate.WORKER_DOORS`) each verify the worker on their
+    own terms (per-task id/token, the act policy). Only those doors: a loopback caller gets no operator route."""
+    if not peer_loopback:
+        return False
+    from server.operator_gate import WORKER_DOORS
+    return path.startswith(WORKER_DOORS)
+
+
 def decide(
     *,
     path: str,
@@ -84,6 +99,7 @@ def decide(
     outcome: str | None,
     target: str | None,
     mine: str | None,
+    peer_loopback: bool = False,
 ) -> tuple[str, str]:
     """Pure admission decision → `(action, reason)`. `reason` is a stable, non-sensitive slug: it
     goes to logs and to the client, and it must never carry a token, a path or an internal URL.
@@ -101,6 +117,9 @@ def decide(
                 and target and target != mine):
             return REPLAY, "session_owned_elsewhere"
         return SERVE, "public_path"
+
+    if is_own_worker_door(path, peer_loopback):
+        return SERVE, "own_worker_door"
 
     # A process that cannot ask "whose session is this?" cannot answer an account request either. This
     # used to serve the request; a missing environment variable was silently the most permissive
@@ -172,9 +191,12 @@ def install(app) -> None:
             response.headers.update(EDGE_NO_STORE)
             return response
 
+        from server import api_guard
+        peer_loopback = api_guard._is_loopback((request.client.host if request.client else "") or "")
+
         outcome: str | None = None
         target: str | None = None
-        if token and resolver_url and mine:
+        if token and resolver_url and mine and not is_own_worker_door(path, peer_loopback):
             outcome, target = await ar.resolve_session_machine(
                 token, control_plane_url=resolver_url
             )
@@ -186,6 +208,7 @@ def install(app) -> None:
             outcome=outcome,
             target=target,
             mine=mine,
+            peer_loopback=peer_loopback,
         )
 
         if action == SERVE:
