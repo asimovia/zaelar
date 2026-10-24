@@ -8,20 +8,18 @@
 // cover the last line of a widget. On iOS it also pads itself with env(safe-area-inset-bottom), or it would sit
 // under the home indicator and every tap would be a swipe-up instead.
 //
-// ── THE 2026-09-04 RESTYLE (V2-573), operator's brief, verbatim: «icon chat wall, then icon desktop, then in the
-// center, the orbe, bigger, with mic icon inside. to the right, config icon». FIVE controls in three zones:
+// ── THE COMPOSITION (2026-10-24, operator): SIX controls around the orb.
 //
-//   💬 chat    → store.chatOpen                    the conversation
-//   ▤ desk     → the DECK                          the dashboards; closes every sheet and shows the cards
-//   ◉  ORB     → the switch (below), 74px, mic INSIDE
-//   🎤 mic     → session.toggleMic()               the fifth slot, and the reason it exists is below
 //   ⚙ config   → store.mobileMenuOpen              energy · account · voice · settings · feedback
+//   💬 chat    → store.chatOpen                    the conversation
+//   🤖 wake    → attention_mode                    the wake word, the desktop orb's 🤖
+//   ◉  ORB     → the switch (below), 74px, mic INSIDE
+//   🎤 mic     → session.openMicHere / mic.toggle  opening it takes the voice to this device
+//   🔊 speaker → session.openSpeakerHere / toggle  same rule
 //
-// TWO CONTROLS LEFT (2026-09-04), each because the operator's own words retired it:
-//   · CAPTIONS. «deactivate subtitles. dont want icon for that» — the button AND the band are gone (the band was
-//     also removed from mobile-surfaces.js; the `captionsOn` signal survives untouched for the desktop).
-//   · SPEAKER. It moved into the config sheet. It is the one control that can make the agent APPEAR broken, so
-//     leaving it one tap from a thumb in a pocket was a trap — and V2-573's own bug is the proof (see below).
+// The 2026-09-04 dashboards button is gone: the deck's own navigation is the PIPS above this bar and the side
+// swipe. The speaker, moved to the config sheet in V2-573, is back here because the voice now belongs to ONE device
+// and the hand that opens mic or speaker is what takes it there. Captions stay out (V2-573).
 //
 // WHY THE MIC STAYED WHEN THE SPEAKER DID NOT — the operator asked «and want some other?» and this is the answer:
 // silencing your own microphone is a PRIVACY gesture, and a privacy gesture that takes two taps and a sheet is not
@@ -45,7 +43,7 @@
 // without learning a second vocabulary, and the host-contract test DERIVES that check from Orb.js itself. The two
 // additions are MIC_OFF (the desktop only greys a muted mic, which is legible next to six icons on a big screen and
 // ambiguous as a lone icon on a phone, so the slash is drawn over the SAME base glyph) and the two glyphs the
-// desktop has no twin for: DESK and CFG, drawn in the same vocabulary (24-box, 2px stroke, round caps).
+// desktop has no twin for: CFG, drawn in the same vocabulary (24-box, 2px stroke, round caps).
 // ============================================================================
 
 import { h, raw } from "../../../app/core/dom.js?v=2";
@@ -60,9 +58,10 @@ const SW = `viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="curre
 const MIC_ON  = `<svg ${SW}><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>`;
 const MIC_OFF = `<svg ${SW}><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/><path d="M4 4l16 16"/></svg>`;
 const CHAT    = `<svg ${SW}><path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.4 9.06 9.06 0 0 1-4-.9L3 21l1.9-4.5a8.38 8.38 0 0 1-.9-4A8.5 8.5 0 0 1 12.5 4 8.38 8.38 0 0 1 21 11.5z"/></svg>`;
-// DESK — the dashboards. A window split into panes: the deck IS one screen per widget, so the glyph says
-// «several screens», not «a grid of apps».
-const DESK    = `<svg ${SW}><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/><path d="M11 9v11"/></svg>`;
+// SPEAKER and the WAKE WORD (2026-10-24) are the desktop's drawings, byte for byte (Orb.js SPK_ON/SPK_OFF/BOT_ICON).
+const SPK_ON  = `<svg ${SW}><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>`;
+const SPK_OFF = `<svg ${SW}><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="m22 9-6 6"/><path d="m16 9 6 6"/></svg>`;
+const BOT     = `<svg ${SW}><path d="M12 8V4H8"/><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M9 13v2"/><path d="M15 13v2"/></svg>`;
 const CFG     = `<svg ${SW}><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.65 1.65 0 0 0 15 19.4a1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09A1.65 1.65 0 0 0 15 4.6a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;
 const PWR     = `<svg ${SW}><path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.77.04"/></svg>`;
 
@@ -95,25 +94,39 @@ function togglePower() {
   api.uiEvent("mobile:power", { state: off ? "off" : "on" });
 }
 
-// The DESK button: the deck is not a sheet, it is what is underneath every sheet, so "show me the dashboards"
-// means "close whatever is covering them". With nothing open it is a no-op that still reads as «I am here».
-function showDesk() {
-  store.setChatOpen(false);
-  store.setMobileMenuOpen(false);
-  store.setMobileSettingsOpen(false);
-  api.uiEvent("mobile:desk", { state: "show" });
+// THE WAKE WORD, same switch as the desktop orb's 🤖 (Orb.js): ON = `smart` (say the name once, keep talking),
+// OFF = `always`. Written through the same /api/settings seam; the SSE `orb:attention` event keeps both shells in step.
+const wakeOn = () => store.attentionMode() === "smart" || store.attentionMode() === "wakeword";
+function toggleWake() {
+  const prev = store.attentionMode();
+  const next = wakeOn() ? "always" : "smart";
+  store.setAttentionMode(next);
+  api.saveSettings({ attention_mode: next }).catch(() => store.setAttentionMode(prev));
+  api.uiEvent("mobile:attention", { state: next });
 }
 
 export function DockBar() {
+  // The wake-word state and the name are read once here, as the desktop orb does; SSE keeps them live afterwards.
+  api.getSettings().then((cfg) => {
+    const knob = (cfg.knobs || []).find((k) => k.key === "attention_mode");
+    if (knob) store.setAttentionMode(knob.value === "wakeword" ? "smart" : knob.value);
+    if (cfg.assistant_name) store.setAssistantName(cfg.assistant_name);
+  }).catch(() => {});
   // Built ONCE, outside the reactive tree, because the visualiser holds this canvas by reference.
   const ORB = OrbMini();
   return h("nav", { class: "zm-dock", "aria-label": t("mobile.dock_label") },
 
-    // ── LEFT of the orb: the two SURFACES — the conversation, and the dashboards ──
-    // These two are the WHOLE footer navigation, no matter how many cards are open (operator, 2026-09-04:
-    // «we use only the 2 icons from footer, one for chat one for dashboard, even if we have more than 2
-    // opened»). Which card you are on is the deck's business — its pips and its k/n switcher — never the bar's.
+    // ── LEFT of the orb: settings, the conversation, and the wake word ──
+    // 2026-10-24 (operator): the dashboards button is gone — «I do not know what it is». The deck already has its own
+    // navigation, the PIPS above this bar (one per open card, the current one lit) and the side swipe; closing the
+    // chat or a sheet is what shows the cards. Its slot went to the WAKE WORD, which the phone did not have.
     h("div", { class: "zm-side" },
+      h("button", {
+        class: () => cls(store.mobileMenuOpen()),
+        "aria-label": () => t("mobile.menu"),
+        onClick: () => { const v = !store.mobileMenuOpen(); store.setMobileMenuOpen(v); api.uiEvent("mobile:menu", { state: v ? "open" : "close" }); },
+      }, raw(CFG)),
+
       h("button", {
         class: () => cls(store.chatOpen()),
         "aria-label": () => t("camera.chat_title"),
@@ -121,11 +134,10 @@ export function DockBar() {
       }, raw(CHAT)),
 
       h("button", {
-        // "on" when the deck is what you are looking at: nothing covering it AND something to look at.
-        class: () => cls(!store.chatOpen() && !store.mobileMenuOpen() && !store.mobileSettingsOpen()),
-        "aria-label": () => t("mobile.dashboards"),
-        onClick: showDesk,
-      }, raw(DESK)),
+        class: () => cls(wakeOn()),
+        "aria-label": () => (wakeOn() ? t("orb.wake_on", { name: store.assistantName() }) : t("orb.wake_off", { name: store.assistantName() })),
+        onClick: toggleWake,
+      }, raw(BOT)),
     ),
 
     // ── CENTRE: the orb, which is also the switch. Stopped → a ⏻ and nothing else; running → zaelar's face. ──
@@ -178,11 +190,16 @@ export function DockBar() {
         },
       }, () => raw(store.micMuted() ? MIC_OFF : MIC_ON)),
 
+      // THE SPEAKER, back in the dock (operator, 2026-10-24). Opening it by hand brings the voice here, like the mic.
       h("button", {
-        class: () => cls(store.mobileMenuOpen()),
-        "aria-label": () => t("mobile.menu"),
-        onClick: () => { const v = !store.mobileMenuOpen(); store.setMobileMenuOpen(v); api.uiEvent("mobile:menu", { state: v ? "open" : "close" }); },
-      }, raw(CFG)),
+        class: () => cls(!store.botMuted()),
+        "aria-label": () => (store.botMuted() ? t("orb.speaker_muted") : t("orb.speaker_unmuted")),
+        onClick: () => {
+          if (store.botMuted() && session.openSpeakerHere) session.openSpeakerHere("dock");
+          else session.toggleBotMute();
+          api.uiEvent("mobile:speaker", { state: store.botMuted() ? "muted" : "unmuted" });
+        },
+      }, () => raw(store.botMuted() ? SPK_OFF : SPK_ON)),
     ),
   );
 }

@@ -86,12 +86,10 @@ body {
 .zm-side:last-child  { justify-content: flex-start; }
 .zm-centre { display: flex; align-items: center; justify-content: center; padding: 0 6px; }
 
-/* 48px. Sized when each side carried THREE icons (390 screen - 16 dock padding - 70 orb column = 152 per side;
-   3*48 + 2*2 = 148). Since V2-573 each side carries TWO (2*48 + 2 = 98 of ~144 available), so the constraint is
-   no longer tight — the size is kept because it is the tap target that was measured, and comfortably above the
-   44px minimum. The slack is what let the orb grow to 74px. */
 .zm-ic {
-  width: 48px; height: 48px; flex: 0 0 auto;
+  /* THREE per side since 2026-10-24: (390 - 16 padding - 86 orb column) / 2 = 144 per side; 3 * 46 + 2 * 2 = 142.
+     The min() keeps a 360px phone from overflowing (≈41px there) — the tap area stays the whole button. */
+  width: min(46px, calc((100vw - 110px) / 6)); height: 46px; flex: 0 0 auto;
   display: flex; align-items: center; justify-content: center;
   border: none; border-radius: 15px; background: transparent;
   transition: color .18s, background .18s, transform .12s;

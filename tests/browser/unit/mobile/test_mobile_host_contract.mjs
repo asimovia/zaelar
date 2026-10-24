@@ -217,7 +217,8 @@ check("the centre slot swaps its two faces by visibility, not by rebuilding",
 // for a deliberate removal — reporting a decision as a regression, which is how a guard gets deleted instead of
 // read. MIC_ICON is checked under the dock's own name for it (MIC_ON), the one rename this pairing needs.
 const GLYPH_PAIRS = [["MIC_ICON", "MIC_ON"], ["SPK_ON", "SPK_ON"], ["SPK_OFF", "SPK_OFF"],
-                     ["CAP_ICON", "CAP"], ["CHAT_ICON", "CHAT"], ["PWR_ICON", "PWR"]];
+                     ["CAP_ICON", "CAP"], ["CHAT_ICON", "CHAT"], ["PWR_ICON", "PWR"],
+                     ["BOT_ICON", "BOT"]];
 let sharedGlyphs = 0;
 for (const [orbName, dockName] of GLYPH_PAIRS) {
   const m = ORB_JS.match(new RegExp(`const ${orbName}\\s*=\\s*\`([^\`]*)\``));
@@ -244,9 +245,13 @@ check("the dock carries no captions control", !/toggleCaptions/.test(DOCKBAR),
 check("the captions BAND is not mounted either",
   !/CaptionBand/.test(read("frontend", "mobile", "app", "shell", "mobile-surfaces.js")),
   "mobile-surfaces.js still mounts CaptionBand — the icon went but the band stayed");
-check("the desk button reaches the deck by closing every sheet",
-  /setChatOpen\(false\)[\s\S]{0,200}setMobileMenuOpen\(false\)[\s\S]{0,200}setMobileSettingsOpen\(false\)/.test(DOCKBAR),
-  "the DESK control must close chat, menu and settings — the deck is what sits UNDER the sheets");
+// 2026-10-24 (operator): the dashboards button is retired — the pips and the swipe are the deck's navigation — and
+// the phone gains the wake word and the speaker, the desktop orb's own switches.
+check("the dock carries no dashboards button", !/showDesk|const DESK\b/.test(DOCKBAR),
+  "the deck is navigated by its pips and the swipe; a dashboards button came back");
+check("the dock carries the wake word and the speaker",
+  /onClick:\s*toggleWake\b/.test(DOCKBAR) && /attention_mode:\s*next/.test(DOCKBAR) && /session\.openSpeakerHere\(/.test(DOCKBAR),
+  "the wake-word switch must write attention_mode like the desktop orb, and the speaker must claim the voice");
 
 // The scroller's rule must be keyed STRUCTURALLY, not to .zm-body. A widget.js does el.className="..." on the
 // root it is handed and WIPES our class — Deck.js's own comment says so — so a .zm-body rule silently stops
