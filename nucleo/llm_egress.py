@@ -53,6 +53,13 @@ _PROVIDER_BY_HOST = (
 )
 
 
+# A client that names itself. Mediated egress sits behind an edge that refuses the default `Python-urllib/x.y`
+# agent (Cloudflare error 1010, measured 2026-10-24): every urllib call through it — the decision model, the
+# embeddings — came back 403 while the httpx-based calls went through. Any call site that builds its own urllib
+# request toward egress sends this.
+USER_AGENT = "zaelar-engine"
+
+
 def mediated() -> bool:
     """Does this deployment send calls through mediated egress?"""
     from nucleo import cloud_account

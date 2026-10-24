@@ -45,3 +45,47 @@ def test_self_host_talks_to_the_provider_with_its_own_key(monkeypatch):
     monkeypatch.setenv("TYPESAFE_API_KEY", "own-key")
     monkeypatch.setattr(jev, "ENDPOINT", PROVIDER)
     assert jev._target() == (PROVIDER, "own-key")
+
+
+# ── the client names itself (2026-10-24): egress's edge refuses `Python-urllib/x.y` with a 403 (error 1010) ─────
+
+class _Captured(Exception):
+    pass
+
+
+def _capture(monkeypatch, sink: dict):
+    import urllib.request
+
+    def fake_urlopen(req, timeout=None):
+        sink["url"] = req.full_url
+        sink["ua"] = req.get_header("User-agent")
+        raise _Captured()
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+
+
+def test_a_decision_trip_names_its_client(mediated, monkeypatch):
+    seen: dict = {}
+    _capture(monkeypatch, seen)
+    with pytest.raises(_Captured):
+        jev._post_question("q", "User: hi", "Is it a greeting?", {"yes": "greets", "no": "does not"}, 1.0)
+    assert seen["url"] == f"{GW}/p/typesafe/v1/systemone"
+    assert seen["ua"] == llm_egress.USER_AGENT
+
+
+def test_an_embedding_through_egress_names_its_client(mediated, monkeypatch):
+    from memory import embeddings
+    monkeypatch.setattr(embeddings, "_cloud_key", lambda: "k")
+    monkeypatch.setattr(embeddings, "_cloud_base_url", lambda: "https://api.openai.com/v1")
+    from nucleo import energy_lease
+    monkeypatch.setattr(energy_lease, "check", lambda *_a, **_k: True)
+    seen: dict = {}
+    _capture(monkeypatch, seen)
+    # The suite stubs `_cloud_embed` so no test reaches a paid provider by accident; this one wants the real
+    # function — its network door is `urlopen`, faked above.
+    real = getattr(embeddings, "_GENUINE_CLOUD_EMBED", embeddings._cloud_embed)
+    try:
+        real(["hola"])
+    except _Captured:
+        pass
+    assert seen.get("url") == f"{GW}/p/openai/embeddings"
+    assert seen["ua"] == llm_egress.USER_AGENT

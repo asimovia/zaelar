@@ -219,7 +219,8 @@ def _post_question(answer_key: str, state: str, instructions: str, criteria: dic
     req = urllib.request.Request(
         url,
         data=body,
-        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json",
+                 "User-Agent": _user_agent()},
         method="POST",
     )
     with urllib.request.urlopen(req, timeout=timeout_s) as resp:
@@ -233,6 +234,11 @@ def _target() -> tuple[str, str]:
     deployment declares it (`llm_egress.route_url`, the same door every other paid call goes through)."""
     from nucleo import llm_egress
     return llm_egress.route_url(ENDPOINT, _read_key())
+
+
+def _user_agent() -> str:
+    from nucleo import llm_egress
+    return llm_egress.USER_AGENT
 
 
 def _meter(questions: int) -> None:
@@ -317,7 +323,8 @@ def _post_many(state: str, questions: dict, timeout_s: float) -> dict:
     url, key = _target()
     req = urllib.request.Request(
         url, data=body,
-        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json",
+                 "User-Agent": _user_agent()},
         method="POST")
     with urllib.request.urlopen(req, timeout=timeout_s) as resp:
         payload = json.loads(resp.read().decode("utf-8"))

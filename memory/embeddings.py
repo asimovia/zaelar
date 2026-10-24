@@ -365,7 +365,8 @@ def _cloud_embed(texts: list[str], *, timeout: float | None = None) -> list[list
     req = urllib.request.Request(
         url,
         data=json.dumps(body).encode("utf-8"),
-        headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}"},
+        headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}",
+                 "User-Agent": llm_egress.USER_AGENT},
     )
     try:
         with urllib.request.urlopen(req, timeout=timeout or float(os.getenv("ZAELAR_EMBED_TIMEOUT_S", "20"))) as r:
