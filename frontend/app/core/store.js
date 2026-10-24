@@ -580,6 +580,8 @@ export const [mobileSettingsOpen, setMobileSettingsOpen] = createSignal(false); 
 // another surface, it must not fight, retry in a loop, or paint itself live: it says so and offers to take the
 // voice over. null = no conflict. See mobile/app/main.js.
 export const [mobileVoiceHeld, setMobileVoiceHeld]       = createSignal(false);
+// The phone's feedback form (inline in MenuSheet), opened from its row OR from the dock's feedback button.
+export const [mobileFeedbackOpen, setMobileFeedbackOpen] = createSignal(false);
 
 // ---- secret vault (V2-060): NATIVE modal (create/unlock by passphrase or passkey; show the value) ----
 export const [vaultOpen, setVaultOpen]       = createSignal(false);

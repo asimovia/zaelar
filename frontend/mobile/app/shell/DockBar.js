@@ -8,7 +8,7 @@
 // cover the last line of a widget. On iOS it also pads itself with env(safe-area-inset-bottom), or it would sit
 // under the home indicator and every tap would be a swipe-up instead.
 //
-// ── THE COMPOSITION (2026-10-24, operator): SIX controls around the orb.
+// ── THE COMPOSITION (2026-10-24, operator): SEVEN controls around the orb, three a side plus feedback.
 //
 //   ⚙ config   → store.mobileMenuOpen              energy · account · voice · settings · feedback
 //   💬 chat    → store.chatOpen                    the conversation
@@ -16,6 +16,7 @@
 //   ◉  ORB     → the switch (below), 74px, mic INSIDE
 //   🎤 mic     → session.openMicHere / mic.toggle  opening it takes the voice to this device
 //   🔊 speaker → session.openSpeakerHere / toggle  same rule
+//   ⚠ feedback → the menu sheet's feedback form, opened
 //
 // The 2026-09-04 dashboards button is gone: the deck's own navigation is the PIPS above this bar and the side
 // swipe. The speaker, moved to the config sheet in V2-573, is back here because the voice now belongs to ONE device
@@ -61,6 +62,8 @@ const CHAT    = `<svg ${SW}><path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.4 9.06 9.06 
 // SPEAKER and the WAKE WORD (2026-10-24) are the desktop's drawings, byte for byte (Orb.js SPK_ON/SPK_OFF/BOT_ICON).
 const SPK_ON  = `<svg ${SW}><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>`;
 const SPK_OFF = `<svg ${SW}><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="m22 9-6 6"/><path d="m16 9 6 6"/></svg>`;
+// FEEDBACK — a SQUARE bubble with «!», so it never reads as the round chat bubble beside it.
+const FB      = `<svg ${SW}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M12 7v4"/><path d="M12 14h.01"/></svg>`;
 const BOT     = `<svg ${SW}><path d="M12 8V4H8"/><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M9 13v2"/><path d="M15 13v2"/></svg>`;
 const CFG     = `<svg ${SW}><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.65 1.65 0 0 0 15 19.4a1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09A1.65 1.65 0 0 0 15 4.6a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;
 const PWR     = `<svg ${SW}><path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.77.04"/></svg>`;
@@ -200,6 +203,19 @@ export function DockBar() {
           api.uiEvent("mobile:speaker", { state: store.botMuted() ? "muted" : "unmuted" });
         },
       }, () => raw(store.botMuted() ? SPK_OFF : SPK_ON)),
+
+      // FEEDBACK (operator, 2026-10-24): right of everything, opens the form in the menu sheet directly.
+      h("button", {
+        class: () => cls(store.mobileMenuOpen() && store.mobileFeedbackOpen()),
+        "aria-label": () => t("feedback.title"),
+        onClick: () => {
+          const v = !(store.mobileMenuOpen() && store.mobileFeedbackOpen());
+          store.setChatOpen(false);
+          store.setMobileFeedbackOpen(v);
+          store.setMobileMenuOpen(v);
+          api.uiEvent("mobile:feedback", { state: v ? "open" : "close" });
+        },
+      }, raw(FB)),
     ),
   );
 }

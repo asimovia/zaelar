@@ -252,6 +252,10 @@ check("the dock carries no dashboards button", !/showDesk|const DESK\b/.test(DOC
 check("the dock carries the wake word and the speaker",
   /onClick:\s*toggleWake\b/.test(DOCKBAR) && /attention_mode:\s*next/.test(DOCKBAR) && /session\.openSpeakerHere\(/.test(DOCKBAR),
   "the wake-word switch must write attention_mode like the desktop orb, and the speaker must claim the voice");
+check("the dock's feedback button opens the form, not just the menu",
+  /store\.setMobileFeedbackOpen\(v\)[\s\S]{0,80}store\.setMobileMenuOpen\(v\)/.test(DOCKBAR)
+  && /store\.mobileFeedbackOpen/.test(read("frontend", "mobile", "app", "shell", "MenuSheet.js")),
+  "the feedback button must open the menu sheet WITH its form open (the form reads store.mobileFeedbackOpen)");
 
 // The scroller's rule must be keyed STRUCTURALLY, not to .zm-body. A widget.js does el.className="..." on the
 // root it is handed and WIPES our class — Deck.js's own comment says so — so a .zm-body rule silently stops

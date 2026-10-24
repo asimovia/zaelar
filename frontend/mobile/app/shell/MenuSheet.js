@@ -18,7 +18,7 @@
 // ============================================================================
 
 import { h, raw } from "../../../app/core/dom.js?v=2";
-import { createSignal } from "../../../app/core/reactive.js?v=2";
+import { createSignal, createEffect } from "../../../app/core/reactive.js?v=2";
 import * as store from "../../../app/core/store.js?v=2";
 import * as session from "../../../app/services/session.js?v=3";
 import * as api from "../../../app/services/api.js?v=2";
@@ -49,7 +49,8 @@ function Row(label, sub, onClick) {
 }
 
 export function MenuSheet() {
-  const [fbOpen, setFbOpen] = createSignal(false);
+  // The form's open state lives in the store: the dock's feedback button opens it too (2026-10-24).
+  const fbOpen = store.mobileFeedbackOpen, setFbOpen = store.setMobileFeedbackOpen;
   const [fbMsg, setFbMsg] = createSignal("");
   const [fbDone, setFbDone] = createSignal("");
   // V2-695 — the same two options as the desktop panel. A decision applied in one channel and not
@@ -143,7 +144,10 @@ export function MenuSheet() {
         ),
         raw(CHEV),
       ),
-      h("div", { class: () => "zm-fb" + (fbOpen() ? " open" : "") },
+      h("div", { class: () => "zm-fb" + (fbOpen() ? " open" : ""),
+                  ref: (el) => createEffect(() => { if (fbOpen() && store.mobileMenuOpen()) setTimeout(() => {
+                    try { el.scrollIntoView({ block: "center", behavior: "smooth" }); fbInput && fbInput.focus({ preventScroll: true }); } catch (_) {}
+                  }, 60); }) },
         h("div", { class: "zm-fb-kind" },
           h("button", { class: () => "zm-fb-kind-b" + (fbKind() === "issue" ? " on" : ""),
                         onClick: () => setFbKind("issue") }, () => t("feedback.kindIssue")),
