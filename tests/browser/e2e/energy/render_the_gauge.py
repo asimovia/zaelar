@@ -108,10 +108,10 @@ def main():
 
 CASES = [
     # (label, width, balance, capacity, plan) → (bars, lit, spent within the cycle)
-    ("free-397-of-500", 1280, 397, 500, {"key": "free", "name": "Free", "scale": 13000, "tier": 0}, (30, 1, 0)),
-    ("pulse-half", 1280, 1500, 3000, {"key": "plan_pulse", "name": "Pulse", "scale": 13000, "tier": 2}, (30, 3, 4)),
-    ("overdrive-full", 1280, 13000, 13000, {"key": "plan_overdrive", "name": "Overdrive", "scale": 13000, "tier": 4}, (30, 30, 0)),
-    ("spark-narrow", 820, 650, 1300, {"key": "plan_spark", "name": "Spark", "scale": 13000, "tier": 1}, (12, 1, 0)),
+    ("free-394-of-398", 1280, 394.6, 398, {"key": "free", "name": "Free", "scale": 13000, "tier": 0}, (30, 30, 0)),
+    ("pulse-half", 1280, 1500, 3000, {"key": "plan_pulse", "name": "Pulse", "scale": 13000, "tier": 2}, (30, 15, 15)),
+    ("overdrive-low", 1280, 2600, 13000, {"key": "plan_overdrive", "name": "Overdrive", "scale": 13000, "tier": 4}, (30, 6, 24)),
+    ("spark-narrow", 820, 650, 1300, {"key": "plan_spark", "name": "Spark", "scale": 13000, "tier": 1}, (12, 6, 6)),
 ]
 
 GAUGE = """() => {
@@ -124,7 +124,8 @@ GAUGE = """() => {
            bars: bars.length, on: g.querySelectorAll('.eg-on').length, spent: g.querySelectorAll('.eg-spent').length,
            free: g.querySelectorAll('.eg-free').length, title: g.getAttribute('title') || '',
            onColor: bars.length && g.querySelector('.eg-on') ? getComputedStyle(g.querySelector('.eg-on')).backgroundImage : '',
-           spentBorder: g.querySelector('.eg-spent') ? getComputedStyle(g.querySelector('.eg-spent')).borderTopWidth : '' };
+           spentBorder: g.querySelector('.eg-spent') ? getComputedStyle(g.querySelector('.eg-spent')).borderTopWidth : '',
+           minGap: bars.slice(1).reduce((m, b, i) => Math.min(m, b.getBoundingClientRect().left - bars[i].getBoundingClientRect().right), 99) };
 }"""
 
 
@@ -157,9 +158,11 @@ def run(url):
                 check(f"…{want_on} lit", m["on"] == want_on, f"on={m['on']}")
                 check(f"…{want_spent} spent boxes", m["spent"] == want_spent, f"spent={m['spent']}")
                 check("…lit bars have relief (a gradient)", "gradient" in m.get("onColor", ""), m.get("onColor"))
+                check("…separate bars, at least 1px apart (never a continuous strip)", m.get("minGap", 0) >= 1,
+                      f"min gap={m.get('minGap')}")
                 if want_spent:
                     check("…spent boxes have an edge", m.get("spentBorder") == "1px", m.get("spentBorder"))
-                check("…the tooltip says the cycle in words", str(balance) in m["title"] and "energy." not in m["title"],
+                check("…the tooltip says the cycle in words", str(round(balance)) in m["title"] and "energy." not in m["title"],
                       m["title"])
             box = pg.query_selector(".trw")
             if box:

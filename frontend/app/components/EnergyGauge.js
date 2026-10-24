@@ -9,14 +9,12 @@
 // the user pays for their own APIs.
 //
 // ── THE SCALE (2026-10-24) ───────────────────────────────────────────────────────────────────────────────────────────
-// The SAME number of bars for every account — more, and thinner, on a wider screen — and each bar is worth the same:
-// the gauge's full scale (`plan.scale`, the biggest cycle there is) divided by the bars. So:
-//   · the bars of THIS cycle are `capacity / per`: a small cycle owns part of the gauge, the biggest owns all of it;
-//   · of those, the lit ones are `balance / per` — «what the cycle gave you minus what you spent», nothing else;
-//   · spent bars stay as grey boxes with a firmer grey edge (it reads as a battery running down, not as a shorter
-//     list), and bars beyond this cycle are faint placeholders.
-// The colour is the plan's tier (`plan.tier`), so a bigger plan is visibly a bigger plan. Without `plan.scale` (an
-// older control plane) the cycle fills the gauge. Nothing here knows a price.
+// The gauge is THIS account's plan: the whole row is what the current cycle made available (`capacity`), and the lit
+// bars are what is left of it, in proportion — «the cycle's Energy minus what you spent», nothing else. The SAME number
+// of bars for every account (more, and thinner, on a wider screen); the plan shows in the COLOUR (`plan.tier`).
+// Spent bars stay as grey boxes with a firmer grey edge, so it reads as a battery running down, not a shorter list.
+// (A first version drew every plan against the biggest one; the operator's own Free cycle then lit 1 bar of 30 with
+// 394 of 398 left — it did not represent his Energy.) Nothing here knows a price.
 import { h } from "../core/dom.js?v=2";
 import * as store from "../core/store.js?v=2";
 import { t } from "../core/i18n.js?v=1";
@@ -36,12 +34,11 @@ export function scale(balance, capacity, plan, width) {
   const cap = Number(capacity);
   if (!Number.isFinite(cap) || cap <= 0) return null;
   const bars = barsFor(width);
-  const full = Math.max(cap, Number(plan && plan.scale) || 0);
-  const per = full / bars;
-  const own = Math.min(bars, Math.max(1, Math.round(cap / per)));
+  const per = cap / bars;
+  const own = bars;
   const bal = Math.max(0, Number.isFinite(Number(balance)) ? Number(balance) : 0);
   // Any Energy left lights at least one bar: an almost-empty account is not an empty one.
-  const lit = bal <= 0 ? 0 : Math.min(own, Math.max(1, Math.round(bal / per)));
+  const lit = bal <= 0 ? 0 : Math.min(bars, Math.max(1, Math.round(bal / per)));
   const tier = Math.min(TIERS - 1, Math.max(0, Math.round(Number(plan && plan.tier) || 0)));
   return { bars, per, own, lit, tier };
 }

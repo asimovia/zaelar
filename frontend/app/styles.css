@@ -413,10 +413,11 @@ body.chatdock-r .statuspanel,body.chatdock-r .cronpanel{right:calc(18px + var(--
    EnergyGauge.js), and silver/gold are intentionally WIDER: someone who paid more must be able to see it.
    `max-width` + `flex-shrink` on each bar: in a narrow window the stack compresses instead of pushing icons
    outside the bar — 50 gold bars are 300px, and 300px is not always available. */
-.eg{display:flex;align-items:flex-end;gap:3px;height:22px;padding:0 2px;cursor:default}
+.eg{display:flex;align-items:flex-end;gap:2px;height:22px;padding:0 2px;cursor:default}
 /* One bar: a small column with a soft top light and a shadow at its foot, so the row has some relief on the
    background instead of reading as a flat barcode. */
-.eg-t{display:block;width:4px;height:18px;border-radius:2px;box-sizing:border-box;
+/* Each bar keeps its own width and the 2px gap: they never shrink into one another (at least 1px apart, always). */
+.eg-t{display:block;flex:0 0 auto;width:4px;height:18px;border-radius:2px;box-sizing:border-box;
       transition:background .3s,border-color .3s,box-shadow .3s}
 @media (max-width:899px){.eg-t{width:5px}}
 /* LIT: the plan's colour, lighter at the top. */
