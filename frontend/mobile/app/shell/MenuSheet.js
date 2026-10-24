@@ -6,7 +6,7 @@
 // WHAT IT HOLDS, and where each row's behaviour actually lives:
 //   · Energy      — the balance, read from store.energy() (the SSE keeps it live; no polling here)
 //   · Account     — cloud only (store.cloudProfile), because on self-host there is no account to open
-//   · Feedback    — sends through services/feedback-api.js, the SAME two functions the desktop widget uses
+//   · Feedback    — FeedbackForm.js, at parity with the desktop panel and on its same services
 //   · Settings    — opens SettingsSheet (the «small settings device»)
 //   · Voice       — cycles the TTS voice (session.cycleVoice), the same seam as tapping the orb
 //   · Shell       — "open the desktop version": sets zaelar_shell=desktop and leaves. THE ESCAPE HATCH, and it is
@@ -18,12 +18,11 @@
 // ============================================================================
 
 import { h, raw } from "../../../app/core/dom.js?v=2";
-import { createSignal, createEffect } from "../../../app/core/reactive.js?v=2";
+import { createEffect } from "../../../app/core/reactive.js?v=2";
 import * as store from "../../../app/core/store.js?v=2";
 import * as session from "../../../app/services/session.js?v=3";
 import * as api from "../../../app/services/api.js?v=2";
-import { listFeedback, sendFeedback } from "../../../app/services/feedback-api.js?v=1";
-import { sendOutcome, listOutcome, lineFor } from "../../../app/services/feedback-state.js?v=1";
+import { FeedbackForm } from "./FeedbackForm.js?v=1";
 import { t } from "../../../app/core/i18n.js?v=1";
 import { accountLink } from "../../../app/core/account-link.js?v=1";
 import * as daemon from "../../../app/services/daemon.js?v=3";
@@ -51,33 +50,7 @@ function Row(label, sub, onClick) {
 export function MenuSheet() {
   // The form's open state lives in the store: the dock's feedback button opens it too (2026-10-24).
   const fbOpen = store.mobileFeedbackOpen, setFbOpen = store.setMobileFeedbackOpen;
-  const [fbMsg, setFbMsg] = createSignal("");
-  const [fbDone, setFbDone] = createSignal("");
-  // V2-695 — the same two options as the desktop panel. A decision applied in one channel and not
-  // the other stops existing (V2-252): the desktop would learn to tell a broken thing from a wish
-  // and every report from a phone would arrive unlabelled.
-  const [fbKind, setFbKind] = createSignal("issue");
-  let fbInput = null;
-
   const close = () => store.setMobileMenuOpen(false);
-
-  const doSend = async () => {
-    const msg = (fbInput && fbInput.value || "").trim();
-    if (!msg) return;
-    store.setFeedbackSending(true);
-    // includeSessionEvidence: true — on a phone the operator cannot copy a trace id or open the debug panel, so a
-    // report without the evidence bundle is a report we cannot act on. The desktop makes this a checkbox; here it
-    // is the default, and the row says so out loud rather than attaching it silently.
-    const r = await sendFeedback({ message: msg, includeSessionEvidence: true, kind: fbKind() });
-    store.setFeedbackSending(false);
-    // Same reading as the desktop panel, from the same module (V2-256). This surface HAD the failure
-    // branch and the desktop did not — one rule in two places is how that happens, so now there is one.
-    const out = sendOutcome(r);
-    if (!out.ok) { setFbDone(lineFor(out, t)); return; }
-    fbInput.value = "";
-    setFbDone(t("feedback.sent"));
-    listFeedback().then((d) => store.setFeedbackItems(listOutcome(d).items));
-  };
 
   return h("section", {
     class: () => "zm-sheet zm-menu" + (store.mobileMenuOpen() ? " open" : ""),
@@ -144,29 +117,11 @@ export function MenuSheet() {
         ),
         raw(CHEV),
       ),
-      h("div", { class: () => "zm-fb" + (fbOpen() ? " open" : ""),
-                  ref: (el) => createEffect(() => { if (fbOpen() && store.mobileMenuOpen()) setTimeout(() => {
-                    try { el.scrollIntoView({ block: "center", behavior: "smooth" }); fbInput && fbInput.focus({ preventScroll: true }); } catch (_) {}
-                  }, 60); }) },
-        h("div", { class: "zm-fb-kind" },
-          h("button", { class: () => "zm-fb-kind-b" + (fbKind() === "issue" ? " on" : ""),
-                        onClick: () => setFbKind("issue") }, () => t("feedback.kindIssue")),
-          h("button", { class: () => "zm-fb-kind-b" + (fbKind() === "idea" ? " on" : ""),
-                        onClick: () => setFbKind("idea") }, () => t("feedback.kindIdea")),
-        ),
-        h("textarea", {
-          ref: (el) => (fbInput = el), rows: "4",
-          placeholder: () => t(fbKind() === "idea" ? "feedback.placeholderIdea" : "feedback.placeholderIssue"),
-          onInput: (e) => setFbMsg(e.target.value),
-        }),
-        h("small", null, () => t("mobile.feedback_evidence")),
-        h("button", {
-          class: "zm-primary",
-          disabled: () => store.feedbackSending() || !fbMsg().trim(),
-          onClick: doSend,
-        }, () => store.feedbackSending() ? (t("feedback.sending")) : (t("feedback.send"))),
-        h("p", { class: "zm-fb-done" }, () => fbDone()),
-      ),
+      // The form itself, at parity with the desktop panel (FeedbackForm.js). It scrolls into view when opened from
+      // the dock's button.
+      h("div", { ref: (el) => createEffect(() => { if (fbOpen() && store.mobileMenuOpen()) setTimeout(() => {
+        try { el.scrollIntoView({ block: "start", behavior: "smooth" }); const ta = el.querySelector("textarea"); ta && ta.focus({ preventScroll: true }); } catch (_) {}
+      }, 60); }) }, FeedbackForm(() => fbOpen() && store.mobileMenuOpen())),
 
       // ── THE ESCAPE HATCH. Persists the choice so index.html's picker stops redirecting this device.
       Row(() => t("mobile.desktop"), () => t("mobile.desktop_sub"),
