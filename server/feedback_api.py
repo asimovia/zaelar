@@ -18,6 +18,8 @@ call to it would silently 403 on a hosted deployment. Running server-side sidest
 """
 from __future__ import annotations
 
+from loguru import logger
+
 import os
 
 import httpx
@@ -206,7 +208,8 @@ def _lang() -> str | None:
     try:
         from i18n import langs as _langs
         return _langs.current_code() or None
-    except Exception:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"feedback: configured language unreadable, report goes without it: {e!r}")
         return None
 
 
