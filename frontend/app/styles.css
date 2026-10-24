@@ -699,6 +699,10 @@ canvas#orb.frozen{opacity:.32;filter:grayscale(1)}
 /* V2-648 — the slash over a stopped microphone. Full-strength within its (dimmed) icon: it is the one stroke
    that must survive the dimming, because it is what says «nothing is listening». */
 .orbic .mic-slash{opacity:1;stroke-width:2.2}
+/* V2-788 — a DEVICE PROBLEM (no microphone permission, a dead track, playback blocked, the speaker silent while
+   the agent speaks): the mic/speaker icon turns red whatever its on/off/stopped state, and its title names the
+   reason. Distinct from a deliberate mute, which is never red (store.deviceHealth). It clears by itself. */
+.orbic.problem,.orbic.problem.off,.orbic.problem.on{color:var(--hb-risk);opacity:1;filter:drop-shadow(0 0 4px currentColor)}
 /* ⏻ REAL agent STATES (2026-08-10). ⏻ is the icon the operator checks to know whether someone is on the other
    side, so it is the only one that cannot lie. `stalled` = “should be on but is NOT” (dropped session, denied
    microphone, lost room): pulses amber so it is not mistaken for operational — the operator spent quite a while

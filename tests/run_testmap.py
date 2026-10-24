@@ -2064,6 +2064,13 @@ DOMAINS: list[dict] = [
                                  "cuenta nunca la coge otra Machine",
             "ch": UNIT,
             "paths": ["tests/voice/unit/test_a_machine_takes_only_its_own_voice_rooms.py"]},
+        # V2-788 — mid-session the agent's voice stopped being heard while the engine kept synthesising, and
+        # the browser had reported nothing since connect. Each device now has ONE derived health; a problem
+        # paints its orb icon red and is reported as a client event, and a deliberate mute is never red.
+        {"id": "3.119", "title": "A microphone or speaker problem turns its orb icon red with the reason, reports a "
+                                 "client event, clears by itself — and a deliberate mute is not red",
+            "ch": UNIT,
+            "paths": ["tests/browser/unit/voice/test_a_device_problem_turns_its_icon_red.py"]},
     ]},
     {"id": "4", "name": "WIDGETS", "nodes": [
         {"id": "4.1", "title": "Ciclo de vida / acciones / refs / generador / background", "ch": UNIT, "paths": [

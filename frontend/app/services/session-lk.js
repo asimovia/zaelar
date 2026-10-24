@@ -33,6 +33,7 @@ import { SpeakerID } from "../lib/speaker-id.js?v=1";
 import * as wake from "./wakeword.js?v=1";
 import { createEffect } from "../core/reactive.js?v=1";
 import { t } from "../core/i18n.js?v=1";
+import * as health from "./device-health.js?v=1";
 
 let room = null, stream = null, videoEl = null, botAudioEl = null;
 let started = false, starting = false;
@@ -216,6 +217,7 @@ function _bootPhase(p) {
 export function attachVideo(el) { videoEl = el; }
 export function attachBotAudio(el) {
   botAudioEl = el;
+  health.watchBotElement(el);   // V2-788: pause/ended/error/stalled/waiting → the speaker's health
   // ICON↔AUDIO PARITY — SELF-CORRECTING INVARIANT (hydration bug 2026-07-17): the vendor LiveKit `attachToElement`
   // sets `element.muted = false` on EVERY attach — including INTERNAL RE-ATTACHES when replacing the
   // mediaStreamTrack (the agent's new track after startup / reconnection), which run WITHOUT passing through our
@@ -402,6 +404,7 @@ export async function start() {
   // (another window stole it) re-asked ~140 times a second instead of every 3 s (measured 2026-09-27).
   if (_blockedRetry) return;
   const gen = _gen;   // see the SESSION GENERATION note above: if it bumps, this startup is no longer the current one
+  _installHealth();   // V2-788: once per page — permission, devicechange, the silence detector, gesture recovery
   starting = true; store.setStarting(true); store.setConnState(t("voice.conn_requesting"));
   audit.silent = false; store.setMicBlocked({ show: false, msg: "" });
 
@@ -474,6 +477,8 @@ export async function start() {
     // nobody else will do it: the operator would be left with the browser's red dot lit over a stopped agent.
     if (gen !== _gen) return _abortedStartup(gen, captured);
     stream = captured;
+    health.micCaptureResult(null);
+    health.watchMicTrack(captured.getAudioTracks()[0]);
     _bootPhase("voz");   // mic granted — the voice link is coming up (frontend-known milestone)
     await populateMicPicker();
     populateMicModePicker();
@@ -493,6 +498,7 @@ export async function start() {
     api.obsSessionStart("voice");   // opens (or reattaches) the work session grouping events — see api.js
     audio.initMic(stream);   // AudioContext + mic analyser → orb visualiser + mic-level meter keep working
     _startSpeakerShadow();   // V2-651 F0: fingerprint each speech segment in the browser, log-only (shadow)
+    health.watchAudioContext(audio.context());   // V2-788: suspended/interrupted → the speaker's health
 
     // --- LiveKit room ---
     const { token, url, ok } = await api.lkToken();
@@ -522,6 +528,7 @@ export async function start() {
         });
       } catch (_) {}
       if (track.kind !== "audio" || !botAudioEl) return;
+      health.watchRemoteTrack(track.mediaStreamTrack);   // V2-788: remote mute/unmute/ended → the speaker's health
       try { track.attach(botAudioEl); } catch (e) {
         try { api.clientLog("⚠️ track.attach() threw", { text: String((e && e.message) || e) }); } catch (_) {}
       }
@@ -632,6 +639,9 @@ export async function start() {
   } catch (err) {
     starting = false; store.setStarting(false); started = false; store.setStarted(false); store.setConnState("error"); console.error(err);
     const n = err && err.name;
+    if (["NotReadableError", "NotAllowedError", "OverconstrainedError", "NotFoundError", "SecurityError"].includes(n)) {
+      health.micCaptureResult(err);   // V2-788: the capture failure is the mic's health, not only a caption
+    }
     if (n === "NotReadableError" || n === "NotAllowedError" || n === "OverconstrainedError") {
       store.setMicBlocked({ show: true, msg: n === "NotAllowedError" ? t("voice.mic_denied") : t("voice.mic_in_use") });
     }
@@ -738,6 +748,16 @@ function _applyPark() {
   setTapParked(_wakeMode() && store.agentLive() && !store.attentionHit() && !store.micMuted() && wake.armed());
 }
 
+// V2-788 — device health. Recovery re-runs the existing unlock (startAudio + re-play) and resumes the analyser
+// context, from inside the gesture; the silence detector reads the RECEIVED remote audio's energy.
+function _installHealth() {
+  health.install({
+    recover: () => { const c = audio.context(); if (c && c.state === "suspended" && c.resume) c.resume().catch(() => {}); return unlockAudio(); },
+    level: () => audio.level(audio.botAnalyser()),
+    ctxState: () => { const c = audio.context(); return c ? c.state : "closed"; },
+  });
+}
+
 export async function stop() {
   _gen++;   // invalidates any `start()` in flight — see the SESSION GENERATION note above
   // V2-749 — a stopped session never leaves the tap parked. A park that outlives its session is an agent
@@ -761,6 +781,7 @@ export async function stop() {
 // `agentLive()` to avoid continuing to publish the level of a stopped mic. Now the entire graph is closed, so
 // «stopped» means stopped in reality, not just in the icon; observability also records proof of it.
   store.setBotSpeaking(false); audio.reset("session_stop");
+  health.clearSession();   // V2-788: a stopped session is not a broken device
   store.setConnState("—"); store.setLatency("— ms");
 }
 

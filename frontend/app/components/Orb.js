@@ -36,6 +36,7 @@ import * as mic from "../services/mic.js?v=1";
 import { makeDraggable, resetDraggable } from "../lib/draggable.js?v=2";
 import { startEcg } from "../lib/ecg.js?v=2";
 import { t } from "../core/i18n.js?v=1";
+import { problemTitleKey } from "../services/device-health.js?v=1";
 
 // Inline SVGs (self-contained, currentColor). Mic + memory + speaker on/off + power + captions + chat + robot.
 const MIC_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>`;
@@ -148,15 +149,25 @@ export function Orb() {
         // no re-render: it only changes a custom property. With the mic muted or the agent stopped there is no effect —
         // because there is no level: the meter can move only when the system is actually listening.
         "data-ctl": "mic",
-        class: () => lidClass(!store.micMuted()) + (store.agentLive() && !store.micMuted() ? " vu" : ""),
+        // V2-788: red when the DEVICE has a problem (store.micHealth — a deliberate mute is not one).
+        class: () => lidClass(!store.micMuted()) + (store.agentLive() && !store.micMuted() ? " vu" : "")
+                     + (store.micHealth().ok ? "" : " problem"),
         style: { "--vu": () => (store.agentLive() && !store.micMuted() ? String(Math.min(1, store.micLevel() * 6)) : "0") },
-        title: () => (store.micMuted() ? t("camera.mic_unmute") : t("camera.mic_mute")),
+        title: () => (!store.micHealth().ok ? t(problemTitleKey("mic", store.micHealth().reason))
+                      : store.micMuted() ? t("camera.mic_unmute") : t("camera.mic_mute")),
         onClick: () => { mic.toggle("orb"); api.uiEvent("orb:mic", { state: store.micMuted() ? "muted" : "unmuted" }); },
       }, () => raw(store.micMuted() ? MIC_OFF : MIC_ICON)),
       h("button", { "data-ctl": "spk",
-        class: () => lidClass(!store.botMuted()),
-        title: () => store.botMuted() ? t("orb.speaker_muted") : t("orb.speaker_unmuted"),
-        onClick: () => { session.toggleBotMute(); api.uiEvent("orb:speaker", { state: store.botMuted() ? "muted" : "unmuted" }); },
+        class: () => lidClass(!store.botMuted()) + (store.spkHealth().ok ? "" : " problem"),
+        title: () => !store.spkHealth().ok ? t(problemTitleKey("spk", store.spkHealth().reason))
+                   : store.botMuted() ? t("orb.speaker_muted") : t("orb.speaker_unmuted"),
+        // V2-788: a red speaker is a click to RECOVER playback (inside the gesture), not to mute it — muting a
+        // speaker the operator cannot hear would just hide the fault.
+        onClick: () => {
+          if (!store.spkHealth().ok) { try { session.unlockAudio && session.unlockAudio(); } catch (_) {}
+                                       api.uiEvent("orb:speaker", { state: "recover", reason: store.spkHealth().reason }); return; }
+          session.toggleBotMute(); api.uiEvent("orb:speaker", { state: store.botMuted() ? "muted" : "unmuted" });
+        },
       }, () => raw(store.botMuted() ? SPK_OFF : SPK_ON)),
       h("button", {
         // The ⏻ is the ONLY icon that can never lie: it is what the operator looks at to know whether someone is

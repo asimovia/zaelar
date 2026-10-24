@@ -237,6 +237,12 @@ below is the first kind, or it names the mechanism that replaced the second.
   paid call is refused (`OutOfEnergy`, never a provider failure: no relay, no light), the fuse stops the agent, and
   the UI shows the exhausted state with a link to `ZAELAR_ACCOUNT_URL` when set; with no lease configured, every
   call is admitted. A boot probe never pays. — since 2026-10-22 · nodes 8.21, 4.247 · `nucleo/energy_lease.py::check`.
+- **CRIT-R9 · A device that cannot capture or play is red on the orb, and said.** Each of the microphone and the
+  speaker has ONE derived health (`store.micHealth()` / `store.spkHealth()`); a problem (no permission, dead or
+  source-muted track, capture error, playback blocked or paused, remote track ended, output lost, the agent
+  speaking with no received energy) paints its icon red with the reason in the title, is reported once as a
+  `client` event, and clears by itself; a deliberate mute is never red except for a revoked permission.
+  — since 2026-10-24 · nodes 3.119 · `frontend/app/services/device-health.js`.
 
 ## 7 · Working here
 

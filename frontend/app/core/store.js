@@ -213,6 +213,37 @@ export const clearFault = () => setFault(null);
 // have already dismissed.
 export const [audioBlocked, setAudioBlocked] = createSignal(false);
 
+// DEVICE HEALTH (V2-788). Mid-session the agent's voice stopped being heard while the engine kept synthesising,
+// and the browser had reported nothing since connect: no way to tell a paused element from a dead track, a lost
+// output device or a silent stream. `services/device-health.js` is the only writer of `deviceConds` — the raw
+// conditions each detector saw, per device — and the two functions below are the ONE derived verdict each icon
+// reads. A deliberate mute is not a fault: it explains every condition except the ones listed as surviving it
+// (a mute does not explain a revoked permission). Conditions in WHILE_SPEAKING only count while the engine says
+// the agent is speaking — a remote track the browser flags as muted between utterances is just silence.
+// `blocked` is not stored here: it IS `audioBlocked`, the SDK's own verdict, read directly so there is one door.
+export const DEVICE_PROBLEMS = {
+  mic: ["permission_denied", "no_device", "capture_error", "track_ended", "track_muted"],
+  spk: ["blocked", "track_ended", "element_error", "paused", "context_interrupted", "no_output", "sink_lost",
+        "silent_while_speaking", "remote_muted"],
+};
+const _SURVIVES_MUTE = { mic: ["permission_denied", "no_device"], spk: [] };
+const _WHILE_SPEAKING = ["remote_muted"];
+export const [deviceConds, setDeviceConds] = createSignal({ mic: {}, spk: {} });
+export const deviceHealth = (device) => {
+  const conds = { ...((deviceConds() || {})[device] || {}) };
+  if (device === "spk" && audioBlocked()) conds.blocked = "canPlaybackAudio=false";
+  const muted = device === "mic" ? micMuted() : botMuted();
+  for (const reason of DEVICE_PROBLEMS[device] || []) {
+    if (!(reason in conds)) continue;
+    if (muted && !_SURVIVES_MUTE[device].includes(reason)) continue;
+    if (_WHILE_SPEAKING.includes(reason) && !botSpeaking()) continue;
+    return { ok: false, reason, detail: String(conds[reason] || "") };
+  }
+  return { ok: true, reason: "", detail: "" };
+};
+export const micHealth = () => deviceHealth("mic");
+export const spkHealth = () => deviceHealth("spk");
+
 // ---- proactive notifications (orchestrator loop / scheduled task fired → zaelar reaches out) ----
 // No floating toast: a proactive push surfaces as a live caption over the orb + a chat-wall entry (see sse.js).
 export const [cronOpen, setCronOpen]   = createSignal(false);  // cron manager panel visible?

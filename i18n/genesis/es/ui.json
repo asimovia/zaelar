@@ -1960,5 +1960,20 @@
  "energy.out.title": "Te has quedado sin energía",
  "energy.out.body": "Tu agente se ha parado porque en tu cuenta no queda energía. Recarga o contrata un plan y volverá solo.",
  "energy.out.top_up": "Recargar",
- "energy.out.close": "Cerrar"
+ "energy.out.close": "Cerrar",
+ "orb.device_problem": "Hay un problema con este dispositivo de audio",
+ "orb.mic_problem_capture": "No se puede abrir el micrófono: quizá lo está usando otra aplicación",
+ "orb.mic_problem_no_device": "No hay ningún micrófono conectado",
+ "orb.mic_problem_permission": "Sin permiso de micrófono: actívalo en los ajustes del navegador",
+ "orb.mic_problem_track_ended": "El micrófono se ha cortado (desconectado o cerrado por el sistema)",
+ "orb.mic_problem_track_muted": "El micrófono no entrega sonido: el sistema u otra aplicación lo ha silenciado",
+ "orb.spk_problem_blocked": "El navegador bloquea el sonido: toca aquí para activarlo",
+ "orb.spk_problem_element_error": "Error al reproducir la voz: toca aquí para reintentar",
+ "orb.spk_problem_interrupted": "El sistema ha cedido el audio a otra aplicación: toca aquí para recuperarlo",
+ "orb.spk_problem_no_output": "No hay ningún altavoz ni auricular disponible",
+ "orb.spk_problem_paused": "La reproducción de la voz se ha parado: toca aquí para reanudarla",
+ "orb.spk_problem_remote_muted": "El agente está hablando pero su audio no llega",
+ "orb.spk_problem_silent": "El agente está hablando pero no llega sonido: toca aquí para reintentar",
+ "orb.spk_problem_sink_lost": "La salida de audio elegida ha desaparecido",
+ "orb.spk_problem_track_ended": "La voz del agente ya no llega al navegador"
 }

@@ -315,6 +315,22 @@ client's **transitions** enter through the same channel (`api.uiState(action, {.
 | `audio:out` | `state` ∈ `attached\|released` | The attach is visible (`🔈 TrackSubscribed`); the **release** is logged too, so a zombie speaker leaves a trace |
 | `tab:visibility` | `state` ∈ `hidden\|visible` | `requestAnimationFrame` does NOT run in a background tab, and the visualizer and several guards depend on rAF: it tells «it froze» from «you were in another app» |
 
+### Device health — `🎤 mic health` / `🔈 spk health` (V2-788)
+
+Rows `kind="client"` (POST `/api/client-log`) written by `frontend/app/services/device-health.js` on every
+**change**, never periodically. `device` ∈ `mic|spk`; `state` is `problem:<cond>` / `clear:<cond>` for a
+condition that turns the orb icon red, or `<key>:<value>` for a report-only fact; `text` carries the detail and
+the resulting verdict (`verdict=ok|<reason>`).
+
+| Device | Red conditions | Reported only |
+|---|---|---|
+| mic | `permission_denied` (permissions API + its `change`, or `NotAllowedError`), `no_device`, `capture_error` (`NotReadableError` — another application holds it), `track_ended`, `track_muted` (the source went silent) | `permission:<state>`, `inputs:<n>`, `device:gone` |
+| spk | `blocked` (= `canPlaybackAudio`), `paused`, `element_error`, `track_ended`, `remote_muted` (only while `bot_speech speaking`), `context_interrupted`, `no_output`, `sink_lost`, `silent_while_speaking` (the engine says speaking, the received remote audio carries no energy for 4 s) | `element:playing\|stalled\|waiting`, `context:<state>`, `default_output:<label>`, `recovery:…` |
+
+A deliberate mute hides every condition but `permission_denied`; a stopped session clears the session-scoped
+ones. «Engine generated TTS, operator heard nothing» now reads as one of these rows — or, if none appears, as an
+output problem past the browser (see the module's limits).
+
 ### `🎙️ speaker` — the voice-identification SHADOW
 
 Rows `kind="client"` with label **`🎙️ speaker`**, ONE per speech segment, emitted by the BROWSER
