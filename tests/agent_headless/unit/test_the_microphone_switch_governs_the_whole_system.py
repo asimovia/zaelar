@@ -221,3 +221,34 @@ def test_a_tab_that_loses_the_voice_shows_who_has_it_and_waits_for_it():
     body = js[i:js.index("\nfunction _stopHeartbeat", i)]
     assert "store.setRemoteHeld(true)" in body, "a stolen tab must read as remote-controlled, not as a fallen agent"
     assert "start()" in body, "and ask for the voice back when it is free"
+
+
+def test_the_voice_changing_hands_names_the_device(monkeypatch):
+    """One engine serves the desktop tab and the phone at once. Each change of voice holder is an event naming the
+    surface, and the owner's beat on the microphone carries it too: «the phone never hears me» and «the desktop
+    took the voice back» must not look alike on the timeline (2026-10-24)."""
+    from server import livekit_api as la
+    from voice import observer
+    seen = []
+    monkeypatch.setattr(observer, "emit", lambda kind, label, **kw: seen.append((kind, label, kw.get("extra") or {})))
+    la.session_release("driver")
+    assert la.session_acquire("phone-tab", "mobile:ab12")["ok"] is True
+    la.session_heartbeat({"sid": "phone-tab", "muted": True, "dev": "mobile:ab12"})
+    la.session_steal("desk-tab", "desktop:cd34")
+    holders = [x[2].get("dev") for x in seen if x[0] == "session"]
+    assert holders == ["mobile:ab12", "desktop:cd34"]
+    assert any(x[0] == "mic" and x[2].get("dev") == "mobile:ab12" for x in seen)
+    la.session_release("desk-tab")
+
+
+def test_a_surface_that_lost_the_voice_retakes_it_only_when_it_could_use_it():
+    """A desktop tab with its mic muted retook the voice every time the phone hid for a moment, its beat closed the
+    engine's mic, and the phone never heard the operator. The automatic retry waits while the surface is hidden or
+    muted; both refusal paths go through it."""
+    import pathlib
+    js = (pathlib.Path(__file__).resolve().parents[3] / "frontend/app/services/session-lk.js").read_text("utf-8")
+    i = js.index("function _armRetry()")
+    body = js[i:js.index("\n}", i)]
+    assert 'document.visibilityState === "hidden"' in body and "store.micMuted()" in body
+    assert js.count("_blockedRetry = setTimeout(") == 1, "every retry goes through _armRetry"
+    assert js.count("_armRetry();") >= 3

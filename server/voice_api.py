@@ -220,7 +220,7 @@ async def client_log(payload: dict):
     label = str(payload.get("label", "client"))[:80]
     text = str(payload.get("text", ""))[:300]
     return JSONResponse(emit("client", label, text=text, extra={k: payload[k] for k in
-                             ("device", "muted", "enabled", "state", "rms", "raw") if k in payload}))
+                             ("device", "muted", "enabled", "state", "rms", "raw", "dev") if k in payload}))
 
 
 @router.post("/api/mic")
@@ -235,7 +235,7 @@ async def mic_switch(payload: dict):
     from voice import mic_input
     muted = bool((payload or {}).get("muted"))
     src = str((payload or {}).get("src") or "frontend")[:40]
-    return JSONResponse(mic_input.set_muted(muted, source=src))
+    return JSONResponse(mic_input.set_muted(muted, source=src, dev=str((payload or {}).get("dev") or "")[:40]))
 
 
 @router.get("/api/mic")
@@ -270,7 +270,7 @@ async def ui_event(payload: dict):
         extra["id"] = str(wid).split("::", 1)[0].strip().lower()
     # `prev`/`reason`/`cause` make a transition READABLE: which state it came from and why it moved. Without them,
     # `agent:state stalled` does not say whether we came from `live` (it fell) or from `starting` (it never came up).
-    for k in ("where", "state", "detail", "prev", "reason", "cause"):
+    for k in ("where", "state", "detail", "prev", "reason", "cause", "dev"):
         v = (payload or {}).get(k)
         if v is not None:
             extra[k] = str(v)[:120]

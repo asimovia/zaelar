@@ -61,7 +61,7 @@ def snapshot() -> dict:
         return {"muted": bool(_state["muted"]), "at": _state["at"], "source": _state["source"]}
 
 
-def set_muted(muted: bool, *, source: str = "frontend", now: float | None = None) -> dict:
+def set_muted(muted: bool, *, source: str = "frontend", now: float | None = None, dev: str = "") -> dict:
     """Write the fact. Idempotent BY DESIGN: the heartbeat re-asserts the same value every ~4s, so only a real
     CHANGE is worth an event — otherwise the timeline would carry 15 rows a minute saying nothing happened."""
     muted = bool(muted)
@@ -70,7 +70,7 @@ def set_muted(muted: bool, *, source: str = "frontend", now: float | None = None
         changed = muted != bool(_state["muted"])
         _state["muted"], _state["at"], _state["source"] = muted, now, (source or "")[:40]
     if changed:
-        _emit(muted, source)
+        _emit(muted, source, dev)
     return {"ok": True, "muted": muted, "changed": changed}
 
 
@@ -110,12 +110,12 @@ def reset() -> None:
         _state.update(muted=False, at=0.0, source="")
 
 
-def _emit(muted: bool, source: str) -> None:
+def _emit(muted: bool, source: str, dev: str = "") -> None:
     """Observability, never fatal: this module is called from the turn's hot path and from a route handler, and
     neither may die because the observer is unavailable."""
     try:
         from voice.observer import emit
         emit("mic", "🎤⃠ micrófono CERRADO" if muted else "🎤 micrófono abierto",
-             role="system", extra={"muted": muted, "src": source})
+             role="system", extra={"muted": muted, "src": source, **({"dev": dev} if dev else {})})
     except Exception:  # noqa: BLE001
         pass

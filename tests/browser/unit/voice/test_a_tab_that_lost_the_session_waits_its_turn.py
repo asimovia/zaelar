@@ -45,4 +45,6 @@ def test_start_does_nothing_while_the_blocked_retry_is_armed():
 def test_the_timer_clears_itself_before_retrying():
     """Otherwise the guard above would also block the one retry that is supposed to run."""
     code = _code(SESSION)
-    assert "_blockedRetry = setTimeout(() => { _blockedRetry = null; start(); }, 3000);" in code
+    i = code.index("function _armRetry()")
+    body = code[i:code.index("\n}", i)]
+    assert "_blockedRetry = null;" in body and body.index("_blockedRetry = null;") < body.index("start();")

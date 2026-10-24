@@ -5,6 +5,20 @@
 // ============================================================================
 
 const json = (r) => r.json();
+// THE DEVICE (V2-792): which surface wrote this. One engine serves the desktop tab and the phone at once, so an
+// event without it cannot say where it happened, and «the phone never hears me» looked the same as «the desktop
+// took the voice». `<surface>:<id>`, the id stable per browser. Sent only on the voice-lock and observability calls
+// below, never added to every POST: some routes store the body they receive.
+const _surface = (() => { try { return location.pathname === "/m" || location.pathname.startsWith("/m/") ? "mobile" : "desktop"; } catch (_) { return "desktop"; } })();
+const _deviceId = (() => {
+  try {
+    let v = localStorage.getItem("hb_device_id");
+    if (!v) { v = Math.random().toString(16).slice(2, 10); localStorage.setItem("hb_device_id", v); }
+    return v;
+  } catch (_) { return "nostore"; }
+})();
+export const DEVICE = `${_surface}:${_deviceId}`;
+
 const postJSON = (url, body, opts = {}) =>
   fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), ...opts });
 
@@ -47,8 +61,8 @@ export const lkToken = () => fetch("/api/token").then((r) => r.json().then((body
 // acquire/heartbeat devuelven {ok}: ok=false → otra pestaña/navegador está viva. Fail-open ante error de red
 // (si el server no responde no hay sesión con la que chocar → no bloquees al usuario). release por sendBeacon
 // al cerrar la pestaña (best-effort, sobrevive al unload).
-export const sessionAcquire = (sid) => postJSON("/api/session/acquire", { sid }).then(json).catch(() => ({ ok: true }));
-export const sessionHeartbeat = (sid, muted) => postJSON("/api/session/heartbeat", { sid, muted }).then(json).catch(() => ({ ok: true }));
+export const sessionAcquire = (sid) => postJSON("/api/session/acquire", { sid, dev: DEVICE }).then(json).catch(() => ({ ok: true }));
+export const sessionHeartbeat = (sid, muted) => postJSON("/api/session/heartbeat", { sid, muted, dev: DEVICE }).then(json).catch(() => ({ ok: true }));
 // V2-654 — the microphone switch, told to the engine. Only `services/mic.js` may call this: the whole point of
 // that module is that ONE write moves icon, storage, audio track and engine together. Best-effort like the rest
 // of the telemetry here, because the heartbeat re-asserts the same value every ~4s and heals a lost request.
@@ -56,15 +70,15 @@ export const sessionHeartbeat = (sid, muted) => postJSON("/api/session/heartbeat
 // request lost before the heartbeat exists (⏻ off, no room, no beat behind it) is retried instead of becoming
 // the exact silent divergence this whole module exists to end.
 export const micState = (muted, src = "frontend") =>
-  postJSON("/api/mic", { muted: !!muted, src }).then((r) => !!(r && r.ok)).catch(() => false);
+  postJSON("/api/mic", { muted: !!muted, src, dev: DEVICE }).then((r) => !!(r && r.ok)).catch(() => false);
 // V2-124: TAKE the voice from whichever surface holds it. EXPLICIT operator gesture only (the mobile shell's
 // «traerla aquí»); the automatic path stays "ask, be refused, retry" in services/session-lk.js. Fail-CLOSED on a
 // network error, unlike acquire/heartbeat above: those fail open because "the server did not answer" means there is
 // no session to collide with, whereas here it would mean claiming a lock we were never granted.
-export const sessionSteal = (sid) => postJSON("/api/session/steal", { sid }).then(json).catch(() => ({ ok: false }));
+export const sessionSteal = (sid) => postJSON("/api/session/steal", { sid, dev: DEVICE }).then(json).catch(() => ({ ok: false }));
 export const sessionRelease = (sid) => {
   try {
-    const blob = new Blob([JSON.stringify({ sid })], { type: "application/json" });
+    const blob = new Blob([JSON.stringify({ sid, dev: DEVICE })], { type: "application/json" });
     if (navigator.sendBeacon && navigator.sendBeacon("/api/session/release", blob)) return;
   } catch (_) {}
   try { fetch("/api/session/release", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sid }), keepalive: true }); } catch (_) {}
@@ -98,11 +112,11 @@ export const getSettings = () => fetch("/api/settings").then(json);
 export const saveSettings = (payload) => postJSON("/api/settings", payload).then(json);
 
 // ---- diagnostics ----
-export const clientLog = (label, o) => { try { postJSON("/api/client-log", { label, ...o }); } catch (_) {} };
+export const clientLog = (label, o) => { try { postJSON("/api/client-log", { label, dev: DEVICE, ...o }); } catch (_) {} };
 
 // ---- observabilidad del frontend (V2-039): audita lo que TOCA el operador — iconos del orbe/TopBar (kind "ui") y
 // geometría de widgets a mano (mover/redimensionar, kind "widget"). Fire-and-forget; el server estampa src="user". ----
-export const uiEvent = (action, o = {}) => { try { postJSON("/api/ui-event", { action, ...o }); } catch (_) {} };
+export const uiEvent = (action, o = {}) => { try { postJSON("/api/ui-event", { action, dev: DEVICE, ...o }); } catch (_) {} };
 
 // ESTADO del cliente, no actividad del operador (2026-08-10). Mismo canal, `src="frontend"`: lo que el frontend
 // SABE y el server no puede ver — si el agente está realmente vivo, si el analizador de micro se soltó, si la pista

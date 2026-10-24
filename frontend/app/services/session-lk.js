@@ -184,11 +184,22 @@ function _startHeartbeat() {
         // watched the demo driver take the voice and read as a fallen agent). Then wait for it back exactly as a
         // tab that STARTS with the voice held elsewhere does — `start()` is refused, keeps the blue, retries.
         store.setRemoteHeld(true);
-        if (_blockedRetry) clearTimeout(_blockedRetry);
-        _blockedRetry = setTimeout(() => { _blockedRetry = null; start(); }, 3000);
+        _armRetry();
       }
     });
   }, 4000);
+}
+// THE RETRY TAKES THE VOICE BACK ONLY WHEN THIS SURFACE COULD USE IT: visible, with its microphone open. A desktop
+// tab with its mic muted retook the lock every time the phone's beat paused (the phone hides for a permission prompt
+// or a sheet), its own beat then closed the engine's mic, and the phone the operator was talking to never heard him
+// (2026-10-24). A muted or hidden surface keeps waiting; opening its mic or coming to the front lets it in.
+function _armRetry() {
+  if (_blockedRetry) clearTimeout(_blockedRetry);
+  _blockedRetry = setTimeout(() => {
+    _blockedRetry = null;
+    if (document.visibilityState === "hidden" || store.micMuted()) { _armRetry(); return; }
+    start();
+  }, 3000);
 }
 function _stopHeartbeat() { if (_hb) { clearInterval(_hb); _hb = null; } }
 // Release the lock when closing the tab (sendBeacon survives unload) → another tab can enter immediately.
@@ -452,8 +463,7 @@ export async function start() {
     starting = false; store.setStarting(false); started = false; store.setStarted(false); store.setConnState("—");
     store.setMicBlocked({ show: true, msg: t("voice.session_open_other_tab") });
     store.setRemoteHeld(true);
-    if (_blockedRetry) clearTimeout(_blockedRetry);
-    _blockedRetry = setTimeout(() => { _blockedRetry = null; start(); }, 3000);
+    _armRetry();
     if (!_everBooted) _unblockBoot();   // do not leave the UI trapped on the splash while blocked
     return;
   }

@@ -16,6 +16,7 @@ from datetime import timedelta
 
 from fastapi import APIRouter, Body
 from fastapi.responses import FileResponse, JSONResponse
+from loguru import logger
 from livekit import api
 
 from voice.engine.core.config import SETTINGS
@@ -30,7 +31,19 @@ router = APIRouter()
 # it is server-side (not localStorage). The tester (2nd participant) does NOT request the lock → unaffected.
 _LOCK_TTL = float(os.getenv("ZAELAR_SESSION_TTL", "12"))   # s; with ~4s heartbeat, 3 misses in a row = expired
 _lock_mx = threading.Lock()
-_active = {"sid": None, "ts": 0.0}
+_active = {"sid": None, "ts": 0.0, "dev": ""}
+
+
+def _holder_changed(prev_sid, sid: str, dev: str, how: str) -> None:
+    """One event when the voice changes hands, naming the surface (`dev`, from the client). Without it a phone
+    that never hears the operator and a desktop tab quietly retaking the voice look the same on the timeline."""
+    if prev_sid == sid:
+        return
+    try:
+        from voice.observer import emit
+        emit("session", f"voice held by {dev or 'unknown device'}", extra={"src": how, "dev": dev})
+    except Exception as e:  # noqa: BLE001 — observability never breaks the lock
+        logger.debug(f"voice holder event not emitted: {e!r}")
 
 
 def _free(now: float) -> bool:
@@ -38,13 +51,16 @@ def _free(now: float) -> bool:
 
 
 @router.post("/api/session/acquire")
-def session_acquire(sid: str = Body(..., embed=True)) -> dict:
+def session_acquire(sid: str = Body(..., embed=True), dev: str = Body("", embed=True)) -> dict:
     """Ask to become the ONLY live session. ok=True if the lock was free/expired or already yours; ok=False (held)
     if another tab/browser is live. Atomic (thread lock: sync handlers run in a threadpool)."""
+    dev = dev if isinstance(dev, str) else ""
     now = _time.time()
     with _lock_mx:
         if _free(now) or _active["sid"] == sid:
-            _active["sid"], _active["ts"] = sid, now
+            prev = _active["sid"]
+            _active["sid"], _active["ts"], _active["dev"] = sid, now, dev[:40]
+            _holder_changed(prev, sid, dev, "acquire")
             return {"ok": True}
         return {"ok": False, "held": True}
 
@@ -64,19 +80,22 @@ def session_heartbeat(payload: dict = Body(...)) -> dict:
     now = _time.time()
     with _lock_mx:
         owner = _active["sid"] == sid or _free(now)
+        dev = str((payload or {}).get("dev") or "")[:40]
         if owner:
-            _active["sid"], _active["ts"] = sid, now
+            if _active["sid"] != sid:
+                _holder_changed(_active["sid"], sid, dev, "heartbeat")
+            _active["sid"], _active["ts"], _active["dev"] = sid, now, dev
     # Only the OWNER's beat speaks for the microphone. A tab that has just lost the voice beats once more before it
     # learns so, and its «unmuted» used to re-open the engine's mic under whoever took it (demo 2026-09-28: the
     # operator's tab, left with mic and speaker on, while the demo driver held the session).
     if owner and isinstance(muted, bool):
         from voice import mic_input
-        mic_input.set_muted(muted, source="heartbeat")
+        mic_input.set_muted(muted, source="heartbeat", dev=dev)
     return {"ok": True} if owner else {"ok": False, "held": True}
 
 
 @router.post("/api/session/steal")
-def session_steal(sid: str = Body(..., embed=True)) -> dict:
+def session_steal(sid: str = Body(..., embed=True), dev: str = Body("", embed=True)) -> dict:
     """TAKE the live-session lock from whoever holds it. An EXPLICIT operator gesture, never automatic.
 
     Why this exists (V2-124): the lock above is correct and its "ask, be refused, retry" loop is the right default
@@ -92,10 +111,12 @@ def session_steal(sid: str = Body(..., embed=True)) -> dict:
 
     Not a security boundary and not pretending to be one: anyone who can reach this port can already open a
     session. Admission is server/ingress.py's job, and it runs before this."""
+    dev = dev if isinstance(dev, str) else ""
     now = _time.time()
     with _lock_mx:
         prev = _active["sid"]
-        _active["sid"], _active["ts"] = sid, now
+        _active["sid"], _active["ts"], _active["dev"] = sid, now, dev[:40]
+    _holder_changed(prev, sid, dev, "steal")
     return {"ok": True, "took_from": prev}
 
 
@@ -104,7 +125,7 @@ def session_release(sid: str = Body(..., embed=True)) -> dict:
     """Release the lock if it is yours (when closing the tab, via sendBeacon). Idempotent."""
     with _lock_mx:
         if _active["sid"] == sid:
-            _active["sid"], _active["ts"] = None, 0.0
+            _active["sid"], _active["ts"], _active["dev"] = None, 0.0, ""
     return {"ok": True}
 
 # Engine switch WITHOUT a build step or touching the 6 static importers of session.js: on the LiveKit engine we

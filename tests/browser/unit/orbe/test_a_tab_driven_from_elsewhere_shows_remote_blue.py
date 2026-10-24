@@ -28,7 +28,7 @@ def test_the_state_is_remote_while_another_session_holds_the_voice():
 def test_the_blocked_start_marks_it_and_a_real_start_clears_it():
     s = _code(APP / "services" / "session-lk.js")
     i = s.index('t("voice.session_open_other_tab")')
-    blocked = s[i:s.index("_blockedRetry = setTimeout", i)]
+    blocked = s[i:s.index("_armRetry();", i)]
     assert "store.setRemoteHeld(true)" in blocked
     assert "store.setStarted(true); store.setRemoteHeld(false);" in s
 
