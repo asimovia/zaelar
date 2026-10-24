@@ -3956,7 +3956,9 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_a_strangers_words_are_data.py"]},
         {"id": "2.206", "title": "The system prompt the fast turn SENDS has a down-only ceiling on a clean install, and the "
                                  "everyday screen stays under the audit's 30k",
-            "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_the_turn_prompt_has_a_ceiling.py"]},
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_the_turn_prompt_has_a_ceiling.py",
+            # 2026-10-24 — an op the card fires by itself (`"internal": true`) is never offered to the model.
+            "tests/agent_headless/unit/flash/test_an_internal_op_is_not_offered_to_the_model.py"]},
         {"id": "2.207", "title": "Whether the reply PROMISED an act or music is read by a verdict in any language; the "
                                  "phrase tables decide only when the verdict cannot (V2-778 F2-16)",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_a_promise_is_read_in_any_language.py"]},

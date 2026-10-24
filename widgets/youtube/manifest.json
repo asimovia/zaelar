@@ -346,12 +346,14 @@
     },
     "player_error": {
       "desc": "Internal: the embedded player reports it cannot play the current video (onError). Fired by the widget itself, not by voice.",
+      "internal": true,
       "payload": {
         "code": "error code from the IFrame API (e.g. 150 = embedding disabled)"
       }
     },
     "player_quality": {
       "desc": "Internal: the embedded player reports which quality levels the current video actually has (IFrame API). Fired by the widget itself, not by voice — it is the only moment a video's definition is knowable.",
+      "internal": true,
       "payload": {
         "levels": "list of YouTube quality level names, e.g. [\"medium\",\"hd720\"]",
         "videoId": "id the levels belong to (optional)"
@@ -359,6 +361,7 @@
     },
     "player_audio": {
       "desc": "Internal: the embedded player reports whether it is really muted (IFrame API). Fired by the widget itself, not by voice — sound ordered but kept silent by the browser becomes audio_blocked.",
+      "internal": true,
       "payload": {
         "muted": "true | false, as the player reports it",
         "videoId": "id the report belongs to (optional)"

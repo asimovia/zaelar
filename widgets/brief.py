@@ -213,6 +213,8 @@ def for_prompt(open_ids=None, recent_ids=None, query: str = "", stats: dict | No
             names = []
             for name, spec in acts.items():
                 spec = spec if isinstance(spec, dict) else {}
+                if spec.get("internal") is True:
+                    continue        # fired by the card itself, never by the model: naming it costs every turn
                 mark = "(confirmar)" if wactions.classify(spec, name) == wactions.CONFIRM else ""
                 names.append(f"{name}{mark}")
             row += "  · datos: " + ", ".join(names)
