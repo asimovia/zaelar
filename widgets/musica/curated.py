@@ -15,6 +15,8 @@ from __future__ import annotations
 import concurrent.futures as _cf
 import time
 
+from loguru import logger as _log
+
 #: Names one call may carry. A longer list is several calls — that is the «little by little» he sees.
 MAX_PER_CALL = 25
 #: Seconds the lookups of one call may take, all together. What is not resolved by then keeps its words.
@@ -81,8 +83,8 @@ def resolve(raw) -> tuple[list, int]:
                 break
             try:
                 out[futs[fut]] = fut.result(timeout=left)
-            except Exception:  # noqa: BLE001 — a lookup that fails or overruns keeps the song's words
-                continue
+            except Exception as e:  # noqa: BLE001 — a lookup that fails or overruns keeps the song's words
+                _log.debug(f"musica: track lookup failed, the song keeps its words: {e!r}")
     finally:
         ex.shutdown(wait=False, cancel_futures=True)
     return out, sum(1 for t in out if t.get("uri"))

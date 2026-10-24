@@ -175,7 +175,7 @@ def test_a_fault_of_ours_never_reaches_the_ladder():
     # falling through is how a bug of ours opened a cooldown on a healthy tier for five days.
     assert "provider_chain" not in head and "_pfail.handle(" not in head, \
         "the ladder is consulted before the fault is attributed — a bug of ours would open a cooldown again"
-    assert re.search(r"if _mine:(?:.|\n)*?\n                send\(", head), \
+    assert re.search(r"if _mine:(?:.|\n)*?\n\s+send\(", head), \
         "the engine-fault branch no longer speaks the ordinary stumble"
     assert head.rstrip().rstrip().endswith("return") or "\n                return\n" in head, \
         "the engine-fault branch must EXIT, not fall through into the provider path"

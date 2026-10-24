@@ -13,10 +13,8 @@ from typing import Any
 
 
 def _running_loop():
-    try:
-        return asyncio.get_running_loop()
-    except RuntimeError:
-        return None                      # a sync caller building a client ahead of any loop
+    """The running loop, or None for a sync caller building a client ahead of any loop."""
+    return asyncio.events._get_running_loop()
 
 
 def _key(key: tuple, loop) -> tuple:
