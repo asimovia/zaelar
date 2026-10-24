@@ -25,6 +25,7 @@ def ask(monkeypatch):
 
     def _ask(card, conf):
         monkeypatch.setattr(jev, "choose_sync", lambda *a, **k: {"choice": card, "confidence": conf})
+        cc._LATE.clear()          # each ask is a new turn: the late answer is kept per sentence WITHIN a turn (V2-794)
         return cc.named_or_catalogue(brief, "find me the wallpaper cosmic eye in the sky")
     return _ask
 

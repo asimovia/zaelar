@@ -55,6 +55,20 @@
         "artist": "el artista, en su propio campo — nunca concatenado dentro de title/query"
       }
     },
+    "add_tracks": {
+      "desc": "añade VARIAS canciones a una lista POR NOMBRE (la crea si no existe), cada una mapeada a una pista reproducible del proveedor conectado; se llama varias veces para llenarla poco a poco",
+      "payload": {
+        "playlist": "nombre de la lista (se crea si no existe)",
+        "tracks": "lista de canciones, cada una {title, artist} (hasta 25 por llamada)"
+      },
+      "done_when": {
+        "widget": "musica",
+        "collection": "playlists",
+        "where": {
+          "title~": "{playlist}"
+        }
+      }
+    },
     "favorite_current": {
       "desc": "guarda la canción que suena ahora en una lista (por defecto «Favoritos»; acepta un nombre de lista y la crea si no existe)",
       "payload": {
@@ -218,5 +232,14 @@
     "w": 320,
     "h": 360
   },
-  "security": "standard"
+  "security": "standard",
+  "collections": {
+    "playlists": {
+      "id": "id",
+      "label": "name",
+      "ops": [
+        "list"
+      ]
+    }
+  }
 }

@@ -19,7 +19,9 @@ ESCALATE_INSTRUCTIONS = (
     "send or read a message, read or change the calendar, read a document already on screen, recall what "
     "it remembers, open or close a card. Those are handle_inline even when phrased as orders. A worker costs "
     "minutes and money: escalate only real background work — researching or comparing things on the web, "
-    "navigating websites, WRITING a new document or summary, building a widget, a multi-step errand."
+    "navigating websites, WRITING a new document or summary, building a widget, a multi-step errand — and "
+    "PUTTING TOGETHER a collection of several items chosen for him (a list of things picked to fit what he "
+    "describes), even when it will end up in one of its own cards. Adding ONE named item to a list is inline."
 )
 
 ESCALATE_CHOICE = {
@@ -27,7 +29,8 @@ ESCALATE_CHOICE = {
                      "a reaction, chatter, a question, or a one-step order to music, video, images, charts, "
                      "maps, messages, the calendar or a card",
     "escalate": "The turn commissions real background work: web research or comparison, navigation, "
-                "writing a new document or summary, building, or any multi-step errand",
+                "writing a new document or summary, building, putting together a collection of several items "
+                "chosen to fit what he describes, or any multi-step errand",
 }
 
 # V2-776 (2026-09-27) — the question used to say «handle_inline ONLY for what is clearly not an errand … when in

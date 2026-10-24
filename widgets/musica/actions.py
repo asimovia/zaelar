@@ -75,6 +75,35 @@ def _a_add_to_playlist(action: str, p: dict) -> dict:
             "track": tr.get("title"), "count": len(tracks)}
 
 
+def _a_add_tracks(action: str, p: dict) -> dict:
+    """Several songs into a list by NAME (created when missing), each mapped to a playable track first
+    (`curated.resolve`, network, done BEFORE the store is read so no playback written meanwhile is lost). The
+    card shows the list as it grows: every call persists and re-renders."""
+    from . import curated as _curated
+    ref = str(p.get("playlist") or p.get("name") or p.get("id") or "").strip()
+    if not ref:
+        return {"ok": False, "error": "playlist_missing", "message": "Falta el nombre de la lista."}
+    tracks, resolved = _curated.resolve(p.get("tracks") if p.get("tracks") is not None else p.get("songs"))
+    if not tracks:
+        return {"ok": False, "error": "no_tracks", "playlist": ref,
+                "message": "No me has dado ninguna canción para la lista."}
+    db = _d._load_db()
+    pl, created = _d._find_or_create_playlist(db, ref)
+    have = pl.setdefault("tracks", [])
+    keys = {_d._norm((t.get("title") or "") + "|" + (t.get("artist") or "")) for t in have}
+    added = 0
+    for tr in tracks:
+        k = _d._norm((tr.get("title") or "") + "|" + (tr.get("artist") or ""))
+        if k not in keys:
+            keys.add(k)
+            have.append(tr)
+            added += 1
+    db["view"] = {"kind": "playlist", "id": pl["id"]}
+    _d._persist(db)
+    return {"ok": True, "playlist": pl["id"], "name": pl.get("name"), "created": created, "added": added,
+            "resolved": resolved, "count": len(have)}
+
+
 def _a_remove_from_playlist(action: str, p: dict) -> dict:
     db = _d._load_db()
     pl = _d._find_playlist(db, p.get("playlist") or p.get("id"))
@@ -137,7 +166,7 @@ def _a_play_playlist(action: str, p: dict) -> dict:
                 continue        # the connector queue holds query STRINGS it re-resolves; a file
                                 # has nothing to re-resolve, so queueing it would silently drop it
             try:
-                music.control("queue", query=_d._track_query(t), uri=t.get("uri") or "")
+                music.control("queue", query=_d._track_query(t), uri=_d._uri_now(t))
             except Exception:
                 pass
     except Exception as e:  # noqa: BLE001

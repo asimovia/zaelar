@@ -27,6 +27,8 @@ search, houses in Los Angeles. Nothing here knows a single one of those domains,
 """
 from __future__ import annotations
 
+from loguru import logger
+
 # ── the closed vocabulary ────────────────────────────────────────────────────────────────────────────────────
 LIST = "lista"              # several things to compare/pick from  → results sheet, opened NOW
 ITEM = "item"               # ONE thing with its detail            → results sheet, opened NOW
@@ -108,9 +110,30 @@ def from_brief(brief) -> str:
         from nucleo.flash import turn_brief as _tb
         choice, info = _tb.read(brief, SURFACE_KEY, "", min_confidence=0.7)
         from nucleo import picture_errand as _pe       # the screen's own reading when his words were unsure
-        return _pe.from_screen(brief, normalize(choice) if info is not None else "")
+        return own_card(brief) or _pe.from_screen(brief, normalize(choice) if info is not None else "")
     except Exception:  # noqa: BLE001
         return ""
+
+
+#: Cards that ARE the errand's sheet or viewer: an end state on them is what the surface already says.
+_SHEET_CARDS = frozenset({"results", "documento", "imagenes"})
+
+
+def own_card(brief) -> str:
+    """`WIDGET` when the brief's end state names rows of one of the assistant's OWN cards (a collection that card
+    declares in its manifest, outside the sheet and the viewers) — the errand fills that card, so no empty results
+    sheet is opened beside it (V2-794). "" otherwise. Reads declared data only: the end-state verdict and the
+    card's manifest `collections`."""
+    try:
+        from nucleo import spec as _spec
+        from widgets import rows as _rows
+        base, _, coll = _spec.end_state_verdict(brief).partition(":")
+        base = base.split("::", 1)[0].strip().lower()
+        if base and base not in _SHEET_CARDS and coll and coll in _rows.declared(base):
+            return WIDGET
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"surfaces: own-card reading failed: {e!r}")
+    return ""
 
 
 #: The surfaces the operator LOOKS at. Between two of these, what he will look at is a reading of his words.

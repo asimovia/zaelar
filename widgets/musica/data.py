@@ -378,9 +378,20 @@ def _play_track(track: dict, db: "dict | None" = None) -> "dict":
     if db is not None and _local.is_local(track):
         return _local.play(db, track)
     from connectors import music
-    r = music.control("play", query=_track_query(track), uri=track.get("uri") or "")
+    r = music.control("play", query=_track_query(track), uri=_uri_now(track))
     return {"ok": bool(getattr(r, "ok", False)), "message": getattr(r, "message", ""),
             "reason": getattr(r, "reason", "")}
+
+
+def _uri_now(track: dict) -> str:
+    """The track's uri when the provider playing now can use it, else "" (the player resolves it by its words)."""
+    try:
+        from connectors import music
+        prov = music.active_provider()
+        from . import curated as _curated
+        return _curated.playable_uri(track, getattr(prov, "name", "") if prov else "")
+    except Exception:  # noqa: BLE001
+        return track.get("uri") or ""
 
 
 def _track_from_resolved(query: str, track) -> dict:
@@ -523,7 +534,7 @@ def ref_index() -> list:
 from .actions import (  # noqa: E402,F401
     _a_refresh, _a_enrich_art, _a_create_playlist, _a_add_to_playlist,
     _a_remove_from_playlist, _a_favorite_current, _a_play_playlist, _a_open_view, _a_back, _a_play_local, _a_seek,
-    _a_playback)
+    _a_playback, _a_add_tracks)
 
 
 # V2-778 F1-12 — one function per action (in `actions.py`), and `apply_action` is the table lookup. Each body
@@ -536,6 +547,7 @@ ACTIONS = {
     "enrich_art": _a_enrich_art,
     "create_playlist": _a_create_playlist,
     "add_to_playlist": _a_add_to_playlist,
+    "add_tracks": _a_add_tracks,
     "remove_from_playlist": _a_remove_from_playlist,
     "favorite_current": _a_favorite_current,
     "play_playlist": _a_play_playlist,

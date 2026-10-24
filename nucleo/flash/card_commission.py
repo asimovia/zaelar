@@ -55,6 +55,48 @@ def card_for_his_words(card: str, operator_text: str) -> str:
     return "" if card and _another_errands_card(card, operator_text) else (card or "")
 
 
+#: The late catalogue answer, kept per sentence for the turn's other readers (V2-794): the promise repair and the
+#: look repair asked the SAME question about the same words one after the other — the second trip timed out at
+#: 3.5 s and its «none» replaced an answer already paid for. One question, one answer, read twice.
+_LATE: dict[str, tuple[str, float, float]] = {}
+LATE_TTL_S = 30.0
+
+
+def late_catalogue(operator_text: str, *, wait_s: float = 3.5) -> tuple[str, float]:
+    """`(card, confidence)` the catalogue question gives for his words — asked once per sentence, then read from
+    the turn's cache. `("", 0.0)` when it cannot be asked or did not answer; an UNSURE answer is returned as it
+    came, and each caller applies its own floor. Never raises, never waits past `wait_s`."""
+    import time as _time
+    key = " ".join(str(operator_text or "").lower().split())[:400]
+    if not key:
+        return "", 0.0
+    hit = _LATE.get(key)
+    if hit and _time.time() - hit[2] < LATE_TTL_S:
+        return hit[0], hit[1]
+    try:
+        from nucleo import jev as _jev
+        from nucleo.flash import turn_brief as _tb
+        q = _tb.catalog_question()
+        if not q:
+            return "", 0.0
+        import concurrent.futures as _cf
+        ex = _cf.ThreadPoolExecutor(max_workers=1)
+        try:
+            v = ex.submit(_jev.choose_sync, "catalog_widget", operator_text, instructions=q["instructions"],
+                          criteria=q["criteria"], question_id="catalog_widget").result(timeout=wait_s)
+        finally:
+            ex.shutdown(wait=False)
+    except Exception:  # noqa: BLE001
+        return "", 0.0
+    cat = str((v or {}).get("choice") or "").strip()
+    conf = float((v or {}).get("confidence") or 0.0)
+    if cat and not (v or {}).get("error"):
+        _LATE[key] = (cat, conf, _time.time())
+        for old in sorted(_LATE, key=lambda k: _LATE[k][2])[: max(0, len(_LATE) - 32)]:
+            _LATE.pop(old, None)
+    return cat, conf
+
+
 def named_or_catalogue(brief, operator_text: str, *, wait_s: float = 3.5) -> str:
     """The card an order names — by the brief, or by ONE late catalogue question when the brief could not know.
 
@@ -77,16 +119,9 @@ def named_or_catalogue(brief, operator_text: str, *, wait_s: float = 3.5) -> str
         # «none» and an unsure anything are left, and both mean «the screen question could not say».
         if not isinstance(info, dict) or (info.get("used") and str(choice or "") != "none"):
             return ""
-        q = _tb.catalog_question()
-        if not q or not (operator_text or "").strip():
+        cat, conf = late_catalogue(operator_text, wait_s=wait_s)
+        if not cat:
             return ""
-        import concurrent.futures as _cf
-        with _cf.ThreadPoolExecutor(max_workers=1) as ex:
-            fut = ex.submit(_jev.choose_sync, "catalog_widget", operator_text, instructions=q["instructions"],
-                            criteria=q["criteria"], question_id="catalog_widget")
-            v = fut.result(timeout=wait_s)
-        cat = str((v or {}).get("choice") or "").strip()
-        conf = float((v or {}).get("confidence") or 0.0)
         named = cat if cat and cat != "none" and conf >= LATE_CATALOGUE_MIN else ""
         if named:
             # a CLOSED player named while another player is on screen: the open one owns a bare order (V2-781)
@@ -269,7 +304,8 @@ async def commission_call(commission: str, *, brief, operator_text: str, spec, w
     from nucleo import danger as _danger
     from nucleo.flash import act_repair as _repair
     card = named_or_catalogue(brief, operator_text)
-    if not card or _danger.is_dangerous(operator_text):
+    from nucleo.flash import commission_keep as _keep          # a list put together keeps its worker (V2-794)
+    if not card or _danger.is_dangerous(operator_text) or _keep.keeps_the_worker(brief, card):
         return None
     # Any card the verdict names may take the CALL; the read half is offered only to one that can answer.
     # An order the verdict reads as owing NO words («send rowan a telegram with the new time», wants_words=act)

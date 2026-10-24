@@ -68,8 +68,11 @@ below is the first kind, or it names the mechanism that replaced the second.
   when nothing ran and nothing was routed, he hears that it was not done (the pass's sentence or the i18n
   `promise_not_kept`) — both channels through `nucleo/turn/promise_kept.py`. Nothing is owed when the reply's
   verdict holds the act for HIS word (`ask_first`, at any confidence — the verdict speaks before any table), nor
-  when a claimed state is one an op of this request left on screen and nothing refused. — since 2026-10-24 ·
-  nodes 2.790, 2.794.
+  when a claimed state is one an op of this request left on screen and nothing refused. A sure `act` verdict is
+  owed on its own, no phrase table asked; and a promise of work handed over LATER (the reply's own `reply_when`
+  verdict), with nothing run, no model call and no pass that ran or refused, starts its errand through the turn's
+  escalation instead of a «not done» (`promise_kept.deferred_errand`). — since 2026-10-24 ·
+  nodes 2.790, 2.794, 2.796.
 - **CRIT-V13 · «I didn't catch what you said before the pause» only over words that were really lost.** A
   discarded fragment whose words still travel, in order, in the text the turn runs with (or in the buffer still
   held) is not a loss: `Accumulator.offer` returns no `dropped`, so no timeline line and no spoken notice. A
@@ -126,9 +129,11 @@ below is the first kind, or it names the mechanism that replaced the second.
   2.72, 3.59 · `nucleo/jev.py`, `nucleo/flash/build_decision.py`.
 - **CRIT-K2 · The verdict COMPLETES the model, never contradicts it.** A valid, resolvable model call runs (a
   discrepancy is recorded ⚖️); an empty turn or an unresolved call is filled by the verdict's declared action on
-  the open card; unsure, closed card or Jev off → the model's path bit for bit. One exception: a verdict VIEW at
-  ≥ 0.95 on the card in front beats a model VIEW on ANOTHER card. — since 2026-09-23 · nodes 2.73,
-  2.121, 2.244 · `nucleo/flash/direct_action.complete`, `nucleo/flash/verdict_card.py`.
+  the open card; unsure, closed card or Jev off → the model's path bit for bit. Two exceptions: a verdict VIEW at
+  ≥ 0.95 on the card in front beats a model VIEW on ANOTHER card; a player's one-shot `play` on a turn the brief
+  reads as a SURE commission (`escalate` ≥ `player_control.COMMISSION_SURE` on an order) is that errand, not his
+  description played as a title (`player_control.commissioned`, both channels). — since 2026-10-24 · nodes 2.73,
+  2.121, 2.244, 2.797 · `nucleo/flash/direct_action.complete`, `nucleo/flash/verdict_card.py`.
 - **CRIT-K3 · The verdict's action lands on the LIVE card**, never a bare phantom; with several cards of one type
   «close» goes to the one his last turn touched; «it» / «that» is the card his last turn acted on. — since
   2026-09-29 · nodes 2.167, 2.169, 2.85 · `nucleo/flash/show_target.py`, `nucleo/canvas_focus.py`.
@@ -167,6 +172,9 @@ below is the first kind, or it names the mechanism that replaced the second.
   his turn naming that card as its target (never one named to be left alone), or the redo verdict on that card make
   it a redo that runs — with or without a verdict, no phrase table (`nucleo/flash/redo_license.py`). — since
   2026-10-24 · nodes 2.793.
+- **CRIT-K14 · The late catalogue question is asked once per sentence.** Every repair of a turn reads the same
+  answer (`card_commission.late_catalogue`); a failed or timed-out trip is never remembered as an answer, and an
+  unsure one stays under each caller's own floor. — since 2026-10-24 · nodes 2.798.
 - **CRIT-K13 · What an order changes ends where he can see or hear it, or the card says why not.** An answer that
   fills a card's list brings that face forward; a video ordered to be watched wants sound unless he muted it, and
   what the player really lets be heard is the player's own report (`audio_blocked`: the hint stays, the brain reads
@@ -207,6 +215,13 @@ below is the first kind, or it names the mechanism that replaced the second.
   left by a previous boot is judged once from it (`met`) or closed as interrupted, silently. — since
   2026-09-30 · nodes 2.194, 2.196, 2.198, 3.105, 3.106, 3.113 · `nucleo/request_row.py`, `nucleo/circuit.py`,
   `nucleo/spec.py`, `nucleo/tasks.py`.
+- **CRIT-E15 · A collection put together for him is an errand, and it ends in the card that holds it.** The
+  escalate question reads «put together several items chosen to fit what he describes» as background work and ONE
+  named item into a list as inline (measured live, 22/22); a card that holds such collections declares the op that
+  appends several items, mapping each to a usable one through its connected providers in priority order, and the
+  end state it leaves (the music card's `add_tracks`); an errand whose end state is rows a card of his declares
+  opens no empty sheet (`surfaces.own_card`); the worker delivers into the card its end state names, in batches.
+  — since 2026-10-24 · nodes 3.93, 4.263, 2.797 · `nucleo/flash/escalation_guard.py`, `widgets/musica/curated.py`.
 - **CRIT-E13 · A worker's request is never his click.** On a self-hosted engine every mutation is the operator's
   unless it is a named worker door (`/api/worker/*`, the agent report, the browser bridge, memory with the per-task
   token, search); it is admitted for his screen's per-boot HttpOnly cookie or a process the engine did not spawn,

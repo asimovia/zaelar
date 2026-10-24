@@ -2197,6 +2197,8 @@ DOMAINS: list[dict] = [
             # `phase_active=True` y la fase de vuelo intacta, así que el turno vuelve a leer un estado que miente,
             # solo del revés. Los xfail son la deuda DECLARADA: cuando el arreglo entre, saldrán XPASS.
             "tests/browser/unit/navegador/test_task_finish_is_coherent.py"]},
+        {"id": "4.263", "title": "Music card: a list somebody puts together grows call after call, each song mapped to a playable track by the connected providers in priority order (a song nobody finds keeps its words), declares the end state it leaves, plays first-now-rest-queued, and a Brain Worker reaches it through its widget door",
+            "ch": UNIT, "paths": ["tests/browser/unit/musica/test_a_list_grows_with_playable_tracks.py"]},
         {"id": "4.3", "title": "Widget de música — cabecera y pie FIJOS, solo la lista central hace scroll "
                               "(V2-667)", "ch": UNIT, "paths": ["tests/browser/unit/musica/test_data.py",
                                                                  "tests/browser/unit/musica/test_anothers_player_never_advances_the_music_queue.py",
@@ -2559,10 +2561,11 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/browser/unit/results/test_the_best_value_option_is_the_card_that_says_so.py"]},
         # V2-776 (2026-09-27): la pregunta de escalado a Jev decía «ante la duda, escala» y mandaba a un worker
         # 11 de 11 órdenes de un paso (música, Telegram, agenda, gráfica). Nombra ahora lo que hacen las tarjetas.
-        # EN VIVO: vieja 5/17, nueva 16/17.
+        # EN VIVO: vieja 5/17, nueva 16/17. V2-794 (2026-10-24): a collection PUT TOGETHER for him is an errand —
+        # old wording 18/22, new 22/22 (four list orders in four domains moved to escalate).
         {"id": "3.93", "title": "Una orden de un paso se hace en el sitio, un encargo de verdad va a un worker",
             "ch": UNIT, "paths": ["tests/voice/unit/test_a_one_step_order_is_not_a_worker.py"],
-            "cmd": "ZAELAR_LIVE_JEV=1 ./.venv/bin/pytest -q -s tests/voice/unit/test_a_one_step_order_is_not_a_worker.py"},
+            "cmd": "ZAELAR_LIVE_JEV=1 ZAELAR_TEST_JEV_LIVE=1 ./.venv/bin/pytest -q -s tests/voice/unit/test_a_one_step_order_is_not_a_worker.py"},
         # V2-776 (2026-09-27): el reset mandaba UN SIGTERM, dormía 2 s y borraba la base; el servidor lo ignoró y
         # siguió vivo sobre una base borrada. Ahora espera el puerto, fuerza, y si sigue vivo no borra nada.
         {"id": "3.115", "title": "An isolated workspace holds its own OAuth tokens — a use-case sandbox wrote a reminder "
@@ -3599,6 +3602,15 @@ DOMAINS: list[dict] = [
         {"id": "2.795", "title": "A held turn the acoustic layer hands back whole after a long pause drops nothing: the «didn't catch what you said before the pause» notice fires only when a fragment's words reach no turn, in both languages",
             "ch": UNIT,
             "paths": ["tests/voice/unit/test_a_discard_is_said_only_when_words_were_lost.py"]},
+        {"id": "2.796", "title": "A reply that promises work handed over LATER, with nothing run and no call, starts its errand through the turn's escalation (the reply's own verdict, no phrase table); a promise to act NOW that ran nothing is said undone on the verdict alone — three domains, both languages, both channels",
+            "ch": UNIT,
+            "paths": ["tests/voice/unit/test_a_promise_of_work_later_starts_its_errand.py"]},
+        {"id": "2.797", "title": "A player's one-shot play over a SURE commission verdict is the errand, not his description played as a title — on the voice and the text channel; controls and one-step plays keep playing; the errand that fills one of his own cards opens no empty sheet; a silent start says so",
+            "ch": UNIT,
+            "paths": ["tests/agent_headless/unit/flash/test_a_commission_outranks_a_one_shot_play.py"]},
+        {"id": "2.798", "title": "The late catalogue question is asked once per sentence and its answer read by every repair of the turn; a timeout never replaces an answer already paid for; an unsure answer stays under each caller's floor",
+            "ch": UNIT,
+            "paths": ["tests/agent_headless/unit/flash/test_one_late_catalogue_question_per_sentence.py"]},
         {"id": "2.728", "title": "A turn that acted on a card and also escalated, read inline, launches no worker — on the text channel as on the voice",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_an_inline_act_settles_the_commission_on_both_channels.py"]},
         {"id": "2.729", "title": "An ordered act that leaves, sure at the operator's 70%, runs when the model only drafted it — both channels",

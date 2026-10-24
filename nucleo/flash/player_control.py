@@ -27,6 +27,8 @@ carries a control. The video's own controls arrive as `widget_data youtube:*`, w
 """
 from __future__ import annotations
 
+from loguru import logger
+
 #: Which card each player TOOL drives — ownership, not vocabulary.
 CARD_OF_TOOL = {"play_music": "musica", "play_video": "youtube"}
 
@@ -132,6 +134,31 @@ def probe_route(tool: str, req: dict, tool_calls: list, *, brief, text: str = ""
     return {}
 
 
+#: How sure the escalate verdict must be for a commission to outrank a player's one-shot play (V2-794). Measured live
+#: on the escalate question (2026-10-24, 22 sentences): «put together a list of …» in four domains read `escalate`
+#: at 0.88-0.98, every one-step play read `handle_inline` at 1.00.
+COMMISSION_SURE = 0.85
+
+
+def commissioned(brief, args) -> bool:
+    """A player's one-shot `play` on a turn the brief reads SURELY as a commission — `escalate_or_inline = escalate`
+    at `COMMISSION_SURE` and an ORDER: what he asked for is put together by a worker, not played as a search query
+    («monta una lista para ambientar un cumpleaños» played «Cumpleaños feliz»). The verdict that the turn is real
+    background work is the one paid reading of the whole turn; a play that takes his description as a title would
+    discard it. Controls (pause, next, volume…), a bare resume and an unsure or absent verdict keep the play."""
+    try:
+        args = args if isinstance(args, dict) else {}
+        if str(args.get("action") or "play").strip().lower() != "play" or not str(args.get("query") or "").strip():
+            return False
+        from nucleo.flash import turn_brief as _tb
+        esc, info = _tb.read(brief, _tb.ESCALATE_KEY, "", min_confidence=COMMISSION_SURE)
+        kind, kinfo = _tb.read(brief, _tb.REQUEST_KEY, "")
+        return info is not None and esc == "escalate" and kinfo is not None and kind == "order"
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"player_control: commission verdict unreadable: {e!r}")
+        return False
+
+
 def probe_music(req: dict, tool_calls: list, *, brief, text: str = "", tags: list | None = None) -> dict:
     """`probe_route` for the text channel's `play_music` branch, shaped as the locals it binds: always `action`
     and `music_req` (None when the music is not touched), plus `spoken` only when the reply changes.
@@ -145,6 +172,8 @@ def probe_music(req: dict, tool_calls: list, *, brief, text: str = "", tags: lis
         if tags is not None:
             tags.append({"action": "close", "extra": {"id": card, "named": True}})
         return {"action": f"canvas:close:{card}", "music_req": None, "spoken": ""}
+    if commissioned(brief, req):
+        return {"action": "escalate", "music_req": None}      # the voice turn's twin (`_t_play_music`, V2-794)
     routed = probe_route("play_music", req, tool_calls, brief=brief, text=text)
     return {"action": "music", "music_req": req} if not routed else {**routed, "music_req": None}
 

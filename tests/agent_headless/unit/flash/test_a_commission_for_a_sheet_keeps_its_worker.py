@@ -56,7 +56,16 @@ def test_the_plumber_refinement_is_not_a_note_on_the_sheet(repair_calls):
 
 
 def test_a_card_that_holds_his_data_still_repairs(repair_calls):
-    assert _repair("agenda", _brief())["widget_id"] == "agenda"
+    assert _repair("agenda", _brief(surface="silenciosa"))["widget_id"] == "agenda"
+    assert _repair("agenda", _brief(surface="voz"))["widget_id"] == "agenda"
+
+
+def test_a_list_deliverable_keeps_its_worker_on_any_card(repair_calls):
+    """V2-794 — a collection put together for him (escalate · lista) is never one repaired call, on his own cards
+    either: «monta una lista para un cumpleaños» must not become an empty list created on the card."""
+    assert _repair("musica", _brief()) is None
+    assert _repair("agenda", _brief()) is None
+    assert repair_calls == []
 
 
 def test_without_a_sure_route_to_a_worker_it_repairs_as_before(repair_calls):
@@ -76,5 +85,7 @@ def test_both_channels_hand_the_brief_to_the_rung():
 
 def test_the_rule_itself():
     assert commission_keep.keeps_the_worker(_brief(), "results")
-    assert not commission_keep.keeps_the_worker(_brief(), "agenda")
+    assert commission_keep.keeps_the_worker(_brief(), "agenda"), "V2-794: a LIST deliverable keeps it on any card"
+    assert not commission_keep.keeps_the_worker(_brief(surface="item"), "agenda")
+    assert commission_keep.keeps_the_worker(_brief(surface="item"), "results")
     assert not commission_keep.keeps_the_worker(None, "navegador")

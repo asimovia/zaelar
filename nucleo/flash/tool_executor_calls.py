@@ -121,7 +121,7 @@ def _on_tool_call(name: str, args: dict, *, _apply_widget_data, _brief, _closed_
         if reveal_req["v"] is None:
             reveal_req["v"] = (args.get("label") or "").strip() or text
     elif name == "play_music":
-        return _t_play_music(args=args, music_req=music_req, _brief=_brief, _apply_widget_data=_apply_widget_data,
+        return _t_play_music(args=args, music_req=music_req, _brief=_brief, _apply_widget_data=_apply_widget_data, esc=escalate_req,
                              acted=acted, clarify=clarify, emit=emit, ask_phrase=_say().ask_which_item, text=operator_text)
     elif name == "play_video":
         # V2-045: VÍDEO = widget youtube (VER); una por turno. Cuerpo + LICENCIA V2-635 («Muy bien,
@@ -236,9 +236,17 @@ def _t_escalate_to_slowbrain(*, args, escalate_req, text):
 
 # V2-778 F1 — the `play_music` arm of `_on_tool_call`, moved verbatim.
 def _t_play_music(*, args, music_req, _brief=None, _apply_widget_data=None, acted=None, clarify=None, emit=None,
-                  ask_phrase="", text=""):
+                  ask_phrase="", text="", esc=None):
     # V2-041: una acción de música por turno. Ruta LIGERA como web_search: se resuelve tras el stream,
     # FUERA del event loop.
+    # V2-794: a one-shot play over a SURE commission verdict is the errand, not a search query played as a title.
+    if music_req["v"] is None and esc is not None and esc["v"] is None and _player_control.commissioned(_brief, args):
+        _t_escalate_to_slowbrain(args={}, escalate_req=esc, text=text)
+        esc["say"] = getattr(__import__("i18n.langs", fromlist=["x"]).current_language(), "done_just_started", "")
+        if emit is not None:
+            emit("brain", "⚖️ encargo, no reproducción: el veredicto lee el turno como trabajo de fondo", role="system",
+                 text=f"play «{str(args.get('query') or '')[:80]}» → escalate", extra={"cat": "flash", "tool": "play_music"})
+        return
     # A CONTROL with the video open too: whose player? Asked once per turn, on its first music call — a control
     # that follows a play of the same turn is about the music that play put on (the collapse below).
     if music_req["v"] is None and _apply_widget_data is not None and _player_control.voice_route(

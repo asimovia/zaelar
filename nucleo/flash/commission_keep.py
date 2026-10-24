@@ -15,6 +15,11 @@ The V2-770 rung exists for a two-field op on a card that holds HIS data («a par
 on that sheet, or on the browser that fills it, is never that deliverable. So when the brief is sure the turn goes to
 a worker and names a sheet as where it lands, the repair keeps its hands off those cards. Every other card, and every
 turn the brief does not route to a worker, repairs as before.
+
+V2-794 — and a LIST deliverable keeps its worker on ANY card. «Monta una lista para ambientar un cumpleaños» (brief:
+escalate · lista) is a collection put together for him; one repaired call — an empty list created, a handful of
+items the pass invented — is not that deliverable on his own cards any more than on a sheet. A one-item order on a
+card that holds his data (`agenda:cancel_meeting`, read as voice or silent) still repairs.
 """
 from __future__ import annotations
 
@@ -25,14 +30,15 @@ _INSTRUMENTS = frozenset({"navegador", "results", "documento"})
 def keeps_the_worker(brief, widget_id: str) -> bool:
     """True when the repair must NOT replace this turn's commission with a call on `widget_id`. Never raises."""
     base = str(widget_id or "").split("::", 1)[0].strip().lower()
-    if brief is None or base not in _INSTRUMENTS:
+    if brief is None or not base:
         return False
     try:
         from nucleo import surfaces as _sf
         from nucleo.flash import turn_brief as _tb
         route, _ = _tb.read(brief, _tb.ESCALATE_KEY, "")
         surface, _ = _tb.read(brief, _sf.SURFACE_KEY, "", min_confidence=0.7)
-        keep = str(route) == "escalate" and str(surface) in (_sf.LIST, _sf.ITEM, _sf.DOC)
+        keep = str(route) == "escalate" and (str(surface) == _sf.LIST
+                                             or (base in _INSTRUMENTS and str(surface) in (_sf.ITEM, _sf.DOC)))
     except Exception:  # noqa: BLE001 — without verdicts, the repair runs as it always did
         return False
     if keep:

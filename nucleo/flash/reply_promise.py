@@ -42,7 +42,20 @@ STATE_CHOICES = {
 }
 STATE_INSTRUCTIONS = ("Classify the assistant's REPLY (any language). The operator's request is context only. Choose "
                       "quiet only when the reply itself says work was stopped/cancelled/cleared or nothing is running.")
+#: A third question in the same trip (V2-794): does the reply hand the result over LATER, after this turn? A promise of
+#: work delivered afterwards («la tendrás en un rato») with nothing started is an errand nobody started — the promise
+#: harness starts it (`promise_kept.deferred_errand`); a promise to act NOW with nothing run is said undone instead.
+WHEN_KEY = "reply_when"
+WHEN_CHOICES = {
+    "later": "says the result will reach the operator LATER, after this reply — work that takes a while and is handed "
+             "over afterwards («you'll have it in a bit», «I'll let you know when it's ready», «la tendrás en un rato», "
+             "«te aviso cuando esté», «je te l'envoie dès que c'est prêt»)",
+    "now": "anything else: an act done or promised for this very moment, an answer, a question, a refusal, or no promise",
+}
+WHEN_INSTRUCTIONS = ("Classify the assistant's REPLY (any language). The operator's request is context only. Choose "
+                     "later only when the reply itself says the result will be delivered after this reply.")
 TTL_S = 120.0
+_WHEN: dict[str, tuple[str, float]] = {}
 _CACHE: dict[str, tuple[str, float]] = {}
 _STATE: dict[str, tuple[str, float]] = {}
 #: Replies the verdict read as `ask_first` at ANY confidence (`held_for_him`). `ASK_FIRST_MIN` guards the line a
@@ -60,6 +73,7 @@ def _key(reply) -> str:
 def reset() -> None:
     _CACHE.clear()
     _STATE.clear()
+    _WHEN.clear()
     _HELD.clear()
 
 
@@ -76,7 +90,8 @@ def _ask(reply, operator_text: str):
     from nucleo import jev
     state = f"REPLY: {str(reply)[:500]}\nOperator said: {str(operator_text or '')[:160]}"
     return jev.ask_many(state, {"reply_promise": {"instructions": INSTRUCTIONS, "criteria": CHOICES},
-                                STATE_KEY: {"instructions": STATE_INSTRUCTIONS, "criteria": STATE_CHOICES}},
+                                STATE_KEY: {"instructions": STATE_INSTRUCTIONS, "criteria": STATE_CHOICES},
+                                WHEN_KEY: {"instructions": WHEN_INSTRUCTIONS, "criteria": WHEN_CHOICES}},
                         name="reply-promise", question_id="reply_promise")
 
 
@@ -91,6 +106,10 @@ def _settle(k: str, handle) -> str | None:
     _STATE[k] = (st if st in STATE_CHOICES else "", time.time())
     for old in sorted(_STATE, key=lambda x: _STATE[x][1])[: max(0, len(_STATE) - _MAX)]:
         _STATE.pop(old, None)
+    when, _when_info = jev.read(handle, WHEN_KEY, "")
+    _WHEN[k] = (when if when in WHEN_CHOICES else "", time.time())
+    for old in sorted(_WHEN, key=lambda x: _WHEN[x][1])[: max(0, len(_WHEN) - _MAX)]:
+        _WHEN.pop(old, None)
     choice, info = jev.read(handle, "reply_promise", "")
     choice = choice if choice in CHOICES else ""
     if choice == "ask_first":
@@ -149,6 +168,12 @@ def claims_quiet(reply) -> bool:
     """The reply SAYS work was stopped/cleared or that nothing runs — sure verdict only; False when unsure/absent."""
     hit = _STATE.get(_key(reply))
     return bool(hit) and time.time() - hit[1] < TTL_S and hit[0] == "quiet"
+
+
+def defers(reply) -> bool:
+    """The reply SAYS its result arrives after this turn — sure verdict only; False when unsure or absent."""
+    hit = _WHEN.get(_key(reply))
+    return bool(hit) and time.time() - hit[1] < TTL_S and hit[0] == "later"
 
 
 def verdict(reply) -> str | None:

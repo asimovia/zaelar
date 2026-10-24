@@ -114,7 +114,7 @@ _METHOD_BLOCK = (
     "Forma: {\"all\":[{\"widget\":\"agenda\",\"collection\":\"meetings\",\"where\":{\"title~\":\"X\"},"
     "\"expect\":\"present|absent\"}]} o {\"widget\":W,\"field\":\"campo\",\"is\"|\"has\":\"x\"} o "
     "{\"desktop\":\"wallpaper\",\"expect\":\"changed\"} — «where» es la misma expresión que `hbwidget rows`, "
-    "y las colecciones y sus campos te los da `hbwidget read <widget>`.")
+    "y las colecciones y sus campos te los da `hbwidget read <widget>`. Si el objetivo nombra una TARJETA, lo entregas EN esa tarjeta con sus acciones declaradas (`hbwidget read <widget>` te da su contrato) y, si son varios elementos, a tandas a medida que los tienes, para que él lo vea crecer.")
 
 
 # V2-167 · el navegador es el ÚLTIMO recurso, no el primero. Conducir un Chromium por una web de reservas es

@@ -78,6 +78,24 @@ def control(action: str, query: str = "", uri: str = "", percent: int = 0, prefe
     return MusicResult(ok=False, provider=prov.name, action=action, reason="error", message=_msg("done"))
 
 
+def resolve(query: str) -> "Track | None":
+    """The playable track a «title — artist» names, WITHOUT playing it: the first connected provider that finds it,
+    in the registry's priority order (a connected streaming account first, the free YouTube-audio last). None when
+    no provider is connected or none finds it. Network I/O, fail-safe: never raises."""
+    q = (query or "").strip()
+    if not q:
+        return None
+    for prov in registry.available():
+        try:
+            hits = prov.search(q, limit=1)
+        except Exception as e:  # noqa: BLE001 — one provider failing hands over to the next
+            logger.warning(f"music.resolve via {prov.name} failed: {e!r}")
+            continue
+        if hits:
+            return hits[0]
+    return None
+
+
 def now_playing(prefer: str = "") -> "NowPlaying | None":
     prov = active_provider(prefer)
     if prov is None:
@@ -99,5 +117,5 @@ def status() -> dict:
     return {"providers": out, "available": available()}
 
 
-__all__ = ["control", "now_playing", "status", "available", "active_provider",
+__all__ = ["control", "resolve", "now_playing", "status", "available", "active_provider",
            "MusicProvider", "MusicResult", "NowPlaying", "Track", "registry"]

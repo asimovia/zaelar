@@ -282,7 +282,7 @@ async def mirror_the_voice_backstops(*, _akp, _cw, _hw, _router, _rt, _sp, _tbri
                 spoken = await _probe._second.probe_hollow_repairs(operator_text, spoken, sess.window, spec)
         except Exception:
             pass
-    spoken = _pk.text_turn_end(spoken, action=action, outcome=locals().get("_pk_out"), operator_text=operator_text)
+    spoken, action = _pk.text_turn_end(spoken, action=action, outcome=locals().get("_pk_out"), operator_text=operator_text, model_calls=tool_calls)
     _out = locals()
     return {k: _out[k] for k in ('_ar', '_forced_search', '_window_goal', 'action', 'music_req', 'spoken', ) if k in _out}
 

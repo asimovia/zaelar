@@ -244,17 +244,13 @@ async def _card_the_catalogue_names(operator_text: str, wait_s: float = 3.0) -> 
     read. Which card holds tomorrow is a question of meaning, not of words: the reader answers it. "" when unsure."""
     try:
         from nucleo import jev as _jev
-        from nucleo.flash import turn_brief as _tb
+        from nucleo.flash import card_commission as _cc     # one question per sentence, its answer shared (V2-794)
         from widgets import runtime
-        q = _tb.catalog_question()
-        if not q or not (operator_text or "").strip():
+        if not (operator_text or "").strip():
             return ""
-        v = await asyncio.wait_for(asyncio.to_thread(
-            _jev.choose_sync, "catalog_widget", operator_text, instructions=q["instructions"],
-            criteria=q["criteria"], question_id="catalog_widget"), timeout=wait_s)
-        cat = str((v or {}).get("choice") or "").strip().split(":")[0]
-        if cat and cat != "none" and float((v or {}).get("confidence") or 0.0) >= _jev.MIN_CONFIDENCE \
-                and runtime.get(cat) is not None:
+        cat, conf = await asyncio.to_thread(_cc.late_catalogue, operator_text, wait_s=wait_s)
+        cat = cat.split(":")[0]
+        if cat and cat != "none" and conf >= _jev.MIN_CONFIDENCE and runtime.get(cat) is not None:
             return cat
     except Exception:  # noqa: BLE001
         pass

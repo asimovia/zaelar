@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from voice.engine.llm.providers import nucleo as _p, turn_errands as _turn_errands
 from nucleo.turn import promise_kept as _promise_kept   # a promise ends ran, repaired or said undone (V2-790)
+from voice.engine.llm.providers import promise_backstop as _promise_backstop   # promise → escalation (V2-049)
+from nucleo.turn import split_by_errand as _sbe   # one sentence about several errands: each one said (2.643)
 
 
 async def close_the_turn(*, send, _acc_ms, _amap_ms, _brief, _busy_at_start, _dialog, _escalate_mod, _filler_audio, _gate_ms, _op_text, _prev_pending, _router, _shown_ids, _start_web_auth, _t_entry, _t_stream0, _tool_fired, _turn_tools, acted, aside, attention, brain, clarify, confirm_state, data_done, deduped, emit, escalate_req, first_ms, first_turn, images_req, listing_req, llm_metrics, music_req, operator_text, read_req, recall_req, reopen_req, reveal_req, search_req, spec, speech, spoken_text, style_fired, system, t0, text, timings, worker_acted) -> dict:
@@ -288,6 +290,7 @@ async def close_the_turn(*, send, _acc_ms, _amap_ms, _brief, _busy_at_start, _di
                               "done_when": (escalate_req.get("done_when") or {}).get(req),   # V2-776 L1
                               "asked": spoken_text})   # V2-655: si el turno pidió permiso, se APARCA
             emit("brain", "🧭 Flash → Brain Worker (escalada registrada)", text=req, role="system")
+            _promise_kept.say_the_start(escalate_req, spoken_text, send=send, speech=speech)   # a silent start says so (V2-794)
 
         # The extra errands of the same sentence (V2-118/V2-155) and the one the pool could not take (three-tasks).
         _turn_errands.launch_the_rest(escalate_req, req, _op_text=_op_text, prev_pending=_prev_pending, router=_router,
@@ -296,12 +299,11 @@ async def close_the_turn(*, send, _acc_ms, _amap_ms, _brief, _busy_at_start, _di
 
     # Promise-without-action and its escalation (V2-049 + V2-534, `promise_backstop.py`), then how the turn ENDS when
     # nothing ran and nothing was routed: he hears it was not done (V2-790, `promise_kept`, the text channel's too).
-    from voice.engine.llm.providers import promise_backstop as _promise_backstop
     _promise_kept.say_after(spoken_text, data_done, send=send, speech=speech, window=brain._window, emit=emit, acted=(
         _promise_backstop.run(spoken_text, did_act=_did_act, op_text=_op_text, prev_pending=_prev_pending, emit=emit,
                               escalate=_escalate_mod.escalate_to_slowbrain, similar_pending=_p._similar_pending,
-                              brief=_brief) or _did_act or escalate_req["v"] is not None or style_fired["v"]))
-    from nucleo.turn import split_by_errand as _sbe
+                              brief=_brief) or _did_act or escalate_req["v"] is not None or style_fired["v"]),
+        turn=(_brief, getattr(brain, "_turn_calls", None), _op_text, _escalate_mod.escalate_to_slowbrain))   # V2-794
     if (_each := _sbe.each_line(spoken_text, _op_text)):      # one sentence about several errands: each one said (2.643)
         send(speech.sanitize(_each, drop_metadata=False))
     _out = {}

@@ -46,7 +46,7 @@ CANNOT_TOOL = {
 }
 
 #: The pass's outcomes, as `outcome["kind"]` records them.
-CALL, CANNOT, JUDGED, SWALLOWED = "call", "cannot", "judged", "swallowed"
+CALL, CANNOT, JUDGED, SWALLOWED, STARTED = "call", "cannot", "judged", "swallowed", "started"
 
 
 def _base(wid) -> str:
@@ -122,7 +122,7 @@ def honest_line(reply: str, outcome: dict | None, *, acted: bool) -> str:
     if acted or not (reply or "").strip():
         return ""
     kind = str((outcome or {}).get("kind") or "")
-    if kind == CALL:
+    if kind in (CALL, STARTED):
         return ""
     if kind == CANNOT:
         return str((outcome or {}).get("say") or "").strip() or _not_kept_line()
@@ -169,6 +169,8 @@ def owed(reply: str, *, open_ids=None) -> bool:
         from voice.engine.llm.providers import promise_backstop as _pb
         if not reply or _rp.held_for_him(reply):
             return False
+        if _rp.verdict(reply) == "act":
+            return True                     # the verdict IS the evidence: no table has to know his language (V2-794)
         if _rp.verdict(reply) != "none" and (_pb.committed(reply) or _rg.promises_action(reply)):
             return True
         return _harness.claims_done(reply) and not _state_holds(open_ids)
@@ -188,6 +190,61 @@ def close(reply: str, outcome: dict | None, *, acted: bool, emit=None) -> str:
         except Exception as _e:  # noqa: BLE001
             _log.debug(f"promise_kept: line 154 failed: {_e!r}")
             pass
+    return line
+
+
+# ── a promise of work handed over LATER starts its errand (V2-794) ──────────────────────────────────────────
+
+def deferred_errand(reply: str, outcome: dict | None, *, acted: bool, model_calls=()) -> bool:
+    """Does this reply owe an ERRAND rather than a «not done»? Pure; never raises.
+
+    «I'll put the forty together for you… you'll have them on the card in a while»: the reply's verdict read `act`, the
+    model called nothing, no card took a second pass, and nothing was started — so «in a while» was a promise
+    nobody would keep. When the reply's own verdict says its result comes LATER (`reply_promise.defers`), the only
+    thing that can keep it is a worker, whatever the escalate question guessed before the reply existed. Not when:
+    something ran or was routed; the model made any call (a call a guard ate is the honest line's case, V2-753);
+    the pass ran a call, declared it cannot, or was swallowed; the reply holds the act for his word."""
+    try:
+        if acted or not (reply or "").strip():
+            return False
+        if str((outcome or {}).get("kind") or "") not in ("", JUDGED):
+            return False
+        if any(isinstance(c, dict) and c.get("name") for c in (model_calls or ())):
+            return False
+        from nucleo.flash import reply_promise as _rp
+        return not _rp.held_for_him(reply) and _rp.verdict(reply) == "act" and _rp.defers(reply)
+    except Exception as _e:  # noqa: BLE001
+        _log.debug(f"promise_kept: deferred_errand failed: {_e!r}")
+        return False
+
+
+def start_deferred(reply: str, outcome: dict | None, *, acted: bool, brief, model_calls, op_text: str, escalate,
+                   emit) -> bool:
+    """The voice door: start the errand a deferred promise owes, through the turn's own escalation (the same portal
+    every escalation crosses). True when it was started — the turn end then owes no line."""
+    if escalate is None or not (op_text or "").strip() or not deferred_errand(reply, outcome, acted=acted,
+                                                                              model_calls=model_calls):
+        return False
+    try:
+        from nucleo import surfaces as _surf
+        escalate(op_text, context={"src": "voice", "surface": _surf.from_brief(brief), "promised": (reply or "")[:300]})
+        if outcome is not None:
+            outcome["kind"] = STARTED
+        emit("brain", "🧭 Flash → Brain Worker (escalada registrada)", text=op_text[:200], role="system",
+             extra={"cat": "flash", "kind_diag": "promise_started", "reply": (reply or "")[:160]})
+        return True
+    except Exception as _e:  # noqa: BLE001
+        _log.warning(f"promise_kept: the deferred errand could not start: {_e!r}")
+        return False
+
+
+def say_the_start(escalate_req: dict, spoken_text: str, *, send, speech) -> str:
+    """An errand a door started in the model's place («⚖️ a commission, not a play») on a turn that said nothing: its
+    start line (`escalate_req["say"]`, the i18n «I'm on it — it isn't done yet»), so the turn is not mute. ""."""
+    line = str((escalate_req or {}).pop("say", "") or "").strip()
+    if not line or (spoken_text or "").strip():
+        return ""
+    send(speech.sanitize(line, drop_metadata=False))
     return line
 
 
@@ -255,9 +312,14 @@ def landed(call, outcome: dict, *, run, acted: dict, data_done: dict, escalate_r
     return None
 
 
-def say_after(reply: str, data_done: dict, *, acted, send, speech, window: list, emit) -> str:
-    """The voice turn end: the honest line, spoken after what streamed and kept in the dialog window."""
-    line = close(reply, (data_done or {}).get("promise"), acted=bool(acted), emit=emit)
+def say_after(reply: str, data_done: dict, *, acted, send, speech, window: list, emit, turn=None) -> str:
+    """The voice turn end: a deferred promise's errand started, else the honest line, spoken after what streamed and
+    kept in the dialog window. `turn` = `(brief, model_calls, op_text, escalate)` of the voice turn, or None."""
+    outcome = data_done.setdefault("promise", {}) if isinstance(data_done, dict) else None
+    if turn and start_deferred(reply, outcome, acted=bool(acted), brief=turn[0], model_calls=turn[1], op_text=turn[2],
+                               escalate=turn[3], emit=emit):
+        return ""
+    line = close(reply, outcome, acted=bool(acted), emit=emit)
     if line:
         send(" " + speech.sanitize(line, drop_metadata=False))
         if window and window[-1].get("role") == "assistant":
@@ -265,14 +327,20 @@ def say_after(reply: str, data_done: dict, *, acted, send, speech, window: list,
     return line
 
 
-def text_turn_end(spoken, *, action: str, outcome: dict | None, operator_text: str):
-    """The text channel's end: still a plain reply after every mirror → the same honest line (or the pass's own)."""
+def text_turn_end(spoken, *, action: str, outcome: dict | None, operator_text: str, model_calls=()):
+    """The text channel's end: still a plain reply after every mirror → a deferred promise becomes the `escalate`
+    action this channel executes (the voice door's twin), else the same honest line (or the pass's own).
+    Returns `(spoken, action)`."""
     try:
         from nucleo.turn import split_by_errand as _sbe
         if action != "chat" or not isinstance(spoken, str) or not spoken.strip() or _sbe.routed(operator_text):
-            return spoken
+            return spoken, action
+        if (operator_text or "").strip() and deferred_errand(spoken, outcome, acted=False, model_calls=model_calls):
+            if outcome is not None:
+                outcome["kind"] = STARTED
+            return spoken, "escalate"
         from voice.observer import emit as _emit
         line = close(spoken, outcome, acted=False, emit=_emit)
-        return (spoken.rstrip() + " " + line) if line else spoken
+        return ((spoken.rstrip() + " " + line) if line else spoken), action
     except Exception:  # noqa: BLE001
-        return spoken
+        return spoken, action
