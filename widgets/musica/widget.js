@@ -681,7 +681,10 @@ function trackRow(t, ctx, opts){
     if(list) list.querySelectorAll(".hb-mus2-tr.selected").forEach(r => r.classList.remove("selected"));
     row.classList.add("selected");
   };
-  row.ondblclick = () => ctx.action("play", {query: t.query || [t.title, t.artist].filter(Boolean).join(" ") || t.title});
+  // V2-795 — a song in a list plays IN the list (`opts.play`): handed over as one sequence, «next» then has
+  // somewhere to go. A bare row (recent, most played) plays alone.
+  row.ondblclick = () => (opts.play ? opts.play()
+    : ctx.action("play", {query: t.query || [t.title, t.artist].filter(Boolean).join(" ") || t.title}));
   if(opts.remove){
     const x = h("button", "hb-mus2-x"); x.appendChild(svgEl(ICON_CLOSE)); x.title = tt("remove_track", null, "Quitar de la lista");
     x.onclick = (e) => { e.stopPropagation(); ctx.action("remove_from_playlist", {playlist: opts.remove, item: t.title}); };
@@ -1057,6 +1060,7 @@ function playlistView(host, data, ctx, pl){
       title: derived.commonArtist ? derived.strip(t.title) : null,
       hideArtist: !!derived.commonArtist,
       playing: nowPlayingMatches(t, np),
+      play: () => ctx.action("play_playlist", {playlist: pl.id, from: String(i + 1)}),
     })));
   } else {
     g.appendChild(h("div", "hb-mus2-empty", tt("playlist_empty", null, "Lista vacía. Dime «añade una canción a esta lista».")));

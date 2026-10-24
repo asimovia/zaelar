@@ -3611,6 +3611,11 @@ DOMAINS: list[dict] = [
         {"id": "2.798", "title": "The late catalogue question is asked once per sentence and its answer read by every repair of the turn; a timeout never replaces an answer already paid for; an unsure answer stays under each caller's floor",
             "ch": UNIT,
             "paths": ["tests/agent_headless/unit/flash/test_one_late_catalogue_question_per_sentence.py"]},
+        # V2-795 — «pon la siguiente» asked twice: the second identical `next {}` was eaten as context-bleed and the
+        # turn said «No lo he hecho». A STEP is declared by its card (`"repeatable": true`) and read generically.
+        {"id": "2.799", "title": "A step op asked again is another step, never a drag: the anti-drag guard reads the card's own `repeatable` declaration (music and video next/volume), and a repeated WRITE is still a drag (V2-795)",
+            "ch": UNIT,
+            "paths": ["tests/agent_headless/unit/flash/test_a_step_op_is_never_a_drag.py"]},
         {"id": "2.728", "title": "A turn that acted on a card and also escalated, read inline, launches no worker — on the text channel as on the voice",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_an_inline_act_settles_the_commission_on_both_channels.py"]},
         {"id": "2.729", "title": "An ordered act that leaves, sure at the operator's 70%, runs when the model only drafted it — both channels",
@@ -5613,6 +5618,8 @@ DOMAINS: list[dict] = [
         {"id": "5.3", "title": "Música / Spotify / YouTube-audio", "ch": UNIT, "paths": [
             "tests/connectors/unit/music/test_music.py", "tests/connectors/unit/music/test_youtube_audio.py",
             "tests/connectors/unit/spotify/test_auth.py", "tests/connectors/unit/spotify/test_provider.py"]},
+        {"id": "5.63", "title": "Next moves inside what is playing: a provider whose skip lives in its context (Spotify) gets a list as ONE play, a skip is checked against the song the player reports and an unchanged song is said, Spotify's own queue is reached (V2-795)",
+            "ch": UNIT, "paths": ["tests/connectors/unit/music/test_a_skip_moves_inside_what_is_playing.py"]},
         {"id": "5.4", "title": "Architect", "ch": UNIT, "paths": ["tests/connectors/unit/architect/test_architect.py"]},
         {"id": "5.5", "title": "WhatsApp: normalización y allowlist", "ch": UNIT, "paths": [
             "tests/connectors/unit/whatsapp/test_allowlist_contract.py",

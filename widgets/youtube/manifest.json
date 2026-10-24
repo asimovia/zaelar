@@ -113,11 +113,13 @@
       "desc": "salta al siguiente vídeo de la lista",
       "payload": {},
       "sensitivity": "routine",
-      "activation": true
+      "activation": true,
+      "repeatable": true
     },
     "previous": {
       "desc": "vuelve al vídeo anterior de la lista (al principio, reinicia el actual)",
-      "payload": {}
+      "payload": {},
+      "repeatable": true
     },
     "ended": {
       "desc": "(interno, la dispara el propio widget) el vídeo terminó — avanza la lista solo",
@@ -221,11 +223,13 @@
     },
     "volume_up": {
       "desc": "sube el volumen",
-      "payload": {}
+      "payload": {},
+      "repeatable": true
     },
     "volume_down": {
       "desc": "baja el volumen",
-      "payload": {}
+      "payload": {},
+      "repeatable": true
     },
     "set_volume": {
       "desc": "pone el volumen a un nivel concreto (0-100)",

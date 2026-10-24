@@ -139,7 +139,8 @@
       "desc": "salta a la siguiente canción de la cola",
       "payload": {},
       "sensitivity": "routine",
-      "activation": true
+      "activation": true,
+      "repeatable": true
     },
     "seek": {
       "desc": "mueve el punto de reproducción de la canción que suena: a un momento concreto (to, en segundos) o hacia delante/atrás (by, en segundos, negativo para retroceder)",
@@ -147,19 +148,23 @@
         "to": "segundos desde el principio de la canción (p. ej. 125 para «ponla en el minuto dos»)",
         "by": "segundos a saltar, negativo para retroceder (p. ej. 30 para «adelanta medio minuto»)"
       },
-      "sensitivity": "routine"
+      "sensitivity": "routine",
+      "repeatable": true
     },
     "previous": {
       "desc": "vuelve a la canción anterior",
-      "payload": {}
+      "payload": {},
+      "repeatable": true
     },
     "volume_up": {
       "desc": "sube el volumen",
-      "payload": {}
+      "payload": {},
+      "repeatable": true
     },
     "volume_down": {
       "desc": "baja el volumen",
-      "payload": {}
+      "payload": {},
+      "repeatable": true
     },
     "set_volume": {
       "desc": "fija el volumen a un nivel concreto (0-100)",

@@ -120,3 +120,8 @@ def seek(position_ms: int, device_id: str = "") -> dict:
 
 def playback_state() -> dict:
     return _request("GET", "/me/player") or {}
+
+
+def add_to_queue(uri: str, device_id: str = "") -> dict:
+    """Append one track to the player's queue (V2-795). The Web API can add; it cannot remove, reorder or clear."""
+    return _request("POST", "/me/player/queue", params={"uri": uri, "device_id": device_id or None})

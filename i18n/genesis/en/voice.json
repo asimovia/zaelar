@@ -419,7 +419,9 @@
    "no_device": "I don't see an active Spotify device. Open Spotify on your phone or computer and I'll play it.",
    "premium": "Controlling Spotify playback needs a Premium account.",
    "not_connected": "Connect your Spotify account first, from settings.",
-   "error": "Spotify didn't respond just now."
+   "error": "Spotify didn't respond just now.",
+   "no_next": "There's nothing after this song in what's playing; tell me what to put on.",
+   "no_prev": "There's no earlier song in what's playing."
   }
  },
  "agenda": {

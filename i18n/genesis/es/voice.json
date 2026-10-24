@@ -426,7 +426,9 @@
    "no_device": "No veo ningún dispositivo de Spotify activo. Abre Spotify en el móvil o el ordenador y te lo pongo enseguida.",
    "premium": "Controlar la reproducción de Spotify necesita una cuenta Premium.",
    "not_connected": "Necesito que conectes tu cuenta de Spotify primero, desde la configuración.",
-   "error": "No he podido con Spotify ahora mismo."
+   "error": "No he podido con Spotify ahora mismo.",
+   "no_next": "No hay nada después de esta canción en lo que suena; dime qué pongo.",
+   "no_prev": "No hay ninguna canción anterior en lo que suena."
   }
  },
  "agenda": {

@@ -78,6 +78,29 @@ def control(action: str, query: str = "", uri: str = "", percent: int = 0, prefe
     return MusicResult(ok=False, provider=prov.name, action=action, reason="error", message=_msg("done"))
 
 
+def play_list(items: "list[tuple[str, str]]") -> MusicResult:
+    """Several tracks as ONE sequence on the active provider — [(query, uri), …], the first sounding now (V2-795).
+    Fail-safe like `control`: never raises."""
+    prov = active_provider()
+    if prov is None:
+        return MusicResult(ok=False, action="play", reason="no_provider", message=_msg("no_provider"))
+    items = [(str(q or ""), str(u or "")) for q, u in (items or [])]
+    if not items:
+        return MusicResult(ok=False, provider=prov.name, action="play", reason="no_track")
+    if getattr(prov, "plays_lists_as_context", False):
+        try:
+            return prov.play_list(items)
+        except Exception as e:  # noqa: BLE001 — a provider failure never breaks voice
+            logger.warning(f"music.play_list failed: {e!r}")
+            return MusicResult(ok=False, provider=prov.name, action="play", reason="error", message=_msg("done"))
+    # A provider whose queue is its own: the first now, the rest queued (V2-047 F4) — through `control`, the
+    # one seam every other playback road takes.
+    res = control("play", query=items[0][0], uri=items[0][1])
+    for q, u in items[1:]:
+        control("queue", query=q, uri=u)
+    return res
+
+
 def resolve(query: str) -> "Track | None":
     """The playable track a «title — artist» names, WITHOUT playing it: the first connected provider that finds it,
     in the registry's priority order (a connected streaming account first, the free YouTube-audio last). None when
@@ -117,5 +140,5 @@ def status() -> dict:
     return {"providers": out, "available": available()}
 
 
-__all__ = ["control", "resolve", "now_playing", "status", "available", "active_provider",
+__all__ = ["control", "play_list", "resolve", "now_playing", "status", "available", "active_provider",
            "MusicProvider", "MusicResult", "NowPlaying", "Track", "registry"]

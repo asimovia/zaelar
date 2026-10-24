@@ -68,6 +68,9 @@ class MusicProvider(ABC):
     """
 
     name: str = "base"
+    #: True when next/previous only move inside the provider's own playback CONTEXT (V2-795): a list must then be
+    #: handed over whole (`play_list`), because a track started alone is a context with nothing after it.
+    plays_lists_as_context: bool = False
 
     @abstractmethod
     def connected(self) -> bool: ...
@@ -121,6 +124,13 @@ class MusicProvider(ABC):
         """The current track ENDED -> play the next one from the queue (if any). Base: unsupported (providers with
         native auto-advance, like Spotify, do not need it)."""
         return MusicResult(ok=False, provider=self.name, action="ended", reason="unsupported")
+
+    def play_list(self, items: "list[tuple[str, str]]") -> MusicResult:
+        """Play SEVERAL tracks as one playback context — `items` = [(query, uri), …] in order (V2-795). Only for a
+        provider that declares `plays_lists_as_context`: its skip moves inside a context and nowhere else
+        (Spotify), so a list must be handed over whole. Everyone else takes the facade's road: the first now,
+        the rest queued — their queue is their own."""
+        return MusicResult(ok=False, provider=self.name, action="play", reason="unsupported")
 
     def status(self) -> dict:
         """Redacted PUBLIC view for the UI (never secrets). Overridable; base = connection only."""

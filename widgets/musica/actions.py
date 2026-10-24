@@ -151,24 +151,35 @@ def _a_play_playlist(action: str, p: dict) -> dict:
         msg = (f"No encuentro ninguna lista que se llame «{str(ref or '').strip()}». "
                + (f"Tienes: {', '.join(names[:6])}." if names else "Todavía no hay ninguna lista guardada."))
         return {"ok": False, "error": "playlist_not_found", "playlist": ref, "message": msg}
-    tracks = pl.get("tracks") or []
+    tracks = list(pl.get("tracks") or [])
     if not tracks:
         return {"ok": False, "error": "empty_playlist", "playlist": pl["id"]}
+    # V2-795 — «play it from the third one»: a song chosen IN a list plays in the list, the rest behind it.
+    if p.get("from") not in (None, ""):
+        i = _d._resolve_track_index(tracks, p.get("from"))
+        if i is None:
+            return {"ok": False, "error": "track_not_found", "item": p.get("from"),
+                    "message": f"«{p.get('from')}» is not in the list «{pl.get('name')}»."}
+        tracks = tracks[i:]
     pl_id = pl["id"]
     first_local = _d._local.is_local(tracks[0])
     try:
-        # A local first track mutates THIS snapshot (local state has no other writer); a streamed one
-        # goes through the connector, which loads/saves the store ITSELF — so it gets no db.
-        r = _d._play_track(tracks[0], db if first_local else None)   # first track starts now
         from connectors import music
-        for t in tracks[1:]:                                # rest goes to queue (V2-047 F4)
-            if _d._local.is_local(t):
-                continue        # the connector queue holds query STRINGS it re-resolves; a file
-                                # has nothing to re-resolve, so queueing it would silently drop it
-            try:
+        if first_local:
+            # A local first track mutates THIS snapshot (local state has no other writer).
+            r = _d._play_track(tracks[0], db)
+            rest = [t for t in tracks[1:] if not _d._local.is_local(t)]
+            for t in rest:          # a file in the rest has nothing a connector queue could re-resolve
                 music.control("queue", query=_d._track_query(t), uri=_d._uri_now(t))
-            except Exception:
-                pass
+        else:
+            # V2-795 — the list is handed over as ONE sequence: a provider whose skip only moves inside its
+            # playback context (Spotify) gets the whole list as that context; the free player queues it. Before,
+            # the first track played ALONE and the rest went to an `enqueue` Spotify never had — so «next» on a
+            # forty-song list changed nothing (measured live). The connector writes the store itself, so it gets
+            # no db snapshot of ours (V2-650).
+            res = music.play_list([(_d._track_query(t), _d._uri_now(t))
+                                   for t in tracks if not _d._local.is_local(t)])
+            r = {"ok": bool(res.ok), "message": res.message, "reason": res.reason}
     except Exception as e:  # noqa: BLE001
         return {"ok": False, "error": str(e)[:120]}
     if not first_local:
@@ -284,6 +295,10 @@ def _a_playback(action: str, p: dict) -> dict:
             _d._persist(db)
         else:
             _d._save_view()
-        return {"ok": ok, "message": getattr(r, "message", ""), "reason": getattr(r, "reason", "")}
+        out = {"ok": ok, "message": getattr(r, "message", ""), "reason": getattr(r, "reason", "")}
+        tr = getattr(r, "track", None)
+        if ok and tr is not None and getattr(tr, "title", ""):
+            out["now_playing"] = tr.label()          # V2-795: a skip reports WHICH song sounds now
+        return out
     except Exception as e:  # noqa: BLE001
         return {"ok": False, "error": str(e)[:120]}

@@ -258,4 +258,5 @@ def test_a_double_click_plays_that_exact_track(mounted):
     mount(_data(playlists=[pl], view={"kind": "playlist", "id": "p"}))
     page.dblclick(".hb-mus2-tr:nth-child(2)")
     calls = page.evaluate("window.__calls")
-    assert ["play", {"query": "B Y"}] in calls
+    # V2-795 — a song in a list plays IN the list, from that exact track, so «next» has somewhere to go
+    assert ["play_playlist", {"playlist": "p", "from": "2"}] in calls

@@ -8,6 +8,7 @@ Fail-safe: never raises; any failure -> `MusicResult(ok=False,...)` with a frien
 from __future__ import annotations
 
 import logging
+import time
 
 from connectors.music.base import MusicProvider, MusicResult, NowPlaying, Track
 
@@ -15,6 +16,11 @@ from . import auth, client
 from .client import SpotifyError
 
 logger = logging.getLogger("zaelar.music.spotify")
+
+#: How long a skip is given to show up in the player before «nothing changed» is believed (V2-795).
+_SETTLE_S, _SETTLE_TRIES = 0.25, 6
+#: Tracks one list hands Spotify as a single context, and how many uri-less ones may be looked up by words.
+_MAX_CONTEXT, _MAX_LIST_LOOKUPS = 100, 15
 
 def _t(key: str, **kw) -> str:
     """A speakable line in the active language — the `voice` pack's `music.spotify.<key>`."""
@@ -46,6 +52,7 @@ def _track_from(item: dict) -> "Track | None":
 
 class SpotifyProvider(MusicProvider):
     name = "spotify"
+    plays_lists_as_context = True          # its next/previous move only inside the context it was handed
 
     def connected(self) -> bool:
         return bool(auth.client_id()) and auth.logged_in()
@@ -125,10 +132,67 @@ class SpotifyProvider(MusicProvider):
         return self._run(lambda dev: client.resume(device_id=dev), "resume")
 
     def next(self) -> MusicResult:
-        return self._run(lambda dev: client.next_track(device_id=dev), "next")
+        return self._step(lambda dev: client.next_track(device_id=dev), "next")
 
     def previous(self) -> MusicResult:
-        return self._run(lambda dev: client.previous_track(device_id=dev), "previous")
+        return self._step(lambda dev: client.previous_track(device_id=dev), "previous")
+
+    def _step(self, fn, action: str) -> MusicResult:
+        """A skip is only DONE when the song changed (V2-795). Spotify answers 204 to a skip with nothing after the
+        current song — measured live: «pon la siguiente» ran, reported ok, and the same song kept playing. So the
+        result names the song that sounds now, read back from the player, or says plainly that nothing changed."""
+        before = self._item_id()
+        res = self._run(fn, action)
+        if not res.ok:
+            return res
+        for _ in range(_SETTLE_TRIES):
+            time.sleep(_SETTLE_S)
+            np = self.now_playing()
+            if np is not None and np.track and np.track.id and np.track.id != before:
+                res.track, res.message = np.track, _t("play", label=np.track.label())
+                return res
+        reason = "no_next" if action == "next" else "no_previous"
+        return MusicResult(ok=False, provider=self.name, action=action, reason=reason,
+                           message=_t("no_next" if action == "next" else "no_prev"))
+
+    def _item_id(self) -> str:
+        np = self.now_playing()
+        return (np.track.id if np is not None and np.track else "") or ""
+
+    # ── a LIST is one playback context (V2-795) ───────────────────────────────────────────────────────────
+    def play_list(self, items: "list[tuple[str, str]]") -> MusicResult:
+        """The whole list in ONE play call, so Spotify's own next/previous move inside it. A track that carries no
+        Spotify uri is looked up by its words (bounded); one nobody finds is left out and counted."""
+        uris, lookups, first = [], 0, None
+        for q, u in items or []:
+            if not str(u or "").startswith("spotify:track:"):
+                u = ""
+                if q and lookups < _MAX_LIST_LOOKUPS:
+                    lookups += 1
+                    hits = self.search(q, limit=1)
+                    u = hits[0].uri if hits else ""
+                    first = first or (hits[0] if hits and not uris else None)
+            if u:
+                uris.append(u)
+        if not uris:
+            return MusicResult(ok=False, provider=self.name, action="play", reason="no_track",
+                               message=_t("no_track", q=(items[0][0] if items else "")))
+        uris = uris[:_MAX_CONTEXT]
+        res = self._run(lambda dev: client.play(uris=uris, device_id=dev), "play", first,
+                        {"label": first.label() if first else (items[0][0] or uris[0])})
+        res.extra = {**(res.extra or {}), "in_context": len(uris), "left_out": len(items) - len(uris)}
+        return res
+
+    def enqueue(self, query: str = "", uri: str = "") -> MusicResult:
+        """Append one track to Spotify's own queue (the base answered «unsupported», so every «queue this» was
+        silently dropped)."""
+        if not str(uri or "").startswith("spotify:track:"):
+            hits = self.search(query, limit=1) if query else []
+            if not hits:
+                return MusicResult(ok=False, provider=self.name, action="queue", reason="no_track",
+                                   message=_t("no_track", q=query))
+            uri = hits[0].uri
+        return self._run(lambda dev: client.add_to_queue(uri, device_id=dev), "queue")
 
     def set_volume(self, percent: int) -> MusicResult:
         pct = max(0, min(100, int(percent or 0)))

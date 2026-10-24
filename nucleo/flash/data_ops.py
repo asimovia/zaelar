@@ -634,6 +634,22 @@ def is_view_op(wid: str, action: str) -> bool:
         return False
 
 
+def is_step_op(wid: str, action: str) -> bool:
+    """A STEP, by the widget's own declaration (`"repeatable": true`, V2-795): each call is one more step — the
+    next song, one notch of volume — so the same call again is a new order, never a drag. Measured live: «pon la
+    siguiente» twice in fifteen seconds; the second was eaten as context-bleed and the turn said it was not done."""
+    if not (wid and action):
+        return False
+    try:
+        from widgets import runtime
+        spec = ((runtime.get(wid.split("::", 1)[0]) or {}).get("actions") or {}).get(action)
+    except Exception as e:  # noqa: BLE001
+        from loguru import logger
+        logger.debug(f"is_step_op: manifest of {wid!r} unreadable: {e!r}")
+        spec = None
+    return isinstance(spec, dict) and spec.get("repeatable") is True
+
+
 #: The last op a widget REFUSED (wid, action, payload, ts). V2-773 (demo, images → markets): «Open the second
 #: one» reached `imagenes:select` with no item and was refused with the menu; the failure note asked the model to
 #: re-call with the item, and the NEXT two turns — «Show me a chart of Apple stock», «the last month instead» —
@@ -758,7 +774,7 @@ def is_context_bleed(last, wid: str, action: str, payload: dict | None, said: st
         return False
     if ((now if now is not None else _t.time()) - l_ts) >= 120:
         return False
-    if is_view_op(wid, action):
+    if is_view_op(wid, action) or is_step_op(wid, action):     # a lens writes nothing; a step is another step
         return False
     if word_overlap(" ".join(str(v) for v in (payload or {}).values()), said) > 0:
         return False

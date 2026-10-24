@@ -180,6 +180,7 @@ below is the first kind, or it names the mechanism that replaced the second.
   what the player really lets be heard is the player's own report (`audio_blocked`: the hint stays, the brain reads
   it, an agent order is told); what it shows carries the fact he needs to check it (a video's publication date).
   — since 2026-10-24 · nodes 2.791, 2.792 · `widgets/youtube/sound.py`, `widgets/youtube/library._fill_list`.
+- **CRIT-K15 · A step asked again is another step, and a skip says what sounds now.** An action a card declares `"repeatable": true` (next, previous, a volume notch, a relative seek) is never eaten as the previous turn's op dragged along; a repeated WRITE still is. A list is handed to a provider whose skip lives in its context (`plays_lists_as_context`, Spotify) as ONE play, and a skip reports the song the player shows afterwards or says that nothing changed. — since 2026-10-24 · nodes 2.799, 5.63 · `nucleo/flash/data_ops.is_step_op`, `connectors/music.play_list`.
 
 ## 4 · Errands and workers
 
