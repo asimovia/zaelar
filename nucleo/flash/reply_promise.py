@@ -45,6 +45,9 @@ STATE_INSTRUCTIONS = ("Classify the assistant's REPLY (any language). The operat
 TTL_S = 120.0
 _CACHE: dict[str, tuple[str, float]] = {}
 _STATE: dict[str, tuple[str, float]] = {}
+#: Replies the verdict read as `ask_first` at ANY confidence (`held_for_him`). `ASK_FIRST_MIN` guards the line a
+#: repair ADDS; standing DOWN a «not done» line is the opposite direction and reads the raw answer (V2-792).
+_HELD: dict[str, float] = {}
 _MAX = 64
 
 
@@ -57,6 +60,7 @@ def _key(reply) -> str:
 def reset() -> None:
     _CACHE.clear()
     _STATE.clear()
+    _HELD.clear()
 
 
 def _remember(k: str, choice: str) -> None:
@@ -89,6 +93,10 @@ def _settle(k: str, handle) -> str | None:
         _STATE.pop(old, None)
     choice, info = jev.read(handle, "reply_promise", "")
     choice = choice if choice in CHOICES else ""
+    if choice == "ask_first":
+        _HELD[k] = time.time()
+        for old in sorted(_HELD, key=_HELD.get)[: max(0, len(_HELD) - _MAX)]:
+            _HELD.pop(old, None)
     if choice == "ask_first" and float((info or {}).get("confidence") or 0.0) < ASK_FIRST_MIN:
         choice = "act"
     _remember(k, choice)
@@ -154,6 +162,14 @@ def verdict(reply) -> str | None:
 # ── the questions the phrase tables answered, verdict first ─────────────────────────────────────────────────
 # Wrappers rather than edits: `router_guards` is a god file under the architecture ratchet, so the verdict is read
 # here and `router` re-exports these under the old names — every caller keeps its import.
+
+def held_for_him(reply) -> bool:
+    """The verdict read this reply as holding its act for HIS word — sure, or below `ASK_FIRST_MIN` — so what comes
+    next is his choice and nothing is owed yet (`promise_kept.honest_line`, V2-792)."""
+    k = _key(reply)
+    at = _HELD.get(k)
+    return (bool(at) and time.time() - at < TTL_S) or verdict(reply) == "ask_first"
+
 
 def promises_action(reply: str) -> bool:
     v = verdict(reply)

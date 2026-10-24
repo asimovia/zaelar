@@ -19,7 +19,8 @@ import time
 _ACTS = ("show", "fullscreen", "maximize", "minimize", "action", "select")
 _OPERATOR = ("actionmap", "flash", "probe", "jev")
 _lock = threading.Lock()
-_state = {"current": [], "previous": [], "fs": "", "acts": [], "failed": [], "t_cur": 0.0, "t_prev": 0.0}
+_state = {"current": [], "previous": [], "fs": "", "acts": [], "failed": [], "prev_failed": [],
+          "t_cur": 0.0, "t_prev": 0.0}
 #: How long after his order an unprompted report still counts as crossing that exchange (`crossed_by`).
 CROSSING_S = 30.0
 
@@ -40,6 +41,7 @@ def note(kind: str, label: str, role: str = "", extra: dict | None = None) -> No
             with _lock:
                 if _state["current"]:
                     _state["previous"] = _state["current"]
+                    _state["prev_failed"] = list(_state["failed"])
                 _state["current"] = []
                 _state["t_prev"], _state["t_cur"] = _state["t_cur"], time.monotonic()
                 _state["acts"] = []
@@ -95,6 +97,19 @@ def last_turn_card(open_ids: list[str]) -> str:
         same_base = [i for i in ids if i.split("::", 1)[0] == cid.split("::", 1)[0]]
         if len(same_base) == 1:
             return same_base[0]
+    return ""
+
+
+def last_turn_held(open_ids) -> str:
+    """A card the previous acting turn's own orders touched, still open now, with none of its controls refused —
+    the screen state an engine op put there, so a reply DESCRIBING it describes what holds (`promise_kept`). ""."""
+    with _lock:
+        touched, failed = list(_state["previous"]), {c for c, _ in _state["prev_failed"]}
+    bases = {str(i).split("::", 1)[0] for i in (open_ids or ()) if str(i)}
+    for r, cid in reversed(touched):
+        base = cid.split("::", 1)[0]
+        if r == 2 and base in bases and base not in failed:
+            return base
     return ""
 
 

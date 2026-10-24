@@ -23,6 +23,9 @@ The mechanism, one door shared by the voice turn (`post_stream_words` + `turn_af
   3. `honest_line` — at turn end, when nothing ran: the pass's own «I could not», or, when the pass's call was
      swallowed by a guard or no card could be found for a committing reply, the i18n `promise_not_kept` line.
 
+A reply that only DESCRIBES what is on screen and leaves the next act to him owes nothing (V2-792): the verdict's
+`ask_first` stands the line down at any confidence, and a claimed state an op of this request left on screen holds.
+
 Bounded: one second pass per turn (the door that already existed), no loop (the line is words, never a new turn),
 and a pass that read the words and found no promise is trusted — the line is never said over its judgement.
 """
@@ -100,18 +103,6 @@ def card_for_the_repair(brief, *, model_calls=(), ran_ops=(), open_ids=None) -> 
         return ""
 
 
-def commits(reply: str) -> bool:
-    """Does the reply promise or claim an act? Only the readers that already exist — no new wording here."""
-    try:
-        from nucleo import harness as _harness
-        from nucleo.flash import router_guards as _rg
-        from voice.engine.llm.providers import promise_backstop as _pb
-        return bool(reply) and (_pb.committed(reply) or _rg.promises_action(reply) or _harness.claims_done(reply))
-    except Exception as _e:  # noqa: BLE001
-        _log.debug(f"promise_kept: line 107 failed: {_e!r}")
-        return False
-
-
 def _not_kept_line() -> str:
     try:
         from i18n import langs as _langs
@@ -127,7 +118,7 @@ def honest_line(reply: str, outcome: dict | None, *, acted: bool) -> str:
     · the pass declared it cannot  → its own sentence (or the i18n line);
     · the pass's call was swallowed by a guard → the i18n line (a claim over a discarded op is not «done»);
     · the pass read the words and called nothing → nothing (its judgement stands over any wording reader);
-    · no pass could run (no card) and the reply commits → the i18n line."""
+    · no pass could run (no card) and the reply still owes it (`owed`: the verdict first) → the i18n line."""
     if acted or not (reply or "").strip():
         return ""
     kind = str((outcome or {}).get("kind") or "")
@@ -146,7 +137,44 @@ def honest_line(reply: str, outcome: dict | None, *, acted: bool) -> str:
     except Exception as _e:  # noqa: BLE001
         _log.debug(f"promise_kept: line 141 failed: {_e!r}")
         pass
-    return _not_kept_line() if commits(reply) else ""
+    return _not_kept_line() if owed(reply) else ""
+
+
+def _state_holds(open_ids=None) -> bool:
+    """A card the previous acting turn's own op put on screen is still open, with nothing refused: a reply that
+    DESCRIBES the screen describes what an op of this request made true (V2-792)."""
+    try:
+        if open_ids is None:
+            from nucleo.flash import canvas_visibility as _cv
+            open_ids = _cv.open_ids()
+        from nucleo import canvas_focus as _focus
+        return bool(_focus.last_turn_held(open_ids))
+    except Exception as _e:  # noqa: BLE001
+        _log.debug(f"promise_kept: state_holds failed: {_e!r}")
+        return False
+
+
+def owed(reply: str, *, open_ids=None) -> bool:
+    """Does a reply that ran nothing (and had no pass) owe «not done»? The reply's verdict before any table (CRIT-K1):
+
+    · the verdict holds the act for HIS word (`ask_first`, at any confidence) → nothing owed: the next act is his
+      choice («they're on screen — tell me the number and I'll play it»);
+    · the verdict read no promise → only a CLAIM of a done state can still owe it, and only when no op of this request
+      left that state on screen;
+    · a promise (verdict, or the tables when the verdict is absent) → owed; a claim alone → owed unless it holds."""
+    try:
+        from nucleo import harness as _harness
+        from nucleo.flash import reply_promise as _rp
+        from nucleo.flash import router_guards as _rg
+        from voice.engine.llm.providers import promise_backstop as _pb
+        if not reply or _rp.held_for_him(reply):
+            return False
+        if _rp.verdict(reply) != "none" and (_pb.committed(reply) or _rg.promises_action(reply)):
+            return True
+        return _harness.claims_done(reply) and not _state_holds(open_ids)
+    except Exception as _e:  # noqa: BLE001
+        _log.debug(f"promise_kept: owed failed: {_e!r}")
+        return False
 
 
 def close(reply: str, outcome: dict | None, *, acted: bool, emit=None) -> str:

@@ -66,7 +66,10 @@ below is the first kind, or it names the mechanism that replaced the second.
   guard discarded, else (decision model silent) the card his last turn acted on or the one open; the pass makes the
   call, or declares `cannot_do`, or judges the words promised nothing. A repaired call a guard swallows is not done;
   when nothing ran and nothing was routed, he hears that it was not done (the pass's sentence or the i18n
-  `promise_not_kept`) — both channels through `nucleo/turn/promise_kept.py`. — since 2026-10-24 · nodes 2.790.
+  `promise_not_kept`) — both channels through `nucleo/turn/promise_kept.py`. Nothing is owed when the reply's
+  verdict holds the act for HIS word (`ask_first`, at any confidence — the verdict speaks before any table), nor
+  when a claimed state is one an op of this request left on screen and nothing refused. — since 2026-10-24 ·
+  nodes 2.790, 2.794.
 
 ## 2 · Consent — act or ask
 
