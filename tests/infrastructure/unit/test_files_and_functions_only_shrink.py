@@ -37,7 +37,6 @@ FILES = {
     'memory/api.py': 891,
     'nucleo/dispatch.py': 921,
     'nucleo/energy_meter.py': 812,
-    'nucleo/flash/act_repair.py': 802,
     'nucleo/flash/fast_client.py': 866,
     'nucleo/flash/prompt.py': 816,
     'nucleo/jev.py': 831,
@@ -122,10 +121,10 @@ FUNCTIONS = {
 
 BRANCHES = {
     'nucleo/flash/post_stream_lanes.py::run_the_light_lanes': 146,
-    'nucleo/flash/post_stream_words.py::hold_the_model_to_its_words': 118,
+    'nucleo/flash/post_stream_words.py::hold_the_model_to_its_words': 117,
     'nucleo/flash/probe.py::run_turn': 124,
     'nucleo/flash/probe_decide.py::name_the_action': 106,
-    'nucleo/flash/probe_mirrors.py::mirror_the_voice_backstops': 108,
+    'nucleo/flash/probe_mirrors.py::mirror_the_voice_backstops': 106,
     'nucleo/worker_api.py::_exec_allow': 106,
     'voice/engine/llm/providers/nucleo.py::NucleoLLMStream._run_inner': 108,
     'widgets/agenda/tasklists.py::apply': 115,

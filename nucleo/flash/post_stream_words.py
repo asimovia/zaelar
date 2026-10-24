@@ -15,6 +15,7 @@ from nucleo.flash import second_pass as _second_pass   # a question the state an
 from nucleo.flash import reminder_backing as _rback   # promise → job, claim → checked (both halves)
 from nucleo.flash import verdict_card as _vcard     # a sure close that an inner order outranks is not owed
 from nucleo.turn import split_by_errand as _sbe   # a sentence about several errands goes part by part (2.643)
+from nucleo.turn import promise_kept as _pk      # a promise ends ran, repaired or said undone (V2-790)
 
 
 async def hold_the_model_to_its_words(*, _apply_widget_data, _brief, _data_ops_hechas, _has_workers, _prompt_mod, _repeat_repair, _router, _show_guard_target, _tag_emit, _tool_fired, _turn_op_tasks, acted, brain, canvas_h, clarify, cron_seen, data_done, emit, escalate_req, images_req, listing_req, music_req, operator_text, read_req, recall_req, reopen_req, reveal_req, search_req, send, speak, spec, speech, spoken, text, worker_acted) -> dict:
@@ -213,10 +214,9 @@ async def hold_the_model_to_its_words(*, _apply_widget_data, _brief, _data_ops_h
                  extra={"cat": "flash", "widget": _cn, "action": "close", "said": (_op_text or "")[:120]})
     # V2-764 — it PROMISED to act on a card the verdict names and called nothing: one pass for the call
     # (`act_repair`), before any backstop decides it was a web errand and spends a worker on it.
-    # full44 M1: «Checking… Apple's up about 1.4% today, roughly $258 — pulling the chart up now.», nothing called,
-    # the verdict unsure — and `promises_action` is a table of SPANISH promise forms, so an English promise never
-    # opened this door. Whether the words promised or claimed an act is the repair pass's own question (its
-    # prompt); the door only needs a card the turn names (`named_or_catalogue` below, "" = no pass).
+    # full44 M1: «…pulling the chart up now.», nothing called, the verdict unsure — and `promises_action` is a table
+    # of SPANISH promise forms. Whether the words promised or claimed an act is the repair pass's own question (its
+    # prompt); the door only needs a card (`named_or_catalogue`, or V2-790's fallback below; "" = no pass).
     _named_by_verdict = ""     # the card the verdict (brief or late catalogue) names for this order, if any
     if (_no_tool and spoken_text and not clarify["msg"]
             and not _sbe.holds_the_repair(spoken_text, _op_text, _brief)):
@@ -224,6 +224,7 @@ async def hold_the_model_to_its_words(*, _apply_widget_data, _brief, _data_ops_h
         from nucleo.flash import card_commission as _cardc_ar
         _ar_wid = _cardc_ar.named_or_catalogue(_brief, _op_text)   # V2-773: a closed card while others are open
         _named_by_verdict = _ar_wid
+        _ar_wid, _pk_out = _pk.card_and_outcome(_ar_wid, _brief, brain, data_done)   # a discarded call, a silent Jev
         if _ar_wid and _vcard.close_is_owed(_brief, _op_text):
             # the promise was to CLOSE it: the card's own close, never a data action (S4 emptied the sheet)
             _tag_emit("close", {"id": _pst._show_target.close_target(_ar_wid)})
@@ -234,7 +235,7 @@ async def hold_the_model_to_its_words(*, _apply_widget_data, _brief, _data_ops_h
             _ar_wid = ""
         _ar_vo, _ar_va = _pst._direct_action.from_brief(_brief)    # full41 E3: a refusal of the verdict's declared act
         _ar = await _agc.or_repair(_op_text, spoken_text, lambda: _act_repair.call_for_promise_or_order(_op_text,
-            spoken_text, _ar_wid, _ar_va if _ar_vo == _ar_wid else "", spec=spec, window=list(brain._window)) if _ar_wid else None)
+            spoken_text, _ar_wid, _ar_va if _ar_vo == _ar_wid else "", spec=spec, window=list(brain._window), outcome=_pk_out) if _ar_wid else None)
         # Demo pass 67, B1: a promise to find a wallpaper, the catalogue naming the EMPTY picture viewer, and no
         # call from the pass — the promise backstop then spent a worker. That order is the picture search.
         _pic = None if (_ar or not _ar_wid) else _cardc_ar.picture_search_for(_ar_wid, _op_text)
@@ -245,10 +246,10 @@ async def hold_the_model_to_its_words(*, _apply_widget_data, _brief, _data_ops_h
             emit("brain", "🎯 la herramienta del turno en vez de un worker (promesa sobre el visor vacío)",
                  text=f"{_ar_wid} ← show_images «{_pic['query'][:100]}»", role="system",
                  extra={"cat": "flash", "widget": _ar_wid, "tool": "show_images"})
-        if _ar:
-            _pst._cvis.present(_pst._direct_action.card_to_present(_ar["widget_id"], _op_text), reason="turn-order",
-                               src="flash", emit=emit)   # pass 133 S1: the sheet it lands on, never the bare base
-            _apply_widget_data(_ar["widget_id"], _ar["action"], _ar["payload"])
+        if (_ar := _pk.landed(_ar, _pk_out, acted=acted, data_done=data_done, escalate_req=escalate_req, emit=emit,
+                              run=lambda: (_pst._cvis.present(_pst._direct_action.card_to_present(_ar["widget_id"], _op_text),
+                                           reason="turn-order", src="flash", emit=emit),   # pass 133 S1: the sheet
+                                           _apply_widget_data(_ar["widget_id"], _ar["action"], _ar["payload"])))):
             acted["widget"], _no_tool = True, False
             emit("brain", "🔁 prometió actuar sin tool — la llamada, en una segunda pasada",
                  text=f"{_ar['widget_id']}:{_ar['action']}", role="system",

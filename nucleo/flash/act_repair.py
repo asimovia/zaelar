@@ -14,13 +14,14 @@ close this. The call it returns goes through the caller's `apply_widget_data`, t
 every model call goes through: nothing new is allowed to run, a declared action stops going unrun.
 
 Bounded on purpose: only when the turn called NOTHING and promised; only a card the verdict names; only an action
-that card declares; a model that still calls nothing leaves the turn exactly as it was. It costs one model call on
-the turns that fail, and zero on every other turn.
+that card declares; a model that still calls nothing leaves the turn exactly as it was. One model call on the turns
+that fail, zero on every other.
 """
 from __future__ import annotations
 
 import json, re
 from . import commission_keep as _keep   # a commission whose deliverable is a sheet keeps its worker
+from nucleo.turn import promise_kept as _pk   # V2-790: with `outcome`, the pass may also answer `cannot_do`
 from .repair_grounding import in_his_lang as _in_his_lang, session_lang as _session_lang  # noqa: F401 — pass 102/141
 
 #: What the repair tells the model. Short on purpose: the ask is «make the call you promised», not a new turn.
@@ -173,7 +174,7 @@ def after_the_repair(spoken: str, promised: bool, widget_id: str = "", action: s
 
 
 async def call_for_promise(operator_text: str, reply: str, widget_id: str, spec=None, *,
-                           window=None) -> dict | None:
+                           window=None, outcome: dict | None = None) -> dict | None:
     """`{widget_id, action, payload}` — the call the model should have made — or None. Never raises."""
     try:
         wid = str(widget_id or "").strip().lower()
@@ -196,12 +197,12 @@ async def call_for_promise(operator_text: str, reply: str, widget_id: str, spec=
         card = (_CARD.format(wid=wid, digest=digest) if digest else "") + _days()
         from nucleo.flash.fast_client import FastClient
         await FastClient().complete(
-            [{"role": "system", "content": _in_his_lang(_SYS).format(wid=wid, actions=_actions_block(manifest), card=card)},
+            [{"role": "system", "content": _in_his_lang(_SYS + _pk.offer_line(outcome)).format(wid=wid, actions=_actions_block(manifest), card=card)},
              {"role": "user", "content": f"Operator: «{operator_text.strip()[:400]}»\n"
                                          f"Your reply (no call): «{(reply or '').strip()[:300]}»"
                                          + conversation(window)}],
-            spec=spec, max_tokens=300, tools=[tool], no_thinking=True,
-            on_tool_call=lambda name, args: got.append((name, args if isinstance(args, dict) else {})))
+            spec=spec, max_tokens=300, tools=[tool, *_pk.offer_tools(outcome)], no_thinking=True,
+            on_tool_call=lambda name, args: _pk.took(outcome, name, args) or got.append((name, args if isinstance(args, dict) else {})))
         for name, args in got:
             if name != "widget_data":
                 continue
@@ -219,7 +220,7 @@ async def call_for_promise(operator_text: str, reply: str, widget_id: str, spec=
             if not _rg.list_was_named(payload, operator_text, window, digest):   # «Favoritos» nobody said
                 _note(wid, "lista que nadie nombró", action=action[:40])
                 continue
-            return {"widget_id": wid, "action": action, "payload": payload}
+            return _pk.called(outcome, {"widget_id": wid, "action": action, "payload": payload})
         if not got:
             _note(wid, "el modelo no llamó a nada")
         return None
@@ -265,7 +266,7 @@ def _answered_a_question(brief, reply: str) -> bool:
 
 
 async def call_for_promise_or_order(operator_text: str, reply: str, widget_id: str, verdict: str = "", spec=None, *,
-                                    window=None, brief=None) -> dict | None:
+                                    window=None, brief=None, outcome: dict | None = None) -> dict | None:
     """`call_for_promise`, and when the words promised nothing — they REFUSED — the verdict's call.
 
     Demo pass 41 (2026-09-29, E3): «send the invoice to quinn…» over the open receipt → «I can't send it myself —
@@ -275,7 +276,7 @@ async def call_for_promise_or_order(operator_text: str, reply: str, widget_id: s
     model, with the action named. Bounded like the others: one card, its declared action, the caller's gate."""
     if _answered_a_question(brief, reply) or _keep.keeps_the_worker(brief, widget_id):   # T529 · 2026-10-14
         return None
-    got = await call_for_promise(operator_text, reply, widget_id, spec, window=window)
+    got = await call_for_promise(operator_text, reply, widget_id, spec, window=window, **({"outcome": outcome} if outcome is not None else {}))
     # V2-781 T518: «make it last until one» — the promise pass read «I'll open it so you can see it» and picked
     # `open_meeting` with the verdict at `agenda:move_meeting` 0.98. The verdict completes the model (CRIT-K2): a
     # view the pass chose over a real op the verdict names is asked once more, for that op.
@@ -286,8 +287,8 @@ async def call_for_promise_or_order(operator_text: str, reply: str, widget_id: s
     if got or not verdict:
         return got
     said = " ".join(str(reply or "").split())[:300]
-    return await call_for_repeated_view(operator_text, widget_id, "", verdict, spec, window=window,
-                                        _sys=_SYS_REFUSED.replace("{said}", said.replace("{", "(").replace("}", ")")))
+    return _pk.called(outcome, await call_for_repeated_view(operator_text, widget_id, "", verdict, spec, window=window,
+                      _sys=_SYS_REFUSED.replace("{said}", said.replace("{", "(").replace("}", ")"))))
 
 
 async def call_for_repeated_view(operator_text: str, widget_id: str, repeated: str, verdict: str, spec=None, *,

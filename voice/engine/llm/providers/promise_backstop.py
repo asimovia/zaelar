@@ -63,19 +63,22 @@ def _a_refinement_of_the_errand_it_names(spoken_text: str, op_text: str, emit) -
 
 
 def run(spoken_text: str, *, did_act: bool, op_text: str, prev_pending: list,
-        emit, escalate, similar_pending, brief=None) -> None:
-    """Fire the backstop for a turn that promised and did nothing. Best-effort: never raises into the turn."""
+        emit, escalate, similar_pending, brief=None) -> str:
+    """Fire the backstop for a turn that promised and did nothing. Best-effort: never raises into the turn.
+
+    Returns "routed" when it sent his words somewhere that will act (a live errand, a worker, part by part) — the
+    turn end then owes no «I have not done it» (V2-790, `nucleo/turn/promise_kept.py`) — else ""."""
     from nucleo.turn import his_spec_to_sheet as _spec
     _spec.carry(op_text)          # every voice turn: a spec he stated about one errand reaches its sheet
     from nucleo.turn import split_by_errand as _sbe
     if not did_act and _sbe.routed(op_text):
-        return                    # a sentence about several errands went part by part (node 2.643)
+        return "routed"           # a sentence about several errands went part by part (node 2.643)
     if not spoken_text or did_act:
-        return
+        return ""
     if _a_refinement_of_the_errand_it_names(spoken_text, op_text, emit):
-        return
+        return "routed"
     if not committed(spoken_text):
-        return
+        return ""
 
     from nucleo.flash import router as _router
     if _router.asks_for_missing_detail(spoken_text):
@@ -83,18 +86,18 @@ def run(spoken_text: str, *, did_act: bool, op_text: str, prev_pending: list,
         # turn later through the window lookback (V2-132). Kept as an event so the series stays measurable.
         emit("brain", "🙋 pregunta aclaratoria (no es promesa incumplida)", text=spoken_text[:120],
              role="system", extra={"cat": "flash", "kind_diag": "asks_detail"})
-        return
+        return "asked"
 
     emit("brain", "⚠️ promesa sin acción (dijo que lo haría, no disparó tool)", text=spoken_text[:120],
          role="system", extra={"cat": "flash", "kind_diag": "promise_no_tool"})
     try:
         if not _router.looks_like_web_task(op_text):
-            return
+            return ""
         if similar_pending(op_text, prev_pending):
             from nucleo import dispatch as _disp_bk
             _disp_bk.inject_soon(op_text, op_text)
             emit("brain", "↪️ promesa→inyección a worker vivo (backstop)", text=op_text[:120], role="system")
-            return
+            return "routed"
         # V2-753 — and it does not overrule the turn's own paid verdict. Live session 46dcfcb4: a guard ate
         # the model's `youtube:close`, the reply became «te lo hago ahora mismo» with nothing behind it, and
         # THIS backstop forced a `claude_code` worker that opened a headless browser for four minutes to stop
@@ -107,7 +110,7 @@ def run(spoken_text: str, *, did_act: bool, op_text: str, prev_pending: list,
         if _eg_bk.judge_escalation_from_brief(brief) == "handle_inline":
             emit("brain", "🚫 promesa→escalada ANULADA por el veredicto (handle_inline)", text=op_text[:120],
                  role="system", extra={"cat": "flash", "kind_diag": "promise_inline"})
-            return
+            return ""
         # THE KIND IS THE CLASSIFIER'S CALL, never this backstop's (2026-08-14, session b70a45d0). Pinned to
         # `"web"` it turned a LOCAL data-op into a browser errand: «lees lo que hay en la agenda, lo borras y
         # compruebas» opened TWO browser cards nobody asked for, was labelled «Buscando en la web…», and — the
@@ -120,5 +123,7 @@ def run(spoken_text: str, *, did_act: bool, op_text: str, prev_pending: list,
         escalate(op_text, context={"src": "voice", "kind": _bk_kind})
         emit("brain", f"🧭 promesa→escalada FORZADA (backstop · kind={_bk_kind})",
              text=op_text[:120], role="system", extra={"cat": "flash", "kind_task": _bk_kind})
+        return "routed"
     except Exception as _e_bk:  # noqa: BLE001
         logger.warning(f"backstop promesa falló: {_e_bk}")
+    return ""

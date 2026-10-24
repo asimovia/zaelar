@@ -61,6 +61,12 @@ below is the first kind, or it names the mechanism that replaced the second.
   says the i18n `say_again`; the first turn (the kickoff greeting) answers nothing he said and says the i18n
   `kickoff_fallback` instead, or nothing — never «say that again» (`turn_failure._fallback_line`).
   — since 2026-10-24 · nodes 2.770.
+- **CRIT-V12 · A promise ends in one of three states, never in a log line.** A reply that promises or claims an act
+  and fired nothing that ran gets ONE second pass on a card — the verdict's, else the card of the model's own call a
+  guard discarded, else (decision model silent) the card his last turn acted on or the one open; the pass makes the
+  call, or declares `cannot_do`, or judges the words promised nothing. A repaired call a guard swallows is not done;
+  when nothing ran and nothing was routed, he hears that it was not done (the pass's sentence or the i18n
+  `promise_not_kept`) — both channels through `nucleo/turn/promise_kept.py`. — since 2026-10-24 · nodes 2.790.
 
 ## 2 · Consent — act or ask
 

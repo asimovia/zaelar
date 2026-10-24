@@ -11,6 +11,7 @@ from nucleo.flash import agenda_claims as _agc   # «I've removed it» with no c
 from nucleo.flash import card_close as _card_close
 from nucleo.flash import probe as _probe
 from nucleo.turn import split_by_errand as _sbe   # a sentence about several errands goes part by part (2.643)
+from nucleo.turn import promise_kept as _pk      # a promise ends ran, repaired or said undone (V2-790)
 
 
 def _a_show_may_replace(action: str, names) -> bool:
@@ -65,16 +66,15 @@ async def mirror_the_voice_backstops(*, _akp, _cw, _hw, _router, _rt, _sp, _tbri
             # Mirror of the voice provider: a reply that ASKS the operator for the detail it needs is not a
             # promise it failed to keep, so nothing is re-derived from it (V2-534). Wired in BOTH channels
             # because this class of defect survives by diverging between them.
-            _ar = None
+            _ar, _pk_out = None, {}
             from . import direct_action as _da_probe
             # full44 M1 — mirror of the voice door: the repair judges its own reply, the door needs no wording table
             if not __import__("nucleo.flash.undecided", fromlist=["x"]).a_question_holds(_tbrief, spoken):   # the 70%
-                # V2-764 — mirror of the voice repair (`act_repair`), gated like it on the verdict too (V2-770).
-                from . import act_repair as _act_repair, card_commission as _cardc_probe
-                _ar_wid = _cardc_probe.named_or_catalogue(_tbrief, operator_text)
+                from . import act_repair as _act_repair, card_commission as _cardc_probe   # V2-764/770: the voice repair's mirror
+                _ar_wid = _pk.card_or(_cardc_probe.named_or_catalogue(_tbrief, operator_text), _tbrief, tool_calls)
                 _pv_o, _pv_a = _da_probe.from_brief(_tbrief)
                 _ar = await _agc.or_repair(operator_text, spoken, lambda: _act_repair.call_for_promise_or_order(operator_text, spoken, _ar_wid, _pv_a if _pv_o == _ar_wid
-                       else "", spec=spec, window=getattr(sess, "window", None), brief=_tbrief) if _ar_wid   # V2-781 p3, T529
+                       else "", spec=spec, window=getattr(sess, "window", None), outcome=_pk_out, brief=_tbrief) if _ar_wid   # V2-781 p3, T529
                        else _act_repair.probe_call_for_promise(operator_text, spoken, spec, window=getattr(sess, "window", None)))
             if _ar:
                 # «widget_data», the label the executor matches — a richer label here meant the repaired call was
@@ -120,8 +120,8 @@ async def mirror_the_voice_backstops(*, _akp, _cw, _hw, _router, _rt, _sp, _tbri
         except Exception:
             pass
 
-    # BACKSTOP DE TRABAJO DEVUELTO (V2-142, espejo del provider — cablear en AMBOS). Distinto del de promesa:
-    # aquí el modelo no promete nada, MANDA AL OPERADOR a buscar en Google/Maps lo que él acaba de pedir. Medido:
+    # WORK HANDED BACK (V2-142, the provider's mirror — wired in BOTH): the model promises nothing, it SENDS THE
+    # OPERATOR to look up in Google/Maps what he just asked for. Measured:
     # «¿puedes buscar tú el teléfono?, para eso te pido ayuda» → «la forma más fiable es que tú busques
     # "farmacia" en Google Maps y me pases el teléfono». Una regla de prompt sola no basta para esto: lo que hace
     # falta es HACER la búsqueda, y para eso hay worker y navegador. Solo si NADA corre — con una tarea viva la
@@ -282,6 +282,7 @@ async def mirror_the_voice_backstops(*, _akp, _cw, _hw, _router, _rt, _sp, _tbri
                 spoken = await _probe._second.probe_hollow_repairs(operator_text, spoken, sess.window, spec)
         except Exception:
             pass
+    spoken = _pk.text_turn_end(spoken, action=action, outcome=locals().get("_pk_out"), operator_text=operator_text)
     _out = locals()
     return {k: _out[k] for k in ('_ar', '_forced_search', '_window_goal', 'action', 'music_req', 'spoken', ) if k in _out}
 

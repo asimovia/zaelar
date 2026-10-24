@@ -369,6 +369,8 @@ class LangSpec:
     data_ack_went_ahead: str = ""
     # Demo passes 108-109: after «¿cuál…?» the verdict PICKED one — said as a choice he can correct, not a go-ahead.
     data_ack_went_with: str = ""
+    # V2-790 — a reply committed to an act and nothing ran: the plain «I have not done it» (`nucleo/turn/promise_kept.py`).
+    promise_not_kept: str = ""
     # A correction of a results sheet ran as a data-op the model did not speak over (`nucleo/flash/correction_ack.py`):
     # «esos no son de Rosalía» got a bare «Hecho.» twice (find-concert-tickets ES, 2026-10-14). The line says what
     # changed: how many rows left the list, and that what does not fit no longer comes in.
