@@ -3960,6 +3960,15 @@ DOMAINS: list[dict] = [
         {"id": "2.332", "title": "«Unmute it and skip to the next one» runs BOTH controls when the verdict heard both — "
                                  "`next` was dropped as an enumeration and «Te paso al siguiente» was said over nothing (V2-781)",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_two_controls_the_verdict_heard_both_run.py"]},
+        {"id": "2.791", "title": "A video ordered to be watched plays WITH sound when the page allows it; when the browser keeps it silent "
+                                 "the player REPORTS it (`audio_blocked`): the hint stays, the brain reads it, an agent order is told (V2-791)",
+            "ch": UNIT, "paths": ["tests/browser/unit/youtube/test_an_ordered_sound_is_heard_or_said_blocked.py"]},
+        {"id": "2.792", "title": "A list of videos he asked to SEE ends on screen (channel, history, saved list → the queue face), and every "
+                                 "video carries its publication date to the brain and the card (V2-791)",
+            "ch": UNIT, "paths": ["tests/browser/unit/youtube/test_a_list_he_asked_to_see_is_shown_with_its_dates.py"]},
+        {"id": "2.793", "title": "A re-emitted op is a drag only when the previous one LANDED and the turn did not ask for it again: a card "
+                                 "that falsified it, a turn naming its card, or the redo verdict make it a REDO that runs (V2-791)",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_a_redo_of_an_op_that_left_no_effect_runs.py"]},
         {"id": "2.340", "title": "A close that NAMES a card closes that card — «Close the music» over a youtube:close verdict "
                                  "emptied the player; «cierra la música» became «Pausado»; «the top one» by its place, or asked (V2-781)",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_a_close_that_names_a_card_closes_that_card.py"]},

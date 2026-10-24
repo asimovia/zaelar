@@ -21,6 +21,9 @@ WINDOW_S = 30.0
 
 _last_agent_order: dict[str, float] = {}
 _pending: set = set()
+#: When the card last reported that an agent order did NOT happen (V2-791). The anti-drag guard reads it: an op
+#: the card itself falsified left no effect, so its re-emit is a retry, never a drag.
+_falsified: dict[str, float] = {}
 
 
 def _base(wid: str) -> str:
@@ -45,6 +48,7 @@ def deliver(wid: str, res) -> bool:
         said = str((res or {}).get("tell") or "").strip() if isinstance(res, dict) else ""
         if not said or not agent_ordered_recently(wid):
             return False
+        _falsified[_base(wid)] = time.time()
         import asyncio
 
         from voice import proactive
@@ -57,3 +61,9 @@ def deliver(wid: str, res) -> bool:
         return True
     except Exception:  # noqa: BLE001
         return False
+
+
+def falsified_since(wid: str, ts: float) -> bool:
+    """Did the card report, at or after `ts`, that what an agent order started did not happen? (V2-791)"""
+    t = _falsified.get(_base(wid))
+    return t is not None and t >= float(ts or 0)

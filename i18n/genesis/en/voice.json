@@ -542,6 +542,7 @@
  },
  "youtube": {
   "queue_empty": "The queue is already empty: there was nothing to remove.",
+  "audio_blocked": "The video is playing silently: the browser won't let me turn its sound on by voice. Tap the card's speaker once and you'll hear it.",
   "exhausted": "I couldn't play it: «{title}» can't be played here (its owner blocks it outside YouTube) and there's no other video left that can.",
   "explicit": "«{title}» can't be played here: its owner only allows it on YouTube.",
   "block": {

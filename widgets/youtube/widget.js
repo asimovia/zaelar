@@ -384,6 +384,32 @@ let _ytEnded = null;
 let _ytError = null;   // V2-401: the player refusing to play (onError) is reported back, never swallowed
 let _ytQuality = null; // V2-604: the quality levels the video really HAS, reported back once per video
 let _qSeen = "";       // last videoId whose levels were reported (infoDelivery repeats several times a second)
+// V2-791 — the SOUND the player really has. `muted` in the store is what was ORDERED; whether the browser let a
+// cross-origin player be unmuted without a gesture is only known from the player's own `infoDelivery.muted`.
+let _ytAudio = null;   // per-render reporter: (playerMuted, videoId) → `player_audio` when it disagrees with the store
+let _audioSent = "";   // last report sent, so a stream that repeats several times a second reports once
+let _soundAsked = 0;   // when an unMute was last posted: a player still muted inside this grace is not yet a verdict
+let _plNow = null;     // the current player element, for the one-shot gesture unlock
+let _unlockArmed = false;
+const _SOUND_GRACE_MS = 1500;
+// The page may give a cross-origin player sound only after a real gesture (sticky user activation). Without one,
+// trying to unmute an autoplaying video can pause it — so the card keeps it playing muted and says so instead.
+function pageMayPlaySound(){
+  try{ const ua = navigator.userActivation; return !ua || !!ua.hasBeenActive; }catch(_){ return true; }
+}
+// Any real gesture on the page unlocks sound: the player is unmuted in that same gesture, once.
+function armSoundUnlock(vol){
+  if(_unlockArmed || typeof document === "undefined") return;
+  _unlockArmed = true;
+  const go = () => {
+    _unlockArmed = false;
+    document.removeEventListener("pointerdown", go, true);
+    document.removeEventListener("keydown", go, true);
+    if(_plNow){ post(_plNow, "unMute", []); post(_plNow, "setVolume", [vol]); }
+  };
+  document.addEventListener("pointerdown", go, true);
+  document.addEventListener("keydown", go, true);
+}
 if(typeof window !== "undefined" && !window.__hbYtWidgetBound){
   window.__hbYtWidgetBound = true;
   window.addEventListener("message", (ev) => {
@@ -403,6 +429,9 @@ if(typeof window !== "undefined" && !window.__hbYtWidgetBound){
       const vid = String(d.info.videoData && d.info.videoData.video_id || "");
       const key = vid || "current";
       if(key !== _qSeen){ _qSeen = key; _ytQuality(d.info.availableQualityLevels, vid); }
+    }
+    if(d.event === "infoDelivery" && d.info && typeof d.info.muted === "boolean" && _ytAudio){
+      _ytAudio(d.info.muted, String(d.info.videoData && d.info.videoData.video_id || ""));
     }
   });
 }
@@ -431,6 +460,7 @@ function post(target, func, args){
       return;
     }
     if(!target.contentWindow) return;
+    if(func === "unMute") _soundAsked = Date.now();      // V2-791: the grace before a muted report is a verdict
     target.contentWindow.postMessage(JSON.stringify({event:"command", func:func, args:args||[]}), "*");
   }catch(_){}
 }
@@ -564,9 +594,20 @@ function renderConn(E, root, data, ctx){
 
 function halted(ctx){ return !!(ctx && ctx.running === false); }
 
+// V2-791 — sound ordered on a page that has had no gesture: unmuting an autoplaying cross-origin player now could
+// PAUSE it. It keeps playing muted, the card REPORTS the block (`player_audio` → `audio_blocked`), and the first
+// gesture anywhere on the page gives it sound. True when it is holding the player silent.
+function holdSilent(iframe, data){
+  if(pageMayPlaySound() || !iframe || !iframe.contentWindow) return false;
+  if(_ytAudio) _ytAudio(true, "");
+  armSoundUnlock(Number(data.volume != null ? data.volume : 70));
+  return true;
+}
+
 // Reassert desired state in the player (idempotent) — used when loading a new video.
 function applyState(iframe, data, ctx){
   if(data.muted){ post(iframe, "mute", []); }
+  else if(holdSilent(iframe, data)){ post(iframe, "mute", []); }      // V2-791: no gesture yet (see holdSilent)
   else { post(iframe, "unMute", []); post(iframe, "setVolume", [Number(data.volume != null ? data.volume : 70)]); }
   // Captions re-asserted HERE, not only in applyCmd, or the choice silently drops on the next `load` (V2-590).
   applyCaptions(iframe, data);
@@ -600,9 +641,10 @@ function applyCmd(iframe, data, ctx){
   if(c === "play") post(iframe, "playVideo", []);
   else if(c === "pause") post(iframe, "pauseVideo", []);
   else if(c === "mute") post(iframe, "mute", []);
-  else if(c === "unmute"){ post(iframe, "unMute", []); post(iframe, "setVolume", [vol]); }
-  else if(c === "volume_up" || c === "volume_down" || c === "set_volume"){
-    post(iframe, "unMute", []); post(iframe, "setVolume", [vol]);
+  // V2-791 — a voice order is no gesture: on a page that has had none, the block is REPORTED (holdSilent) rather
+  // than the store left claiming a sound the player cannot have; the next gesture on the page completes it.
+  else if(c === "unmute" || c === "volume_up" || c === "volume_down" || c === "set_volume"){
+    if(data.muted || !holdSilent(iframe, data)){ post(iframe, "unMute", []); post(iframe, "setVolume", [vol]); }
   }
   else if(c === "captions_on" || c === "captions_off"){ applyCaptions(iframe, data); }
   else if(c === "restart"){ post(iframe, "seekTo", [0, true]); post(iframe, "playVideo", []); }
@@ -1277,7 +1319,8 @@ export function render(root, data, ctx){
     };
   }
   if(E.unmuteHint){
-    E.unmuteHint.style.display = data.muted ? "flex" : "none";
+    // V2-791 — also while the browser keeps an ORDERED sound silent: the hint is the honest state of the player.
+    E.unmuteHint.style.display = (data.muted || (data.audio_blocked && data.videoId)) ? "flex" : "none";
     E.unmuteHint.onclick = () => {
       if(!halted(ctx)){ post(PL, "unMute", []); post(PL, "setVolume", [vol0]); }
       if(ctx && ctx.action) ctx.action("unmute");
@@ -1294,6 +1337,26 @@ export function render(root, data, ctx){
       {code: String(code == null ? "unknown" : code), videoId: id || ""}); };
   _ytQuality = (levels, vid) => {
     if(ctx && ctx.action) ctx.action("player_quality", {levels: Array.isArray(levels) ? levels : [], videoId: vid || ""});
+  };
+  // V2-791 — the player's real sound against what the store says was ordered. Sound wanted and the player still
+  // muted past the grace → `audio_blocked` (the hint stays, the brain is told); heard → the flag clears.
+  _plNow = PL;
+  if(data.audio_blocked && !data.muted && data.videoId && !halted(ctx)) armSoundUnlock(vol0);
+  _ytAudio = (playerMuted, vid) => {
+    if(!ctx || !ctx.action || halted(ctx) || !data.videoId) return;
+    if(vid && vid !== data.videoId) return;
+    let report = null;
+    if(playerMuted && !data.muted && !data.audio_blocked){
+      if(Date.now() - _soundAsked < _SOUND_GRACE_MS && pageMayPlaySound()) return;
+      report = true;
+    } else if(!playerMuted && (data.audio_blocked || data.muted)){
+      report = false;
+    }
+    if(report === null) return;
+    const key = data.videoId + "|" + report + "|" + (data.cmd_seq || 0);
+    if(key === _audioSent) return;
+    _audioSent = key;
+    ctx.action("player_audio", {muted: report, videoId: data.videoId});
   };
 
   // The list rows, re-rendered on every render (text only; the iframe is never touched by this).
@@ -1327,7 +1390,9 @@ export function render(root, data, ctx){
       if(it.videoId) th.src = "https://i.ytimg.com/vi/" + encodeURIComponent(it.videoId) + "/mqdefault.jpg";
       row.appendChild(th);
       row.appendChild(el("span", "hb-yt-rowt", it.title || it.url || "—"));
-      if(it.channel) row.appendChild(el("span", "hb-yt-rowc", it.channel));
+      // V2-791 — with WHEN it was published: «which of these is today's?» is read at a glance
+      const sub = [it.channel, it.published].filter(Boolean).join(" · ");
+      if(sub) row.appendChild(el("span", "hb-yt-rowc", sub));
       const x = el("button", "hb-yt-rowx", "✕");
       x.title = tt("remove_from_list", null, "Quitar de la lista");
       x.addEventListener("click", (e) => { e.stopPropagation(); if(ctx && ctx.action) ctx.action("remove", {item: String(i + 1)}); });

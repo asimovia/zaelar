@@ -140,10 +140,21 @@ def _row(h: dict) -> dict:
             "added_at": int(time.time()), "added_seq": 0}
 
 
+def _dated(rows: list) -> list:
+    """V2-791 — each row's title WITH when it was published: «is the one playing today's?» is read off this."""
+    return [{"title": r.get("title") or "", "published": r.get("published") or ""} for r in rows]
+
+
 def _fill_list(db: dict, rows: list) -> int:
     """Replace the queue with `rows`. Used by the actions that ANSWER with videos (history, a channel, a
     saved list): the list is this widget's one place where a set of videos is chosen from, and sending
-    results anywhere else would be the results-sheet mistake V2-402 already corrected."""
+    results anywhere else would be the results-sheet mistake V2-402 already corrected.
+
+    V2-791 — and the answer is SHOWN: the queue face is brought forward on the card's `goto_tab` rail. Filling a
+    list behind the player tab is an op that ran and that nobody saw — «muéstrame los últimos vídeos del canal»
+    ran `channel_videos` four times with the card still on the video, and he said nothing was happening."""
+    from .helpers import _goto
+    _goto(db, "cola")
     lst = []
     for i, r in enumerate(rows):
         row = _row(r)
@@ -274,7 +285,7 @@ def apply(action: str, p: dict, db: dict) -> "dict | None":
                     "message": "No encontré vídeos recientes de ese canal."}
         count = _fill_list(db, mine[:n])
         store.save(WID, db)
-        out = {"ok": True, "channel": ch, "count": count, "titles": [r["title"] for r in db["list"]]}
+        out = {"ok": True, "channel": ch, "count": count, "titles": [r["title"] for r in db["list"]], "videos": _dated(db["list"])}
         if n_blocked:
             out["blocked_out"] = n_blocked
         return out

@@ -38,6 +38,8 @@ _SEED = {
     "latest": False,
     "volume": 70,
     "muted": True,      # browser autoplay requires starting muted; "unmute" to hear it
+    "mute_kept": False,     # V2-791: the last word on sound was HIS mute (survives the next video)
+    "audio_blocked": False, # V2-791: sound wanted, and the player REPORTS it is still silent (browser policy)
     "captions": False,  # V2-590: subtitles on/off — the player re-asserts it on every load
     "paused": True,
     "last_cmd": "",
@@ -251,7 +253,10 @@ def _bump(db: dict, cmd: str) -> dict:
     db["cmd_seq"] = int(db.get("cmd_seq") or 0) + 1
     store.save(WID, db)
     return {"ok": True, "cmd": cmd, "videoId": db.get("videoId"), "title": db.get("title"),
-            "volume": db.get("volume"), "muted": db.get("muted"), "paused": db.get("paused")}
+            # V2-791 — the channel and the publication date are what lets «is this today's?» be answered
+            "channel": db.get("channel"), "published": db.get("published"),
+            "volume": db.get("volume"), "muted": db.get("muted"), "paused": db.get("paused"),
+            "audio_blocked": bool(db.get("audio_blocked"))}
 
 
 def _play_pos(db: dict, i: int, cmd: str, *, watch: bool = True) -> dict:
@@ -274,6 +279,9 @@ def _play_pos(db: dict, i: int, cmd: str, *, watch: bool = True) -> dict:
     db["pos"] = i
     db["paused"] = False
     library.record_play(db, it)                          # V2-604: we are the ones playing it, so the history is ours
+    if watch:
+        from . import sound as _sound
+        _sound.wants_sound(db)                           # V2-791: a video he asked to watch is heard
     library.apply_prefs(db, fresh=False)
     if watch:
         _goto(db, "player")                              # V2-755: he asked to watch it, so show it

@@ -80,6 +80,7 @@ def _a_load(action, p, db) -> dict:
     db["pos"] = next((i for i, it in enumerate(db.get("list") or []) if it.get("videoId") == vid), -1)
     db["paused"] = False
     _d.library.record_play(db, {"videoId": vid, "title": db["title"], "channel": channel, "url": db["url"]})
+    _d._sound.wants_sound(db)                           # V2-791: a video he asked to watch is heard
     _d.library.apply_prefs(db, fresh=not had_video)
     _d._goto(db, "player")                              # V2-755: he asked to watch it, so show it
     notice = _d._blocking.explicit_link_notice(db, explicit, channel, db["title"])
@@ -524,11 +525,15 @@ def _a_pause(action, p, db) -> dict:
 
 def _a_mute(action, p, db) -> dict:
     db["muted"] = True
+    _d._sound.kept_mute(db, True)                  # V2-791: his mute survives the next video
     return _d._bump(db, "mute")
 
 
 def _a_unmute(action, p, db) -> dict:
+    # V2-791 — this is what was ORDERED; whether the browser let the player obey is the player's own report
+    # (`player_audio` → `audio_blocked`), never assumed from here.
     db["muted"] = False
+    _d._sound.kept_mute(db, False)
     return _d._bump(db, "unmute")
 
 
@@ -548,6 +553,7 @@ def _a_captions_off(action, p, db) -> dict:
 def _a_volume_up(action, p, db) -> dict:
     db["volume"] = min(100, int(db.get("volume") or 70) + 15)
     db["muted"] = False
+    _d._sound.kept_mute(db, False)
     return _d._bump(db, "volume_up")
 
 
@@ -563,6 +569,7 @@ def _a_set_volume(action, p, db) -> dict:
         return {"ok": False, "error": "bad_level", "message": "Dime un nivel entre 0 y 100."}
     db["volume"] = max(0, min(100, lvl))
     db["muted"] = db["volume"] == 0
+    _d._sound.kept_mute(db, db["muted"])
     return _d._bump(db, "set_volume")
 
 

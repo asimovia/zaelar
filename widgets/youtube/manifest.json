@@ -357,6 +357,13 @@
         "videoId": "id the levels belong to (optional)"
       }
     },
+    "player_audio": {
+      "desc": "Internal: the embedded player reports whether it is really muted (IFrame API). Fired by the widget itself, not by voice — sound ordered but kept silent by the browser becomes audio_blocked.",
+      "payload": {
+        "muted": "true | false, as the player reports it",
+        "videoId": "id the report belongs to (optional)"
+      }
+    },
     "play_local": {
       "desc": "reproduce un vídeo que ya está en la biblioteca del agente (por su ruta)",
       "payload": {

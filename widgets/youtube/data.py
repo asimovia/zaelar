@@ -209,7 +209,12 @@ def prompt_digest() -> str:
     # «bloquéame este canal» / «sigue a este» point at the playing video's author: the name rides here so the
     # reply can say WHICH channel (video-blocked-channel-respected, 2026-10-10). Only while a video is loaded.
     if db.get("videoId") and str(db.get("channel") or "").strip():
-        lines.append(f"EN EL REPRODUCTOR: «{str(db.get('title') or '')[:70]}» — canal «{str(db['channel'])[:40]}»")
+        # V2-791 — and WHEN it was published: «is this today's?» is answered from here, never from the title
+        pub = str(db.get("published") or "").strip()
+        lines.append(f"EN EL REPRODUCTOR: «{str(db.get('title') or '')[:70]}» — canal «{str(db['channel'])[:40]}»"
+                     + (f" — publicado «{pub[:30]}»" if pub else ""))
+    if (_snd := _sound.digest_line(db)):
+        lines.append(_snd)
     res = db.get("search_results") or []
     if not res:
         if lines and db.get("list"):          # a digest replaces the items line in the brief: keep the queue
@@ -228,6 +233,8 @@ def prompt_digest() -> str:
         bits = [str(r.get("title") or "")[:70]]
         if r.get("channel"):
             bits.append(str(r["channel"])[:30])
+        if r.get("published"):                           # V2-791: when — «the one from today» is read, not guessed
+            bits.append(str(r["published"])[:30])
         lines.append(f"  {i}. " + " — ".join(bits))
     from . import result_refs as _rr
     lines.append(_rr.queue_line(db))
@@ -266,7 +273,9 @@ def ref_index() -> list:
         if i == cur:
             _estado = _langs.words("hints.cannot_play" if roto else "hints.playing", default="")
         _estado = _estado or _plays.hint(db, it)    # a refused row is still in the list (2026-10-11)
-        pistas = [p for p in (str(it.get("channel") or "").strip(), _estado) if p]
+        # V2-791 — the publication date rides the hint: «which of these is today's?» is read, not guessed
+        pistas = [p for p in (str(it.get("channel") or "").strip(), str(it.get("published") or "").strip(),
+                              _estado) if p]
         out.append({"id": str(i + 1), "label": titulo[:80], "field": "item",
                     "hint": " · ".join(pistas)})
     return out
@@ -282,6 +291,7 @@ from .actions import (  # noqa: E402,F401
 from . import playability as _plays  # noqa: E402 — which rows the player refused
 from .queue_search import _a_queue_search  # noqa: E402 — V2-781: «a few videos, back to back»
 from . import blocking as _blocking  # noqa: E402 — which channel «este canal» is, and the block itself
+from . import sound as _sound  # noqa: E402 — V2-791: what was ordered vs what the player lets be heard
 
 
 # V2-778 F1-12 — one function per action (in `actions.py`), and `apply_action` is the table lookup. Each body
@@ -324,6 +334,7 @@ ACTIONS = {
     "set_volume": _a_set_volume,
     "restart": _a_restart,
     "close": _a_close,
+    "player_audio": _sound.player_audio,
 }
 
 

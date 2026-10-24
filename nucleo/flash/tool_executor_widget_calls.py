@@ -305,7 +305,7 @@ def _apply_widget_data(wid: str, action_name: str, payload: dict, ref: str='', *
         # joins no values and `_word_overlap` is then 0 against any sentence, so the hatch never opens.
         # The incident, turn by turn: `test_a_refused_action_is_not_remembered_as_done.py`.
         # V2-717: the predicate lives in `data_ops.is_context_bleed` — and a VIEW-op is never a drag.
-        if _txw._data_ops.is_context_bleed(brain._last_dataop, wid, action_name, payload, _txw._bnotes.operator_half(text)):
+        if _txw._data_ops.is_context_bleed(brain._last_dataop, wid, action_name, payload, _txw._bnotes.operator_half(text), brief=_brief):  # V2-791: a redo runs
             emit("brain", "🛡️ data-op del turno anterior re-emitida — ignorada (context-bleed)",
                  # …and it SAYS what it threw away. The sibling guards in `_handle_widget_data_tool`
                  # carry the discarded payload; this one carried only «agenda:cancel_meeting», so the

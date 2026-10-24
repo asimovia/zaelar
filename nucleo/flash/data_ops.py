@@ -732,7 +732,8 @@ def is_identical_retry_of_refused(wid: str, action: str, payload: dict | None, *
     return ((now if now is not None else _t.time()) - l_ts) < _REFUSED_S
 
 
-def is_context_bleed(last, wid: str, action: str, payload: dict | None, said: str, *, now: float | None = None) -> bool:
+def is_context_bleed(last, wid: str, action: str, payload: dict | None, said: str, *, now: float | None = None,
+                     brief=None) -> bool:
     """The V2-038 anti-drag rule, unchanged for what it was built for: a MUTATION identical to the one that
     just ran (<120 s), whose content the turn does not even mention, is the model dragging the previous
     turn's op («borra el reloj» dragged the dentist's `add_meeting` → a duplicate appointment). The hatches —
@@ -767,4 +768,5 @@ def is_context_bleed(last, wid: str, action: str, payload: dict | None, said: st
             return False
     except Exception:  # noqa: BLE001
         pass
-    return True
+    from nucleo.flash import redo_license as _redo_lic     # V2-791: a REDO is not a drag
+    return not _redo_lic.licensed(last, wid, said, brief=brief)

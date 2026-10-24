@@ -149,6 +149,16 @@ below is the first kind, or it names the mechanism that replaced the second.
 - **CRIT-K11 · A close order answered with a player's pause is the card's CLOSE** («cierra la música» →
   `musica:pause` closes the card, both channels through `card_close.data_close`, and the receipt says closed).
   — since 2026-10-11 · nodes 2.473, 2.430.
+- **CRIT-K12 · A redo is not a drag.** A re-emitted op is context-bleed only when the previous one LANDED and the
+  turn did not ask for it again: the card reporting afterwards that it did not happen (`late_report.falsified_since`),
+  his turn naming that card as its target (never one named to be left alone), or the redo verdict on that card make
+  it a redo that runs — with or without a verdict, no phrase table (`nucleo/flash/redo_license.py`). — since
+  2026-10-24 · nodes 2.793.
+- **CRIT-K13 · What an order changes ends where he can see or hear it, or the card says why not.** An answer that
+  fills a card's list brings that face forward; a video ordered to be watched wants sound unless he muted it, and
+  what the player really lets be heard is the player's own report (`audio_blocked`: the hint stays, the brain reads
+  it, an agent order is told); what it shows carries the fact he needs to check it (a video's publication date).
+  — since 2026-10-24 · nodes 2.791, 2.792 · `widgets/youtube/sound.py`, `widgets/youtube/library._fill_list`.
 
 ## 4 · Errands and workers
 

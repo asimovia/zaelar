@@ -540,6 +540,7 @@
  },
  "youtube": {
   "queue_empty": "La cola ya está vacía: no había nada que quitar.",
+  "audio_blocked": "El vídeo está sonando en silencio: el navegador no me deja activarle el sonido desde la voz. Toca una vez el altavoz de la tarjeta y se oirá.",
   "exhausted": "No he podido ponerlo: «{title}» no se puede reproducir aquí (su propietario bloquea verlo fuera de YouTube) y no me queda otro vídeo que sí se pueda.",
   "explicit": "«{title}» no se puede reproducir aquí: su propietario solo deja verlo en YouTube.",
   "block": {
