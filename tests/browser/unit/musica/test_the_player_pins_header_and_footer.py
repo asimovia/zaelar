@@ -39,12 +39,14 @@ def _track(title, artist="", **extra):
     return t
 
 
-def _data(playlists=None, now_playing=None, yt=None, top=None, recent=None, view=None, fav_current=False):
+def _data(playlists=None, now_playing=None, yt=None, top=None, recent=None, view=None, fav_current=False,
+          modes=None):
     return {
         "connected": bool(now_playing), "can_connect": False, "own_client_id_set": False,
         "default_available": False, "redirect_uri": "", "now_playing": now_playing, "mode": "idle",
         "yt": yt or {}, "playlists": playlists or [], "recent": recent or [], "counts": {}, "top": top or [],
         "fav_current": fav_current, "view": view or {"kind": "home", "id": ""},
+        "modes": modes or {"shuffle": False, "repeat": "off", "supported": False},
     }
 
 
@@ -114,13 +116,14 @@ def test_idle_playback_bar_is_not_shaped_like_a_track(_page):
     assert _page.query_selector(".hb-mus2-bart") is None
     assert _page.query_selector(".hb-mus2-bara") is None
     buttons = _page.query_selector_all(".hb-mus2-barc button")
-    assert len(buttons) == 5, "prev/play/next/vol-down/vol-up, still all present — just inert"
+    assert len(buttons) == 5, "shuffle/prev/play/next/repeat (V2-795), still all present — just inert"
     assert all(b.is_disabled() for b in buttons), "nothing loaded: the transport has nothing to act on"
 
 
 def test_a_loaded_track_never_shows_the_idle_hint(_page):
     _mount(_page, _data(yt={"videoId": "abc", "title": "Song", "artist": "Artist", "paused": False,
-                            "cmd_seq": 1, "art": ""}))
+                            "cmd_seq": 1, "art": ""},
+                        modes={"shuffle": False, "repeat": "off", "supported": True}))
     bar = _page.query_selector(".hb-mus2-bar")
     assert "empty" not in (bar.get_attribute("class") or "")
     assert _page.query_selector(".hb-mus2-baridle") is None

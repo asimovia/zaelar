@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import logging
 import os
+import random
 import re
 import urllib.parse
 import urllib.request
@@ -259,20 +260,36 @@ class YouTubeAudioProvider(MusicProvider):
                            extra={"surface": "widget", "widget": _WID, "queued": q, "queue_len": len(queue)})
 
     def on_ended(self) -> MusicResult:
-        """The track ended (reported by the widget) -> play the next from the queue. If the queue is empty, do
-        nothing (leave the last track loaded, implicitly paused after ending)."""
+        """The track ended (reported by the widget) -> what the play modes say comes next (V2-795): the same song
+        again under «repeat one», otherwise the next queued one — at random under shuffle — with the song that
+        just ended going to the back of the queue under «repeat all». An empty queue with no repeat does nothing
+        (the last track stays loaded, implicitly paused after ending)."""
+        return self._advance(manual=False)
+
+    def _advance(self, manual: bool) -> MusicResult:
         yt = _load_yt()
+        if not manual and yt.get("repeat") == "one" and yt.get("videoId"):
+            return self._restart(yt, "ended")
         queue = list(yt.get("queue") or [])
+        cur_q = (yt.get("query") or yt.get("title") or "").strip()
+        if yt.get("repeat") == "all" and cur_q and yt.get("videoId"):
+            queue.append(cur_q)              # the song that ends goes to the back: the queue never runs dry
         if not queue:
             return MusicResult(ok=True, provider=self.name, action="ended", reason="empty_queue",
                                extra={"surface": "widget", "widget": _WID})
-        nxt = queue.pop(0)
+        i = random.randrange(len(queue)) if (yt.get("shuffle") and len(queue) > 1) else 0
+        nxt = queue.pop(i)
         vid, title = _resolve(nxt)
         if not vid:
             # that one could not be resolved -> skip it and try the next (recursion bounded by the pop)
             yt["queue"] = queue
+            if yt.get("repeat") == "all" and cur_q and queue and queue[-1] == cur_q:
+                queue.pop()                  # do not let the recursion append the current song once more
             _save_yt(yt)
-            return self.on_ended()
+            return self._advance(manual)
+        if vid == yt.get("videoId"):         # «repeat all» over a one-song queue: the same video again
+            yt["queue"] = queue
+            return self._restart(yt, "ended")
         _push_history(yt)
         yt.update({"videoId": vid, "title": title or nxt, "query": nxt, "paused": False,
                    "muted": False, "queue": queue, "art": _yt_thumb(vid)})
@@ -281,6 +298,57 @@ class YouTubeAudioProvider(MusicProvider):
                            track=Track(id=vid, uri=f"yt:{vid}", title=title or nxt, art=_yt_thumb(vid)),
                            message=_t("play", label=title or nxt),
                            extra={"surface": "widget", "widget": _WID, "videoId": vid, "queue_len": len(queue)})
+
+    def _restart(self, yt: dict, action: str) -> MusicResult:
+        """The SAME video from the top: a seek to 0 plus a play command — the iframe is never reloaded."""
+        prev = dict(yt.get("seek") or {})
+        yt["seek"] = {"n": int(prev.get("n") or 0) + 1, "to": 0.0}
+        yt["paused"] = False
+        _bump(yt, "seek")
+        return MusicResult(ok=True, provider=self.name, action=action,
+                           track=Track(id=yt.get("videoId", ""), title=yt.get("title", ""), art=yt.get("art") or ""),
+                           extra={"surface": "widget", "widget": _WID, "videoId": yt.get("videoId"), "repeat": True})
+
+    # ── play modes and the queue as a list (V2-795) ───────────────────────────────────────────────────────
+    def set_shuffle(self, on: bool) -> MusicResult:
+        yt = _load_yt()
+        yt["shuffle"] = bool(on)
+        _save_yt(yt)                         # no command bump: the player has nothing to do until the song ends
+        return MusicResult(ok=True, provider=self.name, action="shuffle", message=_t("done"),
+                           extra={"surface": "widget", "widget": _WID, "shuffle": bool(on)})
+
+    def set_repeat(self, mode: str) -> MusicResult:
+        mode = mode if mode in ("off", "one", "all") else "off"
+        yt = _load_yt()
+        yt["repeat"] = mode
+        _save_yt(yt)
+        return MusicResult(ok=True, provider=self.name, action="repeat", message=_t("done"),
+                           extra={"surface": "widget", "widget": _WID, "repeat": mode})
+
+    def queue_items(self) -> "list[Track]":
+        return [Track(title=q, uri="") for q in (_load_yt().get("queue") or []) if str(q).strip()]
+
+    def queue_edit(self, op: str, index: int = -1, to: int = -1) -> MusicResult:
+        """The queue is ours (a list of query strings in the store), so all three edits are real here. Nothing
+        is reloaded: `cmd_seq` is not bumped, so the song that is playing is never touched."""
+        yt = _load_yt()
+        queue = list(yt.get("queue") or [])
+        act = "queue_" + str(op or "")
+        if op == "clear":
+            queue = []
+        elif op in ("remove", "move"):
+            if not 0 <= index < len(queue):
+                return MusicResult(ok=False, provider=self.name, action=act, reason="no_track",
+                                   message=_t("no_track", q=str(index + 1)))
+            item = queue.pop(index)
+            if op == "move":
+                queue.insert(max(0, min(len(queue), to)), item)
+        else:
+            return MusicResult(ok=False, provider=self.name, action=act, reason="unsupported")
+        yt["queue"] = queue
+        _save_yt(yt)
+        return MusicResult(ok=True, provider=self.name, action=act, message=_t("done"),
+                           extra={"surface": "widget", "widget": _WID, "queue_len": len(queue)})
 
     def _cmd(self, cmd: str, action: str, msg_key: str, **msg_kw) -> MusicResult:
         yt = _load_yt()
@@ -311,10 +379,10 @@ class YouTubeAudioProvider(MusicProvider):
         if not yt.get("videoId"):
             return MusicResult(ok=False, provider=self.name, action="next", reason="no_track",
                                message=_t("no_track", q=""))
-        if not (yt.get("queue") or []):
+        if not (yt.get("queue") or []) and yt.get("repeat") != "all":
             return MusicResult(ok=False, provider=self.name, action="next", reason="empty_queue",
                                message=_t("no_next"))
-        res = self.on_ended()                # same advance the natural end of a track uses
+        res = self._advance(manual=True)     # the natural end's advance, minus «repeat one» (a skip is a skip)
         return MusicResult(ok=res.ok, provider=self.name, action="next", track=res.track,
                            message=res.message, reason=res.reason, extra=res.extra)
 
@@ -389,7 +457,8 @@ class YouTubeAudioProvider(MusicProvider):
         return NowPlaying(playing=not bool(yt.get("paused")), volume=yt.get("volume"),
                           track=Track(id=yt.get("videoId", ""), title=yt.get("title", ""),
                                      art=yt.get("art") or _yt_thumb(yt.get("videoId", ""))),
-                          provider=self.name)
+                          provider=self.name, shuffle=bool(yt.get("shuffle")),
+                          repeat=str(yt.get("repeat") or "off"))
 
     def status(self) -> dict:
         return {"provider": self.name, "connected": True, "kind": "in_browser_audio"}

@@ -25,7 +25,7 @@ import pytest
 
 MARGIN = 64
 CEILINGS = {(): 24_608, ("agenda", "mensajeria"): 29_103,
-            ("agenda", "mensajeria", "youtube", "contactos", "results", "musica"): 36_561}
+            ("agenda", "mensajeria", "youtube", "contactos", "results", "musica"): 36_060}   # V2-795: musica usage trimmed
 TARGET_EVERYDAY = 30_000
 
 

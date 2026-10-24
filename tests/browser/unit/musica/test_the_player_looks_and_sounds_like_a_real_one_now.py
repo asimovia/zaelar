@@ -105,11 +105,14 @@ def test_every_control_is_an_inline_svg_never_an_emoji_glyph(mounted):
     page, mount = mounted
     mount(_data(yt={"videoId": "abc", "title": "Song", "artist": "Artist", "paused": False, "cmd_seq": 1,
                      "art": "https://i.ytimg.com/vi/abc/hqdefault.jpg"}))
-    bar_text = page.inner_text(".hb-mus2-barc")
-    for glyph in ("⏮", "⏸", "▶", "⏭", "🔉", "🔊", "♥"):
+    bar_text = page.inner_text(".hb-mus2-bar")
+    for glyph in ("⏮", "⏸", "▶", "⏭", "🔉", "🔊", "♥", "🔀", "🔁"):
         assert glyph not in bar_text, f"emoji glyph {glyph!r} survived the redesign"
-    assert page.eval_on_selector_all(".hb-mus2-barc button", "els => els.length") == 5 + 1  # 5 controls + heart
-    assert page.eval_on_selector_all(".hb-mus2-barc button svg", "els => els.length") == 6
+    # V2-795 — shuffle/prev/play/next/repeat in the transport; the heart and the mute beside it
+    assert page.eval_on_selector_all(".hb-mus2-barc button", "els => els.length") == 5
+    assert page.eval_on_selector_all(".hb-mus2-barc button svg", "els => els.length") == 5
+    assert page.eval_on_selector_all(".hb-mus2-barside button svg", "els => els.length") == 1, "the heart"
+    assert page.eval_on_selector_all(".hb-mus2-barprog button svg", "els => els.length") == 1, "the mute"
 
 
 def test_a_missing_cover_shows_the_note_icon_not_a_fallback_emoji(mounted):
@@ -147,7 +150,7 @@ def test_a_dead_cover_url_falls_back_to_the_note_icon_not_a_broken_image(mounted
 def test_the_heart_is_filled_when_the_current_track_is_already_a_favorite(mounted):
     page, mount = mounted
     mount(_data(yt={"videoId": "x", "title": "Song", "paused": False, "cmd_seq": 1}, fav_current=True))
-    heart = page.query_selector(".hb-mus2-barc .fav")
+    heart = page.query_selector(".hb-mus2-bar .fav")
     assert heart is not None
     assert "fill" in (heart.query_selector("svg").get_attribute("stroke") or "") or \
         heart.query_selector("svg").get_attribute("fill") == "currentColor"
@@ -156,8 +159,8 @@ def test_the_heart_is_filled_when_the_current_track_is_already_a_favorite(mounte
 def test_the_heart_is_outline_when_nothing_is_saved_yet(mounted):
     page, mount = mounted
     mount(_data(yt={"videoId": "x", "title": "Song", "paused": False, "cmd_seq": 1}, fav_current=False))
-    assert page.query_selector(".hb-mus2-barc .fav") is None
-    heart_svg = page.query_selector(".hb-mus2-barc button:last-child svg")
+    assert page.query_selector(".hb-mus2-bar .fav") is None
+    heart_svg = page.query_selector(".hb-mus2-barside button:first-child svg")
     assert heart_svg.get_attribute("fill") == "none"
 
 

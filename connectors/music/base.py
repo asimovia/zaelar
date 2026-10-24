@@ -45,6 +45,10 @@ class NowPlaying:
     #: provider does not say», which is not the same as «the song is at the start» — the caller draws no
     #: progress bar at all rather than one pinned at zero.
     progress_ms: int = 0
+    #: Play modes (V2-795): whether the next song is picked at random, and what happens at the end of one
+    #: («off» stops after the queue, «one» replays the song, «all» starts the queue over).
+    shuffle: bool = False
+    repeat: str = "off"
 
 
 @dataclass
@@ -131,6 +135,42 @@ class MusicProvider(ABC):
         (Spotify), so a list must be handed over whole. Everyone else takes the facade's road: the first now,
         the rest queued — their queue is their own."""
         return MusicResult(ok=False, provider=self.name, action="play", reason="unsupported")
+
+    # ── PLAY MODES and the QUEUE as a list (V2-795) — optional, base = unsupported, said plainly ──────────────
+    def set_shuffle(self, on: bool) -> MusicResult:
+        """Pick the next queued song at random (`on`) or in order."""
+        return MusicResult(ok=False, provider=self.name, action="shuffle", reason="unsupported")
+
+    def set_repeat(self, mode: str) -> MusicResult:
+        """`off` | `one` | `all`."""
+        return MusicResult(ok=False, provider=self.name, action="repeat", reason="unsupported")
+
+    def queue_items(self) -> "list[Track] | None":
+        """What will play next, in order. None = this provider does not expose its queue."""
+        return None
+
+    def queue_edit(self, op: str, index: int = -1, to: int = -1) -> MusicResult:
+        """`remove` the item at `index`, `move` it to `to`, or `clear` the queue. Base: unsupported (a provider
+        whose API offers none of these — Spotify — keeps a read-only queue, which is the honest answer)."""
+        return MusicResult(ok=False, provider=self.name, action="queue_" + (op or ""), reason="unsupported")
+
+    def play_context(self, uri: str, label: str = "") -> MusicResult:
+        """Play a whole album/playlist the provider knows by its own uri. Base: unsupported (the caller then
+        plays it track by track, by words)."""
+        return MusicResult(ok=False, provider=self.name, action="play", reason="unsupported")
+
+    # ── CATALOGUE (V2-795) — optional; None = «ask someone else» (`connectors.music.catalog` falls back) ────
+    def search_catalog(self, query: str, limit: int = 8) -> "dict | None":
+        """{tracks, artists, albums, playlists} as plain dicts (see `connectors.music.catalog`)."""
+        return None
+
+    def artist_page(self, artist_id: str) -> "dict | None":
+        """{artist, top, albums} for one artist of THIS provider's catalogue."""
+        return None
+
+    def album_page(self, album_id: str) -> "dict | None":
+        """{album, tracks} for one album of THIS provider's catalogue."""
+        return None
 
     def status(self) -> dict:
         """Redacted PUBLIC view for the UI (never secrets). Overridable; base = connection only."""

@@ -125,3 +125,38 @@ def playback_state() -> dict:
 def add_to_queue(uri: str, device_id: str = "") -> dict:
     """Append one track to the player's queue (V2-795). The Web API can add; it cannot remove, reorder or clear."""
     return _request("POST", "/me/player/queue", params={"uri": uri, "device_id": device_id or None})
+
+
+# ── play modes and the queue (V2-795) — all under the playback scopes the app already holds ───────────────
+def shuffle(state: bool, device_id: str = "") -> dict:
+    return _request("PUT", "/me/player/shuffle",
+                    params={"state": "true" if state else "false", "device_id": device_id or None})
+
+
+def repeat(state: str, device_id: str = "") -> dict:
+    """`state`: track | context | off (Spotify's own words)."""
+    return _request("PUT", "/me/player/repeat", params={"state": state, "device_id": device_id or None})
+
+
+def queue() -> dict:
+    """{currently_playing, queue:[items]} — read-only: the Web API cannot remove, reorder or clear it."""
+    return _request("GET", "/me/player/queue") or {}
+
+
+# ── catalogue (V2-795) — no scope needed beyond a user token ─────────────────────────────────────────────
+def artist(artist_id: str) -> dict:
+    return _request("GET", f"/artists/{artist_id}") or {}
+
+
+def artist_top_tracks(artist_id: str) -> list:
+    return (_request("GET", f"/artists/{artist_id}/top-tracks", params={"market": "from_token"}) or {}).get(
+        "tracks", [])
+
+
+def artist_albums(artist_id: str, limit: int = 12) -> list:
+    return (_request("GET", f"/artists/{artist_id}/albums",
+                     params={"include_groups": "album,single", "limit": limit}) or {}).get("items", [])
+
+
+def album(album_id: str) -> dict:
+    return _request("GET", f"/albums/{album_id}") or {}

@@ -1,195 +1,299 @@
-// musica: face of the music connector (V2-041) with Spotify-style aesthetics (V2-058, Phase 1), a PRO pass
-// (V2-629/V2-678) and the V2-717 redesign: the widget is ONE box (the canvas window IS the frame — no card of
-// our own drawn inside it), the bar above the content is the ONE bar the house standard allows, and the song
-// that is sounding OCCUPIES the card instead of hiding in a strip at the foot. Contract:
-// render(el, data, ctx).
+// musica: face of the music connector (V2-041) — Spotify-style lists (V2-058), a PRO pass (V2-629/V2-678), the
+// V2-717 redesign (the widget is ONE box: the canvas window IS the frame; the bar above the content is the ONE bar
+// the house standard allows; the song that is sounding OCCUPIES the card) and V2-795: the card does what a player
+// does — a queue you can see and edit, shuffle and repeat, a volume you can mute, list management (rename, delete,
+// reorder, play from a song, shuffle a list), a heart on every row, a search over the catalogue with artist and
+// album pages — and the content is SECTIONED: each shelf is a quiet panel one rung up the elevation ladder
+// (V2-689), never a frame around the whole card. Contract: render(el, data, ctx).
 // data = GET /widgets/musica/data -> {mode:"spotify"|"youtube"|"local"|"idle", connected, can_connect,
-//   own_client_id_set, default_available, redirect_uri, now_playing (spotify, with progress_ms/duration_ms)|null,
-//   yt:{videoId,title,artist,paused,muted,volume,cmd_seq,art,seek:{n,to,by}},
-//   local:{src,title,artist,art,paused,seq,seek:{n,to,by}},
+//   own_client_id_set, default_available, redirect_uri, now_playing (spotify, with progress_ms/duration_ms,
+//   shuffle, repeat)|null, yt:{videoId,title,artist,paused,muted,volume,cmd_seq,art,seek:{n,to,by},queue,shuffle,
+//   repeat}, local:{src,title,artist,art,paused,seq,seek:{n,to,by}},
 //   playlists:[{id,name,art,tracks:[{title,artist,album,art,query,uri,videoId}]}], recent:[track],
-//   top:[track+count], fav_current:bool, view:{kind:"home|now|library|playlist|connect",id}}.
+//   top:[track+count], fav_current:bool, fav:{id,name}, modes:{shuffle,repeat,supported},
+//   queue:{items,editable,source}, volume:{level,muted}, browse:{search,artist,album},
+//   view:{kind:"home|now|library|queue|playlist|search|artist|album|connect",id}}.
 //   ctx.action(name,payload) -> POST /widgets/musica/action (JSON).
 //
-// FOUR faces, one of them adaptive (drawView): `home` is the song when something sounds and the library when
-// nothing does; `now` and `library` are the same two pinned by a click or a sentence; `playlist` is a cover
-// plus its tracklist; `connect` is the sources screen. PLAYBACK = the connector (ctx.action ->
-// connectors.music.control); do not reinvent the backend here.
+// Faces (drawView): `home` is ADAPTIVE — the song when something sounds, the library when nothing does; `now` and
+// `library` pin either; `queue`, `playlist`, `search`, `artist`, `album` and `connect` are screens of their own.
+// PLAYBACK = the connector (ctx.action -> connectors.music); nothing here reinvents a backend, and nothing here
+// touches the network: the catalogue answers arrive in the store (`browse`) and are painted from there.
 //
 // THE PLAYHEAD (V2-717) belongs to whoever is making the sound, and that is why there is no position in the
-// store. A local file and the hidden YouTube iframe play in THIS page and hold their own clock, so the card
-// reads them directly and a drag seeks them with no server in the loop at all; Spotify plays on a device
-// somewhere else, so its `progress_ms` is a photograph the card advances locally and a drag is a round trip.
-// A seek asked by VOICE travels the other way — a numbered command left in the store (`seek:{n,to,by}`) that
-// `applyPendingSeek` applies here, because the server has never had a playhead to move.
+// store. A local file and the hidden YouTube iframe play in THIS page and hold their own clock, so the card reads
+// them directly and a drag seeks them with no server in the loop; Spotify plays on a device somewhere else, so its
+// `progress_ms` is a photograph the card advances locally and a drag is a round trip. A seek asked by VOICE
+// travels the other way — a numbered command in the store (`seek:{n,to,by}`) that `applyPendingSeek` applies.
 //
 // The hidden YouTube-audio player is reused between re-renders (persistent `_ytHost`): rebuilding the view never
-// reloads the iframe, which would restart the song. It is recreated only when videoId changes; if cmd_seq changes,
-// the pause/volume command is applied by postMessage. Spotify connection remains intact.
+// reloads the iframe, which would restart the song.
 //
-// COVER ART (V2-629), fast first then enhancements — never the other way round:
-//  1. FREE and INSTANT: a track played through YouTube-audio already carries `art` (the video's own thumbnail,
-//     set server-side the moment its videoId resolves — connectors/music/youtube_audio.py — at ZERO extra cost:
-//     no fetch of ours, just a templated CDN URL the <img> tag loads on its own). Spotify tracks already carry
-//     real album art from Spotify's own API. Neither ever delays "sonar rápido".
-//  2. SLOW and CACHED: a track this widget never actually played (typed into a list, or a legacy row) has no
-//     art. `maybeEnrich()` below asks the server for it AFTER paint, once per song per page life (`_enrichAsked`),
-//     never on the play path — the server caches the answer (hit or miss) so the SAME song is never looked up
-//     twice, on this machine or the next request (widgets/musica/data.py::_enrich_art).
+// ICONS are inline SVG in the SAME visual language as the app shell (frontend/app/lib/icons.js), duplicated
+// locally because widget.js cannot import from frontend/app.
 //
-// ICONS are inline SVG in the SAME visual language as the app shell (frontend/app/lib/icons.js): viewBox
-// 0 0 24 24, stroke=currentColor, stroke-width 2, round caps/joins — duplicated locally because widget.js
-// cannot import from frontend/app (same isolation rule V2-557 already applied to `_norm` below).
+// ⚠️ No backtick may appear inside the CSS template below, not even in a comment: it ends the literal and kills
+// the whole module (met twice; `node --check` catches it, nothing at runtime does).
 
 function injectStyles(){
   if(document.getElementById("hb-mus2-css")) return;
   const s = document.createElement("style"); s.id = "hb-mus2-css"; s.textContent = `
-  /* V2-678 — a real player has THREE bands that never trade places: a header band, a scrolling middle,
-     and a footer transport bar that is visually LIFTED off the content above it (Spotify/Amazon Music's
-     own shape) instead of reading as a stray line drawn across an otherwise flat, empty rectangle. The
-     mechanism is the same one already proven on the youtube widget's player tab: the widget's own root
-     fills the card (height:100%) and switches OFF the card's outer scroll (the :has() rule below), so an
-     internal region owns the overflow instead of the whole card growing past its frame. */
+  /* THREE bands that never trade places: the one bar, a scrolling middle, the transport at the foot. The root
+     fills the card and switches OFF the card's own scroll (the :has rule), so the middle owns the overflow. */
   .hb-scroll:has(> .hb-mus2-root){overflow:hidden}
   .hb-mus2-root{position:relative;height:100%;display:flex;flex-direction:column;overflow:hidden}
-  /* el._viewHost — a plain, otherwise unclassed div between root and the visible card (kept unrebuilt across
-     re-renders so the hidden YouTube/local-audio player never restarts, see render()) — needs its OWN place
-     in the height chain: with no rule of its own it defaults to auto height, and a percentage height on ITS
-     child (.hb-mus2) resolves against "auto" as though no height were set at all, which is exactly how the
-     three-zone pin silently no-opped the first time this was built. */
+  /* el._viewHost sits between root and the visible card and needs its own place in the height chain: with no
+     rule of its own it is height:auto, and a percentage height under it resolves against nothing (V2-678). */
   .hb-mus2-viewhost{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
-  /* V2-717 — ONE box. The canvas already draws a window around every widget: a border, a radius and a
-     background of OUR OWN inside it were a second box drawn on top of the first — «has puesto un contenedor
-     exterior con el titulo y los botones, y dentro has metido otra caja como si eso fuera el widget». What
-     separates the three bands now is TONE and a hairline, never a frame: the widget IS the window. */
-  .hb-mus2{--sp-green:#1DB954;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+  /* V2-717 — ONE box: no border, radius or background of our own; the window is the frame.
+     V2-795 — the rungs this card uses, named once so every panel picks the same step of the ladder:
+     the card sits on --hb-bg (surface 1), a PANEL is --hb-bg-soft (surface 2), a card inside a panel is
+     --hb-bubble (surface 3), and hover is --hb-hover. Hairlines are alpha so they weigh the same on every rung. */
+  .hb-mus2{--sp-green:#1DB954;--mus-panel:var(--hb-bg-soft,rgba(127,127,127,.07));
+           --mus-card:var(--hb-bubble,rgba(127,127,127,.11));--mus-hover:var(--hb-hover,rgba(127,127,127,.16));
+           --mus-line:var(--hb-line-subtle,rgba(127,127,127,.18));--mus-r:var(--hb-r-l,12px);
+           --mus-shadow:var(--hb-shadow-1,0 1px 2px rgba(0,0,0,.18),0 4px 12px rgba(0,0,0,.10));
+           font-family:var(--sans,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif);
            width:100%;height:100%;min-height:0;box-sizing:border-box;background:transparent;overflow:hidden;
-           color:var(--hb-ink,#0d1622);display:flex;flex-direction:column}
-  /* THE ONE BAR (the window chrome is the other — the house standard, amended by V2-715). It is a ROW now,
-     not a stacked header: no brand disc, no «Tu musica» under a window that already says «Musica». */
-  .hb-mus2-headfix{flex:0 0 auto;background:var(--hb-bg-soft,rgba(127,127,127,.05));
-                   border-bottom:1px solid var(--hb-line,#eef1f6);padding:5px 12px;min-height:32px;
-                   display:flex;align-items:center;gap:10px}
-  .hb-mus2-scroll{flex:1 1 auto;min-height:0;overflow:auto;padding:16px 18px;display:flex;flex-direction:column;gap:18px}
-  /* A screen with ONE thing on it centres that thing instead of pinning it to the top-left corner of a big
-     empty card, which is what «se ve tan vacia» was describing. */
-  /* safe center, and not plain center: a flex column that centres CLIPS what overflows, at both ends and
-     with no scrollbar to reach it — measured on the empty library, whose disc was being cut in half by the
-     bar above it. The safe keyword falls back to start exactly when that would happen. */
-  .hb-mus2-scroll.mid{justify-content:safe center;align-items:center}
+           color:var(--hb-ink,#0d1622);display:flex;flex-direction:column;container-type:inline-size}
   .hb-mus2 svg{display:block}
-  .hb-mus2-art svg{width:38%;height:38%;color:rgba(255,255,255,.92)}
-  .hb-mus2-new .hb-mus2-art svg{color:var(--hb-muted,#5b6b82)}
-  .hb-mus2-top{display:flex;align-items:center;gap:9px}
-  .hb-mus2-top b{font-size:18.5px;font-weight:800;letter-spacing:-.015em}
-  .hb-mus2-prov{margin-left:auto;font-size:11px;color:var(--hb-muted,#5b6b82);border:1px solid var(--hb-line,#eef1f6);
-                border-radius:999px;padding:3px 9px;display:flex;align-items:center;gap:5px;flex:0 0 auto;
-                background:var(--hb-bg,#fff);cursor:pointer;font-family:inherit;line-height:1.5}
+  .hb-mus2 button{font-family:inherit}
+
+  /* ── THE ONE BAR: where you are on the left, the search and the source chip in ONE right cluster ── */
+  .hb-mus2-headfix{flex:0 0 auto;background:var(--hb-bg-soft,rgba(127,127,127,.05));
+                   border-bottom:1px solid var(--mus-line);padding:5px 12px;min-height:32px;
+                   display:flex;align-items:center;gap:8px}
+  .hb-mus2-right{margin-left:auto;display:flex;align-items:center;gap:6px;flex:0 0 auto}
+  .hb-mus2-prov{font-size:12px;color:var(--hb-muted,#5b6b82);border:1px solid var(--hb-line,#e3e8f0);
+                border-radius:999px;padding:3px 10px;display:flex;align-items:center;gap:6px;flex:0 0 auto;
+                background:var(--hb-bg,transparent);cursor:pointer;line-height:1.5}
   .hb-mus2-prov:hover{border-color:var(--hb-accent,#3D6FE0);color:var(--hb-ink,#0d1622)}
   .hb-mus2-dot{width:7px;height:7px;border-radius:50%;background:var(--hb-neutral,#c2ccda);flex:0 0 auto}
   .hb-mus2-dot.on{background:var(--sp-green)}
-  .hb-mus2-sec{display:flex;flex-direction:column;gap:9px}
-  .hb-mus2-sech{font-size:13.5px;font-weight:800;letter-spacing:-.01em}
-  .hb-mus2-lists{display:flex;gap:12px;overflow-x:auto;padding-bottom:3px}
-  .hb-mus2-pl{flex:0 0 auto;width:114px;cursor:pointer;display:flex;flex-direction:column;gap:7px}
-  .hb-mus2-art{border-radius:10px;display:flex;align-items:center;justify-content:center;overflow:hidden;
-               background:linear-gradient(135deg,var(--hb-accent,#3D6FE0),var(--hb-accent2,#16B8A6));
-               box-shadow:0 6px 16px rgba(0,0,0,.16);transition:transform .15s,box-shadow .15s}
+  .hb-mus2-seg{display:flex;gap:2px;border:1px solid var(--hb-line,#e3e8f0);border-radius:999px;padding:2px;
+               background:var(--hb-bg,transparent);flex:0 1 auto;min-width:0;overflow:hidden}
+  .hb-mus2-segb{border:0;background:none;color:var(--hb-muted,#5b6b82);font-size:12px;font-weight:700;
+                padding:4px 10px;border-radius:999px;cursor:pointer;display:flex;align-items:center;gap:5px;
+                line-height:1;white-space:nowrap}
+  .hb-mus2-segb svg{width:13px;height:13px;flex:none}
+  .hb-mus2-segb:hover{color:var(--hb-ink,#0d1622)}
+  .hb-mus2-segb.on{background:color-mix(in srgb,var(--hb-accent,#3D6FE0) 18%,transparent);color:var(--hb-ink,#0d1622);
+                   box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--hb-accent,#3D6FE0) 55%,transparent)}
+  .hb-mus2-back{border:0;background:none;color:var(--hb-muted,#5b6b82);font-size:13px;font-weight:600;cursor:pointer;
+                display:flex;align-items:center;gap:4px;padding:2px 4px 2px 0;flex:0 0 auto}
+  .hb-mus2-back svg{width:15px;height:15px}
+  .hb-mus2-back:hover{color:var(--hb-accent,#3D6FE0)}
+  /* a quiet square icon button — the house kit's shape, drawn here so a card rendered outside the app keeps it */
+  .hb-mus2-ibtn{border:1px solid transparent;background:none;color:var(--hb-muted,#5b6b82);cursor:pointer;
+                width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;
+                padding:0;flex:0 0 auto;transition:background .12s,color .12s}
+  .hb-mus2-ibtn svg{width:16px;height:16px}
+  .hb-mus2-ibtn:hover{background:var(--mus-hover);color:var(--hb-ink,#0d1622)}
+  .hb-mus2-ibtn.on{color:var(--sp-green)}
+  .hb-mus2-ibtn.risk:hover{color:var(--hb-risk,#e5484d)}
+  .hb-mus2-ibtn:disabled{opacity:.35;cursor:default;pointer-events:none}
+  .hb-mus2-sbox{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:7px;height:28px;padding:0 10px;
+                border:1px solid var(--hb-line,#e3e8f0);border-radius:999px;background:var(--hb-bg,transparent)}
+  .hb-mus2-sbox:focus-within{border-color:var(--hb-accent,#3D6FE0)}
+  .hb-mus2-sbox svg{width:14px;height:14px;color:var(--hb-muted-2,#9aa7b8);flex:none}
+  .hb-mus2-sinp{flex:1 1 auto;min-width:0;border:0;outline:none;background:none;color:var(--hb-ink,#0d1622);
+                font:inherit;font-size:13px}
+
+  /* ── the middle ── */
+  .hb-mus2-scroll{flex:1 1 auto;min-height:0;overflow:auto;padding:14px;display:flex;flex-direction:column;gap:12px}
+  /* safe center, never plain center: a centred column CLIPS what overflows at both ends (V2-717, measured) */
+  .hb-mus2-scroll.mid{justify-content:safe center;align-items:center;container-type:size}
+  /* a SHORT card (the window is resizable) gives the cover the room first: the facts line goes, the title shrinks */
+  @container (height < 250px){ .hb-mus2-nowm{display:none} .hb-mus2-nowt{font-size:17px;margin-top:8px}
+                               .hb-mus2-nowa{margin-top:2px} .hb-mus2-nowart{height:min(76%,320px)}
+                               .hb-mus2-seek{margin-top:8px} }
+
+  /* V2-795 — A PANEL per shelf: one rung up, a hairline, the soft resting shadow. Quiet on purpose: the content
+     is the music, the panel only says where one group ends and the next begins. */
+  .hb-mus2-sec{display:flex;flex-direction:column;gap:10px;background:var(--mus-panel);border:1px solid var(--mus-line);
+               border-radius:var(--mus-r);box-shadow:var(--mus-shadow);padding:12px;flex:0 0 auto}
+  .hb-mus2-sechead{display:flex;align-items:center;gap:8px;min-height:24px}
+  .hb-mus2-sech{font-size:13.5px;font-weight:700;letter-spacing:-.005em}
+  .hb-mus2-secn{font-size:12px;color:var(--hb-muted-2,#9aa7b8);font-variant-numeric:tabular-nums}
+  .hb-mus2-secact{margin-left:auto;display:flex;align-items:center;gap:6px}
+  .hb-mus2-note{font-size:12px;color:var(--hb-muted,#5b6b82);line-height:1.45}
+  .hb-mus2-pill{border:1px solid var(--hb-line,#e3e8f0);background:var(--mus-card);color:var(--hb-ink,#0d1622);
+                border-radius:999px;padding:4px 11px;font-size:12px;font-weight:600;cursor:pointer;line-height:1.3;
+                display:flex;align-items:center;gap:5px}
+  .hb-mus2-pill svg{width:13px;height:13px}
+  .hb-mus2-pill:hover{border-color:var(--hb-accent,#3D6FE0);background:var(--mus-hover)}
+  .hb-mus2-pill.risk{color:var(--hb-risk,#e5484d)}
+
+  /* lists as CARDS with a cover mosaic; the «new list» is a pill in the panel's head, not a giant tile */
+  .hb-mus2-lists{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px}
+  .hb-mus2-pl{min-width:0;display:flex;flex-direction:column;gap:7px;padding:8px;border-radius:10px;cursor:pointer;
+              background:var(--mus-card);border:1px solid transparent;position:relative;
+              transition:background .14s,transform .14s,box-shadow .14s}
+  .hb-mus2-pl:hover{background:var(--mus-hover);transform:translateY(-1px);box-shadow:var(--mus-shadow)}
+  .hb-mus2-pl .hb-mus2-art{width:100%;height:auto;aspect-ratio:1/1}
+  .hb-mus2-plname{font-size:13px;font-weight:600;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .hb-mus2-plsub{font-size:12px;color:var(--hb-muted,#5b6b82)}
+  .hb-mus2-plplay{position:absolute;right:13px;top:calc(100% - 78px);width:34px;height:34px;border-radius:50%;
+                  border:0;background:var(--sp-green);color:#0b1a10;display:flex;align-items:center;justify-content:center;
+                  cursor:pointer;box-shadow:0 6px 14px rgba(0,0,0,.35);opacity:0;transform:translateY(4px);
+                  transition:opacity .14s,transform .14s}
+  .hb-mus2-plplay svg{width:15px;height:15px}
+  .hb-mus2-pl:hover .hb-mus2-plplay{opacity:1;transform:none}
+
+  .hb-mus2-art{border-radius:8px;display:flex;align-items:center;justify-content:center;overflow:hidden;flex:0 0 auto;
+               background:linear-gradient(135deg,var(--hb-accent,#3D6FE0),var(--hb-accent2,#16B8A6))}
   .hb-mus2-art img{width:100%;height:100%;object-fit:cover}
-  .hb-mus2-pl .hb-mus2-art{width:112px;height:112px}
-  .hb-mus2-pl:hover .hb-mus2-art{transform:translateY(-2px);box-shadow:0 12px 24px rgba(0,0,0,.24)}
-  .hb-mus2-plname{font-size:12.5px;font-weight:600;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .hb-mus2-plsub{font-size:11px;color:var(--hb-muted,#5b6b82)}
-  .hb-mus2-new .hb-mus2-art{background:var(--hb-bg-soft,#fbfdff);border:1.5px dashed var(--hb-line,#eef1f6);
-                            color:var(--hb-muted,#5b6b82);box-shadow:none}
-  .hb-mus2-grid{display:flex;flex-direction:column;gap:1px}
-  .hb-mus2-tr{display:flex;align-items:center;gap:11px;padding:7px 8px;border-radius:9px;cursor:pointer;
-              user-select:none}
-  .hb-mus2-tr:hover{background:var(--hb-bg-soft,#fbfdff)}
-  .hb-mus2-tr.selected{background:var(--hb-bg-soft,#fbfdff);box-shadow:inset 0 0 0 1px var(--hb-line,#eef1f6)}
-  .hb-mus2-tr.playing{background:rgba(29,185,84,.10)}
-  .hb-mus2-tr.playing.selected{background:rgba(29,185,84,.16)}
-  .hb-mus2-tr.playing .hb-mus2-trt{color:var(--sp-green)}
-  .hb-mus2-tr .hb-mus2-art{width:40px;height:40px;box-shadow:none;flex:0 0 auto}
-  .hb-mus2-trn{font-size:12px;color:var(--hb-muted-2,#9aa7b8);font-family:ui-monospace,Menlo,monospace;
-               min-width:16px;text-align:center;display:flex;align-items:center;justify-content:center}
+  .hb-mus2-art svg{width:38%;height:38%;color:rgba(255,255,255,.92)}
+  .hb-mus2-art.fav{background:linear-gradient(135deg,#7b5cff,#e05ca8)}
+  .hb-mus2-mosaic{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr}
+  .hb-mus2-mosaic img{width:100%;height:100%;object-fit:cover;display:block}
+  .hb-mus2-new .hb-mus2-art{background:var(--mus-card);border:1.5px dashed var(--hb-line,#e3e8f0);
+                            color:var(--hb-muted,#5b6b82)}
+  .hb-mus2-new .hb-mus2-art svg{color:var(--hb-muted,#5b6b82)}
+
+  /* ── rows ── */
+  .hb-mus2-grid{display:flex;flex-direction:column;gap:2px}
+  .hb-mus2-tr{display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:8px;cursor:pointer;
+              user-select:none;position:relative;transition:background .12s}
+  .hb-mus2-tr:hover{background:var(--mus-hover)}
+  .hb-mus2-tr.selected{background:var(--mus-card);box-shadow:inset 0 0 0 1px var(--hb-line,#e3e8f0)}
+  /* V2-795 — three states that never look alike: HOVER is a neutral tone; CURRENT (the song the player holds)
+     is a green title and a green edge, with no fill of its own, so it reads the same under the pointer and
+     away from it; the animated meter is drawn ONLY while it is actually sounding. */
+  .hb-mus2-tr.current{box-shadow:inset 3px 0 0 var(--sp-green)}
+  .hb-mus2-tr.current .hb-mus2-trt{color:var(--sp-green)}
+  .hb-mus2-tr.current .hb-mus2-trn svg{width:14px;height:14px;color:var(--sp-green)}
+  .hb-mus2-tr.dragover{box-shadow:inset 0 2px 0 var(--hb-accent,#3D6FE0)}
+  .hb-mus2-tr.current.selected{box-shadow:inset 3px 0 0 var(--sp-green),inset 0 0 0 1px var(--hb-line,#e3e8f0)}
+  .hb-mus2-tr .hb-mus2-art{width:40px;height:40px;border-radius:6px;position:relative}
+  .hb-mus2-trplay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;border:0;padding:0;
+                  background:rgba(0,0,0,.55);color:#fff;opacity:0;cursor:pointer;transition:opacity .12s;border-radius:6px}
+  .hb-mus2-trplay svg{width:16px;height:16px;color:#fff}
+  .hb-mus2-tr:hover .hb-mus2-trplay{opacity:1}
+  .hb-mus2-trn{font-size:12px;color:var(--hb-muted-2,#9aa7b8);font-variant-numeric:tabular-nums;
+               min-width:18px;text-align:center;display:flex;align-items:center;justify-content:center}
   .hb-mus2-trmeta{min-width:0;flex:1}
   .hb-mus2-trt{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .hb-mus2-tra{font-size:11.5px;color:var(--hb-muted,#5b6b82);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .hb-mus2-tra{font-size:12px;color:var(--hb-muted,#5b6b82);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .hb-mus2-trx{display:flex;align-items:center;gap:2px;flex:0 0 auto}
+  /* a row's own buttons are quiet until the row is under the pointer; a liked heart stays lit, it is a STATE */
+  .hb-mus2-trx .hb-mus2-ibtn{opacity:0;width:26px;height:26px}
+  .hb-mus2-trx .hb-mus2-ibtn svg{width:14px;height:14px}
+  .hb-mus2-tr:hover .hb-mus2-trx .hb-mus2-ibtn,.hb-mus2-trx .hb-mus2-ibtn.on,.hb-mus2-trx .hb-mus2-ibtn:focus-visible{opacity:1}
   .hb-mus2-x{border:0;background:none;color:var(--hb-muted-2,#9aa7b8);cursor:pointer;
              padding:5px;border-radius:7px;line-height:1;flex:0 0 auto;display:flex}
   .hb-mus2-x svg{width:14px;height:14px}
   .hb-mus2-x:hover{color:var(--hb-risk,#e5484d)}
-  .hb-mus2-empty{font-size:12px;color:var(--hb-muted-2,#9aa7b8);padding:1px 2px}
-  .hb-mus2-back{border:0;background:none;color:var(--hb-muted,#5b6b82);font-size:13px;font-weight:600;cursor:pointer;
-                display:flex;align-items:center;gap:4px;padding:0;align-self:flex-start}
-  .hb-mus2-back svg{width:15px;height:15px}
-  .hb-mus2-back:hover{color:var(--hb-accent,#3D6FE0)}
-  .hb-mus2-head{display:flex;gap:15px;align-items:flex-end}
+  .hb-mus2-grip{color:var(--hb-muted-2,#9aa7b8);cursor:grab;display:flex;opacity:0;flex:0 0 auto}
+  .hb-mus2-grip svg{width:14px;height:14px}
+  .hb-mus2-tr:hover .hb-mus2-grip{opacity:1}
+  .hb-mus2-empty{font-size:12.5px;color:var(--hb-muted-2,#9aa7b8);padding:2px}
+
+  /* a small menu that floats over the card (add to which list) */
+  .hb-mus2-menu{position:absolute;z-index:20;min-width:180px;max-width:240px;max-height:240px;overflow:auto;padding:5px;
+                background:var(--hb-bubble,#fff);border:1px solid var(--hb-line,#e3e8f0);border-radius:10px;
+                box-shadow:var(--hb-shadow-2,0 16px 40px rgba(0,0,0,.25))}
+  .hb-mus2-menu button{display:block;width:100%;text-align:left;border:0;background:none;color:var(--hb-ink,#0d1622);
+                       padding:7px 9px;border-radius:7px;font-size:13px;cursor:pointer;white-space:nowrap;
+                       overflow:hidden;text-overflow:ellipsis}
+  .hb-mus2-menu button:hover{background:var(--mus-hover)}
+
+  /* ── a page head (list, artist, album): cover, kicker, name, facts, actions ── */
+  .hb-mus2-head{display:flex;gap:16px;align-items:flex-end;padding:2px 2px 4px}
   .hb-mus2-artwrap{position:relative;flex:0 0 auto}
-  .hb-mus2-head .hb-mus2-art{width:100px;height:100px;box-shadow:0 8px 20px rgba(0,0,0,.2);flex:0 0 auto}
-  .hb-mus2-headmeta{display:flex;flex-direction:column;gap:7px;min-width:0}
-  .hb-mus2-headk{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--hb-muted-2,#9aa7b8);
-                 font-family:ui-monospace,Menlo,monospace}
-  .hb-mus2-headn{font-size:22px;font-weight:800;line-height:1.08;letter-spacing:-.02em;word-break:break-word}
-  .hb-mus2-playfab{position:absolute;right:8px;bottom:8px;width:46px;height:46px;border-radius:50%;
-                   background:var(--sp-green);color:#fff;border:0;cursor:pointer;
+  .hb-mus2-head .hb-mus2-art{width:112px;height:112px;border-radius:10px;
+                             box-shadow:0 14px 30px -12px rgba(0,0,0,.6),0 2px 6px rgba(0,0,0,.2)}
+  .hb-mus2-head .hb-mus2-art.round{border-radius:50%}
+  .hb-mus2-headmeta{display:flex;flex-direction:column;gap:6px;min-width:0;flex:1}
+  .hb-mus2-headk{font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--hb-muted-2,#9aa7b8);font-weight:600}
+  .hb-mus2-headn{font-size:22px;font-weight:800;line-height:1.1;letter-spacing:-.02em;word-break:break-word}
+  .hb-mus2-headn.link,.hb-mus2-plsub.link{cursor:pointer}
+  .hb-mus2-plsub.link:hover{color:var(--hb-ink,#0d1622);text-decoration:underline}
+  .hb-mus2-acts{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:2px}
+  .hb-mus2-renin{font:inherit;font-size:20px;font-weight:800;border:1px solid var(--hb-accent,#3D6FE0);border-radius:8px;
+                 padding:2px 8px;background:var(--hb-bg,transparent);color:var(--hb-ink,#0d1622);min-width:0;width:100%;box-sizing:border-box}
+  .hb-mus2-playfab{position:absolute;right:8px;bottom:8px;width:44px;height:44px;border-radius:50%;
+                   background:var(--sp-green);color:#0b1a10;border:0;cursor:pointer;
                    display:flex;align-items:center;justify-content:center;box-shadow:0 6px 14px rgba(0,0,0,.35);
                    transition:transform .15s}
-  .hb-mus2-playfab svg{width:19px;height:19px}
-  .hb-mus2-playfab:hover{transform:scale(1.07)}
+  .hb-mus2-playfab svg{width:18px;height:18px}
+  .hb-mus2-playfab:hover{transform:scale(1.06)}
   .hb-mus2-playfab:disabled{opacity:.4;cursor:default;box-shadow:none;transform:none}
-  /* The transport bar is LIFTED off the content above it — its own background tone, a top divider PLUS a
-     soft upward shadow (the exact cue Spotify/Amazon Music use so the player never reads as "a stray line
-     drawn across a flat rectangle") — and never trades place with the header/scroll (flex:0 0 auto, always
-     the last child of the fixed-height root). */
-  .hb-mus2-bar{flex:0 0 auto;border-top:1px solid var(--hb-line,#eef1f6);background:var(--hb-bg-soft,rgba(127,127,127,.06));
-               box-shadow:0 -10px 24px -18px rgba(0,0,0,.55);padding:13px 18px;display:flex;align-items:center;gap:13px}
+
+  /* artists: round faces in a row that scrolls sideways */
+  .hb-mus2-faces{display:flex;gap:12px;overflow-x:auto;padding-bottom:2px}
+  .hb-mus2-face{flex:0 0 auto;width:84px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;
+                text-align:center;border-radius:10px;padding:6px 2px}
+  .hb-mus2-face:hover{background:var(--mus-hover)}
+  .hb-mus2-face .hb-mus2-art{width:64px;height:64px;border-radius:50%}
+  .hb-mus2-facen{font-size:12px;font-weight:600;max-width:80px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  /* ── THE TRANSPORT, lifted off the content: its own tone, a hairline, a soft upward shadow, and a thin
+     progress line along its top edge (the mini-player's own shape) ── */
+  .hb-mus2-bar{flex:0 0 auto;position:relative;border-top:1px solid var(--mus-line);background:var(--hb-bg-soft,rgba(127,127,127,.06));
+               box-shadow:0 -10px 24px -18px rgba(0,0,0,.55);padding:9px 14px 8px;display:flex;flex-direction:column;gap:4px}
+  .hb-mus2-barrow{display:flex;align-items:center;gap:10px;min-width:0}
+  /* V2-795 — the progress row: elapsed · the rail you click or drag · total, then the volume you can SEE */
+  .hb-mus2-barprog{display:flex;align-items:center;gap:8px;min-width:0;height:20px}
+  .hb-mus2-bartime{font-size:12px;color:var(--hb-muted-2,#9aa7b8);font-variant-numeric:tabular-nums;min-width:34px;flex:0 0 auto}
+  .hb-mus2-bartime.r{text-align:right}
+  .hb-mus2-barprog .hb-mus2-cbtn{padding:3px}
+  .hb-mus2-barprog .hb-mus2-cbtn svg{width:16px;height:16px}
   .hb-mus2-barartwrap{position:relative;flex:0 0 auto}
-  .hb-mus2-bar .hb-mus2-art{width:52px;height:52px;box-shadow:0 3px 10px rgba(0,0,0,.18);flex:0 0 auto}
-  .hb-mus2-bar.empty .hb-mus2-art{background:var(--hb-bg,#fff);border:1.5px dashed var(--hb-line,#eef1f6);
+  .hb-mus2-bar .hb-mus2-art{width:44px;height:44px;border-radius:8px;box-shadow:0 3px 10px rgba(0,0,0,.18)}
+  .hb-mus2-bar.empty .hb-mus2-art{background:var(--hb-bg,transparent);border:1.5px dashed var(--hb-line,#e3e8f0);
                                   box-shadow:none;color:var(--hb-muted,#5b6b82)}
+  .hb-mus2-bar.empty .hb-mus2-art svg{color:var(--hb-muted,#5b6b82)}
   .hb-mus2-areq{position:absolute;right:-3px;bottom:-3px;width:19px;height:19px;border-radius:50%;
                 background:var(--hb-ink,#0d1622);display:flex;align-items:center;justify-content:center;
                 box-shadow:0 0 0 2px var(--hb-bg-soft,#fbfdff)}
   .hb-mus2-areq .hb-mus2-eq{width:10px;height:9px}
   .hb-mus2-areq .hb-mus2-eq span{width:2px}
   .hb-mus2-barmeta{min-width:0;flex:1}
-  /* Track title bumped 13px -> 15px per the operator's ask ("un pixel o dos más grande para que se vea
-     bien") — it is the single most-read line in the whole card. */
   .hb-mus2-bart{font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .hb-mus2-bara{font-size:12.5px;color:var(--hb-muted,#5b6b82);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .hb-mus2-baridle{font-size:13px;font-weight:600;color:var(--hb-muted,#5b6b82);font-style:italic}
-  .hb-mus2-barc{display:flex;align-items:center;gap:6px}
-  .hb-mus2-cbtn{border:0;background:none;color:var(--hb-ink,#0d1622);cursor:pointer;padding:8px;
-                border-radius:8px;line-height:1;display:flex}
+  .hb-mus2-barc{display:flex;align-items:center;gap:2px;flex:0 0 auto}
+  .hb-mus2-barside{display:flex;align-items:center;gap:2px;flex:0 0 auto}
+  .hb-mus2-cbtn{border:0;background:none;color:var(--hb-ink,#0d1622);cursor:pointer;padding:6px;
+                border-radius:8px;line-height:1;display:flex;position:relative}
   .hb-mus2-cbtn svg{width:18px;height:18px}
   .hb-mus2-cbtn:hover{color:var(--hb-accent,#3D6FE0)}
+  .hb-mus2-cbtn.mode{color:var(--hb-muted,#5b6b82)}
+  .hb-mus2-cbtn.mode svg{width:16px;height:16px}
+  .hb-mus2-cbtn.mode.on{color:var(--sp-green)}
+  .hb-mus2-cbtn.mode.on::after{content:"";position:absolute;left:50%;bottom:1px;width:4px;height:4px;margin-left:-2px;
+                               border-radius:50%;background:var(--sp-green)}
   .hb-mus2-cbtn.fav{color:var(--sp-green)}
   .hb-mus2-cbtn.fav:hover{color:var(--sp-green);opacity:.8}
-  .hb-mus2-cbtn.main{width:40px;height:40px;border-radius:50%;background:var(--hb-ink,#0d1622);
+  .hb-mus2-cbtn.main{width:38px;height:38px;border-radius:50%;background:var(--hb-ink,#0d1622);margin:0 3px;
                      color:var(--hb-bg,#fff);align-items:center;justify-content:center;padding:0;
                      box-shadow:0 4px 12px rgba(0,0,0,.28)}
   .hb-mus2-cbtn.main svg{width:16px;height:16px}
-  .hb-mus2-cbtn.main:hover{color:var(--hb-bg,#fff);opacity:.85}
+  .hb-mus2-cbtn.main:hover{color:var(--hb-bg,#fff);opacity:.88}
   .hb-mus2-cbtn:disabled{opacity:.32;cursor:default;pointer-events:none}
+  /* the volume, always visible: where it is, clickable, draggable — the same rail drawing as the progress */
+  .hb-mus2-vol{width:72px;flex:0 0 auto;accent-color:var(--hb-ink,#0d1622);height:14px;margin:0;cursor:pointer}
+  .hb-mus2-vol:hover{accent-color:var(--sp-green)}
+  .hb-mus2-barrail{position:relative;flex:1 1 auto;height:14px;cursor:pointer;touch-action:none;min-width:40px}
+  .hb-mus2-barrail i{position:absolute;left:0;right:0;top:5px;height:4px;border-radius:999px;background:var(--hb-line,#e3e8f0)}
+  .hb-mus2-barrail b{position:absolute;left:0;top:5px;height:4px;border-radius:999px;background:var(--hb-ink,#0d1622);max-width:100%}
+  .hb-mus2-barrail u{position:absolute;top:2px;width:10px;height:10px;margin-left:-5px;border-radius:50%;background:var(--sp-green);
+                     box-shadow:0 1px 4px rgba(0,0,0,.45);opacity:0;transition:opacity .12s}
+  .hb-mus2-barrail:hover b,.hb-mus2-barrail.hb-mus2-drag b{background:var(--sp-green)}
+  .hb-mus2-barrail:hover u,.hb-mus2-barrail.hb-mus2-drag u{opacity:1}
+  /* the card is resizable: the play modes are the first things to go when it is narrow */
+  @container (width <= 400px){ .hb-mus2-barc .mode{display:none} .hb-mus2-vol{width:52px} }
+
   .hb-mus2-connect{display:flex;flex-direction:column;gap:8px}
   .hb-mus2-sub{font-size:12.5px;color:var(--hb-muted,#5b6b82);line-height:1.45}
   .hb-mus2-btn{border:0;background:var(--hb-accent,#3D6FE0);color:var(--canvas,#101216);border-radius:10px;padding:9px 13px;
                font-size:13px;font-weight:700;cursor:pointer;line-height:1;align-self:flex-start}
   .hb-mus2-btn:disabled{opacity:.5;cursor:default}
-  .hb-mus2-btn.ghost{background:var(--hb-bg-soft,#fbfdff);color:var(--hb-ink,#0d1622);border:1px solid var(--hb-line,#eef1f6)}
-  .hb-mus2-link{background:none;border:0;color:var(--hb-muted,#5b6b82);font-size:11.5px;cursor:pointer;
-                text-decoration:underline;padding:0;align-self:flex-start}
-  .hb-mus2-adv{border-top:1px solid var(--hb-line,#eef1f6);padding-top:10px;display:flex;flex-direction:column;gap:8px}
-  .hb-mus2-adv summary{font-size:12px;color:var(--hb-muted,#5b6b82);cursor:pointer}
-  .hb-mus2-steps{font-size:12px;color:var(--hb-muted,#5b6b82);line-height:1.5;margin:0;padding-left:18px}
-  .hb-mus2-code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;
-                background:var(--hb-bg-soft,#f4f7fb);border:1px solid var(--hb-line,#eef1f6);border-radius:7px;
-                padding:4px 7px;word-break:break-all;color:var(--hb-ink,#0d1622)}
-  .hb-mus2-inp{width:100%;box-sizing:border-box;border:1px solid var(--hb-line,#eef1f6);border-radius:8px;
-               padding:8px 10px;font-size:13px;background:var(--hb-bg,#fff);color:var(--hb-ink,#0d1622)}
-  .hb-mus2-newinp{width:126px}
+  .hb-mus2-btn.ghost{background:var(--mus-card);color:var(--hb-ink,#0d1622);border:1px solid var(--hb-line,#e3e8f0)}
+  .hb-mus2-inp{width:100%;box-sizing:border-box;border:1px solid var(--hb-line,#e3e8f0);border-radius:8px;
+               padding:6px 9px;font-size:13px;background:var(--hb-bg,transparent);color:var(--hb-ink,#0d1622)}
+  .hb-mus2-newinp{width:150px}
   .hb-mus2-audio{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;left:-9999px;top:0}
   .hb-mus2-frame{width:1px;height:1px;border:0}
   .hb-mus2-eq{display:flex;align-items:flex-end;gap:2px;width:14px;height:14px}
@@ -199,61 +303,33 @@ function injectStyles(){
   .hb-mus2-eq span:nth-child(3){height:65%;animation-delay:0s}
   @keyframes hbMusEq{0%,100%{transform:scaleY(.4)}50%{transform:scaleY(1)}}
 
-  /* ── V2-717 · the bar's two derived controls ───────────────────────────────────────────────────────────
-     A switch with one side is not a switch: «Sonando» is only drawn while something actually sounds, the
-     same rule the contacts rail follows (a section with nothing in it is not drawn). */
-  .hb-mus2-seg{display:flex;gap:2px;border:1px solid var(--hb-line,#eef1f6);border-radius:999px;padding:2px;
-               background:var(--hb-bg,#fff);flex:0 0 auto}
-  .hb-mus2-segb{border:0;background:none;color:var(--hb-muted,#5b6b82);font-size:12px;font-weight:700;
-                padding:4px 11px;border-radius:999px;cursor:pointer;display:flex;align-items:center;gap:5px;
-                line-height:1;font-family:inherit}
-  .hb-mus2-segb svg{width:13px;height:13px}
-  .hb-mus2-segb:hover{color:var(--hb-ink,#0d1622)}
-  .hb-mus2-segb.on{background:var(--hb-bg-soft,rgba(127,127,127,.10));color:var(--hb-ink,#0d1622);
-                   box-shadow:inset 0 0 0 1px var(--hb-line,#eef1f6)}
-
-  /* ── V2-717 · AHORA SUENA — the song IS the screen ─────────────────────────────────────────────────────
-     «la imagen de la musica mas grande, el nombre de la cancion, el nombre del artista, la duracion, una
-     barra de progreso para que yo la pueda mover... y sin nada mas». The transport stays where it was, at
-     the foot: he asked for the duplication out loud («la cancion igualmente la manejo abajo»). */
-  /* The hero FILLS the middle band and centres itself in it, so the cover can be sized against the height
-     that is actually there: a square capped at half the band still fits the whole ficha — cover, title,
-     artist, facts and scrubber — inside the card's own first footprint (468x540) with nothing to scroll.
-     Sizing it by WIDTH alone put a scrollbar on the one screen that is supposed to be «sin nada más». */
+  /* ── AHORA SUENA — the song IS the screen (V2-717): sized against the HEIGHT that is there, so the whole ficha
+     fits the card's first footprint with nothing to scroll ── */
   .hb-mus2-now{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
                width:100%;max-width:520px;height:100%;margin:0 auto;box-sizing:border-box}
   .hb-mus2-nowart{position:relative;height:min(68%,320px);width:auto;max-width:72%;aspect-ratio:1/1;
-                  border-radius:18px;overflow:hidden;
-                  flex:0 1 auto;display:flex;align-items:center;justify-content:center;
+                  border-radius:16px;overflow:hidden;flex:0 1 auto;display:flex;align-items:center;justify-content:center;
                   background:linear-gradient(135deg,var(--hb-accent,#3D6FE0),var(--hb-accent2,#16B8A6));
                   box-shadow:0 26px 48px -20px rgba(0,0,0,.62),0 2px 8px rgba(0,0,0,.18)}
   .hb-mus2-nowart img{width:100%;height:100%;object-fit:cover}
   .hb-mus2-nowart svg{width:34%;height:34%;color:rgba(255,255,255,.92)}
   .hb-mus2-nowt{font-size:20px;font-weight:800;letter-spacing:-.02em;line-height:1.22;
                 margin-top:clamp(10px,4%,20px);flex:0 0 auto;
-                display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
-                word-break:break-word}
+                display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
   .hb-mus2-nowa{font-size:14px;color:var(--hb-muted,#5b6b82);margin-top:6px;white-space:nowrap;overflow:hidden;
                 text-overflow:ellipsis;max-width:100%}
-  .hb-mus2-nowm{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:11px;font-size:10.5px;
-                letter-spacing:.1em;text-transform:uppercase;color:var(--hb-muted-2,#9aa7b8);
-                font-family:ui-monospace,Menlo,monospace}
+  .hb-mus2-nowa.link{cursor:pointer}
+  .hb-mus2-nowa.link:hover{color:var(--hb-ink,#0d1622);text-decoration:underline}
+  .hb-mus2-nowm{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px;font-size:12px;
+                letter-spacing:.06em;text-transform:uppercase;color:var(--hb-muted-2,#9aa7b8)}
   .hb-mus2-nowm .hb-mus2-eq{width:11px;height:10px}
   .hb-mus2-nowm i{font-style:normal;opacity:.45}
-
-  /* The scrubber. It is drawn ONLY when the player can actually answer «where are we and how long is it» —
-     a bar that cannot be moved, or one that would sit at zero forever, is worse than no bar (the operator's
-     own rule for this batch: what is not finished must look disabled, be absent, or be clear). */
-  /* The slot the scrubber lands in when the player finally answers. It needs its own width: in a centred
-     flex column a bare div shrinks to its content, and a rail asking for 100% OF NOTHING is a rail 0 pixels
-     wide — present, correct-looking in the DOM, and impossible to drag. Measured, not reasoned. */
+  /* the scrubber's slot needs a width of its own: in a centred column a bare div shrinks to nothing (V2-717) */
   .hb-mus2-seekslot{width:100%;flex:0 0 auto}
   .hb-mus2-seek{width:100%;margin-top:clamp(12px,4%,22px);display:flex;align-items:center;gap:10px}
-  .hb-mus2-time{font-size:11px;font-family:ui-monospace,Menlo,monospace;color:var(--hb-muted-2,#9aa7b8);
-                min-width:40px;flex:0 0 auto;font-variant-numeric:tabular-nums}
+  .hb-mus2-time{font-size:12px;color:var(--hb-muted-2,#9aa7b8);min-width:40px;flex:0 0 auto;font-variant-numeric:tabular-nums}
   .hb-mus2-time.r{text-align:right}
-  .hb-mus2-rail{position:relative;flex:1 1 auto;height:18px;display:flex;align-items:center;cursor:pointer;
-                touch-action:none}
+  .hb-mus2-rail{position:relative;flex:1 1 auto;height:18px;display:flex;align-items:center;cursor:pointer;touch-action:none}
   .hb-mus2-railbg{position:absolute;left:0;right:0;height:4px;border-radius:999px;background:var(--hb-line,#e3e8f0)}
   .hb-mus2-fill{position:absolute;left:0;height:4px;border-radius:999px;background:var(--hb-ink,#0d1622);
                 max-width:100%;transition:background .15s}
@@ -262,8 +338,7 @@ function injectStyles(){
   .hb-mus2-rail:hover .hb-mus2-fill,.hb-mus2-rail.hb-mus2-drag .hb-mus2-fill{background:var(--sp-green)}
   .hb-mus2-rail:hover .hb-mus2-knob,.hb-mus2-rail.hb-mus2-drag .hb-mus2-knob{opacity:1;background:var(--sp-green)}
 
-  /* ── V2-717 · an empty screen still has something to say ───────────────────────────────────────────────
-     «se ve tan vacia... estas un poco triste». The chips are REAL: each one plays. */
+  /* ── an empty library still has something to say (V2-717); its chips are REAL: each one plays ── */
   .hb-mus2-hero{display:flex;flex-direction:column;align-items:center;text-align:center;gap:12px;margin:auto;
                 padding:10px 0;max-width:340px}
   .hb-mus2-herod{position:relative;width:76px;height:76px;border-radius:50%;flex:0 0 auto;
@@ -277,23 +352,20 @@ function injectStyles(){
   .hb-mus2-herot{font-size:16.5px;font-weight:800;letter-spacing:-.015em}
   .hb-mus2-heros{font-size:12.5px;color:var(--hb-muted,#5b6b82);line-height:1.5}
   .hb-mus2-chips{display:flex;flex-wrap:wrap;gap:7px;justify-content:center}
-  .hb-mus2-chip{border:1px solid var(--hb-line,#eef1f6);background:var(--hb-bg-soft,#fbfdff);
-                color:var(--hb-ink,#0d1622);border-radius:999px;padding:6px 12px;font-size:12px;font-weight:600;
-                cursor:pointer;font-family:inherit;line-height:1.2}
+  .hb-mus2-chip{border:1px solid var(--hb-line,#e3e8f0);background:var(--mus-panel);
+                color:var(--hb-ink,#0d1622);border-radius:999px;padding:6px 12px;font-size:12.5px;font-weight:600;
+                cursor:pointer;line-height:1.2}
   .hb-mus2-chip:hover{border-color:var(--hb-accent,#3D6FE0);color:var(--hb-accent,#3D6FE0)}
-  /* The way into a new list stays in reach on the empty screen, but at the size of an afterthought: a
-     112px dashed square under the hero made the whole thing taller than the band it lives in. */
-  .hb-mus2-hero .hb-mus2-pl{width:auto;align-items:center;gap:5px}
-  .hb-mus2-hero .hb-mus2-new .hb-mus2-art{width:46px;height:46px;border-radius:12px}
-  .hb-mus2-hero .hb-mus2-plname{font-size:11.5px;color:var(--hb-muted,#5b6b82)}
+  .hb-mus2-hero .hb-mus2-pl{width:auto;align-items:center;gap:5px;background:none;padding:2px}
+  .hb-mus2-hero .hb-mus2-pl:hover{transform:none;box-shadow:none}
+  .hb-mus2-hero .hb-mus2-new .hb-mus2-art{width:44px;height:44px;border-radius:12px}
+  .hb-mus2-hero .hb-mus2-plname{font-size:12px;color:var(--hb-muted,#5b6b82)}
   `; document.head.appendChild(s);
 }
 
 // ── icon set, "our line" (V2-629) ────────────────────────────────────────────────────────────────────────
-// Two attribute sets, never combined on one <svg> — the HTML parser keeps the FIRST occurrence of a
-// duplicate attribute and silently drops the rest, so a tag carrying both `fill="none"` (from an outline
-// base) and a later `fill="currentColor"` override stays "none" forever: a solid icon that quietly rendered
-// as a hairline outline, caught only by a render test asserting the resolved attribute, not by reading.
+// Two attribute sets, never combined on one <svg> — the HTML parser keeps the FIRST occurrence of a duplicate
+// attribute, so an outline base plus a later fill override stays an outline forever.
 const _SW = 'viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" ' +
            'stroke-linejoin="round"';                                            // OUTLINE icons
 const _SF = 'viewBox="0 0 24 24" fill="currentColor" stroke="none"';              // SOLID icons
@@ -305,9 +377,18 @@ const ICON_PREV       = `<svg ${_SW}><polygon points="19 20 9 12 19 4 19 20"/><l
 const ICON_NEXT       = `<svg ${_SW}><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg>`;
 const ICON_PLAY       = `<svg ${_SF}><path d="M8 5v14l11-7z"/></svg>`;
 const ICON_PAUSE      = `<svg ${_SF}><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>`;
-const ICON_VOL_DOWN   = `<svg ${_SW}><path d="M11 5 6 9H2v6h4l5 4V5z"/></svg>`;
+const ICON_VOL_OFF    = `<svg ${_SW}><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="m22 9-6 6"/><path d="m16 9 6 6"/></svg>`;
 const ICON_VOL_UP     = `<svg ${_SW}><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>`;
 const ICON_LIST       = `<svg ${_SW}><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg>`;
+const ICON_QUEUE      = `<svg ${_SW}><path d="M3 6h13"/><path d="M3 12h9"/><path d="M3 18h9"/><path d="m16 13 5 3-5 3z"/></svg>`;
+const ICON_SEARCH     = `<svg ${_SW}><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>`;
+const ICON_SHUFFLE    = `<svg ${_SW}><path d="M16 3h5v5"/><path d="M4 20 21 3"/><path d="M21 16v5h-5"/><path d="m15 15 6 6"/><path d="M4 4l5 5"/></svg>`;
+const ICON_REPEAT     = `<svg ${_SW}><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg>`;
+const ICON_REPEAT_ONE = `<svg ${_SW}><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/><path d="M11 10h1v4"/></svg>`;
+const ICON_EDIT       = `<svg ${_SW}><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>`;
+const ICON_TRASH      = `<svg ${_SW}><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>`;
+const ICON_GRIP       = `<svg ${_SW}><circle cx="9" cy="6" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="18" r="1"/></svg>`;
+const ICON_ADDLIST    = `<svg ${_SW}><path d="M3 6h12"/><path d="M3 12h12"/><path d="M3 18h8"/><path d="M18 14v8"/><path d="M14 18h8"/></svg>`;
 const ICON_HEART      = `<svg ${_SW}><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.6z"/></svg>`;
 const ICON_HEART_FILL = `<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" ` +
   `stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 ` +
@@ -587,6 +668,10 @@ function nowPlaying(data){
   // yt.art/yt.artist (V2-629): the connector already resolves free cover art the instant it knows a videoId,
   // and the server splits an "Artist - Title" upload title for display — both arrive ready on `data.yt`.
   if(yt.videoId) return {title: yt.title || tt("music_fb", null, "Música"), artist: yt.artist || "", art: yt.art || "", playing: !yt.paused};
+  // V2-795 — a file of the agent's own library is the third thing that can be sounding (V2-638), and the bar
+  // showed nothing while it played.
+  const loc = data.local || {};
+  if(loc.src) return {title: loc.title || tt("music_fb", null, "Música"), artist: loc.artist || "", art: loc.art || "", playing: !loc.paused};
   return null;
 }
 
@@ -607,91 +692,6 @@ function maybeEnrich(t, ctx){
     const p = ctx.action("enrich_art", {title, artist: t.artist || ""});
     if (p && typeof p.catch === "function") p.catch(() => {});
   } catch (_) {}
-}
-
-function playbackBar(data, ctx){
-  const np = nowPlaying(data);
-  const bar = h("div", "hb-mus2-bar" + (np ? "" : " empty"));
-  const playing = !!(np && np.playing);
-  if(np) maybeEnrich(np, ctx);
-  const artWrap = h("div", "hb-mus2-barartwrap");
-  artWrap.appendChild(artNode(np && np.art, ICON_NOTE));
-  if(playing){ const badge = h("div", "hb-mus2-areq"); badge.appendChild(eqIcon()); artWrap.appendChild(badge); }
-  bar.appendChild(artWrap);
-  const meta = h("div", "hb-mus2-barmeta");
-  // Two REAL states, never one row wearing a fake song title: an empty player is not a track called "Nada
-  // sonando" (the operator's own words) — it is a plain hint, italic, with no title/artist pair at all.
-  if(np){
-    meta.appendChild(h("div", "hb-mus2-bart", np.title || tt("music_fb", null, "Música")));
-    meta.appendChild(h("div", "hb-mus2-bara", np.artist || (np.device ? np.device : "")));
-  } else {
-    meta.appendChild(h("div", "hb-mus2-baridle", tt("ask_what", null, "Dime qué quieres escuchar")));
-  }
-  bar.appendChild(meta);
-  const ctrls = h("div", "hb-mus2-barc");
-  const mkIcon = (svg, action, cls) => {                    // control = fire-and-forget; SSE re-renders
-    const b = h("button", "hb-mus2-cbtn" + (cls ? " " + cls : ""));
-    b.appendChild(svgEl(svg));
-    if(!np) b.disabled = true;
-    b.onclick = () => ctx.action(action);
-    return b;
-  };
-  ctrls.appendChild(mkIcon(ICON_PREV, "previous"));
-  ctrls.appendChild(mkIcon(playing ? ICON_PAUSE : ICON_PLAY, playing ? "pause" : "resume", "main"));
-  ctrls.appendChild(mkIcon(ICON_NEXT, "next"));
-  ctrls.appendChild(mkIcon(ICON_VOL_DOWN, "volume_down"));
-  ctrls.appendChild(mkIcon(ICON_VOL_UP, "volume_up"));
-  if(np){
-    // The heart is a STATE indicator, not only a button (V2-629): filled when the operator already saved this
-    // song, so tapping it again (harmless — favorite_current dedupes) never contradicts what is on screen.
-    const fav = !!data.fav_current;
-    const heart = mkIcon(fav ? ICON_HEART_FILL : ICON_HEART, "favorite_current", fav ? "fav" : "");
-    heart.title = fav ? tt("already_fav", null, "Ya está en Favoritos") : tt("save_fav", null, "Guardar en Favoritos");
-    ctrls.appendChild(heart);
-  }
-  bar.appendChild(ctrls);
-  return bar;
-}
-
-// Track rows (recent / top tracks / playlist tracklist). Click SELECTS (a purely visual, ephemeral highlight —
-// nothing persisted, nothing sent to the server); double-click PLAYS, like a desktop Spotify tracklist. The
-// "now playing" state, by contrast, IS driven by data (`opts.playing`) and survives a re-render.
-function trackRow(t, ctx, opts){
-  opts = opts || {};
-  maybeEnrich(t, ctx);
-  const row = h("div", "hb-mus2-tr" + (opts.playing ? " playing" : ""));
-  if(opts.index != null || opts.playing){
-    const cell = h("div", "hb-mus2-trn");
-    if(opts.playing) cell.appendChild(eqIcon());
-    else cell.textContent = opts.index;
-    row.appendChild(cell);
-  }
-  row.appendChild(artNode(t.art, ICON_NOTE));
-  const meta = h("div", "hb-mus2-trmeta");
-  meta.appendChild(h("div", "hb-mus2-trt", opts.title || t.title || t.query || "—"));
-  if(!opts.hideArtist){
-    const sub = [t.artist, (t.count ? `· ${t.count} veces` : "")].filter(Boolean).join(" ");
-    if(sub) meta.appendChild(h("div", "hb-mus2-tra", sub));
-  } else if(t.count){
-    meta.appendChild(h("div", "hb-mus2-tra", `${t.count} veces`));
-  }
-  row.appendChild(meta);
-  row.onclick = () => {
-    const list = row.parentElement;
-    if(list) list.querySelectorAll(".hb-mus2-tr.selected").forEach(r => r.classList.remove("selected"));
-    row.classList.add("selected");
-  };
-  // V2-795 — a song in a list plays IN the list (`opts.play`): handed over as one sequence, «next» then has
-  // somewhere to go. A bare row (recent, most played) plays alone.
-  row.ondblclick = () => (opts.play ? opts.play()
-    : ctx.action("play", {query: t.query || [t.title, t.artist].filter(Boolean).join(" ") || t.title}));
-  if(opts.remove){
-    const x = h("button", "hb-mus2-x"); x.appendChild(svgEl(ICON_CLOSE)); x.title = tt("remove_track", null, "Quitar de la lista");
-    x.onclick = (e) => { e.stopPropagation(); ctx.action("remove_from_playlist", {playlist: opts.remove, item: t.title}); };
-    x.ondblclick = (e) => e.stopPropagation();
-    row.appendChild(x);
-  }
-  return row;
 }
 
 // ── V2-717 · WHERE THE SONG IS, whoever is playing it ────────────────────────────────────────────────────
@@ -786,6 +786,337 @@ function seekRow(pb){
   return row;
 }
 
+// ── small shared pieces (V2-795) ─────────────────────────────────────────────────────────────────────────
+function fire(ctx, name, payload){
+  // Fire-and-forget like every control here; tolerant of a ctx whose action returns nothing thenable.
+  try{ const p = ctx.action(name, payload); if(p && typeof p.catch === "function") p.catch(() => {}); return p; }
+  catch(_){ return null; }
+}
+
+function iconBtn(svg, title, onclick, cls){
+  const b = h("button", "hb-mus2-ibtn" + (cls ? " " + cls : ""));
+  b.appendChild(svgEl(svg));
+  if(title){ b.title = title; b.setAttribute("aria-label", title); }
+  if(onclick) b.onclick = (e) => { e.stopPropagation(); onclick(e); };
+  b.ondblclick = (e) => e.stopPropagation();
+  return b;
+}
+
+function trackQuery(t){
+  return t.query || [t.title, t.artist].filter(Boolean).join(" ") || t.title || "";
+}
+
+// What a play of ONE catalogue/library track asks: its words, plus its uri when it has one (the server keeps the
+// uri only if the provider playing now is the one that minted it).
+function playOne(t, ctx){
+  const p = {query: trackQuery(t)};
+  if(t.uri) p.uri = t.uri;
+  if(t.provider) p.provider = t.provider;
+  fire(ctx, "play", p);
+}
+
+// The favourites list is the SERVER's (`data.fav`): its id when it exists, the name the server would create.
+function favList(data){
+  const f = data.fav || {};
+  return (data.playlists || []).find(p => p.id === f.id) || null;
+}
+function isLiked(t, data){
+  const fl = favList(data);
+  if(!fl) return false;
+  const k = _norm(t.title || t.query) + "|" + _norm(t.artist);
+  return (fl.tracks || []).some(x => (_norm(x.title || x.query) + "|" + _norm(x.artist)) === k);
+}
+function likeBtn(t, data, ctx){
+  const liked = isLiked(t, data);
+  return iconBtn(liked ? ICON_HEART_FILL : ICON_HEART,
+    liked ? tt("unlike", null, "Quitar de Favoritos") : tt("like", null, "Guardar en Favoritos"),
+    () => {
+      const fl = favList(data);
+      if(liked && fl) fire(ctx, "remove_from_playlist", {playlist: fl.id, item: t.title || t.query});
+      else fire(ctx, "add_to_playlist", {playlist: fl ? fl.id : ((data.fav || {}).name || "Favoritos"),
+                                        title: t.title || t.query, artist: t.artist || "", query: trackQuery(t)});
+    }, liked ? "on" : "");
+}
+
+// A tiny menu over the card: «add this song to which list». Closed by any click outside it.
+function openMenu(anchor, items){
+  const root = anchor.closest(".hb-mus2-root");
+  if(!root) return;
+  root.querySelectorAll(".hb-mus2-menu").forEach(m => m.remove());
+  const m = h("div", "hb-mus2-menu");
+  items.forEach(it => {
+    const b = h("button", null, it.label);
+    b.onclick = (e) => { e.stopPropagation(); m.remove(); it.run(); };
+    m.appendChild(b);
+  });
+  const r = anchor.getBoundingClientRect(), rr = root.getBoundingClientRect();
+  m.style.top = Math.max(4, Math.min(rr.height - 250, r.bottom - rr.top + 4)) + "px";
+  m.style.right = Math.max(4, rr.right - r.right) + "px";
+  root.appendChild(m);
+  const away = (e) => { if(!m.contains(e.target)){ m.remove(); document.removeEventListener("pointerdown", away, true); } };
+  setTimeout(() => document.addEventListener("pointerdown", away, true), 0);
+}
+function addToListBtn(t, data, ctx){
+  return iconBtn(ICON_ADDLIST, tt("add_to_list", null, "Añadir a una lista"), (e) => {
+    const items = (data.playlists || []).map(pl => ({label: pl.name, run: () => fire(ctx, "add_to_playlist",
+      {playlist: pl.id, title: t.title || t.query, artist: t.artist || "", query: trackQuery(t)})}));
+    items.push({label: "＋ " + tt("new_playlist", null, "Nueva lista"), run: () => {
+      fire(ctx, "add_to_playlist", {playlist: (t.artist || t.title || tt("new_playlist", null, "Nueva lista")),
+                                    title: t.title || t.query, artist: t.artist || "", query: trackQuery(t)});
+    }});
+    openMenu(e.currentTarget, items);
+  });
+}
+
+// A shelf: ONE quiet panel with its own head (title, a count, actions on the right).
+function panel(title, count, actions){
+  const sec = h("div", "hb-mus2-sec");
+  const head = h("div", "hb-mus2-sechead");
+  head.appendChild(h("div", "hb-mus2-sech", title));
+  if(count != null && count !== "") head.appendChild(h("div", "hb-mus2-secn", String(count)));
+  const right = h("div", "hb-mus2-secact");
+  (actions || []).forEach(a => a && right.appendChild(a));
+  head.appendChild(right);
+  sec.appendChild(head);
+  sec.head = head; sec.right = right;
+  return sec;
+}
+
+function pill(svg, label, onclick, cls){
+  const b = h("button", "hb-mus2-pill" + (cls ? " " + cls : ""));
+  if(svg) b.appendChild(svgEl(svg));
+  b.appendChild(h("span", null, label));
+  b.onclick = (e) => { e.stopPropagation(); onclick(e); };
+  return b;
+}
+
+// A list's cover: its own art; else a MOSAIC of the first four different covers it holds; else one cover; else
+// the gradient with the note (a heart for the favourites list).
+function coverOf(pl, isFav){
+  if(pl.art) return artNode(pl.art, ICON_NOTE);
+  const arts = [];
+  (pl.tracks || []).forEach(t => { if(t.art && arts.indexOf(t.art) < 0) arts.push(t.art); });
+  if(arts.length >= 4){
+    const a = h("div", "hb-mus2-art hb-mus2-mosaic");
+    arts.slice(0, 4).forEach(u => { const img = document.createElement("img"); img.src = u; img.alt = "";
+                                    img.onerror = () => { img.style.visibility = "hidden"; }; a.appendChild(img); });
+    return a;
+  }
+  if(arts.length) return artNode(arts[0], ICON_NOTE);
+  const a = artNode(null, isFav ? ICON_HEART_FILL : ICON_NOTE);
+  if(isFav) a.classList.add("fav");
+  return a;
+}
+
+// ── TRACK ROWS ───────────────────────────────────────────────────────────────────────────────────────────
+// Click SELECTS (visual, nothing sent); double-click — or the play button over the cover — PLAYS; the row's own
+// buttons (heart, queue, add to a list, remove) are quiet until the row is under the pointer.
+function trackRow(t, ctx, opts){
+  opts = opts || {};
+  maybeEnrich(t, ctx);
+  // `current` = the song the player holds; `playing` = it is SOUNDING now. Only the second animates.
+  const current = !!(opts.current || opts.playing);
+  const row = h("div", "hb-mus2-tr" + (current ? " current" : "") + (opts.playing ? " playing" : ""));
+  if(opts.drag){
+    const grip = h("div", "hb-mus2-grip"); grip.appendChild(svgEl(ICON_GRIP)); grip.title = tt("drag", null, "Arrastra para mover");
+    row.appendChild(grip);
+  }
+  if(opts.index != null || current){
+    const cell = h("div", "hb-mus2-trn");
+    if(opts.playing) cell.appendChild(eqIcon());
+    else if(current) cell.appendChild(svgEl(ICON_NOTE));        // paused: a still marker, never a meter
+    else cell.textContent = opts.index;
+    row.appendChild(cell);
+  }
+  const art = artNode(t.art, ICON_NOTE);
+  const play = opts.play || (() => playOne(t, ctx));
+  const pb = h("button", "hb-mus2-trplay"); pb.appendChild(svgEl(ICON_PLAY));
+  pb.title = tt("play", null, "Reproducir");
+  pb.onclick = (e) => { e.stopPropagation(); play(); };
+  pb.ondblclick = (e) => e.stopPropagation();
+  art.appendChild(pb);
+  row.appendChild(art);
+  const meta = h("div", "hb-mus2-trmeta");
+  meta.appendChild(h("div", "hb-mus2-trt", opts.title || t.title || t.query || "—"));
+  const times = t.count ? tt("times", {n: t.count}, "{n} veces") : "";
+  const sub = opts.hideArtist ? times : [t.artist, times].filter(Boolean).join(" · ");
+  if(sub) meta.appendChild(h("div", "hb-mus2-tra", sub));
+  row.appendChild(meta);
+  const x = h("div", "hb-mus2-trx");
+  if(opts.data){
+    x.appendChild(likeBtn(t, opts.data, ctx));
+    if(opts.queue !== false) x.appendChild(iconBtn(ICON_QUEUE, tt("add_queue", null, "Añadir a la cola"),
+                                                   () => fire(ctx, "queue", {query: trackQuery(t)})));
+    if(opts.addToList) x.appendChild(addToListBtn(t, opts.data, ctx));
+  }
+  row.appendChild(x);
+  row.onclick = () => {
+    const list = row.parentElement;
+    if(list) list.querySelectorAll(".hb-mus2-tr.selected").forEach(r => r.classList.remove("selected"));
+    row.classList.add("selected");
+  };
+  row.ondblclick = () => play();
+  if(opts.remove){
+    const rm = h("button", "hb-mus2-x"); rm.appendChild(svgEl(ICON_CLOSE));
+    rm.title = opts.removeTitle || tt("remove_track", null, "Quitar de la lista");
+    rm.onclick = (e) => { e.stopPropagation(); opts.remove(); };
+    rm.ondblclick = (e) => e.stopPropagation();
+    row.appendChild(rm);
+  }
+  if(opts.drag) makeReorderable(row, opts.dragIndex, opts.drag);
+  return row;
+}
+
+// One state model for every row: CURRENT when it is the song the player holds, PLAYING only while that song is
+// actually sounding (`np.playing`, the player's own report) — never inferred from «is the current track».
+function rowState(t, np){
+  const current = nowPlayingMatches(t, np);
+  return {current, playing: current && !!(np && np.playing)};
+}
+
+// Reorder by dragging a row onto another (HTML5 drag and drop): ONE call on drop, never one per hover.
+function makeReorderable(row, index, onMove){
+  row.draggable = true;
+  row.dataset.idx = String(index);
+  row.addEventListener("dragstart", (e) => { try{ e.dataTransfer.setData("text/plain", String(index));
+                                                   e.dataTransfer.effectAllowed = "move"; }catch(_){} });
+  row.addEventListener("dragover", (e) => { e.preventDefault(); row.classList.add("dragover"); });
+  row.addEventListener("dragleave", () => row.classList.remove("dragover"));
+  row.addEventListener("drop", (e) => {
+    e.preventDefault(); row.classList.remove("dragover");
+    let from = NaN;
+    try{ from = parseInt(e.dataTransfer.getData("text/plain"), 10); }catch(_){}
+    if(isFinite(from) && from !== index) onMove(from, index);
+  });
+}
+
+// A song the card SEES playing is reported once per page life (internal `played`): a song started by voice never
+// crossed the card's own play path, so Recent and Most played would never hear of it otherwise.
+const _reported = new Set();
+function reportPlayed(np, ctx){
+  if(!np || !np.title) return;
+  const key = _norm(np.title) + "|" + _norm(np.artist);
+  if(_reported.has(key)) return;
+  _reported.add(key);
+  fire(ctx, "played", {title: np.title, artist: np.artist || "", art: np.art || ""});
+}
+
+// ── THE TRANSPORT ────────────────────────────────────────────────────────────────────────────────────────
+function playbackBar(el, data, ctx){
+  const np = nowPlaying(data);
+  const bar = h("div", "hb-mus2-bar" + (np ? "" : " empty"));
+  const playing = !!(np && np.playing);
+  if(np){ maybeEnrich(np, ctx); reportPlayed(np, ctx); }
+  const row = h("div", "hb-mus2-barrow");
+  bar.appendChild(row);
+  const artWrap = h("div", "hb-mus2-barartwrap");
+  artWrap.appendChild(artNode(np && np.art, ICON_NOTE));
+  if(playing){ const badge = h("div", "hb-mus2-areq"); badge.appendChild(eqIcon()); artWrap.appendChild(badge); }
+  row.appendChild(artWrap);
+  const meta = h("div", "hb-mus2-barmeta");
+  // Two REAL states, never one row wearing a fake song title (V2-667): idle is a plain hint, no title/artist.
+  if(np){
+    meta.appendChild(h("div", "hb-mus2-bart", np.title || tt("music_fb", null, "Música")));
+    meta.appendChild(h("div", "hb-mus2-bara", np.artist || (np.device ? np.device : "")));
+  } else {
+    meta.appendChild(h("div", "hb-mus2-baridle", tt("ask_what", null, "Dime qué quieres escuchar")));
+  }
+  row.appendChild(meta);
+  const ctrls = h("div", "hb-mus2-barc");
+  const mk = (svg, action, cls, payload, title) => {          // control = fire-and-forget; SSE re-renders
+    const b = h("button", "hb-mus2-cbtn" + (cls ? " " + cls : ""));
+    b.appendChild(svgEl(svg));
+    if(title){ b.title = title; b.setAttribute("aria-label", title); }
+    if(!np) b.disabled = true;
+    b.onclick = () => fire(ctx, action, payload);
+    return b;
+  };
+  const md = data.modes || {};
+  const modesOk = !!md.supported;
+  const shuf = mk(ICON_SHUFFLE, "shuffle", "mode" + (md.shuffle ? " on" : ""), {on: !md.shuffle},
+                  tt("shuffle", null, "Aleatorio"));
+  if(!modesOk) shuf.disabled = true;
+  const rep = md.repeat || "off";
+  const nextRep = rep === "off" ? "all" : (rep === "all" ? "one" : "off");
+  const repB = mk(rep === "one" ? ICON_REPEAT_ONE : ICON_REPEAT, "repeat", "mode" + (rep !== "off" ? " on" : ""),
+                  {mode: nextRep}, tt("repeat_" + rep, null, rep === "one" ? "Repetir la canción"
+                                                           : (rep === "all" ? "Repetir la cola" : "Repetir: no")));
+  if(!modesOk) repB.disabled = true;
+  ctrls.appendChild(shuf);
+  ctrls.appendChild(mk(ICON_PREV, "previous"));
+  ctrls.appendChild(mk(playing ? ICON_PAUSE : ICON_PLAY, playing ? "pause" : "resume", "main"));
+  ctrls.appendChild(mk(ICON_NEXT, "next"));
+  ctrls.appendChild(repB);
+  row.appendChild(ctrls);
+  if(np){
+    const side = h("div", "hb-mus2-barside");
+    // The heart is a STATE indicator (V2-629): filled when the song is already saved.
+    const fav = !!data.fav_current;
+    const heart = mk(fav ? ICON_HEART_FILL : ICON_HEART, "favorite_current", fav ? "fav" : "", undefined,
+                     fav ? tt("already_fav", null, "Ya está en Favoritos") : tt("save_fav", null, "Guardar en Favoritos"));
+    side.appendChild(heart);
+    row.appendChild(side);
+    bar.appendChild(progressRow(el, data, ctx, mk));
+  }
+  return bar;
+}
+
+// THE PROGRESS ROW (V2-795): elapsed · a rail you click or drag · total, then the volume as a bar you can see.
+// Same rules as the big scrubber: the rail and the times appear only once the player says where the song is,
+// the shared tick paints them, a drag owns the paint and asks for ONE seek on release — so a voice `seek`, which
+// moves the player, shows up here on the next tick. The volume slider is the provider's own level (`data.volume`,
+// the same number voice volume_up/down/set_volume move), so a re-render after any of them puts it where it is.
+function progressRow(el, data, ctx, mk){
+  const row = h("div", "hb-mus2-barprog");
+  const cur = h("div", "hb-mus2-bartime", ""), tot = h("div", "hb-mus2-bartime r", "");
+  const rail = h("div", "hb-mus2-barrail");
+  const fill = h("b"), knob = h("u");
+  rail.append(h("i"), fill, knob);
+  row.append(cur, rail, tot);
+  let dragging = false, frac = 0, pb = null;
+  const paint = (f) => { const pct = Math.max(0, Math.min(1, f)) * 100;
+                         fill.style.width = pct + "%"; knob.style.left = pct + "%"; };
+  const fracAt = (ev) => { const r = rail.getBoundingClientRect();
+                           return r.width ? Math.max(0, Math.min(1, (ev.clientX - r.left) / r.width)) : 0; };
+  rail.addEventListener("pointerdown", (ev) => { if(!pb) return; dragging = true; frac = fracAt(ev);
+    rail.classList.add("hb-mus2-drag"); try{ rail.setPointerCapture(ev.pointerId); }catch(_){}
+    paint(frac); cur.textContent = fmtTime(frac * pb.dur); ev.preventDefault(); });
+  rail.addEventListener("pointermove", (ev) => { if(!dragging) return; frac = fracAt(ev); paint(frac);
+                                                cur.textContent = fmtTime(frac * pb.dur); });
+  const release = () => { if(!dragging) return; dragging = false; rail.classList.remove("hb-mus2-drag");
+                          if(pb && pb.dur && pb.seek) pb.seek(frac * pb.dur); };
+  rail.addEventListener("pointerup", release);
+  rail.addEventListener("pointercancel", release);
+  const show = (on) => { [cur, rail, tot].forEach(x => { x.style.visibility = on ? "" : "hidden"; }); };
+  show(false);
+  el._hbTickers.push(() => {
+    pb = playback(el, data, ctx);
+    if(!pb || !pb.dur){ show(false); return; }
+    show(true);
+    if(dragging) return;
+    paint(pb.pos / pb.dur);
+    cur.textContent = fmtTime(pb.pos); tot.textContent = fmtTime(pb.dur);
+  });
+
+  const vol = data.volume || {};
+  const muted = !!vol.muted;
+  row.appendChild(mk(muted ? ICON_VOL_OFF : ICON_VOL_UP, "set_volume", "", {mute: !muted},
+                     muted ? tt("unmute", null, "Quitar silencio") : tt("mute", null, "Silenciar")));
+  const localLevel = el._hbAudio ? Math.round((el._hbAudio.volume || 0) * 100) : null;
+  const level = vol.level != null ? vol.level : localLevel;
+  const sl = h("input", "hb-mus2-vol"); sl.type = "range"; sl.min = "0"; sl.max = "100";
+  sl.value = String(muted ? 0 : (level != null ? level : 70));
+  sl.title = tt("volume", null, "Volumen") + " · " + sl.value + "%";
+  sl.setAttribute("aria-label", tt("volume", null, "Volumen"));
+  sl.oninput = () => { sl.title = tt("volume", null, "Volumen") + " · " + sl.value + "%"; };
+  sl.onchange = () => {
+    fire(ctx, "set_volume", {level: Number(sl.value)});
+    if(el._hbAudio){ try{ el._hbAudio.volume = Number(sl.value) / 100; }catch(_){} }
+  };
+  row.appendChild(sl);
+  return row;
+}
+
 // The name of what is making sound — the same word the bar's chip shows, so the two never disagree.
 function sourceLabel(data){
   if((data.local || {}).src) return tt("local_src", null, "Tu biblioteca");
@@ -795,68 +1126,97 @@ function sourceLabel(data){
 }
 
 // ── THE ONE BAR ──────────────────────────────────────────────────────────────────────────────────────────
-// The window chrome above it already carries the widget's mark, its name and the system buttons: repeating
-// «Tu música» underneath was the same sentence twice, which is the complaint that opened this batch on the
-// contacts card and reappeared verbatim here. What is left is what could not live anywhere else: where you
-// are, and where the music comes from.
+// The window chrome above already carries the mark, the name and the system buttons. This bar holds what could
+// not live anywhere else: where you are (a back crumb, or the derived switch), and ONE right cluster — the
+// search and the source chip.
 function provChip(data, ctx){
   const b = h("button", "hb-mus2-prov");
   const live = !!(data.connected || (data.yt || {}).videoId || (data.local || {}).src);
   b.appendChild(h("span", "hb-mus2-dot" + (live ? " on" : "")));
   b.appendChild(h("span", null, sourceLabel(data)));
   b.title = tt("sources", null, "Fuentes de música");
-  b.onclick = () => ctx.action("open_view", {kind: "connect"});
+  b.onclick = () => fire(ctx, "open_view", {kind: "connect"});
   return b;
 }
 
-function headerBar(data, ctx, kind){
+function headerBar(el, data, ctx, kind, opts){
+  opts = opts || {};
   const bar = h("div", "hb-mus2-headfix");
-  if(kind === "playlist" || kind === "connect"){
+  if(opts.back){
     const back = h("button", "hb-mus2-back");
     back.appendChild(svgEl(ICON_BACK)); back.appendChild(h("span", null, tt("back", null, "Volver")));
-    back.onclick = () => ctx.action("open_view", {kind: "library"});
+    back.onclick = () => fire(ctx, "open_view", {kind: opts.back});
     bar.appendChild(back);
   } else if(nowPlaying(data)){
-    // DERIVED, like the contacts rail: a switch with one side is not a switch, it is a label. With nothing
-    // sounding there is no «Sonando» to cross to, so the bar simply does not draw one.
+    // DERIVED: a switch with one side is a label, so with nothing sounding there is no switch at all.
     const seg = h("div", "hb-mus2-seg");
     const tab = (id, icon, label) => {
       const b = h("button", "hb-mus2-segb" + (kind === id ? " on" : ""));
       b.appendChild(svgEl(icon)); b.appendChild(h("span", null, label));
-      b.onclick = () => ctx.action("open_view", {kind: id});
+      b.onclick = () => fire(ctx, "open_view", {kind: id});
       return b;
     };
     seg.appendChild(tab("now", ICON_NOTE, tt("tab_now", null, "Sonando")));
     seg.appendChild(tab("library", ICON_LIST, tt("tab_library", null, "Tu música")));
+    if(((data.queue || {}).items || []).length || kind === "queue")
+      seg.appendChild(tab("queue", ICON_QUEUE, tt("tab_queue", null, "Cola")));
     bar.appendChild(seg);
   }
-  bar.appendChild(provChip(data, ctx));
+  if(opts.search){
+    bar.appendChild(searchBox(el, data, ctx));
+  }
+  const right = h("div", "hb-mus2-right");
+  if(!opts.search) right.appendChild(iconBtn(ICON_SEARCH, tt("search", null, "Buscar"),
+                                             () => fire(ctx, "open_view", {kind: "search"})));
+  right.appendChild(provChip(data, ctx));
+  bar.appendChild(right);
   return bar;
 }
 
-// ── AHORA SUENA: the song IS the screen ──────────────────────────────────────────────────────────────────
-// «en el centro están los datos de la ficha que te he dicho y la línea del tiempo de la canción, sin nada
-// más, es decir, la canción igualmente la manejo abajo». So: art, title, artist, one line of facts, the
-// scrubber — and the transport stays at the foot, duplication included, because he asked for it out loud.
-function nowView(host, el, data, ctx){
-  const np = nowPlaying(data);
-  const wrap = h("div", "hb-mus2");
-  wrap.appendChild(headerBar(data, ctx, "now"));
-  const scroll = h("div", "hb-mus2-scroll mid");
-  maybeEnrich(np, ctx);
+// The search box keeps what is being typed across a re-render (an SSE update rebuilds the view under the finger).
+function searchBox(el, data, ctx){
+  const box = h("div", "hb-mus2-sbox");
+  box.appendChild(svgEl(ICON_SEARCH));
+  const inp = h("input", "hb-mus2-sinp");
+  inp.type = "search";
+  inp.placeholder = tt("search_ph", null, "Canciones, artistas o álbumes");
+  const last = ((data.browse || {}).search || {}).query || "";
+  inp.value = el._hbDraft != null ? el._hbDraft : last;
+  inp.addEventListener("input", () => { el._hbDraft = inp.value; });
+  inp.addEventListener("keydown", (e) => {
+    if(e.key === "Enter"){ const q = inp.value.trim(); if(q){ el._hbDraft = q; fire(ctx, "search", {query: q}); } }
+  });
+  box.appendChild(inp);
+  // Focus only when the face was just opened or the box already had it: an SSE repaint must never pull the
+  // keyboard away from whatever else he is typing in.
+  if(el._hbFocusSearch) setTimeout(() => { try{ inp.focus(); }catch(_){} }, 0);
+  return box;
+}
 
+function shell(el, data, ctx, kind, opts){
+  const wrap = h("div", "hb-mus2");
+  wrap.appendChild(headerBar(el, data, ctx, kind, opts));
+  const scroll = h("div", "hb-mus2-scroll");
+  wrap.appendChild(scroll);
+  return {wrap, scroll, done: () => { wrap.appendChild(playbackBar(el, data, ctx)); el._viewHost.appendChild(wrap); }};
+}
+
+// ── AHORA SUENA: the song IS the screen (V2-717) ─────────────────────────────────────────────────────────
+function nowView(el, data, ctx){
+  const np = nowPlaying(data);
+  const s = shell(el, data, ctx, "now");
+  s.scroll.classList.add("mid");
+  maybeEnrich(np, ctx);
   const box = h("div", "hb-mus2-now");
   const art = h("div", "hb-mus2-nowart");
   const fallback = () => { art.textContent = ""; art.appendChild(svgEl(ICON_NOTE)); };
-  if(np.art){
-    const img = document.createElement("img"); img.src = np.art; img.alt = "";
-    img.onerror = fallback; art.appendChild(img);
-  } else fallback();
+  if(np.art){ const img = document.createElement("img"); img.src = np.art; img.alt = ""; img.onerror = fallback; art.appendChild(img); }
+  else fallback();
   box.appendChild(art);
-
   box.appendChild(h("div", "hb-mus2-nowt", np.title || tt("music_fb", null, "Música")));
-  box.appendChild(h("div", "hb-mus2-nowa", np.artist || tt("unknown_artist", null, "Artista desconocido")));
-
+  const who = h("div", "hb-mus2-nowa" + (np.artist ? " link" : ""), np.artist || tt("unknown_artist", null, "Artista desconocido"));
+  if(np.artist) who.onclick = () => fire(ctx, "open_view", {kind: "artist", name: np.artist});
+  box.appendChild(who);
   const meta = h("div", "hb-mus2-nowm");
   if(np.playing) meta.appendChild(eqIcon());
   const facts = [];
@@ -865,88 +1225,67 @@ function nowView(host, el, data, ctx){
   if(np.device) facts.push(np.device);
   facts.forEach((f, i) => { if(i) meta.appendChild(h("i", null, "·")); meta.appendChild(h("span", null, f)); });
   box.appendChild(meta);
-
-  // The scrubber has a SLOT of its own, always present and usually empty: the YouTube embed sends its first
-  // clock frame a second or two after the card is already painted, and the tick fills the slot the moment it
-  // arrives. Drawing a disabled bar in the meantime, or re-rendering the whole card when the clock lands,
-  // were the two worse answers.
+  // The scrubber has a SLOT of its own, usually empty until the player sends its first clock frame.
   const slot = h("div", "hb-mus2-seekslot");
   box.appendChild(slot);
-  scroll.appendChild(box);
-  wrap.appendChild(scroll);
-  wrap.appendChild(playbackBar(data, ctx));
-  host.appendChild(wrap);
-
-  const tick = () => {
+  s.scroll.appendChild(box);
+  s.done();
+  el._hbTickers.push(() => {
     const pb = playback(el, data, ctx);
     if(!pb || !pb.dur){ if(slot.firstChild) slot.textContent = ""; return; }
     if(!slot.firstChild) slot.appendChild(seekRow(pb));
     else slot.firstChild.update(pb);
-  };
-  tick();
-  el._hbTick = setInterval(tick, 250);          // a local clock, no network — cleared by drawView on re-render
+  });
 }
 
-// ── TU MÚSICA: lists + most played + recent ──────────────────────────────────────────────────────────────
-function libraryView(host, data, ctx){
-  const wrap = h("div", "hb-mus2");
-  wrap.appendChild(headerBar(data, ctx, "library"));
-  const scroll = h("div", "hb-mus2-scroll");
+// ── TU MÚSICA: lists + most played + recent, each a panel ────────────────────────────────────────────────
+function libraryView(el, data, ctx){
+  const s = shell(el, data, ctx, "library");
   const np = nowPlaying(data);
   const bare = !(data.playlists || []).length && !(data.top || []).length && !(data.recent || []).length;
-
   if(bare){
-    scroll.classList.add("mid");
-    scroll.appendChild(emptyHero(data, ctx));
-    wrap.appendChild(scroll);
-    wrap.appendChild(playbackBar(data, ctx));
-    host.appendChild(wrap);
+    s.scroll.classList.add("mid");
+    s.scroll.appendChild(emptyHero(data, ctx));
+    s.done();
     return;
   }
-
-  // Lists: covers + "New list" card.
-  const secL = h("div", "hb-mus2-sec");
-  secL.appendChild(h("div", "hb-mus2-sech", tt("your_playlists", null, "Tus listas")));
+  const fav = favList(data);
+  const pls = (data.playlists || []).slice().sort((a, b) => (b === fav) - (a === fav));   // favourites first
+  const secL = panel(tt("your_playlists", null, "Tus listas"), pls.length || "", []);
   const lists = h("div", "hb-mus2-lists");
-  (data.playlists || []).forEach(pl => {
+  pls.forEach(pl => {
     const c = h("div", "hb-mus2-pl");
-    c.appendChild(artNode(pl.art, ICON_NOTE));
+    c.appendChild(coverOf(pl, pl === fav));
     c.appendChild(h("div", "hb-mus2-plname", pl.name || tt("playlist", null, "Lista")));
     const n = (pl.tracks || []).length;
     c.appendChild(h("div", "hb-mus2-plsub", `${n} ${n === 1 ? tt("song_one", null, "canción") : tt("song_many", null, "canciones")}`));
-    c.onclick = () => ctx.action("open_view", {kind: "playlist", id: pl.id});
+    if(n){
+      const pp = h("button", "hb-mus2-plplay"); pp.appendChild(svgEl(ICON_PLAY));
+      pp.title = tt("play_playlist", null, "Reproducir esta lista");
+      pp.onclick = (e) => { e.stopPropagation(); fire(ctx, "play_playlist", {playlist: pl.id}); };
+      c.appendChild(pp);
+    }
+    c.onclick = () => fire(ctx, "open_view", {kind: "playlist", id: pl.id});
     lists.appendChild(c);
   });
-  lists.appendChild(newListCard(lists, ctx));
-  secL.appendChild(lists);
-  scroll.appendChild(secL);
-
-  // Top tracks.
-  if((data.top || []).length){
-    const s = h("div", "hb-mus2-sec");
-    s.appendChild(h("div", "hb-mus2-sech", tt("most_played", null, "Más escuchadas")));
+  secL.right.appendChild(newListPill(secL, ctx));
+  if(pls.length) secL.appendChild(lists);
+  else secL.appendChild(h("div", "hb-mus2-note", tt("no_lists", null, "Aún no tienes listas. Crea una o dime «guárdame esta en una lista».")));
+  s.scroll.appendChild(secL);
+  const rows = (title, list, numbered) => {
+    if(!list.length) return;
+    const sec = panel(title, null, []);
     const g = h("div", "hb-mus2-grid");
-    data.top.forEach((t, i) => g.appendChild(trackRow(t, ctx, {index: String(i + 1), playing: nowPlayingMatches(t, np)})));
-    s.appendChild(g); scroll.appendChild(s);
-  }
-
-  // Recent.
-  if((data.recent || []).length){
-    const s = h("div", "hb-mus2-sec");
-    s.appendChild(h("div", "hb-mus2-sech", tt("recent", null, "Recientes")));
-    const g = h("div", "hb-mus2-grid");
-    data.recent.slice(0, 8).forEach(t => g.appendChild(trackRow(t, ctx, {playing: nowPlayingMatches(t, np)})));
-    s.appendChild(g); scroll.appendChild(s);
-  }
-
-  wrap.appendChild(scroll);
-  wrap.appendChild(playbackBar(data, ctx));
-  host.appendChild(wrap);
+    list.forEach((t, i) => g.appendChild(trackRow(t, ctx, {index: numbered ? String(i + 1) : null,
+      ...rowState(t, np), data, addToList: true})));
+    sec.appendChild(g); s.scroll.appendChild(sec);
+  };
+  rows(tt("most_played", null, "Más escuchadas"), (data.top || []).slice(0, 5), true);
+  rows(tt("recent", null, "Recientes"), (data.recent || []).slice(0, 8), false);
+  s.done();
 }
 
-// An empty library is the FIRST thing a new operator sees, and it used to be the words «Tus listas» over a
-// dashed square in the corner of a large, dark, otherwise empty card — «como puedes ver, está un poco triste
-// al verse tan vacía». Every chip here is real: it plays.
+// An empty library is the FIRST thing a new operator sees (V2-717): something to say and something real to press.
 function emptyHero(data, ctx){
   const hero = h("div", "hb-mus2-hero");
   const disc = h("div", "hb-mus2-herod");
@@ -959,46 +1298,46 @@ function emptyHero(data, ctx){
   [tt("ex_1", null, "Pon música"), tt("ex_2", null, "Ponme a Frank Sinatra"), tt("ex_3", null, "Pon jazz tranquilo")]
     .forEach(q => {
       const c = h("button", "hb-mus2-chip", q);
-      c.onclick = () => ctx.action("play", {query: q});
+      c.onclick = () => fire(ctx, "play", {query: q});
       chips.appendChild(c);
     });
   hero.appendChild(chips);
   const lists = h("div", "hb-mus2-lists");
-  lists.appendChild(newListCard(lists, ctx));
+  const card = h("div", "hb-mus2-pl hb-mus2-new");
+  card.appendChild(artNode(null, ICON_PLUS));
+  card.appendChild(h("div", "hb-mus2-plname", tt("new_playlist", null, "Nueva lista")));
+  card.onclick = () => askName(card, (v) => fire(ctx, "create_playlist", {name: v}));
+  lists.appendChild(card);
   hero.appendChild(lists);
   return hero;
 }
 
-function newListCard(lists, ctx){
-  const card = h("div", "hb-mus2-pl hb-mus2-new");
-  card.appendChild(artNode(null, ICON_PLUS));
-  card.appendChild(h("div", "hb-mus2-plname", tt("new_playlist", null, "Nueva lista")));
-  card.onclick = () => {
-    // Inline: an input replaces the create gesture; Enter/blur -> create_playlist, then SSE re-renders the list.
-    const box = h("div", "hb-mus2-pl");
-    const inp = h("input", "hb-mus2-inp hb-mus2-newinp"); inp.placeholder = tt("name_ph", null, "Nombre");
-    box.appendChild(inp);
-    lists.insertBefore(box, card);
-    inp.focus();
-    let done = false;
-    const submit = () => { if(done) return; const v = (inp.value||"").trim();
-      if(v){ done = true; ctx.action("create_playlist", {name: v}); } else box.remove(); };
-    inp.addEventListener("keydown", e => { if(e.key === "Enter") submit(); if(e.key === "Escape"){ done = true; box.remove(); } });
-    inp.addEventListener("blur", submit);
-  };
-  return card;
+// Inline: an input takes the place of the gesture; Enter or leaving it creates, Escape gives up.
+function askName(anchor, done, initial){
+  const inp = h("input", "hb-mus2-inp hb-mus2-newinp");
+  inp.placeholder = tt("name_ph", null, "Nombre");
+  if(initial) inp.value = initial;
+  anchor.replaceWith(inp);
+  inp.focus(); if(initial) inp.select();
+  let over = false;
+  const submit = () => { if(over) return; over = true; const v = (inp.value || "").trim();
+                         if(v && v !== initial) done(v); else inp.replaceWith(anchor); };
+  inp.addEventListener("keydown", e => { if(e.key === "Enter") submit();
+                                         if(e.key === "Escape"){ over = true; inp.replaceWith(anchor); } });
+  inp.addEventListener("blur", submit);
+  return inp;
 }
 
-// ── FUENTES: where the music comes from ───────────────────────────────────────────────────────────────────────
-// The Spotify block used to sit in the middle of the library, where it was the first thing the eye met on a
-// card that had not been asked anything yet. It is a screen of its own now, behind the source chip — the
-// same shape the contacts card took in V2-715, and the same reason: the connector is not the content.
-function connectView(host, data, ctx){
-  const wrap = h("div", "hb-mus2");
-  wrap.appendChild(headerBar(data, ctx, "connect"));
-  const scroll = h("div", "hb-mus2-scroll");
-  const sec = h("div", "hb-mus2-sec");
-  sec.appendChild(h("div", "hb-mus2-sech", tt("sources", null, "Fuentes de música")));
+function newListPill(sec, ctx){
+  const b = pill(ICON_PLUS, tt("new_short", null, "Nueva"), () => askName(b, (v) => fire(ctx, "create_playlist", {name: v})));
+  b.classList.add("hb-mus2-new");
+  return b;
+}
+
+// ── FUENTES: where the music comes from (V2-717) ─────────────────────────────────────────────────────────
+function connectView(el, data, ctx){
+  const s = shell(el, data, ctx, "connect", {back: "library"});
+  const sec = panel(tt("sources", null, "Fuentes de música"), null, []);
   sec.appendChild(h("div", "hb-mus2-sub", tt("free_source", null,
     "YouTube suena gratis y sin cuenta: ya está listo, no hay nada que conectar.")));
   if(data.connected){
@@ -1015,83 +1354,274 @@ function connectView(host, data, ctx){
     b.onclick = () => ctx.openConnector("spotify");
     sec.appendChild(b);
   }
-  scroll.appendChild(sec);
-  wrap.appendChild(scroll);
-  wrap.appendChild(playbackBar(data, ctx));
-  host.appendChild(wrap);
+  s.scroll.appendChild(sec);
+  s.done();
 }
 
-// PLAYLIST: cover (with the play button INSIDE it) + tracklist.
-function playlistView(host, data, ctx, pl){
-  const wrap = h("div", "hb-mus2");
-  wrap.appendChild(headerBar(data, ctx, "playlist"));
-  const scroll = h("div", "hb-mus2-scroll");
-
+// ── A LIST: cover (play button INSIDE it), name you can rename, actions, the tracklist you can reorder ──
+function playlistView(el, data, ctx, pl){
+  const s = shell(el, data, ctx, "playlist", {back: "library"});
   const tracks = pl.tracks || [];
   const n = tracks.length;
   const derived = deriveArtistInfo(tracks);
-
   const head = h("div", "hb-mus2-head");
   const artwrap = h("div", "hb-mus2-artwrap");
-  artwrap.appendChild(artNode(pl.art, ICON_NOTE));
+  artwrap.appendChild(coverOf(pl, favList(data) === pl));
   const play = h("button", "hb-mus2-playfab"); play.appendChild(svgEl(ICON_PLAY));
   play.title = tt("play_playlist", null, "Reproducir esta lista");
   if(!n) play.disabled = true;
-  play.onclick = () => ctx.action("play_playlist", {playlist: pl.id});
+  play.onclick = () => fire(ctx, "play_playlist", {playlist: pl.id});
   artwrap.appendChild(play);
   head.appendChild(artwrap);
-
   const hm = h("div", "hb-mus2-headmeta");
   hm.appendChild(h("div", "hb-mus2-headk", tt("playlist", null, "Lista")));
-  hm.appendChild(h("div", "hb-mus2-headn", pl.name || tt("playlist", null, "Lista")));
+  const name = h("div", "hb-mus2-headn", pl.name || tt("playlist", null, "Lista"));
+  hm.appendChild(name);
   const subParts = [];
   if(derived.commonArtist) subParts.push(derived.commonArtist);
   subParts.push(`${n} ${n === 1 ? tt("song_one", null, "canción") : tt("song_many", null, "canciones")}`);
   hm.appendChild(h("div", "hb-mus2-plsub", subParts.join(" · ")));
+  const acts = h("div", "hb-mus2-acts");
+  if(n) acts.appendChild(pill(ICON_SHUFFLE, tt("shuffle", null, "Aleatorio"),
+                              () => fire(ctx, "play_playlist", {playlist: pl.id, shuffle: true})));
+  acts.appendChild(iconBtn(ICON_EDIT, tt("rename", null, "Renombrar"), () => {
+    const inp = askName(name, (v) => fire(ctx, "rename_playlist", {playlist: pl.id, name: v}), pl.name);
+    inp.className = "hb-mus2-renin";
+  }));
+  const del = iconBtn(ICON_TRASH, tt("delete", null, "Borrar lista"), () => {
+    // A whole list is a sweep: asked here, on the card, before it is gone.
+    acts.textContent = "";
+    acts.appendChild(h("span", "hb-mus2-plsub", tt("delete_q", {name: pl.name}, "¿Borrar «{name}»?")));
+    acts.appendChild(pill(ICON_TRASH, tt("delete_yes", null, "Borrar"), () => fire(ctx, "delete_playlist", {playlist: pl.id}), "risk"));
+    acts.appendChild(pill(null, tt("cancel", null, "Cancelar"), () => fire(ctx, "open_view", {kind: "playlist", id: pl.id})));
+  }, "risk");
+  acts.appendChild(del);
+  hm.appendChild(acts);
   head.appendChild(hm);
-  scroll.appendChild(head);
+  s.scroll.appendChild(head);
 
+  const sec = panel(tt("songs", null, "Canciones"), n || "", []);
   const g = h("div", "hb-mus2-grid");
   const np = nowPlaying(data);
   if(n){
     tracks.forEach((t, i) => g.appendChild(trackRow(t, ctx, {
       index: String(i + 1),
-      remove: pl.id,
+      remove: () => fire(ctx, "remove_from_playlist", {playlist: pl.id, item: String(i + 1)}),
       title: derived.commonArtist ? derived.strip(t.title) : null,
       hideArtist: !!derived.commonArtist,
-      playing: nowPlayingMatches(t, np),
-      play: () => ctx.action("play_playlist", {playlist: pl.id, from: String(i + 1)}),
+      ...rowState(t, np),
+      // a song in a list plays IN the list: from this one on, the rest queued behind it
+      play: () => fire(ctx, "play_playlist", {playlist: pl.id, from: String(i + 1)}),
+      data, queue: true,
+      drag: (from, to) => fire(ctx, "move_track", {playlist: pl.id, item: String(from + 1), to: String(to + 1)}),
+      dragIndex: i,
     })));
   } else {
     g.appendChild(h("div", "hb-mus2-empty", tt("playlist_empty", null, "Lista vacía. Dime «añade una canción a esta lista».")));
   }
-  scroll.appendChild(g);
-
-  wrap.appendChild(scroll);
-  wrap.appendChild(playbackBar(data, ctx));
-  host.appendChild(wrap);
+  sec.appendChild(g);
+  s.scroll.appendChild(sec);
+  s.done();
 }
 
-// Which face of the card is showing. `home` is the ADAPTIVE one and the default: with something sounding it
-// is the song, with nothing sounding it is the library — which is exactly what the operator described
-// («cuando no estamos reproduciendo… me gustaría ver la canción en toda la pantalla del widget»). The two
-// explicit kinds exist so that a click, or a sentence, can cross over and STAY there.
+// ── THE QUEUE: what sounds now, and what comes next (editable where the player allows it) ───────────────
+function queueView(el, data, ctx){
+  const s = shell(el, data, ctx, "queue");
+  const np = nowPlaying(data);
+  const q = data.queue || {};
+  const items = q.items || [];
+  if(np){
+    const cur = panel(tt("now_title", null, "Sonando ahora"), null, []);
+    const g = h("div", "hb-mus2-grid");
+    g.appendChild(trackRow(np, ctx, {current: true, playing: !!np.playing, data, queue: false, play: () => fire(ctx, np.playing ? "pause" : "resume")}));
+    cur.appendChild(g); s.scroll.appendChild(cur);
+  }
+  const acts = [];
+  if(q.editable && items.length) acts.push(pill(ICON_TRASH, tt("queue_clear", null, "Vaciar"), () => fire(ctx, "queue_clear", {})));
+  const sec = panel(tt("queue_title", null, "A continuación"), items.length || "", acts);
+  if(!q.editable && items.length) sec.appendChild(h("div", "hb-mus2-note",
+    tt("queue_readonly", null, "Esta cola se ve aquí; para cambiarla, usa la app de Spotify.")));
+  const g = h("div", "hb-mus2-grid");
+  items.forEach((t, i) => g.appendChild(trackRow(t, ctx, {
+    index: String(i + 1), data, queue: false,
+    remove: q.editable ? () => fire(ctx, "queue_remove", {item: String(i + 1)}) : null,
+    removeTitle: tt("remove_queue", null, "Quitar de la cola"),
+    drag: q.editable ? (from, to) => fire(ctx, "queue_move", {item: String(from + 1), to: String(to + 1)}) : null,
+    dragIndex: i,
+  })));
+  if(!items.length) g.appendChild(h("div", "hb-mus2-empty", tt("queue_empty", null, "No hay nada en cola. Añade canciones con ＋ desde cualquier lista.")));
+  sec.appendChild(g);
+  s.scroll.appendChild(sec);
+  s.done();
+}
+
+// ── SEARCH: songs, artists, albums (and lists, where the catalogue has them) ─────────────────────────────
+function searchView(el, data, ctx){
+  const s = shell(el, data, ctx, "search", {back: "library", search: true});
+  const res = (data.browse || {}).search || {};
+  const has = k => (res[k] || []).length;
+  if(!res.query){
+    s.scroll.classList.add("mid");
+    s.scroll.appendChild(h("div", "hb-mus2-note", tt("search_hint", null, "Busca una canción, un artista o un álbum.")));
+    s.done(); return;
+  }
+  if(!has("tracks") && !has("artists") && !has("albums") && !has("playlists")){
+    s.scroll.appendChild(h("div", "hb-mus2-note", tt("no_results", {q: res.query}, "Nada para «{q}».")));
+    s.done(); return;
+  }
+  if(has("tracks")){
+    const sec = panel(tt("songs", null, "Canciones"), null, []);
+    const g = h("div", "hb-mus2-grid");
+    res.tracks.forEach(t => g.appendChild(trackRow(t, ctx, {data, addToList: true})));
+    sec.appendChild(g); s.scroll.appendChild(sec);
+  }
+  if(has("artists")){
+    const sec = panel(tt("artists", null, "Artistas"), null, []);
+    const row = h("div", "hb-mus2-faces");
+    res.artists.forEach(a => {
+      const f = h("div", "hb-mus2-face");
+      f.appendChild(artNode(a.art, ICON_NOTE));
+      f.appendChild(h("div", "hb-mus2-facen", a.name));
+      f.onclick = () => fire(ctx, "open_view", {kind: "artist", id: a.id, source: a.source, name: a.name});
+      row.appendChild(f);
+    });
+    sec.appendChild(row); s.scroll.appendChild(sec);
+  }
+  if(has("albums")) s.scroll.appendChild(albumShelf(tt("albums", null, "Álbumes"), res.albums, ctx));
+  if(has("playlists")){
+    const sec = panel(tt("playlists_found", null, "Listas"), null, []);
+    const grid = h("div", "hb-mus2-lists");
+    res.playlists.forEach(p => {
+      const c = h("div", "hb-mus2-pl");
+      c.appendChild(artNode(p.art, ICON_LIST));
+      c.appendChild(h("div", "hb-mus2-plname", p.name));
+      if(p.owner) c.appendChild(h("div", "hb-mus2-plsub", p.owner));
+      c.onclick = () => fire(ctx, "play_album", {uri: p.uri, album: p.name});
+      grid.appendChild(c);
+    });
+    sec.appendChild(grid); s.scroll.appendChild(sec);
+  }
+  s.done();
+}
+
+function albumShelf(title, albums, ctx){
+  const sec = panel(title, null, []);
+  const grid = h("div", "hb-mus2-lists");
+  albums.forEach(al => {
+    const c = h("div", "hb-mus2-pl");
+    c.appendChild(artNode(al.art, ICON_NOTE));
+    c.appendChild(h("div", "hb-mus2-plname", al.name));
+    c.appendChild(h("div", "hb-mus2-plsub", [al.year, al.artist].filter(Boolean).join(" · ")));
+    const pp = h("button", "hb-mus2-plplay"); pp.appendChild(svgEl(ICON_PLAY));
+    pp.title = tt("play", null, "Reproducir");
+    pp.onclick = (e) => { e.stopPropagation(); fire(ctx, "play_album", {id: al.id, source: al.source, uri: al.uri,
+                                                                         album: al.name, artist: al.artist}); };
+    c.appendChild(pp);
+    c.onclick = () => fire(ctx, "open_view", {kind: "album", id: al.id, source: al.source, name: al.name, artist: al.artist});
+    grid.appendChild(c);
+  });
+  sec.appendChild(grid);
+  return sec;
+}
+
+// ── AN ARTIST: face, name, the popular songs, the albums ─────────────────────────────────────────────────
+function artistView(el, data, ctx){
+  const s = shell(el, data, ctx, "artist", {back: "search"});
+  const page = (data.browse || {}).artist || {};
+  const a = page.artist || {};
+  const head = h("div", "hb-mus2-head");
+  const wrap = h("div", "hb-mus2-artwrap");
+  const face = artNode(a.art, ICON_NOTE); face.classList.add("round");
+  wrap.appendChild(face);
+  head.appendChild(wrap);
+  const hm = h("div", "hb-mus2-headmeta");
+  hm.appendChild(h("div", "hb-mus2-headk", tt("artist", null, "Artista")));
+  hm.appendChild(h("div", "hb-mus2-headn", a.name || "—"));
+  const acts = h("div", "hb-mus2-acts");
+  if((page.top || []).length) acts.appendChild(pill(ICON_PLAY, tt("play", null, "Reproducir"),
+    () => fire(ctx, "play_album", {kind: "artist", id: a.id, source: a.source, name: a.name})));
+  hm.appendChild(acts);
+  head.appendChild(hm);
+  s.scroll.appendChild(head);
+  if((page.top || []).length){
+    const sec = panel(tt("popular", null, "Populares"), null, []);
+    const g = h("div", "hb-mus2-grid");
+    page.top.forEach((t, i) => g.appendChild(trackRow(t, ctx, {index: String(i + 1), data, addToList: true,
+                                                                hideArtist: true})));
+    sec.appendChild(g); s.scroll.appendChild(sec);
+  }
+  if((page.albums || []).length) s.scroll.appendChild(albumShelf(tt("albums", null, "Álbumes"), page.albums, ctx));
+  s.done();
+}
+
+// ── AN ALBUM: cover, name, the artist (a door to the artist), year, its songs; play it, keep it as a list ──
+function albumView(el, data, ctx){
+  const s = shell(el, data, ctx, "album", {back: "search"});
+  const page = (data.browse || {}).album || {};
+  const al = page.album || {};
+  const tracks = page.tracks || [];
+  const head = h("div", "hb-mus2-head");
+  const wrap = h("div", "hb-mus2-artwrap");
+  wrap.appendChild(artNode(al.art, ICON_NOTE));
+  const play = h("button", "hb-mus2-playfab"); play.appendChild(svgEl(ICON_PLAY));
+  play.title = tt("play", null, "Reproducir");
+  if(!tracks.length) play.disabled = true;
+  play.onclick = () => fire(ctx, "play_album", {id: al.id, source: al.source, uri: al.uri, album: al.name, artist: al.artist});
+  wrap.appendChild(play);
+  head.appendChild(wrap);
+  const hm = h("div", "hb-mus2-headmeta");
+  hm.appendChild(h("div", "hb-mus2-headk", tt("album", null, "Álbum")));
+  hm.appendChild(h("div", "hb-mus2-headn", al.name || "—"));
+  const who = h("div", "hb-mus2-plsub" + (al.artist ? " link" : ""),
+                [al.artist, al.year, `${tracks.length} ${tracks.length === 1 ? tt("song_one", null, "canción") : tt("song_many", null, "canciones")}`]
+                  .filter(Boolean).join(" · "));
+  if(al.artist) who.onclick = () => fire(ctx, "open_view", {kind: "artist", name: al.artist});
+  hm.appendChild(who);
+  const acts = h("div", "hb-mus2-acts");
+  if(tracks.length) acts.appendChild(pill(ICON_ADDLIST, tt("save_as_list", null, "Guardar como lista"),
+    () => fire(ctx, "add_tracks", {playlist: al.name, tracks: tracks.slice(0, 25).map(t => ({title: t.title, artist: t.artist}))})));
+  hm.appendChild(acts);
+  head.appendChild(hm);
+  s.scroll.appendChild(head);
+  const sec = panel(tt("songs", null, "Canciones"), tracks.length || "", []);
+  const g = h("div", "hb-mus2-grid");
+  tracks.forEach((t, i) => g.appendChild(trackRow(t, ctx, {index: String(i + 1), data, addToList: true, hideArtist: true})));
+  sec.appendChild(g); s.scroll.appendChild(sec);
+  s.done();
+}
+
+// Which face of the card is showing. `home` is ADAPTIVE and the default: the song when something sounds, the
+// library when nothing does. The tick that paints the two progress lines is ONE interval for the whole face.
 function drawView(el, data, ctx){
-  const host = el._viewHost;
   if(el._hbTick){ clearInterval(el._hbTick); el._hbTick = null; }
-  host.textContent = "";
+  const ae = document.activeElement;
+  const hadFocus = !!(ae && ae.classList && ae.classList.contains("hb-mus2-sinp") && el.contains(ae));
+  el._hbTickers = [];
+  el._viewHost.textContent = "";
+  el.querySelectorAll(".hb-mus2-menu").forEach(m => m.remove());
   const view = data.view || {kind: "home"};
   let kind = (view.kind || "home").toLowerCase();
   if(kind === "nowplaying") kind = "now";                       // the pre-V2-717 spelling, never implemented
+  if(kind !== "search") el._hbDraft = null;
+  el._hbFocusSearch = kind === "search" && (hadFocus || el._hbLastKind !== "search");
+  el._hbLastKind = kind;
   if(kind === "playlist"){
     const pl = (data.playlists || []).find(p => p.id === view.id);
-    if(pl){ playlistView(host, data, ctx, pl); return; }
+    if(pl) playlistView(el, data, ctx, pl);
+    else libraryView(el, data, ctx);
   }
-  if(kind === "connect"){ connectView(host, data, ctx); return; }
+  else if(kind === "connect") connectView(el, data, ctx);
+  else if(kind === "queue") queueView(el, data, ctx);
+  else if(kind === "search") searchView(el, data, ctx);
+  else if(kind === "artist" && ((data.browse || {}).artist || {}).artist) artistView(el, data, ctx);
+  else if(kind === "album" && ((data.browse || {}).album || {}).album) albumView(el, data, ctx);
   // A hero with nothing in it would be the emptiest screen of all: when the song ends while the card sits on
   // «Sonando», it falls back to the library instead of showing a frame around silence.
-  if((kind === "now" || kind === "home") && nowPlaying(data)){ nowView(host, el, data, ctx); return; }
-  libraryView(host, data, ctx);
+  else if((kind === "now" || kind === "home") && nowPlaying(data)) nowView(el, data, ctx);
+  else libraryView(el, data, ctx);
+  const tick = () => el._hbTickers.forEach(f => { try{ f(); }catch(_){} });
+  tick();
+  if(el._hbTickers.length) el._hbTick = setInterval(tick, 250);   // a local clock, no network
 }
 
 // ── i18n seam (V2-613 / V2-694): `ctx.t` for our own chrome, the literal as the FALLBACK ────────────────

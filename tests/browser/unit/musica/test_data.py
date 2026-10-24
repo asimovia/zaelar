@@ -258,7 +258,7 @@ def test_the_song_screen_is_reachable_by_voice_under_the_name_it_was_born_with()
     assert md.apply_action("open_view", {"kind": "nowplaying"})["view"]["kind"] == "now"
     assert md.apply_action("open_view", {"kind": "library"})["view"]["kind"] == "library"
     assert md.apply_action("open_view", {"kind": "connect"})["view"]["kind"] == "connect"
-    assert md.apply_action("open_view", {"kind": "album"})["view"]["kind"] == "home", "unknown → the adaptive one"
+    assert md.apply_action("open_view", {"kind": "podcast"})["view"]["kind"] == "home", "unknown → the adaptive one"
 
 
 def test_a_seek_never_follows_the_song_it_was_asked_of():

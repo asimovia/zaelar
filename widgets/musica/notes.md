@@ -166,3 +166,41 @@ is down, and a drag asks the player ONCE, on release.
 - ⚠️ And the oldest trap in this file, met again while writing the comment that explains the fix above: a
   BACKTICK inside the injected `<style>` template ends the literal and kills the whole module. Two of them,
   in prose quoting a CSS keyword. `node --check` catches it; nothing at runtime does.
+
+## 2026-10-24 — V2-795: the card does what a player does, and the content is sectioned
+
+The ask: «more or less what Spotify does, not 100 % but what's reasonable», and a quiet visual pass («boxed or
+sectioned, shadowed, subtle, elegant, dark mode»). Gap list and the parity table live in the local initiative.
+
+- **New declared ops** (all through the generic widget door; prompt cost paid by shortening `whenToUse`/`usage`, so
+  the composed prompt is SMALLER than before): `rename_playlist`, `delete_playlist` (confirm + `confirm_q`: a whole
+  list is a sweep), `move_track`, `shuffle`, `repeat`, `queue_remove`, `queue_move`, `queue_clear`, `search` (view),
+  `play_album`; payload extensions `play_playlist {from, shuffle}`, `set_volume {mute}`, `open_view {kind: queue |
+  search | artist | album}`. `played` is INTERNAL: the card reports a song it shows sounding, so a song started by
+  voice reaches Recent/Most played (deduped against the head of Recent).
+- **Where things live:** `player.py` (modes, queue view/edit, mute, `played`), `browse.py` (search, artist/album pages,
+  `play_album`), `actions.play_sequence` (the one «first now, rest queued» road a list and an album share — the V2-650
+  fresh-load rule moved there intact). The catalogue door is `connectors/music/catalog.py`: the connected account's
+  own catalogue (Spotify `search_catalog`/`artist_page`/`album_page`), else the free iTunes metadata
+  (`connectors/music/itunes.py`, also the art enrichment's client now), played by WORDS.
+- **Provider limits are said, not faked:** Spotify's Web API cannot remove, reorder or clear its queue → read-only
+  on the card, `unsupported` from the op. Liked songs / recently played / own playlists from Spotify would need new
+  scopes (a new consent) — not done; «Favoritos» is the liked list and every row has a heart.
+- **Free player modes:** repeat one = a seek to 0 + a play command on the SAME video (never a reload); repeat all = the
+  finished song goes to the back of the queue; shuffle = the next queued song at random; a manual `next` ignores
+  repeat one.
+- **Visual:** each shelf is a panel on `--hb-bg-soft` with a subtle hairline and `--hb-shadow-1`; list cards on
+  `--hb-bubble` with a 2x2 cover MOSAIC; «Nueva» is a pill in the panel head; rows have hover actions (heart, queue,
+  add to a list); the bar holds shuffle/prev/play/next/repeat + heart + mute (+ a slider from 600 px wide, via a
+  container query — the validator reads a `min-width:600px` declaration as a fixed width, so the range syntax is
+  used) and a thin progress line on its top edge that waits for the clock like the big scrubber.
+- A double-click on a song in a list now plays the LIST from that song (`play_playlist {from}`), like any player.
+- **One state model for every row** (`rowState`): `current` = the song the player holds (green title + green edge,
+  no fill), `playing` = it is SOUNDING per the player's own report — the only state that animates (row meter, bar
+  badge). A paused current song shows a still note. Hover is a neutral tone and never resembles current.
+- **The transport is two rows**: art · title · transport · heart, then elapsed · rail · total · mute · volume bar.
+  The rail and times wait for the clock (no bar pinned at zero); a click or a drag seeks ONCE on release; the volume
+  bar is `data.volume.level` (the provider's level that voice volume_up/down/set_volume move). A short card hides the
+  now-view facts line (container query on the band's height) so the cover keeps its room.
+- The skip fix that preceded this pass (3a3bb199): a list goes to Spotify as ONE context, a skip names the new song or
+  says nothing changed, and `next`/`previous`/volume/`seek` are declared `"repeatable"`.

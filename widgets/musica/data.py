@@ -18,8 +18,6 @@
 import re
 import time
 import unicodedata
-import urllib.parse
-import urllib.request
 
 from .. import store
 from i18n import langs as _langs   # V2-778 F3-30: hints are read back aloud, in the agent's language
@@ -69,6 +67,7 @@ def _load_db() -> dict:
     db.setdefault("counts", {})
     db.setdefault("view", {"kind": "home", "id": ""})
     db.setdefault("art_cache", {})
+    db.setdefault("browse", {})
     return db
 
 
@@ -96,7 +95,8 @@ def _now_playing() -> "dict | None":
                 "title": (t.title if t else ""), "artist": (t.artist if t else ""),
                 "album": (t.album if t else ""), "art": (t.art if t else ""),
                 "progress_ms": int(getattr(np, "progress_ms", 0) or 0),
-                "duration_ms": int(t.duration_ms if t else 0)}
+                "duration_ms": int(t.duration_ms if t else 0),
+                "shuffle": bool(getattr(np, "shuffle", False)), "repeat": str(getattr(np, "repeat", "off") or "off")}
     except Exception:
         return None
 
@@ -138,8 +138,20 @@ def _compose(db: dict) -> dict:
     """Exact blob seen by the card: persisted db + live state + derived top tracks + whether the track
     playing right now is already one of the operator's favorites (the heart's filled state, V2-629)."""
     live = _live_fields(db)
+    from . import player as _player        # V2-795 — the transport's state, read from what is already stored
     return {**db, **live, "top": _derive_top(db),
-            "fav_current": _fav_playlist_match(db, _current_track_from_live(live))}
+            "fav_current": _fav_playlist_match(db, _current_track_from_live(live)),
+            "modes": _player.modes(live), "queue": _player.queue_view(live, db),
+            "volume": _player.volume(live, db), "fav": _fav_ref(db)}
+
+
+def _fav_ref(db: dict) -> dict:
+    """The favourites list the card's hearts write to: the one `_fav_playlist_match` reads, or the name
+    `favorite_current` would create — so a heart on a row and the heart on the bar never open two lists."""
+    for pl in db.get("playlists") or []:
+        if "favorit" in _norm(pl.get("name")):
+            return {"id": pl.get("id", ""), "name": pl.get("name", "")}
+    return {"id": "", "name": "Favoritos"}
 
 
 def view_data(q: str = "") -> dict:
@@ -426,26 +438,10 @@ def _art_cache_key(title: str, artist: str) -> str:
 
 def _itunes_lookup(title: str, artist: str) -> "tuple[str, str]":
     """(art_url, album) from the iTunes Search API — free, no key, no auth. Best-effort, fail-open: a network
-    hiccup or a song iTunes does not carry must never break the widget, it just stays without art. The
-    100x100 thumbnail iTunes returns by default is upsized to 600x600 by rewriting that URL segment — a
-    documented trick, the SAME single request, no second endpoint."""
-    import json
-    term = " ".join(p for p in (artist, title) if p).strip()
-    if not term:
-        return "", ""
-    try:
-        url = "https://itunes.apple.com/search?" + urllib.parse.urlencode(
-            {"term": term, "entity": "song", "limit": 1})
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-        data = json.loads(urllib.request.urlopen(req, timeout=5).read().decode("utf-8", "ignore"))
-    except Exception:
-        return "", ""
-    results = data.get("results") or []
-    if not results:
-        return "", ""
-    hit = results[0]
-    art = str(hit.get("artworkUrl100") or "").replace("100x100bb", "600x600bb")
-    return art, str(hit.get("collectionName") or "").strip()
+    hiccup or a song iTunes does not carry must never break the widget, it just stays without art. The one
+    iTunes client lives in the connector (`connectors/music/itunes.py`, V2-795), shared with search/browse."""
+    from connectors.music import itunes
+    return itunes.cover(title, artist)
 
 
 def _backfill_art(db: dict, key: str, art: str, album: str) -> None:
@@ -534,7 +530,11 @@ def ref_index() -> list:
 from .actions import (  # noqa: E402,F401
     _a_refresh, _a_enrich_art, _a_create_playlist, _a_add_to_playlist,
     _a_remove_from_playlist, _a_favorite_current, _a_play_playlist, _a_open_view, _a_back, _a_play_local, _a_seek,
-    _a_playback, _a_add_tracks)
+    _a_playback, _a_add_tracks, _a_rename_playlist, _a_delete_playlist, _a_move_track)
+from .browse import a_search as _a_search, a_play_album as _a_play_album  # noqa: E402
+from .player import (  # noqa: E402
+    a_shuffle as _a_shuffle, a_repeat as _a_repeat, a_queue_remove as _a_queue_remove,
+    a_queue_move as _a_queue_move, a_queue_clear as _a_queue_clear, a_played as _a_played)
 
 
 # V2-778 F1-12 — one function per action (in `actions.py`), and `apply_action` is the table lookup. Each body
@@ -565,6 +565,18 @@ ACTIONS = {
     "set_volume": _a_playback,
     "queue": _a_playback,
     "ended": _a_playback,
+    # V2-795 — what a player does that the card did not
+    "rename_playlist": _a_rename_playlist,
+    "delete_playlist": _a_delete_playlist,
+    "move_track": _a_move_track,
+    "shuffle": _a_shuffle,
+    "repeat": _a_repeat,
+    "queue_remove": _a_queue_remove,
+    "queue_move": _a_queue_move,
+    "queue_clear": _a_queue_clear,
+    "search": _a_search,
+    "play_album": _a_play_album,
+    "played": _a_played,
 }
 
 

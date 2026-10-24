@@ -1,9 +1,9 @@
 {
   "id": "musica",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "title": "Música",
-  "description": "Tu música por voz y a mano. La canción que suena OCUPA la tarjeta —portada grande, título, artista y una barra de progreso que se puede arrastrar—, y tu biblioteca guarda listas, más escuchadas y recientes. Conecta tu Spotify (un clic) o suena gratis desde YouTube-audio.",
-  "whenToUse": "Para CONECTAR Spotify ('conéctame Spotify' se hace AQUÍ, en su tarjeta — NUNCA por el navegador/authenticate_web), y para ESCUCHAR y ORGANIZAR música: listas, poner una canción o artista, controlar la reproducción. Con la tarjeta abierta se resuelven contra ella con data-ops.",
+  "description": "Tu música por voz y a mano, como un reproductor de verdad: la canción que suena ocupa la tarjeta (portada, título, artista, barra de progreso), tu biblioteca guarda listas, favoritas, más escuchadas y recientes, hay cola, aleatorio y repetir, y un buscador de canciones, artistas y álbumes. Conecta tu Spotify o suena gratis desde YouTube-audio.",
+  "whenToUse": "Música: poner canciones, artistas y álbumes, buscar, listas, cola, aleatorio y repetir. Conectar Spotify es de aquí (nunca authenticate_web).",
   "keywords": [
     "música",
     "musica",
@@ -35,10 +35,21 @@
     "vuelve atrás la canción",
     "qué canción es esta",
     "qué estoy escuchando",
-    "enséñame la canción"
+    "enséñame la canción",
+    "modo aleatorio",
+    "repetir canción",
+    "cola de reproducción",
+    "pon el álbum",
+    "busca canciones",
+    "renombra la lista",
+    "borra la lista",
+    "shuffle",
+    "repeat",
+    "music queue",
+    "play the album"
   ],
   "entry": "widget.js",
-  "usage": "CARA + LISTAS del conector de música (connectors/music + connectors/spotify). Conectar Spotify NO es de esta tarjeta: show_panel(panel='conectores', connector='spotify'). REPRODUCCIÓN: poner una canción/artista suelto sigue yendo por la tool play_music del FlashBrain; para LISTAS propias usa data-ops de este widget: crear una lista → create_playlist{name}; añadir una canción → add_to_playlist{playlist,query,title,artist} (playlist = nombre de la lista en lenguaje natural; si conoces el artista, pásalo en `artist` SEPARADO de `title` — nunca los dos juntos en un solo campo, la tarjeta los enseña por separado); quitar una canción → remove_from_playlist{playlist,item} (item = título o nº); reproducir una lista entera → play_playlist{playlist}; guardar la canción que suena AHORA en favoritos → favorite_current{} (sin payload; crea 'Favoritos' si no existe). MOVER LA CANCIÓN: «ponla en el minuto dos» → seek{to:120}; «adelanta medio minuto» → seek{by:30}; «vuelve atrás diez segundos» → seek{by:-10}. Navegar la tarjeta: open_view{kind,id} — kind=now enseña la canción a pantalla completa, kind=library la biblioteca, kind=playlist con id el detalle de una lista, kind=connect las fuentes — y back (volver). connect/disconnect gestionan la cuenta de Spotify. Curar una lista con muchas canciones ('hazme una lista random de disco') es una escalada a worker (Fase posterior), no una data-op. Guardar en LISTAS con nombre: una sola llamada — add_to_playlist con {playlist} crea la lista si no existe y sin canción explícita guarda la que suena ahora; create_playlist solo hace falta para estrenar una lista vacía.",
+  "usage": "CARA + LISTAS del conector de música. Conectar Spotify: show_panel(panel='conectores', connector='spotify'). Una canción/artista suelto va por la tool play_music; aquí, data-ops. LISTAS: add_to_playlist{playlist,title,artist} (crea la lista si falta; sin canción guarda la que suena; el artista SIEMPRE en su campo), create_playlist{name} solo para estrenar una vacía, remove_from_playlist{playlist,item}, rename_playlist{playlist,name}, delete_playlist{playlist}, move_track{playlist,item,to}, play_playlist{playlist[,from,shuffle:true]}, favorite_current{} (la que suena → Favoritos). COLA: queue{query} añade, queue_remove{item}, queue_move{item,to}, queue_clear{}. MODOS: shuffle{on}, repeat{mode:off|one|all}, set_volume{level} o {mute:true|false}. POSICIÓN: «ponla en el minuto dos» → seek{to:120}, «adelanta medio minuto» → seek{by:30}. CATÁLOGO: search{query}; open_view{kind:artist|album,name} abre su página; play_album{album,artist}. VISTAS: open_view{kind:now|library|queue|playlist(id)|connect}, back. Una lista larga curada ('hazme una lista de disco') es de un worker con add_tracks.",
   "actions": {
     "create_playlist": {
       "desc": "crea una lista de reproducción vacía y la abre",
@@ -82,19 +93,45 @@
         "item": "título de la canción o nº"
       }
     },
-    "play_playlist": {
-      "desc": "reproduce una lista entera (la 1ª suena ya, el resto a la cola)",
+    "rename_playlist": {
+      "desc": "cambia el nombre de una de sus listas",
+      "payload": {
+        "playlist": "nombre actual de la lista",
+        "name": "nombre nuevo"
+      }
+    },
+    "delete_playlist": {
+      "desc": "borra una lista entera (todas sus canciones)",
+      "confirm": true,
       "payload": {
         "playlist": "nombre de la lista"
+      },
+      "confirm_q": "¿Borro la lista «{item}» con todas sus canciones? No se puede deshacer."
+    },
+    "move_track": {
+      "desc": "cambia de sitio una canción dentro de una lista",
+      "payload": {
+        "playlist": "nombre de la lista",
+        "item": "título o nº de la canción",
+        "to": "nº de la posición nueva (1 = la primera)"
+      }
+    },
+    "play_playlist": {
+      "desc": "reproduce una lista entera (la 1ª suena ya, el resto a la cola), desde una canción o en aleatorio",
+      "payload": {
+        "playlist": "nombre de la lista",
+        "from": "opcional: título o nº de la canción por la que empezar",
+        "shuffle": "opcional: true para mezclar el orden"
       },
       "sensitivity": "routine",
       "activation": true
     },
     "open_view": {
-      "desc": "cambia la cara de la tarjeta: la canción que suena a pantalla completa (now), la biblioteca (library), el detalle de una lista (playlist) o las fuentes de música (connect)",
+      "desc": "cambia la cara de la tarjeta: la canción que suena (now), la biblioteca (library), la cola (queue), una lista (playlist), un artista o un álbum del catálogo (artist/album) o las fuentes (connect)",
       "payload": {
-        "kind": "now|library|playlist|connect|home (home = la canción si suena algo, la biblioteca si no)",
-        "id": "nombre/id de la lista (solo si kind=playlist)"
+        "kind": "now|library|queue|playlist|artist|album|search|connect|home",
+        "id": "id de la lista (playlist) o del artista/álbum si se conoce",
+        "name": "nombre del artista o del álbum (artist/album)"
       },
       "view": true
     },
@@ -167,9 +204,10 @@
       "repeatable": true
     },
     "set_volume": {
-      "desc": "fija el volumen a un nivel concreto (0-100)",
+      "desc": "fija el volumen a un nivel concreto (0-100), o silencia / devuelve el sonido",
       "payload": {
-        "level": 70
+        "level": 70,
+        "mute": "opcional: true silencia, false devuelve el volumen de antes"
       }
     },
     "queue": {
@@ -177,6 +215,54 @@
       "payload": {
         "query": "canción/artista"
       }
+    },
+    "queue_remove": {
+      "desc": "quita una canción de la cola de reproducción",
+      "payload": {
+        "item": "título o nº de la canción en la cola"
+      }
+    },
+    "queue_move": {
+      "desc": "cambia de sitio una canción de la cola (to=1: que suene la siguiente)",
+      "payload": {
+        "item": "título o nº en la cola",
+        "to": "nº de la posición nueva"
+      }
+    },
+    "queue_clear": {
+      "desc": "vacía la cola: no suena nada más después de la canción actual",
+      "confirm": false,
+      "payload": {}
+    },
+    "shuffle": {
+      "desc": "activa o quita el modo aleatorio de la reproducción",
+      "payload": {
+        "on": "true para activarlo, false para quitarlo"
+      },
+      "sensitivity": "routine"
+    },
+    "repeat": {
+      "desc": "modo repetir: no repetir, repetir la canción o repetir la cola/lista",
+      "payload": {
+        "mode": "off|one|all"
+      },
+      "sensitivity": "routine"
+    },
+    "search": {
+      "desc": "busca en el catálogo canciones, artistas y álbumes y enseña los resultados",
+      "payload": {
+        "query": "lo que busca"
+      },
+      "view": true
+    },
+    "play_album": {
+      "desc": "reproduce un álbum entero del catálogo",
+      "payload": {
+        "album": "nombre del álbum",
+        "artist": "artista, opcional"
+      },
+      "sensitivity": "routine",
+      "activation": true
     },
     "refresh": {
       "desc": "refresca la tarjeta con el estado real de reproducción",
@@ -193,6 +279,16 @@
       "payload": {
         "title": "SOLO el título",
         "artist": "el artista, opcional"
+      }
+    },
+    "played": {
+      "desc": "interno: lo dispara la propia tarjeta al ver sonar una canción, para Recientes — nunca una orden de voz, no invocar",
+      "internal": true,
+      "payload": {
+        "title": "título",
+        "artist": "artista",
+        "art": "portada",
+        "query": "búsqueda"
       }
     }
   },
@@ -217,7 +313,8 @@
       "next",
       "previous",
       "play_playlist",
-      "ended"
+      "ended",
+      "play_album"
     ],
     "suspend": "pause",
     "resume": "resume",

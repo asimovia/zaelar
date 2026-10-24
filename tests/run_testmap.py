@@ -2199,6 +2199,14 @@ DOMAINS: list[dict] = [
             "tests/browser/unit/navegador/test_task_finish_is_coherent.py"]},
         {"id": "4.263", "title": "Music card: a list somebody puts together grows call after call, each song mapped to a playable track by the connected providers in priority order (a song nobody finds keeps its words), declares the end state it leaves, plays first-now-rest-queued, and a Brain Worker reaches it through its widget door",
             "ch": UNIT, "paths": ["tests/browser/unit/musica/test_a_list_grows_with_playable_tracks.py"]},
+        # V2-795 — «que esta app haga más o menos lo que hace Spotify»: list management (rename, delete, reorder,
+        # play from a song, shuffle a list), an editable queue, shuffle/repeat, mute, a heart on every row, search
+        # with artist and album pages, and a song started by voice reaching Recent — each a DECLARED op, the card's
+        # own report `internal`. Backend with fake providers + the rendered screens on the real dark palette.
+        {"id": "4.264", "title": "Music card does what a player does: lists renamed/deleted/reordered, played from a song or shuffled; the queue seen and edited; shuffle, repeat, mute; search with artist and album pages; every op declared, the card's own report internal (V2-795)",
+            "ch": UNIT, "paths": ["tests/browser/unit/musica/test_the_card_does_what_a_player_does.py"]},
+        {"id": "4.265", "title": "Music card RENDERS a player's screens: shelves are quiet panels one rung up, lists are cards with cover mosaics, rows heart/queue/add-to-list, rename and ask-first delete in place, drag reorders once, queue/search/artist/album faces, shuffle/repeat/mute on the bar, a progress row with elapsed/total that a click or drag seeks once, a volume bar showing the provider's level, the meter animating ONLY while sounding (paused = a still marker), hover never looking like current, legible on the dark palette (V2-795)",
+            "ch": UNIT, "paths": ["tests/browser/unit/musica/test_the_card_renders_a_players_screens.py"]},
         {"id": "4.3", "title": "Widget de música — cabecera y pie FIJOS, solo la lista central hace scroll "
                               "(V2-667)", "ch": UNIT, "paths": ["tests/browser/unit/musica/test_data.py",
                                                                  "tests/browser/unit/musica/test_anothers_player_never_advances_the_music_queue.py",
@@ -5620,6 +5628,8 @@ DOMAINS: list[dict] = [
             "tests/connectors/unit/spotify/test_auth.py", "tests/connectors/unit/spotify/test_provider.py"]},
         {"id": "5.63", "title": "Next moves inside what is playing: a provider whose skip lives in its context (Spotify) gets a list as ONE play, a skip is checked against the song the player reports and an unchanged song is said, Spotify's own queue is reached (V2-795)",
             "ch": UNIT, "paths": ["tests/connectors/unit/music/test_a_skip_moves_inside_what_is_playing.py"]},
+        {"id": "5.64", "title": "Music connector: play modes and an editable queue on the free player (repeat one/all, shuffle), the same contract over Spotify's API (its queue read-only), and ONE catalogue door — the connected account first, the free iTunes metadata next, never emptier than a play (V2-795)",
+            "ch": UNIT, "paths": ["tests/connectors/unit/music/test_play_modes_queue_and_catalogue.py"]},
         {"id": "5.4", "title": "Architect", "ch": UNIT, "paths": ["tests/connectors/unit/architect/test_architect.py"]},
         {"id": "5.5", "title": "WhatsApp: normalización y allowlist", "ch": UNIT, "paths": [
             "tests/connectors/unit/whatsapp/test_allowlist_contract.py",

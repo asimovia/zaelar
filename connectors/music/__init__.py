@@ -101,6 +101,52 @@ def play_list(items: "list[tuple[str, str]]") -> MusicResult:
     return res
 
 
+def _guarded(action: str, fn) -> MusicResult:
+    """Run one provider call fail-safe — the same contract as `control`: a provider failure never raises."""
+    prov = active_provider()
+    if prov is None:
+        return MusicResult(ok=False, action=action, reason="no_provider", message=_msg("no_provider"))
+    try:
+        return fn(prov)
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"music.{action} failed: {e!r}")
+        return MusicResult(ok=False, provider=prov.name, action=action, reason="error", message=_msg("done"))
+
+
+def set_mode(shuffle: "bool | None" = None, repeat: "str | None" = None) -> MusicResult:
+    """Shuffle on/off and/or repeat off|one|all on the active provider (V2-795)."""
+    def run(prov):
+        res = None
+        if shuffle is not None:
+            res = prov.set_shuffle(bool(shuffle))
+        if repeat is not None and (res is None or res.ok):
+            res = prov.set_repeat(str(repeat))
+        return res or MusicResult(ok=False, provider=prov.name, action="mode", reason="no_change")
+    return _guarded("mode", run)
+
+
+def queue_list() -> "tuple[str, list[Track] | None]":
+    """(provider name, what plays next) — None as the list when the provider does not expose its queue."""
+    prov = active_provider()
+    if prov is None:
+        return "", None
+    try:
+        return prov.name, prov.queue_items()
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"music.queue_list via {prov.name} failed: {e!r}")
+        return prov.name, None
+
+
+def queue_edit(op: str, index: int = -1, to: int = -1) -> MusicResult:
+    """remove | move | clear on the active provider's queue (V2-795)."""
+    return _guarded("queue_" + str(op or ""), lambda prov: prov.queue_edit(op, int(index), int(to)))
+
+
+def play_context(uri: str, label: str = "") -> MusicResult:
+    """A whole album/playlist by the provider's own uri; `unsupported` when it cannot (play it track by track)."""
+    return _guarded("play", lambda prov: prov.play_context(uri, label))
+
+
 def resolve(query: str) -> "Track | None":
     """The playable track a «title — artist» names, WITHOUT playing it: the first connected provider that finds it,
     in the registry's priority order (a connected streaming account first, the free YouTube-audio last). None when
@@ -140,5 +186,6 @@ def status() -> dict:
     return {"providers": out, "available": available()}
 
 
-__all__ = ["control", "play_list", "resolve", "now_playing", "status", "available", "active_provider",
+__all__ = ["control", "play_list", "set_mode", "queue_list", "queue_edit", "play_context", "resolve", "now_playing",
+           "status", "available", "active_provider",
            "MusicProvider", "MusicResult", "NowPlaying", "Track", "registry"]

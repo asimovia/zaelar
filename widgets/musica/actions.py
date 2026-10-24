@@ -7,6 +7,10 @@ still governs every call.
 """
 from __future__ import annotations
 
+import random
+
+from loguru import logger as _log
+
 from . import data as _d
 
 
@@ -139,6 +143,36 @@ def _a_favorite_current(action: str, p: dict) -> dict:
     return {"ok": True, "playlist": pl["id"], "track": cur.get("title")}
 
 
+def play_sequence(tracks: list) -> dict:
+    """Play several tracks in order, the first NOW — the one road a list of his and an album from the catalogue both
+    take. Returns the first track's play result plus the FRESH db.
+
+    The streamed tracks go to the connector as ONE sequence (`music.play_list`): a provider whose skip only moves
+    inside its playback context (Spotify) gets the whole list as that context, the free player queues it. A local
+    first track mutates the snapshot it is handed (local state has no other writer); otherwise the connector writes
+    the store ITSELF, so the db returned is read AFTER it (V2-650: persisting the earlier snapshot erased the
+    playback the connector had just written — measured live 2026-09-10, silence)."""
+    db = _d._load_db()
+    first_local = _d._local.is_local(tracks[0])
+    try:
+        from connectors import music
+        if first_local:
+            r = _d._play_track(tracks[0], db)
+            for t in tracks[1:]:    # a file in the rest has nothing a connector queue could re-resolve
+                if not _d._local.is_local(t):
+                    music.control("queue", query=_d._track_query(t), uri=_d._uri_now(t))
+        else:
+            res = music.play_list([(_d._track_query(t), _d._uri_now(t))
+                                   for t in tracks if not _d._local.is_local(t)])
+            r = {"ok": bool(res.ok), "message": res.message, "reason": res.reason}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": str(e)[:120], "db": None}
+    if not first_local:
+        db = _d._load_db()
+    _d._push_recent(db, tracks[0])
+    return {**r, "db": db}
+
+
 def _a_play_playlist(action: str, p: dict) -> dict:
     db = _d._load_db()
     ref = p.get("playlist") or p.get("id")
@@ -154,43 +188,83 @@ def _a_play_playlist(action: str, p: dict) -> dict:
     tracks = list(pl.get("tracks") or [])
     if not tracks:
         return {"ok": False, "error": "empty_playlist", "playlist": pl["id"]}
-    # V2-795 — «play it from the third one»: a song chosen IN a list plays in the list, the rest behind it.
+    # V2-795 — «play it from the third song», «play this list shuffled»: the order is chosen HERE, once, and the
+    # rest of the road is the same one an in-order list takes.
     if p.get("from") not in (None, ""):
         i = _d._resolve_track_index(tracks, p.get("from"))
         if i is None:
             return {"ok": False, "error": "track_not_found", "item": p.get("from"),
                     "message": f"«{p.get('from')}» is not in the list «{pl.get('name')}»."}
         tracks = tracks[i:]
+    if str(p.get("shuffle") or "").strip().lower() in ("true", "1", "yes", "on"):
+        head, rest = (tracks[:1], tracks[1:]) if p.get("from") not in (None, "") else ([], tracks)
+        random.shuffle(rest)
+        tracks = head + rest
     pl_id = pl["id"]
-    first_local = _d._local.is_local(tracks[0])
-    try:
-        from connectors import music
-        if first_local:
-            # A local first track mutates THIS snapshot (local state has no other writer).
-            r = _d._play_track(tracks[0], db)
-            rest = [t for t in tracks[1:] if not _d._local.is_local(t)]
-            for t in rest:          # a file in the rest has nothing a connector queue could re-resolve
-                music.control("queue", query=_d._track_query(t), uri=_d._uri_now(t))
-        else:
-            # V2-795 — the list is handed over as ONE sequence: a provider whose skip only moves inside its
-            # playback context (Spotify) gets the whole list as that context; the free player queues it. Before,
-            # the first track played ALONE and the rest went to an `enqueue` Spotify never had — so «next» on a
-            # forty-song list changed nothing (measured live). The connector writes the store itself, so it gets
-            # no db snapshot of ours (V2-650).
-            res = music.play_list([(_d._track_query(t), _d._uri_now(t))
-                                   for t in tracks if not _d._local.is_local(t)])
-            r = {"ok": bool(res.ok), "message": res.message, "reason": res.reason}
-    except Exception as e:  # noqa: BLE001
-        return {"ok": False, "error": str(e)[:120]}
-    if not first_local:
-        # V2-650: the connector just wrote yt.videoId + the queue into the store while we held this
-        # snapshot; persisting the snapshot would erase the playback it started (measured live
-        # 2026-09-10: «reproduce la lista» resolved True Blue, then wrote yt={} back — silence).
-        db = _d._load_db()
-    _d._push_recent(db, tracks[0])
+    r = play_sequence(tracks)
+    db = r.pop("db", None)
+    if db is None:
+        return r
     db["view"] = {"kind": "playlist", "id": pl_id}
     _d._persist(db)
     return {"ok": r.get("ok", False), "message": r.get("message", ""), "playlist": pl_id}
+
+
+# V2-795 — the list management a player has: rename, delete, reorder.
+def _a_rename_playlist(action: str, p: dict) -> dict:
+    db = _d._load_db()
+    pl = _d._find_playlist(db, p.get("playlist") or p.get("id"))
+    name = str(p.get("name") or p.get("to") or "").strip()
+    if pl is None:
+        return {"ok": False, "error": "playlist_not_found", "playlist": p.get("playlist"),
+                "message": "Which list? " + _names_hint(db)}
+    if not name:
+        return {"ok": False, "error": "missing_name", "message": "What should the list be called?"}
+    old = pl.get("name")
+    pl["name"] = name
+    db["view"] = {"kind": "playlist", "id": pl["id"]}
+    _d._persist(db)
+    return {"ok": True, "playlist": pl["id"], "old": old, "name": name}
+
+
+def _a_delete_playlist(action: str, p: dict) -> dict:
+    db = _d._load_db()
+    pl = _d._find_playlist(db, p.get("playlist") or p.get("id"))
+    if pl is None:
+        return {"ok": False, "error": "playlist_not_found", "playlist": p.get("playlist"),
+                "message": "Which list? " + _names_hint(db)}
+    db["playlists"] = [x for x in db["playlists"] if x is not pl]
+    if (db.get("view") or {}).get("id") == pl["id"]:
+        db["view"] = {"kind": "library", "id": ""}
+    _d._persist(db)
+    return {"ok": True, "deleted": pl.get("name"), "tracks": len(pl.get("tracks") or [])}
+
+
+def _a_move_track(action: str, p: dict) -> dict:
+    db = _d._load_db()
+    pl = _d._find_playlist(db, p.get("playlist") or p.get("id"))
+    if pl is None:
+        return {"ok": False, "error": "playlist_not_found", "playlist": p.get("playlist"),
+                "message": "Which list? " + _names_hint(db)}
+    tracks = pl.setdefault("tracks", [])
+    i = _d._resolve_track_index(tracks, p.get("item"))
+    if i is None:
+        return {"ok": False, "error": "track_not_found", "item": p.get("item"),
+                "message": f"That song is not in «{pl.get('name')}»."}
+    to = _d._resolve_track_index(tracks, p.get("to"))
+    if to is None:
+        return {"ok": False, "error": "bad_position", "to": p.get("to"),
+                "message": f"Where to? A number from 1 to {len(tracks)}."}
+    t = tracks.pop(i)
+    tracks.insert(to, t)
+    db["view"] = {"kind": "playlist", "id": pl["id"]}
+    _d._persist(db)
+    return {"ok": True, "playlist": pl["id"], "track": t.get("title"), "position": to + 1}
+
+
+def _names_hint(db: dict) -> str:
+    names = [str(x.get("name") or "").strip() for x in (db.get("playlists") or []) if x.get("name")]
+    return ("You have: " + ", ".join(names[:6]) + ".") if names else "There are no lists yet."
 
 
 def _a_open_view(action: str, p: dict) -> dict:
@@ -201,8 +275,14 @@ def _a_open_view(action: str, p: dict) -> dict:
     # or a model that learned it, lands on the screen it was always asking for.
     if kind in ("nowplaying", "now_playing", "song", "track"):
         kind = "now"
-    if kind not in ("home", "library", "now", "playlist", "connect"):
+    if kind in ("artist", "album"):                        # V2-795 — a catalogue page: fetched, then shown
+        from . import browse
+        return browse.open_page(kind, p)
+    if kind not in ("home", "library", "now", "playlist", "connect", "queue", "search"):
         kind = "home"
+    if kind == "queue":
+        from . import player
+        player.refresh_spotify_queue()                     # a no-op unless the queue lives on Spotify
     db = _d._load_db()
     vid = str(p.get("id") or "").strip()
     if kind == "playlist" and vid:
@@ -282,10 +362,17 @@ def _a_playback(action: str, p: dict) -> dict:
         _d._local.stop(_db)
         _d._persist(_db)
         return {"ok": True, "message": "", "reason": ""}
+    if action == "set_volume":
+        from . import player
+        muted = player.mute(p)                             # V2-795 — `{mute}` silences / gives the level back
+        if muted is not None:
+            return muted
     try:
         from connectors import music
         query = str(p.get("query") or "")
-        r = music.control(action, query=query, percent=int(p.get("level") or 0))
+        # V2-795 — a catalogue row carries its uri; it is used only when the provider playing now minted it.
+        uri = _d._uri_now({"uri": p.get("uri"), "provider": p.get("provider")}) if action == "play" else ""
+        r = music.control(action, query=query, uri=uri, percent=int(p.get("level") or 0))
         ok = bool(getattr(r, "ok", False))
         # Playing a standalone track from the card (recent/top/list row) feeds recent + top tracks. Voice
         # (play_music) goes through another path and does not pass here (Phase 1).
