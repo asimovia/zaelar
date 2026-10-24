@@ -38,6 +38,11 @@ ROOT = Path(__file__).resolve().parents[4]
     ("call yourself Johnny", "Johnny"),
     ("your name is Nova", "Nova"),
     ("the assistant should be called Johnny", "Johnny"),
+    # The operator's own sentence (2026-10-24): «que» there is the conjunction of «te he dicho que…», not a
+    # question word, and the word after the name is not part of it.
+    ("te he dicho que te llamas Johnny ahora", "Johnny"),
+    ("llámate johnny", "Johnny"),                 # one word, as speech-to-text may write it
+    ("a partir de ahora te llamas Maria Jose", "Maria Jose"),
 ])
 def test_his_own_sentence_renames(text, expected):
     assert ident.spoken_identity_order(text) == ("rename", expected)
@@ -54,6 +59,7 @@ def test_his_own_sentence_renames(text, expected):
     "call yourself whatever you want",
     "Hey Johnny, how are you?",          # being ADDRESSED by a name is not a rename
     "show me the agenda",
+    "te he dicho que te llamas johnny ahora",   # several lower-case words: not a name we can be sure of
     "",
 ])
 def test_what_never_renames(text):

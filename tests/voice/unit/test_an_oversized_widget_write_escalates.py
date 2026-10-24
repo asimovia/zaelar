@@ -62,7 +62,7 @@ def test_the_probe_mirrors_the_rescue_as_a_synthesized_escalation():
     probe = _src("nucleo/flash/probe.py")
     assert "harness_turn as _ht_p" in probe and "_ht_p.mirror_probe(" in probe
     i = probe.index("_ht_p.mirror_probe(")
-    j = probe.index('names = [t["name"] for t in tool_calls]')
+    j = probe.index('names = _probe_decide._reply_as_card_call([t["name"] for t in tool_calls], tool_calls)')
     assert i < j, "the synthesized escalate must exist before the action classification reads the names"
 
 

@@ -111,7 +111,7 @@ def extract_attention_mode_change(directive: str) -> str | None:
 # regex is the one above (already bilingual and already tested), tightened for raw speech — the model's
 # paraphrase is written to be parsed, a sentence spoken into a room is not.
 _ASKS_THE_NAME_RE = _re.compile(
-    r"^\s*[¿?]|\b(?:como|cual|cuales|quien|que|how|what|which|who)\b\s+(?:\w+\s+){0,2}"
+    r"^\s*[¿?]|\b(?:como|cual|cuales|quien|how|what|which|who)\b\s+(?:\w+\s+){0,2}"
     r"(?:te\s+llamas|llamas|name|called)", _re.IGNORECASE)
 # A NAME, not a sentence: «llámate Johnny» renames, «llámate como quieras» does not, and neither does a clause
 # that happens to open with one of the verbs. Three words is generous for a name and still refuses prose.
@@ -143,7 +143,27 @@ def spoken_identity_order(text: str) -> tuple[str, str] | None:
         return None
     if any(w.lower() in _NOT_A_NAME for w in name.split()):
         return None
-    return ("rename", name)
+    name = _the_name_in(name)
+    return ("rename", name) if name else None
+
+
+def _the_name_in(span: str) -> str | None:
+    """The NAME inside what followed the verb, read from capitalisation, which speech-to-text gives proper names:
+    «Johnny ahora» is «Johnny» (the operator's own sentence, 2026-10-24: «te he dicho que te llamas Johnny ahora»
+    was read as a QUESTION and never renamed, while the model answered «apuntado»). A capitalised run is the name;
+    one word in lower case is a name as said; several lower-case words are not a name we can be sure of — the
+    model decides."""
+    words = span.split()
+    if words[0][:1].isupper():
+        run = []
+        for w in words:
+            if not w[:1].isupper():
+                break
+            run.append(w)
+        return " ".join(run)
+    if len(words) == 1:
+        return words[0][:1].upper() + words[0][1:]
+    return None
 
 
 def resolve(directive: str) -> tuple[str, str] | None:
