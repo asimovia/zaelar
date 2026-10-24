@@ -57,6 +57,10 @@ below is the first kind, or it names the mechanism that replaced the second.
   recogniser may close the paid tap only after it has returned a result; its `onstart` proves nothing, and
   runs that keep ending empty within seconds give the licence back (`frontend/app/services/wakeword.js`).
   — since 2026-10-23 · nodes 4.208.
+- **CRIT-V11 · A failed turn's fallback line follows what the turn IS.** A reply that the model could not produce
+  says the i18n `say_again`; the first turn (the kickoff greeting) answers nothing he said and says the i18n
+  `kickoff_fallback` instead, or nothing — never «say that again» (`turn_failure._fallback_line`).
+  — since 2026-10-24 · nodes 2.770.
 
 ## 2 · Consent — act or ask
 
@@ -199,6 +203,10 @@ below is the first kind, or it names the mechanism that replaced the second.
   the writes-only jail (a PreToolUse hook: Write/Edit outside the workdir denied, reads free); the dev-worker keeps
   its full jail; a jail that cannot be armed takes the writing tools away, never the jail. — since 2026-10-01 ·
   nodes 3.112, 2.5 · `nucleo/dev_worker_guard.py`, `nucleo/dispatch_session.py`.
+- **CRIT-E14 · A worker reaches its own engine behind session admission.** Where every request must carry a
+  session, a loopback call to one of the worker doors (`operator_gate.WORKER_DOORS`) is served without one — each
+  door verifies the worker itself; off the machine, or to any other route, the session is still required
+  (`server/ingress.py::is_own_worker_door`). — since 2026-10-24 · nodes 7.77.
 
 ## 5 · Memory and rules
 
@@ -214,6 +222,10 @@ below is the first kind, or it names the mechanism that replaced the second.
   corrects. — since 2026-09-03 · nodes 2.19.
 - **CRIT-M5 · The whole prompt of every turn is on disk**, joined by trace; capture is never switched off. — since
   2026-09-20 · nodes 2.100.
+- **CRIT-M6 · The memory state is written only when it changes.** The live-session projection's change key is
+  computed with the clock frozen, so no clock-derived field (`age_s`, `unreported_s`…) can rewrite the state — and
+  emit a `memory`/`state` event — on a tick where nothing happened (`dispatch.sync_state`). — since 2026-10-24 ·
+  nodes 7.78.
 
 ## 6 · Resilience
 
