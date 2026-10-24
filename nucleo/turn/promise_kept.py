@@ -28,6 +28,8 @@ and a pass that read the words and found no promise is trusted — the line is n
 """
 from __future__ import annotations
 
+from loguru import logger as _log
+
 #: The non-acting tool the second pass is offered beside `widget_data` (`act_repair.call_for_promise`).
 CANNOT_TOOL = {
     "type": "function",
@@ -93,7 +95,8 @@ def card_for_the_repair(brief, *, model_calls=(), ran_ops=(), open_ids=None) -> 
         if focus:
             return focus
         return ids[0] if len(ids) == 1 else ""
-    except Exception:  # noqa: BLE001
+    except Exception as _e:  # noqa: BLE001
+        _log.debug(f"promise_kept: line 96 failed: {_e!r}")
         return ""
 
 
@@ -104,7 +107,8 @@ def commits(reply: str) -> bool:
         from nucleo.flash import router_guards as _rg
         from voice.engine.llm.providers import promise_backstop as _pb
         return bool(reply) and (_pb.committed(reply) or _rg.promises_action(reply) or _harness.claims_done(reply))
-    except Exception:  # noqa: BLE001
+    except Exception as _e:  # noqa: BLE001
+        _log.debug(f"promise_kept: line 107 failed: {_e!r}")
         return False
 
 
@@ -112,7 +116,8 @@ def _not_kept_line() -> str:
     try:
         from i18n import langs as _langs
         return str(getattr(_langs.current_language(), "promise_not_kept", "") or "").strip()
-    except Exception:  # noqa: BLE001
+    except Exception as _e:  # noqa: BLE001
+        _log.debug(f"promise_kept: line 115 failed: {_e!r}")
         return ""
 
 
@@ -138,7 +143,8 @@ def honest_line(reply: str, outcome: dict | None, *, acted: bool) -> str:
         from nucleo.flash import act_repair as _ar
         if _ar.words_shape(reply) in ("asked", "asked_which"):
             return ""                       # a question waits for HIM; nothing was owed yet
-    except Exception:  # noqa: BLE001
+    except Exception as _e:  # noqa: BLE001
+        _log.debug(f"promise_kept: line 141 failed: {_e!r}")
         pass
     return _not_kept_line() if commits(reply) else ""
 
@@ -151,7 +157,8 @@ def close(reply: str, outcome: dict | None, *, acted: bool, emit=None) -> str:
             emit("brain", "🤝 promesa cerrada — dice que no lo ha hecho", text=line[:160], role="system",
                  extra={"cat": "flash", "kind_diag": "promise_closed",
                         "outcome": str((outcome or {}).get("kind") or "no_pass"), "reply": (reply or "")[:160]})
-        except Exception:  # noqa: BLE001
+        except Exception as _e:  # noqa: BLE001
+            _log.debug(f"promise_kept: line 154 failed: {_e!r}")
             pass
     return line
 
@@ -214,7 +221,8 @@ def landed(call, outcome: dict, *, run, acted: dict, data_done: dict, escalate_r
         emit("brain", "🛡️ la segunda pasada no llegó a ejecutarse — no se da por hecho",
              text=f"{call.get('widget_id')}:{call.get('action')}", role="system",
              extra={"cat": "flash", "widget": call.get("widget_id"), "action": call.get("action")})
-    except Exception:  # noqa: BLE001
+    except Exception as _e:  # noqa: BLE001
+        _log.debug(f"promise_kept: line 217 failed: {_e!r}")
         pass
     return None
 

@@ -15,6 +15,8 @@
 #
 from __future__ import annotations
 
+from loguru import logger as _log
+
 import re as _re
 import time as _time
 
@@ -236,7 +238,8 @@ def _loaded_video_terms():
     try:
         from widgets import store
         db = store.load("youtube", {}) or {}
-    except Exception:  # noqa: BLE001
+    except Exception as _e:  # noqa: BLE001
+        _log.debug(f"canvas_license: line 239 failed: {_e!r}")
         return None
     if not str(db.get("videoId") or "").strip():
         return set()

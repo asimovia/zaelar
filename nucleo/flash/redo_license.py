@@ -6,6 +6,8 @@ again, read from structure — never from a phrase table.
 """
 from __future__ import annotations
 
+from loguru import logger as _log
+
 
 def licensed(last, wid: str, said: str, *, brief=None) -> bool:
     """V2-791 — a re-emitted op is a drag only when the previous one LANDED and the turn did not ask for it
@@ -24,25 +26,29 @@ def licensed(last, wid: str, said: str, *, brief=None) -> bool:
     the turn's own target, or the verdict. Never raises; unreadable → not licensed (the guard stands)."""
     try:
         l_ts = float(last[3])
-    except (TypeError, ValueError, IndexError):
+    except (TypeError, ValueError, IndexError) as _e:
+        _log.debug(f"redo_license: line 27 failed: {_e!r}")
         return False
     try:
         from widgets import late_report as _late
         if _late.falsified_since(wid, l_ts):
             return True
-    except Exception:  # noqa: BLE001
+    except Exception as _e:  # noqa: BLE001
+        _log.debug(f"redo_license: line 33 failed: {_e!r}")
         pass
     try:
         from nucleo.flash import named_target as _nt
         if _nt.names_it(said, wid, [wid]):
             return True
-    except Exception:  # noqa: BLE001
+    except Exception as _e:  # noqa: BLE001
+        _log.debug(f"redo_license: line 39 failed: {_e!r}")
         pass
     try:
         if brief is not None:
             from nucleo.flash import redo_decision as _redo
             if _redo.corrects(brief, str(wid).split("::", 1)[0]):
                 return True
-    except Exception:  # noqa: BLE001
+    except Exception as _e:  # noqa: BLE001
+        _log.debug(f"redo_license: line 46 failed: {_e!r}")
         pass
     return False
