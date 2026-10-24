@@ -85,7 +85,7 @@ def test_the_close_handler_is_wired_to_session_health():
     text = _stripped("voice/engine/pipeline/agent.py")
     i = text.find("def _on_close(")
     assert i >= 0 and "on_session_dead(err, _emit)" in text[i:text.find("def ", i + 10)]
-    j = text.find("await session.start(room=ctx.room, agent=agent)")
+    j = text.find("await session.start(room=ctx.room, agent=agent")   # options may follow (recording opts)
     assert j >= 0 and "on_session_alive()" in text[j:j + 300]
 
 

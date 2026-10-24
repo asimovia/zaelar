@@ -96,8 +96,7 @@ async def name_the_action(*, _hard, _router, _tbrief, _vault_gate, ingest, names
         from nucleo.flash import canvas_license as _lic_v
         if _lic_v.video_license(text, _probe._last_assistant_line(sess.window), brief=getattr(sess, "brief", None),
                                 query=_probe._video_turn.request_from(tool_calls)["query"]):
-            action = "canvas:show:youtube"   # V2-045: VER → widget youtube (show + data-op load); espejo del provider
-            video_req = _probe._video_turn.request_from(tool_calls)   # V2-383: y se EJECUTA abajo, como la música
+            action, video_req = "canvas:show:youtube", _probe._video_turn.request_from(tool_calls)  # V2-045 · V2-383
         else:
             # V2-635 (espejo del provider): un turno que no pide ningún vídeo no carga ninguno — arrastre.
             action = "chat"

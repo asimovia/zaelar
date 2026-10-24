@@ -60,6 +60,16 @@ _PROVIDER_BY_HOST = (
 USER_AGENT = "zaelar-engine"
 
 
+def post_json(url: str, key: str, body: bytes, timeout_s: float) -> dict:
+    """POST JSON bytes with a bearer key under this engine's own client name; the decoded JSON answer."""
+    import json
+    import urllib.request
+    req = urllib.request.Request(url, data=body, method="POST", headers={
+        "Authorization": f"Bearer {key}", "Content-Type": "application/json", "User-Agent": USER_AGENT})
+    with urllib.request.urlopen(req, timeout=timeout_s) as resp:
+        return json.loads(resp.read().decode("utf-8"))
+
+
 def mediated() -> bool:
     """Does this deployment send calls through mediated egress?"""
     from nucleo import cloud_account

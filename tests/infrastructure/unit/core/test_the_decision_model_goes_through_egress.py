@@ -32,7 +32,7 @@ def test_the_decision_model_is_a_family_egress_carries():
 
 
 def test_a_mediated_trip_goes_to_egress_with_this_accounts_credential(mediated):
-    assert jev._target() == (f"{GW}/p/typesafe/v1/systemone", TOKEN)
+    assert llm_egress.route_url(jev.ENDPOINT, jev._read_key()) == (f"{GW}/p/typesafe/v1/systemone", TOKEN)
 
 
 def test_the_stand_in_gives_the_decision_model_a_key_so_it_is_not_silently_off(mediated):
@@ -44,7 +44,7 @@ def test_self_host_talks_to_the_provider_with_its_own_key(monkeypatch):
     monkeypatch.setattr(llm_egress, "mediated", lambda: False)
     monkeypatch.setenv("TYPESAFE_API_KEY", "own-key")
     monkeypatch.setattr(jev, "ENDPOINT", PROVIDER)
-    assert jev._target() == (PROVIDER, "own-key")
+    assert llm_egress.route_url(jev.ENDPOINT, jev._read_key()) == (PROVIDER, "own-key")
 
 
 # ── the client names itself (2026-10-24): egress's edge refuses `Python-urllib/x.y` with a 403 (error 1010) ─────
