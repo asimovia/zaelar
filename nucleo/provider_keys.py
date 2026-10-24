@@ -43,6 +43,8 @@ _ENDPOINTS: tuple[tuple[str, str], ...] = (
     ("deepgram.com", "DEEPGRAM_API_KEY"),
     ("elevenlabs.io", "ELEVENLABS_API_KEY"),
     ("inworld.ai", "INWORLD_API_KEY"),
+    # The decision model (Jev, `nucleo/jev.py`): listed so mediated egress stands in for its key as well.
+    ("typesafe.ai", "TYPESAFE_API_KEY"),
 )
 
 

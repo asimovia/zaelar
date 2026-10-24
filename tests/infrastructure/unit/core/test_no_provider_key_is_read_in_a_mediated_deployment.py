@@ -181,10 +181,10 @@ def test_a_search_egress_records_is_not_billed_again_here(mediated, monkeypatch)
     monkeypatch.setenv("CONTROL_PLANE_URL", "https://cp.example")
     monkeypatch.setattr(cloud_account, "my_user_id", lambda: "u-1")
     monkeypatch.setattr(httpx, "AsyncClient", Client)
-    for kind in ("search", "llm", "tts"):
+    for kind in ("search", "llm", "decision", "tts"):
         asyncio.run(energy_meter._post_usage_cloud_account(1.0, kind))
     kinds = [k for k in posted if k]                   # the balance it answers may trigger other, kindless calls
-    assert kinds == ["tts"], f"egress records search and llm; a second post bills twice — posted {kinds}"
+    assert kinds == ["tts"], f"egress records search, llm and decision; a second post bills twice — posted {kinds}"
 
 
 def test_the_balance_panel_does_not_probe_a_wallet_this_instance_does_not_hold(mediated):

@@ -416,8 +416,9 @@ async def _post_usage_cloud_account(energy: float, kind: str, meta: dict | None 
     # (va en `_fire_and_forget`, antes), así que el techo de seguridad sigue funcionando igual.
     from nucleo import llm_egress
     # Paid search joined on 2026-10-23, when its three indexes started going out through egress too. Voice (`tts`,
-    # `stt`, `transport`) is still metered here: it does not go through egress.
-    if kind in ("llm", "worker", "search") and llm_egress.bills_upstream():
+    # `stt`, `transport`) is still metered here: it does not go through egress. The decision model joined on
+    # 2026-10-24, when its trips started going out through egress (billed there per trip).
+    if kind in ("llm", "worker", "search", "decision") and llm_egress.bills_upstream():
         return
     service_token = (os.getenv("CONTROL_PLANE_SERVICE_TOKEN") or "").strip()
     headers = {"X-Service-Token": service_token} if service_token else {}

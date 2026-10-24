@@ -138,6 +138,9 @@ _UPSTREAMS: tuple[tuple[str, str], ...] = (
     ("deepgram", "https://api.deepgram.com/v1"),
     ("elevenlabs", "https://api.elevenlabs.io/v1"),
     ("inworld", "https://api.inworld.ai"),
+    # The decision model. Without it a mediated deployment had no key and no route, so `jev.enabled()` was False on
+    # every turn and no verdict ever reached the guards that are meant to read one.
+    ("typesafe", "https://api.typesafe.ai"),
 )
 
 #: The provider keys this process's own egress credential STANDS IN FOR (see `stand_in_for_provider_keys`): the

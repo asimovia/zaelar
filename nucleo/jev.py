@@ -215,16 +215,24 @@ def _post_question(answer_key: str, state: str, instructions: str, criteria: dic
             },
         }
     ).encode("utf-8")
+    url, key = _target()
     req = urllib.request.Request(
-        ENDPOINT,
+        url,
         data=body,
-        headers={"Authorization": f"Bearer {_read_key()}", "Content-Type": "application/json"},
+        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
         method="POST",
     )
     with urllib.request.urlopen(req, timeout=timeout_s) as resp:
         payload = json.loads(resp.read().decode("utf-8"))
     _meter(1)
     return payload
+
+
+def _target() -> tuple[str, str]:
+    """`(url, key)` for one Jev trip: the provider directly on a self-hosted install, mediated egress where the
+    deployment declares it (`llm_egress.route_url`, the same door every other paid call goes through)."""
+    from nucleo import llm_egress
+    return llm_egress.route_url(ENDPOINT, _read_key())
 
 
 def _meter(questions: int) -> None:
@@ -306,9 +314,10 @@ def _post_many(state: str, questions: dict, timeout_s: float) -> dict:
          "questions": {k: {"type": "choice", "instructions": q["instructions"],
                            "criteria": q["criteria"]} for k, q in questions.items()}}
     ).encode("utf-8")
+    url, key = _target()
     req = urllib.request.Request(
-        ENDPOINT, data=body,
-        headers={"Authorization": f"Bearer {_read_key()}", "Content-Type": "application/json"},
+        url, data=body,
+        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
         method="POST")
     with urllib.request.urlopen(req, timeout=timeout_s) as resp:
         payload = json.loads(resp.read().decode("utf-8"))
