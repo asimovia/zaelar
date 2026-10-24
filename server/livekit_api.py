@@ -50,6 +50,16 @@ def _free(now: float) -> bool:
     return _active["sid"] is None or (now - _active["ts"]) > _LOCK_TTL
 
 
+def speaks_for_the_mic(dev: str) -> bool:
+    """Only the voice holder's surface writes the engine's microphone switch. A surface that just lost the voice
+    turns its own mic off (frontend «one voice, claimed by hand»); obeying that write would mute the surface that took
+    over. Unknown on either side (no holder, an older client without `dev`) keeps the old behaviour: obey."""
+    now = _time.time()
+    with _lock_mx:
+        holder = "" if _free(now) else (_active.get("dev") or "")
+    return not dev or not holder or dev == holder
+
+
 @router.post("/api/session/acquire")
 def session_acquire(sid: str = Body(..., embed=True), dev: str = Body("", embed=True)) -> dict:
     """Ask to become the ONLY live session. ok=True if the lock was free/expired or already yours; ok=False (held)

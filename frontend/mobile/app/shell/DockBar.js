@@ -170,7 +170,12 @@ export function DockBar() {
         // stopped there is no effect, because there is no level — the meter can only move when we are truly hearing.
         style: { "--vu": () => (store.agentLive() && !store.micMuted() ? String(Math.min(1, store.micLevel() * 6)) : "0") },
         "aria-label": () => (store.micMuted() ? t("camera.mic_unmute") : t("camera.mic_mute")),
-        onClick: () => { mic.toggle("dock"); api.uiEvent("mobile:mic", { state: store.micMuted() ? "muted" : "unmuted" }); },
+        // Opening the mic by hand brings the voice to this surface (session.openMicHere); closing it is local.
+        onClick: () => {
+          if (store.micMuted() && session.openMicHere) session.openMicHere("dock");
+          else mic.toggle("dock");
+          api.uiEvent("mobile:mic", { state: store.micMuted() ? "muted" : "unmuted" });
+        },
       }, () => raw(store.micMuted() ? MIC_OFF : MIC_ON)),
 
       h("button", {

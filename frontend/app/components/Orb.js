@@ -155,7 +155,12 @@ export function Orb() {
         style: { "--vu": () => (store.agentLive() && !store.micMuted() ? String(Math.min(1, store.micLevel() * 6)) : "0") },
         title: () => (!store.micHealth().ok ? t(problemTitleKey("mic", store.micHealth().reason))
                       : store.micMuted() ? t("camera.mic_unmute") : t("camera.mic_mute")),
-        onClick: () => { mic.toggle("orb"); api.uiEvent("orb:mic", { state: store.micMuted() ? "muted" : "unmuted" }); },
+        // Opening the mic by hand brings the voice to this surface (session.openMicHere); closing it is local.
+        onClick: () => {
+          if (store.micMuted() && session.openMicHere) session.openMicHere("orb");
+          else mic.toggle("orb");
+          api.uiEvent("orb:mic", { state: store.micMuted() ? "muted" : "unmuted" });
+        },
       }, () => raw(store.micMuted() ? MIC_OFF : MIC_ICON)),
       h("button", { "data-ctl": "spk",
         class: () => lidClass(!store.botMuted()) + (store.spkHealth().ok ? "" : " problem"),
@@ -166,7 +171,9 @@ export function Orb() {
         onClick: () => {
           if (!store.spkHealth().ok) { try { session.unlockAudio && session.unlockAudio(); } catch (_) {}
                                        api.uiEvent("orb:speaker", { state: "recover", reason: store.spkHealth().reason }); return; }
-          session.toggleBotMute(); api.uiEvent("orb:speaker", { state: store.botMuted() ? "muted" : "unmuted" });
+          if (store.botMuted() && session.openSpeakerHere) session.openSpeakerHere("orb");
+          else session.toggleBotMute();
+          api.uiEvent("orb:speaker", { state: store.botMuted() ? "muted" : "unmuted" });
         },
       }, () => raw(store.botMuted() ? SPK_OFF : SPK_ON)),
       h("button", {

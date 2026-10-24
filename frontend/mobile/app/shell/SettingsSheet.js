@@ -87,7 +87,7 @@ export function SettingsSheet() {
       //    server's synthesis cannot disagree.
       Toggle(() => t("orb.speaker_unmuted"),
         () => !store.botMuted(),
-        () => session.toggleBotMute()),
+        () => (store.botMuted() && session.openSpeakerHere ? session.openSpeakerHere("settings") : session.toggleBotMute())),
 
       // Captions have no row either: the operator removed subtitles from this shell entirely (V2-573), band and
       // button both. `store.captionsOn` still exists and still drives the DESKTOP; adding a phone control for a

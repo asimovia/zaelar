@@ -252,3 +252,30 @@ def test_a_surface_that_lost_the_voice_retakes_it_only_when_it_could_use_it():
     assert 'document.visibilityState === "hidden"' in body and "store.micMuted()" in body
     assert js.count("_blockedRetry = setTimeout(") == 1, "every retry goes through _armRetry"
     assert js.count("_armRetry();") >= 3
+
+
+def test_only_the_voice_holders_surface_writes_the_microphone():
+    """One voice, claimed by hand: the surface that loses the voice turns its own mic off. That write must not reach
+    the engine, or it would mute the phone that just took over."""
+    import asyncio
+    from server import livekit_api as la
+    from server.voice_api import mic_switch
+    la.session_release("x")
+    la.session_steal("phone-tab", "mobile:ab12")
+    mic_input.set_muted(False, source="test")
+    asyncio.run(mic_switch({"muted": True, "src": "voice-elsewhere", "dev": "desktop:cd34"}))
+    assert mic_input.is_muted() is False, "the desktop that lost the voice muted the phone's microphone"
+    asyncio.run(mic_switch({"muted": True, "src": "dock", "dev": "mobile:ab12"}))
+    assert mic_input.is_muted() is True
+    la.session_release("phone-tab")
+
+
+def test_a_hand_on_the_mic_or_speaker_claims_the_voice_and_the_loser_stands_down():
+    import pathlib
+    root = pathlib.Path(__file__).resolve().parents[3] / "frontend"
+    js = (root / "app/services/session-lk.js").read_text("utf-8")
+    assert js.count("_standDown(") >= 3, "both refusal paths (lost and held) turn this surface's mic and speaker off"
+    assert "const acq = claim ? await api.sessionSteal(SID) : await api.sessionAcquire(SID);" in js
+    for f in ("app/components/Orb.js", "mobile/app/shell/DockBar.js"):
+        assert "session.openMicHere(" in (root / f).read_text("utf-8"), f
+    assert "session.claimOnNextStart()" in (root / "mobile/app/main.js").read_text("utf-8")

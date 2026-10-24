@@ -235,7 +235,11 @@ async def mic_switch(payload: dict):
     from voice import mic_input
     muted = bool((payload or {}).get("muted"))
     src = str((payload or {}).get("src") or "frontend")[:40]
-    return JSONResponse(mic_input.set_muted(muted, source=src, dev=str((payload or {}).get("dev") or "")[:40]))
+    dev = str((payload or {}).get("dev") or "")[:40]
+    from server.livekit_api import speaks_for_the_mic
+    if not speaks_for_the_mic(dev):
+        return JSONResponse({"ok": True, "muted": mic_input.is_muted(), "ignored": "not_the_voice_holder"})
+    return JSONResponse(mic_input.set_muted(muted, source=src, dev=dev))
 
 
 @router.get("/api/mic")

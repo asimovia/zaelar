@@ -152,6 +152,12 @@ session.startVisuals({ orbCanvas: $("#orb"), vizCanvas: $("#viz") });
 // ---- ALWAYS-ON voice. Identical to the desktop's: browsers require a user gesture for the mic, so we also
 // (re)connect on any pointer interaction while the session is down. Idempotent, and it respects the ONE exception —
 // an explicit, persisted ⏻ off, or the very tap on ⏻ would re-arm the session it just stopped. ----
+// Loading the phone TAKES the voice (operator, 2026-10-24): its mic and speaker come on here and the other surface
+// turns its own off (services/session-lk.js, «one voice, claimed by hand»). Set before the first start() below.
+if (session.claimOnNextStart && !store.powerOff()) {
+  session.claimOnNextStart();
+  mic.setMuted(false, "mobile-load");
+}
 function ensureVoice() {
   if (store.powerOff()) return;
   if (store.langOnboardOpen()) return;              // V2-765: nothing listens while the language picker is up

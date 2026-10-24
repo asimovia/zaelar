@@ -184,10 +184,47 @@ function _startHeartbeat() {
         // watched the demo driver take the voice and read as a fallen agent). Then wait for it back exactly as a
         // tab that STARTS with the voice held elsewhere does — `start()` is refused, keeps the blue, retries.
         store.setRemoteHeld(true);
+        _standDown("lost");
         _armRetry();
       }
     });
   }, 4000);
+}
+
+// ONE VOICE, CLAIMED BY HAND (operator, 2026-10-24). Mic and speaker belong to ONE surface at a time: a person
+// listens on one channel. Opening the mic or the speaker on a surface by hand, or loading the phone, takes the
+// voice there; every other surface turns its own mic and speaker off and waits for a hand to bring it back. What
+// plays inside a card (a video) is not the voice and is untouched. The engine obeys only the holder's mic
+// (server/voice_api.py), so a surface muting itself cannot silence the one that took over.
+let _claimNext = false;
+function _standDown(why) {
+  mic.setMuted(true, "voice-elsewhere");
+  store.setBotMuted(true);
+  applyBotMute();
+  api.uiState("voice:elsewhere", { reason: why });
+}
+/** Take the voice on the next start() instead of asking for it: the phone's boot. */
+export function claimOnNextStart() { _claimNext = true; }
+/** Take the voice HERE now: take the lock if another surface has it, then bring this one up. */
+export async function claimVoice(reason = "hand") {
+  if (started) return true;                       // a started surface already holds the lock (it beats for it)
+  const r = await api.sessionSteal(SID);
+  if (!r || r.ok === false) return false;
+  if (_blockedRetry) { clearTimeout(_blockedRetry); _blockedRetry = null; }
+  store.setMicBlocked({ show: false, msg: "" }); store.setRemoteHeld(false); store.setMobileVoiceHeld(false);
+  api.uiEvent("voice:claim", { reason });
+  if (!starting) start();
+  return true;
+}
+/** The mic, opened by hand: the voice comes here first, then the mic opens. */
+export async function openMicHere(reason = "orb") {
+  await claimVoice(reason);
+  mic.setMuted(false, reason);
+}
+/** The speaker, opened by hand: same rule as the mic. */
+export async function openSpeakerHere(reason = "orb") {
+  await claimVoice(reason);
+  if (store.botMuted()) toggleBotMute();
 }
 // THE RETRY TAKES THE VOICE BACK ONLY WHEN THIS SURFACE COULD USE IT: visible, with its microphone open. A desktop
 // tab with its mic muted retook the lock every time the phone's beat paused (the phone hides for a permission prompt
@@ -458,11 +495,13 @@ export async function start() {
 
   // SINGLE-SESSION GATE: before touching the mic, request to be the only live session. If another tab/browser has it,
   // tiene, NO abrimos el micro (evita dos micros); avisamos y reintentamos solos hasta que la otra se cierre.
-  const acq = await api.sessionAcquire(SID);
+  const claim = _claimNext; _claimNext = false;
+  const acq = claim ? await api.sessionSteal(SID) : await api.sessionAcquire(SID);
   if (acq && acq.ok === false) {
     starting = false; store.setStarting(false); started = false; store.setStarted(false); store.setConnState("—");
     store.setMicBlocked({ show: true, msg: t("voice.session_open_other_tab") });
     store.setRemoteHeld(true);
+    _standDown("held");
     _armRetry();
     if (!_everBooted) _unblockBoot();   // do not leave the UI trapped on the splash while blocked
     return;
