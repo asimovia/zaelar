@@ -106,7 +106,7 @@ FUNCTIONS = {
     'voice/tag_protocol.py::strip_tags': 212,
     'widgets/agenda/actions.py::_a_add_meeting': 134,
     'widgets/agenda/tasklists.py::apply': 170,
-    'widgets/brief.py::for_prompt': 157,
+    'widgets/brief.py::for_prompt': 152,
     'widgets/generator.py::_run_agent_once': 128,
     'widgets/imagenes/data.py::apply_action': 136,
     'widgets/mensajeria/answers.py::answer_action': 136,

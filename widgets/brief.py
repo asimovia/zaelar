@@ -162,7 +162,7 @@ def for_prompt(open_ids=None, recent_ids=None, query: str = "", stats: dict | No
     `query` = turn transcript (optional; without it the `named` layer is lost, not correctness).
     `stats` = optional output dict with selection breakdown for per-turn observability.
     Best-effort: never raises (a broken widget can't break the turn)."""
-    from . import actions as wactions, refs, selection
+    from . import refs, selection
     opened = {str(w).strip().lower() for w in (open_ids or []) if str(w).strip()}
     recent = [str(w).strip().lower() for w in (recent_ids or []) if str(w).strip() and str(w).strip().lower() not in opened]
 
@@ -210,14 +210,7 @@ def for_prompt(open_ids=None, recent_ids=None, query: str = "", stats: dict | No
         # are omitted; the model infers them from the tool example, and agenda.data/refs normalize values (V2-026).
         acts = w.get("actions")
         if isinstance(acts, dict) and acts:
-            names = []
-            for name, spec in acts.items():
-                spec = spec if isinstance(spec, dict) else {}
-                if spec.get("internal") is True:
-                    continue        # fired by the card itself, never by the model: naming it costs every turn
-                mark = "(confirmar)" if wactions.classify(spec, name) == wactions.CONFIRM else ""
-                names.append(f"{name}{mark}")
-            row += "  · datos: " + ", ".join(names)
+            row += "  · datos: " + ", ".join(_offered_action_names(acts))
         lines.append(row)
         for _rule in (wrules.get(widl) or [])[:3]:
             lines.append(f"  [{wid}] regla del operador: {_rule[:120]}")
@@ -291,6 +284,20 @@ def for_prompt(open_ids=None, recent_ids=None, query: str = "", stats: dict | No
         stats.update(sel_stats)
         stats["sz_widgets"] = len(out)
     return out
+
+
+def _offered_action_names(acts: dict) -> list[str]:
+    """The declared action names the model is OFFERED, each marked when it asks first. An op the card fires by
+    itself (`"internal": true`) is never named: the model must not call it, and naming it costs every turn."""
+    from . import actions as wactions
+    names = []
+    for name, spec in acts.items():
+        spec = spec if isinstance(spec, dict) else {}
+        if spec.get("internal") is True:
+            continue
+        mark = "(confirmar)" if wactions.classify(spec, name) == wactions.CONFIRM else ""
+        names.append(f"{name}{mark}")
+    return names
 
 
 def for_brain() -> str:
