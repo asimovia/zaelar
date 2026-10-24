@@ -291,6 +291,9 @@ DOMAINS: list[dict] = [
             # nombra en vez de decir «SIN RELEVO disponible» a secas.
             "tests/agent_headless/unit/workers/test_deepseek_rung.py",
             "tests/agent_headless/unit/flash/test_fast_client.py", "tests/agent_headless/unit/flash/test_fast_client_retry.py",
+            # 2026-10-24 — one fast-model client per EVENT LOOP: a session restarted on a new loop reused the old
+            # loop's pool and every turn failed «bound to a different event loop».
+            "tests/agent_headless/unit/flash/test_a_client_is_never_shared_across_event_loops.py",
             "tests/agent_headless/unit/flash/test_procs.py",
             # V2-094 (2026-08-14): la cadena de proveedores existía desde agosto pero solo para el cerebro de
             # CLUSTER y solo relevaba por proveedor ROTO (429/cuota). El fallo que el operador vive es el proveedor

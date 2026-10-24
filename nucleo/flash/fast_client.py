@@ -331,7 +331,8 @@ class FastClient:
 
         ck = self._client_key(spec)
         base, _key, ua, extra = ck
-        cli = FastClient._clients.get(ck)
+        from nucleo.flash import loop_clients
+        cli = loop_clients.get(FastClient._clients, ck)   # one client per event loop (see that module)
         if cli is None:
             headers = dict(extra)
             if ua:
@@ -346,7 +347,7 @@ class FastClient:
             if _hc is not None:
                 okw["http_client"] = _hc
             cli = AsyncOpenAI(**okw)
-            FastClient._clients[ck] = cli
+            loop_clients.put(FastClient._clients, ck, cli)
         return cli
 
     async def complete(
