@@ -63,6 +63,29 @@ def _clean_facts(raw) -> list[dict]:
     return out
 
 
+_MAX_META = 4
+
+
+def _clean_meta(raw) -> list[dict]:
+    """`meta` — the 1-4 SHORT chips a list card shows under its title (V2-797): the data that decides at a glance
+    (a distance, opening hours, a rating). A bare string is a chip with no label; a label/value pair (any of the
+    `facts` shapes) keeps its label. Bounded: a chip is a chip, not a paragraph."""
+    out: list[dict] = []
+    seq = list(raw.items()) if isinstance(raw, dict) else list(raw) if isinstance(raw, (list, tuple)) else []
+    for entry in seq:
+        if isinstance(entry, str):
+            chip = {"value": entry.strip()[:60]}
+        else:
+            f = _clean_facts([entry] if not isinstance(entry, dict) or "label" in entry or "k" in entry
+                             or "name" in entry else entry)
+            chip = {"label": f[0]["label"][:30], "value": f[0]["value"][:60]} if f else {}
+        if chip.get("value"):
+            out.append(chip)
+        if len(out) >= _MAX_META:
+            break
+    return out
+
+
 def _clean_lines(raw, cap: int) -> list[str]:
     if isinstance(raw, (list, tuple)):
         return [str(x)[:_MAX_LINE_CHARS] for x in raw if x not in (None, "")][:cap]

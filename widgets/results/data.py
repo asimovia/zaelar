@@ -64,14 +64,14 @@ from .sheet_names import (  # noqa: F401 — re-export: this module IS the sheet
 from .record import (  # noqa: F401,E402 — re-export
     _BLOCK_KINDS, _MAX_BLOCKS, _MAX_CELL_CHARS, _MAX_CHIPS, _MAX_FACT_CHARS, _MAX_FACTS, _MAX_IMAGES,
     _MAX_LINE_CHARS, _MAX_LINES, _MAX_TABLE_COLS, _MAX_TABLE_ROWS,
-    _clean_block, _clean_blocks, _clean_facts, _clean_images, _clean_lines, _clean_score, _num)
+    _clean_block, _clean_blocks, _clean_facts, _clean_images, _clean_lines, _clean_meta, _clean_score, _num)
 
 
 # Fields an item may carry. Anything else pushed is dropped — the payload comes from a worker that read the open
 # web, so we never let arbitrary keys through to the renderer (widget.js paints with textContent only, but the
 # schema is the contract and it stays closed).
 _ITEM_FIELDS = ("title", "subtitle", "price", "badge", "url", "image", "primary", "lines",
-                "parts", "images", "facts", "score", "blocks", "full_title")
+                "parts", "images", "facts", "score", "blocks", "full_title", "meta")
 #: `full_title` — the title as the listing wrote it, kept when the card's slot clips it. «Premium 3-Seat Sofa –
 #: Excellent Condition – Only 6 Months Used» became «Premium 3-Seat Sofa – Excellent…» and the condition it carried
 #: was gone from every later turn (2026-10-14): the card paints `title`; a reader of the row reads both.
@@ -163,10 +163,10 @@ def _clip(text, key: str) -> str:
         return "" if text is None else str(text)[:220]
 
 
-# Card slots the audit measures (presentation.audit): what is stored must fit them, or the card wraps and
-# breaks no matter what the worker was told (session 6d19df41: 5 «el payload rompe la tarjeta» warnings while
-# the overlong titles were persisted verbatim). The audit still runs on the RAW payload and reports the issue
-# back to the worker — this only bounds what reaches the card, on a word boundary and marked with "…".
+# STORAGE caps for the card's slots (V2-797). They used to be LAYOUT budgets (title 34, subtitle 70): what the card
+# was assumed to fit, so every real listing name was cut on the server and reported as breaking the card. The card
+# now clamps to the space it really has and shows the whole text on expand; what is bounded here is only how much
+# one field may hold (`presentation.DEFAULTS`), on a word boundary and marked with "…".
 _SLOT_CLIP_KEYS = {"title": "title", "subtitle": "subtitle", "price": "price", "badge": "badge"}
 
 
@@ -186,7 +186,7 @@ def _audit(payload: dict) -> list[str]:
     if issues:
         try:
             from voice.observer import emit
-            emit("widget", "🎨 presentación: el payload rompe la tarjeta", text=" · ".join(issues)[:400],
+            emit("widget", "🎨 presentación: calidad de los datos", text=" · ".join(issues)[:400],
                  role="system", extra={"id": WIDGET_ID, "n": len(issues), "issues": issues[:12]})
         except Exception:
             pass
@@ -249,6 +249,10 @@ def _clean_item(raw: dict) -> dict | None:
             f = _clean_facts(v)
             if f:
                 it[k] = f
+        elif k == "meta":
+            m = _clean_meta(v)
+            if m:
+                it[k] = m
         elif k == "blocks":
             b = _clean_blocks(v)
             if b:
@@ -257,10 +261,12 @@ def _clean_item(raw: dict) -> dict | None:
             s = _clean_score(v)
             if s:
                 it[k] = s
+        elif k == "full_title":
+            it[k] = str(v).strip()[:1000]          # the listing's own words: its own, larger cap (V2-797)
         elif k in _SLOT_CLIP_KEYS:
             it[k] = _clip_slot(v, _SLOT_CLIP_KEYS[k])
             if k == "title" and it[k] != str(v).strip():
-                it.setdefault("full_title", str(v).strip()[:300])
+                it.setdefault("full_title", str(v).strip()[:1000])
         else:
             it[k] = str(v)[:300]
     return it if it.get("title") else None       # a card with no title is not a result, it is noise

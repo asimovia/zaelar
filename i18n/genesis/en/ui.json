@@ -1441,6 +1441,8 @@
  "widgets.results.see_detail_": "See detail → ",
  "widgets.results.session": "Session",
  "widgets.results.session_": "Session: ",
+ "widgets.results.show_less": "Show less",
+ "widgets.results.show_more": "Show all",
  "widgets.results.sources": "sources",
  "widgets.results.sources_empty_1": "Nobody has reported sources yet. Every site consulted will appear here with what happened on it: whether it got in, ",
  "widgets.results.sources_empty_2": "whether its results were capped, whether it asked for authentication or whether it errored.",

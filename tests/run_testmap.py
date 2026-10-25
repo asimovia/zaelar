@@ -5192,6 +5192,14 @@ DOMAINS: list[dict] = [
                                  "errand reopens its row's sheet with its rows",
             "ch": UNIT,
             "paths": ["tests/browser/unit/widgets/test_one_errand_one_card.py"]},
+        # V2-797 part 2 — the results card as a LAYOUT SYSTEM, not a character budget: rendered at three card
+        # sizes with the desktop's own tokens, long names, a missing and a dead photo.
+        {"id": "4.274", "title": "A result card fits any space: no sideways overflow at three sizes, the grid "
+                                 "reflows, titles hold two lines and open whole, every photo card keeps its plate "
+                                 "(monogram when the photo is missing or dead), chips are one line, a row is one box, "
+                                 "and a card sits one rung above its sheet",
+            "ch": UNIT,
+            "paths": ["tests/browser/e2e/widgets/test_a_result_card_fits_any_space.py"]},
         # V2-296 (encargo del operador, 2026-08-24). La pestaña contaba QUÉ hacía y no CUÁNTO llevaba hecho. Dos
         # nodos porque son dos averías distintas: la rejilla puede pintar perfecto cifras que nadie produce, y la
         # cadena puede producirlas y no llegar a pantalla. El de PANTALLA fija sobre todo cuándo CALLARSE —`{}`

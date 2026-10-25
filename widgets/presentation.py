@@ -24,8 +24,12 @@
 #      The old rule's reason survives as the GUARD: a name, never a number, and an impossible choice (a photo
 #      template over results with no photos) falls back instead of drawing badly. `columns` stays forbidden —
 #      that one really is geometry, and the incident below is what it cost.
-#   2. BUDGETS ARE DECLARED, NOT GUESSED. Each blank surface publishes in its manifest how much fits in each field,
-#      and that travels to the prompt of whoever will fill it. A model cannot respect a limit nobody told it.
+#   2. LENGTH IS THE LAYOUT'S JOB (V2-797, replacing «budgets are declared»). The sheet used to publish how
+#      many characters fit each field (title 34, subtitle 70), clip what it stored to that and report every longer
+#      title as «the payload breaks the card». The card did not break: the text was cut on the server and the worker
+#      was scolded for data it does not control (a listing's real name, a page's snippet). A long title is now laid
+#      out by the card — clamped to its lines for the space it really has, whole on expand. What remains here are
+#      STORAGE caps (a field is not a page) and data-quality checks that really break comparison.
 #   3. SILENT CLIPPING IS FORBIDDEN. If something does not fit, cut on a word boundary, mark it with "...", and record
 #      it as an incident. A warning cut mid-word is worse than omitting it.
 #
@@ -35,19 +39,19 @@
 #
 from __future__ import annotations
 
-# Default budgets for a readable card. Applied by surfaces that do not declare their own.
-# Derived from measuring the real case: a 53-char title with three ideas wrapped to 4 lines and collided with the
-# price; at ~34 it fits in one or two lines and breathes.
+# STORAGE caps per field (characters): what one field may hold before it stops being that field. Not layout — the
+# card clamps whatever it is given to the space it has (V2-797). A surface may declare its own in its manifest.
 DEFAULTS: dict = {
-    "sheet_title": 70,       # sheet header: WHAT it is about, not the whole task statement
-    "sheet_subtitle": 220,   # one or two context/caveat sentences
-    "title": 34,             # result name. ONE idea
-    "subtitle": 70,          # one line of context
-    "price": 16,             # highlighted label; never wraps
-    "badge": 16,             # etiqueta corta
-    "part_title": 40,        # the name of a component within a proposal
-    "fact_label": 22,        # the left column of the data record
-    "fact_value": 90,
+    "sheet_title": 160,
+    "sheet_subtitle": 400,
+    "title": 300,
+    "subtitle": 300,
+    "price": 60,
+    "badge": 40,
+    "part_title": 200,
+    "fact_label": 60,
+    "fact_value": 300,
+    "source_detail": 300,
 }
 
 # UNIVERSAL rules for presenting data on a blank surface. This is the preset that guarantees quality: it describes NO
@@ -56,10 +60,11 @@ _UNIVERSAL = """PRESENTACIÓN (control de calidad — aplica SIEMPRE que rellene
 Tu trabajo no acaba con encontrar el dato: acaba cuando se LEE de un vistazo. Reglas:
 · UNA IDEA POR CAMPO. El `title` es el NOMBRE del resultado y nada más. La ruta, la compañía, el barco, el horario
   o la duración NO van en el título: van en `subtitle` (una línea) o en `facts` (dato duro).
-· RESPETA LOS PRESUPUESTOS de abajo. Son los que caben sin envolver. Pasarse no «cabe apretado»: rompe la tarjeta,
-  choca con el precio y obliga a recortar, y lo recortado se pierde.
+· LA LONGITUD LA MAQUETA LA SUPERFICIE: recorta a la vista según el sitio que tenga y enseña el texto entero al
+  abrirlo. No acortes un nombre real para que «quepa».
 · LOS DATOS DUROS VAN EN `facts`, no en prosa. Precio, horario, duración, condiciones, medidas, valoración: cada
-  uno su etiqueta y su valor. Así se comparan en columna y se pueden consultar después por voz.
+  uno su etiqueta y su valor. Así se comparan en columna y se pueden consultar después por voz. Los 1-4 que DECIDEN
+  van además en `meta` (chips cortos bajo el título: distancia, horario, valoración…).
 · NO DECIDAS EL LAYOUT. No mandes número de columnas ni maquetes con guiones, saltos ni tablas ASCII: la superficie
   reparte el espacio según la forma de lo que le des, y lo hace mejor que una suposición a ciegas.
 · NADA IMPORTANTE AL FINAL DE UN CAMPO LARGO. Si una salvedad o un aviso importa, va en su propio `fact` o en su
@@ -102,20 +107,9 @@ def is_blank_sheet(widget_id: str) -> bool:
 
 
 def directive(widget_id: str = "") -> str:
-    """Prompt block that guarantees presentation quality. Universal rules + this surface's REAL budgets. This is the
-    only preset: formats remain free."""
-    lines = [_UNIVERSAL]
-    if widget_id:
-        c = contract(widget_id)
-        lines.append(
-            "\nPRESUPUESTOS de «%s» (caracteres que caben sin envolver):\n"
-            "· título de la hoja ≤%d · subtítulo de la hoja ≤%d\n"
-            "· title ≤%d · subtitle ≤%d · price ≤%d · badge ≤%d\n"
-            "· título de pieza ≤%d · etiqueta de dato ≤%d · valor de dato ≤%d"
-            % (widget_id, c["sheet_title"], c["sheet_subtitle"], c["title"], c["subtitle"],
-               c["price"], c["badge"], c["part_title"], c["fact_label"], c["fact_value"])
-        )
-    return "\n".join(lines)
+    """Prompt block that guarantees presentation quality: the universal rules. Formats remain free, and no
+    character budget travels any more — the surface lays out any length (V2-797)."""
+    return _UNIVERSAL
 
 
 def blank_sheets() -> list[str]:
@@ -160,26 +154,14 @@ def clip(text, limit: int) -> tuple[str, bool]:
 
 
 def audit(widget_id: str, payload: dict) -> list[str]:
-    """Review a payload BEFORE rendering it and return presentation incidents in plain language.
+    """Review a payload BEFORE rendering it and return DATA-QUALITY incidents in plain language — what breaks
+    comparison or leaves a dead end, never a length (V2-797: length is the layout's job).
 
     In code, not only in the prompt: a prompt is a request, not a guarantee. Output from here is recorded in
     observability (and can be returned to the worker for fixing), so a payload that breaks the card stops being
     invisible.
     """
-    c = contract(widget_id)
     out: list[str] = []
-
-    def _check(label: str, value, key: str, *, clipped: bool = False) -> None:
-        """`clipped` distinguishes what is actually CLIPPED (the sheet header, which goes through `clip`) from what
-        simply DOES NOT FIT and wraps, breaking the card. Saying "will be clipped" for a field that is actually kept
-        whole would send people looking for data loss that does not exist."""
-        s = "" if value is None else str(value).strip()
-        if s and len(s) > c[key]:
-            what = "se recortará" if clipped else "envolverá y descuadrará la tarjeta"
-            out.append(f"{label}: {len(s)} caracteres, caben {c[key]} — {what} («{s[:40]}…»)")
-
-    _check("título de la hoja", payload.get("title"), "sheet_title", clipped=True)
-    _check("subtítulo de la hoja", payload.get("subtitle"), "sheet_subtitle", clipped=True)
 
     if payload.get("columns") is not None:
         out.append("`columns` viene en el payload: el layout lo decide la superficie según la forma del contenido, "
@@ -188,16 +170,9 @@ def audit(widget_id: str, payload: dict) -> list[str]:
     items = payload.get("items")
     items = items if isinstance(items, list) else []
     shapes = []
-    for n, it in enumerate(items, 1):
+    for it in items:
         if not isinstance(it, dict):
             continue
-        _check(f"item {n} · title", it.get("title"), "title")
-        _check(f"item {n} · subtitle", it.get("subtitle"), "subtitle")
-        _check(f"item {n} · price", it.get("price"), "price")
-        _check(f"item {n} · badge", it.get("badge"), "badge")
-        for p in (it.get("parts") or []):
-            if isinstance(p, dict):
-                _check(f"item {n} · pieza «{str(p.get('kind') or '')[:12]}»", p.get("title"), "part_title")
         shapes.append((bool(it.get("parts")), bool(it.get("price")), bool(it.get("facts")),
                        bool(it.get("url"))))
 

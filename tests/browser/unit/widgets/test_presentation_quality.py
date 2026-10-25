@@ -166,12 +166,14 @@ def test_the_widget_really_delegates_the_layout():
 
 # ── 3. Budgets are declared, not guessed ──────────────────────────────────────────────────────────────────────────
 
-def test_the_blank_sheet_declares_its_contract():
+def test_the_blank_sheet_declares_itself_and_no_layout_budget():
+    """V2-797 — the sheet no longer publishes how many characters fit a field: the card lays out any length."""
     m = json.loads((WIDGET / "manifest.json").read_text())
     pres = m.get("presentation") or {}
     assert pres.get("blank_sheet") is True
-    for k in ("title", "subtitle", "price", "badge", "sheet_title", "part_title"):
-        assert k in (pres.get("budgets") or {}), f"falta el presupuesto de {k}"
+    for k in ("title", "subtitle", "price", "badge"):
+        assert k not in (pres.get("budgets") or {}), f"a layout budget for {k} came back"
+    assert "≤34" not in m["worker_guide"] and "≤70" not in m["worker_guide"]
 
 
 def test_a_rigid_widget_is_not_subject_to_this():
@@ -193,12 +195,12 @@ def test_blank_sheets_are_discovered_from_manifests_not_a_hardcoded_list():
 
 # ── 4. The directive is the PRESET that guarantees quality, and travels with the task ─────────────────────────────
 
-def test_the_directive_carries_the_real_budgets():
+def test_the_directive_carries_the_rules_but_no_character_budget():
     from widgets import presentation
     d = presentation.directive("results")
     assert "UNA IDEA POR CAMPO" in d
     assert "NO DECIDAS EL LAYOUT" in d
-    assert "title ≤34" in d, "los presupuestos REALES del widget, no una regla genérica vacía"
+    assert "PRESUPUESTOS" not in d and "≤34" not in d, "length is the layout's job (V2-797)"
 
 
 def test_the_directive_is_domain_agnostic():
@@ -212,7 +214,7 @@ def test_the_directive_is_domain_agnostic():
 def test_it_only_reaches_prompts_that_will_display_data():
     from widgets import presentation
     assert presentation.directive_for("Escribe un fichero con el resumen.") == ""
-    assert "PRESUPUESTOS" in presentation.directive_for(
+    assert "PRESENTACIÓN" in presentation.directive_for(
         "entrega con `python -m nucleo.widget_cli data results present @informe.json`")
 
 
@@ -228,27 +230,20 @@ def test_the_worker_prompt_wires_it_in():
 
 # ── 5. A payload that breaks the card leaves a TRACE (a prompt is not a guarantee) ────────────────────────────────
 
-def test_the_audit_catches_every_defect_of_the_real_payload():
+def test_the_audit_catches_the_layout_order_of_the_real_payload():
     from widgets import presentation
     issues = presentation.audit("results", REAL_PAYLOAD)
-    joined = " | ".join(issues)
-    assert "título de la hoja" in joined
-    assert "subtítulo de la hoja" in joined
-    assert "`columns`" in joined
-    assert "item 1 · title" in joined
-    assert "item 1 · price" in joined
-    assert "pieza" in joined
+    assert any("`columns`" in i for i in issues)
 
 
-def test_the_audit_is_honest_about_what_actually_happens():
-    """The sheet header IS truncated; an item title is kept whole and WRAPS. Saying “it will be truncated”
-    about something that is not truncated sends people looking for nonexistent data loss."""
+def test_a_long_text_is_never_an_incident():
+    """V2-797 — «item 1 · title: 39 characters, 34 fit» was raised for every real listing name; the card clamps
+    it to the space it has and shows it whole on expand. Length is not a data defect."""
     from widgets import presentation
-    issues = presentation.audit("results", REAL_PAYLOAD)
-    sheet = next(i for i in issues if i.startswith("título de la hoja"))
-    item = next(i for i in issues if i.startswith("item 1 · title"))
-    assert "se recortará" in sheet
-    assert "envolverá" in item and "se recortará" not in item
+    long = {"items": [{"title": "RESTAURANTE CASA AUGUSTO ARRANZ | SORIA - Carta, fotos y opiniones " * 2,
+                       "subtitle": "x " * 200, "price": "desde 25 € por persona, bebida aparte", "url": "u"}],
+            "title": "t" * 150, "subtitle": "s" * 380}
+    assert presentation.audit("results", long) == []
 
 
 def test_the_audit_flags_items_that_cannot_be_compared():
@@ -280,9 +275,9 @@ def test_present_reports_its_presentation_issues_back(monkeypatch, tmp_path):
 
     out = rd.apply_action("present", dict(REAL_PAYLOAD))
     assert out["ok"] is True
-    assert out["presentation"], "un payload que rompe la tarjeta no puede pasar en silencio"
-    # and the saved header is already truncated at a word boundary, with a marker
-    assert saved["results"]["title"].endswith("…")
+    assert out["presentation"], "a data-quality issue cannot pass in silence"
+    # and the header is stored whole: it is under its storage cap, and the layout clamps it
+    assert saved["results"]["title"] == REAL_PAYLOAD["title"]
 
 
 @pytest.mark.parametrize("action", ["present", "append"])
@@ -295,10 +290,9 @@ def test_both_fill_actions_are_audited(action):
     assert "_audit(payload)" in body[:400], f"{action} debe auditar su payload"
 
 
-def test_an_overlong_item_is_stored_clipped_but_reported(monkeypatch):
-    """Session 6d19df41: 5 «el payload rompe la tarjeta» warnings while the overlong titles were persisted
-    verbatim — the audit saw it, the card still broke. What is stored must fit the card slots (word boundary,
-    marked); the issue is still reported back so the worker can fix the source."""
+def test_an_overlong_item_is_stored_whole_and_not_reported(monkeypatch):
+    """V2-797 — the opposite of session 6d19df41's fix: the overlong titles were clipped to a layout budget on the
+    server. A real name is stored whole; the card clamps it on screen. Only a STORAGE cap still cuts, marked."""
     from widgets import presentation, store
     from widgets.results import data as rd
 
@@ -306,13 +300,14 @@ def test_an_overlong_item_is_stored_clipped_but_reported(monkeypatch):
     monkeypatch.setattr(store, "save", lambda wid, d: saved.setdefault(wid, d) or d)
     monkeypatch.setattr(rd.store, "save", lambda wid, d: saved.setdefault(wid, d) or d)
 
-    out = rd.apply_action("present", dict(REAL_PAYLOAD))
+    payload = {k: v for k, v in REAL_PAYLOAD.items() if k != "columns"}
+    out = rd.apply_action("present", payload)
     assert out["ok"] is True
-    assert out["presentation"], "the worker must still be told its payload breaks the card"
-    budgets = presentation.contract("results")
+    assert out["presentation"] == [], out["presentation"]
     item = saved["results"]["items"][0]
+    raw = REAL_PAYLOAD["items"][0]
     for key in ("title", "subtitle", "price", "badge"):
-        assert len(item[key]) <= budgets[key], f"stored {key} must fit the card ({item[key]!r})"
-    assert item["title"].endswith("…"), "a cut has to SHOW"
-    part = item["parts"][0]
-    assert len(part["title"]) <= budgets["part_title"]
+        assert item[key] == raw[key], f"stored {key} was cut: {item[key]!r}"
+    huge = rd._clean_item({"title": "palabra " * 80})
+    cap = presentation.contract("results")["title"]
+    assert len(huge["title"]) <= cap + 1 and huge["title"].endswith("…"), "a storage cut has to SHOW"

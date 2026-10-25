@@ -61,13 +61,16 @@ function injectStyles(){
      CAREFUL when editing: this is a template literal — no backticks inside.
      ───────────────────────────────────────────────────────────────────────────────────────────────────────────── */
   .hb-results{
-    --s1:5px; --s2:9px; --s3:14px; --s4:18px; --s5:26px;      /* ~4-5 grid, with more air (2026-08-12) */
-    --f-micro:11px;                                           /* uppercase labels, with tracking */
-    --f-sm:13px;                                              /* metadata, states (+1.5px) */
-    --f-body:14.5px;                                          /* body for everything (+2px, readability) */
-    --f-md:16px;                                              /* record title (+2px) */
+    /* V2-797 — the local names stay, their VALUES come from the design system (palette.css): the sheet's
+       rhythm is the desktop's rhythm, and the ⚙ size knob scales it with everything else. The fallbacks are
+       the old local values, for a sheet mounted outside the shell. */
+    --s1:var(--sp-1,5px); --s2:var(--sp-2,9px); --s3:var(--sp-3,14px); --s4:var(--sp-4,18px); --s5:var(--sp-5,26px);
+    --f-micro:var(--fs-micro,11px);                           /* uppercase labels, with tracking */
+    --f-sm:var(--fs-caption,13px);                            /* metadata, states */
+    --f-body:var(--fs-ui,14.5px);                             /* body for everything */
+    --f-md:var(--fs-body,16px);                               /* record title */
     --f-lg:19px; --f-xl:23px;                                 /* record and summary figures */
-    --r-sm:7px; --r-md:10px; --r-lg:13px; --r-pill:99px;       /* radii */
+    --r-sm:var(--hb-r-s,7px); --r-md:var(--hb-r-m,10px); --r-lg:var(--hb-r-l,13px); --r-pill:99px;   /* radii */
     --line:1px solid var(--hb-line,#e3e8f0);
     font-family:var(--sans,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif);
     color:var(--hb-ink,#0d1622);font-size:var(--f-body);line-height:1.62;
@@ -139,112 +142,106 @@ function injectStyles(){
   /* the TAB loader: slightly smaller than the panel's, because it accompanies a label rather than heading it */
   .hb-results .hr-tab .hr-tspin{width:.8em;height:.8em;border-width:1.5px}
 
-  /* ── GRID AND RECORDS ──────────────────────────────────────────────────────────────────────────────────────
-     The accent strip remains ONLY on the featured card. With ten results —the new delivery default— ten vertical
-     blue bars read like a barcode and stop highlighting anything: if everything shouts, nothing shouts. The others
-     carry a 1px line and lift on hover only if clicking does something. */
-  .hb-results .hr-grid{display:grid;gap:var(--s3);min-width:0}
+  /* ── THE CARD SYSTEM (V2-797) ── ONE template, laid out by the space it REALLY has ─────────────────────────
+     «monta un sistema para que cualquier resultado se monte bien, adecuado al UI, a las ventanas, al espacio y
+     formato disponibles. Nada de parches.» Before this, the sheet budgeted CHARACTERS per field (title 34,
+     subtitle 70): the server cut every real listing name to fit a width it never measured, and the worker was
+     told its payload «broke the card». A card does not know its width in characters; it knows it in pixels, and
+     only once it is on screen. So:
+       · every card is a CONTAINER ('hrcard') and its inside is laid out by its own width (@container), never by
+         the viewport and never by a number the filler sent;
+       · text is CLAMPED to its lines with an ellipsis, the whole text is one click away («Ver todo») and in the
+         hover title — a long name is the layout's job, not the data's;
+       · the grid reflows to as many columns as the sheet's width holds ('gridStyle', auto-fill);
+       · photos sit in plates of FIXED aspect, contained, never cropped; a missing or dead photo keeps its plate
+         (a monogram), so one result without a picture never drags the row out of formation;
+       · the item template is driven by DECLARED fields: title, subtitle, meta chips (rating, distance, hours…),
+         price, badge, image, and the action that opens the record. Nothing per domain.
+     Colours, radii, spacing and type come from the design system tokens (palette.css, V2-689 ladder): a card is
+     one rung above the widget it sits on ('--hb-bg-soft' on '--hb-bg'), never the same rung (V2-691).
+     CAREFUL when editing: this is a template literal — no backticks inside. */
+  .hb-results .hr-grid{display:grid;gap:var(--s3);min-width:0;align-items:stretch}
   .hb-results .hr-grid + .hr-grid{margin-top:var(--s3)}
-  .hb-results .hr-card{position:relative;display:block;text-decoration:none;color:inherit;
-    border:var(--line);border-radius:var(--r-lg);padding:var(--s3) var(--s4);background:var(--hb-bg,#fff);
-    min-width:0;transition:border-color .15s,box-shadow .15s,transform .15s}
-  /* The featured card is marked with border and background, period. A color strip peeking from the top ("label tab")
-     was also tried: with the card radius it looked like a loose dash FLOATING above the border, i.e. a layout defect.
-     The tempered background + turquoise border + badge already distinguish it from nine siblings; one more ornament
-     did not highlight better, it only added something that could look broken. */
-  .hb-results .hr-card.primary{border-color:color-mix(in srgb,var(--hb-accent2,#16B8A6) 42%,var(--hb-line,#e3e8f0));
-    background:var(--hb-bg-soft,#fbfdff)}
-  .hb-results a.hr-card:hover,.hb-results .hr-card.choosable:hover{border-color:var(--hb-accent,#3D6FE0);
+  .hb-results .hr-card{position:relative;display:flex;flex-direction:column;min-width:0;
+    text-decoration:none;color:inherit;container:hrcard / inline-size;
+    background:var(--hb-bg-soft,#fbfdff);border:1px solid var(--hb-line-subtle,var(--hb-line,#e3e8f0));
+    border-radius:var(--hb-r-l,12px);padding:var(--s3);
+    transition:border-color var(--hb-t,.16s),box-shadow var(--hb-t,.16s),transform var(--hb-t,.16s)}
+  /* The featured card is marked with border and ground, never with size (V2-703: one track for every card). */
+  .hb-results .hr-card.primary{border-color:color-mix(in srgb,var(--hb-accent2,#16B8A6) 48%,var(--hb-line,#e3e8f0))}
+  .hb-results a.hr-card:hover,.hb-results .hr-card.choosable:hover{
+    border-color:var(--hb-line-strong,var(--hb-accent,#3D6FE0));
     box-shadow:var(--hb-shadow-1,0 8px 30px rgba(13,22,34,.12));transform:translateY(-1px)}
-  /* ── THE PHOTO ── a PLATE with a fixed aspect, and the image CONTAINED inside it ────────────────────────────
-     It used to be a 100%-wide box of 128 fixed pixels under 'object-fit:cover', i.e. a band whose aspect came from the CARD's width
-     and a constant. On a maximized sheet that band measured 1142x168 (6.8:1) and the photo of a pot is 320x251
-     (1.27:1): 'cover' scaled it to 1142x896 and cropped away 81% of its height, leaving a horizontal strip of
-     steel with no pot in it. The operator, with the screenshot: «estas fotos horizontales no sirven para nada
-     porque no se ve absolutamente nada».
-     'cover' is only safe when the box aspect is CLOSE to the photo's; it never is here, because the sheet is
-     resizable and the photos come from whatever shop the search landed on — portrait bottles, landscape cars,
-     square product shots. So: the box aspect is FIXED by the layout (not by the card width), and the image is
-     CONTAINED — whole, always, whatever its shape. The plate behind it is light on purpose: product photography
-     ships with a white background baked in, so a light tray is what makes it look seamless instead of a white
-     rectangle floating on a dark card. */
-  .hb-results .hr-shot{position:relative;display:grid;place-items:center;overflow:hidden;
-    border-radius:var(--r-md);background:#f4f6fa;border:1px solid rgba(13,22,34,.07)}
-  .hb-results .hr-shot img{display:block;max-width:100%;max-height:100%;width:auto;height:auto;
-    object-fit:contain}
-  .hb-results .hr-sec .hr-shot{width:100%;aspect-ratio:4/3;margin-bottom:var(--s3)}
+  .hb-results .hr-card .hr-in{display:flex;flex-direction:column;gap:var(--s3);flex:1 1 auto;min-width:0}
+  .hb-results .hr-card .hr-body{display:flex;flex-direction:column;gap:var(--s2);min-width:0;flex:1 1 auto}
 
-  /* ── THE FOUR LIST LAYOUTS ── the surface decides which, from the SHAPE of what it was given ────────────────
-     «me gustaría que la lista de resultados pueda tener de uno a cinco tipos de formato y que nos adaptemos a
-     cada tipo de artículo». They are PRESET here —not improvised per delivery— and chosen by 'layoutFor()'.
-     They are named after SHAPES and the sheet's optional 'kind' after THINGS, deliberately: the first draft
-     called this one 'media' and the vocabulary of kinds also has a 'media' (audio, video), which is two
-     meanings on one word in one file — the older one wins the argument and the newer one goes quietly wrong.
-       · split    photo LEFT, data RIGHT. The operator's explicit ask and the market standard for anything that
-                  is an ARTICLE (a pot, a car, a flat): the photo identifies it, the data decides it.
-       · gallery  photo on top, wide. For results where the image IS the answer (places, rooms, artwork).
-       · rows     no photo. A dense readable list for documents, quotes, links.
-       · compare  composite proposals side by side (the 'parts' card that already existed).
-     What is NOT preset is which FIELDS a card carries: those come from 'facts', filled per article type by
-     whoever ran the search — a car brings year/km/fuel and a pot brings capacity/diameter/lid. */
-  .hb-results .hr-card.split{display:grid;grid-template-columns:minmax(96px,var(--hr-shot-col,.3fr)) 1fr;
-    gap:var(--s3);align-items:start}
-  .hb-results .hr-card.split .hr-shot{width:100%;aspect-ratio:1/1}
-  .hb-results .hr-card.gallery .hr-shot{width:100%;aspect-ratio:4/3;margin-bottom:var(--s3)}
-  .hb-results .hr-body{min-width:0;display:flex;flex-direction:column;height:100%}
+  /* ── THE PLATE ── fixed aspect, image CONTAINED (V2-702: a box whose aspect came from the card width cropped
+     81% of a pot away). Its ground is one step off the card in either theme: a neutral tray, never a white
+     rectangle glaring on a dark card. */
+  .hb-results .hr-shot{position:relative;display:grid;place-items:center;overflow:hidden;width:100%;
+    aspect-ratio:4/3;border-radius:var(--hb-r-m,10px);
+    background:color-mix(in srgb,var(--hb-ink,#0d1622) 6%,var(--hb-bg-soft,#f4f6fa))}
+  /* Absolutely filling the plate with 'contain': a percentage max-height inside a grid plate never resolves (the
+     track is content-sized), and a tall photo then overflowed the plate and was clipped. */
+  .hb-results .hr-shot img{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:contain}
+  /* No photo, or a dead one: the plate stays and says WHAT it is, by its initial. */
+  .hb-results .hr-shot .hr-mono{font-size:clamp(18px,9cqi,40px);font-weight:700;letter-spacing:-.02em;
+    color:color-mix(in srgb,var(--hb-accent,#3D6FE0) 70%,var(--hb-muted,#5f6b7c));opacity:.75;user-select:none}
+  .hb-results .hr-sec .hr-shot{margin-bottom:var(--s3)}
 
-  /* ── EVERY BOX THE SAME BOX (V2-703) ────────────────────────────────────────────────────────────────────────
-     «son cajitas bien puestas, plantilladas […] asegúrate de que estos objetos plantillados soportan más o menos
-     contenido y que todo va a quedar siempre bien y que se controla cada tamaño de campo».
-     A template that only holds when the data cooperates is not a template. Two rules do the work:
-       1. the cards STRETCH to the tallest in their row, and the footer is pushed to the bottom of each, so the
-          «Ver detalle» buttons line up across the row instead of floating at nine different heights;
-       2. every text field has a LINE BUDGET and overflows into an ellipsis — a three-line title cannot push the
-          photo out of alignment, and a card with no subtitle does not collapse shorter than its neighbour. */
-  .hb-results .hr-grid{align-items:stretch}
-  .hb-results .hr-card{display:flex;flex-direction:column}
-  /* The card stretches to its row AND its data column stretches to the card, or the footer has nothing to be
-     pushed to the bottom OF. With 'align-items:start' the cards measured equal and the buttons still sat 11px
-     apart, because the column ended where its text ended. The PLATE keeps its own alignment: stretching a fixed
-     aspect-ratio box is how the photo band came back. */
-  .hb-results .hr-card.split{display:grid;align-items:stretch}
-  .hb-results .hr-card.split > .hr-shot{align-self:start}
-  /* ⚠️ '.hr-card .hr-foot', not '.hr-foot': the base rule sets 'margin-top:var(--s3)' and is declared FURTHER
-     DOWN this same sheet, so at equal specificity it wins and the footer stops being pushed anywhere. It looked
-     like it worked — the one card whose text happened to fill its body had its button at the bottom, and the
-     other two sat 11px higher. One stylesheet, one namespace, and order decides ties. */
-  .hb-results .hr-card .hr-foot{margin-top:auto;padding-top:var(--s3)}
-
-  /* The budget is the TEMPLATE's; WHAT GOES IN EACH SLOT is the worker's, and that is the whole point: «el worker
-     se supone que tiene que tener la inteligencia suficiente como para decidir qué datos ponemos en esas fichas
-     […] esto no es una página web, esto es un sistema dinámico e inteligente que tiene que soportar cualquier
-     tipo de resultado, tanto si buscamos barcos como cafeteras, como recetas, como eventos históricos». A boat
-     puts its length in the subtitle where a recipe puts its time and a battle puts its date; the card never
-     knows which, and never needs to. */
-  /* THE LINE BUDGET. It lives on a plain child ('.hr-cl'), not on '.hr-t' itself, so the box that carries the
-     flex behaviour and the box that carries the clamp are never the same box.
-     ⚠️ How this was found is worth more than the rule. A 58-character title kept rendering FOUR lines with the
-     clamp declared, and the computed style said display 'block' and orientation 'horizontal' — the declarations
-     were being DROPPED while '-webkit-line-clamp' survived. The cause was not CSS semantics at all: a comment
-     paragraph added above had landed OUTSIDE an already-closed comment, so several lines of prose were parsed as
-     a declaration block and the parser ate everything until it resynced. An injected stylesheet fails SILENTLY —
-     'node --check' is green, the sheet is a string — so the only way to see it is to read back the computed
-     style. Reading back a property you just set is how you learn it never arrived. */
-  .hb-results .hr-card .hr-cl{display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden;
-    -webkit-line-clamp:2}
-  .hb-results .hr-card .hr-t .hr-cl{-webkit-line-clamp:2}
-  /* The badge is NOT squeezed by the subtitle's budget. It was, via a max-height on the row, and the very first
-     card that used both lines of subtitle lost its «ONLY 100% MATCH» — the one label that says why that result
-     leads the list. Its own line, always drawn. */
-  .hb-results .hr-card .hr-metarow{display:block}
-  .hb-results .hr-card .hr-metarow .hr-badge{margin-top:var(--s1)}
-  /* Below ~430px the two columns strangle both halves (a 110px photo next to a 7-em title). The photo goes back
-     on top — still a FIXED aspect plate with the image contained, never a band. */
-  @container (max-width: 430px){
-    .hb-results .hr-card.split{grid-template-columns:1fr}
-    .hb-results .hr-card.split .hr-shot{aspect-ratio:4/3;margin-bottom:var(--s2)}
+  /* ── THE FOUR LIST LAYOUTS ── variants of the SAME template, chosen by 'layoutFor()' from the content shape
+     (or named by the worker, V2-703): split = photo left, data right (articles) · gallery = photo on top
+     (places, rooms, the image IS the answer) · rows = no photo (documents, links) · compare = composite plans. */
+  .hb-results .hr-card.split .hr-in{display:grid;grid-template-columns:minmax(88px,34%) minmax(0,1fr);
+    align-items:stretch}
+  .hb-results .hr-card.split .hr-shot{aspect-ratio:1/1;align-self:start}
+  /* The photo goes back on top, shorter, still a plate, when there is no room for two columns: a ONE-column
+     sheet (the grid's own width, below ~430px) or a card whose content box is under 340px in a wider grid. Both are widths
+     of the sheet as it is drawn, never of the viewport. */
+  .hb-results .hr-grid{container:hrgrid / inline-size}
+  @container hrgrid (max-width: 430px){
+    .hb-results .hr-card.split .hr-in{display:flex;flex-direction:column}
+    .hb-results .hr-card.split .hr-shot{aspect-ratio:16/10}
   }
-  .hb-results .hr-grid{container-type:inline-size}
+  @container hrcard (max-width: 339px){
+    .hb-results .hr-card.split .hr-in{display:flex;flex-direction:column}
+    .hb-results .hr-card.split .hr-shot{aspect-ratio:16/10}
+  }
+  .hb-results .hr-card.gallery .hr-shot{aspect-ratio:4/3}
+
+  /* ── TEXT ── clamped to its lines, whole on expand. The clamp lives on a plain child ('.hr-cl'): a clamp
+     declared on a flex item is dropped (the 2026-09 «four-line title» trap). */
+  .hb-results .hr-card .hr-txt{display:flex;flex-direction:column;gap:var(--s1);min-width:0}
+  .hb-results .hr-card .hr-t{font-size:var(--f-md);font-weight:650;letter-spacing:-.01em;
+    line-height:var(--hb-lh-tight,1.35);overflow-wrap:anywhere;min-width:0;flex:none}
+  .hb-results .hr-card .hr-s{font-size:var(--f-sm);line-height:var(--hb-lh-tight,1.35);
+    color:var(--hb-muted,#5f6b7c);overflow-wrap:anywhere}
+  .hb-results .hr-card .hr-cl{display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden;-webkit-line-clamp:2}
+  @container hrcard (min-width: 560px){
+    .hb-results .hr-card .hr-s .hr-cl{-webkit-line-clamp:3}
+  }
+  .hb-results .hr-card.hr-x .hr-cl{display:block;-webkit-line-clamp:unset;overflow:visible}
+  .hb-results .hr-card .hr-xbtn{display:none;align-self:flex-start;border:0;background:none;padding:0;
+    font:600 var(--f-sm)/1.3 inherit;color:var(--hb-accent,#3D6FE0);cursor:pointer}
+  .hb-results .hr-card .hr-xbtn:hover{text-decoration:underline}
+  .hb-results .hr-card .hr-txt.can-x .hr-xbtn,.hb-results .hr-card.hr-x .hr-xbtn{display:inline}
+
+  /* ── META CHIPS ── the 1-4 data that decide at a glance, each one line, ellipsized; never a paragraph. */
+  .hb-results .hr-card .hr-metarow{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s1);min-width:0;
+    margin:0}
+  .hb-results .hr-card .hr-chip{display:inline-block;max-width:100%;min-width:0;overflow:hidden;
+    text-overflow:ellipsis;white-space:nowrap;font-size:var(--f-sm);line-height:1.35;
+    padding:2px var(--s2);border-radius:var(--r-pill);background:var(--hb-bubble,#f1f4f9);
+    color:var(--hb-ink,#0d1622)}
+  .hb-results .hr-card .hr-chip small{font-size:inherit;color:var(--hb-muted-2,#9aa7b8);margin-right:var(--s1)}
+  .hb-results .hr-card .hr-metarow .hr-badge,.hb-results .hr-card .hr-metarow .hr-score{flex:none}
+
+  /* ── FOOT ── price and the way into the record, pushed to the bottom so every row lines its buttons up. */
+  .hb-results .hr-card .hr-foot{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s2);
+    margin-top:auto;padding-top:var(--s1)}
+  .hb-results .hr-card .hr-foot .hr-price{font-size:var(--f-md);font-weight:700;
+    margin-right:auto;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+  .hb-results .hr-card .hr-foot .hr-more,.hb-results .hr-card .hr-foot .hr-open{margin-top:0}
 
   /* ── THE LINK TO THE ORIGINAL PAGE ── on EVERY card that has one ────────────────────────────────────────────
      «asegúrate de que cuando un widget de resultados busca cosas siempre muestre los links a la página web
@@ -594,8 +591,56 @@ function photo(url, alt, cls){
 // why the plate keeps its size: a row where one tile vanished reflows every sibling.
 function photoPlate(url, alt){
   const box=elem("div","hr-shot");
-  box.appendChild(photo(url, alt, ""));
+  if(!url){ box.classList.add("none"); box.appendChild(monogram(alt)); return box; }
+  const img=photo(url, alt, "");
+  // V2-797 — a dead photo keeps its plate AND says what it is: an empty light box read as a broken card.
+  img.addEventListener("error",()=>{ box.classList.add("none"); if(!box.querySelector(".hr-mono")) box.appendChild(monogram(alt)); });
+  box.appendChild(img);
   return box;
+}
+
+// The first letter or digit of a name, as the stand-in for its missing photo. Any script: \p{L} / \p{N}.
+function monogram(name){
+  const m = String(name||"").match(/[\p{L}\p{N}]/u);
+  const e = elem("span","hr-mono", m ? m[0].toLocaleUpperCase() : "·");
+  e.setAttribute("aria-hidden","true");
+  return e;
+}
+
+// The chips a LIST card shows under its title: what the item DECLARES as `meta`, else its first three facts.
+function metaChips(it){
+  const pairs = (v) => Array.isArray(v) ? v.map(c => (c && typeof c === "object") ? c : {value: c})
+                    : (v && typeof v === "object") ? Object.entries(v).map(([label, value]) => ({label, value})) : [];
+  const own = pairs(it.meta);
+  const meta = own.length ? own : pairs(it.facts).slice(0, 3);
+  return meta.filter(c => c && c.value != null && String(c.value).trim()).slice(0, 4).map(c => {
+    const chip = elem("span","hr-chip");
+    if(c.label){ chip.appendChild(elem("small","", c.label)); }
+    chip.appendChild(document.createTextNode(String(c.value)));
+    chip.title = (c.label ? c.label + ": " : "") + String(c.value);
+    return chip;
+  });
+}
+
+// Text clamped to its lines, with «Ver todo» offered ONLY when something was really cut — measured on screen,
+// because only the screen knows how wide the card is (V2-797). The hover title carries the whole text too.
+function expandable(card, txt){
+  const xb=elem("button","hr-xbtn", tt("show_more", null, "Ver todo")); xb.type="button";
+  xb.setAttribute("aria-expanded","false");
+  txt.appendChild(xb);
+  const measure=()=>{
+    if(card.classList.contains("hr-x")) return;
+    const cut=[...txt.querySelectorAll(".hr-cl")].some(c=>c.scrollHeight > c.clientHeight + 1);
+    txt.classList.toggle("can-x", cut);
+  };
+  if(typeof ResizeObserver === "function") new ResizeObserver(measure).observe(txt);
+  else if(typeof requestAnimationFrame === "function") requestAnimationFrame(measure);
+  xb.addEventListener("click", e=>{ e.preventDefault(); e.stopPropagation();
+    const on=card.classList.toggle("hr-x");
+    xb.textContent = on ? tt("show_less", null, "Ver menos") : tt("show_more", null, "Ver todo");
+    xb.setAttribute("aria-expanded", String(on));
+    if(!on) measure();
+  });
 }
 
 // The SITE a link lands on, which is what the operator is deciding about when he clicks. A raw url is not an
@@ -846,46 +891,42 @@ function makeCard(it, isPrimary, choose, ctx, layout, nav){
   // be a link, the url is NOT dropped: it goes to the footer as an explicit control (see `sourceLink`).
   const asLink = it.url && !hasDetail;
   const card = document.createElement(asLink ? "a" : "div");
-  const shot = (layout !== "rows" && it.image) ? photoPlate(it.image, it.title) : null;
-  // A card with no photo can never wear a PHOTO layout: `split` is a two-column grid, and applied to a card
-  // without its first column it would drop the title in the left track and the subtitle in the right one. The
-  // list may therefore be mixed, which is correct — and `presentation.audit` already flags items that do not
-  // share the same shape, because that is a defect of the DATA, not of the drawing.
-  const lay = shot ? (layout || "rows") : "rows";
+  // ONE template (V2-797): the list's layout decides whether there is a plate, and EVERY card of a photo layout
+  // gets one — a missing photo becomes a monogram plate instead of a card of another shape, so the row keeps
+  // its formation. (It used to fall back to `rows` per card: split grids of mixed shapes.)
+  const lay = LAYOUTS.includes(layout) ? layout : "rows";
+  const photoLayout = lay === "split" || lay === "gallery";
   card.className = "hr-card " + lay + (isPrimary ? " primary" : "");
   if(asLink){ card.href = it.url; card.target = "_blank"; card.rel = "noopener noreferrer"; }
-  if(shot) card.appendChild(shot);
-  // In `split` the data is a COLUMN beside the photo, so it needs its own box; in every other layout the card
-  // itself is that box and an extra wrapper would only add a nesting level.
-  const body = (lay === "split") ? elem("div","hr-body") : card;
-  const head = elem("div","hr-head");
-  // The title's BOX carries the flex behaviour and its CHILD carries the line budget — a clamp declared on a
-  // flex item is dropped (see the .hr-cl note in the sheet). In the record there is no budget: the whole title.
+  const inner = elem("div","hr-in");
+  if(photoLayout) inner.appendChild(photoPlate(it.image || (Array.isArray(it.images) ? it.images[0] : ""), it.title));
+  const body = elem("div","hr-body");
+  // TITLE and SUBTITLE: whole in the data, clamped on screen, whole again on «Ver todo» and in the hover title.
+  const txt = elem("div","hr-txt");
   const tEl = elem("div","hr-t"); tEl.appendChild(elem("div","hr-cl", it.title || ""));
-  head.appendChild(tEl);
-  const sc = scoreTag(it.score); if(sc) head.appendChild(sc);
-  if(it.price) head.appendChild(elem("div","hr-price", it.price));
-  body.appendChild(head);
-  // The BADGE goes with the title, not the footer. It is a label that QUALIFIES the result ("Best set"), and below it
-  // ended up next to the detail button, where it read like a second button.
+  tEl.title = it.full_title || it.title || "";
+  txt.appendChild(tEl);
+  if(it.subtitle){ const sEl = elem("div","hr-s"); sEl.appendChild(elem("div","hr-cl", it.subtitle));
+                   sEl.title = it.subtitle; txt.appendChild(sEl); }
+  body.appendChild(txt);
+  expandable(card, txt);
+  // META: the rating, the badge that says why it leads, and the declared chips — one row that wraps, each chip
+  // one line. The badge QUALIFIES the result, so it sits with the data, never beside the button.
   const meta = elem("div","hr-metarow");
-  if(it.subtitle){ const sEl = elem("div","hr-s"); sEl.appendChild(elem("div","hr-cl", it.subtitle)); meta.appendChild(sEl); }
+  const sc = scoreTag(it.score); if(sc) meta.appendChild(sc);
   if(it.badge) meta.appendChild(elem("span","hr-badge", it.badge));
+  metaChips(it).forEach(c => meta.appendChild(c));
   if(meta.childElementCount) body.appendChild(meta);
   // 80 lines (data.py's cap) so a full block of text — e.g. a song's lyrics — fits in one item's body, not just
   // a handful of spec-sheet bullets (2026-08-03). In the list they are bounded: the full block belongs to the
-  // record. A card WITH a photo is bounded harder still — see the budget note on the footer below.
-  (Array.isArray(it.lines) ? it.lines : []).slice(0, hasDetail ? (shot ? 2 : 6) : 80)
+  // record. A card WITH a photo is bounded harder still.
+  (Array.isArray(it.lines) ? it.lines : []).slice(0, hasDetail ? (photoLayout ? 2 : 6) : 80)
     .forEach(l=>body.appendChild(elem("div","hr-ln", l)));
 
   if(!hasDetail){ const bl = renderBlocks(blocks, {compact: true}); if(bl) body.appendChild(bl); }
 
-  // ⚠️ THE SPEC SHEET DOES NOT COME TO THE LIST (V2-703). It used to: four `facts` rows under the photo, which
-  // on his pot sheet was capacity + diameter + lid + induction, each a full sentence. His verdict: «en las
-  // listas de resultados puede haber menos datos para que quepan más resultados. Si un resultado solo ya ocupa
-  // toda la pantalla, ¿de qué me sirve la lista de resultados y tener acceso a la ficha? Lo que queremos es los
-  // datos principales, la foto y un botón para entrar en la ficha ampliada.»
-  // The table is the RECORD's job, and `renderDetail` already draws all of it.
+  // ⚠️ THE SPEC SHEET DOES NOT COME TO THE LIST (V2-703): the table is the RECORD's job (`renderDetail`); the
+  // list carries the main data as chips, the photo and the way into the record.
 
   // the pieces of a composite result, so three proposals stay comparable at a glance
   if(parts.length){
@@ -902,6 +943,7 @@ function makeCard(it, isPrimary, choose, ctx, layout, nav){
 
   // ── the footer: open the record, and open the ORIGINAL page ──
   const foot = elem("div","hr-foot");
+  if(it.price){ const pr = elem("div","hr-price", it.price); pr.title = it.price; foot.appendChild(pr); }
   if(hasDetail && ctx){
     const btn=elem("button","hr-more",tt("see_detail", null, "Ver detalle →")); btn.type="button";
     // NAVIGATE FIRST, PERSIST AFTER. This button used to do only the second half: it posted `detail` and waited
@@ -942,7 +984,8 @@ function makeCard(it, isPrimary, choose, ctx, layout, nav){
   if(!asLink && !hasDetail){ const src = sourceLink(it.url); if(src) foot.appendChild(src); }
   if(foot.childElementCount) body.appendChild(foot);
 
-  if(body !== card) card.appendChild(body);
+  inner.appendChild(body);
+  card.appendChild(inner);
 
   if(choose && !asLink){
     card.classList.add("choosable");

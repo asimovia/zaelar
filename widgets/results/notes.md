@@ -40,7 +40,8 @@
 - The browser's interaction moved here too: `auth_done` (declared action) forwards «Ya he iniciado sesión» to the
   navegador owner's mailbox via `widgets/supervisor.enqueue` — the sheet never writes the browser's state. A
   pending question renders with «Responde por voz»; a wall renders with its reason.
-- A task with NO sheet keeps its monitor card (manual browsing, sheetless errands): there it is the only surface.
+- V2-797: only a tab NO errand drives keeps its monitor card (manual browsing), or an errand whose deliverable is
+  not a sheet. An errand's tab opens no card at start; a wall or a login raises (opens) the errand's sheet.
 
 ## 2026-09-05 — nota de DISEÑO del operador (sesión 0e3a42d6, rel 2282121-2304882): filas con VÍDEO
 
@@ -51,3 +52,14 @@ Su fórmula: **miniatura a la IZQUIERDA con la proporción del vídeo (16:9), te
 (título/canal/duración), en fila horizontal — no la tarjeta vertical genérica. Tocaría `makeCard` +
 `.hr-img` con una variante por tipo de item (p. ej. `it.kind === "video"`), y el grid de `gridStyle`.
 Sin construir a propósito; cuando se haga, nodo de RENDERIZADO (el layout solo se mide pintándolo).
+
+## V2-797 (2026-10-26) — a layout system, not character budgets
+- The sheet no longer budgets characters per field (title 34, subtitle 70). Fields are stored whole up to a
+  STORAGE cap (`presentation.DEFAULTS`); the presentation audit reports data quality only (shape, links, `columns`).
+- One card template for every result: plate (photo layouts) · title · subtitle · meta chips (score, badge, declared
+  `meta`, else the first three facts) · foot (price + «Ver detalle»). Every card is a container (`hrcard`): text is
+  clamped to its lines for its real width, «Ver todo» appears only when something was cut and shows it whole.
+- `split` stacks when the GRID is one column (<430px) or the card's content box is under 340px.
+- A missing or dead photo keeps its plate with a monogram, so a row never mixes shapes.
+- Tokens: the local scale maps onto palette.css (`--sp-*`, `--fs-*`, `--hb-r-*`); a card is `--hb-bg-soft` on the
+  sheet's `--hb-bg`. Rendered contract: `tests/browser/e2e/widgets/test_a_result_card_fits_any_space.py` (node 4.274).

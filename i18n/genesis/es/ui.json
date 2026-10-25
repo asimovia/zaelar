@@ -1441,6 +1441,8 @@
  "widgets.results.see_detail_": "Ver detalle → ",
  "widgets.results.session": "Sesión",
  "widgets.results.session_": "Sesión: ",
+ "widgets.results.show_less": "Ver menos",
+ "widgets.results.show_more": "Ver todo",
  "widgets.results.sources": "fuentes",
  "widgets.results.sources_empty_1": "Nadie ha reportado fuentes todavía. Aquí aparecerá cada web que se consulte y qué pasó en ella: si entró, ",
  "widgets.results.sources_empty_2": "si le limitaron los resultados, si pedía autenticación o si dio error.",

@@ -6,27 +6,34 @@ TRUE claim («I shouldn't have said "six months used" — that detail isn't actu
 called it invented. The card still paints the clipped `title`; a reader of the row (`claim_backing.row_text`,
 the row-claims guard) reads the whole one. A title that fits gets no copy, and a re-clean keeps it.
 
-Disarm: drop the `setdefault("full_title", …)` in `data._clean_item` → the first test goes red.
+Disarm: drop the `setdefault("full_title", …)` in `data._clean_item` → the cap test goes red.
 """
 from __future__ import annotations
 
 from widgets.results import data
 
 LONG = "Premium 3-Seat Sofa – Excellent Condition – Only 6 Months Used – $350"
+#: V2-797 — the card no longer clips a listing's name to a layout budget (it clamps on screen); the only cut left
+#: is the STORAGE cap of a field, so the copy is now kept for a title past that cap.
+HUGE = " · ".join([LONG] * 6)
 
 
-def test_a_clipped_title_keeps_the_listing_words_in_full_title():
+def test_a_listing_title_is_stored_whole():
     it = data._clean_item({"title": LONG, "price": "350 USD"})
-    assert it["title"].endswith("…") and len(it["title"]) < len(LONG)
-    assert it["full_title"] == LONG
+    assert it["title"] == LONG and "full_title" not in it
 
 
-def test_a_title_that_fits_gets_no_copy_and_a_reclean_keeps_the_whole_one():
-    assert "full_title" not in data._clean_item({"title": "Danish-Style Apartment Sofa", "price": "249"})
-    once = data._clean_item({"title": LONG})
+def test_a_title_past_the_storage_cap_keeps_the_listing_words_in_full_title():
+    it = data._clean_item({"title": HUGE, "price": "350 USD"})
+    assert it["title"].endswith("…") and len(it["title"]) < len(HUGE)
+    assert it["full_title"] == HUGE
+
+
+def test_a_reclean_keeps_the_whole_one():
+    once = data._clean_item({"title": HUGE})
     assert data._clean_item(once) == once
 
 
 def test_the_row_reader_sees_the_whole_title():
     from nucleo.flash import claim_backing as B
-    assert "Only 6 Months Used" in B.row_text(data._clean_item({"title": LONG}))
+    assert "Only 6 Months Used" in B.row_text(data._clean_item({"title": HUGE}))
