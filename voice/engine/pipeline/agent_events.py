@@ -125,28 +125,55 @@ def _on_data(packet, *, _emit, _json, _wake, session) -> None:
             return
         txt = (payload.get("text") or "").strip()
         if txt:
-            # Written chat/paste is ALWAYS directed to zaelar → open the attention window before generating
-            # the response (so the provider gate treats it as an attended turn, not ambient speech).
-            try:
-                from voice import attention
-                attention.note_directed()
-                attention.note_typed()   # V2-646: a typed turn can never be ambient — see the mute backstop
-            except Exception:
-                pass
-            # OBSERVABILITY (intermittent chat/paste diagnosis): leave a trace showing that the text ARRIVED,
-            # and whether generate_reply raises. If a one-second chat poll shows “received” but no reply →
-            # generate_reply is at fault (session busy); if “received” is absent → the data packet did not arrive.
-            # (2026-07-07)
-            _emit("brain", "📥 chat/paste recibido", text=txt, role="user")
-            # V2-773 — HIS LINE ON EVERY WALL. The tab that typed it paints its own bubble; every other
-            # tab (his Chrome while an orchestrator drives the agent, the phone) saw only the replies, and
-            # `sse.js` had been waiting for a `text-injected` transcript nobody emitted. Same shape as the
-            # STT's final transcript, so a typed order and a spoken one leave the same trace on screen.
-            _emit("transcript", "text-injected chat", text=txt, role="user")
-            _route_typed(txt, _emit=_emit, session=session)
+            receive_typed(txt, _emit=_emit, session=session)
     except Exception as e:
         _ag.logger.warning("chat-text data handler: %s", e)
 
+
+def receive_typed(txt: str, *, _emit, session, dev: str = "") -> None:
+    """A typed line becomes a turn — from this room's data channel (the voice holder) or from another screen through
+    `POST /api/chat` (V2-792), which has no room of its own. One body for both, so a line typed on the phone and one
+    typed on the desktop leave the same trace. `dev` names the screen; empty = the holder, as before."""
+    _dev = {"dev": dev} if dev else None
+    # Written chat/paste is ALWAYS directed to zaelar → open the attention window before generating
+    # the response (so the provider gate treats it as an attended turn, not ambient speech).
+    try:
+        from voice import attention
+        attention.note_directed()
+        attention.note_typed()   # V2-646: a typed turn can never be ambient — see the mute backstop
+    except Exception:
+        pass
+    # OBSERVABILITY (intermittent chat/paste diagnosis): leave a trace showing that the text ARRIVED,
+    # and whether generate_reply raises. If a one-second chat poll shows “received” but no reply →
+    # generate_reply is at fault (session busy); if “received” is absent → the data packet did not arrive.
+    # (2026-07-07)
+    _emit("brain", "📥 chat/paste recibido", text=txt, role="user", extra=_dev)
+    # V2-773 — HIS LINE ON EVERY WALL. The tab that typed it paints its own bubble; every other
+    # tab (his Chrome while an orchestrator drives the agent, the phone) saw only the replies, and
+    # `sse.js` had been waiting for a `text-injected` transcript nobody emitted. Same shape as the
+    # STT's final transcript, so a typed order and a spoken one leave the same trace on screen.
+    _emit("transcript", "text-injected chat", text=txt, role="user", extra=_dev)
+    _route_typed(txt, _emit=_emit, session=session)
+
+
+def open_typed_door(*, _emit, _on_session_loop, session):
+    """V2-792 — THE TYPED DOOR FOR EVERY SCREEN. A surface without the voice has no room, so the data channel a typed
+    line rides does not exist for it; `POST /api/chat` hands the line to this session instead. The origin is set ON
+    the session's loop, around the injection, so the reply task LiveKit spawns inherits it and every card that turn
+    opens goes back to the screen that typed. Registered here, cleared by `_on_close` (only if it is still ours)."""
+    from voice import screens as _screens
+
+    async def _typed_from_screen(text: str, dev: str) -> None:
+        async def _do():
+            _tok = _screens.ORIGIN.set(dev)
+            try:
+                receive_typed(text, _emit=_emit, session=session, dev=dev)
+            finally:
+                _screens.ORIGIN.reset(_tok)
+        await _on_session_loop(_do)
+
+    _screens.register_typed(_typed_from_screen)
+    return _typed_from_screen
 
 def _route_typed(txt: str, *, _emit, session) -> None:
     """Turns run in the order he STARTED them: a sentence he began saying before this text is still a
@@ -337,7 +364,7 @@ async def _speak(text: str, *, _busy, _emit, _on_session_loop, session) -> None:
         pass
 
 
-def _on_close(ev, *, _account_limits, _close_account_session, _emit, _proactive, _speak, boot) -> None:
+def _on_close(ev, *, _account_limits, _close_account_session, _emit, _proactive, _speak, boot, _typed=None) -> None:
     _emit("session", "session closed", role="system")
     # Closing ON AN ERROR is a death, not a goodbye → record + alert + recycle (see session_health).
     err = getattr(ev, "error", None)
@@ -348,6 +375,13 @@ def _on_close(ev, *, _account_limits, _close_account_session, _emit, _proactive,
         _proactive.clear_speaker(_speak)
     except Exception:
         pass
+    try:
+        from voice import screens as _screens
+        # V2-792: only OUR door. When the voice moves, the new room's session registers before this one closes.
+        if _typed is not None:
+            _screens.clear_typed(_typed)
+    except Exception as e:  # noqa: BLE001
+        _ag.logger.warning("typed door not cleared: %s", e)
     try:
         _account_limits.clear_closer(_close_account_session)
     except Exception:

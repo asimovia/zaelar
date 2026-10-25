@@ -89,7 +89,8 @@ async def run_widget_hook(wid: str, fn: str, caller):
 # requests the full manifest: preferred size for a fluid-width surface and whether "fullscreen" means native (video)
 # or maximize inside the app. These are two tiny fields; requesting the whole manifest to read them would bring back
 # the O(N·manifest) that V2-085 removed.
-_INDEX_FIELDS = ("id", "title", "name", "transient", "kind", "icon", "size", "fullscreen", "live_title")
+# `one_screen` (V2-792): a card that PLAYS (a video, music) opens on one screen at a time — the host reads it here.
+_INDEX_FIELDS = ("id", "title", "name", "transient", "kind", "icon", "size", "fullscreen", "live_title", "one_screen")
 _INDEX_PURPOSE_MAX = 120
 
 

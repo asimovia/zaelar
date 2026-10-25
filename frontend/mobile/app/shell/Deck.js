@@ -38,6 +38,9 @@
 
 import { t as tr } from "../../../app/core/i18n.js?v=1";
 import * as store from "../../../app/core/store.js?v=2";
+// V2-792 — the screens service, loaded on first use (same as the desktop host: a host imports no service statically).
+const _screens = () => import("../../../app/services/screens.js?v=1");
+const _device = () => import("../../../app/services/api.js?v=2").then((m) => m.DEVICE).catch(() => "");
 import { createEffect } from "../../../app/core/reactive.js?v=2";
 
 const CARD_ANIM_MS = 260;
@@ -192,6 +195,7 @@ export class Deck {
     // doing right now" IS the thing you want the whole screen for.
     let w = this.cards.get(id);
     const fresh = !w;
+    if (fresh && !this._restoring) _screens().then((m) => m.claimIfOneScreen(id)).catch(() => {});   // V2-792: a video opened here plays only here
     if (fresh) {
       w = this._buildCard(id, baseId, q);
       this.cards.set(id, w);
@@ -332,10 +336,11 @@ export class Deck {
   // account (the server keeps ONE last-known layout per install).
   _reportOpen() {
     clearTimeout(this._openTimer);
-    this._openTimer = setTimeout(() => {
+    this._openTimer = setTimeout(async () => {
+      const dev = await _device();
       try {
         fetch("/api/canvas/state", { method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ open: this.list() }) });
+          body: JSON.stringify({ open: this.list(), dev }) });
       } catch (_) {}
     }, 250);
   }
@@ -699,7 +704,7 @@ export class Deck {
     //     resurrected an empty «Results» on top of the full sheet. A base card is legitimate ALONE.
     //   · a browser::tN with no live task behind it has nothing to reload (process state, not a sheet).
     let srv = { items: [], live: [] };
-    try { srv = (await fetch("/api/canvas/layout").then((r) => r.json())) || srv; } catch (_) {}
+    try { srv = (await fetch("/api/canvas/layout?dev=" + encodeURIComponent(await _device())).then((r) => r.json())) || srv; } catch (_) {}
     if (!items.length && Array.isArray(srv.items) && srv.items.length) {
       items = srv.items.map((it) => ({ id: String((it && it.id) || ""), q: String((it && it.q) || "") })).filter((it) => it.id);
     }
@@ -712,7 +717,10 @@ export class Deck {
     const liveSet = new Set((Array.isArray(srv.live) ? srv.live : []).map(String));
     items = items.filter((it) => !(it.id.startsWith("navegador::") && !liveSet.has(it.id)));
     // Capped at 8: a deck is paged one card at a time, so restoring 40 would mount 40 widgets to show one.
-    for (const it of items.slice(0, 8)) { try { await this.show(it.id, { q: it.q }); } catch (_) {} }
+    try { items = await (await _screens()).filterRestore(this, items, srv); } catch (_) {}   // V2-792: a video playing on the other screen stays there
+    this._restoring = true;
+    try { for (const it of items.slice(0, 8)) { try { await this.show(it.id, { q: it.q }); } catch (_) {} } }
+    finally { this._restoring = false; }
     this._goTo(0, 0);
   }
 

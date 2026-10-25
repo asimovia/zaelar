@@ -73,17 +73,22 @@ async def set_config(payload: dict):
 
 
 @router.get("/events")
-async def events():
+async def events(dev: str = ""):
+    # V2-792 — the stream says WHICH SCREEN it feeds (`?dev=`, the frontend's `api.js::DEVICE`). It is how the server
+    # knows a second screen is open; the events themselves stay the same for every surface (each one filters).
+    from voice import screens as _screens
     q = subscribe()
 
     async def gen():
+        _screens.attach(dev)          # inside the generator, so the `finally` that detaches is guaranteed to pair it
         try:
-            yield f"data: {json.dumps({'kind':'session','label':'SSE'})}\n\n"
+            yield f"data: {json.dumps({'kind':'session','label':'SSE','voice_dev':_screens.holder()})}\n\n"
             while True:
                 ev = await q.get()
                 yield f"data: {json.dumps(ev, ensure_ascii=False)}\n\n"
         finally:
             unsubscribe(q)
+            _screens.detach(dev)
 
     return StreamingResponse(gen(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})

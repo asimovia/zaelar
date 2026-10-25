@@ -13,6 +13,9 @@ import { t, applyLang } from "../core/i18n.js?v=1";
 import { paintsProvisional } from "./wakeword.js?v=1";
 import { setWallpaper } from "./theme.js?v=2";
 import { takeoverOnReset, browserTakeoverArgs } from "../core/first-run.js?v=1";
+import { DEVICE, screensBring } from "./api.js?v=2";
+import { placement } from "./event-scope.js?v=1";
+import * as screens from "./screens.js?v=1";
 
 // V2-464 — SHOWCASE mode: ?showcase=1 in the URL. The use-case recorder (recorder.py) uses it to keep the chat
 // open and the grid auto-arranged, so the video is readable without hands.
@@ -77,7 +80,8 @@ export function sweepOnReopen(opens, sweep) {
 
 export function openSSE(desktop) {
   if (es) return;               // already subscribed: reopening would kill the live stream and lose in-flight events
-  es = new EventSource("/events");
+  // V2-792: the stream names this screen, so the server knows a second one is open (`voice/screens.py`).
+  es = new EventSource("/events?dev=" + encodeURIComponent(DEVICE));
   // V2-038: on (re)connect, RECONCILE activity chips against the server's truth (GET /api/tasks reads the RAM
   // registry) → no more orphaned chips after a restart/crash. STATE leads; the UI is its mirror.
   es.onopen = () => {
@@ -112,6 +116,14 @@ function field(d, key) {
 
 export function routeEvent(desktop, d) {
     if (!d) return;
+    // V2-792 — ONE AGENT, MANY SCREENS. What a request does to a screen (open a card, go full screen, open the
+    // panel) happens on the screen that asked; this one keeps at most a chip. `event-scope.js` is the table.
+    if (placement(d, DEVICE) === "elsewhere") { if (desktop) screens.noteElsewhere(desktop, d); return; }
+    if (d.kind === "screens" && d.label === "moved") { if (desktop) screens.onMoved(desktop, d); return; }
+    // The voice changed hands: the screen that lost it stands down NOW, not on its next heartbeat (session-lk.js).
+    if (d.kind === "session" && d.voice_sid) {
+      try { document.dispatchEvent(new CustomEvent("hb:voice-held", { detail: { sid: d.voice_sid, dev: d.dev || "" } })); } catch (_) {}
+    }
     if (d.kind === "bot_speech") {                              // gate person-voice visuals + drive live captions + latency
       // LiveKit engine emits label "speaking"/"idle" (+ a `speaking` bool); the older engine used "started"/"stopped".
       // Prefer the explicit bool, fall back to either label vocabulary.
@@ -172,6 +184,7 @@ export function routeEvent(desktop, d) {
         // operator is looking at is his; background work opens visibly beside it, never over it.
         const _bg = /^worker:/.test(d.src || "");
         desktop.show(d.id, { data: d.data, background: _bg });   // brain shows it (with pushed data, if any)
+        if (d.moved) screensBring(d.id);   // V2-792: «ponlo en el ordenador» — the other screens let it go
         // V2-464 — in showcase, each opening rearranges the grid automatically, so an unattended recording
         // remains aligned without hands. Showcase only: auto-arrangement would move things for a normal operator.
         if (_SHOWCASE) { clearTimeout(_arrT); _arrT = setTimeout(() => desktop.arrange && desktop.arrange(), 700); }

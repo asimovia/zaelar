@@ -129,6 +129,18 @@ export const uiState = (action, o = {}) => uiEvent(action, { src: "frontend", ..
 // mapa de memoria. Best-effort, fire-and-forget: el canvas es la fuente de verdad, el servidor solo la refleja.
 export const postCanvasState = (open) => { try { postJSON("/api/canvas/state", { open: open || [] }); } catch (_) {} };
 
+// ---- ONE AGENT, MANY SCREENS (V2-792) ----
+// A typed line from a screen that does NOT hold the voice: that screen has no LiveKit room, so the line goes over
+// HTTP into the one live session. Resolves `{ok}`; `reason:"no_session"` means nobody holds a session at all.
+export const chatText = (text) =>
+  postJSON("/api/chat", { text, dev: DEVICE }).then((r) => r.json()).catch(() => ({ ok: false, reason: "network" }));
+// Visible / hidden, and «the operator touched this screen» — how the server tells the active screen.
+export const screensBeat = (visible, touched = false) => {
+  try { postJSON("/api/screens/beat", { dev: DEVICE, visible: !!visible, touched: !!touched }); } catch (_) {}
+};
+// «Bring it here»: this screen just opened a card that plays on one screen at a time; the others let it go.
+export const screensBring = (id) => postJSON("/api/screens/bring", { id, dev: DEVICE }).then(json).catch(() => ({}));
+
 // ---- widgets bridge (catalog identify; the desktop owns the rest) ----
 export async function identifyWidget(text) {
   try { const r = await fetch("/widgets/identify?q=" + encodeURIComponent(text)).then(json); return r.match || null; } catch (_) { return null; }

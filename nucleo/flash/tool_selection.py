@@ -290,8 +290,27 @@ def select_for_turn(tools: list[dict], *, turn_text: str, window=None, recent_fa
             forced.add("messaging")
     except Exception:  # noqa: BLE001
         pass
-    return select(tools, turn_text=turn_text, open_widgets=open_now, carried_text=carried,
-                  recent_families=recent_families, force=forced or None)
+    out, report = select(tools, turn_text=turn_text, open_widgets=open_now, carried_text=carried,
+                         recent_families=recent_families, force=forced or None)
+    return with_screens(out), report
+
+
+def with_screens(tools: list[dict]) -> list[dict]:
+    """V2-792 — `show_widget(screen=…)`, «ponlo en el ordenador», exists only while two screens are open: the same
+    rule as the turn context's `screens:` line, so the common case (one screen) pays nothing for it."""
+    from voice import screens as _screens
+    if len(_screens.open_screens()) < 2:
+        return tools
+    out = []
+    for t in tools:
+        fn = (t or {}).get("function") or {}
+        if fn.get("name") == "show_widget":
+            props = dict((fn.get("parameters") or {}).get("properties") or {})
+            props["screen"] = {"type": "string", "enum": ["computer", "phone", "here"],
+                               "description": "only when he asks for it on ANOTHER screen"}
+            t = {**t, "function": {**fn, "parameters": {**fn["parameters"], "properties": props}}}
+        out.append(t)
+    return out
 
 
 def carried_from_window(window, exclude: str = "", n: int = 2) -> str:

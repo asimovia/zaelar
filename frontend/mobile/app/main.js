@@ -19,6 +19,7 @@ import * as store from "../../app/core/store.js?v=2";
 import * as firstRun from "../../app/core/first-run.js?v=1";
 import * as session from "../../app/services/session.js?v=3";
 import * as mic from "../../app/services/mic.js?v=1";
+import * as screens from "../../app/services/screens.js?v=1";
 import { openSSE } from "../../app/services/sse.js?v=6";
 import * as api from "../../app/services/api.js?v=2";
 import { startStatusPolling } from "../../app/services/status.js?v=2";
@@ -272,6 +273,8 @@ try {
 
 // ---- system-status poller (keeps the agent-state signals live even with everything closed) + the voice catalog ----
 startStatusPolling();
+// V2-792 — this screen tells the server whether it is visible and touched (how it knows the active screen).
+screens.wireScreen();
 session.loadVoices();
 
 // ---- manual control surface, mobile edition. Same shape as window.zaelar on the desktop so anything that scripts

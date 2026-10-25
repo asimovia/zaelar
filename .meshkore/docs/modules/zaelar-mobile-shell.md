@@ -254,18 +254,30 @@ The escape hatch is not optional and appears in two places (the menu sheet and t
 cannot leave is a trap, and the picker would otherwise bounce a tablet back on every load. `/` keeps answering 200
 with HTML because the platform's health check fetches it — the redirect is client-side, never an HTTP 302.
 
-## One voice, two surfaces
+## One agent, one voice, many screens (V2-792)
 
-`server/livekit_api.py` allows exactly **one live voice session per machine** (heartbeat ~4s, 12s TTL): two open
-mics against the same agent break the pipeline. Between two tabs on one computer, "close the other one" is advice
-you can act on in a second; a phone and a laptop in another room are not two tabs.
+The desktop tab and the phone are **one agent and one conversation**. What differs between them is not the
+conversation but what a request does to a screen. The rules, and where each one lives:
 
-The automatic behaviour: `session.start()` sets `store.micBlocked` and retries every 3s, so when the other surface
-closes, the phone picks the voice up on its own. On the desktop `micBlocked` paints a 🚫 ring over the orb, which
-is legible when "the other tab" is one you can see but meaningless between rooms — so on the phone
-`VoiceHeldNotice` names the situation and offers the one gesture that resolves it: `POST /api/session/steal` claims
-the lock, and the previous holder's next heartbeat already knows how to stand down. The surface that loses it drops
-to chat plus observer.
+| Rule | Mechanism |
+|---|---|
+| **Voice in and out on ONE screen.** | `server/livekit_api.py`: one live session per machine (heartbeat ~4 s, 12 s TTL). Taking it is an explicit gesture: opening the mic or the speaker on a screen (`session.openMicHere` / `openSpeakerHere`), the phone's load, or `VoiceHeldNotice` → `POST /api/session/steal`. |
+| **The loser stands down at once.** | Every change of hands emits `session · voice held by <dev>` with `voice_sid` (the new holder's tab). `sse.js` re-dispatches it as `hb:voice-held`; `session-lk.js` stands down on it (mic and speaker off, the blue «voice elsewhere» orb), instead of waiting up to 4 s for its next heartbeat. |
+| **Typed chat from ANY screen.** | Only the holder has a LiveKit room. Every other screen sends its typed line over `POST /api/chat`; the live session registered a typed door (`voice/screens.register_typed`) and injects it as a turn exactly like the data channel does (`agent_events.receive_typed`). `reason:"no_session"` means nobody holds a session — only then does the typing screen bring the voice up. |
+| **Every event names the screen that asked.** | `voice/screens.py` stamps `origin_dev` at the stream's single gate (`observer.stamp_identity`). A spoken turn → the voice holder; a typed turn → the screen that typed it (a context var set around the injection, so the reply task inherits it); a background errand → the screen that commissioned it (`note_task`, read from the escalation's context); within a turn the `trace` keeps it even if another turn starts meanwhile. |
+| **What a request does to a screen happens on the screen that asked.** | `frontend/app/services/event-scope.js` is the ONE table: `widget` show/create/fullscreen/move/resize/arrange/minimize and `panel` are `origin`-scoped; everything else (transcript, chat, task progress, notices, energy, close, data, confirm) reaches every screen. An origin event for another screen leaves a passive chip (`ElsewhereChips`: «📄 Document · open on the computer — Open here»). A kind routed by `sse.js` in neither list fails node 4.266. |
+| **A card that plays lives on ONE screen.** | Manifest `one_screen: true` (`youtube`, `musica`), carried in the compact index. Opening one on a screen calls `POST /api/screens/bring`; every other screen closes its copy and keeps «▶ now on the phone — Bring here». A screen being restored skips one-screen cards another open screen has (`/api/canvas/layout?dev=` → `elsewhere`), so loading the phone does not start the desktop's video a second time. Pause, volume and «páralo» are card data, so they reach the card wherever it plays. |
+| **The brain sees the canvas of the screen it is talking to.** | `server/canvas_api.py` keeps every screen's last report and lets only the current turn's screen write `open_widgets`; when a turn starts on another screen its canvas is adopted silently (`on_active_change`). |
+| **The agent knows the screens — only when there are two.** | `screens.slot_line()` adds one line to the turn context (`screens: computer (voice, active) · phone (open)`) with ≥ 2 screens open, nothing otherwise. `show_widget(screen=computer|phone|here)` sends the turn's cards to that screen and moves them there. |
+| **The wake word is per screen.** | By construction: the spotter runs only on a live session with the mic open, and a screen without the voice has neither. |
+
+The registry (`GET /api/screens`) is process memory: open screens (by event stream, `/events?dev=`), visibility
+and last touch (`POST /api/screens/beat`, sent on `visibilitychange` and on a throttled touch), and the voice holder.
+A restart forgets it and every screen re-registers on reconnect. A screen whose stream drops stays «open» for
+`ZAELAR_SCREEN_GONE_S` (90 s), so a phone on the metro does not lose its results to the other screen.
+
+**A result whose screen has gone** is announced, never opened elsewhere: it keeps its origin, and every open
+screen shows the chip.
 
 ## Testing
 
@@ -286,6 +298,12 @@ phone silently ignores the brain:
 
 Each assertion has a disarm: dropping a Deck method, inventing an endpoint and linking the desktop stylesheet each
 turn the node red.
+
+Nodes **4.266 / 4.267 / 4.268** (V2-792) — the screens: the scope table and the hand-over wiring
+(`tests/browser/unit/mobile/test_every_event_kind_declares_its_screen.py`), two real browsers against one engine
+(`tests/browser/e2e/mobile/test_a_card_opens_on_the_screen_that_asked.py`: a card asked on the desktop opens only
+there, the phone paints a chip, the transcript reaches both, the phone types without a room, a one-screen card moved
+away leaves a chip), and the server half (`tests/voice/unit/test_one_agent_many_screens.py`).
 
 Node **4.19** — `tests/browser/e2e/mobile/render_dock.py` renders the shell at 390×844 and measures the dock:
 orb centred and PAINTED, tap targets, sheets stopping above the dock, the stopped→⏻→painted cycle.

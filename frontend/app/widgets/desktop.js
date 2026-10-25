@@ -19,6 +19,10 @@ import { saneFootprint, preferredFootprint } from "./footprint.js?v=2";
 import { bestSpot, overlaps as _overlaps } from "./placement.js?v=1";
 import { t as tr } from "../core/i18n.js?v=1";
 import * as store from "../core/store.js?v=2";
+// V2-792 — the screens service, loaded on first use (a host imports no service statically: the canvas is also
+// mounted on its own by tests, with only its own two core imports stubbed).
+const _screens = () => import("../services/screens.js?v=1");
+const _device = () => import("../services/api.js?v=2").then((m) => m.DEVICE).catch(() => "");
 
 function injectStyles(){
   if(document.getElementById("hb-desk-css"))return;
@@ -491,9 +495,10 @@ export class Desktop {
   _reportOpen(){
     try{ document.dispatchEvent(new CustomEvent("hb:canvas-changed")); }catch(_){}   // V2-537 (closeAll/restore too)
     clearTimeout(this._openTimer);
-    this._openTimer=setTimeout(()=>{
+    this._openTimer=setTimeout(async ()=>{
+      const dev = await _device();
       try{ fetch("/api/canvas/state",{method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({open:this.list(), layout:this._layout(),
+        body:JSON.stringify({open:this.list(), layout:this._layout(), dev,
                              sid:(()=>{ try{ return sessionStorage.getItem("zaelar_sid")||""; }catch(_){ return ""; } })()})}); }catch(_){}
     }, 250);
   }
@@ -530,7 +535,7 @@ export class Desktop {
     // instance cards of errands running RIGHT NOW (their sheet, their browser tab), which is the truth the
     // operator asked the refresh to reflect.
     let srv={items:[], live:[]};
-    try{ srv = await fetch("/api/canvas/layout").then(r=>r.json()) || srv; }catch(_){}
+    try{ srv = await fetch("/api/canvas/layout?dev="+encodeURIComponent(await _device())).then(r=>r.json()) || srv; }catch(_){}
     if(!items.length && Array.isArray(srv.items) && srv.items.length){
       items=srv.items;
       console.info("desktop: restored from server (this browser had no saved desktop)");
@@ -559,6 +564,7 @@ export class Desktop {
     const liveSet = new Set((Array.isArray(srv.live)?srv.live:[]).map(String));
     items = items.filter(it=>{ const id=String(it.id||"");
       return !(id.startsWith("navegador::") && !liveSet.has(id)); });
+    try{ items = await (await _screens()).filterRestore(this, items, srv); }catch(_){}   // V2-792: a video playing on the other screen stays there
     if(!items.length) return;
     this._restoring=true;
     try{ for(const it of items){ await this.show(it.id, {q:it.q, pos:it}); } }
@@ -740,6 +746,7 @@ export class Desktop {
     // Transient/process widgets (search, "what I'm doing") render into the ACTIVITY RAIL above the orb, not a card.
     if(this._meta && this._meta[baseId] && this._meta[baseId].transient) return this._showActivity(baseId, q, providedData);
     let w = this.wins.get(id), fresh=!w;
+    if(fresh && !this._restoring) _screens().then(m=>m.claimIfOneScreen(id)).catch(()=>{});   // V2-792: a video opened here plays only here
     if(fresh){
       const card=document.createElement("div"); card.className="hb-win loading"; card.dataset.wid=id;
       // `_t` — when this card last ARRIVED or was FOCUSED. «Minimise that» means the card he last saw come or

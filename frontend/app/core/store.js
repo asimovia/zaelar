@@ -1082,3 +1082,7 @@ export const pushAgentChat = (text, opts) => {
 export const showAlert = (msg, onClick) => setAlert({ msg, onClick });
 export const hideAlert = () => setAlert(null);
 export const setConnState = (label, ok = false) => setConn({ label, ok });
+
+// V2-792 — what happened on ANOTHER screen of the same agent: a card opened there, or one that plays on one screen
+// at a time moved there. Each item is a passive chip `{key, id, dev, why, at}` (services/screens.js owns it).
+export const [elsewhere, setElsewhere] = createSignal([]);

@@ -285,6 +285,9 @@ def _t_show_widget(*, args, _brief, _router, _say, _show_guard_target, _show_tar
     # MOSTRAR un widget (incl. JUEGOS) como TOOL de 1ª clase — más fiable que el tag [[show]] cuando la
     # palabra colisiona con play_music/play_video ('juega al snake'). Converge en la MISMA ruta de canvas
     # ([[show:id]], dedup/idempotente). Resuelve el id: exacto del catálogo o fuzzy con runtime.identify.
+    if args.get("screen"):                # V2-792: «ponlo en el ordenador» — this turn's cards go to that screen
+        from voice import screens as _scr
+        _scr.send_turn_to(str(args.get("screen")))
     if "show_widget" not in _tool_fired:
         _tool_fired.add("show_widget")
         _wid = (args.get("widget_id") or "").strip()

@@ -169,6 +169,15 @@ def escalate_to_slowbrain(request: str, *, context: dict | None = None) -> int:
                 ctx["trace"] = _t
         except Exception:
             pass
+    # …and so does the SCREEN that asked (V2-792), for the same reason: what the errand opens later goes back there.
+    if "origin_dev" not in ctx:
+        try:
+            from voice import screens as _screens
+            _o = _screens.origin_of({"trace": ctx.get("trace", "")})
+            if _o:
+                ctx["origin_dev"] = _o
+        except Exception as e:  # noqa: BLE001 — the errand still starts; its cards then open on the last screen
+            logger.debug(f"escalate: no screen origin for the errand: {e!r}")
     _emit_bus("escalate.requested", {"id": tid, "request": req, "context": ctx, "ts": time.time()})
     return tid
 

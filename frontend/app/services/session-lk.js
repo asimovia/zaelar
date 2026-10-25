@@ -176,20 +176,30 @@ function _startHeartbeat() {
   if (_hb) return;
   _hb = setInterval(() => {
     api.sessionHeartbeat(SID, mic.beat()).then((r) => {   // V2-654: the beat re-asserts the mic switch, free
-      if (r && r.ok === false && started) {   // we lost the race (another tab is alive) → yield, not two mics
-        console.warn("session lock perdido — otra sesión tomó el control; cierro esta.");
-        stop();
-        store.setMicBlocked({ show: true, msg: t("voice.session_active_other_tab") });
-        // …and say WHO has it: the remote-control blue, not «stalled» amber (operator, demo 2026-09-28: his tab
-        // watched the demo driver take the voice and read as a fallen agent). Then wait for it back exactly as a
-        // tab that STARTS with the voice held elsewhere does — `start()` is refused, keeps the blue, retries.
-        store.setRemoteHeld(true);
-        _standDown("lost");
-        _armRetry();
-      }
+      if (r && r.ok === false && started) _lostVoice("heartbeat");   // another tab is alive → yield, not two mics
     });
   }, 4000);
 }
+// We lost the voice: yield it, say WHO has it — the remote-control blue, not «stalled» amber (operator, demo
+// 2026-09-28: his tab watched the demo driver take the voice and read as a fallen agent) — and wait for it back
+// exactly as a tab that STARTS with the voice held elsewhere does: `start()` is refused, keeps the blue, retries.
+function _lostVoice(how) {
+  console.warn(`session lock lost (${how}) — another surface took the voice; closing this one.`);
+  stop();
+  store.setMicBlocked({ show: true, msg: t("voice.session_active_other_tab") });
+  store.setRemoteHeld(true);
+  _standDown("lost");
+  _armRetry();
+}
+// V2-792 — THE SCREEN THAT LOSES THE VOICE STANDS DOWN AT ONCE. The server announces every change of hands on the
+// event stream, naming the new holder's tab; waiting for this tab's next heartbeat left two microphones open for up
+// to 4 s — «si activo el micro del ordenador se tiene que bloquear inmediatamente el del móvil».
+try {
+  document.addEventListener("hb:voice-held", (e) => {
+    const sid = e && e.detail && e.detail.sid;
+    if (sid && sid !== SID && (started || starting)) _lostVoice("handover");
+  });
+} catch (_) {}
 
 // ONE VOICE, CLAIMED BY HAND (operator, 2026-10-24). Mic and speaker belong to ONE surface at a time: a person
 // listens on one channel. Opening the mic or the speaker on a surface by hand, or loading the phone, takes the
@@ -961,9 +971,20 @@ function _publishText(t) {
 }
 export function sendText(text) {
   const t = (text || "").trim(); if (!t) return false;
+  // V2-792 — A SCREEN WITHOUT THE VOICE STILL TYPES. Only the voice holder has a room, so on any other screen the
+  // queue below waited for a connection the voice lock would never grant, while the wall showed the line as sent.
+  // The line goes over HTTP into the one live session; only when nobody has a session does this screen bring one up.
+  if (!started && !starting) {
+    api.chatText(t).then((r) => {
+      if (r && r.ok) return;
+      if (r && r.reason === "stopped") return;
+      _pendingText.push(t);
+      if (!started && !starting) start().catch(() => {});
+    });
+    return true;
+  }
   if (!room || room.state !== ConnectionState.Connected) {
     _pendingText.push(t);
-    if (!started && !starting) start().catch(() => {});
     return true;
   }
   return _publishText(t);

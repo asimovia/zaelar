@@ -33,6 +33,7 @@ import { DebugPanel } from "../components/DebugPanel.js?v=4";
 import { FeedbackWidget } from "../components/FeedbackWidget.js?v=1";
 import { FaultModal } from "../components/FaultModal.js?v=1";
 import { EnergyNotice } from "../components/EnergyNotice.js?v=1";
+import { ElsewhereChips } from "../components/ElsewhereChips.js?v=1";
 import { LanguageOnboarding } from "../components/LanguageOnboarding.js?v=1";
 import { MemoryMap } from "../components/MemoryMap.js?v=2";
 import { Orb } from "../components/Orb.js?v=3";
@@ -152,6 +153,10 @@ export const SYSTEM_SURFACES = [
   // `core/shared-surfaces.css`); not voice-addressable — it appears when the agent has stopped.
   { id: "energy-notice", comp: EnergyNotice, target: "body", phase: "overlay", kind: "modal",
     toggle: "store.energy().exhausted (SSE kind:energy · /api/energy)", label: "Out of Energy + top up",
+    name: null, aliases: null },
+  // V2-792 — what the agent did on the OTHER screen (a card opened there, a video playing there), one tap away.
+  { id: "elsewhere",  comp: ElsewhereChips, target: "body", phase: "overlay", kind: "transient",
+    toggle: "store.elsewhere() (services/screens.js)", label: "Opened on another screen — open here",
     name: null, aliases: null },
   { id: "boot",       comp: BootOverlay,  target: "body", phase: "overlay", kind: "transient",
     toggle: "store.bootReady (startup veil)", label: "Startup splash",

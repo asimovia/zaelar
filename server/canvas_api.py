@@ -12,6 +12,7 @@ import time
 
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
+from loguru import logger
 from voice.observer import emit
 
 router = APIRouter()
@@ -24,19 +25,15 @@ async def canvas_state(payload: dict):
     brain know "what the operator has in front of them" and resolve "modify the X widget" without asking.
     Best-effort, fire-and-forget from `desktop._persist()`. Normalizes instance ids (navegador::t3 → navegador)
     and dedupes."""
-    # THE SCREEN THE CONVERSATION IS ABOUT is the one holding the voice session. Two tabs (or a phone and a
-    # desktop) report different canvases, and the server used to take the last word: in the demo pass of
-    # 2026-09-28 the operator's watching tab, which had no chart, «closed» Markets 268 ms into «ok close that»,
-    # the verdict no longer saw the chart and the agenda was closed instead. While a live session holds the
-    # lock, another tab's report is not the operator's screen. No live session → every report counts, as before.
-    try:
-        from server import livekit_api as _lk
-        _sid = str((payload or {}).get("sid") or "")
-        # (a report with NO sid is a tab older than this rule — the voice tab always carries one)
-        if _lk._active.get("sid") and not _lk._free(time.time()) and _lk._active["sid"] != _sid:
-            return JSONResponse({"ok": True, "ignored": "not the screen of the voice session"})
-    except Exception:  # noqa: BLE001
-        pass
+    # THE SCREEN THE CONVERSATION IS ABOUT. Two tabs (or a phone and a desktop) report different canvases, and the
+    # server used to take the last word: in the demo pass of 2026-09-28 the operator's watching tab, which had no
+    # chart, «closed» Markets 268 ms into «ok close that», the verdict no longer saw the chart and the agenda was
+    # closed instead. V2-792 — the screen that counts is the one the CURRENT TURN came from (`voice/screens.py`),
+    # which with one screen is that screen and with a phone typing while the desktop holds the voice is the phone.
+    # Every report is kept per screen, so the moment a turn starts on another screen its canvas becomes the
+    # brain's (`_adopt`), with no report needed.
+    if not _counts(payload or {}):
+        return JSONResponse({"ok": True, "ignored": "not the screen of the current turn"})
     raw = payload.get("open") or []
     seen: list[str] = []
     inst: list[str] = []                        # V2-047 F9: full INSTANCE ids, as-is (navegador::t1)
@@ -139,6 +136,61 @@ async def canvas_state(payload: dict):
     return JSONResponse({"ok": True, "open_widgets": seen})
 
 
+#: The last report of every screen (V2-792), so a turn that starts on another screen finds its canvas in place.
+_BY_DEV: dict = {}
+
+
+def _counts(payload: dict) -> bool:
+    """Does this report speak for the screen the conversation is about? It is stored either way."""
+    from voice import screens as _screens
+    dev = _screens.clean(payload.get("dev"))
+    if dev:
+        _BY_DEV[dev] = {"open": list(payload.get("open") or [])[:60], "layout": payload.get("layout")}
+        act = _screens.current()
+        return not act or act == dev
+    # A report with no `dev` is a tab older than V2-792: the voice holder's sid decides, as it did before.
+    try:
+        from server import livekit_api as _lk
+        _sid = str(payload.get("sid") or "")
+        if _lk._active.get("sid") and not _lk._free(time.time()) and _lk._active["sid"] != _sid:
+            return False
+    except Exception as e:  # noqa: BLE001 — no voice lock to ask (another engine): every report counts
+        logger.debug(f"canvas: voice lock unreadable: {e!r}")
+    return True
+
+
+def _adopt(dev: str) -> None:
+    """A turn started on `dev`: its last reported canvas becomes the brain's, silently (no show/close audit — the
+    operator did not open or close anything, he only spoke to another screen)."""
+    rep = _BY_DEV.get(dev)
+    if not rep:
+        return
+    try:
+        inst = [str(w) for w in rep.get("open") or [] if str(w or "").strip()]
+        seen = []
+        for w in inst:
+            b = w.split("::", 1)[0].strip().lower()
+            if b and b not in seen:
+                seen.append(b)
+        canvas_state._last_inst = inst
+        from memory import api as memory
+        layout = rep.get("layout") if isinstance(rep.get("layout"), list) else []
+        maxw = next((str(it.get("id") or "").split("::", 1)[0].lower() for it in layout
+                     if isinstance(it, dict) and it.get("max")), "")
+        minw = [str(it.get("id") or "").split("::", 1)[0].lower() for it in layout if isinstance(it, dict) and it.get("min")]
+        memory.set_state({"open_widgets": seen, "maximized_widget": maxw, "minimized_widgets": minw})
+    except Exception as e:  # noqa: BLE001 — the brain keeps the previous canvas rather than none
+        logger.debug(f"canvas: could not adopt the canvas of {dev}: {e!r}")
+
+
+def _install_adopt() -> None:
+    from voice import screens as _screens
+    _screens.on_active_change(_adopt)
+
+
+_install_adopt()
+
+
 def _sheet_ids_on_disk() -> list:
     """The results sheets that HAVE data (a `state.json`), as canvas ids. A bare `results--x` directory is not
     one: `store.data_dir()` creates it on the first read, which is exactly what a ghost card's own fetch does."""
@@ -210,8 +262,22 @@ async def canvas_arrange():
     return JSONResponse(emit("widget", "arrange", extra={"src": "api"}))
 
 
+def _open_elsewhere(dev: str) -> list:
+    """V2-792 — the cards OTHER open screens have open, `[{id, dev}]`. A screen being restored skips the ones that
+    play on one screen at a time (the host knows which: manifest `one_screen`) and shows a chip instead."""
+    from voice import screens as _screens
+    me = _screens.clean(dev)
+    out: list = []
+    for d, rep in list(_BY_DEV.items()):
+        if d == me or not _screens.is_open(d):
+            continue
+        for cid in rep.get("open") or []:
+            out.append({"id": str(cid), "dev": d})
+    return out
+
+
 @router.get("/api/canvas/layout")
-async def canvas_layout():
+async def canvas_layout(dev: str = ""):
     """The desktop AS the operator left it (cards + positions) PLUS `live`, the instance cards of errands
     running right now (V2-351). Restoration fallback when browser `localStorage` does not have it — another
     browser, another profile, or the same zaelar through another origin (localhost:43917 vs
@@ -223,7 +289,7 @@ async def canvas_layout():
         snap = memory.kv_get("canvas_layout")
         if isinstance(snap, dict) and isinstance(snap.get("items"), list):
             return JSONResponse({"items": _prune_ghost_sheets(snap["items"], live), "at": snap.get("at") or 0,
-                                 "live": live, "sheets": sheets})
+                                 "live": live, "sheets": sheets, "elsewhere": _open_elsewhere(dev)})
     except Exception:  # noqa: BLE001
         pass
-    return JSONResponse({"items": [], "at": 0, "live": live, "sheets": sheets})
+    return JSONResponse({"items": [], "at": 0, "live": live, "sheets": sheets, "elsewhere": _open_elsewhere(dev)})

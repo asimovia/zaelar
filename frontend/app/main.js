@@ -10,6 +10,7 @@ import { h, mount, $ } from "./core/dom.js?v=2";
 import { createEffect } from "./core/reactive.js?v=2";
 import * as session from "./services/session.js?v=3";
 import * as mic from "./services/mic.js?v=1";
+import * as screens from "./services/screens.js?v=1";
 import { openSSE } from "./services/sse.js?v=6";
 import * as store from "./core/store.js?v=2";
 import * as firstRun from "./core/first-run.js?v=1";
@@ -399,6 +400,8 @@ document.addEventListener("hb:open-config", (e) => {
 
 // system-status poller: keeps the ◉ icon's color/blink live even with the panel closed
 startStatusPolling();
+// V2-792 — this screen tells the server whether it is visible and touched (how it knows the active screen).
+screens.wireScreen();
 
 // load the voice catalog (tap the orb to cycle), then honor /?widget=<id> for manual opening
 session.loadVoices();

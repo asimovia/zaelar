@@ -395,8 +395,8 @@ async def entrypoint(ctx: JobContext) -> None:
     if _cloud_account.is_cloud_account():
         _account_limits.register_closer(_close_account_session)
 
-    # CHAT TEXT: the frontend publishes typed/pasted messages on the LiveKit data topic "zaelar-text"
-    # (session-lk.js). Inject each as a normal user turn so the brain answers it exactly like a spoken turn.
+    # CHAT TEXT, as a spoken turn: data topic "zaelar-text" (the holder) and `POST /api/chat` (any screen, V2-792).
+    _typed_from_screen = _agent_events.open_typed_door(_emit=_emit, _on_session_loop=_on_session_loop, session=session)
     import json as _json
 
     @ctx.room.on("data_received")
@@ -407,7 +407,7 @@ async def entrypoint(ctx: JobContext) -> None:
     @session.on("close")
     def _on_close(ev) -> None:
         # V2-778 F1 — the body lives in `voice/engine/pipeline/agent_events.py`; this closure passes what it closed over.
-        return _agent_events._on_close(ev, _account_limits=_account_limits, _close_account_session=_close_account_session, _emit=_emit, _proactive=_proactive, _speak=_speak, boot=boot)
+        return _agent_events._on_close(ev, _account_limits=_account_limits, _close_account_session=_close_account_session, _emit=_emit, _proactive=_proactive, _speak=_speak, boot=boot, _typed=_typed_from_screen)
 
     # Reply LANGUAGE = the active interface language (⚙/voice, live). Appended to the persona so
     # direct/duo reply in it; Hermes also gets it in the kickoff brief below (memory still wins for names).

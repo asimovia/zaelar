@@ -2016,5 +2016,14 @@
  "orb.spk_problem_remote_muted": "El agente está hablando pero su audio no llega",
  "orb.spk_problem_silent": "El agente está hablando pero no llega sonido: toca aquí para reintentar",
  "orb.spk_problem_sink_lost": "La salida de audio elegida ha desaparecido",
- "orb.spk_problem_track_ended": "La voz del agente ya no llega al navegador"
+ "orb.spk_problem_track_ended": "La voz del agente ya no llega al navegador",
+ "screens.on_phone": "el móvil",
+ "screens.on_computer": "el ordenador",
+ "screens.on_other": "otra pantalla",
+ "screens.opened_there": "{name} · abierto en {where}",
+ "screens.playing_there": "{name} · sonando en {where}",
+ "screens.moved_there": "{name} · ahora en {where}",
+ "screens.open_here": "Abrir aquí",
+ "screens.bring_here": "Traer aquí",
+ "screens.dismiss": "Descartar"
 }

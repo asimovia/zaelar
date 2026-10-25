@@ -14,6 +14,14 @@ from loguru import logger
 from nucleo import dispatch as _d
 
 
+def _note_screen(key: str, ctx: dict, rec) -> None:
+    try:
+        from voice import screens as _screens
+        _screens.note_task(key, ctx.get("origin_dev") or _screens.origin_of({"trace": rec.trace_id}))
+    except Exception as e:  # noqa: BLE001 — where a card opens never stops the errand from starting
+        logger.debug(f"dispatch: no screen origin for {key}: {e!r}")
+
+
 async def run_listener(stop: "asyncio.Event | None" = None) -> None:
     import bus
 
@@ -198,11 +206,11 @@ async def run_listener(stop: "asyncio.Event | None" = None) -> None:
                                 # would deliver the half-done work the harness had just caught.
                                 done_when=dict(ctx.get("done_when") or {}),
                                 trace_id=str(ctx.get("trace", "") or ""))   # V2-044: encadena a la frase origen
-            # V2-227 — the SUPERFICIE is sella here, that es the only point by the that pasan TODAS the puertas of
-            # entrada al dispatcher (the cerebro with su `surface`, the auto-resume, the confirm-gate, the cluster, the
-            # Susurro). Lo that declaro the cerebro manda; if no declaro nothing —or said something that no es of the
-            # vocabulario— is deriva of the kind. Sellar tarde significaria open the sheet when already there is response,
-            # that es exactamente it that this cambio exists for no do.
+            # V2-227 — the SURFACE is sealed here, the one point EVERY door into the dispatcher passes (the brain with its
+            # `surface`, auto-resume, the confirm gate, the cluster, Susurro). What the brain declared rules; with nothing
+            # declared (or a word outside the vocabulary) it derives from the kind. Sealing later would open the sheet
+            # once the answer is already there — exactly what this exists to prevent.
+            _note_screen(key, ctx, rec)   # V2-792: its cards open on the screen that commissioned it
             _d.surfaces.set_once(rec, ctx.get("surface"))
             # …and if esa superficie es the sheet, is ABRE YA, empty and with the tab of proceso. Aqui, and no in the
             # entrega, es donde the operator leaves of mirar a pantalla in blanco.

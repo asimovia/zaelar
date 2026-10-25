@@ -558,6 +558,15 @@ def stamp_identity(ev: dict) -> dict:
     # viewer without `cat`, meaning the “Unclassified” row—which is exactly what the operator saw with memory events.
     if "cat" not in ev:
         ev["cat"] = _CAT.get(str(ev.get("kind") or ""), "other")
+    # WHICH SCREEN asked (V2-792): one agent serves the desktop and the phone at once, and a card opened for one of
+    # them must not open on the other. `voice/screens.py` is the one place that knows; this gate is the one place
+    # every event passes, so the stamp lives here.
+    try:
+        from voice import screens as _screens
+        _screens.stamp(ev)
+    except Exception as e:  # noqa: BLE001 — the stream never breaks over a stamp; the reason stays in the log
+        import logging
+        logging.getLogger("zaelar.screens").debug("screen stamp failed: %r", e)
     # Idle timeout (2026-08-13): only REAL activity (not `system`/`pulse` background noise) counts toward the
     # session clock — runs BEFORE resolving `sid` so that, if a rollover happens, this very event already gets
     # stamped with the NEW session. See `observability/identity.py::note_real_activity`.

@@ -36,6 +36,7 @@ from nucleo.flash.recall_heuristics import (  # noqa: F401 — re-export
 # the block that uses them (`live_blocks.py`). They are re-exported because tests import them by name from
 # here: the extraction is a move, not an interface change.
 from nucleo import context_packs as _packs
+from voice import screens as _screens
 from nucleo.flash import live_blocks as _live_blocks
 # V2-348: `_short_note` moved with its sole caller to `live_blocks`; it is re-exported because tests import it
 # by name from here and because the public contract remains `live_state()` (as in V2-276).
@@ -509,15 +510,13 @@ def _flash_layer(open_ids: set[str], recent_ids: list[str] | None = None,
 def live_state() -> str:
     """Cheap, tool-free reads that FlashBrain answers instantly."""
     import time as _t
-    # EXPLICIT date (today + tomorrow in YYYY-MM-DD) so the model need NOT search for or invent a date when adding
-    # an appointment "tomorrow" (V2-026: the model once called web_search to learn tomorrow's date).
+    # EXPLICIT dates (today, tomorrow) so the model never searches or invents one (V2-026: it once web-searched it).
     _tm = _t.strftime("%Y-%m-%d", _t.localtime(_t.time() + 86400))
     lines = [f"Hora local: {_t.strftime('%H:%M')} · hoy es {_t.strftime('%A %d %b')} ({_t.strftime('%Y-%m-%d')}); "
              f"mañana es {_tm}."]
-    # NEXT 7 DAYS with dates (V2-121). Same reason as above, extended: scheduling "Wednesday" requires knowing
-    # WHICH DATE that Wednesday is, and mental date arithmetic is exactly where a small model silently errs—a
-    # misdated reminder is unnoticed until it fails to fire. With this list, mapping a named day to the absolute
-    # date required by `[[cron.create]]` is a LOOKUP. ~90 chars/turn; computed without I/O.
+    # NEXT 7 DAYS with dates (V2-121): scheduling "Wednesday" needs WHICH date, and mental date arithmetic is where a
+    # small model silently errs — a misdated reminder only shows when it fails to fire. With this list, the absolute
+    # date `[[cron.create]]` needs is a LOOKUP. ~90 chars/turn; computed without I/O.
     _now = _t.time()
     _days = "; ".join(f"{_t.strftime('%A', _t.localtime(_now + i * 86400)).lower()} "
                       f"{_t.strftime('%Y-%m-%d', _t.localtime(_now + i * 86400))}" for i in range(1, 8))
@@ -565,6 +564,7 @@ def live_state() -> str:
         lines.extend(_styled.prompt_lines(_mstate))
     except Exception:
         pass
+    lines.extend(filter(None, [_screens.slot_line()]))   # V2-792: a line only with two screens open
     try:
         from widgets import confirm as _confirm
         cl = _confirm.pending_line()

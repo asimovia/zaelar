@@ -4924,6 +4924,23 @@ DOMAINS: list[dict] = [
         # host, o renombre uno, y el ESCRITORIO siga verde porque tiene su propio host: el fallo saldría en el
         # teléfono, en silencio, ignorando al cerebro. El test DERIVA lo que exige del propio código (los métodos
         # que sse.js llama, las rutas que el backend declara), nunca de una lista copiada a mano.
+        # V2-792 — ONE AGENT, ONE VOICE, MANY SCREENS. The desktop and the phone are the same agent and the same
+        # conversation, but what a request does to a screen (open a card, go full screen, open the panel) happens on
+        # the screen that asked; the others get a chip. A screen without the voice still types (POST /api/chat), the
+        # screen that loses the voice stands down on the stream event, and a card that plays lives on one screen.
+        {"id": "4.266", "title": "Every event kind declares its screen (origin vs all) in ONE table; the placement "
+                                 "rule; the hand-over stands down on the stream event; a voiceless screen types "
+                                 "over HTTP (V2-792)", "ch": UNIT,
+            "paths": ["tests/browser/unit/mobile/test_every_event_kind_declares_its_screen.py"]},
+        {"id": "4.267", "title": "Two screens RENDERED: a card asked on the desktop opens only there and the phone "
+                                 "paints a chip naming the computer; the transcript reaches both walls; the phone "
+                                 "types without a voice room; a one-screen card moved away leaves a chip (V2-792)",
+            "ch": UNIT, "paths": ["tests/browser/e2e/mobile/test_a_card_opens_on_the_screen_that_asked.py"]},
+        {"id": "4.268", "title": "The server knows the screens: every event of a turn carries the screen that asked "
+                                 "(voice holder, typed screen, the errand's commissioning screen, by trace), the "
+                                 "typed door, the canvas of the current turn's screen, the hand-over announced, the "
+                                 "screens slot only with two (V2-792)", "ch": UNIT,
+            "paths": ["tests/voice/unit/test_one_agent_many_screens.py"]},
         {"id": "4.18", "title": "Shell MÓVIL: contrato de host + del widget · paleta compartida · el service worker "
                                 "no cachea", "ch": UNIT,
             "paths": ["tests/browser/unit/mobile/test_mobile_host_contract.py"]},

@@ -19,6 +19,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from loguru import logger
 from livekit import api
 
+from voice import screens as _screens
 from voice.engine.core.config import SETTINGS
 
 router = APIRouter()
@@ -36,12 +37,17 @@ _active = {"sid": None, "ts": 0.0, "dev": ""}
 
 def _holder_changed(prev_sid, sid: str, dev: str, how: str) -> None:
     """One event when the voice changes hands, naming the surface (`dev`, from the client). Without it a phone
-    that never hears the operator and a desktop tab quietly retaking the voice look the same on the timeline."""
+    that never hears the operator and a desktop tab quietly retaking the voice look the same on the timeline.
+
+    V2-792 — the event is also the ORDER to the surface that lost it: `voice_sid` names the new holder's tab, so
+    the old one stands down the moment the event lands instead of on its next heartbeat (up to 4 s with two open
+    microphones). The tab id is not a secret (see `session_steal`: anyone who can reach this port can open one)."""
     if prev_sid == sid:
         return
     try:
         from voice.observer import emit
-        emit("session", f"voice held by {dev or 'unknown device'}", extra={"src": how, "dev": dev})
+        emit("session", f"voice held by {dev or 'unknown device'}",
+             extra={"src": how, "dev": dev, "voice_sid": str(sid or "")[:64]})
     except Exception as e:  # noqa: BLE001 — observability never breaks the lock
         logger.debug(f"voice holder event not emitted: {e!r}")
 
@@ -71,6 +77,7 @@ def session_acquire(sid: str = Body(..., embed=True), dev: str = Body("", embed=
             prev = _active["sid"]
             _active["sid"], _active["ts"], _active["dev"] = sid, now, dev[:40]
             _holder_changed(prev, sid, dev, "acquire")
+            _screens.holder_beat(dev)
             return {"ok": True}
         return {"ok": False, "held": True}
 
@@ -95,6 +102,7 @@ def session_heartbeat(payload: dict = Body(...)) -> dict:
             if _active["sid"] != sid:
                 _holder_changed(_active["sid"], sid, dev, "heartbeat")
             _active["sid"], _active["ts"], _active["dev"] = sid, now, dev
+            _screens.holder_beat(dev)
     # Only the OWNER's beat speaks for the microphone. A tab that has just lost the voice beats once more before it
     # learns so, and its «unmuted» used to re-open the engine's mic under whoever took it (demo 2026-09-28: the
     # operator's tab, left with mic and speaker on, while the demo driver held the session).
@@ -126,6 +134,8 @@ def session_steal(sid: str = Body(..., embed=True), dev: str = Body("", embed=Tr
     with _lock_mx:
         prev = _active["sid"]
         _active["sid"], _active["ts"], _active["dev"] = sid, now, dev[:40]
+    _screens.holder_beat(dev)
+    _screens.touched(dev)
     _holder_changed(prev, sid, dev, "steal")
     return {"ok": True, "took_from": prev}
 
@@ -136,6 +146,7 @@ def session_release(sid: str = Body(..., embed=True)) -> dict:
     with _lock_mx:
         if _active["sid"] == sid:
             _active["sid"], _active["ts"], _active["dev"] = None, 0.0, ""
+            _screens.holder_released()
     return {"ok": True}
 
 # Engine switch WITHOUT a build step or touching the 6 static importers of session.js: on the LiveKit engine we
