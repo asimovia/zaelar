@@ -549,6 +549,13 @@ def _validate(wid: str, *, stamp_origin: bool = False) -> tuple[bool, str]:
     if stamp_origin and man.get("origin") != "user" and not paths.is_repo_source(d):
         man["origin"] = "user"
         _dirty = True
+    # V2-792 — every widget the generator writes carries how it lives on several screens. The agent is asked to
+    # decide it; if it did not, the resolved default is written (an output channel ⇒ single), so no widget it
+    # touches — new, or an older one being modified — is left without the declaration.
+    from . import screen_policy
+    if stamp_origin and "screens" not in man:
+        man["screens"] = screen_policy.of(man)
+        _dirty = True
     if _dirty:
         json.dump(man, open(man_p, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
     js_src = open(js_p, encoding="utf-8").read() if os.path.isfile(js_p) else ""
@@ -590,8 +597,7 @@ def _validate(wid: str, *, stamp_origin: bool = False) -> tuple[bool, str]:
     bg_bad = _validate_background(man, data_src)         # background cycle valid + passive needs tick() (V2-034)
     if bg_bad:
         return False, bg_bad
-    from . import screen_policy                          # V2-792: how it lives on several screens, said by the widget
-    scr_bad = screen_policy.problem(man, required=stamp_origin)
+    scr_bad = screen_policy.problem(man)                 # V2-792: a value, and never shared with an output channel
     if scr_bad:
         return False, scr_bad
     init_p = os.path.join(d, "__init__.py")

@@ -9,7 +9,7 @@ list in the host, and the code agent that writes a new widget is told to declare
 Pinned here:
   · every built-in widget declares it explicitly, and a widget with an exclusive output channel is `single`;
   · the resolution and its one rule (`runtime.output` cannot be `shared`);
-  · the validator requires it on a widget the generator just created, and refuses the contradiction everywhere;
+  · every widget the generator creates or modifies leaves with it written, and the contradiction is refused;
   · the generator's contract (shared by the create and modify prompts) asks for it;
   · the compact index carries the RESOLVED policy, so a host never re-derives it;
   · a `show` of a single card asked from another screen MOVES it — the move is announced before the show itself —
@@ -83,13 +83,16 @@ def scratch_widget(monkeypatch, tmp_path):
     return make
 
 
-def test_the_validator_requires_it_on_a_new_widget_and_refuses_the_contradiction(scratch_widget):
+def test_a_widget_the_generator_touches_leaves_declared_and_the_contradiction_is_refused(scratch_widget, tmp_path):
     from widgets import validator
     wid = scratch_widget("zz-screens-missing")
-    ok, err = validator._validate(wid, stamp_origin=True)
-    assert not ok and "screens" in err
-    ok, _ = validator._validate(wid)                                     # the catalogue check of an older widget
-    assert ok
+    assert validator._validate(wid)[0]                                   # the catalogue check never rewrites it
+    assert "screens" not in json.loads((tmp_path / wid / "manifest.json").read_text())
+    assert validator._validate(wid, stamp_origin=True)[0]                # created or modified by the generator
+    assert json.loads((tmp_path / wid / "manifest.json").read_text())["screens"] == "shared"
+    media = scratch_widget("zz-screens-media", runtime={"output": "audio"})
+    assert validator._validate(media, stamp_origin=True)[0]
+    assert json.loads((tmp_path / media / "manifest.json").read_text())["screens"] == "single"
     bad = scratch_widget("zz-screens-contra", screens="shared", runtime={"output": "audio"})
     ok, err = validator._validate(bad)
     assert not ok and "single" in err

@@ -11,8 +11,8 @@ Every widget declares it in its manifest, `"screens"`, because only the widget k
 
 One rule ties it to the rest of the manifest: a widget that takes an exclusive output channel (`runtime.output`,
 the speaker) cannot be `shared` — two screens would play it at once. A manifest without the field resolves the same
-way (`runtime.output` → single, otherwise shared), so a widget written before the field existed still behaves;
-a widget the generator creates must declare it (`widgets/validator.py`).
+way (`runtime.output` → single, otherwise shared), so a widget written before the field existed still behaves; and
+every widget the generator creates or modifies leaves with the field written (`widgets/validator.py`).
 """
 from __future__ import annotations
 
