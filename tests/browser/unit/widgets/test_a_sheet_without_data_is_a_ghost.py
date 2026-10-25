@@ -73,7 +73,7 @@ def test_the_layout_answer_is_pruned_and_names_the_real_sheets(disk, tmp_path, m
 def test_the_desktop_applies_the_same_judgment_to_its_own_list():
     src = DESKTOP.read_text(encoding="utf-8")
     restore = src[src.index("async restore()"):src.index("\n  has(id){")]
-    i_srv = restore.index('fetch("/api/canvas/layout")')
+    i_srv = restore.index('fetch("/api/canvas/layout')        # `?dev=` since V2-792: which screen is asking
     i_filter = restore.index("srv.sheets", i_srv)
     i_show = restore.index("await this.show(it.id", i_filter)
     assert i_srv < i_filter < i_show, "the ghost filter runs after the server answers and before any card is shown"
