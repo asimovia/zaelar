@@ -20,10 +20,11 @@ import * as store from "../core/store.js?v=2";
 import { t } from "../core/i18n.js?v=1";
 import { accountLink } from "../core/account-link.js?v=1";
 
-/** Bars for a screen width: enough to read as detail, never enough to crowd a narrow window. */
+/** Bars for a screen width. On a wide screen each bar is 2% of the cycle (50 bars, the operator's ask: «50 for 50%»),
+ * 4% on a medium one and 5% on a narrow one — enough detail to read the battery, never enough to crowd the window. */
 export function barsFor(width) {
   const w = Number(width) || 0;
-  return w >= 1280 ? 30 : w >= 900 ? 20 : 12;
+  return w >= 1280 ? 50 : w >= 900 ? 25 : 20;
 }
 
 const TIERS = 5;                  // colour classes eg-tier0 … eg-tier4 in styles.css

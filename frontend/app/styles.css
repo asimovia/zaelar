@@ -417,9 +417,9 @@ body.chatdock-r .statuspanel,body.chatdock-r .cronpanel{right:calc(18px + var(--
 /* One bar: a small column with a soft top light and a shadow at its foot, so the row has some relief on the
    background instead of reading as a flat barcode. */
 /* Each bar keeps its own width and the 2px gap: they never shrink into one another (at least 1px apart, always). */
-.eg-t{display:block;flex:0 0 auto;width:4px;height:18px;border-radius:2px;box-sizing:border-box;
+.eg-t{display:block;flex:0 0 auto;width:3px;height:18px;border-radius:1.5px;box-sizing:border-box;
       transition:background .3s,border-color .3s,box-shadow .3s}
-@media (max-width:899px){.eg-t{width:5px}}
+@media (max-width:1279px){.eg-t{width:4px;border-radius:2px}}
 /* LIT: the plan's colour, lighter at the top. */
 .eg-t.eg-on{background:linear-gradient(to bottom,color-mix(in srgb,var(--eg-c) 70%,#fff) 0%,var(--eg-c) 45%,
       color-mix(in srgb,var(--eg-c) 80%,#000) 100%);box-shadow:0 1px 2px rgba(0,0,0,.35),0 0 4px color-mix(in srgb,var(--eg-c) 35%,transparent)}

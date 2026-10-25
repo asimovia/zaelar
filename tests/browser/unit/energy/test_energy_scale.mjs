@@ -24,23 +24,23 @@ const FULL = 13000;            // the gauge's full scale as the cloud sends it (
 const WIDE = 1400;
 
 // ── the same bars for everyone, by screen ──────────────────────────────────────────────────────────────────────
-assert.equal(barsFor(1400), 30);
-assert.equal(barsFor(1000), 20);
-assert.equal(barsFor(400), 12);
+assert.equal(barsFor(1400), 50);
+assert.equal(barsFor(1000), 25);
+assert.equal(barsFor(400), 20);
 for (const cap of [500, 1300, 3000, 13000]) {
-  assert.equal(scale(cap, cap, { scale: FULL }, WIDE).bars, 30, `every plan draws 30 bars on a wide screen (${cap})`);
+  assert.equal(scale(cap, cap, { scale: FULL }, WIDE).bars, 50, `every plan draws 50 bars on a wide screen (${cap})`);
 }
 
 // ── the whole row is THIS cycle; lit = what is left of it, in proportion ──────────────────────────────────────
 let s = scale(394.6, 398, { scale: FULL, tier: 0 }, WIDE);
-assert.equal(s.own, 30, "the current plan fills the gauge");
-assert.equal(s.lit, 30, "394 of 398 is (nearly) full — the operator's own account, which lit 1 bar of 30 before");
+assert.equal(s.own, 50, "the current plan fills the gauge");
+assert.equal(s.lit, 50, "394 of 398 is (nearly) full — the operator's own account, which lit 1 bar of 30 before");
 s = scale(1500, 3000, { scale: FULL, tier: 2 }, WIDE);
-assert.equal(s.lit, 15, "half the cycle left is half the bars");
+assert.equal(s.lit, 25, "half the cycle left is half the bars");
 assert.equal(s.tier, 2, "the plan shows in the colour");
 s = scale(650, 1300, { scale: FULL, tier: 1 }, 820);
-assert.equal(s.bars, 12);
-assert.equal(s.lit, 6);
+assert.equal(s.bars, 20);
+assert.equal(s.lit, 10);
 
 // ── any Energy left lights a bar; none lights nothing ──────────────────────────────────────────────────────────
 assert.equal(scale(1, 13000, { tier: 4 }, WIDE).lit, 1, "almost empty is not empty");
