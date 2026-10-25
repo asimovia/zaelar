@@ -1087,9 +1087,11 @@ canvas#orb.frozen{opacity:.32;filter:grayscale(1)}
 /* connected: ONE status card that carries its own action */
 .cf-wiz .cf-cx-act[data-act="disconnect"],.cf-wiz .cf-cx-act[data-act="mesh-remove"]{background:var(--hb-bg-soft);color:var(--hb-ink);border:1px solid var(--hb-line)}
 .cf-wiz .cf-cx-act[data-act="disconnect"]:hover,.cf-wiz .cf-cx-act[data-act="mesh-remove"]:hover{background:var(--hb-hover);border-color:var(--hb-line-strong);filter:none}
-.cf-wiz-done{display:flex;align-items:center;gap:14px;width:100%;max-width:560px;box-sizing:border-box;padding:16px;border:1px solid color-mix(in srgb,var(--hb-ok) 35%,transparent);
-  border-radius:var(--hb-r-m);background:color-mix(in srgb,var(--hb-ok) 8%,transparent)}
-.cf-wiz-done-mark{flex:none;display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--hb-ok);color:var(--canvas);font-weight:700;font-size:0.8125rem}
+/* neutral, like every other box on the page (operator 2026-10-25: «no me gustan mucho los cuadros verdes»):
+   the badge in the hero already says «conectado»; the green lives only in the small tick */
+.cf-wiz-done{display:flex;align-items:center;gap:14px;width:100%;max-width:560px;box-sizing:border-box;padding:16px;border:1px solid var(--hb-line);
+  border-radius:var(--hb-r-m);background:var(--hb-bg-soft)}
+.cf-wiz-done-mark{flex:none;display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:color-mix(in srgb,var(--hb-ok) 16%,transparent);color:var(--hb-ok);font-weight:700;font-size:0.75rem}
 .cf-wiz-done b{display:block;font-size:0.9375rem;color:var(--hb-ink)}
 .cf-wiz-done p{margin:4px 0 0;font-size:0.8125rem;color:var(--hb-muted-2);line-height:1.55}
 .cf-wiz-done-text{flex:1 1 0;min-width:0}
