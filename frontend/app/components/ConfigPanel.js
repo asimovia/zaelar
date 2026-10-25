@@ -20,7 +20,7 @@ import { theme as themeSignal, setTheme } from "../core/store.js?v=2";
 // configuración»): same signals `update/UpdateSurface.js` already read, so the number keeps updating live
 // while Settings is open instead of freezing at whatever it was on open.
 import { build as updBuild, info as updInfo, check as updCheck } from "../update/watch.js?v=1";
-import { connectorList, connectorWizard, isSettling, groupGoogle, focusOf, GOOGLE } from "./ConnectorWizard.js?v=4";
+import { connectorList, connectorWizard, connectorForm, isSettling, groupGoogle, focusOf } from "./ConnectorWizard.js?v=5";
 
 const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const opt = (list, sel) => (list || []).map(o => `<option value="${esc(o.value != null ? o.value : o)}"${(o.value != null ? o.value : o) === sel ? " selected" : ""}>${esc(o.label != null ? o.label : o)}</option>`).join("");
@@ -531,101 +531,6 @@ export function ConfigPanel() {
     return `<span class="cf-badge cf-${esc(st)}">${label}</span>`;
   };
 
-  // ONE Google account, one consent per service: each row says which card it feeds and connects on its own.
-  const G_ACT = { google: "calendar-connect", "google-contacts": "contacts-connect", gdrive: "cloudfiles-connect",
-                  "google-photos": "photos-connect", youtube: "video-connect" };
-  function googleForm(c, famTitle) {
-    const app = c.app ? "" : `${row("client_id", `<input id="cx_g_id" type="text" placeholder="${t("config.cx.paste_client_id")}"/>`)}
-      ${row("client_secret", `<input id="cx_g_sec" type="password" placeholder="${t("config.cx.only_if_asked")}"/>`)}`;
-    const rows = (c.services || []).map(sv => {
-      const id = esc(sv.id), cc = sv.config || {};
-      const tiers = !sv.connected && sv.id === "gdrive" && (cc.tiers || []).length > 1
-        ? `<select id="cx_cf_tier_${id}">${cc.tiers.map(x => `<option value="${esc(x.id)}"${x.id === cc.default_tier ? " selected" : ""}>${esc(x.label)}</option>`).join("")}</select>` : "";
-      const btn = sv.connected
-        ? `<button class="cf-btn cf-btn-ghost cf-cx-act" data-act="disconnect" data-id="${id}" data-fam="${esc(sv.family || "")}">${t("config.cx.disconnect_btn")}</button>`
-        : `<button class="cf-btn cf-cx-act" data-act="${G_ACT[sv.id]}" data-id="${id}">${t("config.cx.connect")}</button>`;
-      return `<div class="cf-gsvc${sv.id === cxService ? " on" : ""}"><span class="cf-gsvc-name">${esc(sv.label)}` +
-        `<small>${esc(famTitle(sv.family))}</small></span>${cxBadge(sv)}${tiers}${btn}</div>`;
-    }).join("");
-    return app + `<div class="cf-gsvcs">${rows}</div>`;
-  }
-
-  // The blocked consent, offered where the operator is looking: under the connector (or Google service) he pressed.
-  const consentLink = c => {
-    if (!cxConsent || !(cxConsent.id === c.id || (c.services || []).some(x => x.id === cxConsent.id))) return "";
-    return `<div class="cf-wiz-blocked" role="status"><p class="cf-wiz-text">${esc(t("config.cx.popup_blocked"))}</p>` +
-      `<a class="hb-btn hb-btn--primary cf-consent-link" href="${esc(cxConsent.url)}" target="_blank" rel="noopener">${esc(t("config.cx.open_consent"))} ↗</a></div>`;
-  };
-
-  function connectorForm(c, famTitle) {
-    const id = esc(c.id), fam = esc(c.family || "");
-    let box = "";
-    if (c.id === GOOGLE) {
-      box = googleForm(c, famTitle);
-    } else if (c.connected) {
-      // ya conectado → button of desconectar/revocar
-      const revoke = c.family === "infra" ? t("config.cx.revoke") : t("config.cx.disconnect_btn");
-      box = `<button class="cf-btn cf-cx-act" data-act="disconnect" data-id="${id}" data-fam="${fam}">${revoke}</button>`;
-    } else if (id === "whatsapp") {
-      box = `<button class="cf-btn cf-cx-act" data-act="connect" data-id="whatsapp">${t("config.cx.connect_qr")}</button>`;
-    } else if (id === "telegram") {
-      // Zaelar's own app shipped: one button and the QR, nothing else. The api_id form exists only where there is
-      // no app at all (a public clone without our credentials), because there it is the only way in.
-      const own = `<p class="cf-wiz-text">${esc(t("config.cxw.telegram.form_tip"))}</p>
-        ${row("api_id", `<input id="cx_tg_api_id" type="text" inputmode="numeric" placeholder="12345678"/>`)}
-        ${row("api_hash", `<input id="cx_tg_api_hash" type="text" placeholder="${t("config.cx.tg_placeholder")}"/>`)}`;
-      const shipped = !!(c.config || {}).app_shipped;
-      box = shipped ? `<p class="cf-wiz-text">${esc(t("config.cxw.telegram.shipped"))}</p>` : own;
-      box += `
-        <button class="cf-btn cf-cx-act" data-act="connect" data-id="telegram">${t("config.cx.connect_qr")}</button>`;
-    } else if (id === "email") {
-      // The messaging card's per-provider guide, moved here with the connection (2026-10-04): WHERE to get the
-      // app password, and the servers when the provider is not a known one.
-      const P = { gmail: "https://myaccount.google.com/apppasswords", outlook: "https://account.live.com/proofs/AppPassword",
-                  icloud: "https://appleid.apple.com/account/manage", other: "" };
-      const links = Object.entries(P).filter(([, u]) => u).map(([k, u]) =>
-        `<a class="cf-wiz-link cf-em-link" data-em="${k}" href="${u}" target="_blank" rel="noopener"${k === "gmail" ? "" : " hidden"}>${esc(t("config.cx.em_link_" + k))} ↗</a>`).join("");
-      box = `${row(t("config.row.provider"), `<select id="cx_em_provider">${opt([{ value: "gmail", label: "Gmail" }, { value: "outlook", label: "Outlook" }, { value: "icloud", label: "iCloud" }, { value: "other", label: t("config.cx.em_other") }], "gmail")}</select>`)}
-        <p class="cf-em-links">${links}</p>
-        ${row(t("config.cx.email_label"), `<input id="cx_em_address" type="email" placeholder="${t("config.cx.email_placeholder")}"/>`)}
-        ${row(t("config.cx.app_password"), `<input id="cx_em_pass" type="password" placeholder="${t("config.cx.app_password_ph")}"/>`)}
-        <div class="cf-em-other" hidden>${row("IMAP", `<input id="cx_em_imap" type="text" placeholder="imap.tudominio.com"/>`)}
-        ${row("SMTP", `<input id="cx_em_smtp" type="text" placeholder="smtp.tudominio.com"/>`)}</div>
-        <button class="cf-btn cf-cx-act" data-act="connect" data-id="email">${t("config.cx.connect")}</button>`;
-    } else if (id === "spotify") {
-      // The music card's own «use my Spotify app» steps, moved here with the connection (2026-10-04).
-      const cc = c.config || {};
-      const own = `<details class="cf-adv"${cc.can_connect ? "" : " open"}><summary>${t("config.cx.sp_own")}</summary>
-        <p class="cf-wiz-text">${esc(t("config.cx.sp_own_steps"))}</p>
-        <div class="cf-wiz-code"><code>${esc(cc.redirect_uri || (location.origin + "/api/spotify/callback"))}</code></div>
-        ${row("Client ID", `<input id="cx_sp_cid" type="text" placeholder="${cc.own_client_id_set ? t("config.key.ph_saved") : t("config.cx.sp_id_ph")}"/>`)}</details>`;
-      box = `<button class="cf-btn cf-cx-act" data-act="connect" data-id="spotify">${t("config.cx.connect_spotify")}</button>${own}`;
-    } else if (id === "onedrive") {
-      // OneDrive keeps the cloud-files form (V2-557): its own Microsoft app, then which permission to grant.
-      const cc = c.config || {};
-      const tiers = (cc.tiers || []).map(x => `<option value="${esc(x.id)}"${x.id === cc.default_tier ? " selected" : ""}>${esc(x.label)}</option>`).join("");
-      box = `${row("client_id", `<input id="cx_cf_id_${id}" type="text" placeholder="${cc.app_configured ? t("config.key.ph_saved") : t("config.cx.paste_client_id")}"/>`)}
-        ${row("client_secret", `<input id="cx_cf_sec_${id}" type="password" placeholder="${t("config.cx.only_if_asked")}"/>`)}
-        ${tiers ? row(t("config.cx.permission"), `<select id="cx_cf_tier_${id}">${tiers}</select>`) : ""}
-        <button class="cf-btn cf-cx-act" data-act="cloudfiles-connect" data-id="${id}">${t("config.cx.connect")}</button>`;
-    } else if (id === "architect") {
-      const set = (c.config || {}).token_set;
-      box = `${row(t("config.cx.daemon_token"), `<input id="cx_arch_token" type="password" placeholder="${set ? t("config.key.ph_saved") : t("config.cx.paste_token")}"/>`)}
-        ${row(t("config.cx.url_optional"), `<input id="cx_arch_url" type="text" placeholder="https://127.0.0.1:5573"/>`)}
-        <button class="cf-btn cf-cx-act" data-act="architect-save" data-id="architect">${t("config.cx.save_token")}</button>`;
-    } else if (id === "meshkore") {
-      const clusters = (c.clusters || []).map(cl =>
-        `<div class="cf-cx-cluster"><span>${esc(cl.name)} ${cl.connected ? t("config.cx.cluster_connected") : ""}</span>
-          <button class="cf-btn cf-cx-act" data-act="mesh-remove" data-id="meshkore" data-name="${esc(cl.name)}">${t("config.cx.revoke")}</button></div>`).join("");
-      box = `${clusters}${row(t("config.cx.mk_name"), `<input id="cx_mk_name" type="text" placeholder="${t("config.cx.mk_name_ph")}"/>`)}
-        ${row("cluster_id", `<input id="cx_mk_cid" type="text"/>`)}
-        ${row("token", `<input id="cx_mk_token" type="password"/>`)}
-        ${row(t("config.cx.mk_handle"), `<input id="cx_mk_handle" type="text" placeholder="zaelar"/>`)}
-        <button class="cf-btn cf-cx-act" data-act="mesh-add" data-id="meshkore">${t("config.cx.add_cluster")}</button>`;
-    }
-    return box + consentLink(c);
-  }
-
   function sec_connectors() {
     const cs = cfg.connectors || [];
     if (!cs.length) return `<p class="cf-loading">${t("config.cx.load_error")}</p>`;
@@ -640,10 +545,12 @@ export function ConfigPanel() {
     const c = cxFocus && view.find(x => x.id === cxFocus);
     if (c) {
       if (isSettling(c)) settle();
-      return connectorWizard(c, cxStep, connectorForm(c, famTitle), famTitle(c.family), { ...ui, returnTo: cxReturn });
+      return connectorWizard(c, cxStep, connectorForm(c, famTitle, { ...ui, service: cxService, consent: cxConsent }), famTitle(c.family), { ...ui, returnTo: cxReturn });
     }
+    // The list's foot is the connector page's foot: the way out sits on the left, beside the refresh.
     return connectorList(view, fams, ui) +
-      `<div class="cf-foot"><button class="cf-btn cf-cx-refresh">${t("config.cx.refresh_status")}</button></div>`;
+      `<footer class="cf-acts cf-wiz-foot cf-cx-foot"><button type="button" class="cf-btn cf-btn-ghost cf-cx-refresh">${t("config.cx.refresh_status")}</button>` +
+      `<button type="button" class="cf-btn cf-btn-ghost" data-cx-close="1">${t("config.cxw.close")}</button></footer>`;
   }
   // A QR to appear, a scan to land: while the chosen connector is still settling AND on screen, its state is
   // re-read. No time cap: Telegram rotates its QR every 30 s, and a cap (it was 2 min) left a dead code on the

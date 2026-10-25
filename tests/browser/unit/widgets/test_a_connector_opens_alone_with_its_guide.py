@@ -37,6 +37,17 @@ const out = {
   doneFrom: W.connectorWizard({ ...cs[1], connected: true }, 0, "<F>", "Mensajería", { ...ui, returnTo: { from: "Contactos" } }),
   doneAnon: W.connectorWizard({ ...cs[1], connected: true }, 0, "<F>", "Mensajería", { ...ui, returnTo: { from: "" } }),
   doneList: W.connectorWizard({ ...cs[1], connected: true }, 0, "<F>", "Mensajería", ui),
+  // The real forms (2026-10-25 pass): fields stacked, actions on the left, the QR replacing its own button.
+  forms: Object.fromEntries([
+    ["email", { id: "email", label: "Email", family: "mensajeria", connected: false, config: {} }],
+    ["tgShipped", { id: "telegram", label: "Telegram", family: "mensajeria", connected: false, config: { app_shipped: true } }],
+    ["tgQr", { id: "telegram", label: "Telegram", family: "mensajeria", connected: false, status: "connecting", qr: "data:image/png;base64,AAAA", config: { app_shipped: true } }],
+    ["onedrive", { id: "onedrive", label: "OneDrive", family: "archivos", connected: false, config: {} }],
+    ["architect", { id: "architect", label: "Architect", family: "infra", connected: false, config: {} }],
+    ["meshkore", { id: "meshkore", label: "MeshKore", family: "infra", connected: false, clusters: [{ name: "equipo", connected: true }] }],
+  ].map(([k, c]) => [k, W.connectorForm(c, f => f, { ...ui, service: "", consent: null })])),
+  tgQrPage: W.connectorWizard(cs[0], 1, "<FORM-wa>", "Mensajería", ui),
+  waLast: W.connectorWizard({ ...cs[0], qr: undefined, status: "off" }, 1, "<FORM-wa>", "Mensajería", ui),
   // Google is ONE connector (2026-10-04): the calendar row is a SERVICE inside the `google-account` group, and
   // the guide is the group's — its API step names every service's API, its credentials step the redirect URIs.
   gcal: W.guideSteps(W.groupGoogle(cs)[0]),
@@ -127,13 +138,13 @@ def test_the_catalog_names_the_connector_and_the_panel_consumes_it_once():
     assert "openConnectorConfig(c.id)" in CHATWALL and "store.setConfigConnector(id || null)" in CHATWALL
     assert re.search(r"export const \[configConnector, setConfigConnector\]", STORE)
     assert "store.configConnector()" in PANEL and "store.setConfigConnector(null)" in PANEL
-    assert "connectorList(view, fams, ui)" in PANEL and "connectorWizard(c, cxStep, connectorForm(c, famTitle)" in PANEL
+    assert "connectorList(view, fams, ui)" in PANEL and "connectorWizard(c, cxStep, connectorForm(c, famTitle, {" in PANEL
     assert "const view = groupGoogle(cs);" in PANEL, "the panel renders the Google services as ONE connector"
 
 
 def test_contacts_finally_has_a_form_and_a_route_behind_it():
     # The consent row of each Google service carries its own act; contacts' is `contacts-connect`.
-    assert '"google-contacts": "contacts-connect"' in PANEL and "api.contactsConnect(" in PANEL
+    assert '"google-contacts": "contacts-connect"' in WIZ.read_text(encoding="utf-8") and "api.contactsConnect(" in PANEL
     api = (APP / "services" / "api.js").read_text(encoding="utf-8")
     assert '"/api/contacts/connect"' in api
     assert '@router.post("/api/contacts/connect")' in (ENGINE / "connectors/contacts/server_api.py").read_text(encoding="utf-8")
@@ -167,3 +178,39 @@ def test_a_caller_outside_the_panel_makes_back_close_it():
     assert 'cxReturn = { from: from || "" }' in PANEL
     assert re.search(r'\[data-cx-done\].*?if \(cxReturn\) close\(\);', PANEL, re.S)
     assert re.search(r'\[data-cx-back\].*?cxReturn = null', PANEL), "taking the breadcrumb drops the return"
+
+
+def test_every_form_stacks_its_fields_and_keeps_its_actions_on_the_left(run):
+    """Operator 2026-10-25: «estructurado, alineado, con subsecciones… alineado a la izquierda». A field is a
+    label ABOVE its control (`cf-field`), a form's buttons sit in one left-aligned `cf-acts` row — never the
+    label-left/control-right settings row whose button floated to the right edge."""
+    for name, html in run["forms"].items():
+        if name == "tgQr":
+            continue   # a code on screen IS the form (next test)
+        assert "cf-row2" not in html, name
+        assert 'class="cf-acts"' in html, name
+    for name in ("email", "onedrive", "architect", "meshkore"):
+        assert '<label class="cf-field"><span class="cf-field-l">' in run["forms"][name], name
+    assert '<h5 class="cf-sub-h">' in run["forms"]["meshkore"], "adding a cluster is its own subsection"
+
+
+def test_a_code_on_screen_replaces_the_button_and_sentence_that_asked_for_it(run):
+    """The screenshot: «Pulsa Conectar y escanea…», the button, then the QR and the SAME path again under it.
+    Now the button shows only before there is a code; with one, the code sits on the left with its how-to."""
+    assert 'data-act="connect"' in run["forms"]["tgShipped"] and "config.cxw.telegram.shipped" in run["forms"]["tgShipped"]
+    assert 'data-act="connect"' not in run["forms"]["tgQr"] and "config.cxw.telegram.shipped" not in run["forms"]["tgQr"]
+    assert '<div class="cf-wiz-qr"><img' in run["tgQrPage"] and "cf-wiz-qr-text" in run["tgQrPage"]
+
+
+def test_every_page_ends_on_the_way_out_and_the_last_step_has_no_lone_back(run):
+    for html in (run["wa0"], run["wa1"], run["waLast"], run["doneList"]):
+        assert html.count('data-cx-close="1"') == 1 and html.count('data-cx-done="1"') == 1
+        assert html.rindex("cf-wiz-foot") > html.rindex("cf-wiz-steps") if "cf-wiz-steps" in html else True
+    # Step 1 of 2 offers Next; the last step's way back is the ticked rail, not a ghost «Atrás» under «Conectar».
+    assert 'class="cf-btn" data-cx-step="1"' in run["wa0"]
+    assert 'cf-btn cf-btn-ghost" data-cx-step=' not in run["waLast"] and "cf-wiz-nav" not in run["waLast"]
+
+
+def test_the_connectors_list_has_close_beside_refresh():
+    assert re.search(r'cf-cx-foot.*?cf-cx-refresh.*?data-cx-close="1"', PANEL, re.S)
+    assert re.search(r'\[data-cx-close\]"\)\.forEach\(b => b\.onclick = \(\) => close\(\)\)', PANEL)
