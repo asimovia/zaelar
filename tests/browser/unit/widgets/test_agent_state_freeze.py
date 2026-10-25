@@ -74,8 +74,11 @@ def test_the_icon_crown_dims_from_reality_not_from_the_persisted_flag():
 
 def test_the_power_icon_shows_the_four_real_states():
     code = _code(ORB)
-    assert any("agentState()" in l and "pwr-" in l for l in code), \
+    # V2-792 §9: the ⏻ paints `pwrState()`, which is `agentState()` with «voice elsewhere» read as powered ON.
+    assert any("pwrState()" in l and "pwr-" in l for l in code), \
         "el ⏻ es el icono que se mira para saber si hay alguien al otro lado: no puede pintar un flag"
+    assert any("const pwrState" in l and "store.agentState()" in l for l in code), \
+        "pwrState has to come from the real state, never from a flag"
 
 
 def test_every_agent_state_has_a_title_in_both_bundles():
