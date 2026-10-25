@@ -95,7 +95,7 @@ def test_each_family_is_a_heading_followed_by_a_row_of_cards(run):
 
 def test_the_connectors_tab_is_left_aligned_and_its_cards_wrap():
     css = (APP / "styles.css").read_text(encoding="utf-8")
-    assert 'class="cf-scroll cf-scroll--cx"><div class="cf-panel cf-panel--cx">' in PANEL
+    assert '<div class="cf-scroll${activeTab === "conectores" ? " cf-scroll--cx" : ""}"><div class="cf-panel${activeTab === "conectores" ? " cf-panel--cx" : ""}">' in PANEL
     assert ".cf-panel--cx{max-width:none;margin:0}" in css, "the centred column (margin:0 auto) is overridden"
     assert re.search(r"\.cf-cx-grid\{display:grid;grid-template-columns:repeat\(auto-fill,", css), "cards wrap"
     assert re.search(r"@media\(max-width:520px\)\{\s*\.cf-cx-grid\{grid-template-columns:repeat\(2,", css)

@@ -9,7 +9,7 @@ import { createEffect } from "../core/reactive.js?v=2";
 import * as store from "../core/store.js?v=2";
 import * as api from "../services/api.js?v=2";
 import * as session from "../services/session.js?v=3";
-import { GEAR_ICON, BRAIN_ICON, CPU_ICON, DATABASE_ICON, MIC_ICON, SEARCH_ICON, MUSIC_ICON, SERVER_ICON, BELL_ICON } from "../lib/icons.js?v=2";
+import { GEAR_ICON, BRAIN_ICON, CPU_ICON, DATABASE_ICON, MIC_ICON, SEARCH_ICON, MUSIC_ICON, SERVER_ICON, BELL_ICON, MOON_ICON, LINK_ICON, WIDGETS_ICON } from "../lib/icons.js?v=2";
 import * as push from "../services/push.js?v=1";
 import { t } from "../core/i18n.js?v=1";
 import { THEMES, FONT_SIZES, FONT_STACKS } from "../core/themes.js?v=1";
@@ -20,7 +20,7 @@ import { theme as themeSignal, setTheme } from "../core/store.js?v=2";
 // configuración»): same signals `update/UpdateSurface.js` already read, so the number keeps updating live
 // while Settings is open instead of freezing at whatever it was on open.
 import { build as updBuild, info as updInfo, check as updCheck } from "../update/watch.js?v=1";
-import { connectorList, connectorWizard, connectorForm, isSettling, groupGoogle, focusOf } from "./ConnectorWizard.js?v=5";
+import { connectorList, connectorWizard, connectorForm, isSettling, groupGoogle, focusOf } from "./ConnectorWizard.js?v=6";
 
 const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const opt = (list, sel) => (list || []).map(o => `<option value="${esc(o.value != null ? o.value : o)}"${(o.value != null ? o.value : o) === sel ? " selected" : ""}>${esc(o.label != null ? o.label : o)}</option>`).join("");
@@ -53,19 +53,23 @@ const CLOUD_LOCKED_NAV_SECTIONS = new Set(["fast", "code", "memory"]);
 // voice_api's STT/TTS provider knobs specifically (the rest of `voice` — language, VAD, etc. — stays editable).
 const CLOUD_LOCKED_VOICE_KEYS = new Set(["stt_provider", "tts_provider"]);
 
-// V2-083: tres pestañas principales. "settings" = todo lo of antes (menú lateral + secciones); "conectores" y
-// "widgets" son nuevas. Patrón of pastilla segmentada (como the pestañas of the ChatWall).
+// The panel's top-level areas. Since 2026-10-25 they are the groups of ONE left menu, not a row of tabs on top
+// (operator: «un menú a la izquierda… que se vea Ajustes y debajo sus sub-items, y luego los demás»): «settings»
+// carries its sections as sub-items under it; the others are single entries. On a phone the menu is the first
+// page and a section opens over it, with «← Menú» to go back.
 const TABS = [
-  { id: "settings" },
-  { id: "apariencia" },   // V2-617: design profiles + custom knobs — the whole desktop's skin, per account
-  { id: "conectores" },
-  { id: "widgets" },
+  { id: "settings", icon: GEAR_ICON },
+  { id: "apariencia", icon: MOON_ICON },   // V2-617: design profiles + custom knobs — the whole desktop's skin
+  { id: "conectores", icon: LINK_ICON },
+  { id: "widgets", icon: WIDGETS_ICON },
 ];
 
 export function ConfigPanel() {
   let cfg = null, bodyEl, msgEl, ovl;
   let activeSec = SECTIONS[0].id;
   let activeTab = "settings";
+  // Phone only: is the menu the page on screen (true) or the section it opened (false)? Desktop shows both.
+  let navOpen = true;
   // The Conectores tab shows ONE connector at a time behind a breadcrumb (`cxFocus`), on its guide's `cxStep`.
   let cxFocus = null, cxStep = 0, cxPolling = false, cxService = "";   // cxService: the Google service picked out
   // Where «Volver» goes (operator 2026-10-25: «si voy a un sitio y le doy a volver, quiero volver desde donde
@@ -102,20 +106,22 @@ export function ConfigPanel() {
       notices: () => sec_notices(),
     };
     if (!builders[activeSec] || (cloudProfile && CLOUD_LOCKED_NAV_SECTIONS.has(activeSec))) activeSec = visibleSections[0].id;
-    const tabsBar = TABS.map(tab => `<button type="button" class="cf-tab${tab.id === activeTab ? " on" : ""}" data-tab="${tab.id}">${esc(t("config.tab." + tab.id))}</button>`).join("");
-    let pane;
-    if (activeTab === "conectores") {
-      // Left-aligned at the tabs' gutter, not a centred column (operator 2026-10-23: «pegados a la izquierda»).
-      pane = `<div class="cf-tabpane"><div class="cf-scroll cf-scroll--cx"><div class="cf-panel cf-panel--cx">${sec_connectors()}</div></div></div>`;
-    } else if (activeTab === "apariencia") {
-      pane = `<div class="cf-tabpane"><div class="cf-scroll"><div class="cf-panel">${sec_apariencia()}</div></div></div>`;
-    } else if (activeTab === "widgets") {
-      pane = `<div class="cf-tabpane"><div class="cf-scroll"><div class="cf-panel">${sec_widgets()}</div></div></div>`;
-    } else {
-      const nav = visibleSections.map(s => `<button type="button" class="cf-nav-item${s.id === activeSec ? " active" : ""}" data-sec="${s.id}">${s.icon}<span>${esc(t("config.sec." + s.id))}</span></button>`).join("");
-      pane = `<div class="cf-tabpane"><nav class="cf-nav">${nav}</nav><div class="cf-scroll"><div class="cf-panel">${builders[activeSec]()}</div></div></div>`;
-    }
-    bodyEl.innerHTML = `<div class="cf-tabs">${tabsBar}</div>${pane}`;
+    // ONE left menu: each area a row; «settings» lists its sections under it, always visible.
+    const subs = visibleSections.map(sc => `<button type="button" class="cf-nav-item cf-nav-sub${activeTab === "settings" && sc.id === activeSec ? " active" : ""}" data-sec="${sc.id}">` +
+      `${sc.icon}<span>${esc(t("config.sec." + sc.id))}</span></button>`).join("");
+    const menu = `<nav class="cf-nav cf-side" aria-label="${esc(t("config.menu"))}">` + TABS.map(tab =>
+      `<button type="button" class="cf-nav-item cf-nav-top${tab.id === activeTab && (tab.id !== "settings") ? " active" : ""}${tab.id === activeTab ? " on" : ""}" data-tab="${tab.id}">` +
+      `${tab.icon}<span>${esc(t("config.tab." + tab.id))}</span></button>` + (tab.id === "settings" ? `<div class="cf-nav-subs">${subs}</div>` : "")).join("") + `</nav>`;
+    const here = activeTab === "settings" ? t("config.sec." + activeSec) : t("config.tab." + activeTab);
+    let content;
+    if (activeTab === "conectores") content = sec_connectors();
+    else if (activeTab === "apariencia") content = sec_apariencia();
+    else if (activeTab === "widgets") content = sec_widgets();
+    else content = builders[activeSec]();
+    // Every area reads from the left edge, one measure wide; the connectors page keeps its own wider measure.
+    const pane = `<div class="cf-main"><div class="cf-mback"><button type="button" class="cf-mback-btn" data-menu="1">← ${esc(t("config.menu"))}</button><b>${esc(here)}</b></div>` +
+      `<div class="cf-scroll${activeTab === "conectores" ? " cf-scroll--cx" : ""}"><div class="cf-panel${activeTab === "conectores" ? " cf-panel--cx" : ""}">${content}</div></div></div>`;
+    bodyEl.innerHTML = `<div class="cf-layout${navOpen ? " is-menu" : ""}">${menu}${pane}</div>`;
     wire();
   }
 
@@ -321,7 +327,12 @@ export function ConfigPanel() {
   // ---- wiring ----
   function wire() {
     // V2-083: pestañas principales (settings/conectores/widgets)
-    bodyEl.querySelectorAll(".cf-tab").forEach(b => b.onclick = () => { if (b.dataset.tab !== activeTab) { activeTab = b.dataset.tab; render(); } });
+    // The menu: an area row opens that area (Settings on its current section); a sub-item opens that section.
+    // Re-clicking the open area on a phone still has to leave the menu, so it always renders.
+    bodyEl.querySelectorAll(".cf-nav-top").forEach(b => b.onclick = () => {
+      if (b.dataset.tab === "conectores" && activeTab !== "conectores") { cxFocus = null; cxService = ""; cxStep = 0; }
+      activeTab = b.dataset.tab; navOpen = false; render(); bodyEl.querySelector(".cf-scroll")?.scrollTo(0, 0); });
+    bodyEl.querySelectorAll("[data-menu]").forEach(b => b.onclick = () => { navOpen = true; render(); });
     // controles of the pestaña Apariencia (V2-617) — every change applies live + persists via the theme service
     bodyEl.querySelectorAll(".cf-th-card").forEach(b => b.onclick = () => {
       themeSvc.setThemeProfile(b.dataset.profile); msg(t("config.theme.applied")); render();
@@ -359,7 +370,8 @@ export function ConfigPanel() {
       bodyEl.querySelectorAll(".cf-em-link").forEach(a => { a.hidden = a.dataset.em !== emp.value; });
       const o = bodyEl.querySelector(".cf-em-other"); if (o) o.hidden = emp.value !== "other";
     };
-    bodyEl.querySelectorAll(".cf-nav-item").forEach(b => b.onclick = () => { if (b.dataset.sec !== activeSec) { activeSec = b.dataset.sec; render(); } });
+    bodyEl.querySelectorAll(".cf-nav-sub").forEach(b => b.onclick = () => {
+      activeTab = "settings"; activeSec = b.dataset.sec; navOpen = false; render(); bodyEl.querySelector(".cf-scroll")?.scrollTo(0, 0); });
 
     // proveedor of the FlashBrain → repuebla SUS modelos and su row of key
     const fp = document.getElementById("cf_fast_provider");
@@ -834,6 +846,7 @@ export function ConfigPanel() {
       if (want && TABS.some(t => t.id === want)) { activeTab = want; store.setConfigInitialTab(null); }
       // …and the catalog row it was clicked on: that connector opens alone, on its first step (consumed once too).
       store.setConfigFrom(null);
+      navOpen = !(want || cxWant);   // phone: a plain ⚙ opens on the menu; a request opens what it asked for
       if (cxWant) { activeTab = "conectores"; ({ focus: cxFocus, service: cxService } = focusOf(cxWant)); cxStep = 0; cxReturn = { from: from || "" }; store.setConfigConnector(null); }
       else { cxReturn = null; if (want) { cxFocus = null; cxService = ""; cxStep = 0; } }
       load();

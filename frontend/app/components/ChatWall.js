@@ -23,7 +23,7 @@ import { makeResizable } from "../lib/resizable.js?v=1";
 import { CLOSE_ICON, TRASH_ICON, MESSAGE_SQUARE_ICON, ACTIVITY_ICON, CLOCK_ICON, SERVER_ICON, LINK_ICON, APPS_ICON, WIDGETS_ICON } from "../lib/icons.js?v=1";
 import { renderMarkdownLite } from "../lib/markdown-lite.js?v=1";
 import { t } from "../core/i18n.js?v=1";
-import { groupGoogle } from "./ConnectorWizard.js?v=5";
+import { groupGoogle } from "./ConnectorWizard.js?v=6";
 
 // V2-561/V2-526 — stable family order, matching connectors/registry.py's descriptors() order; any family
 // not listed (a catalog-only wishlist family) sorted after, alphabetically, so one nobody expects does not

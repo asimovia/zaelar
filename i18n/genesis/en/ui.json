@@ -362,6 +362,7 @@
  "config.tab.conectores": "Connectors",
  "config.tab.settings": "Settings",
  "config.tab.widgets": "Widgets",
+ "config.menu": "Menu",
  "config.theme.accent": "Accent color",
  "config.theme.accent_clear": "Profile default",
  "config.theme.accent_hint": "the color of everything interactive: tabs, buttons, links",

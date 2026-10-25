@@ -900,15 +900,15 @@ canvas#orb.frozen{opacity:.32;filter:grayscale(1)}
 
 /* body = tab bar (top) + tab panel (bottom) — V2-083 */
 .cf-body{flex:1 1 auto;display:flex;flex-direction:column;min-height:0;overflow:hidden}
-/* main tabs (Settings/Connectors/Widgets) — segmented pill like ChatWall */
-.cf-tabs{flex:0 0 auto;display:flex;gap:3px;padding:var(--sp-2) var(--sp-5);border-bottom:1px solid var(--hb-line-subtle);background:var(--hb-bg-soft)}
-.cf-tab{border:none;background:transparent;color:var(--hb-muted-2);font-size:0.8125rem;font-weight:700;padding:7px 16px;
-  border-radius:9px;cursor:pointer;font-family:var(--sans);line-height:1.4}
-.cf-tab.on{background:var(--hb-bubble);color:var(--hb-accent);
-  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--hb-accent) 40%,transparent)}
-.cf-tab:hover:not(.on){background:var(--hb-hover);color:var(--hb-ink)}
-/* tab panel: Settings has side navigation + scroll; Connectors/Widgets only scroll */
-.cf-tabpane{flex:1 1 auto;display:flex;min-height:0;overflow:hidden}
+/* 2026-10-25 — ONE left menu instead of tabs on top (operator: «un menú a la izquierda… y todo alineado a la
+   izquierda»). Desktop: menu | content. Phone: the menu is the first page; a section opens over it with «← Menú». */
+.cf-layout{flex:1 1 auto;display:flex;min-height:0;overflow:hidden}
+.cf-main{flex:1 1 auto;display:flex;flex-direction:column;min-width:0;min-height:0}
+.cf-mback{display:none}
+.cf-nav-subs{display:flex;flex-direction:column;gap:2px;margin:2px 0 10px;padding-left:14px}
+.cf-nav-top{font-size:0.875rem;color:var(--hb-ink-2,var(--hb-ink))}
+.cf-nav-top.on:not(.active){color:var(--hb-ink)}
+.cf-nav-sub{padding:8px 12px;font-weight:500}
 /* generic button inside a group (Connectors) */
 .cf-btn{background:var(--hb-accent);color:var(--canvas);border:none;border-radius:9px;
   padding:8px 16px;font-size:0.8125rem;font-weight:600;cursor:pointer;margin:10px 0 2px;transition:filter .15s ease}
@@ -919,10 +919,14 @@ canvas#orb.frozen{opacity:.32;filter:grayscale(1)}
 .cf-fam:first-child{margin-top:0}
 .cf-cx-cluster{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--hb-line);font-size:0.8125rem;color:var(--hb-ink)}
 /* Widgets tab — alphabetical list with built-in/yours badge */
-.cf-wrow{display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding:11px 0;border-bottom:1px solid var(--hb-line)}
+.cf-wrow{display:grid;grid-template-columns:200px minmax(0,1fr);align-items:baseline;column-gap:28px;padding:12px 0;border-bottom:1px solid var(--hb-line)}
 .cf-wrow:last-child{border-bottom:none}
 /* ⚙ Apariencia (V2-617): profile cards — each is a swatch strip + name; the active one wears the accent */
-.cf-th-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:18px}
+.cf-th-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin:14px 0 4px}
+/* the language button: the house ghost button (it rendered as a bare browser button); armed = the second click */
+.cf-lang-go{background:none;color:var(--hb-ink);border:1px solid var(--hb-line);border-radius:var(--hb-r-m);min-height:var(--hb-ctl-h);padding:0 16px;font:600 0.8125rem var(--sans);cursor:pointer}
+.cf-lang-go:hover{background:var(--hb-hover)}
+.cf-lang-go.armed{background:var(--hb-accent);border-color:var(--hb-accent);color:var(--canvas)}
 .cf-th-card{display:flex;flex-direction:column;gap:0;border:1px solid var(--hb-line);border-radius:var(--hb-r-m,12px);
   background:var(--hb-bg);cursor:pointer;overflow:hidden;padding:0;text-align:left}
 .cf-th-card:hover{border-color:var(--hb-muted-2)}
@@ -940,11 +944,11 @@ canvas#orb.frozen{opacity:.32;filter:grayscale(1)}
   padding:5px 12px;font:600 var(--fs-caption,0.78rem) var(--sans);cursor:pointer}
 .cf-th-accent-clear:disabled{opacity:.4;cursor:default}
 .cf-wname{font-size:0.875rem;font-weight:600;color:var(--hb-ink)}
-.cf-waliases{flex:1 1 auto;text-align:right;font-size:0.75rem;color:var(--hb-muted-2);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cf-waliases{text-align:left;font-size:0.75rem;color:var(--hb-muted-2);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cf-wbadge{display:inline-block;margin-left:8px;padding:1px 8px;border-radius:999px;font-size:var(--fs-micro);font-weight:800;text-transform:uppercase;letter-spacing:.03em;vertical-align:middle}
 .cf-wbadge.builtin{background:color-mix(in srgb,var(--hb-accent) 16%,transparent);color:var(--hb-accent)}
 .cf-wbadge.user{background:color-mix(in srgb,var(--hb-accent2) 16%,transparent);color:var(--hb-accent2)}
-.cf-nav{flex:0 0 232px;overflow-y:auto;padding:var(--sp-3) var(--sp-2);display:flex;flex-direction:column;gap:2px;
+.cf-nav{flex:0 0 240px;overflow-y:auto;padding:var(--sp-4) var(--sp-3);display:flex;flex-direction:column;gap:2px;
   border-right:1px solid var(--hb-line);background:var(--hb-sidebar)}
 .cf-nav-item{display:flex;align-items:center;gap:11px;padding:10px 12px;border:0;border-radius:10px;
   background:transparent;color:var(--hb-muted);font-size:0.8125rem;font-weight:600;text-align:left;cursor:pointer;
@@ -955,8 +959,9 @@ canvas#orb.frozen{opacity:.32;filter:grayscale(1)}
    raised ground, so it survives a colourblind reader and a dimmed screen. */
 .cf-nav-item.active{background:var(--hb-bubble);color:var(--hb-accent);
   box-shadow:inset 2px 0 0 var(--hb-accent)}
-.cf-scroll{flex:1 1 auto;overflow-y:auto;padding:32px 36px}
-.cf-panel{max-width:640px;margin:0 auto}
+.cf-scroll{flex:1 1 auto;overflow-y:auto;padding:32px 40px 96px}
+.cf-panel{max-width:760px;margin:0}
+.cf-panel-sec+.cf-panel-sec{margin-top:40px}
 
 /* section = standalone title+subtitle above a group (card) with line-separated rows */
 .cf-panel-sec{display:flex;flex-direction:column;gap:14px}
@@ -964,17 +969,18 @@ canvas#orb.frozen{opacity:.32;filter:grayscale(1)}
 .cf-panel-head p{margin:0;font-size:0.8125rem;color:var(--hb-muted-2);line-height:1.5}
 .cf-group{background:var(--hb-bg-soft);border:1px solid var(--hb-line);border-radius:var(--hb-r-l);padding:4px 18px}
 
-/* setting row: label on the left, control on the right (Settings/Chrome pattern) */
-.cf-row2{display:flex;align-items:center;gap:22px;padding:14px 0;border-bottom:1px solid var(--hb-line)}
+/* setting row: a label column, then the control column — BOTH read from the left (2026-10-25: «todo alineado a
+   la izquierda»); the hint sits under its control, left. It used to hug the right edge with right-aligned hints. */
+.cf-row2{display:grid;grid-template-columns:200px minmax(0,380px);align-items:start;column-gap:28px;padding:16px 0;border-bottom:1px solid var(--hb-line)}
 .cf-row2:last-of-type{border-bottom:none}
-.cf-row2-label{flex:1 1 auto;font-size:0.8125rem;font-weight:600;color:var(--hb-ink);min-width:0}
-.cf-row2-ctl{flex:0 0 auto;width:270px;display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+.cf-row2-label{font-size:0.8125rem;font-weight:600;color:var(--hb-ink);min-width:0;padding-top:9px;line-height:1.35}
+.cf-row2-ctl{min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:6px}
 .cf-row2-ctl input,.cf-row2-ctl select{background:var(--hb-bg);color:var(--hb-ink);border:1px solid var(--hb-line);
   border-radius:8px;padding:8px 10px;font-size:0.8125rem;width:100%;transition:border-color .15s ease}
 .cf-row2-ctl input:focus,.cf-row2-ctl select:focus{outline:none;border-color:var(--hb-accent)}
 .cf-status{font-size:0.8125rem;color:var(--hb-ink);font-weight:600}
-.cf-hint{font-size:var(--fs-micro);color:var(--hb-muted-2);text-align:right}
-.cf-foot{margin-top:2px;display:flex;justify-content:flex-end}
+.cf-hint{font-size:var(--fs-micro);color:var(--hb-muted-2);text-align:left;line-height:1.45}
+.cf-foot{margin-top:2px;display:flex;justify-content:flex-start}
 .cf-foot button{background:var(--hb-accent);color:var(--canvas);border:none;border-radius:9px;padding:9px 18px;font-size:0.8125rem;font-weight:600;cursor:pointer;transition:filter .15s ease}
 .cf-foot button:hover{filter:brightness(1.08)}
 .cf-foot button:disabled{opacity:.5;cursor:default}
@@ -993,7 +999,7 @@ canvas#orb.frozen{opacity:.32;filter:grayscale(1)}
 .cf-scroll--cx{padding-left:var(--sp-5);padding-right:var(--sp-5);padding-bottom:96px} /* the last card scrolls clear of the feedback button */
 .cf-panel--cx{max-width:none;margin:0}
 .cf-panel--cx>.cf-wiz,.cf-panel--cx>.cf-crumb{max-width:720px}
-.cf-cx-intro{margin:0 0 4px;font-size:0.8125rem;color:var(--hb-muted-2)}
+.cf-cx-head{margin-bottom:20px}
 /* the list: per family a ROW of cards, one per connector, wrapping — never stretched across the panel */
 .cf-cx-grid{display:grid;grid-template-columns:repeat(auto-fill,220px);gap:var(--sp-3)}
 .cf-cx-card{display:flex;flex-direction:column;align-items:flex-start;gap:var(--sp-2);min-width:0;padding:14px 16px;
@@ -1168,14 +1174,18 @@ canvas#orb.frozen{opacity:.32;filter:grayscale(1)}
 .bp-cand-rejected .bp-cand-status{color:var(--hb-risk)}
 .bp-cand-open .bp-cand-status{color:var(--hb-accent2)}
 @media(max-width:760px){
-  .cf-body{flex-direction:column}
-  .cf-nav{flex-direction:row;flex:0 0 auto;overflow-x:auto;border-right:none;border-bottom:1px solid var(--hb-line)}
-  .cf-nav-item span{display:none}
-  .cf-scroll{padding:20px}
-  .cf-scroll--cx{padding-left:var(--sp-5);padding-right:var(--sp-5)}
-  .cf-row2{flex-direction:column;align-items:stretch;gap:6px}
-  .cf-row2-ctl{width:100%;align-items:stretch}
-  .cf-hint{text-align:left}
+  .cf-layout.is-menu .cf-main,.cf-layout:not(.is-menu) .cf-side{display:none}
+  .cf-side{flex:1 1 auto;border-right:none;padding:var(--sp-3) var(--sp-4)}
+  .cf-side .cf-nav-item{padding:13px 12px;font-size:0.9375rem}
+  .cf-mback{display:flex;align-items:center;gap:12px;flex:0 0 auto;min-height:48px;padding:0 var(--sp-4);border-bottom:1px solid var(--hb-line-subtle);background:var(--hb-bg-soft);font-size:0.875rem;color:var(--hb-ink)}
+  .cf-mback-btn{background:none;border:none;padding:6px 0;font:inherit;font-weight:600;color:var(--hb-accent);cursor:pointer}
+  .cf-scroll{padding:20px 16px 96px}
+  .cf-scroll--cx{padding-left:16px;padding-right:16px}
+  .cf-row2{grid-template-columns:minmax(0,1fr);row-gap:8px}
+  .cf-row2-label{padding-top:0}
+  .cf-row2-ctl{align-items:stretch}
+  .cf-wrow{grid-template-columns:minmax(0,1fr);row-gap:4px}
+  .cf-waliases{white-space:normal}
 }
 .mm-head{flex:0 0 auto;display:flex;align-items:center;gap:14px;padding:12px 16px;border-bottom:1px solid var(--hb-line);background:var(--hb-bg-soft)}
 .mm-brand{display:inline-flex;align-items:center;gap:9px;color:var(--hb-accent)}

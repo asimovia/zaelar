@@ -3636,6 +3636,9 @@ DOMAINS: list[dict] = [
         {"id": "2.801", "title": "An appointment Google Calendar already alarms is not rung again by the agent — read at fire time from the event and the calendar's defaults; an asked notice is always ours, an unknown state rings (V2-796)",
             "ch": UNIT,
             "paths": ["tests/browser/unit/agenda/test_a_notice_google_already_rings_is_not_doubled.py"]},
+        {"id": "2.803", "title": "⚙ Settings is ONE left menu (Settings with its sections under it, Appearance, Connectors, Widgets) "
+                                 "and every area reads from the left edge; on a phone the menu is the first page (operator 2026-10-25)",
+            "ch": UNIT, "paths": ["tests/browser/unit/widgets/test_settings_is_one_left_menu.py"]},
         {"id": "2.802", "title": "A deployment that stops idle engines is told the next due notice after every schedule change, debounced; self-host reports nothing (V2-796)",
             "ch": UNIT,
             "paths": ["tests/agent_headless/unit/test_a_sleeping_engine_is_told_when_to_wake.py"]},
