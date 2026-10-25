@@ -201,7 +201,7 @@ async def run_listener(stop: "asyncio.Event | None" = None) -> None:
                                 # …and the SHEET with it, for the same reason: a relay continues the errand, so
                                 # it keeps writing where the operator is already looking instead of opening a
                                 # second box beside it.
-                                sheet=str(ctx.get("sheet", "") or ""),
+                                sheet=str(ctx.get("sheet", "") or ""), uid=str(ctx.get("task_uid", "") or ""),
                                 # …and HOW SUCCESS IS MEASURED (V2-707 F2): a relay that dropped the condition
                                 # would deliver the half-done work the harness had just caught.
                                 done_when=dict(ctx.get("done_when") or {}),

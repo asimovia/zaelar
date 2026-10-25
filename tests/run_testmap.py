@@ -5176,6 +5176,16 @@ DOMAINS: list[dict] = [
                                  "hoja, y auth_done se reenvía al owner",
             "ch": UNIT,
             "paths": ["tests/browser/unit/widgets/test_the_browser_lives_in_the_process_tab.py"]},
+        # V2-797 — one request opened THREE cards: the browser's monitor at the start (no sheet yet), the results
+        # sheet with the first rows, and after a restart a second sheet named after the new boot. One door
+        # (`nucleo/errand_card.py`) now answers which card represents an errand; a resumed errand reopens the
+        # sheet of its durable row.
+        {"id": "4.273", "title": "One errand, one card: starting opens nothing, a wall or a login raises the "
+                                 "errand's sheet (opened then if it had none), only a tab no errand drives keeps "
+                                 "its monitor card, a refresh does not restore an errand's tab, and a resumed "
+                                 "errand reopens its row's sheet with its rows",
+            "ch": UNIT,
+            "paths": ["tests/browser/unit/widgets/test_one_errand_one_card.py"]},
         # V2-296 (encargo del operador, 2026-08-24). La pestaña contaba QUÉ hacía y no CUÁNTO llevaba hecho. Dos
         # nodos porque son dos averías distintas: la rejilla puede pintar perfecto cifras que nadie produce, y la
         # cadena puede producirlas y no llegar a pantalla. El de PANTALLA fija sobre todo cuándo CALLARSE —`{}`

@@ -201,14 +201,10 @@ async def _prepare_web(rec: "_d.SessionRecord", req: str, reuse_tid: str = "") -
         else:
             _tr = str(getattr(rec, "trace_id", "") or "")   # V2-281: la HOJA viaja con la pestaña, como el trace
             tid = str(navtasks.create(req, trace=_tr, sheet=_d.sheet_of(rec)))
-        # V2-571 — ONE widget per errand: with a sheet, its PROCESS tab embeds the browser (`sheet_browser`)
-        # and the separate monitor card is NOT opened. A sheetless task keeps its card — only surface it has.
-        if not _d.sheet_of(rec):
-            try:
-                from voice.observer import emit
-                emit("widget", "show", extra={"id": navtasks.inst_id(tid), "src": f"worker:{tid}"})
-            except Exception:
-                pass
+        # V2-571/V2-797 — ONE card per errand, and starting is not a reason to open one: the errand's card is
+        # its deliverable (the sheet, opened when the surface was sealed or when the first rows land), whose
+        # PROCESS tab embeds this browser. The monitor card opens only when he must act in the page
+        # (`nucleo/errand_card.py`, asked by the wall and the login wait) — never here.
         try:
             navtasks.set_status(tid, "working")
             navtasks.set_phase(tid, "conduciendo el navegador", True)

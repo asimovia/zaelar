@@ -5,8 +5,8 @@ widget de Resultados en paralelo — ambas cosas son parte de la misma tarea y e
 
   1. `sheet_browser()` derives the errand's live browser monitor (capture, page, wall, login, question) for
      the sheet to render — never stored, `{}` once nothing is live.
-  2. `_prepare_web` STOPS opening the separate `navegador::tN` card for an errand that has a sheet; a task
-     with NO sheet keeps its monitor card, because there it is the only surface.
+  2. `_prepare_web` opens no `navegador::tN` card at all (V2-797: not even for an errand with no sheet yet —
+     see `test_one_errand_one_card.py`).
   3. The task registry refreshes the SHEET's card on every change (`_notify`), or the embedded capture would
      stand still between phase changes.
   4. A struck wall raises the SHEET, not the retired card.
@@ -133,16 +133,17 @@ def test_an_errand_with_a_sheet_does_not_open_the_browser_card(monkeypatch):
     assert navtasks.get(tid).get("sheet") == rec.sheet
 
 
-def test_a_task_with_no_sheet_keeps_its_monitor_card(monkeypatch):
-    """The counterweight: for a sheetless task the card is the ONLY surface, and retiring it there would
-    leave the operator with a browser working somewhere invisible."""
+def test_an_errand_with_no_sheet_yet_opens_no_card_at_start(monkeypatch):
+    """V2-797 — starting is not a reason to open a card. The old counterweight («a sheetless errand keeps its
+    monitor card») is what put TWO cards on screen for one request: the monitor at the start and the sheet
+    when the first rows landed. The tab is still created; its card waits until he must act in it."""
     rec = SessionRecord(task_id="87", goal="abre booking", kind="web")
     rec.status = "running"
     dispatch._SESSIONS["87"] = rec
     seen = _capture_emits(monkeypatch)
     tid = _run_prepare_web(rec, monkeypatch)
-    assert any(lbl == "show" and e.get("id") == navtasks.inst_id(tid)
-               for _k, lbl, e in seen), seen
+    assert tid
+    assert not any(lbl == "show" for _k, lbl, _e in seen), seen
 
 
 # ── 3 · the registry refreshes the sheet's card ─────────────────────────────────────────────────────────────

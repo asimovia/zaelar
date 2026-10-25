@@ -233,6 +233,13 @@ below is the first kind, or it names the mechanism that replaced the second.
   end state it leaves (the music card's `add_tracks`); an errand whose end state is rows a card of his declares
   opens no empty sheet (`surfaces.own_card`); the worker delivers into the card its end state names, in batches.
   — since 2026-10-24 · nodes 3.93, 4.263, 2.797 · `nucleo/flash/escalation_guard.py`, `widgets/musica/curated.py`.
+- **CRIT-E16 · One errand, one card, and a resumed errand keeps it.** Starting an errand opens no card: its card is its
+  deliverable (the sheet, whose process tab embeds the browser), opened when the surface is sealed or when the first rows
+  land; when he must act in the page (a wall, a login) the errand's sheet is raised — opened then if it had none — and the
+  browser's monitor card is only for a tab no errand drives or an errand whose deliverable is not a sheet; a refresh never
+  restores an errand's tab beside its card. A resumed or relayed errand reopens the sheet of its DURABLE row (`task_uid`),
+  never one named after the new boot, with what it had delivered still in it. — since 2026-10-26 · nodes 4.273, 4.109 ·
+  `nucleo/errand_card.py`, `nucleo/sheets.py::row_sheet`.
 - **CRIT-E13 · A worker's request is never his click.** On a self-hosted engine every mutation is the operator's
   unless it is a named worker door (`/api/worker/*`, the agent report, the browser bridge, memory with the per-task
   token, search); it is admitted for his screen's per-boot HttpOnly cookie or a process the engine did not spawn,

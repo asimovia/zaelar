@@ -239,9 +239,11 @@ def _live_canvas_instances() -> list:
     except Exception:  # noqa: BLE001
         pass
     try:
+        from nucleo import errand_card as _ec
         from widgets.navegador import tasks as _t
         for tid in _t.all_ids():
-            out.append(_t.inst_id(tid))
+            if _ec.monitor_stands(tid):      # V2-797: an errand's tab lives inside the errand's card
+                out.append(_t.inst_id(tid))
     except Exception:  # noqa: BLE001
         pass
     seen: list = []

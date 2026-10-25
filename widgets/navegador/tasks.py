@@ -509,6 +509,18 @@ def set_login_wait(task_id: str, on: bool) -> None:
             return
         t["awaiting_login"] = bool(on)
     _notify(task_id)
+    if on:
+        _raise_for_him(task_id, "login")
+
+
+def _raise_for_him(task_id: str, why: str) -> None:   # he must act in the page → the errand's ONE card (V2-797)
+    try:
+        from nucleo import errand_card
+        from voice.observer import emit
+        card = errand_card.card_for(task_id, must_act=True)
+        card and emit("widget", "show", extra={"id": card, "src": f"{why}:{task_id}"})
+    except Exception:
+        pass
 
 
 def milestone(task_id: str, text: str) -> None:
@@ -627,20 +639,8 @@ def _announce_wall(task_id: str, reason: str) -> None:
     """
     milestone(task_id, f"⛔ {reason} — no puedo seguir yo solo desde aquí")
     set_phase(task_id, reason, False)
-    try:
-        from voice.observer import emit
-        # V2-571 — the capture IS the evidence, and it now lives where the errand does: a task with a sheet
-        # raises the SHEET (whose process tab embeds this browser) instead of a second card. Sheetless tasks
-        # keep their monitor card — there it is the only surface that can show the challenge page.
-        with _lock:
-            _sheet = str((_tasks.get(task_id) or {}).get("sheet") or "")
-        if _sheet:
-            from widgets.results import data as _results
-            emit("widget", "show", extra={"id": _results.instance_id(_sheet), "src": f"wall:{task_id}"})
-        else:
-            emit("widget", "show", extra={"id": inst_id(task_id), "src": f"wall:{task_id}"})
-    except Exception:
-        pass
+    # V2-571/V2-797 — the capture IS the evidence: it is raised in the errand's ONE card, never a second one.
+    _raise_for_him(task_id, "wall")
     # …AND THE CONVERSATION, which is the one place the three above cannot reach (2026-08-20, measured on
     # `cancel-subscription-before-charge__es` and `find-theatre-tickets__es`). The card, the phase and the panel
     # are all surfaces the operator has to be LOOKING at. If he is not, the wall is recorded everywhere and said

@@ -87,8 +87,9 @@ def opened(rec, ctx: dict | None = None) -> str:
     if inherited and _ts.task_get(inherited):
         # Continuation: the name, the goal and the origin are the ORIGINAL commission's and must not be
         # overwritten by the relay's rewritten brief (which carries «[ARNÉS] esto quedó sin cumplir…»).
+        _sh = str(getattr(rec, "sheet", "") or "")      # V2-797: a continuation never blanks the row's sheet
         _ts.task_patch(inherited, state="running", kind=str(getattr(rec, "kind", "") or "generic"),
-                       sheet=str(getattr(rec, "sheet", "") or ""), finished_at=None, outcome="")
+                       **({"sheet": _sh} if _sh else {}), finished_at=None, outcome="")
         return uid
     _ts.task_put({
         "id": uid,

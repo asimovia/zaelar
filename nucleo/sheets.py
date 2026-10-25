@@ -125,7 +125,7 @@ def errand_goal_for_nav_task(nav_task: str, sessions=()) -> str:
     return ""
 
 
-def sheet_for_delivery(nav_task: str, sessions=(), live_states=()) -> str:
+def sheet_for_delivery(nav_task: str, sessions=(), live_states=(), *, show: bool = True) -> str:
     """The sheet where this tab should DELIVER what it just found, OPENING IT if its errand does not yet have one.
 
     V2-290 — the sheet opens when COMMISSIONED only when the brain declared the sheet as its surface
@@ -153,7 +153,7 @@ def sheet_for_delivery(nav_task: str, sessions=(), live_states=()) -> str:
         if surfaces.not_a_sheet(getattr(r, "surface", "")):     # …nor a PICTURE errand (its box is the viewer)
             continue
         if tid in (str(getattr(r, "nav_task", "") or ""), str(getattr(r, "task_id", "") or "")):
-            _sheet_open(r)
+            _sheet_open(r) if show else _sheet_open(r, show=False)
             return sheet_of(r)
     return ""
 
@@ -321,6 +321,21 @@ def retitle(rec) -> None:
         pass
 
 
+def row_sheet(uid, mine: str = "") -> str:
+    """The sheet of a durable row born under ANOTHER id than `mine` (a resumed or relayed errand), or "".
+
+    The row's recorded sheet when it has one, else the row id itself: a row and its sheet are named by the same
+    composition (`tasks.task_uid` / `sheet_id_for`), so a row whose sheet opened late still names it (V2-797)."""
+    uid = str(uid or "").strip()
+    if not uid or uid == mine:
+        return ""
+    try:
+        from nucleo import tasks as _tasks
+        return str((_tasks.get(uid) or {}).get("sheet") or "") or uid
+    except Exception:  # noqa: BLE001 — an unreadable store still names the row's own sheet
+        return uid
+
+
 def _sheet_open(rec, *, show: bool = True) -> None:
     """OPEN the sheet when COMMISSIONED, which is the entire gesture of scope C: without this the operator sees nothing
     until there is a response, leaving the screen contract fulfilled in a test and absent in the product.
@@ -345,14 +360,20 @@ def _sheet_open(rec, *, show: bool = True) -> None:
     # version read "already has a sheet ⇒ it came from someone else" and turned a V2-259 test red — rightly: an
     # errand can arrive with ITS OWN sheet already sealed, and that does not make it a relay. A relay's sheet is
     # its PREDECESSOR's, so it does not derive from this `task_id`.
+    # V2-797 — …and a RESUMED errand is the same errand too. Its durable row (`rec.uid`, carried by the
+    # rehydration as `task_uid`) was named by the PREVIOUS boot, and so was its sheet (`task_uid` and
+    # `sheet_id_for` compose the same string). `sheet_id_for(task_id)` recomputed after a restart names a box of
+    # the new boot: the resumed worker opened a third card beside the errand's own sheet. The sheet is keyed to
+    # the ROW, so a record whose row was born under another id continues that row's sheet, never fresh.
     _mine = ""
     try:
         _mine = sheet_id_for(rec.task_id)
     except Exception:  # noqa: BLE001
         pass
-    _inherited = bool(getattr(rec, "sheet", "")) and str(rec.sheet) != _mine
+    _row = row_sheet(getattr(rec, "uid", ""), _mine)
+    _inherited = (bool(getattr(rec, "sheet", "")) and str(rec.sheet) != _mine) or bool(_row)
     if not getattr(rec, "sheet", ""):
-        rec.sheet = _mine
+        rec.sheet = _row or _mine
     _sid = sheet_of(rec)
     try:
         from widgets.results import data as _sheet
