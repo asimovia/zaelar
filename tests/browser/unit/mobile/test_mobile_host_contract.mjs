@@ -173,15 +173,24 @@ check("the CSS centres the orb on the SCREEN, not between its neighbours",
 // ONE power handler, shared by both faces of the centre slot. Two handlers is how the ⏻ and the orb start
 // disagreeing about what stopped means — and since V2-092 the switch is the SERVER's state, so a mobile-only
 // path that flipped a local signal would show "stopped" while the agent kept working.
-const onClicks = [...DOCKBAR.matchAll(/onClick:\s*togglePower\b/g)].length;
-check("the ⏻ and the orb share ONE power handler", onClicks === 2,
-  `found ${onClicks} onClick: togglePower — both the stopped-state ⏻ and the running orb must call the same one`);
+// V2-792 §9 — and ONE door for BOTH shells: the phone's copy started the session before the server had the switch
+// on (refused, 2026-10-25). Both faces call the centre rule; the rule and the switch live in `services/power.js`,
+// the same door the desktop ⏻ and the desktop bar slot use.
+const onClicks = [...DOCKBAR.matchAll(/onClick:\s*\(\)\s*=>\s*power\.centreTap\(/g)].length;
+check("the ⏻ and the orb share ONE handler: the centre rule", onClicks === 2,
+  `found ${onClicks} onClick → power.centreTap — both the stopped-state ⏻ and the running orb must call it`);
+check("the dock has no power path of its own", !/api\.runSt(op|art)\s*\(/.test(DOCKBAR),
+  "DockBar.js calls the run switch directly; it must go through services/power.js");
+const POWER = read("frontend", "app", "services", "power.js");
 // Assert the CALL, not the substring: `includes("api.runStop")` also matches a renamed `api.runStopX`, so it
 // would stay green through exactly the drift it exists to catch (found by breaking it on purpose).
-for (const seam of [/api\.runStop\s*\(/, /api\.runStart\s*\(/, /store\.markPowerCommand\s*\(/]) {
-  check(`the power handler goes through ${seam.source}`, seam.test(DOCKBAR),
-    "that is the seam the desktop ⏻ uses; a parallel path desynchronises the phone from the server");
+for (const seam of [/api\.runStop\s*\(/, /api\.runStart\s*\(/, /store\.markPowerCommand\s*\(/, /store\.markPowerOnPending\s*\(/]) {
+  check(`the power door goes through ${seam.source}`, seam.test(POWER),
+    "that is the seam the ⏻ needs; a parallel path desynchronises the screen from the server");
 }
+check("the session starts only AFTER the server has the switch on",
+  /api\.runStart\(\)\.then\(\(\)\s*=>\s*\{[\s\S]{0,200}session\.start\(\)/.test(POWER),
+  "power.js must call session.start() inside runStart().then — the 2026-10-25 refusal");
 
 // The orb is wrapped in a <button> by the dock, so OrbMini must not be one itself. Nested buttons are invalid
 // HTML and browsers disagree about which tap wins — one honours the outer, another the inner.

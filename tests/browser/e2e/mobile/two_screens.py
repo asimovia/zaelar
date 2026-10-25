@@ -74,8 +74,10 @@ def _free_port() -> int:
 class TwoScreens:
     """A preview of the engine + a desktop page + a phone page. Use as a context manager."""
 
-    def __init__(self, headed: bool = False):
+    def __init__(self, headed: bool = False, desk_init: str = "", spy: bool = True):
         self.headed = headed
+        self.desk_init = desk_init      # extra JS run before the desktop page loads (e.g. the orb docked in the bar)
+        self.spy = spy                  # record show/close instead of executing them (the catalogue check needs it)
         self.base = ""
         self._proc = self._pw = self._browser = None
         self.desk = self.phone = None
@@ -102,13 +104,14 @@ class TwoScreens:
         self.base = f"http://127.0.0.1:{port}"
         self._pw = sync_playwright().start()
         self._browser = self._pw.chromium.launch(headless=not self.headed, args=["--no-sandbox"])
-        self.desk = self._open(DESK, "/", {"width": 1280, "height": 800})
+        self.desk = self._open(DESK, "/", {"width": 1280, "height": 800}, self.desk_init)
         self.phone = self._open(PHONE, "/m", {"width": 390, "height": 844})
         for pg in (self.desk, self.phone):
             pg.wait_for_timeout(2500)
             pg.evaluate("() => document.querySelectorAll('.boot-ovl, .lang-onb, .lang-onb-veil, .zm-held')"
                         ".forEach(e=>e.remove())")
-            assert pg.evaluate(SPY), "the page exposes no host (window.__zaelarDesktop)"
+            if self.spy:
+                assert pg.evaluate(SPY), "the page exposes no host (window.__zaelarDesktop)"
         return self
 
     def __exit__(self, *exc):
@@ -129,11 +132,13 @@ class TwoScreens:
                 self._proc.kill()
         return False
 
-    def _open(self, dev: str, path: str, viewport: dict):
+    def _open(self, dev: str, path: str, viewport: dict, extra: str = ""):
         ctx = self._browser.new_context(viewport=viewport)
         did = dev.split(":", 1)[1]
-        ctx.add_init_script(f"try{{localStorage.setItem('hb_device_id','{did}');localStorage.setItem('hb_lang','en')}}"
-                            "catch(_){}")
+        # The preview has no language chosen; the guard keeps its first-run takeover from wiping and reloading the
+        # page the moment a test switches the agent off (that takeover is first-run.js's, tested on its own).
+        ctx.add_init_script(f"try{{localStorage.setItem('hb_device_id','{did}');localStorage.setItem('hb_lang','en');"
+                            "sessionStorage.setItem('hb_first_run_takeover','1');" + extra + "}catch(_){}")
         pg = ctx.new_page()
         pg.on("pageerror", lambda e, d=dev: self.errors.append(f"{d}: {e}"))
         pg.goto(self.base + path, wait_until="domcontentloaded")

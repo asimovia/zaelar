@@ -33,6 +33,7 @@ import * as store from "../core/store.js?v=2";
 import * as session from "../services/session.js?v=3";
 import * as api from "../services/api.js?v=2";
 import * as mic from "../services/mic.js?v=1";
+import * as power from "../services/power.js?v=1";
 import { makeDraggable, resetDraggable } from "../lib/draggable.js?v=2";
 import { startEcg } from "../lib/ecg.js?v=2";
 import { t } from "../core/i18n.js?v=1";
@@ -116,6 +117,14 @@ export function Orb() {
   // read as on, regardless of its own signal. Visually, each control keeps its state underneath and shows it again
   // as soon as the agent is alive.
   const lidClass = (on) => "orbic" + (on && store.agentLive() ? " on" : " off");
+  // V2-792 §9 (operator, 2026-10-25): GREY = off or closed, LILAC = on or open. The two DEVICE controls (mic,
+  // speaker) are lilac only while really live on THIS screen — `lidClass` above, since a stopped agent or a voice
+  // held elsewhere hears and says nothing here. A SECTION (the chat) or a SETTING (captions, wake word) shows its
+  // own open/on state whatever the agent is doing: the chat is open or it is not.
+  const secClass = (on) => "orbic" + (on ? " on" : " off");
+  // The ⏻ means POWER and nothing else: grey only when the agent is stopped. «Voice on another screen» is not
+  // stopped (that face is what made the operator stop everything, 2026-10-25); it is shown on the orb.
+  const pwrState = () => (store.agentState() === "remote" ? "live" : store.agentState());
 
   const wrap = h("div", { id: "orbwrap", class: "orbwrap", ref: el => (wrapEl = el) },
     // OVAL VEIL (operator 2026-07-22, 3rd pass): a big, opaque, blurred backdrop behind the WHOLE eye cluster
@@ -183,93 +192,13 @@ export function Orb() {
         // `stalled` (“it should be on, but it isn't”) is the state that did not exist before: with it, a fallen agent
         // looks fallen instead of appearing operational.
         "data-ctl": "pwr",
-        class: () => "orbic pwr-" + store.agentState() + (store.agentLive() ? " on" : " off"),
+        class: () => "orbic pwr-" + pwrState() + (pwrState() === "live" ? " on" : " off"),
         title: () => t("orb.power_" + store.agentState()),
-        onClick: () => {
-          const off = !store.powerOff();
-          // V2-627, the operator's own request: say it out loud on every press. `orb:power` already reaches
-          // the server's timeline, but that is a place you have to go and read; when he reports "I pressed it
-          // and nothing happened", the first question is whether the press even ran, and the console answers
-          // that without a round trip. The agent's state at the moment of the press is what makes the line
-          // worth anything — «⏻ ON — agent was off» next to a startup that never arrives is the whole report.
-          console.info("[zaelar] ⏻ " + (off ? "OFF" : "ON") + " — agent was " + store.agentState());
-          // Stamp the command BEFORE applying it: from here on, any server reconciliation that went to fetch the
-          // state before this instant is holding a stale snapshot and must stay quiet (see store.js and the
-          // seeding in main.js). Without this, a cold start tore down the session just asked for.
-          store.markPowerCommand();
-          // V2-627 — a NEWER press supersedes an older one, handoff included. Without this, pressing ON and
-          // then OFF inside the 15 s window left the stamp up, and the ON's own `runStart().then(...)` (still
-          // scheduled) would have brought a voice session up over an agent the operator had just stopped —
-          // with the ⏻ gate, told to treat the window as history, waving it through. The ON branch below
-          // takes the handoff again; every other path leaves it down.
-          store.clearPowerOnPending();
-          store.setPowerOff(off);
-          if (off) {
-            // V2-066 (2026-07-24, explicit operator request after a real failure: "the main button must block
-            // EVERYTHING — pause development processes, stop the microphone, stop the speaker, stop everything").
-            // `session.stop()` ALREADY cuts the mic (stops the real MediaStream tracks, not just the icon) and the
-            // speaker (pauses+detaches <audio>) — but it does so IMPLICITLY, as part of tearing down the whole session.
-            // The mic/speaker signals are ALSO forced explicitly here as a safeguard: if `stop()` ever changes and
-            // stops touching them, the ⏻ lock does not depend on it.
-            try { session.stop(); } catch (_) {}
-            // End of the WORK SESSION for observability (2026-08-09): ⏻ is, along with closing the tab, the only
-            // gesture that means “I'm done.” A `stop()` caused by reconnection does NOT close the session — if it did,
-            // a network hiccup would split in two what the operator experiences as one afternoon of work.
-            api.obsSessionEnd("power_off");
-            // V2-654: through the DOOR. This line used to move the icon and the storage and nothing else —
-            // ⏻ drew a closed microphone over a track that kept publishing, which is exactly how the engine
-            // spent seven minutes transcribing an operator who had shut it (session 85eec898). The comment
-            // above says `session.stop()` already cuts the mic; that stayed true and this stayed a safeguard —
-            // but a safeguard that only paints an icon is worse than none, because it looks like proof.
-            mic.setMuted(true, "power-off");
-            store.setBotMuted(true); localStorage.setItem("hb_bot_muted", "1");
-            // Real bug 2026-07-23 (operator report): powering off left the ECG pulse beating and the captions stuck.
-            // The ECG locally generates beats while `store.tasks()` has something unfinished (lib/ecg.js::activeLoad)
-            // — reconciliation against the server's truth (GET /api/tasks) only runs when reconnecting SSE
-            // (sse.js::es.onopen); if a `task end` was lost during a reconnection gap, the orphaned chip remains
-            // FOREVER until the next reconnection — which never arrives with the voice off. Powering off must settle
-            // everything: reconcile here, even though SSE is already closed (fetchTasks is a separate fetch and does
-            // not depend on it).
-            try { store.fetchTasks(); } catch (_) {}
-            // V2-065 (operator request): ⏻ stops EVERYTHING, but PAUSES — it does not kill like Reset. Freeze the Brain
-            // Workers vivos (SIGSTOP, reversible) for that sigan EXACTAMENTE where estaban al volver a encender.
-            // V2-092: the command goes to the server's GLOBAL SWITCH, which does that and also suspends producing
-            // widgets (the video that kept playing over a stopped agent), cuts background cycles and crons, and
-            // blocks new work. The server saves the state → reloading the page no longer resurrects anything.
-            api.runStop().then(() => store.fetchTasks());
-          } else {
-            // Symmetrically, the mute imposed by ⏻ when powering off (above) is undone when powering on — if the
-            // operator wants the mic/speaker muted INDEPENDENTLY, they have their own buttons for that.
-            mic.setMuted(false, "power-on");   // V2-654: through the door — see the ⏻-off branch above
-            store.setBotMuted(false); localStorage.setItem("hb_bot_muted", "0");
-            // ORDER: the SERVER first, the voice session AFTER (2026-08-31, operator: "when I press the start button
-            // it stays blinking yellow… if I refresh the page, everything starts automatically"). `session.start()` opens with a ⏻ gate against the server's truth
-            // (`GET /api/run`, session-lk.js) — so starting it BEFORE `runStart()` had landed made that gate read
-            // the state from before this very click, abort the startup and set `powerOff` back to true. What then
-            // brought it up was the SSE `run` event undoing that flag plus the operator's NEXT pointer landing on
-            // `ensureVoice()` — which is exactly why it looked like "a minute or two" and why a RELOAD was
-            // instant: by then the server already said RUNNING and the gate let it through.
-            // Turning on CONTINUES frozen work (SIGCONT) but does NOT resume widgets: putting the music or the
-            // video back on is the operator's gesture, not a consequence of powering on (deliberate asymmetry,
-            // see nucleo/runstate.py).
-            // V2-627 — and the ordering has to HOLD, not just be written: `setPowerOff(false)` above already
-            // woke main.js's «power came back» effect synchronously, inside this very click, and that road
-            // started a session against a server that had not been told yet. The handoff stamp closes the
-            // window: while it is up, no other road opens a session, and this click starts it once the server
-            // has answered. `api.runStart()` swallows its own errors, so this `then` always runs — and the
-            // stamp expires on its own anyway, so a reply that never arrives cannot wedge the voice shut.
-            store.markPowerOnPending();
-            api.runStart().then(() => {
-              store.clearPowerOnPending();
-              store.fetchTasks();
-              try { session.start(); } catch (_) {}
-            });
-          }
-          api.uiEvent("orb:power", { state: off ? "off" : "on" });
-        },
+        // V2-792 §9 — the body moved to `services/power.js`, the ONE door both shells switch the agent through.
+        onClick: () => power.togglePower("orb"),
       }, raw(PWR_ICON)),
       h("button", { "data-ctl": "cap",
-        class: () => lidClass(store.captionsOn()),
+        class: () => secClass(store.captionsOn()),
         title: () => store.captionsOn() ? t("orb.captions_hide") : t("orb.captions_show"),
         onClick: () => { const v = store.toggleCaptions(); api.uiEvent("orb:captions", { state: v ? "on" : "off" }); },
       }, raw(CAP_ICON)),
@@ -277,13 +206,13 @@ export function Orb() {
         // 2026-08-09: relocated from CameraUnit (now hidden/archived) — opens the SAME chat panel the old ⏰
         // cron shortcut used to jump into (crons live inside its 3rd tab; no separate cron icon any more).
         "data-ctl": "chat",
-        class: () => lidClass(store.chatOpen()),
+        class: () => secClass(store.chatOpen()),
         title: () => t("camera.chat_title"),
         // From the orb the wall FLOATS — unless it is already docked, which the wall respects (operator, 2026-10-04).
         onClick: () => { const v = !store.chatOpen(); if (v) store.openChatFrom("orb"); else store.setChatOpen(false); api.uiEvent("orb:chat", { state: v ? "open" : "close" }); },
       }, raw(CHAT_ICON)),
       h("button", { "data-ctl": "bot",
-        class: () => lidClass(wakeOn()),
+        class: () => secClass(wakeOn()),
         // The tooltip answers the one question this button raises — «what do I have to say?» — with the word
         // ITSELF, in the operator's language and with today's name in it (V2-749).
         title: () => wakeOn() ? t("orb.wake_on", { name: store.assistantName() }) : t("orb.wake_off", { name: store.assistantName() }),
@@ -311,6 +240,9 @@ export function Orb() {
       h("canvas", { id: "orb",
                     class: () => (store.agentLive() ? "" : "frozen"),
                     ref: el => (orbEl = el), title: () => t("orb.drag") }),
+      // V2-792 §9 — the voice is on ANOTHER screen: the grey orb wears the slashed mic, the phone's own look.
+      h("div", { class: () => "orbsec" + (store.screenState() === "secondary" ? " show" : ""),
+                 title: () => t("orb.centre_secondary"), "aria-hidden": "true" }, raw(MIC_OFF)),
       h("div", { class: () => "micblock" + (store.micBlocked().show ? " show" : ""), ref: el => (micblockEl = el) }, h("span", { class: "ring" })),
       // "te estoy escuchando" ring (2026-09-09): lights up the instant the attention gate judges a turn
       // DIRECTED at zaelar (voice/attention.py via nucleo.py's `emit("ambient", "👂 dirigido a zaelar", …)`) —

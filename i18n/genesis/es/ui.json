@@ -2042,5 +2042,6 @@
  "push.settings_on": "Activados",
  "push.settings_off": "Desactivados",
  "push.test": "Probar",
- "config.sec.notices": "Avisos"
+ "config.sec.notices": "Avisos",
+ "orb.centre_secondary": "La voz está en otro dispositivo — toca para traerla aquí"
 }

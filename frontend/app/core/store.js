@@ -139,6 +139,22 @@ export const agentState = () => {
 // The only predicate views should use to decide whether something can be read as «active».
 export const agentLive = () => agentState() === "live";
 
+// ── WHAT THIS SCREEN SHOWS (V2-792 §9, operator 2026-10-25) ──────────────────────────────────────────────────
+// One agent may be open on several screens; only one holds the voice. Every face of the centre — the desktop eye,
+// the desktop bar slot, the phone dock — paints THIS, and none re-derives it from the flags below:
+//   off       → the agent is stopped: the grey ⏻.
+//   secondary → the agent runs and the voice is on ANOTHER screen: the grey orb with the slashed mic, never orange.
+//   speaking  → this screen holds the voice and the agent is talking: the orange orb.
+//   holder    → this screen holds the voice and the agent is quiet: the grey orb.
+//   starting · stalled · pausing → in transit or fallen, as `agentState` says.
+// It exists because «voice elsewhere» used to wear the ⏻ face of «stopped», and pressing it stopped everything.
+export const screenState = () => {
+  const s = agentState();
+  if (s === "remote") return "secondary";
+  if (s === "live") return botSpeaking() ? "speaking" : "holder";
+  return s;
+};
+
 export const [voices, setVoices]       = createSignal([]);
 export const [voiceIdx, setVoiceIdx]   = createSignal(0);
 export const [voiceFlash, setVoiceFlash] = createSignal({ text: "", show: false });   // transient "🗣 <voice>" label

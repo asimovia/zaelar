@@ -44,7 +44,8 @@
 import { t } from "../core/i18n.js?v=1";
 import { createEffect } from "../core/reactive.js?v=2";
 import * as store from "../core/store.js?v=2";
-import { chatOpen, setChatOpen, setChatTab, openChatFrom, orbDock, setOrbDock, agentState, agentLive, tasks } from "../core/store.js?v=2";
+import { chatOpen, setChatOpen, setChatTab, openChatFrom, orbDock, setOrbDock, agentState, agentLive, screenState, tasks } from "../core/store.js?v=2";
+import * as power from "../services/power.js?v=1";
 
 function injectStyles(){
   if(document.getElementById("wrail-css")) return;
@@ -194,6 +195,11 @@ function injectStyles(){
   #wrail .wr-orbl,#wrail .wr-orbr{display:flex;align-items:center;gap:2px}
   #wrail .wr-swap.on{color:var(--hb-accent,#9B7CFF);background:color-mix(in srgb,var(--hb-accent,#9B7CFF) 16%,transparent)}
   #wrail .orbic{width:36px;height:36px}
+  /* V2-792 §9 (operator, 2026-10-25): the same language as the eye and the phone — LILAC on/open, GREY off/closed.
+     The bar's own button rule above (muted ink for every tool) was winning over .orbic.on on the flanks, so an
+     open mic in the bar read exactly like a closed one. */
+  #wrail .orbic.on{color:var(--hb-accent,#AE90FF)}
+  #wrail .orbic.off{color:var(--hb-muted-2,#99A2AE)}
   #wrail .wr-orbslot{display:none;width:48px;height:48px;position:relative;border-radius:50%;flex:none}
   body.hb-orb-bar #wrail .wr-orbslot{display:flex}
   #wrail .wr-orbslot #orb{position:absolute;inset:0;margin:auto;width:42px!important;height:42px!important;
@@ -202,6 +208,10 @@ function injectStyles(){
     visibility:hidden;color:var(--hb-muted,#A7AFBC)}
   #wrail .wr-orbslot.off #orb{visibility:hidden}
   #wrail .wr-orbslot.off .wr-orbpwr{visibility:visible}
+  /* V2-792 §9 — the voice is on another screen: the grey orb with the slashed mic over it, never the ⏻ face. */
+  #wrail .wr-orbslot .wr-orbsec{position:absolute;inset:0;margin:auto;width:20px;height:20px;visibility:hidden;
+    pointer-events:none;color:var(--hb-muted,#A7AFBC)}
+  #wrail .wr-orbslot.sec .wr-orbsec{visibility:visible}
   #wrail .wr-orbslot:hover .wr-orbpwr{color:var(--hb-ink,#F2F4F7)}
   `; document.head.appendChild(s);
 }
@@ -380,10 +390,18 @@ export function WidgetRail(){
   // The slot is the bar's POWER SWITCH while the orb lives here: it holds the ⏻ face and (in bar mode) the
   // reparented canvas, and forwards its click to the REAL ⏻ control — one owner of the power logic, in
   // Orb.js, however many faces it has (the V2-124 rule).
-  const slot=mk("wr-orbslot",'<svg class="wr-orbpwr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.77.04"/></svg>');
-  slot.onclick=(e)=>{ e.stopPropagation(); const p=document.querySelector('[data-ctl="pwr"]'); if(p) p.click(); };
-  createEffect(()=>{ slot.classList.toggle("off", !agentLive());
-                     slot.title=t("orb.power_"+agentState()); });
+  // V2-792 §9 — the slot paints `screenState()` and a tap goes to the ONE centre rule (services/power.js): stopped
+  // → the grey ⏻, a tap switches the agent on; voice on another screen → the orb with the slashed mic, a tap BRINGS
+  // THE VOICE HERE (it used to wear the ⏻ face and a tap stopped the whole agent, 2026-10-25); holding the voice →
+  // the orb, a tap switches it off.
+  const slot=mk("wr-orbslot",'<svg class="wr-orbpwr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.77.04"/></svg>'
+    +'<svg class="wr-orbsec" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/><path d="m3.5 3.5 17 17"/></svg>');
+  slot.onclick=(e)=>{ e.stopPropagation(); power.centreTap("bar"); };
+  createEffect(()=>{ const s=screenState();
+                     slot.classList.toggle("off", s==="off");
+                     slot.classList.toggle("sec", s==="secondary");
+                     slot.dataset.state=s;
+                     slot.title=s==="secondary"?t("orb.centre_secondary"):t("orb.power_"+agentState()); });
   orbr.append(swap);
   orbzone.append(orbl,slot,orbr);
   const paintSwap=()=>{

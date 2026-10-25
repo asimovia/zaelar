@@ -38,6 +38,8 @@ import pytest
 ENGINE = Path(__file__).resolve().parents[4]
 APP = ENGINE / "frontend" / "app"
 ORB = APP / "components" / "Orb.js"
+# V2-792 §9: the ⏻ body moved to the ONE power door both shells use; the guards follow it there.
+POWER = APP / "services" / "power.js"
 MAIN = APP / "main.js"
 SESSION = APP / "services" / "session-lk.js"
 
@@ -138,9 +140,9 @@ def test_every_road_to_the_voice_respects_the_handoff():
 
 
 def test_the_power_click_takes_the_handoff_and_gives_it_back():
-    code = _code(ORB)
+    code = _code(POWER)
     i = code.find('mic.setMuted(false, "power-on")')   # V2-654: the mic write moved behind the door
-    j = code.find('api.uiEvent("orb:power"', i)
+    j = code.find('api.uiEvent(where', i)
     branch = code[i:j]
     assert "store.markPowerOnPending()" in branch, "the ⏻ ON click has to claim the startup"
     assert branch.index("store.markPowerOnPending()") < branch.index("api.runStart()"), \
@@ -176,8 +178,8 @@ def test_the_refusal_is_not_silent_any_more():
 
 def test_the_press_itself_says_so_in_the_console():
     """The operator's own request: «escribe algo en la consola cada vez que se toca ese botón»."""
-    code = _code(ORB)
-    i = code.find("const off = !store.powerOff();")
+    code = _code(POWER)
+    i = code.find('export function setPower(off, where = "orb") {')
     assert i > 0
     window = code[i:i + 400]
     assert "console.info" in window and "store.agentState()" in window, \
@@ -188,13 +190,13 @@ def test_a_newer_press_supersedes_the_handoff():
     the 15 s window. The ON's `runStart().then(...)` is still scheduled, so if the stamp survived, the gate —
     told to treat that window as history — would wave a voice session up over an agent the operator had just
     stopped. Every press drops the handoff; only the ON branch takes it again."""
-    code = _code(ORB)
+    code = _code(POWER)
     i = code.find("store.markPowerCommand()")
     assert i > 0, "the ⏻ handler moved"
     j = code.find("store.setPowerOff(off)", i)
     assert j > i
     assert "store.clearPowerOnPending()" in code[i:j], \
         "the handoff has to drop on EVERY press, before the branch: a newer command supersedes an older one"
-    on_branch = _code(ORB)[code.find('mic.setMuted(false, "power-on")'):]   # V2-654: same anchor as above
-    assert "store.markPowerOnPending()" in on_branch[:on_branch.index('api.uiEvent("orb:power"')], \
+    on_branch = _code(POWER)[code.find('mic.setMuted(false, "power-on")'):]   # V2-654: same anchor as above
+    assert "store.markPowerOnPending()" in on_branch[:on_branch.index('api.uiEvent(where')], \
         "…and only the ON branch takes it again"

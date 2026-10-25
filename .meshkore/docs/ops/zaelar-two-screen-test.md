@@ -66,6 +66,14 @@ deployment, its own `/m`). Opening the phone takes the voice; the computer's orb
 Write the result in the widget's `notes.md` (date, screens, pass/fail and what failed). A failure is a bug in the
 widget's declaration or in the host, never something to explain to the operator.
 
+**The agent's state on each screen** (every pass, whatever the widget — node 4.147 renders it)
+1. Agent stopped: the grey ⏻ on both screens.
+2. The phone holds the voice: the phone shows the grey orb (orange only while the agent talks); the computer shows
+   the grey orb with the slashed mic — never the ⏻, never orange.
+3. Tap the computer's orb: the voice comes to the computer (the phone turns to the slashed mic). The agent keeps
+   running — a tap on «voice elsewhere» never stops anything.
+4. Icons: lilac when on or open, grey when off or closed, on the computer (eye and bar) and on the phone.
+
 ## 3 · When an agent runs the live pass on the operator's engine
 
 Only with the operator's go-ahead, because it turns his ⏻ on: microphone muted (`POST /api/mic {"muted":true}` and

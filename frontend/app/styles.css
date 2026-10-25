@@ -633,6 +633,12 @@ canvas#orb.frozen{opacity:.32;filter:grayscale(1)}
 /* orb core: RELATIVE anchor for the orb + its overlays. The orb sits here; the caption/mic-block float over it
    without touching layout, so the orb never shifts when text appears. */
 .orbcore{position:relative;z-index:1;display:flex;align-items:center;justify-content:center}   /* above the ECG arc (V2-039) */
+/* V2-792 §9 — «the voice is on another screen»: the slashed mic over the grey orb (the phone's look). The orb is
+   still while it shows (`frozen`), so this is the only mark on it; pointer-events:none keeps the orb draggable. */
+.orbsec{position:absolute;inset:0;margin:auto;width:44px;height:44px;display:none;pointer-events:none;
+  color:var(--hb-muted)}
+.orbsec.show{display:block}
+.orbsec svg{width:100%;height:100%}
 
 /* LIVE CAPTIONS — zaelar's speech CRAWLS up from the orb (teleprompter, Star-Wars style) over a blurred dark
    scrim. ABSOLUTE + bottom anchored ABOVE the whole icon crown (not just the orb) so it never steps on it — the
@@ -731,7 +737,6 @@ canvas#orb.frozen{opacity:.32;filter:grayscale(1)}
 /* `remote` (V2-776, operator 2026-09-27): another session holds the voice — a remote driver, another tab. Not a
    fault, so not amber: the remote-control BLUE, blinking like the alert so it is still noticed. The ⏻ has no
    background here, so it is the outline itself that goes blue. */
-.orbic.pwr-remote{color:var(--hb-remote);opacity:1;animation:pwrAlert 1.6s ease-in-out infinite}
 /* "pausing" (V2-092 addenda, 2026-08-15): a stop requested with a turn in flight — the agent keeps genuinely
    running underneath (nothing has been frozen yet), so it's deliberately painted differently from `stalled`
    (a REAL fault): same amber family as --hb-warn but the SOFTER tone (--hb-warn-ink) and a slow breathe instead
@@ -741,7 +746,7 @@ canvas#orb.frozen{opacity:.32;filter:grayscale(1)}
 @keyframes pwrBoot{0%,100%{opacity:.45}50%{opacity:.95}}
 @keyframes pwrPausing{0%,100%{opacity:1}50%{opacity:.4}}
 @media (prefers-reduced-motion:reduce){
-  .orbic.pwr-stalled,.orbic.pwr-starting,.orbic.pwr-pausing,.orbic.pwr-remote{animation:none}
+  .orbic.pwr-stalled,.orbic.pwr-starting,.orbic.pwr-pausing{animation:none}
 }
 /* the UPPER LID **IS** THE ICONS (v4, operator 2026-07-22: "arriba van los iconos, no una raya"). Inner 5
    (nth-child 2-6) sit ON the almond circle the ECG draws below (R=(S²+a²)/2a ≈ 2.5·orbRadius; icon x = 0/±45/±90

@@ -3389,9 +3389,13 @@ DOMAINS: list[dict] = [
         {"id": "4.146", "title": "El micrófono parado se ve TACHADO (y pinta), el activo brilla más que el "
                                  "apagado —suelo del VU incluido—, y el altavoz no toca el orbe",
             "ch": UNIT, "paths": ["tests/browser/e2e/widgets/test_a_stopped_microphone_is_crossed_out.py"]},
-        {"id": "4.147", "title": "El orbe solo se pone naranja si algo escucha: micro cerrado o agente parado "
-                                 "= gris, y el modo Nombre solo dentro de su ventana",
-            "ch": UNIT, "paths": ["tests/browser/unit/widgets/test_the_orb_only_glows_when_something_listens.py"]},
+        # V2-792 §9 (operator, 2026-10-25) replaced «orange = listening» (V2-648): one state per screen, painted the
+        # same on the desktop bar and the phone dock, and a tap on «voice elsewhere» never stops the agent.
+        {"id": "4.147", "title": "Each screen shows ITS state (two browsers): stopped = grey ⏻; holder = grey orb; "
+                                 "speaking = ORANGE orb only there; voice elsewhere = grey orb with the slashed mic, "
+                                 "never orange, a tap brings the voice (never stops); icons lilac only when really on "
+                                 "here; power-on asks the server first",
+            "ch": UNIT, "paths": ["tests/browser/e2e/mobile/test_each_screen_shows_its_own_state.py"]},
         # V2-650 (2026-09-10, sesión aed0736c «True Blue»): play_playlist persistía un snapshot cargado ANTES de
         # que el proveedor escribiera yt.videoId + la cola — borraba la reproducción recién arrancada (silencio
         # con ok:True); y el guard anti context-bleed se comió los TRES replays explícitos del operador porque su

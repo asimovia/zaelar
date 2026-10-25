@@ -2042,5 +2042,6 @@
  "push.settings_on": "On",
  "push.settings_off": "Off",
  "push.test": "Test",
- "config.sec.notices": "Notifications"
+ "config.sec.notices": "Notifications",
+ "orb.centre_secondary": "Your voice is on another device — tap to bring it here"
 }

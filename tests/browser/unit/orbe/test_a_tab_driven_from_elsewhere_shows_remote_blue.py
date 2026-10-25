@@ -1,4 +1,6 @@
-"""A tab whose voice session is held elsewhere shows the ⏻ in remote-control BLUE, blinking — not the amber fault.
+"""A tab whose voice session is held elsewhere is NOT a fault (not the amber `stalled`) and NOT stopped.
+
+(Until 2026-10-25 it showed the ⏻ in blinking remote-control blue; V2-792 §9 moved that state onto the orb.)
 
 Operator, 2026-09-27, watching his own tab while an agent drove the engine remotely: the blinking ⏻ is right, and
 blue is the colour of every remote-control indicator. Before this, «another session holds the voice» painted
@@ -33,12 +35,18 @@ def test_the_blocked_start_marks_it_and_a_real_start_clears_it():
     assert "store.setStarted(true); store.setRemoteHeld(false);" in s
 
 
-def test_the_power_button_is_blue_and_blinks():
+def test_the_power_button_means_power_and_the_orb_says_the_voice_is_elsewhere():
+    """V2-792 §9 (operator, 2026-10-25) replaced the blinking remote-blue ⏻: «voice elsewhere» wore a ⏻ face, and on
+    the bar it was the SAME face as «stopped» — pressing it to switch the agent on stopped everything. The ⏻ now means
+    power only (lilac while the agent runs, grey only when stopped); the state is the orb's: grey, the slashed mic."""
     css = (APP / "styles.css").read_text(encoding="utf-8")
-    rule = re.search(r"\.orbic\.pwr-remote\{([^}]*)\}", css)
-    assert rule and "var(--hb-remote)" in rule.group(1) and "animation:" in rule.group(1)
+    assert not re.search(r"\.orbic\.pwr-remote\{", css), "the ⏻ no longer has a remote face"
+    orb = _code(APP / "components" / "Orb.js")
+    assert 'store.agentState() === "remote" ? "live"' in orb, "a running agent whose voice is elsewhere is powered ON"
+    assert 'store.screenState() === "secondary"' in orb and "orbsec" in orb, "the orb wears the secondary mark"
+    assert re.search(r"\.orbsec\.show\{display:block\}", css)
     pal = (APP / "core" / "palette.css").read_text(encoding="utf-8")
-    assert pal.count("--hb-remote:") >= 2 and "--hb-remote-ink:#FFFFFF" in pal, "dark and light themes, white ink"
+    assert pal.count("--hb-remote:") >= 2, "the remote token stays for the other remote-control indicators"
 
 
 def test_its_title_is_translated():

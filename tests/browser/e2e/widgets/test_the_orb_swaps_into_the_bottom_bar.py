@@ -156,6 +156,16 @@ def measured(run):
         pg.evaluate("() => document.getElementById('memBtn').click()")
         pg.wait_for_timeout(300)
         out["mem_after_click"] = pg.evaluate(_STATE)
+
+        # V2-792 §9: the ⏻ face means STOPPED and nothing else. Measured the way a stopped agent really arrives on a
+        # screen — the switch persisted off and the orb in the bar, then a load (this preview has no run switch).
+        # (The guard keeps this preview's first-run takeover — it has no language chosen — from wiping the page.)
+        pg.evaluate("() => { sessionStorage.setItem('hb_first_run_takeover', '1'); }")
+        pg.evaluate("() => document.querySelector('#wrail .wr-swap').click()")
+        pg.wait_for_timeout(300)
+        pg.evaluate("async () => { (await import('/static/app/core/store.js?v=2')).setPowerOff(true); }")
+        pg.wait_for_timeout(500)
+        out["bar_off"] = pg.evaluate(_STATE)
         b.close()
     return out
 
@@ -197,14 +207,16 @@ def test_the_lid_controls_flank_the_bar_orb_three_a_side(measured):
     left; robot·chat·swap right (reordered 2026-09-11, operator: immediately right of the orb comes the
     wake-word/activation-mode toggle, then chat, then the swap back to the eye); ⏻ does NOT travel — the
     slot IS the switch (the V2-124 mobile pattern): a BUTTON whose ⏻ face shows exactly while the agent is
-    not live."""
+    STOPPED (V2-792 §9, 2026-10-25: «starting» or «voice on another screen» wear the orb, never the ⏻)."""
     b = measured["bar"]
     assert b["flankL"] == ["mic", "spk", "cap"], f"left flank must be the three voice-side controls: {b['flankL']}"
     assert b["flankR"] == ["bot", "chat", "wr-swap"], f"right flank must be robot·chat·swap: {b['flankR']}"
     assert b["slotTag"] == "BUTTON", f"the slot must be clickable — it is the power switch: {b['slotTag']}"
     assert "pwr" not in b["flankL"] + b["flankR"], "⏻ must never sit beside the orb — it IS the orb's click"
-    # This preview has no live agent, so the switch must wear its ⏻ face over the (kept, hidden) canvas.
-    assert b["slotOff"] and b["pwrFaceShown"], f"no live agent → the ⏻ face shows: {b}"
+    # This preview's agent is not stopped (it is starting): the orb shows, NOT the ⏻ face.
+    assert not b["slotOff"] and not b["pwrFaceShown"], f"not stopped → the orb, never the ⏻ face: {b}"
+    off = measured["bar_off"]
+    assert off["slotOff"] and off["pwrFaceShown"], f"stopped → the ⏻ face over the (kept, hidden) canvas: {off}"
     assert b["slotTitle"] and "." not in b["slotTitle"].split(" ")[0], f"raw i18n key on the switch: {b['slotTitle']!r}"
 
 

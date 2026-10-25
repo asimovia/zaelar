@@ -54,6 +54,7 @@ import * as api from "../../../app/services/api.js?v=2";
 import * as mic from "../../../app/services/mic.js?v=1";
 import { t } from "../../../app/core/i18n.js?v=1";
 import { OrbMini } from "./OrbMini.js?v=3";
+import * as power from "../../../app/services/power.js?v=1";
 
 const SW = `viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"`;
 const MIC_ON  = `<svg ${SW}><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>`;
@@ -76,28 +77,9 @@ const cls = (on) => "zm-ic" + (on ? " on" : " off");
 // The switch, shared by BOTH faces of the centre slot (the ⏻ button and the orb) so the two can never drift apart.
 // Identical to Orb.js's power handler, down to stamping the command BEFORE applying it: without that, a server
 // reconciliation that went to fetch the state before this instant tears down the session just asked for (main.js).
-function togglePower() {
-  const off = !store.powerOff();
-  store.markPowerCommand();
-  store.setPowerOff(off);
-  if (off) {
-    try { session.stop(); } catch (_) {}
-    api.obsSessionEnd("power_off");
-    mic.setMuted(true, "power-off");   // V2-654: through the door — icon, storage, TRACK and engine together
-    store.setBotMuted(true); localStorage.setItem("hb_bot_muted", "1");
-    try { store.fetchTasks(); } catch (_) {}
-    api.runStop().then(() => store.fetchTasks());
-  } else {
-    mic.setMuted(false, "power-on");   // V2-654: through the door
-    store.setBotMuted(false); localStorage.setItem("hb_bot_muted", "0");
-    try { session.start(); } catch (_) {}
-    api.runStart().then(() => store.fetchTasks());
-  }
-  // Starting the agent is ALSO the best user gesture we will ever get for unlocking audio playback (V2-573): a
-  // mobile browser refuses to play a remote track until the page has been touched, and this tap IS that touch.
-  try { session.unlockAudio && session.unlockAudio(); } catch (_) {}
-  api.uiEvent("mobile:power", { state: off ? "off" : "on" });
-}
+// V2-792 §9 — switching the agent on/off and the centre tap live in ONE door both shells use
+// (`app/services/power.js`). This file used to start the voice session BEFORE the server had the switch on, so the
+// server refused it and the phone sat «off» over a running agent (2026-10-25 22:40:17).
 
 // THE WAKE WORD, same switch as the desktop orb's 🤖 (Orb.js): ON = `smart` (say the name once, keep talking),
 // OFF = `always`. Written through the same /api/settings seam; the SSE `orb:attention` event keeps both shells in step.
@@ -156,9 +138,9 @@ export function DockBar() {
     // in the middle of the dock, with no error anywhere. Measured 0 painted pixels of 9216 (2026-08-18).
     h("div", { class: "zm-centre" },
       h("button", {
-        class: () => "zm-ic zm-pwr pwr-off off" + (store.agentState() === "off" ? "" : " zm-hide"),
+        class: () => "zm-ic zm-pwr pwr-off off" + (store.screenState() === "off" ? "" : " zm-hide"),
         "aria-label": () => t("orb.power_off"),
-        onClick: togglePower,
+        onClick: () => power.centreTap("dock"),
       }, raw(PWR)),
       h("button", {
         // The orb itself. `aria-label` says what a tap DOES, not what the orb is — the state is already
@@ -166,11 +148,12 @@ export function DockBar() {
         // `zm-blocked` is V2-573: the browser is refusing to play audio, so the operator hears nothing while
         // everything else looks healthy. It rides the ORB because that is where someone who cannot hear the
         // agent looks, and tapping it (a gesture) is exactly what the unlock needs.
-        class: () => "zm-orb-btn pwr-" + store.agentState()
-          + (store.agentState() === "off" ? " zm-hide" : "")
+        class: () => "zm-orb-btn pwr-" + store.agentState() + " st-" + store.screenState()
+          + (store.screenState() === "off" ? " zm-hide" : "")
           + (store.audioBlocked() ? " zm-blocked" : ""),
-        "aria-label": () => t("mobile.orb_stop"),
-        onClick: togglePower,
+        // What a tap DOES on this screen: bring the voice here, or stop the agent (V2-792 §9).
+        "aria-label": () => (store.screenState() === "secondary" ? t("orb.centre_secondary") : t("mobile.orb_stop")),
+        onClick: () => power.centreTap("dock"),
       }, ORB),
     ),
 
@@ -197,7 +180,9 @@ export function DockBar() {
 
       // THE SPEAKER, back in the dock (operator, 2026-10-24). Opening it by hand brings the voice here, like the mic.
       h("button", {
-        class: () => cls(!store.botMuted()),
+        // Lilac only while the agent's voice really comes out of THIS screen (V2-792 §9): with the agent stopped or
+        // the voice on another screen nothing is said here, whatever the toggle underneath says.
+        class: () => cls(store.agentLive() && !store.botMuted()),
         "aria-label": () => (store.botMuted() ? t("orb.speaker_muted") : t("orb.speaker_unmuted")),
         onClick: () => {
           if (store.botMuted() && session.openSpeakerHere) session.openSpeakerHere("dock");

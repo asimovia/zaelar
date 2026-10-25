@@ -41,7 +41,7 @@ mount(h("div", { class: "zm-bg" }), wrap);                 // the canvas backdro
 const stage = mount(h("div", { id: "zm-stage" }), wrap);
 
 // ---- A PHONE DOES NOT INHERIT SILENCE (V2-573) -------------------------------------------------------------
-// `hb_bot_muted` is written by BOTH the speaker toggle and `togglePower()` — stopping the agent from the dock
+// `hb_bot_muted` is written by BOTH the speaker toggle and `power.setPower()` — stopping the agent from the dock
 // persists "1". So: stop the agent on the phone, start it again later from the computer, open the app, and the
 // phone comes up with the agent LIVE and its own output muted, hydrated from a decision made in another session
 // about a different situation. Everything looks healthy and nothing can be heard. That is the operator's
@@ -161,6 +161,7 @@ if (session.claimOnNextStart && !store.powerOff()) {
 }
 function ensureVoice() {
   if (store.powerOff()) return;
+  if (store.powerOnPending()) return;               // V2-792 §9: the ⏻ is switching the server on; it starts the voice itself
   if (store.langOnboardOpen()) return;              // V2-765: nothing listens while the language picker is up
   if (!store.started() && !store.starting()) session.start().catch(() => {});
 }

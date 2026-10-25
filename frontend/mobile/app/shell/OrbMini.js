@@ -39,7 +39,9 @@ const MIC_IN_ORB = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" s
 
 export function OrbMini() {
   return h("div", {
-    class: () => "zm-orb " + store.agentState() + (store.botSpeaking() ? " talking" : ""),
+    // `talking` only where the voice comes out (V2-792 §9): a screen whose voice is elsewhere receives the same
+    // «speaking» events, and the agent is not talking THERE.
+    class: () => "zm-orb " + store.agentState() + (store.screenState() === "speaking" ? " talking" : ""),
     // The label is the honest STATE (the wrapping button's own label says what a tap does): a screen reader on a
     // phone is often the only way to know whether anyone is on the other end.
     "aria-label": () => "zaelar: " + store.agentState(),
@@ -47,7 +49,9 @@ export function OrbMini() {
     // Both canvases are 1:1 with their CSS box; visualizer.js handles DPR itself.
     h("canvas", { id: "orb", class: "zm-orb-c", width: "96", height: "96" }),
     h("canvas", { id: "viz", class: "zm-viz-c", width: "96", height: "96" }),
-    h("div", { class: () => "zm-orb-mic" + (store.micMuted() ? " muted" : "") }, raw(MIC_IN_ORB)),
+    // Slashed when the mic is closed — and ALWAYS on a screen whose voice is elsewhere: that is its whole face.
+    h("div", { class: () => "zm-orb-mic" + (store.micMuted() || store.screenState() === "secondary" ? " muted" : "") },
+      raw(MIC_IN_ORB)),
     // The transient "🗣 <voice>" flash after cycling the voice from the menu — the only feedback that it took.
     h("div", { class: () => "zm-vflash" + (store.voiceFlash().show ? " show" : "") }, () => store.voiceFlash().text),
   );

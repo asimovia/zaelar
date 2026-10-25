@@ -8,7 +8,7 @@
 import * as store from "../core/store.js?v=2";
 import { micRMS, micAnalyser, botAnalyser, level } from "./audio.js?v=2";
 import { t as tr } from "../core/i18n.js?v=1";
-import { isListening } from "./listening.js?v=1";
+import { orbWarm } from "./orb-colour.js?v=1";
 
 let raf = null, orbPhase = 0, vizPhase = 0;
 // Was the orb already painted in its resting form after freezing? (avoids repainting it 60 times per second while
@@ -39,25 +39,15 @@ function bgRgb() {
   return _bgRgb;
 }
 
-// THE ORB'S COLOR IS THE LISTENING SIGNAL (operator 2026-09-09): a separate green ring «me estropea el diseño
-// del ojo» — the orb itself now wears a vivid warm color while zaelar is listening TO YOU (always mode running,
-// or wake-word mode inside the attention window) and a pale gray while it is not. Smoothed per frame so the
-// change reads as the orb waking, not a hard flip; works identically in eye and bottom-bar mode (same canvas).
-// V2-648: WHAT counts as listening is no longer decided here — it is `services/listening.js`, so a test can
-// drive the rule instead of a copy of it, and so the MICROPHONE finally counts (a muted mic used to leave the
-// orb glowing «te escucho» over a closed input).
+// THE ORB'S COLOUR (V2-792 §9, operator 2026-10-25): grey, and ORANGE only while the agent is talking on the screen
+// that holds the voice — `services/orb-colour.js` is the rule, `store.screenState()` the state. It replaced «orange =
+// listening to you» (V2-648, 2026-09-10). Smoothed per frame so the change reads as the orb waking, not a hard
+// flip; identical in eye and bottom-bar mode (same canvas). On an unreadable store the answer is grey.
 const _ORB_LIVE = [["#FFC46B", "#FF9D3B", 0, 1], ["#FF9D3B", "#F0761F", 2.1, .85], ["#FFD9A0", "#FFB35C", 4.2, .7]];
 const _ORB_IDLE = [["#9AA3AE", "#7C838C", 0, 1], ["#868D96", "#6A7078", 2.1, .85], ["#B0B7BF", "#949BA3", 4.2, .7]];
 let _lisT = 0;
-// `agentLive()` instead of the old powerOff+started pair: it is the ONE predicate every icon already answers
-// to, so the orb cannot disagree with the lid about whether anybody is on the other side. On an unreadable
-// store the answer is NO: the whole point of this signal is that it never claims to be listening when it
-// cannot prove it — a false grey is a nuisance, a false orange is the bug the operator reported.
 function _listeningNow() {
-  try {
-    return isListening({ live: store.agentLive(), micMuted: store.micMuted(),
-                         mode: store.attentionMode(), attentionHit: store.attentionHit() });
-  } catch (_) { return false; }
+  try { return orbWarm(store.screenState()); } catch (_) { return false; }
 }
 function _mixHex(a, b, t) {
   const [ar, ag, ab] = hexRgb(a), [br2, bg3, bb2] = hexRgb(b);

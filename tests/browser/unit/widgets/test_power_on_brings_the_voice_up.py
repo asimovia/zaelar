@@ -29,6 +29,8 @@ from pathlib import Path
 ENGINE = Path(__file__).resolve().parents[4]
 APP = ENGINE / "frontend" / "app"
 ORB = APP / "components" / "Orb.js"
+# V2-792 §9: the ⏻ body moved to the ONE power door both shells use; the guards follow it there.
+POWER = APP / "services" / "power.js"
 MAIN = APP / "main.js"
 SESSION = APP / "services" / "session-lk.js"
 
@@ -41,12 +43,12 @@ def _code(p: Path) -> str:
 
 def _power_on_branch() -> str:
     """The `else` arm of the ⏻ click — the one that turns the agent ON."""
-    code = _code(ORB)
+    code = _code(POWER)
     # V2-654 moved the mic write behind the single door (`services/mic.js`) — this anchor follows it there.
     # It is still the first line of the ON arm, which is all this guard needs from it.
     i = code.find('mic.setMuted(false, "power-on")')
     assert i > 0, "the ⏻ ON branch moved: this guard would be watching nothing"
-    j = code.find('api.uiEvent("orb:power"', i)
+    j = code.find('api.uiEvent(where', i)
     assert j > i, "the end of the ⏻ handler moved: this guard would be watching nothing"
     return code[i:j]
 

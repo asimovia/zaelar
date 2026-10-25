@@ -79,8 +79,11 @@ check("the blocked ring is actually drawn", /\.zm-orb-btn\.zm-blocked\s*\{/.test
 check("the mobile shell unlocks audio on a pointerdown",
   /addEventListener\("pointerdown"[\s\S]{0,160}unlockAudio\s*\(/.test(MAIN),
   "the first touch is the only user gesture the shell is guaranteed to get; it must carry the unlock");
+// V2-792 §9: the dock's ⏻ goes through the shared power door (services/power.js), so the unlock is asserted THERE
+// and the dock is asserted to use that door.
+const POWER = strip(read("frontend", "app", "services", "power.js"));
 check("starting the agent from the dock also unlocks",
-  /unlockAudio/.test(DOCK),
+  /power\.centreTap\(/.test(DOCK) && /session\.unlockAudio\s*\(/.test(POWER),
   "tapping ⏻ to start IS a user gesture — the best one available — and it must not be wasted");
 // The non-LiveKit engine is served at the same URL by server/livekit_api.py, so a namespace missing this export
 // would throw inside a pointerdown handler on any deployment that ever falls back to it.
