@@ -448,6 +448,50 @@ function populateMicModePicker() {
 // already left them as it should; and by the time we get here there may be ANOTHER `start()` under way — the
 // `stop(); setTimeout(start, 350)` pattern of a mic swap or a reconnect — whose flags we would trample. Fixing one
 // race cannot consist of opening the next.
+// ── THE WARM MICROPHONE (2026-10-26) ────────────────────────────────────────────────────────────────────────
+// Every `start()` used to call getUserMedia and every `stop()` killed the track — and `room.disconnect()` killed it
+// too (LiveKit stops local tracks by default). A phone runs that pair all the time: the automatic reconnect after the
+// screen locks (`stop(); setTimeout(start, 500)`), the voice taken back from another screen, ⏻ off and on. On an iPhone
+// home-screen app each fresh getUserMedia may show the permission sheet again — the operator: «cada vez que entro en el
+// agente me pide el permiso del micrófono… se lo quisiera dar una vez y ya».
+// So a stopped session PARKS its stream for `_WARM_MS` instead of closing it, and the next start() with the same
+// constraints takes it back: same device, no new request, no sheet. Nothing reuses it after that window: the browser's
+// recording indicator never outlives a stopped agent by more than a few seconds, and leaving the page releases it now.
+const _WARM_MS = 4000;
+let _warm = null, _warmKey = "", _warmT = null, streamKey = "";
+function _releaseWarm() {
+  clearTimeout(_warmT); _warmT = null;
+  if (_warm) { try { _warm.getTracks().forEach((tr) => tr.stop()); } catch (_) {} _warm = null; }
+}
+function _parkMic(s, key) {
+  _releaseWarm();
+  if (!s || !s.getAudioTracks().some((tr) => tr.readyState === "live")) return;
+  _warm = s; _warmKey = key; _warmT = setTimeout(_releaseWarm, _WARM_MS);
+}
+function _takeWarm(key) {
+  const s = _warm;
+  if (s && _warmKey === key && s.getAudioTracks().some((tr) => tr.readyState === "live")) {
+    clearTimeout(_warmT); _warmT = null; _warm = null;
+    return s;
+  }
+  _releaseWarm();
+  return null;
+}
+try { window.addEventListener("pagehide", _releaseWarm); } catch (_) {}
+
+// Measurement, not behaviour: right before a REAL request, record whether the browser is about to show its permission
+// sheet (`prompt`) or already holds the grant (`granted`). On a phone that is the only way to count the sheets the
+// operator sees, and to tell which path asked (a reload, a reconnect, ⏻) without guessing.
+function _logMicPermission() {
+  try {
+    if (!navigator.permissions || !navigator.permissions.query) return;
+    navigator.permissions.query({ name: "microphone" }).then((st) => {
+      api.clientLog("🎙️ mic request", { text: `permission before getUserMedia: ${st.state}`, state: st.state,
+        standalone: !!(window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true });
+    }).catch(() => {});
+  } catch (_) {}
+}
+
 function _abortedStartup(gen, captured) {
   try { if (captured) captured.getTracks().forEach(tr => tr.stop()); } catch (_) {}
   // Visible, not silent: if this shows up often, something is stopping the session behind the operator's back.
@@ -530,12 +574,16 @@ export async function start() {
     const mode = micMode();
     const ad = { ..._MIC_MODES[mode], channelCount: 1 };
     if (micDeviceId) ad.deviceId = { ideal: micDeviceId };
-    const captured = await navigator.mediaDevices.getUserMedia({ audio: ad });
+    const key = JSON.stringify(ad);
+    const warm = _takeWarm(key);
+    if (!warm) _logMicPermission();
+    const captured = warm || await navigator.mediaDevices.getUserMedia({ audio: ad });
+    if (warm) { try { api.clientLog("🎙️ mic reused", { text: "warm stream taken back — no new permission request" }); } catch (_) {} }
     // An open mic is a RESOURCE, not a value: if the session was stopped while the browser asked for permission,
     // it has to be closed here and now. `stop()` already went by — when it ran, `stream` was still null — and
     // nobody else will do it: the operator would be left with the browser's red dot lit over a stopped agent.
     if (gen !== _gen) return _abortedStartup(gen, captured);
-    stream = captured;
+    stream = captured; streamKey = key;
     health.micCaptureResult(null);
     health.watchMicTrack(captured.getAudioTracks()[0]);
     _bootPhase("voz");   // mic granted — the voice link is coming up (frontend-known milestone)
@@ -828,13 +876,14 @@ export async function stop() {
   _stopHeartbeat();   // stop renewing the lock; the server TTL releases it, or `pagehide` does when the tab closes
   _stopSpeakerShadow();   // V2-651 F0: the analyser is about to be closed below — drop the fingerprint loop first
   started = false; starting = false; store.setStarted(false); store.setStarting(false);
-  try { if (room) await room.disconnect(); } catch (_) {} room = null;
+  // `false`: do NOT let LiveKit stop the local tracks — the mic is parked warm below, not killed (see _WARM_MS).
+  try { if (room) await room.disconnect(false); } catch (_) {} room = null;
 // NOTE: the /events stream is NOT closed here. Since 2026-08-09 `main.js` opens it at startup and its lifetime is the
 // APPLICATION's, not the voice session's: widget events arrive through it (a worker pushing
 // results one by one), and must keep rendering with voice stopped. Closing it here left the screen
   // congelada en dos casos reales y silenciosos — el operador que para la voz, y el navegador que DENIEGA el
 // mic (start() fails → passes through here → goodbye to the stream that main.js had just opened).
-  if (stream) { try { stream.getTracks().forEach(t => t.stop()); } catch (_) {} stream = null; }
+  if (stream) { _parkMic(stream, streamKey); stream = null; }
   // SOLTAR EL AUDIO DE VERDAD (2026-08-10): antes solo se dejaba caer el analizador del BOT (`dropBot`) y el del
 // MIC survived `stop()` with its AudioContext open — hence the visualizer had to be gated by
 // `agentLive()` to avoid continuing to publish the level of a stopped mic. Now the entire graph is closed, so
