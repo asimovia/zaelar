@@ -491,6 +491,11 @@ def note_tool_blindness(text: str, tool: str = "", provider: str = "") -> str:
               + (f" (reset {when.group(1)})" if when else "")
               + " — el worker sigue razonando pero NO puede buscar ni leer páginas")
     logger.warning(f"brain worker CIEGO: {detail}")
+    try:                     # V2-798: the next worker's step 0 learns it too, until the provider's own reset time
+        from nucleo import source_outcomes as _so
+        _so.note(f"search:{name}", _so.QUOTA, kind="search", detail=tool, until=_reset_epoch(text))
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"source outcome for {name} not recorded: {e}")
     try:
         from voice import health_state
         health_state.record("worker_tools", "credit", detail)

@@ -3639,6 +3639,12 @@ DOMAINS: list[dict] = [
         {"id": "2.803", "title": "⚙ Settings is ONE left menu (Settings with its sections under it, Appearance, Connectors, Widgets) "
                                  "and every area reads from the left edge; on a phone the menu is the first page (operator 2026-10-25)",
             "ch": UNIT, "paths": ["tests/browser/unit/widgets/test_settings_is_one_left_menu.py"]},
+        # V2-798 — a worker meets a 403, an unextractable page, a provider's 429 or an agent that times out, and the
+        # NEXT worker knew none of it. Now each source's outcome is a dated record that expires on its own clock.
+        {"id": "2.804", "title": "What a source did to one errand reaches the next worker: walls, empty extracts, a provider's quota and agent timeouts/answers are a dated per-source record that expires (a repeat lives longer, a later success wins), shown as ONE line in step 0 and nothing when nothing is known (V2-798)",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/test_a_source_outcome_outlives_the_errand.py"]},
+        {"id": "2.805", "title": "A network agent's timeout is the agent's own (declared latency with headroom, never below a 60 s floor, capped), one `serve` has ONE budget, only operational agents are asked, and zero rows with the agent's hint is an answer (V2-798)",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/test_a_mesh_agent_gets_its_own_time.py"]},
         {"id": "2.802", "title": "A deployment that stops idle engines is told the next due notice after every schedule change, debounced; self-host reports nothing (V2-796)",
             "ch": UNIT,
             "paths": ["tests/agent_headless/unit/test_a_sleeping_engine_is_told_when_to_wake.py"]},

@@ -72,3 +72,33 @@ an **empty** coverage, and `find` keeps «answered with nobody» and «did not a
 so only the first is ever cached.
 
 A warm lookup answers from one indexed SELECT — no network and no model.
+
+## Its sibling keyed by SOURCE: the outcomes record (V2-798)
+
+The workflow table is keyed by the **kind of errand** («restaurants»). Some facts belong to a **source** instead —
+a site host, a network agent id, a search provider — and hold for every errand that touches it: *this site
+answered 403*, *this page's text could not be extracted*, *this provider is out of quota until Thursday*, *this
+agent did not answer within its timeout*, *this agent answered with no rows and said how to ask again*, and the
+positive one, *this source gave usable rows*. Those live in `nucleo/source_outcomes.py` (one memory KV entry,
+`sources:outcomes`, bounded to 150 sources).
+
+| door that observes it | outcome |
+|---|---|
+| `nucleo/nav_cli.py` — a response annotated with `wall` | `wall` (by host, `www.` stripped) |
+| `nucleo/nav_cli.py` — `extract` on a page | `served` (≥1 named row) or `extract_empty` |
+| `nucleo/mesh_agents.ask` | `served`, `empty` (with the agent's hint) or `timeout` (by agent id) |
+| `nucleo/workers/providers.note_tool_blindness` | `quota` for `search:<provider>`, until the provider's own reset time |
+
+Rules that keep it a **resource and not a fence** (brain-worker doctrine §5):
+
+- **Newest fact wins, and everything expires.** `served` lives 14 days; `wall` 3 days, `extract_empty` 2,
+  `timeout`/`empty` 1, `quota` until the reset the provider stated (12 h if it stated none). A repeated failure
+  lives ×n (capped at ×3) — one 403 can be a bad minute, three are a policy. A later success resets the repeats.
+- **The same sighting is counted once.** A wall stays on screen across several actions on one page; reports within
+  two minutes refresh the date without inflating the count.
+- **It orders, it never drops.** `mesh_agents.serve` asks an agent whose newest fact is a hard failure (`wall`,
+  `quota`, `timeout`) AFTER the others — it is still asked when it is the only one. `empty` and `extract_empty`
+  depend on the query and demote nothing.
+- **It is read, not obeyed.** The worker's step 0 (both worker prompts, via `_mesh_first_block`) gets ONE line —
+  at most six sources, newest first, each with its date — and **nothing at all** when nothing current is known. The
+  full record is `python -m nucleo.source_outcomes` (`--all` includes expired facts), JSON like its sibling bridges.

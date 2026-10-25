@@ -746,7 +746,7 @@ async def navegador_act(task_id: str = Body(..., embed=True), action: str = Body
             _emit_nav(task_id, "🧭 resultados", f"{len(_named)} anuncios/resultados en la página{_extra}")
             _say_phase(task_id, _progress.found(len(_named)))   # V2-227 B1: «12 resultados», el hito que pidió
             _hand_over(task_id, items)      # V2-223: a la hoja y a la conversación, no solo al worker
-            return {"ok": True, "listings": items, "n": len(items), **_door.take(_sheet_of(task_id))}
+            return {"ok": True, "listings": items, "n": len(items), **_door.take(_sheet_of(task_id)), "url": str(getattr(tb.page, "url", "") or "")}  # V2-798: the SOURCE
         if action in ("navigate", "click", "type", "select_option", "scroll", "press", "click_at", "type_at"):
             # La dirección de ANTES, para poder contar qué cambió (V2-293). Se lee del registro de la pestaña
             # porque es lo único que sobrevive entre invocaciones del puente: `nav_cli` es un proceso por acción.

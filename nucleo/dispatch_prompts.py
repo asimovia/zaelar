@@ -9,6 +9,7 @@ keep working unchanged.
 from __future__ import annotations
 
 from nucleo import research
+from nucleo.source_outcomes import worker_line as _sources_line   # V2-798: what each source did lately
 
 
 def _recent_conversation_block(limit: int = 8) -> str:
@@ -170,7 +171,7 @@ def _mesh_first_block(py: str = "python", *, browser: bool, goal: str = "") -> s
         "   · Si `ok:true` y los datos SIRVEN, esa es tu respuesta: entrega eso y no sigas buscando. "
         + cola +
         "para lo que la red no cubra, el navegador sigue siendo el camino.\n"
-        + _known_route_line(goal)
+        + _known_route_line(goal) + _sources_line(py)
         + "\n"
     )
 

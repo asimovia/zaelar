@@ -56,7 +56,18 @@ from loguru import logger
 
 ORACLE_URL = "https://meshkore-oracle.rjj.workers.dev"
 USER_AGENT = "zaelar-mesh-client/1.0"
-_TIMEOUT_S = 12.0
+_TIMEOUT_S = 12.0              # the ORACLE hop (discovery): one indexed search, measured ~1 s
+# V2-798 · an AGENT's skill call is not a discovery hop and must not share its timeout. Measured across sessions
+# 2026-09-25 → 2026-10-26: «The read operation timed out» against five different agents (hotels, flights,
+# tradespeople, wellness, restaurants) — and the restaurant agent, measured from outside, answers in 14.2 s, i.e.
+# the 12 s guess sat right at its real latency and turned every answer into «the agents did not answer». So the
+# timeout is a property of the agent: what it declares, never below a generous floor, never above a cap; and
+# `serve` has ONE budget that bounds the whole call, so a second candidate gets what is left, not another full wait.
+_SERVE_FLOOR_S = 60.0          # latency must never be the reason an errand falls back to the browser
+_SERVE_CAP_S = 90.0            # …and a dead agent must not eat the worker's step
+_SERVE_BUDGET_S = 100.0        # the agent calls of one `serve`; with the Oracle hop it stays under a shell tool's usual 120 s
+_SECOND_TRY_MIN_S = 20.0       # below this, a second candidate is not worth starting
+_LATENCY_HEADROOM = 2.0        # a declared typical latency is a median, not a ceiling
 _CARD_TIMEOUT_S = 5.0          # an optimisation must never dominate the budget of what it optimises
 _DEFAULT_SKILL_PATH = "/v1/search"
 _ROUTE_TTL_S = 7 * 24 * 3600   # a learned route is a shortcut, not a truth: it expires
@@ -81,7 +92,10 @@ def _post(url: str, body: dict, timeout: float = _TIMEOUT_S,
             return e.code, None
     except Exception as e:                                   # noqa: BLE001
         logger.debug(f"mesh: POST {url} falló: {e}")
-        return 0, None
+        # V2-798 · a timeout is a fact about the AGENT (slow), not about the network (down), and the caller
+        # records it per agent — so it travels out instead of collapsing into the same `0, None` as a refusal.
+        timed_out = isinstance(e, TimeoutError) or "timed out" in str(e).lower()
+        return 0, ({"transport": "timeout"} if timed_out else None)
 
 
 def _get(url: str, timeout: float = _CARD_TIMEOUT_S) -> dict | None:
@@ -140,10 +154,40 @@ def _is_free(agent: dict, card: dict | None = None) -> bool:
     return False
 
 
-def _is_live(agent: dict) -> bool:
-    if agent.get("online") is False:
+def _is_live(agent: dict, card: dict | None = None) -> bool:
+    """Deployed AND answering, by what the Oracle row (or the agent's own card) explicitly states.
+
+    V2-798 · `online` is only a heartbeat; the Oracle also probes the skills themselves and publishes the result as
+    `operational` (standard §27: «check `operational` before you commit to a target»). Only an explicit statement
+    is acted on — a missing key is an older Oracle or card that never made one, and treating silence as «down»
+    would empty the mesh the day a field is renamed."""
+    if agent.get("online") is False or agent.get("operational") is False:
+        return False
+    if ((card or {}).get("availability") or {}).get("now") is False:
         return False
     return str(agent.get("status") or "available").lower() in ("available", "online", "active", "")
+
+
+def _declared_latency_s(*sources: dict | None) -> float:
+    """A typical latency the agent (or the Oracle about it) DECLARES, in seconds; 0.0 when none is declared."""
+    for src in sources:
+        for node in (src or {}, (src or {}).get("operational") if isinstance((src or {}).get("operational"), dict)
+                     else {}):
+            for key, scale in (("latency_p95_ms", 1e-3), ("p95_ms", 1e-3), ("latency_ms", 1e-3),
+                               ("expected_latency_s", 1.0), ("latency_s", 1.0), ("timeout_s", 1.0)):
+                try:
+                    v = float(node.get(key) or 0) * scale
+                except (TypeError, ValueError, AttributeError):
+                    v = 0.0
+                if v > 0:
+                    return v
+    return 0.0
+
+
+def agent_timeout(agent: dict) -> float:
+    """How long to wait for THIS agent's skill call: its declared latency with headroom, inside [floor, cap]."""
+    declared = _declared_latency_s(agent, _cards.get(_endpoint_of(agent)))
+    return min(_SERVE_CAP_S, max(_SERVE_FLOOR_S, declared * _LATENCY_HEADROOM))
 
 
 def _endpoint_of(agent: dict) -> str:
@@ -229,14 +273,17 @@ def find(query: str, *, limit: int = 5, free_only: bool = True) -> dict:
         # and only one of them is worth remembering. Caching a network outage would turn one bad minute into
         # three bad days.
         return {"intent": "", "agents": [], "reached": False}
-    agents = [a for a in (data.get("agents") or []) if isinstance(a, dict) and _is_live(a) and _endpoint_of(a)]
+    rows = [a for a in (data.get("agents") or []) if isinstance(a, dict)]
+    not_live = [str(a.get("agent_id") or "") for a in rows if not _is_live(a)]
+    agents = [a for a in rows if _is_live(a) and _endpoint_of(a)]
     # An explicit `false` is a statement; a missing key is an older Oracle that never made one. Only the
     # statement is acted on — treating silence as a mismatch would empty the mesh the day it is rolled back.
     agents = [a for a in agents if a.get("domain_match") is not False]
     if free_only:
         agents = [a for a in agents if _is_free(a) or _is_free(a, _card_of(_endpoint_of(a)))]
     return {"intent": str(data.get("intent") or ""), "query_id": data.get("query_id"),
-            "coverage": str(data.get("coverage") or ""), "agents": agents, "reached": True}
+            "coverage": str(data.get("coverage") or ""), "agents": agents, "reached": True,
+            "not_live": [x for x in not_live if x]}
 
 
 _cards: dict[str, dict | None] = {}
@@ -345,7 +392,7 @@ def _names_missing_fields(asks: dict) -> bool:
     return any(isinstance(asks.get(k), str) and _MISSING_WORDING.search(asks[k]) for k in _DIAG_KEYS)
 
 
-def ask(agent: dict, prompt: str, fields: dict | None = None) -> dict:
+def ask(agent: dict, prompt: str, fields: dict | None = None, timeout: float | None = None) -> dict:
     """Put the errand to one agent. Returns `{ok, data|error|payment_required}` — never raises, never pays.
 
     `prompt` must carry ABSOLUTE dates and the concrete details: an agent's own resolution of «esta noche» is
@@ -366,7 +413,13 @@ def ask(agent: dict, prompt: str, fields: dict | None = None) -> dict:
     # Bearer only when the store holds one for THIS agent — passed as keyword and only then, so callers (and
     # test doubles) that know nothing about auth keep their `(url, body)` shape working unchanged.
     bearer = _bearer_for(agent, endpoint)
-    status, data = _post(url, body, bearer=bearer) if bearer else _post(url, body)
+    wait = float(timeout) if timeout else agent_timeout(agent)
+    status, data = (_post(url, body, timeout=wait, bearer=bearer) if bearer else _post(url, body, timeout=wait))
+    _note_answer(agent, status, data)
+    if status == 0 and isinstance(data, dict) and data.get("transport") == "timeout":
+        return {"ok": False, "status": 0, "timed_out": True, "waited_s": round(wait),
+                "error": f"{agent.get('agent_id') or url} no contestó en {round(wait)} s",
+                "agent": agent.get("agent_id")}
     if status == 402:
         # A charge is a decision for the operator, and this build only uses free agents anyway. Reported as a
         # fact so the caller can say so, never held and never paid.
@@ -377,6 +430,33 @@ def ask(agent: dict, prompt: str, fields: dict | None = None) -> dict:
                 "error": f"{agent.get('agent_id') or url} respondió {status or 'nada'}",
                 "agent": agent.get("agent_id")}
     return {"ok": True, "agent": agent.get("agent_id"), "endpoint": url, "data": data}
+
+
+def _note_answer(agent: dict, status: int, data) -> None:
+    """V2-798 · what this agent did, into the per-source record the next worker reads. Fail-soft by construction."""
+    aid = str(agent.get("agent_id") or "")
+    if not aid:
+        return
+    try:
+        from nucleo import source_outcomes as so
+        if status == 0 and isinstance(data, dict) and data.get("transport") == "timeout":
+            so.note(aid, so.TIMEOUT, kind="agent")
+        elif status == 200:
+            so.note(aid, so.EMPTY if _is_empty_payload(data) else so.SERVED, kind="agent",
+                    detail=str(_agent_hint(data))[:120])
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"mesh: outcome of {aid} not recorded: {e}")
+
+
+def _agent_hint(data) -> str:
+    """The agent's own advice on an answer that carried no rows («widen the radius…») — passed through verbatim."""
+    if not isinstance(data, dict):
+        return ""
+    for k in ("hint", "message", "detail", "suggestion"):
+        v = data.get(k)
+        if isinstance(v, str) and v.strip():
+            return v.strip()[:_DIAG_MAX]
+    return ""
 
 
 # ── the genetic part: the learned route ───────────────────────────────────────────────────────────────────
@@ -510,7 +590,9 @@ def serve(errand: str, prompt: str = "", fields: dict | None = None) -> dict:
     intent, agents = found.get("intent") or "", found.get("agents") or []
     coverage = found.get("coverage") or ""
     cached = route_for(intent) if intent else None
-    if cached:
+    # V2-798 · a learned route is skipped when the Oracle, asked just now, says that agent is not operational:
+    # the cache remembers who served last week, the Oracle knows who is deployed today.
+    if cached and str(cached.get("agent_id") or "") not in (found.get("not_live") or []):
         agents = [cached] + [a for a in agents if a.get("agent_id") != cached.get("agent_id")]
     if not agents:
         # V2-581: «nadie cubre todavía este vertical» and «nadie contestó» are different facts, and the
@@ -534,11 +616,34 @@ def serve(errand: str, prompt: str = "", fields: dict | None = None) -> dict:
             except Exception:
                 pass
         return {"ok": False, "reason": reason, "intent": intent, "coverage": coverage}
+    return _ask_in_turn(_failing_last(agents), errand, prompt, fields, intent, wplan)
+
+
+def _failing_last(agents: list[dict]) -> list[dict]:
+    """V2-798 · candidates whose newest recorded outcome is a failure go AFTER the rest — reordered, never dropped:
+    an agent that timed out yesterday is still asked when it is the only one, and its record expires on its own."""
+    try:
+        from nucleo import source_outcomes as so
+        return sorted(agents, key=lambda a: so.is_failing(str(a.get("agent_id") or "")))   # stable sort
+    except Exception:  # noqa: BLE001
+        return agents
+
+
+def _ask_in_turn(agents: list[dict], errand: str, prompt: str, fields: dict | None, intent: str, wplan) -> dict:
+    """Ask up to two candidates inside ONE time budget (V2-798): the first gets its own timeout, the second only
+    what is left of the budget — a slow first agent can no longer double the wait blindly."""
     dijo: dict = {}
     quien = ""
     vacio: tuple[dict, dict] | None = None      # an `ok` with no rows, held in case nobody does better
+    lentos: list[str] = []
+    started = time.monotonic()
     for agent in agents[:2]:            # one retry with the next candidate; beyond that the browser is faster
-        res = ask(agent, prompt, fields)
+        left = _SERVE_BUDGET_S - (time.monotonic() - started)
+        if agent is not agents[0] and left < _SECOND_TRY_MIN_S:
+            break
+        res = ask(agent, prompt, fields, timeout=min(agent_timeout(agent), left))
+        if res.get("timed_out"):
+            lentos.append(f"«{agent.get('agent_id')}» no contestó en {res.get('waited_s')} s")
         # An `ok` carrying NOTHING is not a served errand. Measured 2026-09-06: asked in English for
         # sneakers, `ebay-finder` answered 200 with `count: 0` (its eBay lane is a sandbox with no
         # inventory), `serve` accepted it and never reached `ybana`, which had 20 real offers. The empty
@@ -574,9 +679,7 @@ def serve(errand: str, prompt: str = "", fields: dict | None = None) -> dict:
             # depends on which candidate happened to be last is a flag a caller cannot trust.
             out = {"ok": True, "intent": intent, "agent": agent.get("agent_id"),
                    **declared, "data": res.get("data")}
-            if _is_empty_payload(res.get("data")):
-                out["empty"] = True
-            return out
+            return _mark_empty(out)
         if res.get("payment_required"):
             return {"ok": False, "reason": f"«{agent.get('agent_id')}» cobra por esto", "intent": intent}
         if not dijo and res.get("asks"):
@@ -597,6 +700,23 @@ def serve(errand: str, prompt: str = "", fields: dict | None = None) -> dict:
     if vacio:
         agent, res = vacio
         declared = _declares(agent) or _declares(agent, _cards.get(_endpoint_of(agent)))
-        return {"ok": True, "intent": intent, "agent": agent.get("agent_id"), "empty": True,
-                **declared, "data": res.get("data")}
+        return _mark_empty({"ok": True, "intent": intent, "agent": agent.get("agent_id"),
+                            **declared, "data": res.get("data")})
+    if lentos:
+        # A timeout names WHO and HOW LONG: «nobody answered» read as «the mesh is down» to the worker.
+        return {"ok": False, "reason": "; ".join(lentos), "intent": intent, "timed_out": True}
     return {"ok": False, "reason": "los agentes de la red no contestaron", "intent": intent}
+
+
+def _mark_empty(out: dict) -> dict:
+    """An answer with no rows is still an ANSWER (V2-798): `empty` is set, and the agent's own hint, when it sends
+    one («widen radius_m…»), is lifted next to it so the caller can ask again its way instead of reading a failure."""
+    if not _is_empty_payload(out.get("data")):
+        return out
+    out["empty"] = True
+    hint = _agent_hint(out.get("data"))
+    if hint:
+        out["agent_hint"] = hint
+        out["reason"] = ("el agente contestó sin resultados y dice cómo volver a pedírselo (ver `agent_hint`); "
+                         "eso es una respuesta, no un fallo")
+    return out

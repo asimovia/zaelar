@@ -158,7 +158,7 @@ def test_a_successful_errand_teaches_the_route(monkeypatch, tmp_path):
                                   intent: {"at": 9e9, "agent": {"agent_id": agent["agent_id"],
                                                                 "endpoint": agent["endpoint"]}}}))
     monkeypatch.setattr(m, "find", lambda q, **k: {"intent": "bookings.hotels", "agents": [FREE]})
-    monkeypatch.setattr(m, "ask", lambda agent, prompt, fields=None: {"ok": True, "data": {"count": 10}})
+    monkeypatch.setattr(m, "ask", lambda agent, prompt, fields=None, timeout=None: {"ok": True, "data": {"count": 10}})
     assert m.serve("hotel in Madrid")["ok"] is True
     assert m.route_for("bookings.hotels")["agent_id"] == "roomrover"
 
@@ -169,7 +169,7 @@ def test_a_learned_route_is_tried_first(monkeypatch):
     monkeypatch.setattr(m, "_routes", lambda: {"bookings.hotels": {"at": _t.time(), "agent": cached}})
     monkeypatch.setattr(m, "find", lambda q, **k: {"intent": "bookings.hotels", "agents": [PAID]})
     order = []
-    monkeypatch.setattr(m, "ask", lambda agent, prompt, fields=None: (order.append(agent["agent_id"]),
+    monkeypatch.setattr(m, "ask", lambda agent, prompt, fields=None, timeout=None: (order.append(agent["agent_id"]),
                                                          {"ok": True, "data": {}})[1])
     monkeypatch.setattr(m, "remember_route", lambda *a: None)
     m.serve("hotel in Madrid")
@@ -302,7 +302,7 @@ def test_a_successful_answer_says_what_the_agent_claims_to_serve(monkeypatch):
                "capabilities": ["flights", "airfare"], "description": "Flight search across 300+ airlines.",
                "pricing": {"amount": 0, "currency": "free"}}
     monkeypatch.setattr(m, "find", lambda q, **k: {"intent": "compute", "agents": [flights]})
-    monkeypatch.setattr(m, "ask", lambda agent, prompt, fields=None: {"ok": True, "data": {"count": 10}})
+    monkeypatch.setattr(m, "ask", lambda agent, prompt, fields=None, timeout=None: {"ok": True, "data": {"count": 10}})
     # `_routes` reads the REAL learned-route store: without this the live route this bug already taught the
     # operator's engine («compute» → aerocast) walks in and answers the test instead of the fixture.
     monkeypatch.setattr(m, "_routes", lambda: {})
@@ -318,7 +318,7 @@ def test_the_claim_is_trimmed_so_it_cannot_eat_the_context(monkeypatch):
            "capabilities": [f"cap{i}" for i in range(40)], "description": "x" * 900,
            "pricing": {"amount": 0, "currency": "free"}}
     monkeypatch.setattr(m, "find", lambda q, **k: {"intent": "general", "agents": [fat]})
-    monkeypatch.setattr(m, "ask", lambda agent, prompt, fields=None: {"ok": True, "data": {}})
+    monkeypatch.setattr(m, "ask", lambda agent, prompt, fields=None, timeout=None: {"ok": True, "data": {}})
     monkeypatch.setattr(m, "_routes", lambda: {})
     res = m.serve("anything")
     assert len(res["serves"]) == m._MAX_CAPS
@@ -331,7 +331,7 @@ def test_an_agent_that_declares_nothing_adds_no_empty_keys(monkeypatch):
     mute = {"agent_id": "mute", "endpoint": "https://mute.example", "online": True,
             "pricing": {"amount": 0, "currency": "free"}}
     monkeypatch.setattr(m, "find", lambda q, **k: {"intent": "general", "agents": [mute]})
-    monkeypatch.setattr(m, "ask", lambda agent, prompt, fields=None: {"ok": True, "data": {}})
+    monkeypatch.setattr(m, "ask", lambda agent, prompt, fields=None, timeout=None: {"ok": True, "data": {}})
     monkeypatch.setattr(m, "_routes", lambda: {})
     res = m.serve("anything")
     assert "serves" not in res and "describes_itself_as" not in res
@@ -347,7 +347,7 @@ def test_the_claim_falls_back_to_the_card_when_the_oracle_row_is_bare(monkeypatc
     bare = {"agent_id": "ticketlumen", "endpoint": "https://tl.example", "online": True,
             "pricing": {"amount": 0, "currency": "free"}}
     monkeypatch.setattr(m, "find", lambda q, **k: {"intent": "general", "agents": [bare]})
-    monkeypatch.setattr(m, "ask", lambda agent, prompt, fields=None: {"ok": True, "data": {}})
+    monkeypatch.setattr(m, "ask", lambda agent, prompt, fields=None, timeout=None: {"ok": True, "data": {}})
     monkeypatch.setattr(m, "_routes", lambda: {})
     m._cards["https://tl.example"] = {"capabilities": ["events"], "description": "Events."}
     res = m.serve("tickets")
@@ -569,7 +569,7 @@ def test_an_ok_with_no_rows_does_not_end_the_search(monkeypatch):
     monkeypatch.setattr(m, "find", lambda q, **k: {"intent": "shopping", "agents": [empty, full]})
     monkeypatch.setattr(m, "_routes", lambda: {})
     monkeypatch.setattr(m, "remember_route", lambda *a: None)
-    monkeypatch.setattr(m, "ask", lambda agent, prompt, fields=None: (
+    monkeypatch.setattr(m, "ask", lambda agent, prompt, fields=None, timeout=None: (
         {"ok": True, "data": {"count": 0, "offers": []}} if agent["agent_id"] == "empty-one"
         else {"ok": True, "data": {"count": 2, "offers": [{"x": 1}, {"x": 2}]}}))
     res = m.serve("buy sneakers")
@@ -586,7 +586,7 @@ def test_an_empty_answer_is_still_returned_when_nobody_does_better(monkeypatch):
     monkeypatch.setattr(m, "find", lambda q, **k: {"intent": "shopping", "agents": [a, b]})
     monkeypatch.setattr(m, "_routes", lambda: {})
     monkeypatch.setattr(m, "remember_route", lambda *a_: None)
-    monkeypatch.setattr(m, "ask", lambda agent, prompt, fields=None: {"ok": True, "data": {"count": 0}})
+    monkeypatch.setattr(m, "ask", lambda agent, prompt, fields=None, timeout=None: {"ok": True, "data": {"count": 0}})
     res = m.serve("buy a unicorn")
     assert res["ok"] is True and res["empty"] is True
     assert res["agent"] in ("e1", "e2")

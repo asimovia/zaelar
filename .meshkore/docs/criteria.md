@@ -240,6 +240,19 @@ below is the first kind, or it names the mechanism that replaced the second.
   restores an errand's tab beside its card. A resumed or relayed errand reopens the sheet of its DURABLE row (`task_uid`),
   never one named after the new boot, with what it had delivered still in it. — since 2026-10-26 · nodes 4.273, 4.109 ·
   `nucleo/errand_card.py`, `nucleo/sheets.py::row_sheet`.
+- **CRIT-E17 · What a source did to one errand is known to the next, with a date, and it expires.** A wall
+  (403/CAPTCHA/login), an extract with no named row, a provider's quota and a network agent's timeout, empty answer
+  or rows are recorded per SOURCE (host, agent id, `search:<provider>`) by the door that observed them; the newest fact
+  wins, a later success resets the repeats, every failure expires on its own clock (a repeat lives up to ×3) and the
+  quota at the provider's stated reset. The worker's step 0 carries ONE dated line (≤6 sources) and nothing when nothing
+  is current; it orders mesh candidates (a hard failure asked last) and never drops one. — since 2026-10-26 · nodes
+  2.804 · `nucleo/source_outcomes.py`, `nucleo/nav_cli.py::_note_source`, `nucleo/mesh_agents.py::_note_answer`.
+- **CRIT-E18 · A network agent gets its own time, inside one budget, and only if it is operational.** The skill call
+  waits the agent's declared latency ×2, never below 60 s nor above 90 s; one `serve` is bounded by one budget and a
+  second candidate gets only what is left; an agent the Oracle or its card states is not online/operational is not
+  asked, a learned route to it included, and silence is not a statement; a timeout names the agent and the seconds; zero
+  rows with the agent's hint is `ok` with `agent_hint`, never a failure. — since 2026-10-26 · nodes 2.805 ·
+  `nucleo/mesh_agents.py::agent_timeout`, `::_ask_in_turn`, `::_is_live`, `::_mark_empty`.
 - **CRIT-E13 · A worker's request is never his click.** On a self-hosted engine every mutation is the operator's
   unless it is a named worker door (`/api/worker/*`, the agent report, the browser bridge, memory with the per-task
   token, search); it is admitted for his screen's per-boot HttpOnly cookie or a process the engine did not spawn,

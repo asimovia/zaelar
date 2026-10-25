@@ -380,8 +380,29 @@ def main(argv: list[str] | None = None) -> int:
         res = _act("extract", {"limit": a.limit})
     else:
         return 2
+    _note_source(a.cmd, res)
     _print_state(res)
     return 0 if res.get("ok") else 1
+
+
+def _note_source(cmd: str, res: dict) -> None:
+    """V2-798 · what this page did goes to the per-source record the NEXT worker reads in its step 0.
+
+    Two facts are observed here and nowhere else on the worker's side: the page is a WALL (403, CAPTCHA, login),
+    and `extract` found no named row on it — or found some, which is the positive fact that makes a site worth
+    starting with. Fail-soft: the worker's answer is printed whatever happens here."""
+    try:
+        from nucleo import source_outcomes as so
+        src = so.source_of_url(str((res or {}).get("url") or ""))
+        if not src or not res.get("ok"):
+            return
+        if res.get("wall"):
+            so.note(src, so.WALL, detail=str(res["wall"]))
+        elif cmd == "extract":
+            named = [x for x in (res.get("listings") or []) if isinstance(x, dict) and x.get("title")]
+            so.note(src, so.SERVED if named else so.EXTRACT_EMPTY, detail=f"{len(named)} rows")
+    except Exception as e:  # noqa: BLE001
+        print(json.dumps({"source_note_failed": str(e)[:200]}), file=sys.stderr)
 
 
 if __name__ == "__main__":

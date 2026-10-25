@@ -53,6 +53,18 @@ endpoint. Both hops read the errand from a field called **`prompt`**.
 > | `{"query": "vuelo de Madrid a Roma"}` | keyword match only |
 > | `{"prompt": "vuelo de Madrid a Roma"}` | `bookings.flights`, with a parse of MAD→FCO |
 
+**Who is asked, and for how long (V2-798).** Only agents the Oracle row does not call down: `online: false`,
+`operational: false` (the Oracle's own probe of the skills, standard §27) or a card whose `availability.now` is
+`false` keep an agent out — a missing field is not a statement and drops nothing. A learned route to an agent the
+Oracle just called down is skipped. The skill call's timeout is the **agent's**: a latency it declares
+(`latency_p95_ms`, `latency_ms`, `expected_latency_s`, … on the row, the card or its `operational` object) ×2,
+never below a 60 s floor, never above 90 s; the Oracle hop keeps its own short timeout. One `serve` has ONE budget
+(100 s, so the command stays under a shell tool's usual two-minute limit): a second candidate gets only what is
+left, and none is started with under 20 s. A timeout is reported naming the agent and the seconds waited, not as
+«nobody answered»; `200` with zero rows is `ok: true, empty: true`, with the agent's own `hint` lifted to
+`agent_hint` so the worker can ask again its way. Each outcome is also recorded per agent for the next errand
+(`zaelar-workflow-table.md` §«outcomes record»).
+
 ### 1.3 Coverage
 
 Coverage is whatever the network publishes: travel (hotels, flights), live events, and every new domain a
