@@ -36,11 +36,13 @@ import { UpdateSurface } from "../../../app/update/UpdateSurface.js?v=1";
 import { EnergyNotice } from "../../../app/components/EnergyNotice.js?v=1";
 import { ElsewhereChips } from "../../../app/components/ElsewhereChips.js?v=1";
 import { ChatSheet } from "./ChatSheet.js?v=1";
-import { DockBar } from "./DockBar.js?v=2";
-import { MenuSheet } from "./MenuSheet.js?v=1";
+import { DockBar } from "./DockBar.js?v=3";
+import { MenuSheet } from "./MenuSheet.js?v=2";
 import { SettingsSheet } from "./SettingsSheet.js?v=2";
 import { VoiceHeldNotice } from "./VoiceHeldNotice.js?v=1";
 import { InstallBanner } from "./InstallBanner.js?v=1";
+import { FeedbackSheet } from "./FeedbackSheet.js?v=1";
+import { EnergyLine } from "./EnergyLine.js?v=1";
 
 export const MOBILE_SURFACES = [
   // ── the bar that owns every control ──
@@ -51,8 +53,11 @@ export const MOBILE_SURFACES = [
   // The desktop's captions are untouched.
   // ── sheets: they slide up from the bottom edge, over the deck ──
   { id: "chat",     comp: ChatSheet,      target: "body", phase: "overlay", label: "Chat (bottom sheet)", shared: false },
-  { id: "menu",     comp: MenuSheet,      target: "body", phase: "overlay", label: "Menu: energy · account · voice · settings · memory · feedback", shared: false },
+  { id: "menu",     comp: MenuSheet,      target: "body", phase: "overlay", label: "☰ Menu: account · energy · settings · voice · desktop", shared: false },
   { id: "settings", comp: SettingsSheet,  target: "body", phase: "overlay", label: "Small settings sheet (language · theme · captions · speaker)", shared: false },
+  { id: "feedback", comp: FeedbackSheet,  target: "body", phase: "overlay", label: "Feedback (its own sheet, from the dock's button)", shared: false },
+  // ── the Energy left, a thin line along the top edge (cloud only) ──
+  { id: "energy-line", comp: EnergyLine,  target: "body", phase: "overlay", label: "Energy left, along the top edge", shared: false },
   // ── the voice lock, made visible instead of silently lost (server/livekit_api.py) ──
   { id: "voice-held", comp: VoiceHeldNotice, target: "body", phase: "overlay", label: "«Your voice is on the computer» + take it over", shared: false },
   // ── V2-796 — «install the app» / «turn on notifications»: the phone has to be REACHABLE for a notice ──

@@ -4,25 +4,23 @@
 // other things… a small configuration device and from there manage all that too».
 //
 // WHAT IT HOLDS, and where each row's behaviour actually lives:
-//   · Energy      — the balance, read from store.energy() (the SSE keeps it live; no polling here)
-//   · Account     — cloud only (store.cloudProfile), because on self-host there is no account to open
-//   · Feedback    — FeedbackForm.js, at parity with the desktop panel and on its same services
+//   · Account     — cloud only (store.cloudProfile): plan, Energy, billing, renewal and sign-out live on the account
+//                   page, so this row is the door to all of it. FIRST, because it is what a phone user comes here for.
+//   · Energy      — the balance, read from store.energy() (the SSE keeps it live); tapping it opens the top-up
 //   · Settings    — opens SettingsSheet (the «small settings device»)
+//   · Feedback is NOT here any more (2026-10-25, operator): it has its own dock button and its own sheet
+//     (FeedbackSheet.js); a second copy at the bottom of the menu read as clutter.
 //   · Voice       — cycles the TTS voice (session.cycleVoice), the same seam as tapping the orb
 //   · Shell       — "open the desktop version": sets zaelar_shell=desktop and leaves. THE ESCAPE HATCH, and it is
 //                   not optional — a shell you cannot leave is a trap, and the shell picker in index.html would
 //                   otherwise bounce a tablet user back here on every load.
 //
-// The feedback form is INLINE rather than a second sheet on purpose: the desktop learned (V2-100) that the whole
-// value of this feature is that it takes one gesture. Two sheets deep and nobody reports anything.
 // ============================================================================
 
 import { h, raw } from "../../../app/core/dom.js?v=2";
-import { createEffect } from "../../../app/core/reactive.js?v=2";
 import * as store from "../../../app/core/store.js?v=2";
 import * as session from "../../../app/services/session.js?v=3";
 import * as api from "../../../app/services/api.js?v=2";
-import { FeedbackForm } from "./FeedbackForm.js?v=1";
 import { t } from "../../../app/core/i18n.js?v=1";
 import { accountLink } from "../../../app/core/account-link.js?v=1";
 import * as daemon from "../../../app/services/daemon.js?v=3";
@@ -48,8 +46,12 @@ function Row(label, sub, onClick) {
 }
 
 export function MenuSheet() {
-  // The form's open state lives in the store: the dock's feedback button opens it too (2026-10-24).
-  const fbOpen = store.mobileFeedbackOpen, setFbOpen = store.setMobileFeedbackOpen;
+  const openAccount = (section) => {
+    // V2-785: the engine's account url, never a relative "/account" — in a hosted deployment that is this agent's
+    // own origin, where no account page exists.
+    const u = accountLink(store.accountUrl(), section);
+    if (u) window.open(u, "_blank", "noopener");
+  };
   const close = () => store.setMobileMenuOpen(false);
 
   return h("section", {
@@ -63,16 +65,24 @@ export function MenuSheet() {
     ),
 
     h("div", { class: "zm-rows" },
-      // ── ENERGY: the balance is the one number a hosted user checks, so it is the first row and it shows the
-      //    value inline instead of hiding it one tap deep. `known:false` (self-host, or the machine still booting)
-      //    renders "—", never a fabricated 0 — a wrong balance is worse than no balance.
-      h("div", { class: () => "zm-energy" + (store.energy().cloud ? "" : " hide") },
+      // ── ACCOUNT — cloud only. On self-host there is no account behind this, so the row is not rendered at all
+      //    rather than rendered and dead: a control that does nothing teaches the operator to distrust the others.
+      () => store.cloudProfile()
+        ? Row(() => t("mobile.account"), () => t("mobile.account_sub"), () => openAccount())
+        : null,
+
+      // ── ENERGY: the balance shows inline instead of hiding it one tap deep, and the row IS the top-up (the
+      //    account page's #buy, like the desktop battery). `known:false` (the machine still booting) renders "—",
+      //    never a fabricated 0 — a wrong balance is worse than no balance.
+      h("button", { class: () => "zm-energy" + (store.energy().cloud ? "" : " hide"), onClick: () => openAccount("buy") },
         h("span", null, () => t("energy.label")),
         h("b", null, () => {
           const e = store.energy();
           return e.known && e.balance != null ? String(Math.round(e.balance)) : "—";
         }),
-        h("i", {
+        // The TRACK is the cycle's Energy and the fill is what is left. The fill used to be the flex item itself,
+        // and `flex: 1 1 auto` stretched it over its own width: 61 of 400 drew a full bar.
+        h("span", { class: "zm-energy-track" }, h("i", {
           style: {
             width: () => {
               const e = store.energy();
@@ -80,23 +90,14 @@ export function MenuSheet() {
               return Math.max(0, Math.min(100, (e.balance / e.capacity) * 100)) + "%";
             },
           },
-        }),
+        })),
       ),
-
-      // ── ACCOUNT — cloud only. On self-host there is no account behind this, so the row is not rendered at all
-      //    rather than rendered and dead: a control that does nothing teaches the operator to distrust the others.
-      () => store.cloudProfile()
-        ? Row(() => t("mobile.account"), () => t("mobile.account_sub"),
-            // V2-785: the engine's account url, never a relative "/account" — in a hosted deployment that is
-            // this agent's own origin, where no account page exists.
-            () => { const u = accountLink(store.accountUrl()); if (u) window.open(u, "_blank", "noopener"); })
-        : null,
-
-      Row(() => t("mobile.voice"), () => (store.voices()[store.voiceIdx()] || {}).label || "",
-        () => { session.cycleVoice(); api.uiEvent("mobile:voice_cycle", {}); }),
 
       Row(() => t("mobile.settings"), () => t("mobile.settings_sub"),
         () => { store.setMobileSettingsOpen(true); }),
+
+      Row(() => t("mobile.voice"), () => (store.voices()[store.voiceIdx()] || {}).label || "",
+        () => { session.cycleVoice(); api.uiEvent("mobile:voice_cycle", {}); }),
 
       // ── 🖥 THE LOCAL DAEMON, READ ONLY (V2-575 P1). A phone does not install a desktop daemon, so this row
       //    has no chevron and no click: it REPORTS. It is here because "is my computer connected?" is a
@@ -108,20 +109,6 @@ export function MenuSheet() {
           h("small", null, () => (daemon.isConnected() ? t("daemon.ok.lead") : t("daemon.mobile.hint"))),
         ),
       ),
-
-      // ── FEEDBACK, inline (one gesture, V2-100) ──
-      h("button", { class: "zm-row", onClick: () => setFbOpen(!fbOpen()) },
-        h("span", { class: "zm-row-t" },
-          h("b", null, () => t("feedback.title")),
-          h("small", null, () => t("mobile.feedback_sub")),
-        ),
-        raw(CHEV),
-      ),
-      // The form itself, at parity with the desktop panel (FeedbackForm.js). It scrolls into view when opened from
-      // the dock's button.
-      h("div", { ref: (el) => createEffect(() => { if (fbOpen() && store.mobileMenuOpen()) setTimeout(() => {
-        try { el.scrollIntoView({ block: "start", behavior: "smooth" }); const ta = el.querySelector("textarea"); ta && ta.focus({ preventScroll: true }); } catch (_) {}
-      }, 60); }) }, FeedbackForm(() => fbOpen() && store.mobileMenuOpen())),
 
       // ── THE ESCAPE HATCH. Persists the choice so index.html's picker stops redirecting this device.
       Row(() => t("mobile.desktop"), () => t("mobile.desktop_sub"),

@@ -211,7 +211,7 @@ check("the centre slot swaps its two faces by visibility, not by rebuilding",
 // while the shapes match, and a comment cannot enforce it: if the desktop redraws its mic, this goes red and
 // somebody has to decide, instead of the two shells drifting apart unnoticed.
 // WHICH glyphs the dock carries is the OPERATOR's decision and it changes (V2-573 retired the captions and the
-// speaker buttons and added DESK and CFG, which the desktop has no twin for). What must never change silently is
+// speaker buttons and added DESK and the ☰ MENU, which the desktop has no twin for). What must never change silently is
 // that a glyph present in BOTH shells is the SAME drawing. So the pairing is derived from the dock itself: every
 // Orb.js glyph whose name the dock also declares is compared shape by shape. A hardcoded list would have gone red
 // for a deliberate removal — reporting a decision as a regression, which is how a guard gets deleted instead of
@@ -252,10 +252,23 @@ check("the dock carries no dashboards button", !/showDesk|const DESK\b/.test(DOC
 check("the dock carries the wake word and the speaker",
   /onClick:\s*toggleWake\b/.test(DOCKBAR) && /attention_mode:\s*next/.test(DOCKBAR) && /session\.openSpeakerHere\(/.test(DOCKBAR),
   "the wake-word switch must write attention_mode like the desktop orb, and the speaker must claim the voice");
-check("the dock's feedback button opens the form, not just the menu",
-  /store\.setMobileFeedbackOpen\(v\)[\s\S]{0,80}store\.setMobileMenuOpen\(v\)/.test(DOCKBAR)
-  && /store\.mobileFeedbackOpen/.test(read("frontend", "mobile", "app", "shell", "MenuSheet.js")),
-  "the feedback button must open the menu sheet WITH its form open (the form reads store.mobileFeedbackOpen)");
+// 2026-10-25 (operator): feedback has its own dock button, so it has its own SHEET — and the menu no longer
+// carries a second copy of it. The menu button is the classic ☰, and its sheet leads with the account.
+const MENUSHEET = read("frontend", "mobile", "app", "shell", "MenuSheet.js");
+const SURFACES = read("frontend", "mobile", "app", "shell", "mobile-surfaces.js");
+check("the dock's feedback button opens its own sheet, never the menu",
+  /store\.setMobileFeedbackOpen\(v\)/.test(DOCKBAR) && !/store\.setMobileFeedbackOpen\(v\)[\s\S]{0,80}store\.setMobileMenuOpen\(v\)/.test(DOCKBAR)
+  && /comp: FeedbackSheet/.test(SURFACES) && /FeedbackForm\(/.test(read("frontend", "mobile", "app", "shell", "FeedbackSheet.js")),
+  "the ⚠ button must open FeedbackSheet (mounted from mobile-surfaces.js), not the menu");
+check("the menu carries no feedback", !/FeedbackForm|feedback\.title/.test(MENUSHEET),
+  "feedback came back into the ☰ menu — it already has its own button and sheet");
+check("the menu button is ☰ and the menu leads with the account and the Energy",
+  /raw\(MENU\)/.test(DOCKBAR) && !/const CFG\b/.test(DOCKBAR)
+  && MENUSHEET.indexOf('t("mobile.account")') > 0 && MENUSHEET.indexOf('t("mobile.account")') < MENUSHEET.indexOf('"zm-energy"')
+  && /openAccount\("buy"\)/.test(MENUSHEET),
+  "the ☰ sheet must open with the account row, then the Energy row that opens the top-up");
+check("the Energy left is always on screen", /comp: EnergyLine,/.test(SURFACES),
+  "the phone lost its Energy line along the top edge");
 
 // The scroller's rule must be keyed STRUCTURALLY, not to .zm-body. A widget.js does el.className="..." on the
 // root it is handed and WIPES our class — Deck.js's own comment says so — so a .zm-body rule silently stops

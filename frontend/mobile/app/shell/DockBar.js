@@ -10,13 +10,13 @@
 //
 // ── THE COMPOSITION (2026-10-24, operator): SEVEN controls around the orb, three a side plus feedback.
 //
-//   ⚙ config   → store.mobileMenuOpen              energy · account · voice · settings · feedback
+//   ☰ menu     → store.mobileMenuOpen              account · energy · settings · voice · desktop
 //   💬 chat    → store.chatOpen                    the conversation
 //   🤖 wake    → attention_mode                    the wake word, the desktop orb's 🤖
 //   ◉  ORB     → the switch (below), 74px, mic INSIDE
 //   🎤 mic     → session.openMicHere / mic.toggle  opening it takes the voice to this device
 //   🔊 speaker → session.openSpeakerHere / toggle  same rule
-//   ⚠ feedback → the menu sheet's feedback form, opened
+//   ⚠ feedback → store.mobileFeedbackOpen          its own sheet (FeedbackSheet.js)
 //
 // The 2026-09-04 dashboards button is gone: the deck's own navigation is the PIPS above this bar and the side
 // swipe. The speaker, moved to the config sheet in V2-573, is back here because the voice now belongs to ONE device
@@ -44,7 +44,7 @@
 // without learning a second vocabulary, and the host-contract test DERIVES that check from Orb.js itself. The two
 // additions are MIC_OFF (the desktop only greys a muted mic, which is legible next to six icons on a big screen and
 // ambiguous as a lone icon on a phone, so the slash is drawn over the SAME base glyph) and the two glyphs the
-// desktop has no twin for: CFG, drawn in the same vocabulary (24-box, 2px stroke, round caps).
+// desktop has no twin for: MENU, drawn in the same vocabulary (24-box, 2px stroke, round caps).
 // ============================================================================
 
 import { h, raw } from "../../../app/core/dom.js?v=2";
@@ -65,7 +65,9 @@ const SPK_OFF = `<svg ${SW}><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="m22 9-6 6
 // FEEDBACK — a SQUARE bubble with «!», so it never reads as the round chat bubble beside it.
 const FB      = `<svg ${SW}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M12 7v4"/><path d="M12 14h.01"/></svg>`;
 const BOT     = `<svg ${SW}><path d="M12 8V4H8"/><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M9 13v2"/><path d="M15 13v2"/></svg>`;
-const CFG     = `<svg ${SW}><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.65 1.65 0 0 0 15 19.4a1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09A1.65 1.65 0 0 0 15 4.6a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;
+// MENU (2026-10-25, operator): the main menu is the classic three bars — a gear promised «settings» and opened the
+// account, the energy and everything else; settings are now one row inside it.
+const MENU    = `<svg ${SW}><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/></svg>`;
 const PWR     = `<svg ${SW}><path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.77.04"/></svg>`;
 
 // BLUE = on/live, pale GREY = off/closed. Same language as the desktop's lid icons.
@@ -119,7 +121,7 @@ export function DockBar() {
   const ORB = OrbMini();
   return h("nav", { class: "zm-dock", "aria-label": t("mobile.dock_label") },
 
-    // ── LEFT of the orb: settings, the conversation, and the wake word ──
+    // ── LEFT of the orb: the menu, the conversation, and the wake word ──
     // 2026-10-24 (operator): the dashboards button is gone — «I do not know what it is». The deck already has its own
     // navigation, the PIPS above this bar (one per open card, the current one lit) and the side swipe; closing the
     // chat or a sheet is what shows the cards. Its slot went to the WAKE WORD, which the phone did not have.
@@ -128,7 +130,7 @@ export function DockBar() {
         class: () => cls(store.mobileMenuOpen()),
         "aria-label": () => t("mobile.menu"),
         onClick: () => { const v = !store.mobileMenuOpen(); store.setMobileMenuOpen(v); api.uiEvent("mobile:menu", { state: v ? "open" : "close" }); },
-      }, raw(CFG)),
+      }, raw(MENU)),
 
       h("button", {
         class: () => cls(store.chatOpen()),
@@ -204,15 +206,14 @@ export function DockBar() {
         },
       }, () => raw(store.botMuted() ? SPK_OFF : SPK_ON)),
 
-      // FEEDBACK (operator, 2026-10-24): right of everything, opens the form in the menu sheet directly.
+      // FEEDBACK (operator, 2026-10-24): right of everything. Since 2026-10-25 it opens its OWN sheet
+      // (FeedbackSheet.js): it has a button of its own, so the menu no longer carries a second copy of it.
       h("button", {
-        class: () => cls(store.mobileMenuOpen() && store.mobileFeedbackOpen()),
+        class: () => cls(store.mobileFeedbackOpen()),
         "aria-label": () => t("feedback.title"),
         onClick: () => {
-          const v = !(store.mobileMenuOpen() && store.mobileFeedbackOpen());
-          store.setChatOpen(false);
+          const v = !store.mobileFeedbackOpen();
           store.setMobileFeedbackOpen(v);
-          store.setMobileMenuOpen(v);
           api.uiEvent("mobile:feedback", { state: v ? "open" : "close" });
         },
       }, raw(FB)),

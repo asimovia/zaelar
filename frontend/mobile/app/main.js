@@ -28,7 +28,7 @@ import { initI18n, t } from "../../app/core/i18n.js?v=1";
 import { submitChat } from "../../app/components/ChatWall.js?v=5";
 
 import { Deck } from "./shell/Deck.js?v=1";
-import { MOBILE_SURFACES } from "./shell/mobile-surfaces.js?v=2";
+import { MOBILE_SURFACES } from "./shell/mobile-surfaces.js?v=3";
 
 // ---- theme + language before mounting anything, so nothing flashes the wrong palette or the wrong words ----
 initTheme();
@@ -247,14 +247,16 @@ try {
 
 // ---- SHEETS ARE MUTUALLY EXCLUSIVE. Two sheets stacked over a 6-inch screen is a dead end with no visible way
 // out; the phone has no room for the desktop's "several panels open at once". Opening one closes the others. ----
-createEffect(() => { if (store.chatOpen()) { store.setMobileMenuOpen(false); store.setMobileSettingsOpen(false); } });
-createEffect(() => { if (store.mobileMenuOpen()) store.setChatOpen(false); });
+createEffect(() => { if (store.chatOpen()) { store.setMobileMenuOpen(false); store.setMobileSettingsOpen(false); store.setMobileFeedbackOpen(false); } });
+createEffect(() => { if (store.mobileMenuOpen()) { store.setChatOpen(false); store.setMobileFeedbackOpen(false); } });
+createEffect(() => { if (store.mobileFeedbackOpen()) { store.setChatOpen(false); store.setMobileMenuOpen(false); store.setMobileSettingsOpen(false); } });
 
 // ---- ANDROID BACK BUTTON / iOS swipe-back. In a standalone PWA there is nowhere to go back TO, so an unhandled
 // back gesture closes the app — losing the session over a reflex. Intercepted: back closes the top-most open
 // surface, and only exits when there is nothing left to close. ----
 function topMostClose() {
   if (store.mobileSettingsOpen()) return store.setMobileSettingsOpen(false), true;
+  if (store.mobileFeedbackOpen()) return store.setMobileFeedbackOpen(false), true;
   if (store.mobileMenuOpen()) return store.setMobileMenuOpen(false), true;
   if (store.chatOpen()) return store.setChatOpen(false), true;
   if (deck.list().length) return deck.close(deck.list()[deck.at] ?? deck.list()[0]), true;

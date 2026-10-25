@@ -301,14 +301,19 @@ body {
 .zm-toggle.on .zm-sw::after { transform: translateX(20px); }
 
 /* ---------- ENERGY row ---------- */
-.zm-energy { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--hb-line); }
+.zm-energy { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--hb-line);
+  width: 100%; min-height: 58px; border-width: 0 0 1px; background: transparent; color: var(--hb-ink); text-align: left; }
+.zm-energy:active { background: var(--hb-hover); }
 .zm-energy.hide { display: none; }                     /* self-host: no account behind it, so no row at all */
 .zm-energy span { font: 600 13px var(--sans); color: var(--hb-muted); letter-spacing: .04em; text-transform: uppercase; }
 .zm-energy b { font: 700 20px/1 var(--sans); color: var(--hb-ink); }
-.zm-energy i {
-  flex: 1 1 auto; height: 7px; min-width: 0; border-radius: 4px;
+.zm-energy-track {
+  flex: 1 1 auto; height: 7px; min-width: 0; border-radius: 4px; overflow: hidden;
+  background: color-mix(in srgb, var(--hb-neutral) 35%, transparent); box-shadow: inset 0 0 0 1px var(--hb-line);
+}
+.zm-energy-track i {
+  display: block; height: 100%; border-radius: 4px;
   background: linear-gradient(90deg, var(--hb-accent2), var(--hb-accent));
-  box-shadow: inset 0 0 0 1px var(--hb-line);
 }
 
 /* ---------- inline FEEDBACK ---------- */
@@ -394,6 +399,18 @@ body {
 .zm-held p { margin: 0 0 12px; font: 500 14px/1.45 var(--sans); }
 .zm-held div { display: flex; gap: 10px; }
 .zm-held .zm-primary, .zm-held .zm-ghost { flex: 1 1 auto; min-height: 44px; font-size: 14px; }
+
+/* ---------- THE ENERGY LINE (2026-10-25) ----------
+   Along the top edge, under the notch: the cycle's Energy left, always visible. Thin on purpose — the screen above
+   the dock is the card's — and inert to touch, so the card header beneath it keeps its one-finger swipe. */
+.zm-eline { position: fixed; left: 0; right: 0; top: env(safe-area-inset-top); height: 3px; z-index: 66;
+  pointer-events: none; background: color-mix(in srgb, var(--hb-neutral) 35%, transparent); display: none; }
+.zm-eline.show { display: block; }
+.zm-eline i { display: block; height: 100%; border-radius: 0 2px 2px 0;
+  background: linear-gradient(90deg, var(--hb-accent2), var(--hb-accent)); transition: width .4s; }
+.zm-eline.low i { background: var(--hb-warn); }
+.zm-eline.out { background: color-mix(in srgb, var(--hb-risk) 45%, transparent); animation: zm-eline-pulse 1.6s ease-in-out infinite; }
+@keyframes zm-eline-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
 
 /* ---------- THE INSTALL / NOTIFICATIONS BANNER (V2-796) ----------
    At the TOP, under the notch, because the bottom belongs to the dock and to the voice-lock notice. Not a modal:

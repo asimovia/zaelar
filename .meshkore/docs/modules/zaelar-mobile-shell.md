@@ -82,10 +82,12 @@ frontend/mobile/
    └─ shell/
       ├─ mobile-surfaces.js canonical list of native mobile surfaces (the pattern of core/system-surfaces.js)
       ├─ Deck.js            ★ the host: full-screen cards, two-finger paging
-      ├─ DockBar.js         the bottom bar: chat · dashboards | ORB | mic · config
+      ├─ DockBar.js         the bottom bar: ☰ menu · chat · wake word | ORB | mic · speaker · feedback
       ├─ OrbMini.js         the orb
       ├─ ChatSheet.js       chat as a bottom sheet
-      ├─ MenuSheet.js       energy · account · voice · settings · feedback · escape hatch
+      ├─ MenuSheet.js       ☰: account (plan, Energy, billing, sign-out) · Energy → top-up · settings · voice · escape hatch
+      ├─ FeedbackSheet.js   the feedback form in its own sheet, opened by the dock's ⚠ (never inside the menu)
+      ├─ EnergyLine.js      the cycle's Energy left, a 3px line along the top edge (cloud only, inert to touch)
       ├─ SettingsSheet.js   the small settings sheet (language · theme · speaker)
       └─ VoiceHeldNotice.js "your voice is on the other device" + take it over
 ```
@@ -146,7 +148,9 @@ nothing to reload).
 
 ### The dock, and why the orb is in the middle of it
 
-Five controls in three zones — `chat · dashboards` | **ORB** | `mic · config`:
+Since 2026-10-25 the bar is `☰ · chat · wake word` | **ORB** | `mic · speaker · feedback`: the main menu is the classic
+three bars (a gear promised «settings» and held the account), and feedback has its own sheet. What follows is the
+earlier five-control rationale, which still holds for the orb and the zones:
 
 - **chat / dashboards** are the WHOLE footer navigation, however many cards are open. Which card you are on is
   the deck's business — its pips and its `k/n` switcher — never the bar's. *Dashboards* is not a sheet: it is
