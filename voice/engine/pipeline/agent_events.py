@@ -125,7 +125,8 @@ def _on_data(packet, *, _emit, _json, _wake, session) -> None:
             return
         txt = (payload.get("text") or "").strip()
         if txt:
-            receive_typed(txt, _emit=_emit, session=session)
+            # V2-778 F1 — the body lives in `voice/engine/pipeline/agent_events.py`; this branch passes what it reads.
+            return receive_typed(txt, _emit=_emit, session=session)
     except Exception as e:
         _ag.logger.warning("chat-text data handler: %s", e)
 

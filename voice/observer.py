@@ -84,6 +84,7 @@ _CAT = {
     # aliases, and the operator’s own taps on the UI (`ui`). This record ties the “wrong widget”
     # wrong widget” to the PHRASE that requested it (each event carries the turn text + its trace chip).
     "widget": "widget", "ui": "widget",
+    "screens": "widget",            # V2-792: a card moved to another screen of the same agent
     # `arbiter` (V2-653): the canvas arbiter's verdict for a widget mutation — allow/veto, the tree
     # branch that decided, and the evidence. Family `widget` because the verdict is ABOUT a canvas
     # command; in F0 (shadow) it records what the armed tree WOULD have done.
