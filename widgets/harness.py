@@ -12,6 +12,15 @@
 #              type is exactly the regression a careless modify introduces. First run records the golden.
 #   render   — widget.js parses as an ES module (`node --input-type=module --check`); skipped if node is absent.
 #              A real DOM render happens in the browser; this catches the syntax-level breakage class.
+#   screens  — the manifest DECLARES how it lives on several screens (`"screens"`: shared | single, V2-792) and the
+#              declaration agrees with its output channel (`widgets/screen_policy.py`).
+#
+# Two more passes, on request, because a widget is not finished until it behaves with the agent open on the computer
+# AND the phone at once:
+#   --two-screens  opens a desktop browser and a phone browser on one engine and checks the widget does what its
+#                  policy says (`tests/browser/e2e/mobile/two_screens.py`; add --headed to watch both windows).
+#   --manual       prints the operator's manual pass for each widget, with a real phone and a real computer
+#                  (`.meshkore/docs/ops/zaelar-two-screen-test.md`).
 #
 import json
 import os
@@ -87,12 +96,55 @@ def check_render(wid: str) -> tuple[bool, str]:
     return True, "parses as ES module"
 
 
+def check_screens(wid: str) -> tuple[bool, str]:
+    from . import screen_policy
+    p = os.path.join(paths.dir_for(wid) or paths.new_dir(wid), "manifest.json")
+    try:
+        man = json.load(open(p, encoding="utf-8"))
+    except Exception as e:
+        return False, f"manifest unreadable: {e}"
+    bad = screen_policy.problem(man, required=True)
+    return (False, bad) if bad else (True, f"{screen_policy.of(man)} — two-screen pass: --two-screens / --manual")
+
+
+#: The operator's manual pass, per policy. Short on purpose: it is read with a phone in one hand.
+_MANUAL = {
+    "shared": [
+        "On the COMPUTER, ask for «{name}». It opens on the computer; the phone shows «{name} · open on the computer — Open here» and does not open it.",
+        "On the PHONE, ask for «{name}» too. It opens on the phone and STAYS open on the computer.",
+        "Change something in it from one screen (by voice or by hand). The other screen shows the change without a reload.",
+        "Type an order on the screen that does NOT hold the voice. It is answered, and the line shows on both chats.",
+    ],
+    "single": [
+        "On the COMPUTER, ask for «{name}» and let it play. The phone shows «{name} · playing on the computer — Bring here» and plays nothing.",
+        "Open the phone app (or reload it). It does NOT start «{name}» again; the chip is there.",
+        "On the PHONE, ask for «{name}» with something new. The computer STOPS and closes it at once; the phone opens and plays it. Never both sounding.",
+        "From the phone, say «pause» / «volume down». It obeys wherever it is playing.",
+        "Say «put it on the computer» (or tap «Bring here» on the computer). It moves back; the phone keeps the chip.",
+        "Tap the mic on the computer. The phone gives up the voice at once (its mic and speaker off).",
+    ],
+}
+
+
+def manual_steps(wid: str) -> list[str]:
+    from . import registry, screen_policy, runtime
+    man = next((w for w in runtime.catalog() if w.get("id") == wid), {"id": wid})
+    name = registry.display_name("widgets", wid, str(man.get("name") or man.get("title") or wid))
+    return [s.format(name=name) for s in _MANUAL[screen_policy.of(man)]]
+
+
+def two_screens(widget_ids: list[str], headed: bool = False) -> int:
+    script = os.path.join(paths.BUILTIN_ROOT, "..", "tests", "browser", "e2e", "mobile", "two_screens.py")
+    return subprocess.call([sys.executable, os.path.abspath(script), *widget_ids, *(["--headed"] if headed else [])])
+
+
 def run(widget_ids: list[str] | None = None) -> int:
     from . import runtime
     ids = widget_ids or [w["id"] for w in runtime.catalog()]
     failures = 0
     for wid in ids:
-        results = [("contract", *check_contract(wid)), ("golden", *check_golden(wid)), ("render", *check_render(wid))]
+        results = [("contract", *check_contract(wid)), ("golden", *check_golden(wid)), ("render", *check_render(wid)),
+                   ("screens", *check_screens(wid))]
         bad = [r for r in results if not r[1]]
         failures += len(bad)
         mark = "✓" if not bad else "✗"
@@ -103,5 +155,19 @@ def run(widget_ids: list[str] | None = None) -> int:
     return 1 if failures else 0
 
 
+def main(argv: list[str]) -> int:
+    ids = [a for a in argv if not a.startswith("--")] or None
+    if "--manual" in argv:
+        from . import runtime
+        for wid in ids or [w["id"] for w in runtime.catalog() if not w.get("transient")]:
+            print(f"\n▸ {wid} — manual two-screen pass (a computer and a phone, one agent)")
+            for i, step in enumerate(manual_steps(wid), 1):
+                print(f"   {i}. {step}")
+        return 0
+    if "--two-screens" in argv:
+        return two_screens(ids or [], headed="--headed" in argv)
+    return run(ids)
+
+
 if __name__ == "__main__":
-    sys.exit(run(sys.argv[1:] or None))
+    sys.exit(main(sys.argv[1:]))

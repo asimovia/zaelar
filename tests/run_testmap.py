@@ -4944,8 +4944,13 @@ DOMAINS: list[dict] = [
         {"id": "4.269", "title": "Every widget declares how it lives on several screens (\"screens\": shared | "
                                  "single): every built-in says it, runtime.output ⇒ single, the validator requires it on "
                                  "a new widget, the code agent is told, the index carries it, a single card asked from "
-                                 "another screen MOVES before it shows (V2-792)", "ch": UNIT,
+                                 "another screen MOVES before it shows; the rule is written in the context, the workflow, AGENTS.md and the "
+                                 "generator, and the widget harness checks it and carries the two-screen passes (V2-792)", "ch": UNIT,
             "paths": ["tests/browser/unit/widgets/test_every_widget_says_how_it_lives_on_several_screens.py"]},
+        {"id": "4.270", "title": "Every widget in the catalogue on TWO screens (desktop + phone browsers on one engine): "
+                                 "asked on the computer it opens there and the phone gets a chip; asked on the phone a "
+                                 "shared one is open on both and a single one moves (V2-792)", "ch": UNIT,
+            "paths": ["tests/browser/e2e/mobile/test_every_widget_on_two_screens.py"]},
         {"id": "4.18", "title": "Shell MÓVIL: contrato de host + del widget · paleta compartida · el service worker "
                                 "no cachea", "ch": UNIT,
             "paths": ["tests/browser/unit/mobile/test_mobile_host_contract.py"]},

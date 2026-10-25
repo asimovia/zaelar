@@ -16,6 +16,7 @@ status: stable
 - **homeostasis** (`nucleo/homeostasis.py`): deterministic, model-free machine-health layer beside the brain.
 - **SpeakerGate** (`frontend/app/lib/speaker-gate.js`): learns the owner's voice, filters other voices.
 - **Widget** (`widgets/<id>/` + desktop.js): isolated visual unit (manifest + widget.js + data.py), voice-driven via silent tags.
+- **Screens** (V2-792): the computer and the phone open on the same agent at once. A request's cards open on the screen that asked (`origin_dev`), the other screen gets a chip; the voice lives on one screen. A widget's manifest `"screens"` says whether it is `shared` (a reflection, open anywhere) or `single` (sound or picture: one screen, it moves).
 - **/debug**: diagnostics surface (AudioProbe RMS, mic meter, client logs via `/api/client-log`).
 - **Personal Operating System**: the public positioning (zaelar.com) — one voice agent + a canvas of apps (widgets).
 - **Apps**: where generated widgets are kept; «describe it and it writes the widget» (beta).

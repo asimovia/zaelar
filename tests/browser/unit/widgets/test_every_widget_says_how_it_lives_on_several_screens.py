@@ -160,3 +160,43 @@ def test_a_shared_card_never_moves(two_screens, monkeypatch):
     two_screens.stamp({"kind": "transcript", "role": "user", "text": "abre la agenda", "dev": PHONE})
     ev = two_screens.stamp({"kind": "widget", "label": "show", "id": "agenda"})
     assert "screens" not in out and not ev.get("moved")
+
+
+# ── The rule lives where every future widget is made (operator, 2026-10-25: «que yo no tenga que explicarlo nunca más»)
+
+DOC = ".meshkore/docs/ops/zaelar-two-screen-test.md"
+
+
+@pytest.mark.parametrize("where", [
+    ".meshkore/context/constraints.md",                        # the invariant context every session loads
+    ".meshkore/context/glossary.md",
+    "widgets/AGENTS.md",                                       # hand editors of a widget
+    ".meshkore/docs/ops/zaelar-new-widget-or-connector-workflow.md",   # «make a widget for Y» / a new native app
+    DOC,
+])
+def test_the_rule_is_written_where_widgets_are_made(where):
+    text = (ENGINE / where).read_text(encoding="utf-8")
+    assert '"screens"' in text or "`screens`" in text or "Screens" in text, f"{where} does not name the policy"
+    assert "shared" in text and "single" in text, f"{where} does not name both values"
+    if where != DOC and where != ".meshkore/context/glossary.md":
+        assert "zaelar-two-screen-test.md" in text, f"{where} does not point at the two-screen test"
+
+
+def test_the_code_agent_is_told_a_shared_copy_may_be_mounted_twice_and_will_be_tested_on_two_screens():
+    from widgets import generator
+    c = generator._CONTRACT
+    assert "MOUNTED TWICE" in c and "--two-screens" in c and "--manual" in c
+
+
+def test_the_widget_harness_checks_it_and_carries_both_passes(tmp_path, monkeypatch):
+    from widgets import harness, paths
+    (tmp_path / "zz-h").mkdir()
+    (tmp_path / "zz-h" / "manifest.json").write_text(json.dumps({"id": "zz-h", "title": "H"}), encoding="utf-8")
+    monkeypatch.setattr(paths, "dir_for", lambda wid: str(tmp_path / wid))
+    ok, why = harness.check_screens("zz-h")
+    assert not ok and "screens" in why
+    monkeypatch.undo()
+    assert harness.check_screens("youtube") == (True, "single — two-screen pass: --two-screens / --manual")
+    assert any("STOPS and closes" in s for s in harness.manual_steps("youtube"))
+    assert any("STAYS open" in s for s in harness.manual_steps("agenda"))
+    assert (ENGINE / "tests/browser/e2e/mobile/two_screens.py").is_file()

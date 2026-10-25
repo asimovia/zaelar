@@ -168,7 +168,9 @@ widgets feel polished and consistent with the rest. These are HARD rules — fol
   where it was asked, the others get a chip, every copy shows the same data live. `"single"` for anything that takes
   the device's sound or picture (video, music, recording): it lives on one screen and asking for it from another
   screen MOVES it there (the old one stops and closes). `runtime.output` ⇒ `"single"` (the gate enforces it). The host
-  does the moving: a widget never detects other screens itself. Policy: `widgets/screen_policy.py`.
+  does the moving: a widget never detects other screens itself. Policy: `widgets/screen_policy.py`. Before calling it
+  done: `python -m widgets.harness --two-screens <id>` (a desktop and a phone browser) and the operator's manual pass
+  (`--manual <id>`) — `.meshkore/docs/ops/zaelar-two-screen-test.md`.
 - **Self-contained**: no external libraries, no CDN, no network from `widget.js`. Inject your `<style>` once (id-guarded).
 - **Security**: any web/3rd-party/user text → build DOM with `textContent` (NEVER `innerHTML` for untrusted data).
 - **Class names must not collide with `frontend/app/styles.css`'s global classes** (checked by the generator's
