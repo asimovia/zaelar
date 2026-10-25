@@ -907,8 +907,10 @@ export class Desktop {
         // connector alone, with its guide. Cards no longer carry connect screens of their own — the voice
         // would not know which of the two to open — so a plug button, a dimmed provider icon or a «connect»
         // link all land here. Same `hb:` event the host already listens to (main.js).
-        openConnector:(cx)=>{ try{ document.dispatchEvent(new CustomEvent("hb:open-config",
-          {detail: {tab: "conectores", connector: String(cx || "")}})); }catch(_e){} },
+        // `from` names THIS card, so the connector's «Volver» says where it goes and lands back here.
+        openConnector:(cx)=>{ try{ const e=(this._registry||{})[baseId];
+          document.dispatchEvent(new CustomEvent("hb:open-config",
+          {detail: {tab: "conectores", connector: String(cx || ""), from: (e && e.name) || ""}})); }catch(_e){} },
         // V2-092 — is the agent running? DELIBERATELY A GETTER: `ctx` is created once at mount and saved
         // (`w._ctx`) for re-renders, so a copied value would become stale. A widget that PLAYS something must check
         // it before starting on its own (see widgets/AGENTS.md, “produce”).

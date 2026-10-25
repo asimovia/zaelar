@@ -68,6 +68,12 @@ export function ConfigPanel() {
   let activeTab = "settings";
   // The Conectores tab shows ONE connector at a time behind a breadcrumb (`cxFocus`), on its guide's `cxStep`.
   let cxFocus = null, cxStep = 0, cxPolling = false, cxService = "";   // cxService: the Google service picked out
+  // Where «Volver» goes (operator 2026-10-25: «si voy a un sitio y le doy a volver, quiero volver desde donde
+  // venía»). Set when something OUTSIDE the panel opened it on one connector (a card, the wall, the voice):
+  // {from: "<caller's name>" | ""}. Then the connector's «Volver» closes the panel — back to the caller —
+  // instead of dropping the person on the connectors list. The breadcrumb stays the way to roam the section,
+  // and taking it drops the return: they chose to explore here.
+  let cxReturn = null;
   // The consent URL the browser REFUSED to open in a window (pop-up blocker). 2026-10-04: the operator pressed
   // «Connect» on Google Calendar, Chrome blocked the window without a word, the panel sat on «connecting…» for
   // three minutes and he read it as «se ha quedado ahí». Kept per connector so its form can offer the way in.
@@ -336,7 +342,11 @@ export function ConfigPanel() {
     // controles of the pestaña Conectores
     bodyEl.querySelectorAll(".cf-cx-act").forEach(b => b.onclick = () => cxAct(b.dataset.act, b.dataset.id, b));
     bodyEl.querySelectorAll("[data-cx]").forEach(b => b.onclick = () => { ({ focus: cxFocus, service: cxService } = focusOf(b.dataset.cx)); cxStep = 0; cxConsent = null; render(); });
-    bodyEl.querySelectorAll("[data-cx-back]").forEach(b => b.onclick = () => { cxFocus = null; cxService = ""; cxStep = 0; cxConsent = null; render(); });
+    bodyEl.querySelectorAll("[data-cx-back]").forEach(b => b.onclick = () => { cxFocus = null; cxService = ""; cxStep = 0; cxConsent = null; cxReturn = null; render(); });
+    // The connector's own way out: back to whoever sent the person here, else to the list (data-cx-back's job).
+    bodyEl.querySelectorAll("[data-cx-done]").forEach(b => b.onclick = () => {
+      if (cxReturn) close(); else { cxFocus = null; cxService = ""; cxStep = 0; cxConsent = null; render(); } });
+    bodyEl.querySelectorAll("[data-cx-close]").forEach(b => b.onclick = () => close());
     bodyEl.querySelectorAll("[data-cx-step]").forEach(b => b.onclick = () => { cxStep = Number(b.dataset.cxStep) || 0; render(); });
     bodyEl.querySelectorAll("[data-copy]").forEach(b => b.onclick = async () => {
       try { await navigator.clipboard.writeText(b.dataset.copy); b.textContent = t("config.cxw.copied"); } catch (_) {}
@@ -630,7 +640,7 @@ export function ConfigPanel() {
     const c = cxFocus && view.find(x => x.id === cxFocus);
     if (c) {
       if (isSettling(c)) settle();
-      return connectorWizard(c, cxStep, connectorForm(c, famTitle), famTitle(c.family), ui);
+      return connectorWizard(c, cxStep, connectorForm(c, famTitle), famTitle(c.family), { ...ui, returnTo: cxReturn });
     }
     return connectorList(view, fams, ui) +
       `<div class="cf-foot"><button class="cf-btn cf-cx-refresh">${t("config.cx.refresh_status")}</button></div>`;
@@ -876,7 +886,7 @@ export function ConfigPanel() {
       store.setApiAlerts((cfg.apis || []).filter(a => a.state === "warn" || a.state === "error"));
     } catch (e) { bodyEl.innerHTML = `<p class="cf-loading">${t("config.load_config_error")}</p>`; }
   }
-  const close = () => store.setConfigOpen(false);
+  const close = () => { cxReturn = null; store.setConfigOpen(false); };
   const onKey = e => { if (e.key === "Escape" && store.configOpen()) close(); };
   window.addEventListener("keydown", onKey);
 
@@ -913,11 +923,12 @@ export function ConfigPanel() {
       // later plain ⚙ click is not forced onto the same tab forever.
       // Both requests are READ before either is cleared: clearing one re-runs this effect synchronously, and a
       // re-run that consumed the connector first left this run reading null (the chosen connector never opened).
-      const want = store.configInitialTab(), cxWant = store.configConnector();
+      const want = store.configInitialTab(), cxWant = store.configConnector(), from = store.configFrom();
       if (want && TABS.some(t => t.id === want)) { activeTab = want; store.setConfigInitialTab(null); }
       // …and the catalog row it was clicked on: that connector opens alone, on its first step (consumed once too).
-      if (cxWant) { activeTab = "conectores"; ({ focus: cxFocus, service: cxService } = focusOf(cxWant)); cxStep = 0; store.setConfigConnector(null); }
-      else if (want) { cxFocus = null; cxService = ""; cxStep = 0; }
+      store.setConfigFrom(null);
+      if (cxWant) { activeTab = "conectores"; ({ focus: cxFocus, service: cxService } = focusOf(cxWant)); cxStep = 0; cxReturn = { from: from || "" }; store.setConfigConnector(null); }
+      else { cxReturn = null; if (want) { cxFocus = null; cxService = ""; cxStep = 0; } }
       load();
     }
     wasOpen = o;

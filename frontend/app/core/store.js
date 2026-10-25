@@ -482,6 +482,9 @@ export const [configOpen, setConfigOpen] = createSignal(false); // config area o
 export const [configInitialTab, setConfigInitialTab] = createSignal(null);
 // The connector the ChatWall catalog was clicked on — ConfigPanel opens on that one alone (consumed once).
 export const [configConnector, setConfigConnector] = createSignal(null);
+// WHO sent the person to that connector (a card's name, e.g. «Contactos»), or "" when unnamed. Consumed with
+// configConnector: its «Volver» goes back THERE (closes the panel) instead of to the connectors list.
+export const [configFrom, setConfigFrom] = createSignal(null);
 export const [benchmarksOpen, setBenchmarksOpen] = createSignal(false); // benchmarks screen (opened FROM config)
 export const [apiSummary, setApiSummary] = createSignal([]);     // [{key,enables,set,state,detail,balance?}] — saldos
 export const [apiAlerts, setApiAlerts]   = createSignal([]);     // warn/error subset for the status dialog

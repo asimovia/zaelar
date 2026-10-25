@@ -105,7 +105,7 @@ export function connectorList(cs, fams, { t, esc, badge }) {
  * one thing at a time, no box inside a box). `form` is the connector's own form (ConfigPanel's), shown flat on the
  * last step; `step` past the guide clamps to it. The 2026-10-04 redesign (operator: «el marco exterior, la
  * ubicación del botón…») kept every hook the panel wires: data-cx-back, data-cx-step, data-copy, .cf-cx-act. */
-export function connectorWizard(c, step, form, famTitle, { t, esc, badge }) {
+export function connectorWizard(c, step, form, famTitle, { t, esc, badge, returnTo = null }) {
   // Google's last step is its SERVICES, so its guide is shown whenever the app is missing, connected or not.
   const guide = c.connected && c.id !== GOOGLE ? [] : guideSteps(c);
   const total = guide.length + 1;
@@ -134,9 +134,13 @@ export function connectorWizard(c, step, form, famTitle, { t, esc, badge }) {
         `<p>${esc(t("config.cxw.connected_body", { label: c.label }))}</p></div><div class="cf-wiz-done-act">${form}</div></div>`
       : `<div class="cf-wiz-form">${form}</div>` + liveState(c, { t, esc });
   }
-  // The last step of a connector that is set up (connected, or Google's services) ends on the way back.
+  // The last step of a connector that is set up (connected, or Google's services) ends on the way back — to
+  // whoever opened it (`returnTo`, named when known: «← Volver a Contactos»), else to the list — and on «Cerrar»
+  // beside it, so leaving ⚙ never depends on spotting the ✕ at the top of the screen.
+  const backLabel = returnTo && returnTo.from ? t("config.cxw.back_to", { name: returnTo.from }) : t("config.cxw.done_back");
   const back = at === total - 1 && (c.connected || c.id === GOOGLE)
-    ? `<div class="cf-wiz-nav"><span></span><button type="button" class="cf-btn cf-btn-ghost" data-cx-back="1">${esc(t("config.cxw.done_back"))}</button></div>` : "";
+    ? `<div class="cf-wiz-nav"><span></span><span class="cf-wiz-out"><button type="button" class="cf-btn cf-btn-ghost" data-cx-done="1">${esc(backLabel)}</button>` +
+      `<button type="button" class="cf-btn cf-btn-ghost" data-cx-close="1">${esc(t("config.cxw.close"))}</button></span></div>` : "";
   const nav = back || (total > 1 ? `<div class="cf-wiz-nav">${at > 0 ? `<button type="button" class="cf-btn cf-btn-ghost" data-cx-step="${at - 1}">${esc(t("config.cxw.prev"))}</button>` : "<span></span>"}` +
     (at < total - 1 ? `<span class="cf-wiz-count">${esc(t("config.cxw.step", { n: at + 1, total }))}</span><button type="button" class="cf-btn" data-cx-step="${at + 1}">${esc(t("config.cxw.next"))}</button>` : "") + `</div>` : "");
   // The vertical stepper: every title is a step; the current one carries the body and the nav underneath it.

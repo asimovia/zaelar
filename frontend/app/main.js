@@ -396,6 +396,7 @@ document.addEventListener("hb:open-config", (e) => {
   const tab = String(((e && e.detail) || {}).tab || "").trim();
   store.setConfigInitialTab(tab || null);
   store.setConfigConnector(String(((e && e.detail) || {}).connector || "").trim() || null);   // one connector, alone
+  store.setConfigFrom(String(((e && e.detail) || {}).from || "").trim() || null);             // who to go back to
   store.setConfigOpen(true);
 });
 

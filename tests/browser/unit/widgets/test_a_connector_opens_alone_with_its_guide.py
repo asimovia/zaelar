@@ -33,6 +33,10 @@ const out = {
   list: W.connectorList(W.groupGoogle(cs), [["mensajeria", "Mensajería"], ["google", "Google"], ["agenda", "Calendario"]], ui),
   wa0: W.connectorWizard(cs[0], 0, "<FORM-wa>", "Mensajería", ui),
   wa1: W.connectorWizard(cs[0], 1, "<FORM-wa>", "Mensajería", ui),
+  // A connected one, done: opened from a card that named itself, from an unnamed caller, and from the list.
+  doneFrom: W.connectorWizard({ ...cs[1], connected: true }, 0, "<F>", "Mensajería", { ...ui, returnTo: { from: "Contactos" } }),
+  doneAnon: W.connectorWizard({ ...cs[1], connected: true }, 0, "<F>", "Mensajería", { ...ui, returnTo: { from: "" } }),
+  doneList: W.connectorWizard({ ...cs[1], connected: true }, 0, "<F>", "Mensajería", ui),
   // Google is ONE connector (2026-10-04): the calendar row is a SERVICE inside the `google-account` group, and
   // the guide is the group's — its API step names every service's API, its credentials step the redirect URIs.
   gcal: W.guideSteps(W.groupGoogle(cs)[0]),
@@ -138,5 +142,28 @@ def test_contacts_finally_has_a_form_and_a_route_behind_it():
 def test_both_requests_are_read_before_either_is_cleared():
     """Clearing `configInitialTab` re-runs the open effect synchronously; a re-run that consumed the connector first
     left the outer run reading null, and the catalog's connector never opened (measured live, 2026-10-04)."""
-    i = PANEL.index("const want = store.configInitialTab(), cxWant = store.configConnector();")
+    i = PANEL.index("const want = store.configInitialTab(), cxWant = store.configConnector(), from = store.configFrom();")
     assert i < PANEL.index("store.setConfigInitialTab(null)", i) < PANEL.index("store.setConfigConnector(null)", i)
+
+
+def test_back_returns_to_whoever_opened_the_connector_and_close_sits_beside_it(run):
+    """Operator 2026-10-25: «si yo voy a un sitio y le doy a volver, quiero volver desde donde venía». From the
+    Contactos card's «Gestionar», «Volver» used to drop the person on the connectors list, with the only way
+    out a ✕ at the top of the screen. Now the done step says WHERE it goes back to and offers «Cerrar» beside it;
+    the breadcrumb stays the way to roam the section."""
+    assert "config.cxw.back_to{&quot;name&quot;:&quot;Contactos&quot;}" in run["doneFrom"]
+    for html in (run["doneFrom"], run["doneAnon"], run["doneList"]):
+        assert 'data-cx-done="1"' in html and 'data-cx-close="1"' in html
+        assert 'class="cf-crumb-back" data-cx-back="1"' in html, "the breadcrumb still leads to the list"
+    assert "config.cxw.done_back" in run["doneAnon"] and "config.cxw.done_back" in run["doneList"]
+
+
+def test_a_caller_outside_the_panel_makes_back_close_it():
+    # The card names itself in the one door every card uses…
+    desk = (APP / "widgets" / "desktop.js").read_text(encoding="utf-8")
+    assert re.search(r'openConnector:.*?from: \(e && e\.name\) \|\| ""', desk, re.S)
+    assert "store.setConfigFrom(" in (APP / "main.js").read_text(encoding="utf-8")
+    # …the panel remembers it only when opened ON a connector, and «Volver» then closes instead of listing.
+    assert 'cxReturn = { from: from || "" }' in PANEL
+    assert re.search(r'\[data-cx-done\].*?if \(cxReturn\) close\(\);', PANEL, re.S)
+    assert re.search(r'\[data-cx-back\].*?cxReturn = null', PANEL), "taking the breadcrumb drops the return"

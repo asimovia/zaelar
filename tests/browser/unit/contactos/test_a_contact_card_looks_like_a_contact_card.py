@@ -438,8 +438,9 @@ def test_a_read_only_connection_SAYS_it_only_brings(_page):
     _mount(_page, _data())
     _page.locator(".ctplug").click()
     assert _page.locator(".ctsyncarrow").inner_text().strip() == "→"
-    assert _page.locator(".ctwarn").count() == 1
-    assert "escritura" in _page.locator(".ctwarn").inner_text()
+    # What would unblock two-way is OUR OAuth app's scope — never said to the person, who can do nothing about it.
+    assert _page.locator(".ctwarn").count() == 0
+    assert "Google Cloud" not in _page.locator(".ctsync").inner_text()
 
 
 def test_a_two_way_connection_says_so_in_one_line(_page):
@@ -482,11 +483,12 @@ def test_the_switch_reads_OFF_when_it_is_off(_page):
 
 def test_syncing_by_hand_is_still_there_but_QUIET(_page):
     """Impatience deserves a door; it just must not be the one that looks like the feature. A primary
-    button beside a switch would go on teaching «syncing is something you do by hand»."""
+    button beside a switch would go on teaching «syncing is something you do by hand» — but it IS a
+    button, the same `ctbtn` as «Gestionar» (operator 2026-10-25: «el de sync no es como el resto»)."""
     _mount(_page, _data())
     _page.locator(".ctplug").click()
     assert _page.locator(".ctsync .ctbtn.primary").count() == 0, "the switch is the control now"
-    _page.locator(".ctsync .ctquiet", has_text="Sincronizar ahora").click()
+    _page.locator(".ctsync button.ctbtn", has_text="Sincronizar ahora").click()
     assert ["sync_contacts", {}] in _calls(_page)
 
 

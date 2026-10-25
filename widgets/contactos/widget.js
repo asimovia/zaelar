@@ -188,12 +188,6 @@ function injectStyles(){
   .hb-contactos .ctswtx{font-size:13px;font-weight:600}
   .hb-contactos .ctswsub{font-size:11.5px;color:var(--hb-muted-2,#7d8a9c);margin-left:auto;text-align:right}
   .hb-contactos .ctsyncfoot{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-  /* ⚠️ NOT ctlink — that class already means «jump to a linked contact» further down this sheet, and a
-     second meaning on one surface loses to the first one silently (measured: the accent underline won). */
-  .hb-contactos .ctquiet{border:0;background:none;padding:0;font-size:12px;font-weight:600;cursor:pointer;
-    color:var(--hb-muted,#5b6b82)}
-  .hb-contactos .ctquiet:hover{color:var(--hb-accent,#3D6FE0);text-decoration:underline}
-  .hb-contactos .ctquiet[disabled]{opacity:.5;cursor:default;text-decoration:none}
   .hb-contactos .ctsyncwhen{font-size:11.5px;color:var(--hb-muted-2,#7d8a9c);margin-left:auto;text-align:right}
   .hb-contactos .ctwarn{font-size:11.5px;line-height:1.5;color:var(--hb-warn,#E0A23D);
     border-left:2px solid var(--hb-warn,#E0A23D);padding-left:9px}
@@ -866,13 +860,8 @@ function renderSyncBox(el, data, ctx, sync, redraw){
         + "los cambios que hagas aquí.")));
   box.appendChild(dir);
 
-  if(!sync.twoWay){
-    // The direction line above already SAYS it only brings; repeating it here in a louder register is noise,
-    // so the warning carries only what the line cannot: what unblocks it.
-    box.appendChild(el2("div","ctwarn", tt("sync_needs_write", null,
-      "Para que vaya en los dos sentidos hace falta el permiso de escritura de contactos en la app de "
-      + "Google Cloud.")));
-  }
+  // What would unblock two-way (an OAuth scope on the deployment's app) is the deployer's business, not the
+  // person's: the direction line above already says what it does, and nothing on this card asks them to act.
 
   if(sync.blockedDeletes){
     // Said out loud rather than swallowed: the engine REFUSED to mirror a deletion it did not believe, and
@@ -886,9 +875,9 @@ function renderSyncBox(el, data, ctx, sync, redraw){
   }
 
   const foot = el2("div","ctsyncfoot");
-  // «Sincronizar ahora» is impatience, not the feature: the switch above is what keeps them in step. It
-  // stays a quiet link so nothing on this panel reads as «syncing is something you do by hand».
-  const go = el2("button","ctquiet", tt("sync_now", null, "Sincronizar ahora"));
+  // «Sincronizar ahora» is impatience, not the feature: the switch above is what keeps them in step. It is
+  // still a BUTTON, the same `ctbtn` as «Gestionar» above it — one look for every action on this panel.
+  const go = el2("button","ctbtn", tt("sync_now", null, "Sincronizar ahora"));
   go.onclick = async()=>{
     go.disabled = true; go.textContent = tt("syncing", null, "Sincronizando…");
     redraw(await ctx.action("sync_contacts", {}));
