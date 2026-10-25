@@ -590,6 +590,10 @@ def _validate(wid: str, *, stamp_origin: bool = False) -> tuple[bool, str]:
     bg_bad = _validate_background(man, data_src)         # background cycle valid + passive needs tick() (V2-034)
     if bg_bad:
         return False, bg_bad
+    from . import screen_policy                          # V2-792: how it lives on several screens, said by the widget
+    scr_bad = screen_policy.problem(man, required=stamp_origin)
+    if scr_bad:
+        return False, scr_bad
     init_p = os.path.join(d, "__init__.py")
     if not os.path.isfile(init_p):
         open(init_p, "w").close()

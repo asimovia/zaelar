@@ -10,7 +10,9 @@ test cannot see the one regression this initiative exists for: «both of them pl
   · the conversation reaches both: the transcript line lands on both walls;
   · a line typed on the phone, which holds no voice room, reaches the live session through `POST /api/chat` with the
     phone's device;
-  · `screens/moved` takes a one-screen card away from the screen that had it.
+  · `screens/moved` takes a one-screen card away from the screen that had it;
+  · a video asked for on the phone while the desktop plays one MOVES to the phone (the widget declares
+    `"screens": "single"`): the desktop closes its player, the phone opens one.
 """
 from __future__ import annotations
 
@@ -172,6 +174,16 @@ def seen(base):
         _post(base, "/__emit", {"kind": "screens", "label": "moved", "id": "youtube", "to": PHONE, "origin_dev": PHONE})
         out["desk_closed"] = _wait(lambda: pages["desk"].evaluate("() => window.__closed"))
         out["desk_3"] = pages["desk"].evaluate(READ)
+
+        # 4 · the video plays on the desktop and the PHONE asks for a video: the server moves it (manifest
+        #     `"screens": "single"`) — the desktop closes its player, the phone opens one
+        pages["desk"].evaluate("() => { window.__closed = []; }")
+        _post(base, "/__emit", {"kind": "transcript", "label": "final", "text": "put on a video of cats",
+                                "role": "user", "dev": PHONE, "trace": "e2e-4"})
+        _post(base, "/__emit", {"kind": "widget", "label": "show", "id": "youtube", "src": "flash", "trace": "e2e-4"})
+        out["desk_closed_4"] = _wait(lambda: pages["desk"].evaluate("() => window.__closed"))
+        out["phone_4"] = _wait(lambda: "youtube" in pages["phone"].evaluate(READ)["shows"]
+                               and pages["phone"].evaluate(READ)) or pages["phone"].evaluate(READ)
         b.close()
     return out
 
@@ -210,3 +222,9 @@ def test_a_card_moved_to_the_phone_leaves_the_desktop_with_a_chip(seen):
 
 def test_no_page_error_on_either_screen(seen):
     assert not seen["errors"], seen["errors"]
+
+
+def test_a_video_asked_on_the_phone_while_the_desktop_plays_one_moves_to_the_phone(seen):
+    """`"screens": "single"`: the desktop stops and closes its player, the phone opens one — never both."""
+    assert seen["desk_closed_4"] == ["youtube"], seen["desk_closed_4"]
+    assert "youtube" in seen["phone_4"]["shows"], seen["phone_4"]

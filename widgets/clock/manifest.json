@@ -1,5 +1,6 @@
 {
   "id": "clock",
+  "screens": "shared",
   "version": "0.1.0",
   "title": "Reloj",
   "description": "Reloj digital grande y centrado: hora actual (HH:MM:SS) y fecha de hoy en español, actualizándose cada segundo. La hora la pone el navegador.",

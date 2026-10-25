@@ -89,8 +89,7 @@ async def run_widget_hook(wid: str, fn: str, caller):
 # requests the full manifest: preferred size for a fluid-width surface and whether "fullscreen" means native (video)
 # or maximize inside the app. These are two tiny fields; requesting the whole manifest to read them would bring back
 # the O(N·manifest) that V2-085 removed.
-# `one_screen` (V2-792): a card that PLAYS (a video, music) opens on one screen at a time — the host reads it here.
-_INDEX_FIELDS = ("id", "title", "name", "transient", "kind", "icon", "size", "fullscreen", "live_title", "one_screen")
+_INDEX_FIELDS = ("id", "title", "name", "transient", "kind", "icon", "size", "fullscreen", "live_title")
 _INDEX_PURPOSE_MAX = 120
 
 
@@ -104,6 +103,8 @@ def _index_row(w: dict) -> dict:
         row["whenToUse"] = purpose[:_INDEX_PURPOSE_MAX]
     ident = _registry.widget_identity(w)
     row["name"], row["aliases"], row["origin"] = ident["name"], ident["aliases"], ident["origin"]
+    from . import screen_policy
+    row["screens"] = screen_policy.of(w)       # V2-792: resolved, so a host never re-derives it
     return row
 
 

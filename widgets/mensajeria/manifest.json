@@ -1,5 +1,6 @@
 {
   "id": "mensajeria",
+  "screens": "shared",
   "size": {
     "w": 760,
     "h": 640

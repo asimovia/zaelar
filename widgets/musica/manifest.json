@@ -1,6 +1,6 @@
 {
   "id": "musica",
-  "one_screen": true,
+  "screens": "single",
   "version": "0.5.0",
   "title": "Música",
   "description": "Tu música por voz y a mano, como un reproductor de verdad: la canción que suena ocupa la tarjeta (portada, título, artista, barra de progreso), tu biblioteca guarda listas, favoritas, más escuchadas y recientes, hay cola, aleatorio y repetir, y un buscador de canciones, artistas y álbumes. Conecta tu Spotify o suena gratis desde YouTube-audio.",

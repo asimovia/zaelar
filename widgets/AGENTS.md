@@ -162,6 +162,13 @@ widgets feel polished and consistent with the rest. These are HARD rules — fol
   live and does nothing is worse than one that is visibly off).
 
 ## Hard rules
+
+- **Declare `"screens"` in `manifest.json`** (V2-792 — one agent open on the computer AND the phone at once):
+  `"shared"` for a reflection of data (calendar, list, contacts, map, results): open on any number of screens, opens
+  where it was asked, the others get a chip, every copy shows the same data live. `"single"` for anything that takes
+  the device's sound or picture (video, music, recording): it lives on one screen and asking for it from another
+  screen MOVES it there (the old one stops and closes). `runtime.output` ⇒ `"single"` (the gate enforces it). The host
+  does the moving: a widget never detects other screens itself. Policy: `widgets/screen_policy.py`.
 - **Self-contained**: no external libraries, no CDN, no network from `widget.js`. Inject your `<style>` once (id-guarded).
 - **Security**: any web/3rd-party/user text → build DOM with `textContent` (NEVER `innerHTML` for untrusted data).
 - **Class names must not collide with `frontend/app/styles.css`'s global classes** (checked by the generator's

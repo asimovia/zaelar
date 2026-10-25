@@ -8,8 +8,11 @@
 //   · a card opened on the other screen → a passive CHIP here («📄 Informe · on the computer — Open here»),
 //     never the card itself. A result that grabs this screen in the middle of something else is the failure
 //     this initiative removes; one tap brings it.
-//   · a card that PLAYS (manifest `one_screen`: video, music) lives on ONE screen. Opening it here tells the server
-//     (`/api/screens/bring`), and every other screen lets it go and keeps a «▶ now on the phone — Bring here» chip.
+//   · a card that takes the device's sound or picture (manifest `"screens": "single"`: video, music) lives on ONE
+//     screen. Asking for it on another screen moves it — the server announces the move the moment the order lands
+//     (`voice/screens.py`), opening it here by hand tells the server (`/api/screens/bring`) — and every other screen
+//     lets it go and keeps a «▶ now on the phone — Bring here» chip. A `"shared"` card (a calendar, a list) is a
+//     reflection and may be open everywhere. The policy is the widget's own (`widgets/screen_policy.py`).
 //   · visible / hidden / touched, so the server can tell the active screen.
 //
 // Shared by both shells: the desktop canvas and the phone deck expose the same host contract (show/close/list).
@@ -23,7 +26,7 @@ const CHIP_TTL_MS = 15 * 60 * 1000;
 
 const base = (id) => String(id || "").split("::", 1)[0].trim().toLowerCase();
 
-// The catalogue's `one_screen` flag, read once from the compact index (both hosts load it lazily, so a deck being
+// The catalogue's `screens` policy, read once from the compact index (both hosts load it lazily, so a deck being
 // restored may not have it yet — this does not depend on that).
 let _oneScreen = null, _names = {};
 async function oneScreenIds() {
@@ -31,7 +34,7 @@ async function oneScreenIds() {
   try {
     const r = await fetch("/widgets", { cache: "no-store" }).then((x) => x.json());
     const rows = Array.isArray(r) ? r : (r && (r.widgets || r.items)) || [];
-    _oneScreen = new Set(rows.filter((w) => w && w.one_screen).map((w) => String(w.id)));
+    _oneScreen = new Set(rows.filter((w) => w && w.screens === "single").map((w) => String(w.id)));
     for (const w of rows) if (w && w.id) _names[String(w.id)] = w.name || w.title || "";
   } catch (_) { return new Set(); }
   return _oneScreen;

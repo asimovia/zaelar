@@ -1,5 +1,6 @@
 {
   "id": "results",
+  "screens": "shared",
   "version": "0.7.0",
   "title": "Resultados",
   "description": "Superficie genérica de presentación, con cinco pestañas: PROCESO (el navegador del encargo embebido — captura, filtros y eventos en vivo, del más nuevo al más viejo), RESULTADOS (fichas + expediente de una), SUMARIO (cómo va), FUENTES (en qué webs entró y qué pasó en cada una) y CRITERIOS (con qué se está buscando). No busca ni calcula: quien hizo el trabajo le entrega el conjunto ya hecho y esto lo guarda y lo pinta. Agnóstica del tema — barcos, pisos, papers o correos.",

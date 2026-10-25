@@ -1,5 +1,6 @@
 {
   "id": "markets",
+  "screens": "shared",
   "version": "0.1.0",
   "title": "Markets",
   "name": "Markets",

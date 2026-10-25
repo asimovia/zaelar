@@ -58,6 +58,58 @@ ROUTED: contextvars.ContextVar[bool] = contextvars.ContextVar("zaelar_screen_rou
 
 _typed = {"fn": None}
 
+#: Where each one-screen card plays right now (`youtube` → its screen) and how to tell which cards are one-screen.
+#: The policy is the WIDGET's (`widgets/screen_policy.py`); this module only asks, through a registered predicate,
+#: so the voice layer imports nothing from the widgets.
+_playing: dict[str, str] = {}
+_policy = {"single": None}
+
+
+def register_policy(fn) -> None:
+    """`fn(card_id) -> bool`: True when the card takes the device's sound or picture (`"screens": "single"`)."""
+    _policy["single"] = fn
+
+
+def _is_single(card_id: str) -> bool:
+    fn = _policy["single"]
+    try:
+        return bool(fn and fn(card_id))
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"screens: policy unreadable for {card_id}: {e!r}")
+        return False
+
+
+def note_playing(card_id, dev) -> str:
+    """A card now lives on `dev` (opened there by hand, or moved there). Returns where it lived before."""
+    b, d = str(card_id or "").split("::", 1)[0].strip().lower(), clean(dev)
+    if not (b and d):
+        return ""
+    with _mx:
+        prev = _playing.get(b, "")
+        _playing[b] = d
+    return prev
+
+
+def _move_if_single(ev: dict, dev: str) -> None:
+    """A `show` of a one-screen card, asked from `dev`: it MOVES here. The move is announced BEFORE the show goes
+    out (this runs inside the show's own stamp), so the screen that had it stops and closes its copy before it can
+    load what the new order put in the card — «ponme un vídeo» said to the phone does not start it on the desktop."""
+    cid = str(ev.get("id") or "")
+    if not cid or ev.get("src") == "user" or not _is_single(cid):
+        return
+    b = cid.split("::", 1)[0].strip().lower()
+    with _mx:
+        prev = _playing.get(b, "")
+        _playing[b] = dev
+    ev["moved"] = True
+    if prev == dev:
+        return
+    try:
+        from voice.observer import emit
+        emit("screens", "moved", extra={"id": cid, "to": dev, "origin_dev": dev, "from": prev})
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"screens: move of {cid} not announced: {e!r}")
+
 
 def clean(dev) -> str:
     """A device id as it may be stored and compared: short, lowercase, no characters a header or a log would mangle."""
@@ -263,8 +315,11 @@ def stamp(ev: dict) -> dict:
         o = origin_of(ev)
         if o:
             ev["origin_dev"] = o
-        if kind == "widget" and ev.get("label") == "show" and ROUTED.get():
-            ev["moved"] = True            # the screen that opens it takes it from the others (`/api/screens/bring`)
+        if kind == "widget" and ev.get("label") == "show":
+            if ROUTED.get():
+                ev["moved"] = True        # the screen that opens it takes it from the others (`/api/screens/bring`)
+            if o:
+                _move_if_single(ev, o)
     except Exception as e:  # noqa: BLE001 — a stamp never breaks the stream
         logger.debug(f"screens: stamp failed: {e!r}")
     return ev
@@ -357,6 +412,7 @@ async def deliver_typed(text: str, dev) -> bool:
 def _reset_for_tests() -> None:
     with _mx:
         _screens.clear()
+        _playing.clear()
         _traces.clear()
         _tasks.clear()
         _holder["dev"], _holder["ts"] = "", 0.0

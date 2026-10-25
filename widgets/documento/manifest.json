@@ -1,5 +1,6 @@
 {
   "id": "documento",
+  "screens": "shared",
   "version": "0.2.0",
   "title": "Documento",
   "description": "Una hoja en blanco donde cabe UNA cosa para leer: una receta, un informe, unas instrucciones, un texto con formato o un PDF. No busca ni calcula; alguien la rellena y esto la presenta bien, con su título, su fuente y sitio de sobra para leer.",

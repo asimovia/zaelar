@@ -1,6 +1,6 @@
 {
   "id": "youtube",
-  "one_screen": true,
+  "screens": "single",
   "version": "0.1.0",
   "title": "YouTube",
   "description": "Reproductor de YouTube REAL embebido en el canvas: reproduce el vídeo de verdad (no una captura) y se controla por voz — reproducir, pausar, subir/bajar volumen, silenciar y reiniciar.",

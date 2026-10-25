@@ -1,5 +1,6 @@
 {
   "id": "fotos",
+  "screens": "shared",
   "version": "0.1.0",
   "title": "Fotos",
   "description": "Galería de fotos importadas de Google Photos: navega por año, pide una tanda nueva desde el selector de Google y busca por fecha o por la etiqueta que le hayas puesto a un viaje.",

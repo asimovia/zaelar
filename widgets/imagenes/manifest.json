@@ -1,5 +1,6 @@
 {
   "id": "imagenes",
+  "screens": "shared",
   "version": "0.1.0",
   "title": "Imágenes",
   "description": "Enseña imágenes y pone una de FONDO DE ESCRITORIO (wallpaper). Visor de fotografías: una imagen grande, la tira de miniaturas debajo, flechas para pasar, y arriba el título de lo que se está viendo con su fuente. Solo mirar — ni edición ni retoque.",

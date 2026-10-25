@@ -264,7 +264,7 @@ async def canvas_arrange():
 
 def _open_elsewhere(dev: str) -> list:
     """V2-792 — the cards OTHER open screens have open, `[{id, dev}]`. A screen being restored skips the ones that
-    play on one screen at a time (the host knows which: manifest `one_screen`) and shows a chip instead."""
+    play on one screen at a time (the host knows which: manifest `"screens": "single"`) and shows a chip instead."""
     from voice import screens as _screens
     me = _screens.clean(dev)
     out: list = []

@@ -25,9 +25,9 @@ of places to touch, not code to write.
 
 ---
 
-## 1. Before writing a line — four decisions
+## 1. Before writing a line — five decisions
 
-Answer them in writing in the piece's design notes. All four have a default answer, and the default is almost
+Answer them in writing in the piece's design notes. All five have a default answer, and the default is almost
 always right; what is expensive is not having made them.
 
 **1.1 Widget, connector, or both?** A CONNECTOR talks to the outside world and has no screen. A WIDGET is a
@@ -53,6 +53,16 @@ quota to answer a question nobody asked).
 recording, a live process? If so, declare `runtime{output, produce[], suspend, active_when}` or your widget will
 keep playing with the agent STOPPED. If not, declare nothing: *received* media (a photo, a QR code) is passive
 content, not production.
+
+**1.5 How does it live on SEVERAL SCREENS?** (Required in the manifest since V2-792.) The same agent is open on
+the operator's computer and phone at once, with one conversation. `"screens": "shared"` — a reflection of data (a
+calendar, a list, contacts, a map, results): it may be open on every screen, a request opens it on the screen that
+asked, the others get an «open here» chip, and every copy shows the same data live. `"screens": "single"` — it
+takes the device's sound or picture (a video, music, a recording): it lives on ONE screen, and asking for it from
+another screen MOVES it (the screen that had it stops and closes its copy); orders about it (pause, volume) still
+reach it wherever it plays. `runtime.output` ⇒ `"single"`, and the gate rejects the contradiction. The host does the
+moving (`voice/screens.py` + `frontend/app/services/screens.js`), so the widget's code never looks at other screens.
+Policy and its one rule: `widgets/screen_policy.py`; node 4.269 fails a built-in widget that does not declare it.
 
 ---
 
@@ -408,6 +418,7 @@ WIDGET
 [ ] apply_action is an ACTIONS = {name: fn} table, one function per action
 [ ] ref_index if there are ids · prompt_digest if relevant (bounded, and saying so)
 [ ] background: decided and written down · runtime{} if it produces
+[ ] screens: "shared" or "single" declared (single if it takes the device's sound/picture)
 [ ] widget.js: no fetch · no innerHTML · textContent · classes with their own prefix · theme via --hb-*
 
 WIRING  (the 16 points of §4, one by one)

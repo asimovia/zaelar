@@ -1,5 +1,6 @@
 {
   "id": "contactos",
+  "screens": "shared",
   "version": "0.1.0",
   "title": "Contactos",
   "description": "El directorio único del operador: personas, sitios y empresas (amigos, restaurantes, fontaneros, cafeterías…) con grupos, ciudad, favoritos y conexiones entre ellos.",

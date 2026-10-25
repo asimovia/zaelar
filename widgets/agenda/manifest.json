@@ -1,5 +1,6 @@
 {
   "id": "agenda",
+  "screens": "shared",
   "version": "0.3.0",
   "title": "Agenda",
   "description": "Tu calendario y tareas: citas, reuniones, tu día, huecos libres («find me a free slot», «cuándo estoy libre»), listas de tareas. Vistas de día, semana, mes y lista; citas por categoría con aviso, asistentes y confirmación; planifica el día y hace de coach.",

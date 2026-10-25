@@ -16,6 +16,14 @@ from voice.observer import emit
 router = APIRouter()
 
 
+def _single(card_id: str) -> bool:
+    from widgets import screen_policy
+    return screen_policy.of_card(card_id) == screen_policy.SINGLE
+
+
+screens.register_policy(_single)     # the voice layer asks the widgets' own declaration, never a list of its own
+
+
 @router.post("/api/chat")
 async def chat(text: str = Body(..., embed=True), dev: str = Body("", embed=True)) -> JSONResponse:
     """Deliver a typed line to the live session, whichever screen typed it.
@@ -54,6 +62,8 @@ def bring(id: str = Body(..., embed=True), dev: str = Body("", embed=True)) -> d
     if not d or not cid:
         return {"ok": False}
     screens.touched(d)
+    if screens.note_playing(cid, d) == d:
+        return {"ok": True, "to": d, "already": True}     # the server announced this move when the order landed
     emit("screens", "moved", extra={"id": cid, "to": d, "origin_dev": d})
     return {"ok": True, "to": d}
 

@@ -1,5 +1,6 @@
 {
   "id": "timer",
+  "screens": "shared",
   "version": "0.1.0",
   "title": "Temporizador / Horno",
   "description": "Cronómetro de cuenta atrás grande y clarísimo. Muestra segundos/minutos restantes, se puede pausar/reanudar/reiniciar desde el widget o por voz.",

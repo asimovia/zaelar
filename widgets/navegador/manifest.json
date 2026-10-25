@@ -1,5 +1,6 @@
 {
   "id": "navegador",
+  "screens": "shared",
   "kind": "backed",
   "backend": {
     "owner": "owner.py"

@@ -4941,6 +4941,11 @@ DOMAINS: list[dict] = [
                                  "typed door, the canvas of the current turn's screen, the hand-over announced, the "
                                  "screens slot only with two (V2-792)", "ch": UNIT,
             "paths": ["tests/voice/unit/test_one_agent_many_screens.py"]},
+        {"id": "4.269", "title": "Every widget declares how it lives on several screens (\"screens\": shared | "
+                                 "single): every built-in says it, runtime.output ⇒ single, the validator requires it on "
+                                 "a new widget, the code agent is told, the index carries it, a single card asked from "
+                                 "another screen MOVES before it shows (V2-792)", "ch": UNIT,
+            "paths": ["tests/browser/unit/widgets/test_every_widget_says_how_it_lives_on_several_screens.py"]},
         {"id": "4.18", "title": "Shell MÓVIL: contrato de host + del widget · paleta compartida · el service worker "
                                 "no cachea", "ch": UNIT,
             "paths": ["tests/browser/unit/mobile/test_mobile_host_contract.py"]},
