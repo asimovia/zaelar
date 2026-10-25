@@ -205,6 +205,7 @@ class OrchestratorLoop:
         await self._supervise_errands(now)
         await self._supervise_stale_flows(now)
         await self._fire_due(now)
+        await self._report_wake(now)
         await self._maybe_spark(now)
         await self._maybe_consolidate(now)
         self._close_idle_session()
@@ -541,15 +542,19 @@ class OrchestratorLoop:
         return self._kind_budget_default.get(kind or "", self._budget_secs)
 
     async def _fire_due(self, now: float) -> None:
-        # V2-092: when the agent is STOPPED (⏻), a cron does not fire. Exit BEFORE `mark_fired`, so the job remains
+        # V2-092: when the agent is STOPPED (⏻), a cron does not SPEAK. Exit BEFORE `mark_fired`, so the job remains
         # OVERDUE and fires as soon as the operator starts — stopping does not lose the reminder, it postpones it. A cron that
         # spoke over a stopped agent would be exactly the failure ⏻ exists to prevent.
+        # V2-796: …but ⏻ silences the VOICE, not his lock screen. With a device subscribed to Web Push, a plain
+        # notice still goes out there (`notices.notify` never speaks while stopped); an errand relaunch still waits.
+        stopped = False
         try:
             from nucleo import runstate
-            if runstate.stopped():
-                return
+            stopped = runstate.stopped()
         except Exception:
             pass
+        if stopped and not self._can_push():
+            return
         try:
             jobs = _scheduler.due(now)
         except Exception as e:  # noqa: BLE001
@@ -559,6 +564,10 @@ class OrchestratorLoop:
             d = job.get("detail") or {}
             prompt = (d.get("prompt") or job.get("title") or "").strip()
             name = (d.get("name") or job.get("title") or "zaelar").strip()
+            from nucleo.workers import quota_wait as _qwait
+            if stopped and (_qwait.takes(d) or not prompt):
+                continue                          # work, not a notice: it waits for ⏻ like before
+            fired_for = (d.get("schedule") or {}).get("next_run")
             try:
                 _scheduler.mark_fired(job, now)   # advances/closes BEFORE delivery (idempotent on voice failure)
             except Exception as e:  # noqa: BLE001
@@ -573,14 +582,65 @@ class OrchestratorLoop:
                 _trace = None
             try:
                 _emit("loop.scheduled_fired", {"id": job.get("id"), "name": name, "prompt": prompt})
-                from nucleo.workers import quota_wait as _qwait
                 if _qwait.takes(d):                 # an errand parked for the quota's reset: relaunch it, not a speech
                     await _qwait.fire(d, self._deliver)
                 elif prompt:
-                    await self._deliver(name, prompt)
+                    await self._deliver_notice(job, name, prompt, fired_for)
             finally:
                 if _trace is not None:
                     _trace.adopt("")
+        await self._retry_owed(now)
+
+    async def _report_wake(self, now: float) -> None:
+        """V2-796 — tell a deployment that stops idle machines when the next notice is due (`nucleo/wake.py`)."""
+        try:
+            from nucleo import wake
+            await wake.flush(now)
+        except Exception as e:  # noqa: BLE001
+            logger.debug(f"loop: wake report failed: {e!r}")
+
+    def _can_push(self) -> bool:
+        if self._deliver is not _default_deliver:
+            return False                          # a test double: the old contract, nothing pushes
+        try:
+            from nucleo import notices
+            return bool(notices.devices())
+        except Exception as e:  # noqa: BLE001 — unreadable: behave as before (postpone while stopped)
+            logger.debug(f"loop: push devices unreadable: {e!r}")
+            return False
+
+    async def _deliver_notice(self, job: dict, name: str, prompt: str, fired_for) -> None:
+        """A due job's text, through the ONE notice door (V2-796): voice when he is there, his devices when not,
+        owed until something takes it — and never a second time for the same firing. A test that injected its own
+        `deliver` keeps the old contract."""
+        if self._deliver is not _default_deliver:
+            await self._deliver(name, prompt)
+            return
+        d = job.get("detail") or {}
+        covered = ""
+        if d.get("origin") == "agenda":
+            try:
+                from widgets.agenda import reminders as _rem
+                covered = _rem.covered_by(job.get("id"))
+            except Exception as e:  # noqa: BLE001 — unknown means ours: a notice too many beats a lost one
+                logger.debug(f"loop: covered_by failed: {e!r}")
+        try:
+            from nucleo import notices
+            await notices.notify(name.removeprefix("aviso: ") or "zaelar", prompt, kind="reminder",
+                                 key=f"job:{job.get('id')}:{fired_for}", covered_by=covered,
+                                 detail={"job": job.get("id"), "origin": d.get("origin") or "cron"})
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"loop: notice delivery failed, falling back to voice: {e!r}")
+            await self._deliver(name, prompt)
+
+    async def _retry_owed(self, now: float) -> None:
+        if self._deliver is not _default_deliver:
+            return
+        try:
+            from nucleo import notices
+            await notices.retry_owed(now)
+        except Exception as e:  # noqa: BLE001
+            logger.debug(f"loop: retry_owed failed: {e!r}")
 
     async def _maybe_spark(self, now: float) -> None:
         if not self._gate.allow(now):

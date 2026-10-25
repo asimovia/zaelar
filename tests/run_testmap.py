@@ -3624,6 +3624,17 @@ DOMAINS: list[dict] = [
         {"id": "2.799", "title": "A step op asked again is another step, never a drag: the anti-drag guard reads the card's own `repeatable` declaration (music and video next/volume), and a repeated WRITE is still a drag (V2-795)",
             "ch": UNIT,
             "paths": ["tests/agent_headless/unit/flash/test_a_step_op_is_never_a_drag.py"]},
+        # V2-796 — a notice is a ROW and says how it ended: never twice, never lost, Google's own alarm wins the
+        # default notice, ⏻ silences the voice not the lock screen, and a sleeping engine is told when to wake.
+        {"id": "2.800", "title": "One notice ledger: the same notice never reaches him twice, an untaken one is owed and shown on the next screen, nobody at a screen → his phone (Web Push, RFC 8291/8292 round-trip), ⏻ silences the voice not the push (V2-796)",
+            "ch": UNIT,
+            "paths": ["tests/agent_headless/unit/test_notice_ledger.py"]},
+        {"id": "2.801", "title": "An appointment Google Calendar already alarms is not rung again by the agent — read at fire time from the event and the calendar's defaults; an asked notice is always ours, an unknown state rings (V2-796)",
+            "ch": UNIT,
+            "paths": ["tests/browser/unit/agenda/test_a_notice_google_already_rings_is_not_doubled.py"]},
+        {"id": "2.802", "title": "A deployment that stops idle engines is told the next due notice after every schedule change, debounced; self-host reports nothing (V2-796)",
+            "ch": UNIT,
+            "paths": ["tests/agent_headless/unit/test_a_sleeping_engine_is_told_when_to_wake.py"]},
         {"id": "2.728", "title": "A turn that acted on a card and also escalated, read inline, launches no worker — on the text channel as on the voice",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_an_inline_act_settles_the_commission_on_both_channels.py"]},
         {"id": "2.729", "title": "An ordered act that leaves, sure at the operator's 70%, runs when the model only drafted it — both channels",
@@ -4951,6 +4962,9 @@ DOMAINS: list[dict] = [
                                  "asked on the computer it opens there and the phone gets a chip; asked on the phone a "
                                  "shared one is open on both and a single one moves (V2-792)", "ch": UNIT,
             "paths": ["tests/browser/e2e/mobile/test_every_widget_on_two_screens.py"]},
+        {"id": "4.271", "title": "The phone is offered the app first, then notifications, never nagged; the service "
+                                 "worker shows every push and reports the click to the ledger (V2-796)", "ch": UNIT,
+            "paths": ["tests/browser/unit/mobile/test_the_phone_is_offered_install_then_notifications.py"]},
         {"id": "4.18", "title": "Shell MÓVIL: contrato de host + del widget · paleta compartida · el service worker "
                                 "no cachea", "ch": UNIT,
             "paths": ["tests/browser/unit/mobile/test_mobile_host_contract.py"]},

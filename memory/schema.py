@@ -461,8 +461,57 @@ FTS_TASKS = (
 )
 
 
+# V2-796 (2026-10-25): A NOTICE IS A ROW, and the row says how it ended. Before this a due reminder went to the
+# voice and, with nobody listening, became a note for the brain's NEXT turn — nothing recorded whether he ever got
+# it. `nucleo/notices.py` is the only writer. `dedupe_key` is UNIQUE so the same notice can never be delivered twice
+# (a restart that re-fires a job, two doors announcing the same finish). Purely additive: IF NOT EXISTS, no ALTER.
+#   · state  owed | spoken | pushed | shown | covered | seen | expired
+#   · channel  voice | push | screen | google (who took it)
+NOTICES = """
+CREATE TABLE IF NOT EXISTS notices (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  dedupe_key   TEXT NOT NULL UNIQUE,
+  kind         TEXT NOT NULL DEFAULT 'reminder',   -- reminder | done | approval | info
+  title        TEXT NOT NULL DEFAULT '',
+  body         TEXT NOT NULL DEFAULT '',
+  url          TEXT NOT NULL DEFAULT '',
+  state        TEXT NOT NULL DEFAULT 'owed',
+  channel      TEXT NOT NULL DEFAULT '',
+  attempts     INTEGER NOT NULL DEFAULT 0,
+  next_try_at  INTEGER,
+  created_at   INTEGER NOT NULL,
+  delivered_at INTEGER,
+  seen_at      INTEGER,
+  detail       TEXT
+)
+"""
+
+# One row per browser that agreed to receive Web Push. `id` is a hash of the endpoint (the endpoint itself is a
+# capability URL: whoever holds it can push to that browser, so it is never logged or returned to a client).
+PUSH_DEVICES = """
+CREATE TABLE IF NOT EXISTS push_devices (
+  id          TEXT PRIMARY KEY,
+  endpoint    TEXT NOT NULL,
+  p256dh      TEXT NOT NULL,
+  auth        TEXT NOT NULL,
+  dev         TEXT NOT NULL DEFAULT '',
+  platform    TEXT NOT NULL DEFAULT '',
+  installed   INTEGER NOT NULL DEFAULT 0,
+  created_at  INTEGER NOT NULL,
+  last_ok_at  INTEGER,
+  fail_count  INTEGER NOT NULL DEFAULT 0
+)
+"""
+
+NOTICES_INDEXES = [
+    "CREATE INDEX IF NOT EXISTS idx_notices_owed ON notices(state, next_try_at)",
+    "CREATE INDEX IF NOT EXISTS idx_notices_created ON notices(created_at DESC)",
+]
+
+
 BASE_DDL = [STATE, MEMORIES, *MEMORIES_INDEXES, EDGES, *EDGES_INDEXES, EPISODIC, JOURNAL, SYS_KV,
             VAULT_META, VAULT_SECRETS, PARAPHRASE_INDEX, *PARAPHRASE_INDEXES,
             ACTION_MAP, *ACTION_MAP_INDEXES, WORKFLOWS, *WORKFLOWS_INDEXES,
             ERRANDS, ERRAND_THREADS, *ERRANDS_INDEXES,
-            TASKS, TASK_ARTIFACTS, *TASKS_INDEXES]
+            TASKS, TASK_ARTIFACTS, *TASKS_INDEXES,
+            NOTICES, PUSH_DEVICES, *NOTICES_INDEXES]

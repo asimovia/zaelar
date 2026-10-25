@@ -24,6 +24,7 @@ import * as session from "../../../app/services/session.js?v=3";
 import { createSignal } from "../../../app/core/reactive.js?v=2";
 import { toggleTheme } from "../../../app/services/theme.js?v=2";
 import { t } from "../../../app/core/i18n.js?v=1";
+import * as push from "../../../app/services/push.js?v=1";
 
 function Toggle(label, get, onToggle) {
   return h("button", { class: () => "zm-row zm-toggle" + (get() ? " on" : ""), onClick: onToggle },
@@ -37,6 +38,24 @@ function Toggle(label, get, onToggle) {
 // worse than nothing but far better than being absent from the list.
 const LANG_NAME = { en: "English", es: "Español", ca: "Català", fr: "Français", de: "Deutsch", it: "Italiano",
                     pt: "Português", nl: "Nederlands", ja: "日本語", zh: "中文" };
+
+function NotifyRow() {
+  const [p, setP] = createSignal(push.permission());
+  push.onChange(() => setP(push.permission()));
+  const on = () => p() === "granted";
+  const sub = () => (!push.supported() ? (push.os() === "ios" && !push.installed() ? t("install.ios_steps") : "")
+    : p() === "denied" ? t("push.denied") : on() ? t("push.settings_on") : t("push.settings_off"));
+  return h("button", {
+    class: "zm-row",
+    onClick: async () => { if (on()) await push.test(); else if (push.supported()) setP(await push.enable()); },
+  },
+    h("span", { class: "zm-row-t" },
+      h("b", null, () => t("push.settings_label")),
+      h("small", null, () => sub()),
+    ),
+    h("span", { class: "zm-row-v" }, () => (on() ? t("push.test") : (push.canAsk() ? t("push.button") : ""))),
+  );
+}
 
 export function SettingsSheet() {
   const [langs, setLangs] = createSignal([]);
@@ -88,6 +107,10 @@ export function SettingsSheet() {
       Toggle(() => t("orb.speaker_unmuted"),
         () => !store.botMuted(),
         () => (store.botMuted() && session.openSpeakerHere ? session.openSpeakerHere("settings") : session.toggleBotMute())),
+
+      // ── V2-796 — can this phone be reached when zaelar is closed? Tapping asks (a gesture, as iOS requires);
+      //    once on, the same row sends a test notice so «is it working?» has an answer.
+      NotifyRow(),
 
       // Captions have no row either: the operator removed subtitles from this shell entirely (V2-573), band and
       // button both. `store.captionsOn` still exists and still drives the DESKTOP; adding a phone control for a

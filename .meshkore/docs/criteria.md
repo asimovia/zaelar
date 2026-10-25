@@ -99,6 +99,12 @@ below is the first kind, or it names the mechanism that replaced the second.
   (`dispatch._run_session`, `kind == code`); the cluster dev-worker is exempt. — since 2026-09-23 · nodes 2.76.
 - **CRIT-C4c · Every appointment he writes carries its notice**: a timed one ~2 h before, an all-day one at 09:00 that
   day; an asked `remind` wins; items synced from Google stay silent. — since 2026-10-10 · nodes 2.250.
+- **CRIT-C4d · A notice is a ROW and reaches him exactly once.** Every reminder, finished job and pending approval goes
+  through `nucleo/notices.py`: voice when he is at a screen, Web Push to his devices when not, `owed` (retried, then
+  shown on the next screen) when nothing could take it — the same `dedupe_key` never twice. A DEFAULT appointment
+  notice that Google Calendar alarms itself is `covered` (read at fire time); an asked one is always ours. ⏻ silences
+  the voice, never the push. — since 2026-10-25 · nodes 2.800, 2.801, 2.802, 4.271 · `nucleo/notices.py`,
+  `nucleo/webpush.py`, `nucleo/wake.py`.
 - **CRIT-C4b · A worker never deletes a card.** Deleting is a confirmed act (`pending_confirm`, the UI's Yes/No);
   the first verb of a request names its act, so a build that mentions deleting its own entries builds. — since
   2026-10-09 · nodes 2.246.

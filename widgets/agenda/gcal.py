@@ -94,6 +94,7 @@ def commit_meeting(db: dict, m: dict) -> dict:
                     if res.get("ok"):
                         m["googleSeriesId"] = res["meeting"].get("googleId") or ""
                         m["googleCalendarId"] = res["meeting"].get("googleCalendarId") or default_cal
+                        m["googleReminders"] = res["meeting"].get("googleReminders") or ""
                     db.setdefault("meetings", []).append(m)
                     return m
                 res = s.create_event(m, default_cal)
@@ -108,7 +109,7 @@ def commit_meeting(db: dict, m: dict) -> dict:
                     # answer False and no errand could close by being ACHIEVED — every one of them ran to
                     # its deadline and died «abandoned» a day later. Two were still showing as running on
                     # his process bar twelve hours after the meeting they announced had happened.
-                    for k in ("reminder_id", "remindAt", "created"):
+                    for k in ("reminder_id", "remindAt", "remindAsked", "created"):
                         if k in m:
                             enriched[k] = m[k]
                     m = enriched

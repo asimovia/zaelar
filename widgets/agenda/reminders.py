@@ -130,6 +130,7 @@ def ring_as_asked(m: dict, raw, resolve_date) -> str:
     if not jid:
         return disp
     m["reminder_id"], m["remindAt"] = jid, disp
+    m["remindAsked"] = True        # V2-796: an asked notice is always OURS, whatever Google rings (CRIT-C4c)
     return ""
 
 
@@ -163,6 +164,7 @@ def roll_series(load, save) -> bool:
         _cancel_reminder(m)
         m.pop("reminder_id", None)
         m.pop("remindAt", None)
+        m.pop("remindAsked", None)         # the next occurrence gets the DEFAULT notice
         jid, at = _schedule_reminder(m.get("title", "Cita"), nxt, m.get("startTime", ""))
         if jid:
             m["reminder_id"], m["remindAt"] = jid, at
@@ -171,3 +173,32 @@ def roll_series(load, save) -> bool:
     if changed:
         save(db)
     return changed
+
+
+def covered_by(job_id, db: dict | None = None) -> str:
+    """`"google"` when the notice `job_id` belongs to an appointment Google Calendar alarms on its own, else "".
+
+    V2-796 — the operator's rule: «si Google Calendar ya avisa al usuario, no tenemos que lanzar un aviso desde el
+    propio agente». Asked AT FIRE TIME, never at schedule time, because he can remove the Google alarm in between.
+    Only the DEFAULT notice yields: one he ASKED for («avísame el miércoles») is always ours (CRIT-C4c). An unknown
+    alarm state answers "" — a notice too many is better than a lost one."""
+    ref = str(job_id or "").strip()
+    if not ref:
+        return ""
+    if db is None:
+        from . import data
+        db = data.load_db()
+    m = next((x for x in db.get("meetings", []) if str(x.get("reminder_id") or "") == ref), None)
+    if not m or m.get("remindAsked"):
+        return ""
+    if m.get("source") != "google" and not m.get("googleSeriesId"):
+        return ""
+    mode = str(m.get("googleReminders") or "")
+    if mode == "popup":
+        return "google"
+    if mode == "default":
+        cal = next((c for c in (db.get("google") or {}).get("calendars", [])
+                    if c.get("id") == m.get("googleCalendarId")), None)
+        if cal and cal.get("alarms") is True:
+            return "google"
+    return ""

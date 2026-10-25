@@ -8,7 +8,7 @@
 // not be an error — it would be a phone running a version of the agent that no longer exists, answering with a
 // widget contract the backend has moved on from. That is the worst class of bug this file could create.
 //
-// SO WHAT DOES IT DO. Two things, and nothing else:
+// SO WHAT DOES IT DO. Two things for the network, and nothing else (plus Web Push, at the bottom — V2-796):
 //   1. it makes the app INSTALLABLE on Android — Chrome requires a manifest AND a service worker with a fetch
 //      handler before it will offer "Install app". iOS does not need it at all (see the apple-* meta tags in
 //      mobile/index.html), but Android is half the phones.
@@ -67,4 +67,43 @@ self.addEventListener("fetch", (event) => {
       )),
     ),
   );
+});
+
+// ============================================================================
+// WEB PUSH (V2-796) — the engine's notice ledger (`nucleo/notices.py`) reaches this browser when no screen is in
+// front of him. The payload is already the final words: {id, kind, title, body, url, tag}. Two handlers, no cache:
+//   · push — show it. iOS and Chromium both REQUIRE a visible notification for every push (`userVisibleOnly`),
+//     so a payload that fails to parse still shows something rather than being dropped (a dropped push gets the
+//     subscription revoked by Safari after a few).
+//   · notificationclick — tell the engine he opened it (the ledger's `seen`), then focus an open zaelar window or
+//     open the notice's URL.
+// ============================================================================
+self.addEventListener("push", (event) => {
+  let msg = {};
+  try { msg = event.data ? event.data.json() : {}; } catch (_) { msg = { body: event.data ? event.data.text() : "" }; }
+  const title = msg.title || "zaelar";
+  event.waitUntil(self.registration.showNotification(title, {
+    body: msg.body || "",
+    tag: msg.tag || undefined,
+    renotify: !!msg.tag,
+    icon: "/static/mobile/icons/icon-192.png",
+    badge: "/static/mobile/icons/icon-192.png",
+    data: { id: msg.id, url: msg.url || "/" },
+    requireInteraction: msg.kind === "approval",
+  }));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const data = event.notification.data || {};
+  const url = new URL(data.url || "/", self.location.origin).href;
+  event.waitUntil((async () => {
+    if (data.id != null) {
+      try { await fetch(`/api/notices/${encodeURIComponent(data.id)}/seen`, { method: "POST" }); } catch (_) {}
+    }
+    const wins = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    const same = wins.find((w) => new URL(w.url).pathname === new URL(url).pathname);
+    if (same) { try { await same.focus(); return; } catch (_) {} }
+    await self.clients.openWindow(url);
+  })());
 });

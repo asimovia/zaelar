@@ -11,6 +11,7 @@ import { createEffect } from "./core/reactive.js?v=2";
 import * as session from "./services/session.js?v=3";
 import * as mic from "./services/mic.js?v=1";
 import * as screens from "./services/screens.js?v=1";
+import * as push from "./services/push.js?v=1";
 import { openSSE } from "./services/sse.js?v=6";
 import * as store from "./core/store.js?v=2";
 import * as firstRun from "./core/first-run.js?v=1";
@@ -400,6 +401,9 @@ document.addEventListener("hb:open-config", (e) => {
 
 // system-status poller: keeps the ◉ icon's color/blink live even with the panel closed
 startStatusPolling();
+// V2-796 — a browser that already allowed notifications keeps its subscription current, and says what it is.
+push.refresh();
+push.report();
 // V2-792 — this screen tells the server whether it is visible and touched (how it knows the active screen).
 screens.wireScreen();
 

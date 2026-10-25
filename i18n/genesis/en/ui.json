@@ -2025,5 +2025,21 @@
  "screens.moved_there": "{name} · now on {where}",
  "screens.open_here": "Open here",
  "screens.bring_here": "Bring here",
- "screens.dismiss": "Dismiss"
+ "screens.dismiss": "Dismiss",
+ "install.title": "Install zaelar on your phone",
+ "install.body": "As an app it can notify you even when it is closed.",
+ "install.button": "Install",
+ "install.later": "Not now",
+ "install.ios_steps": "Tap Share, then «Add to Home Screen».",
+ "install.android_steps": "Open the browser's ⋮ menu and choose «Install app».",
+ "push.title": "Turn on notifications",
+ "push.body": "Reminders, finished jobs and anything that needs your yes, even when zaelar is closed.",
+ "push.button": "Turn on",
+ "push.denied": "Notifications are blocked in this browser's settings.",
+ "push.on": "Notifications are on for this device.",
+ "push.settings_label": "Notifications on this device",
+ "push.settings_on": "On",
+ "push.settings_off": "Off",
+ "push.test": "Test",
+ "config.sec.notices": "Notifications"
 }

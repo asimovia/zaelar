@@ -151,7 +151,7 @@ def sync(db: dict, provider_id: str = _DEFAULT_PROVIDER) -> dict:
                     changed = True
                 if prev is not None:
                     # keep OUR bookkeeping (a local reminder scheduled against this row) across the refresh.
-                    for k in ("reminder_id", "remindAt"):
+                    for k in ("reminder_id", "remindAt", "remindAsked"):
                         if k in prev:
                             m[k] = prev[k]
                 by_gid[gid] = m

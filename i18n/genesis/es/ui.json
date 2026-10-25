@@ -2025,5 +2025,21 @@
  "screens.moved_there": "{name} · ahora en {where}",
  "screens.open_here": "Abrir aquí",
  "screens.bring_here": "Traer aquí",
- "screens.dismiss": "Descartar"
+ "screens.dismiss": "Descartar",
+ "install.title": "Instala zaelar en tu móvil",
+ "install.body": "Como app, te puede avisar aunque la tengas cerrada.",
+ "install.button": "Instalar",
+ "install.later": "Ahora no",
+ "install.ios_steps": "Toca Compartir y luego «Añadir a pantalla de inicio».",
+ "install.android_steps": "Abre el menú ⋮ del navegador y elige «Instalar app».",
+ "push.title": "Activa los avisos",
+ "push.body": "Recordatorios, encargos terminados y lo que necesite tu sí, aunque no tengas zaelar abierto.",
+ "push.button": "Activar",
+ "push.denied": "Los avisos están bloqueados en los ajustes del navegador.",
+ "push.on": "Avisos activados en este dispositivo.",
+ "push.settings_label": "Avisos en este dispositivo",
+ "push.settings_on": "Activados",
+ "push.settings_off": "Desactivados",
+ "push.test": "Probar",
+ "config.sec.notices": "Avisos"
 }

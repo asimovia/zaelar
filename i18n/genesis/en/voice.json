@@ -585,5 +585,8 @@
    "images": "images",
    "worker": "worker"
   }
+ },
+ "notices": {
+  "test_line": "Notifications are on for this device."
  }
 }

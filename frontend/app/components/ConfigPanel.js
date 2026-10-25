@@ -9,7 +9,8 @@ import { createEffect } from "../core/reactive.js?v=2";
 import * as store from "../core/store.js?v=2";
 import * as api from "../services/api.js?v=2";
 import * as session from "../services/session.js?v=3";
-import { GEAR_ICON, BRAIN_ICON, CPU_ICON, DATABASE_ICON, MIC_ICON, SEARCH_ICON, MUSIC_ICON, SERVER_ICON } from "../lib/icons.js?v=1";
+import { GEAR_ICON, BRAIN_ICON, CPU_ICON, DATABASE_ICON, MIC_ICON, SEARCH_ICON, MUSIC_ICON, SERVER_ICON, BELL_ICON } from "../lib/icons.js?v=2";
+import * as push from "../services/push.js?v=1";
 import { t } from "../core/i18n.js?v=1";
 import { THEMES, FONT_SIZES, FONT_STACKS } from "../core/themes.js?v=1";
 import * as themeSvc from "../services/theme.js?v=2";
@@ -41,6 +42,7 @@ const SECTIONS = [
   { id: "search", icon: SEARCH_ICON },
   { id: "music", icon: MUSIC_ICON },
   { id: "apis", icon: SERVER_ICON },
+  { id: "notices", icon: BELL_ICON },     // V2-796 — Web Push on this browser
 ];
 
 // Sections that PICK a provider/model — hidden in the cloud profile, where the deployment sets them (V2-043 area
@@ -91,6 +93,7 @@ export function ConfigPanel() {
       search: () => sec_search(),
       music: () => sec_music(),
       apis: () => sec_apis(),
+      notices: () => sec_notices(),
     };
     if (!builders[activeSec] || (cloudProfile && CLOUD_LOCKED_NAV_SECTIONS.has(activeSec))) activeSec = visibleSections[0].id;
     const tabsBar = TABS.map(tab => `<button type="button" class="cf-tab${tab.id === activeTab ? " on" : ""}" data-tab="${tab.id}">${esc(t("config.tab." + tab.id))}</button>`).join("");
@@ -251,6 +254,18 @@ export function ConfigPanel() {
       + device;
   }
 
+  // V2-796 — can THIS browser be reached when zaelar is closed? The engine sends each notice by voice when he is
+  // in front of a screen, and to every subscribed browser when he is not (`nucleo/notices.py`).
+  function sec_notices() {
+    const p = push.permission();
+    const state = !push.supported() ? "—" : p === "granted" ? t("push.settings_on")
+      : p === "denied" ? t("push.denied") : t("push.settings_off");
+    const ctl = !push.supported() ? "" : p === "granted"
+      ? `<button type="button" class="cf-save cf-push-test">${esc(t("push.test"))}</button>`
+      : p === "default" ? `<button type="button" class="cf-save cf-push-on">${esc(t("push.button"))}</button>` : "";
+    return panel("notices", t("push.title"), t("push.body"), row(t("push.settings_label"), ctl, esc(state)));
+  }
+
   function sec_search() {
     // The búsqueda web elige proveedor AUTO by calidad según the key disponible (Perplexity→Tavily→Brave→Google
     // gratis→DDG). No there is store propio: se gobierna with the KEYS. Se editan here as credenciales.
@@ -327,6 +342,8 @@ export function ConfigPanel() {
       try { await navigator.clipboard.writeText(b.dataset.copy); b.textContent = t("config.cxw.copied"); } catch (_) {}
     });
     const cxr = bodyEl.querySelector(".cf-cx-refresh"); if (cxr) cxr.onclick = () => reloadConnectors();
+    const pon = bodyEl.querySelector(".cf-push-on"); if (pon) pon.onclick = async () => { await push.enable(); render(); };
+    const pts = bodyEl.querySelector(".cf-push-test"); if (pts) pts.onclick = async () => { await push.test(); msg(t("push.on")); };
     const emp = document.getElementById("cx_em_provider");
     if (emp) emp.onchange = () => {
       bodyEl.querySelectorAll(".cf-em-link").forEach(a => { a.hidden = a.dataset.em !== emp.value; });

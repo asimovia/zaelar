@@ -28,7 +28,7 @@ import { initI18n, t } from "../../app/core/i18n.js?v=1";
 import { submitChat } from "../../app/components/ChatWall.js?v=5";
 
 import { Deck } from "./shell/Deck.js?v=1";
-import { MOBILE_SURFACES } from "./shell/mobile-surfaces.js?v=1";
+import { MOBILE_SURFACES } from "./shell/mobile-surfaces.js?v=2";
 
 // ---- theme + language before mounting anything, so nothing flashes the wrong palette or the wrong words ----
 initTheme();

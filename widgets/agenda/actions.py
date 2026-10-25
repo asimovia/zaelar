@@ -125,7 +125,7 @@ def _a_add_meeting(action, payload, db, _extra) -> dict:
         if _ad is not None:
             # settle in place: the dictated title and hour win; what only the old row knew survives.
             _d._cancel_reminder(_ad)
-            for k in ("allDay", "reminder_id", "remindAt"):
+            for k in ("allDay", "reminder_id", "remindAt", "remindAsked"):
                 _ad.pop(k, None)
             for k, v in _new.items():
                 _ad[k] = v
@@ -231,6 +231,7 @@ def _a_set_reminder(action, payload, db, _extra) -> dict:
                                              m.get("startTime", ""))
             if _jid:
                 m["reminder_id"], m["remindAt"] = _jid, _disp
+                m["remindAsked"] = True     # V2-796: he asked for these notices — ours, whatever Google rings
                 _done += 1
             else:
                 _fail.append(f"«{m.get('title', 'Cita')}»: {_disp}")
@@ -397,7 +398,7 @@ def _a_move_meeting(action, payload, db, _extra) -> dict:
     if _rawnew and (m.get("repeat") or {}).get("freq") == "weekly":   # V2-769: a series moves every week
         m["repeat"]["days"] = [_d.recur.weekday(new_date)]
     m["date"], m["startTime"], m["endTime"] = new_date, new_start, _end
-    m.pop("reminder_id", None); m.pop("remindAt", None)
+    m.pop("reminder_id", None); m.pop("remindAt", None); m.pop("remindAsked", None)
     _d.gcal.patch_google(m)   # V2-679: a moved Google-origin meeting is rescheduled on Google too
     _jid, _at = _d._schedule_reminder(m.get("title", "Cita"), _d.recur.next_occurrence(m, _d._today()) or new_date,
                                    new_start)

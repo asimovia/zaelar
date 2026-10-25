@@ -381,6 +381,21 @@ def _board(jid) -> None:
             _tasks.scheduled_mirrored(entry)
     except Exception:  # noqa: BLE001 — a board that failed to update must never lose the reminder
         pass
+    try:
+        from nucleo import wake        # V2-796 — the next due instant may have moved: report it (debounced)
+        wake.note_changed()
+    except Exception as e:  # noqa: BLE001 — the reminder is stored; only the wake report may lag a pulse
+        __import__("logging").getLogger("zaelar.scheduler").debug(f"scheduler: wake note failed: {e!r}")
+
+
+def next_due() -> float | None:
+    """The earliest `next_run` among pending jobs, or None (V2-796: what a stopped machine must wake up for)."""
+    best = None
+    for e in _scheduled(_journal.list_entries(status="pending")):
+        nr = (e["detail"].get("schedule") or {}).get("next_run")
+        if isinstance(nr, (int, float)) and (best is None or nr < best):
+            best = float(nr)
+    return best
 
 
 def reconcile_board() -> int:

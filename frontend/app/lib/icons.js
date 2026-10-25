@@ -28,6 +28,8 @@ export const LINK_ICON = `<svg ${S}><path d="M9 17H7A5 5 0 0 1 7 7h2"/><path d="
 export const VOLUME_X_ICON = `<svg ${S}><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="m22 9-6 6"/><path d="m16 9 6 6"/></svg>`;
 export const ACTIVITY_ICON = `<svg ${S}><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>`;
 export const CLOCK_ICON = `<svg ${S}><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2"/></svg>`;
+// V2-796 — the notices section of ⚙ Settings (Web Push on this browser).
+export const BELL_ICON = `<svg ${S}><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>`;
 export const BRAIN_ICON = `<svg ${S}><path d="M12 4.5a3 3 0 0 0-3 3 3 3 0 0 0-1.3 5.7A3 3 0 0 0 8 16.5a3 3 0 0 0 4 2.6"/><path d="M12 4.5a3 3 0 0 1 3 3 3 3 0 0 1 1.3 5.7A3 3 0 0 1 16 16.5a3 3 0 0 1-4 2.6"/><path d="M12 4.5v15"/></svg>`;
 export const CPU_ICON = `<svg ${S}><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v2"/><path d="M15 2v2"/><path d="M9 20v2"/><path d="M15 20v2"/><path d="M20 9h2"/><path d="M20 15h2"/><path d="M2 9h2"/><path d="M2 15h2"/></svg>`;
 export const DATABASE_ICON = `<svg ${S}><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.66 3.58 3 8 3s8-1.34 8-3V5"/><path d="M4 11v6c0 1.66 3.58 3 8 3s8-1.34 8-3v-6"/></svg>`;

@@ -283,6 +283,7 @@ body {
 .zm-row-t b { font: 600 15px/1.25 var(--sans); }
 .zm-row-t small { font: 13px/1.35 var(--sans); color: var(--hb-muted); }
 .zm-row svg { flex: 0 0 auto; color: var(--hb-muted-2); }
+.zm-row-v { flex: 0 0 auto; font: 600 14px var(--sans); color: var(--hb-accent); }
 .zm-row select {
   min-height: 40px; padding: 0 10px; border: 1px solid var(--hb-line); border-radius: 11px;
   background: var(--hb-bg-soft); color: var(--hb-ink); font: 15px var(--sans);
@@ -393,6 +394,24 @@ body {
 .zm-held p { margin: 0 0 12px; font: 500 14px/1.45 var(--sans); }
 .zm-held div { display: flex; gap: 10px; }
 .zm-held .zm-primary, .zm-held .zm-ghost { flex: 1 1 auto; min-height: 44px; font-size: 14px; }
+
+/* ---------- THE INSTALL / NOTIFICATIONS BANNER (V2-796) ----------
+   At the TOP, under the notch, because the bottom belongs to the dock and to the voice-lock notice. Not a modal:
+   everything stays usable while it shows, and «Not now» is always one tap. */
+.zm-banner {
+  position: fixed; left: 12px; right: 12px; z-index: 64;
+  top: calc(env(safe-area-inset-top) + 10px);
+  padding: 14px 15px; border-radius: var(--zm-r);
+  background: var(--hb-bg-soft); border: 1px solid var(--hb-line); color: var(--hb-ink);
+  box-shadow: var(--hb-shadow-1);
+  opacity: 0; transform: translateY(-10px); pointer-events: none;
+  transition: opacity .22s, transform .22s;
+}
+.zm-banner.show { opacity: 1; transform: none; pointer-events: auto; }
+.zm-banner-t { margin: 0 0 4px; font: 600 15px/1.35 var(--sans); }
+.zm-banner-b { margin: 0 0 12px; font: 400 14px/1.45 var(--sans); color: var(--hb-muted); }
+.zm-banner-a { display: flex; gap: 10px; }
+.zm-banner-a .zm-primary, .zm-banner-a .zm-ghost { flex: 1 1 auto; min-height: 44px; font-size: 14px; }
 
 /* ---------- SHARED DESKTOP SURFACES ----------
    BootOverlay, LanguageOnboarding and Alert are imported verbatim from app/components/ (see

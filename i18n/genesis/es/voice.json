@@ -583,5 +583,8 @@
    "images": "imágenes",
    "worker": "worker"
   }
+ },
+ "notices": {
+  "test_line": "Los avisos están activados en este dispositivo."
  }
 }

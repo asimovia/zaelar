@@ -108,6 +108,9 @@ _CAT = {
     "metric": "system", "vad": "system", "cluster": "system", "perf": "system",
     "stt": "system", "tts": "system", "bot_speech": "system", "state": "system",
     "session": "system", "timing": "system", "notify": "system",
+    # `notice` / `device` (V2-796): how each notice ENDED (spoken · pushed · covered · owed · shown) and what each
+    # screen can receive (installed app? notifications allowed?). Same family as `notify`, which is the voice half.
+    "notice": "system", "device": "system",
     # Health and infrastructure: `error`/`alert` (the viewer never hides them by category — see below),
     # `homeostasis` (the autonomous heartbeat, V2-070), `language` (the language was set), `client` (events the
     # browser reports through `/api/ui-event`).

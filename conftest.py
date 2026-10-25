@@ -255,6 +255,26 @@ except Exception:                                  # sin `voice` importable, la 
     pass
 
 
+# V2-796 — THE NOTICE LEDGER STARTS EMPTY IN EVERY TEST. `notices.dedupe_key` is UNIQUE on purpose: the same notice
+# never reaches him twice. The test database lives for the whole session, so a fixture task id («e7e430-2») used by two
+# tests would make the second one's delivery a «duplicate» that delivers nothing — measured on the first run. The
+# ledger and the push devices are cleared after each test that touched the database; nothing else is.
+import sys as _sys5
+
+import pytest as _pytest5
+
+
+@_pytest5.fixture(autouse=True)
+def _the_notice_ledger_starts_empty():
+    yield
+    mdb = _sys5.modules.get("memory.db")
+    if mdb is None or getattr(mdb, "_DB", None) is None:
+        return
+    d = mdb.get_db()
+    d.execute("DELETE FROM notices")
+    d.execute("DELETE FROM push_devices")
+
+
 # V2-684 — A LANGUAGE LEAK IS A FAILURE OF THE TEST THAT CAUSED IT (2026-09-13).
 #
 # `ZAELAR_LANGUAGE` is forced above so the runner's machine cannot decide what «green» means. That holds

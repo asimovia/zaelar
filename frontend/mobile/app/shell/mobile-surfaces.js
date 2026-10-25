@@ -38,8 +38,9 @@ import { ElsewhereChips } from "../../../app/components/ElsewhereChips.js?v=1";
 import { ChatSheet } from "./ChatSheet.js?v=1";
 import { DockBar } from "./DockBar.js?v=2";
 import { MenuSheet } from "./MenuSheet.js?v=1";
-import { SettingsSheet } from "./SettingsSheet.js?v=1";
+import { SettingsSheet } from "./SettingsSheet.js?v=2";
 import { VoiceHeldNotice } from "./VoiceHeldNotice.js?v=1";
+import { InstallBanner } from "./InstallBanner.js?v=1";
 
 export const MOBILE_SURFACES = [
   // ── the bar that owns every control ──
@@ -54,6 +55,8 @@ export const MOBILE_SURFACES = [
   { id: "settings", comp: SettingsSheet,  target: "body", phase: "overlay", label: "Small settings sheet (language · theme · captions · speaker)", shared: false },
   // ── the voice lock, made visible instead of silently lost (server/livekit_api.py) ──
   { id: "voice-held", comp: VoiceHeldNotice, target: "body", phase: "overlay", label: "«Your voice is on the computer» + take it over", shared: false },
+  // ── V2-796 — «install the app» / «turn on notifications»: the phone has to be REACHABLE for a notice ──
+  { id: "install",    comp: InstallBanner,   target: "body", phase: "overlay", label: "Install the PWA, then allow notifications", shared: false },
   // ── SHARED WITH THE DESKTOP, imported verbatim (their CSS lives in app/core/shared-surfaces.css) ──
   { id: "alert",           comp: Alert,             target: "body", phase: "overlay", label: "Hard notice banner", shared: true },
   { id: "boot",            comp: BootOverlay,       target: "body", phase: "overlay", label: "Startup veil", shared: true },

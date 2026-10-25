@@ -174,7 +174,22 @@ def event_to_meeting(ev: dict, calendar_id: str, calendar_color: str = "") -> di
         m["htmlLink"] = ev["htmlLink"]
     if ev.get("recurringEventId"):          # one instance of a series — the sync needs to know whose
         m["googleSeriesId"] = str(ev["recurringEventId"])
+    m["googleReminders"] = reminders_mode(ev)
     return m
+
+
+def reminders_mode(ev: dict) -> str:
+    """How Google itself alarms this event (V2-796): `popup` (its own popup override), `default` (the calendar's
+    default reminders — whether those ring is the calendar's `alarms`), or `none`. An event with no `reminders`
+    object is on the calendar's defaults — that is Google's documented default."""
+    rem = ev.get("reminders")
+    if not isinstance(rem, dict):
+        return "default"
+    if rem.get("useDefault"):
+        return "default"
+    if any(isinstance(o, dict) and str(o.get("method")) == "popup" for o in (rem.get("overrides") or [])):
+        return "popup"
+    return "none"
 
 
 def meeting_to_event(m: dict) -> dict:
@@ -243,7 +258,11 @@ def list_calendars(client, api_base: str, token: str) -> dict:
         for it in r.json().get("items") or []:
             out.append({"id": it.get("id"), "summary": str(it.get("summary") or it.get("id") or "")[:120],
                        "backgroundColor": it.get("backgroundColor") or "", "primary": bool(it.get("primary")),
-                       "selected": it.get("selected", True) is not False})
+                       "selected": it.get("selected", True) is not False,
+                       # V2-796 — does this calendar ring on its own? An event that keeps the calendar's default
+                       # reminders is alarmed by Google exactly when this is true (a POPUP, not an email).
+                       "alarms": any(str(r.get("method")) == "popup" for r in (it.get("defaultReminders") or [])
+                                     if isinstance(r, dict))})
         return {"ok": True, "calendars": out}
     except Exception as e:
         return {"ok": False, "error": f"no pude hablar con Google Calendar: {e}"[:200]}
