@@ -38,9 +38,7 @@ _RETRY_FOR_S = 24 * 3600
 _RETRY_EVERY_S = 30.0
 _last_retry = [0.0]
 
-def _db():
-    from memory import db as _mdb
-    return _mdb.get_db()
+from memory.api import notices as _store
 
 
 def _now() -> int:
@@ -57,34 +55,27 @@ def _row(r) -> dict:
 
 
 def get(nid) -> dict | None:
-    r = _db().query_one("SELECT * FROM notices WHERE id=?", (int(nid),))
+    r = _store.get(nid)
     return _row(r) if r else None
 
 
 def by_key(key: str) -> dict | None:
-    r = _db().query_one("SELECT * FROM notices WHERE dedupe_key=?", (str(key),))
+    r = _store.by_key(key)
     return _row(r) if r else None
 
 
 def recent(limit: int = 30, state: str = "") -> list[dict]:
-    if state:
-        rows = _db().query("SELECT * FROM notices WHERE state=? ORDER BY created_at DESC LIMIT ?", (state, int(limit)))
-    else:
-        rows = _db().query("SELECT * FROM notices ORDER BY created_at DESC LIMIT ?", (int(limit),))
-    return [_row(r) for r in rows]
+    return [_row(r) for r in _store.recent(limit, state)]
 
 
 def _claim(key: str, kind: str, title: str, body: str, url: str, detail: dict) -> tuple[dict, bool]:
     """Insert the row for `key`, or return the one already there. (row, fresh)."""
-    db = _db()
     existing = by_key(key)
     if existing:
         return existing, False
     try:
-        nid = db.execute(
-            "INSERT INTO notices (dedupe_key, kind, title, body, url, state, created_at, detail) "
-            "VALUES (?, ?, ?, ?, ?, 'owed', ?, ?)",
-            (key, kind, title[:200], body[:1000], url[:300], _now(), json.dumps(detail or {}, ensure_ascii=False)))
+        nid = _store.insert(key, kind, title[:200], body[:1000], url[:300], _now(),
+                            json.dumps(detail or {}, ensure_ascii=False))
     except Exception:  # noqa: BLE001 — a concurrent claim of the same key lost the race: the winner delivers
         row = by_key(key)
         if row:
@@ -94,10 +85,7 @@ def _claim(key: str, kind: str, title: str, body: str, url: str, detail: dict) -
 
 
 def _set(nid, **fields) -> None:
-    if not fields:
-        return
-    cols = ", ".join(f"{k}=?" for k in fields)
-    _db().execute(f"UPDATE notices SET {cols} WHERE id=?", (*fields.values(), int(nid)))
+    _store.update(nid, **fields)
 
 
 def mark_seen(nid) -> bool:
@@ -121,28 +109,22 @@ def subscribe(sub: dict, *, dev: str = "", platform: str = "", installed: bool =
     if not endpoint.startswith("https://") or not p256dh or not auth:
         return {"ok": False, "error": "invalid subscription"}
     did = device_id(endpoint)
-    _db().execute(
-        "INSERT INTO push_devices (id, endpoint, p256dh, auth, dev, platform, installed, created_at) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET p256dh=excluded.p256dh, auth=excluded.auth, "
-        "dev=excluded.dev, platform=excluded.platform, installed=excluded.installed, fail_count=0",
-        (did, endpoint, p256dh, auth, str(dev)[:80], str(platform)[:40], 1 if installed else 0, _now()))
+    _store.device_upsert(did, endpoint, p256dh, auth, str(dev)[:80], str(platform)[:40], installed, _now())
     return {"ok": True, "id": did}
 
 
 def unsubscribe(endpoint: str) -> bool:
-    _db().execute("DELETE FROM push_devices WHERE id=?", (device_id(endpoint),))
+    _store.device_delete(device_id(endpoint))
     return True
 
 
 def devices() -> list[dict]:
     """Every subscribed device — WITHOUT its endpoint or keys (a capability URL never leaves this module)."""
-    rows = _db().query("SELECT id, dev, platform, installed, created_at, last_ok_at, fail_count FROM push_devices "
-                       "ORDER BY created_at")
-    return [dict(r) for r in rows]
+    return _store.devices_public()
 
 
 def _targets() -> list[dict]:
-    return [dict(r) for r in _db().query("SELECT * FROM push_devices")]
+    return _store.devices_all()
 
 
 def _url_for(row: dict, device: dict) -> str:
@@ -164,12 +146,12 @@ def push(row: dict) -> int:
                            topic=f"n{row['id']}")
         if res.get("ok"):
             accepted += 1
-            _db().execute("UPDATE push_devices SET last_ok_at=?, fail_count=0 WHERE id=?", (_now(), d["id"]))
+            _store.device_ok(d["id"], _now())
         elif res.get("gone"):
-            _db().execute("DELETE FROM push_devices WHERE id=?", (d["id"],))
+            _store.device_delete(d["id"])
             logger.info(f"notices: device {d['id']} revoked its subscription — forgotten")
         else:
-            _db().execute("UPDATE push_devices SET fail_count=fail_count+1 WHERE id=?", (d["id"],))
+            _store.device_failed(d["id"])
     return accepted
 
 
@@ -272,9 +254,7 @@ async def retry_owed(now: float | None = None) -> int:
         return 0
     _last_retry[0] = now
     try:
-        rows = [_row(r) for r in _db().query(
-            "SELECT * FROM notices WHERE state='owed' AND next_try_at IS NOT NULL AND next_try_at<=? "
-            "ORDER BY created_at LIMIT 20", (int(now),))]
+        rows = [_row(r) for r in _store.owed_due(int(now))]
     except Exception as e:  # noqa: BLE001
         logger.warning(f"notices: owed list unreadable, retry skipped: {e!r}")
         return 0
@@ -300,7 +280,7 @@ async def retry_owed(now: float | None = None) -> int:
 def drain_to_screen(dev: str = "") -> int:
     """Paint every owed notice on a screen that just connected, and close them as `shown`. Returns how many."""
     try:
-        rows = [_row(r) for r in _db().query("SELECT * FROM notices WHERE state='owed' ORDER BY created_at LIMIT 20")]
+        rows = [_row(r) for r in _store.owed_all()]
     except Exception as e:  # noqa: BLE001
         logger.warning(f"notices: owed list unreadable, nothing drained: {e!r}")
         return 0

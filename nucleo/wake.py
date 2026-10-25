@@ -26,7 +26,8 @@ logger = logging.getLogger("zaelar.wake")
 
 _MIN_GAP_S = 10.0
 _RETRY_S = 120.0
-_state = {"dirty": True, "sent": "unset", "last": 0.0}
+_UNSET = object()
+_state = dict(dirty=True, sent=_UNSET, last=0.0)
 
 
 def url() -> tuple[str, str]:
@@ -82,4 +83,4 @@ async def flush(now: float | None = None) -> bool:
 
 
 def _reset_for_tests() -> None:
-    _state.update({"dirty": True, "sent": "unset", "last": 0.0})
+    _state.update(dirty=True, sent=_UNSET, last=0.0)
