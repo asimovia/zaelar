@@ -37,6 +37,7 @@ from nucleo.flash.recall_heuristics import (  # noqa: F401 — re-export
 # here: the extraction is a move, not an interface change.
 from nucleo import context_packs as _packs
 from voice import screens as _screens
+from files import attachments as _attachments
 from nucleo.flash import live_blocks as _live_blocks
 # V2-348: `_short_note` moved with its sole caller to `live_blocks`; it is re-exported because tests import it
 # by name from here and because the public contract remains `live_state()` (as in V2-276).
@@ -44,9 +45,8 @@ from nucleo.flash.live_blocks import _short_note  # noqa: F401
 # V2-675 ratchet pass: `_cron_line` MOVED to `live_blocks.py`, byte for byte — the same
 # precedent as the browser block (V2-276) and the background-task block (V2-348). Re-exported
 # so its callers and its test keep naming it here.
-from nucleo.flash.live_blocks import _cron_line  # noqa: F401 — re-export
 from nucleo.flash.live_blocks import (  # noqa: F401 — re-export
-    _STALLED_S, _found_candidates, _site_of,
+    _STALLED_S, _cron_line, _found_candidates, _site_of,
 )
 
 
@@ -563,7 +563,7 @@ def live_state() -> str:
         lines.extend(_styled.prompt_lines(_mstate))
     except Exception:
         pass
-    lines.extend(filter(None, [_screens.slot_line()]))   # V2-792: a line only with two screens open
+    lines.extend([*filter(None, [_screens.slot_line()]), *_attachments.prompt_lines()])  # V2-792 · V2-809 attached
     try:
         from widgets import confirm as _confirm
         cl = _confirm.pending_line()
