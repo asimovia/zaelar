@@ -5562,6 +5562,9 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_a_draft_is_the_whole_card.py"]},
         {"id": "4.280", "title": "His mail criteria over the provider's categories are rows of the rules table (widget:mensajeria): a spoken route or hide is stored in his words, survives a restart, is composed into the provider's query (list and count), shown and removable in the card and by voice, and never moves mail in his real mailbox",
             "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_his_mail_criteria_are_rules.py"]},
+        # V2-807 T-09 — disarmed 2026-10-26 (claim threshold, claimer loop, funnel wiring, address-alone) → each red.
+        {"id": "4.281", "title": "A message to someone has ONE body: a version of a held draft written on another card (a document sheet's show) lands on the draft's row through the one door, the draft screen comes up, a document that only mentions the address stays a document, and the body that leaves is the one he corrected (V2-807 T-09)",
+            "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_one_draft_has_one_body.py"]},
         {"id": "4.252", "title": "The chat list paints, filters by kind and name, loads more and opens a chat (RENDERED)",
             "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_the_chat_list_paints_filters_and_loads_more.py"]},
         {"id": "4.250", "title": "The feedback button is never hidden under another layer",

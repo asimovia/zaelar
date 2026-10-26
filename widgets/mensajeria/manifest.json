@@ -1,6 +1,7 @@
 {
   "id": "mensajeria",
   "screens": "shared",
+  "claims_text": true,
   "size": {
     "w": 760,
     "h": 640

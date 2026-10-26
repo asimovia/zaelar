@@ -34,6 +34,7 @@
         "source": "de dónde sale (opcional)"
       },
       "view": true,
+      "text_field": "body",
       "done_when": {
         "widget": "documento",
         "field": "body",

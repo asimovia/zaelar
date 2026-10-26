@@ -471,3 +471,13 @@ def pending_rows() -> list[dict]:
     except Exception as e:  # noqa: BLE001
         _held.logger.info(f"pending_rows unreadable ({e})")
         return []
+
+
+def claim_text(text: str, title: str = "") -> dict | None:
+    """V2-807 T-09 — the hook `widgets/text_home.py` asks: is this text, about to be written on another card, a
+    version of a message held here? Then it belongs on its row (`held.claim`). None when it is not, or unreadable."""
+    try:
+        return _held.claim(load_db(), str(text or ""), str(title or ""))
+    except Exception as e:  # noqa: BLE001 — an unreadable store claims nothing: the text goes where it was sent
+        _held.logger.info(f"claim_text unreadable ({e})")
+        return None

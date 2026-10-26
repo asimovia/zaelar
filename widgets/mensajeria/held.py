@@ -20,6 +20,7 @@ confirms. Stdlib only, like everything this widget runs server-side.
 from __future__ import annotations
 
 import logging
+import re
 import time
 import unicodedata
 from datetime import datetime
@@ -152,3 +153,46 @@ def held_row(action: str, payload: dict, db: dict, his_turns_since) -> dict | No
         k = str(p["key"])
     d = ((db.get("drafts") or {}).get(k) if k else None) or db.get("draft") or None
     return d if d and seen(d, his_turns_since) else None
+
+
+# ── V2-807 T-09 · one outbound message has ONE body: a version of a held draft written anywhere lands on its row ────
+
+#: How much of the shorter text the other must carry for the two to be versions of ONE message, and how much when
+#: the text also names the draft's own recipient address. A bound on overlap, in any language and any wording — no
+#: word in it is read for what it means.
+SAME_MESSAGE = 0.5
+SAME_MESSAGE_ADDRESSED = 0.3
+#: Below this many content words a text is too short to be recognised as a version of anything.
+MIN_WORDS = 6
+
+
+def _words(text) -> set[str]:
+    return {w for w in re.findall(r"\w+", _fold(text)) if len(w) >= 4}
+
+
+def _overlap(a: set, b: set) -> float:
+    if min(len(a), len(b)) < MIN_WORDS:
+        return 0.0
+    return len(a & b) / min(len(a), len(b))
+
+
+def claim(db: dict, text: str, title: str = "") -> dict | None:
+    """The held draft `text` is a version of, as the action that writes it there — or None.
+
+    Measured (V2-807 T-09): a held email was copied into a document sheet, every spoken correction rewrote the COPY,
+    and «send it» sent the untouched row. A text is that draft's when it carries most of the draft's content, or a
+    good part of it while naming the draft's own recipient address. The row then holds the new text (`save_draft`,
+    which also puts the draft screen up), so what is sent is what he last corrected."""
+    body = str(text or "")
+    mine = _words(body)
+    whole = _fold(f"{title} {body}")
+    for k, d in sorted((db.get("drafts") or {}).items(), key=lambda kv: -(kv[1].get("at") or 0)):
+        t = d.get("target") or {}
+        addrs = [_fold(t.get(f)) for f in ("to", "chatId", "senderId") if len(_fold(t.get(f))) >= 6]
+        named = any(a in whole for a in addrs)
+        score = _overlap(mine, _words(d.get("text")))
+        if score >= SAME_MESSAGE or (named and score >= SAME_MESSAGE_ADDRESSED):
+            return {"action": "save_draft", "payload": {"key": k, "text": body},
+                    "to": str(t.get("name") or t.get("to") or t.get("chatId") or ""),
+                    "why": f"overlap {score:.2f}" + (" + recipient named" if named else "")}
+    return None

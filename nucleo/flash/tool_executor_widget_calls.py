@@ -204,8 +204,8 @@ def _apply_widget_data(wid: str, action_name: str, payload: dict, ref: str='', *
     """Ejecuta una data-op según su modo (V2-025): FAST → despacha ya (apply_action / mailbox del owner);
     CONFIRM → abre confirmación con la mutación guardada (se ejecuta al decir "sí"); ESCALATE/None (acción
     no declarada o vía de escape) → escala al SlowBrain. Punto de convergencia de la tool y el tag."""
-    from widgets import actions as _wactions
-    wid = _txw._data_ops.one_open_instance((wid or "").strip().lower())   # V2-773: a base id → its one open instance
+    from widgets import actions as _wactions, text_home as _text_home
+    wid, action_name, payload = _text_home.redirect(_txw._data_ops.one_open_instance((wid or "").strip().lower()), (action_name or "").strip(), payload, emit=emit, present=_txw._cvis.present)   # V2-773 one open instance · V2-807 T-09 a held message's text goes to its row
     action_name = (action_name or "").strip()
     # E5 (demo passes 36/42, 2026-09-29): «close my mail» → the model called the card's own `close` VIEW
     # action (back to the chat list) over a SURE close verdict, and the card stayed. The card's close, once.
