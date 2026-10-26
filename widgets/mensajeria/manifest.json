@@ -395,9 +395,10 @@
       ]
     },
     "mail_folder": {
-      "desc": "Abre una CARPETA del correo como un cliente de correo: «enséñame los enviados», «abre la papelera», «mi bandeja de entrada». `folder` = inbox | flagged (destacados) | drafts | sent | archive | all | junk | trash, o el nombre de una carpeta suya. Devuelve los primeros mensajes en `result.messages`.",
+      "desc": "Abre una CARPETA del correo como un cliente de correo: «enséñame los enviados», «abre la papelera», «enséñame promociones». `folder` = inbox | flagged | drafts | sent | archive | all | junk | trash o una carpeta suya; `category` = una categoría de la bandeja SOLO si `result.categories` la trae. Devuelve `result.messages` y los no leídos reales en `result.unread`.",
       "payload": {
-        "folder": "string (inbox | flagged (destacados) | drafts | sent | archive | all | junk | trash | nombre de carpeta)"
+        "folder": "string (inbox | drafts | sent | … | nombre de carpeta)",
+        "category": "opcional: primary | promotions | social | updates | forums (las que dé el proveedor)"
       },
       "safe": true,
       "view": true

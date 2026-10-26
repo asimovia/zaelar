@@ -394,14 +394,15 @@ def pages_to_reread(db: dict, folder: str, exists) -> list[str]:
             if _t.time() - float(lst.get("viewed_at") or 0) < MIRROR_RECENT_S:
                 out.append(str(key))
         except (TypeError, ValueError):
-            continue
+            logger.debug(f"Email: unreadable view time on {key!r}, not re-read")
     return out
 
 
-async def _reread_first_page(mb, key: str) -> None:
+async def _reread_first_page(mb, key: str, lst: dict | None = None) -> None:
     from connectors.email import folders as _folders
-    folder = key.split("#", 1)[0]
-    page = await asyncio.to_thread(_folders.list_page, mb, folder, None, 30)
+    folder, _, category = key.partition("#")
+    extra = {"category": category, "routes": (lst or {}).get("routes") or []} if category else {}
+    page = await asyncio.to_thread(_folders.list_page, mb, folder, None, 30, **extra)
     ingest.publish_mailbox(PLATFORM, {"folder": folder, "before": None, **page})
 
 
@@ -432,8 +433,9 @@ async def _poll_external_flags(mb) -> None:
         if left:
             ingest.publish_mailbox(PLATFORM, {"folder": folder, "gone": left})
             logger.info(f"Email: {len(left)} left {folder} in his own client (archived, deleted or moved)")
+        lists = (db.get("mailbox") or {}).get("lists") or {}
         for key in pages_to_reread(db, folder, (answer or {}).get("exists")):
-            await _reread_first_page(mb, key)
+            await _reread_first_page(mb, key, lists.get(key))
         if answer is None or folder.upper() != "INBOX":
             continue
         by_chat: dict[str, list[str]] = {}
@@ -550,7 +552,8 @@ async def _drain_mailbox(mb) -> None:
             limit = max(1, min(100, int(order.get("limit") or 30)))
         except (TypeError, ValueError):
             limit = 30
-        page = await asyncio.to_thread(_folders.list_page, mb, folder, order.get("before"), limit)
+        extra = {"category": order["category"], "routes": order.get("routes") or []} if order.get("category") else {}
+        page = await asyncio.to_thread(_folders.list_page, mb, folder, order.get("before"), limit, **extra)
         ingest.publish_mailbox(PLATFORM, {"folder": folder, "before": order.get("before"), **page})
 
 

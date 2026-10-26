@@ -5,8 +5,10 @@
 # time; everything here is server state, so a tap and a voice order («enséñame los enviados», «abre el borrador»)
 # land on the same screen.
 #
-# Screens, one at a time: the LIST of `folder`; an OPEN message (`open`); an open DRAFT (`draft`, a key of the
-# card's own drafts). Leaving a screen goes back one level — draft/message → its folder — never to the home.
+# Screens, one at a time: the LIST of `folder` (and, for an Inbox the provider sorts, of one `category` of it —
+# Primary, Promotions… as the connector reports them, V2-807 T-01); an OPEN message (`open`); an open DRAFT
+# (`draft`, a key of the card's own drafts). Leaving a screen goes back one level — draft/message → its list —
+# never to the home. A list is keyed `folder` or `folder#category`.
 #
 # Same widget-package contract as data.py: stdlib plus the `widgets` package, never `connectors`.
 #
@@ -29,6 +31,7 @@ def _fresh(ts) -> bool:
     try:
         return bool(ts) and time.time() - float(ts) < ASK_TIMEOUT_S
     except (TypeError, ValueError):
+        _log.debug(f"mailbox: unreadable ask time {ts!r} — counted as not in flight")
         return False
 
 
@@ -54,11 +57,32 @@ def role_of(db: dict, name: str) -> str:
     return next((str(f.get("role") or "") for f in _idx(db).get("folders") or [] if f.get("name") == name), "")
 
 
-def ask(db: dict, folder: str, *, older: bool = False, force: bool = False) -> bool:
-    """Queue one page of `folder` for the connector. Returns whether anything was queued."""
+def list_key(folder: str, category: str | None = None) -> str:
+    return f"{folder}#{category}" if category else str(folder)
+
+
+def categories(db: dict) -> list[dict]:
+    """The Inbox's categories as the PROVIDER reported them (`[{key, unread}]`) — never a list of our own. A server
+    that sorts nothing reports none, and the Inbox is one entry."""
+    return [c for c in _idx(db).get("categories") or [] if isinstance(c, dict) and c.get("key")]
+
+
+def default_category(db: dict) -> str | None:
+    """The category the Inbox opens on: the provider's first (Gmail's Primary), as Gmail itself does."""
+    cats = categories(db)
+    return str(cats[0]["key"]) if cats else None
+
+
+def _routes(db: dict) -> list[dict]:
+    """His criteria over the provider's categories, applied by the connector to each category's query."""
+    return []
+
+
+def ask(db: dict, folder: str, *, category: str | None = None, older: bool = False, force: bool = False) -> bool:
+    """Queue one page of `folder` (of one `category` of it) for the connector. Returns whether anything was queued."""
     if folder == DRAFTS:
         return False
-    lst = _idx(db).setdefault("lists", {}).setdefault(folder, {})
+    lst = _idx(db).setdefault("lists", {}).setdefault(list_key(folder, category), {})
     if _fresh(lst.get("asked_at")):
         return False
     if older:
@@ -72,21 +96,35 @@ def ask(db: dict, folder: str, *, older: bool = False, force: bool = False) -> b
         except (TypeError, ValueError):
             _log.warning("mailbox: unreadable answer time, refreshing")
         before = None
-    db.setdefault("pending_mail", []).append({"platform": "email", "folder": folder, "before": before,
-                                              "limit": PAGE})
+    order = {"platform": "email", "folder": folder, "before": before, "limit": PAGE}
+    if category:
+        order.update(category=category, routes=_routes(db))
+        lst["routes"] = order["routes"]
+    db.setdefault("pending_mail", []).append(order)
     lst["asked_at"] = time.time()
     return True
 
 
-def go(db: dict, folder: str) -> str:
-    """Show `folder`'s list (closing any message or draft on screen) and make sure its first page is coming."""
+def go(db: dict, folder: str, category: str | None = None) -> str:
+    """Show `folder`'s list — for the Inbox, one of its categories — closing any message or draft on screen, and
+    make sure its first page is coming. A category can be named alone («promotions»): it is an entry of the Inbox.
+    The Inbox with no category named opens on the provider's first one, as Gmail does."""
     idx = _idx(db)
+    keys = {str(c["key"]).lower() for c in categories(db)}
+    ref = str(folder or "").strip().lower()
+    if not category and ref in keys:
+        folder, category = "INBOX", ref
     name = folder_name(db, folder)
-    idx.update({"folder": name, "open": None, "draft": None})
+    cat = str(category or "").strip().lower() or None
+    if name.upper() != "INBOX" or cat not in keys:
+        cat = None                     # a category the provider never returned is not invented
+    if name.upper() == "INBOX" and not cat:
+        cat = default_category(db)
+    idx.update({"folder": name, "category": cat, "open": None, "draft": None})
     # When he last LOOKED at this list: the connector keeps a list he looked at recently in step with the server
     # (what he archives elsewhere leaves it, what arrives joins it) and leaves the rest alone.
-    idx.setdefault("lists", {}).setdefault(name, {})["viewed_at"] = time.time()
-    ask(db, name)
+    idx.setdefault("lists", {}).setdefault(list_key(name, cat), {})["viewed_at"] = time.time()
+    ask(db, name, category=cat)
     return name
 
 
@@ -160,7 +198,12 @@ def fold(db: dict, ev: dict) -> None:
         return
     if ev.get("folders"):
         idx["folders"] = list(ev["folders"])
-    lst = idx.setdefault("lists", {}).setdefault(folder, {})
+    if isinstance(ev.get("counts"), dict):
+        idx["counts"] = dict(ev["counts"])
+    if folder.upper() == "INBOX" and isinstance(ev.get("categories"), list):
+        idx["categories"] = [dict(c) for c in ev["categories"] if isinstance(c, dict) and c.get("key")]
+    cat = ev.get("category") or None
+    lst = idx.setdefault("lists", {}).setdefault(list_key(folder, cat), {})
     rows = [dict(r) for r in ev.get("rows") or [] if isinstance(r, dict) and r.get("uid")]
     if ev.get("before") is None:
         # A refresh of the first page keeps the older pages he already walked back through, and their cursor.
@@ -174,13 +217,21 @@ def fold(db: dict, ev: dict) -> None:
         lst["cursor"], lst["complete"] = ev.get("nextBefore"), bool(ev.get("complete"))
     lst.update({"answered_at": time.time(), "asked_at": None, "error": str(ev.get("error") or ""),
                 "exists": ev.get("exists")})
+    # The Inbox was asked before its categories were known (the very first open): now that the provider has said
+    # how it sorts it, the screen moves to the first category — the one Gmail opens on.
+    if (not cat and folder.upper() == "INBOX" and str(idx.get("folder") or "").upper() == "INBOX"
+            and not idx.get("category") and default_category(db)):
+        idx["category"] = default_category(db)
+        idx.setdefault("lists", {}).setdefault(list_key("INBOX", idx["category"]), {})["viewed_at"] = time.time()
+        ask(db, "INBOX", category=idx["category"])
 
 
 def view(db: dict) -> dict:
     """What the email section shows. `rows` carry `pending` when the same mail is waiting in the home's list."""
     idx = _idx(db)
     folder = str(idx.get("folder") or "INBOX")
-    lst = (idx.get("lists") or {}).get(folder) or {}
+    cat = (idx.get("category") or None) if folder.upper() == "INBOX" else None
+    lst = (idx.get("lists") or {}).get(list_key(folder, cat)) or {}
     waiting = {str(it.get("messageId")) for it in db.get("items") or [] if it.get("platform") == "email"}
     rows = [dict(r) for r in lst.get("rows") or []]
     if folder.upper() == "INBOX":
@@ -193,6 +244,8 @@ def view(db: dict) -> dict:
     if draft and draft not in (db.get("drafts") or {}):
         draft = None                       # sent or discarded meanwhile: the screen goes back to its folder
     return {"folders": list(idx.get("folders") or []), "folder": folder, "role": role_of(db, folder),
+            "category": cat, "categories": categories(db), "counts": dict(idx.get("counts") or {}),
+            "unread": unread(db, folder, cat),
             "rows": rows, "loading": _fresh(lst.get("asked_at")), "asked": bool(lst.get("answered_at")
                                                                                 or lst.get("asked_at")),
             "more": not lst.get("complete") and bool(lst.get("cursor")), "error": lst.get("error") or "",
@@ -200,10 +253,24 @@ def view(db: dict) -> dict:
             "note": n if (n := idx.get("note")) and _fresh_note(n) else None}
 
 
+def unread(db: dict, folder: str, category: str | None = None) -> int | None:
+    """The provider's own unread figure for a list: a category's, or a folder's. An Inbox the provider sorts counts
+    its first category (Gmail's Inbox badge is Primary's, not every category's). None = not measured."""
+    idx = _idx(db)
+    if str(folder).upper() == "INBOX":
+        cats = {str(c["key"]): c.get("unread") for c in categories(db)}
+        key = category or default_category(db)
+        if key in cats:
+            return cats[key]
+    n = (idx.get("counts") or {}).get(folder)
+    return int(n) if isinstance(n, int) else None
+
+
 def _fresh_note(n) -> bool:
     try:
         return time.time() - float(n.get("at") or 0) < NOTE_S
     except (TypeError, ValueError, AttributeError):
+        _log.debug("mailbox: unreadable note time — the note is not shown")
         return False
 
 

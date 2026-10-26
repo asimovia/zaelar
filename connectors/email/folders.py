@@ -96,8 +96,8 @@ def _header_row(uid: int, flags: str, head: bytes) -> dict:
         dt = parsedate_to_datetime(msg.get("Date", ""))
         if dt is not None:
             row["ts"] = dt.timestamp()
-    except Exception:  # noqa: BLE001 — a malformed Date leaves the row undated, never drops it
-        pass
+    except Exception as e:  # noqa: BLE001 — a malformed Date leaves the row undated, never drops it
+        _log.debug(f"email folders: undated row {uid} ({type(e).__name__})")
     return row
 
 
@@ -115,8 +115,33 @@ def _fetch_meta(meta: bytes) -> tuple[int | None, str]:
     return uid, flags
 
 
-def list_page(mb, folder: str = "INBOX", before: str | None = None, limit: int = 30) -> dict:
-    """One page of `folder`'s headers, newest first: `{folders, rows, nextBefore, complete, exists, error}`.
+_HEADERS = "(UID FLAGS BODY.PEEK[HEADER.FIELDS (FROM TO SUBJECT DATE)])"
+
+
+def _fetch_rows(im, which, *, by_uid: bool = False) -> list[dict]:
+    """Header rows for a sequence range (`"16:45"`) or a list of UIDs, newest first. Headers only, PEEK."""
+    if by_uid:
+        if not which:
+            return []
+        st, data = im.uid("FETCH", ",".join(str(u) for u in which), _HEADERS)
+    else:
+        st, data = im.fetch(which, _HEADERS)
+    rows = {}
+    for part in data or []:
+        if not isinstance(part, tuple) or len(part) < 2:
+            continue
+        uid, flags = _fetch_meta(part[0] if isinstance(part[0], (bytes, bytearray)) else b"")
+        if uid is not None:
+            rows[uid] = _header_row(uid, flags, part[1])
+    return [rows[u] for u in sorted(rows, reverse=True)]
+
+
+def list_page(mb, folder: str = "INBOX", before: str | None = None, limit: int = 30, *,
+              category: str | None = None, routes=None) -> dict:
+    """One page of `folder`'s headers, newest first: `{folders, rows, nextBefore, complete, exists, error}` — and,
+    with the first page, `counts` (each folder's unread, as the server counts it) and, for an Inbox the provider
+    sorts, `categories` (`[{key, unread}]`, `categories.py`). With `category`, the page is that category's, paged by
+    UID with his `routes` applied; a server that sorts nothing ignores `category` and lists the folder.
 
     Paged by SEQUENCE number, not by searching: SELECT already says how many messages the folder holds, and the
     newest are the last numbers — so a page is one FETCH of `limit` headers whatever the size of the folder (a
@@ -130,8 +155,11 @@ def list_page(mb, folder: str = "INBOX", before: str | None = None, limit: int =
         out["error"] = f"IMAP: {type(e).__name__}"
         return out
     try:
+        from connectors.email import categories as _cats
         from connectors.email.mailbox import Mailbox
         out["folders"] = parse_list(Mailbox._folders(im))
+        if before is None:
+            out["counts"] = _cats.unseen_counts(im, out["folders"])
         st, data = im.select(_quote(folder), readonly=True)
         if st != "OK":
             out["error"] = "folder_unavailable"
@@ -139,6 +167,14 @@ def list_page(mb, folder: str = "INBOX", before: str | None = None, limit: int =
         exists = int((data or [b"0"])[0] or 0)
         out["exists"] = exists      # what the folder held when this page was read: a later tick that sees another
                                     # number re-reads the first page (mail arrived, or came back from elsewhere)
+        ext = _cats.supported(im) if folder.upper() == "INBOX" else None
+        if ext and before is None:
+            out["categories"] = _cats.summary(im, ext, routes)
+        if ext and category in ext["keys"]:
+            out["category"] = category
+            uids, out["nextBefore"], out["complete"] = _cats.page_uids(im, ext, category, routes, before, limit)
+            out["rows"] = _fetch_rows(im, uids, by_uid=True)
+            return out
         try:
             hi = min(exists, int(str(before)) - 1) if before else exists
         except (TypeError, ValueError):
@@ -149,23 +185,15 @@ def list_page(mb, folder: str = "INBOX", before: str | None = None, limit: int =
         if hi < 1:
             out["complete"] = True
             return out
-        st, data = im.fetch(f"{lo}:{hi}", "(UID FLAGS BODY.PEEK[HEADER.FIELDS (FROM TO SUBJECT DATE)])")
-        by_uid = {}
-        for part in data or []:
-            if not isinstance(part, tuple) or len(part) < 2:
-                continue
-            uid, flags = _fetch_meta(part[0] if isinstance(part[0], (bytes, bytearray)) else b"")
-            if uid is not None:
-                by_uid[uid] = _header_row(uid, flags, part[1])
-        out["rows"] = [by_uid[u] for u in sorted(by_uid, reverse=True)]
+        out["rows"] = _fetch_rows(im, f"{lo}:{hi}")
     except Exception as e:  # noqa: BLE001 — the card says why the folder is short; it never looks empty
         _log.warning(f"email folders: page of {folder!r} failed: {type(e).__name__}")
         out["error"] = type(e).__name__
     finally:
         try:
             im.logout()
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as e:  # noqa: BLE001 — the page is already in hand
+            _log.debug(f"email folders: logout failed ({type(e).__name__})")
     return out
 
 
@@ -198,8 +226,8 @@ def read_one(mb, folder: str, uid: str, media_dir: str | None = None) -> dict:
             dt = parsedate_to_datetime(msg.get("Date", ""))
             if dt is not None:
                 out["ts"] = dt.timestamp()
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as e:  # noqa: BLE001 — a malformed Date leaves the message undated
+            _log.debug(f"email folders: undated message {uid} ({type(e).__name__})")
         if media_dir and folder.upper() == "INBOX":
             try:
                 from connectors.email.mailbox import extract_attachments
@@ -215,5 +243,5 @@ def read_one(mb, folder: str, uid: str, media_dir: str | None = None) -> dict:
     finally:
         try:
             im.logout()
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as e:  # noqa: BLE001 — the page is already in hand
+            _log.debug(f"email folders: logout failed ({type(e).__name__})")

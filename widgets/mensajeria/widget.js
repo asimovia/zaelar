@@ -225,17 +225,56 @@ function injectStyles(){
   .hb-msg .hd .hdtitle.on{color:var(--hb-accent,#3D6FE0);font-weight:700}
   .hb-msg .hdsep,.hb-msg .msep{color:var(--hb-muted-2,#9aa7b8);font-size:14px}
   .hb-msg .hd .hdsec{font-size:17px;color:var(--hb-ink,#0d1622)}
-  /* The MAIL CLIENT: Compose + the folders as one row of tabs, then the list. */
-  .hb-msg .mfolders{display:flex;align-items:center;gap:10px;margin:0 0 10px;min-width:0}
-  .hb-msg .mcompose{height:34px;padding:0 14px;gap:6px;flex:0 0 auto}
+  .hb-msg .hd .hdcur{font-size:14px;font-weight:600;color:var(--hb-muted,#5f6b7c)}
+  /* The MAIL CLIENT (V2-807 T-01): ONE left rail — Compose, the Inbox opening into the categories the provider
+     sorts it by, every other folder — each with the provider's own unread figure; the list beside it. The rail
+     reads the card's OWN width (a container query, not the screen's): a narrow card folds it to icons, a phone-
+     narrow one to a drawer behind the button that names where he is. */
+  .hb-msg.full > .mclient{flex:1 1 auto;min-height:0}
+  .hb-msg .mclient{container-type:inline-size;position:relative;min-height:0}
+  .hb-msg .mcgrid{display:grid;grid-template-columns:208px minmax(0,1fr);gap:14px;height:100%;min-height:0}
+  .hb-msg .mrail{display:flex;flex-direction:column;gap:1px;min-width:0;min-height:0;overflow:auto;
+    padding-right:10px;border-right:1px solid var(--hb-line-subtle,#eef1f6)}
+  .hb-msg .mpanel{min-width:0;min-height:0;overflow:auto;display:flex;flex-direction:column}
+  .hb-msg .mcompose{height:36px;padding:0 14px;gap:8px;flex:0 0 auto;margin:0 0 10px;align-self:flex-start}
   .hb-msg .mcompose svg{width:15px;height:15px}
-  .hb-msg .mfoldnav{display:flex;gap:4px;overflow-x:auto;min-width:0;scrollbar-width:thin;padding-bottom:2px}
-  .hb-msg .mfold{flex:0 0 auto;border:0;background:transparent;color:var(--hb-muted,#5b6b82);font-size:13px;
-    font-weight:600;padding:7px 11px;border-radius:999px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
-  .hb-msg .mfold:hover{background:var(--hb-hover,#eef3f9);color:var(--hb-ink,#0d1622)}
-  .hb-msg .mfold.on{background:color-mix(in srgb,var(--hb-accent,#3D6FE0) 16%,transparent);color:var(--hb-accent,#3D6FE0)}
-  .hb-msg .mfn{font-size:11px;font-weight:700;min-width:16px;height:16px;padding:0 5px;border-radius:999px;
-    display:inline-flex;align-items:center;justify-content:center;background:var(--hb-neutral,#3a4a5c);color:#fff}
+  .hb-msg .mnav{display:flex;align-items:center;gap:10px;border:0;background:transparent;color:var(--hb-muted,#5b6b82);
+    font:inherit;font-size:13.5px;font-weight:600;padding:0 10px;min-height:32px;border-radius:999px;cursor:pointer;
+    text-align:left;width:100%;box-sizing:border-box;position:relative;flex:0 0 auto}
+  .hb-msg .mnav svg{width:16px;height:16px;flex:0 0 auto}
+  .hb-msg .mnav .mnl{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .hb-msg .mnav.sub{padding-left:26px;font-weight:500;font-size:13px;min-height:30px}
+  .hb-msg .mnav:hover{background:var(--hb-hover,#eef3f9);color:var(--hb-ink,#0d1622)}
+  .hb-msg .mnav.on{background:color-mix(in srgb,var(--hb-accent,#3D6FE0) 16%,transparent);color:var(--hb-accent,#3D6FE0)}
+  .hb-msg .mnav.on .mfn{background:var(--hb-accent,#3D6FE0);color:var(--canvas,#fff)}
+  .hb-msg .mfn{font-size:11px;font-weight:700;min-width:16px;height:16px;padding:0 5px;border-radius:999px;flex:0 0 auto;
+    display:inline-flex;align-items:center;justify-content:center;background:var(--hb-neutral,#3a4a5c);color:var(--hb-ink,#fff)}
+  .hb-msg .mrailsep{height:1px;background:var(--hb-line-subtle,#eef1f6);margin:8px 6px;flex:0 0 auto}
+  .hb-msg .mdrawerbtn{display:none;align-items:center;gap:8px;border:1px solid var(--hb-line,#e3e8f0);
+    background:var(--hb-bg,#fff);color:var(--hb-ink,#0d1622);font:inherit;font-size:13.5px;font-weight:600;
+    border-radius:999px;padding:0 12px;min-height:34px;cursor:pointer;align-self:flex-start;margin:0 0 8px}
+  .hb-msg .mdrawerbtn svg{width:16px;height:16px}
+  @container (max-width:600px){
+    .hb-msg .mcgrid{grid-template-columns:52px minmax(0,1fr);gap:10px}
+    .hb-msg .mrail{padding-right:6px;align-items:center}
+    .hb-msg .mnav,.hb-msg .mnav.sub{justify-content:center;padding:0;width:40px;min-height:36px}
+    .hb-msg .mnav .mnl,.hb-msg .mcompose .mnl{display:none}
+    .hb-msg .mnav .mfn{position:absolute;top:0;right:-4px;min-width:14px;height:14px;font-size:9.5px;padding:0 3px}
+    .hb-msg .mcompose{width:40px;padding:0;justify-content:center;align-self:center}
+  }
+  @container (max-width:440px){
+    .hb-msg .mcgrid{grid-template-columns:minmax(0,1fr)}
+    .hb-msg .mrail{display:none}
+    .hb-msg .mdrawerbtn{display:inline-flex}
+    .hb-msg .mcgrid.open .mrail{display:flex;position:absolute;z-index:3;top:42px;left:0;bottom:0;width:232px;
+      align-items:stretch;padding:8px;background:var(--hb-bg,#fff);border:1px solid var(--hb-line,#e3e8f0);
+      border-radius:12px;box-shadow:var(--hb-shadow-2,0 12px 32px rgba(0,0,0,.18))}
+    .hb-msg .mcgrid.open .mnav{justify-content:flex-start;padding:0 10px;width:100%}
+    .hb-msg .mcgrid.open .mnav.sub{padding-left:26px}
+    .hb-msg .mcgrid.open .mnav .mnl,.hb-msg .mcgrid.open .mcompose .mnl{display:inline}
+    .hb-msg .mcgrid.open .mnav .mfn{position:static}
+    .hb-msg .mcgrid.open .mcompose{width:auto;padding:0 14px;align-self:flex-start}
+  }
   .hb-msg .mlist{max-height:none}
   .hb-msg .mrow.seen .mfrom{font-weight:500;color:var(--hb-muted,#5f6b7c)}
   .hb-msg .mrow.unseen .msubj{color:var(--hb-ink,#0d1622)}
@@ -273,8 +312,6 @@ function injectStyles(){
   /* On a phone the crumb keeps the house, what is open and the way back; the middle steps are the ← button. */
   @media (max-width:560px){
     .hb-msg .mcrumb .mcr:not(.cur),.hb-msg .mcrumb .msep{display:none}
-    .hb-msg .mfolders{flex-wrap:wrap}
-    .hb-msg .mfoldnav{flex:1 1 100%}
   }
   /* V2-680 retired .mdsubj/.mdmeta/.mdfrom/.mdwhen/.mdbody: the detail screen draws the same LETTER the
      thread does now (.mltr below), so keeping a second set of rules for the same thing is how two
@@ -581,6 +618,18 @@ const ACTION_SVG = {
   mic:     [["path", {d: "M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"}], ["path", {d: "M19 10v2a7 7 0 0 1-14 0v-2"}],
             ["path", {d: "M12 19v3"}]],
   file:    [["path", {d: "M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"}], ["path", {d: "M14 2v4a2 2 0 0 0 2 2h4"}]],
+  // The mail rail: one icon per folder role and per provider category (V2-807 T-01).
+  inbox:   [["path", {d: "M22 12h-6l-2 3h-4l-2-3H2"}],
+            ["path", {d: "M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"}]],
+  star:    [["path", {d: "m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8-6.2-3.2L5.8 21 7 14.2 2 9.3l6.9-1Z"}]],
+  send:    [["path", {d: "m22 2-7 20-4-9-9-4Z"}], ["path", {d: "M22 2 11 13"}]],
+  mail:    [["rect", {x: "2", y: "4", width: "20", height: "16", rx: "2"}], ["path", {d: "m22 7-10 6L2 7"}]],
+  alert:   [["circle", {cx: "12", cy: "12", r: "10"}], ["path", {d: "M12 8v4"}], ["path", {d: "M12 16h.01"}]],
+  tag:     [["path", {d: "M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.7 8.7a2.4 2.4 0 0 0 3.4 0l6.6-6.6a2.4 2.4 0 0 0 0-3.4Z"}],
+            ["circle", {cx: "7.5", cy: "7.5", r: "1"}]],
+  info:    [["circle", {cx: "12", cy: "12", r: "10"}], ["path", {d: "M12 16v-4"}], ["path", {d: "M12 8h.01"}]],
+  chat:    [["path", {d: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"}]],
+  menu:    [["path", {d: "M4 6h16"}], ["path", {d: "M4 12h16"}], ["path", {d: "M4 18h16"}]],
   bellOff: [["path", {d: "M8.7 3A6 6 0 0 1 18 8a21.3 21.3 0 0 0 .6 5"}], ["path", {d: "M17 17H3s3-2 3-9a4.7 4.7 0 0 1 .3-1.7"}],
             ["path", {d: "M10.3 21a1.9 1.9 0 0 0 3.4 0"}], ["path", {d: "m2 2 20 20"}]],
 };
@@ -1801,24 +1850,66 @@ function mailCrumb(mb, ctx, act, current){
   return bar;
 }
 
-function mailFolders(mb, data, ctx, act, rerender){
-  const bar = el("div","mfolders");
-  const compose = el("button","bt bt-primary mcompose");
-  compose.appendChild(actionIcon("pen")); compose.appendChild(document.createTextNode(" " + tt("compose", null, "Redactar")));
-  compose.onclick = () => { _newMail = {to:"", subject:"", text:""}; rerender(); };
-  bar.appendChild(compose);
-  const nav = el("div","mfoldnav");
-  const waiting = (data.items || []).filter(it => it.platform === "email").length;
+// The provider's categories of the Inbox, named in his language; a key no bundle names shows as the provider sent it.
+const CAT_FB = {primary:"Principal", social:"Social", promotions:"Promociones", updates:"Notificaciones", forums:"Foros"};
+const CAT_ICON = {primary:"inbox", social:"users", promotions:"tag", updates:"info", forums:"chat"};
+const ROLE_ICON = {inbox:"inbox", flagged:"star", drafts:"file", sent:"send", archive:"archive", all:"mail",
+                   junk:"alert", trash:"trash"};
+// Where unread is noise (what he sent, his drafts, the bin, «all mail»), no figure is shown — as Gmail does.
+const NO_COUNT = new Set(["sent", "drafts", "trash", "all", "flagged", "archive"]);
+let _railOpen = false;    // the drawer, on a card too narrow for the rail
+
+function catLabel(key){ return tt("cat_" + key, null, CAT_FB[key] || key); }
+
+// Where he is inside the mail section, in one name: the category of the Inbox, or the folder.
+function mailWhere(mb){
+  if(String(mb.folder).toUpperCase() === "INBOX" && mb.category) return catLabel(mb.category);
+  return folderLabel(mailFolderList(mb).find(f => f.name === mb.folder) || {role:"inbox"});
+}
+
+function railEntry(icon, label, n, on, go, cls, rerender){
+  const b = el("button", "mnav" + (on ? " on" : "") + (cls ? " " + cls : ""));
+  b.type = "button"; b.title = label;
+  b.setAttribute("aria-label", n ? `${label} (${n})` : label);
+  if(on) b.setAttribute("aria-current", "page");
+  b.append(actionIcon(icon), el("span", "mnl", label));
+  if(n) b.appendChild(el("span", "mfn", String(n)));      // the provider's real number, never rounded
+  // A tap in the drawer closes it at once; the list follows when the action answers.
+  b.onclick = () => { const was = _railOpen; _railOpen = false; go(); if(was && rerender) rerender(); };
+  return b;
+}
+
+// ONE left rail (V2-807 T-01, the operator's design): Compose; the Inbox and, under it, every category the provider
+// sorts it by; then every other folder the server declares. Each with the PROVIDER's unread figure — an Inbox that
+// is sorted counts its first category, the way Gmail's own badge does.
+function mailRail(mb, data, ctx, act, rerender){
+  const rail = el("nav", "mrail");
+  rail.setAttribute("aria-label", tt("mail_section", null, "Correo"));
+  const compose = el("button", "bt bt-primary mcompose");
+  compose.title = tt("compose", null, "Redactar");
+  compose.append(actionIcon("pen"), el("span", "mnl", tt("compose", null, "Redactar")));
+  compose.onclick = () => { _railOpen = false; _newMail = {to:"", subject:"", text:""}; rerender(); };
+  rail.appendChild(compose);
+  const counts = mb.counts || {};
+  const cats = mb.categories || [];
+  const inInbox = String(mb.folder).toUpperCase() === "INBOX";
   const drafts = mailDrafts(data).length;
-  mailFolderList(mb).forEach(f => {
-    const b = el("button","mfold" + (f.name === mb.folder ? " on" : ""), folderLabel(f));
-    const n = f.role === "drafts" ? drafts : (f.role === "inbox" ? waiting : 0);
-    if(n) b.appendChild(el("span","mfn", String(n)));
-    b.onclick = () => act("mail_folder", {folder: f.name});
-    nav.appendChild(b);
+  mailFolderList(mb).forEach((f, i) => {
+    const label = folderLabel(f);
+    if(f.role === "inbox"){
+      const n = cats.length ? (cats[0].unread || 0) : (counts[f.name] || 0);
+      rail.appendChild(railEntry("inbox", label, n, inInbox && !cats.length, () => act("mail_folder", {folder: f.name}),
+                                 "", rerender));
+      cats.forEach(c => rail.appendChild(railEntry(CAT_ICON[c.key] || "tag", catLabel(c.key), c.unread || 0,
+        inInbox && mb.category === c.key, () => act("mail_folder", {folder: f.name, category: c.key}), "sub", rerender)));
+      return;
+    }
+    if(i && !f.role && (mailFolderList(mb)[i - 1] || {}).role) rail.appendChild(el("div", "mrailsep"));
+    const n = f.role === "drafts" ? drafts : (NO_COUNT.has(f.role) ? 0 : (counts[f.name] || 0));
+    rail.appendChild(railEntry(ROLE_ICON[f.role] || "tag", label, n, f.name === mb.folder,
+                               () => act("mail_folder", {folder: f.name}), "", rerender));
   });
-  bar.appendChild(nav);
-  return bar;
+  return rail;
 }
 
 function folderRow(r, mb, act){
@@ -2022,17 +2113,28 @@ function mailClient(data, ctx, rerender){
   const mb = data.mailbox || {folders:[], folder:"INBOX", role:"inbox", rows:[]};
   const act = mailAct(ctx, data, rerender);
   const box = el("div","mclient");
-  box.appendChild(mailFolders(mb, data, ctx, act, rerender));
+  const grid = el("div","mcgrid" + (_railOpen ? " open" : ""));
+  const pane = el("div","mpanel");
+  // On a card too narrow for the rail, this button names where he is and opens the rail as a drawer.
+  const drawer = el("button","mdrawerbtn");
+  drawer.type = "button";
+  drawer.setAttribute("aria-expanded", _railOpen ? "true" : "false");
+  drawer.append(actionIcon("menu"), el("span", null, mailWhere(mb)));
+  drawer.onclick = () => { _railOpen = !_railOpen; rerender(); };
+  pane.appendChild(drawer);
+  grid.append(mailRail(mb, data, ctx, act, rerender), pane);
+  box.appendChild(grid);
   const its = (data.items || []).filter(it => it.platform === "email");
-  if(mb.role === "inbox" && !(mb.rows || []).length && its.length){
-    // The Inbox page has not arrived yet (or the mailbox could not be listed): the mail the card already holds
-    // IS Inbox mail, shown at once instead of an empty box — and said, when the mailbox failed.
-    if(mb.error) box.appendChild(el("div","mnote", tt("folder_error", null, "No he podido leer esta carpeta del buzón.")));
-    box.appendChild(emailList(its, ctx, n => { _openMail = n; rerender(); }));
+  if(mb.role === "inbox" && !mb.category && !(mb.rows || []).length && its.length){
+    // The Inbox page has not arrived (or the mailbox could not be listed): the mail the card already holds IS
+    // Inbox mail, shown at once instead of an empty box — and said, when the mailbox failed. Not on a category:
+    // the held mail is every category mixed, the very thing a category view exists to separate.
+    if(mb.error) pane.appendChild(el("div","mnote", tt("folder_error", null, "No he podido leer esta carpeta del buzón.")));
+    pane.appendChild(emailList(its, ctx, n => { _openMail = n; rerender(); }));
     return box;
   }
-  if(mb.note && mb.note.key === "sent") box.appendChild(el("div","mnote", noteText(mb.note)));
-  box.appendChild(mailList(mb, data, ctx, act));
+  if(mb.note && mb.note.key === "sent") pane.appendChild(el("div","mnote", noteText(mb.note)));
+  pane.appendChild(mailList(mb, data, ctx, act));
   return box;
 }
 
@@ -2139,6 +2241,8 @@ export function render(root, data, ctx){
   } else {
     hd.append(el("span","hdsep","›"),
               el("b","hdsec", _platFilter === "email" ? tt("mail_section", null, "Correo") : (PLAT[_platFilter]||{}).label || _platFilter));
+    // In the mail section the header says the one thing left: which entry of the rail is on screen.
+    if(_platFilter === "email" && data.mailbox) hd.append(el("span","hdsep","›"), el("span","hdcur", mailWhere(data.mailbox)));
   }
   const dots=el("div","dots");
   // V2-521: every channel is VISIBLE up here — connected bright, unconnected dimmed (the operator's ask:
@@ -2225,8 +2329,9 @@ export function render(root, data, ctx){
     return;
   }
   if(_platFilter==="email"){
-    // The mail section is a MAIL CLIENT (mailbox.py): the Inbox first, every folder, drafts — whatever the
-    // density profile, the same way a thread is a thread in both.
+    // The mail section is a MAIL CLIENT (mailbox.py): the rail and the list fill the card and scroll each on its
+    // own, whatever the density profile, the same way a thread is a thread in both.
+    root.classList.add("full");
     root.appendChild(mailClient(data, ctx, rerender));
     return;
   }

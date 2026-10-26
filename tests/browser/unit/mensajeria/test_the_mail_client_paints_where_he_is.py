@@ -141,15 +141,15 @@ def test_the_mail_section_opens_on_the_inbox_with_every_folder_one_tap_away(_pag
     _mount(_page, _data())
     _page.locator(".dots .picon.on").nth(2).click()                      # email
     assert _page.locator(".hd .hdsec").inner_text() == "Correo"
-    chips = _page.locator(".mfold").all_inner_texts()
-    assert [c.split("\n")[0].strip() for c in chips] == ["Recibidos", "Borradores", "Enviados", "Facturas"]
-    assert _page.locator(".mfold.on").inner_text().startswith("Recibidos")
-    assert "1" in _page.locator(".mfold", has_text="Borradores").inner_text(), "the drafts waiting are counted"
+    entries = _page.locator(".mrail .mnav .mnl").all_inner_texts()
+    assert entries == ["Recibidos", "Borradores", "Enviados", "Facturas"]
+    assert _page.locator(".mnav.on .mnl").inner_text() == "Recibidos"
+    assert "1" in _page.locator(".mnav", has_text="Borradores").inner_text(), "the drafts waiting are counted"
     assert _page.locator(".mlist .mrow").count() == 2
     assert _page.locator(".mrow.unseen").count() == 1 and _page.locator(".mtag").count() == 1
     _page.get_by_text("Your invoice").click()
     assert _calls(_page, "mail_open")[-1] == {"uid": "904", "folder": "INBOX"}
-    _page.locator(".mfold", has_text="Enviados").click()
+    _page.locator(".mnav", has_text="Enviados").click()
     assert _calls(_page, "mail_folder")[-1] == {"folder": "[Gmail]/Enviados"}
 
 

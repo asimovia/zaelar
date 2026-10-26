@@ -53,6 +53,9 @@ DOMAINS: list[dict] = [
             "tests/memory/unit/test_widget_slot_migration.py"]},
         {"id": "1.2", "title": "Embeddings y recuperación (retriever+reranker)", "ch": UNIT, "paths": [
             "tests/memory/unit/test_embeddings.py", "tests/memory/unit/test_retriever.py",
+            # V2-802 T-03 (2026-10-26): inbound messages are their own lane — not promoted, not in the passive
+            # blocks, never outranking an own row in recall; still searchable through `messages`.
+            "tests/memory/unit/test_inbound_messages_have_their_own_lane.py",
             # V2-501 (2026-08-30): the semantic space moved from Ollama (a LOCAL server, which does not exist
             # inside a container) to a cloud provider, so local and cloud search the SAME space. What is
             # guarded is not the call: it is that the dim is the one requested, that the credential is named
@@ -68,6 +71,10 @@ DOMAINS: list[dict] = [
         {"id": "1.3", "title": "Escritura / ingest / destilador", "ch": UNIT, "paths": [
             "tests/memory/integration/test_memory_agent.py", "tests/memory/integration/test_writer_queue.py",
             "tests/memory/unit/test_embed_pending_marker.py",
+            # V2-802 T-01/T-02/T-04/T-05 (2026-10-26): a paste is read whole with its channel, a rejected identity
+            # claim writes no trusted row, «I already told you» is not a fact, each row records its real channel.
+            "tests/memory/unit/test_a_rejected_identity_claim_writes_no_trusted_row.py",
+            "tests/memory/unit/test_the_distiller_reads_a_paste_whole_and_knows_its_channel.py",
             "tests/memory/integration/test_write_precision_v2033.py",
             "tests/memory/integration/test_write_precision_v2050.py",
             "tests/memory/integration/test_write_changes_20260712.py",
@@ -124,6 +131,8 @@ DOMAINS: list[dict] = [
         {"id": "1.9", "title": "El arnés de evaluación se prueba a sí mismo", "ch": UNIT, "paths": [
             "tests/memory/unit/test_bot_runner_setup.py", "tests/memory/unit/test_judge.py",
             "tests/memory/unit/test_timeline_cases.py"]},
+        {"id": "1.10", "title": "Recall carries provenance; the conversation record is a source (V2-802 T-06, V2-803 T-01/T-02)",
+            "ch": UNIT, "paths": ["tests/memory/unit/test_recall_says_where_each_line_came_from.py"]},
     ]},
     {"id": "2", "name": "FLASHBRAIN (nucleo)", "nodes": [
         {"id": "2.1", "title": "Enrutado / elección de tool", "ch": UNIT, "paths": [
@@ -2074,6 +2083,8 @@ DOMAINS: list[dict] = [
                                  "client event, clears by itself — and a deliberate mute is not red",
             "ch": UNIT,
             "paths": ["tests/browser/unit/voice/test_a_device_problem_turns_its_icon_red.py"]},
+        {"id": "3.120", "title": "A word table never turns an empty promise into a worker over a confident handle_inline — both channels (V2-802 T-07, CRIT-K1)",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_a_word_table_never_overrules_a_confident_inline.py"]},
     ]},
     {"id": "4", "name": "WIDGETS", "nodes": [
         {"id": "4.1", "title": "Ciclo de vida / acciones / refs / generador / background", "ch": UNIT, "paths": [
@@ -4920,7 +4931,9 @@ DOMAINS: list[dict] = [
                                  "aparcado exige un oído armado y nunca escribe el interruptor del micro, y "
                                  "el motor contesta al tema que el navegador publica",
             "ch": UNIT,
-            "paths": ["tests/browser/unit/voice/test_the_parked_tap_is_wired_to_the_ear.py"]},
+            "paths": ["tests/browser/unit/voice/test_the_parked_tap_is_wired_to_the_ear.py",
+                      # V2-802 T-08 (2026-10-26): the pre-roll is his only when the paid STT could not hear it
+                      "tests/browser/unit/voice/test_our_own_voice_is_never_his_preroll.py"]},
         {"id": "4.207", "title": "Las 30 órdenes que declara la tarjeta de agenda aterrizan de verdad — y "
                                  "un selector que no nombra nada PREGUNTA en vez de acertar por vecindad",
             "ch": UNIT,
@@ -5542,6 +5555,9 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/browser/unit/widgets/test_every_host_gives_a_card_the_whole_ctx.py"]},
         {"id": "4.277", "title": "What he archives, deletes or moves in his own mail client leaves the card: the folder is asked which messages it still holds, what left goes, and a folder whose size changed is read again",
             "ch": UNIT, "paths": ["tests/connectors/unit/email/test_what_he_archives_in_his_client_leaves_the_card.py"]},
+        {"id": "4.278", "title": "The mail section is a simplified Gmail: ONE left rail with the Inbox split into the categories the PROVIDER returns (X-GM-EXT-1), each with the provider's own unread figure, folders only on a server that sorts nothing — RENDERED at three widths and both themes",
+            "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_the_inbox_is_sorted_the_way_the_provider_sorts_it.py",
+                                  "tests/browser/unit/mensajeria/test_the_mail_rail_paints_at_every_width.py"]},
         {"id": "4.252", "title": "The chat list paints, filters by kind and name, loads more and opens a chat (RENDERED)",
             "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_the_chat_list_paints_filters_and_loads_more.py"]},
         {"id": "4.250", "title": "The feedback button is never hidden under another layer",

@@ -17,11 +17,9 @@ recently. A mail he archives in Gmail leaves the card within one tick.
 from __future__ import annotations
 
 import logging
-import re
 
 _log = logging.getLogger("zaelar.email.membership")
 
-_FLAG_RE = re.compile(rb"UID (\d+) FLAGS \(([^)]*)\)", re.I)
 MAX_UIDS = 200
 
 
@@ -58,11 +56,12 @@ def check(mb, folder: str, uids) -> dict | None:
         # Only what was asked can be present: a server is free to answer a UID set with more than it was asked.
         present = found & set(uids)
         flags: dict[str, set[str]] = {}
+        from connectors.email.mailbox import Mailbox      # its FETCH (FLAGS) reader, the one `flags_for` uses
         if present:
             st, data = im.uid("FETCH", ",".join(sorted(present, key=int)), "(FLAGS)")
             for row in (data or []) if st == "OK" else []:
                 raw = row[0] if isinstance(row, tuple) else row
-                m = _FLAG_RE.search(raw) if isinstance(raw, (bytes, bytearray)) else None
+                m = Mailbox._FLAG_RE.search(raw) if isinstance(raw, (bytes, bytearray)) else None
                 if m:
                     flags[m.group(1).decode()] = {f.decode(errors="replace") for f in m.group(2).split()}
         return {"present": present, "flags": flags, "exists": exists}
@@ -72,8 +71,8 @@ def check(mb, folder: str, uids) -> dict | None:
     finally:
         try:
             im.logout()
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as e:  # noqa: BLE001 — the answer is already in hand
+            _log.debug(f"email membership: logout failed ({type(e).__name__})")
 
 
 def gone(asked, answer: dict | None) -> list[str]:

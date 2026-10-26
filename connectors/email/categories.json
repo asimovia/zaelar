@@ -1,0 +1,12 @@
+{
+  "_doc": "Server extensions that SORT the Inbox into categories, keyed by the CAPABILITY that announces them. The connector lists a category only when the server advertises its extension and answers the category's search; a server announcing none of these has folders only. Read by connectors/email/categories.py.",
+  "extensions": {
+    "X-GM-EXT-1": {
+      "search": "X-GM-RAW",
+      "category": "category:{key}",
+      "from": "from:{who}",
+      "unread": "is:unread",
+      "keys": ["primary", "social", "promotions", "updates", "forums"]
+    }
+  }
+}

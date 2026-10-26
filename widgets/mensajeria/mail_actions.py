@@ -11,7 +11,8 @@ from . import mailbox as _mbx
 
 def _rows_answer(db: dict) -> dict:
     v = _mbx.view(db)
-    return {"folder": v["folder"], "role": v["role"], "loading": v["loading"],
+    return {"folder": v["folder"], "role": v["role"], "category": v["category"], "unread": v["unread"],
+            "categories": [c["key"] for c in v["categories"]], "loading": v["loading"],
             "messages": [{"from": r.get("fromName") or r.get("from"), "subject": r.get("subject"),
                           "unread": not r.get("seen")} for r in v["rows"][:10]]}
 
@@ -22,10 +23,10 @@ def _shown(db: dict, platform: str = "email") -> None:
     _d._push_view(db, platform)
 
 
-# «Enséñame los enviados», «abre la papelera», a tap on a folder.
+# «Enséñame los enviados», «abre la papelera», «enséñame promociones», a tap on a folder or a category.
 def _a_mail_folder(action, payload) -> dict:
     db = _d.load_db()
-    _mbx.go(db, str(payload.get("folder") or "inbox"))
+    _mbx.go(db, str(payload.get("folder") or "inbox"), payload.get("category"))
     _shown(db)
     _d.store.save(_d.WIDGET_ID, db)
     return {"ok": True, "result": _rows_answer(db), **_d.view_data()}
@@ -35,7 +36,8 @@ def _a_mail_folder(action, payload) -> dict:
 def _a_mail_more(action, payload) -> dict:
     db = _d.load_db()
     folder = str((db.get("mailbox") or {}).get("folder") or "INBOX")
-    asked = _mbx.ask(db, folder, older=True)
+    cat = _mbx.view(db)["category"]
+    asked = _mbx.ask(db, folder, category=cat, older=True)
     _d.store.save(_d.WIDGET_ID, db)
     return {"ok": True, "result": {"folder": folder, "asked": asked}, **_d.view_data()}
 
