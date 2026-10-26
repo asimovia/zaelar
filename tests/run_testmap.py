@@ -1966,6 +1966,13 @@ DOMAINS: list[dict] = [
         {"id": "3.133", "title": "A bulk close spares the card he is working on unless he names it "
                                  "(V2-807 T-08)", "ch": UNIT,
             "paths": ["tests/agent_headless/unit/flash/test_a_bulk_close_spares_the_card_in_use.py"]},
+        # V2-807 T-14 — a clear stop order was refused twice: the tool gate read a word table that did not list «para
+        # inmediatamente esa tarea». The turn's brief asks, while an errand runs, whether THIS turn orders it stopped;
+        # a sure verdict decides the gate and repairs a turn that called nothing; the grammar is the fallback only.
+        # Disarmed 2026-10-26 (verdict never read) → red.
+        {"id": "3.134", "title": "A clear stop order stops the running errand on the first turn in any wording; a "
+                                 "stop dragged from an earlier turn still never kills (V2-807 T-14)", "ch": UNIT,
+            "paths": ["tests/agent_headless/unit/flash/test_a_clear_stop_order_stops_the_errand.py"]},
         # V2-692 — segunda ejecución en vivo del encargo (2026-09-14). UNA orden suya («organiza una reunión
         # con este contacto») y tuvo que conducirla entera a mano: autorizar el envío cuatro veces, avisar de
         # que había llegado la respuesta, decir que la aceptara — y al final no había reunión ni en nuestra

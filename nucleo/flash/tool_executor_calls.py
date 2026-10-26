@@ -647,7 +647,12 @@ def _t_stop_worker(*, args, _norm_nfkd, _say, _says_stop, clarify, emit, text, w
     # …unless his turn ANSWERS a question we just put to him (demo 2026-10-22: «…running for 15 minutes now. Want
     # me to stop it or keep going?» → «Yes, please» was refused here, and the search ran on). The order to stop
     # was in OUR sentence; the model read his yes and chose the stop. That is not drag from an earlier turn.
-    if not _says_stop(text) and not _prior_line.answers_our_question(brief, prior):
+    # V2-807 T-14 — …and the turn's own verdict decides when it is sure (`stop_decision`): «para inmediatamente esa
+    # tarea que está en marcha» was refused here because the word table below did not list that word order. The
+    # table and the answer-to-our-question check are the fallback when no sure verdict exists.
+    from nucleo.flash import stop_decision as _stop_decision
+    if not _stop_decision.ordered(brief, grammar=bool(_says_stop(text)
+                                                     or _prior_line.answers_our_question(brief, prior))):
         emit("brain", "🛡️ stop_worker ignorado — el operador no ha pedido parar nada (context-bleed)",
              text=(text or "")[:120], role="system",
              extra={"cat": "flash", "kind_diag": "stop_without_order", "which": which or "todo"})

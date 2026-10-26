@@ -10,6 +10,7 @@ from __future__ import annotations
 from nucleo.flash import agenda_claims as _agc   # «I've removed it» with no call → its cancel_meeting
 from nucleo.flash import card_close as _card_close
 from nucleo.flash import probe as _probe
+from nucleo.flash import stop_decision as _stop_decision   # V2-807 T-14: a stop order is the turn's verdict
 from nucleo.turn import split_by_errand as _sbe   # a sentence about several errands goes part by part (2.643)
 from nucleo.turn import promise_kept as _pk      # a promise ends ran, repaired or said undone (V2-790)
 
@@ -239,7 +240,7 @@ async def mirror_the_voice_backstops(*, _akp, _cw, _hw, _router, _rt, _sp, _tbri
         try:
             from nucleo import dispatch as _disp0
             from . import router as _router1
-            if _disp0.has_active() and _router1.looks_like_stop_work(text):
+            if _disp0.has_active() and _stop_decision.ordered(_tbrief, grammar=_router1.looks_like_stop_work(text)):
                 action = "stop_worker"
         except Exception:
             pass

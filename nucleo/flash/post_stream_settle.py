@@ -13,6 +13,7 @@ from nucleo.turn import split_by_errand as _sbe   # the status line names the er
 from nucleo.flash import unchecked_provenance as _pst_up   # 2026-10-14: no claimed check of a video's provenance
 from nucleo.flash import row_claims as _pst_rc   # 2026-10-14: a claim about a row that no source carries is corrected aloud
 from nucleo.flash import blocked_channel_receipt as _pst_bcr   # V2-604: a blocked channel's pasted link is said
+from nucleo.flash import stop_decision as _stop_decision   # V2-807 T-14: a stop order is the turn's verdict
 
 
 async def settle_what_is_pending(*, _ans, _ask_waiting, _auth_pending, _brief, _dialog, _filler_audio, _langs, _prev_pending, _r, _resolve_confirm, _router, _shown_ids, acted, aside, brain, clarify, confirm_state, data_done, emit, escalate_req, had_pending_confirm, llm_metrics, music_req, operator_text, search_req, send, speech, spoken_text, style_fired, text, worker_acted) -> dict:
@@ -75,22 +76,22 @@ async def settle_what_is_pending(*, _ans, _ask_waiting, _auth_pending, _brief, _
         except Exception:
             pass
     # Backstop de PARADA: hay workers vivos, el operador pidió parar trabajo y el modelo NO llamó stop_worker.
-    if worker_acted["v"] not in ("stop",) and escalate_req["v"] is None:
+    # V2-807 T-14 — the turn's sure stop verdict decides; the grammar only without one (`stop_decision.repair`).
+    if worker_acted["v"] not in ("stop",):
         try:
-            from nucleo import dispatch as _disp2
             # V2-773 — «Stop it and close the video widget» is about the CARD the verdict names, never the
             # errands running behind it (two were cancelled on the demo's kickoff).
-            if _disp2.has_active() and _router.looks_like_stop_work(text) and not _pst._direct_action.aims_at_a_card(_brief):
-                tids = _disp2.cancel_soon(text)
-                if tids:
-                    worker_acted["v"] = "stop"
-                    emit("brain", "🛑 stop worker (backstop determinista)", text=str(tids), role="system")
-                    # Un kill SIEMPRE se anuncia por voz (demo 2026-07-14: se mató el worker del widget en
-                    # silencio mientras la voz decía "no te he entendido" — incoherente). Si el modelo ya
-                    # habló otra cosa, se AÑADE la frase; nunca un kill mudo.
-                    _ack = "Vale, lo paro." if not spoken_text else " He parado esa tarea."
-                    send(speech.sanitize(_ack, drop_metadata=False))
-                    spoken_text = (spoken_text + _ack) if spoken_text else _ack.strip()
+            tids = _stop_decision.repair(_brief, text, escalating=escalate_req["v"] is not None, grammar=lambda: (
+                _router.looks_like_stop_work(text) and not _pst._direct_action.aims_at_a_card(_brief)))
+            if tids:
+                worker_acted["v"] = "stop"
+                emit("brain", "🛑 stop worker (backstop determinista)", text=str(tids), role="system")
+                # Un kill SIEMPRE se anuncia por voz (demo 2026-07-14: se mató el worker del widget en
+                # silencio mientras la voz decía "no te he entendido" — incoherente). Si el modelo ya
+                # habló otra cosa, se AÑADE la frase; nunca un kill mudo.
+                _ack = "Vale, lo paro." if not spoken_text else " He parado esa tarea."
+                send(speech.sanitize(_ack, drop_metadata=False))
+                spoken_text = (spoken_text + _ack) if spoken_text else _ack.strip()
         except Exception:
             pass
 
