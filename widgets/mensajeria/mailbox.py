@@ -141,8 +141,13 @@ def open_message(db: dict, uid: str, folder: str | None = None) -> None:
 
 
 def open_draft(db: dict, key: str) -> None:
-    """Put one of the card's drafts on screen, the whole card, inside the Drafts section."""
-    _idx(db).update({"folder": folder_name(db, "drafts"), "open": None, "draft": key})
+    """Put one of the card's drafts on screen as the WHOLE card — its only content, never painted over a list
+    (V2-807 T-02). It is STATE, so it survives the card mounting after the order, closed or not. «Back» returns to
+    the list it was opened from (`back_to`), or to Drafts when it was opened from there."""
+    idx = _idx(db)
+    if not idx.get("draft"):
+        idx["back_to"] = {"folder": str(idx.get("folder") or "INBOX"), "category": idx.get("category") or None}
+    idx.update({"folder": folder_name(db, "drafts"), "category": None, "open": None, "draft": key})
 
 
 NOTE_S = 20              # how long the outcome of a save/send stays on the draft screen
@@ -155,8 +160,22 @@ def note(db: dict, key: str, text: str = "") -> None:
 
 
 def back(db: dict) -> None:
-    """One level up: a message or a draft goes back to its folder's list."""
-    _idx(db).update({"open": None, "draft": None})
+    """One level up: a message goes back to its folder's list; a draft to the list it was opened from."""
+    idx = _idx(db)
+    to = idx.pop("back_to", None) if idx.get("draft") else None
+    idx.update({"open": None, "draft": None})
+    if isinstance(to, dict) and to.get("folder"):
+        idx.update({"folder": str(to["folder"]), "category": to.get("category") or None})
+
+
+def section(db: dict) -> str:
+    """Enter the mail section without naming a list («enséñame el correo»): where he was. An open DRAFT stays on
+    screen — it is his work in progress and has no other face (V2-807 T-02); an open message goes back to its list,
+    as entering the section always did."""
+    idx = _idx(db)
+    if idx.get("draft") and idx["draft"] in (db.get("drafts") or {}):
+        return str(idx.get("folder") or "INBOX")
+    return go(db, str(idx.get("folder") or "INBOX"), idx.get("category"))
 
 
 def drop_gone(db: dict, folder: str, uids) -> int:
@@ -249,7 +268,7 @@ def view(db: dict) -> dict:
             "rows": rows, "loading": _fresh(lst.get("asked_at")), "asked": bool(lst.get("answered_at")
                                                                                 or lst.get("asked_at")),
             "more": not lst.get("complete") and bool(lst.get("cursor")), "error": lst.get("error") or "",
-            "open": opened, "draft": draft,
+            "open": opened, "draft": draft, "back_to": idx.get("back_to") if draft else None,
             "note": n if (n := idx.get("note")) and _fresh_note(n) else None}
 
 

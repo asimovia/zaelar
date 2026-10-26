@@ -26,8 +26,7 @@ def _a_show_view(action, payload) -> dict:
     db["active_chat"] = None            # every list view exits an open thread ("volver" included)
     if platform == "email":             # the mail section opens on its folder's list, never on a stale message
         from . import mailbox as _mbx
-        idx = db.get("mailbox") or {}
-        _mbx.go(db, str(idx.get("folder") or "INBOX"), idx.get("category"))
+        _mbx.section(db)
     # V2-624 — the per-platform view CRITERION («todas las conversaciones con actividad en las últimas 72
     # horas»). `window_h` present = set it (0/negative clears, back to the classic pending view); absent =
     # KEEP whatever he set before — the criterion is per-platform STATE, his words, not per-utterance. It

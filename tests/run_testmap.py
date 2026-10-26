@@ -5558,6 +5558,8 @@ DOMAINS: list[dict] = [
         {"id": "4.278", "title": "The mail section is a simplified Gmail: ONE left rail with the Inbox split into the categories the PROVIDER returns (X-GM-EXT-1), each with the provider's own unread figure, folders only on a server that sorts nothing — RENDERED at three widths and both themes",
             "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_the_inbox_is_sorted_the_way_the_provider_sorts_it.py",
                                   "tests/browser/unit/mensajeria/test_the_mail_rail_paints_at_every_width.py"]},
+        {"id": "4.279", "title": "A draft is the whole card: STATE that survives the card mounting after open_draft and a section-only order, its only content at every width (RENDERED), a one-line pointer on any list, and «back» to the list it came from",
+            "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_a_draft_is_the_whole_card.py"]},
         {"id": "4.252", "title": "The chat list paints, filters by kind and name, loads more and opens a chat (RENDERED)",
             "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_the_chat_list_paints_filters_and_loads_more.py"]},
         {"id": "4.250", "title": "The feedback button is never hidden under another layer",

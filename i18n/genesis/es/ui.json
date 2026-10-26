@@ -2085,6 +2085,8 @@
  "widgets.mensajeria.cat_promotions": "Promociones",
  "widgets.mensajeria.cat_updates": "Notificaciones",
  "widgets.mensajeria.cat_forums": "Foros",
+ "widgets.mensajeria.open_draft": "Abrir",
+ "widgets.mensajeria.n_drafts": "{n} borradores a medias",
  "widgets.mensajeria.no_recipient": "Falta el destinatario",
  "widgets.mensajeria.sending": "Enviando…",
  "widgets.mensajeria.saving": "Guardando…",

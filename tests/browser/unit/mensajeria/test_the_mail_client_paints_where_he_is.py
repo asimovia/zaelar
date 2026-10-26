@@ -131,7 +131,10 @@ def test_inside_a_section_the_house_dims_and_the_section_is_the_current_crumb(_p
     assert _page.locator(".hd .homebtn.on").count() == 0
     assert _page.locator(".hd .hdtitle.on").count() == 0
     assert _page.locator(".hd .hdsec").inner_text() == "WhatsApp"
-    assert "See you at 4" in _page.locator(".pending").inner_text(), "its own held draft lives in its channel"
+    assert "Rowan Pike" in _page.locator(".pending").inner_text(), "its own held draft lives in its channel"
+    assert "See you at 4" not in _page.locator(".pending").inner_text(), "as one line: a draft has one face (V2-807)"
+    _page.locator(".pending .bt").click()
+    assert _calls(_page, "open_draft")[-1] == {"key": "to:whatsapp:rowan pike"}
     _page.locator(".hd .homebtn").click()
     assert _page.locator(".hd .homebtn.on").count() == 1
     assert _calls(_page, "show_view")[-1] == {"platform": "all"}

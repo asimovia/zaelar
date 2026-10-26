@@ -2085,6 +2085,8 @@
  "widgets.mensajeria.cat_promotions": "Promotions",
  "widgets.mensajeria.cat_updates": "Updates",
  "widgets.mensajeria.cat_forums": "Forums",
+ "widgets.mensajeria.open_draft": "Open",
+ "widgets.mensajeria.n_drafts": "{n} drafts in progress",
  "widgets.mensajeria.no_recipient": "The recipient is missing",
  "widgets.mensajeria.sending": "Sending…",
  "widgets.mensajeria.saving": "Saving…",

@@ -116,7 +116,7 @@ function injectStyles(){
      height and the host never scrolls, so the rule would change nothing; and in the one case it COULD
      change something — the height failing to resolve — it would clip the mail with no scrollbar at all,
      which is strictly worse than a card that scrolls. */
-  .hb-msg.full{height:100%;display:flex;flex-direction:column;min-height:0}
+  .hb-msg.full{height:100%;display:flex;flex-direction:column;min-height:0;container-type:inline-size}
   .hb-msg.full > .thread{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
   .hb-msg.full > .thread > .thd{flex:0 0 auto}
   /* The body is the ONE part that grows and scrolls; everything else keeps its natural height. */
@@ -276,6 +276,13 @@ function injectStyles(){
     .hb-msg .mcgrid.open .mcompose{width:auto;padding:0 14px;align-self:flex-start}
   }
   .hb-msg .mlist{max-height:none}
+  .hb-msg .mdptr{display:flex;align-items:center;gap:9px;width:100%;box-sizing:border-box;margin:0 0 6px;padding:0 12px;
+    min-height:36px;border:1px dashed var(--hb-line-strong,#cfd6e0);border-radius:10px;background:transparent;
+    color:var(--hb-ink,#0d1622);font:inherit;font-size:13px;cursor:pointer;text-align:left;flex:0 0 auto}
+  .hb-msg .mdptr svg{width:15px;height:15px;color:var(--hb-accent,#3D6FE0);flex:0 0 auto}
+  .hb-msg .mdptr .mdptrt{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .hb-msg .mdptr .mdptro{color:var(--hb-accent,#3D6FE0);font-weight:600;flex:0 0 auto}
+  .hb-msg .mdptr:hover{border-style:solid;border-color:var(--hb-accent,#3D6FE0)}
   .hb-msg .mrow.seen .mfrom{font-weight:500;color:var(--hb-muted,#5f6b7c)}
   .hb-msg .mrow.unseen .msubj{color:var(--hb-ink,#0d1622)}
   .hb-msg .mtag{font-size:11px;color:var(--hb-accent,#3D6FE0);font-weight:600;flex:0 0 auto}
@@ -309,8 +316,9 @@ function injectStyles(){
   .hb-msg .dfoot{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:12px}
   .hb-msg .mddel:hover:not(:disabled){border-color:var(--hb-risk,#e5484d);color:var(--hb-risk,#e5484d)}
   .hb-msg .mdnote{font-size:12px;color:var(--hb-muted,#5b6b82)}
-  /* On a phone the crumb keeps the house, what is open and the way back; the middle steps are the ← button. */
-  @media (max-width:560px){
+  /* On a narrow CARD (its own width, not the screen's — a narrow card on a wide desktop overflowed) the crumb keeps
+     the house, what is open and the way back; the middle steps are the ← button. */
+  @container (max-width:560px){
     .hb-msg .mcrumb .mcr:not(.cur),.hb-msg .mcrumb .msep{display:none}
   }
   /* V2-680 retired .mdsubj/.mdmeta/.mdfrom/.mdwhen/.mdbody: the detail screen draws the same LETTER the
@@ -385,7 +393,6 @@ function injectStyles(){
   .hb-msg .pending{display:flex;flex-direction:column;gap:6px;margin:6px 0}
   .hb-msg .prow{display:flex;flex-direction:column;gap:4px;align-items:flex-start;padding:8px;border-radius:8px;background:var(--surface-2, rgba(127,127,127,.08))}
   .hb-msg .prow .pbody{white-space:pre-wrap;max-height:7.5em;overflow:auto;opacity:.85}
-  .hb-msg .prow .psub{font-weight:600;opacity:.9}
   /* Attachments picked in the card: a row of chips (a thumbnail for a picture), each removable. */
   .hb-msg .attrow{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 6px}
   .hb-msg .attchip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--hb-line,#e3e8f0);
@@ -1769,15 +1776,15 @@ function pendingStrip(data, ctx){
   const later = (data.sent || []).filter(r => r && r.scheduled_for);
   if(!held.length && !later.length) return null;
   const box = el("div","pending");
+  // A held draft is one line that opens its own screen (V2-807 T-02): the draft has ONE face, and it is never its
+  // body painted over a list.
   held.forEach(d => {
     const t = d.target || {};
     const row = el("div","prow");
     row.append(el("b",null,tt("held_to", {to: t.name || t.to}, `Borrador para ${t.name || t.to}`)));
-    if(t.subject) row.append(el("div","psub",t.subject));
-    row.append(el("div","pbody",String(d.text || "")));
-    const send = el("button","bt bt-primary",tt("send", null, "Enviar"));
-    send.onclick = () => { markBusy(send); ctx.action("send_draft", {contact: t.to || t.name}); };
-    row.append(send);
+    const open = el("button","bt",tt("open_draft", null, "Abrir"));
+    open.onclick = () => { markBusy(open); ctx.action("open_draft", {key: d.key}); };
+    row.append(open);
     box.append(row);
   });
   later.forEach(r => {
@@ -1832,9 +1839,10 @@ function mailCrumb(mb, ctx, act, current){
   const home = iconButton("home", tt("home", null, "Inicio"), "mchome");
   home.onclick = () => { selectPlatform(null); ctx.top && ctx.top(); act("show_view", {platform:"all"}); };
   bar.appendChild(home);
-  const folder = mailFolderList(mb).find(f => f.name === mb.folder) || {role:"inbox"};
+  // One level up is the list this screen was opened from: a draft's own `back_to`, else the list on screen.
+  const up = mailWhere(mb.draft && mb.back_to ? {...mb, ...mb.back_to} : mb);
   const parts = [[tt("mail_section", null, "Correo"), () => act("mail_folder", {folder:"inbox"})],
-                 [folderLabel(folder), current ? () => act("mail_back", {}) : null]];
+                 [up, current ? () => act("mail_back", {}) : null]];
   if(current) parts.push([current, null]);
   parts.forEach(([label, go], i) => {
     if(i) bar.appendChild(el("span","msep","›"));
@@ -1843,7 +1851,7 @@ function mailCrumb(mb, ctx, act, current){
     bar.appendChild(c);
   });
   if(current){
-    const back = el("button","back", "← " + folderLabel(folder));
+    const back = el("button","back", "← " + up);
     back.onclick = () => act("mail_back", {});
     bar.appendChild(back);
   }
@@ -1949,8 +1957,27 @@ function draftRow(d, act){
   return row;
 }
 
+// A draft has ONE face — its own screen (V2-807 T-02). On any other list it is one line that opens it: never its
+// body, never a Send button. Several drafts point at the Drafts entry instead.
+function draftPointer(mb, data, act){
+  const mine = mailDrafts(data);
+  if(!mine.length || mb.role === "drafts") return null;
+  const t = mine[0].target || {};
+  const one = mine.length === 1;
+  const b = el("button","mdptr");
+  b.type = "button";
+  b.append(actionIcon("pen"), el("span", "mdptrt", one
+    ? tt("held_to", {to: t.name || t.to}, `Borrador para ${t.name || t.to}`)
+    : tt("n_drafts", {n: mine.length}, `${mine.length} borradores a medias`)),
+    el("span", "mdptro", tt("open_draft", null, "Abrir")));
+  b.onclick = () => one ? act("open_draft", {key: mine[0].key}) : act("mail_folder", {folder: "drafts"});
+  return b;
+}
+
 function mailList(mb, data, ctx, act){
   const wrap = el("div","tl mlist");
+  const ptr = draftPointer(mb, data, act);
+  if(ptr) wrap.appendChild(ptr);
   if(mb.role === "drafts"){
     const mine = mailDrafts(data);
     mine.forEach(d => wrap.appendChild(draftRow(d, act)));
