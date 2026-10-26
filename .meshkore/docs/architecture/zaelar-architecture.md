@@ -550,6 +550,34 @@ A request that ACTS has four parts, each owned once:
 
 Canonical lines: `criteria.md` CRIT-E9.
 
+## 5h-bis. Acts that reach the real world — one consent door, one pending row, one surface
+
+Every act that leaves the machine or commits him (a message by any channel, an invitation, a booking, a payment) is
+decided by ONE rule, `nucleo/consent.decide`: a missing fact → ask for it; a doubt → ask which; his standing class
+rule (`never | ask | allow`, genesis defaults, overridden by what he says, `config/consent.json`); the radius rail;
+then the class. What an act IS comes from declared data: the manifest's `sensitivity` / `confirm`, its
+`consent_class`, and the widget's `consent_scope` hook, which may REFINE the class — a send's class carries its
+channel (`messaging.send_new@email`), and `class_policy` falls back to the bare class, so a rule he gives for one
+channel governs that channel only. Where judgement is needed the verdict decides (the turn brief's
+`screen_action` at `consent.intent_act_at`), never a verb.
+
+**His order is the yes over a row he has seen.** A widget whose act delivers a row held for his word declares
+`held_row(action, payload)` (the mail card: a draft that has been in front of him across a turn of his). With the
+verdict sure of that very act, `decide(his_yes=True)` clears the class rail and the leave gate takes the row's
+recipient as his (`nucleo/flash/held_send.py`, read by both channels and by `leave_gate`).
+
+**A pending act is a row; asking happens once.** A send for later is a scheduled order with `not_before` in the
+card's outbound queue, visible and cancellable until it leaves. A pending confirmation renders in the conversation
+only; a «yes» by voice or on the chat's Yes/No resolves the same pending item (`widgets/confirm.py`).
+
+**Known doors that still decide on their own** (to be routed through `decide`, never by changing a default):
+third-party errands send under their mandate (`nucleo/errands/wake.py`, CRIT-E6); a cluster message is sent by the
+MeshKore connector (`connectors/meshkore`), whose gate covers connecting, not each message; a worker's click on a
+page is stopped by the browser's own gate (`widgets/navegador/click_gate.py`, `nucleo/danger.py`); an agreed
+invitation is published by the agenda after its action passed the door (`widgets/agenda/invite.py`).
+
+Canonical lines: `criteria.md` CRIT-C1, CRIT-C5, CRIT-C9.
+
 ## 5i. The turn pipeline — the doors, in order
 
 One turn crosses these doors in this order (voice: `voice/engine/llm/providers/nucleo.py`; the text probe
