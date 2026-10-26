@@ -315,6 +315,12 @@ below is the first kind, or it names the mechanism that replaced the second.
 - **CRIT-M1 · A spoken rule carries a scope** decided by a fixed classifier — `voice`, `widget:<id>` or `general`
   — and each prompt surface carries only its own: the worker never carries voice rules; a widget's rule rides in
   that widget's row. — since 2026-09-29 · nodes 2.172 · `nucleo/flash/rule_scope.py`, `memory/rules.py`.
+- **CRIT-M7 · Every standing rule and preference is ONE row of the `rules` table**, scoped (`global` ·
+  `<domain>[/<channel>[/<act>]]` · `widget:<id>[/<action>]` · `item:<id>`, read from declared classes, channels and
+  manifests) and read by a cascade over the request's path: the more specific row runs last and wins, at one level
+  his row beats the default, an `except` scope is not covered, a row past its `until` is absent. Genesis defaults are
+  rows built at read time. `consent.decide` reads the gate; the rails (a missing fact, a doubt, the radius) are code
+  no row reaches. — since 2026-10-26 · nodes 2.809 · `rules/`, `nucleo/consent.py`.
 - **CRIT-M2 · Genesis is per domain** (`style`, `consent`, `library`, `errands`, `playbooks`), each with its own
   override file; a factory reset forgets the spoken rules and keeps credentials, settings and connectors; it never
   deletes under a live server. — since 2026-09-29 · nodes 2.173, 8.4, 3.94.

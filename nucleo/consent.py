@@ -48,12 +48,12 @@ Four questions, asked in this sequence. Anything that is not one of them is not 
 
 Nothing here is a verb table and nothing here decides intent: every input is data somebody else measured.
 
-## Sensitivity is DECLARED DATA, layered like `style_policy` (V2-633)
+## Sensitivity is DECLARED DATA; his standing rules are rows of ONE scoped table (V2-806)
 
-The layering is not invented here — `nucleo/style_policy.py` already ships it and this module deliberately
-mirrors it file for file: factory defaults in `nucleo/genesis.json`, per-install overrides in
-`<workspace>/config/consent.json`, written the moment the operator says so and read per use, so a rule he
-states governs the very next turn and survives a restart.
+Factory defaults in `nucleo/genesis.json`; what he says is a user row of the `rules` table (`rules/`), scoped to
+the act it governs and read through a cascade over the request's path, so a rule he states governs the very next
+decision and survives a restart. The rails (a missing fact, a doubt about which, the radius) are steps of
+`decide` below and no row reaches them.
 
 A widget declares `"security": "standard"` (every shipped widget today, exactly as he asked); an action may
 declare its own `"sensitivity"`. Today's `confirm:true` is READ as `sensitive` rather than deleted — so no
@@ -82,9 +82,7 @@ REFUSE = "refuse"            # a standing policy of the operator's forbids this 
 #: sits today — the operator's instruction, verbatim: «pondremos de momento a todos por defecto estándar».
 LEVELS = ("routine", "standard", "sensitive", "critical")
 
-_GENESIS_PATH = Path(__file__).resolve().parent / "genesis.json"
-_cache: dict = {"path": None, "mtime": None, "data": {}}
-_genesis_cache: dict | None = None
+_migrated: dict = {"key": None}
 
 
 def _rank(level: str) -> int:
@@ -94,94 +92,94 @@ def _rank(level: str) -> int:
         return LEVELS.index("standard")
 
 
-# ── The layered store (same shape as style_policy) ──────────────────────────────────────────────────────
+# ── The operator's standing rules live in ONE table (V2-806) ────────────────────────────────────────────
+# Genesis `consent` is the factory layer (`rules/defaults.py` reads it: a `consent` gate per class, the global
+# `ask_at` and `intent_act_at`); what he says is a `user` row of the `rules` table, scoped like the act it
+# governs. `<workspace>/config/consent.json`, the override file this module used to write, is imported into the
+# table once (`_migrate`) and never written again.
 
 def _overrides_path() -> Path:
     from nucleo import workspace as _ws
     return _ws.root() / "config" / "consent.json"
 
 
-def _genesis() -> dict:
-    global _genesis_cache
-    if _genesis_cache is None:
+def _migrate() -> None:
+    """One-time import of the legacy override file into the table. Idempotent: a marker per database AND a
+    deterministic id per row, so a second run (or a second process) inserts nothing."""
+    import rules
+    from rules import store as _rstore
+    p = _overrides_path()
+    key = (str(_rstore.db_path()), str(p))
+    if _migrated["key"] == key:
+        return
+    marker = f"migrated:consent.json:{p}"
+    if _rstore.meta_get(marker) is None:
         try:
-            _genesis_cache = dict(json.loads(_GENESIS_PATH.read_text()).get("consent") or {})
-        except Exception:  # noqa: BLE001 — a broken genesis must not stop the engine booting
-            _genesis_cache = {}
-    return json.loads(json.dumps(_genesis_cache))     # deep copy: `classes` is a nested dict
+            data = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+        except (OSError, ValueError) as e:
+            import logging
+            logging.getLogger("zaelar.consent").warning(f"consent: {p} unreadable ({e}) — nothing migrated")
+            data = {}
+        at = float(data.get("_set_at") or time.time()) if isinstance(data, dict) else time.time()
+        rows = []
+        for k, v in ((data.get("classes") or {}) if isinstance(data, dict) else {}).items():
+            if str(v).strip().lower() in rules.GATE_VALUES:
+                rows.append((rules.class_scope(*rules.split_key(k)), "consent", str(v).strip().lower(), k))
+        for knob in ("ask_at", "intent_act_at"):
+            if isinstance(data, dict) and knob in data:
+                rows.append((rules.GLOBAL, knob, data[knob], knob))
+        for sc, k, v, src in rows:
+            _rstore.insert_new({"id": f"m_consent_{src}", "scope": sc, "kind": "gate", "key": k, "value": v,
+                                "source": "user", "created_at": at, "origin": f"consent.json:{src}"})
+        _rstore.meta_set(marker, str(int(time.time())))
+    _migrated["key"] = key
 
 
-def _overrides() -> dict:
-    p = _overrides_path()
-    try:
-        mtime = p.stat().st_mtime_ns
-    except OSError:
-        if _cache["path"] == str(p):
-            _cache.update(mtime=None, data={})
-        return {}
-    if _cache["path"] == str(p) and _cache["mtime"] == mtime:
-        return _cache["data"]
-    try:
-        data = json.loads(p.read_text())
-        data = data if isinstance(data, dict) else {}
-    except Exception:  # noqa: BLE001
-        data = {}
-    _cache.update(path=str(p), mtime=mtime, data=data)
-    return data
-
-
-def _write_overrides(data: dict) -> None:
-    p = _overrides_path()
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-    _cache.update(path=None, mtime=None, data={})
+def _anchors(policy_key: str = "", scope: dict | None = None) -> list:
+    import rules
+    _migrate()
+    return rules.path(cls=policy_key, **{k: v for k, v in (scope or {}).items() if v})
 
 
 def policy() -> dict:
-    """genesis ⊕ overrides. `classes` merges KEY BY KEY: an operator who changed one standing rule must not
-    silently lose the other factory ones, which a whole-dict replace would do."""
-    eff = _genesis()
-    ov = _overrides()
-    classes = dict(eff.get("classes") or {})
-    classes.update({k: v for k, v in (ov.get("classes") or {}).items() if isinstance(k, str)})
-    for k, v in ov.items():
-        if k in eff and k != "classes":
-            eff[k] = v
-    eff["classes"] = classes
-    return eff
+    """The effective global knobs and every class genesis names, as the cascade reads them today."""
+    import rules
+    from rules import defaults as _rdef
+    out = {k: rules.value(_anchors(), k) for k in _rdef.GATE_KNOBS}
+    out["classes"] = {r["origin"].partition(":")[2]: class_policy(r["origin"].partition(":")[2])
+                      for r in _rdef.rows() if r["key"] == "consent"}
+    return out
 
 
-def ask_at() -> str:
+def ask_at(policy_key: str = "", scope: dict | None = None) -> str:
     """The lowest level that asks for consent EVEN WHEN the order is clear, the target resolved and the data
-    complete. Genesis says `critical` — the single knob that answers «estoy hasta los huevos de confirmar»."""
-    lvl = str(policy().get("ask_at", "critical")).strip().lower()
+    complete. Genesis says `critical` — the single knob that answers «estoy hasta los huevos de confirmar».
+    Read through the cascade, so a narrower rule of his can move it for one place only."""
+    import rules
+    lvl = str(rules.value(_anchors(policy_key, scope), "ask_at", "critical") or "").strip().lower()
     return lvl if lvl in LEVELS else "critical"
 
 
 def intent_act_at() -> float:
     """How sure the turn's verdict must be of an ORDER and its action to carry it out when the model held it for a
     question (2026-10-15, the operator's 70%). Genesis `intent_act_at`, overridable like every other knob here."""
+    import rules
     try:
-        v = float(policy().get("intent_act_at", 0.7))
+        v = float(rules.value(_anchors(), "intent_act_at", 0.7))
     except (TypeError, ValueError):
         v = 0.7
     return min(max(v, 0.5), 0.99)
 
 
-def class_policy(key: str) -> str:
-    """A standing rule of the operator's for a named class: 'never' | 'ask' | 'allow' | '' (unset).
+def class_policy(key: str, scope: dict | None = None) -> str:
+    """The standing rule for a class: 'never' | 'ask' | 'allow' | '' (no row covers it).
 
-    His own example is the one that ships: `messaging.autorespond: "never"` — PRESET, not hardcoded. «Contesta
-    tú los correos de logística» flips it, and the next decision of that class reads the new value.
+    His own example is the one that ships: `messaging.autorespond: "never"` — PRESET, not hardcoded. A class
+    REFINED by a channel (`messaging.send_new@email`) is covered by his rule for that channel, else by the class's
+    rule for every channel — a rule for one channel never reaches another (`rules/scope.py`).
     """
-    classes = policy().get("classes") or {}
-    key = str(key or "").strip()
-    v = str(classes.get(key, "")).strip().lower()
-    if v not in ("never", "ask", "allow") and "@" in key:
-        # A class REFINED by a channel (`messaging.send_new@email`, V2-800): his rule for that channel governs it,
-        # and without one the bare class's rule does — a rule for one channel never reaches another.
-        v = str(classes.get(key.split("@", 1)[0], "")).strip().lower()
-    return v if v in ("never", "ask", "allow") else ""
+    import rules
+    return rules.gate(_anchors(str(key or "").strip(), scope))
 
 
 # ── Declared sensitivity ────────────────────────────────────────────────────────────────────────────────
@@ -207,7 +205,7 @@ def level_of(spec: dict | None, *, widget_security: str = "", action: str = "") 
 # ── THE RULE ────────────────────────────────────────────────────────────────────────────────────────────
 
 def decide(*, level: str = "standard", missing=(), candidates=(), radius: int | None = 1,
-           bounded: bool = True, policy_key: str = "", his_yes: bool = False) -> dict:
+           bounded: bool = True, policy_key: str = "", his_yes: bool = False, scope: dict | None = None) -> dict:
     """Act, or ask — and if asking, WHICH of the three useful questions it is.
 
     Every argument is something another layer already measured; nothing here reads text or guesses intent.
@@ -218,6 +216,8 @@ def decide(*, level: str = "standard", missing=(), candidates=(), radius: int | 
       · `bounded`   — whether the call names WHAT it hits at all. A sweep with no selector is unbounded, and
                       that is the V2-707 rail: «vacía la agenda» is not «borra la cita del dentista».
       · `policy_key`— the class this belongs to, for the operator's standing rules (`messaging.autorespond`).
+      · `scope`     — what else names the request's place for the rules cascade: `widget`, `action`, `item`
+                      (V2-806). With the class, it is the request's path; the cascade reads only rows covering it.
       · `his_yes`   — his own order already IS the consent: the act delivers a row he has SEEN, held for his
                       word, and the turn's verdict surely names that act (the widget's `held_row` hook). It clears
                       the class question and nothing above it: a missing fact, a doubt, his standing «ask» rule
@@ -240,8 +240,9 @@ def decide(*, level: str = "standard", missing=(), candidates=(), radius: int | 
     if len(cands) > 1:
         return {**out, "verdict": ASK_WHICH, "why": "más de uno encaja"}
 
-    # 3 · a standing rule of his own decides the class before anything else about it
-    pol = class_policy(policy_key)
+    # 3 · a standing rule of his own decides the class before anything else about it — the rules cascade over
+    #     this request's path (V2-806): the most specific row that covers it wins
+    pol = class_policy(policy_key, scope)
     if pol == "never":
         return {**out, "verdict": REFUSE, "why": f"regla del operador: «{policy_key}» nunca"}
     if pol == "ask":
@@ -249,7 +250,8 @@ def decide(*, level: str = "standard", missing=(), candidates=(), radius: int | 
 
     # 4 · the radius rail (V2-707). An unbounded call, or one that will touch more than one thing, is a
     #     different act from the one he named — and `allow` is a standing rule that does not cover a sweep.
-    if bool(policy().get("unbounded_asks", True)) and (not bounded or (radius is not None and radius > 1)):
+    #     A RAIL, not a rule: no row of the rules table reaches it (V2-806).
+    if not bounded or (radius is not None and radius > 1):
         return {**out, "verdict": ASK_CONSENT,
                 "why": "alcance mayor que lo que nombró" if bounded else "no nombra sobre qué actúa"}
 
@@ -259,7 +261,7 @@ def decide(*, level: str = "standard", missing=(), candidates=(), radius: int | 
         return {**out, "why": "su orden sobre lo que ya ha visto" if his_yes and pol != "allow" else ""}
 
     # 6 · the class itself
-    if _rank(lvl) >= _rank(ask_at()):
+    if _rank(lvl) >= _rank(ask_at(policy_key, scope)):
         return {**out, "verdict": ASK_CONSENT, "why": f"clase «{lvl}»"}
     return out
 
@@ -416,28 +418,26 @@ def apply_directive(text: str) -> dict:
         value = "allow" if flags.get("ask_at") == "critical" else "ask"
         out: dict = {}
         for k in keys:
-            out.update(set_class(k, value))
+            out.update(set_class(k, value, text))
         return out
-    data = dict(_overrides())
-    data.update(flags)
-    data["_set_at"] = int(time.time())
-    _write_overrides(data)
+    import rules
+    _migrate()
+    for k, v in flags.items():
+        rules.add(rules.GLOBAL, "gate", k, v, text=text)
     return flags
 
 
-def set_class(key: str, value: str) -> dict:
-    """Set one standing class rule ('never'|'ask'|'allow'). This is the half `principles.md` calls the known
-    gap: the operator's ANSWER becoming the default the next decision of the same class reads."""
+def set_class(key: str, value: str, text: str = "") -> dict:
+    """Set one standing class rule ('never'|'ask'|'allow') — a user row at the class's scope, refined by its
+    channel when the key names one. This is the half `principles.md` calls the known gap: the operator's ANSWER
+    becoming the default the next decision of the same class reads."""
+    import rules
     key = str(key or "").strip()
     value = str(value or "").strip().lower()
-    if not key or value not in ("never", "ask", "allow"):
+    if not key or value not in rules.GATE_VALUES:
         return {}
-    data = dict(_overrides())
-    classes = dict(data.get("classes") or {})
-    classes[key] = value
-    data["classes"] = classes
-    data["_set_at"] = int(time.time())
-    _write_overrides(data)
+    _migrate()
+    rules.add(rules.class_scope(*rules.split_key(key)), "gate", "consent", value, text=text)
     return {key: value}
 
 
@@ -445,26 +445,24 @@ _TOPIC_RE = re.compile(r"\bpregunt\w*|confirm\w*|permiso|friccion|ask\b")
 
 
 def retract_directive(text: str) -> dict:
-    """Release the override a retired rule had set — back to genesis."""
+    """Release the rows a retired rule had set — back to genesis."""
+    import rules
     if not _TOPIC_RE.search(_norm(text)):
         return {}
-    data = dict(_overrides())
+    _migrate()
     keys = _named_keys(text)
     if keys:
         # A retired rule about ONE channel releases that channel's class only — the global knob is not its to move.
-        classes = dict(data.get("classes") or {})
-        released = {k: classes.pop(k) for k in keys if k in classes}
-        if released:
-            data["classes"] = classes
-            _write_overrides(data)
-        return released
-    released = {k: data.pop(k) for k in ("ask_at",) if k in data}
-    if released:
-        _write_overrides(data)
-    return released
+        out = {}
+        for k in keys:
+            gone = rules.clear(rules.class_scope(*rules.split_key(k)), "consent")
+            if gone:
+                out[k] = gone[-1]["value"]
+        return out
+    return {r["key"]: r["value"] for r in rules.clear(rules.GLOBAL, "ask_at")}
 
 
 def _reset_for_tests() -> None:
-    global _genesis_cache
-    _genesis_cache = None
-    _cache.update(path=None, mtime=None, data={})
+    import rules
+    _migrated["key"] = None
+    rules._reset_for_tests()

@@ -71,6 +71,17 @@ modules:
     path: search/
     description: >-
       (V2-782, 2026-10-10) THE SEARCH SERVICE — one door (`search.find()`), one result shape (candidate vs the PAGE that lists candidates, the criterion no row shows said missing), the module chosen by a verdict (`search/route.py`: inline_fact · listing · local_service · images · browser · brain_worker, CRIT-K2 precedence, no verb tables), every provider declared once (`search/providers/`: Perplexity, Tavily, Gemini grounding, Z.ai web search, Brave, our Chromium, DDG, Foursquare, Bright Data) with one minimal real call each in `python -m search.health`, and the HTTP face `/api/search/find|route|health`. Holds the moved chain (`web.py`, was nucleo/websearch.py), the listing ladder (`listing.py` + `extract.py`) and the warm Chromium (`browser.py` + `images.py`); the old `nucleo.*` names are aliases of the same modules. Never imports nucleo/flash, voice or widgets (ratchet at zero); `hooks.py` is what the server wires at boot. Tests: domain 12 (`tests/search/`).
+  - id: rules
+    path: rules/
+    description: >-
+      (V2-806, 2026-10-26) THE RULES TABLE — every standing rule and preference of the operator is ONE row (`id`,
+      `scope`, `kind` gate|pref, `key`, `value`, `except`, `source` default|user, his `text`, `created_at`, `active`,
+      `until`) in the `rules` table of `zaelar.db`, owned here (memory neither reads nor writes it). Scopes are
+      hierarchical and read from declared data (`global` · `<domain>[/<channel>[/<act>]]` from consent classes and
+      catalog channels · `widget:<id>[/<action>]` from manifests · `item:<id>`); a request's path is built from what
+      it already carries and the covering rows apply general → specific, the most specific last (`rules/cascade.py`).
+      Defaults are rows built from genesis at read time. `nucleo/consent.decide` reads the gate; its rails (missing
+      fact, doubt, radius) stay outside. Design: `.meshkore/docs/architecture/zaelar-rules.md`.
   - id: nucleo
     path: nucleo/
     description: >-

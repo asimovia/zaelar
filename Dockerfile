@@ -44,6 +44,7 @@ COPY server ./server
 COPY voice ./voice
 COPY nucleo ./nucleo
 COPY search ./search
+COPY rules ./rules
 COPY memory ./memory
 COPY bus ./bus
 COPY connectors ./connectors

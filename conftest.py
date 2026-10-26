@@ -350,3 +350,20 @@ try:
                 f"absolute path escapes it). If the live engine wrote it at the same instant, check who did.")
 except Exception:                                  # never let the harness's own guard stop the suite
     pass
+
+
+# V2-806 — THE RULES TABLE STARTS EMPTY FOR EVERY TEST.
+#
+# The operator's standing rules are rows of ONE table in `zaelar.db`, and the suite's database is ONE temp file for
+# the whole session (see the `ZAELAR_DB` block above). A rule one test writes («ask me before sending emails») would
+# otherwise govern every test after it — the same contamination the per-test config pins exist to prevent. Only a
+# module that is already imported is reset, so a test that never touches rules pays nothing.
+@_pytest5.fixture(autouse=True)
+def _the_rules_table_starts_empty():
+    store = _sys5.modules.get("rules.store")
+    if store is not None:
+        store._reset_for_tests()
+    cons = _sys5.modules.get("nucleo.consent")
+    if cons is not None and hasattr(cons, "_migrated"):
+        cons._migrated["key"] = None
+    yield

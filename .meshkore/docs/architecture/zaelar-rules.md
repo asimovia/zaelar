@@ -81,6 +81,11 @@ The covering rows are applied in order and, per key, **the last one wins**:
 
 `note` rows do not override each other: every covering note is kept.
 
+Specificity outranks the source, as decided: a broad row of his (`messaging`) does not beat a narrower factory
+row (`messaging/*/send_new`). That is why a new rule is written at the narrowest DECLARED scope that matches what
+he said (see «Writing a rule»): «ask before sending messages» is a row at the class's own scope, where it meets
+the default and wins.
+
 An exception is either a narrower row («email: allow» + «messaging/email/send_new@item:c17: ask») or the row's
 own `except` list.
 

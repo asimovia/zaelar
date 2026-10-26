@@ -3651,6 +3651,8 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_a_turn_about_pending_work_resumes_its_rows.py"]},
         {"id": "2.808", "title": "Every act that reaches the real world passes ONE consent door: an email, a WhatsApp, a cluster message and a worker's booking submit read the same rule, defaults and user rules (`consent.decide_act`); a spoken rule that names a channel moves that channel only; an errand replies under its mandate and holds what the mandate does not cover as a draft row; a «yes» from voice, chat or the Clusters tab resolves the same row (V2-805)",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/test_every_act_that_leaves_passes_one_consent_door.py"]},
+        {"id": "2.809", "title": "Every standing rule is a row of ONE scoped table read by a cascade over the request's path (global → domain → channel → widget → action → item; the more specific row runs last and wins, his row beats the default at one level, an `except` scope is not covered, an expired `until` is absent by the clock); a rule for email never reaches WhatsApp; no row reaches the rails (missing fact, which, radius); the legacy consent file is imported once (V2-806)",
+            "ch": UNIT, "paths": ["tests/infrastructure/unit/core/test_rules_cascade_over_a_requests_path.py"]},
         {"id": "2.802", "title": "A deployment that stops idle engines is told the next due notice after every schedule change, debounced; self-host reports nothing (V2-796)",
             "ch": UNIT,
             "paths": ["tests/agent_headless/unit/test_a_sleeping_engine_is_told_when_to_wake.py"]},

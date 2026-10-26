@@ -21,7 +21,6 @@ the operator's to change by speaking — with the other factory rules surviving 
 """
 from __future__ import annotations
 
-import json
 import pathlib
 
 import pytest
@@ -158,7 +157,10 @@ def test_an_allow_rule_still_does_not_clear_a_SWEEP():
 
 def test_ejecuta_sin_parar_is_understood_and_persisted():
     assert consent.apply_directive("hazlo directamente, no me preguntes más") == {"ask_at": "critical"}
-    assert json.loads((pathlib.Path(consent._overrides_path())).read_text())["ask_at"] == "critical"
+    import rules
+    row = rules.deciding_rule(rules.path(), "ask_at")
+    assert (row["source"], row["value"], row["text"]) == ("user", "critical", "hazlo directamente, no me preguntes más"), \
+        "persisted as HIS row of the rules table, with his words (V2-806)"
 
 
 def test_he_can_ask_for_MORE_friction_too_and_it_reaches_the_verdict():

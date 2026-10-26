@@ -514,7 +514,8 @@ def action_verdict(widget_id: str, action: str, payload: dict | None = None, *, 
     bounded, radius = _scope(wid, name, spec, payload)
     return consent.decide(level=level, missing=consent.missing_facts(spec.get("requires")),
                           radius=radius, bounded=bounded,
-                          policy_key=_policy_key(wid, name, spec, payload), his_yes=his_yes)
+                          policy_key=_policy_key(wid, name, spec, payload), his_yes=his_yes,
+                          scope={"widget": wid, "action": name})
 
 
 def _policy_key(wid: str, name: str, spec: dict, payload: dict | None) -> str:
@@ -657,7 +658,7 @@ def _his_rule_holds(widget_id: str, action: str, payload: dict | None) -> bool:
         from widgets import runtime
         spec = ((runtime.get(wid) or {}).get("actions") or {}).get(name)
         key = _policy_key(wid, name, spec if isinstance(spec, dict) else {}, payload)
-        return consent.class_policy(key) in ("ask", "never")
+        return consent.class_policy(key, {"widget": wid, "action": name}) in ("ask", "never")
     except Exception as e:  # noqa: BLE001 — unreadable: the manifest's friction stands, as before
         from loguru import logger
         logger.info(f"frontend: his rule unreadable for {widget_id}:{action} ({e})")

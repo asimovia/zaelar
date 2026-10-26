@@ -116,7 +116,8 @@ def test_an_explicit_send_over_a_seen_draft_is_the_confirmation(monkeypatch):
 
 def test_his_yes_clears_the_class_rail_and_never_his_own_ask_rule():
     lvl = {"level": "sensitive", "policy_key": "messaging.reply"}
-    data_ = dict(consent._overrides()); data_["ask_at"] = "sensitive"; consent._write_overrides(data_)
+    import rules
+    rules.add(rules.GLOBAL, "gate", "ask_at", "sensitive")          # his global «ask before sensitive acts»
     assert consent.asks(consent.decide(**lvl))
     assert not consent.asks(consent.decide(**lvl, his_yes=True))
     consent.set_class("messaging.reply", "ask")
