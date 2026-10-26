@@ -208,21 +208,20 @@
     "image_reader": {
       "label": "Chat attachments · reads an image added to the chat (V2-809)",
       "titular": {
+        "provider": "deepseek",
+        "model": "deepseek-flash",
+        "base_url": "https://api.deepseek.com",
+        "key_env": "DEEPSEEK_API_KEY",
+        "vision": true
+      },
+      "failover": {
         "provider": "gemini",
-        "model": "gemini-2.5-flash",
+        "model": "gemini-2.5-flash-lite",
         "base_url": "https://generativelanguage.googleapis.com/v1beta/openai/",
         "key_env": "GEMINI_API_KEY",
         "vision": true
       },
-      "failover": {
-        "provider": "openai",
-        "model": "gpt-4.1-mini",
-        "base_url": "https://api.openai.com/v1",
-        "key_env": "OPENAI_API_KEY",
-        "vision": true
-      },
-      "why": "The voice brain does not see images, so an image added to the chat is read ONCE, at upload, by a model that receives the image itself as an `image_url` part (not a provider that only says it reads images). Gemini Flash: native multimodal, cheap, on its own OpenAI-compatible endpoint.",
-      "failover_why": "OpenAI `gpt-4.1-mini` — the ONE stand-in, a different provider, and it also receives the image."
+      "why": "The voice brain does not see images, so an image added to the chat is read ONCE, at upload, by a model that receives the image itself as an `image_url` part. Measured 2026-10-26 with an unseen image (a random number on a random colour, 4 trials each): deepseek-flash 4/4 in 1.2-1.5 s and gemini-2.5-flash-lite 4/4 in 0.8-1.8 s, both a fraction of a cent per image. DeepSeek leads because it is the provider the turn already uses, so a hosted deployment reaches it through the same egress; Gemini Flash-Lite is the cheap stand-in."
     }
   },
   "retired": {
