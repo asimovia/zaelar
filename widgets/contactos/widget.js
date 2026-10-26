@@ -77,7 +77,10 @@ function injectStyles(){
   .hb-contactos .ctsearch span{font-size:12px;color:var(--hb-muted-2,#7d8a9c);flex:0 0 auto}
   .hb-contactos .ctsearch input{border:none;outline:none;background:none;color:var(--hb-ink,#0d1622);font-size:13px;width:100%;padding:0}
   .hb-contactos .ctcols{display:grid;grid-template-columns:188px 1fr;gap:14px;align-items:start}
-  @media(max-width:600px){.hb-contactos .ctcols{grid-template-columns:1fr}}
+  @media(max-width:600px){.hb-contactos .ctcols{grid-template-columns:1fr}
+    /* One column: an open contact IS the screen — the groups rail above it pushed the card half a screen down
+       (V2-813, iPhone 14). «← Back» brings the rail back with the list. */
+    .hb-contactos .ctcols.detail > :first-child{display:none}}
 
   /* ── THE ONE BAR (V2-715) ───────────────────────────────────────────────────────────────────────
      Operator, 2026-09-17: «de estas tres líneas iniciales del widget —la barra negra, la barra de
@@ -1186,6 +1189,7 @@ export function render(el, data, ctx){
   const detail=el._ctDetail
     ? (contacts.find(c=>c.id===el._ctDetail) || (data.hidden_rows||[]).find(c=>c.id===el._ctDetail))
     : null;
+  cols.classList.toggle("detail", !!detail);
 
   if(!contacts.length && !(data.hidden_rows||[]).length){
     main.appendChild(el2("div","ctempty",
