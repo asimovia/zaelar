@@ -19,8 +19,9 @@ import * as store from "../core/store.js?v=2";
 import * as session from "../services/session.js?v=3";
 import * as api from "../services/api.js?v=2";
 import * as feedbackApi from "../services/feedback-api.js?v=1";
+import * as chatFiles from "../services/chat-files.js?v=1";
 import { makeResizable } from "../lib/resizable.js?v=1";
-import { CLOSE_ICON, TRASH_ICON, MESSAGE_SQUARE_ICON, ACTIVITY_ICON, CLOCK_ICON, SERVER_ICON, LINK_ICON, APPS_ICON, WIDGETS_ICON } from "../lib/icons.js?v=1";
+import { CLOSE_ICON, PAPERCLIP_ICON, TRASH_ICON, MESSAGE_SQUARE_ICON, ACTIVITY_ICON, CLOCK_ICON, SERVER_ICON, LINK_ICON, APPS_ICON, WIDGETS_ICON } from "../lib/icons.js?v=1";
 import { renderMarkdownLite } from "../lib/markdown-lite.js?v=1";
 import { t } from "../core/i18n.js?v=1";
 import { groupGoogle } from "./ConnectorWizard.js?v=6";
@@ -93,10 +94,28 @@ function loadDock() {
 }
 
 // Send a message both to the agent and to the on-screen log. Used by the input AND by the paste handler.
-export function submitChat(text) {
-  const t = (text || "").trim(); if (!t) return;
-  session.sendText(t);
-  store.pushChat({ role: "you", text: t });
+// V2-809 — `atts` are REFERENCES to files already uploaded through the upload door ({id, name, kind, size,
+// thumb}); the bytes never ride the message. The server already holds them as the turn's state, so the line the
+// agent receives is his text — or, for a message that is only files, their names.
+export function submitChat(text, atts) {
+  const t = (text || "").trim();
+  const a = (atts || []).filter((x) => x && x.id);
+  if (!t && !a.length) return;
+  session.sendText(t || a.map((x) => "📎 " + x.name).join("\n"));
+  store.pushChat(a.length ? { role: "you", text: t, att: a } : { role: "you", text: t });
+}
+
+const KIND_GLYPH = { image: "🖼", pdf: "📄", text: "📝" };
+const ACCEPT = "image/png,image/jpeg,image/gif,image/webp,application/pdf,.pdf,.txt,.md,.markdown,.csv,text/plain,text/csv,text/markdown";
+
+// An attachment as the chat log shows it — in the bubble, and again in a restored history (the thumbnail is a
+// URL of the engine, not bytes in the log).
+function attView(a) {
+  if (a.thumb) return h("img", { class: "cw-att-img", src: a.thumb, alt: a.name, title: a.name, decoding: "async" });
+  return h("div", { class: "cw-att-file", title: a.name },
+    h("span", { class: "cw-att-glyph" }, KIND_GLYPH[a.kind] || "📎"),
+    h("span", { class: "cw-att-name" }, a.name),
+    h("span", { class: "cw-att-size" }, chatFiles.fmtSize(a.size)));
 }
 
 // Auto-place like a widget: below the camera unit if it fits, else to its right, else overlapping (on top).
@@ -144,7 +163,93 @@ export function ChatWall() {
   // he had to retype it from scratch. The composer now refuses in that ONE state («off»), keeps the text
   // where he wrote it, and says why. `starting` is NOT blocked: there the queue really does flush on connect.
   const canSend = () => store.agentState() !== "off";
-  const send = () => { if (!inputEl || !canSend()) return; submitChat(inputEl.value); inputEl.value = ""; inputEl.focus(); };
+
+  // ── ATTACHMENTS (V2-809) ───────────────────────────────────────────────────────────────────────────────
+  // One row per file, each with its own fate: `up` (progress, cancellable), `reading`, `ready`, or `error` with
+  // the sentence that says why — so one file of several failing never takes the others with it. A refusal the
+  // limits can decide is said before anything travels; the server refuses again either way.
+  const [pend, setPend] = createSignal([]);
+  let fileEl = null, _attSeq = 0;
+  const patchAtt = (key, p) => setPend((xs) => xs.map((x) => (x.key === key ? { ...x, ...p } : x)));
+  const forget = (x) => { if (x && x.local) { try { URL.revokeObjectURL(x.local); } catch (_) {} } };
+  const removeAtt = (key) => {
+    const x = pend().find((y) => y.key === key); if (!x) return;
+    if (x.handle && (x.phase === "up" || x.phase === "reading")) x.handle.cancel();
+    if (x.phase === "ready" && x.ref) chatFiles.detach(x.ref.episode_id);
+    forget(x);
+    setPend((xs) => xs.filter((y) => y.key !== key));
+  };
+  const attBusy = () => pend().some((x) => x.phase === "up" || x.phase === "reading");
+  const addFiles = async (files) => {
+    // Copied BEFORE the first await: an input's FileList is live, and the picker is reset right after this call.
+    const list = Array.from(files || []);
+    const L = await chatFiles.limits();
+    for (const f of list) {
+      const key = "a" + (++_attSeq), name = f.name || "archivo", kind = chatFiles.kindOf(f);
+      const live = pend().filter((x) => x.phase !== "error");
+      const sum = live.reduce((s, x) => s + (x.size || 0), 0);
+      let note = "";
+      if (!kind) note = t("chat.attachType", { name });
+      else if (f.size > L.max_file_bytes) note = t("chat.attachTooLarge", { name, max: chatFiles.fmtSize(L.max_file_bytes) });
+      else if (live.length >= L.max_files_per_message) note = t("chat.attachTooMany", { name, n: L.max_files_per_message });
+      else if (sum + f.size > L.max_message_bytes) note = t("chat.attachMessageTooLarge", { name, max: chatFiles.fmtSize(L.max_message_bytes) });
+      if (note) { setPend((xs) => [...xs, { key, name, kind, size: f.size, phase: "error", note }]); continue; }
+      const handle = chatFiles.upload(f, { lim: L, onState: (st) => patchAtt(key, st) });
+      const local = kind === "image" ? URL.createObjectURL(f) : null;
+      setPend((xs) => [...xs, { key, name, kind, size: f.size, phase: "up", pct: 0, handle, local }]);
+      handle.done.then((out) => {
+        const still = pend().some((x) => x.key === key);
+        if (!still) { if (out.ok) chatFiles.detach(out.ref.episode_id); return; }
+        if (out.ok) return patchAtt(key, { phase: "ready", ref: out.ref, handle: null });
+        if (out.reason === "cancelled") return removeAtt(key);
+        patchAtt(key, { phase: "error", handle: null,
+                        note: t(chatFiles.REASON_KEY[out.reason] || "chat.attachFailed",
+                                { name, max: chatFiles.fmtSize(L.max_file_bytes) }) });
+      });
+    }
+  };
+  const attChip = (x) => h("div", { class: "cw-att-chip " + x.phase, "data-phase": x.phase },
+    x.local ? h("img", { class: "cw-att-thumb", src: x.local, alt: x.name })
+            : h("span", { class: "cw-att-glyph" }, x.phase === "error" ? "⚠" : (KIND_GLYPH[x.kind] || "📎")),
+    h("div", { class: "cw-att-meta" },
+      h("div", { class: "cw-att-name" }, x.name),
+      h("div", { class: "cw-att-sub" },
+        x.phase === "error" ? x.note
+          : x.phase === "up" ? `${x.pct || 0}% · ${chatFiles.fmtSize(x.size)}`
+          : x.phase === "reading" ? t("chat.attachReading")
+          : chatFiles.fmtSize(x.size)),
+      x.phase === "up" ? h("div", { class: "cw-att-bar" }, h("span", { style: `width:${x.pct || 0}%` })) : null),
+    h("button", { class: "cw-att-x", "aria-label": () => t(x.phase === "up" || x.phase === "reading" ? "chat.attachCancel" : "chat.attachRemove"),
+                  title: () => t(x.phase === "up" || x.phase === "reading" ? "chat.attachCancel" : "chat.attachRemove"),
+                  onClick: () => removeAtt(x.key) }, raw(CLOSE_ICON)));
+  // Paste and drop onto the composer are HIS attachments: `stopPropagation` keeps main.js's window-level
+  // handlers (which file a pasted image or a dropped file into the desktop's inbox) from taking them.
+  const onComposerPaste = (e) => {
+    const items = (e.clipboardData && e.clipboardData.items) || [];
+    const files = [];
+    for (const it of items) if (it.kind === "file") { const f = it.getAsFile(); if (f) files.push(f); }
+    if (!files.length) return;
+    e.preventDefault(); e.stopPropagation();
+    addFiles(files);
+  };
+  const [dropping, setDropping] = createSignal(false);
+  const onComposerDrag = (e) => { e.preventDefault(); e.stopPropagation(); setDropping(e.type !== "dragleave"); };
+  const onComposerDrop = (e) => {
+    const files = (e.dataTransfer && e.dataTransfer.files) || [];
+    e.preventDefault(); e.stopPropagation(); setDropping(false);
+    if (files.length) addFiles(files);
+  };
+
+  const send = () => {
+    if (!inputEl || !canSend() || attBusy()) return;
+    const ready = pend().filter((x) => x.phase === "ready" && x.ref).map((x) => ({
+      id: x.ref.episode_id, name: x.ref.name, kind: x.ref.kind, size: x.ref.size, thumb: x.ref.thumb || null }));
+    if (!inputEl.value.trim() && !ready.length) return;
+    submitChat(inputEl.value, ready);
+    pend().forEach(forget);
+    setPend([]);
+    inputEl.value = ""; inputEl.focus();
+  };
 
   // ── PROCESSES tab: live items (store.tasks, SSE) above + history (store.workerHistory, ledger) below ──────
   // V2-608 F7 — the row is STRUCTURED, and its first line holds still (operator, 2026-09-07): «el proceso que
@@ -585,15 +690,25 @@ export function ChatWall() {
     // DOM beside the tasks tab's own, and anything reading «the sub-tabs» read six instead of four.
     h("div", { class: "cw-apps" }, () => (store.chatTab() === "apps" ? appsBody() : null)),
     // INPUT (Chat only — CSS hides it in the other tabs)
-    h("div", { class: "cw-input" },
+    h("div", { class: () => "cw-input" + (dropping() ? " cw-dropping" : ""),
+               onDragover: onComposerDrag, onDragenter: onComposerDrag, onDragleave: onComposerDrag,
+               onDrop: onComposerDrop },
+      () => (pend().length ? h("div", { class: "cw-att-tray" }, ...pend().map(attChip)) : null),
+      h("input", { type: "file", class: "cw-att-input", accept: ACCEPT, multiple: true, ref: (el) => (fileEl = el),
+                   onChange: () => { addFiles(fileEl.files); fileEl.value = ""; } }),
+      h("button", { class: "cw-clip", title: () => t("chat.attach"), "aria-label": () => t("chat.attach"),
+                    onClick: () => fileEl && fileEl.click() }, raw(PAPERCLIP_ICON)),
       h("textarea", {
+        onPaste: onComposerPaste,
         // rows:3 — the composer is for WRITING (V2-619, operator: «ya de base debería tener dos o tres
         // líneas de altura»); CSS gives it the matching min-height so a profile's type scale keeps the ratio.
         ref: el => (inputEl = el), rows: 3, placeholder: () => t("chat.messagePlaceholder"),
         onKeydown: e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } },
       }),
-      h("button", { class: () => "cw-send" + (canSend() ? "" : " off"), disabled: () => !canSend(),
-                    title: () => t(canSend() ? "chat.send" : "chat.sendAgentOff"), onClick: send },
+      h("button", { class: () => "cw-send" + (canSend() && !attBusy() ? "" : " off"),
+                    disabled: () => !canSend() || attBusy(),
+                    title: () => t(!canSend() ? "chat.sendAgentOff" : attBusy() ? "chat.sendWaitFiles" : "chat.send"),
+                    onClick: send },
         raw(SEND_SVG)),
     ),
   );
@@ -903,7 +1018,8 @@ export function ChatWall() {
         rows.push(bubble);
         return;
       }
-      bubble.appendChild(raw(`<div class="cw-msg-body">${renderMarkdownLite(m.text)}</div>`));
+      if (m.text) bubble.appendChild(raw(`<div class="cw-msg-body">${renderMarkdownLite(m.text)}</div>`));
+      if (Array.isArray(m.att) && m.att.length) bubble.appendChild(h("div", { class: "cw-msg-att" }, ...m.att.map(attView)));
       rows.push(bubble);
     });
     // …and when the restored block IS the whole wall (he refreshed and has not said anything yet) the

@@ -247,6 +247,41 @@ body.chatdock-r .statuspanel,body.chatdock-r .cronpanel{right:calc(18px + var(--
    button keeps its shape and loses its charge — a disabled control has to READ disabled, or the operator
    types a whole sentence before finding out (which is exactly what happened). */
 .cw-send.off{background:var(--hb-line,#e3e8f0);color:var(--hb-muted-2,#9aa7b8);cursor:not-allowed;opacity:.65}
+/* V2-809 — files in the chat. The clip has the composer's own control size; the tray sits above the textarea
+   (full row, the composer wraps), one chip per file with its own fate: progress, reading, ready or the reason
+   it failed. The bubble shows a thumbnail for an image and a file row for anything else. */
+.cw-input{flex-wrap:wrap}
+.cw-att-input{display:none}
+.cw-clip{flex:0 0 auto;width:var(--hb-ctl-h);height:var(--hb-ctl-h);border-radius:var(--hb-r-m);
+     border:1px solid var(--hb-line);background:transparent;color:var(--hb-muted);cursor:pointer;
+     display:flex;align-items:center;justify-content:center;transition:color var(--hb-t-fast) ease,border-color var(--hb-t-fast) ease}
+.cw-clip svg{width:17px;height:17px}
+.cw-clip:hover{border-color:var(--hb-accent);color:var(--hb-accent)}
+.cw-input.cw-dropping{outline:2px dashed var(--hb-accent);outline-offset:-6px}
+.cw-att-tray{flex:1 0 100%;display:flex;flex-direction:column;gap:var(--sp-1,4px);max-height:220px;overflow:auto}
+.cw-att-chip{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-1,4px) var(--sp-2);
+     border:1px solid var(--hb-line);border-radius:var(--hb-r-m,12px);background:var(--hb-bg)}
+.cw-att-chip.error{border-color:var(--hb-warn-border);background:var(--hb-warn-bg)}
+.cw-att-chip.error .cw-att-sub{color:var(--hb-warn-ink);white-space:normal}
+.cw-att-thumb{width:36px;height:36px;object-fit:cover;border-radius:6px;flex:none}
+.cw-att-glyph{width:36px;text-align:center;font-size:20px;flex:none}
+.cw-att-meta{flex:1 1 auto;min-width:0}
+.cw-att-name{font-size:var(--fs-ui);color:var(--hb-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cw-att-sub{font-size:.75rem;color:var(--hb-muted)}
+.cw-att-bar{height:3px;border-radius:2px;background:var(--hb-line);margin-top:3px;overflow:hidden}
+.cw-att-bar>span{display:block;height:100%;background:var(--hb-accent);transition:width var(--hb-t-fast) linear}
+.cw-att-x{flex:none;width:28px;height:28px;border:none;background:transparent;color:var(--hb-muted);cursor:pointer;
+     border-radius:6px;display:flex;align-items:center;justify-content:center}
+.cw-att-x svg{width:14px;height:14px}
+.cw-att-x:hover{color:var(--hb-ink);background:var(--hb-hover)}
+.cw-msg-att{display:flex;flex-wrap:wrap;gap:var(--sp-1,4px);margin-top:var(--sp-1,4px)}
+.cw-msg-att:first-child{margin-top:0}
+.cw-att-img{max-width:180px;max-height:180px;border-radius:8px;display:block;object-fit:cover}
+.cw-att-file{display:flex;align-items:center;gap:var(--sp-1,4px);padding:4px 8px;border-radius:8px;
+     background:var(--hb-hover);max-width:100%}
+.cw-att-file .cw-att-glyph{width:auto;font-size:16px}
+.cw-att-file .cw-att-name{font-size:.8rem}
+.cw-att-size{font-size:.72rem;color:var(--hb-muted);flex:none}
 /* V2-079 — ChatWall tabs (Chat / Processes / Crons) + panel visibility via the root's tab-* class */
 /* V2-617: the header tabs are the chat's PRIMARY navigation — UI-size type, real hit targets, and the
    active tab wears the ACCENT (the one color that means «interactive» across the whole skin). */
