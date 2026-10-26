@@ -16,4 +16,10 @@ load_dotenv(os.path.join(ZAELAR_DIR, ".env"), override=True)
 # DURABLE credential store (operator convention 2026-07-08): core secrets live in
 # .meshkore/credentials/zaelar.env (gitignored, chmod 600) so they are never lost — they are loaded from there.
 # Loaded AFTER .env with override=True → the store WINS over .env (same criterion as config/connectors).
-load_dotenv(os.path.join(ZAELAR_DIR, ".meshkore", "credentials", "zaelar.env"), override=True)
+# The path is the WRITER's (`config.credentials.STORE`), never a second copy of it: with `ZAELAR_WORKSPACE` set
+# the writer stores under `<workspace>/credentials/`, and a reader pinned to `<repo>/.meshkore/credentials/`
+# lost every key the wizard wrote at the next start — and, in the test suite (which always sets a temporary
+# workspace), copied the developer's real keys into every test that imported the server.
+from config.credentials import STORE as _CREDENTIAL_STORE  # noqa: E402
+
+load_dotenv(_CREDENTIAL_STORE, override=True)

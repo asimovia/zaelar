@@ -161,3 +161,20 @@ def test_the_root_conftest_really_pins_the_workspace_and_installs_the_guard():
     code = re.sub(r"#[^\n]*", "", re.sub(r'"""(?:.|\n)*?"""', "", src))
     assert 'os.environ["ZAELAR_WORKSPACE"] = tempfile.mkdtemp' in code
     assert "_the_operators_config_is_never_written" in code
+
+
+def test_the_server_reads_the_credential_store_the_writer_writes():
+    """The server loaded `<repo>/.meshkore/credentials/zaelar.env` from a path of its own, while the writer
+    (`config.credentials`) follows `ZAELAR_WORKSPACE`. In a container the wizard's keys were lost at the next
+    start; in this suite (which always sets a temporary workspace) the developer's REAL provider keys reached
+    `os.environ` the moment any test imported `server` — and a worker test then relayed to a provider that a
+    clean clone does not have (red in the folder, green alone)."""
+    import importlib
+
+    from config import credentials
+    from server import common
+    importlib.reload(common)
+    repo_store = Path(__file__).resolve().parents[3] / ".meshkore" / "credentials" / "zaelar.env"
+    assert Path(credentials.STORE).resolve() != repo_store.resolve(), "the suite's store is the operator's"
+    assert Path(common._CREDENTIAL_STORE).resolve() == Path(credentials.STORE).resolve(), \
+        "the server reads a credential store the writer does not write"
