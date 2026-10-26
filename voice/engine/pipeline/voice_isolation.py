@@ -60,7 +60,11 @@ def noise_filter(mode: str, livekit_url: str, *, load=_plugin):
         _warn_once("mode", "unknown ZAELAR_VOICE_ISOLATION=%r (expected off, %s)", mode, ", ".join(FILTERS))
         return None
     if not is_livekit_cloud(livekit_url):
-        _warn_once("transport", "the filter needs a LiveKit Cloud project and LIVEKIT_URL is %r", livekit_url)
+        # The default is on, so a self-hosted server is the ordinary case here, not a misconfiguration: say it once,
+        # quietly.
+        if "transport" not in _warned:
+            _warned.add("transport")
+            logger.info("voice isolation skipped: it needs a LiveKit Cloud project (LIVEKIT_URL=%r)", livekit_url)
         return None
     try:
         nc = load()

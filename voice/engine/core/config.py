@@ -72,9 +72,11 @@ class Settings:
     # take a room minted by another one. The prefix carries the engine's unique id (`_engine_id`); without one it
     # stays «zaelar», and `ZAELAR_ROOM` overrides both.
     room_name: str = env("ZAELAR_ROOM", default_room_prefix())
-    # Agent-side voice isolation on the room's audio input: off | nc | bvc. Default OFF; fails open where the
-    # transport cannot serve it (self-hosted livekit-server). Mechanism: `voice/engine/pipeline/voice_isolation.py`.
-    voice_isolation: str = env("ZAELAR_VOICE_ISOLATION", "off")
+    # Agent-side voice isolation on the room's audio input: off | nc | bvc. Default BVC (road noise and the other
+    # voices in the room go, the main speaker stays); `off` is the flag that turns it off. It only applies on a
+    # LiveKit Cloud project and is skipped quietly elsewhere (a self-hosted livekit-server refuses it).
+    # Mechanism: `voice/engine/pipeline/voice_isolation.py`.
+    voice_isolation: str = env("ZAELAR_VOICE_ISOLATION", "bvc")
 
     # --- Profile + component selection --------------------------------------
     profile: str = PROFILE                                # remote | local

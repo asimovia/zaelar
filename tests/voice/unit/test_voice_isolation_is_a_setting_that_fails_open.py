@@ -52,14 +52,14 @@ def warned(monkeypatch):
     return seen
 
 
-def test_the_setting_is_declared_once_and_defaults_off():
+def test_the_setting_is_declared_once_and_defaults_to_bvc():
     import subprocess
     from pathlib import Path
     root = Path(__file__).resolve().parents[3]
     hits = subprocess.run(["git", "grep", "-l", "ZAELAR_VOICE_ISOLATION\"", "--", "*.py", ":!tests"],
                           cwd=root, capture_output=True, text=True).stdout.split()
     assert hits == ["voice/engine/core/config.py"], hits
-    assert 'env("ZAELAR_VOICE_ISOLATION", "off")' in (root / hits[0]).read_text(encoding="utf-8")
+    assert 'env("ZAELAR_VOICE_ISOLATION", "bvc")' in (root / hits[0]).read_text(encoding="utf-8")
 
 
 def test_off_attaches_nothing_and_says_nothing(warned):
@@ -69,7 +69,6 @@ def test_off_attaches_nothing_and_says_nothing(warned):
 
 
 @pytest.mark.parametrize("url, load, reason", [
-    (SELF_HOSTED, _load_ok, "LiveKit Cloud"),
     (CLOUD, _load_missing, "unavailable"),
     (CLOUD, _load_broken, "unavailable"),
 ])
@@ -77,6 +76,16 @@ def test_on_but_unsupported_fails_open_with_one_warning(warned, url, load, reaso
     for _ in range(3):   # three sessions in one process → still one warning
         assert vi.room_options("bvc", url, load=load) == {}
     assert len(warned) == 1 and reason in warned[0], warned
+
+
+def test_a_self_hosted_server_skips_it_quietly_once(warned, caplog):
+    """The default is on, so a self-hosted livekit-server is the ordinary case: no warning, one info line."""
+    import logging
+    caplog.set_level(logging.INFO)
+    for _ in range(3):
+        assert vi.room_options("bvc", SELF_HOSTED, load=_load_ok) == {}
+    assert warned == []
+    assert sum("LiveKit Cloud" in r.getMessage() for r in caplog.records) == 1
 
 
 def test_an_unknown_mode_fails_open(warned):
