@@ -54,7 +54,9 @@ def _task_view(t: dict) -> dict:
         # name of the piece. With several browsers open, all of them called «Navegador», the header identified
         # nothing at all.
         "id": t.get("id", ""),
-        "title": (t.get("goal_summary") or t.get("title") or t.get("goal") or "").strip()[:70],
+        # V2-799 — the header is the errand's NAME (`tasks.set_title`), never a summariser's answer: a refusal
+        # («No se puede: la petición no contiene…») once became the title he read.
+        "title": (t.get("title") or t.get("goal") or "").strip()[:70],
         "goal": t.get("goal", ""),
         "goal_summary": t.get("goal_summary", ""),
         "status": t.get("status", ""),

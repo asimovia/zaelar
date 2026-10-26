@@ -153,8 +153,10 @@ def test_the_card_no_longer_publishes_results(tarea):
 
 
 def test_the_card_titles_itself_with_the_TASK(tarea):
-    """With several browsers open, all called “Browser”, the header identified none of them."""
-    tasks.set_goal_summary(tarea, "Fontaneros en Madrid centro · urgencia hoy")
+    """With several browsers open, all called “Browser”, the header identified none of them. The header is the
+    errand's NAME (V2-799: `set_title`); a summariser's line is a detail and never overwrites it — a refusal once did."""
+    tasks.set_title(tarea, "Fontaneros en Madrid centro · urgencia hoy")
+    tasks.set_goal_summary(tarea, "No se puede: la petición no contiene objetivo")
     assert navdata.view_data(tarea)["title"] == "Fontaneros en Madrid centro · urgencia hoy"
     import json
     man = json.loads((ENGINE / "widgets/navegador/manifest.json").read_text(encoding="utf-8"))

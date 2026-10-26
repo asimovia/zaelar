@@ -79,6 +79,14 @@ async def hold_the_model_to_its_words(*, _apply_widget_data, _brief, _data_ops_h
         emit("brain", "🎯 sus palabras o el veredicto nombran el visor de imágenes — la búsqueda de fotos, nada más",
              text=_pic_named["query"][:120], role="system", extra={"cat": "flash", "tool": "show_images"})
 
+    # V2-799 — a turn about PENDING work («termina esas tareas») is resolved against the pending rows BEFORE the
+    # fragment guard may annul the model's commissions: each row it means resumes from itself.
+    if escalate_req["v"] is not None and _pst._eguard.is_a_fragment(operator_text, brief=_brief,
+                                                                   last_reply=_pst._prior_line.of(brain)):
+        from nucleo.flash import resume_turn as _resume
+        if await _resume.take(escalate_req, operator_text=operator_text, last_reply=_pst._prior_line.of(brain),
+                              apply_widget_data=_apply_widget_data, emit=emit):
+            acted["widget"] = True
     # GHOST-WORKER guard, plus the «Sí» that has no directive either — in `escalation_guard`.
     _pst._eguard.drop_if_fragment(escalate_req, operator_text=operator_text, brief=_brief,
                              last_reply=_pst._prior_line.of(brain), emit=emit)

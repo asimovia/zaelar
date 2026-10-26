@@ -12,7 +12,7 @@ from nucleo.flash import act_repair as _act_repair, post_stream as _pst
 
 async def run_the_light_lanes(*, FastClient, _apply_widget_data, _brief, _buf_add, _buf_reset, _cardc, _close_target, _cover_work, _identify, _identify_system, _named_by_verdict, _no_tool, _op_text, _prompt_mod, _router, _rv, _say, _show_target_instance, _shown_ids, _t, _tag_emit, _tool_fired, _turn_op_tasks, acted, attention, brain, clarify, data_done, emit, escalate_req, images_req, listing_req, music_req, operator_text, read_req, recall_req, reopen_req, reveal_req, search_req, send, speak, spec, speech, spoken, spoken_text, take, text, with_also_named) -> dict:
     _playback = _router.promises_playback(spoken_text, _op_text, music_open=_pst._direct_action.on_screen_now("musica"))
-    if (_no_tool and spoken_text
+    if (_no_tool and spoken_text and not escalate_req.get("resumed")      # V2-799: its rows already resumed
             and (_router.promises_action(spoken_text) or _playback
                  or _pst._direct_action.verdict_escalates(_brief, answered=not _router.promises_action(spoken_text))
                  or _pst._direct_action.verdict_shows(_brief))
@@ -80,9 +80,16 @@ async def run_the_light_lanes(*, FastClient, _apply_widget_data, _brief, _buf_ad
                 or _pst._direct_action.verdict_escalates(_brief, answered=not _router.promises_action(spoken_text))
                 or _pst._direct_action.order_over_a_card_left_undone(_brief)):
             # crear widget (o sinónimo: panel/gadget) = código → escala; marketplace/informe = navegador → escala
-            escalate_req["v"] = _win_goal or _op_text
-            emit("brain", "🧭 escalada por backstop (prometió crear/gestionar sin escalar)",
-                 text=(_win_goal or _op_text)[:80], role="system")
+            # V2-799 — before a brief is REBUILT from his words (or glued from the window), the pending rows: a
+            # turn that means earlier work resumes each row from itself, never from utterances glued together.
+            from nucleo.flash import resume_turn as _resume
+            if await _resume.take(escalate_req, operator_text=_op_text, last_reply=_pst._prior_line.of(brain),
+                                  apply_widget_data=_apply_widget_data, emit=emit):
+                acted["widget"] = True
+            else:
+                escalate_req["v"] = _win_goal or _op_text
+                emit("brain", "🧭 escalada por backstop (prometió crear/gestionar sin escalar)",
+                     text=(_win_goal or _op_text)[:80], role="system")
         elif _router.looks_like_show_strict(_op_text):    # it named no card: a TAB of the wall, or nothing
             _wtab = _pst._wall_tab_for(_identify_system(_op_text), _op_text)
             if _wtab:
@@ -101,7 +108,7 @@ async def run_the_light_lanes(*, FastClient, _apply_widget_data, _brief, _buf_ad
     # Google Maps y me pases el teléfono». Una regla de prompt no basta: lo que hace falta es HACER la
     # búsqueda. Solo si NADA corre (con una tarea viva la frase puede ser una sugerencia mientras se trabaja,
     # y re-escalar duplicaría el trabajo, V2-123).
-    if (_no_tool and spoken_text and escalate_req["v"] is None
+    if (_no_tool and spoken_text and escalate_req["v"] is None and not escalate_req.get("resumed")
             and _router.hands_public_lookup_back(spoken_text)):
         try:
             from nucleo import dispatch as _disp_hb

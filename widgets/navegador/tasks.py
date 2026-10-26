@@ -597,10 +597,28 @@ def set_sheet(task_id: str, sheet: str) -> None:
     _notify(task_id)
 
 
+def set_title(task_id: str, name: str) -> None:
+    """THE one door for the card's header (V2-799): the errand's NAME (`🏷️ encargo nombrado`, `nucleo/errand_title`).
+
+    The header used to take whatever a summariser model answered (`set_goal_summary`), and a summariser handed a
+    glued, meaningless brief answers with a refusal: the operator read «No se puede: la petición no contiene
+    objetivo, criterios, tipo…» as the title of his errand. A refusal, a status sentence or a worker's words are
+    never a name; the name is composed once, guarded (`errand_title.names_the_errand`), and set here."""
+    name = (name or "").strip()
+    if not name:
+        return
+    with _lock:
+        t = _tasks.get(task_id)
+        if not t or t.get("title") == name[:60]:
+            return
+        t["title"] = name[:60]
+    _notify(task_id)
+
+
 def set_goal_summary(task_id: str, summary: str) -> None:
-    """Set the synthesized ESSENCE of the objective (objective + criteria, compressed by LLM) for DISPLAY in the card —
-    the full `goal` remains intact as operational text guiding the search. Best-effort: if synthesis fails, the card
-    falls back to the raw `goal`."""
+    """Set the synthesized ESSENCE of the objective (objective + criteria, compressed by LLM) as a DETAIL of the
+    card — the full `goal` remains intact as operational text guiding the search. Never the title: the header is
+    the errand's name (`set_title`, V2-799)."""
     summary = (summary or "").strip()
     if not summary:
         return
@@ -609,7 +627,6 @@ def set_goal_summary(task_id: str, summary: str) -> None:
         if not t:
             return
         t["goal_summary"] = summary[:200]
-        t["title"] = summary[:60]   # the card title also uses the essence (previously truncated the raw goal)
     _notify(task_id)
 
 

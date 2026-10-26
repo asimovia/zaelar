@@ -263,6 +263,14 @@ below is the first kind, or it names the mechanism that replaced the second.
   asked, a learned route to it included, and silence is not a statement; a timeout names the agent and the seconds; zero
   rows with the agent's hint is `ok` with `agent_hint`, never a failure. — since 2026-10-26 · nodes 2.805 ·
   `nucleo/mesh_agents.py::agent_timeout`, `::_ask_in_turn`, `::_is_live`, `::_mark_empty`.
+- **CRIT-E19 · A turn about pending work resumes its ROWS, each from itself.** Where the words alone would decide
+  (a commission about to be annulled as a fragment, a promise backstop about to rebuild a brief), the turn is first
+  resolved by a verdict over the durable pending rows (`nucleo/pending_work.py`: the task board's live and recently
+  ended errands, and rows a widget declares with `pending_rows()`), paid only when something is pending; every row
+  it means resumes from itself — a widget row through its own declared action and confirm gate, an ended errand
+  from its own brief, sheet and outcome (`task_uid`), a live one not twice — and no backstop then rebuilds an errand
+  from the window (`nucleo/flash/resume_turn.py`). A browser card's title is the errand's name
+  (`navegador.tasks.set_title`), never a summariser's or a worker's sentence. — since 2026-10-26 · nodes 2.807.
 - **CRIT-E13 · A worker's request is never his click.** On a self-hosted engine every mutation is the operator's
   unless it is a named worker door (`/api/worker/*`, the agent report, the browser bridge, memory with the per-task
   token, search); it is admitted for his screen's per-boot HttpOnly cookie or a process the engine did not spawn,

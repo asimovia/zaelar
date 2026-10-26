@@ -42,6 +42,13 @@ async def _compose_brief(request: str, context: str, trusted: bool, resume: dict
     return await _d.research.compose(request, context)
 
 
+def _errand_name(rec, req: str) -> str:
+    """The name a browser card is born with: the errand's own (`rec.title`), else the provisional one — the goal cut
+    on a word boundary. Never a summariser's answer (V2-799)."""
+    from nucleo import errand_title as _et
+    return str(getattr(rec, "title", "") or "").strip() or _et.provisional(req)
+
+
 #: Live references to the errand NAMERS (V2-530), for the same reason the brief composers below need one: a
 #: bare `Task` can be garbage-collected mid-flight and die in silence.
 _TITLE_BG_TASKS: set = set()
@@ -67,6 +74,9 @@ def _name_errand(rec) -> None:
             if not t or t == (getattr(rec, "title", "") or ""):
                 return
             rec.title = t
+            if getattr(rec, "nav_task", ""):
+                from widgets.navegador import tasks as _navtasks   # V2-799: its browser card wears the same name
+                _navtasks.set_title(rec.nav_task, t)
             try:
                 from voice.observer import emit
                 emit("task", "🏷️ encargo nombrado", text=t, role="system",
@@ -193,6 +203,7 @@ async def _prepare_web(rec: "_d.SessionRecord", req: str, reuse_tid: str = "") -
             tid = str(cont[0])
             try:
                 navtasks.set_goal(tid, req)
+                navtasks.set_title(tid, _errand_name(rec, req))   # V2-799: the reused tab now carries THIS errand's name
                 # V2-571: a reused tab now serves THIS errand, so its sheet stamp follows it — a stale stamp
                 # routes findings and refreshes to the predecessor's box (the V2-434 «sello rancio»).
                 navtasks.set_sheet(tid, _d.sheet_of(rec))
@@ -200,7 +211,7 @@ async def _prepare_web(rec: "_d.SessionRecord", req: str, reuse_tid: str = "") -
                 pass
         else:
             _tr = str(getattr(rec, "trace_id", "") or "")   # V2-281: la HOJA viaja con la pestaña, como el trace
-            tid = str(navtasks.create(req, trace=_tr, sheet=_d.sheet_of(rec)))
+            tid = str(navtasks.create(req, _errand_name(rec, req), trace=_tr, sheet=_d.sheet_of(rec)))
         # V2-571/V2-797 — ONE card per errand, and starting is not a reason to open one: the errand's card is
         # its deliverable (the sheet, opened when the surface was sealed or when the first rows land), whose
         # PROCESS tab embeds this browser. The monitor card opens only when he must act in the page

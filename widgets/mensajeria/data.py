@@ -442,3 +442,16 @@ def consent_scope(action: str, payload: dict | None = None) -> dict:
     except Exception as e:  # noqa: BLE001 — the declared class stands
         _held.logger.info(f"consent_scope unreadable ({e}) — the declared class stands")
         return {}
+
+
+def pending_rows() -> list[dict]:
+    """V2-799 — what this card holds for his word, for `nucleo/pending_work.py`: each held draft, and how it resumes
+    (its own `send_draft`, so a «finish those» reaches it through the same confirm gate as a «send it»)."""
+    try:
+        return [{"id": d["key"], "title": f"{d['platform'] or 'message'} → {d['to']}: {d['subject'] or d['text'][:60]}",
+                 "state": "draft waiting for his OK", "at": d["at"],
+                 "resume": {"action": "send_draft", "payload": {"contact": d["to"]}}}
+                for d in _held.held(load_db()) if d["to"]]
+    except Exception as e:  # noqa: BLE001
+        _held.logger.info(f"pending_rows unreadable ({e})")
+        return []
