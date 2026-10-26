@@ -155,6 +155,7 @@ export function GraphView({ tier }) {
     const dpr = window.devicePixelRatio || 1;
     const { bg, ink } = readColors();
     const font = getComputedStyle(section).fontFamily;
+    const always = canvas.clientWidth < 600 ? 5 : 10;   // labels shown at any zoom: fewer on a phone
     c.setTransform(dpr, 0, 0, dpr, 0, 0);
     c.clearRect(0, 0, canvas.width, canvas.height);
     const { k, tx, ty } = st.view;
@@ -212,7 +213,7 @@ export function GraphView({ tier }) {
       c.fillStyle = col; c.strokeStyle = bg; c.lineWidth = 3 / k;
       c.beginPath(); c.arc(x, y, n.r, 0, Math.PI * 2); c.fill(); c.stroke();
       // labels — level of detail: the biggest few always, the rest once they are big enough on screen
-      if (n.rank < 10 || n.r * k >= 12 || sel || i === st.hover) {
+      if (n.rank < always || n.r * k >= 12 || sel || i === st.hover) {
         c.fillStyle = ink;
         c.font = `${sel ? 700 : 600} ${13 / k}px ${font}`;
         c.textAlign = "center"; c.textBaseline = "top";
