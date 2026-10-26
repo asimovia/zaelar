@@ -18,7 +18,7 @@
   },
   "title": "Mensajería",
   "description": "WhatsApp, Telegram y correo en un sitio: leer, filtrar y ENVIAR o contestar mensajes («message Rowan on Telegram», «escríbele a Anna», «reply to that email»), ya triado a lo que va dirigido a ti. Se vinculan en Conectores; puedes dictar una respuesta y mandarla, con fotos o archivos, y crear grupos.",
-  "whenToUse": "Ver quién le ha escrito, buscar, resumir, responder o mandar mensajes de WhatsApp/Telegram/correo (con adjuntos), crear grupos, su archivo pasado («¿cuándo me escribió X?»), el AUTORRESPONDEDOR o su firma. CONECTAR un canal NO es aquí: show_panel(panel='conectores', connector=…)",
+  "whenToUse": "Ver quién le ha escrito, buscar, resumir, responder o mandar mensajes de WhatsApp/Telegram/correo (con adjuntos) y su archivo pasado («¿cuándo me escribió X?»). CONECTAR un canal NO es aquí: show_panel(panel='conectores', connector=…)",
   "keywords": [
     "mensajes",
     "mensajeria",
@@ -444,6 +444,7 @@
     },
     "mail_open": {
       "desc": "Abre un mensaje de la carpeta de correo en pantalla por su `uid` (lo usa la propia tarjeta al tocar una fila). Para «ábrelo» tras hablar de un correo usa `open`.",
+      "internal": true,
       "payload": {
         "uid": "string",
         "folder": "opcional: la carpeta"
@@ -462,6 +463,7 @@
     "open_draft": {
       "desc": "Abre un BORRADOR que está a medias ocupando toda la tarjeta: «abre el borrador», «enséñame el correo que tenía pendiente para X». Sin `contact` abre el más reciente.",
       "how": "La tarjeta enseña destinatario, asunto, texto y los botones Enviar / Guardar / Descartar.",
+      "row_verb": true,
       "payload": {
         "contact": "opcional: a quién va el borrador",
         "key": "opcional: la clave del borrador"
@@ -472,6 +474,7 @@
     },
     "save_draft": {
       "desc": "Guarda los cambios de un borrador SIN enviarlo (texto; y en un mensaje nuevo, destinatario y asunto). Lo usa el botón «Guardar» del borrador abierto.",
+      "internal": true,
       "payload": {
         "key": "string (la clave del borrador)",
         "text": "opcional: el texto",
@@ -482,6 +485,7 @@
     },
     "discard_draft": {
       "desc": "DESCARTA un borrador: se borra y no se envía nada («tira ese borrador», botón «Descartar»).",
+      "row_verb": true,
       "payload": {
         "contact": "opcional: a quién iba",
         "key": "opcional: la clave del borrador"
@@ -495,6 +499,7 @@
     "compose": {
       "desc": "El botón «Enviar» de la pantalla de borrador (y «Guardar» de un correo nuevo aún sin guardar). Por voz usa `draft` / `send_draft`.",
       "how": "Escribe lo que hay en pantalla en el borrador (`key`, o uno nuevo para `to`) y con `send: true` lo ENVÍA.",
+      "internal": true,
       "payload": {
         "key": "opcional: el borrador abierto",
         "to": "string (destinatario, si es nuevo)",

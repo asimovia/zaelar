@@ -287,12 +287,16 @@ def for_prompt(open_ids=None, recent_ids=None, query: str = "", stats: dict | No
 
 def _offered_action_names(acts: dict) -> list[str]:
     """The declared action names the model is OFFERED, each marked when it asks first. An op the card fires by
-    itself (`"internal": true`) is never named: the model must not call it, and naming it costs every turn."""
+    itself (`"internal": true`) is never named: the model must not call it, and naming it costs every turn.
+
+    An op whose only object is a row the card holds for his word (`"row_verb": true`, e.g. opening or dropping a
+    held draft) is not named here either: that row reaches every turn with its own verbs while it exists
+    (`nucleo/pending_work`), and without the row the op has nothing to act on."""
     from . import actions as wactions
     names = []
     for name, spec in acts.items():
         spec = spec if isinstance(spec, dict) else {}
-        if spec.get("internal") is True:
+        if spec.get("internal") is True or spec.get("row_verb") is True:
             continue
         mark = "(confirmar)" if wactions.classify(spec, name) == wactions.CONFIRM else ""
         names.append(f"{name}{mark}")
