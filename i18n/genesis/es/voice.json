@@ -404,6 +404,7 @@
   "no_provider": "No tengo ninguna cuenta de música conectada. Conéctame Spotify (u otra) desde la configuración y podré ponerte lo que quieras.",
   "done": "Hecho.",
   "ask_more": "No he dado con esa canción. ¿Me dices el artista o alguna palabra más de la letra?",
+  "audio_blocked": "La música está cargada pero no se oye: el navegador de esta pantalla no la deja sonar sin un toque. Toca una vez la tarjeta de música y sonará.",
   "youtube": {
    "play": "Suena {label}.",
    "pause": "Pausado.",
@@ -432,7 +433,10 @@
    "not_connected": "Necesito que conectes tu cuenta de Spotify primero, desde la configuración.",
    "error": "No he podido con Spotify ahora mismo.",
    "no_next": "No hay nada después de esta canción en lo que suena; dime qué pongo.",
-   "no_prev": "No hay ninguna canción anterior en lo que suena."
+   "no_prev": "No hay ninguna canción anterior en lo que suena.",
+   "play_on": "Suena {label} en «{device}».",
+   "not_sounding": "He mandado la música a «{device}», pero allí no está sonando.",
+   "already_on": "Ya está sonando {label} en «{device}»."
   }
  },
  "agenda": {

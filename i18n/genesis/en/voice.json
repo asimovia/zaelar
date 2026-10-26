@@ -397,6 +397,7 @@
   "no_provider": "I don't have a music account connected yet. Connect Spotify (or another) from settings and I'll play whatever you like.",
   "done": "Done.",
   "ask_more": "I couldn't pin down that song. Can you give me the artist or a few more words from the lyrics?",
+  "audio_blocked": "The music is loaded but silent: this screen's browser will not let it play without a tap. Tap the music card once and you'll hear it.",
   "youtube": {
    "play": "Now playing {label}.",
    "pause": "Paused.",
@@ -425,7 +426,10 @@
    "not_connected": "Connect your Spotify account first, from settings.",
    "error": "Spotify didn't respond just now.",
    "no_next": "There's nothing after this song in what's playing; tell me what to put on.",
-   "no_prev": "There's no earlier song in what's playing."
+   "no_prev": "There's no earlier song in what's playing.",
+   "play_on": "Now playing {label} on \"{device}\".",
+   "not_sounding": "I sent the music to \"{device}\", but it is not playing there.",
+   "already_on": "{label} is already playing on \"{device}\"."
   }
  },
  "agenda": {

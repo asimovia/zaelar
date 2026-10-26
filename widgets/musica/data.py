@@ -79,8 +79,31 @@ def _spotify_status() -> dict:
         return {}
 
 
+#: The last Spotify reading and when it was taken (V2-812): the brain's digest rides every turn while the card is
+#: open, and a network read per turn is a price; a reading this fresh is the same fact.
+_NP_FRESH_S = 5.0
+_np_last: dict = {"at": 0.0, "np": None, "src": None}
+
+
 def _now_playing() -> "dict | None":
-    """What is playing NOW, only if a Spotify account is connected. Fail-open: never breaks the card."""
+    """What is playing NOW on the provider making the sound. Fail-open: never breaks the card."""
+    np = _read_now_playing()
+    _np_last.update(at=time.time(), np=np)
+    return np
+
+
+def _fresh_now_playing(db: dict, fresh_s: float) -> "dict | None":
+    """A reading at most `fresh_s` old, of the SAME start: a new start (another provider, another device) is never
+    answered with the reading of the old one."""
+    src = db.get("source")
+    if fresh_s and time.time() - _np_last["at"] < fresh_s and _np_last.get("src") == src:
+        return _np_last["np"]
+    np = _now_playing()
+    _np_last["src"] = src
+    return np
+
+
+def _read_now_playing() -> "dict | None":
     try:
         from connectors import music
         np = music.now_playing()
@@ -91,7 +114,7 @@ def _now_playing() -> "dict | None":
         # `progress_ms` is a photograph taken at THIS read (the card advances it with its own clock) and
         # `duration_ms` is what makes it meaningful; either at 0 means «this provider does not say», and the
         # card then draws no bar at all rather than one pinned at zero.
-        return {"playing": bool(np.playing), "device": np.device or "", "volume": np.volume,
+        return {"playing": bool(np.playing), "device": np.device or "", "volume": np.volume, "provider": np.provider,
                 "title": (t.title if t else ""), "artist": (t.artist if t else ""),
                 "album": (t.album if t else ""), "art": (t.art if t else ""),
                 "progress_ms": int(getattr(np, "progress_ms", 0) or 0),
@@ -101,8 +124,9 @@ def _now_playing() -> "dict | None":
         return None
 
 
-def _live_fields(db: dict) -> dict:
-    """Live state recomputed on each read: Spotify connection + card display mode + now_playing."""
+def _live_fields(db: dict, fresh_s: float = 0.0) -> dict:
+    """Live state recomputed on each read: Spotify connection + card display mode + now_playing. `fresh_s` > 0 lets
+    a reading that young stand in for a new one (the digest's per-turn read, V2-812)."""
     st = _spotify_status()
     connected = bool(st.get("logged_in"))
     yt = dict(db.get("yt") or {})
@@ -111,7 +135,12 @@ def _live_fields(db: dict) -> dict:
     # V2-638 — a file we hold is the third thing the bar can be showing. It wins over the connector
     # modes because it is the one playing IN the page: `local_audio.play` clears the yt block, so the
     # two can never be set at once and the order here only decides what an inconsistent db shows.
-    mode = "local" if loc else ("spotify" if connected else ("youtube" if yt.get("videoId") else "idle"))
+    # V2-812 — the bar shows the player that MAKES the sound: a song started in this page's player while a Spotify
+    # account is connected (no Spotify device on the screen that asked) is the page player's, and the Spotify reading
+    # of a device elsewhere is not what he hears.
+    in_page = (db.get("source") or {}).get("provider") == "youtube" and yt.get("videoId")
+    mode = "local" if loc else ("youtube" if in_page else ("spotify" if connected else
+                                                           ("youtube" if yt.get("videoId") else "idle")))
     return {
         **_SEED,
         "connected": connected,
@@ -119,7 +148,8 @@ def _live_fields(db: dict) -> dict:
         "own_client_id_set": bool(st.get("own_client_id_set")),
         "default_available": bool(st.get("default_available")),
         "redirect_uri": st.get("redirect_uri", ""),
-        "now_playing": (_now_playing() if connected else None),
+        "now_playing": (None if mode != "spotify" else
+                        _fresh_now_playing(db, fresh_s) if fresh_s else _now_playing()),
         "yt": _yt_display(yt),
         "local": loc,
         "mode": mode,
@@ -525,6 +555,53 @@ def ref_index() -> list:
     return out
 
 
+def prompt_digest() -> str:
+    """What the OPEN card shows, for the brain (V2-812): the song, WHICH player makes the sound and where, playing or
+    paused, the volume, and whether the browser keeps it silent. Asked «is it muted?» over a card showing a song, the
+    brain only had the list index — no lists, so «the card is EMPTY» — and answered that it had no data. Empty
+    string when nothing plays: the lists line (`refs.items_line`) is then the whole truth."""
+    try:
+        db = _load_db()
+        live = _live_fields(db, fresh_s=_NP_FRESH_S)
+    except Exception:  # noqa: BLE001
+        return ""
+    from . import player as _player
+    from . import sound as _sound
+    mode = live.get("mode")
+    np = live.get("now_playing") or {}
+    cur = (np if np.get("title") else None) if mode == "spotify" else (
+        (live.get("local") or None) if mode == "local" else _current_track_from_live(live))
+    if mode == "idle" or not cur:
+        return ""
+    if mode == "spotify":
+        where = f"Spotify, on the device «{np.get('device') or '?'}» (not this page)"
+        playing = bool(np.get("playing"))
+    else:
+        blk = (live.get("yt") or {}) if mode == "youtube" else (live.get("local") or {})
+        screen = _screen_word((db.get("source") or {}).get("screen", ""))
+        where = "the page player of this card" + (f", on his {screen}" if screen else "")
+        playing = not blk.get("paused")
+    vol = _player.volume(live, db)
+    level = "?" if vol.get("level") is None else f"{vol['level']}%"
+    lines = [f"MUSIC CARD — NOW: «{cur.get('title') or '?'}"
+             + (f" — {cur.get('artist')}" if cur.get("artist") else "") + f"» · source: {where} · "
+             + ("playing" if playing else "paused") + f" · volume {level}" + (" (MUTED)" if vol.get("muted") else "")]
+    if (snd := _sound.digest_line(live)):
+        lines.append(snd)
+    n = len((_player.queue_view(live, db) or {}).get("items") or [])
+    if n:
+        lines.append(f"queue: {n} after this one")
+    return "\n".join(lines)
+
+
+def _screen_word(dev: str) -> str:
+    try:
+        from voice import screens
+        return screens.surface(dev) if dev else ""
+    except Exception:  # noqa: BLE001
+        return ""
+
+
 # V2-778 F1-12 — the action handlers live in `actions.py`, imported back under their names (that module
 # reads this one).
 from .actions import (  # noqa: E402,F401
@@ -535,6 +612,7 @@ from .browse import a_search as _a_search, a_play_album as _a_play_album  # noqa
 from .player import (  # noqa: E402
     a_shuffle as _a_shuffle, a_repeat as _a_repeat, a_queue_remove as _a_queue_remove,
     a_queue_move as _a_queue_move, a_queue_clear as _a_queue_clear, a_played as _a_played)
+from .sound import player_audio as _a_player_audio  # noqa: E402 — V2-812: what the page player really lets be heard
 
 
 # V2-778 F1-12 — one function per action (in `actions.py`), and `apply_action` is the table lookup. Each body
@@ -577,6 +655,7 @@ ACTIONS = {
     "search": _a_search,
     "play_album": _a_play_album,
     "played": _a_played,
+    "player_audio": _a_player_audio,
 }
 
 

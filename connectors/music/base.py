@@ -49,6 +49,8 @@ class NowPlaying:
     #: («off» stops after the queue, «one» replays the song, «all» starts the queue over).
     shuffle: bool = False
     repeat: str = "off"
+    #: The provider's own id for the device producing the sound (V2-812) — "" for one that plays in the page.
+    device_id: str = ""
 
 
 @dataclass
@@ -75,6 +77,12 @@ class MusicProvider(ABC):
     #: True when next/previous only move inside the provider's own playback CONTEXT (V2-795): a list must then be
     #: handed over whole (`play_list`), because a track started alone is a context with nothing after it.
     plays_lists_as_context: bool = False
+    #: WHERE this provider makes sound (V2-812). `plays_in_page`: in the page of the screen that shows the music card
+    #: (it can play wherever he is). `plays_elsewhere`: on a device of its own (a Spotify Connect speaker, phone or
+    #: computer), so a start is only true once the provider says that device is sounding (`confirm`), and it is only
+    #: chosen when it has a device on the screen that asked (`device_near`).
+    plays_in_page: bool = False
+    plays_elsewhere: bool = False
 
     @abstractmethod
     def connected(self) -> bool: ...
@@ -171,6 +179,17 @@ class MusicProvider(ABC):
     def album_page(self, album_id: str) -> "dict | None":
         """{album, tracks} for one album of THIS provider's catalogue."""
         return None
+
+    # ── PLACEMENT (V2-812) — only for a provider that `plays_elsewhere` ─────────────────────────────────────
+    def device_near(self, screen_kind: str) -> "dict | None":
+        """A device of this provider that sits with a screen of that kind (`phone` / `computer`): {id, name}, or
+        None when it has none there."""
+        return None
+
+    def confirm(self, res: MusicResult, device_id: str = "") -> MusicResult:
+        """Read back a start: the same result once the provider reports the device SOUNDING it, else a result with
+        `reason="not_sounding"`. Base: a provider that plays in this process has nothing to read back."""
+        return res
 
     def status(self) -> dict:
         """Redacted PUBLIC view for the UI (never secrets). Overridable; base = connection only."""

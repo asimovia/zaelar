@@ -291,6 +291,14 @@
         "art": "portada",
         "query": "búsqueda"
       }
+    },
+    "player_audio": {
+      "desc": "Internal: the page player reports whether the browser really lets it be heard (IFrame API). Fired by the card itself, never by voice — sound wanted but kept silent becomes audio_blocked.",
+      "internal": true,
+      "payload": {
+        "muted": "true | false — silent, as the player reports it",
+        "videoId": "id the report belongs to (optional)"
+      }
     }
   },
   "name": "Música",

@@ -92,6 +92,18 @@ def _on_control(res, action: str) -> None:
         acts.upsert("music.playing", status="playing")
 
 
+def _note_page_player(res) -> None:
+    """A start the agent made in the page player is an AGENT order on the music card (V2-812): when the browser then
+    keeps it silent, the card's report is said (`widgets/late_report`), not left for him to discover."""
+    extra = getattr(res, "extra", {}) or {}
+    if getattr(res, "ok", False) and extra.get("surface") == "widget" and extra.get("widget"):
+        try:
+            from widgets import late_report
+            late_report.note_agent_order(str(extra["widget"]))
+        except Exception as e:  # noqa: BLE001
+            logger.debug(f"music_flow: agent order not noted: {e!r}")
+
+
 async def run(action: str, query: str, *, extract=None):
     """Executes ONE music action with fuzzy resolution. Returns the final `MusicResult` (with an extra `.resolved_from`
     if a chain occurred). `extract(system, user) -> str` = async 2nd model pass, provided by the caller (None =
@@ -100,6 +112,7 @@ async def run(action: str, query: str, *, extract=None):
 
     # 1 · ACT DIRECTLY (provider search engines already tolerate fuzziness)
     res = await asyncio.to_thread(music.control, action, query, "", 0, "")
+    _note_page_player(res)
     if getattr(res, "ok", False):
         # 'ended' (queue advancement) brings a NEW track into playback → refresh music.playing as a play.
         if action in ("play", "ended") and not (getattr(res, "extra", {}) or {}).get("noop"):
@@ -137,6 +150,7 @@ async def run(action: str, query: str, *, extract=None):
     # 4 · ACT AGAIN with the canonical name
     if canonical:
         res2 = await asyncio.to_thread(music.control, "play", canonical, "", 0, "")
+        _note_page_player(res2)
         if getattr(res2, "ok", False):
             await asyncio.to_thread(_on_success, res2, query)
             try:

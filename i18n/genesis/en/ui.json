@@ -1421,6 +1421,7 @@
  "widgets.mensajeria.you": "You",
  "widgets.musica.already_fav": "Already in Favourites",
  "widgets.musica.ask_what": "Tell me what you want to listen to",
+ "widgets.musica.tap_sound": "Tap here to hear it on this screen",
  "widgets.musica.back": "Back",
  "widgets.musica.confirm.disconnect": "Shall I disconnect your Spotify account? You'll have to link it again from the widget.",
  "widgets.musica.confirm.delete_playlist": "Delete the list «{item}» with all its songs? It can't be undone.",

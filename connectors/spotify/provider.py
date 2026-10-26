@@ -21,6 +21,10 @@ logger = logging.getLogger("zaelar.music.spotify")
 _SETTLE_S, _SETTLE_TRIES = 0.25, 6
 #: Tracks one list hands Spotify as a single context, and how many uri-less ones may be looked up by words.
 _MAX_CONTEXT, _MAX_LIST_LOOKUPS = 100, 15
+#: Which Spotify Connect devices can sit with which kind of screen (V2-812) — the Web API's own `type` values. A
+#: device of another type (a speaker, a TV, a cast group) is never assumed to be where he is: it is played on only
+#: when the screen that asked is unknown, as before.
+_NEAR_TYPES = {"phone": ("smartphone", "automobile"), "computer": ("computer",)}
 
 def _t(key: str, **kw) -> str:
     """A speakable line in the active language — the `voice` pack's `music.spotify.<key>`."""
@@ -80,6 +84,7 @@ def _playlist_dict(p: dict) -> dict:
 class SpotifyProvider(MusicProvider):
     name = "spotify"
     plays_lists_as_context = True          # its next/previous move only inside the context it was handed
+    plays_elsewhere = True                 # on a Spotify Connect device, never in the page (V2-812)
 
     def connected(self) -> bool:
         return bool(auth.client_id()) and auth.logged_in()
@@ -110,14 +115,58 @@ class SpotifyProvider(MusicProvider):
                 return d.get("id", "")
         return devs[0].get("id", "")
 
-    def _run(self, fn, action: str, track: "Track | None" = None, msg_kw: dict = None) -> MusicResult:
-        """Run a player action with NO_ACTIVE_DEVICE recovery (retry with a device_id)."""
+    def device_near(self, screen_kind: str) -> "dict | None":
+        """A device of his account that sits with a screen of this kind (V2-812): the active one first. None when
+        none does — the caller then plays in the page of the screen that asked instead of on a device elsewhere."""
+        types = _NEAR_TYPES.get(screen_kind or "", ())
+        if not types:
+            return None
+        try:
+            devs = client.devices()
+        except SpotifyError:
+            return None
+        near = [d for d in devs or [] if str(d.get("type") or "").lower() in types
+                and not d.get("is_restricted") and d.get("id")]
+        near.sort(key=lambda d: not d.get("is_active"))
+        return {"id": near[0]["id"], "name": near[0].get("name", "")} if near else None
+
+    def confirm(self, res: MusicResult, device_id: str = "") -> MusicResult:
+        """A start is true once the player says so (V2-812): the device is playing, the song it plays is the one
+        sent, and — when a device was chosen — it is THAT device. Spotify answers 204 to a play on a device that
+        never makes a sound; the read-back is what the reply and the card are allowed to say."""
+        if not res.ok:
+            return res
+        want = res.track.id if res.track is not None and res.track.id else ""
+        np = None
+        for _ in range(_SETTLE_TRIES):
+            time.sleep(_SETTLE_S)
+            np = self.now_playing()
+            if (np is not None and np.playing and (not want or (np.track is not None and np.track.id == want))
+                    and (not device_id or np.device_id == device_id)):
+                res.track = np.track or res.track
+                label = res.track.label() if res.track is not None else ""
+                if np.device and res.action == "play" and label:
+                    res.message = _t("play_on", label=label, device=np.device)
+                res.extra = {**(res.extra or {}), "device": np.device, "device_id": np.device_id, "sounding": True}
+                return res
+        device = (np.device if np is not None else "") or ""
+        return MusicResult(ok=False, provider=self.name, action=res.action, track=res.track, reason="not_sounding",
+                           message=_t("not_sounding", device=device or "Spotify"),
+                           extra={"device": device, "sounding": False})
+
+    def _run(self, fn, action: str, track: "Track | None" = None, msg_kw: dict = None,
+             device: str = "") -> MusicResult:
+        """Run a player action with NO_ACTIVE_DEVICE recovery (retry with a device_id). A `device` CHOSEN for the
+        screen that asked (V2-812) is the only one tried: falling back to the first device listed is how a song
+        went to a computer at home."""
         msg_kw = msg_kw or {}
         try:
-            fn("")
+            fn(device)
             return MusicResult(ok=True, provider=self.name, action=action, track=track,
                                message=_t(action, **msg_kw))
         except SpotifyError as e:
+            if e.code == "no_device" and device:
+                return self._fail(action, e)
             if e.code == "no_device":
                 dev = self._pick_device()
                 if not dev:
@@ -138,7 +187,7 @@ class SpotifyProvider(MusicProvider):
         return MusicResult(ok=False, provider=self.name, action=action, reason=reason, message=_t(key))
 
     # ── control ──────────────────────────────────────────────────────────────────────────────────────────
-    def play(self, query: str = "", uri: str = "") -> MusicResult:
+    def play(self, query: str = "", uri: str = "", device: str = "") -> MusicResult:
         track = None
         if query and not uri:
             hits = self.search(query, limit=1)
@@ -149,8 +198,8 @@ class SpotifyProvider(MusicProvider):
             uri = track.uri
         if uri:
             return self._run(lambda dev: client.play(uris=[uri], device_id=dev), "play", track,
-                             {"label": track.label() if track else uri})
-        return self._run(lambda dev: client.resume(device_id=dev), "resume")
+                             {"label": track.label() if track else uri}, device)
+        return self._run(lambda dev: client.resume(device_id=dev), "resume", device=device)
 
     def pause(self) -> MusicResult:
         return self._run(lambda dev: client.pause(device_id=dev), "pause")
@@ -187,7 +236,7 @@ class SpotifyProvider(MusicProvider):
         return (np.track.id if np is not None and np.track else "") or ""
 
     # ── a LIST is one playback context (V2-795) ───────────────────────────────────────────────────────────
-    def play_list(self, items: "list[tuple[str, str]]") -> MusicResult:
+    def play_list(self, items: "list[tuple[str, str]]", device: str = "") -> MusicResult:
         """The whole list in ONE play call, so Spotify's own next/previous move inside it. A track that carries no
         Spotify uri is looked up by its words (bounded); one nobody finds is left out and counted."""
         uris, lookups, first = [], 0, None
@@ -206,7 +255,7 @@ class SpotifyProvider(MusicProvider):
                                message=_t("no_track", q=(items[0][0] if items else "")))
         uris = uris[:_MAX_CONTEXT]
         res = self._run(lambda dev: client.play(uris=uris, device_id=dev), "play", first,
-                        {"label": first.label() if first else (items[0][0] or uris[0])})
+                        {"label": first.label() if first else (items[0][0] or uris[0])}, device)
         res.extra = {**(res.extra or {}), "in_context": len(uris), "left_out": len(items) - len(uris)}
         return res
 
@@ -254,11 +303,11 @@ class SpotifyProvider(MusicProvider):
             return None
         return [t for t in (_track_from(i) for i in (q.get("queue") or [])[:30]) if t]
 
-    def play_context(self, uri: str, label: str = "") -> MusicResult:
+    def play_context(self, uri: str, label: str = "", device: str = "") -> MusicResult:
         if not str(uri or "").startswith("spotify:"):
             return MusicResult(ok=False, provider=self.name, action="play", reason="unsupported")
         return self._run(lambda dev: client.play(context_uri=uri, device_id=dev), "play", None,
-                         {"label": label or uri})
+                         {"label": label or uri}, device)
 
     # ── catalogue (V2-795) ────────────────────────────────────────────────────────────────────────────────
     def search_catalog(self, query: str, limit: int = 8) -> "dict | None":
@@ -320,6 +369,7 @@ class SpotifyProvider(MusicProvider):
             playing=bool(st.get("is_playing")),
             track=_track_from(st.get("item") or {}),
             device=dev.get("name", ""),
+            device_id=dev.get("id", "") or "",
             volume=dev.get("volume_percent"),
             provider=self.name,
             progress_ms=int(st.get("progress_ms") or 0),

@@ -202,6 +202,7 @@ def _push_history(yt: dict) -> None:
 
 class YouTubeAudioProvider(MusicProvider):
     name = "youtube"
+    plays_in_page = True                   # in the page of the screen that shows the music card (V2-812)
 
     def connected(self) -> bool:
         return True                        # free, no login -> ALWAYS available (default fallback)

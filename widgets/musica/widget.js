@@ -233,6 +233,8 @@ function injectStyles(){
   .hb-mus2-bar{flex:0 0 auto;position:relative;border-top:1px solid var(--mus-line);background:var(--hb-bg-soft,rgba(127,127,127,.06));
                box-shadow:0 -10px 24px -18px rgba(0,0,0,.55);padding:9px 14px 8px;display:flex;flex-direction:column;gap:4px}
   .hb-mus2-barrow{display:flex;align-items:center;gap:10px;min-width:0}
+  .hb-mus2-tapsound{display:block;width:100%;margin:0 0 8px;padding:9px 12px;border:0;border-radius:10px;cursor:pointer;
+    background:var(--hb-accent,#7c5cff);color:#fff;font-size:13px;font-weight:600;text-align:center}
   /* V2-795 — the progress row: elapsed · the rail you click or drag · total, then the volume you can SEE */
   .hb-mus2-barprog{display:flex;align-items:center;gap:8px;min-width:0;height:20px}
   .hb-mus2-bartime{font-size:12px;color:var(--hb-muted-2,#9aa7b8);font-variant-numeric:tabular-nums;min-width:34px;flex:0 0 auto}
@@ -517,6 +519,12 @@ function ytEnsureAudible(iframe, vol){
 // interpolate between frames instead of stepping, and thrown away whenever the video changes — a position
 // belonging to the PREVIOUS song, painted for a quarter of a second on the new one, is a lie the eye catches.
 let _ytReady = null, _ytEnded = null;
+// V2-812 — what the page player REALLY does with the sound. A phone browser may keep a muted-autoplay start silent
+// (refuse the unmute, or never start) until a tap on the page. The embed says so in its own `infoDelivery`
+// (`muted`, `playerState`); the card reports it as `player_audio` and shows a tap row while it lasts.
+let _ytSound = null;                   // per-render reporter: (info) → `player_audio` when it disagrees with the store
+let _ytLoadedAt = 0;                   // when the current song's frame was mounted: a silence inside the grace is not a verdict
+const _SOUND_GRACE_MS = 2500;
 let _ytClock = {vid: "", t: 0, d: 0, at: 0};
 function ytStartListening(iframe){
   try{ iframe.contentWindow.postMessage(JSON.stringify({event:"listening", id:"hb-musica", channel:"widget"}), "*"); }catch(_){}
@@ -535,6 +543,7 @@ if (typeof window !== "undefined" && !window.__hbMusicaYtBound){
       const info = d.info;
       if (typeof info.currentTime === "number"){ _ytClock.t = info.currentTime; _ytClock.at = Date.now(); }
       if (typeof info.duration === "number" && info.duration > 0) _ytClock.d = info.duration;
+      if (_ytSound && (typeof info.muted === "boolean" || typeof info.playerState === "number")) _ytSound(info);
     }
   });
 }
@@ -611,10 +620,57 @@ function syncLocalPlayer(el, data, ctx){
   return true;
 }
 
+// V2-812 — the page player's real sound against what the store wants. Silent = the player reports itself muted, or
+// not playing (state other than 1 playing / 3 buffering), past the grace, while sound is wanted. Heard clears it.
+function bindSoundReport(el, data, ctx){
+  const yt = data.yt || {};
+  let sent = "";
+  _ytSound = (info) => {
+    if(!ctx || !ctx.action || halted(ctx) || !yt.videoId || yt.paused || yt.muted) return;
+    const state = Number(info.playerState);
+    const silent = info.muted === true || (typeof info.playerState === "number" && state !== 1 && state !== 3);
+    if(silent && Date.now() - _ytLoadedAt < _SOUND_GRACE_MS) return;
+    if(silent === !!yt.audio_blocked) return;
+    const key = yt.videoId + "|" + silent + "|" + (yt.cmd_seq || 0);
+    if(key === sent) return;
+    sent = key;
+    try{ const q = ctx.action("player_audio", {muted: silent, videoId: yt.videoId}); if(q && q.catch) q.catch(() => {}); }catch(_){}
+  };
+}
+
+// A TAP is the only thing a phone browser accepts as permission to sound: the player is unmuted and started inside
+// that same gesture. Any tap on the page does it while the block lasts; the row below names it.
+function unlockSound(el, data){
+  const yt = data.yt || {};
+  if(!el._hbFrame) return;
+  ytEnsureAudible(el._hbFrame, yt.volume);
+  ytPost(el._hbFrame, "playVideo");
+}
+function armSoundUnlock(el, data){
+  if(el._hbUnlockArmed || typeof document === "undefined") return;
+  el._hbUnlockArmed = true;
+  const go = () => {
+    el._hbUnlockArmed = false;
+    document.removeEventListener("pointerdown", go, true);
+    unlockSound(el, el._hbData || data);
+  };
+  document.addEventListener("pointerdown", go, true);
+}
+function soundRow(el, data){
+  const yt = data.yt || {};
+  if(data.mode !== "youtube" || !yt.audio_blocked || yt.paused || yt.muted) return null;
+  const b = h("button", "hb-mus2-tapsound", "🔈 " + tt("tap_sound", null, "Toca aquí para que suene en esta pantalla"));
+  b.onclick = () => unlockSound(el, data);
+  return b;
+}
+
 function syncYtPlayer(el, data, ctx){
   const yt = data.yt || {};
   const host = el._ytHost;
   const stopped = halted(ctx);
+  el._hbData = data;
+  bindSoundReport(el, data, ctx);
+  if(yt.audio_blocked && !yt.paused && !stopped) armSoundUnlock(el, data);
   // A local file and a YouTube track can never sound at once: if one is mounted the other releases.
   if(syncLocalPlayer(el, data, ctx)) return;
   if(!yt.videoId){                                   // nothing playing through YouTube -> release the frame
@@ -656,6 +712,7 @@ function syncYtPlayer(el, data, ctx){
     applyPendingSeek(el, yt, () => { const p = ytPosition(yt.videoId, true); return p ? p.pos : 0; },
                      (secs) => { ytPost(frame, "seekTo", [secs, true]); _ytClock.t = secs; _ytClock.at = Date.now(); });
   };
+  _ytLoadedAt = Date.now();
   _ytReady = wake;                                   // real onReady is the exact moment; timeouts back it up
   _ytEnded = () => { try{ ctx.action("ended"); }catch(_){} };   // F4: on end -> advance queue on the server
   setTimeout(wake, 1200); setTimeout(wake, 2600);
@@ -1007,6 +1064,8 @@ function playbackBar(el, data, ctx){
   const bar = h("div", "hb-mus2-bar" + (np ? "" : " empty"));
   const playing = !!(np && np.playing);
   if(np){ maybeEnrich(np, ctx); reportPlayed(np, ctx); }
+  const tap = soundRow(el, data);                    // V2-812: the browser keeps it silent → the tap that fixes it
+  if(tap) bar.appendChild(tap);
   const row = h("div", "hb-mus2-barrow");
   bar.appendChild(row);
   const artWrap = h("div", "hb-mus2-barartwrap");
@@ -1120,7 +1179,7 @@ function progressRow(el, data, ctx, mk){
 // The name of what is making sound — the same word the bar's chip shows, so the two never disagree.
 function sourceLabel(data){
   if((data.local || {}).src) return tt("local_src", null, "Tu biblioteca");
-  if(data.connected) return "Spotify";
+  if(data.mode === "spotify") return "Spotify";      // V2-812: the player making the sound, not the account held
   if((data.yt || {}).videoId) return "YouTube";
   return tt("no_source", null, "Sin fuente");
 }
@@ -1131,7 +1190,7 @@ function sourceLabel(data){
 // search and the source chip.
 function provChip(data, ctx){
   const b = h("button", "hb-mus2-prov");
-  const live = !!(data.connected || (data.yt || {}).videoId || (data.local || {}).src);
+  const live = !!(data.mode === "spotify" || (data.yt || {}).videoId || (data.local || {}).src);
   b.appendChild(h("span", "hb-mus2-dot" + (live ? " on" : "")));
   b.appendChild(h("span", null, sourceLabel(data)));
   b.title = tt("sources", null, "Fuentes de música");
