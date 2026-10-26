@@ -53,7 +53,9 @@ def test_score_weights_importance_and_recency(fresh_db):
     now = int(time.time())
     # Two memories matching the same keyword; one more important + more recent
     hi = memwriter.insert_memory("proyecto Colmena importante", kind="fact", level="long")  # imp 0.7
-    lo = memwriter.insert_memory("proyecto Colmena trivial", kind="msg")                    # imp 0.4
+    # (an `event` at 0.4, not a `msg`: inbound messages are another lane since V2-802 T-03 and the default
+    # search no longer ranks them against own rows — see test_inbound_messages_have_their_own_lane.py)
+    lo = memwriter.insert_memory("proyecto Colmena trivial", kind="event", importance=0.4)
     # Age 'lo' to lower its recency
     memdb.get_db().execute("UPDATE memories SET last_access=? WHERE id=?", (now - 40 * 86400, lo))
     memdb.get_db().execute("UPDATE memories SET last_access=? WHERE id=?", (now, hi))

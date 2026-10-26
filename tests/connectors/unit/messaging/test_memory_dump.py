@@ -41,8 +41,9 @@ def test_incoming_message_becomes_searchable_memory(fresh_db, isolated_widget_st
     }])
     # the message entered the UI store...
     assert any(it["body"].startswith("¿nos vemos") for it in isolated_widget_store["db"]["items"])
-    # ...and is ALSO a retrievable `msg` memory
-    res = memret.search("alquiler", limit=5, expand=False)
+    # ...and is ALSO a retrievable `msg` memory — through the messages lane, since V2-802 T-03 an inbound message
+    # is not ranked against the operator's own facts
+    res = memret.search("alquiler", limit=5, expand=False, lane="messages")
     assert res, "el mensaje entrante debe ser buscable en la memoria"
     row = memdb.get_db().query_one("SELECT kind FROM memories WHERE text LIKE '%alquiler%'")
     assert row is not None and row["kind"] == "msg"

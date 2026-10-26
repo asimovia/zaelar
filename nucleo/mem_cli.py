@@ -5,6 +5,8 @@ touching the DB directly (it preserves the SINGLE WRITER: it writes through the 
 invokes it through Bash:
 
     python -m nucleo.mem_cli recall "moto de enduro del operador"        # REQUESTS a fact → prints the pills
+    python -m nucleo.mem_cli recall "carpinteros Lorena" --source messages   # only what others wrote him
+    python -m nucleo.mem_cli history --hours 24 "reserva restaurante"    # what WE said, verbatim, with session
     python -m nucleo.mem_cli remember "el operador quiere una KTM 350" --slot goal.moto   # SAVES a fact
 
 It communicates with the local server (http://localhost:43917, ZAELAR_BASE override) over HTTP — it NEVER opens the
@@ -52,12 +54,21 @@ def _post(path: str, payload: dict, timeout: float = 20.0) -> dict:
         raise RuntimeError(f"HTTP {e.code}" + (f": {detalle}" if detalle else f": {e.reason}")) from None
 
 
-def _recall(query: str, k: int = 8) -> int:
-    if not query.strip():
+def _recall(query: str, k: int = 8, source: str = "", kind: str = "", hours: float = 0.0) -> int:
+    """Each printed line carries its provenance — `- [when · lane/kind · source · who] text` (V2-802 T-06) — so a
+    worker can quote where something is on record, or say it is not."""
+    if not query.strip() and source != "conversation":
         print("uso: mem_cli recall \"<consulta>\"", file=sys.stderr)
         return 2
+    payload: dict = {"query": query, "k": k}
+    if source:
+        payload["source"] = source
+    if kind:
+        payload["kind"] = kind
+    if hours:
+        payload["hours"] = hours
     try:
-        res = _post("/api/memory/recall", {"query": query, "k": k})
+        res = _post("/api/memory/recall", payload)
     except Exception as e:  # noqa: BLE001
         print(f"recall error: {e}", file=sys.stderr)
         return 1
@@ -90,13 +101,21 @@ def main(argv: list[str] | None = None) -> int:
     r = sub.add_parser("recall", help="pide recuerdos relevantes a una consulta")
     r.add_argument("query")
     r.add_argument("-k", type=int, default=8, help="nº máx de píldoras (1-20)")
+    r.add_argument("--source", default="", help="all|memory|messages|conversation, or a source (whatsapp, email…)")
+    r.add_argument("--kind", default="", help="comma list of kinds (fact,pref,result,event,msg…)")
+    h = sub.add_parser("history", help="what was said in our own conversation, verbatim (V2-803)")
+    h.add_argument("query", nargs="?", default="")
+    h.add_argument("--hours", type=float, default=24.0, help="window to read, in hours")
+    h.add_argument("-k", type=int, default=20, help="max turns (1-20)")
     w = sub.add_parser("remember", help="guarda un dato en la memoria (escritor único)")
     w.add_argument("text")
     w.add_argument("--slot", default="", help="clave canónica para supersede/dedup (p.ej. goal.moto)")
     w.add_argument("--kind", default="", help="fact|pref|result|event|summary|profile")
     a = ap.parse_args(argv)
     if a.cmd == "recall":
-        return _recall(a.query, a.k)
+        return _recall(a.query, a.k, a.source, a.kind)
+    if a.cmd == "history":
+        return _recall(a.query, a.k, "conversation", hours=a.hours)
     if a.cmd == "remember":
         return _remember(a.text, a.slot, a.kind)
     return 2

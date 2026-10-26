@@ -193,6 +193,26 @@ def session(session_id: str) -> dict:
     return row if row and row.get("events") else {}
 
 
+#: How far back `session_at` looks for the session a moment belongs to. A turn is written seconds after the events
+#: of its own flow; anything older than this is another sitting, and naming it would be a guess.
+SESSION_AT_LOOKBACK_S = 1800.0
+
+
+def session_at(ts_s: float) -> str:
+    """The work session that was open at `ts_s` (epoch seconds): the session of the latest event at or before
+    that moment, within `SESSION_AT_LOOKBACK_S`. '' when the log has nothing there — unknown, never guessed.
+
+    For the conversation record (V2-803 T-01): a `conv` row carries the turn and its time but not the session,
+    and the session is what lets «yesterday's session at 23:40» be said and audited."""
+    hi = float(ts_s) * 1000.0
+    r = _rows(
+        "SELECT session_id FROM events WHERE ts_ms <= ? AND ts_ms >= ? "
+        "AND session_id IS NOT NULL AND session_id != '' ORDER BY ts_ms DESC LIMIT 1",
+        (hi, hi - SESSION_AT_LOOKBACK_S * 1000.0),
+    )
+    return str(r[0]["session_id"]) if r else ""
+
+
 def events(session_id: str = "", corr_id: str = "", since_id: int = 0, limit: int = 500,
            tail: bool = False) -> list[dict]:
     """Los eventos EN CRUDO y en orden, con su payload completo — el material de la auditoría (2026-08-10).

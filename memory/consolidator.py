@@ -167,10 +167,15 @@ def promote(now: int | None = None, summarize_fn=None) -> dict:
         # El BUFFER CONVERSACIONAL (`kind='conv'`) NUNCA se promociona a durable: es el turno crudo efímero (TTL 2d),
         # no un recuerdo — el CORAZÓN ya destiló lo memorable en píldoras aparte. Además no lleva vector (writer:
         # optimización 2026-07-12), así que promocionarlo dejaría un durable sin embedding (irrecuperable por vector).
-        cur.execute("UPDATE memories SET level='mid', updated=? WHERE level='short' AND kind!='conv' AND created < ?",
-                    (now, short_cut))
+        # INBOUND MESSAGES (`kind='msg'`) are not promoted either (V2-802 T-03): ageing does not turn what someone
+        # else wrote into something durable about the operator. Measured on a real install: hundreds of email and
+        # group-chat rows promoted short→mid→long by age alone, then competing with his own facts as «durable».
+        # They stay where they were written, searchable through their own lane (`retriever.LANE_*`) and
+        # `recent_by_source`; a message the connector wants durable is written `mid` by `ingest_message(durable=True)`.
+        cur.execute("UPDATE memories SET level='mid', updated=? WHERE level='short' AND kind NOT IN ('conv','msg') "
+                    "AND created < ?", (now, short_cut))
         to_mid = cur.rowcount
-        cur.execute("UPDATE memories SET level='long', updated=? WHERE level='mid' AND created < ?",
+        cur.execute("UPDATE memories SET level='long', updated=? WHERE level='mid' AND kind != 'msg' AND created < ?",
                     (now, mid_cut))
         to_long = cur.rowcount
     # gancho de compresión semántica (V2-006): no-op por defecto.

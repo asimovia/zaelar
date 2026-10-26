@@ -265,6 +265,15 @@ CREATE TABLE journal (
 **State** is always injected (no search). For everything else: vector (sqlite-vec) **∥** keyword (FTS5) in
 parallel, **RRF** fusion, and ordering by weighted score.
 
+**Lanes (2026-10-26, CRIT-M9).** Inbound messages (`kind='msg'`: WhatsApp, Telegram, email) are their OWN lane:
+`query(lane="own")` (the default) never returns them, `lane="messages"` returns only them, `lane="all"` returns the
+own rows first and the messages after, each with its own budget. The filter runs inside every channel before the
+top-K cut. A `msg` row is never promoted and never enters `recent_short` / `salient_long`: an inbox of hundreds of
+rows used to push his own conversation out of the turn and outrank his facts in recall. Recall results carry their
+provenance (`memory.provenance`: id, date, level, kind, slot, source, lane), and his past conversation has one
+reader, `memory.conversation(hours, query)` over the `conv` turns, exposed as `mem_cli history` and as
+`source=conversation` on `/api/memory/recall`.
+
 ```
 score = α·semantic_relevance + β·recency + γ·importance + δ·usage_weight
 defaults:  α = 0.45   β = 0.25   γ = 0.20   δ = 0.10     (tunable per profile)

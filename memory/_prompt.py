@@ -297,8 +297,12 @@ def recent_short(limit: int = 30, max_chars: int = 1800) -> list[dict]:
     # ajenos) NUNCA entra en el bloque PASIVO que ve el FlashBrain cada turno — evita que un peer no confiable
     # inyecte instrucciones en el prompt del operador. Sigue siendo recuperable por consulta EXPLÍCITA
     # (`recent_by_source`) o recall dirigido. Lo del propio dueño (operator/external) sí entra.
+    # INBOUND MESSAGES OUT (V2-802 T-03): this block is «what WE were talking about», and the inbox is not that.
+    # With a connector live, email and group chatter outnumber the turns and pushed the conversation out of the
+    # few lines this block keeps (yesterday's errand gone, marketing email in its place).
+    # They remain readable by their own door (`recent_by_source`) and their own recall lane (`retriever.LANE_*`).
     rows = db.query(
-        "SELECT id, text, created FROM memories WHERE level='short' AND valid=1 "
+        "SELECT id, text, created FROM memories WHERE level='short' AND valid=1 AND kind != 'msg' "
         "AND (json_extract(meta,'$.trust') IS NULL OR json_extract(meta,'$.trust') != 'untrusted') "
         "ORDER BY updated DESC, id DESC LIMIT ?", (int(limit),)
     )
@@ -518,7 +522,9 @@ def salient_long(limit: int = 8, max_chars: int = 800) -> list[dict]:
         # `pref` sale de aquí porque tiene su propia línea desde V2-498 (`tastes()`): dejarlo lo pintaría DOS
         # veces en el mismo prompt. Y libera plaza — medido en la memoria del operador, una de las dos únicas
         # que llegaban al bloque era una preferencia.
-        "WHERE valid=1 AND level IN ('mid','long') AND kind NOT IN ('profile','pref') "
+        # `msg` (V2-802 T-03): an inbound message is what someone else wrote, not what zaelar knows of HIM —
+        # and rows promoted before promotion stopped taking them are still mid/long on existing installs.
+        "WHERE valid=1 AND level IN ('mid','long') AND kind NOT IN ('profile','pref','msg') "
         "AND (slot IS NULL OR slot NOT LIKE '%:%') "
         "AND (json_extract(meta,'$.critical') IS NULL) "        # los CRÍTICOS van en su línea propia (no aquí, sin dup)
         "AND (json_extract(meta,'$.trust') IS NULL OR json_extract(meta,'$.trust') != 'untrusted') "

@@ -647,7 +647,7 @@ def _web_prompt(goal: str, context: str, brief: dict | None = None, *, vision: b
         f"{py} -m nucleo.agent_report progress \"<hecho>\" --done <n>\n"
         f"• Fase legible puntual (tarjeta): {py} -m nucleo.agent_report phase \"<qué haces>\"\n"
         f"• Preguntar al operador y ESPERAR su respuesta: {py} -m nucleo.worker_bridge ask \"<pregunta>\"\n"
-        f"• Leer un dato que zaelar ya sepa:  {py} -m nucleo.mem_cli recall \"<consulta>\"\n"
+        f"• Leer un dato que zaelar ya sepa:  {py} -m nucleo.mem_cli recall \"<consulta>\" (lo DICHO, literal: mem_cli history \"<tema>\")\n"
         # Entrada de CATÁLOGO, no una orden: el QUÉ y el PORQUÉ viven una sola vez, en «LO QUE AVERIGUAS SE
         # GUARDA» (V2-344). Dejar aquí también un motivo («para no volver a pedirlo») era media instrucción
         # suelta, y dos mitades en dos sitios es como una decisión se separa de sí misma sin avisar.

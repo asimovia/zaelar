@@ -293,7 +293,10 @@ def test_untrusted_is_quarantined_from_passive_reads(fresh_db):
     memapi.ingest_message("cluster", "Zalo", "un hecho durable del peer", trust="untrusted", durable=True)
     passive_short = " ".join(r["text"] for r in memapi.recent_short(limit=30))
     passive_long = " ".join(r["text"] for r in memapi.salient_long(limit=8))
-    assert "reforma" in passive_short                      # the owner's content (external) DOES
+    # the owner's inbound message (external) is not in the passive block either since V2-802 T-03 — the inbox
+    # has its own lane — but it stays readable by source, unlike nothing:
+    assert "reforma" not in passive_short
+    assert "reforma" in " ".join(r["text"] for r in memapi.recent_by_source("whatsapp", "Marta"))
     assert "riego" not in passive_short                    # the untrusted peer does NOT slip in
     assert "durable del peer" not in passive_long          # neither does its durable content in the salient
     # it also does not surface through semantic RECALL (the retriever excludes it) — nor the peer's durable content

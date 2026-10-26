@@ -44,6 +44,8 @@ __all__ = [
     "kv_get", "kv_set",
     "query", "recent_short", "recent_window", "recent_by_source", "by_concepts",
     "seconds_since_last_conv",
+    # V2-802 T-06 / V2-803 T-01: where a recalled row came from, and the conversation record as a source.
+    "provenance", "conversation",
     "critical_facts", "salient_long", "map",
     "load_episode", "register_episode", "write_episode", "list_episodes", "migrate_inbox",
     "consolidate", "DEFAULT_BUDGET_TOKENS",
@@ -528,6 +530,7 @@ def background_slot_off_topic(slot: str | None, prompt: str) -> bool:
 
 from ._prompt import (  # noqa: E402,F401
     compose_state, critical_facts, recent_short, recent_window, salient_long, seconds_since_last_conv)
+from .history import conversation, provenance  # noqa: E402,F401 — V2-802 T-06 / V2-803 T-01
 
 
 def _pack(memories: list[dict], budget_tokens: int) -> list[dict]:
@@ -560,14 +563,20 @@ def reinforce_ids_for(mems: list[dict]) -> list[int]:
 
 
 def query(prompt: str, budget_tokens: int = DEFAULT_BUDGET_TOKENS, limit: int = 12,
-          expand: bool = True, reinforce_used: bool = True, lexical_only: bool = False) -> dict:
+          expand: bool = True, reinforce_used: bool = True, lexical_only: bool = False,
+          lane: str = "own") -> dict:
     """Ruta caliente: compone el contexto mínimo = estado (SIEMPRE) + recuerdos relevantes al presupuesto.
 
-    Devuelve {'state': dict, 'memories': list[dict], 'ids': list[int]}. Encola el refuerzo de los usados."""
+    Devuelve {'state': dict, 'memories': list[dict], 'ids': list[int]}. Encola el refuerzo de los usados.
+
+    `lane` (V2-802 T-03, `retriever.LANE_*`) defaults to `own`: this is the OPERATOR-FACT recall (turn recall,
+    worker dossier), and inbound messages are another question — they drowned it by volume. A caller that IS
+    asking about messages passes `messages`, or `all` for own rows first and messages after them."""
     from . import retriever as _retriever  # import perezoso (evita ciclos en import-time)
 
     st = _state.read()
-    mems = _retriever.search(prompt, limit=limit, expand=expand, reinforce=False, lexical_only=lexical_only)
+    mems = _retriever.search(prompt, limit=limit, expand=expand, reinforce=False, lexical_only=lexical_only,
+                             lane=lane)
     # THE CHOKEPOINT for the background-slot rule (2026-08-21). Every surface that shows pills to a model gets
     # them from here, and `query` already has the request the rule needs — so applying it once, at the source,
     # is what makes a FUTURE surface inherit it instead of re-deriving it. The list-of-surfaces approach was
@@ -575,7 +584,12 @@ def query(prompt: str, budget_tokens: int = DEFAULT_BUDGET_TOKENS, limit: int = 
     # (both 2026-08-21), and `/api/memory/recall` — the bridge `mem_cli` uses — was a FOURTH that nobody had
     # listed, found while looking for a way to stop needing the list.
     mems = [m for m in mems if not background_slot_off_topic(m.get("slot"), prompt)]
-    mems = _pack(mems, budget_tokens)
+    if lane == "all":
+        # Each lane packs in its own budget: one shared budget would let a long own lane push the messages out.
+        mems = (_pack([m for m in mems if m.get("kind") != "msg"], budget_tokens)
+                + _pack([m for m in mems if m.get("kind") == "msg"], budget_tokens))
+    else:
+        mems = _pack(mems, budget_tokens)
     ids = [m["id"] for m in mems]
     a_reforzar = reinforce_ids_for(mems)
     if reinforce_used and a_reforzar:

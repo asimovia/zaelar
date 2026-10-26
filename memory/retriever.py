@@ -83,21 +83,58 @@ _FTS_STOP = frozenset(
 )
 
 
-def vec_search(query_vec: list[float], k: int = POOL_K) -> list[tuple[int, float]]:
+# ── LANES (V2-802 T-03) ──────────────────────────────────────────────────────────────────────────────────
+# Inbound messages (`kind='msg'`: WhatsApp, Telegram, email, cluster — what OTHER people wrote) and the operator's
+# own memory (what he said, what was distilled, what his errands found) are two different questions. In one pool
+# the inbox wins by sheer volume: with hundreds of rows mostly inbox, «what's my phone / what were
+# we booking yesterday» came back as marketing email and group chatter. So the lane is applied INSIDE each channel
+# (a top-K that the inbox has already filled cannot be fixed by filtering afterwards) and `all` never fuses them:
+# it returns the own lane first and the message lane after it, each ranked in its own pool.
+#   · `own`      — everything except inbound messages (the operator-fact recall: turn recall, worker dossier).
+#   · `messages` — only inbound messages («the carpenters' numbers Lorena sent us»).
+#   · `all`      — own lane, then message lane; a message never outranks an own row.
+LANE_OWN = "own"
+LANE_MESSAGES = "messages"
+LANE_ALL = "all"
+_VEC_LANE_OVERFETCH = 4     # vec0 KNN cannot take a JOIN (see vec_search_paraphrases): over-fetch, then filter
+
+
+def _lane_sql(lane: str, col: str = "kind") -> str:
+    """The SQL condition that keeps a row in `lane` ('' for `all`). One home for the rule, read by every channel."""
+    if lane == LANE_OWN:
+        return f"{col} != 'msg'"
+    if lane == LANE_MESSAGES:
+        return f"{col} = 'msg'"
+    return ""
+
+
+def _keep_lane(pairs: list[tuple[int, float]], lane: str, k: int) -> list[tuple[int, float]]:
+    """Filter a ranked (id, score) list to `lane`, keeping its order, capped at `k`."""
+    cond = _lane_sql(lane)
+    if not cond or not pairs:
+        return pairs[:k]
+    ids = [p[0] for p in pairs]
+    ph = ",".join("?" * len(ids))
+    keep = {r["id"] for r in _db.get_db().query(f"SELECT id FROM memories WHERE id IN ({ph}) AND {cond}", ids)}
+    return [p for p in pairs if p[0] in keep][:k]
+
+
+def vec_search(query_vec: list[float], k: int = POOL_K, lane: str = "all") -> list[tuple[int, float]]:
     db = _db.get_db()
     if not db.vec_available:
         return []
     try:
+        fetch = k if lane == "all" else k * _VEC_LANE_OVERFETCH
         rows = db.query(
             "SELECT memory_id, distance FROM vec_memories WHERE embedding MATCH ? ORDER BY distance LIMIT ?",
-            (_pack(query_vec), k),
+            (_pack(query_vec), fetch),
         )
-        return [(r["memory_id"], r["distance"]) for r in rows]
+        return _keep_lane([(r["memory_id"], r["distance"]) for r in rows], lane, k)
     except Exception:
         return []
 
 
-def vec_search_paraphrases(query_vec: list[float], k: int = POOL_K) -> list[tuple[int, float]]:
+def vec_search_paraphrases(query_vec: list[float], k: int = POOL_K, lane: str = "all") -> list[tuple[int, float]]:
     """V2-031 T2: como `vec_search()`, pero sobre `vec_paraphrases` — mapeando de vuelta al `memory_id` REAL vía
     `paraphrase_index`. Una paráfrasis nunca es un resultado por sí misma, solo un canal MÁS de evidencia a
     favor de la píldora que representa; `search()` la pasa a `rrf()` como una lista ranked independiente (igual
@@ -113,7 +150,7 @@ def vec_search_paraphrases(query_vec: list[float], k: int = POOL_K) -> list[tupl
         # → mapear `paraphrase_index.id → memory_id` en una segunda consulta normal.
         hits = db.query(
             "SELECT id, distance FROM vec_paraphrases WHERE embedding MATCH ? ORDER BY distance LIMIT ?",
-            (_pack(query_vec), k),
+            (_pack(query_vec), k if lane == "all" else k * _VEC_LANE_OVERFETCH),
         )
         if not hits:
             return []
@@ -122,12 +159,12 @@ def vec_search_paraphrases(query_vec: list[float], k: int = POOL_K) -> list[tupl
         rows = db.query(
             f"SELECT id, memory_id FROM paraphrase_index WHERE id IN ({placeholders})", pids)
         mid_by_pid = {r["id"]: r["memory_id"] for r in rows}
-        return [(mid_by_pid[h["id"]], h["distance"]) for h in hits if h["id"] in mid_by_pid]
+        return _keep_lane([(mid_by_pid[h["id"]], h["distance"]) for h in hits if h["id"] in mid_by_pid], lane, k)
     except Exception:
         return []
 
 
-def fts_search(prompt: str, k: int = POOL_K) -> list[tuple[int, float]]:
+def fts_search(prompt: str, k: int = POOL_K, lane: str = "all") -> list[tuple[int, float]]:
     db = _db.get_db()
     if not db.fts_available:
         return []
@@ -135,11 +172,21 @@ def fts_search(prompt: str, k: int = POOL_K) -> list[tuple[int, float]]:
     if not q:
         return []
     try:
-        rows = db.query(
-            "SELECT rowid, bm25(fts_memories) AS rank FROM fts_memories "
-            "WHERE fts_memories MATCH ? ORDER BY rank LIMIT ?",
-            (q, k),
-        )
+        cond = _lane_sql(lane, "m.kind")
+        if cond:
+            # The lane goes INSIDE the top-K: FTS5 ranks in the same query as the JOIN, so the K slots are spent
+            # on rows of this lane only.
+            rows = db.query(
+                "SELECT f.rowid AS rowid, bm25(fts_memories) AS rank FROM fts_memories f "
+                f"JOIN memories m ON m.id = f.rowid WHERE fts_memories MATCH ? AND {cond} ORDER BY rank LIMIT ?",
+                (q, k),
+            )
+        else:
+            rows = db.query(
+                "SELECT rowid, bm25(fts_memories) AS rank FROM fts_memories "
+                "WHERE fts_memories MATCH ? ORDER BY rank LIMIT ?",
+                (q, k),
+            )
         return [(r["rowid"], r["rank"]) for r in rows]
     except Exception:
         return []
@@ -162,7 +209,8 @@ def _recency(last_access: int | None, now: int) -> float:
 
 
 def graph_expand(results: list[dict], top: int = 6, max_add: int = 8, discount: float = 0.5,
-                 concept_discount: float = 1.0, ppr_max_add: int = 6, ppr_discount: float = 0.35) -> list[dict]:
+                 concept_discount: float = 1.0, ppr_max_add: int = 6, ppr_discount: float = 0.35,
+                 lane: str = "all") -> list[dict]:
     """Añade vecinos por `edges` de los `top` mejores resultados (opcional). No duplica; score descontado.
 
     GRAFO DE CONCEPTOS (T126): si el parent es un NODO-CONCEPTO (kind='concept') que casó la query (p. ej.
@@ -213,7 +261,8 @@ def graph_expand(results: list[dict], top: int = 6, max_add: int = 8, discount: 
                 "FROM memories WHERE id=? AND valid=1 "
                 # CUARENTENA: el contenido de peers/agentes no confiables (trust='untrusted') NUNCA aflora por
                 # recall semántico (ni por el grafo de conceptos) — solo por consulta explícita `recent_by_source`.
-                "AND (json_extract(meta,'$.trust') IS NULL OR json_extract(meta,'$.trust') != 'untrusted')",
+                "AND (json_extract(meta,'$.trust') IS NULL OR json_extract(meta,'$.trust') != 'untrusted')"
+                + (f" AND {_lane_sql(lane)}" if _lane_sql(lane) else ""),   # an edge never crosses lanes
                 (nid,),
             )
             if row is None or row["kind"] == "concept":   # no expandir concepto→concepto
@@ -226,11 +275,12 @@ def graph_expand(results: list[dict], top: int = 6, max_add: int = 8, discount: 
             if len(added) >= max_add:
                 break
 
-    added += _ppr_expand(parents, present_map, ppr_max_add, ppr_discount)
+    added += _ppr_expand(parents, present_map, ppr_max_add, ppr_discount, lane=lane)
     return results + added
 
 
-def _ppr_expand(parents: list[dict], present_map: dict, max_add: int, discount: float) -> list[dict]:
+def _ppr_expand(parents: list[dict], present_map: dict, max_add: int, discount: float,
+                lane: str = "all") -> list[dict]:
     """PPR desde los mismos `parents` que ya sembraron el 1-hop (V2-111 §9.1). Solo añade lo que el 1-hop
     (arriba, ya reflejado en `present_map`) no trajo — nunca duplica. Kill-switch `ZAELAR_GRAPH_PPR=0`."""
     if not parents or max_add <= 0 or os.getenv("ZAELAR_GRAPH_PPR", "1") == "0":
@@ -259,7 +309,8 @@ def _ppr_expand(parents: list[dict], present_map: dict, max_add: int, discount: 
         row = db.query_one(
             "SELECT id, level, kind, text, importance, weight, last_access, pinned, slot FROM memories "
             "WHERE id=? AND valid=1 AND kind != 'concept' "
-            "AND (json_extract(meta,'$.trust') IS NULL OR json_extract(meta,'$.trust') != 'untrusted')",
+            "AND (json_extract(meta,'$.trust') IS NULL OR json_extract(meta,'$.trust') != 'untrusted')"
+            + (f" AND {_lane_sql(lane)}" if _lane_sql(lane) else ""),
             (nid,),
         )
         if row is None:
@@ -332,18 +383,43 @@ def search(
     reinforce: bool = False,
     rerank: bool = True,
     lexical_only: bool = False,
+    lane: str = "own",
 ) -> list[dict]:
     """Ruta caliente: devuelve recuerdos relevantes ordenados por score (con `score` en cada dict).
 
     `lexical_only` (V2-762): the FTS5 channel alone — no embedding call, no reranker. It is the half of the recall
     that lives entirely on this machine (15-90 ms measured), and the turn's recall budget runs it BESIDE the full
-    search so that a slow embedding provider degrades the recall instead of erasing it."""
-    db = _db.get_db()
-    from .clock import now as _clock_now
-    now = _clock_now()
+    search so that a slow embedding provider degrades the recall instead of erasing it.
+
+    `lane` (V2-802 T-03, see `LANE_*`): `own` (the default — the operator-fact recall) / `messages` search one pool;
+    `all` returns the own lane (up to `limit`) followed by the message lane (up to `limit`), so an inbound message
+    never outranks an own row. Each lane runs its own channels, so `all` costs two lexical/vector passes over one
+    embedding of the query."""
+    if lane not in (LANE_OWN, LANE_MESSAGES, LANE_ALL):
+        lane = LANE_OWN
     if lexical_only:
         rerank = False
     qvec = None if lexical_only else _emb.embed(prompt)
+    lanes = (LANE_OWN, LANE_MESSAGES) if lane == LANE_ALL else (lane,)
+    out: list[dict] = []
+    for ln in lanes:
+        out += _search_lane(prompt, qvec, ln, k=k, limit=limit, expand=expand, rerank=rerank,
+                            lexical_only=lexical_only)
+    if reinforce and out:
+        try:
+            import bus  # lazy: evita acoplar la memoria al bus en import-time
+            bus.emit_sync("memory.reinforce", {"ids": [r["id"] for r in out]})
+        except Exception:
+            pass
+    return out
+
+
+def _search_lane(prompt: str, qvec, lane: str, *, k: int, limit: int, expand: bool, rerank: bool,
+                 lexical_only: bool) -> list[dict]:
+    """One lane of `search()`: channels → RRF → score → rerank → graph, all restricted to `lane`."""
+    db = _db.get_db()
+    from .clock import now as _clock_now
+    now = _clock_now()
     # A query embedded in the WRONG SPACE is worse than no vector channel at all (2026-08-18). The write path has
     # refused to insert a vector on a space mismatch since V2-103 (`writer._mark_embed_pending`), but the READ
     # path had no equivalent check: it embedded the query with whatever backend happened to be active and fused
@@ -359,9 +435,9 @@ def search(
     # Fail-open on the question itself: `space_ok()` returns True when there is no verdict (fresh DB, no stamp).
     from . import reembed as _reembed
     space_ok = (not lexical_only) and _reembed.space_ok() and not getattr(_emb, "last_degraded", False)
-    vec = vec_search(qvec, k=k) if space_ok else []
-    kw = fts_search(prompt, k=k)                        # lexical: always, it does not depend on any space
-    para = vec_search_paraphrases(qvec, k=k) if space_ok else []  # V2-031 T2: third channel, mapped to memory_id
+    vec = vec_search(qvec, k=k, lane=lane) if space_ok else []
+    kw = fts_search(prompt, k=k, lane=lane)             # lexical: always, it does not depend on any space
+    para = vec_search_paraphrases(qvec, k=k, lane=lane) if space_ok else []  # V2-031 T2: third channel
     if not space_ok and not lexical_only:
         _warn_wrong_space()
 
@@ -371,8 +447,10 @@ def search(
         toks = _FTS_TOKEN.findall(prompt.lower())
         if toks:
             like = "%" + toks[0] + "%"
+            cond = _lane_sql(lane)
             rows = db.query(
-                "SELECT id FROM memories WHERE valid=1 AND lower(text) LIKE ? ORDER BY updated DESC LIMIT ?",
+                "SELECT id FROM memories WHERE valid=1 AND lower(text) LIKE ? "
+                + (f"AND {cond} " if cond else "") + "ORDER BY updated DESC LIMIT ?",
                 (like, k),
             )
             fused = {r["id"]: 1.0 for r in rows}
@@ -387,7 +465,8 @@ def search(
         f"FROM memories WHERE valid=1 AND id IN ({placeholders}) "
         # CUARENTENA (multi-fuente): el contenido trust='untrusted' (peers de cluster/agentes ajenos) NUNCA se
         # devuelve por el recall semántico — anti prompt-injection. Solo aflora por `memory.recent_by_source`.
-        f"AND (json_extract(meta,'$.trust') IS NULL OR json_extract(meta,'$.trust') != 'untrusted')",
+        f"AND (json_extract(meta,'$.trust') IS NULL OR json_extract(meta,'$.trust') != 'untrusted')"
+        + (f" AND {_lane_sql(lane)}" if _lane_sql(lane) else ""),
         ids,
     )
     results: list[dict] = []
@@ -416,7 +495,7 @@ def search(
     results = results[:limit]
 
     if expand:
-        results = graph_expand(results)
+        results = graph_expand(results, lane=lane)
         results.sort(key=lambda r: r["score"], reverse=True)
 
     # A concept node is a SEED, not an answer (V2-114 F4.1, 2026-08-18). `graph_expand` needs them near the top
@@ -429,12 +508,4 @@ def search(
     # @3 +0.4pp, @5 +0.8pp, @10 +0.0pp — never negative. Modest: an earlier inspection of 6 cases suggested it was
     # far more frequent and the full measurement disproved that. It is applied anyway because it is CORRECT (a node
     # with no content is not an answer), not because of the delta.
-    results = [r for r in results if r.get("kind") != "concept"]
-
-    if reinforce and results:
-        try:
-            import bus  # lazy: evita acoplar la memoria al bus en import-time
-            bus.emit_sync("memory.reinforce", {"ids": [r["id"] for r in results]})
-        except Exception:
-            pass
-    return results
+    return [r for r in results if r.get("kind") != "concept"]
