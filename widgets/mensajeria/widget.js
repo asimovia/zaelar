@@ -249,6 +249,16 @@ function injectStyles(){
   .hb-msg .mnav.on .mfn{background:var(--hb-accent,#3D6FE0);color:var(--canvas,#fff)}
   .hb-msg .mfn{font-size:11px;font-weight:700;min-width:16px;height:16px;padding:0 5px;border-radius:999px;flex:0 0 auto;
     display:inline-flex;align-items:center;justify-content:center;background:var(--hb-neutral,#3a4a5c);color:var(--hb-ink,#fff)}
+  .hb-msg .mrules{margin-top:10px;padding:8px 6px 0;border-top:1px solid var(--hb-line-subtle,#eef1f6);
+    display:flex;flex-direction:column;gap:2px;flex:0 0 auto}
+  .hb-msg .mruleshd{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
+    color:var(--hb-muted-2,#7d8a9c);padding:0 4px 4px}
+  .hb-msg .mrule{display:flex;align-items:flex-start;gap:4px;font-size:12.5px;color:var(--hb-muted,#5b6b82);
+    padding:3px 0 3px 4px;line-height:1.35}
+  .hb-msg .mrulet{flex:1 1 auto;min-width:0;overflow-wrap:anywhere}
+  .hb-msg .mrulex{border:0;background:transparent;color:var(--hb-muted-2,#7d8a9c);width:24px;height:24px;
+    border-radius:7px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto}
+  .hb-msg .mrulex:hover{background:var(--hb-hover,#eef3f9);color:var(--hb-risk,#e5484d)}
   .hb-msg .mrailsep{height:1px;background:var(--hb-line-subtle,#eef1f6);margin:8px 6px;flex:0 0 auto}
   .hb-msg .mdrawerbtn{display:none;align-items:center;gap:8px;border:1px solid var(--hb-line,#e3e8f0);
     background:var(--hb-bg,#fff);color:var(--hb-ink,#0d1622);font:inherit;font-size:13.5px;font-weight:600;
@@ -261,6 +271,7 @@ function injectStyles(){
     .hb-msg .mnav .mnl,.hb-msg .mcompose .mnl{display:none}
     .hb-msg .mnav .mfn{position:absolute;top:0;right:-4px;min-width:14px;height:14px;font-size:9.5px;padding:0 3px}
     .hb-msg .mcompose{width:40px;padding:0;justify-content:center;align-self:center}
+    .hb-msg .mrules{display:none}
   }
   @container (max-width:440px){
     .hb-msg .mcgrid{grid-template-columns:minmax(0,1fr)}
@@ -274,6 +285,7 @@ function injectStyles(){
     .hb-msg .mcgrid.open .mnav .mnl,.hb-msg .mcgrid.open .mcompose .mnl{display:inline}
     .hb-msg .mcgrid.open .mnav .mfn{position:static}
     .hb-msg .mcgrid.open .mcompose{width:auto;padding:0 14px;align-self:flex-start}
+    .hb-msg .mcgrid.open .mrules{display:flex}
   }
   .hb-msg .mlist{max-height:none}
   .hb-msg .mdptr{display:flex;align-items:center;gap:9px;width:100%;box-sizing:border-box;margin:0 0 6px;padding:0 12px;
@@ -1917,6 +1929,21 @@ function mailRail(mb, data, ctx, act, rerender){
     rail.appendChild(railEntry(ROLE_ICON[f.role] || "tag", label, n, f.name === mb.folder,
                                () => act("mail_folder", {folder: f.name}), "", rerender));
   });
+  // His criteria over the categories (V2-807 T-03): rows of his rules, in his words, each removable here too.
+  const mine = mb.rules || [];
+  if(mine.length){
+    const box = el("div", "mrules");
+    box.appendChild(el("div", "mruleshd", tt("mail_rules", null, "Tus criterios")));
+    mine.forEach(r => {
+      const row = el("div", "mrule");
+      row.appendChild(el("span", "mrulet", r.text));
+      const x = iconButton("close", tt("rule_forget", null, "Quitar este criterio"), "mrulex");
+      x.onclick = () => { markBusy(x); act("mail_sort", {forget: r.id}); };
+      row.appendChild(x);
+      box.appendChild(row);
+    });
+    rail.appendChild(box);
+  }
   return rail;
 }
 

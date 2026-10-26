@@ -61,10 +61,16 @@ def list_key(folder: str, category: str | None = None) -> str:
     return f"{folder}#{category}" if category else str(folder)
 
 
-def categories(db: dict) -> list[dict]:
-    """The Inbox's categories as the PROVIDER reported them (`[{key, unread}]`) — never a list of our own. A server
-    that sorts nothing reports none, and the Inbox is one entry."""
-    return [c for c in _idx(db).get("categories") or [] if isinstance(c, dict) and c.get("key")]
+def categories(db: dict, *, include_hidden: bool = False) -> list[dict]:
+    """The Inbox's categories as the PROVIDER reported them (`[{key, unread}]`) — never a list of our own — minus
+    the ones he asked not to see (a rule, `mail_rules.py`). A server that sorts nothing reports none, and the Inbox
+    is one entry."""
+    cats = [c for c in _idx(db).get("categories") or [] if isinstance(c, dict) and c.get("key")]
+    if include_hidden:
+        return cats
+    from . import mail_rules
+    off = mail_rules.hidden()
+    return [c for c in cats if str(c["key"]) not in off]
 
 
 def default_category(db: dict) -> str | None:
@@ -74,8 +80,26 @@ def default_category(db: dict) -> str | None:
 
 
 def _routes(db: dict) -> list[dict]:
-    """His criteria over the provider's categories, applied by the connector to each category's query."""
-    return []
+    """His criteria over the provider's categories (rows of the rules table, `mail_rules.py`), applied by the
+    connector to each category's query."""
+    from . import mail_rules
+    return mail_rules.routes()
+
+
+def rules_changed(db: dict) -> None:
+    """A criterion changed: every category page is stale (its query changed), so each is asked again on entry, and
+    the one on screen at once. A category he hid is left for the provider's first visible one."""
+    idx = _idx(db)
+    for key, lst in (idx.get("lists") or {}).items():
+        if str(key).startswith("INBOX#"):
+            lst["answered_at"] = lst["asked_at"] = None       # an ask in flight carries the old query
+    if str(idx.get("folder") or "").upper() != "INBOX" or idx.get("draft") or idx.get("open"):
+        return
+    cat = idx.get("category")
+    if cat not in {str(c["key"]) for c in categories(db)}:
+        go(db, "INBOX")
+    else:
+        ask(db, "INBOX", category=cat, force=True)
 
 
 def ask(db: dict, folder: str, *, category: str | None = None, older: bool = False, force: bool = False) -> bool:
@@ -112,8 +136,8 @@ def go(db: dict, folder: str, category: str | None = None) -> str:
     idx = _idx(db)
     keys = {str(c["key"]).lower() for c in categories(db)}
     ref = str(folder or "").strip().lower()
-    if not category and ref in keys:
-        folder, category = "INBOX", ref
+    if not category and ref in {str(c["key"]).lower() for c in categories(db, include_hidden=True)}:
+        folder, category = "INBOX", ref          # an entry of the Inbox — even one he hid: the Inbox, then
     name = folder_name(db, folder)
     cat = str(category or "").strip().lower() or None
     if name.upper() != "INBOX" or cat not in keys:
@@ -264,12 +288,18 @@ def view(db: dict) -> dict:
         draft = None                       # sent or discarded meanwhile: the screen goes back to its folder
     return {"folders": list(idx.get("folders") or []), "folder": folder, "role": role_of(db, folder),
             "category": cat, "categories": categories(db), "counts": dict(idx.get("counts") or {}),
+            "rules": _listing(),
             "unread": unread(db, folder, cat),
             "rows": rows, "loading": _fresh(lst.get("asked_at")), "asked": bool(lst.get("answered_at")
                                                                                 or lst.get("asked_at")),
             "more": not lst.get("complete") and bool(lst.get("cursor")), "error": lst.get("error") or "",
             "open": opened, "draft": draft, "back_to": idx.get("back_to") if draft else None,
             "note": n if (n := idx.get("note")) and _fresh_note(n) else None}
+
+
+def _listing() -> list[dict]:
+    from . import mail_rules
+    return mail_rules.listing()
 
 
 def unread(db: dict, folder: str, category: str | None = None) -> int | None:

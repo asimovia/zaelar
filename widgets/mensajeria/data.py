@@ -329,7 +329,7 @@ from .actions import (  # noqa: E402,F401
     _a_set_media_days, _a_create_group, _a_cancel_send)
 from .mail_actions import (  # noqa: E402,F401
     _a_mail_folder, _a_mail_more, _a_mail_open, _a_mail_back, _a_open_draft, _a_save_draft, _a_discard_draft,
-    _a_compose)
+    _a_compose, _a_mail_sort)
 from . import mailbox as _mailbox  # noqa: E402
 
 
@@ -376,6 +376,7 @@ ACTIONS = {
     "save_draft": _a_save_draft,
     "discard_draft": _a_discard_draft,
     "compose": _a_compose,
+    "mail_sort": _a_mail_sort,
 }
 
 

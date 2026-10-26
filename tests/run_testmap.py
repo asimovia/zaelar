@@ -5560,6 +5560,8 @@ DOMAINS: list[dict] = [
                                   "tests/browser/unit/mensajeria/test_the_mail_rail_paints_at_every_width.py"]},
         {"id": "4.279", "title": "A draft is the whole card: STATE that survives the card mounting after open_draft and a section-only order, its only content at every width (RENDERED), a one-line pointer on any list, and «back» to the list it came from",
             "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_a_draft_is_the_whole_card.py"]},
+        {"id": "4.280", "title": "His mail criteria over the provider's categories are rows of the rules table (widget:mensajeria): a spoken route or hide is stored in his words, survives a restart, is composed into the provider's query (list and count), shown and removable in the card and by voice, and never moves mail in his real mailbox",
+            "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_his_mail_criteria_are_rules.py"]},
         {"id": "4.252", "title": "The chat list paints, filters by kind and name, loads more and opens a chat (RENDERED)",
             "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_the_chat_list_paints_filters_and_loads_more.py"]},
         {"id": "4.250", "title": "The feedback button is never hidden under another layer",

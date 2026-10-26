@@ -32,6 +32,22 @@ def _a_mail_folder(action, payload) -> dict:
     return {"ok": True, "result": _rows_answer(db), **_d.view_data()}
 
 
+# «Los de Amazon que vayan a Principal», «no me enseñes Social», «quita esa regla»: his criteria over the
+# provider's categories, rows of the rules table (V2-807 T-03). Nothing moves in his real mailbox.
+def _a_mail_sort(action, payload) -> dict:
+    from . import mail_rules
+    db = _d.load_db()
+    declared = [str(c["key"]) for c in _mbx.categories(db, include_hidden=True)]
+    out = mail_rules.apply(payload or {}, declared)
+    if out.get("ok"):
+        _mbx.rules_changed(db)
+        _shown(db)
+        _d.store.save(_d.WIDGET_ID, db)
+        return {"ok": True, "result": {"changed": out["changed"], "rule": out["said"],
+                                       "rules": [x["text"] for x in mail_rules.listing()]}, **_d.view_data()}
+    return {**out, **_d.view_data()}
+
+
 # «Cargar más» at the bottom of a folder.
 def _a_mail_more(action, payload) -> dict:
     db = _d.load_db()

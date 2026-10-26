@@ -403,6 +403,20 @@
       "safe": true,
       "view": true
     },
+    "mail_sort": {
+      "desc": "Cambia SUS criterios de las categorías de la bandeja (las que da el proveedor; por defecto, las de Gmail tal cual): «los de Amazon que vayan a Principal» → from + to; «no me enseñes Social» → hide; «vuelve a enseñarme Social» → show; «quita esa regla» → forget. Se guarda como regla suya y NO mueve nada en su buzón real.",
+      "payload": {
+        "from": "remitente: dirección, dominio o una palabra (amazon.com)",
+        "to": "categoría destino (primary | promotions | social | updates | forums — solo las que dé el proveedor)",
+        "hide": "categoría a ocultar",
+        "show": "categoría a volver a enseñar",
+        "forget": "remitente o id de la regla a quitar",
+        "said": "sus palabras, tal cual"
+      },
+      "effects": [
+        "state.change"
+      ]
+    },
     "mail_more": {
       "desc": "Carga los siguientes mensajes (más antiguos) de la carpeta de correo abierta",
       "payload": {},

@@ -63,11 +63,13 @@ def _page():
     s.close()
     srv = subprocess.Popen([sys.executable, "-m", "http.server", str(port), "--bind", "127.0.0.1"],
                            cwd=_ENGINE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    for _ in range(50):
+    deadline = time.monotonic() + 10          # a clock, not an iteration count: the server is up or we say so
+    while True:
         try:
             socket.create_connection(("127.0.0.1", port), 0.2).close()
             break
         except OSError:
+            assert time.monotonic() < deadline, "the static server never came up"
             time.sleep(0.1)
     try:
         with sync_playwright() as pw:
