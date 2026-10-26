@@ -176,8 +176,6 @@ def write(sentence: str, context: str = "", *, chat=None) -> dict:
 
 
 def listing_line(rows: list[dict]) -> str:
-    """His rows as one line a person reads: his own words, or the scope and value when he gave none."""
-    from .prompt import scope_label
-    bits = [r["text"] or f"{scope_label(r['scope'])}: {r['key']} = {r['value']}" for r in rows]
-    return " · ".join(dict.fromkeys(bits))
-
+    """His rows as he reads them, grouped by where they apply — never a scope, a key or an id (`rules/labels.py`)."""
+    from .labels import grouped_line
+    return grouped_line(rows)

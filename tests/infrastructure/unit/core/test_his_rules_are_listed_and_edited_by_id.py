@@ -80,3 +80,67 @@ def test_the_settings_section_is_built_from_the_panels_own_pieces():
     assert "r.choices" in sec, "the closed set comes from the server, never a second list in the page"
     assert "/api/rules" in (ENGINE / "frontend/app/services/api.js").read_text("utf-8")
     assert "rules_router" in (ENGINE / "server/__init__.py").read_text("utf-8")
+
+
+# ── he never sees a scope, a key or an id ───────────────────────────────────────────────────────────────
+
+_TECHNICAL = ("/", "@", "widget:", "item:", "default:", "r_", "m_")
+
+
+def _his_rows():
+    return [
+        rules.add("messaging/email/send_new", "gate", "consent", "ask", text="pregúntame antes de mandar correos"),
+        rules.add("messaging/*/send_new", "gate", "consent", "allow", except_=["messaging/telegram", "item:c7"]),
+        rules.add("widget:youtube", "pref", "note", "nada de vídeos largos", text="nada de vídeos largos"),
+        rules.add("widget:agenda/add_meeting", "pref", "note", "reuniones de 30 minutos", text="reuniones de 30 minutos"),
+        rules.add("item:c7", "gate", "consent", "never"),
+        rules.add("voice", "pref", "fillers", "off"),
+    ]
+
+
+@pytest.mark.parametrize("lang", ["es", "en"])
+def test_nothing_the_panel_shows_is_a_scope_a_key_or_an_id(client, lang):
+    from tests.lang import speaking
+    with speaking(lang):
+        mine = _his_rows()
+        body = client.get("/api/rules").json()
+    ids = {r["id"] for g in body["groups"] for r in g["rows"]}
+    shown = [g["label"] for g in body["groups"]]
+    for g in body["groups"]:
+        for r in g["rows"]:
+            shown += [r["name"], *r["except_labels"]]
+    for s in shown:
+        assert s.strip(), "every place and every row has words"
+        assert not any(tok in s for tok in _TECHNICAL), f"technical text on his screen: {s!r}"
+        assert not any(i in s for i in ids), f"an id on his screen: {s!r}"
+    labels = {g["scope"]: g["label"] for g in body["groups"]}
+    assert labels["messaging/email/send_new"] == ("Correo · enviar mensajes nuevos" if lang == "es"
+                                                  else "Email · send new messages")
+    assert labels["global"] == ("En general" if lang == "es" else "In general")
+    assert labels["widget:youtube"] == "YouTube"
+    assert {r["name"] for r in _rows(client).values() if r["id"] == mine[0]["id"]} == \
+        {"pregúntame antes de mandar correos"}, "the row label stays his own words"
+
+
+@pytest.mark.parametrize("lang", ["es", "en"])
+def test_what_rules_do_i_have_is_answered_in_plain_words_grouped_by_place(monkeypatch, lang):
+    import json
+
+    from nucleo.flash import style_directive
+    from rules import shape
+    from tests.lang import speaking
+    rules._reset_for_tests()
+    with speaking(lang):
+        mine = _his_rows()
+        monkeypatch.setattr(shape, "_chat", lambda system, user: json.dumps({"op": "list", "say": "Estas son"}))
+        line = style_directive.repeat_back(shape.write("¿qué reglas tengo?"))
+        monkeypatch.setattr(shape, "_chat", lambda system, user: json.dumps(
+            {"op": "remove", "doubt": [mine[0]["id"], mine[1]["id"]], "say": "¿Cuál?"}))
+        doubt = style_directive.repeat_back(shape.write("olvida la de los mensajes"))
+    for spoken in (line, doubt):
+        assert not any(tok in spoken for tok in _TECHNICAL), f"technical text in a spoken line: {spoken!r}"
+        assert not any(r["id"] in spoken for r in mine)
+    head = "Correo · enviar mensajes nuevos: pregúntame antes de mandar correos." if lang == "es" else \
+        "Email · send new messages: pregúntame antes de mandar correos."
+    assert head in line, line
+    assert ("YouTube: nada de vídeos largos." in line), "grouped by the place, named the way the card is named"

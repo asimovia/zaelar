@@ -140,6 +140,9 @@ There is no always-on block of «the newest N rules».
 
 ## Listing and editing
 
-The same rows are the list: by voice («what rules do I have?»), in ⚙ Settings → Rules (grouped by scope, with
-their source; edit the value, toggle active, delete by id) and over `/api/rules`. A default shows as a default;
-editing it writes a user row at the same scope.
+He never sees a scope, a key or an id: he says his rules and the system files them. The same rows are the list —
+by voice («what rules do I have?») and in ⚙ Settings → Rules — always in his words: a row is his own sentence (a
+row he never worded is named by what it sets), and its place is named from declared data in his language
+(`rules/labels.py`: «In general», «Email · send new messages», «YouTube»), grouped the same way on screen and
+aloud. Ids and scopes are the handles the panel and `/api/rules` use underneath; only the model's own permission
+line keeps the technical scope. A default shows as a default; editing it writes a user row at the same scope.

@@ -27,11 +27,14 @@ def _choices(r: dict) -> list | None:
 
 
 def _view(r: dict) -> dict:
-    from rules import cascade
-    from rules.prompt import scope_label
+    """A row for the panel. `id`, `scope`, `key` and `except` are the panel's handles; what it SHOWS is `label`
+    (where it applies), `name` (his words, or what the row sets) and `except_labels` — all in his language."""
+    from rules import cascade, labels
     return {**{k: r[k] for k in ("id", "scope", "kind", "key", "value", "except", "source", "text", "created_at",
                                  "active", "until")},
-            "label": scope_label(r["scope"]), "live": cascade.live(r), "choices": _choices(r)}
+            "label": labels.human(r["scope"]), "name": labels.row_line(r, with_value=False),
+            "except_labels": [labels.human(e) for e in r.get("except") or []],
+            "live": cascade.live(r), "choices": _choices(r)}
 
 
 @router.get("/api/rules")

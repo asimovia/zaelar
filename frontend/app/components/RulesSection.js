@@ -23,10 +23,9 @@ function control(r) {
 function rowHtml(r) {
   const mine = r.source === "user";
   const until = r.until ? " · " + t("config.rules.until", { at: new Date(r.until * 1000).toLocaleString() }) : "";
-  const except = (r.except || []).length ? " · " + t("config.rules.except", { what: r.except.join(", ") }) : "";
+  const except = (r.except_labels || []).length ? " · " + t("config.rules.except", { what: r.except_labels.join(", ") }) : "";
   const hint = (mine ? t("config.rules.mine") : t("config.rules.default")) + except + until + (r.live ? "" : " · " + t("config.rules.off"));
-  const named = t(`config.rules.k.${r.key}`);    // a key's name in his language; the key itself if it has none
-  const label = r.text || (r.key === "note" ? String(r.value) : (named.startsWith("config.") ? r.key : named));
+  const label = r.name;            // his words, or what the row sets — in his language, from the server
   const acts = mine
     ? `<div class="cf-acts"><label class="cf-hint"><input type="checkbox" class="cf-rule-on" data-rule="${esc(r.id)}"${r.active ? " checked" : ""}/> ${esc(t("config.rules.active"))}</label>` +
       `<button type="button" class="cf-btn cf-btn-ghost cf-rule-del" data-rule="${esc(r.id)}">${esc(t("config.rules.delete"))}</button></div>`
