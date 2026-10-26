@@ -5614,6 +5614,8 @@ DOMAINS: list[dict] = [
         # V2-807 T-13 — disarmed 2026-10-26 (screen first, the draft branch, the open-mail branch) → each red.
         {"id": "4.284", "title": "Reading the mail card answers from what its screen holds: with a draft or one mail open the read is THAT object and the inbox is not searched; with a list on screen the inbox is searched as before (V2-807 T-13)",
             "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_a_read_answers_from_what_the_screen_holds.py"]},
+        {"id": "4.295", "title": "Opening the chat wall, or coming back to its Chat tab, lands on the latest message even when the history was written while the wall was closed (RENDERED)",
+            "ch": UNIT, "paths": ["tests/browser/unit/chat/test_the_wall_opens_on_the_latest_message.py"]},
         {"id": "4.252", "title": "The chat list paints, filters by kind and name, loads more and opens a chat (RENDERED)",
             "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_the_chat_list_paints_filters_and_loads_more.py"]},
         {"id": "4.250", "title": "The feedback button is never hidden under another layer",

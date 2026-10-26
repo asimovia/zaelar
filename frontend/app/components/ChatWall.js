@@ -920,7 +920,16 @@ export function ChatWall() {
       rows.push(b);
     }
     listEl.replaceChildren(...rows);
-    listEl.scrollTop = listEl.scrollHeight;
+    pinToLatest();
+  });
+
+  // Opening the wall (or coming back to its Chat tab) lands on the latest message. The rebuild above pins
+  // too, but a list rebuilt while the wall is hidden has no height to scroll, so it opened at the top of the
+  // history: the pin has to happen when the list becomes VISIBLE, after layout.
+  function pinToLatest() { if (listEl) listEl.scrollTop = listEl.scrollHeight; }
+  createEffect(() => {
+    if (!store.chatOpen() || store.chatTab() !== "chat") return;
+    requestAnimationFrame(pinToLatest);
   });
 
   // on first open with NO saved geometry: auto-place like a widget, then focus the input (Chat only)
