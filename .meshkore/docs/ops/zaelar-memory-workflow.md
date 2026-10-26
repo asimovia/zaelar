@@ -42,8 +42,9 @@ these → full workflow:
   `nucleo/flash/memory_cache.py` + `nucleo/flash/prompt.py` (`needs_recall`/`compose_recall`).
 - **Consolidator / forgetting** — `memory/consolidator.py` (promote/dedup/decay/evict) and its trigger from
   `nucleo/loop.py`.
-- **Observability / viewer** — `memory/api.py::map`, `GET /api/memory/map`, the `memory.updated` SSE bridge in
-  `server/__init__.py`, `frontend/app/components/MemoryMap.js`, `kind=memory` rows in `DebugPanel.js`.
+- **Observability / viewer** — `memory/viewer.py` + `GET /api/memory/viewer/*` (`server/memory_viewer_api.py`),
+  the bounded `memory/api.py::map`, the `memory.updated` SSE bridge in `server/__init__.py`,
+  `frontend/app/components/MemoryMap.js` + `components/memory/`, `kind=memory` rows in `DebugPanel.js`.
 
 **It is NOT triggered by**: a comment, an internal rename, a tweak that touches neither the data contract nor
 any of the interactions above. Carry on as usual.
@@ -75,12 +76,11 @@ any of the interactions above. Carry on as usual.
 | Reader | Where | What to review |
 |---|---|---|
 | **STATE (µs, always in the prompt)** | `memory.state()` → `nucleo/flash/memory_cache._compose` (incl. live UI context: `open_widgets`/`activity`) | `_compose` renders the new fields (lists included); invalidation by `memory.updated` intact. |
-| **Memory map (viewer)** | `memory.map()` → `MemoryMap.js::stateItems` (STATE column) | New STATE fields are rendered in the map (`stateItems` is an explicit whitelist; the row has to be added). |
 | **SHORT (µs, whole working set)** | `memory.recent_short()` → `memory_cache._compose` ("Conversación reciente" block) | It still reads directly (no embeddings) and bounded (limit/max_chars). |
 | **LONG (ms, on demand, off-loop)** | `nucleo/flash/prompt.compose_recall` → `memory.query` → `retriever.search` → **reranker** (`memory/rerank.py`, fail-open); `asyncio.to_thread` + `needs_recall` | It NEVER enters the event loop; scoring stays coherent; the reranker stays fail-open. |
 | **Brain Workers (serial read)** | `hbmem recall` → `POST /api/memory/recall` → `memapi.query()` | It stays read-only and filters `untrusted` (the retriever does it); it never opens the DB. |
 | **SlowBrain (off-hot-path, may use an LLM)** | `nucleo/memory_agent.compose_context` | The only face that may use a recall LLM — verify it stays off-hot-path. |
-| **Viewer / diagnostics** | `memory.map()` → `GET /api/memory/map` → `MemoryMap.js` | It exposes the new columns (`slot`/`meta`); tinting by `memory.updated` intact. |
+| **Viewer / diagnostics** | `memory/viewer.py` → `GET /api/memory/viewer/*` → `MemoryMap.js` + `components/memory/` | Every new list keeps a server cap + cursor and every total a COUNT (node 1.11); a new kind that is not his own fact is kept out of `_OWN_KINDS_SQL`. |
 
 > **Golden latency rule (repeated because it is easy to break):** **LLM on WRITE (off-hot-path), DIRECT queries
 > on READ.** No change may put an LLM or SYNCHRONOUS memory I/O into the voice turn.

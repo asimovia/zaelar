@@ -1104,28 +1104,34 @@ Two surfaces to SEE the memory working in real time:
   **module=memory · layer (state/short/long/slow) · request → result (number of cards/chars) · time `mem_ms`**
   (emitted in `voice/engine/llm/providers/nucleo.py` after `build_flash_system`); writes/queries arrive labelled
   through the SSE bridge. Detail in `zaelar-observability.md`.
-- **The "Memory map" viewer 🧠 — TWO VIEWS** (`frontend/app/components/MemoryMap.js`, full-screen overlay, opened
-  from the orb's bowl). A **toggle** switches between two representations of the same memory; the key idea:
-  separating **CONTENT** from **ORGANISATION**, and NOT mixing short with long (they are different storages in
-  reality → different maps):
-  - **SLOTS** (how it is STORED): three proportional COLUMNS **STATE 10% · SHORT 20% · LONG 70%** (the three-speed
-    READ model); each memory is a node with text+scoring+date+metadata. It is the view with **live per-node
-    tinting** (`[data-mid]`). The **STATE** column also shows the LIVE UI CONTEXT — **open widgets**, **tasks in
-    progress** and **rails in progress** — so the operator SEES what the brain has in front of it at every moment.
-  - **CONCEPTS** (how it is ORGANISED): a **network map** — each concept a **circular node sized by its number of
-    data points** (the number INSIDE), joined to OTHER concepts by **co-occurrence** edges (they share a pill;
-    thickness = number shared). NO content. **SHORT and LONG = TWO SEPARATE MAPS** (stacked panels): LONG from the
-    persisted graph (`edges`), SHORT derived on the fly (`memory/concepts.py::derive_concepts` — short term does not
-    persist edges). The concept vocabulary is centralised in **`memory/concepts.py`** (substrate): one place for how
-    it is WRITTEN (the `memory_agent` backstop) and how the short-term map is DRAWN.
-  - Data: `GET /api/memory/map` (`memory.api.map()`, read-only, no-cache) → `{state, layers:{short,long},
-    concept_graph:{short:{nodes[+count],links[+weight]}, long:{…}}, concepts, edges, counts}`.
+- **The memory viewer 🧠 — one tab per store** (V2-808; `frontend/app/components/MemoryMap.js` + `components/memory/`,
+  full-screen overlay opened from the orb's bowl): **Overview · Graph · Facts · Conversation · Messages · Files · Apps ·
+  System**. The contract is that NO store is ever loaded whole, because one person's store grows and the device that
+  draws it may be a phone:
+  - **Totals are COUNTs** on the server (`GET /api/memory/viewer/stats`, cached a few seconds): facts, conversation,
+    messages (the archive), files, contacts, agenda, apps (each widget's data folder, walked in a background thread
+    and reported `pending` until measured), rules, learnt phrases, logs, vault (a number, nothing else).
+  - **Every list is a capped page with a cursor** (`facts`, `conversation`, `system`: `before_id`; `messages`:
+    `(ts, id)` — a backfill inserts old messages late; `files`/`apps`: offset), newest first, server-side search,
+    `more`. Caps: 200 rows, 60 files.
+  - **The graph is aggregated on the server** (`memory/viewer.py::graph`): concepts with counts and concept↔concept
+    weights over a time window (scan cap 20.000 rows), bounded by the node budget the client sends (clamped
+    50..3000). LONG pills hang from their persisted concept edges, SHORT ones from `memory/concepts.py::derive_concepts`
+    (the same substrate the writer's backstop uses). Inbound messages (`kind='msg'`) are out unless the messages lane
+    is asked for. Raw memories travel only for the selected concept, one page at a time (`/concept`).
+  - **The device budget** (`components/memory/budget.js`): phone 300 nodes / 50 rows, laptop 1.500 / 100, big screen
+    3.000 / 200, from `navigator.deviceMemory`, `hardwareConcurrency` and the viewport; an unknown reading never
+    promotes a device.
+  - **Drawing**: one `<canvas>` sized to its section and re-fitted whenever the layout moves or the section resizes;
+    labels and dots by level of detail; the force layout runs in `force-worker.js` (hub↔hub repulsion, grid
+    collision, springs split by degree, capped velocity) and stops posting once it settles.
+  - `GET /api/memory/map` (`memory.api.map()`) stays for probes and tests, BOUNDED: valid rows, the newest per layer
+    up to 500, the edges of those rows, totals as COUNTs.
 - **Real time + tinting** (gated by the `memory_observability` flag, default ON, in `config/settings.py`): the server
-  bridges `memory.updated` from the bus → topic `observer` → `/events` (`server/__init__.py`). Both views
-  **re-fetch** live; in SLOTS each event carries `op`+`ids` → the viewer **tints** the node (`[data-mid]`) for a few
-  seconds: **green** = insert (`write`), **amber** = overwrite (`supersede`/`reinforce`/`state`), **blue** = query
-  (`compose_recall` emits `op:"query"` with the ids it touched). `services/sse.js` routes `store.bumpMemory()`
-  (refetch) + `store.pushMemPulse({op,ids})` (tint).
+  bridges `memory.updated` from the bus → topic `observer` → `/events` (`server/__init__.py`). While the viewer is
+  open, only the VISIBLE tab refreshes (debounced): the graph re-aggregates and keeps its node positions, a list
+  prepends only the rows it does not show yet; each event's `ids` ring the touched memory dots for a few seconds.
+  `services/sse.js` routes `store.bumpMemory()` (refresh) + `store.pushMemPulse({op,ids})` (ring).
 
 ## Evaluating the memory — HOW a memory system is tested (theory + practice)
 

@@ -361,6 +361,10 @@ below is the first kind, or it names the mechanism that replaced the second.
   default; `messages` and `all` are asked for); recall returns id, date, level, kind, source and session, and his
   own past conversation has one reader (`memory.conversation`, `mem_cli history`). — since 2026-10-26 · nodes 1.2,
   1.10 · `memory/retriever.py`, `memory/history.py`, `server/memory_routes.py`.
+- **CRIT-M10 · The memory viewer never loads a whole store.** Totals are COUNTs; every list has a server cap and a
+  cursor; the graph is aggregated on the server and bounded by the node budget of the device that draws it, and its
+  canvas is fitted to its own panel. — since 2026-10-26 · nodes 1.11, 1.12 · `memory/viewer.py`,
+  `server/memory_viewer_api.py`, `frontend/app/components/memory/`.
 
 ## 6 · Resilience
 
