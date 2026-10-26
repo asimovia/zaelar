@@ -49,6 +49,7 @@ __all__ = [
     "provenance", "conversation",
     "critical_facts", "salient_long", "map", "viewer",
     "load_episode", "register_episode", "write_episode", "list_episodes", "migrate_inbox",
+    "episode_inbox", "adopt_episode",
     "consolidate", "DEFAULT_BUDGET_TOKENS",
 ]
 
@@ -724,6 +725,20 @@ def write_episode(data: bytes, *, filename: str, mime: str | None = None,
     """Guarda bytes en la memoria episódica (data-dir) + resumen buscable (V2-003). Sustituye a la vieja
     bandeja `files/uploads/`: lo escribe el endpoint de subida. Emite memory.updated. Directo (necesita el id)."""
     ref = _episodic.write_episode(data, filename=filename, mime=mime, summary=summary, importance=importance)
+    _emit("memory.updated", {"op": "episode", "id": ref.get("memory_id"), "name": ref.get("name")})
+    return ref
+
+
+def episode_inbox():
+    """The directory an upload is streamed into before `adopt_episode` (V2-809). Direct."""
+    return _episodic.inbox_dir()
+
+
+def adopt_episode(src_path, *, filename: str, mime: str | None = None,
+                  summary: str | None = None, importance: float | None = None) -> dict:
+    """`write_episode` for a file already streamed to disk: moved, never loaded into memory (V2-809). Emits
+    memory.updated. Direct."""
+    ref = _episodic.adopt_episode(src_path, filename=filename, mime=mime, summary=summary, importance=importance)
     _emit("memory.updated", {"op": "episode", "id": ref.get("memory_id"), "name": ref.get("name")})
     return ref
 

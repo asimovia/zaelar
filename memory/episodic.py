@@ -158,6 +158,38 @@ def write_episode(data: bytes, *, filename: str, mime: str | None = None,
     return ref
 
 
+def inbox_dir() -> Path:
+    """Where an upload is STREAMED while it arrives (V2-809): inside the episodic directory, so adopting it is a
+    rename on the same filesystem, never a second copy of a large file."""
+    d = episodic_dir() / ".incoming"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def adopt_episode(src_path: str | Path, *, filename: str, mime: str | None = None,
+                  summary: str | None = None, importance: float | None = None) -> dict:
+    """Like `write_episode`, for a file already on disk (an upload streamed to `inbox_dir()`): the file is MOVED
+    to its final name (collisions resolved, never overwritten) and registered. The bytes are never loaded."""
+    src = Path(src_path)
+    if mime is None and filename:
+        mime = mimetypes.guess_type(filename)[0]
+    name = _safe_name(filename)
+    stem, ext = os.path.splitext(name)
+    d = episodic_dir()
+    candidate, n = name, 1
+    while (d / candidate).exists():
+        candidate = f"{stem}_{n}{ext}"
+        n += 1
+    path = d / candidate
+    os.replace(src, path)
+    size = path.stat().st_size
+    if summary is None:
+        summary = _auto_summary(path, filename, mime) if size <= 1_048_576 else f"Archivo: {filename}"
+    ref = register(str(path), summary, mime=mime, size=size, importance=importance)
+    ref.update({"path": str(path), "name": path.name, "summary": summary, "bytes": size})
+    return ref
+
+
 def list_episodes(limit: int = 200) -> list[dict]:
     """Listado plano de episodios (nombre/tamaño/mime/resumen), lo más reciente primero. Sustituye a
     `files.store.list_files()` para la verificación y un futuro widget de navegación."""

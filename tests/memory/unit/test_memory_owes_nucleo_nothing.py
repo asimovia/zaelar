@@ -133,6 +133,8 @@ DECLARED_SURFACE = {
     "provenance", "conversation",
     "critical_facts", "salient_long", "map",
     "load_episode", "register_episode", "write_episode", "list_episodes", "migrate_inbox",
+    # 2026-10-26 (V2-809): an upload streamed to disk is adopted by rename, never read into memory.
+    "episode_inbox", "adopt_episode",
     "consolidate", "DEFAULT_BUDGET_TOKENS",
 }
 
