@@ -82,7 +82,8 @@ def _parse_judgement(raw: str | None) -> dict | None:
         s = s[i:j + 1]
     try:
         d = json.loads(s)
-    except Exception:
+    except Exception as e:  # noqa: BLE001 — an unreadable reply is «no verdict»; the caller fails open
+        logger.debug(f"attention_judge: unreadable reply ({e!r}): {s[:80]!r}")
         return None
     v = d.get("directed") if isinstance(d, dict) else None
     if not isinstance(v, bool):
