@@ -119,6 +119,34 @@ is a panel UI keyed to a wide window, and re-fitting it is its own piece of work
 - **A card is hidden while paging, never unmounted.** A video that keeps playing behind another card is correct;
   re-mounting it on every swipe would cut it off. The global stop is what silences it.
 
+### The touch floor, its two exceptions, and the keyboard (V2-813)
+
+The shell holds every card's controls to a thumb (`styles.css`, «TOUCH FLOOR»):
+- every control is at least 44px;
+- every text field is 16px (below that iOS zooms on focus);
+- a row that directly holds controls wraps rather than push the card sideways.
+
+That last rule is right for a toolbar and wrong for two shapes, which are exempt.
+
+- **A row that manages its own width** — tabs that scroll sideways (`role="tablist"`), a thumbnail rail, a title
+  that ellipsizes beside its close (`data-strip`). Wrapping youtube's tabs broke its header into two rows with the
+  right cluster floating between them. A widget whose row scrolls or truncates on its own declares it.
+- **A box that directly holds a text field** is one control (a search pill: field + clear + go). It never wraps, so
+  the field shrinks instead; and it grows with its field, which the floor makes 44px tall.
+
+**The keyboard** (`shell/keyboard.js`). Both phone browsers shrink only the VISUAL viewport, so with a field focused
+the deck kept its full height: the keyboard covered its bottom half and the dock covered the rest. While a field
+inside `.zm-deck` has focus and the visual viewport is clearly shorter than the screen, the root wears `zm-kbd`:
+- the deck is laid over `--zm-vvh`/`--zm-vvt`;
+- the dock and the pips step aside;
+- the field is scrolled into view.
+
+The chat sheet keeps its own composer and is not touched.
+
+Two widget-side rules came out of the same pass:
+- a hover-only affordance holds no space on a touch screen (`@media (hover:none)`);
+- whatever a double-click opens, one tap opens on a coarse pointer.
+
 ### Navigating the deck
 
 Four ways to see and change what is open, all host chrome, none stealing a gesture from the widget:
@@ -316,6 +344,18 @@ A restart forgets it and every screen re-registers on reconnect. A screen whose 
 screen shows the chip.
 
 ## Testing
+
+**The phone pass** (node **4.301**, `tests/browser/e2e/mobile/phone_pass.py [ids] [--tabs]`). Every native app is
+opened in the REAL shell (`/m`) on Playwright's iPhone 14 (WebKit) and Pixel 7 (Chromium) and screenshotted, tab by
+tab. It runs against a preview of the engine's routers in a temp workspace holding a COPY of each app's state, with
+no LiveKit router and every session request aborted. It measures four things:
+- sideways scroll;
+- anything escaping the screen;
+- inputs under 16px;
+- wrapped tab strips.
+
+The measurement passed all sixteen apps while the screenshots showed real breakage, so the pass ends when the
+pictures are looked at. The keyboard has its own rendered node, **4.300**.
 
 Node **4.18** — `tests/browser/unit/mobile/test_mobile_host_contract.mjs` (+ its pytest wrapper). Every assertion
 is derived from a source of truth rather than a hand-copied list, because a hand-copied list keeps passing while the
