@@ -560,6 +560,7 @@ class LangSpec:
     secret_saved: str = ""   # after encrypting a new secret
     secret_need_vault: str = ("")                        # attempting to save without a vault yet
     energy_exhausted: str = ("")                                             # 2026-08-09, real accounts only
+    energy_unconfirmed: str = ("")      # V2-801: stopped because the lease could not be renewed — NOT an empty account
     # SPLIT-FRAGMENT ACCUMULATOR (V2-096, fix 2026-08-15): two SPOKEN lines, delivered out of band
     # (`voice/proactive.speaker()`, same channel as V2-093's lead-in filler), that only exist because staying
     # completely silent left the operator with no way to tell "still listening" from "hung".

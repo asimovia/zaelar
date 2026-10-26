@@ -5584,9 +5584,10 @@ DOMAINS: list[dict] = [
                 "tests/browser/unit/mensajeria/test_writing_to_a_person_who_has_not_written.py"]},
         # V2-785 — running out of Energy was only SPOKEN. Rendered: the notice painted with translated words,
         # its Top up link and the battery both pointing at the ENGINE's account url (#buy), keyboard-reachable.
-        # Disarmed 2026-10-22 (notice never gets `.on`) → red.
+        # Disarmed 2026-10-22 (notice never gets `.on`) → red. V2-801: a lease that could not be renewed next to a
+        # lit battery paints the PAUSED notice (no Top up, never «out of Energy»); disarmed 2026-10-26 → red.
         {"id": "4.247", "title": "Sin energía RENDERIZADO: aviso visible y traducido, «Recargar» y la pila enlazan "
-                                "a la cuenta del motor (#buy)",
+                                "a la cuenta del motor (#buy) · en pausa sin «Recargar» si la pila tiene energía",
             "ch": UNIT, "live": True,
             "cmd": "./.venv/bin/python tests/browser/e2e/energy/render_out_of_energy.py"},
         {"id": "4.34", "title": "El aviso de fallo del feedback RENDERIZADO: conectado, con caja, traducido y "
@@ -6397,6 +6398,12 @@ DOMAINS: list[dict] = [
         {"id": "8.24", "title": "Cada modelo de la tabla tiene precio propio", "ch": UNIT, "paths": [
             "tests/infrastructure/unit/core/test_every_model_in_the_table_has_a_price.py",
             "tests/infrastructure/unit/core/test_the_decision_model_is_billed.py"]},
+        # V2-801 — a spent LEASE is not an empty ACCOUNT: running the lease out renews first (bounded backoff), a 5xx is
+        # a failed renewal and never a verdict, the stop carries its cause (energy_denied / lease_unrenewed) and only
+        # the first is told as «empty», the cause survives a restart, boot asks for a fresh lease before any stop
+        # decision, and the notice cannot contradict the battery. Disarmed 2026-10-26 (five guards → red).
+        {"id": "8.25", "title": "A spent lease is not an empty account: renew before stopping, stop with its cause",
+            "ch": UNIT, "paths": ["tests/infrastructure/unit/core/test_a_spent_lease_is_not_an_empty_account.py"]},
         # POLÍTICA DE MODELOS: DeepSeek V4 Pro es el único titular y un proveedor retirado no puede volver a
         # colarse. Es un BARRIDO del árbol, no una aserción de config: el fallo es un NOMBRE reapareciendo en un
         # default, en una lista de candidatos o en un banco, y solo un barrido ve los tres a la vez. Ya había

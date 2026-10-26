@@ -398,12 +398,12 @@ async def connectors_voice_and_health(*, _first_lifespan_entry, _identity, activ
     # ENERGY LEASE — request it at boot, alongside the rest of the warm-up and BEFORE the user can speak,
     # which is when they are already waiting anyway. Instant no-op on self-host. It is a TASK, not an `await`: if the
     # lease endpoint is slow, boot does not hang — without a lease `allowed()` already says no, so waiting here would
-    # not buy any safety.
+    # not buy any safety. A FRESH lease, always (V2-801): the one the previous process persisted is not the answer,
+    # and no stop decision is taken until this request is answered.
     try:
-        import asyncio
         from nucleo import energy_lease
         if energy_lease.enabled():
-            app.state.energy_lease_task = asyncio.create_task(energy_lease.ensure(reason="boot"))
+            app.state.energy_lease_task = energy_lease.start_at_boot()
     except Exception as e:
         _bt._srv.logger.warning(f"energy lease at boot skipped: {e}")
     # Messaging (WhatsApp + Telegram) — MANAGED FROM THE UI, not .env. The supervisor (a) re-starts

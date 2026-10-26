@@ -387,6 +387,7 @@
  "secret_saved": "Done, I've saved it encrypted in your vault.",
  "secret_need_vault": "I can keep it encrypted, but first you need to create a master passphrase for your vault. Opening it now.",
  "energy_exhausted": "You're out of Energy. Pay for a plan or buy more to keep using your agent.",
+ "energy_unconfirmed": "I've stopped because I couldn't confirm your Energy with the service. I'll keep retrying and come back as soon as it answers.",
  "acc_fragment_dropped": "Sorry, I didn't catch what you said before the pause — can you say that again?",
  "acc_still_listening": "Still here, go ahead whenever you're ready.",
  "music": {

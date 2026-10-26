@@ -66,13 +66,23 @@ def test_a_la_mitad_se_pide_renovacion_ANTES_de_quedarse_sin_nada(monkeypatch):
 
 
 def test_agotarse_PARA_de_verdad(monkeypatch):
-    """Without this, “reactive” just means waiting for the cloud to answer. The fuse is what limits the damage."""
+    """Without this, “reactive” just means waiting for the cloud to answer. The fuse is what limits the damage.
+    Since V2-801 running the lease out first ASKS for another one (the slice is spent, not the account); when no
+    renewal comes, the fuse blows all the same."""
     _con_arriendo(monkeypatch)
-    parado = []
-    monkeypatch.setattr(energy_lease, "_schedule", lambda c: c.close())
+    parado, pedidas = [], []
+    monkeypatch.setattr(energy_lease, "_schedule", lambda c: (pedidas.append(c.__name__), c.close()))
     monkeypatch.setattr(energy_lease, "_blow_fuse", lambda: parado.append(1))
     energy_lease.note_spend(100.0)
     assert energy_lease.allowed() is False
+    assert pedidas == ["_renew_or_blow"]
+
+    async def falla(**kw):
+        return False
+    monkeypatch.setattr(energy_lease, "ensure", falla)
+    monkeypatch.setattr(energy_lease, "_RECOVER_DELAYS", (0.0,))
+    import asyncio
+    asyncio.run(energy_lease._renew_or_blow(reason="exhausted"))
     assert parado
 
 
@@ -136,16 +146,19 @@ def test_arrancando_no_es_agotado(monkeypatch):
 
 
 def test_pero_agotado_de_verdad_SI_para(monkeypatch):
-    """El guard anterior no puede convertirse en una puerta abierta: con arriendo concedido y gastado,
-    el fusible salta igual."""
+    """The guard above cannot become an open door: with a lease granted and spent, the fuse waits for the request
+    in flight (V2-801 — the stop decision is taken on its answer) and blows the moment it is over."""
     from nucleo import runstate
     monkeypatch.setattr(energy_lease, "enabled", lambda: True)
     energy_lease._loaded = True
-    energy_lease._renewing = True                      # even while renewing…
-    energy_lease._state.update({"granted": 10.0, "spent": 10.0})   # …but it DID have and spend a lease
+    energy_lease._renewing = True                      # while renewing…
+    energy_lease._state.update({"granted": 10.0, "spent": 10.0})   # …with a lease held and spent
     parado = []
     monkeypatch.setattr(runstate, "stopped", lambda: False)
     monkeypatch.setattr(energy_lease, "_schedule", lambda c: (parado.append(1), c.close()))
+    energy_lease._blow_fuse()
+    assert not parado, "stopped on stale facts while the answer was in flight"
+    energy_lease._renewing = False                     # the request is over and brought nothing
     energy_lease._blow_fuse()
     assert parado
 

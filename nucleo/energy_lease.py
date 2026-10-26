@@ -9,6 +9,19 @@
 # unreachable endpoint caps spend at one lease instead of leaving it unbounded. If the lease stopped the
 # instance, a renewal restarts it; a stop by the user is never undone here.
 #
+# A SPENT LEASE IS NOT AN EMPTY ACCOUNT (V2-801). The lease is a small slice of the account's balance, and one
+# charge can be bigger than the whole slice (a Brain Worker bills its whole run when it ends). Running the slice
+# out therefore ASKS for another one at once, with a short bounded backoff, and stops only on what actually
+# happened, recorded as the stop's cause and shown as such:
+#   · `energy_denied`   — the endpoint ANSWERED no (a 2xx/4xx body carrying `"ok": false`): the account cannot
+#                         spend. Any reason means the same thing; the engine never branches on it.
+#   · `lease_unrenewed` — no answer could be had (network error, timeout, 5xx, a body without `ok`): the account
+#                         may be full, the engine just cannot confirm it. Fail-closed all the same, but this one
+#                         never claims the account is empty.
+# The cause is persisted with the lease, so a restart loop against an unreachable endpoint does not hand each new
+# process a fresh allowance. At boot the lease is asked for again (`ensure(force=True)`) before any stop decision:
+# while a lease request is in flight the fuse does not blow.
+#
 # Without ZAELAR_USER_ID (self-host) `enabled()` is False → `allowed()` is always True, no state, no network.
 #
 from __future__ import annotations
@@ -39,9 +52,19 @@ _PATH = "/lease"
 # `sys_kv` porque si no, reiniciar pondría el gastado a cero y un bucle de reinicios sería gasto sin
 # techo — justo el agujero que esto cierra. NUNCA en el estado raíz: `compose_state` vuelca cada escalar
 # del estado al prompt de cada turno (misma razón que en `rehydrate.py` y en el saldo de `energy_meter`).
-_state: dict = {"lease_id": None, "granted": 0.0, "spent": 0.0, "expires_at": 0.0, "at": 0.0}
+_state: dict = {"lease_id": None, "granted": 0.0, "spent": 0.0, "expires_at": 0.0, "at": 0.0, "cause": None}
 _loaded = False
 _renewing = False
+_recovering = False       # a recovery (`_renew_or_blow`) is between attempts: still no stop decision
+
+# The two causes a stop can have. They travel to the screen through `account_limits.request_close(cause)`.
+CAUSE_DENIED = "energy_denied"          # the endpoint answered no
+CAUSE_UNRENEWED = "lease_unrenewed"     # no answer could be had
+
+# Backoff (seconds before each attempt) of the recovery that runs when the lease is spent or expired. Short and
+# bounded: it is the window during which a machine whose lease just ran out keeps working while it asks — the
+# overspend it allows is that window's, the same order as one in-flight operation.
+_RECOVER_DELAYS = tuple(float(x) for x in os.getenv("ENERGY_LEASE_RECOVER_DELAYS", "0,1,3").split(",") if x.strip())
 
 
 def enabled() -> bool:
@@ -101,6 +124,41 @@ def _near_expiry() -> bool:
     return exp > 0 and time.time() >= exp - _EXPIRY_MARGIN_S
 
 
+def _in_flight() -> bool:
+    """Is a lease request pending (boot, renewal, or a recovery between attempts)? While it is, there is no stop
+    decision to take: the answer is seconds away."""
+    return _renewing or _recovering or _booting
+
+
+_booting = False          # the boot lease request is scheduled and has not answered yet
+
+
+async def _boot_lease() -> bool:
+    global _booting
+    try:
+        return await ensure(reason="boot", force=True)
+    finally:
+        _booting = False
+
+
+def start_at_boot():
+    """Asks for a FRESH lease at boot and returns the task. The lease persisted by the previous process is not
+    trusted as the answer: it may be spent, it carries no fresh balance for the gauge, and a stop decided on it
+    before the endpoint is asked is a stop decided on stale facts. The in-flight mark is set HERE, synchronously,
+    so nothing that runs before the task's first step can take a stop decision either (V2-801)."""
+    global _booting
+    if not enabled():
+        return None
+    _booting = True
+    return asyncio.get_running_loop().create_task(_boot_lease())
+
+
+def stop_cause() -> str | None:
+    """Why the last stop happened (`CAUSE_DENIED` / `CAUSE_UNRENEWED`), or None while the lease is healthy."""
+    _load_once()
+    return _state.get("cause")
+
+
 def allowed() -> bool:
     """¿Puede esta máquina empezar algo que cueste dinero?
 
@@ -144,22 +202,23 @@ _refused_log_at: dict = {}
 def check(kind: str = "") -> bool:
     """May this machine START a paid operation of `kind` now? Never raises; True without a cloud account.
 
-    Three cases beyond the plain `allowed()`:
-      · a lease request is IN FLIGHT and none was ever granted (boot) → no, quietly: the answer is seconds away
-        and stopping the agent for it would be the flicker `_blow_fuse` already refuses;
-      · the lease EXPIRED with energy left (an idle machine) → yes, and ask for a renewal now; whatever the
-        renewal says decides the next call (`_renew_or_blow`), so the stale lease covers at most what is in
-        flight while the cloud answers — the same bound `note_spend` already accepts;
-      · otherwise no lease → no, and the fuse blows, so the refusal reaches the operator as the out-of-energy
-        state rather than as a pile of failed calls."""
+    Cases beyond the plain `allowed()`:
+      · a lease request is IN FLIGHT → no stop decision. A machine that held a lease and has no recorded failure
+        keeps going for that short, bounded window; one that never held one (boot) or whose last recovery failed
+        waits quietly. Stopping for an answer seconds away is the flicker `_blow_fuse` refuses;
+      · the lease ran out — by CLOCK with energy left, or by AMOUNT — and nothing has failed since it was granted
+        → yes, and recover now (`_renew_or_blow`); whatever the recovery hears decides the next call, so the old
+        lease covers at most the recovery window;
+      · otherwise (no lease, or a denial / failed recovery on record) → no, and the fuse blows with the cause on
+        record, so the refusal reaches the operator as what happened rather than as a pile of failed calls."""
     try:
         if allowed():
             return True
-        if _renewing and not float(_state["granted"]):
-            return False
-        if remaining() > 0 and expired():
-            if not _renewing:
-                _schedule(_renew_or_blow())
+        healthy = float(_state["granted"]) > 0 and not _state.get("cause")
+        if _in_flight():
+            return healthy
+        if healthy:
+            _schedule(_renew_or_blow(reason="expired" if remaining() > 0 else "exhausted"))
             return True
         now = time.time()
         if now - _refused_log_at.get(kind, 0.0) > 60:
@@ -250,7 +309,10 @@ def note_spend(energy: float) -> None:
         _persist()
         _tell_gauge()
         if remaining() <= 0:
-            _blow_fuse()                              # truly exhausted: no leased energy left
+            # THE SLICE IS SPENT, NOT THE ACCOUNT. One charge can exceed the whole lease (a worker bills its run
+            # when it ends), and stopping here told someone with most of his balance left that it was gone. Ask
+            # for another lease now; stop only if the endpoint says no or cannot be reached (V2-801).
+            _schedule(_renew_or_blow(reason="exhausted"))
         elif expired():
             # EXPIRED IS NOT EXHAUSTED, and conflating them cost a daily outage. A machine left on
             # overnight without spending wakes up with a stale lease and an untouched balance; stopping
@@ -264,18 +326,42 @@ def note_spend(energy: float) -> None:
         logger.warning(f"energy_lease.note_spend falló (no fatal): {e}")
 
 
-async def _renew_or_blow() -> None:
-    """The lease ran out by CLOCK. Ask for another, then ask the question that actually matters.
+async def _renew_or_blow(reason: str = "expired") -> None:
+    """The lease ran out — by CLOCK or by AMOUNT. Ask for another, a few times, then ask the question that matters.
 
     We do not check whether `ensure` returned True, we check `allowed()`. The difference matters: on a
     NETWORK failure `ensure` answers "there is still leased balance" — correct while the lease is alive,
-    useless once it has expired. `allowed()` is the predicate every caller obeys, so an outage against
-    the cloud still ends in a stop. Fail-closed without giving up the normal case."""
+    useless once it has run out. `allowed()` is the predicate every caller obeys, so an outage against
+    the cloud still ends in a stop. Fail-closed without giving up the normal case.
+
+    The attempts follow `_RECOVER_DELAYS`: a redeploy or a dropped connection is seconds long, and one failed
+    request is not a reason to stop an agent. An ANSWERED no ends the attempts at once (the request already
+    stopped, with `CAUSE_DENIED`); running out of attempts stops with `CAUSE_UNRENEWED`. Single-flight."""
+    global _recovering
+    if _recovering:
+        return
+    _recovering = True
     try:
-        await ensure(reason="expired", force=True)
-    except Exception as e:  # noqa: BLE001
-        logger.warning(f"energy_lease: renewal after expiry failed: {e}")
+        for delay in _RECOVER_DELAYS or (0.0,):
+            if delay:
+                await asyncio.sleep(delay)
+            for _ in range(200):                      # a request already in flight answers for us: wait for it
+                if not _renewing:
+                    break
+                await asyncio.sleep(0.05)
+            try:
+                await ensure(reason=reason, force=True)
+            except Exception as e:  # noqa: BLE001
+                logger.warning(f"energy_lease: renewal ({reason}) failed: {e}")
+            if allowed() or _state.get("cause") == CAUSE_DENIED:
+                return
+    finally:
+        _recovering = False
     if not allowed():
+        if _state.get("cause") != CAUSE_DENIED:
+            _state["cause"] = CAUSE_UNRENEWED
+            _persist()
+        logger.warning(f"energy_lease: lease not renewed after {len(_RECOVER_DELAYS) or 1} attempt(s) ({reason})")
         _blow_fuse()
 
 
@@ -316,9 +402,12 @@ def _blow_fuse(*, verdict: bool = False) -> None:
     # `verdict`: the cloud ANSWERED no. The in-flight exception is for a request with no answer yet; the denial
     # itself runs inside that request (`_renewing` is still True), and without this flag a denied boot lease
     # never stopped anything — measured 2026-10-22 on an account with nothing to lease.
-    if _renewing and not float(_state["granted"]) and not verdict:
-        logger.debug("energy_lease: sin arriendo todavía pero se está pidiendo — no se para")
+    # In flight means ANY pending lease request — boot, renewal, or a recovery between attempts — whether or not
+    # a lease was held before: the stop decision waits for the answer, which is what makes it the right one.
+    if _in_flight() and not verdict:
+        logger.debug("energy_lease: a lease request is in flight — no stop decision yet")
         return
+    cause = CAUSE_DENIED if verdict else (_state.get("cause") or CAUSE_UNRENEWED)
     try:
         from nucleo import runstate
         if not runstate.stopped():     # already stopped: the notice and the retry below still have to happen
@@ -328,7 +417,7 @@ def _blow_fuse(*, verdict: bool = False) -> None:
         logger.warning(f"energy_lease: no se pudo parar por arriendo agotado: {e}")
     try:
         from nucleo import account_limits
-        account_limits.request_close("energy_lease_exhausted")
+        account_limits.request_close(cause)
     except Exception:  # noqa: BLE001
         pass
     _start_retry()
@@ -359,11 +448,13 @@ def _start_retry() -> None:
 async def _retry_loop() -> None:
     """Pide arriendo hasta conseguirlo. Termina SOLO al lograrlo (o al agotar los intentos), y es
     `ensure(force=True)` porque el estado local dice «no queda nada» — sin forzar se creería al día y
-    no preguntaría."""
+    no preguntaría. The wait grows from a few seconds up to `_RETRY_S`: a stop for a lease that could not be
+    renewed is usually over as soon as the endpoint is back, and a full minute before the first try kept an agent
+    stopped for nothing (V2-801)."""
     intentos = 0
     while intentos < int(os.getenv("ENERGY_LEASE_RETRY_MAX", "2880")):   # ~48 h a un intento/minuto
         intentos += 1
-        await asyncio.sleep(_RETRY_S)
+        await asyncio.sleep(min(_RETRY_S, 5.0 * (2 ** (intentos - 1))))
         try:
             if await ensure(reason="retry_after_exhaustion", force=True):
                 logger.info(f"energy_lease: arriendo recuperado tras {intentos} intento(s)")
@@ -420,11 +511,17 @@ async def _request(reason: str) -> bool:
         async with httpx.AsyncClient(timeout=5.0) as c:
             r = await c.post(url.rstrip("/") + _PATH, json=payload,
                              headers={"X-Service-Token": token} if token else {})
-        data = r.json() if r.status_code < 500 else {}
+        data = r.json() if r.status_code < 500 else None
     except Exception as e:  # noqa: BLE001
         # No se pudo renovar. NO se toca el arriendo actual: lo que quede sigue sirviendo, y si se agota
         # antes de que la nube vuelva, el fusible hace su trabajo. Eso es exactamente lo que se quería.
         logger.warning(f"energy_lease: renovación fallida ({reason}), se sigue con lo que quede: {e}")
+        return remaining() > 0
+    if not isinstance(data, dict) or "ok" not in data:
+        # NOT AN ANSWER. A 5xx (a redeploy, an overloaded worker) or a body without `ok` says nothing about the
+        # account. It used to fall through as `{}` → «not ok» → a VERDICT: the lease was zeroed and the agent
+        # stopped as if the account were empty. It is a failed renewal, exactly like a timeout (V2-801).
+        logger.warning(f"energy_lease: no lease answer ({reason}, HTTP {r.status_code}), se sigue con lo que quede")
         return remaining() > 0
 
     # TARIFFS ON THE FLY. The lease response may carry a tariff table, which is adopted ANTES de mirar el veredicto: son válidos igualmente si la nube niega el
@@ -451,14 +548,14 @@ async def _request(reason: str) -> bool:
         # deja vivo lo que quede, que es justo lo contrario.
         motivo = data.get("error") or data.get("reason") or "sin_motivo"
         logger.warning(f"energy_lease: la nube NIEGA el arriendo ({motivo}) — se paran las operaciones de pago")
-        _state.update({"granted": 0.0, "spent": 0.0, "expires_at": 0.0, "at": time.time()})
+        _state.update({"granted": 0.0, "spent": 0.0, "expires_at": 0.0, "at": time.time(), "cause": CAUSE_DENIED})
         _persist()
         _blow_fuse(verdict=True)
         return False
 
     ttl = float(data.get("ttl_s") or 1800)
     _state.update({"lease_id": data.get("lease_id"), "granted": granted, "spent": 0.0,
-                   "expires_at": time.time() + ttl, "at": time.time()})
+                   "expires_at": time.time() + ttl, "at": time.time(), "cause": None})
     _persist()
     logger.info(f"energy_lease: arriendo de {granted:.2f} Energy por {ttl:.0f}s ({reason}), "
                 f"user={cloud_account.my_user_id()}")
@@ -490,12 +587,14 @@ def snapshot() -> dict:
     _load_once()
     return {"leased": True, "lease_id": _state["lease_id"], "granted": float(_state["granted"]),
             "spent": float(_state["spent"]), "remaining": remaining(),
-            "expires_at": float(_state["expires_at"] or 0.0), "allowed": allowed()}
+            "expires_at": float(_state["expires_at"] or 0.0), "allowed": allowed(), "stop_cause": _state.get("cause")}
 
 
 def _reset_for_tests() -> None:
-    global _loaded, _renewing
-    _state.update({"lease_id": None, "granted": 0.0, "spent": 0.0, "expires_at": 0.0, "at": 0.0})
+    global _loaded, _renewing, _recovering, _booting
+    _state.update({"lease_id": None, "granted": 0.0, "spent": 0.0, "expires_at": 0.0, "at": 0.0, "cause": None})
     _loaded = False
     _renewing = False
+    _recovering = False
+    _booting = False
     _refused_log_at.clear()

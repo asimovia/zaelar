@@ -394,6 +394,7 @@
  "secret_saved": "Hecho, la he guardado cifrada en tu bóveda de secretos.",
  "secret_need_vault": "Puedo guardártela cifrada, pero primero necesito que crees una contraseña maestra para tu bóveda. Te la abro.",
  "energy_exhausted": "Se ha agotado tu Energía. Paga una cuota o compra más para seguir usando tu agente.",
+ "energy_unconfirmed": "Me he parado porque no he podido confirmar tu energía con el servicio. Lo reintento solo y vuelvo en cuanto responda.",
  "acc_fragment_dropped": "Perdona, no cogí bien lo que dijiste antes de la pausa. ¿Me lo repites?",
  "acc_still_listening": "Sigo aquí, cuando quieras sigue.",
  "music": {

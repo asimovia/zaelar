@@ -349,6 +349,13 @@ below is the first kind, or it names the mechanism that replaced the second.
   speaking with no received energy) paints its icon red with the reason in the title, is reported once as a
   `client` event, and clears by itself; a deliberate mute is never red except for a revoked permission.
   — since 2026-10-24 · nodes 3.119 · `frontend/app/services/device-health.js`.
+- **CRIT-R10 · A spent lease is not an empty account.** Running the usage lease out — by amount or by clock — asks
+  for another at once (bounded backoff) before any stop; only an answer carrying `ok: false` is a verdict (a 5xx,
+  a timeout or a body without `ok` is a failed renewal). A stop carries its cause: `energy_denied` (the endpoint
+  said no) is the only one told as an empty account with a top-up; `lease_unrenewed` says the agent could not
+  confirm its Energy. The cause persists across a restart, boot asks for a fresh lease before any stop decision,
+  and the notice never says «empty» next to a battery showing Energy. — since 2026-10-26 · nodes 8.25, 4.247 ·
+  `nucleo/energy_lease.py::_renew_or_blow`, `frontend/app/core/account-link.js::noticeKind`.
 
 ## 7 · Working here
 

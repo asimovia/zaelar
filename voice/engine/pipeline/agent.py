@@ -381,7 +381,10 @@ async def entrypoint(ctx: JobContext) -> None:
         try:
             # Same loop hop: this closer fires from `energy_meter`'s fire-and-forget report, i.e. off this loop.
             async def _do_say():
-                await session.say(langs.current_language().energy_exhausted, allow_interruptions=True)
+                # The line follows the REASON: a lease that could not be renewed is not an empty account (V2-801).
+                _line = _account_limits.spoken_line(reason)
+                if _line:
+                    await session.say(_line, allow_interruptions=True)
             await _on_session_loop(_do_say)
         except Exception:
             pass

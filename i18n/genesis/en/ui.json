@@ -2008,6 +2008,8 @@
  "energy.out.body": "Your agent has stopped because your account has no Energy left. Top up or start a plan and it comes back on its own.",
  "energy.out.top_up": "Top up",
  "energy.out.close": "Close",
+ "energy.paused.title": "Your agent is paused",
+ "energy.paused.body": "Your agent has stopped because it couldn't confirm your Energy with the service. Your balance hasn't changed: it keeps retrying and comes back as soon as the service answers.",
  "orb.device_problem": "There is a problem with this audio device",
  "orb.mic_problem_capture": "The microphone cannot be opened: another application may be using it",
  "orb.mic_problem_no_device": "No microphone is connected",

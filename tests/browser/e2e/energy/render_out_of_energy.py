@@ -9,7 +9,9 @@ i18n key as its text (a key is truthy), or with a link to nowhere. Everything be
   · its «Top up» button is a real link to the ENGINE's account url (the one `/api/config` names — no literal in
     the frontend) with the `#buy` fragment, opening in a new tab;
   · closing it closes it;
-  · the battery is a keyboard-reachable LINK to the same place, with a translated aria-label.
+  · the battery is a keyboard-reachable LINK to the same place, with a translated aria-label;
+  · V2-801 — a stop whose lease could not be renewed, next to a battery that shows Energy, paints the PAUSED
+    notice: other words, no «Top up», never «your account has no Energy».
 
 SELF-CONTAINED AND NON-DESTRUCTIVE: its own preview server (server.pages + /static + server.i18n_api) on a free
 port; `/api/config` and `/api/energy` are faked at the network layer with the shapes the engine returns.
@@ -89,7 +91,7 @@ def main():
             print("preview server never came up")
             return 1
         time.sleep(1.0)
-        return run(f"http://127.0.0.1:{port}/")
+        return run(f"http://127.0.0.1:{port}/") or run_paused(f"http://127.0.0.1:{port}/")
     finally:
         proc.terminate()
         try:
@@ -107,7 +109,7 @@ def run(url):
         cfg = {"cloud_profile": True, "account_url": ACCOUNT}
         energy = {"cloud": True, "known": True, "balance": 0, "capacity": 250, "at": 0,
                   "lease": {"leased": True, "allowed": False}, "account_url": ACCOUNT,
-                  "exhausted": {"reason": "energy_lease_exhausted", "at": 1}}
+                  "exhausted": {"reason": "energy_denied", "at": 1}}
         pg.route("**/api/config", lambda r: r.fulfill(status=200, content_type="application/json", body=json.dumps(cfg)))
         pg.route("**/api/energy", lambda r: r.fulfill(status=200, content_type="application/json", body=json.dumps(energy)))
 
@@ -150,6 +152,42 @@ def run(url):
 
         mine = [e for e in errors if "EnergyNotice" in e or "account-link" in e or "EnergyGauge" in e]
         check("no page error from the new code", not mine, f"{mine}")
+        b.close()
+    print(f"\n{'FAILED: ' + str(len(fails)) if fails else 'ALL OK'}")
+    return 1 if fails else 0
+
+
+def run_paused(url):
+    """V2-801 — the lease could not be renewed while the battery knows most of the plan is left."""
+    errors = []
+    with sync_playwright() as p:
+        b = p.chromium.launch()
+        pg = b.new_context(viewport={"width": W, "height": H}).new_page()
+        pg.on("pageerror", lambda e: errors.append(str(e)))
+        cfg = {"cloud_profile": True, "account_url": ACCOUNT}
+        energy = {"cloud": True, "known": True, "balance": 971.6, "capacity": 1300, "at": 0,
+                  "lease": {"leased": True, "allowed": False}, "account_url": ACCOUNT,
+                  "exhausted": {"reason": "lease_unrenewed", "at": 1}}
+        pg.route("**/api/config", lambda r: r.fulfill(status=200, content_type="application/json", body=json.dumps(cfg)))
+        pg.route("**/api/energy", lambda r: r.fulfill(status=200, content_type="application/json", body=json.dumps(energy)))
+        pg.goto(url, wait_until="domcontentloaded")
+        pg.wait_for_timeout(3000)
+        pg.evaluate(LIFT_VEIL)
+        pg.wait_for_timeout(300)
+        box = pg.evaluate(MEASURE, ".en-ovl.on .en-box")
+        check("paused: the notice is painted", bool(box.get("found")) and box.get("area", 0) >= MIN_AREA)
+        if box.get("found"):
+            text = box.get("text") or ""
+            check("paused: translated words, not i18n keys", text and "energy." not in text, f"text={text!r}")
+            out_title = pg.evaluate("""async () => { const m = await import('/static/app/core/i18n.js?v=1');
+                                        return m.t('energy.out.title'); }""")
+            check("paused: never the «out of Energy» title next to a lit battery",
+                  bool(out_title) and out_title not in text, f"text={text!r} out_title={out_title!r}")
+        btn = pg.evaluate(MEASURE, ".en-ovl.on a.en-btn.primary")
+        check("paused: no Top up offered", not btn.get("found") or not btn.get("visible") or btn.get("area", 0) == 0,
+              f"top-up={btn}")
+        mine = [e for e in errors if "EnergyNotice" in e or "account-link" in e]
+        check("paused: no page error from the new code", not mine, f"{mine}")
         b.close()
     print(f"\n{'FAILED: ' + str(len(fails)) if fails else 'ALL OK'}")
     return 1 if fails else 0

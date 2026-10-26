@@ -109,6 +109,7 @@
   color:var(--hb-ink);text-decoration:none}
 .en-btn.primary{background:var(--hb-accent);border-color:var(--hb-accent);color:var(--canvas)}
 .en-btn:focus-visible{outline:2px solid var(--hb-accent);outline-offset:2px}
+.en-btn[hidden]{display:none}   /* V2-801 — the paused notice has no Top up */
 
 /* ── ELSEWHERE CHIPS (V2-792): «📄 Report · on the phone — Open here». Quiet by design: a chip never covers the
    work on this screen, sits above the bottom edge (the desktop's widget rail, the phone's dock via --dock-h) and

@@ -20,8 +20,11 @@ def _refused_for_energy(err_exc, err_text, emit, send) -> bool:
     emit("alert", "Out of energy — the model call was not started.", text=(err_text or "")[:200],
          extra={"cat": "energy", "exhausted": (account_limits.exhausted() or {}).get("reason") or ""})
     if not account_limits.close_requested():
-        from i18n import langs
-        send(langs.current_language().energy_exhausted)
+        # The line follows the recorded reason: with none, or a lease that could not be renewed, the voice never
+        # says the account is empty (V2-801).
+        line = account_limits.spoken_line((account_limits.exhausted() or {}).get("reason"))
+        if line:
+            send(line)
     return True
 
 

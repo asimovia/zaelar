@@ -49,6 +49,27 @@ def on_balance(balance: float | None) -> None:
 # the state is recorded HERE, once, and published on the `energy` event the battery already listens to; the
 # frontend paints the notice from it and from `/api/energy` after a reload. Cleared by a new lease or a top-up.
 _exhausted: dict = {"reason": None, "at": 0.0}
+
+# The reasons that mean the ACCOUNT cannot spend — the ledger or the lease endpoint SAID so. Every other reason
+# (today `lease_unrenewed`: the lease could not be renewed) stopped the agent without knowing the account's state,
+# and is never told as «your account is empty» nor answered with a top-up (V2-801). The frontend mirrors this set
+# in `frontend/app/core/account-link.js::ACCOUNT_EMPTY`.
+ACCOUNT_EMPTY = frozenset({"energy_denied", "balance_depleted"})
+
+
+def says_account_empty(reason) -> bool:
+    return str(reason or "") in ACCOUNT_EMPTY
+
+
+def spoken_line(reason, lang=None) -> str:
+    """The one line the voice says for a stop with this reason. The empty-account line ONLY for a reason that
+    means it; otherwise the could-not-confirm line, and silence if a language lacks it — never the wrong claim."""
+    if lang is None:
+        from i18n import langs
+        lang = langs.current_language()
+    if says_account_empty(reason):
+        return str(getattr(lang, "energy_exhausted", "") or "")
+    return str(getattr(lang, "energy_unconfirmed", "") or "")
 _closed_for = None        # the closer already asked to close: each session is closed ONCE, not per refused call
 
 

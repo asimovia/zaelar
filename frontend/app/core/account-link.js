@@ -21,3 +21,19 @@ export function noticeReason(energy, closedFor = "") {
   const reason = String(e.exhausted.reason || "exhausted");
   return reason === closedFor ? "" : reason;
 }
+
+/** The reasons that mean the ACCOUNT cannot spend — the engine's `nucleo/account_limits.py::ACCOUNT_EMPTY`, the one
+ *  list both sides read (V2-801). Any other reason (a lease that could not be renewed) stopped the agent without
+ *  knowing the account's state. */
+export const ACCOUNT_EMPTY = new Set(["energy_denied", "balance_depleted"]);
+
+/** Which notice to paint: "out" (the account has no Energy — copy and Top up) or "paused" (stopped, account state
+ *  not claimed, no Top up). Pure. "out" needs BOTH a reason that means it AND a battery that does not contradict
+ *  it: a known balance above zero never shows «your account has no Energy» (the modal once said empty while the
+ *  battery showed most of the plan lit). */
+export function noticeKind(energy) {
+  const e = energy || {};
+  const reason = String((e.exhausted && e.exhausted.reason) || "");
+  const showsEnergy = !!e.known && Number(e.balance) > 0;
+  return ACCOUNT_EMPTY.has(reason) && !showsEnergy ? "out" : "paused";
+}

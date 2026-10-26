@@ -2008,6 +2008,8 @@
  "energy.out.body": "Tu agente se ha parado porque en tu cuenta no queda energía. Recarga o contrata un plan y volverá solo.",
  "energy.out.top_up": "Recargar",
  "energy.out.close": "Cerrar",
+ "energy.paused.title": "Tu agente está en pausa",
+ "energy.paused.body": "Tu agente se ha parado porque no ha podido confirmar tu energía con el servicio. Tu saldo no ha cambiado: lo reintenta solo y volverá en cuanto responda.",
  "orb.device_problem": "Hay un problema con este dispositivo de audio",
  "orb.mic_problem_capture": "No se puede abrir el micrófono: quizá lo está usando otra aplicación",
  "orb.mic_problem_no_device": "No hay ningún micrófono conectado",
