@@ -116,7 +116,7 @@ def _fetch_meta(meta: bytes) -> tuple[int | None, str]:
 
 
 def list_page(mb, folder: str = "INBOX", before: str | None = None, limit: int = 30) -> dict:
-    """One page of `folder`'s headers, newest first: `{folders, rows, nextBefore, complete, error}`.
+    """One page of `folder`'s headers, newest first: `{folders, rows, nextBefore, complete, exists, error}`.
 
     Paged by SEQUENCE number, not by searching: SELECT already says how many messages the folder holds, and the
     newest are the last numbers — so a page is one FETCH of `limit` headers whatever the size of the folder (a
@@ -137,6 +137,8 @@ def list_page(mb, folder: str = "INBOX", before: str | None = None, limit: int =
             out["error"] = "folder_unavailable"
             return out
         exists = int((data or [b"0"])[0] or 0)
+        out["exists"] = exists      # what the folder held when this page was read: a later tick that sees another
+                                    # number re-reads the first page (mail arrived, or came back from elsewhere)
         try:
             hi = min(exists, int(str(before)) - 1) if before else exists
         except (TypeError, ValueError):

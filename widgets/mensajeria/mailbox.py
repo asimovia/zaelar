@@ -83,6 +83,9 @@ def go(db: dict, folder: str) -> str:
     idx = _idx(db)
     name = folder_name(db, folder)
     idx.update({"folder": name, "open": None, "draft": None})
+    # When he last LOOKED at this list: the connector keeps a list he looked at recently in step with the server
+    # (what he archives elsewhere leaves it, what arrives joins it) and leaves the rest alone.
+    idx.setdefault("lists", {}).setdefault(name, {})["viewed_at"] = time.time()
     ask(db, name)
     return name
 
@@ -118,10 +121,37 @@ def back(db: dict) -> None:
     _idx(db).update({"open": None, "draft": None})
 
 
+def drop_gone(db: dict, folder: str, uids) -> int:
+    """Messages the server says are no longer in `folder` (archived, deleted or moved in his own client) leave the
+    card: from every page of that folder and, for the Inbox, from the home's pending items. Returns how many rows
+    left. The card mirrors the server's MEMBERSHIP, not only its flags (V2-807 T-04)."""
+    gone = {str(u) for u in uids or []}
+    if not gone:
+        return 0
+    n = 0
+    for key, lst in (_idx(db).get("lists") or {}).items():
+        if str(key).split("#", 1)[0] != folder:
+            continue
+        keep = [r for r in lst.get("rows") or [] if str(r.get("uid")) not in gone]
+        n += len(lst.get("rows") or []) - len(keep)
+        lst["rows"] = keep
+    if folder.upper() == "INBOX":
+        items = db.get("items") or []
+        keep = [it for it in items if not (it.get("platform") == "email" and str(it.get("messageId")) in gone)]
+        n += len(items) - len(keep)
+        for i, it in enumerate(keep, 1):
+            it["n"] = i
+        db["items"] = keep
+    return n
+
+
 def fold(db: dict, ev: dict) -> None:
-    """Fold a connector answer into the index: a folder page, or one message read whole."""
+    """Fold a connector answer into the index: a folder page, one message read whole, or what left a folder."""
     idx = _idx(db)
     folder = str(ev.get("folder") or "INBOX")
+    if ev.get("gone") is not None:
+        drop_gone(db, folder, ev["gone"])
+        return
     if ev.get("open") is not None:
         msg = dict(ev["open"] or {})
         cur = idx.get("open") or {}
@@ -142,7 +172,8 @@ def fold(db: dict, ev: dict) -> None:
         have = {r["uid"] for r in lst.get("rows") or []}
         lst["rows"] = (lst.get("rows") or []) + [r for r in rows if r["uid"] not in have]
         lst["cursor"], lst["complete"] = ev.get("nextBefore"), bool(ev.get("complete"))
-    lst.update({"answered_at": time.time(), "asked_at": None, "error": str(ev.get("error") or "")})
+    lst.update({"answered_at": time.time(), "asked_at": None, "error": str(ev.get("error") or ""),
+                "exists": ev.get("exists")})
 
 
 def view(db: dict) -> dict:

@@ -355,37 +355,95 @@ async def _drain_sends(mb) -> None:
                 pass
 
 
+#: A folder page he looked at within this long is kept in step with the server; one left alone is not asked about.
+MIRROR_RECENT_S = 900
+
+
+def on_screen(db: dict) -> dict[str, list[str]]:
+    """{folder: [uid]} of what the card shows: the pending Inbox items, and the first rows of every folder list he
+    LOOKED at recently (`viewed_at`, stamped when he enters it; the card's `mailbox.lists` are keyed `folder` or
+    `folder#category`). Bounded by what is on screen, never by the size of the mailbox."""
+    import time as _t
+    out: dict[str, list[str]] = {}
+    inbox = [str(it.get("messageId")) for it in db.get("items") or []
+             if it.get("platform") == PLATFORM and it.get("messageId")]
+    if inbox:
+        out["INBOX"] = inbox
+    for key, lst in ((db.get("mailbox") or {}).get("lists") or {}).items():
+        try:
+            recent = _t.time() - float((lst or {}).get("viewed_at") or 0) < MIRROR_RECENT_S
+        except (TypeError, ValueError):
+            recent = False
+        if recent:
+            out.setdefault(str(key).split("#", 1)[0], []).extend(
+                str(r.get("uid")) for r in (lst.get("rows") or [])[:60] if isinstance(r, dict))
+    return {f: list(dict.fromkeys(u)) for f, u in out.items() if u}
+
+
+def pages_to_reread(db: dict, folder: str, exists) -> list[str]:
+    """The recently viewed pages of `folder` whose size changed since they were read — mail arrived, or came back
+    from where he had moved it. Their first page is read again; a page read before the size was recorded is not."""
+    import time as _t
+    out = []
+    if exists is None:
+        return out
+    for key, lst in ((db.get("mailbox") or {}).get("lists") or {}).items():
+        if str(key).split("#", 1)[0] != folder or (lst or {}).get("exists") in (None, exists):
+            continue
+        try:
+            if _t.time() - float(lst.get("viewed_at") or 0) < MIRROR_RECENT_S:
+                out.append(str(key))
+        except (TypeError, ValueError):
+            continue
+    return out
+
+
+async def _reread_first_page(mb, key: str) -> None:
+    from connectors.email import folders as _folders
+    folder = key.split("#", 1)[0]
+    page = await asyncio.to_thread(_folders.list_page, mb, folder, None, 30)
+    ingest.publish_mailbox(PLATFORM, {"folder": folder, "before": None, **page})
+
+
 async def _poll_external_flags(mb) -> None:
-    """Ask the server what the operator did in his own mail client (V2-546).
+    """Mirror what the operator did in his own mail client (V2-546, V2-807 T-04).
 
-    \\Seen means he opened it, \\Answered means he replied to it — either way that mail has been dealt with and
-    has no business sitting in the widget looking pending. This is a per-message answer, not a watermark, which
-    is why the read signal carries ids: IMAP is the one source that can be exact about WHICH mail.
+    Two answers per folder on screen, from one login (`membership.check`): which of those messages the folder
+    STILL holds, and their flags. A mail he archived, deleted or moved elsewhere has left the folder and leaves the
+    card (`connector.mailbox` `{folder, gone}`); \\Seen means he opened it and \\Answered that he replied — either
+    way it has been dealt with. Per message, never a watermark: IMAP is the one source that is exact about WHICH.
 
-    Scoped to the UIDs we are currently showing, so its cost is the size of the pending list and not of the
-    mailbox — and it is skipped entirely when there is nothing pending."""
+    Scoped to what the card shows, so its cost is the size of the screen and not of the mailbox; nothing on
+    screen, nothing asked. A folder the server could not be asked about changes nothing."""
     if not ingest.v2_enabled():
         return
     try:
         db = store.load()
     except Exception:  # noqa: BLE001
         return
+    shown = on_screen(db)
+    if not shown:
+        return
+    from connectors.email import membership
     pending = [it for it in db.get("items", []) if it.get("platform") == PLATFORM]
-    if not pending:
-        return
-    uids = [str(it.get("messageId")) for it in pending if it.get("messageId")]
-    flags = await asyncio.to_thread(mb.flags_for, uids[:200])
-    if not flags:
-        return
-    by_chat: dict[str, list[str]] = {}
-    for it in pending:
-        uid = str(it.get("messageId"))
-        got = flags.get(uid)
-        if got and ("\\Seen" in got or "\\Answered" in got):
-            by_chat.setdefault(str(it.get("chatId")), []).append(uid)
-    for chat_id, ids in by_chat.items():
-        ingest.publish_read(PLATFORM, chat_id, ids=ids)
-        logger.info(f"Email: {len(ids)} ya leídos/contestados en tu cliente ({chat_id})")
+    for folder, uids in shown.items():
+        answer = await asyncio.to_thread(membership.check, mb, folder, uids)
+        left = membership.gone(uids, answer)
+        if left:
+            ingest.publish_mailbox(PLATFORM, {"folder": folder, "gone": left})
+            logger.info(f"Email: {len(left)} left {folder} in his own client (archived, deleted or moved)")
+        for key in pages_to_reread(db, folder, (answer or {}).get("exists")):
+            await _reread_first_page(mb, key)
+        if answer is None or folder.upper() != "INBOX":
+            continue
+        by_chat: dict[str, list[str]] = {}
+        for it in pending:
+            got = answer["flags"].get(str(it.get("messageId")))
+            if got and ("\\Seen" in got or "\\Answered" in got):
+                by_chat.setdefault(str(it.get("chatId")), []).append(str(it.get("messageId")))
+        for chat_id, ids in by_chat.items():
+            ingest.publish_read(PLATFORM, chat_id, ids=ids)
+            logger.info(f"Email: {len(ids)} read or answered in his own client ({chat_id})")
 
 
 async def _drain_history(mb) -> None:

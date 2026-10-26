@@ -5540,6 +5540,8 @@ DOMAINS: list[dict] = [
                                   "tests/browser/unit/mensajeria/test_the_stylesheet_styles_only_what_the_card_draws.py"]},
         {"id": "4.276", "title": "Every host that paints a card (desktop card, activity rail, phone deck) gives it every ctx member a card uses — a forgotten one is a TypeError on tap",
             "ch": UNIT, "paths": ["tests/browser/unit/widgets/test_every_host_gives_a_card_the_whole_ctx.py"]},
+        {"id": "4.277", "title": "What he archives, deletes or moves in his own mail client leaves the card: the folder is asked which messages it still holds, what left goes, and a folder whose size changed is read again",
+            "ch": UNIT, "paths": ["tests/connectors/unit/email/test_what_he_archives_in_his_client_leaves_the_card.py"]},
         {"id": "4.252", "title": "The chat list paints, filters by kind and name, loads more and opens a chat (RENDERED)",
             "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_the_chat_list_paints_filters_and_loads_more.py"]},
         {"id": "4.250", "title": "The feedback button is never hidden under another layer",
