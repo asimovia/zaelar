@@ -152,9 +152,16 @@ export const activeBrain = () => fetch("/api/brain").then(json).catch(() => ({ b
 // ---- system status (ⓘ panel: cerebro/voz/LLM/STT/TTS/cluster + credit/health) ----
 export const getStatus = () => fetch("/api/status").then(json).catch(() => ({ overall: "unknown", items: [] }));
 
-// ---- memory map (🧠 visualizer: state + short/long-term memories + concept graph, read-only, no-cache) ----
-export const getMemoryMap = () =>
-  fetch("/api/memory/map", { cache: "no-store" }).then(json).catch(() => ({ state: {}, layers: { short: [], long: [] }, edges: [], counts: {} }));
+// ---- memory viewer (🧠, V2-808): every store counted and paged; the server caps every list ----
+// `path` is one of stats · graph · concept · timeline · facts · conversation · messages · files · apps · system.
+// A failed read resolves to null: the viewer says «could not load» instead of painting an empty store as a fact.
+export const memoryViewer = (path, params = {}) => {
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== null && v !== "") q.set(k, String(v));
+  const qs = q.toString();
+  return fetch(`/api/memory/viewer/${path}${qs ? "?" + qs : ""}`, { cache: "no-store" })
+    .then((r) => (r.ok ? r.json() : null)).catch(() => null);
+};
 
 // ---- proactive tasks/reminders (loop orquestador propio, nucleo/scheduler.py) ----
 export const cronList = () => fetch("/api/cron").then(json).catch(() => ({ jobs: [] }));

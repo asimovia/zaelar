@@ -32,8 +32,9 @@ import pytest
 ENGINE = pathlib.Path(__file__).resolve().parents[4]
 BUNDLES = ENGINE / "i18n" / "genesis"
 
-#: Key PREFIXES where «tarea»/«task» means the OPERATOR's own task and is therefore correct.
-_HIS_OWN = ("widgets.agenda.", "reset.confirm.body", "memory.zone_long_sub")
+#: Key PREFIXES where «tarea»/«task» means the OPERATOR's own task and is therefore correct. The memory viewer's
+#: agenda card (V2-808) counts HIS appointments and to-dos; the agent's own work on that card is «encargos».
+_HIS_OWN = ("widgets.agenda.", "reset.confirm.body", "memory.store_agenda")
 
 _ES = re.compile(r"\btareas?\b", re.I)
 _EN = re.compile(r"\btasks?\b", re.I)

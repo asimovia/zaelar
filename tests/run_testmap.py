@@ -137,6 +137,8 @@ DOMAINS: list[dict] = [
         # list has a server cap and a cursor, the graph is aggregated and bounded by the device's node budget.
         {"id": "1.11", "title": "The memory viewer never returns a whole store: capped pages with a cursor, COUNTs, a graph bounded by the node budget (V2-808)",
             "ch": HTTP, "paths": ["tests/memory/e2e/test_the_memory_viewer_never_returns_a_whole_store.py"]},
+        {"id": "1.12", "title": "The memory graph PAINTS inside its panel, centred, at desktop and phone width; its layout stays finite and stops when it settles (V2-808, rendered)",
+            "ch": UNIT, "paths": ["tests/browser/unit/memory/test_the_memory_graph_paints_inside_its_panel.py"]},
     ]},
     {"id": "2", "name": "FLASHBRAIN (nucleo)", "nodes": [
         {"id": "2.1", "title": "Enrutado / elección de tool", "ch": UNIT, "paths": [
