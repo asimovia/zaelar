@@ -6676,6 +6676,16 @@ DOMAINS: list[dict] = [
                                 "agente sabe qué abrió la conversación en vez de inventárselo",
             "ch": UNIT,
             "paths": ["tests/voice/unit/test_a_health_notice_never_opens_the_door.py"]},
+        # V2-812 T-03 — measured in a car (session e52cd845, «always»): 68/68 lines admitted, half of them talk
+        # between passengers, the window renewed by every line and by every reply, and «Eso es.» resumed a failed
+        # booking. Inside the window the line is now judged beside the turn: not addressed → renews nothing; not
+        # a clear request → an act that leaves or a worker asks first (consent.decide, dispatch_confirm).
+        {"id": "8.26", "title": "Inside the window a line is still judged: only an addressed line (and the reply to "
+                                "it) renews the window, and a worker or an act that leaves, started from a line "
+                                "that was not a clear request, asks first — a lone operator is asked nothing new "
+                                "(V2-812 T-03)",
+            "ch": UNIT,
+            "paths": ["tests/voice/unit/test_the_window_is_renewed_by_an_addressed_line.py"]},
         {"id": "8.10", "title": "El trabajo del agente se llama PROCESO (job): ninguna etiqueta del frontend "
                                 "lo llama «tarea», y el id de la pestaña se mudó con el rótulo",
             "ch": UNIT,

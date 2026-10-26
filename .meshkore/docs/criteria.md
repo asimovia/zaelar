@@ -73,6 +73,16 @@ below is the first kind, or it names the mechanism that replaced the second.
   verdict), with nothing run, no model call and no pass that ran or refused, starts its errand through the turn's
   escalation instead of a «not done» (`promise_kept.deferred_errand`). — since 2026-10-24 ·
   nodes 2.790, 2.794, 2.796.
+- **CRIT-V15 · Inside the attention window a line is still judged, and only an addressed line keeps it open.** In
+  `always` the window admits without waiting (deafness inside a conversation is the worse failure), and the line is
+  judged beside the turn by the same judge, which answers two questions — addressed? a clear request?
+  (`attention.open_line`). A line judged not addressed renews nothing: its admission is given back and neither the
+  reply's chunks nor its falling edge re-anchor (an armed delivery still does). A worker, or an act with a consent
+  class or from `sensitive` up, started from a line that was not a clear request asks first — `consent.decide`
+  (`licensed`, step 0; `his_yes` and `allow` do not clear it) and the one worker door
+  (`dispatch_confirm.unlicensed_gate`, an `offered` question in his language; his yes licenses the line). A wake
+  word, a typed line or a judge that failed license nothing new and keep today's path. — since 2026-10-26 ·
+  nodes 8.26 · `voice/attention.py`, `nucleo/consent.py`, `nucleo/dispatch_confirm.py`.
 - **CRIT-V16 · The STT boosts a place only where one is expected.** Keyterms bias every word of a session, so the
   national list of mis-heard towns is never sent on its own; only his own places (memory, behind
   `ZAELAR_STT_BOOST_FROM_MEMORY`, off by default) are boosted, spelled by that list. Re-measure

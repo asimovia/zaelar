@@ -147,6 +147,9 @@ class LangSpec:
     # estás pidiendo que modifique esto» — because its whole job is to let him say NO.
     widget_build_confirm: str = ("")
     widget_change_confirm: str = ("")
+    # V2-812 T-03 — an errand that would start from a line that was not clearly his request to the agent (talk
+    # between passengers, an «eso es» after a statement) is asked first, naming what would start.
+    errand_unaddressed_confirm: str = ""
     # ── V2-707 F6 — THE CONFIRM GATE'S OWN SENTENCES ────────────────────────────────────────────────────
     # V2-682 moved `danger.py`'s two gates here and left the OTHER gate — the one that asks about a widget's
     # own data — composing its prose inside `voice/engine/llm/providers/confirm_gate.py`. Measured on

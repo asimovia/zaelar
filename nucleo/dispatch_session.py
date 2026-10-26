@@ -13,6 +13,7 @@ import time
 from typing import TYPE_CHECKING
 
 from nucleo import dispatch as _d
+from nucleo import dispatch_confirm as _dconf
 
 if TYPE_CHECKING:
     from nucleo.dispatch import Task
@@ -53,13 +54,10 @@ async def _run_session(task: "Task") -> None:
             rec.result_summary = danger.confirm_question(req)
             await _d._deliver_confirm(rec)
             _d._SESSIONS.pop(key, None)
-            # La question is RECUERDA (V2-126). Hasta here the gate era a callejon without salida: hablaba the
-            # question by the rail proactivo, tiraba the record, and nadie ponia never `context["confirmed"]`
-            # — a `si` of the operator no tenia a what volver. Peor: the task desaparecia of `pending_summaries`,
-            # so that the turn siguiente NO veia nothing pending and volvia a narrar work that no existia.
-            # Medido in `cancel-subscription-before-charge` and in `pay-known-bill` (three tasks, the three
-            # paradas by the gate, ninguna contada al operator).
-            # …with su HOJA: already esta abierta in pantalla and the «si» has that volver a ELLA (V2-508).
+            # The question is REMEMBERED (V2-126): the gate used to speak it and drop the record, nobody ever set
+            # `context["confirmed"]`, so a yes had nothing to return to and the next turn narrated work that did
+            # not exist (`cancel-subscription-before-charge`, `pay-known-bill`). …and with its SHEET, already on
+            # screen, so the yes returns to it (V2-508).
             _d.remember_confirm(key, req, task, sheet=_d.sheet_of(rec))
             _d._task_row("withdrawn", rec)
             _d.sync_state()
@@ -103,6 +101,9 @@ async def _run_session(task: "Task") -> None:
             _d.remember_code_change(key, req, task, sheet=_d.sheet_of(rec))
             _d._task_row("withdrawn", rec)
             _d.sync_state()
+        return
+
+    if await _dconf.unlicensed_gate(task, key, req):   # V2-812 T-03: a line that was not a request asks first
         return
 
     rec = _d._SESSIONS.get(key)

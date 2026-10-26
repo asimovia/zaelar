@@ -166,6 +166,9 @@ def strip_leading_wakeword(text: str) -> str:
 class Verdict:
     directed: bool
     reason: str        # 'wakeword' | 'active_window' | 'always' | 'ptt' | 'ambient'
+    judged: bool = False           # V2-812 T-03: the judge decided THIS verdict (a cold `always` turn)
+    by_act: bool = False           # …or an act of his did: the name, the push-to-talk button
+    request: bool | None = None    # …and whether it read a clear request to the agent (None: not asked)
 
 
 def evaluate(text: str, *, now: float | None = None) -> Verdict:
@@ -174,11 +177,11 @@ def evaluate(text: str, *, now: float | None = None) -> Verdict:
     if m == "always":
         return Verdict(True, "always")
     if has_wakeword(text):
-        return Verdict(True, "wakeword")
+        return Verdict(True, "wakeword", by_act=True)
     if m == "wakeword":
         return Verdict(False, "ambient")
     if m == "ptt":
-        return Verdict(True, "ptt") if _state["ptt"] else Verdict(False, "ambient")
+        return Verdict(True, "ptt", by_act=True) if _state["ptt"] else Verdict(False, "ambient")
     # smart: active conversation window. `bot_hold` covers a barge-in while zaelar is STILL TALKING inside an
     # open conversation — a long reply must not let the window die mid-sentence (see `note_bot_speech`).
     now = time.time() if now is None else now
@@ -293,64 +296,11 @@ def _window_ref(now: float) -> float:
 # the phrase: question, concrete fact, continuation of an ongoing task = directed; unrelated conversation/noise = no —.
 # `evaluate()` (synchronous, without network access) remains unchanged for callers that cannot afford a round trip (tests, probe,
 # accumulator, agent.py's non-hot-path uses) — the REAL voice turn is its only caller.
-# ⚠️ FRAMING measured 2026-09-01 (session 701fcc1b): the old prompt presented the phrase as loose audio plus a
-# note of "what was being done" — and the judge returned {"directed": false} on «I told you that you have already
-# opened it.» and «Are you listening to me?», 15/15 reproductions, because without the DIALOGUE frame a second-person
-# sentence reads as two people in the room talking to each other. Presenting the assistant's own last utterance
-# as "Zaelar acaba de decir …" flips those exact phrases to directed (3/3 each). The judge is still fallible —
-# which is why `evaluate_content` no longer consults it at all inside an active conversation (see below) — but
-# for the cold-start turns it does keep judging, this frame is the one that was measured to read replies-to-Zaelar
-# as replies-to-Zaelar.
-_DIRECTED_SYSTEM = (
-    "Eres el filtro de atención de Zaelar, un asistente de voz con el MICRÓFONO SIEMPRE ABIERTO — no hay "
-    "palabra de activación, así que además de a su operador oye conversación de fondo (familia, TV, terceros, "
-    "llamadas) que NO va dirigida a él.\n\n"
-    "Te doy lo último que dijo Zaelar (si habló) y la frase que se acaba de transcribir. Decide si la frase es "
-    "el operador hablándole A ZAELAR: le contesta, le pregunta, le corrige, se queja de lo que Zaelar ha hecho "
-    "o dicho, le da datos o le pide algo. Es AMBIENTE solo si claramente habla con OTRA persona o es ruido sin "
-    "relación con la conversación con Zaelar.\n\n"
-    "Ante la duda, marca DIRIGIDO — dejar sin atender al operador es peor que procesar un poco de ruido.\n\n"
-    'Responde SOLO con JSON: {"directed": true} o {"directed": false}. Nada más.'
-)
-
-
-async def _default_directed_judge(text: str, context: str) -> bool | None:
-    """True/False, or None if the judge failed (the caller fails open to directed=True). Off the hot path of the
-    real turn thanks to `asyncio.to_thread` — same pattern as `segmenter.judge()`."""
-    try:
-        from nucleo import memllm
-        # Dialogue frame, not an activity note — see the measurement above `_DIRECTED_SYSTEM`.
-        user = (f"Zaelar acaba de decir: «{context}»\n\nEl micrófono ha oído: «{text}»" if context
-                else f"El micrófono ha oído: «{text}»")
-        raw = await asyncio.to_thread(
-            memllm.chat_sync, "directed", _DIRECTED_SYSTEM, user,
-            max_tokens=20, temperature=0.0, timeout=4.0,
-        )
-        return _parse_directed(raw)
-    except Exception as e:  # noqa: BLE001
-        logger.warning(f"attention._default_directed_judge: failed ({str(e)[:160]}) — fail-open to directed")
-        return None
-
-
-def _parse_directed(raw: str | None) -> bool | None:
-    """Tolerant of a code fence (same problem as `segmenter._parse_judge`). None if it could not be read."""
-    if not raw:
-        return None
-    s = raw.strip()
-    if s.startswith("```"):
-        s = s.split("```", 2)[1] if s.count("```") >= 2 else s.strip("`")
-        if s.lstrip().lower().startswith("json"):
-            s = s.lstrip()[4:]
-    i, j = s.find("{"), s.rfind("}")
-    if i >= 0 and j > i:
-        s = s[i:j + 1]
-    try:
-        d = json.loads(s)
-    except Exception:
-        return None
-    v = d.get("directed")
-    return bool(v) if isinstance(v, bool) else None
-
+# The judge itself — its prompt, the dialogue frame measured 2026-09-01 and the two questions it answers since
+# V2-812 T-03 — lives in `voice/attention_judge.py`; the names are imported back here for every caller and test.
+from voice.attention_judge import (  # noqa: E402,F401
+    _DIRECTED_SYSTEM, _as_judgement, _parse_directed, _parse_judgement)
+from voice.attention_judge import default_directed_judge as _default_directed_judge  # noqa: E402
 
 _directed_judge = _default_directed_judge
 
@@ -383,7 +333,7 @@ async def evaluate_content(text: str, *, context: str = "", now: float | None = 
     if m != "always":
         return evaluate(text, now=now)
     if has_wakeword(text):
-        return Verdict(True, "wakeword")   # free shortcut — no need to ask the model about the obvious
+        return Verdict(True, "wakeword", by_act=True)   # free shortcut — no need to ask the model about the obvious
     t = (text or "").strip()
     if not t:
         return Verdict(False, "ambient")
@@ -419,14 +369,14 @@ async def evaluate_content(text: str, *, context: str = "", now: float | None = 
     if not str(context or "").strip():
         return Verdict(True, "no_frame")
     try:
-        directed = await _directed_judge(t, context)
+        directed, request = _as_judgement(await _directed_judge(t, context))
     except Exception as e:  # noqa: BLE001 — fail-open here ALSO covers an injected judge (set_directed_judge)
         # if it blows up, not just the default: nothing replacing the judge may leave the agent mute.
         logger.warning(f"attention.evaluate_content: judge failed ({str(e)[:160]}) — fail-open to directed")
-        directed = None
+        directed, request = None, None
     if directed is None:
         return Verdict(True, "always")     # fail-open: a broken judge must never leave the agent mute
-    return Verdict(directed, "always" if directed else "llm_ambient")
+    return Verdict(directed, "always" if directed else "llm_ambient", judged=True, request=request)
 
 
 def window_warm(now: float | None = None) -> bool:
@@ -463,6 +413,13 @@ def window_open(now: float | None = None) -> bool:
         bool(_state["last_directed"]) and (_window_ref(now) - _state["last_directed"]) <= window_s())
 
 
+# V2-812 T-03 — the line is still judged inside the window: the registry of admitted lines, their verdict, the
+# window they may renew and the licence they carry, lives in `voice/attention_lines.py`.
+from voice.attention_lines import (  # noqa: E402,F401
+    grant_line, licence, open_line, settle_line, wait_licence)
+from voice import attention_lines as _lines  # noqa: E402
+
+
 def note_directed(now: float | None = None) -> None:
     """Marks that a directed turn was HANDLED → opens/refreshes the active conversation window (smart mode).
 
@@ -472,6 +429,8 @@ def note_directed(now: float | None = None) -> None:
     2026-09-10 (dinner session 130418ed): every piece of table talk extended the window 5 more seconds,
     and the conversation structurally could not die while anybody talked near the mic."""
     now = time.time() if now is None else now
+    if _lines.renewal_refused():
+        return
     _state["_prev_anchor"] = (_state["last_directed"], list(_state["recent_directed"]),
                               _state.get("window_hint") or 0.0)
     _state["last_directed"] = now
@@ -604,6 +563,11 @@ def note_bot_speech(speaking: bool, now: float | None = None) -> None:
     elif _state["bot_hold"]:
         armed = _addressed_armed(now)
         _state["bot_hold"] = False
+        # V2-812 T-03 — the agent's reply re-anchors the window only when the line it answers was addressed:
+        # a reply to talk between passengers is not conversation with HIM. A delivery it was armed for is.
+        if not armed and _lines.latest_unaddressed():
+            _state["bot_addressed"] = 0.0
+            return
         _state["last_directed"] = now
         _state["bot_addressed"] = 0.0   # consumed: this arm licensed THIS utterance, never the next one
         # V2-749 — AND THE CLIENT HAS TO BE TOLD, because it can no longer find out by itself: it learned a
@@ -785,5 +749,6 @@ def reset() -> None:
     _state["speech_rise"] = 0.0
     _state["speech_end"] = 0.0
     _state["unanswered"] = []
+    _lines.reset()
 
 

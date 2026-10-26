@@ -50,6 +50,7 @@
  "errand_part_done": "ya está terminado",
  "widget_build_confirm": "Si no te he entendido mal, me pides que te CONSTRUYA una tarjeta nueva («{what}»). Tarda unos minutos y se queda en tu catálogo. ¿La hago?",
  "widget_change_confirm": "Si no te he entendido mal, me pides que MODIFIQUE una tarjeta tuya y deje una versión nueva («{what}»). ¿Lo hago?",
+ "errand_unaddressed_confirm": "No me ha quedado claro que me lo pidieras a mí. ¿Me pongo con esto: «{what}»?",
  "sweep_confirm_one": "Voy a borrar 1 cita {span}{keeping}. Es permanente. ¿La borro?",
  "sweep_confirm_many": "Voy a borrar {n} citas {span}{keeping}. Es permanente. ¿Las borro?",
  "sweep_span_one": "del {since}",

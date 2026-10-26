@@ -141,6 +141,74 @@ def remember_offer(request: str, *, context: dict, question: str) -> None:
         "question": question, "sheet": "", "offered": True, "ts": time.time()}
 
 
+def remember_unlicensed(task_id: str, request: str, task: "Task", *, question: str, sheet: str = "") -> None:
+    """Park an errand started from a line that was not a clear request to the agent, and keep the question
+    (V2-812 T-03). Same registry as the other gates — the yes/no, the brain's line («no has empezado nada»),
+    the expiry and the relaunch with `confirmed` are all theirs; it is marked `offered` because what he is asked
+    is whether HE wants it, not whether it is safe."""
+    _sweep_confirm()
+    _EXPIRED_CONFIRM.pop(str(task_id), None)
+    _forget_declined_like(request)
+    _PENDING_CONFIRM[str(task_id)] = {
+        "request": request, "kind": (task.kind or "generic"), "trusted": bool(task.trusted),
+        "context": dict(task.context or {}), "question": question, "sheet": str(sheet or ""),
+        "offered": True, "unlicensed": True, "ts": time.time(), "asked": _SPOKEN.pop(str(task_id), False)}
+
+
+def unlicensed_question(request: str) -> str:
+    """The sentence he hears when an errand would start from a line that was not clearly his request to us —
+    in HIS language, like every gate's question (V2-682)."""
+    t = (request or "").strip()
+    short = (t[:120] + "…") if len(t) > 120 else t
+    from i18n import langs as _lg
+    return _lg.current_language().errand_unaddressed_confirm.format(what=short)
+
+
+async def unlicensed_gate(task: "Task", key: str, req: str, *, wait_s: float = 2.5) -> bool:
+    """THE door a worker starts through asks the ONE consent rule whether the line behind it licensed it
+    (V2-812 T-03). True when the errand was parked on a question; False when it may run.
+
+    Measured in a car (session e52cd845): «Eso es.», said into an open window after a sentence that both stated
+    something and offered to resume a failed booking, resumed it — a 144 s worker on the restaurant's website.
+    The line was addressed; it was not a request. Every worker passes here — a commission from the model, a
+    backstop's errand, a resumed row — so the rule is not one each caller has to remember.
+
+    A confirmed relaunch is HIS yes to this very question: it licenses the line, so the worker's own later acts
+    (a commit click, a reply) read a licensed trace instead of asking again."""
+    from nucleo import consent
+    from nucleo import dispatch as _d
+    ctx = task.context or {}
+    trace = str(ctx.get("trace") or "")
+    if not trace or _d._dev_worker_params(ctx):     # the cluster dev worker brings its own authorisation
+        return False
+    try:
+        from voice import attention as _attn
+    except Exception as e:  # noqa: BLE001 — no voice layer: no line behind this errand, nothing to ask about
+        logger.debug(f"unlicensed_gate: no attention layer ({e!r}) — the errand runs")
+        return False
+    if bool(ctx.get("confirmed")):
+        _attn.grant_line(trace)
+        return False
+    lic = await _attn.wait_licence(trace, timeout_s=wait_s)
+    verdict = consent.decide(level="standard", policy_key="errand.start", licensed=lic)
+    if not verdict.get("unlicensed"):
+        return False
+    logger.info(f"dispatch: task {key} PARKED — its line was not a clear request: {req[:80]}")
+    rec = _d._SESSIONS.get(key)
+    question = unlicensed_question(req)
+    if rec:
+        rec.status = "done"
+        rec.result_summary = question
+        await _deliver_confirm(rec)
+        _d._SESSIONS.pop(key, None)
+        remember_unlicensed(key, req, task, question=question, sheet=_d.sheet_of(rec))
+        _d._task_row("withdrawn", rec)
+        _d.sync_state()
+    else:
+        remember_unlicensed(key, req, task, question=question)
+    return True
+
+
 def parked_errands() -> list[tuple[str, str]]:
     """(task_id, request) of every errand PARKED on a question — the same shape `dispatch._live_errands()` hands
     the dedup, because a parked errand has to be VISIBLE to it (2026-09-29, session 81095d8d).

@@ -67,6 +67,9 @@ async def judge(text: str, *, context: str, emit) -> tuple[bool, str, float]:
         # V2-768 — a cold turn let in: the conversation starts HERE, and the agent must be able to say why.
         from voice import attention_opening
         attention_opening.note(verdict.reason, text)
+    # V2-812 T-03 — the admitted line is registered (and, if nobody judged it on the way in, judged beside
+    # the turn) BEFORE the window is renewed, so a line found not addressed gives the window back.
+    attention.open_line(verdict, text=text, context=context)
     attention.note_directed()
     if verdict.reason == "wakeword":
         text = attention.reclaim_ambient_tail(text)

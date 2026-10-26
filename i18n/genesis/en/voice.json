@@ -50,6 +50,7 @@
  "errand_part_done": "already done",
  "widget_build_confirm": "If I've got this right, you're asking me to BUILD you a new card («{what}»). It takes a few minutes and it stays in your catalogue. Shall I?",
  "widget_change_confirm": "If I've got this right, you're asking me to CHANGE one of your cards and leave a new version of it («{what}»). Shall I?",
+ "errand_unaddressed_confirm": "I wasn't sure that was meant for me. Shall I start on this: «{what}»?",
  "sweep_confirm_one": "I'm about to delete 1 appointment {span}{keeping}. It's permanent. Shall I?",
  "sweep_confirm_many": "I'm about to delete {n} appointments {span}{keeping}. It's permanent. Shall I?",
  "sweep_span_one": "on {since}",

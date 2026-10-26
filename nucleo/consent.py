@@ -191,10 +191,33 @@ def level_of(spec: dict | None, *, widget_security: str = "", action: str = "") 
     return ws if ws in LEVELS else "standard"
 
 
+# ── Whose order was it? (V2-812 T-03) ───────────────────────────────────────────────────────────────────
+# The attention gate admits a line inside an open conversation without waiting for its judge, and judges it
+# beside the turn: was it addressed to the agent, and was it a clear request? `licence` is that answer for the
+# line of the CURRENT turn (its trace), measured by another layer like every other input here. Nothing in this
+# module reads the words.
+
+_FROM_LINE = object()   # `decide(licensed=...)` default: read the current turn's line
+
+
+def line_licence(trace: str = "") -> bool | None:
+    """True: the turn's line was a clear request to the agent (or he said yes to the question it raised).
+    False: judged, and it was not. None: unknown — no voice line behind this call, a wake word, a typed line,
+    a verdict still on its way — and then nothing here changes."""
+    try:
+        from voice import attention
+        return attention.licence(trace)
+    except Exception as e:  # noqa: BLE001 — no attention layer (a headless caller) is «unknown», never «refused»
+        import logging
+        logging.getLogger("zaelar.consent").debug(f"consent: no line licence to read ({e!r}) — unknown")
+        return None
+
+
 # ── THE RULE ────────────────────────────────────────────────────────────────────────────────────────────
 
 def decide(*, level: str = "standard", missing=(), candidates=(), radius: int | None = 1,
-           bounded: bool = True, policy_key: str = "", his_yes: bool = False, scope: dict | None = None) -> dict:
+           bounded: bool = True, policy_key: str = "", his_yes: bool = False, scope: dict | None = None,
+           licensed=_FROM_LINE) -> dict:
     """Act, or ask — and if asking, WHICH of the three useful questions it is.
 
     Every argument is something another layer already measured; nothing here reads text or guesses intent.
@@ -211,6 +234,11 @@ def decide(*, level: str = "standard", missing=(), candidates=(), radius: int | 
                       word, and the turn's verdict surely names that act (the widget's `held_row` hook). It clears
                       the class question and nothing above it: a missing fact, a doubt, his standing «ask» rule
                       and the radius rail still stop.
+      · `licensed`  — was the line this act comes from a clear request to the agent (`line_licence`, read
+                      from the current turn when not given)? `False` asks first for an ACT — a declared consent
+                      class, or a level from `sensitive` up — before any other question: a fact is not asked
+                      for, nor a doubt resolved, about something he may not have ordered. His standing `allow`
+                      and `his_yes` do not clear it: both say the act is fine when HE orders it (V2-812 T-03).
 
     Returns `{verdict, why, needs, candidates, n, level}` — data for the caller to phrase in its own words.
     This module never writes a sentence the operator hears: that would be a rail on judgement.
@@ -220,6 +248,12 @@ def decide(*, level: str = "standard", missing=(), candidates=(), radius: int | 
     lvl = str(level or "standard").strip().lower()
     lvl = lvl if lvl in LEVELS else "standard"
     out = {"verdict": RUN, "why": "", "needs": missing, "candidates": cands, "n": radius, "level": lvl}
+
+    # 0 · an act from a line that was not a clear request to the agent is asked first (V2-812 T-03)
+    lic = line_licence() if licensed is _FROM_LINE else licensed
+    if lic is False and (str(policy_key or "").strip() or _rank(lvl) >= _rank("sensitive")):
+        return {**out, "verdict": ASK_CONSENT, "why": "the line was not clearly a request to the agent",
+                "unlicensed": True}
 
     # 1 · a missing datum is not a permission question
     if missing:
@@ -263,7 +297,7 @@ def act_key(cls: str, channel: str = "") -> str:
 
 
 def decide_act(cls: str, *, channel: str = "", level: str = "sensitive", his_yes: bool = False, missing=(),
-               candidates=(), radius: int | None = 1, bounded: bool = True) -> dict:
+               candidates=(), radius: int | None = 1, bounded: bool = True, licensed=_FROM_LINE) -> dict:
     """THE door for an act that reaches the real world OUTSIDE a widget's data-op (V2-805): a cluster message, an
     errand's reply under its mandate, a worker's click that commits him on a website.
 
@@ -273,7 +307,7 @@ def decide_act(cls: str, *, channel: str = "", level: str = "sensitive", his_yes
     his explicit order over a row he saw, or a mandate he gave for this very conversation; it clears the class
     rail and nothing above it (a missing fact, a doubt, his standing «ask»/«never», the radius)."""
     return decide(level=level, missing=missing, candidates=candidates, radius=radius, bounded=bounded,
-                  policy_key=act_key(cls, channel), his_yes=his_yes)
+                  policy_key=act_key(cls, channel), his_yes=his_yes, licensed=licensed)
 
 
 def missing_facts(requires) -> list[str]:
