@@ -364,3 +364,32 @@ def _the_rules_table_starts_empty():
     if store is not None:
         store._reset_for_tests()
     yield
+
+
+# THE MEMORY STATE ROW COMES OUT OF EACH TEST AS IT WENT IN (2026-10-26).
+#
+# `memory.state` is ONE row in the session's single test database, and it carries the canvas report the brain reads
+# as «what is on screen» (`open_widgets`). A test that drives the real canvas door (`canvas_api.canvas_state`) writes
+# that row, and nothing gave it back: `test_one_agent_many_screens.py` left `["youtube"]` behind, so every later test
+# that asks «is this card still open?» (`turn_brief.owner_still_open`) read a stale screen and four action-repair
+# tests in `test_the_turn_asks_jev_once.py` went red only when run after it. The row is snapshotted before each test
+# that runs with the database open and written back after; a test that opened the database itself leaves the row
+# absent (the defaults), which is what it found. Only the database the test started on is restored — a test that
+# re-points `ZAELAR_DB` owns its own file. Same family as the notice ledger and the rules table above.
+@_pytest5.fixture(autouse=True)
+def _the_memory_state_row_is_given_back():
+    mdb = _sys5.modules.get("memory.db")
+    db = getattr(mdb, "_DB", None) if mdb is not None else None
+    path = getattr(db, "path", None)
+    row = db.query_one("SELECT data FROM state WHERE id=1") if db is not None else None
+    before = row["data"] if row is not None else None
+    yield
+    mdb = _sys5.modules.get("memory.db")
+    db = getattr(mdb, "_DB", None) if mdb is not None else None
+    if db is None or (path is not None and getattr(db, "path", None) != path):
+        return
+    if before is None:
+        db.execute("DELETE FROM state WHERE id=1")
+    else:
+        db.execute("INSERT INTO state (id, data) VALUES (1, ?) ON CONFLICT(id) DO UPDATE SET data=excluded.data",
+                   (before,))
