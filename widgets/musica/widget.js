@@ -71,7 +71,9 @@ function injectStyles(){
   .hb-mus2-dot{width:7px;height:7px;border-radius:50%;background:var(--hb-neutral,#c2ccda);flex:0 0 auto}
   .hb-mus2-dot.on{background:var(--sp-green)}
   .hb-mus2-seg{display:flex;gap:2px;border:1px solid var(--hb-line,#e3e8f0);border-radius:999px;padding:2px;
-               background:var(--hb-bg,transparent);flex:0 1 auto;min-width:0;overflow:hidden}
+               background:var(--hb-bg,transparent);flex:0 1 auto;min-width:0;overflow-x:auto;scrollbar-width:none}
+  .hb-mus2-seg::-webkit-scrollbar{display:none}
+  .hb-mus2-segb{flex:0 0 auto}
   .hb-mus2-segb{border:0;background:none;color:var(--hb-muted,#5b6b82);font-size:12px;font-weight:700;
                 padding:4px 10px;border-radius:999px;cursor:pointer;display:flex;align-items:center;gap:5px;
                 line-height:1;white-space:nowrap}
@@ -180,6 +182,14 @@ function injectStyles(){
   .hb-mus2-trx .hb-mus2-ibtn{opacity:0;width:26px;height:26px}
   .hb-mus2-trx .hb-mus2-ibtn svg{width:14px;height:14px}
   .hb-mus2-tr:hover .hb-mus2-trx .hb-mus2-ibtn,.hb-mus2-trx .hb-mus2-ibtn.on,.hb-mus2-trx .hb-mus2-ibtn:focus-visible{opacity:1}
+  /* A finger has no hover (V2-813): the three row actions were invisible yet held three 44px slots, so a title read
+     «Despech…». On a touch screen they are not there until the row is tapped, and then they take a line of their own. */
+  @media (hover:none){
+    .hb-mus2-trx{display:none}
+    .hb-mus2-tr.selected{flex-wrap:wrap}
+    .hb-mus2-tr.selected .hb-mus2-trx{display:flex;flex:1 1 100%;justify-content:flex-end}
+    .hb-mus2-tr.selected .hb-mus2-trx .hb-mus2-ibtn{opacity:1}
+  }
   .hb-mus2-x{border:0;background:none;color:var(--hb-muted-2,#9aa7b8);cursor:pointer;
              padding:5px;border-radius:7px;line-height:1;flex:0 0 auto;display:flex}
   .hb-mus2-x svg{width:14px;height:14px}
@@ -1209,6 +1219,7 @@ function headerBar(el, data, ctx, kind, opts){
   } else if(nowPlaying(data)){
     // DERIVED: a switch with one side is a label, so with nothing sounding there is no switch at all.
     const seg = h("div", "hb-mus2-seg");
+    seg.setAttribute("role", "tablist");   // one row of views — the phone never wraps it into a two-line pill
     const tab = (id, icon, label) => {
       const b = h("button", "hb-mus2-segb" + (kind === id ? " on" : ""));
       b.appendChild(svgEl(icon)); b.appendChild(h("span", null, label));
