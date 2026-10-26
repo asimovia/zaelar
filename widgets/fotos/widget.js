@@ -30,7 +30,8 @@ const CSS = `
 .fts-cx p{margin:0 0 12px;color:var(--hb-muted,#67707d);font-size:12.5px}
 `;
 
-const TILE = 130;   // px, square-ish tile including gap
+const TILE = 130;   // px, the TARGET tile: the real one is stretched so the columns fill the card exactly
+let tile = TILE;    // the size this paint uses (recompute sets it)
 const GAP = 6;
 const HEADER_H = 30;
 
@@ -48,7 +49,7 @@ function buildRows(items, cols) {
   let curYear = null;
   let rowItems = [];
   const flushRow = () => {
-    if (rowItems.length) { rows.push({ type: "items", top: y, h: TILE, items: rowItems }); y += TILE + GAP; rowItems = []; }
+    if (rowItems.length) { rows.push({ type: "items", top: y, h: tile, items: rowItems }); y += tile + GAP; rowItems = []; }
   };
   for (const it of items) {
     const yr = (it.taken_at || "").slice(0, 4) || "?";
@@ -180,7 +181,10 @@ function gallery(d, act) {
 
   const recompute = () => {
     const w = wrap.clientWidth || 600;
-    cols = Math.max(2, Math.floor(w / (TILE + GAP)));
+    // The NEAREST column count to the target, tiles stretched to fill: flooring it left a third of a phone empty
+    // (two 130px columns in 350px, V2-813); on a desktop card the density barely moves.
+    cols = Math.max(2, Math.round((w + GAP) / (TILE + GAP)));
+    tile = Math.floor((w - GAP * (cols - 1)) / cols);
     layout = buildRows(items, cols);
     canvas.style.height = layout.total + "px";
     for (const node of mounted.values()) node.remove();
@@ -230,13 +234,13 @@ function paintRow(row, cols) {
   holder.style.top = row.top + "px";
   holder.style.left = "0";
   holder.style.right = "0";
-  holder.style.height = TILE + "px";
+  holder.style.height = tile + "px";
   row.items.forEach((it, idx) => {
     const t = el("div", "fts-tile");
-    t.style.left = (idx * (TILE + GAP)) + "px";
+    t.style.left = (idx * (tile + GAP)) + "px";
     t.style.top = "0";
-    t.style.width = TILE + "px";
-    t.style.height = TILE + "px";
+    t.style.width = tile + "px";
+    t.style.height = tile + "px";
     t.title = it.filename || "";
     if (it.thumb) {
       const img = document.createElement("img");
