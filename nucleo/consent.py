@@ -66,9 +66,7 @@ not negotiable by convenience.
 from __future__ import annotations
 
 import json
-import re
 import time
-import unicodedata
 from pathlib import Path
 
 # ── Verdicts ────────────────────────────────────────────────────────────────────────────────────────────
@@ -340,83 +338,10 @@ def asks(verdict: dict | str) -> bool:
     return str(v) in (ASK_FACT, ASK_WHICH, ASK_CONSENT, REFUSE)
 
 
-# ── Spoken overrides (sibling of style_policy.apply_directive) ──────────────────────────────────────────
-# Coarse ON PURPOSE, and for the same reason as its sibling: only concepts that can be matched without
-# understanding may flip a stored flag. Everything else still reaches the model as a rule in `state.rules` —
-# nothing the operator says is lost, it just does not silently rewrite a policy nobody can audit.
-
-def _norm(text: str) -> str:
-    t = unicodedata.normalize("NFKD", (text or "").lower())
-    return " ".join("".join(c for c in t if not unicodedata.combining(c)).split())
-
-
-_LESS_FRICTION_RE = re.compile(
-    r"\b(?:no (?:me )?pregunt\w+|deja de pregunt\w+|sin pregunt\w+|no (?:me )?pidas (?:permiso|confirmacion)|"
-    r"no (?:hace falta|necesito) confirmar|hazlo (?:y ya|sin mas|directamente)|ejecuta sin parar|"
-    r"stop asking|don'?t ask (?:me )?(?:again|for confirmation)|just do it)\b")
-_MORE_FRICTION_RE = re.compile(
-    r"\b(?:pregunt\w+ (?:siempre|antes)|pideme (?:permiso|confirmacion)|confirma (?:siempre|antes de)|"
-    r"always ask|ask (?:me )?(?:first|before)|check with me)\b")
-
-
-# V2-778 F0-2 — «sin preguntar» is LESS friction only when nothing negates it. «nunca envíes un correo sin
-# preguntarme» asks for MORE caution, and read bare it set `ask_at: critical` — the caution rule opened the door.
-# A negation GOVERNS the phrase when both sit in the same clause: a comma, «y», «and», «but» end its reach, so
-# «no me preguntes, hazlo sin preguntar» is still less friction. This reads scope; it adds no vocabulary.
-_GOVERNED_WITHOUT_ASKING_RE = re.compile(
-    r"\b(?:nunca|jamas|never|no|don'?t|do not)\b"
-    r"(?:\s+(?!y\b|e\b|and\b|but\b|pero\b)[^\s,.;:!?]+){0,6}?"
-    r"\s+(?:sin (?:pregunt\w+|consultar\w*|pedir\w* (?:permiso|confirmacion)|avisar\w*)"
-    r"|without (?:asking|checking|telling|confirm\w*))\b")
-
-
-def _flags_for(text: str) -> dict:
-    n = _norm(text)
-    if _GOVERNED_WITHOUT_ASKING_RE.search(n):
-        return {"ask_at": "sensitive"}
-    if _LESS_FRICTION_RE.search(n):
-        return {"ask_at": "critical"}
-    if _MORE_FRICTION_RE.search(n):
-        return {"ask_at": "sensitive"}
-    return {}
-
-
-def _named_keys(text: str) -> list[str]:
-    """The consent keys a spoken rule NAMES, read from declared data only (V2-805): a connector of the catalog that
-    declares the class its acts belong to (`consent_class`), named by its own vocabulary — id, label, capabilities.
-    No word table lives here: a channel added to the catalog is reachable by its own words."""
-    try:
-        from connectors import catalog as _catalog
-        return _catalog.consent_keys_named(text)
-    except Exception as e:  # noqa: BLE001 — unreadable catalog: the rule stays global, as it was before
-        import logging
-        logging.getLogger("zaelar.consent").info(f"consent: catalog unreadable ({e}) — the rule stays global")
-        return []
-
-
-def apply_directive(text: str) -> dict:
-    """Persist what a spoken directive names, effective on the next decision. `{}` = it named nothing this
-    store can act on, which is not a failure: the model still receives the sentence as a rule.
-
-    A rule that NAMES a channel («no me pidas confirmación para mandar correos») moves THAT channel's class only
-    (`messaging.send_new@email` → allow, or ask for more friction) and leaves the global knob where it was — before
-    V2-805 it moved `ask_at` for every act, so a rule about email changed what a booking or a payment did."""
-    flags = _flags_for(text)
-    if not flags:
-        return {}
-    keys = _named_keys(text)
-    if keys:
-        value = "allow" if flags.get("ask_at") == "critical" else "ask"
-        out: dict = {}
-        for k in keys:
-            out.update(set_class(k, value, text))
-        return out
-    import rules
-    _migrate()
-    for k, v in flags.items():
-        rules.add(rules.GLOBAL, "gate", k, v, text=text)
-    return flags
-
+# ── Writes: his standing rules are rows of the rules table ──────────────────────────────────────────────
+# A spoken rule is understood ONCE, when it is written, by `rules.shape` (one structured call over the declared
+# vocabulary) — no word table here decides what a sentence means (V2-806). This module keeps the one door code
+# uses to write a class rule: the autoresponder's switch, a «yes, and don't ask me again».
 
 def set_class(key: str, value: str, text: str = "") -> dict:
     """Set one standing class rule ('never'|'ask'|'allow') — a user row at the class's scope, refined by its
@@ -430,27 +355,6 @@ def set_class(key: str, value: str, text: str = "") -> dict:
     _migrate()
     rules.add(rules.class_scope(*rules.split_key(key)), "gate", "consent", value, text=text)
     return {key: value}
-
-
-_TOPIC_RE = re.compile(r"\bpregunt\w*|confirm\w*|permiso|friccion|ask\b")
-
-
-def retract_directive(text: str) -> dict:
-    """Release the rows a retired rule had set — back to genesis."""
-    import rules
-    if not _TOPIC_RE.search(_norm(text)):
-        return {}
-    _migrate()
-    keys = _named_keys(text)
-    if keys:
-        # A retired rule about ONE channel releases that channel's class only — the global knob is not its to move.
-        out = {}
-        for k in keys:
-            gone = rules.clear(rules.class_scope(*rules.split_key(k)), "consent")
-            if gone:
-                out[k] = gone[-1]["value"]
-        return out
-    return {r["key"]: r["value"] for r in rules.clear(rules.GLOBAL, "ask_at")}
 
 
 def _reset_for_tests() -> None:

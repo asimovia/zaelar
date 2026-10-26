@@ -219,8 +219,8 @@ user-visible build number and the reload signal), `daemon/` (the LOCAL daemon, n
   the verdict is what the mouth says.
 - `nucleo/request_row.py` — every request that acts is ONE `tasks` row (`kind=inline` included); `nucleo/tasks.py`
   maps a worker session onto that row.
-- `nucleo/flash/rule_scope.py` + `memory.api.rules_for` — a spoken rule carries `voice` / `widget:<id>` / `general`,
-  and each prompt surface reads only its own.
+- `rules/` — every standing rule and preference is a scoped row; `rules.shape` writes it once from his words,
+  `consent.decide` reads its gate, `rules.prompt` composes only the notes in play (`zaelar-rules.md`).
 
 Architecture: `zaelar-architecture.md` §5h (the request) and §5i (the turn's doors, in order).
 

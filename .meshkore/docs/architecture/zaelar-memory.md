@@ -12,9 +12,9 @@
 >   `edges`, `episodic`, `journal`, `sys_kv`, `tasks` + `task_artifacts` + `fts_tasks` (v9 adds `tasks.verdict`),
 >   `errands` + `errand_threads`, `workflows`, `action_map`, `paraphrase_index` + `vec_paraphrases`,
 >   `vault_meta` + `vault_secrets`.
-> - **Spoken rules have a scope** (`voice` · `widget:<id>` · `general`, from a fixed classifier,
->   `nucleo/flash/rule_scope.py`) stored beside `state.rules`; each prompt surface asks `memory.api.rules_for(surface)`
->   for its own, newest last (the newest eight reach the prompt and the worker's dossier). CRIT-M1.
+> - **Spoken rules are not memory** (V2-806): they are rows of the rules table (`rules/`, its own table in the same
+>   `zaelar.db`), imported once from the old `state.rules` / `state.rule_scopes`; memory neither holds nor renders
+>   them. `zaelar-rules.md`, CRIT-M1, CRIT-M7.
 > - **Genesis is per domain** (`style`, `consent`, `library`, `errands`, `playbooks`, `circuit`), each with its own
 >   override file under `<workspace>/config/`. CRIT-M2.
 > - **Factory reset** (`scripts/reset-memory.sh`) forgets the memory and the spoken rules (their override files are
@@ -78,14 +78,9 @@ configurable providers: cloud by default so that every deployment measures the s
   With that the brain resolves "modify/open the X widget" by looking at what is on screen — if it is open or the
   only one, it acts without asking. `open_widgets` is written by the frontend (authoritative for the canvas,
   `POST /api/canvas/state` from `desktop._persist()`); `activity`/`sessions` by the SlowBrain dispatcher; `rails`
-  is projected by `nucleo/rails.py`. And **`rules`** = the **USER RULES**: behaviour rules the operator imposes by
-  speaking ("be more direct", "answer only yes or no") — starts blank, persists across sessions (≠ a session
-  directive). The provider writes them when it recognises the `set_style_directive` tool, via
-  `memory.add_user_rule` (dedup by normalised text, cap 8, the newest wins) / `memory.remove_user_rule` (fuzzy
-  match, "forget that rule", deterministic guard `router.looks_like_rule_removal`); `compose_state §B` reads them as
-  the "OPERATOR RULES" line (with empty `rules` the prompt is byte-identical). It is the LEARNED layer, as opposed
-  to the BRAIN RULES (primordial genetics, see `zaelar-architecture.md §5e`). Everything is visible in the memory
-  map (STATE column). Schema in `memory/state.py`.
+  is projected by `nucleo/rails.py`. The operator's spoken RULES no longer live here: since V2-806 they are rows of
+  the rules table (`rules/`, `zaelar-rules.md`), and the old `rules` / `rule_scopes` keys are imported there once.
+  Schema in `memory/state.py`.
 - **Short term = RECENT memory (short term and recency are THE SAME module, ONE format).** They are so closely
   related that separating them would be duplication. It is **one** recent memory, in a **MIXED format** (less
   storage-efficient, but simple and sufficient): the `level='short'` rows that are **read WHOLE** into the prompt

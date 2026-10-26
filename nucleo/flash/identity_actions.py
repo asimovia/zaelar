@@ -10,7 +10,7 @@ hardcoded to "zaelar" — nothing had ever wired a rename to it.
 Neither is a free-text preference: a rename is a STRUCTURED fact (`state.assistant_name`, declared since V2-002
 and never once written) and the attention mode is a CONFIGURED setting (`config/settings.py`, the same one the
 orb's 🤖 button writes). Both are detected here, on the model's OWN paraphrase in `directive` — narrower and far
-more predictable than free operator speech, the trade `router_guards.looks_like_rule_removal` already makes —
+more predictable than free operator speech, the trade the old rule-removal guard made —
 and BOTH channels (voice `nucleo.py`, text `probe.py`) call `resolve()` + the matching `persist_*` instead of
 duplicating the regex/DB-write pair twice (the V2-108 lesson: a parallel implementation that only one channel
 gets is a parallel implementation that quietly stops working the day only that one is touched).

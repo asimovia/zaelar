@@ -324,16 +324,6 @@ def test_looks_like_close_guard():
     assert router.looks_like_close("puedes cerrar la música")
 
 
-def test_looks_like_rule_removal_guard():
-    # V2-046 A1: the SAME tool adds or removes a user rule; this turn guard determines the meaning.
-    for yes in ("olvida esa regla", "olvídate de lo de ser breve", "quita la regla de responder sí o no",
-                "ya no hace falta que seas tan directo", "borra esa norma"):
-        assert router.looks_like_rule_removal(yes), yes
-    for no in ("sé más breve a partir de ahora", "trátame de usted", "responde solo sí o no",
-               "cuando te pida una acción hazla sin responder"):
-        assert not router.looks_like_rule_removal(no), no
-
-
 def test_is_messaging_service_guard():
     # V2-045: WhatsApp/Telegram are linked by QR in the messaging widget, not through the browser.
     assert router.is_messaging_service("", "conéctame a WhatsApp")

@@ -1,10 +1,9 @@
-"""The set_style_directive handler, whole (V2-046 A1 + V2-633; extracted from the voice provider paying the
-architecture ratchet). One directive does three things, in this order: identity actions get first refusal
-(a rename / the attention-mode toggle ride the same tool); the STYLE FLAGS that govern the engine's own
-mouths (fast-lane ack, never-mute backstops, lead-in filler — `nucleo/style_policy`) move synchronously, so
-the rule governs the very NEXT turn; and the rule text persists as a USER RULE in the state (off-loop —
-it rides compose_state §B into every prompt). Add-vs-retract is decided by a deterministic guard over the
-operator's own sentence, never by the LLM.
+"""The set_style_directive handler, whole (V2-046 A1 + V2-633 + V2-806). Identity actions get first refusal (a
+rename / the attention-mode toggle ride the same tool); everything else is a RULE, understood ONCE when it is
+written: `rules.shape.write` makes one structured model call against the declared vocabulary and stores, removes
+or lists rows of the rules table — style knobs, permission gates and notes alike, by scope. The session layer
+(`brain._directive`) carries his sentence only until its rows exist, and the agent repeats back once, in plain
+words, what it understood. No regex decides the direction or the scope of a rule.
 """
 from __future__ import annotations
 
@@ -19,64 +18,44 @@ def handle(directive: str, text: str, brain, emit, spawn) -> bool:
     from nucleo.flash import identity_actions as _ident   # rename/attention-mode toggle
     if _ident.handle_voice(directive, emit, spawn):
         return True
-
-    async def _persist_rule(d: str, removal: bool) -> None:
-        try:
-            import rules.notes as _rnotes                       # V2-806: a note row of the rules table
-            from nucleo.flash import rule_scope as _rscope      # the scope the rule is stored with (fixed classifier)
-            if removal:
-                gone = await asyncio.to_thread(_rnotes.remove_matching, d)
-                emit("brain", "🧬 user rule retirada" if gone else "🧬 user rule: sin match para retirar",
-                     text=(gone or d)[:100], role="system")
-            else:
-                _scope = _rscope.scope_of(d)
-                await asyncio.to_thread(_rnotes.add, d, _scope)
-                # V2-778 F3-25: the scope rides on the event, so a rule filed under the wrong surface is visible
-                emit("brain", "🧬 user rule guardada (persiste)", text=d[:100], role="system", extra={"scope": _scope})
-        except Exception as e:  # noqa: BLE001
-            logger.warning(f"user rule no persistida (voz sigue): {e}")
-
-    from nucleo import style_policy as _stylep
-    from nucleo.flash import router as _router
-    if _router.looks_like_rule_removal(text):
-        brain._directive = ""            # the immediate layer drops the retired rule too
-        try:
-            released = _stylep.retract_directive(directive)
-            if released:
-                emit("brain", "🧬 flags de estilo liberados (vuelven al génesis)",
-                     text=", ".join(released), role="system")
-        except Exception:
-            pass
-        try:
-            from nucleo import consent as _consent
-            freed = _consent.retract_directive(directive)
-            if freed:
-                emit("brain", "🧬 consentimiento: vuelve al génesis", text=", ".join(freed), role="system")
-        except Exception:
-            pass
-        spawn(_persist_rule(directive, True), "user-rule")
-    else:
-        brain._directive = directive
-        emit("brain", "🎯 directiva de estilo fijada", text=directive, role="system")
-        try:
-            flags = _stylep.apply_directive(directive)
-            if flags:
-                emit("brain", "🧬 flags de estilo aplicados (rigen ya)",
-                     text=", ".join(f"{k}={v}" for k, v in flags.items()), role="system")
-        except Exception:
-            pass
-        # The act-or-ask gate hears the rule too (2026-09-29): «pregúntame siempre antes» / «hazlo directamente»
-        # had a parser with no production caller — the model got the sentence, the gate never did.
-        try:
-            from nucleo import consent as _consent
-            cflags = _consent.apply_directive(directive)
-            if cflags:
-                emit("brain", "🧬 consentimiento aplicado (rige ya)",
-                     text=", ".join(f"{k}={v}" for k, v in cflags.items()), role="system")
-        except Exception:
-            pass
-        spawn(_persist_rule(directive, False), "user-rule")
+    brain._directive = directive         # obeyed at once, until the rows exist
+    emit("brain", "🎯 directiva de estilo fijada", text=directive, role="system")
+    spawn(write_rule(directive, text, emit, brain), "user-rule")
     return False
+
+
+async def write_rule(directive: str, text: str, emit, brain=None, *, speak: bool = True) -> dict:
+    """Shape and store the rule off the turn, say what was understood, and hand the session layer back."""
+    import rules.shape as _shape
+    try:
+        res = await asyncio.to_thread(_shape.write, directive, text)
+    except Exception as e:  # noqa: BLE001 — the session layer keeps the sentence for this session
+        logger.warning(f"rule not written (the session keeps it): {e}")
+        return {}
+    for attr in ("_directive", "directive"):  # the voice brain's session layer, or the probe session's
+        if brain is not None and getattr(brain, attr, None) == directive:
+            setattr(brain, attr, "")     # his rows govern now
+    for r in res.get("stored") or []:
+        emit("brain", "🧬 user rule guardada (persiste)", text=(r["text"] or directive)[:100], role="system",
+             extra={"id": r["id"], "scope": r["scope"], "kind": r["kind"], "key": r["key"]})
+    for r in res.get("removed") or []:
+        emit("brain", "🧬 user rule retirada", text=(r["text"] or r["id"])[:100], role="system", extra={"id": r["id"]})
+    line = repeat_back(res)
+    if line and speak:
+        from voice import proactive
+        await proactive.notify("reglas", line, speak=True, key=f"rule:{abs(hash(line)) % 10**8}",
+                               opens_window=bool(res.get("doubt")))
+    return {**res, "line": line}
+
+
+def repeat_back(res: dict) -> str:
+    """What the agent says once: the model's own restatement, with the rows it names when it lists or asks."""
+    import rules.shape as _shape
+    say = str(res.get("say") or "").strip()
+    rows = res.get("listed") or res.get("doubt") or []
+    if rows:
+        return (say.rstrip(".:") + ": " if say else "") + _shape.listing_line(rows)
+    return say if (res.get("stored") or res.get("removed") or res.get("op") == "list") else ""
 
 
 def prompt_lines(mstate: dict) -> list[str]:
@@ -138,36 +117,14 @@ def prompt_lines(mstate: dict) -> list[str]:
 
 
 async def handle_probe(d: str, text: str, sess, ingest: bool):
-    """Probe-channel mirror (parallel impl — this module owns the tool in BOTH channels). Returns the
-    identity action label when identity_actions consumed the directive, else None after moving the style
-    flags and persisting the rule (both gated to real turns, like the provider)."""
+    """Probe-channel mirror (this module owns the tool in BOTH channels). Returns the identity action label when
+    identity_actions consumed the directive, else None after writing the rule (gated to real turns)."""
     from nucleo.flash import identity_actions as _ident
     act = await _ident.handle_probe(d, ingest=ingest) if d else None
     if act or not d:
         return act
-    from nucleo import style_policy as _stylep
-    from nucleo.flash import router as _router
-    if _router.looks_like_rule_removal(text):
-        sess.directive = ""
-        if ingest:
-            try:
-                import rules.notes as _rnotes
-                from nucleo import consent as _consent
-                _stylep.retract_directive(d)
-                _consent.retract_directive(d)
-                await asyncio.to_thread(_rnotes.remove_matching, d)
-            except Exception:
-                pass
-    else:
-        sess.directive = d
-        if ingest:
-            try:
-                import rules.notes as _rnotes
-                from nucleo import consent as _consent
-                from nucleo.flash import rule_scope as _rscope
-                _stylep.apply_directive(d)
-                _consent.apply_directive(d)          # the act-or-ask gate hears the rule too (2026-09-29)
-                await asyncio.to_thread(_rnotes.add, d, _rscope.scope_of(d))
-            except Exception:
-                pass
+    sess.directive = d
+    if ingest:
+        from voice.observer import emit
+        await write_rule(d, text, emit, sess)
     return None

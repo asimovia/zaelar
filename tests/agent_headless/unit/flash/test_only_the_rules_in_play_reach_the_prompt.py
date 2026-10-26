@@ -95,13 +95,3 @@ def test_the_memory_states_sentences_are_imported_once_with_their_scopes():
     store._conn().execute("DELETE FROM rules_meta")
     store._done.clear()
     assert len(notes.rows()) == 3, "a re-run inserts nothing: the ids are derived from the sentence"
-
-
-# ── the scope a sentence is filed under (the fixed classifier, until the write-time shaping replaces it) ─────
-
-def test_the_fixed_classifier_names_the_scope_of_a_spoken_rule():
-    from nucleo.flash import rule_scope
-    for voice in ("no me confirmes las órdenes", "sin muletillas", "confirm my orders", "no fillers please"):
-        assert rule_scope.scope_of(voice) == "voice", voice
-    assert rule_scope.scope_of("en la agenda, las reuniones siempre de 30 minutos") == "widget:agenda"
-    assert rule_scope.scope_of("nunca compres en Wish") == "general"

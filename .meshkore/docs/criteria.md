@@ -81,13 +81,13 @@ below is the first kind, or it names the mechanism that replaced the second.
 ## 2 · Consent — act or ask
 
 - **CRIT-C1 · One consent rule.** A missing datum → ask for the DATUM; a doubt between two → ask which; a radius
-  → ask; otherwise act. Genesis asks at `critical`; a spoken rule moves it («pregúntame siempre antes» → sensitive,
-  «hazlo directamente» → critical) in both channels; a negation that governs «sin preguntar» / «without asking»
-  in its own clause is MORE friction («nunca envíes un correo sin preguntarme» → sensitive). A question only
-  clarifies WHAT he wants, never asks permission: when the verdict is sure of the order and its action at
-  `consent.intent_act_at` (genesis 0.7), the engine acts even if the model asked — below it the question stands.
-  — since 2026-09-17 · nodes 4.188, 4.185, 2.174, 2.199, 2.431, 2.728,
-  2.729 · `nucleo/consent.py`, `nucleo/flash/undecided.py`.
+  → ask; otherwise act. Genesis asks at `critical`; a spoken rule moves it in both channels, understood ONCE when
+  written by one structured call (`rules/shape.py`: «pregúntame siempre antes» → `ask_at` sensitive, «no me pidas
+  confirmación para los correos» → a gate at that channel's scope); every field is validated against declared data,
+  removal is by id, and with no answer nothing is guessed into a gate. A question only clarifies WHAT he wants,
+  never asks permission: when the verdict is sure of the order and its action at `consent.intent_act_at` (genesis
+  0.7), the engine acts even if the model asked — below it the question stands. — since 2026-10-26 · nodes 4.188,
+  4.185, 2.174, 2.811, 2.431, 2.728, 2.729 · `nucleo/consent.py`, `rules/shape.py`, `nucleo/flash/undecided.py`.
 - **CRIT-C2 · A «yes» answers ONE proposal** and spends only that proposal's authority; an order that starts with
   «ok» is not a yes to a different pending action; every pending confirmation can be answered in words. — since
   2026-09-18 · nodes 2.29, 2.156, 2.125.
@@ -184,8 +184,8 @@ below is the first kind, or it names the mechanism that replaced the second.
 - **CRIT-K8 · Closing a card is a TOOL, like opening one**; «close the calendar and the messages» closes both; an
   op inside a card runs and the card he NAMED closes after it. — since 2026-09-24 · nodes 2.88, 2.127, 2.126.
 - **CRIT-K9 · A classifier before the model is a PRICE** (~780 ms), paid only where the decision cannot be read
-  after; a fixed table may decide alone only where a wrong answer costs nothing — a fail-open default, as the scope
-  of a spoken rule is. — since 2026-09-22 · nodes 3.58, 2.172.
+  after; a fixed table may decide alone only where a wrong answer costs nothing — a fail-open default. — since
+  2026-09-22 · nodes 3.58.
 - **CRIT-K10 · A card named only to be LEFT ALONE is never the target.** With several open cards declaring the
   same control, his sentence decides before any verdict: the card it names as the target wins, a card inside a
   keep / don't-touch / negation clause is excluded (`nucleo/flash/named_target.py`); a «which card?» the engine

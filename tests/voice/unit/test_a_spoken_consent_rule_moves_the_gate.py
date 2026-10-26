@@ -1,9 +1,8 @@
 """A spoken consent rule moves the consent gate — in production, not only in tests (2026-09-29).
 
-`consent.apply_directive` («pregúntame siempre antes de tocar nada» → ask at `sensitive`; «hazlo directamente,
-no me preguntes» → `critical`) existed with its regexes and tests and NO production caller: the sentence reached
-the model as a rule in `state.rules` and the gate that decides act-or-ask never heard it. The style sibling was
-wired in both channels; this one is wired beside it.
+A consent rule once existed with its parser and tests and NO production caller: the sentence reached the model as
+prose and the gate that decides act-or-ask never heard it. Since V2-806 both channels hand the sentence to
+`rules.shape`, which writes the gate row the decision reads.
 """
 import asyncio
 import pathlib
@@ -33,17 +32,27 @@ class _Sess:
     directive = ""
 
 
-def test_the_probe_channel_moves_the_gate_and_a_retraction_restores_genesis():
+def _answer(monkeypatch, plan):
+    import json
+    from rules import shape
+    monkeypatch.setattr(shape, "_chat", lambda system, user: json.dumps(plan))
+
+
+def test_the_probe_channel_moves_the_gate_and_a_retraction_restores_genesis(monkeypatch):
     assert consent.ask_at() == "critical", "genesis"
     rule = "pregúntame siempre antes de tocar nada"
+    _answer(monkeypatch, {"op": "add", "say": "ok",
+                          "rows": [{"scope": "global", "kind": "gate", "key": "ask_at", "value": "sensitive"}]})
     asyncio.run(style_directive.handle_probe(rule, rule, _Sess(), ingest=True))
     assert consent.ask_at() == "sensitive", "the spoken rule governs the very next decision"
+    import rules
+    rid = rules.deciding_rule(rules.path(), "ask_at")["id"]
     gone = "olvida lo de preguntarme siempre antes"
+    _answer(monkeypatch, {"op": "remove", "remove": [rid], "say": "ok"})
     asyncio.run(style_directive.handle_probe(gone, gone, _Sess(), ingest=True))
     assert consent.ask_at() == "critical", "back to genesis"
 
 
 def test_both_channels_are_wired():
     src = (ENGINE / "nucleo/flash/style_directive.py").read_text("utf-8")
-    assert src.count("_consent.apply_directive(") == 2, "voice and probe both move the consent flags"
-    assert src.count("_consent.retract_directive(") == 2
+    assert src.count("write_rule(") == 3, "voice (spawned) and probe (awaited) both write the rule through the shaper"

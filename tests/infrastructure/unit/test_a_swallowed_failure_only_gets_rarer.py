@@ -276,7 +276,6 @@ PER_FILE: dict[str, int] = {
     'nucleo/flash/reply_or_forward.py': 1,
     'nucleo/flash/reply_promise.py': 1,
     'nucleo/flash/router_guards.py': 1,
-    'nucleo/flash/rule_scope.py': 2,
     'nucleo/flash/search_routing.py': 1,
     'nucleo/flash/second_pass.py': 10,
     'nucleo/flash/segmenter.py': 1,

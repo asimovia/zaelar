@@ -291,7 +291,7 @@ from nucleo.flash.router_guards import (  # noqa: F401 — re-export, not a loca
     looks_like_show_strict, looks_like_escalate_task,
     escalate_goal_from_window, hands_public_lookup_back, promises_a_dated_reminder, dated_reminder_backstop,
     create_widget_request, dated_note_backstop, already_in_agenda,
-    looks_like_marketplace_nav, looks_like_modify_widget, looks_like_rule_removal, looks_like_bare_ref,
+    looks_like_marketplace_nav, looks_like_modify_widget, looks_like_bare_ref,
     is_messaging_service, looks_like_stop_work, login_site, nothing_running_for, too_thin_to_commission,
 )
 # V2-778 F2-16 — the two promise questions read the reply's VERDICT first (any language); the tables propose.

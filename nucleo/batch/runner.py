@@ -197,38 +197,21 @@ def report_of(r: dict) -> dict:
 # operator's (a worker finishing, a refusal) and belong to HIS next turn. Measured on the errands case: the step
 # after a refused search swallowed the refusal note and answered about it — «Las bicis ya están en marcha…
 # no puedo cambiarme por dentro» — to a step that only set a standing rule, and was reported as needing him.
-_SENTENCE_RE = re.compile(r"(?<=[.;!?])\s+|\n+")
-
-
 async def _store_rule(goal: str) -> dict:
-    """A rule row, sentence by sentence: the style and consent flags (the engine's mouths and gate), then the
-    sentence as a note row of the rules table with the scope the fixed classifier gives it. No model call. Never raises."""
-    stored, scopes = [], []
+    """A rule row: understood ONCE by the rules shaper (one structured call for the whole row, V2-806) and stored as
+    rows of the rules table — style knobs, permission gates and notes alike, each with its scope. Never raises."""
     try:
-        import rules.notes as _rnotes
-        from nucleo import consent as _consent, style_policy as _stylep
-        from nucleo.flash import rule_scope as _rscope
-        for s in _SENTENCE_RE.split(str(goal or "")):
-            s = " ".join(s.split()).strip().rstrip(".")
-            if len(s) < 8:
-                continue
-            try:
-                _stylep.apply_directive(s)
-                _consent.apply_directive(s)
-            except Exception:  # noqa: BLE001
-                pass
-            _scope = _rscope.scope_of(s)
-            await asyncio.to_thread(_rnotes.add, s, _scope)
-            stored.append(s)
-            scopes.append(_scope)
-        # V2-778 F3-25: each rule's scope rides on the event, so a misrouted one is visible in the viewer
-        _emit("🧬 user rule guardada (lista)", text=" · ".join(x[:60] for x in stored), n=len(stored),
-              scopes=scopes)
+        import rules.shape as _shape
+        res = await asyncio.to_thread(_shape.write, " ".join(str(goal or "").split()))
+        stored = res.get("stored") or []
+        # V2-778 F3-25: each rule's scope rides on the event, so a misfiled one is visible in the viewer
+        _emit("🧬 user rule guardada (lista)", text=" · ".join((r["text"] or "")[:60] for r in stored), n=len(stored),
+              scopes=[r["scope"] for r in stored], ids=[r["id"] for r in stored])
     except Exception as e:  # noqa: BLE001
         return {"ok": False, "error": f"rule not stored — {type(e).__name__}: {e}"}
     if not stored:
         return {"ok": False, "error": "rule not stored — nothing to keep"}
-    return {"ok": True, "reply": [f"{len(stored)} rule(s) saved."], "executed": "rule"}
+    return {"ok": True, "reply": [res.get("say") or f"{len(stored)} rule(s) saved."], "executed": "rule"}
 
 
 async def _turn(turn, text: str, sid: str, step: str = "") -> dict:

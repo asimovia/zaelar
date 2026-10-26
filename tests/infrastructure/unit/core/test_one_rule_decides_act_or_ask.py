@@ -154,33 +154,50 @@ def test_an_allow_rule_still_does_not_clear_a_SWEEP():
 
 
 # ── 5 · «no me preguntes» is a policy, not a prompt sentence ────────────────────────────────────────────
+# V2-806: the sentence is understood once by `rules.shape` (one structured call, scripted here); what is measured
+# is the row it writes and the decision that reads it.
 
-def test_ejecuta_sin_parar_is_understood_and_persisted():
-    assert consent.apply_directive("hazlo directamente, no me preguntes más") == {"ask_at": "critical"}
+def _shaped(monkeypatch, plan: dict, sentence: str) -> dict:
+    import json as _json
+
+    from rules import shape
+    monkeypatch.setattr(shape, "_chat", lambda system, user: _json.dumps(plan))
+    return shape.write(sentence)
+
+
+def _ask_at(level: str) -> dict:
+    return {"op": "add", "say": "ok", "rows": [{"scope": "global", "kind": "gate", "key": "ask_at", "value": level}]}
+
+
+def test_ejecuta_sin_parar_is_understood_and_persisted(monkeypatch):
+    _shaped(monkeypatch, _ask_at("critical"), "hazlo directamente, no me preguntes más")
     import rules
     row = rules.deciding_rule(rules.path(), "ask_at")
     assert (row["source"], row["value"], row["text"]) == ("user", "critical", "hazlo directamente, no me preguntes más"), \
         "persisted as HIS row of the rules table, with his words (V2-806)"
 
 
-def test_he_can_ask_for_MORE_friction_too_and_it_reaches_the_verdict():
-    consent.apply_directive("pregúntame siempre antes de tocar nada")
+def test_he_can_ask_for_MORE_friction_too_and_it_reaches_the_verdict(monkeypatch):
+    _shaped(monkeypatch, _ask_at("sensitive"), "pregúntame siempre antes de tocar nada")
     assert consent.ask_at() == "sensitive"
     v = consent.decide(level="sensitive", radius=1, bounded=True)
     assert v["verdict"] == consent.ASK_CONSENT, "his rule has to change a DECISION, not just a prompt line"
 
 
-def test_retracting_the_rule_goes_back_to_the_genesis_default():
-    consent.apply_directive("pregúntame siempre antes de tocar nada")
+def test_retracting_the_rule_goes_back_to_the_genesis_default(monkeypatch):
+    row = _shaped(monkeypatch, _ask_at("sensitive"), "pregúntame siempre antes de tocar nada")["stored"][0]
     assert consent.ask_at() == "sensitive"
-    consent.retract_directive("olvida lo de preguntarme antes")
+    _shaped(monkeypatch, {"op": "remove", "remove": [row["id"]], "say": "ok"}, "olvida lo de preguntarme antes")
     assert consent.ask_at() == "critical"
 
 
-def test_prose_that_names_no_flag_stores_NOTHING_instead_of_guessing():
-    """The same boundary its sibling `style_policy` draws: the model still gets the sentence as a rule, so
-    nothing is lost — but a policy nobody can audit is never written from a guess."""
-    assert consent.apply_directive("me gustan las cosas bien hechas") == {}
+def test_prose_that_names_no_gate_writes_NO_gate(monkeypatch):
+    """The boundary its sibling `style_policy` draws: a sentence no gate captures is kept as a NOTE the model
+    reads — nothing is lost — and never written into a policy nobody can audit."""
+    _shaped(monkeypatch, {"op": "add", "say": "ok", "rows": [{"scope": "global", "kind": "pref", "key": "note",
+                                                              "value": "me gustan las cosas bien hechas"}]},
+            "me gustan las cosas bien hechas")
+    assert consent.ask_at() == "critical"
     assert consent.set_class("messaging.autorespond", "quizá") == {}
 
 

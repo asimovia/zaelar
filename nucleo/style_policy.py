@@ -10,10 +10,9 @@ Layering, exactly as the operator ordered it:
      Today: short orders run in SILENCE (the visible effect is the answer) and fillers are "smart" (never on
      a turn that is itself a short order — a thinking sound before «pausa» reads as incomprehension, V2-572).
   2. HIS ROWS (V2-806): each knob is a `pref` row of the rules table at the `voice` scope (`rules/`); the
-     genesis value is the default row. Written the moment a style directive is understood (`apply_directive`,
-     called from the set_style_directive handler in the same turn) and read per use through the cascade — so a
-     rule given by voice or chat GOVERNS THE VERY NEXT TURN, and survives restarts. Removing the rule
-     (`retract_directive`) deletes his row and the genesis default is back. The legacy
+     genesis value is the default row. Written when a spoken rule is understood (`rules.shape`, one structured
+     call when the rule is written — no word table) and read per use through the cascade, so it survives
+     restarts. Removing the rule deletes his row and the genesis default is back. The legacy
      `<workspace>/config/style.json` is imported once.
 
 Scope: these flags gate the VOICE mouths only. The chat channel keeps its text acks — a written «Hecho.»
@@ -23,9 +22,7 @@ untouched for the same reason.
 from __future__ import annotations
 
 import json
-import re
 import time
-import unicodedata
 from pathlib import Path
 
 
@@ -102,103 +99,12 @@ def filler_allowed(kind: str = "neutral") -> bool:
     return kind != "action"
 
 
-# ── Directive parsing: a spoken rule flips concrete flags, deterministically ─────────────────────────────
-# The LLM already receives the rule TEXT (state.rules rides every prompt); this is for the mouths the model
-# does not control. Coarse on purpose: only concepts we can match without understanding flip a flag.
-
-def _norm(text: str) -> str:
-    t = unicodedata.normalize("NFKD", (text or "").lower())
-    return " ".join("".join(c for c in t if not unicodedata.combining(c)).split())
-
-_NEG_CONFIRM_RE = re.compile(
-    r"\b(?:sin confirmar|no (?:me )?confirmes|no confirmar|no respond\w+ nada|no (?:me )?dig\w+ nada|"
-    r"no dec\w+ nada|ejecuta\w* directamente|sin decir nada|sin comentar|no coment\w+ (?:nada|lo hecho)|"
-    r"no repit\w+ lo hecho|menos verborrea|"
-    r"no (?:verbal )?confirm\w*|without confirm\w*|don'?t confirm|no need to confirm|say nothing|"
-    r"don'?t say anything|execute (?:it )?directly|stop confirming)\b")
-_POS_CONFIRM_RE = re.compile(
-    r"\b(?:confirmame\w*|quiero que (?:me )?confirmes|dime (?:ok|vale|hecho) cuando|avisame cuando (?:lo )?"
-    r"hag\w+|vuelve a confirmar|confirm (?:my|the) (?:orders|commands)|tell me when (?:it'?s )?done|"
-    r"confirm again|start confirming)\b")
-_NEG_FILLER_RE = re.compile(
-    r"\b(?:sin (?:muletillas|coletillas|rellenos?)|no (?:me )?dig\w+ (?:un segundo|un momento|espera)|"
-    r"nada de (?:muletillas|coletillas|frases de espera|rellenos?)|quita (?:las muletillas|los rellenos)|"
-    r"no (?:fillers?|filler words)|stop saying (?:one second|wait|just a (?:sec|moment)))\b")
-_POS_FILLER_RE = re.compile(
-    r"\b(?:con muletillas|puedes decir muletillas|vuelve a (?:las muletillas|los rellenos)|"
-    r"avisa(?:me)? mientras piensas|fillers? (?:are )?(?:ok|fine)|bring back (?:the )?fillers?)\b")
-
-
-def _flags_for(text: str) -> dict:
-    """Which style flags this directive names, and their target values. {} when it names none."""
-    n = _norm(text)
-    flags: dict = {}
-    if _NEG_CONFIRM_RE.search(n):
-        flags["confirm_short_actions"] = False
-    elif _POS_CONFIRM_RE.search(n):
-        flags["confirm_short_actions"] = True
-    if _NEG_FILLER_RE.search(n):
-        flags["fillers"] = "off"
-    elif _POS_FILLER_RE.search(n):
-        flags["fillers"] = "on"
-    return flags
-
-
-# ── The SCOPE of a spoken rule (2026-09-29): which prompts carry it ───────────────────────────────────────
-# Rules are hierarchical: genesis per domain (style/consent/library/errands/playbooks, each with its own override
-# file) and, above it, the operator's spoken rules — which used to be ONE flat list riding into every prompt that
-# carries the memory context, the brain worker's dossier included. A fixed classifier names the scope when the
-# rule is set; nothing here is a model. `voice` = a manner of speaking (what the style flags govern, plus brevity,
-# tone and address); anything not recognised with certainty stays `general` = everywhere, as before.
-_VOICE_MANNER_RE = re.compile(
-    r"\b(?:breve\w*|cort[ao]s?|conciso|escueto|una frase|frases?|palabras?|tono|trat\w+ de (?:usted|tu)|"
-    r"hablame de (?:usted|tu)|no (?:me )?narr\w*|sin narrar|verborrea|"
-    r"brief|short(?:er)?|concise|one sentence|sentences?|fewer words|tone|verbose|"
-    r"muletilla\w*|coletilla\w*|relleno\w*|fillers?|hecho|confirm\w*)\b")
-
-
-def scope_of(text: str) -> str:
-    """`"voice"` when the rule is about how the voice speaks, else `"general"`. Deterministic; the doubt goes to
-    `general`, which is exactly what every rule got before scopes existed."""
-    n = _norm(text)
-    if not n:
-        return "general"
-    if _flags_for(n):
-        return "voice"
-    return "voice" if _VOICE_MANNER_RE.search(n) else "general"
-
-
-def apply_directive(text: str) -> dict:
-    """Persist the flags a directive names (instantly effective). Returns what changed ({} = the directive
-    is prose the mouths cannot act on — the LLM still gets it as a rule, nothing is lost)."""
-    flags = _flags_for(text)
-    for k, v in flags.items():
-        set_pref(k, v, text)
-    return flags
-
-
-# A retraction names the TOPIC, not a direction («olvida lo de confirmarme las órdenes») — so releasing an
-# override matches by concept, not by the signed patterns above.
-_CONFIRM_TOPIC_RE = re.compile(r"\bconfirm\w*|verborrea|responder nada|decir nada|repetir lo hecho\b")
-_FILLER_TOPIC_RE = re.compile(r"\bmuletilla\w*|coletilla\w*|relleno\w*|frases? de espera|fillers?\b")
-
-
-def retract_directive(text: str) -> dict:
-    """Remove the overrides a retired rule had set — back to genesis. Returns the keys released."""
-    n = _norm(text)
-    keys = []
-    if _CONFIRM_TOPIC_RE.search(n):
-        keys.append("confirm_short_actions")
-    if _FILLER_TOPIC_RE.search(n):
-        keys.append("fillers")
+def retract(key: str) -> dict:
+    """Remove his row for one knob — the genesis default is back. Returns what was released."""
     import rules
     _migrate()
-    released = {}
-    for k in keys:
-        gone = rules.clear("voice", k)
-        if gone:
-            released[k] = gone[-1]["value"]
-    return released
+    gone = rules.clear("voice", key)
+    return {key: gone[-1]["value"]} if gone else {}
 
 
 def max_sentences() -> int:

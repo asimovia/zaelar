@@ -76,33 +76,21 @@ def test_the_missing_media_verbs_now_classify_as_action():
 
 # ── 2 · a spoken rule flips the flags instantly, and retiring it restores genesis ────────────────────────
 
-def test_a_directive_overrides_and_a_retraction_restores():
-    assert sp.apply_directive("quiero que me confirmes las órdenes") == {"confirm_short_actions": True}
-    assert sp.confirm_short_actions() is True, "the override governs the very next read"
-    sp.apply_directive("no me confirmes las órdenes")
-    assert sp.confirm_short_actions() is False, "the override governs the very next read"
-    released = sp.retract_directive("olvida lo de confirmarme las órdenes")
-    assert "confirm_short_actions" in released
+def test_his_row_overrides_and_retiring_it_restores_genesis():
+    """V2-806: the sentence is understood once by `rules.shape`; what is measured here is the row it writes."""
+    sp.set_pref("confirm_short_actions", True, "quiero que me confirmes las órdenes")
+    assert sp.confirm_short_actions() is True, "the row governs the very next read"
+    sp.set_pref("confirm_short_actions", False, "no me confirmes las órdenes")
+    assert sp.confirm_short_actions() is False, "the row governs the very next read"
+    assert "confirm_short_actions" in sp.retract("confirm_short_actions")
     assert sp.confirm_short_actions() is True, "back to genesis"
-
-
-def test_the_operators_literal_sentence_parses():
-    flags = sp._flags_for("Al recibir órdenes no responder nada; ejecutar directamente, "
-                          "sin confirmar ni repetir lo hecho.")
-    assert flags == {"confirm_short_actions": False}
-
-
-def test_prose_the_mouths_cannot_act_on_changes_nothing(tmp_path):
-    assert sp.apply_directive("llámame siempre capitán") == {}
-    import rules
-    assert rules.all_rows(include_defaults=False) == [], "no row for a no-op"
 
 
 def test_overrides_persist_in_the_workspace_not_the_repo(tmp_path, monkeypatch):
     """V2-806: his knob is a row of the rules table, in the database the workspace holds."""
     monkeypatch.delenv("ZAELAR_DB", raising=False)          # the product's own default path
     import rules
-    sp.apply_directive("no me confirmes las órdenes")
+    sp.set_pref("confirm_short_actions", False, "no me confirmes las órdenes")
     from rules import store
     assert store.db_path().is_relative_to(tmp_path), "the row must live under the workspace (a container's Volume)"
     row = rules.deciding_rule(rules.path(surface="voice"), "confirm_short_actions")
@@ -133,7 +121,7 @@ def test_a_slow_ACTION_turn_gets_no_filler_under_genesis():
 
 
 def test_the_same_turn_gets_its_filler_back_when_the_operator_asks():
-    sp.apply_directive("vuelve a las muletillas")           # fillers: "on"
+    sp.set_pref("fillers", "on", "vuelve a las muletillas")
     fa.arm(_Brain(), "Reproduce el vídeo.")
     out = asyncio.run(_collect(_inner_llm(first_after=0.3)))
     assert any(isinstance(c, FlushSentinel) for c in out), "fillers:on must cover even an action turn"
@@ -146,7 +134,7 @@ def test_a_slow_QUESTION_still_gets_its_cover_by_default():
 
 
 def test_fillers_off_silences_even_the_thinking_cover():
-    sp.apply_directive("nada de muletillas")
+    sp.set_pref("fillers", "off", "nada de muletillas")
     fa.arm(_Brain(), "¿Qué tiempo hará mañana en Soria?")
     out = asyncio.run(_collect(_inner_llm(first_after=0.3)))
     assert not any(isinstance(c, FlushSentinel) for c in out)
@@ -184,7 +172,7 @@ def test_the_fast_lane_says_one_short_ack_under_genesis(monkeypatch):
 
 
 def test_the_fast_lane_goes_silent_when_the_operator_asks(monkeypatch):
-    sp.apply_directive("no me confirmes las órdenes")
+    sp.set_pref("confirm_short_actions", False, "no me confirmes las órdenes")
     assert _run_fast_lane(monkeypatch) == []
 
 
@@ -200,14 +188,14 @@ def test_the_voice_backstops_consult_the_policy():
     # The directive handler was extracted (ratchet): both channels delegate to style_directive.py, which
     # is where the flags must move in the SAME turn.
     shared = (ENGINE / "nucleo/flash/style_directive.py").read_text(encoding="utf-8")
-    assert "apply_directive(" in shared and "retract_directive(" in shared, \
-        "set_style_directive must move the flags in the SAME turn"
+    assert "write_rule(" in shared and "brain._directive = directive" in shared, \
+        "set_style_directive obeys at once (the session layer) and writes the rows (V2-806)"
     assert "style_directive" in src, "the voice channel must delegate to the shared handler"
 
 
 def test_the_model_prompt_carries_the_silence_rule_only_while_silent():
     assert sp.prompt_line() == "", "genesis confirms: the model keeps its own manners"
-    sp.apply_directive("no me confirmes las órdenes")
+    sp.set_pref("confirm_short_actions", False, "no me confirmes las órdenes")
     line = sp.prompt_line()
     assert line and "no digas nada" in line.lower(), "silent orders by rule: the model is told so"
     src = (ENGINE / "nucleo/flash/prompt.py").read_text(encoding="utf-8")

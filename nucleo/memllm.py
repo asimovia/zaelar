@@ -120,6 +120,9 @@ _DEFAULTS = {
     # front of a list he is waiting on, and it asks for STRICT JSON under a long instruction: the shape the
     # `paraphrase` note above measured a reasoner burning its whole budget on. Reasoning OFF, same seat.
     "batch_split": ("https://api.deepseek.com", "deepseek-flash", True),
+    # rule_shape (V2-806): a spoken rule becomes rows of the rules table ONCE, when it is written (`rules/shape.py`).
+    # Off the voice turn, strict JSON under a long instruction — `batch_split`'s profile, so `batch_split`'s seat.
+    "rule_shape": ("https://api.deepseek.com", "deepseek-flash", True),
 }
 
 # ── FAILOVER: the operator's provider ORDER, as data ──────────────────────────────────────────────────────────
@@ -177,6 +180,7 @@ _FAILOVER: dict[str, tuple[tuple[str, str], ...]] = {
     # which a later diet change would erase).
     "distill": ((_OAI, "gpt-4.1-mini"),),
     "batch_split": ((_OAI, "gpt-4.1-mini"),),
+    "rule_shape": ((_OAI, "gpt-4.1-mini"),),
     # paraphrase — this task only works with reasoning OFF (measured 2026-08-18: with it on the whole budget
     # goes to reasoning and `content` comes back EMPTY at every budget tried), which is why the broker's
     # DeepSeek was already banned from this row: it ACCEPTS `thinking:disabled` and ignores it, so it would

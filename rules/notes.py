@@ -70,31 +70,6 @@ def add(text: str, scope: str = _scope.GLOBAL, **kw) -> dict | None:
     return rules.add(scope, "pref", NOTE, t, text=t, **kw)
 
 
-def remove_matching(text: str) -> str:
-    """Remove the note his words best match (moved verbatim from the memory state's fuzzy remover; F3 of V2-806
-    replaces it with removal BY ID through the rule's understood scope). Returns the removed text, or ''."""
-    import difflib
-
-    import rules
-    cand = rows()
-    if not cand:
-        return ""
-    key = _legacy_key(text)
-    key_toks = {w for w in key.split() if len(w) > 3}
-    best, best_score = None, 0.0
-    for r in cand:
-        rn = _legacy_key(text_of(r))
-        score = difflib.SequenceMatcher(None, key, rn).ratio()
-        if key_toks & {w for w in rn.split() if len(w) > 3}:
-            score = max(score, 0.6)
-        if score > best_score:
-            best, best_score = r, score
-    if best is None or best_score < 0.45:
-        return ""
-    rules.remove(best["id"])
-    return text_of(best)
-
-
 def _note_id(text: str) -> str:
     return "m_note_" + hashlib.sha1(" ".join(text.lower().split()).encode("utf-8")).hexdigest()[:12]
 

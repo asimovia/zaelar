@@ -26,7 +26,7 @@ from pathlib import Path
 ENGINE = Path(__file__).resolve().parents[3]
 
 #: Measured 2026-10-19 at 295ff4ec (366 files). Lower these when you remove; never raise them.
-MAX_REGEXES = 555
+MAX_REGEXES = 543   # V2-806: the spoken-rule parsers (consent, style, scope, removal, sentences) went
 MAX_WORD_TABLES = 514
 
 

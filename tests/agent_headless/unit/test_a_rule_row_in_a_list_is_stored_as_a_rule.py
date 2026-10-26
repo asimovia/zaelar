@@ -52,19 +52,32 @@ def _run(calls):
     return uid, asyncio.run(runner.run(uid, turn=turn, ingest=ingest, notify=notify, worker_wait_s=0.1))
 
 
-def test_a_rule_row_is_stored_with_its_flags_and_never_reaches_the_model():
+def _shaper(monkeypatch, plan_for):
+    """V2-806: the rule row is understood once by `rules.shape`; the model is scripted, the engine is measured."""
+    import json
+    from rules import shape
+    monkeypatch.setattr(shape, "_chat", lambda system, user: json.dumps(plan_for(user.rsplit("SENTENCE: ", 1)[1])))
+
+
+def test_a_rule_row_is_stored_with_its_flags_and_never_reaches_the_model(monkeypatch):
+    _shaper(monkeypatch, lambda s: {"op": "add", "say": "ok", "rows": [
+        {"scope": "global", "kind": "pref", "key": "note", "value": "When I ask you to organize something, do as much as possible"},
+        {"scope": "voice", "kind": "pref", "key": "confirm_short_actions", "value": True},
+        {"scope": "global", "kind": "gate", "key": "ask_at", "value": "sensitive"}]})
     calls = []
     uid, _ = _run(calls)
     assert calls == ["Your name is Johnny.", "Remember: I live in Los Angeles."], "the rule row took no model turn"
     import rules.notes as _rnotes
     rules = _rnotes.for_surface("")
-    assert any("organize something" in r for r in rules) and any("Confirm my orders" in r for r in rules)
+    assert any("organize something" in r for r in rules)
     assert sp.confirm_short_actions() is True and consent.ask_at() == "sensitive", "the flags moved on the way"
     s = runner.summary(uid)
     assert len(s["done"]) == 3 and not s.get("failed")
 
 
-def test_a_rule_row_that_names_a_card_gets_that_scope():
+def test_a_rule_row_that_names_a_card_gets_that_scope(monkeypatch):
+    _shaper(monkeypatch, lambda s: {"op": "add", "say": "ok", "rows": [
+        {"scope": "widget:agenda", "kind": "pref", "key": "note", "value": s}]})
     calls = []
     steps = [{"id": "1", "title": "r", "kind": "rule", "say": "From now on, in the calendar, meetings are always 30 minutes."}]
     uid = runner.create("msg", steps, origin="chat")
@@ -79,4 +92,4 @@ def test_a_rule_row_that_names_a_card_gets_that_scope():
         pass
     asyncio.run(runner.run(uid, turn=turn, ingest=ingest, notify=notify, worker_wait_s=0.1))
     import rules.notes as _rnotes
-    assert _rnotes.for_surface("widget:agenda") == ["From now on, in the calendar, meetings are always 30 minutes"]
+    assert _rnotes.for_surface("widget:agenda") == ["From now on, in the calendar, meetings are always 30 minutes."]

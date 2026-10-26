@@ -39,7 +39,7 @@ def test_a_style_knob_is_a_voice_row_over_its_genesis_default():
     style_policy.set_pref("confirm_short_actions", False, "no me confirmes las órdenes")
     assert style_policy.confirm_short_actions() is False
     assert [r["key"] for r in _user_rows("voice")] == ["confirm_short_actions"]
-    style_policy.retract_directive("olvida lo de confirmarme las órdenes")
+    style_policy.retract("confirm_short_actions")
     assert style_policy.confirm_short_actions() is True and _user_rows("voice") == []
 
 

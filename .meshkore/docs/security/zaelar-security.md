@@ -368,12 +368,13 @@ forces it. CRIT-R7.
 
 ## Spoken rules
 
-A rule the operator says («no fillers», «never buy on Wish») is stored with a scope from a fixed classifier
-(`voice`, `widget:<id>`, `general`; `nucleo/flash/rule_scope.py`) and each prompt surface carries only its own —
-a worker never carries voice rules. Rules can loosen consent only through the one rule above; nothing a peer
-says over the cluster channel becomes an operator rule (`remember_external` refuses identity slots and never
-touches `state`). Genesis is per domain with its own override file; a factory reset forgets spoken rules and
-keeps credentials. `criteria.md` §5.
+A rule the operator says («no fillers», «never buy on Wish») becomes rows of the rules table (`rules/`), shaped
+once by one structured call and validated against declared scopes, and each prompt surface carries only the
+scopes in play — a worker never carries voice rules. Rules loosen consent only through the one rule above, and
+no row reaches its rails (a missing fact, a doubt, the radius). Only the operator's own turn writes a rule:
+nothing a peer says over the cluster channel becomes one (`remember_external` refuses identity slots and never
+touches `state`). A factory reset forgets the rules (they live in `zaelar.db`) and keeps credentials.
+`.meshkore/docs/architecture/zaelar-rules.md`, `criteria.md` §5.
 
 ## Secrets
 

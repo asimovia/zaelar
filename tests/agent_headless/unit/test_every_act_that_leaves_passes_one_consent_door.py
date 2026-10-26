@@ -99,36 +99,43 @@ def test_a_payment_click_stays_its_own_class_and_an_unreadable_page_keeps_asking
 
 
 # ── a spoken rule names ONE channel ──────────────────────────────────────────────────────────────────────
+# V2-806: the sentence is understood once by `rules.shape` (scripted here); the row it writes is scoped to the
+# channel it names, and a removal names the row by id.
+
+def _shaped(monkeypatch, plan: dict, sentence: str) -> dict:
+    import json
+    from rules import shape
+    monkeypatch.setattr(shape, "_chat", lambda system, user: json.dumps(plan))
+    return shape.write(sentence)
+
 
 @pytest.mark.parametrize("rule,channel", [
     ("no me pidas confirmación para mandar correos", "email"),
     ("don't ask for confirmation for whatsapps", "whatsapp"),
     ("no me pidas permiso para escribir al cluster", "meshkore"),
 ])
-def test_a_scoped_spoken_rule_removes_confirmation_for_that_channel_only(rule, channel):
+def test_a_scoped_spoken_rule_removes_confirmation_for_that_channel_only(monkeypatch, rule, channel):
     _drafts()
     consent.set_class("messaging.send_new", "ask")
     before = consent.ask_at()
-    got = consent.apply_directive(rule)
-    assert got == {f"messaging.send_new@{channel}": "allow"}, got
+    res = _shaped(monkeypatch, {"op": "add", "say": "ok", "rows": [
+        {"scope": f"messaging/{channel}/send_new", "kind": "gate", "key": "consent", "value": "allow"}]}, rule)
+    assert [r["scope"] for r in res["stored"]] == [f"messaging/{channel}/send_new"]
     assert consent.ask_at() == before, "a rule about one channel never moves the global knob"
     verdicts = {"email": _email(), "whatsapp": _whatsapp(), "meshkore": _cluster()}
     assert not _asks(verdicts.pop(channel)), f"{channel} no longer asks"
     assert all(_asks(v) for v in verdicts.values()), "every other channel keeps his rule"
     assert _asks(_booking())
-    assert consent.retract_directive(rule) == {f"messaging.send_new@{channel}": "allow"}
+    _shaped(monkeypatch, {"op": "remove", "remove": [res["stored"][0]["id"]], "say": "ok"}, "olvida esa regla")
     assert consent.class_policy(f"messaging.send_new@{channel}") == "ask", "retired: the bare class rules again"
 
 
-def test_a_scoped_rule_that_adds_friction_and_an_unscoped_one_keep_their_reach():
+def test_a_scoped_rule_that_adds_friction_keeps_its_reach(monkeypatch):
     _drafts()
-    assert consent.apply_directive("pregúntame siempre antes de mandar un whatsapp") == \
-        {"messaging.send_new@whatsapp": "ask"}
+    _shaped(monkeypatch, {"op": "add", "say": "ok", "rows": [
+        {"scope": "messaging/whatsapp/send_new", "kind": "gate", "key": "consent", "value": "ask"}]},
+            "pregúntame siempre antes de mandar un whatsapp")
     assert _asks(_whatsapp()) and not _asks(_email())
-    assert consent.apply_directive("no me pidas confirmación") == {"ask_at": "critical"}, \
-        "a rule that names no channel moves the global knob, exactly as before"
-    assert consent.apply_directive("no me preguntes por los chats") == {"ask_at": "critical"}, \
-        "a word two channels share names neither"
 
 
 def test_a_send_he_ordered_reads_his_rule_even_when_its_manifest_runs_it_fast():

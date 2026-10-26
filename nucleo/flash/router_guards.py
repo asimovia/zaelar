@@ -386,18 +386,6 @@ def looks_like_modify_widget(text: str) -> bool:
                 and not looks_like_create_widget(text))
 
 
-_RULE_REMOVAL_RE = _re.compile(
-    r"\b(olvida|olvidate|quita|elimina|borra|anula|retira|deja de aplicar|ya no (?:hace falta|quiero|apliques))\b")
-
-
-def looks_like_rule_removal(text: str) -> bool:
-    """True if the turn asks to REMOVE a user rule ('olvida esa regla', 'ya no hace falta que seas tan breve')
-    rather than add one. GUARD for the set_style_directive handler (V2-046 A1): the SAME tool adds or removes;
-    this deterministic guard decides the direction from the turn text, not the LLM."""
-    n = _norm_txt(text)
-    return bool(_RULE_REMOVAL_RE.search(n))
-
-
 # EMPTY item reference or a BARE DEICTIC PRONOUN ("lo", "eso", "esto", "it", "that"…) — with no anchoring noun.
 # In a widget data-op this means the model does NOT know which item it targets: the antecedent ("cancélalo") is
 # in the CONVERSATION, not the widget. GRAMMATICAL pronoun recognition, NOT a routing-verb table.

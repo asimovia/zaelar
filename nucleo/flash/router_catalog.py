@@ -521,11 +521,11 @@ TOOLS: list[dict] = [
         "function": {
             "name": "set_style_directive",
             "description": (
-                "Guarda una REGLA de comportamiento del operador —cómo tratarle o responder desde ya: tono, "
-                "ritmo, longitud, tutear/usted, narrar los pasos—. Persiste entre sesiones (la verás en tu "
-                "ESTADO como REGLAS DEL OPERADOR): no la escales ni la apuntes aparte. TU NOMBRE va aquí: si "
-                "te pide llamarte de otra forma, PUEDES. QUITAR una regla: pásala en `directive`. Una orden "
-                "puntual ('ponme música') o un filtro de tarjeta (un canal: youtube block_channel) NO lo es."
+                "Sus REGLAS permanentes: cómo responder (tono, longitud, narrar), qué hacer sin preguntar o "
+                "preguntando antes (correos, reservas…), la regla de una tarjeta; QUITAR una ('olvida la regla "
+                "de…') o LISTARLAS ('¿qué reglas tengo?'). Su frase tal cual en `directive`: el sistema la "
+                "entiende y se la repite, tú no. TU NOMBRE va aquí: si te pide llamarte de otra forma, PUEDES. "
+                "Una orden puntual ('ponme música') o un filtro de tarjeta (youtube block_channel) NO lo es."
             ),
             "parameters": {
                 "type": "object",
@@ -533,8 +533,7 @@ TOOLS: list[dict] = [
                     "directive": {
                         "type": "string",
                         "description": (
-                            "La regla a seguir desde ahora, en una frase imperativa corta, en el idioma de la "
-                            "conversación."
+                            "Su frase sobre la regla, tal cual, en el idioma de la conversación."
                         ),
                     }
                 },
