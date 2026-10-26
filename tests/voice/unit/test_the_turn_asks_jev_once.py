@@ -76,8 +76,10 @@ def test_the_whole_brief_is_one_call(wire):
     # (here both do: the player's `play` and the sheet's `layout`).
     from nucleo import spec as _spec
     from search import route as _search_route    # V2-782: which search module serves the turn — same trip
+    from nucleo.flash import capability_gap as _gap  # V2-807 T-16: does the order ask for something no card declares
     assert asked == {tb.CANVAS_KEY, tb.REQUEST_KEY, tb.ESCALATE_KEY, tb.TARGET_KEY,
-                     _bd.BUILD_KEY, _sf.SURFACE_KEY, tb.WORDS_KEY, _spec.END_KEY, _search_route.SEARCH_KEY}, asked
+                     _bd.BUILD_KEY, _sf.SURFACE_KEY, tb.WORDS_KEY, _spec.END_KEY, _search_route.SEARCH_KEY,
+                     _gap.KEY}, asked
 
 
 def test_the_canvas_verb_travels_in_the_brief_and_reads_the_same(wire):
