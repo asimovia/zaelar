@@ -166,7 +166,7 @@ def owed(reply: str, *, open_ids=None) -> bool:
         from nucleo import harness as _harness
         from nucleo.flash import reply_promise as _rp
         from nucleo.flash import router_guards as _rg
-        from voice.engine.llm.providers import promise_backstop as _pb
+        from nucleo.flash import committed_reply as _pb
         if not reply or _rp.held_for_him(reply):
             return False
         if _rp.verdict(reply) == "act":

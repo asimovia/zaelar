@@ -18,30 +18,12 @@ a turn as CONTEXT and one of them became an errand called «Cita en Valls». See
 """
 from __future__ import annotations
 
-import re as _re
-import unicodedata as _ud
 
 from loguru import logger
 
-# First person committing to act. Deliberately narrower than `router_guards.promises_action` (which also
-# serves the show/music backstops): this one gates real spending.
-_COMMITTED_RE = _re.compile(
-    r"\b(me pongo con|me pongo a|ahora mismo|lo hago|lo hago ya|te lo (?:reservo|busco|"
-    r"miro|preparo|hago|gestiono)|arranco|voy (?:con|a por|alla|alli|ya)|me meto en|"
-    r"enseguida|me encargo|lo pongo en marcha|voy alla|entro (?:en|a) la web)\b")
-
-
-def _norm(s: str) -> str:
-    n = _ud.normalize("NFKD", s or "")
-    return "".join(c for c in n if not _ud.combining(c)).lower()
-
-
-def committed(spoken_text: str) -> bool:
-    """True if the reply promises, in the first person, to go and do something. A NEGATED clause does not
-    («ahora mismo NO tengo ninguna tarea corriendo» — four of the gate's ten measured firings): the rule and
-    its clause arithmetic live once, in `router_guards`, and both promise gates read them."""
-    from nucleo.flash.router_guards import unnegated_match
-    return unnegated_match(_COMMITTED_RE, _norm(spoken_text))
+# The first-person commitment rule lives in a low layer so the promise harness reads the same one
+# (`nucleo/flash/committed_reply.py`); re-exported here for the backstop and its callers.
+from nucleo.flash.committed_reply import committed  # noqa: E402,F401
 
 
 def _a_refinement_of_the_errand_it_names(spoken_text: str, op_text: str, emit) -> bool:
