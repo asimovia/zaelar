@@ -265,6 +265,7 @@ _DESTRUCTIVE_AND_FAST = {
     # the action that asks (`clear_list`), and so is deleting the list itself.
     ("agenda", "delete_task"),
     ("musica", "remove_from_playlist"),    # one track off a list he owns, re-addable by name
+    ("musica", "queue_remove"),            # one track off the play queue — nothing of his is lost, re-queued by name
     ("youtube", "remove"),                 # one row out of a queue
     ("youtube", "unfollow_channel"),       # re-followable in one gesture; asking would be noise
     # V2-800 — stopping a send HE scheduled, before it leaves: it takes nothing back from anybody, and with two
