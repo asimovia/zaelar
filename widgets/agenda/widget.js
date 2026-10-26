@@ -554,6 +554,18 @@ function injectStyles(){
     padding:4px;border-radius:6px;flex:0 0 auto;display:inline-flex;font-size:12px;font-weight:600}
   .hb-agenda .agt-ib:hover{color:var(--hb-ink,#F2F4F7);background:var(--hb-bg-soft,#272D35)}
   .hb-agenda .agt-ib.danger:hover{color:var(--hb-risk,#FF8A92);background:var(--hb-risk-soft,rgba(255,138,146,.16))}
+  /* A phone (V2-813): every control there is 44px (the shell's touch floor), so the columns that were 20px for the
+     tick and 56px for two icons overflowed — the tick spilled into the number and the ✎/× stacked. The columns
+     make room for the floor, and the tick keeps its small square drawn INSIDE its 44px hit area. */
+  @media (max-width:520px){
+    .hb-agenda .agt-cols,.hb-agenda .agt-item{grid-template-columns:44px 18px minmax(0,1fr) auto 92px;gap:6px;
+      padding-left:6px;padding-right:6px}
+    .hb-agenda .agt-check{border:0;padding:13px;background-clip:content-box;border-radius:6px;
+      outline:1.5px solid var(--hb-line-strong,rgba(255,255,255,.24));outline-offset:-13px}
+    .hb-agenda .agt-check.on{outline-color:var(--hb-accent,#AE90FF)}
+    .hb-agenda .agt-ops{flex-wrap:nowrap;align-items:center}
+    .hb-agenda .agt-ib{align-items:center;justify-content:center}
+  }
   /* An item being renamed spans the columns its text and its controls occupied — the row must not reflow. */
   .hb-agenda .agt-item > .agt-in{grid-column:3 / -1}
   /* The pane's footer — the «new row» line of the spreadsheet, ruled off from the rows above it. */
