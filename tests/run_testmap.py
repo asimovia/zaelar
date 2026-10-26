@@ -5069,6 +5069,12 @@ DOMAINS: list[dict] = [
                                  "stream warm for seconds, LiveKit's disconnect no longer kills it, start() reuses it "
                                  "with the same constraints (iPhone permission sheet on every reconnect)", "ch": UNIT,
             "paths": ["tests/browser/unit/mic/test_a_restart_reuses_the_warm_microphone.py"]},
+        # V2-812 T-08 — the «is it a Mac» check matched iPhone/iPad, so the phone opened its mic with echo cancellation
+        # only. Phones/tablets get the full profile, a desktop Mac keeps «isolate», voiceIsolation only where reported.
+        # Disarmed 2026-10-26 (iPhone read as Mac, voiceIsolation asked blind) → red.
+        {"id": "4.299", "title": "The phone opens its microphone with the full capture profile (EC+NS+AGC); a desktop "
+                                 "Mac keeps «isolate»; voiceIsolation only where the browser reports it (V2-812 T-08)",
+            "ch": UNIT, "paths": ["tests/browser/unit/mic/test_the_phone_gets_the_full_capture_profile.py"]},
         {"id": "4.18", "title": "Shell MÓVIL: contrato de host + del widget · paleta compartida · el service worker "
                                 "no cachea", "ch": UNIT,
             "paths": ["tests/browser/unit/mobile/test_mobile_host_contract.py"]},

@@ -34,6 +34,7 @@ import * as wake from "./wakeword.js?v=1";
 import { createEffect } from "../core/reactive.js?v=1";
 import { t } from "../core/i18n.js?v=1";
 import * as health from "./device-health.js?v=1";
+import { MIC_MODES as _MIC_MODES, defaultMicMode, captureConstraints } from "./mic-profile.js?v=1";
 
 let room = null, stream = null, videoEl = null, botAudioEl = null;
 let started = false, starting = false;
@@ -59,18 +60,12 @@ const audit = { silent: false };
 // weak against non-stationary noise (music) and, on macOS, FIGHTS the system's "Voice Isolation" (which is ML,
 // much stronger, the same kind of cleanup SuperWhisper performs). Three modes:
 //   • isolate → echoCancellation ONLY. Turns on macOS's voice-processing audio unit (where the system's Voice
-//               Isolation hooks in) WITHOUT Chrome's NS on top → let macOS take control. DEFAULT on Mac.
-//   • full    → Chrome's complete APM (EC+NS+AGC). Better on Windows/Linux without OS-level isolation.
+//               Isolation hooks in) WITHOUT Chrome's NS on top → let macOS take control. DEFAULT on a desktop Mac.
+//   • full    → the browser's complete APM (EC+NS+AGC). DEFAULT on phones/tablets and on Windows/Linux.
 //   • raw     → no processing (diagnostics / external mic with its own DSP).
-// NOTE: the `voiceIsolation` constraint belongs to Safari/WebKit; Chrome silently ignores it → we do NOT use it
-// (it was a no-op that created a false sense of isolation). In Chrome, voice isolation is enabled through the OS
-// (Control Center → Microphone → Voice Isolation), not through getUserMedia.
-const _MIC_MODES = {
-  isolate: { echoCancellation: true,  noiseSuppression: false, autoGainControl: false },
-  full:    { echoCancellation: true,  noiseSuppression: true,  autoGainControl: true  },
-  raw:     { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
-};
-const _isMac = /Mac|iP(hone|ad|od)/.test(navigator.platform || navigator.userAgent || "");
+// The platform choice and the constraints live in `mic-profile.js` (V2-812 T-08): the old Mac check matched
+// iPhone/iPad too, so the phone opened with echo cancellation only. `voiceIsolation` is asked only where
+// `getSupportedConstraints()` reports it — never blind (Chrome ignores it, which created a false sense of isolation).
 function micMode() {
   const sp = new URLSearchParams(location.search);
   if (sp.get("raw") === "1") return "raw";
@@ -78,7 +73,7 @@ function micMode() {
   if (sp.get("full") === "1") return "full";
   const saved = localStorage.getItem("zaelar_micmode");
   if (saved && _MIC_MODES[saved]) return saved;
-  return _isMac ? "isolate" : "full";   // Mac: let OS Voice Isolation take control
+  return defaultMicMode(navigator);   // desktop Mac: let OS Voice Isolation take control; phones: full
 }
 
 // ---- ONE LIVE VOICE SESSION PER MACHINE (2026-07-12): prevents two open mics (two tabs/browsers)
@@ -572,7 +567,7 @@ export async function start() {
     await api.setVoiceConfig(store.voiceIdx());
     // Local mic capture (for the analyser + to publish). The mode determines signal conditioning (see above).
     const mode = micMode();
-    const ad = { ..._MIC_MODES[mode], channelCount: 1 };
+    const ad = { ...captureConstraints(mode, navigator), channelCount: 1 };
     if (micDeviceId) ad.deviceId = { ideal: micDeviceId };
     const key = JSON.stringify(ad);
     const warm = _takeWarm(key);
