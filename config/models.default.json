@@ -204,6 +204,25 @@
       },
       "why": "OFF by default after the Susurro->worker loop incident that drowned the voice. Turned on from the panel — the operator's own install has had it on since 2026-07-26, once the circuit breaker existed.",
       "failover_why": "OpenAI `gpt-4.1-mini` — the ONE stand-in, same choice and same two rules as §voice_brain (operator, 2026-09-22)."
+    },
+    "image_reader": {
+      "label": "Chat attachments · reads an image added to the chat (V2-809)",
+      "titular": {
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "base_url": "https://generativelanguage.googleapis.com/v1beta/openai/",
+        "key_env": "GEMINI_API_KEY",
+        "vision": true
+      },
+      "failover": {
+        "provider": "openai",
+        "model": "gpt-4.1-mini",
+        "base_url": "https://api.openai.com/v1",
+        "key_env": "OPENAI_API_KEY",
+        "vision": true
+      },
+      "why": "The voice brain does not see images, so an image added to the chat is read ONCE, at upload, by a model that receives the image itself as an `image_url` part (not a provider that only says it reads images). Gemini Flash: native multimodal, cheap, on its own OpenAI-compatible endpoint.",
+      "failover_why": "OpenAI `gpt-4.1-mini` — the ONE stand-in, a different provider, and it also receives the image."
     }
   },
   "retired": {

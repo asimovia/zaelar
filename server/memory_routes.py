@@ -17,28 +17,148 @@
 #
 import asyncio
 import os
+import uuid
+from pathlib import Path
+from urllib.parse import unquote
 
-from fastapi import APIRouter, Body, File, Form, Header, HTTPException, UploadFile
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Body, Header, HTTPException, Request
+from fastapi.responses import FileResponse, JSONResponse
+from starlette.requests import ClientDisconnect
 
+from files import attachments as _att
 from memory import api as memapi
 
 router = APIRouter()
 
-_MAX_BYTES = 50 * 1024 * 1024   # 50 MB — ample for screenshots/PDFs, an inexpensive safeguard against filling the disk
+
+def _refuse(status: int, reason: str, **extra) -> JSONResponse:
+    """A refusal the composer can TRANSLATE: a stable `reason` code, never a sentence in one language."""
+    return JSONResponse({"ok": False, "reason": reason, **extra}, status_code=status)
+
+
+async def _chunks(request: Request):
+    """The body as it arrives: a raw body is streamed from the socket; a multipart form (the desktop drop) has
+    already been spooled by the parser and is copied out in chunks — never `read()` whole."""
+    ctype = request.headers.get("content-type", "")
+    if ctype.startswith("multipart/form-data"):
+        form = await request.form()
+        up = form.get("file")
+        if up is None or not hasattr(up, "read"):
+            raise HTTPException(400, "file missing")
+        request.state.filename = up.filename or "archivo"
+        request.state.source = str(form.get("source") or "drop")
+        size = int(_att.limits()["chunk_bytes"])
+        while True:
+            piece = await up.read(size)
+            if not piece:
+                break
+            yield piece
+        return
+    async for piece in request.stream():
+        if piece:
+            yield piece
 
 
 @router.post("/api/files/upload")
-async def upload(file: UploadFile = File(...), source: str = Form("drop")):
-    data = await file.read()
-    if len(data) > _MAX_BYTES:
-        raise HTTPException(413, "archivo demasiado grande")
-    # to_thread (2026-07-19 P1-4 audit): write_episode computes the summary embedding SYNCHRONOUSLY
-    # (HTTP to Ollama, 20s timeout) — never in uvicorn's event loop (SSE/queue/widgets run there).
-    ref = await asyncio.to_thread(
-        memapi.write_episode, data, filename=file.filename or "archivo", mime=file.content_type or None,
-    )
-    return {"name": ref["name"], "size": ref["bytes"], "episode_id": ref["episode_id"]}
+async def upload(request: Request):
+    """THE upload door (the desktop drop, the paste, the chat's 📎 — V2-809). The body is STREAMED to a file in
+    the episodic inbox, chunk by chunk, so RAM does not grow with the file. Two encodings, one door: a multipart
+    form (`file` + `source`), or a raw body with the name in `X-File-Name` (URL-encoded) and `?source=` — the raw
+    one is what lets the size and the disk headroom be refused BEFORE a byte is written.
+
+    Refusals carry a `reason` the client translates: `too_large` (413), `type` (415), `disk_full` (507),
+    `cancelled` (499, the client went away). `source=chat` additionally sniffs the kind from the bytes (image,
+    PDF, text), reads the file with bounded work off the event loop, keeps a thumbnail, and makes it the turn's
+    attachment (`files/attachments.py`)."""
+    lim = _att.limits()
+    max_bytes = int(lim["max_file_bytes"])
+    request.state.filename = unquote(request.headers.get("x-file-name", "")) or "archivo"
+    request.state.source = request.query_params.get("source", "drop")
+    inbox = Path(memapi.episode_inbox())
+    declared = request.headers.get("content-length")
+    is_raw = not request.headers.get("content-type", "").startswith("multipart/form-data")
+    if is_raw and declared and declared.isdigit():
+        if int(declared) > max_bytes:
+            return _refuse(413, "too_large", limit=max_bytes)
+        if not _att.disk_allows(inbox, int(declared)):
+            return _refuse(507, "disk_full")
+    elif not _att.disk_allows(inbox, 0):
+        return _refuse(507, "disk_full")
+
+    tmp = inbox / f"{uuid.uuid4().hex}.part"
+    written, head, kind, mime, complete = 0, b"", None, None, False
+    every = int(lim["chunk_bytes"]) * 16
+    try:
+        with open(tmp, "wb") as fh:
+            async for piece in _chunks(request):
+                written += len(piece)
+                if written > max_bytes:
+                    return _refuse(413, "too_large", limit=max_bytes)
+                if len(head) < 65536:
+                    head += piece[:65536 - len(head)]
+                fh.write(piece)
+                if written % every < len(piece) and not _att.disk_allows(inbox, 0):
+                    return _refuse(507, "disk_full")
+        if request.state.source == "chat":
+            sniffed = _att.sniff(head, request.state.filename)
+            if sniffed is None:
+                return _refuse(415, "type")
+            kind, mime = sniffed
+        complete = True
+    except ClientDisconnect:
+        return _refuse(499, "cancelled")
+    finally:
+        if not complete:
+            tmp.unlink(missing_ok=True)         # a refused or cancelled upload leaves nothing behind
+    if request.state.source != "chat":
+        # to_thread (2026-07-19 P1-4 audit): registering computes the summary embedding SYNCHRONOUSLY.
+        ref = await asyncio.to_thread(memapi.adopt_episode, tmp, filename=request.state.filename,
+                                      mime=None)
+        return {"name": ref["name"], "size": ref["bytes"], "episode_id": ref["episode_id"]}
+    return await _keep_chat_file(tmp, request.state.filename, kind, mime)
+
+
+async def _keep_chat_file(tmp: Path, name: str, kind: str, mime: str) -> dict:
+    """Read (bounded, off the event loop, with a clock), keep, and attach. The file is stored even when the
+    reading fails — the turn is then told it could not be read, and why."""
+    lim = _att.limits()
+    thumb_tmp = tmp.with_suffix(".thumb.jpg")
+
+    try:
+        reading, why, has_thumb = await asyncio.wait_for(asyncio.to_thread(_att.process, tmp, kind, thumb_tmp),
+                                                         timeout=float(lim["process_timeout_s"]))
+    except asyncio.TimeoutError:
+        reading, why, has_thumb = "", "reading took too long", False
+    ref = await asyncio.to_thread(memapi.adopt_episode, tmp, filename=name, mime=mime,
+                                  summary=_att.summary_of(name, kind, reading))
+    eid = int(ref["episode_id"])
+    _att.save_reading(eid, reading)
+    if has_thumb and thumb_tmp.exists():
+        os.replace(thumb_tmp, _att.thumb_path(eid))
+    _att.attach({"episode_id": eid, "name": ref["name"], "kind": kind, "mime": mime, "bytes": ref["bytes"],
+                 "why_not": why})
+    return {"ok": True, "name": ref["name"], "size": ref["bytes"], "episode_id": eid, "kind": kind, "mime": mime,
+            "thumb": f"/api/files/{eid}/thumb" if has_thumb else None, "read": bool(reading)}
+
+
+@router.get("/api/files/limits")
+async def file_limits():
+    """The chat composer's limits — the same declared numbers the door enforces (`config/attachments.default.json`)."""
+    return _att.public_limits()
+
+
+@router.delete("/api/files/attached/{episode_id}")
+async def detach(episode_id: int):
+    """He removed an attachment chip before sending: the turn stops seeing it (the file stays stored)."""
+    return {"ok": True, "detached": _att.detach(episode_id)}
+
+
+@router.get("/api/files/{episode_id}/thumb")
+async def thumb(episode_id: int):
+    p = _att.thumb_path(episode_id)
+    if not p.is_file():
+        raise HTTPException(404, "no thumbnail")
+    return FileResponse(p, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=86400"})
 
 
 @router.get("/api/files")

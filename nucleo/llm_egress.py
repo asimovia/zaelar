@@ -50,6 +50,8 @@ _PROVIDER_BY_HOST = (
     # memory_writer/memory_rem rows): without this entry the `X-Zaelar-Provider` header goes out EMPTY on every
     # mediated memory write and the gateway falls back to its own default provider.
     ("api.openai.com", "openai"),
+    # V2-809 — the chat's image reader (`image_reader` in the model table) speaks Gemini's OpenAI-compatible API.
+    ("generativelanguage.googleapis.com", "gemini"),
 )
 
 

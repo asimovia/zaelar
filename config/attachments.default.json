@@ -1,0 +1,38 @@
+{
+  "_doc": "Limits of a file added to the chat (V2-809). ONE place: the upload door, the turn and the chat's composer (via GET /api/files/limits) all read these numbers. Measured with tests/infrastructure/e2e/bench_chat_attachments.py (a real server, the largest allowed file of each kind, RSS sampled every 20 ms, the event loop probed every 50 ms); `why` gives the measured number behind each limit. Measured on a developer Mac, 2026-10-26: re-run it when a limit moves.",
+  "text_extensions": [
+    ".txt",
+    ".md",
+    ".markdown",
+    ".csv"
+  ],
+  "max_file_bytes": 209715200,
+  "max_files_per_message": 10,
+  "max_message_bytes": 524288000,
+  "min_free_bytes": 536870912,
+  "min_free_ratio": 0.15,
+  "chunk_bytes": 1048576,
+  "max_image_pixels": 50000000,
+  "reader_image_side": 1600,
+  "thumb_side": 320,
+  "max_pdf_pages": 300,
+  "max_text_read_bytes": 1048576,
+  "turn_chars_per_file": 6000,
+  "turn_chars_total": 12000,
+  "upload_stall_s": 30,
+  "process_timeout_s": 90,
+  "why": {
+    "text_extensions": "Text is the one kind with no signature in its bytes, so it is accepted by extension AND by decoding as UTF-8 with no NUL. Images and PDF are recognised by their magic numbers, whatever their name.",
+    "max_file_bytes": "200 MB. The upload streams to disk in chunk_bytes pieces and every reader is bounded, so RAM does not grow with the file: measured +38 MB RSS for a 198 MB PDF, +2 MB for a 199 MB text file, +43 MB for a 48 Mpx JPEG. What bounds the size is the data volume every store shares (a small one can be a few GB), and the disk guard below.",
+    "max_files_per_message": "10: a handful of photos or documents; each file is a row in the composer and a reading in the turn, and ten rows still fit the composer at its smallest width.",
+    "max_message_bytes": "500 MB: what one message may carry, so ten large files cannot take the disk headroom in a single send.",
+    "min_free_bytes": "An upload that would leave less than max(512 MB, 15 % of the volume) free is refused before a byte is written (Content-Length) and re-checked every 16 chunks while streaming: the memory database, its WAL and the widgets' data need room to keep working.",
+    "max_image_pixels": "50 Mpx (a 48 Mpx phone photo passes). Above it the image is not decoded at all. JPEG decodes at a reduced scale (+43 MB measured); a PNG has no reduced decode and is the worst case: +266 MB at 48 Mpx. Files are read ONE at a time (files/attachments.py `_work`): eight heavy files uploaded at once measured +303 MB, against +863 MB with the reads in parallel.",
+    "reader_image_side": "The image is downscaled to this longest side before it travels to the reading model: enough for text in a photo, and the request stays small whatever the original weighs.",
+    "max_pdf_pages": "Text extraction stops at this page or at 4x the turn's budget, whichever is first; the PDF is read through an open file (pypdf loads the whole file when given a path: +239 MB measured before the fix, +38 MB after).",
+    "max_text_read_bytes": "A text file is read up to this many bytes for the turn; the rest stays on disk.",
+    "turn_chars_total": "What all the attachments together may add to one turn's prompt. A turn without attachments adds nothing.",
+    "upload_stall_s": "The composer aborts an upload that has made no progress for this long and says so; the reading that follows is bounded by process_timeout_s plus this. Nothing spins forever.",
+    "process_timeout_s": "Reading a file (PDF text, the image model) that takes longer than this is abandoned; the file stays stored and the turn is told it could not be read. The event loop stayed responsive throughout: worst probe 37 ms, during the 198 MB PDF."
+  }
+}

@@ -50,8 +50,12 @@ def test_upload_then_list(client):
     assert "doc.txt" in names
 
 
-def test_upload_too_large_rejected(client):
-    big = io.BytesIO(b"x" * (51 * 1024 * 1024))
+def test_upload_too_large_rejected(client, monkeypatch):
+    """The cap is the declared one (`config/attachments.default.json`, V2-809); shrunk here so the test is fast."""
+    from files import attachments as att
+    att.limits()
+    monkeypatch.setitem(att._limits_cache, "max_file_bytes", 1024 * 1024)
+    big = io.BytesIO(b"x" * (2 * 1024 * 1024))
     r = client.post("/api/files/upload", files={"file": ("big.bin", big, "application/octet-stream")})
     assert r.status_code == 413
 
