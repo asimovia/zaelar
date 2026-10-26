@@ -462,10 +462,14 @@ def consent_scope(action: str, payload: dict | None = None) -> dict:
 
 def pending_rows() -> list[dict]:
     """V2-799 — what this card holds for his word, for `nucleo/pending_work.py`: each held draft, and how it resumes
-    (its own `send_draft`, so a «finish those» reaches it through the same confirm gate as a «send it»)."""
+    (its own `send_draft`, so a «finish those» reaches it through the same confirm gate as a «send it»).
+
+    V2-807 T-10 — and what it IS, whichever cards are open: its body's excerpt and the declared actions that show,
+    rewrite, send or drop it, named by its recipient. This row is the one place a held draft reaches the prompt."""
     try:
         return [{"id": d["key"], "title": f"{d['platform'] or 'message'} → {d['to']}: {d['subject'] or d['text'][:60]}",
-                 "state": "draft waiting for his OK", "at": d["at"],
+                 "state": "draft waiting for his OK", "at": d["at"], "excerpt": d["text"],
+                 "verbs": ["open_draft", "draft", "send_draft", "discard_draft"], "args": {"contact": d["to"]},
                  "resume": {"action": "send_draft", "payload": {"contact": d["to"]}}}
                 for d in _held.held(load_db()) if d["to"]]
     except Exception as e:  # noqa: BLE001

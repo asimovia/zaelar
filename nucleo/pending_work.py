@@ -22,6 +22,7 @@ verdict over these rows (`nucleo/flash/resume_turn.py`); this module only lists 
 from __future__ import annotations
 
 import importlib
+import json
 import time
 
 from loguru import logger
@@ -145,8 +146,38 @@ def prompt_lines() -> list[str]:
     found = rows()
     if not found:
         return []
-    return ["PENDIENTE O PARADO (ids para resume_task):"] + [
-        f"· {r['id']} — {r.get('title') or '?'} · {r.get('state') or ''}" for r in found]
+    return ["PENDIENTE O PARADO (ids para resume_task):"] + [_line(r) for r in found]
+
+
+#: A widget row's excerpt rides the prompt every turn while the row exists: a glance, never the whole text.
+EXCERPT_MAX = 160
+
+
+def _line(r: dict) -> str:
+    """One row. A widget row may add what it holds (`excerpt`) and the actions that act on it (`verbs`, with the
+    payload that names it, `args`) — V2-807 T-10: a held draft whose card is closed is still something the agent
+    can show, edit and send, so it names those doors here and not only in the card's digest."""
+    line = f"· {r['id']} — {r.get('title') or '?'} · {r.get('state') or ''}"
+    if str(r.get("excerpt") or "").strip():
+        line += f" · «{' '.join(str(r['excerpt']).split())[:EXCERPT_MAX]}»"
+    verbs = _declared_verbs(str(r.get("widget") or ""), r.get("verbs"))
+    if verbs:
+        args = json.dumps(r.get("args") or {}, ensure_ascii=False)
+        line += f" · {r['widget']}: {' / '.join(verbs)} {args}"
+    return line
+
+
+def _declared_verbs(wid: str, verbs) -> list[str]:
+    """Only actions the widget DECLARES: a row cannot name a door the card does not have."""
+    if not wid or not isinstance(verbs, (list, tuple)):
+        return []
+    try:
+        from widgets import runtime
+        have = (runtime.get(wid) or {}).get("actions") or {}
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"pending_work: no manifest for {wid} ({e})")
+        return []
+    return [str(v) for v in verbs if str(v) in have]
 
 
 def label(row: dict) -> str:

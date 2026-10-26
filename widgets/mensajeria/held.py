@@ -126,11 +126,14 @@ def seen(draft: dict, his_turns_since) -> bool:
         return False
 
 
-def prompt_lines(db: dict, now: float | None = None) -> list[str]:
-    """What the brain reads about held and scheduled sends (product prompt data, in the agent's working language)."""
+def prompt_lines(db: dict, now: float | None = None, *, drafts: bool = True) -> list[str]:
+    """What the brain reads about held and scheduled sends (product prompt data, in the agent's working language).
+
+    `drafts=False` leaves the held drafts out: the card's digest asks for that, because a held draft already reaches
+    every turn as a pending-work row (`data.pending_rows`, V2-807 T-10) whichever cards are open."""
     now = float(now if now is not None else time.time())
     out = []
-    for d in held(db)[:3]:
+    for d in (held(db)[:3] if drafts else []):
         subj = f" «{d['subject']}»" if d["subject"] else ""
         out.append(f"· BORRADOR esperando su OK para {d['to']}{subj}: «{d['text'][:120]}» — ya está escrito y lo ha "
                    f"visto en la tarjeta; se envía con send_draft (contact: {d['to']!r}), ahora o con `at`/`in_minutes` "

@@ -5574,6 +5574,9 @@ DOMAINS: list[dict] = [
         # V2-807 T-09 — disarmed 2026-10-26 (claim threshold, claimer loop, funnel wiring, address-alone) → each red.
         {"id": "4.281", "title": "A message to someone has ONE body: a version of a held draft written on another card (a document sheet's show) lands on the draft's row through the one door, the draft screen comes up, a document that only mentions the address stays a document, and the body that leaves is the one he corrected (V2-807 T-09)",
             "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_one_draft_has_one_body.py"]},
+        # V2-807 T-10 — disarmed 2026-10-26 (row excerpt, row verbs, digest repeat, undeclared verb) → each red.
+        {"id": "4.282", "title": "A held draft is state with every card closed: its pending-work row carries recipient, subject, a bounded excerpt and the DECLARED actions that show, rewrite, send or drop it (named by its recipient), and the card's digest no longer repeats it (V2-807 T-10)",
+            "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_a_held_draft_is_state_with_every_card_closed.py"]},
         {"id": "4.252", "title": "The chat list paints, filters by kind and name, loads more and opens a chat (RENDERED)",
             "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_the_chat_list_paints_filters_and_loads_more.py"]},
         {"id": "4.250", "title": "The feedback button is never hidden under another layer",

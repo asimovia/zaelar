@@ -151,7 +151,7 @@ def _held_lines() -> list[str]:
     or «send it» resolves to nothing and «cancel the one for tonight» to nobody."""
     try:
         from . import data as _data, held as _held
-        return _held.prompt_lines(_data.load_db())
+        return _held.prompt_lines(_data.load_db(), drafts=False)   # a held draft is a pending-work row (V2-807 T-10)
     except Exception as e:  # noqa: BLE001
         logger.info(f"held lines unreadable: {e}")
         return []
