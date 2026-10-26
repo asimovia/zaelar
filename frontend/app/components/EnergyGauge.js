@@ -13,6 +13,7 @@
 // bars are what is left of it, in proportion — «the cycle's Energy minus what you spent», nothing else. The SAME number
 // of bars for every account (more, and thinner, on a wider screen); the plan shows in the COLOUR (`plan.tier`).
 // Spent bars stay as grey boxes with a firmer grey edge, so it reads as a battery running down, not a shorter list.
+// The lit bars sit at the RIGHT end, next to the box, and the battery empties from the left (the operator, 2026-10-26).
 // (A first version drew every plan against the biggest one; the operator's own Free cycle then lit 1 bar of 30 with
 // 394 of 398 left — it did not represent his Energy.) Nothing here knows a price.
 import { h } from "../core/dom.js?v=2";
@@ -74,6 +75,6 @@ export function EnergyGauge() {
       .replace("{plan}", name);
     return shell("eg eg-tier" + s.tier + (s.lit ? "" : " eg-dead"), tip,
       Array.from({ length: s.bars }, (_, i) =>
-        h("i", { class: "eg-t " + (i < s.lit ? "eg-on" : i < s.own ? "eg-spent" : "eg-free") })));
+        h("i", { class: "eg-t " + (i >= s.bars - s.lit ? "eg-on" : i >= s.bars - s.own ? "eg-spent" : "eg-free") })));
   };
 }

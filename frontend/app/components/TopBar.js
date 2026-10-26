@@ -13,7 +13,7 @@ import { toggleTheme } from "../services/theme.js?v=2";
 import { t } from "../core/i18n.js?v=1";
 import { BUG_ICON, GEAR_ICON, COMPASS_ICON, MOON_ICON, USER_ICON, MEM_ICON, DESKTOP_ICON } from "../lib/icons.js?v=2";
 import * as daemon from "../services/daemon.js?v=3";
-import { EnergyGauge } from "./EnergyGauge.js?v=2";
+import { EnergyGauge } from "./EnergyGauge.js?v=3";
 import { accountLink } from "../core/account-link.js?v=1";
 
 // Status dot is a plain filled circle (see .statusBtn svg below) — recolors via the SAME --hb-ok/--hb-warn/--hb-risk
