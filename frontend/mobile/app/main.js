@@ -28,6 +28,7 @@ import { initI18n, t } from "../../app/core/i18n.js?v=1";
 import { submitChat } from "../../app/components/ChatWall.js?v=5";
 
 import { Deck } from "./shell/Deck.js?v=2";
+import { initKeyboard } from "./shell/keyboard.js?v=1";
 import { MOBILE_SURFACES } from "./shell/mobile-surfaces.js?v=3";
 
 // ---- theme + language before mounting anything, so nothing flashes the wrong palette or the wrong words ----
@@ -141,6 +142,7 @@ window.__zaelarDesktop = deck;      // the name the SSE/session bridge looks for
                                     // deliberately: renaming it would mean editing the shared session module to
                                     // teach it about a second shell, which is exactly the coupling this avoids.
 window.__zaelarDeck = deck;         // …plus an honest alias, for anything mobile-only that comes later.
+initKeyboard();                      // a field focused in a card: the deck fits above the keyboard (V2-813)
 createEffect(() => deck.setRunning(!store.powerOff()));
 // V2-613: same hook as the desktop host — a language switch re-renders every open card's own chrome, live.
 createEffect(() => { t(""); deck.relanguage(); });

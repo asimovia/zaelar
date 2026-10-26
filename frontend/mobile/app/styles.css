@@ -122,6 +122,13 @@ body {
 /* The centre slot's two faces are both mounted and swapped by visibility, never rebuilt — see DockBar.js.
    `display: none` and not opacity: a hidden face must take no space and catch no taps. */
 .zm-dock .zm-hide { display: none; }
+
+/* THE KEYBOARD (V2-813, shell/keyboard.js): while a field inside a card is being typed into, the deck covers only
+   the visible part of the screen and the dock steps aside — otherwise the keyboard hides the bottom of the card and
+   the dock hides what is left of it (agenda's Save/Cancel, measured on iPhone 14 and Pixel 7). */
+html.zm-kbd .zm-dock, html.zm-kbd .zm-pips { display: none; }
+html.zm-kbd .zm-deck { top: var(--zm-vvt, 0px); bottom: auto; height: var(--zm-vvh, 100%); }
+html.zm-kbd .zm-card { bottom: 0; }
 /* `stalled` = "should be on and is not". It has to be impossible to mistake for `live`, because mistaking them is
    exactly what cost a whole session once: a red ring, and it blinks. `pausing` is AMBER, deliberately not red —
    the agent is genuinely still finishing a turn, that is not a fault (V2-092 addenda). */
