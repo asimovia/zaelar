@@ -595,11 +595,10 @@ def take_pending_reply(platform: str | None = None) -> list[dict]:
     Each order: {platform, chatId, to, messageId, subject, msgid, text}."""
     db = load()
     pending = db.get("pending_reply", [])
-    if platform is None:
-        mine, rest = list(pending), []
-    else:
-        mine = [k for k in pending if k.get("platform") == platform]
-        rest = [k for k in pending if k.get("platform") != platform]
+    now = time.time()
+    due = lambda k: float(k.get("not_before") or 0) <= now   # noqa: E731 — a reply scheduled for later waits (V2-800)
+    mine = [k for k in pending if due(k) and (platform is None or k.get("platform") == platform)]
+    rest = [k for k in pending if k not in mine]
     db["pending_reply"] = rest
     save(db)
     return mine

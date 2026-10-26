@@ -21,6 +21,9 @@ from __future__ import annotations
 import re
 import time
 import unicodedata as _ud
+import logging
+
+logger = logging.getLogger("zaelar.mensajeria.inbox")
 
 _MAX_DIGEST_ROWS = 10        # the summary is a glance: who is waiting, not the inbox
 _MAX_ANSWER_ROWS = 8
@@ -137,10 +140,21 @@ def _sent_lately() -> list[str]:
                 body = re.sub(r"\s+", " ", str(m.get("body") or "")).strip()[:_MAX_BODY_DIGEST]
                 rows.append((ts, f"· ENVIADO por {plat} a {th.get('name') or '?'} ({_when({'ts': ts})}): «{body}»"))
     out = [r for _ts, r in sorted(rows, key=lambda t: -t[0])[:_MAX_SENT_ROWS]]
-    for o in (db.get("pending_send") or [])[:_MAX_SENT_ROWS]:
+    for o in [o for o in (db.get("pending_send") or []) if not o.get("scheduled")][:_MAX_SENT_ROWS]:
         out.append(f"· SALIENDO ahora por {o.get('platform')} a {o.get('name') or o.get('to')}: "
                    f"«{str(o.get('text') or '')[:_MAX_BODY_DIGEST]}» (ya está en camino — no lo envíes otra vez)")
     return out
+
+
+def _held_lines() -> list[str]:
+    """Drafts waiting for his word and sends scheduled for later (V2-800): rows of this card the brain must see,
+    or «send it» resolves to nothing and «cancel the one for tonight» to nobody."""
+    try:
+        from . import data as _data, held as _held
+        return _held.prompt_lines(_data.load_db())
+    except Exception as e:  # noqa: BLE001
+        logger.info(f"held lines unreadable: {e}")
+        return []
 
 
 def _found_lately() -> list[str]:
@@ -165,7 +179,7 @@ def prompt_digest() -> str:
     should infer."""
     items = _items()
     sent = _sent_lately()
-    tail = (["LO QUE ACABAS DE ENVIAR:"] + sent if sent else []) + _found_lately()
+    tail = (["LO QUE ACABAS DE ENVIAR:"] + sent if sent else []) + _held_lines() + _found_lately()
     if not items:
         return "\n".join(tail)
     plats: dict = {}

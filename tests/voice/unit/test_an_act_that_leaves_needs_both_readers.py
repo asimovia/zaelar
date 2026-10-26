@@ -21,7 +21,7 @@ def test_a_reply_is_an_act_that_leaves_and_a_draft_is_not():
 
 def test_the_single_data_op_gate_carries_the_rule():
     prov = _vts.read(ROOT / "voice/engine/llm/providers/nucleo.py")
-    i = prov.index("mode = _frontend.action_mode_now(wid, action_name, payload)")
+    i = prov.index("mode = _frontend.action_mode_now(wid, action_name, payload, brief=_brief)")
     block = prov[i:i + 3000]
     assert "_frontend.at_least_sensitive(wid, action_name)" in block
     assert "_direct_action.completes(_brief, wid, model_action=action_name)" in block

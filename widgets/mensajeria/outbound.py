@@ -84,7 +84,7 @@ def resolve_reply_target(db: dict, n=None, mid: str | None = None) -> dict | Non
 
 
 def enqueue_reply(db: dict, target: dict, text: str, cc: list | None = None,
-                  attachments: list | None = None) -> None:
+                  attachments: list | None = None, not_before: float = 0.0) -> None:
     """The one place a reply/draft actually gets queued for the connector to send for real. A real item
     ALWAYS carries `messageId` (set on ingestion, by every connector) — including one resolved via `reply`'s
     own chat-grouping fallback, which never goes through `_renumber` and so never has `n` set either, which
@@ -102,6 +102,8 @@ def enqueue_reply(db: dict, target: dict, text: str, cc: list | None = None,
         "cc": [str(a) for a in (cc or []) if str(a).strip()],
         # Local paths inside the widget's data dir (media.local_paths): photos, voice notes, documents.
         "attachments": [str(a) for a in (attachments or []) if str(a).strip()],
+        # V2-800 — a reply he asked to send LATER waits in the queue until then (`take_pending_reply`).
+        **({"not_before": float(not_before), "at": time.time(), "scheduled": True} if not_before else {}),
     })
     if target.get("messageId") is not None:
         db.setdefault("pending_read", []).append(_d._key(target))
@@ -430,7 +432,8 @@ def forward_without_files(db: dict, payload: dict) -> dict | None:
 
 
 def enqueue(db: dict, target: dict, text: str, *, subject: str = "", objective: str = "",
-            ref: str = "", attachments: list | None = None, not_before: float = 0.0) -> dict:
+            ref: str = "", attachments: list | None = None, not_before: float = 0.0,
+            scheduled: bool = False) -> dict:
     """Put ONE send in the store's outbound queue. The owner flushes it to the bus, exactly as it does with a
     reply — this function never touches the network and never publishes."""
     order = {
@@ -453,6 +456,8 @@ def enqueue(db: dict, target: dict, text: str, *, subject: str = "", objective: 
             + [{"ref": order["ref"], "to": _send_key(order), "files": _file_key(attachments), "at": order["at"]}]
     if not_before:
         order["not_before"] = float(not_before)   # held in the queue until then — see `take_pending_send`
+        if scheduled:
+            order["scheduled"] = True             # V2-800: HE asked for later (not the few seconds of typing on screen)
     db.setdefault("pending_send", []).append(order)
     return order
 

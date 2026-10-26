@@ -14,6 +14,7 @@ from .. import store
 from . import chatlist as _chatlist
 from . import media as _media
 from . import drafts as _drafts
+from . import held as _held
 from . import outbound as _outbound
 from . import sent as _sent
 # The READ side lives in views.py since V2-624 (the architecture ratchet's extraction, along the real seam:
@@ -323,7 +324,7 @@ from .actions import (  # noqa: E402,F401
     _a_search_archive, _a_peek, _a_reply, _a_draft, _a_send_draft, _a_send_to, _a_forward,
     _a_unread, _a_set_signature, _a_set_signature_line, _a_clear_signature, _a_hide, _a_set_notify, _a_unhide,
     _a_open, _a_close, _a_load_more, _a_readchat, _a_archive, _a_chats_more,
-    _a_set_media_days, _a_create_group)
+    _a_set_media_days, _a_create_group, _a_cancel_send)
 
 
 # V2-778 F1-12 — one function per action (in `actions.py`), and `apply_action` is the table lookup. Each body
@@ -342,6 +343,7 @@ ACTIONS = {
     "reply": _a_reply,
     "draft": _a_draft,
     "send_draft": _a_send_draft,
+    "cancel_send": _a_cancel_send,
     "send_to": _a_send_to,
     "forward": _a_forward,
     "unread": _a_unread,
@@ -405,3 +407,38 @@ def __getattr__(name: str):
         from widgets.mensajeria import answers as _answers
         return _answers.answer_action
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+# ── V2-800 · the consent rule's two hooks (read by `nucleo/flash/frontend.py`, same shape as the agenda's) ─────────
+
+def held_row(action: str, payload: dict | None = None) -> dict | None:
+    """The draft this send would deliver when he has already SEEN it — the row his explicit order confirms."""
+    try:
+        from nucleo import his_words
+        return _held.held_row(str(action or ""), dict(payload or {}), load_db(), his_words.since)
+    except Exception as e:  # noqa: BLE001 — an unreadable hook leaves the friction where it was
+        _held.logger.info(f"held_row unreadable ({e}) — the send keeps its question")
+        return None
+
+
+def consent_scope(action: str, payload: dict | None = None) -> dict:
+    """The CHANNEL refines a send's class (`messaging.send_new@email`), so a rule he gives for one channel («no me
+    pidas confirmación para los correos») governs that channel only; `consent.class_policy` falls back to the bare
+    class when the channel has no rule of its own. A call whose channel cannot be read keeps the declared class."""
+    try:
+        if action not in ("send_draft", "send_to", "reply", "forward"):
+            return {}
+        p = dict(payload or {})
+        plat = ""
+        if action == "send_draft":
+            db = load_db()
+            k = _held.draft_for(db, str(p.get("contact") or "")) if p.get("contact") else None
+            d = ((db.get("drafts") or {}).get(k) if k else None) or db.get("draft") or {}
+            plat = str((d.get("target") or {}).get("platform") or "")
+        elif p.get("contact") or p.get("to"):
+            t = _outbound.resolve_target({**p, "text": p.get("text") or "-"})
+            plat = str(t.get("platform") or "") if t.get("ok") else ""
+        return {"class": f"messaging.send_new@{plat}"} if plat else {}
+    except Exception as e:  # noqa: BLE001 — the declared class stands
+        _held.logger.info(f"consent_scope unreadable ({e}) — the declared class stands")
+        return {}

@@ -99,6 +99,9 @@ def needs_asking(brief, widget_id: str, action: str, *, payload=None, said: str 
     """True when the send goes to somebody his words never named, or when a stranger's words are in the context and
     neither the verdict surely backs THIS send nor his own words name its recipient."""
     try:
+        from nucleo.flash import held_send as _held   # V2-800: the row he SAW names its recipient and its text
+        if _held.confirmed(widget_id, action, payload, brief):
+            return False
         if unnamed_recipients(widget_id, action, payload, said):
             return True                       # a recipient he never named: «¿se lo mando a X?», with or without a stranger
         from nucleo import untrusted as _u

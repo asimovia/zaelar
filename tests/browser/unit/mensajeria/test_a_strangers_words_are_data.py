@@ -100,7 +100,7 @@ def test_a_send_with_a_strangers_words_in_context_and_no_sure_verdict_is_asked(m
 def test_the_gate_in_front_of_an_act_that_leaves_asks_it():
     from pathlib import Path
     src = (Path(__file__).resolve().parents[4] / "nucleo" / "flash" / "tool_executor_widget_calls.py").read_text("utf-8")
-    i = src.index("mode = _frontend.action_mode_now(wid, action_name, payload)")
+    i = src.index("mode = _frontend.action_mode_now(wid, action_name, payload, brief=_brief)")
     block = src[i:]
     assert "_leave_gate.asked_if_leaving(" in block and block.index("_leave_gate.asked_if_leaving(") < block.index(
         "if mode == _wactions.FAST:\n")

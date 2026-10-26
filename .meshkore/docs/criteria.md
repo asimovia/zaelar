@@ -121,6 +121,15 @@ below is the first kind, or it names the mechanism that replaced the second.
   SOMEONE, and its «yes» returns to the click it stopped. — since 2026-09-18 · nodes 4.21, 2.29.
 - **CRIT-C7 · A transactional op never enters the task list** (deleting an item, sending a message); the list is
   for work that takes time and that he may come back to. — since 2026-09-21 · nodes 3.82.
+- **CRIT-C9 · A send held for his word is a ROW, and his order over it is the yes — asked once, in one place.** A
+  message he wants to review first is a draft of the mail card (a NEW one to a person: `draft` with `contact`); a
+  send for later is a scheduled row (`send_draft` with `at`/`in_minutes`, shown on the card, `cancel_send` until it
+  leaves). A widget whose action delivers a row he has SEEN declares `held_row`; with the verdict sure of that act at
+  `consent.intent_act_at`, the one consent rule runs it with `his_yes` and the leave gate takes the row's recipient
+  as his (`nucleo/flash/held_send.py`) — his standing «ask» rule, a missing fact, a doubt and the radius still stop.
+  A channel refines a send's class (`messaging.send_new@email`), so his rule for one channel governs that channel
+  only. A pending confirmation lives in the conversation (voice or the chat's Yes/No resolve the same row), never
+  also on the card. — since 2026-10-26 · nodes 2.806 · `widgets/mensajeria/held.py`, `nucleo/consent.decide`.
 - **CRIT-C8 · A search is never gated as a charge.** A negated act («do not buy») and a first-person wish beside
   a lookup order («I want to buy X, give me the link») are subtracted before the money verbs are read — a
   negation only subtracts the act it governs, inside its own clause («don't forget to pay», «no compres el barato,

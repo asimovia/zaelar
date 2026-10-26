@@ -174,7 +174,13 @@ def class_policy(key: str) -> str:
     His own example is the one that ships: `messaging.autorespond: "never"` — PRESET, not hardcoded. «Contesta
     tú los correos de logística» flips it, and the next decision of that class reads the new value.
     """
-    v = str((policy().get("classes") or {}).get(str(key or "").strip(), "")).strip().lower()
+    classes = policy().get("classes") or {}
+    key = str(key or "").strip()
+    v = str(classes.get(key, "")).strip().lower()
+    if v not in ("never", "ask", "allow") and "@" in key:
+        # A class REFINED by a channel (`messaging.send_new@email`, V2-800): his rule for that channel governs it,
+        # and without one the bare class's rule does — a rule for one channel never reaches another.
+        v = str(classes.get(key.split("@", 1)[0], "")).strip().lower()
     return v if v in ("never", "ask", "allow") else ""
 
 
@@ -201,7 +207,7 @@ def level_of(spec: dict | None, *, widget_security: str = "", action: str = "") 
 # ── THE RULE ────────────────────────────────────────────────────────────────────────────────────────────
 
 def decide(*, level: str = "standard", missing=(), candidates=(), radius: int | None = 1,
-           bounded: bool = True, policy_key: str = "") -> dict:
+           bounded: bool = True, policy_key: str = "", his_yes: bool = False) -> dict:
     """Act, or ask — and if asking, WHICH of the three useful questions it is.
 
     Every argument is something another layer already measured; nothing here reads text or guesses intent.
@@ -212,6 +218,10 @@ def decide(*, level: str = "standard", missing=(), candidates=(), radius: int | 
       · `bounded`   — whether the call names WHAT it hits at all. A sweep with no selector is unbounded, and
                       that is the V2-707 rail: «vacía la agenda» is not «borra la cita del dentista».
       · `policy_key`— the class this belongs to, for the operator's standing rules (`messaging.autorespond`).
+      · `his_yes`   — his own order already IS the consent: the act delivers a row he has SEEN, held for his
+                      word, and the turn's verdict surely names that act (the widget's `held_row` hook). It clears
+                      the class question and nothing above it: a missing fact, a doubt, his standing «ask» rule
+                      and the radius rail still stop.
 
     Returns `{verdict, why, needs, candidates, n, level}` — data for the caller to phrase in its own words.
     This module never writes a sentence the operator hears: that would be a rail on judgement.
@@ -243,9 +253,10 @@ def decide(*, level: str = "standard", missing=(), candidates=(), radius: int | 
         return {**out, "verdict": ASK_CONSENT,
                 "why": "alcance mayor que lo que nombró" if bounded else "no nombra sobre qué actúa"}
 
-    # 5 · `allow` clears the class rail below, never the radius rail above
-    if pol == "allow":
-        return out
+    # 5 · `allow` — or his own explicit order over a row he has seen — clears the class rail below, never the
+    #     radius rail above
+    if pol == "allow" or his_yes:
+        return {**out, "why": "su orden sobre lo que ya ha visto" if his_yes and pol != "allow" else ""}
 
     # 6 · the class itself
     if _rank(lvl) >= _rank(ask_at()):

@@ -198,9 +198,9 @@ export function routeEvent(desktop, d) {
       else if (d.label === "confirm" && d.id === "clusters") { store.setClusterConfirm({ question: d.question }); store.setChatTab("clusters"); store.setChatOpen(true); }
       else if (d.label === "confirm-cancel" && d.id === "clusters") store.setClusterConfirm(null);
       else if (d.label === "confirm" && d.id) {                                   // irreversible action (delete/restore/data)
-        desktop.showConfirm(d.id, { question: d.question, action: d.action });    // Yes/No overlay ON the card…
-        // …and the SAME question in the chat thread (V2-518, house norm: no popups — questions live in the
-        // conversation). One pending at a time, like the backend registry.
+        // ONE place (V2-800, the operator: «la confirmación se pide UNA vez, en UN sitio»): the question lives in
+        // the conversation (V2-518, house norm: no popups), answerable there or by voice. The card overlay that
+        // also painted it was a second surface for the same pending row — he answered one and saw the other.
         store.setWidgetConfirm({ id: d.id, question: d.question || "", action: d.action || "" });
         store.setChatTab("chat"); store.setChatOpen(true);
       }

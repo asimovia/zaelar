@@ -2048,5 +2048,8 @@
  "push.settings_off": "Desactivados",
  "push.test": "Probar",
  "config.sec.notices": "Avisos",
- "orb.centre_secondary": "La voz está en otro dispositivo — toca para traerla aquí"
+ "orb.centre_secondary": "La voz está en otro dispositivo — toca para traerla aquí",
+ "widgets.mensajeria.held_to": "Borrador para {to}",
+ "widgets.mensajeria.scheduled_to": "Programado · {to} · {when}",
+ "widgets.mensajeria.cancel_send": "Cancelar envío"
 }

@@ -172,27 +172,44 @@
       ]
     },
     "draft": {
-      "desc": "Escribe (o actualiza) el texto de respuesta en el CUADRO visible del widget, SIN enviarlo — dile al operador que se lo lees para que lo revise antes de que lo mande él (con 'send_draft' o el botón)",
+      "desc": "Escribe un mensaje en el CUADRO del widget SIN enviarlo, para que lo revise: respuesta a una conversación (n) o mensaje NUEVO a una persona (contact). Dile «ya está escrito, revísalo y dime si lo mando ya o cuándo».",
       "payload": {
         "text": "string (el texto dictado)",
         "n": "opcional: número de un email concreto (si no hay conversación abierta)",
         "messageId": "opcional, alternativa a n",
-        "reply_all": "opcional, solo email: true para responder también a los demás destinatarios del original"
+        "reply_all": "opcional, solo email: true para responder también a los demás destinatarios del original",
+        "contact": "opcional: para un mensaje NUEVO, a quién (el nombre tal y como lo dijo, o su dirección de correo)",
+        "subject": "opcional, solo email nuevo: el asunto",
+        "channel": "opcional con contact: whatsapp | telegram | email"
       }
     },
     "send_draft": {
-      "desc": "Envía el borrador que ya está en el cuadro (escrito por voz o a mano) — el mismo texto que se ve en pantalla. No lleva texto propio: si aún no hay nada dictado, dile que dicte primero.",
+      "desc": "Envía un borrador que él ya ha visto — ahora, o MÁS TARDE con at/in_minutes (queda programado en la tarjeta y se puede cancelar). Su orden explícita de mandarlo es la confirmación. Sin borrador, dile que lo dicte.",
       "confirm_q": "¿Envío el borrador que hay escrito en el cuadro?",
       "payload": {
         "n": "opcional: el email concreto cuyo borrador se envía (sin esto va el último borrador tocado)",
-        "messageId": "opcional, alternativa a n"
+        "messageId": "opcional, alternativa a n",
+        "contact": "opcional: a quién va el borrador que se envía (un mensaje nuevo se nombra así)",
+        "at": "opcional: para enviarlo más tarde, fecha y hora local ISO («2026-10-26T11:30»)",
+        "in_minutes": "opcional, alternativa a at: dentro de cuántos minutos («dentro de 10 horas» = 600)"
       },
       "confirm": true,
-      "usage": "El botón «Enviar» de la propia tarjeta hace exactamente esto. Por voz: primero 'draft' con el texto, luego (con su confirmación) 'send_draft'.",
+      "usage": "El botón «Enviar» de la propia tarjeta hace exactamente esto. Por voz: primero 'draft' (con contact si es nuevo), él lo revisa, y su «envíalo» llama a 'send_draft'.",
       "consent_class": "messaging.send_new",
       "singleton": true,
       "effects": [
         "external.send"
+      ]
+    },
+    "cancel_send": {
+      "desc": "Cancela un envío PROGRAMADO para más tarde que aún no ha salido — el de la persona que nombre (contact) o, si solo hay uno, ese.",
+      "payload": {
+        "contact": "opcional: a quién iba el envío programado",
+        "ref": "opcional: la referencia del envío"
+      },
+      "confirm": false,
+      "effects": [
+        "state.change"
       ]
     },
     "send_to": {

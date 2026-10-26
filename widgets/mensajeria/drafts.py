@@ -17,7 +17,9 @@ import time
 MAX = 50
 
 # What travels with a draft so the send can be made without the original item still existing.
-_TARGET_FIELDS = ("platform", "chatId", "senderId", "messageId", "subject", "msgid", "n")
+_TARGET_FIELDS = ("platform", "chatId", "senderId", "messageId", "subject", "msgid", "n",
+                  # A NEW message to a person (`draft` with `contact`): who it goes to travels with the draft.
+                  "to", "name", "contactId", "new")
 
 
 def key(target: dict) -> str:

@@ -282,6 +282,10 @@ function injectStyles(){
   .hb-msg .thread.plat-email .composebox:focus{border-color:#D8452D}
   .hb-msg .composeside{display:flex;flex-direction:column;gap:6px;flex:0 0 auto;justify-content:flex-end}
   .hb-msg .composeside .bt{white-space:nowrap}
+  .hb-msg .pending{display:flex;flex-direction:column;gap:6px;margin:6px 0}
+  .hb-msg .prow{display:flex;flex-direction:column;gap:4px;align-items:flex-start;padding:8px;border-radius:8px;background:var(--surface-2, rgba(127,127,127,.08))}
+  .hb-msg .prow .pbody{white-space:pre-wrap;max-height:7.5em;overflow:auto;opacity:.85}
+  .hb-msg .prow .psub{font-weight:600;opacity:.9}
   .hb-msg .composerow{display:flex;justify-content:flex-end;margin-top:6px}
   /* Attachments picked in the card: a row of chips (a thumbnail for a picture), each removable. */
   .hb-msg .attrow{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 6px}
@@ -1711,6 +1715,38 @@ function connectPrompt(platforms, ctx){
 // engine (a render test, a headless DOM stub) shows exactly what it showed before, and only an engine with a
 // bundle loaded shows the operator's own language.
 let _T = null, _LANG = "en";   // instance language (ctx.lang) — dates never follow the browser locale
+// V2-800 — a NEW message held for his word, and a send scheduled for later, are ROWS of this card: each one shown
+// once, here, with the one control it needs. A held draft opens no conversation (there is none yet), so without
+// this strip «ya está escrito, revísalo» pointed at nothing he could see.
+function pendingStrip(data, ctx){
+  const held = Object.values(data.drafts || {}).filter(d => d && d.target && d.target.new);
+  const later = (data.sent || []).filter(r => r && r.scheduled_for);
+  if(!held.length && !later.length) return null;
+  const box = el("div","pending");
+  held.forEach(d => {
+    const t = d.target || {};
+    const row = el("div","prow");
+    row.append(el("b",null,tt("held_to", {to: t.name || t.to}, `Borrador para ${t.name || t.to}`)));
+    if(t.subject) row.append(el("div","psub",t.subject));
+    row.append(el("div","pbody",String(d.text || "")));
+    const send = el("button","bt bt-primary",tt("send", null, "Enviar"));
+    send.onclick = () => { markBusy(send); ctx.action("send_draft", {contact: t.to || t.name}); };
+    row.append(send);
+    box.append(row);
+  });
+  later.forEach(r => {
+    const row = el("div","prow");
+    const when = new Date(Number(r.scheduled_for) * 1000).toLocaleString(_LANG, {weekday:"short", hour:"2-digit", minute:"2-digit"});
+    row.append(el("b",null,tt("scheduled_to", {to: r.name, when}, `Programado · ${r.name} · ${when}`)));
+    row.append(el("div","pbody",String(r.body || "")));
+    const cancel = el("button","bt",tt("cancel_send", null, "Cancelar envío"));
+    cancel.onclick = () => { markBusy(cancel); ctx.action("cancel_send", {ref: r.id}); };
+    row.append(cancel);
+    box.append(row);
+  });
+  return box;
+}
+
 function tt(key, params, fb){
   try{
     if(_T){ const s=_T("widgets.mensajeria."+key, params); if(s && s!=="widgets.mensajeria."+key) return s; }
@@ -1821,6 +1857,8 @@ export function render(root, data, ctx){
   }
   hd.appendChild(actions);
   root.appendChild(hd);
+  const pend = pendingStrip(data, ctx);   // V2-800: what waits for his word, and what leaves later
+  if(pend) root.appendChild(pend);
 
   if(_settingsOpen) root.appendChild(settingsPanel(platforms, data, ctx, rerender));
 

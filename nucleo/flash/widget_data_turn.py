@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from loguru import logger
 
+from nucleo.flash import held_send as _held_send  # V2-800: his order over a row he has seen is the yes
 from nucleo.flash import leave_gate as _leave_gate
 from nucleo.flash import refusal_line as _rline       # one door for what a refusal may say to him
 from nucleo.flash import worker_note_relay as _relay  # a worker's own note on a live errand's sheet goes to it
@@ -144,6 +145,8 @@ async def execute(tool_calls: list, text: str = "", brief=None) -> dict:
         if (_to := _relay.relay(wid, act, _order)):    # his words, for the worker (search-buy-watch, 2026-10-14)
             hechas.append({"widget": wid, "act": act, "relayed_to": _to}); continue
         mode = _fe.action_mode(wid, act)
+        if mode == _wa.CONFIRM and _held_send.confirmed(wid, act, pl, brief):   # V2-800: his order is the yes
+            mode = _wa.FAST
         mode = _leave_gate.asked_if_leaving(mode, brief, wid, act, payload=pl, said=_order)   # V2-778 F4-33: the voice rail's rule
         if mode != _wa.FAST:
             saltadas.append({"widget": wid, "act": act, "mode": str(mode)})

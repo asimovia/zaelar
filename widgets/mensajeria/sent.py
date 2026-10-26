@@ -31,6 +31,8 @@ def rows(db: dict) -> list[dict]:
         if isinstance(o, dict):
             out.append({"id": str(o.get("ref") or ""), "platform": str(o.get("platform") or ""),
                         "chatId": str(o.get("chatId") or o.get("to") or ""), "name": str(o.get("name") or o.get("to") or ""),
-                        "body": str(o.get("text") or ""), "ts": float(o.get("at") or time.time()), "queued": True})
+                        "body": str(o.get("text") or ""), "ts": float(o.get("at") or time.time()), "queued": True,
+                        # V2-800: a send he asked for LATER — the card shows when, and `cancel_send` stops it.
+                        **({"scheduled_for": float(o["not_before"])} if o.get("scheduled") and float(o.get("not_before") or 0) > time.time() else {})})
     out.sort(key=lambda r: -float(r.get("ts") or 0))
     return out[:_MAX]

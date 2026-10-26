@@ -2048,5 +2048,8 @@
  "push.settings_off": "Off",
  "push.test": "Test",
  "config.sec.notices": "Notifications",
- "orb.centre_secondary": "Your voice is on another device — tap to bring it here"
+ "orb.centre_secondary": "Your voice is on another device — tap to bring it here",
+ "widgets.mensajeria.held_to": "Draft to {to}",
+ "widgets.mensajeria.scheduled_to": "Scheduled · {to} · {when}",
+ "widgets.mensajeria.cancel_send": "Cancel send"
 }

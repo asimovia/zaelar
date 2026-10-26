@@ -211,6 +211,8 @@ def _no_reply_target(db: dict) -> str:
 # one-shot model-dictated reply (CONFIRM-gated, unchanged) — this is the review-first path instead.
 def _a_draft(action, payload) -> dict:
     db = _d.load_db()
+    if str(payload.get("contact") or "").strip() and payload.get("n") is None and not payload.get("messageId"):
+        return _draft_new(db, payload)
     target = _d._outbound.resolve_reply_target(db, payload.get("n"), payload.get("messageId"))
     if target is None:
         return {"ok": False, "error": "no_target",
@@ -221,13 +223,41 @@ def _a_draft(action, payload) -> dict:
     return out
 
 
+def _draft_new(db: dict, payload: dict) -> dict:
+    """A NEW message held for his word (V2-800): resolved to WHO and HOW exactly like `send_to`, written into the
+    card's draft box, and nothing leaves. `send_draft` (now, or with `at`/`in_minutes`) is what sends it."""
+    t = _d._outbound.resolve_target(payload)
+    if not t.get("ok"):
+        return t
+    target = {**t, "new": True, "subject": str(payload.get("subject") or "").strip()}
+    out = _d._drafts.write(db, target, str(payload.get("text") or ""), False, files=payload.get("files"))
+    _d.store.save(_d.WIDGET_ID, db)
+    return {**out, "held": True, "to": t.get("name"), "channel": t.get("platform"),
+            "message": "Ya está escrito: revísalo y confírmame si lo mando ya o cuándo."}
+
+
+def _a_cancel_send(action, payload) -> dict:
+    """Stop a scheduled send before it leaves (V2-800) — by `ref`, by recipient, or the only one scheduled."""
+    db = _d.load_db()
+    out = _d._held.cancel(db, ref=str(payload.get("ref") or ""), contact=str(payload.get("contact") or ""))
+    if out.get("ok"):
+        _d.store.save(_d.WIDGET_ID, db)
+    return out
+
+
 def _a_send_draft(action, payload) -> dict:
     db = _d.load_db()
     # A send names WHICH conversation whenever the widget's own button fires it; a bare voice «envíalo»
     # names nothing and gets the most recent draft, which is what it meant before drafts were per
     # conversation. Resolving the key from the payload's own target keeps both callers on one path.
-    key = None
-    if payload.get("n") is not None or payload.get("messageId"):
+    # V2-800: a held NEW message is named by its recipient (`contact`), and `at`/`in_minutes` schedule it.
+    not_before, bad = _d._held.when(payload)
+    if bad:
+        return {"ok": False, "error": bad, "message": "No entiendo para cuándo: dime la hora o dentro de cuánto."}
+    key = _d._held.draft_for(db, str(payload.get("contact") or "")) if payload.get("contact") else None
+    if payload.get("contact") and key is None:
+        return {"ok": False, "error": "no_draft", "message": "No tengo ningún borrador para esa persona."}
+    if key is None and (payload.get("n") is not None or payload.get("messageId")):
         t = _d._outbound.resolve_reply_target(db, payload.get("n"), payload.get("messageId"))
         if t is not None:
             key = _d._drafts.key(t)
@@ -241,13 +271,20 @@ def _a_send_draft(action, payload) -> dict:
     # elsewhere, read from the real app) is not blindly replied to under a stale identity — same
     # resolution `reply` itself uses. Falls back to the stored identity when nothing live matches: the
     # conversation's own platform/chatId are still enough to send to, even with no pending item left.
+    if stored.get("new"):
+        order = _d._outbound.enqueue(db, stored, text, subject=str(stored.get("subject") or ""),
+                                     attachments=files, not_before=not_before, scheduled=bool(not_before))
+        _d._drafts.forget(db, draft.get("key") or key)
+        _d.store.save(_d.WIDGET_ID, db)
+        return {"ok": True, "to": stored.get("name") or stored.get("to"), "text": text, "ref": order.get("ref"),
+                "attachments": len(files), **({"scheduled_for": not_before} if not_before else {})}
     target = _d._outbound.resolve_reply_target(db, stored.get("n"), stored.get("messageId")) or stored
     cc = _d._drafts.cc_for(draft)
-    _d._outbound.enqueue_reply(db, target, text, cc=cc, attachments=files)
+    _d._outbound.enqueue_reply(db, target, text, cc=cc, attachments=files, not_before=not_before)
     _d._drafts.forget(db, draft.get("key") or key)
     _d.store.save(_d.WIDGET_ID, db)
     return {"ok": True, "to": target.get("senderId") or target.get("chatId"), "text": text,
-            "cc": list(cc), "attachments": len(files)}
+            "cc": list(cc), "attachments": len(files), **({"scheduled_for": not_before} if not_before else {})}
 
 
 def _a_send_to(action, payload) -> dict:
