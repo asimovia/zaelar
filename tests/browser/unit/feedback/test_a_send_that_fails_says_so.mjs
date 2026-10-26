@@ -94,7 +94,7 @@ assert.ok(lineFor(refused, t).trim().length > 0, "an empty line is the bug this 
 
 const SURFACES = [
   ["frontend/app/components/FeedbackWidget.js", read("frontend", "app", "components", "FeedbackWidget.js")],
-  ["frontend/mobile/app/shell/MenuSheet.js", read("frontend", "mobile", "app", "shell", "MenuSheet.js")],
+  ["frontend/mobile/app/shell/FeedbackForm.js", read("frontend", "mobile", "app", "shell", "FeedbackForm.js")],   // the phone form left the ☰ menu for its own sheet (2026-10-25)
 ];
 
 for (const [name, src] of SURFACES) {
@@ -130,6 +130,24 @@ for (const [name, src] of SURFACES) {
   assert.deepEqual(offenders, [],
     `${name}: a signal read as a bare child — evaluated ONCE while the tree is built, never re-rendered, ` +
     "no error anywhere. Wrap it: `() => (cond() ? a : b)`");
+}
+
+// --- 6. a send that WORKED clears the form and closes the window (operator 2026-10-25) ----------------------------
+//
+// «Cuando mandamos algo, se debe limpiar el form, y cerramos el form window.» Both surfaces: the success branch
+// empties the text and the email, goes back to «New», closes its window and leaves the thank-you as a note
+// (the panel that used to show it is gone the moment it would appear). And dictation still running when the
+// send stops it must not write a late result back into the box it just emptied.
+for (const [name, src] of SURFACES) {
+  const ok = src.slice(src.indexOf("if (!out.ok)"));
+  const branch = ok.slice(0, ok.indexOf("refresh();"));
+  assert.ok(/noteSent\(t\("feedback\.thanks"\)\)/.test(branch), `${name}: a sent report leaves no thank-you`);
+  assert.ok(/setFeedbackOpen\(false\)|close\(\)/.test(branch), `${name}: a sent report leaves its window open`);
+  assert.ok(/setFeedbackTab\("new"\)|setTab\("new"\)/.test(branch), `${name}: the next open is not a fresh form`);
+  assert.ok(/value = ""/.test(src.slice(src.indexOf("if (!out.ok)"))) , `${name}: the text survives a send`);
+  assert.ok(!/setFeedbackTab\("sent"\)|setTab\("sent"\)/.test(branch), `${name}: a send still lands on «Sent» instead of closing`);
+  assert.ok(/(textareaEl|textEl)\s*&&\s*recHandle|!textareaEl \|\| !recHandle/.test(src),
+    `${name}: a dictation result after the send can refill the emptied box`);
 }
 
 console.log("ok");

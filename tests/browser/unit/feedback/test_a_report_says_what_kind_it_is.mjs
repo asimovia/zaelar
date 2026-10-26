@@ -67,7 +67,7 @@ const shots = await import(resolve(APP, "services/feedback-images.js"));
 // NOT inherit is remembering to fill the new field.
 const SURFACES = [
   ["FeedbackWidget.js", readFileSync(resolve(APP, "components/FeedbackWidget.js"), "utf8")],
-  ["MenuSheet.js", readFileSync(resolve(MOBILE, "shell/MenuSheet.js"), "utf8")],
+  ["FeedbackForm.js", readFileSync(resolve(MOBILE, "shell/FeedbackForm.js"), "utf8")],   // its own sheet since 2026-10-25
 ];
 
 for (const [name, src] of SURFACES) {

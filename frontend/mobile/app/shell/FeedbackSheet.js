@@ -12,7 +12,7 @@
 import { h } from "../../../app/core/dom.js?v=2";
 import * as store from "../../../app/core/store.js?v=2";
 import { t } from "../../../app/core/i18n.js?v=1";
-import { FeedbackForm } from "./FeedbackForm.js?v=1";
+import { FeedbackForm } from "./FeedbackForm.js?v=2";
 
 export function FeedbackSheet() {
   const open = store.mobileFeedbackOpen;
@@ -26,6 +26,6 @@ export function FeedbackSheet() {
       h("button", { class: "zm-sheet-x", "aria-label": () => t("desktop.close"),
         onClick: () => store.setMobileFeedbackOpen(false) }, "×"),
     ),
-    h("div", { class: "zm-rows" }, FeedbackForm(() => open())),
+    h("div", { class: "zm-rows" }, FeedbackForm(() => open(), () => store.setMobileFeedbackOpen(false))),
   );
 }

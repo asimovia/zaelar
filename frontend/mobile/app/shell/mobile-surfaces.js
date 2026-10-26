@@ -41,7 +41,7 @@ import { MenuSheet } from "./MenuSheet.js?v=2";
 import { SettingsSheet } from "./SettingsSheet.js?v=2";
 import { VoiceHeldNotice } from "./VoiceHeldNotice.js?v=1";
 import { InstallBanner } from "./InstallBanner.js?v=1";
-import { FeedbackSheet } from "./FeedbackSheet.js?v=1";
+import { FeedbackSheet } from "./FeedbackSheet.js?v=2";
 import { EnergyLine } from "./EnergyLine.js?v=1";
 
 export const MOBILE_SURFACES = [

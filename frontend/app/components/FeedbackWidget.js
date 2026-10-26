@@ -19,6 +19,7 @@ import { CLOSE_ICON, MIC_ICON, MESSAGE_SQUARE_ICON, PAPERCLIP_ICON, SEND_ICON, T
          THUMBS_UP_ICON } from "../lib/icons.js?v=2";
 import * as feedbackApi from "../services/feedback-api.js?v=1";
 import { sendOutcome, listOutcome, lineFor } from "../services/feedback-state.js?v=1";
+import { noteSent } from "../services/feedback-sent-note.js?v=1";
 import * as dictation from "../services/feedback-dictation.js?v=1";
 import * as shotsvc from "../services/feedback-images.js?v=1";
 
@@ -85,7 +86,6 @@ export function FeedbackWidget() {
   let wrapEl, btnEl, textareaEl, emailEl, panelEl, fileEl, gripEl;
   let recHandle = null, base = "", finalSoFar = "", pollTimer = null;
   const [listening, setListening] = createSignal(false);
-  const [justSent, setJustSent] = createSignal(false);
   // The two states this panel used to keep to itself. `sendLine` is whatever the last submit
   // ACTUALLY answered; `listReachable` separates "you have sent nothing" from "we cannot look".
   const [sendLine, setSendLine] = createSignal("");
@@ -138,8 +138,10 @@ export function FeedbackWidget() {
     store.setFeedbackItems(out.items);
   };
 
+  // A result that lands after dictation was stopped (a send stops it) is dropped: writing it back would refill
+  // the box the send had just emptied.
   const renderDictated = (interim) => {
-    if (!textareaEl) return;
+    if (!textareaEl || !recHandle) return;
     textareaEl.value = [base, finalSoFar, interim].filter(Boolean).join(" ");
   };
 
@@ -214,14 +216,22 @@ export function FeedbackWidget() {
     // The failure branch is the whole point of V2-256: the message stays in the box (so a retry costs
     // nothing) and the panel SAYS what happened. It used to end here with no `else` at all.
     if (!out.ok) { setSendLine(lineFor(out, t)); return; }
-    setSendLine("");
+    // Sent: the form goes back to how it opens and the window closes (operator 2026-10-25: «se debe limpiar el
+    // form, y cerramos el form window»); the thank-you is the note it leaves behind, and the next open is a
+    // fresh form on «New». The Sent tab is where the report now lives.
+    resetForm();
+    store.setFeedbackTab("new");
+    store.setFeedbackOpen(false);
+    noteSent(t("feedback.thanks"));
+    refresh();
+  };
+
+  // The form exactly as it first opens: no text, no email, no pictures, no message line, «issue» picked.
+  const resetForm = () => {
     if (textareaEl) textareaEl.value = "";
     if (emailEl) emailEl.value = "";
-    setShots([]); setShotLine("");
-    setJustSent(true);
-    setTimeout(() => setJustSent(false), 4000);
-    store.setFeedbackTab("sent");
-    refresh();
+    base = ""; finalSoFar = "";
+    setShots([]); setShotLine(""); setSendLine(""); setKind("issue");
   };
 
   const statusBadge = (item) => h("span", { class: "fw-badge fw-badge-" + item.status },
@@ -268,9 +278,6 @@ export function FeedbackWidget() {
       // V2-766 — after a quick mark the whole panel is its thank-you (CSS hides everything else).
       () => (quick() === "done" || quick() === "failed" ? quickView() : null),
       h("div", { class: "fw-status" },
-        () => (justSent()
-          ? h("div", { class: "fw-thanks" }, () => t("feedback.thanks"))
-          : null),
         () => (sendLine() ? h("div", { class: "fw-error" }, sendLine()) : null),
       ),
       // V2-619, the operator's order and his exact words: email on TOP, then a BIG clearly-boxed textarea

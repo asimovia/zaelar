@@ -196,3 +196,10 @@
 @media (prefers-reduced-motion:reduce){
   .hb-btn,.hb-iconbtn,.hb-tab,.hb-card,.hb-input,.hb-select,.hb-textarea{transition:none}
 }
+
+/* The line a sent feedback report leaves once its window has closed (services/feedback-sent-note.js) — both shells. */
+.hb-sent-note{position:fixed;left:16px;bottom:16px;z-index:9800;max-width:min(360px,calc(100vw - 32px));padding:10px 14px;
+  border:1px solid var(--hb-line);border-radius:var(--hb-r-m);background:var(--hb-bg-soft);color:var(--hb-ink);
+  font:500 0.8125rem/1.45 var(--sans);box-shadow:0 8px 24px rgba(0,0,0,.25);opacity:0;transform:translateY(6px);
+  pointer-events:none;transition:opacity .2s ease,transform .2s ease}
+.hb-sent-note.on{opacity:1;transform:none}

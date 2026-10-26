@@ -1715,8 +1715,6 @@ body.dbg-open .orbwrap{left:calc(50% - var(--dbg-w) / 2)}
 .fw-quickdone-btn{height:40px;padding:0 22px;border-radius:var(--hb-r-m,12px);border:none;cursor:pointer;
   background:var(--hb-accent);color:var(--canvas);font:600 var(--fs-ui,0.875rem) var(--sans)}
 .fw-quickdone-btn:hover{filter:brightness(1.08)}
-.fw-thanks{font-size:0.7812rem;color:var(--hb-accent2);background:color-mix(in srgb,var(--hb-accent2) 12%,transparent);
-  border-radius:9px;padding:7px 10px}
 /* V2-256 — the failure has to occupy the same slot, and the same visual weight, as the thank-you.
    A send that fails used to paint nothing at all: same box, same silence, whether it worked or not. */
 /* The status strip sits OUTSIDE the two tab panes: a confirmation that only exists in the tab the

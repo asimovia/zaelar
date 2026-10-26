@@ -17,6 +17,7 @@ import { t } from "../../../app/core/i18n.js?v=1";
 import { CLOSE_ICON, MIC_ICON, PAPERCLIP_ICON, SEND_ICON, THUMBS_DOWN_ICON, THUMBS_UP_ICON } from "../../../app/lib/icons.js?v=2";
 import * as feedbackApi from "../../../app/services/feedback-api.js?v=1";
 import { sendOutcome, listOutcome, lineFor } from "../../../app/services/feedback-state.js?v=1";
+import { noteSent } from "../../../app/services/feedback-sent-note.js?v=1";
 import * as dictation from "../../../app/services/feedback-dictation.js?v=1";
 import * as shotsvc from "../../../app/services/feedback-images.js?v=1";
 
@@ -26,13 +27,13 @@ const fmtDate = (iso) => {
 };
 const excerpt = (s, max = 180) => { s = (s || "").trim(); return s.length > max ? s.slice(0, max).trimEnd() + "…" : s; };
 
-/** `open` is a signal: the form refreshes its Sent list while it is open (every 30 s, like the desktop panel). */
-export function FeedbackForm(open) {
+/** `open` is a signal: the form refreshes its Sent list while it is open (every 30 s, like the desktop panel).
+ * `close` closes the sheet that holds it — a send that worked clears the form and closes it, as on the desktop. */
+export function FeedbackForm(open, close = () => {}) {
   let textEl = null, emailEl = null, fileEl = null, recHandle = null, base = "", finalSoFar = "", pollTimer = null;
   const [tab, setTab] = createSignal("new");
   const [kind, setKind] = createSignal("issue");
   const [line, setLine] = createSignal("");
-  const [thanks, setThanks] = createSignal(false);
   const [listening, setListening] = createSignal(false);
   const [shots, setShots] = createSignal([]);
   const [shotLine, setShotLine] = createSignal("");
@@ -50,7 +51,8 @@ export function FeedbackForm(open) {
     else { clearInterval(pollTimer); pollTimer = null; if (listening()) toggleMic(); }
   });
 
-  const render = (interim) => { if (textEl) textEl.value = [base, finalSoFar, interim].filter(Boolean).join(" "); };
+  // A result landing after dictation stopped (a send stops it) is dropped, or it would refill the emptied box.
+  const render = (interim) => { if (textEl && recHandle) textEl.value = [base, finalSoFar, interim].filter(Boolean).join(" "); };
   const toggleMic = () => {
     if (listening()) { dictation.stop(recHandle); recHandle = null; setListening(false); return; }
     if (!dictation.isSupported()) return;
@@ -95,10 +97,11 @@ export function FeedbackForm(open) {
     store.setFeedbackSending(false);
     const out = sendOutcome(res);
     if (!out.ok) { setLine(lineFor(out, t)); return; }     // the text stays, so a retry costs nothing
-    setLine(""); textEl.value = ""; if (emailEl) emailEl.value = "";
-    setShots([]); setShotLine("");
-    setThanks(true); setTimeout(() => setThanks(false), 4000);
-    setTab("sent");
+    // Sent: the form as it first opens, the sheet closed, and the thank-you left behind (same rule as the desktop).
+    textEl.value = ""; if (emailEl) emailEl.value = ""; base = ""; finalSoFar = "";
+    setLine(""); setShots([]); setShotLine(""); setKind("issue"); setTab("new");
+    close();
+    noteSent(t("feedback.thanks"));
     refresh();
   };
 
@@ -129,7 +132,6 @@ export function FeedbackForm(open) {
           h("button", { class: "zm-primary", onClick: () => { setQuick(""); setQuickDir(""); } },
             quick() === "failed" ? t("feedback.back") : t("feedback.close")))
       : null),
-    () => (thanks() ? h("p", { class: "zm-fb-done" }, t("feedback.thanks")) : null),
     () => (line() ? h("p", { class: "zm-fb-err" }, line()) : null),
     h("div", { class: "zm-fb-new" },
       h("div", { class: "zm-fb-kind" },
