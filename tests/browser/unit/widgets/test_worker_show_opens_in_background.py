@@ -52,7 +52,7 @@ def test_desktop_show_never_fronts_a_background_card():
 
 def test_deck_show_never_switches_to_a_background_card():
     body = _method(DECK.read_text(encoding="utf-8"),
-                   "let baseId, id, wq;", "close(id) {")
+                   "let baseId, id, wq;", "  close(id")   # close() now names who closed (V2-807 T-15)
     assert "if (!background) this._goTo" in body
     bare = [l for l in body.splitlines()
             if "this._goTo(" in l and "if (!background)" not in l]

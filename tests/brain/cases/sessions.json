@@ -272,8 +272,7 @@
   "expect": "show youtube",
   "forbid": [
    "worker"
-  ],
-  "open": "V2-776 B3: a text guard (`video_without_order`) overrides a correct model call — and the merge dropped the order's head"
+  ]
  },
  {
   "id": "session-3a9a082c-yes-do-it-the-fragment-guard-annuls-the-build",

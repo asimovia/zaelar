@@ -382,13 +382,15 @@ def test_a_question_about_a_day_gets_that_days_record_and_an_empty_day_is_an_ans
     for title, start, end in (("Meshcore architecture", "15:00", "16:00"), ("Product meeting", "11:00", "12:00")):
         r = agenda.apply_action("add_meeting", {"title": title, "date": monday, "startTime": start, "endTime": end})
         assert "error" not in r, r
-    _piano()                                                       # a series, on Tuesdays
+    # A weekly series on a weekday that is neither of the two days asked about. Pinned to TUE it fell on «tomorrow»
+    # every Monday and the empty-day check failed one day a week.
+    series_day = TODAY + dt.timedelta(days=4)
+    _piano(date=series_day.isoformat())
     empty = agenda.read_query(f"What meetings do I have tomorrow ({tomorrow}) in the afternoon, between 12:00 and 18:00?")
     assert "LIBRE" in empty and tomorrow in empty and "Meshcore" not in empty, empty
     day = agenda.read_query(f"What do I have on {monday}?")
     assert day.count("«") == 2 and day.index("Product") < day.index("Meshcore"), day
-    if TUE.isoformat() != monday:
-        assert "Piano" not in day, "a series that does not fall on that day is not on that day"
+    assert "Piano" not in day, "a series that does not fall on that day is not on that day"
     from widgets.agenda import query as q
     assert q._terms("anything in 2026 at 18:00") == ["anything"], "a bare number is never a search term"
     assert q._dates_in("pasado mañana") == [(TODAY + dt.timedelta(days=2)).isoformat()]
