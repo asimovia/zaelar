@@ -100,7 +100,11 @@ const CSS = `
 .arx-find.active{border-color:var(--hb-accent,#2f6df6)}
 /* A phone: the search takes a row of its own and the buttons line up under it (V2-813 — at 44px a tap the five
    buttons and the field could not share 366px, and the row broke wherever it ran out of room). */
-@media (max-width:520px){.arx-tools{flex:1 1 100%;flex-wrap:wrap}.arx-find{order:-1;flex:1 1 100%}}
+@media (max-width:520px){.arx-tools{flex:1 1 100%;flex-wrap:wrap}.arx-find{order:-1;flex:1 1 100%}
+  /* …the toolbar's glyphs read at a thumb's size inside their 44px boxes, and a file row puts its name on a line of
+     its own — four 44px actions beside it left «Presu…» of a long name (V2-813). */
+  .arx-btn{font-size:17px}
+  .arx-row{flex-wrap:wrap;row-gap:2px}.arx-clickable{flex:1 1 100%}.arx-acts{margin-left:auto}}
 .arx-find input{border:0;background:none;outline:none;font:inherit;color:var(--hb-ink,#0d1622);width:130px}
 .arx-find-ic{color:var(--hb-muted,#67707d);font-size:13px}
 .arx-find-count{flex:0 0 auto;font-size:11px;color:var(--hb-muted,#67707d);background:var(--hb-bg,#fff);
@@ -142,8 +146,8 @@ const CSS = `
 .arx-ac.danger:hover{color:var(--hb-risk,#d64545)}
 .arx-rename{flex:1 1 auto;display:flex;gap:6px;min-width:0}
 .arx-rename input{flex:1 1 auto;min-width:0;border:1px solid var(--hb-accent,#2f6df6);border-radius:6px;padding:3px 6px;font:inherit;background:var(--hb-bg,#fff);color:var(--hb-ink,#0d1622)}
-.arx-confirm{display:flex;align-items:center;gap:6px;flex:0 0 auto}
-.arx-confirm span{color:var(--hb-risk,#d64545);font-size:11.5px}
+.arx-confirm{display:flex;align-items:center;gap:6px;flex:0 1 auto;min-width:0;flex-wrap:wrap}
+.arx-confirm span{color:var(--hb-risk,#d64545);font-size:11.5px;min-width:0;overflow-wrap:anywhere}
 .arx-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}
 .arx-tile{display:flex;flex-direction:column;align-items:center;gap:5px;padding:12px 6px;
   border:1px solid var(--hb-line,#eef1f6);border-radius:12px;cursor:pointer;background:var(--hb-bg,#fff);
@@ -160,9 +164,9 @@ const CSS = `
 .arx-note.bad{border-color:var(--hb-risk,#d64545);color:var(--hb-risk,#d64545)}
 .arx-foot{flex:0 0 auto;border-top:1px solid var(--hb-line,#eef1f6);padding:8px 10px;display:flex;gap:10px;align-items:center}
 .arx-foot .arx-nm{font-weight:600}
-.arx-lb{position:absolute;inset:0;background:rgba(10,12,16,.86);display:flex;flex-direction:column;z-index:5;border-radius:14px}
+.arx-lb{position:absolute;inset:0;background:rgba(10,12,16,.96);display:flex;flex-direction:column;z-index:5;border-radius:14px}
 .arx-lb-top{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;color:#fff;flex:0 0 auto}
-.arx-lb-top b{font-size:.85rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.arx-lb-top b{font-size:.85rem;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .arx-lb-close{background:none;border:0;color:#fff;font-size:20px;cursor:pointer;padding:2px 8px;line-height:1}
 .arx-lb-body{flex:1 1 auto;display:flex;align-items:center;justify-content:center;overflow:auto;padding:10px;min-height:0}
 .arx-lb-body img{max-width:100%;max-height:100%;object-fit:contain;border-radius:6px}
@@ -656,7 +660,10 @@ function listView(d, entries, act, ui) {
       }
       click.appendChild(meta);
     }
-    click.onclick = () => isFolder ? act("open_folder", { folderId: e.id }) : selectOrPreview(e, act);
+    // A finger has no double-click: on a touch screen ONE tap opens the file (V2-813 — on a phone a local file
+    // did nothing on a tap, and the double-tap that opened it is a gesture nobody looks for there).
+    click.onclick = () => isFolder ? act("open_folder", { folderId: e.id })
+      : (_coarse() && e.provider === "local") ? openEntry(e, act, row) : selectOrPreview(e, act);
     click.ondblclick = () => { if (!isFolder) openEntry(e, act, row); };
     row.appendChild(click);
 
@@ -670,6 +677,10 @@ function listView(d, entries, act, ui) {
     holder.appendChild(row);
   });
   return holder;
+}
+
+function _coarse() {
+  try { return window.matchMedia("(pointer: coarse)").matches; } catch (_) { return false; }
 }
 
 function selectOrPreview(e, act) {
@@ -831,6 +842,7 @@ function lightbox(ui, act) {
   const p = ui.preview;
   const box = el("div", "arx-lb");
   const top = el("div", "arx-lb-top");
+  top.dataset.strip = "";   // title + close manage their own width (ellipsis) — the phone never wraps them
   top.appendChild(el("b", null, p.name || ""));
   const close = el("button", "arx-lb-close", "✕");
   close.onclick = () => { ui.preview = null; act("refresh", {}); };

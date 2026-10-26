@@ -526,9 +526,10 @@ html.zm-kbd .zm-card { bottom: 0; }
   min-height: 0;
 }
 /* A ROW OF CONTROLS WRAPS instead of pushing the card sideways (see the ⚠️ above — measured on `archivos`).
-   Except a STRIP that scrolls sideways inside its own box — tabs (`role="tablist"`) or a thumbnail rail
-   (`data-strip`): wrapping one broke youtube's header into two rows with the right cluster floating between them
-   (iPhone 14, 2026-10-26), and results' tabs the same way. */
+   Except a row that manages its own width — tabs that scroll sideways (`role="tablist"`), a thumbnail rail, or a
+   title that ellipsizes beside its close button (`data-strip`): wrapping one broke youtube's header into two rows
+   with the right cluster floating between them (iPhone 14, 2026-10-26), results' tabs the same way, and dropped
+   archivos' viewer × onto the content. */
 .zm-scroll.zm-scroll.zm-scroll :has(> button):not([role="tablist"]):not([data-strip]):not(:has(> input, > textarea)),
 .zm-scroll.zm-scroll.zm-scroll :has(> a[href]):not([role="tablist"]):not([data-strip]):not(:has(> input, > textarea)) {
   flex-wrap: wrap;
