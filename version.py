@@ -127,10 +127,26 @@ def sha() -> str:
     return _CACHE["sha"]
 
 
+def build() -> int:
+    """The build number that is RUNNING (`update/BUILD`, the one a user is shown). 0 when unreadable.
+
+    V2-807 T-15: the stamp used to be `VERSION` — a constant bumped by hand that lagged dozens of releases
+    behind, so every event of an up-to-date deployment said an old version. The build file is the one
+    version that ships with every release (the release gate refuses a tag that did not move it)."""
+    import update               # `update.build()` never raises: an unreadable file is 0 there
+    return int(update.build() or 0)
+
+
+def label() -> str:
+    """The version part of the stamp: 'b69' from the running build, `VERSION` only when no build is known."""
+    b = build()
+    return f"b{b}" if b > 0 else VERSION
+
+
 def short() -> str:
-    """Compact label for sealing EVERY observability event: '2.74+a1b2c3d'. Cheap (constant at runtime)."""
+    """Compact label for sealing EVERY observability event: 'b69+a1b2c3d'. Cheap (constant at runtime)."""
     if "short" not in _CACHE:
-        _CACHE["short"] = f"{VERSION}+{sha()}"
+        _CACHE["short"] = f"{label()}+{sha()}"
     return _CACHE["short"]
 
 
@@ -141,5 +157,5 @@ def started_ms() -> int:
 
 def info() -> dict:
     """Details for /api/status and the frontend."""
-    return {"version": VERSION, "sha": sha(), "short": short(), "started_ms": _STARTED_MS,
+    return {"version": VERSION, "build": build(), "sha": sha(), "short": short(), "started_ms": _STARTED_MS,
             "uptime_s": round((time.time() * 1000 - _STARTED_MS) / 1000)}

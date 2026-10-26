@@ -260,7 +260,7 @@ function topMostClose() {
   if (store.mobileFeedbackOpen()) return store.setMobileFeedbackOpen(false), true;
   if (store.mobileMenuOpen()) return store.setMobileMenuOpen(false), true;
   if (store.chatOpen()) return store.setChatOpen(false), true;
-  if (deck.list().length) return deck.close(deck.list()[deck.at] ?? deck.list()[0]), true;
+  if (deck.list().length) return deck.close(deck.list()[deck.at] ?? deck.list()[0], { by: "hand" }), true;
   return false;
 }
 try {
@@ -283,8 +283,8 @@ session.loadVoices();
 // ---- manual control surface, mobile edition. Same shape as window.zaelar on the desktop so anything that scripts
 // the UI (tests, the operator's console) works in both shells. ----
 window.zaelar = {
-  show: (id, q = "") => deck.show(id, { q }),
-  close: (id) => (id ? deck.close(id) : deck.closeAll()),
+  show: (id, q = "") => deck.show(id, { q, by: "console" }),
+  close: (id) => (id ? deck.close(id, { by: "console" }) : deck.closeAll({ by: "console" })),
   next: () => deck.next(),
   prev: () => deck.prev(),
   chat: (text) => submitChat(text),
@@ -297,5 +297,5 @@ window.zaelar = {
 // into a widget (manifest.webmanifest `shortcuts`). ----
 (function () {
   const w = new URLSearchParams(location.search).get("widget");
-  if (w) setTimeout(() => deck.show(w), 700);
+  if (w) setTimeout(() => deck.show(w, { by: "url" }), 700);
 })();

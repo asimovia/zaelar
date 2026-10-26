@@ -908,7 +908,7 @@ export async function reset() { await stop(); try { await api.reset(); } catch (
 // limpia) seguía intacto → un refresh restauraba los mismos widgets. Fix: limpiar escritorio + log EN EL CLIENTE,
 // de forma optimista y determinista, en vez de depender de un viaje de ida y vuelta por un canal que vamos a matar.
 function _clearCanvasAndLog() {
-  try { window.__zaelarDesktop && window.__zaelarDesktop.closeAll(); } catch (_) {}
+  try { window.__zaelarDesktop && window.__zaelarDesktop.closeAll({ by: "reset" }); } catch (_) {}
   try { clearDebugBuffer(); } catch (_) {}
   // Two real gaps this bare `clearDebugBuffer()` left open (operator report, 2026-08-16, live session): (1) it
   // only empties debugbus.js's own ring — `DebugPanel.js`'s RENDERED rows only clear via its own reactive effect

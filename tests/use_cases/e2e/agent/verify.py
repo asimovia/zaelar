@@ -3712,7 +3712,8 @@ def canvas_now(all_events) -> list[str]:
         # The canvas's OWN report comes back as `src: "user"` (V2-039 audit, normalised to the BASE id) and the
         # desktop never obeys it (`sse.js` `_eco`). Folding it in mounted a base `results` over its instance in the
         # photo round (2026-10-11): the round played a ghost the real desktop would not have.
-        if str((f.get("src") if f.get("src") is not None else e.get("src")) or "") == "user":
+        from voice import canvas_src as _csrc
+        if _csrc.is_report((f.get("src") if f.get("src") is not None else e.get("src")) or ""):
             continue
         if label in ("show", "close"):
             evs.append((float(f.get("t_ms") or e.get("t_ms") or e.get("ts_ms") or 0), label,

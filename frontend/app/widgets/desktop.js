@@ -359,7 +359,7 @@ export class Desktop {
     // open and asks for another.
     document.addEventListener("hb:open-card", (e) => {
       const id = String(((e || {}).detail || {}).id || "");
-      if (id) this.show(id);
+      if (id) this.show(id, {by: String(((e || {}).detail || {}).by || "hand")});   // its doors are buttons
     });
   }
 
@@ -497,8 +497,9 @@ export class Desktop {
     clearTimeout(this._openTimer);
     this._openTimer=setTimeout(async ()=>{
       const dev = await _device();
+      const by = this._by || {}; this._by = {};        // V2-807 T-15: the causes of the changes in this report
       try{ fetch("/api/canvas/state",{method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({open:this.list(), layout:this._layout(), dev,
+        body:JSON.stringify({open:this.list(), layout:this._layout(), dev, by,
                              sid:(()=>{ try{ return sessionStorage.getItem("zaelar_sid")||""; }catch(_){ return ""; } })()})}); }catch(_){}
     }, 250);
   }
@@ -724,7 +725,13 @@ export class Desktop {
     e.textContent=msg;
   }
 
-  async show(rawId, {q="", data:providedData=null, pos=null, background=false}={}){
+  // V2-807 T-15 — WHO changed the canvas. Every show/close names its cause (`by`) at the call site that made it:
+  // "hand" for a gesture of the operator, anything else for code (engine, restore, reset, card, screens…). The
+  // causes ride the next canvas report, and the server keeps the operator's provenance for "hand" alone — a card
+  // our own code opened must never read, on the timeline or to the arbiter, as his hand. Unnamed = "code".
+  _noteBy(id, by){ const b=String(id||"").split("::")[0].trim().toLowerCase(); if(b){ (this._by||(this._by={}))[b]=String(by||"code"); } }
+  async show(rawId, {q="", data:providedData=null, pos=null, background=false, by="code"}={}){
+    this._noteBy(rawId, this._restoring ? "restore" : by);
     // `background` (worker-commissioned shows, see sse.js): the card still OPENS — placed in free
     // space, data rendering as usual — but it must not take focus (no _bringFront, no hb-focus steal)
     // over whatever the operator is looking at. Session 6d19df41: a ghost errand's `documento`
@@ -757,7 +764,7 @@ export class Desktop {
       // Minimize was the one gesture with an API (`minimize()`, V2-537) and no BUTTON: it could only be reached
       // by voice or by the rail's ⊟, so a mouse had two of the three window controls every desktop has.
       const x=document.createElement("button"); x.className="hb-x"; x.textContent="✕";
-      x.title=tr("desktop.close_tooltip"); x.onclick=()=>this.close(id);
+      x.title=tr("desktop.close_tooltip"); x.onclick=()=>this.close(id, {by:"hand"});
       const mx=document.createElement("button"); mx.className="hb-max"; mx.textContent="⤢"; mx.title=tr("desktop.maximize_tooltip");
       mx.onclick=()=>this.maximize(id);
       const mn=document.createElement("button"); mn.className="hb-min"; mn.textContent="—";
@@ -871,7 +878,8 @@ export class Desktop {
         // reorder "January 5, 2026" into "5 de enero de 2026", but `new Intl.DateTimeFormat(ctx.lang, …)` can.
         // GETTER, same reason as `running` below: a copied value would go stale across a language switch.
         get lang(){ return store.lang(); },
-        close:()=>this.close(id),
+        // A card closing itself is its own lifecycle; a widget that closes on a click says so with "hand".
+        close:(by)=>this.close(id, {by: by==="hand" ? "hand" : "card"}),
         // “Back to top”: the widget requests it; the canvas decides how (the scroller is card chrome, not the widget’s).
         // Called ONLY when NAVIGATING — opening a record, changing tabs, returning to the list — never on a data
         // refresh: resetting scroll whenever new results arrive would take what the operator is reading out of
@@ -1258,7 +1266,8 @@ export class Desktop {
 
   _unwatchSize(card){ try{ if(card && card._ro){ card._ro.disconnect(); card._ro=null; } }catch(_){} }
 
-  close(id){
+  close(id, {by="code"}={}){
+    this._noteBy(id, by);
     if(this._actId===id){ clearTimeout(this._actTimer); if(this.activity)this.activity.innerHTML=""; this._actId=null; return; }
     const w=this.wins.get(id);
     if(w) this._closeAliases(w);                        // V2-082: limpia el listener del panel de alias si estaba abierto
@@ -1289,8 +1298,8 @@ export class Desktop {
     this.wins.delete(id);
     this._persist();                                    // closing it removes it from the saved desktop too
   }
-  closeAll(){
-    [...this.wins.keys()].forEach(id=>this.close(id));
+  closeAll({by="code"}={}){
+    [...this.wins.keys()].forEach(id=>this.close(id, {by}));
     // BARRIDO DEL DOM (2026-07-14): "cierra todo" DEBE dejar el canvas limpio SIEMPRE, aunque haya tarjetas
     // huérfanas fuera de `wins` (desync tras reconexión/reinicio → el bug de "no eres capaz de cerrar la agenda"
     // con el close disparándose una y otra vez sin efecto). Quitamos toda .hb-win que quede en el escenario.

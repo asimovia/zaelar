@@ -37,7 +37,7 @@ export async function handleWidgetVoice(desktop, text, isFinal) {
   const n = norm(text);
   if (OPEN_RE.test(n)) {                                      // show — acts on INTERIM too (instant, mid-sentence)
     const target = await identifyWidget(text);
-    if (target && _act("show:" + target)) desktop.show(target, { q: text });
+    if (target && _act("show:" + target)) desktop.show(target, { q: text, by: "fast-path" });
   }
   // everything else — closing, moving, anything inside a card — is the engine's
 }

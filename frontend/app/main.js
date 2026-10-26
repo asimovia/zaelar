@@ -326,8 +326,8 @@ try {
 
 // ---- manual control surface: window.zaelar.show('search','tiempo en Soria') · .close() · .gate(true) · .orb('friendly') ----
 window.zaelar = {
-  show: (id, q = "") => desktop && desktop.show(id, { q }),
-  close: (id) => desktop && (id ? desktop.close(id) : desktop.closeAll()),
+  show: (id, q = "") => desktop && desktop.show(id, { q, by: "console" }),
+  close: (id) => desktop && (id ? desktop.close(id, { by: "console" }) : desktop.closeAll({ by: "console" })),
   fullscreen: (id) => desktop && desktop.fullscreen(id),   // V2-583: same entry the SSE handler uses (no gesture)
   gate: (on) => session.setGate(on),
   retrain: () => session.retrain(),
@@ -410,4 +410,4 @@ screens.wireScreen();
 
 // load the voice catalog (tap the orb to cycle), then honor /?widget=<id> for manual opening
 session.loadVoices();
-(function () { const w = new URLSearchParams(location.search).get("widget"); if (w) setTimeout(() => desktop && desktop.show(w), 700); })();
+(function () { const w = new URLSearchParams(location.search).get("widget"); if (w) setTimeout(() => desktop && desktop.show(w, { by: "url" }), 700); })();

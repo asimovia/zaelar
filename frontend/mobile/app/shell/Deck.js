@@ -183,7 +183,12 @@ export class Deck {
   capabilities() { return { open: this.list(), canDrag: false, fullscreenAlways: true, paging: "two-finger" }; }
 
   // ── the host contract, part 2: showing ───────────────────────────────────────────────────────────────────
-  async show(rawId, { q = "", data: providedData = null, background = false } = {}) {
+  // V2-807 T-15 — same contract as the desktop host: every show/close names its cause (`by`), "hand" for a
+  // gesture of the operator and anything else for code. The causes ride the next canvas report, and only
+  // "hand" keeps the operator's provenance on the server. Unnamed = "code".
+  _noteBy(id, by) { const b = String(id || "").split("::")[0].trim().toLowerCase(); if (b) (this._by || (this._by = {}))[b] = String(by || "code"); }
+  async show(rawId, { q = "", data: providedData = null, background = false, by = "code" } = {}) {
+    this._noteBy(rawId, this._restoring ? "restore" : by);
     // `background` (worker-commissioned shows, see app/services/sse.js): the card is mounted and
     // queued in the deck, but the visible card stays where the operator left it — same rule as
     // desktop, where background work opens beside, never over. Session 6d19df41.
@@ -208,7 +213,8 @@ export class Deck {
     await this._load(w, baseId, q, providedData, fresh);
   }
 
-  close(id) {
+  close(id, { by = "code" } = {}) {
+    this._noteBy(id, by);
     const w = this.cards.get(id); if (!w) return;
     const i = this.order.indexOf(id);
     try { w.card.classList.remove("live"); } catch (_) {}
@@ -220,7 +226,7 @@ export class Deck {
     this._persist();
   }
 
-  closeAll() { for (const id of [...this.order]) this.close(id); }
+  closeAll({ by = "code" } = {}) { for (const id of [...this.order]) this.close(id, { by }); }
 
   onDeleted(id) { this._ids = null; this._meta = null; this.close(id); }
 
@@ -339,9 +345,10 @@ export class Deck {
     clearTimeout(this._openTimer);
     this._openTimer = setTimeout(async () => {
       const dev = await _device();
+      const by = this._by || {}; this._by = {};        // V2-807 T-15: the causes of the changes in this report
       try {
         fetch("/api/canvas/state", { method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ open: this.list(), dev }) });
+          body: JSON.stringify({ open: this.list(), dev, by }) });
       } catch (_) {}
     }, 250);
   }
@@ -419,7 +426,7 @@ export class Deck {
     const title = document.createElement("b"); title.textContent = tr("mobile.open_widgets");
     const all = document.createElement("button"); all.className = "zm-swall";
     all.textContent = tr("mobile.close_all");
-    all.onclick = () => { this.closeAll(); this.closeSwitcher(); };
+    all.onclick = () => { this.closeAll({ by: "hand" }); this.closeSwitcher(); };
     head.append(title, all); p.appendChild(head);
     this.order.forEach((id, k) => {
       const w = this.cards.get(id); if (!w) return;
@@ -436,7 +443,7 @@ export class Deck {
       go.onclick = () => { this._goTo(k, 0); this.closeSwitcher(); };
       const x = document.createElement("button"); x.className = "zm-swx"; x.textContent = "×";
       x.setAttribute("aria-label", tr("desktop.close"));
-      x.onclick = () => this.close(id);
+      x.onclick = () => this.close(id, { by: "hand" });
       row.append(go, x); p.appendChild(row);
     });
   }
@@ -539,7 +546,7 @@ export class Deck {
     countEl.onclick = () => this.openSwitcher();
     const x = document.createElement("button"); x.className = "zm-x"; x.textContent = "×";
     x.setAttribute("aria-label", tr("desktop.close"));
-    x.onclick = () => this.close(id);
+    x.onclick = () => this.close(id, { by: "hand" });
     head.append(titleEl, countEl, x);
     const scroll = document.createElement("div"); scroll.className = "zm-scroll";
     const load = document.createElement("div"); load.className = "zm-load";
@@ -568,7 +575,7 @@ export class Deck {
               body: JSON.stringify({ action: name, payload: { ...(payload || {}), q } }) }).then(r => r.json());
           } catch (_) { return null; }
         },
-        close: () => this.close(w.id),
+        close: (by) => this.close(w.id, { by: by === "hand" ? "hand" : "card" }),
         // V2-613 — same contract as the desktop host: a synchronous, in-memory translation lookup, never a
         // network call from inside widget.js. Already imported at the top of this file for the shell's own chrome.
         t: tr,

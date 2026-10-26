@@ -225,7 +225,7 @@ export function render(el, data, ctx) {
     if (state.finished) {
       const btn = document.createElement("button"); btn.className = "ht-btn danger";
       btn.textContent = tr("widgets.timer.close");
-      btn.addEventListener("click", () => { ctx.close(); });
+      btn.addEventListener("click", () => { ctx.close("hand"); });
       acts.appendChild(btn);
       return;
     }

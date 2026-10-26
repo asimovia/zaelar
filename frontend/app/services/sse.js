@@ -176,14 +176,15 @@ export function routeEvent(desktop, d) {
       // the route: the audit must keep emitting with its label so observability continues counting
       // it the same way. The missing rule concerns the report, not the event: **a report of what already happened
       // is not an order**, and the sender is precisely the one who has nothing to do with it.
-      const _eco = d.src === "user";
+      // V2-807 T-15: the canvas's own report is `user` (his hand) or `client[:cause]` (our client code).
+      const _eco = d.src === "user" || /^client(:|$)/.test(String(d.src || ""));
       if (d.label === "show" && d.id && !_eco) {
         // A worker-commissioned card opens WITHOUT taking focus: session 6d19df41, the ghost
         // "Scarborough" errand's `documento` sheet came to the front over the operator's email
         // flow ("why are you open the documents right now? I said open my email"). What the
         // operator is looking at is his; background work opens visibly beside it, never over it.
         const _bg = /^worker:/.test(d.src || "");
-        desktop.show(d.id, { data: d.data, background: _bg });   // brain shows it (with pushed data, if any)
+        desktop.show(d.id, { data: d.data, background: _bg, by: "engine" });   // brain shows it (with pushed data, if any)
         if (d.moved) screensBring(d.id);   // V2-792: «ponlo en el ordenador» — the other screens let it go
         // V2-464 — in showcase, each opening rearranges the grid automatically, so an unattended recording
         // remains aligned without hands. Showcase only: auto-arrangement would move things for a normal operator.
@@ -205,7 +206,7 @@ export function routeEvent(desktop, d) {
         store.setChatTab("chat"); store.setChatOpen(true);
       }
       else if (d.label === "confirm-cancel" && d.id) { desktop.hideConfirm(d.id); store.setWidgetConfirm(null); }   // resolved/cancelled elsewhere (voice/timeout)
-      else if (d.label === "close" && !_eco) d.id ? desktop.close(d.id) : desktop.closeAll();
+      else if (d.label === "close" && !_eco) d.id ? desktop.close(d.id, { by: "engine" }) : desktop.closeAll({ by: "engine" });
       else if (d.label === "arrange") desktop.arrange && desktop.arrange();       // V2-464: rejilla alineada (showcase/API)
       else if (d.label === "move" && d.id) desktop.move(d.id, d.where);            // reposition on the canvas (left/right/…)
       else if (d.label === "resize" && d.id) desktop.resize(d.id, d.data);          // resize a widget (HERMES-ONLY)

@@ -56,7 +56,7 @@ export function dismiss(key) { store.setElsewhere(store.elsewhere().filter((c) =
 /** An origin-scoped event for another screen arrived. Only `show` leaves a chip: a fullscreen, a move or a panel
  *  on the other screen is that screen's business and says nothing worth a tap here. */
 export function noteElsewhere(host, d) {
-  if (!(d && d.kind === "widget" && d.label === "show" && d.id) || d.src === "user") return;
+  if (!(d && d.kind === "widget" && d.label === "show" && d.id) || d.src === "user" || /^client(:|$)/.test(String(d.src || ""))) return;
   isOneScreen(d.id).then((one) => push({
     key: "show:" + d.id, id: d.id, dev: d.origin_dev, why: one ? "playing" : "opened",
     name: cardName(host, d.id), data: d.data || null,
@@ -68,14 +68,14 @@ export function onMoved(host, d) {
   if (!d || !d.id || d.to === api.DEVICE) { if (d && d.id) dismiss("show:" + d.id); return; }
   const open = (host && host.list ? host.list() : []).filter((x) => base(x) === base(d.id));
   if (!open.length) return;
-  for (const x of open) { try { host.close(x); } catch (_) {} }
+  for (const x of open) { try { host.close(x, { by: "screens" }); } catch (_) {} }
   oneScreenIds().then(() => push({ key: "show:" + d.id, id: d.id, dev: d.to, why: "moved", name: cardName(host, d.id) }));
 }
 
 /** One tap: open the card on THIS screen, and if it plays, take it from the others. */
 export async function bringHere(host, chip) {
   dismiss(chip.key);
-  try { await host.show(chip.id, chip.data ? { data: chip.data } : {}); } catch (_) {}
+  try { await host.show(chip.id, chip.data ? { data: chip.data, by: "hand" } : { by: "hand" }); } catch (_) {}
   if (await isOneScreen(chip.id)) api.screensBring(chip.id);
   api.screensBeat(true, true);
 }

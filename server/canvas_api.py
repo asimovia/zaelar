@@ -73,10 +73,15 @@ async def canvas_state(payload: dict):
                 _trace.begin("canvas: " + " ".join(_delta), origin="ui")
             except Exception:
                 pass
+        # V2-807 T-15 — each change carries the cause the client named for it (`by`): only a gesture of his
+        # hands is `user`; a restore, an engine echo or any other client code is `client:<cause>`, and a change
+        # with no named cause is `client`, never promoted to his hand. See `voice/canvas_src.py`.
+        from voice import canvas_src
+        by = canvas_src.causes((payload or {}).get("by"))
         for wid in (now - prev):
-            emit("widget", "show", extra={"id": wid, "src": "user"})
+            emit("widget", "show", extra={"id": wid, "src": canvas_src.of(by.get(wid))})
         for wid in (prev - now):
-            emit("widget", "close", extra={"id": wid, "src": "user"})
+            emit("widget", "close", extra={"id": wid, "src": canvas_src.of(by.get(wid))})
         # V2-609 — WHICH card is at full screen, if any. It is not geometry (the brain does not care about
         # coordinates, which is why `layout` goes to sys_kv): it is «what the operator has in front of them»,
         # the same class of fact `open_widgets` exists for. Without it «sal de pantalla completa» named no

@@ -90,12 +90,17 @@ def note_playing(card_id, dev) -> str:
     return prev
 
 
+def _canvas_report(src) -> bool:
+    from voice import canvas_src
+    return canvas_src.is_report(src)
+
+
 def _move_if_single(ev: dict, dev: str) -> None:
     """A `show` of a one-screen card, asked from `dev`: it MOVES here. The move is announced BEFORE the show goes
     out (this runs inside the show's own stamp), so the screen that had it stops and closes its copy before it can
     load what the new order put in the card — «ponme un vídeo» said to the phone does not start it on the desktop."""
     cid = str(ev.get("id") or "")
-    if not cid or ev.get("src") == "user" or not _is_single(cid):
+    if not cid or _canvas_report(ev.get("src")) or not _is_single(cid):
         return
     b = cid.split("::", 1)[0].strip().lower()
     with _mx:

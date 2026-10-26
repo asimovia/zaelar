@@ -90,6 +90,16 @@ def _decide(op, wid, src, *, action, payload, text, turn_credit, model_acted,
     # ── level 1 · WHO ────────────────────────────────────────────────────────────────────────────────
     if base_src in _SRC_OPERATOR:
         return _v(True, "operator-hands")
+    if base_src == "client":
+        # V2-807 T-15: a change the canvas reports from its OWN code. A restore or a reset is lifecycle; the
+        # echo of an engine command was judged at the command; any other client code (a fast path, an
+        # unnamed cause) has no hand behind it and walks the license branch like the model.
+        from voice import canvas_src
+        cause = canvas_src.cause_of(src)
+        if cause in canvas_src.LIFECYCLE:
+            return _v(True, "lifecycle", cause=cause)
+        if cause == canvas_src.BY_ENGINE:
+            return _v(True, "engine-echo")
     if base_src in _SRC_SYSTEM:
         return _v(True, "lifecycle")
     if base_src.startswith("worker"):
@@ -295,6 +305,8 @@ def shadow_tap(kind: str, label: str, text: str, role: str, extra: dict | None) 
         src = str(ex.get("src") or "") or _prov_src(wid)
         if label == "action" and src.split(":", 1)[0] == "flash":
             return
+        if src == "client:engine":      # `voice.canvas_src.of(BY_ENGINE)`
+            return          # the canvas echoing an engine command: that command was judged when it was issued
         # data:* events carry the ORIGINATING phrase in `text` AND (since V2-653) their payload in
         # `extra` (V2-039's action log); show/close do not, so those borrow the assembled last turn.
         turn, credit = (str(text or ""), True) if op == "data" and text else _turn_text()

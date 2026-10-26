@@ -12,9 +12,10 @@ import version
 
 def test_version_info_shape():
     info = version.info()
-    for k in ("version", "sha", "short", "started_ms", "uptime_s"):
+    for k in ("version", "build", "sha", "short", "started_ms", "uptime_s"):
         assert k in info
-    assert info["short"] == f"{info['version']}+{info['sha']}"
+    # V2-807 T-15: the stamp is the RUNNING build (update/BUILD), not the hand-bumped VERSION constant.
+    assert info["short"] == f"b{info['build']}+{info['sha']}"
     assert isinstance(info["started_ms"], int) and info["started_ms"] > 0
 
 

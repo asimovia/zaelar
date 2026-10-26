@@ -4823,6 +4823,15 @@ DOMAINS: list[dict] = [
             "ch": UNIT,
             "paths": ["tests/browser/unit/contactos/"
                       "test_a_background_import_does_not_erase_a_contact_added_meanwhile.py"]},
+        # V2-807 T-15 — every canvas change names who made it: the host names a cause per show/close at the call
+        # site, the report carries it, and only a gesture of his hands keeps `user`; client code (a fast path, a
+        # restore, an engine echo) is `client:<cause>` to the timeline and the arbiter. The stamp is the running
+        # build. Disarmed 2026-10-26 (diff stamped `user` again, stamp from VERSION) → red.
+        {"id": "2.813", "title": "A canvas change names who made it — a client fast-path open, a restore or an engine "
+                                 "echo is never logged as the operator's hand; the version stamp is the running build "
+                                 "(V2-807 T-15)",
+            "ch": UNIT,
+            "paths": ["tests/browser/unit/widgets/test_a_canvas_change_names_who_made_it.py"]},
         {"id": "2.91", "title": "The canvas that counts is the one of the tab holding the voice session — a watching "
                                 "tab cannot «close» what the operator is looking at",
             "ch": UNIT,
