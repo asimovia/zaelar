@@ -478,8 +478,9 @@ def test_the_negation_guard_hears_english_written_out():
 def test_the_client_lane_carries_the_same_rule():
     """V2-252/V2-555 said this decision existed twice; V2-776 F removed the client copy instead of keeping the two
     in step: the client lane closes nothing, so the negation/clause rule lives only on the engine."""
-    src = open("frontend/app/services/voiceCommands.js", encoding="utf-8").read()
-    assert "closeAll(" not in src and "desktop.close(" not in src, "the client lane closes again"
+    # V2-807 T-05: the client lane is gone entirely (it opened from a verb table too).
+    from pathlib import Path
+    assert not Path("frontend/app/services/voiceCommands.js").exists(), "the client lane is back"
 
 
 # ── L · A third party answers in the language we ASK in (V2-678) ─────────────────────────────────────────

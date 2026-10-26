@@ -129,10 +129,9 @@ function harness(mode = "smart", holdMs = 40) {
     "sse.js must receive both flags the hold now hands it");
   assert.ok(/if\s*\(whole\)\s*return void store\.pushChat/.test(src),
     "the JOINED paragraph is the only thing that may reach the wall — one sentence, one bubble");
-  assert.ok(/if\s*\(judged\)\s*handleWidgetVoice\(_holdDesk, text, isFinal\);/.test(src),
-    "the canvas fast-path must be gated on a real verdict, never on a fail-open release");
-  assert.ok(!/handleWidgetVoice\(desktop, d\.text, isFinal\);\s*\n\s*\/\/ kind "transcript"/.test(src),
-    "the ungated fast-path call must be gone");
+  // V2-807 T-05: the fragments drive nothing on the canvas at all (the client fast path is gone; the engine
+  // alone opens cards) — so not even a judged fragment may reach a canvas call.
+  assert.ok(!src.includes("handleWidgetVoice"), "a client canvas fast-path over transcripts is back");
 }
 
 // ── V2-763 · THE WALL MAY NOT CONTRADICT THE ORB ─────────────────────────────────────────────────────────

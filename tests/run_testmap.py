@@ -2804,10 +2804,6 @@ DOMAINS: list[dict] = [
                                  "encargo",
             "ch": UNIT, "paths": [
                 "tests/browser/unit/widgets/test_a_search_is_not_irreversible.py"]},
-        {"id": "4.158", "title": "Una orden sobre datos no cierra el lienzo desde el cliente, y el atajo del "
-                                 "canvas solo actúa sobre lo que el guarda declaró dirigido",
-            "ch": UNIT, "paths": [
-                "tests/browser/unit/chat/test_a_data_order_never_closes_the_canvas.py"]},
         {"id": "4.155", "title": "Un texto se guarda en la BIBLIOTECA y aparece en sus archivos: save_document, "
                                  "save_to_library y el worker sabe dónde viven los ficheros",
             "ch": UNIT, "paths": [
@@ -4995,8 +4991,12 @@ DOMAINS: list[dict] = [
         # V2-600 → V2-601 T-07 (2026-09-05): «cierra la pantalla completa» (y el «…completamente» del STT) es una
         # orden de ESTADO de pantalla; el veto vivía en los dos backstops del servidor y la TERCERA copia de la
         # regla —la del cliente, voiceCommands.js— seguía cerrando el canvas entero. Conduce el módulo REAL.
-        {"id": "4.115", "title": "El fast-path del cliente veta el close-all ante una mención de pantalla completa",
-            "ch": UNIT, "paths": ["tests/browser/unit/voicecmd/test_close_all_fullscreen_veto.py"]},
+        # V2-807 T-05 (2026-10-26): the client lane is GONE. It opened cards from a verb-stem table plus a catalogue
+        # noun on interim text («pon también la web» → a browser). Absorbs 4.158 (a data order never closes the
+        # canvas from the client). MOUNTS the real sse.js; disarmed (old lane restored) → red.
+        {"id": "4.115", "title": "The client never opens, closes or moves a card from words — interim, spoken or "
+                                 "typed, in any language; only the engine's op reaches the canvas (V2-807 T-05)",
+            "ch": UNIT, "paths": ["tests/browser/unit/voicecmd/test_the_client_never_opens_a_card_from_words.py"]},
         # V2-124: el shell MÓVIL (PWA) es un SEGUNDO host de los dos contratos que ya hablaban `services/sse.js` y
         # cada widget. El riesgo no es que hoy funcione —funciona— sino que alguien añada un método al protocolo de
         # host, o renombre uno, y el ESCRITORIO siga verde porque tiene su propio host: el fallo saldría en el

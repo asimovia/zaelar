@@ -163,8 +163,9 @@ Voice-match vocabulary is a **cross-cutting concern with a clear rule**:
   is understood by the brain and routed correctly regardless of language. So the system FUNCTIONS in any language
   out of the box.
 - The hardcoded **es/en aliases** (`widgets/system_surfaces.py`, `frontend/app/core/system-surfaces.js`) and
-  **regex fast-paths** (`voiceCommands.js`, `nucleo/flash/router.py`, `voice/attention.py`) are ~50 ms **local
-  accelerators**, not requirements. For an uncovered language they simply don't fire → the brain handles the
+  **regex fast-paths** (`nucleo/flash/router.py`, `voice/attention.py`) are ~50 ms **local
+  accelerators** (the browser's own word lane, `voiceCommands.js`, was removed in V2-807 T-05: the client never
+  changes the canvas from words), not requirements. For an uncovered language they simply don't fire → the brain handles the
   intent (a touch slower). This is the pre-existing "es/en backstop, LLM is the multilingual mechanism" design.
 - **System-surface alias packs.** `i18n/init/aliases.py`
   (`ensure_aliases(code)`) generates, in ONE batched LLM call, 4-6 natural voice-command words per system

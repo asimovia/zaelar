@@ -101,5 +101,5 @@ def test_a_stop_order_is_untouched():
 def test_the_canvas_fast_lane_no_longer_closes_anything():
     """V2-776 F: the client's close branch — the third copy of this rule — is gone. Closing belongs to the engine,
     where the quantifier rule lives once (`attention._quantifies_the_canvas`)."""
-    src = open(os.path.join(ENG, "frontend", "app", "services", "voiceCommands.js"), encoding="utf-8").read()
-    assert "closeAll(" not in src and "desktop.close(" not in src and "desktop.move(" not in src
+    # V2-807 T-05: the whole client lane is gone — opening too (node 4.115 drives the real sse.js).
+    assert not os.path.exists(os.path.join(ENG, "frontend", "app", "services", "voiceCommands.js"))

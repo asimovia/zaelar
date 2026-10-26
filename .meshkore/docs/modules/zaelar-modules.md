@@ -181,7 +181,7 @@ frontend/
                           NOTE: on the LiveKit engine this URL serves session-lk.js (see server/livekit_api.py),
                           which runs the speaker-identity shadow pass off the mic analyser.
       theme.js            dark/light mode — applies the `theme` signal to `<html data-theme>` + persists it
-      audio.js  vad.js  stt.js  sse.js  status.js  visualizer.js  voiceCommands.js  api.js
+      audio.js  vad.js  stt.js  sse.js  status.js  visualizer.js  api.js
     components/           function components (read store, build DOM via h(), run effects) — map 1:1 to Solid
       Orb · CameraUnit · TopBar · SettingsModal · ConnStatus · Alert · ChatWall · StatusPanel · CronPanel · MemoryMap
       (ChatWall = text channel: type/paste → session.sendText → data channel → server ClientTextInjector → user turn;

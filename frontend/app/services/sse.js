@@ -1,11 +1,10 @@
 // ============================================================================
 // sse.js — server-sent events stream (/events). Routes backend pushes to the
 // reactive store (bot speech, latency) and to the widget desktop (show/create/
-// modify/close). Transcripts feed the voice-command fast-path. The brain remains
-// the authority; this just reacts to what it emits.
+// modify/close). The engine is the ONLY authority over the canvas: a transcript paints
+// the wall and never opens, closes or moves a card (V2-807 T-05).
 // ============================================================================
 import * as store from "../core/store.js?v=2";
-import { handleWidgetVoice } from "./voiceCommands.js?v=3";
 import { createAttentionHold } from "./attention_hold.js?v=1";
 import { refreshStatus } from "./status.js?v=2";
 import * as vault from "./vault.js?v=1";
@@ -41,18 +40,20 @@ const _hold = createAttentionHold({
   // segmentation showing through a surface that should only ever show his sentence.
   deliver: (text, isFinal, judged, whole) => {
     if (whole) return void store.pushChat({ role: "you", text });
-    // V2-664: the canvas fast-path acts only on speech the GATE ruled directed. A fail-open release still
-    // paints the wall (never lose a word) but may not open, close or move a card — see attention_hold.js.
-    if (judged) handleWidgetVoice(_holdDesk, text, isFinal);
+    // V2-807 T-05 — the fragments drive NOTHING on the canvas. They used to feed a client fast path that
+    // opened cards from a verb-stem table plus a catalogue noun on interim text: «pon también la web» opened
+    // a browser, «este mensaje» the messaging card. A card is opened only by the engine's own op (its verdict,
+    // action map or a tool), which arrives as a `widget show` event below.
   },
   // V2-743 — the provisional caption lives exactly as long as the hold does: it becomes a real bubble on
   // delivery and vanishes on a discard. Clearing on BOTH is the point — a line left behind after a dropped
   // turn would be V2-647 coming back through the caption.
   settled: () => store.clearLiveChat(),
 });
-let _holdDesk = null;   // the canvas the delivery acts on, captured per event (sse.js has no module-level desktop)
 
-export function holdSpokenTurn(desktop, text, isFinal) { _holdDesk = desktop; _hold.spoken(text, isFinal); }
+// `desktop` stays in both signatures: the canvas is no longer driven from here (V2-807 T-05), but the callers
+// and their contract tests name it.
+export function holdSpokenTurn(desktop, text, isFinal) { _hold.spoken(text, isFinal); }
 // V2-743 — the interim seam, the same shape as the two above: a thin exported door the `interim` branch of
 // `onmessage` calls, so the test drives the PRODUCTION path instead of a copy of it (node 4.199).
 //
@@ -66,7 +67,7 @@ export function captionPartial(text) {
   const now = String(text || "").trim();
   store.setLiveChat(said && now ? said + " " + now : (said || now));
 }
-export function settleHeldTurns(desktop, verdictText, directed) { _holdDesk = desktop; _hold.verdict(verdictText, directed); }
+export function settleHeldTurns(desktop, verdictText, directed) { _hold.verdict(verdictText, directed); }
 
 let es = null, _opens = 0;
 
@@ -277,9 +278,7 @@ export function routeEvent(desktop, d) {
         // on screen means a barge-in cut it there, and the short one is now the one that survives.
         store.pushAgentChat(d.text, { spoken: true, trace: d.trace || "" });
       } else {
-        // isFinal gates the CLOSE fast-path (never close on a revisable guess). Voice: "transcript" = final,
-        // "interim" = partial. TYPED chat/paste ("text-injected …") is DEFINITIVELY final — treat it as such, or a
-        // typed "close widgets" would be seen as interim and the close fast-path would never fire.
+        // Voice: "transcript" = final, "interim" = partial. TYPED chat/paste ("text-injected …") is final.
         const isFinal = d.label === "transcript" || (d.label || "").startsWith("text-injected");
         const typed = (d.label || "").startsWith("text-injected");
         // V2-647 — THE ROOM IS NOT THE OPERATOR. The mic is always open and the attention gate decides, per
@@ -290,7 +289,6 @@ export function routeEvent(desktop, d) {
         // of them still landed in the chat as if he had said it). So a spoken turn is HELD until the verdict
         // says it was for us; typed text bypasses the hold, being directed by construction.
         if (typed) {
-          handleWidgetVoice(desktop, d.text, isFinal);
           // V2-773 — the engine now announces every typed line (`text-injected chat`), so a tab that did not
           // type it (his Chrome while an orchestrator drives the agent) paints it too. The tab that typed it
           // already pushed its own bubble in `submitChat`: an identical last line of his is that one, not a repeat.
