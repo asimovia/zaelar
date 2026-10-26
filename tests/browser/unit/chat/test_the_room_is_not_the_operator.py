@@ -25,9 +25,11 @@ def test_a_typed_line_reaches_every_wall_and_the_typing_tab_paints_it_once() -> 
     Now the engine announces every typed line the way the STT announces a final transcript, and the tab that
     typed it recognises its own last line instead of painting it twice."""
     root = Path(__file__).resolve().parents[4]
-    agent = _vts.read(root / "voice/engine/pipeline/agent.py")
-    i = agent.index('_emit("brain", "📥 chat/paste recibido", text=txt, role="user")')
-    assert '_emit("transcript", "text-injected chat", text=txt, role="user")' in agent[i:i + 900], (
+    # The typed door moved out of agent.py into its own module when the entrypoint was split; the emit carries the
+    # screen that typed (`extra=_dev`, V2-792), so the check reads the call up to its keyword arguments.
+    agent = _vts.read(root / "voice/engine/pipeline/agent_events.py")
+    i = agent.index('_emit("brain", "📥 chat/paste recibido", text=txt, role="user"')
+    assert '_emit("transcript", "text-injected chat", text=txt, role="user"' in agent[i:i + 900], (
         "a typed line must leave the same trace as a spoken one, right after it is received")
     sse = (root / "frontend/app/services/sse.js").read_text(encoding="utf-8")
     assert '(d.label || "").startsWith("text-injected")' in sse, "the wall reads the typed label by prefix"
