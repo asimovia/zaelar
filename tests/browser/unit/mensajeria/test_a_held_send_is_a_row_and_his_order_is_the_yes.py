@@ -107,7 +107,11 @@ def test_an_explicit_send_over_a_seen_draft_is_the_confirmation(monkeypatch):
     assert not leave_gate.needs_asking(sure, "mensajeria", "send_draft", payload=payload, said="send it")
     assert leave_gate.needs_asking(_brief("mensajeria:send_draft", 0.5), "mensajeria", "send_draft",
                                    payload=payload, said="send it"), "an unsure order still asks, once"
-    assert frontend.action_mode_now("mensajeria", "send_draft", payload, brief=sure) == wa.FAST
+    assert frontend.action_mode_now("mensajeria", "send_draft", payload) in (wa.FAST, wa.CONFIRM)
+    assert held_send.release(wa.CONFIRM, "mensajeria", "send_draft", payload, sure) == wa.FAST, \
+        "his explicit order over the draft he saw is the yes — asked once, not again"
+    assert held_send.release(wa.CONFIRM, "mensajeria", "send_draft", payload,
+                             _brief("mensajeria:send_draft", 0.5)) == wa.CONFIRM
 
 
 def test_his_yes_clears_the_class_rail_and_never_his_own_ask_rule():
@@ -158,3 +162,11 @@ def test_a_pending_confirmation_has_one_surface_the_conversation():
     block = sse[sse.index('else if (d.label === "confirm" && d.id) {'):][:900]
     assert "store.setWidgetConfirm(" in block
     assert "desktop.showConfirm(" not in block
+
+
+def test_a_new_message_is_keyed_by_who_it_goes_to_never_by_an_empty_chat():
+    """Two NEW messages to two people with no conversation yet must be two drafts — keyed by recipient."""
+    _held_email()
+    data.apply_action("draft", {"contact": "Rowan Pike", "text": "See you at 4"})
+    keys = sorted(data.load_db()["drafts"])
+    assert keys == ["to:email:hospitality@example.com", "to:whatsapp:+34600111222"], keys

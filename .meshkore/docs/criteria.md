@@ -129,7 +129,8 @@ below is the first kind, or it names the mechanism that replaced the second.
   as his (`nucleo/flash/held_send.py`) — his standing «ask» rule, a missing fact, a doubt and the radius still stop.
   A channel refines a send's class (`messaging.send_new@email`), so his rule for one channel governs that channel
   only. A pending confirmation lives in the conversation (voice or the chat's Yes/No resolve the same row), never
-  also on the card. — since 2026-10-26 · nodes 2.806 · `widgets/mensajeria/held.py`, `nucleo/consent.decide`.
+  also on the card; the confirmed act owes its declared end state (`send_draft.done_when`: a sent row for that
+  recipient), so «confirmed» and «done» are judged apart. — since 2026-10-26 · nodes 2.806, 2.807 · `widgets/mensajeria/held.py`, `nucleo/consent.decide`.
 - **CRIT-C8 · A search is never gated as a charge.** A negated act («do not buy») and a first-person wish beside
   a lookup order («I want to buy X, give me the link») are subtracted before the money verbs are read — a
   negation only subtracts the act it governs, inside its own clause («don't forget to pay», «no compres el barato,
@@ -263,14 +264,15 @@ below is the first kind, or it names the mechanism that replaced the second.
   asked, a learned route to it included, and silence is not a statement; a timeout names the agent and the seconds; zero
   rows with the agent's hint is `ok` with `agent_hint`, never a failure. — since 2026-10-26 · nodes 2.805 ·
   `nucleo/mesh_agents.py::agent_timeout`, `::_ask_in_turn`, `::_is_live`, `::_mark_empty`.
-- **CRIT-E19 · A turn about pending work resumes its ROWS, each from itself.** Where the words alone would decide
-  (a commission about to be annulled as a fragment, a promise backstop about to rebuild a brief), the turn is first
-  resolved by a verdict over the durable pending rows (`nucleo/pending_work.py`: the task board's live and recently
-  ended errands, and rows a widget declares with `pending_rows()`), paid only when something is pending; every row
-  it means resumes from itself — a widget row through its own declared action and confirm gate, an ended errand
-  from its own brief, sheet and outcome (`task_uid`), a live one not twice — and no backstop then rebuilds an errand
-  from the window (`nucleo/flash/resume_turn.py`). A browser card's title is the errand's name
-  (`navegador.tasks.set_title`), never a summariser's or a worker's sentence. — since 2026-10-26 · nodes 2.807.
+- **CRIT-E19 · What is pending is STATE, and the model resumes it by id.** Pending rows (`nucleo/pending_work.py`: the
+  board's live and recently ended errands, errands the energy lease stopped, rows a widget declares with
+  `pending_rows()` such as a draft held for his OK) reach the turn prompt as one compact block (ids + names) ONLY when
+  any exists, and the model resumes them with `resume_task(ids)` — offered only then; an id that is not a pending row
+  is dropped. Each row resumes from itself: a widget row through its own declared action and confirm gate, an ended
+  errand from its own brief, sheet and outcome (`task_uid`), a live one not twice. Where the model's commissions
+  would be annulled as a fragment or a backstop would rebuild a brief, a verdict over the rows completes it
+  (`nucleo/flash/resume_turn.py`), never a phrase table, and no backstop then rebuilds an errand from the window. A
+  browser card's title is the errand's name (`navegador.tasks.set_title`). — since 2026-10-26 · nodes 2.807.
 - **CRIT-E13 · A worker's request is never his click.** On a self-hosted engine every mutation is the operator's
   unless it is a named worker door (`/api/worker/*`, the agent report, the browser bridge, memory with the per-task
   token, search); it is admitted for his screen's per-boot HttpOnly cookie or a process the engine did not spawn,

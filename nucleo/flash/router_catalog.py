@@ -469,6 +469,18 @@ TOOLS: list[dict] = [
     {
         "type": "function",
         "function": {
+            "name": "resume_task",
+            "description": "Retoma por sus ids lo de «PENDIENTE O PARADO»: cada uno sigue desde su fila (no lo relances).",
+            "parameters": {
+                "type": "object",
+                "properties": {"ids": {"type": "array", "items": {"type": "string"}}},
+                "required": ["ids"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "restore_widget",
             "description": (
                 "Devuelve un widget a su versión DE SISTEMA: descarta el fork personalizado del operador, o "
@@ -584,9 +596,7 @@ TOOLS: list[dict] = [
                 "type": "object",
                 "properties": {
                     "name": {"type": "string",
-                             "description": "Alias corto y DESCRIPTIVO de ESTE cluster ('commons', 'trading', "
-                                            "'equipo'). Si el operador le da un nombre, usa el suyo. No reutilices "
-                                            "el alias de otro cluster que ya tengas: son cosas distintas."},
+                             "description": "Alias descriptivo ('commons', 'equipo') — ver arriba."},
                     "cluster_id": {"type": "string", "description": "El cluster_id EXACTO (p.ej. 'c_1b93…'). Si el "
                                                                     "operador te pasó una URL de invitación, sácalo de ahí."},
                     "token": {"type": "string", "description": (
@@ -594,11 +604,9 @@ TOOLS: list[dict] = [
                                                     "público no tiene: déjalo vacío."
                                                 )},
                     "vis": {"type": "string", "description": (
-                                                  "'public' si es abierto/tokenless, 'private' si va con token. Con "
-                                                  "cluster_id y sin token, es público."
+                                                  "'public' sin token, 'private' con token."
                                               )},
-                    "handle": {"type": "string", "description": "Tu handle en ese cluster (opcional; por defecto 'zaelar'). "
-                                                                "En un cluster público lo eliges tú libremente."},
+                    "handle": {"type": "string", "description": "Tu handle (opcional; por defecto 'zaelar')."},
                     "code": {"type": "boolean",
                              "description": (
                                  "true SOLO si el operador autoriza a este cluster crear/probar/subir CÓDIGO. Por "

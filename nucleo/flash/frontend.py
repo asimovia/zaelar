@@ -622,7 +622,7 @@ def _scope(wid: str, name: str, spec: dict, payload: dict | None) -> tuple[bool,
         return True, 1
 
 
-def action_mode_now(widget_id: str, action: str, payload: dict | None = None, brief=None) -> str | None:
+def action_mode_now(widget_id: str, action: str, payload: dict | None = None) -> str | None:
     """`action_mode`, but decided for THIS call instead of for the action in the abstract (V2-712).
 
     The one seam the voice provider calls. A declared action whose target resolved to one thing, with the
@@ -637,9 +637,6 @@ def action_mode_now(widget_id: str, action: str, payload: dict | None = None, br
     if mode != _wa.CONFIRM:
         return mode
     try:
-        from nucleo.flash import held_send as _held   # V2-800: his order over a row he has seen is the yes
-        if _held.confirmed(widget_id, action, payload, brief):
-            return _wa.FAST
         return _wa.CONFIRM if consent.asks(action_verdict(widget_id, action, payload)) else _wa.FAST
     except Exception:  # noqa: BLE001 — an unreadable verdict keeps the friction it had
         return _wa.CONFIRM

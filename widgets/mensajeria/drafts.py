@@ -28,7 +28,12 @@ def key(target: dict) -> str:
     A single email is addressed by its `messageId`, stable for the life of the message; anything else is
     the conversation itself. `n` is deliberately NOT part of this: it is positional and gets reused the
     moment an earlier item leaves the list (`_renumber`), so keying on it would hand one conversation's
-    half-written reply to whatever message inherited that number next."""
+    half-written reply to whatever message inherited that number next.
+
+    A NEW message (V2-800) has no conversation yet, or one with no id: it is keyed by WHO it goes to, on which
+    channel — two new messages to two people with no chat id must never share one draft."""
+    if target.get("new"):
+        return f"to:{target.get('platform')}:{str(target.get('to') or target.get('name') or '').strip().lower()}"
     mid = target.get("messageId")
     if mid is not None:
         return f"m:{mid}"

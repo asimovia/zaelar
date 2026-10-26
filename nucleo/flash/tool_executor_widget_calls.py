@@ -7,6 +7,7 @@ closure has. Module-level names of `tool_executor_widget` are read through it (`
 """
 from __future__ import annotations
 
+from nucleo.flash import held_send as _held_send   # V2-800: his order over a row he has seen is the yes
 from nucleo.flash import prior_line as _prior_line
 from nucleo.flash import tool_executor_widget as _txw
 
@@ -225,7 +226,7 @@ def _apply_widget_data(wid: str, action_name: str, payload: dict, ref: str='', *
                                    "id": wid, "action": action_name})
         return
     action_name, payload = _txw._row_lens.retarget(wid, action_name, _txw._said_day.payload(wid, action_name, payload, _txw._bnotes.operator_half(text)), _txw._bnotes.operator_half(text))   # the day he said; the row he named, on ITS day (pass 140)
-    mode = _frontend.action_mode_now(wid, action_name, payload, brief=_brief)   # V2-712 / V2-800
+    mode = _held_send.release(_frontend.action_mode_now(wid, action_name, payload), wid, action_name, payload, _brief)   # V2-712 · V2-800
     # TWO READERS DISAGREE ON AN ACT THAT LEAVES (demo pass 2026-09-28, full12 E3): «draft a short reply
     # saying i'll send the meet link…» — the verdict read `mensajeria:draft` at 1.00, the model called
     # `reply`, V2-712 ran it without a question (clear order, resolved target) and a real email went to a

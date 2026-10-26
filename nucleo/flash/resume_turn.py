@@ -116,3 +116,47 @@ async def take(escalate_req: dict, *, operator_text: str, last_reply: str = "", 
 
 def reset() -> None:
     _CACHE.update(key=None, rows=[], at=0)
+
+
+# ── the three seams the turn calls, each ONE statement there (the doors' size ratchets) ─────────────────
+
+def from_tool(args: dict, *, escalate_req: dict, operator_text: str, apply_widget_data, emit, acted: dict) -> None:
+    """`resume_task(ids)` — the MODEL's choice, from the PENDIENTE block and his words. Ids that are not pending rows
+    are dropped (it chooses among declared rows); each row resumes from itself."""
+    from nucleo import pending_work
+    rows = pending_work.by_ids((args or {}).get("ids") or [])
+    if rows and not escalate_req.get("resumed"):
+        escalate_req["resumed"] = resume(rows, operator_text=operator_text, apply_widget_data=apply_widget_data,
+                                         emit=emit)
+        acted["widget"] = bool(escalate_req["resumed"]) or bool(acted.get("widget"))
+
+
+async def before_fragment_guard(escalate_req: dict, *, operator_text: str, brief, last_reply: str, apply_widget_data,
+                                emit, acted: dict) -> None:
+    """The verdict COMPLETES the model where its commissions are about to be annulled as «a fragment»: the turn is
+    resolved against the pending rows first (a model that already called `resume_task` is left alone)."""
+    from nucleo.flash import escalation_guard as _eg
+    if escalate_req.get("v") is None or escalate_req.get("resumed") \
+            or not _eg.is_a_fragment(operator_text, brief=brief, last_reply=last_reply):
+        return
+    if await take(escalate_req, operator_text=operator_text, last_reply=last_reply,
+                  apply_widget_data=apply_widget_data, emit=emit):
+        acted["widget"] = True
+
+
+async def before_backstops(no_tool: bool, escalate_req: dict, *, spoken_text: str, operator_text: str, brief,
+                           last_reply: str, apply_widget_data, emit, acted: dict) -> bool:
+    """Returns the `_no_tool` the promise backstops read. Where a tool-less promise would make a backstop REBUILD a
+    brief from his words or the window, the pending rows are asked first; resumed rows mean no backstop runs."""
+    if escalate_req.get("resumed"):
+        return False
+    if not (no_tool and spoken_text) or escalate_req.get("v") is not None:
+        return no_tool
+    from nucleo.flash import direct_action as _da, router as _router
+    if not (_router.promises_action(spoken_text) or _da.verdict_escalates(brief, answered=False)):
+        return no_tool
+    if await take(escalate_req, operator_text=operator_text, last_reply=last_reply,
+                  apply_widget_data=apply_widget_data, emit=emit):
+        acted["widget"] = True
+        return False
+    return no_tool

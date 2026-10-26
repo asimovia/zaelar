@@ -80,7 +80,7 @@ FAMILIES: dict[str, tuple[str, ...]] = {
     "core":      ("escalate_to_slowbrain", "set_style_directive"),
     "widgets":   ("show_widget", "close_widget", "widget_data", "delete_widget", "restore_widget", "confirm_widget_delete",
                   "fullscreen_widget", "manage_widget_alias", "show_panel", "arrange_canvas"),
-    "workers":   ("send_to_worker", "stop_worker", "answer_worker"),
+    "workers":   ("send_to_worker", "stop_worker", "answer_worker", "resume_task"),
     "cluster":   ("connect_cluster", "set_cluster_objective", "cluster_send"),
     "messaging": ("reply_message",),
     "media":     ("play_music", "play_video", "show_images"),
@@ -118,13 +118,13 @@ _SITUATIONAL = {
     "cluster_send":          lambda ctx: ctx.get("cluster_connected", False),
     # V2-086: `connect_cluster`/`set_cluster_objective` are NO LONGER gated. The V2-064 gate (the
     # `cluster-registro` widget being open) made the capability UNDISCOVERABLE: connecting a new cluster required
-    # knowing in advance that a widget had to be opened first — and that widget no longer exists (the network is a
-    # NATIVE surface, Clusters tab). Protection against spurious activation was never the gate, but the deterministic
-    # Yes/No confirmation with the cluster_id visible, which remains intact.
+    # knowing in advance that a widget had to be opened first (it no longer exists: the network is a NATIVE surface).
+    # The protection was never the gate but the Yes/No confirmation with the cluster_id visible, still intact.
     # V2-038: worker tools only when there is something to direct (§v3·D: gated by has_workers / ask_pending).
     "send_to_worker":        lambda ctx: ctx.get("has_workers", False),
     "stop_worker":           lambda ctx: ctx.get("has_workers", False),
     "answer_worker":         lambda ctx: ctx.get("ask_pending", False),
+    "resume_task":           lambda ctx: ctx.get("has_pending", False),   # V2-799: only when something is pending
     # V2-085 — three NEW gates, all based on REAL SYSTEM CAPABILITY (if it does not exist, the tool cannot work and
     # offering it only invites the model to promise something impossible):
     "reply_message":         lambda ctx: ctx.get("messaging_on", True),   # without a messaging connector, there is no recipient
@@ -162,7 +162,7 @@ def tool_context(*, open_widgets=None, has_catalog: bool = True,
                  has_workers: bool = False, ask_pending: bool = False,
                  cluster_widget_open: bool = True, messaging_on: bool = True,
                  has_vault: bool = True, has_video_widget: bool = True, has_image_widget: bool = True,
-                 cluster_connected: bool = False) -> dict:
+                 cluster_connected: bool = False, has_pending: bool = False) -> dict:
     """Builds the `tools()` `context` from inexpensive state signals. `has_widgets` = a widget catalog exists
     (there is always one today) OR one is open. `has_workers` = live Brain Workers exist (→ send/stop_worker).
     `ask_pending` = a worker awaits a response (→ answer_worker). `messaging_on`/`has_vault`/`has_video_widget`
@@ -176,7 +176,7 @@ def tool_context(*, open_widgets=None, has_catalog: bool = True,
             "cluster_widget_open": bool(cluster_widget_open), "messaging_on": bool(messaging_on),
             "has_vault": bool(has_vault), "has_video_widget": bool(has_video_widget),
             "has_image_widget": bool(has_image_widget),
-            "cluster_connected": bool(cluster_connected)}
+            "cluster_connected": bool(cluster_connected), "has_pending": bool(has_pending)}
 
 
 def tools_report(offered: list[dict]) -> dict:

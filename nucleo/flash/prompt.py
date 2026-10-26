@@ -527,9 +527,8 @@ def live_state() -> str:
                  "NO es el límite de tu agenda: una fecha explícita («el 8 de septiembre») se apunta tal "
                  "cual, a cualquier distancia, y sin año es del año en curso (o del siguiente si ya pasó) "
                  "— no pidas confirmación de ninguna de las dos cosas.")
-    # V2-348 — el bloque de TAREAS DE FONDO se mudó a `live_blocks.py` por el mismo trinquete y con
-    # el mismo precedente que el del navegador (V2-276): mismo texto, mismas ramas, mismo fail-open.
-    lines.extend(_live_blocks.pending_task_lines())
+    # V2-348 — TAREAS DE FONDO live in `live_blocks.py` (V2-276 precedent); V2-799 — what is pending or stopped.
+    lines.extend(_live_blocks.pending_task_lines() + _live_blocks.pending_work_lines())
     lines.extend(_live_blocks.recent_lines() + _live_blocks.earlier_lines())   # the record: lately, then the days before
     # V2-276 — el bloque del NAVEGADOR vive en `live_blocks.py` desde el 2026-08-24 (trinquete de
     # arquitectura). Mismo texto, mismas caras, mismo fail-open: solo se mudó de fichero.

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from nucleo.flash import player_control as _player_control
 from nucleo.flash import prior_line as _prior_line
+from nucleo.flash import resume_turn as _resume_turn   # V2-799
 from nucleo.flash import tool_executor as _tx
 from nucleo.turn import errands_of_a_turn as _eot
 from nucleo.turn import split_by_errand as _sbe   # a send beside a status question is said (2.644)
@@ -106,13 +107,13 @@ def _on_tool_call(name: str, args: dict, *, _apply_widget_data, _brief, _closed_
         if recall_req["v"] is None:
             recall_req["v"] = (args.get("query") or "").strip() or text
     elif name == "read_widget":
-        # V2-668: el MODELO decide LEER lo que guarda un widget (la hora de una cita con la agenda
-        # cerrada). Se resuelve tras el stream, en el turno, sin abrir nada — hermana de recall.
+        # V2-668: el MODELO decide LEER lo que guarda un widget; tras el stream, sin abrir nada — hermana de recall.
         if read_req["v"] is None:
             read_req["v"] = {"widget_id": (args.get("widget_id") or "").strip(),
                              "question": (args.get("question") or "").strip()}
+    elif name == "resume_task":   # V2-799: the model resumes pending rows by id; each from its own row
+        _resume_turn.from_tool(args, escalate_req=escalate_req, operator_text=operator_text, apply_widget_data=_apply_widget_data, emit=emit, acted=acted)
     elif name == "reopen_task":
-        # V2-728: «lo del piso que te dije» — SQLite + un viaje a Jev, así que tras el stream.
         if reopen_req["v"] is None:
             reopen_req["v"] = (args.get("query") or "").strip() or text
     elif name == "reveal_secret":

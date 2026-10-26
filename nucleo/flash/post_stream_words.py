@@ -26,9 +26,7 @@ async def hold_the_model_to_its_words(*, _apply_widget_data, _brief, _data_ops_h
     # web_search (las palabras-tema «fútbol/resultados» ceban la búsqueda, hallazgo del test post-P1/P2) una
     # petición que en realidad es MOSTRAR un widget que YA EXISTE, lo resolvemos aquí: `_show_guard_target`
     # exige verbo de show + NO-crear + que `runtime.identify` (fuzzy por keywords, GENÉRICO) case un widget
-    # real → override determinista de la tool espuria. Solo si no hubo ya una data-op efectiva.
-    # Solo si el modelo emitió una tool ESPURIA (escalate/search) para lo que en realidad es MOSTRAR un widget
-    # existente. (Se probó ampliarlo a CHARLA en el mar de testing 2026-07-19, pero los verbos 'pon/ver' del
+    # real → override determinista de la tool espuria (escalate/search), solo sin data-op efectiva. (Se probó ampliarlo a CHARLA en el mar de testing 2026-07-19, pero los verbos 'pon/ver' del
     # guard colisionan con 'pon música'/'va a poner el tiempo'/'a ver si…' → hijack de web/deep/música. La cola
     # de show-promesa-en-charla la captura el Susurro, no un guard sobre-amplio.)
     if (escalate_req["v"] is not None or search_req["v"] is not None) and not acted["widget"]:
@@ -67,8 +65,7 @@ async def hold_the_model_to_its_words(*, _apply_widget_data, _brief, _data_ops_h
                     spoken_text = "Aquí lo tienes."
                 send(speech.sanitize(spoken_text, drop_metadata=False))
 
-    # Demo pass 69, B1 — his words NAME the (empty) picture viewer: the turn is the picture search, whatever tool
-    # the model reached for (a listing search this time; a worker, a promise and a commission before).
+    # Demo pass 69, B1 — his words NAME the (empty) picture viewer: the picture search, whatever tool the model used.
     from nucleo.flash import card_commission as _cardc_pic
     _pic_named = (None if images_req["v"] is not None
                   or any(str(_w).split("::")[0] == "imagenes" for _w, _a in (data_done.get("ops") or []))
@@ -79,15 +76,9 @@ async def hold_the_model_to_its_words(*, _apply_widget_data, _brief, _data_ops_h
         emit("brain", "🎯 sus palabras o el veredicto nombran el visor de imágenes — la búsqueda de fotos, nada más",
              text=_pic_named["query"][:120], role="system", extra={"cat": "flash", "tool": "show_images"})
 
-    # V2-799 — a turn about PENDING work («termina esas tareas») is resolved against the pending rows BEFORE the
-    # fragment guard may annul the model's commissions: each row it means resumes from itself.
-    if escalate_req["v"] is not None and _pst._eguard.is_a_fragment(operator_text, brief=_brief,
-                                                                   last_reply=_pst._prior_line.of(brain)):
-        from nucleo.flash import resume_turn as _resume
-        if await _resume.take(escalate_req, operator_text=operator_text, last_reply=_pst._prior_line.of(brain),
-                              apply_widget_data=_apply_widget_data, emit=emit):
-            acted["widget"] = True
-    # GHOST-WORKER guard, plus the «Sí» that has no directive either — in `escalation_guard`.
+    # GHOST-WORKER guard, plus the «Sí» — in `escalation_guard`; pending rows first (V2-799, `resume_turn`).
+    await _pst._resume_turn.before_fragment_guard(escalate_req, operator_text=operator_text, brief=_brief, emit=emit,
+        last_reply=_pst._prior_line.of(brain), apply_widget_data=_apply_widget_data, acted=acted)
     _pst._eguard.drop_if_fragment(escalate_req, operator_text=operator_text, brief=_brief,
                              last_reply=_pst._prior_line.of(brain), emit=emit)
 

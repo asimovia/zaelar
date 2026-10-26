@@ -118,14 +118,9 @@ def _current_trace() -> str:
 
 
 def create(goal: str, title: str = "", *, trace: str = "", sheet: str = "") -> str:
-    """`trace`: pass it explicitly when the caller already knows it (V2-108, 2026-08-17) — `_current_trace()`
-    reads the AMBIENT context (`voice.trace.current()`), which is only reliable when creation happens inline in
-    a turn. `nucleo/dispatch.py::_prepare_web()` creates the task from inside the worker's OWN async execution,
-    which never had that ambient scope active — confirmed with real data: every navigation/screenshot event for
-    a worker-dispatched web task carried NO trace, for the task's entire lifetime (not a startup race that
-    settles — this field is never written again after `create()`, so an empty read here is empty forever).
-    `_prepare_web` has the correct id on hand the whole time (`rec.trace_id`, already reliably set — the
-    escalation's own tool-call events prove it); passing it explicitly is a fix, not a fallback."""
+    """`trace`: pass it explicitly when the caller knows it (V2-108) — `_current_trace()` reads the AMBIENT context,
+    reliable only inline in a turn; `_prepare_web` creates the task inside the worker's own execution, where every
+    event of the task carried NO trace for its whole life. `title`: the errand's name (V2-799, `set_title`)."""
     goal = (goal or "").strip()
     with _lock:
         tid = f"t{_next_seq('navegador.task')}"
@@ -140,15 +135,9 @@ def create(goal: str, title: str = "", *, trace: str = "", sheet: str = "") -> s
             "last_progress": time.time(), "wall": "",
             # V2-044: the task is born from the phrase context (or adopted session) — explicit trace wins.
             "trace": trace or _current_trace(),
-            # V2-281 — THE ERRAND'S SHEET, stamped at birth for exactly the same reason as `trace` above: it is
-            # a fact the caller holds and the registry cannot answer later. `act_api` resolved it by walking the
-            # LIVE session registry (`dispatch.sheet_for_nav_task`), and a browser TAB OUTLIVES the worker
-            # record that opened it — the record is popped in `_run_session`'s finally, and a relay opens a
-            # fresh one. So findings arriving after that point resolved to "" and landed in the BARE `results`
-            # box, the one that belongs to nobody. Measured on `search-secondhand-monitor__es`
-            # (2026-08-24 01:47): 24 rows in the bare sheet against 12 in the errand's own, for ONE errand —
-            # and that stray box is also the «ghost card» the canvas keeps reporting. Empty stays empty, which
-            # is correct for a tab the operator drives by hand: no errand, no sheet, the sheet of always.
+            # V2-281 — THE ERRAND'S SHEET, stamped at birth like `trace`: a browser TAB outlives the worker record
+            # that opened it, so a sheet resolved later from the live registry came back "" and findings landed in
+            # the bare `results` box. Empty stays empty for a tab he drives by hand.
             "sheet": str(sheet or "").strip(),
         }
     return tid
@@ -598,20 +587,14 @@ def set_sheet(task_id: str, sheet: str) -> None:
 
 
 def set_title(task_id: str, name: str) -> None:
-    """THE one door for the card's header (V2-799): the errand's NAME (`🏷️ encargo nombrado`, `nucleo/errand_title`).
-
-    The header used to take whatever a summariser model answered (`set_goal_summary`), and a summariser handed a
-    glued, meaningless brief answers with a refusal: the operator read «No se puede: la petición no contiene
-    objetivo, criterios, tipo…» as the title of his errand. A refusal, a status sentence or a worker's words are
-    never a name; the name is composed once, guarded (`errand_title.names_the_errand`), and set here."""
-    name = (name or "").strip()
-    if not name:
-        return
+    """THE door for the card's header (V2-799): the errand's NAME — never a summariser's or a worker's sentence (a
+    summariser's refusal of a glued brief once became the title he read)."""
+    name = (name or "").strip()[:60]
     with _lock:
         t = _tasks.get(task_id)
-        if not t or t.get("title") == name[:60]:
+        if not name or not t or t.get("title") == name:
             return
-        t["title"] = name[:60]
+        t["title"] = name
     _notify(task_id)
 
 

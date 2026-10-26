@@ -387,3 +387,15 @@ def earlier_lines(now: float | None = None) -> list[str]:
     if not out:
         return [f"Peticiones desde {since}: ninguna."]
     return [f"Peticiones desde {since} (día sin línea = ninguna): " + " | ".join(out) + "."]
+
+
+def pending_work_lines() -> list[str]:
+    """V2-799 — what is pending or stopped, compact (ids + names), ONLY when any row exists; the model resumes from
+    it with `resume_task(ids)`. Never breaks a prompt."""
+    try:
+        from nucleo import pending_work
+        return pending_work.prompt_lines()
+    except Exception as e:  # noqa: BLE001
+        from loguru import logger
+        logger.debug(f"task_block: pending work block skipped ({e})")
+        return []

@@ -605,7 +605,7 @@ def _is_open(wid: str) -> bool:
     return True if state is None else state in ("visible", "maximized")
 
 
-from nucleo.flash.task_block import _short_note, earlier_lines, pending_task_lines, recent_lines  # noqa: E402,F401 — re-export
+from nucleo.flash.task_block import _short_note, earlier_lines, pending_task_lines, pending_work_lines, recent_lines  # noqa: E402,F401 — re-export
 
 
 def _job_line(j: dict) -> str:

@@ -144,9 +144,7 @@ async def execute(tool_calls: list, text: str = "", brief=None) -> dict:
         wid, act, pl = _sday.align(*_vcard.retarget(brief, wid, act, pl, _order), _order); act, pl = _row_lens.retarget(wid, act, pl, _order)   # 110 E3 · 114 I3 · said day · the row he named (140 R2)
         if (_to := _relay.relay(wid, act, _order)):    # his words, for the worker (search-buy-watch, 2026-10-14)
             hechas.append({"widget": wid, "act": act, "relayed_to": _to}); continue
-        mode = _fe.action_mode(wid, act)
-        if mode == _wa.CONFIRM and _held_send.confirmed(wid, act, pl, brief):   # V2-800: his order is the yes
-            mode = _wa.FAST
+        mode = _held_send.release(_fe.action_mode(wid, act), wid, act, pl, brief)   # V2-800: his order is the yes
         mode = _leave_gate.asked_if_leaving(mode, brief, wid, act, payload=pl, said=_order)   # V2-778 F4-33: the voice rail's rule
         if mode != _wa.FAST:
             saltadas.append({"widget": wid, "act": act, "mode": str(mode)})

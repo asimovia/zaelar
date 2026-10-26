@@ -42,6 +42,13 @@ def ordered(widget_id: str, action: str, payload, brief) -> bool:
     return _und.sure_order(brief, widget_id, action)
 
 
+def release(mode, widget_id: str, action: str, payload, brief):
+    """`mode`, or FAST when it is CONFIRM and his order over a row he has seen is the yes — the one call both
+    channels make where an action's friction is decided."""
+    from widgets import actions as _wa
+    return _wa.FAST if mode == _wa.CONFIRM and confirmed(widget_id, action, payload, brief) else mode
+
+
 def confirmed(widget_id: str, action: str, payload, brief) -> bool:
     """`ordered`, and the one consent rule runs it with `his_yes` — the reader every gate asks."""
     if not ordered(widget_id, action, payload, brief):

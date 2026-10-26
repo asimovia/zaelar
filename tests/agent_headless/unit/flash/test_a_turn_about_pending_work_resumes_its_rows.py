@@ -29,12 +29,14 @@ def _sandbox(tmp_path, monkeypatch):
     monkeypatch.setattr(wstore, "DATA_DIR", str(tmp_path))
     monkeypatch.setattr(wstore, "_last_hash", {})
     resume_turn.reset()
+    pending_work.forget_cache()
     from nucleo import tasks
     ts = tasks.store()
     ts.tasks_clear(states=ts.LIVE_STATES + ts.DONE_STATES, modes=("now",))
     yield
     ts.tasks_clear(states=ts.LIVE_STATES + ts.DONE_STATES, modes=("now",))
     resume_turn.reset()
+    pending_work.forget_cache()
 
 
 def _errand(uid="b00t01-1", state="done", goal=GOAL, outcome="La que mejor encaja: Garoa — ¿te la reservo?"):
@@ -127,11 +129,28 @@ def test_a_live_errand_is_not_started_twice(monkeypatch):
 
 def test_both_doors_ask_the_rows_before_annulling_or_gluing():
     words = (ROOT / "nucleo/flash/post_stream_words.py").read_text(encoding="utf-8")
-    assert words.index("_resume.take(escalate_req") < words.index("_pst._eguard.drop_if_fragment(")
+    assert words.index("_resume_turn.before_fragment_guard(") < words.index("_pst._eguard.drop_if_fragment(")
     lanes = (ROOT / "nucleo/flash/post_stream_lanes.py").read_text(encoding="utf-8")
-    i = lanes.index("_resume.take(escalate_req")
-    assert i < lanes.index('escalate_req["v"] = _win_goal or _op_text')
-    assert lanes.count('not escalate_req.get("resumed")') >= 2, "both backstops step aside once the rows resumed"
+    i = lanes.index("_no_tool = await _pst._resume_turn.before_backstops(")
+    assert i < lanes.index('escalate_req["v"] = _win_goal or _op_text') and i < lanes.index("hands_public_lookup_back")
+
+
+def test_a_resumed_turn_leaves_no_backstop_to_rebuild_a_brief(monkeypatch):
+    """`before_backstops` returns the `_no_tool` both promise backstops read: once rows resumed, neither runs."""
+    _errand()
+    calls = []
+    _verdict(monkeypatch, {"task"}, calls)
+    _escalations(monkeypatch)
+    from nucleo.flash import router
+    monkeypatch.setattr(router, "promises_action", lambda t: True)
+    esc, acted = {"v": None, "more": []}, {}
+    no_tool = asyncio.run(resume_turn.before_backstops(True, esc, spoken_text="Retomo lo del restaurante.",
+                                                      operator_text="termina esas tareas", brief=None, last_reply="",
+                                                      apply_widget_data=None, emit=None, acted=acted))
+    assert no_tool is False and esc["resumed"] == ["b00t01-1"]
+    assert asyncio.run(resume_turn.before_backstops(True, {"v": None, "more": []}, spoken_text="", operator_text="x",
+                                                    brief=None, last_reply="", apply_widget_data=None, emit=None,
+                                                    acted={})) is True, "no promise, nothing to complete"
 
 
 # ── the card's title is the errand's NAME, never a summariser's or a worker's sentence ──────────────────
@@ -150,3 +169,68 @@ def test_a_browser_card_is_born_with_the_errands_name_and_renamed_with_it():
     src = (ROOT / "nucleo/dispatch_prepare.py").read_text(encoding="utf-8")
     assert "navtasks.create(req, _errand_name(rec, req)" in src
     assert "_navtasks.set_title(rec.nav_task, t)" in src
+
+
+# ── the MODEL resumes, from the state it is shown; the verdict only completes it ─────────────────────────
+
+def test_the_prompt_carries_pending_rows_only_when_there_are_any():
+    pending_work.forget_cache()
+    assert pending_work.prompt_lines() == []
+    _errand()
+    _held_email()
+    pending_work.forget_cache()
+    lines = pending_work.prompt_lines()
+    assert lines[0].startswith("PENDIENTE") and any("b00t01-1" in l and "Reservar mesa en Soria" in l for l in lines)
+    assert any(l.startswith("· mensajeria:") for l in lines), "a row the mail card holds for his word is listed"
+    from nucleo.flash import live_blocks
+    assert "_live_blocks.pending_work_lines()" in (ROOT / "nucleo/flash/prompt.py").read_text(encoding="utf-8")
+    assert live_blocks.pending_work_lines() == lines
+
+
+def test_the_resume_tool_is_offered_only_when_something_is_pending():
+    from nucleo.flash import router
+    names = lambda ctx: [t["function"]["name"] for t in router.tools(ctx)]   # noqa: E731
+    assert "resume_task" in names(router.tool_context(has_pending=True))
+    assert "resume_task" not in names(router.tool_context(has_pending=False))
+
+
+def test_the_tool_resumes_the_rows_the_model_named_and_drops_invented_ids(monkeypatch):
+    _errand()
+    _held_email()
+    pending_work.forget_cache()
+    rows = pending_work.by_ids(["b00t01-1", "nonexistent-9", "mensajeria:" + "to:email:hospitality@example.com"])
+    assert [r["id"] for r in rows] == ["b00t01-1", "mensajeria:to:email:hospitality@example.com"]
+    src = (ROOT / "nucleo/flash/tool_executor_calls.py").read_text(encoding="utf-8")
+    assert "_resume_turn.from_tool(args" in src[src.index('elif name == "resume_task":'):][:300]
+    esc, ops, acted = {"v": None, "more": []}, [], {}
+    resume_turn.from_tool({"ids": ["nonexistent-9"]}, escalate_req=esc, operator_text="x",
+                          apply_widget_data=lambda *a: ops.append(a), emit=None, acted=acted)
+    assert "resumed" not in esc and ops == [], "an invented id resumes nothing"
+
+
+def test_an_errand_the_energy_lease_stopped_is_resumable_days_later():
+    from nucleo import tasks
+    now = int(time.time())
+    tasks.store().task_put({"id": "b00t01-7", "title": "Playlist de fiesta", "goal": "Haz una playlist de fiesta",
+                            "kind": "code", "mode": "now", "state": "failed", "visible": True, "origin": "voz",
+                            "created_at": now - 3 * 86400, "started_at": now - 3 * 86400,
+                            "finished_at": now - 3 * 86400 + 60,
+                            "outcome": 'API Error: 402 {"error":"out_of_energy"}'})
+    pending_work.forget_cache()
+    (row,) = [r for r in pending_work.rows() if r["id"] == "b00t01-7"]
+    assert row["state"] == "stopped_by_energy"
+
+
+# ── the harness: «confirmed» and «done» are checked separately ──────────────────────────────────────────
+
+def test_a_confirmed_send_owes_its_end_state_and_a_send_that_did_not_happen_is_unmet():
+    """A «yes» that leads to nothing must be impossible: the confirmed path (`dispatch_and_report(receipt=True)`)
+    opens the action's declared end state, and `send_draft` now declares one — a sent row for that recipient."""
+    from nucleo import spec
+    from widgets.mensajeria import data
+    _held_email()
+    e = spec.open_for_action("mensajeria", "send_draft", {"contact": "hospitality@example.com"}, text="sí")
+    assert e is not None, "the end state must render for a held send"
+    assert spec.attest(e) is False, "nothing sent yet: unmet, never a silent «done»"
+    data.apply_action("send_draft", {"contact": "hospitality@example.com"})
+    assert spec.attest(e) is True

@@ -172,7 +172,7 @@
       ]
     },
     "draft": {
-      "desc": "Escribe un mensaje en el CUADRO del widget SIN enviarlo, para que lo revise: respuesta a una conversación (n) o mensaje NUEVO a una persona (contact). Dile «ya está escrito, revísalo y dime si lo mando ya o cuándo».",
+      "desc": "Escribe un mensaje en el CUADRO del widget SIN enviarlo: respuesta (n) o mensaje NUEVO a una persona (contact). Dile «ya está escrito, revísalo y dime si lo mando ya o cuándo».",
       "payload": {
         "text": "string (el texto dictado)",
         "n": "opcional: número de un email concreto (si no hay conversación abierta)",
@@ -184,7 +184,7 @@
       }
     },
     "send_draft": {
-      "desc": "Envía un borrador que él ya ha visto — ahora, o MÁS TARDE con at/in_minutes (queda programado en la tarjeta y se puede cancelar). Su orden explícita de mandarlo es la confirmación. Sin borrador, dile que lo dicte.",
+      "desc": "Envía un borrador que ya ha visto — ahora, o MÁS TARDE con at/in_minutes (queda programado y se puede cancelar). Su orden explícita de mandarlo es la confirmación.",
       "confirm_q": "¿Envío el borrador que hay escrito en el cuadro?",
       "payload": {
         "n": "opcional: el email concreto cuyo borrador se envía (sin esto va el último borrador tocado)",
@@ -196,6 +196,13 @@
       "confirm": true,
       "usage": "El botón «Enviar» de la propia tarjeta hace exactamente esto. Por voz: primero 'draft' (con contact si es nuevo), él lo revisa, y su «envíalo» llama a 'send_draft'.",
       "consent_class": "messaging.send_new",
+      "done_when": {
+        "widget": "mensajeria",
+        "collection": "sent",
+        "where": {
+          "name|chatId~": "{contact}"
+        }
+      },
       "singleton": true,
       "effects": [
         "external.send"

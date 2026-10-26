@@ -31,6 +31,13 @@ from loguru import logger
 RECENT_S = 12 * 3600
 #: How many rows reach the verdict — a glance at what is pending, newest first.
 MAX_ROWS = 8
+#: An errand the energy lease STOPPED stays resumable longer: it did not fail, it was paused for want of energy.
+ENERGY_RECENT_S = 7 * 86400
+#: The gateway's own error code for an exhausted lease, as it reaches a row's outcome — a protocol token, not words.
+_ENERGY_CODE = "out_of_energy"
+#: The rows are read by the prompt block, the tool gate and the tool itself within one turn: one read serves them.
+_CACHE_S = 3.0
+_cache: dict = {"at": 0.0, "rows": []}
 #: Widgets that may hold rows for his word. Read from the catalogue, so a new widget that declares the hook joins.
 _HOOK = "pending_rows"
 
@@ -42,17 +49,31 @@ def _task_rows(now: float) -> list[dict]:
                           exclude_kinds=("inline",))
     ended = ts.tasks_where(states=("done", "failed"), modes=("now",), visible_only=True, limit=MAX_ROWS,
                            newest_first=True, exclude_kinds=("inline",), since=now - RECENT_S)
+    stopped = [r for r in ts.tasks_where(states=("failed",), modes=("now",), visible_only=True, limit=MAX_ROWS,
+                                         newest_first=True, since=now - ENERGY_RECENT_S) if _energy_stopped(r)]
     out = []
-    for r in live + ended:
+    for r in stopped + live + ended:
         uid = str(r.get("id") or "")
         if not uid or any(o["id"] == uid for o in out):
             continue
         out.append({"id": uid, "source": "task", "title": str(r.get("title") or r.get("goal") or "")[:80],
-                    "state": str(r.get("state") or ""), "brief": str(r.get("goal") or ""),
+                    "state": "stopped_by_energy" if _energy_stopped(r) else str(r.get("state") or ""),
+                    "brief": str(r.get("goal") or ""),
                     "outcome": str(r.get("outcome") or ""), "sheet": str(r.get("sheet") or ""),
                     "surface": str(r.get("surface") or ""), "kind": str(r.get("kind") or "generic"),
                     "at": float(r.get("finished_at") or r.get("started_at") or r.get("created_at") or 0)})
     return out
+
+
+def _energy_stopped(r: dict) -> bool:
+    """Did the energy lease stop this errand? Its refusal mark or the gateway's code in how it ended."""
+    try:
+        from nucleo import energy_lease
+        text = f"{r.get('outcome') or ''} {r.get('error_class') or ''}"
+        return str(r.get("state") or "") == "failed" and (energy_lease.is_refusal(text) or _ENERGY_CODE in text)
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"pending_work: energy check skipped ({e})")
+        return False
 
 
 def _widget_rows() -> list[dict]:
@@ -84,13 +105,48 @@ def _widget_rows() -> list[dict]:
 def rows(now: float | None = None) -> list[dict]:
     """Every pending row, newest first, at most `MAX_ROWS`. `[]` when nothing is pending."""
     now = float(now if now is not None else time.time())
+    if now - float(_cache["at"]) < _CACHE_S:
+        return list(_cache["rows"])
     found: list[dict] = []
     try:
         found += _task_rows(now)
     except Exception as e:  # noqa: BLE001
         logger.info(f"pending_work: the task board is unreadable ({e})")
     found += _widget_rows()
-    return sorted(found, key=lambda r: -float(r.get("at") or 0))[:MAX_ROWS]
+    out = sorted(found, key=lambda r: -float(r.get("at") or 0))[:MAX_ROWS]
+    _cache.update(at=now, rows=list(out))
+    return out
+
+
+def has_rows() -> bool:
+    """Is anything pending? What offers the `resume_task` tool this turn. Never raises."""
+    try:
+        return bool(rows())
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"pending_work: has_rows unreadable ({e})")
+        return False
+
+
+def forget_cache() -> None:
+    _cache.update(at=0.0, rows=[])
+
+
+def by_ids(ids) -> list[dict]:
+    """The pending rows the model named, in its order — an id that is not a pending row is dropped (the model
+    chooses among DECLARED rows; it cannot invent one)."""
+    want = [str(i).strip() for i in (ids or []) if str(i).strip()]
+    have = {r["id"]: r for r in rows()}
+    return [have[i] for i in want if i in have]
+
+
+def prompt_lines() -> list[str]:
+    """The compact block the turn prompt carries ONLY when something is pending: ids and names, nothing else.
+    The model resumes from it with `resume_task(ids)`; each row then resumes from itself."""
+    found = rows()
+    if not found:
+        return []
+    return ["PENDIENTE O PARADO (ids para resume_task):"] + [
+        f"· {r['id']} — {r.get('title') or '?'} · {r.get('state') or ''}" for r in found]
 
 
 def label(row: dict) -> str:

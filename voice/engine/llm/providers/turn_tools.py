@@ -8,6 +8,7 @@ read from the provider module is read through it (`_p.<name>`), so a patch on th
 """
 from __future__ import annotations
 
+from nucleo import pending_work as _pending_work   # V2-799: resume_task is offered only when something is pending
 from voice.engine.llm.providers import nucleo as _p
 
 
@@ -64,7 +65,7 @@ async def choose_the_tools(*, _router, brain, emit, first_turn, had_pending_conf
                                      has_workers=_has_workers, ask_pending=_ask_pending,
                                      cluster_widget_open=_cluster_open, messaging_on=_msg_on,
                                      has_vault=_has_vault1, has_video_widget=_has_video1,
-                                     cluster_connected=_cluster_conn)
+                                     cluster_connected=_cluster_conn, has_pending=_pending_work.has_rows())
     _turn_tools = _router.tools(_tool_ctx)
     # KICKOFF = saludo PURO, sin tools (fix 2026-07-19): el texto del kickoff ("Salúdame en 1-2 frases, cálido y
     # breve…") lo interpretaba el modelo como `set_style_directive` → guardaba una regla y respondía "Hecho." en
