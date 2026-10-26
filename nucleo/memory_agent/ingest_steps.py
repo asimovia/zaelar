@@ -207,23 +207,23 @@ async def file_the_atoms(*, _is_corr, atoms, plan, st, t) -> dict:
             # lleva ese preámbulo → sigue funcionando. Quirúrgico: NO desactiva la señal multilingüe en el caso sano.
             if a.get("slot") in _ing._IDENTITY_SLOTS and _ing._looks_like_injection(t):
                 a_corr = _is_corr
-            # (2026-08-21) …and the SAME question without an injection involved: `change` is signed by the model itself, so
-            # que un slot de identidad puede sobrescribirse con la única prueba de que el destilador dijo que sí.
-            # Eso apagó el gate anti-garble justo en el turno para el que se construyó — el operador repitiendo un
-            # nombre propio que el STT destrozaba («que se llama Calatayut,, ciudad de Calatayut») acabó de
-            # `operator.location`, borrando el valor real. Ninguno de los detectores DETERMINISTAS veía corrección
-            # ahí, y tenían razón: la frase no habla del operador, nombra un sitio. Así que la autodeclaración solo
-            # vale si el turno habla de él — que es lo que hace toda mudanza legítima, en cualquier idioma, y lo
-            # que NO hace una aclaración de tercero. No toca el caso sano: «ara visc a Girona» sigue pasando por
-            # `change` como antes, que es justo lo que el comentario de arriba protege.
+            # (2026-08-21) …and the SAME question without an injection: `change` is signed by the distiller itself, so
+            # it alone could overwrite an identity slot — «que se llama Calatayut,, ciudad de Calatayut» (a place he
+            # was spelling) became `operator.location`. Self-declaration counts only if the turn talks about HIM, as
+            # every legitimate move does in any language («ara visc a Girona» still passes by `change`).
+            # V2-802 T-02 — and a SPOKEN identity claim from a turn that is not about him is not his at all (ambient
+            # audio: a TV commentator's name became «the operator is called …»): quarantined, never a trusted row.
+            # A typed/pasted turn is exempt — nobody types by accident, and a signature never speaks in first person.
             # V2-747 — …over the slots the question is ABOUT. `_IDENTITY_SLOTS` holds one whose subject is
             # the ASSISTANT (`assistant.name`), and «does this turn talk about the operator?» can never be
             # true of a sentence renaming it — so the guard did not protect that slot, it sealed it. The
             # registry now says which slots the question applies to; see `memory/slots.slots_about_the_operator`.
             if a.get("slot") in _ing._OPERATOR_IDENTITY_SLOTS and not _ing._talks_about_the_operator(t):
-                if a_corr and not _is_corr:          # solo cuando la autodeclaración era la ÚNICA prueba
+                if a_corr and not _is_corr:          # only when the self-declaration was the ONLY evidence
                     _ing._report_self_declared_change_ignored(str(a.get("slot")), t)
                 a_corr = _is_corr
+                if _ing._channel() != "typed":
+                    a = _ing._quarantine_identity(a)
             # V2-752 — …AND THE ONE IDENTITY SLOT THAT IS NOT ABOUT HIM NEEDS ITS OWN QUESTION. V2-747
             # excused `assistant.name` from the guard above (rightly: a rename never talks about the
             # operator) and from the anti-garble gate (rightly: a rename contradicts the old value by
@@ -279,43 +279,43 @@ async def file_the_atoms(*, _is_corr, atoms, plan, st, t) -> dict:
         # (el dedup semántico funde el duplicado si algún átomo ya lo capturó). Los demás descartes se respetan.
         if _ing._COMMITMENT_RE.search(t):
             await _ing._pkg().remember({"text": t, "level": "long", "kind": "event", "importance": 0.55,
-                            "meta": {"source": "voice", "path": "commitment-net"}, "auto": False})
+                            "meta": {"source": _ing._channel(), "path": "commitment-net"}, "auto": False})
             return _R, {"source": ("llm+net" if atoms else "net"), "atoms": len(atoms) + 1, "plan": plan}
         # BACKSTOP DETERMINISTA de RUTINAS (dim O): una costumbre recurrente es memorable aunque el LLM la descarte.
         if _ing._ROUTINE_RE.search(t):
             await _ing._pkg().remember({"text": t, "level": "long", "kind": "pref", "importance": 0.5,
-                            "meta": {"source": "voice", "path": "routine-net"}, "auto": False})
+                            "meta": {"source": _ing._channel(), "path": "routine-net"}, "auto": False})
             return _R, {"source": ("llm+routine" if atoms else "routine"), "atoms": len(atoms) + 1, "plan": plan}
         # DETERMINISTIC OBSERVATION BACKSTOP (dim I): a pattern the operator notices about themself is self-knowledge
         # útil para aconsejar; el LLM a veces lo tira por "charla". Si hay marca explícita de observación, se guarda.
         if _ing._OBSERVATION_RE.search(t):
             await _ing._pkg().remember({"text": t, "level": "long", "kind": "pref", "importance": 0.5,
-                            "meta": {"source": "voice", "path": "observation-net"}, "auto": False})
+                            "meta": {"source": _ing._channel(), "path": "observation-net"}, "auto": False})
             return _R, {"source": ("llm+obs" if atoms else "obs"), "atoms": len(atoms) + 1, "plan": plan}
         # DETERMINISTIC REVERSAL BACKSTOP (dim M): "I no longer drink coffee / no longer like X" is a state change
         # memorable que el LLM tiende a tirar; se guarda para que el nuevo estado ("ya no…") no se pierda.
         if _ing._REVERSAL_RE.search(t) and "no olvid" not in t.lower():
             await _ing._pkg().remember({"text": t, "level": "long", "kind": "fact", "importance": 0.5,
-                            "meta": {"source": "voice", "path": "reversal-net"}, "auto": False})
+                            "meta": {"source": _ing._channel(), "path": "reversal-net"}, "auto": False})
             return _R, {"source": ("llm+rev" if atoms else "rev"), "atoms": len(atoms) + 1, "plan": plan}
         # DETERMINISTIC HEALTH / SERIOUS-EVENT BACKSTOP (dim C · health): a serious operation/diagnosis/illness
         # es DURABLE — un humano no la olvida; el LLM heart a veces la tira por "pasado". Marca médica → se guarda.
         if _ing._HEALTH_RE.search(t):
             await _ing._pkg().remember({"text": t, "level": "long", "kind": "fact", "importance": 0.7,
-                            "meta": {"source": "voice", "path": "health-net"}, "auto": False})
+                            "meta": {"source": _ing._channel(), "path": "health-net"}, "auto": False})
             return _R, {"source": ("llm+health" if atoms else "health"), "atoms": len(atoms) + 1, "plan": plan}
         # DETERMINISTIC DURABLE-PROFILE BACKSTOP (biographical/preference): "my FAVORITE restaurant", "my FIRST
         # perro"… un humano no los olvida; el LLM heart los tira con mucho contexto. Marca clara → LARGO.
         if _ing._PROFILE_DURABLE_RE.search(t):
             await _ing._pkg().remember({"text": t, "level": "long", "kind": "fact", "importance": 0.6,
-                            "meta": {"source": "voice", "path": "profile-net"}, "auto": False})
+                            "meta": {"source": _ing._channel(), "path": "profile-net"}, "auto": False})
             return _R, {"source": ("llm+profile" if atoms else "profile"), "atoms": len(atoms) + 1, "plan": plan}
         # BACKSTOP de MENSAJE ENTRANTE (V2-050, bot v1 #24/#29): un mensaje/aviso relatado de un tercero es durable;
         # the LLM sometimes distills it to a useless placeholder → save the RAW TEXT (with the actual content) for
         # el recall ("¿qué me dijo Carlos?"). No si es una negación vacía ("no me dijo nada").
         if _ing._INCOMING_MSG_RE.search(t) and not _ing._EMPTY_MSG_RE.search(t):
             await _ing._pkg().remember({"text": t, "level": "long", "kind": "event", "importance": 0.5,
-                            "meta": {"source": "voice", "path": "incoming-msg-net"}, "auto": False})
+                            "meta": {"source": _ing._channel(), "path": "incoming-msg-net"}, "auto": False})
             return _R, {"source": ("llm+msg" if atoms else "msg"), "atoms": len(atoms) + 1, "plan": plan}
         return _R, {"source": ("llm" if atoms else "discard-llm"), "atoms": len(atoms), "plan": plan}
     _out = locals()

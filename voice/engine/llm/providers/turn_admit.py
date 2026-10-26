@@ -21,9 +21,11 @@ async def admit_the_turn(*, attention, brain, emit, first_turn, text) -> dict:
     # V2-013: el "corazón" (agente de memoria) clasifica en background lo que dijo el operador y, si es
     # perfil (nombre/ubicación/trato/hardware/coche) o deseo durable, lo lleva a `state`/`long` sin
     # bloquear el turno. Fire-and-forget: regex µs + escritura por la cola async → cero coste en TTFB.
+    # V2-802: the CHANNEL travels with it — a typed/pasted line is read as written, a document whole.
     try:
         from nucleo import memory_agent as _mem_agent
-        _p.asyncio.create_task(_mem_agent.ingest_utterance(text, role="operator"))
+        _ch = "typed" if attention.typed_line(text) else "voice"
+        _p.asyncio.create_task(_mem_agent.ingest_utterance(text, role="operator", channel=_ch))
     except Exception:
         pass
 

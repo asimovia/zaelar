@@ -504,7 +504,7 @@ def retract_last_directed() -> bool:
     return True
 
 
-def note_typed(now: float | None = None) -> None:
+def note_typed(now: float | None = None, text: str = "") -> None:
     """The operator TYPED this turn (chat/paste). Stamped by the text-packet handler in `pipeline/agent.py`,
     beside its `note_directed()`, because the two facts are different: `directed` says the turn is for us,
     `typed` says it CANNOT be ambient chatter — nobody sits down and types by accident. That distinction is
@@ -512,6 +512,7 @@ def note_typed(now: float | None = None) -> None:
     never apply to a sentence the operator wrote."""
     _state["typed_at"] = time.time() if now is None else now
     _state["typed_pending"] = True   # V2-654 — see `consume_typed()`
+    _state["typed_text"] = _norm(text)   # V2-802 — see `typed_line()`
 
 
 def consume_typed() -> bool:
@@ -523,6 +524,14 @@ def consume_typed() -> bool:
     was = bool(_state.get("typed_pending"))
     _state["typed_pending"] = False
     return was
+
+
+def typed_line(text: str, within_s: float = 45.0, now: float | None = None) -> bool:
+    """Is THIS line the one the operator typed (V2-802)? Exact per line, unlike `was_typed()`'s window, which would
+    also stamp a spoken turn said right after typing — and memory records which channel a value came by. Read-only,
+    so it never competes with `consume_typed()`. Containment, not equality: the turn may arrive trimmed."""
+    line, typed = _norm(text), _state.get("typed_text") or ""
+    return bool(line) and line in typed and was_typed(within_s, now)
 
 
 def was_typed(within_s: float = 45.0, now: float | None = None) -> bool:

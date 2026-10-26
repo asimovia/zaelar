@@ -32,34 +32,30 @@ Salida por átomo (`process()` devuelve `list[dict]`)::
 from __future__ import annotations
 
 import asyncio
+import contextvars
 import json
 import os
 import time
 
 from loguru import logger
 
-_MAX_INPUT = 600            # chars del turno que ve el procesador (destila, no necesita el turno entero)
+_MAX_INPUT = 2400           # chars of a turn the distiller sees, HEAD + TAIL (V2-802: a paste signs at the end)
+#: How the turn arrived — "voice" (STT) or "typed" (chat / paste). Set by the ingest around the turn it distils.
+CHANNEL: contextvars.ContextVar[str] = contextvars.ContextVar("mem_channel", default="voice")
 _TIMEOUT = float(os.getenv("MEM_PROCESSOR_TIMEOUT", "30"))   # s por INTENTO; off-hot-path pero acotado (release del slot)
 # UA de navegador para el POST del CORAZÓN — AIMLAPI (tras Cloudflare) 403ea el UA por defecto de aiohttp; ver el uso.
 _BROWSER_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
-# REINTENTO ante fallo TRANSITORIO (auditoría 2026-07-29): un timeout/conexión/429/5xx de la API remota devolvía
-# None → fail-open a la heurística lossy → PÉRDIDA DURABLE de ese turno (un hecho que el modelo SÍ destila bien se
-# tiraba por un blip de red). Era la causa nº1 de los fallos "esperaba long, está []" del bot de memoria (medido:
-# ~25% de timeouts intermitentes en una tanda). Escribir es off-hot-path y la doctrina lo permite LENTO → reintentar
-# un blip antes de rendirse es correcto. Los 4xx de auth/bad-request NO se reintentan (fallan rápido, alertan).
+# RETRY on a TRANSIENT failure (audit 2026-07-29): a timeout/connection/429/5xx used to fall open to the lossy heuristic
+# and lose that turn for good (~25% intermittent timeouts measured in one batch, the memory bot's top «expected long,
+# got []»). Writing is off-hot-path, so retrying a blip is right; auth/bad-request 4xx are never retried.
 _RETRIES = max(0, int(os.getenv("MEM_PROCESSOR_RETRIES", "2")))           # reintentos (=> _RETRIES+1 intentos)
 _RETRY_BACKOFF = float(os.getenv("MEM_PROCESSOR_RETRY_BACKOFF", "1.5"))   # s base, escalado por intento
-# Techo del escalón LOCAL (Ollama). Es aparte de `_TIMEOUT` porque un modelo local grande tarda MUCHO más que una
-# API de nube en el MISMO trabajo, y a la vez su cota tiene que ser dura: mientras se espera aquí, la cadena no
-# releva. Medido en esta máquina (2026-08-19) con el prompt REAL del destilador — ver el informe por modelo en
-# `tests/memory/e2e/bot/resultados/`. Si se agota, se escribe por DeepSeek directo, nunca por la heurística.
-# 420 s y no 120: medido el 2026-08-19, `qwen3.6:27b-mlx` tarda **372,6 s** en UNA destilación con el prompt
-# reducido (informe por modelo en `tests/memory/e2e/bot/resultados/20260819-destilador-local-ollama/`), así que un
-# techo de 120 s lo cortaba SIEMPRE y el titular local no servía ni una escritura — solo añadía 120 s de espera
-# muerta antes del relevo. Con un modelo local pequeño (un 7B no-razonador) esto sobra por dos órdenes de magnitud;
-# está alto para que un local GRANDE pueda llegar, no porque una escritura deba tardar 7 minutos.
-# ⚠️ Consecuencia que hay que tener presente: la cola del CORAZÓN es `_QUEUE_MAX`/`_QUEUE_WAIT` (2 / 15 s), así que
-# mientras una destilación de 372 s está en vuelo, los turnos siguientes caen a la heurística lossy.
+# Ceiling of the LOCAL (Ollama) rung, apart from `_TIMEOUT`: a big local model takes far longer than a cloud API, and
+# while it is awaited the chain does not relay. 420 s, not 120: measured 2026-08-19, `qwen3.6:27b-mlx` took 372.6 s
+# for ONE distillation (per-model report under `tests/memory/e2e/bot/resultados/20260819-destilador-local-ollama/`),
+# so 120 s cut it every time and only added dead wait before the relay. High so a BIG local model can arrive, not
+# because a write should take minutes. ⚠️ The queue is `_QUEUE_MAX`/`_QUEUE_WAIT` (2 / 15 s): while a 372 s
+# distillation is in flight, the following turns fall to the lossy heuristic.
 _LOCAL_TIMEOUT = float(os.getenv("MEM_PROCESSOR_LOCAL_TIMEOUT", "420"))
 
 
@@ -332,6 +328,8 @@ Por CADA píldora decides:
   compromiso duradero (poner música, abrir o cerrar algo, enseñar una gráfica o unas fotos). Lo que la orden
   REVELA de él sigue valiendo y se infiere aparte («pon algo de Madonna» → le gusta Madonna). Distinto es cuando
   ÉL te INFORMA de algo que ya existe («mi cita del dentista es el martes a las 5»): eso SÍ es un hecho/evento.
+  ★ LO QUE DICE DE VUESTRAS CONVERSACIONES NO es un hecho: «ayer te di mi nombre y teléfono», «ya te lo dije», «ya
+  lo tienes» es una afirmación sin prueba → no la guardes, ni como evento ni fechada. Si trae el DATO, guarda el dato.
   ★ FECHAS RELATIVAS → SIEMPRE ABSOLUTAS. Una píldora se leerá meses después, sola, sin el turno que la originó:
   "hace tres días", "la semana que viene", "ayer", "el jueves" NO significan nada fuera de hoy y con el tiempo se
   vuelven FALSAS. Usa la FECHA Y HORA ACTUAL de arriba para convertirlas a fecha absoluta dentro del texto de la
@@ -489,20 +487,24 @@ def _render(text: str, state: dict | None) -> str:
     keep = {k: st.get(k) for k in ("operator_name", "location", "treatment", "objetivo", "proyecto")
             if st.get(k)}
     snap = ", ".join(f"{k}={v}" for k, v in keep.items()) or "(vacío)"
-    # IDIOMA CANÓNICO de la memoria = el del operador (decisión 2026-07-10: la memoria es MONOLINGÜE, en el idioma
-    # de la persona; el sistema entero se adapta a ese idioma). Si el operador suelta algo en otro idioma, se DESTILA
-    # igualmente traduciendo la píldora al idioma canónico — NUNCA se descarta un dato durable por venir en otro idioma.
-    # Same fix as memllm: no hardcoded language. An unseeded state must not silently mean Spanish — that is
-    # what committed a brand-new account's memory to a language its owner had not chosen.
+    # The memory is MONOLINGUAL, in the operator's language: a pill said in another one is translated, never dropped.
+    # No hardcoded fallback language — an unseeded state must not silently mean Spanish.
     code = st.get("language") or _default_code()
     from i18n import catalog as _cat              # the ONE catalog: a 7-name table wrote a ja memory in English
     lang = (_cat.get(code) or _cat.get("en")).native
+    t, tail = (text or "").strip(), _MAX_INPUT // 3
+    if len(t) > _MAX_INPUT:                       # V2-802 T-01: head + TAIL, the signature of a paste is at the end
+        t = f"{t[:_MAX_INPUT - tail]} […] {t[-tail:]}"
+    how = ("dicho en voz alta (transcrito por STT)" if CHANNEL.get() != "typed" else "ESCRITO o PEGADO por él — puede "
+           "ser un documento: léelo entero; su firma al pie (nombre, correo, teléfono) es SUYA solo si él es quien firma")
     return (f"ESTADO actual: {snap}\n"
             f"FECHA Y HORA ACTUAL: {_now_stamp()}\n"
             f"IDIOMA DE LA MEMORIA: {lang}. Escribe SIEMPRE las píldoras en {lang}, aunque el operador hable en "
             f"otro idioma (tradúcelo). Un dato memorable dicho en otro idioma NO se descarta: se guarda en {lang}.\n"
+            f"TU NOMBRE (el asistente): {st.get('assistant_name') or 'Zaelar'} — si el turno te nombra, te habla a "
+            f"ti; nunca es un tercero ni un destinatario.\n"
             f"{_recent_block()}"
-            f"Turno del operador: \"{(text or '').strip()[:_MAX_INPUT]}\"")
+            f"Turno del operador, {how}: \"{t}\"")
 
 
 def _recent_block() -> str:

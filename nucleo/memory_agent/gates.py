@@ -164,12 +164,17 @@ def _plausibility_demote(atom: dict, *, state: dict, is_correction: bool) -> dic
         new = str((atom.get("state_patch") or {}).get(field) or "").strip().lower()
         # Contradicts an ALREADY established identity AND is not a refinement of the same entity → do not corrupt state.
         if cur and new and cur != new and not _same_entity_refinement(cur, new):
-            a = dict(atom)
-            a.update(dest="long", state_patch={}, slot=None, pinned=False,
-                     importance=min(float(atom.get("importance", 0.5)), 0.4),
-                     _quarantine=True)             # → meta.trust=untrusted in _write_atom: recoverable only via
-            return a                               #   explicit query, NEVER surfaces in recall/prompt (anti-garble)
+            return _quarantine_identity(atom)
     return atom
+
+
+def _quarantine_identity(atom: dict) -> dict:
+    """The ONE disposal of an identity claim the gates reject: a recoverable `long` row with no slot, no state and
+    `_quarantine` (→ meta.trust=untrusted in `_write_atom`) — reachable by an explicit query, NEVER surfacing in
+    recall or the prompt. V2-802 T-02: before this, two of the three rejecting gates only stripped the slot and the
+    pill was still written as a pinned, TRUSTED profile row («the operator is called <a TV commentator>»)."""
+    return dict(atom, dest="long", state_patch={}, slot=None, pinned=False,
+                importance=min(float(atom.get("importance", 0.5)), 0.4), _quarantine=True)
 
 
 def _slot_supersede_guard(atom: dict, *, is_correction: bool) -> dict:
@@ -210,9 +215,10 @@ def _slot_supersede_guard(atom: dict, *, is_correction: bool) -> dict:
     cur = _established_slot_value(slot)
     if not cur or cur == new or _same_entity_refinement(cur, new):
         return atom                      # first value, same value, or a refinement of the same thing
-    a = dict(atom, slot=None, state_patch={})
     _report_slot_guard(slot, cur, new, atom.get("text") or "")
-    return a
+    if atom.get("dest") == "state":      # the distiller declared it HIS identity: a contradicting claim, P0b's case
+        return _quarantine_identity(atom)
+    return dict(atom, slot=None, state_patch={})
 
 
 def _writer_canon(slot) -> str:

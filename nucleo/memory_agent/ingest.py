@@ -19,12 +19,13 @@ def _pkg():
 
 from loguru import logger
 
+from nucleo import mem_processor as _mp
 from nucleo.memory_agent.classify import classify
 from nucleo.memory_agent.dossier import _state_lines  # noqa: F401
 from nucleo.memory_agent.gates import (  # noqa: F401
     _memslots,    _GARBLE_GUARD_SLOTS, _IDENTITY_SLOTS, _OPERATOR_IDENTITY_SLOTS, _PATCH_TO_SLOT,
     _SLOT_TO_STATE_FIELD, _atom_is_nonfact,
-    _atom_value_invalid, _established_slot_value, _plausibility_demote, _precision_reject_atom,
+    _atom_value_invalid, _established_slot_value, _plausibility_demote, _precision_reject_atom, _quarantine_identity,
     _is_ephemeral_directive, _is_vague_request, _report_self_declared_change_ignored, _slot_for_patch,
     _slot_supersede_guard, _writer_canon)
 from nucleo.memory_agent.lang_marks import (  # noqa: F401
@@ -53,21 +54,27 @@ def set_loop(loop) -> None:
     _HOME_LOOP = loop
 
 
-async def ingest_utterance(text: str, *, role: str = "operator") -> dict:
+async def ingest_utterance(text: str, *, role: str = "operator", channel: str = "voice") -> dict:
+    """`channel` — how the line arrived: "voice" (STT) or "typed" (chat / paste). It reaches the distiller's input
+    and every row's `meta.source`, so a pasted document is read as one and a typed value is never stamped «voice»."""
     home = _HOME_LOOP
     try:
         here = asyncio.get_running_loop()
     except RuntimeError:
         here = None
     if home is not None and here is not None and home is not here and not home.is_closed():
-        fut = asyncio.run_coroutine_threadsafe(_ingest_home(text, role=role), home)
+        fut = asyncio.run_coroutine_threadsafe(_ingest_home(text, role=role, channel=channel), home)
         return await asyncio.wrap_future(fut)
-    return await _ingest_home(text, role=role)
+    return await _ingest_home(text, role=role, channel=channel)
 
 
-async def _ingest_home(text: str, *, role: str = "operator") -> dict:
+async def _ingest_home(text: str, *, role: str = "operator", channel: str = "voice") -> dict:
     async with _INGEST_LOCK:
-        result = await _ingest_utterance_locked(text, role=role)
+        _tok = _mp.CHANNEL.set("typed" if channel == "typed" else "voice")   # read by the distiller and the writer
+        try:
+            result = await _ingest_utterance_locked(text, role=role)
+        finally:
+            _mp.CHANNEL.reset(_tok)
         # Ingestion itself already runs off the voice/chat hot path. Publish the completed state into the
         # FlashBrain cache here, so the next utterance sees a correction/move immediately instead of one turn late.
         try:
@@ -143,8 +150,8 @@ async def _ingest_utterance_locked(text: str, *, role: str = "operator") -> dict
             "slot": (None if demoted else plan.get("slot")),
             # demote por conflicto de identidad → CUARENTENA (trust=untrusted): no aflora en recall/prompt.
             "ttl_days": plan.get("ttl_days"),
-            "meta": ({"source": "voice", "path": "heuristic-quarantine", "trust": "untrusted"} if demoted
-                     else {"source": "voice", "path": "heuristic"}),
+            "meta": ({"source": _channel(), "path": "heuristic-quarantine", "trust": "untrusted"} if demoted
+                     else {"source": _channel(), "path": "heuristic"}),
             "auto": False,                      # ya clasificamos aquí; evitamos re-clasificar dentro
         })
         return {"source": ("heuristic-demoted" if demoted else "heuristic"), "atoms": 1, "plan": plan}
@@ -160,6 +167,11 @@ def _sanitize_state_patch(patch: dict | None) -> dict:
     for k, v in (patch or {}).items():
         out[_memslots.state_field(k) or k] = v
     return out
+
+
+def _channel() -> str:
+    """The channel of the turn being ingested (`ingest_utterance(channel=…)`): the row's `meta.source`."""
+    return _mp.CHANNEL.get()
 
 
 def _correction_whitelist() -> set[int]:
@@ -178,7 +190,7 @@ async def _write_atom(atom: dict, *, raw: str = "") -> None:
     """Writes ONE pill from the LLM processor through the façade (async queue). Maps `dest` → layer:
     `state` = sets state + durable `long/pinned` trace with slot; `long`/`short` = memory with its ttl/slot."""
     dest = atom.get("dest")
-    meta = {"source": "voice", "path": "llm", "raw": (raw or "")[:120]}
+    meta = {"source": _channel(), "path": "llm", "raw": (raw or "")[:120]}
     _patch = _sanitize_state_patch(atom.get("state_patch"))   # slot-name→state_field (no claves stray, V2-050)
     atom = dict(atom, state_patch=_patch)
     if _patch:

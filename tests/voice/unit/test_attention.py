@@ -615,7 +615,7 @@ def test_the_text_channel_stamps_it_and_the_provider_reads_it():
     import os
     eng = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
     handler = _vts.read(os.path.join(eng, "voice/engine/pipeline/agent.py"))
-    assert "attention.note_typed()" in handler, "the chat/paste handler no longer stamps typed turns"
+    assert "attention.note_typed(text=txt)" in handler, "the chat/paste handler no longer stamps typed turns"
     prov = _vts.read(os.path.join(eng, "voice/engine/llm/providers/nucleo.py"))
     assert "was_typed()" in prov, "the provider no longer reads whether the turn was typed"
     assert "typed=_typed_turn" in prov, "the provider no longer passes the fact to the handled decision"
