@@ -35,13 +35,12 @@ _BASE = {
     "active_chat": None, "active_items": [], "muted_channels": [], "notify_policy": {},
     "connect_focus": None, "view": None, "lens_criteria": {}, "activity_chats": [], "autoresponder": {},
 }
-# The screenshot's starting point: the brain was asked to connect WhatsApp, so that wizard is on screen.
+# A store still carrying a connect order from before connectors left the card.
 _ON_WIZARD = {**_BASE, "connect_focus": {"platform": "whatsapp", "ts": 1000}}
 # «Enséñame el correo» — the SAME payload the server pushes for show_view {platform:'email'}.
 _SAY_EMAIL = {**_BASE, "connect_focus": {"platform": "whatsapp", "ts": 1000},
               "view": {"platform": "email", "n": 1, "at": _NOW}}
-# One payload asking for BOTH: a coarse lens change and a specific connector to open. The specific one wins.
-# ts must be the highest seen in this page: `connect_focus` is honoured once, by a MOVING stamp.
+# One payload carrying BOTH a lens change and an old connect order: the lens lands, nothing else is drawn.
 _BOTH = {**_BASE, "connect_focus": {"platform": "telegram", "ts": 4000},
          "view": {"platform": "email", "n": 2, "at": _NOW}}
 # «Vuelve al WhatsApp» while an email is open on screen (a detail screen is a screen too).
@@ -58,6 +57,7 @@ _MEASURE = """() => {
     mails: [...el.querySelectorAll('.mrow .mfrom')].map(n => n.textContent),
     chats: [...el.querySelectorAll('.chatrow .tfrom')].map(n => n.textContent),
     lit: [...el.querySelectorAll('.dots .filt')].map(n => (n.title||'').split(':')[0]),
+    acts: window.__acts || [],
   };
 }"""
 
@@ -66,7 +66,7 @@ async def _mount(pg, data):
     await pg.evaluate(
         "d => { window.__acts = []; window.render(document.getElementById('host'), d, "
         "{action: async (name, payload) => { window.__acts.push([name, payload]); return {}; },"
-        " top: () => {}}) }", data)
+        " top: () => {}, openConnector: (cx) => { window.__acts.push(['openConnector', cx]); }}) }", data)
     await pg.wait_for_timeout(60)
 
 
@@ -129,16 +129,10 @@ def _run():
             await _mount(pg, {**_BASE, "view": {"platform": "email", "n": 8, "at": _NOW}})
             out["same_lens"] = await pg.evaluate(_MEASURE)
 
-            # A pending destructive confirmation must not be waiting when he comes back to the setup screen.
-            await _mount(pg, {**_BASE, "connect_focus": {"platform": "whatsapp", "ts": 9000}})
-            await _click(pg, ".linkcard .bt-ghost")           # «Desconectar» → asks for confirmation
-            out["confirm_up"] = await pg.evaluate(_MEASURE)
-            await _mount(pg, {**_BASE, "view": {"platform": "email", "n": 9, "at": _NOW}})
-            await _click(pg, ".connbtn")                      # back into Conectores by hand
-            out["back_in"] = await pg.evaluate(_MEASURE)
-            # …and back into THAT connector's own screen, the only place the confirmation would show.
-            await _click(pg, ".igrid .ibox:has(.ilabel:text-is('WhatsApp'))")
-            out["back_in_wizard"] = await pg.evaluate(_MEASURE)
+            # The plug, from a channel: the ⚙ Conectores section on THAT channel, through the host's one door.
+            await _mount(pg, {**_BASE, "view": {"platform": "telegram", "n": 9, "at": _NOW}})
+            await _click(pg, ".connbtn")
+            out["plug"] = await pg.evaluate(_MEASURE)
 
             out["errors"] = errors
             await b.close()
@@ -160,9 +154,12 @@ def result(playwright_available):
     return _run()
 
 
-def test_the_setup_screen_is_where_this_starts(result):
+# 2026-10-04 the connector screens LEFT the card for ⚙ Conectores (one door, `ctx.openConnector`): an old
+# `connect_focus` in the store must never bring a setup screen back over his messages.
+def test_a_connect_order_never_draws_a_setup_screen_over_the_messages(result):
     assert result["errors"] == [], result["errors"]
-    assert result["wizard"]["onSetupScreen"] is True
+    assert result["wizard"]["onSetupScreen"] is False
+    assert result["wizard"]["chats"] == ["Luis"], result["wizard"]
 
 
 def test_a_voiced_channel_leaves_the_setup_screen_and_paints_its_own(result):
@@ -176,8 +173,9 @@ def test_a_tapped_channel_does_the_same_thing(result):
     assert result["tap"]["onSetupScreen"] is False
 
 
-def test_the_specific_request_wins_when_one_payload_carries_both(result):
-    assert result["both"]["onSetupScreen"] is True, "a lens change wiped the wizard that was asked for"
+def test_a_pushed_view_lands_even_when_the_payload_also_carries_a_connect_order(result):
+    m = result["both"]
+    assert m["onSetupScreen"] is False and m["mails"] == ["Ana"], m
 
 
 def test_an_open_mail_is_a_screen_and_yields_too(result):
@@ -195,8 +193,7 @@ def test_the_same_channel_from_its_detail_lands_on_that_channels_list(result):
     assert m["mails"] == ["Ana"], m
 
 
-def test_a_pending_disconnect_confirmation_does_not_wait_for_him(result):
-    assert result["confirm_up"]["pendingConfirm"] is True
-    assert result["back_in"]["onSetupScreen"] is True
-    assert result["back_in_wizard"]["onSetupScreen"] is True
-    assert result["back_in_wizard"]["pendingConfirm"] is False, "a destructive confirmation survived leaving"
+def test_the_plug_opens_the_connectors_section_on_the_channel_on_screen(result):
+    m = result["plug"]
+    assert ["openConnector", "telegram"] in m["acts"], m["acts"]
+    assert m["onSetupScreen"] is False and m["pendingConfirm"] is False, "the card holds no connector screen"

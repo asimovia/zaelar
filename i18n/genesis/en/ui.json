@@ -2084,5 +2084,6 @@
  "widgets.mensajeria.sending": "Sending…",
  "widgets.mensajeria.saving": "Saving…",
  "widgets.mensajeria.sent_ok": "Sent ✓",
- "widgets.mensajeria.not_sent": "Not sent"
+ "widgets.mensajeria.not_sent": "Not sent",
+ "mobile.connect_on_computer": "Accounts are connected from your computer, in ⚙ Settings › Connectors."
 }

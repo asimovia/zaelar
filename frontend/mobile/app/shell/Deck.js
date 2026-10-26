@@ -37,6 +37,7 @@
 // ============================================================================
 
 import { t as tr } from "../../../app/core/i18n.js?v=1";
+import { noteSent } from "../../../app/services/feedback-sent-note.js?v=1";
 import * as store from "../../../app/core/store.js?v=2";
 // V2-792 — the screens service, loaded on first use (same as the desktop host: a host imports no service statically).
 const _screens = () => import("../../../app/services/screens.js?v=1");
@@ -583,6 +584,29 @@ export class Deck {
           else if (where === "up") sc.scrollTop = Math.max(0, sc.scrollTop - page);
           else sc.scrollTop = sc.scrollTop + page;
         } catch (_) {} },
+        // The SAME members the desktop card gives (desktop.js): a member one host forgets is a TypeError inside the
+        // card the moment it is tapped — seven cards call `openConnector`, and on the phone every one of those taps
+        // threw. The phone has no ⚙ Conectores section, so its door says where linking is done.
+        openConnector: () => noteSent(tr("mobile.connect_on_computer"), 5000),
+        // A file the operator picked in the card: uploaded to the widget's own data dir, same boundary as desktop.
+        upload: async (file) => {
+          try {
+            const fd = new FormData(); fd.append("file", file);
+            return await fetch(`/widgets/${baseId}/upload`, { method: "POST", body: fd }).then(r => r.json());
+          } catch (_) { return { error: "upload failed" }; }
+        },
+        // Linking an account from a card (a picker, an OAuth page): the tab is opened INSIDE the tap — one opened
+        // after an await is blocked in silence — and pointed at the URL the action returns. The card repaints from
+        // the widget's own change notice when the account comes back.
+        connect: async (action, payload) => {
+          let tab = null;
+          try { tab = window.open("", "zaelar_connect_" + baseId); } catch (_) { tab = null; }
+          const res = await ctx.action(action, payload || {});
+          const url = res && res.ok !== false && res.url;
+          if (!url) { try { if (tab) tab.close(); } catch (_) {} return res || { ok: false, error: "no url" }; }
+          try { if (tab) tab.location = url; else tab = window.open(url, "zaelar_connect_" + baseId); } catch (_) {}
+          return Object.assign({}, res, { blocked: !tab });
+        },
         // GETTER, not a copied value: ctx is built once per mount and reused across re-renders, so a snapshot
         // would go stale and a widget that produces would start over a stopped agent (V2-092).
         get running() { return deck._running; },

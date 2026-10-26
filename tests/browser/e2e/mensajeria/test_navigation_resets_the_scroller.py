@@ -56,13 +56,15 @@ async def _mount_and_click(data, sel):
         await pg.evaluate(
             "d => { window.__topCalls = 0; "
             "window.render(document.getElementById('host'), d, "
-            "{action: async () => ({}), top: () => { window.__topCalls++; }})}", data)
+            "{action: async () => ({}), top: () => { window.__topCalls++; }, "
+            "openConnector: (cx) => { window.__cx = (window.__cx || []).concat([cx]); }})}", data)
         await pg.wait_for_timeout(60)
         await pg.click(sel)
         await pg.wait_for_timeout(60)
         calls = await pg.evaluate("() => window.__topCalls")
+        opened = await pg.evaluate("() => window.__cx || []")
         await b.close()
-        return calls, errors
+        return calls, opened, errors
 
 
 def _run(data, sel):
@@ -79,13 +81,13 @@ def playwright_available():
 
 
 def test_opening_a_thread_from_the_chat_list_resets_the_scroller(playwright_available):
-    calls, errors = _run(_BASE, ".chatrow")
+    calls, _opened, errors = _run(_BASE, ".chatrow")
     assert errors == [], errors
     assert calls >= 1, "opening a thread must call ctx.top()"
 
 
 def test_leaving_a_thread_resets_the_scroller(playwright_available):
-    calls, errors = _run(_THREAD_DATA, ".thd .back")
+    calls, _opened, errors = _run(_THREAD_DATA, ".thd .back")
     assert errors == [], errors
     assert calls >= 1, "closing a thread must call ctx.top()"
 
@@ -94,12 +96,14 @@ def test_the_dashboard_title_resets_the_scroller(playwright_available):
     # V2-621 — the dashboard header (title included) only renders for the dashboard itself: an open thread
     # has its OWN header now, with nothing to click back to the title from, so this exercises the title from
     # the dashboard's own chat-list screen instead of `_THREAD_DATA`.
-    calls, errors = _run(_BASE, ".hdtitle")
+    calls, _opened, errors = _run(_BASE, ".hdtitle")
     assert errors == [], errors
     assert calls >= 1, "the title always returns to the dashboard — a navigation, not a filter"
 
 
-def test_the_connectors_toggle_resets_the_scroller(playwright_available):
-    calls, errors = _run(_BASE, ".connbtn")
+def test_the_plug_leaves_the_card_for_the_connectors_section(playwright_available):
+    """Since 2026-10-04 the connectors are not a screen of this card: the plug hands the order to the host's one
+    door (⚙ Conectores), so there is no content swap here and nothing to scroll back."""
+    _calls, opened, errors = _run(_BASE, ".connbtn")
     assert errors == [], errors
-    assert calls >= 1, "opening the connectors screen swaps the whole content, same as a thread"
+    assert opened == [""], opened

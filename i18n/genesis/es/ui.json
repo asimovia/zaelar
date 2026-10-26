@@ -2084,5 +2084,6 @@
  "widgets.mensajeria.sending": "Enviando…",
  "widgets.mensajeria.saving": "Guardando…",
  "widgets.mensajeria.sent_ok": "Enviado ✓",
- "widgets.mensajeria.not_sent": "No se ha enviado"
+ "widgets.mensajeria.not_sent": "No se ha enviado",
+ "mobile.connect_on_computer": "Las cuentas se conectan desde el ordenador, en ⚙ Ajustes › Conectores."
 }

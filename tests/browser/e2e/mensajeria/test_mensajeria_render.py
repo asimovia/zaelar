@@ -86,7 +86,7 @@ _MEASURE = """() => {
     // which reads like a mail client instead. Both shapes carry the same per-message actions, so the probe
     // has to know both or an email claim silently measures an empty list.
     row_acts: [...el.querySelectorAll('.tbrow, .mltr')].map(r =>
-      [...r.querySelectorAll('.tacts button')].map(b => b.textContent).join('')),
+      [...r.querySelectorAll('.tacts button')].map(b => b.getAttribute('aria-label') || '').join(' · ')),
     bodies: [...el.querySelectorAll('.tbbody, .mltrbody')].map(n => n.textContent),
     // V2-610 — the email lens's OWN shape: sender+subject+time, no body (`.msubj`/`.mfrom`, not `.tbody`).
     subjects: [...el.querySelectorAll('.msubj')].map(n => n.textContent),
@@ -244,8 +244,9 @@ def test_archive_and_trash_appear_ONLY_on_email_rows(playwright_available):
                     "active_items": [_ITEMS[2]]}
     wa = _run([_WA_THREAD])[0]
     em = _run([email_thread])[0]
-    assert all("🗄" not in a and "🗑" not in a for a in wa["row_acts"]), wa["row_acts"]
-    assert any("🗄" in a and "🗑" in a for a in em["row_acts"]), em["row_acts"]
+    # The buttons are SVG icons named by their label (test_action_buttons_render_svg_icons): read the names.
+    assert all("Archivar" not in a and "Borrar" not in a for a in wa["row_acts"]), wa["row_acts"]
+    assert any("Archivar" in a and "Borrar" in a for a in em["row_acts"]), em["row_acts"]
     assert any("📄 factura.pdf" in d for d in em["docs"]), em["docs"]
 
 

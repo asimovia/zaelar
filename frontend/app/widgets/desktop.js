@@ -982,6 +982,15 @@ export class Desktop {
           headers:{"Content-Type":"application/json"},body:JSON.stringify({action:name,payload:{...(payload||{}),q}})}).then(r=>r.json());}catch(_){return null;} },
         close:()=>{ clearTimeout(this._actTimer); rail.innerHTML=""; this._actId=null; },
         t:tr, get lang(){ return store.lang(); },             // V2-613: same contract as on a normal card
+        // The rest of a normal card's members: a member this host forgot was a TypeError inside the card on tap.
+        // The rail has no scroller of its own and no window to watch a login from, so those are honest no-ops.
+        top:()=>{}, scroll:()=>{},
+        connect:async()=>({ok:false, error:"open the card to connect"}),
+        upload:async(file)=>{ try{ const fd=new FormData(); fd.append("file", file);
+          return await fetch(`/widgets/${id}/upload`,{method:"POST",body:fd}).then(r=>r.json()); }
+          catch(_){ return {error:"upload failed"}; } },
+        openConnector:(cx)=>{ try{ document.dispatchEvent(new CustomEvent("hb:open-config",
+          {detail: {tab: "conectores", connector: String(cx || ""), from: ""}})); }catch(_e){} },
         get running(){ return desk._running; } };            // V2-092: same contract as on a normal card
       mod.render(mount, data, ctx);
       this._actTimer=setTimeout(()=>{                     // transient: let it linger, then fade and clear the rail

@@ -190,7 +190,7 @@ function injectStyles(){
   .hb-msg .pchip{width:19px;height:19px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
     font-size:10px;font-weight:700;color:#fff;flex:0 0 auto}
   .hb-msg .tfrom{font-size:14.5px;font-weight:600;color:var(--hb-ink,#0d1622)}
-  .hb-msg .tgrp,.hb-msg .tpara{font-size:12.5px;color:var(--hb-muted,#6b7b92);font-weight:400}
+  .hb-msg .tpara{font-size:12.5px;color:var(--hb-muted,#6b7b92);font-weight:400}
   .hb-msg .more{display:inline-block;margin-top:4px;font-size:12.5px;color:var(--hb-accent,#3D6FE0);cursor:pointer}
   .hb-msg .more:hover{text-decoration:underline}
   .hb-msg .tacts{display:flex;gap:2px;flex:0 0 auto;opacity:.3;transition:opacity .12s}
@@ -323,7 +323,7 @@ function injectStyles(){
   .hb-msg .thd{display:flex;align-items:center;gap:9px;margin:0 0 10px;padding-bottom:9px;border-bottom:1px solid var(--hb-line,#eef1f6)}
   /* V2-616 F3 — a real button, in the corner, never a bare underlined link: the operator's own words
      ("estas flechas así largas que se subraya... no me gusta nada"). margin-left:auto on the LAST child
-     pushes it to the far right while the name (appended first) stays left, same pattern .chanhead already
+     pushes it to the far right while the name (appended first) stays left, same pattern the connector list
      used for its own back link — now sharing the SAME visual language instead of two different ones. */
   .hb-msg .thd .back{margin-left:auto;flex:0 0 auto;border:1px solid var(--hb-line,#e3e8f0);background:var(--hb-bg,#fff);
     color:var(--hb-muted,#5b6b82);cursor:pointer;font-size:12.5px;font-weight:600;padding:6px 12px;border-radius:8px}
@@ -349,7 +349,6 @@ function injectStyles(){
   .hb-msg .prow{display:flex;flex-direction:column;gap:4px;align-items:flex-start;padding:8px;border-radius:8px;background:var(--surface-2, rgba(127,127,127,.08))}
   .hb-msg .prow .pbody{white-space:pre-wrap;max-height:7.5em;overflow:auto;opacity:.85}
   .hb-msg .prow .psub{font-weight:600;opacity:.9}
-  .hb-msg .composerow{display:flex;justify-content:flex-end;margin-top:6px}
   /* Attachments picked in the card: a row of chips (a thumbnail for a picture), each removable. */
   .hb-msg .attrow{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 6px}
   .hb-msg .attchip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--hb-line,#e3e8f0);
@@ -375,7 +374,6 @@ function injectStyles(){
      recipient to include). A segmented control, the same .seg language the settings panel already uses. */
   .hb-msg .composetop{display:flex;align-items:center;gap:9px;margin-bottom:7px;flex-wrap:wrap}
   .hb-msg .composehint{font-size:11.5px;color:var(--hb-muted-2,#9aa7b8)}
-  .hb-msg .composesaved{font-size:11.5px;color:var(--hb-accent2,#16B8A6);font-weight:600}
   /* V2-616 — the open thread as LEFT/RIGHT bubbles, not an indented copy of the same row (V2-546's old
      shape). His report, verbatim in spirit: in a 1:1 chat the sender's name on every line is noise (the
      header above already names who this is), and his own replies need to read apart from theirs at a
@@ -398,11 +396,14 @@ function injectStyles(){
      mailDetail) instead of the one generic accent blue every platform shared before. Literal hex, matching
      PLAT[pl].bg exactly — the same identity, not a second palette that can drift from it. */
   .hb-msg .thread.plat-whatsapp .tbrow.out .tbubble,
-  .hb-msg .thread.plat-whatsapp .composerow .bt-primary{background:#16B8A6}
+  .hb-msg .thread.plat-whatsapp .composeside .bt-primary,
+  .hb-msg .thread.plat-whatsapp .dfoot .bt-primary{background:#16B8A6}
   .hb-msg .thread.plat-telegram .tbrow.out .tbubble,
-  .hb-msg .thread.plat-telegram .composerow .bt-primary{background:#2AABEE}
+  .hb-msg .thread.plat-telegram .composeside .bt-primary,
+  .hb-msg .thread.plat-telegram .dfoot .bt-primary{background:#2AABEE}
   .hb-msg .thread.plat-email .tbrow.out .tbubble,
-  .hb-msg .thread.plat-email .composerow .bt-primary{background:#D8452D}
+  .hb-msg .thread.plat-email .composeside .bt-primary,
+  .hb-msg .thread.plat-email .dfoot .bt-primary{background:#D8452D}
   .hb-msg .compose .bt-primary.pressing{transform:scale(.92);box-shadow:0 0 0 5px rgba(42,171,238,.35);transition:transform .12s,box-shadow .12s}
   .hb-msg .compose .bt-primary.sent{opacity:.85}
   .hb-msg .tbfrom{font-size:12px;font-weight:700;margin-bottom:2px;color:var(--hb-accent,#3D6FE0)}
@@ -488,61 +489,12 @@ function injectStyles(){
   @media (max-width: 430px){
     .hb-msg .mediaw .matt,.hb-msg .mediaw video.mvid{max-width:100%;max-height:none}
   }
-  .hb-msg .linkcard{border:1px solid var(--hb-line,#e3e8f0);border-radius:12px;padding:13px 14px;margin-bottom:10px;background:var(--hb-bg-soft,#fbfdff)}
-  .hb-msg .linkcard .ch{display:flex;align-items:center;gap:8px;margin-bottom:9px}
-  .hb-msg .linkcard .ch b{font-size:14px}
-  .hb-msg label.f{display:block;font-size:12.5px;font-weight:600;color:var(--hb-muted,#5b6b82);margin:10px 0 4px}
-  .hb-msg input.f,.hb-msg select.f{width:100%;box-sizing:border-box;border:1px solid var(--hb-line,#e3e8f0);border-radius:9px;padding:10px 12px;font-size:14px;background:var(--hb-bg,#fff);color:var(--hb-ink,#0d1622)}
-  .hb-msg input.f:focus,.hb-msg select.f:focus{outline:none;border-color:var(--hb-accent,#3D6FE0)}
-  .hb-msg .err{color:var(--hb-risk,#e5484d);font-size:12.5px;margin-top:8px}
-  .hb-msg .errfield{border-color:var(--hb-risk,#e5484d)!important}
 
-  /* Guided connect wizard (V2-559, redesigned V2-570). The operator asked for an ASSISTANT: one step
-     visible at a time, real margins, and a breadcrumb back to the connector list — a stack of three boxes
-     read as optional; one box with "Paso 2 de 3" reads as a path. */
-  .hb-msg .wstep{border:1px solid var(--hb-line,#e3e8f0);border-radius:12px;padding:15px 16px 16px;background:var(--hb-bg,#fff);margin:2px 0 14px}
-  .hb-msg .wstep.done{border-color:var(--hb-accent2,#16B8A6)}
-  .hb-msg .whead{display:flex;align-items:center;gap:10px;margin-bottom:12px}
-  .hb-msg .wnum{width:25px;height:25px;flex:0 0 auto;border-radius:50%;display:inline-flex;align-items:center;
-    justify-content:center;font-size:12.5px;font-weight:700;color:#fff;background:var(--hb-neutral,#3a4a5c)}
-  .hb-msg .wstep.done .wnum{background:var(--hb-accent2,#16B8A6)}
-  .hb-msg .wtitle{font-size:15px;font-weight:700;color:var(--hb-ink,#0d1622)}
-  .hb-msg .whead .wcount{margin-left:auto;flex:0 0 auto}
-  .hb-msg .wcount{font-size:11.5px;color:var(--hb-muted-2,#9aa7b8)}
+  /* The «connect a channel» prompt of an empty card. */
   .hb-msg .wbody{font-size:13.5px;color:var(--hb-muted,#4a5a70);line-height:1.6}
   .hb-msg .wbody b{color:var(--hb-ink,#0d1622)}
-  .hb-msg .wlink{display:inline-flex;align-items:center;gap:6px;margin-top:11px;border:1px solid var(--hb-accent,#3D6FE0);
-    color:var(--hb-accent,#3D6FE0);border-radius:9px;padding:9px 14px;font-size:13px;font-weight:600;
-    text-decoration:none;background:transparent}
-  .hb-msg .wlink:hover{background:var(--hb-accent,#3D6FE0);color:var(--canvas,#101216)}
-  .hb-msg .wtip{margin-top:10px;font-size:12.5px;color:var(--hb-muted,#5b6b82);background:var(--hb-bg-soft,#fbfdff);
-    border:1px solid var(--hb-line,#eef1f6);border-radius:9px;padding:9px 11px;line-height:1.55}
-  .hb-msg .wtip b{color:var(--hb-ink,#0d1622)}
-  .hb-msg .wstep label.f:first-of-type{margin-top:0}
-  .hb-msg .qr-wrap{text-align:center;padding:4px 0}
-  .hb-msg .qr-wrap img{width:220px;max-width:78vw;border-radius:12px;border:1px solid var(--hb-line,#e3e8f0);background:#fff;padding:8px}
-  .hb-msg .qr-wrap .cap{font-size:12.5px;color:var(--hb-muted,#3a4757);margin-top:9px;line-height:1.55}
-  .hb-msg .qr-wrap .cap b{color:var(--hb-ink,#0d1622)}
-  .hb-msg .waiting{color:var(--hb-muted-2,#7d8a9c);font-size:12.5px;padding:6px 0;text-align:center}
-  /* Loader (spinner) + connection detail. */
-  .hb-msg .spin{display:inline-block;width:15px;height:15px;border-radius:50%;vertical-align:-2px;margin-right:7px;
-    border:2px solid var(--hb-line,#e3e8f0);border-top-color:var(--hb-accent,#3D6FE0);animation:hbspin .7s linear infinite}
-  @keyframes hbspin{to{transform:rotate(360deg)}}
-  .hb-msg .waitbox{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 0;text-align:center}
-  .hb-msg .waitbox .lbl{font-size:13px;color:var(--hb-ink,#0d1622);font-weight:600}
-  .hb-msg .waitbox .det{font-size:12px;color:var(--hb-muted,#5b6b82);line-height:1.5;max-width:320px}
-  /* Connection error card. */
-  .hb-msg .errcard{border:1px solid var(--hb-risk,#e5484d);border-radius:11px;padding:12px 14px;margin-bottom:14px;background:color-mix(in srgb,var(--hb-risk,#e5484d) 8%,transparent)}
-  .hb-msg .errcard .et{font-size:13px;color:var(--hb-ink,#0d1622);line-height:1.55;margin-bottom:10px}
-  .hb-msg .errcard .et b{color:var(--hb-risk,#e5484d)}
-  /* Breadcrumb (V2-570): back to the connector list + which connector we are on. */
-  .hb-msg .crumb{display:flex;align-items:center;gap:7px;margin:2px 0 16px;font-size:13px}
-  .hb-msg .crumb .back{cursor:pointer;color:var(--hb-accent,#3D6FE0);font-weight:600}
-  .hb-msg .crumb .back:hover{text-decoration:underline}
-  .hb-msg .crumb .sep{color:var(--hb-muted-2,#9aa7b8)}
-  .hb-msg .crumb .cur{color:var(--hb-ink,#0d1622);font-weight:700}
-  /* Homogeneous buttons (V2-570): one scale for every wizard/list/status action, instead of the
-     .btn/.cbtn/.dbtn set that had grown three different heights and paddings. */
+  /* Homogeneous buttons (V2-570): one scale for every action of the card, instead of the .btn/.cbtn/.dbtn set
+     that had grown three different heights and paddings. */
   .hb-msg .bt{height:38px;padding:0 18px;border-radius:10px;font-size:13.5px;font-weight:600;cursor:pointer;
     display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box}
   .hb-msg .bt:disabled{opacity:.6;cursor:default}
@@ -550,22 +502,7 @@ function injectStyles(){
   .hb-msg .bt-primary:hover:not(:disabled){filter:brightness(1.06)}
   .hb-msg .bt-ghost{border:1px solid var(--hb-line,#e3e8f0);background:transparent;color:var(--hb-muted,#5b6b82)}
   .hb-msg .bt-ghost:hover:not(:disabled){border-color:var(--hb-accent,#3D6FE0);color:var(--hb-accent,#3D6FE0)}
-  .hb-msg .bt-danger{border:0;color:var(--canvas,#101216);background:var(--hb-risk,#e5484d)}
-  .hb-msg .wfoot{display:flex;gap:9px;margin-top:10px}
-  .hb-msg .wfoot .bt-primary{flex:1 1 auto}
-  /* Connector LIST screen (V2-570): a grid of icon boxes replaces the stacked rows, so the list stays
-     compact and scannable with 3 connectors today or 20 tomorrow — the operator's own worry about having
-     to scroll past a long vertical list to reach the wizard. */
-  .hb-msg .chanhead{display:flex;align-items:center;gap:8px;margin:2px 0 16px}
-  .hb-msg .chanhead b{font-size:14.5px}
-  /* V2-616 F3 — the SAME back-button chip as .thd, not a second visual language for the same affordance.
-     display:inline-flex because this one is a <span> (not a <button>): padding/border on a plain inline
-     element does not box properly. */
-  .hb-msg .chanhead .back{display:inline-flex;align-items:center;margin-left:auto;flex:0 0 auto;
-    border:1px solid var(--hb-line,#e3e8f0);background:var(--hb-bg,#fff);
-    color:var(--hb-muted,#5b6b82);cursor:pointer;font-size:12.5px;font-weight:600;padding:6px 12px;border-radius:8px}
-  .hb-msg .chanhead .back:hover{border-color:var(--hb-accent,#3D6FE0);color:var(--hb-accent,#3D6FE0);background:var(--hb-hover,#eef3f9)}
-  .hb-msg .chanhead .hint{font-size:12.5px;color:var(--hb-muted-2,#7d8a9c)}
+  /* The grid of channel icons (the «connect a channel» prompt): compact with 3 connectors or 20. */
   .hb-msg .igrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:12px}
   .hb-msg .ibox{display:flex;flex-direction:column;align-items:center;gap:7px;padding:16px 10px;
     border:1px solid var(--hb-line,#e3e8f0);border-radius:13px;background:var(--hb-bg,#fff);cursor:pointer;
@@ -579,11 +516,6 @@ function injectStyles(){
   .hb-msg .ibox .iicon svg{width:24px;height:24px}
   .hb-msg .ibox .ilabel{font-size:13px;font-weight:600;color:var(--hb-ink,#0d1622);text-align:center}
   .hb-msg .ibox .isub{font-size:11px;color:var(--hb-muted-2,#9aa7b8)}
-  .hb-msg .ibox .iavatar{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-    font-size:16px;font-weight:700;color:var(--canvas,#101216);background:var(--hb-accent,#3D6FE0)}
-  /* Connected-status screen + disconnect confirmation (unscoped, no longer nested under a removed .chan row). */
-  .hb-msg .cfm{margin-top:10px;font-size:12.5px;color:var(--hb-ink,#0d1622)}
-  .hb-msg .cfm .row{display:flex;gap:8px;margin-top:8px}
   .hb-msg .connbtn{border:0;background:transparent;color:var(--hb-muted,#3a4757);cursor:pointer;font-size:17px;width:34px;height:34px;border-radius:10px;line-height:1}
   .hb-msg .connbtn:hover,.hb-msg .connbtn.active{background:var(--hb-hover,#eef3f9);color:var(--hb-accent,#3D6FE0)}
   .hb-msg .conns{display:flex;flex-wrap:wrap;gap:6px}
