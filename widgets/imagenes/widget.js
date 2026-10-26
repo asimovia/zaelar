@@ -54,6 +54,10 @@ function injectStyles(){
   .hb-imgv .imgthumb.on{border-color:var(--hb-accent,#2F6FEB)}
   .hb-imgv .imgfb{color:var(--hb-muted,#5b6b82)}
   .hb-imgv .imgempty{color:var(--hb-muted,#5b6b82);font-size:13px;text-align:center;padding:22px 12px}
+  /* Inside the stage the message sits between the ‹ › arrows, which cut its first and last words (V2-813). */
+  .hb-imgv .imgstage > .imgempty{padding-left:56px;padding-right:56px}
+  /* A phone's card is already the frame: a second rounded border inside it is a box in a box. */
+  @media (max-width:520px){.hb-imgv{border:0;border-radius:0;padding:8px 12px 10px}}
   .hb-imgv .imgdim{font-variant-numeric:tabular-nums}
   `; document.head.appendChild(s);
 }
