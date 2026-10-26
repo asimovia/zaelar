@@ -148,16 +148,16 @@ def kind_name(widget_id: str) -> str:
         name = str(_i18n_rt.text(f"widgets.{base}.name", "", code=code) or "").strip()
         if name:
             return name
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"instances: bundle name of {base} unread — {e}")
     try:
         from . import runtime as _rt
         man = _rt.get(base) or {}
         name = str(man.get("name") or man.get("title") or "").strip()
         if name:
             return name
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"instances: manifest name of {base} unread — {e}")
     return base
 
 
@@ -390,7 +390,37 @@ def resolve_close(target, open_ids, text: str = "") -> dict:
     if _named:
         return {"id": _named, "ids": [_named], "ask": "", "options": abiertas}
     etiquetas = _distinguibles([_label(w) for w in abiertas], abiertas)
+    note_close_ask(abiertas)
     return {"id": None, "ids": [], "ask": _ask("close", len(abiertas), _which(etiquetas)), "options": abiertas}
+
+
+# ── THE QUESTION WE ASKED (V2-812 T-05) ──────────────────────────────────────────────────────────────────────
+# The one piece of state in this module, and the reason is the car session: «¿cuál cierro…?» was answered «Las dos.»,
+# and the close the model then called was refused as context-bleed — two words carry no close verb, so his answer to
+# OUR question had less licence than the question itself. Whoever asks «which one should I close?» asks it here, so
+# this is where it is remembered; `nucleo/flash/close_answer.py` reads it.
+#: How long an unanswered «which one should I close?» stays the question his next words answer.
+CLOSE_ASK_S = 90.0
+_CLOSE_ASK: dict = {}
+
+
+def note_close_ask(options) -> None:
+    """Record that a «which one should I close?» over `options` is being asked now."""
+    import time as _t
+    _CLOSE_ASK.clear()
+    _CLOSE_ASK.update({"options": [str(o) for o in options or [] if str(o or "").strip()], "at": _t.time()})
+
+
+def pending_close_ask(within_s: float = CLOSE_ASK_S) -> list[str]:
+    """The cards the last «which one should I close?» offered, while it is still the open question ([] = none)."""
+    import time as _t
+    if not _CLOSE_ASK or _t.time() - float(_CLOSE_ASK.get("at") or 0) > within_s:
+        return []
+    return list(_CLOSE_ASK.get("options") or [])
+
+
+def clear_close_ask() -> None:
+    _CLOSE_ASK.clear()
 
 
 _WORD = _re.compile(r"[^\W\d_]{4,}", _re.UNICODE)

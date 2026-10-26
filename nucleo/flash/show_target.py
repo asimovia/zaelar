@@ -576,6 +576,10 @@ def close_has_order(text: str, canvas_handle: dict | None = None, *, brief=None)
         return True, "grammar"
     if _cg.is_negated_or_narrated(text):
         return False, "none"
+    # V2-812 T-05 — his answer to OUR «which one should I close?» carries that question's licence («Las dos.»).
+    from . import close_answer as _ca
+    if _ca.answers(brief):
+        return True, "answer"
     verb, info = resolve_canvas_verb(canvas_handle)
     if verb == "close" and (info or {}).get("used"):
         return True, "jev"

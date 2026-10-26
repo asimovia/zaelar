@@ -338,16 +338,35 @@ def close_license(text: str, *, brief=None) -> bool:
     never make the engine deaf to «ciérralo».
     """
     if not looks_like_close(_his_words(text)):
+        # V2-812 T-05 — his ANSWER to our own «which one should I close?» carries that question's licence: «Las
+        # dos.» has no close verb, and refusing it as context-bleed refused the close he had already ordered.
+        # «no cierres ninguna» answers it too — and forbids; a negated or narrated close never borrows the licence.
+        from nucleo.flash import close_answer as _ca, close_guards as _cg
+        return _ca.answers(brief) and not _cg.is_negated_or_narrated(_his_words(text))
+    if brief is not None and verdict_denies_close(brief):
         return False
-    if brief is not None:
-        try:
-            from nucleo.flash import show_target as _st, turn_brief as _tb
-            verb, _info = _tb.read(brief, _tb.CANVAS_KEY, "")
-            if str(verb or "") == "neither" and "neither" in _st.CANVAS_VERBS:
-                return False
-        except Exception:  # noqa: BLE001
-            pass
     return True
+
+
+def verdict_denies_close(brief) -> bool:
+    """Does the turn's brief READ A NEGATION of the close the grammar saw? (V2-812 T-05)
+
+    `canvas=neither` alone is not that reading. In the car session «Vale, pues aquí no suena nada, cierra el resto de
+    aplicaciones.» read `canvas=neither` (0.87) beside `request_type=order` — the verdict missed the canvas half of an
+    order and vetoed a clear close. The denials this veto exists for (fce3eff3: «yo no te he dicho que cerraras el
+    widget de vídeo»; 2026-10-22: «you did close the document without me telling you») read as something said ABOUT
+    us or the conversation, never as an order. So the veto needs both: a sure `neither` AND a sure reading of the turn
+    as anything but an order or an answer. An unsure or absent `request_type` is no reading of a negation, and the
+    clear close stands."""
+    try:
+        from nucleo.flash import show_target as _st, turn_brief as _tb
+        verb, _info = _tb.read(brief, _tb.CANVAS_KEY, "")
+        if not (str(verb or "") == "neither" and "neither" in _st.CANVAS_VERBS):
+            return False
+        kind, kinfo = _tb.read(brief, _tb.REQUEST_KEY, "")
+        return bool(kinfo and kinfo.get("used")) and str(kind or "") not in ("order", "answer")
+    except Exception:  # noqa: BLE001
+        return False
 
 
 def fullscreen_license(text: str) -> str:

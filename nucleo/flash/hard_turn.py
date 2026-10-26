@@ -85,7 +85,9 @@ async def say_receipt(emit, brain=None) -> str:
         if asyncio.iscoroutine(r):
             await r
         return line
-    except Exception:                          # noqa: BLE001 — a receipt never breaks the close it describes
+    except Exception as e:                     # noqa: BLE001 — a receipt never breaks the close it describes
+        emit("brain", "⚠️ close receipt not spoken", text=f"{type(e).__name__}: {e}"[:160], role="system",
+             extra={"cat": "flash", "reason": "close_receipt_failed"})
         return ""
 
 

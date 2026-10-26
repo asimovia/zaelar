@@ -69,11 +69,14 @@ def test_a_cancel_while_waiting_for_a_slot_settles_the_sheet(monkeypatch):
     assert settled == ["3"]
 
 
-def _brief(canvas: str):
+def _brief(canvas: str, kind: str = "complaint"):
+    """`request_type` rides with `canvas` as in every real brief: since V2-812 T-05 a `neither` vetoes a grammar close
+    only when the turn is also read as something other than an order — a complaint, as this one is."""
     ev = threading.Event()
     ev.set()
     return {"event": ev, "turn_id": "t", "open_ids": ["documento"],
-            "result": {_tb.CANVAS_KEY: {"choice": canvas, "confidence": 0.98}}}
+            "result": {_tb.CANVAS_KEY: {"choice": canvas, "confidence": 0.98},
+                       _tb.REQUEST_KEY: {"choice": kind, "confidence": 0.9}}}
 
 
 COMPLAINT = "You did close the document of Bitcoin without me telling you, also it seems that ended the trip."

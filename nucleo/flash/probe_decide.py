@@ -60,6 +60,19 @@ def _reply_as_card_call(names, tool_calls):
     return [*names, "widget_data"]
 
 
+def _answer_refuses_music(brief, tool_calls) -> bool:
+    """V2-812 T-05 — mirror of the voice arm (`tool_executor_calls._t_play_music`): an answer to our «which one should
+    I close?» starts no player; the turn's other calls (its close) decide instead."""
+    from nucleo.flash import close_answer as _close_answer
+    call = next((t for t in tool_calls if t.get("name") == "play_music"), None) or {}
+    return _close_answer.refuses(brief, "musica", str((call.get("args") or {}).get("action") or "play").strip().lower())
+
+
+def _without_a_refused_play(names, brief, tool_calls):
+    """The call names minus a `play_music` that `_answer_refuses_music` refuses."""
+    return [n for n in names if n != "play_music" or not _answer_refuses_music(brief, tool_calls)]
+
+
 async def name_the_action(*, _hard, _router, _tbrief, _vault_gate, ingest, names, sess, tags, text, tool_calls) -> dict:
     _hard = _hard_that_ends_the_turn(text, _hard)
     if _hard == "close":

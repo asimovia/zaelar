@@ -1983,6 +1983,14 @@ DOMAINS: list[dict] = [
                                  "nothing closes everything, and the turn says what closed and what stayed "
                                  "(V2-812 T-04)", "ch": UNIT,
             "paths": ["tests/agent_headless/unit/flash/test_a_close_all_never_closes_nothing_in_silence.py"]},
+        # V2-812 T-05 — «cierra el resto de aplicaciones» was vetoed by `canvas=neither` (0.87) beside `request_type=order`;
+        # «Las dos.» answering our «¿cuál cierro?» was refused and resumed the music. `neither` vetoes only with a sure
+        # non-order reading; an answer to our pending close question licenses the close and no player start. es/en.
+        # Disarmed 2026-10-26 → red.
+        {"id": "3.136", "title": "A verdict vetoes a clear close only when it reads a negation, and an answer to our "
+                                 "«which one should I close?» carries that licence and starts no player "
+                                 "(V2-812 T-05)", "ch": UNIT,
+            "paths": ["tests/voice/unit/test_a_verdict_cannot_veto_a_clear_close.py"]},
         # V2-812 T-06 — «¿cuál cierro, «4609d2-1» o «187f3c-1»?» was spoken in the car: untitled sheets fell through to
         # their instance id. A card is named by its content (title, goal, first row), else its kind, two that collide by
         # their place; `instances._no_ids` is the last door before the question. es/en. Disarmed 2026-10-26 → red.

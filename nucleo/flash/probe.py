@@ -328,7 +328,7 @@ async def run_turn(text: str, *, sid: str = "default", ingest: bool = True, mode
         _tbrief=_tbrief,
         _vault_gate=_vault_gate,
         ingest=ingest,
-        names=names,
+        names=_probe_decide._without_a_refused_play(names, _tbrief, tool_calls),   # V2-812 T-05
         sess=sess,
         tags=tags,
         text=text,

@@ -31,11 +31,15 @@ import threading
 from nucleo.flash import canvas_license, router_guards, turn_brief
 
 
-def _brief(canvas: str | None, conf: float = 0.95):
+def _brief(canvas: str | None, conf: float = 0.95, kind: str | None = "complaint"):
+    """`request_type` rides with `canvas` as in every real brief. Since V2-812 T-05 the `neither` vetoes a grammar
+    close only when the turn is also read as something other than an order — these denials read as complaints."""
     ev = threading.Event()
     ev.set()
     result = {} if canvas is None else {
         turn_brief.CANVAS_KEY: {"choice": canvas, "confidence": conf, "probs": {}}}
+    if canvas is not None and kind:
+        result[turn_brief.REQUEST_KEY] = {"choice": kind, "confidence": 0.9, "probs": {}}
     return {"event": ev, "turn_id": "t", "open_ids": (), "result": result}
 
 

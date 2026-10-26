@@ -240,6 +240,14 @@ def _t_play_music(*, args, music_req, _brief=None, _apply_widget_data=None, acte
                   ask_phrase="", text="", esc=None):
     # V2-041: una acción de música por turno. Ruta LIGERA como web_search: se resuelve tras el stream,
     # FUERA del event loop.
+    # V2-812 T-05 — an answer to OUR «which one should I close?» carries that question's licence, not a player's: «Las
+    # dos.» resumed the music in the car session. Read from the brief and the manifest's `runtime.produce`.
+    from nucleo.flash import close_answer as _close_answer
+    if _close_answer.refuses(_brief, "musica", str(args.get("action") or "play").strip().lower()):
+        if emit is not None:
+            emit("brain", "🛡️ play_music refused: the turn answers our «which one should I close?»", role="system",
+                 text=str(args.get("action") or "play"), extra={"cat": "flash", "kind_diag": "close_answer_not_play"})
+        return
     # V2-794: a one-shot play over a SURE commission verdict is the errand, not a search query played as a title.
     if music_req["v"] is None and esc is not None and esc["v"] is None and _player_control.commissioned(_brief, args):
         _t_escalate_to_slowbrain(args={}, escalate_req=esc, text=text)

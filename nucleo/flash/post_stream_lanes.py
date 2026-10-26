@@ -8,6 +8,7 @@ bound.
 from __future__ import annotations
 
 from nucleo.flash import act_repair as _act_repair, escalation_guard as _eg, post_stream as _pst
+from nucleo.flash import close_answer as _close_answer
 
 
 async def run_the_light_lanes(*, FastClient, _apply_widget_data, _brief, _buf_add, _buf_reset, _cardc, _close_target, _cover_work, _identify, _identify_system, _named_by_verdict, _no_tool, _op_text, _prompt_mod, _router, _rv, _say, _show_target_instance, _shown_ids, _t, _tag_emit, _tool_fired, _turn_op_tasks, acted, attention, brain, clarify, data_done, emit, escalate_req, images_req, listing_req, music_req, operator_text, read_req, recall_req, reopen_req, reveal_req, search_req, send, speak, spec, speech, spoken, spoken_text, take, text, with_also_named) -> dict:
@@ -138,11 +139,10 @@ async def run_the_light_lanes(*, FastClient, _apply_widget_data, _brief, _buf_ad
     # he was describing the first wrongful close. A turn that MENTIONS fullscreen is about a screen state
     # (leaving it, or narrating it), never a whole-widget close order for a backstop to guess at; if the
     # operator really wants it closed the model can still emit [[close]] itself.
-    # V2-759 — «Y sal de pantalla completa.» → «Ya está, fuera de pantalla completa.» with NOTHING called,
-    # for the second time (V2-609 was the first). Completed here only when a card IS covering the screen
-    # and the existing licence reads the turn as leaving — see `show_target.fullscreen_exit_backstop` for
-    # why that is safe. It runs BEFORE the close backstop and marks the tool as fired, so a turn that is
-    # about leaving full screen can never be read below as an order to close the whole widget.
+    # V2-759 — «Y sal de pantalla completa.» → «Ya está, fuera de pantalla completa.» with NOTHING called (twice,
+    # after V2-609). Completed only when a card IS covering the screen and the licence reads the turn as leaving
+    # (`show_target.fullscreen_exit_backstop`). It runs BEFORE the close backstop and marks the tool as fired, so a
+    # turn about leaving full screen can never be read below as an order to close the whole widget.
     try:
         if _pst._show_target.fullscreen_exit_backstop(
                 _pst._bnotes.operator_half(text), fired="fullscreen_widget" in _tool_fired,
@@ -150,6 +150,7 @@ async def run_the_light_lanes(*, FastClient, _apply_widget_data, _brief, _buf_ad
             _tool_fired.add("fullscreen_widget")
     except Exception:  # noqa: BLE001 — a backstop never adds an exception to a turn
         pass
+    _close_answer.backstop(_op_text, _brief, emit, acted)     # V2-812 T-05: his answer to OUR «which one?» closes
     if (not acted.get("closed")) and _pst._canvas_lic.close_license(text, brief=_brief) \
             and not _router.looks_like_create_widget(text) \
             and not _pst._card_close.music_keeps_its_turn(music_req, _op_text) and not data_done["v"] \
