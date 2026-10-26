@@ -82,9 +82,6 @@ REFUSE = "refuse"            # a standing policy of the operator's forbids this 
 #: sits today — the operator's instruction, verbatim: «pondremos de momento a todos por defecto estándar».
 LEVELS = ("routine", "standard", "sensitive", "critical")
 
-_migrated: dict = {"key": None}
-
-
 def _rank(level: str) -> int:
     try:
         return LEVELS.index(str(level or "").strip().lower())
@@ -109,30 +106,24 @@ def _migrate() -> None:
     import rules
     from rules import store as _rstore
     p = _overrides_path()
-    key = (str(_rstore.db_path()), str(p))
-    if _migrated["key"] == key:
-        return
     marker = f"migrated:consent.json:{p}"
-    if _rstore.meta_get(marker) is None:
-        try:
-            data = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
-        except (OSError, ValueError) as e:
-            import logging
-            logging.getLogger("zaelar.consent").warning(f"consent: {p} unreadable ({e}) — nothing migrated")
-            data = {}
-        at = float(data.get("_set_at") or time.time()) if isinstance(data, dict) else time.time()
-        rows = []
-        for k, v in ((data.get("classes") or {}) if isinstance(data, dict) else {}).items():
-            if str(v).strip().lower() in rules.GATE_VALUES:
-                rows.append((rules.class_scope(*rules.split_key(k)), "consent", str(v).strip().lower(), k))
-        for knob in ("ask_at", "intent_act_at"):
-            if isinstance(data, dict) and knob in data:
-                rows.append((rules.GLOBAL, knob, data[knob], knob))
-        for sc, k, v, src in rows:
-            _rstore.insert_new({"id": f"m_consent_{src}", "scope": sc, "kind": "gate", "key": k, "value": v,
-                                "source": "user", "created_at": at, "origin": f"consent.json:{src}"})
-        _rstore.meta_set(marker, str(int(time.time())))
-    _migrated["key"] = key
+    if _rstore.once_done(marker):
+        return
+    try:
+        data = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+    except (OSError, ValueError) as e:
+        import logging
+        logging.getLogger("zaelar.consent").warning(f"consent: {p} unreadable ({e}) — nothing migrated")
+        data = {}
+    data = data if isinstance(data, dict) else {}
+    at = float(data.get("_set_at") or time.time())
+    rows = [(rules.class_scope(*rules.split_key(k)), "consent", str(v).strip().lower(), k)
+            for k, v in (data.get("classes") or {}).items() if str(v).strip().lower() in rules.GATE_VALUES]
+    rows += [(rules.GLOBAL, knob, data[knob], knob) for knob in ("ask_at", "intent_act_at") if knob in data]
+    for sc, k, v, src in rows:
+        _rstore.insert_new({"id": f"m_consent_{src}", "scope": sc, "kind": "gate", "key": k, "value": v,
+                            "source": "user", "created_at": at, "origin": f"consent.json:{src}"})
+    _rstore.mark_done(marker)
 
 
 def _anchors(policy_key: str = "", scope: dict | None = None) -> list:
@@ -464,5 +455,4 @@ def retract_directive(text: str) -> dict:
 
 def _reset_for_tests() -> None:
     import rules
-    _migrated["key"] = None
     rules._reset_for_tests()

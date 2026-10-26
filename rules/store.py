@@ -133,8 +133,29 @@ def meta_set(key: str, value: str) -> None:
         _conn().execute("INSERT OR REPLACE INTO rules_meta (key, value) VALUES (?, ?)", (key, value))
 
 
+_done: set = set()
+
+
+def once_done(marker: str) -> bool:
+    """Has this one-time step already run against the current database? Remembered in-process after the first
+    look, so a hot path pays one set lookup."""
+    key = (str(db_path()), marker)
+    if key in _done:
+        return True
+    if meta_get(marker) is not None:
+        _done.add(key)
+        return True
+    return False
+
+
+def mark_done(marker: str) -> None:
+    meta_set(marker, str(int(time.time())))
+    _done.add((str(db_path()), marker))
+
+
 def _reset_for_tests() -> None:
     """Empty the table of the CURRENT database (the suite's temp file) — never called by the product."""
+    _done.clear()
     with _lock:
         c = _conn()
         c.execute("DELETE FROM rules")

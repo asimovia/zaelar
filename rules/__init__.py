@@ -23,7 +23,7 @@ from . import store as _store
 from .scope import GLOBAL, class_scope, covers, norm, path, split_key  # noqa: F401 — the public grammar
 
 KINDS = ("gate", "pref")
-GATE_VALUES = ("allow", "ask", "never")
+ALLOW, ASK, NEVER, GATE_VALUES = _cascade.ALLOW, _cascade.ASK, _cascade.NEVER, _cascade.GATE_VALUES
 NOTE = _cascade.NOTE
 
 

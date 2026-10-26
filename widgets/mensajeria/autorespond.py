@@ -63,13 +63,17 @@ def set_config(db: dict, platform: str, text=None, hours=None, enabled=None) -> 
     # message of any kind» and `owner._auto_reply` reads it as a floor under this switch; without this line
     # that floor would silently kill a responder he had just enabled. This is the loop `principles.md` calls
     # the known gap, closed for one class: his answer becomes the default the next decision reads.
+    # V2-806 — the row is HIS and scoped to THIS platform (`messaging/<platform>/autorespond`): turning the
+    # WhatsApp responder on never lets the engine answer an email by itself.
     if cur.get("enabled"):
         try:
             from nucleo import consent as _consent
-            if _consent.class_policy("messaging.autorespond") == "never":
-                _consent.set_class("messaging.autorespond", "allow")
-        except Exception:  # noqa: BLE001 — never let bookkeeping break a config save
-            pass
+            key = _consent.act_key("messaging.autorespond", platform)
+            if _consent.class_policy(key) == "never":
+                _consent.set_class(key, "allow")
+        except Exception as e:  # noqa: BLE001 — never let bookkeeping break a config save
+            import logging
+            logging.getLogger("zaelar.mensajeria").warning(f"autorespond: the standing rule was not moved ({e})")
     return config_for(db, platform)
 
 

@@ -363,7 +363,4 @@ def _the_rules_table_starts_empty():
     store = _sys5.modules.get("rules.store")
     if store is not None:
         store._reset_for_tests()
-    cons = _sys5.modules.get("nucleo.consent")
-    if cons is not None and hasattr(cons, "_migrated"):
-        cons._migrated["key"] = None
     yield

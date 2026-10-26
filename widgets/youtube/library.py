@@ -52,11 +52,10 @@ def seed_fields() -> dict:
         # never give us (watchHistory has returned empty for every account since 2016): we own
         # it precisely BECAUSE we are the ones playing the video.
         "history": [],            # [{videoId, title, channel, url, played_at, quality}]
-        # Enforceable preferences (see _ENFORCEABLE) — the filters the operator sets by voice.
+        # Enforceable preferences (see _ENFORCEABLE) and the notes he gave that we cannot enforce: both are
+        # rows of the rules table at `widget:youtube` (V2-806), laid over the store on load by `prefs.overlay`.
         "prefs": {},
-        # Everything he asked for that we cannot enforce, kept verbatim so the brain can honour it by
-        # judgement and the card can show it as what it is: a note, not a rule.
-        "prefs_notes": [],        # [{text, added_at}]
+        "prefs_notes": [],        # [{text, added_at, id}]
         # Saved queues, so `list` stops being the only one that ever existed.
         "lists": [],              # [{name, items, saved_at}]
         # Definition the player REPORTED for the current video (0 = it has not said). Its own
@@ -215,6 +214,47 @@ def _pref_value(key: str, raw) -> "tuple[object, str]":
     return None, "No sé aplicar esa preferencia."
 
 
+def _apply_pref(action: str, p: dict, db: dict) -> dict:
+    """set_preference / clear_preference — rows of the rules table at `widget:youtube` (`prefs.py`, V2-806)."""
+    from . import prefs as _prefs
+    raw_key = str(p.get("key") or p.get("name") or p.get("preference") or "").strip()
+    key = _KEY_ALIASES.get(_norm(raw_key), "")
+    if action == "clear_preference":
+        _prefs.overlay(db, _ENFORCEABLE)
+        if key and key in db["prefs"]:
+            _prefs.clear_value(db, key, _ENFORCEABLE)
+            store.save(WID, db)
+            return {"ok": True, "key": key, "prefs": dict(db["prefs"])}
+        n = _norm(raw_key)
+        hit = next((x for x in db["prefs_notes"] if n and n in _norm(x.get("text"))), None)
+        if hit is not None:
+            _prefs.remove_note(db, hit["id"], _ENFORCEABLE)
+            store.save(WID, db)
+            return {"ok": True, "note": hit.get("text"), "prefs": dict(db["prefs"])}
+        return {"ok": False, "error": "not_set", "key": raw_key, "prefs": dict(db["prefs"]),
+                "message": "No tengo esa preferencia guardada."}
+    value = p.get("value") if p.get("value") is not None else p.get("level")
+    if not key:
+        # Not enforceable — and that is said out loud rather than stored as if it were a rule. The brain
+        # still receives it (a note row, published as prefs_notes), so it can honour it by judgement.
+        text = " ".join(x for x in [raw_key, "" if value is None else str(value)] if x).strip()[:200]
+        if not text:
+            return {"ok": False, "error": "no_preference",
+                    "message": "Dime qué preferencia guardo.", "enforceable": sorted(_ENFORCEABLE)}
+        _prefs.add_note(db, text, _ENFORCEABLE)
+        store.save(WID, db)
+        return {"ok": True, "stored_as": "note", "note": text, "enforceable": sorted(_ENFORCEABLE),
+                "message": ("Lo guardo y lo tendré en cuenta, pero no puedo forzarlo automáticamente: "
+                            "lo que sí aplico solo es " + ", ".join(sorted(_ENFORCEABLE)) + ".")}
+    val, err = _pref_value(key, value)
+    if err:
+        return {"ok": False, "error": "bad_value", "key": key, "message": err}
+    _prefs.set_value(db, key, val, " ".join(x for x in [raw_key, str(value)] if x), _ENFORCEABLE)
+    store.save(WID, db)
+    return {"ok": True, "stored_as": "rule", "key": key, "value": val,
+            "how": _ENFORCEABLE[key], "prefs": dict(db["prefs"])}
+
+
 def apply(action: str, p: dict, db: dict) -> "dict | None":
     """The library's actions. Returns None when `action` is not one of ours, so data.py keeps owning its own
     dispatch and the two cannot disagree about who answers what."""
@@ -319,50 +359,8 @@ def apply(action: str, p: dict, db: dict) -> "dict | None":
         store.save(WID, db)
         return {"ok": True, "cleared": n}
 
-    if action == "set_preference":
-        raw_key = str(p.get("key") or p.get("name") or p.get("preference") or "").strip()
-        key = _KEY_ALIASES.get(_norm(raw_key), "")
-        value = p.get("value") if p.get("value") is not None else p.get("level")
-        if not key:
-            # Not enforceable — and that is said out loud rather than stored as if it were a rule. The brain
-            # still receives it (view_data publishes prefs_notes), so it can honour it by judgement.
-            text = " ".join(x for x in [raw_key, "" if value is None else str(value)] if x).strip()[:200]
-            if not text:
-                return {"ok": False, "error": "no_preference",
-                        "message": "Dime qué preferencia guardo.", "enforceable": sorted(_ENFORCEABLE)}
-            notes = db.setdefault("prefs_notes", [])
-            if not any(_norm(x.get("text")) == _norm(text) for x in notes):
-                notes.append({"text": text, "added_at": int(time.time())})
-                del notes[:max(0, len(notes) - 20)]
-            store.save(WID, db)
-            return {"ok": True, "stored_as": "note", "note": text, "enforceable": sorted(_ENFORCEABLE),
-                    "message": ("Lo guardo y lo tendré en cuenta, pero no puedo forzarlo automáticamente: "
-                                "lo que sí aplico solo es " + ", ".join(sorted(_ENFORCEABLE)) + ".")}
-        val, err = _pref_value(key, value)
-        if err:
-            return {"ok": False, "error": "bad_value", "key": key, "message": err}
-        db.setdefault("prefs", {})[key] = val
-        store.save(WID, db)
-        return {"ok": True, "stored_as": "rule", "key": key, "value": val,
-                "how": _ENFORCEABLE[key], "prefs": dict(db["prefs"])}
-
-    if action == "clear_preference":
-        raw_key = str(p.get("key") or p.get("name") or p.get("preference") or "").strip()
-        key = _KEY_ALIASES.get(_norm(raw_key), "")
-        prefs = db.setdefault("prefs", {})
-        if key and key in prefs:
-            prefs.pop(key)
-            store.save(WID, db)
-            return {"ok": True, "key": key, "prefs": dict(prefs)}
-        notes = db.setdefault("prefs_notes", [])
-        n = _norm(raw_key)
-        hit = next((x for x in notes if n and n in _norm(x.get("text"))), None)
-        if hit is not None:
-            notes.remove(hit)
-            store.save(WID, db)
-            return {"ok": True, "note": hit.get("text"), "prefs": dict(prefs)}
-        return {"ok": False, "error": "not_set", "key": raw_key, "prefs": dict(prefs),
-                "message": "No tengo esa preferencia guardada."}
+    if action in ("set_preference", "clear_preference"):
+        return _apply_pref(action, p, db)
 
     if action == "save_list":
         lst = db.get("list") or []

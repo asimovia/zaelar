@@ -94,14 +94,19 @@ def test_the_operators_literal_sentence_parses():
 
 def test_prose_the_mouths_cannot_act_on_changes_nothing(tmp_path):
     assert sp.apply_directive("llámame siempre capitán") == {}
-    assert not (tmp_path / "config" / "style.json").exists(), "no override file for a no-op"
+    import rules
+    assert rules.all_rows(include_defaults=False) == [], "no row for a no-op"
 
 
-def test_overrides_persist_in_the_workspace_not_the_repo(tmp_path):
+def test_overrides_persist_in_the_workspace_not_the_repo(tmp_path, monkeypatch):
+    """V2-806: his knob is a row of the rules table, in the database the workspace holds."""
+    monkeypatch.delenv("ZAELAR_DB", raising=False)          # the product's own default path
+    import rules
     sp.apply_directive("no me confirmes las órdenes")
-    p = tmp_path / "config" / "style.json"
-    assert p.exists(), "the override must live under the workspace (cloud Machine = its Volume)"
-    assert json.loads(p.read_text())["confirm_short_actions"] is False
+    from rules import store
+    assert store.db_path().is_relative_to(tmp_path), "the row must live under the workspace (a container's Volume)"
+    row = rules.deciding_rule(rules.path(surface="voice"), "confirm_short_actions")
+    assert (row["source"], row["value"]) == ("user", False)
 
 
 # ── 3 · the filler consults the policy at FIRE time ──────────────────────────────────────────────────────

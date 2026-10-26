@@ -140,11 +140,10 @@ def test_the_legacy_consent_file_is_migrated_once_and_idempotently(tmp_path):
     first = sorted(r["id"] for r in rules.all_rows(include_defaults=False))
     assert len(first) == 3 and all(r["origin"].startswith("consent.json:") for r in rules.all_rows(include_defaults=False))
     from rules import store
-    for k in [k for k in ("migrated:consent.json:" + str(cfg / "consent.json"),)]:
-        store._conn().execute("DELETE FROM rules_meta WHERE key=?", (k,))
-    consent._migrated["key"] = None
+    store._conn().execute("DELETE FROM rules_meta")
+    store._done.clear()
     consent.class_policy("web.commit")
     assert sorted(r["id"] for r in rules.all_rows(include_defaults=False)) == first, "a re-run inserts nothing"
     rules.remove("m_consent_web.commit")
-    consent._migrated["key"] = None
+    store._done.clear()
     assert consent.class_policy("web.commit") == "ask", "a row he deleted does not come back from the old file"

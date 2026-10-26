@@ -320,9 +320,11 @@ below is the first kind, or it names the mechanism that replaced the second.
   manifests) and read by a cascade over the request's path: the more specific row runs last and wins, at one level
   his row beats the default, an `except` scope is not covered, a row past its `until` is absent. Genesis defaults are
   rows built at read time. `consent.decide` reads the gate; the rails (a missing fact, a doubt, the radius) are code
-  no row reaches. — since 2026-10-26 · nodes 2.809 · `rules/`, `nucleo/consent.py`.
-- **CRIT-M2 · Genesis is per domain** (`style`, `consent`, `library`, `errands`, `playbooks`), each with its own
-  override file; a factory reset forgets the spoken rules and keeps credentials, settings and connectors; it never
+  no row reaches. The style knobs (`voice`), a widget's preferences (`widget:<id>`) and the autoresponder (scoped to
+  its platform) are rows too; each older store is imported once. — since 2026-10-26 · nodes 2.809, 2.810 · `rules/`,
+  `nucleo/consent.py`, `nucleo/style_policy.py`, `widgets/youtube/prefs.py`.
+- **CRIT-M2 · Genesis is per domain** (`style`, `consent`, `library`, `errands`, `playbooks`); what he says over
+  `style` and `consent` is a row of the rules table (CRIT-M7), the others keep their override file; a factory reset forgets the spoken rules and keeps credentials, settings and connectors; it never
   deletes under a live server. — since 2026-09-29 · nodes 2.173, 8.4, 3.94.
 - **CRIT-M3 · A late recall DEGRADES durable memory, never deletes it**; the memory row says whose fact it
   shows. — since 2026-09-24 · nodes 3.79, 3.33.

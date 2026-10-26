@@ -9,15 +9,12 @@ Layering, exactly as the operator ordered it:
   1. GENESIS (`nucleo/genesis.json`, ships with the engine): the factory defaults every install starts from.
      Today: short orders run in SILENCE (the visible effect is the answer) and fillers are "smart" (never on
      a turn that is itself a short order — a thinking sound before «pausa» reads as incomprehension, V2-572).
-  2. USER OVERRIDES (`<workspace>/config/style.json`): persisted the moment a style directive is understood
-     (`apply_directive`, called from the set_style_directive handler in the same turn) and read per use with
-     an mtime cache — so a rule given by voice or chat GOVERNS THE VERY NEXT TURN, and survives restarts.
-     Removing the rule (`retract_directive`) deletes the override and the genesis default is back.
-
-  3. SCOPE (2026-09-29): a spoken rule is stored with the scope `scope_of` gives it — `voice` for a manner
-     of speaking, `general` for everything else — and each prompt surface asks `memory.rules_for(surface)`
-     for its own: the brain worker no longer carries voice rules. Genesis is already per domain (style,
-     consent, library, errands, playbooks), each with its own override file.
+  2. HIS ROWS (V2-806): each knob is a `pref` row of the rules table at the `voice` scope (`rules/`); the
+     genesis value is the default row. Written the moment a style directive is understood (`apply_directive`,
+     called from the set_style_directive handler in the same turn) and read per use through the cascade — so a
+     rule given by voice or chat GOVERNS THE VERY NEXT TURN, and survives restarts. Removing the rule
+     (`retract_directive`) deletes his row and the genesis default is back. The legacy
+     `<workspace>/config/style.json` is imported once.
 
 Scope: these flags gate the VOICE mouths only. The chat channel keeps its text acks — a written «Hecho.»
 interrupts nobody, while an empty chat bubble looks broken; the probe (text-channel parity harness) is
@@ -26,18 +23,14 @@ untouched for the same reason.
 from __future__ import annotations
 
 import json
-import os
 import re
 import time
 import unicodedata
 from pathlib import Path
 
-_GENESIS_PATH = Path(__file__).resolve().parent / "genesis.json"
 
 _FILLER_MODES = ("off", "smart", "on")
 
-_cache: dict = {"path": None, "mtime": None, "data": {}, "at": 0.0}
-_genesis_cache: dict | None = None
 
 
 def _overrides_path() -> Path:
@@ -45,52 +38,45 @@ def _overrides_path() -> Path:
     return _ws.root() / "config" / "style.json"
 
 
-def _genesis() -> dict:
-    global _genesis_cache
-    if _genesis_cache is None:
-        try:
-            _genesis_cache = dict(json.loads(_GENESIS_PATH.read_text()).get("style") or {})
-        except Exception:
-            _genesis_cache = {}
-    return dict(_genesis_cache)
-
-
-def _overrides() -> dict:
-    """Read the per-install overrides, mtime-cached (an os.stat per call, never a parse unless it changed)."""
+def _migrate() -> None:
+    """One-time import of the legacy `config/style.json` into the rules table (V2-806): each override becomes a
+    user `pref` row at the `voice` scope. A marker per database and deterministic ids keep a re-run a no-op."""
+    from rules import store as _rstore
     p = _overrides_path()
+    marker = f"migrated:style.json:{p}"
+    if _rstore.once_done(marker):
+        return
     try:
-        mtime = p.stat().st_mtime_ns
-    except OSError:
-        if _cache["path"] == str(p):
-            _cache.update(mtime=None, data={})
-        return {}
-    if _cache["path"] == str(p) and _cache["mtime"] == mtime:
-        return _cache["data"]
-    try:
-        data = json.loads(p.read_text())
-        data = data if isinstance(data, dict) else {}
-    except Exception:
+        data = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+    except (OSError, ValueError) as e:
+        import logging
+        logging.getLogger("zaelar.style").warning(f"style: {p} unreadable ({e}) — nothing migrated")
         data = {}
-    _cache.update(path=str(p), mtime=mtime, data=data)
-    return data
-
-
-def _write_overrides(data: dict) -> None:
-    p = _overrides_path()
-    p.parent.mkdir(parents=True, exist_ok=True)
-    tmp = p.with_suffix(".json.tmp")
-    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n")
-    os.replace(tmp, p)
-    _cache.update(path=str(p), mtime=None)      # force re-read; the write must win instantly
+    data = data if isinstance(data, dict) else {}
+    at = float(data.get("_set_at") or time.time())
+    for k, v in data.items():
+        if not str(k).startswith("_"):
+            _rstore.insert_new({"id": f"m_style_{k}", "scope": "voice", "kind": "pref", "key": str(k), "value": v,
+                                "source": "user", "created_at": at, "origin": f"style.json:{k}"})
+    _rstore.mark_done(marker)
 
 
 def policy() -> dict:
-    """genesis ⊕ overrides — the effective style flags."""
-    eff = _genesis()
-    for k, v in _overrides().items():
-        if k in eff:
-            eff[k] = v
-    return eff
+    """The effective style knobs: genesis `style` (the `voice` default rows) under his rows, through the rules
+    cascade over the voice surface."""
+    import rules
+    from rules import defaults as _rdef
+    _migrate()
+    vals = rules.resolve(rules.path(surface="voice"))["values"]
+    return {k: vals.get(k) for k in _rdef.style_keys()}
+
+
+def set_pref(key: str, value, text: str = "") -> dict:
+    """His row for one style knob at the `voice` scope — effective on the very next turn."""
+    import rules
+    _migrate()
+    rules.add("voice", "pref", str(key), value, text=text)
+    return {key: value}
 
 
 def confirm_short_actions() -> bool:
@@ -186,12 +172,8 @@ def apply_directive(text: str) -> dict:
     """Persist the flags a directive names (instantly effective). Returns what changed ({} = the directive
     is prose the mouths cannot act on — the LLM still gets it as a rule, nothing is lost)."""
     flags = _flags_for(text)
-    if not flags:
-        return {}
-    data = dict(_overrides())
-    data.update(flags)
-    data["_set_at"] = int(time.time())
-    _write_overrides(data)
+    for k, v in flags.items():
+        set_pref(k, v, text)
     return flags
 
 
@@ -209,10 +191,13 @@ def retract_directive(text: str) -> dict:
         keys.append("confirm_short_actions")
     if _FILLER_TOPIC_RE.search(n):
         keys.append("fillers")
-    data = dict(_overrides())
-    released = {k: data.pop(k) for k in keys if k in data}
-    if released:
-        _write_overrides(data)
+    import rules
+    _migrate()
+    released = {}
+    for k in keys:
+        gone = rules.clear("voice", k)
+        if gone:
+            released[k] = gone[-1]["value"]
     return released
 
 
@@ -268,6 +253,5 @@ def prompt_line() -> str:
 
 
 def _reset_for_tests() -> None:
-    global _genesis_cache
-    _genesis_cache = None
-    _cache.update(path=None, mtime=None, data={}, at=0.0)
+    import rules
+    rules._reset_for_tests()

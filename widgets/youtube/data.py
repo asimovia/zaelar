@@ -162,7 +162,8 @@ def _load() -> dict:
         if k in db:
             continue
         db[k] = [] if isinstance(v, list) else ({} if isinstance(v, dict) else v)
-    return db
+    from . import prefs as _prefs
+    return _prefs.overlay(db, library._ENFORCEABLE)   # his preferences are rows of the rules table (V2-806)
 
 
 def view_data(q: str = "") -> dict:

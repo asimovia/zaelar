@@ -3653,6 +3653,8 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/agent_headless/unit/test_every_act_that_leaves_passes_one_consent_door.py"]},
         {"id": "2.809", "title": "Every standing rule is a row of ONE scoped table read by a cascade over the request's path (global → domain → channel → widget → action → item; the more specific row runs last and wins, his row beats the default at one level, an `except` scope is not covered, an expired `until` is absent by the clock); a rule for email never reaches WhatsApp; no row reaches the rails (missing fact, which, radius); the legacy consent file is imported once (V2-806)",
             "ch": UNIT, "paths": ["tests/infrastructure/unit/core/test_rules_cascade_over_a_requests_path.py"]},
+        {"id": "2.810", "title": "One place per kind of preference: the voice style knobs, a widget's enforceable preferences and notes (the card shows the table, an edit in Settings reaches it) and the autoresponder's standing rule (scoped to the platform he turned on) are rows of the rules table, each legacy store imported once with stable ids (V2-806)",
+            "ch": UNIT, "paths": ["tests/infrastructure/unit/core/test_one_place_per_kind_of_preference.py"]},
         {"id": "2.802", "title": "A deployment that stops idle engines is told the next due notice after every schedule change, debounced; self-host reports nothing (V2-796)",
             "ch": UNIT,
             "paths": ["tests/agent_headless/unit/test_a_sleeping_engine_is_told_when_to_wake.py"]},

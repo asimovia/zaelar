@@ -331,7 +331,7 @@ class _Owner:
             # enabling the responder IS him changing the rule, so it writes `allow` — both halves ship
             # together, because a floor without its release silently kills a feature he already turned on.
             from nucleo import consent as _consent
-            if _consent.class_policy("messaging.autorespond") == "never":
+            if _consent.class_policy(_consent.act_key("messaging.autorespond", platform)) == "never":
                 return 0
             db = msgstore.load()
             if not autorespond.config_for(db, platform)["enabled"]:

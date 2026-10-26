@@ -17,6 +17,10 @@ import time
 from . import scope as _scope
 
 NOTE = "note"
+ALLOW = "allow"
+ASK = "ask"
+NEVER = "never"
+GATE_VALUES = (ALLOW, ASK, NEVER)
 _SOURCE_RANK = {"default": 0, "user": 1}
 
 

@@ -116,7 +116,7 @@ FUNCTIONS = {
     'widgets/navegador/owner.py::TaskBrowser.agent_act': 124,
     'widgets/navegador/owner_actions.py::_automate': 135,
     'widgets/refs.py::resolve': 125,
-    'widgets/youtube/library.py::apply': 217,
+    'widgets/youtube/library.py::apply': 175,   # V2-806: the preference branches moved to youtube/prefs
 }
 
 BRANCHES = {
@@ -128,7 +128,7 @@ BRANCHES = {
     'nucleo/worker_api.py::_exec_allow': 106,
     'voice/engine/llm/providers/nucleo.py::NucleoLLMStream._run_inner': 108,
     'widgets/agenda/tasklists.py::apply': 115,
-    'widgets/youtube/library.py::apply': 123,
+    'widgets/youtube/library.py::apply': 101,
 }
 
 

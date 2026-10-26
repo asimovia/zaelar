@@ -161,7 +161,9 @@ def test_turning_it_on_IS_him_changing_the_rule_so_both_halves_ship_together(mon
     reads — and the NEXT message actually gets the reply."""
     from nucleo import consent
     _enable()                                                 # goes through set_config with a text
-    assert consent.class_policy("messaging.autorespond") == "allow"
+    assert consent.class_policy("messaging.autorespond@whatsapp") == "allow"
+    assert consent.class_policy("messaging.autorespond@email") == "never", \
+        "his rule is for the platform he turned on — never every channel (V2-806)"
     sent = []
     from connectors.messaging import ingest
     monkeypatch.setattr(ingest, "publish_reply", lambda r: sent.append(r))

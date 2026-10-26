@@ -42,6 +42,12 @@ def _isolated(tmp_path, monkeypatch):
 
 # ── 1 · los defaults son los que ya se comportaban así ──────────────────────────────────────────────────
 
+
+def _set(knobs: dict) -> None:
+    """His rows for these style knobs (V2-806: rows of the rules table at the `voice` scope)."""
+    for k, v in knobs.items():
+        sp.set_pref(k, v)
+
 def test_de_fabrica_el_turno_se_comporta_exactamente_como_antes():
     """Mover una preferencia no puede cambiar lo que hace el sistema el primer día."""
     assert sp.max_sentences() == 2
@@ -72,7 +78,7 @@ def test_lo_que_SI_es_del_medio_se_queda_en_el_prompt():
 # ── 2 · es una política: él la cambia y el turno siguiente la obedece ────────────────────────────────────
 
 def test_subir_el_limite_de_frases_cambia_la_linea():
-    sp._write_overrides({"max_sentences": 5})
+    _set({"max_sentences": 5})
     assert sp.max_sentences() == 5
     assert "5 frases" in sp.shape_line()
 
@@ -81,26 +87,26 @@ def test_quitar_el_limite_RETIRA_media_frase_en_vez_de_contradecirla():
     """La diferencia de verdad entre una política y una receta: apagada, desaparece. Una frase en el prompt
     se paga aunque el operador no la quiera, y además contradice a la política que dice lo contrario — que
     es el defecto V2-222 («el prompt se contradecía y el turno elegía la mitad cierta»)."""
-    sp._write_overrides({"max_sentences": 0})
+    _set({"max_sentences": 0})
     linea = sp.shape_line()
     assert "frases" not in linea and "UNA ACCIÓN por turno" in linea
 
 
 def test_con_las_dos_apagadas_no_queda_ni_una_palabra():
-    sp._write_overrides({"max_sentences": 0, "one_action_per_turn": False})
+    _set({"max_sentences": 0, "one_action_per_turn": False})
     assert sp.shape_line() == ""
 
 
 def test_una_sola_frase_se_dice_en_SINGULAR():
     """Detalle pequeño y de los que delatan una plantilla: «en 1 frases» se lee como una máquina."""
-    sp._write_overrides({"max_sentences": 1})
+    _set({"max_sentences": 1})
     linea = sp.shape_line()
     assert "1 frase hablada " in linea, f"el plural no acompaña al sustantivo: {linea!r}"
     assert "habladas" not in linea
 
 
 def test_un_valor_roto_cae_al_defecto_en_vez_de_tumbar_el_turno():
-    sp._write_overrides({"max_sentences": "muchas"})
+    _set({"max_sentences": "muchas"})
     assert sp.max_sentences() == 2
 
 
@@ -115,7 +121,7 @@ def test_la_linea_compuesta_viaja_con_las_lineas_del_turno():
 
 def test_apagarla_la_retira_TAMBIEN_del_turno():
     from nucleo.flash import style_directive as sd
-    sp._write_overrides({"max_sentences": 0, "one_action_per_turn": False})
+    _set({"max_sentences": 0, "one_action_per_turn": False})
     assert not any("UNA ACCIÓN por turno" in l for l in sd.prompt_lines({}))
 
 
