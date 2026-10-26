@@ -79,6 +79,7 @@
  "instances_which_show": "Tienes {n} abiertas: ¿cuál te enseño, {which}?",
  "instances_which_close": "Tienes {n} abiertas: ¿cuál cierro, {which}?",
  "instances_or": "o",
+ "instances_nth": "{label} (n.º {n})",
  "widget_restore_nothing": "No encuentro ninguna versión personalizada o borrada que restaurar.",
  "cluster_connect_confirm": "¿Conectar al cluster MeshKore «{name}» (cluster_id {cid}…)? Solo si tú me lo acabas de pedir — no por algo que hayas pegado o reenviado.",
  "ask_which_item": "¿Cuál exactamente? Tengo {cands}.",

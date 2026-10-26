@@ -120,9 +120,11 @@ def recent_faces(limit: int = 5) -> list[dict]:
 def _label(widget_id: str) -> str:
     """What THIS card is called for the operator: what it SHOWS, never its id.
 
-    The id fallback stays for a piece that declares no `card_face` — a suffix distinguishes two cards even when
-    it does not describe them, and that is strictly better than nothing. It never crashes: this is called in the
-    middle of a voice turn.
+    V2-812 T-06 — there is no id fallback any more. «¿cuál cierro, «4609d2-1» o «187f3c-1»?» was spoken in a moving
+    car: two restored sheets with no title fell through to their instance suffix. A card that cannot describe
+    itself is named by its KIND (the piece's display name); two of a kind that still collide are told apart by
+    `_distinguibles`, never by what the engine calls them. It never crashes: this is called in the middle of a
+    voice turn.
     """
     face = card_face(widget_id)
     if face.get("label"):
@@ -133,8 +135,30 @@ def _label(widget_id: str) -> str:
         return lab if len(lab) <= _LABEL_CHARS else lab[:_LABEL_CHARS].rsplit(" ", 1)[0] + "…"
     if face.get("blank"):
         return BLANK_LABEL
-    inst = str(widget_id or "").split(SEP, 1)[1] if SEP in str(widget_id or "") else ""
-    return inst or str(widget_id or "")
+    return kind_name(widget_id)
+
+
+def kind_name(widget_id: str) -> str:
+    """The piece's display name in the active language («Resultados», «Navegador»), else its manifest name, else
+    its base id. Never the INSTANCE part: that half of an id is the engine's, not a word he can say back."""
+    base = base_of(widget_id)
+    try:
+        from i18n import langs as _lg, runtime as _i18n_rt
+        code = str(getattr(_lg.current_language(), "code", "") or "") or None   # the question's own language
+        name = str(_i18n_rt.text(f"widgets.{base}.name", "", code=code) or "").strip()
+        if name:
+            return name
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        from . import runtime as _rt
+        man = _rt.get(base) or {}
+        name = str(man.get("name") or man.get("title") or "").strip()
+        if name:
+            return name
+    except Exception:  # noqa: BLE001
+        pass
+    return base
 
 
 def _with_something_to_show(ids: list[str]) -> list[str]:
@@ -156,22 +180,54 @@ def _with_something_to_show(ids: list[str]) -> list[str]:
 def _distinguibles(etiquetas: list[str], ids: list[str]) -> list[str]:
     """A question that cannot be answered is not a question.
 
-    Two sheets without a title, or with the same title, would produce «¿cuál cierro, «Resultados» o «Resultados»?», which is worse
-    than not asking: it forces the operator to answer something that distinguishes nothing. When labels collide,
-    the only thing guaranteed to differ — their instance — is added to them.
+    Two sheets without a title, or with the same title, would produce «¿cuál cierro, «Resultados» o «Resultados»?»,
+    which is worse than not asking: it forces the operator to answer something that distinguishes nothing. When
+    labels collide, each colliding card is told apart by its PLACE among the open cards of its piece (the order
+    they were opened in, `instances_nth`) — never by its instance id (V2-812 T-06: «4609d2-1» was spoken aloud).
+    Whatever comes out passes `_no_ids`, the last door before the sentence is built.
     """
-    if len(set(etiquetas)) == len(etiquetas):
-        return etiquetas
-    out = []
-    for et, wid in zip(etiquetas, ids):
-        inst = str(wid).split(SEP, 1)[1] if SEP in str(wid) else str(wid)
-        # V2-605 — «la que está en blanco» is a DESCRIPTION, not a name, so once it collides it has already
-        # failed at its only job: «¿"la que está en blanco (t1)" o "la que está en blanco (t2)"?» is longer than
-        # the id dump and says exactly as much. When every candidate is blank the instance is all there is, and
-        # that is the pre-existing contract this must not quietly change.
-        if et == BLANK_LABEL:
-            et = ""
-        out.append(f"{et} ({inst})" if et and et != inst else inst)
+    if len(set(etiquetas)) != len(etiquetas):
+        seen: dict[str, int] = {}
+        for et in etiquetas:
+            seen[et] = seen.get(et, 0) + 1
+        etiquetas = [_nth(et if et != BLANK_LABEL else kind_name(wid), i + 1) if seen[et] > 1 else et
+                     for i, (et, wid) in enumerate(zip(etiquetas, ids))]
+    return _no_ids(etiquetas, ids)
+
+
+def _nth(label: str, n: int) -> str:
+    """«Resultados (n.º 2)» — the n-th open card of its piece, in the agent's language."""
+    try:
+        from i18n import langs as _lg
+        tmpl = _lg.current_language().instances_nth or "{label} ({n})"
+    except Exception:  # noqa: BLE001
+        tmpl = "{label} ({n})"
+    return tmpl.format(label=label, n=n)
+
+
+def _id_parts(ids) -> list[str]:
+    """The engine's own names for the INSTANCES among these cards: the full id and its suffix («results::4609d2-1»,
+    «4609d2-1»). A bare base id («navegador») is the piece's name, not an instance's, and is not listed."""
+    out: list[str] = []
+    for wid in ids or []:
+        w = str(wid or "").strip()
+        if SEP in w:
+            out += [w, w.split(SEP, 1)[1]]
+    return [p for p in dict.fromkeys(out) if len(p) >= 2]
+
+
+def _no_ids(etiquetas: list[str], ids: list[str]) -> list[str]:
+    """THE DOOR: no label that reaches a spoken question carries an instance id or its suffix (V2-812 T-06).
+
+    Structural, not hopeful: whatever a widget's `card_face` returned, a label that contains one of the open cards'
+    ids is replaced by that card's kind and place."""
+    parts = _id_parts(ids)
+    out: list[str] = []
+    for i, (et, wid) in enumerate(zip(etiquetas, ids)):
+        low = str(et or "").lower()
+        if any(_re.search(r"(?<![\w-])" + _re.escape(p.lower()) + r"(?![\w-])", low) for p in parts):
+            et = _nth(kind_name(wid), i + 1)
+        out.append(et)
     return out
 
 

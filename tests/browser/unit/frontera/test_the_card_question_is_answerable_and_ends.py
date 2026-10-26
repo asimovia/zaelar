@@ -99,10 +99,12 @@ def test_a_card_label_is_short_enough_to_say_out_loud():
     assert len(instances._label("navegador::t9")) <= 44
 
 
-def test_a_piece_that_cannot_describe_its_cards_keeps_the_old_id_fallback():
-    """`card_face` is optional. A widget without it must behave exactly as before — never a guessed label."""
+def test_a_piece_that_cannot_describe_its_cards_is_named_by_its_kind_never_by_id():
+    """`card_face` is optional. A widget without it is named by its KIND — never a guessed label, and since V2-812
+    T-06 never its instance suffix either («4609d2-1» was spoken aloud in the car session)."""
     assert instances.card_face("mensajeria") == {}
-    assert instances._label("mensajeria::t3") == "t3"
+    lab = instances._label("mensajeria::t3")
+    assert lab and "t3" not in lab and lab == instances.kind_name("mensajeria")
 
 
 # ── 3) with two REAL cards the question is asked — once ───────────────────────────────────────────────────────
@@ -182,11 +184,12 @@ def test_a_sheet_is_named_by_the_request_it_shows():
 
 def test_two_untitled_sheets_are_still_told_apart():
     """«Resultados» is `view_data`'s filler, not a name: two of them would ask a question that distinguishes
-    nothing. The instance is the only thing guaranteed to differ, so it comes back as the tiebreaker."""
+    nothing. Since V2-812 T-06 an untitled sheet is named by its first row — never by its instance id."""
     _sheet("b1", "", [{"title": "x"}])
     _sheet("b2", "", [{"title": "y"}])
     out = instances.resolve_close("results", ["results::b1", "results::b2"], "cierra los resultados")
-    assert out["ask"] and "b1" in out["ask"] and "b2" in out["ask"]
+    assert out["ask"] and "«x»" in out["ask"] and "«y»" in out["ask"]
+    assert "b1" not in out["ask"] and "b2" not in out["ask"]
     assert "Resultados" not in out["ask"]
 
 

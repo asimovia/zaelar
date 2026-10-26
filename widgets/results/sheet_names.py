@@ -128,14 +128,29 @@ def card_face(instance: str = "") -> dict:
     returning it would give two untitled sheets the same label and leave the question distinguishing nothing.
     """
     try:
-        from . import data as _data
-        view = _data.view_data(str(instance or "").strip()) or {}
+        view = _view(instance)
     except Exception:  # noqa: BLE001
         return {}
+    # V2-812 T-06 — an untitled sheet (a restored one, say) is named by its first row when nothing named the sheet
+    # itself: «¿cuál cierro, «4609d2-1» o «187f3c-1»?» was what an untitled sheet fell through to before.
+    items = view.get("items") or []
+    first = str(((items[0] if items and isinstance(items[0], dict) else {}).get("title")) or "").strip()
+    return {"label": _sheet_name(view) or first, "blank": not items}
+
+
+def _view(instance: str = "") -> dict:
+    from . import data as _data
+    return _data.view_data(str(instance or "").strip()) or {}
+
+
+def _sheet_name(view: dict) -> str:
+    """What the SHEET is called: its title, else what it was looking for (`criteria.goal`). «Resultados» is the
+    filler `view_data` supplies when nothing named the sheet, not a name."""
+    from . import data as _data
     title = str(view.get("title") or "").strip()
     if title.lower() in ("resultados", "results", _data.default_title().lower()):
         title = ""
-    return {"label": title, "blank": not view.get("items")}
+    return title or str(((view.get("criteria") or {}).get("goal")) or "").strip()
 
 
 def recent_faces(limit: int = 5) -> list[dict]:
@@ -149,9 +164,9 @@ def recent_faces(limit: int = 5) -> list[dict]:
     out: list[dict] = []
     try:
         for sid in reversed([x for x in sheets() if x]):
-            face = card_face(sid)
-            label = str(face.get("label") or "").strip()
-            if not label or face.get("blank"):
+            view = _view(sid)
+            label = _sheet_name(view)          # a row is not a name a phrase calls a CLOSED sheet by
+            if not label or not view.get("items"):
                 continue
             out.append({"id": instance_id(sid), "label": label})
             if len(out) >= max(1, limit):

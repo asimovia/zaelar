@@ -125,15 +125,17 @@ def test_a_question_that_cannot_be_answered_is_not_a_question():
     """Two sheets with no errand behind them are both given the placeholder title “Results”. Asking ““Results” or
     “Results”?” forces the operator to answer something that distinguishes nothing — worse than not asking."""
     ask = instances.resolve_close("results", ["results::t1", "results::t2"])["ask"]
-    assert "«t1»" in ask and "«t2»" in ask
-    assert ask.count("Resultados") == 0
+    # V2-812 T-06: told apart by their PLACE, never by their instance id.
+    assert "t1" not in ask and "t2" not in ask
+    assert ask.count("(n.º 1)") == 1 and ask.count("(n.º 2)") == 1
 
 
 def test_colliding_titles_get_disambiguated_instead_of_repeated():
     for sid in ("t1", "t2"):
         sheet.apply_action("present", {"sheet": sid, "title": "Coches", "items": [{"title": "x"}]})
     ask = instances.resolve_close("results", ["results::t1", "results::t2"])["ask"]
-    assert "Coches (t1)" in ask and "Coches (t2)" in ask
+    assert "Coches (n.º 1)" in ask and "Coches (n.º 2)" in ask      # V2-812 T-06: place, never id
+    assert "t1" not in ask and "t2" not in ask
 
 
 # ── 3) the rule lives ONCE ─────────────────────────────────────────────────────────────────────────────────────

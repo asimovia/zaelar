@@ -197,6 +197,11 @@ below is the first kind, or it names the mechanism that replaced the second.
   keep / don't-touch / negation clause is excluded (`nucleo/flash/named_target.py`); a «which card?» the engine
   asks parks the control, is phrased with the cards' display names, and his next answer naming one of them runs
   it; two players settle on a verdict only at `PLAYER_SURE` (0.9). — since 2026-10-11 · nodes 2.470, 2.471, 2.472.
+- **CRIT-K10b · A card is named by what it shows, never by its id.** Every «which card?» names an instance by its
+  content (title, what it was looking for, its first row), else by its kind, and two that still collide by their
+  place among the open cards (`instances_nth`); the last door before the question (`widgets/instances._no_ids`)
+  replaces any label carrying an open card's id, whatever the widget's `card_face` returned. — since 2026-10-26 ·
+  nodes 3.137 · `widgets/instances.py`, `widgets/results/sheet_names.py`.
 - **CRIT-K11 · A close order answered with a player's pause is the card's CLOSE** («cierra la música» →
   `musica:pause` closes the card, both channels through `card_close.data_close`, and the receipt says closed).
   — since 2026-10-11 · nodes 2.473, 2.430.

@@ -200,6 +200,8 @@ class LangSpec:
     instances_which_show: str = ""
     instances_which_close: str = ""
     instances_or: str = ""
+    #: V2-812 T-06 — two cards of one piece that say the same thing are told apart by their place, never by id.
+    instances_nth: str = ""
     widget_restore_nothing: str = ""
     cluster_connect_confirm: str = ("")
 

@@ -1983,6 +1983,12 @@ DOMAINS: list[dict] = [
                                  "nothing closes everything, and the turn says what closed and what stayed "
                                  "(V2-812 T-04)", "ch": UNIT,
             "paths": ["tests/agent_headless/unit/flash/test_a_close_all_never_closes_nothing_in_silence.py"]},
+        # V2-812 T-06 — «¿cuál cierro, «4609d2-1» o «187f3c-1»?» was spoken in the car: untitled sheets fell through to
+        # their instance id. A card is named by its content (title, goal, first row), else its kind, two that collide by
+        # their place; `instances._no_ids` is the last door before the question. es/en. Disarmed 2026-10-26 → red.
+        {"id": "3.137", "title": "A «which card?» names each card by what it shows, its kind or its place — an id "
+                                 "never reaches a spoken line (V2-812 T-06)", "ch": UNIT,
+            "paths": ["tests/browser/unit/frontera/test_a_card_is_never_named_by_its_id.py"]},
         # V2-807 T-14 — a clear stop order was refused twice: the tool gate read a word table that did not list «para
         # inmediatamente esa tarea». The turn's brief asks, while an errand runs, whether THIS turn orders it stopped;
         # a sure verdict decides the gate and repairs a turn that called nothing; the grammar is the fallback only.
