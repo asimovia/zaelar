@@ -5659,6 +5659,13 @@ DOMAINS: list[dict] = [
         # the limits pre-check) → each red.
         {"id": "4.296", "title": "Files go into the chat: the 📎 takes several files, paste and drop onto the composer attach, each file has its own fate (progress, cancel that aborts, a translated refusal, a clock that ends a silent upload), and the bubble and a restored history show the references — never the bytes (RENDERED, V2-809)",
             "ch": UNIT, "paths": ["tests/browser/unit/chat/test_files_go_into_the_chat.py"]},
+        # V2-812 T-01/T-02 — in a car the phone was silent while Spotify «played» on a device elsewhere and the card read
+        # «EMPTY». The page player reports a silent browser (tap row, digest, late tell); the card publishes what it
+        # shows and controls reach the player that sounds. Disarmed 2026-10-26 → red.
+        {"id": "4.297", "title": "A page player the browser keeps silent says so: the card reports it (player_audio → audio_blocked), shows the tap that gives it sound, the digest says it, and an agent start is told against (RENDERED, V2-812 T-01)",
+            "ch": UNIT, "paths": ["tests/browser/unit/musica/test_a_silent_page_player_says_so_and_offers_the_tap.py"]},
+        {"id": "4.298", "title": "The brain sees what the music card shows (song, which player and where, playing, volume) — no lists is not «empty» — and volume by voice or slider reaches the player making the sound (V2-812 T-02)",
+            "ch": UNIT, "paths": ["tests/browser/unit/musica/test_the_brain_sees_what_the_music_card_shows.py"]},
         {"id": "4.252", "title": "The chat list paints, filters by kind and name, loads more and opens a chat (RENDERED)",
             "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_the_chat_list_paints_filters_and_loads_more.py"]},
         {"id": "4.250", "title": "The feedback button is never hidden under another layer",
@@ -5840,6 +5847,8 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/connectors/unit/music/test_a_skip_moves_inside_what_is_playing.py"]},
         {"id": "5.64", "title": "Music connector: play modes and an editable queue on the free player (repeat one/all, shuffle), the same contract over Spotify's API (its queue read-only), and ONE catalogue door — the connected account first, the free iTunes metadata next, never emptier than a play (V2-795)",
             "ch": UNIT, "paths": ["tests/connectors/unit/music/test_play_modes_queue_and_catalogue.py"]},
+        {"id": "5.65", "title": "Music plays where he listens: a start goes to a device of the account on the screen that asked, else that screen's page; it is read back from the player (device named, silence said, a refused device never swapped for the first listed) and the same words again are not re-sent (V2-812 T-01)",
+            "ch": UNIT, "paths": ["tests/connectors/unit/music/test_the_music_plays_where_he_listens.py"]},
         {"id": "5.4", "title": "Architect", "ch": UNIT, "paths": ["tests/connectors/unit/architect/test_architect.py"]},
         {"id": "5.5", "title": "WhatsApp: normalización y allowlist", "ch": UNIT, "paths": [
             "tests/connectors/unit/whatsapp/test_allowlist_contract.py",

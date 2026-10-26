@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import difflib
 import re
+import threading
 import unicodedata
 
 from . import ref_day, runtime
@@ -670,6 +671,26 @@ def prompt_digest(widget_id: str) -> str:
     return out
 
 
+_asking = threading.local()
+
+
+def _shows_something(widget_id: str) -> bool:
+    """No ROWS is not «nothing on the card» (V2-812). The music card with a song on it and no saved lists was
+    reported «ABIERTA pero VACÍA» every turn, and asked «are you sure it isn't muted?» the brain answered that the
+    card was empty. Emptiness is the widget's to say: a card whose published interior (`prompt_digest`) says
+    something is showing that. Guarded against a digest that itself asks for the items line."""
+    busy = getattr(_asking, "ids", None)
+    if busy is None:
+        busy = _asking.ids = set()
+    if widget_id in busy:
+        return False
+    busy.add(widget_id)
+    try:
+        return bool(prompt_digest(widget_id))
+    finally:
+        busy.discard(widget_id)
+
+
 def items_line(widget_id: str) -> str:
     """Compact line with the widget's LIVE items (label + hint) for the brain brief, so it knows WHAT exists and can
     reference it naturally. No internal ids (the model references by language).
@@ -681,6 +702,8 @@ def items_line(widget_id: str) -> str:
     if not _exposes_ref_index(widget_id):
         return ""
     idx = _ref_index(widget_id)
+    if not idx and _shows_something(widget_id):
+        return ""
     if not idx:
         return ("items ahora: NINGUNO — la tarjeta está ABIERTA pero VACÍA: el operador no ve NADA dentro, así que "
                 "no des por entregado lo que hay que poner ahí")
