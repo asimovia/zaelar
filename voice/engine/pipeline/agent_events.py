@@ -53,6 +53,11 @@ def _on_data(packet, *, _emit, _json, _wake, session) -> None:
                 _phase = (_d.get("phase") or "final").strip()
                 _txt = (_d.get("text") or "").strip()
                 _before = (_d.get("before") or "").strip()
+                # V2-802 T-08: the pre-roll exists for words the paid STT did NOT hear (tap parked). With the
+                # tap open it already transcribed them, and the browser's ear, which keeps running while our
+                # voice plays, sends our own reply as his — measured: the reply glued in front of his turn.
+                if _d.get("parked") is False:
+                    _before = ""
                 from voice import attention as _attn_wake
                 if _phase == "spot":
                     if _before:
@@ -141,7 +146,7 @@ def receive_typed(txt: str, *, _emit, session, dev: str = "") -> None:
     try:
         from voice import attention
         attention.note_directed()
-        attention.note_typed()   # V2-646: a typed turn can never be ambient — see the mute backstop
+        attention.note_typed(text=txt)   # V2-646: a typed turn can never be ambient — see the mute backstop
     except Exception:
         pass
     # OBSERVABILITY (intermittent chat/paste diagnosis): leave a trace showing that the text ARRIVED,

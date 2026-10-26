@@ -820,8 +820,12 @@ function _armWakeEar() {
       // preocupar» — the ring is the answer to that, and it costs nothing to be early.
       // The FINAL is a backstop the engine may well discard; it must not touch the tap, or a late packet
       // would re-open a tap the window has already closed.
+      // `parked` travels with the spot: the words before the name are only worth sending when the paid STT
+      // was NOT hearing them. With the tap open it already has them, and the browser's ear — which keeps
+      // listening while OUR voice plays — would hand over our own reply as his (V2-802 T-08).
+      const parked = tapParked();
       if (spot.phase !== "final") { setTapParked(false); store.pulseAttentionHit(8); }
-      sendWake(spot);
+      sendWake({ ...spot, parked });
     },
     // `armed` is NOT a signal — it flips inside the recogniser's own callbacks, which no effect is
     // subscribed to. So the arming pushes the decision instead of waiting to be read: the same function
@@ -1051,10 +1055,11 @@ export function sendWake(spot) {
   const text = ((spot && spot.text) || "").trim();
   const before = ((spot && spot.before) || "").trim();
   const phase = (spot && spot.phase) || "final";
+  const parked = !(spot && spot.parked === false);   // unknown → parked: the old contract
   if (!text && !before) return false;      // a spot carries `before`, a final carries `text`
   try {
     const payload = new TextEncoder().encode(JSON.stringify(
-      { t: "zaelar-wake", phase, text, before }));
+      { t: "zaelar-wake", phase, text, before, parked }));
     room.localParticipant.publishData(payload, { reliable: true, topic: "zaelar-wake" });
     return true;
   } catch (_) { return false; }

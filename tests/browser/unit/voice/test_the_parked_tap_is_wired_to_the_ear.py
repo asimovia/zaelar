@@ -86,7 +86,7 @@ def test_the_spot_opens_the_tap_and_the_final_does_not():
     line = next(l for l in body.splitlines() if 'phase !== "final"' in l)
     assert "setTapParked(false)" in line and "pulseAttentionHit" in line, \
         "opening the tap and lighting the ring both belong to the spot"
-    assert "sendWake(spot)" in body
+    assert "sendWake({ ...spot, parked })" in body   # V2-802 T-08: the park state rides along
 
 
 def test_a_stopped_session_leaves_the_tap_open():
