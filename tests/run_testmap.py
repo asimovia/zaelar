@@ -2101,6 +2101,14 @@ DOMAINS: list[dict] = [
             "paths": ["tests/browser/unit/voice/test_a_device_problem_turns_its_icon_red.py"]},
         {"id": "3.120", "title": "A word table never turns an empty promise into a worker over a confident handle_inline — both channels (V2-802 T-07, CRIT-K1)",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_a_word_table_never_overrules_a_confident_inline.py"]},
+        # V2-807 T-16 — a request for a capability no card declares is answered «not yet» at the errand portal (the
+        # brief's verdict over the DECLARED actions), a widget declares its operator-only controls and a worker is
+        # refused them, and the spec deriver never takes the assistant's name as the goal. Disarmed 2026-10-26
+        # (portal gate, verdict read, brief question, worker deny, name strip) → each red.
+        {"id": "3.121", "title": "A capability no card declares is a «not yet», never a worker; a worker never runs the "
+                                 "operator's own controls of a card; the assistant's name is never an errand's goal "
+                                 "(V2-807 T-16)",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_a_capability_no_card_declares_is_not_an_errand.py"]},
     ]},
     {"id": "4", "name": "WIDGETS", "nodes": [
         {"id": "4.1", "title": "Ciclo de vida / acciones / refs / generador / background", "ch": UNIT, "paths": [

@@ -228,6 +228,10 @@ class LangSpec:
     #: …naming the rows when they are few (2026-10-14: «Hecho.» over three videos he could not see were there).
     receipt_queue_titles: str = ""
     receipt_queue_empty: str = ""
+    #: V2-807 T-16 — he asked one of our cards for a capability none of them declares: «not yet», and where the
+    #: request went (kept as a suggestion, or the button to send one).
+    capability_not_yet: str = ""
+    capability_not_yet_noted: str = ""
     #: A reply that claimed it checked whether videos are AI-made (`unchecked_provenance`): nothing here can.
     provenance_unchecked: str = ""
     #: …and when the player REFUSED it (`player_outcome`): what could not play and why, never «Suena ahora».

@@ -74,7 +74,8 @@
       },
       "safe": true,
       "view": true,
-      "subset": true
+      "subset": true,
+      "worker": false
     },
     "open": {
       "ref": "name",
@@ -84,13 +85,15 @@
         "n": "int opcional (número del chat en la lista)"
       },
       "safe": true,
-      "view": true
+      "view": true,
+      "worker": false
     },
     "close": {
       "desc": "Cierra el chat abierto y VUELVE a la lista de chats",
       "payload": {},
       "safe": true,
-      "view": true
+      "view": true,
+      "worker": false
     },
     "read": {
       "desc": "Con un chat ABIERTO: marca como leído el mensaje N de ese chat (propaga a su app real — quita el no-leído en WhatsApp/Telegram/correo)",
@@ -148,7 +151,8 @@
       "payload": {
         "n": "int (número del item en la lista)"
       },
-      "safe": true
+      "safe": true,
+      "worker": false
     },
     "unhide": {
       "desc": "Reactivar un canal silenciado para que sus mensajes vuelvan a aparecer",
@@ -156,7 +160,8 @@
         "platform": "string (whatsapp|telegram|email)",
         "chatId": "int|string"
       },
-      "safe": true
+      "safe": true,
+      "worker": false
     },
     "reply": {
       "desc": "Enviar una respuesta al mensaje/chat N por su propio canal (email con hilo, WhatsApp y Telegram como respuesta al mensaje). El envío real lo hace el conector de esa plataforma.",
@@ -292,47 +297,54 @@
         "speak": "bool opcional (false = avisos solo por nota/pantalla, nunca por voz)"
       },
       "safe": true,
-      "usage": "«Avísame cada vez que llegue un mensaje» → set_notify {platform:'email', notify:'all'}. «De Telegram avísame solo de mensajes directos» → {platform:'telegram', notify:'direct'}. «Que WhatsApp no me interrumpa hablando» → {platform:'whatsapp', speak:false}. «Enséñame también lo importante en la lista principal» → {platform:'email', highlight:'important'}. Para silenciar UN chat concreto usa hide, no esto."
+      "usage": "«Avísame cada vez que llegue un mensaje» → set_notify {platform:'email', notify:'all'}. «De Telegram avísame solo de mensajes directos» → {platform:'telegram', notify:'direct'}. «Que WhatsApp no me interrumpa hablando» → {platform:'whatsapp', speak:false}. «Enséñame también lo importante en la lista principal» → {platform:'email', highlight:'important'}. Para silenciar UN chat concreto usa hide, no esto.",
+      "worker": false
     },
     "load_more": {
       "desc": "Trae MENSAJES ANTERIORES de la conversación abierta desde la app real (Telegram/correo/WhatsApp): «cárgame los anteriores», «tráeme los mensajes de antes», «¿qué me dijo la semana pasada?». No inventa nada: se los pide al conector",
       "payload": {
         "limit": "int opcional (cuántos, por defecto 30)"
       },
-      "safe": true
+      "safe": true,
+      "worker": false
     },
     "chats_more": {
       "desc": "Enseña MÁS CHATS en la lista de conversaciones de WhatsApp o Telegram: los siguientes, más antiguos. Para «enséñame más chats», «carga más conversaciones»; no son los mensajes de un chat abierto (eso es load_more)",
       "payload": {
         "platform": "'whatsapp' | 'telegram' (opcional: el canal que se está viendo)"
       },
-      "safe": true
+      "safe": true,
+      "worker": false
     },
     "set_media_days": {
       "desc": "Cuántos DÍAS se guardan en este dispositivo las fotos, vídeos, audios y adjuntos descargados de la mensajería; los más antiguos se borran de aquí y siguen en el móvil. Para «guarda las fotos un mes», «no borres los vídeos» (0 = siempre)",
       "payload": {
         "days": "7 | 14 | 30 | 90 | 0 (0 = guardar siempre)"
       },
-      "safe": true
+      "safe": true,
+      "worker": false
     },
     "set_signature": {
       "desc": "Fija la firma de EMAIL entera, una línea por elemento (ej. nombre / cargo / contacto). Se añade sola a cada correo que se envíe, nunca por el operador ni por Gmail — no lo prometas dos veces",
       "payload": {
         "lines": "array de strings, una por línea (máx. 10)"
-      }
+      },
+      "worker": false
     },
     "set_signature_line": {
       "desc": "Pone o cambia UNA línea de la firma de email (1ª, 2ª, 3ª…) sin tocar las demás — para cuando la dicta línea a línea: «en la primera pon mi nombre, en la segunda mi cargo»",
       "payload": {
         "line": "int (1, 2, 3…)",
         "text": "string (el texto de esa línea)"
-      }
+      },
+      "worker": false
     },
     "clear_signature": {
       "desc": "Borra la firma de email entera",
       "confirm_q": "¿Borro tu firma de correo entera?",
       "payload": {},
-      "confirm": true
+      "confirm": true,
+      "worker": false
     },
     "fetch_now": {
       "desc": "PIDE al conector de esa plataforma que traiga YA las conversaciones con actividad reciente («chupa/refresca más mensajes del conector»): telegram y email. WhatsApp NO lo soporta (su transporte solo empuja en tiempo real; de un chat concreto sí hay load_more). Llegan a las conversaciones en unos segundos y se avisa al terminar",
@@ -361,14 +373,16 @@
       },
       "confirm": true,
       "confirm_q": "¿Activo el autorrespondedor con ese mensaje? Contestará él solo en tu nombre.",
-      "fans_out": true
+      "fans_out": true,
+      "worker": false
     },
     "clear_autoresponder": {
       "desc": "Apaga y borra el autorrespondedor (de una plataforma, o de todas sin `platform`)",
       "payload": {
         "platform": "string opcional (whatsapp|telegram|email|all)"
       },
-      "safe": true
+      "safe": true,
+      "worker": false
     },
     "chat_digest": {
       "desc": "ESTADO destilado por chat desde el archivo: acciones ABIERTAS, plazos y resumen («¿tengo que hacer algo de este grupo?», «¿tengo algo pendiente de mis grupos?»). Con chat devuelve su digest; sin chat, los chats con acciones abiertas",
@@ -402,7 +416,8 @@
         "category": "opcional: primary | promotions | social | updates | forums (las que dé el proveedor)"
       },
       "safe": true,
-      "view": true
+      "view": true,
+      "worker": false
     },
     "mail_sort": {
       "desc": "Cambia SUS criterios de las categorías de la bandeja (las que da el proveedor; por defecto, las de Gmail tal cual): «los de Amazon que vayan a Principal» → from + to; «no me enseñes Social» → hide; «vuelve a enseñarme Social» → show; «quita esa regla» → forget. Se guarda como regla suya y NO mueve nada en su buzón real.",
@@ -416,12 +431,14 @@
       },
       "effects": [
         "state.change"
-      ]
+      ],
+      "worker": false
     },
     "mail_more": {
       "desc": "Carga los siguientes mensajes (más antiguos) de la carpeta de correo abierta",
       "payload": {},
-      "safe": true
+      "safe": true,
+      "worker": false
     },
     "mail_open": {
       "desc": "Abre un mensaje de la carpeta de correo en pantalla por su `uid` (lo usa la propia tarjeta al tocar una fila). Para «ábrelo» tras hablar de un correo usa `open`.",
@@ -430,13 +447,15 @@
         "folder": "opcional: la carpeta"
       },
       "safe": true,
-      "view": true
+      "view": true,
+      "worker": false
     },
     "mail_back": {
       "desc": "Desde un correo o un borrador abierto, VUELVE a la lista de su carpeta («vuelve a la bandeja», «atrás»)",
       "payload": {},
       "safe": true,
-      "view": true
+      "view": true,
+      "worker": false
     },
     "open_draft": {
       "desc": "Abre un BORRADOR que está a medias ocupando toda la tarjeta (destinatario, asunto, texto y los botones Enviar / Guardar / Descartar): «abre el borrador», «enséñame el correo que tenía pendiente para X». Sin `contact` abre el más reciente.",
@@ -445,7 +464,8 @@
         "key": "opcional: la clave del borrador"
       },
       "safe": true,
-      "view": true
+      "view": true,
+      "worker": false
     },
     "save_draft": {
       "desc": "Guarda los cambios de un borrador SIN enviarlo (texto; y en un mensaje nuevo, destinatario y asunto). Lo usa el botón «Guardar» del borrador abierto.",

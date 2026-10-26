@@ -94,6 +94,8 @@
  "receipt_queue_total": "La cola tiene ahora {total}.",
  "receipt_queue_titles": "La cola tiene ahora {total}: {titles}.",
  "receipt_queue_empty": "La cola se ha quedado vacía.",
+ "capability_not_yet": "Eso todavía no lo sé hacer: ninguna de mis tarjetas tiene esa opción, y no voy a improvisarla toqueteándolas. Si la quieres, mándala como sugerencia con el botón de feedback.",
+ "capability_not_yet_noted": "Eso todavía no lo sé hacer: ninguna de mis tarjetas tiene esa opción, y no voy a improvisarla toqueteándolas. Lo he pasado como sugerencia.",
  "provenance_unchecked": "Ojo: no puedo comprobar si un vídeo está hecho con IA; solo veo su título y su canal, así que eso lo decides tú.",
  "receipt_cannot_play": "No he podido ponerlo: «{title}» no se puede reproducir aquí, su propietario bloquea verlo fuera de YouTube. Sigue en tu lista.",
  "receipt_swapped": "«{title}» no se puede reproducir aquí (su propietario lo bloquea fuera de YouTube), así que suena «{to}».",

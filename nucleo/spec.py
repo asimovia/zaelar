@@ -429,7 +429,7 @@ def born(rec, ctx: dict | None = None) -> None:
             # CHANGED» could never be judged → «unverifiable», and the ending said «I couldn't verify it») and
             # unsanitised (`documento.documents`, a collection nobody declares). It goes through what an inferred
             # one does; nothing readable left → inferred, as if it had come without one.
-            dw = _sanitize(dw) or {}
+            dw = _sanitize(_without_the_assistants_name(dw) or {}) or {}
             if dw:
                 dw = bind_sheet(dw, (ctx or {}).get("sheet") or getattr(rec, "sheet", ""))
                 _snapshot(dw)
@@ -598,6 +598,46 @@ def _sanitize(done_when: dict) -> dict | None:
     return {mode or "all": kept}
 
 
+def _assistant_names() -> set[str]:
+    """Every name the assistant answers to, normalized (the attention gate's own list)."""
+    try:
+        from nucleo.flash import presence as _presence
+        return {n for n in _presence.assistant_names() if n}
+    except Exception:  # noqa: BLE001
+        return set()
+
+
+def _without_the_assistants_name(done_when: dict) -> dict | None:
+    """A term that is only the assistant's NAME is how he addressed us, never what the errand is about (V2-807 T-16).
+
+    «…and, <assistant name>, I want it synced in real time» was inferred as `mensajeria.items[title~=<name>]` — the vocative
+    became the goal, the check could never pass, and the worker was told for seven minutes that a row titled with
+    the assistant's name was still missing. A `where` term or a `has` value equal to a name the assistant answers
+    to is removed; a clause left with nothing to look for goes; nothing left → None (honestly unverifiable)."""
+    names = _assistant_names()
+    if not names:
+        return done_when
+    from nucleo import verify as _verify
+    from nucleo.flash import presence as _presence
+
+    def _is_name(v) -> bool:
+        return isinstance(v, str) and _presence._norm(v) in names
+
+    mode, clauses = _verify._clauses(done_when)
+    kept: list[dict] = []
+    for c in clauses:
+        c = dict(c)
+        if isinstance(c.get("where"), dict):
+            where = {k: v for k, v in c["where"].items() if not _is_name(v)}
+            if c["where"] and not where:
+                continue
+            c["where"] = where
+        if _is_name(c.get("has")):
+            continue
+        kept.append(c)
+    return {mode or "all": kept} if kept else None
+
+
 def _infer_messages(goal: str) -> list[dict]:
     cat = catalogue()
     listing = "\n".join(f"  · {t} ({wa})" for t, wa in list(cat.items())[:40]) or "  (none)"
@@ -619,7 +659,10 @@ def _infer_messages(goal: str) -> list[dict]:
              "  {\"desktop\": \"wallpaper\", \"has\": \"text\"} / \"expect\": \"changed\"\n"
              "  {\"canvas\": W, \"expect\": \"visible\"}\n"
              "Prefer \"expect\": \"changed\" when the errand only says WHICH by index or by «that one». Never invent "
-             "a target that is not listed. A search or a hunt whose findings land on a card ends with that card's "
+             "a target that is not listed. "
+             + (f"The assistant is called {', '.join(sorted(_assistant_names()))}: when the errand addresses it by name, "
+                "that name is how he spoke to it, never a term to look for. " if _assistant_names() else "")
+             + "A search or a hunt whose findings land on a card ends with that card's "
              "`empty` field false. Targets the widgets attest (target → widget:action):\n" + listing
              + "\nWhat each card declares a clause may read (only these collections and fields):\n" + cards)},
         {"role": "user", "content": (goal or "").strip()[:1200]},
@@ -661,6 +704,9 @@ def parse(text) -> dict | None:
         return None
     from nucleo import verify as _verify
     if not isinstance(got, dict) or not _verify._clauses(got)[1]:
+        return None
+    got = _without_the_assistants_name(got)
+    if got is None:
         return None
     got = _sanitize(got)
     if got is None:

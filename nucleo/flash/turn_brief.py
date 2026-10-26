@@ -351,6 +351,12 @@ def build(operator_text: str, *, open_ids=None, running_goals=None, has_workers:
             qs[_spec.END_KEY] = end
     except Exception:  # noqa: BLE001
         pass
+    # V2-807 T-16 — does he ask one of OUR cards for a capability none of them declares? Read only at the errand
+    # portal, where a «missing» refuses the worker (`capability_gap`); free inside the brief.
+    from nucleo.flash import capability_gap as _gap
+    gap = _gap.question(open_ids)
+    if gap:
+        qs[_gap.KEY] = gap
     target = target_question(open_ids)
     if target:
         qs[TARGET_KEY] = target
@@ -428,6 +434,14 @@ def stamp(handle, *, turn_id=None, open_ids=None):
     if isinstance(handle, dict):
         handle["turn_id"] = turn_id
         handle["open_ids"] = [str(w) for w in (open_ids or [])]
+        # The errand portal is reached from many callers and none hands it the brief: the trace joins them.
+        try:
+            from nucleo.flash import capability_gap as _gap
+            from voice import trace as _trace
+            _gap.remember(handle, _trace.current())
+        except Exception as e:  # noqa: BLE001 — without it the portal judges nothing, which is today's path
+            from loguru import logger
+            logger.debug(f"turn_brief: capability verdict not joinable to the trace: {e!r}")
     return handle
 
 

@@ -47,6 +47,12 @@ def deny_reason(action: str, payload: dict) -> str:
                     f"si necesitas que él decida, usa ask_user.")
         return (f"la tool «{tool}» no está en el catálogo prestable. Prestables: "
                 f"{', '.join(sorted(_PRESTABLE_TOOLS))}.")
+    if a == "widget_data" and operator_only(payload):
+        wid = str((payload or {}).get("widget_id") or (payload or {}).get("id") or "")
+        return (f"«{(payload or {}).get('action')}» is one of the operator's own controls of «{wid}» (its manifest "
+                f"declares \"worker\": false): it changes his view or the card's settings, and a worker never "
+                f"reconfigures or navigates his cards. Read the card with read_widget if you need its data; if the "
+                f"errand needs that change, say so in your report — he makes it himself.")
     if a == "widget_data":
         # The route out has to be one the worker can actually take (the V2-710 T0.2 lesson, and the same one
         # `deny_reason` itself was written for): naming only the declared actions left a worker with an
@@ -56,6 +62,26 @@ def deny_reason(action: str, payload: dict) -> str:
                 "necesitas no lo cubre ninguna, usa la puerta genérica: rows.list/patch/delete/put con "
                 "{collection, where:{…}} sobre las colecciones que te devuelve read_widget.")
     return "acción no permitida para un worker"
+
+
+def operator_only(payload: dict) -> bool:
+    """Does the widget DECLARE this action as the operator's own control (`"worker": false`)? (V2-807 T-16)
+
+    A worker improvising against a card's controls is how a request for a capability nobody built became seven
+    minutes of a worker switching his mail folders. The widget knows which of its actions only change what HE
+    sees or how the card is configured, so it says so in its manifest; nothing is inferred from a name. An
+    undeclared flag keeps today's path."""
+    try:
+        from nucleo.flash.frontend import declared_actions
+        p = payload or {}
+        wid = str(p.get("widget_id") or p.get("id") or "")
+        act = str(p.get("action") or "").strip()
+        spec = (declared_actions(wid) or {}).get(act)
+        return isinstance(spec, dict) and spec.get("worker") is False
+    except Exception as e:  # noqa: BLE001 — an unreadable manifest keeps today's path
+        from loguru import logger
+        logger.debug(f"worker_policy: operator-only flag unreadable: {e!r}")
+        return False
 
 
 def classify_act(action: str, payload: dict) -> str:
@@ -97,6 +123,8 @@ def classify_act(action: str, payload: dict) -> str:
         # would ask it on `rows.list`, which is a read.
         if str((payload or {}).get("action") or "").strip().startswith("rows."):
             return ALLOW
+        if operator_only(payload):
+            return DENY
         # V2-061: DATA-OP on a widget (reflect in the local MIRROR what happened in reality — e.g. remove from the
         # agenda an appointment already canceled on the web). The gate is the CANONICAL CATALOG (widgets/actions.py
         # via frontend.action_mode), the SAME one as FlashBrain: FAST→ALLOW, CONFIRM(irreversible)→CONFIRM.

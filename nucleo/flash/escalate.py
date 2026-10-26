@@ -126,6 +126,17 @@ def escalate_to_slowbrain(request: str, *, context: dict | None = None) -> int:
         if protected_core.touches_the_engine(req):
             _refuse(req, protected_core.refusal(req))
             return 0
+    # A CAPABILITY NO CARD DECLARES IS NOT AN ERRAND (V2-807 T-16). A worker cannot add a feature to the product; it
+    # can only improvise against the cards' own controls. The turn's verdict over the declarations decides; the
+    # refusal is said and the request kept as a suggestion (`capability_gap`).
+    try:
+        from nucleo.flash import capability_gap as _gap
+        if _gap.refuses(req, ctx0):
+            _gap.refuse(req)
+            logger.info(f"escalate: NOT started — asks for a capability no card declares: {req[:80]}")
+            return 0
+    except Exception as e:  # noqa: BLE001 — the gate may never break the portal
+        logger.debug(f"escalate: capability gate skipped: {e!r}")
     # UNA PREGUNTA NO ES TEATRO (V2-655). Si el turno que escala PIDIÓ PERMISO en voz alta, la orden todavía no
     # existe: preguntar y hacer a la vez es una contradicción, y el operador lee la pregunta literalmente. Se
     # APARCA (no se descarta) en el registro del confirm-gate, que ya sabe recoger el «sí», decirle al cerebro
