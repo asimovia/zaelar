@@ -552,7 +552,11 @@ function injectStyles(){
   /* Homogeneous buttons (V2-570): one scale for every action of the card, instead of the .btn/.cbtn/.dbtn set
      that had grown three different heights and paddings. */
   .hb-msg .bt{height:38px;padding:0 18px;border-radius:10px;font-size:13.5px;font-weight:600;cursor:pointer;
-    display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box}
+    display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;
+    /* A bare .bt (Save draft, attach) is the quiet button: without these it wore the browser's own light-grey
+       face on the dark card, and the attach icon drew black on grey (V2-813, iPhone 14). */
+    border:1px solid var(--hb-line,#e3e8f0);background:transparent;color:var(--hb-ink,#0d1622)}
+  .hb-msg .bt:hover:not(:disabled){border-color:var(--hb-accent,#3D6FE0)}
   .hb-msg .bt:disabled{opacity:.6;cursor:default}
   .hb-msg .bt-primary{border:0;color:var(--canvas,#101216);background:var(--hb-accent,#3D6FE0)}
   .hb-msg .bt-primary:hover:not(:disabled){filter:brightness(1.06)}
@@ -758,6 +762,21 @@ const PLACEHOLDER_RE = /^\[(image|video|audio|ptt|document) received\]$/;
 function isBareMediaLabel(body){
   const b = cleanBody(body);
   return !b || PLACEHOLDER_RE.test(b);
+}
+
+// A body that is really HTML (stored before the connector learned to read a «plain» part that is markup) is shown as
+// the text it carries. DOMParser builds an INERT document: no script runs and nothing is fetched (V2-813).
+const _BLOCK_TAGS = "br,p,div,tr,li,h1,h2,h3,h4,table,blockquote";
+function markupText(b){
+  const s = (b || "").trimStart();
+  if(!s.startsWith("<")) return b;
+  let doc;
+  try { doc = new DOMParser().parseFromString(s, "text/html"); } catch(_) { return b; }
+  doc.querySelectorAll("style,script,head,title").forEach(e => e.remove());
+  doc.querySelectorAll(_BLOCK_TAGS).forEach(e => e.after(doc.createTextNode("\n")));
+  const t = (doc.body ? doc.body.textContent : "").split("\n").map(l => l.replace(/\s+/g, " ").trim())
+    .filter((l, i, a) => l || (i && a[i - 1])).join("\n").trim();
+  return t && t.length < 0.6 * s.length ? t : b;
 }
 
 function displayBody(body, mediaType){
@@ -1291,7 +1310,8 @@ function messageRow(it, ctx, rerender, isGroup){
 
   const media = mediaBlock(it);
   const bareLabel = media && isBareMediaLabel(it.body);
-  const {title, rest} = splitBody(displayBody(it.body, it.mediaType));
+  const {title, rest: _rest} = splitBody(displayBody(it.body, it.mediaType));
+  const rest = markupText(_rest);
   const isLong = rest.length > 220 || rest.split("\n").length > 4;
   const expanded = _expanded.has(key);
   if(!bareLabel){
@@ -1428,7 +1448,7 @@ function mailLetter(it, ctx, meta){
     // this scrolls, which is what makes showing everything affordable.
     // `rest` is the body once splitBody has lifted the "[Asunto: X]" line off it; `title` is the fallback
     // for a message that is nothing BUT that line.
-    linkify(body, rest || title);
+    linkify(body, markupText(rest || title));   // the «[Asunto]» line is lifted first, then the markup
     wrap.appendChild(body);
   }
   if(media) wrap.appendChild(media);
@@ -1823,7 +1843,8 @@ const FOLDER_FB = {inbox:"Recibidos", flagged:"Destacados", drafts:"Borradores",
 let _newMail = null;      // a message being written that is not a draft yet (Redactar / Responder): {to, subject, text}
 
 function folderLabel(f){
-  return f && f.role ? tt("folder_"+f.role, null, FOLDER_FB[f.role]) : ((f && f.label) || "");
+  // A role this card has no word for keeps the server's own name — an empty row in the rail is worse than English.
+  return f && f.role ? tt("folder_"+f.role, null, FOLDER_FB[f.role] || f.label || "") : ((f && f.label) || "");
 }
 
 function mailAct(ctx, data, rerender){
@@ -2066,7 +2087,7 @@ function mailMessage(mb, data, ctx, act, rerender){
     row(tt("date", null, "Fecha"), fmtWhen(m.ts));
     ltr.appendChild(env);
     const body = el("div","mltrbody");
-    linkify(body, m.body || "");
+    linkify(body, markupText(m.body || ""));
     ltr.appendChild(body);
     pane.appendChild(ltr);
   }
