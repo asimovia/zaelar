@@ -1,0 +1,4 @@
+{
+  "_doc": "RFC 6154 special-use mailbox attributes, in the order a mail client lists them after the Inbox. The server DECLARES them; the folder's role is the attribute's own name. Read by connectors/email/folders.py.",
+  "order": ["\\flagged", "\\drafts", "\\sent", "\\archive", "\\all", "\\junk", "\\trash"]
+}

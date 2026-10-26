@@ -92,6 +92,7 @@ const _expanded = new Set();   // message keys with the body expanded
 function selectPlatform(pl){
   _platFilter = (pl && PLAT[pl]) ? pl : null;   // unknown/absent = the unified main list
   _openMail = null;           // a mail detail is a screen too: a lens change lands on that lens's LIST
+  _newMail = null;            // and so is a message being written: leaving the section leaves it
 }
 
 function injectStyles(){
@@ -213,6 +214,68 @@ function injectStyles(){
   .hb-msg .mwhen{margin-left:auto;font-size:11.5px;color:var(--hb-muted-2,#9aa7b8);flex:0 0 auto}
   .hb-msg .msubj{font-size:13.5px;color:var(--hb-muted,#5f6b7c);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .hb-msg .mdet{padding:2px 2px 10px}
+  /* WHERE AM I (2026-10-26): the house + title are lit on the home; inside a section they dim and the
+     section's name follows as the current crumb. Outline icons, the same stroke as every action icon. */
+  .hb-msg .homebtn{border:0;background:transparent;color:var(--hb-muted-2,#7d8a9c);width:32px;height:32px;
+    border-radius:9px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;margin-right:-4px}
+  .hb-msg .homebtn svg{width:18px;height:18px}
+  .hb-msg .homebtn:hover{background:var(--hb-hover,#eef3f9);color:var(--hb-ink,#0d1622)}
+  .hb-msg .homebtn.on{color:var(--hb-accent,#3D6FE0);background:color-mix(in srgb,var(--hb-accent,#3D6FE0) 14%,transparent)}
+  .hb-msg .hd .hdtitle{color:var(--hb-muted,#5f6b7c);font-weight:600}
+  .hb-msg .hd .hdtitle.on{color:var(--hb-accent,#3D6FE0);font-weight:700}
+  .hb-msg .hdsep,.hb-msg .msep{color:var(--hb-muted-2,#9aa7b8);font-size:14px}
+  .hb-msg .hd .hdsec{font-size:17px;color:var(--hb-ink,#0d1622)}
+  /* The MAIL CLIENT: Compose + the folders as one row of tabs, then the list. */
+  .hb-msg .mfolders{display:flex;align-items:center;gap:10px;margin:0 0 10px;min-width:0}
+  .hb-msg .mcompose{height:34px;padding:0 14px;gap:6px;flex:0 0 auto}
+  .hb-msg .mcompose svg{width:15px;height:15px}
+  .hb-msg .mfoldnav{display:flex;gap:4px;overflow-x:auto;min-width:0;scrollbar-width:thin;padding-bottom:2px}
+  .hb-msg .mfold{flex:0 0 auto;border:0;background:transparent;color:var(--hb-muted,#5b6b82);font-size:13px;
+    font-weight:600;padding:7px 11px;border-radius:999px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+  .hb-msg .mfold:hover{background:var(--hb-hover,#eef3f9);color:var(--hb-ink,#0d1622)}
+  .hb-msg .mfold.on{background:color-mix(in srgb,var(--hb-accent,#3D6FE0) 16%,transparent);color:var(--hb-accent,#3D6FE0)}
+  .hb-msg .mfn{font-size:11px;font-weight:700;min-width:16px;height:16px;padding:0 5px;border-radius:999px;
+    display:inline-flex;align-items:center;justify-content:center;background:var(--hb-neutral,#3a4a5c);color:#fff}
+  .hb-msg .mlist{max-height:none}
+  .hb-msg .mrow.seen .mfrom{font-weight:500;color:var(--hb-muted,#5f6b7c)}
+  .hb-msg .mrow.unseen .msubj{color:var(--hb-ink,#0d1622)}
+  .hb-msg .mtag{font-size:11px;color:var(--hb-accent,#3D6FE0);font-weight:600;flex:0 0 auto}
+  .hb-msg .mdtag{font-size:11px;font-weight:700;color:var(--hb-risk,#e5484d);flex:0 0 auto}
+  .hb-msg .mgroup{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
+    color:var(--hb-muted-2,#9aa7b8);padding:14px 2px 4px}
+  .hb-msg .mmore{align-self:flex-start;margin:10px 0 2px}
+  .hb-msg .mnote{font-size:12.5px;color:var(--hb-muted,#5b6b82);margin:4px 2px 8px}
+  /* Navigation bar of a mail screen: ⌂ › Correo › Recibidos › <subject> … ← Recibidos. */
+  .hb-msg .mcrumb{gap:6px;min-width:0}
+  .hb-msg .mchome{border:0;background:transparent;color:var(--hb-muted-2,#7d8a9c);width:28px;height:28px;border-radius:8px;
+    display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto}
+  .hb-msg .mchome svg{width:16px;height:16px}
+  .hb-msg .mchome:hover{background:var(--hb-hover,#eef3f9);color:var(--hb-ink,#0d1622)}
+  .hb-msg .mcr{border:0;background:transparent;font-size:13px;color:var(--hb-muted,#5b6b82);padding:3px 4px;border-radius:6px;
+    cursor:pointer;white-space:nowrap;flex:0 0 auto}
+  .hb-msg .mcr:hover{color:var(--hb-accent,#3D6FE0)}
+  .hb-msg .mcr.cur{color:var(--hb-ink,#0d1622);cursor:default;font-weight:700;overflow:hidden;text-overflow:ellipsis;
+    flex:0 1 auto;min-width:0}
+  /* A DRAFT over the whole card: the fields, the text growing into every spare pixel, the buttons pinned below. */
+  .hb-msg.full > .thread > .dfoot{flex:0 0 auto}
+  .hb-msg .mdform{gap:0;padding:4px 14px 12px}
+  .hb-msg .mdf{display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--hb-line,#eef1f6);padding:6px 0}
+  .hb-msg .mdk{font-size:12.5px;color:var(--hb-muted-2,#9aa7b8);width:56px;flex:0 0 auto}
+  .hb-msg .mdin{flex:1;min-width:0;border:0;background:transparent;font:inherit;font-size:14px;color:var(--hb-ink,#0d1622);
+    padding:6px 0;outline:none}
+  .hb-msg .mdin[readonly]{color:var(--hb-muted,#5b6b82)}
+  .hb-msg .mdbody{flex:1 1 auto;min-height:160px;border:0;background:transparent;resize:none;outline:none;font:inherit;
+    font-size:14.5px;line-height:1.6;color:var(--hb-ink,#0d1622);padding:12px 0 0}
+  .hb-msg .mdfiles{font-size:12.5px;color:var(--hb-muted,#5b6b82)}
+  .hb-msg .dfoot{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:12px}
+  .hb-msg .mddel:hover:not(:disabled){border-color:var(--hb-risk,#e5484d);color:var(--hb-risk,#e5484d)}
+  .hb-msg .mdnote{font-size:12px;color:var(--hb-muted,#5b6b82)}
+  /* On a phone the crumb keeps the house, what is open and the way back; the middle steps are the ← button. */
+  @media (max-width:560px){
+    .hb-msg .mcrumb .mcr:not(.cur),.hb-msg .mcrumb .msep{display:none}
+    .hb-msg .mfolders{flex-wrap:wrap}
+    .hb-msg .mfoldnav{flex:1 1 100%}
+  }
   /* V2-680 retired .mdsubj/.mdmeta/.mdfrom/.mdwhen/.mdbody: the detail screen draws the same LETTER the
      thread does now (.mltr below), so keeping a second set of rules for the same thing is how two
      renderings of one screen start to drift. */
@@ -561,6 +624,8 @@ function platformChip(platform){
 // 2026-09-18: "an okay flag, then an x, then a subwoofer"). Stroke style matches
 // the app icon language (24px grid, currentColor). Same five actions, same order.
 const ACTION_SVG = {
+  home:    [["path", {d: "M3 10.5 12 3l9 7.5"}], ["path", {d: "M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5"}]],
+  pen:     [["path", {d: "M12 20h9"}], ["path", {d: "M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"}]],
   check:   [["path", {d: "M20 6 9 17l-5-5"}]],
   close:   [["path", {d: "M18 6 6 18"}], ["path", {d: "m6 6 12 12"}]],
   archive: [["rect", {x: "2", y: "3", width: "20", height: "5", rx: "1"}],
@@ -1747,6 +1812,298 @@ function pendingStrip(data, ctx){
   return box;
 }
 
+// ── THE EMAIL SECTION, A MAIL CLIENT (mailbox.py) ─────────────────────────────────────────────────────────
+// The operator, 2026-10-26: the home holds only what is addressed to him; the mail section is his mailbox —
+// the Inbox first, every folder the account syncs, a draft opened over the whole card with everything needed
+// to finish it, and a way back one level at a time. Gmail is the reference. All of it is SERVER state
+// (`data.mailbox`), so a tap and a voice order land on the same screen; a tap repaints from the action's own
+// answer instead of waiting for the store's notice.
+const FOLDER_FB = {inbox:"Recibidos", flagged:"Destacados", drafts:"Borradores", sent:"Enviados",
+                   archive:"Archivo", all:"Todos", junk:"Spam", trash:"Papelera"};
+let _newMail = null;      // a message being written that is not a draft yet (Redactar / Responder): {to, subject, text}
+
+function folderLabel(f){
+  return f && f.role ? tt("folder_"+f.role, null, FOLDER_FB[f.role]) : ((f && f.label) || "");
+}
+
+function mailAct(ctx, data, rerender){
+  return (name, payload) => Promise.resolve(ctx.action(name, payload)).then(r => {
+    if(r && r.mailbox){ Object.assign(data, r); rerender(); }
+    return r;
+  });
+}
+
+function mailDrafts(data){
+  return Object.values(data.drafts || {}).filter(d => d && d.target && (d.target.platform || "email") === "email")
+    .sort((a, b) => (b.at || 0) - (a.at || 0));
+}
+
+function mailFolderList(mb){
+  const folders = (mb.folders && mb.folders.length) ? mb.folders.slice() : [{name:"INBOX", role:"inbox", label:"INBOX"}];
+  // The card's own drafts always have a home, even on a server that names no Drafts folder.
+  if(!folders.some(f => f.role === "drafts")) folders.splice(1, 0, {name:"@drafts", role:"drafts", label:""});
+  return folders;
+}
+
+// Navigation bar of every mail screen: Home › Correo › <folder> [› <what is open>] and «← <folder>» on the right.
+function mailCrumb(mb, ctx, act, current){
+  const bar = el("div","thd mcrumb");
+  const home = iconButton("home", tt("home", null, "Inicio"), "mchome");
+  home.onclick = () => { selectPlatform(null); ctx.top && ctx.top(); act("show_view", {platform:"all"}); };
+  bar.appendChild(home);
+  const folder = mailFolderList(mb).find(f => f.name === mb.folder) || {role:"inbox"};
+  const parts = [[tt("mail_section", null, "Correo"), () => act("mail_folder", {folder:"inbox"})],
+                 [folderLabel(folder), current ? () => act("mail_back", {}) : null]];
+  if(current) parts.push([current, null]);
+  parts.forEach(([label, go], i) => {
+    if(i) bar.appendChild(el("span","msep","›"));
+    const c = el(go ? "button" : "b", go ? "mcr" : "mcr cur", label);
+    if(go) c.onclick = go;
+    bar.appendChild(c);
+  });
+  if(current){
+    const back = el("button","back", "← " + folderLabel(folder));
+    back.onclick = () => act("mail_back", {});
+    bar.appendChild(back);
+  }
+  return bar;
+}
+
+function mailFolders(mb, data, ctx, act, rerender){
+  const bar = el("div","mfolders");
+  const compose = el("button","bt bt-primary mcompose");
+  compose.appendChild(actionIcon("pen")); compose.appendChild(document.createTextNode(" " + tt("compose", null, "Redactar")));
+  compose.onclick = () => { _newMail = {to:"", subject:"", text:""}; rerender(); };
+  bar.appendChild(compose);
+  const nav = el("div","mfoldnav");
+  const waiting = (data.items || []).filter(it => it.platform === "email").length;
+  const drafts = mailDrafts(data).length;
+  mailFolderList(mb).forEach(f => {
+    const b = el("button","mfold" + (f.name === mb.folder ? " on" : ""), folderLabel(f));
+    const n = f.role === "drafts" ? drafts : (f.role === "inbox" ? waiting : 0);
+    if(n) b.appendChild(el("span","mfn", String(n)));
+    b.onclick = () => act("mail_folder", {folder: f.name});
+    nav.appendChild(b);
+  });
+  bar.appendChild(nav);
+  return bar;
+}
+
+function folderRow(r, mb, act){
+  const row = el("div","mrow" + (r.seen ? " seen" : " unseen"));
+  const lead = el("span","tlead");
+  if(!r.seen) lead.style.background = "var(--hb-accent,#3D6FE0)";
+  row.appendChild(lead);
+  const main = el("div","mmain");
+  const line1 = el("div","mline1");
+  const sent = mb.role === "sent" || mb.role === "drafts";
+  line1.appendChild(el("span","mfrom", sent ? (tt("to", null, "Para") + ": " + (r.to || "?")) : (r.fromName || r.from || "?")));
+  if(r.pending) line1.appendChild(el("span","mtag", tt("for_you", null, "para ti")));
+  const when = fmtWhen(r.ts);
+  if(when) line1.appendChild(el("span","mwhen", when));
+  main.appendChild(line1);
+  main.appendChild(el("div","msubj", (r.subject || "").trim() || tt("no_subject", null, "(sin asunto)")));
+  row.appendChild(main);
+  row.onclick = () => act("mail_open", {uid: r.uid, folder: mb.folder});
+  return row;
+}
+
+function draftRow(d, act){
+  const t = d.target || {};
+  const row = el("div","mrow mdraftrow");
+  row.appendChild(el("span","tlead"));
+  const main = el("div","mmain");
+  const line1 = el("div","mline1");
+  line1.appendChild(el("span","mdtag", tt("draft_tag", null, "Borrador")));
+  line1.appendChild(el("span","mfrom", t.name || t.to || t.chatId || "?"));
+  const when = fmtWhen(d.at);
+  if(when) line1.appendChild(el("span","mwhen", when));
+  main.appendChild(line1);
+  const subj = (t.subject || "").trim();
+  main.appendChild(el("div","msubj", (subj ? subj + " — " : "") + String(d.text || "").replace(/\s+/g, " ")));
+  row.appendChild(main);
+  row.onclick = () => act("open_draft", {key: d.key});
+  return row;
+}
+
+function mailList(mb, data, ctx, act){
+  const wrap = el("div","tl mlist");
+  if(mb.role === "drafts"){
+    const mine = mailDrafts(data);
+    mine.forEach(d => wrap.appendChild(draftRow(d, act)));
+    const later = (data.sent || []).filter(r => r && r.scheduled_for && r.platform === "email");
+    if(later.length){
+      const ps = pendingStrip({drafts:{}, sent: later}, ctx);
+      if(ps) wrap.appendChild(ps);
+    }
+    if(mb.folder === "@drafts"){
+      if(!mine.length && !later.length) wrap.appendChild(el("div","empty", tt("no_drafts", null, "No hay borradores")));
+      return wrap;
+    }
+    if(mine.length && mb.rows.length) wrap.appendChild(el("div","mgroup", tt("in_mailbox", null, "En tu buzón")));
+  }
+  mb.rows.forEach(r => wrap.appendChild(folderRow(r, mb, act)));
+  if(!mb.rows.length && !(mb.role === "drafts" && mailDrafts(data).length)){
+    wrap.appendChild(el("div","empty", mb.loading || !mb.asked ? tt("loading", null, "Cargando…")
+      : (mb.error ? tt("folder_error", null, "No he podido leer esta carpeta del buzón.")
+                  : tt("folder_empty", null, "Esta carpeta está vacía"))));
+  }
+  if(mb.more || (mb.loading && mb.rows.length)){
+    const more = el("button","bt bt-ghost mmore", mb.loading ? tt("loading", null, "Cargando…") : tt("load_more", null, "Cargar más"));
+    more.disabled = !!mb.loading;
+    more.onclick = () => { markBusy(more); act("mail_more", {}); };
+    wrap.appendChild(more);
+  }
+  return wrap;
+}
+
+// One message of a folder, the whole card. A mail the home also holds is the SAME screen it always was
+// (reply, archive, mark unread…); anything else is read from the mailbox and answered with «Responder».
+function mailMessage(mb, data, ctx, act, rerender){
+  const o = mb.open || {};
+  const item = String(mb.folder).toUpperCase() === "INBOX"
+    ? (data.items || []).find(it => it.platform === "email" && String(it.messageId) === String(o.uid)) : null;
+  const m = o.msg || {};
+  const subject = (item ? item.subject : m.subject) || tt("no_subject", null, "(sin asunto)");
+  const wrap = el("div","thread plat-email");
+  wrap.appendChild(mailCrumb(mb, ctx, act, subject));
+  if(item){
+    const d = mailDetail(item, data, ctx, () => act("mail_back", {}), rerender);
+    d.querySelector(".thd") && d.querySelector(".thd").remove();
+    while(d.firstChild) wrap.appendChild(d.firstChild);
+    return wrap;
+  }
+  const pane = el("div","mdet mpane");
+  if(!o.msg){
+    pane.appendChild(el("div","empty", o.loading ? tt("loading", null, "Cargando…") : tt("mail_unreadable", null, "No he podido abrir este correo.")));
+  } else if(m.error){
+    pane.appendChild(el("div","empty", tt("mail_unreadable", null, "No he podido abrir este correo.")));
+  } else {
+    const ltr = el("div","mltr");
+    ltr.appendChild(el("div","mltrsubj", subject));
+    const env = el("div","menv");
+    const row = (k, v) => { if(v){ env.appendChild(el("div","menvk", k)); env.appendChild(el("div","menvv", v)); } };
+    row(tt("from", null, "De"), m.fromName && m.fromName !== m.from ? `${m.fromName} · ${m.from}` : m.from);
+    row(tt("to", null, "Para"), m.to);
+    row(tt("cc", null, "Copia"), m.cc);
+    row(tt("date", null, "Fecha"), fmtWhen(m.ts));
+    ltr.appendChild(env);
+    const body = el("div","mltrbody");
+    linkify(body, m.body || "");
+    ltr.appendChild(body);
+    pane.appendChild(ltr);
+  }
+  wrap.appendChild(pane);
+  if(o.msg && !m.error && mb.role !== "sent" && mb.role !== "drafts"){
+    const foot = el("div","dfoot");
+    const reply = el("button","bt bt-primary", tt("reply", null, "Responder"));
+    reply.onclick = () => {
+      const subj = String(m.subject || "");
+      _newMail = {to: m.from || "", subject: /^re:/i.test(subj) ? subj : (subj ? "Re: " + subj : ""), text: ""};
+      rerender();
+    };
+    foot.appendChild(reply);
+    wrap.appendChild(foot);
+  }
+  return wrap;
+}
+
+// A DRAFT over the whole card: recipient, subject, text, and Send · Save · Discard. `d` is one of the card's
+// drafts (`data.drafts[key]`) or, for a message not saved yet, `_newMail`.
+function draftEditor(d, key, mb, data, ctx, act, rerender){
+  const t = (d && d.target) || {};
+  const fresh = !key;
+  const isNew = fresh || !!t.new;
+  const email = fresh || (t.platform || "email") === "email";
+  const wrap = el("div","thread plat-" + (t.platform || "email") + " mdraft");
+  const title = fresh ? tt("new_mail", null, "Nuevo correo") : tt("draft_tag", null, "Borrador");
+  const leave = () => { if(fresh){ _newMail = null; rerender(); } else act("mail_back", {}); };
+  if(email) wrap.appendChild(mailCrumb(mb, ctx, act, title));
+  else {
+    const hd = el("div","thd");
+    hd.appendChild(el("b","thdname", title + " · " + ((PLAT[t.platform] || {}).label || t.platform)));
+    const back = el("button","back", tt("back", null, "← Volver")); back.onclick = leave;
+    hd.appendChild(back);
+    wrap.appendChild(hd);
+  }
+  if(fresh){   // the crumb's «←» goes one level up: for a message not saved yet that is simply closing it
+    const b = wrap.querySelector(".mcrumb .back"); if(b) b.onclick = leave;
+  }
+  const pane = el("div","mdet mpane mdform");
+  const field = (label, node) => { const f = el("label","mdf"); f.appendChild(el("span","mdk", label)); f.appendChild(node); pane.appendChild(f); return node; };
+  const toIn = field(tt("to", null, "Para"), el("input","mdin"));
+  // A new message's recipient is editable (re-resolved on save); a reply goes where the conversation is.
+  toIn.value = fresh ? (d.to || "") : isNew ? (t.to || t.name || "")
+    : (t.name && t.senderId && t.name !== t.senderId ? `${t.name} <${t.senderId}>` : (t.senderId || t.chatId || t.name || ""));
+  toIn.readOnly = !isNew;
+  let subjIn = null;
+  if(email){
+    subjIn = field(tt("subject", null, "Asunto"), el("input","mdin"));
+    subjIn.value = fresh ? (d.subject || "") : (t.subject || "");
+    subjIn.readOnly = !isNew;
+  }
+  const box = el("textarea","mdbody");
+  box.value = d.text || "";
+  box.placeholder = tt("draft_ph", null, "Escribe el mensaje…");
+  pane.appendChild(box);
+  if(!fresh && (d.files || []).length) pane.appendChild(el("div","mdfiles", "📎 " + d.files.join(", ")));
+  wrap.appendChild(pane);
+  // Every button is ONE order, and the outcome comes back through the state (`mb.note`): this card's taps are
+  // queued to its owner and answered with nothing, so a screen that waited for the answer waited forever.
+  const note = el("span","mdnote", noteText(mb.note));
+  const values = () => ({text: box.value, ...(isNew ? {to: toIn.value.trim()} : {}),
+                         ...(subjIn && isNew ? {subject: subjIn.value} : {})});
+  if(fresh){   // what he types survives the repaints that arrive while the order is on its way
+    const keepTyped = () => Object.assign(_newMail, {to: toIn.value, subject: subjIn ? subjIn.value : "", text: box.value});
+    [toIn, subjIn, box].forEach(n => n && n.addEventListener("input", keepTyped));
+  }
+  const order = (send, btn) => {
+    if(!box.value.trim()){ note.textContent = tt("empty_draft", null, "El mensaje está vacío"); return; }
+    if(isNew && !toIn.value.trim()){ note.textContent = tt("no_recipient", null, "Falta el destinatario"); return; }
+    markBusy(btn);
+    note.textContent = send ? tt("sending", null, "Enviando…") : tt("saving", null, "Guardando…");
+    if(fresh) _newMail.pending = Date.now();
+    if(!send && !fresh) act("save_draft", {key, ...values()});
+    else act("compose", {...(fresh ? {channel: "email"} : {key}), ...values(), ...(send ? {send: true} : {})});
+  };
+  const foot = el("div","dfoot");
+  const send = el("button","bt bt-primary", tt("send", null, "Enviar"));
+  send.onclick = () => order(true, send);
+  const save = el("button","bt bt-ghost", tt("save_draft", null, "Guardar borrador"));
+  save.onclick = () => order(false, save);
+  const discard = el("button","bt bt-ghost mddel", tt("discard", null, "Descartar"));
+  discard.onclick = () => { if(fresh) leave(); else { markBusy(discard); act("discard_draft", {key}); } };
+  foot.append(send, save, discard, note);
+  wrap.appendChild(foot);
+  return wrap;
+}
+
+// The last outcome of the draft screen, said in his language: saved, sent, or why not.
+function noteText(n){
+  if(!n || !n.key) return "";
+  const fb = {saved:"Guardado ✓", sent:"Enviado ✓", not_saved:"No se ha guardado", not_sent:"No se ha enviado"};
+  const head = tt(n.key === "sent" ? "sent_ok" : n.key, null, fb[n.key] || "");
+  return n.text && /^not_/.test(n.key) ? `${head}: ${n.text}` : head;
+}
+
+function mailClient(data, ctx, rerender){
+  const mb = data.mailbox || {folders:[], folder:"INBOX", role:"inbox", rows:[]};
+  const act = mailAct(ctx, data, rerender);
+  const box = el("div","mclient");
+  box.appendChild(mailFolders(mb, data, ctx, act, rerender));
+  const its = (data.items || []).filter(it => it.platform === "email");
+  if(mb.role === "inbox" && !(mb.rows || []).length && its.length){
+    // The Inbox page has not arrived yet (or the mailbox could not be listed): the mail the card already holds
+    // IS Inbox mail, shown at once instead of an empty box — and said, when the mailbox failed.
+    if(mb.error) box.appendChild(el("div","mnote", tt("folder_error", null, "No he podido leer esta carpeta del buzón.")));
+    box.appendChild(emailList(its, ctx, n => { _openMail = n; rerender(); }));
+    return box;
+  }
+  if(mb.note && mb.note.key === "sent") box.appendChild(el("div","mnote", noteText(mb.note)));
+  box.appendChild(mailList(mb, data, ctx, act));
+  return box;
+}
+
 function tt(key, params, fb){
   try{
     if(_T){ const s=_T("widgets.mensajeria."+key, params); if(s && s!=="widgets.mensajeria."+key) return s; }
@@ -1794,6 +2151,26 @@ export function render(root, data, ctx){
     root.appendChild(threadView(activeChat, data.active_items||[], data, ctx, rerender, data.thread_meta||null));
     return;
   }
+  // The mail section's own full-card screens (mailbox.py): a draft being finished, then one message open.
+  const mb = data.mailbox || null;
+  const draftKey = (mb && mb.draft && (data.drafts || {})[mb.draft]) ? mb.draft : null;
+  // A new message whose Save/Send is on its way settles from the state: saved → the draft it became (or, sent,
+  // the folder); refused → the same screen with his text and the reason.
+  const pn = mb && mb.note;
+  if(_newMail && _newMail.pending && pn && pn.at * 1000 >= _newMail.pending - 1500){
+    if(pn.key === "saved" || pn.key === "sent") _newMail = null; else _newMail.pending = null;
+  }
+  if(!showChannels && (_newMail || draftKey)){
+    root.classList.add("full");
+    root.appendChild(draftEditor(_newMail || data.drafts[draftKey], _newMail ? null : draftKey,
+      mb || {folders:[], folder:"INBOX", role:"inbox", rows:[]}, data, ctx, mailAct(ctx, data, rerender), rerender));
+    return;
+  }
+  if(!showChannels && _platFilter==="email" && mb && mb.open){
+    root.classList.add("full");
+    root.appendChild(mailMessage(mb, data, ctx, mailAct(ctx, data, rerender), rerender));
+    return;
+  }
   const openMailItem = (!showChannels && _platFilter==="email" && _openMail!=null)
     ? (fItems.find(x=>mailKey(x)===_openMail) || items.find(x=>mailKey(x)===_openMail))
     : null;
@@ -1805,6 +2182,14 @@ export function render(root, data, ctx){
 
   // Header: title + counter, connected icons only, connectors, settings, clear.
   const hd=el("div","hd");
+  // WHERE AM I (the operator, 2026-10-26: «ahora mismo no sé si estoy en la home o en alguno de los apartados»).
+  // A house at the left of the title, lit together with the title while the home is on screen; inside a channel
+  // the house and «Mensajes» dim and the channel's name follows them as the current section — the same
+  // breadcrumb every other screen of this card carries.
+  const home = !_platFilter;
+  const homeBtn = iconButton("home", tt("home", null, "Inicio"), "homebtn" + (home ? " on" : ""));
+  homeBtn.onclick=()=>{ selectPlatform(null); ctx.top(); ctx.action("show_view",{platform:"all"}); rerender(); };
+  hd.appendChild(homeBtn);
   // V2-616 — this title used to repeat the CATALOG name ("Mensajería"), which the outer card chrome
   // already says (V2-082's header). What this line actually names is the SCREEN underneath it — the
   // unified inbox — so it reads "Mensajes" now, the operator's own suggestion. The click behavior is
@@ -1812,8 +2197,17 @@ export function render(root, data, ctx){
   // wizard, the connectors list, an open thread or mail).
   const title=el("b","hdtitle",tt("title", null, "Mensajes")); title.title=tt("title_hint", null, "Ver la bandeja unificada de todos tus canales");
   title.onclick=()=>{ selectPlatform(null); ctx.top(); ctx.action("show_view",{platform:"all"}); rerender(); };
-  hd.append(title,
-            el("span","sub", items.length ? `${items.length} para ti` : (connectedCount ? tt("up_to_date", null, "al día") : tt("not_connected", null, "sin conectar"))));
+  if(home) title.classList.add("on");
+  hd.append(title);
+  if(home){
+    // «para ti» counts what the home shows — what is addressed to him — not every unread the channels hold.
+    const mine = items.filter(it=>it.highlight).length;
+    hd.append(el("span","sub", mine ? tt("n_for_you", {n: mine}, `${mine} para ti`)
+      : (connectedCount ? tt("up_to_date", null, "al día") : tt("not_connected", null, "sin conectar"))));
+  } else {
+    hd.append(el("span","hdsep","›"),
+              el("b","hdsec", _platFilter === "email" ? tt("mail_section", null, "Correo") : (PLAT[_platFilter]||{}).label || _platFilter));
+  }
   const dots=el("div","dots");
   // V2-521: every channel is VISIBLE up here — connected bright, unconnected dimmed (the operator's ask:
   // seeing the catalogue at a glance). A bright icon toggles that platform's lens; a dimmed one opens that
@@ -1857,7 +2251,11 @@ export function render(root, data, ctx){
   }
   hd.appendChild(actions);
   root.appendChild(hd);
-  const pend = pendingStrip(data, ctx);   // V2-800: what waits for his word, and what leaves later
+  // V2-800: what waits for his word, and what leaves later — inside its OWN channel, never on the home (the
+  // operator: the home holds only the messages addressed to him). Email's live in the mail section's Drafts.
+  const pend = (_platFilter && _platFilter !== "email") ? pendingStrip({
+    drafts: Object.fromEntries(Object.entries(data.drafts || {}).filter(([, d]) => d && d.target && d.target.platform === _platFilter)),
+    sent: (data.sent || []).filter(r => r && r.platform === _platFilter)}, ctx) : null;
   if(pend) root.appendChild(pend);
 
   if(_settingsOpen) root.appendChild(settingsPanel(platforms, data, ctx, rerender));
@@ -1894,19 +2292,16 @@ export function render(root, data, ctx){
         ? tt("no_activity_hint", null, " — «Traer del conector» las pide de verdad") : "")));
     return;
   }
+  if(_platFilter==="email"){
+    // The mail section is a MAIL CLIENT (mailbox.py): the Inbox first, every folder, drafts — whatever the
+    // density profile, the same way a thread is a thread in both.
+    root.appendChild(mailClient(data, ctx, rerender));
+    return;
+  }
   if(_profile==="completo"){
     if(fItems.length) root.appendChild(richList(fItems, ctx));
     else root.appendChild(el("div","empty",emptyMsg));
     if(hidden) root.appendChild(restNote(hidden));
-    return;
-  }
-  if(_platFilter==="email"){
-    // Email's NATURAL shape (the operator's spec, V2-610): a Gmail-style list — sender, subject, time, NO
-    // body — and opening one moves to `mailDetail`, a second screen, never an inline expand. This is the
-    // shape that SHIPS; a settings toggle for it was deliberately not built (the operator's own words: if
-    // someone wants the old inline-expand shape, fork the widget).
-    root.appendChild(fItems.length ? emailList(fItems, ctx, n=>{ _openMail=n; rerender(); })
-                                    : el("div","empty",emptyMsg));
     return;
   }
 

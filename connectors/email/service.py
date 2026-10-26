@@ -115,6 +115,7 @@ _archive_inbox = None            # V2-543: msg.archive subscription
 _trash_inbox = None              # V2-543: msg.trash subscription
 _history_inbox = None            # V2-546: msg.history subscription ("load previous")
 _fetch_inbox = None              # V2-624: msg.fetch subscription (platform-wide pull)
+_mailbox_inbox = None            # msg.mailbox subscription (a folder page, or one message, for the card)
 
 
 def _media_dir() -> str | None:
@@ -475,6 +476,26 @@ async def _drain_fetch(mb) -> None:
             pass
 
 
+async def _drain_mailbox(mb) -> None:
+    """Serve the card's mail-client orders: one page of a folder, or one message read whole. The answer goes back
+    on `connector.mailbox` — including a failure, so the card can say why a folder is empty."""
+    if _mailbox_inbox is None:
+        return
+    from connectors.email import folders as _folders
+    for order in _mailbox_inbox.drain():
+        folder = str(order.get("folder") or "INBOX")
+        if order.get("open"):
+            msg = await asyncio.to_thread(_folders.read_one, mb, folder, str(order["open"]), _media_dir())
+            ingest.publish_mailbox(PLATFORM, {"folder": folder, "open": msg})
+            continue
+        try:
+            limit = max(1, min(100, int(order.get("limit") or 30)))
+        except (TypeError, ValueError):
+            limit = 30
+        page = await asyncio.to_thread(_folders.list_page, mb, folder, order.get("before"), limit)
+        ingest.publish_mailbox(PLATFORM, {"folder": folder, "before": order.get("before"), **page})
+
+
 async def _drain_disposals(mb) -> None:
     """Drain archive/delete orders (V2-543) and execute them in the REAL mailbox. The widget already removed
     the item and (for trash) the confirm gate already asked; a failure is TOLD, never silently retried — same
@@ -505,7 +526,7 @@ async def _drain_disposals(mb) -> None:
 
 async def _loop() -> None:
     global _mark_inbox, _reply_inbox, _send_inbox, _archive_inbox, _trash_inbox, _history_inbox, _fetch_inbox
-    global _unread_inbox
+    global _unread_inbox, _mailbox_inbox
     _set_status("starting", None, "Conectando con el servidor de correo…")
     mb = config.mailbox()
     if mb is None:
@@ -536,6 +557,8 @@ async def _loop() -> None:
             _history_inbox = ingest.HistoryAskInbox(PLATFORM)
         if _fetch_inbox is None:
             _fetch_inbox = ingest.FetchInbox(PLATFORM)
+        if _mailbox_inbox is None:
+            _mailbox_inbox = ingest.MailboxInbox(PLATFORM)
     _set_status("connected", None, f"Conectado como {config.address()}.")
     logger.info(f"Email conectado ({config.address()}) — escuchando tu buzón")
     global _demand_task
@@ -545,7 +568,8 @@ async def _loop() -> None:
         # What the OPERATOR is waiting for goes first (demo pass 48, 2026-09-29: the receipt's history order,
         # asked at E1, landed 43 s later — after this tick's new-mail fetch, flag poll and the rest, each its own
         # IMAP login — with «open it» and the forward already failed). `_nap` wakes on these same three orders.
-        for what, fn in (("sends", _drain_sends), ("history", _drain_history), ("fetch", _drain_fetch)):
+        for what, fn in (("sends", _drain_sends), ("history", _drain_history), ("fetch", _drain_fetch),
+                         ("mailbox", _drain_mailbox)):
             try:
                 await fn(mb)
             except Exception as e:  # noqa: BLE001
@@ -576,6 +600,11 @@ async def _loop() -> None:
 
 
 _NAP_STEP_S = 0.5
+
+
+def _on_demand() -> tuple:
+    """The queues an operator waits on: a send, a history order, a pull, a folder page."""
+    return (_history_inbox, _send_inbox, _fetch_inbox, _mailbox_inbox)
 _demand_task: "asyncio.Task | None" = None
 
 
@@ -586,8 +615,9 @@ async def _serve_demands(mb) -> None:
     beside the housekeeping costs nothing but a second login; a queue is taken once, so nothing is done twice."""
     while True:
         try:
-            if any(i is not None and i.pending() for i in (_history_inbox, _send_inbox, _fetch_inbox)):
-                for what, fn in (("sends", _drain_sends), ("history", _drain_history), ("fetch", _drain_fetch)):
+            if any(i is not None and i.pending() for i in _on_demand()):
+                for what, fn in (("sends", _drain_sends), ("history", _drain_history), ("fetch", _drain_fetch),
+                                ("mailbox", _drain_mailbox)):
                     try:
                         await fn(mb)
                     except Exception as e:  # noqa: BLE001
@@ -607,7 +637,7 @@ async def _nap(total: float) -> None:
     loop = asyncio.get_running_loop()
     end = loop.time() + max(0.0, float(total))
     while loop.time() < end:
-        if any(i is not None and i.pending() for i in (_history_inbox, _send_inbox, _fetch_inbox)):
+        if any(i is not None and i.pending() for i in _on_demand()):
             return
         await asyncio.sleep(min(_NAP_STEP_S, max(0.0, end - loop.time())))
 

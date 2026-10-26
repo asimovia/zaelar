@@ -75,6 +75,7 @@ class _Owner:
         self._read_sub = None             # V2-546: what he read there
         self._history_sub = None          # V2-546: older messages a connector went and fetched
         self._chats_sub = None            # one page of a platform's chat list
+        self._mailbox_sub = None          # one page of a mail folder, or one message read whole
         self._task: asyncio.Task | None = None
         self._triage_task: asyncio.Task | None = None
         # NOTE (V2-607): the in-memory `_seen` set that used to live here is gone. It claimed to stop resurrecting
@@ -98,6 +99,8 @@ class _Owner:
             self._history_sub = bus.subscribe(ingest.TOPIC_HISTORY)
         if self._chats_sub is None:
             self._chats_sub = bus.subscribe(ingest.TOPIC_CHATS)
+        if self._mailbox_sub is None:
+            self._mailbox_sub = bus.subscribe(ingest.TOPIC_MAILBOX)
         if self._task is None or self._task.done():
             self._task = asyncio.create_task(self._consume())
         logger.info("mensajeria owner started (triage in widget; stateless connectors)")
@@ -110,14 +113,14 @@ class _Owner:
             self._triage_task.cancel()
             self._triage_task = None
         for sub in (self._msg_sub, self._status_sub, self._out_sub, self._read_sub, self._history_sub,
-                    self._chats_sub):
+                    self._chats_sub, self._mailbox_sub):
             try:
                 if sub is not None:
                     sub.close()
             except Exception:
                 pass
         self._msg_sub = self._status_sub = None
-        self._out_sub = self._read_sub = self._history_sub = self._chats_sub = None
+        self._out_sub = self._read_sub = self._history_sub = self._chats_sub = self._mailbox_sub = None
 
     # Bus consumption: incoming messages + status.
     async def _consume(self) -> None:
@@ -140,6 +143,7 @@ class _Owner:
             # already dealt with.
             for what, fn in (("outbound", self._apply_outbound), ("read", self._apply_external_reads),
                              ("history", self._apply_history), ("chats", self._apply_chats),
+                             ("mailbox", self._apply_mailbox),
                              ("media", self._sweep_media), ("queues", self._flush_queues)):
                 try:
                     fn()
@@ -229,6 +233,19 @@ class _Owner:
                 msgstore.add_chats(platform, ev)
                 if ev.get("error"):
                     logger.warning(f"mensajeria: {platform} chat list page failed: {ev['error']}")
+
+    def _apply_mailbox(self) -> None:
+        """A mail folder page, or one message read whole, for the email section (mailbox.py)."""
+        events = [ev for ev in self._drain(self._mailbox_sub) if (ev or {}).get("platform") == "email"]
+        if not events:
+            return
+        from . import mailbox as _mbx
+        db = msgstore.load()
+        for ev in events:
+            _mbx.fold(db, ev)
+            if ev.get("error"):
+                logger.warning(f"mensajeria: mail folder {ev.get('folder')!r} answered with {ev['error']}")
+        msgstore.save(db)
 
     def _apply_status(self) -> None:
         """Reflect pending connector.status events into the UI store; the owner is the only writer."""
@@ -432,6 +449,17 @@ class _Owner:
                 ingest.publish_chats_ask(order)
         except Exception as e:  # noqa: BLE001
             logger.warning(f"mensajeria chats flush: {e}")
+        # And for the email section's folder pages and opened messages.
+        try:
+            from . import mailbox as _mbx
+            db = msgstore.load()
+            orders = _mbx.take_pending(db)
+            if orders:
+                msgstore.save(db)
+            for order in orders:
+                ingest.publish_mailbox_ask(order)
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"mensajeria mailbox flush: {e}")
 
 
 # Single instance governed by the supervisor (contract: async start()/stop()/handle(action,payload)).

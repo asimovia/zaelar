@@ -59,6 +59,11 @@ TOPIC_CHATS = "connector.chats"
 # Creating a GROUP: {platform, ref, name, members: [{to, chatId, name}], text}. Answered with a chat-list row
 # for the new group (`connector.chats`) and, when it fails, `msg.send_failed` with the reason.
 TOPIC_GROUP = "msg.group"
+# The MAILBOX as a mail client sees it (email): {platform, folder, before, limit} asks for one page of a folder's
+# headers, {platform, folder, open: uid} for one message whole. Its own pair: a folder row is neither a chat row
+# (`connector.chats`) nor scrollback (`connector.history`) — it is the server's folder, unfiltered.
+TOPIC_MAILBOX_ASK = "msg.mailbox"
+TOPIC_MAILBOX = "connector.mailbox"
 
 
 def v2_enabled() -> bool:
@@ -360,3 +365,24 @@ def publish_group(order: dict) -> None:
         bus.emit_sync(TOPIC_GROUP, dict(order or {}))
     except Exception as e:  # noqa: BLE001
         _log.warning(f"group order not published: {type(e).__name__}")
+
+
+class MailboxInbox(_PlatformInbox):
+    """Per-platform subscription to `msg.mailbox`: the card asking for a folder page or one message."""
+    _TOPIC = TOPIC_MAILBOX_ASK
+
+
+def publish_mailbox_ask(order: dict) -> None:
+    try:
+        bus.emit_sync(TOPIC_MAILBOX_ASK, dict(order or {}))
+    except Exception as e:  # noqa: BLE001
+        _log.warning(f"mailbox ask not published: {type(e).__name__}")
+
+
+def publish_mailbox(platform: str, answer: dict) -> None:
+    """A connector answering a mailbox ask: a page `{folder, folders, rows, before, nextBefore, complete, error}` or
+    one message `{folder, open: {...}}`."""
+    try:
+        bus.emit_sync(TOPIC_MAILBOX, {"platform": platform, **dict(answer or {})})
+    except Exception as e:  # noqa: BLE001
+        _log.warning(f"mailbox answer not published: {type(e).__name__}")

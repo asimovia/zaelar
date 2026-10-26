@@ -191,7 +191,8 @@
         "messageId": "opcional, alternativa a n",
         "contact": "opcional: a quién va el borrador que se envía (un mensaje nuevo se nombra así)",
         "at": "opcional: para enviarlo más tarde, fecha y hora local ISO («2026-10-26T11:30»)",
-        "in_minutes": "opcional, alternativa a at: dentro de cuántos minutos («dentro de 10 horas» = 600)"
+        "in_minutes": "opcional, alternativa a at: dentro de cuántos minutos («dentro de 10 horas» = 600)",
+        "key": "opcional: la clave exacta del borrador (la usa el botón Enviar del borrador abierto)"
       },
       "confirm": true,
       "usage": "El botón «Enviar» de la propia tarjeta hace exactamente esto. Por voz: primero 'draft' (con contact si es nuevo), él lo revisa, y su «envíalo» llama a 'send_draft'.",
@@ -391,6 +392,82 @@
       "view": true,
       "effects": [
         "output.answer"
+      ]
+    },
+    "mail_folder": {
+      "desc": "Abre una CARPETA del correo como un cliente de correo: «enséñame los enviados», «abre la papelera», «mi bandeja de entrada». `folder` = inbox | flagged (destacados) | drafts | sent | archive | all | junk | trash, o el nombre de una carpeta suya. Devuelve los primeros mensajes en `result.messages`.",
+      "payload": {
+        "folder": "string (inbox | flagged (destacados) | drafts | sent | archive | all | junk | trash | nombre de carpeta)"
+      },
+      "safe": true,
+      "view": true
+    },
+    "mail_more": {
+      "desc": "Carga los siguientes mensajes (más antiguos) de la carpeta de correo abierta",
+      "payload": {},
+      "safe": true
+    },
+    "mail_open": {
+      "desc": "Abre un mensaje de la carpeta de correo en pantalla por su `uid` (lo usa la propia tarjeta al tocar una fila). Para «ábrelo» tras hablar de un correo usa `open`.",
+      "payload": {
+        "uid": "string",
+        "folder": "opcional: la carpeta"
+      },
+      "safe": true,
+      "view": true
+    },
+    "mail_back": {
+      "desc": "Desde un correo o un borrador abierto, VUELVE a la lista de su carpeta («vuelve a la bandeja», «atrás»)",
+      "payload": {},
+      "safe": true,
+      "view": true
+    },
+    "open_draft": {
+      "desc": "Abre un BORRADOR que está a medias ocupando toda la tarjeta (destinatario, asunto, texto y los botones Enviar / Guardar / Descartar): «abre el borrador», «enséñame el correo que tenía pendiente para X». Sin `contact` abre el más reciente.",
+      "payload": {
+        "contact": "opcional: a quién va el borrador",
+        "key": "opcional: la clave del borrador"
+      },
+      "safe": true,
+      "view": true
+    },
+    "save_draft": {
+      "desc": "Guarda los cambios de un borrador SIN enviarlo (texto; y en un mensaje nuevo, destinatario y asunto). Lo usa el botón «Guardar» del borrador abierto.",
+      "payload": {
+        "key": "string (la clave del borrador)",
+        "text": "opcional: el texto",
+        "to": "opcional, mensaje nuevo: el destinatario",
+        "subject": "opcional, email nuevo: el asunto"
+      },
+      "safe": true
+    },
+    "discard_draft": {
+      "desc": "DESCARTA un borrador: se borra y no se envía nada («tira ese borrador», botón «Descartar»).",
+      "payload": {
+        "contact": "opcional: a quién iba",
+        "key": "opcional: la clave del borrador"
+      },
+      "effects": [
+        "state.change"
+      ],
+      "confirm": true,
+      "confirm_q": "¿Descarto ese borrador? Se borra y no se envía."
+    },
+    "compose": {
+      "desc": "El botón «Enviar» de la pantalla de borrador (y «Guardar» de un correo nuevo aún sin guardar): escribe lo que hay en pantalla en el borrador (`key`, o uno nuevo para `to`) y con `send: true` lo ENVÍA. Por voz usa `draft` / `send_draft`.",
+      "payload": {
+        "key": "opcional: el borrador abierto",
+        "to": "string (destinatario, si es nuevo)",
+        "subject": "opcional: asunto",
+        "text": "string",
+        "send": "opcional: true = enviar ya",
+        "channel": "opcional (email por defecto)"
+      },
+      "confirm": true,
+      "confirm_q": "¿Envío ese correo?",
+      "consent_class": "messaging.send_new",
+      "effects": [
+        "external.send"
       ]
     }
   },

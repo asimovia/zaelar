@@ -24,6 +24,9 @@ def _a_show_view(action, payload) -> dict:
     platform = _d._PLAT_ALIASES[raw]
     db = _d.load_db()
     db["active_chat"] = None            # every list view exits an open thread ("volver" included)
+    if platform == "email":             # the mail section opens on its folder's list, never on a stale message
+        from . import mailbox as _mbx
+        _mbx.go(db, str((db.get("mailbox") or {}).get("folder") or "INBOX"))
     # V2-624 — the per-platform view CRITERION («todas las conversaciones con actividad en las últimas 72
     # horas»). `window_h` present = set it (0/negative clears, back to the classic pending view); absent =
     # KEEP whatever he set before — the criterion is per-platform STATE, his words, not per-utterance. It
@@ -255,7 +258,9 @@ def _a_send_draft(action, payload) -> dict:
     if bad:
         return {"ok": False, "error": bad, "message": "No entiendo para cuándo: dime la hora o dentro de cuánto."}
     key = _d._held.draft_for(db, str(payload.get("contact") or "")) if payload.get("contact") else None
-    if payload.get("contact") and key is None:
+    if str(payload.get("key") or "") in (db.get("drafts") or {}):
+        key = str(payload["key"])         # the draft screen's own button names its draft exactly
+    elif payload.get("contact") and key is None:
         return {"ok": False, "error": "no_draft", "message": "No tengo ningún borrador para esa persona."}
     if key is None and (payload.get("n") is not None or payload.get("messageId")):
         t = _d._outbound.resolve_reply_target(db, payload.get("n"), payload.get("messageId"))

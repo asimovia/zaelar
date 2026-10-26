@@ -133,7 +133,8 @@ def prompt_lines(db: dict, now: float | None = None) -> list[str]:
         subj = f" «{d['subject']}»" if d["subject"] else ""
         out.append(f"· BORRADOR esperando su OK para {d['to']}{subj}: «{d['text'][:120]}» — ya está escrito y lo ha "
                    f"visto en la tarjeta; se envía con send_draft (contact: {d['to']!r}), ahora o con `at`/`in_minutes` "
-                   "para más tarde. Su orden explícita de mandarlo ES su confirmación.")
+                   "para más tarde. Su orden explícita de mandarlo ES su confirmación. «Ábrelo / enséñamelo» = "
+                   f"open_draft (contact: {d['to']!r}): ocupa la tarjeta entera para revisarlo.")
     for o in scheduled(db, now)[:3]:
         hhmm = datetime.fromtimestamp(float(o.get("not_before") or 0)).strftime("%d/%m %H:%M")
         out.append(f"· PROGRAMADO para el {hhmm} a {o.get('name') or o.get('to')}: «{str(o.get('text') or '')[:80]}» "
@@ -147,5 +148,7 @@ def held_row(action: str, payload: dict, db: dict, his_turns_since) -> dict | No
         return None
     p = payload if isinstance(payload, dict) else {}
     k = draft_for(db, str(p.get("contact") or "")) if p.get("contact") else None
+    if str(p.get("key") or "") in (db.get("drafts") or {}):
+        k = str(p["key"])
     d = ((db.get("drafts") or {}).get(k) if k else None) or db.get("draft") or None
     return d if d and seen(d, his_turns_since) else None

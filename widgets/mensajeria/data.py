@@ -245,6 +245,8 @@ def view_data(q: str = "") -> dict:
                       or (db.get("chat_index") or {}).get(p)},
         "opening": still_opening,
         "media_days": _media.days(db),
+        # The email section as a mail client (mailbox.py): folders, the current folder's rows, what is open.
+        "mailbox": _mailbox.view(db),
     }
 
 
@@ -325,6 +327,10 @@ from .actions import (  # noqa: E402,F401
     _a_unread, _a_set_signature, _a_set_signature_line, _a_clear_signature, _a_hide, _a_set_notify, _a_unhide,
     _a_open, _a_close, _a_load_more, _a_readchat, _a_archive, _a_chats_more,
     _a_set_media_days, _a_create_group, _a_cancel_send)
+from .mail_actions import (  # noqa: E402,F401
+    _a_mail_folder, _a_mail_more, _a_mail_open, _a_mail_back, _a_open_draft, _a_save_draft, _a_discard_draft,
+    _a_compose)
+from . import mailbox as _mailbox  # noqa: E402
 
 
 # V2-778 F1-12 — one function per action (in `actions.py`), and `apply_action` is the table lookup. Each body
@@ -362,6 +368,14 @@ ACTIONS = {
     "readchat": _a_readchat,
     "archive": _a_archive,
     "trash": _a_archive,
+    "mail_folder": _a_mail_folder,
+    "mail_more": _a_mail_more,
+    "mail_open": _a_mail_open,
+    "mail_back": _a_mail_back,
+    "open_draft": _a_open_draft,
+    "save_draft": _a_save_draft,
+    "discard_draft": _a_discard_draft,
+    "compose": _a_compose,
 }
 
 
@@ -433,6 +447,7 @@ def consent_scope(action: str, payload: dict | None = None) -> dict:
         if action == "send_draft":
             db = load_db()
             k = _held.draft_for(db, str(p.get("contact") or "")) if p.get("contact") else None
+            k = str(p["key"]) if str(p.get("key") or "") in (db.get("drafts") or {}) else k
             d = ((db.get("drafts") or {}).get(k) if k else None) or db.get("draft") or {}
             plat = str((d.get("target") or {}).get("platform") or "")
         elif p.get("contact") or p.get("to"):
