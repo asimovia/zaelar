@@ -122,6 +122,10 @@ DOMAINS: list[dict] = [
         {"id": "1.7", "title": "API HTTP de memoria", "ch": HTTP, "paths": [
             "tests/memory/integration/test_api.py", "tests/memory/integration/test_vault_api.py",
             "tests/memory/e2e/test_server_api.py"]},
+        # V2-809 — disarmed 2026-10-26 (streaming, cancel cleanup, type sniff, disk headroom, size while streaming,
+        # one read at a time) → each red.
+        {"id": "1.13", "title": "The upload door as the chat uses it: kind decided by the bytes, size and disk headroom refused before writing, the body STREAMED to disk, a cancel leaves nothing, files read one at a time (V2-809)",
+            "ch": HTTP, "paths": ["tests/memory/e2e/test_the_chat_upload_door.py"]},
         {"id": "1.8", "title": "Contexto de UI en el estado", "ch": UNIT, "paths": [
             "tests/memory/integration/test_ui_context.py"]},
         # The evaluation HARNESS has its OWN tests: it measures memory, so one of its failures does not appear
@@ -4048,6 +4052,9 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_the_turn_prompt_has_a_ceiling.py",
             # 2026-10-24 — an op the card fires by itself (`"internal": true`) is never offered to the model.
             "tests/agent_headless/unit/flash/test_an_internal_op_is_not_offered_to_the_model.py"]},
+        # V2-809 — disarmed 2026-10-26 (live-block wiring, image as a content part, PDF page cap, pixel cap, detach) → each red.
+        {"id": "2.814", "title": "The turn sees what he just attached to the chat as STATE — name, kind, size and the reading made at upload, within one budget, nothing without one — the image read by a model that receives it, the readers bounded (V2-809)",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_the_turn_sees_what_he_attached.py"]},
         {"id": "2.207", "title": "Whether the reply PROMISED an act or music is read by a verdict in any language; the "
                                  "phrase tables decide only when the verdict cannot (V2-778 F2-16)",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_a_promise_is_read_in_any_language.py"]},
@@ -5622,6 +5629,10 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_a_read_answers_from_what_the_screen_holds.py"]},
         {"id": "4.295", "title": "Opening the chat wall, or coming back to its Chat tab, lands on the latest message even when the history was written while the wall was closed (RENDERED)",
             "ch": UNIT, "paths": ["tests/browser/unit/chat/test_the_wall_opens_on_the_latest_message.py"]},
+        # V2-809 — disarmed 2026-10-26 (bubble refs, one fate per file, the abort, the stall clock, composer paste,
+        # the limits pre-check) → each red.
+        {"id": "4.296", "title": "Files go into the chat: the 📎 takes several files, paste and drop onto the composer attach, each file has its own fate (progress, cancel that aborts, a translated refusal, a clock that ends a silent upload), and the bubble and a restored history show the references — never the bytes (RENDERED, V2-809)",
+            "ch": UNIT, "paths": ["tests/browser/unit/chat/test_files_go_into_the_chat.py"]},
         {"id": "4.252", "title": "The chat list paints, filters by kind and name, loads more and opens a chat (RENDERED)",
             "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_the_chat_list_paints_filters_and_loads_more.py"]},
         {"id": "4.250", "title": "The feedback button is never hidden under another layer",

@@ -203,7 +203,10 @@ start with `make run` → `python -m server`.
 - `tests/voice/e2e/agent/` — voice tester: a second LiveKit participant that TALKS to zaelar and a JUDGE that
   evaluates what it DOES.
 
-`files/` was folded into the episodic layer of `memory/` (a compatibility shim). Root (non-modules): `README.md`,
+`files/` was folded into the episodic layer of `memory/` (a compatibility shim) and holds **`files/attachments.py`**
+(V2-809): what the upload door does for a file added to the CHAT — kind from the bytes, the declared limits
+(`config/attachments.default.json`), the bounded reading (text, PDF text layer, an image read by the
+`image_reader` model), and the turn's state of what he just attached (CRIT-M11). Root (non-modules): `README.md`,
 `Makefile`, `requirements.txt` + `.venv/`, `Dockerfile`/`.dockerignore`, `scripts/` (per-OS install tooling),
 `CLAUDE.md`. **Logging → `.meshkore/logs/`** (do not create `logs/` at the root).
 

@@ -739,9 +739,12 @@ dim, italic, centered `sys` line in the chat log (`store.pushChat({role:"sys",�
 `.cw-msg.sys` via the `--hb-*` theme variables). No preview/thumbnail UI by design — the confirmation line is the
 only visible feedback.
 
-**The endpoint → the episodic layer.** `POST /api/files/upload` now lives in **`memory/server_api.py`**
-(`multipart/form-data`, fields `file` + `source`, 50 MB cap, no auth — local-only app). Each upload calls
-**`memory.write_episode(data, filename, mime)`** (`memory/episodic.py`), which stores the binary AND generates a
+**The endpoint → the episodic layer.** `POST /api/files/upload` lives in **`server/memory_routes.py`**
+(two encodings, one door: `multipart/form-data` with `file` + `source`, or a RAW body with the name in
+`X-File-Name` and `?source=`; no auth — local-only app). The body is STREAMED to `memory.episode_inbox()` in
+chunks and adopted by rename (**`memory.adopt_episode`**), never read whole; the size cap and the disk headroom are
+the declared ones of `config/attachments.default.json`, refused before writing when the length is declared. The
+stored file gets the same treatment as **`memory.write_episode(data, filename, mime)`** (`memory/episodic.py`): the binary AND a
 **searchable summary** embedded into the memory index (participates in `memory.query` via vec + FTS; the binary
 loads **lazy**). `GET /api/files` lists episodic files. Anything left in the old `files/uploads/` from before is
 imported at boot by `memory.migrate_inbox()` (lazy, idempotent, **non-destructive** — it never deletes the source).
@@ -751,6 +754,16 @@ imported at boot by `memory.migrate_inbox()` (lazy, idempotent, **non-destructiv
 change. Threading the file inline into the turn as multimodal content is deliberately NOT done: the operator's real
 asks ("resume este PDF", "mira esta captura y dime qué ves") are satisfied by a follow-up turn where the SlowBrain
 reads the file with its own tools, with zero extra surface in the LLM plumbing.
+
+**Files added to the CHAT (V2-809).** The chat's 📎 (and paste/drop onto its composer) sends each file to the same
+door with `source=chat`, one request per file (`frontend/app/services/chat-files.js`: XHR progress, cancel, a stall
+clock). For the chat the door also decides the kind from the bytes (image · PDF · text, anything else 415), reads it
+ONCE with bounded work, one file at a time (`files/attachments.py`: text up to a byte cap, the PDF text layer up to
+a page cap, an image downscaled and read by the `image_reader` model, which receives the image itself), keeps a
+thumbnail and the reading by episode id, and makes it the turn's STATE: `prompt_lines()` adds one line per recent
+attachment to the live block (reading included, one shared budget) and nothing when there is none. The message
+carries references (`{id, name, kind, size, thumb}`), which the chat log keeps; removing a chip before sending is
+`DELETE /api/files/attached/{id}`; `GET /api/files/limits` gives the composer the declared limits (CRIT-M11).
 
 **Widgets write durable data to memory.** Beyond its UI `store.save()` (canvas SSE, unchanged), a widget
 that produces durable data also dumps it to the central memory for brain recall. First case: `mensajeria` writes

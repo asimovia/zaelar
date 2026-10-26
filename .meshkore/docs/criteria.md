@@ -365,6 +365,13 @@ below is the first kind, or it names the mechanism that replaced the second.
   cursor; the graph is aggregated on the server and bounded by the node budget of the device that draws it, and its
   canvas is fitted to its own panel. — since 2026-10-26 · nodes 1.11, 1.12 · `memory/viewer.py`,
   `server/memory_viewer_api.py`, `frontend/app/components/memory/`.
+- **CRIT-M11 · A file added to the chat is a REFERENCE, streamed to disk and read once with bounded work.** The
+  kind is decided by its bytes (image, PDF, text); size, files per message and the disk's free-space headroom are
+  refused before a byte is written, from ONE declared table (`config/attachments.default.json`, measured); the
+  body streams to disk, files are read one at a time, and the turn sees what he just attached as state — the
+  reading made at upload, an image read by a model that receives it — and nothing when there is none. — since
+  2026-10-26 · nodes 1.13, 2.814, 4.296 · `files/attachments.py`, `server/memory_routes.py`,
+  `frontend/app/services/chat-files.js`.
 
 ## 6 · Resilience
 
