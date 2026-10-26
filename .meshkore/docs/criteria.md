@@ -77,6 +77,16 @@ below is the first kind, or it names the mechanism that replaced the second.
   discarded fragment whose words still travel, in order, in the text the turn runs with (or in the buffer still
   held) is not a loss: `Accumulator.offer` returns no `dropped`, so no timeline line and no spoken notice. A
   fragment that reaches no turn is still reported and rescued. — since 2026-10-24 · nodes 2.795.
+- **CRIT-V14 · The microphone is conditioned per platform, and the agent-side filter is one setting that fails
+  open.** A phone or tablet opens its mic with the full profile (echo cancellation + noise suppression + gain
+  control), a desktop Mac with «isolate» (echo cancellation only, so macOS Voice Isolation works without the
+  browser's suppression on top); `voiceIsolation` is asked only where `getSupportedConstraints()` reports it
+  (`frontend/app/services/mic-profile.js`). Agent-side voice isolation is `ZAELAR_VOICE_ISOLATION` = off | nc | bvc,
+  default off: it attaches `livekit-plugins-noise-cancellation` to the room's audio input only on a LiveKit Cloud
+  project; elsewhere (a self-hosted livekit-server refuses it) or with the plugin missing the session runs as with
+  off and one warning says why (`voice/engine/pipeline/voice_isolation.py`). A filter is turned on by default only
+  after `tests/voice/bench/voice_isolation_bench.py` shows it lowers WER under noise without raising it on clean
+  speech. — since 2026-10-26 · nodes 3.138, 4.299.
 
 ## 2 · Consent — act or ask
 

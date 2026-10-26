@@ -11,6 +11,7 @@ livekit-plugins-mistralai==1.6.6                       # STT Voxtral (default re
 livekit-plugins-anthropic==1.6.6                       # LLM Claude (ramas async)
 livekit-plugins-google==1.6.6                          # LLM Gemini (cerebro rápido del duo)
 livekit-plugins-silero==1.6.6                          # VAD local (ambos perfiles)
+livekit-plugins-noise-cancellation==0.3.2              # agent-side voice isolation (ZAELAR_VOICE_ISOLATION, off by default; needs a LiveKit Cloud project, fails open elsewhere · V2-812)
 livekit-api                                     # firma de tokens JWT en el servidor web
 faster-whisper>=1.1                             # STT local: CPU (universal) + NVIDIA CUDA
 mlx-whisper>=0.4; sys_platform == "darwin" and platform_machine == "arm64"  # STT local Apple Silicon (Metal)

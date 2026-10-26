@@ -72,9 +72,12 @@ def _endpointing_opts() -> dict:
 def _session_start_opts() -> dict:
     """Extra `AgentSession.start` options. A MEDIATED instance holds no LiveKit key (see `make_server`), and the SDK
     uploads a session's recording, traces and logs to the provider's observability endpoint signed with that key:
-    every session would end in a 401 and an ERROR. So it does not record. Elsewhere the SDK default stands."""
+    every session would end in a 401 and an ERROR. So it does not record. Elsewhere the SDK default stands.
+    Voice isolation (V2-812 T-08) adds `room_options` only when the setting is on AND the transport serves it."""
     from nucleo import llm_egress
-    return {"record": False} if llm_egress.mediated() else {}
+    from .voice_isolation import room_options
+    opts = {"record": False} if llm_egress.mediated() else {}
+    return {**opts, **room_options(SETTINGS.voice_isolation, SETTINGS.livekit_url)}
 
 
 async def entrypoint(ctx: JobContext) -> None:

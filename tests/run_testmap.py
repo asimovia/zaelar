@@ -1989,6 +1989,13 @@ DOMAINS: list[dict] = [
         {"id": "3.137", "title": "A «which card?» names each card by what it shows, its kind or its place — an id "
                                  "never reaches a spoken line (V2-812 T-06)", "ch": UNIT,
             "paths": ["tests/browser/unit/frontera/test_a_card_is_never_named_by_its_id.py"]},
+        # V2-812 T-08 — server-side voice isolation is ONE setting (`ZAELAR_VOICE_ISOLATION`, off|nc|bvc, default off).
+        # Off attaches nothing; on where the transport cannot serve it (self-hosted livekit-server refuses the filter)
+        # or the plugin cannot load → the session runs as today with one warning; on, on LiveKit Cloud → the filter
+        # rides in room_options.audio_input. Disarmed 2026-10-26 (off, transport, once, model, except, wiring) → red.
+        {"id": "3.138", "title": "Agent-side voice isolation is one setting, off by default, and fails open with one "
+                                 "warning where the transport or the plugin cannot serve it (V2-812 T-08)", "ch": UNIT,
+            "paths": ["tests/voice/unit/test_voice_isolation_is_a_setting_that_fails_open.py"]},
         # V2-807 T-14 — a clear stop order was refused twice: the tool gate read a word table that did not list «para
         # inmediatamente esa tarea». The turn's brief asks, while an errand runs, whether THIS turn orders it stopped;
         # a sure verdict decides the gate and repairs a turn that called nothing; the grammar is the fallback only.
