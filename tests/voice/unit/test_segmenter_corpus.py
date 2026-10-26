@@ -1,9 +1,9 @@
-"""The segmenter, measured against the WHOLE local session registry (V2-095, 2026-08-14).
+"""The segmenter, measured against a session corpus (V2-095, 2026-08-14; pinned corpus 2026-10-26).
 
 `test_segmenter.py` pins the rule against the 89 transcripts of a single session. That is how the rule was BUILT,
 which is exactly why it is not enough to trust it: a rule tuned on one session is fitted to one session. This file
-replays **every session the operator has on this machine** (195 files, 804 transcripts at the time of writing) and
-measures the rule against production behaviour.
+replays a corpus of whole sessions — first the operator's local registry (195 files, 804 transcripts when it was
+written), now a pinned synthetic one (see below) — and measures the rule against what happened next in each session.
 
 ## The labels come from PRODUCTION, not from reading the sentence
 
@@ -28,13 +28,21 @@ rule is actually responsible for.
 Being precise about that split is the whole point: reporting a single blended recall number would credit the rule
 for a class it can't reach and punish it for another it shouldn't touch.
 
-## The corpus is NOT committed, deliberately
+## The corpus is PINNED, and it is synthetic
 
-These are verbatim recordings of the operator talking, including travel plans and appointments. **This repository is
-public**, and `CLAUDE.md` records the leak that made this rule non-negotiable: 110 of 186 committed voice-battery
-reports carried the operator's name and agenda items. So this test reads the registry at RUNTIME from
-`.meshkore/logs/sessions/` (gitignored) and skips where there is none — same shape as
-`tests/infrastructure/unit/test_roadmap_closure.py`. A clean clone skips; the operator's machine measures.
+Real sessions are verbatim recordings of the operator talking, including travel plans and appointments, and **this
+repository is public** — so they are never committed. The first version read the local registry
+(`.meshkore/logs/sessions/`, gitignored) at runtime instead, and that made the assertions measure WHICH sessions
+happened to be on the machine: the registry rotates (emptied 2026-08-15, rotated to English demo sessions later),
+and on 2026-10-26 the recall test went red with «nothing measurable» — zero Castilian fragments and too few English
+ones — with `nucleo/flash/segmenter.py` unchanged since September. A red that the product cannot cause is a broken
+test.
+
+So the default corpus is `tests/voice/fixtures/sessions/`: authored, non-personal phrases in the SAME event shape a
+real session writes (`transcript` events and the `turno cancelado` brain label), labelled by the same production
+rule below. It includes fragments the rule is known to miss (a trailing verb or adverb it has no class for), so
+recall is a measurement and not 100% by construction. To measure the rule against a real registry on the machine
+that has one, point `ZAELAR_SESSION_CORPUS` at it; nothing from it is ever written back into the repo.
 """
 from __future__ import annotations
 
@@ -46,8 +54,10 @@ import pytest
 
 from nucleo.flash import segmenter
 
-ENGINE = Path(__file__).resolve().parents[3]
-SESSIONS = ENGINE / ".meshkore/logs/sessions"
+import os
+
+SESSIONS = Path(os.environ.get("ZAELAR_SESSION_CORPUS")
+                or Path(__file__).resolve().parents[1] / "fixtures/sessions")
 
 _TERMINAL = re.compile(r"[.!?…]['\")\]]*$")
 _CANCEL = "turno cancelado"
@@ -65,9 +75,10 @@ _CANCEL = "turno cancelado"
 # its own and made to climb. Neither of these FIXES the segmenter — that is product work, and this file's
 # job is to be able to NAME the cause instead of publishing one number that hides it.
 #
-# ⚠️ Measured while writing this: the local registry currently holds ZERO Castilian fragments. The 79% the
-# old floor was set against is not in the corpus any more — the sessions rotated to the English ones. So
-# the Castilian assertion is not passing today, it is SKIPPING, and the test says which.
+# ⚠️ Against the local registry the Castilian bucket went EMPTY (the sessions rotated to English ones) and the
+# assertion silently stopped measuring it; later both buckets fell under `_MIN_SAMPLES` and the test went red
+# with the product untouched. The pinned corpus carries both languages above `_MIN_SAMPLES`, so both floors
+# are asserted on every run.
 _RECALL_FLOOR = {"es": 0.70, "en": 0.55}
 #: Below this a bucket says nothing: it is reported, never asserted on. A floor measured over four
 #: fragments is a coin toss with a number written under it.
@@ -133,7 +144,7 @@ def _corpus() -> dict[str, str]:
 
 pytestmark = pytest.mark.skipif(
     not SESSIONS.is_dir() or not list(SESSIONS.glob("*.jsonl")),
-    reason="the session registry is local to the operator's machine (gitignored): nothing to measure here")
+    reason=f"no session corpus at {SESSIONS}: nothing to measure here")
 
 
 @pytest.fixture(scope="module")
@@ -196,7 +207,7 @@ def test_recall_sobre_fragmentos_sin_puntuacion(corpus):
     if unknown:
         report.append(f"?: {len(unknown)} fragment(s) whose language is a tie — counted in neither")
 
-    assert measured, ("nothing measurable in the local registry: " + " · ".join(report) +
+    assert measured, ("nothing measurable in the corpus: " + " · ".join(report) +
                       " — this is a SKIP-shaped state, not a pass, and it means the corpus rotated away "
                       "from the language whose floor is set.")
     assert not failures, " · ".join(report) + "\n\n" + "\n".join(failures)
@@ -244,6 +255,8 @@ def test_las_ordenes_cortas_de_widget_pasan(corpus):
         last = segmenter._norm(words[-1])
         if last in segmenter._DANGLING or last in segmenter._NEEDS_OBJECT:
             continue                          # ends on a function word: truncated, holding it is correct
+        if (segmenter._norm(words[-2]), last) in segmenter._TRAILING_CONNECTORS:
+            continue                          # ends on «en plan» / «o sea» (V2-570): truncated the same way
         if segmenter.looks_incomplete(t)[0]:
             held.append(t)
     assert not held, f"short orders being held: {[(t, segmenter.looks_incomplete(t)[1]) for t in held]}"

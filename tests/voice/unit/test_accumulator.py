@@ -332,19 +332,25 @@ def test_texto_vacio_no_toca_el_buffer():
     assert a.pending(), "un turno vacío tiró el buffer"
 
 
-# ── CONTRA EL REGISTRO REAL ─────────────────────────────────────────────────────────────────────────────────────
-SESSIONS = __import__("pathlib").Path(__file__).resolve().parents[3] / ".meshkore/logs/sessions"
+# ── AGAINST A SESSION CORPUS ────────────────────────────────────────────────────────────────────────────────────
+# The pinned, synthetic corpus shared with `test_segmenter_corpus.py` (see its docstring for why it is not the local
+# registry any more: the registry rotates, and on 2026-10-26 this test went red at 13 of 32 with the accumulator's
+# recomposition unchanged — the chains on the machine had become mostly two WHOLE sentences said back to back, which
+# nothing should join). `ZAELAR_SESSION_CORPUS=<dir>` measures a real registry on the machine that has one.
+import os as _os
+from pathlib import Path as _Path
+
+SESSIONS = _Path(_os.environ.get("ZAELAR_SESSION_CORPUS")
+                 or _Path(__file__).resolve().parents[1] / "fixtures/sessions")
 
 
 @pytest.mark.skipif(not SESSIONS.is_dir() or not list(SESSIONS.glob("*.jsonl")),
-                    reason="the session registry is local to the operator's machine (gitignored)")
-def test_sobre_las_sesiones_REALES_recompone_frases_y_no_se_atasca():
-    """The end-to-end claim, on production data: replaying every chain of consecutive operator transcripts (a
-    sentence said in several goes), the accumulator has to (a) recompose a good number of them and (b) never end up
-    holding a chain forever.
+                    reason="no session corpus to replay")
+def test_over_a_session_corpus_it_recomposes_sentences_and_never_sticks():
+    """The end-to-end claim: replaying every chain of consecutive operator transcripts (a sentence said in several
+    goes), the accumulator has to (a) recompose a good number of them and (b) never end up holding a chain forever.
 
-    Numbers are asserted as a FLOOR, not an exact figure — the registry grows every session and a test that pins an
-    exact count would go red for the wrong reason.
+    Numbers are asserted as a FLOOR, not an exact figure, so the same assertion holds over a real registry of any size.
     """
     import json
     chains, cur = [], []

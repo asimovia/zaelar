@@ -1,0 +1,68 @@
+{"kind": "transcript", "role": "user", "text": "Búscame un hotel en Valencia para"}
+{"kind": "brain", "role": "system", "label": "✂️ turno cancelado (barge-in/overlap)", "text": ""}
+{"kind": "transcript", "role": "user", "text": "el fin de semana que viene."}
+{"kind": "transcript", "role": "assistant", "text": "De acuerdo."}
+{"kind": "transcript", "role": "user", "text": "Quiero que me prepares un resumen de"}
+{"kind": "brain", "role": "system", "label": "✂️ turno cancelado (barge-in/overlap)", "text": ""}
+{"kind": "transcript", "role": "user", "text": "las notas de la reunión de ayer."}
+{"kind": "transcript", "role": "assistant", "text": "De acuerdo."}
+{"kind": "transcript", "role": "user", "text": "Ponme una alarma a las siete y"}
+{"kind": "brain", "role": "system", "label": "✂️ turno cancelado (barge-in/overlap)", "text": ""}
+{"kind": "transcript", "role": "user", "text": "media de la mañana."}
+{"kind": "transcript", "role": "assistant", "text": "De acuerdo."}
+{"kind": "transcript", "role": "user", "text": "Necesito que mires si hay vuelos desde Madrid a"}
+{"kind": "brain", "role": "system", "label": "✂️ turno cancelado (barge-in/overlap)", "text": ""}
+{"kind": "transcript", "role": "user", "text": "Lisboa el viernes por la tarde."}
+{"kind": "transcript", "role": "assistant", "text": "De acuerdo."}
+{"kind": "transcript", "role": "user", "text": "Apúntame en la agenda una cita con el dentista el"}
+{"kind": "brain", "role": "system", "label": "✂️ turno cancelado (barge-in/overlap)", "text": ""}
+{"kind": "transcript", "role": "user", "text": "jueves a las cinco."}
+{"kind": "transcript", "role": "assistant", "text": "De acuerdo."}
+{"kind": "transcript", "role": "user", "text": "Abre el documento y añade una sección sobre"}
+{"kind": "brain", "role": "system", "label": "✂️ turno cancelado (barge-in/overlap)", "text": ""}
+{"kind": "transcript", "role": "user", "text": "los costes del proyecto."}
+{"kind": "transcript", "role": "assistant", "text": "De acuerdo."}
+{"kind": "transcript", "role": "user", "text": "Mándale un mensaje a Laura diciendo que"}
+{"kind": "brain", "role": "system", "label": "✂️ turno cancelado (barge-in/overlap)", "text": ""}
+{"kind": "transcript", "role": "user", "text": "llego diez minutos tarde."}
+{"kind": "transcript", "role": "assistant", "text": "De acuerdo."}
+{"kind": "transcript", "role": "user", "text": "Y tiene que haber"}
+{"kind": "brain", "role": "system", "label": "✂️ turno cancelado (barge-in/overlap)", "text": ""}
+{"kind": "transcript", "role": "user", "text": "al menos dos opciones vegetarianas."}
+{"kind": "transcript", "role": "assistant", "text": "De acuerdo."}
+{"kind": "transcript", "role": "user", "text": "Con dos navegadores"}
+{"kind": "brain", "role": "system", "label": "✂️ turno cancelado (barge-in/overlap)", "text": ""}
+{"kind": "transcript", "role": "user", "text": "abiertos a la vez, compara los precios."}
+{"kind": "transcript", "role": "assistant", "text": "De acuerdo."}
+{"kind": "transcript", "role": "user", "text": "Busca restaurantes italianos cerca de casa, en plan"}
+{"kind": "brain", "role": "system", "label": "✂️ turno cancelado (barge-in/overlap)", "text": ""}
+{"kind": "transcript", "role": "user", "text": "algo tranquilo para cenar."}
+{"kind": "transcript", "role": "assistant", "text": "De acuerdo."}
+{"kind": "transcript", "role": "user", "text": "Recuérdame llamar a mi hermana cuando"}
+{"kind": "brain", "role": "system", "label": "✂️ turno cancelado (barge-in/overlap)", "text": ""}
+{"kind": "transcript", "role": "user", "text": "salga del trabajo."}
+{"kind": "transcript", "role": "assistant", "text": "De acuerdo."}
+{"kind": "transcript", "role": "user", "text": "Es decir, actualiza la"}
+{"kind": "brain", "role": "system", "label": "✂️ turno cancelado (barge-in/overlap)", "text": ""}
+{"kind": "transcript", "role": "user", "text": "lista de la compra con lo que falta."}
+{"kind": "transcript", "role": "assistant", "text": "De acuerdo."}
+{"kind": "transcript", "role": "user", "text": "Quiero ver los vídeos más recientes de"}
+{"kind": "brain", "role": "system", "label": "✂️ turno cancelado (barge-in/overlap)", "text": ""}
+{"kind": "transcript", "role": "user", "text": "cocina japonesa."}
+{"kind": "transcript", "role": "assistant", "text": "De acuerdo."}
+{"kind": "transcript", "role": "user", "text": "Me gustaría saber cuánto cuesta"}
+{"kind": "brain", "role": "system", "label": "✂️ turno cancelado (barge-in/overlap)", "text": ""}
+{"kind": "transcript", "role": "user", "text": "un billete de tren a Sevilla."}
+{"kind": "transcript", "role": "assistant", "text": "De acuerdo."}
+{"kind": "transcript", "role": "user", "text": "Haz una lista con las tareas pendientes de esta semana y luego"}
+{"kind": "brain", "role": "system", "label": "✂️ turno cancelado (barge-in/overlap)", "text": ""}
+{"kind": "transcript", "role": "user", "text": "ordénalas por prioridad."}
+{"kind": "transcript", "role": "assistant", "text": "De acuerdo."}
+{"kind": "transcript", "role": "user", "text": "Dejándolo preparado para"}
+{"kind": "brain", "role": "system", "label": "✂️ turno cancelado (barge-in/overlap)", "text": ""}
+{"kind": "transcript", "role": "user", "text": "que lo revise mañana."}
+{"kind": "transcript", "role": "assistant", "text": "De acuerdo."}
+{"kind": "transcript", "role": "user", "text": "Pues mira, lo que quería decirte es"}
+{"kind": "brain", "role": "system", "label": "✂️ turno cancelado (barge-in/overlap)", "text": ""}
+{"kind": "transcript", "role": "user", "text": "que mañana no puedo ir."}
+{"kind": "transcript", "role": "assistant", "text": "De acuerdo."}
