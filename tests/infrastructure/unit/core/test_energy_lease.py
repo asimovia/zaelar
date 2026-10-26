@@ -7,6 +7,7 @@ take control away from the operator.
 import time
 
 import pytest
+from tests.waiting import until
 
 from nucleo import energy_lease
 
@@ -271,9 +272,6 @@ def test_a_spend_metered_in_a_worker_thread_still_asks_for_the_renewal(monkeypat
         t = threading.Thread(target=energy_lease.note_spend, args=(60.0,))
         t.start()
         await asyncio.to_thread(t.join)
-        for _ in range(50):
-            if asked:
-                break
-            await asyncio.sleep(0.01)
+        await until(lambda: asked, "a renewal asked from a worker thread", timeout_s=2)
     asyncio.run(main())
     assert asked == ["half_spent"], "a spend from a worker thread never asked for a renewal"

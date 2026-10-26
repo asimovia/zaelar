@@ -32,6 +32,7 @@ from pathlib import Path
 
 import httpx
 import pytest
+from tests.waiting import until
 
 from nucleo import account_limits, energy_lease, runstate
 
@@ -124,12 +125,8 @@ def _run(coro):
 async def _spend_and_settle(energy: float):
     """`note_spend` as a worker's end-of-run charge does it, on a running loop, then let the recovery finish."""
     energy_lease.note_spend(energy)
-    for _ in range(100):
-        await asyncio.sleep(0)
-        if not energy_lease._in_flight():
-            break
-    for _ in range(20):
-        await asyncio.sleep(0.01)
+    await until(lambda: not energy_lease._in_flight(), "the lease recovery to finish", timeout_s=5)
+    await asyncio.sleep(0.2)
 
 
 # ── the incident ─────────────────────────────────────────────────────────────────────────────────────────────

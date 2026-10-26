@@ -18,8 +18,16 @@ verdict: today's path, unchanged — a missed errand is worse than an unasked qu
 """
 from __future__ import annotations
 
+import logging
 import threading
 import time
+
+log = logging.getLogger(__name__)
+
+
+def _note(where: str, exc: Exception) -> None:
+    """Every degraded path here is fail-soft (nothing refused, nothing sent): say which one, never silently."""
+    log.info("capability_gap: %s failed: %s", where, exc)
 
 KEY = "capability_gap"
 MISSING, DECLARED, WORK = "missing", "declared", "work"
@@ -63,7 +71,8 @@ def _declarations(open_ids) -> str:
                 acts.append(f"{name}" + (f" ({desc[:MAX_DESC_CHARS]})" if desc else ""))
             if acts:
                 lines.append(f"Card «{wid}» declares: " + "; ".join(acts))
-    except Exception:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001
+        _note('declared actions of open cards', e)
         pass
     if not lines:
         try:
@@ -77,7 +86,8 @@ def _declarations(open_ids) -> str:
                     if isinstance(w.get("actions"), dict) else ""
                 lines.append(f"Card «{wid}»" + (f" — {desc[:MAX_DESC_CHARS]}" if desc else "")
                              + (f" — actions: {names}" if names else ""))
-        except Exception:  # noqa: BLE001
+        except Exception as e:  # noqa: BLE001
+            _note('catalogue declarations', e)
             pass
     return "\n".join(lines)
 
@@ -100,7 +110,8 @@ def missing(brief) -> bool:
         from nucleo.flash import turn_brief as _tb
         choice, info = _tb.read(brief, KEY, "", min_confidence=MIN_CONFIDENCE)
         return info is not None and str(choice or "") == MISSING
-    except Exception:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001
+        _note('reading the verdict', e)
         return False
 
 
@@ -142,7 +153,8 @@ def _trace_of(ctx: dict) -> str:
     try:
         from voice import trace as _trace
         return _trace.current() or ""
-    except Exception:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001
+        _note('current trace', e)
         return ""
 
 
@@ -163,7 +175,8 @@ def refuse(request: str) -> None:
         emit("task", "blocked", role="system", text=req[:120],
              extra={"reason": "capability_gap", "kind_diag": "capability_gap", "suggestion": noted,
                     "cat": "flash"})
-    except Exception:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001
+        _note('timeline row', e)
         pass
     line = not_yet_line(noted)
     if not line:
@@ -173,7 +186,8 @@ def refuse(request: str) -> None:
 
         from voice import proactive
         asyncio.get_running_loop().create_task(proactive.notify("zaelar", line))
-    except Exception:  # noqa: BLE001 — no loop (tests, boot): the timeline row above already records it
+    except Exception as e:  # noqa: BLE001 — no loop (tests, boot): the timeline row above already records it
+        _note('spoken not-yet line', e)
         pass
 
 
@@ -183,7 +197,8 @@ def not_yet_line(noted: bool) -> str:
         from i18n import langs as _langs
         lg = _langs.current_language()
         return str(getattr(lg, "capability_not_yet_noted" if noted else "capability_not_yet", "") or "")
-    except Exception:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001
+        _note('not-yet line language', e)
         return ""
 
 
@@ -202,5 +217,6 @@ def keep_as_suggestion(request: str) -> bool:
         from server import feedback_api as _fb
         asyncio.get_running_loop().create_task(_fb._deliver({"message": request.strip()[:1000], "type": "idea"}, None))
         return True
-    except Exception:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001
+        _note('suggestion hand-off', e)
         return False

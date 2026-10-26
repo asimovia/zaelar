@@ -27,7 +27,7 @@ ENGINE = Path(__file__).resolve().parents[3]
 
 #: Measured 2026-10-19 at 295ff4ec (366 files). Lower these when you remove; never raise them.
 MAX_REGEXES = 543   # V2-806: the spoken-rule parsers (consent, style, scope, removal, sentences) went
-MAX_WORD_TABLES = 514
+MAX_WORD_TABLES = 476  # 2026-10-26: remeasured once state records and constant unpacking stopped counting (was 514)
 
 
 def _strings(v) -> int:
@@ -36,6 +36,11 @@ def _strings(v) -> int:
     if isinstance(v, (ast.Set, ast.List, ast.Tuple)):
         return sum(isinstance(e, ast.Constant) and isinstance(e.value, str) for e in v.elts)
     if isinstance(v, ast.Dict):
+        # A record of state or of numeric limits (`{"sid": None, "ts": 0.0}`, `{"tracks": 10}`) names fields, it
+        # reads no words: a table maps words to words (or to declared values), so at least one value is a string
+        # or a name.
+        if v.values and all(isinstance(x, ast.Constant) and not isinstance(x.value, str) for x in v.values):
+            return 0
         return sum(isinstance(k, ast.Constant) and isinstance(k.value, str) for k in v.keys if k is not None)
     if (isinstance(v, ast.Call) and isinstance(v.func, ast.Attribute) and v.func.attr == "split"
             and isinstance(v.func.value, ast.Constant) and isinstance(v.func.value.value, str)):
@@ -55,7 +60,9 @@ def _counts() -> dict[str, tuple[int, int]]:
             continue
         rx = sum(isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr == "compile"
                  and getattr(n.func.value, "id", "") == "re" for n in ast.walk(tree))
+        # `A, B, C = "a", "b", "c"` declares named constants, one per target — not a table anything is looked up in.
         wt = sum(isinstance(n, (ast.Assign, ast.AnnAssign)) and n.value is not None and _strings(n.value) >= 3
+                 and not (isinstance(n, ast.Assign) and isinstance(n.targets[0], ast.Tuple))
                  for n in tree.body)
         if rx or wt:
             out[rel] = (rx, wt)
