@@ -46,7 +46,7 @@ def _listed(lines):
     class _L:
         def list(self):
             return "OK", lines
-    return folders.parse_list(Mailbox._folders(_L()))
+    return folders.parse_list(Mailbox._folders(_L(), delimiter=True))
 
 
 def test_folders_come_in_client_order_with_their_role_and_a_readable_name():
@@ -62,6 +62,16 @@ def test_a_role_is_what_the_server_DECLARES_never_a_guess_from_the_folder_name()
     or «Enviados» out of a name is a word table, and the next language or provider would miss it."""
     got = _listed([b'() "." "INBOX"', b'() "." "INBOX.Sent"', b'() "." "INBOX.Drafts"', b'() "." "Trash"'])
     assert {f["label"]: f["role"] for f in got} == {"INBOX": "inbox", "Sent": "", "Drafts": "", "Trash": ""}
+
+
+def test_a_folder_name_is_cut_only_at_the_servers_own_delimiter():
+    """Gmail's delimiter is «/»: a label named after an address keeps its dots (it was read as «com»), and a server
+    whose delimiter IS «.» still gets its leaf."""
+    gm = _listed([b'(\\HasNoChildren) "/" "INBOX"', b'(\\HasNoChildren) "/" "ana@example.com"',
+                  b'(\\HasNoChildren) "/" "Clientes/v2.0"'])
+    assert {f["label"] for f in gm} == {"INBOX", "ana@example.com", "v2.0"}
+    dot = _listed([b'() "." "INBOX"', b'() "." "INBOX.Facturas"', b'() NIL "Plano.txt"'])
+    assert {f["label"] for f in dot} == {"INBOX", "Facturas", "Plano.txt"}
 
 
 class _Imap:

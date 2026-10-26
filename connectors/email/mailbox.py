@@ -381,18 +381,21 @@ class Mailbox:
     _FALLBACK_TRASH = ("Trash", "[Gmail]/Trash", "Deleted Messages", "Deleted Items", "Papelera")
 
     @staticmethod
-    def _folders(im) -> list[tuple[str, str]]:
-        """LIST → [(attrs lowercase, folder name)]. Best-effort parse; unparseable lines are skipped."""
-        out: list[tuple[str, str]] = []
+    def _folders(im, *, delimiter: bool = False) -> list[tuple]:
+        """LIST → [(attrs lowercase, folder name)], or [(attrs, name, hierarchy delimiter)] with `delimiter=True` —
+        the delimiter is the server's own («/» on Gmail, «.» on many others; NIL when flat), and a reader that guesses
+        it cuts «ana@example.com» down to «com». Best-effort parse; unparseable lines are skipped."""
+        out: list[tuple] = []
         try:
             status, data = im.list()
             if status != "OK" or not data:
                 return out
             for raw in data:
                 line = raw.decode("utf-8", "replace") if isinstance(raw, (bytes, bytearray)) else str(raw)
-                m = re.match(r'\(([^)]*)\)\s+"?[^"]*"?\s+"?(.+?)"?\s*$', line)
+                m = re.match(r'\(([^)]*)\)\s+("[^"]*"|NIL|nil)\s+"?(.+?)"?\s*$', line)
                 if m:
-                    out.append((m.group(1).lower(), m.group(2)))
+                    sep = "" if m.group(2).upper() == "NIL" else m.group(2).strip('"').replace("\\\\", "\\")
+                    out.append((m.group(1).lower(), m.group(3), sep) if delimiter else (m.group(1).lower(), m.group(3)))
         except Exception:
             pass
         return out

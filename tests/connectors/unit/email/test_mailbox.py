@@ -15,6 +15,22 @@ def test_strip_html():
     assert "Hola" in out and "qué tal & adiós" in out and "<" not in out
 
 
+def test_strip_html_drops_style_and_script_blocks():
+    out = mb.strip_html("<html><head><style>.a{color:red}</style></head><body><script>x()</script><p>Hola</p></body></html>")
+    assert out == "Hola"
+
+
+def test_a_plain_part_that_is_really_html_is_read_as_text():
+    """Some senders put their HTML in the text/plain part; the card showed `<div id="container" style=…` verbatim."""
+    raw = (b"From: A <a@x.com>\r\nSubject: S\r\nContent-Type: multipart/alternative; boundary=BB\r\n\r\n"
+           b"--BB\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n"
+           b'<div id="container" style="font-family: Arial"><h1>636212</h1><p>es tu codigo</p></div>\r\n'
+           b"--BB--\r\n")
+    import email
+    out = mb.extract_text_body(email.message_from_bytes(raw))
+    assert "<" not in out and "636212" in out and "es tu codigo" in out
+
+
 def test_multipart_prefers_plain():
     raw = (b"From: A <a@x.com>\r\nSubject: S\r\nContent-Type: multipart/alternative; boundary=BB\r\n\r\n"
            b"--BB\r\nContent-Type: text/plain; charset=utf-8\r\n\r\nHola plano\r\n"

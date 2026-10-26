@@ -50,13 +50,14 @@ def parse_list(pairs) -> list[dict]:
     client order: Inbox, the special folders, then the rest by name. `name` is what SELECT needs (raw, still
     encoded); `label` is what a person reads. \\Noselect containers are left out — they hold folders, not mail."""
     out, seen = [], set()
-    for attrs, name in pairs or []:
+    for attrs, name, *sep in pairs or []:
         name = str(name).strip()
+        sep = sep[0] if sep else "/"
         if "\\noselect" in attrs or "\\nonexistent" in attrs or name in seen:
             continue
         seen.add(name)
         label = _mutf7(name)
-        leaf = label.split("/")[-1].split(".")[-1].strip()
+        leaf = (label.split(sep)[-1] if sep else label).strip()
         if name.upper() == "INBOX":
             role = "inbox"
         else:
@@ -157,7 +158,7 @@ def list_page(mb, folder: str = "INBOX", before: str | None = None, limit: int =
     try:
         from connectors.email import categories as _cats
         from connectors.email.mailbox import Mailbox
-        out["folders"] = parse_list(Mailbox._folders(im))
+        out["folders"] = parse_list(Mailbox._folders(im, delimiter=True))
         if before is None:
             out["counts"] = _cats.unseen_counts(im, out["folders"])
         st, data = im.select(_quote(folder), readonly=True)

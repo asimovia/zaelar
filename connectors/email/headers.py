@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import re
 from email.header import decode_header
+from html.parser import HTMLParser
 
 
 # Automatic senders — their mail is silently ignored (never a personal message to triage/reply to).
@@ -40,14 +41,57 @@ def decode_header_value(raw: str) -> str:
     return " ".join(out)
 
 
+class _Text(HTMLParser):
+    """Markup → the text a person reads: block ends become line breaks, <style>/<script>/<head> leave nothing
+    behind (the regex version kept every CSS rule of a styled mail as text), entities are decoded by the parser."""
+
+    _BREAK = {"br", "p", "div", "tr", "li", "h1", "h2", "h3", "h4", "table", "blockquote"}
+    _SILENT = {"style", "script", "head", "title"}
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.out: list[str] = []
+        self._mute = 0
+
+    def handle_starttag(self, tag, attrs):
+        if tag in self._SILENT:
+            self._mute += 1
+        elif tag in self._BREAK:
+            self.out.append("\n")
+
+    def handle_endtag(self, tag):
+        if tag in self._SILENT:
+            self._mute = max(0, self._mute - 1)
+        elif tag in self._BREAK:
+            self.out.append("\n")
+
+    def handle_data(self, data):
+        if not self._mute:
+            self.out.append(data)
+
+
 def strip_html(html: str) -> str:
-    """Naively remove HTML tags (fallback when text/plain is missing)."""
-    text = re.sub(r"<br\s*/?>", "\n", html, flags=re.IGNORECASE)
-    text = re.sub(r"</?p[^>]*>", "\n", text, flags=re.IGNORECASE)
-    text = re.sub(r"<[^>]+>", "", text)
-    for a, b in (("&nbsp;", " "), ("&amp;", "&"), ("&lt;", "<"), ("&gt;", ">"), ("&quot;", '"')):
-        text = text.replace(a, b)
-    return re.sub(r"\n{3,}", "\n\n", text).strip()
+    """Markup → plain text (the fallback when a mail has no text/plain part, or when its «plain» part is HTML)."""
+    p = _Text()
+    try:
+        p.feed(html or "")
+        p.close()
+    except Exception:
+        return html or ""
+    lines = [" ".join(ln.split()) for ln in "".join(p.out).replace("\xa0", " ").splitlines()]
+    out, blank = [], 0
+    for ln in lines:
+        blank = blank + 1 if not ln else 0
+        if blank <= 1:
+            out.append(ln)
+    return "\n".join(out).strip()
+
+
+def _looks_like_markup(txt: str) -> bool:
+    """A text/plain part that is really HTML (some senders put their HTML there): it opens with a tag and most of it
+    is markup. Measured on a confirmation mail that reached the card as `<div id="container" style=…`."""
+    head = (txt or "").lstrip()
+    return head.startswith("<") and len(strip_html(head)) < 0.6 * len(head)
 
 
 def extract_text_body(msg) -> str:
@@ -66,13 +110,13 @@ def extract_text_body(msg) -> str:
                 if payload:
                     charset = part.get_content_charset() or "utf-8"
                     txt = payload.decode(charset, errors="replace")
-                    return strip_html(txt) if want_html else txt
+                    return strip_html(txt) if want_html or _looks_like_markup(txt) else txt
         return ""
     payload = msg.get_payload(decode=True)
     if not payload:
         return ""
     txt = payload.decode(msg.get_content_charset() or "utf-8", errors="replace")
-    return strip_html(txt) if msg.get_content_type() == "text/html" else txt
+    return strip_html(txt) if msg.get_content_type() == "text/html" or _looks_like_markup(txt) else txt
 
 
 def extract_email_address(raw: str) -> str:
