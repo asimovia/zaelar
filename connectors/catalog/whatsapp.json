@@ -6,6 +6,7 @@
   "transport": "bridge",
   "auth": "qr",
   "state": "built",
+  "consent_class": "messaging.send_new",
   "capabilities": [
     "whatsapp",
     "wasap",

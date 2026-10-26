@@ -131,6 +131,17 @@ below is the first kind, or it names the mechanism that replaced the second.
   only. A pending confirmation lives in the conversation (voice or the chat's Yes/No resolve the same row), never
   also on the card; the confirmed act owes its declared end state (`send_draft.done_when`: a sent row for that
   recipient), so «confirmed» and «done» are judged apart. — since 2026-10-26 · nodes 2.806, 2.807 · `widgets/mensajeria/held.py`, `nucleo/consent.decide`.
+- **CRIT-C10 · Every act that reaches the real world reads ONE door, and his rules override its defaults.** A widget's
+  act through `frontend.action_verdict`; a cluster message, an errand's reply and a worker's click through
+  `consent.decide_act(class, channel)` — `messaging.send_new@<channel>`, `web.commit`, `payment.authorize`, defaults
+  in genesis (each as it was before). A spoken rule that names a channel by the connector catalog's own vocabulary
+  moves that channel only («no me pidas confirmación para mandar correos» → `@email: allow`); one that names none
+  moves `ask_at`. An act that leaves and runs FAST by its manifest still stops on his `ask`/`never`. An errand
+  replies only inside its mandate (`may: message`, its channels) — outside it the reply is a held draft row, inside it
+  his channel rule still stops it. A held cluster send is one pending row; voice, chat and the Clusters tab resolve it
+  through the same reader. A page that cannot be read keeps asking; the agenda's invitation is decided once, at the
+  door. — since 2026-10-26 · nodes 2.808, 2.806 · `nucleo/consent.py::decide_act`, `nucleo/errands/mandate.py`,
+  `connectors/meshkore/send_gate.py`, `widgets/navegador/click_gate.py::consent_verdict`.
 - **CRIT-C8 · A search is never gated as a charge.** A negated act («do not buy») and a first-person wish beside
   a lookup order («I want to buy X, give me the link») are subtracted before the money verbs are read — a
   negation only subtracts the act it governs, inside its own clause («don't forget to pay», «no compres el barato,
@@ -220,8 +231,9 @@ below is the first kind, or it names the mechanism that replaced the second.
 - **CRIT-E5 · A report is a DOCUMENT**, and a fast listing pass serves the turn or hands off with its sheet inside
   its budget — a turn is never left mute. — since 2026-09-29 · nodes 4.143, 2.43, 2.171.
 - **CRIT-E6 · An errand with a third party offers the model NO tools**: it returns one JSON object and the engine
-  executes what the mandate allows — the template of every rail on consequences. — since 2026-09-13 · nodes 3.44 ·
-  `nucleo/errands/party.py`.
+  executes what the mandate allows — the template of every rail on consequences; a reply the mandate does not cover
+  is held for his word (CRIT-C10). — since 2026-09-13 · nodes 3.44, 2.808 · `nucleo/errands/party.py`,
+  `nucleo/errands/mandate.py`.
 - **CRIT-E7 · A worker's endpoint comes from its spec or the provider chain**, never from the inherited shell; a
   worker never depends on ONE provider. — since 2026-09-19 · nodes 2.82, 4.27.
 - **CRIT-E8 · A parked errand is still the errand.** The dedup compares against the errands waiting on his

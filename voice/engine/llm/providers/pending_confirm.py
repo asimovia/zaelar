@@ -37,16 +37,16 @@ def _resolve_pending_confirm(ok: bool) -> bool:
             pass
         if not ok:
             emit("brain", "↩️ acción cancelada", text=p.get("widget_id", ""), role="system")
-        elif p.get("action") == "data" and isinstance(p.get("op"), dict) \
-                and p["op"].get("action") == "connect_cluster":
+        elif p.get("action") == "data" and _cluster_tag(p.get("op")):
+            # A cluster row (connect, or a send his rule held — V2-805): the SAME reader the Clusters tab's button uses.
             try:
                 from connectors import meshkore as _mk
-                _pl = p["op"].get("payload") or {}
-                _p._spawn(_mk.dispatch_tag("cluster.connect", {"data": _pl}), "cluster")
-                emit("brain", "🛰 conectando cluster MeshKore (confirmado)", text=_pl.get("name", ""),
+                _tag, _extra = _cluster_tag(p["op"])
+                _p._spawn(_mk.dispatch_tag(_tag, _extra), "cluster")
+                emit("brain", f"🛰 {_tag} (confirmado)", text=str((p["op"].get("payload") or {}).get("name", "")),
                      role="system")
-            except Exception:
-                pass
+            except Exception as e:  # noqa: BLE001
+                emit("brain", f"🛰 cluster confirmado pero no despachado: {e}", role="system")
         elif p.get("action") == "data" and isinstance(p.get("op"), dict):
             try:
                 # V2-743 — `receipt=True`: this is the CONFIRMED path, the one where a false «done» costs
@@ -68,6 +68,17 @@ def _resolve_pending_confirm(ok: bool) -> bool:
         return True
     except Exception:
         return False
+
+
+def _cluster_tag(op):
+    """`(tag, extra)` when a pending op belongs to the MeshKore connector, else None (`send_gate.confirmed_tag`)."""
+    try:
+        from connectors.meshkore import send_gate
+        return send_gate.confirmed_tag(op)
+    except Exception as e:  # noqa: BLE001
+        from loguru import logger
+        logger.warning(f"pending_confirm: cluster op unreadable ({e})")
+        return None
 
 
 def _resolve_and_end_the_turn(verdict: str, text: str) -> bool:

@@ -147,21 +147,47 @@ def _path_of(url) -> str:
 def decide(sig: dict | None) -> tuple[bool, str]:
     """(ask the operator?, why). `None` means the page could not be read — which ASKS, by design.
 
-    Order matters only for the REASON reported, never for the answer: any one signal is enough.
+    Order matters only for the REASON reported, never for the answer: any one signal is enough. This answers what
+    the click IS; whether that act asks is the one consent rule's (`consent_verdict`, V2-805).
     """
+    kind, kw = kind_of(sig)
+    return (True, _reason.why(kind, **kw)) if kind else (False, "")
+
+
+#: What each reason MEANS as an act, for the one consent rule (V2-805): its class and level. Money moving is
+#: `payment.authorize` at `critical`; a submit that commits him on a site (a booking, an order) is `web.commit`.
+#: Both ship as «ask» in genesis — what this gate did before — and his rules may change either one alone.
+#: `unreadable` is absent on purpose: an act nobody can name has no class to look up, and it keeps asking.
+CONSENT_OF = {"secret": ("payment.authorize", "critical"), "payment": ("payment.authorize", "critical"),
+              "button": ("web.commit", "sensitive"), "checkout": ("web.commit", "sensitive")}
+
+
+def consent_verdict(sig: dict | None) -> dict | None:
+    """The one consent rule's verdict on this click, or None when the gate does not route it (nothing to stop, or
+    an unreadable page — a consequence bound: it asks whatever his rules say)."""
+    kind, _kw = kind_of(sig)
+    if kind not in CONSENT_OF:
+        return None
+    from nucleo import consent
+    cls, level = CONSENT_OF[kind]
+    return consent.decide_act(cls, level=level)
+
+
+def kind_of(sig: dict | None) -> tuple[str, dict]:
+    """The reason key a click stops for (unreadable · button · secret · payment · checkout), or ("", {})."""
     if not isinstance(sig, dict):
-        return True, _reason.why("unreadable")
+        return "unreadable", {}
     name = str(sig.get("name") or "")
     if label_is_irreversible(name):
-        return True, _reason.why("button", name=_reason.clip(name, 40))
+        return "button", {"name": _reason.clip(name, 40)}
 
     haystack = _text(sig, "signals")
     in_form = bool(sig.get("inForm"))
     submitish = bool(sig.get("isSubmit")) or in_form
     if submitish and sig.get("payment") is True:
-        return True, _reason.why("secret")
+        return "secret", {}
     if submitish and _PAYMENT_FIELD_RE.search(haystack):
-        return True, _reason.why("payment")
+        return "payment", {}
     # ⚠️ V2-712 — THE IDENTITY RULE NO LONGER ASKS FOR CONSENT, and the operator is right that it should not.
     # «Si te digo que reserves mesa en un restaurante, tú ya tienes que saber quién soy yo, cuál es mi
     # teléfono, cuál es mi email. Y si no lo sabes, obviamente preguntas. Pero una vez ya lo sepas y lo tengas
@@ -176,8 +202,8 @@ def decide(sig: dict | None) -> tuple[bool, str]:
     # `<div role="button">` their script wires up, and requiring a submit let exactly that walk through.
     buttonish = submitish or str(sig.get("role") or "").lower() == "button"
     if buttonish and _CHECKOUT_URL_RE.search(urls):
-        return True, _reason.why("checkout")
-    return False, ""
+        return "checkout", {}
+    return "", {}
 
 
 def needs_facts(sig: dict | None) -> list[str]:
@@ -259,6 +285,11 @@ async def may_act(page, handle, at=None, *, confirm=None, task_id: str = "") -> 
     except Exception:  # noqa: BLE001 — an unreadable page is exactly the case that must ASK
         sig = None
     ask, why = decide(sig)
+    routed = consent_verdict(sig) if ask else None      # V2-805: the act's class decides, read with his rules
+    if routed is not None and routed.get("verdict") == "refuse":
+        return False, f"acción NO hecha: su regla «{routed.get('why') or ''}» ({why})"
+    if routed is not None and routed.get("verdict") == "run":
+        ask = False
     if not ask:
         # V2-712 — the only thing left to check before a form the operator ordered: can we FILL it. A missing
         # datum stops the click and asks for the datum by name; nothing missing means it goes through, which

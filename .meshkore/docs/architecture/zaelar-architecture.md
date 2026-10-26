@@ -570,13 +570,21 @@ recipient as his (`nucleo/flash/held_send.py`, read by both channels and by `lea
 card's outbound queue, visible and cancellable until it leaves. A pending confirmation renders in the conversation
 only; a «yes» by voice or on the chat's Yes/No resolves the same pending item (`widgets/confirm.py`).
 
-**Known doors that still decide on their own** (to be routed through `decide`, never by changing a default):
-third-party errands send under their mandate (`nucleo/errands/wake.py`, CRIT-E6); a cluster message is sent by the
-MeshKore connector (`connectors/meshkore`), whose gate covers connecting, not each message; a worker's click on a
-page is stopped by the browser's own gate (`widgets/navegador/click_gate.py`, `nucleo/danger.py`); an agreed
-invitation is published by the agenda after its action passed the door (`widgets/agenda/invite.py`). A spoken rule
-moves only the global `ask_at` today (`consent.apply_directive`); turning «no confirmation for emails» into the
-channel class (`messaging.send_new@email: allow`) needs a verdict over the declared classes, not a phrase table.
+**Acts outside a widget's data-op use the same door** — `consent.decide_act(class, channel=…, his_yes=…)`, which
+builds the key (`<class>@<channel>`) and calls `decide`. A spoken rule that NAMES a channel moves that channel's class
+only (`apply_directive` reads the connector catalog's own vocabulary for manifests that declare `consent_class`; a
+word two channels share names neither); a rule that names none moves the global `ask_at`, as before. An act that
+leaves and runs FAST by its manifest (`send_to`) still reads his `ask`/`never` rule for its class and channel.
+
+**The audit of the doors that decided on their own** (V2-805):
+
+| Door | Decision | Why |
+|---|---|---|
+| Errand reply (`nucleo/errands/wake.py` → `errands/mandate.py`) | **Kept as a consequence bound, and routed inside it** | The mandate (`may: message`, `channels`) is his grant for that conversation: a reply it does not cover is held as a draft row of the mail card (what his «send it» sends), never sent on a class default. Inside it, `decide_act("messaging.send_new", channel=<thread>, his_yes=True)`: his «ask»/«never» for that channel still stops it. |
+| Cluster message (`connectors/meshkore/bridge.py` → `send_gate.py`) | **Routed** | Each `cluster.send` is `messaging.send_new@meshkore`, with connecting (his yes) as `his_yes`. Asked → one pending row under the Clusters id in `widgets/confirm.py`, op with `effects: external.send`; refused → not sent, said. A confirmed row is dispatched with `confirmed`, read by `send_gate.confirmed_tag` from both the voice/chat resolver and the Clusters tab's button. |
+| Worker's click (`widgets/navegador/click_gate.py`) | **Routed for what it can name; unreadable stays a bound** | `kind_of` names what the click IS; `CONSENT_OF` maps it to `payment.authorize` (critical) or `web.commit` (sensitive), both `ask` in genesis — the gate's old behaviour. `may_act` asks `decide_act`: `allow` runs, `never` refuses. A page that cannot be read has no class and keeps asking. `nucleo/danger.py` (the text gate before a worker starts) is unchanged: it parks money and account destruction before any class can be read. |
+| Agenda invitation (`widgets/agenda/invite.py`) | **Kept — a follow-up, not a second gate** | The door decides `invite` once (`consent_scope` → `calendar.invite_agreed` / `invite_new_party`); `run` publishes what was decided and only refuses on a missing fact or a doubt. |
+| Spoken rules (`consent.apply_directive`) | **Fixed** | Scoped by declared channel vocabulary (above); `retract_directive` releases the class it set. |
 
 Canonical lines: `criteria.md` CRIT-C1, CRIT-C5, CRIT-C9.
 

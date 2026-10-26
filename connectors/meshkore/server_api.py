@@ -135,9 +135,11 @@ async def confirm(body: dict, _=Depends(_guard)):
     if not ok:
         return JSONResponse({"ok": True, "cancelled": True})
     op = p.get("op") or {}
-    if op.get("action") != "connect_cluster":
+    from connectors.meshkore import send_gate
+    tag = send_gate.confirmed_tag(op)          # V2-805: a connect, or a send his rule held — one reader for every yes
+    if tag is None:
         return JSONResponse({"ok": False, "error": f"acción no soportada: {op.get('action')}"}, status_code=400)
-    await meshkore.dispatch_tag("cluster.connect", {"data": op.get("payload") or {}})
+    await meshkore.dispatch_tag(*tag)
     return JSONResponse({"ok": True, "name": (op.get("payload") or {}).get("name", "")})
 
 

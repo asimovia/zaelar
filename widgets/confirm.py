@@ -307,6 +307,8 @@ def _orders_another_card(brief, wid: str) -> bool:
 def _leaves(wid: str, p: dict) -> bool:
     """Is the pending act one that leaves the machine (`external.send`)? Unreadable → yes (never a licence)."""
     op = p.get("op") if isinstance(p.get("op"), dict) else {}
+    if "external.send" in (op.get("effects") or []):
+        return True                     # a row outside any widget declares its own effect (V2-805: a cluster send)
     try:
         from widgets import effects as _fx
         return p.get("action") == "data" and _fx.carries(wid, str(op.get("action") or ""), _fx.EXTERNAL_SEND)

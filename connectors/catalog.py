@@ -72,3 +72,36 @@ def search(query: str, limit: int = 5) -> list[dict]:
         scored.append((rank, -overlap, m))
     scored.sort(key=lambda t: (t[0], t[1]))
     return [m for _, __, m in scored[:limit]]
+
+
+def consent_keys_named(text: str) -> list[str]:
+    """The consent keys (`<consent_class>@<id>`) of the channels a sentence NAMES (V2-805).
+
+    Declared data only: a BUILT manifest that declares `consent_class` (the class its sends belong to) is named by
+    its own vocabulary — id, label, capabilities — matched as whole words with a short inflection («correos»,
+    «whatsapps»). A word two channels share («chats») names neither: doubt about WHICH channel keeps the rule
+    global, exactly as it was before a rule could be scoped."""
+    import re
+    import unicodedata
+
+    def _n(s) -> str:
+        s = unicodedata.normalize("NFKD", str(s or "")).encode("ascii", "ignore").decode().lower()
+        return re.sub(r"[^a-z0-9]+", " ", s).strip()
+
+    t = _n(text)
+    if not t:
+        return []
+    owners: dict[str, set[str]] = {}
+    keys: dict[str, str] = {}
+    for m in load_manifests():
+        cls = str(m.get("consent_class") or "").strip()
+        if not cls or m.get("state") != "built":
+            continue
+        cid = str(m["id"]).strip().lower()
+        keys[cid] = f"{cls}@{cid}"
+        for w in [cid, m.get("label", "")] + list(m.get("capabilities") or []):
+            if _n(w):
+                owners.setdefault(_n(w), set()).add(cid)
+    named = {next(iter(ids)) for w, ids in owners.items()
+             if len(ids) == 1 and re.search(rf"\b{re.escape(w)}\w{{0,2}}\b", t)}
+    return sorted(keys[c] for c in named)

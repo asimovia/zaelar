@@ -45,7 +45,9 @@ def env(tmp_path, monkeypatch):
 
 
 def _errand(env, objective="organizar una reunión con Iván esta tarde"):
-    row = env.start(objective, kind="meeting")
+    # The mandate its ONLY production birth gives (`watch._born_from_echo`): a reply leaves only inside it (V2-805).
+    row = env.start(objective, kind="meeting",
+                    mandate={"parties": ["c1"], "channels": ["telegram"], "may": ["message", "schedule"]})
     env.bind("telegram", "987", row["id"], "c1")
     return row
 
@@ -117,6 +119,22 @@ def test_out_of_shadow_the_reply_is_QUEUED_to_the_bound_conversation(env, monkey
     assert len(queued) == 1
     assert queued[0]["platform"] == "telegram" and queued[0]["chatId"] == "987"
     assert queued[0]["text"] == "Perfecto, a las seis."
+
+
+def test_out_of_shadow_a_reply_its_mandate_does_not_cover_is_HELD_not_sent(env, monkeypatch):
+    """V2-805 — the mandate is the bound: an errand whose grant does not include messaging on this channel holds
+    the reply as a draft row of the mail card (what his «send it» sends) and tells him; nothing leaves."""
+    from connectors.messaging import store as msgstore
+    from nucleo.errands import wake as wake_mod
+    monkeypatch.setattr(wake_mod, "shadow", lambda: False)
+    row = env.start("organizar una reunión con Iván esta tarde", kind="meeting",
+                    mandate={"parties": ["c1"], "channels": ["telegram"], "may": ["schedule"]})
+    env.bind("telegram", "987", row["id"], "c1")
+    _answer(monkeypatch, '{"say": "¿Te va bien a las seis?", "state": "negotiating"}')
+    out = asyncio.run(_wake(row))
+    assert out["sent"] is False and msgstore.load().get("pending_send") in (None, [])
+    drafts = msgstore.load().get("drafts") or {}
+    assert [d["text"] for d in drafts.values()] == ["¿Te va bien a las seis?"]
 
 
 def test_a_recipient_the_model_NAMES_never_reaches_the_wire(env):

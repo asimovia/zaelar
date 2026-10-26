@@ -16,7 +16,7 @@ import time
 from loguru import logger
 
 from voice.tag_protocol import strip_tags
-from connectors.meshkore import brief, store, journal, security, mem_ingest, capsule
+from connectors.meshkore import brief, store, journal, security, mem_ingest, capsule, send_gate
 
 IDLE_SECS = float(os.getenv("MESHKORE_IDLE_SECS", "90"))    # engaged + silent this long → one nudge
 TICK_SECS = float(os.getenv("MESHKORE_TICK_SECS", "20"))    # heartbeat cadence
@@ -600,9 +600,8 @@ class ClusterBridge:
                 name = extra.get("name") or ""
                 data = extra.get("data") or {}
                 to, text = data.get("to"), data.get("text", "")
-                # RESILIENT NAME RESOLUTION: the brain sometimes emits [[cluster.send:<peer_handle>]] instead of
-                # [[cluster.send:<cluster_name>]] (confusing <cluster_name> with the peer's handle). Fix silently:
-                # if no cluster matches `name`, try resolving it as a peer handle across all connected clusters.
+                # RESILIENT NAME RESOLUTION: the brain sometimes emits [[cluster.send:<peer_handle>]]; if no cluster
+                # matches `name`, resolve it as a peer handle across all connected clusters.
                 if not self._manager.has(name):
                     resolved = self._resolve_peer_cluster(name)
                     if resolved:
@@ -613,10 +612,8 @@ class ClusterBridge:
                         _emit("error", f"cluster.send: unknown cluster '{name}' (connected: "
                               f"{', '.join(self._manager.names()) or 'none'})")
                         return
-                # SALVAGE: deepseek/others sometimes emit malformed JSON in the tag (newlines, unescaped quotes) →
-                # parse_json returns None → data empty → zaelar's real message would be LOST. Recover the text from
-                # the raw tag body: pull a "text":"…" if present, else use the raw as plain text (it's still the
-                # message the brain wanted to send). Better a message with a best-effort recipient than silence.
+                # SALVAGE: a malformed JSON tag body (newlines, unescaped quotes) would LOSE the real message. Pull a
+                # "text":"…" from the raw body, else use the raw as plain text: a best-effort recipient beats silence.
                 raw = (extra.get("raw") or "").strip()
                 if not (text or "").strip() and raw:
                     import re as _re
@@ -649,6 +646,8 @@ class ClusterBridge:
                     journal.record({"chan": "out", "action": "cluster.send", "blocked": mblocked, "cluster": name})
                     _emit("error", f"cluster {name}: outbound blocked — possible secret leak ({mblocked}). Not sent.")
                     return
+                if not extra.get("confirmed") and send_gate.gate(name, to, text, media) != "send":
+                    return                       # V2-805: his consent rule for this channel held or refused it
                 # AGREED CADENCE (V2-072): if this relationship has an agreed cadence, WAIT for the remaining time
                 # before sending another message — no bursts. This is the REAL enforcement of zalo's complaint
                 # (we were bombarding it). Off the voice path -> sleeping here blocks nothing critical. Defensive cap.

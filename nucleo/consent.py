@@ -264,6 +264,27 @@ def decide(*, level: str = "standard", missing=(), candidates=(), radius: int | 
     return out
 
 
+def act_key(cls: str, channel: str = "") -> str:
+    """The consent key of an act: its class, refined by the channel it leaves through (`<class>@email`).
+    `class_policy` falls back to the bare class, so a rule for one channel never reaches another (V2-800)."""
+    cls, channel = str(cls or "").strip(), str(channel or "").strip().lower()
+    return f"{cls}@{channel}" if cls and channel else cls
+
+
+def decide_act(cls: str, *, channel: str = "", level: str = "sensitive", his_yes: bool = False, missing=(),
+               candidates=(), radius: int | None = 1, bounded: bool = True) -> dict:
+    """THE door for an act that reaches the real world OUTSIDE a widget's data-op (V2-805): a cluster message, an
+    errand's reply under its mandate, a worker's click that commits him on a website.
+
+    A widget's action reaches `decide` through `frontend.action_verdict` (its manifest's `consent_class`, refined
+    by its `consent_scope` hook); these callers have no manifest row, so they name their class and channel here
+    and get the SAME rule, the same defaults and the same user rules. `his_yes` is the grant the caller holds —
+    his explicit order over a row he saw, or a mandate he gave for this very conversation; it clears the class
+    rail and nothing above it (a missing fact, a doubt, his standing «ask»/«never», the radius)."""
+    return decide(level=level, missing=missing, candidates=candidates, radius=radius, bounded=bounded,
+                  policy_key=act_key(cls, channel), his_yes=his_yes)
+
+
 def missing_facts(requires) -> list[str]:
     """Which of the facts an action DECLARES it needs are not in the operator's state (V2-712).
 
@@ -367,12 +388,36 @@ def _flags_for(text: str) -> dict:
     return {}
 
 
+def _named_keys(text: str) -> list[str]:
+    """The consent keys a spoken rule NAMES, read from declared data only (V2-805): a connector of the catalog that
+    declares the class its acts belong to (`consent_class`), named by its own vocabulary — id, label, capabilities.
+    No word table lives here: a channel added to the catalog is reachable by its own words."""
+    try:
+        from connectors import catalog as _catalog
+        return _catalog.consent_keys_named(text)
+    except Exception as e:  # noqa: BLE001 — unreadable catalog: the rule stays global, as it was before
+        import logging
+        logging.getLogger("zaelar.consent").info(f"consent: catalog unreadable ({e}) — the rule stays global")
+        return []
+
+
 def apply_directive(text: str) -> dict:
     """Persist what a spoken directive names, effective on the next decision. `{}` = it named nothing this
-    store can act on, which is not a failure: the model still receives the sentence as a rule."""
+    store can act on, which is not a failure: the model still receives the sentence as a rule.
+
+    A rule that NAMES a channel («no me pidas confirmación para mandar correos») moves THAT channel's class only
+    (`messaging.send_new@email` → allow, or ask for more friction) and leaves the global knob where it was — before
+    V2-805 it moved `ask_at` for every act, so a rule about email changed what a booking or a payment did."""
     flags = _flags_for(text)
     if not flags:
         return {}
+    keys = _named_keys(text)
+    if keys:
+        value = "allow" if flags.get("ask_at") == "critical" else "ask"
+        out: dict = {}
+        for k in keys:
+            out.update(set_class(k, value))
+        return out
     data = dict(_overrides())
     data.update(flags)
     data["_set_at"] = int(time.time())
@@ -404,6 +449,15 @@ def retract_directive(text: str) -> dict:
     if not _TOPIC_RE.search(_norm(text)):
         return {}
     data = dict(_overrides())
+    keys = _named_keys(text)
+    if keys:
+        # A retired rule about ONE channel releases that channel's class only — the global knob is not its to move.
+        classes = dict(data.get("classes") or {})
+        released = {k: classes.pop(k) for k in keys if k in classes}
+        if released:
+            data["classes"] = classes
+            _write_overrides(data)
+        return released
     released = {k: data.pop(k) for k in ("ask_at",) if k in data}
     if released:
         _write_overrides(data)

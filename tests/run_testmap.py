@@ -3649,6 +3649,8 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_a_held_send_is_a_row_and_his_order_is_the_yes.py"]},
         {"id": "2.807", "title": "A turn about PENDING work («termina esas tareas», «finish those») is STATE in the prompt (ids + names, only when any) and the model resumes it with resume_task(ids) — errands, energy-stopped errands, drafts held for his word; the verdict completes a model that did not; each resumes FROM ITS ROW, a confirmed send owes its end state (a held send through its own confirm gate, an errand from its own brief, sheet and outcome, a live one not twice); never a brief glued from old utterances; a browser card's title is the errand's name (V2-799)",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_a_turn_about_pending_work_resumes_its_rows.py"]},
+        {"id": "2.808", "title": "Every act that reaches the real world passes ONE consent door: an email, a WhatsApp, a cluster message and a worker's booking submit read the same rule, defaults and user rules (`consent.decide_act`); a spoken rule that names a channel moves that channel only; an errand replies under its mandate and holds what the mandate does not cover as a draft row; a «yes» from voice, chat or the Clusters tab resolves the same row (V2-805)",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/test_every_act_that_leaves_passes_one_consent_door.py"]},
         {"id": "2.802", "title": "A deployment that stops idle engines is told the next due notice after every schedule change, debounced; self-host reports nothing (V2-796)",
             "ch": UNIT,
             "paths": ["tests/agent_headless/unit/test_a_sleeping_engine_is_told_when_to_wake.py"]},

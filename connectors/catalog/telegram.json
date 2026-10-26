@@ -6,6 +6,7 @@
   "transport": "native",
   "auth": "app-password",
   "state": "built",
+  "consent_class": "messaging.send_new",
   "capabilities": [
     "telegram",
     "mensajes de telegram",

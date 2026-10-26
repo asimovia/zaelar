@@ -545,7 +545,7 @@ def _t_cluster_send(*, args, _spawn, emit):
                 _data["to"] = _sto
             try:
                 from connectors import meshkore as _mk3
-                _spawn(_mk3.dispatch_tag(f"cluster.send:{_scl}", {"data": _data}), "cluster-send")
+                _spawn(_mk3.dispatch_tag("cluster.send", {"name": _scl, "data": _data}), "cluster-send")
                 emit("brain", "🛰 mensaje enviado al cluster", role="system",
                      text=f"{_scl}{('→' + _sto) if _sto else ''}")
             except Exception as _e:  # noqa: BLE001

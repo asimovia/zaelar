@@ -26,6 +26,8 @@ import time
 
 from loguru import logger
 
+from . import mandate as _mandate
+
 #: The model is off-voice here, but a tier can be slow; without a cap one wake would hold the loop's beat.
 TIMEOUT_S = 60.0
 #: How much of the conversation travels. Enough to answer; never the whole history (it rides a prompt).
@@ -248,7 +250,7 @@ async def wake(errand: dict, *, reason: str = "inbound", inbound_id: str = "",
 
     sent = False
     if say and platform and chat_id and not shadow():
-        sent = _send(errand, platform, chat_id, say, party)
+        sent = _mandate.deliver(errand, platform, chat_id, say, party, _send, _tell_operator)   # V2-805
     _emit_decision(errand, decision, reason, sent=sent, booked=booked)
 
     if link and (errand.get("done_when") or {}).get("link_owed"):

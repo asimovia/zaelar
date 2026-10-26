@@ -634,12 +634,34 @@ def action_mode_now(widget_id: str, action: str, payload: dict | None = None) ->
     from nucleo import consent
     from widgets import actions as _wa
     mode = action_mode(widget_id, action)
+    if mode == _wa.FAST and _his_rule_holds(widget_id, action, payload):
+        return _wa.CONFIRM
     if mode != _wa.CONFIRM:
         return mode
     try:
         return _wa.CONFIRM if consent.asks(action_verdict(widget_id, action, payload)) else _wa.FAST
     except Exception:  # noqa: BLE001 — an unreadable verdict keeps the friction it had
         return _wa.CONFIRM
+
+
+def _his_rule_holds(widget_id: str, action: str, payload: dict | None) -> bool:
+    """An act that LEAVES (`external.send`) and runs FAST by its manifest still reads his standing rule for its
+    class and channel (V2-805): «pregúntame antes de mandar correos» reaches `send_to` too. Only HIS rule is read
+    here — the radius and the class defaults keep the friction the manifest gave, so no default moves."""
+    try:
+        from nucleo import consent
+        from widgets import effects as _fx
+        if not _fx.carries(widget_id, action, _fx.EXTERNAL_SEND):
+            return False
+        wid, name = (widget_id or "").split("::", 1)[0].strip().lower(), (action or "").strip()
+        from widgets import runtime
+        spec = ((runtime.get(wid) or {}).get("actions") or {}).get(name)
+        key = _policy_key(wid, name, spec if isinstance(spec, dict) else {}, payload)
+        return consent.class_policy(key) in ("ask", "never")
+    except Exception as e:  # noqa: BLE001 — unreadable: the manifest's friction stands, as before
+        from loguru import logger
+        logger.info(f"frontend: his rule unreadable for {widget_id}:{action} ({e})")
+        return False
 
 
 def at_least_sensitive(widget_id: str, action: str) -> bool:
