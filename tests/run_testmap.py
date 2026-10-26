@@ -6491,7 +6491,10 @@ DOMAINS: list[dict] = [
             "tests/infrastructure/unit/core/test_no_provider_key_is_read_in_a_mediated_deployment.py",
             # 2026-10-24 — the decision model goes through egress too: with no key and no route it was silently off
             # in every mediated deployment, so no verdict ever reached the guards that read one. Billed upstream.
-            "tests/infrastructure/unit/core/test_the_decision_model_goes_through_egress.py"]},
+            "tests/infrastructure/unit/core/test_the_decision_model_goes_through_egress.py",
+            # V2-811 T-00 — every caller of route() forwards the family header and meters by the provider's URL;
+            # memllm, susurro and rerank dropped both, and FastClient.complete() never metered. Disarmed.
+            "tests/infrastructure/unit/core/test_egress_callers_keep_the_family_and_the_price.py"]},
         {"id": "8.23", "title": "Tarifas: el precio SIGUE al proveedor que corre", "ch": UNIT, "paths": [
             "tests/infrastructure/unit/core/test_energy_tariffs.py"]},
         # V2-767 — el otro lado del 8.20: no basta con que nadie gaste FUERA del contador, hace falta

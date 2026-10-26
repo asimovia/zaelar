@@ -444,21 +444,25 @@ def _attempt(url: str, model: str, key: str, disable_thinking: bool, *, system: 
     if disable_thinking and "deepseek" in model.lower() and "api.deepseek.com" in url.lower():
         payload["thinking"] = {"type": "disabled"}
     # EGRESS (T304): if the deployment mediates egress, neither the URL nor the key belongs to the provider.
+    # The `extra` headers name the provider family the call was meant for: without them egress routes every rung
+    # to its default family, so a stand-in on another provider is sent to the wrong upstream.
     from nucleo import llm_egress
-    url, key, _extra = llm_egress.route(url, key)
+    r_url, r_key, extra = llm_egress.route(url, key)
     data = _post_json(
-        url.rstrip("/") + "/chat/completions",
+        r_url.rstrip("/") + "/chat/completions",
         payload,
-        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json",
+        headers={"Authorization": f"Bearer {r_key}", "Content-Type": "application/json",
                  # AIMLAPI sits behind Cloudflare and 403s urllib's default UA → browser UA
                  # (same workaround as fast_client)
                  "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-                               "(KHTML, like Gecko) Chrome/126.0 Safari/537.36"},
+                               "(KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+                 **extra},
         timeout=timeout,
     )
     content = data["choices"][0]["message"]["content"]
     if not (content or "").strip():
         raise RuntimeError("respuesta vacía (razonamiento se comió el presupuesto)")
+    # Priced by the PROVIDER's URL: the egress URL has no rate row and would bill the catch-all.
     _record_usage(data.get("usage"), url, model)
     return content
 

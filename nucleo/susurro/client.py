@@ -62,8 +62,10 @@ async def audit_llm(window_text: str) -> tuple[str | None, dict]:
     meta: dict = {"model": model, "base_url": base, "request": payload}
     # EGRESS (T304). `meta` deliberately preserves the ORIGINAL base_url: it is what makes the viewer readable
     # ("this audit was headed to AIMLAPI"), and the actual routing is a deployment detail, not part of the event.
+    # `extra` names the provider family for egress; `provider_base` is what the call is priced by.
     from nucleo import llm_egress
-    base, key, _extra = llm_egress.route(base, key)
+    provider_base = base
+    base, key, extra = llm_egress.route(base, key)
     if not key:
         meta["error"] = "sin api key para el endpoint"
         return None, meta
@@ -73,14 +75,14 @@ async def audit_llm(window_text: str) -> tuple[str | None, dict]:
         to = aiohttp.ClientTimeout(total=_TIMEOUT)
         async with aiohttp.ClientSession(timeout=to) as s:
             async with s.post(base + "/chat/completions",
-                              headers={"Authorization": f"Bearer {key}", **_UA}, json=payload) as r:
+                              headers={"Authorization": f"Bearer {key}", **_UA, **extra}, json=payload) as r:
                 data = await r.json()
         if not isinstance(data, dict) or "choices" not in data:
             # some endpoints do not support response_format → retry without it
             payload2 = {k: v for k, v in payload.items() if k != "response_format"}
             async with aiohttp.ClientSession(timeout=to) as s:
                 async with s.post(base + "/chat/completions",
-                                  headers={"Authorization": f"Bearer {key}", **_UA}, json=payload2) as r:
+                                  headers={"Authorization": f"Bearer {key}", **_UA, **extra}, json=payload2) as r:
                     data = await r.json()
         content = data["choices"][0]["message"]["content"]
         usage = data.get("usage") or {}
@@ -92,7 +94,7 @@ async def audit_llm(window_text: str) -> tuple[str | None, dict]:
         # expensive calls per unit. An attempt rejected before the retry without `response_format` is not charged
         # (a 400 does not include `usage`).
         from nucleo import energy_meter as _energy
-        _energy.meter_openai_response({"usage": usage}, base_url=base, model=model)
+        _energy.meter_openai_response({"usage": usage}, base_url=provider_base, model=model)
         return content, meta
     except Exception as e:  # noqa: BLE001 — fail-open duro
         meta.update(ms=round((time.time() - t0) * 1000), error=f"{type(e).__name__}: {e}")

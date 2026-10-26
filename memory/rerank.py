@@ -146,10 +146,13 @@ def _order_openai(query: str, texts: list[str]) -> list[int] | None:
     base_url = str(_cfg().get("rerank_base_url") or "").strip() or None
     # EGRESS (T304). Solo si hay base_url explícita: sin ella el SDK va a OpenAI por defecto y no hay
     # nada que reenrutar — el reranker remoto es opt-in y este camino está dormido por defecto.
+    # `extra` names the provider family for egress; `provider_base` is what the call is priced by.
+    provider_base, extra = base_url, {}
     if base_url:
         from nucleo import llm_egress
-        base_url, key, _extra = llm_egress.route(base_url, key)
-    cli = OpenAI(api_key=key, base_url=base_url, timeout=float(os.getenv("MEMORY_RERANK_TIMEOUT", "12")))
+        base_url, key, extra = llm_egress.route(base_url, key)
+    cli = OpenAI(api_key=key, base_url=base_url, default_headers=extra or None,
+                 timeout=float(os.getenv("MEMORY_RERANK_TIMEOUT", "12")))
     listing = "\n".join(f"[{i}] {t[:280]}" for i, t in enumerate(texts))
     sys = ("Eres un reordenador de recuerdos. Dada una PREGUNTA y una lista de RECUERDOS numerados, devuelve SOLO "
            "un array JSON con los índices ordenados del MÁS al MENOS relevante para responder la pregunta. "
@@ -167,7 +170,7 @@ def _order_openai(query: str, texts: list[str]) -> list[int] | None:
         # una imposibilidad: el día que se ponga en remoto empezaría a costar dinero real sin aparecer en
         # ninguna factura. Se mide ahora, dormida, para que encenderla no sea gratis por descuido.
         from nucleo import energy_meter as _energy
-        _energy.meter_openai_response(resp, base_url=base_url or "", model=_model())
+        _energy.meter_openai_response(resp, base_url=provider_base or "", model=_model())
     except Exception as e:
         logger.debug("rerank openai falló: %s", e)
         return None

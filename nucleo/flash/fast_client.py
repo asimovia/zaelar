@@ -409,6 +409,9 @@ class FastClient:
                 logger.warning(f"fast_client.complete: blip transitorio ({type(e).__name__}), "
                                f"reintento {_attempt}/{_CONNECT_RETRIES}")
                 await asyncio.sleep(_RETRY_BACKOFF_S * _attempt)
+        # Metered like `stream()`, by the provider's URL (never the egress one, which has no rate row).
+        from nucleo import energy_meter
+        energy_meter.meter_openai_response(resp, base_url=spec.resolved_base_url(), model=spec.model)
         try:
             msg = resp.choices[0].message
         except (IndexError, AttributeError):
@@ -476,6 +479,12 @@ class FastClient:
                                f"reintento {_attempt}/{_CONNECT_RETRIES}")
                 await asyncio.sleep(_RETRY_BACKOFF_S * _attempt)
         data = resp.json()
+        # Anthropic wire format names its counters differently; same meter, same provider URL.
+        from nucleo import energy_meter
+        usage = data.get("usage") or {}
+        energy_meter.report_llm_usage(base_url=spec.resolved_base_url(), model=spec.model,
+                                      prompt_tokens=usage.get("input_tokens"),
+                                      completion_tokens=usage.get("output_tokens"))
         parts = data.get("content") or []
         if tools and on_tool_call:
             for p in parts:
