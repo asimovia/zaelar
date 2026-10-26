@@ -20,10 +20,6 @@ RAIZ = Path(__file__).resolve().parents[3]
 # Top-level packages that must NOT be in the image, each with its reason. As with Energy's gate `_EXENTOS`,
 # bypassing the rule requires writing down why, and that text is what someone else can challenge.
 _FUERA_DE_LA_IMAGEN: dict[str, str] = {
-    "files":
-        "SHIM de compatibilidad (V2-003 · T55): el módulo se plegó en la memoria central y el boot importa "
-        "`memory.server_api`, no éste. Nadie dentro del repo lo importa — meterlo en la imagen sería enviar "
-        "código muerto a producción.",
     "tests":
         "el arnés de pruebas no viaja en la imagen de producción.",
     "daemon":
@@ -52,6 +48,24 @@ def test_todo_paquete_del_motor_viaja_en_la_imagen():
         "La imagen construirá bien y la Machine morirá al arrancar con ModuleNotFoundError. Añade su COPY, "
         "o —si de verdad no tiene que viajar— añádelo a _FUERA_DE_LA_IMAGEN con el motivo escrito."
     )
+
+
+def test_an_exempt_package_is_imported_by_nothing_that_ships():
+    """The reason written for an exemption is a claim, and claims go stale: `files/` was exempt as «nobody imports
+    it» until V2-809 imported `files.attachments` from `server/`, and the release crash-looped at boot with
+    `ModuleNotFoundError: No module named 'files'`. So the claim is measured: no package that DOES ship may import
+    an exempt one."""
+    shipped = _copiados() & _paquetes_top_level()
+    offenders = []
+    for pkg in shipped:
+        for py in (RAIZ / pkg).rglob("*.py"):
+            src = py.read_text(encoding="utf-8", errors="ignore")
+            for exempt in _FUERA_DE_LA_IMAGEN:
+                if re.search(rf"^\s*(from|import)\s+{exempt}(\.|\s|$)", src, re.M):
+                    offenders.append(f"{py.relative_to(RAIZ)} imports {exempt}")
+    assert not offenders, (
+        "a package that ships imports one exempted from the image — the Machine will die at boot:\n  "
+        + "\n  ".join(offenders) + "\nCOPY it in the Dockerfile and drop its exemption.")
 
 
 def test_una_exencion_apunta_a_algo_que_existe():
