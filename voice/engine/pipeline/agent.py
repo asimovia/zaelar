@@ -379,8 +379,7 @@ async def entrypoint(ctx: JobContext) -> None:
     async def _close_account_session(reason: str) -> None:
         _emit("session", f"account energy exhausted ({reason}) — closing", role="system")
         try:
-            # Same loop hop (the closer fires off this loop); the line follows the REASON (V2-801).
-            async def _do_say():
+            async def _do_say():  # same loop hop (the closer fires off this loop); the line follows the REASON (V2-801)
                 if _line := _account_limits.spoken_line(reason):
                     await session.say(_line, allow_interruptions=True)
             await _on_session_loop(_do_say)
