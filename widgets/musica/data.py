@@ -15,6 +15,7 @@
 # (yt + playlists + counts). The youtube_audio provider performs read-modify-write on `yt`, so respect the same
 # contract: never overwrite persisted keys.
 #
+import logging
 import re
 import time
 import unicodedata
@@ -40,6 +41,8 @@ _TOP_CAP = 8
 # re-queried on every render either.
 _ART_MISS_COOLDOWN_S = 14 * 24 * 3600
 _ART_CACHE_CAP = 600
+
+_log = logging.getLogger("zaelar.widgets.musica")
 
 
 # Normalization helpers.
@@ -75,7 +78,8 @@ def _spotify_status() -> dict:
     try:
         from connectors.spotify import auth
         return auth.status()
-    except Exception:
+    except Exception as _e:
+        _log.debug("_spotify_status: degraded, carrying on without it: %s", _e)
         return {}
 
 
@@ -120,7 +124,8 @@ def _read_now_playing() -> "dict | None":
                 "progress_ms": int(getattr(np, "progress_ms", 0) or 0),
                 "duration_ms": int(t.duration_ms if t else 0),
                 "shuffle": bool(getattr(np, "shuffle", False)), "repeat": str(getattr(np, "repeat", "off") or "off")}
-    except Exception:
+    except Exception as _e:
+        _log.debug("_read_now_playing: degraded, carrying on without it: %s", _e)
         return None
 
 
@@ -198,7 +203,8 @@ def _persist(db: dict) -> None:
     """Save the compound state, preserving yt + playlists + counts and reflecting connection; triggers SSE re-render."""
     try:
         store.save(WID, _compose(db))
-    except Exception:
+    except Exception as _e:
+        _log.debug("_persist: degraded, carrying on without it: %s", _e)
         pass
 
 
@@ -544,7 +550,8 @@ def _find_or_create_playlist(db: dict, name: str) -> "tuple[dict, bool]":
 def ref_index() -> list:
     try:
         db = _load_db()
-    except Exception:
+    except Exception as _e:
+        _log.debug("ref_index: degraded, carrying on without it: %s", _e)
         return []
     out = []
     for pl in db.get("playlists") or []:
@@ -563,7 +570,8 @@ def prompt_digest() -> str:
     try:
         db = _load_db()
         live = _live_fields(db, fresh_s=_NP_FRESH_S)
-    except Exception:  # noqa: BLE001
+    except Exception as _e:  # noqa: BLE001
+        _log.debug("prompt_digest: degraded, carrying on without it: %s", _e)
         return ""
     from . import player as _player
     from . import sound as _sound
@@ -598,7 +606,8 @@ def _screen_word(dev: str) -> str:
     try:
         from voice import screens
         return screens.surface(dev) if dev else ""
-    except Exception:  # noqa: BLE001
+    except Exception as _e:  # noqa: BLE001
+        _log.debug("_screen_word: degraded, carrying on without it: %s", _e)
         return ""
 
 

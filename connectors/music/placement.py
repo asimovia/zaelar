@@ -40,7 +40,8 @@ def screen_kind(dev: str) -> str:
     try:
         from voice import screens
         return screens.surface(dev) if dev else ""
-    except Exception:  # noqa: BLE001
+    except Exception as _e:  # noqa: BLE001
+        logger.debug("screen_kind: degraded, carrying on without it: %s", _e)
         return ""
 
 
@@ -55,7 +56,8 @@ def recorded() -> dict:
         from widgets import store
         rec = (store.load(_WID, {}) or {}).get(_KEY)
         return dict(rec) if isinstance(rec, dict) else {}
-    except Exception:  # noqa: BLE001
+    except Exception as _e:  # noqa: BLE001
+        logger.debug("recorded: degraded, carrying on without it: %s", _e)
         return {}
 
 

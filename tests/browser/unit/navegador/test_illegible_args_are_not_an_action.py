@@ -108,7 +108,7 @@ def test_el_BUCLE_apunta_el_motivo_y_no_una_frase_generica():
 
 
 @pytest.mark.parametrize("lector,fuente", [
-    ("_parse_directed", "voice.attention"),
+    ("_parse_judgement", "voice.attention_judge"),   # `attention._parse_directed` reads through it (V2-812 T-03)
     ("_parse_judge", "nucleo.flash.segmenter"),
 ])
 def test_los_OTROS_lectores_del_motor_exigen_el_objeto_entero(lector, fuente):
@@ -150,7 +150,7 @@ def test_es_la_MISMA_forma_de_evento_que_la_del_FlashBrain():
     """SOURCE GUARD: a consumer that already consumes `tool_dropped` must not have to change to see it here too."""
     import inspect
 
-    from nucleo.flash import fast_client
-    for src in (inspect.getsource(fast_client), inspect.getsource(agent)):
+    from nucleo.flash import tool_drops   # the FlashBrain's drop record (split out of fast_client)
+    for src in (inspect.getsource(tool_drops), inspect.getsource(agent)):
         assert '"tool_dropped", "⚠️ acción descartada"' in src
         assert '"tool":' in src and '"reason":' in src

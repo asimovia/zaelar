@@ -78,7 +78,8 @@ def _start(prov: "MusicProvider", dev: "dict | None", screen: str, query: str, r
                 logger.info(f"music: {prov.name} not sounding on {res.extra.get('device')!r}, playing in the page")
                 try:
                     prov.pause()                 # a device that starts late must not sound under the page player
-                except Exception:  # noqa: BLE001
+                except Exception as _e:  # noqa: BLE001
+                    logger.debug("_start: degraded, carrying on without it: %s", _e)
                     pass
                 prov, dev, res = alt, None, run(alt, "")
     if res.ok:
@@ -86,7 +87,8 @@ def _start(prov: "MusicProvider", dev: "dict | None", screen: str, query: str, r
         if before is not None and before.name != prov.name:
             try:
                 before.pause()                   # one sound: the player it moved away from goes quiet
-            except Exception:  # noqa: BLE001
+            except Exception as _e:  # noqa: BLE001
+                logger.debug("_start: degraded, carrying on without it: %s", _e)
                 pass
         placement.record(prov.name, device_id=(res.extra or {}).get("device_id", dev_id),
                          device=(res.extra or {}).get("device", (dev or {}).get("name", "")),
@@ -304,7 +306,8 @@ def now_playing(prefer: str = "") -> "NowPlaying | None":
         return None
     try:
         return prov.now_playing()
-    except Exception:  # noqa: BLE001
+    except Exception as _e:  # noqa: BLE001
+        logger.debug("now_playing: degraded, carrying on without it: %s", _e)
         return None
 
 

@@ -106,7 +106,8 @@ class SpotifyProvider(MusicProvider):
         """Device id to use: active one, otherwise first available; '' if none exists."""
         try:
             devs = client.devices()
-        except SpotifyError:
+        except SpotifyError as _e:
+            logger.debug("_pick_device: degraded, carrying on without it: %s", _e)
             return ""
         if not devs:
             return ""
@@ -123,7 +124,8 @@ class SpotifyProvider(MusicProvider):
             return None
         try:
             devs = client.devices()
-        except SpotifyError:
+        except SpotifyError as _e:
+            logger.debug("device_near: degraded, carrying on without it: %s", _e)
             return None
         near = [d for d in devs or [] if str(d.get("type") or "").lower() in types
                 and not d.get("is_restricted") and d.get("id")]
@@ -360,7 +362,8 @@ class SpotifyProvider(MusicProvider):
     def now_playing(self) -> "NowPlaying | None":
         try:
             st = client.playback_state()
-        except SpotifyError:
+        except SpotifyError as _e:
+            logger.debug("now_playing: degraded, carrying on without it: %s", _e)
             return None
         if not st:
             return NowPlaying(playing=False, provider=self.name)
