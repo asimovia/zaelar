@@ -137,13 +137,34 @@ def _sent_lately() -> list[str]:
             except (TypeError, ValueError):
                 continue
             if m.get("dir") == "out" and now - ts <= _SENT_WINDOW_S:
-                body = re.sub(r"\s+", " ", str(m.get("body") or "")).strip()[:_MAX_BODY_DIGEST]
-                rows.append((ts, f"· ENVIADO por {plat} a {th.get('name') or '?'} ({_when({'ts': ts})}): «{body}»"))
+                rows.append((ts, f"· ENVIADO por {plat} a {th.get('name') or '?'} ({_when({'ts': ts})}): "
+                                 f"«{sent_excerpt(m.get('body'))}»"))
     out = [r for _ts, r in sorted(rows, key=lambda t: -t[0])[:_MAX_SENT_ROWS]]
     for o in [o for o in (db.get("pending_send") or []) if not o.get("scheduled")][:_MAX_SENT_ROWS]:
         out.append(f"· SALIENDO ahora por {o.get('platform')} a {o.get('name') or o.get('to')}: "
-                   f"«{str(o.get('text') or '')[:_MAX_BODY_DIGEST]}» (ya está en camino — no lo envíes otra vez)")
+                   f"«{str(o.get('text') or '')[:_MAX_BODY_DIGEST]}» (en camino, AÚN NO ha salido: lo que lleve "
+                   "al salir todavía no consta — no lo envíes otra vez)")
     return out
+
+
+#: V2-807 T-12 — what a sent line carries of the body: its head AND its tail, because what is asked about what left
+#: is as often its end (the signature, a phone, a link) as its start. Bounded: it rides every turn for half an hour.
+_SENT_HEAD, _SENT_TAIL = 220, 200
+
+
+def sent_excerpt(body) -> str:
+    text = " ".join(str(body or "").split())
+    if len(text) <= _SENT_HEAD + _SENT_TAIL + 5:
+        return text
+    return f"{text[:_SENT_HEAD]} … {text[-_SENT_TAIL:]}"
+
+
+def sent_facts() -> list[str]:
+    """V2-807 T-12 — what LEFT (the record: the body as the connector sent it, signature included) and what is still
+    leaving, for every turn whichever cards are open (`data.recent_facts` → `nucleo/pending_work.fact_lines`). A
+    statement about what was sent is read from here, not from the conversation that wrote it."""
+    sent = _sent_lately()
+    return ["LO QUE SALIÓ (registro del envío, tal cual):"] + sent if sent else []
 
 
 def _held_lines() -> list[str]:
@@ -178,8 +199,7 @@ def prompt_digest() -> str:
     nothing to say, and saying «no tienes mensajes» from here would be this module asserting something the reader
     should infer."""
     items = _items()
-    sent = _sent_lately()
-    tail = (["LO QUE ACABAS DE ENVIAR:"] + sent if sent else []) + _held_lines() + _found_lately()
+    tail = _held_lines() + _found_lately()   # what left rides every turn (`sent_facts`, V2-807 T-12), not only here
     if not items:
         return "\n".join(tail)
     plats: dict = {}

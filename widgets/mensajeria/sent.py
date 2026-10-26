@@ -36,3 +36,22 @@ def rows(db: dict) -> list[dict]:
                         **({"scheduled_for": float(o["not_before"])} if o.get("scheduled") and float(o.get("not_before") or 0) > time.time() else {})})
     out.sort(key=lambda r: -float(r.get("ts") or 0))
     return out[:_MAX]
+
+
+#: V2-807 T-12 — how much of a body that LEFT goes on the timeline: enough to hold a whole ordinary message.
+LEFT_BODY_MAX = 4000
+
+
+def left_event(ev: dict) -> dict | None:
+    """What the timeline records when a send made HERE comes back from its connector as sent: the body as it left
+    (signature included — the connector adds it), who it went to, and the order's `ref`. A message he typed in his
+    own app is not this card's send and records nothing here. None when `ev` is not one of ours."""
+    ev = ev if isinstance(ev, dict) else {}
+    ours = bool(ev.get("ref")) or str(ev.get("messageId") or "").startswith("sent:")
+    body = str(ev.get("body") or ev.get("text") or "")
+    if not ours or not body.strip():
+        return None
+    return {"text": body[:LEFT_BODY_MAX],
+            "extra": {"platform": str(ev.get("platform") or ""), "to": str(ev.get("chatId") or ""),
+                      "name": str(ev.get("chatName") or ""), "ref": str(ev.get("ref") or ""),
+                      "chars": len(body), "cut": len(body) > LEFT_BODY_MAX}}

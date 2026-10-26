@@ -144,9 +144,35 @@ def prompt_lines() -> list[str]:
     """The compact block the turn prompt carries ONLY when something is pending: ids and names, nothing else.
     The model resumes from it with `resume_task(ids)`; each row then resumes from itself."""
     found = rows()
-    if not found:
-        return []
-    return ["PENDIENTE O PARADO (ids para resume_task):"] + [_line(r) for r in found]
+    head = ["PENDIENTE O PARADO (ids para resume_task):"] + [_line(r) for r in found] if found else []
+    return head + fact_lines()
+
+
+#: V2-807 T-12 — the hook a widget declares for what it JUST did that the agent must read as a record, whichever
+#: cards are open (the mail card: what left, body as sent). Not pending, not resumable: lines, read every turn.
+_FACTS_HOOK = "recent_facts"
+#: A widget's facts are a glance: at most this many lines, each bounded.
+MAX_FACT_LINES, MAX_FACT_CHARS = 5, 600
+
+
+def fact_lines() -> list[str]:
+    """Every widget's `recent_facts()` lines, bounded. `[]` when none. Never raises."""
+    out: list[str] = []
+    try:
+        from widgets import runtime
+        ids = [str(w.get("id") or "") for w in (runtime.catalog() or [])]
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"pending_work: no widget catalogue for facts ({e})")
+        return out
+    for wid in ids:
+        try:
+            hook = getattr(importlib.import_module(f"widgets.{wid}.data"), _FACTS_HOOK, None)
+            got = hook() if callable(hook) else None
+        except Exception as e:  # noqa: BLE001 — a widget that cannot say what it did adds nothing
+            logger.debug(f"pending_work: {wid}.{_FACTS_HOOK} unreadable ({e})")
+            continue
+        out += [str(x)[:MAX_FACT_CHARS] for x in (got or [])[:MAX_FACT_LINES] if str(x).strip()]
+    return out
 
 
 #: A widget row's excerpt rides the prompt every turn while the row exists: a glance, never the whole text.

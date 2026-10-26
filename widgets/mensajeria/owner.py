@@ -178,6 +178,7 @@ class _Owner:
             # reported his own reply never reaching the widget, and the whole pipeline was silent on success
             # end to end. This confirms the message actually landed in the store, not just that the bus saw it.
             logger.info(f"mensajeria: outbound {platform} message joined its thread ({ev.get('chatId')})")
+            _record_left(ev)
             # V2-693 — and the directory learns WHO that conversation is. The connector resolved a handle
             # into a chat id to make this send; that mapping exists nowhere else, and dropping it is what
             # let one person become two contacts.
@@ -476,3 +477,17 @@ async def stop() -> None:
 
 async def handle(action: str, payload: dict) -> None:
     await _OWNER.handle(action, payload)
+
+
+def _record_left(ev: dict) -> None:
+    """V2-807 T-12 — the body a send of this card LEFT with, on the timeline (`sent.left_event`): what was sent is
+    then read from the record, never rebuilt from the conversation that wrote it."""
+    from . import sent as _sent
+    rec = _sent.left_event(ev)
+    if rec is None:
+        return
+    try:
+        from voice.observer import emit
+        emit("messaging", "sent", text=rec["text"], extra=rec["extra"])
+    except Exception as e:  # noqa: BLE001 — bookkeeping never breaks the owner's loop
+        logger.info(f"mensajeria: the sent body was not recorded ({type(e).__name__}: {e})")

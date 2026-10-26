@@ -485,3 +485,14 @@ def claim_text(text: str, title: str = "") -> dict | None:
     except Exception as e:  # noqa: BLE001 — an unreadable store claims nothing: the text goes where it was sent
         _held.logger.info(f"claim_text unreadable ({e})")
         return None
+
+
+def recent_facts() -> list[str]:
+    """V2-807 T-12 — what this card SENT lately and what is still leaving, as the record every turn reads
+    (`nucleo/pending_work.fact_lines`): a claim about what left is read from the body as it left."""
+    try:
+        from . import inbox_read
+        return inbox_read.sent_facts()
+    except Exception as e:  # noqa: BLE001
+        _held.logger.info(f"recent_facts unreadable ({e})")
+        return []

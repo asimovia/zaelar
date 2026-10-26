@@ -5601,6 +5601,10 @@ DOMAINS: list[dict] = [
         # V2-807 T-10 — disarmed 2026-10-26 (row excerpt, row verbs, digest repeat, undeclared verb) → each red.
         {"id": "4.282", "title": "A held draft is state with every card closed: its pending-work row carries recipient, subject, a bounded excerpt and the DECLARED actions that show, rewrite, send or drop it (named by its recipient), and the card's digest no longer repeats it (V2-807 T-10)",
             "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_a_held_draft_is_state_with_every_card_closed.py"]},
+        # V2-807 T-12 — disarmed 2026-10-26 (fact read, head+tail excerpt, owner wiring, ours filter, data hook) → each red.
+        {"id": "4.283", "title": "What was sent is read from the record of what left: the body as the connector sent it (head and tail — the signature) is a fact of every turn whichever cards are open, a send still leaving says it has not left, and the timeline records the body a send of this card left with — nothing for what he typed in his own app (V2-807 T-12)",
+            "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_what_was_sent_is_read_from_the_record.py",
+                                  "tests/browser/unit/mensajeria/test_the_digest_says_what_was_just_sent.py"]},
         {"id": "4.252", "title": "The chat list paints, filters by kind and name, loads more and opens a chat (RENDERED)",
             "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_the_chat_list_paints_filters_and_loads_more.py"]},
         {"id": "4.250", "title": "The feedback button is never hidden under another layer",
