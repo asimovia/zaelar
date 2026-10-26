@@ -518,9 +518,20 @@ body {
 .zm-scroll.zm-scroll.zm-scroll input[type="range"] {
   min-height: 0;
 }
-/* A ROW OF CONTROLS WRAPS instead of pushing the card sideways (see the ⚠️ above — measured on `archivos`). */
-.zm-scroll.zm-scroll.zm-scroll :has(> button),
-.zm-scroll.zm-scroll.zm-scroll :has(> a[href]) {
+/* A ROW OF CONTROLS WRAPS instead of pushing the card sideways (see the ⚠️ above — measured on `archivos`).
+   Except a STRIP that scrolls sideways inside its own box — tabs (`role="tablist"`) or a thumbnail rail
+   (`data-strip`): wrapping one broke youtube's header into two rows with the right cluster floating between them
+   (iPhone 14, 2026-10-26), and results' tabs the same way. */
+.zm-scroll.zm-scroll.zm-scroll :has(> button):not([role="tablist"]):not([data-strip]):not(:has(> input, > textarea)),
+.zm-scroll.zm-scroll.zm-scroll :has(> a[href]):not([role="tablist"]):not([data-strip]):not(:has(> input, > textarea)) {
   flex-wrap: wrap;
   max-width: 100%;
+}
+/* A box that directly HOLDS a text field is ONE control (a search pill: field + clear + go). It never wraps — the
+   field shrinks instead; wrapping it stacked the buttons under the text and the pill became a blob — and it grows
+   with the field: the floor makes the field 44px, and a pill drawn at a fixed 32px cut the text in half (youtube,
+   2026-10-26). */
+.zm-scroll.zm-scroll.zm-scroll :has(> input:not([type="checkbox"]):not([type="radio"]):not([type="range"])),
+.zm-scroll.zm-scroll.zm-scroll :has(> textarea) {
+  height: auto;
 }

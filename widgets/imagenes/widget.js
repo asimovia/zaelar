@@ -171,6 +171,7 @@ export function render(el, data, ctx){
   // ── strip: the whole set, current one marked ──────────────────────────────────────────────────
   if(items.length>1){
     const strip=txt("div","imgstrip");
+    strip.dataset.strip="";                 // scrolls sideways on its own — the phone never wraps it
     items.forEach((it,k)=>{
       const b=txt("button","imgthumb"+(k===i?" on":""));
       b.title=String(it.title||it.site||`Foto ${k+1}`);

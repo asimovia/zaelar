@@ -1603,6 +1603,7 @@ export function render(el, data, ctx){
   let cur = TABS.some(t=>t.id===data.tab) ? data.tab
           : (!_hasItems && (_live || ((data.progress||{}).phases||[]).length) ? "process" : "results");
   const bar = elem("div","hr-tabs");
+  bar.setAttribute("role","tablist");     // a strip that scrolls sideways — the phone never wraps it
   const panel = elem("div","hr-panel");
 
   const paint = (moved)=>{

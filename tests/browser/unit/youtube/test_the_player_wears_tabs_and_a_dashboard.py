@@ -190,15 +190,16 @@ def test_the_shelf_shows_every_source_disabled_with_its_reason(_page):
 
 
 def test_the_connectors_screen_quiets_the_tabs_and_closing_it_is_ONE_transition(_page):
-    """The header standard: while the connectors screen is open no face is on screen, so no tab is lit and
-    none is clickable; the plug (or the crumb) takes him back to the face he left. And the V2-626 rule: the
+    """The header standard: while the connectors screen is open no face is on screen, so no tab is lit — but every
+    tab is still a way out (2026-10-26: disabled tabs left him stuck on the shelf). The plug (or the crumb) takes
+    him back to the face he left. And the V2-626 rule: the
     way out is ONE transition — the shelf cannot stay rendered underneath, not even after the next repaint."""
     _mount(_page, _data())
     _page.click(".hb-yt-tab[data-tab=cola]")
     _page.click(".hb-yt-plug")
     assert "hb-yt-connmode" in _cls(_page)
     assert _page.locator(".hb-yt-tab.on").count() == 0
-    assert _page.locator(".hb-yt-tab:disabled").count() == 5
+    assert _page.locator(".hb-yt-tab:disabled").count() == 0
     assert "on" in _page.locator(".hb-yt-plug").get_attribute("class")
     _page.click(".hb-yt-plug")
     assert "hb-yt-connmode" not in _cls(_page)
@@ -215,6 +216,18 @@ def test_the_connectors_screen_quiets_the_tabs_and_closing_it_is_ONE_transition(
     _page.click(".hb-yt-plug")
     _page.click(".hb-ytw-crumb")
     assert "hb-yt-connmode" not in _cls(_page) and "hb-yt-t-cola" in _cls(_page)
+
+
+def test_a_tab_tapped_on_the_connectors_screen_goes_there_at_once(_page):
+    """Inside the shelf, a tap on any header tab leaves it and lands on that face — no «Volver» first."""
+    _mount(_page, _data())
+    _page.click(".hb-yt-tab[data-tab=cola]")
+    _page.click(".hb-yt-plug")
+    _page.click(".hb-yt-tab[data-tab=inicio]", timeout=2000)
+    assert "hb-yt-connmode" not in _cls(_page)
+    assert "hb-yt-t-inicio" in _cls(_page)
+    assert _page.locator(".hb-yt-tab.on").get_attribute("data-tab") == "inicio"
+    assert "on" not in (_page.locator(".hb-yt-plug").get_attribute("class") or "").split()
 
 
 def test_recently_watched_band_renders_from_our_own_history(_page):

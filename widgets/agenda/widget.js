@@ -1692,6 +1692,7 @@ export function render(el, data, ctx){
 
   // ── view band ──────────────────────────────────────────────────────────────────────────────────────
   const views = el2("div","agviews");
+  views.setAttribute("role","tablist");   // a strip that scrolls sideways — the phone never wraps it
   [["day", tt("day", null, "Día")], ["week", tt("week", null, "Semana")],
    ["month", tt("month", null, "Mes")], ["list", tt("list", null, "Lista")]].forEach(([id,label])=>{
     const t = el2("button","agtab" + (S.view===id ? " on" : ""), label);

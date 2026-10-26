@@ -118,7 +118,7 @@ function injectStyles(){
              padding:6px 12px;font-size:var(--fs-caption,13.8px);font-weight:600;cursor:pointer;
              line-height:var(--hb-lh-tight,1.35);white-space:nowrap;flex:0 0 auto;
              transition:background var(--hb-t-fast,120ms),color var(--hb-t-fast,120ms)}
-  .hb-yt-tab:hover:not(:disabled){background:var(--hb-hover,rgba(255,255,255,.06));color:var(--hb-ink,#F2F4F7)}
+  .hb-yt-tab:hover{background:var(--hb-hover,rgba(255,255,255,.06));color:var(--hb-ink,#F2F4F7)}
   .hb-yt-tab:focus-visible,.hb-yt-plug:focus-visible,.hb-yt-picon:focus-visible{outline:none;
              box-shadow:var(--hb-focus-ring,0 0 0 2px #AE90FF)}
   /* SELECTION is an accent-tinted chip with a ring and the label in ink at 700 (V2-690/691) — the one
@@ -127,8 +127,6 @@ function injectStyles(){
   .hb-yt-tab.on{background:color-mix(in srgb,var(--hb-accent,#AE90FF) 18%,transparent);
                 box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--hb-accent,#AE90FF) 55%,transparent);
                 color:var(--hb-ink,#F2F4F7);font-weight:700}
-  /* While the connectors screen is open no view is on screen: every tab goes quiet (the standard). */
-  .hb-yt-tab:disabled{opacity:.75;cursor:default}
   .hb-yt-navright{margin-left:auto;display:flex;align-items:center;gap:var(--sp-2,8px);flex:0 0 auto}
   /* The plug — the SAME control every connector widget wears (contactos' .ctplug): an icon, no word. */
   .hb-yt-plug{width:var(--hb-ctl-h-sm,32px);height:var(--hb-ctl-h-sm,32px);flex:0 0 auto;padding:0;
@@ -969,6 +967,7 @@ export function render(root, data, ctx){
 
     const nav = el("div", "hb-yt-nav");
     const tabsBox = el("div", "hb-yt-tabs");
+    tabsBox.setAttribute("role", "tablist");              // a strip that scrolls sideways — the phone never wraps it
     nav.appendChild(tabsBox);
     const tabBtns = {};
     const selectTab = (tid) => {
@@ -982,13 +981,11 @@ export function render(root, data, ctx){
       if(ctx && ctx.top) ctx.top();
       const bd = root._hbYtEls && root._hbYtEls.body; if(bd) bd.scrollTop = 0;
     };
-    // The tabs' lit/quiet state has ONE painter: the chosen face wears .on, and while the connectors screen
-    // is open no face is on screen, so none is lit and none is clickable (the header standard).
+    // The tabs' lit state has ONE painter: the chosen face wears .on, and while the connectors screen is open
+    // no face is on screen, so none is lit. Every tab stays a way OUT: a tap leaves the shelf and lands on that
+    // face at once (operator, 2026-10-26 — disabled tabs left him stuck until he found «Volver»).
     const paintTabs = () => {
-      Object.keys(tabBtns).forEach((k) => {
-        tabBtns[k].classList.toggle("on", !_screen && k === _tab);
-        tabBtns[k].disabled = !!_screen;
-      });
+      Object.keys(tabBtns).forEach((k) => tabBtns[k].classList.toggle("on", !_screen && k === _tab));
     };
     _TABS.forEach((tid) => {
       const b = el("button", "hb-yt-tab" + (tid === _tab ? " on" : ""), tabLabel(tid));

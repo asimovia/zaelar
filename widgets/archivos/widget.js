@@ -98,6 +98,9 @@ const CSS = `
 .arx-tools{display:flex;align-items:center;gap:6px;flex:0 0 auto}
 .arx-find{display:flex;align-items:center;gap:4px;background:var(--hb-bg-soft,#f5f7fb);border:1px solid var(--hb-line,#eef1f6);border-radius:8px;padding:3px 6px}
 .arx-find.active{border-color:var(--hb-accent,#2f6df6)}
+/* A phone: the search takes a row of its own and the buttons line up under it (V2-813 — at 44px a tap the five
+   buttons and the field could not share 366px, and the row broke wherever it ran out of room). */
+@media (max-width:520px){.arx-tools{flex:1 1 100%;flex-wrap:wrap}.arx-find{order:-1;flex:1 1 100%}}
 .arx-find input{border:0;background:none;outline:none;font:inherit;color:var(--hb-ink,#0d1622);width:130px}
 .arx-find-ic{color:var(--hb-muted,#67707d);font-size:13px}
 .arx-find-count{flex:0 0 auto;font-size:11px;color:var(--hb-muted,#67707d);background:var(--hb-bg,#fff);

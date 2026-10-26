@@ -90,6 +90,10 @@ function injectStyles(){
     border-bottom:1px solid var(--hb-line-subtle,rgba(255,255,255,.06));
     padding:0 0 var(--sp-2,8px);margin-bottom:var(--sp-3,12px)}
   .hb-contactos .ctviewsright{margin-left:auto;display:flex;align-items:center;gap:8px;flex:0 0 auto}
+  /* A phone: the search gets the whole row and the sources go under it — five 44px icons and a search box do not
+     fit 366px, and the plug was cut off the edge (V2-813). */
+  @media (max-width:520px){.hb-contactos .ctbar{flex-wrap:wrap;row-gap:var(--sp-2,8px)}
+    .hb-contactos .ctsearch{flex:1 1 100%;max-width:none}}
   .hb-contactos .ctconnicons{display:flex;align-items:center;gap:4px}
   .hb-contactos .ctconnicon{width:var(--hb-icon-h,28px);height:var(--hb-icon-h,28px);border-radius:var(--hb-r-s,8px);
     border:0;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:.72}
