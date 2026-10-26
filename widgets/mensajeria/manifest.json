@@ -410,7 +410,8 @@
       ]
     },
     "mail_folder": {
-      "desc": "Abre una CARPETA del correo como un cliente de correo: «enséñame los enviados», «abre la papelera», «enséñame promociones». `folder` = inbox | flagged | drafts | sent | archive | all | junk | trash o una carpeta suya; `category` = una categoría de la bandeja SOLO si `result.categories` la trae. Devuelve `result.messages` y los no leídos reales en `result.unread`.",
+      "desc": "Abre una CARPETA del correo como un cliente de correo: «enséñame los enviados», «abre la papelera», «enséñame promociones».",
+      "how": "`folder` = inbox | flagged | drafts | sent | archive | all | junk | trash o una carpeta suya; `category` = una categoría de la bandeja SOLO si `result.categories` la trae. Devuelve `result.messages` y los no leídos reales en `result.unread`.",
       "payload": {
         "folder": "string (inbox | drafts | sent | … | nombre de carpeta)",
         "category": "opcional: primary | promotions | social | updates | forums (las que dé el proveedor)"
@@ -420,7 +421,8 @@
       "worker": false
     },
     "mail_sort": {
-      "desc": "Cambia SUS criterios de las categorías de la bandeja (las que da el proveedor; por defecto, las de Gmail tal cual): «los de Amazon que vayan a Principal» → from + to; «no me enseñes Social» → hide; «vuelve a enseñarme Social» → show; «quita esa regla» → forget. Se guarda como regla suya y NO mueve nada en su buzón real.",
+      "desc": "Cambia SUS criterios de las categorías de la bandeja: «los de Amazon que vayan a Principal», «no me enseñes Social», «quita esa regla». Se guarda como regla suya y NO mueve nada en su buzón real.",
+      "how": "Las categorías son las que da el proveedor (por defecto, las de Gmail tal cual). «los de Amazon que vayan a Principal» → from + to; «no me enseñes Social» → hide; «vuelve a enseñarme Social» → show; «quita esa regla» → forget.",
       "payload": {
         "from": "remitente: dirección, dominio o una palabra (amazon.com)",
         "to": "categoría destino (primary | promotions | social | updates | forums — solo las que dé el proveedor)",
@@ -458,7 +460,8 @@
       "worker": false
     },
     "open_draft": {
-      "desc": "Abre un BORRADOR que está a medias ocupando toda la tarjeta (destinatario, asunto, texto y los botones Enviar / Guardar / Descartar): «abre el borrador», «enséñame el correo que tenía pendiente para X». Sin `contact` abre el más reciente.",
+      "desc": "Abre un BORRADOR que está a medias ocupando toda la tarjeta: «abre el borrador», «enséñame el correo que tenía pendiente para X». Sin `contact` abre el más reciente.",
+      "how": "La tarjeta enseña destinatario, asunto, texto y los botones Enviar / Guardar / Descartar.",
       "payload": {
         "contact": "opcional: a quién va el borrador",
         "key": "opcional: la clave del borrador"
@@ -490,7 +493,8 @@
       "confirm_q": "¿Descarto ese borrador? Se borra y no se envía."
     },
     "compose": {
-      "desc": "El botón «Enviar» de la pantalla de borrador (y «Guardar» de un correo nuevo aún sin guardar): escribe lo que hay en pantalla en el borrador (`key`, o uno nuevo para `to`) y con `send: true` lo ENVÍA. Por voz usa `draft` / `send_draft`.",
+      "desc": "El botón «Enviar» de la pantalla de borrador (y «Guardar» de un correo nuevo aún sin guardar). Por voz usa `draft` / `send_draft`.",
+      "how": "Escribe lo que hay en pantalla en el borrador (`key`, o uno nuevo para `to`) y con `send: true` lo ENVÍA.",
       "payload": {
         "key": "opcional: el borrador abierto",
         "to": "string (destinatario, si es nuevo)",
