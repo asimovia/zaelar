@@ -25,10 +25,8 @@ from . import state as _state
 from . import writer as _writer
 from .queue import get_queue
 from .action_map_store import (  # noqa: E402,F401 — V2-778 F1: moved, imported back under their names
-    action_map_active, action_map_add, action_map_has_seed, action_map_hit, action_map_retarget_seed,
-    action_map_seed_version, action_map_set_seed_version)
-# V2-796 — the notice ledger's rows, through the front door (`nucleo/notices.py` owns every rule).
-from . import notices_store as notices  # noqa: E402,F401
+    action_map_active, action_map_add, action_map_has_seed, action_map_hit, action_map_retarget_seed, action_map_seed_version, action_map_set_seed_version)
+from . import notices_store as notices  # noqa: E402,F401 — V2-796: the notice ledger, through the front door
 from .kv_store import (  # noqa: E402,F401 — V2-778 F1: moved, imported back under their names
     kv_del, kv_get, kv_keys, kv_set)
 
