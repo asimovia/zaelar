@@ -101,7 +101,10 @@ async def handle(text: str, hard: str, emit) -> str | None:
          extra={"cmd": hard, "reason": "hard_interrupt"})
 
     if hard == "close":
-        emit("widget", "close", extra={"src": "flash"})     # 3 · close EVERY widget, now, before anything else
+        # 3 · close every card he is not using, now, before anything else (V2-807 T-08: the card in use stays
+        #     unless his words name it — `bulk_close`).
+        from nucleo.flash import bulk_close as _bulk
+        _bulk.close_all(emit, src="flash", text=text)
     # 4 · V2-688 — and only THEN ask whether closing was the whole request. The closing clause is removed from what
     #     the model reads: handed «close all» against an already-empty canvas it re-emits it (the context-bleed shape
     #     V2-635 catalogued), and that second close would land on whatever this same sentence just asked to open.

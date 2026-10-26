@@ -143,6 +143,64 @@ def classify_alias_call(tool_calls: list, text: str) -> str:
     return f"alias:{op}:{rid}" if rid else "clarify"
 
 
+def model_named(wid_arg: str) -> str:
+    """The card the model NAMED, when it is one we have: an exact catalog id, or an INSTANCE id verbatim (V2-773 —
+    the model can only name one it was told about, and the alias resolver would read it as noise). "" otherwise —
+    an alias or a garbled id leaves the target missing, and only then may a guard fill it in (V2-807 T-06)."""
+    w = str(wid_arg or "").strip()
+    if not w:
+        return ""
+    try:
+        from widgets import runtime
+        if runtime.get(w) is not None:
+            return w
+        if "::" in w and runtime.get(w.split("::", 1)[0]) is not None:
+            return w
+    except Exception as e:  # noqa: BLE001
+        from loguru import logger
+        logger.debug(f"show_target: catalog unreadable — {e}")
+    return ""
+
+
+def named_or_guess(model_id, guess, *, bases_only: bool = False) -> str:
+    """The card the model NAMED, else the guard's guess (`guess()`) — a guess FILLS a missing target, it never
+    replaces a present one (V2-807 T-06). `model_id` is the id, or the tag's `extra` dict carrying it. `bases_only`
+    for a channel that resolves catalog ids only."""
+    if isinstance(model_id, dict):
+        model_id = model_id.get("id")
+    named = model_named(str(model_id or ""))
+    if named and not (bases_only and "::" in named):
+        return named
+    return str(guess() or "")
+
+
+def verdict_denies_show(brief) -> bool:
+    """Did the brief SURELY read the canvas as anything but a show (neither, close…)? Then a show grammar's guess
+    over the same words is overruled (V2-807 T-06; CRIT-K1). Absent or unsure verdict → False, today's path."""
+    try:
+        from nucleo.flash import turn_brief as _tb
+        verb, info = _tb.read(brief, _tb.CANVAS_KEY, "")
+        return bool(isinstance(info, dict) and info.get("used")) and str(verb or "") not in ("", "show")
+    except Exception as e:  # noqa: BLE001
+        from loguru import logger
+        logger.debug(f"show_target: canvas verdict unreadable — {e}")
+        return False
+
+
+def show_proposed(brief, router, text: str) -> bool:
+    """May a promise backstop SHOW a card on this turn? A sure `canvas=show` verdict, or the show grammar when no
+    sure verdict says otherwise (V2-807 T-06: «Why are you opening a browser? I asked for the draft» re-opened the
+    browser from its own noun in his complaint)."""
+    try:
+        from nucleo.flash import direct_action as _da
+        if _da.verdict_shows(brief):
+            return True
+    except Exception as e:  # noqa: BLE001
+        from loguru import logger
+        logger.debug(f"show_target: show verdict unreadable — {e}")
+    return bool(router.looks_like_show_strict(text)) and not verdict_denies_show(brief)
+
+
 def resolve_show(wid_arg: str, text: str, window, last_action, guard_target) -> tuple:
     """The voice provider's show_widget RESOLUTION, moved here whole (V2-650b, paid to the provider's
     size ratchet): open/recent context from memory state, then contextual target → exact catalog id →
@@ -159,15 +217,15 @@ def resolve_show(wid_arg: str, text: str, window, last_action, guard_target) -> 
         open_ids, recent_ids = [], []
     res = {}
     try:
-        contextual = guard_target(text, window, last_action)
-        if contextual:
+        # V2-807 T-06 — THE CARD THE MODEL NAMED WINS. The guard used to run first and REPLACE it: «Where is it?
+        # Open it» with `show_widget(documento)` was rewritten to the browser, because the deictic «it» walked back
+        # to his previous line — a complaint that NAMED the browser. A word-level guess may fill in a missing
+        # target; it never replaces a present one (a text guard never contradicts the verdict, CRIT-K2).
+        named = model_named(wid_arg)
+        if named:
+            res = {"match": named, "system": None}
+        elif (contextual := guard_target(text, window, last_action)):
             res = {"match": contextual, "system": None}
-        elif wid_arg and runtime.get(wid_arg) is not None:       # exact catalog id
-            res = {"match": wid_arg, "system": None}
-        elif wid_arg and "::" in wid_arg and runtime.get(wid_arg.split("::", 1)[0]) is not None:
-            # V2-773 — an INSTANCE id, verbatim: the model can only name one it was told about (a finished
-            # errand's sheet, `instances.recent_faces`), and the alias resolver would read it as noise.
-            res = {"match": wid_arg, "system": None}
         else:                                                    # name/alias → real id or system surface
             res = runtime.identify(wid_arg or text, open_ids=open_ids, recent_ids=recent_ids) or {}
     except Exception:

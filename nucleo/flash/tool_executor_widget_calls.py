@@ -138,7 +138,7 @@ def _tag_emit(action: str, extra: dict, *, _apply_widget_data, _brief, _is_meta_
         emit("brain", "🔓 close licenciado por Jev (la gramática no veía orden, dos lectores de acuerdo)",
              text=(text or "")[:120], role="system", extra={"cat": "flash", "kind_diag": "close_jev_licensed"})
     if action == "show":
-        contextual = _show_guard_target(text, brain._window, brain._last_action)
+        contextual = _txw._show_target.named_or_guess(extra, lambda: _show_guard_target(text, brain._window, brain._last_action))  # V2-807 T-06
         if contextual:
             extra = {**(extra or {}), "id": contextual}
         # V2-776 — the CARD, as the tool path resolves it: `[[show:results]]` with the monitor sheet open

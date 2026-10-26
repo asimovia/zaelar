@@ -298,8 +298,17 @@ def _t_show_widget(*, args, _brief, _router, _say, _show_guard_target, _show_tar
         # en un turno de cerrar SÍ debe corregirse») y este canal no la aplicaba. El show se descarta y
         # el backstop de cierre de más abajo hace el cierre — una orden, una mutación. V2-750 — AND THE GRAMMAR ONLY PROPOSES BELOW. Measured (session b41925f6): «vamos a HACER una cosa, ábreme el WIDGET de vídeo» matched `hacer una cosa, abreme el widget` and built a duplicate video player called `entonces-vamos-cosa`, while this same turn's verdict said `catalog_widget=youtube` at 1.00 and nobody read it. `build_decision` composes that verdict with `build_or_use`: it VETOES a create over a card we already have, and REACHES the generator where no table of ours can read the script (zh/ja/hi 6/9 → 9/9, node 2.68).
         if _router.show_contradicts_the_order(text) or _tx._canvas_lic.closing_turn(_brief, _wid):
-            emit("brain", "🚧 show_widget descartado: la orden dice CERRAR, no abrir",
-                 text=(_wid or "?")[:40], role="system")
+            # V2-807 T-08 — a show of a card ALREADY open, on a close turn, is the model KEEPING it («close the
+            # others, keep the document»). Nothing is opened either way; the keep is remembered so the bulk close
+            # of the same sentence spares it.
+            from nucleo.flash import bulk_close as _bulk, canvas_visibility as _cvis_keep
+            if _wid and _cvis_keep.is_open(_wid):
+                _bulk.note_kept(_wid)
+                emit("brain", "🧷 show_widget on a close turn over an open card: kept, not opened",
+                     text=_wid[:40], role="system", extra={"cat": "flash", "kept": _wid})
+            else:
+                emit("brain", "🚧 show_widget descartado: la orden dice CERRAR, no abrir",
+                     text=(_wid or "?")[:40], role="system")
         # GUARD: CREAR un widget nuevo NO es show → escala al generador (el modelo elige show_widget para
         # 'créame un widget de X' e `identify` devuelve un widget EXISTENTE equivocado). Backstop determinista.
         elif (_bd := _tx._build_decision.decide(text, brief=_brief, proposed=_router.looks_like_create_widget(text)))[0]:

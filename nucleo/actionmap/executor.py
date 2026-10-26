@@ -166,6 +166,12 @@ def _widget_has_live_work(wid: str) -> bool:
         return True
 
 
+def _bulk_close():
+    """The one bulk-close door (V2-807 T-08): a close that names no card spares the card he is working on."""
+    from nucleo.flash import bulk_close
+    return bulk_close
+
+
 def describe(action: dict) -> str:
     """Short probe/report string, mirroring `nucleo/flash/probe.py` action naming."""
     do = action.get("do")
@@ -200,7 +206,7 @@ def execute(action: dict, emit, phrase: str = "") -> bool:
     said = (phrase or "")[:160]
     src = {"src": "actionmap", "origin": "actionmap"}
     if do == "close_all":
-        emit("widget", "close", text=said, extra=dict(src))
+        _bulk_close().close_all(emit, src=src["src"], text=phrase or "", said=said, extra=dict(src))   # V2-807 T-08
         return True
     if do == "arrange":
         # V2-588: same emit as POST /api/canvas/arrange and the arrange_canvas tool — one rail, three doors.

@@ -103,59 +103,78 @@ def with_also_named(ids, text: str) -> list[str]:
     return out
 
 
-def _widget_fallback(text: str, emit, ask=None, last_spoken: str = "") -> bool:
-    """Si la frase es una orden clara de mostrar/cerrar un widget conocido y el modelo no emitió la tag, la
-    emitimos nosotros (idempotente). Reutiliza el identificador de `widgets/runtime`. Devuelve True si ACTUÓ
-    (para que el llamante marque acted["widget"] y el login-fallback no robe el turno — V2-023).
+def _canvas_order(brief) -> str:
+    """The canvas verb the turn's verdict SURELY reads — "show", "close", or "" (neither, unsure, absent).
 
-    `ask` es por dónde se PREGUNTA (V2-259 F3). Preguntar TAMBIÉN es haber actuado: el turno se resuelve con la
-    pregunta, y devolver False aquí dejaría que el login-fallback se llevara el turno como si nadie hubiera
-    hecho nada — que es el fallo que el comentario de arriba existe para evitar."""
-    import re as _re
-    import unicodedata as _ud
-    n = "".join(c for c in _ud.normalize("NFKD", text or "") if not _ud.combining(c)).lower()
+    V2-807 T-07: the fallback used to decide with a verb-stem table (`pon`, `cierr`…) plus a catalogue-noun match,
+    and «put the web in the signature too» opened the messaging card because «firma»/«mensaje» are its nouns, on a
+    turn whose verdict said `canvas=neither` at 0.96. The verdict is the order; the words only name the card."""
+    try:
+        from nucleo.flash import turn_brief as _tb
+        verb, info = _tb.read(brief, _tb.CANVAS_KEY, "")
+        if not (isinstance(info, dict) and info.get("used")):
+            return ""
+        v = str(verb or "")
+        return v if v in ("show", "close") else ""
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"widget fallback: canvas verdict unreadable — {e}")
+        return ""
+
+
+def _widget_fallback(text: str, emit, ask=None, last_spoken: str = "", brief=None) -> bool:
+    """The model SAID it would open/close a card and emitted nothing: emit it for it — ONLY on the turn's own sure
+    canvas verdict (V2-807 T-07). Returns True if it ACTED (so the caller marks acted["widget"] and the login
+    fallback does not steal the turn — V2-023).
+
+    What it acts on is the verdict, never a verb table: with `canvas=neither`, unsure or absent, it does nothing
+    and the model's own calls stand. A show needs a card his words NAME (`_identify_named`, never «by context»);
+    a close that names no card closes the cards he is not using (`bulk_close.close_all`, V2-807 T-08 — the draft
+    he was correcting closed with everything else on «close what you don't need»).
+
+    `ask` is where a question goes (V2-259 F3). Asking IS acting: the turn resolves with the question."""
+    n = _norm_nfkd(text)
     if _action_is_negated(n):   # "no necesito que abras nada" → no dispares ningún widget
         return False
     if _is_meta_widget_question(n):   # "¿por qué abriste X?" es una PREGUNTA, no una orden
         return False
+    order = _canvas_order(brief)
+    if not order:
+        return False
     try:
-        if _re.search(r"\b(quit|cierr|cerr|elimin|escond|ocult|limpi|despej|close|hide|clear)", n):
-            if _re.search(r"\b(todo|todos|todas|all|widgets|tarjetas|la pantalla|el escritorio)", n):
-                emit("widget", "close", extra={"src": "flash"})
+        if order == "close":
+            wid = _identify_named(text)
+            if not wid:
+                from nucleo.flash import bulk_close as _bulk
+                _bulk.close_all(emit, src="flash", text=text)
                 return True
-            wid = _identify(text)
-            if wid:
-                _t = _close_target(wid, text)
-                if _t["ask"]:
-                    if ask:
-                        ask(_t["ask"])
-                        emit("brain", "❓ cerrar: varias tarjetas abiertas", text=wid, role="system",
-                             extra={"options": _t["options"]})
-                        return True
-                    return False        # sin canal para preguntar, mejor no cerrar a ciegas
-                for _cid in (_t.get("ids") or [_t["id"] or wid]):
-                    emit("widget", "close", extra={"id": _cid, "src": "flash"})
-                return True
-        elif _re.search(r"\b(abr|muestr|ensen|pon|saca|sube)|quiero ver|ver mi", n):
-            wid = _identify(text)
-            if wid:
-                # V2-605 F2 — SYMMETRIC with the close branch above, which has consulted the instance since
-                # V2-259 while this one emitted the BARE id. Measured on the LIVE engine: «Enséñame el
-                # navegador» calls no tool and emits no tag, so it never reached the `show_widget` path this
-                # pass had already fixed — it arrived HERE and opened the base with four cards on the canvas.
-                _t = _show_target_instance(wid, text, last_spoken)
-                if _t["ask"]:
-                    if ask:
-                        ask(_t["ask"])
-                        emit("brain", "❓ mostrar: varias tarjetas abiertas", text=wid, role="system",
-                             extra={"options": _t["options"]})
-                        return True
-                    # No channel to ask through: SHOW the base, exactly as before. Staying silent here would
-                    # turn a slightly-wrong card into a turn where nothing happens at all.
-                    _cvis.present(wid, reason="turn-order", src="flash", emit=emit)
+            _t = _close_target(wid, text)
+            if _t["ask"]:
+                if ask:
+                    ask(_t["ask"])
+                    emit("brain", "❓ cerrar: varias tarjetas abiertas", text=wid, role="system",
+                         extra={"options": _t["options"]})
                     return True
-                _cvis.present(str(_t.get("id") or wid), reason="turn-order", src="flash", emit=emit)
+                return False        # sin canal para preguntar, mejor no cerrar a ciegas
+            for _cid in (_t.get("ids") or [_t["id"] or wid]):
+                emit("widget", "close", extra={"id": _cid, "src": "flash"})
+            return True
+        wid = _identify_named(text)
+        if wid:
+            # V2-605 F2 — the instance, as the close branch resolves it: «Enséñame el navegador» with four cards
+            # on the canvas opened the bare base.
+            _t = _show_target_instance(wid, text, last_spoken)
+            if _t["ask"]:
+                if ask:
+                    ask(_t["ask"])
+                    emit("brain", "❓ mostrar: varias tarjetas abiertas", text=wid, role="system",
+                         extra={"options": _t["options"]})
+                    return True
+                # No channel to ask through: SHOW the base, exactly as before. Staying silent here would
+                # turn a slightly-wrong card into a turn where nothing happens at all.
+                _cvis.present(wid, reason="turn-order", src="flash", emit=emit)
                 return True
+            _cvis.present(str(_t.get("id") or wid), reason="turn-order", src="flash", emit=emit)
+            return True
     except Exception as e:  # noqa: BLE001
         logger.warning(f"widget fallback skipped: {e}")
     return False

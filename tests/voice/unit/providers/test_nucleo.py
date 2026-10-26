@@ -26,11 +26,21 @@ def test_last_user_text_from_ctx():
     assert nucleo._last_user_text(_Ctx()) == "enséñame la agenda"
 
 
+def _brief(canvas, conf=0.95):
+    """A landed turn brief whose canvas verdict is `canvas` (V2-807 T-07: the fallback acts on the verdict only)."""
+    import threading
+    ev = threading.Event()
+    ev.set()
+    return {"event": ev, "turn_id": "t-1", "open_ids": [],
+            "result": {"canvas": {"choice": canvas, "confidence": conf}}}
+
+
 def test_widget_fallback_emits_show(monkeypatch):
     import widgets.runtime as rt
-    monkeypatch.setattr(rt, "identify", lambda text, **context: {"match": "agenda"})
+    monkeypatch.setattr(rt, "identify_named", lambda text, **context: "agenda")
     events = []
-    nucleo._widget_fallback("enséñame la agenda", lambda kind, action, extra=None: events.append((action, extra)))
+    nucleo._widget_fallback("enséñame la agenda", lambda kind, action, extra=None: events.append((action, extra)),
+                            brief=_brief("show"))
     # V2-039: widget events carry provenance (`src`) — the provider fallback marks them as 'flash'.
     # V2-723: …and the REASON that spent this presentation, because an anonymous show is an effect nobody
     # authorized. The fallback's reason is the operator's own order in this turn.
@@ -39,5 +49,6 @@ def test_widget_fallback_emits_show(monkeypatch):
 
 def test_widget_fallback_close_all(monkeypatch):
     events = []
-    nucleo._widget_fallback("cierra todos los widgets", lambda kind, action, extra=None: events.append((action, extra)))
+    nucleo._widget_fallback("cierra todos los widgets", lambda kind, action, extra=None: events.append((action, extra)),
+                            brief=_brief("close"))
     assert ("close", {"src": "flash"}) in events

@@ -39,6 +39,6 @@ def test_the_after_show_repair_is_still_gated_on_that_id():
 def test_a_tag_show_resolves_to_the_open_card():
     """Verification 2026-09-27: `[[show:results]]` over the open monitor sheet opened the empty base beside it."""
     text = _vts.read(SRC)
-    i = text.index('contextual = _show_guard_target(text, brain._window, brain._last_action)')
+    i = text.index('lambda: _show_guard_target(text, brain._window, brain._last_action)')   # V2-807 T-06
     j = text.index('GUARD anti-clutter', i)
     assert "_show_target_instance(_tid" in text[i:j]

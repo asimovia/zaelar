@@ -1950,6 +1950,22 @@ DOMAINS: list[dict] = [
         {"id": "3.46", "title": "Un cierre COMPUESTO no se come el resto de la frase", "ch": UNIT,
             "paths": ["tests/agent_headless/unit/flash/"
                       "test_a_compound_close_does_not_swallow_the_rest.py"]},
+        # V2-807 T-06 — a word-level guess FILLS a missing target and never replaces the card the model named
+        # («where is it? open it» + `show_widget(documento)` became the browser); a second pass never mints a web
+        # address nobody said; the show grammar proposes and a sure verdict decides. Disarmed 2026-10-26 → red.
+        {"id": "3.131", "title": "A guess never replaces the card the model named, and a second pass never mints "
+                                 "a web address nobody said (V2-807 T-06)", "ch": UNIT,
+            "paths": ["tests/voice/unit/test_a_card_the_model_named_is_never_replaced_by_a_guess.py"]},
+        # V2-807 T-07 — the widget fallback acts on the turn's sure canvas verdict, never on a verb stem plus a
+        # catalogue noun (a signature edit opened the messaging card under `canvas=neither`). Disarmed → red.
+        {"id": "3.132", "title": "The widget fallback acts on the canvas verdict, not on a verb table "
+                                 "(V2-807 T-07)", "ch": UNIT,
+            "paths": ["tests/voice/unit/providers/test_the_fallback_acts_on_the_verdict_not_on_a_verb_table.py"]},
+        # V2-807 T-08 — a close that names no card spares the card in use (the newest card a data-op ran on, or one
+        # the turn kept) at every bulk-close door: fallback, hard interrupt, action map. es/en/ja. Disarmed → red.
+        {"id": "3.133", "title": "A bulk close spares the card he is working on unless he names it "
+                                 "(V2-807 T-08)", "ch": UNIT,
+            "paths": ["tests/agent_headless/unit/flash/test_a_bulk_close_spares_the_card_in_use.py"]},
         # V2-692 — segunda ejecución en vivo del encargo (2026-09-14). UNA orden suya («organiza una reunión
         # con este contacto») y tuvo que conducirla entera a mano: autorizar el envío cuatro veces, avisar de
         # que había llegado la respuesta, decir que la aceptara — y al final no había reunión ni en nuestra

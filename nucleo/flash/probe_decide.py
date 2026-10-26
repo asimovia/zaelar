@@ -132,7 +132,7 @@ async def name_the_action(*, _hard, _router, _tbrief, _vault_gate, ingest, names
             from widgets import runtime as _rt
             _res = {}
             try:
-                _contextual = _probe._show_target(text, sess.window, sess.last_action)
+                _contextual = _probe._named_or_guess(_swid, lambda: _probe._show_target(text, sess.window, sess.last_action), bases_only=True)  # V2-807 T-06
                 if _contextual:
                     _res = {"match": _contextual, "system": None}
                 elif _swid and _rt.get(_swid) is not None:

@@ -69,6 +69,7 @@ def _session(sid: str, *, execute: bool | None = None) -> ProbeSession:
 # 2026-08-29 (architecture ratchet).
 from .show_target import (  # noqa: F401
     _ctx_ids, _identify_ctx, _running_goals, _show_target, classify_alias_call,
+    named_or_guess as _named_or_guess,   # V2-807 T-06: a guess fills a missing target only
     close_target as _close_target,   # demo pass 2026-09-28: close is a tool too
     fullscreen_target as _fullscreen_target,
     fullscreen_exit_due as _fullscreen_exit_due,   # V2-759
@@ -230,7 +231,7 @@ async def run_turn(text: str, *, sid: str = "default", ingest: bool = True, mode
                 except Exception:
                     pass
         if action == "show":
-            contextual = _show_target(text, sess.window, sess.last_action)
+            contextual = _named_or_guess(extra, lambda: _show_target(text, sess.window, sess.last_action))  # V2-807 T-06
             if contextual:
                 extra = {**(extra or {}), "id": contextual}
         tags.append({"action": action, "extra": {k: v for k, v in (extra or {}).items() if k != "data"}

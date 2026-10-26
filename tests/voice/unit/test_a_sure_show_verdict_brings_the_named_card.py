@@ -38,8 +38,9 @@ def test_the_promise_backstop_wakes_on_the_verdict_and_identifies_by_it():
                      src, re.S)
     assert gate and "_direct_action.verdict_shows(_brief)" in gate.group(0)
     # 5a572275 (demo C1): the card the verdict names wins over the contextual guess, then the same gate.
-    assert re.search(r"_pw = \(\(_named_by_verdict or _identify\(_op_text\)\)\s+if \(_router\.looks_like_show_strict"
-                     r"\(_op_text\) or _direct_action\.verdict_shows\(_brief\)\)", src)
+    # V2-807 T-06: the grammar-or-verdict choice lives in ONE helper, where a sure non-show verdict overrules the grammar.
+    assert re.search(r"_pw = \(\(_named_by_verdict or _identify\(_op_text\)\)\s+if _show_target\.show_proposed"
+                     r"\(_brief, _router, _op_text\)", src)
 
 
 def test_the_backstop_shows_the_card_not_the_bare_piece():

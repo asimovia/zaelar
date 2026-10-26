@@ -23,6 +23,9 @@ VOICE = ["voice/engine/llm/providers/nucleo.py", "nucleo/flash/tool_executor.py"
 #: three wired into the probe, five explained). A new voice-only module either gets wired or gets its reason here.
 VOICE_ONLY = {
     "accumulator": "the voice turn accumulates STT fragments before it speaks; the text channel gets whole lines",
+    "bulk_close": ("V2-807 T-08 — the probe reaches the SAME door through `hard_turn` and the shared action-map executor, "
+                   "which both channels run; the voice imports it directly only to record the model's KEEP of an open "
+                   "card on a close turn, a canvas effect the dry probe never emits"),
     "music_flow": ("the probe runs the SAME rail through `music_turn.execute`, which imports it — this ratchet reads direct imports only"),
     "ordered_send": ("the probe runs the SAME rule through `verdict_card.retarget` (`ordered_send.instead`), which both "
                      "its execute and its dry plan call; the voice imports it directly for `run`, its rail's emit and apply"),

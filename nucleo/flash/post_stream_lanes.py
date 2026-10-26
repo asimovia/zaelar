@@ -50,7 +50,7 @@ async def run_the_light_lanes(*, FastClient, _apply_widget_data, _brief, _buf_ad
         # answered by CONTEXT with the minimized monitor sheet, and the sheet came up over the day he asked for.
         # The card the verdict names wins over a contextual guess.
         _pw = ((_named_by_verdict or _identify(_op_text))
-               if (_router.looks_like_show_strict(_op_text) or _pst._direct_action.verdict_shows(_brief)) else "")
+               if _pst._show_target.show_proposed(_brief, _router, _op_text) else "")   # V2-807 T-06
         if _pw:
             # V2-776 — the CARD, not the piece: a bare `results` is resolved like the tool path resolves it
             # (open instance, or the closed sheet the phrase names), or «Show me the monitors» opened the base.

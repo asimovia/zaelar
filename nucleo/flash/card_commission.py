@@ -549,6 +549,8 @@ async def after_show(acted: dict, *, brief, operator_text: str, spoken_text: str
             return False
         if _a_question_writing(brief, got, emit):
             return False
+        if _mints_an_address(got, operator_text, said, window, emit):
+            return False
         present(got["widget_id"], reason="turn-order", src="flash", emit=emit)
         apply_widget_data(got["widget_id"], got["action"], got["payload"])
         emit("brain", "🔁 abrió la tarjeta y prometió más — la llamada, en una segunda pasada",
@@ -579,6 +581,49 @@ async def probe_after_show(tool_calls: list, tags: list, spoken: str, *, brief, 
                                 emit=emit, present=lambda *a, **k: True, apply_widget_data=add, window=window)
     except Exception as e:  # noqa: BLE001
         logger.warning(f"probe after-show skipped: {type(e).__name__}: {e}")
+        return False
+
+
+def _hosts(payload) -> list[str]:
+    """The web hosts a payload carries in its string values (a `url`, an `href`…), lower-cased."""
+    import re
+    from urllib.parse import urlparse
+    out: list[str] = []
+    for v in (payload or {}).values() if isinstance(payload, dict) else ():
+        if not isinstance(v, str):
+            continue
+        for m in re.finditer(r"(?:https?://|www\.)[^\s\"'<>]+", v, re.I):
+            raw = m.group(0)
+            host = urlparse(raw if "://" in raw else "http://" + raw).hostname or ""
+            if host:
+                out.append(host.lower())
+    return out
+
+
+def _mints_an_address(got: dict, operator_text: str, said: str, window, emit) -> bool:
+    """A second pass COMPLETES the card the turn chose; it never mints a web address nobody said (V2-807 T-06).
+
+    Measured: «Where is it? Open it» over a draft, the card that came up was the browser, and this pass asked for
+    «the call» and produced `navegador:open {url: https://docs.google.com}` — «document» turned into Google Docs, a
+    sign-in page on his screen. An address is acceptable when some part of its host (beyond `www` and the TLD) was
+    said in this conversation — by him this turn, by our reply, or anywhere in the window. True when refused."""
+    try:
+        hosts = _hosts(got.get("payload"))
+        if not hosts:
+            return False
+        heard = " ".join([operator_text or "", said or ""] + [str((m or {}).get("content") or "")
+                                                            for m in (window or []) if isinstance(m, dict)]).lower()
+        for host in hosts:
+            labels = [x for x in host.split(".")[:-1] if x and x != "www" and len(x) >= 3]
+            if labels and any(x in heard for x in labels):
+                continue
+            emit("brain", "🚫 second pass refused: a web address nobody said", role="system",
+                 text=f"{got.get('widget_id')}:{got.get('action')} → {host}",
+                 extra={"cat": "flash", "kind_diag": "minted_address", "host": host})
+            return True
+        return False
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"card commission: address check unreadable — {e}")
         return False
 
 
