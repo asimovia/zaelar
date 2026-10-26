@@ -14,6 +14,7 @@
 #
 import asyncio
 import json
+import mimetypes
 import os
 import sqlite3
 import threading
@@ -23,6 +24,7 @@ from fastapi import APIRouter
 from fastapi.responses import FileResponse, JSONResponse
 
 from memory import api as memapi
+from widgets.mensajeria import media as _media
 
 router = APIRouter()
 
@@ -30,8 +32,14 @@ router = APIRouter()
 FILES_CAP = 60
 LIST_CAP = 200
 #: What a connector writes into the messaging data dir — the same prefixes its media sweep owns.
-_MEDIA_PREFIXES = ("img_", "vid_", "aud_", "doc_", "tg_", "eml_", "up_")
-_IMAGE_EXT = (".jpg", ".jpeg", ".png", ".webp", ".gif")
+# The stored-file prefixes are declared once, where the files are written (`widgets/mensajeria/media.py`).
+_MEDIA_PREFIXES = _media.PREFIXES
+
+
+def _is_image(name: str) -> bool:
+    """A raster image by its declared type (never SVG: a thumbnail is served same-origin)."""
+    kind = mimetypes.guess_type(name)[0] or ""
+    return kind.startswith("image/") and "svg" not in kind
 _STATS_TTL_S = 8.0
 _DIRS_TTL_S = 600.0
 _THUMB_PX = 240
@@ -98,7 +106,7 @@ def _media_rows() -> list[dict]:
             if e.is_file(follow_symlinks=False) and e.name.startswith(_MEDIA_PREFIXES):
                 st = e.stat(follow_symlinks=False)
                 kind = e.name.split("_", 1)[0]
-                if e.name.lower().endswith(_IMAGE_EXT):
+                if _is_image(e.name):
                     kind = "img"
                 rows.append({"name": e.name, "kind": kind, "bytes": st.st_size, "mtime": int(st.st_mtime)})
     rows.sort(key=lambda r: (-r["mtime"], r["name"]))
@@ -295,14 +303,14 @@ async def viewer_files(offset: int = 0, limit: int = FILES_CAP, kind: str = ""):
     n = _clamp(limit, FILES_CAP, FILES_CAP)
     off = max(0, int(offset or 0))
     page = rows[off:off + n]
-    return {"items": [dict(r, thumb=r["name"].lower().endswith(_IMAGE_EXT)) for r in page],
+    return {"items": [dict(r, thumb=_is_image(r["name"])) for r in page],
             "more": off + n < len(rows), "next": off + n, "total": len(rows)}
 
 
 def _thumb(name: str) -> str | None:
     """A cached thumbnail of one image (generated once). None when it cannot be made."""
     safe = "".join(c for c in os.path.basename(name or "") if c.isalnum() or c in "._-")
-    if not safe.startswith(_MEDIA_PREFIXES) or not safe.lower().endswith(_IMAGE_EXT):
+    if not safe.startswith(_MEDIA_PREFIXES) or not _is_image(safe):
         return None
     src = os.path.join(_widgets_root(), "mensajeria", safe)
     if not os.path.isfile(src):

@@ -18,6 +18,7 @@ Read-only: nothing here reinforces, rewrites or touches a weight.
 from __future__ import annotations
 
 import json
+import logging
 import threading
 import time
 from itertools import combinations
@@ -57,7 +58,8 @@ def clamp_budget(budget) -> int:
 def _source(meta) -> str:
     try:
         return str((json.loads(meta) if isinstance(meta, str) else (meta or {})).get("source") or "")
-    except (TypeError, ValueError):
+    except (TypeError, ValueError) as e:
+        logging.getLogger(__name__).debug("memory viewer: unreadable meta, no source: %s", e)
         return ""
 
 
