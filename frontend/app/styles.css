@@ -978,6 +978,8 @@ canvas#orb.frozen{opacity:.32;filter:grayscale(1)}
 .cf-row2-ctl input,.cf-row2-ctl select{background:var(--hb-bg);color:var(--hb-ink);border:1px solid var(--hb-line);
   border-radius:8px;padding:8px 10px;font-size:0.8125rem;width:100%;transition:border-color .15s ease}
 .cf-row2-ctl input:focus,.cf-row2-ctl select:focus{outline:none;border-color:var(--hb-accent)}
+.cf-row2-ctl .cf-acts label{display:inline-flex;align-items:center;gap:6px}
+.cf-row2-ctl .cf-acts input[type=checkbox]{width:auto;padding:0;margin:0}
 .cf-status{font-size:0.8125rem;color:var(--hb-ink);font-weight:600}
 .cf-hint{font-size:var(--fs-micro);color:var(--hb-muted-2);text-align:left;line-height:1.45}
 .cf-foot{margin-top:2px;display:flex;justify-content:flex-start}

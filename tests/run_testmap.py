@@ -3657,6 +3657,8 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/infrastructure/unit/core/test_one_place_per_kind_of_preference.py"]},
         {"id": "2.811", "title": "A spoken rule is understood ONCE when written: one structured call against the declared vocabulary (scopes, knobs, levels, his rows), every field validated by code (an undeclared scope becomes its nearest declared one, an out-of-domain gate is dropped), `until` resolved by the clock, removal BY ID and two candidates are a question, a listing reads his rows, no answer keeps the sentence as a global note and guesses no gate; the agent repeats it back once; no word table reads a rule (V2-806)",
             "ch": UNIT, "paths": ["tests/infrastructure/unit/core/test_a_rule_is_understood_once_when_written.py"]},
+        {"id": "2.812", "title": "His rules are listed and edited BY ID: /api/rules is the table grouped by scope with its source and the closed set each key admits, an edit is checked against its key's domain, a default is overridden never deleted nor switched off, his rows are switched off and deleted by id; ⚙ Settings → Rules is a Settings sub-item built from the panel's own pieces (V2-806)",
+            "ch": UNIT, "paths": ["tests/infrastructure/unit/core/test_his_rules_are_listed_and_edited_by_id.py"]},
         {"id": "2.802", "title": "A deployment that stops idle engines is told the next due notice after every schedule change, debounced; self-host reports nothing (V2-796)",
             "ch": UNIT,
             "paths": ["tests/agent_headless/unit/test_a_sleeping_engine_is_told_when_to_wake.py"]},

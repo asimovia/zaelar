@@ -177,6 +177,11 @@ export const wizardComplete = (done = true) => postJSON("/api/wizard/complete", 
 
 // ---- área de configuración full-screen + saldos de APIs (V2-043) ----
 export const getConfig = () => fetch("/api/config", { cache: "no-store" }).then(json);
+// ---- rules (V2-806): his standing rules and preferences, one table (rules/api.py) ----
+export const getRules = () => fetch("/api/rules", { cache: "no-store" }).then(json);
+export const editRule = (id, patch) => fetch(`/api/rules/${encodeURIComponent(id)}`,
+  { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) }).then(json);
+export const deleteRule = (id) => fetch(`/api/rules/${encodeURIComponent(id)}`, { method: "DELETE" }).then(json);
 export const saveConfigV2 = (section, patch) => postJSON("/api/config/v2", { section, patch }).then(json);
 export const saveConfigCredential = (key, value) => postJSON("/api/config/credential", { key, value }).then(json);
 export const getApiSummary = (refresh = false) =>

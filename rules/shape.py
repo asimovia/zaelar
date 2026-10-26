@@ -40,6 +40,11 @@ Answer with ONE JSON object and nothing else:
 - "until" only when he bounds it in time ("today" = "end_of_day")."""
 
 
+def _log(msg: str) -> None:
+    import logging
+    logging.getLogger("zaelar.rules").info(f"rules.shape: {msg}")
+
+
 def _chat(system: str, user: str) -> str | None:
     from nucleo import memllm
     return memllm.chat_sync("rule_shape", system, user, max_tokens=900, temperature=0.0, timeout=20.0)
@@ -73,7 +78,8 @@ def _until(v) -> float | None:
         return datetime.now().replace(hour=23, minute=59, second=59, microsecond=0).timestamp()
     try:
         return datetime.fromisoformat(str(v).strip()).timestamp()
-    except ValueError:
+    except ValueError as e:
+        _log(f"an unreadable until ({e}) — the row is kept without one")
         return None
 
 
@@ -84,7 +90,8 @@ def _typed(value, like):
     if isinstance(like, int):
         try:
             return int(value)
-        except (TypeError, ValueError):
+        except (TypeError, ValueError) as e:
+            _log(f"a knob value that is not a number ({e}) — the row is dropped")
             return None
     return str(value) if isinstance(value, (str, int, float)) else None
 

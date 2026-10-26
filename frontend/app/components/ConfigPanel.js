@@ -9,7 +9,8 @@ import { createEffect } from "../core/reactive.js?v=2";
 import * as store from "../core/store.js?v=2";
 import * as api from "../services/api.js?v=2";
 import * as session from "../services/session.js?v=3";
-import { GEAR_ICON, BRAIN_ICON, CPU_ICON, DATABASE_ICON, MIC_ICON, SEARCH_ICON, MUSIC_ICON, SERVER_ICON, BELL_ICON, MOON_ICON, LINK_ICON, WIDGETS_ICON } from "../lib/icons.js?v=2";
+import { GEAR_ICON, BRAIN_ICON, CPU_ICON, DATABASE_ICON, MIC_ICON, SEARCH_ICON, MUSIC_ICON, SERVER_ICON, BELL_ICON, MOON_ICON, LINK_ICON, WIDGETS_ICON, LIST_ICON } from "../lib/icons.js?v=2";
+import { mountRules } from "./RulesSection.js?v=1";   // V2-806 — his rules and preferences, one table
 import * as push from "../services/push.js?v=1";
 import { t } from "../core/i18n.js?v=1";
 import { THEMES, FONT_SIZES, FONT_STACKS } from "../core/themes.js?v=1";
@@ -43,6 +44,7 @@ const SECTIONS = [
   { id: "music", icon: MUSIC_ICON },
   { id: "apis", icon: SERVER_ICON },
   { id: "notices", icon: BELL_ICON },     // V2-796 — Web Push on this browser
+  { id: "rules", icon: LIST_ICON },       // V2-806 — his standing rules and preferences
 ];
 
 // Sections that PICK a provider/model — hidden in the cloud profile, where the deployment sets them (V2-043 area
@@ -104,6 +106,7 @@ export function ConfigPanel() {
       music: () => sec_music(),
       apis: () => sec_apis(),
       notices: () => sec_notices(),
+      rules: () => `<div id="cf_rules_host"></div>`,   // filled from /api/rules once on screen (wire)
     };
     if (!builders[activeSec] || (cloudProfile && CLOUD_LOCKED_NAV_SECTIONS.has(activeSec))) activeSec = visibleSections[0].id;
     // ONE left menu: each area a row; «settings» lists its sections under it, always visible.
@@ -326,6 +329,7 @@ export function ConfigPanel() {
 
   // ---- wiring ----
   function wire() {
+    if (activeTab === "settings" && activeSec === "rules") mountRules(document.getElementById("cf_rules_host"), msg);
     // V2-083: pestañas principales (settings/conectores/widgets)
     // The menu: an area row opens that area (Settings on its current section); a sub-item opens that section.
     // Re-clicking the open area on a phone still has to leave the menu, so it always renders.

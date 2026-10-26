@@ -30,6 +30,7 @@ from .pages import router as pages_router
 from .tasks_api import router as tasks_router      # V2-728: the task board, extracted from voice_api
 from .screens_api import router as screens_router  # V2-792: one agent, many screens (typed door, registry)
 from .notices_api import router as notices_router  # V2-796: the notice ledger + Web Push subscriptions
+from rules.api import router as rules_router        # V2-806: ⚙ Settings → Rules over the rules table
 from .voice_api import router as voice_router
 from .canvas_api import router as canvas_router  # V2-778 F1: the canvas routes, extracted from voice_api
 from widgets.server_api import router as widgets_router  # isolated widget layer (does not touch the voice core)
@@ -250,7 +251,7 @@ def create_app() -> FastAPI:
                vault_router, wizard_router, spotify_router, config_router, i18n_router,
                obs_router, feedback_router, update_router, cloudfiles_router, photos_router, contacts_router,
                videoacct_router, calendar_router, torrent_router, library_router, daemon_router,
-               tasks_router, screens_router, notices_router]
+               tasks_router, screens_router, notices_router, rules_router]
     # LiveKit control plane (token + connect config + session.js swap), the default engine.
     if os.getenv("ZAELAR_ENGINE", "livekit").lower() == "livekit":
         from .livekit_api import router as livekit_router

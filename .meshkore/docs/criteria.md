@@ -323,7 +323,9 @@ below is the first kind, or it names the mechanism that replaced the second.
   his row beats the default, an `except` scope is not covered, a row past its `until` is absent. Genesis defaults are
   rows built at read time. `consent.decide` reads the gate; the rails (a missing fact, a doubt, the radius) are code
   no row reaches. The style knobs (`voice`), a widget's preferences (`widget:<id>`) and the autoresponder (scoped to
-  its platform) are rows too; each older store is imported once. — since 2026-10-26 · nodes 2.809, 2.810 · `rules/`,
+  its platform) are rows too; each older store is imported once. Every row has an id: «what rules do I have?», «forget
+  the email rule» and ⚙ Settings → Rules list, edit, switch off and delete BY ID (a default is overridden, never
+  deleted). — since 2026-10-26 · nodes 2.809, 2.810, 2.811, 2.812 · `rules/`,
   `nucleo/consent.py`, `nucleo/style_policy.py`, `widgets/youtube/prefs.py`.
 - **CRIT-M2 · Genesis is per domain** (`style`, `consent`, `library`, `errands`, `playbooks`); what he says over
   `style` and `consent` is a row of the rules table (CRIT-M7), the others keep their override file; a factory reset forgets the spoken rules and keeps credentials, settings and connectors; it never
