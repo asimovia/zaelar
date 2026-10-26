@@ -5605,6 +5605,9 @@ DOMAINS: list[dict] = [
         {"id": "4.283", "title": "What was sent is read from the record of what left: the body as the connector sent it (head and tail — the signature) is a fact of every turn whichever cards are open, a send still leaving says it has not left, and the timeline records the body a send of this card left with — nothing for what he typed in his own app (V2-807 T-12)",
             "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_what_was_sent_is_read_from_the_record.py",
                                   "tests/browser/unit/mensajeria/test_the_digest_says_what_was_just_sent.py"]},
+        # V2-807 T-13 — disarmed 2026-10-26 (screen first, the draft branch, the open-mail branch) → each red.
+        {"id": "4.284", "title": "Reading the mail card answers from what its screen holds: with a draft or one mail open the read is THAT object and the inbox is not searched; with a list on screen the inbox is searched as before (V2-807 T-13)",
+            "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_a_read_answers_from_what_the_screen_holds.py"]},
         {"id": "4.252", "title": "The chat list paints, filters by kind and name, loads more and opens a chat (RENDERED)",
             "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_the_chat_list_paints_filters_and_loads_more.py"]},
         {"id": "4.250", "title": "The feedback button is never hidden under another layer",

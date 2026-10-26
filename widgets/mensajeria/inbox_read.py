@@ -224,7 +224,13 @@ def read_query(question: str) -> str:
     about a recipient is answered from that same directory. Demo pass 2026-09-28, C5: «send rowan a telegram with
     the new time» → the model asked this card «is there a contact called Rowan? does he have Telegram?», got only
     the inbox, answered «I can't find any contact named Rowan», and a worker spent a minute sending what `send_to`
-    would have sent at once. The card's reading and the card's action now see the same people."""
+    would have sent at once. The card's reading and the card's action now see the same people.
+
+    V2-807 T-13 — and it answers from what the SCREEN holds: with a draft or one mail open, that object is the answer
+    and the inbox is not searched (a keyword hit on filler words answered about a stranger's mail, live)."""
+    shown = on_screen(question)
+    if shown:
+        return shown
     inbox = _inbox_answer(question)
     try:
         from widgets import directory as _directory       # the layer every outbound door asks — never a widget
@@ -244,6 +250,37 @@ def read_query(question: str) -> str:
         except Exception:  # noqa: BLE001
             past = ""
     return "\n\n".join(x for x in (people, inbox, past) if x)
+
+
+#: How much of the open object a read hands over: the whole of a normal mail, bounded.
+_MAX_OPEN_BODY = 3000
+
+
+def on_screen(question: str = "") -> str:
+    """The object the card's screen holds — the open draft, or the one mail open — as the record, or "" when the
+    screen holds a list. `question` is not read: what is on screen is the answer whatever words asked for it."""
+    try:
+        from . import data as _data, mailbox as _mbx
+        db = _data.load_db()
+        v = _mbx.view(db)
+    except Exception as e:  # noqa: BLE001 — an unreadable screen falls back to the inbox search
+        logger.info(f"on_screen unreadable: {e}")
+        return ""
+    from nucleo import untrusted as _u
+    if v.get("draft"):
+        d = (db.get("drafts") or {}).get(v["draft"]) or {}
+        t = d.get("target") or {}
+        who = t.get("name") or t.get("to") or t.get("chatId") or "?"
+        to = f" <{t.get('to')}>" if t.get("to") and t.get("to") != who else ""
+        return (f"EN PANTALLA está el BORRADOR que él está revisando (esto es el registro; aún NO se ha enviado): "
+                f"para {who}{to} por {t.get('platform') or '?'}" + (f", asunto «{t['subject']}»" if t.get("subject") else "")
+                + f":\n{str(d.get('text') or '')[:_MAX_OPEN_BODY]}")
+    msg = (v.get("open") or {}).get("msg") if isinstance(v.get("open"), dict) else None
+    if isinstance(msg, dict) and not msg.get("error"):
+        return (f"EN PANTALLA está ESTE correo (esto es el registro) {_u.NOTE}\nDe: {_u.neutralize(str(msg.get('fromName') or msg.get('from') or '?'))}"
+                f" · Asunto: «{_u.neutralize(str(msg.get('subject') or ''))}»\n"
+                f"{_u.inline(str(msg.get('body') or '')[:_MAX_OPEN_BODY])}")
+    return ""
 
 
 def _inbox_answer(question: str) -> str:
