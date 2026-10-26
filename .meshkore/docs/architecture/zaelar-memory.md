@@ -1104,24 +1104,25 @@ Two surfaces to SEE the memory working in real time:
   **module=memory · layer (state/short/long/slow) · request → result (number of cards/chars) · time `mem_ms`**
   (emitted in `voice/engine/llm/providers/nucleo.py` after `build_flash_system`); writes/queries arrive labelled
   through the SSE bridge. Detail in `zaelar-observability.md`.
-- **The memory viewer 🧠 — one tab per store** (V2-808; `frontend/app/components/MemoryMap.js` + `components/memory/`,
-  full-screen overlay opened from the orb's bowl): **Overview · Graph · Facts · Conversation · Messages · Files · Apps ·
-  System**. The contract is that NO store is ever loaded whole, because one person's store grows and the device that
-  draws it may be a phone:
-  - **Totals are COUNTs** on the server (`GET /api/memory/viewer/stats`, cached a few seconds): facts, conversation,
-    messages (the archive), files, contacts, agenda, apps (each widget's data folder, walked in a background thread
-    and reported `pending` until measured), rules, learnt phrases, logs, vault (a number, nothing else).
-  - **Every list is a capped page with a cursor** (`facts`, `conversation`, `system`: `before_id`; `messages`:
-    `(ts, id)` — a backfill inserts old messages late; `files`/`apps`: offset), newest first, server-side search,
-    `more`. Caps: 200 rows, 60 files.
+- **The memory viewer 🧠 — a monitor, not a browser** (V2-808, V2-814; `frontend/app/components/MemoryMap.js` +
+  `components/memory/`, full-screen overlay opened from the orb's bowl): **Overview · Graph**. It shows totals and how
+  the memory relates concepts; no stored row (a fact, a turn, a message, a file) ever leaves the server through it,
+  and it says nothing about the machine it runs on.
+  - **Totals are COUNTs** on the server (`GET /api/memory/viewer/stats`, cached a few seconds), one card per store:
+    memories, conversations (sessions and days, from the event log), messages (per source, per day, size), files
+    (by type, with their size), contacts, agenda, app data (each widget's data folder, walked in a background thread
+    and reported `pending` until measured; a browser widget's `profile*` is its browsing session and is not
+    counted), rules, learnt phrases, activity log, vault (a number, nothing else). Each card with a series carries its
+    last 30 days, and opens in place to show them with its breakdown.
   - **The graph is aggregated on the server** (`memory/viewer.py::graph`): concepts with counts and concept↔concept
     weights over a time window (scan cap 20.000 rows), bounded by the node budget the client sends (clamped
     50..3000). LONG pills hang from their persisted concept edges, SHORT ones from `memory/concepts.py::derive_concepts`
     (the same substrate the writer's backstop uses). Inbound messages (`kind='msg'`) are out unless the messages lane
-    is asked for. Raw memories travel only for the selected concept, one page at a time (`/concept`).
-  - **The device budget** (`components/memory/budget.js`): phone 300 nodes / 50 rows, laptop 1.500 / 100, big screen
-    3.000 / 200, from `navigator.deviceMemory`, `hardwareConcurrency` and the viewport; an unknown reading never
-    promotes a device.
+    is asked for (the viewer never asks). A selected concept is its numbers and the concepts it is related to
+    (`/concept`) — never a memory's text.
+  - **The device budget** (`components/memory/budget.js`): phone 300 nodes, laptop 1.500, big screen 3.000, from
+    `navigator.deviceMemory`, `hardwareConcurrency` and the viewport; an unknown reading never promotes a device. It is
+    internal: the viewer never prints it.
   - **Drawing**: one `<canvas>` sized to its section and re-fitted whenever the layout moves or the section resizes;
     labels and dots by level of detail; the force layout runs in `force-worker.js` (hub↔hub repulsion, grid
     collision, springs split by degree, capped velocity) and stops posting once it settles.

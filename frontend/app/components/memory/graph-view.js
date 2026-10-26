@@ -1,9 +1,11 @@
 // ============================================================================
-// memory/graph-view.js — the «Graph» tab of the memory viewer (V2-808).
+// memory/graph-view.js — the «Graph» tab of the memory viewer (V2-808, V2-814).
 //
-// What it draws comes AGGREGATED from the server (`/api/memory/viewer/graph`): the concepts of a time window with
-// their counts, the concept↔concept weights, and as many memory dots as the device's node budget allows. Raw
-// memories travel only for the concept he selects, one page at a time (`/api/memory/viewer/concept`).
+// It shows how the memory RELATES things — concepts and the weight between them — never what is stored: the
+// server sends the concepts of a time window with their counts, the concept↔concept weights, and as many memory
+// dots as the device's node budget allows (`/api/memory/viewer/graph`); a selected concept is its numbers and the
+// concepts it is related to (`/api/memory/viewer/concept`), with no memory text. The map is his own memory only:
+// inbound messages are not in it.
 //
 // Drawing: ONE <canvas>, sized to its section in device pixels and re-fitted when the section resizes — the
 // previous map was absolutely positioned DOM in a world scaled once at open time, which is how the concept maps
@@ -15,7 +17,7 @@ import { h } from "../../core/dom.js?v=2";
 import * as store from "../../core/store.js?v=2";
 import * as api from "../../services/api.js?v=2";
 import { t } from "../../core/i18n.js?v=1";
-import { num, ago, memMeta } from "./format.js?v=1";
+import { num, ago } from "./format.js?v=2";
 
 const PALETTE = ["--hb-accent", "--hb-accent2", "--hb-warn", "--hb-ok", "--hb-risk", "--hb-muted"];
 const PERIODS = [{ days: 1, key: "memory.period_1" }, { days: 7, key: "memory.period_7" },
@@ -36,16 +38,16 @@ const cap = (s) => (s ? s.charAt(0).toLocaleUpperCase(store.lang() || "en") + s.
 
 export function GraphView({ tier }) {
   const st = {
-    days: 30, layers: new Set(["short", "long"]), messages: false, data: null,
+    days: 30, layers: new Set(["short", "long"]), data: null,
     nodes: [], drawLinks: [], pos: null, view: { k: 1, tx: 0, ty: 0 }, autoFit: true,
-    selected: "", hover: -1, page: null, timeline: [], brushFrom: -1, settled: true, pulses: new Map(),
+    selected: "", hover: -1, timeline: [], brushFrom: -1, settled: true, pulses: new Map(),
   };
   let canvas, section, aside, footer, showingEl, chipsEl, periodEl, bars, brushBox, worker, raf = 0, colors = [];
   let active = false;
 
   // ── data ──────────────────────────────────────────────────────────────────────────────────────────────
   const params = () => ({ days: st.days, layers: [...st.layers].join(","),
-                          lanes: st.messages ? "own,messages" : "own", budget: tier.nodes });
+                          lanes: "own", budget: tier.nodes });
 
   async function load(warm = false) {
     const data = await api.memoryViewer("graph", params());
@@ -280,39 +282,33 @@ export function GraphView({ tier }) {
     if (i !== st.hover) { st.hover = i; canvas.style.cursor = i >= 0 ? "pointer" : "grab"; schedule(); }
   }
 
-  // ── the detail panel ──────────────────────────────────────────────────────────────────────────────────
-  let detailHead, detailList, detailFoot;
+  // ── the detail panel: the concept and what it is related to ─────────────────────────────────────────────
+  let detailHead, detailList;
   async function select(key) {
     st.selected = key; schedule();
-    detailList.replaceChildren(); detailFoot.replaceChildren();
+    detailList.replaceChildren();
     if (!key) { detailHead.replaceChildren(h("p", { class: "mv-muted" }, t("memory.detail_empty"))); return; }
-    await page(key, 0);
-  }
-  async function page(key, before) {
-    const p = await api.memoryViewer("concept", { key, ...params(), before_id: before || "", limit: tier.rows > 50 ? 20 : 10 });
+    const p = await api.memoryViewer("concept", conceptParams(key));
     if (!p || key !== st.selected) return;
-    if (!before) {
-      const c = (st.data?.concepts || []).find((x) => x.key === key);
-      const color = `var(${PALETTE[(c ? st.data.concepts.indexOf(c) : 0) % PALETTE.length]})`;
-      detailHead.replaceChildren(
-        h("p", { class: "hb-sectitle" }, t("memory.detail_kicker")),
-        h("h2", { class: "mv-detail-title", style: { color } }, cap(p.label)),
-        h("p", { class: "mv-muted" }, t("memory.detail_line", { count: num(p.count), short: num(p.short), ago: ago(p.last) })),
-        h("div", { class: "mv-chips" }, ...p.related.map((r) => h("button", {
-          class: "hb-badge hb-badge--bare mv-chip", type: "button", onClick: () => select(r.key) },
-          `${cap(r.key)} · ${num(r.count)}`))),
-      );
-      st.page = { items: [], count: p.count };
-    }
-    st.page.items.push(...p.items);
-    for (const m of p.items) {
-      detailList.append(h("li", { class: "hb-card mv-pill" },
-        h("p", { class: "mv-pill-text" }, m.text), h("p", { class: "mv-pill-meta" }, memMeta(m))));
-    }
-    detailFoot.replaceChildren(...[h("span", {}, t("memory.page_of", { shown: num(st.page.items.length), total: num(p.count) })),
-      p.more ? h("button", { class: "hb-btn hb-btn--ghost hb-btn--sm", type: "button",
-                             onClick: () => page(key, p.next) }, t("memory.load_more")) : null].filter(Boolean));
+    const colorOf = (k) => {
+      const i = (st.data?.concepts || []).findIndex((x) => x.key === k);
+      return `var(${PALETTE[Math.max(0, i) % PALETTE.length]})`;
+    };
+    detailHead.replaceChildren(
+      h("p", { class: "hb-sectitle" }, t("memory.detail_kicker")),
+      h("h2", { class: "mv-detail-title", style: { color: colorOf(key) } }, cap(p.label)),
+      h("p", { class: "mv-muted" }, t("memory.detail_line", { count: num(p.count), ago: ago(p.last) })));
+    if (!p.related.length) { detailList.append(h("li", { class: "mv-muted" }, t("memory.related_none"))); return; }
+    const top = Math.max(1, ...p.related.map((r) => r.count));
+    detailList.append(h("li", { class: "hb-sectitle mv-related-title" }, t("memory.related_title")),
+      ...p.related.map((r) => h("li", {},
+        h("button", { class: "mv-related", type: "button", onClick: () => select(r.key),
+                      style: { "--mv-accent": colorOf(r.key) } },
+          h("span", { class: "mv-related-name" }, cap(r.key)),
+          h("span", { class: "mv-related-n" }, t("memory.related_shared", { n: num(r.count) })),
+          h("span", { class: "mv-fill" }, h("i", { style: { width: Math.max(6, (r.count / top) * 100) + "%" } }))))));
   }
+  const conceptParams = (key) => ({ key, days: st.days, layers: [...st.layers].join(","), lanes: "own" });
 
   // ── chrome: filters, counters, the time brush ─────────────────────────────────────────────────────────
   let emptyEl;
@@ -324,9 +320,8 @@ export function GraphView({ tier }) {
     chipsEl.replaceChildren(
       chip("short", t("memory.layer_short", { n: num(lc.short) }), st.layers.has("short"), () => toggleLayer("short")),
       chip("long", t("memory.layer_long", { n: num(lc.long) }), st.layers.has("long"), () => toggleLayer("long")),
-      chip("messages", t("memory.lane_messages", { n: num(lc.messages) }), st.messages, () => { st.messages = !st.messages; load(); }),
     );
-    showingEl.textContent = d ? t("memory.showing", { shown: num(d.shown.nodes), total: num(d.total.nodes), cap: num(tier.nodes) }) : "";
+    showingEl.textContent = d ? t("memory.showing", { n: num(d.concepts.length) }) : "";
     if (emptyEl && st.nodes.length) emptyEl.hidden = true;
   }
   const chip = (kind, text, on, fn) => h("button", { class: `mv-layer mv-layer--${kind}`, type: "button",
@@ -403,8 +398,7 @@ export function GraphView({ tier }) {
       ),
       h("aside", { class: "mv-detail", "aria-label": () => t("memory.detail_label"), ref: (x) => (aside = x) },
         h("div", { class: "mv-detail-head", ref: (x) => (detailHead = x) }),
-        h("ul", { class: "mv-detail-list", ref: (x) => (detailList = x) }),
-        h("div", { class: "mv-detail-foot", ref: (x) => (detailFoot = x) })),
+        h("ul", { class: "mv-detail-list", ref: (x) => (detailList = x) })),
     ),
     h("footer", { class: "mv-brush", ref: (x) => (footer = x) },
       h("div", { class: "mv-brush-head" }, h("span", {}, () => t("memory.brush_label")), h("span", { class: "mv-brush-range" })),

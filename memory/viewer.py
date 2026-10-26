@@ -1,32 +1,23 @@
-"""memory/viewer.py — the BOUNDED reads behind the memory viewer (V2-808).
+"""memory/viewer.py — the BOUNDED, AGGREGATE reads behind the memory viewer (V2-808, V2-814).
 
-The viewer used to read the whole store on every open and on every `memory.updated` (`api.map`): every row of
-`memories` and `edges` with full text and meta, the concept graph derived per pill in the browser's payload. One
-install is one person, but that person's store grows — weeks of conversation, an import of thousands of messages —
-and the device that draws it is whatever he opens it on. So the contract here is the one the rest of the engine's
-list endpoints already keep (`observability/api.py`):
+The viewer is a monitor of the memory, not a browser of its rows: it shows totals and how the memory relates
+things, never the stored text. So nothing here returns a row:
 
-  * no function returns a whole store: every list takes a `limit` that is clamped by a server cap and a cursor
-    (`before_id`), and says whether there is `more`;
   * totals are COUNTs, never `len()` of a list;
   * the graph is AGGREGATED here — concepts with their counts and concept↔concept weights — bounded by a time
-    window, a scan cap and the node budget the client sends. Raw rows travel only for the concept the operator
-    selected, one page at a time.
+    window, a scan cap and the node budget the client sends;
+  * one concept is its numbers and the concepts it shares memories with.
 
 Read-only: nothing here reinforces, rewrites or touches a weight.
 """
 from __future__ import annotations
 
-import json
-import logging
 import threading
 import time
 from itertools import combinations
 
 from . import db as _db
 
-#: Hard cap of rows a single list call returns, whatever the client asks for.
-LIST_CAP = 200
 #: Rows the graph aggregation reads at most (newest first) — the window is bounded even when «all time» is asked.
 SCAN_CAP = 20000
 #: Node budget bounds — the client's device tier picks a value inside them.
@@ -39,34 +30,12 @@ _cache: dict = {}
 _cache_lock = threading.Lock()
 
 
-def clamp_limit(limit, cap: int = LIST_CAP, default: int = 50) -> int:
-    try:
-        n = int(limit)
-    except (TypeError, ValueError):
-        n = default
-    return max(1, min(n, cap))
-
-
 def clamp_budget(budget) -> int:
     try:
         n = int(budget)
     except (TypeError, ValueError):
         n = 300
     return max(BUDGET_MIN, min(n, BUDGET_MAX))
-
-
-def _source(meta) -> str:
-    try:
-        return str((json.loads(meta) if isinstance(meta, str) else (meta or {})).get("source") or "")
-    except (TypeError, ValueError) as e:
-        logging.getLogger(__name__).debug("memory viewer: unreadable meta, no source: %s", e)
-        return ""
-
-
-def _row(r) -> dict:
-    return {"id": r["id"], "text": r["text"], "kind": r["kind"],
-            "level": "short" if r["level"] == "short" else "long",
-            "source": _source(r["meta"]), "created": r["created"]}
 
 
 def _layer_sql(layers: set[str]) -> str:
@@ -106,34 +75,6 @@ def per_day(days: int = 30) -> list[dict]:
         "SELECT date(created,'unixepoch','localtime') d, SUM(kind='msg') m, SUM(kind!='msg') o FROM memories "
         "WHERE valid=1 AND kind NOT IN ('concept','conv') AND created>=? GROUP BY d ORDER BY d", (since,))
     return [{"day": r["d"], "own": int(r["o"] or 0), "messages": int(r["m"] or 0)} for r in rows]
-
-
-# ── paged lists ─────────────────────────────────────────────────────────────────────────────────────────────
-def _page(where: list[str], args: list, before_id: int, limit: int, q: str) -> dict:
-    if before_id:
-        where.append("id < ?"); args.append(int(before_id))
-    if q:
-        where.append("text LIKE ? COLLATE NOCASE"); args.append(f"%{q}%")
-    n = clamp_limit(limit)
-    rows = _db.get_db().query(
-        "SELECT id, level, kind, text, meta, created FROM memories WHERE " + " AND ".join(where)
-        + " ORDER BY id DESC LIMIT ?", (*args, n + 1))
-    items = [_row(r) for r in rows[:n]]
-    return {"items": items, "more": len(rows) > n, "next": items[-1]["id"] if items else 0}
-
-
-def facts(*, layer: str = "all", q: str = "", before_id: int = 0, limit: int = 50) -> dict:
-    """What the agent learnt about him, newest first. `layer` = short | long | all."""
-    where, args = ["valid=1", _OWN_KINDS_SQL], []
-    ls = _layer_sql({layer} if layer in ("short", "long") else set())
-    if ls:
-        where.append(ls)
-    return _page(where, args, before_id, limit, (q or "").strip())
-
-
-def conversation(*, q: str = "", before_id: int = 0, limit: int = 50) -> dict:
-    """The verbatim conversation record, newest first."""
-    return _page(["valid=1", "kind='conv'"], [], before_id, limit, (q or "").strip())
 
 
 # ── the graph, aggregated ───────────────────────────────────────────────────────────────────────────────────
@@ -253,9 +194,11 @@ def layer_counts(*, days: int = 30) -> dict:
     return {"short": int(r["s"] or 0), "long": int(r["l"] or 0), "messages": int(r["m"] or 0)}
 
 
-def concept(key: str, *, days: int = 30, layers: str = "short,long", lanes: str = "own",
-            before_id: int = 0, limit: int = 20) -> dict:
-    """One concept: its numbers, the concepts it shares memories with, and ONE page of its memories."""
+def concept(key: str, *, days: int = 30, layers: str = "short,long", lanes: str = "own") -> dict:
+    """One concept: how many memories hold it and the concepts it shares them with — never the memories' text.
+
+    The viewer is a monitor of how the memory RELATES things (V2-814); the rows themselves are not shown.
+    """
     key = (key or "").strip().lower()
     lys = _layers(layers)
     mine = [p for p in _window(max(0, int(days or 0)), _lanes(lanes)) if p["level"] in lys and key in p["c"]]
@@ -264,20 +207,9 @@ def concept(key: str, *, days: int = 30, layers: str = "short,long", lanes: str 
         for c in p["c"]:
             if c != key:
                 related[c] = related.get(c, 0) + 1
-    ids = [p["id"] for p in mine if not before_id or p["id"] < int(before_id)]   # newest first already
-    n = clamp_limit(limit, default=20)
-    page_ids = ids[:n]
-    rows = {}
-    if page_ids:
-        ph = ",".join("?" * len(page_ids))
-        for r in _db.get_db().query(f"SELECT id, level, kind, text, meta, created FROM memories WHERE id IN ({ph})",
-                                    tuple(page_ids)):
-            rows[int(r["id"])] = _row(r)
-    items = [rows[i] for i in page_ids if i in rows]
     return {
         "key": key, "label": key, "count": len(mine),
         "short": sum(1 for p in mine if p["level"] == "short"),
         "last": max((p["created"] for p in mine), default=0),
-        "related": [{"key": c, "count": w} for c, w in sorted(related.items(), key=lambda kv: -kv[1])[:6]],
-        "items": items, "more": len(ids) > n, "next": items[-1]["id"] if items else 0,
+        "related": [{"key": c, "count": w} for c, w in sorted(related.items(), key=lambda kv: -kv[1])[:8]],
     }

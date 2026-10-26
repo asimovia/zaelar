@@ -1,4 +1,4 @@
-"""The memory viewer's graph PAINTS inside its panel, centred, at desktop and phone width (V2-808). Rendered.
+"""The memory viewer's graph PAINTS inside its panel, centred, at desktop and phone width (V2-808, V2-814). Rendered.
 
 The operator's screenshot of the old 🧠 map: the concept maps («Corto plazo» / «Largo plazo») sat pushed into the
 bottom-right corner of the panel instead of filling it. The old map scaled a DOM world once, at open time, against
@@ -7,7 +7,8 @@ whatever size the panel had then. The new graph is one <canvas> sized to its sec
 style or a node count would be green on a graph drawn off-screen.
 
 Also rendered here, because each is a claim about what reaches the screen or the server:
-  * the overview paints one card per store with the server's totals (no length of a list);
+  * the overview paints one card per store with the server's totals, and a card opens to its 30 days and its
+    breakdown — two tabs only, no stored row and no word about the machine on screen (V2-814);
   * the graph asks the server for the DEVICE's node budget, and the layout worker reports it has settled;
   * the device tier rule (phone / laptop / big screen).
 
@@ -55,20 +56,26 @@ def _graph(budget: int) -> dict:
             "scanned": 900, "capped": False, "layer_counts": {"short": 120, "long": 780, "messages": 600}}
 
 
-_STATS = {"counted_at": 1793000000, "growth": [{"day": f"2026-10-{d:02d}", "memories": d, "messages": 40 + d}
-                                               for d in range(1, 27)],
-          "stores": [{"key": "facts", "total": 239, "week": 12, "parts": {"concepts": 32, "relations": 446, "short": 14}},
-                     {"key": "conversation", "total": 112, "since": 1792900000},
-                     {"key": "messages", "total": 179456, "bytes": 91226112, "week": 3120,
+_DAILY = [d % 9 for d in range(30)]
+_STATS = {"counted_at": 1793000000,
+          "stores": [{"key": "memories", "total": 239, "week": 12, "daily": _DAILY,
+                      "parts": {"concepts": 32, "relations": 446, "short": 14, "long": 225}},
+                     {"key": "conversation", "total": 112, "since": 1792900000, "daily": _DAILY,
+                      "parts": {"days": 9, "turns": 40}},
+                     {"key": "messages", "total": 179456, "bytes": 91226112, "week": 3120, "daily": _DAILY,
                       "parts": {"telegram": 165511, "whatsapp": 13564, "email": 381}},
-                     {"key": "files", "total": 1440, "bytes": 2254857830, "week": 40,
-                      "parts": {"images": 1013, "videos": 300, "audio": 90, "documents": 37}},
+                     {"key": "files", "total": 1440, "bytes": 2254857830, "daily": _DAILY,
+                      "types": {"images": {"n": 1013, "bytes": 170000000}, "videos": {"n": 300, "bytes": 2000000000},
+                                "audio": {"n": 90, "bytes": 9000000}, "documents": {"n": 37, "bytes": 75857830}}},
                      {"key": "contacts", "total": 2}, {"key": "agenda", "total": 396,
                       "parts": {"meetings": 369, "todo": 1, "errands": 26}},
-                     {"key": "apps", "total": 1932735283, "unit": "bytes", "pending": False,
-                      "parts": {"navegador": 1900000000, "agenda": 1100000}, "sheets": 98},
+                     {"key": "apps", "total": 1932735, "unit": "bytes", "pending": False,
+                      "apps": [{"key": "agenda", "title": "Agenda", "bytes": 1100000, "sheets": 0},
+                               {"key": "results", "title": "", "bytes": 832735, "sheets": 98}]},
                      {"key": "rules", "total": 3}, {"key": "phrases", "total": 2453, "parts": {"paraphrases": 174}},
-                     {"key": "events", "total": 17255, "week": 900}, {"key": "vault", "total": 0}]}
+                     {"key": "events", "total": 17255, "week": 900, "daily": _DAILY}, {"key": "vault", "total": 0}]}
+#: What an older or misbehaving server could still send for a concept: the viewer must never paint it.
+_MEMORY_TEXT = "Quiere un road trip a Alsacia en diciembre."
 
 
 def _listening(port: int) -> bool:
@@ -104,7 +111,7 @@ def _api(route, asked: list):
             "timeline": {"days": [{"day": f"2026-10-{d:02d}", "own": d % 7, "messages": 3} for d in range(1, 27)]},
             "concept": {"key": q.get("key", ""), "label": q.get("key", ""), "count": 24, "short": 6, "last": 1793000000,
                         "related": [{"key": "finanzas", "count": 5}],
-                        "items": [{"id": 9, "text": "Quiere un road trip a Alsacia en diciembre.", "kind": "intent",
+                        "items": [{"id": 9, "text": _MEMORY_TEXT, "kind": "intent",
                                    "level": "long", "source": "voice", "created": 1792900000}],
                         "more": True, "next": 9}}.get(path, {"items": [], "more": False, "next": 0})
     route.fulfill(status=200, content_type="application/json", body=json.dumps(body))
@@ -130,7 +137,7 @@ def _open(browser, port, *, width=1440, height=940, mutate=None):
         const i18n = await import('/frontend/app/core/i18n.js?v=1');
         await i18n.loadBundle('es'); await i18n.applyLang('es');
         const store = await import('/frontend/app/core/store.js?v=2');
-        const mm = await import('/frontend/app/components/MemoryMap.js?v=2');
+        const mm = await import('/frontend/app/components/MemoryMap.js?v=3');
         document.body.append(mm.MemoryMap());
         store.setMemOpen(true);
         window.__store = store;
@@ -173,14 +180,20 @@ def test_the_overview_paints_one_card_per_store_with_the_servers_totals(browser_
     pg = _open(b, port)
     cards = pg.locator(".mv-store")
     assert cards.count() == len(_STATS["stores"])
-    msgs = pg.locator(".mv-store[data-store=messages]").inner_text()
-    assert "179.456" in msgs and "Telegram 165.511" in msgs, msgs
-    assert pg.locator(".mv-tabs .hb-tab").all_inner_texts() == [
-        "Resumen", "Grafo", "Hechos", "Conversación", "Mensajes", "Archivos", "Apps", "Sistema"]
-    pg.click(".mv-tabs .hb-tab[data-tab=apps]")
-    pg.wait_for_selector("[data-view=apps] .mv-list-foot .hb-empty-state", timeout=5000)
-    foot = pg.locator("[data-view=apps] .mv-list-foot").inner_text()
-    assert "null" not in foot, f"a missing button was painted as text: {foot!r}"     # measured on the first build
+    assert pg.locator(".mv-tabs .hb-tab").all_inner_texts() == ["Resumen", "Grafo"]
+    msgs = pg.locator(".mv-store[data-store=messages]")
+    assert "179.456" in msgs.inner_text() and "Telegram" not in msgs.inner_text(), "closed: the total, not the detail"
+    msgs.locator(".mv-store-face").click()
+    opened = msgs.inner_text()
+    assert "Telegram" in opened and "165.511" in opened and "últimos 30 días" in opened.lower(), opened
+    assert msgs.locator(".mv-spark > i").count() == 30
+    files = pg.locator(".mv-store[data-store=files]")
+    files.locator(".mv-store-face").click()
+    assert "Vídeos" in files.inner_text() and "300" in files.inner_text(), files.inner_text()
+    text = pg.locator(".memmap").inner_text().lower()
+    for word in ("dispositivo", "núcleos", "nodos", "navegador", "data\n"):
+        assert word not in text, f"the overview speaks of {word!r}"
+    assert "null" not in text and "undefined" not in text
     assert not pg._errors, pg._errors
     pg.close()
 
@@ -191,7 +204,10 @@ def test_the_graph_fills_its_panel_and_is_centred_on_a_desktop(browser_and_port)
     _assert_fills_and_centred(_graph_painted(pg))
     graph_calls = [u for u in pg._asked if "/viewer/graph" in u]
     assert graph_calls and all("budget=" in u for u in graph_calls), graph_calls
-    assert "Viajes" in pg.locator(".mv-detail-title").inner_text(), "the biggest concept is selected and paged in"
+    assert "Viajes" in pg.locator(".mv-detail-title").inner_text(), "the biggest concept is selected"
+    pg.wait_for_selector(".mv-related", timeout=5000)
+    assert "Finanzas" in pg.locator(".mv-detail").inner_text(), "a concept shows what it is related to"
+    assert "Alsacia" not in pg.locator(".memmap").inner_text(), "a memory's text is never painted"
     assert pg.evaluate("() => document.querySelector('.mv-canvas-wrap').dataset.nodes") == str(12 + 600)
     assert not pg._errors, pg._errors
     pg.close()

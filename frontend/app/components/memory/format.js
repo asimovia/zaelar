@@ -1,4 +1,4 @@
-// memory/format.js — numbers, sizes and dates in the instance language (V2-808). No word lists: Intl does it.
+// memory/format.js — numbers, sizes and dates in the instance language (V2-808, V2-814). No word lists: Intl does it.
 import * as store from "../../core/store.js?v=2";
 import { t } from "../../core/i18n.js?v=1";
 
@@ -39,12 +39,4 @@ export function label(prefix, code) {
   const key = `${prefix}${code}`;
   const s = t(key);
   return s === key ? "" : s;
-}
-
-// One meta line of a memory: kind · layer · where it came from · when.
-export function memMeta(m) {
-  const src = String(m.source || "").split(":")[0];
-  return [label("memory.kind_", m.kind) || t("memory.kind_other"),
-          t(m.level === "short" ? "memory.level_short" : "memory.level_long"),
-          label("memory.src_", src), date(m.created)].filter(Boolean).join(" · ");
 }

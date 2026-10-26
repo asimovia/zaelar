@@ -1,20 +1,22 @@
-"""The memory viewer never returns a whole store (V2-808).
+"""The memory viewer never returns a stored row, and never a whole store (V2-808, V2-814).
 
-The viewer used to read every row of `memories` and `edges` on each open and on every `memory.updated`. One install
-is one person, but his store grows — weeks of conversation, an import of thousands of messages — and whatever device
-opens the viewer has to draw what comes back. The contract, endpoint by endpoint:
+The viewer is a MONITOR of the brain: totals, sizes, the last 30 days of each store, and how the memory relates
+concepts. One install is one person, but his store grows — weeks of conversation, an import of thousands of
+messages — so the contract, endpoint by endpoint:
 
-  * every list is capped by the SERVER, whatever `limit` the client sends, and pages with a cursor that neither
-    repeats nor skips a row;
-  * totals are COUNTs that agree with what is stored, not the length of a page;
+  * no endpoint returns a stored row: the row lists of the first viewer (facts, conversation, messages, files,
+    apps, system) are retired, and a concept is numbers and related concepts — never a memory's text;
+  * totals are COUNTs that agree with what is stored; files are totalled by TYPE with their size; each store
+    carries its last 30 days;
+  * a browser widget's profile is its browsing session, not data it keeps: it is not counted as app data;
   * the graph is aggregated on the server and never has more nodes than the budget (itself clamped);
   * the old `/api/memory/map` is bounded too.
 
 Fixture: 200.000 memories and 200.000 archived messages written straight into a temporary database — the size
-of a heavy import — so «it is capped» and «it is fast» are measured on the volume that made them necessary.
-Disarm (2026-10-26): with `memory.viewer.clamp_limit` returning the requested `limit` unclamped, the cap tests
-went red (10.000 rows came back); with `archive.page` ordering by `id` instead of `(ts, id)`, the cursor test
-went red (the backfilled rows were skipped).
+of a heavy import — so «it is counted» and «it is fast» are measured on the volume that made them necessary.
+Disarms (2026-10-26): `memory.viewer.concept` returning its memories' text again turned
+`test_no_stored_row_ever_leaves_the_viewer` red; the profile skip removed from `_walk` turned
+`test_a_browser_profile_is_not_app_data` red.
 """
 from __future__ import annotations
 
@@ -75,9 +77,19 @@ def big(tmp_path_factory):
     for i in range(150):
         with open(os.path.join(media, f"img_{i:04d}.jpg"), "wb") as fh:
             fh.write(b"x" * 10)
+    for i in range(4):
+        with open(os.path.join(media, f"vid_{i:04d}.mp4"), "wb") as fh:
+            fh.write(b"x" * 1000)
+    # a browser widget: its profile (the browsing session) is big; what it saved for him is small
+    nav = os.path.join(store.DATA_DIR, "navegador")
+    os.makedirs(os.path.join(nav, "profile-en-US", "Cache"), exist_ok=True)
+    with open(os.path.join(nav, "profile-en-US", "Cache", "blob"), "wb") as fh:
+        fh.write(b"x" * 500_000)
+    with open(os.path.join(nav, "shot.png"), "wb") as fh:
+        fh.write(b"x" * 300)
     from server import memory_viewer_api as mva
     mva._stats_cache.update(at=0.0, body=None)
-    mva._media.update(at=0.0, rows=None)
+    mva._media_cache.update(at=0.0, rows=None)
     from memory import viewer
     viewer._cache.clear()
     app = FastAPI()
@@ -97,63 +109,50 @@ def _timed(client, url):
     return r.json(), time.perf_counter() - t0
 
 
-def test_a_list_never_returns_more_than_the_server_cap_however_much_is_asked(big):
-    from memory.viewer import LIST_CAP
-    body, secs = _timed(big, "/api/memory/viewer/facts?limit=10000")
-    assert len(body["items"]) == LIST_CAP and body["more"] is True
-    assert secs < 1.5, f"a capped page of a {N}-row store took {secs:.2f}s"
-    body, _ = _timed(big, "/api/memory/viewer/conversation?limit=10000")
-    assert len(body["items"]) == LIST_CAP
-    body, secs = _timed(big, "/api/memory/viewer/messages?limit=10000")
-    assert len(body["items"]) == 200 and body["more"] is True
-    assert secs < 1.5, f"a capped page of a {N}-row archive took {secs:.2f}s"
-    body, _ = _timed(big, "/api/memory/viewer/files?limit=10000")
-    assert len(body["items"]) == 60 and body["total"] == 150
+@pytest.mark.parametrize("path", ["facts", "conversation", "messages", "files", "thumb/img_0001.jpg", "apps",
+                                  "system"])
+def test_the_row_lists_are_retired(big, path):
+    assert big.get(f"/api/memory/viewer/{path}?limit=10").status_code == 404
 
 
-def test_the_cursor_neither_repeats_nor_skips_a_row(big):
-    seen, cursor = [], 0
-    for _ in range(4):
-        body, _ = _timed(big, f"/api/memory/viewer/facts?limit=50&before_id={cursor}")
-        seen += [m["id"] for m in body["items"]]
-        cursor = body["next"]
-    assert len(seen) == len(set(seen)) == 200
-    assert seen == sorted(seen, reverse=True), "newest first"
-    assert seen[0] - seen[-1] < 400, "consecutive pages are contiguous (only own-lane kinds in between)"
-
-
-def test_the_message_cursor_follows_time_not_insertion_order(big):
-    """A backfill inserts OLD messages late: paging by id would serve them before newer ones, or skip them."""
-    got, nxt = [], None
-    for _ in range(3):
-        q = f"&before_ts={nxt['ts']}&before_id={nxt['id']}" if nxt else ""
-        body, _ = _timed(big, f"/api/memory/viewer/messages?limit=200{q}")
-        got += body["items"]
-        nxt = body["next"]
-    ts = [m["ts"] for m in got]
-    assert ts == sorted(ts, reverse=True)
-    assert len({m["id"] for m in got}) == 600
-
-
-def test_search_runs_on_the_server(big):
-    body, _ = _timed(big, "/api/memory/viewer/messages?q=presupuesto&limit=150")
-    assert body["items"] and all("presupuesto" in m["body"] for m in body["items"])
-    assert len(body["items"]) == 150 and body["more"]                # 200 match (every 1000th row): one page of them
-    body, _ = _timed(big, "/api/memory/viewer/facts?q=hipoteca&limit=20")
-    assert body["items"] and all("hipoteca" in m["text"] for m in body["items"])
+def test_no_stored_row_ever_leaves_the_viewer(big):
+    graph, _ = _timed(big, "/api/memory/viewer/graph?days=0&budget=300")
+    key = graph["concepts"][0]["key"]
+    one, _ = _timed(big, f"/api/memory/viewer/concept?key={key}&days=0")
+    assert one["count"] > 0 and one["related"], one
+    assert set(one) == {"key", "label", "count", "short", "last", "related"}, sorted(one)
+    stats, _ = _timed(big, "/api/memory/viewer/stats")
+    for body in (graph, one, stats):
+        blob = str(body)
+        assert "hipoteca" not in blob and "presupuesto" not in blob, "a stored text reached the viewer"
 
 
 def test_the_totals_are_counts_of_what_is_stored(big):
     body, secs = _timed(big, "/api/memory/viewer/stats")
     stores = {s["key"]: s for s in body["stores"]}
-    assert stores["facts"]["total"] == N * 3 // 5                 # fact, pref, event — not msg, not conv
-    assert stores["conversation"]["total"] == N // 5
+    assert stores["memories"]["total"] == N * 3 // 5                 # fact, pref, event — not msg, not conv
+    assert stores["conversation"]["parts"]["turns"] == N // 5
     assert stores["messages"]["total"] == N
     assert sum(stores["messages"]["parts"].values()) == N
-    assert stores["files"]["total"] == 150
-    assert {"facts", "conversation", "messages", "files", "contacts", "agenda", "apps", "rules", "phrases",
+    files = stores["files"]
+    assert files["total"] == 154 and files["types"]["images"] == {"n": 150, "bytes": 1500}
+    assert files["types"]["videos"] == {"n": 4, "bytes": 4000} and files["bytes"] == 5500
+    assert {"memories", "conversation", "messages", "files", "contacts", "agenda", "apps", "rules", "phrases",
             "events", "vault"} <= set(stores)
+    for key in ("memories", "conversation", "messages", "files", "events"):
+        assert len(stores[key]["daily"]) == 30, key
+    assert sum(stores["files"]["daily"]) == 154, "files written today land in today's bar"
     assert secs < 3, f"the overview counts took {secs:.2f}s"
+
+
+def test_a_browser_profile_is_not_app_data(big):
+    from server import memory_viewer_api as mva
+    mva._measure_dirs()
+    mva._stats_cache.update(at=0.0, body=None)
+    body, _ = _timed(big, "/api/memory/viewer/stats")
+    apps = next(s for s in body["stores"] if s["key"] == "apps")
+    nav = next(a for a in apps["apps"] if a["key"] == "navegador")
+    assert nav["bytes"] == 300, f"the browsing session was counted as app data: {nav}"
 
 
 def test_the_graph_never_has_more_nodes_than_the_budget(big):
@@ -169,17 +168,6 @@ def test_the_graph_never_has_more_nodes_than_the_budget(big):
     keys = {c["key"] for c in body["concepts"]}
     assert all(set(m["c"]) <= keys for m in body["memories"]), "a memory hangs only from concepts that are drawn"
     assert all(lk["a"] in keys and lk["b"] in keys for lk in body["links"])
-
-
-def test_one_concept_is_read_one_page_at_a_time(big):
-    graph, _ = _timed(big, "/api/memory/viewer/graph?days=0&budget=300")
-    key = graph["concepts"][0]["key"]
-    p1, _ = _timed(big, f"/api/memory/viewer/concept?key={key}&days=0&limit=20")
-    assert len(p1["items"]) == 20 and p1["more"] and p1["count"] > 20
-    p2, _ = _timed(big, f"/api/memory/viewer/concept?key={key}&days=0&limit=20&before_id={p1['next']}")
-    assert not {m["id"] for m in p1["items"]} & {m["id"] for m in p2["items"]}
-    huge, _ = _timed(big, f"/api/memory/viewer/concept?key={key}&days=0&limit=100000")
-    assert len(huge["items"]) <= 200
 
 
 def test_the_old_map_is_bounded_too(big):

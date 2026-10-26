@@ -80,7 +80,7 @@ any of the interactions above. Carry on as usual.
 | **LONG (ms, on demand, off-loop)** | `nucleo/flash/prompt.compose_recall` → `memory.query` → `retriever.search` → **reranker** (`memory/rerank.py`, fail-open); `asyncio.to_thread` + `needs_recall` | It NEVER enters the event loop; scoring stays coherent; the reranker stays fail-open. |
 | **Brain Workers (serial read)** | `hbmem recall` → `POST /api/memory/recall` → `memapi.query()` | It stays read-only and filters `untrusted` (the retriever does it); it never opens the DB. |
 | **SlowBrain (off-hot-path, may use an LLM)** | `nucleo/memory_agent.compose_context` | The only face that may use a recall LLM — verify it stays off-hot-path. |
-| **Viewer / diagnostics** | `memory/viewer.py` → `GET /api/memory/viewer/*` → `MemoryMap.js` + `components/memory/` | Every new list keeps a server cap + cursor and every total a COUNT (node 1.11); a new kind that is not his own fact is kept out of `_OWN_KINDS_SQL`. |
+| **Viewer / diagnostics** | `memory/viewer.py` → `GET /api/memory/viewer/*` → `MemoryMap.js` + `components/memory/` | No stored row leaves the viewer and every total is a COUNT (node 1.11); a new kind that is not his own fact is kept out of `_OWN_KINDS_SQL`. |
 
 > **Golden latency rule (repeated because it is easy to break):** **LLM on WRITE (off-hot-path), DIRECT queries
 > on READ.** No change may put an LLM or SYNCHRONOUS memory I/O into the voice turn.
