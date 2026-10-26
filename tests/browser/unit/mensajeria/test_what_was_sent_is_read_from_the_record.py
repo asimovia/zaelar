@@ -95,5 +95,5 @@ def test_the_owner_emits_it_where_the_send_comes_back(monkeypatch):
             "messageId": "sent:1:a@b.example", "timestamp": time.time()}
     fake = SimpleNamespace(_out_sub=object(), _drain=lambda sub: [echo])
     owner._Owner._apply_outbound(fake)
-    mine = [g for g in got if g[0] == "messaging"]
-    assert [g[:2] for g in mine] == [("messaging", "sent")] and mine[0][2]["text"] == SIGNED
+    mine = [g for g in got if g[:2] == ("widget", "sent")]
+    assert len(mine) == 1 and mine[0][2]["text"] == SIGNED and mine[0][2]["extra"]["id"] == "mensajeria"

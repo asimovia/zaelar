@@ -488,6 +488,6 @@ def _record_left(ev: dict) -> None:
         return
     try:
         from voice.observer import emit
-        emit("messaging", "sent", text=rec["text"], extra=rec["extra"])
+        emit("widget", "sent", text=rec["text"], extra={"id": "mensajeria", **rec["extra"]})
     except Exception as e:  # noqa: BLE001 — bookkeeping never breaks the owner's loop
         logger.info(f"mensajeria: the sent body was not recorded ({type(e).__name__}: {e})")
