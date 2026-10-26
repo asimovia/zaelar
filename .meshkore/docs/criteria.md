@@ -184,6 +184,11 @@ below is the first kind, or it names the mechanism that replaced the second.
   keeps its answer. — since 2026-09-23 · nodes 2.74, 4.204.
 - **CRIT-K8 · Closing a card is a TOOL, like opening one**; «close the calendar and the messages» closes both; an
   op inside a card runs and the card he NAMED closes after it. — since 2026-09-24 · nodes 2.88, 2.127, 2.126.
+- **CRIT-K8b · A close that names no card closes the OTHERS, never nothing, and never in silence.** The card in use
+  (the newest card a data-op ran on, still open, or one the turn kept) is spared unless his words name it; when
+  sparing would leave nothing to close, everything closes; every bulk close leaves one short line in his language —
+  what it closed, what is still on screen, cards by name — spoken by the doors with no model reply (hard interrupt,
+  action map). — since 2026-10-26 · nodes 3.133, 3.135 · `nucleo/flash/bulk_close.py`, `nucleo/flash/hard_turn.py`.
 - **CRIT-K9 · A classifier before the model is a PRICE** (~780 ms), paid only where the decision cannot be read
   after; a fixed table may decide alone only where a wrong answer costs nothing — a fail-open default. — since
   2026-09-22 · nodes 3.58.

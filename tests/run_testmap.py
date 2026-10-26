@@ -1976,6 +1976,13 @@ DOMAINS: list[dict] = [
         {"id": "3.133", "title": "A bulk close spares the card he is working on unless he names it "
                                  "(V2-807 T-08)", "ch": UNIT,
             "paths": ["tests/agent_headless/unit/flash/test_a_bulk_close_spares_the_card_in_use.py"]},
+        # V2-812 T-04 — the car session: «ciérralo todo» spared the ONLY open card three times and the hard turn ended
+        # silent. A spare that would leave nothing to close is no spare; every bulk close leaves a one-line receipt in
+        # his language (closed · still on screen), spoken by the hard interrupt and the action map. es/en. Disarmed → red.
+        {"id": "3.135", "title": "A close-all never closes nothing, and never in silence: sparing that would leave "
+                                 "nothing closes everything, and the turn says what closed and what stayed "
+                                 "(V2-812 T-04)", "ch": UNIT,
+            "paths": ["tests/agent_headless/unit/flash/test_a_close_all_never_closes_nothing_in_silence.py"]},
         # V2-807 T-14 — a clear stop order was refused twice: the tool gate read a word table that did not list «para
         # inmediatamente esa tarea». The turn's brief asks, while an errand runs, whether THIS turn orders it stopped;
         # a sure verdict decides the gate and repairs a turn that called nothing; the grammar is the fallback only.

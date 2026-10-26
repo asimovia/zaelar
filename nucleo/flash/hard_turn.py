@@ -59,7 +59,37 @@ def remainder(text: str, hard: str) -> str:
         return ""
 
 
-async def handle(text: str, hard: str, emit) -> str | None:
+async def say_receipt(emit, brain=None) -> str:
+    """V2-812 T-04 — a close turn SAYS what it closed and what it kept, in one short line in his language.
+
+    The hard close has no model reply to ride: before this it ended the turn in silence, and in the car session an
+    order to close everything that had closed nothing (`bulk_close`, the spare) was indistinguishable from one that
+    had worked. Spoken out of band, with the fast lane's manners (never over his voice, anti-echo updated). Returns
+    the line ("" when there was nothing to say or no mouth to say it with)."""
+    import time as _time
+
+    from nucleo.flash import bulk_close as _bulk
+    line = _bulk.take_receipt()
+    if not line:
+        return ""
+    emit("brain", "🧾 close receipt", text=line, role="system", extra={"cat": "flash", "reason": "close_receipt"})
+    try:
+        from voice import proactive
+        speak = proactive.speaker()
+        if speak is None or proactive.user_speaking():
+            return ""
+        if brain is not None:
+            brain._last_spoken = line            # anti-echo: the mic must not re-capture it as his turn
+            brain._last_spoke_at = _time.time()
+        r = speak(line)
+        if asyncio.iscoroutine(r):
+            await r
+        return line
+    except Exception:                          # noqa: BLE001 — a receipt never breaks the close it describes
+        return ""
+
+
+async def handle(text: str, hard: str, emit, brain=None) -> str | None:
     """Resolve a hard interrupt. Returns the text the turn should go on with, or None to end the turn.
 
     `emit` is injected rather than imported: the voice provider already holds a fail-safe `emit` (a no-op when
@@ -105,6 +135,7 @@ async def handle(text: str, hard: str, emit) -> str | None:
         #     unless his words name it — `bulk_close`).
         from nucleo.flash import bulk_close as _bulk
         _bulk.close_all(emit, src="flash", text=text)
+        await say_receipt(emit, brain)         # V2-812 T-04: never a close in silence
     # 4 · V2-688 — and only THEN ask whether closing was the whole request. The closing clause is removed from what
     #     the model reads: handed «close all» against an already-empty canvas it re-emits it (the context-bleed shape
     #     V2-635 catalogued), and that second close would land on whatever this same sentence just asked to open.

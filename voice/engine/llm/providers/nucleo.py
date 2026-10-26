@@ -322,7 +322,7 @@ class NucleoLLMStream(llm.LLMStream):
             hard = attention.hard_interrupt(text)
             if hard:
                 from nucleo.flash import hard_turn as _hard_turn
-                _cont = await _hard_turn.handle(text, hard, emit)
+                _cont = await _hard_turn.handle(text, hard, emit, brain)
                 if _cont is None:
                     _release_acc_trace_if_fresh(brain)      # ver docstring — este turno no llega a offer()
                     return

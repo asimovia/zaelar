@@ -17,6 +17,13 @@ in it unless his words name it. «In use» is read from facts, never from words:
 With nothing in use the close is the bare one, exactly as before: `closeAll()` on the client. With an unknown canvas
 (no report yet) it is also the bare one — inventing a keep from no data would be a new guess.
 
+A SPARE NEVER EMPTIES THE ORDER (V2-812 T-04). In a moving car «ciérralo todo» spared the only open card three times
+— the music card he had been using was «in use» — and the turn ended without a word: an order to close everything
+closed nothing, in silence. When sparing would leave nothing to close, the spare is dropped and everything closes:
+«close all» with one card open means that card. And every bulk close leaves its RECEIPT (`receipt()`): one short line
+in his language saying what it closed and what is still on screen, which the doors that have no model reply of their
+own (the hard interrupt, the action map) speak.
+
 Every bulk-close door of a TURN goes through `close_all` (the verdict-driven fallback, the seeded action map, the
 hard interrupt). The reset endpoints do not: a reset is the lifecycle, not an order about cards.
 """
@@ -33,6 +40,10 @@ WORKING_S = 300.0
 KEPT_S = 30.0
 
 _KEPT: dict[str, float] = {}
+#: The last bulk close: what it closed, what it kept, what was open, when — read once by `take_receipt`.
+_LAST: dict = {}
+#: How long a bulk close's receipt is owed — the same turn, never a later one.
+RECEIPT_S = 20.0
 
 
 def _base(card: str) -> str:
@@ -55,8 +66,9 @@ def kept_now() -> list[str]:
 
 
 def reset() -> None:
-    """Forget every keep (tests, session reset)."""
+    """Forget every keep and the last receipt (tests, session reset)."""
     _KEPT.clear()
+    _LAST.clear()
 
 
 def _on_canvas(card: str, open_ids) -> str:
@@ -99,6 +111,20 @@ def in_use(open_ids, text: str = "") -> list[str]:
     return spare
 
 
+def spare_for(opened, text: str = "", *, emit=None, src: str = "") -> list[str]:
+    """The cards a bulk close over `opened` keeps: the ones in use — unless keeping them leaves NOTHING to close.
+
+    V2-812 T-04: a close-all whose every open card is «in use» is an order about those very cards, so none is kept.
+    Sparing exists to protect the draft among OTHER cards, never to turn «close everything» into a no-op."""
+    spare = in_use(opened, text) if opened else []
+    if spare and not [c for c in opened if c not in spare]:
+        if emit is not None:
+            emit("brain", "🧷 bulk close: sparing would close nothing — everything closes", text=",".join(spare),
+                 role="system", extra={"cat": "flash", "would_keep": spare, "src": src})
+        return []
+    return spare
+
+
 def _open_instances() -> list[str]:
     try:
         from server.voice_api import open_instances
@@ -118,13 +144,53 @@ def close_all(emit, *, src: str, text: str = "", said: str = "", extra: dict | N
     base["src"] = src
     kw = {"text": said} if said else {}
     opened = list(open_ids) if open_ids is not None else _open_instances()
-    spare = in_use(opened, text) if opened else []
+    spare = spare_for(opened, text, emit=emit, src=src)
     if not spare:
         emit("widget", "close", extra=base, **kw)
+        _note(closed=opened, kept=[], opened=opened)
         return []
     for cid in opened:
         if cid not in spare:
             emit("widget", "close", extra={**base, "id": cid}, **kw)
     emit("brain", "🧷 bulk close: the card in use stays", text=",".join(spare), role="system",
          extra={"cat": "flash", "kept": spare, "src": src})
+    _note(closed=[c for c in opened if c not in spare], kept=spare, opened=opened)
     return spare
+
+
+def _note(*, closed, kept, opened) -> None:
+    _LAST.clear()
+    _LAST.update({"closed": list(closed), "kept": list(kept), "opened": list(opened), "at": time.time()})
+
+
+def receipt(closed, kept, *, opened=None, lang=None) -> str:
+    """One short line in his language: what a bulk close closed, and what is still on screen.
+
+    Built from the language's own receipt sentences (`receipt_closed` · `receipt_left` · `receipt_left_none`), the
+    cards named by their display names, never by id. With an unknown canvas (nothing reported) the bare close took
+    whatever was there: all that can be said truthfully is that nothing is left."""
+    try:
+        from nucleo.flash import card_receipt as _cr
+        if lang is None:
+            from i18n import langs as _langs
+            lang = _langs.current_language()
+        gone = list(dict.fromkeys(_base(c) for c in closed or [] if _base(c)))
+        left = [_base(c) for c in dict.fromkeys(kept or []) if _base(c) and _base(c) not in gone]
+        left = list(dict.fromkeys(left))
+        if not gone:
+            return "" if left else str(lang.receipt_left_none or "")
+        line = [lang.receipt_closed.format(cards=_cr._join(lang, gone))]
+        line.append(lang.receipt_left.format(cards=_cr._join(lang, left)) if left else lang.receipt_left_none)
+        return " ".join(x for x in line if x)
+    except Exception as e:  # noqa: BLE001 — a receipt never breaks the close it describes
+        logger.debug(f"bulk_close: receipt unbuilt — {e}")
+        return ""
+
+
+def take_receipt(*, within_s: float = RECEIPT_S) -> str:
+    """The receipt of the bulk close this turn just made, ONCE ("" when none, or when it is stale)."""
+    last = dict(_LAST)
+    _LAST.clear()
+    if not last or time.time() - float(last.get("at") or 0) > within_s:
+        return ""
+    return receipt(last.get("closed"), last.get("kept"), opened=last.get("opened"))

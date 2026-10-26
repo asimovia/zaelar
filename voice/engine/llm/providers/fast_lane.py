@@ -27,10 +27,14 @@ async def _speak_ack(brain) -> None:
         speak = proactive.speaker()
         if speak is None or proactive.user_speaking():
             return
-        phrase = langs.pick_ack(getattr(brain, "_last_ack", ""))
+        # V2-812 T-04 — a bulk close says what it closed and what it kept; any other act keeps the short ack.
+        from nucleo.flash import bulk_close as _bulk
+        receipt = _bulk.take_receipt()
+        phrase = receipt or langs.pick_ack(getattr(brain, "_last_ack", ""))
         if not phrase:
             return
-        brain._last_ack = phrase
+        if not receipt:
+            brain._last_ack = phrase
         try:
             brain._last_spoken = phrase          # anti-echo: the mic must not re-capture it
             brain._last_spoke_at = time.time()
