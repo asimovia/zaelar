@@ -22,6 +22,7 @@ from .clock import now as _clock_now
 from . import db as _db  # noqa: F401  (asegura import del paquete; get_db perezoso)
 from . import episodic as _episodic
 from . import state as _state
+from . import viewer  # noqa: F401 — V2-808: the bounded reads behind the memory viewer
 from . import writer as _writer
 from .queue import get_queue
 from .action_map_store import (  # noqa: E402,F401 — V2-778 F1: moved, imported back under their names
@@ -46,7 +47,7 @@ __all__ = [
     "seconds_since_last_conv",
     # V2-802 T-06 / V2-803 T-01: where a recalled row came from, and the conversation record as a source.
     "provenance", "conversation",
-    "critical_facts", "salient_long", "map",
+    "critical_facts", "salient_long", "map", "viewer",
     "load_episode", "register_episode", "write_episode", "list_episodes", "migrate_inbox",
     "consolidate", "DEFAULT_BUDGET_TOKENS",
 ]
@@ -597,104 +598,39 @@ def query(prompt: str, budget_tokens: int = DEFAULT_BUDGET_TOKENS, limit: int = 
     return {"state": st, "memories": mems, "ids": ids, "reinforce_ids": a_reforzar}
 
 
-def _concept_graph(pills: list[dict], resolver) -> dict:
-    """Construye un MAPA CONCEPTUAL de una capa (V2-013 T126, redseño del visor 2026-07-10): nodos = conceptos con
-    su `count` (nº de datos de ESTA capa que los tocan), links = aristas CONCEPTO↔CONCEPTO por CO-OCURRENCIA (dos
-    conceptos se relacionan si comparten una píldora; `weight` = nº de píldoras compartidas). SIN contenido: es el
-    plano de CÓMO se organiza la información, no las píldoras. `resolver(pill) -> [labels]` da los conceptos de
-    cada píldora (para el LARGO = aristas persistidas; para el CORTO = derivadas al vuelo, no hay aristas)."""
-    from itertools import combinations
-    node_count: dict[str, int] = {}
-    link_w: dict[tuple, int] = {}
-    for p in pills:
-        cs = sorted({c for c in (resolver(p) or []) if c})
-        for c in cs:
-            node_count[c] = node_count.get(c, 0) + 1
-        for a, b in combinations(cs, 2):
-            key = (a, b)
-            link_w[key] = link_w.get(key, 0) + 1
-    nodes = [{"key": c, "label": c, "count": n}
-             for c, n in sorted(node_count.items(), key=lambda kv: (-kv[1], kv[0]))]
-    links = [{"a": a, "b": b, "weight": w} for (a, b), w in link_w.items()]
-    return {"nodes": nodes, "links": links}
+#: Rows per layer `map()` returns at most (V2-808). The viewer reads `memory/viewer.py`; this stays for the
+#: callers that want a snapshot of state + the newest pills (test probes, the loop cycle), and is bounded too.
+MAP_CAP = 500
 
 
-def map() -> dict:
-    """Mapa COMPLETO de la memoria para el VISOR (V2-014 · T129 · redseño de 2 vistas 2026-07-10). Lectura DIRECTA
-    de la BD (no hot path, NO refuerza ni toca pesos). Sirve DOS vistas que el frontend alterna:
-
-      • **SLOTS** — `state` + `layers.{short,long}` (tarjetas por capa, con TODOS los metadatos por unidad).
-      • **CONCEPTOS** — `concept_graph.{short,long}`: mapa conceptual SEPARADO por capa (corto y largo son
-        storages distintos en la realidad → diagramas distintos). Cada uno = {nodes:[{key,label,count}],
-        links:[{a,b,weight}]} — conceptos con nº de datos + relaciones concepto↔concepto por co-ocurrencia, SIN
-        volcar el contenido. El LARGO usa las aristas persistidas (grafo emergente del CORAZÓN); el CORTO las
-        deriva al vuelo (`memory.concepts.derive_concepts`, el corto no persiste aristas — píldoras efímeras).
-
-    Devuelve::
-
-        {
-          "state":         {...},
-          "layers":        {"short": [mem...], "long": [mem...]},   # vista SLOTS
-          "concept_graph": {"short": {nodes,links}, "long": {nodes,links}},  # vista CONCEPTOS (separada)
-          "concepts":      [mem+degree...],      # (compat) nodos-concepto crudos
-          "edges":         [{from_id,to_id,type,weight}...],
-          "counts":        {"short": n, "long": m, "concepts": k, "edges": e, "total": t},
-        }
-
-    Read-only: lo sirve `GET /api/memory/map` (no-cache) y se refresca en vivo por `memory.updated` (puente SSE
-    en el server). Tolera BD vacía (listas/grafos vacíos)."""
-    from memory.concepts import derive_concepts
+def map(limit: int = 200) -> dict:
+    """A BOUNDED snapshot of the memory (V2-014, bounded by V2-808): `state` + the newest valid pills of each layer
+    (at most `limit`, capped at `MAP_CAP`), the edges among THOSE pills, and the totals as COUNTs. Read-only. It
+    used to return every row and every edge on each call; the viewer now reads the paged, aggregated
+    `memory/viewer.py` and nothing here grows with the store."""
+    n = max(1, min(int(limit or 200), MAP_CAP))
     db = _db.get_db()
-    rows = db.query(
-        "SELECT id, level, kind, text, importance, weight, access_count, last_access, ttl_days, "
-        "pinned, valid, superseded_by, slot, meta, created, updated FROM memories ORDER BY updated DESC"
-    )
-    mems = [dict(r) for r in rows]
-    short = [m for m in mems if m.get("level") == "short" and m.get("kind") != "concept"]
-    # NODOS-CONCEPTO (T126) fuera de las capas: son HUBS del grafo, no hechos → capa propia para el visor.
-    concepts = [m for m in mems if m.get("kind") == "concept"]
-    longterm = [m for m in mems if m.get("level") in ("mid", "long") and m.get("kind") != "concept"]
-    edges = [dict(r) for r in db.query("SELECT from_id, to_id, type, weight FROM edges")]
-    # nº de píldoras enlazadas por concepto (para pintar el tamaño del hub).
-    deg: dict[int, int] = {}
-    for e in edges:
-        deg[e["from_id"]] = deg.get(e["from_id"], 0) + 1
-    for c in concepts:
-        c["degree"] = deg.get(c["id"], 0)
-
-    # ── MAPA CONCEPTUAL por capa (vista CONCEPTOS) ──────────────────────────────────────────────────────────
-    # LARGO: conceptos de cada píldora vía aristas persistidas (grafo emergente del CORAZÓN). Backstop derivado
-    # si una píldora durable no tiene aristas (pre-T126 / sin etiqueta del LLM).
-    concept_label = {c["id"]: (c.get("text") or "").strip() for c in concepts}
-    pill_concepts: dict[int, set] = {}
-    cid_set = set(concept_label)
-    for e in edges:
-        f, t = e.get("from_id"), e.get("to_id")
-        if f in cid_set and t not in cid_set:
-            pill_concepts.setdefault(t, set()).add(concept_label[f])
-        elif t in cid_set and f not in cid_set:
-            pill_concepts.setdefault(f, set()).add(concept_label[t])
-
-    def _long_resolver(p):
-        labels = pill_concepts.get(p.get("id"))
-        return list(labels) if labels else derive_concepts(p.get("text") or "")
-
-    def _short_resolver(p):
-        return derive_concepts(p.get("text") or "")
-
-    concept_graph = {
-        "short": _concept_graph(short, _short_resolver),
-        "long": _concept_graph(longterm, _long_resolver),
-    }
-
+    cols = ("SELECT id, level, kind, text, importance, weight, access_count, last_access, ttl_days, "
+            "pinned, valid, superseded_by, slot, meta, created, updated FROM memories WHERE valid=1 AND kind!='concept' ")
+    short = [dict(r) for r in db.query(cols + "AND level='short' ORDER BY updated DESC LIMIT ?", (n,))]
+    longterm = [dict(r) for r in db.query(cols + "AND level IN ('mid','long') ORDER BY updated DESC LIMIT ?", (n,))]
+    ids = [m["id"] for m in short + longterm]
+    edges = []
+    if ids:
+        ph = ",".join("?" * len(ids))
+        edges = [dict(r) for r in db.query(
+            f"SELECT from_id, to_id, type, weight FROM edges WHERE from_id IN ({ph}) OR to_id IN ({ph}) LIMIT ?",
+            (*ids, *ids, 4 * n))]
+    c = viewer.counts()
+    one = lambda sql: int((db.query_one(sql) or [0])[0] or 0)  # noqa: E731
+    n_short = one("SELECT COUNT(*) FROM memories WHERE valid=1 AND kind!='concept' AND level='short'")
+    n_long = one("SELECT COUNT(*) FROM memories WHERE valid=1 AND kind!='concept' AND level IN ('mid','long')")
     return {
         "state": _state.read(),
         "layers": {"short": short, "long": longterm},
-        "concept_graph": concept_graph,
-        "concepts": concepts,
         "edges": edges,
-        "counts": {"short": len(short), "long": len(longterm), "concepts": len(concepts),
-                   "edges": len(edges), "total": len(mems)},
+        "counts": {"short": n_short, "long": n_long, "concepts": c["concepts"], "edges": c["relations"],
+                   "total": n_short + n_long + c["concepts"]},
     }
 
 

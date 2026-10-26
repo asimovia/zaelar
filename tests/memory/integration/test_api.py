@@ -315,17 +315,17 @@ def test_untrusted_is_quarantined_from_passive_reads(fresh_db):
 
 
 def test_concept_graph_separates_short_and_long(fresh_db):
+    """The concept graph (now aggregated by `memory.viewer.graph`, V2-808) still separates the layers: a durable
+    fact feeds the LONG map, a fresh message the SHORT one, and every concept carries its count."""
     memapi.write_now("me operaron del corazón y hago rehabilitación", kind="fact", level="long")
     memapi.ingest_message("whatsapp", "Diego", "el sábado hay partido de pádel")  # short
-    m = memapi.map()
-    cg = m["concept_graph"]
-    assert "short" in cg and "long" in cg
-    long_labels = {n["label"] for n in cg["long"]["nodes"]}
-    short_labels = {n["label"] for n in cg["short"]["nodes"]}
-    assert "salud" in long_labels           # the durable health fact is in the LONG map
-    assert "deporte" in short_labels        # the padel message derives 'deporte' in the SHORT map
-    # each node carries its data count
-    assert all("count" in n for n in cg["long"]["nodes"] + cg["short"]["nodes"])
+    long_g = memapi.viewer.graph(days=0, layers="long", lanes="own,messages")
+    short_g = memapi.viewer.graph(days=0, layers="short", lanes="own,messages")
+    assert "salud" in {n["label"] for n in long_g["concepts"]}      # the durable health fact is in the LONG map
+    assert "deporte" in {n["label"] for n in short_g["concepts"]}   # the padel message derives 'deporte' in SHORT
+    assert "deporte" not in {n["label"] for n in memapi.viewer.graph(days=0, layers="short")["concepts"]}, \
+        "inbound messages stay out of his own map unless the messages lane is asked for"
+    assert all("count" in n for n in long_g["concepts"] + short_g["concepts"])
 
 
 def test_unforget_after_prune_reindexes_the_revived_row(fresh_db):

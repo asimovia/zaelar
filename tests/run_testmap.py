@@ -133,6 +133,10 @@ DOMAINS: list[dict] = [
             "tests/memory/unit/test_timeline_cases.py"]},
         {"id": "1.10", "title": "Recall carries provenance; the conversation record is a source (V2-802 T-06, V2-803 T-01/T-02)",
             "ch": UNIT, "paths": ["tests/memory/unit/test_recall_says_where_each_line_came_from.py"]},
+        # V2-808: the memory viewer shows every store, totalled by COUNTs, and never returns a whole one — every
+        # list has a server cap and a cursor, the graph is aggregated and bounded by the device's node budget.
+        {"id": "1.11", "title": "The memory viewer never returns a whole store: capped pages with a cursor, COUNTs, a graph bounded by the node budget (V2-808)",
+            "ch": HTTP, "paths": ["tests/memory/e2e/test_the_memory_viewer_never_returns_a_whole_store.py"]},
     ]},
     {"id": "2", "name": "FLASHBRAIN (nucleo)", "nodes": [
         {"id": "2.1", "title": "Enrutado / elección de tool", "ch": UNIT, "paths": [

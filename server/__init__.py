@@ -44,6 +44,7 @@ from connectors.calendar.server_api import router as calendar_router  # V2-679: 
 from connectors.torrent.server_api import router as torrent_router  # V2-637: embedded torrent client + Range stream (/api/torrent/*)
 from library.server_api import router as library_router  # V2-638: the agent's own filesystem (/api/library/*)
 from server.memory_routes import router as files_router  # paste/drop uploads → EPISODIC memory (V2-003; absorbs files/)
+from server.memory_viewer_api import router as memory_viewer_router  # V2-808: every store, counted and paged
 from memory.vault_api import router as vault_router    # operator encrypted-secrets vault (V2-060)
 from update.api import router as update_router      # V2-553: the update channel (build number + «reload?»)
 from bus.sse import publish as _sse_publish   # ONLY gate into the observer topic: stamps install+session
@@ -247,7 +248,7 @@ def create_app() -> FastAPI:
     # cron_router = the «Colmena» brain's OWN proactivity (nucleo/cron_api.py over nucleo/scheduler.py) — replaces
     # Hermes' old /api/cron; the same frontend ⏰ panel consumes it.
     routers = [pages_router, voice_router, canvas_router, widgets_router, meshkore_router, messaging_router,
-               files_router,
+               files_router, memory_viewer_router,
                vault_router, wizard_router, spotify_router, config_router, i18n_router,
                obs_router, feedback_router, update_router, cloudfiles_router, photos_router, contacts_router,
                videoacct_router, calendar_router, torrent_router, library_router, daemon_router,
