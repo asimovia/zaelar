@@ -169,7 +169,6 @@ def test_a_preference_that_is_turned_OFF_stops_costing_bytes():
     from nucleo import style_policy as sp
     sp._reset_for_tests()
     completo = len(sp.shape_line())
-    sp._cache.update(path=None, mtime=None, data={})
     real = sp.policy
     sp.policy = lambda: {**real(), "max_sentences": 0, "one_action_per_turn": False}
     try:

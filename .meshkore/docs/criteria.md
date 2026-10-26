@@ -312,9 +312,11 @@ below is the first kind, or it names the mechanism that replaced the second.
 
 ## 5 · Memory and rules
 
-- **CRIT-M1 · A spoken rule carries a scope** decided by a fixed classifier — `voice`, `widget:<id>` or `general`
-  — and each prompt surface carries only its own: the worker never carries voice rules; a widget's rule rides in
-  that widget's row. — since 2026-09-29 · nodes 2.172 · `nucleo/flash/rule_scope.py`, `memory/rules.py`.
+- **CRIT-M1 · Only the rules in play reach the model.** A sentence of his no code applies is a `note` row with a
+  scope (`global`, `voice`, `widget:<id>`); the voice turn carries `global` + `voice` inside the budget of the block it
+  replaced, a card's notes ride in its row only while it is on screen, named or recent, the worker never carries how
+  the voice speaks; a rule code applies never enters as prose (his permissions: one compact line); memory composes
+  none. — since 2026-10-26 · nodes 2.172 · `rules/prompt.py`, `rules/notes.py`, `widgets/brief.py`.
 - **CRIT-M7 · Every standing rule and preference is ONE row of the `rules` table**, scoped (`global` ·
   `<domain>[/<channel>[/<act>]]` · `widget:<id>[/<action>]` · `item:<id>`, read from declared classes, channels and
   manifests) and read by a cascade over the request's path: the more specific row runs last and wins, at one level

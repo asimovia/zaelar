@@ -92,15 +92,8 @@ def compose_state(*, mission_fallback: str = "") -> tuple[str, str, dict]:
         sit.append(f"Te llamas {aname}.")
     if st.get("treatment"):
         sit.append(f"Trato preferido: {st['treatment']}.")
-    # USER RULES (V2-046 A1): reglas de comportamiento que el operador impuso hablando; persisten entre sesiones
-    # y viajan SIEMPRE (cacheadas, µs). Capa APRENDIDA sobre las brain rules. Vacío = ni una línea (prompt idéntico).
-    # 2026-09-29 — the generic line carries the general and voice rules; a rule scoped to a widget rides in
-    # that widget's own row of the resources block (`widgets/brief.py`), composed where it applies.
-    from memory import rules as _rules
-    rules = _rules.for_surface(st, "voice")
-    if rules:
-        sit.append("REGLAS DEL OPERADOR (te las dio él; síguelas SIEMPRE): "
-                   + " · ".join(r[:90] for r in rules[-8:]))   # the NEWEST eight (V2-778 F3-24)
+    # The operator's spoken rules are rows of the rules table since V2-806 (`rules/`): memory no longer holds or
+    # renders them — the voice turn composes the ones in scope (`rules/prompt.py`).
     if st.get("location"):
         sit.append(f"Ubicación: {st['location']}.")
     # HECHOS CRÍTICOS de seguridad (alergias/condiciones médicas): línea PROPIA y PROMINENTE que se surface SIEMPRE,

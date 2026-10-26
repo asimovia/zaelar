@@ -181,10 +181,9 @@ def for_prompt(open_ids=None, recent_ids=None, query: str = "", stats: dict | No
         from memory import api as _memapi
         _st = _memapi.state() or {}
         maxw = str((_st.get("maximized_widget") or "")).strip().lower()
-        # 2026-09-29 — a spoken rule that names ONE card («en la agenda, las reuniones siempre de 30 minutos»)
-        # is composed HERE, in that card's row, every turn (an order about the agenda comes before it is open),
-        # and left out of the generic REGLAS line (`memory/rules.py`).
-        wrules = _memapi.rules_by_widget(_st) or {}
+        import rules.notes as _rnotes            # V2-806: a card's notes ride in its row only while it is IN PLAY
+        wrules = {w: n for w, n in _rnotes.by_widget().items()
+                  if w in {str(p["w"].get("id") or "").lower() for p in picked if p.get("reason") != "fill"}}
     except Exception:
         maxw = ""
 

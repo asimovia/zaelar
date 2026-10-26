@@ -40,7 +40,7 @@ __all__ = [
     "start", "stop", "redact_secrets",
     "write", "write_now", "ingest_message", "correction_targets", "widget_trace_ids", "task_trace_ids", "reinforce", "reinforce_ids_for", "pin", "unpin", "link",
     "forget", "unforget", "clear_conversation", "clear_slot_prefix",
-    "state", "set_state", "compose_state", "add_user_rule", "remove_user_rule", "rules_for", "rules_by_widget",
+    "state", "set_state", "compose_state",
     "kv_get", "kv_set",
     "query", "recent_short", "recent_window", "recent_by_source", "by_concepts",
     "seconds_since_last_conv",
@@ -468,87 +468,8 @@ def note_widgets_used(ids) -> list:
 # Claves del ESTADO que la sección B renderiza con su propia línea (no como "campo suelto"): no las vuelques dos veces.
 
 
-# ── USER RULES (V2-046 A1) — reglas de comportamiento impuestas por el operador, persistentes ─────────────
-_RULES_CAP = 12   # 8 until 2026-09-29: an INIT with five rule rows (V2-776 K2) dropped its first ones
-
-
-def _norm_rule(text: str) -> str:
-    import re
-    import unicodedata
-    n = unicodedata.normalize("NFKD", (text or "").strip().lower())
-    n = "".join(c for c in n if not unicodedata.combining(c))
-    return " ".join(re.sub(r"[^\w\s]", " ", n).split())     # sin acentos ni puntuación, espacios colapsados
-
-
-# Scope of a spoken rule (2026-09-29): the rule TEXT stays a flat list of strings (every old reader keeps working);
-# its scope, when it is not the default, lives beside it in `state.rule_scopes` {normalised text: scope}. The
-# scope is decided by the CALLER with a fixed classifier (`nucleo.flash.rule_scope`) — memory owes nucleo nothing,
-# so it never classifies. The filter has ONE home, `memory/rules.py` (this facade and `_prompt.py` both read it).
-from memory import rules as _rules  # noqa: E402
-
-RULE_SCOPE_DEFAULT = _rules.DEFAULT_SCOPE
-
-
-def rules_for(surface: str, st: dict | None = None) -> list:
-    """The operator's rules this SURFACE carries (see `memory/rules.py`). `st` lets a caller that already read
-    the state avoid a second read."""
-    return _rules.for_surface(st if isinstance(st, dict) else state(), surface)
-
-
-def rules_by_widget(st: dict | None = None) -> dict:
-    """{widget id: [rules]} — the rules scoped to a card, for that card's own row in the resources block."""
-    return _rules.by_widget(st if isinstance(st, dict) else state())
-
-
-def add_user_rule(text: str, scope: str = RULE_SCOPE_DEFAULT) -> list:
-    """Añade (o refuerza) una USER RULE del operador. Dedup por texto normalizado (re-decirla la sube a la más
-    reciente), cap `_RULES_CAP` (fuera la más antigua). Devuelve la lista vigente. Emite memory.updated (por
-    set_state) → memory_cache recompone el ESTADO off-loop. Llamar SIEMPRE fuera del turno (to_thread).
-    `scope` (ver `rules_for`): el ámbito que el llamador decidió; el default es «a todos», como siempre."""
-    t = (text or "").strip().rstrip(".") if text else ""
-    if not t:
-        return list(state().get("rules") or [])
-    cur = [r for r in (state().get("rules") or []) if isinstance(r, str) and r.strip()]
-    key = _norm_rule(t)
-    cur = [r for r in cur if _norm_rule(r) != key]     # dedup: la nueva versión manda
-    cur.append(t)
-    cur = cur[-_RULES_CAP:]
-    keep = {_norm_rule(r) for r in cur}
-    scopes = dict(state().get("rule_scopes") or {}) if isinstance(state().get("rule_scopes"), dict) else {}
-    scopes = {k: v for k, v in scopes.items() if k in keep}      # the cap drops a rule's scope with the rule
-    if scope and scope != RULE_SCOPE_DEFAULT:
-        scopes[key] = str(scope)
-    else:
-        scopes.pop(key, None)
-    set_state({"rules": cur, "rule_scopes": scopes})
-    return cur
-
-
-def remove_user_rule(text: str) -> tuple[list, str]:
-    """Retira la USER RULE que mejor casa con `text` (match difuso stdlib; el operador dice "olvida esa regla de
-    ser breve", no el texto exacto). Devuelve `(lista vigente, regla retirada | '')`. Sin match claro no toca nada."""
-    import difflib
-    cur = [r for r in (state().get("rules") or []) if isinstance(r, str) and r.strip()]
-    if not cur:
-        return [], ""
-    key = _norm_rule(text)
-    # match: mejor candidata por similitud de secuencia O por solape de tokens (>=1 token significativo compartido)
-    best, best_score = "", 0.0
-    key_toks = {w for w in key.split() if len(w) > 3}
-    for r in cur:
-        rn = _norm_rule(r)
-        score = difflib.SequenceMatcher(None, key, rn).ratio()
-        if key_toks & {w for w in rn.split() if len(w) > 3}:
-            score = max(score, 0.6)
-        if score > best_score:
-            best, best_score = r, score
-    if best_score < 0.45:      # sin señal suficiente → no retirar la regla equivocada
-        return cur, ""
-    cur = [r for r in cur if r != best]
-    scopes = dict(state().get("rule_scopes") or {}) if isinstance(state().get("rule_scopes"), dict) else {}
-    scopes.pop(_norm_rule(best), None)
-    set_state({"rules": cur, "rule_scopes": scopes})
-    return cur, best
+# ── USER RULES moved out (V2-806): the operator's rules and preferences are rows of the rules table (`rules/`),
+# which owns them; the sentences this state used to hold are imported once by `rules.notes.migrate_memory_state`.
 
 # Cómo se lee cada estado de un run de rail en el prompt (V2-042). SOLO DATOS (la directiva de qué hacer con un
 # rail vive en la capa de recursos del FlashBrain — `nucleo/rails.prompt_lines()` — como con los workers).

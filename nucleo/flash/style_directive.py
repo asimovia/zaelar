@@ -22,15 +22,15 @@ def handle(directive: str, text: str, brain, emit, spawn) -> bool:
 
     async def _persist_rule(d: str, removal: bool) -> None:
         try:
-            from memory import api as _mem
+            import rules.notes as _rnotes                       # V2-806: a note row of the rules table
             from nucleo.flash import rule_scope as _rscope      # the scope the rule is stored with (fixed classifier)
             if removal:
-                _, gone = await asyncio.to_thread(_mem.remove_user_rule, d)
+                gone = await asyncio.to_thread(_rnotes.remove_matching, d)
                 emit("brain", "🧬 user rule retirada" if gone else "🧬 user rule: sin match para retirar",
                      text=(gone or d)[:100], role="system")
             else:
                 _scope = _rscope.scope_of(d)
-                await asyncio.to_thread(_mem.add_user_rule, d, scope=_scope)
+                await asyncio.to_thread(_rnotes.add, d, _scope)
                 # V2-778 F3-25: the scope rides on the event, so a rule filed under the wrong surface is visible
                 emit("brain", "🧬 user rule guardada (persiste)", text=d[:100], role="system", extra={"scope": _scope})
         except Exception as e:  # noqa: BLE001
@@ -151,23 +151,23 @@ async def handle_probe(d: str, text: str, sess, ingest: bool):
         sess.directive = ""
         if ingest:
             try:
-                from memory import api as _memapi
+                import rules.notes as _rnotes
                 from nucleo import consent as _consent
                 _stylep.retract_directive(d)
                 _consent.retract_directive(d)
-                await asyncio.to_thread(_memapi.remove_user_rule, d)
+                await asyncio.to_thread(_rnotes.remove_matching, d)
             except Exception:
                 pass
     else:
         sess.directive = d
         if ingest:
             try:
-                from memory import api as _memapi
+                import rules.notes as _rnotes
                 from nucleo import consent as _consent
                 from nucleo.flash import rule_scope as _rscope
                 _stylep.apply_directive(d)
                 _consent.apply_directive(d)          # the act-or-ask gate hears the rule too (2026-09-29)
-                await asyncio.to_thread(_memapi.add_user_rule, d, scope=_rscope.scope_of(d))
+                await asyncio.to_thread(_rnotes.add, d, _rscope.scope_of(d))
             except Exception:
                 pass
     return None

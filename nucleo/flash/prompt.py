@@ -756,6 +756,7 @@ def build_flash_system(directive: str = "", recall_query: str = "", recall_block
     import time as _t
     _t0 = _t.perf_counter()
     from . import memory_cache
+    from rules import prompt as _rules_prompt          # V2-806: his in-scope rules, per turn
     _ts = _t.perf_counter()
     memory_block, _op_name = memory_cache.get()
     if timings is not None:
@@ -792,7 +793,7 @@ def build_flash_system(directive: str = "", recall_query: str = "", recall_block
         + ("\n\n" + memory_block if memory_block else "")
         + ("\n\n" + recent_block if recent_block else "")
         + ("\n\n" + recall_block if recall_block else "")
-        + _people_block(turn_text)
+        + _people_block(turn_text) + _rules_prompt.voice_block()
         + _directive_block(directive)
         # CONTEXT PACKS (V2-675) go AFTER the operator's own style directive and BEFORE the live state: a
         # directive is HIS instruction and a pack is OURS; and a pack is about a STRETCH of the relationship,

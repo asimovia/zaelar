@@ -80,4 +80,5 @@ def test_security_flag_isolated_from_style_rules(fresh_db):
     mstate.set_security_flag("secrets_voice", False)
     st = mstate.read()
     assert st["security"]["secrets_voice"] is False
-    assert st["rules"] == []
+    import rules
+    assert rules.all_rows(include_defaults=False) == [], "nor a row of the rules table (V2-806)"

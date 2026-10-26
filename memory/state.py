@@ -44,17 +44,6 @@ _DEFAULT: dict = {
     # cae al texto de `langs`). Es la parte FIJA del prompt que comparten los dos cerebros.
     "mission": None,
     "treatment": None,        # p.ej. "directo, sin narrar" | "elaborado"
-    # USER RULES (V2-046 A1): reglas de comportamiento que el OPERADOR impone hablando ("sé más directo",
-    # "responde solo sí o no", "cuando te pida una acción hazla sin responder"). El agente NACE EN BLANCO de
-    # user rules y cada usuario lo personaliza; PERSISTEN entre sesiones (≠ la directiva de sesión, que muere al
-    # reconectar). Lista corta de frases imperativas (cap ~8, dedup, la más reciente manda) — la escribe el
-    # provider al reconocer una regla (tool set_style_directive) vía memory.add_user_rule; la lee compose_state §B.
-    # Es la capa APRENDIDA frente a las BRAIN RULES (genética primigenia hardcodeada). Ver V2-046-sistema-arena.
-    "rules": [],
-    # 2026-09-29 — el ÁMBITO de cada regla dicha, {texto normalizado: scope}, solo cuando no es el default
-    # («general» = todos los prompts). Lo decide el llamador con un clasificador fijo (`style_policy.scope_of`);
-    # `memory.rules_for(surface)` lo lee. La lista de arriba no cambia de forma: los lectores viejos siguen igual.
-    "rule_scopes": {},
     "location": None,
     "recent": [],             # tareas/mensajes recientes (lista corta)
     "topics": [],             # temas hablados recientemente

@@ -77,45 +77,6 @@ def test_compose_state_is_direct_no_retriever(fresh_db, monkeypatch):
     assert calls["n"] == 0
 
 
-# ── USER RULES (V2-046 A1): operator rules in STATE — persistent, capped, deduplicated, rendered ────────────
-
-def test_user_rules_render_and_empty_is_byte_identical(fresh_db):
-    """With empty rules the block is BYTE-identical (not one extra line); with rules, add a REGLAS DEL OPERADOR line."""
-    memapi.set_state({"operator_name": "Ricart"})
-    before, _, _ = memapi.compose_state(mission_fallback="m")
-    assert "REGLAS DEL OPERADOR" not in before
-    memapi.add_user_rule("Sé más directo, responde en una frase")
-    after, _, _ = memapi.compose_state(mission_fallback="m")
-    assert "REGLAS DEL OPERADOR" in after and "Sé más directo" in after
-    # removing it returns the exact original block
-    _, gone = memapi.remove_user_rule("esa regla de ser directo")
-    assert gone
-    again, _, _ = memapi.compose_state(mission_fallback="m")
-    assert again == before
-
-
-def test_user_rules_dedup_and_cap(fresh_db):
-    """Repeating a rule does not duplicate it (it moves it to the most recent position); the cap drops the oldest one."""
-    memapi.add_user_rule("Responde solo sí o no")
-    memapi.add_user_rule("responde solo si o no.")          # same rule, different spelling → dedup
-    assert len(memapi.state()["rules"]) == 1
-    for i in range(14):
-        memapi.add_user_rule(f"Regla número {i}")
-    rules = memapi.state()["rules"]
-    assert len(rules) == 12                                  # cap (12 since V2-776 K2)
-    assert "Regla número 13" in rules[-1]                    # the most recent one wins
-
-
-def test_user_rules_remove_fuzzy_and_no_false_removal(fresh_db):
-    """Removal matches by fuzzy reference; without a strong enough signal it does NOT remove the wrong rule."""
-    memapi.add_user_rule("Cuando te pida una acción hazla sin responder")
-    memapi.add_user_rule("Trátame de usted")
-    _, gone = memapi.remove_user_rule("olvida lo de tratarme de usted")
-    assert gone == "Trátame de usted"
-    _, gone2 = memapi.remove_user_rule("olvida esa regla del parchís")   # it does not exist → changes nothing
-    assert gone2 == "" and len(memapi.state()["rules"]) == 1
-
-
 # ── An ERRAND is not a fact about the person (V2-337, 2026-08-26) ───────────────────────────────────────────
 #
 # Both were in the SAME list and under the SAME instruction — «take it as known without searching» — so «Vive en Madrid»

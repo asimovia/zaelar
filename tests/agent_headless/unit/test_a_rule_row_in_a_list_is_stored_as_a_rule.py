@@ -4,13 +4,12 @@ Demo pass 57, the INIT: Jev split the message into 26 rows and named five of the
 «Confirm my orders with a short line…»). The runner handed each to a model turn, the model answered «Done.»,
 `set_style_directive` was never called and nothing was stored: no flag, no `state.rules`. The classification
 was right and its consequence was missing. Now a `rule` row goes to the directive handler's own path — the
-style and consent flags, then the sentences into memory with their scope — with no model call for that row.
+style and consent flags, then the sentences as note rows of the rules table with their scope — with no model call for that row.
 """
 import asyncio
 
 import pytest
 
-from memory import api as memapi
 from memory import db as memdb
 from memory import embeddings as mememb
 from nucleo import consent, style_policy as sp
@@ -57,7 +56,8 @@ def test_a_rule_row_is_stored_with_its_flags_and_never_reaches_the_model():
     calls = []
     uid, _ = _run(calls)
     assert calls == ["Your name is Johnny.", "Remember: I live in Los Angeles."], "the rule row took no model turn"
-    rules = memapi.state().get("rules") or []
+    import rules.notes as _rnotes
+    rules = _rnotes.for_surface("")
     assert any("organize something" in r for r in rules) and any("Confirm my orders" in r for r in rules)
     assert sp.confirm_short_actions() is True and consent.ask_at() == "sensitive", "the flags moved on the way"
     s = runner.summary(uid)
@@ -78,4 +78,5 @@ def test_a_rule_row_that_names_a_card_gets_that_scope():
     async def notify(title, text):
         pass
     asyncio.run(runner.run(uid, turn=turn, ingest=ingest, notify=notify, worker_wait_s=0.1))
-    assert memapi.rules_for("widget:agenda") == ["From now on, in the calendar, meetings are always 30 minutes"]
+    import rules.notes as _rnotes
+    assert _rnotes.for_surface("widget:agenda") == ["From now on, in the calendar, meetings are always 30 minutes"]
