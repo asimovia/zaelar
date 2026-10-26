@@ -97,11 +97,11 @@ below is the first kind, or it names the mechanism that replaced the second.
   control), a desktop Mac with «isolate» (echo cancellation only, so macOS Voice Isolation works without the
   browser's suppression on top); `voiceIsolation` is asked only where `getSupportedConstraints()` reports it
   (`frontend/app/services/mic-profile.js`). Agent-side voice isolation is `ZAELAR_VOICE_ISOLATION` = off | nc | bvc,
-  default off: it attaches `livekit-plugins-noise-cancellation` to the room's audio input only on a LiveKit Cloud
+  default bvc (operator, 2026-10-26: on by default on desktop and phone, `off` is the flag): it attaches `livekit-plugins-noise-cancellation` to the room's audio input only on a LiveKit Cloud
   project; elsewhere (a self-hosted livekit-server refuses it) or with the plugin missing the session runs as with
-  off and one warning says why (`voice/engine/pipeline/voice_isolation.py`). A filter is turned on by default only
-  after `tests/voice/bench/voice_isolation_bench.py` shows it lowers WER under noise without raising it on clean
-  speech. — since 2026-10-26 · nodes 3.138, 4.299.
+  off and one warning says why (`voice/engine/pipeline/voice_isolation.py`). A self-hosted server skips it with one info line.
+  `tests/voice/bench/voice_isolation_bench.py` measures WER with and without it; a result that raises WER on clean
+  speech turns the default back to off. — since 2026-10-26 · nodes 3.138, 4.299.
 
 ## 2 · Consent — act or ask
 
