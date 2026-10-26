@@ -72,12 +72,34 @@ and Barcelona, which nova-3 transcribes correctly, and never reaching the ones t
 
 # ── the wiring: send the list, and DO NOT send it when doing so breaks things ───────────────────────────────
 
-def test_una_sesion_en_castellano_manda_los_terminos(monkeypatch):
+# ── V2-812 T-07: boost only the places EXPECTED, never the national list on its own ─────────────────────────
+# Measured before the change (detail in `gazetteer.expected_terms`): sent on every session, the hundred towns
+# turned ordinary words into towns («música desactiva» → «música de Játiva») and cost word error rate on plain
+# commands, while the operator's own speech used none of them.
+
+@pytest.mark.parametrize("code", ["es", "en"])
+def test_a_session_with_no_expected_place_boosts_nothing(monkeypatch, code):
+    monkeypatch.delenv(gz.MEMORY_ENV, raising=False)
     monkeypatch.setattr(langs, "first_run_auto", lambda: False)
-    monkeypatch.setattr(langs, "current_code", lambda: "es")
+    monkeypatch.setattr(langs, "current_code", lambda: code)
     stt = dg.build()
-    assert stt._opts.keyterm, "the operator’s session has no reinforcement: the gazetteer is not wired in"
-    assert "Calatayud" in stt._opts.keyterm
+    assert not stt._opts.keyterm, f"a {code} session biased every word towards a national list of towns"
+    assert gz.boost_terms(code) == []
+
+
+@pytest.mark.parametrize("code", ["es", "en"])
+def test_his_own_places_are_boosted_and_spelled_by_the_measured_list(monkeypatch, code):
+    """The places he DOES use (his memory, behind the switch that governs sending them out) are the expected
+    ones — and the measured list still decides how they are spelled («calatayud» in memory → «Calatayud»)."""
+    import memory.api as _mem
+    monkeypatch.setenv(gz.MEMORY_ENV, "1")
+    monkeypatch.setattr(_mem, "state", lambda: {"operator_name": "Ricart", "location": "Vive en Calatayud"})
+    monkeypatch.setattr(langs, "first_run_auto", lambda: False)
+    monkeypatch.setattr(langs, "current_code", lambda: code)
+    keyterm = list(dg.build()._opts.keyterm or [])
+    assert "Calatayud" in keyterm
+    for stranger in ("Játiva", "Tarrasa", "Vigo", "Almonte"):
+        assert stranger not in keyterm, f"«{stranger}» is not his: it may not bias his speech"
 
 
 def test_la_primera_ejecucion_NO_manda_terminos(monkeypatch):

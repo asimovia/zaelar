@@ -14,7 +14,8 @@ def build(vad=None):
     model = SETTINGS.stt_model_deepgram
     opts = {}
 
-    # TERM BOOSTING — the place names nova-3 mangles (see `gazetteer.py` for the measured sweep behind the list).
+    # TERM BOOSTING — only the places EXPECTED in his speech (`gazetteer.expected_terms`): a national list sent
+    # on every session turned ordinary words into towns (V2-812 T-07, measured there). Empty by default.
     # Three conditions, and each one is a way to go deaf rather than mishear a town:
     #   · nova-3 only. The plugin RAISES on `keyterm` with any other model, and that exception happens while the
     #     session is being built, so a `ZAELAR_STT_MODEL_DG=nova-2` would take the whole STT down with it.

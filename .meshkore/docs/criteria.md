@@ -73,6 +73,11 @@ below is the first kind, or it names the mechanism that replaced the second.
   verdict), with nothing run, no model call and no pass that ran or refused, starts its errand through the turn's
   escalation instead of a «not done» (`promise_kept.deferred_errand`). — since 2026-10-24 ·
   nodes 2.790, 2.794, 2.796.
+- **CRIT-V16 · The STT boosts a place only where one is expected.** Keyterms bias every word of a session, so the
+  national list of mis-heard towns is never sent on its own; only his own places (memory, behind
+  `ZAELAR_STT_BOOST_FROM_MEMORY`, off by default) are boosted, spelled by that list. Re-measure
+  (`gazetteer.expected_terms`) before boosting anything wider. — since 2026-10-26 · nodes 3.13 ·
+  `voice/engine/speech/stt/gazetteer.py`.
 - **CRIT-V13 · «I didn't catch what you said before the pause» only over words that were really lost.** A
   discarded fragment whose words still travel, in order, in the text the turn runs with (or in the buffer still
   held) is not a loss: `Accumulator.offer` returns no `dropped`, so no timeline line and no spoken notice. A

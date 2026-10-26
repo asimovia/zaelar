@@ -1861,8 +1861,11 @@ DOMAINS: list[dict] = [
         # demás es reparar una frase que ya nació mal. Medido contra la API viva: el tope es de 500 SUB-TOKENS
         # (≈114 nombres reales), y pasarse es un 400 en la petición de escucha — o sea el motor SORDO, que es peor
         # que el fallo que arregla. De ahí que la mitad de los tests sean el sobre y no la función.
+        # V2-812 T-07 — sent on every session, the national list turned ordinary words into towns («música
+        # desactiva» → «música de Játiva»); now only the places EXPECTED (his own, from memory) are boosted.
         {"id": "3.13", "title": "Refuerzo de términos del STT: los topónimos que nova-3 destroza, y una lista que "
-                                "no puede crecer hasta dejar el motor sordo",
+                                "no puede crecer hasta dejar el motor sordo — boosted only where a place is "
+                                "expected, never the national list on its own (V2-812 T-07)",
             "ch": VOICE, "paths": ["tests/voice/unit/test_stt_gazetteer.py"]},
         # V2-640 — «¿sigues ahí?» es un toque en la puerta, no un encargo: se contesta al instante y sin
         # modelo (carril de presencia, espejo en probe), y el intercambio queda en la ventana igualmente.

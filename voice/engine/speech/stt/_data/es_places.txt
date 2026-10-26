@@ -1,5 +1,9 @@
 # Spanish place names that Deepgram nova-3 mis-transcribes — measured, not guessed.
 #
+# NOT SENT GLOBALLY since V2-812 T-07: boosting all of them biased ordinary speech towards these towns
+# (measured in `gazetteer.expected_terms`). The list is now the SPELLING of a place the operator's own memory
+# says he uses; on its own it boosts nothing.
+#
 # THE SWEEP (2026-08-23). 941 Spanish municipalities over 8.000 inhabitants, each spoken by macOS
 # `say -v Mónica` inside a carrier sentence («Estoy en X, ¿qué tiempo hace?») and sent to nova-3 with
 # language=es. 342 of the 941 came back wrong — 36%. The list below is the worst of those by population.

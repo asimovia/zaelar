@@ -138,8 +138,38 @@ def memory_terms(limit: int = 30) -> list[str]:
     return out[:limit]
 
 
+def _fold(term: str) -> str:
+    import unicodedata
+    return "".join(c for c in unicodedata.normalize("NFD", (term or "").lower())
+                   if unicodedata.category(c) != "Mn")
+
+
+def expected_terms(code: str) -> list[str]:
+    """The places EXPECTED in this operator's speech: his own (the memory hook), spelled the way the measured
+    list spells them when it has them. The national list on its own is never sent (V2-812 T-07).
+
+    WHY NOT GLOBALLY. A keyterm is a bias on EVERY word of the session, and a hundred rare towns are a hundred
+    magnets for ordinary speech. Measured three ways before removing it:
+      · real speech — in 1,996 distinct operator lines across the session logs at hand, the 100
+        boosted names appeared 3 times and all 3 were captures of something else («música desactiva» →
+        «música de Játiva», «el Vogue de Madonna» → «el Vigo de Madonna», a sentence ending «…de Tarrasa»);
+        0 genuine uses;
+      · ordinary commands, A/B on nova-3 (248 lines: the Spanish action-map phrases, the car session's own
+        lines, 30 sentences built on the list's «heard as» neighbours; macOS `say -v Mónica`) — word error
+        rate 3.8% → 4.1% clean and 6.9% → 7.1% under road-like noise; boosting made 6 lines worse and 3
+        better in noise («abre mi día» → «abre mi vía», «widgets» → «güílets», «vamos al monte» →
+        «vamos almonte»);
+      · what it buys — the same 100 names in a carrier sentence: recall 0 → 90 clean, 11 → 85 in noise.
+    So the list recovers towns he does not say at the price of words he says all the time. Boosting stays
+    for the places that ARE expected — his own, from memory, behind the switch that already governs sending
+    them to a third party (`MEMORY_ENV`, off by default: with it off nothing is boosted)."""
+    canon = {_fold(t): t for t in terms(code)}
+    return [canon.get(_fold(m), m) for m in memory_terms()]
+
+
 def boost_terms(code: str) -> list[str]:
     """Everything the STT should boost for this session, clamped ONCE — the only function `deepgram.py` calls.
+    Since V2-812 T-07 that is `expected_terms` and nothing else: never the national list on its own.
 
     It exists because of a bug in the first version of this module: the static list and the memory terms were
     each clamped on their own and then added together, so the pair could go over the cap even though neither
@@ -148,4 +178,4 @@ def boost_terms(code: str) -> list[str]:
     The operator's own places go FIRST. If anything has to be dropped it should be a town he has never named,
     not the one he lives in — which is the entire point of the hook.
     """
-    return _clamp([*memory_terms(), *terms(code)])
+    return _clamp(expected_terms(code))
