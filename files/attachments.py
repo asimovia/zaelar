@@ -78,10 +78,39 @@ def free_bytes_needed(total_bytes: int) -> int:
     return max(int(lim["min_free_bytes"]), int(float(lim["min_free_ratio"]) * int(total_bytes)))
 
 
-def disk_allows(directory: Path, incoming: int) -> bool:
-    """False when writing `incoming` more bytes would leave the volume under its headroom."""
+# Bytes that uploads in flight have announced and not written yet. The free space of the volume only shows what
+# is already on disk, so without this several uploads at once were each measured as if alone — and together could
+# land the volume under its headroom.
+_reservations: dict[int, int] = {}
+_res_lock = threading.Lock()
+
+
+class Reservation:
+    """The bytes one upload still owes the disk: announced at the start, shrinking as they are written."""
+
+    def __init__(self, announced: int):
+        self._key = id(self)
+        self.update(announced)
+
+    def update(self, left: int) -> None:
+        with _res_lock:
+            _reservations[self._key] = max(0, int(left))
+
+    def release(self) -> None:
+        with _res_lock:
+            _reservations.pop(self._key, None)
+
+
+def reserved_bytes() -> int:
+    with _res_lock:
+        return sum(_reservations.values())
+
+
+def disk_allows(directory: Path, incoming: int = 0) -> bool:
+    """False when writing `incoming` more bytes — on top of what every upload in flight still owes — would leave
+    the volume under its headroom."""
     du = shutil.disk_usage(directory)
-    return du.free - max(0, int(incoming)) >= free_bytes_needed(du.total)
+    return du.free - max(0, int(incoming)) - reserved_bytes() >= free_bytes_needed(du.total)
 
 
 # ── kind ─────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -334,5 +363,7 @@ def prompt_lines(now: float | None = None) -> list[str]:
 
 
 def _reset_for_tests() -> None:
+    with _res_lock:
+        _reservations.clear()
     with _lock:
         _recent.clear()

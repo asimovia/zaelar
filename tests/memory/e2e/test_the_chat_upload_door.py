@@ -241,3 +241,42 @@ def test_files_are_read_one_at_a_time(monkeypatch, tmp_path):
     for t in ts:
         t.join(timeout=10)
     assert worst[0] == 1, f"{worst[0]} files were read at the same time"
+
+
+def test_an_upload_in_flight_counts_against_the_headroom_of_the_others(client, tmp_path, monkeypatch):
+    """Free space only shows what is on disk: what another upload has announced and not written yet must count."""
+    import shutil as _sh
+    real = _sh.disk_usage
+    monkeypatch.setattr(att.shutil, "disk_usage",
+                        lambda p: real(p)._replace(total=3 * 1024 ** 3, free=600 * 1024 ** 2))
+    other = att.Reservation(100 * 1024 ** 2)        # an upload still arriving, 100 MB to go
+    try:
+        r = _raw(client, "a.pdf", b"%PDF-1.4" + b"x" * (200 * 1024))
+        assert r.status_code == 507 and r.json()["reason"] == "disk_full", (
+            "600 MB free minus the 100 MB another upload still owes leaves less than the 512 MB headroom")
+    finally:
+        other.release()
+    r = _raw(client, "a.pdf", b"%PDF-1.4" + b"x" * (200 * 1024))
+    assert r.status_code == 200, "with the other upload done the same file fits"
+    assert att.reserved_bytes() == 0, "a finished or refused upload must give its reservation back"
+
+
+def test_a_reading_that_runs_out_of_time_leaves_no_thumbnail_behind(client, tmp_path, monkeypatch):
+    import threading
+    import time as _t
+    done = threading.Event()
+    left: list[Path] = []
+
+    def slow_process(path, kind, thumb_dest):
+        _t.sleep(0.6)                                # past the clock below
+        thumb_dest.write_bytes(b"late thumbnail")
+        left.append(thumb_dest)
+        done.set()
+        return "", "", True
+
+    monkeypatch.setattr(att, "process", slow_process)
+    monkeypatch.setitem(att._limits_cache, "process_timeout_s", 0.2)
+    r = _raw(client, "slow.png", _png())
+    assert r.status_code == 200 and r.json()["thumb"] is None
+    until_sync(done.is_set, "the slow reader to finish", timeout_s=5)
+    until_sync(lambda: left and not left[0].exists(), "the late thumbnail to be removed", timeout_s=5)

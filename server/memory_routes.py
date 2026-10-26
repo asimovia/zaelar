@@ -16,6 +16,7 @@
 # trust model as the rest of the local API.
 #
 import asyncio
+import threading
 import os
 import uuid
 from pathlib import Path
@@ -77,13 +78,12 @@ async def upload(request: Request):
     inbox = Path(memapi.episode_inbox())
     declared = request.headers.get("content-length")
     is_raw = not request.headers.get("content-type", "").startswith("multipart/form-data")
-    if is_raw and declared and declared.isdigit():
-        if int(declared) > max_bytes:
-            return _refuse(413, "too_large", limit=max_bytes)
-        if not _att.disk_allows(inbox, int(declared)):
-            return _refuse(507, "disk_full")
-    elif not _att.disk_allows(inbox, 0):
+    announced = int(declared) if is_raw and declared and declared.isdigit() else 0
+    if announced > max_bytes:
+        return _refuse(413, "too_large", limit=max_bytes)
+    if not _att.disk_allows(inbox, announced):
         return _refuse(507, "disk_full")
+    held = _att.Reservation(announced)      # counted by every other upload's check until this one is written
 
     tmp = inbox / f"{uuid.uuid4().hex}.part"
     written, head, kind, mime, complete = 0, b"", None, None, False
@@ -97,6 +97,7 @@ async def upload(request: Request):
                 if len(head) < 65536:
                     head += piece[:65536 - len(head)]
                 fh.write(piece)
+                held.update(announced - written)
                 if written % every < len(piece) and not _att.disk_allows(inbox, 0):
                     return _refuse(507, "disk_full")
         if request.state.source == "chat":
@@ -108,6 +109,7 @@ async def upload(request: Request):
     except ClientDisconnect:
         return _refuse(499, "cancelled")
     finally:
+        held.release()
         if not complete:
             tmp.unlink(missing_ok=True)         # a refused or cancelled upload leaves nothing behind
     if request.state.source != "chat":
@@ -124,10 +126,21 @@ async def _keep_chat_file(tmp: Path, name: str, kind: str, mime: str) -> dict:
     lim = _att.limits()
     thumb_tmp = tmp.with_suffix(".thumb.jpg")
 
+    abandoned = threading.Event()
+
+    def _work():
+        out = _att.process(tmp, kind, thumb_tmp)
+        # A thread cannot be stopped: one that outlived its clock removes what it wrote itself, when it ends.
+        if abandoned.is_set():
+            thumb_tmp.unlink(missing_ok=True)
+        return out
+
     try:
-        reading, why, has_thumb = await asyncio.wait_for(asyncio.to_thread(_att.process, tmp, kind, thumb_tmp),
+        reading, why, has_thumb = await asyncio.wait_for(asyncio.to_thread(_work),
                                                          timeout=float(lim["process_timeout_s"]))
     except asyncio.TimeoutError:
+        abandoned.set()
+        thumb_tmp.unlink(missing_ok=True)
         reading, why, has_thumb = "", "reading took too long", False
     ref = await asyncio.to_thread(memapi.adopt_episode, tmp, filename=name, mime=mime,
                                   summary=_att.summary_of(name, kind, reading))
