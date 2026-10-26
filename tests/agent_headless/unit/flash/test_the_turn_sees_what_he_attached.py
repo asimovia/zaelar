@@ -87,7 +87,10 @@ def _jpeg(w, h) -> bytes:
 
 def test_the_image_travels_to_a_model_that_receives_it(monkeypatch, tmp_path):
     from nucleo import energy_meter, memllm
-    monkeypatch.setenv("GEMINI_API_KEY", "placeholder-gemini")
+    # The titular is read from the declared table, so a measured change of reader does not break this test; what
+    # it pins is that the image travels to THAT model, downscaled, as an image part, and is metered there.
+    titular = att._image_rungs()[0]
+    monkeypatch.setenv(titular["key_env"], "placeholder-key")
     sent, metered = [], []
     monkeypatch.setattr(memllm, "_post_json", lambda url, payload, **kw: sent.append((url, payload)) or
                         {"choices": [{"message": {"content": "A blue square."}}], "usage": {"prompt_tokens": 1}})
@@ -96,13 +99,14 @@ def test_the_image_travels_to_a_model_that_receives_it(monkeypatch, tmp_path):
     p.write_bytes(_jpeg(4000, 3000))
     assert att._read_image(p) == ("A blue square.", "")
     url, payload = sent[0]
-    assert "generativelanguage.googleapis.com" in url and payload["model"] == "gemini-2.5-flash"
+    from urllib.parse import urlparse
+    assert urlparse(titular["base_url"]).netloc in url and payload["model"] == titular["model"]
     part = payload["messages"][0]["content"][1]
     assert part["type"] == "image_url" and part["image_url"]["url"].startswith("data:image/jpeg;base64,")
     from PIL import Image
     shown = Image.open(io.BytesIO(base64.b64decode(part["image_url"]["url"].split(",", 1)[1])))
     assert max(shown.size) <= att.limits()["reader_image_side"], "downscaled before it travels"
-    assert metered and metered[0]["model"] == "gemini-2.5-flash"
+    assert metered and metered[0]["model"] == titular["model"]
 
 
 def test_every_rung_of_the_image_reader_receives_images():
@@ -113,7 +117,9 @@ def test_every_rung_of_the_image_reader_receives_images():
 
 
 def test_without_a_key_the_image_is_unread_and_says_why(monkeypatch, tmp_path):
-    for env in ("GEMINI_API_KEY", "OPENAI_API_KEY"):
+    # Every rung's key, read from the table: a hard-coded list missed the titular when it changed and this test
+    # made a real model call.
+    for env in {r["key_env"] for r in att._image_rungs()}:
         monkeypatch.delenv(env, raising=False)
     p = tmp_path / "a.jpg"
     p.write_bytes(_jpeg(50, 50))
