@@ -7,7 +7,7 @@ bound.
 """
 from __future__ import annotations
 
-from nucleo.flash import act_repair as _act_repair, post_stream as _pst
+from nucleo.flash import act_repair as _act_repair, escalation_guard as _eg, post_stream as _pst
 
 
 async def run_the_light_lanes(*, FastClient, _apply_widget_data, _brief, _buf_add, _buf_reset, _cardc, _close_target, _cover_work, _identify, _identify_system, _named_by_verdict, _no_tool, _op_text, _prompt_mod, _router, _rv, _say, _show_target_instance, _shown_ids, _t, _tag_emit, _tool_fired, _turn_op_tasks, acted, attention, brain, clarify, data_done, emit, escalate_req, images_req, listing_req, music_req, operator_text, read_req, recall_req, reopen_req, reveal_req, search_req, send, speak, spec, speech, spoken, spoken_text, take, text, with_also_named) -> dict:
@@ -20,7 +20,7 @@ async def run_the_light_lanes(*, FastClient, _apply_widget_data, _brief, _buf_ad
                  or _pst._direct_action.verdict_shows(_brief))
             and not _router.asks_for_missing_detail(spoken_text)):
         _win_goal = ""
-        if not (_router.looks_like_create_widget(_op_text) or _router.looks_like_escalate_task(_op_text)):
+        if (_wt := _eg.word_tables(_router, _brief, _op_text, emit=emit)) == "":   # V2-802 T-07 (CRIT-K1)
             # V2-132 — la petición puede ser de HACE UNOS TURNOS: zaelar pidió el dato que faltaba (correcto),
             # el operador se lo dio, y la promesa cayó en un turno cuyo texto por sí solo no describe tarea
             # ninguna («vale, avísame»). El backstop miraba solo ESTE turno, así que no podía dispararse — y
@@ -77,7 +77,7 @@ async def run_the_light_lanes(*, FastClient, _apply_widget_data, _brief, _buf_ad
             music_req["v"] = {"query": _router.music_query(spoken_text, _op_text), "action": "play"}
             emit("brain", "🎵 música por backstop (prometió ponerla sin tool, en inglés)",
                  text=music_req["v"]["query"][:80], role="system")
-        elif (_router.looks_like_create_widget(_op_text) or _router.looks_like_escalate_task(_op_text) or _win_goal
+        elif (_wt == "go" or _win_goal
                 or _pst._direct_action.verdict_escalates(_brief, answered=not _router.promises_action(spoken_text))
                 or _pst._direct_action.order_over_a_card_left_undone(_brief)):
             escalate_req["v"] = _win_goal or _op_text   # crear widget = código; marketplace/informe = navegador

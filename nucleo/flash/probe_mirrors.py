@@ -89,8 +89,8 @@ async def mirror_the_voice_backstops(*, _akp, _cw, _hw, _router, _rt, _sp, _tbri
                 action = "music"
                 music_req = {"action": "play", "query": _routerc.music_query(spoken, text)}
             elif _routerc.promises_action(spoken) and not _routerc.asks_for_missing_detail(spoken):
-                if (_routerc.looks_like_create_widget(text) or _routerc.looks_like_escalate_task(text)
-                        or _routerc.looks_like_create_widget(spoken) or _routerc.looks_like_escalate_task(spoken)):
+                from . import escalation_guard as _eg_pm   # V2-802 T-07: the voice lane's rule (CRIT-K1)
+                if (_wt := _eg_pm.word_tables(_routerc, _tbrief, text, spoken)) == "go":
                     action = "escalate"
                 # V2-132: the request may have been made a turn or two back — zaelar asked for the missing
                 # detail (correct), the operator gave it, and the promise landed on a turn whose text
@@ -102,7 +102,7 @@ async def mirror_the_voice_backstops(*, _akp, _cw, _hw, _router, _rt, _sp, _tbri
                 # turnos sobre una tarea de Ticketmaster ya cancelada. El razonamiento de la puerta era correcto
                 # e incompleto: con una tarea viva «sigo con ello» ES honesto y re-escalar SÍ duplicaría el
                 # trabajo — pero solo si la tarea viva es de lo que se ha pedido.
-                elif (_wgoal := _routerc.escalate_goal_from_window(sess.window, text)) and (
+                elif _wt == "" and (_wgoal := _routerc.escalate_goal_from_window(sess.window, text)) and (
                         not _hw or _routerc.nothing_running_for(_wgoal, _probe._running_goals())):
                     action = "escalate"
                     _window_goal = _wgoal
