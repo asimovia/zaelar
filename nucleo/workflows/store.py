@@ -31,6 +31,8 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass, field
 
+from loguru import logger
+
 # A learned route is a shortcut, not a truth. Positive rows live a week; a NEGATIVE row lives less, because
 # «nobody serves this» is the answer most likely to stop being true — the mesh gains agents on the order of
 # days (two arrived the afternoon this was written).
@@ -110,6 +112,34 @@ def _pinned(domain: str, channel: str) -> bool:
     return False
 
 
+# V2-859 T567 · the genome is OBSERVABLE: every write to the learned layer emits ONE `gene` event with the row
+# before and after, so a session replay shows the route change where it happened and the reader can fold the
+# learned layer step by step. A read (`plan`) emits nothing — only a change is a gene event.
+def _shape(r: dict) -> dict:
+    return {"status": r.get("status"), "rank": r.get("rank"), "source": r.get("source"), "target": r.get("target")}
+
+
+def _gene_row(domain: str, channel: str) -> dict | None:
+    for r in _rows(domain):
+        if r.get("channel") == channel:
+            return _shape(r)
+    return None
+
+
+def _gene(cause: str, domain: str, channel: str, before, after, evidence: str = "") -> None:
+    if before == after:
+        return
+    status = (after or before or {}).get("status")
+    gtype = "nothing_serves" if status == "none" else "route"
+    try:
+        from voice.observer import emit
+        emit("gene", f"🧬 {gtype} {cause} · {domain} → {channel}", role="system",
+             extra={"layer": "learned", "type": gtype, "key": f"{domain}/{channel}", "before": before,
+                    "after": after, "cause": cause, "evidence": str(evidence or "")[:200]})
+    except Exception as e:  # noqa: BLE001 — the event is an instrument; the route was written either way
+        logger.debug(f"workflows: gene event not emitted ({e!r})")
+
+
 def learn(domain: str, channel: str, *, target: str = "", evidence: str = "",
           rank: int = 100, source: str = "learned", ttl_s: int = TTL_OK_S) -> None:
     """Record that this channel SERVED this domain. Called after a real success, never after a guess."""
@@ -119,8 +149,10 @@ def learn(domain: str, channel: str, *, target: str = "", evidence: str = "",
         return
     try:
         from memory import api as memory
+        before = _gene_row(domain, channel)
         memory.workflow_upsert(domain, channel, status="active", rank=rank, source=source,
                                target=target, evidence=evidence, ttl_s=ttl_s)
+        _gene("learned", domain, channel, before, _gene_row(domain, channel), evidence)
     except Exception:
         pass
 
@@ -135,8 +167,10 @@ def note_empty(domain: str, channel: str = CH_MESH, *, evidence: str = "", ttl_s
         return
     try:
         from memory import api as memory
+        before = _gene_row(domain, channel)
         memory.workflow_upsert(domain, channel, status="none", rank=999, source="learned",
                                evidence=evidence, ttl_s=ttl_s)
+        _gene("learned", domain, channel, before, _gene_row(domain, channel), evidence)
     except Exception:
         pass
 
@@ -145,7 +179,10 @@ def forget(domain: str, channel: str = "") -> None:
     """Drop what was learned — the operator correcting the route, or a test cleaning up."""
     try:
         from memory import api as memory
+        gone = [r for r in _rows(domain) if not channel or r.get("channel") == channel]
         memory.workflow_forget(domain, channel)
+        for r in gone:
+            _gene("forgotten", domain, r.get("channel") or "", _shape(r), None)
     except Exception:
         pass
 
