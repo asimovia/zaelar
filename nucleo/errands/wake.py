@@ -242,9 +242,8 @@ async def wake(errand: dict, *, reason: str = "inbound", inbound_id: str = "",
         # The booking is a FACT, and two things hang off it. It records the DEBT when the video link could
         # not be minted, so the beat can settle it the moment the link appears instead of letting the
         # errand expire announcing it was never confirmed. And it repairs a closing condition this errand
-        # may never have had: `kind_for` reads the objective's words, and one that is entirely about a
-        # meeting without saying the word falls to `generic`, whose `done_when` is empty — an errand that
-        # could only ever end by running out of time.
+        # may never have had: an errand opened under no playbook is `generic`, whose `done_when` is empty —
+        # an errand that could only ever end by running out of time.
         update(eid, done_when=_book.done_spec(errand, booked["date"], booked["time"],
                                               owed=bool(booked.get("video")) and not link))
 

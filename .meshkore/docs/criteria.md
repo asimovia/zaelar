@@ -563,9 +563,12 @@ Flash keeps the conversation; the row is what both brains read.
   suggestion; at checkpoint 1 the worker names its playbook (`report playbook`) and records a readable goal (`report
   goal`, refused with why when it is prose, a card's mere presence or undeclared). An act that leaves the machine — a
   send, an agent call — is refused until checkpoint 1 is closed; a `message` also needs its end state on the row.
-  Reads are never held. A SURE order whose leaving act no door reached becomes its message task. — since 2026-11-05 ·
-  nodes 2.1357, 2.1351, 2.1240 · `nucleo/workers/prompts/playbook.py`, `nucleo/workers/exit_gate.py`,
-  `nucleo/request/ask_outside_door.py`.
+  Reads are never held. A SURE order whose leaving act no door reached becomes its message task. There is ONE
+  catalogue: `meeting`/`booking` (a conversation that ends on his agenda) are names in it — not offered to a worker sent
+  to do the job on a website — and the name the task gave rides the send that can open a follow-through, so the errand
+  born from it inherits its kind; no word table over the objective decides it. — since 2026-11-05 (one catalogue:
+  2026-11-07, V2-859 T562) · nodes 2.1357, 2.1351, 2.1240, 2.60 · `nucleo/workers/prompts/playbook.py`,
+  `nucleo/workers/exit_gate.py`, `nucleo/request/ask_outside_door.py`, `nucleo/errands/playbooks.py`.
 - **CRIT-T2c · The deliverable sheet declares what an end state reads.** The results sheet — the card every search
   errand delivers into — declares its `items` (read from its view, listed only), so a worker's goal on it is readable;
   a sheet INSTANCE (`results::<sheet>`) declares what its card declares and a rows clause is read on THAT sheet, never

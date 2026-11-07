@@ -1252,8 +1252,12 @@ DOMAINS: list[dict] = [
                                 "resultado, así que el reintento corregido —que el propio rechazo pide— sí corre",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/"
                                   "test_a_refused_action_is_not_remembered_as_done.py"]},
-        {"id": "2.60", "title": "Una propuesta de reunión ABRE su encargo aunque el modelo olvide etiquetarla, y "
-                                 "el playbook reconoce una propuesta llana («could we meet… Google Meet link»)",
+        {"id": "2.60", "title": "One notion of playbook (V2-859 T562, ES/EN): meeting/booking are names of the worker's "
+                                 "catalogue (not offered to a web worker), the exit door stamps the name the task gave on "
+                                 "the send, the errand born from its echo inherits it — a continuing playbook opens its "
+                                 "follow-through even unlabeled, a `message` send opens nothing whatever it says; no word "
+                                 "table, genesis holds structure and need ids, the prose is in both packs; disarmed (stamp, "
+                                 "inheritance, net, door) → red",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/test_a_meeting_proposal_opens_its_errand_even_unlabeled.py"]},
         # V2-669 — el relleno de entrada se elige a ciegas ~1,1 s dentro del turno; el hueco que NO cubre está al
         # otro lado de la costura de la herramienta. Medido en la observabilidad del operador (deepseek-v4-pro):

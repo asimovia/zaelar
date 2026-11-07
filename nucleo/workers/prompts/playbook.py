@@ -6,6 +6,8 @@ router, V2-750). The row's `playbook` column records the name, so «how is it go
 
   · `which(...)` — `document` (its surface is a document), `message` (it runs under a mandate that names channels),
     `lista` (the request is unmistakably a list by shape, `nucleo/batch/detect.unmistakable`), else `errand`;
+    `meeting`/`booking` (a conversation that ends on his agenda) only the worker names; the name rides the send
+    (`exit_gate`) and the errand born from it inherits it (V2-859 T562: one notion of playbook, no word table);
   · `done_when(name)` — the end state, stated up front;
   · `block(name, done_when)` — the nine checkpoints; a `lista` adds how a list is walked (one worker, one item at a
     time — the list's own rows in `nucleo/batch` stay as they are).
@@ -17,6 +19,8 @@ from __future__ import annotations
 from nucleo.workers.prompts.catalog import words as _words   # the `worker_brief.*` pack reader, one copy
 
 ERRAND, DOCUMENT, MESSAGE, LISTA = "errand", "document", "message", "lista"
+MEETING, BOOKING = "meeting", "booking"
+WITH_A_PARTY = (MEETING, BOOKING)        # they go on as an errand with the other person (`nucleo/errands`)
 #: The checkpoint loop's bound (§6): a third failure at the same checkpoint → `ask` or end with the reason.
 ATTEMPTS = 2
 
@@ -29,7 +33,7 @@ def _note(what: str, e: Exception) -> None:
 def which(*, surface: str = "", mandate: dict | None = None, request: str = "", declared: str = "") -> str:
     """The playbook a task follows, from what the engine already decided about it. One the escalation already DECLARED
     (an answered send names `message`, V2-851 F2e) wins over every inference below."""
-    if declared in (ERRAND, DOCUMENT, MESSAGE, LISTA):
+    if declared in NAMES:
         return declared
     try:
         from nucleo import surfaces as _surfaces
@@ -53,11 +57,12 @@ def done_when(name: str) -> str:
     return str(_words(f"done_when.{name}") or _words(f"done_when.{ERRAND}") or "")
 
 
-NAMES = (ERRAND, DOCUMENT, MESSAGE, LISTA)
+NAMES = (ERRAND, DOCUMENT, MESSAGE, LISTA, MEETING, BOOKING)
 
 #: The card each playbook's end state is READ on (the deliverable its work fills): the sheet for a hunt or a list, the
 #: document, the outbox. Declared once; the brief tells the worker what that card declares, from its manifest.
-DELIVERABLE = {ERRAND: "results", LISTA: "results", DOCUMENT: "documento", MESSAGE: "mensajeria"}
+DELIVERABLE = {ERRAND: "results", LISTA: "results", DOCUMENT: "documento", MESSAGE: "mensajeria",
+               MEETING: "agenda", BOOKING: "agenda"}
 
 
 def goal_grammar(name: str) -> str:
@@ -77,11 +82,14 @@ def goal_grammar(name: str) -> str:
         return ""
 
 
-def catalogue(suggested: str) -> str:
+def catalogue(suggested: str, *, with_a_party: bool = True) -> str:
     """The playbooks the worker chooses among (V2-852 T19b — the WORKER picks; the engine's `which` only suggests):
-    one line each, the end state its own (`done_when.<name>`), plus how checkpoint 1 is closed. '' with no pack."""
+    one line each, the end state its own (`done_when.<name>`), plus how checkpoint 1 is closed. '' with no pack.
+    `with_a_party=False`: a worker sent to do it ON a website talks to no one, so no `meeting`/`booking` (and its
+    brief is the one nearest the C11 ceiling — +332 chars put it over, 2026-11-07)."""
     intro = str(_words("playbooks_intro") or "")
-    lines = [f"  · {n} — {done_when(n)}" for n in NAMES if done_when(n)]
+    names = NAMES if with_a_party else tuple(n for n in NAMES if n not in WITH_A_PARTY)
+    lines = [f"  · {n} — {done_when(n)}" for n in names if done_when(n)]
     if not intro or not lines:
         return ""
     return "\n".join([intro.format(name=suggested), *lines, str(_words("playbooks_checkpoint") or "")]).rstrip()
@@ -128,13 +136,13 @@ def _durable(rec) -> tuple[str, dict]:
         return "", {}
 
 
-def block(name: str, end_state: str) -> str:
+def block(name: str, end_state: str, *, with_a_party: bool = True) -> str:
     """The method block for a playbook, or '' when the language pack has none."""
     tpl = str(_words("playbook") or "")
     if not tpl:
         return ""
     out = tpl.format(name=name, attempts=ATTEMPTS, done_when=end_state)
-    cat = catalogue(name)
+    cat = catalogue(name, with_a_party=with_a_party)
     if cat:
         out += "\n" + cat
     grammar = goal_grammar(name)

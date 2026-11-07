@@ -1,32 +1,29 @@
-"""nucleo/errands/playbooks.py — how a KIND of errand is done, as DATA (V2-683).
+"""nucleo/errands/playbooks.py — the playbooks that continue as an errand with a third party, as DATA (V2-683, V2-859).
 
 The operator asked for workflows — «deberíamos tener workflows para reservar un restaurante, organizar una
-reunión…» — and immediately drew the boundary himself: «que esos workflows además fueran dinámicos, porque
-las preferencias de otro usuario podrían ser diferentes». The doctrine in CLAUDE.md draws the same line
-from the other side: RESOURCES nailed down, REASONING open, and a hardcoded map of the world may say
-«start here», never «only here».
+reunión…» — and drew the boundary himself: «que esos workflows además fueran dinámicos, porque las preferencias de
+otro usuario podrían ser diferentes». So a playbook is a BRIEFING, not a script:
 
-So a playbook is a BRIEFING, not a script:
+  · `done_when` — the condition that CLOSES it, machine-checkable (`verify.py` runs it);
+  · `needs` — ids of what has to be known before acting (worded per language, `errands.needs.<id>`), so the errand
+    ASKS instead of inventing (the V2-652 scar: a worker typed a placeholder NIF into a real form, twice);
+  · the brief — a few sentences of how this kind of thing is done well, per language (`errands.brief.<kind>`).
 
-  · `done_when` — the condition that CLOSES it, machine-checkable (`verify.py` runs it). Without this an
-    errand can never close itself, which is the requirement he stated out loud.
-  · `needs` — what has to be known before acting, so the errand ASKS instead of inventing (the V2-652 scar:
-    a worker typed a placeholder NIF into a real form, twice).
-  · `brief` — a few sentences of how this kind of thing is done well. Never steps.
-  · `stop_when` — what ends it without success.
+**There is ONE notion of playbook (V2-859 T562).** `meeting` and `booking` are names in the worker's catalogue
+(`nucleo/workers/prompts/playbook.py`); the worker names one at checkpoint 1, the exit door stamps that name on the
+message that leaves, and the errand born from it inherits it (`kind_of`). This module used to guess the kind from
+the objective's WORDS with a `matches` table — a table of verbs is not a router (V2-750), and its words were
+Spanish, so an English operator's errands fell to `generic`.
 
-**Three properties make it a shortcut instead of a fence**, and each is a test:
-  1. an errand with NO playbook still runs (the generic path), so a kind nobody wrote is not a dead end;
-  2. the operator's own preferences layer OVER genesis (`config/playbooks.json`), which is his «otro
-     usuario querría Zoom» in one file — the same two-layer shape `style_policy` already uses;
+Three properties keep it a shortcut instead of a fence, and each is a test:
+  1. an errand with NO playbook still runs (the generic path);
+  2. the operator's own preferences layer OVER genesis (`config/playbooks.json`, his brief replaces the pack's);
   3. nothing here names a person, a company or a site: swap «reunión»→«cena» and it still stands.
 """
 from __future__ import annotations
 
 import json
-import re
 import time
-import unicodedata
 from pathlib import Path
 
 from loguru import logger
@@ -37,12 +34,6 @@ _override_cache: tuple[float, dict] = (0.0, {})
 
 #: The brief travels on EVERY wake and in the pack, so it is bounded — measured in the test, not hoped for.
 MAX_BRIEF = 700
-
-
-def _fold(s) -> str:
-    """Accent-stripped lowercase — the same normalisation every matcher in this house uses."""
-    n = unicodedata.normalize("NFD", str(s or "").lower())
-    return "".join(ch for ch in n if unicodedata.category(ch) != "Mn")
 
 
 def _genesis() -> dict:
@@ -107,8 +98,21 @@ def get(kind: str) -> dict:
     return dict(playbooks().get(str(kind or "").strip().lower()) or {})
 
 
+def _words(path: str):
+    try:
+        from i18n import langs
+        return langs.words(path)
+    except Exception:  # noqa: BLE001 — a missing pack never blocks an errand
+        return None
+
+
 def brief_for(kind: str) -> str:
-    return str(get(kind).get("brief") or "")[:MAX_BRIEF]
+    """His own brief for this kind (`config/playbooks.json`) wins; else the language pack's; '' with neither."""
+    kind = str(kind or "").strip().lower()
+    if not kind or kind not in playbooks():
+        return ""
+    mine = str(get(kind).get("brief") or "")
+    return (mine or str(_words(f"errands.brief.{kind}") or ""))[:MAX_BRIEF]
 
 
 def done_when(kind: str) -> dict:
@@ -116,24 +120,22 @@ def done_when(kind: str) -> dict:
 
 
 def needs(kind: str) -> list:
-    return list(get(kind).get("needs") or [])
+    """The ids of what has to be known before acting (genesis), stamped on the errand at birth."""
+    return [str(n) for n in (get(kind).get("needs") or []) if str(n).strip()]
 
 
-def kind_for(text: str) -> str:
-    """Which playbook briefs this errand. A LEXICAL sweep over the objective (`workflows/domains.py`'s
-    pattern), and `generic` when nothing matches — never a model call, and never a refusal: an errand whose
-    kind we cannot name still runs, which is what keeps this a shortcut and not a gate."""
-    # Accent-stripped on BOTH sides, or «resérvame» never matches «reserva» — which is how the operator
-    # actually says it, and a table that only fires on the unaccented spelling is a table that does nothing.
-    n = _fold(text)
-    for kind, spec in playbooks().items():
-        for word in (spec.get("matches") or []):
-            try:
-                if re.search(rf"\b{re.escape(_fold(word))}", n):
-                    return kind
-            except Exception:
-                continue
-    return "generic"
+def need_words(ids) -> list:
+    """Each need in the active language; an id the pack does not word is shown as written (a need his own file
+    spelled out in words stays readable)."""
+    return [str(_words(f"errands.needs.{n}") or n) for n in (ids or []) if str(n).strip()]
+
+
+def kind_of(playbook: str) -> str:
+    """The errand's kind: the playbook the task NAMED (carried on the message that left), when it is one of these;
+    `generic` otherwise. Never a reading of the objective's words, never a refusal — an errand whose playbook is not
+    here still runs."""
+    name = str(playbook or "").strip().lower()
+    return name if name and name in playbooks() else "generic"
 
 
 # ── what the model is told about the operator's own calendar ────────────────────────────────────────────

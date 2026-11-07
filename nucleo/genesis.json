@@ -50,73 +50,27 @@
     "max_days": 7
   },
   "playbooks": {
-    "_comment": "A BRIEFING per kind of errand, never a script: what «done» means, what has to be known before acting, how this kind of thing is done well, and what ends it without success. An errand whose kind is not here still runs (the generic path) — that is what keeps this a shortcut and not a fence. The operator overrides any of it in config/playbooks.json.",
+    "_comment": "V2-859 T562 — the STRUCTURE of the playbooks that continue as an errand with a third party, language-neutral: what closes it (`done_when`, a closed verifier in nucleo/errands/verify.py) and what has to be known before acting (`needs`, ids worded in i18n/genesis/<lang>/voice.json `errands.needs`). How it is done well (`errands.brief`) and what «done» means to the worker (`worker_brief.done_when`) are language data. The kind is the playbook the task NAMED, carried on the message that leaves — never a reading of the objective's words (V2-750). An errand whose playbook is not here still runs (the generic path). The operator overrides any of it in config/playbooks.json.",
     "meeting": {
-      "matches": [
-        "reuni",
-        "meeting",
-        "quedar",
-        "quedamos",
-        "vernos",
-        "nos vemos",
-        "cita con",
-        "videollamada",
-        "video call",
-        "videocall",
-        "llamada con",
-        "call with",
-        "meet link",
-        "meet up"
-      ],
       "done_when": {
         "widget": "agenda",
         "has": "meeting",
         "within": "window"
       },
       "needs": [
-        "con quién",
-        "ventana de fechas",
-        "duración",
-        "medio (presencial, videollamada…)"
-      ],
-      "defaults": {
-        "duration_min": 30
-      },
-      "prefers": {
-        "medium": [
-          "videollamada",
-          "presencial",
-          "teléfono"
-        ]
-      },
-      "stop_when": [
-        "pide hablar con el operador",
-        "dice que no puede",
-        "se pasó la ventana"
-      ],
-      "brief": "Propón dos horas CONCRETAS dentro de la ventana que te dio tu operador, mirando lo que ya tiene ocupado. Acepta la primera que la otra persona confirme y no sigas negociando después. No propongas nada fuera de esa ventana salvo que el encargo nombre una alternativa. Cuando haya hora, dilo claro y una sola vez."
+        "party",
+        "window",
+        "duration",
+        "medium"
+      ]
     },
     "booking": {
-      "matches": [
-        "reserva",
-        "reservar",
-        "mesa para",
-        "booking",
-        "cita en",
-        "pedir hora"
-      ],
       "needs": [
-        "sitio",
-        "día y hora",
-        "cuántas personas",
-        "a nombre de quién"
-      ],
-      "stop_when": [
-        "no tienen sitio",
-        "piden datos que solo el operador puede dar",
-        "se pasó la ventana"
-      ],
-      "brief": "Pide lo que falta antes de comprometer nada, confirma con la otra parte el día, la hora y el número de personas, y no des por hecha una reserva que no te han confirmado."
+        "place",
+        "when",
+        "people",
+        "holder"
+      ]
     }
   },
   "contacts": {

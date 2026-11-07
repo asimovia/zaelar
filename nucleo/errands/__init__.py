@@ -109,9 +109,9 @@ def start(objective: str, *, kind: str = "", mandate: dict | None = None, title:
           trace: str = "", now: float | None = None) -> dict | None:
     """Open an errand. Returns the row, or None when it must not exist at all.
 
-    The ONE door, and it is self-sufficient: the kind, the closing condition and what still has to be known
-    are read from the playbook here rather than by each caller, so an errand opened from anywhere closes
-    itself. (Written after a test caught the other shape: only the bus watcher filled `done_when`, and an
+    The ONE door, and it is self-sufficient: given the playbook the task named (`kind`), the closing condition
+    and what still has to be known are read from it here rather than by each caller, so an errand opened from
+    anywhere closes itself. (Written after a test caught the other shape: only the bus watcher filled `done_when`, and an
     errand opened by any other path could never verify and could only ever end by running out of time.)
 
     The refusal is not a formality: `escalate_to_slowbrain` puts the SAME check at the one gateway every
@@ -134,13 +134,13 @@ def start(objective: str, *, kind: str = "", mandate: dict | None = None, title:
     grace, ceiling, default_window = GRACE_S, MAX_S, DEFAULT_WINDOW_S
     kind = (kind or "").strip().lower()
     try:
-        from .playbooks import done_when as _pb_done, kind_for, needs as _pb_needs, settings
+        from .playbooks import done_when as _pb_done, kind_of, needs as _pb_needs, settings
         cfg = settings()
         grace = float(cfg.get("grace_h", GRACE_S / 3600)) * 3600
         ceiling = float(cfg.get("max_days", MAX_S / 86400)) * 86400
         default_window = float(cfg.get("default_window_h", DEFAULT_WINDOW_S / 3600)) * 3600
-        if not kind:
-            kind = kind_for(obj)
+        # The kind is the playbook the task NAMED (V2-859 T562), never a reading of the objective's words.
+        kind = kind_of(kind)
         if done_when is None:
             done_when = _pb_done(kind)
         if unknowns is None:

@@ -216,6 +216,7 @@ def _a_send_to(action, payload) -> dict:
     send_at = _d.time.time() + _d._compose_seconds(payload.get("text")) if seen else 0.0
     order = _d._outbound.enqueue(db, t, payload.get("text"), subject=str(payload.get("subject") or ""),
                               objective=str(payload.get("objective") or ""), attachments=atts,
+                              playbook=str(payload.get("playbook") or ""),
                               not_before=send_at)
     if seen:
         db["active_chat"] = {"platform": t.get("platform"), "chatId": t.get("chatId")}

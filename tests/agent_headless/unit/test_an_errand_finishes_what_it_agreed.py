@@ -511,7 +511,7 @@ def test_a_link_in_hand_lets_the_model_speak_of_it_even_with_the_calendar_DOWN(e
 
 
 def test_booking_REPAIRS_an_errand_that_had_no_closing_condition(env, monkeypatch):
-    """⚠️ Measured on the live errand: `playbooks.kind_for` reads the objective's WORDS, and the worker
+    """⚠️ Measured on the live errand (then a word table read the objective, retired in V2-859 T562), the worker
     wrote «Confirm Tuesday 15 September 16:00 and send the Google Meet link» — entirely about a meeting and
     never saying the word, so it fell to `generic`, whose `done_when` is EMPTY. An errand with no closing
     condition can only ever end by running out of time, however well it goes: the same shape as the missing
@@ -519,17 +519,15 @@ def test_booking_REPAIRS_an_errand_that_had_no_closing_condition(env, monkeypatc
 
     Booking is a FACT and beats the guess. A row that has just written a meeting is a meeting errand.
 
-    ⚠️ The sentence this case was BORN with («…and send the Google Meet link») classifies correctly since
-    V2-705 widened the meeting vocabulary, so it stopped exercising the repair. The property is unchanged —
-    an objective the playbook cannot classify must still be repaired by the booking — so the case keeps it
-    with a sentence that is still entirely about a meeting and still says none of the words.
+    Since V2-859 T562 the kind is the playbook the task named; an errand opened under none is `generic`, and
+    the booking still repairs it — the property this case keeps.
     """
     from widgets.agenda import gcal
     monkeypatch.setattr(gcal, "connected", lambda: False)
     row = env.start("Confirm Tuesday 15 September 16:00 with him and send him the address",
                     mandate={"parties": ["c1"], "channels": ["telegram"], "may": ["message", "schedule"]})
     assert not (row.get("done_when") or {}).get("widget"), \
-        "this case is only meaningful over an objective the playbook could not classify"
+        "this case is only meaningful over an errand opened under no playbook"
     env.bind("telegram", "987", row["id"], "c1")
     _answer(monkeypatch, '{"say": "Cerrado.", "state": "agreed", '
                          '"agreed": {"start": "2026-09-15 16:00", "medium": "meet"}}')

@@ -667,7 +667,9 @@
    "errand": "lo que pidió está encontrado, verificado contra cada condición que dio, y en su pantalla — o un «no hay» bien fundado que diga dónde miraste.",
    "document": "el documento está en su hoja, completo, cada sección escrita a partir de las fuentes que leíste.",
    "message": "el mensaje salió UNA vez, a la persona que nombró, por el canal que la puerta permitió — o se le preguntó cuál.",
-   "lista": "cada punto de la lista está hecho o informado con su motivo."
+   "lista": "cada punto de la lista está hecho o informado con su motivo.",
+   "meeting": "hay una cita con esa persona en su agenda, dentro de la ventana que te dio — tras tu primer mensaje la conversación sigue sola como gestión hasta que la otra parte la cierre.",
+   "booking": "la otra parte confirmó el día, la hora y cuántas personas, y la reserva está en su agenda — una reserva sin confirmar no cuenta."
   },
   "catalog_intro": "QUÉ MÁS EXISTE (titulares — pide el conjunto entero de una familia SOLO cuando tu tarea lo necesite: `python -m nucleo.cli.bridge catalog <familia>`):",
   "families": {
@@ -703,5 +705,22 @@
   "order_create": "Crea un grupo de WhatsApp que se llame «{group}» con {names}, y escribe en él: «{text}»",
   "order_each": "Manda este mensaje a {names}, a cada uno por separado y por el canal que tenga: «{text}»",
   "order_mirror": "Crea un grupo de WhatsApp que se llame «{group}» con {names}"
+ },
+ "errands": {
+  "_comment": "V2-859 T562 — how a playbook that continues with a third party is briefed on each wake (`nucleo/errands`). The kind is the playbook the task named (`worker_brief.done_when`), never a reading of the objective's words; `needs` are ids declared in nucleo/genesis.json and worded here.",
+  "brief": {
+   "meeting": "Propón dos horas CONCRETAS dentro de la ventana que te dio tu operador, mirando lo que ya tiene ocupado. Acepta la primera que la otra persona confirme y no sigas negociando después. No propongas nada fuera de esa ventana salvo que el encargo nombre una alternativa. Cuando haya hora, dilo claro y una sola vez.",
+   "booking": "Pide lo que falta antes de comprometer nada, confirma con la otra parte el día, la hora y el número de personas, y no des por hecha una reserva que no te han confirmado."
+  },
+  "needs": {
+   "party": "con quién",
+   "window": "ventana de fechas",
+   "duration": "duración",
+   "medium": "medio (presencial, videollamada…)",
+   "place": "sitio",
+   "when": "día y hora",
+   "people": "cuántas personas",
+   "holder": "a nombre de quién"
+  }
  }
 }

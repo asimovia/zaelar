@@ -143,6 +143,19 @@ def taint_question(rec, kind: str, action: str, target: str, channel: str = "") 
         return f"{action} → {target}?"
 
 
+def _continues_as(rec, wid: str, act: str) -> str:
+    """The playbook a send CONTINUES as (`meeting`/`booking`, the name the task gave) when the act declares a
+    follow-through (`objective`); the errand born from it inherits that, never its words (V2-859 T562). '' else."""
+    from nucleo.workers.prompts import playbook as _pbk
+    from widgets import contract as _contract
+    try:
+        name = str(getattr(rec, "playbook_chosen", "") or "") or _pbk._durable(rec)[0]
+        return name if name in _pbk.WITH_A_PARTY and "objective" in _contract._declared(wid, act) else ""
+    except Exception as e:  # noqa: BLE001 — an unstamped send opens what it opened before: nothing new
+        logger.debug(f"exit_gate: playbook not stamped ({e!r})")
+        return ""
+
+
 def gate(rec, payload: dict) -> Exit:
     """The message door for one `widget_data` call of a worker. A call that does not leave passes untouched."""
     from nucleo import on_his_behalf as _ob
@@ -177,6 +190,8 @@ def gate(rec, payload: dict) -> Exit:
                           call=out, emit=_emit)
     if got.inner != inner:
         out["payload"], inner = got.inner, got.inner
+    if (named := _continues_as(rec, wid, act)):
+        out["payload"] = inner = {**inner, "playbook": named}
     from nucleo.workers import taint
     from widgets import actions as _wa
     who = ", ".join(_ob.who_of(wid, act, inner)) or wid

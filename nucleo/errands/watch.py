@@ -93,14 +93,14 @@ def _drain(name: str) -> list[dict]:
 # ── the three signals ───────────────────────────────────────────────────────────────────────────────────
 def _gestion_objective(ev: dict) -> str:
     """The objective this outbound message OPENS, or "". The model's explicit `objective` wins; failing that,
-    a message that itself reads as a meeting proposal seeds one from its own text (V2-705 autonomy net).
+    a message sent under a playbook that CONTINUES with the other person (`meeting`, `booking` — the name the
+    task gave at checkpoint 1, stamped on the order by the exit door) seeds one from its own text.
 
-    Measured 2026-09-15: the agent sent «Hi! I'd like to propose a meeting tomorrow at 8am. I'll set up a
-    Google Meet link.» but the model dropped the `objective`, so this gate refused the birth, no errand
-    existed, and the operator's «Yes, I agree» on Telegram woke nothing — the meeting never booked itself.
-    The whole workflow's autonomy hung on the model remembering to label the send. The message text is the
-    gestión in the agent's own words, and `kind_for` reads it exactly as it reads an explicit objective;
-    restricted to `meeting` so an ordinary one-off message («running late, see you at 5») opens nothing."""
+    Measured 2026-09-15 (V2-705): the agent sent «Hi! I'd like to propose a meeting tomorrow at 8am…» but the
+    model dropped the `objective`, no errand existed, and the operator's «Yes, I agree» woke nothing. That net used
+    to be a word table over the message (`kind_for(text) == "meeting"`) — a table of verbs is not a router
+    (V2-750), and it only knew Spanish and a few English words. The playbook is a FACT the task already holds, in
+    any language; an ordinary one-off message (playbook `message`, or none) opens nothing."""
     obj = str((ev or {}).get("objective") or "").strip()
     if obj:
         return obj
@@ -108,8 +108,8 @@ def _gestion_objective(ev: dict) -> str:
     if not text:
         return ""
     try:
-        from .playbooks import kind_for
-        if kind_for(text) == "meeting":
+        from .playbooks import kind_of
+        if kind_of((ev or {}).get("playbook")) != "generic":
             return text
     except Exception:  # noqa: BLE001
         pass
@@ -173,10 +173,10 @@ def _born_from_echo(now: float) -> list[dict]:
         if not order:
             continue
         objective = str(order.get("objective") or "")
-        # The kind, the closing condition and the unknowns are read by `start()` itself — one door, so an
-        # errand opened from anywhere else closes itself too.
+        # The kind is the playbook the task named (stamped on the order); the closing condition and the
+        # unknowns are read from it by `start()` itself — one door, so an errand opened from anywhere closes itself.
         row = _start(
-            objective, title=objective[:120],
+            objective, kind=str(order.get("playbook") or ""), title=objective[:120],
             mandate={"parties": [order.get("contactId") or ""], "channels": [order.get("platform") or ""],
                      "may": ["message", "schedule"]},
             trace=str(order.get("trace") or ""),

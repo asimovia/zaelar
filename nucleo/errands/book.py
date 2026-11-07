@@ -223,10 +223,10 @@ def unbook(errand: dict, party: str = "") -> dict:
 def done_spec(errand: dict, date: str, start: str, *, owed: bool) -> dict:
     """What closes this errand, now that it has actually WRITTEN a meeting (V2-692e).
 
-    ⚠️ It also repairs a closing condition the errand may never have had. `playbooks.kind_for` reads the
-    objective's WORDS, and the live run produced «Confirm Tuesday 15 September 16:00 and send the Google
-    Meet link» — an objective entirely about a meeting that never says the word, so it fell to `generic`,
-    whose `done_when` is empty. An errand with no closing condition can only ever end by running out of
+    ⚠️ It also repairs a closing condition the errand may never have had: one opened under no playbook (an
+    explicit `objective` from a task that named `message`, say) is `generic`, whose `done_when` is empty. The
+    live run that found it (V2-692e) was a meeting the old word table could not recognise; since V2-859 T562 the
+    kind is the playbook the task named, and this repair still covers the task that named none. An errand with no closing condition can only ever end by running out of
     time, however well it goes: the V2-692 `created`-stamp defect again, arriving through the vocabulary
     instead of through the data.
 

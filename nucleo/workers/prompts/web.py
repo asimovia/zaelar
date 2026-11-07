@@ -241,7 +241,7 @@ def _web_prompt(goal: str, context: str, brief: dict | None = None, *, vision: b
     except Exception:
         lang_code = None
     stable = [_drawer_rules().rstrip(), str(catalog.words("header")),
-              _playbook.block(playbook, _playbook.done_when(playbook)),
+              _playbook.block(playbook, _playbook.done_when(playbook), with_a_party=False),   # a site, not a person
               driving_block(py, in_brief=True).rstrip(), results_block(py).rstrip(), catalog.headlines(skip=("browser",))]
     variable = [worker_language_block(), _today_block()]
     variable.append(catalog.known_lines(goal))   # what is KNOWN about this errand: per task, so not on request
