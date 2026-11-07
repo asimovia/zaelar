@@ -24,6 +24,7 @@ from . import llm as llmmod
 from . import status as statusmod
 from . import verify as verifymod
 from . import watchdog as watchdogmod
+from . import engine_up
 
 
 class ScenarioCrash(RuntimeError):
@@ -88,6 +89,15 @@ def engine_autopsy(err: str) -> dict:
     except Exception as e3:
         out["log_error"] = str(e3)[:120]
     return out
+
+
+def _not_measured(scenario, reason: str) -> dict:
+    """The one INFRA row of a case whose engine was not there (V2-860 T0.1): no transcript, no score."""
+    return {"scenario": scenario.id, "tier": scenario.tier, "channel": scenario.channel,
+            "run": {"transcript": [], "mechanism_report": {}, "watchdog_log": [], **_where_it_ran(),
+                    "crashed": reason, "autopsy": {"error": reason}},
+            "verdict": {"scores": {}, "overall": None, "findings": [], "improvements": [],
+                        "veredicto": f"INFRA: {reason}"}}
 
 
 def _await_seed_landing(probe: str, *, budget_s: float = 45.0, poll_s: float = 3.0) -> tuple:
@@ -881,7 +891,9 @@ def _judge_pending() -> int:
 
 def _run_batch(chosen: list, *, sandboxed: bool, args_no_file: bool = False,
                verify_tasks: dict | None = None, stop_after_failures: int = 0,
-               failures_already: int = 0, provisional: str = "", allow_dirty: bool = False) -> int:
+               failures_already: int = 0, provisional: str = "", allow_dirty: bool = False,
+               revive=None) -> int:
+    """`revive` (sandbox only): restarts the batch's own engine once when it stops answering (`engine_up`)."""
     config.RUNS_DIR.mkdir(parents=True, exist_ok=True)
     results = []
     # Stop the walk once there is enough to work on (operator, 2026-08-18: "cuando tengas 10 fallando, para —
@@ -969,6 +981,18 @@ def _run_batch(chosen: list, *, sandboxed: bool, args_no_file: bool = False,
                       f"{'trabajo ' + str(st['tasks']) if st['tasks'] else ''}"
                       f"{' tarjetas ' + str(st['items']) if st['items'] else ''}")
         except Exception as e:
+            # V2-860 T0.1 — a REFUSED reset means nothing is listening: wait, revive once, else ONE infra row
+            # and stop. 44 of 51 INFRA rows were cases walked one after another against a dead engine.
+            _down = engine_up.ensure(revive=revive) if engine_up.refused(e) else ""
+            if _down:
+                print(f"\n■ stopping the walk: {_down}. The cases left did not run — resume with "
+                      f"--start-at {scenario.id}")
+                results.append(_not_measured(scenario, _down))
+                try:
+                    statusmod.record(results[-1:], sandboxed=sandboxed, provisional=provisional)
+                except Exception as e2:
+                    print(f"  ⚠️ could not record the infra row of {scenario.id}: {e2}")
+                break
             print(f"  ⚠️ no pude resetear el motor antes del caso: {e} — este caso puede arrastrar "
                   f"trabajo de antes")
         # V2-464 — GRABACIÓN opcional (--record): un Chromium espectador con ?showcase=1 mira el plató
@@ -1957,12 +1981,23 @@ def _sandbox_batch(chosen: list, args: argparse.Namespace, *, verify_tasks: dict
         if _pf:
             print(_pf)
             raise SystemExit(4)
+        def _revive() -> bool:
+            # V2-860 T0.1 — ONE restart of this batch's own engine, same port and workspace. The context
+            # manager's teardown stops whatever process `eng` holds, so the new one is swapped in.
+            from tests.platform.sandbox_engine import spawn_engine, stop_engine
+            print(f"  ▸ the sandbox engine stopped answering — restarting it once on {port}")
+            stop_engine(eng, clean_widgets=False)
+            eng.process = spawn_engine(workspace=eng.workspace, port=port, log_path=eng.log_path,
+                                       extra_env={"ZAELAR_LANGUAGE": lang}).process
+            return True
+
         try:
             return _run_batch(chosen, sandboxed=True, args_no_file=args.no_file,
                       allow_dirty=getattr(args, "allow_dirty", False),
                               verify_tasks=verify_tasks, provisional=_provisional(args),
                               stop_after_failures=args.stop_after_failures,
-                              failures_already=statusmod.failing_count() if args.stop_after_failures else 0)
+                              failures_already=statusmod.failing_count() if args.stop_after_failures else 0,
+                              revive=_revive)
         finally:
             leaked = eng.new_widget_dirs()
             if leaked:
