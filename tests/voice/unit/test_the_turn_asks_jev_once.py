@@ -58,10 +58,12 @@ def _settle(handle, t=2.0):
 
 
 # ── one trip ─────────────────────────────────────────────────────────────────────────────────────
-def test_the_whole_brief_is_one_call(wire):
+def test_the_whole_brief_is_one_call(wire, monkeypatch):
     """THE point of F1, and the metric: the canvas verb and the escalate pair were TWO sockets and
     two threads on every turn, and the route would have opened a third. One trip now carries all of
     them — measured, N questions cost what one costs."""
+    from widgets import refs as _refs   # the pinned set below is for cards with no listed rows (item_ref needs two)
+    monkeypatch.setattr(_refs, "_ref_index", lambda base: [])
     _settle(tb.ask("dale al play", open_ids=["musica", "results"]))
     assert len(wire.calls) == 1, f"the brief made {len(wire.calls)} trips, not one"
     asked = set(wire.calls[0]["questions"])

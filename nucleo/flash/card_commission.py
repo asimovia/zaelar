@@ -84,6 +84,13 @@ def named_or_catalogue(brief, operator_text: str) -> str:
         from nucleo.turn import brief as _tb
         card = _bd.named_card(brief)
         if card:
+            # a card only the CATALOGUE names is a guess like the late one below: it may not contradict the end state
+            # the brief named (837ba9366 read both catalogue twins here, and «agenda» 0.77 skipped that check)
+            from nucleo.flash import direct_action as _da
+            if not _da.from_brief(brief)[0] and not _bd.card_mass(brief):
+                from nucleo.circuit import spec as _spec
+                if _spec.card_contradicts(brief, card):
+                    return ""
             return card_for_his_words(card, operator_text)
         from nucleo.request import stop as _stop   # he corrects the last act of his turns, a card's: that card (U2)
         if (fixed := _stop.corrected_card(brief)) and _tb.owner_still_open(brief, fixed):

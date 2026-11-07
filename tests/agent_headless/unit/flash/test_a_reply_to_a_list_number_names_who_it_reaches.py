@@ -111,7 +111,8 @@ def test_somebody_the_directory_does_not_hold_is_named_by_a_shared_word(world):
 def test_the_ingest_door_refuses_a_feed(monkeypatch):
     from connectors.messaging import ingest
     sent = []
-    monkeypatch.setattr(ingest.bus, "emit_sync", lambda topic, ev: sent.append(ev))
+    # the MESSAGE topics only: each message also leaves an observability row (`connector`), which is not a message
+    monkeypatch.setattr(ingest.bus, "emit_sync", lambda topic, ev: sent.append(ev) if topic.startswith("connector.msg") else None)
     ingest.publish_msg("whatsapp", {"chatId": "status@broadcast", "body": "my status"})
     ingest.publish_msg_out("whatsapp", {"chatId": "status@broadcast", "body": "Hola Raquel"})
     ingest.publish_msg("whatsapp", {"chatId": "120363000@newsletter", "body": "news"})

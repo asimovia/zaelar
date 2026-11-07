@@ -179,6 +179,50 @@ def _the_alert_lights_start_dark():
 
 
 @pytest.fixture(autouse=True)
+def _the_provider_chain_starts_rested():
+    """`nucleo.llm.provider_chain` keeps its cooldowns in `memory.kv` (they outlive a process on purpose); a test that
+    noted a provider failure for real left the stand-in parked, and the next test that paints the FlashBrain box found
+    no stand-in — measured 2026-11-07, `test_the_flash_brain_box_names_its_primary_and_its_stand_in_while_healthy` red
+    after `test_what_was_said_survives_a_failed_turn`, green alone. Only a chain that HOLDS something is written."""
+    import sys
+
+    def _rest():
+        pc = sys.modules.get("nucleo.llm.provider_chain")
+        if pc is None:
+            return
+        for name in ("_slow_streak", "_relay_turns"):
+            d = getattr(pc, name, None)
+            if isinstance(d, dict):
+                d.clear()
+        store = getattr(pc, "_store", None)
+        try:
+            store._load()
+            if getattr(store, "_cooldown", None):
+                store.clear()
+        except Exception:  # noqa: BLE001 — a test may have put a double in its place; leave that one alone
+            pass
+    _rest()
+    yield
+    _rest()
+
+
+@pytest.fixture(autouse=True)
+def _the_mouth_starts_unhushed():
+    """`voice.proactive.hush()` silences every out-of-band line for 20 s of WALL time (a stop order, V2-752); a test
+    that hushed left the next tests in that window mute — measured 2026-11-07, `test_nucleo_speak_acc_drop` red after
+    `tests/agent_headless/unit/turn`, green alone."""
+    import sys
+
+    def _unhush():
+        mark = getattr(sys.modules.get("voice.proactive"), "_hushed_at", None)
+        if isinstance(mark, list) and mark:
+            mark[0] = 0.0
+    _unhush()
+    yield
+    _unhush()
+
+
+@pytest.fixture(autouse=True)
 def _composers_never_reach_the_network():
     """The two small model calls a turn can make after the fact — a finished errand's spoken line
     (`spoken_delivery.line`) and the confirmation judge (`widgets.confirm._judge`) — stay off the network inside the
