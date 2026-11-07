@@ -58,7 +58,7 @@ _MAX_PROSE = 24_866          # refactor2710-08: −63, the screen line and one c
 #: prompt prose (F0 had raised the ceiling 42_376 → 44_070 partly on that). Now only strings the model can read
 #: count, the ceiling is that exact number, and it is STRICTER than before: one new sentence in the prompt fails
 #: this test, where the old ceiling had ~19 k of documentation to hide it in. EDIT DOWNWARD ONLY.
-_MAX_TOTAL = 48_507          # refactor2710-08 (was 48_721); the prose above 24_929 + the tool catalog 23_594 + the POLICY lines below, 198
+_MAX_TOTAL = 48_513          # +6 2026-11-08 V2-860 T2.5: `play_video` owns the VIDEO-podcast, `play_music` the podcast (one owner per kind); refactor2710-08 (was 48_721); the prose above 24_929 + the tool catalog 23_594 + the POLICY lines below, 198
 #: V2-778 (2026-10-02) — re-measured with the docstrings out, as `_MAX_PROSE` (was 67_862 counting them).
 
 #: ⚠️ V2-713 R5 — A THIRD SOURCE, WHICH WAS ALWAYS THERE AND NEVER COUNTED. `style_policy` composes lines

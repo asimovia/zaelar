@@ -14,6 +14,7 @@ What lives here and nowhere else:
   · `browser.py`    — the warm Chromium (Google, and the image indexes); `images.py` — the pure image parsers
   · `providers/`    — every external index declared once: keys (names), kind, host, paid
   · `health.py`     — one minimal real call per provider: live · missing · exhausted · blocked · down
+  · `media.py`      — the MEDIA door, apart from `find()`: what can be PLAYED that his words name (V2-860)
   · `api.py`        — the HTTP face (`/api/search/find`, `/api/search/health`, `/api/search/route`)
 
 The direction is one-way: the turn (`nucleo/flash`), the workers and the sheet call this package; this package
@@ -34,8 +35,9 @@ from . import hooks as _hooks
 from .result import (BRAIN_WORKER, BROWSER, IMAGES, INLINE_FACT, LISTING, LOCAL_SERVICE, MODULES,  # noqa: F401
                      Candidate, Page, SearchResult, Source, candidate_from_row)
 from .route import Route, search_route  # noqa: F401
+from .media import find_media  # noqa: F401 — the media door (V2-860): what can be PLAYED, apart from `find()`
 
-__all__ = ["find", "search_route", "Route", "SearchResult", "Candidate", "Page", "Source", "MODULES",
+__all__ = ["find", "find_media", "search_route", "Route", "SearchResult", "Candidate", "Page", "Source", "MODULES",
            "INLINE_FACT", "LISTING", "LOCAL_SERVICE", "IMAGES", "BROWSER", "BRAIN_WORKER"]
 
 #: How many leads a fact search keeps as candidates (the top of the chain's results), and how many a hunt reads.

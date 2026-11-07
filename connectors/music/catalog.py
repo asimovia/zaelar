@@ -15,6 +15,11 @@ Every item is a plain dict, the same keys whatever the source (`track_dict` and 
   artist   {id, name, art, uri, source}
   album    {id, name, artist, art, year, uri, source}
   playlist {id, name, owner, art, uri, count, source}
+  show     {id, name, owner, art, uri, count, source}     — a podcast, shelved like a playlist (V2-860)
+
+`context(uri)` opens THE album/playlist/podcast a uri names — the same object, never another found by its name. Which
+KIND of thing his words name (a podcast, a list, an album or a song) is the search service's media door
+(`search.media`), asked over this catalogue.
 Network I/O, synchronous, never raises.
 """
 from __future__ import annotations
@@ -26,7 +31,7 @@ from .base import Track
 
 logger = logging.getLogger("zaelar.music.catalog")
 
-_EMPTY = ("tracks", "artists", "albums", "playlists")
+_EMPTY = ("tracks", "artists", "albums", "playlists", "shows")
 
 
 def track_dict(t: Track, provider: str = "") -> dict:
@@ -53,7 +58,7 @@ def _ask(prov, method: str, *args):
 
 
 def search(query: str, limit: int = 8) -> dict:
-    """{query, source, tracks, artists, albums, playlists}."""
+    """{query, source, tracks, artists, albums, playlists, shows}."""
     q = (query or "").strip()
     out = {"query": q, "source": "", **{k: [] for k in _EMPTY}}
     if not q:
@@ -103,3 +108,19 @@ def artist(ref: dict) -> "dict | None":
 def album(ref: dict) -> "dict | None":
     """{album, tracks} for `{id, source}` — or for `{name[, artist]}`, found by searching it first."""
     return _page("album", ref or {})
+
+
+def context(uri: str) -> "dict | None":
+    """{context, tracks} for the album/playlist/podcast this provider uri names, from the provider that owns it.
+    None when no connected provider can open it — the caller says so; it never searches the uri's NAME instead."""
+    u = str(uri or "").strip()
+    if not u:
+        return None
+    for prov in _providers():
+        if not u.startswith(prov.name + ":"):
+            continue
+        got = _ask(prov, "context_page", u)
+        if got and got.get("tracks"):
+            return got
+    return None
+

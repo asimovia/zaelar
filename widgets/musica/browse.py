@@ -2,9 +2,10 @@
 
 `search {query}` and `open_view {kind: artist|album}` ask `connectors.music.catalog` (the connected streaming
 account's catalogue, or the free iTunes metadata) and keep the answer in the card's store under `browse`, so the
-card paints it with no network of its own and a re-render never asks twice. `play_album` plays a whole album: by
-the provider's own uri when it can (Spotify), otherwise first track now and the rest queued by their words — the
-same road a list of the operator's takes.
+card paints it with no network of its own and a re-render never asks twice. `play_album` plays a whole album, list or
+podcast: by the provider's own uri when it can (Spotify), otherwise THE SAME object's tracks (read by that uri), the
+first now and the rest queued by their words — the same road a list of the operator's takes. A uri is never traded
+for a search of its name (V2-860 F1).
 
 Every network call happens BEFORE the store is read, so a playback the connector writes meanwhile is never
 overwritten by a stale snapshot (the V2-650 lesson).
@@ -16,7 +17,7 @@ from loguru import logger as _log
 from . import data as _d
 
 #: What the card keeps of one answer — enough to paint and to play, small enough for the store.
-_CAP = {"tracks": 10, "artists": 8, "albums": 12, "playlists": 8, "top": 10}
+_CAP = {"tracks": 10, "artists": 8, "albums": 12, "playlists": 8, "shows": 8, "top": 10}
 
 
 def _trim(page: dict) -> dict:
@@ -38,12 +39,24 @@ def a_search(action: str, p: dict) -> dict:
     if not query:
         return {"ok": False, "error": "missing_query", "message": "What should I search for? Say a song, an artist or an album."}
     from connectors.music import catalog
-    res = catalog.search(query)
+    from search import media
+    held: dict = {}
+
+    def _catalogue(q: str) -> dict:
+        held.update(catalog.search(q))
+        return held
+    got = media.find_media(query, catalogue=_catalogue, video=False)   # the one ranking voice, card and worker share
+    res = held or {"query": query, "source": ""}
     _keep("search", res, {"kind": "search", "id": ""})
-    counts = {k: len(res.get(k) or []) for k in ("tracks", "artists", "albums", "playlists")}
+    counts = {k: len(res.get(k) or []) for k in ("tracks", "artists", "albums", "playlists", "shows")}
     out = {"ok": True, "query": query, "source": res.get("source", ""), **counts}
     # What the turn can NAME without a second look: the first few songs, the first artist and album.
     out["top"] = [f"{t.get('title')} — {t.get('artist')}".strip(" —") for t in (res.get("tracks") or [])[:3]]
+    # …and what can be PLAYED, best fit first, each with its own handle (`play_album {uri}` for a whole) (V2-860 T2.4).
+    out["candidates"] = [media.public(c) for c in got["candidates"][:6]]
+    whole = media.named_whole(query, got["candidates"])
+    if whole is not None:
+        out["named"] = media.public(whole)
     if not any(counts.values()):
         out["message"] = f"Nothing found for «{query}»."
     return out
@@ -82,10 +95,19 @@ def a_play_album(action: str, p: dict) -> dict:
     uri = str(p.get("uri") or "").strip()
     label = str(p.get("album") or p.get("name") or "").strip()
     if uri:
-        r = music.play_context(uri, label)
-        if r.ok:
+        # THE object of the uri, through the one rule the voice's «play X» takes (`music.play_whole`): its uri where
+        # it can sound, else its own songs, else why not — never its name searched again (V2-860 T2.4: on the phone
+        # the list «Sueñacuentos» became another album, chapter by chapter).
+        page: dict = {}
+        r = music.play_whole(uri, label, opened=page)
+        if page.get("tracks"):
+            meta = dict(page.get("context") or {})
+            _keep("album", {"album": meta, "tracks": page["tracks"]}, {"kind": "album", "id": str(meta.get("id") or "")})
+        elif r.ok:
             _d._save_view()
-            return {"ok": True, "message": r.message, "album": label}
+        out = {"ok": bool(r.ok), "message": r.message, "album": (page.get("context") or {}).get("name", "") or label,
+               "uri": uri, **({"tracks": len(page["tracks"])} if page.get("tracks") else {})}
+        return out if r.ok else {**out, "error": r.reason or "context_unreadable"}
     ref = {"id": str(p.get("id") or "").strip(), "source": str(p.get("source") or "").strip(),
            "name": label, "artist": str(p.get("artist") or "").strip()}
     if not ref["id"] and not ref["name"]:
