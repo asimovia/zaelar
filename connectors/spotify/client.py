@@ -163,3 +163,26 @@ def artist_albums(artist_id: str, limit: int = 12) -> list:
 
 def album(album_id: str) -> dict:
     return _request("GET", f"/albums/{album_id}") or {}
+
+
+def playlist(playlist_id: str) -> dict:
+    """The playlist's own name/owner/images (its first page of items comes inside, under `tracks` or `items`)."""
+    return _request("GET", f"/playlists/{playlist_id}", params={"market": "from_token"}) or {}
+
+
+def playlist_items(playlist_id: str, limit: int = 50) -> list:
+    """The items of ONE playlist — `[{track|item: {...}}]`. The Web API named the path `/tracks` and now also
+    `/items`; the second is asked only when the first is refused."""
+    params = {"limit": limit, "market": "from_token"}
+    try:
+        got = _request("GET", f"/playlists/{playlist_id}/tracks", params=params) or {}
+    except SpotifyError as e:
+        if e.status not in (403, 404, 410):
+            raise
+        got = _request("GET", f"/playlists/{playlist_id}/items", params=params) or {}
+    return got.get("items", [])
+
+
+def show(show_id: str) -> dict:
+    """A podcast (show) with its first page of episodes under `episodes`."""
+    return _request("GET", f"/shows/{show_id}", params={"market": "from_token"}) or {}

@@ -55,7 +55,7 @@ TOOLS: list[dict] = [
                 "VER un VÍDEO en el widget `youtube`: un videoclip, tráiler, peli, directo, «el último vídeo de X». "
                 "No es play_music (OÍR) ni web_search. Tarda: habla en "
                 "presente/futuro ('lo busco'), NUNCA en pasado antes de que cargue. BUSCAR para elegir ('búscame "
-                "vídeos de X', documentales, un podcast) es ESTA tool con action=list: resultados NUMERADOS al "
+                "vídeos de X', documentales, un vídeo-podcast) es ESTA tool con action=list: resultados NUMERADOS al "
                 "Inicio (luego play_result/add_results). Un ENLACE ya PEGADO se AÑADE a la cola con "
                 "widget_data(youtube, add), no se reproduce. No lo escales ni lo mandes a la hoja."
             ),

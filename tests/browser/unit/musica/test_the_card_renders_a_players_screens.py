@@ -265,6 +265,19 @@ def test_results_open_artist_and_album_pages_and_play_an_album(_page):
     assert _calls(_page, "play_album")[-1]["album"] == "A Night at the Opera"
 
 
+def test_podcasts_have_their_own_shelf_and_a_tap_plays_that_podcast_by_its_uri(_page):
+    """V2-860 T2.4 — a podcast the search found sits on ITS shelf, and a tap asks for THAT object by its uri."""
+    res = {**SEARCH, "query": "sueñacuentos", "source": "spotify", "tracks": [], "artists": [], "albums": [],
+           "shows": [{"id": "sh1", "name": "Sueñacuentos", "owner": "Elena Lostalé", "art": "",
+                      "uri": "spotify:show:sh1", "source": "spotify"}]}
+    _mount(_page, _data(view={"kind": "search", "id": ""}, browse={"search": res}))
+    heads = _page.eval_on_selector_all(".hb-mus2-sech", "els => els.map(e => e.textContent)")
+    assert heads == ["Podcasts"], heads
+    assert _page.inner_text(".hb-mus2-plsub") == "Elena Lostalé"
+    _page.click(".hb-mus2-lists .hb-mus2-pl")
+    assert _calls(_page, "play_album")[-1] == {"uri": "spotify:show:sh1", "album": "Sueñacuentos"}
+
+
 def test_an_album_page_plays_it_and_keeps_it_as_a_list(_page):
     page = {"album": {"id": "9", "name": "A Night at the Opera", "artist": "Queen", "year": "1975", "art": "",
                       "uri": "", "source": "itunes"}, "tracks": [_t("Death on Two Legs", "Queen"), _t("39", "Queen")]}

@@ -447,25 +447,30 @@
    "no_prev": "There's no earlier song in what's playing.",
    "play_on": "Now playing «{label}» on \"{device}\".",
    "not_sounding": "I sent the music to \"{device}\", but it is not playing there.",
-   "already_on": "«{label}» is already playing on \"{device}\"."
+   "already_on": "«{label}» is already playing on \"{device}\".",
+   "needs_app_phone": "I have «{label}» in {provider}, but there's no {provider} app open on this phone: open it and I'll put it on.",
+   "needs_app": "I have «{label}» in {provider}, but it can only play in the {provider} app and there isn't one open here: open it and I'll put it on."
   },
   "outcome_pass": "The operator asked: «{asked}». You had already said: «{said}». Then the music act ended like this: {facts}. If what you said is still true, answer exactly SKIP. Otherwise tell the operator, in one or two natural spoken sentences in the operator's language, what really happened and offer only the options listed. Ask for more words from the song only when the facts say the catalogue was reached and found nothing.",
   "outcome_reasons": {
    "unreachable": "the music catalogue could not be reached right now",
    "no_track": "the catalogue was searched and has nothing under that name",
    "no_provider": "no music source is available",
-   "error": "the player failed"
+   "error": "the player failed",
+   "needs_app": "it was found in the connected catalogue, but only that service's own app can play it and none is open on the screen that asked — nothing else was played instead"
   },
   "outcome_options": {
    "retry": "try again in a moment",
    "connect": "connect a music account (Spotify) in Connectors",
    "another": "look for another version",
-   "more_words": "a few more words from the song"
+   "more_words": "a few more words from the song",
+   "open_app": "open the music app on this device and ask again"
   },
   "outcome_labels": {
    "tried": "looked up",
    "identified_by": "named by",
-   "options": "options"
+   "options": "options",
+   "named": "found"
   }
  },
  "agenda": {

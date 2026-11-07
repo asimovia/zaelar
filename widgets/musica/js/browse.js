@@ -142,7 +142,8 @@ export function shell(el, data, ctx, kind, opts){
 // the store: two screens can look at the same results through different filters.
 const FILTERS = [["all", () => tt("f_all", null, "Todo")], ["tracks", () => tt("songs", null, "Canciones")],
                  ["artists", () => tt("artists", null, "Artistas")], ["albums", () => tt("albums", null, "Álbumes")],
-                 ["playlists", () => tt("playlists_found", null, "Listas")]];
+                 ["playlists", () => tt("playlists_found", null, "Listas")],
+                 ["shows", () => tt("podcasts_found", null, "Podcasts")]];
 
 export function searchView(el, data, ctx){
   const L = el._hbLayout || {};
@@ -159,7 +160,7 @@ export function searchView(el, data, ctx){
     s.scroll.appendChild(h("div", "hb-mus2-note mid", tt("search_hint", null, "Busca una canción, un artista o un álbum.")));
     s.done(); return;
   }
-  if(!has("tracks") && !has("artists") && !has("albums") && !has("playlists")){
+  if(!has("tracks") && !has("artists") && !has("albums") && !has("playlists") && !has("shows")){
     s.scroll.appendChild(h("div", "hb-mus2-note", tt("no_results", {q: res.query}, "Nada para «{q}».")));
     s.done(); return;
   }
@@ -201,6 +202,20 @@ export function searchView(el, data, ctx){
     const sec = panel(tt("playlists_found", null, "Listas"), null, []);
     const grid = h("div", "hb-mus2-lists");
     res.playlists.forEach(p => {
+      const c = h("div", "hb-mus2-pl");
+      c.appendChild(artNode(p.art, ICON_LIST));
+      c.appendChild(h("div", "hb-mus2-plname", p.name));
+      if(p.owner) c.appendChild(h("div", "hb-mus2-plsub", p.owner));
+      c.onclick = () => fire(ctx, "play_album", {uri: p.uri, album: p.name});
+      grid.appendChild(c);
+    });
+    sec.appendChild(grid); s.scroll.appendChild(sec);
+  }
+  if(show("shows")){
+    // A podcast plays like a list: by ITS uri, or its own episodes where the provider cannot sound it (V2-860).
+    const sec = panel(tt("podcasts_found", null, "Podcasts"), null, []);
+    const grid = h("div", "hb-mus2-lists");
+    res.shows.forEach(p => {
       const c = h("div", "hb-mus2-pl");
       c.appendChild(artNode(p.art, ICON_LIST));
       c.appendChild(h("div", "hb-mus2-plname", p.name));

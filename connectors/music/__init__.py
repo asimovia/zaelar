@@ -227,6 +227,10 @@ def _play(query: str, uri: str, prefer: str = "") -> MusicResult:
         if same is not None:
             return same
 
+        whole = _named_whole(query) if (query and not uri) else None
+        if whole is not None:
+            return _play_whole(whole)
+
         look_up, facts = _identify(query) if (query and not uri and getattr(prov, "plays_in_page", False)) else (query, {})
 
         def run(p, dev_id):
@@ -238,6 +242,62 @@ def _play(query: str, uri: str, prefer: str = "") -> MusicResult:
     except Exception as e:  # noqa: BLE001 — a provider failure never breaks voice
         logger.warning(f"music.control(play) failed: {e!r}")
         return MusicResult(ok=False, provider=prov.name, action="play", reason="error", message=_msg("done"))
+
+
+def _named_whole(query: str) -> "dict | None":
+    """The podcast, list or album his words NAME, read by the search service's media door over this connector's
+    catalogue (`search.media.named_whole`, V2-860 T2.3). None: the song road stays as it was."""
+    if not any(type(p).search_catalog is not MusicProvider.search_catalog for p in registry.available()):
+        return None                        # no connected catalogue knows podcasts and lists: nothing to compare
+    try:
+        from search import media as _media
+        from . import catalog
+        got = _media.find_media(query, catalogue=catalog.search, video=False)
+        return _media.named_whole(query, got["candidates"])
+    except Exception as e:  # noqa: BLE001 — an unreadable catalogue leaves the song road as it was
+        logger.debug(f"music: no named whole for {query!r}: {e!r}")
+        return None
+
+
+def _play_whole(cand: dict) -> MusicResult:
+    """«Play X» where X is a whole his words named (`_named_whole`): `play_whole` with the facts of the match."""
+    res = play_whole(str(cand.get("uri") or ""), str(cand.get("name") or ""), str(cand.get("kind") or ""))
+    res.extra = {**(res.extra or {}), "named": cand.get("kind", ""), "named_fit": cand.get("fit", 0.0)}
+    return res
+
+
+def play_whole(uri: str, name: str = "", kind: str = "", *, opened: "dict | None" = None) -> MusicResult:
+    """Play THE album/list/podcast a uri names — by that uri where it can sound, else its own SONGS in order — or say
+    why not. The one rule for «play X» and a tap on the card (V2-860 T2.3/T2.4). Episodes are never substituted: a
+    podcast that cannot sound here is `needs_app`, never its words on another player (the phone, 2026-11-07: a
+    tapped podcast played a namesake album chapter by chapter). Never a name search. `opened`, when given, receives
+    the page that was opened (the card keeps it as its view)."""
+    res = play_context(uri, name)
+    if not res.ok:
+        from . import catalog
+        page = catalog.context(uri) or {}
+        if opened is not None:
+            opened.update(page)
+        items = page.get("tracks") or []
+        if items and not any(t.get("kind") == "episode" for t in items):
+            res = play_list([(t.get("query") or t.get("title", ""), t.get("uri", "")) for t in items])
+        elif items or kind == "show" or uri.split(":")[1:2] == ["show"]:
+            res = _needs_app(uri, name or str((page.get("context") or {}).get("name") or ""))
+        else:
+            res = MusicResult(ok=False, provider=res.provider, action="play", reason="context_unreadable",
+                              message=res.message)
+    res.extra = {**(res.extra or {}), "named_uri": uri, "named_name": name}
+    return res
+
+
+def _needs_app(uri: str, name: str) -> MusicResult:
+    """A whole that only its provider's own app can sound, with no such app where he asked: said, nothing plays."""
+    from i18n import langs as _langs
+    prov = uri.split(":", 1)[0] if ":" in uri else ""
+    phone = placement.screen_kind(placement.asking_screen()) == "phone"
+    line = _langs.words("music.spotify.needs_app_phone" if phone else "music.spotify.needs_app", default="")
+    return MusicResult(ok=False, provider=prov, action="play", reason="needs_app",
+                       message=line.format(label=name, provider=prov.capitalize()), extra={"screen": "phone" if phone else ""})
 
 
 def play_list(items: "list[tuple[str, str]]") -> MusicResult:
