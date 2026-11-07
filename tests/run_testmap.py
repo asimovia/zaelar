@@ -7523,6 +7523,11 @@ DOMAINS: list[dict] = [
         {"id": "10.56", "title": "The stage is cleared before EVERY case — including the first — and the "
                                  "reset that runs is the one that keeps memory",
             "ch": UNIT, "paths": ["tests/use_cases/unit/test_the_stage_is_cleared_before_every_case.py"]},
+        # V2-860 T0.1 — disarmed 2026-11-07 (`engine_up.refused` → False: 2 red).
+        {"id": "10.139", "title": "A round starts only on an engine that answers (V2-860 T0.1): a REFUSED first "
+                                  "contact waits a bounded time, restarts its own sandbox once, and otherwise "
+                                  "records ONE infra row («sandbox engine not answering») and stops the walk",
+            "ch": UNIT, "paths": ["tests/use_cases/unit/test_a_round_starts_only_on_a_live_engine.py"]},
         {"id": "10.57", "title": "Two searches are two sheets: the harness COUNTS the boxes, and one box "
                                  "for two errands is reported as shared",
             "ch": UNIT, "paths": ["tests/use_cases/unit/test_two_searches_are_two_sheets.py"]},
