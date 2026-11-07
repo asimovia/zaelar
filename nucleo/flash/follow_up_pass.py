@@ -168,6 +168,8 @@ class Hold:
                 except Exception as e:  # noqa: BLE001 — an unawaitable brief reads as in flight
                     logger.debug(f"follow_up_pass: the brief was not awaited — {e!r}")
             self.routed = _route.sure_escalate(self.brief)
+        if self.routed and _route.player_ran(self.brief):
+            self.routed = False          # a player took the turn after its first word: its words are said (V2-860 F3)
         if self.routed:
             words, self.route_pending = "".join(self.route_pending), []
             if words.strip():

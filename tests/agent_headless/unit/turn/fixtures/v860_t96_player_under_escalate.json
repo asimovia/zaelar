@@ -1,0 +1,9 @@
+{
+  "_source": "an archived phone session, 2026-11-07, turn T96 (+538..+540 s): the brief's verdicts and the model's call; nothing personal kept",
+  "operator_text": "Pues busca, Johnny, busca cuentos de Elena Rosales. Sueña cuentos se llama el podcast.",
+  "escalate_confidence": 0.62,
+  "escalate_confidence_reread": 0.5,
+  "brief": {"catalog_widget": "musica", "request_type": "order", "errand_class": "none", "errand_kind": "generic"},
+  "call": {"name": "play_music", "args": {"query": "Sueña cuentos"}},
+  "measured_then": "the call was swallowed twice (0.62, then 0.50) and a generic worker was spawned"
+}
