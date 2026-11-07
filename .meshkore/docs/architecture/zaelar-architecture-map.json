@@ -78,6 +78,13 @@
    "package": "rules/"
   },
   {
+   "id": "genome",
+   "block": "brain",
+   "name": "Agent DNA",
+   "package": "nucleo/genesis.json · i18n/genesis/ · nucleo/actionmap/ · nucleo/workflows/",
+   "_doc": "The genome (V2-859): the factory genes every install starts from, and the learned layer that grows over the agent's life (action aliases, playbook routes). The user's own rules are personal and never heritable: they are the rules zone, drawn next to this one, not inside it."
+  },
+  {
    "id": "services",
    "block": "brain",
    "name": "Services",
@@ -641,6 +648,38 @@
    "emits": []
   },
   {
+   "id": "g_factory",
+   "zone": "genome",
+   "name": "Factory genome",
+   "paths": [
+    "nucleo/genesis.json",
+    "i18n/genesis"
+   ],
+   "emits": []
+  },
+  {
+   "id": "g_alias",
+   "zone": "genome",
+   "name": "Action aliases",
+   "paths": [
+    "nucleo/actionmap"
+   ],
+   "emits": [
+    "gene"
+   ]
+  },
+  {
+   "id": "g_route",
+   "zone": "genome",
+   "name": "Playbook routes",
+   "paths": [
+    "nucleo/workflows"
+   ],
+   "emits": [
+    "gene"
+   ]
+  },
+  {
    "id": "s_search",
    "zone": "services",
    "name": "Search",
@@ -747,7 +786,24 @@
    "name": "tasks · errands",
    "paths": [
     "memory/tasks_store.py",
-    "memory/errands_store.py",
+    "memory/errands_store.py"
+   ],
+   "emits": []
+  },
+  {
+   "id": "st_alias",
+   "zone": "store",
+   "name": "action_map",
+   "paths": [
+    "memory/action_map_store.py"
+   ],
+   "emits": []
+  },
+  {
+   "id": "st_route",
+   "zone": "store",
+   "name": "routes",
+   "paths": [
     "memory/workflows_store.py"
    ],
    "emits": []
@@ -1816,6 +1872,50 @@
    "a": "s_nav",
    "b": "x_daemon",
    "label": "a real window"
+  },
+  {
+   "id": "seed",
+   "a": "g_factory",
+   "b": "g_alias",
+   "label": "seed"
+  },
+  {
+   "id": "playprose",
+   "a": "g_factory",
+   "b": "w_play",
+   "label": "playbook prose",
+   "uncaptured": true
+  },
+  {
+   "id": "alias",
+   "a": "f_model",
+   "b": "g_alias",
+   "label": "alias"
+  },
+  {
+   "id": "routeread",
+   "a": "w_run",
+   "b": "g_route",
+   "label": "route",
+   "uncaptured": true
+  },
+  {
+   "id": "routelearn",
+   "a": "f_tools",
+   "b": "g_route",
+   "label": "learned route"
+  },
+  {
+   "id": "s_alias",
+   "a": "g_alias",
+   "b": "st_alias",
+   "label": "stores"
+  },
+  {
+   "id": "s_route",
+   "a": "g_route",
+   "b": "st_route",
+   "label": "stores"
   }
  ],
  "_flows": "Who talks to whom. `a`/`b` carry no direction (a call goes and comes back). `uncaptured` = the flow exists in the code but leaves no event (e.g. the rules read into every prompt).",

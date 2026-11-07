@@ -115,6 +115,13 @@ def ensure_seeded(lang: str) -> None:
                 moved += 1
             ok += 1
         _mapi.action_map_set_seed_version(lang, version)
+        # V2-859 T567 · the factory layer moved: one `gene` event per import (not one per phrase — 2 736 rows would
+        # drown the stream), with the counts as before → after. Learned aliases will emit one each (T564).
+        _emit("gene", f"🧬 alias seeded · {lang} v{have} → v{version}", role="system",
+              extra={"layer": "factory", "type": "alias", "key": f"{lang}/seed",
+                     "before": {"version": have} if have else None,
+                     "after": {"version": version, "entries": ok, "retargeted": moved, "refused": bad},
+                     "cause": "seeded", "evidence": ""})
         # Loud either way: the import is an event worth a timeline row; refusals are an ALERT.
         _emit("alert" if bad else "system",
               f"action map seeded ({lang}, pack v{version}): {ok} entries" +

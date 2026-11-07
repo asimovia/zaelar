@@ -76,6 +76,10 @@ _CAT = {
     # its harness), status written, waiting, resumed, worker died, retitled, playbook, settle — as a delta, writer named
     # (`nucleo/circuit/progress.py`), so a replay rebuilds the task's state at any moment.
     "task_progress": "worker",
+    # `gene` (V2-859 T567, 2026-11-07): a change in the genome's learned layer — a playbook route learned, found empty
+    # or forgotten, a seed pack imported — with the row before and after. Family `memory`: it is what the agent
+    # keeps, not a step of a turn or of a task.
+    "gene": "memory",
     "ask": "worker",          # V2-851: a task's question on screen {task_id, ask_id, text, session, options?, among?}
     "background": "worker", "backed": "worker",
     # `flow` = EXPLICIT flow closure (V2-090/observability): before this, "closed" was only ever INFERRED from the
