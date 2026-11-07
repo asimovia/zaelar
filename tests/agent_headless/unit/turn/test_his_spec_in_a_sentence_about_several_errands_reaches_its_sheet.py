@@ -42,6 +42,7 @@ def live(monkeypatch):
     S.forget()
     yield
     S.forget()
+    sheet.store.delete(sheet.sheet_key(SHEET))   # its rows would be on screen for every later test (item_ref asked)
 
 
 def _titles() -> list[str]:
