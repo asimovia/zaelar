@@ -135,10 +135,11 @@ def _still_open(errand: dict, party: str, messages: list[dict]) -> list[str]:
     """
     open_ = [str(u) for u in (errand.get("unknowns") or []) if str(u).strip()]
     if party:
-        open_ = [u for u in open_ if "quién" not in u.lower() and "quien" not in u.lower()]
+        open_ = [u for u in open_ if u != "party"]       # an id (V2-859 T562), never a word of one language
     if any(str(m.get("dir") or "") != "out" for m in messages or []):
         return []
-    return open_
+    from .playbooks import need_words
+    return need_words(open_)
 
 
 def build_dossier(errand: dict, *, party: str, messages: list[dict], brief: str = "",

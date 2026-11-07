@@ -80,10 +80,12 @@ def _ivan(*, preferred: str = PLATFORM) -> None:
 
 
 def _open(world: World, *, objective: str = OBJECTIVE, text: str = OPENER,
-                deliver: bool = True) -> dict:
-    """The operator's confirmed order, all the way to a born errand. Returns what the arc needs afterwards."""
+                deliver: bool = True, playbook: str = "meeting") -> dict:
+    """The operator's confirmed order, all the way to a born errand. Returns what the arc needs afterwards.
+    `playbook` is what the exit door stamps: the name the worker gave at checkpoint 1 (V2-859 T562)."""
     from nucleo import errands
-    world.act("send_to", {"contact": "Iván Petrenko", "text": text, "objective": objective})
+    world.act("send_to", {"contact": "Iván Petrenko", "text": text, "objective": objective,
+                          **({"playbook": playbook} if playbook else {})})
     orders = world.outbox()
     assert len(orders) == 1, "one confirmed order is one message on the wire"
     if not deliver:
@@ -117,7 +119,7 @@ def test_the_errand_is_born_from_a_confirmed_order_and_owns_the_conversation(wor
     e = got["errand"]
     assert e is not None, "the echo of a real send is what births the errand"
     assert e["objective"] == OBJECTIVE
-    assert e["kind"] == "meeting", "the kind is read from the playbooks by start(), not by the caller"
+    assert e["kind"] == "meeting", "the kind is the playbook the task named, carried on the order it sent"
     assert e["done_when"] == {"widget": "agenda", "has": "meeting", "within": "window"}
     assert e["state"] in ("contacting", "gathering")
     from nucleo import errands
@@ -382,7 +384,7 @@ def test_an_errand_with_NO_PLAYBOOK_still_runs_the_whole_arc(world, monkeypatch)
     answers(monkeypatch, '{"say": "¿Te lo llevo el jueves?", "state": "negotiating"}')
 
     got = _open(world, objective="pedirle a Iván que me revise el manuscrito esta semana",
-                text="Hola, soy Zaelar, el asistente de Ricard. ¿Podrías revisarle un manuscrito?")
+                text="Hola, soy Zaelar, el asistente de Ricard. ¿Podrías revisarle un manuscrito?", playbook="")
     e = got["errand"]
     assert e is not None
     assert e["kind"] == "generic" and playbooks.brief_for("generic") == "", "no playbook, and it runs anyway"
@@ -403,9 +405,10 @@ def test_the_SAME_arc_with_the_words_swapped(world, monkeypatch):
     answers(monkeypatch, '{"say": "Te reservo mesa para dos a las 21:00.", "state": "negotiating"}')
 
     got = _open(world, objective="reservar mesa para cenar con Iván el viernes",
-                text="Hola, soy Zaelar. ¿Te va bien cenar el viernes?")
-    assert got["errand"]["kind"] == "booking", "the lexical sweep read the objective, nobody routed it"
-    assert "confirma con la otra parte" in playbooks.brief_for("booking")
+                text="Hola, soy Zaelar. ¿Te va bien cenar el viernes?", playbook="booking")
+    assert got["errand"]["kind"] == "booking", "the playbook the task named, never a reading of its words"
+    from i18n import langs
+    assert playbooks.brief_for("booking") == langs.words("errands.brief.booking"), "the brief is language data"
 
     _answers_and_wakes(world, got["chat"], "El viernes me va bien")
     assert errands.get(got["errand"]["id"])["state"] == "negotiating"
@@ -430,7 +433,8 @@ def test_the_OPERATORS_OWN_FILE_wins_over_genesis(world, monkeypatch, tmp_path):
     _answers_and_wakes(world, got["chat"], "¿Por dónde hacemos la llamada?")
 
     brief = model.calls[-1]["dossier"]
-    assert "Zoom" in brief and "Propón dos horas CONCRETAS" not in brief, \
+    from i18n import langs
+    assert "Zoom" in brief and str(langs.words("errands.brief.meeting")) not in brief, \
         "his file REPLACES the briefing for that kind; genesis is the default, not the law"
 
 
@@ -446,9 +450,13 @@ def test_no_playbook_names_a_person_a_company_or_a_site():
     from nucleo.errands import playbooks
     banned = re.compile(r"\b(google|meet|zoom|teams|whatsapp|telegram|gmail|outlook|calendly|opentable|"
                         r"thefork|booking\.com|ivan|iván|ricard|ricart)\b", re.I)
+    from i18n import langs
     for kind, spec in playbooks.playbooks().items():
-        blob = " ".join(str(v) for k, v in spec.items() if k != "matches" and isinstance(v, (str,)))
-        blob += " " + " ".join(str(x) for x in (spec.get("needs") or []) + (spec.get("stop_when") or []))
+        blob = " ".join(str(v) for v in spec.values() if isinstance(v, str))
+        for lang in ("es", "en"):            # the prose lives in the language packs (V2-859 T562)
+            blob += " " + str(langs.words(f"errands.brief.{kind}", lang) or "")
+            blob += " " + str(langs.words(f"worker_brief.done_when.{kind}", lang) or "")
+            blob += " " + " ".join(str(langs.words(f"errands.needs.{n}", lang) or n) for n in playbooks.needs(kind))
         hit = banned.search(blob)
         assert not hit, f"playbook «{kind}» names «{hit.group(0)}» — that is a script, not a briefing"
 

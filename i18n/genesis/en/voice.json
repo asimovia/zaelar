@@ -669,7 +669,9 @@
    "errand": "what he asked for is found, verified against every condition he gave, and on his screen — or a well-founded «there is none» saying where you looked.",
    "document": "the document is on his sheet, complete, every section written from the sources you read.",
    "message": "the message left ONCE, to the person he named, through the channel the door allowed — or he was asked which.",
-   "lista": "every item of the list is done or reported with its reason."
+   "lista": "every item of the list is done or reported with its reason.",
+   "meeting": "a meeting with that person is on his agenda, inside the window he gave — after your first message the conversation continues by itself as an errand until the other side closes it.",
+   "booking": "the other side confirmed the day, the time and how many people, and the booking is on his agenda — an unconfirmed booking does not count."
   },
   "catalog_intro": "WHAT ELSE EXISTS (headlines — ask for a family's full set ONLY when your task needs it: `python -m nucleo.cli.bridge catalog <family>`):",
   "families": {
@@ -705,5 +707,22 @@
   "order_create": "Create a WhatsApp group called “{group}” with {names}, and write in it: “{text}”",
   "order_each": "Send this message to {names}, to each one separately, on the channel each one has: “{text}”",
   "order_mirror": "Create a WhatsApp group called “{group}” with {names}"
+ },
+ "errands": {
+  "_comment": "V2-859 T562 — how a playbook that continues with a third party is briefed on each wake (`nucleo/errands`). The kind is the playbook the task named (`worker_brief.done_when`), never a reading of the objective's words; `needs` are ids declared in nucleo/genesis.json and worded here.",
+  "brief": {
+   "meeting": "Propose two CONCRETE times inside the window your operator gave you, looking at what he already has booked. Accept the first one the other person confirms and stop negotiating after that. Propose nothing outside that window unless the errand names an alternative. Once there is a time, say it clearly and only once.",
+   "booking": "Ask for what is missing before committing to anything, confirm the day, the time and the number of people with the other side, and never treat as made a booking they have not confirmed."
+  },
+  "needs": {
+   "party": "who with",
+   "window": "date window",
+   "duration": "duration",
+   "medium": "medium (in person, video call…)",
+   "place": "place",
+   "when": "day and time",
+   "people": "how many people",
+   "holder": "whose name it is under"
+  }
  }
 }
