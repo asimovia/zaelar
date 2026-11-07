@@ -255,9 +255,8 @@ def test_a_BURST_of_messages_is_one_move(env, monkeypatch):
 # ── the playbook is a briefing, never a gate ─────────────────────────────────────────────────────────────
 
 def test_an_errand_with_NO_playbook_still_runs(env, monkeypatch):
-    from nucleo.errands import playbooks
-    assert playbooks.kind_for("pídele el presupuesto a Iván") == "generic"
-    row = env.start("pídele el presupuesto a Iván", kind="generic")
+    row = env.start("pídele el presupuesto a Iván")
+    assert row["kind"] == "generic", "no playbook named: the generic path, never a refusal"
     env.bind("telegram", "55", row["id"])
     _answer(monkeypatch, '{"say": "¿Me pasas presupuesto?", "state": "negotiating"}')
     assert asyncio.run(_wake(row))["ok"] is True
@@ -275,6 +274,7 @@ def test_nothing_in_a_playbook_names_a_person_or_a_company(env):
     import json
     from nucleo.errands import playbooks
     blob = json.dumps(playbooks.playbooks(), ensure_ascii=False).lower()
+    blob += " ".join(playbooks.brief_for(k) for k in playbooks.playbooks()).lower()
     for banned in ("iván", "ivan petrenko", "google meet", "zoom", "ricart"):
         assert banned not in blob
 
@@ -362,7 +362,8 @@ def test_an_errand_is_born_from_the_message_that_REALLY_went_out(watcher, env):
     from connectors.messaging import ingest
     asyncio.run(watcher.tick())                        # subscribe
     _emit(ingest.TOPIC_SEND, {"ref": "r1", "platform": "telegram", "to": "@ivanm",
-                              "objective": "organizar una reunión esta tarde", "contactId": "c1"})
+                              "objective": "organizar una reunión esta tarde", "contactId": "c1",
+                              "playbook": "meeting"})          # stamped by the exit door (V2-859 T562)
     asyncio.run(watcher.tick())
     assert env.count_open() == 0, "the order alone opens nothing"
     _emit(ingest.TOPIC_MSG_OUT, {"platform": "telegram", "chatId": "987", "ref": "r1"})
@@ -536,14 +537,14 @@ def test_a_checklist_written_before_anybody_spoke_is_not_read_over_their_answer(
     duración, medio» — four things sitting in the transcript printed three lines below. Told it was still
     gathering, it gathered: the party had just written «Ok do it at 1700» and it answered by proposing two
     slots, and the person had to write back «But i just said at 17h»."""
-    from nucleo.errands import party
-    row = {"unknowns": ["con quién", "ventana de fechas", "duración", "medio (presencial, videollamada…)"]}
+    from nucleo.errands import party, playbooks
+    row = {"unknowns": ["party", "window", "duration", "medium"]}      # ids since V2-859 T562
 
-    assert "con quién" not in party._still_open(row, "Cryptonite", []), \
-        "the binding answers the name, from the very first message"
-    assert party._still_open(row, "Cryptonite", []) == [
-        "ventana de fechas", "duración", "medio (presencial, videollamada…)"]
-    assert party._still_open(row, "", []) == row["unknowns"], "with nobody named, nothing is assumed"
+    assert playbooks.need_words(["party"])[0] not in party._still_open(row, "Cryptonite", []), \
+        "the binding answers the name, from the very first message — read by id, in any language"
+    assert party._still_open(row, "Cryptonite", []) == playbooks.need_words(["window", "duration", "medium"])
+    assert party._still_open(row, "", []) == playbooks.need_words(row["unknowns"]), \
+        "with nobody named, nothing is assumed"
 
     answered = [{"dir": "out", "body": "¿qué hora te va bien?"}, {"dir": "in", "body": "Ok do it at 1700"}]
     assert party._still_open(row, "Cryptonite", answered) == [], \

@@ -144,7 +144,7 @@ def forward_without_files(db: dict, payload: dict) -> dict | None:
 
 def enqueue(db: dict, target: dict, text: str, *, subject: str = "", objective: str = "",
             ref: str = "", attachments: list | None = None, not_before: float = 0.0,
-            scheduled: bool = False) -> dict:
+            scheduled: bool = False, playbook: str = "") -> dict:
     """Put ONE send in the store's outbound queue. The owner flushes it to the bus, exactly as it does with a
     reply — this function never touches the network and never publishes."""
     order = {
@@ -161,6 +161,8 @@ def enqueue(db: dict, target: dict, text: str, *, subject: str = "", objective: 
         order["subject"] = subject
     if objective:
         order["objective"] = objective
+    if playbook:
+        order["playbook"] = playbook            # the task's named playbook, stamped by the exit door (V2-859 T562)
     if attachments:
         order["attachments"] = [str(a) for a in attachments]
         db["recent_files_sent"] = [r for r in db.get("recent_files_sent") or [] if order["at"] - r["at"] <= SAME_FILES_S] \
