@@ -31,6 +31,8 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass, field
 
+from loguru import logger
+
 # A learned route is a shortcut, not a truth. Positive rows live a week; a NEGATIVE row lives less, because
 # «nobody serves this» is the answer most likely to stop being true — the mesh gains agents on the order of
 # days (two arrived the afternoon this was written).
@@ -113,13 +115,14 @@ def _pinned(domain: str, channel: str) -> bool:
 # V2-859 T567 · the genome is OBSERVABLE: every write to the learned layer emits ONE `gene` event with the row
 # before and after, so a session replay shows the route change where it happened and the reader can fold the
 # learned layer step by step. A read (`plan`) emits nothing — only a change is a gene event.
-_GENE_FIELDS = ("status", "rank", "source", "target")
+def _shape(r: dict) -> dict:
+    return {"status": r.get("status"), "rank": r.get("rank"), "source": r.get("source"), "target": r.get("target")}
 
 
 def _gene_row(domain: str, channel: str) -> dict | None:
     for r in _rows(domain):
         if r.get("channel") == channel:
-            return {k: r.get(k) for k in _GENE_FIELDS}
+            return _shape(r)
     return None
 
 
@@ -133,8 +136,8 @@ def _gene(cause: str, domain: str, channel: str, before, after, evidence: str = 
         emit("gene", f"🧬 {gtype} {cause} · {domain} → {channel}", role="system",
              extra={"layer": "learned", "type": gtype, "key": f"{domain}/{channel}", "before": before,
                     "after": after, "cause": cause, "evidence": str(evidence or "")[:200]})
-    except Exception:
-        pass
+    except Exception as e:  # noqa: BLE001 — the event is an instrument; the route was written either way
+        logger.debug(f"workflows: gene event not emitted ({e!r})")
 
 
 def learn(domain: str, channel: str, *, target: str = "", evidence: str = "",
@@ -179,7 +182,7 @@ def forget(domain: str, channel: str = "") -> None:
         gone = [r for r in _rows(domain) if not channel or r.get("channel") == channel]
         memory.workflow_forget(domain, channel)
         for r in gone:
-            _gene("forgotten", domain, r.get("channel") or "", {k: r.get(k) for k in _GENE_FIELDS}, None)
+            _gene("forgotten", domain, r.get("channel") or "", _shape(r), None)
     except Exception:
         pass
 
