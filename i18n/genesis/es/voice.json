@@ -469,14 +469,16 @@
    "no_provider": "no hay ninguna fuente de música disponible",
    "error": "el reproductor falló",
    "needs_app": "se encontró en el catálogo conectado, pero solo la app de ese servicio puede ponerlo y no hay ninguna abierta en la pantalla que lo pidió — no se puso nada en su lugar",
-   "elsewhere": "la cuenta está sonando en otro dispositivo («{device}») que no es el de esta pantalla ni donde Zaelar la puso — no se tocó, para no cortársela a quien lo usa; el operador puede tomar el control (la tarjeta de música ofrece el botón, o pedírselo de palabra)"
+   "elsewhere": "la cuenta está sonando en otro dispositivo («{device}») que no es el de esta pantalla ni donde Zaelar la puso — no se tocó, para no cortársela a quien lo usa; el operador puede tomar el control (la tarjeta de música ofrece el botón, o pedírselo de palabra)",
+   "not_applied": "el reproductor recibió la orden pero sigue sonando — no se aplicó"
   },
   "outcome_options": {
    "retry": "volver a intentarlo en un momento",
    "connect": "conectar una cuenta de música (Spotify) en Conectores",
    "another": "buscar otra versión",
    "more_words": "unas palabras más de la canción",
-   "open_app": "abrir la app de música en este dispositivo y pedírmelo otra vez"
+   "open_app": "abrir la app de música en este dispositivo y pedírmelo otra vez",
+   "take_over": "tomar el control: que suene aquí y se corte en el otro dispositivo (el botón de la tarjeta de música, o pedírselo)"
   },
   "outcome_labels": {
    "tried": "buscado",

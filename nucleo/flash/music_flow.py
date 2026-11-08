@@ -136,6 +136,23 @@ def something_to_play():
                        message=_langs.words("music.ask_what", default="What should I put on?"))
 
 
+#: Spoken controls → the music card's declared action that performs them (`widgets/musica/manifest.json`).
+_CARD_CONTROLS = {"pause": "pause", "stop": "pause", "resume": "resume", "next": "next", "previous": "previous",
+                  "volume_up": "volume_up", "volume_down": "volume_down"}
+
+
+async def _through_card(card_action: str):
+    """Run one control as the music card's action and hand back the connector's result shape."""
+    from connectors.music.base import MusicResult
+    from widgets import server_api
+    r = await server_api.brain_action("musica", card_action, {})
+    r = r if isinstance(r, dict) else {}
+    ok = r.get("ok") is not False and not r.get("error")
+    return MusicResult(ok=ok, provider=str(r.get("provider") or ""), action=card_action,
+                       reason=str(r.get("reason") or r.get("error") or ""), message=str(r.get("message") or ""),
+                       extra={k: r[k] for k in ("device", "now_playing") if r.get(k)})
+
+
 async def run(action: str, query: str, *, extract=None, kind: str = ""):
     """Executes ONE music action with fuzzy resolution. Returns the final `MusicResult` (with an extra `.resolved_from`
     if a chain occurred). `extract(system, user) -> str` = async 2nd model pass, provided by the caller (None =
@@ -149,6 +166,15 @@ async def run(action: str, query: str, *, extract=None, kind: str = ""):
         res = await asyncio.to_thread(something_to_play)
         if getattr(res, "ok", False):
             await asyncio.to_thread(_on_success, res, getattr(res, "chosen", "") or "")
+        return res
+
+    # 0b · A CONTROL IS THE CARD'S OWN ACTION (operator, 2026-11-08: «cuando digo pausa, el widget pausa y lanza la
+    # señal al conector»). It runs through the same funnel as his tap on the card — the contract, the stopped-agent
+    # gate, the handler, the ledger, the card's refresh — so voice and touch can never disagree about what happened.
+    if action in _CARD_CONTROLS:
+        res = await _through_card(_CARD_CONTROLS[action])
+        if getattr(res, "ok", False):
+            await asyncio.to_thread(_on_control, res, action)
         return res
 
     # 1 · ACT DIRECTLY (provider search engines already tolerate fuzziness)

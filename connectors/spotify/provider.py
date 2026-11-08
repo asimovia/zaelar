@@ -251,6 +251,24 @@ class SpotifyProvider(MusicProvider):
     def pause(self) -> MusicResult:
         return self._run(lambda dev: client.pause(device_id=dev), "pause")
 
+    def confirm_paused(self, res: MusicResult) -> MusicResult:
+        """A pause is DONE once the player says it is not playing — Spotify answers 200 to a pause a device never
+        applies. Already paused (a 403 «restriction») is the end state he asked for, so it is a pause too."""
+        if not res.ok:
+            np = self.now_playing()
+            if np is not None and not np.playing:
+                return MusicResult(ok=True, provider=self.name, action=res.action, message=_t("pause"),
+                                   extra={"already": True, "device": np.device})
+            return res
+        np = None
+        for _ in range(_SETTLE_TRIES):
+            np = self.now_playing()
+            if np is None or not np.playing:
+                return res
+            time.sleep(_SETTLE_S)
+        return MusicResult(ok=False, provider=self.name, action=res.action, reason="not_applied",
+                           message=_t("error"), extra={"device": np.device if np is not None else ""})
+
     def take_over(self, device_id: str, device: str = "") -> MusicResult:
         """Spotify's transfer: the playback moves to `device_id` and keeps playing — read back like any start."""
         res = self._run(lambda dev: client.transfer(dev, play=True), "take_over", msg_kw={"device": device or "Spotify"},

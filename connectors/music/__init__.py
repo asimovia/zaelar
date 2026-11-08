@@ -183,7 +183,33 @@ def control(action: str, query: str = "", uri: str = "", percent: int = 0, prefe
     t0 = time.time()
     res = _control(action, query, uri, percent, prefer, seconds, relative, kind)
     _observe(action, query, res, t0)
+    _card_changed()
     return res
+
+
+def _card_changed() -> None:
+    """Tell an open music card that what sounds may have changed, so it re-reads the player. The card's stored data
+    rarely changes on a pause or a skip (the state lives in the player), so the store's own change-gated push never
+    fires: a pause said by voice left the card showing «playing» over a paused Spotify (2026-11-08). Every act
+    crosses this door, whoever asked — the card, the voice, a repair."""
+    try:
+        from voice.observer import emit
+        emit("widget", "data", extra={"id": placement._WID, "src": "music"})
+    except Exception as e:  # noqa: BLE001 — a missed refresh never breaks the act
+        logger.debug(f"music: card refresh not sent: {e!r}")
+
+
+def _refreshes_card(fn):
+    """The starts that do not go through `control` (`play_list`, `play_context`) refresh the card the same way."""
+    import functools
+
+    @functools.wraps(fn)
+    def run(*a, **k):
+        try:
+            return fn(*a, **k)
+        finally:
+            _card_changed()
+    return run
 
 
 def _observe(action: str, query: str, res: MusicResult, t0: float) -> None:
@@ -218,7 +244,7 @@ def _control(action: str, query: str, uri: str, percent: int, prefer: str, secon
         if action == "play":
             return _confirmed(prov, prov.play(query=query, uri=uri))
         if action == "pause":
-            return prov.pause()
+            return prov.confirm_paused(prov.pause())
         if action in ("resume", "reanuda", "sigue"):
             return _confirmed(prov, prov.resume())
         if action == "next":
@@ -226,7 +252,7 @@ def _control(action: str, query: str, uri: str, percent: int, prefer: str, secon
         if action in ("previous", "prev", "back"):
             return prov.previous()
         if action == "stop":                       # 'stop' = pause (stop music, not kill processes)
-            return prov.pause()
+            return prov.confirm_paused(prov.pause())
         if action == "queue":                       # V2-047 F4: add to queue (one after another)
             return prov.enqueue(query=query, uri=uri)
         if action == "ended":                       # V2-047 F4: widget says it ended -> next from queue
@@ -473,6 +499,7 @@ def _needs_app(uri: str, name: str) -> MusicResult:
                        message=line.format(label=name, provider=prov.capitalize()), extra={"screen": "phone" if phone else ""})
 
 
+@_refreshes_card
 def play_list(items: "list[tuple[str, str]]") -> MusicResult:
     """Several tracks as ONE sequence on the provider placed for the asking screen — [(query, uri), …], the first
     sounding now (V2-795, V2-812). Fail-safe like `control`: never raises."""
@@ -552,6 +579,7 @@ def queue_edit(op: str, index: int = -1, to: int = -1) -> MusicResult:
     return _guarded("queue_" + str(op or ""), lambda prov: prov.queue_edit(op, int(index), int(to)))
 
 
+@_refreshes_card
 def play_context(uri: str, label: str = "") -> MusicResult:
     """A whole album/playlist by the provider's own uri; `unsupported` when it cannot (play it track by track).
     Placed like any start (V2-812): a provider with no device on the asking screen answers `unsupported` through the

@@ -384,7 +384,10 @@ def _a_playback(action: str, p: dict) -> dict:
             _d._persist(db)
         else:
             _d._save_view()
-        out = {"ok": ok, "message": getattr(r, "message", ""), "reason": getattr(r, "reason", "")}
+        out = {"ok": ok, "message": getattr(r, "message", ""), "reason": getattr(r, "reason", ""),
+               "provider": getattr(r, "provider", "")}
+        if (getattr(r, "extra", None) or {}).get("device"):
+            out["device"] = r.extra["device"]          # where it sounds — a refusal names the other device
         tr = getattr(r, "track", None)
         if ok and tr is not None and getattr(tr, "title", ""):
             out["now_playing"] = tr.label()          # V2-795: a skip reports WHICH song sounds now

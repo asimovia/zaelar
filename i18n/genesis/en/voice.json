@@ -462,14 +462,16 @@
    "no_provider": "no music source is available",
    "error": "the player failed",
    "needs_app": "it was found in the connected catalogue, but only that service's own app can play it and none is open on the screen that asked — nothing else was played instead",
-   "elsewhere": "the account is playing on another device (\"{device}\") that is neither this screen's nor where Zaelar put it — it was left alone so whoever uses it is not cut off; the operator can take control (the music card offers the button, or he can ask for it)"
+   "elsewhere": "the account is playing on another device (\"{device}\") that is neither this screen's nor where Zaelar put it — it was left alone so whoever uses it is not cut off; the operator can take control (the music card offers the button, or he can ask for it)",
+   "not_applied": "the player took the command but is still playing — it was not applied"
   },
   "outcome_options": {
    "retry": "try again in a moment",
    "connect": "connect a music account (Spotify) in Connectors",
    "another": "look for another version",
    "more_words": "a few more words from the song",
-   "open_app": "open the music app on this device and ask again"
+   "open_app": "open the music app on this device and ask again",
+   "take_over": "take control: play it here and stop it on the other device (the music card's button, or ask for it)"
   },
   "outcome_labels": {
    "tried": "looked up",
