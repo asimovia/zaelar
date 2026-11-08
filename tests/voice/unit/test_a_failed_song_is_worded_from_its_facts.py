@@ -61,3 +61,17 @@ def test_with_nothing_said_the_pass_is_the_answer(monkeypatch, model, expected):
     asyncio.run(music_outcome.say(lang_lock="", asked="play x", said="", res=_res("unreachable"), spec=None,
                                   emit=lambda *a, **k: None, send=sent.append, speech=SimpleNamespace(sanitize=lambda s, **k: s)))
     assert sent == expected
+
+
+@pytest.mark.parametrize("code,kind_word", [("es", "un podcast"), ("en", "a podcast")])
+@pytest.mark.parametrize("extra", [{"named": "show"}, {}], ids=["named-by-words", "tapped-by-uri"])
+def test_what_was_found_is_named_with_its_kind_and_where(monkeypatch, code, kind_word, extra):
+    """V2-860 — the text channel, 2026-11-08: a podcast found on Spotify that could not sound here was worded «the
+    album» in «the music app» — the pass had its name and nothing else. Now the facts carry WHAT it is (from the act's
+    own kind, or its uri's) and WHERE it was found (the provider that answered). Disarm: `_found_as` → "" → red."""
+    from i18n import langs
+    monkeypatch.setattr(langs, "current_code", lambda: code)
+    res = SimpleNamespace(ok=False, reason="needs_app", provider="spotify",
+                          extra={"named_name": "Sueñacuentos", "named_uri": "spotify:show:x1", **extra})
+    sys2 = music_outcome.system("LOCK", "pon Sueñacuentos", "", res)
+    assert f"«Sueñacuentos» ({kind_word}, Spotify)" in sys2, sys2
