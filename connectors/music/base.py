@@ -191,6 +191,11 @@ class MusicProvider(ABC):
         None when it has none there."""
         return None
 
+    def take_over(self, device_id: str, device: str = "") -> MusicResult:
+        """Move what the account is sounding on another device to `device_id` (he chose to take it). Base: a
+        provider that plays in this process has no other device to take it from."""
+        return MusicResult(ok=False, provider=self.name, action="take_over", reason="unsupported")
+
     def confirm(self, res: MusicResult, device_id: str = "") -> MusicResult:
         """Read back a start: the same result once the provider reports the device SOUNDING it, else a result with
         `reason="not_sounding"`. Base: a provider that plays in this process has nothing to read back."""

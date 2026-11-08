@@ -251,6 +251,12 @@ class SpotifyProvider(MusicProvider):
     def pause(self) -> MusicResult:
         return self._run(lambda dev: client.pause(device_id=dev), "pause")
 
+    def take_over(self, device_id: str, device: str = "") -> MusicResult:
+        """Spotify's transfer: the playback moves to `device_id` and keeps playing — read back like any start."""
+        res = self._run(lambda dev: client.transfer(dev, play=True), "take_over", msg_kw={"device": device or "Spotify"},
+                        device=device_id)
+        return self.confirm(res, device_id)
+
     def resume(self) -> MusicResult:
         return self._run(lambda dev: client.resume(device_id=dev), "resume")
 

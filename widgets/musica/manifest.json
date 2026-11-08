@@ -4,7 +4,9 @@
   "version": "0.5.0",
   "owner": "Zaelar",
   "licence": "SUL-1.0",
-  "connector_families": ["musica"],
+  "connector_families": [
+    "musica"
+  ],
   "title": "Música",
   "description": "Tu música por voz y a mano, como un reproductor de verdad: la canción que suena ocupa la tarjeta (portada, título, artista, barra de progreso), tu biblioteca guarda listas, favoritas, más escuchadas y recientes, hay cola, aleatorio y repetir, y un buscador de canciones, artistas y álbumes. Conecta tu Spotify o suena gratis desde YouTube-audio.",
   "whenToUse": "Música: poner canciones, artistas y álbumes, buscar, listas, cola, aleatorio y repetir. Conectar Spotify es de aquí (nunca authenticate_web).",
@@ -191,6 +193,12 @@
       "sensitivity": "routine",
       "activation": true
     },
+    "take_over": {
+      "desc": "toma el control de Spotify cuando está sonando en otro dispositivo de la cuenta: pone aquí lo que se pidió (o trae lo que sonaba allí), cortándolo en el otro dispositivo",
+      "payload": {},
+      "sensitivity": "routine",
+      "activation": true
+    },
     "next": {
       "desc": "salta a la siguiente canción de la cola",
       "payload": {},
@@ -351,7 +359,8 @@
       "play_playlist",
       "ended",
       "play_album",
-      "play_result"
+      "play_result",
+      "take_over"
     ],
     "suspend": "pause",
     "resume": "resume",

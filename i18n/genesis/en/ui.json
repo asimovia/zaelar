@@ -2447,5 +2447,10 @@
  "veil.off_sub": "While it is stopped it does not listen, play anything or touch your apps. Switch it on to use the desktop again.",
  "veil.on_btn": "Switch on",
  "veil.pausing": "Stopping the agent…",
- "veil.starting": "Starting the agent…"
+ "veil.starting": "Starting the agent…",
+ "widgets.musica.away_now": "{provider} is playing on \"{device}\"",
+ "widgets.musica.away_take": "Take control",
+ "widgets.musica.away_confirm": "It will stop on \"{device}\". Take it anyway?",
+ "widgets.musica.away_yes": "Yes, take control",
+ "widgets.musica.away_no": "Cancel"
 }

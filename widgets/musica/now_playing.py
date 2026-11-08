@@ -50,7 +50,8 @@ def _read_now_playing() -> "dict | None":
         t = np.track
         # Where the song IS, for a remote device's progress bar: `progress_ms` is taken at THIS read (the card
         # advances it); either at 0 means «not reported» and no bar is drawn (V2-717).
-        return {"playing": bool(np.playing), "device": np.device or "", "volume": np.volume, "provider": np.provider,
+        return {"playing": bool(np.playing), "device": np.device or "", "device_id": getattr(np, "device_id", "") or "",
+                "volume": np.volume, "provider": np.provider,
                 "title": (t.title if t else ""), "artist": (t.artist if t else ""),
                 "album": (t.album if t else ""), "art": (t.art if t else ""),
                 "progress_ms": int(getattr(np, "progress_ms", 0) or 0),
@@ -75,6 +76,7 @@ def _live_fields(db: dict, fresh_s: float = 0.0) -> dict:
     in_page = (db.get("source") or {}).get("provider") == "youtube" and yt.get("videoId")
     mode = "local" if loc else ("youtube" if in_page else ("spotify" if connected else
                                                            ("youtube" if yt.get("videoId") else "idle")))
+    now = (None if mode != "spotify" else _fresh_now_playing(db, fresh_s) if fresh_s else _d._now_playing())
     return {
         **_d._SEED,
         "connected": connected,
@@ -82,13 +84,30 @@ def _live_fields(db: dict, fresh_s: float = 0.0) -> dict:
         "own_client_id_set": bool(st.get("own_client_id_set")),
         "default_available": bool(st.get("default_available")),
         "redirect_uri": st.get("redirect_uri", ""),
-        "now_playing": (None if mode != "spotify" else
-                        _fresh_now_playing(db, fresh_s) if fresh_s else _d._now_playing()),
+        "now_playing": now,
+        "elsewhere": _elsewhere(db, now),
         "yt": _d._yt_display(yt),
         "local": loc,
         "mode": mode,
         "empty": mode == "idle",                             # V2-776 L2 — nothing playing, nothing to attest
     }
+
+
+def _elsewhere(db: dict, now: "dict | None") -> dict:
+    """{provider, device} when the account is PLAYING on somebody else's device — the card says so and offers to
+    take control (operator, 2026-11-08). Only asked when what plays is not where our last start went, so the usual
+    read (our own device) costs nothing more."""
+    if not (now and now.get("playing") and now.get("device_id")):
+        return {}
+    src = db.get("source") or {}
+    if src.get("provider") == now.get("provider") and src.get("device_id") == now.get("device_id"):
+        return {}
+    try:
+        from connectors import music
+        return music.elsewhere()
+    except Exception as _e:
+        _log.debug("_elsewhere: degraded, carrying on without it: %s", _e)
+        return {}
 
 
 def _current_track_from_live(live: dict) -> "dict | None":

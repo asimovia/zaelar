@@ -32,6 +32,7 @@ class _Account:
     def __init__(self, devices, sounding_on=""):
         self.devices = devices
         self.sounding_on = sounding_on
+        self.item = "t1"
         self.calls: list = []
 
     def playback_state(self):
@@ -39,7 +40,7 @@ class _Account:
         if dev is None:
             return {}
         return {"is_playing": True, "device": {"id": dev["id"], "name": dev["name"], "volume_percent": 40},
-                "item": {"id": "t1", "uri": "spotify:track:t1", "name": "TQG", "artists": [{"name": "KAROL G"}]}}
+                "item": {"id": self.item, "uri": f"spotify:track:{self.item}", "name": "TQG", "artists": [{"name": "KAROL G"}]}}
 
     def _act(self, name):
         def fn(*a, device_id="", **k):
@@ -129,3 +130,58 @@ def test_with_nothing_active_a_retry_wakes_only_our_device(account, monkeypatch,
         placement.record("spotify", device_id=recorded, device="MacBook Pro", screen=COMPUTER, query="x")
     music.control("resume")
     assert [d for d in tried if d] == want, tried
+
+
+# ── A START on an account sounding elsewhere is held and said; taking control is his choice ─────────────────────
+
+def _start_world(account, monkeypatch, sounding_on="spk"):
+    from voice import screens
+    devices = [_dev("mac", "MacBook Pro", "Computer"), _dev("spk", "Living room", "Speaker", active=True)]
+    acc = account(_Account(devices, sounding_on=sounding_on))
+    monkeypatch.setattr(client, "search", lambda q, types="track", limit=5: {"tracks": {"items": [
+        {"id": "t9", "uri": "spotify:track:t9", "name": "Dai Dai", "artists": [{"name": "Shakira"}]}]}})
+    started: list = []
+
+    def play(uris=None, context_uri="", device_id=""):
+        started.append(device_id)
+        acc.sounding_on = device_id
+        acc.item = (uris or ["spotify:track:t1"])[0].rsplit(":", 1)[-1]
+        return {}
+
+    monkeypatch.setattr(client, "play", play)
+    monkeypatch.setattr(client, "transfer", lambda device_id, play=True: (started.append(("transfer", device_id)),
+                                                                        setattr(acc, "sounding_on", device_id))[0] or {})
+    screens.begin_turn(COMPUTER, "T1")
+    return acc, started
+
+
+def test_a_start_that_would_cut_another_device_is_held_and_said(account, monkeypatch):
+    acc, started = _start_world(account, monkeypatch)
+    r = music.control("play", "dai dai de shakira")
+    assert not r.ok and r.reason == "elsewhere" and r.extra.get("can_take_over")
+    assert "Living room" in r.message
+    assert started == [], "nothing was started: the speaker keeps playing"
+    assert placement.held().get("query") == "dai dai de shakira"
+
+
+def test_taking_control_starts_what_was_held_on_our_device(account, monkeypatch):
+    acc, started = _start_world(account, monkeypatch)
+    music.control("play", "dai dai de shakira")
+    r = music.control("take_over")
+    assert r.ok, (r.reason, r.message)
+    assert started == ["mac"], started
+    assert placement.held() == {}, "a held start runs once"
+
+
+def test_taking_control_with_nothing_held_moves_what_sounds_here(account, monkeypatch):
+    acc, started = _start_world(account, monkeypatch)
+    r = music.control("take_over")
+    assert r.ok and started == [("transfer", "mac")], started
+    assert placement.recorded().get("device_id") == "mac"
+
+
+def test_the_card_is_told_where_the_account_sounds(account, monkeypatch):
+    _start_world(account, monkeypatch)
+    assert music.elsewhere() == {"provider": "spotify", "device": "Living room"}
+    placement.record("spotify", device_id="spk", device="Living room", screen=COMPUTER, query="x")
+    assert music.elsewhere() == {}, "where our own start went is ours"
