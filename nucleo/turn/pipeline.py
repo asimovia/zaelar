@@ -186,10 +186,14 @@ async def run(self, motor) -> None:
     # only when the model's first token is later than ZAELAR_FILLER_MS (default 1100 ms — a reply within
     # ~a second gets no filler, operator's rule), and a turn that never armed (kickoff, probe, a `say`)
     # can never sound one. A barge-in interrupts the reply speech and the filler dies with it.
+    # V2-863 — the cover is DECIDED here, before the model is paid, from the brief's verdict: the pipeline waits for
+    # the brief, bounded (fired at the ear's eager end of turn it has usually landed; at admission ~250 ms), so the
+    # phrase the model is told about is the one that sounds, at once. No deadline race downstream.
     _filler_audio = None
     try:
         _filler_audio = motor._filler_audio_mod()
         if _filler_audio.enabled() and not first_turn:
+            await _filler_audio.settle_brief(_brief)
             _filler_audio.arm(brain, text, messages=messages, brief=_brief)  # V2-640 cover, V2-726 A2 verdict
     except Exception:
         pass
