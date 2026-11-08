@@ -458,7 +458,7 @@ and record nothing. And `src` is bounded to `user`/`frontend` — anything else 
 - `brain` — prompts/replies of the «Colmena» brain (FlashBrain), escalations
   (`escalate_to_slowbrain`). **"✂️ eco de la cobertura recortado"** (`text` = the cover, `extra.cat: "flash"`,
   V2-864): the model opened its reply with the very words of the cover that had just sounded, and the voice did not
-  say them twice (`EchoCut` in `voice/engine/speech/filler_audio.py`). One per turn at most; its count over the
+  say them twice (`EchoCut` in `voice/engine/speech/echo_cut.py`). One per turn at most; its count over the
   covered turns of a session is how often the model still echoes its lead-in.
 - **`ambient`** — the ATTENTION gate (`voice/attention.py`): a turn that was NOT addressed to zaelar (no wake word
   and outside the conversation window). `label` = "🙉 ambiente — no dirigido a zaelar" with `extra.mode`

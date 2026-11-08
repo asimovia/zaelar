@@ -48,7 +48,8 @@ below is the first kind, or it names the mechanism that replaced the second.
   compared word for word with case, accents and punctuation normalised, and an echo dropped with the punctuation
   after it and a capital on the next word; a reply that only continues the cover passes untouched, and with no cover
   sounded nothing is cut. The note to the model names the cover's first word, but the cut is the mechanism. — since
-  2026-11-09 · node 2.1640 · `voice/engine/speech/filler_audio.py` (`EchoCut`, `llm_node_with_filler`).
+  2026-11-09 · nodes 2.1640 · `voice/engine/speech/echo_cut.py` (`EchoCut`), `voice/engine/speech/filler_audio.py`
+  (`llm_node_with_filler`).
 - **CRIT-V5 · A claim is not a fact.** A delivery claimed over an empty sheet becomes a follow-up; «still on it»
   is said only about live work on THIS request; a result already spoken is not news on the next turn — nor an
   object our PREVIOUS reply (read from the conversation window, never a global) or a card's own sentence already
