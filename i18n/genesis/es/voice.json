@@ -478,6 +478,12 @@
    "identified_by": "identificada por",
    "options": "opciones",
    "named": "encontrado"
+  },
+  "outcome_kinds": {
+   "show": "un podcast",
+   "playlist": "una lista",
+   "album": "un álbum",
+   "track": "una canción"
   }
  },
  "agenda": {
