@@ -33,6 +33,7 @@ import { SpeakerID } from "../lib/speaker-id.js?v=1";
 import * as wake from "./wakeword.js?v=1";
 import { createEffect, createSignal } from "../core/reactive.js?v=2";   // T-18: ?v=1 was a 2nd instance, blind to the store
 import { t } from "../core/i18n.js?v=1";
+import { createOutbox } from "./outbox.js?v=1";
 import * as health from "./device-health.js?v=1";
 import { MIC_MODES as _MIC_MODES, defaultMicMode, captureConstraints } from "./mic-profile.js?v=1";
 
@@ -603,7 +604,7 @@ export async function start() {
     health.watchAudioContext(audio.context());   // V2-788: suspended/interrupted → the speaker's health
 
     // --- LiveKit room ---
-    const { token, url, ok } = await api.lkToken();
+    const { token, url, ok } = await api.lkToken(_outbox.size() > 0);
     // Backstop for the gate above: if the server stopped right in this gap (between the initial check and
     // here), `/api/token` says so with a 409 instead of a JWT. Undo what's ALREADY open (mic + observability
     // session) instead of carrying `token: undefined` forward into a LiveKit room that will never connect.
@@ -690,7 +691,7 @@ export async function start() {
         // V2-087: la verdad es el ICONO (`botMuted`), no `chatOpen`. Antes esto reconciliaba contra el chat, así
         // que una reconexión DESHACÍA el «quiero oírte con el chat abierto» que el operador acabara de pedir.
         setVoiceOutput(!store.botMuted());
-        _flushPendingText();
+        _drainOutbox();          // lines typed while nothing could take them go now
       }
       else if (st === ConnectionState.Reconnecting) store.setConnState(t("voice.conn_reconnecting"));
       else if (st === ConnectionState.Disconnected) { store.setConnState("—"); if (started) store.setBotSpeaking(false); }
@@ -993,49 +994,19 @@ export async function reconnect() {
   return start();
 }
 
-// ---- text channel: publish a typed/pasted message; the embedded agent injects it as a user turn ----
-// NOTE (remaining wiring): the agent entrypoint must subscribe to this data topic and call
-// session.generate_reply(user_input=text). Until then, chat text is delivered best-effort over the room data.
-//
-// Bug real 2026-07-24 (reporte del operador, con timeline confirmado): mandar un mensaje justo cuando la sala
-// aún no estaba en estado Connected (p.ej. recién reconectada) lo DESCARTABA en silencio — `sendText` devolvía
-// `true` igualmente, y `ChatWall.js::submitChat` lo añade al historial SIN comprobar el resultado → el mensaje
-// aparecía "enviado" en pantalla pero nunca llegaba al cerebro. Lo que respondía después (el saludo de kickoff)
-// no tenía relación alguna con lo que el operador había escrito. Fix: si no está conectado, se ENCOLA (no se
-// tira) y se entrega en cuanto la sala llega a Connected (`_flushPendingText`, enganchado en
-// RoomEvent.ConnectionStateChanged más arriba) — nunca más un mensaje visible-pero-fantasma.
-let _pendingText = [];
-function _flushPendingText() {
-  if (!_pendingText.length || !room || room.state !== ConnectionState.Connected) return;
-  const queued = _pendingText; _pendingText = [];
-  for (const t of queued) _publishText(t);
-}
-function _publishText(t) {
-  try {
-    const payload = new TextEncoder().encode(JSON.stringify({ t: "zaelar-text", text: t }));
-    room.localParticipant.publishData(payload, { reliable: true, topic: "zaelar-text" });
-    return true;
-  } catch (_) { return false; }
-}
+// ---- text channel ----
+// 2026-07-24 the first of these: a line sent while the room was not Connected was dropped and the wall showed it
+// as sent; an in-memory queue fixed that one moment, and died with the next reload (2026-11-08). The data channel
+// never says whether anything received a line, so typed text no longer rides it at all: the outbox below sends
+// over HTTP and keeps each line until the engine answers that it has it.
+// THE OUTBOX (operator, 2026-11-08) — every typed line is kept until the engine has it; see `outbox.js`.
+const _outbox = createOutbox({ storage: localStorage, send: (t) => api.chatText(t),
+                               onNoSession: () => { if (!started && !starting) start().catch(() => {}); } });
+const _drainOutbox = () => _outbox.drain();
+if (_outbox.size()) _outbox.later(1500);           // a reload with his lines still undelivered
+
 export function sendText(text) {
-  const t = (text || "").trim(); if (!t) return false;
-  // V2-792 — A SCREEN WITHOUT THE VOICE STILL TYPES. Only the voice holder has a room, so on any other screen the
-  // queue below waited for a connection the voice lock would never grant, while the wall showed the line as sent.
-  // The line goes over HTTP into the one live session; only when nobody has a session does this screen bring one up.
-  if (!started && !starting) {
-    api.chatText(t).then((r) => {
-      if (r && r.ok) return;
-      if (r && r.reason === "stopped") return;
-      _pendingText.push(t);
-      if (!started && !starting) start().catch(() => {});
-    });
-    return true;
-  }
-  if (!room || room.state !== ConnectionState.Connected) {
-    _pendingText.push(t);
-    return true;
-  }
-  return _publishText(t);
+  return _outbox.add(text);
 }
 
 // V2-749 — the sentence the cheap ear heard, on its own topic. `text` carries the wake word, so the engine's

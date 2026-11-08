@@ -431,6 +431,8 @@ async def entrypoint(ctx: JobContext) -> None:
     agent = ZaelarAgent(instructions=SETTINGS.system_prompt + " " + _lang.reply_directive)
     await session.start(room=ctx.room, agent=agent, **_session_start_opts())
     logger.info("Session started.")
+    from voice import screens as _screens_door
+    _screens_door.register_typed(_typed_from_screen)   # the typed door opens on a STARTED session (see open_typed_door)
     from .session_health import on_session_alive
     on_session_alive()   # a session that just STARTED supersedes any recorded death
 
@@ -473,7 +475,15 @@ async def entrypoint(ctx: JobContext) -> None:
         _last_conv_age = _mem.seconds_since_last_conv()
     except Exception:
         _last_conv_age = None
-    if _kickoff_recent(ctx.room.name):
+    from voice import screens as _screens_kick
+    if _screens_kick.typed_waiting():
+        # A TYPED LINE IS WAITING (operator, 2026-11-08): the page held a request he typed while the engine could not
+        # take it, or one just arrived — that line is the session's first turn, and a greeting over it is the
+        # «good to have you» he got instead of an answer.
+        _mark_kickoff(ctx.room.name)
+        _emit("brain", "↩️ kickoff omitido — hay una línea escrita esperando, esa es el primer turno", role="system")
+        _air.lift()
+    elif _kickoff_recent(ctx.room.name):
         _emit("brain", "🚫 kickoff duplicado evitado (otra sesión ya saludó esta sala)", role="system")
         _air.lift()              # the other job is greeting; this one has nothing to wait for
     elif _last_conv_age is not None and _last_conv_age < _resume_window:
