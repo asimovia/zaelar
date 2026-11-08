@@ -185,7 +185,7 @@ def prompt_digest() -> str:
         if r.get("published"):                           # V2-791: when — «the one from today» is read, not guessed
             bits.append(str(r["published"])[:30])
         lines.append(f"  {i}. " + " — ".join(bits))
-    from . import result_refs as _rr
+    from widgets import result_refs as _rr
     lines.append(_rr.queue_line(db))
     return "\n".join(lines)
 

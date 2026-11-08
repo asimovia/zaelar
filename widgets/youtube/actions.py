@@ -5,7 +5,7 @@ Queue editing lives in `list_actions.py`, playback in `player_actions.py`.
 from __future__ import annotations
 
 from . import data as _d
-from . import result_refs as _rr
+from widgets import result_refs as _rr
 
 
 # V2-638 — the player is where a film is WATCHED, so the two non-YouTube sources belong on this surface

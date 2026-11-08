@@ -238,8 +238,10 @@ def decide(name: str, args: dict | None = None) -> Decision:
         _kind, _keys = _STR_ARGS[name]
         return Decision(_kind, {k: (args.get(k) or "").strip() for k in _keys})
     if name == "play_music":
+        _kind = (args.get("kind") or "").strip().lower()          # V2-861: «a list», «the podcast» travels
         return Decision(MUSIC, {"query": (args.get("query") or "").strip(),
-                                "action": (args.get("action") or "play").strip().lower()})
+                                "action": (args.get("action") or "play").strip().lower(),
+                                **({"kind": _kind} if _kind else {})})
     if name == "play_video":
         return Decision(VIDEO, {"query": (args.get("query") or "").strip(),
                                 "action": _video_action(args.get("action"))})

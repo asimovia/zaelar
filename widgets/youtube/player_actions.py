@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from . import data as _d
-from . import result_refs as _rr
+from widgets import result_refs as _rr
 from .actions import _a_play_result
 
 

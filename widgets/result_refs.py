@@ -1,4 +1,7 @@
-"""Which row of the dashboard's search band he NAMED — by number, by title or by channel (2026-10-14).
+"""Which row of a card's search results he NAMED — by number, by title or by channel/owner (2026-10-14).
+
+Shared by every card that shows results he picks from (V2-861): the video card's band, and the music card's
+candidates (a candidate's name as `title`, its owner as `channel`).
 
 Use case `find-videos-on-a-topic-no-ai-slop` (EN): «play the Palm Centre one first», twice, with «How to Prune an
 Olive Tree — The Palm Centre» as row 5 of the band. The model called `play_item {item: "How to Prune an Olive Tree —

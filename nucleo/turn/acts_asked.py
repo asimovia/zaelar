@@ -15,6 +15,10 @@ counts verbs, so the question says it: a stop or pause followed by a close of th
 real decision model (3 of 3 each): «stop the video and close youtube» several 1.00 → one; «pause it and close the player»
 → one 0.94; the operator's own «mark her as favourite and add the aliases» stays several 0.96 — the bench
 `tests/voice/bench/test_the_acts_asked_question_against_the_real_api.py` holds those numbers.
+
+A search that only FINDS what is then played is the same act (local engine, 2026-11-08, V2-861: «put some list in
+spotify. Look for sueñacuentos and play it» → the list sounded on his computer and the mouth added «I've only done part
+of it, on Music»): the verdict counted «look for» and «play» as two verbs.
 """
 from __future__ import annotations
 
@@ -26,10 +30,12 @@ ONE, SEVERAL = "one", "several"
 INSTRUCTIONS = ("How many DIFFERENT things does the operator ask to be done in this message, in any wording or "
                 "language? Each change, send, open, close or play of something is one act; doing the same thing to "
                 "several items at once is still one act. Stopping, pausing or leaving full screen something and then "
-                "closing it is ONE act: the close already ends it.")
+                "closing it is ONE act: the close already ends it. Count RESULTS, not verbs or sentences: finding, looking "
+                "for or choosing something and then playing, opening or sending it is ONE result, even when he says it "
+                "twice or in several sentences.")
 CRITERIA = {
     ONE: "one act, or nothing to do at all (a question, a chat, an answer); also a stop or pause followed by a close "
-         "of the same thing",
+         "of the same thing, or a search that only finds what is then played, opened or sent",
     SEVERAL: "two or more different acts in the same message",
 }
 

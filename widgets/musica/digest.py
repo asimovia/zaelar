@@ -39,8 +39,9 @@ def prompt_digest() -> str:
     np = live.get("now_playing") or {}
     cur = (np if np.get("title") else None) if mode == "spotify" else (
         (live.get("local") or None) if mode == "local" else _d._current_track_from_live(live))
+    found = _found_lines(db)
     if mode == "idle" or not cur:
-        return ""
+        return "\n".join(found)
     if mode == "spotify":
         where = f"Spotify, on the device «{np.get('device') or '?'}» (not this page)"
         playing = bool(np.get("playing"))
@@ -59,7 +60,29 @@ def prompt_digest() -> str:
     n = len((_player.queue_view(live, db) or {}).get("items") or [])
     if n:
         lines.append(f"queue: {n} after this one")
-    return "\n".join(lines)
+    return "\n".join(lines + found)
+
+
+def _found_lines(db: dict) -> list:
+    """What the card FOUND for his last request, numbered, with each one's owner and the one sounding marked
+    (V2-861). «Not this one» / «which ones do you have?» is answered from here — the others said with who made them —
+    and his pick is `play_result`; searching again would renumber the list. Costs prompt only while the card is open."""
+    srch = (db.get("browse") or {}).get("search") or {}
+    rows = list(srch.get("candidates") or [])
+    if not rows:
+        return []
+    chosen = str(srch.get("chosen") or "")
+    from search.media import SPOKEN_KIND
+    out = [f"MUSIC SEARCH ON THE CARD («{str(srch.get('query') or '')[:60]}», {len(rows)} numbered, ▶ = the one "
+           "started): pick one with play_result{item: number | name | owner}. «Not this one» / «which ones?» → say "
+           "the others with their owners and let him choose; never search again (it renumbers)."]
+    for i, r in enumerate(rows, 1):
+        mark = "▶ " if chosen and r.get("uri") == chosen else ""
+        owner = f" — {str(r['owner'])[:40]}" if r.get("owner") else ""
+        out.append(f"  {i}. {mark}{SPOKEN_KIND.get(r.get('kind', ''), r.get('kind', ''))} «{str(r.get('name') or '')[:60]}»{owner}")
+    if srch.get("failed"):
+        out.append(f"  (the start did not sound: {srch['failed']})")
+    return out
 
 
 def _screen_word(dev: str) -> str:

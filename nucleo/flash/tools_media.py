@@ -21,8 +21,8 @@ TOOLS: list[dict] = [
             # V2-041: capacidad de PRIMER NIVEL (como web_search) — reproducir música por un conector de streaming
             # (hoy Spotify). Frontera clara: es ESCUCHAR música, NO un dato del mundo (web_search) NI un vídeo.
             "description": (
-                "Reproduce o controla MÚSICA o un PODCAST (solo AUDIO) con la cuenta de música conectada del operador. `query` = "
-                "qué poner; si no dice qué, elige tú (sus gustos o algo variado) y dilo; vacío = reanudar. "
+                "Reproduce o controla MÚSICA, una LISTA o un PODCAST (solo AUDIO). `query` = "
+                "qué poner; si no dice qué, elige tú y dilo; vacío = reanudar. "
                 "Varias seguidas: la 1ª con play y CADA siguiente con queue. "
                 "Comentar o quejarse de lo que suena no es otra reproducción; querer algo DISTINTO "
                 "(aun como deseo o pregunta) SÍ: llámala. VER algo en "
@@ -34,11 +34,12 @@ TOOLS: list[dict] = [
                 "type": "object",
                 "properties": {
                     "query": {"type": "string",
-                              "description": ("qué reproducir en lenguaje natural (artista/canción/género); "
-                                              "vacío = reanudar lo que sonaba")},
+                              "description": "qué reproducir (artista/canción/lista/género); vacío = reanudar"},
                     "action": {"type": "string",
                                "description": ("play (def) | queue | pause | resume | next | "
                                                "previous | volume_up | volume_down | stop")},
+                    # V2-861 — «put some LIST… Sueñacuentos» lost «list» and played the podcast of that name.
+                    "kind": {"type": "string", "enum": ["song", "list", "album", "podcast"]},
                 },
                 "required": [],
             },

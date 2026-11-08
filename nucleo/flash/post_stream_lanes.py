@@ -16,6 +16,38 @@ from nucleo.acts import wall_tab as _wall_tab   # V2-834 T14/T35: a promised con
 from nucleo.turn import brief as _brief_q, reply as _reply
 
 
+def _asked_to_play(mq: dict) -> str:
+    """His words when the music request is a NEW one (play + words); "" for a control or a bare «play»."""
+    return (mq.get("query") or "").strip() if (mq.get("action") or "play") == "play" else ""
+
+
+async def _open_music_search(mq: dict, *, emit, text, brief) -> None:
+    """V2-861 — a NEW request opens the music card on its search, blank, with his words, while the act runs. A bare
+    «open the music» never comes here: the card then stays as it was. Never raises."""
+    q = _asked_to_play(mq)
+    if not q:
+        return
+    try:
+        from widgets.musica import browse as _mbrowse
+        await _pst.asyncio.to_thread(_mbrowse.begin_search, q)
+        _pst._cvis.present("musica", reason="turn-order", action="play", src="flash", emit=emit, text=text, brief=brief)
+    except Exception as e:  # noqa: BLE001 — the card's look never stops the act
+        _pst.logger.debug(f"music card not opened on its search: {e!r}")
+
+
+async def _keep_music_findings(mq: dict, res) -> None:
+    """V2-861 — what the act found (the numbered candidates, the one started) written back to the card, and its view
+    moved. Never raises."""
+    q = _asked_to_play(mq)
+    if not q or res is None:
+        return
+    try:
+        from widgets.musica import browse as _mbrowse
+        await _pst.asyncio.to_thread(_mbrowse.after_play, q, res)
+    except Exception as e:  # noqa: BLE001
+        _pst.logger.debug(f"music card findings not kept: {e!r}")
+
+
 async def run_the_light_lanes(*, FastClient, _apply_widget_data, _brief, _buf_add, _buf_reset, _cardc, _close_target, _cover_work, _identify, _identify_system, _named_by_verdict, _no_tool, _op_text, _prompt_mod, _router, _rv, _say, _show_target_instance, _shown_ids, _t, _tag_emit, _tool_fired, _turn_op_tasks, acted, attention, brain, clarify, data_done, emit, escalate_req, images_req, listing_req, music_req, operator_text, read_req, recall_req, reopen_req, reveal_req, search_req, send, speak, spec, speech, spoken, spoken_text, take, text, with_also_named) -> dict:
     _no_tool = await _pst._resume_turn.before_backstops(_no_tool, escalate_req, spoken_text=spoken_text, emit=emit,
         operator_text=_op_text, brief=_brief, last_reply=_pst._prior_line.of(brain), apply_widget_data=_apply_widget_data, acted=acted)
@@ -371,9 +403,11 @@ async def run_the_light_lanes(*, FastClient, _apply_widget_data, _brief, _buf_ad
                 out.append(d)
             return "".join(out)
 
+        await _open_music_search(mq, emit=emit, text=operator_text, brief=_brief)   # V2-861
         try:
             from nucleo.flash import music_flow as _mflow
-            res = await _mflow.run(mq.get("action") or "play", mq.get("query") or "", extract=_extract)
+            res = await _mflow.run(mq.get("action") or "play", mq.get("query") or "", extract=_extract,
+                                  kind=mq.get("kind") or "")
         except Exception as e:  # noqa: BLE001
             _pst.logger.warning(f"play_music falló (voz sigue): {e}")
             res = None
@@ -385,6 +419,7 @@ async def run_the_light_lanes(*, FastClient, _apply_widget_data, _brief, _buf_ad
                 await _mflow.run(music_req["followup"]["action"], "", extract=None)
             except Exception as e:  # noqa: BLE001
                 _pst.logger.warning(f"play_music followup falló: {e}")
+        await _keep_music_findings(mq, res)                                       # V2-861
         ok = bool(getattr(res, "ok", False))
         msg = (getattr(res, "message", "") or "").strip()
         _extra = getattr(res, "extra", {}) or {}

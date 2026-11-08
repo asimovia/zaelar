@@ -156,8 +156,8 @@ export function searchView(el, data, ctx){
     top.appendChild(searchBox(el, data, ctx, "search"));
     s.scroll.appendChild(top);
   }
-  if(!res.query){
-    s.scroll.appendChild(h("div", "hb-mus2-note mid", tt("search_hint", null, "Busca una canción, un artista o un álbum.")));
+  if(!res.query || res.pending){   // V2-861: a request said to the agent opens the card here, blank, while it searches
+    s.scroll.appendChild(h("div", "hb-mus2-note mid", res.pending ? tt("searching", {q: res.query}, "Buscando «{q}»…") : tt("search_hint", null, "Busca una canción, un artista o un álbum.")));
     s.done(); return;
   }
   if(!has("tracks") && !has("artists") && !has("albums") && !has("playlists") && !has("shows")){

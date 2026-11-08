@@ -96,6 +96,14 @@ def _episode_from(ep: dict, show_name: str, art: str = "") -> "Track | None":
                  album=show_name, art=_image(ep) or art, duration_ms=int(ep.get("duration_ms") or 0))
 
 
+def _now_item(item: dict) -> "Track | None":
+    """What sounds: a song, or an episode with its show where an artist would stand (V2-861)."""
+    if str(item.get("type") or "") == "episode":
+        show = item.get("show") or {}
+        return _episode_from(item, show.get("name", ""), _image(show))
+    return _track_from(item)
+
+
 def _item_dict(t: Track, episode: bool) -> dict:
     """One row of an opened context; an EPISODE says so (`kind`), so a player never plays it as a song by its words."""
     from connectors.music import catalog as _cat
@@ -430,7 +438,7 @@ class SpotifyProvider(MusicProvider):
         dev = st.get("device") or {}
         return NowPlaying(
             playing=bool(st.get("is_playing")),
-            track=_track_from(st.get("item") or {}),
+            track=_now_item(st.get("item") or {}),
             device=dev.get("name", ""),
             device_id=dev.get("id", "") or "",
             volume=dev.get("volume_percent"),

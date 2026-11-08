@@ -122,7 +122,8 @@ def seek(position_ms: int, device_id: str = "") -> dict:
 
 
 def playback_state() -> dict:
-    return _request("GET", "/me/player") or {}
+    # An episode is only described when asked for (V2-861: a list of episodes sounded and the player read «nothing»).
+    return _request("GET", "/me/player", params={"additional_types": "track,episode"}) or {}
 
 
 def add_to_queue(uri: str, device_id: str = "") -> dict:

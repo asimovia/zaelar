@@ -284,6 +284,14 @@
       "sensitivity": "routine",
       "activation": true
     },
+    "play_result": {
+      "desc": "pone UNO de los resultados que la tarjeta encontró (la lista numerada del resumen): por su número, su nombre o su autor",
+      "payload": {
+        "item": "número, nombre o autor del resultado"
+      },
+      "sensitivity": "routine",
+      "activation": true
+    },
     "refresh": {
       "desc": "refresca la tarjeta con el estado real de reproducción",
       "payload": {}
@@ -342,7 +350,8 @@
       "previous",
       "play_playlist",
       "ended",
-      "play_album"
+      "play_album",
+      "play_result"
     ],
     "suspend": "pause",
     "resume": "resume",

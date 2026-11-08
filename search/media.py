@@ -28,10 +28,14 @@ from . import hooks as _hooks
 #: much it must beat the best song. Below either, the song road stays as it was.
 CONTEXT_FIT = 0.5
 CONTEXT_MARGIN = 0.15
-#: The kinds a catalogue answer carries, where each lives in it, and which field is its owner; a whole is all but a song.
-_KINDS = (("show", "shows", "owner"), ("playlist", "playlists", "owner"), ("album", "albums", "artist"),
-          ("track", "tracks", "artist"))
-_WHOLES = frozenset(kind for kind, _key, _owner in _KINDS if kind != "track")
+#: The kinds a catalogue answer carries, where each lives in it, which field is its owner, and the word a request and
+#: a reply use for it (`play_music.kind`, the card's numbered list — V2-861); a whole is all but a song.
+_KINDS = (("show", "shows", "owner", "podcast"), ("playlist", "playlists", "owner", "list"),
+          ("album", "albums", "artist", "album"), ("track", "tracks", "artist", "song"))
+_WHOLES = frozenset(kind for kind, _key, _owner, _word in _KINDS if kind != "track")
+#: The kind a request NAMES («a list», «the podcast») → the candidate kind it means, and back.
+ASKED_KINDS = {word: kind for kind, _key, _owner, word in _KINDS}
+SPOKEN_KIND = {kind: word for kind, _key, _owner, word in _KINDS}
 #: How many results of each kind are compared (the catalogue answers in relevance order).
 _PER_KIND = 8
 _PRIVATE = ("item",)
@@ -85,17 +89,28 @@ def rank(query: str, answer: dict) -> list[dict]:
     """Every podcast, list, album and song of a catalogue answer as a candidate, best fit first. A song keeps a tie
     (an album named like its single plays the single, as it always did); otherwise the catalogue's order stays."""
     out = []
-    for kind, key, owner_key in _KINDS:
+    for kind, key, owner_key, _word in _KINDS:
         for it in ((answer or {}).get(key) or [])[:_PER_KIND]:
             if isinstance(it, dict):
                 out.append(_candidate(kind, it, query, owner_key))
     return sorted(out, key=lambda c: (-c["fit"], c["kind"] != "track"))
 
 
-def named_whole(query: str, candidates: list[dict]) -> "dict | None":
+def named_whole(query: str, candidates: list[dict], kind: str = "") -> "dict | None":
     """The podcast, list or album his words NAME — it fits them at least `CONTEXT_FIT`, beats the best song by
-    `CONTEXT_MARGIN`, and carries a uri to open it by. None otherwise: the song road stays as it was."""
+    `CONTEXT_MARGIN`, and carries a uri to open it by. None otherwise: the song road stays as it was.
+
+    `kind` is the kind HE named (`ASKED_KINDS`, V2-861: «put some LIST… Sueñacuentos» played the podcast of the
+    same name over four lists): the best fit of that kind wins with no margin over the songs, and «a song» keeps the
+    song road. A named kind with nothing of it that fits falls back to the rule above."""
     cands = [c for c in (candidates or []) if isinstance(c, dict)]
+    want = ASKED_KINDS.get(str(kind or "").strip().lower(), "")
+    if want == "track":
+        return None
+    if want:
+        mine = [c for c in cands if c.get("kind") == want and c.get("uri") and c.get("fit", 0.0) >= CONTEXT_FIT]
+        if mine:
+            return max(mine, key=lambda c: c.get("fit", 0.0))
     song = max((c.get("fit", 0.0) for c in cands if c.get("kind") == "track"), default=0.0)
     wholes = [c for c in cands if c.get("kind") in _WHOLES and c.get("uri")]
     best = max(wholes, key=lambda c: c.get("fit", 0.0), default=None)
