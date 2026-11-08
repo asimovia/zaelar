@@ -51,7 +51,9 @@ export const sttMode = () => fetch("/api/stt-mode").then(json);
 // the body so a caller can tell a real token apart from a refusal (409 `{error:"engine_stopped"}` while the ⏻
 // global switch is off, see server/livekit_api.py::token()) — the body alone has no `token` either way, so
 // checking for its mere presence would silently try to connect a room with `token: undefined`.
-export const lkToken = () => fetch("/api/token").then((r) => r.json().then((body) => ({ ok: r.ok, ...body })));
+// `pending`: this page holds typed lines it could not deliver — the session it opens answers them, no greeting.
+export const lkToken = (pending = false) => fetch("/api/token" + (pending ? "?pending=1" : ""))
+  .then((r) => r.json().then((body) => ({ ok: r.ok, ...body })));
 
 // UNA SOLA SESIÓN DE VOZ VIVA POR MÁQUINA (2026-07-12): el server es el árbitro (localhost = mismo ordenador).
 // acquire/heartbeat devuelven {ok}: ok=false → otra pestaña/navegador está viva. Fail-open ante error de red
