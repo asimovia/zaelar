@@ -6432,6 +6432,9 @@ DOMAINS: list[dict] = [
         # not forwarding `payload`: 1 red).
         {"id": "2.1633", "title": "A refused card action hands back its DECLARED payload (V2-860 T2.7): at the one door every caller shares (`brain_action`) a refusal carries the action's declared `payload` and the first declared key the call left out as `field`, read through `act_policy.declared_actions`; a worker's bridge forwards it beside detail/options/field; nothing is added to any prompt up front",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/workers/test_a_refused_card_action_hands_back_its_declared_shape.py"]},
+        # V2-860 F3 — disarmed 2026-11-08 (`a_search` without candidates: 1 red; the `search` family unregistered: 1 red).
+        {"id": "2.1634", "title": "A worker reaches OUR players through the door it already has (V2-860 F3): `widget_data` on the music card's declared `search`/`play_album` is ALLOWED, the search hands back playable candidates with their uri and `play_album {uri}` takes the one play rule; its level 1 opens with the `search` family (our search, the players are cards, never the web), the network is asked first only for what none of ours covers (both workers), and the widgets family gives each card its mission",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/workers/test_a_worker_plays_through_the_cards_it_already_has.py"]},
         # V2-851 F1b §3 — a worker's question is durable and the session that asked is resumed by id.
         {"id": "2.1030", "title": "A question waits on its row (V2-851 F1b): `ask` writes `state=waiting`, "
                                   "`waiting_for=user_answer`, `ask_id`, `ask` and keeps the retained act as the task's "

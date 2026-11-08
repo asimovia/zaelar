@@ -268,15 +268,16 @@
       "sensitivity": "routine"
     },
     "search": {
-      "desc": "busca en el catálogo canciones, artistas y álbumes y enseña los resultados",
+      "desc": "busca en el catálogo canciones, artistas, álbumes, listas y podcasts, enseña los resultados y devuelve candidates con su uri",
       "payload": {
         "query": "lo que busca"
       },
       "view": true
     },
     "play_album": {
-      "desc": "reproduce un álbum entero del catálogo",
+      "desc": "reproduce un álbum, una lista o un podcast entero del catálogo (por su uri, de search)",
       "payload": {
+        "uri": "el uri que devolvió search (preferido)",
         "album": "nombre del álbum",
         "artist": "artista, opcional"
       },
