@@ -182,3 +182,17 @@ def test_a_list_that_cannot_be_opened_says_so_and_plays_nothing_else(world, monk
     out = browse.a_play_album("play_album", {"uri": "spotify:playlist:pl1", "album": "Sueñacuentos"})
     assert not out["ok"] and out["error"] == "context_unreadable"
     assert calls["album"] == [] and calls["looked"] == [], "nothing else sounded in its place"
+
+
+def test_the_phone_turn_replayed_is_worded_from_what_was_found_never_the_cards_now_playing(world):
+    """V2-860 T4.1 — T94 of the archived phone session: «Sueña cuentos en Spotify?» with no Spotify app on the phone.
+    The reply said «ahora mismo en Spotify suena Better With Time» — read from the card, not from the act. The act's
+    facts now carry what the catalogue found and why it cannot sound here; the card's «now playing» is not a fact."""
+    from i18n import langs
+    from nucleo.flash import music_outcome
+    said = "Voy a buscarlo en Spotify y te lo pongo a sonar."
+    res = music.control("play", "Sueña cuentos")
+    facts = music_outcome.system("LOCK", "Sueña cuentos en Spotify?", said, res)
+    w = langs.words("music", default={})
+    assert "«Sueñacuentos»" in facts and w["outcome_reasons"]["needs_app"] in facts
+    assert w["outcome_options"]["open_app"] in facts and "Better With Time" not in facts

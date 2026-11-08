@@ -651,8 +651,10 @@ Flash keeps the conversation; the row is what both brains read.
   set comes on request through the bridge (`python -m nucleo.cli.bridge catalog <family>`). Which playbook
   (`errand | message | document | lista`) is read from facts the engine has — the surface, the mandate, the request's
   shape — never from words. His rules reach the worker as data; the door stays their only authoritative reader. A
-  worker's harness never reads the host user's own config. — since 2026-11-05 · nodes 2.1151, 2.1150, 2.1095 ·
-  `nucleo/workers/prompts/playbook.py`, `nucleo/workers/prompts/catalog.py`.
+  worker's harness never reads the host user's own config. The families are ordered ours → outside → browser: the
+  first is our `search` (the search service; what can be PLAYED is the `musica`/`youtube` cards, never the web), and
+  the network is asked first only for a capability none of ours covers (V2-860 F3, 2026-11-08). — since 2026-11-05 ·
+  nodes 2.1151, 2.1150, 2.1095, 2.1634 · `nucleo/workers/prompts/playbook.py`, `nucleo/workers/prompts/catalog.py`.
 - **CRIT-T9 · What a worker does is kept on its task, at the door.** Every act through the bridge — denied, asked, run,
   and the act his yes ran — records its artefact on the task's row and emits ONE `worker_act` event {task_id, session,
   act, door, outcome}; files a worker produces are slots of its row. The worker cannot produce a deliverable that is
@@ -763,7 +765,7 @@ Flash keeps the conversation; the row is what both brains read.
   contact record and the recipient check. A question about a first name many share answers «which one», closest
   three. — since 2026-11-04 · nodes 4.358, 2.1010 · `connectors/whatsapp/service/directory.py`,
   `connectors/whatsapp/bridge/bridge.js`, `widgets/directory.py`, `widgets/contactos/`.
-- **CRIT-M14 · A podcast or a list plays ITSELF, never its namesake.** «Play X» asks the search service's media door (`search.media`) to compare his words with the NAME of every kind the connected catalogue answers (podcast, list, album, song — a song keeps a tie) and plays the whole they name by its uri where it can sound, else its OWN songs read by that uri (`music.play_whole`, the same rule a tap on the card takes); a podcast's episodes are never substituted — where only the provider's app can sound it and none is open, the answer is `needs_app` and nothing plays; a uri is never traded for a search of its name. — since 2026-11-07, rule of one door 2026-11-08 (V2-860 T2.1-T2.4) · nodes 5.71, 3.177 · `search/media.py`, `connectors/music/__init__.py`, `widgets/musica/browse.py`.
+- **CRIT-M14 · A podcast or a list plays ITSELF, never its namesake.** «Play X» asks the search service's media door (`search.media`) to compare his words with the NAME of every kind the connected catalogue answers (podcast, list, album, song — a song keeps a tie) and plays the whole they name by its uri where it can sound, else its OWN songs read by that uri (`music.play_whole`, the same rule a tap on the card takes); a podcast's episodes are never substituted — where only the provider's app can sound it and none is open, the answer is `needs_app` and nothing plays; a uri is never traded for a search of its name; a whole that could not sound is worded from what was found and why (`music_outcome`: its name, `needs_app` → open the app), never from the card's «now playing». — since 2026-11-07, rule of one door 2026-11-08 (V2-860 T2.1-T2.4, T4.1) · nodes 5.71, 3.177 · `search/media.py`, `connectors/music/__init__.py`, `widgets/musica/browse.py`.
 - **CRIT-R1 · A bug of ours is not a provider outage.** The exception decides (an HTTP status is theirs, a bare
   Python error is ours); the SAME request relays to the stand-in inside the connect loop; the panel names titular
   and stand-in, amber while the substitute serves. — since 2026-09-23 · nodes 2.77, 2.54, 4.27.
