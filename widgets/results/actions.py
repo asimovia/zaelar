@@ -13,6 +13,7 @@ from search import candidacy as _cand
 from . import category_gate as _gate
 
 from . import data as _d
+from . import find as _find
 from . import door_event as _door
 from . import hard_checks as _hard
 from . import pool as _pool
@@ -152,14 +153,13 @@ def _a_clear(action, payload, sheet) -> dict:
     return {"ok": True, "shown": 0}
 
 
-def _a_choose(action, payload, sheet) -> dict:
-    title = str(payload.get("title", "")).strip()
-    if not title:
-        return {"ok": False, "error": "choose needs the item's EXACT title"}
+def _a_choose(action, payload, sheet) -> dict:   # V2-861: by its number or words (`detail`'s finder), its real title kept
     data = _d.view_data(sheet)
-    data["chosen"] = title
+    it = _d._find(data.get("items") or [], _d._named(payload), payload.get("index"))
+    if not it: return _find.no_row()  # noqa: E701
+    data["chosen"] = it["title"]
     _d._save(data, sheet)
-    return {"ok": True, "chosen": title}
+    return {"ok": True, "chosen": it["title"]}
 
 
 def _a_detail(action, payload, sheet) -> dict:
@@ -176,10 +176,7 @@ def _a_detail(action, payload, sheet) -> dict:
         if len(hits) == 1:
             sheet, it = hits[0]
             data = _d.view_data(sheet)
-    if not it:
-        # `error` is the model's hint (English, internal); what HE hears is the pack's line, in his language (V2-831 R9)
-        return {"ok": False, "error": "no such row on the sheet (pass its title, or a 1-based index)",
-                "message": _d.note_text("refusal_no_row", ""), "say": "widgets.results.refusal_no_row"}
+    if not it: return _find.no_row()  # noqa: E701
     data["view"] = "detail"
     data["focus"] = it["title"]
     data["tab"] = "results"                  # opening a record means returning to the list, not staying on sources

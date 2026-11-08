@@ -18,6 +18,13 @@ def _named(payload: dict) -> str:
     return ""
 
 
+def no_row() -> dict:
+    """The refusal when no row is the one named (`choose`, `detail`): `error` is the model's hint (English); what HE
+    hears is the pack's line, in his language (V2-831 R9)."""
+    return {"ok": False, "error": "no such row on the sheet (pass its title, or a 1-based index)",
+            "message": _d.note_text("refusal_no_row", ""), "say": "widgets.results.refusal_no_row"}
+
+
 def _find(items: list[dict], title: str = "", index=None) -> dict | None:
     """Resolve WHICH item the operator means: by ordinal, exact title, contains-match, decorated title, or badge.
     The ordinal matters because this arrives from VOICE: «number one» survives STT better than a full name."""

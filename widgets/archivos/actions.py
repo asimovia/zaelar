@@ -92,8 +92,27 @@ def _a_save_document(act: str, payload: dict) -> dict:
     return _save_document(_begin(act), payload)
 
 
+def _named_entry(db: dict, act: str, payload: dict) -> dict:
+    """The row he NAMED on the list on screen — its number in the digest, its name or words of it — turned into the
+    id the open takes (V2-861: the video and music cards pick a result this way; here «abre el tercero» or «abre el
+    contrato» reached `open_file` with no id to open). An id already on the list, or a reference that names no single
+    row of the right kind, is left as it came: the open answers it as before."""
+    key = "folderId" if act == "open_folder" else "fileId"
+    ref = payload.get(key) or payload.get("id") or payload.get("item")
+    entries = db.get("entries") or []
+    if ref is None or not entries or any(str(e.get("id")) == str(ref) for e in entries):
+        return payload
+    from widgets import result_refs as _rr
+    i = _rr.resolve([{"title": str(e.get("name") or ""), "channel": ""} for e in entries], ref)
+    if i is None or (str(entries[i].get("kind")) == "folder") != (act == "open_folder"):
+        return payload
+    return {**payload, key: str(entries[i].get("id") or "")}
+
+
 def _nav(act: str, payload: dict) -> dict:
     db = _begin(act)
+    if act in ("open_file", "open_folder"):
+        payload = _named_entry(db, act, payload or {})
     if (db.get("provider") or "local") == "local":
         return _handle_local_nav(db, act, payload)
     svc = _d._svc()
