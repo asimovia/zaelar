@@ -471,6 +471,12 @@
    "identified_by": "named by",
    "options": "options",
    "named": "found"
+  },
+  "outcome_kinds": {
+   "show": "a podcast",
+   "playlist": "a playlist",
+   "album": "an album",
+   "track": "a song"
   }
  },
  "agenda": {

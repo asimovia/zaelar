@@ -31,6 +31,18 @@ def _options(reason: str) -> list[str]:
     return ["retry"] + (["connect"] if connectable else [])
 
 
+def _found_as(w: dict, res, extra: dict) -> str:
+    """« (a podcast, Spotify)» — WHAT kind of thing was found and WHERE, from the act's own facts (its uri's kind, the
+    provider that answered). Without them the pass guessed: a podcast was worded «the album», Spotify «the music app»
+    (V2-860, measured on the text channel 2026-11-08). The kind's word is language data (`music.outcome_kinds`)."""
+    uri = str(extra.get("named_uri") or "")
+    kind = str(extra.get("named") or (uri.split(":")[1] if uri.count(":") >= 2 else ""))
+    word = str((w.get("outcome_kinds") or {}).get(kind) or "")
+    prov = str(getattr(res, "provider", "") or (uri.split(":", 1)[0] if ":" in uri else "")).strip()
+    parts = [x for x in (word, prov[:1].upper() + prov[1:] if prov else "") if x]
+    return f" ({', '.join(parts)})" if parts else ""
+
+
 def system(lang_lock: str, asked: str, said: str, res) -> str:
     """The pass's instructions, in his language, with this act's facts."""
     from i18n import langs
@@ -42,7 +54,7 @@ def system(lang_lock: str, asked: str, said: str, res) -> str:
     if extra.get("tried") or extra.get("looked_up"):
         facts.append(f"{labels.get('tried', 'looked up')}: «{extra.get('tried') or extra.get('looked_up')}»")
     if extra.get("named_name"):          # what the catalogue found — the reply names it, never the card's «now playing»
-        facts.append(f"{labels.get('named', 'found')}: «{extra['named_name']}»")
+        facts.append(f"{labels.get('named', 'found')}: «{extra['named_name']}»{_found_as(w, res, extra)}")
     if extra.get("identified_by"):
         facts.append(f"{labels.get('identified_by', 'named by')}: {extra['identified_by']}")
     facts.append(f"{labels.get('options', 'options')}: " + "; ".join(str(opts.get(k, k)) for k in _options(reason)))
