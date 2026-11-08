@@ -23,12 +23,42 @@ from loguru import logger
 PASS = frozenset({"escalate_to_slowbrain", "not_understood"})
 
 
+def is_player(name: str) -> bool:
+    """The call hands the request to one of OUR players (`acts/media.CARD_OF_TOOL`, the one declaration): it sends
+    nothing outward, so a sure escalate has nothing to protect there (V2-860 T1.1)."""
+    try:
+        from nucleo.acts.media import CARD_OF_TOOL
+        return str(name or "") in CARD_OF_TOOL
+    except Exception as e:  # noqa: BLE001 — an unreadable declaration keeps the old routing
+        logger.debug(f"route_by_verdict: players unreadable — {e!r}")
+        return False
+
 def wait_s() -> float:
     """How long the model's words and calls wait for a brief in flight before they run on their own."""
     try:
         return max(0.0, float(os.getenv("ZAELAR_ROUTE_WAIT_S", "1.5")))
     except ValueError:
         return 1.5
+
+
+def player_ran(brief) -> str:
+    """The player the model handed this turn to («» when none): its catalogue is the turn's answer, not an errand."""
+    try:
+        return str((brief or {}).get(_PLAYER_KEY) or "")
+    except Exception as e:  # noqa: BLE001 — an unreadable brief reads as «no player»
+        logger.debug(f"route_by_verdict: player unreadable — {e!r}")
+        return ""
+
+
+_PLAYER_KEY = "_player_ran"
+
+
+def _mark(brief, name: str) -> None:
+    try:
+        if brief is not None:
+            brief[_PLAYER_KEY] = name
+    except Exception as e:  # noqa: BLE001 — an unmarkable brief only keeps the old routing
+        logger.debug(f"route_by_verdict: player not marked — {e!r}")
 
 
 def sure_escalate(brief) -> bool:
@@ -68,7 +98,12 @@ def gate_calls(on_tool_call, *, brief, escalate_req: dict, operator_text: str, e
                     brief["event"].wait(left)
                 except Exception as e:  # noqa: BLE001 — an unawaitable brief reads as in flight
                     logger.debug(f"route_by_verdict: brief not awaited — {e!r}")
+        player = is_player(name)
+        if player and not escalate_req.get("routed"):
+            _mark(brief, name)               # its words are said and no errand opens behind it (V2-860 T1.1)
+            return on_tool_call(name, args)
         if name not in PASS and sure_escalate(brief):
+            _mark(brief, "")                 # a routed send after a player: the turn's words are the errand's
             route(escalate_req, operator_text, emit, why=f"call:{name}", brief=brief)
             return None
         return on_tool_call(name, args)

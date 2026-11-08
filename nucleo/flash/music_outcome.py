@@ -26,6 +26,8 @@ def _options(reason: str) -> list[str]:
         logger.debug(f"music outcome: sources unreadable: {e!r}")
     if reason == "no_track":
         return ["more_words", "another"]
+    if reason == "needs_app":          # found, and only its provider's own app can sound it here (V2-860 T4.1)
+        return ["open_app"]
     return ["retry"] + (["connect"] if connectable else [])
 
 
@@ -39,6 +41,8 @@ def system(lang_lock: str, asked: str, said: str, res) -> str:
     facts = [str((w.get("outcome_reasons") or {}).get(reason) or reason)]
     if extra.get("tried") or extra.get("looked_up"):
         facts.append(f"{labels.get('tried', 'looked up')}: «{extra.get('tried') or extra.get('looked_up')}»")
+    if extra.get("named_name"):          # what the catalogue found — the reply names it, never the card's «now playing»
+        facts.append(f"{labels.get('named', 'found')}: «{extra['named_name']}»")
     if extra.get("identified_by"):
         facts.append(f"{labels.get('identified_by', 'named by')}: {extra['identified_by']}")
     facts.append(f"{labels.get('options', 'options')}: " + "; ".join(str(opts.get(k, k)) for k in _options(reason)))

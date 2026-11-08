@@ -1730,6 +1730,9 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ['tests/voice/unit/test_a_failed_song_is_worded_from_its_facts.py']},
         {"id": "3.172", "title": "A video or a track to play is found through the search service's one door (`search.video.find_videos`): the results page, then the same page in the warm Chromium, both declared providers with a health probe; the music player and the video card ask the same door, no private scrape is left, every call reports its outcome (V2-833 F1)",
             "ch": UNIT, "paths": ['tests/search/unit/test_a_video_lookup_is_a_search.py']},
+        # V2-860 T2.1 — disarmed 2026-11-08 (`named_whole` → None: 5 red).
+        {"id": "3.177", "title": "What can be PLAYED is found through the search service's media door (`search.find_media`, V2-860 T2.1), apart from `find()`'s routes: his words are compared with the NAME of every kind the catalogue answers (podcast, list, album, song — spaces aside, extra words allowed, a song keeps a tie), the whole he names is told from its namesake song only with a uri, music falls to the one video door when the catalogue is empty, and nothing found is an honest empty",
+            "ch": UNIT, "paths": ["tests/search/unit/test_a_media_search_finds_what_can_be_played.py"]},
         {"id": "3.171", "title": "A canvas gesture of his turn is «what we just did»: close / minimise / full screen / arrange are recorded by the one canvas door (`done_ops.gesture`), a bulk close as ONE gesture with what it closed and kept — so the redo question is asked about it and a correction of it is the card's, never the running errand's; a show or a background trace is not his act (V2-831 T-02c)",
             "ch": UNIT, "paths": ['tests/agent_headless/unit/flash/test_a_close_is_what_we_just_did.py']},
         {"id": "3.170", "title": "Which cards he names to close has ONE reader: the close question's pick on screen (`brief_screen.close_picks`) is read before the declared-names matcher by every close door — a picked card the matcher misses closes alone, never as «close everything» (V2-831 audit A2b, CRIT-K1)",
@@ -6069,6 +6072,9 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/connectors/unit/music/test_play_modes_queue_and_catalogue.py"]},
         {"id": "5.65", "title": "Since 2026-11-01 (operator's rule, V2-833 F2) a song sounds in the page of the screen that ASKED, a connected Spotify identifies it — Music plays where he listens: a start goes to a device of the account on the screen that asked, else that screen's page; it is read back from the player (device named, silence said, a refused device never swapped for the first listed) and the same words again are not re-sent (V2-812 T-01)",
             "ch": UNIT, "paths": ["tests/connectors/unit/music/test_the_music_plays_where_he_listens.py"]},
+        # V2-860 T2.2-T2.4 — disarmed 2026-11-08 (`named_whole` → None: 4 red; episodes played like songs: 3 red).
+        {"id": "5.71", "title": "A podcast or a list plays ITSELF, never its namesake (V2-860 T2.2-T2.4): the catalogue search brings podcasts and an opened podcast marks its episodes; the whole his words name (the media door) plays by its uri where it can sound, else its own SONGS, and a podcast's episodes are never substituted — on a phone without the provider's app the answer is `needs_app` and nothing sounds; a tapped uri follows the same rule and is never traded for its name; the card's search hands back what can be played with its handle; the T94 phone turn is worded from what was found and why (`needs_app`), never from the card's «now playing» (T4.1)",
+            "ch": UNIT, "paths": ["tests/connectors/unit/music/test_a_podcast_or_list_plays_itself_not_its_namesake.py"]},
         {"id": "5.66", "title": "Every connector family declares how far back it can see through one door — mail (the "
                                 "INBOX's oldest INTERNALDATE, read-only), cloud files (the root's date), messaging (the "
                                 "archive's oldest row); an undeclared family says so, a dead resource is a fact, not a "
@@ -6418,6 +6424,17 @@ DOMAINS: list[dict] = [
         # V2-851 F5 — disarmed 2026-11-05 (`sure_escalate` returning False → 6 red).
         {"id": "2.1192", "title": "A SURE escalate verdict routes the request to its task before the model is trusted (V2-851 F5, CRIT-E27, battery C9): at or above the licence the model's inline call, tag and words do not run, the request becomes the turn's commission (the errand portal through `flow_of.route`) whether or not the model called escalate; the commission and `not_understood` pass; an inline, unsure or absent verdict lets the model act; a brief in flight is waited for at most `ZAELAR_ROUTE_WAIT_S` · A request a sure escalate verdict routed is final at the close (V2-851 F5, battery C9): no show guard, picture search, fragment guard, third rung, card commission or annulment gate swaps it for an inline card act or drops it (`route_by_verdict.owns`) — the request reaches its task, where his mail's taint asks consent",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_a_sure_escalate_verdict_routes_before_the_model.py"]},
+        # V2-860 T1.1 — disarmed 2026-11-08 (`is_player` over an empty `CARD_OF_TOOL`: 5 red; a routed send after a
+        # player keeping the player mark: 1 red).
+        {"id": "2.1632", "title": "A call to a PLAYER is served by its catalogue, never swallowed by an errand (V2-860 T1.1): under a sure escalate a tool `acts/media.CARD_OF_TOOL` declares runs (music to the music card, video to the video card), its words are said and no errand opens behind it; the exemption is the call, not the turn — a send before or after it is still routed, and a player after the turn was routed does not run beside the errand; the T96 phone turn replayed records `music_req`",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_a_player_call_is_not_swallowed_by_an_errand.py"]},
+        # V2-860 T2.7 — disarmed 2026-11-08 (`action_shape.on_refusal` passing the refusal untouched: 2 red; the bridge
+        # not forwarding `payload`: 1 red).
+        {"id": "2.1633", "title": "A refused card action hands back its DECLARED payload (V2-860 T2.7): at the one door every caller shares (`brain_action`) a refusal carries the action's declared `payload` and the first declared key the call left out as `field`, read through `act_policy.declared_actions`; a worker's bridge forwards it beside detail/options/field; nothing is added to any prompt up front",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/workers/test_a_refused_card_action_hands_back_its_declared_shape.py"]},
+        # V2-860 F3 — disarmed 2026-11-08 (`a_search` without candidates: 1 red; the `search` family unregistered: 1 red).
+        {"id": "2.1634", "title": "A worker reaches OUR players through the door it already has (V2-860 F3): `widget_data` on the music card's declared `search`/`play_album` is ALLOWED, the search hands back playable candidates with their uri and `play_album {uri}` takes the one play rule; its level 1 opens with the `search` family (our search, the players are cards, never the web), the network is asked first only for what none of ours covers (both workers), and the widgets family gives each card its mission",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/workers/test_a_worker_plays_through_the_cards_it_already_has.py"]},
         # V2-851 F1b §3 — a worker's question is durable and the session that asked is resumed by id.
         {"id": "2.1030", "title": "A question waits on its row (V2-851 F1b): `ask` writes `state=waiting`, "
                                   "`waiting_for=user_answer`, `ask_id`, `ask` and keeps the retained act as the task's "
@@ -7523,6 +7540,11 @@ DOMAINS: list[dict] = [
         {"id": "10.56", "title": "The stage is cleared before EVERY case — including the first — and the "
                                  "reset that runs is the one that keeps memory",
             "ch": UNIT, "paths": ["tests/use_cases/unit/test_the_stage_is_cleared_before_every_case.py"]},
+        # V2-860 T0.1 — disarmed 2026-11-07 (`engine_up.refused` → False: 2 red).
+        {"id": "10.139", "title": "A round starts only on an engine that answers (V2-860 T0.1): a REFUSED first "
+                                  "contact waits a bounded time, restarts its own sandbox once, and otherwise "
+                                  "records ONE infra row («sandbox engine not answering») and stops the walk",
+            "ch": UNIT, "paths": ["tests/use_cases/unit/test_a_round_starts_only_on_a_live_engine.py"]},
         {"id": "10.57", "title": "Two searches are two sheets: the harness COUNTS the boxes, and one box "
                                  "for two errands is reported as shared",
             "ch": UNIT, "paths": ["tests/use_cases/unit/test_two_searches_are_two_sheets.py"]},

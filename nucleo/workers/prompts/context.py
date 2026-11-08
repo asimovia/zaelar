@@ -126,9 +126,12 @@ def _mesh_first_block(py: str = "python", *, browser: bool, goal: str = "") -> s
     que buscará por su cuenta. Solo cambia el ENCABEZADO y la salida del último punto: lo que se le manda hacer
     es idéntico, y tenerlo dos veces es exactamente como estas dos mitades se separan sin avisar.
     """
-    cabeza = ("PASO 0 — ANTES DE ABRIR EL NAVEGADOR, pregunta a la red si ya hay un agente que haga esto:\n"
+    # V2-860 T3.4 — ours first: the network is asked first only for what none of ours covers (both workers).
+    cabeza = ("PASO 0 — para lo que NADA nuestro cubre (buscar, música y vídeo son nuestros), ANTES DE ABRIR EL "
+              "NAVEGADOR pregunta a la red si ya hay un agente que lo haga:\n"
               if browser else
-              "PASO 0 — ANTES DE PONERTE A BUSCARLO TÚ, pregunta a la red si ya hay un agente que haga esto:\n")
+              "PASO 0 — para lo que NADA nuestro cubre (buscar, música y vídeo son nuestros), ANTES DE HACERLO TÚ "
+              "pregunta a la red si ya hay un agente que lo haga:\n")
     cola = ("Si dice que no hay agente, o el resultado no vale, sigue con el método de abajo — es lo normal: "
             if browser else
             "Si dice que no hay agente, o el resultado no vale, sigue con tu método normal — es lo normal: ")

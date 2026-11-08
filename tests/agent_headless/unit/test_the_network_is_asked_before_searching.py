@@ -43,11 +43,13 @@ def test_el_worker_WEB_lo_sigue_llevando():
 def test_cada_uno_recibe_SU_encabezado():
     """One instruction per block: the one driving a browser is told «before opening it», while the one
     searching on its own is told «before searching for it yourself». The command is the same; the next resource is not."""
-    # V2-851 F3: the brief carries ONE headline for both, naming both next resources; the family is the generic one.
+    # V2-851 F3: the brief carries ONE headline for both; the family is the generic one. V2-860 T3.4: ours first —
+    # the network is asked first only for what none of ours covers (search, music and video are ours).
     from nucleo.workers.prompts import catalog
     line = catalog.words("families.mesh").lower()
-    assert ("browser" in line or "navegador" in line) and "cli.mesh" in line
-    assert "ANTES DE PONERTE A BUSCARLO TÚ" in catalog.full("mesh")
+    assert "cli.mesh" in line and ("nothing of ours" in line or "nada nuestro" in line)
+    assert "ANTES DE HACERLO TÚ" in catalog.full("mesh")
+    assert "ANTES DE ABRIR EL NAVEGADOR" in dp._mesh_first_block(browser=True)
 
 
 def test_el_bloque_vive_en_UN_solo_sitio():

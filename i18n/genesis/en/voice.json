@@ -447,25 +447,30 @@
    "no_prev": "There's no earlier song in what's playing.",
    "play_on": "Now playing «{label}» on \"{device}\".",
    "not_sounding": "I sent the music to \"{device}\", but it is not playing there.",
-   "already_on": "«{label}» is already playing on \"{device}\"."
+   "already_on": "«{label}» is already playing on \"{device}\".",
+   "needs_app_phone": "I have «{label}» in {provider}, but there's no {provider} app open on this phone: open it and I'll put it on.",
+   "needs_app": "I have «{label}» in {provider}, but it can only play in the {provider} app and there isn't one open here: open it and I'll put it on."
   },
   "outcome_pass": "The operator asked: «{asked}». You had already said: «{said}». Then the music act ended like this: {facts}. If what you said is still true, answer exactly SKIP. Otherwise tell the operator, in one or two natural spoken sentences in the operator's language, what really happened and offer only the options listed. Ask for more words from the song only when the facts say the catalogue was reached and found nothing.",
   "outcome_reasons": {
    "unreachable": "the music catalogue could not be reached right now",
    "no_track": "the catalogue was searched and has nothing under that name",
    "no_provider": "no music source is available",
-   "error": "the player failed"
+   "error": "the player failed",
+   "needs_app": "it was found in the connected catalogue, but only that service's own app can play it and none is open on the screen that asked — nothing else was played instead"
   },
   "outcome_options": {
    "retry": "try again in a moment",
    "connect": "connect a music account (Spotify) in Connectors",
    "another": "look for another version",
-   "more_words": "a few more words from the song"
+   "more_words": "a few more words from the song",
+   "open_app": "open the music app on this device and ask again"
   },
   "outcome_labels": {
    "tried": "looked up",
    "identified_by": "named by",
-   "options": "options"
+   "options": "options",
+   "named": "found"
   }
  },
  "agenda": {
@@ -675,8 +680,9 @@
   },
   "catalog_intro": "WHAT ELSE EXISTS (headlines — ask for a family's full set ONLY when your task needs it: `python -m nucleo.cli.bridge catalog <family>`):",
   "families": {
+   "search": "Zaelar's search (`act use_tool \"<what>\"`); music, podcasts and video: the `musica`/`youtube` cards, never the web.",
    "browser": "drive the operator's real browser (look, click, type, navigate, visit, extract) and its method.",
-   "mesh": "BEFORE searching yourself or opening the browser, ask the network: `python -m nucleo.cli.mesh find \"<the errand, in his words>\"` (how to serve it and read what comes back: catalog mesh).",
+   "mesh": "what NOTHING of ours covers (an image, a transcript…): `python -m nucleo.cli.mesh find \"<the errand>\"`.",
    "sites": "trusted sites per category in his country (shopping, travel, second-hand…).",
    "messaging": "his WhatsApp, Telegram and email: `python -m nucleo.cli.widget read mensajeria` says what is connected and pending.",
    "widgets": "read and operate a card of his canvas (agenda, lists, results, documento…) through its declared actions.",
@@ -698,7 +704,8 @@
    "messaging": "His messaging (WhatsApp, Telegram and his EMAIL) is read through the `mensajeria` card: `python -m nucleo.cli.widget read mensajeria` says which channels are connected and what is pending; a send is its declared action (`python -m nucleo.cli.widget data mensajeria send_to @msg.json`). There is NO gmail_cli and no «gmail» tool; opening the webmail in the browser is the last resort, never the first.",
    "widgets": "To READ or OPERATE a card: `python -m nucleo.cli.widget read|data|show|close <widget>` — read first and use the REAL ids it returns. NEVER rewrite a widget's CODE to put data in it: data goes in through its declared actions, which `read` lists. The cards installed here:",
    "schedule": "For zaelar to remind him or follow up LATER, schedule it for real: write {\"when\":\"<when>\",\"prompt\":\"<what it must say or do>\"} to `reminder.json` and run `python -m nucleo.cli.bridge act schedule @reminder.json` — «tomorrow at 9», «Wednesday at 18:00», «every 30m» or a cron «0 9 * * 3». If it returns an error, do NOT say it is scheduled: say it is not.",
-   "rules": "His rules that cover a concrete act: write {\"widget\":…, \"action\":…, \"channel\":…} to `rule.json` and run `python -m nucleo.cli.bridge act rules @rule.json` — the rows in the order they apply and the values they resolve to. DATA: the door of each act applies them; you never decide with them. A rule he states while you work: `python -m nucleo.cli.bridge act propose_rule @rule.json` with {\"sentence\": \"<his words>\"} — it is written only on his yes."
+   "rules": "His rules that cover a concrete act: write {\"widget\":…, \"action\":…, \"channel\":…} to `rule.json` and run `python -m nucleo.cli.bridge act rules @rule.json` — the rows in the order they apply and the values they resolve to. DATA: the door of each act applies them; you never decide with them. A rule he states while you work: `python -m nucleo.cli.bridge act propose_rule @rule.json` with {\"sentence\": \"<his words>\"} — it is written only on his yes.",
+   "search": "ZAELAR'S SEARCH SERVICE (the same one the assistant uses): `python -m nucleo.cli.bridge act use_tool \"<what you look for>\"`, the query in quotes. It picks the route itself: a FACT (an answer already synthesised, with its sources), a LIST of offers or listings (rows with their link and what it did not find), a LOCAL SERVICE (places with address and rating) or IMAGES. What it did NOT find is said: do not invent it.\nMUSIC, PODCASTS AND VIDEO ARE NOT SEARCHED ON THE WEB: they are cards with declared actions. `python -m nucleo.cli.widget data musica search \"<what>\"` returns `candidates` (kind, name, owner, `uri`) and `named` when his words name a podcast, a list or an album; it plays with `data musica play_album @f.json` and `{\"uri\": \"<the uri>\"}` (if it cannot sound where he is, the answer says why — do not swap in something else). Video: `data youtube search @f.json` with `{\"query\": \"…\"}` and `data youtube load @f.json` with `{\"videoId\": \"…\"}`.\nTHE BROWSER is for a site he named or his own signed-in session, never to find a song or a video."
   }
  },
  "contactos": {

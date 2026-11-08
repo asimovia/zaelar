@@ -180,6 +180,11 @@ class MusicProvider(ABC):
         """{album, tracks} for one album of THIS provider's catalogue."""
         return None
 
+    def context_page(self, uri: str) -> "dict | None":
+        """{context, tracks} for the album, playlist or podcast its OWN uri names — the same object, never another
+        one found by its name (the phone case: a tapped list whose uri could not sound became another list)."""
+        return None
+
     # ── PLACEMENT (V2-812) — only for a provider that `plays_elsewhere` ─────────────────────────────────────
     def device_near(self, screen_kind: str) -> "dict | None":
         """A device of this provider that sits with a screen of that kind (`phone` / `computer`): {id, name}, or

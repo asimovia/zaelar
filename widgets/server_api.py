@@ -541,6 +541,8 @@ async def brain_action(wid: str, action: str, payload: dict) -> dict:
     _late.note_agent_order(wid)          # a late failure of what this starts is said (`late_report`)
     res = await _dispatch(wid, action, payload or {})
     res = {"error": "no data module"} if res is _MISSING else res
+    from widgets.action_shape import on_refusal as _shape
+    res = _shape(wid, str(action), payload, res)      # a refusal hands back the declared payload (V2-860 T2.7)
     try:
         if isinstance(res, dict) and (res.get("error") or res.get("ok") is False):
             from voice.observer import emit as _emit2
