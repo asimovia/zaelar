@@ -17,11 +17,8 @@ from loguru import logger
 
 
 def _text_of(ev) -> str:
-    try:
-        alts = getattr(ev, "alternatives", None) or []
-        return str(getattr(alts[0], "text", "") or "").strip() if alts else ""
-    except Exception:  # noqa: BLE001
-        return ""
+    alts = getattr(ev, "alternatives", None) or []
+    return str(getattr(alts[0], "text", "") or "").strip() if alts else ""
 
 
 def on_preflight(text: str) -> None:
@@ -32,8 +29,8 @@ def on_preflight(text: str) -> None:
         from voice.observer import emit
         emit("vad", "⚡ fin de turno ANTICIPADO — el brief sale ya", text=text[:160], role="system",
              extra={"cat": "system", "detector": "stt-eager"})
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as e:  # noqa: BLE001 — the mark is for the timeline; the brief still fires below
+        logger.debug(f"eager brief: timeline mark not written — {e!r}")
     try:
         from nucleo.turn import brief_turn as _bt
         _bt.fire_early(text)

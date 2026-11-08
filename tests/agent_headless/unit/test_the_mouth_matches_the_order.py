@@ -114,7 +114,8 @@ def test_the_voice_arm_carries_the_utterance():
     """`filler_kind` runs at ARM time, so the provider must hand the text over — an arm without it silently
     degrades every action order back to «Déjame ver…»."""
     src = _vts.read(ENGINE / "voice/engine/llm/providers/nucleo.py")
-    assert "_filler_audio.arm(brain, text" in src, "the provider arms the filler without the turn's text"
+    # V2-863: the arm door is `decide_and_arm` (the brief settles first, then `arm`); the text still travels.
+    assert "_filler_audio.decide_and_arm(brain, text" in src, "the provider arms the filler without the turn's text"
 
 
 # ── 3 · the fast lane confirms out loud ──────────────────────────────────────────────────────────────────
