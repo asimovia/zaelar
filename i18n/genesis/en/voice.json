@@ -418,6 +418,7 @@
   "elsewhere": "\"{device}\" is using {provider} right now, not this device; I won't touch it from here so I don't disturb whoever is listening.",
   "held_elsewhere": "\"{device}\" is listening to {provider} right now. Playing it here would cut it off there; take control if you want.",
   "no_device_here": "I can't see any Spotify device of yours on this screen to bring it to.",
+  "played_here_instead": "I put it on here through YouTube because {provider} is playing on \"{device}\"; if you want it on {provider}, tell me to take control.",
   "youtube": {
    "play": "Now playing «{label}».",
    "play_untitled": "The music is playing.",
@@ -587,7 +588,11 @@
     "eleven",
     "twelve"
    ]
-  }
+  },
+  "mirror_failed": "It's saved in your agenda, but Google Calendar didn't take it, so it isn't there. Do you want me to reconnect Google?",
+  "invite_offer_ics": "The calendar didn't add {who} ({why}). Shall I send the invitation by email as an .ics instead?",
+  "invite_offer_connect_mail": "The calendar didn't add {who} ({why}), and there's no email account connected to send it another way. Do you want to connect your email?",
+  "invite_offer_connect_mail_bare": "There's no email account connected to send the invitation from. Do you want to connect your email?"
  },
  "hints": {
   "project": "project",
@@ -745,5 +750,9 @@
    "people": "how many people",
    "holder": "whose name it is under"
   }
+ },
+ "apps": {
+  "photos_offer": "Google Photos isn't connected. I can connect it in Connectors, show you the images saved on this computer, or open your images folder in Files. Which would you like?",
+  "files_cloud_fallback": "«{provider}» isn't connected, so this is your local library. Connect it in Connectors to go back to it."
  }
 }

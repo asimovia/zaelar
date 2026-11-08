@@ -81,7 +81,8 @@
         "preferred": "opcional: el canal por el que se le escribe por defecto",
         "phones": "opcional: varios teléfonos, «900111222, 915550000» o [{value, label}] — una empresa no tiene un solo número",
         "emails": "opcional: varios correos, igual que phones"
-      }
+      },
+      "done_when": {"widget": "contactos", "collection": "contacts", "where": {"name~": "{name}"}, "expect": "present"}
     },
     "update_contact": {
       "desc": "cambia los datos de un contacto existente — solo los campos que mandes; `group` AÑADE una etiqueta, `groups` sustituye la lista entera",
@@ -99,7 +100,8 @@
         "notes": "string (opcional)",
         "phones": "lista que SUSTITUYE los teléfonos (opcional)",
         "emails": "lista que SUSTITUYE los correos (opcional)"
-      }
+      },
+      "done_when": {"widget": "contactos", "collection": "contacts", "where": {"id": "{contactId}"}, "with": {"name": "{name?}", "city": "{city?}", "email": "{email?}"}, "expect": "present"}
     },
     "remove_contact": {
       "desc": "borra un contacto del directorio; queda en la papelera y restore_contact lo devuelve tal cual",
@@ -107,7 +109,8 @@
         "contactId": "string"
       },
       "confirm": true,
-      "confirm_q": "¿Borro «{item}» del directorio? Lo podrás recuperar."
+      "confirm_q": "¿Borro «{item}» del directorio? Lo podrás recuperar.",
+      "done_when": {"widget": "contactos", "collection": "contacts", "where": {"id": "{contactId}"}, "expect": "absent"}
     },
     "restore_contact": {
       "desc": "DEVUELVE el último contacto borrado («recupéralo», «deshaz eso», «vuelve a ponerme a Iván»), con sus mismos datos",
@@ -123,7 +126,8 @@
         "platform": "whatsapp | telegram | email",
         "handle": "su usuario de Telegram, su teléfono o su dirección de correo (opcional si ya lo tienes guardado)",
         "preferred": "true/false (true si se omite)"
-      }
+      },
+      "done_when": {"widget": "contactos", "collection": "contacts", "where": {"id": "{contactId}"}, "with": {"platform": "{platform}"}, "expect": "present"}
     },
     "set_favorite": {
       "desc": "marca o desmarca un contacto como favorito («mi restaurante favorito»)",
@@ -245,7 +249,8 @@
       "payload": {
         "name": "el nombre del grupo tal y como lo dice",
         "contactIds": "opcional: los contactos que van dentro"
-      }
+      },
+      "done_when": {"widget": "contactos", "collection": "groups", "where": {"name~": "{name}"}, "expect": "present"}
     },
     "rename_group": {
       "desc": "cambia el nombre de un grupo suyo (los de serie no se renombran)",

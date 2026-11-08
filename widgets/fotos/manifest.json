@@ -39,24 +39,44 @@
     },
     "pick": {
       "desc": "abre el selector de fotos de Google para elegir una tanda («elige más fotos», «quiero añadir las del viaje»). Conectar la cuenta NO es esto: es show_panel(panel='conectores', connector='google-photos')",
-      "payload": {}
+      "payload": {},
+      "done_when": {
+        "widget": "fotos",
+        "field": "session_pending",
+        "is": "true"
+      }
     },
     "more": {
       "desc": "carga la siguiente página de la galería",
       "payload": {},
-      "view": true
+      "view": true,
+      "done_when": {
+        "widget": "fotos",
+        "field": "cursor",
+        "expect": "changed"
+      }
     },
     "search": {
       "desc": "BUSCA por fecha («el año pasado», «en junio») y por la etiqueta del viaje, y CONTESTA con lo que encaja",
       "payload": {
         "query": "lo que se busca, p.ej. «fotos de Marruecos el año pasado»"
       },
-      "view": true
+      "view": true,
+      "done_when": {
+        "widget": "fotos",
+        "field": "query",
+        "is": "{query}"
+      }
     },
     "clear_search": {
       "desc": "quita el filtro y vuelve a la galería completa",
       "payload": {},
-      "view": true
+      "view": true,
+      "done_when": {
+        "widget": "fotos",
+        "field": "active_filter",
+        "expect": "absent"
+      }
     },
     "label_batch": {
       "desc": "pone una etiqueta a la última tanda de fotos importada",

@@ -210,7 +210,8 @@ from widgets.navegador.owner_actions import (  # noqa: E402,F401
 
 
 from widgets.navegador.owner_page import (  # noqa: E402,F401
-    _ensure_page, _YT_RE, _YT_ID_RE, _looks_like_url, _normalize_url, _youtube_id, _draw_cursor, _capture, _goto)
+    _ensure_page, _YT_RE, _YT_ID_RE, _looks_like_url, _normalize_url, _youtube_id, _draw_cursor, _capture, _goto,
+    _bump_rev)
 
 # The owner's own code lives in its concern modules; the STATE above stays here, and they read it (and every other
 # name of this module) through the package.

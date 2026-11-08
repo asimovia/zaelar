@@ -39,16 +39,28 @@ def hits(clause: dict, wid: str, coll: str) -> list[dict]:
     return [r for r in matched if all(v in rows._fold(r) for v in stated)]   # T-19 R2: a bare row is not it
 
 
-def _ids(found: list[dict]) -> list[str] | None:
-    """The rows' ids, or None when one has none — a row that cannot be named cannot be told new from old."""
-    ids = [str(r.get("id") or "").strip() for r in found]
+def _id_field(clause: dict) -> str:
+    """The id field the clause's collection DECLARES (`contactos.groups` keys on `groupId`), `id` by default."""
+    try:
+        from widgets import rows
+        wid = str(clause.get("widget") or "").strip().lower()
+        coll = str(clause.get("collection") or "").strip()
+        return str(rows.spec(wid, coll).get("id") or "id") if wid and coll else "id"
+    except Exception:  # noqa: BLE001
+        return "id"
+
+
+def _ids(found: list[dict], id_field: str = "id") -> list[str] | None:
+    """The rows' ids, or None when one has none — a row that cannot be named cannot be told new from old.
+    The collection's declared id field is read first; a bare `id` still names a row that carries only that."""
+    ids = [str(r.get(id_field) or r.get("id") or "").strip() for r in found]
     return None if any(not i for i in ids) else ids
 
 
 def added(clause: dict, found: list[dict]) -> bool | None:
     """Is one of the rows the clause selects NEW since birth? None with nothing to compare against."""
     base = clause.get("baseline_ids")
-    ids = _ids(found)
+    ids = _ids(found, _id_field(clause))
     if not isinstance(base, list) or ids is None:
         return None
     return any(i not in base for i in ids)
@@ -65,7 +77,7 @@ def row_ids(clause: dict) -> list[str] | None:
         coll = str(clause.get("collection") or "").strip()
         if not wid or coll not in rows.declared(wid):
             return None
-        return _ids(hits(clause, wid, coll))
+        return _ids(hits(clause, wid, coll), _id_field(clause))
     except Exception as e:  # noqa: BLE001
         logger.debug(f"baseline: unreadable ({e!r})")
         return None

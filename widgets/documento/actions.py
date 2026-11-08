@@ -37,6 +37,7 @@ def _a_show(action: str, p: dict) -> dict:
                "title": _d._text(p.get("title"), 120),
                "subtitle": _d._text(p.get("subtitle") or p.get("summary"), 200),
                "source": _d._text(p.get("source"), 80)})
+    db["rev"] = int(db.get("rev") or 0) + 1            # the end state of THIS show (manifest `done_when`)
     store.save(_d.WIDGET_ID, _d._stamp(db))
     return {"ok": True, "kind": kind, "title": db["title"], "chars": len(db["body"])}
 
@@ -82,7 +83,7 @@ def _a_goto(action: str, p: dict) -> dict:
 
 
 def _a_clear(action: str, p: dict) -> dict:
-    store.save(_d.WIDGET_ID, _d._stamp(_d._seed()))
+    store.save(_d.WIDGET_ID, _d._stamp(_d.blank(_d._load())))
     return {"ok": True, "empty": True}
 
 
@@ -104,6 +105,7 @@ def _a_save_to_library(action: str, p: dict) -> dict:
     if not res.get("ok"):
         return {"ok": False, "error": res.get("error") or "no pude guardar el fichero"}
     db["saved_rel"] = res.get("rel") or ""
+    db["saved_at"] = time.time()                       # the end state of THIS save (manifest `done_when`)
     store.save(_d.WIDGET_ID, db)
     ent = res.get("entry") or {}
     return {"ok": True, "file": {"name": ent.get("name") or name, "rel": res.get("rel") or ""},

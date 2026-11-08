@@ -374,7 +374,8 @@ def _a_playback(action: str, p: dict) -> dict:
         query = str(p.get("query") or "")
         # V2-795 — a catalogue row carries its uri; it is used only when the provider playing now minted it.
         uri = _d._uri_now({"uri": p.get("uri"), "provider": p.get("provider")}) if action == "play" else ""
-        r = music.control(action, query=query, uri=uri, percent=int(p.get("level") or 0))
+        r = music.control(action, query=query, uri=uri, percent=int(p.get("level") or 0),
+                          prefer=str(p.get("source") or "").strip().lower())
         ok = bool(getattr(r, "ok", False))
         # Playing a standalone track from the card (recent/top/list row) feeds recent + top tracks. Voice
         # (play_music) goes through another path and does not pass here (Phase 1).
@@ -388,6 +389,8 @@ def _a_playback(action: str, p: dict) -> dict:
                "provider": getattr(r, "provider", "")}
         if (getattr(r, "extra", None) or {}).get("device"):
             out["device"] = r.extra["device"]          # where it sounds — a refusal names the other device
+        if (getattr(r, "extra", None) or {}).get("elsewhere_device"):
+            out["elsewhere_device"] = r.extra["elsewhere_device"]   # played here instead: the take-over is an offer
         tr = getattr(r, "track", None)
         if ok and tr is not None and getattr(tr, "title", ""):
             out["now_playing"] = tr.label()          # V2-795: a skip reports WHICH song sounds now

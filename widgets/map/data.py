@@ -24,7 +24,7 @@ _MAX_PLACES = 12
 
 
 def _seed() -> dict:
-    return {"title": "", "places": [], "selected": 0, "updated": 0, "misses": []}
+    return {"title": "", "places": [], "selected": 0, "updated": 0.0, "misses": []}
 
 
 def _load() -> dict:
@@ -190,6 +190,36 @@ def _numbered(db: dict) -> list:
     return [f"{i + 1}. {p['name']}" for i, p in enumerate(db.get("places") or [])]
 
 
+def _stamp(prev) -> float:
+    """A fresh `updated` that always MOVES — the `done_when` of show/add reads `updated changed`, and two
+    calls inside the same second must not read as «nothing happened»."""
+    try:
+        before = float(prev or 0)
+    except (TypeError, ValueError):
+        before = 0.0
+    return round(max(time.time(), before + 0.001), 3)
+
+
+#: Sources a caller may NAME for the links of a call (principle 4: a preference for that call only). The map
+#: itself is always drawn from OpenStreetMap; a named source only adds its own link per place to the result.
+_LINK_SOURCES = {"google": "https://www.google.com/maps/search/?api=1&query="}
+
+
+def _source_links(source, places: list) -> list | None:
+    """Per-place links of the named source, or None when no (known) source was named."""
+    base = _LINK_SOURCES.get(str(source or "").strip().lower())
+    if not base:
+        return None
+    out = []
+    for i, pl in enumerate(places):
+        if "lat" in pl and "lon" in pl:
+            q = f"{pl['lat']},{pl['lon']}"
+        else:
+            q = ", ".join(x for x in (pl.get("name"), pl.get("address")) if x)
+        out.append(f"{i + 1}. {pl.get('name', '')}: {base}{urllib.parse.quote(q, safe=',')}")
+    return out
+
+
 def apply_action(action: str, payload: dict = None) -> dict:
     p = payload or {}
     db = _load()
@@ -219,9 +249,13 @@ def apply_action(action: str, payload: dict = None) -> dict:
         if action == "show":
             db["title"] = str(p.get("title") or p.get("query") or "").strip()[:80]
             db["selected"] = 0
-        db["misses"], db["updated"] = missed, int(time.time())
+        db["misses"], db["updated"] = missed, _stamp(db.get("updated"))
         store.save(WID, db)
-        return {"ok": True, "places": _numbered(db), "not_found": missed}
+        out = {"ok": True, "places": _numbered(db), "not_found": missed}
+        links = _source_links(p.get("source"), db["places"])
+        if links is not None:
+            out["links"] = links
+        return out
     if action == "select":
         ps = db.get("places") or []
         item = str(p.get("item") or p.get("n") or p.get("name") or "").strip()

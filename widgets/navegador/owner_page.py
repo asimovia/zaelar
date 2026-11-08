@@ -154,6 +154,17 @@ def _draw_cursor(path: str, x: float, y: float) -> None:
         pass
 
 
+def _bump_rev(prev: dict | None = None) -> int:
+    """The next `rev`, always past what the card holds: `done_when` reads `rev changed`, and a restarted owner
+    counting from zero again could land on the very number the baseline took."""
+    try:
+        stored = int((prev if prev is not None else _o._read()).get("rev") or 0)
+    except (TypeError, ValueError, AttributeError):
+        stored = 0
+    _o._rev = max(_o._rev, stored) + 1
+    return _o._rev
+
+
 async def _capture() -> None:
     """Screenshot the viewport → widgets/_data/navegador/shot.png and bump rev (client <img> cache-bust)."""
     page = _o._page
@@ -163,21 +174,29 @@ async def _capture() -> None:
         # OFF-LOOP (V2-035): the PIL composite is synchronous CPU work that held the GIL in the uvicorn loop and
         # starved the TTS audio pump (choppy voice). Move it to a thread → it does not block voice.
         await _o.asyncio.to_thread(_o._draw_cursor, shot, _o._mouse["x"], _o._mouse["y"])
-    _o._rev += 1
+    prev = _o._read()
+    _bump_rev(prev)
     title = ""
     try:
         title = await page.title()
     except Exception:
         pass
-    _o._write(mode="page", url=page.url, title=title or page.url, rev=_o._rev, loading=False, error="",
-           youtube_id="", youtube_title="")
     from widgets.navegador import page_outcome as _po
-    _o._emit("screenshot", page.url, rev=_o._rev, **_po.take(page))   # V2-837 G6: the navigation it shows, once
+    outcome = _po.take(page)
+    # `wall` is what the page on screen IS (none · antibot · captcha · http), written as a VALUE so `done_when`
+    # reads a walled page as unmet, never as unverifiable. A capture with no new navigation (a scroll) keeps the
+    # page's wall; one after `_goto` reset it reads the response the listener noted, or the URL when none was.
+    wall = str(outcome.get("wall") or "") or str(prev.get("wall") or "") or _po.classify(200, page.url)
+    _o._write(mode="page", url=page.url, title=title or page.url, rev=_o._rev, loading=False, error="",
+           youtube_id="", youtube_title="", wall=wall)
+    _o._emit("screenshot", page.url, rev=_o._rev, **outcome)   # V2-837 G6: the navigation it shows, once
 
 
-async def _goto(url: str, push: bool = True) -> None:
+async def _goto(url: str, push: bool = True, query: str = "") -> None:
     page = await _o._ensure_page()
-    _o._write(loading=True, error="", url=url)
+    # The URL is written BEFORE navigating, so it proves nothing; `rev` (bumped only by a capture) and `wall`
+    # (reset here, read again by that capture) are what say the page arrived. `query` is what this page searched.
+    _o._write(loading=True, error="", url=url, wall="", query=str(query or ""))
     _o._emit("navigate", url)
     try:
         await page.goto(url, wait_until="domcontentloaded")

@@ -16,6 +16,9 @@ def enqueue_reply(db: dict, target: dict, text: str, cc: list | None = None,
     `n`, is the "real item" signal: only the synthetic thread identity (`resolve_reply_target`, platform + chatId
     alone) lacks it, and it has no pending item to remove."""
     from .. import data as _d
+    from .. import sent as _sent
+    ref = str(ref or "") or new_ref()       # every order names itself, so OUR send is attestable (its outbox row)
+    _sent.outbox_open(db, ref, target, text, not_before=not_before)
     db.setdefault("pending_reply", []).append({
         "platform": target.get("platform"), "chatId": target.get("chatId"),
         "to": target.get("senderId") or target.get("chatId"),
@@ -172,6 +175,8 @@ def enqueue(db: dict, target: dict, text: str, *, subject: str = "", objective: 
         if scheduled:
             order["scheduled"] = True             # V2-800: HE asked for later (not the few seconds of typing on screen)
     db.setdefault("pending_send", []).append(order)
+    from .. import sent as _sent
+    _sent.outbox_open(db, order["ref"], order, order["text"], not_before=float(not_before or 0))
     return order
 
 

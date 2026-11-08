@@ -232,8 +232,9 @@ def _a_release(action: str, p: dict) -> dict:
     try:
         from connectors import music
         music._card_changed()
-    except Exception:  # noqa: BLE001 — a missed refresh never undoes the release
-        pass
+    except Exception as e:  # noqa: BLE001 — a missed refresh never undoes the release
+        import logging
+        logging.getLogger("zaelar.widgets.musica").debug(f"release: card refresh not sent: {e!r}")
     return {"ok": True, "message": "", "reason": ""}
 
 

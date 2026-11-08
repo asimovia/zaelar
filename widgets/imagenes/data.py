@@ -29,7 +29,7 @@ _MAX = 60
 
 
 def _seed() -> dict:
-    return {"title": "", "query": "", "source": "", "items": [], "i": 0}
+    return {"title": "", "query": "", "source": "", "items": [], "i": 0, "set_seq": 0}
 
 
 def _load() -> dict:
@@ -95,6 +95,7 @@ def view_data(q: str = "") -> dict:
         "auto": bool(db.get("auto")),
         "every_s": int(db.get("every_s") or 6),
         "empty": not items,                                  # V2-776 L2
+        "set_seq": int(db.get("set_seq") or 0),
     }
 
 
@@ -200,11 +201,15 @@ def apply_action(action: str, payload: dict = None) -> dict:
 
     if a == "show":
         rows = _rows(p.get("items"))
+        # An empty `show` must not blank a set that IS on screen: the operator would be left staring at an
+        # empty card with no way back, and the honest report is that nothing was found (V2-377's lesson,
+        # applied to pictures). But a set already held that answers the request IS the show (`held`).
+        if not rows and not (held := _held.answers_show(db, p)):
+            return _refused("none", "no llegó ninguna imagen", len(items))
+        db["set_seq"] = int(db.get("set_seq") or 0) + 1   # one more set on screen: the end state of a show
         if not rows:
-            # An empty `show` must not blank a set that IS on screen: the operator would be left staring at an
-            # empty card with no way back, and the honest report is that nothing was found (V2-377's lesson,
-            # applied to pictures). But a set already held that answers the request IS the show (`held`).
-            return _held.answers_show(db, p) or _refused("none", "no llegó ninguna imagen", len(items))
+            store.save(WIDGET_ID, _clamp(db))
+            return held
         db.update({"items": rows, "i": 0, "auto": False,   # a fresh set starts STILL (V2-589)
                    "title": " ".join(str(p.get("title") or p.get("query") or "").split())[:120],
                    "query": " ".join(str(p.get("query") or "").split())[:120],
@@ -223,7 +228,8 @@ def apply_action(action: str, payload: dict = None) -> dict:
         rows = _rows(_local_files())
         if not rows:
             return _refused("no_local", "no hay imágenes guardadas en este equipo", len(items))
-        db.update({"items": rows, "i": 0, "title": "Imágenes guardadas", "query": "", "source": "local"})
+        db.update({"items": rows, "i": 0, "title": "Imágenes guardadas", "query": "", "source": "local",
+                   "set_seq": int(db.get("set_seq") or 0) + 1})
         store.save(WIDGET_ID, _clamp(db))
         return {"ok": True, "n": len(rows), "source": "local"}
 

@@ -72,13 +72,32 @@ OUTBOX_KEEP_S = 600.0
 _OUTBOX_MAX = 40
 
 
-def outbox_queue(db: dict, ref: str, platform: str, chat_id, key: str, text: str) -> dict:
-    """Record a send the card just made. `key` is the composer's own conversation key, so the card finds its row."""
+def outbox_queue(db: dict, ref: str, platform: str, chat_id, key: str, text: str, *, name: str = "",
+                 contact_id: str = "", not_before: float = 0.0) -> dict:
+    """Record a send the card just made. `key` is the composer's own conversation key, so the card finds its row.
+
+    The row also names WHO the order was for (`name`, `contactId`): it is the record of OUR order, so the end state
+    of a send (`send_to`, `forward`, `send_draft`) is read here — a message he typed on his phone, or an
+    autoresponder's, lands in the conversation but never opens a row of this outbox."""
     row = {"ref": str(ref), "platform": str(platform or ""), "chatId": str(chat_id or ""), "key": str(key or ""),
+           "name": str(name or ""), "contactId": str(contact_id or ""),
            "text": str(text or "")[:4000], "state": "queued", "reason": "", "at": time.time()}
+    if not_before:
+        row["not_before"] = float(not_before)      # a held send is not «unconfirmed» before it was due to leave
     rows = [r for r in (db.get("outbox") or []) if isinstance(r, dict) and r.get("ref") != row["ref"]]
     db["outbox"] = (rows + [row])[-_OUTBOX_MAX:]
     return row
+
+
+def outbox_open(db: dict, ref: str, target: dict, text: str, *, not_before: float = 0.0) -> None:
+    """Open the outbox row of an order queued by an action (not the card's own Send, which opens its row with its
+    composer key first): a row that already exists for `ref` is kept as it is."""
+    if not ref or any(isinstance(r, dict) and r.get("ref") == str(ref) for r in db.get("outbox") or []):
+        return
+    t = target if isinstance(target, dict) else {}
+    outbox_queue(db, ref, str(t.get("platform") or ""), t.get("chatId") or t.get("to") or "", "", text,
+                 name=str(t.get("name") or t.get("chatName") or t.get("from") or ""),
+                 contact_id=str(t.get("contactId") or ""), not_before=not_before)
 
 
 def outbox_settle(db: dict, ref, ok: bool, reason: str = "", *, retried: bool = False) -> bool:
@@ -103,11 +122,12 @@ def outbox_view(db: dict, now: float | None = None) -> list[dict]:
     for r in db.get("outbox") or []:
         if not isinstance(r, dict):
             continue
-        at = float(r.get("settled") or r.get("at") or 0)
+        at = float(r.get("settled") or max(float(r.get("at") or 0), float(r.get("not_before") or 0)))
         if now - at > OUTBOX_KEEP_S:
             continue
         row = dict(r)
-        if row.get("state") == "queued" and now - float(row.get("at") or 0) > OUTBOX_STALE_S:
+        due = max(float(row.get("at") or 0), float(row.get("not_before") or 0))
+        if row.get("state") == "queued" and now - due > OUTBOX_STALE_S:
             row["state"] = "unconfirmed"
         out.append(row)
     return out

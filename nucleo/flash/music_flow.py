@@ -166,7 +166,7 @@ async def _through_card(card_action: str):
                        extra={k: r[k] for k in ("device", "now_playing") if r.get(k)})
 
 
-async def run(action: str, query: str, *, extract=None, kind: str = ""):
+async def run(action: str, query: str, *, extract=None, kind: str = "", source: str = ""):
     """Executes ONE music action with fuzzy resolution. Returns the final `MusicResult` (with an extra `.resolved_from`
     if a chain occurred). `extract(system, user) -> str` = async 2nd model pass, provided by the caller (None =
     no resolution, direct attempt only)."""
@@ -190,8 +190,23 @@ async def run(action: str, query: str, *, extract=None, kind: str = ""):
             await asyncio.to_thread(_on_control, res, action)
         return res
 
+    # 0c · THE END STATE IS OWED FROM HERE (operator, 2026-11-08): a spoken play opens the music card's declared end
+    # state for `play` — the asked music sounds on OUR player (`here.title` changed) — exactly as a tap does through
+    # the data-op door, so the harness judges it and the card's declared next step (`on_unmet`) can run.
+    _owed = None
+    if action == "play" and (query or "").strip():
+        try:
+            from nucleo.circuit import spec as _spec
+            _owed = _spec.open_for_action("musica", "play", {"query": query, **({"source": source} if source else {})},
+                                          text=query)
+        except Exception as e:  # noqa: BLE001 — no harness never blocks the music
+            logger.debug(f"music_flow: end state not opened: {e!r}")
+
     # 1 · ACT DIRECTLY (provider search engines already tolerate fuzziness)
-    res = await asyncio.to_thread(lambda: music.control(action, query, "", 0, "", **({"kind": kind} if kind else {})))
+    res = await asyncio.to_thread(lambda: music.control(action, query, "", 0, source,
+                                                        **({"kind": kind} if kind else {})))
+    if _owed is not None and not getattr(res, "ok", False):
+        _owed["reported"] = True          # the turn words this failure (`music_outcome`); the circuit says it no twice
     _note_page_player(res)
     if getattr(res, "ok", False):
         # 'ended' (queue advancement) brings a NEW track into playback → refresh music.playing as a play.
@@ -229,7 +244,7 @@ async def run(action: str, query: str, *, extract=None, kind: str = ""):
 
     # 4 · ACT AGAIN with the canonical name
     if canonical:
-        res2 = await asyncio.to_thread(music.control, "play", canonical, "", 0, "")
+        res2 = await asyncio.to_thread(music.control, "play", canonical, "", 0, source)
         _note_page_player(res2)
         if getattr(res2, "ok", False):
             await asyncio.to_thread(_on_success, res2, query)

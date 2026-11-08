@@ -62,9 +62,18 @@
         "present.mount"
       ],
       "done_when": {
-        "widget": "markets",
-        "field": "symbol",
-        "expect": "present"
+        "all": [
+          {
+            "widget": "markets",
+            "field": "fetched_at",
+            "expect": "changed"
+          },
+          {
+            "widget": "markets",
+            "field": "failed",
+            "expect": "absent"
+          }
+        ]
       }
     },
     "range": {
@@ -77,9 +86,18 @@
         "present.mount"
       ],
       "done_when": {
-        "widget": "markets",
-        "field": "range",
-        "is": "{range}"
+        "all": [
+          {
+            "widget": "markets",
+            "field": "fetched_at",
+            "expect": "changed"
+          },
+          {
+            "widget": "markets",
+            "field": "failed",
+            "expect": "absent"
+          }
+        ]
       }
     },
     "refresh": {
@@ -88,7 +106,21 @@
       "view": true,
       "effects": [
         "present.mount"
-      ]
+      ],
+      "done_when": {
+        "all": [
+          {
+            "widget": "markets",
+            "field": "fetched_at",
+            "expect": "changed"
+          },
+          {
+            "widget": "markets",
+            "field": "failed",
+            "expect": "absent"
+          }
+        ]
+      }
     }
   },
   "security": "standard"
