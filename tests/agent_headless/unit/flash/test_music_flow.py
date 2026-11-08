@@ -118,6 +118,11 @@ def test_extract_no_means_unresolved(monkeypatch):
 def test_pause_reflects_in_playing_run(monkeypatch):
     monkeypatch.setattr("connectors.music.control",
                         lambda action, q="", uri="", pct=0, prefer="": _ok(action=action, track=_track() if action == "play" else None))
+    # Since 2026-11-08 a spoken control is the music card's own action (`music_flow._through_card`).
+    async def _card(wid, action, payload):
+        assert (wid, action) == ("musica", "pause")
+        return {"ok": True, "message": "", "reason": "", "provider": "spotify"}
+    monkeypatch.setattr("widgets.server_api.brain_action", _card)
     _run(music_flow.run("play", "sinatra"))
     _run(music_flow.run("pause", ""))
     assert rails.get("music.playing")["status"] == "paused"
@@ -129,3 +134,20 @@ def test_parse_canonical():
     assert music_flow._parse_canonical("no estoy seguro") == ""
     assert music_flow._parse_canonical("") == ""
     assert music_flow._parse_canonical("«Rosalía — Despechá»") == "Rosalía — Despechá"
+
+
+@pytest.mark.parametrize("spoken, card", [("pause", "pause"), ("stop", "pause"), ("resume", "resume"),
+                                          ("next", "next"), ("previous", "previous"), ("volume_up", "volume_up")])
+def test_a_spoken_control_is_the_music_cards_own_action(monkeypatch, spoken, card):
+    """Operator, 2026-11-08: «cuando digo pausa, el widget pausa y lanza la señal al conector». A spoken control runs
+    the card's declared action — the same funnel as his tap — never a second road straight to the connector."""
+    direct: list = []
+    monkeypatch.setattr("connectors.music.control", lambda *a, **k: direct.append(a) or _ok())
+    seen: list = []
+
+    async def _card(wid, action, payload):
+        seen.append((wid, action))
+        return {"ok": True, "message": "", "reason": "", "provider": "spotify"}
+    monkeypatch.setattr("widgets.server_api.brain_action", _card)
+    res = _run(music_flow.run(spoken, ""))
+    assert res.ok and seen == [("musica", card)] and direct == [], (seen, direct)

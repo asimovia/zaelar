@@ -11,6 +11,12 @@ export const ICON_NOTE = I.MUSIC_ICON, ICON_PLUS = I.PLUS_ICON, ICON_BACK = I.CH
   ICON_FWD = I.CHEVRON_RIGHT_ICON, ICON_HOME = I.HOME_ICON, ICON_LIBRARY = I.LIBRARY_ICON, ICON_MORE = I.MORE_ICON,
   ICON_UP = I.CHEVRON_UP_ICON, ICON_DOWN = I.CHEVRON_DOWN_ICON, ICON_SIDEBAR = I.SIDEBAR_ICON;
 // Which song source a row came from, said as a word (no brand marks are drawn here — see icons.js's own rule).
+// Our session was TAKEN on another device of the account (operator, 2026-11-08): the card shows what plays there,
+// with no control of ours, until he takes control or lets it go. "" when the card is ours to drive.
+export function takenBy(data){
+  return ((data || {}).elsewhere || {}).device || "";
+}
+
 export function sourceOf(t){
   if(!t) return "";
   if(t.provider === "spotify" || String(t.uri || "").startsWith("spotify:")) return "Spotify";

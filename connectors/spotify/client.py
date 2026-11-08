@@ -23,7 +23,7 @@ _API = "https://api.spotify.com/v1"
 class SpotifyError(Exception):
     def __init__(self, status: int, code: str = "", message: str = ""):
         self.status = status
-        self.code = code                     # stable: no_device | premium | auth | rate_limit | http
+        self.code = code                     # stable: no_device | premium | restricted | auth | rate_limit | http
         self.message = message
         super().__init__(f"{status} {code}: {message}")
 
@@ -43,7 +43,10 @@ def _classify(status: int, path: str, body: str) -> str:
     if status == 404 and "/me/player" in path:
         return "no_device"                   # NO_ACTIVE_DEVICE
     if status == 403 and "/me/player" in path:
-        return "premium"                     # playback control without Premium
+        # Spotify names a missing Premium in the body (`PREMIUM_REQUIRED`); any other 403 on the player is a
+        # restriction of the moment («Restriction violated»: pausing what is already paused, a device that will not
+        # take the command) — telling him to buy Premium for that is a lie (measured 2026-11-08).
+        return "premium" if "PREMIUM_REQUIRED" in (body or "").upper() else "restricted"
     return "http"
 
 

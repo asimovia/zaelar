@@ -117,6 +117,8 @@ export function shell(el, data, ctx, kind, opts){
   const main = h("div", "hb-mus2-main");
   const head = headerBar(el, data, ctx, kind, opts, L);
   if(head) main.appendChild(head);
+  const away = elsewhereBanner(el, data, ctx);
+  if(away) main.appendChild(away);
   const scroll = h("div", "hb-mus2-scroll");
   main.appendChild(scroll);
   body.appendChild(main);
@@ -136,6 +138,36 @@ export function shell(el, data, ctx, kind, opts){
     }
     el._viewHost.appendChild(wrap);
   }};
+}
+// ── SOUNDING ELSEWHERE (operator, 2026-11-08) ─────────────────────────────────────────────────────────────
+// One account, one stream: when it plays on somebody else's device the card says where, and taking it here is HIS
+// choice, asked twice — the button, then «it will stop there». The ask is a per-screen moment, kept on the element.
+function elsewhereBanner(el, data, ctx){
+  const away = data.elsewhere || {};
+  if(!away.device){ el._hbTakeAsk = false; return null; }
+  const prov = away.provider ? away.provider.charAt(0).toUpperCase() + away.provider.slice(1) : "Spotify";
+  const box = h("div", "hb-mus2-away");
+  box.appendChild(h("span", "hb-mus2-awayt", tt("away_now", {provider: prov, device: away.device},
+    "{provider} está sonando en «{device}»")));
+  const btns = h("span", "hb-mus2-awayb");
+  const btn = (label, cls, fn) => { const b = h("button", "hb-mus2-awaybtn" + (cls ? " " + cls : ""), label);
+    b.onclick = (e) => { e.stopPropagation(); fn(); }; return b; };
+  if(el._hbTakeAsk){
+    box.classList.add("ask");
+    box.appendChild(h("span", "hb-mus2-awayq", tt("away_confirm", {device: away.device},
+      "Se cortará en «{device}». ¿Lo tomas igualmente?")));
+    btns.appendChild(btn(tt("away_yes", null, "Sí, tomar el control"), "go",
+      () => { el._hbTakeAsk = false; fire(ctx, "take_over"); el._hbRedraw && el._hbRedraw(); }));
+    btns.appendChild(btn(tt("away_no", null, "Cancelar"), "",
+      () => { el._hbTakeAsk = false; el._hbRedraw && el._hbRedraw(); }));
+  } else {
+    btns.appendChild(btn(tt("away_take", null, "Tomar el control"), "",
+      () => { el._hbTakeAsk = true; el._hbRedraw && el._hbRedraw(); }));
+    btns.appendChild(btn(tt("away_release", null, "Dejarlo"), "",
+      () => { fire(ctx, "release"); }));
+  }
+  box.appendChild(btns);
+  return box;
 }
 // ── SEARCH: songs, artists, albums (and lists, where the catalogue has them) ─────────────────────────────
 // The filter is a per-screen convenience (which KIND of result to look at), so it lives on the card element, not in

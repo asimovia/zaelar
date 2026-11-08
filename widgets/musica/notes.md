@@ -238,3 +238,42 @@ each — not a scaled-down desktop on the phone. Everything new is PRESENTATION;
 - The new glyphs (home, library, more, up/down, sidebar) live in `frontend/app/lib/icons.js` with the rest; the new
   labels are `widgets.musica.*` keys in both genesis bundles (ES + EN).
 - Manifest `size` 468x540 → 760x580: the first footprint on the canvas is now the compact desktop arrangement.
+
+## 2026-11-08 — the playbook: what the card shows, what it can do, and who decides
+
+One account of a streaming provider is shared by a household and plays on ONE device at a time. The card is OUR
+player, so it shows a session only when it is ours, never draws a control it cannot honour, and always says where
+the sound is. Every row below is a declared fact read by code (`now_playing._live_fields`, `connectors/music`),
+never a reading of his words, so the same holds in every language.
+
+### What the card shows
+
+| The account / the page player | The card | Controls |
+|---|---|---|
+| sounds on OUR device (our last start went there, or the provider's device beside the asking screen) | the song, source «Spotify · device» | live |
+| our page player (YouTube) or a library file holds the song | the song, source «YouTube» / «Your library» | live |
+| plays on another device and it was never our session | **blank** — what someone else listens to is not ours to show | none |
+| plays on another device after OUR session (`source.live`) — somebody took it | that song, an amber strip «Spotify is playing on X» | **locked**: «Take control» (asks twice) · «Let it be» |
+| he asked for Spotify music while it plays elsewhere (`placement.held`) | the same locked strip | «Take control» starts what he asked, on our device |
+| after «Let it be» (`release`) | blank | none |
+
+The source is said on every face: the bar's third line (`hb-mus2-barsrc`) and the ficha's facts.
+
+### What each act does (one door: `connectors.music.control`)
+
+- **A start** (`play`, a list, an album) that would cut another device's playback is HELD (`reason="elsewhere"`) and
+  remembered for ten minutes; nothing is sent. A start that goes to the page player (YouTube) never depends on
+  Spotify and is never held.
+- **A control** (`pause`, `resume`, `next`, `previous`, volume, seek, queue) reaches only OUR device; another device's
+  playback is refused with the device named. With nothing sounding anywhere it goes through, and a no-device retry
+  wakes only our device, never the first one listed.
+- **A pause is read back**: done only when the player says it stopped (already stopped is done); accepted but still
+  playing is `not_applied`. A skip that changed nothing at the edge of what plays resumes what was sounding;
+  «previous» with nothing before starts the song over.
+- **`take_over`** (declared): runs the held start on our device, or moves what sounds here (provider transfer).
+  **`release`** (declared): our session is over; the card goes blank while it plays elsewhere.
+- **Voice is the card's action**: a spoken pause/resume/next/previous/volume runs the card's declared action through
+  the same funnel as a tap (`nucleo/flash/music_flow._through_card`). Every act at the door re-reads the card
+  (`_card_changed`), whoever asked. A bare control under a sure verdict holds the turn's words until its result
+  (`follow_up_pass.Hold`); a failed control is said with the connector's line, never judged by a model.
+- Pause and resume declare their end state for the harness (`done_when: now_playing.playing`).

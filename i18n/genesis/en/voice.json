@@ -415,6 +415,9 @@
   "ask_more": "I couldn't pin down that song. Can you give me the artist or a few more words from the lyrics?",
   "ask_what": "What should I put on? Say a song, an artist or a style.",
   "audio_blocked": "The music is loaded but silent: this screen's browser will not let it play without a tap. Tap the music card once and you'll hear it.",
+  "elsewhere": "\"{device}\" is using {provider} right now, not this device; I won't touch it from here so I don't disturb whoever is listening.",
+  "held_elsewhere": "\"{device}\" is listening to {provider} right now. Playing it here would cut it off there; take control if you want.",
+  "no_device_here": "I can't see any Spotify device of yours on this screen to bring it to.",
   "youtube": {
    "play": "Now playing «{label}».",
    "play_untitled": "The music is playing.",
@@ -449,7 +452,8 @@
    "not_sounding": "I sent the music to \"{device}\", but it is not playing there.",
    "already_on": "«{label}» is already playing on \"{device}\".",
    "needs_app_phone": "I have «{label}» in {provider}, but there's no {provider} app open on this phone: open it and I'll put it on.",
-   "needs_app": "I have «{label}» in {provider}, but it can only play in the {provider} app and there isn't one open here: open it and I'll put it on."
+   "needs_app": "I have «{label}» in {provider}, but it can only play in the {provider} app and there isn't one open here: open it and I'll put it on.",
+   "take_over": "Now playing here, on \"{device}\"."
   },
   "outcome_pass": "The operator asked: «{asked}». You had already said: «{said}». Then the music act ended like this: {facts}. If what you said is still true, answer exactly SKIP. Otherwise tell the operator, in one or two natural spoken sentences in the operator's language, what really happened and offer only the options listed. Ask for more words from the song only when the facts say the catalogue was reached and found nothing.",
   "outcome_reasons": {
@@ -457,14 +461,17 @@
    "no_track": "the catalogue was searched and has nothing under that name",
    "no_provider": "no music source is available",
    "error": "the player failed",
-   "needs_app": "it was found in the connected catalogue, but only that service's own app can play it and none is open on the screen that asked — nothing else was played instead"
+   "needs_app": "it was found in the connected catalogue, but only that service's own app can play it and none is open on the screen that asked — nothing else was played instead",
+   "elsewhere": "the account is playing on another device (\"{device}\") that is neither this screen's nor where Zaelar put it — it was left alone so whoever uses it is not cut off; the operator can take control (the music card offers the button, or he can ask for it)",
+   "not_applied": "the player took the command but is still playing — it was not applied"
   },
   "outcome_options": {
    "retry": "try again in a moment",
    "connect": "connect a music account (Spotify) in Connectors",
    "another": "look for another version",
    "more_words": "a few more words from the song",
-   "open_app": "open the music app on this device and ask again"
+   "open_app": "open the music app on this device and ask again",
+   "take_over": "take control: play it here and stop it on the other device (the music card's button, or ask for it)"
   },
   "outcome_labels": {
    "tried": "looked up",
