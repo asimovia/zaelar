@@ -38,6 +38,7 @@ import { ElsewhereChips } from "../components/ElsewhereChips.js?v=1";
 import { LanguageOnboarding } from "../components/LanguageOnboarding.js?v=1";
 import { MemoryMap } from "../components/MemoryMap.js?v=6";
 import { Orb } from "../components/Orb.js?v=3";
+import { PowerVeil } from "../components/PowerVeil.js?v=1";
 import { StatusPanel } from "../components/StatusPanel.js?v=2";
 import { TopBar } from "../components/TopBar.js?v=4";
 import { VaultModal } from "../components/VaultModal.js?v=1";
@@ -172,6 +173,10 @@ export const SYSTEM_SURFACES = [
   // V2-792 — what the agent did on the OTHER screen (a card opened there, a video playing there), one tap away.
   { id: "elsewhere",  comp: ElsewhereChips, target: "body", phase: "overlay", kind: "transient",
     toggle: "store.elsewhere() (services/screens.js)", label: "Opened on another screen — open here",
+    name: null, aliases: null },
+  // The desktop locked while the agent is stopped (operator, 2026-11-08): one state, never half on / half off.
+  { id: "power-veil", comp: PowerVeil,    target: "desk", phase: "overlay", kind: "transient",
+    toggle: "store.agentState() off / pausing / starting", label: "Stopped-agent veil over the desktop",
     name: null, aliases: null },
   { id: "boot",       comp: BootOverlay,  target: "body", phase: "overlay", kind: "transient",
     toggle: "store.bootReady (startup veil)", label: "Startup splash",

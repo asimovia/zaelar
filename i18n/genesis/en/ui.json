@@ -2442,5 +2442,10 @@
  "widgets.contactos.agent_id_ph": "agent id…",
  "widgets.contactos.agent_cluster_ph": "cluster (optional)",
  "widgets.contactos.side_state": "State",
- "widgets.contactos.unclassified": "Unclassified"
+ "widgets.contactos.unclassified": "Unclassified",
+ "veil.off_title": "The agent is stopped",
+ "veil.off_sub": "While it is stopped it does not listen, play anything or touch your apps. Switch it on to use the desktop again.",
+ "veil.on_btn": "Switch on",
+ "veil.pausing": "Stopping the agent…",
+ "veil.starting": "Starting the agent…"
 }

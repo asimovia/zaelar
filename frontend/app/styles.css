@@ -144,6 +144,19 @@ canvas#viz{position:absolute;left:0;right:0;bottom:0;width:100%;height:30px;disp
    the settings, the vault and every modal (9500+), which he opens on purpose and must never land under a
    video. */
 body:has(.hb-win.hb-cinema, .hb-win.hb-fullwide) #desk{transform:none;z-index:9300}
+/* Stopped-agent veil (operator, 2026-11-08): above the widget stage (12) and its cards, BELOW the bottom rail
+   (9002) and the orb (100000) — those are how the agent is switched back on. Swallows every click on the cards. */
+.power-veil{position:fixed;inset:0;z-index:9000;display:none;align-items:center;justify-content:center;
+  background:rgba(8,10,16,.62);backdrop-filter:grayscale(.85) blur(2px);-webkit-backdrop-filter:grayscale(.85) blur(2px)}
+.power-veil.on{display:flex}
+.power-veil-box{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;max-width:min(440px,86vw);
+  padding:22px 26px;border-radius:16px;background:rgba(20,22,30,.82);border:1px solid rgba(255,255,255,.08);color:#e8eaf0}
+.power-veil-title{font-size:20px;font-weight:600}
+.power-veil-sub{font-size:14px;opacity:.75;line-height:1.4}
+.power-veil-sub:empty{display:none}
+.power-veil-btn{margin-top:6px;padding:9px 18px;border-radius:999px;border:0;cursor:pointer;font-size:15px;font-weight:600;
+  background:#e8eaf0;color:#14161e}
+.power-veil-btn.hidden{display:none}
 /* panels/overlays live OUTSIDE #desk (top-right) → move them away from the right dock manually */
 body.chatdock-r .statuspanel,body.chatdock-r .cronpanel{right:calc(18px + var(--chatdock-r))}
 /* V2-689 — the wall's header IS the Toolbar component's geometry (44px, 12px padding, hairline under it) and
