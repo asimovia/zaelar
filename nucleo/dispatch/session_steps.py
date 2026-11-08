@@ -196,6 +196,9 @@ async def run_it_to_its_delivery(*, _dev, _dev_settings_path, _wd, brief, escala
             _ds._d._sheet_close(rec)
         elif not _continues and _ds._d.surfaces.opens_doc(getattr(rec, "surface", "")):
             _ds._d._docsheet.doc_close(rec)
+        if not _continues:   # V2-862 — its chat box says how it ended (a parked or resuming errand is still going)
+            from nucleo import chat_refs as _chat_refs
+            _chat_refs.closed(rec, file=str(getattr(rec, "kept_file", "") or ""))
         try:
             from nucleo.cli import worker_api
             worker_api.purge_task(key)   # §v3·L: sin asks pendientes de una sesión terminada

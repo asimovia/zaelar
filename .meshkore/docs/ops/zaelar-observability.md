@@ -306,6 +306,11 @@ kept for the FlashBrain's «PROCESOS DE FONDO» prompt, but does not duplicate t
     subscriber); `extra = {task_id, ask_id, text, session, options?, among?}` (`options` only when declared, `among` =
     the tasks an ASK_WHICH names). The chat wall and the processes panel draw it; a `task_state` leaving `waiting`
     removes it. Re-emitted for the open questions after a restart.
+  - **`artifact`** — an errand's reference box on the chat wall (V2-862, `nucleo/chat_refs.py`): `opened` ·
+    `retitled` · `closed` with `extra = {ref, task_id, surface, card, title, state, file?}` (`state` started · done ·
+    partial · cancelled), or `skipped` with `reason` (no_card · child · event · cluster · no_row). ONE decision per
+    errand, under its trace: «was the box made, why not, how did it end» is one query of this kind. The same event is
+    what the wall draws. `.meshkore/docs/modules/zaelar-chat-refs.md`.
   - **`ask_outside_door`** (family `flash`) — `🚪 asked outside the door`: the turn ended on OUR question about a card
     whose acts leave the machine and no call reached its door; `extra = {trace, widget, leaves, which_person}`. A
     measurement, never a repair (that question is also made durable on the turn's row).

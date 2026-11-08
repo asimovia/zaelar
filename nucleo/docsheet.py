@@ -57,7 +57,21 @@ def doc_close(rec) -> None:
     disappeared accounts for half of what happened."""
     try:
         from widgets.documento import data as _doc
+        _keep(rec, _doc.keep_task(str(getattr(rec, "task_id", "") or "")))
         _doc.finish_task(task_id=str(getattr(rec, "task_id", "") or ""),
                          phases=_phrases(rec)[-PHASES_KEPT:])
     except Exception:  # noqa: BLE001
         pass
+
+
+def _keep(rec, kept: dict) -> None:
+    """V2-862 — what the report wrote, finished or not, becomes the TASK's: the `document` artifact the reopen door
+    rebuilds the sheet from, and the library file his chat reference names. The sheet holds one document and the
+    next report overwrites it, so without this a reference to an older report would reopen the newest one."""
+    if not kept:
+        return
+    rec.kept_file = str(kept.get("file") or "")
+    uid = str(getattr(rec, "uid", "") or "")
+    if uid:
+        from nucleo.circuit import ledger as _tasks
+        _tasks.store().artifact_put(uid, "document", kept)

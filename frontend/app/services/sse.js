@@ -402,6 +402,7 @@ export function routeEvent(desktop, d) {
       // the observability panel would keep showing rows from the previous session over one just born blank.
       // `clearDebugBuffer()` (already called by reset) empties the RING, not the DOM.
       try { store.newSession(); } catch (_) {}
+    } else if (d.kind === "artifact") { store.upsertChatRef(d);                 // V2-862: an errand's reference box on the wall
     } else if (d.kind === "ask" || d.kind === "task_state") { asks.route(d);     // V2-851: a task's question opens / its row moves on
     } else if (d.kind === "task") {                                               // SlowBrain background task lifecycle
       // A deep-brain task started/finished — surface it as a liquid chip flanking the orb so the operator SEES

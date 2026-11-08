@@ -211,8 +211,7 @@ async def run_listener(stop: "asyncio.Event | None" = None) -> None:
             _d._SESSIONS[key] = rec
             _note_screen(key, ctx, rec)   # V2-792: its cards open on the screen that commissioned it
             _d.surfaces.set_once(rec, ctx.get("surface"))
-            # …and if esa superficie es the sheet, is ABRE YA, empty and with the tab of proceso. Aqui, and no in the
-            # entrega, es donde the operator leaves of mirar a pantalla in blanco.
+            # …and a sheet surface OPENS NOW, empty, on its process tab: here, not at delivery, his blank screen ends.
             if _d.surfaces.opens_sheet(getattr(rec, "surface", "")):
                 _d._sheet_open(rec)
             elif _d.surfaces.opens_doc(getattr(rec, "surface", "")):   # a REPORT opens the DOCUMENT sheet (V2-644)
@@ -223,6 +222,7 @@ async def run_listener(stop: "asyncio.Event | None" = None) -> None:
                 _tasks.opened(rec, ctx)
             except Exception:  # noqa: BLE001
                 logger.debug("dispatch: no pude registrar la tarea durable", exc_info=True)
+            __import__("nucleo.chat_refs", fromlist=["x"]).opened(rec, ctx)   # V2-862: its box on his chat wall, or why not
             _d._name_errand(rec)          # V2-530 — asynchronous; the sheet is already open under its brief
 
             rec.task = asyncio.create_task(_d._run_session(task), name=f"worker-session-{key}")

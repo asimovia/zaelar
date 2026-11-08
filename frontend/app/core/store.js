@@ -819,6 +819,24 @@ export const setChatMsgs = (v) => {
 };
 export const pushChat = (m) => setChatMsgs(xs => _capChat([...xs, m]));
 
+// V2-862 — an errand's REFERENCE BOX on the wall (`nucleo/chat_refs.py`, SSE kind `artifact`). ONE box per task
+// row (`ref`): the first event draws it where the conversation is, every later one (retitled, closed, a relay that
+// re-opened it) updates it IN PLACE, so it never moves down the thread nor doubles. `skipped` draws nothing — that
+// event exists for the audit. `text` carries the title because a restored history keeps only rows with a string text.
+export const upsertChatRef = (d) => {
+  const ref = String((d && d.ref) || "");
+  if (!ref || d.label === "skipped") return;
+  const row = { role: "ref", ref, text: String(d.title || d.text || ""), surface: String(d.surface || ""),
+                card: String(d.card || ""), state: String(d.state || "started"), file: String(d.file || "") };
+  setChatMsgs(xs => {
+    const k = xs.findIndex(m => m && m.role === "ref" && m.ref === ref);
+    if (k < 0) return _capChat([...xs, row]);
+    const was = xs[k];
+    const merged = { ...was, ...row, text: row.text || was.text, card: row.card || was.card, file: row.file || was.file };
+    return [...xs.slice(0, k), merged, ...xs.slice(k + 1)];
+  });
+};
+
 // ── V2-743: THE LINE HE IS SAYING RIGHT NOW ────────────────────────────────────────────────────────────
 // A spoken turn does not reach the wall until the attention gate rules on it, and the gate waits for the
 // endpointer, which waits for him to stop talking. Measured 2026-09-21 (session bcd4aba1): from his first
