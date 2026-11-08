@@ -177,12 +177,14 @@ def prompt_digest() -> str:
     if not entries:
         return f"{head}: VACÍA."
     rows = []
-    for e in entries[:DIGEST_ENTRIES]:
+    for n, e in enumerate(entries[:DIGEST_ENTRIES], 1):
         mark = "📁" if str(e.get("kind")) == "folder" else "·"
-        rows.append(f"{mark} {_text(e.get('name'), 80)}")
+        rows.append(f"{n}. {mark} {_text(e.get('name'), 80)}")
     more = len(entries) - len(rows)
     tail = f" (y {more} más)" if more > 0 else ""
-    return f"{head}: " + " | ".join(rows) + tail
+    # V2-861 — numbered as he says them: «abre el tercero» / «el del contrato» is open_file{fileId: 3 | its name}
+    pick = " · abrir uno: open_file{fileId: número o nombre} / open_folder{folderId: …}"
+    return f"{head}: " + " | ".join(rows) + tail + pick
 
 
 # ── dispatch ───────────────────────────────────────────────────────────────────────────────────────────────

@@ -259,9 +259,10 @@
       "payload": {}
     },
     "choose": {
-      "desc": "Marca un item como elegido por el operador (requiere `choosable:true`).",
+      "desc": "Marca un item como elegido por el operador (requiere `choosable:true`): por su título o su número.",
       "payload": {
-        "title": "Plan A — Ibiza en familia"
+        "title": "Plan A — Ibiza en familia",
+        "index": "1-based, si lo dice por número"
       }
     },
     "auth_done": {

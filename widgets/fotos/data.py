@@ -120,6 +120,10 @@ def view_data(q: str = ""):
     }
 
 
+#: How many of a search's photos the brain reads by number.
+DIGEST_FOUND = 12
+
+
 def ref_index() -> list[dict]:
     """Photo ids currently on screen — the model NEVER invents a photo id (V2-026 precedent)."""
     out = []
@@ -139,7 +143,18 @@ def prompt_digest() -> str:
         return "FOTOS: sin ninguna foto importada todavía (usa pick para elegir una tanda)."
     years = db.get("years") or []
     by_year = ", ".join(f"{y['year']}: {y['count']}" for y in years[:6])
-    return f"FOTOS: {total} importadas — {by_year}"
+    head = f"FOTOS: {total} importadas — {by_year}"
+    q = str((db.get("active_filter") or {}).get("query") or "").strip()
+    items = db.get("items") or []
+    if not q:
+        return head
+    # V2-861 — what a search FOUND, numbered as he says them («the third one», «the one from Marrakech»): the brain
+    # answers «which ones?» from here instead of searching again.
+    rows = [f"  {n}. {str(it.get('filename') or '')[:60]}" + (f" — {str(it.get('taken_at'))[:10]}" if it.get("taken_at") else "")
+            for n, it in enumerate(items[:DIGEST_FOUND], 1)]
+    more = len(items) - len(rows)
+    return "\n".join([head, f"BÚSQUEDA EN PANTALLA («{q[:60]}», {len(items)} fotos):"] + rows
+                      + ([f"  (y {more} más)"] if more > 0 else []))
 
 
 # ── write ──────────────────────────────────────────────────────────────────────────────────────────────────

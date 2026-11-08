@@ -6078,6 +6078,9 @@ DOMAINS: list[dict] = [
         # V2-861 — disarmed 2026-11-08 (`_choose` keeping the page on a computer: 3 red).
         {"id": "5.72", "title": "A list he names plays on the first try (V2-861): two players whatever the screen — the provider's app with the asking screen (the Spotify of THIS computer), else our page player; the kind he names (list/podcast/album/song) rides `play_music` to the media door; a request said to the agent opens the music card on its search, blank, and leaves the numbered candidates with their owners and the one started; `play_result` picks another by number, name or owner, two rows carrying his words are asked",
             "ch": UNIT, "paths": ["tests/connectors/unit/music/test_a_named_list_plays_on_this_computer_first_try.py"]},
+        # V2-861 — disarmed 2026-11-08 (`choose` keeping the words as given: 1 red; `_named_entry` a no-op: 1 red).
+        {"id": "5.73", "title": "A result on screen is picked the way he names it (V2-861): the results sheet's `choose` takes a row's number or words and keeps the row's real title; the file explorer numbers what it shows and opens a file or folder by its number or name (`_named_entry` over the shared resolver); the photo gallery's digest numbers what a search found",
+            "ch": UNIT, "paths": ["tests/browser/unit/widgets/test_a_result_on_screen_is_picked_the_way_he_names_it.py"]},
         {"id": "5.66", "title": "Every connector family declares how far back it can see through one door — mail (the "
                                 "INBOX's oldest INTERNALDATE, read-only), cloud files (the root's date), messaging (the "
                                 "archive's oldest row); an undeclared family says so, a dead resource is a fact, not a "
