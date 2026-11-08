@@ -10,6 +10,7 @@ from __future__ import annotations
 from . import data as _d
 from . import title_when as _tw
 from . import twins as _twins
+from . import mirror as _mirror
 
 
 def _a_drop_project(action, payload, db, _extra) -> dict:
@@ -101,6 +102,10 @@ def _a_add_meeting(action, payload, db, _extra) -> dict:
     _extra = {"ignored": _d.series.ignored_keys(payload), "stored": dict(_new),
               "revert": {"action": "cancel_meeting", "payload": {"title": title, "date": date, "whole": True}}}
     _d.default_status(_new)
+    # The calendar he NAMED for this write, if any (optional `calendar`): unknown → the default one, and said.
+    _cal = _mirror.calendar_named(db, payload.get("calendar"))
+    if str(payload.get("calendar") or "").strip() and not _cal:
+        _extra["calendar_unknown"] = str(payload.get("calendar"))[:80]
     # V2-652 — the HOUR-LESS TWIN: the backstop's all-day entry, then «a las once y media» as a TIMED add, stood
     # side by side («dos ítems», session 7f77e2cc). A timed write SETTLES the all-day twin in place; an all-day
     # write over a timed twin adds nothing — either way the timed row is the richer fact.
@@ -117,7 +122,9 @@ def _a_add_meeting(action, payload, db, _extra) -> dict:
         _twin = next((m for m in _meets if _twin_of(m)), None)   # timed or all-day — either way it exists
         if _twin is None:                      # all-day: its notice at 09:00 that day (operator, 2026-10-10)
             _new.update(_d.reminders.notice_fields(title, _d.recur.next_occurrence(_new, _d._today()) or date))
-            _extra["_row"] = _d.gcal.commit_meeting(db, _new); _d.edit.touch(db, _new)
+            _mst: dict = {}
+            _extra["_row"] = _d.gcal.commit_meeting(db, _new, _mst, _cal); _d.edit.touch(db, _new)
+            _extra.update(_mirror.mirror_offer(_mst))      # saved here, not in Google: OFFERED, never silent
         else:
             _extra["_row"] = _twin
             if _d._settle_rule(db, _twin, _new):
@@ -157,7 +164,9 @@ def _a_add_meeting(action, payload, db, _extra) -> dict:
                 _new["reminder_id"], _new["remindAt"] = _jid, _at
             if _new.get("repeat"):
                 _new["remindFor"] = _rday
-            _extra["_row"] = _d.gcal.commit_meeting(db, _new)
+            _mst = {}
+            _extra["_row"] = _d.gcal.commit_meeting(db, _new, _mst, _cal)
+            _extra.update(_mirror.mirror_offer(_mst))      # saved here, not in Google: OFFERED, never silent
             _d.edit.touch(db, _new)
     return _d._Continue(_extra)
 
@@ -191,6 +200,8 @@ def _a_cancel_meeting(action, payload, db, _extra) -> dict:
             res = {**res, "message": (_d._spoken("widget_selector_missing").replace("{options}", ", ".join(_soon))
                                       if _soon else _d._spoken("widget_selector_missing_bare"))}
         return {**_d.view_data(), **res}
+    _d.writes.note(db, "cancel_meeting", title=str(res.get("title") or ""),   # this cancel's end state
+                   asked=str(payload.get("title") or ""))
     db["currentPlan"] = _d.compute_plan(db)
     _d.store.save(_d.WIDGET_ID, db)
     d = _d.view_data()
@@ -308,6 +319,7 @@ def _a_move_meeting(action, payload, db, _extra) -> dict:
         m["reminder_id"], m["remindAt"] = _jid, _at
     _extra = {"stored": dict(m)}
     _d.edit.touch(db, m)
+    _d.writes.note(db, "move_meeting", m, asked=str(payload.get("title") or ""))   # this move's end state
     return _d._Continue(_extra)
 
 
@@ -358,6 +370,7 @@ def _a_update_meeting(action, payload, db, _extra) -> dict:
         m["title"] = _nt[:160]
     _d.edit.touch(db, m)
     _d.gcal.patch_google(m)   # V2-679: an edited Google-origin meeting is patched on Google too
+    _d.writes.note(db, "update_meeting", m, asked=str(payload.get("title") or ""))   # this edit's end state
     return _d._Continue(_extra)
 
 

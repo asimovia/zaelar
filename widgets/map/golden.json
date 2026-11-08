@@ -4,6 +4,6 @@
     "places": "list",
     "selected": "int",
     "title": "str",
-    "updated": "int"
+    "updated": "float"
   }
 }

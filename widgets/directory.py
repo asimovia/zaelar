@@ -170,14 +170,26 @@ def channels(contact: dict) -> list[dict]:
     return out
 
 
-def channel_for(contact: dict, platform: str = "") -> dict | None:
+def channel_for(contact: dict, platform: str = "", connected=None) -> dict | None:
     """The channel to write to. With `platform` named, THAT one or nothing. Without it: the preferred one,
     then the most used, then the only one — and None when there is nothing to choose from or the choice is
-    a coin toss, because guessing a channel is how a private message lands in the wrong app."""
+    a coin toss, because guessing a channel is how a private message lands in the wrong app.
+
+    `connected` (the platforms whose link is up, or None when unknown): with no platform named, a channel whose
+    link is down is a PREFERENCE that cannot be honoured now, so it is skipped for the connected ones the contact
+    has. When none of the contact's channels is connected the choice is the usual one — the caller says it is down.
+    A NAMED platform is never swapped: that is the caller's offer to make, never a silent resend elsewhere."""
     if not isinstance(contact, dict):
         return None
     chs = channels(contact)
     want = _norm(platform)
+    if not want and connected is not None:
+        up = {_norm(p) for p in connected}
+        live = [c for c in chs if _norm(c.get("platform")) in up]
+        if live and len(live) < len(chs):
+            pref = _norm(contact.get("preferred"))
+            hit = next((c for c in live if _norm(c.get("platform")) == pref), None) if pref else None
+            return hit or channel_for({**contact, "channels": live, "email": "", "preferred": ""})
     if want:
         hit = next((c for c in chs if _norm(c.get("platform")) == want), None)
         if hit:

@@ -34,7 +34,8 @@ def test_the_collection_reads_from_the_view_and_is_read_only(doc):
 def test_goto_moves_the_focus_and_the_postcondition_reads_it(doc):
     from nucleo.circuit import spec, verify
     dw = spec.render("documento", "goto", {"text": "proof of work"})
-    assert dw["baseline"] is None, "before any goto the sheet looks at nothing"
+    # before any goto the sheet looks at nothing — an EMPTY focus, a value (None would read «unverifiable»)
+    assert dw["baseline"] == {"text": "", "at": 0}, dw
     assert doc.apply_action("goto", {"text": "proof of work"})["ok"]
     assert verify.check(dw) is True
     assert verify.check({"widget": "documento", "field": "focus", "has": "proof-of-work"}) is True

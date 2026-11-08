@@ -5,10 +5,12 @@
     "error": "str",
     "loading": "bool",
     "mode": "str",
+    "query": "str",
     "rev": "int",
     "title": "str",
     "updated": "str",
     "url": "str",
+    "wall": "str",
     "youtube_id": "str",
     "youtube_title": "str"
   }

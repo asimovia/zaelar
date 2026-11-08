@@ -1,7 +1,10 @@
 {
   "id": "imagenes",
   "screens": "shared",
-  "fill": {"tool": "show_images", "filled_by": "items"},
+  "fill": {
+    "tool": "show_images",
+    "filled_by": "items"
+  },
   "version": "0.1.0",
   "owner": "Zaelar",
   "created": "2026-08-28",
@@ -47,9 +50,18 @@
       },
       "view": true,
       "done_when": {
-        "widget": "imagenes",
-        "field": "items",
-        "expect": "present"
+        "all": [
+          {
+            "widget": "imagenes",
+            "field": "items",
+            "expect": "present"
+          },
+          {
+            "widget": "imagenes",
+            "field": "set_seq",
+            "expect": "changed"
+          }
+        ]
       }
     },
     "add": {
@@ -65,7 +77,12 @@
         "item": "número 1-N o texto del título/fuente"
       },
       "view": true,
-      "ref": "item"
+      "ref": "item",
+      "done_when": {
+        "widget": "imagenes",
+        "field": "i",
+        "expect": "changed"
+      }
     },
     "next": {
       "desc": "pasa a la foto siguiente",
@@ -80,14 +97,33 @@
     "local": {
       "desc": "abre las imágenes guardadas en este equipo (no busca en la web)",
       "payload": {},
-      "view": true
+      "view": true,
+      "done_when": {
+        "all": [
+          {
+            "widget": "imagenes",
+            "field": "source",
+            "is": "local"
+          },
+          {
+            "widget": "imagenes",
+            "field": "set_seq",
+            "expect": "changed"
+          }
+        ]
+      }
     },
     "slideshow": {
       "desc": "pasa las fotos SOLAS (modo presentación) cada pocos segundos, en bucle",
       "payload": {
         "every_s": "segundos por foto, 2-60 (opcional, def 6)"
       },
-      "view": true
+      "view": true,
+      "done_when": {
+        "widget": "imagenes",
+        "field": "auto",
+        "is": "true"
+      }
     },
     "slideshow_stop": {
       "desc": "detiene el pase automático (las fotos se quedan donde están)",

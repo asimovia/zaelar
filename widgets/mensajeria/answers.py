@@ -43,7 +43,10 @@ def _send_or_forward(action: str, payload: dict) -> dict | None:
             return {"ok": False, "error": "falta `text` en forward: la nota para esa persona con lo que el "
                                           "operador quiere decirle — vuelve a llamar a forward con contact, "
                                           "text y from"}
-        payload = {**payload, "contact": payload.get("contact") or payload.get("to"), "channel": "email"}
+        # The channel he named, else the contact's own (`resolve_target` → `directory.channel_for`), as the act does.
+        named = str(payload.get("channel") or payload.get("platform") or "").strip().lower()
+        payload = {**{k: v for k, v in payload.items() if k not in ("channel", "platform")},
+                   "contact": payload.get("contact") or payload.get("to"), **({"channel": named} if named else {})}
         if (no_files := _d._outbound.forward_without_files(_d.load_db(), payload)):
             return no_files
     t = _d._outbound.resolve_target(payload)

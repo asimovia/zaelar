@@ -240,7 +240,9 @@ def _a_forward(action, payload) -> dict:
     orig = _d._outbound._message_ref(db0, src) or {}
     subj = str(payload.get("subject") or "").strip() or (f"Fwd: {orig.get('subject')}" if orig.get("subject") else "Fwd")
     text = str(payload.get("text") or "").strip() or subj
-    # The channel is the one he names («por WhatsApp»); mail when he names none, as it always was.
-    channel = str(payload.get("channel") or payload.get("platform") or "email").strip().lower()
-    return _d.apply_action("send_to", {"contact": payload.get("contact") or payload.get("to"), "channel": channel,
+    # The channel is the one he names («por WhatsApp»); with none named it is the contact's own channel, chosen
+    # exactly as `send_to` chooses it (`directory.channel_for`: preferred, connected) — never mail by default.
+    channel = str(payload.get("channel") or payload.get("platform") or "").strip().lower()
+    return _d.apply_action("send_to", {"contact": payload.get("contact") or payload.get("to"),
+                                    **({"channel": channel} if channel else {}),
                                     "text": text, "subject": subj, "attach_from": src})

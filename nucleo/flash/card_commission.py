@@ -180,13 +180,32 @@ def picture_named_by(operator_text: str, brief=None) -> dict | None:
     """The picture search his words ask for when they NAME the picture viewer (its name or alias: «wallpaper»,
     «fondo de pantalla», «fotos») and it is empty — whatever tool the model reached for (demo passes 60-69, B1: a
     worker, a promise, a commission, a product-listing search, in turn) — or the one the verdict surely names
-    (`picture_by_verdict`). None otherwise."""
+    (`picture_by_verdict`). None otherwise.
+
+    A name match alone never turns his sentence into a query: «as you can see in the image, nothing is playing» names
+    the viewer's alias and searched the web for the whole complaint. The name counts only while the brief reads the
+    turn as an order or a question (or a canvas `show`) and does not surely say `canvas = neither`."""
     try:
         from widgets import runtime as _rt
-        card = str(_rt.identify_named(operator_text or "") or "")
+        card = str(_rt.identify_named(operator_text or "") or "") if _a_name_may_search(brief) else ""
     except Exception:  # noqa: BLE001
         card = ""
     return (picture_search_for(card, operator_text) if card else None) or picture_by_verdict(brief, operator_text)
+
+
+def _a_name_may_search(brief) -> bool:
+    """May a card NAME in his words stand for a picture search? Only with the brief's reading behind it: a sure
+    `canvas = neither` or a turn read as anything but an order/question (a complaint, a comment) refuses, and so
+    does a brief that has not landed. No brief at all (a caller with no turn) keeps the name's reading."""
+    if brief is None:
+        return True
+    from nucleo.acts import canvas_verdict as _cv
+    from nucleo.turn import brief as _tb
+    if _cv.sure_no_canvas(brief):
+        return False
+    kind, _k = _tb.read(brief, _tb.REQUEST_KEY, "")
+    verb, _v = _tb.read(brief, _tb.CANVAS_KEY, "")
+    return str(kind or "") in ("order", "question") or (str(verb or "") == "show" and str(kind or "") != "complaint")
 
 
 def picture_by_verdict(brief, operator_text: str) -> dict | None:

@@ -23,7 +23,10 @@ def _a_invite(action, payload, db, _extra) -> dict:
     from . import invite as _invite
     _res = _invite.run(db, payload)
     if not _res.get("ok"):
-        return {"ok": False, "error": str(_res.get("error") or "no pude mandar la invitación")}
+        # What comes next travels with the refusal: the OFFER (the .ics rung, connecting a mail) and the line he
+        # hears — dropping them here turned a refused calendar back into a dead stop.
+        return {"ok": False, "error": str(_res.get("error") or "no pude mandar la invitación"),
+                **{k: _res[k] for k in ("offer", "message") if _res.get(k)}}
     _d.store.save(_d.WIDGET_ID, db)
     return {**_d.view_data(), "ok": True, "message": _res.get("message", ""),
             "invited": _res.get("invited") or [], "how": _res.get("how", "")}
