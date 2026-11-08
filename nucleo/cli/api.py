@@ -52,7 +52,8 @@ def _wall(role: str, text: str) -> None:
 @router.post("/api/flash/say")
 async def say(text: str = Body(..., embed=True), session: str = Body("default", embed=True),
               ingest: bool = Body(True, embed=True), prompt: bool = Body(False, embed=True),
-              model: str = Body("", embed=True), execute: bool = Body(False, embed=True)) -> dict:
+              model: str = Body("", embed=True), execute: bool = Body(False, embed=True),
+              dev: str = Body("", embed=True)) -> dict:
     """Inject a text turn into FlashBrain and return its response, action, and timings (test channel).
     `model` (optional) forces another fast model for A/B testing. `execute` (V2-049) REALLY EXECUTES worker
     actions (escalation/injection/response/stop) → end-to-end testing of web tasks by text, without voice."""
@@ -77,6 +78,13 @@ async def say(text: str = Body(..., embed=True), session: str = Body("default", 
     # TO THE WALL, before anything else: the turn may take seconds and the operator must see the request now.
     # If it were rendered at the end, the screen would be silent while the agent works — exactly when it is watched.
     _wall("user", text)
+    # `dev` — the screen this line is typed from (`desktop:…` / `mobile:…`), as `/api/chat` carries it. Without it a
+    # text test runs with no asking screen, and whatever depends on WHERE he asked (which player sounds, V2-861) is
+    # untestable by text. Empty keeps today's behaviour.
+    if (dev or "").strip():
+        from voice import screens as _screens
+        _screens.begin_turn(dev)
+        _screens.ORIGIN.set(_screens.clean(dev))
     res = await run_turn(text, sid=session, ingest=ingest, model=model, execute=execute)
     # `reply` is a LIST of sentences (a turn may say several). Join them instead of calling `str()`: stringifying
     # the list would render `['I will look for them now.']` on the wall, including brackets and quotes.

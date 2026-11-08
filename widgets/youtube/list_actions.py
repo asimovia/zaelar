@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from . import data as _d
-from . import result_refs as _rr
+from widgets import result_refs as _rr
 
 
 def _a_remove(action, p, db) -> dict:

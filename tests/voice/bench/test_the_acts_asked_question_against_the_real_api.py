@@ -37,6 +37,9 @@ CASES = [
     ("Marca a Rowan Quill como contacto favorito y añádele los alias «Quinn» y «Quinn Rowan».", "several"),
     ("stop the music and show me the calendar", "several"),
     ("pon la agenda y mándale un telegram a Orion", "several"),
+    # V2-861 — a search that only finds what is then played is the same act
+    ("hey , put some list in spotify. Look for sueñacuentos and play it", "one"),
+    ("búscame vídeos de gatos y pon el primero", "one"),
 ]
 REPEAT = 3
 

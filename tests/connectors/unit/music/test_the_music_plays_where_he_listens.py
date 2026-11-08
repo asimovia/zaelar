@@ -8,7 +8,8 @@ plays on a device ELSEWHERE was chosen without asking where the request came fro
 Then (V2-812) the start went to a Spotify device on the asking screen, else that screen's page. Since 2026-11-01
 (operator's rule, V2-833 F2) it sounds on the device that asked; since 2026-11-02 a PHONE with its own Spotify app
 plays there (the richer source), and without that app the page plays it and the connector says the app is missing;
-a computer always uses the page. A connected Spotify identifies the song for the page; the same words again while it sounds are not re-sent; the record of where it went is what the controls reach. The Spotify Web API and the YouTube resolver are faked; nothing
+since 2026-11-08 (operator, V2-861: «only YouTube in our app, or the Spotify of THIS device») a computer follows the
+same rule as a phone. A connected Spotify identifies the song for the page; the same words again while it sounds are not re-sent; the record of where it went is what the controls reach. The Spotify Web API and the YouTube resolver are faked; nothing
 reaches the network or a real device.
 """
 from __future__ import annotations
@@ -106,6 +107,7 @@ def _ask_from(dev):
 # Changed on purpose 2026-11-01 (operator's rule, V2-833 F2): a song sounds on OUR device — the page of the screen that
 # asked — whatever Spotify session is open somewhere else. Changed again 2026-11-02 (operator): the phone's OWN Spotify
 # app is that device, so a phone asking with that app open is the one case that leaves the page (tested below).
+# Changed again 2026-11-08 (operator, V2-861): a computer with its own Spotify app is that device too.
 # Spotify, when connected, IDENTIFIES the song (a search, no device); the page player plays what it identified.
 @pytest.mark.parametrize("asker", [PHONE, COMPUTER, None], ids=["phone", "computer", "no-known-screen"])
 @pytest.mark.parametrize("devices", [[], [_dev("pc", "Home computer", "Computer", active=True)],
@@ -114,6 +116,9 @@ def _ask_from(dev):
 def test_a_song_sounds_in_the_page_of_the_screen_that_asked(world, asker, devices):
     if asker == PHONE and devices and devices[0]["type"] == "Smartphone":
         pytest.skip("a phone with its own Spotify app plays there — test_a_phone_with_spotify_open_plays_in_that_app")
+    if asker == COMPUTER and devices and devices[0]["type"] == "Computer":
+        pytest.skip("since V2-861 a computer with its own Spotify app plays there — "
+                    "test_a_named_list_plays_on_this_computer_first_try.py")
     fake = world(_Spotify(devices))
     if asker:
         _ask_from(asker)

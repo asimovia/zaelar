@@ -214,7 +214,7 @@ from .actions import (  # noqa: E402,F401
     _a_refresh, _a_enrich_art, _a_create_playlist, _a_add_to_playlist,
     _a_remove_from_playlist, _a_favorite_current, _a_play_playlist, _a_open_view, _a_back, _a_play_local, _a_seek,
     _a_playback, _a_add_tracks, _a_rename_playlist, _a_delete_playlist, _a_move_track)
-from .browse import a_search as _a_search, a_play_album as _a_play_album  # noqa: E402
+from .browse import a_search as _a_search, a_play_album as _a_play_album, a_play_result as _a_play_result  # noqa: E402
 from .player import (  # noqa: E402
     a_shuffle as _a_shuffle, a_repeat as _a_repeat, a_queue_remove as _a_queue_remove,
     a_queue_move as _a_queue_move, a_queue_clear as _a_queue_clear, a_played as _a_played)
@@ -258,6 +258,7 @@ ACTIONS = {
     "queue_clear": _a_queue_clear,
     "search": _a_search,
     "play_album": _a_play_album,
+    "play_result": _a_play_result,
     "played": _a_played,
     "player_audio": _a_player_audio,
 }

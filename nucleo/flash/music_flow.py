@@ -136,7 +136,7 @@ def something_to_play():
                        message=_langs.words("music.ask_what", default="What should I put on?"))
 
 
-async def run(action: str, query: str, *, extract=None):
+async def run(action: str, query: str, *, extract=None, kind: str = ""):
     """Executes ONE music action with fuzzy resolution. Returns the final `MusicResult` (with an extra `.resolved_from`
     if a chain occurred). `extract(system, user) -> str` = async 2nd model pass, provided by the caller (None =
     no resolution, direct attempt only)."""
@@ -152,7 +152,7 @@ async def run(action: str, query: str, *, extract=None):
         return res
 
     # 1 · ACT DIRECTLY (provider search engines already tolerate fuzziness)
-    res = await asyncio.to_thread(music.control, action, query, "", 0, "")
+    res = await asyncio.to_thread(lambda: music.control(action, query, "", 0, "", **({"kind": kind} if kind else {})))
     _note_page_player(res)
     if getattr(res, "ok", False):
         # 'ended' (queue advancement) brings a NEW track into playback → refresh music.playing as a play.

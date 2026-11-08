@@ -14,7 +14,6 @@ from __future__ import annotations
 
 from loguru import logger as _log
 
-from . import data as _d
 
 #: What the card keeps of one answer — enough to paint and to play, small enough for the store.
 _CAP = {"tracks": 10, "artists": 8, "albums": 12, "playlists": 8, "shows": 8, "top": 10}
@@ -127,3 +126,103 @@ def a_play_album(action: str, p: dict) -> dict:
     _keep("album", page, {"kind": "album", "id": str(meta.get("id") or "")})
     return {"ok": r.get("ok", False), "message": r.get("message", ""), "album": meta.get("name", ""),
             "tracks": len(page["tracks"])}
+
+
+# ── A request said to the agent (V2-861) ──────────────────────────────────────────────────────────────────────────
+# «put some list in spotify, look for Sueñacuentos» left the card on the song that sounded before, and nothing on screen
+# said what was found. A NEW request opens the card on its search, blank, with his words — and the act's answer (the
+# catalogue's answer, the numbered candidates, the one started) is written back, so the card shows what was found and
+# the turn can name the others («not this one» → the list with their owners). «Open the music» never comes here: the
+# card then stays as it was.
+
+def begin_search(query: str) -> None:
+    """The card on the search for his words, blank, while the act runs. Never raises."""
+    q = " ".join(str(query or "").split())
+    if not q:
+        return
+    try:
+        db = _d._load_db()
+        browse = dict(db.get("browse") or {})
+        browse["search"] = {"query": q, "pending": True}
+        db["browse"] = browse
+        db["view"] = {"kind": "search", "id": ""}
+        _d._persist(db)
+    except Exception as e:  # noqa: BLE001 — the card's look never breaks the act
+        _log.debug(f"musica: search not begun for {q!r}: {e!r}")
+
+
+def after_play(query: str, res) -> None:
+    """Write back what the act found and started, and move the view: the whole that sounds opens on its page, a song
+    on Now playing, and a start that failed stays on the search so he sees what was found. Never raises."""
+    q = " ".join(str(query or "").split())
+    if not q:
+        return
+    try:
+        extra = getattr(res, "extra", None) or {}
+        found = extra.get("found") or {}
+        ok = bool(getattr(res, "ok", False))
+        chosen = str(found.get("chosen") or "")
+        page: dict = {}
+        if ok and chosen and chosen.split(":")[1:2] != ["track"]:
+            from connectors.music import catalog
+            page = catalog.context(chosen) or {}                 # network BEFORE the store is read (V2-650)
+        db = _d._load_db()
+        browse = dict(db.get("browse") or {})
+        browse["search"] = {**_trim(found.get("answer") or {}), "query": q,
+                            "candidates": list(found.get("candidates") or []), "chosen": chosen,
+                            **({} if ok else {"failed": str(getattr(res, "reason", "") or "")})}
+        if page.get("tracks"):
+            meta = dict(page.get("context") or {})
+            browse["album"] = _trim({"album": meta, "tracks": page["tracks"]})
+            db["view"] = {"kind": "album", "id": str(meta.get("id") or "")}
+        elif ok:
+            db["view"] = {"kind": "now", "id": ""}
+        else:
+            db["view"] = {"kind": "search", "id": ""}
+        db["browse"] = browse
+        _d._persist(db)
+    except Exception as e:  # noqa: BLE001
+        _log.debug(f"musica: the act's findings not kept for {q!r}: {e!r}")
+
+
+def found_rows() -> list:
+    """The candidates on the card's search, numbered as the digest numbers them: [{kind, name, owner, uri, …}]."""
+    try:
+        return list(((_d._load_db().get("browse") or {}).get("search") or {}).get("candidates") or [])
+    except Exception as e:  # noqa: BLE001
+        _log.debug(f"musica: candidates unreadable: {e!r}")
+        return []
+
+
+def a_play_result(action: str, p: dict) -> dict:
+    """`play_result {item: N | name | owner}` — one of the candidates the card found, picked by its number, its name
+    or its owner («the one by irene»), through the resolver the video card uses (`widgets/result_refs`). A whole plays
+    by its uri (`music.play_whole`), a song by its uri or its words. Two rows carrying his words are asked, never
+    guessed."""
+    from widgets import result_refs as _rr
+    rows = found_rows()
+    if not rows:
+        return {"ok": False, "error": "no_results", "message": "There are no search results on the card right now."}
+    ref = p.get("item") if p.get("item") is not None else p.get("n")
+    i = _rr.resolve([{"title": r.get("name", ""), "channel": r.get("owner", "")} for r in rows], ref)
+    if i is None:
+        return {"ok": False, "error": "item_not_found", "item": ref, "count": len(rows),
+                "options": [f"{n}. {r.get('name', '')}" + (f" — {r['owner']}" if r.get("owner") else "")
+                            for n, r in enumerate(rows, 1)],
+                "message": "Which one? Say its number, its name or who made it."}
+    row = rows[i]
+    from connectors import music
+    if row.get("kind") in ("show", "playlist", "album") and row.get("uri"):
+        r = music.play_whole(str(row["uri"]), str(row.get("name") or ""), str(row.get("kind") or ""))
+    else:
+        r = music.control("play", "" if row.get("uri") else str(row.get("name") or ""), str(row.get("uri") or ""))
+    # the pick becomes the chosen one, and the card moves exactly as a spoken request does
+    found = {"answer": {k: v for k, v in ((_d._load_db().get("browse") or {}).get("search") or {}).items()
+                        if k in _CAP}, "candidates": rows, "chosen": str(row.get("uri") or "")}
+    r.extra = {**(r.extra or {}), "found": found}
+    after_play(str(((_d._load_db().get("browse") or {}).get("search") or {}).get("query") or row.get("name") or ""), r)
+    return {"ok": bool(r.ok), "message": r.message, "position": i + 1, "name": row.get("name", ""),
+            "owner": row.get("owner", ""), **({} if r.ok else {"error": r.reason or "error"})}
+
+
+from . import data as _d  # noqa: E402 — read at call time: data owns the store and imports this module's actions

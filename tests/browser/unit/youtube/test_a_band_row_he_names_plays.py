@@ -3,7 +3,7 @@
 «play the Palm Centre one first», twice: the model called `play_item {item: "How to Prune an Olive Tree — The Palm
 Centre"}` over an empty queue, `play_item` handed it to `play_result`, which read only a number — and he heard «Solo
 hay 6 resultados.» Nothing ever played. Now the band row resolves by number, exact title or the words of its title
-and channel (`widgets/youtube/result_refs.py`); two rows carrying his words are refused, never guessed.
+and channel (`widgets/result_refs.py`); two rows carrying his words are refused, never guessed.
 
 Disarm: `result_refs.resolve` reading digits only → every named-row test goes red.
 """

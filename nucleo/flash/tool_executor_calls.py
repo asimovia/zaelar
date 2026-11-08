@@ -93,6 +93,8 @@ def _t_play_music(*, args, music_req, _brief=None, _apply_widget_data=None, acte
         return
     _mq = {"query": (args.get("query") or "").strip(),
            "action": (args.get("action") or "play").strip().lower()}
+    if (args.get("kind") or "").strip():                       # V2-861: «a list», «the podcast» travels
+        _mq["kind"] = str(args["kind"]).strip().lower()
     if music_req["v"] is None:
         music_req["v"] = _mq
     else:

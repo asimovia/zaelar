@@ -53,19 +53,20 @@ def _in_page() -> "MusicProvider | None":
 
 
 def _choose(prefer: str, screen: str) -> "tuple[MusicProvider | None, dict | None]":
-    """WHERE a start goes: the device he asked from (operator's rule, 2026-11-01: «it sounds on OUR device, where we
-    asked», whatever Spotify session is open somewhere else; V2-833 F2). On a PHONE, a connected provider whose own
-    app is on that phone plays there — the richer source (operator, 2026-11-02: «YouTube is only the default when
-    there is no better one»). Without that app the page player takes it, and the provider's connector says what is
-    missing (`placement.note_app`). A computer keeps the page: a Spotify «computer» is as likely the one at home.
-    (provider, device) — device only when the provider's app was found."""
+    """WHERE a start goes — one of TWO players, whatever the screen (operator, 2026-11-08: «only YouTube in our music
+    app, or the Spotify of this device»): a connected provider whose own app sits with the asking screen plays there
+    (V2-833 F2: «it sounds on OUR device, where we asked»), the richer source; otherwise the page player of that
+    screen, and the provider's connector says what is missing (`placement.note_app`). A computer is no exception: the
+    rule that kept the page on a computer left the Spotify app of the very computer that asked unused while the reply
+    told him to open it (V2-861). (provider, device) — device only when the provider's app was found."""
     page = _in_page()
-    if placement.screen_kind(screen) == "phone":
+    kind = placement.screen_kind(screen)
+    if kind:
         for prov in registry.available():
             if not getattr(prov, "plays_elsewhere", False) or (prefer and prov.name != prefer):
                 continue
-            dev = prov.device_near("phone")
-            placement.note_app(prov.name, "phone", found=bool(dev))
+            dev = prov.device_near(kind)
+            placement.note_app(prov.name, kind, found=bool(dev))
             if dev:
                 return prov, dev
     return (page or active_provider(prefer)), None
@@ -141,7 +142,7 @@ def _already(prov: "MusicProvider", query: str) -> "MusicResult | None":
 
 @_consequence.door("music", neutral=lambda action="play", *_a, **_k: MusicResult(ok=True, action=str(action), reason="dry"))
 def control(action: str, query: str = "", uri: str = "", percent: int = 0, prefer: str = "",
-            seconds: float = 0.0, relative: bool = False) -> MusicResult:
+            seconds: float = 0.0, relative: bool = False, kind: str = "") -> MusicResult:
     """Execute ONE music action against the active provider. `action`: play|pause|resume|next|previous|stop|
     volume_up|volume_down|set_volume|seek. FlashBrain facade — fail-safe, never raises.
 
@@ -149,7 +150,7 @@ def control(action: str, query: str = "", uri: str = "", percent: int = 0, prefe
     where the act is observed: one `music` event with where it went and who named it, whichever route asked."""
     action = (action or "play").strip().lower()
     t0 = time.time()
-    res = _control(action, query, uri, percent, prefer, seconds, relative)
+    res = _control(action, query, uri, percent, prefer, seconds, relative, kind)
     _observe(action, query, res, t0)
     return res
 
@@ -168,9 +169,9 @@ def _observe(action: str, query: str, res: MusicResult, t0: float) -> None:
 
 
 def _control(action: str, query: str, uri: str, percent: int, prefer: str, seconds: float,
-             relative: bool) -> MusicResult:
+             relative: bool, kind: str = "") -> MusicResult:
     if action == "play" and (query or uri):
-        return _play(query, uri, prefer)
+        return _play(query, uri, prefer, kind)
     prov = _for_control(prefer)
     if prov is None:
         return MusicResult(ok=False, action=action, reason="no_provider", message=_msg("no_provider"))
@@ -216,7 +217,7 @@ def _confirmed(prov: "MusicProvider", res: MusicResult) -> MusicResult:
     return prov.confirm(res) if getattr(prov, "plays_elsewhere", False) else res
 
 
-def _play(query: str, uri: str, prefer: str = "") -> MusicResult:
+def _play(query: str, uri: str, prefer: str = "", kind: str = "") -> MusicResult:
     """A start by words or uri, placed on the screen that asked (V2-812). Fail-safe: never raises."""
     screen = placement.asking_screen()
     prov, dev = _choose(prefer, screen)
@@ -227,9 +228,12 @@ def _play(query: str, uri: str, prefer: str = "") -> MusicResult:
         if same is not None:
             return same
 
-        whole = _named_whole(query) if (query and not uri) else None
+        found = _found(query) if (query and not uri) else {}
+        whole = _named_whole(query, kind, found) if found else None
         if whole is not None:
-            return _play_whole(whole)
+            res = _play_whole(whole)
+            res.extra = {**(res.extra or {}), **_found_extra(query, found, str(whole.get("uri") or ""))}
+            return res
 
         look_up, facts = _identify(query) if (query and not uri and getattr(prov, "plays_in_page", False)) else (query, {})
 
@@ -237,26 +241,59 @@ def _play(query: str, uri: str, prefer: str = "") -> MusicResult:
             return p.play(query=look_up, uri=uri, device=dev_id) if dev_id else p.play(query=look_up, uri=uri)
         res = _start(prov, dev, screen, query, run)
         res.extra = {**(res.extra or {}), **facts, "placed": "page" if getattr(prov, "plays_in_page", False) else "provider",
-                     **({"looked_up": look_up} if look_up != query else {})}
+                     **({"looked_up": look_up} if look_up != query else {}),
+                     **_found_extra(query, found, str(getattr(res.track, "uri", "") or ""))}
         return res
     except Exception as e:  # noqa: BLE001 — a provider failure never breaks voice
         logger.warning(f"music.control(play) failed: {e!r}")
         return MusicResult(ok=False, provider=prov.name, action="play", reason="error", message=_msg("done"))
 
 
-def _named_whole(query: str) -> "dict | None":
-    """The podcast, list or album his words NAME, read by the search service's media door over this connector's
-    catalogue (`search.media.named_whole`, V2-860 T2.3). None: the song road stays as it was."""
+def _found(query: str) -> dict:
+    """What the connected catalogue holds for his words: {answer, candidates} — the catalogue's own answer and the
+    media door's ranking of it (`search.media.find_media`, V2-860 T2.1). Asked ONCE per start: the whole he named is
+    read from it, and the music card keeps it to show what was found and let him pick another (V2-861). {} when no
+    connected catalogue knows podcasts and lists, or it cannot be read."""
     if not any(type(p).search_catalog is not MusicProvider.search_catalog for p in registry.available()):
-        return None                        # no connected catalogue knows podcasts and lists: nothing to compare
+        return {}
     try:
         from search import media as _media
         from . import catalog
-        got = _media.find_media(query, catalogue=catalog.search, video=False)
-        return _media.named_whole(query, got["candidates"])
+        held: dict = {}
+
+        def _catalogue(q: str) -> dict:
+            held.update(catalog.search(q))
+            return held
+        got = _media.find_media(query, catalogue=_catalogue, video=False)
+        return {"answer": held, "candidates": got["candidates"]}
     except Exception as e:  # noqa: BLE001 — an unreadable catalogue leaves the song road as it was
-        logger.debug(f"music: no named whole for {query!r}: {e!r}")
+        logger.debug(f"music: catalogue unreadable for {query!r}: {e!r}")
+        return {}
+
+
+def _named_whole(query: str, kind: str = "", found: "dict | None" = None) -> "dict | None":
+    """The podcast, list or album his words NAME — of the KIND he named, when he named one — read by the search
+    service's media door over this connector's catalogue (`search.media.named_whole`, V2-860 T2.3, V2-861). None:
+    the song road stays as it was."""
+    found = _found(query) if found is None else found
+    if not found.get("candidates"):
         return None
+    from search import media as _media
+    return _media.named_whole(query, found["candidates"], kind=kind)
+
+
+def _found_extra(query: str, found: dict, chosen: str) -> dict:
+    """The `found` fact a start carries back: the catalogue's answer and the ranked candidates (without their raw
+    rows) and the uri of the one that was started — what the card shows and the turn can name (V2-861)."""
+    if not found.get("candidates"):
+        return {}
+    from search import media as _media
+    return {"found": {"query": query, "answer": dict(found.get("answer") or {}), "chosen": chosen,
+                      "candidates": [_media.public(c) for c in found["candidates"][:_FOUND_CAP]]}}
+
+
+#: How many candidates a start hands back to the card — the numbered list he picks from.
+_FOUND_CAP = 8
 
 
 def _play_whole(cand: dict) -> MusicResult:

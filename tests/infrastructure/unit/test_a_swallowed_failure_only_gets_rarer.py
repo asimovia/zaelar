@@ -590,7 +590,7 @@ PER_FILE: dict[str, int] = {
     'widgets/youtube/helpers.py': 2,
     'widgets/youtube/library.py': 2,
     'widgets/youtube/move_refs.py': 1,
-    'widgets/youtube/result_refs.py': 1,
+    'widgets/result_refs.py': 1,
     'widgets/youtube/sources.py': 1,
 }
 
