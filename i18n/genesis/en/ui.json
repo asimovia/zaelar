@@ -2452,5 +2452,7 @@
  "widgets.musica.away_take": "Take control",
  "widgets.musica.away_confirm": "It will stop on \"{device}\". Take it anyway?",
  "widgets.musica.away_yes": "Yes, take control",
- "widgets.musica.away_no": "Cancel"
+ "widgets.musica.away_no": "Cancel",
+ "widgets.musica.away_short": "On \"{device}\"",
+ "widgets.musica.away_release": "Let it be"
 }

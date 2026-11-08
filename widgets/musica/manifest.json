@@ -209,6 +209,11 @@
       "sensitivity": "routine",
       "activation": true
     },
+    "release": {
+      "desc": "deja la sesión de Spotify que está sonando en otro dispositivo de la cuenta: no se toca y la tarjeta queda en blanco",
+      "payload": {},
+      "sensitivity": "routine"
+    },
     "next": {
       "desc": "salta a la siguiente canción de la cola",
       "payload": {},

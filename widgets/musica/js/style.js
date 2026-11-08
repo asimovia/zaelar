@@ -36,6 +36,10 @@ export const CSS = `
   .hb-mus2-awaybtn{border:1px solid rgba(245,166,35,.6);background:transparent;color:inherit;border-radius:999px;
                    padding:4px 12px;font-size:12.5px;font-weight:600;cursor:pointer}
   .hb-mus2-awaybtn.go{background:#f5a623;border-color:#f5a623;color:#1a1300}
+  .hb-mus2-barc.locked{justify-content:center}
+  .hb-mus2-barlock{font-size:12.5px;font-weight:600;color:#f5a623;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .hb-mus2-barsrc{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;opacity:.6;white-space:nowrap;
+                  overflow:hidden;text-overflow:ellipsis}
   .hb-mus2 button{font-family:inherit}
 
   /* ── THE ONE BAR: where you are on the left, the search and the source chip in ONE right cluster ── */
