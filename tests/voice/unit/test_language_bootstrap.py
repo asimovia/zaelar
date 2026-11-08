@@ -56,14 +56,33 @@ def _captured_stt_kwargs(monkeypatch, module, plugin_attr, plugin_mod):
 
 @pytest.mark.parametrize("detecting, expected", [(True, "multi"), (False, "es")])
 def test_deepgram_asks_for_multi_only_while_detecting(monkeypatch, detecting, expected):
+    """nova-3 (`ZAELAR_STT_MODEL_DG=nova-3`): the v1 ear takes a `language`, and «multi» is its only auto."""
+    import dataclasses
+
+    from livekit.plugins import deepgram as _dg
+
+    from voice.engine.speech.stt import deepgram as adapter
+
+    monkeypatch.setattr(adapter, "SETTINGS", dataclasses.replace(adapter.SETTINGS, stt_model_deepgram="nova-3"))
+    monkeypatch.setattr(langs, "first_run_auto", lambda: detecting)
+    monkeypatch.setattr(langs, "current_code", lambda: "es")
+    kw = _captured_stt_kwargs(monkeypatch, adapter, "STT", _dg)
+    assert kw["language"] == expected
+
+
+@pytest.mark.parametrize("detecting, expected", [(True, []), (False, ["es"])])
+def test_flux_is_hinted_only_once_a_language_is_chosen(monkeypatch, detecting, expected):
+    """Flux, the default ear (V2-863): `flux-general-multi` listens to every language and takes a HINT, never a
+    lock — none on the first run, so `i18n.init.detect` classifies a clean first sentence."""
     from livekit.plugins import deepgram as _dg
 
     from voice.engine.speech.stt import deepgram as adapter
 
     monkeypatch.setattr(langs, "first_run_auto", lambda: detecting)
     monkeypatch.setattr(langs, "current_code", lambda: "es")
-    kw = _captured_stt_kwargs(monkeypatch, adapter, "STT", _dg)
-    assert kw["language"] == expected
+    kw = _captured_stt_kwargs(monkeypatch, adapter, "STTv2", _dg)
+    assert kw.get("language_hint", []) == expected
+    assert "language" not in kw
 
 
 @pytest.mark.parametrize("detecting", [True, False])

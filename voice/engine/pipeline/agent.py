@@ -160,6 +160,13 @@ async def entrypoint(ctx: JobContext) -> None:
     except Exception as e:  # noqa: BLE001 — never let bookkeeping stop a session from coming up
         logger.warning("live_tts: could not register the live TTS (%s)", e)
     turn_detection = build_turn_detection() or "vad"   # None (disabled) → VAD-based EOU (no ML InferenceRunner)
+    # V2-863 — with the Flux ear the END OF TURN IS THE MODEL'S (`EndOfTurn`, ~260 ms after the last word), so the
+    # session reads it from the STT («stt» mode) instead of counting silence with the hold below; the lexical veto
+    # (`speech/turn/semantic.py`) is Flux's own job there. nova-3 and the local ears keep today's path untouched.
+    from ..speech.stt import deepgram as _dg_stt
+    _flux = _dg_stt.flux_active()
+    if _flux:
+        turn_detection = "stt"
     # tap the session VAD ONLY to record the mic (ZAELAR_RECORD_MIC); otherwise use the bare VAD directly.
     vad_session = tapped_vad(vad_plain, boot) if boot.recording else vad_plain
 
@@ -220,6 +227,9 @@ async def entrypoint(ctx: JobContext) -> None:
     # will STILL close the turn (raising hold to 5 s would kill any short command). The brain's FRAGMENT GUARD
     # (`nucleo.py::_superseded`) prevents the damage: an superseded fragment neither speaks nor acts.
     _endpointing = _endpointing_opts()
+    if _flux:
+        # The model already waited for the turn to end; this is the ONLY silence added after its verdict.
+        _endpointing = {**_endpointing, "min_delay": SETTINGS.stt_flux_min_delay}
     logger.info("endpointing: %s (turn_detection=%s)", _endpointing, turn_detection)
 
     session = AgentSession(
@@ -234,6 +244,13 @@ async def entrypoint(ctx: JobContext) -> None:
             "preemptive_generation": {"enabled": True},   # latency: starts generating before EOU is confirmed
         },
     )
+
+    # V2-863 — was the early model run USED or thrown away? LiveKit says it in two debug lines; now they are events.
+    try:
+        from . import preemptive_tap as _ptap
+        _ptap.install(_emit)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("preemptive tap not installed (%s)", e)
 
     @session.on("agent_state_changed")
     def _on_agent_state(ev) -> None:

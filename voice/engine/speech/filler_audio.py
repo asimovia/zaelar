@@ -31,14 +31,19 @@ replaces `voice/engine/llm/providers/lead_in_filler.py`, V2-093/V2-114/V2-122):
     by us explicitly, marked (`kind="filler"`), exactly as V2-122's addenda decided.
 
 The other half of the operator's request — “if we are going to answer in one second or less, do not add a
-filler” —
-falls out of the same seam: the wrapper races the model's first chunk against the delay (default 1100 ms,
-`ZAELAR_FILLER_MS`; 0 disables). A fast reply never gets one.
+filler” — is `answering_fast()`: when the last turns all beat `ZAELAR_FILLER_MS` (default 1100 ms; 0 disables the
+cover altogether) nothing is armed. V2-863 (2026-11-08) took the RACE out: the cover used to be promised to the
+model CONDITIONALLY («si tardas sonará X») and fired only if the first chunk lost a 1.1 s race, so the model never
+knew whether it had sounded — measured as the two classes the operator hears, the cover followed by the reply's
+own wait-opener, and a reply that continues a cover that never sounded. Now the cover is DECIDED at `arm()`, before
+the model is paid, from the turn brief's verdict (Jev, 250 ms p50; the pipeline waits for it, bounded, in
+`settle_brief`): a decided cover sounds AT ONCE as the reply's first segment and the model is told so without a
+conditional; an undecided turn gets no cover and no note.
 
 ARM/CONSUME: only a turn that ARMED the filler can sound one. The voice provider arms per eligible brain
 turn (never the kickoff); `say()` speeches (greeting, proactive deliveries) don't go through `llm_node` at
-all. The arm is consumed AT FIRE TIME, not at generation start, because the node can begin a hair before
-the brain's `_run_inner` gets to arm.
+all. The arm is consumed when the node OBSERVES it, because the node begins a hair before the brain's
+`_run_inner` gets to arm (prompt build sits in between).
 """
 from __future__ import annotations
 
@@ -49,9 +54,9 @@ import time
 import unicodedata
 
 _ARM_TTL_S = 20.0
-_ARM_GRACE_S = 0.8       # past the deadline, how long we keep polling for this turn to ARM (see the race
-                         # below). A spin guard, not a behavioural bound: the first-chunk future always
-                         # resolves, so in practice the loop exits there — this only saves a model that hangs.
+_ARM_GRACE_S = 0.8       # how long the node polls for this turn to ARM (prompt build + the bounded wait for the
+                         # brief sit between node start and the arm). A spin guard, not a behavioural bound: the
+                         # first-chunk future always resolves, so in practice the loop exits there.
 _ARM_POLL_S = 0.05
 # The SECOND cover (V2-669). `_WORK_GRACE_S` is how long a work note waits before it is allowed to sound: a
 # second pass that comes back inside it beats the cover and nothing is said. `_COVER_MIN_GAP_S` is measured
@@ -328,16 +333,84 @@ def filler_kind(text: str, last_reply: str = "") -> str:
     return "neutral"
 
 
+def _kind_from_brief(brief, fallback: str) -> tuple[str, dict | None]:
+    """The turn's class for the cover: the brief's `request_type` when it has LANDED and is sure, else the regex
+    class. Read at arm time (V2-863) — the same gate `_consume_jev_kind` applied at fire time before."""
+    if brief is None:
+        return fallback, None
+    try:
+        from nucleo import jev as _jev
+        from nucleo.turn import brief as _tb
+        choice, info = _tb.read(brief, _tb.REQUEST_KEY, "")
+        if not choice:
+            return fallback, info
+        return _jev.KIND_MAP.get(choice, fallback) or fallback, info
+    except Exception:
+        return fallback, None
+
+
+def _target_title(brief) -> str:
+    """The NAME of the card a sure verdict of the brief says the sentence is about — what a cover with content can
+    say («Lo miro en Agenda…») instead of a bare acknowledgement. Only a SURE verdict (the brief's licence) names
+    one; anything else is "" and the cover stays a plain acknowledgement, which is true of every turn."""
+    if brief is None:
+        return ""
+    try:
+        from nucleo.turn import brief as _tb
+        wid = ""
+        for key in (_tb.TARGET_KEY, _tb.CATALOG_CLOSED_KEY, _tb.CATALOG_KEY):
+            choice, _info = _tb.read(brief, key, "")
+            if choice and str(choice) != "none":
+                wid = str(choice).rsplit(":", 1)[0] if key == _tb.TARGET_KEY else str(choice)
+                break
+        if not wid:
+            return ""
+        from widgets import instances as _inst
+        base = _inst.base_of(wid) or wid
+        from widgets import runtime as _rt
+        for w in _rt.catalog():
+            if str(w.get("id") or "").strip() == base:
+                return str(w.get("name") or w.get("title") or "").strip()
+    except Exception:
+        return ""
+    return ""
+
+
+async def settle_brief(brief, max_s: float = 0.35) -> bool:
+    """Wait, BOUNDED, for the turn's brief before the cover is decided (V2-863): fired at the eager end of turn it has
+    usually landed already; fired at admission it lands ~250 ms later. A turn that will arm nothing (cover off, the
+    engine answering fast, the previous cover stranded) waits for nothing. True when the brief is ready."""
+    if not isinstance(brief, dict) or brief.get("event") is None:
+        return False
+    ev = brief["event"]
+    if ev.is_set():
+        return True
+    if not enabled() or answering_fast() or _stranded or max_s <= 0:
+        return False
+    try:
+        await asyncio.wait_for(asyncio.to_thread(ev.wait, max_s), timeout=max_s + 0.25)
+    except Exception:
+        pass
+    return ev.is_set()
+
+
+async def decide_and_arm(brain, text: str = "", messages: list | None = None, brief=None) -> str:
+    """The pipeline's one call (V2-863): wait for the turn's brief, bounded (`settle_brief`), then decide the cover
+    (`arm`). Fired at the eager end of turn the brief has usually landed; fired at admission it lands ~250 ms later."""
+    await settle_brief(brief)
+    return arm(brain, text, messages=messages, brief=brief)
+
+
 def arm(brain, text: str = "", messages: list | None = None, brief=None) -> str:
-    """Called by the voice provider once per eligible turn, right where the model is about to be paid.
-    `text` is the operator's utterance — it picks which filler POOL covers this turn (V2-572). Since V2-640
-    the PHRASE is chosen here too, so the model can be told which cover may sound before its reply («que las
-    siguientes frases continúen a partir de esas frases de relleno», operator 2026-09-09): when the turn's
-    `messages` are handed in, a [SISTEMA] note with the exact phrase is appended to the LAST USER message —
-    the local list only, so the stable prompt prefix (V2-536 cache) and the durable window never see it, and
-    conditional wording on purpose (a fast reply gets no filler and the model cannot know which case it is
-    in). The phrase is only committed (anti-echo, last-said) at fire time, if it sounds."""
-    global _arm
+    """Called by the voice provider once per eligible turn, right where the model is about to be paid. DECIDES the
+    cover (V2-863): `text` and the brief's verdict pick the pool (V2-572, V2-726 A2 — Jev's class when it landed sure,
+    the regex class otherwise), the style rule says whether this kind of turn may be covered at all (V2-633), and a
+    SURE verdict about a card lets the cover say WHERE it is about to look («Lo miro en Agenda…»). A decided cover
+    sounds at once as the reply's first segment, and the model is told so WITHOUT a conditional on the LAST USER
+    message of the local `messages` list — the stable prompt prefix (V2-536 cache) and the durable window never see
+    it. A turn that decides no cover leaves no note: a promise of a phrase that cannot sound is prompt noise."""
+    global _arm, _jev_brief
+    _jev_brief = None
     if _dangling_fragment(text):
         _arm = None                       # half a sentence gets no promise — V2-642
         return ""
@@ -348,26 +421,39 @@ def arm(brain, text: str = "", messages: list | None = None, brief=None) -> str:
         _note_stranded(False)             # one turn of silence, then covers resume — V2-716
         _arm = None
         return ""
-    kind = filler_kind(text, last_reply=getattr(brain, "_last_reply", "") or "")
+    regex_kind = filler_kind(text, last_reply=getattr(brain, "_last_reply", "") or "")
+    kind, _info = _kind_from_brief(brief, regex_kind)
+    try:
+        from nucleo import style_policy as _style
+        allowed = _style.filler_allowed(kind)
+    except Exception:
+        allowed = True
+    if not allowed:
+        _arm = None                       # genesis «smart» drops the cover on an order; «off» everywhere — V2-633
+        return ""
     phrase = ""
     try:
         from voice.engine.core import langs
         last = getattr(brain, "_last_filler", "") or _last_phrase
-        phrase = langs.pick_filler(last, kind=kind)
+        # A question about a card we are sure of says where it looks; an order keeps the motion pool (a look
+        # is not what «cierra la agenda» does), and an unsure verdict names nothing.
+        target = _target_title(brief) if kind == "neutral" else ""
+        if target:
+            phrase = langs.pick_cover("widget", target=target, last=last)
+        if not phrase:
+            phrase = langs.pick_filler(last, kind=kind)
     except Exception:
         phrase = ""
+    if not phrase:
+        _arm = None
+        return ""
     _arm = (time.monotonic(), brain, kind, phrase)
-    # The turn's brief already asked what KIND of turn this is (V2-726 A2): it was fired when the
-    # sentence was admitted, ~1 s before this deadline, and it carries the same question this module
-    # used to open its own socket for. The regex class above is what was promised to the model; the
-    # fire site swaps the pool only when the brief's verdict lands confident and DIFFERENT.
-    global _jev_brief
-    _jev_brief = brief
-    if phrase and messages and isinstance(messages[-1], dict) and messages[-1].get("role") == "user":
+    _jev_brief = brief                    # the record of which brief decided this turn's cover
+    if messages and isinstance(messages[-1], dict) and messages[-1].get("role") == "user":
         messages[-1] = {**messages[-1], "content": str(messages[-1].get("content") or "") + (
-            f"\n\n[SISTEMA] Si tu respuesta tarda, sonará antes «{phrase}» en tu voz. Que tu primera "
-            "frase continúe esa muletilla con naturalidad (sin repetirla ni contradecirla); y que "
-            "también funcione sola por si no llega a sonar.")}
+            f"\n\n[SISTEMA] Antes de tu respuesta ya suena en tu voz «{phrase}». Tu primera frase la continúa con "
+            "naturalidad: no la repitas, no la contradigas y no abras con otra espera («dame un momento», «déjame "
+            "mirar»). Si por lo que fuera no llegara a sonar, tu frase se entiende igual sola.")}
     return phrase
 
 
@@ -581,34 +667,28 @@ async def llm_node_with_filler(agent, default_impl, chat_ctx, tools, model_setti
     model_spoke = False     # V2-716: the model yielded at least one chunk of its own
     try:
         if wait_ms > 0:
-            # The ARM and the deadline RACE, and the arm can lose: this node is entered before the brain's
-            # `_run_inner` reaches its arm call (prompt build + tool selection sit in between), and how far
-            # before varies per turn. Measured live 2026-08-31: one turn armed 150 ms BEFORE the deadline
-            # (filler fired) and the next armed ~400 ms AFTER it (no filler, with TTFT 3.26 s — a turn that
-            # plainly deserved one). So the deadline is not a single sleep: past it we keep polling for the
-            # arm, still racing the model's first chunk, for a bounded grace. A generation that never arms
-            # (the kickoff) just waits out the grace producing nothing — it is not yielding meanwhile either.
+            # The node is entered before the brain's `_run_inner` reaches its arm call (prompt build, the bounded
+            # wait for the brief and tool selection sit in between), so the arm is POLLED for a bounded grace,
+            # still racing the model's first chunk: a fast lane that answers before any arm (the action map, a
+            # presence knock) gets no cover. A generation that never arms (the kickoff) waits out the grace
+            # producing nothing — it is not yielding meanwhile either.
             #
-            # V2-669 — the loop no longer STOPS once the lead-in has settled. The turn that takes longest is
-            # the one that calls a tool, and on that turn the lead-in is over long before the answer exists:
-            # measured on 7 real voice turns (2026-09-04..11, `deepseek-v4-pro`), a web-search turn ends
-            # 3.4-5.9 s AFTER the tool event while the lead-in sounded ~1 s in. So the node keeps racing the
-            # first chunk and covers a SECOND time when the provider publishes a work note (`note_work`).
-            deadline = time.monotonic() + wait_ms / 1000.0
-            give_up = deadline + _ARM_GRACE_S
-            lead_settled = False        # the lead-in phase is over: it fired, or its window closed
+            # V2-863 — there is no deadline race any more: a turn that ARMED decided its cover before the model
+            # was paid, so the cover sounds the moment the arm is seen. V2-669 — the loop does not STOP once the
+            # lead-in has settled: the turn that takes longest calls a tool, and on that turn the lead-in is over
+            # long before the answer exists (a web-search turn ended 3.4-5.9 s after the tool event on 7 real
+            # turns), so the node keeps racing the first chunk and covers a SECOND time when the provider
+            # publishes a work note (`note_work`).
+            give_up = time.monotonic() + _ARM_GRACE_S
+            lead_settled = False        # the lead-in phase is over: it sounded, or nothing armed in time
             lead_at = 0.0               # monotonic of the lead-in that actually SOUNDED (0 = none did)
             covered = False             # at most ONE work cover per turn
             while not get_t.done():
-                now = time.monotonic()
-                left = (deadline - now) if (not lead_settled and now < deadline - _ARM_POLL_S) else _ARM_POLL_S
-                await asyncio.wait({get_t}, timeout=max(left, 0.01))
+                await asyncio.wait({get_t}, timeout=_ARM_POLL_S)
                 if get_t.done():
                     break
                 now = time.monotonic()
                 if not lead_settled:
-                    if now < deadline:
-                        continue
                     armed = _consume_arm()
                     if armed is None:
                         if now >= give_up:
@@ -616,26 +696,6 @@ async def llm_node_with_filler(agent, default_impl, chat_ctx, tools, model_setti
                         continue
                     lead_settled = True
                     brain, kind, armed_phrase = armed
-                    # Jev re-class: a confident verdict for a different pool re-picks the phrase from
-                    # THAT pool. The [SISTEMA] note promised the regex phrase conditionally ("si tarda"),
-                    # and all covers are equally short continuations — a wrong-class cover is the worse
-                    # failure (the operator's "Good question" for an order).
-                    try:
-                        _jev_kind, _ = _consume_jev_kind(kind)
-                        if _jev_kind != kind:
-                            kind, armed_phrase = _jev_kind, ""
-                    except Exception:
-                        pass
-                    # V2-633: the style policy rules the fire. Genesis "smart" drops the cover on ACTION
-                    # turns («reproduce el vídeo» + «Un segundo…» measured as pure annoyance, session
-                    # 6c715232); "off" (operator rule) drops it everywhere. Checked at fire time, so a
-                    # rule given one turn ago already governs this one.
-                    try:
-                        from nucleo import style_policy as _style
-                        if not _style.filler_allowed(kind):
-                            continue
-                    except Exception:
-                        pass
                     phrase = _pick_phrase(brain, kind, armed_phrase)
                     if phrase:
                         _announce(phrase)

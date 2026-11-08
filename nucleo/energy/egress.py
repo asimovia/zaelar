@@ -186,6 +186,7 @@ _UPSTREAMS: tuple[tuple[str, str], ...] = (
     ("deepseek", "https://api.deepseek.com"),
     # Voice: the streaming sockets go through egress too (it opens its own socket to the provider with the key).
     ("deepgram", "https://api.deepgram.com/v1"),
+    ("deepgram_flux", "https://api.deepgram.com/v2"),      # Flux (V2-863): the conversational ear lives on /v2
     ("elevenlabs", "https://api.elevenlabs.io/v1"),
     ("inworld", "https://api.inworld.ai"),
     # The decision model. Without it a mediated deployment had no key and no route, so `jev.enabled()` was False on

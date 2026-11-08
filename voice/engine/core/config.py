@@ -105,7 +105,17 @@ class Settings:
     # Empty -> each LLM provider falls back to its own sensible default model.
     llm_model: str = env("ZAELAR_LLM_MODEL", "")
     stt_model_voxtral: str = env("ZAELAR_STT_MODEL", "voxtral-mini-transcribe-realtime-2602")
-    stt_model_deepgram: str = env("ZAELAR_STT_MODEL_DG", "nova-3")
+    # Deepgram: `flux-*` is the CONVERSATIONAL ear (V2-863) — the model itself says when the turn ended (~260 ms)
+    # and announces an EAGER end of turn before confirming it, so the brief and the model can start early; nova-3
+    # keeps working with `ZAELAR_STT_MODEL_DG=nova-3` (silence-based end of turn, `voice/endpointing.py`).
+    stt_model_deepgram: str = env("ZAELAR_STT_MODEL_DG", "flux-general-multi")
+    # Flux turn thresholds (Deepgram's own ranges): eager 0.3-0.9 (0 disables the eager event), end 0.5-0.9, and the
+    # longest silence Flux waits before closing a turn on its own.
+    stt_eager_eot: float = float(env("ZAELAR_STT_EAGER_EOT", "0.5"))
+    stt_eot_threshold: float = float(env("ZAELAR_STT_EOT_THRESHOLD", "0.7"))
+    stt_eot_timeout_ms: int = int(env("ZAELAR_STT_EOT_TIMEOUT_MS", "3000"))
+    # With Flux the end of turn is the model's: this is the only silence we ADD after it (the old hold is not used).
+    stt_flux_min_delay: float = float(env("ZAELAR_STT_FLUX_MIN_DELAY", "0.25"))
     tts_model: str = env("ZAELAR_TTS_MODEL", "sonic-3")
     tts_voice_id: str = env("CARTESIA_VOICE_ID", "")
 
