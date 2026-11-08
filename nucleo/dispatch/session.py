@@ -256,6 +256,8 @@ def _settle_unrun(_d, rec, key) -> None:
             _d._docsheet.doc_close(rec)
     except Exception as e:  # noqa: BLE001
         _d.logger.debug(f"dispatch: the unrun {key} left its surface as it was: {e}")
+    from nucleo import chat_refs as _chat_refs
+    _chat_refs.closed(rec, file=str(getattr(rec, "kept_file", "") or ""))   # V2-862 — never raises
 
 
 def _say_queued_behind(_d, key) -> None:

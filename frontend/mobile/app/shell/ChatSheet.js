@@ -21,6 +21,7 @@ import { h, raw } from "../../../app/core/dom.js?v=2";
 import { createEffect } from "../../../app/core/reactive.js?v=2";
 import * as store from "../../../app/core/store.js?v=2";
 import { submitChat } from "../../../app/components/ChatWall.js?v=5";
+import { chatRefView } from "../../../app/components/ChatRef.js?v=1";
 import { renderMarkdownLite } from "../../../app/lib/markdown-lite.js?v=1";
 import { t } from "../../../app/core/i18n.js?v=1";
 
@@ -49,6 +50,7 @@ export function ChatSheet() {
     ),
     h("div", { class: "zm-msgs", ref: (el) => (listEl = el) },
       () => store.chatMsgs().map((m) => {
+        if (m.role === "ref") return chatRefView(m, "zm-msg");   // V2-862: the same box the desktop wall draws
         const row = h("div", { class: "zm-msg " + (m.role || "sys") });
         // The agent speaks markdown (lists, bold, code); the person does not. Same renderer as the desktop wall.
         if (m.role === "agent") row.innerHTML = renderMarkdownLite(m.text || "");
