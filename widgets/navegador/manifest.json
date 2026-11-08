@@ -10,7 +10,7 @@
   "licence": "SUL-1.0",
   "title": "Navegador",
   "description": "Un navegador web dentro de zaelar: abre cualquier página, la renderiza en vivo con un Chromium propio y reproduce vídeos de YouTube embebidos. Su tarjeta es el MONITOR de lo que ese navegador está haciendo ahora mismo —la captura de la página y dos o tres líneas de estado—, no el sitio donde se enseñan los hallazgos: eso es la hoja `results`. Un encargo puede tener VARIOS navegadores abiertos a la vez, cada uno con su tarjeta; los resultados de todos se concentran en una sola hoja.",
-  "whenToUse": "Cuando el operador quiere VER una página web EN VIVO: buscar en Google, abrir una web concreta (Wallapop, una tienda, la RAE), enseñarle una página o un vídeo de YouTube. FRONTERA: los hallazgos van a `results`, nunca aquí; y si lo que quiere es LEER el texto o la receta EN SÍ, a `documento`.",
+  "whenToUse": "Cuando el operador quiere VER una página web EN VIVO: buscar en la web (Bing), abrir una web concreta (Wallapop, una tienda, la RAE), enseñarle una página o un vídeo de YouTube. FRONTERA: los hallazgos van a `results`, nunca aquí; y si lo que quiere es LEER el texto o la receta EN SÍ, a `documento`.",
   "keywords": [
     "navegador",
     "navega",
@@ -46,18 +46,51 @@
   "entry": "widget.js",
   "actions": {
     "open": {
-      "desc": "abre una URL o web en el navegador (si el texto no es una URL, busca en Google)",
+      "desc": "abre una URL o web en el navegador (si el texto no es una URL, la busca en Bing)",
       "payload": {
         "url": "string — URL o dominio, p.ej. wallapop.com"
       },
-      "safe": true
+      "safe": true,
+      "done_when": {
+        "all": [
+          {
+            "widget": "navegador",
+            "field": "rev",
+            "expect": "changed"
+          },
+          {
+            "widget": "navegador",
+            "field": "wall",
+            "is": "none"
+          }
+        ]
+      }
     },
     "search": {
-      "desc": "busca en Google y muestra la página de resultados",
+      "desc": "busca en Bing (el buscador del navegador) y muestra la página de resultados",
       "payload": {
         "q": "string — lo que se busca"
       },
-      "safe": true
+      "safe": true,
+      "done_when": {
+        "all": [
+          {
+            "widget": "navegador",
+            "field": "rev",
+            "expect": "changed"
+          },
+          {
+            "widget": "navegador",
+            "field": "wall",
+            "is": "none"
+          },
+          {
+            "widget": "navegador",
+            "field": "query",
+            "is": "{q}"
+          }
+        ]
+      }
     },
     "youtube": {
       "desc": "busca y reproduce un vídeo de YouTube (o abre una URL/id de vídeo concreta)",
@@ -65,22 +98,88 @@
         "q": "string — búsqueda del vídeo",
         "url": "string opcional — URL o id de 11 caracteres del vídeo"
       },
-      "safe": true
+      "safe": true,
+      "done_when": {
+        "all": [
+          {
+            "widget": "navegador",
+            "field": "rev",
+            "expect": "changed"
+          },
+          {
+            "widget": "navegador",
+            "field": "mode",
+            "is": "youtube"
+          }
+        ]
+      }
     },
     "back": {
       "desc": "vuelve a la página anterior",
       "payload": {},
-      "safe": true
+      "safe": true,
+      "done_when": {
+        "all": [
+          {
+            "widget": "navegador",
+            "field": "rev",
+            "expect": "changed"
+          },
+          {
+            "widget": "navegador",
+            "field": "wall",
+            "is": "none"
+          },
+          {
+            "widget": "navegador",
+            "field": "url",
+            "expect": "changed"
+          }
+        ]
+      }
     },
     "forward": {
       "desc": "avanza a la página siguiente",
       "payload": {},
-      "safe": true
+      "safe": true,
+      "done_when": {
+        "all": [
+          {
+            "widget": "navegador",
+            "field": "rev",
+            "expect": "changed"
+          },
+          {
+            "widget": "navegador",
+            "field": "wall",
+            "is": "none"
+          },
+          {
+            "widget": "navegador",
+            "field": "url",
+            "expect": "changed"
+          }
+        ]
+      }
     },
     "reload": {
       "desc": "recarga la página actual",
       "payload": {},
-      "safe": true
+      "safe": true,
+      "done_when": {
+        "all": [
+          {
+            "widget": "navegador",
+            "field": "rev",
+            "expect": "changed"
+          },
+          {
+            "widget": "navegador",
+            "field": "wall",
+            "is": "none"
+          }
+        ]
+      }
     },
     "close": {
       "desc": "cierra la ventana del navegador (la sesión/logins se conservan para la próxima)",

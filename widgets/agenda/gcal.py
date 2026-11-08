@@ -62,7 +62,7 @@ def svc():
         return None
 
 
-def commit_meeting(db: dict, m: dict) -> dict:
+def commit_meeting(db: dict, m: dict, status: dict | None = None, calendar_id: str = "") -> dict:
     """Append a NEW meeting to `db['meetings']`, creating it on Google Calendar FIRST when connected — the
     operator's own acceptance test is "I dictate it, and within seconds it's in the real Google Calendar", so
     the write cannot wait for the next background tick. Returns the dict actually stored (the Google-enriched
@@ -78,13 +78,22 @@ def commit_meeting(db: dict, m: dict) -> dict:
     could only ever end by running out of time. Its own note says the unit test missed the shape by writing
     `created` itself, which measured data the product has never produced. A DATE, not a timestamp: that is
     what the verifier compares against.
+
+    `calendar_id` is the calendar he named for THIS write (`calendar_named`); empty → his default calendar.
+    `status`, when given, is FILLED with whether the Google mirror happened: `{"mirrored": bool, "reason": str}`,
+    reason one of `not_connected` · `refused: <what Google said>` · `error: <exception>`. Keeping the local write is
+    right; keeping it SILENTLY is not — the caller turns a refusal into an offer to reconnect (principle: a provider
+    is a preference, and what needs his choice is an offer in the reply, never a dead stop or a quiet divergence).
     """
+    st = status if isinstance(status, dict) else {}
+    st.update(mirrored=False, reason="not_connected")
     m.setdefault("created", _time.strftime("%Y-%m-%d"))
     s = svc()
     if s is not None:
         try:
             if s.connected():
-                default_cal = (db.get("google") or {}).get("defaultCalendarId") or ""
+                st["reason"] = "error: no answer"
+                default_cal = calendar_id or (db.get("google") or {}).get("defaultCalendarId") or ""
                 if isinstance(m.get("repeat"), dict):
                     # V2-769 — a SERIES goes up as ONE recurring event (RRULE), and stays OUR row: Google hands
                     # back its instances one by one (`singleEvents`), and the sync drops the ones whose master
@@ -95,6 +104,9 @@ def commit_meeting(db: dict, m: dict) -> dict:
                         m["googleSeriesId"] = res["meeting"].get("googleId") or ""
                         m["googleCalendarId"] = res["meeting"].get("googleCalendarId") or default_cal
                         m["googleReminders"] = res["meeting"].get("googleReminders") or ""
+                        st.update(mirrored=True, reason="")
+                    else:
+                        st["reason"] = f"refused: {str(res.get('error') or '')[:160]}"
                     db.setdefault("meetings", []).append(m)
                     return m
                 res = s.create_event(m, default_cal)
@@ -113,10 +125,14 @@ def commit_meeting(db: dict, m: dict) -> dict:
                         if k in m:
                             enriched[k] = m[k]
                     m = enriched
-        except Exception:  # noqa: BLE001
-            pass
+                    st.update(mirrored=True, reason="")
+                else:
+                    st["reason"] = f"refused: {str(res.get('error') or '')[:160]}"
+        except Exception as e:  # noqa: BLE001
+            st["reason"] = f"error: {str(e)[:160]}"
     db.setdefault("meetings", []).append(m)
     return m
+
 
 
 def patch_google(m: dict) -> None:

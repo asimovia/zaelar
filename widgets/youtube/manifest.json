@@ -76,9 +76,11 @@
         "title": "título a mostrar (opcional)"
       },
       "done_when": {
-        "widget": "youtube",
-        "field": "videoId",
-        "expect": "changed"
+        "all": [
+          {"widget": "youtube", "field": "videoId", "expect": "changed"},
+          {"widget": "youtube", "field": "player_error", "expect": "absent"},
+          {"widget": "youtube", "field": "paused", "is": "false"}
+        ]
       }
     },
     "add": {
@@ -114,6 +116,7 @@
       "done_when": {
         "all": [
           {"widget": "youtube", "field": "videoId", "expect": "changed"},
+          {"widget": "youtube", "field": "player_error", "expect": "absent"},
           {"widget": "youtube", "field": "paused", "is": "false"}
         ]
       }
@@ -124,12 +127,24 @@
       "sensitivity": "routine",
       "activation": true,
       "repeatable": true,
-      "done_when": {"widget": "youtube", "field": "videoId", "expect": "changed"}
+      "done_when": {
+        "all": [
+          {"widget": "youtube", "field": "videoId", "expect": "changed"},
+          {"widget": "youtube", "field": "player_error", "expect": "absent"},
+          {"widget": "youtube", "field": "paused", "is": "false"}
+        ]
+      }
     },
     "previous": {
       "desc": "vuelve al vídeo anterior de la lista (al principio, reinicia el actual)",
       "payload": {},
-      "repeatable": true
+      "repeatable": true,
+      "done_when": {
+        "all": [
+          {"widget": "youtube", "field": "player_error", "expect": "absent"},
+          {"widget": "youtube", "field": "paused", "is": "false"}
+        ]
+      }
     },
     "ended": {
       "desc": "(interno, la dispara el propio widget) el vídeo terminó — avanza la lista solo",
@@ -202,7 +217,8 @@
       "desc": "reanuda/reproduce el vídeo",
       "payload": {},
       "sensitivity": "routine",
-      "activation": true
+      "activation": true,
+      "done_when": {"widget": "youtube", "field": "paused", "is": "false"}
     },
     "pause": {
       "desc": "PARA el vídeo y lo deja cargado: congelado en pantalla, listo para seguir con play. «Vale, para el vídeo», «páralo», «páralo un momento», «detenlo», «pausa» — «para» es el verbo, no la preposición",
@@ -386,7 +402,13 @@
       "payload": {
         "path": "ruta del fichero dentro de la biblioteca (p. ej. video/pelicula.mp4)"
       },
-      "view": true
+      "view": true,
+      "done_when": {
+        "all": [
+          {"widget": "youtube", "field": "src", "expect": "changed"},
+          {"widget": "youtube", "field": "paused", "is": "false"}
+        ]
+      }
     },
     "play_torrent": {
       "desc": "busca un torrent de vídeo por la red y lo reproduce aquí mientras se descarga, o adopta uno que ya está en Descargas",
@@ -396,7 +418,13 @@
         "keep": "opcional: true si además lo quiere guardar aunque no sea reproducible",
         "id": "opcional: el id de una descarga que ya está en curso en el widget Descargas, para reproducirla aquí sin volver a buscarla"
       },
-      "view": true
+      "view": true,
+      "done_when": {
+        "all": [
+          {"widget": "youtube", "field": "src", "expect": "changed"},
+          {"widget": "youtube", "field": "paused", "is": "false"}
+        ]
+      }
     },
     "play_result": {
       "desc": "reproduce UN resultado de la búsqueda del inicio, por número 1-based («el tercero» → item:3)",
@@ -405,16 +433,9 @@
       },
       "done_when": {
         "all": [
-          {
-            "widget": "youtube",
-            "field": "videoId",
-            "expect": "changed"
-          },
-          {
-            "widget": "youtube",
-            "field": "paused",
-            "is": "false"
-          }
+          {"widget": "youtube", "field": "videoId", "expect": "changed"},
+          {"widget": "youtube", "field": "player_error", "expect": "absent"},
+          {"widget": "youtube", "field": "paused", "is": "false"}
         ]
       }
     },

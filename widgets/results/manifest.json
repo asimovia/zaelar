@@ -152,16 +152,32 @@
       },
       "view": true,
       "done_when": {
-        "widget": "results",
-        "field": "view",
-        "is": "detail",
-        "absent_is": "list"
+        "all": [
+          {
+            "widget": "results",
+            "field": "view",
+            "is": "detail",
+            "absent_is": "list"
+          },
+          {
+            "widget": "results",
+            "field": "focus",
+            "expect": "changed",
+            "absent_is": ""
+          }
+        ]
       }
     },
     "list": {
       "desc": "Vuelve del expediente a la lista.",
       "payload": {},
-      "view": true
+      "view": true,
+      "done_when": {
+        "widget": "results",
+        "field": "view",
+        "is": "list",
+        "absent_is": "list"
+      }
     },
     "layout": {
       "desc": "CAMBIA CÓMO SE VEN los resultados ya pintados («compare them visually», «side by side», «ponlos en fila»): tile = en paralelo con foto · row = lista densa · card = foto a la izquierda",
@@ -181,7 +197,12 @@
       "payload": {
         "tab": "sources"
       },
-      "view": true
+      "view": true,
+      "done_when": {
+        "widget": "results",
+        "field": "tab_words",
+        "has": "{tab}"
+      }
     },
     "scroll": {
       "desc": "Desplaza la hoja («haz scroll», «baja», «sube», «al principio», «al final») — mueve la vista, no cambia nada.",
@@ -256,13 +277,24 @@
     },
     "clear": {
       "desc": "Vacía la hoja entera (las cuatro pestañas).",
-      "payload": {}
+      "payload": {},
+      "done_when": {
+        "widget": "results",
+        "field": "empty",
+        "is": "true"
+      }
     },
     "choose": {
       "desc": "Marca un item como elegido por el operador (requiere `choosable:true`): por su título o su número.",
       "payload": {
         "title": "Plan A — Ibiza en familia",
         "index": "1-based, si lo dice por número"
+      },
+      "done_when": {
+        "widget": "results",
+        "field": "chosen",
+        "expect": "changed",
+        "absent_is": ""
       }
     },
     "auth_done": {

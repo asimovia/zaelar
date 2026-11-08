@@ -65,7 +65,12 @@
         "folderId": "id de la carpeta (local: video/audio/documents/images/downloads; nube: su id o nombre)"
       },
       "ref": "folderId",
-      "view": true
+      "view": true,
+      "done_when": {
+        "widget": "archivos",
+        "field": "trail",
+        "has": "{folderId}"
+      }
     },
     "go_up": {
       "desc": "sube a la carpeta de arriba",
@@ -82,7 +87,12 @@
       "payload": {
         "query": "lo que se busca"
       },
-      "view": true
+      "view": true,
+      "done_when": {
+        "widget": "archivos",
+        "field": "query",
+        "is": "{query}"
+      }
     },
     "clear_search": {
       "desc": "quita la búsqueda y vuelve a enseñar la carpeta donde estaba",
@@ -104,7 +114,14 @@
         "text": "el contenido completo",
         "folderId": "opcional: documents (por defecto) | video | audio | images | downloads"
       },
-      "view": true
+      "view": true,
+      "done_when": {
+        "widget": "archivos",
+        "collection": "entries",
+        "where": {
+          "name~": "{name}"
+        }
+      }
     },
     "reveal_local_file": {
       "desc": "enseña dónde está un archivo LOCAL en el disco de este ordenador (self-host) en vez de descargar una segunda copia; en la nube no existe",
@@ -120,7 +137,14 @@
         "fileId": "el archivo a renombrar",
         "name": "el nombre nuevo"
       },
-      "ref": "fileId"
+      "ref": "fileId",
+      "done_when": {
+        "widget": "archivos",
+        "collection": "entries",
+        "where": {
+          "name~": "{name}"
+        }
+      }
     },
     "copy_file": {
       "desc": "duplica un archivo de la biblioteca LOCAL, al lado del original",
@@ -136,21 +160,39 @@
         "fileId": "el archivo a borrar"
       },
       "ref": "fileId",
-      "confirm": true
+      "confirm": true,
+      "done_when": {
+        "widget": "archivos",
+        "collection": "entries",
+        "where": {
+          "id|name": "{fileId}"
+        },
+        "expect": "absent"
+      }
     },
     "set_view": {
       "desc": "cambia entre lista y cuadrícula",
       "payload": {
         "mode": "list | grid"
       },
-      "view": true
+      "view": true,
+      "done_when": {
+        "widget": "archivos",
+        "field": "mode",
+        "is": "{mode}"
+      }
     },
     "set_provider": {
       "desc": "cambia de proveedor: local (tu biblioteca) o un servicio de la nube conectado",
       "payload": {
         "provider": "local | gdrive | onedrive"
       },
-      "view": true
+      "view": true,
+      "done_when": {
+        "widget": "archivos",
+        "field": "provider",
+        "is": "{provider}"
+      }
     },
     "show_section": {
       "desc": "CAMBIA de sección o de pestaña SIN tocar nada: «enséñame los torrents», «qué se está descargando», «las semillas», «vuelve a la biblioteca»",
@@ -231,5 +273,14 @@
   "origin": "builtin",
   "live_title": true,
   "security": "standard",
-  "worker_guide": "Para buscar torrents desde un worker: `python -m nucleo.cli.widget data archivos torrent_search @q.json` con {\"query\":\"lo que sea\"} (deja el catálogo en pantalla), y para bajar uno `python -m nucleo.cli.widget data archivos torrent_download @d.json` con {\"item\": 2}. La lista completa se lee con `python -m nucleo.cli.widget data archivos` (clave `torrents`)."
+  "worker_guide": "Para buscar torrents desde un worker: `python -m nucleo.cli.widget data archivos torrent_search @q.json` con {\"query\":\"lo que sea\"} (deja el catálogo en pantalla), y para bajar uno `python -m nucleo.cli.widget data archivos torrent_download @d.json` con {\"item\": 2}. La lista completa se lee con `python -m nucleo.cli.widget data archivos` (clave `torrents`).",
+  "collections": {
+    "entries": {
+      "id": "id",
+      "label": "name",
+      "ops": [
+        "list"
+      ]
+    }
+  }
 }

@@ -25,7 +25,7 @@ from connectors.messaging import store as msgstore  # noqa: F401
 _LABEL = {"whatsapp": "WhatsApp", "telegram": "Telegram", "email": "Email"}
 _BATCH = float(os.getenv("MSG_TRIAGE_BATCH", "2.0"))   # seconds between triage batches; groups bursts into one call
 
-from .seams import _note, _scrub, _origin, _settle, _record_left  # noqa: E402,F401
+from .seams import _note, _scrub, _origin, _settle, _record_left, _offer_after_failure  # noqa: E402,F401
 from .lifecycle import _Lifecycle  # noqa: E402
 from .apply import _Apply  # noqa: E402
 from .handle import _Handle  # noqa: E402

@@ -44,11 +44,16 @@ _TICKER = re.compile(r"^[\^]?[A-Z0-9]{1,6}([.\-=][A-Z0-9]{1,5})?(=X|-USD)?$")
 
 def _seed() -> dict:
     return {"symbol": "", "name": "", "currency": "", "exchange": "", "range": "1d", "points": [],
-            "price": None, "change": None, "change_pct": None, "as_of": 0, "fetched_at": 0, "error": ""}
+            "price": None, "change": None, "change_pct": None, "as_of": 0, "fetched_at": 0.0, "failed": "", "error": ""}
 
 
 def _load() -> dict:
-    return store.load(WID, _seed())
+    db = store.load(WID, _seed())
+    if str(db.get("error") or "").strip() and not db.get("failed"):
+        # Older stores kept the price source's failure in `error`, which the verifier reads as «this card cannot
+        # be read» — so a failed refresh over a stale chart read unverifiable instead of unmet. It is `failed` now.
+        db["failed"], db["error"] = db["error"], ""
+    return db
 
 
 def _get(url: str) -> dict:
@@ -158,7 +163,10 @@ def _summary(db: dict) -> str:
 def view_data(q: str = "") -> dict:
     try:
         db = _load()
-        return {**{k: db.get(k) for k in _seed()}, "ranges": list(RANGES), "summary": _summary(db),
+        # `error` stays for a view that cannot be read at all; a failed FETCH is a readable outcome (`failed`),
+        # and every key is written as a value so `done_when` reads «unmet», never «unverifiable».
+        return {**{k: db.get(k) for k in _seed()}, "error": "", "failed": str(db.get("failed") or ""),
+                "fetched_at": float(db.get("fetched_at") or 0), "ranges": list(RANGES), "summary": _summary(db),
                 "empty": not str(db.get("symbol") or "")}                                  # V2-776 L2
     except Exception as e:  # noqa: BLE001 — never raise from the hot path
         return {**_seed(), "ranges": list(RANGES), "summary": "", "error": str(e)[:160]}
@@ -177,7 +185,12 @@ def _fetch_into(db: dict, symbol: str, rng: str, name: str = "") -> dict:
     got = _chart(symbol, rng)
     db.update(got)
     db["name"] = got.get("name") or name or symbol
-    db.update({"range": rng, "fetched_at": int(time.time()), "error": ""})
+    try:
+        before = float(db.get("fetched_at") or 0)
+    except (TypeError, ValueError):
+        before = 0.0
+    # a stamp that always MOVES: `done_when` reads `fetched_at changed`, and two fetches in one second are two
+    db.update({"range": rng, "fetched_at": round(max(time.time(), before + 0.001), 3), "failed": "", "error": ""})
     store.save(WID, db)
     return {"ok": True, "symbol": db["symbol"], "name": db["name"], "price": db["price"],
             "currency": db["currency"], "change_pct": db["change_pct"], "range": rng, "summary": _summary(db)}
@@ -221,6 +234,6 @@ def apply_action(action: str, payload: dict = None) -> dict:
             return _fetch_into(db, db["symbol"], rng, db.get("name") or "")
         return {"ok": False, "error": f"unknown action '{action}' — markets has show, range, refresh"}
     except Exception as e:  # noqa: BLE001
-        db["error"] = f"{type(e).__name__}: {e}"[:200]
+        db["failed"], db["error"] = f"{type(e).__name__}: {e}"[:200], ""
         store.save(WID, db)
-        return {"ok": False, "error": f"the price source did not answer ({db['error']}) — try again in a moment"}
+        return {"ok": False, "error": f"the price source did not answer ({db['failed']}) — try again in a moment"}

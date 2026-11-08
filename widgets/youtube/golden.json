@@ -31,6 +31,7 @@
     "search_query": "str",
     "search_results": "list",
     "searched_at": "int",
+    "src": "str",
     "suggested": "list",
     "suggested_at": "int",
     "suggested_channels": "int",

@@ -417,7 +417,10 @@ def open_for_action(wid: str, action: str, payload: dict | None, *, text: str = 
         dw = render(wid, action, payload)
         if not dw:
             return None
-        return open(dw, text=text, source=source, widget=wid, action=action, trace=trace)
+        e = open(dw, text=text, source=source, widget=wid, action=action, trace=trace)
+        if e is not None:
+            e["payload"] = copy.deepcopy(payload or {})   # what the app's declared next steps are rendered from
+        return e
     except Exception as e:  # noqa: BLE001
         logger.debug(f"spec: no spec for {wid}:{action}: {e}")
         return None

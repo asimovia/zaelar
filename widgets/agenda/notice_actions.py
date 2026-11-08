@@ -35,6 +35,7 @@ def _a_set_reminder(action, payload, db, _extra) -> dict:
             if _jid:
                 m["reminder_id"], m["remindAt"] = _jid, _disp
                 m["remindAsked"] = True     # V2-796: he asked for these notices — ours, whatever Google rings
+                _d.writes.note(db, "set_reminder", m)       # this notice's end state
                 _done += 1
             else:
                 _fail.append(f"«{m.get('title', 'Cita')}»: {_disp}")
@@ -59,6 +60,7 @@ def _a_set_reminder(action, payload, db, _extra) -> dict:
     # a bare day or hour is read against the occurrence; an all-day item rings too (V2-781 T513)
     if (_why := _ring_on(m, _occ, _at)):
         return {"ok": False, "error": f"no pude programar el aviso: {_why}"}
+    _d.writes.note(db, "set_reminder", m, asked=str(payload.get("title") or ""))   # this notice's end state
     return _d._Continue(_extra)
 
 
@@ -86,6 +88,8 @@ def _a_add_meeting_noticed(action, payload, db, _extra):
     m = res.value.pop("_row", None) if isinstance(res, _d._Continue) else None
     if isinstance(res, _d._Continue):
         res.value["clashes"] = _free.clashes(db.get("meetings"), res.value.get("stored"))
+        if m is not None:                          # this write's end state: an entry that did not exist before
+            _d.writes.note(db, "add_meeting", m, asked=str(payload.get("title") or ""))
     if raw is None or not isinstance(res, _d._Continue):
         return res
     if m is not None and m not in db.get("meetings", []):

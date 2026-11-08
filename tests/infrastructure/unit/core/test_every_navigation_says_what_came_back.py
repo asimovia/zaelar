@@ -73,7 +73,13 @@ def test_it_is_wired_where_the_context_is_born_and_every_screenshot_row_takes_it
         for n in ast.walk(ast.parse(p.read_text(encoding="utf-8"))):
             if (isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr == "_emit"
                     and n.args and isinstance(n.args[0], ast.Constant) and n.args[0].value == "screenshot"):
-                if not any(isinstance(k.value, ast.Call) and getattr(k.value.func, "attr", "") == "take"
-                           for k in n.keywords if k.arg is None):
+                src_p = p.read_text(encoding="utf-8")
+                taken = any(isinstance(k.value, ast.Call) and getattr(k.value.func, "attr", "") == "take"
+                            for k in n.keywords if k.arg is None)
+                # 2026-11-08: the outcome may be taken ONCE into a name (`outcome = _po.take(page)`) and spread here,
+                # because the same reading also writes the card's `wall` — taking it twice would lose it.
+                bound = any(isinstance(k.value, ast.Name) and f"{k.value.id} = _po.take(" in src_p
+                            for k in n.keywords if k.arg is None)
+                if not (taken or bound):
                     missing.append(f"{p.relative_to(ROOT)}:{n.lineno}")
     assert not missing, f"a screenshot row that drops the navigation's outcome: {missing}"

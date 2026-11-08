@@ -15,6 +15,9 @@ _SEED = {
     # identical whether the browser has run yet or not — the golden was captured from a live store and the
     # harness reads a fresh one, which is how `make test-widgets` sat red on a phantom drift (V2-601 T-10).
     "updated": "",
+    # V2-707 end state: `wall` is what the page on screen IS (none · antibot · captcha · http, `page_outcome.py`)
+    # and `query` what it searched — VALUES on every read, so a clause over them reads unmet, never unverifiable.
+    "wall": "", "query": "",
 }
 
 
@@ -101,7 +104,8 @@ def view_data(q: str = "") -> dict:
             pass
     try:
         db = store.load(WID, dict(_SEED))
-        return {**db, "empty": not str(db.get("url") or "")}     # V2-776 L2
+        # a store written before a key existed still answers it: a key MISSING from the view reads «unverifiable»
+        return {**_SEED, **db, "empty": not str(db.get("url") or "")}     # V2-776 L2
     except Exception as e:
         return {**_SEED, "error": f"no data: {e}"}
 
@@ -112,14 +116,40 @@ def apply_action(action: str, payload: dict | None = None) -> dict:
     touching anything. Do not write the store; the owner is the only writer."""
     data = view_data()
     if action in ("open", "search", "youtube", "back", "forward", "reload", "scroll", "click", "type", "press"):
-        return {**data, "error": "El navegador no está activo ahora mismo. Reinténtalo en un momento."}
+        out = {**data, "ok": False, "error": "El navegador no está activo ahora mismo."}
+        link = _link_for(action, payload or {})
+        # Principle 1: a browser that is down is not a dead stop. What needs his choice goes in the reply as an
+        # OFFER — the page itself, to open in his own browser, or the same action again once it is back.
+        if link:
+            out["link"] = link
+            out["offer"] = ("offer him this link to open in his own browser, or to try again once Zaelar's "
+                            "browser is back")
+        else:
+            out["offer"] = "offer him to try again in a moment, once Zaelar's browser is back"
+        return out
     return data
+
+
+def _link_for(action: str, payload: dict) -> str:
+    """The page the action meant, as a link he can open himself — the same search engine the owner uses."""
+    from urllib.parse import quote_plus
+    raw = str(payload.get("url") or payload.get("q") or "").strip()
+    if not raw or action not in ("open", "search", "youtube"):
+        return ""
+    if action == "youtube":
+        if raw.startswith(("http://", "https://")):
+            return raw
+        return f"https://www.youtube.com/results?search_query={quote_plus(raw)}"
+    if action == "open" and " " not in raw and "." in raw:
+        return raw if raw.startswith(("http://", "https://")) else "https://" + raw
+    import os
+    return os.environ.get("NAVEGADOR_SEARCH", "https://www.bing.com/search?q={q}").replace("{q}", quote_plus(raw))
 
 
 def coach_context() -> str:
     return ("The 'navegador' widget is a web browser inside zaelar. Its card is the MONITOR of what this browser "
             "is doing right now; findings are shown in the 'results' sheet, never here. "
-            "You can open any website (open), search Google "
+            "You can open any website (open), search the web with Bing "
             "(search), or play YouTube (youtube); back/forward/reload and page scrolling are safe. To navigate "
             "inside a website (click/type/submit forms), use click/type/press. The page appears as a live capture; "
             "YouTube plays embedded.")

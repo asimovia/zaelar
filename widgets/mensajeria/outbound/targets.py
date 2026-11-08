@@ -80,6 +80,56 @@ def _takes_platform(fn) -> bool:
         return False
 
 
+def _takes_kw(fn, name: str) -> bool:
+    import inspect
+    try:
+        return name in inspect.signature(fn).parameters
+    except (TypeError, ValueError) as e:
+        import logging
+        logging.getLogger("zaelar.widgets.mensajeria").debug(f"targets: unreadable link stamp: {e!r}")
+        return False
+
+
+def connected_platforms(db: dict | None = None) -> set[str] | None:
+    """The platforms whose link is up, as this card's store reflects it (`platforms[p].status`). None when that is
+    UNKNOWN: unreadable, or no link reports up at all — the store's resting value («off» everywhere) is what a card
+    whose connectors have not reported looks like, and a guess of «all down» would refuse sends that can leave."""
+    try:
+        if db is None:
+            from .. import data as _d
+            db = _d.load_db()
+        plats = (db or {}).get("platforms")
+        if not isinstance(plats, dict):
+            return None
+        up = {p for p in PLATFORMS if str((plats.get(p) or {}).get("status") or "") == "connected"}
+        return up or None
+    except Exception as e:  # noqa: BLE001 — unknown is not «down»: the usual choice stands
+        import logging
+        logging.getLogger("zaelar.widgets.mensajeria").debug(f"targets: link state unreadable: {e!r}")
+        return None
+
+
+def alternatives(contact: dict, up: set[str] | None, d=None, *, but: str = "") -> list[str]:
+    """The contact's OTHER channels whose link is up — what an offer names. [] when none, or the state is unknown."""
+    if not up or not isinstance(contact, dict):
+        return []
+    d = d or _directory()
+    out: list[str] = []
+    for ch in d.channels(contact):
+        p = str(ch.get("platform") or "").strip().lower()
+        if p in up and p != but and p not in out:
+            out.append(p)
+    return out
+
+
+def channel_down(name: str, platform: str, alts: list[str]) -> dict:
+    """The refusal of a send whose channel is down, with the OFFER of the contact's connected channels (no send)."""
+    tail = (f" Por {', '.join(label(p) for p in alts)} sí puedo escribirle: dime si lo mando por ahí."
+            if alts else " No tengo ningún otro canal suyo conectado ahora mismo.")
+    return {"ok": False, "error": "channel_down", "channel": platform, "offer": list(alts),
+            "message": f"{label(platform)} no está conectado ahora mismo, así que no se ha enviado nada a {name}.{tail}"}
+
+
 def _near_recipient(who: str) -> list[dict]:
     """The contacts only a spelling-tolerant match finds — never written to, named back as a question: «¿te refieres
     a Cryptonite?» costs one turn; the wrong person costs what cannot be taken back."""
@@ -187,7 +237,13 @@ def resolve_target(payload: dict | None = None) -> dict:
                                       f"pregúntaselo."}
 
     c = hits[0]
-    ch = d.channel_for(c, want)
+    up = connected_platforms()
+    takes = _takes_kw(d.channel_for, "connected")
+    ch = d.channel_for(c, want, **({"connected": up} if takes and not want else {}))
+    if want and ch and up is not None and want not in up:
+        # He NAMED a channel whose link is down: nothing leaves, and the reply OFFERS the contact's channels that are
+        # up — never a resend through one of them on his behalf (a send to a third party crosses his consent).
+        return channel_down(c.get("name") or who, want, alternatives(c, up, d, but=want))
     if not ch:
         have = [str(x.get("platform")) for x in d.channels(c)]
         name = c.get("name") or who

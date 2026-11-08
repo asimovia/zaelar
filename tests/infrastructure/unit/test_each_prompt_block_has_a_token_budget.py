@@ -20,7 +20,7 @@ import pytest
 BUDGET = {
     "language": 254,
     "operating": 3140,     # ⚠️ reads NO truth: removing it is gated on the battery (×3), not on this test
-    "resources": 2692,     # +4 V2-861: the music card's `play_result` action name in the catalogue; +23 V2-854: the contacts card's five group action names in the catalogue; re-measured with main merged (its manifests, not this section)
+    "resources": 2700,     # +8 2026-11-08: the music card's `take_over` / `release` action names in the catalogue; +4 V2-861: the music card's `play_result` action name in the catalogue; +23 V2-854: the contacts card's five group action names in the catalogue; re-measured with main merged (its manifests, not this section)
     "close": 20,
 }
 #: How far under its budget a block may sit before the budget must be lowered.

@@ -239,9 +239,10 @@ def decide(name: str, args: dict | None = None) -> Decision:
         return Decision(_kind, {k: (args.get(k) or "").strip() for k in _keys})
     if name == "play_music":
         _kind = (args.get("kind") or "").strip().lower()          # V2-861: «a list», «the podcast» travels
+        _src = (args.get("source") or "").strip().lower()         # the source he NAMED (2026-11-08); else preference
         return Decision(MUSIC, {"query": (args.get("query") or "").strip(),
                                 "action": (args.get("action") or "play").strip().lower(),
-                                **({"kind": _kind} if _kind else {})})
+                                **({"kind": _kind} if _kind else {}), **({"source": _src} if _src else {})})
     if name == "play_video":
         return Decision(VIDEO, {"query": (args.get("query") or "").strip(),
                                 "action": _video_action(args.get("action"))})

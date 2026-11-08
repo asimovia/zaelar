@@ -145,7 +145,12 @@
         "shuffle": "opcional: true para mezclar el orden"
       },
       "sensitivity": "routine",
-      "activation": true
+      "activation": true,
+      "done_when": {
+        "widget": "musica",
+        "field": "here.title",
+        "expect": "changed"
+      }
     },
     "open_view": {
       "desc": "cambia la cara de la tarjeta: la canción que suena (now), la biblioteca (library), la cola (queue), una lista (playlist), un artista o un álbum del catálogo (artist/album) o las fuentes (connect)",
@@ -164,22 +169,37 @@
     "play": {
       "desc": "reproduce/reanuda la reproducción actual, o busca y reproduce si se da 'query'",
       "payload": {
-        "query": "opcional: canción/artista a poner"
+        "query": "opcional: canción/artista a poner",
+        "source": "spotify | youtube, solo si la nombra"
       },
       "sensitivity": "routine",
       "activation": true,
       "done_when": {
         "widget": "musica",
-        "field": "now_playing",
+        "field": "here.title",
         "expect": "changed"
-      }
+      },
+      "on_unmet": [
+        {
+          "action": "play",
+          "payload": {
+            "query": "{query}",
+            "source": "youtube"
+          }
+        }
+      ]
     },
     "play_local": {
       "desc": "reproduce un audio que ya está en la biblioteca del agente (por su ruta)",
       "payload": {
         "path": "ruta del fichero dentro de la biblioteca (p. ej. audio/cancion.mp3)"
       },
-      "view": true
+      "view": true,
+      "done_when": {
+        "widget": "musica",
+        "field": "here.title",
+        "expect": "changed"
+      }
     },
     "pause": {
       "desc": "pausa la reproducción en curso",
@@ -188,8 +208,8 @@
       "activation": true,
       "done_when": {
         "widget": "musica",
-        "field": "now_playing.playing",
-        "is": false
+        "field": "here.title",
+        "expect": "absent"
       }
     },
     "resume": {
@@ -199,18 +219,23 @@
       "activation": true,
       "done_when": {
         "widget": "musica",
-        "field": "now_playing.playing",
-        "is": true
+        "field": "here.title",
+        "expect": "present"
       }
     },
     "take_over": {
-      "desc": "toma el control de Spotify cuando está sonando en otro dispositivo de la cuenta: pone aquí lo que se pidió (o trae lo que sonaba allí), cortándolo en el otro dispositivo",
+      "desc": "toma Spotify de otro dispositivo de la cuenta y suena aquí",
       "payload": {},
       "sensitivity": "routine",
-      "activation": true
+      "activation": true,
+      "done_when": {
+        "widget": "musica",
+        "field": "here.title",
+        "expect": "changed"
+      }
     },
     "release": {
-      "desc": "deja la sesión de Spotify que está sonando en otro dispositivo de la cuenta: no se toca y la tarjeta queda en blanco",
+      "desc": "deja Spotify en el otro dispositivo; la tarjeta queda en blanco",
       "payload": {},
       "sensitivity": "routine"
     },
@@ -305,7 +330,12 @@
         "artist": "artista, opcional"
       },
       "sensitivity": "routine",
-      "activation": true
+      "activation": true,
+      "done_when": {
+        "widget": "musica",
+        "field": "here.title",
+        "expect": "changed"
+      }
     },
     "play_result": {
       "desc": "pone UNO de los resultados que la tarjeta encontró (la lista numerada del resumen): por su número, su nombre o su autor",
@@ -313,7 +343,12 @@
         "item": "número, nombre o autor del resultado"
       },
       "sensitivity": "routine",
-      "activation": true
+      "activation": true,
+      "done_when": {
+        "widget": "musica",
+        "field": "here.title",
+        "expect": "changed"
+      }
     },
     "refresh": {
       "desc": "refresca la tarjeta con el estado real de reproducción",

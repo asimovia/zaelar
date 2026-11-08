@@ -40,15 +40,29 @@ def world(tmp_path, monkeypatch):
 
 
 class _Sent:
-    """`mensajeria.sent` as a list the test writes: what left, and what is still queued."""
+    """`mensajeria.sent` as a list the test writes: what left, and what is still queued — and `mensajeria.outbox`, the
+    rows of OUR orders, opened and settled through the card's real `sent.outbox_queue` / `sent.outbox_settle`."""
 
     def __init__(self, monkeypatch, rows=()):
         from widgets import rows as R
+        from widgets.mensajeria import sent as _sent
         self.rows = [dict(r) for r in rows]
-        monkeypatch.setattr(R, "declared", lambda wid: {"sent": {"id": "id", "from": "view"}} if wid == "mensajeria"
-                            else {})
-        monkeypatch.setattr(R, "_rows", lambda wid, coll: list(self.rows) if (wid, coll) == ("mensajeria", "sent")
-                            else [])
+        self.db: dict = {"outbox": []}
+        self._sent = _sent
+        monkeypatch.setattr(R, "declared", lambda wid: {"sent": {"id": "id", "from": "view"},
+                                                        "outbox": {"id": "ref", "from": "view"}}
+                            if wid == "mensajeria" else {})
+        monkeypatch.setattr(R, "_rows", lambda wid, coll: (list(self.rows) if coll == "sent"
+                                                           else _sent.outbox_view(self.db) if coll == "outbox"
+                                                           else []) if wid == "mensajeria" else [])
+
+    def order(self, ref, body, name="Raquel", platform="whatsapp"):
+        """OUR order, queued by the card: its outbox row opens in state `queued`."""
+        self._sent.outbox_queue(self.db, ref, platform, "34600@s.whatsapp.net", "", body, name=name)
+
+    def landed(self, ref):
+        """The connector's echo bound to our ref settles the row as sent (`owner._settle` → `outbox_settle`)."""
+        assert self._sent.outbox_settle(self.db, ref, True)
 
     def left(self, id_, body, name="Raquel"):
         self.rows.append({"id": id_, "body": body, "name": name, "chatId": "34600@s.whatsapp.net", "queued": False})
@@ -76,9 +90,12 @@ def test_the_same_holds_in_another_language_and_another_send(monkeypatch):
     sent = _Sent(monkeypatch)
     dw = spec.render("mensajeria", "send_to", {"contact": "Rowan", "text": "running late"})
     assert verify.check(dw) is False
-    sent.queued("ref-1", "running late", name="Rowan")
-    assert verify.check(dw) is False
-    sent.left("echo-1", "running late", name="Rowan")
+    # Changed on purpose 2026-11-08: our order's outbox row, settled by the connector's echo, is the end state.
+    sent.order("ref-1", "running late", name="Rowan")
+    assert verify.check(dw) is False, "our order still in the queue has not left"
+    sent.left("phone-1", "running late", name="Rowan")
+    assert verify.check(dw) is False, "a message he typed on his phone is not our order landing"
+    sent.landed("ref-1")
     assert verify.check(dw) is True
 
 
@@ -90,6 +107,8 @@ def test_a_row_that_cannot_be_named_reads_unverifiable_never_met(monkeypatch):
 
 
 def test_a_scheduled_send_is_done_when_it_is_scheduled(monkeypatch):
+    # Changed on purpose 2026-11-08: our order's outbox row, settled by the connector's echo, is the end state.
+    # (The mock now declares `outbox` too, so the first branch of `send_draft` reads «not yet», never «unknown».)
     sent = _Sent(monkeypatch)
     dw = spec.render("mensajeria", "send_draft", {"contact": "Rowan", "at": "21:00"})
     assert verify.check(dw) is False
@@ -258,7 +277,9 @@ def test_a_send_whose_echo_lands_after_the_turn_is_said_sent(monkeypatch):
         dw = spec.render("mensajeria", "send_to", {"contact": "Pablo", "text": "have you tried Zaelar?"})
         e = spec.open(dw, text="x", source="flash", widget="mensajeria", action="send_to", now=1000.0)
         e["row"], e["turn"] = rq.opened("mensajeria", "send_to"), rq.current()
-        sent.left("echo-1", "have you tried Zaelar?", name="Pablo")
+        # Changed on purpose 2026-11-08: our order's outbox row, settled by the connector's echo, is the end state.
+        sent.order("ref-1", "have you tried Zaelar?", name="Pablo")
+        sent.landed("ref-1")
         circuit.tick(now=1000.0 + circuit.CHECK_EVERY_S + 1)
         await asyncio.sleep(0.05)
     asyncio.run(run())

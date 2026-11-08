@@ -56,6 +56,17 @@ def connected(source: str) -> bool:
     return False
 
 
+#: How each source is named to him.
+_LABEL = {"telegram": "Telegram", "whatsapp": "WhatsApp", "meshkore": "MeshKore", "google-contacts": "Google"}
+
+
+def connected_sources(but: str = "") -> list[str]:
+    """The sources whose connector is linked RIGHT NOW (Google Contacts and the import-only ones) — what an offer
+    names; `but` is left out. Only a linked connector is offered: an offer the next turn cannot keep is no offer."""
+    out = [s for s in ("google-contacts", *KNOWN) if connected(s)]
+    return [s for s in out if s != str(but or "").strip().lower()]
+
+
 # ── the three normalisers ───────────────────────────────────────────────────────────────────────────────
 
 def _meshkore_payload() -> dict:
@@ -119,7 +130,14 @@ def sync_now(source: str) -> dict:
     if source not in KNOWN:
         return {"ok": False, "error": f"no sé importar contactos de «{source}» — tengo {', '.join(KNOWN)}"}
     if source != "meshkore" and not connected(source):
-        return {"ok": False, "error": f"{source} no está conectado todavía — conéctalo y vuelve a pedírmelo"}
+        # He NAMED a source that is not linked: nothing is imported from another one on his behalf — the reply
+        # OFFERS the sources that are connected, and he chooses.
+        alts = connected_sources(but=source)
+        tail = (f" Ahora mismo puedo traerlos de {', '.join(_LABEL.get(a, a) for a in alts)}: dime si quieres."
+                if alts else "")
+        return {"ok": False, "error": "source_not_connected", "source": source, "offer": alts,
+                "message": f"{_LABEL.get(source, source)} no está conectado todavía — conéctalo y vuelve a "
+                           f"pedírmelo.{tail}"}
     t0 = time.time()
     got = _payload(source)
     logger.info(f"contactos: {source} contestó en {time.time() - t0:.1f}s → ok={got.get('ok')} "
