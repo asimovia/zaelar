@@ -49,9 +49,14 @@ def test_no_active_device_recovers_with_device_id(prov, monkeypatch):
         return {}
 
     monkeypatch.setattr(spclient, "play", _play)
-    monkeypatch.setattr(spclient, "devices", lambda: [{"id": "dev9", "is_active": False}])
+    monkeypatch.setattr(spclient, "devices", lambda: [{"id": "spk1", "is_active": False},
+                                                      {"id": "dev9", "is_active": False}])
+    # Changed on purpose 2026-11-08 (operator): the retry goes to OUR device — the one the last start placed —
+    # never the first listed, which on a shared account is somebody else's speaker.
+    from connectors.music import placement
+    monkeypatch.setattr(placement, "recorded", lambda: {"provider": "spotify", "device_id": "dev9"})
     r = prov.play(query="frank sinatra")
-    assert r.ok and tried == ["", "dev9"]          # 1st without a device (404) → 2nd with the device found
+    assert r.ok and tried == ["", "dev9"]          # 1st without a device (404) → 2nd with our device
 
 
 def test_no_device_at_all_reports_reason(prov, monkeypatch):
