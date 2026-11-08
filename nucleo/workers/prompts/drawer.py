@@ -102,6 +102,7 @@ def _drawer_rules(py: str = "") -> str:
             f"{_busca} act use_tool \"<qué buscas>\" — la consulta ENTRE COMILLAS, sin llaves ni ficheros. Devuelve "
             "una respuesta ya sintetizada, las páginas con su enlace y lo que NO encontró. No insistas con el tuyo "
             "después de un fallo de cuota: no vuelve en esta tarea.\n"
+            # V2-860 T3.4 — what can be PLAYED is a card, never the web: said once, in the `search` headline.
             "  · Si un comando te pide aprobación, lo escribiste mal: REESCRÍBELO en la forma de arriba. No lo "
             "reintentes igual, no busques otra vía y no te calles — si de verdad no hay forma, DILO como "
             "resultado (`hbnote`/tu entrega) en vez de terminar en silencio.\n\n")

@@ -28,10 +28,10 @@ from . import hooks as _hooks
 #: much it must beat the best song. Below either, the song road stays as it was.
 CONTEXT_FIT = 0.5
 CONTEXT_MARGIN = 0.15
-#: The kinds a catalogue answer carries, where each lives in it, and which field is its owner.
+#: The kinds a catalogue answer carries, where each lives in it, and which field is its owner; a whole is all but a song.
 _KINDS = (("show", "shows", "owner"), ("playlist", "playlists", "owner"), ("album", "albums", "artist"),
           ("track", "tracks", "artist"))
-_WHOLES = ("show", "playlist", "album")
+_WHOLES = frozenset(kind for kind, _key, _owner in _KINDS if kind != "track")
 #: How many results of each kind are compared (the catalogue answers in relevance order).
 _PER_KIND = 8
 _PRIVATE = ("item",)

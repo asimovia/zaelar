@@ -26,6 +26,9 @@ PROMPT_CEILING_CHARS = 16_500
 
 
 
+#: How much of a card's `whenToUse` its line in the widgets family carries (level 2: on request, never in the brief).
+_MISSION_CAP = 90
+
 _FULL: dict[str, Callable[[], str]] = {}
 
 
@@ -79,6 +82,12 @@ def known_lines(goal: str) -> str:
         return ""
 
 
+@_family("search")
+def _search() -> str:
+    """FIRST family (V2-860 T3.1): our search service and the cards that PLAY — ours before the network or the browser."""
+    return words("family_text.search")
+
+
 @_family("browser")
 def _browser() -> str:
     from nucleo.workers.prompts import web
@@ -110,13 +119,16 @@ def _sites() -> str:
 
 @_family("widgets")
 def _widgets() -> str:
-    try:
+    try:   # each card with its mission (V2-860 T3.3), cut as the voice turn's brief cuts it (`widgets.brief._purpose`)
         from widgets import runtime
-        ids = sorted({str(w.get("id")) for w in runtime.catalog() if w.get("id")})
+        from widgets.brief import purpose as _purpose
+        rows = {str(w.get("id")): _purpose(str(w.get("whenToUse") or w.get("title") or "").strip().replace("\n", " "),
+                                           _MISSION_CAP) for w in runtime.catalog() if w.get("id")}
     except Exception as e:  # noqa: BLE001
         _note("widgets", e)
-        ids = []
-    return words("family_text.widgets") + ("\n" + ", ".join(ids) if ids else "")
+        rows = {}
+    lines = [f"  · {wid} — {why}" if why else f"  · {wid}" for wid, why in sorted(rows.items())]
+    return words("family_text.widgets") + ("\n" + "\n".join(lines) if lines else "")
 
 
 @_family("results")
