@@ -9,19 +9,64 @@ from __future__ import annotations
 
 from loguru import logger
 
-#: A brief fired for a sentence before its turn was admitted (a hard stop asks it first): `(text, at, handle)`. The turn
-#: that then admits the SAME sentence reuses it instead of paying a second round trip.
+#: Briefs fired for a sentence before its turn was admitted — a hard stop that asks first, or the EAGER end of turn the
+#: ear announces (V2-863) — keyed by the sentence as spoken: `{key: (at, handle)}`. The turn that then admits the SAME
+#: sentence reuses it instead of paying a second round trip. Bounded: an eager that never became a turn ages out.
 _PREFIRED: dict = {}
 PREFIRED_TTL_S = 8.0
+_PREFIRED_MAX = 4
+
+
+def _key(text: str) -> str:
+    """The sentence as SAID: case, punctuation and spacing are the transcriber's, not his (an eager transcript and the
+    confirmed one differ by a full stop and a capital when he did not resume)."""
+    import re
+    import unicodedata
+    t = unicodedata.normalize("NFKD", str(text or "")).casefold()
+    t = "".join(c for c in t if not unicodedata.combining(c))
+    return " ".join(re.findall(r"[^\W_]+", t))
 
 
 def prefired(operator_text: str):
     """The handle fired early for this very sentence, once, while fresh — else None."""
     import time
-    pre = _PREFIRED.pop("last", None)
-    if pre and pre[0] == (operator_text or "").strip() and time.time() - pre[1] <= PREFIRED_TTL_S and pre[2]:
-        return pre[2]
+    key = _key(operator_text)
+    pre = _PREFIRED.pop(key, None) if key else None
+    if pre and time.time() - pre[0] <= PREFIRED_TTL_S and pre[1]:
+        return pre[1]
     return None
+
+
+def _remember_prefired(operator_text: str, handle) -> None:
+    import time
+    key = _key(operator_text)
+    if not key or not handle:
+        return
+    _PREFIRED[key] = (time.time(), handle)
+    while len(_PREFIRED) > _PREFIRED_MAX:
+        _PREFIRED.pop(next(iter(_PREFIRED)))
+
+
+def fire_early(operator_text: str):
+    """Fire the turn's brief on a sentence the ear has HEARD but not yet confirmed (the eager end of turn, V2-863), and
+    keep it for the turn that admits the same words. Nobody waits here. A sentence already fired is not fired twice;
+    a sentence that grows (he resumed) is a new sentence and gets its own brief — the verdict judges the words the
+    model reads. Returns the handle, or None (Jev off, empty words, a failure — the turn fires its own at admission)."""
+    key = _key(operator_text)
+    if not key:
+        return None
+    import time
+    have = _PREFIRED.get(key)
+    if have and time.time() - have[0] <= PREFIRED_TTL_S and have[1]:
+        return have[1]
+    try:
+        from nucleo.turn import brief
+        handle = brief.ask_for_turn(operator_text)
+    except Exception as e:  # noqa: BLE001 — a classifier may never break a turn
+        logger.debug(f"brief: the eager brief did not fire — {e!r}")
+        return None
+    _remember_prefired(operator_text, handle)
+    return handle
 
 
 async def verdict_before_the_turn(operator_text: str, key: str, *, wait_s: float = 2.0):
@@ -34,7 +79,7 @@ async def verdict_before_the_turn(operator_text: str, key: str, *, wait_s: float
     handle = brief.ask_for_turn(operator_text)
     if not handle:
         return None, None
-    _PREFIRED["last"] = ((operator_text or "").strip(), time.time(), handle)
+    _remember_prefired(operator_text, handle)
     try:
         await asyncio.to_thread(handle["event"].wait, wait_s)
     except Exception as e:  # noqa: BLE001
