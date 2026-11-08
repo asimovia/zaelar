@@ -243,6 +243,9 @@ class SpotifyProvider(MusicProvider):
                                    message=_t("no_track", q=query))
             track = hits[0]
             uri = track.uri
+        from connectors import music as _music
+        if _music.superseded():          # a newer request was asked during the search: it does not sound
+            return MusicResult(ok=False, provider=self.name, action="play", reason="superseded", message="")
         if uri:
             return self._run(lambda dev: client.play(uris=[uri], device_id=dev), "play", track,
                              {"label": track.label() if track else uri}, device)

@@ -196,3 +196,29 @@ def test_a_phone_app_that_stays_silent_falls_back_to_the_page(world):
     r = music.control("play", "Dai Dai")
     assert r.ok and r.provider == "youtube", "a 204 from an app that never sounds is not a song playing"
     assert fake.paused >= 1, "the late app is told to stay quiet under the page player"
+
+
+def test_the_newest_request_is_the_one_that_sounds(world, monkeypatch):
+    """Live 2026-11-08: «play Bruce Springsteen… or better, Amy Macdonald» — Amy played, then Bruce's slower lookup
+    landed, paused her and took the speaker. A start still resolving when a newer one is asked is dropped."""
+    import threading
+    world(_Spotify([]))
+    gate, started = threading.Event(), threading.Event()
+
+    def resolve(q):
+        if "bruce" in q.lower():
+            started.set()
+            gate.wait(5)
+        return (("vidBruce0001" if "bruce" in q.lower() else "vidAmy00001"), q)
+    monkeypatch.setattr(yta, "_resolve", resolve)
+    monkeypatch.setattr(music, "_identify", lambda q: (q, {}))
+    out: dict = {}
+    t = threading.Thread(target=lambda: out.setdefault("bruce", music.control("play", "bruce springsteen")))
+    t.start()
+    assert started.wait(5)
+    amy = music.control("play", "amy macdonald")
+    gate.set()
+    t.join(5)
+    from widgets import store
+    assert amy.ok and out["bruce"].reason == "superseded" and not out["bruce"].ok
+    assert (store.load("musica", {}).get("yt") or {}).get("videoId") == "vidAmy00001", "the older start took the speaker"
