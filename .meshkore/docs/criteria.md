@@ -273,6 +273,13 @@ below is the first kind, or it names the mechanism that replaced the second.
 
 ## 3 · The canvas — whose card, what runs
 
+- **CRIT-K46 · An app's provider is a preference, its end state is real, and it iterates before «unmet».** An
+  unavailable provider falls to the next one and anything needing his choice is an offer; `done_when` is THIS call's
+  outcome on our side (never stale, never another actor's), every field it names is a value of the view; an unmet end
+  state runs the app's declared `on_unmet` steps (bounded) before it is said; a named source is honoured for that call.
+  Reviewed across every app at once. — since 2026-11-08 · nodes 4.395, 4.396, 4.408, 5.74, 5.75 ·
+  `nucleo/circuit/__init__.py::_next_step`, `widgets/*/manifest.json`, `zaelar-widgets-workflow.md` §2b.
+
 - **CRIT-K1 · A verb table is not a router.** A grammar may PROPOSE (free, instant); the decision model chooses
   among DECLARED options; a backstop never contradicts a verdict already paid — the promise branches of both
   channels ask `escalation_guard.word_tables` before a word table escalates (2026-10-26). — since 2026-09-22 · nodes
@@ -548,8 +555,8 @@ below is the first kind, or it names the mechanism that replaced the second.
   dispatcher's single door by the sealed surface (a card-naming surface draws it; told/silent, a child errand, an
   arriving event or a cluster peer do not), drawn at the START so a half-done errand keeps it, updated in place to its
   ending, and every errand leaves `artifact opened|skipped` on record; a report is kept (library file + the task's
-  copy) and the box reopens THAT deliverable through the one reopen door. — since 2026-11-08 · nodes 2.1635, 4.395,
-  4.396 · `nucleo/chat_refs.py`, `nucleo/docsheet.py`, `nucleo/turn/task_recall.py`.
+  copy) and the box reopens THAT deliverable through the one reopen door. — since 2026-11-08 · nodes 2.1635, 4.412,
+  4.413 · `nucleo/chat_refs.py`, `nucleo/docsheet.py`, `nucleo/turn/task_recall.py`.
 ## 4b · A task
 
 A request Flash identifies as work is a TASK: one row, one Brain Worker resumable by id, one writer of its ending.

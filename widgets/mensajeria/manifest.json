@@ -223,10 +223,10 @@
         "any": [
           {
             "widget": "mensajeria",
-            "collection": "sent",
+            "collection": "outbox",
             "where": {
-              "name|chatId~": "{contact}",
-              "queued": "false"
+              "name|contactId|chatId~": "{contact}",
+              "state": "sent"
             },
             "expect": "added"
           },
@@ -278,10 +278,11 @@
       "slots": {"recipient": {"key": "contact", "from": "his_words"}, "channel": {"key": "channel", "from": "reading"}, "text": {"key": "text", "from": "composed"}},
       "done_when": {
         "widget": "mensajeria",
-        "collection": "sent",
+        "collection": "outbox",
         "where": {
-          "name|chatId~": "{contact}",
-          "queued": "false"
+          "name|contactId|chatId~": "{contact}",
+          "platform": "{channel?}",
+          "state": "sent"
         },
         "expect": "added"
       }
@@ -319,10 +320,11 @@
       "slots": {"recipient": {"key": "contact", "from": "his_words"}, "channel": {"key": "channel", "from": "reading"}, "text": {"key": "text", "from": "composed"}},
       "done_when": {
         "widget": "mensajeria",
-        "collection": "sent",
+        "collection": "outbox",
         "where": {
-          "name|chatId~": "{contact}",
-          "queued": "false"
+          "name|contactId|chatId~": "{contact}",
+          "platform": "{channel?}",
+          "state": "sent"
         },
         "expect": "added"
       }
@@ -592,6 +594,14 @@
     "sent": {
       "id": "id",
       "label": "body",
+      "from": "view",
+      "ops": [
+        "list"
+      ]
+    },
+    "outbox": {
+      "id": "ref",
+      "label": "name",
       "from": "view",
       "ops": [
         "list"

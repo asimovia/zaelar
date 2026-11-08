@@ -44,13 +44,15 @@ class _Apply:
 
     def _apply_send_failures(self) -> None:
         """A send that did not leave (`msg.send_failed`, V2-819) settles the card's outbox row — the card keeps his
-        text and says why — and the brain hears it once."""
+        text and says why — and the brain hears it once, with the OFFER of the contact's other connected channels."""
         for ev in self._drain(self._failed_sub):
             ev = ev if isinstance(ev, dict) else {}
             reason = str(ev.get("reason") or "")
             logger.warning(f"mensajeria: a {ev.get('platform')} send did not leave ({ev.get('ref')}): {reason[:120]}")
             if ev.get("ref"):
                 _f._settle(ev.get("ref"), False, reason)
+            # The contact's other connected channels, OFFERED — never a resend through one of them on his behalf.
+            _f._offer_after_failure(ev)
 
     def _apply_external_reads(self) -> None:
         for ev in self._drain(self._read_sub):

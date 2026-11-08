@@ -54,6 +54,6 @@ screen; a click opens the card on the screen that clicked.
 
 ## Tests
 
-Nodes **2.1635** (the decision, the event, the hooks), **4.395** (one box that updates in place; both shells; the
-reopen door; ES/EN strings) and **4.396** (a report kept whole or half done, and its reference reopening IT after
+Nodes **2.1635** (the decision, the event, the hooks), **4.412** (one box that updates in place; both shells; the
+reopen door; ES/EN strings) and **4.413** (a report kept whole or half done, and its reference reopening IT after
 another report overwrote the card).

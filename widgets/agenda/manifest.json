@@ -87,15 +87,29 @@
         "repeat": "weekly | daily | monthly (opcional — SOLO si se repite; `date` es el primer día o el día en que empieza)",
         "days": "días de la semana en que se repite, si es weekly: «martes», «lunes y jueves» o [0..6] con lunes=0 (sin él, el día de `date`)",
         "until": "último día de la repetición o del tramo de varios días, YYYY-MM-DD (o «junio de 2027» = hasta el 30 de junio); sin él no acaba",
-        "remind": "cuándo suena el aviso si él lo pide distinto del de por defecto: YYYY-MM-DD (a la hora de la cita, o 09:00 si es de todo el día), YYYY-MM-DD HH:MM, o «el día antes» (opcional)"
+        "remind": "cuándo suena el aviso si él lo pide distinto del de por defecto: YYYY-MM-DD (a la hora de la cita, o 09:00 si es de todo el día), YYYY-MM-DD HH:MM, o «el día antes» (opcional)",
+        "calendar": "en cuál de sus calendarios de Google va, si lo nombra («el del trabajo») — solo para esta cita (opcional; sin él, el calendario por defecto)"
       },
       "done_when": {
-        "widget": "agenda",
-        "collection": "meetings",
-        "where": {
-          "title~": "{title}",
-          "date": "{date?}"
-        }
+        "all": [
+          {
+            "widget": "agenda",
+            "collection": "meetings",
+            "where": {
+              "title~": "{title}",
+              "date": "{date?}"
+            }
+          },
+          {
+            "widget": "agenda",
+            "collection": "writes",
+            "where": {
+              "action": "add_meeting",
+              "title|asked~": "{title}"
+            },
+            "expect": "added"
+          }
+        ]
       }
     },
     "find_free": {
@@ -120,6 +134,27 @@
         "title": "string (título de la cita, aunque sea parcial — OPCIONAL: sin él y con date, TODAS las citas de ese día)",
         "date": "YYYY-MM-DD o «mañana»/día de la semana (con title filtra; SIN title = todas las citas de ese día)",
         "at": "HH:MM del día de la cita, YYYY-MM-DD (otro día, a la hora de la cita) o YYYY-MM-DD HH:MM"
+      },
+      "done_when": {
+        "all": [
+          {
+            "widget": "agenda",
+            "collection": "meetings",
+            "where": {
+              "title~": "{title?}",
+              "remindAt!": ""
+            }
+          },
+          {
+            "widget": "agenda",
+            "collection": "writes",
+            "where": {
+              "action": "set_reminder",
+              "title|asked~": "{title?}"
+            },
+            "expect": "added"
+          }
+        ]
       }
     },
     "add_reminder": {
@@ -149,6 +184,29 @@
         "date": "YYYY-MM-DD (opcional, filtra por fecha)",
         "whole": "true = todo lo que el título nombra: la serie entera, o todas las citas sueltas con ese título (opcional)",
         "from": "YYYY-MM-DD o «enero» — desde cuándo deja de repetirse (opcional)"
+      },
+      "done_when": {
+        "all": [
+          {
+            "widget": "agenda",
+            "collection": "occurrences",
+            "where": {
+              "title~": "{title}",
+              "date": "{date?}",
+              "date>=": "{from?}"
+            },
+            "expect": "absent"
+          },
+          {
+            "widget": "agenda",
+            "collection": "writes",
+            "where": {
+              "action": "cancel_meeting",
+              "title|asked~": "{title}"
+            },
+            "expect": "added"
+          }
+        ]
       }
     },
     "restore_meeting": {
@@ -245,6 +303,27 @@
         "time": "HH:MM (opcional — solo si la tarea tiene hora fija)",
         "estimateMinutes": "int (opcional — SOLO si él dice cuánto le llevará; es lo que la mete en el plan del día)",
         "priority": "int 1-5 (opcional)"
+      },
+      "done_when": {
+        "any": [
+          {
+            "widget": "agenda",
+            "collection": "tasks",
+            "where": {
+              "title~": "{title}"
+            },
+            "expect": "added"
+          },
+          {
+            "widget": "agenda",
+            "collection": "writes",
+            "where": {
+              "action": "add_meeting",
+              "title|asked~": "{title}"
+            },
+            "expect": "added"
+          }
+        ]
       }
     },
     "move_meeting": {
@@ -260,13 +339,26 @@
       },
       "confirm_q": "¿Muevo «{title}»? Hay alguien más contando con esa hora y habrá que avisarle.",
       "done_when": {
-        "widget": "agenda",
-        "collection": "meetings",
-        "where": {
-          "title~": "{title}",
-          "startTime": "{newTime?}",
-          "date": "{newDate?}"
-        }
+        "all": [
+          {
+            "widget": "agenda",
+            "collection": "meetings",
+            "where": {
+              "title~": "{title}",
+              "startTime": "{newTime?}",
+              "date": "{newDate?}"
+            }
+          },
+          {
+            "widget": "agenda",
+            "collection": "writes",
+            "where": {
+              "action": "move_meeting",
+              "title|asked~": "{title}"
+            },
+            "expect": "added"
+          }
+        ]
       }
     },
     "update_meeting": {
@@ -285,6 +377,26 @@
         "repeat": "weekly | daily | monthly | none",
         "days": "días de la semana (si es weekly)",
         "until": "YYYY-MM-DD — hasta cuándo se repite"
+      },
+      "done_when": {
+        "all": [
+          {
+            "widget": "agenda",
+            "collection": "meetings",
+            "where": {
+              "title~": "{newTitle?}"
+            }
+          },
+          {
+            "widget": "agenda",
+            "collection": "writes",
+            "where": {
+              "action": "update_meeting",
+              "title|asked~": "{title}"
+            },
+            "expect": "added"
+          }
+        ]
       }
     },
     "invite": {
@@ -293,7 +405,8 @@
         "who": "a quién: una dirección de correo, el nombre de un contacto, o varios separados por comas",
         "meeting": "título de la reunión (si no lo dices, la última que hay en la agenda)",
         "date": "fecha de la reunión, si hay varias con el mismo título",
-        "message": "una línea propia para el cuerpo del correo (opcional)"
+        "message": "una línea propia para el cuerpo del correo (opcional)",
+        "via": "opcional: «email» para mandarla por correo con el .ics aunque la cita esté en el calendario — solo esta vez"
       },
       "confirm": true,
       "consent_class": "calendar.invite_new_party",
@@ -479,6 +592,13 @@
       "label": "title",
       "from": "view",
       "key": "meetings",
+      "ops": [
+        "list"
+      ]
+    },
+    "writes": {
+      "id": "id",
+      "label": "title",
       "ops": [
         "list"
       ]

@@ -32,6 +32,7 @@ def _tab_alias(word: str) -> str:
 # Seed: BLANK player by default (no video) until the operator requests one.
 _SEED = {
     "videoId": "",
+    "src": "",          # a local/torrent row's stream URL (`sources.carry`); a value, never absent, for `done_when`
     "title": "",
     "url": "",
     "channel": "",

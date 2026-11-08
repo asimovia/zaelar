@@ -169,3 +169,15 @@ def test_a_sure_take_control_verdict_completes_a_held_start(monkeypatch, verdict
     held = MusicResult(ok=False, provider="spotify", action="play", reason="elsewhere")
     res = _run(music_flow.completed_by_verdict(held, {"x": 1}))
     assert (seen == ["take_over"] and res.ok) if expect_take else (seen == [] and res is held)
+
+
+def test_a_named_source_reaches_the_music_door(monkeypatch):
+    """«put it on YouTube» / «on Spotify»: the source he names travels to the door as its preference."""
+    from nucleo.flash import router
+    d = router.decide("play_music", {"query": "lena hall", "source": "YouTube"})
+    assert d.payload.get("source") == "youtube"
+    seen: dict = {}
+    monkeypatch.setattr("connectors.music.control",
+                        lambda action, q="", uri="", pct=0, prefer="", **k: seen.update(prefer=prefer) or _ok(action=action, track=_track()))
+    _run(music_flow.run("play", "lena hall", source="youtube"))
+    assert seen.get("prefer") == "youtube"

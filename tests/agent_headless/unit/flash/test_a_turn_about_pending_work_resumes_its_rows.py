@@ -345,10 +345,14 @@ def test_a_confirmed_send_owes_its_end_state_and_a_send_that_did_not_happen_is_u
     e = spec.open_for_action("mensajeria", "send_draft", {"contact": "hospitality@example.com"}, text="sí")
     assert e is not None, "the end state must render for a held send"
     assert spec.attest(e) is False, "nothing sent yet: unmet, never a silent «done»"
-    data.apply_action("send_draft", {"contact": "hospitality@example.com"})
+    res = data.apply_action("send_draft", {"contact": "hospitality@example.com"})
     assert spec.attest(e) is False, "V2-847: queued is not sent — the end state is the connector's echo"
+    # Changed on purpose 2026-11-08: our order's outbox row, settled by the connector's echo, is the end state.
     db = data.load_db()
     db.setdefault("threads", {})["email|hospitality@example.com"] = {"name": "hospitality@example.com", "msgs": [
-        {"id": "echo-1", "dir": "out", "who": "Tú", "body": "ok", "ts": time.time()}]}
+        {"id": "phone-1", "dir": "out", "who": "Tú", "body": "ok", "ts": time.time()}]}
     data.store.save(data.WIDGET_ID, db)
+    assert spec.attest(e) is False, "a message in the thread that is not our order's echo is not its landing"
+    from widgets.mensajeria import owner
+    owner._settle(res["ref"], True)                  # the connector's echo bound to our ref (`_apply_outbound`)
     assert spec.attest(e) is True

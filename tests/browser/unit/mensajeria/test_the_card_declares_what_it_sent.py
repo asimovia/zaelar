@@ -51,17 +51,29 @@ def _left(md, body):
     md.store.save(md.WIDGET_ID, db)
 
 
+def _ours_landed(md, ref, body, name="Rowan", platform="telegram", chat_id="1000000017"):
+    """OUR order: its outbox row opened as the card queues it, then settled by the connector's echo bound to `ref`."""
+    from widgets.mensajeria import sent
+    db = md.load_db()
+    sent.outbox_queue(db, ref, platform, chat_id, "", body, name=name)
+    assert sent.outbox_settle(db, ref, True)
+    md.store.save(md.WIDGET_ID, db)
+
+
 def test_the_send_to_postcondition_is_met_by_the_message_that_left(md):
+    # Changed on purpose 2026-11-08: our order's outbox row, settled by the connector's echo, is the end state.
     from nucleo.circuit import spec, verify
     dw = spec.render("mensajeria", "send_to", {"contact": "Rowan", "text": "catch-up tomorrow is now at 4:30 PM"})
     # V2-847: the message that left BEFORE this request is not this request's send — the end state is a NEW row.
     assert verify.check(dw) is False
     _left(md, "Hey Rowan — catch-up tomorrow is now at 4:30 PM")
+    assert verify.check(dw) is False, "a message in the thread that is not our order's echo is another actor's"
+    _ours_landed(md, "s-1", "Hey Rowan — catch-up tomorrow is now at 4:30 PM")
     assert verify.check(dw) is True
     # Demo pass 68, C5: the clause carried the model's whole draft (`body~`) and the message that left was worded by
     # the card, so a Telegram Rowan received read «unmet». What is attestable is that it went out to HIM.
     other = spec.render("mensajeria", "send_to", {"contact": "Rowan", "text": "see you at 5"})
-    _left(md, "Rowan, see you at five then")
+    _ours_landed(md, "s-2", "Rowan, see you at five then")
     assert verify.check(other) is True
     assert verify.check(spec.render("mensajeria", "send_to", {"contact": "Anna", "text": "see you at 5"})) is False
 
@@ -72,7 +84,8 @@ def test_a_send_to_an_address_is_met_by_the_row_that_keeps_that_address():
     that». The template now reads `name|chatId~`; the row grammar's `a|b` is any of those fields."""
     from nucleo.circuit import spec
     from widgets import rows
-    row = {"name": "Quinn", "chatId": "quinn@example.com", "platform": "email", "queued": False}
+    # Changed on purpose 2026-11-08: our order's outbox row, settled by the connector's echo, is the end state.
+    row = {"ref": "s1", "name": "Quinn", "chatId": "quinn@example.com", "platform": "email", "state": "sent"}
     for action in ("forward", "send_to"):
         for contact in ("quinn@example.com", "Quinn", "Quinn (quinn@example.com)"):
             where = spec._fill(spec.template_of("mensajeria", action), {"contact": contact})["where"]
@@ -80,6 +93,6 @@ def test_a_send_to_an_address_is_met_by_the_row_that_keeps_that_address():
         where = spec._fill(spec.template_of("mensajeria", action), {"contact": "rowan@example.com"})["where"]
         assert not rows.matches(row, where), "another address is another send"
         quinn = spec._fill(spec.template_of("mensajeria", action), {"contact": "Quinn"})["where"]
-        assert not rows.matches({**row, "queued": True}, quinn), "V2-847: a row still in the queue has not left"
+        assert not rows.matches({**row, "state": "queued"}, quinn), "V2-847: a row still in the queue has not left"
     assert not rows.matches(row, {"name|chatId!": "Quinn"}), "a negative over several fields: every one must differ"
     assert rows.matches(row, {"name|chatId!": "Rowan"})

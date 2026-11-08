@@ -58,6 +58,7 @@ def _a_set_view(act: str, payload: dict) -> dict:
 def _a_set_provider(act: str, payload: dict) -> dict:
     db = _begin(act)
     want = _d._text(payload.get("provider"), 40).lower() or "local"
+    db.pop("preferred_provider", None)               # an explicit choice replaces any remembered one
     if want == "local":
         db["provider"] = "local"
         db = _relist_local(db, "")
@@ -113,13 +114,50 @@ def _nav(act: str, payload: dict) -> dict:
     db = _begin(act)
     if act in ("open_file", "open_folder"):
         payload = _named_entry(db, act, payload or {})
-    if (db.get("provider") or "local") == "local":
+    pref = db.get("preferred_provider") or db.get("provider") or "local"   # his choice, even while it is unreachable
+    if pref == "local":
         return _handle_local_nav(db, act, payload)
     svc = _d._svc()
-    if svc is None:
-        return _d._err("el conector de archivos no está disponible en esta instalación")
-    db = _sync_status(db, svc)
-    if not db.get("connected"):
-        return _d._err("no hay ningún servicio de archivos conectado: se conecta en la sección Conectores "
-                       "(show_panel panel='conectores', connector='gdrive' u 'onedrive')")
-    return _handle_cloud_nav(db, svc, act, payload)
+    if svc is not None:
+        db = _sync_status(db, svc)
+        if db.get("connected"):
+            db["provider"] = pref
+            db.pop("preferred_provider", None)        # his choice is reachable again: it is what the card shows
+            return _handle_cloud_nav(db, svc, act, payload)
+    db["provider"] = pref
+    # The saved cloud provider is a PREFERENCE, never a gate: with no connector (or nothing connected) the library is
+    # the next option, and the reply says so instead of stopping.
+    return _fall_back_to_local(db, act, payload)
+
+
+def _fall_back_to_local(db: dict, act: str, payload: dict) -> dict:
+    was = str(db.get("provider") or "")
+    db["provider"] = "local"
+    # A cloud folder id means nothing on the library's shelves: land at the library's root instead of refusing.
+    if act == "open_folder" and not _is_local_folder(payload):
+        act = "go_home"
+    elif act in ("refresh", "clear_search", "go_up"):
+        db["folder_id"] = ""
+    # The card SHOWS the library, and his choice stays the cloud drive: the next move tries it again first.
+    db["preferred_provider"] = was
+    res = _handle_local_nav(db, act, payload)
+    if isinstance(res, dict):
+        res["provider"] = "local"
+        res["fallback_from"] = was
+        res["note"] = _note(was)
+    return res
+
+
+def _is_local_folder(payload: dict) -> bool:
+    from library import paths as _paths
+    fid = str((payload or {}).get("folderId") or (payload or {}).get("id") or "").strip()
+    kind = fid.split(":", 1)[1] if fid.startswith("shelf:") else fid
+    return kind in _paths.KINDS
+
+
+def _note(provider: str) -> str:
+    """Said beside a result served from the library because his cloud drive could not be reached (`voice` pack)."""
+    from i18n import langs as _lg
+    line = _lg.words("apps.files_cloud_fallback", default="") or _lg.words("apps.files_cloud_fallback", code="en",
+                                                                          default="")
+    return str(line or "").replace("{provider}", provider or "?")

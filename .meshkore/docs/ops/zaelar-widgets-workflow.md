@@ -69,6 +69,27 @@ document is needed.
 - If you changed the on-disk format (`widgets/store.py`), verify the migration against REAL data from at least one
   existing widget (not only an empty test widget) before calling it good.
 
+### 2b. The four app principles — a change of this kind reaches EVERY app
+
+Set on 2026-11-08 and applied to every app at once (each one reviewed on its own): when one of these changes in one
+app, every other app is reviewed against it in the same change, adapted to each.
+
+1. **A provider is a preference, never a gate.** When an app can do the job through several providers, channels or
+   sources (Spotify or the page player, WhatsApp/Telegram/email, a cloud drive or the library), an unavailable one
+   falls to the next; what needs his choice (taking another device's playback, a channel he named that is down, a
+   send that failed) is an OFFER in the result's `message`, never a dead stop and never an automatic act he did not
+   ask for.
+2. **The end state is the app's, and real.** `actions.<a>.done_when` describes the outcome of THIS call on OUR side
+   — never something an older row, a stale result left on screen or another actor can satisfy (a song on a household
+   speaker, a message he typed on his phone). A field a clause names is always a VALUE in the view (`""`, `false`,
+   `0`): a missing key reads «unverifiable», never unmet (`test_every_declared_end_state_reads_a_field_the_app_has`).
+3. **Iterate before saying unmet.** `actions.<a>.on_unmet: [{"action": …, "payload": {"k": "{orig_key}" | literal}}]`
+   declares what to try next; the circuit runs the steps in order through the card's own funnel when the end state is
+   still unmet past its grace (`nucleo/circuit/__init__.py::_next_step`, at most `MAX_STEPS`), then settles unmet.
+   Only deterministic, side-effect-safe steps; never for an act that leaves the machine (consent).
+4. **The source can be named.** An optional payload field (`source`, `channel`, `calendar`, `provider`) honoured for
+   that call only — his saved preference is not overwritten by one call or one unavailable moment.
+
 ## 3. Document — the golden rule is ALWAYS three places, never two out of three
 
 Same principle as `zaelar-docs-sync.md`: it appears in **context (`CLAUDE.md` / `criteria.md`) + canonical doc

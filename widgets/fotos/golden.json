@@ -7,6 +7,7 @@
     "error": "str",
     "has_more": "bool",
     "items": "list",
+    "query": "str",
     "reason": "str",
     "session_pending": "bool",
     "total": "int",

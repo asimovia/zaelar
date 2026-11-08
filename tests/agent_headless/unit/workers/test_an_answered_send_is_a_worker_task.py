@@ -96,7 +96,11 @@ def test_an_answered_question_about_a_send_is_one_worker_on_the_same_row(fresh):
     assert request == f"{SAID} — {CANDS[0]}"
     assert (ctx["task_uid"], ctx["answers"], ctx["playbook"], ctx["chosen"]) == (uid, ask_id, "message", f"{ask_id}#0")
     clauses = ctx["done_when"]["any"]
-    assert clauses and all(c["widget"] == "mensajeria" and c["collection"] == "sent" for c in clauses)
+    # Changed on purpose 2026-11-08: our order's outbox row, settled by the connector's echo, is the end state.
+    landed = [c for c in clauses if "scheduled_for>" not in c["where"]]
+    assert clauses and all(c["widget"] == "mensajeria" for c in clauses)
+    assert landed and all(c["collection"] == "outbox" and c["where"].get("state") == "sent" for c in landed)
+    assert all(c["collection"] == "sent" for c in clauses if c not in landed), "a scheduled send: its queued row"
     assert all(CANDS[0] in c["where"].values() for c in clauses), "the end state is the echo of a send to her"
     row = ts.task_get(uid)
     assert len(_rows()) == 1 and (row["state"], row["playbook"]) == ("running", "message")
