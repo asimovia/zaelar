@@ -86,3 +86,21 @@ def test_letting_it_go_is_a_declared_action_that_ends_our_session(world):
     assert md.apply_action("release", {})["ok"]
     from widgets import store
     assert (store.load("musica", {}).get("source") or {}).get("live") is False and placement.held() == {}
+
+
+def test_here_is_what_our_player_sounds_never_another_device(world):
+    """The end state of a start is `here.title` changed: a song on another device of the account is not `here`."""
+    assert _live(source={"provider": "spotify", "device_id": "mac", "live": True})["here"] == {"title": "", "source": ""}
+    yt = md._live_fields({"source": {"provider": "youtube"}, "yt": {"videoId": "abc", "title": "Creep"}})
+    assert yt["here"] == {"title": "Creep", "source": "youtube"}
+    paused = md._live_fields({"source": {"provider": "youtube"}, "yt": {"videoId": "abc", "title": "Creep", "paused": True}})
+    assert paused["here"] == {"title": "", "source": ""}   # a value, never a missing key: a failed start reads unmet
+    blocked = md._live_fields({"source": {"provider": "youtube"}, "yt": {"videoId": "abc", "title": "Creep", "audio_blocked": True}})
+    assert blocked["here"]["title"] == "", "a page player the browser keeps silent is not sounding"
+
+
+def test_every_start_declares_that_it_sounds_here():
+    import json
+    m = json.load(open("widgets/musica/manifest.json", encoding="utf-8"))["actions"]
+    for a in ("play", "play_playlist", "play_result", "play_album", "take_over"):
+        assert m[a]["done_when"] == {"widget": "musica", "field": "here.title", "expect": "changed"}, a

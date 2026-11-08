@@ -78,7 +78,7 @@ def _empty() -> dict:
 # The live PROCESS lives in `live.py` (V2-296); the derived fields and the write that strips them in `derived.py`.
 from widgets.results.live import (  # noqa: E402,F401 — re-export
     _MAX_PHASES, _MAX_PHASE_CHARS, _browser, _clean_phases, _harvest, _progress)
-from .derived import _counts, _identity, _save  # noqa: E402,F401 — re-export
+from .derived import _counts, _identity, _save, _tab_words  # noqa: E402,F401 — re-export
 
 
 def view_data(q: str = "") -> dict:
@@ -114,6 +114,7 @@ def view_data(q: str = "") -> dict:
     data["harvest"] = _harvest(data, _safe_sheet(q))
     data["browser"] = _browser(data, _safe_sheet(q))     # V2-571/822: what the browser needs HIM to do (wall, login)
     data["identity"] = _identity()                       # V2-601 T-10: rides the payload; widget.js may not fetch
+    data["tab_words"] = _tab_words(data)                 # the `tab` action's end state: every word for the tab on screen
     return data
 
 

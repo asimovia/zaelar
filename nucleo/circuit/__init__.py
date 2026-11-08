@@ -82,6 +82,8 @@ def tick(now: float | None = None) -> list[dict]:
             elif out is False and not e.get("task_id") and now - float(e.get("born") or now) >= INLINE_GRACE_S:
                 if _fx.leaves(str(e.get("widget") or ""), str(e.get("action") or "")):
                     _settle_unconfirmed_send(e, now)
+                elif _next_step(e, now):
+                    continue                  # the app's declared next step runs; the same end state stays owed
                 else:
                     _settle_unmet_inline(e, now)
                 closed.append(e)
@@ -228,6 +230,59 @@ def _made_good_later(e: dict) -> bool:
         return True
     except Exception as ex:  # noqa: BLE001 — unreadable: the correction is said as before
         logger.debug(f"circuit: made-good check skipped ({ex})")
+        return False
+
+
+#: How many declared next steps one end state may run before it is settled unmet and said.
+MAX_STEPS = 3
+
+
+def _render_step(value, payload: dict):
+    """A step's payload value: «{key}» alone is the original payload's value (any type), «{key}» inside text is
+    replaced by its text, anything else is a literal."""
+    if isinstance(value, str):
+        if value.startswith("{") and value.endswith("}") and value.count("{") == 1:
+            return payload.get(value[1:-1].rstrip("?"), "")
+        out = value
+        for k, v in (payload or {}).items():
+            out = out.replace("{" + str(k) + "}", str(v))
+        return out
+    if isinstance(value, dict):
+        return {k: _render_step(v, payload) for k, v in value.items()}
+    return value
+
+
+def _next_step(e: dict, now: float) -> bool:
+    """ITERATE until the end state is met (operator, 2026-11-08: «si falla el primer intento, tiene que iterar hasta
+    que el arnés se cumpla»). The app DECLARES what to try next when an action's end state is not met
+    (`actions.<a>.on_unmet: [{action, payload}]` in its manifest — the next provider, a wider search); the circuit
+    runs the next one through the same funnel as a tap, at most `MAX_STEPS`, and only then settles unmet. Nothing
+    is guessed here: an action that declares no step is settled as before. True when a step was started."""
+    try:
+        from widgets import runtime as _rt
+        wid, action = str(e.get("widget") or ""), str(e.get("action") or "")
+        steps = (((_rt.get(wid) or {}).get("actions") or {}).get(action) or {}).get("on_unmet") or []
+        i = int(e.get("step") or 0)
+        if not isinstance(steps, list) or i >= min(len(steps), MAX_STEPS):
+            return False
+        step = steps[i] if isinstance(steps[i], dict) else {}
+        nxt = str(step.get("action") or "").strip()
+        if not nxt:
+            return False
+        payload = _render_step(step.get("payload") or {}, e.get("payload") or {})
+        e["step"], e["born"], e["tries"] = i + 1, now, int(e.get("tries") or 0) + 1
+        import asyncio
+        from widgets import server_api
+        try:
+            asyncio.get_running_loop().create_task(server_api.brain_action(wid, nxt, payload))
+        except RuntimeError:               # no running loop (a test, a thread): run it here
+            asyncio.run(server_api.brain_action(wid, nxt, payload))
+        from nucleo.circuit import spec as _spec
+        _spec._emit("🔁 spec: sin cumplir → el siguiente paso que declara la app", e,
+                    step=f"{wid}:{nxt}", tries=e["tries"])
+        return True
+    except Exception as ex:  # noqa: BLE001 — a step that cannot start leaves the verdict as before
+        logger.debug(f"circuit: next step not started ({ex})")
         return False
 
 

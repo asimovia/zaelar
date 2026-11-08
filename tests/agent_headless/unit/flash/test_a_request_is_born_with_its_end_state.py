@@ -47,12 +47,15 @@ def test_the_wallpaper_action_declares_a_changed_desktop_and_takes_its_baseline(
 def test_a_required_placeholder_with_no_value_renders_nothing_and_an_optional_one_is_dropped():
     assert spec.render("results", "layout", {}) is None, "a `{layout}` nobody gave is not a spec — never a guess"
     dw = spec.render("agenda", "add_meeting", {"title": "Catch up with Rowan", "startTime": "16:00"})
-    assert dw == {"widget": "agenda", "collection": "meetings", "where": {"title~": "Catch up with Rowan"}}
+    # Changed on purpose 2026-11-08: the meeting AND a new write of this call (the agenda's writes log) — never an older row.
+    assert dw["all"][0] == {"widget": "agenda", "collection": "meetings", "where": {"title~": "Catch up with Rowan"}}
+    assert dw["all"][1]["collection"] == "writes" and dw["all"][1]["expect"] == "added"
 
 
 def test_an_action_without_a_template_has_no_spec():
-    assert spec.template_of("results", "choose") is None
-    assert spec.render("results", "choose", {"title": "x"}) is None
+    # `choose` declares its end state since 2026-11-08; `scroll` still declares none.
+    assert spec.template_of("results", "scroll") is None
+    assert spec.render("results", "scroll", {"title": "x"}) is None
 
 
 # ── the readers ────────────────────────────────────────────────────────────────────────────────────────────
@@ -109,8 +112,8 @@ def test_the_data_op_door_opens_the_spec_before_the_op_and_attests_it_after(monk
 # ── the gate ───────────────────────────────────────────────────────────────────────────────────────────────
 
 def test_a_completion_that_attests_a_different_end_state_is_refused():
-    brief = _brief(end_state=("desktop:wallpaper", 0.92), screen_action=("results:choose", 0.98))
-    why = spec.gate_completion(brief, "results", "choose")
+    brief = _brief(end_state=("desktop:wallpaper", 0.92), screen_action=("results:scroll", 0.98))
+    why = spec.gate_completion(brief, "results", "scroll")
     assert "desktop:wallpaper" in why and "attests nothing" in why
     assert spec.gate_completion(brief, "imagenes", "wallpaper") == ""
 
@@ -124,7 +127,7 @@ def test_without_an_end_state_verdict_the_completion_is_untouched():
 def test_the_brief_enumerates_the_end_states_of_the_screen_and_of_the_specs_still_owed(monkeypatch):
     assert spec.end_state_question([]) is None
     q = spec.end_state_question(["results"])
-    assert set(q["criteria"]) == {"results:view", "results:layout", "none"}
+    assert {"results:view", "results:layout", "none"} <= set(q["criteria"])   # more since 2026-11-08 (choose, tab…)
     spec.open({"desktop": "wallpaper", "expect": "changed", "baseline": {}}, text="find me the wallpaper cosmic eye", source="voice")
     q = spec.end_state_question(["results"])
     assert "desktop:wallpaper" in q["criteria"], "a closed card whose end state is still owed is an option (B2)"

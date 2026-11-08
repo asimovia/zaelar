@@ -10,6 +10,7 @@ from widgets.agenda import recur as _recur  # read through the module so a patch
 MEETING_KEYS = frozenset(("title", "date", "startTime", "time", "endTime", "notes", "details", "location",
                           "place", "category", "attendees", "people", "with", "status", "confirmed", "allDay",
                           "all_day", "meet", "newTitle", "id", "item", "widget_id", "action",
+                          "calendar",          # which of his calendars this write goes to (add_meeting, optional)
                           # a DURATION says the end (V2-773): read by add_meeting and move_meeting alike
                           "duration", "durationMinutes", "duration_minutes", "minutes", "length") + _recur.ALL_KEYS)
 

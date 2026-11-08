@@ -36,7 +36,11 @@ from __future__ import annotations
 import time
 
 from .. import store
+import logging
+
 from i18n import langs as _langs   # V2-778 F3-30: hints are read back aloud, in the agent's language
+
+logger = logging.getLogger("zaelar.widgets.fotos")
 
 WIDGET_ID = "fotos"
 DB_VERSION = 1
@@ -114,6 +118,9 @@ def view_data(q: str = ""):
         "has_more": bool(db.get("has_more")),
         "total": int(db.get("total") or 0),
         "active_filter": db.get("active_filter") or {},
+        # The query on screen as a VALUE ("" when no search is applied): the `search` end state reads it, and a key
+        # the view omitted would read «unverifiable», never unmet.
+        "query": str((db.get("active_filter") or {}).get("query") or ""),
         "error": db.get("error") or "",
         "reason": db.get("reason") or "",
         "updated": int(db.get("updated") or 0),
@@ -163,6 +170,10 @@ def apply_action(action: str, payload: dict | None = None):
     act = str(action or "").strip()
     svc = _svc()
     if svc is None:
+        if act == "search":
+            # The connector is a PREFERENCE for reading, never a gate: what was already imported is ours, so a search
+            # still answers from the local index (or, failing that, from what the card already holds).
+            return _search_offline(payload)
         return _err("el conector de fotos no está disponible en esta instalación")
     db = _load()
     db = _sync_status(db, svc)
@@ -184,8 +195,13 @@ def apply_action(action: str, payload: dict | None = None):
     if act == "pick":
         res = svc.start_session()
         if not res.get("ok"):
-            return _err(res.get("error") or "no pude abrir el selector de Google Photos",
-                        needs_app=bool(res.get("needs_app")), needs_connect=bool(res.get("needs_connect")))
+            out = _err(res.get("error") or "no pude abrir el selector de Google Photos",
+                       needs_app=bool(res.get("needs_app")), needs_connect=bool(res.get("needs_connect")))
+            if out["needs_app"] or out["needs_connect"]:
+                # Not a dead stop: the connect path stays, and the reply OFFERS what works without Google.
+                out["alternatives"] = [dict(a) for a in _PICK_ALTERNATIVES]
+                out["message"] = _offer_text()
+            return out
         db["session_pending"] = True
         _save(db)
         # `url` travels back so the CARD can open the picker window (widget.js never touches the network).
@@ -233,6 +249,47 @@ def apply_action(action: str, payload: dict | None = None):
 
     return _err(f"acción desconocida: «{act}». Las que hay: refresh, pick, more, search, clear_search, "
                 f"label_batch")
+
+
+# ── without the connector / without a connection ──────────────────────────────────────────────────────────
+#: What the operator can use instead of Google's picker: images saved on this machine, and the files card. Each is a
+#: real action of another card (or the connect panel's tool), so the reply can offer it by name instead of stopping.
+_PICK_ALTERNATIVES = (
+    {"tool": "show_panel", "args": {"panel": "conectores", "connector": "google-photos"}},
+    {"widget": "imagenes", "action": "local", "payload": {}},
+    {"widget": "archivos", "action": "open_folder", "payload": {"folderId": "images"}},
+)
+
+def _offer_text() -> str:
+    """The offer when Google Photos is not connected — the `voice` pack's `apps.photos_offer`, English floor."""
+    try:
+        return _langs.words("apps.photos_offer", default="") or _langs.words("apps.photos_offer", code="en", default="")
+    except Exception as e:  # noqa: BLE001 — no pack: the offer keeps its alternatives, without words
+        logger.debug(f"fotos: offer line unreadable: {e!r}")
+        return ""
+
+
+def _search_offline(payload: dict) -> dict:
+    """`search` with the connector package unavailable: the local index first, then the card's own cached items.
+    Filename / batch-label matching only (the date parser lives in the connector)."""
+    q = _text(payload.get("query") or payload.get("q"), 200)
+    if not q:
+        return _err("dime qué fotos busco: una fecha, un viaje, o los dos")
+    db = _load()
+    try:
+        from connectors.photos import store as _pstore
+        hits = [{"id": str(it.get("id") or ""), "filename": it.get("filename") or "",
+                 "taken_at": it.get("taken_at") or "", "provider": it.get("provider") or "", "thumb": ""}
+                for it in _pstore.filter_items("", "", q)[:60]]
+    except Exception:  # noqa: BLE001 — not even the local index: what the card already shows
+        needle = q.lower()
+        hits = [it for it in (db.get("items") or []) if needle in str(it.get("filename") or "").lower()][:60]
+    db["items"] = hits
+    db["has_more"] = False
+    db["cursor"] = 0
+    db["active_filter"] = {"date_from": "", "date_to": "", "label": q, "query": q}
+    _save(db)
+    return {"ok": True, "query": q, "count": len(hits), "matches": hits[:20], "source": "local"}
 
 
 # ── background (V2-034) ───────────────────────────────────────────────────────────────────────────────────

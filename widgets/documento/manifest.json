@@ -39,9 +39,18 @@
       "view": true,
       "text_field": "body",
       "done_when": {
-        "widget": "documento",
-        "field": "body",
-        "expect": "present"
+        "all": [
+          {
+            "widget": "documento",
+            "field": "rev",
+            "expect": "changed"
+          },
+          {
+            "widget": "documento",
+            "field": "empty",
+            "is": false
+          }
+        ]
       }
     },
     "append": {
@@ -71,12 +80,22 @@
     },
     "clear": {
       "desc": "quita lo que haya y deja la hoja en blanco",
-      "payload": {}
+      "payload": {},
+      "done_when": {
+        "widget": "documento",
+        "field": "empty",
+        "is": true
+      }
     },
     "save_to_library": {
       "desc": "guarda el documento que hay en la hoja como fichero en la biblioteca del operador (carpeta Documentos del widget archivos)",
       "payload": {
         "name": "nombre del fichero (opcional: por defecto el título)"
+      },
+      "done_when": {
+        "widget": "documento",
+        "field": "saved_at",
+        "expect": "changed"
       }
     }
   },

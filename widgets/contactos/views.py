@@ -128,7 +128,14 @@ def _a_sync_contacts(action, payload, q, db, contacts, now) -> dict:
     res = _d.gcontacts.sync(db, merge=_d.gmerge.merge_imported, remove=_d.gmerge.drop_deleted,
                          since=float((db.get("sync") or {}).get("last") or 0.0))
     if not res.get("ok"):
-        return {"ok": False, "error": str(res.get("error") or "no se pudo sincronizar")}
+        # Google is not reachable: the card still answers with what it holds, and the reply OFFERS the sources
+        # that are connected — importing from one of them is his choice, never done on his behalf.
+        from . import sources
+        alts = sources.connected_sources(but="google-contacts")
+        why = str(res.get("error") or "no se pudo sincronizar")
+        tail = (f" Puedo traerlos de {', '.join(sources._LABEL.get(a, a) for a in alts)}, que sí está conectado: "
+                f"dime si quieres.") if alts else ""
+        return {**_d.view_data(q), "ok": False, "error": why, "offer": alts, "message": f"{why}.{tail}"}
     _d.store.save(_d.WIDGET_ID, db)
     d = _d.view_data(q)
     d.update({"ok": True, "result": res})

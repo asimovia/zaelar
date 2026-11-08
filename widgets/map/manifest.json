@@ -37,14 +37,15 @@
     "w": 400,
     "h": 320
   },
-  "usage": "To pin places use 'show' with 'places': a list of {name, address, note, url} — the address may be just the city («Griffith Observatory, Los Angeles»); 'near' adds a city to every place that has none. 'show' replaces what is on the map, 'add' adds to it. 'select' with 'item' (number on the map or name) highlights one. Places are geocoded here: never invent coordinates. The result lists the numbered places and any that could not be found.",
+  "usage": "To pin places use 'show' with 'places': a list of {name, address, note, url} — the address may be just the city («Griffith Observatory, Los Angeles»); 'near' adds a city to every place that has none. 'show' replaces what is on the map, 'add' adds to it. 'select' with 'item' (number on the map or name) highlights one. Places are geocoded here: never invent coordinates. The result lists the numbered places and any that could not be found. Say source 'google' only when he names Google Maps: each place then carries its Google Maps link.",
   "actions": {
     "show": {
       "desc": "PUTS PLACES ON A MAP («show them on a map», «where are those three»): places by name + address or city, numbered on the map",
       "payload": {
         "places": "list of {name, address, note, url}",
         "near": "optional city for places without an address",
-        "title": "optional"
+        "title": "optional",
+        "source": "optional: 'google' adds a Google Maps link per place to the result (this call only)"
       },
       "view": true,
       "effects": [
@@ -52,20 +53,26 @@
       ],
       "done_when": {
         "widget": "map",
-        "field": "places",
-        "expect": "present"
+        "field": "updated",
+        "expect": "changed"
       }
     },
     "add": {
       "desc": "adds more places to the map on screen, keeping the ones there",
       "payload": {
         "places": "list of {name, address, note, url}",
-        "near": "optional city"
+        "near": "optional city",
+        "source": "optional: 'google' adds a Google Maps link per place to the result (this call only)"
       },
       "view": true,
       "effects": [
         "present.mount"
-      ]
+      ],
+      "done_when": {
+        "widget": "map",
+        "field": "updated",
+        "expect": "changed"
+      }
     },
     "select": {
       "desc": "HIGHLIGHTS one place of the map («the second one», «the observatory»): by its number or its name",

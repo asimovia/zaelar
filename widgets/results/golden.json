@@ -1,7 +1,9 @@
 {
   "view_data_shape": {
+    "empty": "bool",
     "items": "list",
     "subtitle": "str",
+    "tab_words": "str",
     "title": "str"
   }
 }

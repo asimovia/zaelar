@@ -152,7 +152,7 @@ def _identify(query: str) -> tuple[str, dict]:
 
 
 def _start(prov: "MusicProvider", dev: "dict | None", screen: str, query: str, run,
-           replay: "dict | None" = None) -> MusicResult:
+           replay: "dict | None" = None, named: bool = False) -> MusicResult:
     """Run one start on `prov`, read it back when the sound is elsewhere, fall back to the asking screen's page
     when the device there is not sounding, and record where it went. `run(prov, device_id)` is the start itself.
 
@@ -165,7 +165,20 @@ def _start(prov: "MusicProvider", dev: "dict | None", screen: str, query: str, r
     if getattr(prov, "plays_elsewhere", False) and not _TAKING_OVER.get():
         held, there = _held_elsewhere(prov, dev)
         if held:
-            placement.hold(replay or {})
+            placement.hold(replay or {})        # what «take control» would start on that provider, if he asks
+            page = _in_page()
+            if page is not None and not named:
+                # A provider is a PREFERENCE, never a gate (operator, 2026-11-08: he never asked for Spotify, he asked
+                # for that singer — if Spotify is not free, play her through YouTube). The account sounds on somebody
+                # else's device, so the asked music plays on our page player instead; taking the account over stays
+                # an offer the reply makes. Only a provider he NAMED waits for his choice.
+                logger.info(f"music: {prov.name} plays on {held!r} — {query!r} goes to the page player")
+                res = run(page, "")
+                if res.ok:
+                    _after_start(page, None, screen, query, res)
+                res.extra = {**(res.extra or {}), "elsewhere_device": held, "can_take_over": True,
+                             **({"playing_there": there} if there else {})}
+                return res
             return MusicResult(ok=False, provider=prov.name, action="play", reason="elsewhere",
                                message=_msg("held_elsewhere").format(device=held, provider=prov.name.capitalize()),
                                extra={"device": held, "can_take_over": True, **({"playing_there": there} if there else {})})
@@ -186,17 +199,29 @@ def _start(prov: "MusicProvider", dev: "dict | None", screen: str, query: str, r
                     pass
                 prov, dev, res = alt, None, run(alt, "")
     if res.ok:
-        before = sounding_provider()
-        if before is not None and before.name != prov.name:
-            try:
-                before.pause()                   # one sound: the player it moved away from goes quiet
-            except Exception as _e:  # noqa: BLE001
-                logger.debug("_start: degraded, carrying on without it: %s", _e)
-                pass
-        placement.record(prov.name, device_id=(res.extra or {}).get("device_id", dev_id),
-                         device=(res.extra or {}).get("device", (dev or {}).get("name", "")),
-                         screen=screen, query=query)
+        _after_start(prov, dev, screen, query, res)
     return res
+
+
+def _after_start(prov: "MusicProvider", dev: "dict | None", screen: str, query: str, res: MusicResult) -> None:
+    """A start sounded: the player it moved away from goes quiet (one sound), and where it went is recorded."""
+    before = sounding_provider()
+    if before is not None and before.name != prov.name and not getattr(before, "plays_elsewhere", False):
+        try:
+            before.pause()
+        except Exception as _e:  # noqa: BLE001
+            logger.debug("_after_start: degraded, carrying on without it: %s", _e)
+    elif before is not None and before.name != prov.name:
+        # The provider it moves away from plays on a device: pause it only when that device is OURS — another
+        # person's playback is never touched by a start of ours.
+        try:
+            if not _foreign_device(before):
+                before.pause()
+        except Exception as _e:  # noqa: BLE001
+            logger.debug("_after_start: degraded, carrying on without it: %s", _e)
+    placement.record(prov.name, device_id=(res.extra or {}).get("device_id", (dev or {}).get("id", "")),
+                     device=(res.extra or {}).get("device", (dev or {}).get("name", "")),
+                     screen=screen, query=query)
 
 
 def _already(prov: "MusicProvider", query: str) -> "MusicResult | None":
@@ -458,7 +483,8 @@ def _play(query: str, uri: str, prefer: str = "", kind: str = "") -> MusicResult
 
         def run(p, dev_id):
             return p.play(query=look_up, uri=uri, device=dev_id) if dev_id else p.play(query=look_up, uri=uri)
-        res = _start(prov, dev, screen, query, run, {"fn": "play", "query": query, "uri": uri, "kind": kind})
+        res = _start(prov, dev, screen, query, run, {"fn": "play", "query": query, "uri": uri, "kind": kind},
+                     named=bool(prefer))
         res.extra = {**(res.extra or {}), **facts, "placed": "page" if getattr(prov, "plays_in_page", False) else "provider",
                      **({"looked_up": look_up} if look_up != query else {}),
                      **_found_extra(query, found, str(getattr(res.track, "uri", "") or ""))}

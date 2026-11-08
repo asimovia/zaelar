@@ -261,9 +261,11 @@ def run(db: dict, payload: dict) -> dict:
         return {"ok": False, "error": "dime a qué dirección mando la invitación"}
 
     note = str(payload.get("message") or payload.get("text") or "").strip()
-    # RUNG 1 — the meeting has a calendar behind it: the calendar sends the invitation.
+    via = _via(payload)
+    # RUNG 1 — the meeting has a calendar behind it: the calendar sends the invitation. He may NAME the rung
+    # (`via: email`) for this call only: then the .ics goes by mail even when a calendar is behind the meeting.
     s = _gcal().svc()
-    if m.get("googleId") and m.get("googleCalendarId") and s is not None:
+    if via != "email" and m.get("googleId") and m.get("googleCalendarId") and s is not None:
         try:
             res = s.invite(m, guests["emails"])
         except Exception as e:  # noqa: BLE001
@@ -277,13 +279,72 @@ def run(db: dict, payload: dict) -> dict:
                         "message": f"{', '.join(already)} ya estaba invitado a esta reunión."}
             return {"ok": True, "invited": added, "already": already, "how": "calendar",
                     "message": f"Invitación enviada a {', '.join(added)} desde el calendario."}
-        # A calendar that refused is NOT a reason to fall to the second rung: the meeting lives there, and
-        # a separate .ics would put a second, unlinked copy in the guest's calendar whose answer nobody
-        # would ever see. Report what the calendar said.
-        return {"ok": False, "error": str(res.get("error") or "no pude añadir al invitado en el calendario")}
+        # A calendar that refused is not a reason to fall to the second rung SILENTLY — a separate .ics puts a
+        # second, unlinked copy in the guest's calendar whose answer nobody would ever see — and not a dead stop
+        # either: the second rung is OFFERED, and his yes is the same call with `via: email`. With no mail
+        # connected, what is offered is connecting it.
+        why = str(res.get("error") or "no pude añadir al invitado en el calendario")
+        return _offer_second_rung(payload, guests, why)
+    if via == "calendar":
+        return {"ok": False, "error": "esta reunión no está en ningún calendario conectado: la invitación solo "
+                                      "puede ir por correo (.ics) — vuelve a llamar sin `via` o con via=email"}
 
-    # RUNG 2 — no calendar behind this meeting: we build the invitation and mail it ourselves.
+    # RUNG 2 — no calendar behind this meeting (or he named the mail): we build the invitation and mail it.
     return _mail_invitation(m, guests, note)
+
+
+_VIA_EMAIL = ("email", "mail", "e-mail", "correo", "ics", ".ics")
+_VIA_CAL = ("calendar", "calendario", "google", "gcal")
+
+
+def _via(payload: dict) -> str:
+    """The rung he NAMED for this call (`via`): "email", "calendar" or "" (the ladder decides)."""
+    v = str(payload.get("via") or payload.get("channel") or "").strip().lower()
+    return "email" if v in _VIA_EMAIL else "calendar" if v in _VIA_CAL else ""
+
+
+def _mail_from() -> str:
+    """The connected mail account an .ics would leave from, or "" when none is connected."""
+    try:
+        from connectors.email import config as _mailcfg
+        return str(_mailcfg.address() or "").strip()
+    except Exception as e:  # noqa: BLE001 — unreadable: no guess
+        import logging
+        logging.getLogger("zaelar.widgets.agenda").debug(f"invite: value unreadable: {e!r}")
+        return ""
+
+
+def _line(key: str, default: str, **kw) -> str:
+    """A spoken line of the `voice` pack's `agenda.<key>`, in the active language; `default` when it has none."""
+    try:
+        from i18n import langs as _langs
+        tpl = (str(_langs.words(f"agenda.{key}", default="") or "")
+               or str(_langs.words(f"agenda.{key}", code="en", default="") or "") or default)
+    except Exception as e:  # noqa: BLE001 — no pack: the default stands
+        import logging
+        logging.getLogger("zaelar.widgets.agenda").debug(f"invite: line {key} unreadable: {e!r}")
+        tpl = default
+    try:
+        return tpl.format(**kw)
+    except (KeyError, IndexError, ValueError):
+        return tpl
+
+
+def _offer_second_rung(payload: dict, guests: dict, why: str) -> dict:
+    """The calendar refused: not done, and the reply OFFERS what comes next — the .ics by mail (his yes is the
+    same `invite` with `via: email`, under the same consent rule as any invitation), or connecting a mail
+    account when there is none. `error` is for the model; `message` is the line he may hear."""
+    who = ", ".join(guests.get("emails") or []) or "?"
+    if _mail_from():
+        nxt = {k: v for k, v in payload.items() if k not in ("via", "channel")}
+        return {"ok": False, "error": f"el calendario no aceptó al invitado: {why}. OFRÉCELE mandarla por correo "
+                                      f"(.ics): si dice que sí, vuelve a llamar a invite con via=email",
+                "offer": {"action": "invite", "payload": {**nxt, "via": "email"}},
+                "message": _line("invite_offer_ics", "", who=who, why=why)}
+    return {"ok": False, "error": f"el calendario no aceptó al invitado: {why}, y no hay ningún correo conectado "
+                                  f"para mandarla de otra forma — ofrécele conectar su correo en Conectores",
+            "offer": {"connect": "email"},
+            "message": _line("invite_offer_connect_mail", "", who=who, why=why)}
 
 
 def _mail_invitation(m: dict, guests: dict, note: str) -> dict:
@@ -302,7 +363,9 @@ def _mail_invitation(m: dict, guests: dict, note: str) -> dict:
         me = ""
     if not me:
         return {"ok": False, "error": "no hay ninguna cuenta de correo conectada desde la que mandar la "
-                                      "invitación — conéctala en Conectores y vuelve a intentarlo"}
+                                      "invitación — ofrécele conectarla en Conectores y vuelve a intentarlo",
+                "offer": {"connect": "email"},
+                "message": _line("invite_offer_connect_mail_bare", "")}
     try:
         text = _ics.build(m, organizer=me, attendees=guests["emails"], offset_minutes=_offset_minutes())
     except ValueError as e:

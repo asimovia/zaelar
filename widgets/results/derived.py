@@ -37,6 +37,28 @@ def _identity() -> dict:
         return {}
 
 
+#: How long «the processes panel was opened from this sheet» stays true for `tab_words` — the voice round trip with
+#: margin, the same window a scroll request has (V2-591).
+PROCESS_OPENED_TTL_S = 120
+
+
+def _tab_words(data: dict, now: float | None = None) -> str:
+    """DERIVED: the tab on screen with every word that names it (`merge._TAB_ALIASES`), so the `tab` action's
+    `done_when` (`tab_words has {tab}`) reads «fuentes» and «sources» alike. The processes panel is not a tab
+    of the sheet: its words count only while `process_opened` (stamped when `tab` → process opened it) is fresh."""
+    import time
+    from .merge import _TAB_ALIASES
+    cur = str(data.get("tab") or "results")
+    words = [cur] + [k for k, v in _TAB_ALIASES.items() if v == cur and k != cur]
+    try:
+        opened = float(data.get("process_opened") or 0)
+    except (TypeError, ValueError):
+        opened = 0.0
+    if opened and ((now if now is not None else time.time()) - opened) <= PROCESS_OPENED_TTL_S:
+        words += ["process"] + [k for k, v in _TAB_ALIASES.items() if v == "process" and k != "process"]
+    return " | ".join(words)
+
+
 def _save(data: dict, sheet: str = "") -> None:
     """Persist WITHOUT derived fields: `counts` is recalculated on read, and storing it would make it stale as soon as
     anything else changes (an old number on screen is worse than no number)."""
@@ -45,6 +67,7 @@ def _save(data: dict, sheet: str = "") -> None:
     d.pop("progress", None)                  # derived from the live record: storing it would freeze a «Trabajando…»
     d.pop("browser", None)                   # derived too (V2-571): a stored capture would outlive its browser
     d.pop("identity", None)                  # derived every read (T-10): ids belong to the PROCESS, not the sheet
+    d.pop("tab_words", None)                 # derived every read: the words of the tab on screen
     for k in ("sources", "summary", "criteria"):
         if not d.get(k):
             d.pop(k, None)                       # remove empty sections: the blank sheet remains blank
