@@ -126,6 +126,10 @@ class YouTubeAudioProvider(MusicProvider):
         if not vid and query:
             got = _resolve(query)
             vid, title, why = got[0], got[1], (got[2] if len(got) > 2 else "")
+        from connectors import music as _music
+        if _music.superseded():          # a newer request was asked while this one was looked up: it does not sound
+            return MusicResult(ok=False, provider=self.name, action="play", reason="superseded", message="")
+        yt = _load_yt() if vid else yt   # re-read after the lookup: what landed meanwhile is not overwritten
         if not vid:
             # V2-833 F3 — the lookup's own outcome: a catalogue that could not be REACHED is not «no such song»
             return MusicResult(ok=False, provider=self.name, action="play",
