@@ -16,6 +16,10 @@ from __future__ import annotations
 from loguru import logger
 
 
+#: Controls of what already plays — deterministic acts whose failure is a fact, not something to word.
+_CONTROLS = {"pause", "stop", "resume", "next", "previous", "volume_up", "volume_down", "set_volume", "seek"}
+
+
 def _options(reason: str) -> list[str]:
     """The options this install really has for this outcome (keys of `music.outcome_options`)."""
     connectable = False
@@ -67,6 +71,15 @@ def system(lang_lock: str, asked: str, said: str, res) -> str:
 async def say(*, lang_lock: str, asked: str, said: str, res, spec, emit, send, speech) -> str:
     """Word the failed act — the play tool's own round, said now in its turn (SKIP keeps what was said). Returns what
     was sent. The detached follow-up it used to run when words were already out went in V2-851 F5 (no second mouth)."""
+    if str(getattr(res, "action", "") or "") in _CONTROLS and str(getattr(res, "message", "") or "").strip():
+        # A CONTROL that did not happen is a fact with its own sentence (the connector's, in his language): it is
+        # said, never judged. A model asked «is what you said still true?» answered SKIP over «Done — moving to the
+        # next one» when the skip had been refused (live 2026-11-08).
+        text = speech.sanitize(str(res.message), drop_metadata=False).strip()
+        emit("brain", "🎵 music outcome → the connector's line", role="system", text=str(getattr(res, "reason", ""))[:40],
+             extra={"cat": "flash", "reason": getattr(res, "reason", ""), "provider": getattr(res, "provider", "")})
+        send((" " if said and not said[-1:].isspace() else "") + text)
+        return text
     from nucleo.flash import follow_up_pass
     sys2 = system(lang_lock, asked, said, res)
     emit("brain", "🎵 music outcome → the turn words it", role="system", text=str(getattr(res, "reason", ""))[:40],
