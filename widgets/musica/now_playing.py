@@ -77,6 +77,11 @@ def _live_fields(db: dict, fresh_s: float = 0.0) -> dict:
     mode = "local" if loc else ("youtube" if in_page else ("spotify" if connected else
                                                            ("youtube" if yt.get("videoId") else "idle")))
     now = (None if mode != "spotify" else _fresh_now_playing(db, fresh_s) if fresh_s else _d._now_playing())
+    away = _elsewhere(db, now) if mode == "spotify" else {}
+    if away and not _ours_taken(db):
+        # The account plays on somebody else's device and it was never our session: the card is OUR player, so it
+        # stays blank — what another person listens to is not ours to show (operator, 2026-11-08).
+        mode, now, away = ("youtube" if yt.get("videoId") else "idle"), None, {}
     return {
         **_d._SEED,
         "connected": connected,
@@ -85,7 +90,7 @@ def _live_fields(db: dict, fresh_s: float = 0.0) -> dict:
         "default_available": bool(st.get("default_available")),
         "redirect_uri": st.get("redirect_uri", ""),
         "now_playing": now,
-        "elsewhere": _elsewhere(db, now),
+        "elsewhere": away,                                   # set = our session was taken: controls locked
         "yt": _d._yt_display(yt),
         "local": loc,
         "mode": mode,
@@ -93,18 +98,32 @@ def _live_fields(db: dict, fresh_s: float = 0.0) -> dict:
     }
 
 
+def _ours_taken(db: dict) -> bool:
+    """Was this OUR session, now taken elsewhere — our last start went to this provider and he has not let it go
+    (`placement.release`), or he asked for something that waits for him to take control (`placement.held`)?"""
+    src = db.get("source") or {}
+    if src.get("provider") == "spotify" and src.get("live", True):
+        return True
+    try:
+        from connectors.music import placement
+        return bool(placement.held())
+    except Exception as _e:
+        _log.debug("_ours_taken: degraded, carrying on without it: %s", _e)
+        return False
+
+
 def _elsewhere(db: dict, now: "dict | None") -> dict:
-    """{provider, device} when the account is PLAYING on somebody else's device — the card says so and offers to
-    take control (operator, 2026-11-08). Only asked when what plays is not where our last start went, so the usual
-    read (our own device) costs nothing more."""
-    if not (now and now.get("playing") and now.get("device_id")):
+    """{provider, device} when the account's playback sits on somebody else's device (playing or paused there) —
+    the card locks its controls and offers to take control (operator, 2026-11-08). Only asked when what plays is not
+    where our last start went, so the usual read (our own device) costs nothing more."""
+    if not (now and now.get("device_id")):
         return {}
     src = db.get("source") or {}
     if src.get("provider") == now.get("provider") and src.get("device_id") == now.get("device_id"):
         return {}
     try:
         from connectors import music
-        return music.elsewhere()
+        return music.elsewhere(playing_only=False)
     except Exception as _e:
         _log.debug("_elsewhere: degraded, carrying on without it: %s", _e)
         return {}

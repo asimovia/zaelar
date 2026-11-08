@@ -1,9 +1,10 @@
 // musica — the TRANSPORT: what is playing, where the song is, the scrubber, the playback bar and its progress and
 // volume rows (refactor2710-12 T-03).
+import { sourceLabel } from "./browse.js";
 import { _ytClock, soundRow, ytPosition, ytPost } from "./players.js";
 import { ICON_HEART, ICON_HEART_FILL, ICON_NEXT, ICON_NOTE, ICON_PAUSE, ICON_PLAY, ICON_PREV, ICON_QUEUE,
   ICON_REPEAT, ICON_REPEAT_ONE, ICON_SHUFFLE, ICON_VOL_OFF, ICON_VOL_UP, _norm, artNode, eqIcon,
-  fire, h, svgEl, tt } from "./shared.js";
+  fire, h, svgEl, tt, takenBy } from "./shared.js";
 
 // Playback bar (Spotify or YouTube).
 export function nowPlaying(data){
@@ -145,6 +146,13 @@ export function reportPlayed(np, ctx){
 export function transport(data, ctx, np, cls){
   const playing = !!(np && np.playing);
   const ctrls = h("div", "hb-mus2-barc" + (cls ? " " + cls : ""));
+  if(takenBy(data)){
+    // Not our session: no control is drawn, so none can be tapped and refused. The strip under the bar says where it
+    // plays and holds the two ways out (take control / let it go).
+    ctrls.classList.add("locked");
+    ctrls.appendChild(h("span", "hb-mus2-barlock", tt("away_short", {device: takenBy(data)}, "En «{device}»")));
+    return {ctrls, mk: () => h("span")};
+  }
   const mk = (svg, action, kls, payload, title) => {          // control = fire-and-forget; SSE re-renders
     const b = h("button", "hb-mus2-cbtn" + (kls ? " " + kls : ""));
     b.appendChild(svgEl(svg));
@@ -193,13 +201,16 @@ export function playbackBar(el, data, ctx){
   if(np){
     meta.appendChild(h("div", "hb-mus2-bart", np.title || tt("music_fb", null, "Música")));
     meta.appendChild(h("div", "hb-mus2-bara", np.artist || (np.device ? np.device : "")));
+    // WHERE it sounds, always said: the player making the sound, and the device when it is not this page.
+    meta.appendChild(h("div", "hb-mus2-barsrc", [sourceLabel(data), data.mode === "spotify" && np.device ? np.device : ""]
+      .filter(Boolean).join(" · ")));
   } else {
     meta.appendChild(h("div", "hb-mus2-baridle", tt("ask_what", null, "Dime qué quieres escuchar")));
   }
   row.appendChild(meta);
   const {ctrls, mk} = transport(data, ctx, np);
   row.appendChild(ctrls);
-  if(np){
+  if(np && !takenBy(data)){
     const side = h("div", "hb-mus2-barside");
     // The heart is a STATE indicator (V2-629): filled when the song is already saved.
     const fav = !!data.fav_current;

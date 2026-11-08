@@ -44,6 +44,10 @@ def prompt_digest() -> str:
         return "\n".join(found)
     if mode == "spotify":
         where = f"Spotify, on the device «{np.get('device') or '?'}» (not this page)"
+        if (live.get("elsewhere") or {}).get("device"):
+            # His session was taken on another device: nothing here controls it until he takes control
+            # (`take_over`) or lets it go (`release`) — a pause or a skip would be refused.
+            where += " — TAKEN by another device of the account: controls locked; take_over or release"
         playing = bool(np.get("playing"))
     else:
         blk = (live.get("yt") or {}) if mode == "youtube" else (live.get("local") or {})

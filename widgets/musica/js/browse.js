@@ -163,6 +163,8 @@ function elsewhereBanner(el, data, ctx){
   } else {
     btns.appendChild(btn(tt("away_take", null, "Tomar el control"), "",
       () => { el._hbTakeAsk = true; el._hbRedraw && el._hbRedraw(); }));
+    btns.appendChild(btn(tt("away_release", null, "Dejarlo"), "",
+      () => { fire(ctx, "release"); }));
   }
   box.appendChild(btns);
   return box;

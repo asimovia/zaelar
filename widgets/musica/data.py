@@ -224,6 +224,19 @@ from .sound import player_audio as _a_player_audio  # noqa: E402 — V2-812: wha
 # `apply_action` is a table lookup; the contract gate reads the table's keys (`widgets/validator._table_actions`).
 
 
+def _a_release(action: str, p: dict) -> dict:
+    """He lets the account's playback on another device go (`placement.release`)."""
+    from connectors.music import placement
+    placement.release()
+    _save_view()
+    try:
+        from connectors import music
+        music._card_changed()
+    except Exception:  # noqa: BLE001 — a missed refresh never undoes the release
+        pass
+    return {"ok": True, "message": "", "reason": ""}
+
+
 ACTIONS = {
     "refresh": _a_refresh,
     "enrich_art": _a_enrich_art,
@@ -248,6 +261,7 @@ ACTIONS = {
     "queue": _a_playback,
     "ended": _a_playback,
     "take_over": _a_playback,          # he chose to take the account's playback from another device
+    "release": _a_release,             # …or to let it go: the card goes blank while it plays there
     # V2-795 — what a player does that the card did not
     "rename_playlist": _a_rename_playlist,
     "delete_playlist": _a_delete_playlist,

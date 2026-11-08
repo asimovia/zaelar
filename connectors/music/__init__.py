@@ -321,9 +321,10 @@ def _held_elsewhere(prov: "MusicProvider", dev: "dict | None") -> str:
     return _foreign_device(prov, np)
 
 
-def elsewhere() -> dict:
-    """What the music card shows when the account is PLAYING on somebody else's device: {provider, device}; {} when
-    not. Read-only — one state read per connected provider that plays on its own devices."""
+def elsewhere(playing_only: bool = True) -> dict:
+    """{provider, device} when the account's playback sits on somebody else's device — PLAYING there, or with
+    `playing_only=False` also paused there; {} when not. Read-only — one state read per connected provider that
+    plays on its own devices."""
     for prov in registry.available():
         if not getattr(prov, "plays_elsewhere", False):
             continue
@@ -332,7 +333,7 @@ def elsewhere() -> dict:
         except Exception as _e:  # noqa: BLE001
             logger.debug("elsewhere: state unreadable: %s", _e)
             continue
-        if np is not None and np.playing and np.device_id:
+        if np is not None and (np.playing or not playing_only) and np.device_id:
             dev = _foreign_device(prov, np)
             if dev:
                 return {"provider": prov.name, "device": dev}
