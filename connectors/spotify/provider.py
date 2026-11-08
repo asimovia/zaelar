@@ -288,7 +288,22 @@ class SpotifyProvider(MusicProvider):
         """A skip is only DONE when the song changed (V2-795). Spotify answers 204 to a skip with nothing after the
         current song — measured live: «pon la siguiente» ran, reported ok, and the same song kept playing. So the
         result names the song that sounds now, read back from the player, or says plainly that nothing changed."""
-        before = self._item_id()
+        try:
+            st = client.playback_state() or {}
+        except SpotifyError as _e:
+            logger.debug("_step: state unreadable: %s", _e)
+            st = {}
+        before = str((st.get("item") or {}).get("id") or "")
+        was_playing = bool(st.get("is_playing"))
+        dev_id = str((st.get("device") or {}).get("id") or "")
+        disallows = (st.get("actions") or {}).get("disallows") or {}
+        if action == "previous" and disallows.get("skipping_prev") and before:
+            # Nothing before it in what plays (a single song has no context): «previous» starts this song over, as
+            # every player does — Spotify refuses the skip with a 403 and nothing would happen (live 2026-11-08).
+            res = self._run(lambda dev: client.seek(0, device_id=dev), "previous", None, {}, dev_id)
+            if res.ok and not was_playing:
+                self._run(lambda dev: client.resume(device_id=dev), "resume", device=dev_id)
+            return res
         res = self._run(fn, action)
         if not res.ok:
             return res
@@ -298,6 +313,12 @@ class SpotifyProvider(MusicProvider):
             if np is not None and np.track and np.track.id and np.track.id != before:
                 res.track, res.message = np.track, _t("play", label=np.track.label())
                 return res
+        # The song did not change. A skip past the end of what plays STOPS Spotify (live 2026-11-08: «next» on a
+        # single song left the music off): give him back what was sounding before saying there was nothing after.
+        if was_playing:
+            np = self.now_playing()
+            if np is not None and not np.playing:
+                self._run(lambda dev: client.resume(device_id=dev), "resume", device=dev_id)
         reason = "no_next" if action == "next" else "no_previous"
         return MusicResult(ok=False, provider=self.name, action=action, reason=reason,
                            message=_t("no_next" if action == "next" else "no_prev"))

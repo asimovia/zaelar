@@ -128,3 +128,52 @@ def test_a_403_on_the_player_is_premium_only_when_spotify_says_so(body, code):
     """Measured 2026-11-08: pausing with nothing playing answered «needs a Premium account» on a Premium account —
     the 403 was a «Restriction violated», which is not a missing subscription."""
     assert spclient._classify(403, "/me/player/pause", body) == code
+
+
+class _Single:
+    """A single song with nothing around it, as Spotify plays one started by its uri: a «next» ends playback and a
+    «previous» is disallowed (403) — both measured live 2026-11-08."""
+
+    def __init__(self):
+        self.playing, self.position, self.calls = True, 90_000, []
+
+    def state(self):
+        return {"is_playing": self.playing, "progress_ms": self.position,
+                "device": {"id": "mac", "name": "MacBook"}, "item": {"id": "t1", "uri": "spotify:track:t1",
+                                                                     "name": "Me Enamoré", "artists": []},
+                "actions": {"disallows": {"skipping_prev": True}}}
+
+    def next_track(self, device_id=""):
+        self.calls.append("next"); self.playing = False; return {}
+
+    def previous_track(self, device_id=""):
+        raise SpotifyError(403, "restricted", "Restriction violated")
+
+    def seek(self, ms, device_id=""):
+        self.calls.append(("seek", ms)); self.position = ms; return {}
+
+    def resume(self, device_id=""):
+        self.calls.append("resume"); self.playing = True; return {}
+
+
+@pytest.fixture
+def single(monkeypatch):
+    import importlib
+    spp = importlib.import_module("connectors.spotify.provider")
+    s = _Single()
+    monkeypatch.setattr(spp, "_SETTLE_S", 0)
+    monkeypatch.setattr(spclient, "playback_state", s.state)
+    for n in ("next_track", "previous_track", "seek", "resume"):
+        monkeypatch.setattr(spclient, n, getattr(s, n))
+    return s
+
+
+def test_a_next_with_nothing_after_never_leaves_the_music_off(prov, single):
+    r = prov.next()
+    assert not r.ok and r.reason == "no_next"
+    assert single.playing and single.calls[-1] == "resume", single.calls
+
+
+def test_a_previous_with_nothing_before_starts_the_song_over(prov, single):
+    r = prov.previous()
+    assert r.ok and ("seek", 0) in single.calls and single.playing
