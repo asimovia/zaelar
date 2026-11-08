@@ -57,6 +57,8 @@ def system(lang_lock: str, asked: str, said: str, res) -> str:
     extra = getattr(res, "extra", None) or {}
     labels, opts = w.get("outcome_labels") or {}, w.get("outcome_options") or {}
     facts = [str((w.get("outcome_reasons") or {}).get(reason) or reason).replace("{device}", str(extra.get("device") or "?"))]
+    if extra.get("playing_there"):       # what sounds on the other device, read from the player — never guessed
+        facts.append(f"{labels.get('playing_there', 'playing there')}: «{extra['playing_there']}»")
     if extra.get("tried") or extra.get("looked_up"):
         facts.append(f"{labels.get('tried', 'looked up')}: «{extra.get('tried') or extra.get('looked_up')}»")
     if extra.get("named_name"):          # what the catalogue found — the reply names it, never the card's «now playing»
@@ -71,6 +73,8 @@ def system(lang_lock: str, asked: str, said: str, res) -> str:
 async def say(*, lang_lock: str, asked: str, said: str, res, spec, emit, send, speech) -> str:
     """Word the failed act — the play tool's own round, said now in its turn (SKIP keeps what was said). Returns what
     was sent. The detached follow-up it used to run when words were already out went in V2-851 F5 (no second mouth)."""
+    if str(getattr(res, "reason", "") or "") == "superseded":
+        return ""                      # a newer request of his replaced it: that one speaks, this one is not news
     if str(getattr(res, "action", "") or "") in _CONTROLS and str(getattr(res, "message", "") or "").strip():
         # A CONTROL that did not happen is a fact with its own sentence (the connector's, in his language): it is
         # said, never judged. A model asked «is what you said still true?» answered SKIP over «Done — moving to the

@@ -138,7 +138,20 @@ def something_to_play():
 
 #: Spoken controls → the music card's declared action that performs them (`widgets/musica/manifest.json`).
 _CARD_CONTROLS = {"pause": "pause", "stop": "pause", "resume": "resume", "next": "next", "previous": "previous",
-                  "volume_up": "volume_up", "volume_down": "volume_down"}
+                  "volume_up": "volume_up", "volume_down": "volume_down", "take_over": "take_over"}
+
+
+async def completed_by_verdict(res, brief):
+    """A start HELD because the account plays on another device (`elsewhere`), on a turn whose sure verdict is to TAKE
+    CONTROL of the music card: the verdict completes the model's call (CRIT-K2) — the card's `take_over` runs, and it
+    starts what was held, here. Live 2026-11-08: «play it here, in my device, right now — take control» was read as
+    `musica:take_over` twice, the model called play, and the start was refused again. Any other outcome: `res`."""
+    if getattr(res, "ok", True) or getattr(res, "reason", "") != "elsewhere":
+        return res
+    from nucleo.flash import follow_up_pass
+    if follow_up_pass._sure_target(brief) != ("musica", "take_over"):
+        return res
+    return await _through_card("take_over")
 
 
 async def _through_card(card_action: str):

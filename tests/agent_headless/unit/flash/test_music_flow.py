@@ -151,3 +151,21 @@ def test_a_spoken_control_is_the_music_cards_own_action(monkeypatch, spoken, car
     monkeypatch.setattr("widgets.server_api.brain_action", _card)
     res = _run(music_flow.run(spoken, ""))
     assert res.ok and seen == [("musica", card)] and direct == [], (seen, direct)
+
+
+@pytest.mark.parametrize("verdict,expect_take", [(("musica", "take_over"), True), (("musica", "play"), False)])
+def test_a_sure_take_control_verdict_completes_a_held_start(monkeypatch, verdict, expect_take):
+    """Live 2026-11-08: «play it here, in my device, right now — take control» read as `musica:take_over`, the model
+    called play, and the start was refused again. The verdict completes the call: the card's take-over runs."""
+    from connectors.music.base import MusicResult
+    from nucleo.flash import follow_up_pass
+    monkeypatch.setattr(follow_up_pass, "_sure_target", lambda brief: verdict)
+    seen: list = []
+
+    async def _card(wid, action, payload):
+        seen.append(action)
+        return {"ok": True, "provider": "spotify"}
+    monkeypatch.setattr("widgets.server_api.brain_action", _card)
+    held = MusicResult(ok=False, provider="spotify", action="play", reason="elsewhere")
+    res = _run(music_flow.completed_by_verdict(held, {"x": 1}))
+    assert (seen == ["take_over"] and res.ok) if expect_take else (seen == [] and res is held)
