@@ -137,9 +137,11 @@ def test_a_stranded_cover_silences_exactly_the_next_turn():
     is the conversation coming apart, so the turn after a stranded cover stays quiet — and only that one."""
     brain = _Brain()
     fa._note_stranded(True)
-    assert fa.arm(brain, "open the messages") == ""
+    # A QUESTION, on purpose: since V2-863 the style rule is applied at arm, and «smart» leaves an order such as
+    # «open the messages» without a cover from the start — which would make this green for the wrong reason.
+    assert fa.arm(brain, "what's on my agenda") == ""
     assert not fa.stranded(), "the suppression is consumed, not sticky"
-    assert fa.arm(brain, "open the messages") != ""
+    assert fa.arm(brain, "what's on my agenda") != ""
 
 
 def test_the_promise_to_the_model_never_rides_a_turn_that_was_not_armed():
