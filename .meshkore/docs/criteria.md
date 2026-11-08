@@ -43,6 +43,12 @@ below is the first kind, or it names the mechanism that replaced the second.
   fact, never conditionally; a turn that decides no cover leaves no note. — since 2026-11-08 · nodes 2.1636, 2.1637 ·
   `voice/engine/speech/filler_audio.py` (`arm`, `settle_brief`, `llm_node_with_filler`),
   `voice/engine/pipeline/eager_brief.py`, `nucleo/turn/brief_turn.py`.
+- **CRIT-V4c · A cover that sounded is never heard twice.** The head of the reply that repeats it is cut before TTS
+  and transcript, deterministically, zero tokens: held until it has more words than the cover (or a sentence mark),
+  compared word for word with case, accents and punctuation normalised, and an echo dropped with the punctuation
+  after it and a capital on the next word; a reply that only continues the cover passes untouched, and with no cover
+  sounded nothing is cut. The note to the model names the cover's first word, but the cut is the mechanism. — since
+  2026-11-09 · node 2.1640 · `voice/engine/speech/filler_audio.py` (`EchoCut`, `llm_node_with_filler`).
 - **CRIT-V5 · A claim is not a fact.** A delivery claimed over an empty sheet becomes a follow-up; «still on it»
   is said only about live work on THIS request; a result already spoken is not news on the next turn — nor an
   object our PREVIOUS reply (read from the conversation window, never a global) or a card's own sentence already
