@@ -175,6 +175,12 @@ def _control(action: str, query: str, uri: str, percent: int, prefer: str, secon
     prov = _for_control(prefer)
     if prov is None:
         return MusicResult(ok=False, action=action, reason="no_provider", message=_msg("no_provider"))
+    if action in _TOUCHES_PLAYBACK and getattr(prov, "plays_elsewhere", False):
+        foreign = _foreign_device(prov)
+        if foreign:
+            return MusicResult(ok=False, provider=prov.name, action=action, reason="elsewhere",
+                               message=_msg("elsewhere").format(device=foreign, provider=prov.name.capitalize()),
+                               extra={"device": foreign})
     try:
         if action == "play":
             return _confirmed(prov, prov.play(query=query, uri=uri))
@@ -209,6 +215,35 @@ def _control(action: str, query: str, uri: str, percent: int, prefer: str, secon
         return MusicResult(ok=False, provider=prov.name, action=action, reason="error",
                            message=_msg("done"))
     return MusicResult(ok=False, provider=prov.name, action=action, reason="error", message=_msg("done"))
+
+
+#: Controls that act on whatever the account is sounding right now. On a provider that plays on its own devices
+#: (one account shared by a household), that playback may belong to somebody else.
+_TOUCHES_PLAYBACK = _CONTROL | _VOLUME | {"play", "queue", "seek", "reanuda", "sigue", "prev", "back"}
+
+
+def _foreign_device(prov: "MusicProvider") -> str:
+    """The name of the device the account is sounding on when it is NOT ours, else "" (operator, 2026-11-08: «only
+    control Spotify when it is active on this device and not captured elsewhere, or I will disturb other people who
+    use the same account»). Ours = the device the last start placed (`placement.recorded`) or the provider's device
+    that sits with the asking screen (`device_near`). Nothing active, or a state that cannot be read, is nobody's
+    playback: the control goes ahead as before."""
+    try:
+        np = prov.now_playing()
+    except Exception as _e:  # noqa: BLE001 — an unreadable state never blocks a control
+        logger.debug("_foreign_device: state unreadable: %s", _e)
+        return ""
+    dev_id = getattr(np, "device_id", "") if np is not None else ""
+    if not dev_id:
+        return ""
+    rec = placement.recorded()
+    if rec.get("provider") == prov.name and rec.get("device_id") == dev_id:
+        return ""
+    kind = placement.screen_kind(placement.asking_screen())
+    near = prov.device_near(kind) if kind else None
+    if near and near.get("id") == dev_id:
+        return ""
+    return getattr(np, "device", "") or prov.name
 
 
 def _confirmed(prov: "MusicProvider", res: MusicResult) -> MusicResult:

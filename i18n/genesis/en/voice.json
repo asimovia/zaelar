@@ -415,6 +415,7 @@
   "ask_more": "I couldn't pin down that song. Can you give me the artist or a few more words from the lyrics?",
   "ask_what": "What should I put on? Say a song, an artist or a style.",
   "audio_blocked": "The music is loaded but silent: this screen's browser will not let it play without a tap. Tap the music card once and you'll hear it.",
+  "elsewhere": "\"{device}\" is using {provider} right now, not this device; I won't touch it from here so I don't disturb whoever is listening.",
   "youtube": {
    "play": "Now playing «{label}».",
    "play_untitled": "The music is playing.",
@@ -457,7 +458,8 @@
    "no_track": "the catalogue was searched and has nothing under that name",
    "no_provider": "no music source is available",
    "error": "the player failed",
-   "needs_app": "it was found in the connected catalogue, but only that service's own app can play it and none is open on the screen that asked — nothing else was played instead"
+   "needs_app": "it was found in the connected catalogue, but only that service's own app can play it and none is open on the screen that asked — nothing else was played instead",
+   "elsewhere": "the account is playing on another device (\"{device}\") that is neither this screen's nor where Zaelar put it — it was left alone so whoever uses it is not disturbed"
   },
   "outcome_options": {
    "retry": "try again in a moment",
