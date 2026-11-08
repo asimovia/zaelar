@@ -27,6 +27,7 @@ import { t } from "../core/i18n.js?v=1";
 import { groupGoogle } from "./ConnectorWizard.js?v=6";
 import { ProcessEntry } from "./ProcessEntry.js?v=1";
 import { AskWall } from "./TaskAsk.js?v=1";
+import { chatRefView } from "./ChatRef.js?v=1";
 
 // V2-561/V2-526 — stable family order, matching connectors/registry.py's descriptors() order; any family
 // not listed (a catalog-only wishlist family) sorted after, alphabetically, so one nobody expects does not
@@ -989,7 +990,8 @@ export function ChatWall() {
       // The divider goes AFTER the last restored line — it says «what is above this was said earlier»,
       // so with nothing restored (a fresh session, or a reset) it is never drawn at all.
       if (restoredLeft > 0 && i === restoredLeft) rows.push(h("div", { class: "cw-earlier" }, _whenLabel()));
-      const cls = m.role === "peer" ? "peer" : m.role === "agent" ? "agent" : m.role === "sys" ? "sys" : "you";
+      if (m.role === "ref") { rows.push(chatRefView(m)); return; }   // V2-862: an errand's reference box
+      const cls =m.role === "peer" ? "peer" : m.role === "agent" ? "agent" : m.role === "sys" ? "sys" : "you";
       const bubble = h("div", { class: "cw-msg " + cls });
       if (m.role === "peer" && (m.dir === "in" || m.dir === "out")) {
         const who = m.dir === "out" ? `🛰 → ${m.peer || "?"}` : `🛰 ${m.peer || "?"}`;

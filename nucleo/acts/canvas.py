@@ -35,6 +35,7 @@ def apply(op: str, wid: str = "", *, src: str, text: str = "", role: str = "", r
         emit("widget", op, **({"text": text} if text else {}), **({"role": role} if role else {}), extra=fields)
     __import__("nucleo.done_ops", fromlist=["x"]).gesture(op, wid)   # a gesture of his turn is «what we just did» (T-02c)
     __import__("nucleo.acts.surface_owner", fromlist=["x"]).observe(op, wid, src)   # V2-844 F0: whose it would be
+    op == "show" and __import__("nucleo.chat_refs", fromlist=["x"]).note_show(src, wid)   # V2-862: an errand's card
     return True
 
 

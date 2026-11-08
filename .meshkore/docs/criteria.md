@@ -544,6 +544,12 @@ below is the first kind, or it names the mechanism that replaced the second.
   session, a loopback call to one of the worker doors (`operator_gate.WORKER_DOORS`) is served without one — each
   door verifies the worker itself; off the machine, or to any other route, the session is still required
   (`server/ingress.py::is_own_worker_door`). — since 2026-10-24 · nodes 7.77.
+- **CRIT-E28 · An errand that delivers into a card leaves ONE reference box on his chat wall.** Decided at the
+  dispatcher's single door by the sealed surface (a card-naming surface draws it; told/silent, a child errand, an
+  arriving event or a cluster peer do not), drawn at the START so a half-done errand keeps it, updated in place to its
+  ending, and every errand leaves `artifact opened|skipped` on record; a report is kept (library file + the task's
+  copy) and the box reopens THAT deliverable through the one reopen door. — since 2026-11-08 · nodes 2.1635, 4.395,
+  4.396 · `nucleo/chat_refs.py`, `nucleo/docsheet.py`, `nucleo/turn/task_recall.py`.
 ## 4b · A task
 
 A request Flash identifies as work is a TASK: one row, one Brain Worker resumable by id, one writer of its ending.

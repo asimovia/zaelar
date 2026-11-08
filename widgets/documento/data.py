@@ -142,6 +142,53 @@ def finish_task(task_id: str, phases: list) -> None:
     store.save(WIDGET_ID, _stamp(db))
 
 
+def keep_task(task_id: str) -> dict:
+    """The bound errand is ending: KEEP what it wrote, finished or not (V2-862). Call before `finish_task`.
+
+    Two copies, for two readers. The text goes to his library's documents shelf (`library.index.save_text`, the
+    same door `save_to_library` uses, owning its file so a second keep updates it), because that is where his files
+    live and Archivos shows them. The sheet's own fields are returned for the task to keep as an artifact, because
+    this card holds ONE document and the next report overwrites it: the reference on his chat wall reopens the
+    report it names, not whichever one came last. A PDF was never ours to copy; a sheet with nothing written
+    keeps nothing. Never raises — `{}` when there is nothing to keep."""
+    try:
+        db = _load()
+        if str(db.get("task") or "") != str(task_id or "") or not str(task_id or ""):
+            return {}
+        kind = _kind(db.get("kind"))
+        body = str(db.get("body") or "")
+        src = str(db.get("src") or "")
+        if not (body.strip() or src):
+            return {}
+        out = {"kind": kind, "title": str(db.get("title") or db.get("task_title") or ""),
+               "subtitle": str(db.get("subtitle") or ""), "source": str(db.get("source") or ""),
+               "body": body, "src": src, "file": ""}
+        if kind != "pdf" and body.strip():
+            from library import index as _lib
+            name = _text(out["title"], 160) or "documento"
+            if kind == "html" and not os.path.splitext(name)[1]:
+                name += ".html"
+            res = _lib.save_text(name, body, kind="documents", replace=str(db.get("saved_rel") or ""))
+            if res.get("ok"):
+                db["saved_rel"] = out["file"] = str(res.get("rel") or "")
+                store.save(WIDGET_ID, db)
+        return out
+    except Exception:  # noqa: BLE001 — keeping a copy must never change how the errand ends
+        return {}
+
+
+def restore(kept: dict) -> bool:
+    """Put a document a task KEPT back on the sheet (the reopen door, V2-862). Unbound: the errand is over."""
+    if not isinstance(kept, dict) or not (str(kept.get("body") or "").strip() or kept.get("src")):
+        return False
+    db = _seed()
+    db.update({k: kept.get(k) or "" for k in ("kind", "title", "subtitle", "source", "body", "src")})
+    db["kind"] = _kind(db.get("kind"))
+    db["saved_rel"] = str(kept.get("file") or "")
+    store.save(WIDGET_ID, _stamp(db))
+    return True
+
+
 def prompt_digest() -> str:
     """What is ON the sheet, so the brain can ANSWER about it instead of re-fetching it (`widgets/refs.py`).
     Only asked for while the card is OPEN. A PDF is never read here, so the digest gives its title and says the

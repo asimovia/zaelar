@@ -115,9 +115,36 @@ def _document_of(task: dict) -> dict | None:
         return None
     title = str(task.get("title") or task.get("goal") or "").strip()
     bound = str(db.get("task") or "") == str(task.get("id") or "") or (title and str(db.get("task_title") or "") == title)
-    if not bound or not str(db.get("body") or db.get("src") or "").strip():
+    if bound and str(db.get("body") or db.get("src") or "").strip():
+        return {"ok": True, "instance": "documento", "rebuilt": False, "title": str(db.get("title") or title)}
+    return _kept_document(task) or _kept_card(task)
+
+
+def _kept_document(task: dict) -> dict | None:
+    """V2-862 — the sheet now holds another report (or none): rebuild it from the copy the task KEPT at its end
+    (`nucleo/docsheet._keep`), so a reference to this report opens THIS report."""
+    try:
+        from nucleo.circuit import ledger as _tasks
+        from widgets.documento import data as _doc
+        kept = _tasks.artifact(str(task.get("id") or ""), "document")
+        if not kept or not _doc.restore(kept):
+            return None
+    except Exception:  # noqa: BLE001
         return None
-    return {"ok": True, "instance": "documento", "rebuilt": False, "title": str(db.get("title") or title)}
+    return {"ok": True, "instance": "documento", "rebuilt": True,
+            "title": str(kept.get("title") or task.get("title") or "")}
+
+
+def _kept_card(task: dict) -> dict | None:
+    """V2-862 — a surface that keeps no copy of its own (a card the errand built or filled, the picture viewer):
+    the card it delivered into, recorded at its end (`nucleo/chat_refs._keep_card`)."""
+    try:
+        from nucleo.circuit import ledger as _tasks
+        card = _tasks.artifact(str(task.get("id") or ""), "card") or {}
+    except Exception:  # noqa: BLE001
+        return None
+    inst = str(card.get("instance") or "") if isinstance(card, dict) else ""
+    return {"ok": True, "instance": inst, "rebuilt": False, "title": str(task.get("title") or "")} if inst else None
 
 
 def recall_and_reopen(query: str, heard: str = "") -> dict:

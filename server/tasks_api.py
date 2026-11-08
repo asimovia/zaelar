@@ -85,8 +85,10 @@ async def tasks_reopen(payload: dict | None = None):
     if not tid:
         return JSONResponse({"ok": False, "error": "sin tarea"}, status_code=400)
     try:
-        from widgets.results import rehydrate as _rehy
-        out = await asyncio.to_thread(_rehy.sheet_from_task, tid)
+        # V2-862 — the ONE reopen door the voice already used (`reopen_task`): the results sheet first, then a
+        # report's document and a card the task kept. The chat wall's reference box calls here too.
+        from nucleo.turn import task_recall as _recall
+        out = await asyncio.to_thread(_recall.reopen, {"id": tid})
     except Exception as e:  # noqa: BLE001
         logger.warning(f"tasks_reopen({tid}) failed: {e}")
         return JSONResponse({"ok": False, "error": "no se pudo reabrir"}, status_code=500)

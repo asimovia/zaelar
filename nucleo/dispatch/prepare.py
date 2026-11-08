@@ -55,6 +55,8 @@ def _name_errand(rec) -> None:
                 _d._sheet_retitle(rec)
             elif _d.surfaces.opens_doc(getattr(rec, "surface", "")):
                 _d._docsheet.doc_retitle(rec)
+            from nucleo import chat_refs as _chat_refs
+            _chat_refs.retitled(rec)   # V2-862 — its chat box wears the same name
             try:
                 from nucleo.circuit import ledger as _tasks
                 _tasks.retitled(rec)   # V2-728 — the durable row carries the name the operator will search by
