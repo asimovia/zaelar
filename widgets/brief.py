@@ -130,6 +130,7 @@ def _purpose(text: str, cap: int = _PURPOSE_CAP) -> str:
             return head[:j + 1].rstrip()
     j = head.rfind(" ")
     return (head[:j] if j >= cap // 2 else head).rstrip() + "…"
+purpose = _purpose   # the public name another domain reads a card's mission by (V2-860 T3.3)
 
 
 def for_prompt(open_ids=None, recent_ids=None, query: str = "", stats: dict | None = None) -> str:

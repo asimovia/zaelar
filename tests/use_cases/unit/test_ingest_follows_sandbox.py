@@ -90,5 +90,9 @@ def test_and_the_batch_actually_PASSES_the_flag_down(monkeypatch):
     monkeypatch.setattr(R.statusmod, "record", lambda *a, **k: None)
     monkeypatch.setattr(R.reportmod, "build", lambda *a, **k: R.config.RUNS_DIR / "x.md")
     monkeypatch.setattr(R.initiativemod, "file_failure", lambda *a, **k: None)
+    # The engine is a double here: since V2-860 T0.1 a REFUSED stage reset stops the walk (no engine, no round).
+    monkeypatch.setattr(R.probe_client, "hard_reset", lambda: {})
+    monkeypatch.setattr(R.probe_client, "settle_after_reset",
+                        lambda **k: {"clean": True, "waited_s": 0, "tasks": [], "items": []})
     R._run_batch([_scn()], sandboxed=True, args_no_file=True)
     assert seen and seen[0].get("sandboxed") is True

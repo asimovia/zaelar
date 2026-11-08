@@ -81,6 +81,34 @@ def _playlist_dict(p: dict) -> dict:
             "count": int(((p.get("tracks") or {}).get("total")) or 0), "source": "spotify"}
 
 
+def _show_dict(sh: dict) -> dict:
+    """A podcast: the same keys as a playlist (`owner` = its publisher), so the card shelves it like one."""
+    return {"id": sh.get("id", ""), "name": sh.get("name", ""), "owner": sh.get("publisher", "") or "",
+            "art": _image(sh), "uri": sh.get("uri", ""), "count": int(sh.get("total_episodes") or 0),
+            "source": "spotify"}
+
+
+def _episode_from(ep: dict, show_name: str, art: str = "") -> "Track | None":
+    """An episode as a track: its show stands where an artist would, so a player that plays by words finds it."""
+    if not ep or not ep.get("name"):
+        return None
+    return Track(id=ep.get("id", ""), uri=ep.get("uri", ""), title=ep.get("name", ""), artist=show_name,
+                 album=show_name, art=_image(ep) or art, duration_ms=int(ep.get("duration_ms") or 0))
+
+
+def _item_dict(t: Track, episode: bool) -> dict:
+    """One row of an opened context; an EPISODE says so (`kind`), so a player never plays it as a song by its words."""
+    from connectors.music import catalog as _cat
+    d = _cat.track_dict(t, "spotify")
+    return {**d, "kind": "episode"} if episode else d
+
+
+def _uri_parts(uri: str) -> "tuple[str, str]":
+    """`spotify:<kind>:<id>` → (kind, id); ("", "") for anything else."""
+    parts = str(uri or "").split(":")
+    return (parts[1], parts[2]) if len(parts) == 3 and parts[0] == "spotify" and parts[2] else ("", "")
+
+
 class SpotifyProvider(MusicProvider):
     name = "spotify"
     plays_lists_as_context = True          # its next/previous move only inside the context it was handed
@@ -316,7 +344,7 @@ class SpotifyProvider(MusicProvider):
         if not (query or "").strip():
             return None
         try:
-            res = client.search(query, types="track,artist,album,playlist", limit=limit)
+            res = client.search(query, types="track,artist,album,playlist,show", limit=limit)
         except SpotifyError as e:
             logger.warning(f"Spotify catalogue search failed: {e}")
             return None
@@ -327,6 +355,7 @@ class SpotifyProvider(MusicProvider):
             "artists": [_artist_dict(a) for a in ((res.get("artists") or {}).get("items") or []) if a],
             "albums": [_album_dict(a) for a in ((res.get("albums") or {}).get("items") or []) if a],
             "playlists": [_playlist_dict(p) for p in ((res.get("playlists") or {}).get("items") or []) if p],
+            "shows": [_show_dict(x) for x in ((res.get("shows") or {}).get("items") or []) if x],
         }
 
     def artist_page(self, artist_id: str) -> "dict | None":
@@ -357,6 +386,37 @@ class SpotifyProvider(MusicProvider):
             if t:
                 tracks.append(_cat.track_dict(t, "spotify"))
         return {"album": meta, "tracks": tracks}
+
+    def context_page(self, uri: str) -> "dict | None":
+        """The tracks of THE album, playlist or podcast this uri names — never a name search (V2-860 F1)."""
+        from connectors.music import catalog as _cat
+        kind, cid = _uri_parts(uri)
+        try:
+            if kind == "album":
+                page = self.album_page(cid)
+                return {"context": {**page["album"], "kind": "album"}, "tracks": page["tracks"]} if page else None
+            if kind == "playlist":
+                meta = _playlist_dict({**client.playlist(cid), "id": cid, "uri": uri})
+                items = client.playlist_items(cid)
+                tracks = []
+                for it in items:
+                    obj = (it or {}).get("track") or (it or {}).get("item") or {}
+                    episode = obj.get("type") == "episode"
+                    t = (_episode_from(obj, (obj.get("show") or {}).get("name", ""), _image(obj.get("show") or {}))
+                         if episode else _track_from(obj))
+                    if t:
+                        tracks.append(_item_dict(t, episode))
+                return {"context": {**meta, "kind": "playlist"}, "tracks": tracks}
+            if kind == "show":
+                sh = client.show(cid)
+                meta = _show_dict({**sh, "id": cid, "uri": uri})
+                eps = ((sh.get("episodes") or {}).get("items") or [])
+                tracks = [_item_dict(t, True) for t in (_episode_from(e, meta["name"], meta["art"]) for e in eps) if t]
+                return {"context": {**meta, "kind": "show"}, "tracks": tracks}
+        except SpotifyError as e:
+            logger.warning(f"Spotify context {kind} failed: {e}")
+            return None
+        return None
 
     # ── status ─────────────────────────────────────────────────────────────────────────────────────────
     def now_playing(self) -> "NowPlaying | None":

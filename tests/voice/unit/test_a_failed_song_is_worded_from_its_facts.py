@@ -23,7 +23,8 @@ def _res(reason: str, **extra):
 
 
 @pytest.mark.parametrize("code", ["en", "es"])
-@pytest.mark.parametrize("reason,option,absent", [("unreachable", "retry", "more_words"), ("no_track", "more_words", "retry")])
+@pytest.mark.parametrize("reason,option,absent", [("unreachable", "retry", "more_words"), ("no_track", "more_words", "retry"),
+                                                   ("needs_app", "open_app", "more_words")])   # V2-860 T4.1
 def test_the_facts_say_why_and_offer_only_what_fits(monkeypatch, code, reason, option, absent):
     from i18n import langs
     monkeypatch.setattr(langs, "current_code", lambda: code)
