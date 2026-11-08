@@ -107,3 +107,25 @@ def test_nothing_sounding_is_nobodys_playback(account):
     placement.record("spotify", device_id="mac", device="MacBook Pro", screen=COMPUTER, query="x")
     r = music.control("pause")
     assert r.reason != "elsewhere" and acc.calls == ["pause"]
+
+
+@pytest.mark.parametrize("recorded, want", [("mac", ["mac"]), ("", [])], ids=["ours-listed", "no-record"])
+def test_with_nothing_active_a_retry_wakes_only_our_device(account, monkeypatch, recorded, want):
+    """No device active: Spotify answers `no_device` and the provider retries on a device of its choosing. That choice
+    used to be the FIRST device listed — a speaker in another room, as likely as not."""
+    from connectors.spotify.client import SpotifyError
+    tried: list = []
+
+    def resume(device_id=""):
+        tried.append(device_id)
+        if not device_id:
+            raise SpotifyError(404, "no_device", "no active device")
+        return {}
+
+    devices = [_dev("spk", "Living room", "Speaker"), _dev("mac", "MacBook Pro", "Computer")]
+    account(_Account(devices, sounding_on=""))
+    monkeypatch.setattr(client, "resume", resume)
+    if recorded:
+        placement.record("spotify", device_id=recorded, device="MacBook Pro", screen=COMPUTER, query="x")
+    music.control("resume")
+    assert [d for d in tried if d] == want, tried

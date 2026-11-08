@@ -139,7 +139,9 @@ class SpotifyProvider(MusicProvider):
 
     # ── device resolution (NO_ACTIVE_DEVICE) ─────────────────────────────────────────────────────────────
     def _pick_device(self) -> str:
-        """Device id to use: active one, otherwise first available; '' if none exists."""
+        """Device id to retry on: the active one, otherwise the device the last start placed (ours); '' when
+        neither is listed. Never the first device listed: on an account shared by a household that wakes somebody
+        else's speaker (operator, 2026-11-08)."""
         try:
             devs = client.devices()
         except SpotifyError as _e:
@@ -150,7 +152,14 @@ class SpotifyProvider(MusicProvider):
         for d in devs:
             if d.get("is_active"):
                 return d.get("id", "")
-        return devs[0].get("id", "")
+        try:
+            from connectors.music import placement
+            rec = placement.recorded()
+        except Exception as _e:  # noqa: BLE001
+            logger.debug("_pick_device: no placement record: %s", _e)
+            rec = {}
+        ours = rec.get("device_id") if rec.get("provider") == self.name else ""
+        return next((d.get("id", "") for d in devs if ours and d.get("id") == ours), "")
 
     def device_near(self, screen_kind: str) -> "dict | None":
         """A device of his account that sits with a screen of this kind (V2-812): the active one first. None when
