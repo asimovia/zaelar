@@ -247,6 +247,7 @@ ACTIONS = {
     "set_volume": _a_playback,
     "queue": _a_playback,
     "ended": _a_playback,
+    "take_over": _a_playback,          # he chose to take the account's playback from another device
     # V2-795 — what a player does that the card did not
     "rename_playlist": _a_rename_playlist,
     "delete_playlist": _a_delete_playlist,

@@ -7,6 +7,7 @@ sentence. Network I/O -> caller runs it with `asyncio.to_thread` (respects V2-01
 """
 from __future__ import annotations
 
+import contextvars
 import time
 
 import logging
@@ -20,6 +21,24 @@ logger = logging.getLogger("zaelar.music")
 # Control actions WITHOUT data (all except 'play', which may carry query/uri).
 _CONTROL = {"pause", "resume", "next", "previous", "stop"}
 _VOLUME = {"volume_up", "volume_down", "set_volume"}
+
+#: Set while the operator has CHOSEN to take the account's playback from another device (`taking_over`): the two
+#: doors that otherwise leave someone else's playback alone — a start (`_start`) and a control (`_control`) — let it
+#: through. Only `take_over` and a forced start set it; nothing reads his words for it.
+_TAKING_OVER: "contextvars.ContextVar[bool]" = contextvars.ContextVar("music_taking_over", default=False)
+
+
+class taking_over:
+    """`with music.taking_over(): …` — the operator chose to take the playback here, so what sounds on another device
+    of the account may be interrupted."""
+
+    def __enter__(self):
+        self._tok = _TAKING_OVER.set(True)
+        return self
+
+    def __exit__(self, *_a):
+        _TAKING_OVER.reset(self._tok)
+        return False
 
 def _msg(key: str) -> str:
     """A seam line (no provider / a provider failure) in the active language — the words live in the `voice`
@@ -89,9 +108,21 @@ def _identify(query: str) -> tuple[str, dict]:
     return query, {}
 
 
-def _start(prov: "MusicProvider", dev: "dict | None", screen: str, query: str, run) -> MusicResult:
+def _start(prov: "MusicProvider", dev: "dict | None", screen: str, query: str, run,
+           replay: "dict | None" = None) -> MusicResult:
     """Run one start on `prov`, read it back when the sound is elsewhere, fall back to the asking screen's page
-    when the device there is not sounding, and record where it went. `run(prov, device_id)` is the start itself."""
+    when the device there is not sounding, and record where it went. `run(prov, device_id)` is the start itself.
+
+    A start on an account that is SOUNDING on somebody else's device would cut it there (one account, one stream):
+    it is held and said instead, unless he chose to take it (`taking_over`). `replay` is what to start once he does
+    (`take_over`)."""
+    if getattr(prov, "plays_elsewhere", False) and not _TAKING_OVER.get():
+        held = _held_elsewhere(prov, dev)
+        if held:
+            placement.hold(replay or {})
+            return MusicResult(ok=False, provider=prov.name, action="play", reason="elsewhere",
+                               message=_msg("held_elsewhere").format(device=held, provider=prov.name.capitalize()),
+                               extra={"device": held, "can_take_over": True})
     dev_id = (dev or {}).get("id", "")
     res = run(prov, dev_id)
     if getattr(prov, "plays_elsewhere", False):
@@ -172,10 +203,12 @@ def _control(action: str, query: str, uri: str, percent: int, prefer: str, secon
              relative: bool, kind: str = "") -> MusicResult:
     if action == "play" and (query or uri):
         return _play(query, uri, prefer, kind)
+    if action == "take_over":
+        return _take_over()
     prov = _for_control(prefer)
     if prov is None:
         return MusicResult(ok=False, action=action, reason="no_provider", message=_msg("no_provider"))
-    if action in _TOUCHES_PLAYBACK and getattr(prov, "plays_elsewhere", False):
+    if action in _TOUCHES_PLAYBACK and getattr(prov, "plays_elsewhere", False) and not _TAKING_OVER.get():
         foreign = _foreign_device(prov)
         if foreign:
             return MusicResult(ok=False, provider=prov.name, action=action, reason="elsewhere",
@@ -222,17 +255,18 @@ def _control(action: str, query: str, uri: str, percent: int, prefer: str, secon
 _TOUCHES_PLAYBACK = _CONTROL | _VOLUME | {"play", "queue", "seek", "reanuda", "sigue", "prev", "back"}
 
 
-def _foreign_device(prov: "MusicProvider") -> str:
+def _foreign_device(prov: "MusicProvider", np: "NowPlaying | None" = None) -> str:
     """The name of the device the account is sounding on when it is NOT ours, else "" (operator, 2026-11-08: «only
     control Spotify when it is active on this device and not captured elsewhere, or I will disturb other people who
     use the same account»). Ours = the device the last start placed (`placement.recorded`) or the provider's device
     that sits with the asking screen (`device_near`). Nothing active, or a state that cannot be read, is nobody's
     playback: the control goes ahead as before."""
-    try:
-        np = prov.now_playing()
-    except Exception as _e:  # noqa: BLE001 — an unreadable state never blocks a control
-        logger.debug("_foreign_device: state unreadable: %s", _e)
-        return ""
+    if np is None:
+        try:
+            np = prov.now_playing()
+        except Exception as _e:  # noqa: BLE001 — an unreadable state never blocks a control
+            logger.debug("_foreign_device: state unreadable: %s", _e)
+            return ""
     dev_id = getattr(np, "device_id", "") if np is not None else ""
     if not dev_id:
         return ""
@@ -244,6 +278,73 @@ def _foreign_device(prov: "MusicProvider") -> str:
     if near and near.get("id") == dev_id:
         return ""
     return getattr(np, "device", "") or prov.name
+
+
+def _held_elsewhere(prov: "MusicProvider", dev: "dict | None") -> str:
+    """The device a start would cut: the account is PLAYING on a device that is neither the one this start targets
+    nor ours. "" when nothing sounds, or it sounds where we are."""
+    try:
+        np = prov.now_playing()
+    except Exception as _e:  # noqa: BLE001 — unreadable: nothing known to protect
+        logger.debug("_held_elsewhere: state unreadable: %s", _e)
+        return ""
+    if np is None or not np.playing or not np.device_id:
+        return ""
+    if dev and dev.get("id") == np.device_id:
+        return ""
+    return _foreign_device(prov, np)
+
+
+def elsewhere() -> dict:
+    """What the music card shows when the account is PLAYING on somebody else's device: {provider, device}; {} when
+    not. Read-only — one state read per connected provider that plays on its own devices."""
+    for prov in registry.available():
+        if not getattr(prov, "plays_elsewhere", False):
+            continue
+        try:
+            np = prov.now_playing()
+        except Exception as _e:  # noqa: BLE001
+            logger.debug("elsewhere: state unreadable: %s", _e)
+            continue
+        if np is not None and np.playing and np.device_id:
+            dev = _foreign_device(prov, np)
+            if dev:
+                return {"provider": prov.name, "device": dev}
+    return {}
+
+
+def _take_over() -> MusicResult:
+    """He chose to take the account's playback here. What he last asked for and was held (`placement.held`) starts
+    now on our device; with nothing held, what sounds elsewhere moves here (the provider's transfer). Never without
+    his choice: this is the one door that sets `taking_over`."""
+    held = placement.held()
+    placement.clear_held()
+    with taking_over():
+        fn = held.get("fn")
+        if fn == "play":
+            return control("play", query=held.get("query", ""), uri=held.get("uri", ""), kind=held.get("kind", ""))
+        if fn == "list":
+            return play_list([tuple(x) for x in held.get("items") or []])
+        if fn == "context":
+            return play_whole(held.get("uri", ""), held.get("label", ""))
+        prov = next((p for p in registry.available() if getattr(p, "plays_elsewhere", False)), None)
+        if prov is None:
+            return MusicResult(ok=False, action="take_over", reason="no_provider", message=_msg("no_provider"))
+        screen = placement.asking_screen()
+        kind = placement.screen_kind(screen)
+        dev = prov.device_near(kind) if kind else None
+        if dev is None:
+            rec = placement.recorded()
+            if rec.get("provider") == prov.name and rec.get("device_id"):
+                dev = {"id": rec["device_id"], "name": rec.get("device", "")}
+        if dev is None:
+            return MusicResult(ok=False, provider=prov.name, action="take_over", reason="no_device",
+                               message=_msg("no_device_here"))
+        res = prov.take_over(dev["id"], dev.get("name", ""))
+        if res.ok:
+            placement.record(prov.name, device_id=dev["id"], device=dev.get("name", ""), screen=screen,
+                             query=placement.recorded().get("query", ""))
+        return res
 
 
 def _confirmed(prov: "MusicProvider", res: MusicResult) -> MusicResult:
@@ -274,7 +375,7 @@ def _play(query: str, uri: str, prefer: str = "", kind: str = "") -> MusicResult
 
         def run(p, dev_id):
             return p.play(query=look_up, uri=uri, device=dev_id) if dev_id else p.play(query=look_up, uri=uri)
-        res = _start(prov, dev, screen, query, run)
+        res = _start(prov, dev, screen, query, run, {"fn": "play", "query": query, "uri": uri, "kind": kind})
         res.extra = {**(res.extra or {}), **facts, "placed": "page" if getattr(prov, "plays_in_page", False) else "provider",
                      **({"looked_up": look_up} if look_up != query else {}),
                      **_found_extra(query, found, str(getattr(res.track, "uri", "") or ""))}
@@ -345,7 +446,7 @@ def play_whole(uri: str, name: str = "", kind: str = "", *, opened: "dict | None
     tapped podcast played a namesake album chapter by chapter). Never a name search. `opened`, when given, receives
     the page that was opened (the card keeps it as its view)."""
     res = play_context(uri, name)
-    if not res.ok:
+    if not res.ok and res.reason != "elsewhere":
         from . import catalog
         page = catalog.context(uri) or {}
         if opened is not None:
@@ -388,7 +489,7 @@ def play_list(items: "list[tuple[str, str]]") -> MusicResult:
                 if not getattr(p, "plays_lists_as_context", False):
                     return _play_one_then_queue(p, items)
                 return p.play_list(items, device=dev_id) if dev_id else p.play_list(items)
-            return _start(prov, dev, screen, items[0][0], run)
+            return _start(prov, dev, screen, items[0][0], run, {"fn": "list", "items": items})
         except Exception as e:  # noqa: BLE001 — a provider failure never breaks voice
             logger.warning(f"music.play_list failed: {e!r}")
             return MusicResult(ok=False, provider=prov.name, action="play", reason="error", message=_msg("done"))
@@ -462,7 +563,7 @@ def play_context(uri: str, label: str = "") -> MusicResult:
     try:
         def run(p, dev_id):
             return p.play_context(uri, label, device=dev_id) if dev_id else p.play_context(uri, label)
-        return _start(prov, dev, screen, label, run)
+        return _start(prov, dev, screen, label, run, {"fn": "context", "uri": uri, "label": label})
     except Exception as e:  # noqa: BLE001
         logger.warning(f"music.play_context failed: {e!r}")
         return MusicResult(ok=False, provider=prov.name, action="play", reason="error", message=_msg("done"))
