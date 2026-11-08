@@ -1,6 +1,11 @@
 #
 # endpointing.py — PURE decision logic for the turn layer (no pipecat, no I/O, fully unit-testable).
 #
+# ⚠ V2-863 (2026-11-08): with the DEFAULT ear, Deepgram Flux, none of the hold values below governs the end of turn —
+# Flux's own end-of-turn model closes it (`turn_detection="stt"` in `voice/engine/pipeline/agent.py`) and the only
+# silence added after its verdict is `ZAELAR_STT_FLUX_MIN_DELAY`. This module still rules nova-3 and the local ears
+# (`ZAELAR_STT_MODEL_DG=nova-3`, voxtral, whisper). Values untouched on purpose.
+#
 # Born from the 2026-07-05 car sessions: the old turn layer closed a turn at the browser VAD's first
 # ~1.1s pause (→ one thought chopped into 3 turns, a reply per fragment), and its 800ms barge-in timer could
 # NEVER be cancelled in time because the browser's stop signal takes 1100ms of silence to fire (800 < 1100 →

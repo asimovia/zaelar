@@ -158,12 +158,17 @@ def _ready_brief(choice, confidence=0.9):
                                                      "probs": {}}, "_latency_ms": 80}}
 
 
-def test_a_confident_verdict_in_the_BRIEF_reclasses_the_armed_turn():
+def test_a_confident_verdict_in_the_BRIEF_reclasses_the_armed_turn(monkeypatch):
+    """Since V2-863 the reclass happens at ARM time, not at fire time: `_consume_arm()` already hands back the
+    verdict's pool. The style rule is opened here («smart» would drop the cover on an order altogether, which
+    is a different test — node 3.51); what this one measures is the CLASS the brief imposes."""
+    monkeypatch.setattr("nucleo.style_policy.filler_allowed", lambda k: True)
     fa.arm(_Brain(), "is it done?", brief=_ready_brief("order"))
     assert fa._jev_brief is not None
     _, kind, _ = fa._consume_arm()
-    new_kind, info = fa._consume_jev_kind(kind)
-    assert (new_kind, info["used"]) == ("action", True)
+    assert kind == "action", "the regex read a question; the brief's sure «order» decides the pool at arm"
+    new_kind, info = fa._consume_jev_kind("neutral")
+    assert (new_kind, info["used"]) == ("action", True), "the same brief answers the fire-time reader too"
     assert fa._consume_jev_kind("neutral") == ("neutral", None), "one turn, one verdict"
 
 
@@ -175,10 +180,11 @@ def test_the_filler_opens_NO_socket_of_its_own(monkeypatch):
     fired: list = []
     monkeypatch.setattr("nucleo.jev.ask_async", lambda *a, **k: fired.append(a) or None)
     monkeypatch.setattr("nucleo.jev.choose_sync", lambda *a, **k: fired.append(a) or None)
+    monkeypatch.setattr("nucleo.style_policy.filler_allowed", lambda k: True)
     fa.arm(_Brain(), "is it done?", brief=_ready_brief("order"))
     assert fired == [], "the filler asked Jev on its own instead of reading the turn's brief"
     _, kind, _ = fa._consume_arm()
-    assert fa._consume_jev_kind(kind)[0] == "action", "…and it still got its verdict"
+    assert kind == "action", "…and it still got its verdict, read from the brief at arm"
 
 
 def test_an_unsure_verdict_in_the_brief_keeps_the_regex_class():

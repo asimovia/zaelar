@@ -178,12 +178,14 @@ def test_the_balance_panel_does_not_probe_a_wallet_this_instance_does_not_hold(m
 
 # ── voice (2026-10-23): the streaming sockets go through egress too ────────────────────────────────────────────
 
-@pytest.mark.parametrize("module,attr,cls,expect", [
-    ("voice.engine.speech.stt.deepgram", "_deepgram", "STT", "/p/deepgram/listen"),
-    ("voice.engine.speech.tts.elevenlabs", "_eleven", "TTS", "/p/elevenlabs"),
-    ("voice.engine.speech.tts.inworld", "_inworld", "TTS", "/p/inworld/"),
+@pytest.mark.parametrize("module,attr,cls,expect,settings", [
+    # V2-863: Flux (`STTv2`, Deepgram's /v2) is the default ear and has its own egress family; nova-3 keeps /v1.
+    ("voice.engine.speech.stt.deepgram", "_deepgram", "STTv2", "/p/deepgram_flux/listen", {}),
+    ("voice.engine.speech.stt.deepgram", "_deepgram", "STT", "/p/deepgram/listen", {"stt_model_deepgram": "nova-3"}),
+    ("voice.engine.speech.tts.elevenlabs", "_eleven", "TTS", "/p/elevenlabs", {}),
+    ("voice.engine.speech.tts.inworld", "_inworld", "TTS", "/p/inworld/", {}),
 ])
-def test_each_voice_provider_opens_through_egress(mediated, monkeypatch, module, attr, cls, expect):
+def test_each_voice_provider_opens_through_egress(mediated, monkeypatch, module, attr, cls, expect, settings):
     import importlib
     mod = importlib.import_module(module)
     llm_egress.stand_in_for_provider_keys()
@@ -197,9 +199,12 @@ def test_each_voice_provider_opens_through_egress(mediated, monkeypatch, module,
     import dataclasses
     fields = {f: TOKEN for f in ("deepgram_api_key", "elevenlabs_api_key", "inworld_api_key")
               if hasattr(mod.SETTINGS, f)}
-    monkeypatch.setattr(mod, "SETTINGS", dataclasses.replace(mod.SETTINGS, **fields))   # SETTINGS is frozen
+    monkeypatch.setattr(mod, "SETTINGS", dataclasses.replace(mod.SETTINGS, **fields, **settings))   # frozen
     mod.build()
-    assert seen["base_url"].startswith(GW + expect), seen.get("base_url")
+    base = seen["base_url"]
+    if base.startswith("wss://"):                 # the Flux socket is handed to the plugin as wss://, same host
+        base = "https://" + base[len("wss://"):]
+    assert base.startswith(GW + expect), seen.get("base_url")
     assert seen["api_key"] == TOKEN
     if "ws_url" in seen:
         assert seen["ws_url"].startswith("wss://egress.example/"), seen["ws_url"]

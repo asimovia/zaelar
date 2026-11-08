@@ -32,6 +32,11 @@ from ..core import langs
 
 
 class ZaelarAgent(Agent):
+    def stt_node(self, audio, model_settings):
+        # V2-863 — the brief fires on the ear's EAGER end of turn (a Flux preflight), before the turn is confirmed.
+        from . import eager_brief as _eb
+        return _eb.stt_node_firing_the_brief(self, Agent.default.stt_node, audio, model_settings)
+
     def llm_node(self, chat_ctx, tools, model_settings):
         from voice.engine.speech import filler_audio as _fa
         return _fa.llm_node_with_filler(self, Agent.default.llm_node, chat_ctx, tools, model_settings)

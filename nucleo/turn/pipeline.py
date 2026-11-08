@@ -190,7 +190,7 @@ async def run(self, motor) -> None:
     try:
         _filler_audio = motor._filler_audio_mod()
         if _filler_audio.enabled() and not first_turn:
-            _filler_audio.arm(brain, text, messages=messages, brief=_brief)  # V2-640 cover, V2-726 A2 verdict
+            await _filler_audio.decide_and_arm(brain, text, messages=messages, brief=_brief)  # V2-640/726/863
     except Exception:
         pass
     self._phase = "generando la respuesta"
