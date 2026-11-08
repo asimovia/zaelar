@@ -184,7 +184,9 @@ def open_typed_door(*, _emit, _on_session_loop, session):
                 _screens.ORIGIN.reset(_tok)
         await _on_session_loop(_do)
 
-    _screens.register_typed(_typed_from_screen)
+    # NOT registered here: a line handed to a session that has not STARTED reaches `generate_reply` too early. The
+    # entrypoint registers it once `session.start` returned (`agent.py`); until then `/api/chat` answers
+    # `no_session` and the page keeps the line in its outbox and tries again.
     return _typed_from_screen
 
 def _route_typed(txt: str, *, _emit, session) -> None:

@@ -403,6 +403,21 @@ def has_session() -> bool:
     return _typed["fn"] is not None
 
 
+#: A typed line that is WAITING for the session: one arrived over HTTP in the last moments, or a page announced it
+#: holds undelivered lines when it asked for its room (`note_waiting`). The session's first turn is then that line,
+#: never a greeting (operator, 2026-11-08: he typed a request during a stall, reloaded, and was greeted).
+_WAITING = {"at": 0.0}
+WAITING_S = 60.0
+
+
+def note_waiting() -> None:
+    _WAITING["at"] = time.time()
+
+
+def typed_waiting(window_s: float = WAITING_S) -> bool:
+    return time.time() - _WAITING["at"] < window_s
+
+
 async def deliver_typed(text: str, dev) -> bool:
     """Hand a typed line to the live session. False when there is none — the caller then brings one up."""
     fn = _typed["fn"]
@@ -410,6 +425,7 @@ async def deliver_typed(text: str, dev) -> bool:
     if fn is None or not t:
         return False   # not a failure: nobody holds a session, and the caller brings one up
     touched(dev)
+    note_waiting()
     await fn(t, clean(dev))
     return True
 
@@ -423,3 +439,4 @@ def _reset_for_tests() -> None:
         _holder["dev"], _holder["ts"] = "", 0.0
         _last["dev"] = ""
     _typed["fn"] = None
+    _WAITING["at"] = 0.0

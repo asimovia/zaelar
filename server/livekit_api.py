@@ -191,7 +191,7 @@ def _token_from_egress(identity: str, name: str) -> JSONResponse:
 
 
 @router.get("/api/token")
-def token(identity: str = "operator", name: str = "You") -> JSONResponse:
+def token(identity: str = "operator", name: str = "You", pending: int = 0) -> JSONResponse:
     """Mint a join token for a FRESH per-session room.
 
     A unique room per connection guarantees automatic agent dispatch every time:
@@ -213,6 +213,10 @@ def token(identity: str = "operator", name: str = "You") -> JSONResponse:
     from nucleo import runstate
     if runstate.stopped():
         return JSONResponse({"error": "engine_stopped"}, status_code=409)
+    if pending:
+        # The page holds typed lines it could not deliver: the session it is opening answers them, no greeting.
+        from voice import screens as _screens
+        _screens.note_waiting()
 
     # MEDIATED: the room token is signed by egress, which holds the LiveKit secret and decides the room and the agent
     # (this instance's own). A process that can sign a token can sign one for ANY room of the project — so in a

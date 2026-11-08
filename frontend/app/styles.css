@@ -441,7 +441,8 @@ body.chatdock-r .statuspanel,body.chatdock-r .cronpanel{right:calc(18px + var(--
    other difference: same height, same radius, same hover, separated from the icons by the toolbar rule —
    a separator EARNS its place when the purpose of the row changes, and it changes there. */
 /* The wrapper is what is fixed: the Energy gauge on the background, then the box of controls (2026-10-24). */
-.trw{position:fixed;top:calc(16px + var(--banner-h));right:18px;z-index:20;
+/* z 9001: above the stopped-agent veil (9000) — settings, status and debug stay reachable while the agent is off. */
+.trw{position:fixed;top:calc(16px + var(--banner-h));right:18px;z-index:9001;
     display:flex;align-items:center;gap:14px;transition:top .2s}
 .tr{position:relative;
     display:flex;align-items:center;gap:2px;padding:var(--sp-1);
