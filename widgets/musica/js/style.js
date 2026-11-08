@@ -26,6 +26,20 @@ export const CSS = `
            width:100%;height:100%;min-height:0;box-sizing:border-box;background:transparent;overflow:hidden;
            color:var(--hb-ink,#0d1622);display:flex;flex-direction:column;container-type:inline-size}
   .hb-mus2 svg{display:block}
+  /* Sounding elsewhere: a strip under the bar, amber so it reads as «not yours» without shouting. */
+  .hb-mus2-away{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:6px 12px 0;padding:8px 12px;
+                border-radius:var(--mus-r);background:rgba(245,166,35,.14);border:1px solid rgba(245,166,35,.45);
+                font-size:13px;line-height:1.35}
+  .hb-mus2-awayt{font-weight:600;flex:1 1 auto}
+  .hb-mus2-awayq{flex:1 1 100%;opacity:.85}
+  .hb-mus2-awayb{display:flex;gap:8px;margin-left:auto}
+  .hb-mus2-awaybtn{border:1px solid rgba(245,166,35,.6);background:transparent;color:inherit;border-radius:999px;
+                   padding:4px 12px;font-size:12.5px;font-weight:600;cursor:pointer}
+  .hb-mus2-awaybtn.go{background:#f5a623;border-color:#f5a623;color:#1a1300}
+  .hb-mus2-barc.locked{justify-content:center}
+  .hb-mus2-barlock{font-size:12.5px;font-weight:600;color:#f5a623;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .hb-mus2-barsrc{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;opacity:.6;white-space:nowrap;
+                  overflow:hidden;text-overflow:ellipsis}
   .hb-mus2 button{font-family:inherit}
 
   /* ── THE ONE BAR: where you are on the left, the search and the source chip in ONE right cluster ── */

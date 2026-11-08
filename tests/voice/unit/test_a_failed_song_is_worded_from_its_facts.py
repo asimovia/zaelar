@@ -75,3 +75,20 @@ def test_what_was_found_is_named_with_its_kind_and_where(monkeypatch, code, kind
                           extra={"named_name": "Sueñacuentos", "named_uri": "spotify:show:x1", **extra})
     sys2 = music_outcome.system("LOCK", "pon Sueñacuentos", "", res)
     assert f"«Sueñacuentos» ({kind_word}, Spotify)" in sys2, sys2
+
+
+@pytest.mark.parametrize("action", ["pause", "next", "resume", "set_volume"])
+def test_a_failed_control_is_said_with_the_connectors_line_never_judged(monkeypatch, action):
+    """Live 2026-11-08: a refused skip was answered «Done — moving to the next one» and the pass said SKIP over it.
+    A control that did not happen is a fact; its sentence is the connector's, and no model may silence it."""
+    from nucleo.flash import follow_up_pass
+
+    async def _stream(client, sys2, user, spec, mt, what):
+        yield "SKIP"
+    monkeypatch.setattr(follow_up_pass, "measured", _stream)
+    sent: list = []
+    res = SimpleNamespace(ok=False, reason="elsewhere", provider="spotify", action=action, extra={"device": "Camaretas"},
+                          message="«Camaretas» está usando Spotify ahora mismo.")
+    asyncio.run(music_outcome.say(lang_lock="", asked="x", said="Done.", res=res, spec=None,
+                                  emit=lambda *a, **k: None, send=sent.append, speech=SimpleNamespace(sanitize=lambda s, **k: s)))
+    assert sent == [" «Camaretas» está usando Spotify ahora mismo."], sent

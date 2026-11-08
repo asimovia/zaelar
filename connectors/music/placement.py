@@ -68,8 +68,10 @@ def record(provider: str, *, device_id: str = "", device: str = "", screen: str 
         from widgets import store
         with store.mutating(_WID):
             db = store.load(_WID, {}) or {}
+            # `live`: this is OUR session until he lets it go (`release`) — what the card keeps showing, locked,
+            # when somebody else takes the account's playback on another device (operator, 2026-11-08).
             db[_KEY] = {"provider": provider, "device_id": device_id, "device": device, "screen": screen,
-                        "query": query, "at": int(time.time())}
+                        "query": query, "at": int(time.time()), "live": True}
             store.save(_WID, db)
     except Exception as e:  # noqa: BLE001 — a lost record degrades to the old choice, never breaks playback
         logger.warning(f"music.placement: record not written: {e!r}")
@@ -109,3 +111,57 @@ def app_missing(provider: str) -> list:
         logger.debug("app_missing: degraded, carrying on without it: %s", _e)
         return []
     return sorted(k.split(":", 1)[1] for k in missing if k.startswith(provider + ":"))
+
+
+def release() -> None:
+    """He lets the account's playback go: our session is over, the card goes blank while it plays elsewhere, and a
+    held start is dropped."""
+    try:
+        from widgets import store
+        with store.mutating(_WID):
+            db = store.load(_WID, {}) or {}
+            if isinstance(db.get(_KEY), dict):
+                db[_KEY] = {**db[_KEY], "live": False}
+            db.pop(_HELD, None)
+            store.save(_WID, db)
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"music.placement: release not written: {e!r}")
+
+
+_HELD = "held_start"
+_HELD_TTL_S = 600
+
+
+def hold(replay: dict) -> None:
+    """Keep the start that was held because the account sounds on somebody else's device, so `take_over` can run it
+    if he chooses to. One at a time — a newer held start replaces the older one."""
+    try:
+        from widgets import store
+        with store.mutating(_WID):
+            db = store.load(_WID, {}) or {}
+            db[_HELD] = {**(replay or {}), "at": int(time.time())}
+            store.save(_WID, db)
+    except Exception as e:  # noqa: BLE001 — a lost hold only means «take over» moves what sounds instead
+        logger.warning(f"music.placement: held start not written: {e!r}")
+
+
+def held() -> dict:
+    """The held start, while it is recent; {} otherwise."""
+    try:
+        from widgets import store
+        h = (store.load(_WID, {}) or {}).get(_HELD) or {}
+    except Exception as _e:  # noqa: BLE001
+        logger.debug("held: degraded, carrying on without it: %s", _e)
+        return {}
+    return dict(h) if isinstance(h, dict) and time.time() - int(h.get("at") or 0) < _HELD_TTL_S else {}
+
+
+def clear_held() -> None:
+    try:
+        from widgets import store
+        with store.mutating(_WID):
+            db = store.load(_WID, {}) or {}
+            if db.pop(_HELD, None) is not None:
+                store.save(_WID, db)
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"music.placement: held start not cleared: {e!r}")

@@ -4,7 +4,7 @@ import { provChip, shell, sourceLabel } from "./browse.js";
 import { maybeEnrich, nowPlaying, playback, seekRow, transport } from "./controls.js";
 import { addToListBtn, coverOf, favList, openMenu, panel, pill, queueBody, rowState, trackRow } from "./playlist.js";
 import { ICON_HEART, ICON_HEART_FILL, ICON_MORE, ICON_NOTE, ICON_PAUSE, ICON_PLAY, ICON_PLUS, ICON_QUEUE, ICON_SEARCH,
-  ICON_VOL_OFF, ICON_VOL_UP, _norm, artNode, eqIcon, fire, h, iconBtn, playOne, sourceOf, svgEl, tt } from "./shared.js";
+  ICON_VOL_OFF, ICON_VOL_UP, _norm, artNode, eqIcon, fire, h, iconBtn, playOne, sourceOf, svgEl, takenBy, tt } from "./shared.js";
 
 // ── AHORA SUENA: the song IS the screen (V2-717) ─────────────────────────────────────────────────────────
 // Desktop: the ficha in the middle, the transport stays in the bar at the foot (his own ask), and a wide card shows
@@ -74,7 +74,7 @@ export function nowView(el, data, ctx, opts){
   s.done();
   el._hbTickers.push(() => {
     const pb = playback(el, data, ctx);
-    if(!pb || !pb.dur){ if(slot.firstChild) slot.textContent = ""; }
+    if(!pb || !pb.dur || takenBy(data)){ if(slot.firstChild) slot.textContent = ""; }   // no seeking what is not ours
     else if(!slot.firstChild) slot.appendChild(seekRow(pb));
     else slot.firstChild.update(pb);
     if(video) placeVideo(el, art);

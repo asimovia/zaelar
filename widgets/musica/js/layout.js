@@ -13,7 +13,7 @@
 // (both sides ≥700) gets `compact` — the touch rules still apply there through `(hover:none)`.
 import { nowPlaying } from "./controls.js";
 import { ICON_HOME, ICON_LIBRARY, ICON_NEXT, ICON_NOTE, ICON_PAUSE, ICON_PLAY, ICON_QUEUE, ICON_SEARCH,
-  ICON_SIDEBAR, artNode, fire, h, svgEl, tt } from "./shared.js";
+  ICON_SIDEBAR, artNode, fire, h, svgEl, tt, takenBy } from "./shared.js";
 
 export function inShell(el){ return !!(el && el.closest && el.closest(".zm-scroll")); }
 
@@ -156,9 +156,13 @@ export function miniPlayer(el, data, ctx, playback){
     b.onclick = (e) => { e.stopPropagation(); fire(ctx, action); };
     return b;
   };
-  mini.appendChild(mk(playing ? ICON_PAUSE : ICON_PLAY, playing ? "pause" : "resume",
-                      playing ? tt("pause", null, "Pausa") : tt("play", null, "Reproducir"), "main"));
-  mini.appendChild(mk(ICON_NEXT, "next", tt("next", null, "Siguiente")));
+  if(takenBy(data)){
+    mini.appendChild(h("span", "hb-mus2-barlock", tt("away_short", {device: takenBy(data)}, "En «{device}»")));
+  } else {
+    mini.appendChild(mk(playing ? ICON_PAUSE : ICON_PLAY, playing ? "pause" : "resume",
+                        playing ? tt("pause", null, "Pausa") : tt("play", null, "Reproducir"), "main"));
+    mini.appendChild(mk(ICON_NEXT, "next", tt("next", null, "Siguiente")));
+  }
   mini.onclick = () => fire(ctx, "open_view", {kind: "now"});
   el._hbTickers.push(() => {
     const pb = playback(el, data, ctx);

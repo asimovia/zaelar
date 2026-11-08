@@ -49,9 +49,14 @@ def test_no_active_device_recovers_with_device_id(prov, monkeypatch):
         return {}
 
     monkeypatch.setattr(spclient, "play", _play)
-    monkeypatch.setattr(spclient, "devices", lambda: [{"id": "dev9", "is_active": False}])
+    monkeypatch.setattr(spclient, "devices", lambda: [{"id": "spk1", "is_active": False},
+                                                      {"id": "dev9", "is_active": False}])
+    # Changed on purpose 2026-11-08 (operator): the retry goes to OUR device — the one the last start placed —
+    # never the first listed, which on a shared account is somebody else's speaker.
+    from connectors.music import placement
+    monkeypatch.setattr(placement, "recorded", lambda: {"provider": "spotify", "device_id": "dev9"})
     r = prov.play(query="frank sinatra")
-    assert r.ok and tried == ["", "dev9"]          # 1st without a device (404) → 2nd with the device found
+    assert r.ok and tried == ["", "dev9"]          # 1st without a device (404) → 2nd with our device
 
 
 def test_no_device_at_all_reports_reason(prov, monkeypatch):
@@ -113,3 +118,62 @@ def test_a_relative_seek_with_nothing_playing_refuses_instead_of_seeking_to_zero
     monkeypatch.setattr(spclient, "seek", lambda ms, device_id="": pytest.fail("nothing to move"))
     r = prov.seek(30, relative=True)
     assert r.ok is False and r.reason == "no_track"
+
+
+@pytest.mark.parametrize("body, code", [
+    ('{"error":{"status":403,"message":"Player command failed: Premium required","reason":"PREMIUM_REQUIRED"}}', "premium"),
+    ('{"error":{"status":403,"message":"Player command failed: Restriction violated","reason":"UNKNOWN"}}', "restricted"),
+], ids=["premium-required", "restriction-violated"])
+def test_a_403_on_the_player_is_premium_only_when_spotify_says_so(body, code):
+    """Measured 2026-11-08: pausing with nothing playing answered «needs a Premium account» on a Premium account —
+    the 403 was a «Restriction violated», which is not a missing subscription."""
+    assert spclient._classify(403, "/me/player/pause", body) == code
+
+
+class _Single:
+    """A single song with nothing around it, as Spotify plays one started by its uri: a «next» ends playback and a
+    «previous» is disallowed (403) — both measured live 2026-11-08."""
+
+    def __init__(self):
+        self.playing, self.position, self.calls = True, 90_000, []
+
+    def state(self):
+        return {"is_playing": self.playing, "progress_ms": self.position,
+                "device": {"id": "mac", "name": "MacBook"}, "item": {"id": "t1", "uri": "spotify:track:t1",
+                                                                     "name": "Me Enamoré", "artists": []},
+                "actions": {"disallows": {"skipping_prev": True}}}
+
+    def next_track(self, device_id=""):
+        self.calls.append("next"); self.playing = False; return {}
+
+    def previous_track(self, device_id=""):
+        raise SpotifyError(403, "restricted", "Restriction violated")
+
+    def seek(self, ms, device_id=""):
+        self.calls.append(("seek", ms)); self.position = ms; return {}
+
+    def resume(self, device_id=""):
+        self.calls.append("resume"); self.playing = True; return {}
+
+
+@pytest.fixture
+def single(monkeypatch):
+    import importlib
+    spp = importlib.import_module("connectors.spotify.provider")
+    s = _Single()
+    monkeypatch.setattr(spp, "_SETTLE_S", 0)
+    monkeypatch.setattr(spclient, "playback_state", s.state)
+    for n in ("next_track", "previous_track", "seek", "resume"):
+        monkeypatch.setattr(spclient, n, getattr(s, n))
+    return s
+
+
+def test_a_next_with_nothing_after_never_leaves_the_music_off(prov, single):
+    r = prov.next()
+    assert not r.ok and r.reason == "no_next"
+    assert single.playing and single.calls[-1] == "resume", single.calls
+
+
+def test_a_previous_with_nothing_before_starts_the_song_over(prov, single):
+    r = prov.previous()
+    assert r.ok and ("seek", 0) in single.calls and single.playing

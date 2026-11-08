@@ -52,7 +52,11 @@ def _unrun_model_card(model_calls, ran_ops) -> str:
 
 class Hold:
     """The streamed words, held under a SURE `screen_action` that ANSWERS (`output.answer`) — the model's first words are
-    speculative there. Decided at the FIRST word: the brief often lands after the stream opens (pass 5, C2)."""
+    speculative there. Decided at the FIRST word: the brief often lands after the stream opens (pass 5, C2).
+
+    The same hold for a sure BARE CONTROL (`widgets.effects.is_bare_control`: pause, next…): the model wrote «Paused.»
+    before the pause ran, and when the connector refused it the turn said «Paused. I couldn't get that done…»
+    (live 2026-11-08). Its words are said only if the control happened; a refused one leaves the refusal alone."""
 
     def __init__(self, brief, send, wait_s: float = 0.0, route_wait_s: float = 0.0):
         self.brief, self.card, self.send, self.held, self.deferred = brief, None, send, [], ""
@@ -150,7 +154,7 @@ class Hold:
             emit("brain", "⏳ held words wait — the card's answer has not run yet", role="system", text=text[:160],
                  extra={"cat": "flash", "card": self.card})
         elif text and (_unrun_model_card(model_calls, ran_ops) == self.card
-                     or await self._answered(ran_ops, op_tasks)):
+                     or await self._answered(ran_ops, op_tasks) or await self._refused(op_tasks)):
             emit("brain", "🤐 the words were written before the data (or narrated another call) — not said",
                  role="system", text=text[:160], extra={"cat": "flash", "card": self.card})
         elif text:
@@ -180,6 +184,17 @@ class Hold:
         for p in pend:
             self._say(p)
         return False
+
+    async def _refused(self, op_tasks, timeout: float = 6.0) -> bool:
+        """A bare control held its words and its op on the held card came back refused (or never answered): the words
+        claimed something that did not happen. The mouth says the refusal (`reply.of_op` → `unmet`)."""
+        from nucleo.flash import op_receipt
+        if not control_held(self.brief, self.card):
+            return False
+        mine = [t for w, t in op_tasks or () if _card(w) == self.card]
+        if (pend := [t for t in mine if not t.done()]):
+            await asyncio.wait(pend, timeout=timeout)
+        return any(not t.done() or t.cancelled() or t.exception() or op_receipt.failed(t.result()) for t in mine)
 
     async def _answered(self, ran_ops, op_tasks, timeout: float = 6.0) -> bool:
         """An answer op ran on the held card and its dispatch RETURNED data (waited for as the op's answer pass would)."""
@@ -226,15 +241,32 @@ def _card(wid) -> str:
     return str(wid or "").split("::", 1)[0].strip().lower()
 
 
-def holds(brief) -> str:
-    """The card a sure ANSWER verdict names, or "" (nothing held: today's path)."""
+def _sure_target(brief) -> "tuple[str, str]":
+    """(card, action) of a SURE `screen_action` verdict, or ("", "")."""
     try:
         from nucleo.acts import card
         from nucleo.turn import brief as tb
-        from widgets import effects
         target, info = tb.read(brief, tb.TARGET_KEY, "", min_confidence=card.VETO_SURE)
         wid, _, act = str(target or "").partition(":")
-        return wid if (info or {}).get("used") and effects.carries(wid, act, effects.OUTPUT_ANSWER) else ""
+        return (wid, act) if (info or {}).get("used") and wid else ("", "")
     except Exception as e:  # noqa: BLE001 — an unreadable verdict holds nothing
+        logger.debug(f"follow_up_pass: hold unreadable: {e!r}")
+        return "", ""
+
+
+def control_held(brief, card: str = "") -> bool:
+    """The sure verdict names a BARE CONTROL (on `card`, when given)."""
+    from widgets import effects
+    wid, act = _sure_target(brief)
+    return bool(wid) and (not card or wid == card) and effects.is_bare_control(wid, act)
+
+
+def holds(brief) -> str:
+    """The card a sure ANSWER verdict, or a sure BARE CONTROL, names — or "" (nothing held: today's path)."""
+    try:
+        from widgets import effects
+        wid, act = _sure_target(brief)
+        return wid if wid and (effects.carries(wid, act, effects.OUTPUT_ANSWER) or effects.is_bare_control(wid, act)) else ""
+    except Exception as e:  # noqa: BLE001
         logger.debug(f"follow_up_pass: hold unreadable: {e!r}")
         return ""
