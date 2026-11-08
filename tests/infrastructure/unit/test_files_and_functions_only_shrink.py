@@ -81,7 +81,7 @@ FUNCTIONS = {
     'nucleo/turn/pipeline.py::run': 196,
     'nucleo/turn/pipeline_close.py::close_the_turn': 212,
     'nucleo/turn/pipeline_gate.py::open_the_turn': 195,
-    'voice/engine/pipeline/agent.py::entrypoint': 426,  # 2026-11-08 apps principles: a waiting typed line skips the greeting; the typed door opens after start
+    'voice/engine/pipeline/agent.py::entrypoint': 443,  # +17 V2-863 (2.1638/2.1639): with the Flux ear the session reads the end of turn from the STT and adds only `stt_flux_min_delay`; the preemptive tap is installed; 2026-11-08 apps principles: a waiting typed line skips the greeting; the typed door opens after start
     'voice/engine/pipeline/agent_events.py::_on_data': 142,
     'voice/engine/speech/filler_audio.py::llm_node_with_filler': 143,
     'voice/proactive.py::notify': 128,

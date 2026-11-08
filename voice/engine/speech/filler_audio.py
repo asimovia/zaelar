@@ -394,6 +394,13 @@ async def settle_brief(brief, max_s: float = 0.35) -> bool:
     return ev.is_set()
 
 
+async def decide_and_arm(brain, text: str = "", messages: list | None = None, brief=None) -> str:
+    """The pipeline's one call (V2-863): wait for the turn's brief, bounded (`settle_brief`), then decide the cover
+    (`arm`). Fired at the eager end of turn the brief has usually landed; fired at admission it lands ~250 ms later."""
+    await settle_brief(brief)
+    return arm(brain, text, messages=messages, brief=brief)
+
+
 def arm(brain, text: str = "", messages: list | None = None, brief=None) -> str:
     """Called by the voice provider once per eligible turn, right where the model is about to be paid. DECIDES the
     cover (V2-863): `text` and the brief's verdict pick the pool (V2-572, V2-726 A2 — Jev's class when it landed sure,
