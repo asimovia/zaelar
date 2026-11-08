@@ -118,3 +118,13 @@ def test_a_relative_seek_with_nothing_playing_refuses_instead_of_seeking_to_zero
     monkeypatch.setattr(spclient, "seek", lambda ms, device_id="": pytest.fail("nothing to move"))
     r = prov.seek(30, relative=True)
     assert r.ok is False and r.reason == "no_track"
+
+
+@pytest.mark.parametrize("body, code", [
+    ('{"error":{"status":403,"message":"Player command failed: Premium required","reason":"PREMIUM_REQUIRED"}}', "premium"),
+    ('{"error":{"status":403,"message":"Player command failed: Restriction violated","reason":"UNKNOWN"}}', "restricted"),
+], ids=["premium-required", "restriction-violated"])
+def test_a_403_on_the_player_is_premium_only_when_spotify_says_so(body, code):
+    """Measured 2026-11-08: pausing with nothing playing answered «needs a Premium account» on a Premium account —
+    the 403 was a «Restriction violated», which is not a missing subscription."""
+    assert spclient._classify(403, "/me/player/pause", body) == code
