@@ -43,7 +43,10 @@ def test_the_veil_covers_the_cards_and_leaves_the_rail_and_the_orb_above_it():
     stage = _z(DESKTOP.read_text(encoding="utf-8"), r"\.hb-stage")
     rail = _z(RAIL.read_text(encoding="utf-8"), r"#wrail")
     orb = _z(css, r"\.orbwrap")
+    top = _z(css, r"\.trw")
     assert stage < veil < rail < orb, (stage, veil, rail, orb)
+    # the top bar (settings, status, debug) is how he reads what happened — the e2e that opens settings caught it
+    assert veil < top, ("the top bar sits under the veil", veil, top)
 
 
 def test_the_way_out_is_the_one_power_door():
