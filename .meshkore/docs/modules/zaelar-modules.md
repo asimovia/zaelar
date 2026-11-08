@@ -1,14 +1,14 @@
 ---
 title: Zaelar Modules
 category: modules
-updated: 2026-09-30
+updated: 2026-11-08
 owner: ricart
 status: current
 ---
 
 | Module     | Path           | Description                                                                 |
 |------------|----------------|-----------------------------------------------------------------------------|
-| voice      | voice/         | Voice pipeline core (LiveKit engine in `voice/engine/`): providers, turn control, observer, tag protocol, STT, audio filter, TTS |
+| voice      | voice/         | Voice pipeline core (LiveKit engine in `voice/engine/`): providers, turn control, observer, tag protocol, STT, audio filter, TTS. **The ear (V2-863):** Deepgram **Flux** (`flux-general-multi`) is the default remote STT — a conversational model that closes the turn itself (~260 ms after the last word) and announces an EAGER end of turn first, on which the turn brief fires (`pipeline/eager_brief.py`) and LiveKit starts the model early; with it the session runs `turn_detection="stt"` and adds only `ZAELAR_STT_FLUX_MIN_DELAY` (0.25 s) after the model's verdict, so the silence hold of `voice/endpointing.py` does not govern. `ZAELAR_STT_MODEL_DG=nova-3` keeps the previous ear (words only, end of turn by silence + the lexical veto). Thresholds: `ZAELAR_STT_EAGER_EOT` 0.5 · `ZAELAR_STT_EOT_THRESHOLD` 0.7 · `ZAELAR_STT_EOT_TIMEOUT_MS` 3000. |
 | nucleo     | nucleo/        | **Brain «Colmena»** (default `BRAIN=nucleo`). `turn/` = the ONE turn pipeline for voice and text, the router (`flow_of.route`, requests and events) and the in-turn mouth; `flash/` = FlashBrain's reflexes and tools (sub-second, non-reasoning model per-invocation); `websearch.py` = SHARED web search (both brains, layered providers); `dispatch/`+`workers/`+`cli/` = Brain Workers, one per task, resumable by id, with a playbook and one internal API (the bridge); a request's life: `circuit/` (end state `spec.py`, the row `ledger.py`, `settle` = the only writer of an ending, the one asker `asker.py`) + `request/` (birth, questions, ending); `events/` = what arrives without a turn, the stream worker; `consent.py` = the ONE rule that decides act-or-ask; `batch/` = several tasks become a LIST; `jev/` = the Jev choice client; `context_packs/` = prompt that lives only during a phase; `memory_agent/` = the memory's single writer; `pulse/` = `loop.py` (~1 Hz) + `scheduler.py` (own cron) + `cron_api.py` (`/api/cron`) + `sparks.py` + `notices.py` (the out-of-turn mouth). Reached by voice through `voice/engine/llm/providers/nucleo.py` and by text through `voice/typed_turn.py`. |
 | action map | nucleo/actionmap/ | **A known phrase skips the model** — deterministic layer IN FRONT of the FlashBrain: exact whole-utterance lookup in a per-language table (`action_map` in `zaelar.db`, seeded from `seeds/<lang>.json`), executing an allowlisted direct action through the SAME emit funnels the model uses. Wired in both channels (voice provider + probe). Anything that is not a verbatim hit falls through to the model. Doc: `zaelar-action-map.md` |
 | memory     | memory/        | **Central memory** — SQLite `zaelar.db` (sqlite-vec + FTS5 + RRF + graph + forgetting). Absorbed the old `files/` as an episodic layer. `server_api.py` = `/api/files/*` + `/api/memory/map` (memory-map visualizer). |

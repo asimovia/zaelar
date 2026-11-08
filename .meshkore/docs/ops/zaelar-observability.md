@@ -359,6 +359,18 @@ kept for the FlashBrain's «PROCESOS DE FONDO» prompt, but does not duplicate t
   interrupción (ruido)" with **`extra.resumed`** (did LiveKit resume the speech after the noise?), "🔊 voz solapada"
   (`extra.is_interruption`). Barge-in tunable by env: `ZAELAR_MIN_INTERRUPTION_SEC` (default 0.6),
   `ZAELAR_MIN_INTERRUPTION_WORDS`, `ZAELAR_FALSE_INTERRUPTION_TIMEOUT`, `ZAELAR_RESUME_FALSE_INTERRUPTION`.
+  **"⚡ fin de turno ANTICIPADO — el brief sale ya"** (`extra.detector: "stt-eager"`, V2-863): the Flux ear announced
+  an eager end of turn (a `PREFLIGHT_TRANSCRIPT`) and the turn's brief was fired on those words before the turn was
+  confirmed (`voice/engine/pipeline/eager_brief.py`). A turn that then resumes leaves this line with no `transcript`
+  of the same words behind it — that is what a FALSE eager looks like, and the count to watch.
+- **`perf`** — where the time of a turn went. Beside the per-turn `🧾 turno (…)` summary and `⏱ primer audio N ms
+  desde que dejó de hablar` (end of turn → first sound), two lines say what LiveKit's **preemptive generation** did
+  with the model run it started on the eager transcript (V2-863, `voice/engine/pipeline/preemptive_tap.py`, a tap on
+  the SDK's own log lines): **"⚡ generación anticipada USADA"** (`extra.used: true`, `extra.lead_ms` = how long the
+  early run had been going when the turn closed — the time it saved) and **"✂️ generación anticipada DESCARTADA"**
+  (`extra.used: false`: the chat context or the tools changed between the eager transcript and the confirmed turn,
+  so the early run was paid for nothing). The ratio of the two over a session is the one number that says whether
+  the eager path is worth its cost.
 - **`widget`** — canvas action: `label` = `show` / `close` / `move` / `resize` / `data` / `action` / `delete` /
   `confirm` … with `extra.id`. **This is the source of truth for «did the widget open?»**, independent of whether
   the TTS sounded. **PROVENANCE (`extra.src`) — where the order came from**, to audit the frontend as an independent

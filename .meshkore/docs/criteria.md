@@ -32,9 +32,17 @@ below is the first kind, or it names the mechanism that replaced the second.
   could not start or whose dispatch raised is said as not done, never left behind «Done.». — since 2026-09-30 ·
   nodes 2.17, 3.35, 2.201.
 - **CRIT-V4 · Fillers are «smart».** A wait cover sounds only on a turn that thinks (a question, real work), never
-  on a short order; a cover describes motion and never ends the turn; a promise to look with nothing behind it is
-  withdrawn. — since 2026-09-17 · nodes 2.50, 2.164, 3.58 · `voice/engine/speech/filler_audio.py`,
+  on a short order — the rule applied where the cover is decided (`arm`), so an order gets no cover and no note; a
+  cover describes motion and never ends the turn; a promise to look with nothing behind it is withdrawn. — since
+  2026-09-17 · nodes 2.50, 2.164, 3.58, 2.1636 · `voice/engine/speech/filler_audio.py`,
   `nucleo/flash/answer_guards.py`.
+- **CRIT-V4b · The cover is decided before the model is paid, never raced against it.** `arm()` decides from the
+  turn brief's sure verdict (the pool, whether the turn may be covered, and — for a question about a sure card — the
+  card it names); the brief fires at the ear's EAGER end of turn so it has landed by then, and the pipeline waits for
+  it bounded (≤ 0.35 s); a decided cover sounds at once as the reply's first segment and the model is told so as a
+  fact, never conditionally; a turn that decides no cover leaves no note. — since 2026-11-08 · nodes 2.1636, 2.1637 ·
+  `voice/engine/speech/filler_audio.py` (`arm`, `settle_brief`, `llm_node_with_filler`),
+  `voice/engine/pipeline/eager_brief.py`, `nucleo/turn/brief_turn.py`.
 - **CRIT-V5 · A claim is not a fact.** A delivery claimed over an empty sheet becomes a follow-up; «still on it»
   is said only about live work on THIS request; a result already spoken is not news on the next turn — nor an
   object our PREVIOUS reply (read from the conversation window, never a global) or a card's own sentence already
