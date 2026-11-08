@@ -185,13 +185,23 @@
       "desc": "pausa la reproducción en curso",
       "payload": {},
       "sensitivity": "routine",
-      "activation": true
+      "activation": true,
+      "done_when": {
+        "widget": "musica",
+        "field": "now_playing.playing",
+        "is": false
+      }
     },
     "resume": {
       "desc": "reanuda la reproducción pausada",
       "payload": {},
       "sensitivity": "routine",
-      "activation": true
+      "activation": true,
+      "done_when": {
+        "widget": "musica",
+        "field": "now_playing.playing",
+        "is": true
+      }
     },
     "take_over": {
       "desc": "toma el control de Spotify cuando está sonando en otro dispositivo de la cuenta: pone aquí lo que se pidió (o trae lo que sonaba allí), cortándolo en el otro dispositivo",

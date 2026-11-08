@@ -33,18 +33,21 @@ class _Account:
         self.devices = devices
         self.sounding_on = sounding_on
         self.item = "t1"
+        self.playing = True
         self.calls: list = []
 
     def playback_state(self):
         dev = next((d for d in self.devices if d["id"] == self.sounding_on), None)
         if dev is None:
             return {}
-        return {"is_playing": True, "device": {"id": dev["id"], "name": dev["name"], "volume_percent": 40},
+        return {"is_playing": self.playing, "device": {"id": dev["id"], "name": dev["name"], "volume_percent": 40},
                 "item": {"id": self.item, "uri": f"spotify:track:{self.item}", "name": "TQG", "artists": [{"name": "KAROL G"}]}}
 
     def _act(self, name):
         def fn(*a, device_id="", **k):
             self.calls.append(name)
+            if name in ("pause", "resume"):
+                self.playing = name == "resume"
             return {}
         return fn
 
@@ -145,6 +148,7 @@ def _start_world(account, monkeypatch, sounding_on="spk"):
     def play(uris=None, context_uri="", device_id=""):
         started.append(device_id)
         acc.sounding_on = device_id
+        acc.playing = True
         acc.item = (uris or ["spotify:track:t1"])[0].rsplit(":", 1)[-1]
         return {}
 
@@ -185,3 +189,25 @@ def test_the_card_is_told_where_the_account_sounds(account, monkeypatch):
     assert music.elsewhere() == {"provider": "spotify", "device": "Living room"}
     placement.record("spotify", device_id="spk", device="Living room", screen=COMPUTER, query="x")
     assert music.elsewhere() == {}, "where our own start went is ours"
+
+
+def test_a_pause_the_player_never_applied_is_not_reported_done(account, monkeypatch):
+    """Spotify answers 200 to a pause a device never applies: the pause is read back, not assumed."""
+    acc = account(_Account(HOUSE, sounding_on="mac"))
+    placement.record("spotify", device_id="mac", device="MacBook Pro", screen=COMPUTER, query="x")
+    monkeypatch.setattr(sp_provider, "_SETTLE_S", 0)
+    monkeypatch.setattr(client, "pause", lambda device_id="": {})        # accepted, never applied
+    r = music.control("pause")
+    assert not r.ok and r.reason == "not_applied"
+
+
+def test_every_act_tells_the_open_card_to_read_the_player_again(account, monkeypatch):
+    """A pause said by voice left the card showing «playing»: the store did not change, so nothing pushed it."""
+    from voice import observer
+    pushed: list = []
+    monkeypatch.setattr(observer, "emit", lambda kind, label, **k: pushed.append((kind, label, (k.get("extra") or {}).get("id"))))
+    account(_Account(HOUSE, sounding_on="mac"))
+    placement.record("spotify", device_id="mac", device="MacBook Pro", screen=COMPUTER, query="x")
+    pushed.clear()                     # the record's own store write pushes too; only the act's push counts
+    music.control("pause")
+    assert ("widget", "data", "musica") in pushed, pushed

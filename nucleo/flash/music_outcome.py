@@ -26,6 +26,8 @@ def _options(reason: str) -> list[str]:
         logger.debug(f"music outcome: sources unreadable: {e!r}")
     if reason == "no_track":
         return ["more_words", "another"]
+    if reason == "elsewhere":          # the account sounds on somebody else's device: taking it is his choice
+        return ["take_over"]
     if reason == "needs_app":          # found, and only its provider's own app can sound it here (V2-860 T4.1)
         return ["open_app"]
     return ["retry"] + (["connect"] if connectable else [])
@@ -50,7 +52,7 @@ def system(lang_lock: str, asked: str, said: str, res) -> str:
     reason = str(getattr(res, "reason", "") or "error")
     extra = getattr(res, "extra", None) or {}
     labels, opts = w.get("outcome_labels") or {}, w.get("outcome_options") or {}
-    facts = [str((w.get("outcome_reasons") or {}).get(reason) or reason)]
+    facts = [str((w.get("outcome_reasons") or {}).get(reason) or reason).replace("{device}", str(extra.get("device") or "?"))]
     if extra.get("tried") or extra.get("looked_up"):
         facts.append(f"{labels.get('tried', 'looked up')}: «{extra.get('tried') or extra.get('looked_up')}»")
     if extra.get("named_name"):          # what the catalogue found — the reply names it, never the card's «now playing»
