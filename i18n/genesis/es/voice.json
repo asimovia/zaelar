@@ -422,6 +422,7 @@
   "ask_more": "No he dado con esa canción. ¿Me dices el artista o alguna palabra más de la letra?",
   "ask_what": "¿Qué te pongo? Dime una canción, un artista o un estilo.",
   "audio_blocked": "La música está cargada pero no se oye: el navegador de esta pantalla no la deja sonar sin un toque. Toca una vez la tarjeta de música y sonará.",
+  "elsewhere": "«{device}» está usando {provider} ahora mismo, no este dispositivo; no lo toco desde aquí para no molestar a quien lo esté escuchando.",
   "youtube": {
    "play": "Suena «{label}».",
    "play_untitled": "Ya suena la música.",
@@ -464,7 +465,8 @@
    "no_track": "se buscó en el catálogo y no hay nada con ese nombre",
    "no_provider": "no hay ninguna fuente de música disponible",
    "error": "el reproductor falló",
-   "needs_app": "se encontró en el catálogo conectado, pero solo la app de ese servicio puede ponerlo y no hay ninguna abierta en la pantalla que lo pidió — no se puso nada en su lugar"
+   "needs_app": "se encontró en el catálogo conectado, pero solo la app de ese servicio puede ponerlo y no hay ninguna abierta en la pantalla que lo pidió — no se puso nada en su lugar",
+   "elsewhere": "la cuenta está sonando en otro dispositivo («{device}») que no es el de esta pantalla ni donde Zaelar la puso — no se tocó, para no molestar a quien lo use"
   },
   "outcome_options": {
    "retry": "volver a intentarlo en un momento",
