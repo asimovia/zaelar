@@ -397,6 +397,7 @@ below is the first kind, or it names the mechanism that replaced the second.
   recorded by the canvas door (a bulk close as one gesture with what it closed and kept), so a correction of it is
   the card's, never the running errand's; a show or a background trace is not his act. — since 2026-11-01 · nodes 3.171.
 - **CRIT-K44 · A refused card action hands back its declared shape.** At the one door every caller shares (`widgets/server_api.brain_action`) a refusal carries the action's DECLARED `payload` and, when the card named no field, the first declared key the call left out as `field` — level 2 of the action, given only on a refusal, never added to a prompt up front; a worker's bridge forwards it beside `detail/options/field`. Manifest payloads are prose, so nothing is coerced. — since 2026-11-08 (V2-860 T2.7) · nodes 2.1633 · `widgets/action_shape.py`, `nucleo/cli/worker_api_exec.py`.
+- **CRIT-K45 · An action alias belongs to ONE language.** The action map indexes only the install's language (`store.index()` seeds and reads `active_lang()` alone): an exact phrase of another language is not a miss of the map, it goes to the model like any novelty. An alias is a gene of its language's lineage (`i18n/genesis/<lang>/actionmap.json` is the factory layer, `source='learned'` rows the learned one, V2-859) and is never lent to another. — since 2026-09-03 (V2-539 §3.2), both ways pinned 2026-11-08 · nodes 2.41 · `nucleo/actionmap/store.py`.
 
 ## 4 · Errands and workers
 
