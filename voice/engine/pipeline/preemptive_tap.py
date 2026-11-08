@@ -15,6 +15,8 @@ from __future__ import annotations
 
 import logging
 
+from loguru import logger as _log
+
 USED_PREFIX = "using preemptive generation"
 DISCARDED_PREFIX = "preemptive generation enabled but chat context or tools have changed"
 LOGGER_NAME = "livekit.agents"
@@ -39,8 +41,8 @@ class _Tap(logging.Handler):
             elif msg.startswith(DISCARDED_PREFIX):
                 self._emit("perf", "✂️ generación anticipada DESCARTADA — el contexto o las tools cambiaron",
                            role="system", extra={"cat": "system", "used": False})
-        except Exception:  # noqa: BLE001 — a tap never breaks the pipeline it watches
-            pass
+        except Exception as e:  # noqa: BLE001 — a tap never breaks the pipeline it watches
+            _log.debug(f"preemptive tap: event not emitted — {e!r}")
 
 
 def install(emit) -> logging.Handler:
