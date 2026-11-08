@@ -76,6 +76,10 @@ _CAT = {
     # its harness), status written, waiting, resumed, worker died, retitled, playbook, settle — as a delta, writer named
     # (`nucleo/circuit/progress.py`), so a replay rebuilds the task's state at any moment.
     "task_progress": "worker",
+    # `artifact` (V2-862): an errand's reference box on the chat wall — `opened` (drawn), `skipped` (and why:
+    # no_card · child · event · cluster · no_row), `retitled`, `closed` (done · partial · cancelled, card, file).
+    # The same event is what the wall receives; one query of this kind answers «was the box made, and why not».
+    "artifact": "worker",
     # `gene` (V2-859 T567, 2026-11-07): a change in the genome's learned layer — a playbook route learned, found empty
     # or forgotten, a seed pack imported — with the row before and after. Family `memory`: it is what the agent
     # keeps, not a step of a turn or of a task.

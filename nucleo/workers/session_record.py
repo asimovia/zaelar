@@ -65,6 +65,11 @@ class SessionRecord:
     # V2-227 — WHERE the operator sees the result, decided when ASSIGNING; closed vocabulary (`nucleo/surfaces.py`):
     # list | item | widget | voice | silent. Sealed ONCE (`set_once`). Empty = not sealed yet.
     surface: str = ""
+    # V2-862 — True once its reference box was drawn on his chat wall (`nucleo/chat_refs.opened`), so the close
+    # updates that box and an errand that never had one stays silent.
+    chat_ref: bool = False
+    # V2-862 — the library file its deliverable was kept in (`documents/…`), when it wrote one. Set at close.
+    kept_file: str = ""
     # V2-227 scope C — short ring of readable phases for the PROCESS tab (not an audit log); raw `steps` stay apart.
     phases: list = field(default_factory=list)     # [{"t": <ts>, "s": "entrando en booking.com"}]
     last_event_at: float = field(default_factory=time.time)

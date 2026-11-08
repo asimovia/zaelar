@@ -24,7 +24,7 @@ export const ORIGIN_SCOPED = {
 // Every other kind the stream carries, declared on purpose: the conversation and the agent's state are the same on
 // every screen. A kind routed in sse.js that is in NEITHER table fails node 4.240 — a new kind decides its scope.
 export const ALL_SCREENS = [
-  "alert", "ambient", "ask", "bot_speech", "brain", "cluster", "energy", "error", "filler", "interim", "language",
+  "alert", "ambient", "artifact", "ask", "bot_speech", "brain", "cluster", "energy", "error", "filler", "interim", "language",
   "memory", "notify", "pulse", "run", "screens", "secret", "session", "state", "status", "task", "task_state",
   "transcript", "ui", "vad",
 ];

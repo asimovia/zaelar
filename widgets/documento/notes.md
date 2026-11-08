@@ -34,3 +34,9 @@
   → Proceso; body → Documento; finished+empty → Proceso (what happened beats a blank page). `process` is
   ALWAYS a dict in view_data — a None would freeze the golden's shape as NoneType and turn the harness red
   the first time a live engine had a bound errand.
+- **V2-862 (2026-11-08) — a report is KEPT, and a chat reference reopens IT.** At the errand's end (finished or
+  half done) `keep_task` writes the text to the library's documents shelf (the same `save_text` door as
+  `save_to_library`, one owned file) and returns the sheet's fields for the task's `document` artifact
+  (`nucleo/docsheet._keep`). This sheet holds ONE document and the next report overwrites it, so `restore` is how
+  the reopen door (`nucleo/turn/task_recall._kept_document`) puts back the report a chat reference names. A PDF is
+  never copied (it was never ours); an empty sheet keeps nothing. `.meshkore/docs/modules/zaelar-chat-refs.md`.
