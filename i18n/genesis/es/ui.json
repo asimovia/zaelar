@@ -2442,5 +2442,10 @@
  "widgets.contactos.agent_id_ph": "id del agente…",
  "widgets.contactos.agent_cluster_ph": "cluster (opcional)",
  "widgets.contactos.side_state": "Estado",
- "widgets.contactos.unclassified": "Sin clasificar"
+ "widgets.contactos.unclassified": "Sin clasificar",
+ "veil.off_title": "El agente está parado",
+ "veil.off_sub": "Mientras está parado no escucha, no reproduce nada ni toca tus apps. Enciéndelo para volver a usar el escritorio.",
+ "veil.on_btn": "Encender",
+ "veil.pausing": "Parando el agente…",
+ "veil.starting": "Encendiendo el agente…"
 }
