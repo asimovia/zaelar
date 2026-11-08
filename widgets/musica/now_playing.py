@@ -91,11 +91,28 @@ def _live_fields(db: dict, fresh_s: float = 0.0) -> dict:
         "redirect_uri": st.get("redirect_uri", ""),
         "now_playing": now,
         "elsewhere": away,                                   # set = our session was taken: controls locked
+        "here": _here(mode, loc, yt, now, away),
         "yt": _d._yt_display(yt),
         "local": loc,
         "mode": mode,
         "empty": mode == "idle",                             # V2-776 L2 — nothing playing, nothing to attest
     }
+
+
+def _here(mode: str, loc: dict, yt: dict, now: "dict | None", away: dict) -> dict:
+    """What OUR player is sounding right now — {title, source} — and {} when nothing sounds here. The end state of
+    every start declares its title CHANGED (manifest `done_when`), so a start is met only when the asked music sounds
+    on our side: another device of the account changing songs never satisfies it (live 2026-11-08: `now_playing`
+    changed on a household speaker and the harness called a request met while nothing played here)."""
+    # Nothing sounding is a VALUE ("" title), never a missing key: a missing key reads as «unverifiable», and a failed
+    # start must read unmet. A page player the browser keeps silent (`audio_blocked`) is not sounding.
+    if mode == "local" and loc.get("src") and not loc.get("paused"):
+        return {"title": loc.get("title") or loc.get("src", ""), "source": "local"}
+    if mode == "youtube" and yt.get("videoId") and not yt.get("paused") and not yt.get("audio_blocked"):
+        return {"title": yt.get("title") or yt.get("videoId", ""), "source": "youtube"}
+    if mode == "spotify" and now and now.get("playing") and not away:
+        return {"title": now.get("title") or "", "source": "spotify"}
+    return {"title": "", "source": ""}
 
 
 def _ours_taken(db: dict) -> bool:

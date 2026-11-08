@@ -63,3 +63,39 @@ def _record_left(ev: dict) -> None:
         emit("widget", "sent", text=rec["text"], extra={"id": "mensajeria", **rec["extra"]})
     except Exception as e:  # noqa: BLE001 — bookkeeping never breaks the owner's loop
         logger.info(f"mensajeria: the sent body was not recorded ({type(e).__name__}: {e})")
+
+
+def _offer_after_failure(ev: dict) -> list[str]:
+    """A send that did not leave: the contact's OTHER channels whose link is up, kept on its outbox row and said to
+    him once as an OFFER. Nothing is resent — a message to a third party through another channel is his decision.
+    [] when the order names no known contact, or none of the contact's other channels is connected. Never raises."""
+    try:
+        from widgets import directory
+        from .. import sent as _sent
+        from ..outbound import targets
+        ev = ev if isinstance(ev, dict) else {}
+        plat = str(ev.get("platform") or "").strip().lower()
+        cid = str(ev.get("contactId") or "").strip()
+        contact = next((c for c in directory._contacts() if cid and str(c.get("id") or "") == cid), None) \
+            or directory.find_by_channel(plat, ev.get("chatId") or ev.get("to"))
+        if not contact:
+            return []
+        db = msgstore.load()
+        alts = targets.alternatives(contact, targets.connected_platforms(db), directory, but=plat)
+        if not alts:
+            return []
+        ref = str(ev.get("ref") or "")
+        for r in db.get("outbox") or []:
+            if isinstance(r, dict) and ref and r.get("ref") == ref:
+                r["offer"] = list(alts)
+                msgstore.save(db)
+                break
+        name = str(contact.get("name") or ev.get("name") or "")
+        chans = ", ".join(targets.label(p) for p in alts)
+        from .. import owner as _f            # the facade: a patch on `owner._note` governs this line too
+        _f._note(f"[SISTEMA] El mensaje a {name} por {targets.label(plat)} no ha salido. Puedo escribirle por {chans}, "
+              f"que sí está conectado: ofréceselo al operador y NO lo reenvíes hasta que él lo diga.")
+        return alts
+    except Exception as e:  # noqa: BLE001 — an offer that cannot be computed is not the failure
+        logger.info(f"mensajeria: no offer after the failed send ({type(e).__name__}: {e})")
+        return []

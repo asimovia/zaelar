@@ -81,22 +81,22 @@ FUNCTIONS = {
     'nucleo/turn/pipeline.py::run': 196,
     'nucleo/turn/pipeline_close.py::close_the_turn': 212,
     'nucleo/turn/pipeline_gate.py::open_the_turn': 195,
-    'voice/engine/pipeline/agent.py::entrypoint': 416,
+    'voice/engine/pipeline/agent.py::entrypoint': 426,  # 2026-11-08 apps principles: a waiting typed line skips the greeting; the typed door opens after start
     'voice/engine/pipeline/agent_events.py::_on_data': 142,
     'voice/engine/speech/filler_audio.py::llm_node_with_filler': 143,
     'voice/proactive.py::notify': 128,
     'voice/tag_protocol.py::strip_tags': 212,
-    'widgets/agenda/actions.py::_a_add_meeting': 137,  # +3 2026-11-06 (4.392): the row the write lands on is handed to the notice writer (`_row`)
+    'widgets/agenda/actions.py::_a_add_meeting': 145,  # 2026-11-08 apps principles: the mirror status is offered, the write is logged;  # +3 2026-11-06 (4.392): the row the write lands on is handed to the notice writer (`_row`)
     'widgets/agenda/tasklists.py::apply': 170,
     'widgets/brief.py::for_prompt': 152,
     'widgets/generator.py::_run_agent_once': 128,
-    'widgets/imagenes/data.py::apply_action': 136,
+    'widgets/imagenes/data.py::apply_action': 141,  # 2026-11-08 apps principles: the set counter a show's end state reads
     'widgets/refs.py::resolve': 122,
     'widgets/youtube/library.py::apply': 175,   # V2-806: the preference branches moved to youtube/prefs
 }
 
 BRANCHES = {
-    'nucleo/flash/post_stream_lanes.py::run_the_light_lanes': 146,
+    'nucleo/flash/post_stream_lanes.py::run_the_light_lanes': 154,  # 2026-11-08 apps principles: the take-over offer and the verdict that completes a held start
     'nucleo/flash/post_stream_acts.py::complete_the_acts': 117,
     'nucleo/flash/probe.py::run_turn': 124,
     'nucleo/flash/probe_decide.py::name_the_action': 106,

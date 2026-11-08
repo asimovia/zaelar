@@ -126,7 +126,7 @@ export function render(el, data, ctx){
   el.appendChild(box);
   if(pts.length) drawChart(box, pts, up, d.range, lang);
   else box.appendChild(txt("div", "mkterr", tt("no_points", null, "No price history for this period.")));
-  if(d.error) el.appendChild(txt("div", "mkterr", tt("stale", null, "The price source did not answer; this is the last chart it gave.")));
+  if(d.failed || d.error) el.appendChild(txt("div", "mkterr", tt("stale", null, "The price source did not answer; this is the last chart it gave.")));
 
   const tabs = txt("div", "mkttabs");
   for(const r of (Array.isArray(d.ranges) && d.ranges.length ? d.ranges : ["1d","5d","1mo","3mo","6mo","1y","5y"])){

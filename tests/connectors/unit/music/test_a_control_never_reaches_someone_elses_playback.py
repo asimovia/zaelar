@@ -221,3 +221,24 @@ def test_a_held_start_says_what_plays_on_the_other_device(account, monkeypatch):
     assert r.reason == "elsewhere" and r.extra.get("playing_there") == "TQG — KAROL G", r.extra
     from nucleo.flash import music_outcome
     assert "«TQG — KAROL G»" in music_outcome.system("", "x", "", r)
+
+
+def test_a_start_held_elsewhere_plays_on_the_page_player_instead(account, monkeypatch):
+    """Operator, 2026-11-08: «yo no he pedido Spotify; quiero a esta cantante — si Spotify no está libre, pónmela por
+    YouTube». A provider is a preference: the asked music sounds here, the take-over stays an offer."""
+    from connectors.music import youtube_audio as yta
+    acc, started = _start_world(account, monkeypatch)
+    registry.register(yta.YouTubeAudioProvider())
+    monkeypatch.setattr(yta, "_resolve", lambda q: ("vidLenaHall1", q))
+    r = music.control("play", "lena hall")
+    assert r.ok and r.provider == "youtube", (r.ok, r.provider, r.reason)
+    assert r.extra.get("elsewhere_device") == "Living room" and r.extra.get("can_take_over")
+    assert started == [] and acc.sounding_on == "spk", "the other device's playback is untouched"
+
+
+def test_a_provider_he_named_waits_for_his_choice(account, monkeypatch):
+    from connectors.music import youtube_audio as yta
+    acc, started = _start_world(account, monkeypatch)
+    registry.register(yta.YouTubeAudioProvider())
+    r = music.control("play", "lena hall", prefer="spotify")
+    assert not r.ok and r.reason == "elsewhere" and started == []

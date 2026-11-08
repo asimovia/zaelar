@@ -1,10 +1,12 @@
 {
   "view_data_shape": {
+    "auto": "bool",
     "current": "dict",
     "i": "int",
     "items": "list",
     "n": "int",
     "query": "str",
+    "set_seq": "int",
     "source": "str",
     "title": "str"
   }

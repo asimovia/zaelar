@@ -407,7 +407,7 @@ async def run_the_light_lanes(*, FastClient, _apply_widget_data, _brief, _buf_ad
         try:
             from nucleo.flash import music_flow as _mflow
             res = await _mflow.run(mq.get("action") or "play", mq.get("query") or "", extract=_extract,
-                                  kind=mq.get("kind") or "")
+                                  kind=mq.get("kind") or "", source=mq.get("source") or "")
         except Exception as e:  # noqa: BLE001
             _pst.logger.warning(f"play_music falló (voz sigue): {e}")
             res = None
@@ -438,6 +438,15 @@ async def run_the_light_lanes(*, FastClient, _apply_widget_data, _brief, _buf_ad
         # No re-anunciar un no-op (F5): si la reproducción fue "ya suena eso", el modelo ya habló; no encajes
         # el "ya está sonando" salvo que el modelo callara.
         _is_noop = bool(_extra.get("noop"))
+        if ok and _extra.get("elsewhere_device"):
+            # Played on our page player because the account sounds on another device: the take-over is an OFFER,
+            # said once, from the pack (operator, 2026-11-08: the circuits are optional, never a stop).
+            from i18n import langs as _langs_off
+            _offer = _langs_off.words("music.played_here_instead", default="").format(
+                device=_extra["elsewhere_device"], provider="Spotify")
+            if _offer:
+                send((" " if spoken_text and not spoken_text[-1:].isspace() else "") + speech.sanitize(_offer, drop_metadata=False))
+                spoken_text = "".join(spoken).strip()
         if res is not None and not ok:
             # V2-833 F3 — a failed act is worded by the turn from its facts, never a canned line after «te la pongo»
             from nucleo.flash import music_outcome as _mo

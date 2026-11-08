@@ -225,7 +225,7 @@ def _handle_local_write(db: dict, act: str, payload: dict) -> dict:
         name = _d._text(payload.get("name") or payload.get("newName"), 200)
         if not name:
             return _d._err("dime el nombre nuevo")
-        res = _idx.rename(fid, name)
+        res = _idx.rename(fid, _keep_extension(fid, name))
     elif act == "copy_file":
         res = _idx.duplicate(fid)
     else:                                                  # delete_file
@@ -238,3 +238,11 @@ def _handle_local_write(db: dict, act: str, payload: dict) -> dict:
     if "rel" in res:
         out["rel"] = res["rel"]
     return out
+
+
+def _keep_extension(rel: str, name: str) -> str:
+    """«rename it to acta final» names the file, not its format: a new name with no extension keeps the old one. The
+    shelves classify by extension, so a dropped one moved the file off its shelf — out of the card's sight."""
+    import os
+    old_ext = os.path.splitext(str(rel or ""))[1]
+    return name if os.path.splitext(name)[1] or not old_ext else f"{name}{old_ext}"

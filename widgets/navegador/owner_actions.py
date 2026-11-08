@@ -185,7 +185,7 @@ async def _close_task(task_id: str) -> None:
 async def _search(q: str) -> None:
     if not q:
         return
-    await _o._goto(_o._SEARCH_URL.replace("{q}", _o.quote_plus(q)))
+    await _o._goto(_o._SEARCH_URL.replace("{q}", _o.quote_plus(q)), query=q)
 
 
 async def _step(direction: str) -> None:
@@ -283,5 +283,5 @@ async def _show_youtube(video_id: str, title: str) -> None:
     _o._hist = _o._hist[:_o._idx + 1] + [url]
     _o._idx = len(_o._hist) - 1
     _o._write(mode="youtube", url=url, title=title or "YouTube", youtube_id=video_id,
-           youtube_title=title, loading=False, error="")
+           youtube_title=title, loading=False, error="", rev=_o._bump_rev(), wall="none", query=str(title or ""))
     _o._emit("youtube", video_id, title=title)

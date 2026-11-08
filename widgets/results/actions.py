@@ -16,7 +16,7 @@ from . import data as _d
 from . import find as _find
 from . import door_event as _door
 from . import hard_checks as _hard
-from . import pool as _pool
+from . import pool as _pool, live as _live
 
 
 def _file_pages(data: dict, pages: list[dict]) -> dict:
@@ -234,12 +234,13 @@ def _a_tab(action, payload, sheet) -> dict:
     tab = str(payload.get("tab") or payload.get("name") or "").strip().lower()
     tab = _d._TAB_ALIASES.get(tab, tab)
     if tab == "process":
-        return _a_process_panel()
+        return _a_process_panel(sheet)
     if tab not in _d._TABS:
         return {"ok": False,
                 "error": f"pestaña «{tab}» desconocida (results · summary · sources · criteria)"}
     data = _d.view_data(sheet)
     data["tab"] = tab
+    data.pop("process_opened", None)
     if tab != "results":
         data.pop("view", None)               # detail is a RESULTS page: leaving the tab closes it
         data.pop("focus", None)
@@ -247,7 +248,7 @@ def _a_tab(action, payload, sheet) -> dict:
     return {"ok": True, "tab": tab}
 
 
-def _a_process_panel() -> dict:
+def _a_process_panel(sheet: str = "") -> dict:
     """«Proceso» said to the sheet opens the PROCESSES PANEL (V2-822, the operator's decision 5).
 
     The sheet has no process tab any more: what the errand is doing lives in the running process's entry in the
@@ -259,6 +260,7 @@ def _a_process_panel() -> dict:
         emit("panel", "open", extra={"tab": "procesos", "src": "results:tab"})
     except Exception as e:  # noqa: BLE001 — an event that cannot be emitted is said, not swallowed
         return {"ok": False, "error": f"could not open the processes panel: {e}"}
+    _d._save({**_d.view_data(sheet), "process_opened": _d._tm.time()}, sheet)   # read by `derived._tab_words`
     return {"ok": True, "tab": "process", "opened": "procesos",
             "note": "the processes panel is open on what is running now"}
 
@@ -392,5 +394,5 @@ def _a_auth_done(action, payload, sheet) -> dict:
     except Exception:  # noqa: BLE001
         queued = False
     if not queued:
-        return {"ok": False, "error": "el navegador no está activo ahora mismo — reinténtalo en un momento"}
+        return _live.browser_down(tid)      # an OFFER, never a dead stop (principle 1)
     return {"ok": True, "task_id": tid}

@@ -49,6 +49,14 @@ def _seed() -> dict:
             "task": "", "task_title": "", "process": []}
 
 
+def blank(old: dict | None = None) -> dict:
+    """A blank sheet that keeps the `show` counter moving forward: a counter that went back to 0 could meet a
+    later `show`'s `rev changed` against a baseline it happens to equal."""
+    db = _seed()
+    db["rev"] = int((old or {}).get("rev") or 0)
+    return db
+
+
 def _load() -> dict:
     return store.load(WIDGET_ID, _seed(), version=DB_VERSION)
 
@@ -103,10 +111,19 @@ def view_data(q: str = "") -> dict:
         "src": src,
         "source": str(db.get("source") or ""),
         "updated": int(db.get("updated") or 0),
+        # How many times `show` has put a document here — the end state of a `show` is THIS counter moving, never
+        # «a body is present», which any older document already satisfies. Always written, never omitted: a key
+        # missing from the view reads as unverifiable.
+        "rev": int(db.get("rev") or 0),
+        # When the sheet was last saved to the library (0 = never) and where: `save_to_library`'s end state.
+        "saved_at": float(db.get("saved_at") or 0),
+        "saved_rel": str(db.get("saved_rel") or ""),
         "chars": len(body),
         "empty": not (body or src),
         "process": _process(db),
-        "focus": db.get("focus") if isinstance(db.get("focus"), dict) else None,   # V2-773 — set by `goto`
+        # V2-773 — set by `goto`. Always a VALUE (an empty focus when none is set), never None: `goto`'s end state is
+        # `focus changed`, and a None reads «unverifiable», never met nor unmet.
+        "focus": db.get("focus") if isinstance(db.get("focus"), dict) else {"text": "", "at": 0},
         # V2-776 L2 — the headings as rows: «go to the part about proof of work» has a section to be attested.
         "sections": _sections(body),
     }
@@ -116,7 +133,7 @@ def view_data(q: str = "") -> dict:
 def begin_task(title: str, task_id: str) -> None:
     """A REPORT errand was commissioned: bind this sheet to it and start blank — the old document under a live
     process view would read as the answer arriving instantly (as results' `begin_task(fresh=True)`)."""
-    db = _seed()
+    db = blank(_load())
     db.update({"task": str(task_id or ""), "task_title": _text(title, 120)})
     store.save(WIDGET_ID, _stamp(db))
 

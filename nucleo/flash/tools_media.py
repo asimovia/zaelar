@@ -21,12 +21,12 @@ TOOLS: list[dict] = [
             # V2-041: capacidad de PRIMER NIVEL (como web_search) — reproducir música por un conector de streaming
             # (hoy Spotify). Frontera clara: es ESCUCHAR música, NO un dato del mundo (web_search) NI un vídeo.
             "description": (
-                "Reproduce o controla MÚSICA, una LISTA o un PODCAST (solo AUDIO). `query` = "
+                "Reproduce o controla MÚSICA, una LISTA o un PODCAST (AUDIO). `query` = "
                 "qué poner; si no dice qué, elige tú y dilo; vacío = reanudar. "
-                "Varias seguidas: la 1ª con play y CADA siguiente con queue. "
+                "Varias: la 1ª play, CADA siguiente queue. "
                 "Comentar o quejarse de lo que suena no es otra reproducción; querer algo DISTINTO "
-                "(aun como deseo o pregunta) SÍ: llámala. VER algo en "
-                "pantalla (vídeo, videoclip, tráiler, peli) es play_video, no esto. Abrir un juego o widget se "
+                "(aun como deseo o pregunta) SÍ: llámala. VER algo "
+                "(vídeo, videoclip, tráiler, peli) es play_video. Un juego o widget se "
                 "MUESTRA, no se reproduce. Sus LISTAS guardadas son del widget `musica` (widget_data play_playlist / "
                 "create_playlist / add_to_playlist); CURAR una lista con contenido es escalate."
             ),
@@ -40,6 +40,7 @@ TOOLS: list[dict] = [
                                                "previous | volume_up | volume_down | stop")},
                     # V2-861 — «put some LIST… Sueñacuentos» lost «list» and played the podcast of that name.
                     "kind": {"type": "string", "enum": ["song", "list", "album", "podcast"]},
+                    "source": {"type": "string", "enum": ["spotify", "youtube"]},   # only when he names it
                 },
                 "required": [],
             },

@@ -11,7 +11,7 @@ from .. import store
 from . import gcal, sweep
 from .reminders import _cancel_reminder, _schedule_reminder  # noqa: F401  (V2-705)
 from .details import _apply_details, _norm_attendees, _norm_status, default_status, stated  # noqa: F401
-from . import edit, planner, recur, series, tasklists
+from . import edit, planner, recur, series, tasklists, writes
 from widgets.agenda import task_read as _task_read_m
 
 
@@ -218,8 +218,13 @@ def apply_action(action: str, payload: dict | None = None) -> dict:
 
     The whole action holds the agenda's own write lock (reentrant), whoever calls it: an errand calls it directly,
     not through `server_api`, and the tick's orphan sweep must never see a notice scheduled whose row is not saved."""
-    with store.mutating(WIDGET_ID):
-        return _apply_action(action, payload)
+    tok = writes.ASKED.set(str((payload or {}).get("title") or "")) if writes.ASKED.get() is None else None
+    try:
+        with store.mutating(WIDGET_ID):
+            return _apply_action(action, payload)
+    finally:
+        if tok is not None:
+            writes.ASKED.reset(tok)
 
 
 def _apply_action(action: str, payload: dict | None = None) -> dict:
