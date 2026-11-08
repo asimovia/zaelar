@@ -419,6 +419,11 @@ async def run_the_light_lanes(*, FastClient, _apply_widget_data, _brief, _buf_ad
                 await _mflow.run(music_req["followup"]["action"], "", extract=None)
             except Exception as e:  # noqa: BLE001
                 _pst.logger.warning(f"play_music followup falló: {e}")
+        if res is not None:
+            try:
+                res = await _mflow.completed_by_verdict(res, _brief)      # «take control» read by the verdict
+            except Exception as e:  # noqa: BLE001
+                _pst.logger.warning(f"play_music take-over by verdict failed: {e}")
         await _keep_music_findings(mq, res)                                       # V2-861
         ok = bool(getattr(res, "ok", False))
         msg = (getattr(res, "message", "") or "").strip()

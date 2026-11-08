@@ -28,6 +28,49 @@ _VOLUME = {"volume_up", "volume_down", "set_volume"}
 _TAKING_OVER: "contextvars.ContextVar[bool]" = contextvars.ContextVar("music_taking_over", default=False)
 
 
+#: Starts are numbered as they are ASKED; the music is one sound, so the newest request is the one that may sound. An
+#: older start still resolving (a YouTube lookup takes seconds) that reaches `_start` after a newer one was asked is
+#: dropped: «play Bruce Springsteen… or better, Amy Macdonald» played Amy, then Bruce's slower lookup landed, paused her
+#: and took the speaker (live 2026-11-08).
+import itertools as _itertools
+import threading as _threading
+
+_START_SEQ = _itertools.count(1)
+_START_LOCK = _threading.Lock()
+_LATEST = {"n": 0}
+_TICKET: "contextvars.ContextVar[int]" = contextvars.ContextVar("music_start_ticket", default=0)
+
+
+def _asked_start(fn):
+    """A public start takes its number when it is asked; a start nested in another (a whole that falls back to its
+    songs, a take-over replaying what was held) keeps the outer one's."""
+    import functools
+
+    @functools.wraps(fn)
+    def run(*a, **k):
+        if _TICKET.get():
+            return fn(*a, **k)
+        with _START_LOCK:
+            n = next(_START_SEQ)
+            _LATEST["n"] = n
+        tok = _TICKET.set(n)
+        try:
+            return fn(*a, **k)
+        finally:
+            _TICKET.reset(tok)
+    return run
+
+
+def superseded() -> bool:
+    """A newer start was asked since this one: it must not take the speaker. Providers ask it right before they
+    commit (after a slow lookup), `_start` before it runs one."""
+    n = _TICKET.get()
+    return bool(n) and n < _LATEST["n"]
+
+
+_superseded = superseded
+
+
 class taking_over:
     """`with music.taking_over(): …` — the operator chose to take the playback here, so what sounds on another device
     of the account may be interrupted."""
@@ -116,20 +159,23 @@ def _start(prov: "MusicProvider", dev: "dict | None", screen: str, query: str, r
     A start on an account that is SOUNDING on somebody else's device would cut it there (one account, one stream):
     it is held and said instead, unless he chose to take it (`taking_over`). `replay` is what to start once he does
     (`take_over`)."""
+    if _superseded():
+        logger.info(f"music: a start for {query!r} was replaced by a newer request before it could sound — dropped")
+        return MusicResult(ok=False, provider=prov.name, action="play", reason="superseded", message="")
     if getattr(prov, "plays_elsewhere", False) and not _TAKING_OVER.get():
-        held = _held_elsewhere(prov, dev)
+        held, there = _held_elsewhere(prov, dev)
         if held:
             placement.hold(replay or {})
             return MusicResult(ok=False, provider=prov.name, action="play", reason="elsewhere",
                                message=_msg("held_elsewhere").format(device=held, provider=prov.name.capitalize()),
-                               extra={"device": held, "can_take_over": True})
+                               extra={"device": held, "can_take_over": True, **({"playing_there": there} if there else {})})
     dev_id = (dev or {}).get("id", "")
     res = run(prov, dev_id)
     if getattr(prov, "plays_elsewhere", False):
         res = prov.confirm(res, dev_id) if res.ok else res
         # Silent, or refused by the device (gone, not Premium…): the asking screen's page plays it. A song the
         # provider could not FIND stays its answer — the caller's resolution chain handles that.
-        if not res.ok and res.reason != "no_track":
+        if not res.ok and res.reason not in ("no_track", "superseded"):
             alt = _in_page() if placement.screen_kind(screen) else None
             if alt is not None:
                 logger.info(f"music: {prov.name} not sounding on {res.extra.get('device')!r}, playing in the page")
@@ -235,11 +281,17 @@ def _control(action: str, query: str, uri: str, percent: int, prefer: str, secon
     if prov is None:
         return MusicResult(ok=False, action=action, reason="no_provider", message=_msg("no_provider"))
     if action in _TOUCHES_PLAYBACK and getattr(prov, "plays_elsewhere", False) and not _TAKING_OVER.get():
-        foreign = _foreign_device(prov)
+        try:
+            np_now = prov.now_playing()
+        except Exception as _e:  # noqa: BLE001
+            logger.debug("control: state unreadable: %s", _e)
+            np_now = None
+        foreign = _foreign_device(prov, np_now) if np_now is not None else _foreign_device(prov)
         if foreign:
+            there = np_now.track.label() if np_now is not None and np_now.track is not None else ""
             return MusicResult(ok=False, provider=prov.name, action=action, reason="elsewhere",
                                message=_msg("elsewhere").format(device=foreign, provider=prov.name.capitalize()),
-                               extra={"device": foreign})
+                               extra={"device": foreign, **({"playing_there": there} if there else {})})
     try:
         if action == "play":
             return _confirmed(prov, prov.play(query=query, uri=uri))
@@ -306,19 +358,22 @@ def _foreign_device(prov: "MusicProvider", np: "NowPlaying | None" = None) -> st
     return getattr(np, "device", "") or prov.name
 
 
-def _held_elsewhere(prov: "MusicProvider", dev: "dict | None") -> str:
-    """The device a start would cut: the account is PLAYING on a device that is neither the one this start targets
-    nor ours. "" when nothing sounds, or it sounds where we are."""
+def _held_elsewhere(prov: "MusicProvider", dev: "dict | None") -> "tuple[str, str]":
+    """(device, what plays there) when a start would cut it: the account is PLAYING on a device that is neither the
+    one this start targets nor ours. ("", "") when nothing sounds, or it sounds where we are. What plays there is
+    read from the player and travels with the refusal, so the reply never has to guess it (live 2026-11-08: «Amy
+    Macdonald is playing on Camaretas» while Shakira was)."""
     try:
         np = prov.now_playing()
     except Exception as _e:  # noqa: BLE001 — unreadable: nothing known to protect
         logger.debug("_held_elsewhere: state unreadable: %s", _e)
-        return ""
+        return "", ""
     if np is None or not np.playing or not np.device_id:
-        return ""
+        return "", ""
     if dev and dev.get("id") == np.device_id:
-        return ""
-    return _foreign_device(prov, np)
+        return "", ""
+    device = _foreign_device(prov, np)
+    return device, (np.track.label() if device and np.track is not None else "")
 
 
 def elsewhere(playing_only: bool = True) -> dict:
@@ -380,6 +435,7 @@ def _confirmed(prov: "MusicProvider", res: MusicResult) -> MusicResult:
     return prov.confirm(res) if getattr(prov, "plays_elsewhere", False) else res
 
 
+@_asked_start
 def _play(query: str, uri: str, prefer: str = "", kind: str = "") -> MusicResult:
     """A start by words or uri, placed on the screen that asked (V2-812). Fail-safe: never raises."""
     screen = placement.asking_screen()
@@ -466,6 +522,7 @@ def _play_whole(cand: dict) -> MusicResult:
     return res
 
 
+@_asked_start
 def play_whole(uri: str, name: str = "", kind: str = "", *, opened: "dict | None" = None) -> MusicResult:
     """Play THE album/list/podcast a uri names — by that uri where it can sound, else its own SONGS in order — or say
     why not. The one rule for «play X» and a tap on the card (V2-860 T2.3/T2.4). Episodes are never substituted: a
@@ -501,6 +558,7 @@ def _needs_app(uri: str, name: str) -> MusicResult:
 
 
 @_refreshes_card
+@_asked_start
 def play_list(items: "list[tuple[str, str]]") -> MusicResult:
     """Several tracks as ONE sequence on the provider placed for the asking screen — [(query, uri), …], the first
     sounding now (V2-795, V2-812). Fail-safe like `control`: never raises."""
@@ -581,6 +639,7 @@ def queue_edit(op: str, index: int = -1, to: int = -1) -> MusicResult:
 
 
 @_refreshes_card
+@_asked_start
 def play_context(uri: str, label: str = "") -> MusicResult:
     """A whole album/playlist by the provider's own uri; `unsupported` when it cannot (play it track by track).
     Placed like any start (V2-812): a provider with no device on the asking screen answers `unsupported` through the
