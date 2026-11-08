@@ -452,8 +452,9 @@ def arm(brain, text: str = "", messages: list | None = None, brief=None) -> str:
     if messages and isinstance(messages[-1], dict) and messages[-1].get("role") == "user":
         messages[-1] = {**messages[-1], "content": str(messages[-1].get("content") or "") + (
             f"\n\n[SISTEMA] Antes de tu respuesta ya suena en tu voz «{phrase}». Tu primera frase la continúa con "
-            "naturalidad: no la repitas, no la contradigas y no abras con otra espera («dame un momento», «déjame "
-            "mirar»). Si por lo que fuera no llegara a sonar, tu frase se entiende igual sola.")}
+            f"naturalidad y EMPIEZA POR LA PALABRA SIGUIENTE: nunca por «{(re.findall(r'[^\W_]+', phrase) or [''])[0]}» ni por otra "
+            "espera («dame un momento», «déjame mirar»); no la contradigas. Si por lo que fuera no llegara a sonar, "
+            "tu frase se entiende igual sola.")}
     return phrase
 
 
@@ -616,6 +617,91 @@ def _announce(phrase: str, *, cover: str = "") -> None:
         pass
 
 
+def _words(text: str) -> list[str]:
+    """The words of a phrase as SAID: case, accents and punctuation («Look…», «Look,») are the voice's, not the model's."""
+    t = unicodedata.normalize("NFKD", str(text or "")).casefold()
+    t = "".join(c for c in t if not unicodedata.combining(c))
+    return re.findall(r"[^\W_]+", t)
+
+
+class EchoCut:
+    """Cuts the cover the model REPEATS at the head of its reply — deterministic, zero tokens (V2-864).
+
+    Measured on the operator's own session (2026-11-09, 7 covered turns): 4 replies opened with the very words that
+    had just sounded as the cover («Look…» → «Look, you're right…», «Got it…» → «Got it — I can see…»), with the
+    note asking the model not to. A model echoes its lead-in; a rule in prose does not stop it. This does: the
+    reply's first words are held until there are enough of them to compare, and when they ARE the cover (word for
+    word, however punctuated) they are dropped together with the punctuation that followed, and the next word is
+    capitalised. Anything else passes untouched, so a reply that merely CONTINUES the cover («…you told me to close
+    it») is never cut. One decision per turn, taken once; after it, every chunk passes straight through.
+    """
+
+    def __init__(self, phrase: str):
+        self._cover = _words(phrase)
+        self._buf = ""
+        self._decided = not self._cover
+        self.cut = False
+
+    def _need(self) -> bool:
+        # Enough words to compare: the cover's own count plus one more word started (so «Look» vs «Looking» cannot
+        # be confused), or a sentence mark that ends the head early.
+        ws = _words(self._buf)
+        return len(ws) > len(self._cover) or bool(re.search(r"[.!?\n]", self._buf))
+
+    def _decide(self) -> str:
+        self._decided = True
+        head = _words(self._buf)[:len(self._cover)]
+        if head != self._cover:
+            return self._buf
+        # Walk past the cover's words in the ORIGINAL text, then the punctuation and spaces that followed it.
+        pos, taken = 0, 0
+        for m in re.finditer(r"[^\W_]+", self._buf):
+            taken += 1
+            pos = m.end()
+            if taken == len(self._cover):
+                break
+        rest = re.sub(r"^[\s,.;:…—–\-]+", "", self._buf[pos:])
+        self.cut = True
+        return rest[:1].upper() + rest[1:] if rest else ""
+
+    def feed(self, text: str) -> str:
+        """Text to emit NOW for this chunk ("" while the head is still being held)."""
+        if self._decided:
+            return text
+        self._buf += str(text or "")
+        return self._decide() if self._need() else ""
+
+    def flush(self) -> str:
+        """The stream ended: whatever is held is decided with what there is."""
+        return "" if self._decided else self._decide()
+
+
+def _chunk_text(chunk) -> str | None:
+    """The text of a model chunk, or None when it carries none (a tool call, a usage report)."""
+    if isinstance(chunk, str):
+        return chunk
+    delta = getattr(chunk, "delta", None)
+    content = getattr(delta, "content", None)
+    return content if isinstance(content, str) else None
+
+
+def _with_text(chunk, text: str):
+    if isinstance(chunk, str):
+        return text
+    chunk.delta.content = text
+    return chunk
+
+
+def _note_echo_cut(phrase: str) -> None:
+    """One event per cut: the chat wall and the timeline show that the model repeated its cover and the voice did not."""
+    try:
+        from voice.observer import emit
+        emit("brain", "✂️ eco de la cobertura recortado", text=phrase, role="system",
+             extra={"cat": "flash", "path": "segment"})
+    except Exception:
+        pass
+
+
 def mark_for_strip(phrase: str) -> None:
     _pending_strip.append(phrase)
 
@@ -682,6 +768,7 @@ async def llm_node_with_filler(agent, default_impl, chat_ctx, tools, model_setti
             give_up = time.monotonic() + _ARM_GRACE_S
             lead_settled = False        # the lead-in phase is over: it sounded, or nothing armed in time
             lead_at = 0.0               # monotonic of the lead-in that actually SOUNDED (0 = none did)
+            lead_phrase = ""            # the lead-in that sounded, so its echo can be cut from the reply (V2-864)
             covered = False             # at most ONE work cover per turn
             while not get_t.done():
                 await asyncio.wait({get_t}, timeout=_ARM_POLL_S)
@@ -702,6 +789,7 @@ async def llm_node_with_filler(agent, default_impl, chat_ctx, tools, model_setti
                         mark_for_strip(phrase)
                         fired_any = True
                         lead_at = now
+                        lead_phrase = phrase
                         yield phrase + " "
                         yield FlushSentinel()   # closes the segment → played on its own, right now
                     continue
@@ -735,14 +823,34 @@ async def llm_node_with_filler(agent, default_impl, chat_ctx, tools, model_setti
                     yield cover + " "
                     yield FlushSentinel()
         kind, val = await get_t
+        # V2-864 — a cover that sounded is never heard twice: the head of the model's reply is compared with it
+        # (deterministic, no model, no tokens) and an echo is cut before TTS and before the transcript.
+        echo = EchoCut(lead_phrase) if (wait_ms > 0 and lead_phrase) else None
+        last_chunk = None
         while True:
             if kind == "err":
                 raise val
             if kind == "end":
                 break
             model_spoke = True
-            yield val
+            if echo is not None:
+                text = _chunk_text(val)
+                if text is None:
+                    yield val
+                else:
+                    last_chunk = val
+                    out = echo.feed(text)
+                    if out:
+                        yield _with_text(val, out)
+            else:
+                yield val
             kind, val = await q.get()
+        if echo is not None:
+            tail = echo.flush()
+            if tail and last_chunk is not None:
+                yield _with_text(last_chunk, tail)
+            if echo.cut:
+                _note_echo_cut(lead_phrase)
     finally:
         # V2-716 — did this generation STRAND its cover? A cover that sounded on a turn the model then never
         # answered is the whole of what the operator heard, and the measure that named this is blunt: of the
