@@ -6504,6 +6504,10 @@ DOMAINS: list[dict] = [
         # V2-863 — disarmed 2026-11-08 (lead not in ms: 1 red; the SDK's «used» prefix reworded in the tap: 1 red).
         {"id": "2.1639", "title": "Preemptive generation is MEASURED (V2-863): the tap on `livekit.agents` is installed once, a «using preemptive generation» line is one `perf` event `used=True` with `lead_ms`, the «chat context or tools have changed» line one `perf` event `used=False`, any other line nothing; and the installed `agent_activity.py` still says it in those words",
             "ch": UNIT, "paths": ["tests/voice/unit/test_preemptive_generation_is_measured.py"]},
+        # V2-864 — disarmed 2026-11-09 (the cut never cuts: 8 reds · the node bypasses the cut: 2 reds · the note without
+        # the cover's first word: 1 red).
+        {"id": "2.1640", "title": "A cover that sounded is never heard twice (V2-864, CRIT-V4c): `EchoCut` holds the head of the reply until it has more words than the cover (or a sentence mark), compares word for word with case, accents and punctuation normalised, and cuts an echo with the punctuation after it and a capital on the next word («Look…»+«Look, you're right» → «You're right», chunks «Got»/« it — I» → «I», «Vale…»+«Vale.» → nothing); a reply that only continues the cover («So…»+«then…», «Look…»+«Looking…») passes intact, one decision per turn; through `llm_node_with_filler` the cut runs only when a cover SOUNDED, before TTS and transcript, emits ONE `brain` «✂️ eco de la cobertura recortado», and a chunk with no text (usage, tool call) passes untouched; the note names the cover's first word with its capital («nunca por «Un»»)",
+            "ch": UNIT, "paths": ["tests/voice/unit/test_a_cover_that_sounded_is_never_heard_twice.py"]},
         # V2-851 F1b §3 — a worker's question is durable and the session that asked is resumed by id.
         {"id": "2.1030", "title": "A question waits on its row (V2-851 F1b): `ask` writes `state=waiting`, "
                                   "`waiting_for=user_answer`, `ask_id`, `ask` and keeps the retained act as the task's "
