@@ -79,6 +79,18 @@ whether the operator has vetoed it.
 one — `store.index()` is a plain `dict[phrase] → entry`, rebuilt lazily on first use, on a language change and
 on writes. A miss costs one dict lookup.
 
+The rule holds both ways: an English install does not index the Spanish pack either, so «para la música» spoken to
+it is not a map miss — it goes to the model like any novelty, and «stop the music» is that install's row for the
+same act. This is the genome's rule, not a limit to work around: an alias is a gene of ONE language's lineage
+(V2-859 §4 — the pack is the factory layer, `source='learned'` rows the learned one) and is never lent to another
+(CRIT-K45, node 2.41 both ways).
+
+**In the genome.** The seed import is a factory-layer change and emits one `gene` event per pack version
+(`🧬 alias seeded · <lang> v<a> → v<b>`, with counts — never one per phrase); a hit is evidence, not a change, and
+emits only its `actionmap` execution event. There is **no writer of learned rows yet**: `watch.py` only observes
+candidates and `agree`/`disagree` are never written, so every row today is `seed`. A learned alias needs that writer
+first (the conversational definition below), and it inherits nothing across languages.
+
 ### Normalization
 
 `normalize.py`: lowercase → NFKD accent strip → punctuation to spaces → whitespace collapse. Deliberately

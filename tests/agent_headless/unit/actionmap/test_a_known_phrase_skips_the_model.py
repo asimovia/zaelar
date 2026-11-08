@@ -118,6 +118,17 @@ def test_one_install_one_language(fresh_map, monkeypatch):
     assert actionmap.match("clear the screen") is None
 
 
+def test_an_alias_lineage_is_its_language_both_ways(fresh_map, monkeypatch):
+    """An alias is a gene of ONE language (V2-859 §4): an English install does not index the Spanish pack either.
+    Measured 2026-11-08 on an English install: «Para la música» is in the Spanish pack, not in the English one, so it
+    went to the model — that is the rule, not a fault of the map; «stop the music» is the English row of the same act."""
+    _lang(monkeypatch, "en")
+    assert actionmap.match("stop the music") is not None
+    assert actionmap.match("para la música") is None
+    from memory import action_map_store
+    assert action_map_store.action_map_active("es") == [], "the Spanish pack was never even seeded"
+
+
 def test_disabled_row_stops_matching(fresh_map, monkeypatch):
     """The user's veto is a row edit and the index honors it — the WhatsApp-retarget scenario's first half."""
     _lang(monkeypatch, "es")
