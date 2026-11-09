@@ -672,7 +672,12 @@
   "engine_shedding": "El motor no responde o va sin memoria — libero carga.",
   "engine_exit": "El motor sigue bloqueado — salgo limpio para que lo reinicien.",
   "voice_lag": "La voz va con retraso — pauso el trabajo de fondo.",
-  "envelope_late": "Poca memoria libre: el encargo arranca igual, con menos prioridad."
+  "envelope_late": "Poca memoria libre: el encargo arranca igual, con menos prioridad.",
+  "room_ok": "Hay sitio para el navegador: se abre ya.",
+  "room_paused": "Worker {task} en pausa para abrir el navegador.",
+  "room_wait": "Esperando sitio para abrir el navegador.",
+  "room_anyway": "Poco sitio, pero es tu ventana: el navegador se abre igual.",
+  "room_resumed": "Worker {task} reanudado: vuelve a haber sitio."
  },
  "not_understood_lines": [
   "No he entendido bien lo que me pides. ¿Me lo dices con otras palabras o me das algún detalle más?",

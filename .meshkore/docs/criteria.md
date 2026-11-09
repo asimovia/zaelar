@@ -572,6 +572,9 @@ below is the first kind, or it names the mechanism that replaced the second.
   ending, and every errand leaves `artifact opened|skipped` on record; a report is kept (library file + the task's
   copy) and the box reopens THAT deliverable through the one reopen door. — since 2026-11-08 · nodes 2.1635, 4.412,
   4.413 · `nucleo/chat_refs.py`, `nucleo/docsheet.py`, `nucleo/turn/task_recall.py`.
+- **CRIT-E29 · The daemon's acting routes answer only this computer.** `grant · revoke · pick · start · pair` on `/api/daemon/*` refuse a caller that is not on this computer, whatever token it presents; `status` off this computer never names a folder (V2-575 P1) · node 7.98 · `server/` daemon proxy.
+- **CRIT-E30 · A sign-in window opens on the local daemon only when it declared `browser.auth` (measured) and this engine has no window of its own.** The daemon reports a COUNT of new cookies, never a cookie; with no daemon the reach is byte-identical (V2-575 P2) · nodes 7.97 · 4.414 · `widgets/navegador/owner_login/daemon_link.py`, `daemon/browser/`.
+
 ## 4b · A task
 
 A request Flash identifies as work is a TASK: one row, one Brain Worker resumable by id, one writer of its ending.
@@ -796,6 +799,8 @@ Flash keeps the conversation; the row is what both brains read.
   `memory/_prompt/compose.py`, `memory/history.py`,
   `nucleo/turn/prompt/recall.py`, `nucleo/turn/prompt/live_state.py`, `nucleo/acts/repair_after_lookup.py`.
 
+- **CRIT-G1 · Only structured genes cross between agents.** A heritable gene is alias · route · nothing_serves · threshold (`genome/genes.py`) and passes the privacy filter (`genome/privacy.py`: a gene naming a known contact, an email, a phone, a URL, a number or a date is dropped); prose is never learned; a refused genesis reads as the last good generation; a new generation absorbs only what it ships identical and keeps what is his (V2-859 T563–T566) · nodes 2.1650–2.1653 · `genome/`.
+
 ## 6 · Resilience
 
 - **CRIT-M13 · His chats are people, linked by phone or email, found by every name.** The WhatsApp import reads the
@@ -874,6 +879,10 @@ Flash keeps the conversation; the row is what both brains read.
   counted as `untagged`; read off the rows the gate files in Rejected, from `widgets/results/actions.py`), pages filed as sources, copies, rows past the cap and the pool. — since 2026-11-02 ·
   nodes 7.86 · `widgets/results/door_event.py`.
 - **CRIT-R17 · Every row brings its picture, fetched only from the public web**: after a push is saved, a row whose template draws a photo with a `url` and no `image` gets the cover its page declares, and every remote picture is copied once into the results folder and served by `/widgets/results/asset/` (background, one fetch per page, public addresses only at every hop, pinned connection, byte cap, image types and signatures, no SVG); `offer`/`link` rows stay without one; the door event counts `no_picture`. — since 2026-11-02 · nodes 7.87, 7.88 · `widgets/results/media.py`, `search/public_fetch.py`.
+
+- **CRIT-R18 · A held worker names its true reason.** Memory only while `admits()` is false, the voice's shed as the voice, else what it queues behind; a shed names its source (`voice_loop` · `voice_audio` · `watchdog`) and ends when THAT source recovers, the seconds only a ceiling (V2-867 F0) · node 3.178 · `nucleo/workers/envelope.py`, `voice/lag.py`.
+- **CRIT-R19 · Admission is a limit, not a delay.** A worker waits for room with no deadline start (the exit is his cancel) and is admitted one at a time, the next measured only once the previous runs; the floor is max(`admit_free_ratio` × total, `voice_reserve_mb`); `max_parallel` is the ceiling (V2-867 F1) · node 3.178 · `nucleo/workers/envelope.py`, `nucleo/dispatch/session.py`.
+- **CRIT-R20 · A Chromium never launches outside the worker envelope.** Without room the newest running worker nobody else paused is paused first and resumed when room returns; room undoes only its own pauses; the operator's own window is never refused; the search browser waits like a worker through `search.hooks.room` (V2-867 F2) · node 3.179 · `nucleo/workers/room.py`.
 
 ## 7 · Working here
 
