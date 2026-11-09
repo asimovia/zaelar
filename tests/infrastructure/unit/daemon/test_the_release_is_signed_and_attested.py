@@ -169,6 +169,26 @@ def test_no_signature_survives_a_rename(tmp_path):
     assert names.SIGNATURE_TEMPLATE == names.SUMS_TEMPLATE + ".sigstore.json"
 
 
+def test_the_sums_a_windows_build_writes_check_on_any_machine(tmp_path, monkeypatch):
+    """On Windows, text mode turns every `\\n` into CRLF unless told otherwise, and a sums file whose names end
+    in `\\r` fails `shasum -c` / `sha256sum -c` everywhere else — the signature would vouch for a file nobody
+    can use to check the binary. Windows' translation is simulated here, since this suite runs elsewhere."""
+    names = _release_names()
+    original = Path.write_text
+
+    def windows_write_text(self, data, encoding=None, errors=None, newline=None):
+        translated = data.replace("\n", "\r\n") if newline is None else data
+        return original(self, translated, encoding=encoding, errors=errors, newline="")
+
+    monkeypatch.setattr(Path, "write_text", windows_write_text)
+    (tmp_path / "zaelar-daemon.exe").write_bytes(b"binary")
+    (tmp_path / "zaelar-daemon.pyz").write_bytes(b"archive")
+    (tmp_path / "manifest.json").write_bytes(b"{}")
+    names.rename_for("windows", tmp_path)
+    for written in (names.SUMS_TEMPLATE.format(suffix="windows"), "manifest-windows.json"):
+        assert b"\r" not in (tmp_path / written).read_bytes(), f"{written} was written with CRLF"
+
+
 # ── the installers ───────────────────────────────────────────────────────────────────────────────────────────
 @pytest.mark.parametrize("script,start,end,default", [
     ("get.sh", 'VERIFY_OUT="$(cosign verify-blob', "2>&1)", 'SIGNER_RE="${ZAELAR_DAEMON_SIGNER_RE:-' + SIGNER_RE + '}"'),

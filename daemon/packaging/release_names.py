@@ -79,7 +79,11 @@ def rename_for(suffix: str, dist: Path | None = None) -> list[Path]:
     # The checksums are RECOMPUTED, not rewritten by text substitution: a sums file whose names were patched
     # but whose digests came from somewhere else would be the same lie in a more convincing format.
     sums = dist / SUMS_TEMPLATE.format(suffix=suffix)
-    sums.write_text("".join(f"{_sha256(a)}  {a.name}\n" for a in sorted(published)), encoding="utf-8")
+    # ⚠️ `newline="\n"`, because this runs on Windows too, where text mode writes CRLF: every name in the sums then
+    # ends in `\r`, and `shasum -c` / `sha256sum -c` on any other machine report the files as missing — a
+    # third party could not check a Windows build at all (measured on the published SHA256SUMS-windows).
+    sums.write_text("".join(f"{_sha256(a)}  {a.name}\n" for a in sorted(published)), encoding="utf-8",
+                    newline="\n")
     old_sums = dist / "SHA256SUMS"
     if old_sums.exists():
         old_sums.unlink()
@@ -92,7 +96,7 @@ def rename_for(suffix: str, dist: Path | None = None) -> list[Path]:
             manifest["artifacts"] = [
                 {"name": a.name, "bytes": a.stat().st_size, "sha256": _sha256(a)} for a in sorted(published)
             ]
-            manifest_path.write_text(json.dumps(manifest, indent=1) + "\n", encoding="utf-8")
+            manifest_path.write_text(json.dumps(manifest, indent=1) + "\n", encoding="utf-8", newline="\n")
         except Exception:       # noqa: BLE001 — the manifest is informational; the sums are the control
             pass
     return published
