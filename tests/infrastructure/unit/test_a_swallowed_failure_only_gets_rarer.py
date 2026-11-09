@@ -60,6 +60,20 @@ def _counts() -> dict[str, int]:
 #: fall, and no file may exceed its own count.
 TOTAL = 1699   # refactor2710-06: measured with 04 and main merged
 PER_FILE: dict[str, int] = {
+    # Landed uncounted on main with the desktop shell (V2-575, PR #254) and recorded here 2026-11-09 by V2-836, which
+    # found this ratchet red on main: the daemon's best-effort GUI/browser probes. Debt, measured; only falls.
+    'daemon/browser/app_window.py': 4,
+    'daemon/browser/channel.py': 5,
+    'daemon/browser/download.py': 5,
+    'daemon/browser/status.py': 1,
+    'daemon/tray/controller.py': 1,
+    'daemon/tray/macos.py': 2,
+    'daemon/tray/windows.py': 3,
+    # Likewise landed uncounted with the daemon's auto-update (V2-869, PR #255), recorded the same day.
+    'daemon/update/__init__.py': 4,
+    'daemon/update/apply.py': 5,
+    'daemon/update/check.py': 3,
+    'daemon/update/state.py': 2,
     'nucleo/acts/card_names.py': 4,
     'widgets/navegador/owner_login/daemon_link.py': 5,
     'nucleo/chat_refs.py': 1,

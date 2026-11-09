@@ -64,10 +64,14 @@ def unreported(files: dict[str, str]) -> dict[str, int]:
     return out
 
 
+# `daemon/` is NOT the engine: it is the program installed on his computer, which imports nothing from the engine
+# (guarded by its own tests) and so cannot report through `connectors/outcome`; its calls are recorded in its own
+# audit log (`daemon/audit.py`). Its loopback/relay calls landed on main uncounted (V2-575 P3, desktop shell), which
+# turned this ratchet red for a door the daemon can never use.
 def _product() -> dict[str, str]:
     names = subprocess.run(["git", "ls-files", "*.py"], cwd=ENGINE, capture_output=True, text=True).stdout.split()
     return {n: (ENGINE / n).read_text(encoding="utf-8") for n in names
-            if not n.startswith(("tests/", "scripts/")) and "/tests/" not in n and (ENGINE / n).exists()}
+            if not n.startswith(("tests/", "scripts/", "daemon/")) and "/tests/" not in n and (ENGINE / n).exists()}
 
 
 def test_a_provider_call_outside_the_door_only_gets_rarer():

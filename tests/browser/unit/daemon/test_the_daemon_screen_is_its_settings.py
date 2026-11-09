@@ -2,7 +2,8 @@
 
 Five cards in a fixed order — status · folders · browser · pairing · tunnel — each painted from a fixture
 `/api/daemon/status`; a status missing every new field still paints them all in their "not known" face with no
-exception; the tunnel switch is drawn disabled with its consent text; the install wizard ENDS on the settings view
+exception; the tunnel switch is drawn disabled with its consent text while the status says nothing about it (its live
+face is `test_the_tunnel_switch_asks_first.py`); the install wizard ENDS on the settings view
 instead of closing; and the 🖥 icon's colour follows the status, green for a cloud engine whose relay is connected.
 
 Rendered in Chromium against the real DaemonSetup, TopBar-free icon state (`services/daemon.iconState`) applied to
@@ -66,8 +67,9 @@ def test_every_card_paints_from_a_full_local_status(server, lang):
         assert r["windowOpen"] == {"disabled": True, "tip": b["daemon.browser.window_tip"]}
         assert r["pairLinked"] == b["daemon.pair.loopback"], "over loopback the card says it is already linked"
         assert r["pairCode"] is None and not r["getCard"], "no code and no download for a local engine"
-        assert r["tunnel"] == b["daemon.tunnel.consent"] and r["soon"] == b["daemon.tunnel.soon"]
-        assert r["switchDisabled"] is True and r["switchChecked"] is False, "the tunnel switch is not live yet"
+        assert r["tunnel"] == b["daemon.tunnel.consent"] and r["soon"] is None
+        assert r["switchDisabled"] is True and r["switchChecked"] is False, "no egress field: the switch is not live"
+        assert r["tunnelState"] == b["daemon.tunnel.unknown"]
         assert not _raw_keys(r["text"]), f"raw i18n keys on screen: {_raw_keys(r['text'])}"
         assert not pg._errors, pg._errors
         pg._browser.close()

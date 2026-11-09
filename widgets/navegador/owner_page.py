@@ -29,6 +29,9 @@ async def _ensure_page():
         if port:
             args.append(f"--remote-debugging-port={port}")
             _o._emit("remote_port", f"puerto de depuración {port}")
+        # V2-836: while his daemon carries this engine's browsing (an engine away from his computer, his tunnel
+        # switched on), the browser leaves through the local forwarder; with no tunnel the args are what they were.
+        args += await _egress_args()
 
         async def _launch(headless: bool, channel: str | None):
             # channel="chrome" = the installed REAL Chrome (real-browser fingerprint, not Playwright's Chromium that
@@ -110,6 +113,17 @@ async def _ensure_page():
     # headless above, and a «real window» label then promised him a window nobody could see.
     _o._emit("launched", f"navegador {'ventana real' if _o._headed else 'headless'} · perfil persistente")
     return _o._page
+
+
+async def _egress_args() -> list[str]:
+    """`--proxy-server=…` while his tunnel is up (waiting a moment for a dial that is on its way), else nothing."""
+    try:
+        from nucleo.daemon_egress import link
+        await link.ready()
+        return link.launch_args()
+    except Exception as e:  # noqa: BLE001 — the tunnel is additive: a launch never fails on it
+        _o.logger.debug(f"navegador: egress args unavailable ({type(e).__name__})")
+        return []
 
 
 # ── a session handed over by his daemon (V2-575 P3) ───────────────────────────────────────────────────────────

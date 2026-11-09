@@ -61,6 +61,14 @@ def update_message(result: dict) -> str:
     return f"Zaelar daemon {current} is up to date."
 
 
+class _Tray:
+    """Stands in for the HTTP request a route receives: the caller is the person at this computer, via the menu."""
+
+    @staticmethod
+    def _caller() -> str:
+        return "tray"
+
+
 class Controller:
     """`notify(title, message)` and `quit_fn()` are supplied by the backend; everything else is injectable."""
 
@@ -81,10 +89,20 @@ class Controller:
 
     # ── reading ────────────────────────────────────────────────────────────────────────────────────────────
 
+    def _egress(self) -> dict | None:
+        try:
+            from .. import config   # noqa: PLC0415
+            from ..egress import tunnel   # noqa: PLC0415
+            return {"enabled": config.egress_enabled(), "connected": tunnel.TUNNEL.connected()}
+        except Exception as e:   # noqa: BLE001 — an unreadable state greys the item out, never the menu
+            from ..egress import note   # noqa: PLC0415
+            note("tray could not read the tunnel state", e)
+            return None
+
     def refresh(self) -> model.View:
         health = self._health()
         target = self._target() if health else None
-        v = model.view(health, target, self._windows.current_task())
+        v = model.view(health, target, self._windows.current_task(), self._egress() if health else None)
         with self._lock:
             self._view = v
         return v
@@ -150,6 +168,15 @@ class Controller:
 
     def _do_download_cancel(self) -> None:
         self._job.cancel()
+
+    def _do_egress(self) -> None:
+        """Flip the outbound tunnel through the daemon's own route (`POST /egress`), as the person at this computer:
+        the menu item said what it means, and choosing it is his consent."""
+        from ..http import routes   # noqa: PLC0415
+        on = not bool((self._egress() or {}).get("enabled"))
+        routes.egress_switch(_Tray(), {"enabled": on, "consent": on})
+        self._notify("Zaelar", "Outbound tunnel on: your cloud agent browses through this computer." if on
+                     else "Outbound tunnel off.")
 
     def _do_updates(self) -> None:
         """Check now; when a newer, VERIFIED release exists, download and verify it — then say what happened. The

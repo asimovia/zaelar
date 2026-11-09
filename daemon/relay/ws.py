@@ -47,6 +47,8 @@ class WebSocket:
         self._buf = b""
         self._parts: list[bytes] = []
         self.closed = False
+        #: The status code of the peer's close frame, when it sent one (the egress tunnel reads 4401 from it).
+        self.close_code: int | None = None
 
     # ── reading ──────────────────────────────────────────────────────────────────────────────────────────
 
@@ -100,6 +102,8 @@ class WebSocket:
             if opcode == OP_PONG:
                 continue
             if opcode == OP_CLOSE:
+                if len(payload) >= 2:
+                    self.close_code = struct.unpack("!H", payload[:2])[0]
                 self.close()
                 raise Closed("closed by the relay")
             if opcode in (OP_TEXT, OP_BINARY, OP_CONT):

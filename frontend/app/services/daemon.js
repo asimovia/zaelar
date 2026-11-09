@@ -75,6 +75,22 @@ export function iconState() {
 export function relay() { const s = status(); return (s && s.relay && typeof s.relay === "object") ? s.relay : null; }
 export function relayConnected() { const r = relay(); return !!(r && r.connected); }
 
+// The outbound tunnel (V2-836): `{capable, enabled, connected, hosts_last_hour}`, or null when the engine does not say.
+export function egress() { const s = status(); return (s && s.egress && typeof s.egress === "object") ? s.egress : null; }
+
+// Flip the tunnel switch on the daemon of THIS computer. ON always carries `consent: true`: it is only ever called
+// from the «I understand, turn it on» button, after the consent text. Re-reads the status either way.
+export async function setEgress(enabled) {
+  let body = {};
+  try {
+    const r = await fetch("/api/daemon/egress", { method: "POST", headers: { "Content-Type": "application/json" },
+                                                  body: JSON.stringify({ enabled: !!enabled, consent: !!enabled }) });
+    try { body = await r.json(); } catch (_) { body = {}; }
+  } catch (_) { body = {}; }
+  await check();
+  return body;
+}
+
 // The browser the daemon's sign-in window uses (`browser: {state, channel, progress, size_mb}`), or null when
 // this daemon does not say — an older daemon, or none at all.
 export function browser() { const s = status(); return (s && s.browser && typeof s.browser === "object") ? s.browser : null; }

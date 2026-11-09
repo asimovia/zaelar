@@ -2,7 +2,8 @@
 
 A small resident process on the user's OWN computer for the two things an engine without his desktop cannot do: read
 the folders he grants, and open a real browser window on his screen for a sign-in or a challenge only a person passes.
-It is additive: an engine with no daemon behaves exactly as before. Not the shared MeshKore daemon.
+It is additive: an engine with no daemon behaves exactly as before. Not the shared MeshKore daemon. When he switches
+it on, it can also carry an engine's browsing so sites see his own connection (the egress tunnel, below).
 
 Standalone on purpose: the daemon imports nothing from the engine and the engine never imports the daemon (both
 directions are guarded by tests). Its dependency set is the standard library, plus Playwright only when a browser
@@ -13,6 +14,7 @@ window is wanted. Initiative: V2-575.
 ```
  engine on the same computer ──loopback HTTP + token──▶ daemon (127.0.0.1:45817)
  engine elsewhere ──HTTPS──▶ relay ◀──WSS, dialled OUT by the daemon── daemon
+ engine elsewhere ◀──WSS /daemon/tunnel, dialled OUT by the daemon (egress)── daemon ──TCP──▶ public sites
 ```
 
 | Folder | What it is |
@@ -22,10 +24,11 @@ window is wanted. Initiative: V2-575.
 | `daemon/http/` | The loopback surface: route table (`routes.py`), handler, life cycle. |
 | `daemon/browser/` | The ONE headed sign-in window on a persistent profile. |
 | `daemon/relay/` | The OUTBOUND link (P3): config, a stdlib WebSocket client, the link, command dispatch, pairing, session export. |
+| `daemon/egress/` | The egress tunnel (V2-836): its own WebSocket, one TCP stream per `open`, the per-host audit. |
 | `daemon/packaging/` | The single-file builds and the one-line installers. |
 
 State lives under one directory, `config/daemon/` in a source tree or the platform's user-data directory when
-installed: `daemon.json` (port, API token, folder allowlist), `audit.jsonl`, `browser/profile/`, and `relay.json`.
+installed: `daemon.json` (port, API token, folder allowlist, the `egress` switch), `audit.jsonl`, `browser/profile/`, and `relay.json`.
 
 ## The permission circuit
 
@@ -81,6 +84,7 @@ If a relay URL is configured and the daemon has been paired, the daemon dials OU
 | `browser.close` | `{task_id?}` | `{closed}` |
 | `browser.export_session` | `{site}` | `{domain, storage_state}` |
 | `daemon.status` | `{}` | `{version, caps, roots_count, browser:{open}}` |
+| `egress.offer` | `{token, url, expires_at}` | `{accepted, connected}` — refused `egress_disabled` while his switch is off (see «Egress») |
 
 What a REMOTE caller may not do is enforced in `daemon/relay/dispatch.py`, before the handler: `profile` is dropped
 from `browser.open` (the window opens on the daemon's own profile); an unknown op is `unknown_op`; `deadline_ms` is
@@ -113,11 +117,62 @@ close → the same `_auth_done` a local window ends with; presence is re-read ev
 `POST /api/daemon/pair` returns `{code, expires_at}` on a hosted engine, `relay_not_available` on one with no relay,
 and `paired, mode: loopback` over loopback.
 
+## Egress — the engine browses through his computer (V2-836)
+
+A seam: if an engine away from his computer can offer a tunnel AND his daemon is connected with `egress` among its
+capabilities, the engine's own Chromium (the navigator's and the search one) and its direct fetches open their TCP
+connections from his computer, so sites see his connection instead of a datacenter's. Otherwise nothing of this runs
+and the traffic goes out directly, unchanged.
+
+**The switch** is `daemon.json`'s `egress: {enabled, consented_at}` — OFF by default, ON only with a recorded consent
+(a file edited to `enabled: true` without `consented_at` reads off). Flipped ONLY on his computer: the tray item
+«Outbound tunnel: on/off» (choosing it is the consent; its tooltip says what it means), or the 🖥 screen of an engine on
+the same computer (`POST /api/daemon/egress {enabled}` → loopback `POST /egress {enabled, consent}`; ON is asked first
+with the consent text and «I understand, turn it on»). `GET /egress` reads it. A relayed command never switches it:
+`egress.offer` is refused while it is off, and the loopback route refuses an ON that says it came through the relay.
+`hello` declares `egress` only while it is on; flipping it makes the relay link say hello again; switching it OFF
+closes the tunnel and every stream at once.
+
+**The offer and the dial.** The engine mints `<instance_id>.<32 random bytes, base64url>` (10 min, kept in memory,
+`nucleo/daemon_egress/tokens.py`) and sends `egress.offer {token, url: <ZAELAR_TUNNEL_ORIGIN>/daemon/tunnel,
+expires_at}` over the relay. The daemon accepts a `wss://` URL on the same site as its relay (or two loopback ends),
+dials it with `Authorization: Bearer <token>`, and redials with backoff only while that offer is fresh; the engine
+renews it before half its life is gone. On a hostname shared by several instances, `server/ingress.py` admits
+`/daemon/tunnel` without a cookie and replays it (`307 fly-replay: instance=<prefix>`) to the instance the prefix
+names; that instance verifies the token in constant time against its own set and closes **4401** on anything else,
+which the daemon reads as «do not retry this token». A WebSocket on that hostname is admitted only on that allowlist.
+
+**Frames** on the tunnel (JSON text): engine → daemon `{"t":"open","id","host","port"}`; daemon → engine
+`{"t":"ok","id"}` or `{"t":"close","id","error"}`; both ways `{"t":"data","id","b64"}` and `{"t":"close","id"}`;
+engine → daemon `{"t":"ping"}` every 25 s → `{"t":"pong"}`. CONNECT semantics: a byte stream to `host:port`; TLS runs
+end to end, so the daemon sees host names and byte counts only.
+
+**On the engine**, `nucleo/daemon_egress/forwarder.py` listens on `127.0.0.1:<ephemeral>` and speaks `CONNECT
+host:port` (and absolute-form `http://`) to Chromium (`--proxy-server`, added at launch only while a tunnel is up) and
+to httpx (`proxy=`). A stream goes through the tunnel while one is up and directly when none is; a stream the daemon
+REFUSES is answered `502` and not retried directly. A Chromium launched before the tunnel came up keeps going out
+directly until its next launch (the search one relaunches when idle; the navigator waits up to 5 s for a dial already
+offered before launching).
+
+**The daemon's rules** (`daemon/security/egress_guard.py`, applied per stream in `daemon/egress/connect.py`): the
+switch is re-read; ports 80/443/8080/8443 only; names that only exist inside his network refused before any lookup;
+the name resolved on the daemon and EVERY address checked public — loopback, RFC 1918, link-local, ULA, CGNAT,
+multicast/reserved, and v4 embedded in mapped/NAT64/6to4 v6 refused, one private answer refuses the name; the socket
+connects to a checked address (never to the name again) and the peer is re-checked; a per-site token bucket (120,
+refilled 4/s); at most 128 streams. The audit (`daemon/egress/ledger.py`) writes `egress.host` when a host is first
+reached in an hour, `egress.summary` (streams, bytes each way) when the hour turns or the tunnel closes, and one
+`refused` line per host and reason per hour — never a URL.
+
+**Status**: `/api/daemon/status.egress = {capable, enabled, connected, hosts_last_hour}`. On this computer it is the
+daemon's `GET /egress`; away from it, `enabled` is `egress` in his daemon's capabilities, `capable` a connected daemon
+recent enough to carry it, `connected` this engine's tunnel.
+
 ## Limits
 
 20 MB per result, 2 MB per exported session, 1 MB per incoming message, `deadline_ms` ≤ 120 000, 4 concurrent
-commands, backoff 1 → 60 s. Not done here: the task's browsing itself running on the daemon (only the sign-in and the
-session cross), push of events to the engine (it polls), an egress tunnel.
+commands, backoff 1 → 60 s; tunnel: 128 streams, 32 KB per data frame, a 10-minute token. Not done here: the task's
+browsing itself running on the daemon's window (only the sign-in and the session cross), push of events to the engine
+(it polls), the tunnel for an engine on the same computer (it has no instance id: its traffic is already his).
 
 ## Testing
 
@@ -130,6 +185,11 @@ session cross), push of events to the engine (it polls), an egress tunnel.
 | 7.105 | session export: one domain, own profile, 2 MB, counts-only audit |
 | 7.106 | hosted pairing code and `status.relay` |
 | 4.420 | end to end: engine → in-process relay → the real daemon link → import; presence; the phone |
+| 7.121 | egress guard: every private range by resolved address, ports, per-site rate, the switch per stream |
+| 7.122 | egress switch: off by default, consent, offer refused while off, `hello`, kill switch mid-session |
+| 7.123 | egress end to end: offer → dial → one CONNECT round trip; the token; two streams on one socket |
+| 7.124 | `/daemon/tunnel` admission: allowlist, replay by prefix, no cookie, 4401 |
+| 7.125 · 4.431 · 4.432 | `status.egress` and the switch route · launch args only with a tunnel · the 🖥 switch asks first |
 
 The relay in tests is a real WebSocket server on an ephemeral loopback port
 (`tests/infrastructure/unit/daemon/fake_relay.py`). No real relay is exercised by this repository.

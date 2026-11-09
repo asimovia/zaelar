@@ -27,8 +27,13 @@ CAPABILITIES = ["files.list", "files.read", "files.search"]
 
 def capabilities() -> list[str]:
     """What this daemon can do RIGHT NOW: the files half always, the sign-in window only when a browser is really
-    there to open (`daemon.browser.available()`) — P2's capability is measured, never declared by hand."""
-    return list(CAPABILITIES) + ([browser.CAPABILITY] if browser.available() else [])
+    there to open (`daemon.browser.available()`) — P2's capability is measured, never declared by hand — and the
+    outbound tunnel (`egress`, V2-836) only while the person has it switched on."""
+    return list(CAPABILITIES) + ([browser.CAPABILITY] if browser.available() else []) + \
+        ([EGRESS_CAPABILITY] if config.egress_enabled() else [])
+
+
+EGRESS_CAPABILITY = "egress"
 
 AUDIT_DEFAULT_LIMIT = 200
 AUDIT_MAX_LIMIT = 1_000
@@ -158,6 +163,31 @@ def browser_close(request, payload: dict) -> dict:
     return out
 
 
+def egress_state(_request, _payload: dict) -> dict:
+    """The tunnel as this computer sees it: the switch, when he consented, and what it is carrying."""
+    from ..egress import tunnel
+    section = config.egress()
+    return {"ok": True, "enabled": bool(section.get("enabled")), "consented_at": section.get("consented_at"),
+            **tunnel.TUNNEL.view()}
+
+
+def egress_switch(request, payload: dict) -> dict:
+    """Switch the tunnel. ON needs `consent: true` — the screen on this computer showed the text and he pressed
+    «I understand, turn it on» — and is refused to anything that says it came through the relay: a remote command
+    never flips this switch. OFF is immediate and closes every stream."""
+    from ..egress import tunnel
+    from ..fs.refusal import Refusal
+    enabled = payload.get("enabled") is True
+    if enabled and request._caller() == "relay":
+        raise Refusal("not_local", "The tunnel is switched on only from this computer.")
+    try:
+        section = tunnel.switch(enabled, consent=payload.get("consent") is True)
+    except ValueError:
+        raise Refusal("consent_required", "Turning the tunnel on needs your consent on this computer.") from None
+    audit.record("egress.switch", caller=request._caller(), outcome="ok", detail={"enabled": section["enabled"]})
+    return egress_state(request, {})
+
+
 TABLE: dict[tuple[str, str], object] = {
     ("GET", "/health"): health,
     ("GET", "/permissions"): permissions,
@@ -171,4 +201,6 @@ TABLE: dict[tuple[str, str], object] = {
     ("POST", "/browser/open"): browser_open,
     ("POST", "/browser/state"): browser_state,
     ("POST", "/browser/close"): browser_close,
+    ("GET", "/egress"): egress_state,
+    ("POST", "/egress"): egress_switch,
 }

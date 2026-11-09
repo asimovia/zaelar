@@ -212,12 +212,14 @@ async def daemon_status(request: Request):
         "platform": _guess_platform(request),
         "downloads": _downloads(version),
         "relay": dict(_RELAY_OFF),
+        "egress": dict(_EGRESS_OFF),
     }
     # A cloud engine is not on the user's machine, so probing 127.0.0.1 would either time out or — worse —
     # reach a daemon belonging to whoever else is on that host. It does not probe at all.
     if cloud:
         payload["state"] = "remote"
         payload["relay"] = await _relay_status()
+        payload["egress"] = _egress_remote(payload["relay"])
         return JSONResponse(payload)
     # ⚠️ NO CONFIG MEANS NO DAEMON OF OURS, and the probe is skipped rather than attempted. `/health` is the one
     # route that answers without a token, so probing anyway would report `reachable: true` on the strength of a
@@ -244,6 +246,7 @@ async def daemon_status(request: Request):
             payload["roots"] = list(perms.get("roots") or [])
             payload["candidates"] = list(perms.get("candidates") or [])
         has_roots = bool(perms.get("roots")) if (pstatus == 200 and perms.get("ok")) else False
+        payload["egress"] = await _egress_local(cfg)
         payload["state"] = "warn" if (payload["outdated"] or not has_roots) else "ok"
     else:
         payload["state"] = "off"
@@ -334,6 +337,55 @@ async def _relay_status() -> dict:
         return await relay_link.status_view()
     except Exception:       # noqa: BLE001 — a status icon never fails on the relay
         return dict(_RELAY_OFF)
+
+
+# ── the outbound tunnel (V2-836) ──────────────────────────────────────────────────────────────────────────────
+
+_EGRESS_OFF = {"capable": False, "enabled": False, "connected": False, "hosts_last_hour": 0}
+
+
+def _egress_remote(relay: dict) -> dict:
+    """On an engine away from his computer: what his daemon declares through the relay, and this engine's own
+    tunnel. All-false when this engine cannot offer one."""
+    try:
+        from nucleo.daemon_egress import link
+        return link.status(relay)
+    except Exception:       # noqa: BLE001 — a status icon never fails on the tunnel
+        return dict(_EGRESS_OFF)
+
+
+async def _egress_local(cfg: dict) -> dict:
+    """On this computer: the daemon's own answer (`GET /egress`). An older daemon without the route is not capable."""
+    status, body = await _call(cfg, "/egress")
+    if status != 200 or not body.get("ok"):
+        return dict(_EGRESS_OFF)
+    return {"capable": True, "enabled": bool(body.get("enabled")), "connected": bool(body.get("connected")),
+            "hosts_last_hour": int(body.get("hosts_last_hour") or 0)}
+
+
+@router.post("/api/daemon/egress")
+async def daemon_egress(request: Request, body: dict = Body(default={})):
+    """The tunnel switch (V2-836). It lives in the DAEMON, on his computer, and only something on his computer flips
+    it: here, the engine on the same machine passes his click to the daemon over loopback — ON with `consent: true`
+    (the screen showed the text and he pressed «I understand, turn it on»), OFF at once. An engine away from his
+    computer answers `409 switch_on_his_computer`: no remote command switches the tunnel, so the screen tells him to
+    use the Zaelar icon on his computer instead."""
+    if _is_cloud():
+        if not _same_origin(request):
+            return _CROSS_SITE
+        return JSONResponse({"ok": False, "error": "switch_on_his_computer"}, status_code=409)
+    if (refusal := _refused(request)) is not None:
+        return refusal
+    cfg = _daemon_config()
+    if not cfg.get("token"):
+        return JSONResponse({"ok": False, "error": "not_installed"}, status_code=409)
+    enabled = body.get("enabled") is True
+    status, result = await _call(cfg, "/egress", {"enabled": enabled, "consent": enabled and body.get("consent") is True})
+    if status == 0:
+        return JSONResponse({"ok": False, "error": "not_running"}, status_code=409)
+    if status == 404:
+        return JSONResponse({"ok": False, "error": "daemon_too_old"}, status_code=409)
+    return JSONResponse(result, status_code=status)
 
 
 async def _pairing_code() -> JSONResponse:

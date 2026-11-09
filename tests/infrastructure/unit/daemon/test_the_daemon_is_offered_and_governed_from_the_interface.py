@@ -123,7 +123,12 @@ def test_the_engine_never_proxies_a_file_route():
     # caller that is not on this computer and a cross-site page. 2026-11-09 (P3): on a HOSTED engine it returns a
     # one-time pairing code `{code, expires_at}` from the service the engine reports to — shown to him, single use,
     # minutes long; the same-origin guard still applies (his browser is never on a hosted engine's machine).
+    # 2026-11-09, threat-modelled (V2-836): `egress` carries ONE boolean to the daemon's tunnel switch (`{enabled,
+    # consent}`) and returns the switch's state — no path, no file, no secret. It acts only from this computer (the
+    # same two guards as `grant`); ON reaches the daemon only with the screen's consent, and a hosted engine answers
+    # `switch_on_his_computer` without calling anything, so no remote page can switch the tunnel.
     assert paths == {"/api/daemon/status",
+                     "/api/daemon/egress",
                      "/api/daemon/pair",
                      "/api/daemon/permissions/grant",
                      "/api/daemon/permissions/revoke",

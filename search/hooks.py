@@ -10,6 +10,8 @@ modules did reach for are kept as callables the server sets in its lifespan (`se
     (route chosen, provider answered) land on the timeline when it runs inside the engine.
   · `room(what)` — an async context manager around a Chromium launch (`nucleo.workers.room.room_for`, V2-867 F2):
     in the engine the launch waits for room on the host, pausing the newest worker; alone it launches at once.
+  · `proxy()` — the local proxy the browser and the direct fetches leave through while an egress tunnel is up
+    (`nucleo.daemon_egress.link.proxy_url`, V2-836); None — a direct connection, as always — otherwise or alone.
 
 Unset, every seam is a no-op: the service works alone, which is the point of making it a service.
 """
@@ -26,6 +28,19 @@ emit: Callable[..., None] | None = None
 policy: Callable[[], dict] | None = None
 #: The host's room for a heavy launch (`nucleo.workers.room.room_for` in the engine, V2-867 F2).
 room: Callable[[str], AsyncContextManager] | None = None
+#: The host's egress proxy URL while a tunnel is up, else None (`nucleo.daemon_egress.link.proxy_url`, V2-836).
+proxy: Callable[[], str | None] | None = None
+
+
+def egress_proxy() -> str | None:
+    """The proxy a launch or a direct fetch uses right now, or None (direct) — always None when the service runs alone."""
+    if proxy is None:
+        return None
+    try:
+        return proxy() or None
+    except Exception as e:  # noqa: BLE001 — the tunnel is additive: a search never fails on it
+        logger.debug(f"search.hooks: the proxy hook raised ({e!r})")
+        return None
 
 
 def declared(key: str, default: float) -> float:
