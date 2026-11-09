@@ -32,6 +32,22 @@ def set_login_wait(task_id: str, on: bool, *, blocked: str = "") -> None:
     _f._notify(task_id)
     if on:
         _f._raise_for_him(task_id, "login")
+    _errand_waits(task_id, on, blocked)
+
+
+def _errand_waits(task_id: str, on: bool, blocked: str) -> None:
+    """V2-868 D3 — the errand driving this card waits on HIS sign-in: one question, the worker stops, nothing is
+    delivered (`nucleo/request/sign_in_wait`). A wait that ends unblocked is remembered until the owner confirms
+    the sign-in, which resumes the same row."""
+    try:
+        from nucleo.request import sign_in_wait
+        if on or blocked:
+            sign_in_wait.park(task_id, blocked=blocked)
+        else:
+            sign_in_wait.ended(task_id)
+    except Exception as e:  # noqa: BLE001 — the card's own state is already written
+        import logging
+        logging.getLogger("zaelar.navegador").debug(f"tasks: the errand's sign-in wait not settled ({e!r})")
 
 
 def _raise_for_him(task_id: str, why: str) -> None:   # he must act in the page → the errand's ONE card (V2-797)

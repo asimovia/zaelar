@@ -101,7 +101,7 @@ def _attach_brief_followup(task: "_d.asyncio.Task", *, key: str, rec: "_d.Sessio
             unavailable = True
         try:
             if b:
-                _d.research.save(key, b)
+                _d.research.save(rec, b)          # V2-868: under the errand's ROW, never the per-boot id
                 _d.research.remember_round(_d._goal_key(req), b)
                 if not _d.surfaces.not_a_sheet(getattr(rec, "surface", "")):    # V2-644: no results sheet to seed
                     _d.asyncio.ensure_future(_d._seed_research_criteria(b, rec))

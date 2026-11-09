@@ -431,6 +431,7 @@ def _close(rec, relay_cap: int) -> str:
             rec.goal_retried = True
             try:
                 from nucleo.acts import errand as _esc
+                from nucleo.runtime_ids import errand_key   # V2-868: the brief's key is the row's
                 _esc.escalate_to_slowbrain(
                     f"{rec.goal}\n\n[ARNÉS] Esto quedó SIN cumplir y es lo que hay que terminar: {missing}. "
                     f"Lo demás ya está hecho: no lo repitas.",
@@ -440,7 +441,7 @@ def _close(rec, relay_cap: int) -> str:
                              "done_when": dict(rec.done_when), "depth": int(rec.depth or 0),
                              "relay_gen": int(rec.relay_gen or 0) + 1,
                              "task_uid": str(getattr(rec, "uid", "") or ""),
-                             **({"resume": {"brief_task": str(getattr(rec, "uid", "") or rec.task_id)}} if gap else {})})
+                             **({"resume": {"brief_task": errand_key(rec)}} if gap else {})})
                 rec.result_summary = ""            # no delivery: the relay takes it over, without noise
                 rec.ok = False
                 rec.handoff = f"objetivo sin cumplir → retomada ({missing[:80]})"

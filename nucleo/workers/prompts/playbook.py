@@ -65,7 +65,24 @@ DELIVERABLE = {ERRAND: "results", LISTA: "results", DOCUMENT: "documento", MESSA
                MEETING: "agenda", BOOKING: "agenda"}
 
 
-def goal_grammar(name: str) -> str:
+def results_contract(brief: dict | None) -> bool:
+    """Does this errand owe a RESULTS SHEET (V2-868 D3)? Only when its research brief declares a deliverable on it.
+
+    Measured on the operator's console: «track my parcel by talking to the seller's bot every day» had no research
+    brief (the spec said it ends in nothing a card can attest), yet the playbook named the results card as the place its
+    end state is read, so the worker declared `results.items` as its goal, landed on a sign-in and wrote ONE item made
+    of its own status («login pending», a daily hour) and a recalled price. A status became a result. The card an
+    errand fills is the brief's declared deliverable: the composer's «not a research» owes none; a brief still on its
+    way (None) keeps the contract, as before."""
+    if brief is None:
+        return True            # no brief YET (composing in parallel, or the composer down): the contract stands
+    if not isinstance(brief, dict) or not brief.get("goal"):
+        return False           # the composer answered «not a research» (`brief_store.not_research`)
+    widget = str((brief.get("deliverable") or {}).get("widget") or "results").strip().lower()
+    return widget == DELIVERABLE[ERRAND]
+
+
+def goal_grammar(name: str, *, card: str | None = None) -> str:
     """Checkpoint 1's grammar line: the shape a row's end state takes and what this playbook's card declares.
     Measured 2026-11-06 (eleven errands, both languages): the brief showed only the prose «DONE WHEN» and every first
     `report goal` was prose, refused at the door — one round trip and a late checkpoint 1 per errand. '' with no pack."""
@@ -74,7 +91,7 @@ def goal_grammar(name: str) -> str:
         return ""
     try:
         from nucleo.circuit import spec_declares as _sd
-        card = DELIVERABLE.get(name, "")
+        card = DELIVERABLE.get(name, "") if card is None else card
         declares = _sd.said_of(card) if card else ""
         return tpl.format(shape=_sd.SHAPE, declares=declares).replace(" .", ".")
     except Exception as e:  # noqa: BLE001
@@ -136,8 +153,9 @@ def _durable(rec) -> tuple[str, dict]:
         return "", {}
 
 
-def block(name: str, end_state: str, *, with_a_party: bool = True) -> str:
-    """The method block for a playbook, or '' when the language pack has none."""
+def block(name: str, end_state: str, *, with_a_party: bool = True, results: bool = True) -> str:
+    """The method block for a playbook, or '' when the language pack has none. `results=False` (V2-868 D3): the errand
+    owes no results sheet (`results_contract`), so checkpoint 1 is not told that its end state is read on one."""
     tpl = str(_words("playbook") or "")
     if not tpl:
         return ""
@@ -145,7 +163,8 @@ def block(name: str, end_state: str, *, with_a_party: bool = True) -> str:
     cat = catalogue(name, with_a_party=with_a_party)
     if cat:
         out += "\n" + cat
-    grammar = goal_grammar(name)
+    owes_sheet = results or DELIVERABLE.get(name) != DELIVERABLE[ERRAND]
+    grammar = goal_grammar(name) if owes_sheet else goal_grammar(name, card="")
     if grammar:
         out += "\n" + grammar
     if name == LISTA:

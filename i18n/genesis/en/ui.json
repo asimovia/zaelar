@@ -2466,5 +2466,9 @@
  "widgets.musica.away_release": "Let it be",
  "daemon.cap.browser_on": "Sign-in window: when a site asks you to sign in, Zaelar can open it here on this computer.",
  "daemon.cap.browser_off": "Sign-in window: not available on this computer yet (the browser it needs is not installed).",
- "daemon.mobile.connected": "Connected on your computer. From here Zaelar can read the folders you granted; a sign-in window only opens on the computer."
+ "daemon.mobile.connected": "Connected on your computer. From here Zaelar can read the folders you granted; a sign-in window only opens on the computer.",
+ "errand.sign_in.window": "Sign in in the window I just opened and I'll carry on by myself.",
+ "errand.sign_in.no_window": "I need you to sign in, and I can't open a window for you from here. I'll wait and carry on once you do.",
+ "errand.sign_in.phone": "From your phone I can't open a sign-in window: open your agent on a computer and I'll carry on from there.",
+ "errand.sign_in.done": "I've signed in{site} — carry on where you stopped."
 }

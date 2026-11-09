@@ -498,7 +498,8 @@ def test_a_resumed_task_keeps_the_criteria_it_already_agreed(fresh_db):
     from nucleo.workers import brief as research
     b = _brief(hard=["criterio ya acordado"])
     research.save("t-42", b)
-    got = asyncio.run(dispatch._compose_brief("sigue con lo de antes", "", True, {"brief_task": "t-42"}))
+    got = asyncio.run(dispatch._compose_brief("sigue con lo de antes", "", True, {"brief_task": "t-42"},
+                                              errand="t-42"))          # V2-868: the RESUMED row's own brief
     assert got["hard"] == ["criterio ya acordado"]
 
 

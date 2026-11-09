@@ -71,3 +71,28 @@ def reset_seq(name: str) -> None:
     with _lock:
         _seqs.pop(name, None)
         _BOOT = secrets.token_hex(3)
+
+
+def errand_key(rec_or_id) -> str:
+    """THE key of anything stored per errand (V2-868): the durable row id when the errand has one, else the
+    boot-stamped task id — the same composition as `ledger.task_uid`, `sheets.sheet_id_for` and `workdir.for_task`.
+
+    A bare `task_id` is the per-process counter (`escalate._seq` restarts at 1 every boot) and was the key of the
+    research brief in the memory KV, which survives restarts: the first errand of a boot read the brief of the
+    previous boot's first errand, judged itself against it and relaunched with it. That is the class V2-288 and
+    V2-259 closed for the workdir and the sheet; this door closes it for every errand-scoped store at once.
+
+    Accepts a record (`uid`, `task_id`) or an id. An id that is only the counter (all digits) is composed with this
+    boot's stamp; anything else is already durable and is returned as it is. "" when there is nothing to key on."""
+    if rec_or_id is None:
+        return ""
+    if isinstance(rec_or_id, (str, int)):
+        uid, tid = "", str(rec_or_id).strip()
+    else:
+        uid = str(getattr(rec_or_id, "uid", "") or "").strip()
+        tid = str(getattr(rec_or_id, "task_id", "") or "").strip()
+    if uid:
+        return uid
+    if not tid:
+        return ""
+    return f"{boot_id()}-{tid}" if tid.isdigit() else tid
