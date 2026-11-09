@@ -8,12 +8,15 @@ modules did reach for are kept as callables the server sets in its lifespan (`se
     in the engine; nothing in a standalone process).
   · `emit(family, label, **extra)` — the observability bus (`voice.observer.emit`), so the service's own rows
     (route chosen, provider answered) land on the timeline when it runs inside the engine.
+  · `room(what)` — an async context manager around a Chromium launch (`nucleo.workers.room.room_for`, V2-867 F2):
+    in the engine the launch waits for room on the host, pausing the newest worker; alone it launches at once.
 
-Unset, both are no-ops: the service works alone, which is the point of making it a service.
+Unset, every seam is a no-op: the service works alone, which is the point of making it a service.
 """
 from __future__ import annotations
 
-from typing import Callable
+import contextlib
+from typing import AsyncContextManager, Callable
 
 from loguru import logger
 
@@ -21,6 +24,8 @@ on_chain_failure: Callable[[str, str], None] | None = None
 emit: Callable[..., None] | None = None
 #: The host's declared resource policy (`nucleo.workers.envelope.policy` in the engine): `browser_bg_wait_s` lives there.
 policy: Callable[[], dict] | None = None
+#: The host's room for a heavy launch (`nucleo.workers.room.room_for` in the engine, V2-867 F2).
+room: Callable[[str], AsyncContextManager] | None = None
 
 
 def declared(key: str, default: float) -> float:
@@ -48,3 +53,10 @@ def note(family: str, label: str, **extra) -> None:
         emit(family, label, **extra)
     except Exception as e:  # noqa: BLE001
         logger.debug(f"search.hooks: the emit hook raised ({e!r})")
+
+
+def room_for(what: str) -> AsyncContextManager:
+    """The host's room for a launch of `what`, or an empty context when the service runs alone."""
+    if room is None:
+        return contextlib.nullcontext()
+    return room(what)
