@@ -286,7 +286,7 @@ export function ChatWall() {
       // restarted says how many times. Both come from the durable row (`silent_s` merged live, `attempts`).
       (task.silentS >= 60 ? t("chat.procSilent", { t: dur(task.silentS * 1000) }) : ""),
       (task.attempts > 0 ? t("chat.procRestarted", { n: task.attempts }) : ""),
-    ].filter(Boolean).join(" · ");
+    ].filter(Boolean);
     return h("div", { class: "cw-proc-row live " + icon },
       h("span", { class: "cw-proc-dot" }, gl),
       h("div", { class: "cw-proc-main" },
@@ -294,7 +294,7 @@ export function ChatWall() {
         // The activity is shown only while it says something the title does not — a note that merely repeats
         // the name would be the same text twice, a few pixels apart.
         (note && note !== title) ? h("div", { class: "cw-proc-note" }, note) : null,
-        h("div", { class: "cw-proc-meta" }, meta),
+        h("div", { class: "cw-proc-meta" }, ...meta.map((m, i) => h("span", { class: "cw-proc-tag" + (i ? "" : " state") }, m))),
         // V2-822 — the process's ONE home: its plan and, expanded by him, its page, harvest and narration.
         ProcessEntry(task.session || task.id, task.id),
       ),
