@@ -35,6 +35,7 @@ def acts(monkeypatch):
     monkeypatch.setitem(lag._state, "episode", False)
     monkeypatch.setitem(lag._state, "loops", set())
     monkeypatch.setattr(lag, "_audio_flows", lambda: seen["audio"])
+    monkeypatch.setattr(lag, "_in_boot_grace", lambda: False)    # V2-871: past the cold-start window
     monkeypatch.setattr(proactive, "user_speaking", lambda: seen["speaking"])
     seen.update(audio=True, speaking=True)
     return seen

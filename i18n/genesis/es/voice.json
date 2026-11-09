@@ -672,6 +672,8 @@
   "engine_shedding": "El motor no responde o va sin memoria — libero carga.",
   "engine_exit": "El motor sigue bloqueado — salgo limpio para que lo reinicien.",
   "voice_lag": "La voz va con retraso — pauso el trabajo de fondo.",
+  "voice_dead": "El motor de voz se ha parado y no ha vuelto — sigo reiniciándolo; mientras, puedes escribirme.",
+  "voice_dead_exit": "El motor de voz no ha vuelto — reinicio el motor para que vuelva.",
   "envelope_late": "Poca memoria libre: el encargo arranca igual, con menos prioridad.",
   "room_ok": "Hay sitio para el navegador: se abre ya.",
   "room_paused": "Worker {task} en pausa para abrir el navegador.",

@@ -14,9 +14,10 @@ _CAP_TTL_S = float(os.getenv("HOMEOSTASIS_CAPSULE_TTL_S", str(30 * 24 * 3600))) 
 
 
 def livekit_degraded(marks: list[float], now: float, *, window_s: float = _LK_WINDOW_S,
-                     threshold: int = _LK_THRESHOLD) -> bool:
-    """Degraded when >= `threshold` marks fall inside the last window."""
-    recent = [t for t in marks if now - t <= window_s]
+                     threshold: int = _LK_THRESHOLD, since: float = 0.0) -> bool:
+    """Degraded when >= `threshold` marks fall inside the last window. Marks before `since` (the cold-start window,
+    V2-871) are the warm-up and never count."""
+    recent = [t for t in marks if now - t <= window_s and t >= since]
     return len(recent) >= threshold
 
 

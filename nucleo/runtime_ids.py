@@ -29,8 +29,11 @@ from __future__ import annotations
 
 import secrets
 import threading
+import time
 
 _BOOT = secrets.token_hex(3)
+_IMPORTED_AT = time.time()
+_BOOT_WALL: float | None = None
 _lock = threading.Lock()
 _seqs: dict[str, int] = {}
 
@@ -38,6 +41,21 @@ _seqs: dict[str, int] = {}
 def boot_id() -> str:
     """This process's stamp. Stable for the whole process lifetime, different every restart."""
     return _BOOT
+
+
+def boot_wall() -> float:
+    """When this PROCESS started, wall clock (V2-871): the OS's own record of the process, so the boot is the
+    process's and not this module's import. Read once; this module's import time if the OS cannot say."""
+    global _BOOT_WALL
+    if _BOOT_WALL is None:
+        try:
+            import psutil
+            _BOOT_WALL = float(psutil.Process().create_time())
+        except Exception as e:  # noqa: BLE001 — the import time is a later, still honest, boot
+            _BOOT_WALL = _IMPORTED_AT
+            import logging
+            logging.getLogger(__name__).debug("runtime_ids: process start unreadable (%r), import time used", e)
+    return _BOOT_WALL
 
 
 def next_seq(name: str) -> int:
