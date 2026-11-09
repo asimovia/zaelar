@@ -184,7 +184,10 @@ _RECENT_RE = _re.compile(
     r"(some|a\s+few|\d+)\s+(messages?|turns?|minutes?|hours?)\s+ago|(some\s+time|a\s+while|ages)\s+ago|"
     r"(i|we)\s+(did\s+)?(explain(ed)?|told|ask(ed)?)|"
     r"told\s+you|asked\s+you|te\s+(ped[ií]|expliqu[eé]|cont[eé]|coment[eé])|"
-    r"te\s+he\s+(dicho|pedido|contado|explicado)|hace\s+(unas\s+)?horas|hace\s+(unos\s+)?minutos)\b", _re.I
+    r"te\s+he\s+(dicho|pedido|contado|explicado)|hace\s+(unas\s+)?horas|hace\s+(unos\s+)?minutos|"
+    # «the one you found yesterday evening» (2026-11-09): a part of the day named, or what zaelar itself found.
+    r"yesterday|last\s+night|this\s+(morning|afternoon|evening)|you\s+(found|played|searched|looked\s+up)|"
+    r"ayer|anoche|esta\s+(mañana|tarde|noche)|(que\s+)?(encontraste|pusiste|buscaste))\b", _re.I
 )
 
 

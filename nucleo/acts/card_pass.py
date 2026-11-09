@@ -121,6 +121,16 @@ _SYS_AFTER_SEARCH = (
 )
 
 
+_SYS_AFTER_RECALL = (
+    "You are the brain of a voice assistant. The operator's turn gave an ORDER on the card «{wid}» that needed "
+    "something said earlier in your conversation. You recalled it and answered:\n«{answer}»\n\nNow fulfil the "
+    "order: make the `widget_data` call with widget_id «{wid}», one of its declared actions and the payload taken "
+    "from his words and from what you recalled (a name, a title, a date as YYYY-MM-DD). If his sentence does not "
+    "ask for anything on «{wid}», call nothing. Write any text you put in the payload in the OPERATOR's language, "
+    "as he said it.\n\nActions of «{wid}»:\n{actions}{card}"
+)
+
+
 _SYS_COMMISSION = (
     "You are the brain of a voice assistant. The operator gave an ORDER that names the card «{wid}», "
     "and the turn was about to send it to a background process of SEVERAL MINUTES. Before spending "

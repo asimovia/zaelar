@@ -45,7 +45,9 @@ async def compose_the_prompt(*, brain, emit, operator_text, self, text) -> dict:
     from nucleo.turn.prompt import builder as _prompt_mod
     recall_block = ""
     recall_ids: list = []
-    timings["recall_fired"] = _rh.needs_recall(operator_text)
+    # A reference to the recent interaction («I did ask you some time ago…») fires it too (V2-865): the
+    # conversation lane of the recall is what answers it, and the expanded buffer below is recency only.
+    timings["recall_fired"] = _rh.needs_recall(operator_text) or _rh.needs_recent(operator_text)
     if timings["recall_fired"]:
         # TIME-BOX del recall (regla dura "nunca lento"): el retriever suele cerrar en ~0.4-1.5s, pero en el
         # turno vivo puede dispararse a 4s+ (recarga del modelo de embedding tras un desalojo por el CORAZÓN

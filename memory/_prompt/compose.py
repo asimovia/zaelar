@@ -3,7 +3,8 @@
   A. **QUIÉN ERES** — the mission (state.mission, seeded at init from `langs`; `mission_fallback` until then).
   B. **QUIÉN TIENES DELANTE** — the operator, the critical facts and tastes, the durable state fields, the open
      widgets, the live processes and rails, and the salient durable profile — errands apart from facts.
-  C. **LO QUE HA PASADO HOY** — the day's episodes as a schema (V2-865): when, what he opened with, how it ended.
+  C. **HOY, EN ESQUEMA** — the day's episodes (V2-865): when, what he opened with, how it ended. Rendered by
+     `day_block()` into the prompt's live TAIL, not into this cached block; the stats are counted here.
   D. **DE QUÉ ÍBAIS HABLANDO** — the last few lines of the short term (a cut, never a model summary).
 
 A DIRECT read (µs, no LLM, no retriever), cached off the hot path (`nucleo/flash/memory_cache`). The readers it
@@ -85,13 +86,28 @@ def compose_state(*, mission_fallback: str = "") -> tuple[str, str, dict]:
     stats["short_count"] = len(convo)
     stats["short_chars"] = short_chars
 
-    if not (mission or sit or salient or errands or convo or day):
+    if not (mission or sit or salient or errands or convo):
         return "", op, stats
-    return _render(mission, sit, salient, errands, convo, crit, day), op, stats
+    return _render(mission, sit, salient, errands, convo, crit), op, stats
 
 
-#: The day's schema in the prompt: at most this many characters — ~350 tokens on every turn (V2-865).
-_DAY_MAX_CHARS = 1400
+#: The day's schema in the prompt is read at the TAIL (`live_state`), not in this cached block: in the state, thirty
+#: thousand characters before his words, the model answered «I need the name» three times with the name
+#: in front of it (measured 2026-11-09); the tail is where the facts of the turn are read.
+def day_block() -> str:
+    """HOY, EN ESQUEMA — the day's episodes as lines for the live tail of the prompt, fresh on every call (µs read),
+    or "" when the day holds nothing beyond the live window."""
+    day = _day_lines()
+    if not day:
+        return ""
+    return ("HOY, EN ESQUEMA (lo de las últimas horas, de más antiguo a más reciente; lo que sigue en la ventana no "
+            "se repite). Si te pide algo de esto, el dato ESTÁ aquí o en `recall` con SUS palabras — nunca digas que "
+            "no tienes acceso a lo de antes:\n" + "\n".join(day))
+
+
+#: The day's schema in the prompt: at most this many characters — ~550 tokens on every turn (V2-865). 1400 held four
+#: episodes; a morning after a busy evening has seven, and the one dropped first was the one he meant (2026-11-09).
+_DAY_MAX_CHARS = 2200
 
 
 def _hhmm(ts: float) -> str:
@@ -208,7 +224,7 @@ def _rails(st: dict) -> list[str]:
 
 
 def _render(mission: str, sit: list[str], salient: list[str], errands: list[str], convo: list[str],
-            crit: list[str], day: list[str] | None = None) -> str:
+            crit: list[str]) -> str:
     parts: list[str] = []
     if mission:
         parts.append("── QUIÉN ERES ──\n" + mission)
@@ -224,13 +240,6 @@ def _render(mission: str, sit: list[str], salient: list[str], errands: list[str]
                   "cómo acabó. No empieces a trabajar en uno salvo que él lo saque en este turno]\n"
                   + "\n".join(errands))
         parts.append(b)
-    if day:
-        # Says what the lines ARE and where the detail is: the model that read only the window answered «I don't
-        # have what you explained earlier today» with the answer three hours back in this same buffer (V2-865).
-        parts.append("── LO QUE HA PASADO HOY (las últimas horas en esquema, de más antiguo a más reciente; lo que "
-                     "ya está en la ventana no se repite aquí). Si te pide algo de esto y te falta el detalle, NO "
-                     "digas que no lo tienes: llama a `recall` con SUS palabras y lo lees literal ──\n"
-                     + "\n".join(day))
     if convo:
         parts.append("── DE QUÉ ÍBAIS HABLANDO (lo más reciente primero; el último MANDA si hay contradicción) ──\n"
                      + "\n".join(convo))
