@@ -3,7 +3,8 @@
   A. **QUIÉN ERES** — the mission (state.mission, seeded at init from `langs`; `mission_fallback` until then).
   B. **QUIÉN TIENES DELANTE** — the operator, the critical facts and tastes, the durable state fields, the open
      widgets, the live processes and rails, and the salient durable profile — errands apart from facts.
-  C. **DE QUÉ ÍBAIS HABLANDO** — the last few lines of the short term (a cut, never a model summary).
+  C. **LO QUE HA PASADO HOY** — the day's episodes as a schema (V2-865): when, what he opened with, how it ended.
+  D. **DE QUÉ ÍBAIS HABLANDO** — the last few lines of the short term (a cut, never a model summary).
 
 A DIRECT read (µs, no LLM, no retriever), cached off the hot path (`nucleo/flash/memory_cache`). The readers it
 calls are looked up on the package (`_p()`), so a patch on `memory._prompt` governs them.
@@ -30,7 +31,7 @@ def _p():
 def compose_state(*, mission_fallback: str = "") -> tuple[str, str, dict]:
     """`(block, operator_name, stats)`. Best-effort: `('', '', {...})` when memory is unavailable."""
     stats = {"has_state": False, "state_fields": 0, "short_count": 0, "short_chars": 0,
-             "salient_count": 0, "has_mission": False, "op": ""}
+             "salient_count": 0, "has_mission": False, "op": "", "day_count": 0, "day_chars": 0}
     try:
         st = _state.read()
     except Exception:
@@ -67,6 +68,10 @@ def compose_state(*, mission_fallback: str = "") -> tuple[str, str, dict]:
     stats["salient_count"] = len(salient)
     stats["errand_count"] = len(errands)
 
+    day = _day_lines()
+    stats["day_count"] = len(day)
+    stats["day_chars"] = sum(len(x) for x in day)
+
     convo: list[str] = []
     short_chars = 0
     try:
@@ -80,9 +85,44 @@ def compose_state(*, mission_fallback: str = "") -> tuple[str, str, dict]:
     stats["short_count"] = len(convo)
     stats["short_chars"] = short_chars
 
-    if not (mission or sit or salient or errands or convo):
+    if not (mission or sit or salient or errands or convo or day):
         return "", op, stats
-    return _render(mission, sit, salient, errands, convo, crit), op, stats
+    return _render(mission, sit, salient, errands, convo, crit, day), op, stats
+
+
+#: The day's schema in the prompt: at most this many characters — ~350 tokens on every turn (V2-865).
+_DAY_MAX_CHARS = 1400
+
+
+def _hhmm(ts: float) -> str:
+    from datetime import datetime as _dt
+    try:
+        return _dt.fromtimestamp(float(ts)).strftime("%H:%M")
+    except (TypeError, ValueError, OSError, OverflowError):
+        return "?"
+
+
+def _day_lines() -> list[str]:
+    """C · one line per episode of the day, oldest first, the most recent kept when the budget bites."""
+    try:
+        episodes = _p().day_ledger()
+    except Exception as e:  # noqa: BLE001 — the state is best-effort; the day is left out and said so
+        import logging as _logging
+        _logging.getLogger("zaelar.memory.prompt").debug(f"compose_state: the day's ledger unreadable ({e!r})")
+        return []
+    lines: list[str] = []
+    for e in episodes:
+        span = _hhmm(e["start"]) + (f"–{_hhmm(e['end'])}" if e.get("end") and e["end"] - e["start"] >= 60 else "")
+        n = int(e.get("turns") or 0)
+        line = f"· {span}" + (f" ({n} turnos)" if n > 1 else "") + f" él: «{e['u'][:110]}»"
+        if e.get("a"):
+            line += f" → tú: «{e['a'][:120]}»"
+        if n > 2 and e.get("last_a") and e["last_a"] != e.get("a"):
+            line += f" · al final: «{e['last_a'][:80]}»"
+        lines.append(line)
+    while lines and sum(len(x) for x in lines) > _DAY_MAX_CHARS:
+        lines.pop(0)                       # the oldest episode goes first; the recent ones are what he means
+    return lines
 
 
 def _situation(st: dict, op: str) -> tuple[list[str], list[str]]:
@@ -168,7 +208,7 @@ def _rails(st: dict) -> list[str]:
 
 
 def _render(mission: str, sit: list[str], salient: list[str], errands: list[str], convo: list[str],
-            crit: list[str]) -> str:
+            crit: list[str], day: list[str] | None = None) -> str:
     parts: list[str] = []
     if mission:
         parts.append("── QUIÉN ERES ──\n" + mission)
@@ -184,6 +224,13 @@ def _render(mission: str, sit: list[str], salient: list[str], errands: list[str]
                   "cómo acabó. No empieces a trabajar en uno salvo que él lo saque en este turno]\n"
                   + "\n".join(errands))
         parts.append(b)
+    if day:
+        # Says what the lines ARE and where the detail is: the model that read only the window answered «I don't
+        # have what you explained earlier today» with the answer three hours back in this same buffer (V2-865).
+        parts.append("── LO QUE HA PASADO HOY (las últimas horas en esquema, de más antiguo a más reciente; lo que "
+                     "ya está en la ventana no se repite aquí). Si te pide algo de esto y te falta el detalle, NO "
+                     "digas que no lo tienes: llama a `recall` con SUS palabras y lo lees literal ──\n"
+                     + "\n".join(day))
     if convo:
         parts.append("── DE QUÉ ÍBAIS HABLANDO (lo más reciente primero; el último MANDA si hay contradicción) ──\n"
                      + "\n".join(convo))

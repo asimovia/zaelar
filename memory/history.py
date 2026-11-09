@@ -88,33 +88,84 @@ def provenance(ids) -> dict[int, dict]:
     return out
 
 
-def _matching_conv_ids(query: str, since: int) -> set[int] | None:
+def is_kickoff(u: str) -> bool:
+    """Is this operator line the FIRST-TURN kickoff — the prompt the engine speaks in HIS voice so the model greets
+    him (`i18n` `kickoff_prompt`, every language)? It is written into the conversation buffer as his words, and it
+    is not something he said: a ledger of the day must not open an episode with it. Best-effort: without the
+    catalog, nothing is a kickoff."""
+    t = " ".join((u or "").split())
+    return bool(t) and t in _kickoff_prompts()
+
+
+def _kickoff_prompts() -> frozenset[str]:
+    global _KICKOFFS
+    if _KICKOFFS is None:
+        try:
+            from i18n import langs as _langs
+            _KICKOFFS = frozenset(" ".join(sp.kickoff_prompt.split()) for sp in _langs.supported() if sp.kickoff_prompt)
+        except Exception:  # noqa: BLE001 — the catalog is not memory's to require
+            _KICKOFFS = frozenset()
+    return _KICKOFFS
+
+
+_KICKOFFS: frozenset[str] | None = None
+
+
+def _newest_conv_ids(n: int) -> set[int]:
+    """The ids of the newest `n` conversation rows — what the live dialog window already holds (V2-865)."""
+    if n <= 0:
+        return set()
+    rows = _db.get_db().query(
+        "SELECT id FROM memories WHERE kind='conv' AND valid=1 ORDER BY created DESC, id DESC LIMIT ?", (int(n),))
+    return {int(r["id"]) for r in rows}
+
+
+def _matching_conv_ids(query: str, since: int) -> dict[int, int] | None:
     """Conversation rows in the window that match `query` through the SAME lexical channel recall uses (FTS5 with
-    the retriever's stemming). None = the query carries no searchable term (read the whole window instead)."""
+    the retriever's stemming), as `{id: hits}` — `hits` = how many DISTINCT terms of the query the turn carries.
+    Not bm25: it crowns the shortest row that repeats one word («Which of these tasks… which…»), measured
+    2026-11-09 against the model's own query. None = the query carries no searchable term (read the whole window)."""
     from .retriever import _fts_query
     q = _fts_query(query or "")
     if not q:
         return None
+    terms = {t.strip('"').rstrip("*").lower() for t in q.split(" OR ") if t.strip()}
     db = _db.get_db()
     if db.fts_available:
         rows = db.query(
-            "SELECT m.id AS id FROM fts_memories f JOIN memories m ON m.id = f.rowid "
+            "SELECT m.id AS id, m.text AS text FROM fts_memories f JOIN memories m ON m.id = f.rowid "
             "WHERE fts_memories MATCH ? AND m.kind='conv' AND m.valid=1 AND m.created >= ?", (q, since))
-        return {int(r["id"]) for r in rows}
-    # No FTS on this build: plain containment over the same terms, so the reader still answers.
-    terms = [t.strip('"').rstrip("*").lower() for t in q.split(" OR ")]
-    rows = db.query("SELECT id, text FROM memories WHERE kind='conv' AND valid=1 AND created >= ?", (since,))
-    return {int(r["id"]) for r in rows if any(t and t in (r["text"] or "").lower() for t in terms)}
+    else:   # no FTS on this build: plain containment over the same terms, so the reader still answers
+        rows = db.query("SELECT id, text FROM memories WHERE kind='conv' AND valid=1 AND created >= ?", (since,))
+    out: dict[int, int] = {}
+    for r in rows:
+        words = _words(r["text"] or "")
+        hits = sum(1 for t in terms if t and any(w == t or w.startswith(t) for w in words))
+        if hits or db.fts_available:
+            out[int(r["id"])] = max(hits, 1)
+    return out
 
 
-def conversation(hours: float = 24.0, query: str = "", limit: int = 40, max_chars: int = 6000) -> list[dict]:
+def _words(text: str) -> set[str]:
+    """The lowercased words of a row, split on anything that is not a letter or a digit."""
+    return set("".join(c if c.isalnum() else " " for c in text.lower()).split())
+
+
+def conversation(hours: float = 24.0, query: str = "", limit: int = 40, max_chars: int = 6000, *,
+                 skip_newest: int = 0, by: str = "recency") -> list[dict]:
     """The operator's own past conversation, VERBATIM, oldest first: `[{id, ts, at, who, text}]` where `who` is
     'operator' or 'assistant' and `at` is local ISO time.
 
     Bounded twice — by `hours` (clamped to `MAX_HOURS`) and by size (`limit` turns, `max_chars`); when the bound
     bites, the NEWEST turns are the ones kept. With a `query`, only turns matching it (lexically, as recall does)
     are returned; a query with no match returns [] — «not found» is an answer. Only valid rows: a reset that
-    cleared the conversation (`clear_conversation`) stays cleared here too."""
+    cleared the conversation (`clear_conversation`) stays cleared here too.
+
+    `skip_newest` (V2-865) leaves out the newest N turns — the ones the live dialog window already carries, so a
+    reader asked «what did he say EARLIER» is not answered with the thread it is in. `by="relevance"` picks, with a
+    `query`, the BEST-matching turns first (FTS5 rank) instead of the newest: measured on 2026-11-09 with the
+    model's own query «artist from a TV show…», recency kept twelve turns of the live complaint and trimmed the
+    one turn, three hours old, that held the answer. The output stays chronological either way."""
     try:
         h = float(hours)
     except (TypeError, ValueError):
@@ -124,13 +175,19 @@ def conversation(hours: float = 24.0, query: str = "", limit: int = 40, max_char
     match = _matching_conv_ids(query, since) if (query or "").strip() else None
     if match is not None and not match:
         return []
+    skip = _newest_conv_ids(int(skip_newest or 0))
     rows = _db.get_db().query(
         "SELECT id, text, meta, created FROM memories WHERE kind='conv' AND valid=1 AND created >= ? "
         "ORDER BY created DESC, id DESC", (since,))
+    if by == "relevance" and match:
+        # Most query terms first, the newest among equals; the trim below then keeps the turns that answer.
+        rows = sorted(rows, key=lambda r: (-match.get(int(r["id"]), 0), -float(r["created"] or 0), -int(r["id"])))
     picked: list[tuple] = []
     used = 0
-    for r in rows:                                     # newest → oldest; trimmed, then reversed
+    for r in rows:                                     # best/newest → worst/oldest; trimmed, then reversed
         if match is not None and int(r["id"]) not in match:
+            continue
+        if int(r["id"]) in skip:
             continue
         m = _meta(r["meta"])
         u, a = (m.get("u") or "").strip(), (m.get("a") or "").strip()
@@ -142,7 +199,7 @@ def conversation(hours: float = 24.0, query: str = "", limit: int = 40, max_char
         picked.append((int(r["id"]), r["created"], u, a))
         used += seg
     out: list[dict] = []
-    for mid, ts, u, a in reversed(picked):
+    for mid, ts, u, a in sorted(picked, key=lambda t: (float(t[1] or 0), t[0])):   # chronological, whatever the pick
         if u:
             out.append({"id": mid, "ts": ts, "at": iso(ts), "who": "operator", "text": u})
         if a:

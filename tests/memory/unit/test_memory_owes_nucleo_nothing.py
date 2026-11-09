@@ -140,7 +140,7 @@ DECLARED_SURFACE = {
     "clear_conversation", "clear_slot_prefix",
     "state", "set_state", "compose_state",
     "kv_get", "kv_set",
-    "query", "recent_short", "recent_window", "recent_by_source", "by_concepts",
+    "query", "recent_short", "recent_window", "day_ledger", "recent_by_source", "by_concepts",
     "seconds_since_last_conv",
     # 2026-10-26 (V2-802 T-06 / V2-803 T-01): provenance of a recalled row, and the ONE reader of the operator's
     # own past conversation (the `conv` buffer) — declared on purpose, both read by the recall route.

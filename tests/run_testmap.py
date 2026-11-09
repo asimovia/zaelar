@@ -6508,6 +6508,23 @@ DOMAINS: list[dict] = [
         # the cover's first word: 1 red · no event on a cut: 1 red).
         {"id": "2.1640", "title": "A cover that sounded is never heard twice (V2-864, CRIT-V4c): `EchoCut` holds the head of the reply until it has more words than the cover (or a sentence mark), compares word for word with case, accents and punctuation normalised, and cuts an echo with the punctuation after it and a capital on the next word («Look…»+«Look, you're right» → «You're right», chunks «Got»/« it — I» → «I», «Vale…»+«Vale.» → nothing); a reply that only continues the cover («So…»+«then…», «Look…»+«Looking…») passes intact, one decision per turn; through `llm_node_with_filler` the cut runs only when a cover SOUNDED, before TTS and transcript, emits ONE `brain` «✂️ eco de la cobertura recortado», and a chunk with no text (usage, tool call) passes untouched; the note names the cover's first word with its capital («nunca por «Un»»)",
             "ch": UNIT, "paths": ["tests/voice/unit/test_a_cover_that_sounded_is_never_heard_twice.py"]},
+        # V2-865 — disarmed 2026-11-09 (kickoff never skipped · only the flag read · no chunk cut · live window kept ·
+        # budget drops the newest · section not rendered: 6 reds).
+        {"id": "2.1641", "title": "The day is in the state (V2-865): `day_ledger()` folds the last `DAY_HOURS` of the `conv` buffer into EPISODES — a silence over `EPISODE_GAP_MIN`, a first-turn kickoff (`meta.kickoff` or any language's `kickoff_prompt`) or `EPISODE_MAX_TURNS` opens one, a kickoff never opens or fills one, the newest `LIVE_WINDOW_TURNS` are out; `compose_state()` renders «LO QUE HA PASADO HOY» before «DE QUÉ ÍBAIS HABLANDO» with each opener and first reply, counts `day_count`/`day_chars`, drops the OLDEST line past `_DAY_MAX_CHARS`, and is absent with only the live thread",
+            "ch": UNIT, "paths": ["tests/memory/unit/test_the_day_is_in_the_state.py"]},
+        # V2-865 — disarmed 2026-11-09 (no relevance sort · hits flattened · skip ignored · output unsorted · is_kickoff
+        # blind: 5 reds).
+        {"id": "2.1642", "title": "Recall reaches the conversation (V2-865): `conversation(query, by=\"relevance\")` picks the turns with the most DISTINCT query terms first and, with the live window out (`skip_newest`), reaches the old turn that answers where `by=\"recency\"` keeps the live complaint; `skip_newest` leaves out exactly the newest N; the output stays chronological; `is_kickoff` knows every language's kickoff and nothing else",
+            "ch": UNIT, "paths": ["tests/memory/unit/test_recall_reaches_the_conversation.py"]},
+        # V2-865 — disarmed 2026-11-09 (block only with pills · live window read · count zeroed · constants apart: 4 reds).
+        {"id": "2.1643", "title": "A recall speaks the conversation too (V2-865): `compose_recall` carries «Lo hablado antes» — the matching turns of the last two days with their time, his words and the reply — even when no durable pill matched, never a turn of the live window, `timings[\"recall_conv_turns\"]` counted; `LIVE_WINDOW_TURNS` is half `_WINDOW_MAX` in the recall and in the memory reads",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_recall_speaks_the_conversation_too.py"]},
+        # V2-865 — disarmed 2026-11-09 (each new alternative of `_RECENT_RE` removed in turn: 5 reds).
+        {"id": "2.1644", "title": "An earlier explanation is a recent reference (V2-865): `needs_recent` fires on «some messages / a while ago», «I did explain / told you / asked you», «te pedí / te expliqué / te he pedido», «hace unas horas»; a plain order or a greeting does not",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_an_earlier_explanation_is_a_recent_reference.py"]},
+        # V2-865 — disarmed 2026-11-09 (stamp never written · stamp on every turn: 2 reds).
+        {"id": "2.1645", "title": "The first turn is stamped as a kickoff (V2-865): `close_the_turn` writes `meta.kickoff=True` on the conversation row of a first turn — the engine speaking in his voice — and no stamp on a normal turn's row",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_the_first_turn_is_stamped_as_a_kickoff.py"]},
         # V2-851 F1b §3 — a worker's question is durable and the session that asked is resumed by id.
         {"id": "2.1030", "title": "A question waits on its row (V2-851 F1b): `ask` writes `state=waiting`, "
                                   "`waiting_for=user_answer`, `ask_id`, `ask` and keeps the retained act as the task's "
