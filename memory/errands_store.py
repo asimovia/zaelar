@@ -2,11 +2,11 @@
 
 The `errands`/`errand_threads` tables and nothing else: what opens an errand, what wakes it and when it
 closes are RULES, and they live in `nucleo/errands/`. This module stores and reads, exactly as the
-workflows facade does for its own table.
+playbook-routes facade does for its own table.
 
 Why its own module rather than more of `memory/api.py`: the facade is at its size ceiling and the
 architecture ratchet asks for a module instead of a higher number — and this concern is cohesive enough to
-be one. It is still the memory package's own boundary, so the rule `nucleo/workflows/` follows holds
+be one. It is still the memory package's own boundary, so the rule `nucleo/routes/` follows holds
 unchanged: nothing outside `memory/` touches `db`, the schema or the retriever.
 
 Every function fails SOFT. A ledger that raises would take down the turn that was merely trying to
@@ -20,7 +20,7 @@ import time
 from . import db as _db_mod
 
 
-# Facade access, the same boundary `workflows` keeps: `nucleo/errands/` owns the RULES (what opens one, what
+# Facade access, the same boundary `playbook_routes` keeps: `nucleo/errands/` owns the RULES (what opens one, what
 # wakes it, when it closes) and never touches memory internals. These functions store and read, nothing else.
 def errand_put(row: dict) -> None:
     """Insert or replace one errand. The caller composes the row; this writes it."""

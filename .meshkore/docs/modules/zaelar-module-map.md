@@ -290,7 +290,7 @@ monkeypatches keep working. Look here before grepping for a name that seems to h
 - `nucleo/flash/payload_fill.py` — the payload fills of a direct widget action (out of `direct_action.py`).
 - `nucleo/dispatch/listener.py` — the escalation listener; `dispatch.py` stays the facade.
 - `nucleo/workers/session_notes.py` — the session's notes as a mixin; `nucleo/workers/tool_steps.py` — tool-step readers.
-- `memory/workflows_store.py` — the `workflows` table (out of the memory facade).
+- `memory/routes_store.py` — the `playbook_routes` table (out of the memory facade).
 - `server/canvas_api.py` — the canvas routes, on their own router (out of `voice_api.py`).
 - `voice/interrupt_grammar.py` — the hard-interrupt grammar (out of `attention.py`).
 - `voice/engine/pipeline/prewarm.py` — the worker prewarm (out of `pipeline/agent.py`).
@@ -310,7 +310,8 @@ files from growing back.
 | One bounded-choice primitive and where it may sit | `.meshkore/docs/modules/zaelar-decision-model.md` |
 | One canonical home per datum; what memory is not for | `.meshkore/docs/architecture/zaelar-domain-stores.md` |
 | A commission's durable record | `.meshkore/docs/modules/zaelar-jobs.md` |
-| The workflow table (what serves this kind of errand) | `.meshkore/docs/modules/zaelar-workflow-table.md` |
+| The playbook routes (what serves this kind of errand) | `.meshkore/docs/modules/zaelar-playbook-routes.md` |
+| The genome (identity, generation, heritable genes, `python -m genome diff`) | `.meshkore/docs/modules/zaelar-genome.md` |
 | A message with several tasks becomes a list | `.meshkore/docs/modules/zaelar-task-lists.md` |
 | The agenda's numbered task lists | `.meshkore/docs/modules/zaelar-agenda-task-lists.md` |
 | The agent's own filesystem (`library/`) | `.meshkore/docs/modules/zaelar-agent-filesystem.md` |

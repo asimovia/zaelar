@@ -1,4 +1,4 @@
-"""Process state that shares the file but is never a memory pill: the action map, workflows, errands, tasks,
+"""Process state that shares the file but is never a memory pill: the action map, playbook routes, errands, tasks,
 notices and push devices. Each table has one owner module that holds every rule; these are only its DDL."""
 
 # ── Action map (V2-539) ──────────────────────────────────────────────────────────────────────────────────
@@ -27,12 +27,12 @@ ACTION_MAP_INDEXES = [
 ]
 
 
-# V2-594 · WORKFLOWS — for a DOMAIN of errand, the ORDER of external channels to try (one row per (domain,
+# V2-594 · PLAYBOOK_ROUTES — for a DOMAIN of errand, the ORDER of external channels to try (one row per (domain,
 # channel)). Not a second action_map, which maps a PHRASE to a LOCAL widget action. The row that matters most is
 # the NEGATIVE one (`status='none'`, «the mesh has nothing for X»): it saves the Oracle round trip for every
 # uncovered errand, and it EXPIRES on purpose so a new agent on the mesh can change the answer.
-WORKFLOWS = """
-CREATE TABLE IF NOT EXISTS workflows (
+PLAYBOOK_ROUTES = """
+CREATE TABLE IF NOT EXISTS playbook_routes (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
   domain      TEXT NOT NULL,
   channel     TEXT NOT NULL,
@@ -49,8 +49,8 @@ CREATE TABLE IF NOT EXISTS workflows (
   UNIQUE(domain, channel)
 );
 """
-WORKFLOWS_INDEXES = [
-    "CREATE INDEX IF NOT EXISTS idx_workflows_domain ON workflows(domain, status, rank)",
+PLAYBOOK_ROUTES_INDEXES = [
+    "CREATE INDEX IF NOT EXISTS idx_playbook_routes_domain ON playbook_routes(domain, status, rank)",
 ]
 
 
