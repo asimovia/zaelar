@@ -213,6 +213,8 @@ def token(identity: str = "operator", name: str = "You", pending: int = 0) -> JS
     from nucleo import runstate
     if runstate.stopped():
         return JSONResponse({"error": "engine_stopped"}, status_code=409)
+    from nucleo.pulse import voice_recycle
+    voice_recycle.note_session_requested()     # V2-871: from here a voice worker that is not alive is a dead voice
     if pending:
         # The page holds typed lines it could not deliver: the session it is opening answers them, no greeting.
         from voice import screens as _screens
