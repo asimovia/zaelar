@@ -266,6 +266,17 @@ user-visible build number and the reload signal), `daemon/` (the LOCAL daemon, n
   the two-layer bridge catalogue (headlines in the brief, a family's full set through the bridge).
 - `nucleo/workers/exit_gate.py` — the harness at every exit that leaves (`leave`, over the acts declared in `EXITS`, V2-857): checkpoint 1 closed, the message door
   (`card.licence`, his recipient, the held row) and the taint, read on what leaves.
+- `nucleo/workers/envelope.py` — the worker envelope (V2-867): a worker is admitted only above the floor
+  (max(`admit_free_ratio`×total, `voice_reserve_mb`), `config/resources.default.json`), one at a time, with no deadline
+  start; `reason()` names the wait (`waiting_room` · `waiting_voice` · `queued_behind`); `shed(seconds, source)` /
+  `unshed(source)` hold and release per source; `relieve` pauses the newest worker under pressure.
+  `nucleo/workers/room.py` — `async with room_for("browser")` around both Chromium launches (the owner's window,
+  `search/browser.py` through `search.hooks.room`): pause the newest worker, launch, resume only its own pauses.
+- `nucleo/runtime_ids.errand_key` — THE key of anything stored per errand (the row id, else the boot-stamped id),
+  never the per-boot `task_id` (V2-868); the brief store stamps `brief["errand"]` and `circuit.breadth.brief_of`
+  refuses a stranger's. `nucleo/request/sign_in_wait.py` — a sign-in the engine cannot do parks the errand as ONE
+  question through the asker and resumes the same row on the confirmed sign-in. `widgets/results/provenance.py` — a
+  worker's result row needs a url or a known source, else `rejected` with its reason.
 - `widgets/directory.py` + `widgets/contactos/{model,groups,group_actions}.py` + `nucleo/memory_agent/contacts.py` +
   `memory/rem/contacts.py` — who he means: one ranking by sound and closeness, filtered by the act; groups as rows
   with ids; contacts as structured memory with `who(description)`; REM links one person's records (never deletes).
