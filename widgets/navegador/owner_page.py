@@ -103,12 +103,84 @@ async def _ensure_page():
             ])
         except Exception:
             pass
+        await _apply_imported_sessions(_o._context)      # V2-575 P3: a session his daemon handed over survives relaunches
     # ONE tab: reuse the one the persistent context already brings instead of opening another → no extra tabs.
     _o._page = _o._context.pages[0] if _o._context.pages else await _o._context.new_page()
     # V2-835 — the label says what WAS launched, not what was wanted: a headed launch with no screen falls back to
     # headless above, and a «real window» label then promised him a window nobody could see.
     _o._emit("launched", f"navegador {'ventana real' if _o._headed else 'headless'} · perfil persistente")
     return _o._page
+
+
+# ── a session handed over by his daemon (V2-575 P3) ───────────────────────────────────────────────────────────
+# After he signs in on his daemon's window, a remote engine receives THAT site's session (`browser.export_session`)
+# and imports it here: the cookies into this context, the localStorage through an init script that fills the keys
+# the page does not have yet. Kept in process memory and re-applied on every relaunch of the context (a persistent
+# profile does not keep session cookies across a close). Only what belongs to the domain it came for is taken.
+
+_imported_sessions: dict[str, dict] = {}     # registrable domain → {"cookies": [...], "origins": [...]}
+_SAME_SITE = ("Strict", "Lax", "None")
+
+
+def _belongs(host: str, domain: str) -> bool:
+    host = (host or "").strip().lower().lstrip(".")
+    return bool(domain) and (host == domain or host.endswith("." + domain))
+
+
+def _session_for(domain: str, storage_state: dict) -> dict:
+    """The part of `storage_state` that belongs to `domain`, in the shapes `add_cookies` and the init script take."""
+    from urllib.parse import urlsplit
+    cookies = []
+    for c in (storage_state or {}).get("cookies") or []:
+        if not isinstance(c, dict) or not _belongs(str(c.get("domain") or ""), domain):
+            continue
+        if not isinstance(c.get("name"), str) or not isinstance(c.get("value"), str):
+            continue
+        ck = {k: c[k] for k in ("name", "value", "domain", "path", "expires", "httpOnly", "secure") if k in c}
+        ck.setdefault("path", "/")
+        if c.get("sameSite") in _SAME_SITE:
+            ck["sameSite"] = c["sameSite"]
+        cookies.append(ck)
+    origins = []
+    for o in (storage_state or {}).get("origins") or []:
+        origin = str((o or {}).get("origin") or "") if isinstance(o, dict) else ""
+        if not origin.startswith("https://") or not _belongs(urlsplit(origin).hostname or "", domain):
+            continue
+        items = [{"name": str(i.get("name")), "value": str(i.get("value"))}
+                 for i in (o.get("localStorage") or []) if isinstance(i, dict) and "name" in i]
+        origins.append({"origin": origin, "localStorage": items})
+    return {"cookies": cookies, "origins": origins}
+
+
+def _local_storage_script(origins: list) -> str:
+    import json
+    data = json.dumps({o["origin"]: o["localStorage"] for o in origins if o.get("localStorage")})
+    return ("(() => { try { const all = " + data + "; const items = all[location.origin]; if (!items) return;"
+            " for (const it of items) { if (localStorage.getItem(it.name) === null)"
+            " localStorage.setItem(it.name, it.value); } } catch (e) {} })();")
+
+
+async def _apply_imported_sessions(ctx) -> None:
+    for session in list(_imported_sessions.values()):
+        try:
+            if session["cookies"]:
+                await ctx.add_cookies(session["cookies"])
+            if any(o.get("localStorage") for o in session["origins"]):
+                await ctx.add_init_script(_local_storage_script(session["origins"]))
+        except Exception as e:  # noqa: BLE001 — a session that does not apply leaves the probe to say so
+            _o.logger.warning(f"navegador: imported session not applied ({type(e).__name__})")
+
+
+async def _import_session(domain: str, storage_state: dict) -> dict:
+    """Import his daemon's session for `domain` into this engine's browser. Returns COUNTS, never names or values."""
+    domain = (domain or "").strip().lower().lstrip(".")
+    session = _session_for(domain, storage_state)
+    if not domain or not (session["cookies"] or session["origins"]):
+        return {"ok": False, "cookies": 0, "origins": 0}
+    _imported_sessions[domain] = session
+    if _o._context is not None:
+        await _apply_imported_sessions(_o._context)
+    return {"ok": True, "cookies": len(session["cookies"]), "origins": len(session["origins"])}
 
 
 # ── utilities ────────────────────────────────────────────────────────────────────────────────────────────────

@@ -121,11 +121,14 @@ async def _authenticate(task_id: str, url: str, *, site: str = "", goal: str = "
     # computer through a connected daemon that declares it can; otherwise nowhere, and the process is BLOCKED with
     # that state instead of waiting for a window that cannot exist.
     from nucleo import browser_window
-    from widgets.navegador.owner_login import daemon_link
+    from widgets.navegador.owner_login import daemon_link, relay_link
     await daemon_link.sync()                       # V2-575 P2: a loopback daemon that can open a window registers here
-    reach = browser_window.reach()
+    if relay_link.hosted():
+        await relay_link.sync()                    # V2-575 P3: his daemon through the relay, for an engine away from him
+    surface = _surface_of(task_id)
+    reach = browser_window.reach(surface)
     if not reach:
-        await _block_for_no_window(task_id, site or url)
+        await _block_for_no_window(task_id, site or url, blocked="phone" if surface == "phone" else "no_window")
         return
     if reach == browser_window.DAEMON:
         await _authenticate_on_daemon(task_id, url, site)
@@ -168,16 +171,29 @@ async def _authenticate(task_id: str, url: str, *, site: str = "", goal: str = "
     _o._arm_login_watch(task_id, site)                               # WATCH the window → auto-detect login
 
 
-async def _block_for_no_window(task_id: str, site: str) -> None:
-    """No window can reach him (no display here, no daemon connected that can open one): the task that needs his
-    sign-in and the tasks paused behind it are BLOCKED — a live state, not a failure. Their entry in the processes
-    panel says why, and he is told once, in his language, in the chat and by voice."""
+def _surface_of(task_id: str) -> str:
+    """`phone` when the errand driving this browser task came from his phone (V2-792 screens), else ``."""
+    try:
+        from nucleo.request import sign_in_wait
+        rec = sign_in_wait._record_driving(task_id)
+        return "phone" if rec is not None and sign_in_wait._on_phone(rec) else ""
+    except Exception as e:  # noqa: BLE001 — unknown screen: the reach decides as before
+        _o.logger.debug(f"navegador: the requesting screen is unknown ({type(e).__name__})")
+        return ""
+
+
+async def _block_for_no_window(task_id: str, site: str, *, blocked: str = "no_window") -> None:
+    """No window can reach him (no display here, no daemon connected that can open one, or he asked from his phone):
+    the task that needs his sign-in and the tasks paused behind it are BLOCKED — a live state, not a failure. Their
+    entry in the processes panel says why, and he is told once, in his language, in the chat and by voice."""
     from widgets.navegador import tasks
     for tid in [task_id, *[t for t in list(_o._auth_resume) if t != task_id]]:
         if not tid or tasks.is_cancelled(tid):
             continue
-        tasks.set_login_wait(tid, False, blocked="no_window")
+        tasks.set_login_wait(tid, False, blocked=blocked)
     _o._auth_resume.clear()
+    if blocked == "phone":
+        return                       # the errand's own question says it from the phone (`sign_in_wait.question`)
     tasks.milestone(task_id, f"⛔ {site}: hace falta iniciar sesión y aquí no hay ventana — bloqueada")
     # V2-835 — the daemon is OFFERED once per run: the next block is shown in the processes panel and said nowhere
     # else, so a search that walks into three logins does not repeat the same sales line three times.
@@ -209,8 +225,11 @@ async def _authenticate_on_daemon(task_id: str, url: str, site: str) -> None:
         return
     tasks.set_login_wait(task_id, True)
     tasks.milestone(task_id, "🔓 Te abrí la ventana en tu ordenador; lo detecto solo cuando entres")
+    from widgets.navegador.owner_login import relay_link
     if daemon_link.owns_link():                    # the loopback transport watches its own window (P2)
         daemon_link.watch(task_id, site)
+    elif relay_link.owns_link():                   # the relayed one watches, then brings the session over (P3)
+        relay_link.watch(task_id, site)
     try:
         from nucleo.pulse import notices
         await notices.notify("navegador", _o._say().login_opened, task_id=task_id, kind="ask")
