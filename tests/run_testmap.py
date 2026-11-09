@@ -7257,6 +7257,17 @@ DOMAINS: list[dict] = [
             "paths": ["tests/infrastructure/unit/daemon/test_the_daemon_is_offered_and_governed_from_the_interface.py",
                       # 2026-10-22: «Conectar» starts it and «Elegir carpeta…» opens the system dialog — no terminal
                       "tests/infrastructure/unit/daemon/test_the_computer_connects_with_one_click.py"]},
+        # V2-575 P4 — A RELEASE A STRANGER CAN VERIFY. The hash check was two files from one release agreeing; now
+        # each build signs its `SHA256SUMS-<suffix>` with Sigstore keyless (the signer is the release workflow's
+        # OIDC identity, logged in Rekor), attests the binaries' provenance, and `get.sh`/`get.ps1` verify the
+        # bundle when cosign is on PATH. Pinned: the job's permissions, signing AFTER `release_names.py` and the
+        # self-verify before upload, pinned tool versions, no stale signature surviving a rename, the bundle name
+        # agreed by script/workflow/installers, a missing bundle refused, and the real get.sh against a fake
+        # network and a fake cosign.
+        {"id": "7.99", "title": "Local daemon: release checksums are signed keyless after the rename, binaries carry "
+                                "build provenance, and the installers verify the signature when cosign is present",
+            "ch": UNIT,
+            "paths": ["tests/infrastructure/unit/daemon/test_the_release_is_signed_and_attested.py"]},
         # V2-638 — EL SISTEMA DE ARCHIVOS DEL AGENTE: un solo árbol que comparten todos los widgets, en vez de
         # que cada uno guarde en su rincón. Lo que se fija, por orden de daño: la FRONTERA (`paths.resolve()` es
         # la única puerta y toda ruta que llega es no fiable — magnet, salida del modelo, query string; una

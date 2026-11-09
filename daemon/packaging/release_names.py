@@ -32,6 +32,19 @@ _RENAMES = (
     ("manifest.json", "manifest-{suffix}.json"),
 )
 
+# The checksum file the release publishes, and the Sigstore bundle the workflow signs it into. Named here, once,
+# because three places must agree on them: the workflow signs `SUMS_TEMPLATE`, writes `SIGNATURE_TEMPLATE`, and
+# both installers download the pair under these names (node 7.99 joins all three).
+SUMS_TEMPLATE = "SHA256SUMS-{suffix}"
+SIGNATURE_TEMPLATE = SUMS_TEMPLATE + ".sigstore.json"
+
+# Every shape a signature over a sums file has had or could have: a bundle, or a detached `.sig` + `.pem` pair.
+_SIGNATURE_SUFFIXES = (".sigstore.json", ".sigstore", ".bundle", ".sig", ".pem")
+
+
+def _stale_signatures(dist: Path) -> list[Path]:
+    return [f for f in dist.glob("SHA256SUMS*") if f.name.endswith(_SIGNATURE_SUFFIXES)]
+
 
 def _sha256(path: Path) -> str:
     digest = hashlib.sha256()
@@ -46,6 +59,12 @@ def rename_for(suffix: str, dist: Path | None = None) -> list[Path]:
 
     Returns the artifacts (binary and archive) under their published names."""
     dist = dist or DIST
+    # ⚠️ A SIGNATURE IS ABOUT THE BYTES IT WAS MADE OVER. The sums are rewritten below, so any signature already in
+    # `dist` — from an earlier build, an earlier name, a re-run — now vouches for a file that no longer exists,
+    # and published beside the new sums it would read as "signed" while verifying nothing (or failing on every
+    # user's machine). Signing is the workflow's NEXT step, over what this function writes; nothing older survives.
+    for stale in _stale_signatures(dist):
+        stale.unlink()
     # Windows names its binary `zaelar-daemon.exe`; a suffix that already carries `.exe` would double it.
     published: list[Path] = []
     for build_name, template in _RENAMES:
@@ -59,7 +78,7 @@ def rename_for(suffix: str, dist: Path | None = None) -> list[Path]:
 
     # The checksums are RECOMPUTED, not rewritten by text substitution: a sums file whose names were patched
     # but whose digests came from somewhere else would be the same lie in a more convincing format.
-    sums = dist / f"SHA256SUMS-{suffix}"
+    sums = dist / SUMS_TEMPLATE.format(suffix=suffix)
     sums.write_text("".join(f"{_sha256(a)}  {a.name}\n" for a in sorted(published)), encoding="utf-8")
     old_sums = dist / "SHA256SUMS"
     if old_sums.exists():
