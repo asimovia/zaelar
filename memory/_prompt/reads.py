@@ -90,6 +90,82 @@ def recent_window(limit: int = 6, max_chars: int = 1600) -> list[dict]:
     return out
 
 
+#: The day the ledger spans, in hours — rolling, so «today» at 00:10 still holds the evening (V2-865).
+DAY_HOURS = 16.0
+#: Silence between two turns that opens a new EPISODE of the day (minutes).
+EPISODE_GAP_MIN = 12.0
+#: Turns the live dialog window carries (10 messages, `_WINDOW_MAX` of the channel): the ledger leaves them out.
+LIVE_WINDOW_TURNS = 5
+#: An episode longer than this is cut into chunks, each with its own opening request: one line per 25 turns
+#: showed the Arduino card and hid the music he asked for ten turns later (measured on the 18:08 run, 2026-11-08).
+EPISODE_MAX_TURNS = 10
+
+
+def day_ledger(hours: float | None = None, *, skip_newest: int = LIVE_WINDOW_TURNS, gap_min: float = EPISODE_GAP_MIN,
+               max_episodes: int = 8) -> list[dict]:
+    """LO QUE HA PASADO HOY — the day's conversation as a SCHEMA, DIRECT READ (µs, no LLM, no retriever) — V2-865.
+
+    The passive block saw the last 5 short rows (≈2 turns); nothing in the prompt said what happened earlier in
+    the day, and the model answered «I don't have the earlier explanation» three hours after naming the artist he
+    then asked for again (measured 2026-11-09). This reader folds the `conv` buffer of the last `hours`
+    into EPISODES — runs of turns separated by less than `gap_min` of silence — and returns one entry per episode:
+    when, how many turns, what he OPENED with and what was answered first, and how it ENDED. No summary model: a
+    cut of his words and of the reply, which is what lets the model know the episode exists and pull the detail
+    with `recall` (the conversation lane) when he points at it.
+
+    The newest `skip_newest` turns are left out — the live window already carries them verbatim — and a first-turn
+    kickoff never opens an episode (it is the engine speaking in his voice). Oldest first; when there are more than
+    `max_episodes`, the most recent are kept. `[{start, end, turns, u, a, last_a}]`, epoch seconds."""
+    import json as _json
+    from ..clock import now as _now
+    from ..history import _newest_conv_ids, is_kickoff
+    h = float(DAY_HOURS if hours is None else hours)
+    try:
+        import os as _os
+        h = float(_os.getenv("ZAELAR_DAY_HOURS", h))
+    except (TypeError, ValueError) as e:
+        import logging as _logging
+        _logging.getLogger("zaelar.memory.prompt").debug(f"day_ledger: ZAELAR_DAY_HOURS unreadable, {h} h kept ({e})")
+    since = int(_now() - max(h, 0.0) * 3600)
+    db = _db.get_db()
+    rows = db.query(
+        "SELECT id, created, meta FROM memories WHERE kind='conv' AND valid=1 AND created >= ? "
+        "ORDER BY created ASC, id ASC", (since,))
+    skip = _newest_conv_ids(int(skip_newest or 0))
+    episodes: list[dict] = []
+    last_ts: float | None = None
+    new_session = False
+    for r in rows:
+        if int(r["id"]) in skip:
+            continue
+        try:
+            meta = _json.loads(r["meta"]) if r["meta"] else {}
+        except Exception:  # noqa: BLE001
+            meta = {}
+        u = " ".join(str(meta.get("u") or "").split())
+        a = " ".join(str(meta.get("a") or "").split())
+        if meta.get("kickoff") or is_kickoff(u):
+            # The greeting turn is not his, and it is a new work session: whatever follows is a new episode. It
+            # never fills one — measured 2026-11-09, a gap counted from the greeting glued six hours into one line.
+            new_session = True
+            continue
+        ts = float(r["created"] or 0)
+        if (not episodes or new_session or last_ts is None or (ts - last_ts) > gap_min * 60
+                or episodes[-1]["turns"] >= int(max(EPISODE_MAX_TURNS, 1))):
+            episodes.append({"start": ts, "end": ts, "turns": 0, "u": "", "a": "", "last_a": ""})
+        new_session = False
+        ep = episodes[-1]
+        ep["end"] = ts
+        ep["turns"] += 1
+        if not ep["u"] and u:
+            ep["u"], ep["a"] = u, a
+        if a:
+            ep["last_a"] = a
+        last_ts = ts
+    episodes = [e for e in episodes if e["u"]]
+    return episodes[-int(max_episodes):] if max_episodes else episodes
+
+
 def seconds_since_last_conv() -> float | None:
     """Segundos desde el ÚLTIMO turno conversacional (buffer corto `source='conv'`), o None si no hay ninguno.
     Sirve para que el kickoff (voice/engine/pipeline/agent.py) distinga una sesión NUEVA de una RECONEXIÓN a una

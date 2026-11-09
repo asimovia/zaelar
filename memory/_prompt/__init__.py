@@ -8,4 +8,5 @@ key-shape rule ONCE — that is a RETRIEVAL rule and lives with it, not here.
 from .. import state as _state  # noqa: F401 — tests reach the state read through here
 from .compose import _ERRAND_KINDS, _RAIL_STATUS, _STATE_RENDERED, compose_state  # noqa: F401
 from .reads import (  # noqa: F401
-    critical_facts, recent_short, recent_window, salient_long, seconds_since_last_conv, tastes)
+    DAY_HOURS, LIVE_WINDOW_TURNS, critical_facts, day_ledger, recent_short, recent_window, salient_long,
+    seconds_since_last_conv, tastes)

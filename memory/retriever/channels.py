@@ -52,7 +52,12 @@ _FTS_STOP = frozenset(
     "va van voy vas vais esta estan están estoy estas estás estamos ando anda andas hay ha han he has "
     "recuerdas recuerda recuérdame recuerdame acuerdas acuerda acuerdo dime dímelo sabes cuéntame cuentame "
     "cuenta quién quien qué hago hice había tengo tienes tuve algún alguna algo cosa "
-    "the of to in on at is are was for and or my your his her remember recall tell know what did do i you".split()
+    "the of to in on at is are was for and or my your his her remember recall tell know what did do i you "
+    # V2-865: the rest of the English function words — «from», «that», «which» were terms of a recall query and
+    # outranked the one turn that carried the answer.
+    "from that this these those which with have has had been were they them then than also just into some "
+    "about would could should will shall there their here where when who whom whose how why not but if so as "
+    "be am an it its our ours we us he him she hers me mine said says say want wants wanted need needs".split()
 )
 
 

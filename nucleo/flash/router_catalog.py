@@ -354,10 +354,12 @@ TOOLS: list[dict] = [
             # V2-056 (audit 2026-07-19): «who decides to search = the model» (V2-022) applied to MEMORY —
             # the needs_recall heuristic remains optimistic prefetch; this tool covers what prefetch missed
             # ("I want to go on vacation", "organize a trip" did not trigger recall → amnesiac brain).
+            # V2-865: it also reaches what was said TODAY outside the window (the conversation lane), paid for
+            # inside the same description — the catalog and the turn's total only shrink.
             "description": (
-                "Consulta tu memoria de largo plazo sobre el OPERADOR y su vida (gustos, familia, planes, lo que "
-                "te contó hace días) cuando la necesitas para "
-                "responder o preparar algo y no está ya en tu ESTADO ni en la conversación reciente. Vuelve en este "
+                "Consulta tu memoria sobre el OPERADOR y su vida (gustos, familia, planes, lo que te contó hace "
+                "días u HOY antes de esta ventana, literal) cuando la necesitas para responder o preparar algo y no "
+                "está en tu ESTADO ni en la ventana. Vuelve en este "
                 "turno, sin tarjeta ni espera. `query` = qué necesitas recordar, autocontenido. No es para datos del "
                 "mundo (web_search) ni lo que GUARDA un widget —citas, contactos, ficheros— (read_widget). Jamás digas "
                 "«memoria» ni «base de datos»: hablas como quien simplemente se acuerda."
