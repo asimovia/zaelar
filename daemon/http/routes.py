@@ -14,6 +14,7 @@ from __future__ import annotations
 from .. import VERSION, audit, config
 from ..fs import listing, reading, searching
 from .. import picker
+from .. import browser
 from ..fs import roots as folders
 from ..fs.entries import LIST_DEFAULT_LIMIT, LIST_MAX_LIMIT, MAX_READ_BYTES
 
@@ -21,6 +22,12 @@ from ..fs.entries import LIST_DEFAULT_LIMIT, LIST_MAX_LIMIT, MAX_READ_BYTES
 # here until it is really there: offering a browser hand-off the daemon cannot perform makes the agent tell the
 # user it will open a window and then not.
 CAPABILITIES = ["files.list", "files.read", "files.search"]
+
+
+def capabilities() -> list[str]:
+    """What this daemon can do RIGHT NOW: the files half always, the sign-in window only when a browser is really
+    there to open (`daemon.browser.available()`) — P2's capability is measured, never declared by hand."""
+    return list(CAPABILITIES) + ([browser.CAPABILITY] if browser.available() else [])
 
 AUDIT_DEFAULT_LIMIT = 200
 AUDIT_MAX_LIMIT = 1_000
@@ -55,7 +62,7 @@ def health(_request, _payload: dict) -> dict:
         "daemon": "zaelar",
         "version": VERSION,
         "configured": bool(cfg.get("configured")),
-        "capabilities": list(CAPABILITIES),
+        "capabilities": capabilities(),
     }
 
 
@@ -123,6 +130,31 @@ def read_audit(_request, payload: dict) -> dict:
     return {"ok": True, "entries": audit.tail(limit)}
 
 
+def _host_of(url: str) -> str:
+    from urllib.parse import urlsplit
+    return (urlsplit(url or "").hostname or "")[:200]
+
+
+def browser_open(request, payload: dict) -> dict:
+    """Open the sign-in window on this screen. The audit keeps the HOST, never the full address: a login URL can
+    carry a one-time code in its query."""
+    url = _as_text(payload, "url")
+    out = browser.WINDOWS.open(_as_text(payload, "task"), url, _as_text(payload, "profile"))
+    audit.record("browser.open", caller=request._caller(), path=_host_of(url), outcome="ok")
+    return out
+
+
+def browser_state(_request, payload: dict) -> dict:
+    """Polled by the engine while it waits: the URL and how many cookies appeared — never which ones."""
+    return browser.WINDOWS.state(_as_text(payload, "task"))
+
+
+def browser_close(request, payload: dict) -> dict:
+    out = browser.WINDOWS.close(_as_text(payload, "task"))
+    audit.record("browser.close", caller=request._caller(), path=None, outcome="ok")
+    return out
+
+
 TABLE: dict[tuple[str, str], object] = {
     ("GET", "/health"): health,
     ("GET", "/permissions"): permissions,
@@ -133,4 +165,7 @@ TABLE: dict[tuple[str, str], object] = {
     ("POST", "/files/read"): read_file,
     ("POST", "/files/search"): search,
     ("POST", "/audit"): read_audit,
+    ("POST", "/browser/open"): browser_open,
+    ("POST", "/browser/state"): browser_state,
+    ("POST", "/browser/close"): browser_close,
 }

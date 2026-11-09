@@ -2463,5 +2463,8 @@
  "widgets.musica.away_yes": "Sí, tomar el control",
  "widgets.musica.away_no": "Cancelar",
  "widgets.musica.away_short": "En «{device}»",
- "widgets.musica.away_release": "Dejarlo"
+ "widgets.musica.away_release": "Dejarlo",
+ "daemon.cap.browser_on": "Ventana de inicio de sesión: cuando una web te pida entrar, Zaelar puede abrirla aquí, en este ordenador.",
+ "daemon.cap.browser_off": "Ventana de inicio de sesión: aún no disponible en este ordenador (falta el navegador que necesita).",
+ "daemon.mobile.connected": "Conectado en tu ordenador. Desde aquí Zaelar puede leer las carpetas que permitiste; una ventana de inicio de sesión solo se abre en el ordenador."
 }

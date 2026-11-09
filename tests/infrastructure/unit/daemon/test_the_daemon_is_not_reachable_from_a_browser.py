@@ -199,9 +199,16 @@ def test_the_server_header_does_not_leak_the_python_version(live):
     assert "Python" not in server
 
 
-def test_health_advertises_only_the_capabilities_that_exist(live):
-    """A capability the engine believes in is a promise to the user. The browser hand-off is P2 and must not
-    appear here until it is really there, or the agent will offer to open a window it cannot open."""
+def test_health_advertises_only_the_capabilities_that_exist(live, monkeypatch):
+    """A capability the engine believes in is a promise to the user. The browser hand-off (P2) is declared only
+    when a browser is really there to open — measured, both ways: off by hand → absent; present → declared."""
+    from daemon import browser
     base, _token, _docs = live
+    monkeypatch.setenv("ZAELAR_DAEMON_BROWSER", "0")
     _status, body, _ = _call(base, "/health")
     assert body["capabilities"] == ["files.list", "files.read", "files.search"]
+    monkeypatch.delenv("ZAELAR_DAEMON_BROWSER")
+    monkeypatch.setattr(browser.window, "_chromium_on_disk", lambda: True)
+    _status, body, _ = _call(base, "/health")
+    expected = ["files.list", "files.read", "files.search"] + (["browser.auth"] if browser.available() else [])
+    assert body["capabilities"] == expected

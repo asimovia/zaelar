@@ -2463,5 +2463,8 @@
  "widgets.musica.away_yes": "Yes, take control",
  "widgets.musica.away_no": "Cancel",
  "widgets.musica.away_short": "On \"{device}\"",
- "widgets.musica.away_release": "Let it be"
+ "widgets.musica.away_release": "Let it be",
+ "daemon.cap.browser_on": "Sign-in window: when a site asks you to sign in, Zaelar can open it here on this computer.",
+ "daemon.cap.browser_off": "Sign-in window: not available on this computer yet (the browser it needs is not installed).",
+ "daemon.mobile.connected": "Connected on your computer. From here Zaelar can read the folders you granted; a sign-in window only opens on the computer."
 }
