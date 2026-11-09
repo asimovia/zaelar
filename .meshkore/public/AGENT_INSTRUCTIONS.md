@@ -471,7 +471,7 @@ Each is one line in `.meshkore/docs/criteria.md`, with its node; read the sectio
   by name — C15), crossed before any question and again on his yes. Each slot the card declares for the act
   (`slots` in its manifest: recipient, channel, text, a held draft) is asked where its value came from — his words,
   the task's reading, his order over the row, or a stranger (`nucleo/workers/exit_slots.py`). A send is ONE linear
-  task (T2c): Flash's call is retained on the row with its slots and their origin (`nucleo/request/send_task.py`),
+  task (T2e): Flash's call is retained on the row with its slots and their origin (`nucleo/request/send_task.py`),
   every slot his → the exit door and the card's door run with zero questions and no worker, a slot that lacks is ONE
   durable question his answer fills on the same row, and the taint asks only about a slot a stranger wrote.
 - **Background work never starves the voice (§R, R18–R20):** a held worker names its TRUE reason (memory only under
@@ -479,6 +479,9 @@ Each is one line in `.meshkore/docs/criteria.md`, with its node; read the sectio
   limit with no deadline start, one worker at a time, floor = max(`admit_free_ratio`×total, `voice_reserve_mb`), and a
   Chromium launches only through `nucleo/workers/room.py` (pause the newest worker, launch, resume only its own pauses;
   his window is never refused). `nucleo/workers/envelope.py`, `config/resources.default.json`.
+- **A voice recycle is bounded and verified (§R, R21):** the old worker's close is abandoned past `recycle_close_s`, the
+  new one counts only once REGISTERED, retried, and a voice still dead `voice_dead_s` after a session was asked is an
+  alert plus a supervised restart; marks inside `boot_grace_s` are warm-up. `nucleo/pulse/voice_recycle.py`.
 - **An errand is bound to its row (§S, S17–S19):** anything stored per errand is keyed by `runtime_ids.errand_key`,
   never the per-boot `task_id`; a brief names its errand and the judge refuses a stranger's; a sign-in it cannot do is
   a WAIT on him through the one asker (`nucleo/request/sign_in_wait.py`), never a result; a worker's result says where
