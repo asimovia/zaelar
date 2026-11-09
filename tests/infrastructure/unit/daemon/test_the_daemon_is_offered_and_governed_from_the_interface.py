@@ -61,15 +61,16 @@ def test_asking_about_the_daemon_does_not_leave_a_credential_behind(client, tmp_
     assert not (tmp_path / "config" / "daemon").exists(), "the status route created the daemon's state directory"
 
 
-def test_the_download_points_at_the_version_this_engine_actually_carries(client):
-    """Pinned to the daemon's own tag, not `releases/latest`. `latest` follows whatever was released last —
-    including an engine release with no daemon assets in it — and a 404 on the one screen whose entire job is
-    handing somebody a file is the most expensive kind of broken link."""
+def test_the_download_points_at_the_newest_release_and_not_a_stale_pin(client):
+    """The direct links follow the newest release, which carries a fresh daemon build on every engine tag. A
+    pin to `daemon-v<version>` went stale silently: the version number stood still while the daemon's code
+    moved, and the screen kept handing out a months-old build under a correct-looking name."""
     body = client.get("/api/daemon/status").json()
-    version = body["expected_version"]
-    assert re.fullmatch(r"\d+\.\d+\.\d+", version), f"unreadable daemon version: {version!r}"
-    assert body["downloads"]["tag"] == f"daemon-v{version}"
-    assert f"daemon-v{version}" in body["downloads"]["platforms"]["macos"]["artifact"]
+    assert re.fullmatch(r"\d+\.\d+\.\d+", body["expected_version"])
+    for platform, entry in body["downloads"]["platforms"].items():
+        for key in ("artifact", "installer", "checksums"):
+            assert "/releases/latest/download/" in entry[key], f"{platform}.{key} is pinned: {entry[key]}"
+            assert "daemon-v" not in entry[key]
 
 
 @pytest.mark.parametrize("agent,expected", [
@@ -230,15 +231,56 @@ def test_nothing_is_executed_before_its_checksum_is_checked(script, hasher):
 
 
 @pytest.mark.parametrize("script", ["get.sh", "get.ps1"])
-def test_the_bootstrap_installs_a_DAEMON_release_and_not_merely_the_latest(script):
-    """`releases/latest` follows whatever was released last, and this repository also tags the engine — so the
-    newest release regularly carries no daemon assets at all. Filtering tags by prefix is what stops the
-    command from failing on a perfectly healthy repository."""
+def test_the_bootstrap_picks_the_release_by_the_file_it_needs(script):
+    """Neither `releases/latest` (an engine release whose daemon build is still running has no daemon files)
+    nor a tag prefix (a `daemon-v*` tag sinks below the API's first page within weeks, and the command then
+    died on a healthy repository): the newest release that publishes the asset itself."""
     text = (ENGINE / "daemon" / "packaging" / script).read_text(encoding="utf-8")
-    assert "daemon-v" in text, f"{script} does not filter releases by the daemon's tag prefix"
-    # The USAGE, not the word: both scripts explain in a comment why `releases/latest` is wrong, and a test
-    # that forbade the substring would be tripped by its own documentation.
-    assert "releases/latest/download" not in text, f"{script} builds a URL from the wrong release"
+    code = "\n".join(line for line in text.splitlines() if not line.lstrip().startswith("#"))
+    assert "daemon-v" not in code, f"{script} still filters releases by a tag prefix"
+    assert "releases/latest/download" not in code, f"{script} builds a URL from the wrong release"
+    assert "per_page=100" in code, f"{script} reads too short a page of releases"
+
+
+def _releases_json(newest_without_assets: bool = True) -> str:
+    """An API page shaped like GitHub's: newest first, an engine release still building (no assets), then
+    releases carrying both Mac builds, and no `daemon-v*` tag anywhere on the page."""
+    def rel(tag, names):
+        return {"tag_name": tag, "assets": [
+            {"name": n, "browser_download_url": f"https://github.com/x/y/releases/download/{tag}/{n}"}
+            for n in names]}
+    both = ["zaelar-daemon-macos-x86_64", "zaelar-daemon-macos", "SHA256SUMS-macos"]
+    rels = ([rel("v9.3", [])] if newest_without_assets else []) + [
+        rel("v9.2", ["zaelar-daemon-macos-x86_64", "SHA256SUMS-macos-x86_64"]),
+        rel("v9.1", both)]
+    return json.dumps(rels, indent=2)
+
+
+@pytest.mark.parametrize("asset,expected", [
+    ("zaelar-daemon-macos", "v9.1"),
+    ("zaelar-daemon-macos-x86_64", "v9.2"),
+])
+def test_the_one_liner_resolves_the_newest_release_carrying_its_own_build(tmp_path, asset, expected):
+    """Runs the real `resolve_tag` from get.sh against a fake `curl`: it skips the release still building,
+    never mistakes the Intel name for the Apple Silicon one, and needs no `daemon-v` tag to exist."""
+    import shutil
+    import subprocess
+    bash = shutil.which("bash")
+    if not bash:
+        pytest.skip("no bash")
+    text = (ENGINE / "daemon" / "packaging" / "get.sh").read_text(encoding="utf-8")
+    start = text.index("resolve_tag() {")
+    fn = text[start:text.index("\n}\n", start) + 3]
+    (tmp_path / "page.json").write_text(_releases_json(), encoding="utf-8")
+    fake = tmp_path / "bin" / "curl"
+    fake.parent.mkdir()
+    fake.write_text(f'#!/bin/sh\ncat "{tmp_path / "page.json"}"\n', encoding="utf-8")
+    fake.chmod(0o755)
+    script = f"set -euo pipefail\nREPO=x/y\nASSET={asset}\n{fn}\nresolve_tag\n"
+    out = subprocess.run([bash, "-c", script], capture_output=True, text=True, timeout=10,
+                         env={"PATH": f"{fake.parent}:/usr/bin:/bin"})
+    assert out.returncode == 0, out.stderr
+    assert out.stdout.strip() == expected
 
 
 def test_the_command_the_screen_shows_runs_the_script_the_repo_ships():

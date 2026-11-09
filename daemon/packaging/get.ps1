@@ -31,20 +31,22 @@ if (-not $IsWindows -and $PSVersionTable.PSVersion.Major -ge 6) {
 # an opaque "could not create SSL/TLS secure channel" that sends people hunting for a proxy problem.
 try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 } catch {}
 
-# ── the newest DAEMON release, which is not the newest release ────────────────────────────────────────────
-# The repository also tags the engine, so `releases/latest` regularly points at something carrying no daemon
-# assets at all. Tags are filtered by prefix instead.
+# ── the newest release that CARRIES THIS FILE ────────────────────────────────────────────────────────────
+# Not `releases/latest` (an engine release whose daemon build is still running, or failed, has no daemon
+# assets yet) and not a tag prefix either: the daemon is rebuilt on every engine tag, so a prefix-filtered
+# `daemon-v*` tag sinks below the first page of the API within weeks and the one-liner dies on a healthy
+# repository. The rule is the asset itself: the newest release that publishes exactly this file.
+$Asset = 'zaelar-daemon-windows.exe'
 $Tag = $env:ZAELAR_DAEMON_TAG
 if (-not $Tag) {
   try {
-    $releases = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases?per_page=30" `
+    $releases = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases?per_page=100" `
                                   -Headers @{ 'User-Agent' = 'zaelar-daemon-get' }
-    $Tag = ($releases | Where-Object { $_.tag_name -like 'daemon-v*' } | Select-Object -First 1).tag_name
+    $Tag = ($releases | Where-Object { @($_.assets | ForEach-Object { $_.name }) -contains $Asset } | Select-Object -First 1).tag_name
   } catch { }
 }
 if (-not $Tag) { Die 'could not find a published daemon release. Set ZAELAR_DAEMON_TAG to install a specific one.' }
 
-$Asset = 'zaelar-daemon-windows.exe'
 $Base  = "https://github.com/$Repo/releases/download/$Tag"
 Write-Host ''
 Write-Host "Zaelar Local Daemon · $Tag"
