@@ -1,0 +1,8 @@
+#!/bin/bash
+# Runs after Installer.app put Zaelar.app in THIS user's Library (the package installs for the current user only —
+# no administrator password, the same rule as install.sh). It hands the bundle to the same install.sh the one-line
+# installer uses, which registers the per-user LaunchAgent and starts the daemon: one install procedure, not two.
+set -euo pipefail
+DEST="${2:-$HOME/Library/Application Support/Zaelar}"
+[[ -d "$DEST/Zaelar.app" ]] || DEST="$HOME/Library/Application Support/Zaelar"
+ZAELAR_DAEMON_PREFIX="$DEST" exec /bin/bash "$(cd "$(dirname "$0")" && pwd)/install.sh" "$DEST/Zaelar.app"

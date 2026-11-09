@@ -32,11 +32,40 @@ def read_health(port: int, timeout: float = 2.0) -> dict | None:
         return None
 
 
+class _Updater:
+    """The tray's door to `daemon.update`, imported when first used so the tray loads nothing it does not need."""
+
+    def check_and_download(self) -> dict:
+        from ..update import check   # noqa: PLC0415
+        return check.check_and_download()
+
+    def install(self) -> dict:
+        from ..update import apply   # noqa: PLC0415
+        return apply.install()
+
+
+def update_message(result: dict) -> str:
+    """One sentence for a check's result. Every refusal says the installed Zaelar was left untouched — it was."""
+    current = (result.get("current") or {}).get("version") or VERSION
+    available = result.get("available") or {}
+    state = result.get("state")
+    if result.get("note"):
+        return f"You have Zaelar daemon {current} ({result['note']})."
+    if state == "failed" or (not result.get("ok") and result.get("error")):
+        return f"Update check failed: {result.get('error') or 'unknown error'}. Your Zaelar was not changed."
+    if state == "ready" and available:
+        return (f"Zaelar {available.get('version')} (build {available.get('build')}) is downloaded and verified. "
+                "Choose «Install» in the menu to restart on it.")
+    if available:
+        return f"Zaelar {available.get('version')} (build {available.get('build')}) is available."
+    return f"Zaelar daemon {current} is up to date."
+
+
 class Controller:
     """`notify(title, message)` and `quit_fn()` are supplied by the backend; everything else is injectable."""
 
     def __init__(self, port: int, notify=None, quit_fn=None, health_fn=None, target_fn=None,
-                 app=None, windows=None, job=None, choose=None):
+                 app=None, windows=None, job=None, choose=None, updater=None):
         self.port = port
         self._notify = notify or (lambda title, message: None)
         self._quit = quit_fn or (lambda: os._exit(0))
@@ -46,6 +75,7 @@ class Controller:
         self._windows = windows or WINDOWS
         self._job = job or DOWNLOAD
         self._choose = choose or picker.choose_folder
+        self._updater = updater or _Updater()
         self._lock = threading.Lock()
         self._view = model.view(None, None)
 
@@ -122,9 +152,17 @@ class Controller:
         self._job.cancel()
 
     def _do_updates(self) -> None:
-        health = self._health() or {}
-        version = health.get("version") or VERSION
-        self._notify("Zaelar", f"You have Zaelar daemon {version}. Automatic updates are not available yet.")
+        """Check now; when a newer, VERIFIED release exists, download and verify it — then say what happened. The
+        install itself is a second, explicit click (`update_install`), because it restarts the daemon."""
+        result = self._updater.check_and_download()
+        self._notify("Zaelar", update_message(result))
+
+    def _do_update_install(self) -> None:
+        out = self._updater.install()
+        if out.get("error"):
+            self._notify("Zaelar", f"The update was not installed: {out['error']}. Zaelar was left as it was.")
+        elif out.get("restart") == "manual":
+            self._notify("Zaelar", f"Zaelar {out.get('installed', 'update')}. Quit and open Zaelar to finish.")
 
     def _do_quit(self) -> None:
         audit.record("daemon.stop", outcome="ok", detail={"by": "tray"})
