@@ -25,6 +25,8 @@ _PERIOD_S = float(os.getenv("HOMEOSTASIS_PERIOD_S", "60"))       # heartbeat per
 from nucleo.pulse.homeostasis_policy import (  # noqa: E402
     _CAP_MAX, _CAP_TTL_S, _IDLE_S, _LK_THRESHOLD, _LK_WINDOW_S, _LOG_CAP_BYTES)
 
+from nucleo.pulse import voice_recycle  # noqa: E402
+
 _RECYCLE_COOLDOWN_S = float(os.getenv("HOMEOSTASIS_RECYCLE_COOLDOWN_S", "600"))  # at most one recycle per 10 min
 
 _LOG_KEEP = int(os.getenv("HOMEOSTASIS_LOG_KEEP", "3"))             # rotated files to keep
@@ -141,28 +143,22 @@ async def _consume_recycle_request(app, now: float) -> bool:
 
 
 async def _recycle_livekit(app) -> bool:
-    """Recreate the EMBEDDED LiveKit worker (aclose + make_server + new task) without restarting the process."""
+    """Recreate the EMBEDDED LiveKit worker without restarting the process — bounded, verified and retried
+    (V2-871, `voice_recycle.recycle`): a close that hangs is abandoned, never awaited forever."""
     global _last_recycle
+    _last_recycle = time.time()              # the cooldown counts an attempt, not only a success
     try:
-        old = getattr(app.state, "lk_server", None)
-        if old is not None:
-            try:
-                await old.aclose()
-            except Exception as e:  # noqa: BLE001
-                log.warning("homeostasis: aclose del motor viejo falló: %s", e)
         from voice.engine.pipeline.agent import make_server
-        new = make_server()
-        app.state.lk_server = new
         devmode = os.getenv("ZAELAR_ENV", "dev").lower() != "prod"
-        app.state.lk_task = asyncio.create_task(new.run(devmode=devmode))
-        _last_recycle = time.time()
-        _marks.clear()                       # the degradation window starts over
-        _emit("recycle", "motor LiveKit reciclado (worker embebido re-registrado)")
-        log.info("homeostasis: motor LiveKit reciclado")
-        return True
+        ok = await voice_recycle.recycle(app, make_server, devmode)
     except Exception as e:  # noqa: BLE001
         log.warning("homeostasis: reciclado del motor falló: %s", e)
-        return False
+        ok = False
+    _marks.clear()                           # the degradation window starts over
+    if ok:
+        _emit("recycle", "motor LiveKit reciclado (worker embebido re-registrado)")
+        log.info("homeostasis: motor LiveKit reciclado")
+    return ok
 
 
 def _rotate_log(path: str, *, keep: int = _LOG_KEEP) -> None:
@@ -198,7 +194,7 @@ async def _tick(app) -> None:
         if getattr(app, "state", None) is not None and getattr(app.state, "lk_server", None) is not None:
             # 1a) EXPLICIT request (a dead voice session, see request_recycle)
             await _consume_recycle_request(app, now)
-            if livekit_degraded(_marks, now):
+            if livekit_degraded(_marks, now, since=voice_recycle.grace_end()):   # V2-871: warm-up ≠ degraded
                 if now - _last_recycle < _RECYCLE_COOLDOWN_S:
                     pass  # recycled recently: no recycle loop
                 elif safe_to_recycle(_voice_on(), _recent_activity_ts(), now):
@@ -210,6 +206,8 @@ async def _tick(app) -> None:
                     await _alert("lk_degraded", "Motor de voz degradado",
                                  "El motor LiveKit se está atascando pero hay actividad en curso; no lo reinicio "
                                  "para no cortarte. Si notas cortes, dime y lo reinicio.")
+            # 1c) V2-871: a worker that gave up or never came back after a session was asked for is never quiet
+            await voice_recycle.check_dead(app, _recycle_livekit, now)
     except Exception as e:  # noqa: BLE001
         log.warning("homeostasis: chequeo del motor falló: %s", e)
 

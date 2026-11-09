@@ -12,7 +12,8 @@ named by its source and released by the reading that drops back under the bound 
 
 V2-831 pass 10: the notice was said six times in a TYPED session with the microphone off — the loop lag was the
 engine's own heavy turns, not the audio path. So «the voice is falling behind» is ONLY the SDK's audio
-signals (VAD inference vs real time, the executor's ping) while audio really flows (`mic_input.hears`); the loop's
+signals (VAD inference vs real time, the executor's ping) while audio really flows (`mic_input.hears`) and the cold
+start is over (V2-871: the warm-up of the first session is not a lag to shed); the loop's
 own lag sheds load QUIETLY (no event, no words); and the notice is spoken only while he is talking and so is the one
 not being heard (`proactive.user_speaking`).
 """
@@ -43,6 +44,13 @@ def _audio_flows() -> bool:
     return mic_input.hears()
 
 
+def _in_boot_grace() -> bool:
+    """V2-871: the cold-start window (`boot_grace_s`) — the first session pays the warm-up, and a hold would only
+    slow it."""
+    from nucleo.pulse import voice_recycle
+    return voice_recycle.in_boot_grace()
+
+
 def note(lag_s: float, source: str) -> bool:
     """One lag reading. The loop's own lag over the bound only sheds, quietly. An AUDIO signal (the SDK's) over the
     bound while audio flows acts — a shed on every reading, the event once per cooldown, the spoken notice once per EPISODE and only while
@@ -60,7 +68,7 @@ def note(lag_s: float, source: str) -> bool:
         _state["episode"] = False        # recovered: the next episode may be said again
         envelope.unshed(AUDIO)           # releases only the audio's own hold — never the loop's or the watchdog's
         return False
-    if not _audio_flows():
+    if not _audio_flows() or _in_boot_grace():
         return False
     envelope.shed(_COOLDOWN_S, AUDIO)    # every reading over the bound holds; only the notice waits a cooldown
     if now - _state["last_act"] < _COOLDOWN_S:
