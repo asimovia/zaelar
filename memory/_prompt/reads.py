@@ -3,6 +3,7 @@ may be slow; reading must be maximum speed»). Nothing here calls a model."""
 from __future__ import annotations
 
 from .. import db as _db
+from ..history import LIVE_GAP_MIN as _LIVE_GAP_MIN
 
 
 def recent_short(limit: int = 30, max_chars: int = 1800) -> list[dict]:
@@ -39,15 +40,22 @@ def recent_short(limit: int = 30, max_chars: int = 1800) -> list[dict]:
     return out
 
 
-def recent_window(limit: int = 6, max_chars: int = 1600) -> list[dict]:
+def recent_window(limit: int = 6, max_chars: int = 1600, *, gap_min: float | None = None) -> list[dict]:
     """VENTANA CONVERSACIONAL verbatim (los últimos turnos LITERALES operador↔zaelar), LECTURA DIRECTA (µs, sin
     LLM ni retriever). Reconstruye los pares del BUFFER de corto `kind='conv'` (que escribe el provider cada turno)
     en mensajes listos para SEMBRAR `brain._window` tras un reinicio/reconexión — así el FlashBrain no pierde "de
     qué hablábamos" cuando su ventana en memoria arranca vacía (circuito de corto plazo, 2026-07-14). Devuelve
     `[{role, content}]` MÁS ANTIGUO primero (orden natural de chat). Prefiere los campos estructurados `meta.u`/
-    `meta.a`; si un registro viejo no los tiene, parsea el texto "Operador: … · zaelar: …". Tolera BD vacía."""
+    `meta.a`; si un registro viejo no los tiene, parsea el texto "Operador: … · zaelar: …". Tolera BD vacía.
+
+    `gap_min` (V2-865): only the LIVE episode — the newest turn within `gap_min` of now, each earlier one within
+    `gap_min` of the next. Seeding a fresh session with the tail of one that ended nine hours before put the model's
+    own «I don't have what we said earlier today» back in front of it as the freshest dialog (measured 2026-11-09);
+    what happened earlier belongs to the day's schema (`day_ledger`), not to the window."""
     import json as _json
+    from ..clock import now as _now
     db = _db.get_db()
+    ref: float | None = float(_now()) if gap_min is not None else None
     rows = db.query(
         "SELECT text, meta, created FROM memories WHERE level='short' AND valid=1 "
         "AND json_extract(meta,'$.source')='conv' "
@@ -56,6 +64,11 @@ def recent_window(limit: int = 6, max_chars: int = 1600) -> list[dict]:
     pairs: list[tuple[str, str, float]] = []
     used = 0
     for r in rows:                                    # vienen NUEVO→VIEJO; recortamos por chars y luego invertimos
+        ts_r = float(r["created"] or 0)
+        if ref is not None:
+            if ref - ts_r > float(gap_min) * 60:        # the live episode ends here
+                break
+            ref = ts_r
         u = a = ""
         try:
             meta = _json.loads(r["meta"]) if r["meta"] else {}
@@ -92,8 +105,9 @@ def recent_window(limit: int = 6, max_chars: int = 1600) -> list[dict]:
 
 #: The day the ledger spans, in hours — rolling, so «today» at 00:10 still holds the evening (V2-865).
 DAY_HOURS = 16.0
-#: Silence between two turns that opens a new EPISODE of the day (minutes).
-EPISODE_GAP_MIN = 12.0
+#: Silence between two turns that opens a new EPISODE of the day (minutes) — the same silence that closes the live
+#: window (`history.LIVE_GAP_MIN`): what the window holds and what the day folds are two readings of one cut.
+EPISODE_GAP_MIN = _LIVE_GAP_MIN
 #: Turns the live dialog window carries (10 messages, `_WINDOW_MAX` of the channel): the ledger leaves them out.
 LIVE_WINDOW_TURNS = 5
 #: An episode longer than this is cut into chunks, each with its own opening request: one line per 25 turns
@@ -118,7 +132,7 @@ def day_ledger(hours: float | None = None, *, skip_newest: int = LIVE_WINDOW_TUR
     `max_episodes`, the most recent are kept. `[{start, end, turns, u, a, last_a}]`, epoch seconds."""
     import json as _json
     from ..clock import now as _now
-    from ..history import _newest_conv_ids, is_kickoff
+    from ..history import is_kickoff, live_conv_ids
     h = float(DAY_HOURS if hours is None else hours)
     try:
         import os as _os
@@ -131,7 +145,7 @@ def day_ledger(hours: float | None = None, *, skip_newest: int = LIVE_WINDOW_TUR
     rows = db.query(
         "SELECT id, created, meta FROM memories WHERE kind='conv' AND valid=1 AND created >= ? "
         "ORDER BY created ASC, id ASC", (since,))
-    skip = _newest_conv_ids(int(skip_newest or 0))
+    skip = live_conv_ids(int(skip_newest or 0), gap_min=gap_min)
     episodes: list[dict] = []
     last_ts: float | None = None
     new_session = False

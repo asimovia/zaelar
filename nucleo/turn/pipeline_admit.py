@@ -47,7 +47,11 @@ async def admit_the_turn(*, motor, attention, brain, emit, first_turn, text) -> 
         if not brain._window:
             try:
                 from memory import api as _memory
-                _seed = _memory.recent_window(limit=int(motor.os.getenv("ZAELAR_WINDOW_SEED", "6")))
+                # Only the LIVE episode (V2-865): a window seeded with the tail of a session that ended hours ago
+                # showed the model its own «I don't have what we said earlier today» as the freshest dialog — the
+                # day's schema carries that part; the window carries what is still being said.
+                from memory._prompt.reads import EPISODE_GAP_MIN as _gap
+                _seed = _memory.recent_window(limit=int(motor.os.getenv("ZAELAR_WINDOW_SEED", "6")), gap_min=_gap)
                 if _seed:
                     brain._window[:0] = _seed
                     emit("brain", "🌱 ventana sembrada desde memoria", role="system",

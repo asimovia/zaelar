@@ -36,6 +36,18 @@ def _recent_widget_ids() -> list[str]:
         return []
 
 
+def _day_lines() -> list[str]:
+    """The day's schema (`memory.day_block`, V2-865) as prompt lines; [] when there is none or memory is not up."""
+    try:
+        from memory import api as memory
+        block = memory.day_block()
+    except Exception as e:  # noqa: BLE001 — the tail never fails for a read that is a convenience
+        from loguru import logger
+        logger.debug(f"live_state: day block failed ({e!r})")
+        return []
+    return [block] if block else []
+
+
 def live_state() -> str:
     """Cheap, tool-free reads that FlashBrain answers instantly."""
     import time as _t
@@ -59,7 +71,7 @@ def live_state() -> str:
     lines.append(screen_line())
     # V2-348 — TAREAS DE FONDO live in `live_blocks.py` (V2-276 precedent); V2-799 — what is pending or stopped.
     lines.extend(live_tasks.pending_task_lines() + live_tasks.waiting_lines() + live_history.pending_work_lines())
-    lines.extend(live_history.recent_lines() + live_history.earlier_lines())   # the record: lately, then the days before
+    lines.extend(live_history.recent_lines() + live_history.earlier_lines() + _day_lines())   # + today (V2-865)
     lines.extend(live_browser.navegador_lines())
     lines.extend(live_record.harness_lines())   # V2-660: an open harness goal is a FACT with its rule
     lines.extend(live_record.done_ops_lines())  # V2-707 F6: and so is a mutation that already RAN

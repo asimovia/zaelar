@@ -314,6 +314,11 @@ async def run_the_light_lanes(*, FastClient, _apply_widget_data, _brief, _buf_ad
         _cover_work("recall")
         _recall_empty_thread = await _second_v.recall_spoken(text, recall_req["v"], spec, emit, speak)
         spoken_text = "".join(spoken).strip()
+        # V2-865 — the order the recall was serving is carried out with what was recalled (the sibling of the search
+        # and read lanes): a words-only pass promised «let me put her on now» and nothing played. Its gate is its own.
+        await _act_repair.voice_after_recall(_op_text, spoken_text, _brief, spec, window=list(brain._window),
+                                             apply=_apply_widget_data, send=send, emit=emit, acted=acted,
+                                             done=data_done, recalled=_recall_empty_thread, music=music_req["v"])
         if _recall_empty_thread == "empty_thread" and not acted["widget"] and not data_done["v"]:
             # fix02: the pills came back empty on a LIVE-thread question — the compose would have narrated
             # the void as no-access. The deterministic which-message question replaces it at the clarify
