@@ -53,6 +53,8 @@ import re
 import time
 import unicodedata
 
+from voice.engine.speech.echo_cut import EchoCut, first_word
+
 _ARM_TTL_S = 20.0
 _ARM_GRACE_S = 0.8       # how long the node polls for this turn to ARM (prompt build + the bounded wait for the
                          # brief sit between node start and the arm). A spin guard, not a behavioural bound: the
@@ -452,8 +454,9 @@ def arm(brain, text: str = "", messages: list | None = None, brief=None) -> str:
     if messages and isinstance(messages[-1], dict) and messages[-1].get("role") == "user":
         messages[-1] = {**messages[-1], "content": str(messages[-1].get("content") or "") + (
             f"\n\n[SISTEMA] Antes de tu respuesta ya suena en tu voz «{phrase}». Tu primera frase la continúa con "
-            "naturalidad: no la repitas, no la contradigas y no abras con otra espera («dame un momento», «déjame "
-            "mirar»). Si por lo que fuera no llegara a sonar, tu frase se entiende igual sola.")}
+            f"naturalidad y EMPIEZA POR LA PALABRA SIGUIENTE: nunca por «{first_word(phrase)}» ni por otra "
+            "espera («dame un momento», «déjame mirar»); no la contradigas. Si por lo que fuera no llegara a sonar, "
+            "tu frase se entiende igual sola.")}
     return phrase
 
 
@@ -682,6 +685,7 @@ async def llm_node_with_filler(agent, default_impl, chat_ctx, tools, model_setti
             give_up = time.monotonic() + _ARM_GRACE_S
             lead_settled = False        # the lead-in phase is over: it sounded, or nothing armed in time
             lead_at = 0.0               # monotonic of the lead-in that actually SOUNDED (0 = none did)
+            lead_phrase = ""            # the lead-in that sounded, so its echo can be cut from the reply (V2-864)
             covered = False             # at most ONE work cover per turn
             while not get_t.done():
                 await asyncio.wait({get_t}, timeout=_ARM_POLL_S)
@@ -702,6 +706,7 @@ async def llm_node_with_filler(agent, default_impl, chat_ctx, tools, model_setti
                         mark_for_strip(phrase)
                         fired_any = True
                         lead_at = now
+                        lead_phrase = phrase
                         yield phrase + " "
                         yield FlushSentinel()   # closes the segment → played on its own, right now
                     continue
@@ -735,14 +740,20 @@ async def llm_node_with_filler(agent, default_impl, chat_ctx, tools, model_setti
                     yield cover + " "
                     yield FlushSentinel()
         kind, val = await get_t
+        # V2-864 — a cover that sounded is never heard twice: the reply's head is compared with it (no model, no
+        # tokens) and an echo is cut before TTS and the transcript.
+        echo = EchoCut(lead_phrase) if (wait_ms > 0 and lead_phrase) else None
         while True:
             if kind == "err":
                 raise val
             if kind == "end":
                 break
             model_spoke = True
-            yield val
+            for out in (echo.pass_chunk(val) if echo is not None else (val,)):
+                yield out
             kind, val = await q.get()
+        for out in (echo.close() if echo is not None else ()):
+            yield out
     finally:
         # V2-716 — did this generation STRAND its cover? A cover that sounded on a turn the model then never
         # answered is the whole of what the operator heard, and the measure that named this is blunt: of the
