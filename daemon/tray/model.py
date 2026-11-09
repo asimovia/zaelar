@@ -81,8 +81,24 @@ def _update_item(health: dict) -> Item:
     return Item("updates", "Check for updates")
 
 
-def view(health: dict | None, app_target: dict | None, signin_task: str = "") -> View:
-    """The whole menu for one `/health` reading. `app_target` is `app_window.target()`'s answer."""
+#: Shown as the tunnel item's tooltip: switching it on from the menu IS his consent, so the menu says what it means.
+EGRESS_CONSENT = ("With the tunnel on, your cloud agent browses the web through this computer, so websites see your "
+                  "own connection and your IP is associated with that traffic.")
+
+
+def _egress_item(egress: dict | None) -> Item:
+    """The outbound tunnel (V2-836): «on» or «off» as the daemon's own config says, connected or not."""
+    if egress is None:
+        return Item("egress", "Outbound tunnel", False, "Not available in this build.")
+    if not egress.get("enabled"):
+        return Item("egress", "Outbound tunnel: off", True, EGRESS_CONSENT)
+    tail = " (carrying)" if egress.get("connected") else ""
+    return Item("egress", f"Outbound tunnel: on{tail}", True, "Click to switch it off.")
+
+
+def view(health: dict | None, app_target: dict | None, signin_task: str = "", egress: dict | None = None) -> View:
+    """The whole menu for one `/health` reading. `app_target` is `app_window.target()`'s answer; `egress` is the
+    tunnel's switch and state (`{enabled, connected}`), read in-process."""
     state = glyph(health)
     items = [Item("status", _status_line(health), False)]
     if state == "error":
@@ -93,6 +109,7 @@ def view(health: dict | None, app_target: dict | None, signin_task: str = "") ->
         Item("open", "Open Zaelar", bool(target.get("enabled")), str(target.get("reason") or "")),
         Item("folders", "Allowed folders…"),
         _browser_item(health, signin_task),
+        _egress_item(egress),
         _update_item(health),
         Item("quit", "Quit Zaelar"),
     ]

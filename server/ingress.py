@@ -46,6 +46,18 @@ PUBLIC_EXACT = frozenset({
     "/m", "/manifest.webmanifest", "/sw.js",
 })
 
+# WEBSOCKETS answered on a shared hostname, by path — also an allowlist, and a separate one: an HTTP middleware never
+# sees a WebSocket upgrade (ASGI scope `websocket`), so without this gate a WebSocket route added tomorrow would be
+# served by whichever instance the edge picked, cookie or not.
+#
+# `/daemon/tunnel` (V2-836) is his daemon dialling back the tunnel this engine offered it. It carries no session
+# cookie (the caller is a daemon, not a browser) and needs none: it is admitted by its OWN credential, a bearer token
+# `<instance_id>.<secret>`. The prefix only says WHICH instance minted it, so the socket is handed to that instance —
+# and the instance checks the secret against its own outstanding set (`server/daemon_tunnel.py`), closing 4401 on
+# anything it did not mint. No tenant data crosses on the way: the gate reads a routing prefix, like the fly-replay
+# of a public shell carries a session to its owner, and answers nothing of anyone's.
+TOKEN_ADMITTED_WS = frozenset({"/daemon/tunnel"})
+
 # Prefixes. Static assets belong to nobody, so refusing them would only break the shell that is already public.
 PUBLIC_PREFIXES = ("/static/",)
 
@@ -141,6 +153,53 @@ def decide(
     return UNAVAILABLE, "session_unverifiable"
 
 
+def decide_websocket(*, path: str, bearer: str, mine: str | None) -> tuple[str, str, str | None]:
+    """Pure admission of a WebSocket on a process that takes part in session routing → `(action, reason, target)`.
+    Only `TOKEN_ADMITTED_WS` paths are admitted at all; the token's instance prefix decides where."""
+    if path not in TOKEN_ADMITTED_WS:
+        return DENY, "websocket_not_allowed", None
+    from nucleo.daemon_egress.tokens import prefix
+    target = prefix(bearer)
+    if not target:
+        return DENY, "no_token", None
+    if not mine:
+        return UNAVAILABLE, "resolver_not_configured", None
+    if target == mine:
+        return SERVE, "token_names_this_instance", None
+    return REPLAY, "token_names_another_instance", target
+
+
+class WebSocketGate:
+    """The WebSocket half of the admission gate (pure ASGI: HTTP middleware never sees an upgrade). A pass-through on
+    a process that is not part of session routing; on one that is, see `decide_websocket`. A replay answers the
+    upgrade with `307` + `fly-replay` (the ASGI WebSocket denial response); a refusal closes before accepting."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope.get("type") != "websocket":
+            return await self.app(scope, receive, send)
+        from nucleo.energy import routing as ar
+        if not ar.is_account_routing_machine():
+            return await self.app(scope, receive, send)
+        headers = {k.decode("latin-1").lower(): v.decode("latin-1") for k, v in scope.get("headers") or []}
+        auth = headers.get("authorization", "").strip()
+        bearer = auth[7:].strip() if auth[:7].lower() == "bearer " else ""
+        path = scope.get("path") or ""
+        action, reason, target = decide_websocket(path=path, bearer=bearer, mine=ar.my_machine_id())
+        if action == SERVE:
+            return await self.app(scope, receive, send)
+        if action == REPLAY and "websocket.http.response" in (scope.get("extensions") or {}):
+            await send({"type": "websocket.http.response.start", "status": 307,
+                        "headers": [(b"fly-replay", f"instance={target}".encode("latin-1")),
+                                    (b"cdn-cache-control", b"no-store"), (b"content-length", b"0")]})
+            await send({"type": "websocket.http.response.body", "body": b""})
+            return
+        logger.debug(f"ingress: websocket refused ({reason}) {path}")
+        await send({"type": "websocket.close", "code": 1008})
+
+
 # --- the middleware -----------------------------------------------------------------------------
 
 
@@ -172,6 +231,8 @@ def install(app) -> None:
     """Mount the admission gate. A no-op at request time on any process that is not part of session
     routing — `is_account_routing_machine()` is a pair of env reads, so a single-process install pays
     one branch and nothing else."""
+
+    app.add_middleware(WebSocketGate)
 
     @app.middleware("http")
     async def _ingress(request, call_next):

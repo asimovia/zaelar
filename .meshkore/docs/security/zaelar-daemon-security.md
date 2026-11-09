@@ -203,6 +203,18 @@ first); Playwright runs on one thread with its own loop, and every request threa
   `nucleo/browser_window`; `owner._browser_backend()` picks `daemon` when connected and `inproc` otherwise, and with
   no daemon the reach is byte-identical to before.
 
+### 3.x The egress tunnel (V2-836)
+
+The one feature that makes the daemon open connections FOR someone else, so it is held to the hardest rule here:
+**it never becomes a way into his network.** Every destination is resolved on the daemon and every address it returns
+must be public (one private answer refuses the name); the socket goes to a checked address, never to the name again,
+and its peer is re-checked — a rebinding resolver has no second lookup to win. Names that only exist inside his
+network are refused before any lookup; only web ports pass; one site has its own rate bucket. The switch is his, on
+his computer (tray or loopback, with a recorded consent), re-read on every stream; a relayed command can offer a
+tunnel, never switch it on. The tunnel URL must be `wss://` on the same site as the relay, so an offer cannot send the
+token anywhere else. TLS stays end to end: the daemon sees host names and byte counts, which is what the audit keeps.
+Mechanism and frames: `.meshkore/docs/modules/zaelar-local-daemon.md` §Egress; criteria CRIT-E38..E40.
+
 ---
 
 ## 4. What is deliberately **not** covered

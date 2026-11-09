@@ -1,5 +1,6 @@
-"""`daemon.json` — the daemon's only persistent state: the port, the API token, the folder allowlist, and which
-browser its windows open in (`browser`).
+"""`daemon.json` — the daemon's only persistent state: the port, the API token, the folder allowlist, which
+browser its windows open in (`browser`), and whether a connected engine may browse through this computer
+(`egress`, off by default).
 
 Written atomically (tmp + `os.replace`), which is the house pattern (`config/connectors.py`, `config/v2.py`,
 `config/credentials.py`) and matters more here than usual: the allowlist IS the permission circuit, and a
@@ -54,10 +55,26 @@ def _defaults() -> dict:
         # `auto_download`: may the resident fetch a Chromium on first run when there is no Chrome. Cancelling the
         # download turns it off, so a person who said no is not asked again by the next start.
         "browser": {"channel": "", "auto_download": True},
+        # The OUTBOUND TUNNEL (V2-836): may a connected engine browse through this computer? OFF until the person
+        # switches it on HERE (the tray or the local screen), never by a remote command. `consented_at` is when he
+        # was shown what it means and said yes; `enabled` without it is read as off (see `_clean_egress`).
+        "egress": {"enabled": False, "consented_at": None},
     }
 
 
-_KEYS = ("port", "token", "roots", "configured", "browser")
+_KEYS = ("port", "token", "roots", "configured", "browser", "egress")
+
+
+def _clean_egress(raw) -> dict:
+    """`enabled` only with a recorded consent: a hand-edited `"enabled": true` with no `consented_at` is OFF, so the
+    file cannot be the way the switch gets flipped behind the person's back."""
+    out = {"enabled": False, "consented_at": None}
+    if isinstance(raw, dict):
+        at = raw.get("consented_at")
+        if isinstance(at, (int, float)) and not isinstance(at, bool) and at > 0:
+            out["consented_at"] = at
+        out["enabled"] = raw.get("enabled") is True and out["consented_at"] is not None
+    return out
 
 
 def _clean_browser(raw) -> dict:
@@ -92,6 +109,7 @@ def load() -> dict:
             if key in data:
                 merged[key] = data[key]
         merged["browser"] = _clean_browser(merged.get("browser"))
+        merged["egress"] = _clean_egress(merged.get("egress"))
         if not isinstance(merged.get("roots"), list):
             merged["roots"] = []
         merged["roots"] = [str(r) for r in merged["roots"] if isinstance(r, str) and r.strip()]
@@ -121,6 +139,7 @@ def save(patch: dict) -> dict:
         assert _CACHE is not None
         _CACHE.update({k: v for k, v in patch.items() if k in _KEYS})
         _CACHE["browser"] = _clean_browser(_CACHE.get("browser"))
+        _CACHE["egress"] = _clean_egress(_CACHE.get("egress"))
         _write(_CACHE)
         return dict(_CACHE)
 
@@ -153,6 +172,30 @@ def save_browser(**fields) -> dict:
     """Merge into the `browser` section and persist. Unknown fields and values outside their domain are dropped."""
     merged = {**browser(), **fields}
     return dict(save({"browser": _clean_browser(merged)}).get("browser") or {})
+
+
+def egress() -> dict:
+    """The `egress` section, always complete."""
+    return _clean_egress(load().get("egress"))
+
+
+def egress_enabled() -> bool:
+    """Read on EVERY new tunnel stream: the switch is the kill switch."""
+    return bool(egress().get("enabled"))
+
+
+def save_egress(enabled: bool, *, consent: bool = False) -> dict:
+    """Switch the tunnel. ON needs `consent` — the person, at this computer, was shown what it means and said yes —
+    and records when; OFF never needs anything. Raises `ValueError("consent_required")` for an ON without it."""
+    import time
+    current = egress()
+    if enabled:
+        if not consent:
+            raise ValueError("consent_required")
+        section = {"enabled": True, "consented_at": int(time.time())}
+    else:
+        section = {"enabled": False, "consented_at": current.get("consented_at")}
+    return _clean_egress(save({"egress": section}).get("egress"))
 
 
 def token() -> str:

@@ -113,6 +113,7 @@ async def stop_the_engine(app, h: dict) -> None:
     if h.get("loop_on"):
         await _stop("orchestrator loop", _module_stop("nucleo.pulse.loop"))
     await _stop("browser search", _module_stop("search.browser"))
+    await _stop("daemon egress", _module_stop("nucleo.daemon_egress.link"))
     await _stop("meshkore", _module_stop("connectors.meshkore", "shutdown"))
     await _stop("memory→SSE bridge", lambda: _unsubscribe(h.get("mem_sse_sub"), h.get("mem_sse_task")))
     await _stop("pulse→SSE bridge", lambda: _unsubscribe(h.get("pulse_sse_sub"), h.get("pulse_sse_task")))

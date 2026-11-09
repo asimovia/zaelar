@@ -246,11 +246,8 @@ def test_a_cancelled_download_stops_and_is_remembered(fake_install, ws):
     from daemon import config
     job = fake_install("hang")
     job.start()
-    for _ in range(200):
-        if job.snapshot()["progress"] >= 40:
-            break
-        import time
-        time.sleep(0.02)
+    from tests.waiting import until_sync
+    until_sync(lambda: job.snapshot()["progress"] >= 40, "the download to reach 40 %", timeout_s=4)
     assert job.snapshot()["progress"] == 40, job.snapshot()
     out = job.cancel()
     assert out["state"] == "cancelled", out

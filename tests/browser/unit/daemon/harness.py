@@ -67,6 +67,20 @@ def _pair_handler(api):
     return handle
 
 
+def _egress_handler(api):
+    """`POST /api/daemon/egress`: records each body in `api["egress_posts"]`; answers `api["egress"]` (or ok)."""
+    import json as _json
+
+    def handle(route):
+        body = route.request.post_data or "{}"
+        api.setdefault("egress_posts", []).append(_json.loads(body))
+        nxt = api.get("after_egress")
+        if nxt is not None:
+            api["status"] = nxt(api["egress_posts"][-1]) if callable(nxt) else nxt
+        route.fulfill(status=200, content_type="application/json", body=_json.dumps({"ok": True}))
+    return handle
+
+
 def open_page(pw, port: int, api: dict, *, lang: str = "es", width: int = 1280, height: int = 900, touch=False):
     """A page with the shared stylesheets and the `lang` bundle loaded, nothing mounted yet."""
     browser = pw.chromium.launch()
@@ -80,6 +94,7 @@ def open_page(pw, port: int, api: dict, *, lang: str = "es", width: int = 1280, 
     pg.route("**/api/**", lambda r: r.fulfill(status=200, content_type="application/json", body="{}"))
     pg.route("**/api/daemon/status", _status_handler(api))
     pg.route("**/api/daemon/pair", _pair_handler(api))
+    pg.route("**/api/daemon/egress", _egress_handler(api))
     pg.route("**/api/i18n/bundle/*", lambda r: r.fulfill(
         status=200, content_type="application/json",
         body=json.dumps({"strings": BUNDLES["en" if r.request.url.rstrip("/").endswith("/en") else "es"]})))
@@ -137,7 +152,8 @@ READ = """() => {
     pairCard: !!card('pair'), pairLinked: q('.dsx-pair-linked'), pairCode: q('.dsx-pair-code'),
     pairLeft: q('.dsx-pair-left'), pairHow: q('.dsx-pair-how'), pairCli: q('.dsx-pair-cli'),
     getCard: !!card('get'), limit: q('[data-card="get"] .dsx-warn'),
-    tunnel: q('.dsx-consent'), soon: q('.dsx-soon'),
+    tunnel: q('.dsx-consent'), soon: q('.dsx-soon'), tunnelState: q('.dsx-tunnel-state'),
+    tunnelWhere: q('.dsx-tunnel-where'), tunnelAsk: !!o.querySelector('.dsx-tunnel-confirm'),
     switchDisabled: sw ? sw.disabled : null, switchChecked: sw ? sw.checked : null,
     text: o.innerText,
   };

@@ -4,7 +4,7 @@
 //
 //   SETTINGS     the daemon answers. Five cards, in this order: status (installed, running, version, linked to
 //                this computer or to the cloud agent) · folders (with the default one) · browser (Chrome found, or
-//                Chromium downloading with its progress) · pairing with the cloud agent · the tunnel (coming).
+//                Chromium downloading with its progress) · pairing with the cloud agent · the tunnel (V2-836).
 //                Each card reads `/api/daemon/status` and has an "unknown" face for every field it reads.
 //   NOT THERE    here is how to start it on this computer. The screen then waits: `services/daemon.js` polls, and
 //                the moment the daemon answers this becomes the settings screen on its own — the wizard ENDS there,
@@ -28,7 +28,7 @@ import * as api from "../services/api.js?v=2";
 import * as daemon from "../services/daemon.js?v=3";
 import { t } from "../core/i18n.js?v=1";
 import { CLOSE_ICON, DESKTOP_ICON } from "../lib/icons.js?v=2";
-import { BrowserCard, StatusCard, TunnelCard } from "./daemon/cards.js?v=1";
+import { BrowserCard, StatusCard, TunnelCard } from "./daemon/cards.js?v=2";
 import { FoldersCard } from "./daemon/folders.js?v=1";
 import { PairingCard } from "./daemon/pairing.js?v=1";
 
