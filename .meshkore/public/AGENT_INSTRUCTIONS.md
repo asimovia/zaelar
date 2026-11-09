@@ -338,6 +338,11 @@ These are the rules. Everything else in this file is a pointer to where the deta
   (several sessions share one checkout and its index). Never overwrite or commit someone else's uncommitted work.
   Commits carry a `Co-Authored-By:` trailer naming the agent that wrote the change, after the MeshKore trailers —
   this repo's convention, which the preamble above lets the operator's block override.
+- **A change is not done until it is on `main`.** `main` is the branch of work; a branch exists only for the PR
+  that lands it, and that PR is merged THE SAME DAY by the session that opened it (its targeted tests green; a
+  batch waits for the orchestrator's gate), or closed with the reason. No PR stays open overnight: a PR nobody
+  merges rots against a `main` that keeps moving (operator, 2026-11-09, after finding twelve open PRs from the
+  previous two weeks — eight already contained in `main`, four to re-judge).
 - **Visual changes are agreed first.** No unrequested redesign passes.
 - **English everywhere inside `engine/`.** This is a PUBLIC repository: comments, docstrings, test names, log
   messages, documentation under `.meshkore/` and commit messages are English. Spanish that is **product data**
