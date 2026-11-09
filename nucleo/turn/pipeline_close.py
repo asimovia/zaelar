@@ -95,7 +95,10 @@ async def close_the_turn(*, motor, send, _acc_ms, _amap_ms, _brief, _busy_at_sta
                          kind="conv", level="short", importance=0.2, ttl_days=2.0,
                          # u/a estructurados → `memory.recent_window` reconstruye la ventana verbatim sin
                          # parsear el string (circuito de corto plazo, 2026-07-14).
-                         meta={"source": "conv", "u": operator_text[:400], "a": _a[:400]})
+                         # `kickoff` (V2-865): the first turn is the engine speaking in HIS voice; the day's
+                         # ledger must know it is not something he said.
+                         meta={"source": "conv", "u": operator_text[:400], "a": _a[:400],
+                               **({"kickoff": True} if first_turn else {})})
         except Exception:
             pass
 

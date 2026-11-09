@@ -105,6 +105,9 @@ async def compose_the_prompt(*, brain, emit, operator_text, self, text) -> dict:
         emit("memory", "corto", role="system",
              text=f"working set entero → {ms.get('short_count', 0)} tarjetas · {ms.get('short_chars', 0)} chars",
              extra={"layer": "short", "mem_ms": timings.get("mem_state_ms")})
+        emit("memory", "día", role="system",       # V2-865: the day's schema the prompt carried this turn
+             text=f"esquema del día → {ms.get('day_count', 0)} episodios · {ms.get('day_chars', 0)} chars",
+             extra={"layer": "day", "mem_ms": timings.get("mem_state_ms")})
         if timings.get("recall_fired"):
             emit("memory", "recall", role="system",
                  text=f"«{text[:60]}» → {len(recall_ids)} tarjetas del largo plazo",

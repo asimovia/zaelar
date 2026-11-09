@@ -19,10 +19,52 @@ def _observability_on() -> bool:
     return (_os.getenv("ZAELAR_MEM_OBSERVABILITY", "1").strip().lower() not in ("0", "false", "no", "off"))
 
 
+#: Turns the live dialog window carries (10 messages of `_WINDOW_MAX`, 5 turns): the conversation lane of a recall
+#: leaves them out — they are already in front of the model, and keeping them buried the one that answered (V2-865).
+LIVE_WINDOW_TURNS = 5
+#: How far back the conversation lane of a recall reads, in hours — the buffer's own reach (`ttl_days=2.0`).
+CONVERSATION_HOURS = 48.0
+#: Bounds of the conversation lane inside the recall block: turns and characters.
+CONVERSATION_TURNS = 4
+CONVERSATION_CHARS = 1000
+
+
+def conversation_lines(recall_query: str, *, skip_newest: int = LIVE_WINDOW_TURNS) -> list[str]:
+    """The conversation lane of a recall (V2-865): the turns of the last two days that MATCH the query, best match
+    first, the live window left out, each as one line «HH:MM él: «…» · tú: «…»». DIRECT read (FTS5, no embedding).
+
+    The model's `recall` reached the pills only (`mid`/`long`), and the pill the distiller had kept of that
+    episode described the artist he had asked for without the name — which was in zaelar's own reply, three hours
+    back in the `conv` buffer. Measured 2026-11-09: three recalls, three «nothing names that artist».
+    Best-effort: [] on any failure."""
+    try:
+        from memory import api as memory
+        turns = memory.conversation(hours=CONVERSATION_HOURS, query=recall_query, limit=CONVERSATION_TURNS,
+                                    max_chars=CONVERSATION_CHARS, skip_newest=skip_newest, by="relevance")
+    except Exception as e:  # noqa: BLE001
+        from loguru import logger
+        logger.debug(f"recall: conversation lane failed ({e!r})")
+        return []
+    by_turn: dict[int, dict] = {}
+    for t in turns:
+        row = by_turn.setdefault(int(t["id"]), {"at": (t.get("at") or "")[11:16], "u": "", "a": ""})
+        row["u" if t.get("who") == "operator" else "a"] = " ".join(str(t.get("text") or "").split())
+    out: list[str] = []
+    for row in by_turn.values():
+        line = f"· {row['at'] or '?'}"
+        if row["u"]:
+            line += f" él: «{row['u'][:200]}»"
+        if row["a"]:
+            line += f" · tú: «{row['a'][:200]}»"
+        out.append(line)
+    return out
+
+
 def compose_recall(recall_query: str = "", timings: dict | None = None,
-                   lexical_only: bool = False) -> tuple[str, list[int]]:
-    """Turn-specific SEMANTIC recall (`memory.query`). Returns (recall_block, used_ids). The STATE block
-    (name/form of address/location/topics) does NOT go here: it comes from the session cache (`memory_cache`, T114). Best-effort.
+                   lexical_only: bool = False, skip_newest: int = LIVE_WINDOW_TURNS) -> tuple[str, list[int]]:
+    """Turn-specific SEMANTIC recall (`memory.query`) PLUS the conversation lane (V2-865). Returns
+    (recall_block, used_ids). The STATE block (name/form of address/location/topics) does NOT go here: it comes
+    from the session cache (`memory_cache`, T114). Best-effort.
 
     ⚠️ Performs blocking I/O (HTTP embeddings to Ollama): the caller runs it OUTSIDE the event loop
     (`asyncio.to_thread`, T115) and ONLY when the turn needs it (T116). `timings` fills `mem_query_ms` (T113)."""
@@ -32,6 +74,9 @@ def compose_recall(recall_query: str = "", timings: dict | None = None,
     _tq = _t.perf_counter()
     lines: list[str] = []
     used_ids: list[int] = []
+    conv_lines = conversation_lines(recall_query, skip_newest=skip_newest)
+    if timings is not None:
+        timings["recall_conv_turns"] = len(conv_lines)
     try:
         from memory import api as memory
         # Request a DEEP POOL (high limit) and retain DURABLE memory (mid/long): recency (SHORT, conversation
@@ -85,7 +130,11 @@ def compose_recall(recall_query: str = "", timings: dict | None = None,
         pass
     if timings is not None:
         timings["mem_query_ms"] = round((_t.perf_counter() - _tq) * 1000, 1)
-    if not lines:
+    if not lines and not conv_lines:
         return "", used_ids
-    block = "Puede que venga a cuento (de tu memoria):\n" + "\n".join(lines) + "\n"
+    block = ""
+    if lines:
+        block += "Puede que venga a cuento (de tu memoria):\n" + "\n".join(lines) + "\n"
+    if conv_lines:
+        block += "Lo hablado antes, literal y con hora:\n" + "\n".join(conv_lines) + "\n"
     return block, used_ids

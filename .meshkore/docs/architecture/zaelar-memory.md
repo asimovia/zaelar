@@ -274,6 +274,18 @@ provenance (`memory.provenance`: id, date, level, kind, slot, source, lane), and
 reader, `memory.conversation(hours, query)` over the `conv` turns, exposed as `mem_cli history` and as
 `source=conversation` on `/api/memory/recall`.
 
+**The conversation lane of the turn's recall (V2-865).** The model's `recall` used to read only the durable pills
+(`mid`/`long`); a pill the distiller kept of an episode can be true and still miss the one datum (a name that was
+in zaelar's own reply). `nucleo/turn/prompt/recall.compose_recall` now also carries the matching `conv` turns of
+the last 48 h (the buffer's own reach), at most 4 turns / 1000 chars, under «Lo hablado antes, literal y con
+hora:» — one line per turn `· HH:MM él: «…» · tú: «…»` — and returns a block even when no pill matched
+(`timings["recall_conv_turns"]`). It reads `memory.conversation(query, by="relevance", skip_newest=5)`:
+`skip_newest` leaves out the turns the live window already carries, and `by="relevance"` puts first the turns that
+carry the most DISTINCT query terms (newest among equals; not bm25, which crowns the shortest row repeating one
+word). By recency, twelve turns of the live complaint that repeated the query's words trimmed the one turn, three
+hours old, that held the answer. The output stays chronological either way. The FTS stop list knows the English
+function words too (`from`, `that`, `which`…), which used to outrank the content words of an English query.
+
 ```
 score = α·semantic_relevance + β·recency + γ·importance + δ·usage_weight
 defaults:  α = 0.45   β = 0.25   γ = 0.20   δ = 0.10     (tunable per profile)
@@ -662,6 +674,8 @@ collisions; readers use WAL without blocking.
 | `memory.query(prompt, budget) → ctx` | **direct · ms** (read), but the FlashBrain calls it **off the event loop** (`asyncio.to_thread`) and **on demand** | SlowBrain dispatcher · FlashBrain (recall) |
 | `memory.state() → dict` | direct · µs (fixed table) | the composer (always) |
 | `memory.recent_short(limit, max_chars) → list` | direct · µs (direct read, NO embeddings) | the composer: SHORT term **whole** into the prompt |
+| `memory.day_ledger(hours, *, skip_newest, gap_min, max_episodes) → [{start,end,turns,u,a,last_a}]` | direct · µs (direct SQL, NO embeddings) | the composer: section C, the day's episodes (V2-865) |
+| `memory.conversation(hours, query, limit, max_chars, *, skip_newest, by) → [{id,ts,at,who,text}]` | direct · ms (FTS5 with a query) | `mem_cli history`, `/api/memory/recall`, the conversation lane of the turn's recall (V2-865) |
 | `memory.recent_window(limit, max_chars) → [{role,content}]` | direct · µs (direct read, NO embeddings) | seeds `brain._window` at startup + the second short-term pass (short-term circuit) |
 | `memory.reinforce(ids)` | async (event) | fired by the retriever when memories are used |
 | `memory.pin(id)` / `unpin(id)` | async | operator (by voice) · memory agent |
@@ -865,7 +879,8 @@ Ordered structure:
 |---|---|---|
 | **A · WHO YOU ARE** | The MISSION/identity (3-4 sentences, in the operator's language). It LIVES IN THE MEMORY — not in an English prompt. | `state.mission`, seeded at start-up by `memory_cache.prime()` from `langs.LangSpec.mission`; `mission_fallback` if not yet seeded (the caller passes it so as not to invert the memory→voice dependency). |
 | **B · WHO IS IN FRONT OF YOU** | VARIABLE situational data: operator (name/address/location + durable STATE fields), OPEN widgets, tasks/sessions IN PROGRESS, **RAILS in progress** (live FlashBrain runs), and the salient durable profile ("what you know about them"). | `memory.state()` + `memory.salient_long()` (terse cap). |
-| **C · WHAT YOU WERE TALKING ABOUT** | A TIGHT synthesis of the recent conversation — the last lines of short term (aggressive cap), NOT the whole raw dump nor LONG memory. | `memory.recent_short(limit=5, max_chars=550)`. The cut IS the "synthesis" (it is still a direct read; an LLM synthesis, if ever wanted, would go OFF the turn). |
+| **C · WHAT HAPPENED TODAY** (V2-865) | The day as a SCHEMA: one line per EPISODE of the last `DAY_HOURS` (16 h, env `ZAELAR_DAY_HOURS`) — when, how many turns, what he OPENED with and the first reply, and how it ended (`· HH:MM–HH:MM (N turnos) él: «…» → tú: «…» · al final: «…»`). The newest `LIVE_WINDOW_TURNS` (5, half the dialog window's `_WINDOW_MAX`) are left out — the window carries them verbatim. Budget `_DAY_MAX_CHARS` = 1400 (≈350 tokens a turn), the OLDEST line dropped first. The header tells the model to call `recall` with his words instead of saying it has no access. Absent when there is nothing outside the window. | `memory.day_ledger()` — a direct SQL read over `kind='conv'`. A new episode opens after a silence over `EPISODE_GAP_MIN` (12 min), after a first-turn KICKOFF row (`meta.kickoff`, stamped by `pipeline_close`, or `history.is_kickoff(u)` = any language's i18n `kickoff_prompt`), or when the current one reaches `EPISODE_MAX_TURNS` (10). A kickoff never opens or fills one: it is the engine speaking in his voice. No summary model — a cut of his words and the reply. Stats `day_count`, `day_chars`. |
+| **D · WHAT YOU WERE TALKING ABOUT** | A TIGHT synthesis of the recent conversation — the last lines of short term (aggressive cap), NOT the whole raw dump nor LONG memory. | `memory.recent_short(limit=5, max_chars=550)`. The cut IS the "synthesis" (it is still a direct read; an LLM synthesis, if ever wanted, would go OFF the turn). |
 
 The mission (A) seeded in `state.mission` is visible in the memory map (STATE column) and editable — identity is not
 hard-coded in `voice/prompt.py` (that English persona only serves the `BRAIN=direct|local|duo` baselines and the
