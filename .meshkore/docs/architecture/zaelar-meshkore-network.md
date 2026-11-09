@@ -24,6 +24,10 @@ different code, and must not be confused with each other**:
 | trust | none needed: read-only data, nothing of ours crosses | the whole security model of `zaelar-security.md` |
 | detail | §1 below | `zaelar-cluster-channel.md` (end-to-end algorithm) |
 
+A **third** surface is planned (V2-866): **A2A contacts** — the agent of a PERSON you know, reached through a
+server mailbox rather than a socket, with its own trust class and per-contact scopes. Its theory and event catalogue:
+`zaelar-a2a-network.md`; it is not a cluster and not a live agent.
+
 A single sentence tells them apart: **an agent serves an errand, a cluster holds a conversation.** Asking a
 hotel agent for rooms needs no relationship, no memory and no permissions; a peer that speaks to us every
 day needs all three, which is why one is a small client and the other is a module.
