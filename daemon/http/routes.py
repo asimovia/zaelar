@@ -63,6 +63,7 @@ def health(_request, _payload: dict) -> dict:
         "version": VERSION,
         "configured": bool(cfg.get("configured")),
         "capabilities": capabilities(),
+        **browser.health_fields(),
     }
 
 

@@ -11,13 +11,23 @@ cookie, a cookie name or a page's content: `state` answers the page's URL and HO
 window opened — enough for the engine to tell «signed in» from «still on the form», and nothing a caller could
 replay.
 
-OPTIONAL ON PURPOSE. Playwright is not in `requirements.txt`: the daemon runs on a bare Python and the files half
-needs nothing else. `available()` says whether this daemon can open a window at all (Playwright importable and a
-Chromium on disk), and `/health` declares `browser.auth` only when it can — a capability the engine believes in is a
-promise to the user.
+IMPORTED LAZILY ON PURPOSE. Playwright ships inside the installed daemon (the packaged builds bundle it) but is
+never imported at the top of a module: `python -m daemon` still runs on a bare Python and the files half needs
+nothing else. `available()` says whether this daemon can open a window right now (Playwright importable AND Google
+Chrome installed or the downloaded Chromium complete — see `channel`), and `/health` declares `browser.auth` only
+when it can — a capability the engine believes in is a promise to the user. `health_fields()` is the rest of what
+`/health` says about the browser (`status`), and `DOWNLOAD` is the first-run Chromium job (`download`).
+
+    channel     which browser: the person's Google Chrome, else the downloaded Chromium (v1: Chrome only)
+    download    the cancellable `playwright install chromium` job, with progress
+    status      the `/health` shape and the `browser.auth` rule
+    window      the one sign-in window, driven over Playwright's pipe
+    app_window  «Open Zaelar»: the agent in an app-mode window, launched with no automation attached
 """
 from __future__ import annotations
 
+from .download import DOWNLOAD  # noqa: F401
+from .status import health_fields  # noqa: F401
 from .window import CAPABILITY, WINDOWS, available  # noqa: F401 — the package's surface
 
-__all__ = ["CAPABILITY", "WINDOWS", "available"]
+__all__ = ["CAPABILITY", "WINDOWS", "DOWNLOAD", "available", "health_fields"]

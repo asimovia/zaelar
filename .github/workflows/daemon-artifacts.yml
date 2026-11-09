@@ -44,10 +44,10 @@ jobs:
           # degrade — it fails with "bad CPU type in executable", which every user reads as a broken download.
           # `macos-latest` has been arm64 since macos-14, so without this second job an Intel Mac got nothing.
           - os: macos-latest
-            artifact: zaelar-daemon
+            artifact: Zaelar.zip
             suffix: macos
           - os: macos-15-intel
-            artifact: zaelar-daemon
+            artifact: Zaelar.zip
             suffix: macos-x86_64
           - os: windows-latest
             artifact: zaelar-daemon.exe
@@ -73,9 +73,13 @@ jobs:
       # empty environment — is stronger than proving it in a repo checkout where the engine's venv is next
       # door and an accidental import would resolve.
       - name: The daemon runs on a bare Python, with nothing installed
+        shell: bash
         run: |
-          python -c "import daemon, daemon.fs, daemon.http, daemon.security; print(daemon.VERSION)"
+          set -euo pipefail
+          python -c "import daemon, daemon.fs, daemon.http, daemon.security, daemon.browser; print(daemon.VERSION)"
           python -m daemon version
+          # Without Playwright it serves files and SAYS it cannot open windows, rather than pretending.
+          python -m daemon browser | python -c "import json,sys; b=json.load(sys.stdin)['browser']; assert b['state']=='unsupported', b; print(b)"
 
       - name: The PowerShell installers parse
         if: runner.os == 'Windows'
@@ -102,32 +106,73 @@ jobs:
       - name: Build the portable archive
         run: python daemon/packaging/build.py --zipapp
 
-      - name: Install the build tooling
-        run: pip install -r daemon/packaging/requirements-build.txt
+      # What the installed program bundles (`daemon/requirements.txt`: Playwright and its driver, the tray's GUI
+      # library for this OS) plus the build tool. Installed only now, AFTER the bare-Python check above.
+      - name: Install what the desktop build bundles, and the build tooling
+        run: pip install -r daemon/requirements.txt -r daemon/packaging/requirements-build.txt
 
-      - name: Build the standalone binary
-        run: python daemon/packaging/build.py --onefile
+      # macOS: `dist/app/Zaelar.app` (onedir, `Info.plist` patched, re-sealed ad hoc) zipped as
+      # `dist/daemon/Zaelar.zip`; Windows: `dist/daemon/zaelar-daemon.exe` (onefile).
+      - name: Build the standalone program
+        run: python daemon/packaging/build.py --standalone
+
+      - name: The app bundle says who it is, lives in the menu bar, and explains its folder prompts (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          set -euo pipefail
+          P=dist/app/Zaelar.app/Contents/Info.plist
+          test "$(plutil -extract CFBundleIdentifier raw "$P")" = "com.zaelar.daemon"
+          test "$(plutil -extract LSUIElement raw "$P")" = "true"
+          for key in NSDocumentsFolderUsageDescription NSDesktopFolderUsageDescription NSDownloadsFolderUsageDescription; do
+            plutil -extract "$key" raw "$P" | grep -q "Zaelar"
+          done
+          codesign --verify --deep --strict dist/app/Zaelar.app
+          test -x dist/app/Zaelar.app/Contents/Resources/playwright/driver/node \
+            || test -x dist/app/Zaelar.app/Contents/Frameworks/playwright/driver/node
 
       # A binary that builds and does not run is worse than no binary: it fails on the user's machine instead
       # of ours. This starts the real artifact, asks it what it is, and — the half that matters — checks it
       # answers over HTTP and that a request naming somebody else's Host is refused. The guards are what the
       # daemon is FOR; shipping a build where they were compiled out would be the worst possible regression.
-      - name: The binary actually runs and its guards hold (macOS)
+      # The runners have Google Chrome installed, so the installed-style build must report a browser READY on the
+      # `chrome` channel and declare `browser.auth` — the measured rule, through the bundled Playwright.
+      - name: The binary actually runs, finds Chrome, and its guards hold (macOS)
         if: runner.os == 'macOS'
         run: |
           set -euo pipefail
-          ./dist/daemon/zaelar-daemon version
+          BIN=dist/app/Zaelar.app/Contents/MacOS/zaelar-daemon
+          "$BIN" version
           export ZAELAR_WORKSPACE="$RUNNER_TEMP/ws"
           mkdir -p "$ZAELAR_WORKSPACE/config/daemon"
           printf '{"version":1,"port":45997,"token":"%s","roots":[],"configured":false}' \
             "citoken0123456789012345678901234567890123456789" > "$ZAELAR_WORKSPACE/config/daemon/daemon.json"
-          ./dist/daemon/zaelar-daemon &
+          "$BIN" browser | tee "$RUNNER_TEMP/browser.json"
+          python -c "import json; b=json.load(open('$RUNNER_TEMP/browser.json'))['browser']; assert b['state']=='ready' and b['channel']=='chrome', b"
+          "$BIN" --no-tray &
           for _ in $(seq 1 40); do curl -sf -m1 http://127.0.0.1:45997/health >/dev/null && break; sleep 0.25; done
-          curl -sf -m5 http://127.0.0.1:45997/health | grep -q '"daemon": "zaelar"'
+          curl -sf -m5 http://127.0.0.1:45997/health | tee "$RUNNER_TEMP/health.json" | grep -q '"daemon": "zaelar"'
+          grep -q '"browser.auth"' "$RUNNER_TEMP/health.json" || { echo "the installed build does not declare browser.auth"; exit 1; }
+          python -c "import json; h=json.load(open('$RUNNER_TEMP/health.json')); b=h['browser']; assert b['state']=='ready' and b['channel']=='chrome', b; assert h['unsupported_browsers']==['edge','firefox','safari'], h; print('/health browser:', b)"
           code=$(curl -s -o /dev/null -w '%{http_code}' -m5 -H 'Host: evil.example' \
                  -H 'Authorization: Bearer citoken0123456789012345678901234567890123456789' \
                  http://127.0.0.1:45997/permissions)
           test "$code" = "401" || { echo "the rebind guard did not survive the build (got $code)"; exit 1; }
+          kill %1
+          wait || true
+
+      # The resident WITH its menu-bar icon (the default of the packaged program) must still serve: the HTTP side
+      # binds before the GUI library loads, so an icon that cannot be drawn never costs the daemon.
+      - name: The resident starts with its tray and still answers (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          set -euo pipefail
+          export ZAELAR_WORKSPACE="$RUNNER_TEMP/ws"
+          dist/app/Zaelar.app/Contents/MacOS/zaelar-daemon > "$RUNNER_TEMP/tray.log" 2>&1 &
+          for _ in $(seq 1 60); do curl -sf -m1 http://127.0.0.1:45997/health >/dev/null && break; sleep 0.25; done
+          curl -sf -m5 http://127.0.0.1:45997/health | grep -q '"daemon": "zaelar"'
+          sleep 2
+          kill -0 %1 || { cat "$RUNNER_TEMP/tray.log"; echo "the resident died with its tray"; exit 1; }
+          cat "$RUNNER_TEMP/tray.log"
           kill %1
 
       - name: The binary actually runs and its guards hold (Windows)
@@ -142,7 +187,10 @@ jobs:
           '{"version":1,"port":45997,"token":"' + $token + '","roots":[],"configured":false}' |
             Set-Content -Path (Join-Path $ws 'config/daemon/daemon.json') -Encoding ASCII
           $env:ZAELAR_WORKSPACE = $ws
-          $proc = Start-Process -FilePath ./dist/daemon/zaelar-daemon.exe -PassThru
+          $browser = (& ./dist/daemon/zaelar-daemon.exe browser | Out-String | ConvertFrom-Json).browser
+          Write-Host "browser: $($browser | ConvertTo-Json -Compress)"
+          if ($browser.state -ne 'ready' -or $browser.channel -ne 'chrome') { throw "the installed build found no Chrome: $($browser | ConvertTo-Json -Compress)" }
+          $proc = Start-Process -FilePath ./dist/daemon/zaelar-daemon.exe -ArgumentList '--no-tray' -PassThru
           try {
             $up = $false
             foreach ($i in 1..40) {
@@ -152,6 +200,8 @@ jobs:
             if (-not $up) { throw "the daemon never answered on 45997" }
             $health = Invoke-RestMethod -Uri 'http://127.0.0.1:45997/health' -TimeoutSec 5
             if ($health.daemon -ne 'zaelar') { throw "unexpected /health payload" }
+            if ($health.capabilities -notcontains 'browser.auth') { throw "the installed build does not declare browser.auth" }
+            if ($health.browser.state -ne 'ready' -or $health.browser.channel -ne 'chrome') { throw "/health does not report Chrome ready: $($health.browser | ConvertTo-Json -Compress)" }
             $refused = $false
             try {
               Invoke-WebRequest -Uri 'http://127.0.0.1:45997/permissions' -TimeoutSec 5 `
@@ -159,6 +209,30 @@ jobs:
             } catch { if ($_.Exception.Response.StatusCode.value__ -eq 401) { $refused = $true } }
             if (-not $refused) { throw "the rebind guard did not survive the build" }
           } finally { Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue }
+
+      # The packaged program's default is the resident WITH its notification-area icon. Built and started here;
+      # nobody clicks it on a runner — that is a manual check.
+      - name: The resident starts with its tray and still answers (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $env:ZAELAR_WORKSPACE = Join-Path $env:RUNNER_TEMP 'ws'
+          $proc = Start-Process -FilePath ./dist/daemon/zaelar-daemon.exe -PassThru `
+            -RedirectStandardOutput (Join-Path $env:RUNNER_TEMP 'tray.log') -RedirectStandardError (Join-Path $env:RUNNER_TEMP 'tray.err')
+          try {
+            $up = $false
+            foreach ($i in 1..60) {
+              try { Invoke-RestMethod -Uri 'http://127.0.0.1:45997/health' -TimeoutSec 1 | Out-Null; $up = $true; break }
+              catch { Start-Sleep -Milliseconds 250 }
+            }
+            if (-not $up) { throw "the resident with its tray never answered" }
+            Start-Sleep -Seconds 2
+            if ($proc.HasExited) { throw "the resident died with its tray (exit $($proc.ExitCode))" }
+          } finally {
+            Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+            Get-Content (Join-Path $env:RUNNER_TEMP 'tray.log'), (Join-Path $env:RUNNER_TEMP 'tray.err') -ErrorAction SilentlyContinue
+          }
 
       # ⚠️ PLATFORM-DISTINCT NAMES, and not for tidiness. Both runners produce `zaelar-daemon.pyz`,
       # `manifest.json` and `SHA256SUMS` under those exact names, so the release job — which flattens every

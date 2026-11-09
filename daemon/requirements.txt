@@ -1,14 +1,35 @@
-# zaelar-daemon — its OWN dependency set, deliberately separate from the engine's requirements.txt.
+# zaelar-daemon — its OWN runtime dependency set, deliberately separate from the engine's requirements.txt.
 #
-# The engine's venv is ~1.7 GB across ~394 packages (torch ~490 MB, mlx ~182 MB). A single-file installer built
-# from that does not exist, so the daemon never imports the engine and never shares its environment. Everything
-# added below is weight in the macOS and Windows installers (P4) and one more import that can fail on somebody
-# else's machine, so the bar for adding a line here is high.
+# The engine's venv is ~1.7 GB across ~394 packages (torch ~490 MB, mlx ~182 MB). A desktop installer built from
+# that does not exist, so the daemon never imports the engine and never shares its environment. Everything below is
+# weight in the macOS and Windows installers and one more import that can fail on somebody else's machine, so the
+# bar for a line here is high — and each line says why it is here.
 #
-# P0: EMPTY. The permission circuit, the file operations and the HTTP surface are standard library only
-# (`http.server`, `pathlib`, `os`, `json`, `secrets`, `hmac`). `python -m daemon` runs on a bare Python 3.11+
-# with nothing installed at all.
-#
-# P2 will add exactly one: `playwright`, for the real browser that passes CAPTCHAs. Its Chromium (~1.6 GB) is
-# NOT bundled — it is downloaded on first run, which is a step in the install wizard.
-# P3 will add a WebSocket client for the relay, unless it can be written against the standard library instead.
+# THIS IS WHAT THE INSTALLED PROGRAM BUNDLES, NOT WHAT `python -m daemon` NEEDS. The headless service — permission
+# circuit, files, HTTP surface — is standard library only and still runs on a bare Python 3.11+ with nothing
+# installed (CI proves it on an empty runner before installing anything). Every package below is imported LAZILY,
+# inside the function that needs it, and a test keeps the tray's GUI libraries out of the headless import path.
+# Pinned exactly: the artifact a stranger runs must not change because an index moved.
+
+# The daemon's browser windows (sign-in window, first-run Chromium download). Brings its Node driver (~100 MB) in the
+# wheel. NOT a browser: Google Chrome is used when installed, else Chromium is downloaded on first run.
+playwright==1.61.0
+# …and its two runtime dependencies, pinned with it so a build is reproducible.
+greenlet==3.5.6
+pyee==13.0.1
+
+# macOS menu-bar icon. `rumps` is the smallest wrapper over AppKit's status item; it brings PyObjC's Cocoa bridge.
+rumps==0.4.0; sys_platform == "darwin"
+pyobjc-core==13.0; sys_platform == "darwin"
+pyobjc-framework-Cocoa==13.0; sys_platform == "darwin"
+
+# Windows notification-area icon. `pystray` draws it; `Pillow` loads the icon image it needs; `six` is pystray's.
+pystray==0.19.5; sys_platform == "win32"
+Pillow==12.3.0; sys_platform == "win32"
+six==1.17.0; sys_platform == "win32"
+
+# Not here, on purpose:
+#   a global hotkey library — the optional «bring Zaelar to front» shortcut is deferred (see
+#   `.meshkore/docs/ops/zaelar-daemon-build.md` §«The tray»): every cross-platform option adds more than one
+#   dependency, and on macOS it needs one more system permission prompt.
+#   a WebSocket client for the relay — owned by the relay's own change.
