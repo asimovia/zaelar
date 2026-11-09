@@ -73,23 +73,59 @@ async def seed_criteria(brief: dict, rec=None) -> None:
         logger.debug(f"research: could not seed the criteria into the results sheet ({exc})")
 
 
-def save(task_id, brief: dict) -> None:
+def not_research() -> dict:
+    """What the pre-flight hands the prompt when the composer ANSWERED «this is not a research» (V2-868 D3): no goal,
+    so nothing is saved, seeded or judged — and no deliverable, so the worker is owed no results sheet. Distinct from
+    None, which means «no brief yet» (still composing, or the composer down) and keeps the sheet's contract."""
+    return {"research": False, "deliverable": {"widget": ""}}
+
+
+def _key(errand) -> str:
+    """The KV key of an errand's brief — through THE door (`runtime_ids.errand_key`), never a bare task id (V2-868)."""
+    from nucleo.runtime_ids import errand_key
+    k = errand_key(errand)
+    return f"{_b._KV}:{k}" if k else ""
+
+
+def save(errand, brief: dict) -> None:
+    """Keep `brief` as the brief of `errand` (a record or an id) and STAMP it with its owner (`brief["errand"]`), so a
+    reader can tell a brief that is this errand's from one that only sits under the same key (V2-868 D2)."""
     if not brief:
+        return
+    from nucleo.runtime_ids import errand_key
+    owner = errand_key(errand)
+    if not owner:
         return
     try:
         from memory import api as memory
-        memory.kv_set(f"{_b._KV}:{task_id}", brief)
+        brief["errand"] = owner
+        memory.kv_set(_key(owner), brief)
     except Exception as e:  # noqa: BLE001
-        logger.warning(f"research: no pude persistir el brief de {task_id} ({e})")
+        logger.warning(f"research: brief of {owner} not persisted ({e})")
 
 
-def load(task_id) -> dict | None:
+def read(errand) -> tuple[dict | None, bool]:
+    """(brief, foreign): the brief stored for `errand`, and whether what sits under its key belongs to ANOTHER errand
+    (no owner stamp, or another owner's) — then the brief is None. Never raises."""
     try:
+        from nucleo.runtime_ids import errand_key
+        owner = errand_key(errand)
+        if not owner:
+            return None, False
         from memory import api as memory
-        out = memory.kv_get(f"{_b._KV}:{task_id}")
-        return out if isinstance(out, dict) and out.get("goal") else None
-    except Exception:
-        return None
+        out = memory.kv_get(_key(owner))
+        if not (isinstance(out, dict) and out.get("goal")):
+            return None, False
+        if str(out.get("errand") or "") != owner:
+            return None, True
+        return out, False
+    except Exception:  # noqa: BLE001
+        return None, False
+
+
+def load(errand) -> dict | None:
+    """The brief of `errand` (a record or an id), or None — never another errand's (see `read`)."""
+    return read(errand)[0]
 
 
 # ── ROUNDS by OBJECTIVE: “I’m not convinced, keep searching” continues; it does not restart ───────────────────

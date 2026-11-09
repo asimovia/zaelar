@@ -349,10 +349,10 @@ def test_the_brief_of_the_dead_task_is_the_one_reused(fresh_db):
 
     brief = {"goal": "veleros de 42 a 49 pies hasta 50.000 €", "hard": ["≤ 50.000 €"], "round": 1,
              "breadth": {"min_candidates": 40, "angles": []}, "deliverable": {"widget": "results", "n_final": 10}}
-    research.save("7", brief)
+    research.save("abc123-7", brief)        # V2-868: kept under the dead task's durable ROW id
     research.remember_round(dispatch._goal_key(VELEROS), brief)   # the bait that triggered round 2
 
-    out = asyncio.run(dispatch._compose_brief(VELEROS, "", True, {"brief_task": "7"}))
+    out = asyncio.run(dispatch._compose_brief(VELEROS, "", True, {"brief_task": "abc123-7"}, errand="abc123-7"))
     assert out["round"] == 1, f"reanudar no sube de ronda (salió {out.get('round')})"
     assert (out["breadth"] or {})["min_candidates"] == 40, "ni endurece la amplitud"
     assert out["deliverable"]["n_final"] == 10

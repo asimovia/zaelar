@@ -8,6 +8,10 @@ import asyncio
 
 from loguru import logger
 
+#: V2-868 D4 — what a WORKER writes to a card that screens its writer (the results sheet: a row says where it was
+#: found), stamped here at the one door every worker write crosses, over whatever the worker put in that key.
+_WRITER = {"results": {"writer": "worker"}}
+
 
 def _own_sheet(rec) -> str:
     """This errand's results sheet, OPENED NOW if it has none. Delivering into the bare shared `results` let the
@@ -220,7 +224,7 @@ async def _exec_allow(action: str, payload: dict, rec) -> dict:
             except Exception:
                 pass
             from widgets.server_api import brain_action
-            res = await brain_action(wid, act, data_payload)
+            res = await brain_action(wid, act, {**data_payload, **_WRITER.get(wid, {})})
             if isinstance(res, dict) and res.get("error"):
                 # V2-707 F1 — a refusal carries its diagnostic half: a message with no way out stops a worker.
                 out = {"ok": False, "error": str(res.get("error"))}
