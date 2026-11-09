@@ -105,6 +105,19 @@ frontend/mobile/
 `MemoryMap` is the one shareable component deliberately left out: the component would import fine, but its styling
 is a panel UI keyed to a wide window, and re-fitting it is its own piece of work.
 
+### The local daemon's row (V2-575)
+
+The ☰ menu carries one row about the daemon on the user's computer, and it is **read-only**: a desktop daemon is
+installed, granted folders and paired from the computer (the desktop's 🖥 settings screen), never from a phone, so
+the row has no chevron and no click. Under its connected/hint line it says two more things, one line each: the
+**browser** the sign-in window uses (`Chrome found`, `Downloading a browser… 43 % (120 MB)`, `No supported browser`)
+and **what the daemon is linked to** (this computer over loopback, or the cloud agent through the relay and since
+when). Both lines are the same i18n keys the desktop screen draws, produced by one reader each in
+`app/services/daemon.js` (`browserLine()` / `linkLine()`), so the two surfaces cannot word one state two ways;
+a status without `browser` or `relay` reads «not known», never a raw key or an exception. The daemon poll runs
+here too (`daemon.start()` in `MenuSheet.js`), because the phone does not mount the desktop's setup surface.
+Test: node 4.419.
+
 ## Design rules specific to this shell
 
 - **Paging is one finger, anywhere — and still two or three** (V2-815, operator: «tiene que ser fácil movernos con

@@ -21,6 +21,11 @@
 import { createSignal } from "../core/reactive.js?v=2";
 
 const POLL_MS = 20000;
+// While the daemon downloads a browser the progress is the only thing on this screen that moves, so it is asked
+// for every 2 s — and only then: the fast poll re-arms from each answer and dies with the first one that is not
+// `downloading`, so a finished (or abandoned) download costs nothing afterwards.
+const DOWNLOAD_POLL_MS = 2000;
+let _fast = null;
 
 const [status, setStatus] = createSignal(null);
 export { status };
@@ -34,6 +39,7 @@ export async function check() {
     if (!r.ok) return;                       // engine restarting, or an older build without the route
     const s = await r.json();
     if (!s || !s.ok) return;
+    _armDownloadPoll(s);
     // ⚠️ ONLY WHEN SOMETHING ACTUALLY CHANGED. The poll answers every 20 s with an equal-but-new object, and
     // the setup screen is a reactive child of this signal — so writing it unconditionally would rebuild that
     // subtree four times a minute and wipe whatever the user had half-typed into the folder field.
@@ -44,13 +50,103 @@ export async function check() {
   } catch (_) { /* no answer is not news: the engine restarts, the tab sleeps */ }
 }
 
+function _armDownloadPoll(s) {
+  const downloading = !!(s.browser && s.browser.state === "downloading");
+  if (!downloading) { if (_fast) { clearTimeout(_fast); _fast = null; } return; }
+  if (_fast) return;                         // one timer at a time, however many answers arrive
+  _fast = setTimeout(() => { _fast = null; if (!document.hidden) check(); }, DOWNLOAD_POLL_MS);
+}
+
 // What the dot is coloured by. Deliberately NOT a fourth opinion: the engine computed `state` in
 // `daemon_api.py` so that "running but no folders chosen is a warning" is decided once, and this returns
 // the neutral value until the first answer arrives instead of flashing an alarm on every page load.
+//
+// The one place it adds to the engine's `state`: a cloud engine answers `remote`, and once the relay is
+// connected that remote engine DOES reach this computer — green, the same as a local daemon that answers.
 export function iconState() {
   const s = status();
   if (!s) return "unknown";
+  if (s.state === "remote") return relayConnected() ? "ok" : "remote";
   return s.state || "off";
+}
+
+// The relay half of the status (`relay: {paired, connected, caps, version, platform, since}`). Absent on an engine
+// without the relay — which is a fact about this engine, not a fault, and every reader treats it as "not here".
+export function relay() { const s = status(); return (s && s.relay && typeof s.relay === "object") ? s.relay : null; }
+export function relayConnected() { const r = relay(); return !!(r && r.connected); }
+
+// The browser the daemon's sign-in window uses (`browser: {state, channel, progress, size_mb}`), or null when
+// this daemon does not say — an older daemon, or none at all.
+export function browser() { const s = status(); return (s && s.browser && typeof s.browser === "object") ? s.browser : null; }
+
+// Download progress as a whole percent. The daemon may report a 0–1 fraction or a 0–100 percent; anything else
+// (missing, negative, NaN) is "not known", which the screen draws as an indeterminate bar rather than as 0 %.
+export function downloadPercent(b) {
+  const p = Number(b && b.progress);
+  if (!Number.isFinite(p) || p < 0) return null;
+  return Math.min(100, Math.round(p <= 1 && !Number.isInteger(p) ? p * 100 : p));
+}
+
+// The browser state as ONE i18n key and its values — read by the desktop card and by the phone row, so the two
+// can never word the same state differently.
+export function browserLine() {
+  const b = browser();
+  if (!b) return { key: "daemon.browser.unknown", vars: null };
+  if (b.state === "ready") return { key: b.channel === "chromium" ? "daemon.browser.ready_chromium" : "daemon.browser.ready_chrome", vars: null };
+  if (b.state === "downloading") {
+    const pct = downloadPercent(b);
+    const mb = Number(b.size_mb);
+    if (pct == null) return { key: "daemon.browser.downloading", vars: null };
+    return Number.isFinite(mb) && mb > 0
+      ? { key: "daemon.browser.downloading_pct_mb", vars: { pct, mb: Math.round(mb) } }
+      : { key: "daemon.browser.downloading_pct", vars: { pct } };
+  }
+  if (b.state === "absent") return { key: "daemon.browser.absent", vars: null };
+  if (b.state === "unsupported") return { key: "daemon.browser.unsupported", vars: null };
+  return { key: "daemon.browser.unknown", vars: null };
+}
+
+// The connection as ONE i18n key: this computer over loopback, the cloud agent over the relay, or neither.
+export function linkLine() {
+  const s = status();
+  if (!s) return { key: "daemon.link.unknown", vars: null };
+  const r = relay();
+  if (r && r.connected) return r.since ? { key: "daemon.link.relay_since", vars: { since: sinceText(r.since) } }
+                                       : { key: "daemon.link.relay", vars: null };
+  if (s.state !== "remote") return { key: s.reachable ? "daemon.link.local" : "daemon.link.none", vars: null };
+  if (r && r.paired) return { key: "daemon.link.relay_offline", vars: null };
+  return { key: r ? "daemon.link.unpaired" : "daemon.link.unknown", vars: null };
+}
+
+// `since` may be an ISO string or epoch seconds/ms. Shown in the viewer's own locale; unreadable → as given.
+export function sinceText(v) {
+  const n = typeof v === "number" ? (v < 1e12 ? v * 1000 : v) : Date.parse(v);
+  if (!Number.isFinite(n)) return String(v || "");
+  try { return new Date(n).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }); }
+  catch (_) { return new Date(n).toISOString(); }
+}
+
+// Pairing (V2-575 P3). A hosted engine mints a one-time code `{code, expires_at}` the daemon on his computer is
+// given; over loopback there is nothing to pair (`{paired, mode: "loopback"}`); an engine without the relay says
+// `relay_not_available`. Normalised to one of those three, plus the failure the screen shows as a problem.
+export async function pair() {
+  let body = {};
+  try {
+    const r = await fetch("/api/daemon/pair", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+    try { body = await r.json(); } catch (_) { body = {}; }
+  } catch (_) { return { ok: false, error: "" }; }
+  if (body.error === "relay_not_available") return { ok: false, unavailable: true };
+  if (!body.ok) return { ok: false, error: body.error || body.message || "" };
+  if (body.mode === "loopback") return { ok: true, loopback: true };
+  if (!body.code) return { ok: false, error: "" };
+  return { ok: true, code: String(body.code), expiresAt: expiryMs(body.expires_at) };
+}
+
+// `expires_at` as epoch ms: an ISO string, epoch seconds or epoch ms. Unreadable → null (no countdown is drawn).
+export function expiryMs(v) {
+  if (v == null || v === "") return null;
+  const n = typeof v === "number" ? (v < 1e12 ? v * 1000 : v) : Date.parse(v);
+  return Number.isFinite(n) ? n : null;
 }
 
 // Offered on every engine once the first status has arrived. On a cloud account (`remote`) it is where the user
