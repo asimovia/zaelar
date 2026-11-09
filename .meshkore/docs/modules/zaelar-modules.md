@@ -118,7 +118,14 @@ env-first). It runs at two speeds:
   loop, fail-open, gated by env `ZAELAR_HOMEOSTASIS`. Binary rule (each resource is healthy or degraded→heal), THREE
   checks: (1) **LiveKit engine** — detects in-process degradation via a `logging.Handler` on the `livekit` logger
   (markers `wait_pc_connection timed out` / `entrypoint did not exit`) and, only when SAFE (voice off + channel idle
-  ≥120s), **recycles the embedded worker** (`aclose` + `make_server` + new task, no process restart) with a cooldown;
+  ≥120s), **recycles the embedded worker** (no process restart) with a cooldown — through `nucleo/pulse/voice_recycle.py`
+  (V2-871): the old worker's `aclose()` is waited `recycle_close_s` then ABANDONED (close and run tasks cancelled, the
+  fixed health port released), the new worker counts only once REGISTERED within `recycle_verify_s`, `recycle_attempts`
+  tries with doubling `recycle_backoff_s`; a voice still dead `voice_dead_s` after a session was asked alerts and, under
+  `ZAELAR_SUPERVISED=1`, exits for a restart (`self_watchdog.exit_for_restart`; self-host: retries every
+  `recycle_retry_s` and says so once). Marks inside `boot_grace_s` from the process start (`runtime_ids.boot_wall`)
+  are warm-up, not degradation (the same window mutes the audio-lag shed in `voice/lag.py`). Before V2-871 the
+  close was awaited unbounded and a stuck job that never acked parked the whole heartbeat;
   when unsafe it alerts the operator once and touches nothing; (2) **logs** — rotates `timeline-latest.jsonl` /
   `meshkore.jsonl` by rename over a size cap + prunes old archives; (3) **capsules** — evicts concluded+old per-peer
   capsules and caps the total (`sys_kv` `capsule:*`, via `memory.kv_keys(prefix)`/`memory.kv_del(key)`). **Distinct
