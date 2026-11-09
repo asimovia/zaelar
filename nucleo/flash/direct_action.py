@@ -391,8 +391,9 @@ def card_to_present(widget_id: str, operator_text: str = "") -> str:
         return str(widget_id or "")
 
 from nucleo.acts.canvas_verdict import (  # noqa: E402,F401
-    sure_canvas, named_cards, _open_now, complete_canvas, catalogue_names, _says_the_name, closes_the_named_card,
-    close_op_is_the_card, on_screen_now)
+    sure_canvas, complete_canvas, closes_the_named_card, close_op_is_the_card)
+from nucleo.acts.card_names import (  # noqa: E402,F401
+    named_cards, _open_now, catalogue_names, _says_the_name, on_screen_now)
 from nucleo.acts.card_verdict import (  # noqa: E402,F401
     verdict_card, order_is_inside, _action_sure, verdict_shows, aims_at_a_card, verdict_escalates,
     order_over_a_card_left_undone, completes, endorses, take_rung, verdict_elsewhere,

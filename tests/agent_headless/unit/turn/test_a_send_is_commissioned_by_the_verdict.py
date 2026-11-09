@@ -28,17 +28,17 @@ from nucleo.request import inline_ask, model, send_task, send_task_words as stw
 ROOT = Path(__file__).resolve().parents[4]
 WID, ACT = "mensajeria", "send_to"
 CASES = {
-    "es": {"said": "mándale un correo a Andrew diciendo: prueba uno del envío lineal, ignóralo",
+    "es": {"said": "mándale un correo a Quinn diciendo: prueba uno del envío lineal, ignóralo",
            "text": "prueba uno del envío lineal, ignóralo",
-           "escalation": 'Send an email to Andrew (andrew@example.com) with exactly this body: "prueba uno del envío '
+           "escalation": 'Send an email to Quinn (quinn@example.com) with exactly this body: "prueba uno del envío '
                          'lineal, ignóralo". Just send it, no reply expected.',
-           "bare": "mándale un mensaje a Andrew", "prose_q": "¿Qué quieres que le diga, Richard?",
-           "promise": 'Enviando ahora mismo «prueba uno del envío lineal, ignóralo» a Andrew.'},
-    "en": {"said": "send Andrew an email saying: test two of the linear send, ignore it",
+           "bare": "mándale un mensaje a Quinn", "prose_q": "¿Qué quieres que le diga, Richard?",
+           "promise": 'Enviando ahora mismo «prueba uno del envío lineal, ignóralo» a Quinn.'},
+    "en": {"said": "send Quinn an email saying: test two of the linear send, ignore it",
            "text": "test two of the linear send, ignore it",
-           "escalation": 'Email Andrew the body "test two of the linear send, ignore it" and nothing else.',
-           "bare": "send a message to Andrew", "prose_q": "What should it say, Richard?",
-           "promise": 'Sending it now — same as before, just "test two of the linear send, ignore it" to Andrew.'},
+           "escalation": 'Email Quinn the body "test two of the linear send, ignore it" and nothing else.',
+           "bare": "send a message to Quinn", "prose_q": "What should it say, Richard?",
+           "promise": 'Sending it now — same as before, just "test two of the linear send, ignore it" to Quinn.'},
 }
 
 
@@ -63,7 +63,7 @@ def world(tmp_path, monkeypatch):
     monkeypatch.setattr(store, "_last_hash", {})
     monkeypatch.setattr(consent, "_overrides_path", lambda: tmp_path / "consent.json")
     consent._reset_for_tests()
-    cd.apply_action("add_contact", {"name": "Andrew Gold", "email": "andrew@example.com"})
+    cd.apply_action("add_contact", {"name": "Quinn Gold", "email": "quinn@example.com"})
     cd.apply_action("add_contact", {"name": "Test Test", "email": "test@example.org"})      # a word of the dictated text
     cd.apply_action("add_contact", {"name": "Prueba Pérez", "email": "prueba@example.org"})
     monkeypatch.setattr(contract, "would_refuse", lambda *a, **k: None)
@@ -76,7 +76,7 @@ def world(tmp_path, monkeypatch):
 
     async def _dispatch(wid, action, payload, *, row="", text="", **kw):
         sent.append({"widget": wid, "action": action, "payload": dict(payload), "row": row})
-        return {"ok": True, "result": {"to": "Andrew Gold", "channel": "email"}}
+        return {"ok": True, "result": {"to": "Quinn Gold", "channel": "email"}}
     from nucleo.flash import data_ops
     monkeypatch.setattr(data_ops, "dispatch_and_report", _dispatch)
     from nucleo.acts import errand
@@ -128,8 +128,8 @@ def test_the_words_the_model_quoted_of_his_are_the_text(lang):
     c = CASES[lang]
     assert stw.quoted_his(c["said"], c["escalation"]) == c["text"]
     assert stw.quoted_his(c["said"], c["promise"]) == c["text"]
-    assert stw.quoted_his(c["bare"], 'Sending "hello there" to Andrew now') == ""    # not his words
-    assert stw.quoted_his(c["said"], "On it — emailing Andrew now.") == ""           # nothing quoted
+    assert stw.quoted_his(c["bare"], 'Sending "hello there" to Quinn now') == ""    # not his words
+    assert stw.quoted_his(c["said"], "On it — emailing Quinn now.") == ""           # nothing quoted
 
 
 @pytest.mark.parametrize("lang", ["es", "en"])
@@ -151,7 +151,7 @@ def test_an_escalation_without_the_words_keeps_the_worker_on_the_rows_row(world,
     monkeypatch.setenv("ZAELAR_LANGUAGE", lang)
     c = CASES[lang]
     _say(c["bare"])
-    esc, acted = {"v": "Send Andrew a message; work out the wording from the conversation."}, {"v": None}
+    esc, acted = {"v": "Send Quinn a message; work out the wording from the conversation."}, {"v": None}
     uid, how = stw.by_verdict(_brief(**SEND), said=c["bare"], model_text=esc["v"], escalate_req=esc,
                               worker_acted=acted, emit=world["emit"], on_missing="worker")
     assert uid and how == "worker" and world["sent"] == [] and _asks(world) == []
@@ -221,14 +221,14 @@ def test_the_close_and_the_escalation_read_the_verdict_and_the_bound_answer_read
 
 @pytest.mark.parametrize("lang", ["es", "en"])
 def test_the_person_is_never_read_from_the_words_he_dictated(world, lang, monkeypatch):
-    """Measured live: «send Andrew an email saying: test six…» went to the contact «Test Test»."""
+    """Measured live: «send Quinn an email saying: test six…» went to the contact «Test Test»."""
     monkeypatch.setenv("ZAELAR_LANGUAGE", lang)
     c = CASES[lang]
     _say(c["said"])
     uid, how = stw.by_verdict(_brief(**SEND), said=c["said"], model_text=c["promise"], escalate_req={"v": None},
                               worker_acted={"v": None}, emit=world["emit"])
     assert how == "run" and len(world["sent"]) == 1
-    assert world["sent"][0]["payload"]["contact"].lower() == "andrew", world["sent"][0]["payload"]
+    assert world["sent"][0]["payload"]["contact"].lower() == "quinn", world["sent"][0]["payload"]
     assert stw.without(c["said"], c["text"]).split()[-1] in ("saying", "diciendo")
 
 
@@ -247,13 +247,13 @@ def test_his_quoted_words_complete_the_send_that_waited_for_them(world, lang, mo
     # a quote of his words that does not name the waiting person completes nothing
     assert sta.fill_from_quote(answer, f'Searching for "{quoted}" on the web.', emit=world["emit"]) == ""
     assert world["sent"] == []
-    assert sta.fill_from_quote(answer, f'Sending "{quoted}" to Andrew now.', emit=world["emit"]) == uid
+    assert sta.fill_from_quote(answer, f'Sending "{quoted}" to Quinn now.', emit=world["emit"]) == uid
     assert len(world["sent"]) == 1 and world["sent"][0]["payload"]["text"] == quoted and len(_rows()) == 1
-    assert sta.fill_from_quote(answer, f'Sending "{quoted}" to Andrew now.', emit=world["emit"]) == ""
+    assert sta.fill_from_quote(answer, f'Sending "{quoted}" to Quinn now.', emit=world["emit"]) == ""
 
 
 def test_a_spoken_answer_the_model_did_not_quote_is_composed_by_a_worker(world, monkeypatch):
-    """Measured live: «contesta a Andrew con lo que diga el último correo de Inworld», bound as the answer to «what
+    """Measured live: «contesta a Quinn con lo que diga el último correo de Orion», bound as the answer to «what
     should it say?», was sent LITERALLY. An unquoted spoken answer goes to a worker on the row, which reads the mail
     (taint) — and the exit asks."""
     from nucleo.acts import errand
@@ -266,7 +266,7 @@ def test_a_spoken_answer_the_model_did_not_quote_is_composed_by_a_worker(world, 
     uid, _how = stw.by_verdict(_brief(**SEND), said=c["bare"], model_text=c["prose_q"], escalate_req={"v": None},
                                worker_acted={"v": None}, emit=world["emit"], asked_line=c["prose_q"])
     entry = asker.artefact(uid)
-    line = "contesta a Andrew con lo que diga el último correo de Inworld"
+    line = "contesta a Quinn con lo que diga el último correo de Orion"
     _say(line)
     sta.compose(entry["ask_id"])
     got = sta.answered(uid, entry, line)
@@ -282,7 +282,7 @@ def test_a_spoken_answer_the_model_did_not_quote_is_composed_by_a_worker(world, 
 
 
 def test_a_reply_whose_person_the_card_picks_is_never_commissioned_by_the_verdict(world):
-    """Measured live: «contesta a Andrew con lo que diga el último correo de Inworld» → verdict `mensajeria:reply`,
+    """Measured live: «contesta a Quinn con lo que diga el último correo de Orion» → verdict `mensajeria:reply`,
     a reply row with no person and no text waited on «What should I tell ??» — any answer bound to it would have
     answered the last inbound mail. Only an act whose person comes from HIS words is the verdict's; with `reply` named
     the end state's own send stands (send_to, the person his word), and his words naming nobody commission nothing."""
@@ -304,14 +304,14 @@ def test_a_sure_escalate_at_the_close_composes_on_the_send_row():
 
 @pytest.mark.parametrize("lang", ["es", "en"])
 def test_a_sure_escalate_never_runs_the_send_inline(world, lang, monkeypatch):
-    """Measured live: «busca en mi correo el último de Inworld y mándale a Andrew lo que diga» (escalate 0.72) ran
-    inline as a send with the word «Inworld» as his text. Work is composed by the worker on the row."""
+    """Measured live: «busca en mi correo el último de Orion y mándale a Quinn lo que diga» (escalate 0.72) ran
+    inline as a send with the word «Orion» as his text. Work is composed by the worker on the row."""
     monkeypatch.setenv("ZAELAR_LANGUAGE", lang)
-    said = {"es": "busca el último correo del hotel y mándale a Andrew lo que diga",
-            "en": "find the hotel's last email and send Andrew what it says"}[lang]
+    said = {"es": "busca el último correo del hotel y mándale a Quinn lo que diga",
+            "en": "find the hotel's last email and send Quinn what it says"}[lang]
     _say(said)
     uid, how = stw.by_verdict(_brief(**SEND, escalate_or_inline=("escalate", 0.72)), said=said,
-                              model_text='Find the "hotel" email and send Andrew what it says.',
+                              model_text='Find the "hotel" email and send Quinn what it says.',
                               escalate_req={"v": "x"}, worker_acted={"v": None}, emit=world["emit"])
     assert how == "worker" and uid and world["sent"] == [] and _asks(world) == []
 
@@ -321,10 +321,10 @@ def test_a_new_send_to_his_named_person_answers_no_stale_question(world):
     _say(c["bare"])
     stw.by_verdict(_brief(**SEND), said=c["bare"], model_text=c["prose_q"], escalate_req={"v": None},
                    worker_acted={"v": None}, emit=world["emit"], asked_line=c["prose_q"])
-    asks = [{"task_id": "stale-1", "ask_id": "stale-1-q1"}]   # a waiting row that is no send to Andrew
+    asks = [{"task_id": "stale-1", "ask_id": "stale-1-q1"}]   # a waiting row that is no send to Quinn
     assert stw.new_send(_brief(**SEND), c["said"], asks) is True
     waiting = [{"task_id": r["id"], "ask_id": r["ask_id"]} for r in _rows() if r["state"] == "waiting"]
-    assert stw.new_send(_brief(**SEND), c["said"], waiting) is False, "a send to Andrew already waits: it may be his answer"
+    assert stw.new_send(_brief(**SEND), c["said"], waiting) is False, "a send to Quinn already waits: it may be his answer"
     assert stw.new_send(_brief(screen_action=(f"{WID}:show_view", 0.9)), c["said"], asks) is False
 
 

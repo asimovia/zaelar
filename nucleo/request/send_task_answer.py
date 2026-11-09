@@ -29,7 +29,7 @@ def compose(ask_id: str) -> None:
 def fill_from_quote(said: str, model_text: str, *, emit=None) -> str:
     """The turn's model QUOTED words of his and named the person of the latest send task waiting on its TEXT: those
     words are the text, that row runs (measured live: «dile: prueba siete…» was not bound — the model said «Sending
-    "prueba siete, ignóralo" to Andrew now» and the verdict ran `dismiss`). Both are required — his quoted words AND
+    "prueba siete, ignóralo" to Quinn now» and the verdict ran `dismiss`). Both are required — his quoted words AND
     the person the row waits to write to — so a quote about anything else completes nothing. The row's uid, or "".
     """
     try:

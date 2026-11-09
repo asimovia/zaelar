@@ -111,7 +111,7 @@ def unbind(brief, text: str, how: str, asks: list, escalate_req: dict, emit) -> 
 
 def slot_answer(ask: dict, text: str, spoken_text: str) -> str:
     """His answer to a SEND TASK's slot question is the words the model quoted of his when it quoted them («Sending
-    "prueba tres, ignóralo" to Andrew»), else his line as he said it; any other task's question gets his line."""
+    "prueba tres, ignóralo" to Quinn»), else his line as he said it; any other task's question gets his line."""
     from nucleo.cli import worker_api_bind as _bind
     try:
         from nucleo.circuit import asker

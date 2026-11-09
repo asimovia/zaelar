@@ -26,7 +26,7 @@ def payload_from_words(wid: str, action: str, said: str, dictated: str = "") -> 
 
 def without(said: str, dictated: str) -> str:
     """His sentence without the words he DICTATED (the run `send_task.his_text` matches, in order): the words that may
-    name the person. Measured live (2026-11-06): «send Andrew an email saying: test six…» resolved the contact «test
+    name the person. Measured live (2026-11-06): «send Quinn an email saying: test six…» resolved the contact «test
     test» from the dictated text and the mail went to a stranger. Folded tokens; `said` itself when nothing is cut."""
     from nucleo.acts.message_names import TOK, fold
     have = TOK.findall(fold(str(said or "")))
@@ -216,7 +216,7 @@ def by_verdict(brief, *, said: str, model_text: str, escalate_req: dict, worker_
         from nucleo.turn import brief as _tb
         # a sure «escalate» verdict says the request is WORK (what leaves is composed from something he did not say):
         # it never runs inline from the turn — the worker composes on the row and the exit door judges its slots.
-        # Measured live: «…mándale a Andrew lo que diga» ran as a `forward` with the word «Inworld» as his text.
+        # Measured live: «…mándale a Quinn lo que diga» ran as a `forward` with the word «Orion» as his text.
         esc, esc_info = _tb.read(brief, _tb.ESCALATE_KEY, "")
         work = esc_info is not None and esc == "escalate"
         got = from_verdict(wid, act, said, "" if work else model_text, reading=_tb.carried(brief) or None,
@@ -242,7 +242,7 @@ def ends_asking(reply: str) -> bool:
 def new_send(brief, said: str, asks) -> bool:
     """Is this turn a NEW send — the brief identifies one and his words name its one person — that none of the waiting
     questions is about (no send task waiting to write to that person)? Then it is no answer to them, and nobody is asked
-    «which task is your answer for». Measured live: a stale reply row caught «send Andrew an email saying…» through
+    «which task is your answer for». Measured live: a stale reply row caught «send Quinn an email saying…» through
     a 0.48 reading and the send never happened."""
     try:
         wid, act = identified(brief)
