@@ -44,6 +44,10 @@ DECLARED: dict[tuple[str, str], str] = {
     ("nucleo/flash/resume_turn.py", "resume"): CONTINUES,
     ("nucleo/pulse/rehydrate.py", "_later"): CONTINUES,
     ("nucleo/request/answered_task.py", "start"): CONTINUES + " (his answer hands its waiting row to a worker: `task_uid`)",
+    ("nucleo/request/send_task_answer.py", "_worker"): CONTINUES + " (his answer hands the send task's own waiting row "
+                                                         "to a `message` worker through the portal, `task_uid`, #225)",
+    ("nucleo/request/send_task_turn.py", "at_close"): CONTINUES + " (the send row `by_verdict` just opened or found is "
+                                                       "composed by a worker through the portal on that row, `task_uid`, #225)",
     ("nucleo/request/append.py", "_rerun"): "the dispatcher's backstop re-running a delivered pass in its box",
     ("nucleo/sheets.py", "sheet_for_delivery"): CONTINUES,
     ("nucleo/workers/quota_wait.py", "fire"): CONTINUES,

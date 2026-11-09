@@ -96,8 +96,10 @@ def bind_the_answer(brief, text: str, *, model_answer: str, worker_acted: dict, 
     what has been said this turn."""
     from i18n import langs as _l
     from nucleo.cli import worker_api as _wapi, worker_api_bind as _bind
-    how, asks = _bind.bind(brief, model_answered=bool(model_answer))
-    if how == _bind.ANSWER and _wapi.answer_soon(asks[0]["ask_id"], _bind.answer_text(text), asks[0].get("choice")):
+    from nucleo.request import send_task_turn as _st   # a turn that is a send task binds no other waiting task
+    how, asks = _st.unbind(brief, text, *_bind.bind(brief, model_answered=bool(model_answer)), escalate_req, emit)
+    if how == _bind.ANSWER and _wapi.answer_soon(asks[0]["ask_id"], _st.slot_answer(asks[0], text, spoken_text),
+                                                 asks[0].get("choice")):
         worker_acted["v"] = "answer"
         escalate_req["v"] = None          # it answered a waiting task: no new errand
         emit("brain", "💬 answer bound to its task", text=text[:120], role="system",
