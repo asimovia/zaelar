@@ -5,10 +5,13 @@ import sys
 
 from fastapi import Request
 
-# Where a user gets the installer. Pinned to the daemon's OWN version tag rather than `releases/latest`, which
-# follows whatever was released last — including an engine release carrying no daemon assets at all, and a link
-# that 404s on the one screen whose entire job is handing somebody a file.
-_RELEASE_BASE_DEFAULT = "https://github.com/asimovia/zaelar/releases/download"
+# Where a user gets the installer: the newest release's own files. The daemon is rebuilt and attached on every
+# engine tag (`.github/workflows/daemon-artifacts.yml` runs on `v*`), so `releases/latest/download/<file>` is
+# the newest build. It used to be pinned to a `daemon-v<version>` tag, and that pin went stale silently: the
+# version number did not move while the daemon's code did, so the screen kept handing out a months-old build.
+# The one-line command (the main path) resolves the newest release that carries the file and never 404s; these
+# links are the fallback for somebody who would rather see the file first.
+_RELEASE_BASE_DEFAULT = "https://github.com/asimovia/zaelar/releases/latest/download"
 
 _ASSETS = {
     "macos": {"artifact": "zaelar-daemon-macos", "installer": "zaelar-daemon-install-macos.sh",
@@ -37,9 +40,9 @@ _BOOTSTRAP = {
 
 def _downloads(version: str) -> dict:
     base = (os.getenv("ZAELAR_DAEMON_DOWNLOAD_BASE") or "").strip().rstrip("/")
-    tag = f"daemon-v{version}" if version else ""
+    tag = "latest"
     if not base:
-        base = f"{_RELEASE_BASE_DEFAULT}/{tag}" if tag else ""
+        base = _RELEASE_BASE_DEFAULT
     boot = (os.getenv("ZAELAR_DAEMON_BOOTSTRAP_BASE") or _BOOTSTRAP_BASE_DEFAULT).rstrip("/")
     out: dict = {"tag": tag, "platforms": {}}
     if not base:
