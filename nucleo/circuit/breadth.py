@@ -29,15 +29,32 @@ JUDGE_TIMEOUT_S = 25.0      # a bound on the wait, not on the search: past it, t
 
 
 def brief_of(rec) -> dict | None:
-    """The errand's brief: saved under the worker's key, and under the commission's durable id once judged here."""
+    """The errand's brief, read through THE errand door (V2-868 D1): its durable row id, never the per-boot task id.
+
+    A brief whose owner stamp is not this errand's is REFUSED, and that is said (V2-868 D2): measured on the operator's
+    console, a parcel-tracking errand read a previous boot's podcast brief stored under the same bare task id, judged
+    itself against it and relaunched with it. No brief → nothing to judge, and nothing relaunches from here."""
     try:
-        from nucleo.workers import brief as _brief
-        for key in (getattr(rec, "task_id", ""), getattr(rec, "uid", "")):
-            if key and (b := _brief.load(key)):
-                return b
+        from nucleo.workers import brief as _brief   # noqa: F401 — the package first: brief ⇄ brief_store
+        from nucleo.workers import brief_store
+        brief, foreign = brief_store.read(rec)
+        if foreign:
+            _foreign_event(rec)
+        return brief
     except Exception as e:  # noqa: BLE001
         logger.debug(f"breadth: brief unreadable: {e!r}")
     return None
+
+
+def _foreign_event(rec) -> None:
+    try:
+        from voice.observer import emit
+        from nucleo.runtime_ids import errand_key
+        emit("task", "🧭 brief of another errand ignored", role="system",
+             extra={"id": str(getattr(rec, "task_id", "") or ""), "uid": str(getattr(rec, "uid", "") or ""),
+                    "errand": errand_key(rec), "cat": "circuit"})
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"breadth: event not emitted: {e!r}")
 
 
 def target(brief: dict | None) -> dict:
@@ -129,8 +146,8 @@ async def judge(rec, *, timeout: float = JUDGE_TIMEOUT_S) -> dict | None:
         brief = brief_of(rec)
         tgt = target(brief)
         if not tgt or not sheet:
+            rec.breadth = None      # undeclared: no target of THIS errand, so nothing here may relaunch it (V2-868)
             return None
-        _keep(rec, brief)
         prog = progress(sheet, int(getattr(rec, "considered", -1) or -1))
         if not short(tgt, prog):
             out = {"judged": False, "enough": True, "short": False, "target": tgt, "progress": prog}
@@ -147,17 +164,6 @@ async def judge(rec, *, timeout: float = JUDGE_TIMEOUT_S) -> dict | None:
     except Exception as e:  # noqa: BLE001
         logger.debug(f"breadth: judge skipped: {e!r}")
         return None
-
-
-def _keep(rec, brief: dict) -> None:
-    """The brief under the commission's durable id too, so a continuation or a reopen (`reopen.py`) finds it."""
-    uid = str(getattr(rec, "uid", "") or "")
-    if uid and uid != str(getattr(rec, "task_id", "") or ""):
-        try:
-            from nucleo.workers import brief as _brief
-            _brief.save(uid, brief)
-        except Exception as e:  # noqa: BLE001
-            logger.debug(f"breadth: brief not kept under {uid}: {e!r}")
 
 
 def another_round(rec) -> str:

@@ -23,7 +23,9 @@ def _build_prompt(request: str, context: str, trusted: bool, brief: dict | None 
             parts.append(f"{catalog.words('context_head')}\n{context}")
         parts.append(f"{catalog.words('request_head')}\n{request}")
         return "\n\n".join(p for p in parts if p)
-    stable = [catalog.words("header"), _playbook.block(playbook, _playbook.done_when(playbook)), catalog.headlines()]
+    stable = [catalog.words("header"),
+              _playbook.block(playbook, _playbook.done_when(playbook), results=_playbook.results_contract(brief)),
+              catalog.headlines()]
     variable = [worker_language_block(), _today_block(), catalog.said_block()]
     variable.append(catalog.known_lines(request))   # what is KNOWN about this errand: per task, so not on request
     if context:
