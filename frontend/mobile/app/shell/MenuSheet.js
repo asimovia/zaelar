@@ -134,7 +134,9 @@ export function MenuSheet() {
       h("div", { class: () => "zm-row zm-row-static" + (daemon.isOffered() ? "" : " is-off") },
         h("span", { class: "zm-row-t" },
           h("b", null, () => t("daemon.mobile.row")),
-          h("small", null, () => (daemon.isConnected() ? t("daemon.ok.lead") : t("daemon.mobile.hint"))),
+          // What works FROM HERE, said plainly (P1): the folders he granted can be read, a sign-in window cannot
+          // open on a phone — it opens on the computer, so the phone never promises one.
+          h("small", null, () => (daemon.isConnected() ? t("daemon.mobile.connected") : t("daemon.mobile.hint"))),
         ),
       ),
 
