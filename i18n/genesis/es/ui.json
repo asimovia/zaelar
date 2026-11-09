@@ -1978,7 +1978,7 @@
  "results.digest.part": "pieza",
  "results.digest.more_results": "(+{n} resultados más en la hoja)",
  "task.phase.waiting_room": "esperando memoria libre en esta máquina",
- "task.phase.room_late": "poca memoria libre — arranco igual, con menos prioridad",
+ "task.phase.waiting_voice": "la voz va primero — el encargo arranca cuando se asiente",
  "task.phase.starting": "arrancando",
  "task.phase.label_web": "Buscando en la web…",
  "task.phase.label_code": "Trabajando en un widget…",

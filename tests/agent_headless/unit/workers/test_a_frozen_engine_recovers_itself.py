@@ -17,6 +17,8 @@ import pytest
 
 from nucleo.pulse import self_watchdog as wd
 
+GB = 1024 ** 3
+
 POL = {"freeze_s": 15.0, "stuck_s": 120.0, "exit_grace_s": 15.0}
 
 
@@ -45,8 +47,9 @@ def world(monkeypatch):
     from nucleo import dispatch
     acts = {"events": [], "shed": [], "relieve": 0, "hook": 0, "timers": []}
     monkeypatch.setattr(wd, "policy", lambda: dict(POL))
-    monkeypatch.setattr(envelope, "measured", lambda: (2000, 1000))
-    monkeypatch.setattr(envelope, "shed", lambda s: acts["shed"].append(s))
+    monkeypatch.setattr(envelope, "measured", lambda: (2 * GB, GB))
+    monkeypatch.setattr(envelope, "shed", lambda s, source: acts["shed"].append(s))
+    monkeypatch.setattr(envelope, "unshed", lambda source: None)
     monkeypatch.setattr(envelope, "relieve", lambda recs: acts.__setitem__("relieve", acts["relieve"] + 1) or "")
     monkeypatch.setattr(dispatch, "_SESSIONS", {})
     monkeypatch.setattr(wd, "_emit", lambda label, **x: acts["events"].append((label, x)))
@@ -86,7 +89,7 @@ def test_unsupervised_it_sheds_and_never_exits(world, monkeypatch):
 
 def test_memory_pressure_alone_sheds(world, monkeypatch):
     from nucleo.workers import envelope
-    monkeypatch.setattr(envelope, "measured", lambda: (2000, 100))     # 5 % free, under the 10 % floor
+    monkeypatch.setattr(envelope, "measured", lambda: (2 * GB, GB // 10))  # 5 % free, under the 10 % floor
     wd._state["beat"] = time.monotonic()
     assert wd.tick(_Frozen(), now=time.monotonic()) == "shed"
 
@@ -132,7 +135,7 @@ def test_a_host_on_the_floor_is_one_episode_not_a_flapping_alert(world, monkeypa
     monkeypatch.delenv("ZAELAR_SUPERVISED", raising=False)
     monkeypatch.setattr(envelope, "policy", lambda: {"pause_free_ratio": 0.1, "admit_free_ratio": 0.2})
     ratios = iter([0.098, 0.141, 0.098, 0.113, 0.095, 0.121, 0.096, 0.25])
-    monkeypatch.setattr(envelope, "measured", lambda: (1000, int(1000 * next(ratios))))
+    monkeypatch.setattr(envelope, "measured", lambda: (8 * GB, int(8 * GB * next(ratios))))
     seen = []
     for i in range(8):
         wd._state["beat"] = 1000.0 + 2 * i
@@ -150,7 +153,7 @@ def test_a_supervised_host_in_the_band_is_never_restarted_for_it(world, monkeypa
     for floor, want_exit in ((0.15, False), (0.09, True)):     # in the band · under the pause floor (the control)
         wd._state.update(since=0.0, shed=False, exiting=False, code=0)
         ratios = iter([0.09] + [floor] * 20)
-        monkeypatch.setattr(envelope, "measured", lambda: (1000, int(1000 * next(ratios))))
+        monkeypatch.setattr(envelope, "measured", lambda: (8 * GB, int(8 * GB * next(ratios))))
         seen = []
         for i in range(12):
             wd._state["beat"] = 1000.0 + 2 * i
