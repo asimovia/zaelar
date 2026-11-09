@@ -200,6 +200,12 @@ def guardians(app, first_lifespan_entry: bool) -> None:
         self_watchdog.start()
     except Exception as e:
         logger.warning(f"self watchdog start failed (voice/chat unaffected): {e}")
+    # V2-836: an engine away from his computer offers his daemon the outbound tunnel (a no-op on a self-hosted one).
+    try:
+        from nucleo.daemon_egress import link as egress_link
+        egress_link.start()
+    except Exception as e:
+        logger.warning(f"daemon egress start failed (browsing goes out directly): {e}")
     # V2-831 T-31: with ZAELAR_SUMMARY_URL set, a compact turn/voice/worker summary is pushed off the host.
     try:
         from nucleo.pulse import offhost

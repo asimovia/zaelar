@@ -104,7 +104,7 @@ def test_the_glyph_follows_health_and_nothing_else():
 def test_the_menu_has_the_five_items_in_order():
     from daemon.tray import model
     v = model.view(_health(), LOCAL)
-    assert [i.id for i in v.items] == ["status", "open", "folders", "signin", "updates", "quit"]
+    assert [i.id for i in v.items] == ["status", "open", "folders", "signin", "egress", "updates", "quit"]
     assert v.items[0].enabled is False and "0.3.0" in v.items[0].label
     assert next(i for i in v.items if i.id == "signin").label == "Open sign-in window"
     assert next(i for i in model.view(_health(), LOCAL, "t1").items if i.id == "signin").label == \

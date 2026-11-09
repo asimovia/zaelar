@@ -99,6 +99,13 @@ class RelayClient:
         if self._thread is not None:
             self._thread.join(timeout)
 
+    def refresh_caps(self) -> None:
+        """The capability list changed here (the tunnel switch): drop the live link so the loop redials at once and
+        says `hello` again with the new list. Nothing happens when there is no link."""
+        sock = self._ws
+        if sock is not None and self.connected():
+            sock.close()
+
     def connected(self) -> bool:
         return self.status.get("state") == "connected"
 

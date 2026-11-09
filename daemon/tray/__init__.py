@@ -13,7 +13,7 @@ there. The GUI libraries are imported inside `load()` for the same reason: a bui
 headless service with one line saying why, instead of not starting.
 
 The menu: Open Zaelar · Allowed folders… · Sign-in window (open / close — or the browser download, start / cancel,
-while there is no browser yet) · Check for updates · Quit.
+while there is no browser yet) · Outbound tunnel: on / off (V2-836) · Check for updates · Quit.
 """
 from __future__ import annotations
 

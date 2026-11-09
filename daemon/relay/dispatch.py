@@ -136,6 +136,15 @@ def _daemon_status(_args: dict) -> dict:
             "browser": {"open": bool(getattr(_windows(), "_current", None))}}
 
 
+def _egress_offer(args: dict) -> dict:
+    """V2-836: the engine offers a tunnel `{token, url, expires_at}`. Refused (`egress_disabled`) unless the person
+    switched the tunnel on HERE; a remote caller can offer, never switch."""
+    from ..egress import tunnel
+    out = tunnel.TUNNEL.offer(args)
+    audit.record("egress.offer", caller="relay", outcome="ok")
+    return out
+
+
 OPS = {
     "files.list": _files_list,
     "files.read": _files_read,
@@ -145,6 +154,7 @@ OPS = {
     "browser.close": _browser_close,
     "browser.export_session": _export_session,
     "daemon.status": _daemon_status,
+    "egress.offer": _egress_offer,
 }
 
 

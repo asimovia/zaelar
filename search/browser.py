@@ -81,6 +81,28 @@ def enabled() -> bool:
     return os.getenv("BROWSER_SEARCH", "1") == "1"
 
 
+_launched_proxy: list = [None]   # the tunnel proxy the live context was launched with (None = direct)
+
+
+def _egress_proxy() -> str | None:
+    """His tunnel's local proxy while it is up (V2-836); None — a direct launch, exactly as before — otherwise."""
+    try:
+        from nucleo.daemon_egress import link
+        return link.proxy_url()
+    except Exception:  # noqa: BLE001 — the tunnel is additive
+        return None
+
+
+def _egress_changed() -> bool:
+    return _egress_proxy() != _launched_proxy[0]
+
+
+def _egress_launch() -> list[str]:
+    url = _egress_proxy()
+    _launched_proxy[0] = url
+    return [f"--proxy-server={url}"] if url else []
+
+
 async def ensure_started() -> bool:
     """Starts (idempotently) the persistent Chromium context and warms it with google.com. True when ready.
     Fire-and-forget from boot; never raises into the lifespan."""
@@ -89,9 +111,17 @@ async def ensure_started() -> bool:
         return False
     if _owner is not asyncio.get_running_loop():   # a context and its lock serve only the loop that made them
         _pw, _ctx, _start_lock, _owner = None, None, asyncio.Lock(), asyncio.get_running_loop()
-    if _ctx is not None:
+    if _ctx is not None and not _egress_changed():
         return True
     async with _start_lock:
+        if _ctx is not None and _egress_changed() and not _ctx.pages:
+            # V2-836: his tunnel came up (or went) since this context launched, and no search is on it right now —
+            # relaunch so the next search leaves the way it should. A context in use is left alone until idle.
+            try:
+                await _ctx.close()
+            except Exception as e:  # noqa: BLE001
+                logger.debug(f"browser_search: context not closed for the tunnel: {e!r}")
+            _ctx = None
         if _ctx is not None:
             return True
         try:
@@ -110,7 +140,7 @@ async def ensure_started() -> bool:
                     locale=f"{_hl}-{_gl.upper()}",
                     viewport={"width": 1280, "height": 900},
                     args=["--no-sandbox", "--disable-blink-features=AutomationControlled",
-                          "--disable-dev-shm-usage"],
+                          "--disable-dev-shm-usage", *_egress_launch()],
                 )
             _ctx.set_default_timeout(_TIMEOUT_MS)
             # warm: open google once (brings the network up, accepts consent, which stays in the profile)
@@ -257,7 +287,9 @@ async def _unwrap_redirects(results: list[dict]) -> None:
         if target:
             row["url"] = target
 
-    async with httpx.AsyncClient(timeout=4.0, follow_redirects=False, headers={"User-Agent": _UA}) as c:
+    proxy = _egress_proxy()   # V2-836: a direct fetch leaves through his tunnel too, while it is up
+    async with httpx.AsyncClient(timeout=4.0, follow_redirects=False, headers={"User-Agent": _UA},
+                                 **({"proxy": proxy} if proxy else {})) as c:
         await asyncio.gather(*(one(c, r) for r in results))
 
 

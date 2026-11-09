@@ -54,6 +54,7 @@ from .config_api import router as config_router  # full-screen configuration are
 from .i18n_api import router as i18n_router  # multilingual UI: state + preset/generated bundles (V2-089)
 from .feedback_api import router as feedback_router  # send a suggestion to the developers (V2-100)
 from .daemon_api import router as daemon_router  # V2-575 P1: status + folder permissions of the LOCAL DAEMON
+from .daemon_tunnel import router as daemon_tunnel_router  # V2-836: the WebSocket his daemon dials to carry browsing
 from .lifespan import lifespan  # what starts, in which order, and what stops (refactor2710-13 T-03)
 
 
@@ -89,7 +90,7 @@ def create_app() -> FastAPI:
                files_router, memory_viewer_router,
                vault_router, wizard_router, spotify_router, config_router, i18n_router,
                obs_router, feedback_router, update_router, cloudfiles_router, photos_router, contacts_router,
-               videoacct_router, calendar_router, torrent_router, library_router, daemon_router,
+               videoacct_router, calendar_router, torrent_router, library_router, daemon_router, daemon_tunnel_router,
                tasks_router, screens_router, notices_router, rules_router]
     # LiveKit control plane (token + connect config + session.js swap), the default engine.
     if os.getenv("ZAELAR_ENGINE", "livekit").lower() == "livekit":
