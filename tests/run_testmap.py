@@ -6533,7 +6533,7 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/memory/unit/test_the_live_window_is_the_live_chain.py"]},
         # V2-865 second cut — disarmed 2026-11-09 (repeat filter off · a short query is a repeat · no episode cap ·
         # reference words searchable: 4 mutations, 9 reds).
-        {"id": "2.1647", "title": "Recall picks the answer, not the echo (V2-865): a `conv` row whose operator words mostly ARE the query (`REPEAT_OVERLAP`, queries of 4+ words) is his earlier attempt and is dropped; a relevance pick takes at most `EPISODE_ROWS` turns of one episode so an older episode gets in; the words of a reference to the conversation («asked», «earlier», «today», «pedí», «antes», «hoy»…) are not search terms",
+        {"id": "2.1647", "title": "Recall picks the answer, not the echo (V2-865): a `conv` row whose operator words mostly ARE the query (`REPEAT_OVERLAP`, queries of 4+ words) is his earlier attempt and is dropped — unless it is also the oldest matching turn, the original request said again, which stays with its answer (`_oldest_repeat`); a relevance pick takes at most `EPISODE_ROWS` turns of one episode so an older episode gets in; the words of a reference to the conversation («asked», «earlier», «today», «pedí», «antes», «hoy»…) are not search terms",
             "ch": UNIT, "paths": ["tests/memory/unit/test_recall_picks_the_answer_not_the_echo.py"]},
         # V2-865 second cut — disarmed 2026-11-09 (his words ignored · lines unsorted · no per-side cut · tool_round
         # drops his words · recall_fired without needs_recent: 5 reds).

@@ -67,6 +67,21 @@ def test_his_earlier_attempt_at_the_same_request_is_not_the_referent(fresh_db):
     assert answer in _ids(lines)
 
 
+def test_the_oldest_repeat_is_the_original_request_and_stays(fresh_db, monkeypatch):
+    """He says the ORIGINAL sentence again, almost word for word: the original turn is the oldest matching turn
+    there is, so it stays with its answer; his later attempts at it are the ones dropped. (Above, the oldest
+    matching turn was worded differently, so the repeat there was a later attempt and fell.)"""
+    original = _turn("put some music here by the singer from the series and play her song",
+                     "That is the lead singer, playing her now", 5 * H)
+    attempt = _turn("put some music here by the singer from the series and play her song please",
+                    "Playing a song by the wrong singer", 2 * H)
+    lines = memapi.conversation(hours=48, query=QUERY, limit=4, by="relevance")
+    assert original in _ids(lines) and attempt not in _ids(lines)
+    monkeypatch.setattr(memhistory, "_oldest_repeat", lambda rows, qw, match: None)   # disarm: every repeat dropped
+    assert original not in _ids(memapi.conversation(hours=48, query=QUERY, limit=4, by="relevance")), \
+        "disarm did not land: with no oldest kept, the original must fall with the attempts"
+
+
 def test_a_short_query_never_counts_as_a_repeat():
     words = memhistory._words("play her song")
     assert not memhistory._is_repeat(words, words), "under four words a query is too thin to call a repeat"

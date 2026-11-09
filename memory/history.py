@@ -165,6 +165,25 @@ def _episodes_of(rows) -> dict[int, int]:
     return out
 
 
+def _oldest_repeat(rows, query_words: set[str], match: dict | None) -> int | None:
+    """The id of the oldest row whose operator words repeat the query, when that row is also the oldest row that
+    matches the query at all — the original request. None when an older matching turn exists (the repeat is then
+    a later attempt) or nothing repeats."""
+    oldest_match: tuple[float, int] | None = None
+    oldest_rep: tuple[float, int] | None = None
+    for r in rows:
+        if match is not None and int(r["id"]) not in match:
+            continue
+        key = (float(r["created"] or 0), int(r["id"]))
+        if oldest_match is None or key < oldest_match:
+            oldest_match = key
+        m = _meta(r["meta"])
+        u = (m.get("u") or "").strip() or (r["text"] or "").strip()
+        if _is_repeat(_words(u), query_words) and (oldest_rep is None or key < oldest_rep):
+            oldest_rep = key
+    return oldest_rep[1] if oldest_rep and oldest_rep == oldest_match else None
+
+
 #: Two sentences this alike are the SAME request said again: the word sets overlap at least this much.
 REPEAT_OVERLAP = 0.6
 
@@ -244,6 +263,10 @@ def conversation(hours: float = 24.0, query: str = "", limit: int = 40, max_char
         # Most query terms first, the newest among equals; the trim below then keeps the turns that answer.
         rows = sorted(rows, key=lambda r: (-match.get(int(r["id"]), 0), -float(r["created"] or 0), -int(r["id"])))
     episode_of = _episodes_of(rows) if by == "relevance" and match else {}
+    # The repeats of THIS request are his later attempts and are dropped — unless the oldest of them is the oldest
+    # matching turn there is: then it is the ORIGINAL request, said again almost word for word, and dropping it
+    # would drop the turn that answered it. The first time the subject came up is the original.
+    original_repeat = _oldest_repeat(rows, qwords, match) if qwords else None
     per_episode: dict[int, int] = {}
     picked: list[tuple] = []
     used = 0
@@ -256,8 +279,8 @@ def conversation(hours: float = 24.0, query: str = "", limit: int = 40, max_char
         u, a = (m.get("u") or "").strip(), (m.get("a") or "").strip()
         if not u and not a:                            # an old row without structured fields: its text as is
             u = (r["text"] or "").strip()
-        if qwords and _is_repeat(_words(u), qwords):   # his earlier attempt at THIS request: not the referent
-            continue
+        if qwords and int(r["id"]) != original_repeat and _is_repeat(_words(u), qwords):
+            continue                                   # his later attempt at THIS request: not the referent
         ep = episode_of.get(int(r["id"]))
         if ep is not None and per_episode.get(ep, 0) >= EPISODE_ROWS:   # the rest of that episode says the same
             continue
