@@ -783,13 +783,17 @@ Flash keeps the conversation; the row is what both brains read.
   for him. Groups are rows with an id (natives + his own), a person or company may link agents, and a word of a
   person is never a card's alias (`widgets/aliases.py`). — since 2026-11-05 · nodes 2.1500, 2.1530, 2.1531, 2.1532,
   2.1533, 2.1551, 4.390 · `nucleo/memory_agent/contacts.py`, `memory/rem/contacts.py`, `widgets/contactos/groups.py`.
-- **CRIT-M16 · The day is in the state, and recall reaches the conversation.** The composed state carries the
-  day's EPISODES outside the live window as a schema — when, what he opened with, the first reply, how it ended —
-  under a fixed budget that drops the oldest first; a first-turn kickoff is the engine's words, never an episode.
-  A turn's recall reads the `conv` buffer beside the durable pills, by relevance and without the live window, and
-  answers with the literal turns even when no pill matched. «I have no access to what was said earlier» is never
-  the answer while the buffer holds it. — since 2026-11-09 · nodes 2.1641, 2.1642, 2.1643, 2.1644, 2.1645 ·
-  `memory/_prompt/reads.py`, `memory/_prompt/compose.py`, `memory/history.py`, `nucleo/turn/prompt/recall.py`.
+- **CRIT-M16 · The day is in the prompt's live tail, and recall reaches the conversation.** Every turn's live tail
+  carries the day's EPISODES outside the live chain as a schema — when, what he opened with, the first reply, how it
+  ended — under a fixed budget that drops the oldest first; a first-turn kickoff is the engine's words, never an
+  episode. The live window and the day are cut by ONE silence: the window holds only the turns that chain to now, so
+  a session after hours of silence starts with an empty window and the earlier session in the day. A reference to
+  the conversation fires the recall; the recall reads the `conv` buffer beside the durable pills, his own words
+  first, by relevance, without the live chain, his repeated attempts or more than two turns of one episode, and
+  answers with the literal turns even when no pill matched; an order that needed the recalled fact is carried out.
+  «I have no access to what was said earlier» is never the answer while the buffer holds it. — since 2026-11-09 ·
+  nodes 2.1641-2.1649 · `memory/_prompt/reads.py`, `memory/_prompt/compose.py`, `memory/history.py`,
+  `nucleo/turn/prompt/recall.py`, `nucleo/turn/prompt/live_state.py`, `nucleo/acts/repair_after_lookup.py`.
 
 ## 6 · Resilience
 
