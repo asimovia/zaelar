@@ -95,6 +95,8 @@ _sem: "asyncio.Semaphore | None" = None
 
 
 def _pool():
+    """`max_parallel` workers at most — a CEILING. Below it the envelope admits by measured room, one worker at a time
+    until the previous one runs (V2-867 T593, `workers/envelope.wait_for_room` in `session._a_slot`)."""
     global _sem
     if _sem is None:
         _sem = asyncio.Semaphore(_max_parallel())

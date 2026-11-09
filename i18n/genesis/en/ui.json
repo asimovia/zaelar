@@ -1978,7 +1978,7 @@
  "results.digest.part": "part",
  "results.digest.more_results": "(+{n} more results on the sheet)",
  "task.phase.waiting_room": "waiting for free memory on this machine",
- "task.phase.room_late": "little free memory — starting anyway, at a lower priority",
+ "task.phase.waiting_voice": "the voice comes first — the job starts when it settles",
  "task.phase.starting": "starting",
  "task.phase.label_web": "Searching the web…",
  "task.phase.label_code": "Working on a widget…",

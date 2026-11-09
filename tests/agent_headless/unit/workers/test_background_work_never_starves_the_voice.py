@@ -5,7 +5,7 @@ given back when they ended, the VAD fell behind real time and the host froze. Th
 (`config/resources.default.json`, ratios of what the host measures):
   · an errand's process GROUP is reaped when it ends, even when its leader already exited;
   · a new worker is admitted only above the free-memory floor;
-  · the admission wait is a CLOCK (`admit_wait_s`): past it the worker starts anyway, said and at lower priority;
+  · the admission wait has NO clock (V2-867 T592): a worker waits for room, it never starts «anyway»;
   · under pressure the NEWEST worker is paused — only while another runs — and resumed with room again, never one
     the operator paused;
   · a worker runs below the voice's scheduling priority.
@@ -53,15 +53,15 @@ def test_an_errand_leaves_nothing_of_its_group_behind():
 
 
 def test_a_new_worker_waits_below_the_floor_and_starts_with_room(monkeypatch):
-    pol = {"worker_nice": 10, "admit_free_ratio": 0.2, "pause_free_ratio": 0.1, "admit_wait_s": 60}
+    pol = {"worker_nice": 10, "admit_free_ratio": 0.2, "pause_free_ratio": 0.1, "voice_reserve_mb": 0}
     monkeypatch.setattr(envelope, "policy", lambda: pol)
     assert not envelope.admits(2 * GB, int(0.15 * 2 * GB))
     assert envelope.admits(2 * GB, int(0.25 * 2 * GB))
     readings = iter([(2 * GB, int(0.05 * 2 * GB)), (2 * GB, int(0.05 * 2 * GB)), (2 * GB, int(0.5 * 2 * GB))])
     monkeypatch.setattr(envelope, "measured", lambda: next(readings))
     said = []
-    assert asyncio.run(envelope.wait_for_room(lambda: said.append(1), poll_s=0.01)) is True
-    assert said == [1], "the wait was not said once"
+    assert asyncio.run(envelope.wait_for_room(said.append, poll_s=0.01)) is True
+    assert said == ["waiting_room"], "the wait was not said once, as memory"
 
 
 class _Sess:
@@ -83,22 +83,26 @@ def _rec(tid, started, paused=False):
     return r
 
 
-def test_past_the_deadline_the_worker_starts_anyway_and_says_so(monkeypatch):
-    """A busy host must never mean «no worker ever starts»: the wait is a CLOCK from data, then it starts."""
+def test_without_room_the_worker_keeps_waiting_and_never_starts_by_deadline(monkeypatch):
+    """V2-867 T592: the deadline start is gone — a host that never has room holds the worker until it is cancelled."""
     monkeypatch.setattr(envelope, "policy", lambda: {"worker_nice": 10, "admit_free_ratio": 0.2,
-                                                     "pause_free_ratio": 0.1, "admit_wait_s": 0.05})
+                                                     "pause_free_ratio": 0.1, "voice_reserve_mb": 0})
     monkeypatch.setattr(envelope, "measured", lambda: (2 * GB, int(0.01 * 2 * GB)))   # never any room
-    late = []
-    import time as _t
-    t0 = _t.monotonic()
-    assert asyncio.run(envelope.wait_for_room(lambda: None, lambda: late.append(1), poll_s=0.01)) is False
-    assert late == [1] and _t.monotonic() - t0 < 2.0, "the deadline did not end the wait"
+    said = []
+
+    async def run():
+        t = asyncio.ensure_future(envelope.wait_for_room(said.append, poll_s=0.01))
+        await asyncio.sleep(0.3)
+        assert not t.done(), "the worker started without room"
+        t.cancel()
+    asyncio.run(run())
+    assert said == ["waiting_room"], said
 
 
 def test_the_only_running_worker_is_never_paused(monkeypatch):
     """The one errand he is waiting on is never the one frozen: pressure pauses the newest only while another runs."""
     monkeypatch.setattr(envelope, "policy", lambda: {"worker_nice": 10, "admit_free_ratio": 0.2,
-                                                     "pause_free_ratio": 0.1, "admit_wait_s": 60})
+                                                     "pause_free_ratio": 0.1, "voice_reserve_mb": 0})
     monkeypatch.setattr(envelope, "measured", lambda: (2 * GB, int(0.01 * 2 * GB)))
     only = _rec("1", 100)
     assert envelope.relieve([only]) == "" and not only.paused
@@ -106,7 +110,7 @@ def test_the_only_running_worker_is_never_paused(monkeypatch):
 
 def test_pressure_pauses_the_newest_and_room_resumes_only_what_it_paused(monkeypatch):
     monkeypatch.setattr(envelope, "policy", lambda: {"worker_nice": 10, "admit_free_ratio": 0.2,
-                                                     "pause_free_ratio": 0.1, "admit_wait_s": 60})
+                                                     "pause_free_ratio": 0.1, "voice_reserve_mb": 0})
     old, new, his = _rec("1", 100), _rec("2", 200), _rec("3", 50, paused=True)   # «his» = paused by the operator
     monkeypatch.setattr(envelope, "measured", lambda: (2 * GB, int(0.05 * 2 * GB)))
     assert envelope.relieve([old, new, his]) == "paused 2" and new.paused and not old.paused
