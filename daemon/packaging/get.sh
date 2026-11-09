@@ -39,14 +39,17 @@ case "$(uname -m)" in
   *)      die "unsupported architecture: $(uname -m)" ;;
 esac
 
-# ── the newest DAEMON release, which is not the newest release ────────────────────────────────────────────
-# The repository also tags the engine, so `releases/latest` regularly points at something with no daemon
-# assets in it at all. Tags are filtered by prefix instead.
+# ── the newest release that CARRIES THIS FILE ──────────────────────────────────────────────────────────────
+# Not `releases/latest` (an engine release whose daemon build is still running, or failed, has no daemon
+# assets yet) and not a tag prefix either: the daemon is rebuilt on every engine tag, so a prefix-filtered
+# `daemon-v*` tag sinks below the first page of the API within weeks, the filter finds nothing, and the
+# one-liner dies on a perfectly healthy repository. The rule is the asset itself: the newest release (the API
+# lists newest first) that publishes exactly "$ASSET" — anchored on the closing quote, so the Apple Silicon
+# name never matches the Intel one.
 resolve_tag() {
-  local tag
-  tag="$(curl -fsSL "https://api.github.com/repos/$REPO/releases?per_page=30" 2>/dev/null \
-        | sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\(daemon-v[^"]*\)".*/\1/p' | head -n 1 || true)"
-  printf '%s' "$tag"
+  curl -fsSL "https://api.github.com/repos/$REPO/releases?per_page=100" 2>/dev/null \
+    | grep -o "\"browser_download_url\"[[:space:]]*:[[:space:]]*\"[^\"]*/releases/download/[^/\"]*/$ASSET\"" \
+    | head -n 1 | sed 's#.*/releases/download/\([^/]*\)/.*#\1#' || true
 }
 TAG="${ZAELAR_DAEMON_TAG:-$(resolve_tag)}"
 [[ -n "$TAG" ]] || die "could not find a published daemon release. Set ZAELAR_DAEMON_TAG to install a specific one."

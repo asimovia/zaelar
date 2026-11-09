@@ -56,8 +56,10 @@ your PC". That buys, for free and immediately, most of what a code-signing certi
 Developer account, no Microsoft account, no notarization queue, nothing that expires, and no approval between
 a fix and the person who needs it.
 
-What the bootstrap does, in order: resolve the newest **`daemon-v*`** tag (never `releases/latest` — this repo
-also tags the engine), pick the build for `uname -m`, download it, **verify its SHA-256 against the published
+What the bootstrap does, in order: pick the build for `uname -m`, resolve **the newest release that publishes
+that exact file** (never `releases/latest` — an engine release whose daemon build is still running has none; and
+never a `daemon-v*` prefix — the daemon is rebuilt on every engine tag, so a prefix tag sinks below the API's
+first page and the filter finds nothing), download it, **verify its SHA-256 against the published
 sums while it is still an inert file in a temp directory**, and only then run the installer, fetched from
 `main` so it shares the origin the user already trusted by running the line.
 
@@ -185,9 +187,10 @@ without the other two is how the download screen starts offering a 404, so node 
 
 ### Where a user gets the file
 
-`GET /api/daemon/status` carries a `downloads` block pinned to **the daemon's own version tag** — not
-`releases/latest`, which follows whatever was released last, including an engine release with no daemon assets
-in it. The 🖥 icon in the interface renders it; when the engine runs on a remote host that is the icon's whole job,
+`GET /api/daemon/status` carries a `downloads` block whose direct links follow **`releases/latest/download/`**:
+every engine tag attaches a fresh daemon build, and the old pin to `daemon-v<version>` went stale silently (the
+version number stood still while the code moved). The one-line command stays the main path and never depends
+on `latest` carrying the files. The 🖥 icon in the interface renders it; when the engine runs on a remote host that is the icon's whole job,
 since a remote engine cannot reach a daemon on somebody's desk.
 
 `ZAELAR_DAEMON_DOWNLOAD_BASE` overrides the base URL for a mirror or a private build.
