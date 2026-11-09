@@ -211,11 +211,13 @@ async def daemon_status(request: Request):
         "port": _port(cfg),
         "platform": _guess_platform(request),
         "downloads": _downloads(version),
+        "relay": dict(_RELAY_OFF),
     }
     # A cloud engine is not on the user's machine, so probing 127.0.0.1 would either time out or — worse —
     # reach a daemon belonging to whoever else is on that host. It does not probe at all.
     if cloud:
         payload["state"] = "remote"
+        payload["relay"] = await _relay_status()
         return JSONResponse(payload)
     # ⚠️ NO CONFIG MEANS NO DAEMON OF OURS, and the probe is skipped rather than attempted. `/health` is the one
     # route that answers without a token, so probing anyway would report `reachable: true` on the strength of a
@@ -311,16 +313,50 @@ async def daemon_start(request: Request):
     return JSONResponse({"ok": True, "started": True})
 
 
+_RELAY_OFF = {"paired": False, "connected": False, "caps": [], "version": "", "platform": "", "since": None}
+
+
+async def _relay_status() -> dict:
+    """`relay` in the status: his daemon as the relay sees it — `{paired, connected, caps, version, platform, since}`.
+    All-false when this engine has no relay to ask (every self-hosted engine)."""
+    try:
+        from widgets.navegador.owner_login import relay_link
+        if not relay_link.hosted():
+            return dict(_RELAY_OFF)
+        return await relay_link.status_view()
+    except Exception:       # noqa: BLE001 — a status icon never fails on the relay
+        return dict(_RELAY_OFF)
+
+
+async def _pairing_code() -> JSONResponse:
+    """A hosted engine asks the service it reports to for a one-time code his daemon redeems (`POST
+    /daemon/pairing-code`, its own credential). The code is shown to HIM; it is not a secret worth more than its few
+    minutes and its single use."""
+    from widgets.navegador.owner_login import relay_link
+    if not relay_link.hosted():
+        return JSONResponse({"ok": False, "error": "relay_not_available"}, status_code=409)
+    status, body = await relay_link._http("POST", "/daemon/pairing-code", {}, timeout=10.0)
+    code = body.get("code") if isinstance(body.get("code"), str) else ""
+    if status != 200 or not code:
+        error = "rate_limited" if status == 429 else "relay_unreachable"
+        return JSONResponse({"ok": False, "error": error}, status_code=429 if status == 429 else 502)
+    return JSONResponse({"ok": True, "mode": "relay", "code": code, "expires_at": body.get("expires_at")})
+
+
 @router.post("/api/daemon/pair")
 async def daemon_pair(request: Request):
     """Pairing (decision 6). Over loopback there is nothing to pair: the engine reads the daemon's token from the
     daemon's own state directory on the same disk, which is what being on this computer means — so a local caller
-    is answered `paired, mode: loopback` with no code. The one-time code is for a daemon reaching a REMOTE engine
-    through the relay (P3), which this engine does not have; it says so instead of minting a code nothing reads."""
+    is answered `paired, mode: loopback` with no code. A HOSTED engine (P3) cannot read his disk: it asks the service
+    it reports to for a one-time code `{code, expires_at}` that his daemon redeems through the relay. The caller of a
+    hosted engine is never on its machine, so only the same-origin guard applies there; a cloud engine with no relay
+    to ask answers `relay_not_available`."""
+    if _is_cloud():
+        if not _same_origin(request):
+            return _CROSS_SITE
+        return await _pairing_code()
     if (refusal := _refused(request)) is not None:
         return refusal
-    if _is_cloud():
-        return JSONResponse({"ok": False, "error": "relay_not_available"}, status_code=409)
     cfg = _daemon_config()
     if not cfg.get("token"):
         return JSONResponse({"ok": False, "error": "not_installed"}, status_code=409)

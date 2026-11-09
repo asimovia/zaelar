@@ -10,7 +10,8 @@ question with one answer, and it is answered here — never by a caller re-readi
                his computer is
                CONNECTED and declares it can open a browser for him (`BROWSER_CAPABILITY`). The window opens there.
   · ``       — neither. No window can reach him, so a process that needs him to authenticate is BLOCKED, with that
-               state on its entry in the processes panel, and the agent tells him why it cannot continue.
+               state on its entry in the processes panel, and the agent tells him why it cannot continue. A request
+               from his PHONE is always here: the window would open on a computer he is not looking at.
 
 THE DAEMON LINK. Whatever transport carries a daemon's connection to this engine registers what the daemon declared
 with `daemon_connected(capabilities, opener)` and clears it with `daemon_gone()`; `opener(url, task_id)` is how a
@@ -41,6 +42,8 @@ import time
 
 HERE = "here"
 DAEMON = "daemon"
+#: The screen kind that never gets a window: a phone (V2-575 §Mobile).
+PHONE = "phone"
 #: What a connected daemon declares when it can open a browser window on his computer for him.
 BROWSER_CAPABILITY = "browser.auth"
 
@@ -180,8 +183,11 @@ def daemon_gone() -> None:
         _link.clear()
 
 
-def reach() -> str:
-    """Where a browser window for him can open: `here`, `daemon`, or `` (nowhere)."""
+def reach(surface: str = "") -> str:
+    """Where a browser window for him can open: `here`, `daemon`, or `` (nowhere). `surface` is the screen that asked
+    (V2-792): from his PHONE no window opens anywhere — the one it would open is on a computer he is away from."""
+    if surface == PHONE:
+        return ""
     if _has_display():
         return HERE
     with _lock:

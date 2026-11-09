@@ -96,6 +96,25 @@ def is_running(port: int | None = None) -> bool:
         return probe.connect_ex((HOST, resolve_port(port))) == 0
 
 
+def _start_relay() -> None:
+    """The outbound relay link (P3), only when this daemon has been paired — otherwise nothing, loopback only. It is
+    additive: a relay that cannot start never stops the loopback surface from serving."""
+    try:
+        from ..relay import client as relay_client
+        if relay_client.start_if_paired():
+            print("  relay: paired — connecting out", flush=True)
+    except Exception:   # noqa: BLE001
+        pass
+
+
+def _stop_relay() -> None:
+    try:
+        from ..relay import client as relay_client
+        relay_client.stop()
+    except Exception:   # noqa: BLE001
+        pass
+
+
 def serve(port: int | None = None) -> int:
     resolved = resolve_port(port)
     if is_running(resolved):
@@ -114,12 +133,14 @@ def serve(port: int | None = None) -> int:
 
     thread = threading.Thread(target=server.serve_forever, name="zaelar-daemon", daemon=True)
     thread.start()
+    _start_relay()
     try:
         thread.join()
     except KeyboardInterrupt:
         print("\nzaelar-daemon stopping…", flush=True)
     finally:
         audit.record("daemon.stop", outcome="ok")
+        _stop_relay()
         server.shutdown()
         server.server_close()
     return 0
