@@ -114,6 +114,39 @@ try {
   }
   Say 'checksum ok'
 
+  # ── the signed update manifest, when this PC can check it ───────────────────────────────────────────────
+  # `update-manifest.json` + `.minisig` is what an INSTALLED daemon updates from, signed with a key that is never in
+  # the release. With `minisign` on PATH it is verified against the PUBLIC key from this script's own origin (the
+  # repository's `main`) and must list the bytes that arrived. No manifest (older release) or no signature (cut
+  # before the key existed) is skipped and said; a manifest that does not verify or does not list them is a refusal.
+  $KeyUrl = if ($env:ZAELAR_DAEMON_UPDATE_KEY_URL) { $env:ZAELAR_DAEMON_UPDATE_KEY_URL } else { ($RawBase -replace '/packaging$', '') + '/update/PUBLIC_KEY' }
+  if (Get-Command minisign -ErrorAction SilentlyContinue) {
+    $manifestPath = Join-Path $Work 'update-manifest.json'
+    $haveManifest = $true
+    try { Invoke-WebRequest -Uri "$Base/update-manifest.json" -OutFile $manifestPath -UseBasicParsing } catch { $haveManifest = $false }
+    if (-not $haveManifest) {
+      Say "update manifest not checked - $Tag publishes none"
+    } else {
+      $haveSig = $true
+      try { Invoke-WebRequest -Uri "$Base/update-manifest.json.minisig" -OutFile "$manifestPath.minisig" -UseBasicParsing } catch { $haveSig = $false }
+      if (-not $haveSig) {
+        Say "update manifest not checked - $Tag publishes it unsigned"
+      } else {
+        $keyPath = Join-Path $Work 'update-key.pub'
+        Invoke-WebRequest -Uri $KeyUrl -OutFile $keyPath -UseBasicParsing
+        $previousPreference = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+        try { & minisign -V -q -p $keyPath -m $manifestPath 2>&1 | Out-Null; $minisignCode = $LASTEXITCODE }
+        finally { $ErrorActionPreference = $previousPreference }
+        if ($minisignCode -ne 0) { Die "the update manifest of $Tag does not verify against the published key. Nothing was installed." }
+        if (-not (Select-String -Path $manifestPath -SimpleMatch "`"$actual`"" -Quiet)) {
+          Die "the signed update manifest of $Tag does not list the file that arrived. Nothing was installed."
+        }
+        Say 'update manifest ok - signed, and it lists this file'
+      }
+    }
+  }
+
   # ── install with the same script the repository ships ───────────────────────────────────────────────────
   # Fetched from `main` rather than from the release, deliberately: it then shares this script's origin
   # exactly, so the trust decision the user already made by running this line is the only one being made.

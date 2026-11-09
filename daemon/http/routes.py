@@ -15,6 +15,7 @@ from .. import VERSION, audit, config
 from ..fs import listing, reading, searching
 from .. import picker
 from .. import browser
+from .. import update
 from ..fs import roots as folders
 from ..fs.entries import LIST_DEFAULT_LIMIT, LIST_MAX_LIMIT, MAX_READ_BYTES
 
@@ -64,6 +65,7 @@ def health(_request, _payload: dict) -> dict:
         "configured": bool(cfg.get("configured")),
         "capabilities": capabilities(),
         **browser.health_fields(),
+        **update.health_fields(),
     }
 
 

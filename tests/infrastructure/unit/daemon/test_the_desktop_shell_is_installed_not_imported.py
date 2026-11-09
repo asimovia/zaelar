@@ -167,17 +167,28 @@ def test_the_menu_actions_call_the_daemons_own_functions(tmp_path, monkeypatch):
             calls.append("app")
             return {"ok": True}
 
+    class Updater:
+        # The real one reaches the network (`daemon.update.check`); its own tests live in
+        # test_the_daemon_updates_itself_only_when_verified.py. Here only the wiring is under test.
+        def check_and_download(self):
+            calls.append("check")
+            return {"ok": True, "current": {"version": "0.3.0", "build": 7}, "available": None, "state": "idle"}
+
+        def install(self):
+            calls.append("install")
+            return {"state": "idle", "error": "", "restart": "launchd"}
+
     folder = tmp_path / "Docs"
     folder.mkdir()
     ctrl = Controller(1, notify=lambda t, m: notes.append(m), quit_fn=lambda: calls.append("quit"),
                       health_fn=lambda: _health(), target_fn=lambda: LOCAL, app=App(), windows=Windows(),
-                      job=Job(), choose=lambda prompt: str(folder))
+                      job=Job(), choose=lambda prompt: str(folder), updater=Updater())
     for item in ("open", "signin", "signin", "download_start", "download_cancel", "folders", "updates", "quit"):
         ctrl.act(item)
-    assert calls == ["app", "open-window", "close-tray", "download", "cancel", "quit"]
+    assert calls == ["app", "open-window", "close-tray", "download", "cancel", "check", "quit"]
     assert str(folder.resolve()) in [str(Path(r).resolve()) for r in config.load()["roots"]], \
         "«Allowed folders…» grants through the permission circuit"
-    assert any("0.3.0" in n for n in notes), "«Check for updates» reads the version from /health"
+    assert any("0.3.0" in n and "up to date" in n for n in notes), "«Check for updates» says what the check found"
     config.reset_cache()
 
 

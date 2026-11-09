@@ -20,8 +20,9 @@
 # log — so when `cosign` is on PATH this script verifies `SHA256SUMS-*.sigstore.json` against that identity and
 # REFUSES to install on a bad or missing signature. Then a passing install means: these bytes are the ones the
 # `daemon-artifacts.yml` workflow of asimovia/zaelar built and signed for a release tag. What it does NOT mean:
-# that anybody reviewed the code, or that Apple or Microsoft vouch for it — the binary carries no Developer ID
-# or Authenticode signature (a later step). Without `cosign`, only the hash is checked and the script says so.
+# that anybody reviewed the code. Apple vouches for it only when the release carries a notarized `.pkg` (preferred
+# whenever the signed sums list one; `install.sh` asks Gatekeeper about it). Without `cosign`, only the hash is
+# checked and the script says so. With `minisign`, the signed update manifest must list the same bytes too.
 # A fork that publishes its own releases sets ZAELAR_DAEMON_SIGNER_RE to its own workflow's identity.
 #
 # NO SUDO. Anywhere. If this script ever needs an administrator password, something is wrong with it.
@@ -75,8 +76,6 @@ printf '\nZaelar Local Daemon · %s · %s\n\n' "$TAG" "$(uname -m)"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
-say "downloading ${ASSET}…"
-curl -fsSL -o "$WORK/$ASSET" "$BASE/$ASSET" || die "could not download $ASSET from $TAG."
 # Each architecture publishes its OWN checksum file: one `SHA256SUMS-macos` holding both would mean two
 # jobs writing one name into a flattened release, and the second would win.
 SUMS="SHA256SUMS-$SUFFIX"
@@ -105,6 +104,16 @@ else
   say "signature not checked (no cosign) — by hand: cosign verify-blob --bundle $SUMS.sigstore.json --certificate-identity-regexp '$SIGNER_RE' --certificate-oidc-issuer $OIDC_ISSUER $SUMS"
 fi
 
+# ── the notarized installer package, when this release has one ───────────────────────────────────────────
+# A release cut after the publisher's Apple identity existed also carries `Zaelar-<suffix>.pkg`: the same app,
+# Developer ID signed, notarized and stapled, which `install.sh` hands to Gatekeeper before using it. The SIGNED sums
+# say whether it exists — a release without an identity lists only the zip, and the zip is installed exactly as before.
+if [[ "$ASSET" == *.zip ]] && grep -Eq "^[0-9a-f]{64}[[:space:]]+Zaelar-$SUFFIX\.pkg$" "$WORK/SHA256SUMS"; then
+  ASSET="Zaelar-$SUFFIX.pkg"
+fi
+say "downloading ${ASSET}…"
+curl -fsSL -o "$WORK/$ASSET" "$BASE/$ASSET" || die "could not download $ASSET from $TAG."
+
 # ── verify before anything is executed ────────────────────────────────────────────────────────────────────
 # The order matters: the hash is checked while the file is still an inert blob in a temp directory, before it
 # is made executable, moved anywhere, or handed to launchd.
@@ -117,12 +126,36 @@ ACTUAL="$(shasum -a 256 "$WORK/$ASSET" | awk '{print $1}')"
     got      $ACTUAL"
 say "checksum ok"
 
+# ── the signed update manifest, when this Mac can check it ───────────────────────────────────────────────────
+# The release also publishes `update-manifest.json` + `.minisig` — what an INSTALLED daemon updates from, signed with
+# a key that is never in the release. With `minisign` on PATH, the manifest is verified against the PUBLIC key from
+# this script's own origin (the repository's `main`, never the release) and must list the exact bytes that arrived.
+# A release without a manifest (older) or without its signature (cut before the key existed) is skipped and said so;
+# a manifest that does not verify, or does not list this file, is a refusal.
+KEY_URL="${ZAELAR_DAEMON_UPDATE_KEY_URL:-${RAW_BASE%/packaging}/update/PUBLIC_KEY}"
+if command -v minisign >/dev/null 2>&1; then
+  if curl -fsSL -o "$WORK/update-manifest.json" "$BASE/update-manifest.json" 2>/dev/null; then
+    if curl -fsSL -o "$WORK/update-manifest.json.minisig" "$BASE/update-manifest.json.minisig" 2>/dev/null; then
+      curl -fsSL -o "$WORK/update-key.pub" "$KEY_URL" || die "could not download the update public key."
+      minisign -V -q -p "$WORK/update-key.pub" -m "$WORK/update-manifest.json" >/dev/null 2>&1 \
+        || die "the update manifest of $TAG does not verify against the published key. Nothing was installed."
+      grep -q "\"$ACTUAL\"" "$WORK/update-manifest.json" \
+        || die "the signed update manifest of $TAG does not list the file that arrived. Nothing was installed."
+      say "update manifest ok — signed, and it lists this file"
+    else
+      say "update manifest not checked — $TAG publishes it unsigned"
+    fi
+  else
+    say "update manifest not checked — $TAG publishes none"
+  fi
+fi
+
 # ── install with the same script the repository ships ─────────────────────────────────────────────────────
 # Fetched from `main` rather than from the release, deliberately: it then shares this script's origin exactly,
 # so the trust decision the user already made by running this line is the only one being made.
 say "installing…"
 curl -fsSL -o "$WORK/install.sh" "$RAW_BASE/macos/install.sh" || die "could not download the installer."
-[[ "$ASSET" == *.zip ]] || chmod +x "$WORK/$ASSET"
+[[ "$ASSET" == *.zip || "$ASSET" == *.pkg ]] || chmod +x "$WORK/$ASSET"
 bash "$WORK/install.sh" "$WORK/$ASSET"
 
 # ⚠️ `| bash --purge` DOES NOT WORK and looks like it should: the option is read by bash, not by the script,
