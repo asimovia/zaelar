@@ -65,7 +65,7 @@ def test_anything_else_does_not_match(txt):
 
 # ── voice: empty pills + thread position → flag, nothing spoken ──
 def test_recall_spoken_flags_empty_thread_and_speaks_nothing(monkeypatch):
-    def _no_pills(query):  # sync: recall_spoken runs it via to_thread
+    def _no_pills(query, **_kw):  # sync: recall_spoken runs it via to_thread
         return "", []
 
     async def _boom(*a, **k):
@@ -84,7 +84,7 @@ def test_recall_spoken_flags_empty_thread_and_speaks_nothing(monkeypatch):
 def test_recall_spoken_still_composes_when_the_pills_answer(monkeypatch):
     import nucleo.turn.prompt.builder as _prompt
 
-    def _pills(query):  # sync: recall_spoken runs it via to_thread
+    def _pills(query, **_kw):  # sync: recall_spoken runs it via to_thread; `his_words` rides along (V2-865)
         return "Puede que venga a cuento:\n· le gusta el buceo", [7]
 
     monkeypatch.setattr(_prompt, "compose_recall", _pills)
@@ -107,7 +107,7 @@ def test_recall_spoken_still_composes_empty_non_thread(monkeypatch):
     remember" the compose was built for. Only thread positions short-circuit."""
     import nucleo.turn.prompt.builder as _prompt
 
-    def _no_pills(query):  # sync: recall_spoken runs it via to_thread
+    def _no_pills(query, **_kw):  # sync: recall_spoken runs it via to_thread
         return "", []
 
     monkeypatch.setattr(_prompt, "compose_recall", _no_pills)

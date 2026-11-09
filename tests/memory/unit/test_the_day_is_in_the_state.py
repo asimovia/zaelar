@@ -8,7 +8,7 @@ Pinned here:
   · `day_ledger()` folds the day's `conv` buffer into EPISODES — a silence, a first-turn kickoff (flagged
     `meta.kickoff`, or the i18n `kickoff_prompt` text of any language) or `EPISODE_MAX_TURNS` opens a new one;
   · a kickoff never opens or fills an episode, and the newest `LIVE_WINDOW_TURNS` turns (the live window) are out;
-  · `compose_state()` renders «LO QUE HA PASADO HOY» with each episode's opener and first reply, counts it in
+  · `day_block()` renders «HOY, EN ESQUEMA» for the live tail with each episode's opener and first reply, counts it in
     its stats, keeps it under `_DAY_MAX_CHARS` by dropping the OLDEST line first, and is absent with only the
     live thread.
 """
@@ -99,35 +99,59 @@ def test_a_long_episode_is_cut_into_chunks_with_their_own_opener(fresh_db):
     assert max(e["turns"] for e in eps) <= memprompt.reads.EPISODE_MAX_TURNS
 
 
-def test_the_state_renders_the_day_with_its_stats(fresh_db):
+def test_the_day_is_rendered_for_the_live_tail_with_its_stats(fresh_db):
     h = 3600
     _turn("find me a song by the artist from that show", "That would be the lead singer, here it is", 3 * h)
     _turn("louder", "Done", 3 * h - 60)
     _live_thread(5)
-    block, _op, stats = memapi.compose_state(mission_fallback="m")
-    assert "LO QUE HA PASADO HOY" in block
-    day = block.split("LO QUE HA PASADO HOY", 1)[1].split("── DE QUÉ ÍBAIS HABLANDO", 1)[0]
+    _block, _op, stats = memapi.compose_state(mission_fallback="m")
+    day = memapi.day_block()
+    assert day.startswith("HOY, EN ESQUEMA")
     assert "find me a song by the artist from that show" in day and "That would be the lead singer" in day
     assert "live complaint" not in day, "what the live window holds is not repeated in the day"
     assert "recall" in day, "the header points the model at recall instead of «I have no access»"
-    assert block.index("LO QUE HA PASADO HOY") < block.index("DE QUÉ ÍBAIS HABLANDO")
+    assert "HOY, EN ESQUEMA" not in _block, "the day is read at the tail of the prompt, not in the cached state"
     assert stats["day_count"] == 1 and stats["day_chars"] > 0
+    from nucleo.turn.prompt import live_state as _live
+    tail = _live.live_state()
+    assert "HOY, EN ESQUEMA" in tail and "find me a song by the artist from that show" in tail
 
 
 def test_the_days_budget_drops_the_oldest_episode_first(fresh_db):
     h = 3600
-    for k in range(8):                                      # eight episodes, an hour apart, oldest first
-        _turn(f"episode {k} opener " + "x" * 120, f"episode {k} reply " + "y" * 140, (9 - k) * h)
+    for k in range(10):                                     # ten episodes of three turns, an hour apart, oldest first
+        _turn(f"episode {k} opener " + "x" * 120, f"episode {k} reply " + "y" * 140, (11 - k) * h)
+        _turn(f"episode {k} more", f"episode {k} again " + "y" * 60, (11 - k) * h - 60)
+        _turn(f"episode {k} last", f"episode {k} ending " + "z" * 90, (11 - k) * h - 120)
     _live_thread(5)
-    block, _op, stats = memapi.compose_state(mission_fallback="m")
+    kept = memapi.day_ledger()                              # the ledger itself keeps the newest `max_episodes`
+    assert [e["u"][:9] for e in kept] == [f"episode {k}" for k in range(2, 10)]
+    _block, _op, stats = memapi.compose_state(mission_fallback="m")
+    block = memapi.day_block()
     assert stats["day_chars"] <= memcompose._DAY_MAX_CHARS
-    assert 0 < stats["day_count"] < 8
-    assert "episode 7 opener" in block, "the most recent episode is what he means: it stays"
-    assert "episode 0 opener" not in block, "the oldest episode is the one the budget drops"
+    assert 0 < stats["day_count"] < len(kept), "the budget bites: fewer lines than episodes kept"
+    assert "episode 9 opener" in block, "the most recent episode is what he means: it stays"
+    assert "episode 2 opener" not in block, "the oldest episode is the one the budget drops"
 
 
 def test_with_only_the_live_thread_the_day_is_absent(fresh_db):
     _live_thread(5)
-    block, _op, stats = memapi.compose_state(mission_fallback="m")
-    assert "LO QUE HA PASADO HOY" not in block
+    _block, _op, stats = memapi.compose_state(mission_fallback="m")
+    assert memapi.day_block() == ""
     assert stats["day_count"] == 0 and stats["day_chars"] == 0
+
+
+def test_a_busy_evening_fits_the_mornings_day(fresh_db):
+    """Seven ordinary episodes all reach the prompt: 1400 characters held four, and the one dropped first was the
+    one he meant (measured 2026-11-09)."""
+    h = 3600
+    for k in range(7):
+        _turn(f"episode {k}: find me something to listen to by the singer from that series, the second season",
+              f"episode {k}: here is a song by the lead singer of that series, playing it on the music card",
+              (9 - k) * h)
+    _live_thread(5)
+    _block, _op, stats = memapi.compose_state(mission_fallback="m")
+    block = memapi.day_block()
+    assert stats["day_count"] == 7, stats
+    assert all(f"episode {k}: find me" in block for k in range(7))
+    assert stats["day_chars"] <= memcompose._DAY_MAX_CHARS

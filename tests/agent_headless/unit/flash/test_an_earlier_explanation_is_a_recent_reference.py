@@ -2,7 +2,9 @@
 
 The failure: «I did explain that some messages ago today» fired nothing — the English side of `needs_recent`
 knew «earlier» and «you said», not a span of messages, minutes or hours ago, nor «I explained / told you /
-asked you»; the Spanish side did not know «te pedí / te expliqué / hace horas».
+asked you»; the Spanish side did not know «te pedí / te expliqué / hace horas». Second cut (2026-11-09): a part
+of the day named («yesterday», «last night», «this morning», «ayer», «anoche», «esta tarde») or what zaelar itself
+found or played («the one you found», «la que pusiste») is a reference too.
 """
 import pytest
 
@@ -20,11 +22,23 @@ from nucleo.flash.recall_heuristics import needs_recent
     "te pedí hace horas que pusieras esa canción",
     "ya te expliqué lo del viaje",
     "te he pedido antes que lo apuntaras",
+    "the singer from yesterday",
+    "what we listened to last night",
+    "the plan from this morning",
+    "the song you found for me",
+    "play what you played before",
+    "la canción de ayer",
+    "lo de anoche",
+    "lo que vimos esta tarde",
+    "la que encontraste",
+    "pon la que pusiste",
+    "lo que buscaste",
 ])
 def test_an_earlier_explanation_reaches_for_the_recent_conversation(said):
     assert needs_recent(said), said
 
 
-@pytest.mark.parametrize("said", ["put some music here", "what time is it", "hola", "pon música aquí"])
+@pytest.mark.parametrize("said", ["put some music here", "what time is it", "hola", "pon música aquí",
+                                  "find me a song by her", "busca una canción suya", "I found a great song"])
 def test_a_plain_order_or_greeting_does_not(said):
     assert not needs_recent(said), said
