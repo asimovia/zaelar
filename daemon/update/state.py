@@ -25,14 +25,14 @@ import os
 import threading
 from pathlib import Path
 
-STATES = ("idle", "downloading", "ready", "failed")
-
 ALLOWED: dict[str, set[str]] = {
     "idle": {"idle", "downloading", "failed"},
     "downloading": {"ready", "failed"},
     "ready": {"idle", "downloading", "failed"},
     "failed": {"idle", "downloading", "failed"},
 }
+#: Every state the machine can be in — the keys of its transitions, declared once.
+STATES = tuple(ALLOWED)
 
 _DEFAULT = {"state": "idle", "error": "", "last_check": 0, "last_result": "", "available": None,
             "pending": None, "next_key": None}

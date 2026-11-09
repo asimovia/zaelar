@@ -35,6 +35,7 @@ from .. import config
 from ..fs.refusal import Refusal
 from ..relay import ws
 from ..security import egress_guard as guard
+from ..security.guards import is_loopback_name
 from . import connect as connect_mod, note
 from .ledger import LEDGER
 
@@ -56,7 +57,6 @@ BACKOFF_MAX_S = 30.0
 CLOSE_UNKNOWN_TOKEN = 4401
 _TICK_S = 1.0
 _TOKEN_CHARS = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._-")
-_LOOPBACK = ("127.0.0.1", "localhost", "::1")
 
 
 def _site(host: str) -> str:
@@ -74,8 +74,8 @@ def acceptable_url(url: str, relay_url: str) -> bool:
     host, rhost = (u.hostname or "").lower(), (r.hostname or "").lower()
     if not host or not rhost:
         return False
-    if host in _LOOPBACK or rhost in _LOOPBACK:
-        return host in _LOOPBACK and rhost in _LOOPBACK and u.scheme in ("ws", "wss")
+    if is_loopback_name(host) or is_loopback_name(rhost):
+        return is_loopback_name(host) and is_loopback_name(rhost) and u.scheme in ("ws", "wss")
     return u.scheme == "wss" and _site(host) == _site(rhost)
 
 

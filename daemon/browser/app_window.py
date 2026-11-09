@@ -31,11 +31,11 @@ from urllib.parse import urlsplit
 
 from .. import paths
 from ..fs.refusal import Refusal
+from ..security.guards import is_loopback_name
 from . import channel
 
 DEFAULT_LOCAL_URL = "http://localhost:43917"
 PAIR_FIRST = "pair with your cloud agent first"
-_LOOPBACK = {"localhost", "127.0.0.1", "::1", "[::1]"}
 _PROBE_TIMEOUT_S = 0.8
 
 
@@ -44,7 +44,7 @@ def local_url() -> str:
     raw = (os.environ.get("ZAELAR_ENGINE_URL") or "").strip().rstrip("/")
     if raw:
         parts = urlsplit(raw)
-        if parts.scheme in ("http", "https") and (parts.hostname or "") in _LOOPBACK:
+        if parts.scheme in ("http", "https") and is_loopback_name(parts.hostname or ""):
             return raw
     return DEFAULT_LOCAL_URL
 
@@ -70,7 +70,7 @@ def _relay_link() -> str:
         return ""
     # The relay answers `{"url", "expires_at"}` or None (not paired, no such endpoint, unreachable).
     url = str((answer or {}).get("url") or "") if isinstance(answer, dict) else str(answer or "")
-    return url if urlsplit(url).scheme == "https" or (urlsplit(url).hostname or "") in _LOOPBACK else ""
+    return url if urlsplit(url).scheme == "https" or is_loopback_name(urlsplit(url).hostname or "") else ""
 
 
 def target(*, probe=_probe, relay=_relay_link) -> dict:
