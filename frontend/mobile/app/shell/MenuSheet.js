@@ -137,6 +137,16 @@ export function MenuSheet() {
           // What works FROM HERE, said plainly (P1): the folders he granted can be read, a sign-in window cannot
           // open on a phone — it opens on the computer, so the phone never promises one.
           h("small", null, () => (daemon.isConnected() ? t("daemon.mobile.connected") : t("daemon.mobile.hint"))),
+          // The browser the sign-in window uses and the link to the cloud agent, one line each — the same words
+          // the desktop's settings screen uses (`daemon.browserLine` / `daemon.linkLine`), read, never set here.
+          h("small", { class: "zm-daemon-browser" }, () => {
+            const b = daemon.browserLine();
+            return t("daemon.mobile.browser_line", { state: t(b.key, b.vars || undefined) });
+          }),
+          h("small", { class: "zm-daemon-link" }, () => {
+            const l = daemon.linkLine();
+            return t("daemon.mobile.link_line", { state: t(l.key, l.vars || undefined) });
+          }),
         ),
       ),
 

@@ -684,6 +684,8 @@ export const [appsWindowOpen, setAppsWindowOpen] = createSignal(false);
 // which owns the poll — the same split `update/watch.js` has, so the store never holds a stale copy of
 // something the network already answered.
 export const [daemonSetupOpen, setDaemonSetupOpen] = createSignal(false);
+// The pairing card's last answer (null · `{code, expiresAt}` · `{loopback}` · `{unavailable}`), here so a redraw keeps it.
+export const [daemonPair, setDaemonPair] = createSignal(null);
 
 // ---- debug / observability side-column (resizable right column, fed by the SSE /events bus) ----
 export const [debugOpen, setDebugOpen]   = createSignal(localStorage.getItem("hb_debug_open") === "1" || (typeof location !== "undefined" && new URLSearchParams(location.search).has("trace")));  // ?trace=<corr_id> deep link

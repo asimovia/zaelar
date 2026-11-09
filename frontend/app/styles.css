@@ -1830,6 +1830,39 @@ body.dbg-open .orbwrap{left:calc(50% - var(--dbg-w) / 2)}
   background:var(--hb-bg);color:var(--hb-ink);font-size:0.8125rem}
 .dsx-btn{background:var(--hb-accent);color:var(--canvas);border:none;border-radius:var(--hb-r-m);padding:8px 14px;
   font-size:0.8125rem;font-weight:600;cursor:pointer;white-space:nowrap}
+/* The SETTINGS face (V2-575): one bordered card per concern, on the box's own surface — the rows inside a card
+   (a folder, a command) keep the --hb-bg-soft step, so the elevation ladder still reads box → card → row. */
+.dsx-settings{display:flex;flex-direction:column;gap:var(--sp-4)}
+.dsx-card{padding:var(--sp-4);border:1px solid var(--hb-line);border-radius:var(--hb-r-m)}
+.dsx-card .dsx-lead{margin-bottom:var(--sp-3)}
+.dsx-kv{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-top:1px solid var(--hb-line-subtle);
+  font-size:0.8125rem}
+.dsx-k{color:var(--hb-muted)}
+.dsx-v{color:var(--hb-ink);font-weight:600;text-align:right;overflow-wrap:anywhere}
+.dsx-unknown{color:var(--hb-muted);font-style:italic}
+.dsx-tag{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:999px;font-size:0.6875rem;font-weight:600;
+  vertical-align:middle;white-space:nowrap}
+.dsx-default{color:var(--hb-accent);border:1px solid color-mix(in srgb,var(--hb-accent) 45%,transparent)}
+.dsx-soon{color:var(--hb-warn-ink);background:var(--hb-warn-bg);border:1px solid var(--hb-warn-border)}
+.dsx-item.is-default{border-color:color-mix(in srgb,var(--hb-accent) 45%,var(--hb-line))}
+.dsx-chip.is-default{border-color:color-mix(in srgb,var(--hb-accent) 45%,var(--hb-line))}
+.dsx-limit{font-style:italic}
+.dsx-browser-state{margin:0;color:var(--hb-ink);font-size:0.875rem;font-weight:600}
+.dsx-browser-state.dsx-unknown{font-weight:400}
+.dsx-progress{margin-top:var(--sp-3);height:8px;border-radius:999px;background:var(--hb-bg-soft);overflow:hidden;
+  border:1px solid var(--hb-line)}
+.dsx-progress-bar{height:100%;background:var(--hb-accent);transition:width .4s ease}
+.dsx-window{margin-top:var(--sp-3)}
+.dsx-btn:disabled,.dsx-mini:disabled{opacity:.5;cursor:not-allowed}
+.dsx-pair{margin-top:var(--sp-4)}
+.dsx-pair-code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:2rem;font-weight:700;letter-spacing:.12em;
+  color:var(--hb-ink);padding:12px 16px;border-radius:var(--hb-r-m);background:var(--hb-bg-soft);
+  border:1px solid var(--hb-line);text-align:center;user-select:all}
+.dsx-pair.is-expired .dsx-pair-code{color:var(--hb-muted);text-decoration:line-through}
+.dsx-pair-left{font-variant-numeric:tabular-nums}
+.dsx-toggle{display:flex;align-items:center;gap:10px;margin-top:var(--sp-3);font-size:0.8125rem;color:var(--hb-ink)}
+.dsx-toggle.is-disabled{color:var(--hb-muted);cursor:not-allowed}
+.dsx-switch{width:18px;height:18px;margin:0}
 @media(max-width:640px){
   .dsx-ovl{padding:12px}
   .dsx-box{max-height:92vh}
