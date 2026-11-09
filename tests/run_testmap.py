@@ -7285,6 +7285,22 @@ DOMAINS: list[dict] = [
                                 "build provenance, and the installers verify the signature when cosign is present",
             "ch": UNIT,
             "paths": ["tests/infrastructure/unit/daemon/test_the_release_is_signed_and_attested.py"]},
+        # V2-869 — THE DAEMON AS A DESKTOP RESIDENT. The installed daemon can always open its window: the person's
+        # Google Chrome when installed (found per OS; v1 supports Chrome only and /health names the browsers it
+        # does not), else a Chromium downloaded on first run as a job with progress and cancel (a cancel is
+        # remembered). `browser.auth` only when a window can really open; the transport is Playwright's pipe, never
+        # a debug port.
+        {"id": "7.100", "title": "Local daemon: brings its own browser — Chrome per OS, else a cancellable Chromium "
+                                 "download with progress; browser.auth only when launchable, never a debug port",
+            "ch": UNIT,
+            "paths": ["tests/infrastructure/unit/daemon/test_the_daemon_brings_its_own_browser.py"]},
+        # The tray is a VIEW of /health and stays off the headless path (`python -m daemon` loads no GUI); «Open
+        # Zaelar» goes local → relay link → disabled with the reason; the `.app` carries its bundle id,
+        # LSUIElement and the three folder-prompt sentences; the release publishes the zipped app per architecture.
+        {"id": "7.101", "title": "Local daemon: tray icon and the agent in an app window, packaged as Zaelar.app — "
+                                 "and none of it imported by the headless service",
+            "ch": UNIT,
+            "paths": ["tests/infrastructure/unit/daemon/test_the_desktop_shell_is_installed_not_imported.py"]},
         # V2-638 — EL SISTEMA DE ARCHIVOS DEL AGENTE: un solo árbol que comparten todos los widgets, en vez de
         # que cada uno guarde en su rincón. Lo que se fija, por orden de daño: la FRONTERA (`paths.resolve()` es
         # la única puerta y toda ruta que llega es no fiable — magnet, salida del modelo, query string; una

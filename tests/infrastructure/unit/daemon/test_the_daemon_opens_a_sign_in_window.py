@@ -124,17 +124,20 @@ def test_a_named_profile_must_be_absolute_and_symlink_free(fake):
 
 
 def test_the_capability_is_measured_never_declared(monkeypatch):
-    from daemon.browser import window
+    from daemon.browser import channel, window
     from daemon.http import routes
     monkeypatch.setattr(window, "_chromium_on_disk", lambda: True)
+    monkeypatch.setattr(window, "_chrome_executable", lambda: "")
     monkeypatch.delenv("ZAELAR_DAEMON_BROWSER", raising=False)
-    assert window.available() == (window.importlib.util.find_spec("playwright") is not None)
+    assert window.available() == channel.playwright_present()
     assert ("browser.auth" in routes.capabilities()) == window.available()
     monkeypatch.setenv("ZAELAR_DAEMON_BROWSER", "0")
     assert not window.available() and "browser.auth" not in routes.capabilities()
     monkeypatch.delenv("ZAELAR_DAEMON_BROWSER")
     monkeypatch.setattr(window, "_chromium_on_disk", lambda: False)
-    assert not window.available(), "no Chromium on disk → no window promised"
+    assert not window.available(), "no Chrome and no Chromium on disk → no window promised"
+    monkeypatch.setattr(window, "_chrome_executable", lambda: "/Applications/Google Chrome.app/x")
+    assert window.available() == channel.playwright_present(), "an installed Google Chrome is a browser to open"
 
 
 def test_the_routes_serve_the_window_behind_the_token(fake, monkeypatch):

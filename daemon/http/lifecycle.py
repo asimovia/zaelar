@@ -13,6 +13,7 @@ socket is closed immediately: a refused connection is a fact the caller can act 
 from __future__ import annotations
 
 import socket
+import socketserver
 import sys
 import threading
 from http.server import ThreadingHTTPServer
@@ -34,6 +35,15 @@ class _Server(ThreadingHTTPServer):
         self._live_lock = threading.Lock()
         self._live = 0
         super().__init__(address, handler_cls)
+
+    def server_bind(self):
+        """`HTTPServer.server_bind` minus its reverse lookup. The stock one calls `socket.getfqdn(host)` to fill
+        `server_name` — a name only CGI ever reads — and on macOS a packaged daemon's lookup of 127.0.0.1 falls
+        through to mDNS: measured 2026-11-09, the installed `Zaelar.app` sat 36 s in `mdns_hostbyaddr` before it
+        would answer `/health`, on every start. Loopback has no name worth asking the network for."""
+        socketserver.TCPServer.server_bind(self)
+        host, port = self.server_address[:2]
+        self.server_name, self.server_port = str(host), int(port)
 
     def process_request(self, request, client_address):
         with self._live_lock:

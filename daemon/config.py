@@ -1,4 +1,5 @@
-"""`daemon.json` — the daemon's only persistent state in P0: the port, the API token, the folder allowlist.
+"""`daemon.json` — the daemon's only persistent state: the port, the API token, the folder allowlist, and which
+browser its windows open in (`browser`).
 
 Written atomically (tmp + `os.replace`), which is the house pattern (`config/connectors.py`, `config/v2.py`,
 `config/credentials.py`) and matters more here than usual: the allowlist IS the permission circuit, and a
@@ -47,7 +48,27 @@ def _defaults() -> dict:
         # has not chosen yet" (show the wizard) from "the user chose nothing" (respect it).
         "roots": [],
         "configured": False,
+        # Which browser the daemon's windows open in. `channel` is the last one MEASURED usable ("chrome" — the
+        # person's own Google Chrome program — or "chromium", the one the daemon downloaded); "" means none yet.
+        # A record, not an instruction: the browser is re-measured on every launch (`daemon.browser.channel`).
+        # `auto_download`: may the resident fetch a Chromium on first run when there is no Chrome. Cancelling the
+        # download turns it off, so a person who said no is not asked again by the next start.
+        "browser": {"channel": "", "auto_download": True},
     }
+
+
+_KEYS = ("port", "token", "roots", "configured", "browser")
+
+
+def _clean_browser(raw) -> dict:
+    """Only the two known fields, each in its own domain. A hand-edited file cannot smuggle a path or a flag in."""
+    out = {"channel": "", "auto_download": True}
+    if isinstance(raw, dict):
+        if raw.get("channel") in ("", "chrome", "chromium"):
+            out["channel"] = raw["channel"]
+        if isinstance(raw.get("auto_download"), bool):
+            out["auto_download"] = raw["auto_download"]
+    return out
 
 
 def load() -> dict:
@@ -67,9 +88,10 @@ def load() -> dict:
             data = {}
         merged = _defaults()
         # Only take keys we know. A stray key from a newer version must not become an allowlist entry.
-        for key in ("port", "token", "roots", "configured"):
+        for key in _KEYS:
             if key in data:
                 merged[key] = data[key]
+        merged["browser"] = _clean_browser(merged.get("browser"))
         if not isinstance(merged.get("roots"), list):
             merged["roots"] = []
         merged["roots"] = [str(r) for r in merged["roots"] if isinstance(r, str) and r.strip()]
@@ -97,7 +119,8 @@ def save(patch: dict) -> dict:
     load()                      # make sure the cache is warm before mutating it
     with _LOCK:
         assert _CACHE is not None
-        _CACHE.update({k: v for k, v in patch.items() if k in ("port", "token", "roots", "configured")})
+        _CACHE.update({k: v for k, v in patch.items() if k in _KEYS})
+        _CACHE["browser"] = _clean_browser(_CACHE.get("browser"))
         _write(_CACHE)
         return dict(_CACHE)
 
@@ -119,6 +142,17 @@ def _write(data: dict) -> None:
             tmp.unlink()
         except Exception:       # noqa: BLE001
             pass
+
+
+def browser() -> dict:
+    """The `browser` section, always complete."""
+    return dict(load().get("browser") or {})
+
+
+def save_browser(**fields) -> dict:
+    """Merge into the `browser` section and persist. Unknown fields and values outside their domain are dropped."""
+    merged = {**browser(), **fields}
+    return dict(save({"browser": _clean_browser(merged)}).get("browser") or {})
 
 
 def token() -> str:

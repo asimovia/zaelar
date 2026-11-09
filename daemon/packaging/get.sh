@@ -40,11 +40,13 @@ command -v curl >/dev/null 2>&1 || die "curl is required and is not on PATH."
 # ⚠️ APPLE SILICON AND INTEL ARE DIFFERENT BINARIES and there is no such thing as a build that runs on both:
 # a PyInstaller bundle carries a real interpreter compiled for one architecture. Getting this wrong does not
 # degrade, it fails with "bad CPU type in executable", which reads like a broken download.
+# The macOS build is the `Zaelar.app` bundle (menu-bar icon, bundled browser driver), published zipped.
 case "$(uname -m)" in
-  arm64)  ASSET="zaelar-daemon-macos" ;;
-  x86_64) ASSET="zaelar-daemon-macos-x86_64" ;;
+  arm64)  SUFFIX="macos" ;;
+  x86_64) SUFFIX="macos-x86_64" ;;
   *)      die "unsupported architecture: $(uname -m)" ;;
 esac
+ASSET="Zaelar-$SUFFIX.zip"
 
 # ── the newest release that CARRIES THIS FILE ──────────────────────────────────────────────────────────────
 # Not `releases/latest` (an engine release whose daemon build is still running, or failed, has no daemon
@@ -59,6 +61,12 @@ resolve_tag() {
     | head -n 1 | sed 's#.*/releases/download/\([^/]*\)/.*#\1#' || true
 }
 TAG="${ZAELAR_DAEMON_TAG:-$(resolve_tag)}"
+# Releases cut before the `.app` publish the single-file program instead. Until one carries the bundle, the newest
+# that carries the old file is installed — the same daemon, without the menu-bar icon and the bundled browser.
+if [[ -z "$TAG" ]]; then
+  ASSET="zaelar-daemon-$SUFFIX"
+  TAG="$(resolve_tag)"
+fi
 [[ -n "$TAG" ]] || die "could not find a published daemon release. Set ZAELAR_DAEMON_TAG to install a specific one."
 BASE="https://github.com/$REPO/releases/download/$TAG"
 
@@ -71,7 +79,7 @@ say "downloading ${ASSET}…"
 curl -fsSL -o "$WORK/$ASSET" "$BASE/$ASSET" || die "could not download $ASSET from $TAG."
 # Each architecture publishes its OWN checksum file: one `SHA256SUMS-macos` holding both would mean two
 # jobs writing one name into a flattened release, and the second would win.
-SUMS="SHA256SUMS-${ASSET#zaelar-daemon-}"
+SUMS="SHA256SUMS-$SUFFIX"
 curl -fsSL -o "$WORK/SHA256SUMS" "$BASE/$SUMS" || die "could not download $SUMS."
 
 # ── the signature over the sums, when this Mac can check it ──────────────────────────────────────────────
@@ -114,7 +122,7 @@ say "checksum ok"
 # so the trust decision the user already made by running this line is the only one being made.
 say "installing…"
 curl -fsSL -o "$WORK/install.sh" "$RAW_BASE/macos/install.sh" || die "could not download the installer."
-chmod +x "$WORK/$ASSET"
+[[ "$ASSET" == *.zip ]] || chmod +x "$WORK/$ASSET"
 bash "$WORK/install.sh" "$WORK/$ASSET"
 
 # ⚠️ `| bash --purge` DOES NOT WORK and looks like it should: the option is read by bash, not by the script,

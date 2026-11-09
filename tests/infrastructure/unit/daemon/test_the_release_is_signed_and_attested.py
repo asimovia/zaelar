@@ -262,11 +262,11 @@ def _run_get_sh(tmp_path: Path, cosign_exit: int | None, with_bundle: bool = Tru
         pytest.skip("needs bash and shasum")
     fixtures = tmp_path / "fixtures"
     fixtures.mkdir()
-    binary = b"the daemon binary"
-    (fixtures / "zaelar-daemon-macos").write_bytes(binary)
+    binary = b"the daemon app, zipped"
+    (fixtures / "Zaelar-macos.zip").write_bytes(binary)
     import hashlib
     (fixtures / "SHA256SUMS-macos").write_text(
-        f"{hashlib.sha256(binary).hexdigest()}  zaelar-daemon-macos\n", encoding="utf-8")
+        f"{hashlib.sha256(binary).hexdigest()}  Zaelar-macos.zip\n", encoding="utf-8")
     if with_bundle:
         (fixtures / "SHA256SUMS-macos.sigstore.json").write_text("{}", encoding="utf-8")
     marker = tmp_path / "installed"

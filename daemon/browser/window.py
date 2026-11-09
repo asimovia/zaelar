@@ -18,16 +18,14 @@ directory on this disk.
 from __future__ import annotations
 
 import asyncio
-import glob
-import importlib.util
 import os
-import sys
 import threading
 from pathlib import Path
 from urllib.parse import urlsplit
 
 from .. import paths
 from ..fs.refusal import Refusal
+from . import channel, status
 
 #: What `/health` declares when this daemon can open a sign-in window (the engine reads the same string).
 CAPABILITY = "browser.auth"
@@ -37,35 +35,45 @@ _OPEN_TIMEOUT_S = 45.0
 _STATE_TIMEOUT_S = 8.0
 _NAV_TIMEOUT_MS = 20_000
 
+#: The task name of a window the person opened from the tray rather than one a task asked for.
+PERSON_TASK = "tray"
 
-def _playwright_cache_dirs() -> list[str]:
-    """Where Playwright keeps its browsers on each OS (its own documented defaults), or the env override."""
-    env = (os.environ.get("PLAYWRIGHT_BROWSERS_PATH") or "").strip()
-    if env and env != "0":
-        return [env]
-    home = Path.home()
-    if sys.platform == "darwin":
-        return [str(home / "Library" / "Caches" / "ms-playwright")]
-    if sys.platform.startswith("win"):
-        return [str(Path(os.environ.get("LOCALAPPDATA") or (home / "AppData" / "Local")) / "ms-playwright")]
-    return [str(Path(os.environ.get("XDG_CACHE_HOME") or (home / ".cache")) / "ms-playwright")]
+
+# Seams kept at their old names (tests and callers patch them here); the measuring lives in `channel` and `status`.
+_playwright_cache_dirs = channel.cache_dirs
 
 
 def _chromium_on_disk() -> bool:
-    return any(glob.glob(os.path.join(d, "chromium-*")) for d in _playwright_cache_dirs())
+    return bool(channel.chromium_dir())
+
+
+def _chrome_executable() -> str:
+    return channel.chrome_executable()
+
+
+def _select() -> str:
+    return channel.select(chrome=_chrome_executable, chromium=_chromium_on_disk)
 
 
 def available() -> bool:
-    """Can this daemon open a window? Playwright importable AND a Chromium downloaded. `ZAELAR_DAEMON_BROWSER=0` turns
-    the capability off by hand (a machine where the person does not want windows opened for them)."""
-    if (os.environ.get("ZAELAR_DAEMON_BROWSER") or "").strip() == "0":
-        return False
-    try:
-        if importlib.util.find_spec("playwright") is None:
-            return False
-    except (ImportError, ValueError):
-        return False
-    return _chromium_on_disk()
+    """Can this daemon open a window? Playwright importable AND a browser to drive — the person's Google Chrome, or
+    the Chromium the daemon downloaded. `ZAELAR_DAEMON_BROWSER=0` turns the capability off by hand (a machine where
+    the person does not want windows opened for them)."""
+    return status.describe(select=_select)["state"] == "ready"
+
+
+#: Extra Chromium flags for the sign-in window. ⚠️ NEVER `--remote-debugging-port`: Playwright talks to the browser
+#: over a PIPE it owns (`--remote-debugging-pipe`), which no other process on this computer can join. A debug PORT
+#: would let any local process — any page's `fetch` included — drive a browser the person is signed in to.
+LAUNCH_ARGS = ("--start-maximized",)
+
+
+def launch_kwargs(chosen: str) -> dict:
+    """What `launch_persistent_context` receives besides the profile. Pure, so the transport rule is testable."""
+    kwargs = {"headless": False, "viewport": None, "args": list(LAUNCH_ARGS)}
+    if chosen == "chrome":
+        kwargs["channel"] = "chrome"
+    return kwargs
 
 
 def _check_url(url: str) -> str:
@@ -100,12 +108,23 @@ def _check_profile(raw: str) -> Path:
 
 
 async def _launch_playwright(profile: Path):
-    """The real launcher: headed Chromium on a persistent profile. Returns `(context, stopper)`."""
+    """The real launcher: a headed Chrome (or the downloaded Chromium) on a persistent profile. Returns
+    `(context, stopper)`."""
     from playwright.async_api import async_playwright   # optional dependency — only reached when available()
+    chosen = _select()
     pw = await async_playwright().start()
     try:
-        ctx = await pw.chromium.launch_persistent_context(str(profile), headless=False,
-                                                          viewport=None, args=["--start-maximized"])
+        kwargs = launch_kwargs(chosen)
+        try:
+            ctx = await pw.chromium.launch_persistent_context(str(profile), **kwargs)
+        except Exception:
+            # Playwright's `channel="chrome"` looks only where Chrome installs by default; a Chrome in
+            # `~/Applications` (or wherever the registry says) is launched by its path instead.
+            exe = _chrome_executable() if chosen == "chrome" else ""
+            if not exe:
+                raise
+            kwargs.pop("channel", None)
+            ctx = await pw.chromium.launch_persistent_context(str(profile), executable_path=exe, **kwargs)
     except Exception:
         await pw.stop()
         raise
@@ -215,11 +234,23 @@ class Windows:
     def open(self, task: str, url: str, profile: str = "") -> dict:
         if not available() and self._launcher is _launch_playwright:
             raise Refusal("browser_unavailable",
-                          "This daemon cannot open a browser window: Playwright or its Chromium is not installed.")
+                          "This daemon cannot open a browser window yet: no Google Chrome, and its Chromium is not "
+                          "downloaded.")
         task = (task or "").strip()[:128]
         if not task:
             raise Refusal("bad_task", "A sign-in window belongs to a task; none was named.")
         return self._submit(self._open(task, _check_url(url), _check_profile(profile)), _OPEN_TIMEOUT_S)
+
+    def open_for_person(self) -> dict:
+        """The tray's «Sign-in window»: an empty window on the daemon's own profile, for a person who wants to sign
+        in to a site before any task asks. Never another profile — the tray has no caller to name one."""
+        if not available() and self._launcher is _launch_playwright:
+            raise Refusal("browser_unavailable", "This daemon cannot open a browser window yet.")
+        return self._submit(self._open(PERSON_TASK, "about:blank", _check_profile("")), _OPEN_TIMEOUT_S)
+
+    def current_task(self) -> str:
+        """The task whose window is open, or "" — what the tray reads to say «open» or «close»."""
+        return str((self._current or {}).get("task") or "")
 
     def state(self, task: str) -> dict:
         if self._loop is None:

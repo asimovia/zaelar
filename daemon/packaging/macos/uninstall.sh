@@ -18,6 +18,7 @@ say() { printf '  %s\n' "$*"; }
 launchctl bootout "gui/$(id -u)/$LABEL" >/dev/null 2>&1 || launchctl unload "$AGENT" >/dev/null 2>&1 || true
 rm -f "$AGENT"
 rm -f "$PREFIX/bin/zaelar-daemon" "$PREFIX/bin/zaelar-daemon.pyz"
+rm -rf "$PREFIX/Zaelar.app"
 
 printf '\n✓ zaelar-daemon stopped and removed\n'
 if [[ "${1:-}" == "--purge" ]]; then

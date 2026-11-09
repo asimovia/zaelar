@@ -135,9 +135,25 @@ def test_the_engine_does_not_import_the_daemon_either():
     )
 
 
-def test_the_daemon_has_no_third_party_dependencies_in_p0():
-    """P0 is standard library only, and `requirements.txt` says so. This is what makes `python -m daemon` run on a
-    bare Python 3.11+ with nothing installed — verified by actually running it that way, and kept honest here."""
-    reqs = (ENGINE / "daemon" / "requirements.txt").read_text(encoding="utf-8")
-    lines = [ln.strip() for ln in reqs.splitlines() if ln.strip() and not ln.strip().startswith("#")]
-    assert lines == [], f"the daemon grew a dependency without a decision: {lines}"
+# The packaged desktop program bundles these, and only these (V2-869): a new line is a decision, not a drift.
+_DECIDED_RUNTIME = {"playwright", "greenlet", "pyee", "rumps", "pyobjc-core", "pyobjc-framework-cocoa",
+                    "pystray", "pillow", "six"}
+
+
+def test_the_daemons_runtime_manifest_is_the_decided_set_pinned_and_explained():
+    """`daemon/requirements.txt` is what the INSTALLED program bundles (the browser driver, the tray's GUI library),
+    not what `python -m daemon` needs — that stays standard library only, proven on a bare runner by the artifacts
+    workflow and by `test_the_desktop_shell_is_installed_not_imported.py`. Every line is from the decided set,
+    pinned exactly, and sits under a comment that says why it is there."""
+    reqs = (ENGINE / "daemon" / "requirements.txt").read_text(encoding="utf-8").splitlines()
+    names = set()
+    for i, raw in enumerate(reqs):
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        spec = line.split(";")[0].strip()
+        assert "==" in spec, f"unpinned: {line}"
+        names.add(spec.split("==")[0].strip().lower())
+        above = [r.strip() for r in reqs[:i] if r.strip()]
+        assert above and (above[-1].startswith("#") or "==" in above[-1]), f"no reason given above: {line}"
+    assert names == _DECIDED_RUNTIME, f"the daemon's runtime set changed without a decision: {sorted(names)}"

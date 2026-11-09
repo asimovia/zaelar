@@ -190,7 +190,7 @@ def test_an_intel_mac_is_not_handed_an_apple_silicon_binary():
     script = (ENGINE / "daemon" / "packaging" / "get.sh").read_text(encoding="utf-8")
     assert "uname -m" in script
     assert "arm64)" in script and "x86_64)" in script
-    assert "zaelar-daemon-macos-x86_64" in script
+    assert 'x86_64) SUFFIX="macos-x86_64"' in script and 'ASSET="Zaelar-$SUFFIX.zip"' in script
 
 
 def test_every_asset_the_screen_links_to_is_one_the_release_publishes():
