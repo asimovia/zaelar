@@ -203,6 +203,18 @@ def test_the_relay_link_is_read_lazily_and_its_absence_is_not_an_error():
         assert app_window._relay_link() == ""
 
 
+def test_open_zaelar_reads_the_relays_one_time_link(monkeypatch):
+    """The relay's `login_link()` answers `{"url", "expires_at"}` or None; only an https link is opened."""
+    from daemon.browser import app_window
+    relay = pytest.importorskip("daemon.relay.login_link")
+    monkeypatch.setattr(relay, "login_link", lambda: {"url": "https://agent.example/once?t=1", "expires_at": "x"})
+    assert app_window._relay_link() == "https://agent.example/once?t=1"
+    monkeypatch.setattr(relay, "login_link", lambda: None)
+    assert app_window._relay_link() == ""
+    monkeypatch.setattr(relay, "login_link", lambda: {"url": "http://agent.example/once"})
+    assert app_window._relay_link() == "", "a plain-http link from far away is not opened"
+
+
 @pytest.mark.parametrize("raw,expected", [
     ("", "http://localhost:43917"),
     ("http://127.0.0.1:5000", "http://127.0.0.1:5000"),

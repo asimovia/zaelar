@@ -64,10 +64,12 @@ def _relay_link() -> str:
     except Exception:   # noqa: BLE001 — ImportError, or a relay that fails to import: no remote target
         return ""
     try:
-        fn = getattr(login_link, "login_link", None) or getattr(login_link, "get", None)
-        url = str(fn() or "") if callable(fn) else ""
+        fn = getattr(login_link, "login_link", None)
+        answer = fn() if callable(fn) else None
     except Exception:   # noqa: BLE001
         return ""
+    # The relay answers `{"url", "expires_at"}` or None (not paired, no such endpoint, unreachable).
+    url = str((answer or {}).get("url") or "") if isinstance(answer, dict) else str(answer or "")
     return url if urlsplit(url).scheme == "https" or (urlsplit(url).hostname or "") in _LOOPBACK else ""
 
 
