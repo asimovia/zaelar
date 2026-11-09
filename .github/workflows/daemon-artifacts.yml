@@ -152,6 +152,7 @@ jobs:
           for _ in $(seq 1 40); do curl -sf -m1 http://127.0.0.1:45997/health >/dev/null && break; sleep 0.25; done
           curl -sf -m5 http://127.0.0.1:45997/health | tee "$RUNNER_TEMP/health.json" | grep -q '"daemon": "zaelar"'
           grep -q '"browser.auth"' "$RUNNER_TEMP/health.json" || { echo "the installed build does not declare browser.auth"; exit 1; }
+          python -c "import json; h=json.load(open('$RUNNER_TEMP/health.json')); b=h['browser']; assert b['state']=='ready' and b['channel']=='chrome', b; assert h['unsupported_browsers']==['edge','firefox','safari'], h; print('/health browser:', b)"
           code=$(curl -s -o /dev/null -w '%{http_code}' -m5 -H 'Host: evil.example' \
                  -H 'Authorization: Bearer citoken0123456789012345678901234567890123456789' \
                  http://127.0.0.1:45997/permissions)
@@ -200,6 +201,7 @@ jobs:
             $health = Invoke-RestMethod -Uri 'http://127.0.0.1:45997/health' -TimeoutSec 5
             if ($health.daemon -ne 'zaelar') { throw "unexpected /health payload" }
             if ($health.capabilities -notcontains 'browser.auth') { throw "the installed build does not declare browser.auth" }
+            if ($health.browser.state -ne 'ready' -or $health.browser.channel -ne 'chrome') { throw "/health does not report Chrome ready: $($health.browser | ConvertTo-Json -Compress)" }
             $refused = $false
             try {
               Invoke-WebRequest -Uri 'http://127.0.0.1:45997/permissions' -TimeoutSec 5 `

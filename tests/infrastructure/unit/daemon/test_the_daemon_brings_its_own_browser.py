@@ -162,6 +162,26 @@ def test_browser_auth_is_declared_only_when_a_window_can_open(ws, monkeypatch):
     assert "browser.auth" not in routes.capabilities(), "the person's off switch wins"
 
 
+def test_health_over_http_carries_the_browser_and_the_unsupported_list(ws):
+    """The real route, over a real server: what the interface and the tray read."""
+    import threading
+    import urllib.request
+    from daemon import server as dsrv
+    srv = dsrv.build(port=0)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        with urllib.request.urlopen(f"http://127.0.0.1:{srv.server_address[1]}/health", timeout=5) as resp:
+            body = json.loads(resp.read().decode("utf-8"))
+    finally:
+        srv.shutdown()
+        srv.server_close()
+    assert body["unsupported_browsers"] == ["edge", "firefox", "safari"]
+    assert body["browser"]["state"] in ("ready", "downloading", "absent", "unsupported")
+    assert ("browser.auth" in body["capabilities"]) == (body["browser"]["state"] == "ready"), body
+    assert not any(k in json.dumps(body["browser"]) for k in ("/", "\\", "profile")), \
+        "the one route without a token names no path"
+
+
 # ── the first-run download: a job with progress and a cancel ──────────────────────────────────────────────────
 
 # The real output format, measured from `playwright install --no-shell chromium` (1.61) on a pipe.

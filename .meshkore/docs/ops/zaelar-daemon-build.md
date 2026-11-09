@@ -63,7 +63,8 @@ measured on the computer, never assumed (`daemon/browser/channel.py`):
 **v1 supports Google Chrome only** as an installed browser. Edge, Firefox and Safari are not looked for, and
 `/health` lists them as `unsupported_browsers` so the interface can say so.
 
-`/health` gains (from `daemon.browser.health_fields()`):
+`/health` gains (`routes.health()` merges `daemon.browser.health_fields()` — the one line in `routes.py`; the logic
+stays in `daemon/browser/`):
 
 ```json
 "browser": {"state": "ready|downloading|absent|unsupported", "channel": "chrome|chromium|",

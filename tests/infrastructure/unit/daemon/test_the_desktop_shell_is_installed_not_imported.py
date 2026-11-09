@@ -317,5 +317,6 @@ def test_the_workflow_smoke_starts_the_app_headless_and_checks_the_browser():
     assert "Zaelar.app/Contents/MacOS/zaelar-daemon" in workflow and '"$BIN" --no-tray' in workflow
     assert "b['state']=='ready' and b['channel']=='chrome'" in workflow
     assert "browser.auth" in workflow and "evil.example" in workflow
+    assert "h['unsupported_browsers']" in workflow and "$health.browser.state -ne 'ready'" in workflow
     assert "--ArgumentList '--no-tray'" not in workflow and "-ArgumentList '--no-tray'" in workflow
     assert "pip install -r daemon/requirements.txt -r daemon/packaging/requirements-build.txt" in workflow
