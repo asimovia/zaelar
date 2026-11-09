@@ -51,22 +51,26 @@ async def _ensure_page():
 
         # Prefer REAL Chrome (less detectable). If it is not installed, fall back to Playwright's Chromium; if there
         # is no display (headed fails), fall back to headless. Never leave the widget dead.
-        _o._context = None
-        _o._headed = False
-        for _ch in ("chrome", None):
-            try:
-                _o._context = await _launch(_o._headless(), _ch)
-                _o._headed = not _o._headless()
-                break
-            except Exception as e:
-                _o.logger.warning(f"navegador: launch channel={_ch or 'chromium'} falló "
-                               f"({_o._brief(e, 100)})")
-        if _o._context is None:
-            try:
-                _o._context = await _launch(True, None)      # last resort: headless chromium
-            except Exception as e:
-                _o.logger.warning(f"navegador: headless también falló ({_o._brief(e, 100)})")
-                raise
+        # V2-867 F2: the launch asks the worker envelope for room first. His own window is never refused: at most
+        # one short poll for the newest worker's pause to take effect, then it opens.
+        from nucleo.workers import room as _room
+        async with _room.room_for("browser", patient=False):
+            _o._context = None
+            _o._headed = False
+            for _ch in ("chrome", None):
+                try:
+                    _o._context = await _launch(_o._headless(), _ch)
+                    _o._headed = not _o._headless()
+                    break
+                except Exception as e:
+                    _o.logger.warning(f"navegador: launch channel={_ch or 'chromium'} falló "
+                                   f"({_o._brief(e, 100)})")
+            if _o._context is None:
+                try:
+                    _o._context = await _launch(True, None)      # last resort: headless chromium
+                except Exception as e:
+                    _o.logger.warning(f"navegador: headless también falló ({_o._brief(e, 100)})")
+                    raise
         _o._browser = None                               # the persistent context IS the browser (no separate object)
         from widgets.navegador import page_outcome as _po   # V2-837 G6: every navigation's status, time, size, wall
         _po.attach(_o._context)

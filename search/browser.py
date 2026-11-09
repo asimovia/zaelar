@@ -99,15 +99,19 @@ async def ensure_started() -> bool:
             os.makedirs(_PROFILE, exist_ok=True)
             _pw = await async_playwright().start()
             _hl, _gl = _where()
-            _ctx = await _pw.chromium.launch_persistent_context(
-                _PROFILE,
-                headless=os.getenv("BROWSER_SEARCH_HEADLESS", "1") == "1",
-                user_agent=_UA,
-                locale=f"{_hl}-{_gl.upper()}",
-                viewport={"width": 1280, "height": 900},
-                args=["--no-sandbox", "--disable-blink-features=AutomationControlled",
-                      "--disable-dev-shm-usage"],
-            )
+            # V2-867 F2: ask the worker envelope for room first and wait like a worker (no deadline start); the
+            # caller's own timeout is the exit — the chain then falls to the next index, as for any start failure.
+            from search import hooks as _hooks
+            async with _hooks.room_for("browser"):
+                _ctx = await _pw.chromium.launch_persistent_context(
+                    _PROFILE,
+                    headless=os.getenv("BROWSER_SEARCH_HEADLESS", "1") == "1",
+                    user_agent=_UA,
+                    locale=f"{_hl}-{_gl.upper()}",
+                    viewport={"width": 1280, "height": 900},
+                    args=["--no-sandbox", "--disable-blink-features=AutomationControlled",
+                          "--disable-dev-shm-usage"],
+                )
             _ctx.set_default_timeout(_TIMEOUT_MS)
             # warm: open google once (brings the network up, accepts consent, which stays in the profile)
             try:
