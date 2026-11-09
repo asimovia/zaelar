@@ -346,7 +346,8 @@ def test_no_label_on_the_daemon_screen_shows_a_raw_key():
     because the Spanish one is the operator's own interface."""
     used = set()
     for name in ("app/components/DaemonSetup.js", "app/components/TopBar.js",
-                 "mobile/app/shell/MenuSheet.js"):
+                 "app/components/daemon/cards.js", "app/components/daemon/folders.js",
+                 "app/components/daemon/pairing.js", "mobile/app/shell/MenuSheet.js"):
         text = (ENGINE / "frontend" / name).read_text(encoding="utf-8")
         used |= {m for m in re.findall(r't\("([a-z0-9_.]+)"\)', text)
                  if m.startswith("daemon.") or m == "topbar.daemon.title"}
