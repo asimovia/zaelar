@@ -113,7 +113,8 @@ def _read_window() -> float:
     from pathlib import Path
     days = 90.0
     try:
-        g = json.loads((Path(__file__).resolve().parents[1] / "nucleo" / "genesis.json").read_text(encoding="utf-8"))
+        import genome   # V2-859: a refused genesis reads as the last good generation
+        g = genome.genesis()
         days = float((g.get("contacts") or {}).get("active_days") or days)
         from nucleo import workspace as _ws
         over = _ws.root() / "config" / "contacts.json"

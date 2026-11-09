@@ -52,6 +52,7 @@ COPY nucleo ./nucleo
 COPY search ./search
 COPY scrape ./scrape
 COPY rules ./rules
+COPY genome ./genome
 COPY files ./files
 COPY memory ./memory
 COPY bus ./bus

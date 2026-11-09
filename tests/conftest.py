@@ -163,6 +163,19 @@ def _the_spec_ledger_starts_empty():
 
 
 @pytest.fixture(autouse=True)
+def _the_worker_envelope_measures_a_roomy_host(monkeypatch):
+    """The worker envelope admits by the host's MEASURED free memory and, since V2-867, with no deadline: a test that
+    commissions a worker on a machine near the floor waited for room that the test never controls — measured
+    2026-11-09, `test_the_pulse_beat_writes_the_workers_state_into_its_row` red at 20 % free, green at 22 %. Every
+    test starts on a roomy host with no shed held and nothing admitted; a test of the envelope patches its own."""
+    from nucleo.workers import envelope
+    monkeypatch.setattr(envelope, "measured", lambda: (16 * 2 ** 30, 12 * 2 ** 30))
+    monkeypatch.setattr(envelope, "_sheds", {})
+    monkeypatch.setattr(envelope, "_admitted", {})
+    yield
+
+
+@pytest.fixture(autouse=True)
 def _the_alert_lights_start_dark():
     """`voice.health_state` is one in-process table of amber lights; a test that noted a provider failure for real
     left `worker_tools` amber, and the next test that reads the alerts panel found an error it never caused —

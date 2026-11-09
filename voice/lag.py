@@ -7,7 +7,8 @@ signals now feed one reader:
   · the SDK's measured delays (VAD inference behind real time, the executor's ping), read from the log RECORD's
     `delay` field, never from its words (`_SdkDelays`).
 Over the declared bound (`voice_lag_s` in `config/resources.default.json`, a rule with this reader) it says so: an
-event, ONE spoken notice in his language per cooldown, and load shed through the worker envelope (T-27).
+event, ONE spoken notice in his language per cooldown, and load shed through the worker envelope (T-27) — a shed
+named by its source and released by the reading that drops back under the bound (V2-867 T591).
 
 V2-831 pass 10: the notice was said six times in a TYPED session with the microphone off — the loop lag was the
 engine's own heavy turns, not the audio path. So «the voice is falling behind» is ONLY the SDK's audio
@@ -34,6 +35,7 @@ def bound_s() -> float:
 
 
 LOOP = "voice_loop"     # the session loop's own lag: our turns' work, never the audio path
+AUDIO = "voice_audio"   # the SDK's audio signals (VAD vs real time, the executor's ping): the shed source they name
 
 
 def _audio_flows() -> bool:
@@ -43,18 +45,25 @@ def _audio_flows() -> bool:
 
 def note(lag_s: float, source: str) -> bool:
     """One lag reading. The loop's own lag over the bound only sheds, quietly. An AUDIO signal (the SDK's) over the
-    bound while audio flows acts — event and shed once per cooldown, the spoken notice once per EPISODE and only while
+    bound while audio flows acts — a shed on every reading, the event once per cooldown, the spoken notice once per EPISODE and only while
     he is talking (said again only after the lag has recovered and come back)."""
     now = time.monotonic()
+    from nucleo.workers import envelope
     if source == LOOP:
         if lag_s >= bound_s():
-            __import__("nucleo.workers.envelope", fromlist=["x"]).shed(_COOLDOWN_S)   # quietly: neither an event nor a spoken line
+            envelope.shed(_COOLDOWN_S, LOOP)    # quietly: neither an event nor a spoken line
+        else:
+            envelope.unshed(LOOP)               # V2-867 T591: the hold ends with its cause, the minute is a ceiling
         return False
     _state["worst"] = max(_state["worst"], lag_s)
     if lag_s < bound_s():
         _state["episode"] = False        # recovered: the next episode may be said again
+        envelope.unshed(AUDIO)           # releases only the audio's own hold — never the loop's or the watchdog's
         return False
-    if not _audio_flows() or now - _state["last_act"] < _COOLDOWN_S:
+    if not _audio_flows():
+        return False
+    envelope.shed(_COOLDOWN_S, AUDIO)    # every reading over the bound holds; only the notice waits a cooldown
+    if now - _state["last_act"] < _COOLDOWN_S:
         return False
     _state["last_act"] = now
     first, _state["episode"] = not _state["episode"], True
@@ -65,11 +74,6 @@ def note(lag_s: float, source: str) -> bool:
              extra={"cat": "voice", "kind_diag": "voice_lag", "lag_s": round(lag_s, 2), "source": source})
     except Exception as e:  # noqa: BLE001
         logger.debug(f"lag: event not emitted: {e!r}")
-    try:
-        from nucleo.workers import envelope
-        envelope.shed(_COOLDOWN_S)
-    except Exception as e:  # noqa: BLE001
-        logger.warning(f"lag: load not shed: {e!r}")
     try:
         from i18n import langs
         from nucleo.pulse import notices

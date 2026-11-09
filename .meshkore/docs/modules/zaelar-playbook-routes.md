@@ -1,13 +1,17 @@
-# The workflow table — what serves this kind of errand, and is that still true?
+# The playbook routes — what serves this kind of errand, and is that still true?
 
-**Module:** `nucleo/workflows/` · **Table:** `workflows` (`memory/schema.py`, facade in `memory/api.py`)
+**Module:** `nucleo/routes/` · **Table:** `playbook_routes` (`memory/schema.py`, facade in `memory/api.py`)
+**Renamed (V2-859 T563):** this was «the workflow table». A playbook (`nucleo/workers/prompts/playbook.py`) says how a
+kind of work is done; its **route** is the learned channel order for that work — same rows, same TTL, same «operator
+wins» pin. An existing install's `workflows` table is renamed in place at boot (`memory/db.py`). Heritable shape:
+`route` / `nothing_serves` genes (`genome/genes.py`, channel ids only — never the `target`).
 **Sibling doc:** `zaelar-action-map.md` — read that one too, because the first
 question anyone asks here is how the two differ.
 
 ## What it answers
 
 Before an errand pays for a browser or a Brain Worker, something has to answer *«do we already know a faster
-way to do this?»*. The workflow table is where that answer lives — including the two cases a success-only
+way to do this?»*. The playbook route table is where that answer lives — including the two cases a success-only
 route cache cannot hold:
 
 - *«nobody on the mesh serves this domain yet»* is remembered too, so the next errand of that kind skips the
@@ -22,7 +26,7 @@ route cache cannot hold:
 | `store.plan(text)` | the ANSWER. `Plan(domain, channels, ask_mesh, known_empty)`, decided from the table alone. |
 | `store.learn` / `note_empty` / `forget` | writing what a real errand proved. |
 | `store.site_for(domain)` | the browser channel, **derived** from `site_catalog`, never copied. |
-| table `workflows` | one row per `(domain, channel)`: `status`, `rank`, `source`, `target`, `evidence`, `ttl_s`, `checked_at`. |
+| table `playbook_routes` | one row per `(domain, channel)`: `status`, `rank`, `source`, `target`, `evidence`, `ttl_s`, `checked_at`. |
 
 Channels, best first: `connector` (built into the engine) → `mesh` (an agent on the network) → `browser`
 (the trusted site) → `worker` (always available, always slowest). `mesh` is written by learning and `browser`
@@ -75,7 +79,7 @@ A warm lookup answers from one indexed SELECT — no network and no model.
 
 ## Its sibling keyed by SOURCE: the outcomes record (V2-798)
 
-The workflow table is keyed by the **kind of errand** («restaurants»). Some facts belong to a **source** instead —
+The playbook route table is keyed by the **kind of errand** («restaurants»). Some facts belong to a **source** instead —
 a site host, a network agent id, a search provider — and hold for every errand that touches it: *this site
 answered 403*, *this page's text could not be extracted*, *this provider is out of quota until Thursday*, *this
 agent did not answer within its timeout*, *this agent answered with no rows and said how to ask again*, and the

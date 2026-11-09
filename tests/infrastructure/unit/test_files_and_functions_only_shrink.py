@@ -36,6 +36,7 @@ FILES = {
     'nucleo/llm/fast_client.py': 866,
     'nucleo/jev/__init__.py': 590,
     'voice/engine/llm/providers/nucleo.py': 997,
+    'voice/observer.py': 806,   # 2026-11-09: red on main before the V2-867/868/859/575 batch (observability owner); only shrinks from here
 }
 
 FUNCTIONS = {

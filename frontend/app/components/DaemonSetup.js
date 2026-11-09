@@ -21,7 +21,7 @@
 // is your entire home folder — choose the folders you actually want me to work with", and replacing that with
 // "could not add folder" would throw away the only part the user can act on.
 import { h, raw } from "../core/dom.js?v=2";
-import { createSignal } from "../core/reactive.js?v=2";
+import { createEffect, createSignal } from "../core/reactive.js?v=2";
 import * as store from "../core/store.js?v=2";
 import * as api from "../services/api.js?v=2";
 import * as daemon from "../services/daemon.js?v=3";
@@ -75,6 +75,18 @@ export function DaemonSetup() {
   };
 
   const close = () => { store.setDaemonSetupOpen(false); setProblem(""); };
+
+  // IT DISAPPEARS ON CONNECT (V2-575 P1). Opened while the computer was not connected, the screen closes by itself the
+  // moment the daemon answers — unless no folder is granted yet: then the permission step is the one thing left to do
+  // here, and the screen stays on it rather than vanishing with nothing chosen. Reopened later, it stays open.
+  let sawAbsent = false;
+  createEffect(() => {
+    const s = daemon.status();
+    if (!store.daemonSetupOpen()) { sawAbsent = false; return; }
+    if (!s || daemon.isRemote()) return;
+    if (!daemon.isConnected()) { sawAbsent = true; return; }
+    if (sawAbsent && (s.roots || []).length) { sawAbsent = false; close(); api.uiEvent("daemon:connected_close", {}); }
+  });
 
   // Escape closes. Registered once on the window rather than on the overlay, because the overlay does not
   // hold focus when the user has been typing into the path field.
@@ -232,6 +244,9 @@ export function DaemonSetup() {
     }
     return h("div", {},
       h("p", { class: "dsx-lead" }, () => t("daemon.ok.lead")),
+      // P2: whether a sign-in window can open on this screen is MEASURED by the daemon, so it is said, not assumed.
+      h("p", { class: "dsx-note dsx-cap" }, () => (s.capabilities || []).includes("browser.auth")
+        ? t("daemon.cap.browser_on") : t("daemon.cap.browser_off")),
       () => s.outdated
         ? h("p", { class: "dsx-warn" }, () => t("daemon.ok.outdated"), " ",
             h("span", { class: "dsx-mono" }, () => `${s.version} → ${s.expected_version}`))

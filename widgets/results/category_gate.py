@@ -164,16 +164,19 @@ def _file(data: dict, off: list[dict]) -> None:
 def gate(data: dict, items: list[dict], payload: dict, prior=()) -> tuple[list[dict], dict]:
     """(rows that are candidates, extra for the action's reply). Off rows are filed in `data["rejected"]`.
     `prior`: the rows already on the sheet, for an `append` (a second copy of one of them is off)."""
+    from widgets.results import provenance as _prov    # V2-868 D4: a worker's row says where it was found
+    on, unsourced = _prov.screen(data, items, payload)
     own, ctx = _own(data, payload), _context(data, payload)
-    on, off = _split(items, own, ctx, data, payload, raw_items=payload.get("items"), prior=prior)
+    on, off = _split(on, own, ctx, data, payload, raw_items=payload.get("items"), prior=prior)
     if not off:
-        return on, {}
+        return on, unsourced
     _file(data, off)
     _emit(len(on), off)
-    return on, {"off_category": off[:8],
+    return on, {**unsourced, "off_category": off[:8],
                 "note_for_worker": (f"{len(off)} row(s) are NOT what he asked for — moved to the Rejected tab: "
                                     + "; ".join(f"«{o['title'][:50]}» ({o['why']})" for o in off[:4])
-                                    + ". Do not re-add them: present only rows that fit what he asked for.")}
+                                    + ". Do not re-add them: present only rows that fit what he asked for."
+                                    + (" " + unsourced["note_for_worker"] if unsourced else ""))}
 
 
 def recheck(sheet: str, correction: str, *, relayed: bool = False) -> int:

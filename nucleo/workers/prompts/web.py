@@ -235,14 +235,19 @@ def _web_prompt(goal: str, context: str, brief: dict | None = None, *, vision: b
     funnel (gather wide → filter → score → verify finalists) closes the prompt. `vision=False` (V2-289) when the
     model driving cannot read images — the browser family then tells it to work from the text snapshot."""
     py = _py()
+    _owes_sheet = _playbook.results_contract(brief)
     try:
         from i18n import langs
         lang_code = langs.current_code()
     except Exception:
         lang_code = None
     stable = [_drawer_rules().rstrip(), str(catalog.words("header")),
-              _playbook.block(playbook, _playbook.done_when(playbook), with_a_party=False),   # a site, not a person
-              driving_block(py, in_brief=True).rstrip(), results_block(py).rstrip(), catalog.headlines(skip=("browser",))]
+              _playbook.block(playbook, _playbook.done_when(playbook), with_a_party=False,   # a site, not a person
+                              results=_owes_sheet),
+              driving_block(py, in_brief=True).rstrip(),
+              # V2-868 D3 — the sheet is named only to an errand that owes one: a site errand with no research brief
+              # (a sign-in, a chat with a seller's bot) once filled it with its own status as a «finding».
+              results_block(py).rstrip() if _owes_sheet else "", catalog.headlines(skip=("browser",))]
     variable = [worker_language_block(), _today_block()]
     variable.append(catalog.known_lines(goal))   # what is KNOWN about this errand: per task, so not on request
     recent = _recent_conversation_block()

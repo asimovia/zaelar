@@ -87,8 +87,8 @@ def _sheet(sheet: str, *, rows: int, explored: int, sources: list[dict]) -> None
 
 
 def _record(spec: dict, sheet: str, tid: str = "7") -> SessionRecord:
-    research.save(tid, _brief(spec))
     rec = SessionRecord(task_id=tid, goal=spec["goal"], kind="research", uid=sheet, sheet=sheet, status="done", ok=True)
+    research.save(rec, _brief(spec))          # V2-868: an errand's brief is kept under its ROW, never the bare task id
     rec.done_when = {"all": [{"widget": "results", "field": "empty", "is": "false"}]}
     rec.result_summary = "Here are the results."
     return rec

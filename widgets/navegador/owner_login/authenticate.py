@@ -121,6 +121,8 @@ async def _authenticate(task_id: str, url: str, *, site: str = "", goal: str = "
     # computer through a connected daemon that declares it can; otherwise nowhere, and the process is BLOCKED with
     # that state instead of waiting for a window that cannot exist.
     from nucleo import browser_window
+    from widgets.navegador.owner_login import daemon_link
+    await daemon_link.sync()                       # V2-575 P2: a loopback daemon that can open a window registers here
     reach = browser_window.reach()
     if not reach:
         await _block_for_no_window(task_id, site or url)
@@ -194,14 +196,21 @@ async def _authenticate_on_daemon(task_id: str, url: str, site: str) -> None:
     """The window opens on his computer through the connected daemon; this task waits for his sign-in there. The
     daemon's side reports it done through the same `auth_done` a local window ends with."""
     from nucleo import browser_window
-    from widgets.navegador import tasks
+    from widgets.navegador import auth_memory, tasks
+    from widgets.navegador.owner_login import daemon_link
     _o._auth_active = site
+    auth_memory.checkpoint_auth_pending(site, task_id, (_o._auth_resume.get(task_id) or {}).get("goal", ""))
     tasks.set_status(task_id, "needs_input")
     tasks.set_phase(task_id, "esperando tu inicio de sesión", True)
     if not await browser_window.open_on_daemon(url, task_id):
+        _o._auth_active = ""
+        auth_memory.clear_auth_pending()
         await _block_for_no_window(task_id, site or url)
         return
     tasks.set_login_wait(task_id, True)
+    tasks.milestone(task_id, "🔓 Te abrí la ventana en tu ordenador; lo detecto solo cuando entres")
+    if daemon_link.owns_link():                    # the loopback transport watches its own window (P2)
+        daemon_link.watch(task_id, site)
     try:
         from nucleo.pulse import notices
         await notices.notify("navegador", _o._say().login_opened, task_id=task_id, kind="ask")

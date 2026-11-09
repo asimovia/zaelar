@@ -21,7 +21,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 PACKAGES = ("nucleo", "voice", "server", "widgets", "memory", "search", "scrape", "rules", "bus", "observability",
-            "connectors", "library", "config")
+            "connectors", "library", "config", "genome")
 SKIP_PARTS = {".venv", "__pycache__", "_user", "_data"}
 DOTTED = re.compile(r"[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)+")
 INCIDENT = re.compile(r"\(?\b20(25|26)-\d\d-\d\d")

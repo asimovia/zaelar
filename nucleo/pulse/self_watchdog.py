@@ -76,7 +76,7 @@ def _emit(key: str, **extra) -> None:
 def _shed(pol: dict) -> None:
     from nucleo import dispatch
     from nucleo.workers import envelope
-    envelope.shed(pol["stuck_s"])
+    envelope.shed(pol["stuck_s"], "watchdog")    # V2-867: its own source — the voice recovering never releases it
     did = envelope.relieve(list(dispatch._SESSIONS.values()))
     logger.warning(f"self_watchdog: shedding load ({did or 'nothing to pause'})")
 
@@ -113,7 +113,7 @@ def tick(loop, now: float | None = None) -> str:
         what = "shed"       # the band holds the ALERT; only a frozen loop or real pressure restarts the engine
     facts = {"loop_age_s": round(age, 1), "free_ratio": round(avail / total, 3) if total else None}
     if what == "recovered":
-        _state["since"], _state["shed"] = 0.0, False
+        _state["since"], _state["shed"] = 0.0, envelope.unshed("watchdog") or False   # V2-867: its hold ends now
         _emit("engine_recovered", **facts)
     elif what == "shed":
         _state["since"] = _state["since"] or now

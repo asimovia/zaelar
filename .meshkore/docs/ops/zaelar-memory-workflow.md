@@ -69,7 +69,7 @@ any of the interactions above. Carry on as usual.
 | **Episodic (paste/drop)** | `memory/episodic.py` ← `memory/server_api.py` (`write_episode`) | The searchable summary is still indexed in `memories` (vec/fts). |
 | **Spoken rules** | NOT memory since V2-806: `nucleo/flash/style_directive.py` (both channels) → `rules.shape.write` → rows of the rules table (`rules/`) | That memory composes no rule; that each surface reads `rules.notes.for_surface` / `rules.prompt.voice_block`; that the event carries the scope. Nodes 2.172, 2.204, 2.811. |
 | **Request rows** | `nucleo/request/model.py` (birth) + `nucleo/circuit/ledger.py` (the row seam: worker sessions, waits, the asker's question) + `nucleo/batch/runner.py` (list steps) → `memory/tasks_store.task_put`/`task_patch`; the end state as the `spec` artifact (`artifact_put`); every ending written by `nucleo/circuit.settle` only | One row per request; a later op never improves a failed row; schema v9 `verdict`; the prompt's `task_block.recent_lines` still reads it. Nodes 2.194, 2.196, 2.198. |
-| **Workflow table** | `memory/workflows_store.workflow_upsert` / `workflow_hit` / `workflow_forget` (re-exported by `memory.api`) | That a channel that stopped serving is demoted, not kept as the first answer. |
+| **Playbook routes** | `memory/routes_store.route_upsert` / `route_hit` / `route_forget` (re-exported by `memory.api`) | That a channel that stopped serving is demoted, not kept as the first answer. |
 
 ### 1b. Memory READERS (direct, NO LLM on the path — golden rule)
 

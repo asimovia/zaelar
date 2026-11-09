@@ -130,6 +130,11 @@ async def start(app, first_lifespan_entry: bool) -> dict:
     loop_on = orchestrator_loop(active_brain)
     pulse_sub, pulse_task = pulse_sse_bridge(first_lifespan_entry, loop_on)
     slow_on = dispatcher(active_brain, first_lifespan_entry)
+    try:   # V2-859: the genome is named, kept as the last good generation, and absorbed on a generation change
+        import genome
+        genome.boot()
+    except Exception as e:  # noqa: BLE001 — the genome's bookkeeping never stops the engine booting
+        logger.warning(f"genome: boot step failed ({e!r})")
     watchers()
     return {"loop_on": loop_on, "pulse_sse_sub": pulse_sub, "pulse_sse_task": pulse_task,
             "slow_on": slow_on}

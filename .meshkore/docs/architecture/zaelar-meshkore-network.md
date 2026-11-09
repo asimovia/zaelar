@@ -63,7 +63,7 @@ never below a 60 s floor, never above 90 s; the Oracle hop keeps its own short t
 left, and none is started with under 20 s. A timeout is reported naming the agent and the seconds waited, not as
 «nobody answered»; `200` with zero rows is `ok: true, empty: true`, with the agent's own `hint` lifted to
 `agent_hint` so the worker can ask again its way. Each outcome is also recorded per agent for the next errand
-(`zaelar-workflow-table.md` §«outcomes record»).
+(`zaelar-playbook-routes.md` §«outcomes record»).
 
 ### 1.3 Coverage
 

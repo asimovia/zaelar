@@ -10,7 +10,7 @@
 > **At a glance**
 > - **Schema v9, 19 tables** (on a fresh `zaelar.db`): `state`, `memories` + `vec_memories` + `fts_memories`,
 >   `edges`, `episodic`, `journal`, `sys_kv`, `tasks` + `task_artifacts` + `fts_tasks` (v9 adds `tasks.verdict`),
->   `errands` + `errand_threads`, `workflows`, `action_map`, `paraphrase_index` + `vec_paraphrases`,
+>   `errands` + `errand_threads`, `playbook_routes`, `action_map`, `paraphrase_index` + `vec_paraphrases`,
 >   `vault_meta` + `vault_secrets`.
 > - **Spoken rules are not memory** (V2-806): they are rows of the rules table (`rules/`, its own table in the same
 >   `zaelar.db`), imported once from the old `state.rules` / `state.rule_scopes`; memory neither holds nor renders

@@ -266,7 +266,7 @@ def _schedule(entries: list[dict], delay: float) -> None:
                     # el mismo reloj. Pasando el `brief_task` se ENTRA POR LA VÍA YA PREVISTA para esto (reutilizar
                     # el brief tal cual): mismos criterios, misma ronda, misma amplitud.
                     _ctx = {"kind": ent.get("kind") or "generic", "rehydrated": True,
-                            "resume": {"brief_task": str(ent.get("id") or "")}}
+                            "resume": {"brief_task": str(ent.get("uid") or ent.get("id") or "")}}   # V2-868: its ROW
                     if ent.get("uid"):
                         _ctx["task_uid"] = ent["uid"]      # the resumed worker CONTINUES the same row (as a relay)
                     escalate.escalate_to_slowbrain(ent["goal"], context=_ctx)

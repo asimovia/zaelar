@@ -160,15 +160,15 @@ def _mesh_first_block(py: str = "python", *, browser: bool, goal: str = "") -> s
     )
 
 
-# V2-594 · what we ALREADY know about this errand, in ONE line and only when there is one: from the workflow table,
+# V2-594 · what we ALREADY know about this errand, in ONE line and only when there is one: from the playbook route table,
 # which learns from every real errand (a hand-written agent list went stale the day the mesh grew). Known to work →
 # name it; known empty → say so; nothing known → write NOTHING.
 def _known_route_line(goal: str) -> str:
     if not (goal or "").strip():
         return ""
     try:
-        from nucleo import workflows as _wf
-        plan = _wf.plan(goal)
+        from nucleo import routes as _routes
+        plan = _routes.plan(goal)
     except Exception:
         return ""
     if not plan:
