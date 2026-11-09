@@ -783,7 +783,7 @@ Flash keeps the conversation; the row is what both brains read.
   for him. Groups are rows with an id (natives + his own), a person or company may link agents, and a word of a
   person is never a card's alias (`widgets/aliases.py`). — since 2026-11-05 · nodes 2.1500, 2.1530, 2.1531, 2.1532,
   2.1533, 2.1551, 4.390 · `nucleo/memory_agent/contacts.py`, `memory/rem/contacts.py`, `widgets/contactos/groups.py`.
-- **CRIT-M13 · The day is in the state, and recall reaches the conversation.** The composed state carries the
+- **CRIT-M16 · The day is in the state, and recall reaches the conversation.** The composed state carries the
   day's EPISODES outside the live window as a schema — when, what he opened with, the first reply, how it ended —
   under a fixed budget that drops the oldest first; a first-turn kickoff is the engine's words, never an episode.
   A turn's recall reads the `conv` buffer beside the durable pills, by relevance and without the live window, and
