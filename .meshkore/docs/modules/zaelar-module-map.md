@@ -87,7 +87,9 @@ start with `make run` → `python -m server`.
   `nucleo/susurro/` was removed in V2-851.) **`nucleo/pulse/homeostasis.py`** = the
   **AUTONOMOUS HEARTBEAT** — the second level, a SIBLING of the brain (not part of it): keeps the MACHINE healthy
   (recycles a degraded LiveKit engine when safe, rotates logs, evicts dead capsules), deterministic and with NO LLM,
-  `start()/stop()` in the lifespan like the other supervisors.
+  `start()/stop()` in the lifespan like the other supervisors. `nucleo/pulse/voice_recycle.py` = its recycle (V2-871): bounded close, verified
+  registration, retries, a dead voice alerts (supervised: exits for restart); `boot_grace_s` and the other numbers in
+  `config/resources.default.json`.
 - `memory/` — **central, human-like memory**, a 100% local SUBSTRATE (the write-side LLMs go through an API), one
   SQLite file `zaelar.db` (WAL, in `memory/_data/`): a shared substrate written by the FlashBrain, the memory agent
   and the widgets, and read by the retriever on the hot path (ms). **`memory.compose_state()`** composes the
