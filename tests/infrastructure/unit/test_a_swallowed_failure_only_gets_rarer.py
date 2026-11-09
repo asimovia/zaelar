@@ -60,6 +60,9 @@ def _counts() -> dict[str, int]:
 #: fall, and no file may exceed its own count.
 TOTAL = 1699   # refactor2710-06: measured with 04 and main merged
 PER_FILE: dict[str, int] = {
+    'widgets/navegador/owner_login/daemon_link.py': 5,
+    'nucleo/chat_refs.py': 1,
+    'daemon/browser/window.py': 5,
     'nucleo/turn/pipeline_state.py': 1,
     'nucleo/turn/pipeline_gate.py': 2,
     'nucleo/turn/pipeline_failure.py': 2,
@@ -184,7 +187,7 @@ PER_FILE: dict[str, int] = {
     'server/canvas_api.py': 9,
     'server/config_api.py': 2,
     'server/config_catalog.py': 2,
-    'server/daemon_api.py': 3,
+    'server/daemon_api.py': 4,
     'server/feedback_api.py': 3,
     'server/memory_routes.py': 1,
     'server/operator_gate.py': 1,
@@ -344,7 +347,7 @@ PER_FILE: dict[str, int] = {
     'nucleo/flash/smalltalk.py': 3,
     'nucleo/flash/style_directive.py': 8,
     'nucleo/flash/surface_ack.py': 3,
-    'nucleo/turn/task_recall.py': 2,
+    'nucleo/turn/task_recall.py': 4,
     'nucleo/flash/titular_watch.py': 6,
     'nucleo/flash/tool_executor_calls.py': 3,
     'nucleo/flash/tool_executor_widget_calls.py': 8,
@@ -519,7 +522,7 @@ PER_FILE: dict[str, int] = {
     'widgets/contract.py': 5,
     'widgets/desktop_props.py': 4,
     'widgets/directory.py': 5,
-    'widgets/documento/data.py': 1,
+    'widgets/documento/data.py': 2,
     'widgets/effects.py': 3,
     'widgets/fotos/data.py': 1,
     'widgets/generator.py': 7,

@@ -57,7 +57,7 @@ def host(monkeypatch):
     state = {"mem": HIGH}
     monkeypatch.setattr(envelope, "measured", lambda: state["mem"])
     monkeypatch.setattr(envelope, "policy", lambda: {"admit_free_ratio": 0.2, "pause_free_ratio": 0.1})
-    monkeypatch.setattr(envelope, "_shed", {"until": 0.0})
+    monkeypatch.setattr(envelope, "_sheds", {})
     monkeypatch.setattr(dispatch, "_SESSIONS", {})
     monkeypatch.setattr(room, "_stopped", lambda: False)
     monkeypatch.setattr(room, "_say", lambda *a, **k: None)
