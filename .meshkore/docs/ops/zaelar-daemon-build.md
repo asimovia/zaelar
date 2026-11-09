@@ -56,14 +56,18 @@ your PC". That buys, for free and immediately, most of what a code-signing certi
 Developer account, no Microsoft account, no notarization queue, nothing that expires, and no approval between
 a fix and the person who needs it.
 
-What the bootstrap does, in order: resolve the newest **`daemon-v*`** tag (never `releases/latest` — this repo
-also tags the engine), pick the build for `uname -m`, download it, **verify its SHA-256 against the published
+What the bootstrap does, in order: pick the build for `uname -m`, resolve **the newest release that publishes
+that exact file** (never `releases/latest` — an engine release whose daemon build is still running has none; and
+never a `daemon-v*` prefix — the daemon is rebuilt on every engine tag, so a prefix tag sinks below the API's
+first page and the filter finds nothing), download it, **verify its SHA-256 against the published
 sums while it is still an inert file in a temp directory**, and only then run the installer, fetched from
 `main` so it shares the origin the user already trusted by running the line.
 
-Be exact about what that verification is: **two files from one release agreeing.** It catches a corrupt
-download and an altered mirror. It is **not provenance** — whoever can replace one can replace the other; that
-is what a signature adds (see «Signing and notarizing» below).
+Be exact about what the hash is: **two files from one release agreeing.** It catches a corrupt download, not a
+release whose binary and sums were both replaced — that is what the signature adds. When `cosign` is on PATH the
+bootstrap first verifies the Sigstore bundle over the sums against the release workflow's identity and refuses
+to install on a bad or missing signature; without it, it checks the hash only and prints the command to verify
+by hand (see «Signing» below).
 
 The direct download still works and the interface still offers it, in a `<details>` that says what it costs: a
 browser saved the file, so macOS asks the user to allow it in System Settings and Windows shows SmartScreen.
@@ -185,26 +189,73 @@ without the other two is how the download screen starts offering a 404, so node 
 
 ### Where a user gets the file
 
-`GET /api/daemon/status` carries a `downloads` block pinned to **the daemon's own version tag** — not
-`releases/latest`, which follows whatever was released last, including an engine release with no daemon assets
-in it. The 🖥 icon in the interface renders it; when the engine runs on a remote host that is the icon's whole job,
+`GET /api/daemon/status` carries a `downloads` block whose direct links follow **`releases/latest/download/`**:
+every engine tag attaches a fresh daemon build, and the old pin to `daemon-v<version>` went stale silently (the
+version number stood still while the code moved). The one-line command stays the main path and never depends
+on `latest` carrying the files. The 🖥 icon in the interface renders it; when the engine runs on a remote host that is the icon's whole job,
 since a remote engine cannot reach a daemon on somebody's desk.
 
 `ZAELAR_DAEMON_DOWNLOAD_BASE` overrides the base URL for a mirror or a private build.
 
-### Signing and notarizing
+### Signing
 
-Not a side effect of a green build: it needs an Apple Developer ID and (Windows) a code-signing certificate,
-which live with whoever publishes the build, not in a workflow. Builds published without them are **unsigned**;
-the installers clear quarantine on a file the user explicitly chose, which is the same consent they already
-gave.
+**What is signed, and by whom.** Each build job signs its own `SHA256SUMS-<suffix>` with a **Sigstore keyless**
+signature. There is no signing key: the job asks GitHub for an OIDC token (`id-token: write`), Sigstore's
+Fulcio turns it into a short-lived certificate whose subject is the workflow's identity —
+`https://github.com/asimovia/zaelar/.github/workflows/daemon-artifacts.yml@refs/tags/<tag>` on a release, issuer
+`https://token.actions.githubusercontent.com` — and the signature is recorded in the public **Rekor**
+transparency log. The job then attaches **GitHub build-provenance attestations** (`attestations: write`) to
+exactly the files the sums list: `zaelar-daemon-<suffix>` (`.exe` on Windows) and `zaelar-daemon-<suffix>.pyz`.
 
-⚠️ **There is no self-updater, deliberately.** An update channel that downloads and executes without a signed
-artifact is remote code execution by design, and bolting one onto a daemon that reads somebody's documents
-would be the worst possible place to have it. What exists instead: the engine can already read the daemon's
-version over `/health` and tell the user it is out of date, `SHA256SUMS` lets a person check the file they got
-matches the file that was built (two files agreeing — **not** provenance: whoever can replace one can replace
-the other), and upgrading is re-running the installer. A signed channel is the prerequisite for any updater.
+| Published beside each build | What it is |
+|---|---|
+| `SHA256SUMS-<suffix>` | SHA-256 of the binary and the archive, under their published names |
+| `SHA256SUMS-<suffix>.sigstore.json` | One Sigstore bundle: signature + certificate + Rekor inclusion proof |
+| (GitHub attestation store) | SLSA build provenance for each file in the sums |
+
+⚠️ **The order is the guard.** `release_names.py` rewrites the sums for the published names, so signing comes
+AFTER it — a signature taken before would be valid over a file that is never published. The script also deletes
+any signature already in `dist/daemon/` (a `.sigstore.json`, `.sig` or `.pem` from an earlier name or run), so
+the only bundle beside the sums is the one made over them. The job then verifies its own bundle against its own
+identity before uploading: a signature that only verifies on someone's laptop is an untested claim.
+
+**One bundle, not `.sig` + `.pem`.** The bundle carries the transparency-log proof as well as the signature and
+certificate, so verifying needs one extra file and no Rekor lookup to be trusted at install time; it is cosign's
+default output and what `verify-blob --bundle` reads.
+
+**Verifying a download by hand** (the checksum file first, then the binary against it):
+
+```bash
+cosign verify-blob \
+  --bundle SHA256SUMS-macos.sigstore.json \
+  --certificate-identity-regexp '^https://github.com/asimovia/zaelar/\.github/workflows/daemon-artifacts\.yml@refs/tags/' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  SHA256SUMS-macos
+shasum -a 256 -c SHA256SUMS-macos --ignore-missing
+gh attestation verify zaelar-daemon-macos --repo asimovia/zaelar
+```
+
+On Windows: the same `cosign` line with `-windows`, then `Get-FileHash zaelar-daemon-windows.exe` against the
+sums. A `workflow_dispatch` build is signed by `…/daemon-artifacts.yml@refs/heads/<branch>`, so the regexp
+above (tags only) correctly refuses it — a branch build is not a release.
+
+**The installers verify it when they can.** `get.sh` and `get.ps1` check the bundle when `cosign` is on PATH and
+refuse to install on a bad OR missing signature (whoever can replace the binary and the sums can also delete
+the bundle, so "no signature" never means "fine"). Without `cosign` they keep the hash check and print one line
+with the command above. `ZAELAR_DAEMON_SIGNER_RE` points the check at a fork's own workflow.
+
+**What this proves, and what it does not.** A passing check means the bytes are the ones this repository's
+release workflow built and signed for a tag. It does not mean the code was reviewed, and it is not an
+operating-system signature: the binaries carry no Apple Developer ID / notarization and no Windows
+Authenticode, which need an identity the publisher holds and are a later, separate step. Until then the
+installers clear quarantine on a file the user explicitly chose, which is the same consent they already gave.
+Releases cut before signing existed carry no bundle.
+
+⚠️ **There is no self-updater, deliberately.** An update channel that downloads and executes code needs a
+verified artifact at every step, and bolting one onto a daemon that reads somebody's documents would be the worst
+possible place to get that wrong. What exists instead: the engine reads the daemon's version over `/health` and
+tells the user it is out of date, and upgrading is re-running the installer — which verifies the signature as
+above. The signed checksums are the prerequisite for any updater, not the updater.
 
 ---
 
@@ -217,6 +268,7 @@ the other), and upgrading is re-running the installer. A signed channel is the p
 | The guards hold against a hostile local process | Node **7.40**, with disarms |
 | The release asset names, the download links and the installers agree | Node **7.44** |
 | The Windows and macOS builds, the installer syntax, and the guards surviving the build | `.github/workflows/daemon-artifacts.yml` on `windows-latest` / `macos-latest` |
+| The sums are signed after the rename, provenance is attested, and the installers verify the bundle | Node **7.99** (workflow + installers + `release_names.py`, with disarms) and the workflow's own verify step |
 
 The macOS install path (launchd accepts the job, starts it, defers to an already-running instance, and uninstall
 leaves nothing) can be exercised by hand by installing into a temporary `HOME` and checking `launchctl print`.

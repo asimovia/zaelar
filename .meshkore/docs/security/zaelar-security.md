@@ -382,6 +382,27 @@ Keys are entered in the ⚙ panel and kept in the gitignored credential store an
 power-user fallback (`config/.env.example` lists the names). Operator secrets that the agent must use but never
 read live in the vault (§Operator secrets vault above).
 
+## Verifying a download (the Local Daemon)
+
+Every daemon build signs its `SHA256SUMS-<suffix>` with a Sigstore keyless signature whose signer is the
+release workflow's GitHub OIDC identity (no key exists to leak; the signature is in the public Rekor log), and
+attaches GitHub build-provenance attestations to the binaries the sums list. A third party verifies a release:
+
+```bash
+cosign verify-blob \
+  --bundle SHA256SUMS-macos.sigstore.json \
+  --certificate-identity-regexp '^https://github.com/asimovia/zaelar/\.github/workflows/daemon-artifacts\.yml@refs/tags/' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  SHA256SUMS-macos
+shasum -a 256 -c SHA256SUMS-macos --ignore-missing
+gh attestation verify zaelar-daemon-macos --repo asimovia/zaelar
+```
+
+`get.sh` / `get.ps1` run the `cosign` check themselves when `cosign` is on PATH and refuse a bad or missing
+signature; without it they check the hash only and say so. This proves *which workflow built these bytes from
+which tag* — not that the code was reviewed. OS-level signing (Apple Developer ID, Windows Authenticode) is a
+later step. Detail: `.meshkore/docs/ops/zaelar-daemon-build.md` §3 «Signing».
+
 ## Hard rules (from CLAUDE.md)
 
 - `.env`, `config/settings.json`, `config/connectors.json`, `config/v2.json` and the central memory DB are never
