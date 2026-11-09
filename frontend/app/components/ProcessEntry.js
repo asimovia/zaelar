@@ -39,6 +39,13 @@ function elem(tag, cls, text){
   if(text != null) e.textContent = text;
   return e;
 }
+// A section label inside the expanded entry — the one cheap way to give a long entry structure (components.css
+// says the same of `.hb-sectitle`; this one is smaller, because it sits inside a list row, not on a page).
+function sect(key, fb, hintKey, hintFb){
+  const s = elem("div","pe-sect", tt(key, null, fb));
+  if(hintKey) s.appendChild(elem("span","pe-hint", tt(hintKey, null, hintFb)));
+  return s;
+}
 
 // ── THE HARVEST in numbers (moved here from the results sheet's process tab, V2-296 → V2-822). It is a FUNNEL, read
 // in order: how much was examined → what was collected → what fell out at each cut → what remains. The three pillars
@@ -61,6 +68,7 @@ function tallyLabel(k){ return tt("chat.procTally." + k, null, TALLY_FB[k] || k)
 
 function paintHarvest(panel, harvest){
   if(!harvest || !Object.keys(harvest).length) return;
+  panel.appendChild(sect("chat.procHarvest", "Recuento"));
   const grid = elem("div","pe-stats");
   TALLY.forEach(({k, always, sub})=>{
     const n = Number(harvest[k] || 0);
@@ -86,6 +94,7 @@ function planRows(rec, all){
 function paintPlan(box, rec, all){
   const rows = planRows(rec, all);
   if(!rows.length) return;
+  if(all) box.appendChild(sect("chat.procPlan", "Plan"));
   const ul = elem("div","pe-plan");
   for(const r of rows){
     const li = elem("div","pe-step " + r.state);
@@ -120,17 +129,21 @@ function paintWait(node, br){
 }
 
 function paintBrowser(box, br){
-  if(!br || !br.task_id) return;
+  // A browser that has not opened anything yet has nothing to show: no section, rather than a labelled empty box.
+  if(!br || !br.task_id || !(br.shot || br.url || br.page_title || br.wall)) return;
+  box.appendChild(sect("chat.procPage", "Página"));
   const wrap = elem("div","pe-page");
   const view = elem("div","pe-shot");
+  // No capture yet = one quiet line, not an empty box the size of a screenshot.
+  const noShot = () => { view.textContent = ""; view.classList.add("empty"); view.appendChild(elem("span","", tt("chat.procNoShot", null, "sin captura todavía…"))); };
   if((br.shot_rev || 0) > 0 && br.shot){
     const img = document.createElement("img");
     img.alt = br.page_title || tt("chat.procPage", null, "Página");
     img.src = "/widgets/navegador/asset/" + br.shot + "?v=" + (br.shot_rev || 0);
-    img.addEventListener("error", () => { view.textContent = ""; view.appendChild(elem("span","", tt("chat.procNoShot", null, "sin captura todavía…"))); });
+    img.addEventListener("error", noShot);
     view.appendChild(img);
   } else {
-    view.appendChild(elem("span","", tt("chat.procNoShot", null, "sin captura todavía…")));
+    noShot();
   }
   wrap.appendChild(view);
   if(br.page_title || br.url){
@@ -146,6 +159,7 @@ function paintBrowser(box, br){
 // painted whether or not the process is alive: a task waiting on his answer has usually stopped its worker.
 export function paintEntry(node, rec, open){
   node.textContent = "";
+  node.classList.toggle("open", !!(open && rec && rec.alive));   // the row hides its own activity line: the log says it
   const ask = AskSlot(node.dataset.task || node.dataset.key);
   if(!rec || !rec.alive){ node.appendChild(ask); node.appendChild(actsOf(node, null)); return; }
   const br = rec.browser || {};
@@ -155,7 +169,7 @@ export function paintEntry(node, rec, open){
     paintHarvest(node, rec.harvest || {});
     const lines = Array.isArray(rec.phases) ? rec.phases.filter(x => String(x || "").trim()) : [];
     if(lines.length){
-      node.appendChild(elem("div","hb-sectitle pe-logt", tt("chat.procLog", null, "Lo que ha ido haciendo (lo último, arriba)")));
+      node.appendChild(sect("chat.procLog", "Actividad", "chat.procLogHint", "lo último, arriba"));
       const log = elem("div","pe-log");
       lines.slice().reverse().forEach((s, i) => log.appendChild(elem("div","pe-line" + (i === 0 ? " now" : ""), String(s))));
       node.appendChild(log);
