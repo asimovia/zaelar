@@ -199,12 +199,14 @@ export const SYSTEM_SURFACES = [
     label: "First-run language onboarding",
     name: null, aliases: null },
   // V2-575 P1 (2026-09-14): the 🖥 local-daemon screen — install it, and choose which folders it may read.
+  // 2026-11-09: it is THE daemon's settings (status · folders · browser · pairing · tunnel), with the install
+  // wizard in front of it; it no longer closes itself on connect.
   // `name: null` because it is not voice-addressable: "open the daemon" is not a sentence anybody says, and
   // the thing behind the icon is an install step plus a permission grant, both of which are deliberate
   // clicks by design (see the component's own note on why this is a full screen and not a dismissible modal).
   { id: "daemon-setup", comp: DaemonSetup, target: "body", phase: "overlay", kind: "fullscreen",
     toggle: "store.daemonSetupOpen (🖥 icon in the TopBar)",
-    label: "Local daemon: install and folder permissions",
+    label: "Local daemon: install, then its settings (folders, browser, pairing, tunnel)",
     name: null, aliases: null },
 ];
 

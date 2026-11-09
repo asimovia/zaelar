@@ -129,7 +129,7 @@ session cross), push of events to the engine (it polls), an egress tunnel.
 | 7.104 | the relay link: hello, ping, bye, backoff, `profile` stripped, unknown op, deadline, size cap, pairing |
 | 7.105 | session export: one domain, own profile, 2 MB, counts-only audit |
 | 7.106 | hosted pairing code and `status.relay` |
-| 4.419 | end to end: engine → in-process relay → the real daemon link → import; presence; the phone |
+| 4.420 | end to end: engine → in-process relay → the real daemon link → import; presence; the phone |
 
 The relay in tests is a real WebSocket server on an ephemeral loopback port
 (`tests/infrastructure/unit/daemon/fake_relay.py`). No real relay is exercised by this repository.
