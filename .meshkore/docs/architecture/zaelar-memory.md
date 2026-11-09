@@ -287,7 +287,9 @@ request, and the paraphrase's words reach the turns ABOUT the request rather tha
 gaps under `LIVE_GAP_MIN`, 12 min — empty after a night's silence). `by="relevance"` puts first the turns that carry
 the most DISTINCT query terms (newest among equals; not bm25, which crowns the shortest row repeating one word), and
 three filters keep the echoes of the request out of the pick: a row whose operator words mostly ARE the query
-(`REPEAT_OVERLAP` 0.6, queries of four words or more) is his earlier attempt and is dropped; one episode (turns under
+(`REPEAT_OVERLAP` 0.6, queries of four words or more) is his earlier attempt and is dropped — unless it is also the
+oldest matching turn there is, the original request said again almost word for word, which stays with its answer
+(`_oldest_repeat`); one episode (turns under
 12 min apart) gives at most `EPISODE_ROWS` (2) turns; and the FTS stop list drops the words of a REFERENCE to the
 conversation («asked», «earlier», «today», «ago», «pedí», «antes», «hoy», «hace»…) besides the English function
 words. Without them the top of the ranking was one complaint episode said five ways while the turn, hours older,
