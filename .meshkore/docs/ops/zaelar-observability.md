@@ -500,10 +500,13 @@ and record nothing. And `src` is bounded to `user`/`frontend` — anything else 
      mem_ms}`. So ◷ SHOWS which layer was touched, how long it took and what it returned (number of cards/chars).
      DebugPanel column 4 = the layer; latency = `mem_ms`. The **`day`** row (V2-865, emitted by
      `voice/engine/llm/providers/turn_prompt.py`) reads «esquema del día → N episodios · M chars»: how many episodes
-     of the day's ledger (`memory.day_ledger`) the state block carried this turn (`compose_state` stats `day_count`,
-     `day_chars`). `0 episodios` with an earlier conversation today means the ledger was empty or over budget — the
-     first place to look when the model says it does not have what was said earlier. A recall's conversation lane
-     is counted on the turn's timings as `recall_conv_turns`.
+     of the day's ledger (`memory.day_ledger`) the «HOY, EN ESQUEMA» block carries in the LIVE TAIL of this turn's
+     prompt (`memory.day_block`, read by `live_state`; counted by `compose_state` stats `day_count`, `day_chars`).
+     `0 episodios` with an earlier conversation today means the ledger was empty, the turns were still in the live
+     chain, or the budget dropped them — the first place to look when the model says it does not have what was said
+     earlier. A recall's conversation lane is counted on the turn's timings as `recall_conv_turns`; a recall fired by
+     a reference to the conversation (`needs_recent`) shows as `recall_fired`; an order carried out after a recall
+     emits the `brain` row «🔁 recordó para una orden — la llamada, con lo recordado».
   Gated by the `memory_observability` flag (default ON, `config/settings.py`; env `ZAELAR_MEM_OBSERVABILITY`). It
   goes out through SSE `GET /events`; the mutation bridge does NOT go through the `/debug` ring (fine-grained, zero
   noise). **The mutation bridge is COALESCED**: one turn fires several `memory.updated` (conversation buffer + pills

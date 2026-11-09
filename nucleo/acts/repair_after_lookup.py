@@ -141,36 +141,66 @@ async def call_after_search(operator_text: str, answer: str, brief, spec=None, *
     («find out when it premieres and remind me») was answered with the fact and then refused. One bounded pass:
     the card the brief names, its declared actions, the caller's usual gate."""
     try:
-        wid = order_card_after_search(brief, answer)
-        if not wid or not (operator_text or "").strip() or not (answer or "").strip() or _cp.canvas_holds_the_turn(brief, operator_text, wid):
+        prep = _order_with_a_fact(operator_text, answer, brief)
+        if not prep:
             return None
-        from widgets import runtime as _rt
-        manifest = _rt.get(wid) or {}
-        declared = manifest.get("actions") or {}
-        tool = _cp.widget_data_tool()
-        if not declared or not tool:
-            return None
-        from nucleo.flash import widget_read as _wr
-        digest = str(_wr.read(wid) or "").strip()[:800]
-        card = (_cp._CARD.format(wid=wid, digest=digest) if digest else "") + _cp.days()
-        said = " ".join(str(answer).split())[:600].replace("{", "(").replace("}", ")")
-        got: list[tuple[str, dict]] = []
-        from nucleo.llm.fast_client import FastClient
-        await FastClient().complete(
-            [{"role": "system", "content": _cp.in_his_lang(_cp._SYS_AFTER_SEARCH).format(wid=wid, answer=said, actions=_cp.actions_block(manifest),
-                                                                    card=card)},
-             {"role": "user", "content": f"Operator: «{operator_text.strip()[:400]}»" + _cp.conversation(window)}],
-            spec=spec, max_tokens=400, tools=[tool], no_thinking=True,
-            on_tool_call=lambda name, args: got.append((name, args if isinstance(args, dict) else {})))
-        for name, args in got:
-            action = str(args.get("action") or "").strip()
-            if name == "widget_data" and str(args.get("widget_id") or "").strip().lower() == wid and action in declared:
-                payload = args.get("payload") if isinstance(args.get("payload"), dict) else {}
-                return {"widget_id": wid, "action": action, "payload": payload}
-        _cp.note(wid, "tras buscar, el modelo no hizo la llamada de la orden")
-        return None
+        wid, manifest, card, said = prep
+        system = _cp.in_his_lang(_cp._SYS_AFTER_SEARCH).format(wid=wid, answer=said, actions=_cp.actions_block(manifest),
+                                                               card=card)
+        return await _call_the_order(system, operator_text, wid, manifest, spec, window, "tras buscar")
     except Exception:  # noqa: BLE001
         return None
+
+
+async def call_after_recall(operator_text: str, answer: str, brief, spec=None, *, window=None) -> dict | None:
+    """`call_after_search`'s twin for a turn that RECALLED its fact (V2-865): the recall's answer pass has no
+    tools, so «put on the artist I asked you about earlier» came back as «I've got her — let me put her
+    on now» and nothing played (measured 2026-11-09). Same gate, same bounded pass, what was recalled as the fact."""
+    try:
+        prep = _order_with_a_fact(operator_text, answer, brief)
+        if not prep:
+            return None
+        wid, manifest, card, said = prep
+        system = _cp.in_his_lang(_cp._SYS_AFTER_RECALL).format(wid=wid, answer=said, actions=_cp.actions_block(manifest),
+                                                               card=card)
+        return await _call_the_order(system, operator_text, wid, manifest, spec, window, "tras recordar")
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _order_with_a_fact(operator_text: str, answer: str, brief):
+    """The card an order with a found fact is on, with what the pass needs — `(wid, manifest, card, said)` or None."""
+    wid = order_card_after_search(brief, answer)
+    if not wid or not (operator_text or "").strip() or not (answer or "").strip() or _cp.canvas_holds_the_turn(brief, operator_text, wid):
+        return None
+    from widgets import runtime as _rt
+    manifest = _rt.get(wid) or {}
+    if not (manifest.get("actions") or {}) or not _cp.widget_data_tool():
+        return None
+    from nucleo.flash import widget_read as _wr
+    digest = str(_wr.read(wid) or "").strip()[:800]
+    card = (_cp._CARD.format(wid=wid, digest=digest) if digest else "") + _cp.days()
+    said = " ".join(str(answer).split())[:600].replace("{", "(").replace("}", ")")
+    return wid, manifest, card, said
+
+
+async def _call_the_order(system: str, operator_text: str, wid: str, manifest: dict, spec, window, after: str) -> dict | None:
+    """One bounded tool pass on the card: the `widget_data` call it makes, if it is for `wid` and declared."""
+    declared = manifest.get("actions") or {}
+    got: list[tuple[str, dict]] = []
+    from nucleo.llm.fast_client import FastClient
+    await FastClient().complete(
+        [{"role": "system", "content": system},
+         {"role": "user", "content": f"Operator: «{operator_text.strip()[:400]}»" + _cp.conversation(window)}],
+        spec=spec, max_tokens=400, tools=[_cp.widget_data_tool()], no_thinking=True,
+        on_tool_call=lambda name, args: got.append((name, args if isinstance(args, dict) else {})))
+    for name, args in got:
+        action = str(args.get("action") or "").strip()
+        if name == "widget_data" and str(args.get("widget_id") or "").strip().lower() == wid and action in declared:
+            payload = args.get("payload") if isinstance(args.get("payload"), dict) else {}
+            return {"widget_id": wid, "action": action, "payload": payload}
+    _cp.note(wid, f"{after}, el modelo no hizo la llamada de la orden")
+    return None
 
 
 async def voice_after_search(operator_text: str, spoken_text: str, brief, spec, *, window, apply, send, emit,
@@ -183,6 +213,26 @@ async def voice_after_search(operator_text: str, spoken_text: str, brief, spec, 
     apply(got["widget_id"], got["action"], got["payload"])
     acted["widget"] = done["v"] = True
     emit("brain", "🔁 buscó para una orden — la llamada, con lo encontrado", role="system",
+         text=f"{got['widget_id']}:{got['action']}", extra={"cat": "flash", "widget": got["widget_id"],
+                                                          "action": got["action"]})
+    return True
+
+
+async def voice_after_recall(operator_text: str, spoken_text: str, brief, spec, *, window, apply, send, emit,
+                             acted: dict, done: dict, recalled: str | None = None, music=None) -> bool:
+    """`voice_after_search`'s twin for a turn that RECALLED (V2-865): the recall's answer pass has no tools, so
+    «put on the artist I asked you about earlier» came back as «I've got her — let me put her on now» and
+    nothing played (measured 2026-11-09). Same gate (a sure order on a card the brief names, or an answer that
+    refuses the act), same bounded pass, with what was recalled as the fact. True when it acted. Not when the
+    recall came back as an empty thread (`recalled`), the turn already acted, or a music request holds it."""
+    if recalled is not None or acted.get("widget") or done.get("v") or music is not None:
+        return False
+    got = await call_after_recall(operator_text, spoken_text, brief, spec, window=window)
+    if not got:
+        return False
+    apply(got["widget_id"], got["action"], got["payload"])
+    acted["widget"] = done["v"] = True
+    emit("brain", "🔁 recordó para una orden — la llamada, con lo recordado", role="system",
          text=f"{got['widget_id']}:{got['action']}", extra={"cat": "flash", "widget": got["widget_id"],
                                                           "action": got["action"]})
     return True

@@ -57,7 +57,15 @@ _FTS_STOP = frozenset(
     # outranked the one turn that carried the answer.
     "from that this these those which with have has had been were they them then than also just into some "
     "about would could should will shall there their here where when who whom whose how why not but if so as "
-    "be am an it its our ours we us he him she hers me mine said says say want wants wanted need needs".split()
+    "be am an it its our ours we us he him she hers me mine said says say want wants wanted need needs "
+    # V2-865 (second cut): the words of a REFERENCE to the conversation — «I asked you earlier today», «the request
+    # from some messages ago» — point at the exchange, not at what it was about; left in, they crowned the turns
+    # ABOUT the earlier request (the complaint) over the one turn that answered it (measured 2026-11-09).
+    "ask asked asks told earlier today yesterday tonight before ago request requested mention mentioned "
+    "explain explained talked talking spoke speaking discussed conversation message messages turn turns "
+    "minute minutes hour hours time again "
+    "pedí pedido pediste dije dijiste dijo antes hoy ayer anoche hace comenté comentaste hablamos hablábamos "
+    "conversación mensaje mensajes minutos horas rato explicado contado pregunté otra vez".split()
 )
 
 

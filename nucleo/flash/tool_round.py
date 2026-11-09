@@ -61,7 +61,8 @@ async def recall_spoken(text: str, query: str, spec, emit, speak) -> str | None:
     emit("brain", "🧠 recall por tool", text=query, role="system")
     _t = _time.time()
     try:
-        block, _ids = await _asyncio.to_thread(_prompt_mod.compose_recall, query)
+        # His own words travel with the model's query (V2-865): the conversation lane searches them first.
+        block, _ids = await _asyncio.to_thread(lambda: _prompt_mod.compose_recall(query, his_words=text))
     except Exception as e:  # noqa: BLE001
         logger.warning(f"recall tool falló (voz sigue): {e}")
         block = ""
