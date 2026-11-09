@@ -20,8 +20,12 @@
 # certificate is short-lived, and the signature is recorded in the public Rekor transparency log. No key exists
 # to leak. It also attaches GitHub build-provenance attestations to the binaries the sums list. That proves
 # "these bytes were built by this workflow, from this repository, at this ref" — it does NOT prove the code was
-# reviewed, and it is not an operating-system signature: Apple Developer ID and Windows Authenticode need an
-# identity only the publisher holds, and are a later, separate step (see the ops playbook).
+# reviewed, and it is not an operating-system signature: Apple Developer ID (+ notarization) and Windows
+# Authenticode need identities only the publisher holds, so their steps run only when ALL of that identity's secrets
+# exist and are otherwise skipped with an "unsigned: identity secrets absent" notice (V2-869 §5). The `manifest` job
+# writes `update-manifest.json` — what installed daemons update from — and signs it with minisign when
+# MINISIGN_SECRET_KEY exists; unsigned, every daemon refuses it (V2-869 §4). Order of the bytes: build → smoke test →
+# identity signing → rename + sums → cosign → provenance → manifest → minisign. See the ops playbook §3.
 
 name: daemon artifacts
 
@@ -234,6 +238,103 @@ jobs:
             Get-Content (Join-Path $env:RUNNER_TEMP 'tray.log'), (Join-Path $env:RUNNER_TEMP 'tray.err') -ErrorAction SilentlyContinue
           }
 
+      # ── IDENTITY SIGNING (V2-869 §5): CONDITIONAL ON THE SECRETS, AFTER THE SMOKE TEST, BEFORE THE SUMS ──────────
+      # Apple Developer ID + notarization and Windows Authenticode (Azure Artifact Signing) need identities only the
+      # publisher holds. Until every secret of an identity exists, its steps are SKIPPED with a visible notice and the
+      # ad hoc build is published exactly as before — the workflow stays green and signs the day the secrets land.
+      # Signing changes the bytes, so it runs BEFORE `release_names.py` computes the sums and before cosign signs
+      # them: every later record (sums, Sigstore bundle, provenance, update manifest) is about the signed files.
+      # Secrets are read into env only for a presence test; their values are never echoed (GitHub masks them too).
+      - name: Which publisher identities are configured
+        id: identity
+        shell: bash
+        env:
+          APPLE_DEVID_APP_P12: ${{ secrets.APPLE_DEVID_APP_P12 }}
+          APPLE_DEVID_APP_P12_PASSWORD: ${{ secrets.APPLE_DEVID_APP_P12_PASSWORD }}
+          APPLE_DEVID_INSTALLER_P12: ${{ secrets.APPLE_DEVID_INSTALLER_P12 }}
+          APPLE_DEVID_INSTALLER_P12_PASSWORD: ${{ secrets.APPLE_DEVID_INSTALLER_P12_PASSWORD }}
+          NOTARY_KEY_P8: ${{ secrets.NOTARY_KEY_P8 }}
+          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
+          NOTARY_ISSUER: ${{ secrets.NOTARY_ISSUER }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          ARTIFACT_SIGNING_ENDPOINT: ${{ secrets.ARTIFACT_SIGNING_ENDPOINT }}
+          ARTIFACT_SIGNING_ACCOUNT: ${{ secrets.ARTIFACT_SIGNING_ACCOUNT }}
+          ARTIFACT_SIGNING_PROFILE: ${{ secrets.ARTIFACT_SIGNING_PROFILE }}
+        run: |
+          set -euo pipefail
+          present() { local n=0; for v in "$@"; do [[ -n "${!v:-}" ]] && n=$((n + 1)); done; echo "$n"; }
+          APPLE=(APPLE_DEVID_APP_P12 APPLE_DEVID_APP_P12_PASSWORD APPLE_DEVID_INSTALLER_P12 APPLE_DEVID_INSTALLER_P12_PASSWORD NOTARY_KEY_P8 NOTARY_KEY_ID NOTARY_ISSUER APPLE_TEAM_ID)
+          WINDOWS=(AZURE_TENANT_ID AZURE_CLIENT_ID AZURE_CLIENT_SECRET ARTIFACT_SIGNING_ENDPOINT ARTIFACT_SIGNING_ACCOUNT ARTIFACT_SIGNING_PROFILE)
+          decide() {   # <os label> <output name> <names…>
+            local label="$1" out="$2"; shift 2
+            local have; have="$(present "$@")"
+            if [[ "$have" == "$#" ]]; then
+              echo "$out=true" >> "$GITHUB_OUTPUT"; echo "$label: identity secrets present — signing"
+            else
+              echo "$out=false" >> "$GITHUB_OUTPUT"
+              if [[ "$have" == 0 ]]; then
+                echo "::notice title=unsigned (${{ matrix.suffix }})::unsigned: identity secrets absent — $label signing skipped, the ad hoc build is published as before"
+              else
+                echo "::warning title=unsigned (${{ matrix.suffix }})::unsigned: $have of $# $label identity secrets present — all are needed, signing skipped"
+              fi
+            fi
+          }
+          if [[ "$RUNNER_OS" == "macOS" ]]; then decide "Apple Developer ID" apple "${APPLE[@]}"; else echo "apple=false" >> "$GITHUB_OUTPUT"; fi
+          if [[ "$RUNNER_OS" == "Windows" ]]; then decide "Windows Authenticode" windows "${WINDOWS[@]}"; else echo "windows=false" >> "$GITHUB_OUTPUT"; fi
+
+      # The installer package's SHAPE on every build, signed or not: current-user install (no administrator), the
+      # bundle not relocatable, `postinstall` + `install.sh` inside. Built unsigned into the runner's temp folder and
+      # never published — an unsigned .pkg is exactly the Gatekeeper warning this exists to avoid.
+      - name: The installer package has the right shape (macOS, unsigned, not published)
+        if: runner.os == 'macOS'
+        run: bash daemon/packaging/macos/sign_and_notarize.sh check dist/app/Zaelar.app "$RUNNER_TEMP/pkgcheck" ${{ matrix.suffix }}
+
+      - name: Sign with Developer ID, notarize, staple, build Zaelar.pkg (macOS)
+        if: runner.os == 'macOS' && steps.identity.outputs.apple == 'true'
+        env:
+          APPLE_DEVID_APP_P12: ${{ secrets.APPLE_DEVID_APP_P12 }}
+          APPLE_DEVID_APP_P12_PASSWORD: ${{ secrets.APPLE_DEVID_APP_P12_PASSWORD }}
+          APPLE_DEVID_INSTALLER_P12: ${{ secrets.APPLE_DEVID_INSTALLER_P12 }}
+          APPLE_DEVID_INSTALLER_P12_PASSWORD: ${{ secrets.APPLE_DEVID_INSTALLER_P12_PASSWORD }}
+          NOTARY_KEY_P8: ${{ secrets.NOTARY_KEY_P8 }}
+          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
+          NOTARY_ISSUER: ${{ secrets.NOTARY_ISSUER }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          bash daemon/packaging/macos/sign_and_notarize.sh sign dist/app/Zaelar.app dist/daemon ${{ matrix.suffix }}
+          # The signed program still runs: the hardened runtime is exactly where a missing entitlement shows up.
+          dist/app/Zaelar.app/Contents/MacOS/zaelar-daemon version
+
+      # Azure Artifact Signing (formerly Trusted Signing): the certificate never leaves Azure; the action signs with
+      # a service principal and an RFC 3161 timestamp. Pinned by commit (v2.0.0).
+      - name: Sign zaelar-daemon.exe with Authenticode (Windows)
+        if: runner.os == 'Windows' && steps.identity.outputs.windows == 'true'
+        uses: azure/artifact-signing-action@208f8af4bf26cf2af8597424e3cb5582801523ba
+        with:
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          endpoint: ${{ secrets.ARTIFACT_SIGNING_ENDPOINT }}
+          signing-account-name: ${{ secrets.ARTIFACT_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ secrets.ARTIFACT_SIGNING_PROFILE }}
+          files: ${{ github.workspace }}\dist\daemon\zaelar-daemon.exe
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
+      - name: The signed program verifies and still runs (Windows)
+        if: runner.os == 'Windows' && steps.identity.outputs.windows == 'true'
+        shell: pwsh
+        run: |
+          $sig = Get-AuthenticodeSignature ./dist/daemon/zaelar-daemon.exe
+          if ($sig.Status -ne 'Valid') { throw "Authenticode signature is $($sig.Status)" }
+          Write-Host "signed by: $($sig.SignerCertificate.Subject)"
+          & ./dist/daemon/zaelar-daemon.exe version
+
       # ⚠️ PLATFORM-DISTINCT NAMES, and not for tidiness. Both runners produce `zaelar-daemon.pyz`,
       # `manifest.json` and `SHA256SUMS` under those exact names, so the release job — which flattens every
       # downloaded artifact into one upload — had two files claiming each name and whichever landed second won.
@@ -305,10 +406,84 @@ jobs:
             dist/daemon/*
           if-no-files-found: error
 
-  release:
-    # Only on a tag, and only once both platforms built AND their guards held on the real binary.
-    if: startsWith(github.ref, 'refs/tags/')
+  # ── THE SIGNED UPDATE MANIFEST (V2-869 §4) ──────────────────────────────────────────────────────────────────
+  # One `update-manifest.json` for the whole release, so it is written once every build job has renamed, summed and
+  # cosigned its files: `update_manifest.py` hashes them under their PUBLISHED names, refuses a build name that
+  # survived the rename, and refuses any digest that disagrees with the job's `SHA256SUMS-<suffix>`. Then minisign
+  # signs it with MINISIGN_SECRET_KEY — a key that is never in the repository or the release; the installed daemon
+  # verifies against the PUBLIC key committed at `daemon/update/PUBLIC_KEY`. Without the secret the manifest is
+  # published UNSIGNED with a notice, and every client refuses it: that is the designed behaviour, not a gap.
+  manifest:
     needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: release
+          pattern: zaelar-daemon-*
+          merge-multiple: true
+
+      - name: Write the update manifest (after the rename and the sums)
+        run: python daemon/packaging/update_manifest.py release --tag "${{ github.ref_name }}"
+
+      - name: Sign the update manifest (minisign)
+        id: minisign
+        shell: bash
+        env:
+          MINISIGN_SECRET_KEY: ${{ secrets.MINISIGN_SECRET_KEY }}
+          MINISIGN_PASSWORD: ${{ secrets.MINISIGN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${MINISIGN_SECRET_KEY:-}" ]]; then
+            echo "::notice title=update manifest unsigned::unsigned: MINISIGN_SECRET_KEY absent — update-manifest.json is published without a signature and every installed daemon will REFUSE it"
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          sudo apt-get install -y -qq minisign >/dev/null
+          umask 077
+          KEY="$RUNNER_TEMP/minisign.key"
+          trap 'rm -f "$KEY"' EXIT
+          printf '%s\n' "$MINISIGN_SECRET_KEY" > "$KEY"
+          BUILD="$(python -c "import json; print(json.load(open('release/update-manifest.json'))['build'])")"
+          printf '%s\n' "${MINISIGN_PASSWORD:-}" | minisign -S -s "$KEY" -m release/update-manifest.json \
+            -t "zaelar-daemon update-manifest build=$BUILD ref=${{ github.ref_name }}"
+          echo "signed=true" >> "$GITHUB_OUTPUT"
+
+      # Verified with the CLIENT's own code and the COMMITTED public key — so a secret key that does not match the
+      # key the daemons trust fails the release here, not on every user's machine.
+      - name: The signature verifies the way an installed daemon will verify it
+        if: steps.minisign.outputs.signed == 'true'
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from daemon.update import check, public_keys
+          data = Path("release/update-manifest.json").read_bytes()
+          sig = Path("release/update-manifest.json.minisig").read_text()
+          m = check.verify(data, sig, "${{ github.ref_name }}", public_keys())
+          print("verified:", m.version, "build", m.build, sorted(m.platforms))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zaelar-daemon-update-manifest
+          path: |
+            release/update-manifest.json
+            release/update-manifest.json.minisig
+          if-no-files-found: warn
+
+  release:
+    # Only on a tag, and only once every platform built, its guards held on the real binary, and the manifest exists.
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [build, manifest]
     runs-on: ubuntu-latest
     permissions:
       contents: write

@@ -85,7 +85,8 @@ in `daemon/`.
 state: full dot connected, half dot waiting, cross error), Windows a notification-area icon on `pystray` + `Pillow`
 (glyph and colour). It is a VIEW of `/health`, polled over HTTP every 5 s like any client, and never owns state. Menu:
 **Open Zaelar · Allowed folders… · Sign-in window** (open/close; while there is no browser: download / cancel) ·
-**Check for updates** (reads the version from `/health`; the update client is a later step) · **Quit**. On by default
+**Check for updates** (runs the signed update check now; once a verified update is waiting the item becomes
+«Install Zaelar X (build N) and restart» — §3 «How the installed daemon updates itself») · **Quit**. On by default
 for the packaged program, off for `python -m daemon`; `--tray` / `--no-tray` override. The HTTP server binds BEFORE
 the GUI library loads, so an icon that cannot be drawn never costs the daemon (no tray → it serves headless and says
 why). On Windows the `.exe` stays a console program (so `status` prints in a terminal) and the tray hides the console
@@ -253,7 +254,41 @@ It does more than build. On each runner it:
 5. on macOS, checks the `.app`'s `Info.plist` (bundle id, `LSUIElement`, the three usage strings) and its ad-hoc
    seal (`codesign --verify --deep --strict`), and that the bundled Node driver is executable;
 6. starts the resident WITH its tray (the packaged default) and checks it still answers — built and started, not
-   clicked: clicking the menu is a manual check.
+   clicked: clicking the menu is a manual check;
+7. on macOS, builds the installer package UNSIGNED (never published) and checks its shape: a current-user install
+   with no administrator, the bundle not relocatable, `postinstall` + `install.sh` inside.
+
+### The pipeline, in the order the BYTES go through it
+
+```
+build → smoke test → identity signing (conditional) → rename → sums → cosign → provenance → manifest → minisign → release
+```
+
+Identity signing changes the bytes, so it runs BEFORE the sums: every later record — sums, Sigstore bundle,
+provenance, update manifest — is then about the files that are actually published. The rename recomputes the sums
+(below), so cosign signs after it; the manifest is written by its own job once every build job has renamed,
+summed and cosigned, over the PUBLISHED names, and minisign signs it last.
+
+| Step | Where | Runs when | Without it |
+|---|---|---|---|
+| Smoke test (the binary runs, finds Chrome, its guards hold) | each build job | always | — (the job fails) |
+| Developer ID sign + notarize + staple + `Zaelar.pkg` | macOS jobs, `macos/sign_and_notarize.sh sign` | ALL eight Apple secrets exist | notice «unsigned: identity secrets absent»; the ad hoc zip ships as before |
+| Authenticode (Azure Artifact Signing) | Windows job, `azure/artifact-signing-action` pinned by commit | ALL six Azure secrets exist | the same notice; the unsigned `.exe` ships as before |
+| Rename + sums | `release_names.py` | always | — |
+| Sigstore keyless over the sums + provenance | each build job | always | — |
+| `update-manifest.json` | `manifest` job, `update_manifest.py` | always | — |
+| minisign over the manifest | `manifest` job | `MINISIGN_SECRET_KEY` exists | notice: published UNSIGNED — every installed daemon refuses it |
+
+**The secret names the workflow reads, and nothing else** (node 7.111 fails on any other `secrets.*`):
+
+| Identity | Secrets |
+|---|---|
+| Apple | `APPLE_DEVID_APP_P12`, `APPLE_DEVID_APP_P12_PASSWORD` (the Developer ID Application `.p12`, base64), `APPLE_DEVID_INSTALLER_P12`, `APPLE_DEVID_INSTALLER_P12_PASSWORD` (Developer ID Installer), `NOTARY_KEY_P8` (an App Store Connect API key, PEM or base64), `NOTARY_KEY_ID`, `NOTARY_ISSUER`, `APPLE_TEAM_ID` |
+| Windows | `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `ARTIFACT_SIGNING_ENDPOINT`, `ARTIFACT_SIGNING_ACCOUNT`, `ARTIFACT_SIGNING_PROFILE` |
+| Update manifest | `MINISIGN_SECRET_KEY` (the whole minisign secret key file), `MINISIGN_PASSWORD` |
+
+A PARTIAL set (some secrets of an identity, not all) is a warning, not a failure, and signs nothing: the workflow
+stays green while secrets are being added one by one.
 
 ```bash
 git tag daemon-v0.2.0 && git push origin daemon-v0.2.0
@@ -350,17 +385,114 @@ the bundle, so "no signature" never means "fine"). Without `cosign` they keep th
 with the command above. `ZAELAR_DAEMON_SIGNER_RE` points the check at a fork's own workflow.
 
 **What this proves, and what it does not.** A passing check means the bytes are the ones this repository's
-release workflow built and signed for a tag. It does not mean the code was reviewed, and it is not an
-operating-system signature: the binaries carry no Apple Developer ID / notarization and no Windows
-Authenticode, which need an identity the publisher holds and are a later, separate step. Until then the
-installers clear quarantine on a file the user explicitly chose, which is the same consent they already gave.
-Releases cut before signing existed carry no bundle.
+release workflow built and signed for a tag. It does not mean the code was reviewed. Releases cut before signing
+existed carry no bundle.
 
-⚠️ **There is no self-updater, deliberately.** An update channel that downloads and executes code needs a
-verified artifact at every step, and bolting one onto a daemon that reads somebody's documents would be the worst
-possible place to get that wrong. What exists instead: the engine reads the daemon's version over `/health` and
-tells the user it is out of date, and upgrading is re-running the installer — which verifies the signature as
-above. The signed checksums are the prerequisite for any updater, not the updater.
+### Identity signing — Developer ID, notarization, Authenticode (conditional)
+
+**macOS** (`daemon/packaging/macos/sign_and_notarize.sh sign`): the two `.p12` go into a throwaway keychain
+(deleted on exit, whatever happens); every Mach-O in the bundle is signed inside-out with the hardened runtime and a
+secure timestamp, then the bundle (not `codesign --deep` for SIGNING: it applies one set of options to nested code
+it never inspected — `--deep` is used to VERIFY); the team identifier must equal `APPLE_TEAM_ID`. Entitlements are
+the minimum, in `macos/entitlements.plist`: `allow-jit` (the bundled Node driver) and
+`allow-unsigned-executable-memory` (CPython's ctypes closures). The app is notarized (`notarytool submit --wait`,
+anything but `Accepted` fails the job and prints Apple's log), stapled, checked with `spctl`, and RE-ZIPPED — so
+`Zaelar-<suffix>.zip`, what `get.sh` and the auto-update install, carries a notarized app. Then `Zaelar.pkg`:
+`pkgbuild` + `productbuild` with a distribution that enables only the current user's home (no administrator; the
+component is marked `auth="none"` and not relocatable), payload `~/Library/Application Support/Zaelar/Zaelar.app`,
+and a `postinstall` that runs the same `install.sh` to register the LaunchAgent — signed with the Installer
+identity, notarized, stapled, published as `Zaelar-<suffix>.pkg`. The signed program is started once more
+(`version`) — the hardened runtime is exactly where a missing entitlement shows.
+
+**Windows**: `azure/artifact-signing-action` (formerly Trusted Signing; the certificate never leaves Azure) signs
+`zaelar-daemon.exe` with SHA-256 and an RFC 3161 timestamp; the job then requires `Get-AuthenticodeSignature` to
+say `Valid` and runs the signed program. No separate installer: the onefile `.exe` plus `install.ps1` stays the
+install path.
+
+⚠️ **Not verified yet:** none of the signed branches has run — no identity exists. The structure is pinned (node
+7.111) and the unsigned package's shape is checked on every macOS build; the first run with the secrets is the
+real test, on a CLEAN machine, before a release is announced.
+
+### The signed update manifest
+
+One `update-manifest.json` per release (`daemon/packaging/update_manifest.py`, shape in `daemon/update/manifest.py`
+— writer and reader import the same table):
+
+```json
+{"product": "zaelar-daemon", "version": "0.2.2", "build": 123, "tag": "v3.140",
+ "published_at": "2026-11-09T12:00:00Z", "min_engine_build": 0,
+ "platforms": {"macos":        {"asset": "Zaelar-macos.zip",          "sha256": "…", "size": 1},
+               "macos-x86_64": {"asset": "Zaelar-macos-x86_64.zip",   "sha256": "…", "size": 1},
+               "windows":      {"asset": "zaelar-daemon-windows.exe", "sha256": "…", "size": 1},
+               "pyz":          {"asset": "zaelar-daemon-macos.pyz",   "sha256": "…", "size": 1}},
+ "installers": {"macos": {"asset": "Zaelar-macos.pkg", "sha256": "…", "size": 1}},
+ "next_key": null}
+```
+
+- **`build` is the engine's `update/BUILD` (V2-553)** at the tag; `build.py` stamps the same integer into the
+  packaged daemon (`daemon/update/BUILD`), so `/health.update.current.build`, the manifest and the engine's own
+  number are ONE number, and the engine's connection icon can say "your daemon is older" with one comparison.
+- The writer **refuses** a build name that survived the rename and any digest that disagrees with the job's
+  `SHA256SUMS-<suffix>`; a platform whose build did not run is left out (and said so), not fatal.
+- `installers` appears only when the notarized `.pkg` was built; the updater installs the zip.
+- `next_key` rotates the key without a flag day: a manifest signed by a trusted key may announce the next public
+  key, which the client remembers. A key is only ever learned from a manifest that verified.
+
+**Signed with minisign** (`minisign -S`, prehashed Ed25519) using `MINISIGN_SECRET_KEY`, which is never in the
+repository or the release. The **public key is committed at `daemon/update/PUBLIC_KEY`** — so trusting this
+repository's `main` is the only trust decision, and the client never fetches the key it verifies with from the same
+place as the thing it verifies. The job verifies its own signature with the CLIENT's code and the COMMITTED key,
+so a secret that does not match the committed key fails the release here, not on users' machines. ⚠️ The committed
+key is a DEVELOPMENT key: it is rotated (new pair, new `PUBLIC_KEY`, new secret) before the first real release.
+
+### How the installed daemon updates itself (`daemon/update/`)
+
+- **When:** an installed daemon checks once a day (first check two minutes after start; `ZAELAR_DAEMON_AUTO_UPDATE=0`
+  turns it off), and whenever the person picks «Check for updates» in the tray. A source tree never updates itself.
+- **Where:** the newest release (newest-first, as the API lists them) that CARRIES `update-manifest.json` — the
+  same "asset exists" rule as `get.sh`.
+- **What must verify** (any failure → `state = failed`, the reason in `/health.update.error`, nothing downloaded or
+  changed): a `.minisig` exists (an unsigned manifest is refused — correct, not a gap), it verifies against the
+  committed key (or a `next_key` learned from a verified manifest), the manifest parses, and its `tag` is the
+  release it was found on (no replay of a valid manifest from another release).
+- **Decision:** newer when the manifest's `build` is greater than this daemon's; the daemon's `version` only breaks
+  a tie for a build that does not know its number. Never backwards.
+- **Download:** to the updater's own staging folder; size and sha256 against the signed manifest; when `cosign` is
+  on PATH, also the Sigstore bundle over `SHA256SUMS-<suffix>` and the asset's line in it (the same check as
+  `get.sh`; optional — the manifest already pins the bytes). Any mismatch deletes the download → `failed`.
+- **Swap** (from `ready` only, after re-hashing the staged file): macOS extracts the zip beside `Zaelar.app`,
+  requires the new bundle's code signature to verify and — on a Developer-ID install — the SAME team, exchanges
+  the two directories in one atomic `renamex_np(RENAME_SWAP)` and restarts with `launchctl kickstart -k
+  gui/<uid>/com.zaelar.daemon`. Windows renames the running `.exe` aside (`zaelar-daemon.old.exe`), renames the new
+  one into place (and back on failure), and a detached `cmd` restarts it two seconds after this process exits; the
+  `.old.exe` is deleted by the next check. Chosen over "swap at next start via the scheduled task" because
+  `install.ps1`'s Startup-folder fallback has no launcher to run a swap. A `.pyz` is `os.replace`d (atomic).
+- **Automatic install** happens only when no sign-in window is open; otherwise the tray shows «Install Zaelar X
+  (build N) and restart».
+- **State:** `<state dir>/update/state.json` — `state` (`idle | downloading | ready | failed`), `error`,
+  `last_check`, `last_result`, `available`, `pending`, `next_key`. `ready` is reachable only through `downloading`.
+- **`/health.update`** = `{current: {version, build}, available: {version, build, tag, published_at} | null,
+  state, error, last_check}` — read from that file, nothing fetched while answering.
+
+⚠️ **Not verified live:** no release carries a signed manifest yet (no tag cut, no `MINISIGN_SECRET_KEY` stored),
+the macOS swap + `kickstart` was exercised on fake bundles only, and the Windows rename dance only as file
+operations on macOS — never on Windows.
+
+### How a user verifies a release
+
+The `cosign` + `shasum` + `gh attestation` lines above, plus, for the manifest:
+
+```bash
+curl -fsSLO https://raw.githubusercontent.com/asimovia/zaelar/main/daemon/update/PUBLIC_KEY
+minisign -V -p PUBLIC_KEY -m update-manifest.json      # then compare the sha256 it lists with the file
+spctl --assess --type install --verbose=2 Zaelar-macos.pkg        # notarized package (when published)
+```
+
+`get.sh` / `get.ps1` do all of it when the tools are present: cosign over the sums (bad or missing → refused);
+minisign over the manifest when the release has one AND its signature (bad, or not listing the bytes that arrived
+→ refused; no manifest or unsigned → skipped and said); and on a Mac they prefer `Zaelar-<suffix>.pkg` whenever the
+SIGNED sums list one — `install.sh` then requires `pkgutil --check-signature` and Gatekeeper
+(`spctl --assess --type install`) to accept it before taking the app out of it.
 
 ---
 
@@ -376,6 +508,8 @@ above. The signed checksums are the prerequisite for any updater, not the update
 | The sums are signed after the rename, provenance is attested, and the installers verify the bundle | Node **7.99** (workflow + installers + `release_names.py`, with disarms) and the workflow's own verify step |
 | The browser: Chrome per OS, the Chromium download job (start → progress → ready / cancelled / failed), `browser.auth` only when launchable, the channel recorded, never a debug port | Node **7.100**, with disarms |
 | The tray is a view of `/health` and off the headless path; «Open Zaelar» local → relay → disabled; the `.app`'s `Info.plist`; the zipped app in the release; installers parse | Node **7.101**, with disarms |
+| The auto-update: minisign-signed manifest verified with the committed key (pure-Python Ed25519); unsigned / other key / tampered / replayed / size or sha256 mismatch / staged file changed → `failed` with the installed bytes unchanged; the state machine; `/health.update`; the swap's rollback; «Install» only when verified | Node **7.110**, with disarms |
+| The manifest written after the rename and agreeing with the signed sums; conditional minisign / Developer ID / Authenticode with a visible skip and only the agreed secret names; the installers verify the manifest and prefer a notarized `.pkg`; the `.pkg` is a current-user install | Node **7.111**, with disarms |
 
 The macOS install path (launchd accepts the job, starts it, defers to an already-running instance, and uninstall
 leaves nothing) can be exercised by hand by installing into a temporary `HOME` and checking `launchctl print`.

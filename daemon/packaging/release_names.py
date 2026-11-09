@@ -28,6 +28,8 @@ DIST = Path(__file__).resolve().parent.parent.parent / "dist" / "daemon"
 # (onedir, zipped by `build.py`): the Mac builds publish `Zaelar-macos.zip` / `Zaelar-macos-x86_64.zip`.
 _RENAMES = (
     ("Zaelar.zip", "Zaelar-{suffix}.zip"),
+    # Only when the identity secrets exist: the Developer-ID-signed, notarized installer package (`macos/sign_and_notarize.sh`).
+    ("Zaelar.pkg", "Zaelar-{suffix}.pkg"),
     ("zaelar-daemon", "zaelar-daemon-{suffix}"),
     ("zaelar-daemon.exe", "zaelar-daemon-{suffix}.exe"),
     ("zaelar-daemon.pyz", "zaelar-daemon-{suffix}.pyz"),

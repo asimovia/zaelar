@@ -7301,6 +7301,24 @@ DOMAINS: list[dict] = [
                                  "and none of it imported by the headless service",
             "ch": UNIT,
             "paths": ["tests/infrastructure/unit/daemon/test_the_desktop_shell_is_installed_not_imported.py"]},
+        # V2-869 §4 — THE SIGNED AUTO-UPDATE. The installed daemon updates only from an `update-manifest.json` signed
+        # with minisign and verified (pure-Python Ed25519, stdlib only) against the committed PUBLIC key; the manifest
+        # pins each asset's sha256 and size. Any verification failure — unsigned, other key, tampered, replayed from
+        # another release, size/sha256 mismatch, a staged file changed before the swap — ends in `failed` with the
+        # installed program's bytes unchanged (asserted on the bytes, not the state). `/health.update` carries it.
+        {"id": "7.110", "title": "Local daemon: updates itself only from a minisign-signed manifest; any verification "
+                                 "failure leaves the installed program untouched",
+            "ch": UNIT,
+            "paths": ["tests/infrastructure/unit/daemon/test_the_daemon_updates_itself_only_when_verified.py"]},
+        # V2-869 §4-5 — THE RELEASE SIGNS WHAT IT CAN AND SAYS WHAT IT SKIPPED. The manifest is written over the
+        # published names after the rename and must agree with the signed sums; minisign, Developer ID + notarization
+        # and Authenticode run only when their secrets exist (by the agreed NAMES only), after the smoke test and
+        # before the sums, with an «unsigned: identity secrets absent» notice otherwise; the installers verify the
+        # signed manifest with minisign when present and prefer a notarized .pkg; the .pkg is a current-user install.
+        {"id": "7.111", "title": "Local daemon release: signed update manifest, conditional identity signing with a "
+                                 "visible skip, installers that verify more",
+            "ch": UNIT,
+            "paths": ["tests/infrastructure/unit/daemon/test_the_release_signs_what_it_can_and_says_what_it_skipped.py"]},
         # V2-638 — EL SISTEMA DE ARCHIVOS DEL AGENTE: un solo árbol que comparten todos los widgets, en vez de
         # que cada uno guarde en su rincón. Lo que se fija, por orden de daño: la FRONTERA (`paths.resolve()` es
         # la única puerta y toda ruta que llega es no fiable — magnet, salida del modelo, query string; una

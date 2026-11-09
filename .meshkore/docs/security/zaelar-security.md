@@ -1,7 +1,7 @@
 ---
 title: Zaelar Security
 category: security
-updated: 2026-09-30
+updated: 2026-11-09
 owner: ricart
 status: current
 ---
@@ -400,8 +400,25 @@ gh attestation verify zaelar-daemon-macos --repo asimovia/zaelar
 
 `get.sh` / `get.ps1` run the `cosign` check themselves when `cosign` is on PATH and refuse a bad or missing
 signature; without it they check the hash only and say so. This proves *which workflow built these bytes from
-which tag* — not that the code was reviewed. OS-level signing (Apple Developer ID, Windows Authenticode) is a
-later step. Detail: `.meshkore/docs/ops/zaelar-daemon-build.md` §3 «Signing».
+which tag* — not that the code was reviewed. OS-level signing (Apple Developer ID + notarization, Windows
+Authenticode) runs in the same workflow only when the publisher's identity secrets exist, and is skipped with a
+visible notice otherwise. Detail: `.meshkore/docs/ops/zaelar-daemon-build.md` §3.
+
+## Updates (the Local Daemon updates itself)
+
+The installed daemon downloads and executes new code, so every step is verified and **any verification failure
+leaves the installed program untouched**. It trusts exactly one thing: the minisign PUBLIC key committed at
+`daemon/update/PUBLIC_KEY` (plus a successor announced in `next_key` by a manifest that already verified). Each
+release's `update-manifest.json` is signed in CI with a secret key that is never in the repository or the release,
+and pins every asset's sha256 and size. The client refuses an unsigned manifest, a signature by an unknown key, a
+tampered manifest, and a manifest whose `tag` is not the release it was found on (replay); it downloads to its own
+staging folder, refuses a size or sha256 mismatch (and, with `cosign` present, a bad Sigstore bundle over the sums),
+re-hashes the staged file right before the swap, and on macOS requires the new bundle's code signature to verify
+and — on a Developer-ID install — the same team. The swap is atomic on macOS (`renamex_np` RENAME_SWAP) and a
+rename with rollback on Windows. Ed25519 verification is pure Python (`daemon/update/ed25519.py`, RFC 8032 vectors
+in the tests) so the daemon stays standard-library only; it handles only public data, so constant time is not
+needed. What it does not defend against: a compromise of the signing key itself (rotation via `next_key` exists,
+revocation does not), or of this repository's `main`, which is where the public key comes from.
 
 ## Hard rules (from CLAUDE.md)
 

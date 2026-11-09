@@ -11,8 +11,9 @@
 # directory, which is never touched, so an upgrade keeps the folders the user chose.
 #
 #   ./install.sh                     use the artifact next to this script, or the newest in dist/
-#   ./install.sh /path/to/artifact   use a specific one: Zaelar-macos.zip / Zaelar.app (the desktop app, with
-#                                    its menu-bar icon and its browser driver), or a onefile binary / a .pyz
+#   ./install.sh /path/to/artifact   use a specific one: Zaelar-macos.pkg (signed + notarized, checked with
+#                                    Gatekeeper) / Zaelar-macos.zip / Zaelar.app (the desktop app, with its
+#                                    menu-bar icon and its browser driver), or a onefile binary / a .pyz
 #
 # THE APP is installed as `<prefix>/Zaelar.app` and started by the same LaunchAgent; `<prefix>/bin/zaelar-daemon`
 # becomes a two-line launcher into it, so the terminal commands (`status`, `allow`, …) are unchanged.
@@ -54,7 +55,8 @@ if [[ -z "$SOURCE" ]]; then
   # ran this script next to it lands here. Without these four lines that person gets "no artifact found" while
   # the artifact sits in the same folder, which is the most demoralising install failure there is.
   ARCH_SUFFIX="macos"; [[ "$(uname -m)" == "x86_64" ]] && ARCH_SUFFIX="macos-x86_64"
-  for candidate in "$HERE/Zaelar-$ARCH_SUFFIX.zip" "$HOME/Downloads/Zaelar-$ARCH_SUFFIX.zip" \
+  for candidate in "$HERE/Zaelar-$ARCH_SUFFIX.pkg" "$HOME/Downloads/Zaelar-$ARCH_SUFFIX.pkg" \
+                   "$HERE/Zaelar-$ARCH_SUFFIX.zip" "$HOME/Downloads/Zaelar-$ARCH_SUFFIX.zip" \
                    "$HERE/../../../dist/daemon/Zaelar.zip" "$HERE/../../../dist/app/Zaelar.app" \
                    "$HERE/zaelar-daemon-macos" "$HERE/zaelar-daemon-macos.pyz" \
                    "$HERE/zaelar-daemon" "$HERE/zaelar-daemon.pyz" \
@@ -64,6 +66,22 @@ if [[ -z "$SOURCE" ]]; then
   done
 fi
 [[ -n "$SOURCE" && -e "$SOURCE" ]] || die "no artifact found. Build one: python daemon/packaging/build.py"
+
+# ── a notarized installer package: Gatekeeper first, then the app inside it ─────────────────────────────────────
+# A `.pkg` is published only Developer-ID-signed and notarized (`sign_and_notarize.sh`), so an unsigned one, or one
+# Gatekeeper rejects, is refused rather than installed. The app is taken OUT of the package (`pkgutil --expand-full`,
+# no administrator, no Installer.app) and installed exactly like the zip's — one install procedure, not two.
+PKG_STAGE=""
+if [[ "$SOURCE" == *.pkg ]]; then
+  pkgutil --check-signature "$SOURCE" >/dev/null 2>&1 || die "$SOURCE is not signed. Nothing was installed."
+  spctl --assess --type install "$SOURCE" >/dev/null 2>&1 \
+    || die "Gatekeeper rejects $SOURCE (not notarized, or not by a known developer). Nothing was installed."
+  PKG_STAGE="$(mktemp -d)"
+  pkgutil --expand-full "$SOURCE" "$PKG_STAGE/x" >/dev/null || die "$SOURCE is not a readable package."
+  SOURCE="$(find "$PKG_STAGE/x" -maxdepth 3 -type d -path '*/Payload/Zaelar.app'  | head -n 1)"
+  [[ -n "$SOURCE" ]] || die "the package does not contain Zaelar.app."
+  say "package ok — signed, and Gatekeeper accepts it"
+fi
 
 PYTHON=""
 if [[ "$SOURCE" == *.pyz ]]; then
@@ -96,7 +114,7 @@ ENV_BLOCK=""
 PROCESS_TYPE="Background"
 if [[ "$SOURCE" == *.zip || "$SOURCE" == *.app ]]; then
   STAGE="$(mktemp -d)"
-  trap 'rm -rf "$STAGE"' EXIT
+  trap 'rm -rf "$STAGE" ${PKG_STAGE:+"$PKG_STAGE"}' EXIT
   if [[ "$SOURCE" == *.zip ]]; then
     # `ditto`, which keeps the bundle's symlinks and signature intact; `unzip` does not always.
     ditto -x -k "$SOURCE" "$STAGE" || die "$SOURCE is not a readable archive."

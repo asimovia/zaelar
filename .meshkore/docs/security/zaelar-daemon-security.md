@@ -214,7 +214,7 @@ Saying this plainly is part of the model. A limit somebody can read is a limit s
 | **TOCTOU on Windows** | No `O_NOFOLLOW`, no cheap `F_GETPATH`. Would need the Win32 API (`GetFinalPathNameByHandle`), which means leaving the standard library. |
 | **A process running as the user reading `daemon.json` directly** | It already *is* the user; it does not need the daemon. The token protects against A and C, not B. |
 | **Content-based secret detection** | The list is name-based. A file called `notes.txt` containing an API key is served, and should be — guessing at contents would refuse the user their own documents. |
-| **A signed update channel** | No self-updater exists, on purpose: an update path that downloads and executes without a signature is remote code execution by design. Upgrading is re-running the installer. |
+| **A compromised update-signing key** | The daemon updates itself (V2-869 §4) only from a minisign-signed manifest verified against the committed public key, and any failure leaves the install untouched (`zaelar-security.md` §Updates). A stolen SECRET key would sign a malicious update; `next_key` rotates the key, but there is no revocation list. Closing it: an offline root key that signs the update key, or a threshold of keys. |
 | **Rate limits per capability** | The budgets are per request (read cap, search time and file budgets), not per hour. A hostile local caller can read every allowed file slowly; it could also just read them directly. |
 | **A remote relay** | `X-Zaelar-Relay` is recorded in the audit log so the trail exists from the start, but the daemon grants a remote caller nothing. |
 

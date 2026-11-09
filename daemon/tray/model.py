@@ -68,6 +68,19 @@ def _browser_item(health: dict, signin_task: str) -> Item:
     return Item("signin", "Sign-in window", False, "This build of Zaelar cannot open browser windows.")
 
 
+def _update_item(health: dict) -> Item:
+    """«Check for updates», or — once a verified update is waiting — the item that installs it."""
+    update = health.get("update") or {}
+    state = update.get("state")
+    available = update.get("available") or {}
+    if state == "ready" and available:
+        return Item("update_install", f"Install Zaelar {available.get('version')} (build {available.get('build')}) "
+                                      "and restart")
+    if state == "downloading":
+        return Item("updates", "Downloading the update…", False)
+    return Item("updates", "Check for updates")
+
+
 def view(health: dict | None, app_target: dict | None, signin_task: str = "") -> View:
     """The whole menu for one `/health` reading. `app_target` is `app_window.target()`'s answer."""
     state = glyph(health)
@@ -80,7 +93,7 @@ def view(health: dict | None, app_target: dict | None, signin_task: str = "") ->
         Item("open", "Open Zaelar", bool(target.get("enabled")), str(target.get("reason") or "")),
         Item("folders", "Allowed folders…"),
         _browser_item(health, signin_task),
-        Item("updates", "Check for updates"),
+        _update_item(health),
         Item("quit", "Quit Zaelar"),
     ]
     return View(state, items[0].label, items)

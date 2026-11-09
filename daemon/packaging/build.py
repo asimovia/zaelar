@@ -31,9 +31,10 @@ build that stops existing the first time that tool breaks on a new Python. The z
 there is always a way to ship, and CI can prove the package still assembles even on a runner where PyInstaller
 would not.
 
-WHAT THIS DELIBERATELY DOES NOT DO: download anything, sign anything, or publish anything. Signing needs the
-operator's identity and publishing needs a decision about where; both are steps in the release playbook, run by
-somebody who has those things, not side effects of a build.
+WHAT THIS DELIBERATELY DOES NOT DO: download anything, sign anything with an identity, or publish anything. The
+macOS bundle is sealed AD HOC so it is internally consistent; Developer ID signing, notarization and the `.pkg`
+(`macos/sign_and_notarize.sh`), Authenticode, the Sigstore signature over the sums and the signed update manifest
+(`update_manifest.py`) are steps of the release WORKFLOW, which holds the identities — never side effects of a build.
 
     python daemon/packaging/build.py              everything it can build here
     python daemon/packaging/build.py --zipapp     just the portable one
@@ -102,6 +103,12 @@ def _stage(into: Path) -> Path:
         DAEMON, package,
         ignore=lambda _dir, names: [n for n in names if n in _EXCLUDE or n.endswith((".pyc", ".pyo"))],
     )
+    # The engine's build number (`update/BUILD`, V2-553), stamped INTO the package: an installed daemon has no
+    # engine tree beside it, and this integer is what the update manifest and the engine's icon compare.
+    engine_build = ENGINE / "update" / "BUILD"
+    if engine_build.is_file():
+        (package / "update" / "BUILD").write_text(engine_build.read_text(encoding="utf-8").strip() + "\n",
+                                                  encoding="utf-8")
     return package
 
 
