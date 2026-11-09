@@ -15,7 +15,13 @@
     "`pause_free_ratio`, sheds load; still so after `stuck_s` and under a supervisor (ZAELAR_SUPERVISED=1) it exits",
     "non-zero for a restart, ended hard `exit_grace_s` later if the loop cannot shut down.",
     "`summary_push_s` (T-31): how often the compact summary goes to ZAELAR_SUMMARY_URL, when a deployment sets one.",
-    "`browser_bg_wait_s` (pass 10): how long a background search waits for HIS turn's search in the one browser."
+    "`browser_bg_wait_s` (pass 10): how long a background search waits for HIS turn's search in the one browser.",
+    "THE VOICE RECYCLE (V2-871): the old LiveKit worker's close is waited `recycle_close_s`, then abandoned; the new one",
+    "must register within `recycle_verify_s`, retried `recycle_attempts` times `recycle_backoff_s` apart (doubling).",
+    "Gave up, or no live worker `voice_dead_s` after a session was asked for: an alert, and under a supervisor an exit",
+    "for a restart; unsupervised a new try every `recycle_retry_s`. `boot_grace_s` is the cold start (models, browser,",
+    "the first connection; a first session measured 2.5 min to listening on a small host): degraded marks and the",
+    "audio lag inside it are the warm-up, never a degradation."
   ],
   "worker_nice": 10,
   "admit_free_ratio": 0.2,
@@ -26,5 +32,12 @@
   "stuck_s": 120,
   "exit_grace_s": 15,
   "summary_push_s": 30,
-  "browser_bg_wait_s": 10
+  "browser_bg_wait_s": 10,
+  "recycle_close_s": 10,
+  "recycle_verify_s": 30,
+  "recycle_attempts": 3,
+  "recycle_backoff_s": 5,
+  "recycle_retry_s": 120,
+  "voice_dead_s": 120,
+  "boot_grace_s": 300
 }

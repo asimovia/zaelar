@@ -676,6 +676,8 @@
   "engine_shedding": "The engine is not answering or is short of memory — easing the load.",
   "engine_exit": "The engine is still stuck — exiting cleanly so it can be restarted.",
   "voice_lag": "The voice is falling behind — pausing background work.",
+  "voice_dead": "The voice engine stopped and did not come back — I keep restarting it; meanwhile you can type to me.",
+  "voice_dead_exit": "The voice engine did not come back — restarting the engine so it does.",
   "envelope_late": "Little free memory: the errand starts anyway, at a lower priority.",
   "room_ok": "Room for the browser: it opens now.",
   "room_paused": "Worker {task} paused to open the browser.",

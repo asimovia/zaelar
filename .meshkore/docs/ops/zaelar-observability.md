@@ -327,6 +327,17 @@ kept for the FlashBrain's «PROCESOS DE FONDO» prompt, but does not duplicate t
     to make room) · `room_wait` (a background browser waits for room) · `room_anyway` (his window opens with little
     room) · `room_resumed` (a worker room paused, resumed); `extra = {what, task?}`, words from `alerts.room_*`. A
     held worker's phase names its reason (`waiting_room` · `waiting_voice` · `queued_behind`, `envelope.reason()`).
+  - **`voice`** with `cat: voice` and `kind_diag: recycle_*` — a LiveKit worker recycle (V2-871,
+    `nucleo/pulse/voice_recycle.py`), one per step: `recycle_start` (attempt n begins) · `recycle_ok` (the new worker is
+    REGISTERED — LiveKit's register response set `server.id`) · `recycle_failed` (this attempt did not register within
+    `recycle_verify_s`; the next one waits `recycle_backoff_s`, doubling) · `recycle_gave_up` (all `recycle_attempts`
+    failed); `extra` carries `old_close: closed|abandoned` (the old worker's close finished, or was abandoned past
+    `recycle_close_s` with its health port released). A voice still without a live worker `voice_dead_s` after a room
+    token was minted is an **`alert`** `voice_dead` (unsupervised: retried every `recycle_retry_s`, said ONCE through
+    `notices.notify`) or `voice_dead_exit` (`ZAELAR_SUPERVISED=1`: `self_watchdog.exit_for_restart`, exit 75); the
+    timeline attaches `pressure`. Degraded marks and the audio lag inside `boot_grace_s` (from the process start,
+    `runtime_ids.boot_wall`) are warm-up and emit nothing. These values are new: every viewer that filters by
+    `kind_diag` — the local one AND any remote panel reading the same `events` table — has to learn them.
   - **`task`** with `cat: circuit` — `🧭 brief of another errand ignored` (V2-868, `nucleo/circuit/breadth.py`): the
     judge found a brief stamped for another errand and refused it; `extra = {id, uid, errand}`.
   - A viewer that filters by `kind_diag` must learn these values: one it does not know shows up EMPTY, never as an
@@ -342,8 +353,9 @@ kept for the FlashBrain's «PROCESOS DE FONDO» prompt, but does not duplicate t
   the source of truth for «why was the engine degraded/recycled?». Labels: **`start`** (supervisor start),
   **`degraded`** (a red vital sign detected — e.g. the LiveKit engine reporting `wait_pc_connection timed out` /
   `entrypoint did not exit`, caught by a `logging.Handler` on the `livekit` logger), **`recycle`** (recycles the
-  embedded LiveKit worker — `aclose` + `make_server` + a new task, without restarting the process — ONLY when it is
-  safe: voice off + channel idle ≥120 s, with a cooldown), **`rotate`** (rotates
+  embedded LiveKit worker without restarting the process — through `voice_recycle.recycle()`: the old close bounded
+  and abandoned, the new worker verified registered, retried; see the `recycle_*` diagnostics above — ONLY when it is
+  safe: voice off + channel idle ≥120 s, with a cooldown; marks inside `boot_grace_s` never count), **`rotate`** (rotates
   `timeline-latest.jsonl`/`meshkore.jsonl` by size + prunes old files), **`evict`** (evicts concluded/stale
   capsules, `sys_kv` `capsule:*`) and **`alert`** (a single notice to the operator when it detects degradation but
   it is NOT safe to act). It exists so that a long-running embedded worker that degrades recovers by itself instead

@@ -631,7 +631,7 @@ Flash keeps the conversation; the row is what both brains read.
   recipient, the stranger's-text taint — and again by the retained act his yes runs. — since 2026-11-05 · nodes
   2.1601, 2.1603, 2.1604 · `nucleo/flash/tool_executor_widget_calls.py`, `nucleo/turn/routed_sends.py`,
   `nucleo/cli/worker_api.py`, `nucleo/cli/worker_api_answer.py`.
-- **CRIT-T2c · A send is ONE linear task: his data travel with their origin, one door decides.** Flash's leaving call
+- **CRIT-T2e · A send is ONE linear task: his data travel with their origin, one door decides.** Flash's leaving call
   is retained on the request's row with each declared slot and its source (`nucleo/request/send_task`: the person by
   `message.is_his`, the channel by the turn's reading, the words by `his_text` — a run of his own words, in order),
   and the row is born with its end state. Every required slot his → the act crosses the exit door and the card's door
@@ -901,6 +901,8 @@ Flash keeps the conversation; the row is what both brains read.
 - **CRIT-R18 · A held worker names its true reason.** Memory only while `admits()` is false, the voice's shed as the voice, else what it queues behind; a shed names its source (`voice_loop` · `voice_audio` · `watchdog`) and ends when THAT source recovers, the seconds only a ceiling (V2-867 F0) — since 2026-11-09 · nodes 3.178 · `nucleo/workers/envelope.py`, `voice/lag.py`.
 - **CRIT-R19 · Admission is a limit, not a delay.** A worker waits for room with no deadline start (the exit is his cancel) and is admitted one at a time, the next measured only once the previous runs; the floor is max(`admit_free_ratio` × total, `voice_reserve_mb`); `max_parallel` is the ceiling (V2-867 F1) — since 2026-11-09 · nodes 3.178 · `nucleo/workers/envelope.py`, `nucleo/dispatch/session.py`.
 - **CRIT-R20 · A Chromium never launches outside the worker envelope.** Without room the newest running worker nobody else paused is paused first and resumed when room returns; room undoes only its own pauses; the operator's own window is never refused; the search browser waits like a worker through `search.hooks.room` (V2-867 F2) — since 2026-11-09 · nodes 3.179 · `nucleo/workers/room.py`.
+
+- **CRIT-R21 · A LiveKit recycle never awaits the old worker unbounded.** The close is bounded and abandoned past `recycle_close_s`, the new worker is verified REGISTERED within `recycle_verify_s` and retried `recycle_attempts` times; a voice that stays dead `voice_dead_s` after a session was asked is an alert plus a restart under a supervisor (self-host: retries and says so once); the cold-start window `boot_grace_s` is warm-up, never degradation (V2-871) — since 2026-11-09 · nodes 3.180 · `nucleo/pulse/voice_recycle.py`, `nucleo/pulse/homeostasis.py`.
 
 ## 7 · Working here
 

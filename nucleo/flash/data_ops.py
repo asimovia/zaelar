@@ -362,7 +362,10 @@ def _write_ending(_row: str, wid: str, action_name: str, res, _spec_entry, _atte
     """The row's ending this op writes through `circuit.settle` (the one writer). Never raises."""
     from nucleo import circuit as _circuit
     if _refused:
-        _circuit.settle(row=_row, verdict="unmet", outcome=str(res.get("message") or res.get("error") or "")[:200])
+        # V2-850 — the spec closes WITH the row: left open, a refused send's check waited out its grace over a
+        # message that was never queued.
+        _circuit.settle(_spec_entry, row=_row, verdict="unmet",
+                        outcome=str(res.get("message") or res.get("error") or "")[:200])
     elif _spec_entry is None:
         # V2-847 — `undeclared` is «It is done.», and for an act that LEAVES the machine nothing has said so:
         # with no end state to check it is `unverifiable` (said as done-but-unconfirmed), never success.
