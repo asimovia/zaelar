@@ -792,7 +792,8 @@ Flash keeps the conversation; the row is what both brains read.
   first, by relevance, without the live chain, his repeated attempts or more than two turns of one episode, and
   answers with the literal turns even when no pill matched; an order that needed the recalled fact is carried out.
   «I have no access to what was said earlier» is never the answer while the buffer holds it. — since 2026-11-09 ·
-  nodes 2.1641-2.1649 · `memory/_prompt/reads.py`, `memory/_prompt/compose.py`, `memory/history.py`,
+  nodes 2.1641, 2.1642, 2.1643, 2.1644, 2.1645, 2.1646, 2.1647, 2.1648, 2.1649 · `memory/_prompt/reads.py`,
+  `memory/_prompt/compose.py`, `memory/history.py`,
   `nucleo/turn/prompt/recall.py`, `nucleo/turn/prompt/live_state.py`, `nucleo/acts/repair_after_lookup.py`.
 
 ## 6 · Resilience
