@@ -14,7 +14,7 @@ import urllib.error
 import urllib.request
 
 from .. import VERSION
-from . import config
+from . import config, note
 
 _TIMEOUT_S = 10.0
 
@@ -45,7 +45,8 @@ def login_link() -> dict | None:
         return None
     try:
         status, data = GET(config.http_url(cfg["url"], "/daemon/login-link"), cfg["credential"])
-    except Exception:   # noqa: BLE001 — optional: fall back to the plain address
+    except Exception as e:   # noqa: BLE001 — optional: fall back to the plain address
+        note("login link", e)
         return None
     link = str(data.get("url") or "")
     if status != 200 or not link.startswith("https://"):

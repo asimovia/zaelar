@@ -25,6 +25,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from .. import paths
+from . import note
 
 ENV_URL = "ZAELAR_DAEMON_RELAY_URL"
 _KEYS = ("url", "credential", "paired_at", "account_hint")
@@ -37,9 +38,13 @@ def relay_file() -> Path:
 
 
 def _read_file() -> dict:
+    path = relay_file()
+    if not path.exists():
+        return {}                            # never paired: the normal case
     try:
-        data = json.loads(relay_file().read_text(encoding="utf-8"))
-    except Exception:       # noqa: BLE001 — absent or corrupt: not paired
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as e:  # noqa: BLE001 — corrupt: treated as not paired, and said
+        note("relay.json unreadable", e)
         return {}
     if not isinstance(data, dict):
         return {}
@@ -59,9 +64,13 @@ def _build_defaults_dirs() -> list[Path]:
 
 def _build_default_url() -> str:
     for d in _build_defaults_dirs():
+        f = d / "build_defaults.json"
+        if not f.exists():
+            continue                         # optional file
         try:
-            data = json.loads((d / "build_defaults.json").read_text(encoding="utf-8"))
-        except Exception:   # noqa: BLE001 — optional file
+            data = json.loads(f.read_text(encoding="utf-8"))
+        except Exception as e:  # noqa: BLE001
+            note("build_defaults.json unreadable", e)
             continue
         if isinstance(data, dict) and isinstance(data.get("relay_url"), str):
             return data["relay_url"].strip()
@@ -150,11 +159,9 @@ def _write(data: dict) -> None:
             fh.write(json.dumps(data, indent=1, ensure_ascii=False))
         try:
             os.chmod(tmp, 0o600)
-        except Exception:   # noqa: BLE001 — Windows: the per-user ACL already applies
-            pass
+        except Exception as e:   # noqa: BLE001 — Windows: the per-user ACL already applies
+            note("chmod relay.json", e)
         os.replace(tmp, path)
-    except Exception:       # noqa: BLE001 — persisting must never take the daemon down
-        try:
-            tmp.unlink()
-        except Exception:   # noqa: BLE001
-            pass
+    except Exception as e:  # noqa: BLE001 — persisting must never take the daemon down
+        note("relay.json not written", e)
+        tmp.unlink(missing_ok=True)

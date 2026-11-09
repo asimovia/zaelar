@@ -14,3 +14,11 @@ or a packaged `build_defaults.json`) or the daemon has not been paired, nothing 
     login_link.py      a one-time «Open Zaelar» link, when the relay offers it
 """
 from __future__ import annotations
+
+import sys
+
+
+def note(where: str, e: BaseException) -> None:
+    """One line on stderr — the daemon's log — for a failure the relay link absorbs instead of raising. The exception's
+    TYPE only: its text can carry a path or an address, and this line is not the audit."""
+    print(f"zaelar-daemon relay: {where}: {type(e).__name__}", file=sys.stderr, flush=True)

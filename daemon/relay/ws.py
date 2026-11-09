@@ -12,6 +12,7 @@ not: extensions, compression, subprotocols, a server side.
 from __future__ import annotations
 
 import base64
+import contextlib
 import hashlib
 import os
 import socket
@@ -148,19 +149,13 @@ class WebSocket:
     def close(self, code: int = 1000) -> None:
         if self.closed:
             return
-        try:
+        with contextlib.suppress(Exception):     # the peer may be gone already: closing is best effort
             self._send_frame(OP_CLOSE, struct.pack("!H", code))
-        except Exception:   # noqa: BLE001 — the peer may be gone already
-            pass
         self.closed = True
-        try:
+        with contextlib.suppress(OSError):
             self._sock.shutdown(socket.SHUT_RDWR)   # wakes a reader blocked in recv() on another thread
-        except OSError:
-            pass
-        try:
+        with contextlib.suppress(OSError):
             self._sock.close()
-        except OSError:
-            pass
 
     def settimeout(self, seconds: float | None) -> None:
         self._sock.settimeout(seconds)
@@ -210,8 +205,6 @@ def connect(url: str, headers: dict | None = None, *, timeout: float = 15.0) -> 
         ws._buf = rest
         return ws
     except BaseException:
-        try:
+        with contextlib.suppress(OSError):
             raw.close()
-        except OSError:
-            pass
         raise

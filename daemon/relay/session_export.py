@@ -18,7 +18,6 @@ label and an IP address have no registrable domain and are refused outright.
 from __future__ import annotations
 
 import asyncio
-import ipaddress
 import json
 from urllib.parse import urlsplit
 
@@ -39,15 +38,17 @@ def _host_of(site: str) -> str:
     return (urlsplit(raw).hostname or "").strip(".")
 
 
+def _is_ip(host: str) -> bool:
+    """An address rather than a name: IPv6 (the only hosts with a colon once the port is gone) or dotted digits."""
+    return ":" in host or (bool(host) and host.replace(".", "").isdigit())
+
+
 def registrable_domain(site: str) -> str:
     """`https://www.shop.example.com/x` → `example.com`; `a.example.co.uk` → `example.co.uk`. Raises `Refusal` for
     something that has no registrable domain (empty, an IP, a single label, a bare suffix)."""
     host = _host_of(site)
-    try:
-        ipaddress.ip_address(host)
+    if _is_ip(host):
         raise Refusal("bad_site", "A session is exported for a site name, not an address.")
-    except ValueError:
-        pass
     labels = [x for x in host.split(".") if x]
     if len(labels) < 2 or not all(x.replace("-", "").isalnum() for x in labels):
         raise Refusal("bad_site", "That is not a site name a session can be exported for.")

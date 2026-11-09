@@ -177,7 +177,8 @@ def _surface_of(task_id: str) -> str:
         from nucleo.request import sign_in_wait
         rec = sign_in_wait._record_driving(task_id)
         return "phone" if rec is not None and sign_in_wait._on_phone(rec) else ""
-    except Exception:   # noqa: BLE001 — unknown screen: the reach decides as before
+    except Exception as e:  # noqa: BLE001 — unknown screen: the reach decides as before
+        _o.logger.debug(f"navegador: the requesting screen is unknown ({type(e).__name__})")
         return ""
 
 

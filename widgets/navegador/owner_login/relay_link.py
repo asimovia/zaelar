@@ -41,7 +41,8 @@ def _is_cloud() -> bool:
     try:
         from nucleo.energy import account as cloud_account
         return bool(cloud_account.is_cloud_account())
-    except Exception:   # noqa: BLE001
+    except Exception as e:  # noqa: BLE001 — unknown deployment: no relay is asked
+        _o.logger.debug(f"relay_link: deployment unknown ({type(e).__name__})")
         return False
 
 
@@ -212,4 +213,4 @@ async def _watch(task_id: str, site: str) -> None:
                 await _o._abandon_login(task_id)
                 return
     except _o.asyncio.CancelledError:
-        return
+        _o.logger.debug(f"relay_link: the sign-in watch of {task_id} was cancelled")

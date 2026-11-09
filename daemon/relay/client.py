@@ -25,7 +25,7 @@ import threading
 import time
 
 from .. import VERSION, audit
-from . import config, ws
+from . import config, note, ws
 
 BACKOFF_MIN_S = 1.0
 BACKOFF_MAX_S = 60.0
@@ -110,7 +110,8 @@ class RelayClient:
         try:
             sock.send(json.dumps({"t": "event", "name": name, "data": data}))
             return True
-        except Exception:   # noqa: BLE001 — the reader will notice the broken socket and reconnect
+        except Exception as e:   # noqa: BLE001 — the reader will notice the broken socket and reconnect
+            note("event not sent", e)
             return False
 
     # ── the loop ─────────────────────────────────────────────────────────────────────────────────────────
@@ -177,7 +178,8 @@ class RelayClient:
                 quiet = 0.0
                 try:
                     frame = json.loads(raw)
-                except ValueError:
+                except ValueError as e:
+                    note("a frame that is not JSON", e)
                     continue
                 if not isinstance(frame, dict):
                     continue
@@ -225,8 +227,8 @@ class RelayClient:
                 result = dispatch.handle(frame)
                 try:
                     sock.send(json.dumps(result, ensure_ascii=False))
-                except Exception:   # noqa: BLE001 — the link dropped; the relay times the command out
-                    pass
+                except Exception as e:   # noqa: BLE001 — the link dropped; the relay times the command out
+                    note("result not sent", e)
                 if frame.get("op") in ("browser.open", "browser.close"):
                     self._watch_window()
             finally:
@@ -248,7 +250,8 @@ class RelayClient:
                     return
                 try:
                     state = dispatch._browser_state({})
-                except Exception:   # noqa: BLE001 — a browser that cannot answer has nothing to report
+                except Exception as e:   # noqa: BLE001 — a browser that cannot answer has nothing to report
+                    note("window state unreadable", e)
                     return
                 now = {"open": bool(state.get("open")), "signed_in": bool(state.get("signed_in"))}
                 if now != seen:
@@ -269,7 +272,8 @@ def start_if_paired() -> bool:
     """Called when the daemon starts serving: dial the relay if this daemon has been paired."""
     try:
         return CLIENT.start()
-    except Exception:   # noqa: BLE001 — the relay is additive; loopback serving never depends on it
+    except Exception as e:   # noqa: BLE001 — the relay is additive; loopback serving never depends on it
+        note("link not started", e)
         return False
 
 

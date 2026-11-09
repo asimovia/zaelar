@@ -313,6 +313,14 @@ async def daemon_start(request: Request):
     return JSONResponse({"ok": True, "started": True})
 
 
+def _relay_link():
+    """The engine's relay transport. Imported through the browser's owner, which is how its package must load (the
+    login package and the owner import each other)."""
+    from widgets.navegador import owner  # noqa: F401
+    from widgets.navegador.owner_login import relay_link
+    return relay_link
+
+
 _RELAY_OFF = {"paired": False, "connected": False, "caps": [], "version": "", "platform": "", "since": None}
 
 
@@ -320,7 +328,7 @@ async def _relay_status() -> dict:
     """`relay` in the status: his daemon as the relay sees it — `{paired, connected, caps, version, platform, since}`.
     All-false when this engine has no relay to ask (every self-hosted engine)."""
     try:
-        from widgets.navegador.owner_login import relay_link
+        relay_link = _relay_link()
         if not relay_link.hosted():
             return dict(_RELAY_OFF)
         return await relay_link.status_view()
@@ -332,7 +340,7 @@ async def _pairing_code() -> JSONResponse:
     """A hosted engine asks the service it reports to for a one-time code his daemon redeems (`POST
     /daemon/pairing-code`, its own credential). The code is shown to HIM; it is not a secret worth more than its few
     minutes and its single use."""
-    from widgets.navegador.owner_login import relay_link
+    relay_link = _relay_link()
     if not relay_link.hosted():
         return JSONResponse({"ok": False, "error": "relay_not_available"}, status_code=409)
     status, body = await relay_link._http("POST", "/daemon/pairing-code", {}, timeout=10.0)

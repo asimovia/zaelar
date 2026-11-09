@@ -103,16 +103,16 @@ def _start_relay() -> None:
         from ..relay import client as relay_client
         if relay_client.start_if_paired():
             print("  relay: paired — connecting out", flush=True)
-    except Exception:   # noqa: BLE001
-        pass
+    except Exception as e:   # noqa: BLE001
+        print(f"zaelar-daemon relay did not start: {type(e).__name__}", file=sys.stderr, flush=True)
 
 
 def _stop_relay() -> None:
     try:
         from ..relay import client as relay_client
         relay_client.stop()
-    except Exception:   # noqa: BLE001
-        pass
+    except Exception as e:   # noqa: BLE001
+        print(f"zaelar-daemon relay did not stop cleanly: {type(e).__name__}", file=sys.stderr, flush=True)
 
 
 def serve(port: int | None = None) -> int:
