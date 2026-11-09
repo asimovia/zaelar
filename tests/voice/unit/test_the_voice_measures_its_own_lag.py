@@ -29,7 +29,8 @@ def acts(monkeypatch):
     async def notify(title, text, **k):
         seen["notices"].append(text)
     monkeypatch.setattr(proactive, "notify", notify)
-    monkeypatch.setattr(envelope, "shed", lambda s: seen["shed"].append(s))
+    monkeypatch.setattr(envelope, "shed", lambda s, source: seen["shed"].append((s, source)))
+    monkeypatch.setattr(envelope, "unshed", lambda source: seen.setdefault("unshed", []).append(source))
     monkeypatch.setitem(lag._state, "last_act", -1e9)
     monkeypatch.setitem(lag._state, "episode", False)
     monkeypatch.setitem(lag._state, "loops", set())
@@ -100,7 +101,7 @@ def test_a_shed_holds_new_workers_and_pauses_the_newest(monkeypatch):
     from types import SimpleNamespace
     from nucleo.workers import envelope
     monkeypatch.setattr(envelope, "measured", lambda: (8, 8))            # plenty of memory: only the shed acts
-    monkeypatch.setitem(envelope._shed, "until", 0.0)
+    monkeypatch.setattr(envelope, "_sheds", {})
 
     class S:
         def __init__(self, r): self.r = r
@@ -109,7 +110,7 @@ def test_a_shed_holds_new_workers_and_pauses_the_newest(monkeypatch):
     a = SimpleNamespace(task_id="1", status="running", started=1, paused=False)
     b = SimpleNamespace(task_id="2", status="running", started=2, paused=False)
     a.session, b.session = S(a), S(b)
-    envelope.shed(30)
+    envelope.shed(30, "voice_loop")
     assert envelope.shedding() and envelope.relieve([a, b]) == "paused 2"
 
 

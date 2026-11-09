@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 from nucleo.dispatch import session as _ds
+from nucleo.runtime_ids import errand_key   # V2-868: the one key of anything stored per errand
 
 
 async def build_what_it_runs_with(*, ctx, key, kind, rec, req, task, trusted) -> dict:
@@ -74,12 +75,14 @@ async def build_what_it_runs_with(*, ctx, key, kind, rec, req, task, trusted) ->
     # code no pasa by here: su address es the repo, no a espacio of candidatos.
     brief = None
     _brief_bg: _ds._d.asyncio.Task | None = None
+    _composer_down = False
     if not _dev and not _answered and not _ds._d.surfaces.delivers_pictures(getattr(rec, "surface", "")):   # pictures and a resumed answer skip the research brief
         try:
             # V2-301 — the composer (15-30 s reasoning call) ran IN SERIES: the worker sat queued 20-32 s
             # (guitar rounds, 2026-08-24). A short head start keeps instant briefs; past it the worker spawns
             # NOW and the brief arrives as an injected turn. Fail-open unchanged.
-            _brief_bg = _ds._d.asyncio.ensure_future(_ds._d._compose_brief(req, ctx, trusted, resume, task_id=key))
+            _brief_bg = _ds._d.asyncio.ensure_future(_ds._d._compose_brief(req, ctx, trusted, resume, task_id=key,
+                                                                       errand=errand_key(rec)))
             _head = float(_ds._d.os.environ.get("ZAELAR_BRIEF_HEAD_START_S", "2.0") or 2.0)
             if _head <= 0:      # kill-switch: serial, exactly as before
                 brief = await _brief_bg
@@ -93,7 +96,7 @@ async def build_what_it_runs_with(*, ctx, key, kind, rec, req, task, trusted) ->
         except _ds._d.research.ComposerUnavailable:
             # The composer failed: fail-open (start undirected) is right, but the kind is still promoted — it
             # costs DIRECTION, not TIME. Bench 2026-08-13: composer >30 s → `generic` (600 s) → died at 704 s.
-            brief = None
+            brief, _composer_down = None, True
             _brief_bg = None    # falló DENTRO del head start: ya está manejado aquí, nada que inyectar luego
             if kind == "generic":
                 rec.kind = "research"
@@ -101,8 +104,12 @@ async def build_what_it_runs_with(*, ctx, key, kind, rec, req, task, trusted) ->
                 _ds._d.logger.info(f"dispatch: tarea {key} SIN brief (compositor caído) pero con presupuesto de "
                             f"investigación · kind={rec.kind}")
                 _ds._d.sync_state()
-        if brief:
-            _ds._d.research.save(key, brief)
+        if brief is None and _brief_bg is None and not _composer_down:
+            # V2-868 D3 — the composer ANSWERED that this is not a research (none, not «still thinking», not «down»):
+            # the errand owes no results sheet, and its prompt is told so (`playbook.results_contract`).
+            brief = _ds._d.research.not_research()
+        if brief and brief.get("goal"):
+            _ds._d.research.save(rec, brief)     # V2-868: under the errand's ROW, never the per-boot id
             _ds._d.research.remember_round(_ds._d._goal_key(req), brief)   # para que una 2ª petición continúe, no reempiece
             if not _ds._d.surfaces.not_a_sheet(getattr(rec, "surface", "")):   # V2-644: no results sheet to seed
                 await _ds._d._seed_research_criteria(brief, rec)
@@ -152,7 +159,7 @@ async def run_it_to_its_delivery(*, _dev, _dev_settings_path, _wd, brief, escala
                     pass
         if kind == "web" and trusted:
             _ds._d._leave_resume(rec, nav_tid=nav_tid, resume=resume, req=req, key=key,
-                          brief=bool(brief), prev_count=_prev_count)
+                          brief=bool((brief or {}).get("goal")), prev_count=_prev_count)
         try:
             if key.isdigit():
                 escalate.finish(int(key), rec.result_summary if rec.ok else "")

@@ -204,6 +204,8 @@ def test_el_criterio_ACORDADO_viaja_igual():
     ent = dispatch._resume_entry(_Rec(""), nav_tid="t9", resume={"brief_task": "b7"},
                                  req=PETICION, key="k1", brief=False, prev_count=0)
     assert ent["brief_task"] == "b7"
-    ent2 = dispatch._resume_entry(_Rec(""), nav_tid="t9", resume={}, req=PETICION, key="k9",
+    rec = _Rec("")
+    rec.uid = "b00t01-9"
+    ent2 = dispatch._resume_entry(rec, nav_tid="t9", resume={}, req=PETICION, key="k9",
                                   brief=True, prev_count=0)
-    assert ent2["brief_task"] == "k9"
+    assert ent2["brief_task"] == "b00t01-9", "V2-868: the brief travels under its errand's ROW, never the task id"

@@ -43,6 +43,11 @@ def record_session_established(site: str) -> None:
         )
     except Exception as e:  # noqa: BLE001
         logger.warning(f"auth_memory: record_session_established failed: {e}")
+    try:                                   # V2-868 D3: the errand that waited on this sign-in resumes, same row
+        from nucleo.request import sign_in_wait
+        sign_in_wait.established(site)
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"auth_memory: waiting errand not resumed: {e}")
 
 
 def checkpoint_auth_pending(site: str, task_id: str = "", goal: str = "") -> None:

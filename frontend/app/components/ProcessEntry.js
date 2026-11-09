@@ -68,7 +68,6 @@ function tallyLabel(k){ return tt("chat.procTally." + k, null, TALLY_FB[k] || k)
 
 function paintHarvest(panel, harvest){
   if(!harvest || !Object.keys(harvest).length) return;
-  panel.appendChild(sect("chat.procHarvest", "Recuento"));
   const grid = elem("div","pe-stats");
   TALLY.forEach(({k, always, sub})=>{
     const n = Number(harvest[k] || 0);
@@ -166,6 +165,8 @@ export function paintEntry(node, rec, open){
   paintPlan(node, rec, open);
   if(open){
     paintBrowser(node, br);
+    // The label is the entry's, not the grid's: the harvest-grid harness extracts `paintHarvest` alone and reads the panel's first child as the grid.
+    if(rec.harvest && Object.keys(rec.harvest).length) node.appendChild(sect("chat.procHarvest", "Recuento"));
     paintHarvest(node, rec.harvest || {});
     const lines = Array.isArray(rec.phases) ? rec.phases.filter(x => String(x || "").trim()) : [];
     if(lines.length){

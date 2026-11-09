@@ -135,6 +135,37 @@ def _same_origin(request: Request) -> bool:
 _CROSS_SITE = JSONResponse({"ok": False, "error": "cross_origin"}, status_code=403)
 
 
+def _on_this_machine(request: Request) -> bool:
+    """Is the caller on the computer the daemon runs on? (V2-575 P1)
+
+    `server/api_guard.py` already holds every `/api/*` to a loopback peer — EXCEPT a caller presenting
+    `ZAELAR_API_TOKEN`, the door for an operator who opened his engine to his network on purpose. That door is right
+    for reading his agent from another device and wrong for THESE routes: granting a folder, opening the folder dialog
+    and starting a process all act on this desktop, and a phone on the same network is not sitting at it. So the
+    daemon's routes ask the narrower question themselves, whatever the token says. Starlette's in-process TestClient
+    (peer `testclient`) cannot come off a socket and counts as local, as it does in the API guard."""
+    import ipaddress
+    peer = (request.client.host if request.client else "") or ""
+    if peer == "testclient":
+        return True
+    try:
+        return ipaddress.ip_address(peer).is_loopback
+    except ValueError:
+        return False
+
+
+_NOT_LOCAL = JSONResponse({"ok": False, "error": "not_on_this_computer"}, status_code=403)
+
+
+def _refused(request: Request) -> JSONResponse | None:
+    """The two guards every acting route passes: our own page, and a caller on this computer."""
+    if not _same_origin(request):
+        return _CROSS_SITE
+    if not _on_this_machine(request):
+        return _NOT_LOCAL
+    return None
+
+
 # ── downloads ─────────────────────────────────────────────────────────────────────────────────────────────
 
 def _daemon_version() -> str:
@@ -205,10 +236,13 @@ async def daemon_status(request: Request):
         payload["outdated"] = bool(version and payload["version"] and payload["version"] != version)
         # GET, not POST: `/permissions` is a read in the daemon's table and a POST there is a 405.
         pstatus, perms = await _call(cfg, "/permissions")
-        if pstatus == 200 and perms.get("ok"):
+        # Which folders he granted is his desktop's business: a caller off this computer learns THAT it is
+        # connected, never the paths.
+        if pstatus == 200 and perms.get("ok") and _on_this_machine(request):
             payload["roots"] = list(perms.get("roots") or [])
             payload["candidates"] = list(perms.get("candidates") or [])
-        payload["state"] = "warn" if (payload["outdated"] or not payload["roots"]) else "ok"
+        has_roots = bool(perms.get("roots")) if (pstatus == 200 and perms.get("ok")) else False
+        payload["state"] = "warn" if (payload["outdated"] or not has_roots) else "ok"
     else:
         payload["state"] = "off"
     return JSONResponse(payload)
@@ -216,15 +250,15 @@ async def daemon_status(request: Request):
 
 @router.post("/api/daemon/permissions/grant")
 async def daemon_grant(request: Request, body: dict = Body(default={})):
-    if not _same_origin(request):
-        return _CROSS_SITE
+    if (refusal := _refused(request)) is not None:
+        return refusal
     return await _permissions(request, "/permissions/grant", body)
 
 
 @router.post("/api/daemon/permissions/revoke")
 async def daemon_revoke(request: Request, body: dict = Body(default={})):
-    if not _same_origin(request):
-        return _CROSS_SITE
+    if (refusal := _refused(request)) is not None:
+        return refusal
     return await _permissions(request, "/permissions/revoke", body)
 
 
@@ -232,8 +266,8 @@ async def daemon_revoke(request: Request, body: dict = Body(default={})):
 async def daemon_pick(request: Request, body: dict = Body(default={})):
     """The system's folder dialog, opened by the daemon on this desktop; what the person picks is granted through
     the daemon's own boundary. The wait is the person browsing, so the timeout is theirs, not a network one."""
-    if not _same_origin(request):
-        return _CROSS_SITE
+    if (refusal := _refused(request)) is not None:
+        return refusal
     return await _permissions(request, "/permissions/pick", body, timeout=_PICK_TIMEOUT_S)
 
 
@@ -249,8 +283,8 @@ async def daemon_start(request: Request):
     answering is left alone, and a second click inside the cooldown does not start a second one on the same port."""
     import subprocess
     import time
-    if not _same_origin(request):
-        return _CROSS_SITE
+    if (refusal := _refused(request)) is not None:
+        return refusal
     if _is_cloud():
         return JSONResponse({"ok": False, "error": "no_daemon_from_cloud"}, status_code=409)
     cfg = _daemon_config()
@@ -275,6 +309,25 @@ async def daemon_start(request: Request):
         return JSONResponse({"ok": False, "error": "start_failed", "message": str(e)[:200]}, status_code=500)
     _last_start[0] = time.time()
     return JSONResponse({"ok": True, "started": True})
+
+
+@router.post("/api/daemon/pair")
+async def daemon_pair(request: Request):
+    """Pairing (decision 6). Over loopback there is nothing to pair: the engine reads the daemon's token from the
+    daemon's own state directory on the same disk, which is what being on this computer means — so a local caller
+    is answered `paired, mode: loopback` with no code. The one-time code is for a daemon reaching a REMOTE engine
+    through the relay (P3), which this engine does not have; it says so instead of minting a code nothing reads."""
+    if (refusal := _refused(request)) is not None:
+        return refusal
+    if _is_cloud():
+        return JSONResponse({"ok": False, "error": "relay_not_available"}, status_code=409)
+    cfg = _daemon_config()
+    if not cfg.get("token"):
+        return JSONResponse({"ok": False, "error": "not_installed"}, status_code=409)
+    status, health = await _call(cfg, "/health")
+    if status != 200 or not health.get("ok"):
+        return JSONResponse({"ok": False, "error": "not_running"}, status_code=409)
+    return JSONResponse({"ok": True, "paired": True, "mode": "loopback", "code": None})
 
 
 async def _permissions(_request: Request, path: str, body: dict, *, timeout: float = _TIMEOUT_S) -> JSONResponse:

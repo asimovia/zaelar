@@ -1,4 +1,4 @@
-"""V2-594 · the workflow table: what serves this kind of errand, and is that still true?
+"""V2-594 · the playbook route table: what serves this kind of errand, and is that still true?
 
 The rows that matter most are the NEGATIVE ones. Before this, «nobody on the mesh does wellness» was thrown
 away every time, so every massage errand paid the Oracle round trip again and then paid a language model to
@@ -10,8 +10,8 @@ import time
 
 import pytest
 
-from nucleo import workflows as wf
-from nucleo.workflows import store
+from nucleo import routes as wf
+from nucleo.routes import store
 
 
 @pytest.fixture(autouse=True)
@@ -134,7 +134,7 @@ def test_a_catch_all_category_does_not_outrank_a_specific_match():
     """Measured 2026-09-05: the site catalog calls «pedir cita con el médico» `local_business`, and because
     the catalog was asked FIRST and answered, the `health` pattern never got a turn. Six unrelated Spanish
     errands — doctor, dentist, physio, hairdresser, vet, gym — collapsed into the single key `local`."""
-    from nucleo.workflows import domains
+    from nucleo.routes import domains
     assert domains.domain_of("pedir cita con el medico") == "health"
     assert domains.domain_of("reservar hora con el dentista") == "health"
     assert domains.domain_of("pedir cita con el fisioterapeuta") == "health"
@@ -145,7 +145,7 @@ def test_the_same_errand_keys_the_same_in_both_languages():
     misses half the time». The catch-all broke exactly that — `pedir cita con el médico` keyed `local` while
     `book a doctor appointment` keyed `health`, so the two halves of one errand wrote to two different rows,
     and neither ever helped the other."""
-    from nucleo.workflows import domains
+    from nucleo.routes import domains
     pairs = [("pedir cita con el medico", "book a doctor appointment"),
              ("reservar hora con el dentista", "book a dentist appointment"),
              ("billete de tren a Sevilla", "train ticket to Chicago"),
@@ -158,12 +158,12 @@ def test_the_same_errand_keys_the_same_in_both_languages():
 def test_the_catch_all_still_answers_when_nothing_specific_matches():
     """Holding the weak category back must not throw it away: «cita en la peluquería» has no specific
     pattern, and `local` is a better key than none — a domain of "" writes no cache row at all."""
-    from nucleo.workflows import domains
+    from nucleo.routes import domains
     assert domains.domain_of("cita en la peluqueria") == "local"
 
 
 def test_a_specific_catalog_category_still_wins_immediately():
     """Only the catch-all is held back. `event_tickets` names a real vertical and keeps its priority."""
-    from nucleo.workflows import domains
+    from nucleo.routes import domains
     assert domains.domain_of("entradas para un concierto") == "events"
     assert domains.domain_of("buscar un hotel en Madrid") == "hotel"

@@ -1978,7 +1978,7 @@
  "results.digest.part": "pieza",
  "results.digest.more_results": "(+{n} resultados más en la hoja)",
  "task.phase.waiting_room": "esperando memoria libre en esta máquina",
- "task.phase.room_late": "poca memoria libre — arranco igual, con menos prioridad",
+ "task.phase.waiting_voice": "la voz va primero — el encargo arranca cuando se asiente",
  "task.phase.starting": "arrancando",
  "task.phase.label_web": "Buscando en la web…",
  "task.phase.label_code": "Trabajando en un widget…",
@@ -2463,5 +2463,12 @@
  "widgets.musica.away_yes": "Sí, tomar el control",
  "widgets.musica.away_no": "Cancelar",
  "widgets.musica.away_short": "En «{device}»",
- "widgets.musica.away_release": "Dejarlo"
+ "widgets.musica.away_release": "Dejarlo",
+ "daemon.cap.browser_on": "Ventana de inicio de sesión: cuando una web te pida entrar, Zaelar puede abrirla aquí, en este ordenador.",
+ "daemon.cap.browser_off": "Ventana de inicio de sesión: aún no disponible en este ordenador (falta el navegador que necesita).",
+ "daemon.mobile.connected": "Conectado en tu ordenador. Desde aquí Zaelar puede leer las carpetas que permitiste; una ventana de inicio de sesión solo se abre en el ordenador.",
+ "errand.sign_in.window": "Inicia sesión en la ventana que te acabo de abrir y sigo yo solo.",
+ "errand.sign_in.no_window": "Necesito que inicies sesión y desde aquí no puedo abrirte una ventana. Me quedo esperando y sigo en cuanto entres.",
+ "errand.sign_in.phone": "Desde el móvil no puedo abrirte una ventana para iniciar sesión: abre tu agente en un ordenador y sigo desde ahí.",
+ "errand.sign_in.done": "Ya he iniciado sesión{site} — sigue donde lo dejaste."
 }

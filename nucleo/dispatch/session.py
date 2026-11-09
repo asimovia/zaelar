@@ -219,12 +219,12 @@ async def _a_slot(_d, key, rec):
     """The worker pool, entered the way the operator should see it: a commission that waits says behind what, and
     its silence starts when it RUNS, never while it waited for a slot (the loop's stuck clock reads it)."""
     _say_queued_behind(_d, key)
+    from nucleo.workers import envelope as _env      # V2-831 T-27 + V2-867: admission by measured room, no clock
     try:
-        from nucleo.workers import envelope as _env, progress as _pg, reports as _rp   # V2-831 T-27: admission
-        await _env.wait_for_room(lambda: _rp.session_phase(key, _pg.say("waiting_room", "waiting for free memory")),
-                                 lambda: _rp.session_phase(key, _pg.say("room_late", "little free memory — starting anyway")))
-        await _d._pool().acquire()
+        await _env.wait_for_room(lambda why: _say_held(_d, key, why), key=key, runs=lambda: _runs(rec))
+        await _d._pool().acquire()          # `max_parallel` stays the CEILING; the room decides below it
     except asyncio.CancelledError:          # stopped while it waited: it never ran, so its finally never will
+        _env.released(key)
         _settle_unrun(_d, rec, key)
         raise
     try:
@@ -233,7 +233,29 @@ async def _a_slot(_d, key, rec):
             _settle_unrun(_d, rec, key)     # stopped while it waited, noticed only now: same leftovers
         yield
     finally:
+        _env.released(key)
         _d._pool().release()
+
+
+def _runs(rec) -> bool:
+    """The admitted worker RUNS — its process is up — so the next one is measured against the floor (T593)."""
+    return bool(getattr(getattr(rec, "session", None), "alive", False))
+
+
+def _say_held(_d, key, why: str) -> None:
+    """The waiting row says its TRUE reason (V2-867): the voice as the voice, memory only under the floor, else behind
+    which running work it queues. Never raises."""
+    try:
+        from nucleo.workers import progress as _pg, reports as _rp
+        ahead = [n for n in (str(x.get("title") or x.get("goal") or "")[:60] for x in _d.active_sessions()
+                             if str(x.get("id")) != str(key) and x.get("status") == "running") if n]
+        if why == "waiting_voice" or (why == "waiting_room" and not ahead):
+            _rp.session_phase(key, _pg.say(why, why))
+        else:
+            _rp.session_phase(key, _pg.say("queued_behind", "queued — waiting for a free slot behind: {names}", names=" · ".join(ahead))
+                              if ahead else _pg.say("queued", "queued"))
+    except Exception as e:  # noqa: BLE001
+        _d.logger.debug(f"dispatch: held phase not written for {key}: {e}")
 
 
 def _settle_unrun(_d, rec, key) -> None:
@@ -267,15 +289,5 @@ def _say_queued_behind(_d, key) -> None:
     monitor search and the Bitcoin summary, the agent told him it was «stuck», and «restarting» it only cancelled the
     one in the queue. The phase now names the work it waits behind, so the row, the prompt and the agent all read the
     same fact. Never raises: a phase that cannot be written leaves the plain «queued»."""
-    try:
-        if not _d._pool().locked():
-            return
-        from nucleo.workers import progress as _progress, reports as _reports
-        ahead = [str(x.get("title") or x.get("goal") or "")[:60] for x in _d.active_sessions()
-                 if str(x.get("id")) != str(key) and x.get("status") == "running"]
-        ahead = [a for a in ahead if a]
-        if ahead:
-            _reports.session_phase(key, _progress.say("queued_behind", "queued — waiting for a free slot behind: {names}",
-                                                  names=" · ".join(ahead)))
-    except Exception as e:  # noqa: BLE001
-        _d.logger.debug(f"dispatch: queued phase not written for {key}: {e}")
+    if _d._pool().locked():
+        _say_held(_d, key, "queued_behind")

@@ -63,6 +63,7 @@ def _tools_for(kind: str, trusted: bool, may_write: bool = False) -> list[str] |
 
 
 def _max_parallel() -> int:
+    """The pool's ceiling; how many actually run below it is the host's measured room (V2-867 T593)."""
     try:
         v = os.getenv("CODE_AGENT_MAX_PARALLEL")
         if v:

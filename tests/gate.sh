@@ -9,7 +9,7 @@ set -e
 cd "$(dirname "$0")/.."
 PY=./.venv/bin/python
 echo "== syntax sweep (the Dockerfile's COPY list — same as the release gate)"
-$PY -m compileall -q nucleo memory voice server widgets bus config connectors observability i18n update
+$PY -m compileall -q nucleo memory voice server widgets bus config connectors observability i18n update genome search scrape rules library
 echo "== ruff (F + E9 only)"
 ./.venv/bin/ruff check .
 if [ "$1" = "--impacted" ]; then

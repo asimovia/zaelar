@@ -117,7 +117,11 @@ def test_the_engine_never_proxies_a_file_route():
     # 2026-10-22, threat-modelled: `start` launches the daemon this engine carries (local only, same-origin, no
     # input reaches the command), and `pick` is `grant` with the system's own folder dialog choosing the path —
     # the daemon's boundary applies to it unchanged and it returns the allowlist, never a file's contents.
+    # 2026-11-09, threat-modelled (V2-575 P1): `pair` takes no input and returns no secret — over loopback it only
+    # answers that nothing needs pairing (`mode: loopback`, `code: None`); like every acting route it refuses a
+    # caller that is not on this computer and a cross-site page.
     assert paths == {"/api/daemon/status",
+                     "/api/daemon/pair",
                      "/api/daemon/permissions/grant",
                      "/api/daemon/permissions/revoke",
                      "/api/daemon/permissions/pick",

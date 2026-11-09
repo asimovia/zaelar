@@ -81,6 +81,17 @@ def _pack_entries(pack: dict) -> list[dict]:
     return out
 
 
+def factory(lang: str) -> dict[str, dict]:
+    """`{normalized phrase: action}` the shipped pack declares for `lang` — the factory half of the alias genes
+    (V2-859): what a learned row is compared with by `genome diff` and by an absorption."""
+    out: dict[str, dict] = {}
+    for e in _pack_entries(seed_pack(lang) or {}):
+        phrase = normalize(str(e.get("phrase") or ""))
+        if phrase and isinstance(e.get("action"), dict):
+            out.setdefault(phrase, e["action"])
+    return out
+
+
 def ensure_seeded(lang: str) -> None:
     """Import the shipped pack for `lang`, once per PACK VERSION. Respects every row the operator touched.
 

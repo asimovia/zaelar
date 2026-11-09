@@ -12,7 +12,7 @@ import pytest
 
 from memory import api as memory
 from memory import db as memdb
-from nucleo import workflows as wf
+from nucleo import routes as wf
 from nucleo.actionmap import store as amap
 from observability import pieces
 from voice import observer
@@ -64,7 +64,7 @@ def test_forgetting_a_domain_says_one_gene_per_route_it_dropped(genes):
 
 
 def test_a_route_the_operator_pinned_is_never_moved_so_nothing_is_announced(genes):
-    memory.workflow_upsert("hotel", wf.store.CH_BROWSER, status="active", rank=1, source="operator")
+    memory.route_upsert("hotel", wf.store.CH_BROWSER, status="active", rank=1, source="operator")
     wf.learn("hotel", wf.store.CH_BROWSER, rank=50)
     wf.note_empty("hotel", wf.store.CH_BROWSER)
     assert genes == []
@@ -87,7 +87,7 @@ def test_a_new_seed_pack_is_one_factory_gene_not_one_per_phrase(genes, monkeypat
 
 
 def test_the_gene_event_is_stamped_with_the_genome_piece_that_owns_it():
-    assert pieces.piece_for("nucleo/workflows/store.py", "gene") == "g_route"
+    assert pieces.piece_for("nucleo/routes/store.py", "gene") == "g_route"
     assert pieces.piece_for("nucleo/actionmap/store.py", "gene") == "g_alias"
-    assert pieces.piece_for("memory/workflows_store.py") == "st_route"
+    assert pieces.piece_for("memory/routes_store.py") == "st_route"
     assert pieces.piece_for("nucleo/genesis.json") == "g_factory"
