@@ -25,12 +25,12 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from .. import paths
+from ..security.guards import is_loopback_name
 from . import note
 
 ENV_URL = "ZAELAR_DAEMON_RELAY_URL"
 _KEYS = ("url", "credential", "paired_at", "account_hint")
 _LOCK = threading.Lock()
-_LOOPBACK_HOSTS = ("127.0.0.1", "localhost", "::1")
 
 
 def relay_file() -> Path:
@@ -84,7 +84,7 @@ def acceptable(url: str) -> bool:
         return False
     if parts.scheme in ("https", "wss"):
         return True
-    return parts.scheme in ("http", "ws") and parts.hostname in _LOOPBACK_HOSTS
+    return parts.scheme in ("http", "ws") and is_loopback_name(parts.hostname)
 
 
 def url() -> str:

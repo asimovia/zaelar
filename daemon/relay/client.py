@@ -245,13 +245,14 @@ class RelayClient:
     # ── his window: tell the relay when it closes or he signs in ────────────────────────────────────────
 
     def _watch_window(self) -> None:
-        """Poll the sign-in window ONLY while one is open; emit `browser.state` when `open` or `signed_in` flips."""
+        """Poll the sign-in window ONLY while one is open; emit `browser.state` when what it reports changes (open,
+        url, new cookies) — the engine judges from those facts whether he has signed in."""
         if self._window_thread is not None and self._window_thread.is_alive():
             return
 
         def loop():
             from . import dispatch
-            seen = {"open": False, "signed_in": False}
+            seen: dict = {"open": False}
             while not self._stop.is_set() and self.connected():
                 if not getattr(dispatch._windows(), "_current", None) and not seen["open"]:
                     return
@@ -260,10 +261,9 @@ class RelayClient:
                 except Exception as e:   # noqa: BLE001 — a browser that cannot answer has nothing to report
                     note("window state unreadable", e)
                     return
-                now = {"open": bool(state.get("open")), "signed_in": bool(state.get("signed_in"))}
+                now = {"open": bool(state.get("open")), "url": state.get("url"), "new_cookies": state.get("new_cookies")}
                 if now != seen:
-                    self.send_event("browser.state", {k: state.get(k) for k in
-                                                      ("open", "signed_in", "url", "new_cookies") if k in state})
+                    self.send_event("browser.state", {k: state.get(k) for k in ("open", "url", "new_cookies") if k in state})
                     seen = now
                 if not now["open"]:
                     return

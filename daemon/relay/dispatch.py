@@ -15,7 +15,6 @@ is different about a REMOTE caller is applied here, before the handler, and nowh
 from __future__ import annotations
 
 import json
-import re
 import threading
 
 from .. import VERSION, audit
@@ -26,11 +25,6 @@ MAX_DEADLINE_MS = 120_000
 DEFAULT_DEADLINE_MS = 30_000
 #: `browser.open` answers as soon as the window is launching (the contract: the engine then polls `browser.state`).
 OPEN_WAIT_S = 5.0
-
-# A sign-in or registration page by its URL, in the languages the product speaks — the daemon's own conservative read
-# for `signed_in` (the engine applies its own, richer judgement on the same URL and count).
-_LOGIN_URL_RE = re.compile(r"log[-_ ]?in|sign[-_ ]?(in|up|on)|auth|sso|oauth|register|registr|iniciar|entrar|acceso|"
-                           r"inscri|password|contrase", re.I)
 
 
 class _RelayCaller:
@@ -61,13 +55,6 @@ def _current_task() -> str:
 def _text(args: dict, key: str) -> str:
     v = args.get(key)
     return v if isinstance(v, str) else ""
-
-
-def signed_in(state: dict) -> bool:
-    """Off any sign-in/registration page AND at least one new cookie since the window opened."""
-    url = str(state.get("url") or "")
-    return bool(state.get("open")) and bool(url) and not _LOGIN_URL_RE.search(url) and \
-        int(state.get("new_cookies") or 0) >= 1
 
 
 # ── the ops ──────────────────────────────────────────────────────────────────────────────────────────────────
@@ -113,9 +100,9 @@ def _browser_open(args: dict) -> dict:
 
 def _browser_state(args: dict) -> dict:
     task = _text(args, "task_id") or _text(args, "task") or _current_task()
-    state = dict(_routes().browser_state(_CALLER, {"task": task}))
-    state["signed_in"] = signed_in(state)
-    return state
+    # Facts only — open, url, new cookies. Whether he has signed in is the ENGINE's one judgement over them
+    # (`navegador/owner_login/daemon_link._signed_in`); a second reader here would be a word list to keep in step.
+    return dict(_routes().browser_state(_CALLER, {"task": task}))
 
 
 def _browser_close(args: dict) -> dict:
