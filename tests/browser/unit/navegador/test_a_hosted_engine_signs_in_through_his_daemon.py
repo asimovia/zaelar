@@ -269,10 +269,8 @@ def test_open_state_export_import_through_the_relay(daemon_over_relay, monkeypat
     async def run():
         await owner._authenticate(tid, "https://shop.example.com/login", site="shop.example.com", goal="comprar")
         assert relay_link.owns_link() and tasks.get(tid)["awaiting_login"], "the window opened on his computer"
-        for _ in range(200):                                  # he signs in on the daemon's window
-            if launched and launched[0][1].pages:
-                break
-            await asyncio.sleep(0.02)
+        from tests.waiting import until                       # he signs in on the daemon's window
+        await until(lambda: launched and launched[0][1].pages, "the daemon's window to open a page", timeout_s=4)
         ctx = launched[0][1]
         await asyncio.sleep(0.1)
         ctx._cookies.append({"name": "sid", "value": "SECRET", "domain": ".shop.example.com", "path": "/"})

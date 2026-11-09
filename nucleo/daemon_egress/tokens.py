@@ -29,7 +29,9 @@ def instance_id() -> str | None:
     try:
         from nucleo.energy import routing
         mid = routing.my_machine_id()
-    except Exception:   # noqa: BLE001 — no routing module, no instance
+    except Exception as e:   # noqa: BLE001 — without the routing module there is no instance id
+        from loguru import logger
+        logger.debug(f"daemon_egress: no instance id ({type(e).__name__})")
         return None
     return mid if mid and PREFIX_RE.match(mid) else None
 

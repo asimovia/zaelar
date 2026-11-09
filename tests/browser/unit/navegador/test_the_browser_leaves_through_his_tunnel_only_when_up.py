@@ -74,6 +74,8 @@ def tunnel(monkeypatch):
     link.reset_for_tests()
     state = {"url": None}
     monkeypatch.setattr(link, "proxy_url", lambda: state["url"])
+    from search import hooks
+    monkeypatch.setattr(hooks, "proxy", lambda: state["url"])   # the seam the engine wires at boot
     yield state
     link.reset_for_tests()
 

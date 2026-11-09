@@ -86,11 +86,8 @@ _launched_proxy: list = [None]   # the tunnel proxy the live context was launche
 
 def _egress_proxy() -> str | None:
     """His tunnel's local proxy while it is up (V2-836); None — a direct launch, exactly as before — otherwise."""
-    try:
-        from nucleo.daemon_egress import link
-        return link.proxy_url()
-    except Exception:  # noqa: BLE001 — the tunnel is additive
-        return None
+    from search import hooks as _hooks
+    return _hooks.egress_proxy()
 
 
 def _egress_changed() -> bool:

@@ -69,11 +69,19 @@ def _embedded_v4(ip: ipaddress.IPv6Address) -> ipaddress.IPv4Address | None:
     return None
 
 
+def _address(text: str):
+    """The IP address `text` spells, or None when it spells a name (not a failure: most hosts are names)."""
+    try:
+        parsed = ipaddress.ip_address(str(text).split("%", 1)[0])
+    except ValueError:
+        parsed = None
+    return parsed
+
+
 def is_public(address: str) -> bool:
     """Whether one ADDRESS (not a name) is somewhere on the public internet the tunnel may reach."""
-    try:
-        ip = ipaddress.ip_address(address.split("%", 1)[0])
-    except ValueError:
+    ip = _address(address)
+    if ip is None:
         return False
     if isinstance(ip, ipaddress.IPv6Address):
         inner = _embedded_v4(ip)
@@ -106,11 +114,8 @@ def clean_host(host) -> str:
     h = h.rstrip(".")
     if not h:
         raise Refused("bad_host", "No destination was named.")
-    try:
-        ipaddress.ip_address(h.split("%", 1)[0])
+    if _address(h) is not None:
         return h
-    except ValueError:
-        pass
     if not _NAME_RE.match(h) or ".." in h:
         raise Refused("bad_host", "That is not a host name.")
     if h in _LOCAL_NAMES or h.endswith(_LOCAL_SUFFIXES):
@@ -128,11 +133,9 @@ def resolve_public(host: str, port: int, resolver=socket.getaddrinfo) -> list[st
         raise Refused("unresolvable", "That name does not resolve.") from None
     addresses: list[str] = []
     for info in infos or []:
-        try:
-            addr = str(info[4][0])
-        except (IndexError, TypeError):
-            continue
-        if addr not in addresses:
+        sockaddr = info[4] if isinstance(info, (tuple, list)) and len(info) > 4 else None
+        addr = str(sockaddr[0]) if isinstance(sockaddr, (tuple, list)) and sockaddr else ""
+        if addr and addr not in addresses:
             addresses.append(addr)
     if not addresses:
         raise Refused("unresolvable", "That name does not resolve.")
@@ -155,11 +158,8 @@ def domain_of(host: str) -> str:
     """The rate limiter's key: the last two labels of a name (`img.cdn.example.com` → `example.com`), the address
     itself for an IP literal. Coarse on purpose — a site that spreads over many subdomains is still one site."""
     h = str(host or "").lower().rstrip(".")
-    try:
-        ipaddress.ip_address(h)
+    if _address(h) is not None:
         return h
-    except ValueError:
-        pass
     labels = [x for x in h.split(".") if x]
     return ".".join(labels[-2:]) if len(labels) >= 2 else h
 

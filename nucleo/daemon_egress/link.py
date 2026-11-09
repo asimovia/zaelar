@@ -17,6 +17,7 @@ otherwise — and with None the launch is exactly what it was before this existe
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import os
 import time
 from urllib.parse import urlsplit
@@ -67,7 +68,8 @@ def available() -> bool:
         return False
     try:
         return bool(_relay_link().hosted())
-    except Exception:   # noqa: BLE001
+    except Exception as e:   # noqa: BLE001
+        logger.debug(f"daemon_egress: the relay link is unreadable ({type(e).__name__})")
         return False
 
 
@@ -108,10 +110,8 @@ async def ready(timeout: float = 5.0) -> bool:
     if not (_state["offer_at"] and time.time() < _state["offer_exp"]
             and time.time() - _state["offer_at"] < DIAL_WAIT_S):
         return False
-    try:
+    with contextlib.suppress(asyncio.TimeoutError):   # no dial in time: the launch goes out directly
         await asyncio.wait_for(_event().wait(), timeout)
-    except asyncio.TimeoutError:
-        pass
     return connected()
 
 
@@ -162,10 +162,8 @@ async def offer() -> bool:
 
 
 def _version(raw) -> tuple:
-    try:
-        return tuple(int(x) for x in str(raw or "").split(".")[:3])
-    except ValueError:
-        return ()
+    parts = str(raw or "").split(".")[:3]
+    return tuple(int(x) for x in parts) if parts and all(x.isdigit() for x in parts) else ()
 
 
 async def tick(presence: dict) -> None:

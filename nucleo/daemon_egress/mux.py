@@ -15,10 +15,13 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import contextlib
 import binascii
 import itertools
 import json
 import time
+
+from loguru import logger
 
 PING_S = 25.0
 OPEN_TIMEOUT_S = 20.0
@@ -66,20 +69,16 @@ class Stream:
             return
         self.closed = True
         self._s._streams.pop(self.id, None)
-        try:
+        with contextlib.suppress(Exception):     # the tunnel is gone: there is nobody left to tell
             await self._s._send({"t": "close", "id": self.id})
-        except Exception:   # noqa: BLE001 — the tunnel is gone; nothing left to tell
-            pass
 
     def _feed(self, data: bytes) -> asyncio.Future | None:
         return self._q.put(data)
 
     def _end(self) -> None:
         self.closed = True
-        try:
+        with contextlib.suppress(asyncio.QueueFull):   # a full queue still ends: its reader drains to the EOF
             self._q.put_nowait(b"")
-        except asyncio.QueueFull:
-            pass
 
 
 class Session:
@@ -146,12 +145,13 @@ class Session:
                 raw = await self._recv_text()
                 try:
                     frame = json.loads(raw)
-                except (TypeError, ValueError):
+                except (TypeError, ValueError) as e:
+                    logger.debug(f"daemon_egress: a tunnel frame that is not JSON ({type(e).__name__})")
                     continue
                 if isinstance(frame, dict):
                     await self._on_frame(frame)
-        except Exception:   # noqa: BLE001 — the socket ended (closed, broken, cancelled): same ending
-            pass
+        except Exception as e:   # noqa: BLE001 — the socket ended (closed, broken, cancelled): same ending
+            logger.debug(f"daemon_egress: the tunnel socket ended ({type(e).__name__})")
         finally:
             pinger.cancel()
             self._shutdown()
@@ -161,8 +161,8 @@ class Session:
             while not self.closed:
                 await asyncio.sleep(PING_S)
                 await self._send({"t": "ping"})
-        except Exception:   # noqa: BLE001 — the reader notices too
-            return
+        except Exception as e:   # noqa: BLE001 — the reader notices too
+            logger.debug(f"daemon_egress: ping stopped ({type(e).__name__})")
 
     async def _on_frame(self, frame: dict) -> None:
         kind, sid = frame.get("t"), frame.get("id")
@@ -176,7 +176,8 @@ class Session:
                 return
             try:
                 data = base64.b64decode(str(frame.get("b64") or ""), validate=True)
-            except (binascii.Error, ValueError):
+            except (binascii.Error, ValueError) as e:
+                logger.debug(f"daemon_egress: a data frame that is not base64 ({type(e).__name__})")
                 return
             if data:
                 self._account(st.host, down=len(data))
@@ -203,7 +204,5 @@ class Session:
         already = self.closed
         self._shutdown()
         if self._close_transport is not None and not already:
-            try:
+            with contextlib.suppress(Exception):   # closing a socket that is already gone
                 await self._close_transport()
-            except Exception:   # noqa: BLE001 — closing a socket that is already gone
-                pass

@@ -121,6 +121,8 @@ def prewarm_and_seams(app, active_brain) -> None:
             _search_hooks.policy = _envelope.policy        # pass 10 I1: the browser's foreground wait is declared there
             from nucleo.workers import room as _room
             _search_hooks.room = lambda what: _room.room_for(what, patient=True)   # V2-867 F2: waits like a worker
+            from nucleo.daemon_egress import link as _egress_link
+            _search_hooks.proxy = _egress_link.proxy_url    # V2-836: his tunnel's local proxy while it is up
             # V2-846: scrape's seams — the fast model that maps a site's listing keys once, and the one per-source
             # record (CRIT-E17) where a wall a read hit is noted next to the browser's and the workers'.
             from scrape import hooks as _scrape_hooks

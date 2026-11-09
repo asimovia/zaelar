@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import base64
 import binascii
+import contextlib
 import ipaddress
 import json
 import queue
@@ -86,7 +87,8 @@ def _expiry(raw) -> float:
         from datetime import datetime
         try:
             return datetime.fromisoformat(raw.strip().replace("Z", "+00:00")).timestamp()
-        except ValueError:
+        except ValueError as e:
+            note("an offer's expiry is unreadable", e)
             return 0.0
     return 0.0
 
@@ -101,14 +103,12 @@ class _Stream:
         if self.done.is_set():
             return
         self.done.set()
-        try:
+        with contextlib.suppress(queue.Full):
+            self.outbox.put_nowait(None)          # wakes the writer, which then sees `done`
+        with contextlib.suppress(OSError):        # the destination may have gone already: closing is best effort
             self.sock.shutdown(socket.SHUT_RDWR)
-        except OSError:
-            pass
-        try:
+        with contextlib.suppress(OSError):
             self.sock.close()
-        except OSError:
-            pass
 
 
 class Tunnel:
@@ -264,7 +264,8 @@ class Tunnel:
                 quiet, heard_anything = 0.0, True
                 try:
                     frame = json.loads(raw)
-                except ValueError:
+                except ValueError as e:
+                    note("a tunnel frame that is not JSON", e)
                     continue
                 if isinstance(frame, dict):
                     self._on_frame(sock, frame)
@@ -290,7 +291,8 @@ class Tunnel:
         try:
             sock.send(json.dumps(frame, separators=(",", ":")))
             return True
-        except Exception:   # noqa: BLE001 — the reader notices the broken socket
+        except Exception as e:   # noqa: BLE001 — the reader notices the broken socket too
+            note("frame not sent", e)
             return False
 
     def _on_frame(self, sock, frame: dict) -> None:
@@ -356,10 +358,7 @@ class Tunnel:
     def _pump_in(self, sock, st: _Stream) -> None:
         """Engine → destination: drain the stream's outbox into its socket. `None` is the engine's close."""
         while not st.done.is_set():
-            try:
-                data = st.outbox.get(timeout=_TICK_S)
-            except queue.Empty:
-                continue
+            data = st.outbox.get()                # `None`: the engine closed it, or `shut()` woke us
             if data is None:
                 self._end(sock, st, notify=False)
                 return

@@ -94,7 +94,9 @@ class Controller:
             from .. import config   # noqa: PLC0415
             from ..egress import tunnel   # noqa: PLC0415
             return {"enabled": config.egress_enabled(), "connected": tunnel.TUNNEL.connected()}
-        except Exception:   # noqa: BLE001 — an unreadable state greys the item out, never the menu
+        except Exception as e:   # noqa: BLE001 — an unreadable state greys the item out, never the menu
+            from ..egress import note   # noqa: PLC0415
+            note("tray could not read the tunnel state", e)
             return None
 
     def refresh(self) -> model.View:

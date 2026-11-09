@@ -18,6 +18,7 @@ Bound to loopback only; nothing off this machine can use it.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 from urllib.parse import urlsplit
 
 from loguru import logger
@@ -44,10 +45,8 @@ class _Direct:
         await self._w.drain()
 
     async def close(self) -> None:
-        try:
+        with contextlib.suppress(Exception):     # a connection the peer already dropped: closing is best effort
             self._w.close()
-        except Exception:   # noqa: BLE001
-            pass
 
 
 def parse_target(line: str) -> tuple[str, str, int, str, str]:
@@ -97,10 +96,8 @@ class Forwarder:
     async def stop(self) -> None:
         if self._server is not None:
             self._server.close()
-            try:
+            with contextlib.suppress(Exception):
                 await self._server.wait_closed()
-            except Exception:   # noqa: BLE001
-                pass
             self._server = None
 
     async def _route(self, host: str, port: int):
@@ -138,20 +135,17 @@ class Forwarder:
                 await upstream.write(out.encode("latin-1"))
             await self._pump(reader, writer, upstream)
         except (asyncio.IncompleteReadError, asyncio.LimitOverrunError, asyncio.TimeoutError, ValueError):
-            try:
+            logger.debug("daemon_egress: a proxy request that is not CONNECT or absolute-form http")
+            with contextlib.suppress(Exception):  # the client may have left already
                 writer.write(b"HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
                 await writer.drain()
-            except Exception:   # noqa: BLE001
-                pass
         except Exception as e:  # noqa: BLE001 — one stream fails alone
             logger.debug(f"daemon_egress: stream ended ({type(e).__name__})")
         finally:
             if upstream is not None:
                 await upstream.close()
-            try:
+            with contextlib.suppress(Exception):
                 writer.close()
-            except Exception:   # noqa: BLE001
-                pass
 
     @staticmethod
     async def _pump(reader: asyncio.StreamReader, writer: asyncio.StreamWriter, upstream) -> None:
