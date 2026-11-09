@@ -72,7 +72,7 @@ def said_block() -> str:
 
 
 def known_lines(goal: str) -> str:
-    """What is already KNOWN about this errand (the workflow table's route, the sources that walled or served before):
+    """What is already KNOWN about this errand (the playbook route table's route, the sources that walled or served before):
     facts about THIS task, so they stay in the brief while the network's how-to is a family. '' when nothing."""
     try:
         from nucleo.workers.prompts import context

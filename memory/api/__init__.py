@@ -27,7 +27,7 @@ from .. import viewer  # noqa: F401 — V2-808: the bounded reads behind the mem
 from .. import writer as _writer
 from ..queue import get_queue
 from ..action_map_store import (  # noqa: E402,F401 — V2-778 F1: moved, imported back under their names
-    action_map_active, action_map_add, action_map_has_seed, action_map_hit, action_map_retarget_seed, action_map_seed_version, action_map_set_seed_version)
+    action_map_absorb, action_map_active, action_map_add, action_map_has_seed, action_map_hit, action_map_learned, action_map_retarget_seed, action_map_seed_version, action_map_set_seed_version)
 from .. import notices_store as notices  # noqa: E402,F401 — V2-796: the notice ledger, through the front door
 from ..kv_store import (  # noqa: E402,F401 — V2-778 F1: moved, imported back under their names
     kv_del, kv_get, kv_keys, kv_set)
@@ -43,8 +43,8 @@ from .sleep import concept_names, fold_concepts, register_sleep_phase, same_pers
 from .._prompt import (  # noqa: E402,F401 — the PRESENTATION (what is painted for a model) lives in `_prompt.py`
     compose_state, critical_facts, day_block, day_ledger, recent_short, recent_window, salient_long, seconds_since_last_conv)
 from ..history import conversation, provenance  # noqa: E402,F401 — V2-802 T-06 / V2-803 T-01
-# ── workflows (V2-594): `nucleo/workflows/` reaches the table only through the facade ──
-from ..workflows_store import workflow_forget, workflow_hit, workflow_upsert, workflows_for  # noqa: E402,F401
+# ── playbook routes (V2-594, renamed V2-859): `nucleo/routes/` reaches the table only through the facade ──
+from ..routes_store import route_forget, route_hit, route_upsert, routes_for, routes_learned  # noqa: E402,F401
 
 # tokens ≈ characters / 4 (cheap approximation for truncating to the budget).
 _CHARS_PER_TOKEN = 4

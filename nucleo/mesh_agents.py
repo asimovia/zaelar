@@ -599,13 +599,13 @@ def serve(errand: str, prompt: str = "", fields: dict | None = None, agent_id: s
     prompt = (prompt or errand).strip()
     if not errand:
         return {"ok": False, "reason": "sin encargo"}
-    # V2-594 · the workflow table answers BEFORE the network does. A domain the mesh is known to have nothing
+    # V2-594 · the playbook route table answers BEFORE the network does. A domain the mesh is known to have nothing
     # for does not pay the Oracle round trip again, and the caller gets a FACT instead of an empty result to
     # send through a model to have the emptiness narrated back. The negative row expires, so a new agent on
     # the mesh is still discovered — it is a shortcut, not a verdict.
     try:
-        from nucleo import workflows as _wf
-        wplan = _wf.plan(errand)
+        from nucleo import routes as _routes
+        wplan = _routes.plan(errand)
     except Exception:
         wplan = None
     if wplan and wplan.known_empty:
@@ -635,8 +635,8 @@ def serve(errand: str, prompt: str = "", fields: dict | None = None, agent_id: s
         # saving never fired where it was needed most. An unreachable Oracle is cached NEVER.
         if wplan and wplan.domain and found.get("reached"):
             try:
-                from nucleo import workflows as _wf
-                _wf.note_empty(wplan.domain,
+                from nucleo import routes as _routes
+                _routes.note_empty(wplan.domain,
                                evidence=f"oracle reached, 0 agents (coverage={coverage or '-'}, "
                                         f"intent={intent or '-'})")
             except Exception:
@@ -694,13 +694,13 @@ def _ask_in_turn(agents: list[dict], errand: str, prompt: str, fields: dict | No
             # unconditional fetch here reddened two unrelated tests, and a learned route stored before
             # capabilities were kept would have paid it on every single cached hit.)
             declared = _declares(agent) or _declares(agent, _cards.get(_endpoint_of(agent)))
-            # V2-594: a success teaches the workflow table too, keyed by the LEXICAL domain rather than the
+            # V2-594: a success teaches the playbook route table too, keyed by the LEXICAL domain rather than the
             # Oracle intent. That matters: the intent is `general` for events, shopping and wellness, which is
             # exactly where `remember_route` cannot help — the domain key has no such hole.
             if wplan and wplan.domain:
                 try:
-                    from nucleo import workflows as _wf
-                    _wf.learn(wplan.domain, _wf.store.CH_MESH, target=str(agent.get("agent_id") or ""),
+                    from nucleo import routes as _routes
+                    _routes.learn(wplan.domain, _routes.store.CH_MESH, target=str(agent.get("agent_id") or ""),
                               evidence=f"served «{errand[:60]}»", rank=10)
                 except Exception:
                     pass

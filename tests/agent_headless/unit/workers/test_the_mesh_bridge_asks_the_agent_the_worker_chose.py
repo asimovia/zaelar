@@ -18,8 +18,8 @@ def _serve(monkeypatch, agent_id):
     monkeypatch.setattr(mesh_agents, "_failing_last", lambda agents: agents)
     monkeypatch.setattr(mesh_agents, "_ask_in_turn", lambda agents, *a, **k: asked.extend(agents) or {"ok": True})
     try:
-        from nucleo import workflows
-        monkeypatch.setattr(workflows, "plan", lambda errand: None)
+        from nucleo import routes
+        monkeypatch.setattr(routes, "plan", lambda errand: None)
     except Exception:  # noqa: BLE001
         pass
     mesh_agents.serve("sneakers size 42 under 80 euros", agent_id=agent_id)

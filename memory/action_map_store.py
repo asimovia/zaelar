@@ -7,7 +7,11 @@ unchanged and `memory.api` re-exports them, so the memory-boundary contract hold
 """
 from __future__ import annotations
 
+import logging
+
 from . import db as _db  # noqa: F401  (asegura import del paquete; get_db perezoso)
+
+_log = logging.getLogger("zaelar.memory")
 
 
 
@@ -106,3 +110,32 @@ def action_map_hit(entry_id: int) -> None:
                              (int(_time.time()), entry_id))
     except Exception:
         pass
+
+
+def action_map_learned() -> list[dict]:
+    """Every LEARNED row of every language, with its evidence (V2-859): the action map's half of the learned layer
+    of the genome — what `genome diff` may export and what an absorption may fold into the factory."""
+    try:
+        rows = _db.get_db().query(
+            "SELECT id, lang, phrase, action, status, hits, agree, disagree FROM action_map "
+            "WHERE source='learned' ORDER BY lang, phrase")
+        return [dict(r) for r in rows]
+    except Exception as e:  # noqa: BLE001 — an unreadable table exports nothing, and says so
+        _log.warning(f"action_map: learned rows unreadable ({e!r})")
+        return []
+
+
+def action_map_absorb(entry_id: int) -> bool:
+    """A learned row the factory now ships, identical, becomes the factory row (V2-859 T566). Only an ACTIVE learned
+    row moves: one he disabled is his decision and stays his. The row keeps its id and its counters."""
+    try:
+        db = _db.get_db()
+        if db.query_one("SELECT 1 AS x FROM action_map WHERE id=? AND source='learned' AND status='active'",
+                        (entry_id,)) is None:
+            return False
+        db.execute("UPDATE action_map SET source='seed' WHERE id=? AND source='learned' AND status='active'",
+                   (entry_id,))
+        return True
+    except Exception as e:  # noqa: BLE001 — a row not absorbed stays learned, which is safe; said
+        _log.warning(f"action_map: absorption of row {entry_id} failed ({e!r})")
+        return False

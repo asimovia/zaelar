@@ -29,8 +29,8 @@ def _isolated(monkeypatch):
     m._cards.clear()
     monkeypatch.setattr(m, "_get", lambda url, timeout=None: None)
     try:
-        from nucleo import workflows
-        monkeypatch.setattr(workflows, "plan", lambda *a, **k: None)
+        from nucleo import routes
+        monkeypatch.setattr(routes, "plan", lambda *a, **k: None)
     except Exception:
         pass
     yield

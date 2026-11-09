@@ -1,4 +1,4 @@
-"""nucleo/workflows/store.py — the workflow table's runtime (V2-594).
+"""nucleo/routes/store.py — the playbook route table's runtime (V2-594).
 
 ## What it is for
 
@@ -98,7 +98,7 @@ def plan(request: str, locale: str | None = None) -> Plan:
 def _rows(domain: str) -> list[dict]:
     try:
         from memory import api as memory
-        return memory.workflows_for(domain)
+        return memory.routes_for(domain)
     except Exception:
         return []
 
@@ -137,7 +137,7 @@ def _gene(cause: str, domain: str, channel: str, before, after, evidence: str = 
              extra={"layer": "learned", "type": gtype, "key": f"{domain}/{channel}", "before": before,
                     "after": after, "cause": cause, "evidence": str(evidence or "")[:200]})
     except Exception as e:  # noqa: BLE001 — the event is an instrument; the route was written either way
-        logger.debug(f"workflows: gene event not emitted ({e!r})")
+        logger.debug(f"routes: gene event not emitted ({e!r})")
 
 
 def learn(domain: str, channel: str, *, target: str = "", evidence: str = "",
@@ -150,7 +150,7 @@ def learn(domain: str, channel: str, *, target: str = "", evidence: str = "",
     try:
         from memory import api as memory
         before = _gene_row(domain, channel)
-        memory.workflow_upsert(domain, channel, status="active", rank=rank, source=source,
+        memory.route_upsert(domain, channel, status="active", rank=rank, source=source,
                                target=target, evidence=evidence, ttl_s=ttl_s)
         _gene("learned", domain, channel, before, _gene_row(domain, channel), evidence)
     except Exception:
@@ -168,7 +168,7 @@ def note_empty(domain: str, channel: str = CH_MESH, *, evidence: str = "", ttl_s
     try:
         from memory import api as memory
         before = _gene_row(domain, channel)
-        memory.workflow_upsert(domain, channel, status="none", rank=999, source="learned",
+        memory.route_upsert(domain, channel, status="none", rank=999, source="learned",
                                evidence=evidence, ttl_s=ttl_s)
         _gene("learned", domain, channel, before, _gene_row(domain, channel), evidence)
     except Exception:
@@ -180,7 +180,7 @@ def forget(domain: str, channel: str = "") -> None:
     try:
         from memory import api as memory
         gone = [r for r in _rows(domain) if not channel or r.get("channel") == channel]
-        memory.workflow_forget(domain, channel)
+        memory.route_forget(domain, channel)
         for r in gone:
             _gene("forgotten", domain, r.get("channel") or "", _shape(r), None)
     except Exception:

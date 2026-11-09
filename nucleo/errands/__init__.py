@@ -74,7 +74,7 @@ _WORD_HOURS_RE = re.compile(r"\b(" + "|".join(_WORD_HOURS) + r")\s*(horas?|hours
 
 def _memory():
     """The errands' own facade inside the memory package (`memory/errands_store.py`). Same boundary
-    `nucleo/workflows/` keeps — nothing here touches `db`, the schema or the retriever — and it is a
+    `nucleo/routes/` keeps — nothing here touches `db`, the schema or the retriever — and it is a
     separate module rather than more of `memory/api.py` because that file is at its size ceiling and the
     ratchet asks for a module instead of a bigger number."""
     from memory import errands_store

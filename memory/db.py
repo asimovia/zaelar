@@ -103,6 +103,12 @@ class Database:
         with self._lock:
             cur = self.conn.execute("PRAGMA user_version").fetchone()
             version = cur[0] if cur else 0
+            # V2-859 T563: the V2-594 `workflows` table is the playbook's ROUTE — same rows, same meaning, new name.
+            # Renamed in place before the DDL so an existing install keeps what it learned; idempotent, no version.
+            have = {r[0] for r in self.conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+            if "workflows" in have and "playbook_routes" not in have:
+                self.conn.execute("ALTER TABLE workflows RENAME TO playbook_routes")
+                self.conn.execute("DROP INDEX IF EXISTS idx_workflows_domain")
             for stmt in _schema.BASE_DDL:
                 self.conn.execute(stmt)
             if self.vec_available:
