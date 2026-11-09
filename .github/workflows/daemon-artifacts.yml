@@ -13,8 +13,15 @@
 # install time, on somebody else's computer, in the worst possible mood.
 #
 # IT PUBLISHES NOTHING BY ITSELF. On a tag the artifacts are attached to the release; otherwise they are build
-# artifacts you can download and look at. Signing and notarizing are release steps run by somebody who holds
-# the identity to sign with — see the ops playbook — never a side effect of a green build.
+# artifacts you can download and look at.
+#
+# WHAT IS SIGNED, AND BY WHOM. Each build job signs its own `SHA256SUMS-<suffix>` with a Sigstore KEYLESS
+# signature: the signer is this workflow's GitHub OIDC identity (`.../daemon-artifacts.yml@<ref>`), the
+# certificate is short-lived, and the signature is recorded in the public Rekor transparency log. No key exists
+# to leak. It also attaches GitHub build-provenance attestations to the binaries the sums list. That proves
+# "these bytes were built by this workflow, from this repository, at this ref" — it does NOT prove the code was
+# reviewed, and it is not an operating-system signature: Apple Developer ID and Windows Authenticode need an
+# identity only the publisher holds, and are a later, separate step (see the ops playbook).
 
 name: daemon artifacts
 
@@ -47,6 +54,13 @@ jobs:
             suffix: windows
     runs-on: ${{ matrix.os }}
     timeout-minutes: 25
+    # Least privilege, stated rather than inherited. `id-token: write` lets the job ask GitHub for the OIDC token
+    # Sigstore turns into a signing certificate; `attestations: write` stores the provenance. The build never
+    # writes to the repository — attaching to a release is the `release` job's, which holds `contents: write`.
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
 
     steps:
       - uses: actions/checkout@v4
@@ -157,6 +171,44 @@ jobs:
       # made the one-line installer refuse to install.
       - name: Name the artifacts after the platform they are for
         run: python daemon/packaging/release_names.py ${{ matrix.suffix }}
+
+      # ⚠️ SIGNED AFTER THE RENAME, NEVER BEFORE. The rename rewrites the sums, so a signature taken earlier
+      # would cover a file that is never published — valid, and about nothing. `release_names.py` also deletes
+      # any signature left over from an earlier name, so the only bundle beside the sums is the one made here.
+      # ONE BUNDLE, NOT .sig + .pem: `SHA256SUMS-<suffix>.sigstore.json` carries the signature, the certificate
+      # AND the transparency-log inclusion proof, so a user verifies with one extra file and without trusting a
+      # Rekor lookup at install time. It is cosign's default output format and what `--bundle` verifies.
+      - uses: sigstore/cosign-installer@v4.1.3
+        with:
+          cosign-release: "v3.1.4"
+
+      - name: Sign the checksums (keyless, this workflow's identity)
+        shell: bash
+        run: |
+          set -euo pipefail
+          cosign sign-blob --yes \
+            --bundle "dist/daemon/SHA256SUMS-${{ matrix.suffix }}.sigstore.json" \
+            "dist/daemon/SHA256SUMS-${{ matrix.suffix }}"
+
+      # The signature is checked here exactly as a user will check it, pinned to THIS run's identity — a bundle
+      # that only verifies on the author's laptop is the same untested claim as a binary that only runs there.
+      - name: The signature verifies against this workflow's identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          cosign verify-blob \
+            --bundle "dist/daemon/SHA256SUMS-${{ matrix.suffix }}.sigstore.json" \
+            --certificate-identity "${{ github.server_url }}/${{ github.workflow_ref }}" \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+            "dist/daemon/SHA256SUMS-${{ matrix.suffix }}"
+
+      # Provenance for exactly what the sums list — the binary and the portable archive under their published
+      # names — so the attestation and the checksum file can never disagree about which files they are about.
+      # `gh attestation verify <file> --repo asimovia/zaelar` checks it.
+      - name: Attest the build provenance of the published binaries
+        uses: actions/attest-build-provenance@v4.2.2
+        with:
+          subject-checksums: dist/daemon/SHA256SUMS-${{ matrix.suffix }}
 
       # The installers and the one-line bootstraps are architecture-independent, so exactly ONE job publishes
       # them. Copied from both Mac jobs they would be two files claiming one name in a flattened release, and

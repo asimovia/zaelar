@@ -11,8 +11,17 @@
 # ⚠️ IT DOES NOT TRUST THE DOWNLOAD BLINDLY. Piping a script into `iex` is exactly as safe as its origin and
 # no safer, so: this script comes over https from the repository it belongs to, the binary comes from that
 # repository's own release, and its SHA-256 is compared with the `SHA256SUMS-windows` the build published
-# beside it. That is two files agreeing — enough to catch a corrupt download or an altered mirror, NOT
-# provenance, since whoever can replace one can replace the other. Provenance needs a signature.
+# beside it — before anything is executed.
+#
+# WHAT IS PROVEN, EXACTLY. The hash alone is two files agreeing: it catches a corrupt download, NOT a release
+# whose binary and sums were both replaced. That is what the signature is for. The build signs the sums with
+# Sigstore keyless — the signer is the release workflow's GitHub identity, the signature is in the public Rekor
+# log — so when `cosign` is on PATH this script verifies `SHA256SUMS-windows.sigstore.json` against that
+# identity and REFUSES to install on a bad or missing signature. A passing install then means: these bytes are
+# the ones the `daemon-artifacts.yml` workflow of asimovia/zaelar built and signed for a release tag. It does
+# NOT mean anybody reviewed the code, nor that Microsoft vouches for it — the .exe carries no Authenticode
+# signature (a later step). Without `cosign`, only the hash is checked and the script says so. A fork that
+# publishes its own releases sets ZAELAR_DAEMON_SIGNER_RE to its own workflow's identity.
 #
 # NO ADMINISTRATOR. Anywhere.
 $ErrorActionPreference = 'Stop'
@@ -58,6 +67,39 @@ try {
   Say "downloading $Asset…"
   Invoke-WebRequest -Uri "$Base/$Asset" -OutFile (Join-Path $Work $Asset) -UseBasicParsing
   Invoke-WebRequest -Uri "$Base/SHA256SUMS-windows" -OutFile (Join-Path $Work 'SHA256SUMS') -UseBasicParsing
+
+  # ── the signature over the sums, when this PC can check it ──────────────────────────────────────────────
+  # Checked BEFORE the hash, because the hash is only as good as the sums file it is compared with.
+  $SignerRe = if ($env:ZAELAR_DAEMON_SIGNER_RE) { $env:ZAELAR_DAEMON_SIGNER_RE } else { '^https://github.com/asimovia/zaelar/\.github/workflows/daemon-artifacts\.yml@refs/tags/' }
+  $OidcIssuer = 'https://token.actions.githubusercontent.com'
+  if (Get-Command cosign -ErrorAction SilentlyContinue) {
+    Say 'checking the signature…'
+    # A missing bundle is a refusal, not a skip: whoever can replace the binary and the sums can also delete
+    # the signature, so "no signature" must never quietly mean "fine".
+    try {
+      Invoke-WebRequest -Uri "$Base/SHA256SUMS-windows.sigstore.json" -OutFile (Join-Path $Work 'SHA256SUMS.sigstore.json') -UseBasicParsing
+    } catch {
+      Die "$Tag publishes no signature for SHA256SUMS-windows. Releases before signing have none - install a newer one, or remove cosign from PATH to install with the hash check only."
+    }
+    # ⚠️ cosign reports success on stderr, and Windows PowerShell 5.1 under 'Stop' turns a redirected stderr line
+    # into a terminating error — a GOOD signature would abort the install. The exit code is the verdict.
+    $previousPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+      $verifyOut = & cosign verify-blob `
+        --bundle (Join-Path $Work 'SHA256SUMS.sigstore.json') `
+        --certificate-identity-regexp $SignerRe `
+        --certificate-oidc-issuer $OidcIssuer `
+        (Join-Path $Work 'SHA256SUMS') 2>&1 | Out-String
+      $verifyCode = $LASTEXITCODE
+    } finally { $ErrorActionPreference = $previousPreference }
+    if ($verifyCode -ne 0) {
+      Die "the signature on SHA256SUMS-windows does not verify - it was not signed by the release workflow. Nothing was installed.`n    $verifyOut"
+    }
+    Say 'signature ok - signed by the release workflow'
+  } else {
+    Say "signature not checked (no cosign) - by hand: cosign verify-blob --bundle SHA256SUMS-windows.sigstore.json --certificate-identity-regexp '$SignerRe' --certificate-oidc-issuer $OidcIssuer SHA256SUMS-windows"
+  }
 
   # ── verify before anything is executed ──────────────────────────────────────────────────────────────────
   # While the file is still an inert blob in a temp directory: before it is moved, registered with the task

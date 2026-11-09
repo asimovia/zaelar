@@ -12,10 +12,17 @@
 # ⚠️ IT DOES NOT TRUST THE DOWNLOAD BLINDLY. Piping a script into a shell is exactly as safe as the origin it
 # came from and no safer, so: this script is fetched over https from the repository it belongs to, the binary
 # is fetched from that repository's own release, and its SHA-256 is checked against the `SHA256SUMS-*` the
-# build published beside it. Be clear about what that last part IS: two files agreeing. It catches a corrupt
-# or truncated download and it catches a mirror that altered one of them — it is NOT provenance, because
-# whoever can replace one can replace the other. Provenance needs a signature, and that is a separate,
-# deliberate piece of work (see `.meshkore/docs/ops/zaelar-daemon-build.md`).
+# build published beside it — before anything is executed.
+#
+# WHAT IS PROVEN, EXACTLY. The hash alone is two files agreeing: it catches a corrupt download, NOT a release
+# whose binary and sums were both replaced. That is what the signature is for. The build signs the sums with
+# Sigstore keyless — the signer is the release workflow's GitHub identity, the signature is in the public Rekor
+# log — so when `cosign` is on PATH this script verifies `SHA256SUMS-*.sigstore.json` against that identity and
+# REFUSES to install on a bad or missing signature. Then a passing install means: these bytes are the ones the
+# `daemon-artifacts.yml` workflow of asimovia/zaelar built and signed for a release tag. What it does NOT mean:
+# that anybody reviewed the code, or that Apple or Microsoft vouch for it — the binary carries no Developer ID
+# or Authenticode signature (a later step). Without `cosign`, only the hash is checked and the script says so.
+# A fork that publishes its own releases sets ZAELAR_DAEMON_SIGNER_RE to its own workflow's identity.
 #
 # NO SUDO. Anywhere. If this script ever needs an administrator password, something is wrong with it.
 set -euo pipefail
@@ -66,6 +73,29 @@ curl -fsSL -o "$WORK/$ASSET" "$BASE/$ASSET" || die "could not download $ASSET fr
 # jobs writing one name into a flattened release, and the second would win.
 SUMS="SHA256SUMS-${ASSET#zaelar-daemon-}"
 curl -fsSL -o "$WORK/SHA256SUMS" "$BASE/$SUMS" || die "could not download $SUMS."
+
+# ── the signature over the sums, when this Mac can check it ──────────────────────────────────────────────
+# Checked BEFORE the hash, because the hash is only as good as the sums file it is compared with.
+SIGNER_RE="${ZAELAR_DAEMON_SIGNER_RE:-^https://github.com/asimovia/zaelar/\.github/workflows/daemon-artifacts\.yml@refs/tags/}"
+OIDC_ISSUER="https://token.actions.githubusercontent.com"
+if command -v cosign >/dev/null 2>&1; then
+  say "checking the signature…"
+  # A missing bundle is a refusal, not a skip: whoever can replace the binary and the sums can also delete the
+  # signature, so "no signature" must never quietly mean "fine".
+  curl -fsSL -o "$WORK/SHA256SUMS.sigstore.json" "$BASE/$SUMS.sigstore.json" \
+    || die "$TAG publishes no signature for $SUMS. Releases before signing have none — install a newer one, or uninstall cosign to install with the hash check only."
+  if ! VERIFY_OUT="$(cosign verify-blob \
+        --bundle "$WORK/SHA256SUMS.sigstore.json" \
+        --certificate-identity-regexp "$SIGNER_RE" \
+        --certificate-oidc-issuer "$OIDC_ISSUER" \
+        "$WORK/SHA256SUMS" 2>&1)"; then
+    die "the signature on $SUMS does not verify — it was not signed by the release workflow. Nothing was installed.
+    $VERIFY_OUT"
+  fi
+  say "signature ok — signed by the release workflow"
+else
+  say "signature not checked (no cosign) — by hand: cosign verify-blob --bundle $SUMS.sigstore.json --certificate-identity-regexp '$SIGNER_RE' --certificate-oidc-issuer $OIDC_ISSUER $SUMS"
+fi
 
 # ── verify before anything is executed ────────────────────────────────────────────────────────────────────
 # The order matters: the hash is checked while the file is still an inert blob in a temp directory, before it
