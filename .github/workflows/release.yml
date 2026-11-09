@@ -50,7 +50,7 @@ jobs:
         # The list is the Dockerfile's COPY list: a package the image ships but the gate does not compile is a
         # syntax error that reaches production. `observability` and `i18n` were missing — both are imported at
         # module level by server/__init__.py, so either one would crash the boot the gate had just blessed.
-        run: python -m compileall -q nucleo memory voice server widgets bus config connectors observability i18n update
+        run: python -m compileall -q nucleo memory voice server widgets bus config connectors observability i18n update genome search scrape rules library
 
       # GATE — THE BUILD NUMBER MOVED (V2-553). `update/BUILD` is the only version a person is ever shown,
       # and a release that ships the same number as the last one is invisible to the person it exists for:
