@@ -15,7 +15,8 @@ from .sheet_names import WIDGET_ID
 # Fields an item may carry; anything else is dropped. The payload comes from a worker that read the open web,
 # so the schema stays closed even though widget.js paints with textContent only.
 _ITEM_FIELDS = ("title", "subtitle", "price", "badge", "url", "image", "primary", "lines",
-                "parts", "images", "facts", "score", "blocks", "full_title", "meta", "kind")
+                "parts", "images", "facts", "score", "blocks", "full_title", "meta", "kind",
+                "source")      # V2-868 D4: where a row without its own url was found (a name on the Sources tab)
 
 #: WHAT KIND OF THING a result is — content, not layout. On the payload's root it names the list; on an item (V2-831)
 #: it picks that card's template (`offer` · `video` · `link`, `js/parts.js::itemKind`). Absent, the shape decides.
@@ -182,6 +183,8 @@ def _clean_item(raw: dict) -> dict | None:
         elif k == "kind":
             if str(v).strip().lower() in _KINDS:
                 it[k] = str(v).strip().lower()
+        elif k == "source":                       # a NAME (V2-868), not a Sources-tab row: `_clean_source` is that
+            it[k] = flat(v)[:120]
         elif "_clean_" + k in globals():          # a structure of its own: its `_clean_<field>` (parts, facts, score…)
             it[k] = globals()["_clean_" + k](v)
         elif k == "full_title":

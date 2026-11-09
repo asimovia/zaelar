@@ -68,6 +68,11 @@ def _goal_key(req: str) -> str:
     return " ".join(sorted(_content_words(req)))
 
 
+def _errand_key(rec) -> str:
+    from nucleo.runtime_ids import errand_key       # V2-868: a brief is kept under its errand's row
+    return errand_key(rec)
+
+
 def _resume_entry(rec, *, nav_tid: str, resume: dict | None, req: str, key: str,
                   brief: bool, prev_count: int) -> dict:
     """The resumption entry left by an INCOMPLETE web task. Outside `_run_session` so it can be tested.
@@ -91,7 +96,7 @@ def _resume_entry(rec, *, nav_tid: str, resume: dict | None, req: str, key: str,
             "ts": time.time(), "count": int(prev_count) + 1, "goal": req[:200],
             # The criteria already agreed upon travel with the resumption: rebuilding them halfway through a search
             # would turn it into a different search without warning.
-            "brief_task": key if brief else str((resume or {}).get("brief_task") or "")}
+            "brief_task": _errand_key(rec) if brief else str((resume or {}).get("brief_task") or "")}
 
 
 def _leave_resume(rec, *, nav_tid: str, resume: dict | None, req: str, key: str,

@@ -13,13 +13,13 @@ from nucleo import dispatch as _d
 
 
 async def _compose_brief(request: str, context: str, trusted: bool, resume: dict | None = None,
-                         task_id: str = "") -> dict | None:
+                         task_id: str = "", errand: str = "") -> dict | None:
     """The one door every research brief is composed through — and so the one place it is RECORDED (V2-837 G9): one
     `brief composed` event per errand with the fields the worker will be held to, whatever path produced it."""
     t0 = _d.time.monotonic()
     how, brief = "none", None
     try:
-        how, brief = await _compose_brief_how(request, context, trusted, resume)
+        how, brief = await _compose_brief_how(request, context, trusted, resume, errand=errand)
         return brief
     except _d.research.ComposerUnavailable:
         how = "unavailable"
@@ -60,7 +60,7 @@ def _emit_brief(brief: dict | None, *, how: str, ms: float, task_id: str, truste
 
 
 async def _compose_brief_how(request: str, context: str, trusted: bool,
-                             resume: dict | None = None) -> tuple[str, dict | None]:
+                             resume: dict | None = None, *, errand: str = "") -> tuple[str, dict | None]:
     """PRE-FLIGHT of a research: turns the raw request into a DIRECTED brief (nucleo/workers/brief.py).
 
     Why here and not in the voice turn: directing a search well — separating hard criteria from soft ones, adding
@@ -70,13 +70,16 @@ async def _compose_brief_how(request: str, context: str, trusted: bool,
     it starts working.
 
     On a RESUMPTION the previous round's brief is reused as it is: the criteria were already agreed, and recomposing
-    them could change them halfway through a search the operator believes continues the same script."""
+    them could change them halfway through a search the operator believes continues the same script — but only when
+    that brief is stamped with the resumed errand's own key (`errand`, V2-868); any other brief is composed afresh."""
     if not trusted:
         return "none", None               # a profile with no tools: there is no research to direct
     prev_tid = str((resume or {}).get("brief_task") or "")
     if prev_tid:
         prev = _d.research.load(prev_tid)
-        if prev:
+        # V2-868 D2 — «reused» only when the stored brief is the RESUMED row's own: a relaunch once inherited another
+        # errand's brief (a previous boot's podcast research) as its «agreed criteria» and searched for that instead.
+        if prev and errand and str(prev.get("errand") or "") == str(errand):
             return "reused", prev
     # Already researched, and the operator comes back to it? Then this is the NEXT ROUND of the same search: it
     # inherits the agreed criteria and widens the breadth, with his words now as the reason for the rejection. Without

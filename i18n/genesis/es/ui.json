@@ -2463,5 +2463,9 @@
  "widgets.musica.away_yes": "Sí, tomar el control",
  "widgets.musica.away_no": "Cancelar",
  "widgets.musica.away_short": "En «{device}»",
- "widgets.musica.away_release": "Dejarlo"
+ "widgets.musica.away_release": "Dejarlo",
+ "errand.sign_in.window": "Inicia sesión en la ventana que te acabo de abrir y sigo yo solo.",
+ "errand.sign_in.no_window": "Necesito que inicies sesión y desde aquí no puedo abrirte una ventana. Me quedo esperando y sigo en cuanto entres.",
+ "errand.sign_in.phone": "Desde el móvil no puedo abrirte una ventana para iniciar sesión: abre tu agente en un ordenador y sigo desde ahí.",
+ "errand.sign_in.done": "Ya he iniciado sesión{site} — sigue donde lo dejaste."
 }
