@@ -93,6 +93,8 @@ def daemon(tmp_path_factory):
     # by accident (his ~/Documents exists) and fail on any machine without one — CI found it on its first run
     # (2026-09-05). The workspace already carries the Documents this fixture creates.
     env["HOME"] = str(ws)
+    # The sign-in window (P2) is a measured capability; this node pins the files contract, so it is switched off.
+    env["ZAELAR_DAEMON_BROWSER"] = "0"
     env["PYTHONPATH"] = str(ENGINE) + os.pathsep + env.get("PYTHONPATH", "")
     proc = subprocess.Popen([sys.executable, "-m", "daemon"], cwd=str(ENGINE), env=env,
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)

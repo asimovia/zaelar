@@ -205,6 +205,11 @@ from widgets.navegador.owner_login import (  # noqa: E402,F401
     _login_site_of)
 
 
+# V2-575 P2 — the browser BACKEND switch: `daemon` when the sign-in window goes to a connected local daemon, `inproc`
+# (this module's own Chromium) otherwise. With no daemon connected nothing changes.
+from widgets.navegador.owner_login.daemon_link import browser_backend as _browser_backend  # noqa: E402,F401
+
+
 from widgets.navegador.owner_actions import (  # noqa: E402,F401
     _automate, _browse, _close_task, _search, _step, _scroll, _click, _type, _press, _youtube, _show_youtube)
 
