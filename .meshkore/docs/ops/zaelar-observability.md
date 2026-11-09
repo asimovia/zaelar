@@ -110,7 +110,9 @@ scrubbed (`observability/scrub`); a credential or a bearer never enters:
 | `gateway · ↗ <family>` | `nucleo/energy/egress.route` / `.route_url`, only when egress is mediated | `family · path · ok` (`ok: false` = no egress credential, the call will fail). Never the query, never a credential; self-host records nothing |
 
 Families: `connector`, `mesh` and `gateway` in `system`, `pulse` in `pulse`, `model_call` in `worker` (`_CAT`); the
-operator console mirrors them. The same pass made the **provider a field** where it only travelled in a label: the
+operator console mirrors them. The planned A2A network (V2-866) adds kind and family **`a2a`** (on by default), one
+row per step with the relationship id `rel`, declared once in `a2a/events.py::OPS`; its full table is §8 of
+`docs/architecture/zaelar-a2a-network.md`. The same pass made the **provider a field** where it only travelled in a label: the
 `metric` rows of STT/TTS and the per-phrase `stt`/`tts` rows carry `provider` (and `audio_ms`), and a Jev row carries
 the host it ran on. The viewer (◷) reads the new fields in `frontend/app/components/debug-detail.js` (sender, subject,
 cause, provider, the beat's numbers, a model call's input and tools). Still open: STT latency exists only when the

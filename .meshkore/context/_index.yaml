@@ -40,6 +40,12 @@ nodes:
     desc: "A second model seat for background work that can wait; decided once, adopted progressively, off = identical."
     load: pinned
     src: context/slow-lane.md
+  - id: architecture.a2a
+    parent: architecture
+    title: "The A2A network"
+    desc: "A person's agent reached by yours: mailbox not socket, mutual hash discovery, propose-then-send, contact trust class, one event per step (planned, V2-866)."
+    load: on-demand
+    src: docs/architecture/zaelar-a2a-network.md
   - id: architecture.full
     parent: architecture
     title: "Arquitectura completa"
