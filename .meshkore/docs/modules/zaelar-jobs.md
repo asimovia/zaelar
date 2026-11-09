@@ -14,7 +14,7 @@
 **Modules:** `nucleo/circuit/ledger.py` (the decisions) · `memory/tasks_store.py` (the storage) ·
 `nucleo/turn/task_recall.py` (finding one again) · `widgets/results/rehydrate.py` (putting it back)
 **Tables:** `tasks`, `task_artifacts`, `fts_tasks` (`memory/schema.py`, schema v7)
-**Sibling docs:** `zaelar-workflow-table.md` (a different object with a confusing name — that one caches WHICH
+**Sibling docs:** `zaelar-playbook-routes.md` (a different object with a confusing name — that one caches WHICH
 CHANNEL serves a domain; this one is the commission itself).
 
 ## What it answers

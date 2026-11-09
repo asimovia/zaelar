@@ -39,11 +39,8 @@ MAX_BRIEF = 700
 def _genesis() -> dict:
     global _cache
     if _cache is None:
-        try:
-            _cache = dict(json.loads(_GENESIS.read_text(encoding="utf-8")) or {})
-        except Exception as e:  # noqa: BLE001
-            logger.warning(f"errands: no pude leer genesis.json ({e!r})")
-            _cache = {}
+        import genome   # V2-859: a refused genesis reads as the last good generation, never half a file
+        _cache = genome.genesis()
     return _cache
 
 

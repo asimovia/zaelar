@@ -60,7 +60,8 @@ def rows() -> list[dict]:
         return []
     if _cache["mtime"] != mtime:
         try:
-            _cache.update(mtime=mtime, rows=_build(json.loads(_GENESIS.read_text(encoding="utf-8")), mtime / 1e9))
+            import genome   # V2-859: a refused genesis reads as the last good generation, never half a file
+            _cache.update(mtime=mtime, rows=_build(genome.genesis(), mtime / 1e9))
         except (OSError, ValueError) as e:
             import logging
             logging.getLogger("zaelar.rules").warning(f"rules: genesis unreadable ({e}) — no default rows")

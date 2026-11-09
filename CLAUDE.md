@@ -306,6 +306,11 @@ These are the rules. Everything else in this file is a pointer to where the deta
 - **Fix the CLASS, never the case.** No fix that only makes one test pass: green is the consequence of a healthy
   system. Name the class; fix it with verdict → declared data → one door; the test carries another variant
   (language, wording, domain). Product regexes and word tables only ever shrink (node 7.73).
+- **The genome is the inheritance; only STRUCTURED genes cross.** Factory = `nucleo/genesis.json` +
+  `i18n/genesis/<lang>/` (`genome.identity()` names it, `generation` counts it); learned = the `source='learned'`
+  rows of the action map and the playbook routes; rules, config, memory and contacts are personal and never
+  heritable. A playbook's learned channel order is its **route** (`nucleo/routes/`): «workflow» is not an engine
+  word. `.meshkore/docs/modules/zaelar-genome.md`.
 - **Mechanisms, not rails.** One question decides whether a change belongs in this engine: does it bound a
   CONSEQUENCE (stays — the mandate, the selector, the undo of the row that errand wrote) or a JUDGEMENT (goes —
   «don't argue», a verb table that decides intent)? A sentence about how to behave is a rail: delete it and find
@@ -491,6 +496,8 @@ human. The deep playbook (how each battery is launched, formats, evaluation): `.
   dir and fails BY NAME the test that leaves `sys.modules` purged. Reproduce the red in its folder alone first.
 - **A test NEVER touches the operator's real state** — not the agenda, the memory, `config/` or the logs. That
   rule lives in the root `conftest.py`, not in each test.
+- **A privacy test names invented people** and asserts the name is absent from the WHOLE output, not just from the
+  list it expected (`tests/agent_headless/unit/genome/`).
 
 ## Hard rules
 
@@ -515,6 +522,11 @@ human. The deep playbook (how each battery is launched, formats, evaluation): `.
   (`nucleo/flash/`) uses only fast non-reasoning models, and no model runs after a turn's main stream (an unreadable
   turn is answered with one line that asks him, node 3.175). **Model PER INVOCATION**, never a global model env
   (concurrent sessions). Routing (`fast` + `code_agent`) lives in `config/v2.py` (managed by the UI).
+- **Nothing personal crosses from one agent to another.** A heritable gene is one of the closed shapes in
+  `genome/genes.py` (`alias · route · nothing_serves · threshold`) and passes `genome/privacy.py` (a known name, an
+  email, a phone, a URL, a 3+ digit number, a date drop it); prose is never learned. A release that changes a gene
+  bumps `generation` in `nucleo/genesis.json`; a genesis that fails `genome.check()` is refused LOUD and read as
+  the last good generation.
 - Don't edit `.meshkore/roadmap/state.json` by hand — it's a generated artefact.
 - **Zaelar's CORE must NOT require Docker.** The LiveKit server runs from the native `livekit-server` binary
   (`make install-livekit`); Docker is only an optional fallback. The testing system MAY use Docker.
