@@ -885,6 +885,8 @@ Flash keeps the conversation; the row is what both brains read.
 - **CRIT-R19 · Admission is a limit, not a delay.** A worker waits for room with no deadline start (the exit is his cancel) and is admitted one at a time, the next measured only once the previous runs; the floor is max(`admit_free_ratio` × total, `voice_reserve_mb`); `max_parallel` is the ceiling (V2-867 F1) — since 2026-11-09 · nodes 3.178 · `nucleo/workers/envelope.py`, `nucleo/dispatch/session.py`.
 - **CRIT-R20 · A Chromium never launches outside the worker envelope.** Without room the newest running worker nobody else paused is paused first and resumed when room returns; room undoes only its own pauses; the operator's own window is never refused; the search browser waits like a worker through `search.hooks.room` (V2-867 F2) — since 2026-11-09 · nodes 3.179 · `nucleo/workers/room.py`.
 
+- **CRIT-R21 · A LiveKit recycle never awaits the old worker unbounded.** The close is bounded and abandoned past `recycle_close_s`, the new worker is verified REGISTERED within `recycle_verify_s` and retried `recycle_attempts` times; a voice that stays dead `voice_dead_s` after a session was asked is an alert plus a restart under a supervisor (self-host: retries and says so once); the cold-start window `boot_grace_s` is warm-up, never degradation (V2-871) — since 2026-11-09 · nodes 3.180 · `nucleo/pulse/voice_recycle.py`, `nucleo/pulse/homeostasis.py`.
+
 ## 7 · Working here
 
 - **CRIT-W1 · Mechanisms, not rules.** A change that bounds a CONSEQUENCE stays; one that bounds JUDGEMENT is
