@@ -120,7 +120,9 @@ def test_the_engine_never_proxies_a_file_route():
     # the daemon's boundary applies to it unchanged and it returns the allowlist, never a file's contents.
     # 2026-11-09, threat-modelled (V2-575 P1): `pair` takes no input and returns no secret — over loopback it only
     # answers that nothing needs pairing (`mode: loopback`, `code: None`); like every acting route it refuses a
-    # caller that is not on this computer and a cross-site page.
+    # caller that is not on this computer and a cross-site page. 2026-11-09 (P3): on a HOSTED engine it returns a
+    # one-time pairing code `{code, expires_at}` from the service the engine reports to — shown to him, single use,
+    # minutes long; the same-origin guard still applies (his browser is never on a hosted engine's machine).
     assert paths == {"/api/daemon/status",
                      "/api/daemon/pair",
                      "/api/daemon/permissions/grant",
