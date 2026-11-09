@@ -159,3 +159,13 @@ def test_the_voice_turn_end_keeps_our_which_question():
     src = _vts.read(Path(__file__).resolve().parents[4] / "nucleo/turn/pipeline_close.py")
     j = src.index("    if not (_acted_elsewhere or (acted[\"widget\"] and not _ending.only_held())):")
     assert "_message.asked_which(spoken_text" in src[j:j + 400]
+
+
+def test_a_who_question_leaves_the_conversation_the_card_stood_on(world):
+    from widgets.mensajeria import data as ms
+    db = ms.load_db()
+    db["active_chat"] = {"platform": "whatsapp", "chatId": "120363349887504300@g.us"}
+    ms.store.save(ms.WIDGET_ID, db)
+    for action in ("send_to", "draft"):
+        assert ms.apply_action(action, {"contact": "Raquel", "text": "¿qué tal?"})["ok"] is False
+        assert ms.load_db()["active_chat"] is None, f"{action}: «which Raquel?» is not asked over another chat"
