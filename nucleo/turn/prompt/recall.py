@@ -24,27 +24,40 @@ def _observability_on() -> bool:
 LIVE_WINDOW_TURNS = 5
 #: How far back the conversation lane of a recall reads, in hours — the buffer's own reach (`ttl_days=2.0`).
 CONVERSATION_HOURS = 48.0
-#: Bounds of the conversation lane inside the recall block: turns and characters.
+#: Bounds of the conversation lane inside the recall block: turns, and characters of each side of a line as RENDERED
+#: (his words, the reply). The reader is bounded by turns only: bounding it by raw characters let three long rows
+#: spend the whole lane before the fourth, three hours old, that held the answer (measured 2026-11-09).
 CONVERSATION_TURNS = 4
-CONVERSATION_CHARS = 1000
+CONVERSATION_CHARS = 200
 
 
-def conversation_lines(recall_query: str, *, skip_newest: int = LIVE_WINDOW_TURNS) -> list[str]:
+def conversation_lines(recall_query: str, *, skip_newest: int = LIVE_WINDOW_TURNS, his_words: str = "") -> list[str]:
     """The conversation lane of a recall (V2-865): the turns of the last two days that MATCH the query, best match
     first, the live window left out, each as one line «HH:MM él: «…» · tú: «…»». DIRECT read (FTS5, no embedding).
 
     The model's `recall` reached the pills only (`mid`/`long`), and the pill the distiller had kept of that
     episode described the artist he had asked for without the name — which was in zaelar's own reply, three hours
     back in the `conv` buffer. Measured 2026-11-09: three recalls, three «nothing names that artist».
+    `his_words` (the operator's own sentence, when the query is the model's paraphrase of it): HIS words are
+    searched first and the paraphrase fills what is left — measured 2026-11-09, the model's paraphrase of his
+    request reached the complaint turns, and his own sentence reached the one turn that named the artist.
     Best-effort: [] on any failure."""
+    turns: list[dict] = []
     try:
         from memory import api as memory
-        turns = memory.conversation(hours=CONVERSATION_HOURS, query=recall_query, limit=CONVERSATION_TURNS,
-                                    max_chars=CONVERSATION_CHARS, skip_newest=skip_newest, by="relevance")
+        for q in [w for w in (his_words, recall_query) if (w or "").strip()]:
+            if q == recall_query and his_words.strip() == recall_query.strip():
+                continue
+            for t in memory.conversation(hours=CONVERSATION_HOURS, query=q, limit=CONVERSATION_TURNS,
+                                         max_chars=10 ** 6, skip_newest=skip_newest, by="relevance"):
+                if len({x["id"] for x in turns} | {int(t["id"])}) > CONVERSATION_TURNS:
+                    break
+                turns.append(t)
     except Exception as e:  # noqa: BLE001
         from loguru import logger
         logger.debug(f"recall: conversation lane failed ({e!r})")
         return []
+    turns.sort(key=lambda t: (float(t.get("ts") or 0), int(t["id"])))
     by_turn: dict[int, dict] = {}
     for t in turns:
         row = by_turn.setdefault(int(t["id"]), {"at": (t.get("at") or "")[11:16], "u": "", "a": ""})
@@ -53,15 +66,16 @@ def conversation_lines(recall_query: str, *, skip_newest: int = LIVE_WINDOW_TURN
     for row in by_turn.values():
         line = f"· {row['at'] or '?'}"
         if row["u"]:
-            line += f" él: «{row['u'][:200]}»"
+            line += f" él: «{row['u'][:CONVERSATION_CHARS]}»"
         if row["a"]:
-            line += f" · tú: «{row['a'][:200]}»"
+            line += f" · tú: «{row['a'][:CONVERSATION_CHARS]}»"
         out.append(line)
     return out
 
 
 def compose_recall(recall_query: str = "", timings: dict | None = None,
-                   lexical_only: bool = False, skip_newest: int = LIVE_WINDOW_TURNS) -> tuple[str, list[int]]:
+                   lexical_only: bool = False, skip_newest: int = LIVE_WINDOW_TURNS,
+                   his_words: str = "") -> tuple[str, list[int]]:
     """Turn-specific SEMANTIC recall (`memory.query`) PLUS the conversation lane (V2-865). Returns
     (recall_block, used_ids). The STATE block (name/form of address/location/topics) does NOT go here: it comes
     from the session cache (`memory_cache`, T114). Best-effort.
@@ -74,7 +88,7 @@ def compose_recall(recall_query: str = "", timings: dict | None = None,
     _tq = _t.perf_counter()
     lines: list[str] = []
     used_ids: list[int] = []
-    conv_lines = conversation_lines(recall_query, skip_newest=skip_newest)
+    conv_lines = conversation_lines(recall_query, skip_newest=skip_newest, his_words=his_words)
     if timings is not None:
         timings["recall_conv_turns"] = len(conv_lines)
     try:

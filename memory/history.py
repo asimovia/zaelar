@@ -111,13 +111,92 @@ def _kickoff_prompts() -> frozenset[str]:
 _KICKOFFS: frozenset[str] | None = None
 
 
-def _newest_conv_ids(n: int) -> set[int]:
-    """The ids of the newest `n` conversation rows — what the live dialog window already holds (V2-865)."""
+#: Silence that closes the LIVE episode, in minutes: the newest turns count as «in the dialog window» only while
+#: they chain to now with gaps under this. The same figure cuts the day into episodes (`reads.EPISODE_GAP_MIN`).
+LIVE_GAP_MIN = 12.0
+
+
+def live_conv_ids(n: int, gap_min: float | None = LIVE_GAP_MIN) -> set[int]:
+    """The ids of the conversation rows the LIVE dialog window holds (V2-865): the newest `n`, but only those that
+    chain to now — each less than `gap_min` of silence from the next, the newest from now. A fresh session after a
+    night's sleep has an EMPTY window, so nothing is skipped; a session running for two hours skips its last `n`
+    turns. Measured 2026-11-09: skipping «the newest five» unconditionally hid a request made at midnight from the
+    morning's day schema while the window did not hold it either — it was in neither place.
+    `gap_min=None` keeps the plain «newest n» reading."""
     if n <= 0:
         return set()
     rows = _db.get_db().query(
-        "SELECT id FROM memories WHERE kind='conv' AND valid=1 ORDER BY created DESC, id DESC LIMIT ?", (int(n),))
-    return {int(r["id"]) for r in rows}
+        "SELECT id, created FROM memories WHERE kind='conv' AND valid=1 ORDER BY created DESC, id DESC LIMIT ?",
+        (int(n),))
+    if gap_min is None:
+        return {int(r["id"]) for r in rows}
+    out: set[int] = set()
+    ref = float(_clock_now())
+    for r in rows:
+        ts = float(r["created"] or 0)
+        if ref - ts > float(gap_min) * 60:
+            break
+        out.add(int(r["id"]))
+        ref = ts
+    return out
+
+
+def _newest_conv_ids(n: int) -> set[int]:
+    """The ids of the newest `n` conversation rows, whatever their age (kept for callers that mean exactly that)."""
+    return live_conv_ids(n, gap_min=None)
+
+
+#: Turns of ONE episode a relevance pick may take: the turns of an episode share their words, so the top of the
+#: ranking is one episode said five ways while the turn that answers, three hours older, waits below (2026-11-09).
+EPISODE_ROWS = 2
+
+
+def _episodes_of(rows) -> dict[int, int]:
+    """Episode index of each row (any order in): consecutive turns less than `LIVE_GAP_MIN` apart share one."""
+    ordered = sorted(rows, key=lambda r: (float(r["created"] or 0), int(r["id"])))
+    out: dict[int, int] = {}
+    ep, last = -1, None
+    for r in ordered:
+        ts = float(r["created"] or 0)
+        if last is None or ts - last > LIVE_GAP_MIN * 60:
+            ep += 1
+        out[int(r["id"])] = ep
+        last = ts
+    return out
+
+
+def _oldest_repeat(rows, query_words: set[str], match: dict | None) -> int | None:
+    """The id of the oldest row whose operator words repeat the query, when that row is also the oldest row that
+    matches the query at all — the original request. None when an older matching turn exists (the repeat is then
+    a later attempt) or nothing repeats."""
+    oldest_match: tuple[float, int] | None = None
+    oldest_rep: tuple[float, int] | None = None
+    for r in rows:
+        if match is not None and int(r["id"]) not in match:
+            continue
+        key = (float(r["created"] or 0), int(r["id"]))
+        if oldest_match is None or key < oldest_match:
+            oldest_match = key
+        m = _meta(r["meta"])
+        u = (m.get("u") or "").strip() or (r["text"] or "").strip()
+        if _is_repeat(_words(u), query_words) and (oldest_rep is None or key < oldest_rep):
+            oldest_rep = key
+    return oldest_rep[1] if oldest_rep and oldest_rep == oldest_match else None
+
+
+#: Two sentences this alike are the SAME request said again: the word sets overlap at least this much.
+REPEAT_OVERLAP = 0.6
+
+
+def _is_repeat(words: set[str], query_words: set[str]) -> bool:
+    """He is repeating himself: the row's words and the query's are mostly the same set. A row he had to repeat is
+    the earlier attempt, and the answer it carries did not satisfy him — recycling it as evidence is how the
+    model named the wrong artist twice (measured 2026-11-09). Only for queries with substance (4+ words)."""
+    if len(query_words) < 4 or not words:
+        return False
+    inter = len(words & query_words)
+    union = len(words | query_words) or 1
+    return inter / union >= REPEAT_OVERLAP
 
 
 def _matching_conv_ids(query: str, since: int) -> dict[int, int] | None:
@@ -175,13 +254,20 @@ def conversation(hours: float = 24.0, query: str = "", limit: int = 40, max_char
     match = _matching_conv_ids(query, since) if (query or "").strip() else None
     if match is not None and not match:
         return []
-    skip = _newest_conv_ids(int(skip_newest or 0))
+    skip = live_conv_ids(int(skip_newest or 0))
+    qwords = _words(query) if (query or "").strip() else set()
     rows = _db.get_db().query(
         "SELECT id, text, meta, created FROM memories WHERE kind='conv' AND valid=1 AND created >= ? "
         "ORDER BY created DESC, id DESC", (since,))
     if by == "relevance" and match:
         # Most query terms first, the newest among equals; the trim below then keeps the turns that answer.
         rows = sorted(rows, key=lambda r: (-match.get(int(r["id"]), 0), -float(r["created"] or 0), -int(r["id"])))
+    episode_of = _episodes_of(rows) if by == "relevance" and match else {}
+    # The repeats of THIS request are his later attempts and are dropped — unless the oldest of them is the oldest
+    # matching turn there is: then it is the ORIGINAL request, said again almost word for word, and dropping it
+    # would drop the turn that answered it. The first time the subject came up is the original.
+    original_repeat = _oldest_repeat(rows, qwords, match) if qwords else None
+    per_episode: dict[int, int] = {}
     picked: list[tuple] = []
     used = 0
     for r in rows:                                     # best/newest → worst/oldest; trimmed, then reversed
@@ -193,11 +279,18 @@ def conversation(hours: float = 24.0, query: str = "", limit: int = 40, max_char
         u, a = (m.get("u") or "").strip(), (m.get("a") or "").strip()
         if not u and not a:                            # an old row without structured fields: its text as is
             u = (r["text"] or "").strip()
+        if qwords and int(r["id"]) != original_repeat and _is_repeat(_words(u), qwords):
+            continue                                   # his later attempt at THIS request: not the referent
+        ep = episode_of.get(int(r["id"]))
+        if ep is not None and per_episode.get(ep, 0) >= EPISODE_ROWS:   # the rest of that episode says the same
+            continue
         seg = len(u) + len(a)
         if picked and (used + seg > max_chars or len(picked) >= int(limit)):
             break
         picked.append((int(r["id"]), r["created"], u, a))
         used += seg
+        if ep is not None:
+            per_episode[ep] = per_episode.get(ep, 0) + 1
     out: list[dict] = []
     for mid, ts, u, a in sorted(picked, key=lambda t: (float(t[1] or 0), t[0])):   # chronological, whatever the pick
         if u:
