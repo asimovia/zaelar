@@ -1,6 +1,12 @@
 {
   "_comment": "GENESIS RULES (V2-633) — the engine's shipped BASE conversational rules. This file is the factory default every install starts from; the operator overrides any of it by just SAYING so (set_style_directive -> style_policy.apply_directive persists the override in <workspace>/config/style.json, applied on the very next turn). Nothing here is per-user data: user overrides never live in this file.",
-  "version": 1,
+  "generation": 1,
+  "_generation": "V2-859 — the genome's GENERATION (was `version`). One integer for the whole genome (this file + i18n/genesis/<lang>/); `genome.identity()` names it with a hash of the canonical content, documentation keys stripped. A release that changes a gene bumps it; on boot a new generation absorbs the learned rows it now ships (`genome/absorb.py`).",
+  "genome": {
+    "_comment": "V2-859 T564 — what may cross from this agent to another: STRUCTURED genes only (alias · route · nothing_serves · threshold), each with the evidence it needs here. Prose is never learned. `thresholds` is the closed list of knobs a learned value may move, with its bounds; a knob not listed here is never a gene.",
+    "evidence": {"alias_hits": 3, "route_closures": 1, "nothing_serves_answers": 1},
+    "thresholds": {"consent.intent_act_at": [0.5, 0.95]}
+  },
   "style": {
     "confirm_short_actions": true,
     "fillers": "smart",

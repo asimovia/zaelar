@@ -81,7 +81,7 @@
    "id": "genome",
    "block": "brain",
    "name": "Agent DNA",
-   "package": "nucleo/genesis.json · i18n/genesis/ · nucleo/actionmap/ · nucleo/workflows/",
+   "package": "genome/ · nucleo/genesis.json · i18n/genesis/ · nucleo/actionmap/ · nucleo/routes/",
    "_doc": "The genome (V2-859): the factory genes every install starts from, and the learned layer that grows over the agent's life (action aliases, playbook routes). The user's own rules are personal and never heritable: they are the rules zone, drawn next to this one, not inside it."
   },
   {
@@ -653,9 +653,12 @@
    "name": "Factory genome",
    "paths": [
     "nucleo/genesis.json",
-    "i18n/genesis"
+    "i18n/genesis",
+    "genome"
    ],
-   "emits": []
+   "emits": [
+    "gene"
+   ]
   },
   {
    "id": "g_alias",
@@ -673,7 +676,7 @@
    "zone": "genome",
    "name": "Playbook routes",
    "paths": [
-    "nucleo/workflows"
+    "nucleo/routes"
    ],
    "emits": [
     "gene"
@@ -804,7 +807,7 @@
    "zone": "store",
    "name": "routes",
    "paths": [
-    "memory/workflows_store.py"
+    "memory/routes_store.py"
    ],
    "emits": []
   },

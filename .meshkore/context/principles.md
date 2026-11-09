@@ -110,6 +110,11 @@ consequence of a sound system, never the target. So:
 5. **When the structural fix does not fit the batch,** the test stays red (or `xfail` with the class as its
    reason) and the class is recorded as open work. An honest red beats a patched green: a patched green hides the
    class from the next person and from the judge.
+6. **What one agent learns crosses only as a class.** A learned row is evidence on one install; it reaches other
+   agents only as a structured gene (`genome/genes.py`) that names no person, site or company (`genome/privacy.py`)
+   and only after the candidate generation passes the gate, the benches and the use cases at least as well as the
+   current one. A learned row that names a case IS the case: the filter drops it, and nobody hand-copies it into
+   the genome.
 
 Enforced, not just written: `tests/infrastructure/unit/test_words_never_fix_a_case.py` (node 7.73) — the count
 of `re.compile` calls and module-level word tables in product code may only fall.

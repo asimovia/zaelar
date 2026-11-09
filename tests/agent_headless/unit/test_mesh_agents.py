@@ -315,11 +315,11 @@ def test_a_tiered_card_can_prove_a_bare_oracle_row_free(monkeypatch):
     assert m._is_free(bare, {"pricing": TIERED_FREE["pricing"]}) is True
 
 
-# ── V2-594 · the workflow table answers before the network does ───────────────────────────────────────────
+# ── V2-594 · the playbook route table answers before the network does ───────────────────────────────────────────
 def test_a_known_empty_domain_never_reaches_the_oracle(monkeypatch):
     """The whole point of the negative row: no round trip, and no empty result sent through a model to have
     the emptiness narrated back. `_post` is the network trap, so reaching it fails the test by itself."""
-    from nucleo import workflows as wf
+    from nucleo import routes as wf
     wf.forget("wellness")
     wf.note_empty("wellness", evidence="oracle coverage=none")
     try:

@@ -1,6 +1,6 @@
-"""nucleo/workflows/domains.py — WHICH KIND of errand is this, lexically and for free (V2-594).
+"""nucleo/routes/domains.py — WHICH KIND of errand is this, lexically and for free (V2-594).
 
-This is the key of the workflow table, and it is deliberately NOT a new list of verbs.
+This is the key of the playbook route table, and it is deliberately NOT a new list of verbs.
 
 `site_catalog.category_of()` is already the house's lexical classifier for errands, and it is already the
 single source shared by `errand_kind` (which picks the task `kind`) and `flash/router_guards` (which decides

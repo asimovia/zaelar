@@ -31,7 +31,8 @@ def _genesis() -> dict:
     global _genesis_cache
     if _genesis_cache is None:
         try:
-            _genesis_cache = dict(json.loads(_GENESIS_PATH.read_text()).get("library") or {})
+            import genome   # V2-859: a refused genesis reads as the last good generation, never half a file
+            _genesis_cache = dict(genome.genesis().get("library") or {})
         except Exception:  # noqa: BLE001 — a broken genesis must not stop the engine booting
             _genesis_cache = {}
     return dict(_genesis_cache)
