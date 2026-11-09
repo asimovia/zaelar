@@ -94,6 +94,16 @@ def _exit(pol: dict) -> None:
     t.start()
 
 
+def exit_for_restart(reason: str) -> bool:
+    """Another detector's restart (V2-871: a voice engine that stayed dead) through this one exit — under a
+    supervisor only, asked once. True if the exit was asked now."""
+    if not supervised() or _state["exiting"]:
+        return False
+    _emit("engine_exit", reason=reason, code=EXIT_CODE)
+    _exit(policy())
+    return True
+
+
 def tick(loop, now: float | None = None) -> str:
     """One reading of the loop and the memory, and its consequence. Returns the decision."""
     from nucleo.workers import envelope
