@@ -178,7 +178,13 @@ _RECENT_RE = _re.compile(
     r"mencion[eé]|mencionaste|lo\s+de\s+antes|eso\s+[uú]ltimo|lo\s+[uú]ltimo|retoma|retomamos|vuelve\s+a\s+lo|"
     r"como\s+te\s+dije|como\s+dec[ií]a|rep[ií]te(lo|melo)?|otra\s+vez\s+(eso|lo)|"
     r"earlier|a\s+moment\s+ago|(just|right)\s+now|we\s+(were\s+)?(talking|said|discussed)|"
-    r"(you|i)\s+said|as\s+i\s+said|repeat\s+that|go\s+back\s+to)\b", _re.I
+    r"(you|i)\s+said|as\s+i\s+said|repeat\s+that|go\s+back\s+to|"
+    # V2-865 — «I did explain that some messages ago today» fired nothing: the English side knew «earlier» and
+    # «you said» but not a span of messages, minutes or hours, nor «explained / told you / asked you».
+    r"(some|a\s+few|\d+)\s+(messages?|turns?|minutes?|hours?)\s+ago|(some\s+time|a\s+while|ages)\s+ago|"
+    r"(i|we)\s+(did\s+)?(explain(ed)?|told|ask(ed)?)|"
+    r"told\s+you|asked\s+you|te\s+(ped[ií]|expliqu[eé]|cont[eé]|coment[eé])|"
+    r"te\s+he\s+(dicho|pedido|contado|explicado)|hace\s+(unas\s+)?horas|hace\s+(unos\s+)?minutos)\b", _re.I
 )
 
 

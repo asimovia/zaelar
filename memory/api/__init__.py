@@ -41,7 +41,7 @@ from .reads import (  # noqa: F401
     MAP_CAP, background_slot_off_topic, by_concepts, by_slot_prefix, lexical_ids, map, recent_by_source)
 from .sleep import concept_names, fold_concepts, register_sleep_phase, same_person_records  # noqa: F401 — V2-854 F3, V2-858 T549
 from .._prompt import (  # noqa: E402,F401 — the PRESENTATION (what is painted for a model) lives in `_prompt.py`
-    compose_state, critical_facts, recent_short, recent_window, salient_long, seconds_since_last_conv)
+    compose_state, critical_facts, day_ledger, recent_short, recent_window, salient_long, seconds_since_last_conv)
 from ..history import conversation, provenance  # noqa: E402,F401 — V2-802 T-06 / V2-803 T-01
 # ── workflows (V2-594): `nucleo/workflows/` reaches the table only through the facade ──
 from ..workflows_store import workflow_forget, workflow_hit, workflow_upsert, workflows_for  # noqa: E402,F401
@@ -60,7 +60,7 @@ __all__ = [
     "lexical_ids", "register_sleep_phase", "same_person_records", "fold_concepts", "concept_names",
     "state", "set_state", "compose_state",
     "kv_get", "kv_set",
-    "query", "recent_short", "recent_window", "recent_by_source", "by_concepts",
+    "query", "recent_short", "recent_window", "day_ledger", "recent_by_source", "by_concepts",
     "seconds_since_last_conv",
     # V2-802 T-06 / V2-803 T-01: where a recalled row came from, and the conversation record as a source.
     "provenance", "conversation",
