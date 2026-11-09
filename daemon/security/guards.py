@@ -92,7 +92,13 @@ def host_is_loopback(host_header: str, port: int) -> bool:
         name, port_text = raw, ""
     if port_text and port_text != str(port):
         return False
-    return name.strip().lower() in _LOOPBACK_HOSTS
+    return is_loopback_name(name)
+
+
+def is_loopback_name(name: str) -> bool:
+    """Whether a host name is this machine: the ONE loopback list every daemon door reads (Host header, relay
+    URL, tunnel URL, local engine URL)."""
+    return (name or "").strip().lower() in _LOOPBACK_HOSTS
 
 
 def _looks_like_a_browser(headers) -> str:
