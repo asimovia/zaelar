@@ -322,6 +322,15 @@ kept for the FlashBrain's «PROCESOS DE FONDO» prompt, but does not duplicate t
     `task` event too (`nucleo/pulse/rehydrate_said.py`: resumed · cut and not resumed · waits for his answer — kept).
   - **`flow`** with `cat: events` — `🧵 an event is routed`: the router's answer for an event
     (`nucleo/events/pump.py`); `extra = {origin, key, as: resume|stream|nothing, by, task_id, rules}`.
+  - **`task`** with `cat: worker` and `kind_diag: room_*` — the worker envelope's room for a browser launch (V2-867
+    F2, `nucleo/workers/room.py`), one per decision: `room_ok` (room, it opens now) · `room_paused` (worker `task` paused
+    to make room) · `room_wait` (a background browser waits for room) · `room_anyway` (his window opens with little
+    room) · `room_resumed` (a worker room paused, resumed); `extra = {what, task?}`, words from `alerts.room_*`. A
+    held worker's phase names its reason (`waiting_room` · `waiting_voice` · `queued_behind`, `envelope.reason()`).
+  - **`task`** with `cat: circuit` — `🧭 brief of another errand ignored` (V2-868, `nucleo/circuit/breadth.py`): the
+    judge found a brief stamped for another errand and refused it; `extra = {id, uid, errand}`.
+  - A viewer that filters by `kind_diag` must learn these values: one it does not know shows up EMPTY, never as an
+    error.
   - **`notice`** / **`notify`** — the out-of-turn mouth (`nucleo/pulse/notices.py`): every line said outside a turn,
     with its task id or notice key, and how its row ended (`spoken · pushed · covered · shown · seen · owed`).
 - **`turn.completed`** (bus topic, not a `kind`) — the semantic close of EVERY turn (emitted by

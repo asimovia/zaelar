@@ -79,6 +79,19 @@ session's sheet and overwrite it. The durable id composes `boot_id()`, exactly a
 so **the sheet id and the task id are the same string** and the two are joinable by construction. A relay
 carries `task_uid` in its escalation context and UPDATES that row instead of opening a second one.
 
+**Everything else stored per errand uses the same key** (V2-868): `nucleo/runtime_ids.errand_key(rec_or_id)` — the
+row id when there is one, else the boot-stamped task id (a bare all-digit counter is composed with this boot's stamp).
+The research brief lived in the memory KV under the bare `task_id`, which survives restarts, so the first errand of a
+boot could read the previous boot's first errand's brief, be judged against it and relaunch with it. Now the brief
+store keys by `errand_key` and stamps `brief["errand"]`; `circuit.breadth.brief_of` refuses a brief whose stamp is not
+this row's (event `task` «🧭 brief of another errand ignored», `cat: circuit`), and a relaunch reuses a brief only for
+the row it resumes. A new per-errand store goes through the same door — never a bare `task_id`.
+
+**A sign-in it cannot do is a wait, not an ending** (`nucleo/request/sign_in_wait.py`). When the browser task an
+errand drives reaches `awaiting_login` or `blocked: no_window`, the row waits on him (`state=waiting`) with ONE
+question through the asker, the worker stops without writing to any sheet, and his confirmed sign-in resumes the SAME
+row by id. A request from the phone gets the line that the window opens on a computer.
+
 ## Finding one again
 
 The rule: **an index narrows, a model chooses.**

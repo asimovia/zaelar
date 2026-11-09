@@ -466,6 +466,15 @@ Each is one line in `.meshkore/docs/criteria.md`, with its node; read the sectio
   by name — C15), crossed before any question and again on his yes. Each slot the card declares for the act
   (`slots` in its manifest: recipient, channel, text, a held draft) is asked where its value came from — his words,
   the task's reading, his order over the row, or a stranger (`nucleo/workers/exit_slots.py`).
+- **Background work never starves the voice (§R, R18–R20):** a held worker names its TRUE reason (memory only under
+  the floor, else the voice's shed, else what it queues behind), a shed ends when ITS source recovers, admission is a
+  limit with no deadline start, one worker at a time, floor = max(`admit_free_ratio`×total, `voice_reserve_mb`), and a
+  Chromium launches only through `nucleo/workers/room.py` (pause the newest worker, launch, resume only its own pauses;
+  his window is never refused). `nucleo/workers/envelope.py`, `config/resources.default.json`.
+- **An errand is bound to its row (§S, S17–S19):** anything stored per errand is keyed by `runtime_ids.errand_key`,
+  never the per-boot `task_id`; a brief names its errand and the judge refuses a stranger's; a sign-in it cannot do is
+  a WAIT on him through the one asker (`nucleo/request/sign_in_wait.py`), never a result; a worker's result says where
+  it was found (`widgets/results/provenance.py`) or lands in Rejected.
 
 ## Testing
 

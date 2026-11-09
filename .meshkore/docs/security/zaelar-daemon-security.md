@@ -9,8 +9,8 @@ this repository.
 ## 1. What it is, in one paragraph
 
 A small HTTP service that runs on the user's own machine and gives the Zaelar engine two things a container
-cannot have: the user's **files**, under a per-folder permission circuit, and (later) a **real browser** on
-their screen for authentication and CAPTCHAs. It binds loopback, it is standard library only, and it is
+cannot have: the user's **files**, under a per-folder permission circuit, and a **real browser** on their
+screen for authentication and CAPTCHAs (§3.8). It binds loopback, it is standard library only, and it is
 **additive** — the engine works exactly as it does today when the daemon is absent.
 
 It is **read-only**. There is no code path in `daemon/fs/` that opens a file for writing, and a test asserts
@@ -158,7 +158,8 @@ holds the token server-side and is the only thing that ever calls the daemon.
 
 That makes the proxy a second front door, so it is guarded as one:
 
-- **It exposes `status`, `grant` and `revoke`. Nothing else.** ⚠️ No file route, ever. The browser has no use
+- **It exposes `status`, `grant`, `revoke`, `pick` (the system folder dialog), `start` and `pair`. Nothing else.**
+  ⚠️ No file route, ever. The browser has no use
   for file contents — the screen shows which folders are granted, not what is inside them — and the agent reads
   files server-side, in-process. Proxying `files.read` would hand every page that can reach the engine exactly
   the capability §3.1 spends five guards refusing, through the engine's own credentials. A ratchet test fixes
@@ -169,6 +170,11 @@ That makes the proxy a second front door, so it is guarded as one:
   `Host` second — not a configured hostname, because this engine is reached as `localhost:43917`, as
   `127.0.0.1:43917` and as whatever hostname a remote deployment uses, and a guard that knew only one of those would
   lock the user out of their own interface with every escape test still green.
+- **An acting route answers only a caller on this computer** (V2-575 P1, `_on_this_machine`). `grant`, `revoke`,
+  `pick`, `start` and `pair` act on this desktop, so they refuse any peer that is not loopback with
+  `not_on_this_computer` — even one presenting `ZAELAR_API_TOKEN`, the door for reading the agent from another device
+  on his network. A phone on the same network is not sitting at the computer. `status` from elsewhere says connected
+  and never lists the granted folders.
 - **No token means no probe.** `/health` answers without a credential, so an engine with no `daemon.json`
   probing anyway would report "connected" on the strength of a daemon it cannot authenticate to — a green icon
   over a surface where every real call 401s. A daemon that has run always wrote its config, so this locks
@@ -178,6 +184,24 @@ That makes the proxy a second front door, so it is guarded as one:
   file on a remote host's volume where no daemon will ever run, just because somebody opened the status icon.
 - **An engine running on a remote host does not probe loopback at all.** The daemon is on the user's computer; 127.0.0.1 in a
   container is at best a timeout and at worst somebody else's daemon on the same host.
+
+### 3.8 The sign-in window — `daemon/browser/` (V2-575 P2)
+
+When the engine has no screen of its own and the daemon is connected, the daemon's window is where he signs in.
+`/browser/open|state|close` drive ONE headed Chromium at a time on a persistent profile (opening a second closes the
+first); Playwright runs on one thread with its own loop, and every request thread hands it a coroutine.
+
+- **`browser.auth` is declared only when measured**: Playwright importable AND a Chromium on disk
+  (`window.available()`); otherwise the daemon serves files only and the engine's reach says so.
+- **What never leaves**: the session is cookies inside the profile on this disk. `state` returns the URL and a COUNT of
+  new cookies — never their names or values.
+- **No debug port**: Playwright's pipe transport, no `--remote-debugging-port`, so no other local process can drive the
+  signed-in browser.
+- **The profile parameter is local-only**: a caller on this machine may name an absolute, symlink-free directory (the
+  engine names its own profile so the task reads the session afterwards). A future relay must strip it.
+- **The engine side**: `widgets/navegador/owner_login/daemon_link.py` registers the loopback transport with
+  `nucleo/browser_window`; `owner._browser_backend()` picks `daemon` when connected and `inproc` otherwise, and with
+  no daemon the reach is byte-identical to before.
 
 ---
 
