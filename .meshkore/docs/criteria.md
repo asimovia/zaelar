@@ -996,6 +996,10 @@ Flash keeps the conversation; the row is what both brains read.
   candidate's photo, video or graphic goes in the row wherever it exists. — since 2026-11-02 · nodes 12.840 ·
   `nucleo/workers/prompts/research.py`.
 
+- **CRIT-S14 · An errand is bound to its row.** Every errand-scoped store (the brief first) is keyed by `runtime_ids.errand_key` — the row id, else the boot-stamped id — never the per-boot `task_id`; a brief names its errand and the judge refuses a stranger's, never relaunching blind; a relaunch reuses a brief only for the resumed row (V2-868 D1–D2) · nodes 2.1654 · 2.1655 · `nucleo/workers/brief_store.py`, `nucleo/circuit/breadth.py`.
+- **CRIT-S15 · A sign-in it cannot do is a wait, not a result.** `awaiting_login` / `blocked` parks the errand on one question through the asker, stops its worker and writes nothing to a sheet; the same row resumes on a confirmed sign-in; on the phone the line says to open the agent on a computer; «not a research» owes no results contract (V2-868 D3) · node 2.1656 · `nucleo/request/sign_in_wait.py`.
+- **CRIT-S16 · A result says where it was found.** A worker's row that states data needs a url or a source the sheet knows, else it lands in Rejected with its reason (V2-868 D4) · node 4.416 · `widgets/results/provenance.py`.
+
 ## Contradicciones (contradictions — this table must stay empty)
 
 | topic | rule A | rule B | winner |
