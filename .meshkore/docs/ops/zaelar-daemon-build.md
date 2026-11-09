@@ -13,8 +13,9 @@ than any of it: that re-running the installer is the whole upgrade procedure.
 
 | Artifact | Needs | For |
 |---|---|---|
-| `zaelar-daemon.pyz` | a Python ≥ 3.11 on the target | developers, self-hosters, and the guarantee that there is always a way to ship |
-| `zaelar-daemon` / `.exe` | nothing on the target | an ordinary user |
+| `zaelar-daemon.pyz` | a Python ≥ 3.11 on the target | developers, self-hosters, and the guarantee that there is always a way to ship — **files only**: no Playwright inside, so `/health` says `browser.state = "unsupported"` |
+| `Zaelar.app` → `Zaelar.zip` (macOS) | nothing on the target | an ordinary Mac user: onedir app bundle, menu-bar icon, bundled browser driver |
+| `zaelar-daemon.exe` (Windows) / `zaelar-daemon` (Linux) | nothing on the target | onefile; the tray on Windows, headless on Linux |
 | `manifest.json`, `SHA256SUMS` | — | telling whether the file you have is the file that was built |
 
 The portable archive is built by the **standard library** (`zipapp`) with no build dependency at all, which is
@@ -25,16 +26,99 @@ stops existing the first time that tool breaks on a new Python.
 python daemon/packaging/build.py             # everything this machine can build
 python daemon/packaging/build.py --zipapp    # portable only, needs nothing installed
 
-pip install -r daemon/packaging/requirements-build.txt   # PyInstaller, pinned
-python daemon/packaging/build.py --onefile
+# what the desktop program bundles + PyInstaller, all pinned
+pip install -r daemon/requirements.txt -r daemon/packaging/requirements-build.txt
+python daemon/packaging/build.py --standalone   # Zaelar.app on macOS, onefile elsewhere (`--onefile` = old name)
 ```
 
 Output lands in `dist/daemon/` (gitignored — the artifacts are reproducible from source, so a binary in a git
-repo would only ever be a stale one).
+repo would only ever be a stale one). The macOS bundle itself is assembled in `dist/app/Zaelar.app` and only its
+zip goes to `dist/daemon/`: a release attaches every file in that folder, and a bundle is thousands of files.
 
-⚠️ **PyInstaller is a BUILD dependency and must never reach `daemon/requirements.txt`**, which is empty and
-checked by a test. "Runs on a bare Python with nothing installed" is the property that makes a single-file
-installer possible at all.
+⚠️ **Two manifests, two jobs.** `daemon/requirements.txt` is the RUNTIME manifest of the packaged program — what
+the installer bundles, each line pinned and explained (node **7.36** holds it to the decided set). PyInstaller is a
+BUILD dependency and lives in `daemon/packaging/requirements-build.txt`. Neither is needed by `python -m daemon`:
+the headless service is still standard library only, every bundled package is imported lazily inside the function
+that needs it, and node **7.101** fails if the headless import path loads the tray or a GUI library.
+
+### The desktop resident (V2-869): what the installed program carries
+
+**The browser driver, not a browser.** Playwright and its Node driver (~100 MB in the wheel) ship inside the
+program (`--collect-data playwright`: the driver is data no import statement reveals). The browser itself is
+measured on the computer, never assumed (`daemon/browser/channel.py`):
+
+1. **Google Chrome**, when installed → Playwright's `channel="chrome"`. Found per OS: macOS
+   `/Applications/Google Chrome.app` or `~/Applications/…`; Windows the `App Paths\chrome.exe` registry key, then
+   `Program Files` / `Program Files (x86)` / `%LOCALAPPDATA%`; Linux `google-chrome` / `google-chrome-stable` on PATH.
+   The daemon uses Chrome's PROGRAM on its own profile directory — never the person's Chrome profile.
+2. Otherwise **Chromium, downloaded on first run** into Playwright's own cache (`~/Library/Caches/ms-playwright`,
+   `%LOCALAPPDATA%\ms-playwright`, `~/.cache/ms-playwright`) by `playwright install --no-shell chromium` through
+   the bundled driver (`daemon/browser/download.py`). A background job with progress (parsed from Playwright's own
+   `NN% of SIZE MiB` lines) and a cancel; a cancel sets `browser.auto_download = false` so the next start does not
+   begin it again. Only a revision folder carrying Playwright's `INSTALLATION_COMPLETE` marker counts — a cancelled
+   download leaves the folder without it. ~170 MB measured for Chromium 149 (`--no-shell` skips the headless shell
+   the daemon never uses). The resident starts the job by itself when `auto_download` is on; the menu shows it with
+   Cancel; `zaelar-daemon browser install` runs it in a terminal.
+
+**v1 supports Google Chrome only** as an installed browser. Edge, Firefox and Safari are not looked for, and
+`/health` lists them as `unsupported_browsers` so the interface can say so.
+
+`/health` gains (from `daemon.browser.health_fields()`):
+
+```json
+"browser": {"state": "ready|downloading|absent|unsupported", "channel": "chrome|chromium|",
+            "progress": 0-100, "size_mb": 171.0, "error": "only after a failed download"},
+"unsupported_browsers": ["edge", "firefox", "safari"]
+```
+
+`unsupported` = this program has no Playwright (the `.pyz`, a bare `python -m daemon`) or the person turned windows
+off (`ZAELAR_DAEMON_BROWSER=0`). `browser.auth` is declared exactly when `state == "ready"`. The measured channel is
+recorded in `daemon.json` → `browser.channel` (a record, re-measured on every launch, never read back as an order).
+`zaelar-daemon browser` prints the same object from a terminal.
+
+**The transport is Playwright's pipe**, never `--remote-debugging-port`: a debug port would let any local process —
+a web page's `fetch` included — drive a browser the person is signed in to. Node **7.100** fails on the flag anywhere
+in `daemon/`.
+
+**The tray** (`daemon/tray/`) — macOS a menu-bar extra on `rumps` (template image; the glyph changes SHAPE per
+state: full dot connected, half dot waiting, cross error), Windows a notification-area icon on `pystray` + `Pillow`
+(glyph and colour). It is a VIEW of `/health`, polled over HTTP every 5 s like any client, and never owns state. Menu:
+**Open Zaelar · Allowed folders… · Sign-in window** (open/close; while there is no browser: download / cancel) ·
+**Check for updates** (reads the version from `/health`; the update client is a later step) · **Quit**. On by default
+for the packaged program, off for `python -m daemon`; `--tray` / `--no-tray` override. The HTTP server binds BEFORE
+the GUI library loads, so an icon that cannot be drawn never costs the daemon (no tray → it serves headless and says
+why). On Windows the `.exe` stays a console program (so `status` prints in a terminal) and the tray hides the console
+when nobody started it from one. Icons: `daemon/tray/icons/`, regenerated by `daemon/packaging/tray_icons.py`.
+
+**Open Zaelar** (`daemon/browser/app_window.py`) — starts the browser PROGRAM directly with `--app=<url>` on the
+daemon's own app profile (`config/daemon/browser/app-profile`, separate from the sign-in window's because Chrome locks
+a profile to one process). No Playwright and no pipe: nothing drives that window, so it carries no automation banner.
+Where it points: the local engine when `/healthz` answers on `ZAELAR_ENGINE_URL` (loopback only) or
+`http://localhost:43917`; else the link `daemon.relay.login_link` returns, imported lazily (the relay is its own
+change); else the item is disabled with «pair with your cloud agent first». One window: a second click while it is
+open does nothing.
+
+**The global hotkey is deferred.** Every cross-platform option adds more than one dependency (`pynput` brings `six`
+and PyObjC's Quartz frameworks on macOS), and on macOS a global key listener needs one more system permission
+prompt (Input Monitoring). Not built; no config key for it.
+
+**macOS: why `Zaelar.app`, onedir.** A onefile program unpacks itself into a temporary folder on every start, which
+the hardened runtime and notarization handle badly; and only an app bundle carries an `Info.plist`
+(`daemon/packaging/macos/info_plist.py`, patched after PyInstaller and then re-sealed AD HOC — identity signing is a
+later step):
+
+| Key | Value | Why |
+|---|---|---|
+| `CFBundleIdentifier` | `com.zaelar.daemon` | the identity macOS files permission grants under (same string as the LaunchAgent label) |
+| `LSUIElement` | `true` | no Dock icon: it lives in the menu bar |
+| `NSDocumentsFolderUsageDescription` | "Zaelar reads the documents in the folders you allow, to find or read them when you ask." | the sentence macOS shows in its own prompt |
+| `NSDesktopFolderUsageDescription` | "Zaelar only looks at your Desktop if you allow it, to find what you ask for." | 〃 |
+| `NSDownloadsFolderUsageDescription` | "Zaelar reads your Downloads only if you allow it, to open or find what you downloaded." | 〃 |
+
+⚠️ **`http.server`'s reverse lookup stalled the packaged program.** The stock `HTTPServer.server_bind` calls
+`socket.getfqdn("127.0.0.1")`; inside the packaged daemon on macOS that lookup fell through to mDNS and the process
+sat **36 s** before `/health` answered, on every start (measured 2026-11-09; a from-source Python did not). The
+daemon's server overrides `server_bind` without it (`daemon/http/lifecycle.py`).
 
 ---
 
@@ -88,7 +172,8 @@ where its own binary sits: `<prefix>/bin/<program>` → `<prefix>`, so the token
 land in `<prefix>/config/daemon`. That is why a custom prefix needs no environment variable in the launch
 agent and no wrapper around the Windows task — which matters on Windows, where a scheduled task cannot carry an
 environment variable and setting a user-level `ZAELAR_WORKSPACE` would repoint the **engine's** workspace as a
-side effect.
+side effect. (The macOS `Zaelar.app` is the exception: its program sits inside the bundle, not in `bin/`, so the
+LaunchAgent and the `bin/` launcher hand it `ZAELAR_WORKSPACE=<prefix>` — see «Installing from a checkout».)
 
 The `bin` directory is the guard, not decoration. Without it a file somebody ran straight out of `~/Downloads`
 would claim `~` as its root, and an in-repo `python -m daemon` would resolve `sys.executable` to
@@ -105,11 +190,19 @@ perfectly.
 **macOS**
 
 ```bash
-daemon/packaging/macos/install.sh              # picks the artifact next to it, or the newest in dist/daemon/
+daemon/packaging/macos/install.sh              # Zaelar-macos.zip / dist/daemon/Zaelar.zip / dist/app/Zaelar.app,
+                                               # else a onefile or .pyz next to it
 daemon/packaging/macos/uninstall.sh [--purge]
 ```
 
-Per-user LaunchAgent, `~/Library/Application Support/Zaelar`, **no sudo**.
+Per-user LaunchAgent, `~/Library/Application Support/Zaelar`, **no sudo**. The app lands in
+`<prefix>/Zaelar.app` (unpacked with `ditto`, quarantine cleared) and the LaunchAgent starts its program with
+`ProcessType Interactive` (a menu-bar app) and `EnvironmentVariables → ZAELAR_WORKSPACE=<prefix>`: the program lives
+inside the bundle, not in `<prefix>/bin/`, so «the state follows the program» cannot derive the prefix and it is
+handed over instead. `<prefix>/bin/zaelar-daemon` becomes a two-line launcher into the bundle with the same
+variable, so `status`, `allow`, `token` work as before. Verified by hand 2026-11-09 with a scratch `HOME` and a
+prefix containing a space: launchd ran the app, `/health` declared `browser.auth`, state landed in the prefix,
+uninstall left nothing.
 
 **Windows**
 
@@ -153,7 +246,13 @@ It does more than build. On each runner it:
 2. **parse-checks the installer scripts** — a syntax error in a PowerShell file is a thing you find at install
    time, on somebody else's computer;
 3. starts the **real binary** and checks `/health` answers **and that a request naming `Host: evil.example` is
-   still refused with a 401** — the one regression that would ship a daemon which starts and defends nothing.
+   still refused with a 401** — the one regression that would ship a daemon which starts and defends nothing;
+4. checks the installed-style build finds the runner's Google Chrome (`zaelar-daemon browser` → `ready`/`chrome`)
+   and `/health` declares `browser.auth` — through the BUNDLED Playwright;
+5. on macOS, checks the `.app`'s `Info.plist` (bundle id, `LSUIElement`, the three usage strings) and its ad-hoc
+   seal (`codesign --verify --deep --strict`), and that the bundled Node driver is executable;
+6. starts the resident WITH its tray (the packaged default) and checks it still answers — built and started, not
+   clicked: clicking the menu is a manual check.
 
 ```bash
 git tag daemon-v0.2.0 && git push origin daemon-v0.2.0
@@ -167,8 +266,8 @@ would overwrite the other's. Each runner renames its own before uploading:
 
 | Published asset | Platform |
 |---|---|
-| `zaelar-daemon-macos`, `zaelar-daemon-macos.pyz` | macOS, Apple Silicon |
-| `zaelar-daemon-macos-x86_64`, `zaelar-daemon-macos-x86_64.pyz` | macOS, Intel |
+| `Zaelar-macos.zip`, `zaelar-daemon-macos.pyz` | macOS, Apple Silicon (the zipped `Zaelar.app`) |
+| `Zaelar-macos-x86_64.zip`, `zaelar-daemon-macos-x86_64.pyz` | macOS, Intel |
 | `zaelar-daemon-windows.exe`, `zaelar-daemon-windows.pyz` | Windows |
 | `SHA256SUMS-<suffix>`, `manifest-<suffix>.json` | one per build job |
 | `get.sh`, `get.ps1`, `zaelar-daemon-(un)install-*` | published once, architecture-independent |
@@ -182,6 +281,11 @@ which is precisely what a download button cannot do: a user-agent does not say w
 the build names while the release publishes the architecture names, so the published sums must be computed
 over the published names — otherwise the one-line installer would refuse a binary it fetched perfectly.
 Patching the names inside the build's file is not enough: the digests are recomputed from the renamed files.
+
+⚠️ **Releases cut before the `.app` publish `zaelar-daemon-macos[-x86_64]`** (onefile). `get.sh` asks for the newest
+release carrying `Zaelar-<suffix>.zip` and, when none does yet, falls back to the newest carrying the old file — the
+same daemon without the icon and the bundled browser. The download screen's direct link
+(`server/daemon_downloads.py`) names the zip, so it 404s until the first release that carries it.
 
 **These names are a contract.** `server/daemon_api.py` builds the download links from them, and both installers
 look for them (including in `~/Downloads`, which is where a browser actually puts them). Renaming an asset
@@ -269,6 +373,8 @@ above. The signed checksums are the prerequisite for any updater, not the update
 | The release asset names, the download links and the installers agree | Node **7.44** |
 | The Windows and macOS builds, the installer syntax, and the guards surviving the build | `.github/workflows/daemon-artifacts.yml` on `windows-latest` / `macos-latest` |
 | The sums are signed after the rename, provenance is attested, and the installers verify the bundle | Node **7.99** (workflow + installers + `release_names.py`, with disarms) and the workflow's own verify step |
+| The browser: Chrome per OS, the Chromium download job (start → progress → ready / cancelled / failed), `browser.auth` only when launchable, the channel recorded, never a debug port | Node **7.100**, with disarms |
+| The tray is a view of `/health` and off the headless path; «Open Zaelar» local → relay → disabled; the `.app`'s `Info.plist`; the zipped app in the release; installers parse | Node **7.101**, with disarms |
 
 The macOS install path (launchd accepts the job, starts it, defers to an already-running instance, and uninstall
 leaves nothing) can be exercised by hand by installing into a temporary `HOME` and checking `launchctl print`.

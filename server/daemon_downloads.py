@@ -14,7 +14,8 @@ from fastapi import Request
 _RELEASE_BASE_DEFAULT = "https://github.com/asimovia/zaelar/releases/latest/download"
 
 _ASSETS = {
-    "macos": {"artifact": "zaelar-daemon-macos", "installer": "zaelar-daemon-install-macos.sh",
+    # macOS ships the `Zaelar.app` bundle, zipped (V2-869); Apple Silicon here, `Zaelar-macos-x86_64.zip` for Intel.
+    "macos": {"artifact": "Zaelar-macos.zip", "installer": "zaelar-daemon-install-macos.sh",
               "checksums": "SHA256SUMS-macos"},
     "windows": {"artifact": "zaelar-daemon-windows.exe", "installer": "zaelar-daemon-install-windows.ps1",
                 "checksums": "SHA256SUMS-windows"},

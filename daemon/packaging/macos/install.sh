@@ -10,8 +10,12 @@
 # "install", and there is no second procedure to get wrong. The allowlist and the token live in the state
 # directory, which is never touched, so an upgrade keeps the folders the user chose.
 #
-#   ./install.sh                     use the artifact next to this script, or the newest in dist/daemon/
-#   ./install.sh /path/to/artifact   use a specific one (a onefile binary or a .pyz)
+#   ./install.sh                     use the artifact next to this script, or the newest in dist/
+#   ./install.sh /path/to/artifact   use a specific one: Zaelar-macos.zip / Zaelar.app (the desktop app, with
+#                                    its menu-bar icon and its browser driver), or a onefile binary / a .pyz
+#
+# THE APP is installed as `<prefix>/Zaelar.app` and started by the same LaunchAgent; `<prefix>/bin/zaelar-daemon`
+# becomes a two-line launcher into it, so the terminal commands (`status`, `allow`, …) are unchanged.
 set -euo pipefail
 
 LABEL="com.zaelar.daemon"
@@ -31,6 +35,7 @@ BIN_DIR="$PREFIX/bin"
 LOG_DIR="$PREFIX/logs"
 AGENT="$HOME/Library/LaunchAgents/$LABEL.plist"
 TARGET="$BIN_DIR/zaelar-daemon"
+APP="$PREFIX/Zaelar.app"
 
 say() { printf '  %s\n' "$*"; }
 die() { printf '✗ %s\n' "$*" >&2; exit 1; }
@@ -48,14 +53,17 @@ if [[ -z "$SOURCE" ]]; then
   # `zaelar-daemon.pyz` and one would overwrite the other), so a person who downloaded the file from the web and
   # ran this script next to it lands here. Without these four lines that person gets "no artifact found" while
   # the artifact sits in the same folder, which is the most demoralising install failure there is.
-  for candidate in "$HERE/zaelar-daemon-macos" "$HERE/zaelar-daemon-macos.pyz" \
+  ARCH_SUFFIX="macos"; [[ "$(uname -m)" == "x86_64" ]] && ARCH_SUFFIX="macos-x86_64"
+  for candidate in "$HERE/Zaelar-$ARCH_SUFFIX.zip" "$HOME/Downloads/Zaelar-$ARCH_SUFFIX.zip" \
+                   "$HERE/../../../dist/daemon/Zaelar.zip" "$HERE/../../../dist/app/Zaelar.app" \
+                   "$HERE/zaelar-daemon-macos" "$HERE/zaelar-daemon-macos.pyz" \
                    "$HERE/zaelar-daemon" "$HERE/zaelar-daemon.pyz" \
                    "$HOME/Downloads/zaelar-daemon-macos" "$HOME/Downloads/zaelar-daemon-macos.pyz" \
                    "$HERE/../../../dist/daemon/zaelar-daemon" "$HERE/../../../dist/daemon/zaelar-daemon.pyz"; do
-    [[ -f "$candidate" ]] && { SOURCE="$candidate"; break; }
+    [[ -e "$candidate" ]] && { SOURCE="$candidate"; break; }
   done
 fi
-[[ -n "$SOURCE" && -f "$SOURCE" ]] || die "no artifact found. Build one: python daemon/packaging/build.py"
+[[ -n "$SOURCE" && -e "$SOURCE" ]] || die "no artifact found. Build one: python daemon/packaging/build.py"
 
 PYTHON=""
 if [[ "$SOURCE" == *.pyz ]]; then
@@ -81,7 +89,34 @@ fi
 sleep 0.5
 
 # ── install the artifact ──────────────────────────────────────────────────────────────────────────────────
-if [[ "$SOURCE" == *.pyz ]]; then
+# What launchd starts, and the environment it needs. The app's program lives inside the bundle, not in `bin/`, so
+# it cannot find its state by where it sits (`daemon/paths.py::_install_root`): the prefix is handed to it instead.
+PROGRAM="$TARGET"
+ENV_BLOCK=""
+PROCESS_TYPE="Background"
+if [[ "$SOURCE" == *.zip || "$SOURCE" == *.app ]]; then
+  STAGE="$(mktemp -d)"
+  trap 'rm -rf "$STAGE"' EXIT
+  if [[ "$SOURCE" == *.zip ]]; then
+    # `ditto`, which keeps the bundle's symlinks and signature intact; `unzip` does not always.
+    ditto -x -k "$SOURCE" "$STAGE" || die "$SOURCE is not a readable archive."
+  else
+    ditto "$SOURCE" "$STAGE/Zaelar.app"
+  fi
+  [[ -x "$STAGE/Zaelar.app/Contents/MacOS/zaelar-daemon" ]] || die "$SOURCE does not contain Zaelar.app."
+  rm -rf "$APP"
+  ditto "$STAGE/Zaelar.app" "$APP"
+  # Same consent as below for the single file: the person chose to install THIS bundle.
+  xattr -dr com.apple.quarantine "$APP" 2>/dev/null || true
+  PROGRAM="$APP/Contents/MacOS/zaelar-daemon"
+  printf '#!/bin/sh\nZAELAR_WORKSPACE="${ZAELAR_WORKSPACE:-%s}" exec "%s" "$@"\n' "$PREFIX" "$PROGRAM" > "$TARGET"
+  chmod 0755 "$TARGET"
+  rm -f "$BIN_DIR/zaelar-daemon.pyz"
+  ENV_BLOCK="<key>EnvironmentVariables</key><dict><key>ZAELAR_WORKSPACE</key><string>$PREFIX</string></dict>"
+  # A menu-bar app is interactive: `Background` lets the scheduler starve the icon's clicks.
+  PROCESS_TYPE="Interactive"
+  say "installed Zaelar.app (menu-bar icon, carries its own Python and browser driver)"
+elif [[ "$SOURCE" == *.pyz ]]; then
   install -m 0644 "$SOURCE" "$BIN_DIR/zaelar-daemon.pyz"
   # A two-line launcher rather than a shebang: the plist names ONE program, and this keeps the plist identical
   # whichever artifact is installed — so an upgrade from .pyz to onefile does not need a different plist.
@@ -101,8 +136,8 @@ else
 fi
 
 # ── register it to start at login ─────────────────────────────────────────────────────────────────────────
-# KeepAlive with SuccessfulExit=false: restart it if it dies, but let a deliberate `zaelar-daemon stop` stay
-# stopped instead of fighting the user. ProcessType Background asks the scheduler to treat it as what it is.
+# KeepAlive with SuccessfulExit=false: restart it if it dies, but let a deliberate Quit (from the menu bar, an exit
+# 0) stay stopped instead of fighting the user. ProcessType asks the scheduler to treat it as what it is.
 cat > "$AGENT" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -110,11 +145,12 @@ cat > "$AGENT" <<EOF
 <dict>
   <key>Label</key><string>$LABEL</string>
   <key>ProgramArguments</key>
-  <array><string>$TARGET</string></array>
+  <array><string>$PROGRAM</string></array>
+  $ENV_BLOCK
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key>
   <dict><key>SuccessfulExit</key><false/></dict>
-  <key>ProcessType</key><string>Background</string>
+  <key>ProcessType</key><string>$PROCESS_TYPE</string>
   <key>StandardOutPath</key><string>$LOG_DIR/daemon.log</string>
   <key>StandardErrorPath</key><string>$LOG_DIR/daemon.log</string>
 </dict>

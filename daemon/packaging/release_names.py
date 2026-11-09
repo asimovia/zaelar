@@ -24,8 +24,10 @@ from pathlib import Path
 DIST = Path(__file__).resolve().parent.parent.parent / "dist" / "daemon"
 
 # Build name → the template its published name follows. `.exe` keeps its extension because Windows needs it to
-# run the file at all, so the suffix goes before it rather than after.
+# run the file at all, so the suffix goes before it rather than after. `Zaelar.zip` is the macOS `Zaelar.app`
+# (onedir, zipped by `build.py`): the Mac builds publish `Zaelar-macos.zip` / `Zaelar-macos-x86_64.zip`.
 _RENAMES = (
+    ("Zaelar.zip", "Zaelar-{suffix}.zip"),
     ("zaelar-daemon", "zaelar-daemon-{suffix}"),
     ("zaelar-daemon.exe", "zaelar-daemon-{suffix}.exe"),
     ("zaelar-daemon.pyz", "zaelar-daemon-{suffix}.pyz"),
