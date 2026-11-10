@@ -202,7 +202,7 @@ def test_a_name_that_spells_its_ticker_takes_that_ticker(monkeypatch):
 
 @pytest.mark.parametrize("payload", [{"value": "1mo"}, {}, {"range": "whenever"}])
 def test_a_period_that_names_nothing_is_refused_not_drawn_as_today(fake_yahoo, payload):
-    """V2-873 (node 4.218): «¿y en el último mes?» reached `range` as `{"value": "1mo"}`; the card drew «today» and
+    """V2-873 (node 4.218): «and over the last month?» (said in Spanish) reached `range` as `{"value": "1mo"}`; the card drew the one-day chart and
     said it was done. A `range` that names no period is refused with its field (the refusal carries the declared
     shape back, `widgets/action_shape`), and the chart on screen is left as it was."""
     mk.apply_action("show", {"symbol": "Apple"})
