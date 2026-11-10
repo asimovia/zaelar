@@ -75,6 +75,22 @@ survives killing and relaunching the app. A cookie without an expiry (a per-boot
 not: on relaunch the shell obtains a new one the way a fresh browser tab would. The app adds no login screen of its
 own; whatever the origin does for an unauthenticated `/m` (a redirect to its sign-in page) happens in-page.
 
+## The app's own glue (`www/in-app.js`)
+
+Injected by `MainViewController.swift` at document start into every page the WebView loads, so it works with any
+engine version and never runs in a browser: it marks `<html class="in-app" data-platform="ios">` (CSS adapts without
+sniffing user agents) and gives a light haptic tick on the dock, the orb and send buttons. Plugins in the app:
+Keyboard (`resize: native`, dark keys, no form accessory bar), Haptics, App, Geolocation. The shell reaches them
+through `window.Capacitor.Plugins.<Name>`, never through an npm import (it is served by the engine, not bundled).
+The user agent ends in `ZaelarApp/<version> (ios)` — a hint for the engine, never a credential.
+
+## The screen as a sensor
+
+`frontend/app/services/device.js` is one door for location (one fix or a watch), motion and compass: the native
+plugin inside the app, the Web API in a browser, every failure a value. Apps (widgets) reach it as
+`await ctx.device()` (contract in `widgets/AGENTS.md`). Measured in the simulator: the system dialog shows the app's
+own sentence, and a fix comes back from the plugin.
+
 ## Inside the app, the shell knows it is the app
 
 Capacitor injects its bridge into the main frame of every page, remote origin included, so

@@ -19,9 +19,9 @@ import { saneFootprint, preferredFootprint } from "./footprint.js?v=2";
 import { bestSpot, overlaps as _overlaps } from "./placement.js?v=1";
 import { t as tr } from "../core/i18n.js?v=1";
 import * as store from "../core/store.js?v=2";
-// V2-792 — the screens service, loaded on first use (a host imports no service statically: the canvas is also
-// mounted on its own by tests, with only its own two core imports stubbed).
+// V2-792 — services load on first use: a host imports none statically (tests mount it with its core imports stubbed).
 const _screens = () => import("../services/screens.js?v=1");
+const _sensors = () => import("../services/device.js?v=1");   // V2-870 P2: ctx.device — the screen's sensors
 const _device = () => import("../services/api.js?v=2").then((m) => m.DEVICE).catch(() => "");
 
 // V2-821 — which element scrolls a card: the region its widget declares, else the card's own scroller.
@@ -880,7 +880,7 @@ export class Desktop {
         // through this ONE synchronous, in-memory lookup — never a network call, never an import of frontend
         // internals from inside widget.js (that boundary stays `ctx`-only, like `action`/`close`/`running`).
         // Falls back to English, then to the literal key, so an untranslated string is visible rather than blank.
-        t:tr,
+        t:tr, device:_sensors,
         // The raw active code (e.g. "es"), for the rarer widget whose need is a native `Intl`/`Date`/`Number`
         // FORMAT (day/month names, date order, currency) rather than a custom string — `t()` alone cannot
         // reorder "January 5, 2026" into "5 de enero de 2026", but `new Intl.DateTimeFormat(ctx.lang, …)` can.
@@ -1001,7 +1001,7 @@ export class Desktop {
       const ctx={ action:async(name,payload)=>{ try{return await fetch(`/widgets/${id}/action`,{method:"POST",
           headers:{"Content-Type":"application/json"},body:JSON.stringify({action:name,payload:{...(payload||{}),q}})}).then(r=>r.json());}catch(_){return null;} },
         close:()=>{ clearTimeout(this._actTimer); rail.innerHTML=""; this._actId=null; },
-        t:tr, get lang(){ return store.lang(); },             // V2-613: same contract as on a normal card
+        t:tr, device:_sensors, get lang(){ return store.lang(); },             // V2-613: same contract as on a normal card
         // The rest of a normal card's members: a member this host forgot was a TypeError inside the card on tap.
         // The rail has no scroller of its own and no window to watch a login from, so those are honest no-ops.
         top:()=>{}, scroll:()=>{},
