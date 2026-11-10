@@ -165,6 +165,13 @@ The shell behaves differently only where `inNativeApp()` (`frontend/app/core/nat
 | `scripts/ios-archive.sh` (`npm run ios:archive`) | `xcodebuild archive` (generic iOS, automatic signing, `-allowProvisioningUpdates`, team `APPLE_TEAM_ID`) + `-exportArchive` (app-store-connect) → `build/ipa/App.ipa` |
 | `scripts/ios-upload.sh` (`npm run ios:upload`) | `xcodebuild -exportArchive` with `destination: upload`, authenticated by an App Store Connect API key: `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8` (path to the `.p8`) |
 
+**Signing without an Xcode account** (`ZAELAR_SIGN=manual`, `scripts/manual-signing.sh`): the certificates (`<name>.cer`
++ `<name>.key`, PEM), the profiles («Zaelar App Store», «Zaelar Dev») and any intermediate authority (Apple WWDR G3)
+made in the developer portal and saved in `ZAELAR_SIGN_DIR` (default `~/.zaelar-signing`). The scripts find the
+profile by name and the certificate it carries, import them into a throwaway keychain (restored and deleted on exit),
+install the profile, and sign Manual with Apple Distribution (store) or Apple Development (device). The upload only
+authenticates: `altool --upload-app` with the API key's id, issuer and `.p8` path.
+
 Both store scripts refuse to run without their variables and take `--dry-run` (check inputs, print the commands).
 A paid Apple Developer team is required: App Store distribution and Associated Domains are not available to a free
 personal team.

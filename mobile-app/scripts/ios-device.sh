@@ -14,6 +14,8 @@
 # · TEAM is the team ID in Xcode › Settings › Accounts. The project keeps com.zaelar.app; a free personal team may
 #   refuse it (an id belongs to one team), so BUNDLE_ID=com.zaelar.app.dev overrides it for this build only — build
 #   settings on the command line, the project file is never edited.
+# · ZAELAR_SIGN=manual signs with the portal's development certificate and «Zaelar Dev» profile instead of an Xcode
+#   account (scripts/manual-signing.sh); LAUNCH=1 opens the app after installing (needs the phone's developer image).
 # · device-id: the CoreDevice identifier or UDID from `xcrun devicectl list devices`; default: the first paired iPhone.
 # · Voice needs an https origin: a plain-http LAN address is not a secure context, so the WebView gives it no mic.
 set -eu
@@ -34,9 +36,21 @@ fi
 [ -n "$DEVICE" ] || { echo "no paired iPhone found (xcrun devicectl list devices)"; exit 1; }
 
 npx cap sync ios
-xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug -destination 'generic/platform=iOS' \
-  -derivedDataPath ios/DerivedData -allowProvisioningUpdates \
-  DEVELOPMENT_TEAM="$TEAM" CODE_SIGN_STYLE=Automatic PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" build
+if [ "${ZAELAR_SIGN:-automatic}" = manual ]; then
+  # The development certificate and the «Zaelar Dev» profile from the portal (scripts/manual-signing.sh); the device
+  # must be in that profile.
+  . scripts/manual-signing.sh
+  manual_signing "${ZAELAR_SIGN_PROFILE:-Zaelar Dev}" || exit 1
+  xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug -destination 'generic/platform=iOS' \
+    -derivedDataPath ios/DerivedData DEVELOPMENT_TEAM="$TEAM" CODE_SIGN_STYLE=Manual \
+    CODE_SIGN_IDENTITY="$SIGN_IDENTITY" PROVISIONING_PROFILE_SPECIFIER="$SIGN_PROFILE" \
+    OTHER_CODE_SIGN_FLAGS="--keychain $SIGN_KEYCHAIN" PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" build
+else
+  xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug -destination 'generic/platform=iOS' \
+    -derivedDataPath ios/DerivedData -allowProvisioningUpdates \
+    DEVELOPMENT_TEAM="$TEAM" CODE_SIGN_STYLE=Automatic PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" build
+fi
 xcrun devicectl device install app --device "$DEVICE" ios/DerivedData/Build/Products/Debug-iphoneos/App.app
+[ "${LAUNCH:-0}" = 1 ] && xcrun devicectl device process launch --device "$DEVICE" "$BUNDLE_ID" || true
 echo "Installed $BUNDLE_ID on $DEVICE — open it from the home screen. A free team's app must be trusted once:"
 echo "Settings › General › VPN & Device Management › your Apple ID › Trust."
