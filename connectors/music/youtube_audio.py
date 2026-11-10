@@ -84,6 +84,11 @@ def _bump(yt: dict, cmd: str) -> dict:
     return yt
 
 
+def refused_ids(yt: dict) -> list:
+    """The songs the page player REFUSED (onError 101/150/100/2/5, V2-873): a lookup never offers them again."""
+    return [str(v) for v in (yt.get("refused") or []) if v]
+
+
 def _push_history(yt: dict) -> None:
     """Remember the track being REPLACED so previous() can go back to it (V2-631). Only a real, resolved track
     (with a videoId) enters; capped at 20 so the store never grows unbounded."""
@@ -124,7 +129,7 @@ class YouTubeAudioProvider(MusicProvider):
                                       "noop": True})
         why = ""
         if not vid and query:
-            got = _resolve(query)
+            got = _resolve(query, skip=refused_ids(yt))
             vid, title, why = got[0], got[1], (got[2] if len(got) > 2 else "")
         from connectors import music as _music
         if _music.superseded():          # a newer request was asked while this one was looked up: it does not sound
@@ -137,7 +142,7 @@ class YouTubeAudioProvider(MusicProvider):
                                message=_t("no_track", q=query or uri))
         if yt.get("videoId") and yt.get("videoId") != vid:
             _push_history(yt)
-        yt.update({"videoId": vid, "title": title or query or vid, "query": query or "", "paused": False,
+        yt.update({"videoId": vid, "title": title or query or vid, "query": query or "", "paused": False, "player_error": "",
                    "muted": False, "volume": int(yt.get("volume") or 70), "art": _yt_thumb(vid)})
         _bump(yt, "load")
         return MusicResult(ok=True, provider=self.name, action="play",

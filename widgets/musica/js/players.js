@@ -24,6 +24,7 @@ export let _ytReady = null, _ytEnded = null;
 // (refuse the unmute, or never start) until a tap on the page. The embed says so in its own `infoDelivery`
 // (`muted`, `playerState`); the card reports it as `player_audio` and shows a tap row while it lasts.
 export let _ytSound = null;                   // per-render reporter: (info) → `player_audio` when it disagrees with the store
+export let _ytRefused = null;                 // per-render reporter: (code) → `player_error`, the player REFUSED the song (V2-873)
 export let _ytLoadedAt = 0;                   // when the current song's frame was mounted: a silence inside the grace is not a verdict
 export const _SOUND_GRACE_MS = 2500;
 export let _ytClock = {vid: "", t: 0, d: 0, at: 0};
@@ -40,6 +41,7 @@ if (typeof window !== "undefined" && !window.__hbMusicaYtBound){
     if (d.id !== "hb-musica") return;
     if (d.event === "onReady" && _ytReady) _ytReady();
     else if (d.event === "onStateChange" && Number(d.info) === 0 && _ytEnded) _ytEnded();   // 0 = ENDED
+    else if (d.event === "onError" && _ytRefused) _ytRefused(String(d.info));   // 101/150 = embedding refused
     else if (d.event === "infoDelivery" && d.info && typeof d.info === "object"){
       const info = d.info;
       if (typeof info.currentTime === "number"){ _ytClock.t = info.currentTime; _ytClock.at = Date.now(); }
@@ -126,6 +128,13 @@ export function syncLocalPlayer(el, data, ctx){
 export function bindSoundReport(el, data, ctx){
   const yt = data.yt || {};
   let sent = "";
+  // V2-873 — the player REFUSED the song (IFrame API onError): reported once per song, with the song it was about.
+  _ytRefused = (code) => {
+    const vid = el._hbVid || yt.videoId;
+    if(!ctx || !ctx.action || !vid || el._hbRefused === vid + "|" + code) return;
+    el._hbRefused = vid + "|" + code;
+    try{ const q = ctx.action("player_error", {code: code, videoId: vid}); if(q && q.catch) q.catch(() => {}); }catch(_){}
+  };
   _ytSound = (info) => {
     if(!ctx || !ctx.action || halted(ctx) || !yt.videoId || yt.paused || yt.muted) return;
     const state = Number(info.playerState);
