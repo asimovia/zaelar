@@ -58,10 +58,12 @@ manual_signing() {
   security unlock-keychain -p "$KC_PASS" "$SIGN_KEYCHAIN"
   security import "$WORK/id.p12" -k "$SIGN_KEYCHAIN" -P "$P12_PASS" -f pkcs12 -T /usr/bin/codesign -T /usr/bin/security >/dev/null
   rm -f "$WORK/id.p12"
-  # The intermediate authorities in the folder (e.g. Apple WWDR G3 for Apple Distribution / Development): without the
+  # The intermediate authorities (Xcode's own, then the folder's — e.g. Apple WWDR G3 for Apple Distribution / Development): without the
   # chain the identity is not «valid» and codesign refuses it. A certificate that is already there is skipped.
-  for c in "$SIGN_DIR"/*.cer; do
-    [ "$c" = "$CERT" ] && continue
+  # Xcode ships the WWDR intermediates (G3 is `AppleWWDRCA-2030.cer`) — used first, no download needed.
+  XCODE_CA="$(xcode-select -p)/../SharedFrameworks/DVTFoundation.framework/Versions/A/Resources"
+  for c in "$XCODE_CA"/*.cer "$SIGN_DIR"/*.cer; do
+    [ -f "$c" ] && [ "$c" != "$CERT" ] || continue
     security import "$c" -k "$SIGN_KEYCHAIN" >/dev/null 2>&1 || true
   done
   security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KC_PASS" "$SIGN_KEYCHAIN" >/dev/null
