@@ -1696,6 +1696,8 @@ DOMAINS: list[dict] = [
                                  "reopening gives the ear back (V2-831 T-18)",
             "ch": UNIT, "paths": [
                 "tests/voice/unit/test_a_closed_microphone_feeds_no_audio_to_stt.py"]},
+        {"id": "3.185", "title": "A voice room is given only once this engine's worker is REGISTERED, and the page is ready only with the agent in it (V2-873): `/api/token` answers 503 `voice_starting` while the embedded worker has no LiveKit id (a room born before it is never dispatched an agent); the page waits and asks again, leaves a room no agent joined within its bound and asks for a new one, never says «ready» without the agent, and says it is unavailable past the bound; a typed line never waits on the token door",
+            "ch": UNIT, "paths": ["tests/voice/unit/test_a_room_is_given_only_once_the_worker_is_registered.py"]},
         # V2-831 T-19 R7+R8 (V2-747 class) — disarmed 2026-10-29 (the correction reader, the backstop's rule, the
         # settle's card acts) → red each. R7b (pass 2): the owner fact never says card / ignores the errand's acts → red.
         # R7c (pass 3): worker-span writes count, errand by timestamps, Inject or done_ops without trace, inject_soon

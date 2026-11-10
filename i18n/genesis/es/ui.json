@@ -939,6 +939,8 @@
  "voice.alert_tap_audio": "Toca para activar el audio de zaelar.",
  "voice.conn_connected": "conectado",
  "voice.conn_connecting": "conectando…",
+ "voice.agent_starting": "el agente está arrancando… lo vuelvo a intentar",
+ "voice.agent_unavailable": "el agente no está disponible ahora mismo — vuelve a intentarlo en un momento",
  "voice.conn_error": "error",
  "voice.conn_error_status": "error {status}",
  "voice.conn_reconnecting": "reconectando…",
