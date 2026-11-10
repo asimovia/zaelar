@@ -83,7 +83,12 @@ async def tick(now: float | None = None) -> int:
 async def publish(ev: dict, *, now: float | None = None) -> dict:
     """Route ONE event and obey the route. The entry for any source (`pulse/due` for a cron's job)."""
     now = time.time() if now is None else now
+    from nucleo.events import once
     from nucleo.turn import flow_events, flow_of
+    if not once.first(ev):                 # a re-delivered message resumes no row and runs no rule twice (V2-872 F2)
+        _events.said("flow", "🧵 a re-delivered message is not routed again", str(ev.get("text") or "")[:160],
+                     origin=ev.get("origin"), key=ev.get("key"), message=once.key_of(ev))
+        return {"as": flow_events.NOTHING, "again": True}
     r = await flow_of.route(event=ev)
     how = r.get("as")
     try:

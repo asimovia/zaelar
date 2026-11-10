@@ -2870,6 +2870,7 @@ DOMAINS: list[dict] = [
         # the restart with every old card and re-reported them to the server as open — the ghosts were in the
         # server's canvas state before anyone typed. The SSE re-open IS the restart seen from the tab.
         {"id": "4.433", "title": "A tab sleeps on its own and never reconnects without a gesture (V2-872): a stream error CLOSES the EventSource and `presence.reconnectDecision` reopens it only while visible and touched within `tab_sleep_min` (the hello's value), with a 2 s → 60 s backoff; a hidden or untouched tab goes dormant (the orb dims, «Zaelar duerme — toca para despertar») and every poller asks `asleep()` before it reaches the server; `engine.sleep` puts it to sleep; the first gesture wakes it, and every open the tab decides says it is a person (`wake=1`, counted as input by the engine) so a hosted edge may start a stopped engine for it and never for a browser's own retry", "ch": UNIT, "paths": ["tests/browser/unit/arranque/test_a_sleeping_tab_never_reconnects_on_its_own.py"]},
+        {"id": "4.434", "title": "One black veil over the whole screen (both shells, the top layer above every panel and the chat wall) when the engine sleeps — Reactivate is a gesture that reopens the stream with `wake=1` and the veil says it is waiting until the stream answers — or when the voice is held by another screen («use it here», «continue here with text»); the agent's ⏻ is never touched; a visible, connected, awake tab tells the engine a person is there on open, on becoming visible and every minute; every line in the ui pack (ES/EN)", "ch": UNIT, "paths": ["tests/browser/unit/arranque/test_one_black_veil_when_the_engine_sleeps_or_the_voice_moves.py"]},
         {"id": "4.221", "title": "Un reset alcanza a la pestaña que se quedó abierta: al reconectar el "
                                  "stream se vuelve a leer la época y se barre (V2-773)",
             "ch": UNIT, "paths": [
@@ -3833,9 +3834,21 @@ DOMAINS: list[dict] = [
         {"id": "2.802", "title": "A deployment that stops idle engines is told the next due notice after every schedule change, debounced; self-host reports nothing (V2-796)",
             "ch": UNIT,
             "paths": ["tests/agent_headless/unit/test_a_sleeping_engine_is_told_when_to_wake.py"]},
+        {"id": "2.841", "title": "A sleeping engine is woken for ONE instant: its next job, its next deadline (an errand's expiry, a waiting row's deadline, an owed notice's retry when a device can take it — only instants ahead) or, only while something LISTENS to a channel that can be caught up (a subscribed rule, an unread note that could subscribe, a row waiting for its event, a live errand's conversation, his notify or autoresponder preference), its next listen pass on a fixed `listen_every_min` grid; nothing → null; the report goes stale on its own once its instant passes and every recheck (V2-872 F2)",
+            "ch": UNIT,
+            "paths": ["tests/agent_headless/unit/test_a_sleeping_engine_wakes_for_what_listens.py"]},
+        {"id": "2.842", "title": "A mail an earlier process dealt with never reaches the model again: the mailbox cursor (UIDVALIDITY + highest UID, trailing delivery) hands a new process only what arrived since — asleep or not —, a renumbered folder voids it; the widget asks its durable ledger BEFORE the classifier; the router routes an arriving message once, so a re-delivery resumes no row and runs no rule twice (V2-872 F2)",
+            "ch": UNIT,
+            "paths": ["tests/connectors/unit/email/test_a_mail_seen_by_an_earlier_process_never_reaches_the_model.py"]},
+        {"id": "2.843", "title": "A repeating appointment hands its notice to the next occurrence the moment it rings: the pulse runs the origin's hand-over right after the delivery and once at start, and a notice that already rang moves the series on at once, so the next instant is in the scheduler before the engine may sleep (V2-872 F2)",
+            "ch": UNIT,
+            "paths": ["tests/agent_headless/unit/test_a_series_hands_over_its_notice_when_it_rings.py"]},
         {"id": "2.830", "title": "An engine nobody is using ends its own process cleanly (opt-in window; never with a worker running or a notice due), and every stop is bounded: a step timeout and a hard deadline that exits with status 0",
             "ch": UNIT,
             "paths": ["tests/agent_headless/unit/test_an_idle_engine_stops_itself_cleanly.py"]},
+        {"id": "2.1658", "title": "An idle engine asks its host to SUSPEND it and falls back to the clean exit: the wake report goes out first (a failed one keeps it up), then the goodnight, then the sleep endpoint — 202 waits to be suspended and exits if nothing happens, 200 is a resume already, a refusal or no answer is the exit, and a suspend followed by a resume (read from the clocks on the pulse, before any stop decision) never exits; a resume starts the idle state over; a visible connected screen is presence; a widget's background tick is not activity; a job ⏻ held past its instant holds nothing up",
+            "ch": UNIT,
+            "paths": ["tests/agent_headless/unit/test_an_idle_engine_sleeps_and_wakes.py"]},
         {"id": "2.728", "title": "A turn that acted on a card and also escalated, read inline, launches no worker — on the text channel as on the voice",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_an_inline_act_settles_the_commission_on_both_channels.py"]},
         {"id": "2.729", "title": "An ordered act that leaves, sure at the operator's 70%, runs when the model only drafted it — both channels",

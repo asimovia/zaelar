@@ -297,6 +297,11 @@ def _the_notice_ledger_starts_empty():
     d = mdb.get_db()
     d.execute("DELETE FROM notices")
     d.execute("DELETE FROM push_devices")
+    # V2-872 F2 — same family: the ledger of routed arrivals (`nucleo/events/once.py`) and the mailbox cursors
+    # (`connectors/email/cursor.py`) are durable on purpose, so a message id or an address one test used would make the
+    # next test's arrival a «re-delivery» that routes nothing.
+    if d.query_one("SELECT name FROM sqlite_master WHERE type='table' AND name='sys_kv'") is not None:
+        d.execute("DELETE FROM sys_kv WHERE key='events:routed' OR substr(key, 1, 13)='email:cursor:'")
 
 
 # V2-684 — A LANGUAGE LEAK IS A FAILURE OF THE TEST THAT CAUSED IT (2026-09-13).

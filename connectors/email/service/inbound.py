@@ -20,6 +20,10 @@ def _media_dir() -> str | None:
 async def _ingest_new(mb) -> None:
     """Read INBOX in a thread, publish/triage new emails. Updates `_seen`/`_published`."""
     msgs = await asyncio.to_thread(mb.fetch_new, _svc._seen, _media_dir())
+    try:
+        _svc.advance_cursor()            # what the PREVIOUS poll handed over is now dealt with (V2-872 F2)
+    except Exception as e:  # noqa: BLE001 — not advanced: the next start re-delivers, and the consumers dedupe it
+        logger.debug(f"Email: cursor not advanced: {e!r}")
     if not msgs:
         return
     for m in msgs:

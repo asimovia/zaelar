@@ -143,7 +143,7 @@ def main() -> int:
                 pg.wait_for_timeout(3000)
                 for wid in ids:
                     del errs[:]
-                    pg.evaluate("() => document.querySelectorAll('.boot-ovl,.lang-onb,.lang-onb-veil,.zm-held')"
+                    pg.evaluate("() => document.querySelectorAll('.boot-ovl,.lang-onb,.lang-onb-veil,.dz-veil')"
                                 ".forEach(e => e.remove())")
                     try:
                         pg.evaluate("async (id) => { for (const o of window.__zaelarDeck.list()) window.__zaelarDeck.close(o);"

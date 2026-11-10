@@ -32,6 +32,9 @@ A widget declares its cycle in `manifest.json`:
     scheduler: it is caught, traced (`observer`, kind `background`), and the scheduler continues. Per-widget
     overlap is avoided; if the previous tick is still running, that cycle is skipped.
   - **Minimum period = 1s.** `every` is normalized to seconds (>=1).
+  - **A tick is not activity.** Every tick runs on the engine's own clock (`observability/identity.paced`): what it
+    emits, writes or spawns never moves the real-activity clock, so a widget with a cycle cannot keep an idle engine
+    from stopping (`nucleo/idle_stop.py`).
 
 ## Passive ticks follow presence (V2-872)
 
@@ -125,10 +128,22 @@ def _idle_every_s() -> int:
         return 300
 
 
+def _paced():
+    """The engine's own clock (`observability/identity.paced`): a tick is scheduled work, never a person, so nothing
+    it emits, writes or spawns moves the activity clock the idle stop reads."""
+    try:
+        from observability import identity
+        return identity.paced()
+    except Exception:  # noqa: BLE001 — an unreadable identity module never stops a tick
+        import contextlib
+        return contextlib.nullcontext()
+
+
 def _emit(label: str, wid: str, text: str = "") -> None:
     try:
         from voice.observer import emit
-        emit("background", label, text=(f"{wid}: {text}" if text else wid), extra={"id": wid})
+        with _paced():
+            emit("background", label, text=(f"{wid}: {text}" if text else wid), extra={"id": wid})
     except Exception:
         pass
 
@@ -206,6 +221,11 @@ def _call_tick(wid: str):
 
 
 async def _tick_once(wid: str, kind: str) -> None:
+    with _paced():
+        await _tick_once_paced(wid, kind)
+
+
+async def _tick_once_paced(wid: str, kind: str) -> None:
     # V2-092: when the agent is stopped, cycles do not run. A "stopped agent" that keeps polling connectors and
     # writing to memory is not really stopped. The loop is NOT cancelled; it stays awake counting, so starting
     # again resumes ticks without rebuilding the scheduler.

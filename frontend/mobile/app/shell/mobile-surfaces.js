@@ -34,12 +34,12 @@ import { BootOverlay } from "../../../app/components/BootOverlay.js?v=2";
 import { LanguageOnboarding } from "../../../app/components/LanguageOnboarding.js?v=1";
 import { UpdateSurface } from "../../../app/update/UpdateSurface.js?v=1";
 import { EnergyNotice } from "../../../app/components/EnergyNotice.js?v=1";
+import { DormantVeil } from "../../../app/components/DormantVeil.js?v=1";
 import { ElsewhereChips } from "../../../app/components/ElsewhereChips.js?v=1";
 import { ChatSheet } from "./ChatSheet.js?v=1";
 import { DockBar } from "./DockBar.js?v=4";
 import { MenuSheet } from "./MenuSheet.js?v=2";
 import { SettingsSheet } from "./SettingsSheet.js?v=2";
-import { VoiceHeldNotice } from "./VoiceHeldNotice.js?v=1";
 import { InstallBanner } from "./InstallBanner.js?v=1";
 import { FeedbackSheet } from "./FeedbackSheet.js?v=2";
 import { EnergyLine } from "./EnergyLine.js?v=1";
@@ -58,8 +58,6 @@ export const MOBILE_SURFACES = [
   { id: "feedback", comp: FeedbackSheet,  target: "body", phase: "overlay", label: "Feedback (its own sheet, from the dock's button)", shared: false },
   // ── the Energy left, a thin line along the top edge (cloud only) ──
   { id: "energy-line", comp: EnergyLine,  target: "body", phase: "overlay", label: "Energy left, along the top edge", shared: false },
-  // ── the voice lock, made visible instead of silently lost (server/livekit_api.py) ──
-  { id: "voice-held", comp: VoiceHeldNotice, target: "body", phase: "overlay", label: "«Your voice is on the computer» + take it over", shared: false },
   // ── V2-796 — «install the app» / «turn on notifications»: the phone has to be REACHABLE for a notice ──
   { id: "install",    comp: InstallBanner,   target: "body", phase: "overlay", label: "Install the PWA, then allow notifications", shared: false },
   // ── SHARED WITH THE DESKTOP, imported verbatim (their CSS lives in app/core/shared-surfaces.css) ──
@@ -73,6 +71,9 @@ export const MOBILE_SURFACES = [
   { id: "update",          comp: UpdateSurface, target: "body", phase: "overlay", label: "«New version — reload» bar", shared: true },
   // V2-785 — out of Energy, on screen, with the top-up button (the voice alone used to say it).
   { id: "energy-notice",   comp: EnergyNotice,  target: "body", phase: "overlay", label: "Out of Energy + top up", shared: true },
+  // 2026-11-10 — the engine asleep, or the voice on another device: one black veil (it replaced the phone's own
+  // «your voice is on the computer» notice), with the gesture that fixes each.
+  { id: "dormant",         comp: DormantVeil,   target: "body", phase: "overlay", label: "Asleep / voice on another device — full-screen veil", shared: true },
   // V2-792 — what the agent did on the OTHER screen, one tap away (a report opened on the computer, a video there).
   { id: "elsewhere",       comp: ElsewhereChips, target: "body", phase: "overlay", label: "Opened on another screen — open here", shared: true },
 ];

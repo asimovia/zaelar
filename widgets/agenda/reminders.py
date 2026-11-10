@@ -146,19 +146,50 @@ def _cancel_reminder(meeting: dict) -> None:
         __import__("logging").getLogger("zaelar.agenda").warning(f"could not cancel notice {ref}", exc_info=True)
 
 
-def roll_series(load, save) -> bool:
-    """A REPEATING appointment's notice moves on to its next occurrence (V2-769). Called from the agenda's
-    background tick: a series stores ONE notice — the next one — and once that day has passed, the one after
-    is scheduled. `remindFor` marks which occurrence the stored notice belongs to, so a notice that could
-    not be scheduled (its instant already gone) is not retried on every tick. True when something changed."""
-    import time as _t
+def _rang(m: dict) -> bool:
+    """Has the notice stored for `remindFor` stopped waiting — rung, cancelled, or never scheduled at all? An id the
+    scheduler does not know as its own is left be (unknown is not «rang»)."""
+    ref = str(m.get("reminder_id") or "").strip()
+    if not ref:
+        return True
+    try:
+        from nucleo.pulse import scheduler as _sched
+        return _sched.is_pending(ref) is False
+    except Exception:  # noqa: BLE001 — unreadable: leave the stored notice as it is
+        __import__("logging").getLogger("zaelar.agenda").warning(f"notice {ref} unreadable, left as it is",
+                                                                 exc_info=True)
+        return False
+
+
+def upcoming(m: dict, today: str) -> str:
+    """The occurrence a series' notice belongs to now: the first day ≥ today — or, when the notice for that day has
+    already rung (or could not be scheduled), the occurrence after it (V2-872 F2). "" when none is left."""
+    import datetime as _dt
     from . import recur
+    nxt = recur.next_occurrence(m, today)
+    if nxt and nxt == m.get("remindFor") and _rang(m):
+        try:
+            after = (_dt.date.fromisoformat(nxt) + _dt.timedelta(days=1)).isoformat()
+        except ValueError:
+            return nxt
+        nxt = recur.next_occurrence(m, after)
+    return nxt
+
+
+def roll_series(load, save) -> bool:
+    """A REPEATING appointment's notice moves on to its next occurrence (V2-769). A series stores ONE notice — the
+    next one. Once it has RUNG, the next occurrence's is scheduled at once (V2-872 F2): not when the day changes, since
+    an engine woken only for that notice may sleep long before then, and the series would then never ring again.
+    Called from the agenda's tick, right after one of its notices rang, and when the pulse starts (`roll_notices`).
+    `remindFor` marks which occurrence the stored notice belongs to, so a notice that could not be scheduled is
+    not retried on every tick. True when something changed."""
+    import time as _t
     db = load()
     today, changed = _t.strftime("%Y-%m-%d"), False
     for m in db.get("meetings", []):
         if not isinstance(m.get("repeat"), dict) or m.get("allDay") or not m.get("startTime"):
             continue
-        nxt = recur.next_occurrence(m, today)
+        nxt = upcoming(m, today)
         if not nxt or m.get("remindFor") == nxt:
             continue
         _cancel_reminder(m)

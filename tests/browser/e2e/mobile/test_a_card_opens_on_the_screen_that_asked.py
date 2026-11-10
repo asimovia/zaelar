@@ -149,7 +149,7 @@ def seen(base):
             pages[name] = pg
         for pg in pages.values():
             pg.wait_for_timeout(2500)
-            pg.evaluate("() => document.querySelectorAll('.boot-ovl, .lang-onb, .lang-onb-veil, .zm-held').forEach(e=>e.remove())")
+            pg.evaluate("() => document.querySelectorAll('.boot-ovl, .lang-onb, .lang-onb-veil, .dz-veil').forEach(e=>e.remove())")
             assert pg.evaluate(SPY)
         out["registered"] = _wait(lambda: sum(1 for x in _get(base, "/__screens") if x["streams"]) >= 2
                                   and _get(base, "/__screens")) or _get(base, "/__screens")
