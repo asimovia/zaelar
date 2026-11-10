@@ -217,7 +217,10 @@ def test_the_range_end_state_is_the_period_asked(fake_yahoo):
     from nucleo.circuit import spec, verify
     from widgets.markets.data import apply_action
     tpl = spec.template_of("markets", "range")
-    assert tpl == {"widget": "markets", "field": "range", "is": "{range}"}, tpl
+    assert {"widget": "markets", "field": "range", "is": "{range}"} in tpl["all"], tpl
+    assert {"widget": "markets", "field": "failed", "expect": "absent"} in tpl["all"], "a failed fetch is never met"
+    show = spec.template_of("markets", "show")["all"]
+    assert {"widget": "markets", "field": "symbol", "expect": "present"} in show, "a chart with no symbol is no chart"
     apply_action("show", {"symbol": "Apple"})
     asked = spec._fill(tpl, {"range": "1mo"})
     assert verify.check(asked) is False, "the chart still shows today: unmet"
