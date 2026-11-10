@@ -78,7 +78,8 @@ _CODES = {"1m": "1mo", "30d": "1mo", "1month": "1mo", "6m": "6mo", "3m": "3mo", 
           "today": "1d", "1day": "1d"}
 
 
-def _range_of(raw) -> str:
+def _range_of(raw, default: "str | None" = "1d") -> "str | None":
+    """A period code from his words or a code; `default` when nothing names one (`show`'s «today»; None for `range`)."""
     r = str(raw or "").strip().lower()
     if r in RANGES:
         return r
@@ -87,7 +88,7 @@ def _range_of(raw) -> str:
     for pat, code in _RANGE_WORDS:
         if re.search(pat, r):
             return code
-    return "1d"
+    return default
 
 
 def _lookup(query: str) -> tuple[str, str]:
@@ -230,7 +231,12 @@ def apply_action(action: str, payload: dict = None) -> dict:
         if action in ("range", "refresh"):
             if not db.get("symbol"):
                 return {"ok": False, "error": "there is no chart on screen yet — use 'show' with a symbol first"}
-            rng = _range_of(p.get("range")) if action == "range" else (db.get("range") or "1d")
+            rng = _range_of(p.get("range"), None) if action == "range" else (db.get("range") or "1d")
+            if rng is None:
+                # V2-873: a period that names nothing is REFUSED, never drawn as «today» and said done — the refusal
+                # carries the declared shape back (`widgets/action_shape.on_refusal`) for the next call to use.
+                return {"ok": False, "field": "range",
+                        "error": f"which period? 'range' is one of {', '.join(RANGES)} — none was named"}
             return _fetch_into(db, db["symbol"], rng, db.get("name") or "")
         return {"ok": False, "error": f"unknown action '{action}' — markets has show, range, refresh"}
     except Exception as e:  # noqa: BLE001

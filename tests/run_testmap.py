@@ -1696,6 +1696,8 @@ DOMAINS: list[dict] = [
                                  "reopening gives the ear back (V2-831 T-18)",
             "ch": UNIT, "paths": [
                 "tests/voice/unit/test_a_closed_microphone_feeds_no_audio_to_stt.py"]},
+        {"id": "3.185", "title": "A voice room is given only once this engine's worker is REGISTERED, and the page is ready only with the agent in it (V2-873): `/api/token` answers 503 `voice_starting` while the embedded worker has no LiveKit id (a room born before it is never dispatched an agent); the page waits and asks again, leaves a room no agent joined within its bound and asks for a new one, never says «ready» without the agent, and says it is unavailable past the bound; a typed line never waits on the token door",
+            "ch": UNIT, "paths": ["tests/voice/unit/test_a_room_is_given_only_once_the_worker_is_registered.py"]},
         # V2-831 T-19 R7+R8 (V2-747 class) — disarmed 2026-10-29 (the correction reader, the backstop's rule, the
         # settle's card acts) → red each. R7b (pass 2): the owner fact never says card / ignores the errand's acts → red.
         # R7c (pass 3): worker-span writes count, errand by timestamps, Inject or done_ops without trace, inject_soon
@@ -2895,7 +2897,10 @@ DOMAINS: list[dict] = [
                 "tests/browser/e2e/widgets/test_map_render.py"]},
         {"id": "4.218", "title": "MERCADOS: una gráfica de precio por nombre o ticker, el cambio contra el cierre "
                                  "de ayer («hoy») o contra el inicio del periodo, las palabras del periodo, el "
-                                 "429 reintentado en el host gemelo — y la tarjeta RENDERIZADA",
+                                 "429 reintentado en el host gemelo — y la tarjeta RENDERIZADA; V2-873: the end state "
+                                 "of `range` is the period ASKED (`range = {range}`, a failed fetch never met), `show` "
+                                 "needs a symbol, and a `range` that names no "
+                                 "period is refused with its field, never drawn as today and said done",
             "ch": UNIT, "paths": [
                 "tests/browser/unit/markets/test_a_price_chart_by_name_or_ticker.py",
                 "tests/browser/e2e/widgets/test_markets_render.py"]},
@@ -3851,6 +3856,12 @@ DOMAINS: list[dict] = [
         {"id": "2.1658", "title": "An idle engine asks its host to SUSPEND it and falls back to the clean exit: the wake report goes out first (a failed one keeps it up), then the goodnight, then the sleep endpoint — 202 waits to be suspended and exits if nothing happens, 200 is a resume already, a refusal or no answer is the exit, and a suspend followed by a resume (read from the clocks on the pulse, before any stop decision) never exits; a resume starts the idle state over; a visible connected screen is presence; a widget's background tick is not activity; a job ⏻ held past its instant holds nothing up",
             "ch": UNIT,
             "paths": ["tests/agent_headless/unit/test_an_idle_engine_sleeps_and_wakes.py"]},
+        {"id": "2.1659", "title": "The answer to a waiting question is yes, no or NEITHER (V2-873, ES/EN): a parked errand waiting on its row is answered by the brief's pick, never by the task gate's word reading; with no pick, «vale cierra los resultados» (a yes word opening a sure card order) is neither and the errand keeps waiting, a bare «vale» is the yes; the word reader decides alone only a reply made of answer words of one side («sí, hazlo», «ok go ahead») — «vale para el vídeo y cierra youtube» and «sí, y cierra el vídeo» are read by the verdicts — and a yes/no word that answered nothing is SAID (`errand_still_waiting`)",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_a_yes_that_opens_another_order_is_neither.py"]},
+        {"id": "2.1661", "title": "A canvas gesture is an end state the SCREEN reports, and a card's own `close` declares what it does (V2-873, V7, ES/EN): close / minimise / full screen owe `canvas <card> closed|minimized|maximized` from the canvas report, checked by the circuit like any declared end state; youtube's `close` declares the player emptied (`videoId` absent), never the card closed, and no example of its descriptor calls the card by its catalogue name",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_a_canvas_gesture_is_owed_to_the_screen.py"]},
+        {"id": "2.1663", "title": "Every CRITICAL event of the vocabulary has a door that emits it (V2-873): a critical errand class read unsure starts the errand only because money and accounts are still asked where they happen — `payment.authorize` at the browser's click gate, `errand.<class>` at the worker door",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/test_every_critical_event_has_an_emitter.py"]},
         {"id": "2.728", "title": "A turn that acted on a card and also escalated, read inline, launches no worker — on the text channel as on the voice",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_an_inline_act_settles_the_commission_on_both_channels.py"]},
         {"id": "2.729", "title": "An ordered act that leaves, sure at the operator's 70%, runs when the model only drafted it — both channels",
@@ -4707,7 +4718,7 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/agent_headless/unit/test_an_errand_is_born_with_the_end_state_the_brief_read.py"]},
         {"id": "2.885", "title": "Stopping EVERY running errand needs the brief's sure stop_all: anything less stops the one his words name or asks which, never a word in his sentence (refactor2710-06 T-03)",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_stopping_every_errand_needs_a_sure_verdict.py"]},
-        {"id": "2.884", "title": "An errand asks before it starts by its class (the brief's errand_class, the money vocabulary only without a verdict), through consent.decide_act: money and accounts ask, his yes clears it, his standing never refuses (refactor2710-06 T-03)",
+        {"id": "2.884", "title": "An errand asks before it starts by its class (the brief's errand_class, the money vocabulary only without a verdict), through consent.decide_act: money and accounts ask, his yes clears it, his standing never refuses (refactor2710-06 T-03); V2-873: a CRITICAL class asks at birth only on a SURE verdict (`verdicts.VETO`) — read unsure (0.51 «open the best deal») the errand starts and money that really leaves is asked at its exit",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/test_an_errand_asks_first_by_its_class.py"]},
         {"id": "2.883", "title": "Which errand his words are for is the brief's errand_target, read asymmetrically: agreeing runs cluster_send / send_to_worker / set_cluster_objective, a sure contrary verdict drops it, an unsure one asks, no verdict keeps today's route (refactor2710-06 T-03)",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/test_his_words_for_an_errand_are_read_by_the_brief.py"]},
@@ -5474,8 +5485,14 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/browser/unit/results/test_each_sheet_action_reads_its_own_outcome.py"]},
         {"id": "4.410", "title": "(apps principles, operator 2026-11-08) A navigation counts only when the page arrived (rev changed, no wall); a browser that is down is an offer",
             "ch": UNIT, "paths": ["tests/browser/unit/navegador/test_a_navigation_is_met_only_when_the_page_arrived.py"]},
-        {"id": "4.411", "title": "(apps principles, operator 2026-11-08) A video play is done only when our player plays it (videoId changed, no player error, not paused)",
+        {"id": "4.411", "title": "(apps principles, operator 2026-11-08) A video play is done only when our player plays it — V2-873: the video the PLAYER reports playing (`playing_id` changed, `playing`), no player error; the order alone meets nothing, a report about the old video is stale, a stream of ours is named by its source",
             "ch": UNIT, "paths": ["tests/browser/unit/youtube/test_a_play_is_done_only_when_the_player_plays.py"]},
+        {"id": "4.441", "title": "The youtube card reports what the PLAYER plays, from the embedded player's own postMessage stream (V2-873): each change of `onStateChange`/`infoDelivery` is reported ONCE as `player_state` with the video the player delivered; another frame's messages report nothing; our own <video> reports too",
+            "ch": UNIT, "paths": ["tests/browser/unit/youtube/test_the_player_reports_what_it_plays.py"]},
+        {"id": "4.442", "title": "A browser notice is not a JS error (V2-873): an `error` event with no Error object (a ResizeObserver loop notice, an opaque cross-origin «Script error.») is reported under its own label (`api.errorLabel`); an exception a script threw stays «⚠️ JS error»",
+            "ch": UNIT, "paths": ["tests/browser/unit/arranque/test_a_browser_notice_is_not_a_js_error.py"]},
+        {"id": "4.440", "title": "What sounds here is what the PAGE PLAYER says it plays (V2-873, U1 «Rosalía»): `musica.here` for the page player is written only by the player's own report (state 1, not muted — `player_audio` playing, once per song), never by the song picked, so every start's `here.title CHANGED` reads the truth; a Spotify device or a library file reads as before; and a refused song: the music card reports the IFrame API's `onError` once per song (`player_error`), the song joins `yt.refused` and no lookup offers it again, our own pick is replaced by the next one his words find, and with no other `player_error` stays — «what sounds here» is empty and the digest says it",
+            "ch": UNIT, "paths": ["tests/browser/unit/musica/test_a_song_the_player_refuses_is_never_said_to_play.py"]},
         # V2-862 — disarmed 2026-11-08 (upsert that appends: 1 red · reopen without the kept copy: 1 red · keep without the file: 1 red).
         {"id": "4.412", "title": "An errand's chat reference is ONE box that updates in place (V2-862): opened/retitled/closed/relay upsert by the task row, never doubling nor moving down the thread, `skipped` draws nothing; the desktop wall and the phone draw the same view and it reopens through the existing door (ES/EN)",
             "ch": UNIT, "paths": ["tests/browser/unit/chat/test_an_errand_reference_is_one_box_that_updates.py"]},

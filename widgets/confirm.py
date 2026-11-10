@@ -259,10 +259,42 @@ def opening_answer(text: str) -> str | None:
 def is_plain_answer(text: str, verdict: str) -> bool:
     """A bare yes/no: the answer word plus at most `_PLAIN_ANSWER_WORDS` others. Anything longer may be a different
     request that happens to carry «vale» or a «no» — the task gate reads this too (`turn/confirm_gates.py`)."""
+    return _rest_words(text, verdict) <= _PLAIN_ANSWER_WORDS
+
+
+def answer_alone(text: str, verdict: str) -> bool:
+    """His reply is ONLY answer words of that side («vale», «sí, hazlo», «ok go ahead», «no, déjalo») — the one case the
+    word reader decides alone (V2-873); anything more is read by the verdicts."""
+    return _rest_words(text, verdict, every=True) == 0
+
+
+def _rest_words(text: str, verdict: str, *, every: bool = False) -> int:
+    """How many words his reply has besides its answer word (`every`: besides ALL its answer words of that side)."""
     n = _norm(text)
-    m = (_YES_RE if verdict == "yes" else _NO_RE).search(n)
-    rest = [w for w in re.findall(r"\w+", (n[:m.start()] + " " + n[m.end():]) if m else n)]
-    return len(rest) <= _PLAIN_ANSWER_WORDS
+    rx = _YES_RE if verdict == "yes" else _NO_RE
+    m = rx.search(n)
+    rest = rx.sub(" ", n) if every else ((n[:m.start()] + " " + n[m.end():]) if m else n)
+    return len(re.findall(r"\w+", rest))
+
+
+def orders_a_card(brief) -> bool:
+    """The turn's brief SURELY reads an order on a card: an action inside one (`screen_action`) or a canvas gesture
+    over one (open, close, full screen…). Such a turn is an order, never a bare yes/no to a question waiting on him
+    — whatever word it opens with (V2-873). No brief, or an unsure one, says nothing."""
+    if brief is None:
+        return False
+    try:
+        from nucleo.flash import direct_action as _da
+        vw, va = _da.from_brief(brief)
+        if vw and va and _da._action_sure(brief):
+            return True
+        from nucleo.acts import card as _card
+        from nucleo.turn import brief as _tb
+        verb, info = _tb.read(brief, _tb.CANVAS_KEY, "", min_confidence=_card.VETO_SURE)
+        return bool(info) and str(verb or "") not in ("", "none", "neither")
+    except Exception as e:  # noqa: BLE001 — no verdict: the reading of his words decides
+        __import__("loguru").logger.debug(f"confirm: card order unreadable — {e!r}")
+        return False
 
 
 def answers_pending(text: str, brief=None) -> str | None:

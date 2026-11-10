@@ -377,6 +377,14 @@
         "query": "búsqueda"
       }
     },
+    "player_error": {
+      "desc": "Internal: the page player refused the song (IFrame API onError); the card's own report, never voice",
+      "internal": true,
+      "payload": {
+        "code": "the onError code (101/150 = embedding refused)",
+        "videoId": "id the report belongs to"
+      }
+    },
     "player_audio": {
       "desc": "Internal: the page player reports whether the browser really lets it be heard (IFrame API). Fired by the card itself, never by voice — sound wanted but kept silent becomes audio_blocked.",
       "internal": true,
