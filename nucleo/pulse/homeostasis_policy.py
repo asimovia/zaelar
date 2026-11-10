@@ -21,9 +21,13 @@ def livekit_degraded(marks: list[float], now: float, *, window_s: float = _LK_WI
     return len(recent) >= threshold
 
 
-def safe_to_recycle(voice_on: bool, last_activity_ts: float, now: float, *, idle_s: float = _IDLE_S) -> bool:
-    """Recycle only with no live voice and `idle_s` of channel silence, so it never cuts a conversation."""
+def safe_to_recycle(voice_on: bool, last_activity_ts: float, now: float, *, idle_s: float = _IDLE_S,
+                    session_started: float = 0.0, session_grace_s: float = 0.0) -> bool:
+    """Recycle only with no live voice, `idle_s` of channel silence and `session_grace_s` past the last session START
+    (V2-872: a session 11 s old barely moves the timeline, and a recycle there ate its greeting)."""
     if voice_on:
+        return False
+    if session_started and now - session_started < session_grace_s:
         return False
     return (now - last_activity_ts) >= idle_s
 
