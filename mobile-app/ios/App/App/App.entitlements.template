@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Entitlements for a store build, rendered by scripts/ios-archive.sh into App.entitlements (not tracked) with the
+  engine host the app opens (env ZAELAR_APP_LINKS_HOST). It is a template, not part of every build, because:
+    · the host is deployment data, not mechanism;
+    · Associated Domains needs a paid team — a personal team's device build (scripts/ios-device.sh) signs without it.
+  applinks: universal links into /m (V2-870 §4); the host must serve /.well-known/apple-app-site-association.
+  webcredentials: lets iOS offer saved passwords for that host inside the app.
+  No aps-environment yet: native push comes with its own step.
+-->
+<plist version="1.0">
+<dict>
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:__APP_LINKS_HOST__</string>
+		<string>webcredentials:__APP_LINKS_HOST__</string>
+	</array>
+</dict>
+</plist>
