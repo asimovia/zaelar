@@ -6,14 +6,24 @@ silence watchdog + Hermes agent). Two things trigger it:
   - a NEW /api/offer → stop_all() first, so only ONE bot ever runs (no orphaned workers whose silence watchdog
     keeps making the bot talk).
 """
+import time
+
 from loguru import logger
 
 _shutdowns: list = []   # async callables: shutdown(reason) -> None
+_last_registered_at: float = 0.0   # wall clock of the last session START — the heartbeat never recycles over it
 
 
 def register(shutdown):
+    global _last_registered_at
+    _last_registered_at = time.time()
     _shutdowns.append(shutdown)
     return shutdown
+
+
+def last_registered_at() -> float:
+    """When the newest live session started (0.0 if none ever did in this process)."""
+    return _last_registered_at
 
 
 def unregister(shutdown):
