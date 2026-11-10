@@ -34,7 +34,7 @@ def player_audio(action: str, p: dict) -> dict:
         db["yt"] = yt
         _d._persist(db)
         return {"ok": True, "audio_blocked": False, "sounding": True}
-    wanted = not yt.get("paused") and not yt.get("muted")
+    wanted = not yt.get("paused") and not yt.get("muted") and not yt.get("player_error")   # V2-873: a refusal, not the browser
     was = bool(yt.get("audio_blocked"))
     if silent and wanted:
         if was:

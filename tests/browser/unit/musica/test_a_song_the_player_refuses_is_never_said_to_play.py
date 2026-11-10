@@ -117,3 +117,14 @@ def test_the_card_reports_once_that_the_player_plays(_page):
                        "{event: 'infoDelivery', id: 'hb-musica', info: {playerState: 1, muted: false}})}))")
     reports = [c[1] for c in _page.evaluate("() => window.__calls") if c[0] == "player_audio"]
     assert reports == [{"muted": False, "playing": True, "videoId": _NEXT}], reports
+
+
+@pytest.mark.parametrize("lang", ["es", "en"])
+def test_the_silence_of_a_refused_song_is_not_told_as_a_blocked_browser(store_tmp, monkeypatch, lang):
+    """V2-873 — after the last refusal the page reports silence; «tap the card for sound» was told over it, a wrong
+    reason (the owner refused the video, the browser did nothing)."""
+    monkeypatch.setenv("ZAELAR_LANGUAGE", lang)
+    monkeypatch.setattr("connectors.music.youtube_resolve._resolve", lambda q, skip=(): ("", "", "empty"))
+    md.apply_action("player_error", {"code": "150", "videoId": _DEAD})
+    r = md.apply_action("player_audio", {"muted": True, "playing": False, "videoId": _DEAD})
+    assert not r.get("audio_blocked") and not r.get("tell"), r
