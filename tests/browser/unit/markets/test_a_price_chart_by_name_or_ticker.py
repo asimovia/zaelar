@@ -198,3 +198,17 @@ def test_a_name_that_spells_its_ticker_takes_that_ticker(monkeypatch):
     monkeypatch.setattr(mk, "_get", _no_search)
     assert mk._lookup("Apple (AAPL)") == ("AAPL", "Apple")
     assert mk._lookup("Nasdaq Composite (^IXIC)") == ("^IXIC", "Nasdaq Composite")
+
+
+def test_the_digest_says_it_is_a_chart_of_one_period_among_several(fake_yahoo):
+    """V2-873 (node 4.218): «and over the last month?» (said in Spanish) over the Apple chart was answered «I only have the last price» —
+    the brain read the card as a price, because that is all its digest said. The digest names the period drawn and
+    the periods the same card draws, read from `RANGES` (no list of its own)."""
+    mk.apply_action("show", {"symbol": "Apple"})
+    d = mk.prompt_digest()
+    assert "Period drawn: 1d" in d, d
+    for r in mk.RANGES:
+        if r != "1d":
+            assert r in d.split("Period drawn:")[1], f"the digest must say the card also draws {r}: {d}"
+    mk.apply_action("range", {"range": "the last month"})
+    assert "Period drawn: 1mo" in mk.prompt_digest()

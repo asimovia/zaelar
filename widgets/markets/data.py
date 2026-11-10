@@ -173,10 +173,13 @@ def view_data(q: str = "") -> dict:
 
 
 def prompt_digest() -> str:
-    """What is on screen, so a follow-up («is that good?», «and in euros?») needs no round trip."""
+    """What is on screen, so a follow-up needs no round trip: a CHART of one period among those the card draws (V2-873:
+    read as a last price alone, «and over the last month?» got «I only have the last price»)."""
     try:
-        s = _summary(_load())
-        return f"Markets chart on screen: {s}." if s else ""
+        db = _load()
+        s, rng = _summary(db), str(db.get("range") or "1d")
+        return f"Markets chart on screen: {s}. Period drawn: {rng}; the same card draws " \
+               f"{', '.join(r for r in RANGES if r != rng)}." if s else ""
     except Exception:  # noqa: BLE001
         return ""
 
