@@ -1,8 +1,19 @@
 # mobile-app — the native companion (V2-870)
 
-A Capacitor 7 iOS app that is **one full-screen WKWebView showing the engine's own `/m` shell**
-(`frontend/mobile/`, V2-124). There is no second mobile UI: the shell's bar (orb in the centre) is the whole UI.
-Android will live in this same project later (`npx cap add android`); it is not added yet.
+A Capacitor 7 app that is **one full-screen WebView showing the engine's own `/m` shell** (`frontend/mobile/`,
+V2-124). There is no second UI: the shell's bar (orb in the centre) is the whole UI, and this project only lends it
+the device's hands. Where it sits among the other surfaces: `.meshkore/docs/architecture/zaelar-surfaces.md`.
+
+```
+mobile-app/
+├─ ios/       iPhone (first) — iPad later in the same target
+├─ android/   Android, added later in this same project with `npx cap add android` — not yet
+├─ www/       the app's own glue (`in-app.js`) and the page shown when the engine cannot be reached — never a copy of the shell
+└─ scripts/   version, icons, simulator, device, archive, upload
+```
+
+iPad: 1.0 ships iPhone-only (`TARGETED_DEVICE_FAMILY = 1`, the only place that says so); iPad joins later in the same
+target (device family `1,2`), with the shell it gets (`/m` or the desktop `/`) still to be decided.
 
 - App id: `com.zaelar.app` (fixed forever — changing it breaks updates and deep links). Name: Zaelar.
 - Minimum iOS: 16. Dependencies: Swift Package Manager (`ios/App/CapApp-SPM`), no CocoaPods.
@@ -122,10 +133,39 @@ Xcode 26.6, iPhone 17 Pro simulator (iOS 26.5):
 
 Not verifiable in the simulator: the microphone, the audio route and haptics — real-device steps.
 
+## Store readiness
+
+| File | What it carries |
+|---|---|
+| `ios/App/App/Info.plist` | display name, `ITSAppUsesNonExemptEncryption = false` (HTTPS only), `LSApplicationCategoryType` productivity, `UIRequiresFullScreen`, portrait, the microphone/camera/location sentences; versions read from build settings. No `UIBackgroundModes` until background voice. |
+| `ios/App/App.xcodeproj` | iPhone only for 1.0 (`TARGETED_DEVICE_FAMILY = 1`; iPad later, same target), iOS 16+, `MARKETING_VERSION`/`CURRENT_PROJECT_VERSION` stamped by `scripts/version.sh` |
+| `scripts/version.sh` (run by `npm run sync`) | version = `package.json` `version`; build = the engine's `update/BUILD` (`IOS_BUILD=127.1` for a second upload on the same engine build) |
+| `ios/App/App/PrivacyInfo.xcprivacy` | no tracking; collected for app functionality: email (sign-in), audio (voice session), user content, coarse location (only when an app asks), diagnostics; no required-reason API (Capacitor's frameworks ship their own manifests) |
+| `ios/App/App/App.entitlements.template` | Associated Domains (`applinks:` + `webcredentials:`) for `ZAELAR_APP_LINKS_HOST`, rendered only for a store build; the host must serve `/.well-known/apple-app-site-association` (not built yet). No push entitlement yet. |
+| `scripts/icons.py` (`npm run icons`) | `AppIcon.appiconset` (1024 opaque + iOS 18 dark/tinted) and the launch mark, drawn from `frontend/mobile/icons/generate.py`'s geometry; `--source brand.png` swaps in a designed icon |
+| `Base.lproj/LaunchScreen.storyboard` | the dark background with the mark centred, no text |
+| `scripts/ios-archive.sh` (`npm run ios:archive`) | `xcodebuild archive` (generic iOS, automatic signing, `-allowProvisioningUpdates`, team `APPLE_TEAM_ID`) + `-exportArchive` (app-store-connect) → `build/ipa/App.ipa` |
+| `scripts/ios-upload.sh` (`npm run ios:upload`) | `xcodebuild -exportArchive` with `destination: upload`, authenticated by an App Store Connect API key: `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8` (path to the `.p8`) |
+
+Both store scripts refuse to run without their variables and take `--dry-run` (check inputs, print the commands).
+A paid Apple Developer team is required: App Store distribution and Associated Domains are not available to a free
+personal team.
+
+**Shipping a TestFlight build, in order:**
+
+1. Paid team in Xcode › Settings › Accounts; the app record `com.zaelar.app` created in App Store Connect.
+2. An App Store Connect API key (role App Manager) saved outside the repo; its id, issuer id and `.p8` path in
+   `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8`.
+3. If the engine build did not move since the last upload: `IOS_BUILD=<build>.<n>`.
+4. `APPLE_TEAM_ID=… ZAELAR_ORIGIN=https://… ZAELAR_APP_LINKS_HOST=… ZAELAR_ALLOW_NAVIGATION=… npm run ios:archive`
+5. `ASC_KEY_ID=… ASC_ISSUER_ID=… ASC_KEY_P8=… APPLE_TEAM_ID=… npm run ios:upload`
+6. In App Store Connect: wait for processing, answer the export-compliance question (already answered by the
+   Info.plist key), add internal testers.
+
 ## Not here yet
 
 Background voice, native push, the share target, deep links and App Intents (V2-870 §2–§6), runtime server
-switching, final app icon and launch artwork, Android.
+switching, the apple-app-site-association file on the engine host, Android.
 
 ## Generated (not tracked)
 
