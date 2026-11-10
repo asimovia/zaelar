@@ -3866,6 +3866,9 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_a_canvas_gesture_is_owed_to_the_screen.py"]},
         {"id": "2.1663", "title": "Every CRITICAL event of the vocabulary has a door that emits it (V2-873): a critical errand class read unsure starts the errand only because money and accounts are still asked where they happen — `payment.authorize` at the browser's click gate, `errand.<class>` at the worker door",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/test_every_critical_event_has_an_emitter.py"]},
+        # V2-874 class 7 — disarmed 2026-11-10 (`asked_line` returns "") → red.
+        {"id": "2.1667", "title": "A live errand carries what he ASKED for (V2-874): his commissioning sentence rides on the errand's own line in the running-errands block, bounded (ASKED_MAX, cut on a word and marked), so a reference to results still to come binds although his turn left the dialog window; nothing heard or the title already saying it adds nothing",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_a_live_errand_says_what_he_asked.py"]},
         {"id": "2.728", "title": "A turn that acted on a card and also escalated, read inline, launches no worker — on the text channel as on the voice",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_an_inline_act_settles_the_commission_on_both_channels.py"]},
         {"id": "2.729", "title": "An ordered act that leaves, sure at the operator's 70%, runs when the model only drafted it — both channels",
