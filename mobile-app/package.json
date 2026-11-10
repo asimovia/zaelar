@@ -6,7 +6,8 @@
   "scripts": {
     "sync": "cap sync ios",
     "ios:open": "cap open ios",
-    "ios:run": "cap run ios"
+    "ios:run": "cap run ios",
+    "ios:device": "sh scripts/ios-device.sh"
   },
   "dependencies": {
     "@capacitor/app": "7.1.2",

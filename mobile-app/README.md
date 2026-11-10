@@ -65,10 +65,22 @@ xcrun simctl install booted ios/DerivedData/Build/Products/Debug-iphonesimulator
 xcrun simctl launch booted com.zaelar.app
 ```
 
-## A real iPhone and a local engine
+## On a real iPhone
 
-A phone cannot reach the Mac's `localhost`. Use the Mac's LAN address (`ZAELAR_ORIGIN=http://192.168.x.y:43917`)
-and make sure the engine listens on that interface; iOS asks once for local-network access.
+```bash
+ZAELAR_ORIGIN=https://engine.example.org ZAELAR_ALLOW_NAVIGATION=signin.example.org \
+  TEAM=<team id> npm run ios:device          # builds, installs and launches on the connected phone
+```
+
+`scripts/ios-device.sh` signs with the team in `TEAM` (Xcode › Settings › Accounts; a free personal team works, its
+builds expire after 7 days) and picks the first connected iPhone unless a UDID is given. If the team cannot register
+`com.zaelar.app`, `BUNDLE_ID=com.zaelar.app.dev` overrides it for that build only (build settings on the command
+line; the project keeps `com.zaelar.app`).
+
+Voice needs an **https** origin. A phone reaches a self-hosted engine on the Mac only by its LAN address
+(`HOST=0.0.0.0 ./zaelar start`, then `ZAELAR_ORIGIN=http://192.168.x.y:43917`), which shows the screen but has no
+voice: a plain-http address is not a secure context, so the WebView gives it no microphone, and a local LiveKit
+announces itself on the loopback. Use a hosted engine (or an https tunnel to the Mac) for voice.
 
 ## Session
 
@@ -79,8 +91,10 @@ own; whatever the origin does for an unauthenticated `/m` (a redirect to its sig
 
 ## The app's own glue (`www/in-app.js`)
 
-Injected by `MainViewController.swift` at document start into every page the WebView loads, so it works with any
-engine version and never runs in a browser. It marks `<html class="in-app" data-platform="ios">` — CSS (the shell's
+Injected by `MainViewController.swift` at document start into every main-frame page, so it works with any engine
+version and never runs in a browser. It acts only on the configured engine's origin (any other page the WebView
+follows in-page is left alone). It hides the shell's top banner (its «add to Home Screen» and browser-notification
+offers belong to a browser tab, never to the app), marks `<html class="in-app" data-platform="ios">` — CSS (the shell's
 and the website's) adapts without sniffing user agents — and gives a light haptic tick on the dock, the orb and send
 buttons. Capacitor also injects its bridge into every page, remote origin included, so the shell can ask
 `window.Capacitor.isNativePlatform()` (`services/push.js` uses it: no «add to Home Screen» offer inside the app) and
@@ -91,7 +105,8 @@ engine, not bundled. The user agent ends in `ZaelarApp/<version> (ios)`: a hint 
 
 `frontend/app/services/device.js` is one door for location (one fix or a watch), motion and compass: the native
 plugin inside the app, the Web API in a browser, every failure a value. Apps (widgets) reach it as
-`await ctx.device()` (contract in `widgets/AGENTS.md`).
+`await ctx.device()` (contract in `widgets/AGENTS.md`). No widget uses it yet: it is the seam the phone's sensor apps
+will be built on, not a feature by itself.
 
 ## Measured in the simulator
 
