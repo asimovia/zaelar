@@ -21,7 +21,7 @@ from nucleo.turn import confirm_gates as gates
 
 
 def _settle(monkeypatch, said, answered, spoken_text=""):
-    monkeypatch.setattr(gates, "resolve_all", lambda text, brief=None: answered)
+    monkeypatch.setattr(gates, "resolve_all", lambda text, brief=None, **_k: answered)
     out = []
     got = asyncio.run(S.settle_what_is_pending(
         _ans=None, _ask_waiting=False, _auth_pending=False, _brief=None, _dialog=None, _filler_audio=None,
