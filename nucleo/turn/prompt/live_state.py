@@ -77,15 +77,12 @@ def live_state() -> str:
     lines.extend(live_record.done_ops_lines())  # V2-707 F6: and so is a mutation that already RAN
     lines.extend(live_record.shelf_lines())     # V2-773: a finished errand's closed sheet has a name
     try:
-        # AUSENCIA de ubicación, dicha con todas las letras (V2-127). Sin esto el prompt manda usar «la ciudad
-        # del operador» y no hay ninguna: el hueco se rellena con una plausible y el operador oye el nombre de
-        # una ciudad que él no ha dicho. Mismo remedio que la marca «SIN paso reportado aún»: nombrar el hueco.
-        # Coste CERO cuando el estado sí la trae — la línea ni aparece.
+        # WHERE (V2-127 → V2-875, `nucleo/where.py`): where a screen of his is now when it is known, else the gap named
+        # with all its letters (a missing city is filled with a plausible one otherwise). Zero cost when neither applies.
         from memory import api as _memapi_loc
+        from nucleo import where as _where
         _mstate = _memapi_loc.state() or {}
-        if not _mstate.get("location"):
-            lines.append("NO SABES dónde vive el operador (su ESTADO no tiene ubicación): no supongas ninguna "
-                         "ciudad ni la nombres; si hace falta para lo que te pide, pregúntasela.")
+        lines.extend(_where.prompt_lines(_mstate))
     except Exception:
         _mstate = {}
     # WAKE WORD MODE is a fact the model must HOLD, not guess (2026-09-09, session 8a07e8d9: it invented it knew

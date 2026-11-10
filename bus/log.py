@@ -185,10 +185,11 @@ _writer_thread.start()
 
 
 def drain(timeout: float = 2.0) -> None:
-    """Wait for the queue to empty. For tests and orderly shutdown; never called on the hot path."""
+    """Wait until every queued event has been WRITTEN (not just taken off the queue: the writer marks a batch done after
+    its insert). For tests and orderly shutdown; never called on the hot path."""
     import time as _t
     t0 = _t.time()
-    while not _q.empty() and (_t.time() - t0) < timeout:
+    while (_q.unfinished_tasks or not _q.empty()) and (_t.time() - t0) < timeout:
         _t.sleep(0.01)
 
 
@@ -307,13 +308,22 @@ def _is_locked(e: Exception) -> bool:
         (getattr(e, "sqlite_errorcode", 0) & 0xFF) in (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED)
 
 
+def _stored(recs: list) -> list:
+    """V2-875 — the person's switches: nothing when observability is off; payloads tagged when obfuscating. A copy:
+    the payload is shared with the other sinks (the live screens get it as it was)."""
+    from observability import persist
+    if not persist.storing():
+        return []
+    return [{**r, "payload": persist.tagged(r.get("payload"))} for r in recs]
+
+
 def _write_batch(recs: list, *, built: bool = False, deadline: float | None = None) -> None:
     """Persist a batch IN ORDER, one commit. A locked database is waited out with backoff until ONE clock, started at
     the batch's first attempt, passes `_LOCK_BUDGET_S` — each attempt's own busy wait counts, and the row-by-row
     fallback shares the clock — then the batch is dropped loudly; any other failure retries row by row, so a bad row
     loses only itself."""
     rows = list(recs) if built else []
-    for rec in ([] if built else recs):
+    for rec in ([] if built else _stored(recs)):
         try:
             rows.append(_row(rec))
         except Exception as e:  # noqa: BLE001

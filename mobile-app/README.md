@@ -145,11 +145,15 @@ The shell behaves differently only where `inNativeApp()` (`frontend/app/core/nat
   `POST /api/config/v2`), so it survives reloads and reinstalls; Settings can withdraw it (which ends the voice here).
 - **Account deletion reachable** (5.1.1(v)): the menu's «Delete account» row opens the account page at `#delete` in
   the system browser. The deletion itself is the account service's, not the engine's.
-- **What leaves the phone**: a location fix from `ctx.device()` goes only to the app on screen that asked — no widget
-  uses it yet and the engine has no route that receives one, so nothing is posted or stored. The engine writes no
-  audio: the only recorder is a debugging tap (`mic_raw.wav`) that runs only with `ZAELAR_RECORD_MIC` set; the STT
-  config (`ZAELAR_STT`, `ZAELAR_STT_MODEL*`, `ZAELAR_STT_EOT_*`) has no retention or opt-out key, so each STT
-  provider's own default retention applies. Transcripts are text and are kept like any conversation.
+- **What leaves the phone**: with the agent's «Use my location» permission on (`config/v2` `privacy.location`) and the
+  platform permission already granted, the shell reports a coarse position (`frontend/app/services/where.js`); the
+  engine rounds it to ~1 km, names it by reverse geocoding and keeps it as the state's `here` (`nucleo/where.py`), so
+  the agent can recommend places near the person. Switching the permission off forgets it. `ctx.device()` itself
+  still keeps nothing: what an app on screen reads stays with that app. The engine writes no audio — the only
+  recorder is a debugging tap (`mic_raw.wav`) behind `ZAELAR_RECORD_MIC`; the STT config has no retention or
+  opt-out key, so each STT provider's default retention applies. Transcripts are text and are kept like any
+  conversation; what is kept for debugging follows the agent's observability and obfuscation permissions
+  (`.meshkore/docs/ops/zaelar-observability.md`).
 
 ## Store readiness
 
