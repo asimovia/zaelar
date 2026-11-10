@@ -6,7 +6,7 @@
 //   · on a HOSTED engine with the relay, "Get a code" asks `POST /api/daemon/pair` for a one-time code and shows
 //     it big, with its countdown and where to type it (the menu-bar icon, or the command line in a fold);
 //   · on an engine WITHOUT the relay (`relay_not_available`, or a status with no `relay` field) the card is not
-//     drawn at all: a pairing step that can never complete is worse than none.
+//     drawn: a pairing step that can never complete is worse than none — the tab says the link is not built yet.
 //
 // The answer lives in `store.daemonPair` and not here: the card is redrawn with the status, and a code the person
 // is in the middle of typing into another window must survive that.
@@ -85,9 +85,8 @@ export function PairingCard(ctx) {
             () => ctx.copied() ? t("daemon.cmd.copied") : t("daemon.cmd.copy")))));
   };
 
-  return h("div", { class: "dsx-pair-slot" }, () => hidden() ? null :
+  return h("div", { class: "dsx-pair-slot" }, () => hidden() ? h("p", { class: "dsx-note dsx-pair-none" }, () => t("daemon.remote.limit")) :
     h("section", { class: "dsx-card dsx-pairing", "data-card": "pair" },
-      h("h3", { class: "dsx-h3" }, () => t("daemon.pair.title")),
       () => loopback()
         ? h("p", { class: "dsx-note dsx-pair-linked" }, () => t("daemon.pair.loopback"))
         : h("div", {},
