@@ -38,6 +38,8 @@
 	</array>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Zaelar listens only while voice is on, when you talk to it.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Zaelar uses your location only when an app on screen asks for it. It never tracks you in the background.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Zaelar uses your location only when an app or a request of yours needs it.</string>
 	<key>UIStatusBarStyle</key>
