@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
-  The app's privacy manifest (App Review requires one). It describes what the app sends to the engine it opens —
-  the WebView shows the engine's own shell, so this follows what that shell sends, all of it to make the app work:
-    · email address — signing in to the engine;
-    · audio — the voice session (microphone, while the person talks to the agent);
-    · other user content — what is typed or shared in the conversation;
-    · coarse location — only when an app on screen asks for it (services/device.js);
-    · other diagnostic data — the shell's error reports to its engine.
-  No tracking, no tracking domains. No required-reason API is used by the app's own code or its plugins (App,
-  Geolocation, Haptics, Keyboard); Capacitor's frameworks ship their own manifests, which declare none either.
+  The app's privacy manifest (App Review requires one). The WebView shows the engine's own shell, so it follows what
+  that shell sends to the engine, all of it to make the app work:
+    · email address — signing in (linked to the person);
+    · audio data — the voice session, while the person talks to the agent (linked);
+    · other user content — what is typed or shared in the conversation (linked);
+    · coarse and precise location — only when an app on screen asks for it (services/device.js), not linked.
+  No diagnostics, no identifiers, no tracking, no tracking domains. No required-reason API is used by the app's own
+  code or its plugins (App, Geolocation, Haptics, Keyboard); Capacitor's frameworks ship their own manifests, which
+  declare none either.
 -->
 <plist version="1.0">
 <dict>
@@ -55,7 +55,7 @@
 			<key>NSPrivacyCollectedDataType</key>
 			<string>NSPrivacyCollectedDataTypeCoarseLocation</string>
 			<key>NSPrivacyCollectedDataTypeLinked</key>
-			<true/>
+			<false/>
 			<key>NSPrivacyCollectedDataTypeTracking</key>
 			<false/>
 			<key>NSPrivacyCollectedDataTypePurposes</key>
@@ -63,7 +63,7 @@
 		</dict>
 		<dict>
 			<key>NSPrivacyCollectedDataType</key>
-			<string>NSPrivacyCollectedDataTypeOtherDiagnosticData</string>
+			<string>NSPrivacyCollectedDataTypePreciseLocation</string>
 			<key>NSPrivacyCollectedDataTypeLinked</key>
 			<false/>
 			<key>NSPrivacyCollectedDataTypeTracking</key>

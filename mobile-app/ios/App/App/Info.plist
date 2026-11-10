@@ -38,8 +38,6 @@
 	</array>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Zaelar listens when you talk to it. Nothing is recorded without you.</string>
-	<key>NSCameraUsageDescription</key>
-	<string>Zaelar uses the camera only when you show it something.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Zaelar uses your location only when an app or a request of yours needs it.</string>
 	<key>UIStatusBarStyle</key>

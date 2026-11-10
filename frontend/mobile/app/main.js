@@ -30,6 +30,7 @@ import { submitChat } from "../../app/components/ChatWall.js?v=5";
 import { Deck } from "./shell/Deck.js?v=5";
 import { initKeyboard } from "./shell/keyboard.js?v=2";
 import { MOBILE_SURFACES } from "./shell/mobile-surfaces.js?v=4";
+import * as consent from "./shell/ai-consent.js?v=1";
 
 // ---- theme + language before mounting anything, so nothing flashes the wrong palette or the wrong words ----
 initTheme();
@@ -85,7 +86,7 @@ try { document.getElementById("preboot")?.remove(); } catch { /* noop */ }
   for (let i = 0; i < 45; i++) {
     try {
       const cfg = await api.getConfig();
-      if (cfg) { store.setCloudProfile(!!cfg.cloud_profile); store.setAccountUrl(cfg.account_url || ""); return; }
+      if (cfg) { store.setCloudProfile(!!cfg.cloud_profile); store.setAccountUrl(cfg.account_url || ""); consent.loadFrom(cfg); return; }
     }
     catch { /* 503 while the instance boots: retry */ }
     await new Promise((r) => setTimeout(r, 2000));
@@ -165,12 +166,13 @@ function ensureVoice() {
   if (store.powerOff()) return;
   if (store.powerOnPending()) return;               // V2-792 §9: the ⏻ is switching the server on; it starts the voice itself
   if (store.langOnboardOpen()) return;              // V2-765: nothing listens while the language picker is up
+  if (consent.pending()) return;                    // V2-870: inside the app, nothing listens before the yes
   if (!store.started() && !store.starting()) session.start().catch(() => {});
 }
 // V2-765 — the language picker lifts the gate: the `run` event drops `powerOff`, and this brings the voice up
 // without waiting for another tap; the mic and speaker the boot probe muted come back as with ⏻ ON.
 createEffect(() => {
-  if (store.powerOff() || store.langOnboardOpen()) return;
+  if (store.powerOff() || store.langOnboardOpen() || consent.pending()) return;
   ensureVoice();
 });
 document.addEventListener("hb:language-ready", () => {

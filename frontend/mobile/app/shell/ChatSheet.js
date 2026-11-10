@@ -24,6 +24,7 @@ import { submitChat } from "../../../app/components/ChatWall.js?v=5";
 import { chatRefView } from "../../../app/components/ChatRef.js?v=1";
 import { renderMarkdownLite } from "../../../app/lib/markdown-lite.js?v=1";
 import { t } from "../../../app/core/i18n.js?v=1";
+import * as consent from "./ai-consent.js?v=1";
 
 const SEND = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>`;
 
@@ -33,6 +34,7 @@ export function ChatSheet() {
   const send = () => {
     const v = (inputEl && inputEl.value) || "";
     if (!v.trim()) return;
+    if (consent.pending()) { consent.setSheetOpen(true); return; }   // V2-870: in the app a line asks first
     submitChat(v);
     inputEl.value = "";
     // Keep the keyboard up: on a phone, dismissing it after every line turns a conversation into a chore.

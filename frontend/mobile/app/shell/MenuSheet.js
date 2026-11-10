@@ -26,6 +26,7 @@ import * as session from "../../../app/services/session.js?v=3";
 import * as api from "../../../app/services/api.js?v=2";
 import { t } from "../../../app/core/i18n.js?v=1";
 import { accountLink } from "../../../app/core/account-link.js?v=1";
+import { inNativeApp } from "../../../app/core/native.js?v=1";
 import * as daemon from "../../../app/services/daemon.js?v=3";
 import { ProcessEntry } from "../../../app/components/ProcessEntry.js?v=1";
 import { createSignal, createEffect } from "../../../app/core/reactive.js?v=2";
@@ -98,7 +99,7 @@ export function MenuSheet() {
       // ── ENERGY: the balance shows inline instead of hiding it one tap deep, and the row IS the top-up (the
       //    account page's #buy, like the desktop battery). `known:false` (the machine still booting) renders "—",
       //    never a fabricated 0 — a wrong balance is worse than no balance.
-      h("button", { class: () => "zm-energy" + (store.energy().cloud ? "" : " hide"), onClick: () => openAccount("buy") },
+      h("button", { class: () => "zm-energy" + (store.energy().cloud ? "" : " hide"), onClick: () => openAccount(inNativeApp() ? "" : "buy") },   // V2-870: no #buy in the app
         h("span", null, () => t("energy.label")),
         h("b", null, () => {
           const e = store.energy();

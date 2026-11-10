@@ -2539,5 +2539,16 @@
  "errand.sign_in.window": "Inicia sesión en la ventana que te acabo de abrir y sigo yo solo.",
  "errand.sign_in.no_window": "Necesito que inicies sesión y desde aquí no puedo abrirte una ventana. Me quedo esperando y sigo en cuanto entres.",
  "errand.sign_in.phone": "Desde el móvil no puedo abrirte una ventana para iniciar sesión: abre tu agente en un ordenador y sigo desde ahí.",
- "errand.sign_in.done": "Ya he iniciado sesión{site} — sigue donde lo dejaste."
+ "errand.sign_in.done": "Ya he iniciado sesión{site} — sigue donde lo dejaste.",
+ "consent.title": "Antes de empezar",
+ "consent.body": "Para responderte, Zaelar envía lo que dices y escribes —tu voz, tus mensajes y el contexto necesario para contestar— a los servicios de IA que hacen funcionar este agente: reconocimiento de voz, modelos de lenguaje y síntesis de voz.",
+ "consent.what": "Solo lo usan para producir la respuesta. No se envía nada hasta que aceptes.",
+ "consent.withdraw_note": "Puedes retirar este permiso cuando quieras en Ajustes.",
+ "consent.accept": "Aceptar",
+ "consent.later": "Ahora no",
+ "consent.settings_label": "Compartir mi conversación con los servicios de IA",
+ "mobile.delete_account": "Eliminar cuenta",
+ "mobile.delete_account_sub": "Abre la página de tu cuenta en el navegador",
+ "energy.out.account": "Abrir tu cuenta",
+ "energy.out.body_app": "Tu agente se ha parado porque en tu cuenta no queda energía."
 }
