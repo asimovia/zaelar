@@ -32,6 +32,16 @@ A widget declares its cycle in `manifest.json`:
     scheduler: it is caught, traced (`observer`, kind `background`), and the scheduler continues. Per-widget
     overlap is avoided; if the previous tick is still running, that cycle is skipped.
   - **Minimum period = 1s.** `every` is normalized to seconds (>=1).
+
+## Passive ticks follow presence (V2-872)
+
+A declared `every` is the cadence for a PERSON LOOKING. With no screen open (`voice.screens.open_screens()` empty) a
+passive widget ticks at most every `background_idle_every_s` (300; the first such tick that long after the start,
+not at boot): measured on a small shared-CPU host, the agenda's 10 s tick made five calendar calls for nobody and
+helped spend the CPU quota the voice needed. `"background": {"always": true}` keeps the cadence off-screen.
+Do NOT shorten it back for the agenda: its NOTICES are scheduler jobs (`nucleo/pulse/scheduler.py`, scheduled by
+`widgets/agenda/reminders.py` when the row is written) firing on their own instant; the tick syncs the calendar,
+rolls a series' notice on to its next DAY and drops orphans — none of which needs seconds.
 """
 from __future__ import annotations
 
@@ -68,6 +78,51 @@ def parse_period(v) -> int | None:
 def background_period(w: dict) -> int | None:
     """The cycle in seconds declared by a widget manifest, or None if it does not run in the background."""
     return parse_period(w.get("background")) if w.get("background") is not None else None
+
+
+def background_always(w: dict) -> bool:
+    """`"background": {"always": true}` — the declared cadence holds with no screen open (V2-872)."""
+    bg = w.get("background")
+    return isinstance(bg, dict) and bg.get("always") is True
+
+
+def effective_period(declared_s: int, screens_open: bool, always: bool, idle_every_s: int) -> int:
+    """The period a passive widget's tick runs at NOW: the declared one for a person looking (or for a widget that
+    declares `always`), and never shorter than `idle_every_s` with no screen open."""
+    if always or screens_open:
+        return declared_s
+    return max(declared_s, int(idle_every_s))
+
+
+def due(now: float, last: float | None, started: float, declared_s: int, screens_open: bool, always: bool,
+        idle_every_s: int) -> bool:
+    """Is a tick due at `now`? `last` is the previous tick (None: never ticked since `started`). A first tick with a
+    screen open (or `always`) runs at once, as before; without one it waits a full idle period from the start —
+    a boot nobody looks at is not a reason to sync."""
+    period = effective_period(declared_s, screens_open, always, idle_every_s)
+    if last is None:
+        if always or screens_open:
+            return True
+        last = started
+    return now - last >= period
+
+
+def _screens_open() -> bool:
+    """Any screen open right now. Read lazily (this module never imports `voice` at import); unreadable → True, the
+    declared cadence, which is what the widget had before."""
+    try:
+        from voice import screens
+        return bool(screens.open_screens())
+    except Exception:  # noqa: BLE001
+        return True
+
+
+def _idle_every_s() -> int:
+    try:
+        from nucleo.workers import envelope
+        return max(1, int(envelope.policy().get("background_idle_every_s", 300)))
+    except Exception:  # noqa: BLE001
+        return 300
 
 
 def _emit(label: str, wid: str, text: str = "") -> None:
@@ -182,12 +237,19 @@ async def _tick_once(wid: str, kind: str) -> None:
         _inflight.discard(wid)
 
 
-async def _run_widget(wid: str, period: int, kind: str) -> None:
-    """Periodic loop for one widget. Waits a little at startup to stagger ticks, then runs every `period`s."""
+async def _run_widget(wid: str, period: int, kind: str, always: bool = False) -> None:
+    """Periodic loop for one widget. Waits a little at startup to stagger ticks, then wakes every `period`s. A
+    BACKED widget's owner gets its command on every wake; a PASSIVE one ticks only when `due` (presence, V2-872) —
+    a wake that is not due costs a dict read, never a tick."""
     await asyncio.sleep(min(period, 2.0))
+    idle_every = _idle_every_s()
+    started, last = time.monotonic(), None
     while True:
         try:
-            await _tick_once(wid, kind)
+            now = time.monotonic()
+            if kind == "backed" or due(now, last, started, period, _screens_open(), always, idle_every):
+                last = now
+                await _tick_once(wid, kind)
         except asyncio.CancelledError:
             break
         await asyncio.sleep(period)
@@ -215,7 +277,7 @@ def start() -> None:
             except Exception as e:  # noqa: BLE001
                 logger.warning(f"background[{wid}] could not import data.py: {e}")
                 continue
-        _tasks[wid] = asyncio.create_task(_run_widget(wid, period, kind))
+        _tasks[wid] = asyncio.create_task(_run_widget(wid, period, kind, background_always(w)))
         logger.info(f"background[{wid}] every {period}s ({kind})")
         _emit("start", wid, f"every {period}s ({kind})")
 

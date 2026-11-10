@@ -4,7 +4,7 @@
 # with the same start()/stop() pattern as the other lifespan supervisors. Each resource is binary, healthy or
 # degraded → heal:
 #   1) LiveKit ENGINE — degradation is read from the SDK log (in-process); recycle the embedded worker when SAFE
-#      (voice off + channel idle), otherwise tell the operator.
+#      (no live session, none in its grace, channel idle, CPU not starved — V2-872), otherwise tell the operator.
 #   2) LOGS — rotate by rename (writers append with "a", so the next write recreates the file) and prune old ones.
 #   3) CAPSULES — evict concluded, old per-peer state (sys_kv `capsule:*`) and bound the total.
 # Never touches the FlashBrain or the operator's memory; fail-open; every action emits `homeostasis`;
@@ -25,7 +25,8 @@ _PERIOD_S = float(os.getenv("HOMEOSTASIS_PERIOD_S", "60"))       # heartbeat per
 from nucleo.pulse.homeostasis_policy import (  # noqa: E402
     _CAP_MAX, _CAP_TTL_S, _IDLE_S, _LK_THRESHOLD, _LK_WINDOW_S, _LOG_CAP_BYTES)
 
-from nucleo.pulse import voice_recycle  # noqa: E402
+from nucleo.pulse import starvation, voice_recycle  # noqa: E402
+from nucleo.workers import envelope  # noqa: E402
 
 _RECYCLE_COOLDOWN_S = float(os.getenv("HOMEOSTASIS_RECYCLE_COOLDOWN_S", "600"))  # at most one recycle per 10 min
 
@@ -117,11 +118,9 @@ def _recent_activity_ts() -> float:
 
 
 def _voice_on() -> bool:
-    try:
-        from server import state as S
-        return bool(S.STATE.get("voice"))
-    except Exception:
-        return False
+    """A live `run_bot` session (V2-872: `STATE["voice"]` is the voice's INDEX, 0 read as «off»); errors abort the check."""
+    from server import active
+    return active.count() > 0
 
 
 async def _consume_recycle_request(app, now: float) -> bool:
@@ -188,16 +187,22 @@ def _rotate_log(path: str, *, keep: int = _LOG_KEEP) -> None:
 async def _tick(app) -> None:
     """One beat: the three checks, each isolated."""
     now = time.time()
+    pol = envelope.policy()
 
+    win, starved = starvation.read(float(pol.get("steal_pct_starved", 20)))   # 0) the host's CPU (V2-872)
     # 1) LiveKit ENGINE
     try:
         if getattr(app, "state", None) is not None and getattr(app.state, "lk_server", None) is not None:
             # 1a) EXPLICIT request (a dead voice session, see request_recycle)
             await _consume_recycle_request(app, now)
-            if livekit_degraded(_marks, now, since=voice_recycle.grace_end()):   # V2-871: warm-up ≠ degraded
+            if starved and _marks:                    # the window's marks are the starvation: never a recycle
+                await starvation.report(win, _marks, _emit)
+            elif livekit_degraded(_marks, now, since=voice_recycle.grace_end()):   # V2-871: warm-up ≠ degraded
+                from server import active
                 if now - _last_recycle < _RECYCLE_COOLDOWN_S:
                     pass  # recycled recently: no recycle loop
-                elif safe_to_recycle(_voice_on(), _recent_activity_ts(), now):
+                elif safe_to_recycle(_voice_on(), _recent_activity_ts(), now, session_started=active.last_registered_at(),
+                                     session_grace_s=float(pol.get("session_grace_s", 180))):
                     _emit("degraded", "motor LiveKit degradado (bucle WebRTC) — reciclando en frío")
                     ok = await _recycle_livekit(app)
                     if ok:

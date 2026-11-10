@@ -16,6 +16,7 @@ import { DEVICE, screensBring } from "./api.js?v=2";
 import { placement } from "./event-scope.js?v=1";
 import * as screens from "./screens.js?v=1";
 import * as asks from "../core/asks.js?v=1";
+import { wirePresence, presenceEvent, onStreamOpen, onStreamError } from "./presence.js?v=1";
 
 // V2-464 — SHOWCASE mode: ?showcase=1 in the URL. The use-case recorder (recorder.py) uses it to keep the chat
 // open and the grid auto-arranged, so the video is readable without hands.
@@ -84,9 +85,12 @@ export function openSSE(desktop) {
   if (es) return;               // already subscribed: reopening would kill the live stream and lose in-flight events
   // V2-792: the stream names this screen, so the server knows a second one is open (`voice/screens.py`).
   es = new EventSource("/events?dev=" + encodeURIComponent(DEVICE));
+  wirePresence({ open: () => openSSE(desktop), close: closeSSE, t });   // V2-872: no browser auto-reconnect, ever
   // V2-038: on (re)connect, RECONCILE activity chips against the server's truth (GET /api/tasks reads the RAM
   // registry) → no more orphaned chips after a restart/crash. STATE leads; the UI is its mirror.
+  es.onerror = () => { closeSSE(); onStreamError(); };   // reopening is presence.js's decision, never the browser's
   es.onopen = () => {
+    onStreamOpen();
     try { store.fetchTasks(); } catch (_) {}
     // V2-773 — a RESET while this tab stayed open. `make reset` bumps the wipe epoch and restarts the engine;
     // the epoch is only ever read at boot, so the operator's tab came back from the restart with every old card
@@ -120,6 +124,7 @@ function field(d, key) {
 
 export function routeEvent(desktop, d) {
     if (!d) return;
+    presenceEvent(d);   // V2-872: the hello's tab_sleep_min, `engine.sleep`, his spoken turn
     // V2-792 — ONE AGENT, MANY SCREENS. What a request does to a screen (open a card, go full screen, open the
     // panel) happens on the screen that asked; this one keeps at most a chip. `event-scope.js` is the table.
     if (placement(d, DEVICE) === "elsewhere") { if (desktop) screens.noteElsewhere(desktop, d); return; }

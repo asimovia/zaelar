@@ -24,6 +24,7 @@
 // polled at all, a visible one costs ~200 bytes against a fully cached dict, and it is the only mechanism
 // that still works for a PWA whose tab has been backgrounded for hours.
 import { createSignal } from "../core/reactive.js?v=2";
+import { asleep } from "../services/presence.js?v=1";
 
 const POLL_MS = 20000;
 
@@ -67,7 +68,7 @@ export function applyUpdate() { try { location.reload(); } catch (_) {} }
 export function startUpdateWatch(ms = POLL_MS) {
   if (_iv) return;
   check();
-  _iv = setInterval(() => { if (document.visibilityState !== "hidden") check(); }, ms);
+  _iv = setInterval(() => { if (document.visibilityState !== "hidden" && !asleep()) check(); }, ms);   // V2-872
   // Coming back to a tab left open for hours is the moment the answer is most likely to have changed, and
   // the moment the operator is actually looking. Check then, without shortening the interval for everyone.
   document.addEventListener("visibilitychange", () => {

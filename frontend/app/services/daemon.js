@@ -19,6 +19,7 @@
 // icon still has a job there, and it is the one the operator asked for — it is where somebody working
 // against the cloud agent gets the installer for their own machine.
 import { createSignal } from "../core/reactive.js?v=2";
+import { asleep } from "./presence.js?v=1";
 
 const POLL_MS = 20000;
 // While the daemon downloads a browser the progress is the only thing on this screen that moves, so it is asked
@@ -238,6 +239,6 @@ export const revoke = (path) => _permissions("revoke", path);
 export function start() {
   if (_iv) return;
   check();
-  _iv = setInterval(() => { if (!document.hidden) check(); }, POLL_MS);
+  _iv = setInterval(() => { if (!document.hidden && !asleep()) check(); }, POLL_MS);   // V2-872: nor a sleeping tab
   document.addEventListener("visibilitychange", () => { if (!document.hidden) check(); });
 }

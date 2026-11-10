@@ -683,7 +683,8 @@
   "room_paused": "Worker {task} paused to open the browser.",
   "room_wait": "Waiting for room to open the browser.",
   "room_anyway": "Little room, but it is your window: the browser opens anyway.",
-  "room_resumed": "Worker {task} resumed: there is room again."
+  "room_resumed": "Worker {task} resumed: there is room again.",
+  "cpu_starved": "The machine is short of CPU; the voice may be slow for a moment."
  },
  "not_understood_lines": [
   "I didn't quite get what you're asking. Could you put it another way or give me a bit more detail?",

@@ -57,6 +57,10 @@ ORIGIN: contextvars.ContextVar[str] = contextvars.ContextVar("zaelar_screen_orig
 ROUTED: contextvars.ContextVar[bool] = contextvars.ContextVar("zaelar_screen_routed", default=False)
 
 _typed = {"fn": None}
+#: When a person last did something on ANY surface — a touch, a typed line, a spoken turn — in epoch seconds
+#: (V2-872). Kept apart from the registry, whose entries are pruned when a screen goes. A stream open (`attach`),
+#: a `beat` and a visibility change never move it: the idle stop reads this as presence (`nucleo/idle_stop.py`).
+_input = {"at": 0.0}
 
 #: Where each one-screen card plays right now (`youtube` → its screen) and how to tell which cards are one-screen.
 #: The policy is the WIDGET's (`widgets/screen_policy.py`); this module only asks, through a registered predicate,
@@ -183,11 +187,18 @@ def touched(dev) -> None:
     if not d:
         return
     now = time.time()
+    _input["at"] = now
     with _mx:
         e = _entry(d, now)
         e["input_at"] = now
         e["seen_at"] = now
         e["visible"] = True
+
+
+def last_input_ms() -> int | None:
+    """When a person last gave input on any surface (epoch ms), or None since the process started."""
+    at = _input["at"]
+    return round(at * 1000) if at else None
 
 
 def holder_beat(dev) -> None:
@@ -246,7 +257,9 @@ def on_active_change(fn) -> None:
 
 
 def begin_turn(dev, trace: str = "") -> None:
-    """A turn started from this surface. The last one wins for events that carry nothing better (see `origin_of`)."""
+    """A turn started from this surface. The last one wins for events that carry nothing better (see `origin_of`).
+    His turn — spoken or typed — is his input, so it is presence even when no screen is named."""
+    _input["at"] = time.time()
     d = clean(dev)
     if not d:
         return
@@ -440,3 +453,4 @@ def _reset_for_tests() -> None:
         _last["dev"] = ""
     _typed["fn"] = None
     _WAITING["at"] = 0.0
+    _input["at"] = 0.0

@@ -13,6 +13,10 @@ nothing, so «the engine was out of memory» could not be told from «a browser 
                 `wired_mb` was starved by something outside the engine
     browsers    live browser processes under this engine (a browser's helper processes are not counted)
     workers     live Brain Worker sessions
+    cpu_steal_pct     the host's steal share over the heartbeat's last window (V2-872): the CPU the hypervisor gave
+                      someone else — on a shared vCPU past its quota, the engine asked and was not served
+    cpu_throttled_ms  the ms the engine's cgroup was throttled in that window; both left out where the host does
+                      not say (no `/proc/stat` or `cpu.stat`, as on macOS)
 
 Measured (V2-852 T15, the first live session on the task engine): ten shed/recovered alert pairs in six minutes, every
 one with `rss_mb` 245-377 and `loop_age_s` 0 — the engine was answering and small; the host's free ratio sat on the
@@ -82,4 +86,10 @@ def snapshot() -> dict:
         logger.debug(f"pressure.snapshot: {e!r}")
         pass
     out["workers"] = _workers()
+    try:
+        from nucleo.pulse import starvation
+        win = starvation.last_window()
+        out["cpu_steal_pct"], out["cpu_throttled_ms"] = win.get("steal_pct"), win.get("throttled_ms")
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"pressure.cpu: {e!r}")
     return {k: v for k, v in out.items() if v is not None}
