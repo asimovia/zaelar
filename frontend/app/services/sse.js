@@ -87,9 +87,7 @@ export function openSSE(desktop, { wake = false } = {}) {
   // V2-872: an open that presence.js decided is a person's gesture and says so (`wake=1`): the edge of a hosted
   // deployment starts a stopped engine for a person, never for a stream the browser retries on its own.
   es = new EventSource("/events?dev=" + encodeURIComponent(DEVICE) + (wake ? "&wake=1" : ""));
-  // V2-872: no browser auto-reconnect, ever. `beat` tells the engine a person is connected here; `dormant` drives
-  // the full-screen veil while the engine sleeps (components/DormantVeil.js).
-  wirePresence({ open: (o) => openSSE(desktop, o), close: closeSSE, t, beat: screensPresent, dormant: store.setDormant });
+  wirePresence({ open: (o) => openSSE(desktop, o), close: closeSSE, t, beat: screensPresent, dormant: store.setDormant });   // V2-872: no auto-reconnect; presence beat; the veil
   // V2-038: on (re)connect, RECONCILE activity chips against the server's truth (GET /api/tasks reads the RAM
   // registry) → no more orphaned chips after a restart/crash. STATE leads; the UI is its mirror.
   es.onerror = () => { closeSSE(); onStreamError(); };   // reopening is presence.js's decision, never the browser's
