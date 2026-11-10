@@ -62,6 +62,7 @@ def test_scheduler_ticks_a_passive_widget(monkeypatch):
     monkeypatch.setattr(bg.runtime, "catalog", lambda: [{"id": "faketick", "background": "1s"}])
     monkeypatch.setattr(bg.importlib, "import_module",
                         lambda n, *a, **k: fake if n == "widgets.faketick.data" else real_import(n, *a, **k))
+    monkeypatch.setattr(bg, "_screens_open", lambda: True)   # V2-872: the declared cadence is for a person looking
 
     async def _drive():
         bg.start()

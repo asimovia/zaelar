@@ -173,7 +173,7 @@ def _defines_function(src: str, name: str) -> bool:
 
 def _validate_background(man: dict, src: str) -> str | None:
     """A widget declaring `background` (cyclic off-screen execution, V2-034) must be valid: `every` must parse to a
-    period (>=1s), and a PASSIVE widget with background MUST have `def tick()` in data.py, the function called by the
+    period (>=1s), an optional `always` (V2-872) must be a boolean, and a PASSIVE widget with background MUST have `def tick()` in data.py, the function called by the
     scheduler each cycle. A `backed` widget with background is served by its owner (`tick` command in the mailbox),
     so tick() is not required in data.py."""
     if man.get("background") is None:
@@ -183,6 +183,11 @@ def _validate_background(man: dict, src: str) -> str | None:
     if not period:
         return (f"'background' invalid ({man.get('background')!r}); use \"1s\"/\"5m\"/\"1h\", a number of seconds, "
                 f"or {{\"every\":\"1m\"}} (minimum 1s)")
+    bg = man.get("background")
+    if isinstance(bg, dict) and "always" in bg and not isinstance(bg.get("always"), bool):
+        # V2-872: `always: true` keeps the declared cadence with no screen open (widgets/background.py); without
+        # it a passive tick slows to `background_idle_every_s` while nobody is looking.
+        return f"'background.always' must be true or false (got {bg.get('always')!r})"
     if (man.get("kind") or "passive") != "backed" and not _defines_function(src, "tick"):
         return ("manifest declares 'background' (off-screen cycle) but data.py does not define `def tick()`; "
                 "add tick() to refresh data and write to memory, or remove 'background'")

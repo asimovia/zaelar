@@ -21,7 +21,11 @@
     "Gave up, or no live worker `voice_dead_s` after a session was asked for: an alert, and under a supervisor an exit",
     "for a restart; unsupervised a new try every `recycle_retry_s`. `boot_grace_s` is the cold start (models, browser,",
     "the first connection; a first session measured 2.5 min to listening on a small host): degraded marks and the",
-    "audio lag inside it are the warm-up, never a degradation."
+    "audio lag inside it are the warm-up, never a degradation.",
+    "A CHEAP BOOT (V2-872): `prewarm_browser` warms the search Chromium at boot. A host that stops when idle wants it",
+    "false in its own `config/resources.json` (it pays the warm-up on every boot); undeclared there, it is already",
+    "false when ZAELAR_IDLE_STOP_MIN is set. The browser then starts at first use. `background_idle_every_s`: with no",
+    "screen open a passive widget's background tick runs at most this often, whatever its declared `every`."
   ],
   "worker_nice": 10,
   "admit_free_ratio": 0.2,
@@ -39,5 +43,7 @@
   "recycle_backoff_s": 5,
   "recycle_retry_s": 120,
   "voice_dead_s": 120,
-  "boot_grace_s": 300
+  "boot_grace_s": 300,
+  "prewarm_browser": true,
+  "background_idle_every_s": 300
 }

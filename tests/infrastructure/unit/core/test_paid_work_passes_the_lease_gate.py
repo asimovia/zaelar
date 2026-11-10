@@ -158,7 +158,9 @@ def test_the_boot_search_probe_never_pays_in_a_leased_deployment(monkeypatch):
     monkeypatch.setattr(health, "probe_all", lambda names=None, parallel=True: asked.extend(names or []) or [])
     api.prime_cache()
     assert asked and not [n for n in asked if PROVIDERS[n].paid]
-    assert {r["provider"] for r in api.cached_rows() if r["state"] == "unprobed"} == {n for n, p in PROVIDERS.items() if p.paid}
+    # V2-872: the rows that run in a not-yet-started Chromium say `unprobed` too, for another reason (their own test)
+    assert {r["provider"] for r in api.cached_rows() if r["state"] == "unprobed" and r["paid"]} == \
+        {n for n, p in PROVIDERS.items() if p.paid}
 
 
 def test_a_refusal_never_marks_a_provider(no_lease):
