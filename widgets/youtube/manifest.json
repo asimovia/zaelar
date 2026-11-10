@@ -77,9 +77,9 @@
       },
       "done_when": {
         "all": [
-          {"widget": "youtube", "field": "videoId", "expect": "changed"},
+          {"widget": "youtube", "field": "playing_id", "expect": "changed"},
           {"widget": "youtube", "field": "player_error", "expect": "absent"},
-          {"widget": "youtube", "field": "paused", "is": "false"}
+          {"widget": "youtube", "field": "playing", "is": "true"}
         ]
       }
     },
@@ -115,9 +115,9 @@
       "activation": true,
       "done_when": {
         "all": [
-          {"widget": "youtube", "field": "videoId", "expect": "changed"},
+          {"widget": "youtube", "field": "playing_id", "expect": "changed"},
           {"widget": "youtube", "field": "player_error", "expect": "absent"},
-          {"widget": "youtube", "field": "paused", "is": "false"}
+          {"widget": "youtube", "field": "playing", "is": "true"}
         ]
       }
     },
@@ -129,9 +129,9 @@
       "repeatable": true,
       "done_when": {
         "all": [
-          {"widget": "youtube", "field": "videoId", "expect": "changed"},
+          {"widget": "youtube", "field": "playing_id", "expect": "changed"},
           {"widget": "youtube", "field": "player_error", "expect": "absent"},
-          {"widget": "youtube", "field": "paused", "is": "false"}
+          {"widget": "youtube", "field": "playing", "is": "true"}
         ]
       }
     },
@@ -142,7 +142,7 @@
       "done_when": {
         "all": [
           {"widget": "youtube", "field": "player_error", "expect": "absent"},
-          {"widget": "youtube", "field": "paused", "is": "false"}
+          {"widget": "youtube", "field": "playing", "is": "true"}
         ]
       }
     },
@@ -218,7 +218,7 @@
       "payload": {},
       "sensitivity": "routine",
       "activation": true,
-      "done_when": {"widget": "youtube", "field": "paused", "is": "false"}
+      "done_when": {"widget": "youtube", "field": "playing", "is": "true"}
     },
     "pause": {
       "desc": "PARA el vídeo y lo deja cargado: congelado en pantalla, listo para seguir con play. «Vale, para el vídeo», «páralo», «páralo un momento», «detenlo», «pausa» — «para» es el verbo, no la preposición",
@@ -227,8 +227,8 @@
       "activation": true,
       "done_when": {
         "widget": "youtube",
-        "field": "paused",
-        "is": "true"
+        "field": "playing",
+        "is": "false"
       }
     },
     "mute": {
@@ -397,6 +397,14 @@
         "videoId": "id the report belongs to (optional)"
       }
     },
+    "player_state": {
+      "desc": "Internal: the embedded player reports which video it plays and whether it plays (its own onStateChange); the end states read it",
+      "internal": true,
+      "payload": {
+        "playing": "true | false, as the player reports it",
+        "videoId": "id the report belongs to (optional)"
+      }
+    },
     "play_local": {
       "desc": "reproduce un vídeo que ya está en la biblioteca del agente (por su ruta)",
       "payload": {
@@ -433,9 +441,9 @@
       },
       "done_when": {
         "all": [
-          {"widget": "youtube", "field": "videoId", "expect": "changed"},
+          {"widget": "youtube", "field": "playing_id", "expect": "changed"},
           {"widget": "youtube", "field": "player_error", "expect": "absent"},
-          {"widget": "youtube", "field": "paused", "is": "false"}
+          {"widget": "youtube", "field": "playing", "is": "true"}
         ]
       }
     },

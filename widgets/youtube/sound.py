@@ -62,6 +62,24 @@ def player_audio(action, p, db) -> dict:
     return {"ok": True, "audio_blocked": bool(db.get("audio_blocked"))}
 
 
+def player_state(action, p, db) -> dict:
+    """Internal, fired by widget.js from the embedded player's own `onStateChange` (V2-873): WHICH video the player
+    plays (`playing_id`) and WHETHER it plays (`playing`). The end states of every start and of pause read these —
+    `videoId`/`paused` are the ORDER, and a «Hecho» was said over a video the player never changed. A report about
+    another video than the current one is stale."""
+    vid = str(p.get("videoId") or "").strip()[:20]
+    if vid and vid != str(db.get("videoId") or ""):
+        return {"ok": True, "stale": True}
+    playing = str(p.get("playing")).strip().lower() in ("true", "1", "yes")
+    was = (str(db.get("playing_id") or ""), bool(db.get("playing")))
+    if playing:   # a stream of ours (library, torrent) has no videoId: its source names it
+        db["playing_id"] = vid or str(db.get("videoId") or db.get("src") or "")
+    db["playing"] = playing
+    if (str(db.get("playing_id") or ""), playing) != was:
+        store.save(WID, db)
+    return {"ok": True, "playing": playing, "playing_id": str(db.get("playing_id") or "")}
+
+
 def digest_line(db: dict) -> str:
     """The brain must not say «it is playing with sound» over a player the browser keeps silent."""
     if db.get("videoId") and db.get("audio_blocked") and not db.get("muted"):
