@@ -239,13 +239,13 @@ def test_nothing_is_executed_before_its_checksum_is_checked(script, hasher):
 
 @pytest.mark.parametrize("script", ["get.sh", "get.ps1"])
 def test_the_bootstrap_picks_the_release_by_the_file_it_needs(script):
-    """Neither `releases/latest` (an engine release whose daemon build is still running has no daemon files)
-    nor a tag prefix (a `daemon-v*` tag sinks below the API's first page within weeks, and the command then
-    died on a healthy repository): the newest release that publishes the asset itself."""
+    """Never `releases/latest` (an engine release, whose daemon build is not published). The daemon tags come from
+    `git/matching-refs` — every tag, so none sinks below the first page of the listing — and the listing is the
+    fallback for a repository with no daemon release carrying the file (V2-869 §5; the order is node 7.129)."""
     text = (ENGINE / "daemon" / "packaging" / script).read_text(encoding="utf-8")
     code = "\n".join(line for line in text.splitlines() if not line.lstrip().startswith("#"))
-    assert "daemon-v" not in code, f"{script} still filters releases by a tag prefix"
     assert "releases/latest/download" not in code, f"{script} builds a URL from the wrong release"
+    assert "git/matching-refs/tags/daemon-v" in code, f"{script} does not read every daemon tag"
     assert "per_page=100" in code, f"{script} reads too short a page of releases"
 
 
@@ -269,15 +269,15 @@ def _releases_json(newest_without_assets: bool = True) -> str:
 ])
 def test_the_one_liner_resolves_the_newest_release_carrying_its_own_build(tmp_path, asset, expected):
     """Runs the real `resolve_tag` from get.sh against a fake `curl`: it skips the release still building,
-    never mistakes the Intel name for the Apple Silicon one, and needs no `daemon-v` tag to exist."""
+    never mistakes the Intel name for the Apple Silicon one, and needs no `daemon-v` tag to exist (the fallback)."""
     import shutil
     import subprocess
     bash = shutil.which("bash")
     if not bash:
         pytest.skip("no bash")
     text = (ENGINE / "daemon" / "packaging" / "get.sh").read_text(encoding="utf-8")
-    start = text.index("resolve_tag() {")
-    fn = text[start:text.index("\n}\n", start) + 3]
+    start = text.index('API="https://api.github.com')
+    fn = text[start:text.index("\n}\n", text.index("resolve_tag() {")) + 3]
     (tmp_path / "page.json").write_text(_releases_json(), encoding="utf-8")
     fake = tmp_path / "bin" / "curl"
     fake.parent.mkdir()

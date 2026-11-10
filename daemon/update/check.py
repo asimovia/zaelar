@@ -1,8 +1,8 @@
 """Is there a newer daemon? — found, VERIFIED, compared. Once a day in the background and whenever the person asks.
 
-WHERE THE MANIFEST COMES FROM. The same rule as `get.sh`: not `releases/latest` (an engine release whose daemon build
-is still running has no daemon assets yet) and not a tag prefix — the newest release, in the API's own newest-first
-order, that CARRIES `update-manifest.json`. The release tag it was found on must equal the `tag` inside the signed
+WHERE THE MANIFEST COMES FROM. The same rule as `get.sh` (`release_line`): among the `daemon-vX.Y.Z` releases that
+carry `update-manifest.json`, the newest by version; only when none does, the newest release of any kind carrying it.
+Never `releases/latest`, which is an engine release. The release tag it was found on must equal the `tag` inside the signed
 manifest, so a valid manifest cannot be replayed from another release to point at that release's files.
 
 WHAT REFUSES. No `.minisig` beside the manifest (the publisher had no signing key that day — the manifest is then
@@ -13,12 +13,11 @@ the comparison never moves the installed version backwards.
 """
 from __future__ import annotations
 
-import json
 import threading
 import time
 import urllib.request
 
-from . import apply, current, manifest, minisign, public_keys, repo
+from . import apply, current, manifest, minisign, public_keys, release_line, repo
 from .state import STORE, Store
 
 DAY_S = 24 * 3600
@@ -39,17 +38,17 @@ def http_get(url: str, timeout: float = 20.0, limit: int = _MAX_JSON) -> bytes:
     return data
 
 
+def found_in(rel: dict | None) -> tuple[str, str, str | None] | None:
+    """`(tag, manifest_url, signature_url | None)` of a release that carries the manifest, or None."""
+    url = release_line.asset_url(rel, manifest.MANIFEST_NAME) if isinstance(rel, dict) else None
+    if not url:
+        return None
+    return str(rel.get("tag_name") or ""), url, release_line.asset_url(rel, manifest.SIGNATURE_NAME)
+
+
 def find_release(releases: list) -> tuple[str, str, str | None] | None:
-    """`(tag, manifest_url, signature_url | None)` of the newest release carrying the manifest, or None."""
-    for rel in releases if isinstance(releases, list) else []:
-        if not isinstance(rel, dict) or rel.get("draft"):
-            continue
-        assets = {a.get("name"): a.get("browser_download_url") for a in rel.get("assets") or [] if isinstance(a, dict)}
-        url = assets.get(manifest.MANIFEST_NAME)
-        if isinstance(url, str) and url.startswith("https://"):
-            sig = assets.get(manifest.SIGNATURE_NAME)
-            return str(rel.get("tag_name") or ""), url, sig if isinstance(sig, str) else None
-    return None
+    """The release to update from, out of a releases listing: the daemon's own line first (`release_line`)."""
+    return found_in(release_line.choose(releases, manifest.MANIFEST_NAME))
 
 
 def verify(data: bytes, signature: str | None, tag: str, keys: list) -> manifest.Manifest:
@@ -72,8 +71,7 @@ def check(fetch=http_get, store: Store = STORE, now: float | None = None) -> dic
     except Exception:   # noqa: BLE001 — leftovers of a previous swap never block a check
         pass
     try:
-        releases = json.loads(fetch(f"https://api.github.com/repos/{repo()}/releases?per_page=100").decode("utf-8"))
-        found = find_release(releases)
+        found = found_in(release_line.resolve(fetch, repo(), manifest.MANIFEST_NAME))
         if found is None:
             snap = store.update(last_check=now, last_result="no release publishes an update manifest yet")
             return _result(True, mine, snap)

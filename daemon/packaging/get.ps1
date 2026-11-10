@@ -40,18 +40,39 @@ if (-not $IsWindows -and $PSVersionTable.PSVersion.Major -ge 6) {
 # an opaque "could not create SSL/TLS secure channel" that sends people hunting for a proxy problem.
 try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 } catch {}
 
-# ── the newest release that CARRIES THIS FILE ────────────────────────────────────────────────────────────
-# Not `releases/latest` (an engine release whose daemon build is still running, or failed, has no daemon
-# assets yet) and not a tag prefix either: the daemon is rebuilt on every engine tag, so a prefix-filtered
-# `daemon-v*` tag sinks below the first page of the API within weeks and the one-liner dies on a healthy
-# repository. The rule is the asset itself: the newest release that publishes exactly this file.
+# ── which release: the daemon's OWN line first ─────────────────────────────────────────────────────────────
+# The same order as get.sh and `daemon/update/release_line.py` (node 7.129): the `daemon-vX.Y.Z` tags — all of them,
+# through `git/matching-refs`, newest VERSION first — and the first whose release publishes this file; only when none
+# does, the newest release of any kind that publishes it. A prerelease is skipped. Engine releases (`v*`) once carried
+# daemon builds too, and "the newest release with the file" installed an engine build over a newer daemon release.
 $Asset = 'zaelar-daemon-windows.exe'
+$Api = "https://api.github.com/repos/$Repo"
+$Headers = @{ 'User-Agent' = 'zaelar-daemon-get' }
+function Test-Carries($rel) {
+  $rel -and -not $rel.prerelease -and -not $rel.draft -and (@($rel.assets | ForEach-Object { $_.name }) -contains $Asset)
+}
 $Tag = $env:ZAELAR_DAEMON_TAG
+$Picked = 'ZAELAR_DAEMON_TAG'
+if (-not $Tag) {
+  $tags = @()
+  try {
+    $tags = @(Invoke-RestMethod -Uri "$Api/git/matching-refs/tags/daemon-v" -Headers $Headers |
+      ForEach-Object { $_.ref -replace '^refs/tags/', '' } |
+      Where-Object { $_ -match '^daemon-v\d+\.\d+\.\d+$' } |
+      Sort-Object { [version]($_ -replace '^daemon-v', '') } -Descending)
+  } catch { }
+  foreach ($t in ($tags | Select-Object -First 5)) {
+    try {
+      $rel = Invoke-RestMethod -Uri "$Api/releases/tags/$t" -Headers $Headers
+      if (Test-Carries $rel) { $Tag = $t; $Picked = "the daemon's release line"; break }
+    } catch { }
+  }
+}
 if (-not $Tag) {
   try {
-    $releases = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases?per_page=100" `
-                                  -Headers @{ 'User-Agent' = 'zaelar-daemon-get' }
-    $Tag = ($releases | Where-Object { @($_.assets | ForEach-Object { $_.name }) -contains $Asset } | Select-Object -First 1).tag_name
+    $releases = Invoke-RestMethod -Uri "$Api/releases?per_page=100" -Headers $Headers
+    $Tag = ($releases | Where-Object { Test-Carries $_ } | Select-Object -First 1).tag_name
+    $Picked = "no daemon-v* release carries $Asset - an older engine release that does"
   } catch { }
 }
 if (-not $Tag) { Die 'could not find a published daemon release. Set ZAELAR_DAEMON_TAG to install a specific one.' }
@@ -59,6 +80,7 @@ if (-not $Tag) { Die 'could not find a published daemon release. Set ZAELAR_DAEM
 $Base  = "https://github.com/$Repo/releases/download/$Tag"
 Write-Host ''
 Write-Host "Zaelar Local Daemon · $Tag"
+Say "release: $Tag ($Picked)"
 Write-Host ''
 
 $Work = Join-Path ([IO.Path]::GetTempPath()) ("zaelar-daemon-" + [Guid]::NewGuid().ToString('N'))
