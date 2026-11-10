@@ -38,6 +38,8 @@ class Answered:
     gate: str = ""
     yes: bool = False
     result: object = None
+    #: V2-873 — his reply carried a yes/no word and answered nothing waiting: the request still waiting, to be SAID
+    waiting: str = ""
 
     def __bool__(self) -> bool:
         return bool(self.gate)
@@ -63,6 +65,8 @@ def resolve(text: str, *, widget=None, task=None, browser=None) -> Answered:
             got = do_resolve(text)
         except Exception:  # noqa: BLE001
             continue
+        if isinstance(got, dict) and "still_waiting" in got:
+            return Answered(waiting=str(got["still_waiting"] or ""))
         if got is None or got is False:
             # Open but the reply was not a yes/no it could read («¿y cuánto cuestan?»). It stays waiting, and
             # the answer does NOT fall through to the next gate: an ambiguous word is not an authorisation.
@@ -112,7 +116,8 @@ def _task_gate(brief=None):
         tid = str(p.get("task_id") or "")
         if _the_binding_reads_it(brief, p):
             return None          # its row's question is answered by the brief's pick (`bind_the_answer`), not here
-        v = task_reply(words, _c.classify_reply(words), str(p.get("question") or ""), brief=brief, parked=tid,
+        said = _c.classify_reply(words)
+        v = task_reply(words, said, str(p.get("question") or ""), brief=brief, parked=tid,
                        names_it=bool(named) and named == tid)
         if named and (v == "yes" or (v is None and not _names_another_errand(words, tid))):
             # He is talking about THIS errand: what he adds travels with the «yes» (`resolve_confirm`), and the clock
@@ -124,7 +129,11 @@ def _task_gate(brief=None):
             # about the monitors «name» the game, and its «no» cancelled it.
             if not (v and _c.is_plain_answer(words, v)):
                 _d.absorb_refinement(tid, words)
-        return _d.resolve_confirm(v == "yes", tid) if v else None
+        if v:
+            return _d.resolve_confirm(v == "yes", tid)
+        # V2-873 — a yes/no word that answered nothing: the errand keeps waiting, and he is TOLD so («sí, y cierra el
+        # vídeo» used to leave it waiting in silence, and he believed he had answered).
+        return {"still_waiting": str(p.get("request") or "")} if said else None
     return (_open, _do)
 
 
@@ -201,8 +210,8 @@ def task_reply(words: str, v: str | None, question: str, *, brief=None, parked: 
         # «vale cierra los resultados»: the «vale» opens an ORDER the brief surely read on a card — neither a yes nor
         # a no to the parked errand, which keeps waiting (V2-873). A bare «vale» is still the answer.
         return None
-    if v is None or _c.is_plain_answer(words, v):
-        return v
+    if v is None or _c.answer_alone(words, v):
+        return v              # V2-873: the word reader is the fast path for a ONE-word answer; longer, the verdicts read it
     if parked and _about_another_errand(words, parked):
         return None
     if parked and v == "no" and not names_it:

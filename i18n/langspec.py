@@ -104,6 +104,7 @@ class LangSpec:
     spend_confirm: str = ("")
     irreversible_confirm: str = ("")
     confirm_cancelled: str = ""
+    errand_still_waiting: str = ""   # V2-873: a yes/no word that answered nothing — the parked errand still waits
     #: V2-857 phase 3 — the two DECLARED answers to a consent question on a row (its candidates: the brief picks one,
     #: the screen shows them as buttons); never read from his words.
     answer_yes: str = ""
