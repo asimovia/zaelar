@@ -283,6 +283,20 @@ def tick(ctx) -> None:
     gcal.tick(ctx)
 
 
+def roll_notices(wait_s: float = 2.0) -> bool:
+    """Every repeating appointment holds its NEXT notice in the scheduler (V2-872 F2) — the pulse calls this right
+    after one of the agenda's notices rang, and once when it starts. Waits at most `wait_s` for the widget's lock (a
+    voice write in progress): the next call, or the tick, catches up. True when a series moved on."""
+    from .reminders import roll_series
+    lock = store.mutating(WIDGET_ID)
+    if not lock.acquire(timeout=wait_s):
+        return False
+    try:
+        return roll_series(load_db, lambda db: store.save(WIDGET_ID, db))
+    finally:
+        lock.release()
+
+
 def on_calendar_connected() -> None:
     """Called by `connectors/calendar/server_api.py` right after OAuth consent completes (body in `gcal.py`)."""
     gcal.on_calendar_connected()

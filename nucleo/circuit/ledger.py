@@ -239,6 +239,8 @@ def waiting(task_id: str, waiting_for: str, ask_id: str = "", ask: str = "", *, 
                    **({"ask_id": ask_id} if ask_id else {}), **({"ask": ask[:600]} if ask else {}))
     if not quiet:                        # `quiet`: a caller that says the whole move itself (`worker_died`)
         _progress.changed(uid, "waiting", row)
+    if not same:
+        _wake_changed()                  # what it waits for, and until when, may move the next wake instant
     return True
 
 
@@ -250,6 +252,15 @@ def resumed(task_id: str) -> None:
     if row and row.get("state") == "waiting" and row.get("waiting_for"):
         _ts.task_patch(uid, state="running", waiting_for="", waiting_since=None, deadline=None)
         _progress.changed(uid, "resumed", row)
+        _wake_changed()
+
+
+def _wake_changed() -> None:
+    try:
+        from nucleo.pulse import wake
+        wake.note_changed()
+    except Exception as e:  # noqa: BLE001 — the row is written; only the wake report may lag its recheck
+        logger.debug(f"ledger: wake note failed: {e!r}")
 
 
 #: What a task waits for when its worker process DIED before finishing: the pulse resumes it by id (V2-851 §3).

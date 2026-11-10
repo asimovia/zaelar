@@ -179,6 +179,30 @@ def due(now: float | None = None) -> list[dict]:
     return out
 
 
+#: What an ORIGIN does once one of its one-time jobs has rung and been delivered (V2-872 F2): `origin → "module:fn"`,
+#: run by the pulse right after the delivery (`loop._after_rung`). An appointment series keeps ONE notice in the
+#: scheduler — the next — so the one that just rang must hand over to the one after BEFORE the engine may sleep: the
+#: agenda's own tick may never run in an engine woken only for that notice.
+AFTER_RUNG = {"agenda": "widgets.agenda.data:roll_notices"}
+_rung: set[str] = set()
+
+
+def take_rung() -> set[str]:
+    """The origins whose one-time jobs closed since the last call — taken once."""
+    out = set(_rung)
+    _rung.clear()
+    return out
+
+
+def is_pending(jid) -> bool | None:
+    """Is the job still waiting to ring? None when the id is not one of the scheduler's (unknown: leave it be)."""
+    try:
+        entry = _journal.get(int(jid))
+    except (TypeError, ValueError):
+        return None
+    return bool(entry) and entry.get("status") == "pending"
+
+
 def mark_fired(entry: dict, now: float | None = None) -> dict | None:
     """Mark a task as triggered. One-time → status='done'. Recurring → recalculate next_run (remains pending).
     Return the new schedule (or None if it closed)."""
@@ -192,6 +216,8 @@ def mark_fired(entry: dict, now: float | None = None) -> dict | None:
         d["schedule"] = sch
         _journal.update(entry["id"], status="done", detail=d)
         _board(entry["id"])
+        if d.get("origin") in AFTER_RUNG:
+            _rung.add(str(d["origin"]))
         return None
     d["schedule"] = nxt
     _journal.update(entry["id"], status="pending", detail=d)

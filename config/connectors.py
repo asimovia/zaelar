@@ -81,6 +81,11 @@ def set(platform: str, patch: dict) -> dict:
     cur.update(patch or {})
     data[platform] = cur
     _write(data)
+    try:
+        from nucleo.pulse import wake      # a channel switched on or off can start or end a listener
+        wake.note_changed()
+    except Exception as e:  # noqa: BLE001 — the config is written; only the wake report may lag its recheck
+        __import__("logging").getLogger("zaelar.config").debug(f"connectors: wake note failed: {e!r}")
     return get(platform)
 
 

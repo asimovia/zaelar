@@ -32,7 +32,10 @@
     "A CHEAP BOOT (V2-872): `prewarm_browser` warms the search Chromium at boot. A host that stops when idle wants it",
     "false in its own `config/resources.json` (it pays the warm-up on every boot); undeclared there, it is already",
     "false when ZAELAR_IDLE_STOP_MIN is set. The browser then starts at first use. `background_idle_every_s`: with no",
-    "screen open a passive widget's background tick runs at most this often, whatever its declared `every`."
+    "screen open a passive widget's background tick runs at most this often, whatever its declared `every`.",
+    "LISTENING WHILE ASLEEP (V2-872 F2): an engine that reports when to be woken (`nucleo/pulse/wake.py`) asks for a",
+    "pass every `listen_every_min` only while something reacts to an inbound channel that can be caught up (a rule, a",
+    "waiting task, an errand, his notify preference — `nucleo/pulse/listeners.py`); with nothing listening, no pass."
   ],
   "worker_nice": 10,
   "admit_free_ratio": 0.2,
@@ -56,5 +59,6 @@
   "tab_sleep_min": 10,
   "wake_grace_min": 3,
   "prewarm_browser": true,
-  "background_idle_every_s": 300
+  "background_idle_every_s": 300,
+  "listen_every_min": 10
 }

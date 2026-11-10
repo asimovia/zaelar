@@ -48,6 +48,9 @@ def test_self_host_reports_nothing(monkeypatch):
 
 
 def test_the_next_due_instant_is_reported_once(monkeypatch):
+    from nucleo.pulse import deadlines, listeners      # the scheduler's half alone; the rest is node 2.841
+    monkeypatch.setattr(deadlines, "upcoming", lambda now: {})
+    monkeypatch.setattr(listeners, "active_listeners", lambda: set())
     monkeypatch.setenv("CONTROL_PLANE_URL", "https://cp.example")
     monkeypatch.setenv("CONTROL_PLANE_SERVICE_TOKEN", "tok")
     monkeypatch.setattr(scheduler, "next_due", lambda: 1_900_000_000.5)
