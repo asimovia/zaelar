@@ -24,7 +24,11 @@
     "audio lag inside it are the warm-up, never a degradation.",
     "A STARVED CPU (V2-872): between two heartbeats the host's steal share (/proc/stat) over `steal_pct_starved` %, or",
     "any cgroup throttling (cpu.stat), makes that window's LiveKit marks the host's, not the worker's: an event, one",
-    "notice per episode, and never a recycle. Nor within `session_grace_s` of the last voice session's start."
+    "notice per episode, and never a recycle. Nor within `session_grace_s` of the last voice session's start.",
+    "PRESENCE AND SLEEP (V2-872): presence is a person's input on a screen (a touch, a key, a typed line, a spoken",
+    "turn), never an open stream. A tab with no input for `tab_sleep_min` closes its stream and waits for a gesture",
+    "(0 = the tab never sleeps); the client reads the value from the stream's hello. With an idle stop on",
+    "(ZAELAR_IDLE_STOP_MIN), an engine with no input since boot stops after `wake_grace_min` instead of the full window."
   ],
   "worker_nice": 10,
   "admit_free_ratio": 0.2,
@@ -44,5 +48,7 @@
   "voice_dead_s": 120,
   "boot_grace_s": 300,
   "steal_pct_starved": 20,
-  "session_grace_s": 180
+  "session_grace_s": 180,
+  "tab_sleep_min": 10,
+  "wake_grace_min": 3
 }
