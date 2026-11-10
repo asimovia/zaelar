@@ -166,7 +166,45 @@ def test_settings_is_the_last_icon_before_reset():
     later = [tok for tok in ('id: "statusBtn"', 'id: "debugBtn"', 'id: "daemonBtn"', 'id: "acctBtn"',
                              'id: "memBtn"', 'id: "themeBtn"', 'id: "wizBtn"')
              if tok in row and row.index(tok) > cfg]
-    assert not later, f"these icons sit to the RIGHT of settings, and only Reset may: {later}"
+    assert not later, f"these icons sit to the RIGHT of settings, and only Reset and the profile may: {later}"
+
+
+def test_the_profile_is_the_last_control_of_the_row():
+    """Operator, 2026-11-10: the 👤 goes to the far right of the bar, like the account avatar of every application —
+    after ⚙ and Reset. The rendered face is `tests/browser/unit/topbar/`; this pins the source order the DOM gets."""
+    src = (ROOT / "frontend" / "app" / "components" / "TopBar.js").read_text(encoding="utf-8")
+    row = src[src.index("export function TopBar()"):src.index("ResetConfirm(),")]
+    assert 'id: "acctBtn"' not in row, "the profile button lives in ProfileMenu.js, mounted once at the row's end"
+    assert row.rstrip().endswith("ProfileMenu(),"), "ProfileMenu() must be the last control of the row"
+
+
+# ── the profile menu's two pages are the deployment's, read from /api/config ────────────────────────────────
+
+def _config(monkeypatch, **env):
+    import asyncio
+
+    from server import config_api
+    for k in ("ZAELAR_USER_ID", "ZAELAR_ACCOUNT_URL", "ZAELAR_LOGOUT_URL"):
+        monkeypatch.delenv(k, raising=False)
+    for k, v in env.items():
+        monkeypatch.setenv(k, v)
+    return json.loads(asyncio.run(config_api.get_config()).body)
+
+
+def test_a_self_hosted_engine_names_no_account_and_no_logout(monkeypatch):
+    cfg = _config(monkeypatch)
+    assert (cfg["cloud_profile"], cfg["account_url"], cfg["logout_url"]) == (False, "", "")
+
+
+def test_the_logout_url_is_the_deployments_and_optional(monkeypatch):
+    """`ZAELAR_LOGOUT_URL` is read as given (trimmed) and has NO default: the engine never names a login of its own.
+    It does not need an account id — a self-hosted engine behind its own login may set it too."""
+    cfg = _config(monkeypatch, ZAELAR_USER_ID="u1", ZAELAR_ACCOUNT_URL="https://acct.example.test/a",
+                  ZAELAR_LOGOUT_URL="  https://acct.example.test/logout  ")
+    assert (cfg["account_url"], cfg["logout_url"]) == ("https://acct.example.test/a", "https://acct.example.test/logout")
+    assert _config(monkeypatch, ZAELAR_USER_ID="u1")["logout_url"] == ""
+    assert _config(monkeypatch, ZAELAR_LOGOUT_URL="https://login.example.test/out")["logout_url"] == \
+        "https://login.example.test/out"
 
 
 # ── the reset cannot reach the installation's configuration ───────────────────────────────────────────────

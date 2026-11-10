@@ -1,5 +1,5 @@
-// TopBar — top-right PROJECT controls, left to right: ◉ status · ◷ debug · 🖥 daemon · 👤 account (cloud) ·
-// 🧠 memory · ☾ theme · 🧭 setup · ⚙ settings · Reset.
+// TopBar — top-right PROJECT controls, left to right: ◉ status · ◷ debug · 🖥 daemon · 🧠 memory · ☾ theme ·
+// 🧭 setup · ⚙ settings · Reset · 👤 profile (only when the deployment names an account page or a log-out page).
 // These are the project's tools; zaelar's OWN things (voice, memory, captions, crons, attention, power, theme)
 // live on the EYE's upper lid over the orb (Orb.js, V2-039 “ojo”). ⏰ cron moved there in V2-014; ☾/☀ theme moved
 // there in V2-039. The voice session is ALWAYS ON (auto-connects, main.js) — the ⏻ icon on the eye is the one
@@ -11,10 +11,10 @@ import * as api from "../services/api.js?v=2";
 import { overallStatus } from "../services/status.js?v=2";
 import { toggleTheme } from "../services/theme.js?v=2";
 import { t } from "../core/i18n.js?v=1";
-import { BUG_ICON, GEAR_ICON, COMPASS_ICON, MOON_ICON, USER_ICON, MEM_ICON, DESKTOP_ICON } from "../lib/icons.js?v=2";
+import { BUG_ICON, GEAR_ICON, COMPASS_ICON, MOON_ICON, MEM_ICON, DESKTOP_ICON } from "../lib/icons.js?v=2";
 import * as daemon from "../services/daemon.js?v=3";
 import { EnergyGauge } from "./EnergyGauge.js?v=3";
-import { accountLink } from "../core/account-link.js?v=1";
+import { ProfileMenu } from "./ProfileMenu.js?v=1";
 
 // Status dot is a plain filled circle (see .statusBtn svg below) — recolors via the SAME --hb-ok/--hb-warn/--hb-risk
 // tokens the rest of the app uses for health state, instead of a one-off emoji/dingbat only this button had.
@@ -55,12 +55,6 @@ export function TopBar() {
       id: "daemonBtn", title: () => t("topbar.daemon.title"),
       onClick: () => { const v = !store.daemonSetupOpen(); store.setDaemonSetupOpen(v); api.uiEvent("topbar:daemon", { state: v ? "open" : "close" }); },
     }, raw(DESKTOP_ICON)),
-    // 👤 Perfil of the CUENTA (SOLO cloud): the hosted account's data (user/energy) — distinto of la
-    // persona of the operador, that vive en the orbe. En self-host NO aparece (instalación puramente local, no hace falta).
-    // Contenido by definir; hoy abre un panel placeholder.
-    () => store.cloudProfile() ? h("button", { class: () => "ic" + (store.accountOpen() ? " on" : ""), id: "acctBtn",
-      title: () => t("topbar.account.title"),
-      onClick: () => { const v = !store.accountOpen(); store.setAccountOpen(v); api.uiEvent("topbar:account", { state: v ? "open" : "close" }); } }, raw(USER_ICON)) : null,
     // 🧠 memory map — MOVED here from the orb's upper lid (V2-623, operator 2026-09-08: «quita el icono de la
     // memoria del orbe. ponlo arriba a la derecha»). Same signal, same viewer; only the button's home changed.
     h("button", { class: () => "ic" + (store.memOpen() ? " on" : ""), id: "memBtn",
@@ -88,9 +82,11 @@ export function TopBar() {
     // Reset = DESTRUCTIVO: for todos the procesos of fondo and limpia the canvas. Pide confirmación primero.
     () => store.cloudProfile() ? null : h("button", { class: "reset", id: "reset", title: () => t("topbar.reset.title"),
       onClick: () => { api.uiEvent("topbar:reset", { state: "prompt" }); store.setResetConfirmOpen(true); } }, () => t("topbar.reset")),
+    // 👤 PROFILE — the LAST control of the row, like the account avatar of every application (operator 2026-11-10).
+    // Its menu (ProfileMenu.js) holds the deployment's account page and its log-out; absent when it names neither.
+    ProfileMenu(),
     ResetConfirm(),
     RestartingOverlay(),
-    AccountPanel(),
     ),
   );
 }
@@ -139,33 +135,6 @@ function ResetConfirm() {
       h("div", { class: "rc-actions" },
         h("button", { class: "rc-btn rc-no", onClick: close }, () => t("reset.confirm.cancel")),
         h("button", { class: "rc-btn rc-yes", onClick: confirm }, () => t("reset.confirm.yes")),
-      ),
-    ),
-  );
-  return ovl;
-}
-
-// ACCOUNT panel (👤 icon, cloud only). Reuses the Reset overlay (`ovl rc-ovl` + `rc-box`) so it adds no CSS. It
-// shows no account detail itself; it is the way out to the page where those live. V2-785: the url is
-// the engine's (`account_url` from /api/config), no longer a literal here — one place knows it.
-function AccountPanel() {
-  const close = () => store.setAccountOpen(false);
-  let ovl;
-  ovl = h("div", {
-    class: () => "ovl rc-ovl" + (store.accountOpen() ? " on" : ""),
-    onClick: (e) => { if (e.target === ovl) close(); },
-  },
-    h("div", { class: "rc-box" },
-      h("h3", { class: "rc-title" }, () => t("account.title")),
-      h("p", { class: "rc-body" }, () => t("account.body")),
-      h("div", { class: "rc-actions" },
-        h("a", {
-          class: "rc-btn rc-yes",
-          href: () => accountLink(store.accountUrl()) || null,
-          target: "_blank",
-          rel: "noopener",
-        }, () => t("account.manage")),
-        h("button", { class: "rc-btn rc-no", onClick: close }, () => t("account.close")),
       ),
     ),
   );

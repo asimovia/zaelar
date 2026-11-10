@@ -659,15 +659,15 @@ export const [wizardOpen, setWizardOpen] = createSignal(false);
 // al arrancar desde /api/config. `null` = not known yet: the header renders NOTHING until the engine says which
 // profile it is, so a cloud page never flashes the local header first. ----
 export const [cloudProfile, setCloudProfile] = createSignal(null);         // cloud account? null = unknown yet
-export const [accountOpen, setAccountOpen]   = createSignal(false);        // account panel (profile icon, cloud only)
+export const [accountOpen, setAccountOpen]   = createSignal(false);        // the 👤 profile menu is open
 
 // ---- ENERGY BALANCE (the top-bar BATTERY, cloud only). `known:false` = we do not know the balance yet, which is
 // NOT the same as zero: the battery renders dimmed, never empty. main.js seeds it from /api/energy and SSE refreshes
 // it (`kind:"energy"`) whenever the agent spends, so it drops LIVE without anyone asking. ----
 export const [energy, setEnergy] = createSignal({ cloud: false, known: false, balance: null, capacity: null });
-// V2-785 — the account page the engine names (`account_url` in /api/config and /api/energy; "" on self-host), and
-// the out-of-energy reason whose notice the person closed (a new exhaustion opens it again).
-export const [accountUrl, setAccountUrl] = createSignal("");
+// V2-785 — the account page the engine names (`account_url` in /api/config and /api/energy; "" on self-host), its
+// log-out page (`logout_url`, "" when unset), and the out-of-energy reason whose notice the person closed.
+export const [accountUrl, setAccountUrl] = createSignal(""), [logoutUrl, setLogoutUrl] = createSignal("");
 export const [energyNoticeClosed, setEnergyNoticeClosed] = createSignal("");
 
 // ---- system status (ⓘ panel: Hermes / voz / LLM / STT / TTS / cluster · credit + health) ----

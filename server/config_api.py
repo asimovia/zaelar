@@ -67,9 +67,11 @@ async def get_config():
         from nucleo.energy import account as cloud_account
         out["cloud_profile"] = cloud_account.is_cloud_account()
         out["account_url"] = cloud_account.account_url()
+        out["logout_url"] = cloud_account.logout_url()
     except Exception:
         out["cloud_profile"] = False
         out["account_url"] = ""
+        out["logout_url"] = ""
     try:
         from config import balances
         out["apis"] = balances.summary_with_workers()

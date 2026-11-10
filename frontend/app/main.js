@@ -103,7 +103,7 @@ try { document.getElementById("preboot")?.remove(); } catch { /* noop */ }
   for (let i = 0; i < 45; i++) {
     try {
       const cfg = await api.getConfig();
-      if (cfg) { store.setCloudProfile(!!cfg.cloud_profile); store.setAccountUrl(cfg.account_url || ""); return; }
+      if (cfg) { store.setCloudProfile(!!cfg.cloud_profile); store.setAccountUrl(cfg.account_url || ""); store.setLogoutUrl(cfg.logout_url || ""); return; }
     }
     catch { /* 503 while the instance starts: retry */ }
     await new Promise((r) => setTimeout(r, 2000));

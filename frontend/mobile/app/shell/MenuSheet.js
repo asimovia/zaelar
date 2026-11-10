@@ -6,6 +6,8 @@
 // WHAT IT HOLDS, and where each row's behaviour actually lives:
 //   · Account     — cloud only (store.cloudProfile): plan, Energy, billing, renewal and sign-out live on the account
 //                   page, so this row is the door to all of it. FIRST, because it is what a phone user comes here for.
+//   · Log out     — only when the deployment names a log-out page (`logout_url`, env ZAELAR_LOGOUT_URL): navigated
+//                   in this tab, it ends the session and lands on that deployment's login. Self-host has none.
 //   · Energy      — the balance, read from store.energy() (the SSE keeps it live); tapping it opens the top-up
 //   · Apps        — the apps launcher (V2-823, operator 2026-10-27: «en el móvil, el lanzador de aplicaciones va
 //                   dentro del menú ☰»): the row turns the sheet into AppsPane — the list, then an app's page with
@@ -93,6 +95,10 @@ export function MenuSheet() {
       //    rather than rendered and dead: a control that does nothing teaches the operator to distrust the others.
       () => store.cloudProfile()
         ? Row(() => t("mobile.account"), () => t("mobile.account_sub"), () => openAccount())
+        : null,
+      () => store.logoutUrl()
+        ? h("div", { class: "zm-logout" }, Row(() => t("topbar.profile.logout"), null,
+            () => { api.uiEvent("mobile:logout", {}); location.assign(store.logoutUrl()); }))
         : null,
 
       // ── ENERGY: the balance shows inline instead of hiding it one tap deep, and the row IS the top-up (the

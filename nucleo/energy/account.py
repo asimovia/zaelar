@@ -30,3 +30,14 @@ def account_url() -> str:
     if not is_cloud_account():
         return ""
     return (os.getenv(_ACCOUNT_URL_ENV) or "").strip() or _DEFAULT_ACCOUNT_URL
+
+
+# Where the holder of an account ends their session. A deployment that puts a login in front of the engine sets
+# `ZAELAR_LOGOUT_URL` to a page the browser NAVIGATES to (GET, same tab) that ends the session and lands on its login;
+# the interface's profile menu offers «Log out» only when it is set. No default: a self-hosted engine has no login.
+_LOGOUT_URL_ENV = "ZAELAR_LOGOUT_URL"
+
+
+def logout_url() -> str:
+    """The deployment's log-out page, or `""` when none is set — the menu then has no «Log out»."""
+    return (os.getenv(_LOGOUT_URL_ENV) or "").strip()

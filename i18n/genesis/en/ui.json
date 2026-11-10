@@ -1,8 +1,4 @@
 {
- "account.body": "Plan, Energy balance, billing and profile settings live on your account page.",
- "account.close": "Close",
- "account.manage": "Manage account & billing →",
- "account.title": "Your account",
  "bench.candidates_evaluated": "Candidates evaluated",
  "bench.close": "close",
  "bench.col_cost": "cost in/out",
@@ -871,6 +867,8 @@
  "topbar.account.title": "Your account",
  "topbar.daemon.title": "Your computer · choose which folders Zaelar may read",
  "topbar.debug.title": "Observability · live event column (transcription, widgets, brain, models)",
+ "topbar.profile.account": "Private area",
+ "topbar.profile.logout": "Log out",
  "topbar.reset": "Reset",
  "topbar.reset.title": "Reset · stops everything and clears (asks for confirmation)",
  "topbar.settings.title": "Settings · which API/model each part uses · voice · balances",
