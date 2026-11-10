@@ -15,6 +15,7 @@
 import * as api from "./api.js?v=2";
 import * as store from "../core/store.js?v=2";
 import { t } from "../core/i18n.js?v=1";
+import { asleep } from "./presence.js?v=1";
 
 const SEV = { ok: 0, off: 0, unknown: 1, warn: 2, error: 3 };   // "off" (voice idle) is NON-alarming
 const LABEL = ["ok", "unknown", "warn", "error"];
@@ -66,5 +67,5 @@ let _iv = null;
 export function startStatusPolling(ms = 15000) {
   refreshStatus();
   if (_iv) clearInterval(_iv);
-  _iv = setInterval(refreshStatus, ms);
+  _iv = setInterval(() => { if (!asleep()) refreshStatus(); }, ms);   // V2-872: a sleeping tab asks nothing
 }

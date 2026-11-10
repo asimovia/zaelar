@@ -13,6 +13,8 @@
 // the DOM. Pure pub/sub over EventSource, matching the app's service style.
 // ============================================================================
 
+import { asleep } from "./presence.js?v=1";
+
 let es = null;
 let buf = [];
 const CAP = 1000;                 // ring buffer: plenty for a live session, bounded so memory can't grow forever
@@ -30,8 +32,8 @@ export function startDebugBus() {
       if (buf.length > CAP) buf.shift();
       for (const fn of subs) { try { fn(d); } catch (_) {} }
     };
-    // EventSource auto-reconnects on drop; nothing to do on error but keep it quiet.
-    es.onerror = () => {};
+    // V2-872: never the browser's auto-reconnect (a request starts a stopped engine); retried only while awake.
+    es.onerror = () => { es.close(); es = null; setTimeout(function retry() { if (asleep()) setTimeout(retry, 5000); else startDebugBus(); }, 3000); };
   } catch (_) { /* no SSE support → panel simply stays empty */ }
 }
 

@@ -87,7 +87,11 @@ async def events(dev: str = ""):
     async def gen():
         _screens.attach(dev)          # inside the generator, so the `finally` that detaches is guaranteed to pair it
         try:
-            yield f"data: {json.dumps({'kind':'session','label':'SSE','voice_dev':_screens.holder()})}\n\n"
+            # V2-872: the hello tells the tab how long it keeps this stream with nobody touching it.
+            from nucleo import idle_stop as _idle
+            hello = {'kind': 'session', 'label': 'SSE', 'voice_dev': _screens.holder(),
+                     'tab_sleep_min': _idle.tab_sleep_min()}
+            yield f"data: {json.dumps(hello)}\n\n"
             try:
                 from nucleo.pulse import notices as _notices   # V2-796: what no channel could take is shown here
                 _notices.drain_to_screen(dev)

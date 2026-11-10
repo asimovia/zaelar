@@ -28,6 +28,7 @@ let _capSeen = false;   // V2-752: the audio-synced caption channel has been hea
 import * as mic from "./mic.js?v=1";
 import { openSSE } from "./sse.js?v=6";
 import { clearDebugBuffer } from "./debugbus.js?v=2";
+import { asleep } from "./presence.js?v=1";   // V2-872: a sleeping tab retries nothing
 import { startVisualizer } from "./visualizer.js?v=2";
 import { SpeakerID } from "../lib/speaker-id.js?v=1";
 import * as wake from "./wakeword.js?v=1";
@@ -170,7 +171,7 @@ function _stopSpeakerShadow() {
 let _hb = null, _blockedRetry = null;
 function _startHeartbeat() {
   if (_hb) return;
-  _hb = setInterval(() => {
+  _hb = setInterval(() => { if (asleep()) return;
     api.sessionHeartbeat(SID, mic.beat()).then((r) => {   // V2-654: the beat re-asserts the mic switch, free
       if (r && r.ok === false && started) _lostVoice("heartbeat");   // another tab is alive → yield, not two mics
     });
@@ -241,7 +242,7 @@ function _armRetry() {
   if (_blockedRetry) clearTimeout(_blockedRetry);
   _blockedRetry = setTimeout(() => {
     _blockedRetry = null;
-    if (document.visibilityState === "hidden" || store.micMuted()) { _armRetry(); return; }
+    if (document.visibilityState === "hidden" || store.micMuted() || asleep()) { _armRetry(); return; }
     start();
   }, 3000);
 }
@@ -772,12 +773,12 @@ function autoReconnect() {
   }
   _recTries++; store.setConnState(t("voice.conn_reconnecting"));
   stop();
-  _recTimer = setTimeout(() => { _recTimer = null; if (started) start(); }, _REC_BACKOFF[i]);
+  _recTimer = setTimeout(() => { _recTimer = null; if (started && !asleep()) start(); }, _REC_BACKOFF[i]);
 }
 // The network is back (wifi/hotspot switch complete) → if we have a session, reconnect NOW without waiting for backoff.
 try {
   window.addEventListener("online", () => {
-    if (!started) return;
+    if (!started || asleep()) return;
     _recTries = 0; if (_recTimer) { clearTimeout(_recTimer); _recTimer = null; }
     store.setConnState(t("voice.conn_reconnecting")); stop(); setTimeout(start, 500);
   });
