@@ -29,11 +29,12 @@ async def close_the_turn(*, motor, send, _acc_ms, _amap_ms, _brief, _busy_at_sta
         music=music_req["v"] is not None, video=("play_video" in _tool_fired),
         images=images_req["v"] is not None,
         confirm=bool(confirm_state.get("opened") or confirm_state.get("handled")))
-    if not spoken_text and not _tool_handled:
+    _held = bool(escalate_req.get("routed") and worker_acted["v"])   # V2-874: held words, his turn reached a worker
+    if _wait_lines.owes_a_line(spoken_text, _tool_handled, _held):
         try:
             from i18n import langs                      # V2-603: the shared decision
             spoken_text = _wait_lines.mute_backstop(brain._window, langs.current_language(), _prev_pending,
-                                              operator_text=_op_text)
+                                              operator_text=_op_text, reached_worker=_held)
         except Exception:
             spoken_text = motor._say().still_on_it if _prev_pending else motor._say().say_again
         send(speech.sanitize(spoken_text, drop_metadata=False))

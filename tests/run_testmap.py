@@ -1369,6 +1369,10 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/voice/unit/test_jev_show_close.py"]},
         {"id": "3.61", "title": "Jev repairs an invented widget action to a declared one (or abstains); canvas verbs keep their boundary, unsure keeps today's escalate",
             "ch": UNIT, "paths": ["tests/voice/unit/test_jev_action.py"]},
+        # V2-874 — disarmed 2026-11-10 (silence at LICENCE / the verdict overruling an inline answer below VETO / a send
+        # held only at VETO / escalate deciding membership / the specific question ignored) → red each.
+        {"id": "3.186", "title": "Who wins the commission (V2-874, shadow): a verdict between LICENCE and VETO never overrules the model — its words stand and its inline answer keeps the turn (rule a), a model that did nothing is licensed into an errand; membership in a live errand belongs to flow_of; errand_target/stop_errand at the licence win over escalate; an act that leaves is still held from LICENCE; the shadow event says would (a), would_b and did, and adds no jev read",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_a_doubtful_verdict_never_silences_the_model.py"]},
         # V2-726 A3 (2026-09-20) — el gate corre DESPUÉS del modelo y casi siempre después de que la voz
         # haya empezado, y un turno que llevaba escalada normalmente RESPONDIÓ prometiendo el encargo. Un
         # `handle_inline` confiado borraba `v` y todos los `more` sin más, o sea producía el fallo más
@@ -3862,6 +3866,15 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_a_canvas_gesture_is_owed_to_the_screen.py"]},
         {"id": "2.1663", "title": "Every CRITICAL event of the vocabulary has a door that emits it (V2-873): a critical errand class read unsure starts the errand only because money and accounts are still asked where they happen — `payment.authorize` at the browser's click gate, `errand.<class>` at the worker door",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/test_every_critical_event_has_an_emitter.py"]},
+        # V2-874 class 7 — disarmed 2026-11-10 (`asked_line` returns "") → red.
+        {"id": "2.1667", "title": "A live errand carries what he ASKED for (V2-874): his commissioning sentence rides on the errand's own line in the running-errands block, bounded (ASKED_MAX, cut on a word and marked), so a reference to results still to come binds although his turn left the dialog window; nothing heard or the title already saying it adds nothing",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_a_live_errand_says_what_he_asked.py"]},
+        # V2-874 class 6 — disarmed 2026-11-10 (the hold applies only to a non-empty piece / a held turn handled by a worker owes no line) → red each.
+        {"id": "2.1668", "title": "The stream's last, EMPTY piece releases nothing a routed or undecided turn holds (V2-874): the Hold keeps the model's words in route_pending through the closing say(take(True)) and release() decides — dropped under a sure escalate, said in order inline; voice and typed share the one pipeline; a held turn that reached a live worker (steer, inject) and launched nothing is never mute — it says it is still on it",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_the_streams_last_empty_piece_releases_nothing.py"]},
+        # V2-874 rule 4 — disarmed 2026-11-10 (every launch labelled an escalation) → red.
+        {"id": "2.1669", "title": "The launch's event says what happened (V2-874): a request flow_of joined to a live errand is labelled as that join (inject, steer, absorb, reopen, join), never «escalada registrada», which stays the label of a NEW errand; the event carries `as`",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_the_launch_says_whether_it_joined_or_escalated.py"]},
         {"id": "2.728", "title": "A turn that acted on a card and also escalated, read inline, launches no worker — on the text channel as on the voice",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_an_inline_act_settles_the_commission_on_both_channels.py"]},
         {"id": "2.729", "title": "An ordered act that leaves, sure at the operator's 70%, runs when the model only drafted it — both channels",

@@ -64,6 +64,7 @@ class Hold:
         # words of that turn are never said (`nucleo/turn/route_by_verdict`). None until known; `route_wait_s` = 0
         # (a caller that hands no wait) decides at once from what is ready.
         self.routed, self.route_pending, self.route_wait_s = None, [], float(route_wait_s or 0.0)
+        self.dropped = ""
         # V2-833 F8 — the second holder: a sentence the brief read as UNREADABLE. Undecided (None) until the first
         # word finds the verdict, or `wait_s` passes — the lead-in filler's own deadline, handed in by the channel
         # (the time the engine already treats as «he is fine without words»); `unread` is what the turn answers with.
@@ -76,8 +77,9 @@ class Hold:
         if piece and self.routed is None:
             from nucleo.turn import route_by_verdict as _route
             self.routed = _route.decided(self.brief, self.t0, self.route_wait_s)
-        if piece and (self.routed is None or self.routed):
-            self.route_pending.append(piece)          # in flight: wait for the verdict · routed: never said
+        if self.routed is None or self.routed:        # V2-874: the stream's last, EMPTY piece released them all
+            if piece:
+                self.route_pending.append(piece)      # in flight: wait for the verdict · routed: never said
             return
         if self.route_pending:
             pend, self.route_pending = self.route_pending, []
@@ -176,6 +178,7 @@ class Hold:
             self.routed = False          # a player took the turn after its first word: its words are said (V2-860 F3)
         if self.routed:
             words, self.route_pending = "".join(self.route_pending), []
+            self.dropped = words              # V2-874: what the model wrote, for the commission's shadow
             if words.strip():
                 emit("brain", "🤐 routed to its task — the inline words are not said", role="system", text=words[:160],
                      extra={"cat": "flash", "routed": True})
