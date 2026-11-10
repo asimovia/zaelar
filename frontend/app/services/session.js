@@ -193,7 +193,15 @@ export async function start() {
              :                     { echoCancellation: true, noiseSuppression: true, autoGainControl: true, advanced: [{ voiceIsolation: true }] };
     const ad = { ...ap, channelCount: 1 };
     if (micDeviceId) ad.deviceId = { ideal: micDeviceId };   // ideal, NOT exact → a silent/missing pinned device falls back
-    stream = await navigator.mediaDevices.getUserMedia({ audio: ad });   // audio-only → system-default mic
+    try { stream = await navigator.mediaDevices.getUserMedia({ audio: ad }); }   // audio-only → system-default mic
+    catch (err) {
+      // As in session-lk.js: a refused mic brings the session up CHAT-ONLY on a silent stream, so typed lines still
+      // reach the engine; with no audio context the refusal stands and the catch below gates it.
+      if (!micDenial.isRefusal(err)) throw err;
+      try { stream = micDenial.silentStream(); } catch (_) { throw err; }
+      store.setMicBlocked({ show: true, msg: err.name === "NotAllowedError" ? t("voice.mic_denied") : t("voice.mic_in_use_superwhisper") });
+      try { api.clientLog("🎙️ chat-only session", { text: `mic refused (${err.name}): session without a mic`, state: "chat_only" }); } catch (_) {}
+    }
     diagMic("after getUserMedia(audio)");
     await populateMicPicker();
     // video is best-effort and MUST NOT block/break audio. Skip it if the camera is toggled OFF.
@@ -231,7 +239,7 @@ export async function start() {
     // Speaker-gate is OFF by default: only create it when opted-in via window.zaelar.gate(true) then reconnect.
     if (store.gateOn()) { gate = new SpeakerGate(audio.micAnalyser(), audio.context().sampleRate, { enabled: true, onState: spkState }); gate.reset(); spkState({ enrolled: false, enrollCount: 0, need: 5 }); }
     else { gate = null; store.setSpk({ show: false, other: false, html: "" }); }
-    startMicVAD({ getStream, getDc, getGate, onOwner: spkOwner }); openSSE(window.__zaelarDesktop); auditMicCapture();
+    startMicVAD({ getStream, getDc, getGate, onOwner: spkOwner }); openSSE(window.__zaelarDesktop); if (!stream.__silent) auditMicCapture();
     // free browser STT if the server is configured for it (STT_PROVIDER=browser)
     api.sttMode().then(m => { if (m && m.mode === "browser") startBrowserSTT(m.lang, { getDc, isActive }); }).catch(() => {});
     const offer = await pc.createOffer({ offerToReceiveAudio: true }); await pc.setLocalDescription(offer);
