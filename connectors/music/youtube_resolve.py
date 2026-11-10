@@ -21,7 +21,7 @@ def _lang() -> str:
 # ── query resolution -> (videoId, title) ─────────────────────────────────────────────────────────────────
 
 
-def _resolve_api(query: str) -> tuple:
+def _resolve_api(query: str, skip: frozenset = frozenset()) -> tuple:
     key = (os.getenv("YOUTUBE_API_KEY") or "").strip()
     if not key:
         return "", ""
@@ -29,12 +29,12 @@ def _resolve_api(query: str) -> tuple:
         import httpx
         r = _outcome.call("youtube.api", "search", lambda: httpx.get("https://www.googleapis.com/youtube/v3/search", params={
             "part": "snippet", "type": "video", "videoCategoryId": "10",  # 10 = Music
-            "q": query, "maxResults": 1, "key": key}, timeout=8), measure=lambda r: {"status": r.status_code},
+            "q": query, "maxResults": 1 + len(skip), "key": key}, timeout=8), measure=lambda r: {"status": r.status_code},
             refused=lambda r: r.status_code >= 400, empty=lambda r: not (r.json() or {}).get("items"))
         if r.status_code >= 400:
             logger.warning(f"YouTube Data API {r.status_code}: {r.text[:100]}")
             return "", ""
-        items = (r.json() or {}).get("items") or []
+        items = [it for it in (r.json() or {}).get("items") or [] if (it.get("id") or {}).get("videoId") not in skip]
         if not items:
             return "", ""
         sn = items[0].get("snippet") or {}
@@ -70,16 +70,18 @@ def is_a_count_not_a_name(title: str) -> bool:
     return bool(_BARE_COUNT_RE.match(title or ""))
 
 
-def _resolve(query: str) -> tuple:
+def _resolve(query: str, skip=()) -> tuple:
     """(videoId, title, why) — `why` is the lookup's outcome: found · empty · unreachable (V2-833 F3: «I could not
-    ask» is never told as «there is no such song»)."""
-    vid, title = _resolve_api(query)
+    ask» is never told as «there is no such song»). `skip`: videos the page player already REFUSED (V2-873)."""
+    skip = frozenset(skip or ())
+    vid, title = _resolve_api(query, skip)
     why = "found" if vid else "empty"
     if not vid:
         # V2-833 F1 — the search service's one video door (page, then the warm Chromium), never a private scrape
         from search import video as _video
         seen: dict = {}
-        hits = _video.find_videos(f"{query} audio", 1, accept_language=_accept_language(), outcome=seen)
+        hits = [h for h in _video.find_videos(f"{query} audio", 1 + len(skip), accept_language=_accept_language(),
+                                              outcome=seen) if h.get("videoId") not in skip]
         vid, title = (hits[0]["videoId"], hits[0]["title"]) if hits else ("", "")
         why = seen.get("reason") or why
     # The QUERY is what he actually said; a bare count is what the provider happened to label the list.

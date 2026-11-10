@@ -5476,6 +5476,10 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/browser/unit/navegador/test_a_navigation_is_met_only_when_the_page_arrived.py"]},
         {"id": "4.411", "title": "(apps principles, operator 2026-11-08) A video play is done only when our player plays it (videoId changed, no player error, not paused)",
             "ch": UNIT, "paths": ["tests/browser/unit/youtube/test_a_play_is_done_only_when_the_player_plays.py"]},
+        {"id": "4.439", "title": "A browser notice is not a JS error (V2-873): an `error` event with no Error object (a ResizeObserver loop notice, an opaque cross-origin «Script error.») is reported under its own label (`api.errorLabel`); an exception a script threw stays «⚠️ JS error»",
+            "ch": UNIT, "paths": ["tests/browser/unit/arranque/test_a_browser_notice_is_not_a_js_error.py"]},
+        {"id": "4.440", "title": "A song the page player REFUSES is never said to play (V2-873, U1 «Rosalía»): the music card reports the IFrame API's `onError` once per song (`player_error`), the song joins `yt.refused` and no lookup offers it again, our own pick is replaced by the next one his words find, and with no other `player_error` stays — «what sounds here» is empty and the digest says it",
+            "ch": UNIT, "paths": ["tests/browser/unit/musica/test_a_song_the_player_refuses_is_never_said_to_play.py"]},
         # V2-862 — disarmed 2026-11-08 (upsert that appends: 1 red · reopen without the kept copy: 1 red · keep without the file: 1 red).
         {"id": "4.412", "title": "An errand's chat reference is ONE box that updates in place (V2-862): opened/retitled/closed/relay upsert by the task row, never doubling nor moving down the thread, `skipped` draws nothing; the desktop wall and the phone draw the same view and it reopens through the existing door (ES/EN)",
             "ch": UNIT, "paths": ["tests/browser/unit/chat/test_an_errand_reference_is_one_box_that_updates.py"]},
