@@ -65,8 +65,10 @@ def wake_grace_min() -> float:
 
 
 def tab_sleep_min() -> float:
-    """How long a visible tab with no input keeps its stream (the client reads it from the stream's hello)."""
-    return _policy_min("tab_sleep_min")
+    """How long a visible tab with no input keeps its stream (the client reads it from the stream's hello). An engine
+    that never stops (no idle stop: a self-hosted laptop) never puts a tab to sleep — an open stream costs it nothing,
+    and a wall display is read without being touched — so it tells the tab 0."""
+    return _policy_min("tab_sleep_min") if window_min() > 0 else 0.0
 
 
 def request_exit(fn) -> None:
