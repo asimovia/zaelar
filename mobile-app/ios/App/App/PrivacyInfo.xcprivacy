@@ -1,15 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
-  The app's privacy manifest (App Review requires one). It describes what the app sends to the engine it opens —
-  the WebView shows the engine's own shell, so this follows what that shell sends, all of it to make the app work:
-    · email address — signing in to the engine;
-    · audio — the voice session (microphone, while the person talks to the agent);
-    · other user content — what is typed or shared in the conversation;
-    · coarse location — only when an app on screen asks for it (services/device.js);
-    · other diagnostic data — the shell's error reports to its engine.
-  No tracking, no tracking domains. No required-reason API is used by the app's own code or its plugins (App,
-  Geolocation, Haptics, Keyboard); Capacitor's frameworks ship their own manifests, which declare none either.
+  The app's privacy manifest (App Review requires one): the data types the app's store labels declare, every one
+  linked to the person and collected for the app's functionality (product interaction also for analytics). No
+  tracking, no tracking domains. Required-reason API: UserDefaults (CA92.1, the app's own preferences).
 -->
 <plist version="1.0">
 <dict>
@@ -18,12 +12,49 @@
 	<key>NSPrivacyTrackingDomains</key>
 	<array/>
 	<key>NSPrivacyAccessedAPITypes</key>
-	<array/>
+	<array>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array><string>CA92.1</string></array>
+		</dict>
+	</array>
 	<key>NSPrivacyCollectedDataTypes</key>
 	<array>
 		<dict>
 			<key>NSPrivacyCollectedDataType</key>
 			<string>NSPrivacyCollectedDataTypeEmailAddress</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array><string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string></array>
+		</dict>
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeName</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array><string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string></array>
+		</dict>
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypePreciseLocation</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array><string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string></array>
+		</dict>
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeContacts</string>
 			<key>NSPrivacyCollectedDataTypeLinked</key>
 			<true/>
 			<key>NSPrivacyCollectedDataTypeTracking</key>
@@ -53,7 +84,7 @@
 		</dict>
 		<dict>
 			<key>NSPrivacyCollectedDataType</key>
-			<string>NSPrivacyCollectedDataTypeCoarseLocation</string>
+			<string>NSPrivacyCollectedDataTypeCustomerSupport</string>
 			<key>NSPrivacyCollectedDataTypeLinked</key>
 			<true/>
 			<key>NSPrivacyCollectedDataTypeTracking</key>
@@ -63,9 +94,39 @@
 		</dict>
 		<dict>
 			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeSearchHistory</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array><string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string></array>
+		</dict>
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeUserID</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array><string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string></array>
+		</dict>
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeProductInteraction</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array><string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string><string>NSPrivacyCollectedDataTypePurposeAnalytics</string></array>
+		</dict>
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
 			<string>NSPrivacyCollectedDataTypeOtherDiagnosticData</string>
 			<key>NSPrivacyCollectedDataTypeLinked</key>
-			<false/>
+			<true/>
 			<key>NSPrivacyCollectedDataTypeTracking</key>
 			<false/>
 			<key>NSPrivacyCollectedDataTypePurposes</key>

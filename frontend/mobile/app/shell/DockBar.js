@@ -57,6 +57,7 @@ import { t } from "../../../app/core/i18n.js?v=1";
 import { OrbMini } from "./OrbMini.js?v=3";
 import * as power from "../../../app/services/power.js?v=1";
 import { ProcessCount } from "../../../app/components/ProcessCount.js?v=1";
+import * as consent from "./ai-consent.js?v=1";   // V2-870: in the app the voice asks first
 
 const SW = `viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"`;
 const MIC_ON  = `<svg ${SW}><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>`;
@@ -145,7 +146,7 @@ export function DockBar() {
       h("button", {
         class: () => "zm-ic zm-pwr pwr-off off" + (store.screenState() === "off" ? "" : " zm-hide"),
         "aria-label": () => t("orb.power_off"),
-        onClick: () => power.centreTap("dock"),
+        onClick: () => consent.gate(() => power.centreTap("dock")),
       }, raw(PWR)),
       h("button", {
         // The orb itself. `aria-label` says what a tap DOES, not what the orb is — the state is already
@@ -158,7 +159,7 @@ export function DockBar() {
           + (store.audioBlocked() ? " zm-blocked" : ""),
         // What a tap DOES on this screen: bring the voice here, or stop the agent (V2-792 §9).
         "aria-label": () => (store.screenState() === "secondary" ? t("orb.centre_secondary") : t("mobile.orb_stop")),
-        onClick: () => power.centreTap("dock"),
+        onClick: () => consent.gate(() => power.centreTap("dock")),
       }, ORB),
     ),
 
@@ -177,7 +178,7 @@ export function DockBar() {
         "aria-label": () => (store.micMuted() ? t("camera.mic_unmute") : t("camera.mic_mute")),
         // Opening the mic by hand brings the voice to this surface (session.openMicHere); closing it is local.
         onClick: () => {
-          if (store.micMuted() && session.openMicHere) session.openMicHere("dock");
+          if (store.micMuted() && session.openMicHere) consent.gate(() => session.openMicHere("dock"));
           else mic.toggle("dock");
           api.uiEvent("mobile:mic", { state: store.micMuted() ? "muted" : "unmuted" });
         },
@@ -190,7 +191,7 @@ export function DockBar() {
         class: () => cls(store.agentLive() && !store.botMuted()),
         "aria-label": () => (store.botMuted() ? t("orb.speaker_muted") : t("orb.speaker_unmuted")),
         onClick: () => {
-          if (store.botMuted() && session.openSpeakerHere) session.openSpeakerHere("dock");
+          if (store.botMuted() && session.openSpeakerHere) consent.gate(() => session.openSpeakerHere("dock"));
           else session.toggleBotMute();
           api.uiEvent("mobile:speaker", { state: store.botMuted() ? "muted" : "unmuted" });
         },

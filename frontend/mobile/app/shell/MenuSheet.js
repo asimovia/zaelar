@@ -26,6 +26,7 @@ import * as session from "../../../app/services/session.js?v=3";
 import * as api from "../../../app/services/api.js?v=2";
 import { t } from "../../../app/core/i18n.js?v=1";
 import { accountLink } from "../../../app/core/account-link.js?v=1";
+import { inNativeApp } from "../../../app/core/native.js?v=1";
 import * as daemon from "../../../app/services/daemon.js?v=3";
 import { ProcessEntry } from "../../../app/components/ProcessEntry.js?v=1";
 import { createSignal, createEffect } from "../../../app/core/reactive.js?v=2";
@@ -94,11 +95,16 @@ export function MenuSheet() {
       () => store.cloudProfile()
         ? Row(() => t("mobile.account"), () => t("mobile.account_sub"), () => openAccount())
         : null,
+      // V2-870 — inside the native app the account can be deleted from here (App Review 5.1.1(v)): the account page
+      // at its #delete section, in the system browser (`openAccount` opens a new window, which leaves the app).
+      () => store.cloudProfile() && inNativeApp()
+        ? Row(() => t("mobile.delete_account"), () => t("mobile.delete_account_sub"), () => openAccount("delete"))
+        : null,
 
       // ── ENERGY: the balance shows inline instead of hiding it one tap deep, and the row IS the top-up (the
       //    account page's #buy, like the desktop battery). `known:false` (the machine still booting) renders "—",
       //    never a fabricated 0 — a wrong balance is worse than no balance.
-      h("button", { class: () => "zm-energy" + (store.energy().cloud ? "" : " hide"), onClick: () => openAccount("buy") },
+      h("button", { class: () => "zm-energy" + (store.energy().cloud ? "" : " hide"), onClick: () => openAccount(inNativeApp() ? "" : "buy") },   // V2-870: no #buy in the app
         h("span", null, () => t("energy.label")),
         h("b", null, () => {
           const e = store.energy();

@@ -24,7 +24,7 @@ target (device family `1,2`), with the shell it gets (`/m` or the desktop `/`) s
 |---|---|
 | `AVAudioSession` `playAndRecord` + `voiceChat`, speaker by default, Bluetooth allowed; set at launch and on every foreground (`AppDelegate.swift`) | Everything you see and touch: dock, orb, deck, sheets, chat |
 | Plugins: Keyboard (`resize: native`, dark keys, no form accessory bar), Haptics, App, Geolocation | Voice v1: the LiveKit WebRTC client inside the WebView, foreground only |
-| Permission sentences (EN + ES `InfoPlist.strings`) for microphone, camera and location; iOS asks on first use, never at launch | Safe-area layout (`viewport-fit=cover` + `env(safe-area-inset-*)`) |
+| Permission sentences (EN + ES `InfoPlist.strings`) for microphone and location; iOS asks on first use, never at launch (no camera: nothing uses it) | Safe-area layout (`viewport-fit=cover` + `env(safe-area-inset-*)`) |
 | `www/in-app.js`, the app's glue (below); light status bar; portrait on iPhone | Sign-in, session, i18n strings — all served by the engine |
 | `www/index.html`, shown only when the origin cannot be loaded, with a retry button | |
 
@@ -133,14 +133,32 @@ Xcode 26.6, iPhone 17 Pro simulator (iOS 26.5):
 
 Not verifiable in the simulator: the microphone, the audio route and haptics — real-device steps.
 
+## What App Review checks inside the app
+
+The shell behaves differently only where `inNativeApp()` (`frontend/app/core/native.js`) is true:
+
+- **No purchase path** (3.1.3(f)): the out-of-Energy notice and the menu's Energy row open the account page without
+  `#buy`, in the system browser (a new window leaves the app), and say «your account», never «top up».
+- **A yes before the AI services** (5.1.2(i)): `mobile/app/shell/ai-consent.js` + `AiConsentSheet.js` ask before the
+  first turn; until the yes the always-on voice does not start and the orb, the mic/speaker hand-off and the chat send
+  open the question instead. The answer is the engine's (`config/v2` section `consent`, written through
+  `POST /api/config/v2`), so it survives reloads and reinstalls; Settings can withdraw it (which ends the voice here).
+- **Account deletion reachable** (5.1.1(v)): the menu's «Delete account» row opens the account page at `#delete` in
+  the system browser. The deletion itself is the account service's, not the engine's.
+- **What leaves the phone**: a location fix from `ctx.device()` goes only to the app on screen that asked — no widget
+  uses it yet and the engine has no route that receives one, so nothing is posted or stored. The engine writes no
+  audio: the only recorder is a debugging tap (`mic_raw.wav`) that runs only with `ZAELAR_RECORD_MIC` set; the STT
+  config (`ZAELAR_STT`, `ZAELAR_STT_MODEL*`, `ZAELAR_STT_EOT_*`) has no retention or opt-out key, so each STT
+  provider's own default retention applies. Transcripts are text and are kept like any conversation.
+
 ## Store readiness
 
 | File | What it carries |
 |---|---|
-| `ios/App/App/Info.plist` | display name, `ITSAppUsesNonExemptEncryption = false` (HTTPS only), `LSApplicationCategoryType` productivity, `UIRequiresFullScreen`, portrait, the microphone/camera/location sentences; versions read from build settings. No `UIBackgroundModes` until background voice. |
+| `ios/App/App/Info.plist` | display name, `ITSAppUsesNonExemptEncryption = false` (HTTPS only), `LSApplicationCategoryType` productivity, `UIRequiresFullScreen`, portrait, the microphone and location sentences (no camera: nothing uses it); versions read from build settings. No `UIBackgroundModes` until background voice. |
 | `ios/App/App.xcodeproj` | iPhone only for 1.0 (`TARGETED_DEVICE_FAMILY = 1`; iPad later, same target), iOS 16+, `MARKETING_VERSION`/`CURRENT_PROJECT_VERSION` stamped by `scripts/version.sh` |
 | `scripts/version.sh` (run by `npm run sync`) | version = `package.json` `version`; build = the engine's `update/BUILD` (`IOS_BUILD=127.1` for a second upload on the same engine build) |
-| `ios/App/App/PrivacyInfo.xcprivacy` | no tracking; collected for app functionality: email (sign-in), audio (voice session), user content, coarse location (only when an app asks), diagnostics; no required-reason API (Capacitor's frameworks ship their own manifests) |
+| `ios/App/App/PrivacyInfo.xcprivacy` | no tracking; the store labels' data types (email, name, precise location, contacts, audio, user content, customer support, search history, user id, product interaction, diagnostics), all linked, for app functionality; required-reason API: UserDefaults (CA92.1) (Capacitor's frameworks ship their own manifests) |
 | `ios/App/App/App.entitlements.template` | Associated Domains (`applinks:` + `webcredentials:`) for `ZAELAR_APP_LINKS_HOST`, rendered only for a store build; the host must serve `/.well-known/apple-app-site-association` (not built yet). No push entitlement yet. |
 | `scripts/icons.py` (`npm run icons`) | `AppIcon.appiconset` (1024 opaque + iOS 18 dark/tinted) and the launch mark, drawn from `frontend/mobile/icons/generate.py`'s geometry; `--source brand.png` swaps in a designed icon |
 | `Base.lproj/LaunchScreen.storyboard` | the dark background with the mark centred, no text |

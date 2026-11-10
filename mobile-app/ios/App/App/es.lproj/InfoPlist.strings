@@ -1,4 +1,3 @@
 /* Permission sentences (Spanish). */
-"NSMicrophoneUsageDescription" = "Zaelar te escucha cuando le hablas. No se graba nada sin ti.";
-"NSCameraUsageDescription" = "Zaelar usa la cámara solo cuando le enseñas algo.";
+"NSMicrophoneUsageDescription" = "Zaelar solo escucha mientras la voz está encendida, cuando le hablas.";
 "NSLocationWhenInUseUsageDescription" = "Zaelar usa tu ubicación solo cuando una app o algo que le pides lo necesita.";

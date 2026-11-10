@@ -14,6 +14,7 @@ import * as store from "../core/store.js?v=2";
 import { t } from "../core/i18n.js?v=1";
 import * as api from "../services/api.js?v=2";
 import { accountLink, noticeReason, noticeKind } from "../core/account-link.js?v=2";
+import { inNativeApp } from "../core/native.js?v=1";   // V2-870: no purchase path inside the app
 
 // TWO notices, chosen by WHAT HAPPENED (V2-801): "out" — the account has no Energy (the engine was told so) — with
 // the Top up link; "paused" — the agent stopped without knowing the account's state (its lease could not be
@@ -30,16 +31,16 @@ export function EnergyNotice() {
     h("div", { class: "en-box", role: "alertdialog", "aria-live": "assertive", "aria-labelledby": "en-title" },
       h("div", { class: "en-mark", "aria-hidden": "true" }, "⚡"),
       h("h3", { class: "en-title", id: "en-title" }, () => t(`energy.${kind()}.title`)),
-      h("p", { class: "en-body" }, () => t(`energy.${kind()}.body`)),
+      h("p", { class: "en-body" }, () => t(`energy.${kind()}.body` + (inNativeApp() && kind() === "out" ? "_app" : ""))),
       h("div", { class: "en-actions" },
         h("a", {
           class: "en-btn primary",
-          href: () => accountLink(store.accountUrl(), "buy") || null,
+          href: () => accountLink(store.accountUrl(), inNativeApp() ? "" : "buy") || null,   // in the app: the account page, no #buy
           hidden: () => kind() !== "out",
           target: "_blank",
           rel: "noopener",
           onClick: () => api.uiEvent("energy:top_up", { reason: reason() }),
-        }, () => t("energy.out.top_up")),
+        }, () => t(inNativeApp() ? "energy.out.account" : "energy.out.top_up")),
         h("button", { class: "en-btn", onClick: close }, () => t("energy.out.close")),
       ),
     ),

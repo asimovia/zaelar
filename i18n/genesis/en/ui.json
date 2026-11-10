@@ -2539,5 +2539,16 @@
  "errand.sign_in.window": "Sign in in the window I just opened and I'll carry on by myself.",
  "errand.sign_in.no_window": "I need you to sign in, and I can't open a window for you from here. I'll wait and carry on once you do.",
  "errand.sign_in.phone": "From your phone I can't open a sign-in window: open your agent on a computer and I'll carry on from there.",
- "errand.sign_in.done": "I've signed in{site} — carry on where you stopped."
+ "errand.sign_in.done": "I've signed in{site} — carry on where you stopped.",
+ "consent.title": "Before you start",
+ "consent.body": "To answer you, Zaelar sends what you say and type — your voice, your messages and the context needed to reply — to the AI services that power this agent: speech recognition, language models and voice synthesis.",
+ "consent.what": "They use it only to produce the answer. Nothing is sent until you accept.",
+ "consent.withdraw_note": "You can withdraw this at any time in Settings.",
+ "consent.accept": "Accept",
+ "consent.later": "Not now",
+ "consent.settings_label": "Share my conversation with the AI services",
+ "mobile.delete_account": "Delete account",
+ "mobile.delete_account_sub": "Opens your account page in the browser",
+ "energy.out.account": "Open your account",
+ "energy.out.body_app": "Your agent has stopped because your account has no Energy left."
 }
