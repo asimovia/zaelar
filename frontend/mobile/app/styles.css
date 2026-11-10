@@ -610,3 +610,6 @@ html.zm-kbd[data-kbd="sheet"] .zm-sheet.open { top: var(--zm-vvt, 0px); bottom: 
 .zm-consent-a { display: flex; flex-direction: column; gap: 8px; padding: 6px 16px 16px; }
 .zm-consent-a button { height: 48px; border-radius: 14px; font: 600 16px/1 var(--sans); }
 html.zm-consent-pending .zm-orb-btn, html.zm-consent-pending .zm-pwr, html.zm-consent-pending .zm-send { opacity: .45; }
+
+/* V2-875 — the Permissions heading inside the Settings sheet, aligned with its rows. */
+.zm-settings .zm-procs-t { padding: 16px 16px 6px; }
