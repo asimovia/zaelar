@@ -1,0 +1,3 @@
+/* Permission sentences. iOS shows them the first time the shell asks for the microphone or camera, never at launch. */
+"NSMicrophoneUsageDescription" = "Zaelar listens when you talk to it. Nothing is recorded without you.";
+"NSCameraUsageDescription" = "Zaelar uses the camera only when you show it something.";

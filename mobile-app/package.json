@@ -1,0 +1,19 @@
+{
+  "name": "zaelar-mobile-app",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Native companion: the engine's /m shell in a Capacitor WebView (V2-870).",
+  "scripts": {
+    "sync": "cap sync ios",
+    "ios:open": "cap open ios",
+    "ios:run": "cap run ios"
+  },
+  "dependencies": {
+    "@capacitor/core": "7.6.10",
+    "@capacitor/ios": "7.6.10"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "7.6.10",
+    "typescript": "5.9.3"
+  }
+}
