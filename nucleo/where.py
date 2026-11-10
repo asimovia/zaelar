@@ -24,15 +24,19 @@ import urllib.request
 
 from loguru import logger
 
+from connectors import outcome as _outcome
+
 FRESH_S = 6 * 3600                 # a fix older than this says nothing about where he is now
 _UA = "zaelar-personal-agent/1.0 (+https://zaelar.com)"
 _cache: dict[tuple, dict] = {}
 
 
 def _get(url: str, timeout: float = 5.0) -> dict | list | None:
+    """GET a JSON answer through the one door that reports every outside call (`connectors/outcome.py`)."""
+    host = urllib.parse.urlsplit(url).hostname or "geo"
     req = urllib.request.Request(url, headers={"User-Agent": _UA, "Accept": "application/json"})
-    with urllib.request.urlopen(req, timeout=timeout) as r:   # noqa: S310 — fixed https hosts above
-        return json.loads(r.read().decode("utf-8"))
+    raw = _outcome.call(f"where:{host}", "reverse", lambda: urllib.request.urlopen(req, timeout=timeout).read())  # noqa: S310
+    return json.loads(raw.decode("utf-8"))
 
 
 def reverse(lat: float, lon: float, lang: str = "") -> dict:
@@ -88,8 +92,8 @@ def report(lat, lon, accuracy=None, dev: str = "") -> dict:
     try:
         from observability import pii
         pii.note_place(geo.get("place"), geo.get("region"))
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as e:  # noqa: BLE001 — the state is written; only the tagger misses this place
+        logger.debug(f"where: place not handed to the tagger ({e!r})")
     return {"ok": True, "here": here}
 
 
