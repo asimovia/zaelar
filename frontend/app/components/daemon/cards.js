@@ -1,10 +1,10 @@
-// The STATUS, BROWSER and TUNNEL cards of the daemon's settings screen (V2-575).
+// The STATUS, BROWSER and TUNNEL tabs of the daemon's settings screen (V2-575, V2-869).
 //
 // Each card reads `GET /api/daemon/status` through `services/daemon.js` and has an UNKNOWN face for every field it
 // reads: an older daemon, an engine without the relay, or a status that has not arrived yet must draw "not known"
 // — never throw, and never a confident wrong answer such as "no browser" when the daemon simply did not say.
 import { h } from "../../core/dom.js?v=2";
-import { createEffect, createSignal } from "../../core/reactive.js?v=2";
+import { createEffect, createMemo, createSignal } from "../../core/reactive.js?v=2";
 import * as daemon from "../../services/daemon.js?v=3";
 import { t } from "../../core/i18n.js?v=1";
 
@@ -19,16 +19,19 @@ function row(labelKey, value, cls) {
     h("span", { class: "dsx-v" }, value));
 }
 
-// ── 1 · STATUS: is it installed, running, which version, and who it is linked to ──────────────────────────────
-export function StatusCard() {
+// ── 1 · STATUS: what it is, then installed · running · version · linked to ──────────────────────────────────────
+// A computer that is not linked (cloud, unpaired; or local, not answering) gets ONE line and the way forward instead
+// of "not known" four times. `go(tab)` opens a tab.
+export function StatusCard(go) {
   const st = () => daemon.status() || {};
-  return h("section", { class: "dsx-card dsx-status", "data-card": "status" },
-    h("p", { class: "dsx-lead" }, () => t("daemon.status.what")),
-    // From a cloud engine "installed" and "running" are about the CONTAINER, which has no daemon: what is known
-    // there is the relay, so those two rows read from it instead of saying "no" about a computer it cannot see.
+  const unlinked = createMemo(() => { const s = daemon.status(); const r = daemon.relay();
+    return !!s && (s.state === "remote" ? !(r && r.paired) : !s.reachable); });
+  const live = createMemo(() => daemon.relayConnected() || (!daemon.isRemote() && daemon.isConnected()));
+  // From a cloud engine "installed" and "running" are about the CONTAINER, which has no daemon: what is known
+  // there is the relay, so those rows read from it instead of saying "no" about a computer it cannot see.
+  const rows = h("div", { class: "dsx-rows" },
     row("daemon.status.installed", () => {
       const s = st(); const r = daemon.relay();
-      // Paired proves it is installed; unpaired proves nothing about his computer, so it stays "not known".
       return s.state === "remote" ? tri(r && r.paired ? true : undefined) : tri(s.installed);
     }, "dsx-installed"),
     row("daemon.status.running", () => {
@@ -39,11 +42,16 @@ export function StatusCard() {
       const s = st(); const r = daemon.relay();
       return (s.state === "remote" ? (r && r.version) : s.version) || t("daemon.status.unknown");
     }, "dsx-version"),
-    row("daemon.status.link", () => say(daemon.linkLine()), "dsx-link-state"),
-    () => st().outdated
-      ? h("p", { class: "dsx-warn" }, () => t("daemon.ok.outdated"), " ",
-          h("span", { class: "dsx-mono" }, () => `${st().version} → ${st().expected_version}`))
-      : null,
+    row("daemon.status.link", () => say(daemon.linkLine()), "dsx-link-state"));
+  const away = h("div", { class: "dsx-away" },
+    h("p", { class: "dsx-note dsx-unlinked" }, () => t(daemon.isRemote() ? "daemon.status.unlinked" : "daemon.local.lead")),
+    h("div", { class: "dsx-dl-row" },
+      h("button", { class: "dsx-primary dsx-go-install", onClick: () => go("install") }, () => t("daemon.status.go_install")),
+      () => daemon.isRemote() && daemon.relay()
+        ? h("button", { class: "dsx-dl-btn dsx-go-link", onClick: () => go("link") }, () => t("daemon.status.go_link")) : null));
+  return h("section", { class: "dsx-card dsx-status", "data-card": "status" },
+    h("p", { class: "dsx-lead" }, () => live() ? h("span", { class: "dsx-dot" }) : null, () => t("daemon.status.what")),
+    () => unlinked() ? away : rows,
   );
 }
 
@@ -73,7 +81,6 @@ export function BrowserCard() {
   // than omitted (the window exists) or live (a button that does nothing is worse than a disabled one).
   const windowTip = () => t("daemon.browser.window_tip");
   return h("section", { class: "dsx-card dsx-browser", "data-card": "browser" },
-    h("h3", { class: "dsx-h3" }, () => t("daemon.browser.title")),
     h("p", { class: () => "dsx-browser-state" + (daemon.browser() ? "" : " dsx-unknown") }, () => say(daemon.browserLine())),
     progress,
     onlyChrome,
@@ -124,7 +131,6 @@ export function TunnelCard() {
     try { await daemon.setEgress(true); } finally { setTunnelBusy(false); setTunnelAsking(false); }
   };
   return h("section", { class: "dsx-card dsx-tunnel", "data-card": "tunnel" },
-    h("h3", { class: "dsx-h3" }, () => t("daemon.tunnel.title")),
     h("p", { class: "dsx-note dsx-consent" }, () => t("daemon.tunnel.consent")),
     h("label", { class: () => "dsx-toggle" + (live() ? "" : " is-disabled") },
       h("input", { type: "checkbox", class: "dsx-switch", role: "switch", disabled: () => !live(),
