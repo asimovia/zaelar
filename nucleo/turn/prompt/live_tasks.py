@@ -30,6 +30,25 @@ def _short_note(note: str, limit: int = 110) -> str:
     return (head[:cut] if cut > limit // 2 else head).rstrip(" ,;:.") + "…"
 
 
+#: V2-874 — the most his commissioning sentence takes on a live errand's line (≈ 40 tokens; cut on a word, marked).
+ASKED_MAX = 140
+
+
+def asked_line(t: dict) -> str:
+    """What he ASKED for, on the errand's own line: his commissioning sentence (`SessionRecord.heard`), bounded.
+
+    Measured (demo S3, 2026-11-10): the line carried only the errand's title as the worker wrote it, cut at 60
+    («Buscar monitores de 27 pulgadas con resolución 4K (UHD) con »), and the turn that commissioned it had left the
+    dialog window — «abre el que sea mejor oferta» found nothing to refer to («No sé a qué me remites»). The errand is
+    in the prompt every turn; what he asked for travels with it, whatever the window holds. "" when nothing was heard
+    or the title already says it."""
+    heard = " ".join(str(t.get("heard") or "").split())
+    title = " ".join(str(t.get("request") or "").split())
+    if not heard or heard.lower() == title.lower()[:len(heard)]:
+        return ""
+    return f" — lo pidió así: «{_short_note(heard, ASKED_MAX)}»"
+
+
 def pending_task_lines() -> list[str]:
     """El bloque de TAREAS DE FONDO EN CURSO, renderizado (V2-348).
 
@@ -57,7 +76,7 @@ def pending_task_lines() -> list[str]:
             _ofrecer: list[str] = []
             for t in _pend:
                 ph = (t.get("phase") or "").strip()
-                bit = f'«{(t.get("request") or "")[:60]}»' + (f' — {ph}' if ph else "")
+                bit = f'«{(t.get("request") or "")[:60]}»' + asked_line(t) + (f' — {ph}' if ph else "")
                 # V2-059: progreso ESTRUCTURADO si el worker lo reporta (paso N/total, %, nota) → respuesta precisa
                 # a "¿cómo va?" en vez de una fase vaga.
                 pct, done, total = t.get("pct", -1), t.get("done", 0), t.get("total", 0)
