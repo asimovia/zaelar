@@ -46,10 +46,16 @@ def note_changed() -> None:
     _state["dirty"] = True
 
 
-async def flush(now: float | None = None) -> bool:
-    """Send the next due instant if it is stale. True when a report was sent and accepted."""
+def pending() -> bool:
+    """True while a change of the schedule has not been reported (or its report failed)."""
+    return bool(_state["dirty"])
+
+
+async def flush(now: float | None = None, *, force: bool = False) -> bool:
+    """Send the next due instant if it is stale. True when a report was sent and accepted. `force` skips the
+    debounce: the idle stop flushes once right before the engine stops (`nucleo/idle_stop.py`)."""
     now = time.time() if now is None else now
-    if not _state["dirty"] or now - _state["last"] < _MIN_GAP_S:
+    if not _state["dirty"] or (not force and now - _state["last"] < _MIN_GAP_S):
         return False
     endpoint, token = url()
     if not endpoint:

@@ -59,8 +59,12 @@ ROUTED: contextvars.ContextVar[bool] = contextvars.ContextVar("zaelar_screen_rou
 _typed = {"fn": None}
 #: When a person last did something on ANY surface — a touch, a typed line, a spoken turn — in epoch seconds
 #: (V2-872). Kept apart from the registry, whose entries are pruned when a screen goes. A stream open (`attach`),
-#: a `beat` and a visibility change never move it: the idle stop reads this as presence (`nucleo/idle_stop.py`).
+#: a `beat` and a visibility change never move it.
 _input = {"at": 0.0}
+#: When a VISIBLE screen with its stream open last said a person is there (`present`), in epoch seconds. Presence
+#: is a connected person, not only his input: the operator opened the page, so the engine stays up for him even if he
+#: never speaks. The idle stop reads `last_presence_ms` = the later of this and his input (`nucleo/idle_stop.py`).
+_presence = {"at": 0.0}
 
 #: Where each one-screen card plays right now (`youtube` → its screen) and how to tell which cards are one-screen.
 #: The policy is the WIDGET's (`widgets/screen_policy.py`); this module only asks, through a registered predicate,
@@ -193,6 +197,28 @@ def touched(dev) -> None:
         e["input_at"] = now
         e["seen_at"] = now
         e["visible"] = True
+
+
+def present(dev) -> None:
+    """A visible screen with its stream open says a person is there (`frontend/app/services/presence.js`: on the
+    stream's open and every minute while visible, never while the tab sleeps). A stream open alone is not this: a
+    tab whose stream reconnects is a request, and only the tab knows it is visible and awake."""
+    d = clean(dev)
+    if not d:
+        return
+    now = time.time()
+    _presence["at"] = now
+    with _mx:
+        e = _entry(d, now)
+        e["seen_at"] = now
+        e["visible"] = True
+
+
+def last_presence_ms() -> int | None:
+    """The last moment a person was present on any surface — his input or a visible connected screen — in epoch ms,
+    or None since the process started."""
+    at = max(_input["at"], _presence["at"])
+    return round(at * 1000) if at else None
 
 
 def last_input_ms() -> int | None:
@@ -454,3 +480,4 @@ def _reset_for_tests() -> None:
     _typed["fn"] = None
     _WAITING["at"] = 0.0
     _input["at"] = 0.0
+    _presence["at"] = 0.0

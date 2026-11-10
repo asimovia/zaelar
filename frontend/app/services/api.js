@@ -136,6 +136,11 @@ export const chatText = (text) =>
 export const screensBeat = (visible, touched = false) => {
   try { postJSON("/api/screens/beat", { dev: DEVICE, visible: !!visible, touched: !!touched }); } catch (_) {}
 };
+// A visible, connected, awake screen says a person is here (services/presence.js, once a minute): the idle stop keeps
+// the engine up for its whole window after the last one (nucleo/idle_stop.py).
+export const screensPresent = () => {
+  try { postJSON("/api/screens/beat", { dev: DEVICE, visible: true, present: true }).catch(() => {}); } catch (_) {}
+};
 // «Bring it here»: this screen just opened a card that plays on one screen at a time; the others let it go.
 export const screensBring = (id) => postJSON("/api/screens/bring", { id, dev: DEVICE }).then(json).catch(() => ({}));
 

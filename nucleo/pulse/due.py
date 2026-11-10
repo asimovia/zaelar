@@ -9,6 +9,20 @@ from nucleo.pulse import scheduler as _scheduler, sparks as _sparks
 from nucleo.pulse.signals import _default_deliver, _emit
 
 
+def next_owed(now: float) -> float | None:
+    """The next instant this engine must be AWAKE for: the earliest pending job still ahead of `now`, or None.
+
+    A job whose instant has already passed is not one the engine has to stay up for. The pulse fires every due job at
+    the top of its beat (`DuePulse._fire_due`), so a job still past due later in the same beat is one it could not
+    fire: ⏻ is off and no device can take the notice, or it is work that waits for ⏻. It waits for a PERSON, and the
+    person's return starts the engine anyway — reading it as «due now» kept an idle engine up forever and pulled a
+    stopped one back every minute. The idle stop reads this (`nucleo/idle_stop.py`); the scheduler's own
+    `next_due()` stays the earliest instant of all, overdue included."""
+    ahead = [float(j["next_run"]) for j in _scheduler.list_jobs(active_only=True)
+             if isinstance(j.get("next_run"), (int, float)) and float(j["next_run"]) > now]
+    return min(ahead, default=None)
+
+
 class DuePulse:
     async def _fire_due(self, now: float) -> None:
         # V2-092: when the agent is STOPPED (⏻), a cron does not SPEAK. Exit BEFORE `mark_fired`, so the job remains

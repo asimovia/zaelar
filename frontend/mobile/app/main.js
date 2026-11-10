@@ -195,15 +195,10 @@ window.addEventListener("pointerdown", ensureVoice);
 window.addEventListener("pointerdown", () => { try { session.unlockAudio(); } catch (_) {} });
 
 // ---- THE VOICE LOCK, SURFACED (server/livekit_api.py: one live voice session per machine) ------------------------
-// session.start() does NOT throw when the lock is held: it sets store.micBlocked and retries itself every 3 s until
-// the other surface goes away (services/session-lk.js). That behaviour is RIGHT and shared — when the desktop tab
-// closes, the phone picks the voice up on its own with nobody doing anything.
-//
-// What was missing is that on the desktop `micBlocked` paints a 🚫 ring over the orb, which is legible when "the
-// other tab" is a tab you can see. Between a phone and a laptop in another room it is not: the phone would sit there
-// looking like it was connecting, forever, with no hint that the voice is simply somewhere else. So the flag is
-// mirrored into a mobile surface that NAMES the situation and offers the one gesture that fixes it.
-createEffect(() => store.setMobileVoiceHeld(!!store.micBlocked().show && !store.powerOff()));
+// session.start() does NOT throw when the lock is held: it marks `store.remoteHeld` and retries itself every 3 s until
+// the other surface goes away (services/session-lk.js) — when the desktop tab closes, the phone picks the voice up on
+// its own. Between a phone and a laptop in another room a 🚫 ring on the orb says nothing, so the shared full-screen
+// veil (app/components/DormantVeil.js, face "moved") names the situation and offers the gesture that fixes it.
 
 // ---- reconcile with the SERVER's truth about the global switch (V2-092), in the SAFE direction ----
 // Identical logic to app/main.js, including the timestamp guard: this reply is a SNAPSHOT of when it was asked, not
