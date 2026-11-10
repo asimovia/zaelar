@@ -198,3 +198,28 @@ def test_a_name_that_spells_its_ticker_takes_that_ticker(monkeypatch):
     monkeypatch.setattr(mk, "_get", _no_search)
     assert mk._lookup("Apple (AAPL)") == ("AAPL", "Apple")
     assert mk._lookup("Nasdaq Composite (^IXIC)") == ("^IXIC", "Nasdaq Composite")
+
+
+@pytest.mark.parametrize("payload", [{"value": "1mo"}, {}, {"range": "whenever"}])
+def test_a_period_that_names_nothing_is_refused_not_drawn_as_today(fake_yahoo, payload):
+    """V2-873 (node 4.218): «¿y en el último mes?» reached `range` as `{"value": "1mo"}`; the card drew «today» and
+    said it was done. A `range` that names no period is refused with its field (the refusal carries the declared
+    shape back, `widgets/action_shape`), and the chart on screen is left as it was."""
+    mk.apply_action("show", {"symbol": "Apple"})
+    r = mk.apply_action("range", payload)
+    assert r.get("ok") is False and r.get("field") == "range", r
+    assert mk.view_data()["range"] == "1d"
+
+
+def test_the_range_end_state_is_the_period_asked(fake_yahoo):
+    """V2-873 (node 4.218): the end state of `range` reads the period ASKED (`range = {range}`), not a fetch stamp —
+    with the stamp a chart left on «today» read as the last month done."""
+    from nucleo.circuit import spec, verify
+    from widgets.markets.data import apply_action
+    tpl = spec.template_of("markets", "range")
+    assert tpl == {"widget": "markets", "field": "range", "is": "{range}"}, tpl
+    apply_action("show", {"symbol": "Apple"})
+    asked = spec._fill(tpl, {"range": "1mo"})
+    assert verify.check(asked) is False, "the chart still shows today: unmet"
+    apply_action("range", {"range": "1mo"})
+    assert verify.check(asked) is True

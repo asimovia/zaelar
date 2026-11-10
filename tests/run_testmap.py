@@ -2895,7 +2895,9 @@ DOMAINS: list[dict] = [
                 "tests/browser/e2e/widgets/test_map_render.py"]},
         {"id": "4.218", "title": "MERCADOS: una gráfica de precio por nombre o ticker, el cambio contra el cierre "
                                  "de ayer («hoy») o contra el inicio del periodo, las palabras del periodo, el "
-                                 "429 reintentado en el host gemelo — y la tarjeta RENDERIZADA",
+                                 "429 reintentado en el host gemelo — y la tarjeta RENDERIZADA; V2-873: the end state "
+                                 "of `range` is the period ASKED (`range = {range}`), and a `range` that names no "
+                                 "period is refused with its field, never drawn as today and said done",
             "ch": UNIT, "paths": [
                 "tests/browser/unit/markets/test_a_price_chart_by_name_or_ticker.py",
                 "tests/browser/e2e/widgets/test_markets_render.py"]},
