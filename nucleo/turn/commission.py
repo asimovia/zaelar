@@ -117,7 +117,8 @@ def shadow(emit, *, at: str, brief, escalate_req: dict | None, model_calls=(), f
     `escalate_req["held_words"]`: what the Hold kept unsaid on a routed turn (the model wrote them)."""
     try:
         from voice import trace as _trace
-        calls = [str((c or {}).get("name") or "") for c in model_calls or ()]
+        model_calls = [*(model_calls or ()), *((escalate_req or {}).get("held_calls") or ())]   # the ones the gate held
+        calls = [str((c or {}).get("name") or "") for c in model_calls]
         wrote = bool(words_said or str((escalate_req or {}).get("held_words") or "").strip())
         w = would(brief, model_calls=model_calls, flow_as=flow_as, model_wrote=wrote)
         wb = would(brief, model_calls=model_calls, flow_as=flow_as, model_wrote=wrote, variant="b")
