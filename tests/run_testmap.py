@@ -1369,6 +1369,10 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/voice/unit/test_jev_show_close.py"]},
         {"id": "3.61", "title": "Jev repairs an invented widget action to a declared one (or abstains); canvas verbs keep their boundary, unsure keeps today's escalate",
             "ch": UNIT, "paths": ["tests/voice/unit/test_jev_action.py"]},
+        # V2-874 — disarmed 2026-11-10 (silence at LICENCE / the verdict overruling an inline answer below VETO / a send
+        # held only at VETO / escalate deciding membership / the specific question ignored) → red each.
+        {"id": "3.186", "title": "Who wins the commission (V2-874, shadow): a verdict between LICENCE and VETO never overrules the model — its words stand and its inline answer keeps the turn (rule a), a model that did nothing is licensed into an errand; membership in a live errand belongs to flow_of; errand_target/stop_errand at the licence win over escalate; an act that leaves is still held from LICENCE; the shadow event says would (a), would_b and did, and adds no jev read",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_a_doubtful_verdict_never_silences_the_model.py"]},
         # V2-726 A3 (2026-09-20) — el gate corre DESPUÉS del modelo y casi siempre después de que la voz
         # haya empezado, y un turno que llevaba escalada normalmente RESPONDIÓ prometiendo el encargo. Un
         # `handle_inline` confiado borraba `v` y todos los `more` sin más, o sea producía el fallo más

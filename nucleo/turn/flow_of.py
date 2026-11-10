@@ -247,6 +247,13 @@ async def settled() -> dict | None:
         return None
 
 
+def peek() -> dict | None:
+    """This turn's route if it has settled — never waits (the commission's shadow reads it, V2-874)."""
+    from voice import trace as _trace
+    task = _TURN.get(_trace.current() or "")
+    return task.result() if task is not None and task.done() and not task.cancelled() and not task.exception() else None
+
+
 def _flat(text: str) -> str:
     from nucleo import matching
     return " ".join(matching.norm_text(text).split())

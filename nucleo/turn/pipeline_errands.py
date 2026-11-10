@@ -14,6 +14,7 @@ from nucleo.request import model as _request   # his words travel with the ONE e
 from nucleo.request import send_task_turn as _send_turn   # a send the verdict identified is its task (2026-11-06)
 from nucleo.request import stop as _stop_decision   # V2-820: a replace stops X and starts Y in one act
 from nucleo.turn import brief as _tb   # the turn's reading travels with the errand it commissions (V2-852)
+from nucleo.turn import commission as _commission   # V2-874: who wins the commission, in shadow
 from nucleo.turn import his_spec_to_sheet as _his_spec   # a spec he stated about one errand reaches its sheet
 from nucleo.turn import reply as _reply   # the turn's one mouth: a door's start line on a silent turn (V2-851 F1)
 from nucleo.turn import routed_sends as _routed_sends   # a send the turn routed leaves it as a commission (V2-852)
@@ -35,7 +36,10 @@ async def launch_the_errands(*, motor, send, speech, emit, brain, _brief, _op_te
         # V2-844 F2: a request that belongs to an open errand is ROUTED at the portal (`flow_door`) by the turn's one
         # route, settled here before the first launch — no second yardstick in this branch any more.
         from nucleo.turn import flow_of as _flow
-        await _flow.settled()
+        _settled = await _flow.settled()
+        _commission.shadow(emit, at="close", brief=_brief, escalate_req=escalate_req, launched=True,
+                           model_calls=getattr(brain, "_turn_calls", None) or (),
+                           flow_as=str((_settled or {}).get("as") or ""), words_said=bool(spoken_text), text=req)
         # V2-113: mark THIS trace as just-escalated BEFORE publishing, so `_maybe_close_flow` (moments later, in
         # this same turn) doesn't close the flow before `dispatch.run_listener` registers it (`_flow_should_close`).
         try:
@@ -109,6 +113,12 @@ async def launch_the_errands(*, motor, send, speech, emit, brain, _brief, _op_te
             emit("brain", "🚫 errands this turn did not start (worker pool)", text="; ".join(escalate_req["dropped"])[:200],
                  role="system", extra={"cat": "flash", "not_started": list(escalate_req["dropped"])})
 
+    else:   # V2-874: a turn that launches nothing is in the shadow too — the rule may have opened what it did not
+        from nucleo.turn import flow_of as _flow
+        _commission.shadow(emit, at="close", brief=_brief, escalate_req=escalate_req, words_said=bool(spoken_text),
+                           model_calls=getattr(brain, "_turn_calls", None) or (),
+                           flow_as=str((_flow.peek() or {}).get("as") or ""), worker=str(worker_acted["v"] or ""),
+                           text=_op_text)
     # A task that started or waits is visible from its row (V2-851 F1): no later line re-promises or says «not done».
     _his_spec.carry(_op_text)          # every voice turn: a spec he stated about one errand reaches its sheet
     if not _did_act:

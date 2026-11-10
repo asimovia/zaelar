@@ -205,6 +205,7 @@ async def run(self, motor) -> None:
     )
     errored, _hold = s["errored"], s["_hold"]
     if getattr(_hold, "routed", False) and not _route.player_ran(_brief):
+        req["escalate_req"]["held_words"] = getattr(_hold, "dropped", "")   # V2-874: the model wrote, unsaid
         _route.route(req["escalate_req"], operator_text, emit, why="verdict", brief=_brief)   # nothing called
     # V2-778 F1 — the turn the model did not answer (whose fault, the relay, the line he hears) lives in
     # `nucleo/turn/pipeline_failure.py`.
