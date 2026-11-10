@@ -22,6 +22,8 @@ observability failure must NEVER bring down a work session.
 """
 from __future__ import annotations
 
+import contextlib
+import contextvars
 import json
 import os
 import threading
@@ -43,6 +45,25 @@ _session: dict = {"id": None, "started_ms": None, "source": ""}
 # replace explicit closing — it only acts when that closing did not arrive.
 IDLE_TIMEOUT_MS = int(os.getenv("ZAELAR_SESSION_IDLE_MIN", "5")) * 60_000
 _last_real_activity_ms: dict = {"v": None}
+#: True while the running context works on the engine's OWN clock — a widget's background tick and everything it
+#: emits, writes or spawns (`widgets/background.py`). That work is scheduled, never a sign that anyone is here, so
+#: it never moves the activity clock: a declared `every` of one minute otherwise kept an idle engine up forever.
+_PACED: contextvars.ContextVar[bool] = contextvars.ContextVar("zaelar_paced", default=False)
+
+
+@contextlib.contextmanager
+def paced():
+    """Run a block on the engine's own clock: nothing inside it is real activity (`note_real_activity`).
+    `asyncio.to_thread` and new tasks copy the context, so the work a tick hands off is covered too."""
+    token = _PACED.set(True)
+    try:
+        yield
+    finally:
+        _PACED.reset(token)
+
+
+def is_paced() -> bool:
+    return _PACED.get()
 
 # HEARTBEAT to the session-report endpoint. The explicit session close (`_report_to_control_plane("end", ...)`)
 # is best-effort: if the process dies hard (OOM, `kill -9`) it never arrives. Repeating the same idempotent
@@ -208,7 +229,10 @@ def note_real_activity() -> None:
     (same path as ⏻, reports `end_session('idle_timeout')` to the timeline and control plane) and leaves it closed:
     the next `session_id()` will open a new one automatically. Only REAL activity counts for the clock — if the
     pulse extended it, a live but unused machine would never rotate; if the pulse could trigger rotation, an idle
-    machine would rotate on every pulse tick. With this filter: neither one nor the other — only the real gap matters."""
+    machine would rotate on every pulse tick. With this filter: neither one nor the other — only the real gap matters.
+    Work on the engine's own clock (`paced()`) is not real activity either."""
+    if _PACED.get():
+        return
     now = round(time.time() * 1000)
     with _lock:
         last = _last_real_activity_ms["v"]

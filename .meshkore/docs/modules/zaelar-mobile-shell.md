@@ -88,8 +88,7 @@ frontend/mobile/
       ├─ MenuSheet.js       ☰: account (plan, Energy, billing, sign-out) · Energy → top-up · settings · voice · escape hatch
       ├─ FeedbackSheet.js   the feedback form in its own sheet, opened by the dock's ⚠ (never inside the menu)
       ├─ EnergyLine.js      the cycle's Energy left, a 3px line along the top edge (cloud only, inert to touch)
-      ├─ SettingsSheet.js   the small settings sheet (language · theme · speaker)
-      └─ VoiceHeldNotice.js "your voice is on the other device" + take it over
+      └─ SettingsSheet.js   the small settings sheet (language · theme · speaker)
 ```
 
 ### Shared, never forked
@@ -351,7 +350,7 @@ conversation but what a request does to a screen. The rules, and where each one 
 
 | Rule | Mechanism |
 |---|---|
-| **Voice in and out on ONE screen.** | `server/livekit_api.py`: one live session per machine (heartbeat ~4 s, 12 s TTL). Taking it is an explicit gesture: opening the mic or the speaker on a screen (`session.openMicHere` / `openSpeakerHere`), the phone's load, or `VoiceHeldNotice` → `POST /api/session/steal`. |
+| **Voice in and out on ONE screen.** | `server/livekit_api.py`: one live session per machine (heartbeat ~4 s, 12 s TTL). Taking it is an explicit gesture: opening the mic or the speaker on a screen (`session.openMicHere` / `openSpeakerHere`), the phone's load, or the shared full-screen veil's «use it here» (`app/components/DormantVeil.js`, face "moved" — the same veil both shells show when the engine sleeps) → `session.claimVoice` → `POST /api/session/steal`. |
 | **The loser stands down at once.** | Every change of hands emits `session · voice held by <dev>` with `voice_sid` (the new holder's tab). `sse.js` re-dispatches it as `hb:voice-held`; `session-lk.js` stands down on it (mic and speaker off, the blue «voice elsewhere» orb), instead of waiting up to 4 s for its next heartbeat. |
 | **Typed chat from ANY screen.** | Only the holder has a LiveKit room. Every other screen sends its typed line over `POST /api/chat`; the live session registered a typed door (`voice/screens.register_typed`) and injects it as a turn exactly like the data channel does (`agent_events.receive_typed`). `reason:"no_session"` means nobody holds a session — only then does the typing screen bring the voice up. |
 | **Every event names the screen that asked.** | `voice/screens.py` stamps `origin_dev` at the stream's single gate (`observer.stamp_identity`). A spoken turn → the voice holder; a typed turn → the screen that typed it (a context var set around the injection, so the reply task inherits it); a background errand → the screen that commissioned it (`note_task`, read from the escalation's context); within a turn the `trace` keeps it even if another turn starts meanwhile. |

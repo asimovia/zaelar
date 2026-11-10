@@ -134,6 +134,7 @@ class OrchestratorLoop(workers.WorkersPulse, flows.FlowsPulse, due.DuePulse):
         now = time.time()
         self._ticks += 1
         _t0 = time.monotonic()
+        self._note_resume(now, _t0)          # FIRST: every stop decision below reads a resume as a resume
         await self._supervise_workers(now)
         self._supervise_memory(now)          # V2-831 T-27 — pressure pauses the newest worker, room resumes it
         await self._supervise_confirms(now)
@@ -182,9 +183,19 @@ class OrchestratorLoop(workers.WorkersPulse, flows.FlowsPulse, due.DuePulse):
         except Exception:
             pass
 
+    def _note_resume(self, now: float, mono: float) -> None:
+        """Whether this process was suspended since the last beat (`nucleo/idle_stop.note_tick`). It runs before
+        anything else on the beat: a sleep request whose answer never arrived is decided at the end of this same beat,
+        and a host that froze and resumed must never be read as a host that refused to freeze."""
+        try:
+            from nucleo import idle_stop
+            idle_stop.note_tick(now, mono, self.tick_s)
+        except Exception as e:  # noqa: BLE001
+            logger.debug(f"loop: resume check failed: {e!r}")
+
     def _maybe_idle_stop(self, now: float) -> None:
         """Offers the pulse to the idle stop (`nucleo/idle_stop.py`): off unless the deployment sets
-        `ZAELAR_IDLE_STOP_MIN`, and when on it only ever asks the server to exit cleanly."""
+        `ZAELAR_IDLE_STOP_MIN`, and when on it asks the deployment to suspend this host or the server to exit cleanly."""
         try:
             from nucleo import idle_stop
             idle_stop.maybe_stop(now)

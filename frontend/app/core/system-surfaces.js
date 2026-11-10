@@ -35,6 +35,7 @@ import { FeedbackWidget } from "../components/FeedbackWidget.js?v=2";
 import { FaultModal } from "../components/FaultModal.js?v=1";
 import { EnergyNotice } from "../components/EnergyNotice.js?v=1";
 import { ElsewhereChips } from "../components/ElsewhereChips.js?v=1";
+import { DormantVeil } from "../components/DormantVeil.js?v=1";
 import { LanguageOnboarding } from "../components/LanguageOnboarding.js?v=1";
 import { MemoryMap } from "../components/MemoryMap.js?v=6";
 import { Orb } from "../components/Orb.js?v=3";
@@ -173,6 +174,13 @@ export const SYSTEM_SURFACES = [
   // V2-792 — what the agent did on the OTHER screen (a card opened there, a video playing there), one tap away.
   { id: "elsewhere",  comp: ElsewhereChips, target: "body", phase: "overlay", kind: "transient",
     toggle: "store.elsewhere() (services/screens.js)", label: "Opened on another screen — open here",
+    name: null, aliases: null },
+  // 2026-11-10 — ONE black veil over the whole screen: the engine went to sleep (Reactivate wakes it) or the voice
+  // moved to another screen (bring it here). Shared with the phone; CSS in `core/shared-surfaces.css`. Not
+  // voice-addressable: while it shows, this screen has no voice to say anything with.
+  { id: "dormant",    comp: DormantVeil,  target: "body", phase: "overlay", kind: "modal",
+    toggle: "store.dormant().face (engine.sleep, services/presence.js) · store.remoteHeld() (session-lk.js)",
+    label: "Asleep / moved to another device — full-screen veil",
     name: null, aliases: null },
   // The desktop locked while the agent is stopped (operator, 2026-11-08): one state, never half on / half off.
   { id: "power-veil", comp: PowerVeil,    target: "desk", phase: "overlay", kind: "transient",

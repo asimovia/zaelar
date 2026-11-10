@@ -58,7 +58,7 @@ def test_an_unreadable_worker_registry_counts_as_busy(monkeypatch):
     monkeypatch.setitem(sys.modules, "nucleo.dispatch.registry", broken)
     import nucleo.dispatch as dispatch_pkg
     monkeypatch.setattr(dispatch_pkg, "registry", broken, raising=False)
-    _last, workers, _next = idle_stop._readings()
+    _last, workers, _next = idle_stop._readings(time.time())
     assert workers is True
 
 
@@ -97,7 +97,7 @@ GRACE = 3 * MIN
 
 
 def test_woken_with_nobody_present_it_stops_after_the_short_grace():
-    why = idle_stop.decide(NOW, None, NOW - 4 * MIN, False, None, 15 * MIN, last_input_ms=None, grace_ms=GRACE)
+    why = idle_stop.decide(NOW, None, NOW - 4 * MIN, False, None, 15 * MIN, last_presence_ms=None, grace_ms=GRACE)
     assert why and "nobody present" in why
 
 
@@ -107,16 +107,16 @@ def test_the_grace_is_counted_from_the_boot_and_not_before_it_ends():
 
 def test_activity_that_is_not_a_person_does_not_stretch_the_grace():
     """A boot's own events and a reconnecting tab move the activity clock with nobody there; the grace ignores it."""
-    why = idle_stop.decide(NOW, NOW - 10_000, NOW - 4 * MIN, False, None, 15 * MIN, last_input_ms=None, grace_ms=GRACE)
+    why = idle_stop.decide(NOW, NOW - 10_000, NOW - 4 * MIN, False, None, 15 * MIN, last_presence_ms=None, grace_ms=GRACE)
     assert why and "nobody present" in why
 
 
 def test_after_his_first_input_the_full_window_applies():
     started = NOW - 30 * MIN
     assert idle_stop.decide(NOW, None, started, False, None, 15 * MIN,
-                            last_input_ms=NOW - 4 * MIN, grace_ms=GRACE) is None
-    why = idle_stop.decide(NOW, None, started, False, None, 15 * MIN, last_input_ms=NOW - 16 * MIN, grace_ms=GRACE)
-    assert why and "no real activity for 16 min" in why
+                            last_presence_ms=NOW - 4 * MIN, grace_ms=GRACE) is None
+    why = idle_stop.decide(NOW, None, started, False, None, 15 * MIN, last_presence_ms=NOW - 16 * MIN, grace_ms=GRACE)
+    assert why and "nobody present for 16 min" in why
 
 
 @pytest.mark.parametrize("workers, next_due", [
@@ -130,9 +130,13 @@ def test_workers_and_due_notices_keep_their_veto_inside_the_grace(workers, next_
 def test_the_two_windows_are_declared_in_the_resources_policy(monkeypatch):
     from nucleo.workers import envelope
     pol = envelope.policy()
-    assert pol["wake_grace_min"] == 3 and pol["tab_sleep_min"] == 10
+    assert pol["wake_grace_min"] == 1 and pol["tab_sleep_min"] == 10
     monkeypatch.setenv("ZAELAR_IDLE_STOP_MIN", "15")
-    assert idle_stop.wake_grace_min() == 3 and idle_stop.tab_sleep_min() == 10
+    assert idle_stop.wake_grace_min() == 1 and idle_stop.tab_sleep_min() == 10
+    monkeypatch.setenv("ZAELAR_WAKE_GRACE_MIN", "2.5")
+    assert idle_stop.wake_grace_min() == 2.5, "one deployment may set its own grace"
+    monkeypatch.setenv("ZAELAR_WAKE_GRACE_MIN", "soon")
+    assert idle_stop.wake_grace_min() == 1, "a value that is not a number keeps the policy's"
 
 
 def test_an_engine_that_never_stops_never_puts_a_tab_to_sleep(monkeypatch):
@@ -166,7 +170,7 @@ def test_maybe_stop_reads_screen_input_as_presence(monkeypatch):
     from voice import screens
     screens._reset_for_tests()
     monkeypatch.setenv("ZAELAR_IDLE_STOP_MIN", "15")
-    monkeypatch.setattr(idle_stop, "_readings", lambda: (None, False, None))
+    monkeypatch.setattr(idle_stop, "_readings", lambda now: (None, False, None))
     exits = []
     idle_stop.request_exit(lambda: exits.append(1))
     now = time.time()
@@ -184,8 +188,8 @@ def test_maybe_stop_reads_screen_input_as_presence(monkeypatch):
 
 def _armed(monkeypatch, record):
     monkeypatch.setenv("ZAELAR_IDLE_STOP_MIN", "1")
-    monkeypatch.setattr(idle_stop, "_readings", lambda: (None, False, None))
-    monkeypatch.setattr(idle_stop, "_last_input", lambda: None)
+    monkeypatch.setattr(idle_stop, "_readings", lambda now: (None, False, None))
+    monkeypatch.setattr(idle_stop, "_last_presence", lambda: None)
     monkeypatch.setattr(idle_stop, "_STARTED_MS", round((time.time() - 3600) * 1000))
     import voice.observer as observer
     monkeypatch.setattr(observer, "emit", lambda kind, label, **kw: record.append(f"{kind}:{label}"))
@@ -206,6 +210,7 @@ def test_on_the_server_loop_the_exit_waits_one_beat_for_the_goodnight(monkeypatc
 
     async def _main():
         assert idle_stop.maybe_stop() is True
+        await asyncio.sleep(0.05)                     # the stop runs as a task: the report first, then the goodnight
         before = list(record)
         await asyncio.sleep(0.5)
         return before
