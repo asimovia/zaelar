@@ -26,7 +26,9 @@ import argparse
 import datetime as _dt
 import hashlib
 import json
+import struct
 import sys
+import zipfile
 from pathlib import Path
 
 ENGINE = Path(__file__).resolve().parent.parent.parent
@@ -76,6 +78,60 @@ def _sums(directory: Path, suffix: str) -> dict[str, str]:
     return out
 
 
+def _unreadable(path: Path, e: Exception) -> bool:
+    """Said in the job's log, then `False`: an asset whose signature could not be READ is published as unsigned —
+    the screen then keeps the warning, which is the safe side — and the log says why."""
+    print(f"  {path.name}: signature not readable ({type(e).__name__}: {e}) — marked unsigned", file=sys.stderr)
+    return False
+
+
+def _stapled_app(path: Path) -> bool:
+    """A notarized, STAPLED Zaelar.app carries its ticket at `Zaelar.app/Contents/CodeResources` — a file an ad hoc
+    build never has (its seal is `_CodeSignature/CodeResources`). Read from the zip that is published, so the flag is
+    about these bytes, not about which workflow step was believed to run."""
+    try:
+        with zipfile.ZipFile(path) as zf:
+            return any(n.endswith("Zaelar.app/Contents/CodeResources") for n in zf.namelist())
+    except (OSError, zipfile.BadZipFile) as e:
+        return _unreadable(path, e)
+
+
+def _authenticode(path: Path) -> bool:
+    """A PE carries an Authenticode signature when its certificate-table directory entry (data directory 4) is not
+    empty. Pure header arithmetic — the manifest job runs on Linux, where no Windows tool is."""
+    try:
+        with open(path, "rb") as fh:
+            head = fh.read(4096)
+    except OSError as e:
+        return _unreadable(path, e)
+    try:
+        if head[:2] != b"MZ":
+            return False
+        pe = struct.unpack_from("<I", head, 0x3C)[0]
+        if head[pe:pe + 4] != b"PE\0\0":
+            return False
+        optional = pe + 24
+        magic = struct.unpack_from("<H", head, optional)[0]
+        directories = optional + (96 if magic == 0x10B else 112)      # PE32 / PE32+
+        size = struct.unpack_from("<I", head, directories + 4 * 8 + 4)[0]
+    except struct.error as e:
+        return _unreadable(path, e)
+    return size > 0
+
+
+def _signed(key: str, path: Path, directory: Path) -> bool | None:
+    """Whether the publisher's OPERATING-SYSTEM identity is on this platform's asset (V2-869 §5): Developer ID +
+    notarization on a Mac build, Authenticode on Windows; `None` for the portable `.pyz`, which has no such signature
+    (and so no field). The engine's download screen reads it to drop the "your system will ask you to allow it"
+    line; the updater trusts the minisign signature and the digest, never this flag."""
+    if path.suffix == ".zip":
+        package = shape.INSTALLERS.get(key, ("",))[0]
+        return _stapled_app(path) or bool(package and (directory / package).is_file())
+    if path.suffix == ".exe":
+        return _authenticode(path)
+    return None
+
+
 def build_manifest(directory: Path, tag: str, published_at: str | None = None, next_key: str | None = None,
                    build: int | None = None, version: str | None = None) -> dict:
     stale = [n for n in _BUILD_NAMES if (directory / n).exists()]
@@ -94,6 +150,9 @@ def build_manifest(directory: Path, tag: str, published_at: str | None = None, n
         if listed != digest:
             raise ManifestRefused(f"{asset}: SHA256SUMS-{suffix} says {listed}, the file hashes to {digest}")
         platforms[key] = {"asset": asset, "sha256": digest, "size": path.stat().st_size}
+        signed = _signed(key, path, directory)
+        if signed is not None:
+            platforms[key]["signed"] = signed
     if not platforms:
         raise ManifestRefused("no platform asset found — nothing to describe")
     installers: dict[str, dict] = {}
@@ -142,7 +201,8 @@ def main(argv: list[str]) -> int:
     data = json.loads(target.read_text(encoding="utf-8"))
     print(f"{target.name}: {data['product']} {data['version']} build {data['build']} tag {data['tag']}")
     for key, entry in data["platforms"].items():
-        print(f"  {key:13} {entry['asset']}  {entry['size']:,} bytes  {entry['sha256'][:16]}…")
+        mark = "" if "signed" not in entry else ("  signed" if entry["signed"] else "  unsigned")
+        print(f"  {key:13} {entry['asset']}  {entry['size']:,} bytes  {entry['sha256'][:16]}…{mark}")
     return 0
 
 

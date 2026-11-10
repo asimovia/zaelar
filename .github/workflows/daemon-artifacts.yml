@@ -266,7 +266,7 @@ jobs:
         run: |
           set -euo pipefail
           present() { local n=0; for v in "$@"; do [[ -n "${!v:-}" ]] && n=$((n + 1)); done; echo "$n"; }
-          APPLE=(APPLE_DEVID_APP_P12 APPLE_DEVID_APP_P12_PASSWORD APPLE_DEVID_INSTALLER_P12 APPLE_DEVID_INSTALLER_P12_PASSWORD NOTARY_KEY_P8 NOTARY_KEY_ID NOTARY_ISSUER APPLE_TEAM_ID)
+          APPLE=(APPLE_DEVID_APP_P12 APPLE_DEVID_APP_P12_PASSWORD NOTARY_KEY_P8 NOTARY_KEY_ID NOTARY_ISSUER APPLE_TEAM_ID)
           WINDOWS=(AZURE_TENANT_ID AZURE_CLIENT_ID AZURE_CLIENT_SECRET ARTIFACT_SIGNING_ENDPOINT ARTIFACT_SIGNING_ACCOUNT ARTIFACT_SIGNING_PROFILE)
           decide() {   # <os label> <output name> <names…>
             local label="$1" out="$2"; shift 2
@@ -282,7 +282,17 @@ jobs:
               fi
             fi
           }
-          if [[ "$RUNNER_OS" == "macOS" ]]; then decide "Apple Developer ID" apple "${APPLE[@]}"; else echo "apple=false" >> "$GITHUB_OUTPUT"; fi
+          # The Installer certificate is OPTIONAL: it only signs the `.pkg`. Without it the notarized zip ships alone and
+          # `get.sh` installs from the zip, as it always has.
+          if [[ "$RUNNER_OS" == "macOS" ]]; then
+            decide "Apple Developer ID" apple "${APPLE[@]}"
+            pkg="$(present APPLE_DEVID_INSTALLER_P12 APPLE_DEVID_INSTALLER_P12_PASSWORD)"
+            if [[ "$pkg" == 1 ]]; then
+              echo "::warning title=no .pkg (${{ matrix.suffix }})::1 of the 2 Developer ID Installer secrets present — both are needed; no .pkg this release"
+            elif [[ "$pkg" == 0 ]] && grep -q '^apple=true' "$GITHUB_OUTPUT"; then
+              echo "::notice title=no .pkg (${{ matrix.suffix }})::Developer ID Installer secrets absent — the notarized zip ships without a .pkg"
+            fi
+          else echo "apple=false" >> "$GITHUB_OUTPUT"; fi
           if [[ "$RUNNER_OS" == "Windows" ]]; then decide "Windows Authenticode" windows "${WINDOWS[@]}"; else echo "windows=false" >> "$GITHUB_OUTPUT"; fi
 
       # The installer package's SHAPE on every build, signed or not: current-user install (no administrator), the
@@ -292,7 +302,14 @@ jobs:
         if: runner.os == 'macOS'
         run: bash daemon/packaging/macos/sign_and_notarize.sh check dist/app/Zaelar.app "$RUNNER_TEMP/pkgcheck" ${{ matrix.suffix }}
 
-      - name: Sign with Developer ID, notarize, staple, build Zaelar.pkg (macOS)
+      # The signing PLAN for this very bundle, printed on every macOS build with no identity at all: which Mach-O files
+      # get signed, deepest first, which one gets the Node entitlements, then notarize → staple → assess. The day the
+      # secrets land, the real run executes exactly these lines.
+      - name: The signing plan for this bundle (macOS, dry run, no secrets)
+        if: runner.os == 'macOS'
+        run: bash daemon/packaging/macos/sign_and_notarize.sh --dry-run sign dist/app/Zaelar.app "$RUNNER_TEMP/signplan" ${{ matrix.suffix }}
+
+      - name: Sign with Developer ID, notarize, staple, assess, [build Zaelar.pkg] (macOS)
         if: runner.os == 'macOS' && steps.identity.outputs.apple == 'true'
         env:
           APPLE_DEVID_APP_P12: ${{ secrets.APPLE_DEVID_APP_P12 }}
@@ -303,11 +320,30 @@ jobs:
           NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
           NOTARY_ISSUER: ${{ secrets.NOTARY_ISSUER }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: bash daemon/packaging/macos/sign_and_notarize.sh sign dist/app/Zaelar.app dist/daemon ${{ matrix.suffix }}
+
+      # ⚠️ THE SMOKE TEST AGAIN, ON THE SIGNED BYTES. The hardened runtime is exactly where a missing entitlement shows,
+      # and it shows as a crash, not an error: the bundled Node dies on its first JIT page without `allow-jit`. So the
+      # signed app must still find Chrome, its Node must still run JavaScript, and the resident must still start with
+      # its menu-bar icon — on the runner, before anything is published.
+      - name: The SIGNED app still runs, its Node still compiles, its resident still starts (macOS)
+        if: runner.os == 'macOS' && steps.identity.outputs.apple == 'true'
         run: |
           set -euo pipefail
-          bash daemon/packaging/macos/sign_and_notarize.sh sign dist/app/Zaelar.app dist/daemon ${{ matrix.suffix }}
-          # The signed program still runs: the hardened runtime is exactly where a missing entitlement shows up.
-          dist/app/Zaelar.app/Contents/MacOS/zaelar-daemon version
+          APP=dist/app/Zaelar.app
+          BIN="$APP/Contents/MacOS/zaelar-daemon"
+          "$BIN" version
+          export ZAELAR_WORKSPACE="$RUNNER_TEMP/ws"
+          "$BIN" browser | python -c "import json,sys; b=json.load(sys.stdin)['browser']; assert b['state']=='ready' and b['channel']=='chrome', b"
+          NODE="$(find "$APP/Contents" -type f -name node -perm -u+x | head -n 1)"
+          test -n "$NODE"
+          "$NODE" -e 'let s=0; for (let i=0;i<5e7;i++) s+=i%7; new WebAssembly.Module(new Uint8Array([0,97,115,109,1,0,0,0])); console.log("node jit ok", s)'
+          "$BIN" > "$RUNNER_TEMP/signed-tray.log" 2>&1 &
+          for _ in $(seq 1 60); do curl -sf -m1 http://127.0.0.1:45997/health >/dev/null && break; sleep 0.25; done
+          curl -sf -m5 http://127.0.0.1:45997/health | grep -q '"daemon": "zaelar"'
+          sleep 2
+          kill -0 %1 || { cat "$RUNNER_TEMP/signed-tray.log"; echo "the signed resident died with its tray"; exit 1; }
+          kill %1
 
       # Azure Artifact Signing (formerly Trusted Signing): the certificate never leaves Azure; the action signs with
       # a service principal and an RFC 3161 timestamp. Pinned by commit (v2.0.0).

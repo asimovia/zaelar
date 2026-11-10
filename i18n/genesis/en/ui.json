@@ -2548,5 +2548,8 @@
  "mobile.delete_account": "Delete account",
  "mobile.delete_account_sub": "Opens your account page in the browser",
  "energy.out.account": "Open your account",
- "energy.out.body_app": "Your agent has stopped because your account has no Energy left."
+ "energy.out.body_app": "Your agent has stopped because your account has no Energy left.",
+ "daemon.manual.body.signed.macos": "Works too, with no extra step: signed by Zaelar and notarized by Apple, it opens without warnings.",
+ "daemon.manual.body.signed.windows": "Works too: it is signed by Zaelar. Right after a new release Windows may still show «Windows protected your PC» while the signature builds its reputation → More info → Run anyway.",
+ "daemon.manual.package": "the installer (.pkg)"
 }
