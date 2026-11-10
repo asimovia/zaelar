@@ -85,7 +85,7 @@ function injectStyles() {
      safe-area insets are the only geometry in this shell — everything else is flow layout, because there is
      nothing to place: there is one card and it is the whole viewport. The bottom is the dock's TOP edge, safe area
      included, so the bar never covers a card's last line and nothing pads for it twice. */
-  .zm-card,.zm-home{position:absolute;inset:0;bottom:calc(var(--dock-h) + var(--zm-safe-b, env(safe-area-inset-bottom)));pointer-events:auto;
+  .zm-card,.zm-home{position:absolute;inset:0;bottom:calc(var(--dock-h) + var(--zm-safe-b));pointer-events:auto;
     display:flex;flex-direction:column;background:var(--hb-bg);opacity:0;transform:translateX(0);visibility:hidden;
     transition:opacity ${CARD_ANIM_MS}ms ease, transform ${CARD_ANIM_MS}ms cubic-bezier(.22,.9,.3,1)}
   .zm-card.live,.zm-home.live{opacity:1;visibility:visible}
@@ -137,7 +137,7 @@ function injectStyles() {
      fixed dock — the only always-visible "there are more cards" signal did not exist on screen. Found by measuring
      geometry, not by reading (the unpainted-orb lesson again). pointer-events live on the BUTTONS, never the row:
      the row spans the full width and would eat taps meant for the widget under it. */
-  .zm-pips{position:absolute;left:0;right:0;bottom:calc(var(--dock-h) + var(--zm-safe-b, env(safe-area-inset-bottom)) + 3px);
+  .zm-pips{position:absolute;left:0;right:0;bottom:calc(var(--dock-h) + var(--zm-safe-b) + 3px);
     display:flex;justify-content:center;pointer-events:none;z-index:4}
   .zm-pip{pointer-events:auto;width:26px;height:26px;border:none;background:transparent;padding:0;margin:0;
     display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--hb-neutral)}

@@ -19,17 +19,15 @@
    ============================================================================ */
 
 :root {
-  /* 64px since 2026-10-26 (operator, iPhone 14 screenshots: «la parte de abajo parece que estamos desaprovechando
-     espacio»): the bar is exactly its row of 44px icons; the orb rises above its edge like the centre button of a
-     tab bar. The safe-area pad is added ONCE, here, and every card ends at the bar's top edge. */
-  /* 54px + a TRIMMED safe-area pad since 2026-11-10 (operator, native companion on iPhone 17 Pro: «más espacio
-     debajo... bajar los iconos donde van en todas las aplicaciones»). The full 34px home-indicator inset under a
-     64px row left the icons ~66px above the edge; a native tab bar keeps them ~50px up. The indicator itself is
-     5px tall at 8px from the bottom, so 12px of the inset is given back and the rest still clears it. */
+  /* The bar is its row of 44px icons; the orb rises above its edge like the centre button of a tab bar. Its pad is
+     a TRIMMED safe area (2026-11-10, operator on iPhone 17 Pro: icons «donde van en todas las aplicaciones»): the
+     full 34px home-indicator inset left them ~66px above the edge, a native tab bar keeps them ~50px up; the
+     indicator is 5px tall at 8px from the bottom, so 12px of the inset is given back. The pad is added ONCE, here,
+     and every card ends at the bar's top edge. */
   --dock-h: 54px;                        /* the bar's own height; the safe-area pad is added on top of it */
   --zm-safe-b: max(6px, calc(env(safe-area-inset-bottom) - 12px));
   /* Sheet height, measured from ON TOP OF the dock (see .zm-sheet). Leaves the deck visible above it, so the
-     card you were reading never disappears entirely behind the chat. */
+     card you were reading never disappears entirely behind a sheet (the chat is a full screen instead). */
   --zm-sheet-max: calc(78vh - var(--dock-h));
   --zm-r: 18px;                          /* one corner radius for every surface in this shell */
 }
@@ -278,7 +276,6 @@ html.zm-kbd[data-kbd="sheet"] .zm-sheet.open { top: var(--zm-vvt, 0px); bottom: 
   padding-top: env(safe-area-inset-top); transform: none; opacity: 0; visibility: hidden; pointer-events: none;
   transition: opacity .18s, visibility 0s .18s; }
 .zm-chat.open { opacity: 1; visibility: visible; pointer-events: auto; transition: opacity .18s; }
-.zm-chat .zm-sheet-grab { display: none; }
 .zm-msgs {
   flex: 1 1 auto; min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain; padding: 12px; display: flex; flex-direction: column; gap: 9px;

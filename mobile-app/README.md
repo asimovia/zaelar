@@ -9,16 +9,18 @@ Android will live in this same project later (`npx cap add android`); it is not 
 
 ## What is native and what is not
 
-| Native (Swift / project settings) | Web (the engine's `/m` shell, unchanged) |
+| Native (the app) | Web (the engine's `/m` shell) |
 |---|---|
-| `AVAudioSession` `playAndRecord` + `voiceChat`, speaker by default, Bluetooth allowed; set at launch and again on foreground (`AppDelegate.swift`) | Everything you see and touch: dock, orb, deck, sheets, chat |
-| Permission sentences for microphone and camera (EN + ES `InfoPlist.strings`); iOS asks on the first `getUserMedia`, never at launch | Voice v1: the LiveKit WebRTC client inside the WebView, foreground only |
-| Light status bar over a dark background; portrait on iPhone | Safe-area layout (`viewport-fit=cover` + `env(safe-area-inset-*)`) |
-| A bundled page (`www/index.html`) shown only when the origin cannot be loaded, with a retry button | Sign-in, session, i18n strings — all served by the engine |
+| `AVAudioSession` `playAndRecord` + `voiceChat`, speaker by default, Bluetooth allowed; set at launch and on every foreground (`AppDelegate.swift`) | Everything you see and touch: dock, orb, deck, sheets, chat |
+| Plugins: Keyboard (`resize: native`, dark keys, no form accessory bar), Haptics, App, Geolocation | Voice v1: the LiveKit WebRTC client inside the WebView, foreground only |
+| Permission sentences (EN + ES `InfoPlist.strings`) for microphone, camera and location; iOS asks on first use, never at launch | Safe-area layout (`viewport-fit=cover` + `env(safe-area-inset-*)`) |
+| `www/in-app.js`, the app's glue (below); light status bar; portrait on iPhone | Sign-in, session, i18n strings — all served by the engine |
+| `www/index.html`, shown only when the origin cannot be loaded, with a retry button | |
 
 Capacitor's own WebView setup already provides what in-WebView voice needs: inline media playback, no user gesture
-required for playback, the WebView's scroll bounce turned off. `capacitor.config.ts` adds `contentInset: never`,
-the dark background, and `limitsNavigationsToAppBoundDomains: false`.
+required for playback, no scroll bounce, and microphone/motion permission granted to the page (the system asks the
+user once, for the app). `capacitor.config.ts` adds `contentInset: never`, the dark background and
+`limitsNavigationsToAppBoundDomains: false`.
 
 ## Which engine it opens
 
@@ -78,44 +80,38 @@ own; whatever the origin does for an unauthenticated `/m` (a redirect to its sig
 ## The app's own glue (`www/in-app.js`)
 
 Injected by `MainViewController.swift` at document start into every page the WebView loads, so it works with any
-engine version and never runs in a browser: it marks `<html class="in-app" data-platform="ios">` (CSS adapts without
-sniffing user agents) and gives a light haptic tick on the dock, the orb and send buttons. Plugins in the app:
-Keyboard (`resize: native`, dark keys, no form accessory bar), Haptics, App, Geolocation. The shell reaches them
-through `window.Capacitor.Plugins.<Name>`, never through an npm import (it is served by the engine, not bundled).
-The user agent ends in `ZaelarApp/<version> (ios)` — a hint for the engine, never a credential.
+engine version and never runs in a browser. It marks `<html class="in-app" data-platform="ios">` — CSS (the shell's
+and the website's) adapts without sniffing user agents — and gives a light haptic tick on the dock, the orb and send
+buttons. Capacitor also injects its bridge into every page, remote origin included, so the shell can ask
+`window.Capacitor.isNativePlatform()` (`services/push.js` uses it: no «add to Home Screen» offer inside the app) and
+reach plugins as `window.Capacitor.Plugins.<Name>` — never through an npm import, since the shell is served by the
+engine, not bundled. The user agent ends in `ZaelarApp/<version> (ios)`: a hint for the engine, never a credential.
 
 ## The screen as a sensor
 
 `frontend/app/services/device.js` is one door for location (one fix or a watch), motion and compass: the native
 plugin inside the app, the Web API in a browser, every failure a value. Apps (widgets) reach it as
-`await ctx.device()` (contract in `widgets/AGENTS.md`). Measured in the simulator: the system dialog shows the app's
-own sentence, and a fix comes back from the plugin.
-
-## Inside the app, the shell knows it is the app
-
-Capacitor injects its bridge into the main frame of every page, remote origin included, so
-`window.Capacitor.isNativePlatform()` is `true` in the shell when it runs here. `frontend/app/services/push.js`
-`installed()` uses it: the «add to Home Screen» offer is not shown inside the native app.
+`await ctx.device()` (contract in `widgets/AGENTS.md`).
 
 ## Measured in the simulator
 
-Xcode 26.6, iPhone 17 Pro simulator (iOS 26.5): the shell renders with the dock above the home indicator and a light
-status bar; a typed line reaches the engine and the WebView joins the LiveKit room (WebRTC works in WKWebView).
-A sign-in page on another host renders in-page when listed in `ZAELAR_ALLOW_NAVIGATION`. Not verifiable in the
-simulator: the microphone and the audio route — that is a real-device step.
+Xcode 26.6, iPhone 17 Pro simulator (iOS 26.5):
 
-Shell geometry tuned on the simulator for the app (and the installed PWA, which is the same shell): the dock keeps
-only part of the home-indicator inset (`--zm-safe-b`), so its icons sit where a native tab bar puts them; the chat
-is a full screen from the top edge to the dock, not a bottom sheet. With the chat's keyboard up the chat fills the
-visible area above it.
+- the shell renders with the dock where a native tab bar sits and a light status bar; the chat is a full screen and,
+  with the keyboard up, keeps its header and puts the composer on the keys;
+- a typed line reaches the engine and the WebView joins the LiveKit room (WebRTC works in WKWebView);
+- a sign-in page on another host renders in-page when listed in `ZAELAR_ALLOW_NAVIGATION`;
+- location: the system dialog shows the app's sentence and a fix comes back from the plugin.
+
+Not verifiable in the simulator: the microphone, the audio route and haptics — real-device steps.
 
 ## Not here yet
 
 Background voice, native push, the share target, deep links and App Intents (V2-870 §2–§6), runtime server
-switching, app icons and launch artwork, Android.
+switching, final app icon and launch artwork, Android.
 
 ## Generated (not tracked)
 
-`node_modules/`, `package-lock.json` (`package.json` pins exact versions instead), `www/origin.js` (written by `capacitor.config.ts` at sync), `ios/App/App/public/`,
-`ios/App/App/capacitor.config.json`, `ios/App/App/config.xml`, `ios/capacitor-cordova-ios-plugins/`, build
-outputs and `DerivedData/`.
+`node_modules/`, `package-lock.json` (`package.json` pins exact versions instead), `www/origin.js` (written by
+`capacitor.config.ts` at sync), `ios/App/App/public/`, `ios/App/App/capacitor.config.json`, `ios/App/App/config.xml`,
+`ios/capacitor-cordova-ios-plugins/`, build outputs and `DerivedData/`.
