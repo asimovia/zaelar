@@ -2896,7 +2896,8 @@ DOMAINS: list[dict] = [
         {"id": "4.218", "title": "MERCADOS: una gráfica de precio por nombre o ticker, el cambio contra el cierre "
                                  "de ayer («hoy») o contra el inicio del periodo, las palabras del periodo, el "
                                  "429 reintentado en el host gemelo — y la tarjeta RENDERIZADA; V2-873: the end state "
-                                 "of `range` is the period ASKED (`range = {range}`), and a `range` that names no "
+                                 "of `range` is the period ASKED (`range = {range}`, a failed fetch never met), `show` "
+                                 "needs a symbol, and a `range` that names no "
                                  "period is refused with its field, never drawn as today and said done",
             "ch": UNIT, "paths": [
                 "tests/browser/unit/markets/test_a_price_chart_by_name_or_ticker.py",
@@ -3857,6 +3858,8 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_a_yes_that_opens_another_order_is_neither.py"]},
         {"id": "2.1661", "title": "A canvas gesture is an end state the SCREEN reports, and a card's own `close` declares what it does (V2-873, V7, ES/EN): close / minimise / full screen owe `canvas <card> closed|minimized|maximized` from the canvas report, checked by the circuit like any declared end state; youtube's `close` declares the player emptied (`videoId` absent), never the card closed, and no example of its descriptor calls the card by its catalogue name",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_a_canvas_gesture_is_owed_to_the_screen.py"]},
+        {"id": "2.1663", "title": "Every CRITICAL event of the vocabulary has a door that emits it (V2-873): a critical errand class read unsure starts the errand only because money and accounts are still asked where they happen — `payment.authorize` at the browser's click gate, `errand.<class>` at the worker door",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/test_every_critical_event_has_an_emitter.py"]},
         {"id": "2.728", "title": "A turn that acted on a card and also escalated, read inline, launches no worker — on the text channel as on the voice",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_an_inline_act_settles_the_commission_on_both_channels.py"]},
         {"id": "2.729", "title": "An ordered act that leaves, sure at the operator's 70%, runs when the model only drafted it — both channels",

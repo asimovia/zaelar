@@ -23,6 +23,8 @@
     "platforms_at": "int",
     "platforms_stale": "bool",
     "player_error": "str",
+    "playing_id": "str",
+    "playing": "bool",
     "pos": "int",
     "prefs": "dict",
     "prefs_notes": "list",

@@ -72,6 +72,11 @@
             "widget": "markets",
             "field": "failed",
             "expect": "absent"
+          },
+          {
+            "widget": "markets",
+            "field": "symbol",
+            "expect": "present"
           }
         ]
       }
@@ -86,9 +91,10 @@
         "present.mount"
       ],
       "done_when": {
-        "widget": "markets",
-        "field": "range",
-        "is": "{range}"
+        "all": [
+          {"widget": "markets", "field": "range", "is": "{range}"},
+          {"widget": "markets", "field": "failed", "expect": "absent"}
+        ]
       }
     },
     "refresh": {
