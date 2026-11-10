@@ -25,9 +25,12 @@ await new Promise((r) => setTimeout(r, 20));
 assert.equal(calls, 1);
 assert.equal(rejections.length, 0, "a failed client-log POST must not surface as an unhandled rejection");
 
-// ── 2. a storm is capped per minute ────────────────────────────────────────────────────────────────────────
+// ── 2. a storm of the SAME report is capped per minute; a different report still goes out ──────────────────
 for (let i = 0; i < 500; i++) api.clientLog("⚠️ promesa sin capturar", { text: "y" });
 await new Promise((r) => setTimeout(r, 20));
-assert.equal(calls, api.CLIENT_LOG_PER_MIN, `capped at ${api.CLIENT_LOG_PER_MIN} per minute, sent ${calls}`);
+assert.equal(calls, 1 + api.CLIENT_LOG_PER_MIN, `the same report capped at ${api.CLIENT_LOG_PER_MIN}/min, sent ${calls - 1}`);
+api.clientLog("🔊 device", { state: "problem:silent_while_speaking" });
+await new Promise((r) => setTimeout(r, 20));
+assert.equal(calls, 2 + api.CLIENT_LOG_PER_MIN, "a different report is never held back by another one's storm");
 assert.equal(rejections.length, 0);
 console.log("ok");
