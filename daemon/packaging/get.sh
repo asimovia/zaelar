@@ -49,15 +49,33 @@ case "$(uname -m)" in
 esac
 ASSET="Zaelar-$SUFFIX.zip"
 
-# ── the newest release that CARRIES THIS FILE ──────────────────────────────────────────────────────────────
-# Not `releases/latest` (an engine release whose daemon build is still running, or failed, has no daemon
-# assets yet) and not a tag prefix either: the daemon is rebuilt on every engine tag, so a prefix-filtered
-# `daemon-v*` tag sinks below the first page of the API within weeks, the filter finds nothing, and the
-# one-liner dies on a perfectly healthy repository. The rule is the asset itself: the newest release (the API
-# lists newest first) that publishes exactly "$ASSET" — anchored on the closing quote, so the Apple Silicon
-# name never matches the Intel one.
+# ── which release: the daemon's OWN line first ─────────────────────────────────────────────────────────────
+# The daemon is released on its own tags, `daemon-vX.Y.Z`; engine releases (`v*`) once carried daemon builds too, and
+# "the newest release that carries the file" then installed an engine build over a newer, signed daemon release.
+# The order (the same as `daemon/update/release_line.py`, node 7.129):
+#   1. the `daemon-vX.Y.Z` tags — ALL of them, through `git/matching-refs`, so a daemon release never sinks below the
+#      first page of the releases listing — newest VERSION first, the first whose release publishes "$ASSET";
+#   2. only when none does, the newest release of any kind (the API lists newest first) that publishes it.
+# Anchored on the closing quote, so the Apple Silicon name never matches the Intel one. Drafts are never listed to an
+# anonymous caller, and a prerelease is skipped.
+API="https://api.github.com/repos/$REPO"
+carries() {   # <release json on stdin> — true when that release publishes exactly "$ASSET" and is not a prerelease
+  local body; body="$(cat)"
+  grep -Eq '"prerelease"[[:space:]]*:[[:space:]]*true' <<<"$body" && return 1
+  grep -q "\"browser_download_url\"[[:space:]]*:[[:space:]]*\"[^\"]*/releases/download/[^/\"]*/$ASSET\"" <<<"$body"
+}
+daemon_tags() {   # every daemon-vX.Y.Z tag, newest version first
+  curl -fsSL "$API/git/matching-refs/tags/daemon-v" 2>/dev/null \
+    | grep -Eo '"refs/tags/daemon-v[0-9]+\.[0-9]+\.[0-9]+"' | tr -d '"' | sed 's#^refs/tags/##' \
+    | sed 's/^daemon-v//' | sort -t. -k1,1nr -k2,2nr -k3,3nr | sed 's/^/daemon-v/' || true
+}
 resolve_tag() {
-  curl -fsSL "https://api.github.com/repos/$REPO/releases?per_page=100" 2>/dev/null \
+  local tag tried=0
+  for tag in $(daemon_tags); do
+    (( tried++ < 5 )) || break
+    if curl -fsSL "$API/releases/tags/$tag" 2>/dev/null | carries; then printf '%s\n' "$tag"; return 0; fi
+  done
+  curl -fsSL "$API/releases?per_page=100" 2>/dev/null \
     | grep -o "\"browser_download_url\"[[:space:]]*:[[:space:]]*\"[^\"]*/releases/download/[^/\"]*/$ASSET\"" \
     | head -n 1 | sed 's#.*/releases/download/\([^/]*\)/.*#\1#' || true
 }
@@ -69,9 +87,16 @@ if [[ -z "$TAG" ]]; then
   TAG="$(resolve_tag)"
 fi
 [[ -n "$TAG" ]] || die "could not find a published daemon release. Set ZAELAR_DAEMON_TAG to install a specific one."
+case "$TAG" in
+  daemon-v*) PICKED="the daemon's release line" ;;
+  *)         PICKED="no daemon-v* release carries $ASSET — an older engine release that does" ;;
+esac
+[[ -n "${ZAELAR_DAEMON_TAG:-}" ]] && PICKED="ZAELAR_DAEMON_TAG"
 BASE="https://github.com/$REPO/releases/download/$TAG"
 
-printf '\nZaelar Local Daemon · %s · %s\n\n' "$TAG" "$(uname -m)"
+printf '\nZaelar Local Daemon · %s · %s\n' "$TAG" "$(uname -m)"
+say "release: $TAG ($PICKED)"
+printf '\n'
 
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT

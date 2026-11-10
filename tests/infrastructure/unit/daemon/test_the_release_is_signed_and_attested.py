@@ -139,11 +139,12 @@ def test_provenance_is_attested_for_exactly_what_the_sums_list():
         "subject-checksums": "dist/daemon/" + names.SUMS_TEMPLATE.format(suffix="${{ matrix.suffix }}")}
 
 
-def test_a_build_that_is_not_a_tag_still_publishes_nothing():
-    """Signing must not turn a dispatch or a branch run into a release: only the tag-gated release job attaches
-    files, and the build job uploads build artifacts only."""
+def test_a_build_that_is_not_a_daemon_tag_still_publishes_nothing():
+    """Signing must not turn a dispatch, a branch run or an ENGINE tag into a daemon release: only the release job,
+    gated on the daemon's own `daemon-v` tags, attaches files, and the build job uploads build artifacts only
+    (V2-869 §5: an engine release carrying daemon builds was picked over a newer, signed daemon release)."""
     jobs = _workflow()["jobs"]
-    assert jobs["release"]["if"] == "startsWith(github.ref, 'refs/tags/')"
+    assert jobs["release"]["if"] == "startsWith(github.ref, 'refs/tags/daemon-v')"
     assert not any("action-gh-release" in str(s.get("uses", "")) for s in jobs["build"]["steps"])
 
 

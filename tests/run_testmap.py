@@ -7408,6 +7408,11 @@ DOMAINS: list[dict] = [
                                  "notarytool submit) are retried with a growing pause; a verdict is never retried",
             "ch": UNIT,
             "paths": ["tests/infrastructure/unit/daemon/test_the_calls_that_cross_apples_network_are_retried.py"]},
+        {"id": "7.129", "title": "Local daemon release: a daemon file comes from the daemon's own release line (highest "
+                                 "daemon-vX.Y.Z version), an engine release only when none carries it — get.sh, "
+                                 "get.ps1, the 🖥 screen and the updater",
+            "ch": UNIT,
+            "paths": ["tests/infrastructure/unit/daemon/test_the_daemon_line_wins_over_an_engine_release.py"]},
         # V2-638 — EL SISTEMA DE ARCHIVOS DEL AGENTE: un solo árbol que comparten todos los widgets, en vez de
         # que cada uno guarde en su rincón. Lo que se fija, por orden de daño: la FRONTERA (`paths.resolve()` es
         # la única puerta y toda ruta que llega es no fiable — magnet, salida del modelo, query string; una

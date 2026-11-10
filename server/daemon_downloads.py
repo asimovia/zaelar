@@ -9,12 +9,11 @@ import urllib.request
 
 from fastapi import Request
 
-# Where a user gets the installer: the newest release's own files. The daemon is rebuilt and attached on every
-# engine tag (`.github/workflows/daemon-artifacts.yml` runs on `v*`), so `releases/latest/download/<file>` is
-# the newest build. It used to be pinned to a `daemon-v<version>` tag, and that pin went stale silently: the
-# version number did not move while the daemon's code did, so the screen kept handing out a months-old build.
-# The one-line command (the main path) resolves the newest release that carries the file and never 404s; these
-# links are the fallback for somebody who would rather see the file first.
+# Where a user gets the installer: the daemon's OWN release line (`daemon/update/release_line.py`, V2-869 §5) — the
+# newest `daemon-vX.Y.Z` release by version, an engine release only when no daemon release carries the files. It is
+# resolved in the background with the signed flag below; `releases/latest/download` (an ENGINE release, whose daemon
+# build is not published) is only the placeholder until that first read lands. The one-line command (the main path)
+# resolves the same release itself; these links are the fallback for somebody who would rather see the file first.
 _RELEASE_BASE_DEFAULT = "https://github.com/asimovia/zaelar/releases/latest/download"
 
 _ASSETS = {
@@ -54,7 +53,7 @@ _BOOTSTRAP = {
 # checked against the signature and the digest, never against this flag.
 _SIGNED_TTL_S = 6 * 3600
 _SIGNED_RETRY_S = 15 * 60
-_signed_cache: dict = dict(at=0.0, base="", signed={}, busy=False)   # a state record, not a table
+_signed_cache: dict = dict(at=0.0, base="", signed={}, busy=False, tag="", download="")   # a state record
 _signed_lock = threading.Lock()
 LIVE = True     # the suite turns it off (root conftest): a deterministic test never reads GitHub
 
@@ -79,25 +78,50 @@ def _read_signed(base: str) -> dict:
     return out
 
 
+def _resolve_release() -> tuple[str, str]:
+    """(tag, download base) of the release the daemon files come from — the daemon's own line first."""
+    from connectors import outcome as _outcome
+    from server import daemon_release_line as release_line
+
+    def fetch(url: str) -> bytes:
+        req = urllib.request.Request(url, headers={"User-Agent": "zaelar-engine", "Accept": "application/json"})
+        with urllib.request.urlopen(req, timeout=5) as r:     # noqa: S310 — https API
+            return r.read(4 * 1024 * 1024)
+
+    repo = (os.getenv("ZAELAR_DAEMON_REPO") or "").strip() or "asimovia/zaelar"
+    rel = _outcome.call("daemon_release", "resolve", lambda: release_line.resolve(fetch, repo, "update-manifest.json"),
+                        empty=lambda r: not r) or {}
+    tag = str(rel.get("tag_name") or "")
+    if not tag:
+        raise LookupError("no release carries the daemon's update manifest")
+    return tag, f"https://github.com/{repo}/releases/download/{tag}"
+
+
 def _refresh_signed(base: str) -> None:
+    tag, download = "", base
     try:
-        signed, ok = _read_signed(base), True
+        if base == _RELEASE_BASE_DEFAULT:
+            tag, download = _resolve_release()
+        signed, ok = _read_signed(download), True
     except Exception:       # noqa: BLE001 — offline, no release yet, an older manifest: all mean "not known"
         signed, ok = {}, False
     with _signed_lock:
-        _signed_cache.update(signed=signed, base=base, busy=False,
+        _signed_cache.update(signed=signed, base=base, busy=False, tag=tag if ok else "", download=download if ok else "",
                              at=time.time() - (0 if ok else _SIGNED_TTL_S - _SIGNED_RETRY_S))
 
 
 def _release_signed(base: str) -> dict:
-    """{platform: bool, "package:<platform>": asset} from the newest release's manifest, or {} while it is not
-    known. Never blocks."""
+    """{platform: bool, "package:<platform>": asset, "tag": …, "download": …} from the chosen release's manifest, or
+    {} while it is not known. Never blocks."""
     with _signed_lock:
         fresh = _signed_cache["base"] == base and time.time() - _signed_cache["at"] < _SIGNED_TTL_S
         if not fresh and LIVE and not _signed_cache["busy"] and base.startswith("https://"):
             _signed_cache["busy"] = True
             threading.Thread(target=_refresh_signed, args=(base,), name="daemon-release-signed", daemon=True).start()
-        return dict(_signed_cache["signed"]) if _signed_cache["base"] == base else {}
+        if _signed_cache["base"] != base:
+            return {}
+        return {**_signed_cache["signed"], "tag": _signed_cache.get("tag") or "",
+                "download": _signed_cache.get("download") or ""}
 
 
 def _downloads(version: str) -> dict:
@@ -110,6 +134,10 @@ def _downloads(version: str) -> dict:
     if not base:
         return out
     signed = _release_signed(base)
+    # The release the daemon line resolved to, once known; the placeholder base until then.
+    if signed.get("tag") and str(signed.get("download") or "").startswith("https://"):
+        tag, base = signed["tag"], signed["download"]
+        out["tag"] = tag
     for name, assets in _ASSETS.items():
         entry = {key: f"{base}/{filename}" for key, filename in assets.items()}
         entry["bootstrap"] = f"{boot}/{_BOOTSTRAP[name]['script']}"
