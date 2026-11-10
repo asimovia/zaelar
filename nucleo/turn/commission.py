@@ -25,8 +25,10 @@ from __future__ import annotations
 
 from loguru import logger
 
-#: `stop_errand` choices that address the running errand (`nucleo.request.stop`): its words are for it.
-ADDRESSES_THE_ERRAND = ("steer", "replace", "stop", "stop_all", "settled")
+from nucleo.request.stop import REPLACE, SETTLED, STEER, STOP, STOP_ALL
+
+#: `stop_errand` choices that address the running errand — the owner's own constants (`nucleo.request.stop`).
+ADDRESSES_THE_ERRAND = (STEER, REPLACE, STOP, STOP_ALL, SETTLED)
 #: The model's own calls that hand the turn to an errand (a new one, or the one running).
 HANDS_OVER = ("escalate_to_slowbrain", "send_to_worker")
 #: `flow_of` outcomes that open a new errand («» — no route was begun or settled).
@@ -151,5 +153,6 @@ def _peek(brief):
     try:
         from nucleo import jev
         return jev.peek(brief)
-    except Exception:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"commission: brief unreadable — {e!r}")
         return None
