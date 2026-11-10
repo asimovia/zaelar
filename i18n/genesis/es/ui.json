@@ -2548,5 +2548,8 @@
  "mobile.delete_account": "Eliminar cuenta",
  "mobile.delete_account_sub": "Abre la página de tu cuenta en el navegador",
  "energy.out.account": "Abrir tu cuenta",
- "energy.out.body_app": "Tu agente se ha parado porque en tu cuenta no queda energía."
+ "energy.out.body_app": "Tu agente se ha parado porque en tu cuenta no queda energía.",
+ "daemon.manual.body.signed.macos": "También vale, sin pasos de más: firmado por Zaelar y notarizado por Apple, se abre sin avisos.",
+ "daemon.manual.body.signed.windows": "También vale: está firmado por Zaelar. Justo después de una versión nueva Windows aún puede mostrar «Windows protegió su PC» mientras la firma gana reputación → Más información → Ejecutar de todas formas.",
+ "daemon.manual.package": "el instalador (.pkg)"
 }

@@ -286,6 +286,16 @@ def _the_network_probe_never_reaches_the_network(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _the_daemon_release_probe_never_reaches_the_network(monkeypatch):
+    """`/api/daemon/status` reads the newest release's `update-manifest.json` in the background to learn whether its
+    installers are signed (V2-869 §5). Inside the suite it reads nothing; the tests of that mechanism fill the cache
+    or call the reader with a fake URL opener."""
+    from server import daemon_downloads
+    monkeypatch.setattr(daemon_downloads, "LIVE", False)
+    monkeypatch.setattr(daemon_downloads, "_signed_cache", {"at": 0.0, "base": "", "signed": {}, "busy": False})
+
+
+@pytest.fixture(autouse=True)
 def _a_sheets_pictures_never_reach_the_network(monkeypatch):
     """Every `present`/`append` hands the rows still without a picture to `widgets.results.media`, whose default
     fetcher is the open web (V2-840 H4). Inside the suite it fetches nothing: the tests of that mechanism inject

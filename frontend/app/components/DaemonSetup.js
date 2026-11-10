@@ -127,10 +127,16 @@ export function DaemonSetup() {
       // is what marks a download as quarantined.
       h("details", { class: "dsx-more" },
         h("summary", {}, () => t("daemon.manual.summary")),
-        h("p", { class: "dsx-note" }, () => t("daemon.manual.body")),
+        // ⚠️ THE WARNING LINE FOLLOWS THE PUBLISHED BYTES, NOT A HOPE. `signed` comes from the release's own manifest
+        // (V2-869 §5): true only when that platform's asset carries Developer ID + notarization or Authenticode.
+        // Unknown or false keeps the unsigned sentence — telling somebody "no warning" and then showing one is worse
+        // than preparing them for one that does not come.
+        h("p", { class: "dsx-note", "data-signed": () => current().signed === true ? "yes" : "no" },
+          () => current().signed === true ? t("daemon.manual.body.signed." + platform()) : t("daemon.manual.body")),
         h("p", { class: "dsx-note" },
-          h("a", { class: "dsx-link", href: () => current().artifact || "#", download: "" },
-            () => t("daemon.manual.artifact")), " · ",
+          // A notarized `.pkg` is the file a person double-clicks; without one, the zipped app as before.
+          h("a", { class: "dsx-link", href: () => current().package || current().artifact || "#", download: "" },
+            () => current().package ? t("daemon.manual.package") : t("daemon.manual.artifact")), " · ",
           h("a", { class: "dsx-link", href: () => current().installer || "#", download: "" },
             () => t("daemon.manual.installer")), " · ",
           h("a", { class: "dsx-link", href: () => current().checksums || "#" },
