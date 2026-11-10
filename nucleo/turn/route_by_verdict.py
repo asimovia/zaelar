@@ -132,3 +132,5 @@ def route(escalate_req: dict, operator_text: str, emit, *, why: str, brief=None)
              text=str(operator_text or "")[:160], extra={"cat": "flash", "why": why, "routed": True, "source": why,
                                                          "verdict": str(choice or ""),
                                                          "confidence": float((info or {}).get("confidence") or 0.0)})
+        from nucleo.turn import commission   # V2-874: the one rule, in shadow beside what routing did
+        commission.shadow(emit, at="route", brief=brief, escalate_req=escalate_req, text=operator_text)
