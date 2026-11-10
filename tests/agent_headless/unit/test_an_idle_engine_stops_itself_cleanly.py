@@ -13,7 +13,7 @@ import time
 
 import pytest
 
-from nucleo import idle_stop
+from nucleo import idle_stop, suspend
 
 MIN = 60_000
 NOW = 1_800_000_000_000
@@ -21,10 +21,10 @@ NOW = 1_800_000_000_000
 
 @pytest.fixture(autouse=True)
 def _fresh(monkeypatch):
-    idle_stop._reset_for_tests()
+    suspend._reset_for_tests()
     monkeypatch.delenv("ZAELAR_IDLE_STOP_MIN", raising=False)
     yield
-    idle_stop._reset_for_tests()
+    suspend._reset_for_tests()
 
 
 def test_quiet_for_the_whole_window_with_nothing_pending_is_a_stop():
@@ -172,14 +172,14 @@ def test_maybe_stop_reads_screen_input_as_presence(monkeypatch):
     monkeypatch.setenv("ZAELAR_IDLE_STOP_MIN", "15")
     monkeypatch.setattr(idle_stop, "_readings", lambda now: (None, False, None))
     exits = []
-    idle_stop.request_exit(lambda: exits.append(1))
+    suspend.request_exit(lambda: exits.append(1))
     now = time.time()
     monkeypatch.setattr(idle_stop, "_STARTED_MS", round((now - 5 * 60) * 1000))
     try:
         screens.attach("mobile:x1")                          # a tab reconnected: not a person
         assert idle_stop.maybe_stop(now) is True and exits == [1]
-        idle_stop._reset_for_tests()
-        idle_stop.request_exit(lambda: exits.append(2))
+        suspend._reset_for_tests()
+        suspend.request_exit(lambda: exits.append(2))
         screens.touched("mobile:x1")                         # he touched it: the full window holds
         assert idle_stop.maybe_stop(time.time()) is False and exits == [1]
     finally:
@@ -193,7 +193,7 @@ def _armed(monkeypatch, record):
     monkeypatch.setattr(idle_stop, "_STARTED_MS", round((time.time() - 3600) * 1000))
     import voice.observer as observer
     monkeypatch.setattr(observer, "emit", lambda kind, label, **kw: record.append(f"{kind}:{label}"))
-    idle_stop.request_exit(lambda: record.append("exit"))
+    suspend.request_exit(lambda: record.append("exit"))
 
 
 def test_the_engine_says_goodnight_before_it_exits(monkeypatch):
@@ -206,7 +206,7 @@ def test_the_engine_says_goodnight_before_it_exits(monkeypatch):
 def test_on_the_server_loop_the_exit_waits_one_beat_for_the_goodnight(monkeypatch):
     record = []
     _armed(monkeypatch, record)
-    monkeypatch.setattr(idle_stop, "SLEEP_FLUSH_S", 0.2)
+    monkeypatch.setattr(suspend, "SLEEP_FLUSH_S", 0.2)
 
     async def _main():
         assert idle_stop.maybe_stop() is True

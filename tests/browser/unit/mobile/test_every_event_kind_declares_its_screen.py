@@ -75,6 +75,11 @@ def test_the_screen_that_loses_the_voice_stands_down_on_the_stream_event():
 
 
 def test_a_screen_without_the_voice_types_over_http():
+    """A screen that does not hold the voice still types. Since the outbox (2026-11-08) EVERY typed line goes over
+    HTTP, voice or not: `sendText` hands it to the outbox, whose one sender is `api.chatText`, and nothing typed rides
+    the room's data channel. The outbox's own delivery is pinned by `chat/test_a_typed_line_is_kept_until_the_engine_has_it`."""
     lk = _strip(open(os.path.join(SVC, "session-lk.js")).read())
     body = re.search(r"export function sendText\(text\) \{[\s\S]*?\n\}", lk).group(0)
-    assert re.search(r"if \(!started && !starting\) \{\s*api\.chatText\(", body)
+    assert re.search(r"return _outbox\.add\(text\);", body), "sendText no longer hands the line to the outbox"
+    assert "publishData" not in body and "_publish(" not in body, "a typed line rides the voice room again"
+    assert re.search(r"createOutbox\(\{[^}]*send: \(t\) => api\.chatText\(t\)", lk), "the outbox does not send over HTTP"
