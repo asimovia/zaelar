@@ -86,18 +86,9 @@
         "present.mount"
       ],
       "done_when": {
-        "all": [
-          {
-            "widget": "markets",
-            "field": "fetched_at",
-            "expect": "changed"
-          },
-          {
-            "widget": "markets",
-            "field": "failed",
-            "expect": "absent"
-          }
-        ]
+        "widget": "markets",
+        "field": "range",
+        "is": "{range}"
       }
     },
     "refresh": {
