@@ -63,7 +63,11 @@ from __future__ import annotations
 #         every start and an allowlist that did not survive a restart, behind a perfectly healthy
 #         /health. The root is now taken from where the program sits (`<prefix>/bin/…` → `<prefix>`),
 #         which also makes installing into a chosen folder work with nothing to configure.
-VERSION = "0.2.2"
+# 0.3.0 — THE DESKTOP APP, SIGNED. The daemon is a menu-bar application (`Zaelar.app`, tray, sign-in window,
+#         folders, egress tunnel, auto-update) and this is the first release signed with a Developer ID
+#         certificate, notarized by Apple and stapled: macOS opens it without a warning. The relay client,
+#         the session export and the tunnel are new HTTP surface the engine can observe (hence the minor bump).
+VERSION = "0.3.0"
 
 # THE PORT. Fixed, so the engine and the wizard can both name it without discovery, and chosen deliberately:
 #   · not in /etc/services (verified 2026-09-04) — no known service to collide with;
