@@ -72,6 +72,8 @@ run() {
   if (( DRY )); then printf '+ %s\n' "$*"; return 0; fi
   "$@"
 }
+# `retry` (the stapler calls) and `transient` (notarytool's network failures): calls that cross Apple's network.
+. "$HERE/retry.sh"
 
 [[ -x "$APP/Contents/MacOS/zaelar-daemon" ]] || die "$APP is not a Zaelar.app"
 VERSION="$(/usr/bin/plutil -extract CFBundleShortVersionString raw "$APP/Contents/Info.plist")"
@@ -276,18 +278,32 @@ notarize() {   # <file> — refuses anything but Accepted, and prints Apple's lo
   phase "notarize $(basename "$file")"
   if (( DRY )); then
     printf '+ xcrun notarytool submit %s --key <NOTARY_KEY_P8> --key-id <NOTARY_KEY_ID> --issuer <NOTARY_ISSUER> --wait --timeout 45m\n' "$file"
+    printf '  ↻ notarytool submit: up to %d attempts on a network error only, pauses %s s\n' \
+      "$(( ${#RETRY_DELAYS[@]} + 1 ))" "${RETRY_DELAYS[*]}"
     return 0
   fi
   # `|| true`: notarytool exits non-zero on Invalid or a timeout, and under `set -e` that ended the script BEFORE
   # Apple's log was fetched — the one thing that says which binary was refused and why.
-  result="$(xcrun notarytool submit "$file" --key "$WORK/notary.p8" --key-id "$NOTARY_KEY_ID" \
-            --issuer "$NOTARY_ISSUER" --wait --timeout 45m --output-format json 2>"$WORK/notary.err" || true)"
-  id="$(/usr/bin/python3 -c 'import json,sys
+  # A lost connection is retried; a status of any kind (Accepted, Invalid, Rejected, a --wait timeout) is a verdict
+  # and is never submitted again.
+  local attempt=1 max=$(( ${#RETRY_DELAYS[@]} + 1 ))
+  while :; do
+    printf '  ↻ notarytool submit: attempt %d/%d\n' "$attempt" "$max"
+    result="$(xcrun notarytool submit "$file" --key "$WORK/notary.p8" --key-id "$NOTARY_KEY_ID" \
+              --issuer "$NOTARY_ISSUER" --wait --timeout 45m --output-format json 2>"$WORK/notary.err" || true)"
+    id="$(/usr/bin/python3 -c 'import json,sys
 try: print(json.loads(sys.argv[1]).get("id", ""))
 except Exception: print("")' "$result")"
-  status="$(/usr/bin/python3 -c 'import json,sys
+    status="$(/usr/bin/python3 -c 'import json,sys
 try: print(json.loads(sys.argv[1]).get("status", ""))
 except Exception: print("")' "$result")"
+    [[ -n "$status" ]] && break
+    (( attempt < max )) && transient "$WORK/notary.err" || break
+    cat "$WORK/notary.err" >&2 || true
+    printf '  ↻ notarytool submit: network error, retrying in %ss\n' "${RETRY_DELAYS[attempt-1]}" >&2
+    sleep "${RETRY_DELAYS[attempt-1]}"
+    attempt=$(( attempt + 1 ))
+  done
   if [[ "$status" != "Accepted" ]]; then
     cat "$WORK/notary.err" >&2 || true
     if [[ -n "$id" ]]; then
@@ -302,7 +318,7 @@ notarize "$WORK/notarize.zip"
 
 # ── 5. staple, re-zip ────────────────────────────────────────────────────────────────────────────────────────
 phase "staple"
-run xcrun stapler staple "$APP"
+retry "stapler staple Zaelar.app" xcrun stapler staple "$APP"
 run rm -f "$OUT/Zaelar.zip"
 run ditto -c -k --sequesterRsrc --keepParent "$APP" "$OUT/Zaelar.zip"
 
@@ -312,7 +328,7 @@ RECEIVED="$WORK/received"
 run mkdir -p "$RECEIVED"
 run ditto -x -k "$OUT/Zaelar.zip" "$RECEIVED"
 run codesign --verify --deep --strict --verbose=2 "$RECEIVED/Zaelar.app"
-run xcrun stapler validate "$RECEIVED/Zaelar.app"
+retry "stapler validate Zaelar.app" xcrun stapler validate "$RECEIVED/Zaelar.app"
 gatekeeper execute "$RECEIVED/Zaelar.app"
 
 # ── 7. the installer package ─────────────────────────────────────────────────────────────────────────────────
@@ -329,9 +345,9 @@ fi
 run pkgutil --check-signature "$OUT/Zaelar.pkg"
 notarize "$OUT/Zaelar.pkg"
 phase "staple package"
-run xcrun stapler staple "$OUT/Zaelar.pkg"
+retry "stapler staple Zaelar.pkg" xcrun stapler staple "$OUT/Zaelar.pkg"
 phase "assess package"
-run xcrun stapler validate "$OUT/Zaelar.pkg"
+retry "stapler validate Zaelar.pkg" xcrun stapler validate "$OUT/Zaelar.pkg"
 gatekeeper install "$OUT/Zaelar.pkg"
 (( DRY )) || check_pkg "$OUT/Zaelar.pkg"
 say "Zaelar.zip and Zaelar.pkg: Developer ID signed, notarized, stapled"

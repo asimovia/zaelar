@@ -7404,6 +7404,10 @@ DOMAINS: list[dict] = [
                                  "signed, from its manifest, without blocking the poll",
             "ch": UNIT,
             "paths": ["tests/infrastructure/unit/daemon/test_the_download_says_whether_the_release_is_signed.py"]},
+        {"id": "7.128", "title": "Local daemon release: the signing calls that cross Apple's network (stapler, "
+                                 "notarytool submit) are retried with a growing pause; a verdict is never retried",
+            "ch": UNIT,
+            "paths": ["tests/infrastructure/unit/daemon/test_the_calls_that_cross_apples_network_are_retried.py"]},
         # V2-638 — EL SISTEMA DE ARCHIVOS DEL AGENTE: un solo árbol que comparten todos los widgets, en vez de
         # que cada uno guarde en su rincón. Lo que se fija, por orden de daño: la FRONTERA (`paths.resolve()` es
         # la única puerta y toda ruta que llega es no fiable — magnet, salida del modelo, query string; una
