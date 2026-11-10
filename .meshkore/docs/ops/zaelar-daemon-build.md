@@ -390,28 +390,98 @@ existed carry no bundle.
 
 ### Identity signing — Developer ID, notarization, Authenticode (conditional)
 
-**macOS** (`daemon/packaging/macos/sign_and_notarize.sh sign`): the two `.p12` go into a throwaway keychain
-(deleted on exit, whatever happens); every Mach-O in the bundle is signed inside-out with the hardened runtime and a
-secure timestamp, then the bundle (not `codesign --deep` for SIGNING: it applies one set of options to nested code
-it never inspected — `--deep` is used to VERIFY); the team identifier must equal `APPLE_TEAM_ID`. Entitlements are
-the minimum, in `macos/entitlements.plist`: `allow-jit` (the bundled Node driver) and
-`allow-unsigned-executable-memory` (CPython's ctypes closures). The app is notarized (`notarytool submit --wait`,
-anything but `Accepted` fails the job and prints Apple's log), stapled, checked with `spctl`, and RE-ZIPPED — so
-`Zaelar-<suffix>.zip`, what `get.sh` and the auto-update install, carries a notarized app. Then `Zaelar.pkg`:
-`pkgbuild` + `productbuild` with a distribution that enables only the current user's home (no administrator; the
-component is marked `auth="none"` and not relocatable), payload `~/Library/Application Support/Zaelar/Zaelar.app`,
-and a `postinstall` that runs the same `install.sh` to register the LaunchAgent — signed with the Installer
-identity, notarized, stapled, published as `Zaelar-<suffix>.pkg`. The signed program is started once more
-(`version`) — the hardened runtime is exactly where a missing entitlement shows.
+**macOS** (`daemon/packaging/macos/sign_and_notarize.sh sign`): the identities go into a throwaway keychain (unlocked,
+key partition list set so `codesign` never waits on a prompt; deleted and the search list restored on exit, whatever
+happens). Every Mach-O in the bundle is signed INSIDE-OUT — files deepest path first, then nested bundles
+(`Python.framework`) deepest first, then the app — with the hardened runtime and a secure timestamp; never
+`codesign --deep` to SIGN (it applies one set of options to nested code it never inspected — `--deep` is used to
+VERIFY). The team identifier must equal `APPLE_TEAM_ID`. The app is notarized (`notarytool submit --wait`; anything
+but `Accepted` fails the job and prints Apple's log), stapled and RE-ZIPPED, so `Zaelar-<suffix>.zip` — what `get.sh`
+and the auto-update install — carries a notarized app. Then what a user RECEIVES is assessed: the published zip is
+extracted and that copy must pass `codesign --verify --deep --strict`, `stapler validate` and Gatekeeper
+(`spctl --assess --type execute` naming `Notarized Developer ID`); any failure fails the release.
+
+**Entitlements are per binary and were measured** (2026-11-10, arm64 build, hardened runtime): only the bundled
+Node that drives Playwright gets one — `allow-jit` (`macos/entitlements-node.plist`); without it V8 dies on its first
+JIT page. The app, the Python runtime and the tray need none (`allow-unsigned-executable-memory`, once listed "for
+ctypes", was measured unnecessary). Library validation stays on: every dylib is re-signed by the same team.
+Chromium is not bundled — the daemon drives the installed Chrome or downloads Chromium on first run into the user's
+folder. After signing, the workflow re-runs the smoke test on the SIGNED bytes (Chrome ready, Node's JIT, the resident
+with its tray), so a missing entitlement fails on the runner.
+
+**The `.pkg` is optional.** With the Developer ID Installer identity, `Zaelar.pkg` is built (`pkgbuild` +
+`productbuild`, a distribution that enables only the current user's home: no administrator; the component is
+`auth="none"` and not relocatable; payload `~/Library/Application Support/Zaelar/Zaelar.app`; a `postinstall` that runs
+the same `install.sh`), signed, notarized, stapled, assessed as an install and published as `Zaelar-<suffix>.pkg` —
+`get.sh` prefers it when the signed sums list it. Without that identity the notarized zip ships alone and `get.sh`
+installs from it.
+
+**Testable without Apple.** `sign_and_notarize.sh --dry-run sign <Zaelar.app> <dir> <suffix>` walks the real bundle
+and prints every command it would run (`+ codesign …`), needs no secret and prints none. Every macOS build prints that
+plan; node 7.126 pins its order on a fixture bundle.
+
+**Whether a release is signed is measured from its bytes.** `update_manifest.py` writes `"signed": true|false` for
+`macos`, `macos-x86_64` and `windows`: a Mac zip is signed when it carries the stapled ticket
+(`Zaelar.app/Contents/CodeResources`) or its `.pkg` is published; a Windows `.exe` when its certificate-table directory
+is not empty. The engine reads it from `releases/latest/download/update-manifest.json` in the background (cached six
+hours, `null` until known) into `/api/daemon/status.downloads.platforms.<os>.signed`, and the 🖥 screen drops the
+"your system will ask you to allow it" line only for a platform marked signed (nodes 7.127, 4.444). The updater never
+trusts this flag; it trusts the minisign signature and the digest.
 
 **Windows**: `azure/artifact-signing-action` (formerly Trusted Signing; the certificate never leaves Azure) signs
 `zaelar-daemon.exe` with SHA-256 and an RFC 3161 timestamp; the job then requires `Get-AuthenticodeSignature` to
 say `Valid` and runs the signed program. No separate installer: the onefile `.exe` plus `install.ps1` stays the
 install path.
 
-⚠️ **Not verified yet:** none of the signed branches has run — no identity exists. The structure is pinned (node
-7.111) and the unsigned package's shape is checked on every macOS build; the first run with the secrets is the
-real test, on a CLEAN machine, before a release is announced.
+⚠️ **Not verified yet:** none of the signed branches has run against Apple or Azure — no secret is set yet. The
+structure is pinned (nodes 7.111, 7.126), the unsigned package's shape and the signing plan are checked on every macOS
+build, and the entitlements were measured on an ad hoc hardened build; the first run with the secrets is the real
+test, on a CLEAN machine, before a release is announced.
+
+### The first signed release — procedure
+
+1. **Secrets** (repository → Settings → Secrets and variables → Actions; names only, values never in the repo):
+
+   ```bash
+   gh secret set APPLE_DEVID_APP_P12 --repo asimovia/zaelar < <(base64 -i developer-id-application.p12)
+   gh secret set APPLE_DEVID_APP_P12_PASSWORD --repo asimovia/zaelar
+   gh secret set NOTARY_KEY_P8 --repo asimovia/zaelar < AuthKey_XXXXXXXXXX.p8
+   gh secret set NOTARY_KEY_ID --repo asimovia/zaelar
+   gh secret set NOTARY_ISSUER --repo asimovia/zaelar
+   gh secret set APPLE_TEAM_ID --repo asimovia/zaelar
+   # optional — only for the .pkg:
+   gh secret set APPLE_DEVID_INSTALLER_P12 --repo asimovia/zaelar < <(base64 -i developer-id-installer.p12)
+   gh secret set APPLE_DEVID_INSTALLER_P12_PASSWORD --repo asimovia/zaelar
+   ```
+
+   The `.p12` must contain the certificate AND its private key (export both from Keychain Access). `NOTARY_KEY_P8`
+   accepts the PEM text or its base64. The notary key needs the "Developer" role in App Store Connect → Users and
+   Access → Integrations → Keys. Secrets reach tag pushes from this repository, never a fork's pull request.
+2. **Dry rehearsal**: run the workflow by hand (`gh workflow run daemon-artifacts.yml --ref main`). It builds, signs
+   and notarizes but publishes nothing (no tag, no `release` job). Read the `identity` step (no "unsigned" notice for
+   macOS), the sign step (`notarized …`, `Gatekeeper: Zaelar.app accepted, notarized Developer ID`) and the signed
+   smoke test.
+3. **Tag**: bump `update/BUILD`, commit, then push the tag (`git tag daemon-vX.Y.Z && git push origin daemon-vX.Y.Z`).
+4. **On a CLEAN Mac** (not the build machine; a fresh user account is enough), download the zip with a BROWSER so it
+   is quarantined, unzip, and:
+
+   ```bash
+   spctl --assess --type execute --verbose=4 Zaelar.app        # accepted · source=Notarized Developer ID
+   codesign -dv --verbose=4 Zaelar.app                         # Authority=Developer ID Application: … · TeamIdentifier · Runtime Version
+   codesign --verify --deep --strict --verbose=2 Zaelar.app    # valid on disk · satisfies its Designated Requirement
+   xcrun stapler validate Zaelar.app                           # The validate action worked!
+   pkgutil --check-signature Zaelar-macos.pkg                  # Developer ID Installer · trusted by the Apple root (if published)
+   spctl --assess --type install --verbose=4 Zaelar-macos.pkg  # accepted · source=Notarized Developer ID (if published)
+   ```
+
+   Then open it by double-click: no "cannot be opened" dialog. Check `update-manifest.json` says `"signed": true` for
+   both Mac platforms, and the 🖥 screen's fold shows the signed sentence.
+
+**Windows** is gated on `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `ARTIFACT_SIGNING_ENDPOINT`,
+`ARTIFACT_SIGNING_ACCOUNT`, `ARTIFACT_SIGNING_PROFILE` (Azure Artifact Signing: no certificate file to hold; the
+account and its identity validation come first). Until all six exist the `.exe` ships unsigned with a notice, the
+manifest says `"signed": false` for it, and the screen keeps the SmartScreen line. Even signed, SmartScreen can warn
+on a new release until the signature builds reputation — the signed Windows sentence says so.
 
 ### The signed update manifest
 

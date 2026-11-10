@@ -88,8 +88,10 @@ def test_the_manifest_is_written_over_the_published_names_and_parses(tmp_path):
     assert set(data["platforms"]) == {"macos", "windows", "pyz"}, "the Intel build did not run: left out, not fatal"
     for key, entry in data["platforms"].items():
         blob = (release / entry["asset"]).read_bytes()
-        assert entry == {"asset": shape.PLATFORMS[key][0], "sha256": hashlib.sha256(blob).hexdigest(),
-                         "size": len(blob)}
+        expected = {"asset": shape.PLATFORMS[key][0], "sha256": hashlib.sha256(blob).hexdigest(), "size": len(blob)}
+        if key != "pyz":                        # the portable archive has no OS signature, so no field
+            expected["signed"] = False          # fixture bytes: no stapled ticket, no Authenticode table
+        assert entry == expected
     parsed = shape.parse(target.read_bytes())
     assert parsed.platforms["windows"].asset == "zaelar-daemon-windows.exe"
 
@@ -121,6 +123,68 @@ def test_a_notarized_pkg_is_renamed_summed_and_listed(tmp_path):
     assert "Zaelar-macos.pkg" in (tmp_path / "d" / "SHA256SUMS-macos").read_text()
     data = json.loads(writer.write(tmp_path / "d", "v1").read_text())
     assert data["installers"]["macos"]["asset"] == "Zaelar-macos.pkg"
+
+
+# ── the `signed` flag: measured from the published bytes ─────────────────────────────────────────────────
+
+def _zip(path: Path, names: list[str]) -> bytes:
+    import zipfile
+    with zipfile.ZipFile(path, "w") as zf:
+        for n in names:
+            zf.writestr(n, b"x")
+    return path.read_bytes()
+
+
+def _pe(cert_size: int, plus: bool = True) -> bytes:
+    """A minimal PE header: MZ, e_lfanew, `PE\\0\\0`, COFF, the optional-header magic and the certificate-table
+    directory entry (data directory 4) — the only fields the reader looks at."""
+    import struct
+    buf = bytearray(1024)
+    buf[0:2] = b"MZ"
+    struct.pack_into("<I", buf, 0x3C, 0x80)
+    buf[0x80:0x84] = b"PE\0\0"
+    optional = 0x80 + 24
+    struct.pack_into("<H", buf, optional, 0x20B if plus else 0x10B)
+    directories = optional + (112 if plus else 96)
+    struct.pack_into("<II", buf, directories + 4 * 8, 0x400 if cert_size else 0, cert_size)
+    return bytes(buf)
+
+
+@pytest.mark.parametrize("stapled,pkg,signed", [(True, False, True), (False, True, True), (False, False, False)],
+                         ids=["stapled-zip", "notarized-pkg-listed", "ad-hoc"])
+def test_a_mac_build_is_signed_when_its_zip_carries_the_ticket_or_its_pkg_exists(tmp_path, stapled, pkg, signed):
+    names = _load("rn_sig1", "release_names.py")
+    writer = _load("um_sig1", "update_manifest.py")
+    d = tmp_path / "d"
+    d.mkdir()
+    content = ["Zaelar.app/Contents/MacOS/zaelar-daemon", "Zaelar.app/Contents/_CodeSignature/CodeResources"]
+    _zip(d / "Zaelar.zip", content + (["Zaelar.app/Contents/CodeResources"] if stapled else []))
+    if pkg:
+        (d / "Zaelar.pkg").write_bytes(b"notarized pkg")
+    names.rename_for("macos", d)
+    data = json.loads(writer.write(d, "v1").read_text())
+    assert data["platforms"]["macos"]["signed"] is signed
+    assert shape.parse(json.dumps(data).encode()).platforms["macos"].asset == "Zaelar-macos.zip", "clients still parse"
+
+
+@pytest.mark.parametrize("cert,plus,signed", [(2048, True, True), (2048, False, True), (0, True, False)],
+                         ids=["pe32plus-signed", "pe32-signed", "unsigned"])
+def test_a_windows_build_is_signed_when_its_certificate_table_is_not_empty(tmp_path, cert, plus, signed):
+    names = _load("rn_sig2", "release_names.py")
+    writer = _load("um_sig2", "update_manifest.py")
+    d = tmp_path / "d"
+    d.mkdir()
+    (d / "zaelar-daemon.exe").write_bytes(_pe(cert, plus))
+    names.rename_for("windows", d)
+    data = json.loads(writer.write(d, "v1").read_text())
+    assert data["platforms"]["windows"]["signed"] is signed
+
+
+def test_a_file_that_is_not_a_pe_or_a_zip_is_never_called_signed(tmp_path):
+    writer = _load("um_sig3", "update_manifest.py")
+    junk = tmp_path / "junk"
+    junk.write_bytes(b"MZ" + b"\xff" * 70)
+    assert writer._authenticode(junk) is False and writer._stapled_app(junk) is False
 
 
 # ── the workflow ──────────────────────────────────────────────────────────────────────────────────────────────
@@ -158,6 +222,18 @@ def test_identity_signing_is_conditional_after_the_smoke_test_and_before_the_sum
     cosign = _index(steps, lambda s: "cosign sign-blob" in str(s.get("run", "")), "cosigns")
     assert smoke < ident < mac < rename < cosign and ident < win < rename
     assert steps[mac]["if"] == "runner.os == 'macOS' && steps.identity.outputs.apple == 'true'"
+    signed_smoke = _index(steps, lambda s: str(s.get("name", "")).startswith("The SIGNED app still runs"),
+                          "smoke-tests the signed app")
+    assert mac < signed_smoke < rename, "the signed bytes are smoke-tested before they are summed and published"
+    assert steps[signed_smoke]["if"] == steps[mac]["if"]
+    for needle in ("browser", "node", "WebAssembly", "/health", "kill -0"):
+        assert needle in steps[signed_smoke]["run"], needle
+    plan = _index(steps, lambda s: "sign_and_notarize.sh --dry-run sign" in str(s.get("run", "")),
+                  "prints the signing plan on every build")
+    assert steps[plan]["if"] == "runner.os == 'macOS'" and "env" not in steps[plan], "no secret, every build"
+    apple_required = re.search(r"APPLE=\(([^)]*)\)", probe["run"]).group(1).split()
+    assert set(apple_required) == APPLE_SECRETS - {"APPLE_DEVID_INSTALLER_P12", "APPLE_DEVID_INSTALLER_P12_PASSWORD"}, \
+        "the Installer certificate is optional: it only signs the .pkg"
     assert steps[win]["if"] == "runner.os == 'Windows' && steps.identity.outputs.windows == 'true'"
     assert set(steps[mac]["env"]) == APPLE_SECRETS
     assert re.fullmatch(r"azure/artifact-signing-action@[0-9a-f]{40}", steps[win]["uses"]), "pinned by commit"

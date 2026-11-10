@@ -10,9 +10,9 @@ both import THIS module, so the asset names, the platform keys and the shape can
       "published_at": "2026-11-09T…Z",
       "min_engine_build": 0,           the oldest engine build this daemon works with (0 = any)
       "platforms": {
-        "macos":        {"asset": "Zaelar-macos.zip",          "sha256": "…", "size": 123},
-        "macos-x86_64": {"asset": "Zaelar-macos-x86_64.zip",   "sha256": "…", "size": 123},
-        "windows":      {"asset": "zaelar-daemon-windows.exe", "sha256": "…", "size": 123},
+        "macos":        {"asset": "Zaelar-macos.zip",          "sha256": "…", "size": 123, "signed": true},
+        "macos-x86_64": {"asset": "Zaelar-macos-x86_64.zip",   "sha256": "…", "size": 123, "signed": true},
+        "windows":      {"asset": "zaelar-daemon-windows.exe", "sha256": "…", "size": 123, "signed": false},
         "pyz":          {"asset": "zaelar-daemon-macos.pyz",   "sha256": "…", "size": 123}
       },
       "installers": {"macos": {"asset": "Zaelar-macos.pkg", …}}   only when the notarized .pkg was built
