@@ -15,8 +15,8 @@ PRESENCE IS THE PERSON, NEVER THE TAB (V2-872). Real activity includes a screen'
 touch, a typed line, a spoken turn) and never a stream open, a beat or a visibility change: an open tab that
 reconnects its stream is a request, not a person. Until the first input after boot the window is the short
 `wake_grace_min` (`config/resources.default.json`): an engine woken by a request that brought nobody stops again
-in minutes instead of a full window — measured, a tab's reconnect after every stop booted one engine 35 times in
-26 h. Workers and due notices keep their veto in both windows.
+in minutes instead of a full window, so a tab that reconnects after every stop cannot hold it in a wake loop.
+Workers and due notices keep their veto in both windows.
 
 Before exiting, the engine says goodnight: `engine.sleep` goes out on every open stream, and the exit waits one
 beat (`SLEEP_FLUSH_S`) so it is delivered; the client goes dormant on it and never reconnects without a gesture.

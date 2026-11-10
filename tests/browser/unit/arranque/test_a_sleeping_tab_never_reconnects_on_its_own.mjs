@@ -1,8 +1,8 @@
 // ============================================================================
 // test_a_sleeping_tab_never_reconnects_on_its_own.mjs — V2-872.
 //
-// A hosted engine stops when nobody uses it, and any request starts it again. An open tab whose EventSource
-// reconnected on its own after every stop booted one engine 35 times in 26 h. Presence is the person: a tab
+// An engine with an idle stop ends when nobody uses it, and any request can start it again. An open tab whose
+// EventSource reconnects on its own after every stop starts it again and again. Presence is the person: a tab
 // reconnects only while visible AND touched recently, with a capped backoff; otherwise it sleeps until a gesture.
 //
 // Run: node tests/browser/unit/arranque/test_a_sleeping_tab_never_reconnects_on_its_own.mjs
