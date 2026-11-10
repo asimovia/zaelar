@@ -259,10 +259,7 @@ def opening_answer(text: str) -> str | None:
 def is_plain_answer(text: str, verdict: str) -> bool:
     """A bare yes/no: the answer word plus at most `_PLAIN_ANSWER_WORDS` others. Anything longer may be a different
     request that happens to carry «vale» or a «no» — the task gate reads this too (`turn/confirm_gates.py`)."""
-    n = _norm(text)
-    m = (_YES_RE if verdict == "yes" else _NO_RE).search(n)
-    rest = [w for w in re.findall(r"\w+", (n[:m.start()] + " " + n[m.end():]) if m else n)]
-    return len(rest) <= _PLAIN_ANSWER_WORDS
+    return _rest_words(text, verdict) <= _PLAIN_ANSWER_WORDS
 
 
 def answer_alone(text: str, verdict: str) -> bool:
