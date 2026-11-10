@@ -40,8 +40,9 @@ def test_info_plist_answers_what_review_asks() -> None:
     assert info["UIRequiresFullScreen"] is True
     assert info["LSApplicationCategoryType"] == "public.app-category.productivity"
     assert info["UISupportedInterfaceOrientations"] == ["UIInterfaceOrientationPortrait"]
-    for key in ("NSMicrophoneUsageDescription", "NSCameraUsageDescription", "NSLocationWhenInUseUsageDescription"):
+    for key in ("NSMicrophoneUsageDescription", "NSLocationWhenInUseUsageDescription"):
         assert info.get(key, "").strip(), f"{key} is missing: iOS kills the app when the permission is first asked"
+    assert "NSCameraUsageDescription" not in info, "nothing uses the camera: review asks why a permission is declared"
     assert info["CFBundleShortVersionString"] == "$(MARKETING_VERSION)"
     assert info["CFBundleVersion"] == "$(CURRENT_PROJECT_VERSION)"
     assert "UIBackgroundModes" not in info, "no background mode until background voice ships (review asks why)"
@@ -59,9 +60,11 @@ def test_the_privacy_manifest_declares_no_tracking_and_what_the_shell_sends() ->
     p = _plist(PRIVACY)
     assert p["NSPrivacyTracking"] is False and p["NSPrivacyTrackingDomains"] == []
     assert p["NSPrivacyAccessedAPITypes"] == []
-    kinds = {d["NSPrivacyCollectedDataType"] for d in p["NSPrivacyCollectedDataTypes"]}
-    assert kinds >= {"NSPrivacyCollectedDataTypeEmailAddress", "NSPrivacyCollectedDataTypeAudioData",
-                     "NSPrivacyCollectedDataTypeOtherUserContent", "NSPrivacyCollectedDataTypeCoarseLocation"}
+    linked = {d["NSPrivacyCollectedDataType"]: d["NSPrivacyCollectedDataTypeLinked"] for d in p["NSPrivacyCollectedDataTypes"]}
+    assert linked == {"NSPrivacyCollectedDataTypeEmailAddress": True, "NSPrivacyCollectedDataTypeAudioData": True,
+                      "NSPrivacyCollectedDataTypeOtherUserContent": True,
+                      "NSPrivacyCollectedDataTypeCoarseLocation": False,
+                      "NSPrivacyCollectedDataTypePreciseLocation": False}, linked   # the store labels, exactly
     for d in p["NSPrivacyCollectedDataTypes"]:
         assert d["NSPrivacyCollectedDataTypeTracking"] is False
         assert d["NSPrivacyCollectedDataTypePurposes"] == ["NSPrivacyCollectedDataTypePurposeAppFunctionality"]

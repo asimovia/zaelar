@@ -5194,6 +5194,11 @@ DOMAINS: list[dict] = [
                                  "full screen, permission sentences, versions from the build), the privacy manifest "
                                  "(no tracking, the data the shell sends) and the entitlements template (V2-870)", "ch": UNIT,
             "paths": ["tests/infrastructure/unit/test_the_ios_app_carries_its_store_manifests.py"]},
+        {"id": "4.443", "title": "Inside the native app the shell passes review: no purchase path (account page without "
+                                 "#buy, no top-up wording), nothing reaches the AI services before a yes kept in the "
+                                 "engine's config, Settings can withdraw it and open account deletion; a browser is "
+                                 "unchanged (V2-870)", "ch": UNIT,
+            "paths": ["tests/browser/unit/mobile/test_the_app_passes_review.py"]},
         {"id": "4.272", "title": "A session restart takes the microphone back instead of asking again — stop() parks the "
                                  "stream warm for seconds, LiveKit's disconnect no longer kills it, start() reuses it "
                                  "with the same constraints (iPhone permission sheet on every reconnect)", "ch": UNIT,
