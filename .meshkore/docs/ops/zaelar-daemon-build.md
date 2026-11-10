@@ -142,10 +142,8 @@ your PC". That buys, for free and immediately, most of what a code-signing certi
 Developer account, no Microsoft account, no notarization queue, nothing that expires, and no approval between
 a fix and the person who needs it.
 
-What the bootstrap does, in order: pick the build for `uname -m`, resolve **the newest release that publishes
-that exact file** (never `releases/latest` — an engine release whose daemon build is still running has none; and
-never a `daemon-v*` prefix — the daemon is rebuilt on every engine tag, so a prefix tag sinks below the API's
-first page and the filter finds nothing), download it, **verify its SHA-256 against the published
+What the bootstrap does, in order: pick the build for `uname -m`, resolve **the release** by the daemon's release
+line (§3 «Which release a file comes from»), say which one it picked and why, download it, **verify its SHA-256 against the published
 sums while it is still an inert file in a temp directory**, and only then run the installer, fetched from
 `main` so it shares the origin the user already trusted by running the line.
 
@@ -239,7 +237,26 @@ turns "let me reinstall this" into "let me set it all up again".
 ## 3. Releasing
 
 `.github/workflows/daemon-artifacts.yml` builds on **macos-latest** and **windows-latest** — the platforms
-people install on, not the one the tests run on — and on a tag attaches the artifacts to the release.
+people install on, not the one the tests run on — and on a **`daemon-vX.Y.Z`** tag attaches the artifacts to that
+release. An engine tag (`v*`) runs the same build, checks, signing and manifest as a check that the daemon builds at that
+revision, and **publishes nothing**: the daemon has its own release line.
+
+### Which release a file comes from — the daemon's line first
+
+One rule: `daemon/update/release_line.py` (the updater), an identical copy in `server/daemon_release_line.py` (the 🖥
+screen — the engine never imports `daemon/`, which is not in the cloud image), and `get.sh` / `get.ps1` in their own
+language; node 7.129 runs the same cases against all four and fails when the two Python copies differ:
+
+1. the `daemon-vX.Y.Z` tags — **all** of them, from `git/matching-refs/tags/daemon-v`, so a daemon release never sinks
+   below the first page of the releases listing that engine releases fill — highest **version** first (0.10.0 before
+   0.9.0), and the first whose release carries the file. A draft, a prerelease or a tag that is not exactly
+   `daemon-vX.Y.Z` is not a candidate;
+2. only when no daemon release carries it, the newest release of any kind that does — the older engine releases that
+   still publish daemon builds.
+
+Why: engine releases used to carry daemon builds too, and "the newest release that carries the file" then installed
+the engine release's build — unsigned, under the engine's number — over a newer, signed and notarized daemon release.
+The installer prints the release it picked and the reason (`release: daemon-v0.3.0 (the daemon's release line)`).
 
 It does more than build. On each runner it:
 
@@ -329,10 +346,9 @@ without the other two is how the download screen starts offering a 404, so node 
 
 ### Where a user gets the file
 
-`GET /api/daemon/status` carries a `downloads` block whose direct links follow **`releases/latest/download/`**:
-every engine tag attaches a fresh daemon build, and the old pin to `daemon-v<version>` went stale silently (the
-version number stood still while the code moved). The one-line command stays the main path and never depends
-on `latest` carrying the files. The 🖥 icon in the interface renders it; when the engine runs on a remote host that is the icon's whole job,
+`GET /api/daemon/status` carries a `downloads` block whose direct links point at the release the daemon line resolves
+to (`downloads.tag`), read in the background with the signed flag; until that first read lands they point at
+`releases/latest/download/`, a placeholder. The one-line command stays the main path and resolves the release itself. The 🖥 icon in the interface renders it; when the engine runs on a remote host that is the icon's whole job,
 since a remote engine cannot reach a daemon on somebody's desk.
 
 `ZAELAR_DAEMON_DOWNLOAD_BASE` overrides the base URL for a mirror or a private build.
@@ -430,7 +446,7 @@ plan; node 7.126 pins its order on a fixture bundle.
 **Whether a release is signed is measured from its bytes.** `update_manifest.py` writes `"signed": true|false` for
 `macos`, `macos-x86_64` and `windows`: a Mac zip is signed when it carries the stapled ticket
 (`Zaelar.app/Contents/CodeResources`) or its `.pkg` is published; a Windows `.exe` when its certificate-table directory
-is not empty. The engine reads it from `releases/latest/download/update-manifest.json` in the background (cached six
+is not empty. The engine reads it from the resolved daemon release's `update-manifest.json` in the background (cached six
 hours, `null` until known) into `/api/daemon/status.downloads.platforms.<os>.signed`, and the 🖥 screen drops the
 "your system will ask you to allow it" line only for a platform marked signed (nodes 7.127, 4.444). The updater never
 trusts this flag; it trusts the minisign signature and the digest.
@@ -526,8 +542,8 @@ key is a DEVELOPMENT key: it is rotated (new pair, new `PUBLIC_KEY`, new secret)
 
 - **When:** an installed daemon checks once a day (first check two minutes after start; `ZAELAR_DAEMON_AUTO_UPDATE=0`
   turns it off), and whenever the person picks «Check for updates» in the tray. A source tree never updates itself.
-- **Where:** the newest release (newest-first, as the API lists them) that CARRIES `update-manifest.json` — the
-  same "asset exists" rule as `get.sh`.
+- **Where:** the daemon's release line (§3 «Which release a file comes from»): the newest `daemon-vX.Y.Z` release by
+  version that carries `update-manifest.json`; another release only when no daemon release does.
 - **What must verify** (any failure → `state = failed`, the reason in `/health.update.error`, nothing downloaded or
   changed): a `.minisig` exists (an unsigned manifest is refused — correct, not a gap), it verifies against the
   committed key (or a `next_key` learned from a verified manifest), the manifest parses, and its `tag` is the
