@@ -139,12 +139,17 @@ export function bindSoundReport(el, data, ctx){
     if(!ctx || !ctx.action || halted(ctx) || !yt.videoId || yt.paused || yt.muted) return;
     const state = Number(info.playerState);
     const silent = info.muted === true || (typeof info.playerState === "number" && state !== 1 && state !== 3);
-    if(silent && Date.now() - _ytLoadedAt < _SOUND_GRACE_MS) return;
-    if(silent === !!yt.audio_blocked) return;
-    const key = yt.videoId + "|" + silent + "|" + (yt.cmd_seq || 0);
+    // V2-873 — what sounds here is what the PLAYER says it plays (state 1, not muted), told once per song: the card's
+    // «here» is written from this, never from the song that was picked.
+    const playing = !silent && state === 1;
+    if(!(playing && yt.sounding_id !== yt.videoId)){
+      if(silent && Date.now() - _ytLoadedAt < _SOUND_GRACE_MS) return;
+      if(silent === !!yt.audio_blocked) return;
+    }
+    const key = yt.videoId + "|" + silent + "|" + playing + "|" + (yt.cmd_seq || 0);
     if(key === sent) return;
     sent = key;
-    try{ const q = ctx.action("player_audio", {muted: silent, videoId: yt.videoId}); if(q && q.catch) q.catch(() => {}); }catch(_){}
+    try{ const q = ctx.action("player_audio", {muted: silent, playing: playing, videoId: yt.videoId}); if(q && q.catch) q.catch(() => {}); }catch(_){}
   };
 }
 

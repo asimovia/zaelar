@@ -124,7 +124,7 @@ def test_the_card_reports_a_silent_player_after_the_grace(_page):
     _page.wait_for_timeout(2700)
     _player_says(_page, {"muted": True, "playerState": -1})
     reports = [c[1] for c in _page.evaluate("() => window.__calls") if c[0] == "player_audio"]
-    assert reports == [{"muted": True, "videoId": "VID00000001"}]
+    assert reports == [{"muted": True, "playing": False, "videoId": "VID00000001"}]
 
 
 def test_a_blocked_player_shows_the_tap_and_a_heard_one_does_not(_page):
@@ -144,6 +144,6 @@ def test_a_player_that_never_says_a_word_is_reported_silent(_page):
         _mount(_page, _data(videoId="VIDQUIET001"))
         _page.wait_for_timeout(5400)
         reports = [c[1] for c in _page.evaluate("() => window.__calls") if c[0] == "player_audio"]
-        assert reports == [{"muted": True, "videoId": "VIDQUIET001"}], reports
+        assert reports == [{"muted": True, "playing": False, "videoId": "VIDQUIET001"}], reports
     finally:
         _page.unroute("**/*youtube*/**")

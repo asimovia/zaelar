@@ -109,7 +109,7 @@ def _here(mode: str, loc: dict, yt: dict, now: "dict | None", away: dict) -> dic
     if mode == "local" and loc.get("src") and not loc.get("paused"):
         return {"title": loc.get("title") or loc.get("src", ""), "source": "local"}
     if mode == "youtube" and yt.get("videoId") and not yt.get("paused") and not yt.get("audio_blocked") \
-            and not yt.get("player_error"):                  # a song the player refused does not sound (V2-873)
+            and not yt.get("player_error") and yt.get("sounding_id") == yt.get("videoId"):   # V2-873: the PLAYER says so
         return {"title": yt.get("title") or yt.get("videoId", ""), "source": "youtube"}
     if mode == "spotify" and now and now.get("playing") and not away:
         return {"title": now.get("title") or "", "source": "spotify"}

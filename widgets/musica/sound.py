@@ -28,6 +28,12 @@ def player_audio(action: str, p: dict) -> dict:
     if not yt.get("videoId") or (vid and vid != str(yt.get("videoId"))):
         return {"ok": True, "stale": True}
     silent = _flag(p.get("muted"))
+    if _flag(p.get("playing")) and not silent and yt.get("sounding_id") != yt.get("videoId"):
+        # V2-873 — the page player says it PLAYS this song: the one writer of «what sounds here» (`_here`)
+        yt.update(sounding_id=str(yt.get("videoId")), audio_blocked=False)
+        db["yt"] = yt
+        _d._persist(db)
+        return {"ok": True, "audio_blocked": False, "sounding": True}
     wanted = not yt.get("paused") and not yt.get("muted")
     was = bool(yt.get("audio_blocked"))
     if silent and wanted:

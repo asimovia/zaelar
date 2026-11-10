@@ -91,8 +91,11 @@ def test_letting_it_go_is_a_declared_action_that_ends_our_session(world):
 def test_here_is_what_our_player_sounds_never_another_device(world):
     """The end state of a start is `here.title` changed: a song on another device of the account is not `here`."""
     assert _live(source={"provider": "spotify", "device_id": "mac", "live": True})["here"] == {"title": "", "source": ""}
-    yt = md._live_fields({"source": {"provider": "youtube"}, "yt": {"videoId": "abc", "title": "Creep"}})
+    yt = md._live_fields({"source": {"provider": "youtube"}, "yt": {"videoId": "abc", "title": "Creep",
+                                                                      "sounding_id": "abc"}})
     assert yt["here"] == {"title": "Creep", "source": "youtube"}
+    picked = md._live_fields({"source": {"provider": "youtube"}, "yt": {"videoId": "abc", "title": "Creep"}})
+    assert picked["here"]["title"] == "", "V2-873: the song picked is not what sounds — the page player says that"
     paused = md._live_fields({"source": {"provider": "youtube"}, "yt": {"videoId": "abc", "title": "Creep", "paused": True}})
     assert paused["here"] == {"title": "", "source": ""}   # a value, never a missing key: a failed start reads unmet
     blocked = md._live_fields({"source": {"provider": "youtube"}, "yt": {"videoId": "abc", "title": "Creep", "audio_blocked": True}})
