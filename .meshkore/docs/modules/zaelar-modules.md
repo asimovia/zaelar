@@ -889,7 +889,11 @@ Ollama — nothing personal leaves the machine) and dumps content to `memory/`. 
   **black-box library**, nothing vendored.
 - `connectors/email/` — the operator's **personal email**. The CLEANEST connector: **stdlib-only**
   (`imaplib`/`smtplib`), NO Node bridge (WhatsApp) NOR third-party lib (Telegram). `mailbox.py` = pure IMAP/SMTP logic
-  **vendored + adapted** from Hermes' email adapter — poll with UID dedup via `BODY.PEEK` (no `\Seen` on read),
+  **vendored + adapted** from Hermes' email adapter — poll with UID dedup via `BODY.PEEK` (no `\Seen` on read); the
+  dedup survives the process: `cursor.py` keeps a durable cursor per account and folder (`UIDVALIDITY` + the highest
+  UID dealt with, in the engine's key-value table), so a new process hands over only what arrived since — asleep or not
+  — and a renumbered folder voids it; the messaging widget asks its durable `taken` ledger BEFORE the classifier, so a
+  message is classified and delivered once across processes;
   multipart/HTML→text, noreply/bulk filter, SPF/DKIM/DMARC verdict (trust metadata, not an authz gate — we read the
   operator's OWN mailbox), SMTP reply with `In-Reply-To`/`References` threading. `config.py` = UI-managed store wins
   over `.env`, provider presets (Gmail/Outlook/iCloud/Yahoo/otro). `service.py` = asyncio engine; IMAP/SMTP always via
