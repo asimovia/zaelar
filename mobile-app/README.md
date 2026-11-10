@@ -73,7 +73,9 @@ ZAELAR_ORIGIN=https://engine.example.org ZAELAR_ALLOW_NAVIGATION=signin.example.
 ```
 
 `scripts/ios-device.sh` signs with the team in `TEAM` (Xcode › Settings › Accounts; a free personal team works, its
-builds expire after 7 days) and picks the first connected iPhone unless a UDID is given. If the team cannot register
+builds expire after 7 days), builds for `generic/platform=iOS` (so a phone on a newer iOS than this Xcode still
+works), installs with `devicectl` on the first paired iPhone (or the device id given) and leaves the opening to the
+icon. A free team's app must be trusted once on the phone: Settings › General › VPN & Device Management. If the team cannot register
 `com.zaelar.app`, `BUNDLE_ID=com.zaelar.app.dev` overrides it for that build only (build settings on the command
 line; the project keeps `com.zaelar.app`).
 
