@@ -132,3 +132,11 @@ def test_a_call_the_gate_held_is_the_models_inline_answer(lang):
     out = commission.shadow(lambda *a, **k: None, at="close", text=SAID[lang], launched=True, escalate_req=req,
                             brief=_brief(escalate=("escalate", 0.6)), flow_as="new", words_said=False)
     assert out["model_calls"] == ["search_listings"] and out["would"]["route"] == "inline"
+
+
+def test_below_the_licence_the_shadow_leaves_the_turns_own_path(lang):
+    req = {"v": None}
+    out = commission.shadow(lambda *a, **k: None, at="close", text=SAID[lang], escalate_req=req, launched=False,
+                            brief=_brief(escalate=("handle_inline", 0.76)), flow_as="inject", words_said=True,
+                            model_calls=[{"name": "escalate_to_slowbrain", "args": {}}])
+    assert out["changes"] == [] and out["changes_b"] == [], "another door dropped the model's own call: not the rule's"
