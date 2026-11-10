@@ -144,3 +144,12 @@ def test_a_stream_of_ours_is_named_by_its_source_when_it_plays():
     yt.apply_action("player_state", {"playing": True, "videoId": ""})
     db = yt._load()
     assert db["playing_id"] == "/api/library/stream/a.mp4" and db["playing"] is True
+
+
+def test_its_own_close_is_done_when_the_player_is_empty():
+    """V2-873 (V7): the card's `close` empties the player; that — not the card closed — is its declared end state."""
+    _playing()
+    dw = _dw("close")
+    assert verify.check(dw) is False
+    assert yt.apply_action("close", {}).get("ok") is not False
+    assert verify.check(dw) is True

@@ -203,15 +203,16 @@ def _end_brief(action: str, a_conf: float, end: str, e_conf: float):
 
 @pytest.mark.parametrize("action", ["next", "play_item"])
 def test_a_queue_step_attests_the_item_change_so_the_completion_may_fire(action):
-    """The measured ES turn: «Dale, pásame al siguiente, quiero ver ya el de PSY» → end state `youtube:videoId` 0.77,
+    """The measured ES turn: «Dale, pásame al siguiente, quiero ver ya el de PSY» → end state `youtube:videoId` 0.77 (now `youtube:playing_id`, V2-873),
     `youtube:next` 0.60 — both under the veto bar, so the end state governs, and the step must attest it."""
     tpl = _spec.template_of("youtube", action)
-    assert tpl is not None and _spec.target_of(tpl) == "youtube:videoId", f"{action} must declare the item change"
-    assert _spec.gate_completion(_end_brief(f"youtube:{action}", 0.60, "youtube:videoId", 0.77), "youtube", action) == ""
+    # V2-873: the item that changes is the one the PLAYER reports playing (`playing_id`), not the order's `videoId`
+    assert tpl is not None and _spec.target_of(tpl) == "youtube:playing_id", f"{action} must declare the item change"
+    assert _spec.gate_completion(_end_brief(f"youtube:{action}", 0.60, "youtube:playing_id", 0.77), "youtube", action) == ""
 
 
 def test_a_step_that_attests_nothing_is_still_refused_under_a_sure_end_state():
-    why = _spec.gate_completion(_end_brief("youtube:volume_up", 0.60, "youtube:videoId", 0.77), "youtube", "volume_up")
+    why = _spec.gate_completion(_end_brief("youtube:volume_up", 0.60, "youtube:playing_id", 0.77), "youtube", "volume_up")
     assert "attests nothing" in why
 
 
@@ -226,8 +227,8 @@ def test_disarm_a_queue_step_with_no_declared_end_state_is_refused_again():
     _spec._manifest = stripped
     try:
         assert _spec.template_of("youtube", "next") is None, "the disarm did not land"
-        why = _spec.gate_completion(_end_brief("youtube:next", 0.60, "youtube:videoId", 0.77), "youtube", "next")
+        why = _spec.gate_completion(_end_brief("youtube:next", 0.60, "youtube:playing_id", 0.77), "youtube", "next")
         assert "attests nothing" in why, "disarmed, the gate must refuse the skip again"
     finally:
         _spec._manifest = kept
-    assert _spec.gate_completion(_end_brief("youtube:next", 0.60, "youtube:videoId", 0.77), "youtube", "next") == ""
+    assert _spec.gate_completion(_end_brief("youtube:next", 0.60, "youtube:playing_id", 0.77), "youtube", "next") == ""
