@@ -75,6 +75,22 @@ survives killing and relaunching the app. A cookie without an expiry (a per-boot
 not: on relaunch the shell obtains a new one the way a fresh browser tab would. The app adds no login screen of its
 own; whatever the origin does for an unauthenticated `/m` (a redirect to its sign-in page) happens in-page.
 
+## Inside the app, the shell knows it is the app
+
+Capacitor injects its bridge into the main frame of every page, remote origin included, so
+`window.Capacitor.isNativePlatform()` is `true` in the shell when it runs here. `frontend/app/services/push.js`
+`installed()` uses it: the «add to Home Screen» offer is not shown inside the native app.
+
+## Measured in the simulator
+
+Xcode 26.6, iPhone 17 Pro simulator (iOS 26.5): the shell renders with the dock above the home indicator and a light
+status bar; a typed line reaches the engine and the WebView joins the LiveKit room (WebRTC works in WKWebView).
+A sign-in page on another host renders in-page when listed in `ZAELAR_ALLOW_NAVIGATION`. Not verifiable in the
+simulator: the microphone and the audio route — that is a real-device step.
+
+Known: with the keyboard up, WKWebView scrolls the whole document, so the top of a sheet slides under the status bar
+until the keyboard closes.
+
 ## Not here yet
 
 Background voice, native push, the share target, deep links and App Intents (V2-870 §2–§6), runtime server
