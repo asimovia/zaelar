@@ -5522,6 +5522,7 @@ DOMAINS: list[dict] = [
         {"id": "4.417", "title": "Local daemon: the browser download's progress follows the polled status every 2 s with no click, the fast poll stops with the first answer that is not downloading, and a repaint keeps the folder being typed (V2-575)", "ch": UNIT, "paths": ["tests/browser/unit/daemon/test_the_browser_download_progress.py"]},
         {"id": "4.418", "title": "Local daemon: pairing with the cloud agent — the one-time code from POST /api/daemon/pair shown big with a running countdown, an expired code says so, relay_not_available hides the card, loopback says already linked (V2-575 P3)", "ch": UNIT, "paths": ["tests/browser/unit/daemon/test_the_daemon_pairing_code.py"]},
         {"id": "4.419", "title": "Local daemon: the phone's ☰ row stays read-only and says the browser and the link in one line each, «not known» when the status does not say (V2-575)", "ch": UNIT, "paths": ["tests/browser/unit/daemon/test_the_phone_row_reports_browser_and_link.py"]},
+        {"id": "4.444", "title": "Local daemon: the 🖥 download fold follows the published release — signed (Developer ID + notarization / Authenticode) drops the «your system will ask you to allow it» line and links the notarized .pkg when listed; unsigned or unknown keeps it; per platform (V2-869 §5)", "ch": UNIT, "paths": ["tests/browser/unit/daemon/test_the_download_warning_follows_the_signed_release.py"]},
         {"id": "4.414", "title": "Browser: the sign-in window goes to the daemon only when it is connected and the engine has no window of its own; with no daemon nothing changes (V2-575 P2)", "ch": UNIT, "paths": ["tests/browser/unit/navegador/test_the_sign_in_window_goes_to_the_daemon_when_connected.py"]},
         {"id": "4.420", "title": "Browser: a hosted engine opens the sign-in window on his computer through the relay, brings back ONLY that site's session and imports it; presence drives the link; from the phone no window opens (V2-575 P3)", "ch": UNIT, "paths": ["tests/browser/unit/navegador/test_a_hosted_engine_signs_in_through_his_daemon.py"]},
         {"id": "4.431", "title": "Browser: the navigator's and the search Chromium launch with --proxy-server only while his tunnel is up; with none the launch args are exactly the old ones (V2-836)", "ch": UNIT, "paths": ["tests/browser/unit/navegador/test_the_browser_leaves_through_his_tunnel_only_when_up.py"]},
@@ -7387,6 +7388,22 @@ DOMAINS: list[dict] = [
                                  "visible skip, installers that verify more",
             "ch": UNIT,
             "paths": ["tests/infrastructure/unit/daemon/test_the_release_signs_what_it_can_and_says_what_it_skipped.py"]},
+        # V2-869 §5 — THE DEVELOPER ID PATH, TESTABLE WITHOUT APPLE. `sign_and_notarize.sh --dry-run sign` walks a real
+        # bundle and prints its plan: import → sign inside-out (files, then nested bundles deepest first, the app last;
+        # never --deep to sign) → verify → notarize → staple → assess the PUBLISHED zip extracted → [.pkg]; hardened
+        # runtime + timestamp everywhere, entitlements only on the bundled Node (allow-jit, measured); the Installer
+        # identity optional; no secret printed.
+        {"id": "7.126", "title": "Local daemon release: the macOS signing plan runs inside-out, notarizes, staples and "
+                                 "assesses what a user receives — pinned by a dry run, no Apple account needed",
+            "ch": UNIT,
+            "paths": ["tests/infrastructure/unit/daemon/test_the_macos_signing_plan_runs_inside_out.py"]},
+        # V2-869 §5 — `/api/daemon/status.downloads.platforms.<os>.signed` comes from the release's update manifest
+        # (measured from the bytes there), read in the background and cached; `null` while unknown; the `.pkg` link
+        # only when the manifest lists it.
+        {"id": "7.127", "title": "Engine: /api/daemon/status says per platform whether the published release is "
+                                 "signed, from its manifest, without blocking the poll",
+            "ch": UNIT,
+            "paths": ["tests/infrastructure/unit/daemon/test_the_download_says_whether_the_release_is_signed.py"]},
         # V2-638 — EL SISTEMA DE ARCHIVOS DEL AGENTE: un solo árbol que comparten todos los widgets, en vez de
         # que cada uno guarde en su rincón. Lo que se fija, por orden de daño: la FRONTERA (`paths.resolve()` es
         # la única puerta y toda ruta que llega es no fiable — magnet, salida del modelo, query string; una
