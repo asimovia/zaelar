@@ -5,7 +5,7 @@ pulse and must fire while nobody is there, each owned elsewhere and only READ he
 
   · an errand with a third party runs out of time at `expires_at` (`nucleo/errands`): the pulse closes it and tells him;
   · a task row that WAITS carries `deadline` — his unanswered question closes after the declared wait and is said once,
-    a died worker is resumed by id after its pause (`nucleo/circuit/ledger`);
+    a died worker is resumed by id after its pause (`nucleo/circuit/waits`);
   · an owed notice is pushed again at `next_try_at` (`nucleo/pulse/notices`) — only when a device can take the push:
     with none, a retry only owes it again, and the next screen that opens drains it.
 

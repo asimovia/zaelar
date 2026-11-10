@@ -1,7 +1,8 @@
 """An idle engine asks its host to SUSPEND it, falls back to the clean exit when it cannot, and knows it has resumed.
 
 The stop decided by `nucleo/idle_stop.py` (node 2.830) used to end the process; a deployment that can suspend its
-host resumes it in well under a second instead of a cold boot. These tests hold the mechanism around that:
+host resumes it in well under a second instead of a cold boot (`nucleo/suspend.py` carries the stop out). These tests
+hold the mechanism around that:
   * the wake report goes out BEFORE the goodnight, and a failed report keeps the engine up;
   * the sleep endpoint's answers: 202 waits to be suspended (and exits if nothing happens), 200 is already a resume,
     anything else or no answer is the clean exit — and a suspend followed by a resume is never read as a failure;
@@ -16,19 +17,19 @@ import time
 
 import pytest
 
-from nucleo import idle_stop
+from nucleo import idle_stop, suspend
 
 MIN = 60_000
 
 
 @pytest.fixture(autouse=True)
 def _fresh(monkeypatch):
-    idle_stop._reset_for_tests()
+    suspend._reset_for_tests()
     for k in ("ZAELAR_IDLE_STOP_MIN", "ZAELAR_SLEEP_URL", "ZAELAR_WAKE_URL", "CONTROL_PLANE_URL",
               "CONTROL_PLANE_SERVICE_TOKEN", "ZAELAR_WAKE_GRACE_MIN"):
         monkeypatch.delenv(k, raising=False)
     yield
-    idle_stop._reset_for_tests()
+    suspend._reset_for_tests()
 
 
 def _arm(monkeypatch, record, *, status=202, flushed=True, post=None):
@@ -38,7 +39,7 @@ def _arm(monkeypatch, record, *, status=202, flushed=True, post=None):
     monkeypatch.setattr(idle_stop, "_readings", lambda now: (None, False, None))
     monkeypatch.setattr(idle_stop, "_last_presence", lambda: None)
     monkeypatch.setattr(idle_stop, "_STARTED_MS", round((time.time() - 3600) * 1000))
-    monkeypatch.setattr(idle_stop, "SLEEP_FLUSH_S", 0.01)
+    monkeypatch.setattr(suspend, "SLEEP_FLUSH_S", 0.01)
     import voice.observer as observer
     monkeypatch.setattr(observer, "emit", lambda kind, label, **kw: record.append(f"{kind}:{label}"))
 
@@ -49,9 +50,9 @@ def _arm(monkeypatch, record, *, status=202, flushed=True, post=None):
     async def _post(endpoint, token):
         record.append("sleep")
         return await post() if post else status
-    monkeypatch.setattr(idle_stop, "_flush_wake", _flush)
-    monkeypatch.setattr(idle_stop, "_post_sleep", _post)
-    idle_stop.request_exit(lambda: record.append("exit"))
+    monkeypatch.setattr(suspend, "_flush_wake", _flush)
+    monkeypatch.setattr(suspend, "_post_sleep", _post)
+    suspend.request_exit(lambda: record.append("exit"))
 
 
 async def _stop_now():
@@ -74,7 +75,7 @@ def test_a_failed_wake_report_keeps_the_engine_up_and_tries_later(monkeypatch):
     _arm(monkeypatch, record, flushed=False)
     asyncio.run(_stop_now())
     assert record == ["report"], record
-    assert idle_stop._state["requested"] is False
+    assert suspend._state["requested"] is False
     assert idle_stop.maybe_stop() is False, "the stop is retried after WAKE_RETRY_S, not on the next beat"
 
 
@@ -99,9 +100,9 @@ def test_an_accepted_sleep_that_never_comes_falls_back_to_the_exit(monkeypatch):
     record = []
     _arm(monkeypatch, record, status=202)
     asyncio.run(_stop_now())
-    assert idle_stop._state["sleep"] is not None
+    assert suspend._state["sleep"] is not None
     assert idle_stop.maybe_stop() is False and "exit" not in record, "inside SLEEP_CONFIRM_S it waits"
-    idle_stop._state["sleep"]["deadline"] = time.monotonic() - 1      # SLEEP_CONFIRM_S went by, still running
+    suspend._state["sleep"]["deadline"] = time.monotonic() - 1      # SLEEP_CONFIRM_S went by, still running
     idle_stop.note_tick(time.time(), time.monotonic(), 1.0)
     idle_stop.note_tick(time.time() + 1, time.monotonic() + 1, 1.0)
     assert idle_stop.maybe_stop() is True and record[-1] == "exit"
@@ -117,11 +118,11 @@ def test_an_accepted_sleep_followed_by_a_resume_never_exits(monkeypatch, wall_ga
     asyncio.run(_stop_now())
     w, m = time.time(), time.monotonic()
     idle_stop.note_tick(w, m, 1.0)
-    idle_stop._state["sleep"]["deadline"] = m - 1                    # the deadline is gone on the monotonic clock too
+    suspend._state["sleep"]["deadline"] = m - 1                    # the deadline is gone on the monotonic clock too
     assert idle_stop.note_tick(w + wall_gap, m + mono_gap, 1.0) is True, "the resume was not seen"
     assert idle_stop.maybe_stop() is False and "exit" not in record, "a resumed engine exited"
     assert "session:engine.resumed" in record
-    assert idle_stop._state["requested"] is False and idle_stop._state["sleep"] is None
+    assert suspend._state["requested"] is False and suspend._state["sleep"] is None
 
 
 def test_an_unanswered_sleep_across_a_resume_is_not_a_refusal(monkeypatch):
@@ -135,7 +136,7 @@ def test_an_unanswered_sleep_across_a_resume_is_not_a_refusal(monkeypatch):
         return None
     _arm(monkeypatch, record, post=_frozen_then_lost)
     asyncio.run(_stop_now())
-    assert idle_stop._state["exit_pending"] is False
+    assert suspend._state["exit_pending"] is False
     assert idle_stop.maybe_stop() is False and "exit" not in record
 
 
@@ -144,17 +145,17 @@ def test_a_200_is_a_sleep_that_already_happened(monkeypatch):
     _arm(monkeypatch, record, status=200)
     asyncio.run(_stop_now())
     assert "exit" not in record and "session:engine.resumed" in record
-    assert idle_stop._state["requested"] is False
+    assert suspend._state["requested"] is False
 
 
 def test_the_sleep_endpoint_mirrors_the_wake_one(monkeypatch):
-    assert idle_stop.sleep_url() == ("", "")
+    assert suspend.sleep_url() == ("", "")
     monkeypatch.setenv("CONTROL_PLANE_URL", "https://cp.invalid/")
-    assert idle_stop.sleep_url() == ("", ""), "no token: nowhere to ask"
+    assert suspend.sleep_url() == ("", ""), "no token: nowhere to ask"
     monkeypatch.setenv("CONTROL_PLANE_SERVICE_TOKEN", "t0k")
-    assert idle_stop.sleep_url() == ("https://cp.invalid/sleep", "t0k")
+    assert suspend.sleep_url() == ("https://cp.invalid/sleep", "t0k")
     monkeypatch.setenv("ZAELAR_SLEEP_URL", "http://elsewhere.invalid/s")
-    assert idle_stop.sleep_url() == ("http://elsewhere.invalid/s", "t0k")
+    assert suspend.sleep_url() == ("http://elsewhere.invalid/s", "t0k")
 
 
 def test_the_report_before_a_stop_skips_the_debounce(monkeypatch):
@@ -194,7 +195,7 @@ def test_the_report_before_a_stop_skips_the_debounce(monkeypatch):
     (8.0, 1.0, False, False),         # under the skew
 ])
 def test_a_resume_is_read_from_the_clocks(wall, mono, sleeping, resumed):
-    assert idle_stop.resumed_between(wall, mono, 1.0, sleeping=sleeping) is resumed
+    assert suspend.resumed_between(wall, mono, 1.0, sleeping=sleeping) is resumed
 
 
 def test_a_resume_starts_the_idle_state_over(monkeypatch):
@@ -206,10 +207,10 @@ def test_a_resume_starts_the_idle_state_over(monkeypatch):
     import voice.observer as observer
     monkeypatch.setattr(observer, "emit", lambda kind, label, **kw: record.append(f"{kind}:{label}"))
     w, m = time.time(), time.monotonic()
-    idle_stop._state["requested"] = True
+    suspend._state["requested"] = True
     assert idle_stop.note_tick(w, m, 1.0) is False, "the first beat has nothing to compare with"
     assert idle_stop.note_tick(w + 3600, m + 1, 1.0) is True
-    assert idle_stop._state["requested"] is False
+    assert suspend._state["requested"] is False
     assert idle_stop._since_ms() == round((w + 3600) * 1000), "the grace counts from the resume, not the boot"
     assert wake.pending(), "the next due instant is reported again after a resume"
     assert record == ["session:engine.resumed"]
