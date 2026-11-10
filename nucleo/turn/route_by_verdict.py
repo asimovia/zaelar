@@ -118,11 +118,13 @@ def owns(escalate_req: dict | None) -> bool:
     return bool((escalate_req or {}).get("routed"))
 
 
-def route(escalate_req: dict, operator_text: str, emit, *, why: str, brief=None) -> None:
+def route(escalate_req: dict, operator_text: str, emit, *, why: str, brief=None, held: str = "") -> None:
     """The request is the turn's commission (the errand portal launches it at the close, through `flow_of.route`).
     The ONLY opener of an errand the model did not call (V2-857 phase 8: no word backstop): its event says the
     verdict, its confidence and where it was read (`source`: the model's call it held, or `verdict` at its words)."""
     first = not escalate_req.get("routed")
+    if held:
+        escalate_req["held_words"] = held   # V2-874: what the model wrote and the Hold kept unsaid (nothing called)
     escalate_req["routed"] = True
     if escalate_req.get("v") is None:
         escalate_req["v"] = operator_text
