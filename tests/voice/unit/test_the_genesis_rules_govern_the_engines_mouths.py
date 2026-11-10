@@ -212,8 +212,13 @@ def test_an_acted_but_silent_turn_never_gets_the_stuck_apology():
     worked, reading as not-understanding. The backstop must be gated on the turn having done NOTHING, and a
     context-bleed dedupe counts as handled (a deliberately ignored duplicate is not a void to apologize for)."""
     src = _vts.read(ENGINE / "voice/engine/llm/providers/nucleo.py")
-    assert "if not spoken_text and not _tool_handled:" in src, \
+    assert "if _wait_lines.owes_a_line(spoken_text, _tool_handled, _held):" in src, \
         "the mute backstop must skip turns that acted (V2-633 silence is design, not a void)"
+    from nucleo.turn import wait_lines as _wl
+    assert not _wl.owes_a_line("", True, False), "a turn that acted owes no line (V2-633)"
+    # V2-874: the one exception — the Hold kept the model's words unsaid AND his turn reached a live worker instead
+    # of launching; nothing else will speak, and «still on it» is said (never the stuck apology).
+    assert _wl.owes_a_line("", True, True)
     # V2-646 narrowed this by ONE state, and the narrowing is the point: a deduped duplicate still counts as
     # handled on a SPOKEN turn (that is V2-634's lesson, dragged-in room noise deserves silence), but never on
     # a TYPED one — nobody types by accident, and a written question that got a vetoed action and no words is

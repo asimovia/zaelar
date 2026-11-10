@@ -75,9 +75,19 @@ def _still_working(window, lang) -> str:
     return _qw.asleep_line(window, lang) or str(getattr(lang, "filler_still_working", "") or "Sigo con ello.")
 
 
-def mute_backstop(window, lang, has_work: bool, operator_text: str = "") -> str:
+def owes_a_line(spoken: str, handled: bool, held_for_a_worker: bool) -> bool:
+    """Is this turn about to end in silence? A turn nothing handled — or one whose words the Hold kept unsaid (routed)
+    and that reached a LIVE worker instead of launching: the steer or inject counts as handled and says nothing, and
+    no start line follows because nothing starts (V2-874). A routed turn that launches says its start line later."""
+    return not str(spoken or "").strip() and (not handled or bool(held_for_a_worker))
+
+
+def mute_backstop(window, lang, has_work: bool, operator_text: str = "", reached_worker: bool = False) -> str:
     """The whole decision for a mute turn: live work ABOUT this → «still on it»; nothing → `mute_line`. An ack asks for
-    nothing new, so the live work is it (V2-781); work about something else is not this turn's (demo pass C2)."""
+    nothing new, so the live work is it (V2-781); work about something else is not this turn's (demo pass C2). A turn
+    whose words reached a live worker IS about its work — no reading of his words decides that again (V2-874)."""
+    if reached_worker:
+        return _still_working(window, lang)
     if has_work and operator_text:
         try:
             from voice import endpointing as _ep
