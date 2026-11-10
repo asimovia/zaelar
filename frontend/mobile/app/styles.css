@@ -599,3 +599,14 @@ html.zm-kbd[data-kbd="sheet"] .zm-sheet.open { top: var(--zm-vvt, 0px); bottom: 
 .zm-apps-page .aw-open { min-height: 44px; min-width: 96px; font-size: 15px; }
 .zm-apps-page .aw-facts { grid-template-columns: max-content minmax(0, 1fr); }
 .zm-apps-page .aw-factv, .zm-apps-page .aw-about { overflow-wrap: anywhere; }
+
+/* ---------- V2-870 — the AI services question (native app only, shell/AiConsentSheet.js) ----------
+   Above every other sheet: it is asked before anything else can happen. While the yes is missing the controls that
+   would reach the AI services look disabled; a tap on them opens this sheet again (ai-consent.js `gate`). */
+.zm-consent { z-index: 76; max-height: none; }
+.zm-consent-b { padding: 14px 16px 4px; overflow: auto; }
+.zm-consent-b p { margin: 0 0 12px; font: 15px/1.5 var(--sans); color: var(--hb-ink); }
+.zm-consent-b .zm-consent-note { color: var(--hb-muted); font-size: 14px; }
+.zm-consent-a { display: flex; flex-direction: column; gap: 8px; padding: 6px 16px 16px; }
+.zm-consent-a button { height: 48px; border-radius: 14px; font: 600 16px/1 var(--sans); }
+html.zm-consent-pending .zm-orb-btn, html.zm-consent-pending .zm-pwr, html.zm-consent-pending .zm-send { opacity: .45; }

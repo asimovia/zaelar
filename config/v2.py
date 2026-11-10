@@ -210,6 +210,12 @@ _DEFAULTS: dict[str, dict] = {
     "actionmap": {
         "enabled": True,
     },
+    # V2-870 — the person's yes to sending their conversation (voice, text, the context of an answer) to the AI
+    # services this agent uses. Asked by the native phone app before its first turn (App Review 5.1.2(i)) and
+    # withdrawable from its Settings; one answer per engine, so every device of this agent shares it.
+    "consent": {
+        "ai_providers": False,
+    },
     # v2 deployment flags. After Hermes' burial (V2-009), the default brain is «Colmena» itself.
     "flags": {
         "brain": "nucleo",                                  # active brain: 'nucleo' (own) · 'direct'/'local' (baselines)

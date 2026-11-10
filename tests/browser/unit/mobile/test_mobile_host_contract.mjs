@@ -179,7 +179,8 @@ check("the CSS centres the orb on the SCREEN, not between its neighbours",
 // V2-792 §9 — and ONE door for BOTH shells: the phone's copy started the session before the server had the switch
 // on (refused, 2026-10-25). Both faces call the centre rule; the rule and the switch live in `services/power.js`,
 // the same door the desktop ⏻ and the desktop bar slot use.
-const onClicks = [...DOCKBAR.matchAll(/onClick:\s*\(\)\s*=>\s*power\.centreTap\(/g)].length;
+// V2-870: inside the native app the call is wrapped in the AI-consent gate — still the ONE centre rule.
+const onClicks = [...DOCKBAR.matchAll(/onClick:\s*\(\)\s*=>\s*(?:consent\.gate\(\(\)\s*=>\s*)?power\.centreTap\(/g)].length;
 check("the ⏻ and the orb share ONE handler: the centre rule", onClicks === 2,
   `found ${onClicks} onClick → power.centreTap — both the stopped-state ⏻ and the running orb must call it`);
 check("the dock has no power path of its own", !/api\.runSt(op|art)\s*\(/.test(DOCKBAR),
@@ -277,7 +278,7 @@ check("the menu carries no feedback", !/FeedbackForm|feedback\.title/.test(MENUS
 check("the menu button is ☰ and the menu leads with the account and the Energy",
   /raw\(MENU\)/.test(DOCKBAR) && !/const CFG\b/.test(DOCKBAR)
   && MENUSHEET.indexOf('t("mobile.account")') > 0 && MENUSHEET.indexOf('t("mobile.account")') < MENUSHEET.indexOf('"zm-energy"')
-  && /openAccount\("buy"\)/.test(MENUSHEET),
+  && /openAccount\((?:inNativeApp\(\) \? "" : )?"buy"\)/.test(MENUSHEET),   // V2-870: no #buy inside the native app
   "the ☰ sheet must open with the account row, then the Energy row that opens the top-up");
 check("the Energy left is always on screen", /comp: EnergyLine,/.test(SURFACES),
   "the phone lost its Energy line along the top edge");

@@ -40,8 +40,9 @@ def test_info_plist_answers_what_review_asks() -> None:
     assert info["UIRequiresFullScreen"] is True
     assert info["LSApplicationCategoryType"] == "public.app-category.productivity"
     assert info["UISupportedInterfaceOrientations"] == ["UIInterfaceOrientationPortrait"]
-    for key in ("NSMicrophoneUsageDescription", "NSCameraUsageDescription", "NSLocationWhenInUseUsageDescription"):
+    for key in ("NSMicrophoneUsageDescription", "NSLocationWhenInUseUsageDescription"):
         assert info.get(key, "").strip(), f"{key} is missing: iOS kills the app when the permission is first asked"
+    assert "NSCameraUsageDescription" not in info, "nothing uses the camera: review asks why a permission is declared"
     assert info["CFBundleShortVersionString"] == "$(MARKETING_VERSION)"
     assert info["CFBundleVersion"] == "$(CURRENT_PROJECT_VERSION)"
     assert "UIBackgroundModes" not in info, "no background mode until background voice ships (review asks why)"
@@ -55,16 +56,19 @@ def test_the_project_targets_the_iphone_and_is_versioned_by_the_script() -> None
     assert "PrivacyInfo.xcprivacy in Resources" in pbx, "the privacy manifest must be bundled, not just present"
 
 
-def test_the_privacy_manifest_declares_no_tracking_and_what_the_shell_sends() -> None:
+def test_the_privacy_manifest_declares_no_tracking_and_the_store_labels() -> None:
     p = _plist(PRIVACY)
     assert p["NSPrivacyTracking"] is False and p["NSPrivacyTrackingDomains"] == []
-    assert p["NSPrivacyAccessedAPITypes"] == []
-    kinds = {d["NSPrivacyCollectedDataType"] for d in p["NSPrivacyCollectedDataTypes"]}
-    assert kinds >= {"NSPrivacyCollectedDataTypeEmailAddress", "NSPrivacyCollectedDataTypeAudioData",
-                     "NSPrivacyCollectedDataTypeOtherUserContent", "NSPrivacyCollectedDataTypeCoarseLocation"}
-    for d in p["NSPrivacyCollectedDataTypes"]:
-        assert d["NSPrivacyCollectedDataTypeTracking"] is False
-        assert d["NSPrivacyCollectedDataTypePurposes"] == ["NSPrivacyCollectedDataTypePurposeAppFunctionality"]
+    assert p["NSPrivacyAccessedAPITypes"] == [{"NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+                                               "NSPrivacyAccessedAPITypeReasons": ["CA92.1"]}]
+    kinds = {d["NSPrivacyCollectedDataType"].removeprefix("NSPrivacyCollectedDataType"): d
+             for d in p["NSPrivacyCollectedDataTypes"]}
+    assert set(kinds) == {"EmailAddress", "Name", "PreciseLocation", "Contacts", "AudioData", "OtherUserContent",
+                          "CustomerSupport", "SearchHistory", "UserID", "ProductInteraction", "OtherDiagnosticData"}
+    for name, d in kinds.items():
+        assert d["NSPrivacyCollectedDataTypeLinked"] is True, name
+        assert d["NSPrivacyCollectedDataTypeTracking"] is False, name
+        assert "NSPrivacyCollectedDataTypePurposeAppFunctionality" in d["NSPrivacyCollectedDataTypePurposes"], name
 
 
 def test_the_entitlements_are_a_template_without_push_yet() -> None:
