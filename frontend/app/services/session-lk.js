@@ -463,6 +463,8 @@ function _releaseWarm() {
 }
 function _parkMic(s, key) {
   _releaseWarm();
+  // A chat-only session's silent stream is never taken back: the next start asks for the mic again.
+  if (s && s.__silent) { try { s.getTracks().forEach((tr) => tr.stop()); } catch (_) {} return; }
   if (!s || !s.getAudioTracks().some((tr) => tr.readyState === "live")) return;
   _warm = s; _warmKey = key; _warmT = setTimeout(_releaseWarm, _WARM_MS);
 }
@@ -577,14 +579,27 @@ export async function start() {
     const key = JSON.stringify(ad);
     const warm = _takeWarm(key);
     if (!warm) _logMicPermission();
-    const captured = warm || await navigator.mediaDevices.getUserMedia({ audio: ad });
+    let captured = warm;
+    if (!captured) {
+      try { captured = await navigator.mediaDevices.getUserMedia({ audio: ad }); }
+      catch (err) {
+        // A refused mic (denied, no device, a policy) is no reason to have no session: without one the engine takes
+        // no typed line either. The session comes up CHAT-ONLY on a silent track — he types, the agent answers — and
+        // the mic says why it is off. With no audio context the refusal stands, and the catch below gates it.
+        if (!micDenial.isRefusal(err)) throw err;
+        try { captured = micDenial.silentStream(); } catch (_) { throw err; }
+        health.micCaptureResult(err);
+        store.setMicBlocked({ show: true, msg: err.name === "NotAllowedError" ? t("voice.mic_denied") : t("voice.mic_in_use") });
+        try { api.clientLog("🎙️ chat-only session", { text: `mic refused (${err.name}): session without a mic`, state: "chat_only" }); } catch (_) {}
+      }
+    }
     if (warm) { try { api.clientLog("🎙️ mic reused", { text: "warm stream taken back — no new permission request" }); } catch (_) {} }
     // An open mic is a RESOURCE, not a value: if the session was stopped while the browser asked for permission,
     // it has to be closed here and now. `stop()` already went by — when it ran, `stream` was still null — and
     // nobody else will do it: the operator would be left with the browser's red dot lit over a stopped agent.
     if (gen !== _gen) return _abortedStartup(gen, captured);
     stream = captured; streamKey = key;
-    health.micCaptureResult(null);
+    if (!captured.__silent) health.micCaptureResult(null);
     health.watchMicTrack(captured.getAudioTracks()[0]);
     _bootPhase("voz");   // mic granted — the voice link is coming up (frontend-known milestone)
     await populateMicPicker();
