@@ -129,7 +129,8 @@ class YouTubeAudioProvider(MusicProvider):
                                       "noop": True})
         why = ""
         if not vid and query:
-            got = _resolve(query, skip=refused_ids(yt))
+            refused = refused_ids(yt)
+            got = _resolve(query, skip=refused) if refused else _resolve(query)   # V2-873: what the player refused
             vid, title, why = got[0], got[1], (got[2] if len(got) > 2 else "")
         from connectors import music as _music
         if _music.superseded():          # a newer request was asked while this one was looked up: it does not sound

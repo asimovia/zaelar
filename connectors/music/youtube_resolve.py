@@ -93,6 +93,11 @@ def _resolve(query: str, skip=()) -> tuple:
 _YT_URL_RE = re.compile(r"(?:v=|youtu\.be/|/embed/|^)([0-9A-Za-z_-]{11})")
 
 
+def resolve(query: str, skip=()) -> tuple:
+    """The public face of `_resolve`: a song query → (videoId, title, why), skipping `skip` (V2-873)."""
+    return _resolve(query, skip)
+
+
 def _extract_id(uri: str) -> str:
     m = _YT_URL_RE.search((uri or "").replace("yt:", ""))
     return m.group(1) if m else ""

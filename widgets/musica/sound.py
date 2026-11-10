@@ -50,8 +50,8 @@ def player_audio(action: str, p: dict) -> dict:
     return {"ok": True, "audio_blocked": was}
 
 
-#: The IFrame API's fatal codes: 101/150 the owner refuses embedding, 100 removed or private, 2/5 broken (V2-634).
-FATAL = frozenset({"2", "5", "100", "101", "150"})
+#: The IFrame API's fatal codes (101/150 the owner refuses embedding, 100 removed, 2/5 broken) — the video card's set.
+from widgets.youtube.availability import FATAL_CODES as FATAL  # noqa: E402
 
 
 def player_error(action: str, p: dict) -> dict:
@@ -72,8 +72,8 @@ def player_error(action: str, p: dict) -> dict:
     nxt = ("", "")
     if fatal and str(yt.get("query") or "").strip():
         from connectors.music import youtube_audio as _ya
-        from connectors.music.youtube_resolve import _resolve
-        nxt = _resolve(str(yt["query"]), skip=_ya.refused_ids(yt))[:2]
+        from connectors.music import youtube_resolve as _yr
+        nxt = _yr.resolve(str(yt["query"]), skip=_ya.refused_ids(yt))[:2]
     if nxt[0]:
         yt.update({"videoId": nxt[0], "title": nxt[1] or yt.get("query"), "player_error": "", "audio_blocked": False,
                    "paused": False, "last_cmd": "load", "cmd_seq": int(yt.get("cmd_seq") or 0) + 1})
