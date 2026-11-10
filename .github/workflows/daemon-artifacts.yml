@@ -12,8 +12,12 @@
 # installer scripts before it does anything else — a syntax error in a PowerShell file is a thing you find at
 # install time, on somebody else's computer, in the worst possible mood.
 #
-# IT PUBLISHES NOTHING BY ITSELF. On a tag the artifacts are attached to the release; otherwise they are build
-# artifacts you can download and look at.
+# IT PUBLISHES ONLY ON THE DAEMON'S OWN TAGS. On a `daemon-vX.Y.Z` tag the artifacts are attached to that release. On
+# an ENGINE tag (`v*`) everything below still runs — build, smoke test, signing, manifest — as a check that the daemon
+# builds at that engine revision, but nothing is attached: the daemon has its own release line, and engine releases
+# carrying daemon builds made "the newest release with the file" hand out an engine build over a newer, signed daemon
+# release (V2-869 §5; the resolvers read the daemon line first, `daemon/update/release_line.py`). Without a tag the
+# artifacts are build artifacts you can download and look at.
 #
 # WHAT IS SIGNED, AND BY WHOM. Each build job signs its own `SHA256SUMS-<suffix>` with a Sigstore KEYLESS
 # signature: the signer is this workflow's GitHub OIDC identity (`.../daemon-artifacts.yml@<ref>`), the
@@ -517,8 +521,9 @@ jobs:
           if-no-files-found: warn
 
   release:
-    # Only on a tag, and only once every platform built, its guards held on the real binary, and the manifest exists.
-    if: startsWith(github.ref, 'refs/tags/')
+    # Only on a DAEMON tag (an engine tag builds as a check and publishes nothing), and only once every platform built,
+    # its guards held on the real binary, and the manifest exists.
+    if: startsWith(github.ref, 'refs/tags/daemon-v')
     needs: [build, manifest]
     runs-on: ubuntu-latest
     permissions:
