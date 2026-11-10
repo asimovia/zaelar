@@ -112,3 +112,14 @@ def test_the_waiting_line_exists_in_both_languages():
     for lang in ("es", "en"):
         line = json.loads((root / f"i18n/genesis/{lang}/voice.json").read_text(encoding="utf-8"))["errand_still_waiting"]
         assert "{request}" in line, lang
+
+
+@pytest.mark.parametrize("lang,said", [("es", "sí, y cierra el vídeo"), ("en", "yes, and close the video")])
+def test_the_turn_says_the_errand_still_waits(parked, lang, said, monkeypatch):
+    monkeypatch.setenv("ZAELAR_LANGUAGE", lang)
+    heard: list = []
+    assert not gates.resolve_all(said, brief=None, say=heard.append)
+    assert heard and "abre el que sea mejor oferta" in heard[0], heard
+    heard.clear()
+    gates.resolve_all("sí" if lang == "es" else "yes", brief=None, say=heard.append)
+    assert not heard, "an answer that answered says nothing of the kind"

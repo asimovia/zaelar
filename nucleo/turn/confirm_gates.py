@@ -131,8 +131,8 @@ def _task_gate(brief=None):
                 _d.absorb_refinement(tid, words)
         if v:
             return _d.resolve_confirm(v == "yes", tid)
-        # V2-873 — a yes/no word that answered nothing: the errand keeps waiting, and he is TOLD so («sí, y cierra el
-        # vídeo» used to leave it waiting in silence, and he believed he had answered).
+        # V2-873 — a yes/no word that answered nothing: the errand keeps waiting, and he is TOLD so (a «yes, and close
+        # the video» used to leave it waiting in silence, and he believed he had answered).
         return {"still_waiting": str(p.get("request") or "")} if said else None
     return (_open, _do)
 
@@ -257,7 +257,7 @@ def _browser_gate():
     return (lambda: True, _do)
 
 
-def resolve_all(text: str, *, widget: bool = False, brief=None) -> Answered:
+def resolve_all(text: str, *, widget: bool = False, brief=None, say=None) -> Answered:
     """The standard resolution: every gate a channel can answer, IN ONE CALL — which is the invariant.
 
     One call is what makes «the second gate never sees the word» true by construction instead of by the caller
@@ -265,9 +265,13 @@ def resolve_all(text: str, *, widget: bool = False, brief=None) -> Answered:
 
     `widget=True` includes the widget gate. Voice handles that one earlier in its turn (it has to speak the
     acknowledgement and return), so by default it is left out rather than resolved twice. `brief` is the turn's
-    verdict handle: the task gate reads it when a long reply cannot be judged (`task_reply`).
+    verdict handle: the task gate reads it when a long reply cannot be judged (`task_reply`). `say(line)`, when given,
+    says a yes/no word that answered nothing (V2-873: the parked errand keeps waiting, and he is told).
     """
-    return resolve(text,
-                   widget=_widget_gate(brief) if widget else None,
-                   task=_task_gate(brief) if brief is not None else _task_gate(),
-                   browser=_browser_gate())
+    ans = resolve(text, widget=_widget_gate(brief) if widget else None,
+                  task=_task_gate(brief) if brief is not None else _task_gate(), browser=_browser_gate())
+    if say is not None and not ans and ans.waiting:
+        from i18n import langs as _langs
+        if line := str(getattr(_langs.current_language(), "errand_still_waiting", "") or ""):
+            say(line.format(request=ans.waiting[:120]))
+    return ans

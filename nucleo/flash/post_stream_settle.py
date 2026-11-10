@@ -133,9 +133,7 @@ async def settle_what_is_pending(*, _ans, _ask_waiting, _auth_pending, _brief, _
     # decided once, for both channels, in `nucleo/turn/confirm_gates.py`.
     if not had_pending_confirm and not worker_acted["v"]:
         from nucleo.turn import confirm_gates as _gates
-        _ans = _gates.resolve_all(text, brief=_brief)
-        if not _ans and _ans.waiting and (_still := str(getattr((_langs or _i18n_langs).current_language(), "errand_still_waiting", "") or "")):
-            send(speech.sanitize(_still.format(request=_ans.waiting[:120]), drop_metadata=False))   # V2-873: neither, said
+        _ans = _gates.resolve_all(text, brief=_brief, say=lambda s: send(speech.sanitize(s, drop_metadata=False)))
         if _ans:   # it answers what is PARKED; an unrelated errand of the same breath still starts (three-tasks)
             _r = _ans.result if isinstance(_ans.result, dict) else {}
             _pst._eot.keep_beside_an_answer(escalate_req, str(_r.get("request") or "") if _ans.gate == "task" else None, declined=not _ans.yes)
