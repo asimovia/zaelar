@@ -90,8 +90,8 @@ def test_the_shutdown_deadline_exits_the_process_with_status_zero(monkeypatch):
 
 
 # ── V2-872 · presence is the person, never the tab ─────────────────────────────────────────────────────────────
-# Measured on a hosted engine: an open tab's stream reconnected after every stop, the platform started the engine
-# on that request, and the engine waited the full window again — 35 boots in 26 h with nobody there.
+# The loop this closes: an open tab's stream reconnects after every stop, that request starts the engine again,
+# and the engine waits the full window again with nobody there.
 
 GRACE = 3 * MIN
 

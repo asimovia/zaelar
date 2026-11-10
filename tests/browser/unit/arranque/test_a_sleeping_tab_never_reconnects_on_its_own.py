@@ -1,7 +1,7 @@
 """A sleeping tab never reconnects on its own (V2-872).
 
-A hosted engine stops when nobody uses it, and any request starts it again. An open tab whose `EventSource`
-reconnected by itself after every stop booted one engine 35 times in 26 h with nobody there. The client's rule
+An engine with an idle stop ends when nobody uses it, and any request can start it again. An open tab whose
+`EventSource` reconnects by itself after every stop starts the engine again and again with nobody there. The client's rule
 lives in ONE pure function (`frontend/app/services/presence.js::reconnectDecision`), driven by the `.mjs` beside
 this file; the checks below hold the wiring that makes it the only way back: the stream's error closes it, and
 every poller and voice retry asks `asleep()` before it reaches the server.

@@ -1,9 +1,9 @@
 // ============================================================================
 // presence.js — V2-872: presence is the PERSON, never the tab.
 //
-// A hosted engine stops when nobody uses it, and any request starts it again. An open tab whose EventSource
-// reconnected on its own after every stop booted one engine 35 times in 26 h, each boot burning the host's CPU
-// quota with nobody there. So this tab never reconnects by itself:
+// An engine with an idle stop ends when nobody uses it, and any request can start it again. An open tab whose
+// EventSource reconnects on its own after every stop starts the engine again and again, each boot spending the
+// host's CPU with nobody there. So this tab never reconnects by itself:
 //   · a stream error CLOSES the stream; reopening it is `reconnectDecision`'s call — only while the tab is visible
 //     AND had input (pointer, key, his spoken turn) within `tab_sleep_min`, with a 2 s → 60 s backoff;
 //   · a tab with no input for `tab_sleep_min` sleeps on its own, and so does every tab on the engine's
