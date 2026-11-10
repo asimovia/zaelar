@@ -128,6 +128,9 @@ export const clientLog = (label, o) => {
     postJSON("/api/client-log", { label, dev: DEVICE, ...o }).catch(() => {});
   } catch (_) {}
 };
+// V2-873 — the label of one global `error` event: an exception a script THREW carries its Error (`e.error`); an event
+// with none is a notice the browser raises itself (a ResizeObserver loop, an opaque cross-origin script), not a fault.
+export const errorLabel = (e) => (e && e.error ? "⚠️ JS error" : "ℹ️ browser notice (no exception)");
 
 // ---- observabilidad del frontend (V2-039): audita lo que TOCA el operador — iconos del orbe/TopBar (kind "ui") y
 // geometría de widgets a mano (mover/redimensionar, kind "widget"). Fire-and-forget; el server estampa src="user". ----
