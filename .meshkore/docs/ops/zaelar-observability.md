@@ -433,7 +433,10 @@ the resulting verdict (`verdict=ok|<reason>`).
 | spk | `blocked` (= `canPlaybackAudio`), `paused`, `element_error`, `track_ended`, `remote_muted` (only while `bot_speech speaking`), `context_interrupted`, `no_output`, `sink_lost`, `silent_while_speaking` (the engine says speaking, the received remote audio carries no energy for 4 s) | `element:playing\|stalled\|waiting`, `context:<state>`, `default_output:<label>`, `recovery:…` |
 
 A deliberate mute hides every condition but `permission_denied`; a stopped session clears the session-scoped
-ones. «Engine generated TTS, operator heard nothing» now reads as one of these rows — or, if none appears, as an
+ones. A capture the browser REFUSES (`NotAllowedError`, `NotFoundError`, a policy…) is not retried until a gesture,
+and the session comes up chat-only on a silent stream so typed lines still reach the engine
+(`services/mic-denial.js`, node 4.437). `api.clientLog` never reports its own failed POST and is capped per minute
+(`CLIENT_LOG_PER_MIN`, node 4.435), so a looping page cannot flood this stream. «Engine generated TTS, operator heard nothing» now reads as one of these rows — or, if none appears, as an
 output problem past the browser (see the module's limits).
 
 ### `🎙️ speaker` — the voice-identification SHADOW
@@ -500,7 +503,9 @@ and record nothing. And `src` is bounded to `user`/`frontend` — anything else 
   while the mic is open**, perpetually. The PER-SENTENCE latency, which is signal, already comes out as
   `stt`/`tts`/`brain` with backend, model and text. It is still persisted to the jsonl; it just stays out of the
   viewer's main thread.
-  `error` — session errors. `alert` — speakable errors (e.g. "Cerebro rápido caído"). `session` — open/close.
+  `error` — session errors. `alert` — speakable errors (e.g. "Cerebro rápido caído"). `session` — open/close, plus the
+  idle stop's two system events: `engine.sleep` (the goodnight on every open stream before the engine is suspended or
+  exits) and `engine.resumed` (`gap_s`, `asked`; a resume read from the clocks) — neither counts as real activity.
 - Connectors: `label` prefixed with `cluster.` / `cron.` / `architect.` / `wa.` (WhatsApp) / (Telegram) = tag
   dispatch.
 - **`cluster` · field `pace`** — the **conversation-health criterion** of the agent-to-agent channel (cluster ONLY;

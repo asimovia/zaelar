@@ -185,6 +185,39 @@ script uses EXPLICIT paths (never `rm -rf` on a shared parent — e.g. `memory/_
 search profile). After the reset, zaelar starts with `operator_name=None` and memory at 0 → the profile grows
 during the test and observability can be compared against the DB.
 
+### Idle stop, sleep and wake (optional — off by default)
+
+A self-hosted engine stays up: with `ZAELAR_IDLE_STOP_MIN` unset or 0 none of this runs. Hosts that start and stop
+the process on demand can switch it on; every piece is a seam that does nothing until its variable is set.
+
+- **The decision** (`nucleo/idle_stop.py`, CRIT-R25). On every pulse the engine stops when nobody has been present
+  and nothing real has happened for `ZAELAR_IDLE_STOP_MIN` minutes, no Brain Worker is running, and no notice it can
+  still fire is due inside that window. Presence is a connected person: a screen's input (a touch, a typed line, a
+  spoken turn) or a VISIBLE tab with its event stream open, which beats every minute (`POST /api/screens/beat
+  {present}`, `frontend/app/services/presence.js`). A stream open alone never counts. Until someone is present after
+  boot or a resume, the window is the short `wake_grace_min` (resources policy, 1; `ZAELAR_WAKE_GRACE_MIN` overrides
+  it). A job already overdue that the pulse could not fire vetoes nothing.
+- **The tab sleeps too** (CRIT-R24). A tab with no input for `tab_sleep_min` (resources policy, 10; 0 = never)
+  closes its stream and sends nothing until a gesture; the open that gesture makes carries `wake=1`, the only mark a
+  front door should start a stopped engine for (CRIT-R28).
+- **The act** (`nucleo/suspend.py`, CRIT-R31). First the wake report is flushed (a report that fails keeps the
+  engine up and the stop is retried later), then the goodnight (`engine.sleep` on every open stream: one black veil,
+  `DormantVeil.js`, with Reactivate). Then, if a sleep endpoint is set (`ZAELAR_SLEEP_URL`, else `CONTROL_PLANE_URL`
+  + `/sleep` when `CONTROL_PLANE_SERVICE_TOKEN` is set too), the engine POSTs there to be SUSPENDED: `202` = accepted,
+  wait `SLEEP_CONFIRM_S` and exit cleanly if still not suspended; `200` = already resumed; anything else or no answer
+  = clean exit. With no endpoint it is the clean exit (status 0, through the server's graceful shutdown).
+- **The resume.** A suspended process just continues. The pulse reads it from the clocks (wall vs monotonic skew, or
+  a long gap after a sleep was asked): the idle state starts over with the short grace, the wake report goes stale,
+  and `engine.resumed` is published. Connectors reconnect on their own.
+- **The wake instant** (`nucleo/pulse/wake.py`, CRIT-R29). If `ZAELAR_WAKE_URL` is set (else `CONTROL_PLANE_URL` +
+  `/wake` with the same token), the engine POSTs `{"next_due": <epoch s | null>}`: the earliest of the scheduler's
+  next job, the pulse's own deadlines (`deadlines.py`) and — only while a listener exists (`listeners.py`: a connected
+  inbound channel AND something that reacts to it) — the next pass on a `listen_every_min` grid. `null` = nothing to
+  wake for. The host is expected to start the process a little before that instant.
+- **Nothing is handled twice** (CRIT-R30). Mail keeps a durable cursor (`connectors/email/cursor.py`), the messaging
+  widget asks its `taken` ledger before the classifier, and the event router routes one arrival once — so a process
+  that wakes up hands over only what arrived while it slept.
+
 ## 6. Defaults at a glance
 | Function | Default | Free? | Alternatives (in code) |
 |---|---|---|---|
