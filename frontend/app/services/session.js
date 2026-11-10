@@ -9,6 +9,7 @@
 // almost exactly as-is (it already touches no JSX).
 // ============================================================================
 import * as store from "../core/store.js?v=2";
+import * as micDenial from "./mic-denial.js?v=1";
 import * as audio from "./audio.js?v=2";
 import * as api from "./api.js?v=2";
 import * as mic from "./mic.js?v=1";
@@ -176,7 +177,9 @@ function iceDone(pc) {
 }
 
 export async function start() {
-  if (started || starting) return; starting = true; store.setStarting(true); store.setConnState(t("voice.conn_requesting"));
+  if (started || starting) return;
+  if (micDenial.waitingForGesture()) return;   // a refused mic waits for the person (mic-denial.js), never a loop
+  starting = true; store.setStarting(true); store.setConnState(t("voice.conn_requesting"));
   audit.silent = false; store.setMicBlocked({ show: false, msg: "" });   // clear any prior mic-blocked state
   try {
     await api.setVoiceConfig(store.voiceIdx());
@@ -241,6 +244,7 @@ export async function start() {
     starting = false; store.setStarting(false); started = false; store.setStarted(false); store.setConnState(t("voice.conn_error")); console.error(err);
     // Mic taken by another app (NotReadableError) or denied → show the 🚫 ring on the orb, NOT a top error banner.
     const n = err && err.name;
+    micDenial.noteCaptureError(err);
     if (n === "NotReadableError" || n === "NotAllowedError" || n === "OverconstrainedError") {
       store.setMicBlocked({ show: true, msg: n === "NotAllowedError" ? t("voice.mic_denied") : t("voice.mic_in_use_superwhisper") });
     } else { store.setConnState(t("voice.conn_error")); }

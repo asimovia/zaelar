@@ -112,16 +112,19 @@ export const saveSettings = (payload) => postJSON("/api/settings", payload).then
 // ---- diagnostics ----
 // A diagnostic must never feed itself: a failed POST here is a rejected promise, and the page's own
 // `unhandledrejection` handler reports rejections through THIS call — without the `.catch` one failed request
-// became a loop of reports that took every connection of the tab. A storm of the same error is one fact, so the
-// reports are also capped per minute.
-const _clientLogBudget = { since: 0, sent: 0 };
-export const CLIENT_LOG_PER_MIN = 20;
+// became a loop of reports that took every connection of the tab. A storm of the SAME report is one fact, so each
+// distinct report (label + text/state) is capped per minute; different reports are never held back by it.
+const _clientLogSeen = new Map();
+let _clientLogMinute = 0;
+export const CLIENT_LOG_PER_MIN = 5;
 export const clientLog = (label, o) => {
   try {
     const now = Date.now();
-    if (now - _clientLogBudget.since >= 60000) { _clientLogBudget.since = now; _clientLogBudget.sent = 0; }
-    if (_clientLogBudget.sent >= CLIENT_LOG_PER_MIN) return;
-    _clientLogBudget.sent += 1;
+    if (now - _clientLogMinute >= 60000) { _clientLogMinute = now; _clientLogSeen.clear(); }
+    const key = `${label}|${(o && (o.text || o.state)) || ""}`;
+    const n = _clientLogSeen.get(key) || 0;
+    if (n >= CLIENT_LOG_PER_MIN) return;
+    _clientLogSeen.set(key, n + 1);
     postJSON("/api/client-log", { label, dev: DEVICE, ...o }).catch(() => {});
   } catch (_) {}
 };

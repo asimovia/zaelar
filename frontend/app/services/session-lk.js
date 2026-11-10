@@ -37,6 +37,7 @@ import { t } from "../core/i18n.js?v=1";
 import { createOutbox } from "./outbox.js?v=1";
 import * as health from "./device-health.js?v=1";
 import { MIC_MODES as _MIC_MODES, defaultMicMode, captureConstraints } from "./mic-profile.js?v=1";
+import * as micDenial from "./mic-denial.js?v=1";
 
 let room = null, stream = null, videoEl = null, botAudioEl = null;
 let started = false, starting = false;
@@ -502,6 +503,8 @@ export async function start() {
   // `ensureVoice` effect re-runs the moment `starting` drops, so without this line a tab that lost the lock
   // (another window stole it) re-asked ~140 times a second instead of every 3 s (measured 2026-09-27).
   if (_blockedRetry) return;
+  // The browser refused the mic (denied, no device, a policy): asking again before the person acts is a loop.
+  if (micDenial.waitingForGesture()) return;
   const gen = _gen;   // see the SESSION GENERATION note above: if it bumps, this startup is no longer the current one
   _installHealth();   // V2-788: once per page — permission, devicechange, the silence detector, gesture recovery
   starting = true; store.setStarting(true); store.setConnState(t("voice.conn_requesting"));
@@ -743,6 +746,7 @@ export async function start() {
   } catch (err) {
     starting = false; store.setStarting(false); started = false; store.setStarted(false); store.setConnState("error"); console.error(err);
     const n = err && err.name;
+    micDenial.noteCaptureError(err);
     if (["NotReadableError", "NotAllowedError", "OverconstrainedError", "NotFoundError", "SecurityError"].includes(n)) {
       health.micCaptureResult(err);   // V2-788: the capture failure is the mic's health, not only a caption
     }
