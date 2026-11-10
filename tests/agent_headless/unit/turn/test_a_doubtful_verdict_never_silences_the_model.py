@@ -125,3 +125,10 @@ def test_the_shadow_reads_the_held_words_as_the_models_answer(lang):
     assert out["model_wrote"] and out["would"]["route"] == "inline" and out["would_b"]["route"] == "errand"
     assert set(out["changes"]) == {"route", "silence_words"} and out["changes_b"] == ["silence_words"]
     assert out["escalate"] == ["escalate", 0.54] and out["call_id"] == "c1" and out["flow_as"] == "inject"
+
+
+def test_a_call_the_gate_held_is_the_models_inline_answer(lang):
+    req = {"v": SAID[lang], "routed": True, "held_calls": [{"name": "search_listings", "args": {}}]}
+    out = commission.shadow(lambda *a, **k: None, at="close", text=SAID[lang], launched=True, escalate_req=req,
+                            brief=_brief(escalate=("escalate", 0.6)), flow_as="new", words_said=False)
+    assert out["model_calls"] == ["search_listings"] and out["would"]["route"] == "inline"

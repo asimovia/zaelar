@@ -104,6 +104,7 @@ def gate_calls(on_tool_call, *, brief, escalate_req: dict, operator_text: str, e
             return on_tool_call(name, args)
         if name not in PASS and sure_escalate(brief):
             _mark(brief, "")                 # a routed send after a player: the turn's words are the errand's
+            escalate_req.setdefault("held_calls", []).append({"name": name, "args": dict(args or {})})   # V2-874
             route(escalate_req, operator_text, emit, why=f"call:{name}", brief=brief)
             return None
         return on_tool_call(name, args)
