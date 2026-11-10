@@ -265,6 +265,37 @@ def is_plain_answer(text: str, verdict: str) -> bool:
     return len(rest) <= _PLAIN_ANSWER_WORDS
 
 
+def answer_alone(text: str, verdict: str) -> bool:
+    """His reply is the answer word and nothing else («vale», «sí.», «no»)."""
+    return is_plain_answer(text, verdict) and _rest_words(text, verdict) == 0
+
+
+def _rest_words(text: str, verdict: str) -> int:
+    n = _norm(text)
+    m = (_YES_RE if verdict == "yes" else _NO_RE).search(n)
+    return len(re.findall(r"\w+", (n[:m.start()] + " " + n[m.end():]) if m else n))
+
+
+def orders_a_card(brief) -> bool:
+    """The turn's brief SURELY reads an order on a card: an action inside one (`screen_action`) or a canvas gesture
+    over one (open, close, full screen…). Such a turn is an order, never a bare yes/no to a question waiting on him
+    — whatever word it opens with (V2-873). No brief, or an unsure one, says nothing."""
+    if brief is None:
+        return False
+    try:
+        from nucleo.flash import direct_action as _da
+        vw, va = _da.from_brief(brief)
+        if vw and va and _da._action_sure(brief):
+            return True
+        from nucleo.acts import card as _card
+        from nucleo.turn import brief as _tb
+        verb, info = _tb.read(brief, _tb.CANVAS_KEY, "", min_confidence=_card.VETO_SURE)
+        return bool(info) and str(verb or "") not in ("", "none", "neither")
+    except Exception as e:  # noqa: BLE001 — no verdict: the reading of his words decides
+        __import__("loguru").logger.debug(f"confirm: card order unreadable — {e!r}")
+        return False
+
+
 def answers_pending(text: str, brief=None) -> str | None:
     """`classify_reply`, for the confirmation actually pending — 'yes' | 'no' | None.
 

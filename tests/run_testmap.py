@@ -3851,6 +3851,8 @@ DOMAINS: list[dict] = [
         {"id": "2.1658", "title": "An idle engine asks its host to SUSPEND it and falls back to the clean exit: the wake report goes out first (a failed one keeps it up), then the goodnight, then the sleep endpoint — 202 waits to be suspended and exits if nothing happens, 200 is a resume already, a refusal or no answer is the exit, and a suspend followed by a resume (read from the clocks on the pulse, before any stop decision) never exits; a resume starts the idle state over; a visible connected screen is presence; a widget's background tick is not activity; a job ⏻ held past its instant holds nothing up",
             "ch": UNIT,
             "paths": ["tests/agent_headless/unit/test_an_idle_engine_sleeps_and_wakes.py"]},
+        {"id": "2.1659", "title": "The answer to a waiting question is yes, no or NEITHER (V2-873, ES/EN): a parked errand waiting on its row is answered by the brief's pick, never by the task gate's word reading; with no pick, «vale cierra los resultados» (a yes word opening a sure card order) is neither and the errand keeps waiting, a bare «vale» is the yes",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_a_yes_that_opens_another_order_is_neither.py"]},
         {"id": "2.728", "title": "A turn that acted on a card and also escalated, read inline, launches no worker — on the text channel as on the voice",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_an_inline_act_settles_the_commission_on_both_channels.py"]},
         {"id": "2.729", "title": "An ordered act that leaves, sure at the operator's 70%, runs when the model only drafted it — both channels",

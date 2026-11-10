@@ -110,6 +110,8 @@ def _task_gate(brief=None):
         named = _named_parked(words)
         p = _d.pending_confirm(named) or {}
         tid = str(p.get("task_id") or "")
+        if _the_binding_reads_it(brief, p):
+            return None          # its row's question is answered by the brief's pick (`bind_the_answer`), not here
         v = task_reply(words, _c.classify_reply(words), str(p.get("question") or ""), brief=brief, parked=tid,
                        names_it=bool(named) and named == tid)
         if named and (v == "yes" or (v is None and not _names_another_errand(words, tid))):
@@ -124,6 +126,25 @@ def _task_gate(brief=None):
                 _d.absorb_refinement(tid, words)
         return _d.resolve_confirm(v == "yes", tid) if v else None
     return (_open, _do)
+
+
+def _the_binding_reads_it(brief, p: dict) -> bool:
+    """The parked errand waits on its ROW (`dispatch.confirm.make_durable` gave it an `ask_id`) and the turn's brief
+    read the binding question over the open asks: then the brief's pick among the two DECLARED answers is the reader
+    (CRIT-C13), and his words are read only when no pick came (V2-873: «vale cierra los resultados» — a «vale» that
+    opens another order — was read here as the yes to «this moves money… shall I go on?» before the brief, which saw
+    the question, could say it answered none)."""
+    if brief is None or not str((p or {}).get("ask_id") or ""):
+        return False
+    try:
+        from nucleo.cli import worker_api_bind as _bind
+        from nucleo.turn import verdicts as _v
+        choice, info = _v.read(brief, _bind.KEY, None, min_confidence=0.0)
+        return bool(info) and choice is not None
+    except Exception as e:  # noqa: BLE001 — unreadable: the words decide, as before
+        from loguru import logger
+        logger.debug(f"confirm_gates: binding verdict unreadable — {type(e).__name__}: {e}")
+        return False
 
 
 def _names_another_errand(words: str, parked: str) -> bool:
@@ -176,6 +197,10 @@ def task_reply(words: str, v: str | None, question: str, *, brief=None, parked: 
     # yeses of 2026-10-11 left the game parked and the agent asked again. A «no» keeps its stricter path below.
     if names_it and _c.opening_answer(words) == "yes":
         return "yes"
+    if v is not None and not _c.answer_alone(words, v) and _c.orders_a_card(brief):
+        # «vale cierra los resultados»: the «vale» opens an ORDER the brief surely read on a card — neither a yes nor
+        # a no to the parked errand, which keeps waiting (V2-873). A bare «vale» is still the answer.
+        return None
     if v is None or _c.is_plain_answer(words, v):
         return v
     if parked and _about_another_errand(words, parked):
