@@ -22,6 +22,15 @@ from nucleo.turn import errands_of_a_turn as _eot   # the errand the pool could 
 from nucleo.turn import split_by_errand as _sbe   # one sentence about several errands: each one said (2.643)
 
 
+def launch_label(joins_as: str) -> str:
+    """The launch's event says what happened (V2-874): a NEW errand is an escalation; a request `flow_of` joined to a
+    live errand (inject, steer, absorb, reopen, join) is that join — the panel used to call both «escalada»."""
+    from nucleo.turn import flow_of as _flow
+    if str(joins_as or _flow.NEW) == _flow.NEW:
+        return "🧭 Flash → Brain Worker (escalada registrada)"
+    return f"🧵 Flash → its live errand ({joins_as})"
+
+
 async def launch_the_errands(*, motor, send, speech, emit, brain, _brief, _op_text, _escalate_mod, _prev_pending,
                              _router, _did_act, _acted_elsewhere, acted, escalate_req,
                              spoken_text, worker_acted) -> dict:
@@ -62,7 +71,8 @@ async def launch_the_errands(*, motor, send, speech, emit, brain, _brief, _op_te
                           **_send_ctx,            # a send the verdict identified: the worker composes on ITS row
                           **({"replaces": escalate_req["replaces"]} if _replacing else {}),
                           **({"part": 0} if escalate_req.get("more") else {})})   # V2-844: one of several
-        emit("brain", "🧭 Flash → Brain Worker (escalada registrada)", text=req, role="system", extra={"heard": _heard})
+        _as = str((_settled or {}).get("as") or _flow.NEW)
+        emit("brain", launch_label(_as), text=req, role="system", extra={"heard": _heard, "as": _as})
         _say = escalate_req.pop("say", "")
         if _started:   # V2-852 T21 — a door that refused said why; «I'm on it» is a start's line, never a refusal's
             _reply.say_started(_say, spoken_text, send, speech)   # a silent start says so (V2-794)

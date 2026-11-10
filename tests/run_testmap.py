@@ -3872,6 +3872,9 @@ DOMAINS: list[dict] = [
         # V2-874 class 6 — disarmed 2026-11-10 (the hold applies only to a non-empty piece / a held turn handled by a worker owes no line) → red each.
         {"id": "2.1668", "title": "The stream's last, EMPTY piece releases nothing a routed or undecided turn holds (V2-874): the Hold keeps the model's words in route_pending through the closing say(take(True)) and release() decides — dropped under a sure escalate, said in order inline; voice and typed share the one pipeline; a held turn that reached a live worker (steer, inject) and launched nothing is never mute — it says it is still on it",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_the_streams_last_empty_piece_releases_nothing.py"]},
+        # V2-874 rule 4 — disarmed 2026-11-10 (every launch labelled an escalation) → red.
+        {"id": "2.1669", "title": "The launch's event says what happened (V2-874): a request flow_of joined to a live errand is labelled as that join (inject, steer, absorb, reopen, join), never «escalada registrada», which stays the label of a NEW errand; the event carries `as`",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_the_launch_says_whether_it_joined_or_escalated.py"]},
         {"id": "2.728", "title": "A turn that acted on a card and also escalated, read inline, launches no worker — on the text channel as on the voice",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_an_inline_act_settles_the_commission_on_both_channels.py"]},
         {"id": "2.729", "title": "An ordered act that leaves, sure at the operator's 70%, runs when the model only drafted it — both channels",
