@@ -19,6 +19,8 @@ import pytest
 SCRIPT = Path(__file__).with_name("test_one_black_veil_when_the_engine_sleeps_or_the_voice_moves.mjs")
 VEIL = Path("frontend/app/components/DormantVeil.js")
 SHARED_CSS = Path("frontend/app/core/shared-surfaces.css")
+#: `.fw-wrap` (styles.css): the one layer above the veil — test_the_feedback_button_is_never_hidden holds it on top.
+FEEDBACK_LAUNCHER = 101000
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="node not installed")
@@ -34,11 +36,14 @@ def _z(src: str, selector: str) -> int:
 
 
 def test_the_veil_is_the_top_layer_on_every_screen():
-    """«Covers the whole screen, the chat wall and any open panel»: nothing on either shell may sit above it."""
+    """«Covers the whole screen, the chat wall and any open panel»: nothing on either shell sits above it but the
+    feedback button, which is never hidden."""
     veil = _z(SHARED_CSS.read_text(encoding="utf-8"), ".dz-veil")
     for p in [*Path("frontend/app").rglob("*.css"), *Path("frontend/app").rglob("*.js"),
               *Path("frontend/mobile").rglob("*.css"), *Path("frontend/mobile").rglob("*.js")]:
         for z in re.findall(r"z-index:\s*(\d+)", p.read_text(encoding="utf-8", errors="ignore")):
+            if int(z) == FEEDBACK_LAUNCHER:      # the feedback button is never hidden, by anything
+                continue
             if p != SHARED_CSS or int(z) != veil:
                 assert int(z) < veil, f"{p} has a layer at z-index {z}, above the veil ({veil})"
 

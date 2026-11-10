@@ -112,11 +112,11 @@
 .en-btn[hidden]{display:none}   /* V2-801 — the paused notice has no Top up */
 
 /* ---------- DORMANT VEIL (2026-11-10) — ONE black veil over the WHOLE screen: the engine went to sleep, or the voice
-   moved to another screen. Both shells mount it (components/DormantVeil.js). The TOP layer: above every panel, the
-   chat wall, a card in cinema (100500) and the feedback button (101000); a notice under it (Energy, a fault) is
+   moved to another screen. Both shells mount it (components/DormantVeil.js). Above every panel, the chat wall and a
+   card in cinema (100500); only the feedback button (101000) stays above it, never hidden; a notice under it (Energy, a fault) is
    shown again once the engine is awake. Black on purpose in both themes, so its text and button carry their own
    light colours. ---------- */
-.dz-veil{position:fixed;inset:0;z-index:102000;display:none;align-items:center;justify-content:center;padding:16px;
+.dz-veil{position:fixed;inset:0;z-index:100900;display:none;align-items:center;justify-content:center;padding:16px;
   box-sizing:border-box;background:#000;color:#f2f4ff}
 .dz-veil.on{display:flex}
 .dz-box{width:min(420px,100%);text-align:center}
