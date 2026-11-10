@@ -77,8 +77,9 @@ class Hold:
         if piece and self.routed is None:
             from nucleo.turn import route_by_verdict as _route
             self.routed = _route.decided(self.brief, self.t0, self.route_wait_s)
-        if piece and (self.routed is None or self.routed):
-            self.route_pending.append(piece)          # in flight: wait for the verdict · routed: never said
+        if self.routed is None or self.routed:        # V2-874: the stream's last, EMPTY piece released them all
+            if piece:
+                self.route_pending.append(piece)      # in flight: wait for the verdict · routed: never said
             return
         if self.route_pending:
             pend, self.route_pending = self.route_pending, []

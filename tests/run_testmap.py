@@ -3869,6 +3869,9 @@ DOMAINS: list[dict] = [
         # V2-874 class 7 — disarmed 2026-11-10 (`asked_line` returns "") → red.
         {"id": "2.1667", "title": "A live errand carries what he ASKED for (V2-874): his commissioning sentence rides on the errand's own line in the running-errands block, bounded (ASKED_MAX, cut on a word and marked), so a reference to results still to come binds although his turn left the dialog window; nothing heard or the title already saying it adds nothing",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_a_live_errand_says_what_he_asked.py"]},
+        # V2-874 class 6 — disarmed 2026-11-10 (the hold applies only to a non-empty piece / a held turn handled by a worker owes no line) → red each.
+        {"id": "2.1668", "title": "The stream's last, EMPTY piece releases nothing a routed or undecided turn holds (V2-874): the Hold keeps the model's words in route_pending through the closing say(take(True)) and release() decides — dropped under a sure escalate, said in order inline; voice and typed share the one pipeline; a held turn that reached a live worker (steer, inject) and launched nothing is never mute — it says it is still on it",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_the_streams_last_empty_piece_releases_nothing.py"]},
         {"id": "2.728", "title": "A turn that acted on a card and also escalated, read inline, launches no worker — on the text channel as on the voice",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_an_inline_act_settles_the_commission_on_both_channels.py"]},
         {"id": "2.729", "title": "An ordered act that leaves, sure at the operator's 70%, runs when the model only drafted it — both channels",
