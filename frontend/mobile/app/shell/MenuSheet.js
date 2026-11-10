@@ -95,6 +95,11 @@ export function MenuSheet() {
       () => store.cloudProfile()
         ? Row(() => t("mobile.account"), () => t("mobile.account_sub"), () => openAccount())
         : null,
+      // V2-870 — inside the native app the account can be deleted from here (App Review 5.1.1(v)): the account page
+      // at its #delete section, in the system browser (`openAccount` opens a new window, which leaves the app).
+      () => store.cloudProfile() && inNativeApp()
+        ? Row(() => t("mobile.delete_account"), () => t("mobile.delete_account_sub"), () => openAccount("delete"))
+        : null,
 
       // ── ENERGY: the balance shows inline instead of hiding it one tap deep, and the row IS the top-up (the
       //    account page's #buy, like the desktop battery). `known:false` (the machine still booting) renders "—",
