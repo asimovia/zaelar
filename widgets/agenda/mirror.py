@@ -35,9 +35,4 @@ def mirror_offer(status: dict | None) -> dict:
     except Exception:  # noqa: BLE001
         line = ""
     return {"mirror": {"mirrored": False, "reason": str(st.get("reason") or ""), "offer": "reconnect_calendar"},
-            "message": str(line or MIRROR_FAILED_EN)}
-
-
-#: Fallback when the voice pack has no `agenda.mirror_failed` line yet (English: the product default language).
-MIRROR_FAILED_EN = ("It's saved in your agenda, but Google Calendar didn't take it, so it isn't there. "
-                    "Do you want me to reconnect Google?")
+            "message": str(line)}

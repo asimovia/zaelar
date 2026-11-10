@@ -71,10 +71,10 @@ if __name__ == "__main__":
     servers = [uvicorn.Server(uvicorn.Config(app, host=host, port=port, log_level="warning",
                                              timeout_graceful_shutdown=5))]
 
-    # The idle stop (`nucleo/idle_stop.py`, off unless ZAELAR_IDLE_STOP_MIN is set) asks for the SAME graceful
-    # shutdown a signal would start — status 0, no signal re-raised.
-    from nucleo import idle_stop as _idle_stop
-    _idle_stop.request_exit(lambda: [setattr(s, "should_exit", True) for s in servers])
+    # The idle stop (`nucleo/idle_stop.py` decides, `nucleo/suspend.py` carries it out; off unless ZAELAR_IDLE_STOP_MIN
+    # is set) asks for the SAME graceful shutdown a signal would start — status 0, no signal re-raised.
+    from nucleo import suspend as _suspend
+    _suspend.request_exit(lambda: [setattr(s, "should_exit", True) for s in servers])
     # The self watchdog (`nucleo/pulse/self_watchdog.py`, V2-831 T-28) asks for the same shutdown, and the process
     # then ends with its non-zero status so a supervisor starts it again.
     from nucleo.pulse import self_watchdog as _self_watchdog

@@ -22,7 +22,8 @@ def test_start_takes_the_warm_stream_before_asking_the_browser():
     start = _fn("start")
     take, ask = start.find("_takeWarm("), start.find("getUserMedia(")
     assert 0 <= take < ask, "start() must try the parked stream before a new getUserMedia"
-    assert re.search(r"warm \|\| await navigator\.mediaDevices\.getUserMedia", start)
+    # The browser is asked only when nothing warm was taken back (a refusal there falls back to chat-only, 4.437).
+    assert re.search(r"let captured = warm;\s*if \(!captured\) \{\s*try \{ captured = await navigator\.mediaDevices\.getUserMedia", start)
 
 
 def test_stop_parks_the_stream_and_livekit_does_not_kill_it():
