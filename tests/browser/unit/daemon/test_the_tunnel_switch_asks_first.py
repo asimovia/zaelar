@@ -18,7 +18,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.browser.unit.daemon.harness import BUNDLES, ENGINE, mount_screen, open_page, read
+from tests.browser.unit.daemon.harness import BUNDLES, ENGINE, mount_screen, open_page, read, show
 from tests.waiting import until_sync
 
 pytest.importorskip("playwright.sync_api")
@@ -47,6 +47,7 @@ def test_on_is_asked_first_and_sends_consent(server, lang):
     with sync_playwright() as pw:
         pg = open_page(pw, server, api, lang=lang)
         mount_screen(pg)
+        show(pg, "tunnel")
         pg.wait_for_selector(".dsx-ovl.on .dsx-tunnel-state", timeout=5000)
         r = read(pg)
         assert r["switchDisabled"] is False and r["switchChecked"] is False
@@ -77,6 +78,7 @@ def test_off_is_immediate(server):
     with sync_playwright() as pw:
         pg = open_page(pw, server, api)
         mount_screen(pg)
+        show(pg, "tunnel")
         pg.wait_for_selector(".dsx-ovl.on .dsx-tunnel-state", timeout=5000)
         assert read(pg)["switchChecked"] is True
         _click_switch(pg)
@@ -95,6 +97,7 @@ def test_a_cloud_engine_shows_the_state_and_where_to_switch_it(server, lang):
     with sync_playwright() as pw:
         pg = open_page(pw, server, api, lang=lang)
         mount_screen(pg)
+        show(pg, "tunnel")
         pg.wait_for_selector(".dsx-ovl.on .dsx-tunnel-where", timeout=5000)
         r = read(pg)
         assert r["switchDisabled"] is True and r["switchChecked"] is True

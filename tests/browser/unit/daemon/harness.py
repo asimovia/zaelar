@@ -125,6 +125,12 @@ def mount_screen(pg):
     }""")
 
 
+def show(pg, tab: str):
+    """Open one tab of the screen (V2-869): only the open tab's card is in the DOM."""
+    pg.click(f".dsx-ovl.on .dsx-tabs [data-tab='{tab}']")
+    pg.wait_for_selector(f".dsx-ovl.on .dsx-tabs [data-tab='{tab}'].is-on", timeout=3000)
+
+
 def recheck(pg):
     pg.evaluate("async () => { await window.__daemon.check(); }")
 
@@ -144,14 +150,17 @@ READ = """() => {
     version: q('.dsx-version .dsx-v'), link: q('.dsx-link-state .dsx-v'),
     folders: [...o.querySelectorAll('.dsx-item .dsx-path')].map(e => e.innerText),
     defaultTag: q('.dsx-item.is-default .dsx-default'), suggested: q('.dsx-chip.is-default'),
-    slow: q('.dsx-limit'), foldersNote: q('[data-card="folders"] .dsx-unknown'),
+    foldersBody: q('[data-card="folders"] .dsx-body'), foldersNote: q('[data-card="folders"] .dsx-unknown'),
     browser: q('.dsx-browser-state'), onlyChrome: q('.dsx-only-chrome'), cap: q('.dsx-cap'),
     bar: (() => { const b = o.querySelector('.dsx-progress-bar'); return b ? b.getBoundingClientRect().width : null; })(),
     track: (() => { const b = o.querySelector('.dsx-progress'); return b ? b.getBoundingClientRect().width : null; })(),
     windowOpen: (() => { const b = o.querySelector('.dsx-window-open'); return b ? {disabled: b.disabled, tip: b.title} : null; })(),
     pairCard: !!card('pair'), pairLinked: q('.dsx-pair-linked'), pairCode: q('.dsx-pair-code'),
     pairLeft: q('.dsx-pair-left'), pairHow: q('.dsx-pair-how'), pairCli: q('.dsx-pair-cli'),
-    getCard: !!card('get'), limit: q('[data-card="get"] .dsx-warn'),
+    getCard: !!o.querySelector('.dsx-get'), limit: q('.dsx-get .dsx-warn'),
+    tabs: [...o.querySelectorAll('.dsx-tabs [role=tab]')].map(e => e.innerText.trim()),
+    tab: (() => { const e = o.querySelector('.dsx-tabs .is-on'); return e ? e.dataset.tab : null; })(),
+    unlinked: q('.dsx-unlinked'), installedLine: q('.dsx-installed-line'), pairNone: q('.dsx-pair-none'),
     tunnel: q('.dsx-consent'), soon: q('.dsx-soon'), tunnelState: q('.dsx-tunnel-state'),
     tunnelWhere: q('.dsx-tunnel-where'), tunnelAsk: !!o.querySelector('.dsx-tunnel-confirm'),
     switchDisabled: sw ? sw.disabled : null, switchChecked: sw ? sw.checked : null,

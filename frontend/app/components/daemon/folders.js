@@ -54,9 +54,7 @@ export function FoldersCard(ctx) {
   };
   const local = createMemo(() => !daemon.isRemote());
   return h("section", { class: "dsx-card dsx-folders", "data-card": "folders" },
-    h("h3", { class: "dsx-h3" }, () => t("daemon.folders.title")),
-    h("p", { class: "dsx-note" }, () => t("daemon.folders.body")),
-    h("p", { class: "dsx-note dsx-limit" }, () => t("daemon.folders.slow")),
+    h("p", { class: "dsx-note dsx-body" }, () => t("daemon.folders.body")),
     () => local()
       ? h("button", { class: "dsx-primary", disabled: () => ctx.busy() === "pick", onClick: ctx.doPick },
           () => t("daemon.folders.pick"))
