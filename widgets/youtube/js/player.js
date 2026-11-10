@@ -29,6 +29,11 @@ if(typeof window !== "undefined" && !window.__hbYtWidgetBound){
     let d; try{ d = JSON.parse(ev.data); }catch(_){ return; }
     if(d.id !== "hb-youtube") return;
     if(d.event === "onStateChange" && Number(d.info) === 0 && Y.ytEnded) Y.ytEnded();   // 0 = ENDED
+    // V2-873 — what the PLAYER plays, reported from its own state (1 playing · 2 paused · 0 ended), with the id it
+    // last delivered: the end states read this, never the order sent («Hecho» over a video that never changed).
+    if(d.event === "infoDelivery" && d.info && d.info.videoData && d.info.videoData.video_id) Y.ytLoaded = String(d.info.videoData.video_id);
+    const st = d.event === "onStateChange" ? Number(d.info) : (d.event === "infoDelivery" && d.info && "playerState" in d.info ? Number(d.info.playerState) : NaN);
+    if((st === 1 || st === 2 || st === 0) && Y.ytState) Y.ytState(st === 1, Y.ytLoaded || "");
     // onError codes: 2 bad id · 5 HTML5 error · 100 removed · 101/150 embedding disabled by the owner.
     // Without this, "This video is unavailable" on screen coexisted with a declared state that said
     // playing — and /widgets/producing, the brain and the judge all believed the declared state (V2-401).
@@ -166,6 +171,9 @@ export function buildFrame(data, ctx, loading, isStream, src, id){
     if(!data.paused && !halted(ctx)){ try{ video.play().catch(function(){}); }catch(_){} }
     const c1 = ctx;
     video.addEventListener("ended", function(){ try{ c1.action("ended"); }catch(_){} });
+    // V2-873 — our own <video> reports what it plays too, as the embed does (`player_state`)
+    video.addEventListener("playing", function(){ if(Y.ytState) Y.ytState(true, ""); });
+    video.addEventListener("pause", function(){ if(Y.ytState) Y.ytState(false, ""); });
     frame.appendChild(video);
   } else if(id){
     iframe = document.createElement("iframe");
@@ -218,6 +226,13 @@ export function bindReporters(data, ctx, id, PL){
   // candidate, and a late onError for an already-replaced video must not be attributed to its successor.
   Y.ytError = (code) => { if(ctx && ctx.action) ctx.action("player_error",
       {code: String(code == null ? "unknown" : code), videoId: id || ""}); };
+  Y.ytState = (playing, vid) => {
+    if(!ctx || !ctx.action || !(data.videoId || data.src)) return;
+    const key = (vid || data.videoId || data.src) + "|" + playing;
+    if(key === Y.stateSent) return;              // the player repeats its state several times a second
+    Y.stateSent = key;
+    ctx.action("player_state", {playing: !!playing, videoId: vid || data.videoId});
+  };
   Y.ytQuality = (levels, vid) => {
     if(ctx && ctx.action) ctx.action("player_quality", {levels: Array.isArray(levels) ? levels : [], videoId: vid || ""});
   };

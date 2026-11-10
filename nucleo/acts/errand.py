@@ -270,17 +270,17 @@ def class_of(verdict: dict | None, request: str) -> str:
     return cls
 
 
-def asks_first(cls: str, *, confirmed: bool) -> bool:
-    """Does an errand ask BEFORE it starts? Only a CRITICAL class does (V2-857 phase 4) — money leaving, one of his
-    accounts — through the one act-or-ask rule (`consent.decide_act`) on its row, unless his yes is already here; his
-    standing «never» still refuses after a yes. Every other class is decided at its EXIT, the event itself (a send at
-    `messaging.send_new@<channel>`, with his channel and person rules), never twice."""
-    if cls == "none":
-        return False
+def asks_first(cls: str, *, confirmed: bool, verdict: dict | None = None) -> bool:
+    """Does an errand ask BEFORE it starts? Only a CRITICAL class (V2-857 phase 4: money, his accounts), read SURE
+    (`verdicts.VETO`; V2-873: a 0.51 `moves_money` parked «open the best deal»), through the one act-or-ask rule on its
+    row unless his yes is here — his «never» still refuses. Every other class is decided at its EXIT, never twice."""
     from nucleo import consent
     from nucleo.events import vocabulary as _evoc
-    if _evoc.level_of(f"errand.{cls}") != "critical":
+    from nucleo.turn import verdicts as _v
+    if cls == "none" or _evoc.level_of(f"errand.{cls}") != "critical":
         return False
+    if verdict is not None and (conf := float(verdict.get("confidence") or 0.0)) < _v.VETO and not confirmed:
+        return _emit("🧭 a critical class read unsure — its exit asks", f"{cls} · {conf:.2f}", {"cat": "flash"}) or False
     return consent.asks(consent.decide_act(f"errand.{cls}", channel="errand", his_yes=confirmed, licensed=True))
 
 

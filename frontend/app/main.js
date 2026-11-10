@@ -37,7 +37,7 @@ import { Desktop } from "./widgets/desktop.js?v=11";
 // Fire-and-forget and defensive on purpose: diagnostics must never be able to break the page they diagnose.
 try {
   window.addEventListener("error", (e) => {
-    api.clientLog("⚠️ JS error", { text: String((e && e.message) || e), raw: String((e && e.filename) || "") + ":" + String((e && e.lineno) || 0) });
+    api.clientLog(api.errorLabel(e), { text: String((e && e.message) || e), raw: String((e && e.filename) || "") + ":" + String((e && e.lineno) || 0) });
   });
   window.addEventListener("unhandledrejection", (e) => {
     api.clientLog("⚠️ promesa sin capturar", { text: String((e && e.reason && (e.reason.message || e.reason)) || e) });

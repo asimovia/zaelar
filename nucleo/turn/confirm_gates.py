@@ -38,6 +38,8 @@ class Answered:
     gate: str = ""
     yes: bool = False
     result: object = None
+    #: V2-873 — his reply carried a yes/no word and answered nothing waiting: the request still waiting, to be SAID
+    waiting: str = ""
 
     def __bool__(self) -> bool:
         return bool(self.gate)
@@ -63,6 +65,8 @@ def resolve(text: str, *, widget=None, task=None, browser=None) -> Answered:
             got = do_resolve(text)
         except Exception:  # noqa: BLE001
             continue
+        if isinstance(got, dict) and "still_waiting" in got:
+            return Answered(waiting=str(got["still_waiting"] or ""))
         if got is None or got is False:
             # Open but the reply was not a yes/no it could read («¿y cuánto cuestan?»). It stays waiting, and
             # the answer does NOT fall through to the next gate: an ambiguous word is not an authorisation.
@@ -110,7 +114,10 @@ def _task_gate(brief=None):
         named = _named_parked(words)
         p = _d.pending_confirm(named) or {}
         tid = str(p.get("task_id") or "")
-        v = task_reply(words, _c.classify_reply(words), str(p.get("question") or ""), brief=brief, parked=tid,
+        if _the_binding_reads_it(brief, p):
+            return None          # its row's question is answered by the brief's pick (`bind_the_answer`), not here
+        said = _c.classify_reply(words)
+        v = task_reply(words, said, str(p.get("question") or ""), brief=brief, parked=tid,
                        names_it=bool(named) and named == tid)
         if named and (v == "yes" or (v is None and not _names_another_errand(words, tid))):
             # He is talking about THIS errand: what he adds travels with the «yes» (`resolve_confirm`), and the clock
@@ -122,8 +129,31 @@ def _task_gate(brief=None):
             # about the monitors «name» the game, and its «no» cancelled it.
             if not (v and _c.is_plain_answer(words, v)):
                 _d.absorb_refinement(tid, words)
-        return _d.resolve_confirm(v == "yes", tid) if v else None
+        if v:
+            return _d.resolve_confirm(v == "yes", tid)
+        # V2-873 — a yes/no word that answered nothing: the errand keeps waiting, and he is TOLD so (a «yes, and close
+        # the video» used to leave it waiting in silence, and he believed he had answered).
+        return {"still_waiting": str(p.get("request") or "")} if said else None
     return (_open, _do)
+
+
+def _the_binding_reads_it(brief, p: dict) -> bool:
+    """The parked errand waits on its ROW (`dispatch.confirm.make_durable` gave it an `ask_id`) and the turn's brief
+    read the binding question over the open asks: then the brief's pick among the two DECLARED answers is the reader
+    (CRIT-C13), and his words are read only when no pick came (V2-873: «vale cierra los resultados» — a «vale» that
+    opens another order — was read here as the yes to «this moves money… shall I go on?» before the brief, which saw
+    the question, could say it answered none)."""
+    if brief is None or not str((p or {}).get("ask_id") or ""):
+        return False
+    try:
+        from nucleo.cli import worker_api_bind as _bind
+        from nucleo.turn import verdicts as _v
+        choice, info = _v.read(brief, _bind.KEY, None, min_confidence=0.0)
+        return bool(info) and choice is not None
+    except Exception as e:  # noqa: BLE001 — unreadable: the words decide, as before
+        from loguru import logger
+        logger.debug(f"confirm_gates: binding verdict unreadable — {type(e).__name__}: {e}")
+        return False
 
 
 def _names_another_errand(words: str, parked: str) -> bool:
@@ -176,8 +206,12 @@ def task_reply(words: str, v: str | None, question: str, *, brief=None, parked: 
     # yeses of 2026-10-11 left the game parked and the agent asked again. A «no» keeps its stricter path below.
     if names_it and _c.opening_answer(words) == "yes":
         return "yes"
-    if v is None or _c.is_plain_answer(words, v):
-        return v
+    if v is not None and not _c.answer_alone(words, v) and _c.orders_a_card(brief):
+        # «vale cierra los resultados»: the «vale» opens an ORDER the brief surely read on a card — neither a yes nor
+        # a no to the parked errand, which keeps waiting (V2-873). A bare «vale» is still the answer.
+        return None
+    if v is None or _c.answer_alone(words, v):
+        return v              # V2-873: the word reader is the fast path for a ONE-word answer; longer, the verdicts read it
     if parked and _about_another_errand(words, parked):
         return None
     if parked and v == "no" and not names_it:
@@ -223,7 +257,7 @@ def _browser_gate():
     return (lambda: True, _do)
 
 
-def resolve_all(text: str, *, widget: bool = False, brief=None) -> Answered:
+def resolve_all(text: str, *, widget: bool = False, brief=None, say=None) -> Answered:
     """The standard resolution: every gate a channel can answer, IN ONE CALL — which is the invariant.
 
     One call is what makes «the second gate never sees the word» true by construction instead of by the caller
@@ -231,9 +265,13 @@ def resolve_all(text: str, *, widget: bool = False, brief=None) -> Answered:
 
     `widget=True` includes the widget gate. Voice handles that one earlier in its turn (it has to speak the
     acknowledgement and return), so by default it is left out rather than resolved twice. `brief` is the turn's
-    verdict handle: the task gate reads it when a long reply cannot be judged (`task_reply`).
+    verdict handle: the task gate reads it when a long reply cannot be judged (`task_reply`). `say(line)`, when given,
+    says a yes/no word that answered nothing (V2-873: the parked errand keeps waiting, and he is told).
     """
-    return resolve(text,
-                   widget=_widget_gate(brief) if widget else None,
-                   task=_task_gate(brief) if brief is not None else _task_gate(),
-                   browser=_browser_gate())
+    ans = resolve(text, widget=_widget_gate(brief) if widget else None,
+                  task=_task_gate(brief) if brief is not None else _task_gate(), browser=_browser_gate())
+    if say is not None and not ans and ans.waiting:
+        from i18n import langs as _langs
+        if line := str(getattr(_langs.current_language(), "errand_still_waiting", "") or ""):
+            say(line.format(request=ans.waiting[:120]))
+    return ans

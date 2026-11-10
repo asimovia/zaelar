@@ -215,6 +215,10 @@ def token(identity: str = "operator", name: str = "You", pending: int = 0) -> JS
         return JSONResponse({"error": "engine_stopped"}, status_code=409)
     from nucleo.pulse import voice_recycle
     voice_recycle.note_session_requested()     # V2-871: from here a voice worker that is not alive is a dead voice
+    if voice_recycle.starting():
+        # V2-873 — a room born before this engine's worker registers is never given an agent, and the page would talk
+        # to nobody. No room yet: the page waits and asks again (`services/voice-arrival.js`).
+        return JSONResponse({"error": "voice_starting"}, status_code=503)
     if pending:
         # The page holds typed lines it could not deliver: the session it is opening answers them, no greeting.
         from voice import screens as _screens

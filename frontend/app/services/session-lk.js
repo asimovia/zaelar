@@ -38,6 +38,7 @@ import { createOutbox } from "./outbox.js?v=1";
 import * as health from "./device-health.js?v=1";
 import { MIC_MODES as _MIC_MODES, defaultMicMode, captureConstraints } from "./mic-profile.js?v=1";
 import * as micDenial from "./mic-denial.js?v=1";
+import * as arrival from "./voice-arrival.js?v=1";   // V2-873: «ready» only with the agent in the room
 
 let room = null, stream = null, videoEl = null, botAudioEl = null;
 let started = false, starting = false;
@@ -255,11 +256,22 @@ try { window.addEventListener("pagehide", () => { api.sessionRelease(SID); api.o
 // picker) never re-lock it. A safety timeout unblocks even if the agent's "ready" signal never arrives — a
 // stuck boot must never lock the UI out for good. ----
 let _everBooted = false, _bootTimer = null;
-function _unblockBoot() {
+function _unblockBoot(ready = true) {
   clearTimeout(_bootTimer); _bootTimer = null;
   _everBooted = true;
-  store.setBootPhase("listo");   // last cluster lights up → the splash implodes into the orb (boot-anim.js)
-  store.setBootReady(true);
+  if (ready) store.setBootPhase("listo");   // last cluster lights up → the splash implodes into the orb (boot-anim.js)
+  store.setBootReady(true);                 // V2-873: unblocked without «listo» when no agent came — never a false ready
+}
+// V2-873 — a room is only good with the AGENT in it (`services/voice-arrival.js`): a worker still registering is
+// waited for (503 `voice_starting`), and a room no agent joined is left and asked for again; both bounded.
+const _startingRetry = arrival.boundedRetry(arrival.STARTING_TRIES, arrival.STARTING_EVERY_MS);
+const _agentRetry = arrival.boundedRetry(arrival.AGENT_TRIES, 1000);
+let _agentWatch = null;
+function _noAgent(retry) {
+  store.setConnState(t("voice.agent_starting"));
+  if (retry.arm(() => start())) return;
+  store.setMicBlocked({ show: true, msg: t("voice.agent_unavailable") });
+  if (!_everBooted) _unblockBoot(false);
 }
 // Advance the boot phase ONLY during the very first boot (later reconnects never touch the splash). Ignores
 // out-of-order/unknown phases so a late backend milestone can't rewind the animation.
@@ -568,7 +580,11 @@ export async function start() {
     // 60s: generous on purpose. A cold boot pays Hermes's briefing fetch (≤15s) PLUS the fast layer's own
     // first-turn latency on a LOCAL Ollama model (measured 4-36s depending on how warm it is) — bailing early
     // would unblock the UI before zaelar actually greets you, which reads as more broken, not less.
-    _bootTimer = setTimeout(() => { console.warn("boot overlay: safety timeout, unblocking anyway"); _unblockBoot(); }, 60000);
+    // V2-873: past it, «ready» only if the agent IS in the room; otherwise the arrival watch keeps asking (bounded).
+    _bootTimer = setTimeout(function safety() {
+      if (arrival.agentPresent(room)) { _unblockBoot(); return; }
+      _bootTimer = setTimeout(safety, 60000);
+    }, 60000);
   }
   try {
     await api.setVoiceConfig(store.voiceIdx());
@@ -623,7 +639,17 @@ export async function start() {
     health.watchAudioContext(audio.context());   // V2-788: suspended/interrupted → the speaker's health
 
     // --- LiveKit room ---
-    const { token, url, ok } = await api.lkToken(_outbox.size() > 0);
+    const tk = await api.lkToken(_outbox.size() > 0);
+    const { token, url, ok } = tk;
+    if (arrival.tokenVerdict(tk) === "starting") {
+      // V2-873 — the engine's worker is still registering: a room now would never get its agent. Release what this
+      // start opened and ask again, bounded; never the ⏻-off path below.
+      started = false; store.setStarted(false); api.obsSessionEnd("voice_starting");
+      try { stream.getTracks().forEach((tr) => tr.stop()); } catch (_) {}
+      starting = false; store.setStarting(false);
+      return _noAgent(_startingRetry);
+    }
+    _startingRetry.reset();
     // Backstop for the gate above: if the server stopped right in this gap (between the initial check and
     // here), `/api/token` says so with a 409 instead of a JWT. Undo what's ALREADY open (mic + observability
     // session) instead of carrying `token: undefined` forward into a LiveKit room that will never connect.
@@ -717,6 +743,12 @@ export async function start() {
       else store.setConnState(String(st));
     });
     room.on(RoomEvent.Disconnected, () => { if (started) autoReconnect(); });
+    room.on(RoomEvent.ParticipantConnected, (p) => {
+      if (!arrival.agentPresent(room)) return;
+      if (_agentWatch) { _agentWatch(); _agentWatch = null; }
+      _agentRetry.reset();
+      try { api.clientLog("🤖 agent in the room", { text: String((p && p.identity) || ""), state: "agent_joined" }); } catch (_) {}
+    });
     // Debug-bus contract messages (topic "vl2", voice/engine/pipeline/instrument.py). During the FIRST boot the
     // agent reports ordered milestones — {type:"boot", phase:"memoria"|"reflejo"} as each subsystem comes online —
     // and finally {type:"ready"} = init done (voice live + memory composed + warm), emitted BEFORE zaelar greets.
@@ -758,6 +790,14 @@ export async function start() {
     openSSE(window.__zaelarDesktop);   // backend→UI events (widgets, bot_speech, transcript, alerts) — same as before
     _startHeartbeat();                 // keep the single-session lock while alive
     starting = false; store.setStarting(false);
+    if (_agentWatch) _agentWatch();
+    const _r = room;
+    _agentWatch = arrival.watchAgent(room, () => {
+      _agentWatch = null;
+      if (room !== _r) return;          // a newer room is already up
+      try { api.clientLog("🤖 no agent in the room", { text: "a new room is asked for", state: "agent_missing" }); } catch (_) {}
+      stop().then(() => _noAgent(_agentRetry));
+    });
   } catch (err) {
     starting = false; store.setStarting(false); started = false; store.setStarted(false); store.setConnState("error"); console.error(err);
     const n = err && err.name;

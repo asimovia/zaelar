@@ -53,6 +53,24 @@ def note_session_requested(now: float | None = None) -> None:
     _state["requested"] = time.time() if now is None else now
 
 
+_app: dict = {"app": None}
+
+
+def use_app(app) -> None:
+    """The process that runs the EMBEDDED worker hands its app over (its `state` holds the worker and its task)."""
+    _app["app"] = app
+
+
+def starting() -> bool:
+    """V2-873 — this process embeds a voice worker that is not REGISTERED with LiveKit yet. A room made now is never
+    dispatched an agent (the server dispatches a room when it is born, to the workers registered then), so the token
+    door holds the room back until the worker can take it. No embedded worker → False (nothing to wait for here)."""
+    st = getattr(_app["app"], "state", None)
+    if st is None or getattr(st, "lk_task", None) is None:
+        return False
+    return not worker_alive(getattr(st, "lk_server", None), getattr(st, "lk_task", None))
+
+
 def worker_alive(server, task) -> bool:
     """The embedded worker is running AND registered with LiveKit (it has a worker id and is not reconnecting)."""
     if server is None or task is None or task.done():

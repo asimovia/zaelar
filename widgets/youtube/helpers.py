@@ -54,6 +54,9 @@ _SEED = {
     # Written back by widget.js so "is it producing?" answers the player's reported reality, not our intent:
     # the operator's screenshot showed "This video is unavailable" while the declared state said playing.
     "player_error": "",
+    # V2-873 — what the PLAYER reports it plays (its onStateChange), never the order: the end states read these.
+    "playing_id": "",
+    "playing": False,
     # V2-634 — an unplayable video is a FACT to act on (rules and mechanism: availability.py's docstring).
     "blocked_videos": [],     # [{videoId,title,code,at}] the embedded player REFUSED — searches skip them
     "blocked_notice": {},     # {kind: swapped|explicit|exhausted, from, to?, code} — banner + brain; cleared on load

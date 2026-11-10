@@ -51,3 +51,25 @@ def test_the_brief_asks_it_and_the_voice_carries_it():
 @pytest.mark.parametrize("cls", ["moves_money", "account_change"])
 def test_the_dispatch_gate_reads_the_same_rule(cls):
     assert errand.asks_first(errand.class_of({"choice": cls, "confidence": 0.95}, "busca hoteles"), confirmed=False)
+
+
+@pytest.mark.parametrize("request_text", ["abre el que sea mejor oferta", "open the best deal",
+                                          "cancela mi suscripción al gimnasio"])
+@pytest.mark.parametrize("cls", ["moves_money", "account_change"])
+def test_a_critical_class_asks_at_birth_only_on_a_sure_verdict(cls, request_text):
+    """V2-873 (node 2.884): «abre el que sea mejor oferta» read `moves_money` at 0.51 and the errand was parked behind
+    «this moves money» — opening an offer. A critical class read UNSURE starts the errand (money that really leaves is
+    asked at its exit, `payment.authorize`); read SURE (`verdicts.VETO`) it asks before it starts, as before."""
+    from nucleo.turn import verdicts as v
+    unsure = {"choice": cls, "confidence": 0.51}
+    sure = {"choice": cls, "confidence": v.VETO}
+    assert errand.class_of(unsure, request_text) == cls, "the class is still read (the row and the exit carry it)"
+    assert not errand.asks_first(errand.class_of(unsure, request_text), confirmed=False, verdict=unsure)
+    assert errand.asks_first(errand.class_of(sure, request_text), confirmed=False, verdict=sure)
+
+
+def test_the_one_door_that_starts_a_worker_hands_the_verdict_over():
+    """`dispatch._run_session` is where the birth asks: it must pass the brief's verdict, or every class reads sure."""
+    import inspect
+    from nucleo.dispatch import session
+    assert 'verdict=task.context.get("errand_class")' in inspect.getsource(session)

@@ -92,6 +92,8 @@ def voice_worker(app) -> None:
             app.state.lk_server = _lk
             _devmode = os.getenv("ZAELAR_ENV", "dev").lower() != "prod"
             app.state.lk_task = asyncio.create_task(_lk.run(devmode=_devmode))
+            from nucleo.pulse import voice_recycle as _vr
+            _vr.use_app(app)          # V2-873: the token door asks whether this worker is registered yet
             logger.info("LiveKit agent worker started EMBEDDED (job_executor_type=THREAD)")
         except Exception as e:
             logger.warning(f"LiveKit embedded worker start failed: {e}")
