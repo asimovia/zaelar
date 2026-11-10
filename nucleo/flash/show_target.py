@@ -326,7 +326,19 @@ def close_dispatch(args: dict, tag_emit, emit, text: str = "", done=None, clarif
             refused += 1
             continue
         emit("brain", f"🪟 close_widget({mode}) → canvas", text=t, role="system")
+        _owe_the_canvas(t, "minimized" if mode == "minimize" else "closed", text, mode)
     return "" if attempted and refused == attempted else rid
+
+
+def _owe_the_canvas(wid: str, expect: str, text: str, action: str) -> None:
+    """V2-873 — a canvas gesture is an end state the SCREEN reports, not the order sent: «cierro YouTube» was said and
+    the card stayed open. A close owes `canvas <wid> closed|minimized`, full screen `maximized`, read from the canvas
+    report (`truth.canvas_state`): the circuit checks it like any declared end state, and says it when it does not land."""
+    try:
+        from nucleo.circuit import spec as _spec
+        _spec.open({"canvas": wid, "expect": expect}, text=text, source="canvas", widget=wid, action=action)
+    except Exception as e:  # noqa: BLE001 — an end state that cannot be owed leaves the close as it was
+        __import__("loguru").logger.debug(f"show_target: close end state not opened — {e!r}")
 
 
 def fullscreen_dispatch(args: dict, text: str, tag_emit, emit, deduped: dict, brief=None) -> None:
@@ -373,6 +385,8 @@ def fullscreen_dispatch(args: dict, text: str, tag_emit, emit, deduped: dict, br
     # back out. With no `mode` (an older call shape) the event keeps its old meaning, toggle included.
     tag_emit("fullscreen", {"id": rid, **({"on": True} if mode == "on" else {})})
     emit("brain", "⛶ fullscreen_widget → canvas", text=rid, role="system")
+    if mode == "on":
+        _owe_the_canvas(rid, "maximized", text, "fullscreen")
 
 
 def _anything_at_full_screen() -> bool:

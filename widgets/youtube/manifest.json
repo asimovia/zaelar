@@ -268,8 +268,9 @@
       "payload": {}
     },
     "close": {
-      "desc": "QUITA el vídeo del reproductor: deja de sonar y la tarjeta se queda sin vídeo, de vuelta al catálogo. «quita el vídeo», «cierra el vídeo», «basta ya», «párralo y vuelve al inicio». Congelarlo es pause",
-      "payload": {}
+      "desc": "QUITA el vídeo del reproductor: deja de sonar y la tarjeta sigue abierta, sin vídeo. «quita el vídeo», «basta ya», «párralo y vuelve al inicio». Cerrar YouTube es el lienzo; congelarlo es pause",
+      "payload": {},
+      "done_when": {"widget": "youtube", "field": "videoId", "expect": "absent"}
     },
     "show_history": {
       "desc": "llena la lista con el HISTORIAL de vídeos que ha reproducido de verdad (lo más reciente primero); con 'query' busca dentro del historial en vez de en la red",
