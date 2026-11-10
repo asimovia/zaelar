@@ -401,6 +401,13 @@ and the auto-update install — carries a notarized app. Then what a user RECEIV
 extracted and that copy must pass `codesign --verify --deep --strict`, `stapler validate` and Gatekeeper
 (`spctl --assess --type execute` naming `Notarized Developer ID`); any failure fails the release.
 
+**The calls that cross Apple's network are retried** (`macos/retry.sh`, node 7.128): every `stapler staple` and
+`stapler validate` runs again after 15, 30, 60, 90 and 120 s (six attempts, each one logged), because the ticket lives
+on Apple's CloudKit service and a dropped connection there (NSURLErrorDomain -1005, exit 68) once failed an Intel
+build whose notarization had been ACCEPTED. `notarytool submit --wait` is resubmitted on the same schedule only when it
+returned no status and its error reads as a network failure; a status of any kind — `Invalid`, `Rejected`, a `--wait`
+timeout — is a verdict and is never submitted again. `ZAELAR_RETRY_DELAYS` overrides the pauses.
+
 **Entitlements are per binary and were measured** (2026-11-10, arm64 build, hardened runtime): only the bundled
 Node that drives Playwright gets one — `allow-jit` (`macos/entitlements-node.plist`); without it V8 dies on its first
 JIT page. The app, the Python runtime and the tray need none (`allow-unsigned-executable-memory`, once listed "for
