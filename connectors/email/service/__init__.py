@@ -60,12 +60,60 @@ def seed_from_mailbox(mb) -> int:
     disarms came back green before this was extracted.
     """
     read, unread = mb.inbox_split()
-    _seen.update(read)
-    if len(unread) > BACKFILL:
-        _seen.update(unread[:-BACKFILL])
+    if not _resume_from_cursor(mb, read, unread):
+        _seen.update(read)
+        if len(unread) > BACKFILL:
+            _seen.update(unread[:-BACKFILL])
+        logger.info(f"Email: {len(unread)} sin leer en INBOX; entran los {min(len(unread), BACKFILL)} más recientes")
     _set_unread_total(len(unread))
-    logger.info(f"Email: {len(unread)} sin leer en INBOX; entran los {min(len(unread), BACKFILL)} más recientes")
     return len(unread)
+
+
+#: The mailbox this process reads, as the cursor knows it: its address and INBOX's `UIDVALIDITY` (V2-872 F2).
+_where: dict = {"address": "", "validity": None, "pending": None}
+
+
+def _resume_from_cursor(mb, read, unread) -> bool:
+    """Seed from where an EARLIER process left this mailbox (`connectors/email/cursor.py`). True when it applied.
+
+    Everything at or under the cursor was dealt with before and is seen; everything above it arrived since — while the
+    engine slept too — and is handed over, read on his phone or not: the cursor says what THIS engine has dealt with,
+    the server's flags say what HE has read, and a rule over arriving mail must see every message once. Bounded like the
+    first connect (`BACKFILL` newest). No cursor, a renumbered folder or a non-numeric UID: False, first-connect rules."""
+    from connectors.email import cursor
+    address = str(getattr(mb, "address", "") or "").strip()
+    _where.update(address=address, validity=None, pending=None)
+    if not address or not hasattr(mb, "inbox_validity"):
+        return False
+    validity = mb.inbox_validity()
+    _where["validity"] = validity
+    parts = cursor.split(cursor.load(address), validity, set(read) | set(unread))
+    if parts is None:
+        return False
+    old, new = parts
+    _seen.update(old)
+    if len(new) > BACKFILL:
+        _seen.update(new[:-BACKFILL])
+    logger.info(f"Email: {len(new)} new since the last process (cursor); {min(len(new), BACKFILL)} handed over")
+    return True
+
+
+def advance_cursor() -> None:
+    """Move the mailbox's cursor to what an EARLIER poll handed over (called once per poll, after it).
+
+    It TRAILS delivery on purpose: the value saved is what `_seen` held a whole poll earlier, so everything under it was
+    published at least one poll interval ago and consumed from the bus (the triage batch, the event router) — a cursor
+    written at publish time would lose a message to a stop in between. A stop inside that window re-delivers at most
+    the last poll or two, and both consumers drop a message they already took before any model call."""
+    from connectors.email import cursor
+    address, validity = _where.get("address"), _where.get("validity")
+    if not address or not validity:
+        return
+    nums = cursor.numeric(_seen)
+    high = nums[-1] if nums else None
+    if _where.get("pending") is not None:
+        cursor.save(address, validity, _where["pending"])
+    _where["pending"] = high
 
 
 def unread_total() -> int:
@@ -295,6 +343,7 @@ async def stop() -> None:
             pass
     _mark_inbox = _reply_inbox = _send_inbox = _archive_inbox = _trash_inbox = _unread_inbox = None
     _seen.clear()
+    _where.update(address="", validity=None, pending=None)
     _set_unread_total(-1)
     _published.clear()
     _shown.clear()

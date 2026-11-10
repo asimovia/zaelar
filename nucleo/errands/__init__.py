@@ -175,6 +175,11 @@ def _save(row: dict) -> None:
         _tasks.errand_mirrored(row)
     except Exception:  # noqa: BLE001
         logger.debug("errands: no pude reflejar el encargo en el tablero de tareas", exc_info=True)
+    try:
+        from nucleo.pulse import wake          # its expiry and its conversations move the next wake instant
+        wake.note_changed()
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"errands: wake note failed: {e!r}")
 
 
 def get(errand_id: str) -> dict | None:
@@ -185,6 +190,20 @@ def live(now: float | None = None) -> list[dict]:
     """Every errand still running, expired ones swept first so nobody reads a dead one as open."""
     sweep(now)
     return [_parse(r) for r in _memory().errands_where(LIVE) if r]
+
+
+def live_rows() -> list[dict]:
+    """The errands still open, read WITHOUT sweeping — for a reader that must not close one in silence (the wake
+    report reads it; the expiry is announced only by the pulse's own sweep, `watch._report_expired`)."""
+    return [p for p in (_parse(r) for r in _memory().errands_where(LIVE)) if p]
+
+
+def next_expiry(now: float | None = None) -> float | None:
+    """The earliest instant an open errand runs out of time (`expires_at`) still ahead of `now`, or None."""
+    now = time.time() if now is None else now
+    ahead = [float(r.get("expires_at") or 0) for r in _memory().errands_where(LIVE)]
+    ahead = [t for t in ahead if t > now]
+    return min(ahead) if ahead else None
 
 
 def count_open() -> int:

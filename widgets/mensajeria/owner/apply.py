@@ -149,6 +149,16 @@ class _Apply:
                 break
         if not batch:
             return
+        # What was ALREADY taken in never reaches the model again (V2-872 F2): a source re-delivers what is still
+        # unread on its server on every connect, and the durable ledger used to drop it only after it was classified.
+        # Same predicate as the store guard below (`new_among`), asked first.
+        taken = msgstore.load()
+        fresh = [m for m in batch if msgstore.new_among(taken, (m or {}).get("platform"), [m])]
+        if len(fresh) < len(batch):
+            logger.info(f"mensajeria: {len(batch) - len(fresh)} already taken in, not triaged again")
+        batch = fresh
+        if not batch:
+            return
 
         verdicts = await triage_agent.classify(batch, msgcfg.operator_name() or None)
         # STORING IS NOT NOTIFYING (V2-607), two questions in this order:

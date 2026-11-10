@@ -115,6 +115,7 @@ class OrchestratorLoop(workers.WorkersPulse, flows.FlowsPulse, due.DuePulse):
         return self._task is not None and not self._task.done()
 
     async def _run(self) -> None:
+        await self._after_rung(on_load=True)   # V2-872 F2 — every origin catches up its next job before the first beat
         while not self._stop:
             try:
                 await self.tick()
@@ -141,12 +142,32 @@ class OrchestratorLoop(workers.WorkersPulse, flows.FlowsPulse, due.DuePulse):
         await self._supervise_errands(now)
         await self._supervise_stale_flows(now)
         await self._fire_due(now)
+        await self._after_rung()
         await self._report_wake(now)
         await self._maybe_spark(now)
         await self._maybe_consolidate(now)
         self._close_idle_session()
         self._maybe_idle_stop(now)
         _emit("loop.tick", {"ts": now, "n": self._ticks, "ms": round((time.monotonic() - _t0) * 1000)})
+
+    async def _after_rung(self, on_load: bool = False) -> None:
+        """V2-872 F2 — what an origin does once one of its jobs rang (`scheduler.AFTER_RUNG`: a series' notice hands
+        over to the next occurrence), run AFTER the delivery and before the wake report, so the next instant is in the
+        scheduler before the engine may sleep. `on_load` runs every declared handler once, at the first beat: the heal
+        for a notice that rang in a process that stopped before handing over. Off the loop (a widget's file lock)."""
+        try:
+            origins = set(_scheduler.AFTER_RUNG) if on_load else _scheduler.take_rung()
+        except Exception as e:  # noqa: BLE001
+            logger.debug(f"loop: rung origins unreadable: {e!r}")
+            return
+        import importlib
+        for origin in sorted(origins):
+            target = _scheduler.AFTER_RUNG.get(origin, "")
+            try:
+                mod, _, fn = target.partition(":")
+                await asyncio.to_thread(getattr(importlib.import_module(mod), fn))
+            except Exception as e:  # noqa: BLE001 — the next beat of that origin's own tick catches it up
+                logger.warning(f"loop: after a {origin} job rang, {target} failed: {e!r}")
 
     def _close_idle_session(self) -> None:
         """Closes the observability session when nothing real has happened in it for a while
