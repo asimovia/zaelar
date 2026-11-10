@@ -263,14 +263,18 @@ def is_plain_answer(text: str, verdict: str) -> bool:
 
 
 def answer_alone(text: str, verdict: str) -> bool:
-    """His reply is the answer word and nothing else («vale», «sí.», «no»)."""
-    return is_plain_answer(text, verdict) and _rest_words(text, verdict) == 0
+    """His reply is ONLY answer words of that side («vale», «sí, hazlo», «ok go ahead», «no, déjalo») — the one case the
+    word reader decides alone (V2-873); anything more is read by the verdicts."""
+    return _rest_words(text, verdict, every=True) == 0
 
 
-def _rest_words(text: str, verdict: str) -> int:
+def _rest_words(text: str, verdict: str, *, every: bool = False) -> int:
+    """How many words his reply has besides its answer word (`every`: besides ALL its answer words of that side)."""
     n = _norm(text)
-    m = (_YES_RE if verdict == "yes" else _NO_RE).search(n)
-    return len(re.findall(r"\w+", (n[:m.start()] + " " + n[m.end():]) if m else n))
+    rx = _YES_RE if verdict == "yes" else _NO_RE
+    m = rx.search(n)
+    rest = rx.sub(" ", n) if every else ((n[:m.start()] + " " + n[m.end():]) if m else n)
+    return len(re.findall(r"\w+", rest))
 
 
 def orders_a_card(brief) -> bool:

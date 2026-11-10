@@ -79,3 +79,36 @@ def test_a_bare_yes_still_answers(parked, lang, monkeypatch):
     monkeypatch.setattr(tb, "owner_still_open", lambda _b, _o: True)
     ans = gates.resolve_all(BARE[lang], brief=_brief({tb.CANVAS_KEY: _v("close")}))
     assert ans and ans.gate == "task" and ans.yes and parked
+
+
+# ── V2-873 · the words are the fast path for a ONE-word answer; a «neither» is SAID ─────────────────────────────
+
+NEITHER = {"es": ["sí, y cierra el vídeo", "vale para el vídeo y cierra youtube", "vale cierra los resultados"],
+           "en": ["yes, and close the video", "ok stop the video and close youtube", "ok close the results"]}
+
+
+@pytest.mark.parametrize("lang", ["es", "en"])
+def test_a_yes_word_inside_a_longer_order_is_neither_and_is_said(parked, lang):
+    """No brief pick, no card verdict, no judge: the answer word alone does not decide a longer reply. «vale para el
+    vídeo» read «para» as the NO; «sí, y cierra el vídeo» left the errand waiting in silence. Now neither, and the
+    gate hands back the request still waiting, which the turn says (`errand_still_waiting`)."""
+    for said in NEITHER[lang]:
+        ans = gates.resolve_all(said, brief=None)
+        assert not ans, f"«{said}» answered the parked errand"
+        assert ans.waiting == "abre el que sea mejor oferta", f"«{said}»: the waiting errand is not said"
+    assert "9" in dc._PENDING_CONFIRM and not parked
+
+
+@pytest.mark.parametrize("lang,word", [("es", "sí"), ("en", "yes")])
+def test_a_one_word_answer_is_still_the_fast_path(parked, lang, word):
+    ans = gates.resolve_all(word, brief=None)
+    assert ans and ans.gate == "task" and ans.yes and parked
+
+
+def test_the_waiting_line_exists_in_both_languages():
+    import json
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[4]
+    for lang in ("es", "en"):
+        line = json.loads((root / f"i18n/genesis/{lang}/voice.json").read_text(encoding="utf-8"))["errand_still_waiting"]
+        assert "{request}" in line, lang
