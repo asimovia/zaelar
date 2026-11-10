@@ -2551,5 +2551,17 @@
  "energy.out.body_app": "Your agent has stopped because your account has no Energy left.",
  "daemon.manual.body.signed.macos": "Works too, with no extra step: signed by Zaelar and notarized by Apple, it opens without warnings.",
  "daemon.manual.body.signed.windows": "Works too: it is signed by Zaelar. Right after a new release Windows may still show «Windows protected your PC» while the signature builds its reputation → More info → Run anyway.",
- "daemon.manual.package": "the installer (.pkg)"
+ "daemon.manual.package": "the installer (.pkg)",
+ "config.sec.permissions": "Permissions",
+ "config.perm.sub": "What this agent may use and keep. They apply to every device of this agent.",
+ "config.perm.location": "Use my location",
+ "config.perm.location_hint": "Your screen tells the agent which town you are in, to recommend places, routes and the weather near you. Never finer than about 1 km.",
+ "config.perm.files": "Read files on my computer",
+ "config.perm.files_hint": "Lets the agent use the folders you grant on your computer. Off, no folder can be added.",
+ "config.perm.observability": "Keep activity for debugging",
+ "config.perm.observability_hint": "Stores what the agent did so faults can be found and fixed. Your voice is never recorded.",
+ "config.perm.obfuscate": "Hide personal data in what is kept",
+ "config.perm.obfuscate_hint": "Names, places, numbers, phones and emails are replaced by tags such as [PLACE] before anything is stored.",
+ "config.perm.saved": "Saved",
+ "config.perm.failed": "Could not save"
 }

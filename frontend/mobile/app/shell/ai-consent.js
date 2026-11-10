@@ -38,5 +38,6 @@ export async function decide(yes, post = _post) {
   if (!(r && r.ok)) return false;
   setAccepted(!!yes);
   if (yes) setSheetOpen(false);
+  import("../../../app/services/privacy.js?v=1").then((p) => p.refresh()).catch(() => {});   // location may report now
   return true;
 }

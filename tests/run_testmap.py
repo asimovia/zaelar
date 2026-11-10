@@ -5201,6 +5201,14 @@ DOMAINS: list[dict] = [
                                  "engine's config, Settings can withdraw it and open account deletion; a browser is "
                                  "unchanged (V2-870)", "ch": UNIT,
             "paths": ["tests/browser/unit/mobile/test_the_app_passes_review.py"]},
+        {"id": "4.444", "title": "The person owns what is kept: a screen's location becomes the state (~1 km, named) only "
+                                 "with the switch on and is forgotten when it goes off; the prompt says where he is now; "
+                                 "the files switch refuses a new folder; observability off stores nothing; obfuscation "
+                                 "tags personal data and never rewrites the event's structure (V2-875)", "ch": UNIT,
+            "paths": ["tests/infrastructure/unit/test_the_person_owns_what_is_kept.py"]},
+        {"id": "4.445", "title": "A screen tells where it is only with the switch on and the permission already granted; "
+                                 "the switch is the gesture that asks and writes the engine's setting first (V2-875)",
+            "ch": UNIT, "paths": ["tests/browser/unit/mobile/test_a_screen_tells_where_it_is.py"]},
         {"id": "4.272", "title": "A session restart takes the microphone back instead of asking again — stop() parks the "
                                  "stream warm for seconds, LiveKit's disconnect no longer kills it, start() reuses it "
                                  "with the same constraints (iPhone permission sheet on every reconnect)", "ch": UNIT,

@@ -8,6 +8,7 @@ import json
 def test_the_capture_writes_the_whole_prompt_beside_the_excerpt(tmp_path, monkeypatch):
     from voice import observer
     monkeypatch.setattr(observer, "PROMPTS_DIR", str(tmp_path))
+    monkeypatch.setattr("config.privacy.obfuscate", lambda: False)   # the capture itself; the tagging is 4.441
     monkeypatch.setitem(observer._session_file, "sid", "s-1")
     monkeypatch.setattr(observer, "emit", lambda *a, **k: None)
     middle = "Puede que venga a cuento (de tu memoria): · Tesla insurance renewal due on March 12, 2027."

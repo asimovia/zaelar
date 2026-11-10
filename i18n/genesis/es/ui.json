@@ -2551,5 +2551,17 @@
  "energy.out.body_app": "Tu agente se ha parado porque en tu cuenta no queda energía.",
  "daemon.manual.body.signed.macos": "También vale, sin pasos de más: firmado por Zaelar y notarizado por Apple, se abre sin avisos.",
  "daemon.manual.body.signed.windows": "También vale: está firmado por Zaelar. Justo después de una versión nueva Windows aún puede mostrar «Windows protegió su PC» mientras la firma gana reputación → Más información → Ejecutar de todas formas.",
- "daemon.manual.package": "el instalador (.pkg)"
+ "daemon.manual.package": "el instalador (.pkg)",
+ "config.sec.permissions": "Permisos",
+ "config.perm.sub": "Lo que este agente puede usar y guardar. Se aplica a todos los dispositivos de este agente.",
+ "config.perm.location": "Usar mi ubicación",
+ "config.perm.location_hint": "Tu pantalla le dice al agente en qué población estás, para recomendarte sitios, rutas y el tiempo cerca de ti. Nunca con más detalle que 1 km.",
+ "config.perm.files": "Leer archivos de mi ordenador",
+ "config.perm.files_hint": "Deja que el agente use las carpetas que le des en tu ordenador. Apagado, no se puede añadir ninguna.",
+ "config.perm.observability": "Guardar la actividad para depurar",
+ "config.perm.observability_hint": "Guarda lo que hizo el agente para encontrar y corregir fallos. Tu voz nunca se graba.",
+ "config.perm.obfuscate": "Ocultar datos personales en lo guardado",
+ "config.perm.obfuscate_hint": "Nombres, lugares, números, teléfonos y correos se cambian por etiquetas como [PLACE] antes de guardar nada.",
+ "config.perm.saved": "Guardado",
+ "config.perm.failed": "No se pudo guardar"
 }
