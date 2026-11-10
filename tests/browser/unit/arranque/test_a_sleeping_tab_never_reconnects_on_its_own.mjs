@@ -46,8 +46,8 @@ const MIN = 60000, NOW = 1_800_000_000_000;
 
 // ── 2. the wiring: an error with him here retries; `engine.sleep` puts the tab to sleep; a gesture wakes it ──
 {
-  let opens = 0, closes = 0;
-  P.wirePresence({ open: () => opens++, close: () => closes++, t: (k) => k });
+  let opens = 0, closes = 0, wakes = 0;
+  P.wirePresence({ open: (o) => { opens++; if (o && o.wake) wakes++; }, close: () => closes++, t: (k) => k });
   assert.ok(listeners.pointerdown && listeners.keydown, "a pointer and a key are input");
   assert.equal(listeners.visibilitychange, undefined, "becoming visible is not a gesture");
 
@@ -56,6 +56,7 @@ const MIN = 60000, NOW = 1_800_000_000_000;
   assert.equal(timers[0].ms, 2000);
   timers.shift().fn();
   assert.equal(opens, 1, "…and the retry reopens the stream");
+  assert.equal(wakes, 1, "a retry with him here says it is a person (`wake=1`): the edge may start a stopped engine for it");
 
   P.presenceEvent({ kind: "session", label: "engine.sleep" });
   assert.equal(P.asleep(), true, "the engine's goodnight puts the tab to sleep");
@@ -71,6 +72,7 @@ const MIN = 60000, NOW = 1_800_000_000_000;
   listeners.pointerdown[0]();
   assert.equal(P.asleep(), false, "the first gesture wakes it");
   assert.equal(opens, 2, "…and reconnects");
+  assert.equal(wakes, 2, "…as a person");
   assert.equal(orb.style.opacity, "");
 }
 

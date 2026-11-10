@@ -81,11 +81,13 @@ export function sweepOnReopen(opens, sweep) {
   return true;
 }
 
-export function openSSE(desktop) {
+export function openSSE(desktop, { wake = false } = {}) {
   if (es) return;               // already subscribed: reopening would kill the live stream and lose in-flight events
   // V2-792: the stream names this screen, so the server knows a second one is open (`voice/screens.py`).
-  es = new EventSource("/events?dev=" + encodeURIComponent(DEVICE));
-  wirePresence({ open: () => openSSE(desktop), close: closeSSE, t });   // V2-872: no browser auto-reconnect, ever
+  // V2-872: an open that presence.js decided is a person's gesture and says so (`wake=1`): the edge of a hosted
+  // deployment starts a stopped engine for a person, never for a stream the browser retries on its own.
+  es = new EventSource("/events?dev=" + encodeURIComponent(DEVICE) + (wake ? "&wake=1" : ""));
+  wirePresence({ open: (o) => openSSE(desktop, o), close: closeSSE, t });   // V2-872: no browser auto-reconnect, ever
   // V2-038: on (re)connect, RECONCILE activity chips against the server's truth (GET /api/tasks reads the RAM
   // registry) → no more orphaned chips after a restart/crash. STATE leads; the UI is its mirror.
   es.onerror = () => { closeSSE(); onStreamError(); };   // reopening is presence.js's decision, never the browser's
