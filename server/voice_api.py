@@ -78,7 +78,7 @@ async def set_config(payload: dict):
 
 
 @router.get("/events")
-async def events(dev: str = ""):
+async def events(dev: str = "", wake: str = ""):
     # V2-792 — the stream says WHICH SCREEN it feeds (`?dev=`, the frontend's `api.js::DEVICE`). It is how the server
     # knows a second screen is open; the events themselves stay the same for every surface (each one filters).
     from voice import screens as _screens
@@ -86,6 +86,8 @@ async def events(dev: str = ""):
 
     async def gen():
         _screens.attach(dev)          # inside the generator, so the `finally` that detaches is guaranteed to pair it
+        if wake == "1":
+            _screens.touched(dev)     # V2-872: the tab reopened on a gesture — a person, so the idle stop counts it as input
         try:
             # V2-872: the hello tells the tab how long it keeps this stream with nobody touching it.
             from nucleo import idle_stop as _idle

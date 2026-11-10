@@ -10,6 +10,8 @@
 //     `engine.sleep`: the stream closes, the orb says so, and the first gesture wakes it;
 //   · a hidden tab never reconnects, and becoming visible again is not a gesture.
 // While asleep the tab sends nothing: pollers and voice retries ask `asleep()` before they reach the server.
+// Every open this module decides carries `wake=1`: it is a person, and a deployment whose edge lets only a person
+// start a stopped engine (a navigation or this mark) tells it apart from a stream the browser would retry on its own.
 //
 // No imports on purpose: the decision is driven by a node test, and the shell hands in what it needs.
 // ============================================================================
@@ -65,7 +67,7 @@ export function onStreamError() {
   _p.attempt++;
   _p.timer = setTimeout(() => {
     _p.timer = null;
-    if (reconnectDecision(now()).reconnect) _p.h && _p.h.open(); else sleep();
+    if (reconnectDecision(now()).reconnect) _p.h && _p.h.open({ wake: true }); else sleep();
   }, d.delayMs);
 }
 
@@ -80,7 +82,7 @@ export function sleep() {
 function wake() {
   _p.asleep = false; _p.attempt = 0;
   paint(false);
-  try { _p.h && _p.h.open(); } catch (_) {}
+  try { _p.h && _p.h.open({ wake: true }); } catch (_) {}
 }
 
 // The dormant state, on both shells: the orb (`#orb`, the same id on desktop and phone) dims and a line under it
