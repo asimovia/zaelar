@@ -60,6 +60,9 @@ def _counts() -> dict[str, int]:
 #: fall, and no file may exceed its own count.
 TOTAL = 1699   # refactor2710-06: measured with 04 and main merged
 PER_FILE: dict[str, int] = {
+    # V2-872 W2 (2026-11-10): the CPU sampler's two best-effort reads — a sample that failed, a notice not delivered —
+    # are logged and never raised: the heartbeat must not die of its own report. Only falls.
+    'nucleo/pulse/starvation.py': 2,
     # Landed uncounted on main with the desktop shell (V2-575, PR #254) and recorded here 2026-11-09 by V2-836, which
     # found this ratchet red on main: the daemon's best-effort GUI/browser probes. Debt, measured; only falls.
     'daemon/browser/app_window.py': 4,

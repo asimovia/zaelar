@@ -681,7 +681,8 @@
   "room_paused": "Worker {task} en pausa para abrir el navegador.",
   "room_wait": "Esperando sitio para abrir el navegador.",
   "room_anyway": "Poco sitio, pero es tu ventana: el navegador se abre igual.",
-  "room_resumed": "Worker {task} reanudado: vuelve a haber sitio."
+  "room_resumed": "Worker {task} reanudado: vuelve a haber sitio.",
+  "cpu_starved": "La máquina va corta de CPU; la voz puede ir lenta un momento."
  },
  "not_understood_lines": [
   "No he entendido bien lo que me pides. ¿Me lo dices con otras palabras o me das algún detalle más?",
