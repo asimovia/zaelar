@@ -66,6 +66,11 @@ def next_due(now: float) -> tuple[float | None, dict]:
     from nucleo.pulse import scheduler
     candidates: dict[str, float] = {}
     nxt = scheduler.next_due()
+    if nxt and float(nxt) <= now:
+        # An overdue job is one the pulse could not fire (⏻ off, no device for the notice): it waits for a person,
+        # whose return starts the engine anyway. Reporting it would wake the engine every minute for nothing.
+        from nucleo.pulse import due
+        nxt = due.next_owed(now)
     if nxt:
         candidates["scheduler"] = float(nxt)
     try:
@@ -90,10 +95,16 @@ def _stale(now: float) -> bool:
     return isinstance(sent, (int, float)) and now >= sent      # the instant it named has come: the next one is new
 
 
-async def flush(now: float | None = None) -> bool:
-    """Send the next due instant if it is stale. True when a report was sent and accepted."""
+def pending() -> bool:
+    """True while a change of the schedule has not been reported (or its report failed)."""
+    return bool(_state["dirty"])
+
+
+async def flush(now: float | None = None, *, force: bool = False) -> bool:
+    """Send the next due instant if it is stale. True when a report was sent and accepted. `force` skips the
+    debounce: the idle stop flushes once right before the engine stops (`nucleo/idle_stop.py`)."""
     now = time.time() if now is None else now
-    if not _stale(now) or now - _state["last"] < _MIN_GAP_S:
+    if not (_stale(now) or force) or (not force and now - _state["last"] < _MIN_GAP_S):
         return False
     endpoint, token = url()
     if not endpoint:

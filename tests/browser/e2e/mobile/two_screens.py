@@ -108,7 +108,7 @@ class TwoScreens:
         self.phone = self._open(PHONE, "/m", {"width": 390, "height": 844})
         for pg in (self.desk, self.phone):
             pg.wait_for_timeout(2500)
-            pg.evaluate("() => document.querySelectorAll('.boot-ovl, .lang-onb, .lang-onb-veil, .zm-held')"
+            pg.evaluate("() => document.querySelectorAll('.boot-ovl, .lang-onb, .lang-onb-veil, .dz-veil')"
                         ".forEach(e=>e.remove())")
             if self.spy:
                 assert pg.evaluate(SPY), "the page exposes no host (window.__zaelarDesktop)"

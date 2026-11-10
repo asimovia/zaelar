@@ -74,3 +74,15 @@ def test_a_schedule_change_marks_the_report_stale(monkeypatch):
         assert scheduler.next_due() is not None
     finally:
         scheduler.cancel(str(job["id"]))
+
+
+def test_an_overdue_job_it_could_not_fire_is_not_reported(monkeypatch):
+    """With ⏻ off and no device, a due job stays overdue: reporting its past instant woke the engine every minute."""
+    from nucleo.pulse import deadlines, due, listeners
+    monkeypatch.setattr(deadlines, "upcoming", lambda now: {})
+    monkeypatch.setattr(listeners, "active_listeners", lambda: set())
+    monkeypatch.setattr(scheduler, "next_due", lambda: 500.0)              # in the past at now=1000
+    monkeypatch.setattr(due, "next_owed", lambda now: None)
+    assert wake.next_due(1000.0)[0] is None
+    monkeypatch.setattr(due, "next_owed", lambda now: 4000.0)              # the next job still ahead is reported
+    assert wake.next_due(1000.0)[0] == 4000.0
