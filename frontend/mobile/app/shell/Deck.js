@@ -39,7 +39,6 @@
 // always pages. That is the rule a ViewPager and a UIPageViewController apply, and it is what keeps a vertical list
 // scrollable and a map pannable while a swipe across the screen still turns the page. The vertical scroll is never
 // prevented: a finger that commits to going down is the widget's.
-//
 // A CARD IS NEVER UNMOUNTED WHILE PAGING, only hidden. A video that keeps playing behind another card is correct;
 // re-mounting it on every swipe would cut it off mid-sentence.
 // ============================================================================
@@ -50,6 +49,7 @@ import * as store from "../../../app/core/store.js?v=2";
 // V2-792 — the screens service, loaded on first use (same as the desktop host: a host imports no service statically).
 const _screens = () => import("../../../app/services/screens.js?v=1");
 const _device = () => import("../../../app/services/api.js?v=2").then((m) => m.DEVICE).catch(() => "");
+const _sensors = () => import("../../../app/services/device.js?v=1");   // V2-870 P2: ctx.device — the screen's sensors
 import { createEffect } from "../../../app/core/reactive.js?v=2";
 
 const CARD_ANIM_MS = 260;
@@ -85,7 +85,7 @@ function injectStyles() {
      safe-area insets are the only geometry in this shell — everything else is flow layout, because there is
      nothing to place: there is one card and it is the whole viewport. The bottom is the dock's TOP edge, safe area
      included, so the bar never covers a card's last line and nothing pads for it twice. */
-  .zm-card,.zm-home{position:absolute;inset:0;bottom:calc(var(--dock-h) + env(safe-area-inset-bottom));pointer-events:auto;
+  .zm-card,.zm-home{position:absolute;inset:0;bottom:calc(var(--dock-h) + var(--zm-safe-b, env(safe-area-inset-bottom)));pointer-events:auto;
     display:flex;flex-direction:column;background:var(--hb-bg);opacity:0;transform:translateX(0);visibility:hidden;
     transition:opacity ${CARD_ANIM_MS}ms ease, transform ${CARD_ANIM_MS}ms cubic-bezier(.22,.9,.3,1)}
   .zm-card.live,.zm-home.live{opacity:1;visibility:visible}
@@ -137,7 +137,7 @@ function injectStyles() {
      fixed dock — the only always-visible "there are more cards" signal did not exist on screen. Found by measuring
      geometry, not by reading (the unpainted-orb lesson again). pointer-events live on the BUTTONS, never the row:
      the row spans the full width and would eat taps meant for the widget under it. */
-  .zm-pips{position:absolute;left:0;right:0;bottom:calc(var(--dock-h) + env(safe-area-inset-bottom) + 3px);
+  .zm-pips{position:absolute;left:0;right:0;bottom:calc(var(--dock-h) + var(--zm-safe-b, env(safe-area-inset-bottom)) + 3px);
     display:flex;justify-content:center;pointer-events:none;z-index:4}
   .zm-pip{pointer-events:auto;width:26px;height:26px;border:none;background:transparent;padding:0;margin:0;
     display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--hb-neutral)}
@@ -720,7 +720,7 @@ export class Deck {
         close: (by) => this.close(w.id, { by: by === "hand" ? "hand" : "card" }),
         // V2-613 — same contract as the desktop host: a synchronous, in-memory translation lookup, never a
         // network call from inside widget.js. Already imported at the top of this file for the shell's own chrome.
-        t: tr,
+        t: tr, device: _sensors,
         get lang() { return store.lang(); },
         // V2-821 — same contract as the desktop host: the scroller is the region the widget declares
         // ([data-hb-scroller], a fixed header above it), else the card's own.

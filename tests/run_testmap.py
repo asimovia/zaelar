@@ -5162,6 +5162,10 @@ DOMAINS: list[dict] = [
         {"id": "4.271", "title": "The phone is offered the app first, then notifications, never nagged; the service "
                                  "worker shows every push and reports the click to the ledger (V2-796)", "ch": UNIT,
             "paths": ["tests/browser/unit/mobile/test_the_phone_is_offered_install_then_notifications.py"]},
+        {"id": "4.438", "title": "The screen as a sensor: location, motion and compass behind one door (services/device.js) — "
+                                 "the native plugin only inside the app, the Web API in a browser, a refusal a value, "
+                                 "stop() clears the native watch (V2-870)", "ch": UNIT,
+            "paths": ["tests/browser/unit/mobile/test_the_screen_is_a_sensor.py"]},
         {"id": "4.272", "title": "A session restart takes the microphone back instead of asking again — stop() parks the "
                                  "stream warm for seconds, LiveKit's disconnect no longer kills it, start() reuses it "
                                  "with the same constraints (iPhone permission sheet on every reconnect)", "ch": UNIT,

@@ -30,3 +30,6 @@ config/*.json
 connectors/whatsapp/bridge/node_modules
 connectors/whatsapp/_session
 connectors/telegram/_session
+
+# Native companion app (V2-870): never part of the engine image
+mobile-app/
