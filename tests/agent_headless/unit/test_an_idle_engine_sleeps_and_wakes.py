@@ -87,7 +87,7 @@ def test_a_refused_sleep_is_the_clean_exit_on_the_next_beat(monkeypatch):
     assert idle_stop.maybe_stop() is True and record[-1] == "exit"
 
 
-def test_no_sleep_endpoint_is_todays_clean_exit(monkeypatch):
+def test_no_sleep_endpoint_is_the_clean_exit(monkeypatch):
     record = []
     _arm(monkeypatch, record)
     monkeypatch.delenv("ZAELAR_SLEEP_URL")
