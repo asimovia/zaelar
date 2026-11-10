@@ -14,7 +14,7 @@ import time
 
 import pytest
 
-from tests.browser.unit.daemon.harness import BUNDLES, mount_screen, open_page, read
+from tests.browser.unit.daemon.harness import BUNDLES, mount_screen, open_page, read, show
 from tests.waiting import until_sync
 
 pytest.importorskip("playwright.sync_api")
@@ -35,6 +35,7 @@ def test_a_code_appears_and_its_countdown_runs(server):
     with sync_playwright() as pw:
         pg = open_page(pw, server, api, lang="en")
         mount_screen(pg)
+        show(pg, "link")
         pg.wait_for_selector(".dsx-ovl.on .dsx-pair-get", timeout=5000)
         assert read(pg)["pairCode"] is None, "no code before it is asked for"
         pg.click(".dsx-pair-get")
@@ -62,6 +63,7 @@ def test_an_expired_code_says_so_and_drops_its_instructions(server):
     with sync_playwright() as pw:
         pg = open_page(pw, server, api)
         mount_screen(pg)
+        show(pg, "link")
         pg.wait_for_selector(".dsx-ovl.on .dsx-pair-get", timeout=5000)
         pg.click(".dsx-pair-get")
         pg.wait_for_selector(".dsx-pair-code", timeout=5000)
@@ -79,10 +81,12 @@ def test_an_engine_without_the_relay_hides_the_card(server):
     with sync_playwright() as pw:
         pg = open_page(pw, server, api)
         mount_screen(pg)
+        show(pg, "link")
         pg.wait_for_selector(".dsx-ovl.on .dsx-pair-get", timeout=5000)
         pg.click(".dsx-pair-get")
         until_sync(lambda: not read(pg)["pairCard"], "the pairing card to hide", timeout_s=5)
-        assert read(pg)["cards"] == ["status", "get", "folders", "browser", "tunnel"]
+        r = read(pg)
+        assert r["cards"] == [] and r["pairNone"] == BUNDLES["es"]["daemon.remote.limit"], "the tab says why, no dead card"
         assert not pg._errors, pg._errors
         pg._browser.close()
 
@@ -95,6 +99,7 @@ def test_over_loopback_the_card_says_it_is_already_linked(server):
     with sync_playwright() as pw:
         pg = open_page(pw, server, api)
         mount_screen(pg)
+        show(pg, "link")
         pg.wait_for_selector(".dsx-ovl.on .dsx-pair-get", timeout=5000)
         pg.click(".dsx-pair-get")
         until_sync(lambda: read(pg)["pairLinked"] == b["daemon.pair.loopback"], "the linked line", timeout_s=5)

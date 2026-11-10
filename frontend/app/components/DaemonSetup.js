@@ -1,28 +1,18 @@
-// DaemonSetup — the full-screen surface behind the 🖥 icon (V2-575): THE configuration of the local daemon.
+// DaemonSetup — the full-screen surface behind the 🖥 icon (V2-575, V2-869): THE configuration of the local daemon.
+// Six TABS in the subheader, one topic each, the open one remembered for the session:
+//   STATUS (default) one line of what it is, then installed · running · version · linked to — or, for a computer
+//          that is not linked, ONE line and the way to Install / Link instead of four "not known" rows.
+//   INSTALL from the cloud the one-line command (the manual file folded); on a self-hoster's engine «Connect» and
+//          the launcher's commands, never a download; once installed, "installed, version X" and the update hint.
+//   FOLDERS · BROWSER · LINK · TUNNEL one card each (`components/daemon/`), each with an "unknown" face.
+// The install wizard ENDS on the folders tab when the daemon answers, rather than closing (2026-11-09).
 //
-// It is a SETTINGS screen with an install wizard in front of it, and the two are genuinely different screens:
-//
-//   SETTINGS     the daemon answers. Five cards, in this order: status (installed, running, version, linked to
-//                this computer or to the cloud agent) · folders (with the default one) · browser (Chrome found, or
-//                Chromium downloading with its progress) · pairing with the cloud agent · the tunnel (V2-836).
-//                Each card reads `/api/daemon/status` and has an "unknown" face for every field it reads.
-//   NOT THERE    here is how to start it on this computer. The screen then waits: `services/daemon.js` polls, and
-//                the moment the daemon answers this becomes the settings screen on its own — the wizard ENDS there,
-//                on the folders card, rather than closing (2026-11-09: it used to vanish on connect; a settings
-//                screen that closes itself is not a settings screen).
-//   FROM CLOUD   the daemon runs on the user's own computer. The download is offered; with the relay the pairing
-//                card links that computer to this cloud agent, and without it the screen says so plainly.
-//
-// WHY A FULL SCREEN AND NOT A MODAL, copying `LanguageOnboarding.js` rather than `WizardModal.js`: this asks
-// somebody to grant access to their documents. A dialog that vanishes when you click slightly off it is the
-// wrong instrument for that — half-granted permissions are exactly the state the permission circuit exists to
-// avoid. It closes on the ✕ and on Escape, both deliberate gestures.
-//
-// EVERY REFUSAL IS SHOWN WITH THE DAEMON'S OWN WORDS. `daemon/fs/roots.py` goes to real trouble to say "that
-// is your entire home folder — choose the folders you actually want me to work with", and replacing that with
-// "could not add folder" would throw away the only part the user can act on.
+// A FULL SCREEN AND NOT A MODAL: it grants access to his documents, and a dialog that vanishes on a stray click
+// leaves permissions half-granted. It closes on the ✕ and on Escape, both deliberate gestures.
+// EVERY REFUSAL IS SHOWN WITH THE DAEMON'S OWN WORDS: `daemon/fs/roots.py` says "that is your entire home folder —
+// choose the folders you actually want", and "could not add folder" would throw away the part he can act on.
 import { h, raw } from "../core/dom.js?v=2";
-import { createMemo, createSignal, untrack } from "../core/reactive.js?v=2";
+import { createEffect, createMemo, createSignal, untrack } from "../core/reactive.js?v=2";
 import * as store from "../core/store.js?v=2";
 import * as api from "../services/api.js?v=2";
 import * as daemon from "../services/daemon.js?v=3";
@@ -37,15 +27,18 @@ import { PairingCard } from "./daemon/pairing.js?v=1";
 daemon.start();
 
 const PLATFORM_LABEL = { macos: "macOS", windows: "Windows" };
+const TABS = ["status", "install", "folders", "browser", "link", "tunnel"];
+
+// The open tab: a module signal survives a close and reopen, sessionStorage a reload (which may throw: then signal only).
+const KEY = "zaelar.daemon.tab";
+const [tab, setTabRaw] = createSignal((() => { try { const v = sessionStorage.getItem(KEY); return TABS.includes(v) ? v : "status"; } catch (_) { return "status"; } })());
+const setTab = (id) => { setTabRaw(id); try { sessionStorage.setItem(KEY, id); } catch (_) { /* signal only */ } };
 
 // How a SELF-HOSTER starts it. Not a download: they already have the daemon — it is a Python package in this
 // repository, it has no dependencies at all, and the launcher starts it beside the engine on both platforms.
 // These are the repo's own verbs, so they live here rather than in a translation bundle: `./zaelar restart` is
 // not a phrase, it is a command, and translating it would break it.
-const SOURCE_COMMANDS = {
-  macos: "./zaelar restart",
-  windows: ".\\zaelar.ps1 restart",
-};
+const SOURCE_COMMANDS = { macos: "./zaelar restart", windows: ".\\zaelar.ps1 restart" };
 
 export function DaemonSetup() {
   const [problem, setProblem] = createSignal("");
@@ -82,14 +75,9 @@ export function DaemonSetup() {
 
   // Escape closes. Registered once on the window rather than on the overlay, because the overlay does not
   // hold focus when the user has been typing into the path field.
-  window.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && store.daemonSetupOpen()) close();
-  });
+  window.addEventListener("keydown", (e) => { if (e.key === "Escape" && store.daemonSetupOpen()) close(); });
 
-  const said = (code) => {
-    const key = "daemon.err." + (code || "");
-    return code && t(key) !== key ? t(key) : (code || "");
-  };
+  const said = (code) => { const key = "daemon.err." + (code || ""); return code && t(key) !== key ? t(key) : (code || ""); };
 
   const act = async (fn, path) => {
     if (!path) return;
@@ -122,30 +110,21 @@ export function DaemonSetup() {
 
   const platform = () => chosen() || (daemon.status() || {}).platform || "macos";
 
-  // ── the download block, shared by the "not there" and "from cloud" screens ──────────────────────────────
+  // ── the download block, offered only from the cloud (see the install tab) ─────────────────────────────────
   const downloads = () => {
     const all = daemon.platforms();
     const names = Object.keys(all);
     if (!names.length) return h("p", { class: "dsx-note" }, () => t("daemon.download.unavailable"));
     const current = () => all[platform()] || {};
     return h("div", { class: "dsx-dl" },
-      // Which machine, not which file. The tabs pick the platform; the command below is the whole install.
-      h("div", { class: "dsx-dl-row" }, ...names.map((name) =>
-        h("button", {
-          class: () => "dsx-dl-btn" + (platform() === name ? " on" : ""),
-          onClick: () => { setChosen(name); api.uiEvent("daemon:platform", { platform: name }); },
-        }, PLATFORM_LABEL[name] || name))),
+      platformRow(names),
       h("p", { class: "dsx-note" }, () => t("daemon.cmd.lead")),
       h("div", { class: "dsx-cmd-row" },
         h("code", { class: "dsx-cmd" }, () => current().command || ""),
-        h("button", { class: "dsx-copy",
-          onClick: () => copy(current().command || ""),
-        }, () => copied() ? t("daemon.cmd.copied") : t("daemon.cmd.copy"))),
+        copyBtn(() => current().command || "")),
       h("p", { class: "dsx-note" }, () => t("daemon.cmd.why")),
-      h("p", { class: "dsx-note" }, () => t("daemon.note.noadmin")),
-      // The direct file stays reachable for somebody who would rather look at it first — and it is the path
-      // that COSTS a security dialog, because a browser is what marks a download as quarantined. Said here,
-      // quietly, instead of being the button everybody presses by default.
+      // The direct file stays reachable, folded: it is the path that COSTS a security dialog, because a browser
+      // is what marks a download as quarantined.
       h("details", { class: "dsx-more" },
         h("summary", {}, () => t("daemon.manual.summary")),
         h("p", { class: "dsx-note" }, () => t("daemon.manual.body")),
@@ -155,10 +134,20 @@ export function DaemonSetup() {
           h("a", { class: "dsx-link", href: () => current().installer || "#", download: "" },
             () => t("daemon.manual.installer")), " · ",
           h("a", { class: "dsx-link", href: () => current().checksums || "#" },
-            () => t("daemon.note.checksums_link"))),
-        h("p", { class: "dsx-note" }, () => t("daemon.manual.arch"))),
+            () => t("daemon.note.checksums_link")))),
     );
   };
+  function platformRow(names) {
+    return h("div", { class: "dsx-dl-row" }, ...names.map((name) =>
+      h("button", {
+        class: () => "dsx-dl-btn" + (platform() === name ? " on" : ""),
+        onClick: () => { setChosen(name); api.uiEvent("daemon:platform", { platform: name }); },
+      }, PLATFORM_LABEL[name] || name)));
+  }
+  function copyBtn(text) {
+    return h("button", { class: "dsx-copy", onClick: () => copy(text()) },
+      () => copied() ? t("daemon.cmd.copied") : t("daemon.cmd.copy"));
+  }
 
   // ── the cards share the screen's plumbing (the busy marker, the refusal line, the copy button) ─────────────────
   const ctx = {
@@ -166,48 +155,36 @@ export function DaemonSetup() {
     bindPath: (el) => (pathEl = el),
     typedPath: () => (pathEl && pathEl.value || "").trim(),
   };
-  // Built ONCE: each card binds what it reads, so a status change repaints a line, never a whole card — a card
-  // rebuilt every 2 s while a browser downloads would wipe the typed path and close any open fold.
-  const cards = {
-    status: StatusCard(), folders: FoldersCard(ctx), browser: BrowserCard(),
-    pair: PairingCard(ctx), tunnel: TunnelCard(),
-  };
 
-  // What SHAPE the screen has. A memo, so the body is rebuilt when the shape changes (the daemon starts answering,
-  // say) and not on every poll that changes a percentage.
-  const mode = createMemo(() => !daemon.status() ? "loading"
-    : daemon.isRemote() ? "remote" : daemon.isConnected() ? "settings" : "absent");
-  const relayUp = createMemo(() => daemon.relayConnected());
+  // What SHAPE the install tab has: rebuilt when that changes (the daemon starts answering, say), never per poll.
+  const shape = createMemo(() => { const s = daemon.status(); const r = daemon.relay();
+    return !s ? "loading" : s.state === "remote" ? (r && r.paired ? "done" : "remote") : s.reachable ? "done" : "absent"; });
   const hasRelay = createMemo(() => !!daemon.relay());
 
-  // ── the three screens ───────────────────────────────────────────────────────────────────────────────────
-  // Built UNTRACKED: everything the screen reads synchronously while it is built would otherwise subscribe it to
-  // the status, and the whole screen would be rebuilt on every poll. The bindings inside keep their own effects.
-  const screen = () => {
+  // Built UNTRACKED: what it reads while built would otherwise subscribe the tab to every poll.
+  const install = () => {
     const s = daemon.status();
     if (!s) return h("p", { class: "dsx-note" }, () => t("daemon.loading"));
+    if (shape() === "done") {
+      const v = () => { const st = daemon.status() || {}; return (st.state === "remote" ? (daemon.relay() || {}).version : st.version) || ""; };
+      return h("div", {},
+        h("p", { class: "dsx-lead dsx-installed-line" }, () => v() ? t("daemon.install.done", { v: v() }) : t("daemon.install.done_bare")),
+        () => (daemon.status() || {}).outdated
+          ? h("p", { class: "dsx-warn" }, () => t("daemon.ok.outdated"), " ",
+              h("span", { class: "dsx-mono" }, () => `${daemon.status().version} → ${daemon.status().expected_version}`))
+          : null);
+    }
     if (s.state === "remote") {
-      const getIt = () => h("div", { class: "dsx-card dsx-get", "data-card": "get" },
-        h("p", { class: "dsx-lead" }, () => t("daemon.remote.lead")),
-        // Said out loud rather than implied, ONLY on an engine without the relay (no `relay` in its status):
-        // there, wiring the daemon to the cloud agent does not exist, and a download screen implying it does is
-        // how a product earns "it doesn't work".
+      return h("div", { class: "dsx-get" },
+        // Said out loud ONLY on an engine without the relay: there, linking to the cloud agent does not exist.
         () => hasRelay() ? null : h("p", { class: "dsx-warn" }, () => t("daemon.remote.limit")),
         downloads());
-      return h("div", { class: "dsx-settings" },
-        cards.status,
-        // The download stays until this computer is linked: before that it is the next step, after it, noise.
-        () => relayUp() ? null : untrack(getIt),
-        cards.folders, cards.browser, cards.pair, cards.tunnel);
     }
     // ⚠️ A SELF-HOSTER IS NEVER OFFERED A DOWNLOAD. They cloned the repository; the daemon is already on their
-    // disk as a Python package with no dependencies, and the launcher starts it. Handing them an installer for
-    // a binary would be telling somebody who owns the source to go and fetch a copy of it — and it would put a
-    // second, differently-versioned daemon on the machine, competing for the same port. The download exists
-    // for exactly one audience: somebody whose Zaelar runs in the cloud, on a computer that is not theirs.
+    // disk as a Python package with no dependencies, and the launcher starts it. An installer would put a second,
+    // differently-versioned daemon on the machine, competing for the same port.
     if (!s.reachable) {
       return h("div", {},
-        h("p", { class: "dsx-intro" }, () => t("daemon.intro")),
         h("p", { class: "dsx-lead" }, () => t("daemon.local.lead")),
         h("button", { class: "dsx-primary", disabled: () => connecting(), onClick: doConnect },
           () => connecting() ? t("daemon.connecting") : t("daemon.connect")),
@@ -215,35 +192,51 @@ export function DaemonSetup() {
         h("details", { class: "dsx-more" },
           h("summary", {}, () => t("daemon.details")),
           h("p", { class: "dsx-note" }, () => t("daemon.local.body")),
-          h("div", { class: "dsx-dl-row" }, ...Object.keys(SOURCE_COMMANDS).map((name) =>
-            h("button", {
-              class: () => "dsx-dl-btn" + (platform() === name ? " on" : ""),
-              onClick: () => { setChosen(name); api.uiEvent("daemon:platform", { platform: name }); },
-            }, PLATFORM_LABEL[name] || name))),
+          platformRow(Object.keys(SOURCE_COMMANDS)),
           h("div", { class: "dsx-cmd-row" },
             h("code", { class: "dsx-cmd" }, () => SOURCE_COMMANDS[platform()] || SOURCE_COMMANDS.macos),
-            h("button", { class: "dsx-copy",
-              onClick: () => copy(SOURCE_COMMANDS[platform()] || SOURCE_COMMANDS.macos),
-            }, () => copied() ? t("daemon.cmd.copied") : t("daemon.cmd.copy"))),
+            copyBtn(() => SOURCE_COMMANDS[platform()] || SOURCE_COMMANDS.macos)),
           h("p", { class: "dsx-note" }, () => t("daemon.local.hint"))));
     }
-    // SETTINGS: the folders card comes right after the status, which is where the wizard lands on connect.
-    return h("div", { class: "dsx-settings" },
-      cards.status, cards.folders, cards.browser, cards.pair, cards.tunnel);
+    return null;
   };
-  const body = () => { mode(); return untrack(screen); };   // the only subscription is the shape (see `mode`)
+
+  // Built ONCE: each card binds what it reads, so a status change repaints a line, never a whole card — a card
+  // rebuilt every 2 s while a browser downloads would wipe the typed path and close any open fold.
+  const panels = {
+    status: StatusCard(setTab), folders: FoldersCard(ctx), browser: BrowserCard(),
+    link: PairingCard(ctx), tunnel: TunnelCard(),
+    install: h("section", { class: "dsx-card", "data-card": "install" }, () => { shape(); return untrack(install); }),
+  };
+
+  // The wizard ENDS on the folders tab: the daemon answering while Install is open moves there.
+  let was = untrack(shape);
+  createEffect(() => { const now = shape(); if (was !== "done" && now === "done" && untrack(tab) === "install") setTab("folders"); was = now; });
+
+  // Arrow keys move along the tab bar (the WAI tabs pattern).
+  const onKeydown = (e) => {
+    const d = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+    if (!d) return;
+    const next = TABS[(TABS.indexOf(tab()) + d + TABS.length) % TABS.length];
+    setTab(next); e.preventDefault();
+    const b = e.currentTarget.querySelector(`[data-tab="${next}"]`); if (b) b.focus();
+  };
 
   return h("div", { class: () => "ovl dsx-ovl" + (store.daemonSetupOpen() ? " on" : "") },
     h("div", { class: "dsx-box" },
       h("div", { class: "dsx-head" },
         h("span", { class: "dsx-mark" }, raw(DESKTOP_ICON)),
-        h("h2", { class: "dsx-title" }, () => t(mode() === "absent" ? "daemon.title" : "daemon.settings.title")),
+        h("h2", { class: "dsx-title" }, () => t("daemon.settings.title")),
         h("button", { class: "dsx-icon", title: () => t("daemon.close"), onClick: close }, raw(CLOSE_ICON))),
-      // `body` and not `body()`: passed as a FUNCTION it is a reactive child, so the screen becomes the
-      // settings one by itself the moment the daemon answers — which is the whole "install it and watch this
-      // turn green" step. Called, it would render once and never change again.
-      h("div", { class: "dsx-scroll" },
-        body,
+      h("nav", { class: "hb-tabs dsx-tabs", role: "tablist", "aria-label": () => t("daemon.settings.title"), onKeydown },
+        ...TABS.map((id) => h("button", {
+          class: () => "hb-tab" + (tab() === id ? " is-on" : ""), type: "button", role: "tab", "data-tab": id,
+          "aria-selected": () => String(tab() === id), tabindex: () => (tab() === id ? "0" : "-1"),
+          onClick: () => { setTab(id); api.uiEvent("daemon:tab", { tab: id }); },
+        }, () => t("daemon.tab." + id)))),
+      // A reactive child: the open tab's prebuilt panel is attached, the others wait detached with their state.
+      h("div", { class: "dsx-scroll", role: "tabpanel" },
+        () => panels[tab()],
         () => problem() ? h("p", { class: "dsx-problem" }, problem()) : null,
         h("button", { class: "dsx-link dsx-recheck", onClick: () => daemon.check() }, () => t("daemon.refresh"))),
     ),

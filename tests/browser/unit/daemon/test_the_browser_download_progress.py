@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import pytest
 
-from tests.browser.unit.daemon.harness import BUNDLES, mount_screen, open_page, read
+from tests.browser.unit.daemon.harness import BUNDLES, mount_screen, open_page, read, show
 from tests.waiting import until_sync
 
 pytest.importorskip("playwright.sync_api")
@@ -38,11 +38,13 @@ def test_the_progress_follows_two_polls_and_the_poll_stops_when_done(server):
     with sync_playwright() as pw:
         pg = open_page(pw, server, api, lang="en")
         mount_screen(pg)
+        show(pg, "folders")
+        pg.fill(".dsx-input", "/Users/x/half-typed")
+        show(pg, "browser")
         pg.wait_for_selector(".dsx-ovl.on .dsx-progress-bar", timeout=5000)
         r = read(pg)
         assert r["browser"] == line(10), r["browser"]
         assert abs(r["bar"] / r["track"] - 0.10) < 0.03
-        pg.fill(".dsx-input", "/Users/x/half-typed")
         api["status"] = seq[1]
         until_sync(lambda: read(pg)["browser"] == line(43), "the second poll (2 s) without a click", timeout_s=4)
         until_sync(lambda: abs(read(pg)["bar"] / read(pg)["track"] - 0.43) < 0.03, "the bar to follow", timeout_s=2)
@@ -54,7 +56,8 @@ def test_the_progress_follows_two_polls_and_the_poll_stops_when_done(server):
         # sleep would leave a stray poll unanswered — and uncounted — until after the assertion.
         pg.wait_for_timeout(4500)
         assert api["hits"] == hits, f"the fast poll kept going after the download ended ({api['hits'] - hits} more)"
-        assert pg.input_value(".dsx-input") == "/Users/x/half-typed", "a repaint wiped the folder being typed"
+        show(pg, "folders")
+        assert pg.input_value(".dsx-input") == "/Users/x/half-typed", "a repaint or a tab switch wiped the typed folder"
         assert not pg._errors, pg._errors
         pg._browser.close()
 
@@ -65,6 +68,7 @@ def test_a_download_with_no_known_progress_draws_an_indeterminate_bar(server):
     with sync_playwright() as pw:
         pg = open_page(pw, server, {"status": _st({"state": "downloading"})})
         mount_screen(pg)
+        show(pg, "browser")
         pg.wait_for_selector(".dsx-ovl.on .dsx-progress.is-indeterminate", timeout=5000)
         assert read(pg)["browser"] == b["daemon.browser.downloading"]
         assert not pg._errors, pg._errors
