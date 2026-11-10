@@ -89,9 +89,10 @@ def icon(size, mark_scale, rounded):
     return img
 
 
-OUT = __file__.rsplit("/", 1)[0] + "/"
-icon(192, 0.185, True).save(OUT + "icon-192.png")
-icon(512, 0.185, True).save(OUT + "icon-512.png")
-icon(512, 0.155, False).save(OUT + "maskable-512.png")     # full bleed, mark inside the 80% circle
-icon(180, 0.185, False).save(OUT + "apple-touch-icon.png")  # iOS masks it itself
-print("icons written")
+if __name__ == "__main__":   # importable: mobile-app/scripts/icons.py draws the native app's icons with `icon()`
+    OUT = __file__.rsplit("/", 1)[0] + "/"
+    icon(192, 0.185, True).save(OUT + "icon-192.png")
+    icon(512, 0.185, True).save(OUT + "icon-512.png")
+    icon(512, 0.155, False).save(OUT + "maskable-512.png")     # full bleed, mark inside the 80% circle
+    icon(180, 0.185, False).save(OUT + "apple-touch-icon.png")  # iOS masks it itself
+    print("icons written")
