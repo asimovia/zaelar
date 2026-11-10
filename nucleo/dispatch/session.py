@@ -49,7 +49,8 @@ async def _run_session(task: "Task") -> None:
     # context, the money vocabulary only when there is none (refactor2710-06 T-03) — before anything starts.
     from nucleo.acts import errand as _errand
     _cls = _errand.class_of(task.context.get("errand_class"), req)
-    if trusted and _errand.asks_first(_cls, confirmed=bool(task.context.get("confirmed"))):
+    if trusted and _errand.asks_first(_cls, confirmed=bool(task.context.get("confirmed")),
+                                      verdict=task.context.get("errand_class")):
         _d.logger.info(f"dispatch: tarea {key} PARA por confirm-gate: {req[:80]}")
         rec = _d._SESSIONS.get(key)
         if rec:
