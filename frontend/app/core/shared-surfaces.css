@@ -138,7 +138,7 @@
    work on this screen, sits above the bottom edge (the desktop's widget rail, the phone's dock via --dock-h) and
    carries one action. See components/ElsewhereChips.js + services/screens.js. ─────────────────────────────── */
 .ew-stack{position:fixed;left:50%;transform:translateX(-50%);z-index:60;display:none;flex-direction:column;gap:6px;
-  bottom:calc(var(--dock-h, 56px) + env(safe-area-inset-bottom, 0px) + 12px);width:min(440px, calc(100vw - 32px))}
+  bottom:calc(var(--dock-h, 56px) + var(--zm-safe-b, env(safe-area-inset-bottom, 0px)) + 12px);width:min(440px, calc(100vw - 32px))}
 .ew-stack.on{display:flex}
 .ew-chip{display:flex;align-items:center;gap:8px;padding:8px 8px 8px 12px;border-radius:12px;
   background:var(--hb-bg-soft);border:1px solid var(--hb-line);
