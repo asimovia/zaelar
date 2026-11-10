@@ -35,15 +35,27 @@ def prime_cache() -> None:
     Where spending is bounded by an energy lease, the boot probe asks only the FREE indexes. Every paid probe is
     a real paid request, and a boot is not something anyone asked for: measured 2026-10-22, a brand-new account
     nobody had opened was billed for two web searches ~95 s after its machine started — this probe. The paid
-    rows say `unprobed` until someone asks (`/api/search/health?fresh=1` or the CLI)."""
+    rows say `unprobed` until someone asks (`/api/search/health?fresh=1` or the CLI).
+
+    Nor does it START the search Chromium (V2-872): the rows that run in it (`google`, `images`, `youtube_browser`
+    — the providers switched off by `BROWSER_SEARCH`) are probed only when the browser is already up. Every boot
+    of a host that stops when idle ran this probe ~50 s in, and its `youtube_browser` row alone launched the
+    browser and loaded YouTube through it (18 s on a small shared-CPU host, «unreachable» every time) — the
+    warm-up `prewarm_browser: false` had just declined. Those rows say `unprobed` until someone asks."""
+    from . import browser as _browser
     from . import health as _health
     from .providers import PROVIDERS
     from .providers import keys as _keys
     try:
-        skip = {n for n, p in PROVIDERS.items() if p.paid} if _keys.leased() else set()
+        paid = {n for n, p in PROVIDERS.items() if p.paid} if _keys.leased() else set()
+        cold = set() if _browser._ctx is not None else {n for n, p in PROVIDERS.items()
+                                                         if p.env_switch[0] == "BROWSER_SEARCH"}
+        skip = paid | cold
         rows = _health.probe_all([n for n in PROVIDERS if n not in skip])
-        rows += [{"provider": n, "kind": PROVIDERS[n].kind, "paid": True, "key": _keys.key_name(n), "ok": False,
-                  "latency_ms": 0, "state": "unprobed", "why": "paid: probed on demand"} for n in sorted(skip)]
+        rows += [{"provider": n, "kind": PROVIDERS[n].kind, "paid": PROVIDERS[n].paid, "key": _keys.key_name(n),
+                  "ok": False, "latency_ms": 0, "state": "unprobed",
+                  "why": "paid: probed on demand" if n in paid else "browser not started: probed on demand"}
+                 for n in sorted(skip)]
         _health_cache.update(at=time.time(), rows=rows)
     except Exception as e:  # noqa: BLE001 — a failed priming leaves the cache empty; the panel says «sin sondear»
         logger.warning(f"search.api: the boot probe failed ({e!r}); the panel will say «sin sondear todavía»")

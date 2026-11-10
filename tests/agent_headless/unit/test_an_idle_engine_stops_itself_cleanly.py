@@ -127,11 +127,21 @@ def test_workers_and_due_notices_keep_their_veto_inside_the_grace(workers, next_
     assert idle_stop.decide(NOW, None, NOW - 10 * MIN, workers, next_due, 15 * MIN, grace_ms=GRACE) is None
 
 
-def test_the_two_windows_are_declared_in_the_resources_policy():
+def test_the_two_windows_are_declared_in_the_resources_policy(monkeypatch):
     from nucleo.workers import envelope
     pol = envelope.policy()
     assert pol["wake_grace_min"] == 3 and pol["tab_sleep_min"] == 10
+    monkeypatch.setenv("ZAELAR_IDLE_STOP_MIN", "15")
     assert idle_stop.wake_grace_min() == 3 and idle_stop.tab_sleep_min() == 10
+
+
+def test_an_engine_that_never_stops_never_puts_a_tab_to_sleep(monkeypatch):
+    """Self-host (no idle stop): the hello says 0 — an open stream costs nothing there and a wall display is read
+    without being touched. The policy's 10 is for a host that stops when idle."""
+    monkeypatch.delenv("ZAELAR_IDLE_STOP_MIN", raising=False)
+    assert idle_stop.tab_sleep_min() == 0.0
+    monkeypatch.setenv("ZAELAR_IDLE_STOP_MIN", "15")
+    assert idle_stop.tab_sleep_min() == 10
 
 
 def test_a_stream_a_beat_or_visibility_is_not_presence_and_his_input_is():

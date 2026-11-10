@@ -25,7 +25,7 @@ log = logging.getLogger(__name__)
 _PROC_STAT = "/proc/stat"
 _CGROUP_STAT = "/sys/fs/cgroup/cpu.stat"
 
-_state: dict = {"prev": None, "window": {}, "open": False}   # open = a starved episode already told
+_state: dict = {"prev": None, "window": None, "open": False}   # a state record: the last sample, the last window, open = a starved episode already told
 
 
 def read_proc_stat(path: str = _PROC_STAT) -> dict | None:
@@ -93,7 +93,7 @@ def tick(read=None) -> dict:
 
 def last_window() -> dict:
     """The last window the heartbeat read (empty before the second beat)."""
-    return dict(_state["window"])
+    return dict(_state["window"] or {})
 
 
 def read(steal_pct_starved: float) -> tuple[dict, bool | None]:

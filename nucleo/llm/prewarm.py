@@ -4,7 +4,8 @@ The operator saw 6–8s on the FIRST turn and about 1s thereafter. The cause: th
 (a cloud provider) establishes TLS, performs the handshake, and starts the model cold. We absorb
 that HERE, during server startup—while the frontend renders the brain-mesh loader—with a MINIMAL fire-and-forget
 query, so the model is warm (~1s) when the user can interact. It also warms search Chromium
-(`search/browser`). It never blocks startup or raises.
+(`search/browser`) — unless the resources policy says not to (`prewarm_browser`, V2-872: a host that stops when
+idle pays that warm-up on every boot; see `browser_prewarm_wanted`). It never blocks startup or raises.
 """
 from __future__ import annotations
 
@@ -70,8 +71,45 @@ def _emit_prewarm(what: str, ms: int, model: str, *, ttft: int | None = None,
         pass
 
 
+def browser_prewarm_wanted(declared, idle_stop_min: int) -> bool:
+    """Is the search Chromium warmed at boot? (V2-872 W3.) `declared` is the deployment's own
+    `prewarm_browser` (from its `config/resources.json`), or None when that file does not set it.
+
+    A declared value always wins. Undeclared, the answer depends on whether the host STOPS WHEN IDLE
+    (`ZAELAR_IDLE_STOP_MIN` > 0): such a host boots many times a day — often for a request that brings no real
+    activity — and each boot would pay the Chromium start in full (measured 53-96 s of CPU on a small shared-CPU
+    host, with the quota spent and the voice throttled behind it), so the default there is NOT to warm it. A
+    host that stays up (a self-hosted laptop) warms it once and keeps it: the repo default (`true`) holds.
+    Not warming loses nothing but the first search's start: every door of `search/browser.py` calls
+    `ensure_started()` before it uses the context, so the first search starts the browser itself."""
+    if declared is not None:
+        return bool(declared)
+    return idle_stop_min <= 0
+
+
+def _browser_prewarm_from_config() -> bool:
+    """The live inputs: the DEPLOYMENT file's own key (the repo default is `true` and would hide the idle-stop flip),
+    then the repo default where the host stays up."""
+    import json
+    import os
+    from nucleo import idle_stop
+    from nucleo.workers import envelope
+    path, declared = os.path.join(envelope._HERE, "resources.json"), None
+    try:
+        with open(path, encoding="utf-8") as fh:              # the deployment's own file is optional
+            declared = json.load(fh).get("prewarm_browser")
+    except Exception as e:  # noqa: BLE001 — absent or unreadable (the envelope warns): the default holds
+        logger.debug(f"prewarm: no deployment prewarm_browser ({e!r})")
+    if declared is None and not idle_stop.window_min():
+        declared = envelope.policy().get("prewarm_browser", True)
+    return browser_prewarm_wanted(declared, idle_stop.window_min())
+
+
 async def _warm_browser() -> None:
     try:
+        if not _browser_prewarm_from_config():
+            _emit_prewarm("browser", 0, "chromium", note="skipped by policy: starts at first use")
+            return
         from search import browser as browser_search
         t0 = time.time()
         ok = await browser_search.ensure_started()

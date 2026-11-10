@@ -28,7 +28,11 @@
     "PRESENCE AND SLEEP (V2-872): presence is a person's input on a screen (a touch, a key, a typed line, a spoken",
     "turn), never an open stream. A tab with no input for `tab_sleep_min` closes its stream and waits for a gesture",
     "(0 = the tab never sleeps); the client reads the value from the stream's hello. With an idle stop on",
-    "(ZAELAR_IDLE_STOP_MIN), an engine with no input since boot stops after `wake_grace_min` instead of the full window."
+    "(ZAELAR_IDLE_STOP_MIN), an engine with no input since boot stops after `wake_grace_min` instead of the full window.",
+    "A CHEAP BOOT (V2-872): `prewarm_browser` warms the search Chromium at boot. A host that stops when idle wants it",
+    "false in its own `config/resources.json` (it pays the warm-up on every boot); undeclared there, it is already",
+    "false when ZAELAR_IDLE_STOP_MIN is set. The browser then starts at first use. `background_idle_every_s`: with no",
+    "screen open a passive widget's background tick runs at most this often, whatever its declared `every`."
   ],
   "worker_nice": 10,
   "admit_free_ratio": 0.2,
@@ -50,5 +54,7 @@
   "steal_pct_starved": 20,
   "session_grace_s": 180,
   "tab_sleep_min": 10,
-  "wake_grace_min": 3
+  "wake_grace_min": 3,
+  "prewarm_browser": true,
+  "background_idle_every_s": 300
 }
