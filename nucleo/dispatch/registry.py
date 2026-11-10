@@ -98,7 +98,8 @@ def pending_summaries() -> list[dict]:
              # Amplitud in curso: leaves al cerebro contestar «va by 30 candidatos» and, al acabar, ofrecer continue.
              "considered": r.considered, "kept": r.kept,
              "sheet": _d.sheet_of(r),     # V2-451: la hoja es del ENCARGO, y sin esto solo viajaba con navegador
-             "surface": getattr(r, "surface", "")}
+             "surface": getattr(r, "surface", ""),
+             "heard": getattr(r, "heard", "")}   # V2-874: his commissioning sentence, beside the errand's own title
             for r in _d._SESSIONS.values() if r.status in _d.LIVE_SESSION_STATES]
 
 

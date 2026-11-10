@@ -104,6 +104,7 @@ def gate_calls(on_tool_call, *, brief, escalate_req: dict, operator_text: str, e
             return on_tool_call(name, args)
         if name not in PASS and sure_escalate(brief):
             _mark(brief, "")                 # a routed send after a player: the turn's words are the errand's
+            escalate_req.setdefault("held_calls", []).append({"name": name, "args": dict(args or {})})   # V2-874
             route(escalate_req, operator_text, emit, why=f"call:{name}", brief=brief)
             return None
         return on_tool_call(name, args)
@@ -117,11 +118,13 @@ def owns(escalate_req: dict | None) -> bool:
     return bool((escalate_req or {}).get("routed"))
 
 
-def route(escalate_req: dict, operator_text: str, emit, *, why: str, brief=None) -> None:
+def route(escalate_req: dict, operator_text: str, emit, *, why: str, brief=None, held: str = "") -> None:
     """The request is the turn's commission (the errand portal launches it at the close, through `flow_of.route`).
     The ONLY opener of an errand the model did not call (V2-857 phase 8: no word backstop): its event says the
     verdict, its confidence and where it was read (`source`: the model's call it held, or `verdict` at its words)."""
     first = not escalate_req.get("routed")
+    if held:
+        escalate_req["held_words"] = held   # V2-874: what the model wrote and the Hold kept unsaid (nothing called)
     escalate_req["routed"] = True
     if escalate_req.get("v") is None:
         escalate_req["v"] = operator_text
@@ -132,3 +135,5 @@ def route(escalate_req: dict, operator_text: str, emit, *, why: str, brief=None)
              text=str(operator_text or "")[:160], extra={"cat": "flash", "why": why, "routed": True, "source": why,
                                                          "verdict": str(choice or ""),
                                                          "confidence": float((info or {}).get("confidence") or 0.0)})
+        from nucleo.turn import commission   # V2-874: the one rule, in shadow beside what routing did
+        commission.shadow(emit, at="route", brief=brief, escalate_req=escalate_req, text=operator_text)
