@@ -21,7 +21,11 @@
     "Gave up, or no live worker `voice_dead_s` after a session was asked for: an alert, and under a supervisor an exit",
     "for a restart; unsupervised a new try every `recycle_retry_s`. `boot_grace_s` is the cold start (models, browser,",
     "the first connection; a first session measured 2.5 min to listening on a small host): degraded marks and the",
-    "audio lag inside it are the warm-up, never a degradation."
+    "audio lag inside it are the warm-up, never a degradation.",
+    "PRESENCE AND SLEEP (V2-872): presence is a person's input on a screen (a touch, a key, a typed line, a spoken",
+    "turn), never an open stream. A tab with no input for `tab_sleep_min` closes its stream and waits for a gesture",
+    "(0 = the tab never sleeps); the client reads the value from the stream's hello. With an idle stop on",
+    "(ZAELAR_IDLE_STOP_MIN), an engine with no input since boot stops after `wake_grace_min` instead of the full window."
   ],
   "worker_nice": 10,
   "admit_free_ratio": 0.2,
@@ -39,5 +43,7 @@
   "recycle_backoff_s": 5,
   "recycle_retry_s": 120,
   "voice_dead_s": 120,
-  "boot_grace_s": 300
+  "boot_grace_s": 300,
+  "tab_sleep_min": 10,
+  "wake_grace_min": 3
 }
