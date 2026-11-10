@@ -32,13 +32,15 @@ SHAPES = (
 )
 _PUNCT = "\"'«»“”‘’()[]{}¿?¡!.,;:…"
 _ENDS = ".!?…\n"
-#: Fields that describe the event, not what anyone said: never rewritten.
-STRUCTURAL = frozenset({
-    "kind", "label", "id", "ids", "dev", "origin_dev", "to", "corr_id", "trace", "trace_id", "session_id", "sid",
-    "topic", "role", "cat", "piece", "ver", "inst", "host", "model", "engine", "provider", "src", "source",
-    "platform", "ts", "t", "t_ms", "rel_ms", "at", "i", "state", "phase", "widget", "card_id", "task_id", "ask_id",
-    "action", "status", "reason", "lang", "voice", "channel",
-})
+def _structural() -> frozenset:
+    """The fields that describe an event, never rewritten: the indexed columns the events table declares
+    (`bus/log._COLUMNS` — flow, session, family, kind, label, actor, model, version, piece). Read lazily: the
+    tagger runs on the writers' threads, after the bus log exists."""
+    try:
+        from bus import log
+        return frozenset(c[0] for c in log._COLUMNS)
+    except Exception:  # noqa: BLE001 — without the schema every string is treated as text (more tags, never fewer)
+        return frozenset()
 
 
 def norm(s) -> str:
@@ -106,9 +108,9 @@ def known(ttl_s: float = 60.0) -> dict[str, str]:
     return out
 
 
-#: Kept whole: what the OUTSIDE world brought back (web results — title, url, snippet), which a debugging session audits
-#: against what the agent said. It is not the person's data; it still passes the secrets scrub.
-EXEMPT = frozenset({"evidence"})
+#: Kept whole: `evidence`, what the OUTSIDE world brought back (web results — title, url, snippet), which a debugging
+#: session audits against what the agent said. It is not the person's data; it still passes the secrets scrub.
+EXEMPT = "evidence"
 
 
 def tag(text: str, names: dict[str, str] | None = None) -> str:
@@ -147,15 +149,23 @@ def tag(text: str, names: dict[str, str] | None = None) -> str:
         return "[WITHHELD]"
 
 
-def tag_obj(obj, names: dict[str, str] | None = None, _key: str = ""):
-    """A copy of `obj` with every free-text value tagged; structural fields untouched."""
-    if names is None:
-        names = known()
+def _identifier(s: str) -> bool:
+    """An id, a kind, a device, a trace, a model name — one token that is data about the event, not anyone's words:
+    lowercase with letters, or joined by an id separator (`·` `:` `_`). Never an address (an email, a link)."""
+    if " " in s or "@" in s or s.startswith(("http://", "https://", "www.")):
+        return False
+    return (any(c.isalpha() for c in s) and s == s.lower()) or any(c in s for c in "·:_")
+
+
+def tag_obj(obj, names: dict[str, str] | None = None, _key: str = "", _fields: frozenset | None = None):
+    """A copy of `obj` with every free-text value tagged; structural fields and identifiers untouched."""
+    names = known() if names is None else names
+    fields = _structural() if _fields is None else _fields
     if isinstance(obj, str):
-        return obj if _key in STRUCTURAL else tag(obj, names)
+        return obj if _key in fields or _identifier(obj) else tag(obj, names)
     if isinstance(obj, dict):
-        return {k: (v if k in EXEMPT or (k in STRUCTURAL and not isinstance(v, (dict, list)))
-                    else tag_obj(v, names, str(k))) for k, v in obj.items()}
+        return {k: (v if k == EXEMPT or (k in fields and not isinstance(v, (dict, list)))
+                    else tag_obj(v, names, str(k), fields)) for k, v in obj.items()}
     if isinstance(obj, (list, tuple)):
-        return [tag_obj(v, names, _key) for v in obj]
+        return [tag_obj(v, names, _key, fields) for v in obj]
     return obj
