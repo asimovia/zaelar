@@ -44,7 +44,6 @@ export function ChatSheet() {
     "aria-hidden": () => (store.chatOpen() ? "false" : "true"),
   },
     h("header", { class: "zm-sheet-h" },
-      h("div", { class: "zm-sheet-grab" }),
       h("h2", null, () => t("chat.title")),
       h("button", { class: "zm-sheet-x", "aria-label": () => t("desktop.close"), onClick: () => store.setChatOpen(false) }, "×"),
     ),

@@ -19,17 +19,25 @@
    ============================================================================ */
 
 :root {
-  /* 64px since 2026-10-26 (operator, iPhone 14 screenshots: «la parte de abajo parece que estamos desaprovechando
-     espacio»): the bar is exactly its row of 44px icons; the orb rises above its edge like the centre button of a
-     tab bar. The safe-area pad is added ONCE, here, and every card ends at the bar's top edge. */
-  --dock-h: 64px;                        /* the bar's own height; the safe-area pad is added on top of it */
+  /* The bar is its row of 44px icons; the orb rises above its edge like the centre button of a tab bar. Its pad is
+     a TRIMMED safe area (2026-11-10, operator on iPhone 17 Pro: icons «donde van en todas las aplicaciones»): the
+     full 34px home-indicator inset left them ~66px above the edge, a native tab bar keeps them ~50px up; the
+     indicator is 5px tall at 8px from the bottom, so 12px of the inset is given back. The pad is added ONCE, here,
+     and every card ends at the bar's top edge. */
+  --dock-h: 54px;                        /* the bar's own height; the safe-area pad is added on top of it */
+  --zm-safe-b: max(6px, calc(env(safe-area-inset-bottom) - 12px));
   /* Sheet height, measured from ON TOP OF the dock (see .zm-sheet). Leaves the deck visible above it, so the
-     card you were reading never disappears entirely behind the chat. */
+     card you were reading never disappears entirely behind a sheet (the chat is a full screen instead). */
   --zm-sheet-max: calc(78vh - var(--dock-h));
   --zm-r: 18px;                          /* one corner radius for every surface in this shell */
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+/* INSIDE THE NATIVE APP (V2-870 §10: the app marks <html class="in-app"> from native code at document start). Controls
+   behave like native ones: no text selection, no long-press callout or link preview on a button. Text stays
+   selectable where it is content — messages, cards, inputs. */
+html.in-app button, html.in-app .zm-dock, html.in-app .zm-sheet-h, html.in-app .zm-pips {
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 html, body { height: 100%; margin: 0; }
 body {
   font-family: var(--sans);
@@ -69,8 +77,8 @@ body {
    centre. Getting this from flexbox would have required a spacer element whose only job is to lie about symmetry. */
 .zm-dock {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
-  height: calc(var(--dock-h) + env(safe-area-inset-bottom));
-  padding: 0 8px env(safe-area-inset-bottom);
+  height: calc(var(--dock-h) + var(--zm-safe-b));
+  padding: 0 8px var(--zm-safe-b);
   /* minmax(0, ...) and not a bare 1fr: `1fr` means minmax(AUTO, 1fr), so the side with three buttons grows
      its own track past its fair share and shoves the orb off centre — measured at 8px before this. With a 0
      floor the two side tracks are always equal, so the orb is centred on the SCREEN by construction, and an
@@ -213,7 +221,7 @@ html.zm-kbd[data-kbd="sheet"] .zm-sheet.open { top: var(--zm-vvt, 0px); bottom: 
    length can read two, and a third would cover the card it is describing. */
 .zm-cap {
   position: fixed; left: 10px; right: 10px; z-index: 55;
-  bottom: calc(var(--dock-h) + env(safe-area-inset-bottom) + 8px);
+  bottom: calc(var(--dock-h) + var(--zm-safe-b) + 8px);
   padding: 9px 13px; border-radius: 13px;
   background: rgba(6, 10, 16, .74);
   -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
@@ -233,14 +241,14 @@ html.zm-kbd[data-kbd="sheet"] .zm-sheet.open { top: var(--zm-vvt, 0px); bottom: 
    main.js also makes the sheets mutually exclusive, and the Android back button closes the top-most one. */
 .zm-sheet {
   position: fixed; left: 0; right: 0; z-index: 70;
-  bottom: calc(var(--dock-h) + env(safe-area-inset-bottom));
+  bottom: calc(var(--dock-h) + var(--zm-safe-b));
   max-height: var(--zm-sheet-max);
   display: flex; flex-direction: column;
   background: var(--hb-bg); border-top: 1px solid var(--hb-line);
   border-radius: var(--zm-r) var(--zm-r) 0 0;
   box-shadow: var(--hb-shadow-2);
   /* Slid down by its own height PLUS the dock it sits on, or its lower edge would peek above the bar while closed. */
-  transform: translateY(calc(101% + var(--dock-h) + env(safe-area-inset-bottom)));
+  transform: translateY(calc(101% + var(--dock-h) + var(--zm-safe-b)));
   transition: transform .26s cubic-bezier(.22, .9, .3, 1);
 }
 .zm-sheet.open { transform: none; }
@@ -261,7 +269,13 @@ html.zm-kbd[data-kbd="sheet"] .zm-sheet.open { top: var(--zm-vvt, 0px); bottom: 
 }
 
 /* ---------- CHAT sheet ---------- */
-.zm-chat { height: var(--zm-sheet-max); }
+/* The chat is a SCREEN, not a sheet (operator, 2026-11-10: «toda la pantalla dedicada al chat como si fuera una
+   pantalla única»): from the top edge (under the status bar, padded by the safe area) down to the dock, which stays
+   — the orb and ⏻ are never more than one tap away. It fades in place instead of sliding up from the bottom. */
+.zm-chat { top: 0; max-height: none; border: 0; border-radius: 0; box-shadow: none;
+  padding-top: env(safe-area-inset-top); transform: none; opacity: 0; visibility: hidden; pointer-events: none;
+  transition: opacity .18s, visibility 0s .18s; }
+.zm-chat.open { opacity: 1; visibility: visible; pointer-events: auto; transition: opacity .18s; }
 .zm-msgs {
   flex: 1 1 auto; min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain; padding: 12px; display: flex; flex-direction: column; gap: 9px;

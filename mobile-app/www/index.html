@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>Zaelar</title>
+<!-- Bundled page, shown only when the engine's origin cannot be loaded (Capacitor `server.errorPath`).
+     No words beyond the name: user-facing text lives in the engine's i18n packs, which are unreachable here. -->
+<style>
+  html, body { margin: 0; height: 100%; background: #0a0f16; color: #e6edf6;
+    font-family: -apple-system, system-ui, sans-serif; }
+  main { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; }
+  h1 { font-weight: 300; letter-spacing: .32em; font-size: 28px; margin: 0; }
+  button { background: none; border: 1px solid #2a3646; color: #9fb3c8; border-radius: 999px;
+    width: 56px; height: 56px; font-size: 26px; }
+</style>
+<script src="origin.js"></script>
+</head>
+<body>
+<main>
+  <h1>ZAELAR</h1>
+  <button aria-label="Retry" onclick="location.replace((window.ZAELAR_ORIGIN || '') + '/m')">↻</button>
+</main>
+</body>
+</html>

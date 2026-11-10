@@ -79,7 +79,7 @@ def test_typing_in_a_card_lays_the_deck_over_the_visible_part_and_steps_the_dock
     st = _state(page)
     assert st["kbd"] and st["where"] == "deck" and st["dock"] == "none", st
     assert st["deckH"] == H - KEYBOARD, st
-    assert st["sheet"]["top"] > 0, st            # a sheet is not touched by a field in a card
+    assert st["sheet"]["h"] != H - KEYBOARD, st   # a sheet is not touched by a field in a card (the chat starts at top 0)
 
 
 def test_typing_in_the_chat_sheet_lays_the_sheet_over_the_visible_part_and_steps_the_dock_aside(page):
