@@ -34,7 +34,7 @@ export function os() {
   return "desktop";
 }
 
-export const installed = () =>
+export const installed = () => globalThis.Capacitor?.isNativePlatform?.() === true ||   // the native app (V2-870)
   (typeof matchMedia === "function" && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
 
 export const supported = () =>
