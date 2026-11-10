@@ -45,6 +45,17 @@ def test_a_sleeping_tab_sends_nothing(rel, guard):
     assert guard in (FRONT / rel).read_text(encoding="utf-8"), f"{rel} reaches the server while the tab sleeps"
 
 
+def test_an_open_the_tab_decided_says_it_is_a_person():
+    """The edge of a hosted deployment starts a stopped engine for a navigation or for `wake=1`, never for a stream the
+    browser retries on its own. The mark is set only on the opens presence.js decides; the boot open has none."""
+    src = (FRONT / "services/sse.js").read_text(encoding="utf-8")
+    assert '(wake ? "&wake=1" : "")' in src, "a presence-driven open must carry wake=1"
+    assert "open: (o) => openSSE(desktop, o)" in src, "presence.js's open options must reach the stream"
+    api = Path("server/voice_api.py").read_text(encoding="utf-8")
+    assert 'wake: str = ""' in api and 'if wake == "1":' in api and "_screens.touched(dev)" in api, (
+        "a gesture that reopened the stream is input: the idle stop's unattended-wake grace ends with it")
+
+
 def test_the_only_event_streams_are_the_app_one_and_the_debug_panel():
     """A new `EventSource` is a new door back into a stopped engine: it goes through presence.js or is named here."""
     hits = sorted(str(p.relative_to(FRONT)) for p in FRONT.rglob("*.js")
