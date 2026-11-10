@@ -72,6 +72,13 @@ def reading(brief) -> dict:
             "stop_errand": [stop, round(stop_c, 3)]}
 
 
+def in_play(brief) -> bool:
+    """Is the escalate verdict at the licence this turn? Below it the rule has nothing to weigh."""
+    from nucleo.turn import verdicts as _v
+    esc, conf = _answer(brief, "escalate_or_inline")
+    return esc == "escalate" and conf >= _v.LICENCE
+
+
 def would(brief, *, model_calls=(), flow_as: str = "", model_wrote: bool = False, variant: str = "a") -> dict:
     """What the one rule decides for this turn. `model_wrote`: the model wrote words of its own this turn (said or held).
 
@@ -124,6 +131,9 @@ def shadow(emit, *, at: str, brief, escalate_req: dict | None, model_calls=(), f
         wb = would(brief, model_calls=model_calls, flow_as=flow_as, model_wrote=wrote, variant="b")
         d = did(escalate_req, model_calls=model_calls, flow_as=flow_as, launched=launched, words_said=words_said,
                 worker=str(worker or ""))
+        if not in_play(brief):   # no escalate verdict at the licence: the rule touches nothing, the turn's own path stands
+            for x in (w, wb):
+                x.update(route=d["route"], open_new=d["open_new"])
         extra = {"cat": "flash", "at": at, "turn_id": str(_trace.current() or ""),
                  "call_id": str((brief or {}).get("_call_id") or ((_peek(brief) or {}).get("_call_id") or "")),
                  **reading(brief), "flow_as": str(flow_as or ""), "model_calls": calls, "words_said": bool(words_said), "model_wrote": wrote,
