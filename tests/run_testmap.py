@@ -5166,6 +5166,10 @@ DOMAINS: list[dict] = [
                                  "the native plugin only inside the app, the Web API in a browser, a refusal a value, "
                                  "stop() clears the native watch (V2-870)", "ch": UNIT,
             "paths": ["tests/browser/unit/mobile/test_the_screen_is_a_sensor.py"]},
+        {"id": "4.439", "title": "The iOS app carries what App Review reads: Info.plist keys (encryption, category, "
+                                 "full screen, permission sentences, versions from the build), the privacy manifest "
+                                 "(no tracking, the data the shell sends) and the entitlements template (V2-870)", "ch": UNIT,
+            "paths": ["tests/infrastructure/unit/test_the_ios_app_carries_its_store_manifests.py"]},
         {"id": "4.272", "title": "A session restart takes the microphone back instead of asking again — stop() parks the "
                                  "stream warm for seconds, LiveKit's disconnect no longer kills it, start() reuses it "
                                  "with the same constraints (iPhone permission sheet on every reconnect)", "ch": UNIT,

@@ -4,10 +4,13 @@
   "version": "0.1.0",
   "description": "Native companion: the engine's /m shell in a Capacitor WebView (V2-870).",
   "scripts": {
-    "sync": "cap sync ios",
+    "sync": "sh scripts/version.sh && cap sync ios",
     "ios:open": "cap open ios",
     "ios:run": "cap run ios",
-    "ios:device": "sh scripts/ios-device.sh"
+    "ios:device": "sh scripts/ios-device.sh",
+    "icons": "../.venv/bin/python scripts/icons.py",
+    "ios:archive": "sh scripts/ios-archive.sh",
+    "ios:upload": "sh scripts/ios-upload.sh"
   },
   "dependencies": {
     "@capacitor/app": "7.1.2",

@@ -1,0 +1,74 @@
+"""V2-870 — the iOS app carries what App Review reads: Info.plist keys, the privacy manifest and the entitlements.
+
+Parsed with plistlib (and `plutil -lint` where it exists, i.e. on a Mac): a manifest that does not parse is refused at
+upload, and a missing key is a rejection that arrives days later. The entitlements are a TEMPLATE on purpose (the host
+is deployment data and a personal team cannot sign Associated Domains), so its placeholder must survive.
+"""
+from __future__ import annotations
+
+import plistlib
+import re
+import shutil
+import subprocess
+from pathlib import Path
+
+import pytest
+
+APP = Path(__file__).resolve().parents[3] / "mobile-app" / "ios" / "App"
+INFO = APP / "App" / "Info.plist"
+PRIVACY = APP / "App" / "PrivacyInfo.xcprivacy"
+ENTITLEMENTS = APP / "App" / "App.entitlements.template"
+PBXPROJ = APP / "App.xcodeproj" / "project.pbxproj"
+
+
+def _plist(p: Path) -> dict:
+    return plistlib.loads(p.read_bytes())
+
+
+@pytest.mark.parametrize("path", [INFO, PRIVACY, ENTITLEMENTS])
+def test_every_manifest_parses(path: Path) -> None:
+    assert isinstance(_plist(path), dict)
+    if shutil.which("plutil"):
+        r = subprocess.run(["plutil", "-lint", str(path)], capture_output=True, text=True)
+        assert r.returncode == 0, r.stdout + r.stderr
+
+
+def test_info_plist_answers_what_review_asks() -> None:
+    info = _plist(INFO)
+    assert info["CFBundleDisplayName"] == "Zaelar"
+    assert info["ITSAppUsesNonExemptEncryption"] is False
+    assert info["UIRequiresFullScreen"] is True
+    assert info["LSApplicationCategoryType"] == "public.app-category.productivity"
+    assert info["UISupportedInterfaceOrientations"] == ["UIInterfaceOrientationPortrait"]
+    for key in ("NSMicrophoneUsageDescription", "NSCameraUsageDescription", "NSLocationWhenInUseUsageDescription"):
+        assert info.get(key, "").strip(), f"{key} is missing: iOS kills the app when the permission is first asked"
+    assert info["CFBundleShortVersionString"] == "$(MARKETING_VERSION)"
+    assert info["CFBundleVersion"] == "$(CURRENT_PROJECT_VERSION)"
+    assert "UIBackgroundModes" not in info, "no background mode until background voice ships (review asks why)"
+
+
+def test_the_project_targets_the_iphone_and_is_versioned_by_the_script() -> None:
+    pbx = PBXPROJ.read_text()
+    families = set(re.findall(r"TARGETED_DEVICE_FAMILY = \"?([^;\"]+)\"?;", pbx))
+    assert families and families <= {"1", "1,2"}, families   # iPhone now; iPad joins the same target later
+    assert all(re.fullmatch(r"\d+(\.\d+){0,2}", v) for v in re.findall(r"CURRENT_PROJECT_VERSION = ([^;]+);", pbx))
+    assert "PrivacyInfo.xcprivacy in Resources" in pbx, "the privacy manifest must be bundled, not just present"
+
+
+def test_the_privacy_manifest_declares_no_tracking_and_what_the_shell_sends() -> None:
+    p = _plist(PRIVACY)
+    assert p["NSPrivacyTracking"] is False and p["NSPrivacyTrackingDomains"] == []
+    assert p["NSPrivacyAccessedAPITypes"] == []
+    kinds = {d["NSPrivacyCollectedDataType"] for d in p["NSPrivacyCollectedDataTypes"]}
+    assert kinds >= {"NSPrivacyCollectedDataTypeEmailAddress", "NSPrivacyCollectedDataTypeAudioData",
+                     "NSPrivacyCollectedDataTypeOtherUserContent", "NSPrivacyCollectedDataTypeCoarseLocation"}
+    for d in p["NSPrivacyCollectedDataTypes"]:
+        assert d["NSPrivacyCollectedDataTypeTracking"] is False
+        assert d["NSPrivacyCollectedDataTypePurposes"] == ["NSPrivacyCollectedDataTypePurposeAppFunctionality"]
+
+
+def test_the_entitlements_are_a_template_without_push_yet() -> None:
+    e = _plist(ENTITLEMENTS)
+    assert e["com.apple.developer.associated-domains"] == ["applinks:__APP_LINKS_HOST__",
+                                                           "webcredentials:__APP_LINKS_HOST__"]
+    assert "aps-environment" not in e, "native push brings its own entitlement with its own step"
