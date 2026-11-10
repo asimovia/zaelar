@@ -4709,7 +4709,7 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/agent_headless/unit/test_an_errand_is_born_with_the_end_state_the_brief_read.py"]},
         {"id": "2.885", "title": "Stopping EVERY running errand needs the brief's sure stop_all: anything less stops the one his words name or asks which, never a word in his sentence (refactor2710-06 T-03)",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_stopping_every_errand_needs_a_sure_verdict.py"]},
-        {"id": "2.884", "title": "An errand asks before it starts by its class (the brief's errand_class, the money vocabulary only without a verdict), through consent.decide_act: money and accounts ask, his yes clears it, his standing never refuses (refactor2710-06 T-03)",
+        {"id": "2.884", "title": "An errand asks before it starts by its class (the brief's errand_class, the money vocabulary only without a verdict), through consent.decide_act: money and accounts ask, his yes clears it, his standing never refuses (refactor2710-06 T-03); V2-873: a CRITICAL class asks at birth only on a SURE verdict (`verdicts.VETO`) — read unsure (0.51 «open the best deal») the errand starts and money that really leaves is asked at its exit",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/test_an_errand_asks_first_by_its_class.py"]},
         {"id": "2.883", "title": "Which errand his words are for is the brief's errand_target, read asymmetrically: agreeing runs cluster_send / send_to_worker / set_cluster_objective, a sure contrary verdict drops it, an unsure one asks, no verdict keeps today's route (refactor2710-06 T-03)",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/test_his_words_for_an_errand_are_read_by_the_brief.py"]},
