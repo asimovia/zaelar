@@ -55,6 +55,13 @@ def owed_due(now: int, limit: int = 20) -> list[dict]:
     return [dict(r) for r in rows]
 
 
+def owed_next_try(after: int) -> int | None:
+    """The earliest retry instant of an owed notice still ahead of `after`, or None."""
+    row = _d().query_one("SELECT MIN(next_try_at) AS t FROM notices WHERE state='owed' AND next_try_at IS NOT NULL "
+                         "AND next_try_at>?", (int(after),))
+    return int(row["t"]) if row is not None and row["t"] is not None else None
+
+
 def owed_all(limit: int = 20) -> list[dict]:
     rows = _d().query("SELECT * FROM notices WHERE state='owed' ORDER BY created_at LIMIT ?", (int(limit),))
     return [dict(r) for r in rows]

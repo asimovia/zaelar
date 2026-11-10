@@ -85,7 +85,14 @@ def get(rule_id: str) -> dict | None:
 
 
 def _invalidate() -> None:
+    """Every write ends here: the cache is dropped, and the wake report is marked stale — a rule that subscribes to an
+    inbound channel can turn the engine into a listener (`nucleo/pulse/listeners.py`)."""
     _cache.update(version=None, rows=None)
+    try:
+        from nucleo.pulse import wake
+        wake.note_changed()
+    except Exception as e:  # noqa: BLE001 — the rule is written; only the wake report may lag its recheck
+        __import__("logging").getLogger("zaelar.rules").debug(f"rules: wake note failed: {e!r}")
 
 
 _COLS = "id, scope, kind, key, value, except_scopes, source, text, created_at, active, until, origin"

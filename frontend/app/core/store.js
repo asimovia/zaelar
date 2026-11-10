@@ -84,6 +84,9 @@ export const [micBlocked, setMicBlocked]   = createSignal({ show: false, msg: ""
 // Another tab or a remote driver holds the single voice session (V2-776, 2026-09-27): this tab is not broken,
 // it is being CONTROLLED FROM ELSEWHERE, and the ⏻ says so in blue instead of the amber of a fault.
 export const [remoteHeld, setRemoteHeld] = createSignal(false);  // 🚫 ring over the orb
+// The engine went to sleep (`engine.sleep`, services/presence.js): `face` "sleep" darkens the whole screen
+// (components/DormantVeil.js) and `waking` says a gesture asked it back and the stream has not answered yet.
+export const [dormant, setDormant] = createSignal({ face: "", waking: false });
 export const [micLevel, setMicLevel]       = createSignal(0);               // true mic RMS (0..1) for the meter
 
 // ── attention gate (V2-016 + 2026-09-09): the 🤖 mode + a real-time "I'm listening to YOU" ring ─────────────
@@ -611,10 +614,6 @@ export function beginLangOnboardLoading() {
 // on a phone — the desktop has a top bar and a floating launcher instead of a bottom menu.
 export const [mobileMenuOpen, setMobileMenuOpen]         = createSignal(false);   // ☰ sheet: account · profile · feedback · settings
 export const [mobileSettingsOpen, setMobileSettingsOpen] = createSignal(false);   // the small settings sheet, opened FROM the menu
-// The voice lock (server/livekit_api.py: ONE live voice session per machine). When the phone finds it HELD by
-// another surface, it must not fight, retry in a loop, or paint itself live: it says so and offers to take the
-// voice over. null = no conflict. See mobile/app/main.js.
-export const [mobileVoiceHeld, setMobileVoiceHeld]       = createSignal(false);
 // The phone's feedback form (inline in MenuSheet), opened from its row OR from the dock's feedback button.
 export const [mobileFeedbackOpen, setMobileFeedbackOpen] = createSignal(false);
 

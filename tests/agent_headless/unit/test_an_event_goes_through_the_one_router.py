@@ -45,9 +45,11 @@ def _db(tmp_path, monkeypatch):
     mememb.reset()
 
 
-def _mail(sender: str = ADDR) -> dict:
+def _mail(sender: str = ADDR, mid: str = "m1") -> dict:
+    """One arriving mail. Two different items carry two message ids: the same id twice is a RE-DELIVERY, which the
+    pump routes once (`nucleo/events/once.py`)."""
     return events.of_message({"platform": "email", "senderId": sender, "chatId": sender, "senderName": "ACME",
-                              "subject": "Invoice", "body": "Your November invoice: $91.10", "messageId": "m1"})
+                              "subject": "Invoice", "body": "Your November invoice: $91.10", "messageId": mid})
 
 
 def _subscribe(chat=lambda s, u: SHAPED) -> str:
@@ -137,7 +139,7 @@ def test_the_stream_is_one_recurring_row_that_rests_and_carries_the_mandate(monk
     assert row["mode"] == "recurring" and row["kind"] == "stream" and row["origin"] == "event"
     ctx = launched[0]
     assert ctx["task_uid"] == "stream-mail" and ctx["mandate"]["may"] == ["schedule"] and "resume" not in ctx   # the one grant vocabulary (V2-857)
-    asyncio.run(pump.publish(_mail()))
+    asyncio.run(pump.publish(_mail(mid="m2")))
     assert len(launched) == 1, "one item at a time: the second waits for the stream to rest"
     ledger.store().task_patch("stream-mail", session_id="sess-1")
     from nucleo import circuit

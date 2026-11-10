@@ -115,6 +115,7 @@ class OrchestratorLoop(workers.WorkersPulse, flows.FlowsPulse, due.DuePulse):
         return self._task is not None and not self._task.done()
 
     async def _run(self) -> None:
+        await self._after_rung(on_load=True)   # V2-872 F2 — every origin catches up its next job before the first beat
         while not self._stop:
             try:
                 await self.tick()
@@ -133,6 +134,7 @@ class OrchestratorLoop(workers.WorkersPulse, flows.FlowsPulse, due.DuePulse):
         now = time.time()
         self._ticks += 1
         _t0 = time.monotonic()
+        self._note_resume(now, _t0)          # FIRST: every stop decision below reads a resume as a resume
         await self._supervise_workers(now)
         self._supervise_memory(now)          # V2-831 T-27 — pressure pauses the newest worker, room resumes it
         await self._supervise_confirms(now)
@@ -141,12 +143,32 @@ class OrchestratorLoop(workers.WorkersPulse, flows.FlowsPulse, due.DuePulse):
         await self._supervise_errands(now)
         await self._supervise_stale_flows(now)
         await self._fire_due(now)
+        await self._after_rung()
         await self._report_wake(now)
         await self._maybe_spark(now)
         await self._maybe_consolidate(now)
         self._close_idle_session()
         self._maybe_idle_stop(now)
         _emit("loop.tick", {"ts": now, "n": self._ticks, "ms": round((time.monotonic() - _t0) * 1000)})
+
+    async def _after_rung(self, on_load: bool = False) -> None:
+        """V2-872 F2 — what an origin does once one of its jobs rang (`scheduler.AFTER_RUNG`: a series' notice hands
+        over to the next occurrence), run AFTER the delivery and before the wake report, so the next instant is in the
+        scheduler before the engine may sleep. `on_load` runs every declared handler once, at the first beat: the heal
+        for a notice that rang in a process that stopped before handing over. Off the loop (a widget's file lock)."""
+        try:
+            origins = set(_scheduler.AFTER_RUNG) if on_load else _scheduler.take_rung()
+        except Exception as e:  # noqa: BLE001
+            logger.debug(f"loop: rung origins unreadable: {e!r}")
+            return
+        import importlib
+        for origin in sorted(origins):
+            target = _scheduler.AFTER_RUNG.get(origin, "")
+            try:
+                mod, _, fn = target.partition(":")
+                await asyncio.to_thread(getattr(importlib.import_module(mod), fn))
+            except Exception as e:  # noqa: BLE001 — the next beat of that origin's own tick catches it up
+                logger.warning(f"loop: after a {origin} job rang, {target} failed: {e!r}")
 
     def _close_idle_session(self) -> None:
         """Closes the observability session when nothing real has happened in it for a while
@@ -161,9 +183,19 @@ class OrchestratorLoop(workers.WorkersPulse, flows.FlowsPulse, due.DuePulse):
         except Exception:
             pass
 
+    def _note_resume(self, now: float, mono: float) -> None:
+        """Whether this process was suspended since the last beat (`nucleo/idle_stop.note_tick`). It runs before
+        anything else on the beat: a sleep request whose answer never arrived is decided at the end of this same beat,
+        and a host that froze and resumed must never be read as a host that refused to freeze."""
+        try:
+            from nucleo import idle_stop
+            idle_stop.note_tick(now, mono, self.tick_s)
+        except Exception as e:  # noqa: BLE001
+            logger.debug(f"loop: resume check failed: {e!r}")
+
     def _maybe_idle_stop(self, now: float) -> None:
         """Offers the pulse to the idle stop (`nucleo/idle_stop.py`): off unless the deployment sets
-        `ZAELAR_IDLE_STOP_MIN`, and when on it only ever asks the server to exit cleanly."""
+        `ZAELAR_IDLE_STOP_MIN`, and when on it asks the deployment to suspend this host or the server to exit cleanly."""
         try:
             from nucleo import idle_stop
             idle_stop.maybe_stop(now)

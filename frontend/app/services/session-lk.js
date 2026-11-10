@@ -219,7 +219,7 @@ export async function claimVoice(reason = "hand") {
   const r = await api.sessionSteal(SID);
   if (!r || r.ok === false) return false;
   if (_blockedRetry) { clearTimeout(_blockedRetry); _blockedRetry = null; }
-  store.setMicBlocked({ show: false, msg: "" }); store.setRemoteHeld(false); store.setMobileVoiceHeld(false);
+  store.setMicBlocked({ show: false, msg: "" }); store.setRemoteHeld(false);
   api.uiEvent("voice:claim", { reason });
   if (!starting) start();
   return true;

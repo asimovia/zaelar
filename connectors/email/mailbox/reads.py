@@ -1,5 +1,19 @@
 """The INBOX reads (read/unread, new, scrollback, activity): BODY.PEEK, never raising upward. Mixed into `Mailbox`."""
+import logging
+import re
+
 from .parse import parse_message
+
+_log = logging.getLogger("zaelar.email")
+
+
+def _logout(im) -> None:
+    if im is None:
+        return
+    try:
+        im.logout()
+    except Exception as e:  # noqa: BLE001 — the read is done; a failed logout only leaves the server to time it out
+        _log.debug(f"Email: IMAP logout failed: {e!r}")
 
 
 def _fetch_parsed(im, uid: str, media_dir: str | None) -> dict | None:
@@ -55,6 +69,22 @@ class _ReadsMixin:
                 im.logout()
             except Exception:
                 pass
+
+    def inbox_validity(self) -> int | None:
+        """INBOX's `UIDVALIDITY` (the epoch its UIDs are numbered in), or None when the server did not say — then no
+        cursor applies and the connector seeds as on a first connect."""
+        raw, im = "", None
+        try:
+            im = self._imap()
+            st, data = im.status("INBOX", "(UIDVALIDITY)")
+            if st == "OK" and data and data[0]:
+                raw = data[0].decode() if isinstance(data[0], bytes) else str(data[0])
+        except Exception as e:  # noqa: BLE001
+            _log.info(f"Email: INBOX UIDVALIDITY unreadable ({type(e).__name__}) — no cursor this connect")
+        finally:
+            _logout(im)
+        m = re.search(r"UIDVALIDITY\s+(\d+)", raw, re.I)
+        return int(m.group(1)) if m and int(m.group(1)) > 0 else None
 
     def all_uids(self) -> set[str]:
         """All current INBOX UIDs. Kept as the fail-soft floor for `inbox_split`."""

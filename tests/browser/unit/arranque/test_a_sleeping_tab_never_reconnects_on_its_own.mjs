@@ -62,7 +62,7 @@ const MIN = 60000, NOW = 1_800_000_000_000;
   assert.equal(P.asleep(), true, "the engine's goodnight puts the tab to sleep");
   assert.equal(closes, 1, "…and closes its stream");
   assert.equal(orb.style.opacity, "0.35", "the orb shows the dormant state");
-  assert.equal(pill.textContent, "orb.asleep");
+  assert.equal(pill.textContent, "", "the engine's sleep has the full-screen veil, not the tab's pill");
 
   P.onStreamError();
   assert.equal(timers.length, 0, "a sleeping tab schedules no reconnect");
@@ -71,6 +71,7 @@ const MIN = 60000, NOW = 1_800_000_000_000;
 
   listeners.pointerdown[0]();
   assert.equal(P.asleep(), false, "the first gesture wakes it");
+  P.onStreamOpen();
   assert.equal(opens, 2, "…and reconnects");
   assert.equal(wakes, 2, "…as a person");
   assert.equal(orb.style.opacity, "");
@@ -82,6 +83,7 @@ const MIN = 60000, NOW = 1_800_000_000_000;
   P.onStreamError();
   assert.equal(timers.length, 0, "a hidden tab never reconnects");
   assert.equal(P.asleep(), true);
+  assert.equal(pill.textContent, "orb.asleep", "a tab asleep on its own says so under the orb");
   globalThis.document.hidden = false;
   listeners.keydown[0]();
   assert.equal(P.asleep(), false, "a key is a gesture too");
