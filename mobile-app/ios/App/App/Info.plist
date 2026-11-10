@@ -37,7 +37,7 @@
 		<string>UIInterfaceOrientationPortrait</string>
 	</array>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Zaelar listens when you talk to it. Nothing is recorded without you.</string>
+	<string>Zaelar listens only while voice is on, when you talk to it.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Zaelar uses your location only when an app or a request of yours needs it.</string>
 	<key>UIStatusBarStyle</key>
