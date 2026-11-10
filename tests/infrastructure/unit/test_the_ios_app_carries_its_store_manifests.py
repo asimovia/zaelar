@@ -47,9 +47,10 @@ def test_info_plist_answers_what_review_asks() -> None:
     assert "UIBackgroundModes" not in info, "no background mode until background voice ships (review asks why)"
 
 
-def test_the_project_is_iphone_only_and_versioned_by_the_script() -> None:
+def test_the_project_targets_the_iphone_and_is_versioned_by_the_script() -> None:
     pbx = PBXPROJ.read_text()
-    assert set(re.findall(r"TARGETED_DEVICE_FAMILY = ([^;]+);", pbx)) == {"1"}
+    families = set(re.findall(r"TARGETED_DEVICE_FAMILY = \"?([^;\"]+)\"?;", pbx))
+    assert families and families <= {"1", "1,2"}, families   # iPhone now; iPad joins the same target later
     assert all(re.fullmatch(r"\d+(\.\d+){0,2}", v) for v in re.findall(r"CURRENT_PROJECT_VERSION = ([^;]+);", pbx))
     assert "PrivacyInfo.xcprivacy in Resources" in pbx, "the privacy manifest must be bundled, not just present"
 
