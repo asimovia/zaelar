@@ -56,18 +56,19 @@ def test_the_project_targets_the_iphone_and_is_versioned_by_the_script() -> None
     assert "PrivacyInfo.xcprivacy in Resources" in pbx, "the privacy manifest must be bundled, not just present"
 
 
-def test_the_privacy_manifest_declares_no_tracking_and_what_the_shell_sends() -> None:
+def test_the_privacy_manifest_declares_no_tracking_and_the_store_labels() -> None:
     p = _plist(PRIVACY)
     assert p["NSPrivacyTracking"] is False and p["NSPrivacyTrackingDomains"] == []
-    assert p["NSPrivacyAccessedAPITypes"] == []
-    linked = {d["NSPrivacyCollectedDataType"]: d["NSPrivacyCollectedDataTypeLinked"] for d in p["NSPrivacyCollectedDataTypes"]}
-    assert linked == {"NSPrivacyCollectedDataTypeEmailAddress": True, "NSPrivacyCollectedDataTypeAudioData": True,
-                      "NSPrivacyCollectedDataTypeOtherUserContent": True,
-                      "NSPrivacyCollectedDataTypeCoarseLocation": False,
-                      "NSPrivacyCollectedDataTypePreciseLocation": False}, linked   # the store labels, exactly
-    for d in p["NSPrivacyCollectedDataTypes"]:
-        assert d["NSPrivacyCollectedDataTypeTracking"] is False
-        assert d["NSPrivacyCollectedDataTypePurposes"] == ["NSPrivacyCollectedDataTypePurposeAppFunctionality"]
+    assert p["NSPrivacyAccessedAPITypes"] == [{"NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+                                               "NSPrivacyAccessedAPITypeReasons": ["CA92.1"]}]
+    kinds = {d["NSPrivacyCollectedDataType"].removeprefix("NSPrivacyCollectedDataType"): d
+             for d in p["NSPrivacyCollectedDataTypes"]}
+    assert set(kinds) == {"EmailAddress", "Name", "PreciseLocation", "Contacts", "AudioData", "OtherUserContent",
+                          "CustomerSupport", "SearchHistory", "UserID", "ProductInteraction", "OtherDiagnosticData"}
+    for name, d in kinds.items():
+        assert d["NSPrivacyCollectedDataTypeLinked"] is True, name
+        assert d["NSPrivacyCollectedDataTypeTracking"] is False, name
+        assert "NSPrivacyCollectedDataTypePurposeAppFunctionality" in d["NSPrivacyCollectedDataTypePurposes"], name
 
 
 def test_the_entitlements_are_a_template_without_push_yet() -> None:

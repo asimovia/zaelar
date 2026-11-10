@@ -27,7 +27,6 @@ import { t } from "../../../app/core/i18n.js?v=1";
 import * as push from "../../../app/services/push.js?v=1";
 import * as consent from "./ai-consent.js?v=1";
 import { inNativeApp } from "../../../app/core/native.js?v=1";
-import { accountLink } from "../../../app/core/account-link.js?v=1";
 
 function Toggle(label, get, onToggle) {
   return h("button", { class: () => "zm-row zm-toggle" + (get() ? " on" : ""), onClick: onToggle },
@@ -120,15 +119,10 @@ export function SettingsSheet() {
       // surface this shell does not render would be a switch that does nothing visible.
 
       // ── V2-870, NATIVE APP ONLY: the yes to the AI services, withdrawable here (withdrawing ends this screen's
-      //    voice; nothing reaches the AI services again until a new yes), and the way to delete the account — the
-      //    account page in the system browser (`_blank` leaves the app), at its #delete section.
+      //    voice; nothing reaches the AI services again until a new yes).
       () => inNativeApp() ? Toggle(() => t("consent.settings_label"), () => consent.accepted(),
         () => (consent.accepted() ? consent.decide(false).then((ok) => { if (ok && session.stop) session.stop(); })
                                   : consent.setSheetOpen(true))) : null,
-      () => inNativeApp() && accountLink(store.accountUrl()) ? h("button", {
-        class: "zm-row", onClick: () => window.open(accountLink(store.accountUrl(), "delete"), "_blank", "noopener"),
-      }, h("span", { class: "zm-row-t" }, h("b", null, () => t("mobile.delete_account")),
-        h("small", null, () => t("mobile.delete_account_sub")))) : null,
 
       // ── DELEGATED, not hidden.
       h("button", {
