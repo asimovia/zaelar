@@ -88,8 +88,10 @@ status bar; a typed line reaches the engine and the WebView joins the LiveKit ro
 A sign-in page on another host renders in-page when listed in `ZAELAR_ALLOW_NAVIGATION`. Not verifiable in the
 simulator: the microphone and the audio route — that is a real-device step.
 
-Known: with the keyboard up, WKWebView scrolls the whole document, so the top of a sheet slides under the status bar
-until the keyboard closes.
+Shell geometry tuned on the simulator for the app (and the installed PWA, which is the same shell): the dock keeps
+only part of the home-indicator inset (`--zm-safe-b`), so its icons sit where a native tab bar puts them; the chat
+is a full screen from the top edge to the dock, not a bottom sheet. With the chat's keyboard up the chat fills the
+visible area above it.
 
 ## Not here yet
 
