@@ -110,7 +110,21 @@ export const getSettings = () => fetch("/api/settings").then(json);
 export const saveSettings = (payload) => postJSON("/api/settings", payload).then(json);
 
 // ---- diagnostics ----
-export const clientLog = (label, o) => { try { postJSON("/api/client-log", { label, dev: DEVICE, ...o }); } catch (_) {} };
+// A diagnostic must never feed itself: a failed POST here is a rejected promise, and the page's own
+// `unhandledrejection` handler reports rejections through THIS call — without the `.catch` one failed request
+// became a loop of reports that took every connection of the tab. A storm of the same error is one fact, so the
+// reports are also capped per minute.
+const _clientLogBudget = { since: 0, sent: 0 };
+export const CLIENT_LOG_PER_MIN = 20;
+export const clientLog = (label, o) => {
+  try {
+    const now = Date.now();
+    if (now - _clientLogBudget.since >= 60000) { _clientLogBudget.since = now; _clientLogBudget.sent = 0; }
+    if (_clientLogBudget.sent >= CLIENT_LOG_PER_MIN) return;
+    _clientLogBudget.sent += 1;
+    postJSON("/api/client-log", { label, dev: DEVICE, ...o }).catch(() => {});
+  } catch (_) {}
+};
 
 // ---- observabilidad del frontend (V2-039): audita lo que TOCA el operador — iconos del orbe/TopBar (kind "ui") y
 // geometría de widgets a mano (mover/redimensionar, kind "widget"). Fire-and-forget; el server estampa src="user". ----
