@@ -181,7 +181,9 @@ personal team.
 1. Paid team in Xcode › Settings › Accounts; the app record `com.zaelar.app` created in App Store Connect.
 2. An App Store Connect API key (role App Manager) saved outside the repo; its id, issuer id and `.p8` path in
    `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8`.
-3. If the engine build did not move since the last upload: `IOS_BUILD=<build>.<n>`.
+3. If the engine build did not move since the last upload, pick the next build number and pass `IOS_BUILD=<n>` (or
+   `<build>.<n>`) **on the archive command itself**: `ios:archive` re-runs `version.sh`, so a number set only on
+   `npm run sync` is stamped back to `update/BUILD` and App Store Connect refuses the duplicate.
 4. `APPLE_TEAM_ID=… ZAELAR_ORIGIN=https://… ZAELAR_APP_LINKS_HOST=… ZAELAR_ALLOW_NAVIGATION=… npm run ios:archive`
 5. `ASC_KEY_ID=… ASC_ISSUER_ID=… ASC_KEY_P8=… APPLE_TEAM_ID=… npm run ios:upload`
 6. In App Store Connect: wait for processing, answer the export-compliance question (already answered by the
