@@ -39,7 +39,6 @@
 // always pages. That is the rule a ViewPager and a UIPageViewController apply, and it is what keeps a vertical list
 // scrollable and a map pannable while a swipe across the screen still turns the page. The vertical scroll is never
 // prevented: a finger that commits to going down is the widget's.
-//
 // A CARD IS NEVER UNMOUNTED WHILE PAGING, only hidden. A video that keeps playing behind another card is correct;
 // re-mounting it on every swipe would cut it off mid-sentence.
 // ============================================================================
@@ -50,6 +49,7 @@ import * as store from "../../../app/core/store.js?v=2";
 // V2-792 — the screens service, loaded on first use (same as the desktop host: a host imports no service statically).
 const _screens = () => import("../../../app/services/screens.js?v=1");
 const _device = () => import("../../../app/services/api.js?v=2").then((m) => m.DEVICE).catch(() => "");
+const _sensors = () => import("../../../app/services/device.js?v=1");   // V2-870 P2: ctx.device — the screen's sensors
 import { createEffect } from "../../../app/core/reactive.js?v=2";
 
 const CARD_ANIM_MS = 260;
@@ -720,7 +720,7 @@ export class Deck {
         close: (by) => this.close(w.id, { by: by === "hand" ? "hand" : "card" }),
         // V2-613 — same contract as the desktop host: a synchronous, in-memory translation lookup, never a
         // network call from inside widget.js. Already imported at the top of this file for the shell's own chrome.
-        t: tr,
+        t: tr, device: _sensors,
         get lang() { return store.lang(); },
         // V2-821 — same contract as the desktop host: the scroller is the region the widget declares
         // ([data-hb-scroller], a fixed header above it), else the card's own.

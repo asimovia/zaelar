@@ -35,6 +35,11 @@
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+/* INSIDE THE NATIVE APP (V2-870 §10: the app marks <html class="in-app"> from native code at document start). Controls
+   behave like native ones: no text selection, no long-press callout or link preview on a button. Text stays
+   selectable where it is content — messages, cards, inputs. */
+html.in-app button, html.in-app .zm-dock, html.in-app .zm-sheet-h, html.in-app .zm-pips {
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 html, body { height: 100%; margin: 0; }
 body {
   font-family: var(--sans);

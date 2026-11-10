@@ -14,7 +14,7 @@
  * in-page (e.g. a sign-in page on another host). Any host not listed opens in Safari instead.
  */
 import type { CapacitorConfig } from '@capacitor/cli';
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const origin = (process.env.ZAELAR_ORIGIN || 'http://localhost:43917').replace(/\/+$/, '');
@@ -27,6 +27,8 @@ const allowNavigation = (process.env.ZAELAR_ALLOW_NAVIGATION || '')
 
 // The bundled page (www/index.html) is only shown when the origin cannot be loaded; it needs to know where to retry.
 writeFileSync(join(__dirname, 'www', 'origin.js'), `window.ZAELAR_ORIGIN = ${JSON.stringify(origin)};\n`);
+
+const { version } = JSON.parse(readFileSync(join(__dirname, 'package.json'), 'utf8'));
 
 const config: CapacitorConfig = {
   appId: 'com.zaelar.app', // fixed forever: changing it breaks updates and deep links
@@ -44,6 +46,13 @@ const config: CapacitorConfig = {
     scrollEnabled: true, // the shell's own scrollers need it; Capacitor already turns the WebView bounce off
     limitsNavigationsToAppBoundDomains: false,
     backgroundColor: '#0a0f16',
+    // A hint, never a credential: lets the engine tell the app from a browser (admission stays the session).
+    appendUserAgent: `ZaelarApp/${version} (ios)`,
+  },
+  plugins: {
+    // The WebView shrinks above the keyboard (no document scroll under the status bar); dark keys; the form
+    // accessory bar (‹ › ✓) is hidden by the plugin's default.
+    Keyboard: { resize: 'native', style: 'DARK' },
   },
 };
 
