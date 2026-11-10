@@ -17,6 +17,13 @@ fail() { echo "ios-archive: $*" >&2; exit 1; }
 case "$ZAELAR_ORIGIN" in https://*) ;; *) fail "ZAELAR_ORIGIN must be https for a store build";; esac
 [ -n "${ZAELAR_APP_LINKS_HOST:-}" ] || fail "ZAELAR_APP_LINKS_HOST is not set (the host whose universal links open the app)"
 
+# Optional: an App Store Connect API key lets -allowProvisioningUpdates create the certificate and the profile without
+# an Xcode account signed in (ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8 = path to the .p8 — names only, never values).
+AUTH=""
+if [ -n "${ASC_KEY_P8:-}" ]; then
+  [ -n "${ASC_KEY_ID:-}" ] && [ -n "${ASC_ISSUER_ID:-}" ] || fail "ASC_KEY_P8 is set: ASC_KEY_ID and ASC_ISSUER_ID are needed too"
+  AUTH="-authenticationKeyPath $ASC_KEY_P8 -authenticationKeyID $ASC_KEY_ID -authenticationKeyIssuerID $ASC_ISSUER_ID"
+fi
 ARCHIVE=build/Zaelar.xcarchive
 ENT=ios/App/App/App.entitlements
 OPTS=build/ExportOptions.plist
