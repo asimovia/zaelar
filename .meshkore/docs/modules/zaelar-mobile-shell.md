@@ -310,8 +310,14 @@ The work happens on the engine; what the phone has to be is a place a notice can
   same switch plus «test», and the desktop has it under ⚙ → Notifications.
 
 A deployment that stops idle engines may set `ZAELAR_WAKE_URL` (or `CONTROL_PLANE_URL` + its token → `/wake`):
-`nucleo/pulse/wake.py` reports the next due instant after every schedule change so the process can be started in time.
-Without it, nothing is sent.
+`nucleo/pulse/wake.py` reports ONE wake instant (`{"next_due": <epoch s | null>}`) so the process can be started in
+time. It is the earliest of the scheduler's next job, the pulse's own deadlines still ahead (an errand's expiry, a
+waiting row's deadline, an owed notice's retry) and — only while something LISTENS to an inbound channel (a connected
+channel that can be caught up AND a rule, a waiting row, an errand or a preference that reacts to it,
+`nucleo/pulse/listeners.py`) — the next listen pass on a `listen_every_min` grid. With none of those it is `null`, and a
+job already overdue that the pulse could not fire is left out (it waits for a person). Without the endpoint, nothing
+is sent. How the engine goes to sleep, and how a phone tab sleeps on its own: `zaelar-ops.md` §«Idle stop, sleep and
+wake».
 
 Not covered: a self-hosted engine opened from a phone over plain `http://<lan-ip>` is not a secure origin, so it
 cannot register a service worker or push. iOS shows no action buttons on web notifications: an approval opens the app.
@@ -362,7 +368,9 @@ conversation but what a request does to a screen. The rules, and where each one 
 | **The wake word is per screen.** | By construction: the spotter runs only on a live session with the mic open, and a screen without the voice has neither. |
 
 The registry (`GET /api/screens`) is process memory: open screens (by event stream, `/events?dev=`), visibility
-and last touch (`POST /api/screens/beat`, sent on `visibilitychange` and on a throttled touch), and the voice holder.
+and last touch (`POST /api/screens/beat`, sent on `visibilitychange` and on a throttled touch), presence (the same
+route with `present`: a visible tab with its stream open says a person is connected when the stream opens, when it
+becomes visible and every minute — `services/presence.js`, never while hidden or asleep), and the voice holder.
 A restart forgets it and every screen re-registers on reconnect. A screen whose stream drops stays «open» for
 `ZAELAR_SCREEN_GONE_S` (90 s), so a phone on the metro does not lose its results to the other screen.
 
