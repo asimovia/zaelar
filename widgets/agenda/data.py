@@ -139,6 +139,7 @@ from .system_tasks import system_tasks as _system_tasks  # noqa: F401,E402 — r
 # Relative spoken date/time normalization lives in `when.py` (V2-744); re-exported because `invite.py`,
 # `sweep.py` and the tests reach `data._resolve_date` / `data._resolve_time`.
 from .when import _m2, _resolve_date, _resolve_time, _WEEKDAYS  # noqa: F401,E402 — re-export
+from .spec_call import spec_call  # noqa: F401,E402 — the end state a call owes, as the row keeps it (V2-886)
 
 
 # A meeting carries `attendees`, `status` (confirmed|pending), `location` and `category`; the widget paints hue

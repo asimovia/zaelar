@@ -120,8 +120,10 @@ def bind_sheet(done_when, sheet: str):
 
 
 def render(wid: str, action: str, payload: dict | None) -> dict | None:
-    """The action's postcondition, rendered over this payload, baselines taken. None = nothing declared or
-    nothing renderable."""
+    """The action's postcondition, rendered over this payload as the card stores it (`card_call`), baselines taken.
+    None = nothing declared or nothing renderable."""
+    from nucleo.circuit.card_call import card_call
+    action, payload = card_call(wid, action, payload)
     tpl = template_of(wid, action)
     if tpl is None:
         return None
