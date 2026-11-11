@@ -31,7 +31,7 @@ def words(text: str) -> set[str]:
     """Lower-cased, accent-folded words of at least `MIN_WORD` letters — «Gràcia» and «gracia» are one word."""
     folded = unicodedata.normalize("NFKD", str(text or "").lower())
     folded = "".join(c for c in folded if not unicodedata.combining(c))
-    return {w for w in re.findall(r"[a-z0-9]+", folded) if len(w) >= MIN_WORD}
+    return {w for w in re.findall(r"\w+", folded) if len(w) >= MIN_WORD}   # any alphabet, not only the latin one
 
 
 def named(rows: list[dict], *texts: str, name=lambda r: r.get("title") or r.get("goal") or "") -> dict | None:
