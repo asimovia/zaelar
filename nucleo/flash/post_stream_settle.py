@@ -123,7 +123,7 @@ def bind_the_answer(brief, text: str, *, model_answer: str, worker_acted: dict, 
 async def settle_what_is_pending(*, _ans, _ask_waiting, _auth_pending, _brief, _dialog, _filler_audio, _langs, _prev_pending, _r, _resolve_confirm, _router, _shown_ids, _turn_op_tasks=(), acted, aside, brain, clarify, confirm_state, data_done, emit, escalate_req, had_pending_confirm, llm_metrics, music_req, operator_text, search_req, send, speech, spoken_text, style_fired, text, worker_acted) -> dict:
     if had_pending_confirm and not confirm_state["handled"]:
         try:
-            verdict = _pst._wconfirm.answers_pending(text, _brief)  # V2-878 §4b: declared answers
+            verdict = _pst._wconfirm.answers_pending(text, _brief)
             if verdict:
                 _resolve_confirm(verdict == "yes")
         except Exception:

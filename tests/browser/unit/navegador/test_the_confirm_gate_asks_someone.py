@@ -73,9 +73,10 @@ def test_the_spoken_yes_reaches_the_waiting_click(tasks):
     tid = tasks.create("comprar entradas del teatro")
     tasks.ask(tid, "¿Lo confirmo?")
 
-    got = tasks.answer_from_turn("sí, dale")
+    yes = __import__("nucleo.request.consent_ask", fromlist=["x"]).yes_no()[0]                  # his declared yes (V2-878 §4b)
+    got = tasks.answer_from_turn(yes)
     assert got == {"task_id": tid, "ok": True}
-    assert tasks.take_answer(tid) == "sí, dale"
+    assert tasks.take_answer(tid) == yes
     assert tasks.get(tid)["status"] == "working"          # no longer waiting: the gate can continue
 
 
@@ -85,9 +86,10 @@ def test_a_no_is_also_an_answer(tasks):
     tid = tasks.create("comprar entradas del teatro")
     tasks.ask(tid, "¿Lo confirmo?")
 
-    got = tasks.answer_from_turn("no, déjalo")
+    no = __import__("nucleo.request.consent_ask", fromlist=["x"]).yes_no()[1]
+    got = tasks.answer_from_turn(no)
     assert got == {"task_id": tid, "ok": False}
-    assert tasks.take_answer(tid) == "no, déjalo"
+    assert tasks.take_answer(tid) == no
 
 
 def test_conversation_is_not_an_answer(tasks):
@@ -138,4 +140,4 @@ def test_a_real_question_is_still_answered(tasks):
     """Regression sensitivity: the fix must not disable the path that V2-202 opened."""
     tid = tasks.create("comprar entradas del teatro")
     tasks.ask(tid, "¿Lo confirmo?")
-    assert tasks.answer_from_turn("sí, dale") == {"task_id": tid, "ok": True}
+    assert tasks.answer_from_turn(__import__("nucleo.request.consent_ask", fromlist=["x"]).yes_no()[0]) == {"task_id": tid, "ok": True}

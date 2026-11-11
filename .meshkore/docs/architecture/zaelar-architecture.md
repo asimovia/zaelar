@@ -643,9 +643,11 @@ row and the two answers DECLARED as candidates (`answer_yes` · `answer_no` of t
 verdict picks one (`worker_api_bind`: `#0` yes, `#1` no), the screen shows them as the question's buttons
 (`TaskAsk`), the card's own button (`POST /widgets/{id}/confirm` → `widgets/confirm_answer.py`) answers that same question, and the yes re-runs
 the act through its own door once (`inline_ask.rerun`, `take`). Nothing waits in this process's memory and no word
-list reads the yes before the brief. What still waits in `widgets/confirm.py` is only what has no row: a card's
-delete or restore, a cluster connect or a held cluster send — the in-memory gate and its two readers
-(`confirm_gates`, `classify_reply`) remain for those, and go with their rows.
+list reads the yes before the brief. Since V2-878 §4 every gate question waits on a row (a card's delete or restore,
+a cluster connect or held send, a parked offer, a scheduled notice that asks): `widgets/confirm.py` and
+`dispatch/confirm.py` keep only an index of those rows, several waiting are told apart by the brief's pick (never
+the most recent), and without a pick only a reply that IS one of the row's declared answers decides
+(`consent_ask.declared_answer`) — the yes/no word tables and the hot-path judge are gone.
 
 **Acts outside a widget's data-op use the same door** — `consent.decide_act(class, channel=…, his_yes=…)`, which
 builds the key (`<class>@<channel>`) and calls `decide`. His rules are rows of the rules table read by a cascade
