@@ -17,6 +17,8 @@ import json
 
 import pytest
 
+import widgets.contactos.groups  # noqa: F401 — the directory's lazy imports, bound before the roots move
+import widgets.contactos.model  # noqa: F401
 import widgets.directory  # noqa: F401 — imported before the roots move (the package path follows the roots)
 import widgets.textmatch  # noqa: F401
 from widgets import aliases, paths, registry, runtime
