@@ -228,8 +228,9 @@ async def rerun(uid: str, entry: dict, text: str, choice: int | None = None):
     if retained.get("kind") == "notice":         # a scheduled notice's question (V2-878 §4): his answer ends it
         return __import__("nucleo.pulse.notice_ask", fromlist=["x"]).answered(uid, entry, text)
     if retained.get("kind") == "send":           # a send task's slot (`nucleo/request/send_task`): his answer fills it
-        from nucleo.request import send_task_answer
-        return send_task_answer.answered(uid, entry, text, choice)
+        return __import__("nucleo.request.send_task_answer", fromlist=["x"]).answered(uid, entry, text, choice)
+    if retained.get("kind") == "which":          # «for X, or something new?» (V2-878 §3 e): his answer routes it
+        return __import__("nucleo.turn.which_flow", fromlist=["x"]).answered(uid, entry, text, choice)
     if retained.get("kind") == "start":          # a parked errand's question (V2-857 P0-1): its yes relaunches it
         from nucleo.dispatch import confirm as _dc
         return _dc.rerun_start(uid, entry, text, choice)

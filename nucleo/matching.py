@@ -43,7 +43,19 @@ def content_words(text: str) -> set:
     """Words that carry the errand: length >= 4 after normalization. The tokenizer that both judges share —
     punctuation stripped by the regex, because `zurdo` and `zurdo,` counting as different words once cost two
     workers doing the same job on real money (V2-123)."""
-    return {w for w in _WORD_RE.findall(norm_text(text)) if len(w) >= 4}
+    toks = _WORD_RE.findall(norm_text(text))
+    if toks and len(toks) <= _UNSPACED_TOKENS and len("".join(toks)) >= _UNSPACED_CHARS * len(toks):
+        # A script written without spaces (Japanese, Chinese, Thai) is one or two `\w+` runs for a whole sentence:
+        # its words are read as character BIGRAMS, so two sentences about one errand still share content (V2-878 §3).
+        # Measured: bigrams keep one errand ≥ 0.50 and two errands ≤ 0.20 in ja/zh/th; 3-grams fell to 0.33 for a
+        # Chinese refinement of the same errand (two-character words).
+        return {t[i:i + 2] for t in toks for i in range(max(1, len(t) - 1))}
+    return {w for w in toks if len(w) >= 4}
+
+
+#: `\w+` giving this few tokens, each `_UNSPACED_CHARS` characters long on average, is a sentence with no spaces between
+#: its words («gaming monitor» is two words of 6; «モニターは27インチ以上で探して» is one run of 15).
+_UNSPACED_TOKENS, _UNSPACED_CHARS = 2, 8
 
 
 def jaccard(a: set, b: set) -> float:

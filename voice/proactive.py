@@ -176,6 +176,17 @@ def _paint(kind: str, title: str, text: str, *, key: str, task_id: str) -> None:
         logger.warning(f"proactive notify (UI) failed: {e}")
 
 
+def _to_conversation(spoken: str, notice: str) -> None:
+    """A line said out of turn is part of the conversation record (`conv`), marked with the notice it came from
+    (V2-878 §3): it reached the window only, so a restart, the day's ledger and recall lost what we had told him."""
+    try:
+        from memory import api as memory
+        memory.write(f"zaelar: {spoken[:200]}", kind="conv", level="short", importance=0.2, ttl_days=2.0,
+                     meta={"source": "conv", "u": "", "a": spoken[:400], "notice": str(notice or "out_of_turn")})
+    except Exception as e:  # noqa: BLE001 — the line was said; only its record failed
+        logger.debug(f"proactive: the out-of-turn line is not in the conversation record ({e!r})")
+
+
 async def notify(title: str, text: str, *, speak: bool = True, kind: str = "notify",
                  key: str = "", opens_window: bool = True, carry: bool = True, about: str = "",
                  task_id: str = "") -> bool:
@@ -268,6 +279,7 @@ async def notify(title: str, text: str, *, speak: bool = True, kind: str = "noti
                 _dialog.note_spoken(spoken, about=about)
             except Exception:  # noqa: BLE001
                 pass
+            _to_conversation(spoken, key or task_id)
         finally:
             _last_spoke[0] = time.monotonic()
     except Exception as e:  # noqa: BLE001

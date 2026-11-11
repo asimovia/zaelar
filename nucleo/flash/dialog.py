@@ -117,6 +117,39 @@ def loop_nudge(window: list[dict]) -> str:
     return ""
 
 
+def live_slice(window: list[dict], keep: int) -> None:
+    """THE cut of the dialog window (V2-878 §3): the last `keep` messages AND none from before the last silence of
+    `LIVE_GAP_MIN` — the same silence that cuts the day's episodes and the live chain (`memory.history`), so the window
+    and the day are two readings of one cut. It was cut by count alone: after a night, the window still held last
+    evening's exchange as if it had just been said. Each message carries the time it entered (`ts`, stamped here the
+    first time it is seen — the turn's close, seconds after it was appended); in place, like the `del` it replaces."""
+    import time
+    now = time.time()
+    for m in window:
+        m.setdefault("ts", now)
+    try:
+        from memory import api as _mem
+        gap = float(_mem.LIVE_GAP_MIN) * 60.0
+    except Exception:  # noqa: BLE001 — no memory layer: the count alone cuts, as before
+        gap = float("inf")
+    start = 0
+    for i in range(1, len(window)):
+        if float(window[i]["ts"]) - float(window[i - 1]["ts"]) >= gap:
+            start = i
+    if len(window) and now - float(window[-1]["ts"]) >= gap:
+        start = len(window)                    # the silence runs up to now: nothing of before is live
+    del window[:max(start, len(window) - keep)]
+
+
+def for_model(m: dict) -> dict:
+    """A window message as a model reads it: its role and words only (`ts` and `cut` are the engine's). A reply the
+    operator cut ends with «…», so the model knows it was not heard to its end."""
+    text = str(m.get("content") or "")
+    if m.get("cut") and not text.rstrip().endswith("…"):
+        text = text.rstrip() + " …"
+    return {"role": m.get("role"), "content": text}
+
+
 # ── 1b) LO QUE EL OPERADOR DIJO NO SE PIERDE ─────────────────────────────────────────────────────────────
 def push_user(window: list[dict], text: str) -> None:
     """Registra en la ventana lo que dijo el operador, INCLUSO si su turno se canceló por solape.
@@ -188,7 +221,7 @@ def record_turn_without_model(brain, said: str, reply: str, cap: int = 10) -> No
         from i18n import langs as _lg
         r = str(_lg.current_language().data_ack or "").strip()
     record_silent_action(window, r)
-    del window[:-cap]
+    live_slice(window, cap)
     brain._last_reply = r
 
 
@@ -218,7 +251,7 @@ def prune_window(window: list[dict]) -> list[dict]:
                     del out[j]
                     break
         out.append(m)
-    return out
+    return [for_model(m) for m in out]
 
 
 # ── 3) ANTI-DEGENERACIÓN DEL OUTPUT ──────────────────────────────────────────────────────────────────────

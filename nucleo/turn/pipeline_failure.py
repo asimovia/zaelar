@@ -65,7 +65,7 @@ def _keep_his_words(brain, text: str, err_text: str, spec=None) -> None:
     try:
         from nucleo.flash import dialog as _dialog
         _dialog.push_user(brain._window, text)
-        del brain._window[:-_WINDOW_MAX]
+        _dialog.live_slice(brain._window, _WINDOW_MAX)
     except Exception as e:  # noqa: BLE001
         logger.warning(f"turn_failure: his words could not be kept in the window: {e!r}")
 

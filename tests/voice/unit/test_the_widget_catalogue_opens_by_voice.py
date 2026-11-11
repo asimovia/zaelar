@@ -186,4 +186,4 @@ def test_the_voice_lane_opens_the_tab_and_records_the_exchange():
     assert panel == [{"extra": {"tab": "apps-custom", "src": "flash"}}], events
     from i18n import langs as _lg
     # recorded as WORDS (demo pass 109, S4): a «[panel:…]» line in the assistant's mouth is copied into replies
-    assert brain._window[-1] == {"role": "assistant", "content": _lg.current_language().data_ack}
+    assert {k: brain._window[-1][k] for k in ("role", "content")} == {"role": "assistant", "content": _lg.current_language().data_ack}
