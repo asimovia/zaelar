@@ -159,16 +159,19 @@ def report_stt_usage(*, audio_seconds: float | None, provider: str) -> None:
 
 
 @_never_raises
-def report_transport_usage(*, participant_seconds: float | None, provider: str = "livekit") -> None:
-    """Call when a voice SESSION closes: transport bills the whole time the room is up, silences included."""
+def report_transport_usage(*, participant_seconds: float | None, provider: str = "livekit",
+                           session_id: str | None = None) -> None:
+    """Call when a work session closes, with the time its voice room was up (silences included). `session_id` is
+    the session that produced it: the report goes out after that session closed, so it cannot be read back."""
     if not _m.enabled():
         return
     energy = _m.transport_cost_to_energy(participant_seconds=participant_seconds, provider=provider)
     if energy <= 0:
         return
-    _m._fire_and_forget(energy, "transport",
-                     {"provider": provider,
-                      "participant_seconds": round(float(participant_seconds or 0.0), 1)})
+    meta = {"provider": provider, "participant_seconds": round(float(participant_seconds or 0.0), 1)}
+    if session_id:
+        meta["session_id"] = session_id
+    _m._fire_and_forget(energy, "transport", meta)
 
 
 @_never_raises

@@ -808,6 +808,8 @@ DOMAINS: list[dict] = [
                                  "take the button's door on the origin screen · a remark does nothing",
             "ch": UNIT,
             "paths": ["tests/agent_headless/unit/actionmap/test_his_own_speaker_and_power_by_voice.py"]},
+        {"id": "4.490", "title": "A closed mic releases the device (the browser's recording dot goes out) and opening it reacquires the same device and swaps the fresh track into the publication; a stale reopen never leaves the device captured; the wake-word park never releases",
+         "ch": UNIT, "paths": ["tests/browser/unit/mic/test_a_closed_mic_releases_the_device.py"]},
         # V2-591 — «haz scroll en la lista» recibió un cambio de pestaña, un re-present y un worker puesto a
         # MODIFICAR el código del widget («No, no toques nada»). El scroller es CROMO de la app (la regla
         # de ctx.top()): el servidor guarda una PETICIÓN con contador-testigo + caducidad (patrón V2-540) y el
@@ -6869,6 +6871,12 @@ DOMAINS: list[dict] = [
                                   "everything), migrated at boot; a Commons broadcast, intro or standing objective opens no "
                                   "turn, a message addressed to us does",
             "ch": UNIT, "paths": ["tests/cluster/unit/test_cluster_attention.py"]},
+        {"id": "2.1710", "title": "Voice transport is billed on the time the voice room was really up (connect → close), never on the work session's wall-clock and never across a suspension, and the charge carries the id of the session that ran it instead of opening a new one",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/test_transport_bills_voice_time_not_session_time.py"]},
+        {"id": "2.1711", "title": "A client STATE report (`/api/ui-event` src=frontend: the tab came to the foreground, the agent state moved) is not activity: it never moves the activity clock that keeps an engine awake; a tap still does",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/test_a_client_state_report_is_not_activity.py"]},
+        {"id": "2.1712", "title": "An OPEN session is not an ACTIVE one: work on the engine's own clock is stored `paced` and opens no session; a session is active while its voice room is up (`voice.up` after the last `voice.down`) or a person did something within the idle window — `observability/flows.py::is_active`, one rule for every reader",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/test_an_open_session_is_not_an_active_one.py"]},
         {"id": "2.1692", "title": "Every question app has a ✕ (V2-886 D7): `POST /api/tasks/<row>/asks/<ask_id>/dismiss` on the row's open question ends that row through his cancel door and records `ask_dismissed`; a question that is not the open one is 409 and changes nothing; the card's ✕ and its label exist in es and en",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/test_a_question_card_can_be_dismissed.py"]},
         {"id": "2.1150", "title": "A worker's Claude Code never reads the host user's config (V2-851 F3, §15e): the spawn passes --setting-sources project,local + --strict-mcp-config and disables auto-memory; a routed tier also gets the engine's own CLAUDE_CONFIG_DIR (stable, for resume by id); the licence tier keeps its login; a dev worker keeps it after its env allowlist; the widget generator and the code agent share the helper",

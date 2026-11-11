@@ -40,6 +40,14 @@ export function initMic(stream) {
   return { ac, micAn };
 }
 
+// A microphone reopened after the operator closed it (`mic-device.js`): the same analyser listens to the new capture,
+// and the AudioContext — with the bot's analyser on it — stays. Without a context yet, the full init.
+export function rebindMic(stream) {
+  if (!ac || !micAn) return initMic(stream);
+  try { ac.createMediaStreamSource(stream).connect(micAn); } catch (_) {}
+  return { ac, micAn };
+}
+
 // Attach the bot's returning audio to its own analyser (drives the orb). Best-effort.
 export function attachBot(stream) {
   try {

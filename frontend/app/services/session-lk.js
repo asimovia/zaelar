@@ -39,6 +39,7 @@ import * as health from "./device-health.js?v=1";
 import { MIC_MODES as _MIC_MODES, defaultMicMode, captureConstraints } from "./mic-profile.js?v=1";
 import * as micDenial from "./mic-denial.js?v=1";
 import * as arrival from "./voice-arrival.js?v=1";   // V2-873: «ready» only with the agent in the room
+import { createMicDevice } from "./mic-device.js?v=1";   // 2026-11-11: a closed mic hands the device back
 
 let room = null, stream = null, videoEl = null, botAudioEl = null;
 let started = false, starting = false;
@@ -359,8 +360,24 @@ export function isActive() { return started; }
 // (born unparked, against deafness) heals within one beat. The mute needs no packet: `POST /api/mic` carries it.
 let _tapParked = false;
 const [_parkedSig, _setParkedSig] = createSignal(false);
+// 2026-11-11 — his CLOSED mic releases the device (the red dot goes out); opening it reacquires it (`mic-device.js`).
+const _micDevice = createMicDevice({
+  acquire: () => navigator.mediaDevices.getUserMedia({ audio: streamKey ? JSON.parse(streamKey) : true }),
+  adopt: async (fresh) => {
+    const tr = fresh.getAudioTracks()[0];
+    if (tr) tr.enabled = !_tapParked;
+    const pub = room && room.localParticipant ? [...room.localParticipant.audioTrackPublications.values()][0] : null;
+    if (pub && pub.track && tr) await pub.track.replaceTrack(tr, true);
+    stream = fresh;
+    audio.rebindMic(fresh);
+    health.watchMicTrack(tr);
+  },
+  log: (what, e) => { try { api.clientLog("🎙️ mic " + what, { text: e ? String(e.name || e) : what, state: what }); } catch (_) {} },
+});
 function _applyMicTransport(want) {
   const off = want || _tapParked;
+  if (want) _micDevice.release(stream);
+  else if (_micDevice.released()) { const g = _gen; _micDevice.reacquire(() => g !== _gen || mic.muted()); }
   if (stream) stream.getAudioTracks().forEach(t => t.enabled = !off);
   if (room && room.localParticipant) {
     try { Promise.resolve(room.localParticipant.setMicrophoneEnabled(!off)).catch(() => {}); } catch (_) {}
@@ -614,7 +631,7 @@ export async function start() {
     // it has to be closed here and now. `stop()` already went by — when it ran, `stream` was still null — and
     // nobody else will do it: the operator would be left with the browser's red dot lit over a stopped agent.
     if (gen !== _gen) return _abortedStartup(gen, captured);
-    stream = captured; streamKey = key;
+    stream = captured; streamKey = key; _micDevice.reset();
     if (!captured.__silent) health.micCaptureResult(null);
     health.watchMicTrack(captured.getAudioTracks()[0]);
     _bootPhase("voz");   // mic granted — the voice link is coming up (frontend-known milestone)

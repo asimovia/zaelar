@@ -236,6 +236,12 @@ async def ui_event(payload: dict):
         v = (payload or {}).get(k)
         if v is not None:
             extra[k] = str(v)[:120]
+    if extra["src"] == "frontend":
+        # A client STATE transition (the tab went to the foreground, the agent state moved) is not a person doing
+        # anything: it must not keep a hosted engine awake nor count as a session's activity (`paced`).
+        from observability.identity import paced
+        with paced():
+            return JSONResponse(emit(kind, label, extra=extra))
     return JSONResponse(emit(kind, label, extra=extra))
 
 

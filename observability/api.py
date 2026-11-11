@@ -106,8 +106,14 @@ async def list_sessions(request: Request, limit: int = 30, user_id: str = ""):
     # `session_id`, NOT `id`: it is the key returned by `identity.session_info()`. With the wrong key this
     # silently returned "" and NO session was marked as alive — the most costly possible failure in an audit view,
     # because it does not look like an error: it looks as though nobody is working.
-    return JSONResponse({"sessions": _flows.sessions(limit=min(limit, 500), user_id=user_id),
-                         "current": _identity.session_info().get("session_id") or ""})
+    # `active` per row (2026-11-11): the OPEN session is not the same as somebody being here — background noise
+    # opens and keeps one. A person's activity or a connected voice decides it (`flows.is_active`).
+    import time as _time
+    now = _time.time() * 1000
+    rows = _flows.sessions(limit=min(limit, 500), user_id=user_id)
+    for r in rows:
+        r["active"] = _flows.is_active(r, now)
+    return JSONResponse({"sessions": rows, "current": _identity.session_info().get("session_id") or ""})
 
 
 @router.get("/api/observability/session/{session_id}")

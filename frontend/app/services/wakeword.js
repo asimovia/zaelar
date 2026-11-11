@@ -16,10 +16,16 @@
 //    que hacer a nivel de navegador.»
 //
 // WHAT THIS DOES. While the agent is cold in a wake-word mode, the published
-// track is PARKED (no audio leaves the browser, so nothing is transcribed and
-// nothing is billed) and a recogniser that runs inside the browser and costs us
-// nothing listens for the assistant's own name. When it hears it, the tap opens
-// and the sentence the browser already has is handed to the engine.
+// track is PARKED (nothing reaches OUR engine, so nothing is transcribed by us
+// and nothing is billed) and the browser's own speech recogniser listens for
+// the assistant's own name. When it hears it, the tap opens and the sentence
+// the browser already has is handed to the engine.
+//
+// ⚠️ THE BROWSER'S RECOGNISER IS NOT LOCAL. The Web Speech API is the browser
+// vendor's service: in Chrome it streams the microphone audio to Google's
+// servers to be transcribed, the whole time the ear is listening. It costs us
+// no tokens; it is not private, and nothing here may say it is. The settings
+// say so to the operator (`config.voice.wakeword_privacy`).
 //
 // WHY THE BROWSER'S Web Speech API AND NOT A KEYWORD MODEL. The name is not
 // ours to choose: the operator renames the assistant by voice, mid-session, to
@@ -143,7 +149,7 @@ export function paintsProvisional(mode, hit) {
 let _rec = null;          // the browser recogniser, while one exists
 let _armed = false;       // it has returned a result and has not gone deaf since — the ONLY licence to park
 let _dead = false;        // a fatal error: this session never arms again
-let _tail = [];           // {at, text} of local utterances that carried no name
+let _tail = [];           // {at, text} of the browser ear's utterances that carried no name
 let _deps = null;         // injected: { getLang, getNames, onSpot, onArmed, log }
 let _restartT = null;
 let _wantRunning = false;
@@ -200,7 +206,7 @@ export function offerInterim(text, { now = Date.now() } = {}) {
   return _fire({ phase: "spot", text: "", before: tail ? tail + " " + t : t });
 }
 
-// One finalized local utterance. Exported so the test drives the real decision
+// One finalized utterance from the browser ear. Exported so the test drives the real decision
 // rather than a transcript of it.
 export function offer(text, { now = Date.now() } = {}) {
   const t = String(text || "").trim();
