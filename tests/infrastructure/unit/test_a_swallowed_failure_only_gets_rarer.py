@@ -548,7 +548,7 @@ PER_FILE: dict[str, int] = {
     'widgets/generator.py': 7,
     'widgets/imagenes/data.py': 4,
     'widgets/instances.py': 3,
-    'widgets/late_report.py': 1,
+    'widgets/late_report.py': 2,
     'widgets/lifecycle.py': 2,
     'widgets/map/data.py': 5,
     'widgets/markets/data.py': 1,

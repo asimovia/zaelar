@@ -153,16 +153,12 @@ def _held(ctx: dict, out: Reading, slot: str, key: str) -> None:
 RULES = {f.__name__.lstrip("_"): f for f in (_his_words, _reading, _card, _composed, _held)}
 
 
-#: The recipient sources that are the worker's own pick: neither his word, the turn's reading, the card nor the held row.
-_WORKERS_OWN = ("agent", "none")
-
-
 def unbacked_send(rec, turn, got, mandated: bool = False) -> str:
     """CRIT-C5's second half at the worker's exit: a send whose recipient the WORKER chose, from an errand whose
     reading does not ask for anything to be sent in his name, is dropped — never turned into a question (V2-886 D4).
     Backed = the reading's errand class is `sends_for_him` or it names a message channel, or a mandate covers the
     channel. No reading at all (an old row) keeps today's path: the leave rule asks. Returns the reason, "" when backed."""
-    if turn is None or got.released or (got.sources or {}).get("recipient") not in _WORKERS_OWN:
+    if turn is None or got.released or (got.sources or {}).get("recipient") not in ("agent", "none"):   # the worker's own pick
         return ""
     if mandated:          # the session's mandate covers this channel (`exit_gate.under_mandate`)
         return ""

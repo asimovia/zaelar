@@ -52,6 +52,8 @@ def player_audio(action, p, db) -> dict:
                 out["tell"] = tell      # said only if an agent order is being contradicted (`widgets/late_report.py`)
         return out
     if not silent:
+        from widgets import late_report             # V2-886 fila 6: sound reported before the «silent» tell was said
+        late_report.retract(WID)
         changed = bool(db.get("audio_blocked")) or bool(db.get("muted"))
         db["audio_blocked"] = False
         if db.get("muted"):            # he unmuted it from the player's own control: the card follows the player
@@ -99,7 +101,11 @@ def state_line(db: dict) -> str:
     if not db.get("videoId"):
         return ""
     vol = db.get("volume")
-    bits = ["en pausa" if db.get("paused") else "reproduciéndose"]
+    # V2-886 fila 6: the PLAYER's report when it has one for this video, never the order — `paused` is what we asked,
+    # `playing` is what the player says it does; a pause pressed inside the iframe used to read «playing».
+    reported = str(db.get("playing_id") or "") == str(db.get("videoId") or "") and "playing" in db
+    bits = [("reproduciéndose" if db.get("playing") else "en pausa") if reported
+            else ("en pausa" if db.get("paused") else "reproduciéndose")]
     if isinstance(vol, (int, float)):
         bits.append(f"volumen {int(vol)} %")
     if db.get("muted"):

@@ -28,6 +28,9 @@ def player_audio(action: str, p: dict) -> dict:
     if not yt.get("videoId") or (vid and vid != str(yt.get("videoId"))):
         return {"ok": True, "stale": True}
     silent = _flag(p.get("muted"))
+    if not silent:                                   # V2-886 fila 6: sound reported before a «silent» tell was said
+        from widgets import late_report
+        late_report.retract("musica")
     if _flag(p.get("playing")) and not silent and yt.get("sounding_id") != yt.get("videoId"):
         # V2-873 — the page player says it PLAYS this song: the one writer of «what sounds here» (`_here`)
         yt.update(sounding_id=str(yt.get("videoId")), audio_blocked=False)
