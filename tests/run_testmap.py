@@ -6151,6 +6151,16 @@ DOMAINS: list[dict] = [
                                 "ending at the dock's edge, the producing badge and restore V2-351",
             "ch": UNIT, "live": True,
             "cmd": "./.venv/bin/python tests/browser/e2e/mobile/render_deck.py"},
+        {"id": "4.460", "title": "Phone: ⏻ is one door (V2-877 #4/#11, V2-654) — a stop remembers the mic it found and ⏻ on "
+                                 "puts that back (never opens a mic he closed, a hand change while stopped wins); the "
+                                 "reconnect ⏻ on causes re-reports the deck instead of adopting the desktop's layout, so "
+                                 "no card the hand opened closes; an orphan card still goes", "ch": UNIT,
+            "paths": ["tests/browser/unit/mobile/test_the_power_switch_is_one_door.py"]},
+        {"id": "4.461", "title": "Phone: the chat is a conversation (V2-876 rule 6, V2-877 #3/#10) — a voice filler from "
+                                 "the stream keeps its kind and draws no bubble, the list follows the newest line unless "
+                                 "he scrolled up, his own line brings it down, a line sent with ⏻ off says the agent is "
+                                 "off; every label the shell asks t() for exists in every pack", "ch": UNIT,
+            "paths": ["tests/browser/unit/mobile/test_the_phone_chat_is_a_conversation.py"]},
     ]},
     {"id": "5", "name": "CONECTORES", "nodes": [
         # V2-559 — el operador siguió la guía, creó la contraseña de aplicación y pegó el ENLACE de esa
