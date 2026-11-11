@@ -275,6 +275,16 @@ def say_started(line: str, said: str, send, speech) -> str:
     return text
 
 
+def routed_send_started(send, speech) -> str:
+    """V2-887 step 5 — an act that LEFT as a task has no result in this turn: its line is the START («I'm on it — it
+    isn't done yet»), never the short «Done.» (measured: «Hecho.» at 4.19 s, the send failed at 4.37 s)."""
+    try:
+        return say_started(str(getattr(_lang(), "done_just_started", "") or ""), "", send, speech)
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"reply: the start line was not said — {e!r}")
+        return ""
+
+
 async def after_acts(tasks, said: str, send, speech, timeout: float = WAIT_S, *, prior: str = "",
                      model_calls=None, quiet: bool = False, held: bool = False) -> str:
     """The turn's acts ended (its data-ops answered, or `timeout` passed): the lines of what they declared and of
