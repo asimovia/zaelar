@@ -191,12 +191,20 @@ function traceChip(tid, onClick) {
   return c;
 }
 const ORIGIN_ICON = { turno: "🗣", kickoff: "👋", probe: "🧪", cron: "⏰", proactivo: "✨", ui: "🖱", cluster: "🌐" };
+// WHO started a flow — `user` (his voice, typing or tap) or `system` — as the root event declares it (`initiator`,
+// `voice/trace.py::initiator_of`). The Traces view marks each flow with it and filters on it (All · User · System).
+// A flow whose root has not arrived yet has no initiator: it shows only under All, never guessed from its text.
+const WHO = ["all", "user", "system"];
+const WHO_ICON = { user: "👤", system: "⚙" };
+export function traceShown(who, filter) { return filter === "all" || who === filter; }
 
 export function DebugPanel() {
   let listEl, countEl, filterEl, lastRow = null, lastSig = "";
   let tracesEl;                                  // V2-044: contenedor of the vista Trazas (árbol by trace)
   let hdrEl;                                     // cabecera fija of columnas (solo tiene sentido en the vista log)
   let mode = localStorage.getItem("hb_dbg_mode") === "traces" ? "traces" : "log";
+  let whoEl;                                     // the All · User · System row above the Traces tree
+  let who = WHO.includes(localStorage.getItem("hb_dbg_who")) ? localStorage.getItem("hb_dbg_who") : "all";
   let filter = "";
   let noiseHidden = true;
   let count = 0;
@@ -503,12 +511,14 @@ export function DebugPanel() {
     const sum = document.createElement("summary");
     const chip = traceChip(tid, null);
     const ic = document.createElement("span"); ic.className = "dbg-tro"; ic.textContent = "•";
+    const wb = document.createElement("span"); wb.className = "dbg-trw";
     const tx = document.createElement("span"); tx.className = "dbg-trt"; tx.textContent = "…";
     const nEl = document.createElement("span"); nEl.className = "dbg-trn";
-    sum.append(chip, ic, tx, nEl);
+    sum.append(chip, wb, ic, tx, nEl);
     const body = document.createElement("div"); body.className = "dbg-trb";
     det.append(sum, body);
-    e = { det, ic, tx, nEl, body, spans: new Map(), n: 0 };
+    e = { det, ic, wb, tx, nEl, body, spans: new Map(), n: 0, who: "" };
+    det.hidden = !traceShown(e.who, who);
     traces.set(tid, e);
     // The flujo more RECIENTE arriba, igual that the log. DENTRO of each árbol the eventos siguen en orden
     // cronológico: un flujo se lee of principio a fin, es lo that permite ver dónde se torció.
@@ -544,6 +554,13 @@ export function DebugPanel() {
     const e = traceEntry(tid);
     if (d.kind === "trace" && d.root) {                 // the RAÍZ: the frase/estímulo that inició the cadena
       e.ic.textContent = ORIGIN_ICON[d.origin] || "•";
+      if (d.initiator === "user" || d.initiator === "system") {
+        e.who = d.initiator;
+        e.wb.textContent = WHO_ICON[e.who];
+        e.wb.title = t("debug.who_" + e.who);
+        e.det.dataset.who = e.who;
+        e.det.hidden = !traceShown(e.who, who);
+      }
       e.tx.textContent = (d.text || d.label || "").toString();
       e.tx.title = stamp(d._rx) + " · origen: " + (d.origin || "?");
       return;
@@ -570,8 +587,16 @@ export function DebugPanel() {
     localStorage.setItem("hb_dbg_mode", m);
     if (listEl) listEl.hidden = (m === "traces");
     if (tracesEl) tracesEl.hidden = (m !== "traces");
+    if (whoEl) whoEl.hidden = (m !== "traces");
     if (hdrEl) hdrEl.hidden = (m === "traces");     // the árbol no va en columnas → without cabecera that rotular
     if (btn) { btn.innerHTML = m === "traces" ? LIST_ICON : LINK_ICON; btn.title = m === "traces" ? t("debug.view_log") : t("debug.view_traces"); }
+  }
+
+  function setWho(w) {
+    who = w;
+    localStorage.setItem("hb_dbg_who", w);
+    if (whoEl) for (const b of whoEl.children) b.classList.toggle("on", b.dataset.who === w);
+    for (const e of traces.values()) e.det.hidden = !traceShown(e.who, who);
   }
 
   function applyFilter() {
@@ -661,6 +686,11 @@ export function DebugPanel() {
     ),
     h("div", { class: "dbg-list", ref: (el) => { listEl = el; el.hidden = (mode === "traces"); } }),
     // V2-044: the vista Trazas — misma zona, contenedor alterno (toggle ⛓ arriba)
+    h("div", { class: "dbg-who", ref: (el) => { whoEl = el; el.hidden = (mode !== "traces"); } },
+      ...WHO.map((w) => h("button", {
+        class: "dbg-whob" + (w === who ? " on" : ""), "data-who": w, onClick: () => setWho(w),
+      }, () => t("debug.who_" + w))),
+    ),
     h("div", { class: "dbg-list dbg-traces", ref: (el) => { tracesEl = el; el.hidden = (mode !== "traces"); } }),
   );
 

@@ -299,6 +299,18 @@ the set of events it should?») is answered by grouping by `trace`.
 - **In the viewer** (◷): every row carries a **trace chip** (deterministic colour; click → filters the whole chain),
   and the **⛓** button toggles to the **Traces** view: one tree per trace — the root SENTENCE + everything it
   generated, grouped by actor. `jq` equivalent: `jq 'select(.trace=="T12·9f3a")' timeline-latest.jsonl`.
+- **WHO started it — `initiator`** (`user` | `system`): declared ONCE by the root event, from its origin
+  (`voice/trace.py::initiator_of`, one table `USER_ORIGINS` = `turno`·`ui`·`probe`; every other origin, and any new
+  one, is `system` — kickoff, cron, spark, cluster peer, cluster heartbeat `pulso`, a rule reacting to a connector
+  event). Never derived from the text. `observability.flows.flows()` projects it per flow (a root written before the
+  flag falls back to its declared origin through the same table). The **Traces** view marks each flow 👤/⚙ and has an
+  **All · User · System** row on top (default All, remembered per browser). The private panel shows the same flag —
+  a flag added on one side only comes out EMPTY on the other.
+- **The beat is NOT a flow.** The pulse is a continuous ~1 Hz process: its `pulse` (slow tick / beat summary) and
+  `background` (a widget's clock-driven refresh) events never take the ambient trace (`voice/trace.py::BEAT_KINDS`) — a
+  beat emitted inside a request's context would join that request and stretch it over every beat after it. They are
+  read only as pulse cycles. What the pulse FIRES (a cron, a spark, a cluster heartbeat turn) opens its own trace,
+  flagged `system`. A reader that attributes trace-less events to the nearest flow by time must skip these kinds too.
 
 ## A Brain Worker's steps — WHERE it works and WHAT it uses
 
