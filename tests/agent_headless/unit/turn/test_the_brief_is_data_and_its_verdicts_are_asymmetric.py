@@ -49,7 +49,7 @@ def test_a_question_that_cannot_be_built_never_costs_the_others(monkeypatch):
 
 
 @pytest.mark.parametrize("answer,expected", [
-    (("keep", 0.65), "ask_which"),     # the ficha's case: «Para todo», keep 0.65 → asked, never refused silently
+    (("keep", 0.65), "run"),           # V2-886 D2 (on purpose): a doubt below the veto is recorded, the call runs
     (("keep", 0.9), "veto"),           # a sure verdict refuses what the model called
     (("stop", 0.6), "run"),            # the verdict agrees
     (("keep", 0.3), "run"),            # a shrug is no verdict: the model's call runs
@@ -59,7 +59,7 @@ def test_the_asymmetric_read(answer, expected):
 
 
 def test_the_stop_gate_reads_it_and_without_a_verdict_the_models_call_runs():
-    assert stop.model_stop(_brief(**{stop.KEY: ("keep", 0.65)})) == "ask_which"
+    assert stop.model_stop(_brief(**{stop.KEY: ("keep", 0.65)})) == "run"    # V2-886 D2: a doubt, not a question
     assert stop.model_stop(_brief(**{stop.KEY: ("stop", 0.95)})) == "run"
     assert stop.model_stop(_brief(**{stop.KEY: ("keep", 0.95)})) == "veto"
     assert stop.model_stop(None) == "run", "no verdict: the model's own call is the order (V2-857 phase 8)"

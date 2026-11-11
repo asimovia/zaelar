@@ -1,4 +1,5 @@
-"""Whose are his words: when the flow judge runs out of time with an errand open, he is ASKED (V2-878 §3 (e), node 2.1678).
+"""Whose are his words: when the flow judge runs out of time with an errand open, they join the errand he named last
+(V2-886 D3; it was asked under V2-878 §3 (e), node 2.1678).
 
   · The flow judge has the turn's budget (`JUDGE_S`); past it the route read «no flow» and a refinement said while
     the model was slow opened a SECOND errand beside the one it refined. With an errand open a timeout is now
@@ -41,16 +42,19 @@ def _route(text):
     return asyncio.run(flow_of.route(text, brief=None))
 
 
-def test_a_judge_out_of_time_asks_whose_and_opens_nothing(judged, monkeypatch):
+@pytest.mark.parametrize("said", ["y que tengan altavoces integrados", "and they should have built-in speakers"])
+def test_a_judge_out_of_time_joins_the_errand_he_named_last_and_asks_nothing(judged, monkeypatch, said):
+    """V2-886 D3: the likely reading wins — no «for X, or something new?», no second errand."""
     monkeypatch.setattr(flow_of, "JUDGE_S", 0.05)
     judged["slow"] = True
-    r = _route("y que tengan altavoces integrados")
+    r = _route(said)
     assert r["as"] == flow_of.UNDECIDED and r["flow"] == "w1", "a judge out of time read as «no flow»"
 
-    asked: list = []
-    monkeypatch.setattr("nucleo.turn.which_flow.ask", lambda req, route, ctx: asked.append((req, route["flow"])) or "a1")
-    assert flow_door.obey("y que tengan altavoces integrados", r, {}) is False, "the portal opened an errand anyway"
-    assert asked == [("y que tengan altavoces integrados", "w1")]
+    asked, relayed = [], []
+    monkeypatch.setattr("nucleo.turn.which_flow.ask", lambda req, route, ctx: asked.append(req) or "a1")
+    monkeypatch.setattr("nucleo.dispatch.relay_his_words", lambda flow, text: relayed.append(flow) or True)
+    assert flow_door.obey(said, r, {}) is False, "the portal opened an errand anyway"
+    assert relayed == ["w1"] and not asked, "a slow judge interrupted him with a question"
 
 
 @pytest.mark.parametrize("lang,that,new", [("es", "Para lo de", "Algo nuevo"), ("en", "For", "Something new")])

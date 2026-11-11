@@ -102,9 +102,13 @@ def obey(req: str, r: dict, ctx: dict) -> bool:
         if how == _flow.CARD:          # V2-879 O1: the turn's one act is a card's — the errand is told nothing
             _emit("🧵 a card's act — the card door serves it, no errand is told", req, r)
             return False
-        if how == _flow.UNDECIDED:     # the judge ran out of time with an errand open: he is asked (V2-878 §3 e)
-            __import__("nucleo.turn.which_flow", fromlist=["x"]).ask(req, r, ctx)
-            _emit("🧵 whose is it? — asked, nothing opened until he says", req, r)
+        if how == _flow.UNDECIDED:     # the judge ran out of time with an errand open (V2-878 §3 e)
+            # V2-886 D3: the likely reading wins — the words join the errand he named last, nothing new is opened,
+            # and a correction is one sentence away. Asking «for X, or something new?» interrupted him over a doubt
+            # that was ours (a slow judge), never his (operator, 2026-11-11: act at the likely reading).
+            from nucleo import dispatch as _d
+            _d.relay_his_words(str(r["flow"]), fold_note(req))
+            _emit("🧵 judge out of time — the words join the errand he named last", req, r)
             return False
         _emit("🧵 a route this portal does not know — the errand opens", req, r)
         return True                      # fail-open: an outcome nobody taught it never swallows an errand
