@@ -151,7 +151,7 @@ def present(widget_id: str, *, reason: str, action: str = "", src: str = "flash"
         try:
             from widgets import effects as _fx
             if not _fx.carries(wid, action, _fx.PRESENT_MOUNT):
-                return _suppress("la acción no declara que su salida necesite la tarjeta")
+                return _suppress("la acción no declara que su salida necesite la app")
         except Exception:  # noqa: BLE001
             return _suppress("no se pudo leer la declaración del widget")
     if is_open(wid, known=known) and not is_minimized(wid):
@@ -203,7 +203,7 @@ def present_for_call(widget_id: str, action: str, *, brief=None, card: str = "",
         logger.debug(f"present_for_call: canvas verdict unreadable — {e!r}")
     _say(emit, "🚫 presentación suprimida", {
         "id": wid, "src": src, "action": action, "reason": "turn-order", "cat": "widget",
-        "detail": "la acción corre detrás de la pantalla: el turno no pidió ver la tarjeta"})
+        "detail": "la acción corre detrás de la pantalla: el turno no pidió ver la app"})
     return False
 
 

@@ -134,7 +134,7 @@ def checkpoint_one(rec) -> str:
                 "<name>`) and record your goal (`report goal`) before anything leaves the machine")
     if name == MESSAGE and not (dict(getattr(rec, "done_when", None) or {}) or _durable(rec)[1]):
         return ("checkpoint 1 is not closed: a message's end state goes on the row first (`report goal` — the "
-                "message to that person appears as sent on its card)")
+                "message to that person appears as sent on its app)")
     return ""
 
 

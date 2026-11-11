@@ -506,7 +506,7 @@ def test_minimise_that_targets_the_card_in_front(monkeypatch):
     monkeypatch.setattr(memapi, "state", lambda: {})
     monkeypatch.setattr(voice_api, "open_instances", lambda: ["results::c44e34-ls1"])
     assert executor.execute({"do": "minimize", "widget": "*"}, emit, phrase="Minimise that while you work.")
-    assert seen == [("minimize", "results::c44e34-ls1")], "the only open card, by its full instance id"
+    assert seen == [("minimize", "results::c44e34-ls1")], "the only open app, by its full instance id"
     seen.clear()
     monkeypatch.setattr(voice_api, "open_instances", lambda: ["results::c44e34-ls1", "youtube"])
     assert executor.execute({"do": "minimize", "widget": "*"}, emit, phrase="minimise that") is False, "two cards: the model asks"

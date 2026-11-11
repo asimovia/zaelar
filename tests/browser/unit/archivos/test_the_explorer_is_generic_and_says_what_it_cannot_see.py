@@ -375,7 +375,7 @@ def test_switching_to_an_unconnected_cloud_provider_is_refused_by_name(data, mon
     _wire(data, _Svc(entries=_FILES, connected=False), monkeypatch)
     out = data.apply_action("set_provider", {"provider": "gdrive"})
     assert out["ok"] is False and "gdrive" in out["error"]
-    assert data.view_data()["provider"] == "local", "a refused switch must not strand the card off local"
+    assert data.view_data()["provider"] == "local", "a refused switch must not strand the app off local"
 
 
 # ── answering, not just repainting ─────────────────────────────────────────────────────────────────────────

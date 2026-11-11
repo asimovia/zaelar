@@ -73,7 +73,7 @@ def test_the_catalogue_rung_leaves_the_errand_to_the_worker(text, action, monkey
         return {"kind": "call", "widget_id": "mensajeria", "action": action, "payload": {"folder": "sent"}}
     monkeypatch.setattr(repair_of_a_view, "call_or_read_for_commission", _view)
     got = asyncio.run(card_commission.commission_call(text, brief=_brief(**REPORT), operator_text=text, spec=None))
-    assert got is None, "the worker keeps the errand; his card stays where he left it"
+    assert got is None, "the worker keeps the errand; his app stays where he left it"
     asked = dict(REPORT, **{tb.CANVAS_KEY: ("show", 0.95)})
     got = asyncio.run(card_commission.commission_call(text, brief=_brief(**asked), operator_text=text, spec=None))
     assert got and got["action"] == action

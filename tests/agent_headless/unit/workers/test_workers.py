@@ -289,7 +289,7 @@ def test_deleting_a_widget_does_not_open_it(monkeypatch):
     seen, evs = _drive_generator(monkeypatch, req="borra el widget del tiempo",
                                  gen_result={"ok": True, "id": "meteo-soria"},
                                  action=("delete", "meteo-soria"))
-    assert not [s for s in seen if s[1] == "show"], "un borrado NUNCA abre la tarjeta"
+    assert not [s for s in seen if s[1] == "show"], "un borrado NUNCA abre la app"
     assert any(e.type == "result" for e in evs)
 
 

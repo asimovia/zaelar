@@ -2609,12 +2609,12 @@ def delivery_completeness(delivered: dict | None, sheet: dict | None,
 def browser_still_driving(db_path, *, quiet_s: float = 6.0) -> dict:
     """¿Sigue conduciendo el navegador AHORA MISMO? Se mide por ACTIVIDAD RECIENTE, no por un registro.
 
-    `probe_client.settle_after_reset()` mira dos cosas —las sesiones de worker (`/api/tasks`) y las tarjetas del
-    canvas— y con las dos a cero AFIRMA «sin trabajo vivo ni tarjetas». Le falta la tercera: una pestaña del
-    NAVEGADOR es un registro distinto, y puede estar conduciendo sin sesión de worker viva y sin tarjeta abierta.
+    `probe_client.settle_after_reset()` mira dos cosas —las sesiones de worker (`/api/tasks`) y las apps del
+    canvas— y con las dos a cero AFIRMA «sin trabajo vivo ni apps». Le falta la tercera: una pestaña del
+    NAVEGADOR es un registro distinto, y puede estar conduciendo sin sesión de worker viva y sin app abierta.
 
     Medido el 2026-08-25. Maté una tanda con `hotel-under-15-days` a medias; la siguiente arrancó en
-    `search-buy-motorcycle__es` y su log dice, literal, «▸ motor limpio en 0.0s: sin trabajo vivo ni tarjetas».
+    `search-buy-motorcycle__es` y su log dice, literal, «▸ motor limpio en 0.0s: sin trabajo vivo ni apps».
     A la vez, entre las 21:06 y las 21:09, el navegador abría:
 
         booking.com/hotel/es/eurostars-regina · booking.com/searchresults?ss=Sevilla · google.com/travel/search
@@ -3545,7 +3545,7 @@ def sheet_timing(db_path, *, since: float = 0.0) -> dict:
     # de V2-259, cuando la hoja era UNA; desde entonces cada encargo abre la suya (`results::<id>`) y ese
     # `show` no casaba con nada. Lo único que casaba era el `show` de la caja pelada… que lo emite el ECO del
     # canvas (`src="user"`), o sea el fantasma que V2-261 filtra en el frontend: `sheet_ms` medía cuándo
-    # apareció una tarjeta que nadie abrió. Medido en la ronda de las 18:17 — `results::602da7-1 src=worker:1`
+    # apareció una app que nadie abrió. Medido en la ronda de las 18:17 — `results::602da7-1 src=worker:1`
     # tres segundos ANTES del `results src=user` que era el único que se leía.
     #
     # Y el id viaja en DOS formas a la vez, las dos vistas en el mismo segundo de esa ronda: `results::<x>`

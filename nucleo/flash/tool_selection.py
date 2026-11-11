@@ -55,7 +55,7 @@ ALWAYS: frozenset[str] = frozenset({"core", "web", "memory"})
 # ([[feedback_no_hardcoded_understand]]) is what is NOT done here: we do not decide what the operator wants, only which
 # schemas are worth putting in front of the model so that IT can decide.
 _HINTS: dict[str, tuple[str, ...]] = {
-    "widgets": ("widget", "tarjeta", "panel", "pantalla", "ventana", "abre", "abre", "cierra", "muestra",
+    "widgets": ("widget", "tarjeta", "app", "panel", "pantalla", "ventana", "abre", "abre", "cierra", "muestra",
                 "muestrame", "ensename", "borra", "alias", "llama", "lista", "agenda", "card", "screen",
                 "show", "close", "open", "delete",
                 # V2-588: arrange_canvas — the tool-name words the family ratchet demands, plus the verbs

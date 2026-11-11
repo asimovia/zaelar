@@ -147,7 +147,7 @@ def _link_for(action: str, payload: dict) -> str:
 
 
 def coach_context() -> str:
-    return ("The 'navegador' widget is a web browser inside zaelar. Its card is the MONITOR of what this browser "
+    return ("The 'navegador' widget is a web browser inside zaelar. Its app is the MONITOR of what this browser "
             "is doing right now; findings are shown in the 'results' sheet, never here. "
             "You can open any website (open), search the web with Bing "
             "(search), or play YouTube (youtube); back/forward/reload and page scrolling are safe. To navigate "

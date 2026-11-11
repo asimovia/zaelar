@@ -93,7 +93,7 @@ def _data(active):
 def test_an_open_chat_paints_its_thread_in_both_profiles(_page, profile):
     _mount(_page, _data(_ACTIVE), profile)
     assert _page.locator(".thread").count() == 1, \
-        f"profile {profile!r}: the open chat did not paint — the card is still showing a list"
+        f"profile {profile!r}: the open chat did not paint — the app is still showing a list"
     assert "Francisco" in _page.locator(".thread").inner_text()
     assert _page.locator(".back").count() == 1, "a thread must always offer the way back to the list"
 

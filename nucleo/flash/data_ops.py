@@ -377,7 +377,7 @@ def _write_ending(_row: str, wid: str, action_name: str, res, _spec_entry, _atte
         _circuit.settle(_spec_entry, row=_row, verdict=_circuit.verdict.from_attest(_attested).name)
     elif _spec_entry is not None and _unchanged(_spec_entry):   # a replay, not a failure: the circuit leaves it
         _circuit.settle(_spec_entry, row=_row, verdict="unverifiable",
-                        outcome="sin cambio visible: la tarjeta ya estaba así")
+                        outcome="sin cambio visible: la app ya estaba así")
     # False: the widget may still be catching up — the circuit's pulse settles it.
 
 

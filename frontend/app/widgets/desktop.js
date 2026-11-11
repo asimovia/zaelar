@@ -942,7 +942,7 @@ export class Desktop {
       this._applyLiveTitle(w, baseId, data);            // …y el texto, que sale de los datos recién cargados
       // TAMAÑO PREFERIDO del widget, solo en el primer montaje y solo si el operador no le había dejado uno suyo.
       // Una superficie de ancho fluido (la hoja de resultados) no puede deducir su tamaño del contenido: sin esto
-      // encogería a la anchura de su tarjeta más estrecha. Lo declara su manifest (`size`), no lo adivina el canvas.
+      // encogería a la anchura de su app más estrecha. Lo declara su manifest (`size`), no lo adivina el canvas.
       if(fresh) this._applyPreferred(w.card, baseId, !!(pos && pos.w), !!(pos && pos.h));
       if(fresh) this._freezeSize(w.card, baseId);      // V2-630: after this, content changes never resize the card
       if(fresh && !(pos && pos.left)) this._settle(w.card, id);   // V2-773: at its REAL size, still in a free spot
@@ -1290,14 +1290,14 @@ export class Desktop {
     const w=this.wins.get(id);
     if(w) this._closeAliases(w);                        // V2-082: limpia el listener del panel de alias si estaba abierto
     if(!w){
-      // ROBUSTEZ (2026-07-14): la tarjeta puede estar en el DOM pero NO en `wins` (huérfana tras una reconexión/
+      // ROBUSTEZ (2026-07-14): la app puede estar en el DOM pero NO en `wins` (huérfana tras una reconexión/
       // reinicio → desync). Antes `close` la ignoraba en silencio y el operador "seguía viendo el widget" pese a
-      // pedir cerrarlo N veces. Barremos el DOM por si acaso: si hay tarjeta con ese id, la quitamos igual.
+      // pedir cerrarlo N veces. Barremos el DOM por si acaso: si hay app con ese id, la quitamos igual.
       const orphan=this.stage&&this.stage.querySelector(`.hb-win[data-wid="${(id||"").replace(/"/g,'')}"]`);
       if(orphan){ orphan.classList.remove("in"); setTimeout(()=>orphan.remove(),220); this._persist(); }
       return;
     }
-    // Cerrar la tarjeta de una TAREA de NAVEGADOR (navegador::<taskid>) cierra también su PESTAÑA en el navegador
+    // Cerrar la app de una TAREA de NAVEGADOR (navegador::<taskid>) cierra también su PESTAÑA en el navegador
     // real y cancela la tarea si seguía viva — así no se acumulan pestañas ni tareas huérfanas.
     //
     // V2-259 — la condición era `id.includes("::")` con `w.base||"navegador"` de reserva, o sea que daba por
@@ -1318,7 +1318,7 @@ export class Desktop {
   }
   closeAll({by="code"}={}){
     [...this.wins.keys()].forEach(id=>this.close(id, {by}));
-    // BARRIDO DEL DOM (2026-07-14): "cierra todo" DEBE dejar el canvas limpio SIEMPRE, aunque haya tarjetas
+    // BARRIDO DEL DOM (2026-07-14): "cierra todo" DEBE dejar el canvas limpio SIEMPRE, aunque haya apps
     // huérfanas fuera de `wins` (desync tras reconexión/reinicio → el bug de "no eres capaz de cerrar la agenda"
     // con el close disparándose una y otra vez sin efecto). Quitamos toda .hb-win que quede en el escenario.
     if(this.stage){ this.stage.querySelectorAll(".hb-win").forEach(card=>{ this._unwatchSize(card); card.classList.remove("in"); setTimeout(()=>card.remove(),220); }); }
@@ -1435,8 +1435,8 @@ export class Desktop {
     return true;
   }
 
-  // MAXIMIZAR dentro de la app: la tarjeta ocupa casi todo el lienzo sin tapar zaelar. Es un TOGGLE y guarda la
-  // geometría anterior, así que volver deja la tarjeta exactamente donde y como estaba (si no, "ponlo grande"
+  // MAXIMIZAR dentro de la app: la app ocupa casi todo el lienzo sin tapar zaelar. Es un TOGGLE y guarda la
+  // geometría anterior, así que volver deja la app exactamente donde y como estaba (si no, "ponlo grande"
   // sería una operación de ida sin vuelta y el operador tendría que recolocarla a mano).
   maximize(id){
     const w = this.wins.get(id); if(!w || !w.card) return false;
@@ -1568,7 +1568,7 @@ export class Desktop {
       if(dir.includes("w")){ w = sw - dx; l = sl + dx; }
       if(dir.includes("n")){ h = sh - dy; t = st + dy; }
       // Los mínimos se aplican ANTES de mover el origen: si no, arrastrar el borde izquierdo más allá del ancho
-      // mínimo seguía desplazando la tarjeta a la derecha y parecía que se estaba moviendo, no redimensionando.
+      // mínimo seguía desplazando la app a la derecha y parecía que se estaba moviendo, no redimensionando.
       const _min = this._minSize(id), _c = this.canvas();
       if(w < _min.w){ if(dir.includes("w")) l = sl + (sw - _min.w); w = _min.w; }
       if(h < _min.h){ if(dir.includes("n")) t = st + (sh - _min.h); h = _min.h; }
@@ -1616,7 +1616,7 @@ export class Desktop {
     }
     if(opts.height != null){
       const maxH = _c.y1 - _c.y0;
-      // ALTO REAL, no `max-height`. Con max-height la tarjeta seguía encogiéndose al contenido, así que "hazla
+      // ALTO REAL, no `max-height`. Con max-height la app seguía encogiéndose al contenido, así que "hazla
       // más alta" no hacía nada visible salvo que el contenido ya desbordara — y el tamaño tampoco se podía
       // guardar (no había ninguno). Ahora es el mismo eje que mueve el tirador de la esquina.
       card.style.height = Math.max(_min.h, Math.min(opts.height, maxH)) + "px";

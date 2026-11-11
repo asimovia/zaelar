@@ -67,7 +67,7 @@ def prompt_digest() -> str:
             row += " (" + "; ".join(x for x in extra if x) + ")"
         lines.append(row)
     if len(contacts) > 15:
-        lines.append(f"… y {len(contacts) - 15} entradas más (la tarjeta las enseña todas).")
+        lines.append(f"… y {len(contacts) - 15} entradas más (la app las enseña todas).")
     return "\n".join(lines)
 
 

@@ -131,7 +131,7 @@ def test_close_stops_claiming_the_bare_verb_but_still_says_it_STOPS():
     """
     close = _acts()["close"]["desc"].lower()
     assert "deja de sonar" in close and "sin vídeo" in close, "close has to SAY that it stops it for real"
-    assert "quita" in close, "…and that the card is left EMPTY — that is the half `pause` does not do"
+    assert "quita" in close, "…and that the app is left EMPTY — that is the half `pause` does not do"
     assert "párralo y vuelve al inicio" in close, "V2-753's compound order stays its own (measured 0.89)"
 
 
@@ -286,7 +286,7 @@ def test_an_unreadable_card_is_reported_once_so_the_silence_is_not_invisible(mon
     g = harness.note_goal(harness.KIND_WIDGET_CONTENT, "musica", "Pon algo.")
     assert asyncio.run(harness.verify(g)) is None
     assert asyncio.run(harness.verify(g)) is None
-    assert [s for s in seen if "NO verificable" in s], "the unreadable card leaves a line"
+    assert [s for s in seen if "NO verificable" in s], "the unreadable app leaves a line"
     assert len([s for s in seen if "NO verificable" in s]) == 1, "…once, not on every heartbeat"
 
 

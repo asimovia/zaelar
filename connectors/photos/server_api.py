@@ -25,7 +25,7 @@ router = APIRouter()
 DOOR = Door(prefix="/api/photos", family="fotos", oauth=oauth, providers=providers,
             status=lambda: service.status(), label="Google Photos",
             provider=service.PROVIDER_ID, forget=lambda: service.disconnect(),
-            done="You can now pick your photos from the zaelar card.", done_key="oauth.photos.done")
+            done="You can now pick your photos from the zaelar app.", done_key="oauth.photos.done")
 status, connect, callback, disconnect = register(router, DOOR)
 _page = DOOR.page
 

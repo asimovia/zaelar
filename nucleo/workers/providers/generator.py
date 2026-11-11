@@ -45,7 +45,7 @@ class GeneratorBackend(WorkerBackend):
             if action == "delete":
                 # V2-781 T531 — a worker never deletes a card. Deleting is a CONFIRMED act (`pending_confirm`, the
                 # UI's Yes/No); inside an errand it ran with no question of its own and took the clock with it.
-                await self._emit("result", summary=f"No he borrado «{existing}»: borrar una tarjeta se confirma "
+                await self._emit("result", summary=f"No he borrado «{existing}»: borrar una app se confirma "
                                  "aparte — pídemelo y te lo pregunto.", ok=False,
                                  data={"widget": existing, "deleted": False})
                 return

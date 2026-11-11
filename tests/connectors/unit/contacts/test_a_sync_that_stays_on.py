@@ -414,7 +414,7 @@ def test_a_due_pass_runs_and_SAVES(ct, monkeypatch):
     monkeypatch.setattr(gcontacts, "sync", lambda db, **k: {"ok": True, "added": 1})
     ctx = _Ctx()
     gcontacts.tick(ctx)
-    assert len(ctx.saved) == 1, "a pass nobody saves is a pass the open card never sees"
+    assert len(ctx.saved) == 1, "a pass nobody saves is a pass the open app never sees"
 
 
 def test_a_FAILED_pass_still_moves_the_clock(ct, monkeypatch):

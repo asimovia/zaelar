@@ -63,7 +63,7 @@ def _driving_shared(py: str) -> str:
     f"• Progreso ESTRUCTURADO (el operador lo VE y zaelar responde '¿cómo va?'): al empezar "
     f"{py} -m nucleo.cli.report plan \"paso1|paso2|paso3\"  y al terminar cada paso "
     f"{py} -m nucleo.cli.report progress \"<hecho>\" --done <n>\n"
-    f"• Fase legible puntual (tarjeta): {py} -m nucleo.cli.report phase \"<qué haces>\"\n"
+    f"• Fase legible puntual (app): {py} -m nucleo.cli.report phase \"<qué haces>\"\n"
     f"• Preguntar al operador (tu turno TERMINA y se te reanuda con su respuesta): {py} -m nucleo.cli.bridge ask \"<pregunta>\"\n"
     f"• Leer un dato que zaelar ya sepa:  {py} -m nucleo.cli.mem recall \"<consulta>\" (lo DICHO, literal: cli.mem history \"<tema>\")\n"
     )
@@ -205,7 +205,7 @@ def results_block(py: str) -> str:
     # tiene además un efecto colateral buscado: `_with_presentation` engancha sola los presupuestos de campo
     # de esa superficie al ver su id en el texto.
     # UNA instrucción con su bifurcación DENTRO (V2-226): «escribe el informe y no las filas», no dos órdenes.
-    "DÓNDE SE VE LO QUE ENCUENTRAS — son DOS superficies y no son intercambiables: la TARJETA del navegador "
+    "DÓNDE SE VE LO QUE ENCUENTRAS — son DOS superficies y no son intercambiables: la APP del navegador "
     "es el monitor (enseña por dónde vas y nada más), y la HOJA `results` es donde el operador mira los "
     "hallazgos; se le abrió delante en cuanto te encargó esto. ESCRIBE en esa hoja el INFORME de cierre "
     "—conclusión, criterios y en qué sitios entraste y qué pasó en cada uno— y NO las filas que ya sacaste "

@@ -99,7 +99,7 @@ async def verify(goal: dict) -> bool | None:
         if not view or "empty" not in view or str(view.get("error") or "").strip():
             out = None                       # a widget that does not declare emptiness is unverifiable
             if goal.get("last_seen") != "unreadable":
-                _emit("🫥 arnés: objetivo NO verificable — la tarjeta no declara si está vacía", goal)
+                _emit("🫥 arnés: objetivo NO verificable — la app no declara si está vacía", goal)
         elif view.get("empty"):
             out = False
             goal["why"] = "empty"

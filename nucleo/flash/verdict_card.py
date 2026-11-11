@@ -57,7 +57,7 @@ def takes_the_view(brief, model_card: str, model_action: str, *, operator_text: 
                             apply_widget_data=apply_widget_data, widget_id=vwid, instead_of=model_action,
                             require_order=False)
         if done:
-            emit("brain", "🎯 veredicto seguro sobre la tarjeta de delante — corre su vista, no la del modelo",
+            emit("brain", "🎯 veredicto seguro sobre la app de delante — corre su vista, no la del modelo",
                  text=f"modelo={model_card}:{model_action} · veredicto={vwid}:{vact}", role="system",
                  extra={"cat": "flash", "id": vwid, "model": f"{model_card}:{model_action}", "verdict": vact})
         return done

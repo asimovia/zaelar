@@ -36,7 +36,7 @@ _CLOSE_VERB_RE = re.compile(
 
 # The CARDS themselves — these nouns name the canvas, so a close verb next to one is a close-ALL on its own.
 _ALL_RE = re.compile(
-    r"\b(widgets|tarjetas|ventanas|pantalla|escritorio|everything)\b")
+    r"\b(widgets|tarjetas|apps|ventanas|pantalla|escritorio|everything)\b")
 
 
 # V2-664 — A BARE QUANTIFIER IS NOT THE CANVAS UNTIL IT SAYS SO. «todo/todos/todas/all» used to count
@@ -55,7 +55,7 @@ _QUANT_RE = re.compile(
 
 # Nouns that ARE the cards (what a quantifier may govern and still mean the whole canvas) …
 _CARD_WORD_RE = re.compile(
-    r"^(?:widgets?|tarjetas?|ventanas?|cards?|pantallas?|escritorios?|canvas|mural|esto|eso|abierto|abiertos)$")
+    r"^(?:widgets?|tarjetas?|apps?|ventanas?|cards?|pantallas?|escritorios?|canvas|mural|esto|eso|abierto|abiertos)$")
 
 
 # … and the particles that are not a noun at all, so the quantifier governs NOTHING through them.

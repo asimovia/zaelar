@@ -41,7 +41,7 @@ def test_the_chat_opens_and_the_text_is_published_for_the_card_to_type(box):
 def test_the_order_waits_while_it_is_typed_and_then_leaves_once(box, monkeypatch):
     from connectors.messaging import store as msgstore
     box.apply_action("send_to", {"contact": "Rowan", "channel": "telegram", "text": "Moved to 3:15"})
-    assert msgstore.take_pending_send() == [], "released before the card pressed send"
+    assert msgstore.take_pending_send() == [], "released before the app pressed send"
     later = time.time() + 30
     monkeypatch.setattr(msgstore.time, "time", lambda: later)
     got = msgstore.take_pending_send()

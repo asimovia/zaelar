@@ -773,7 +773,7 @@ def prompt_digest(widget_id: str) -> str:
     except Exception:
         return ""
     if len(out) > _MAX_DIGEST_CHARS:
-        out = out[:_MAX_DIGEST_CHARS].rsplit("\n", 1)[0] + "\n… (recortado — el resto está en la propia tarjeta)"
+        out = out[:_MAX_DIGEST_CHARS].rsplit("\n", 1)[0] + "\n… (recortado — el resto está en la propia app)"
     return out
 
 
@@ -811,7 +811,7 @@ def items_line(widget_id: str) -> str:
     if not idx and _shows_something(widget_id):
         return ""
     if not idx:
-        return ("items ahora: NINGUNO — la tarjeta está ABIERTA pero VACÍA: el operador no ve NADA dentro, así que "
+        return ("items ahora: NINGUNO — la app está ABIERTA pero VACÍA: el operador no ve NADA dentro, así que "
                 "no des por entregado lo que hay que poner ahí")
     bits = []
     for i in idx[:12]:

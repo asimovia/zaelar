@@ -86,7 +86,7 @@ def _canvas():
                 const m = await import(`http://127.0.0.1:${port}/frontend/app/widgets/desktop.js?v=1`);
                 window.__desk = new m.Desktop(document.getElementById('stage'));
             }""", port)
-            assert not errors, f"the canvas threw before a single card was asked for: {errors}"
+            assert not errors, f"the canvas threw before a single app was asked for: {errors}"
             page._hb_errors = errors
             yield page
             browser.close()
@@ -114,7 +114,7 @@ def test_a_fresh_card_actually_appears_on_the_canvas(_canvas):
     """
     _show(_canvas, "uno", data={"ok": True})
     assert _canvas.evaluate("() => document.querySelectorAll('#stage .hb-win').length") == 1
-    assert not _canvas._hb_errors, f"opening a card threw: {_canvas._hb_errors}"
+    assert not _canvas._hb_errors, f"opening an app threw: {_canvas._hb_errors}"
 
 
 def test_a_worker_card_opens_beside_his_card_and_never_over_it(_canvas):
@@ -126,9 +126,9 @@ def test_a_worker_card_opens_beside_his_card_and_never_over_it(_canvas):
     front = _z(_canvas, "uno")
     _show(_canvas, "dos", data={"ok": True}, background=True)
     assert _canvas.evaluate("() => document.querySelectorAll('#stage .hb-win').length") == 2, \
-        "a background card must still OPEN — background is about focus, not about hiding"
-    assert _z(_canvas, "dos") < front, "the worker's card took the front over his"
-    assert _z(_canvas, "uno") == front, "his card must not have been demoted either"
+        "a background app must still OPEN — background is about focus, not about hiding"
+    assert _z(_canvas, "dos") < front, "the worker's app took the front over his"
+    assert _z(_canvas, "uno") == front, "his app must not have been demoted either"
     assert not _canvas._hb_errors, _canvas._hb_errors
 
 
@@ -137,7 +137,7 @@ def test_a_second_show_of_an_open_card_honours_background_too(_canvas):
     front = _z(_canvas, "uno")
     _canvas.evaluate("() => window.__desk.show('dos', { background: true, data: { again: 1 } })")
     _canvas.wait_for_timeout(200)
-    assert _z(_canvas, "dos") < front, "re-showing a worker card fronted it"
+    assert _z(_canvas, "dos") < front, "re-showing a worker app fronted it"
     _canvas.evaluate("() => window.__desk.show('dos', { data: { again: 2 } })")
     _canvas.wait_for_timeout(200)
     assert _z(_canvas, "dos") > front, "his OWN re-show must come to the front, as it always did"

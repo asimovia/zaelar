@@ -131,7 +131,7 @@ def test_the_connectors_button_is_the_door_to_the_section_not_a_screen_of_its_ow
     list — and the messages underneath never go anywhere."""
     _mount(_page, _base_data())
     _page.locator(".connbtn").click()
-    assert _page.locator(".chanhead").count() == 0, "no connectors screen inside the card any more"
+    assert _page.locator(".chanhead").count() == 0, "no connectors screen inside the app any more"
     assert _page.get_by_text("Marta", exact=True).count() == 1, "the inbox stays where it was"
     assert ["openConnector", ""] in _page.evaluate("() => window.__calls")
     _page.locator(".dots .picon.on").nth(2).click()               # ORDER=[whatsapp,telegram,email] → email

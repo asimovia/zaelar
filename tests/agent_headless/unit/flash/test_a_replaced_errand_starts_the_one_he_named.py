@@ -217,7 +217,7 @@ def test_a_steer_reaches_the_one_running_errand(text, one_errand):
     acted, esc = {"v": None}, {"v": "leer mis correos", "more": ["x"]}
     assert sd.steer(_brief("steer"), text, worker_acted=acted, escalate_req=esc) == "7"
     assert one_errand["injected"] == [("7", " ".join(text.split()))]
-    assert acted["v"] == "inject", "the turn now counts as acted: no repair pass turns the promise into a card op"
+    assert acted["v"] == "inject", "the turn now counts as acted: no repair pass turns the promise into an app op"
     assert esc == {"v": None, "more": []}, "the model's escalation of his correction is the relay's, not a new errand"
 
 

@@ -40,7 +40,7 @@ def test_a_third_card_fills_by_its_declaration_with_no_engine_edit(cards):
     assert req == {"widget_id": "podcasts", "action": "find_episodes",
                    "payload": {"topic": "find episodes about the Apollo missions"}}
     cards["podcasts"] = {"episodes": [{"title": "Apollo 11"}]}
-    assert cc.search_to_fill("podcasts", "find episodes about the Apollo missions") is None, "a full card shows itself"
+    assert cc.search_to_fill("podcasts", "find episodes about the Apollo missions") is None, "a full app shows itself"
 
 
 def test_an_instance_is_judged_by_its_own_view(cards):

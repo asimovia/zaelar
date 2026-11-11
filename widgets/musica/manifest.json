@@ -8,7 +8,7 @@
     "musica"
   ],
   "title": "Música",
-  "description": "Tu música por voz y a mano, como un reproductor de verdad: la canción que suena ocupa la tarjeta (portada, título, artista, barra de progreso), tu biblioteca guarda listas, favoritas, más escuchadas y recientes, hay cola, aleatorio y repetir, y un buscador de canciones, artistas y álbumes. Conecta tu Spotify o suena gratis desde YouTube-audio.",
+  "description": "Tu música por voz y a mano, como un reproductor de verdad: la canción que suena ocupa la app (portada, título, artista, barra de progreso), tu biblioteca guarda listas, favoritas, más escuchadas y recientes, hay cola, aleatorio y repetir, y un buscador de canciones, artistas y álbumes. Conecta tu Spotify o suena gratis desde YouTube-audio.",
   "whenToUse": "Música: poner canciones, artistas y álbumes, buscar, listas, cola, aleatorio y repetir. Conectar Spotify es de aquí (nunca authenticate_web).",
   "keywords": [
     "música",
@@ -153,7 +153,7 @@
       }
     },
     "open_view": {
-      "desc": "cambia la cara de la tarjeta: la canción que suena (now), la biblioteca (library), la cola (queue), una lista (playlist), un artista o un álbum del catálogo (artist/album) o las fuentes (connect)",
+      "desc": "cambia la cara de la app: la canción que suena (now), la biblioteca (library), la cola (queue), una lista (playlist), un artista o un álbum del catálogo (artist/album) o las fuentes (connect)",
       "payload": {
         "kind": "now|library|queue|playlist|artist|album|search|connect|home",
         "id": "id de la lista (playlist) o del artista/álbum si se conoce",
@@ -235,7 +235,7 @@
       }
     },
     "release": {
-      "desc": "deja Spotify en el otro dispositivo; la tarjeta queda en blanco",
+      "desc": "deja Spotify en el otro dispositivo; la app queda en blanco",
       "payload": {},
       "sensitivity": "routine"
     },
@@ -338,7 +338,7 @@
       }
     },
     "play_result": {
-      "desc": "pone UNO de los resultados que la tarjeta encontró (la lista numerada del resumen): por su número, su nombre o su autor",
+      "desc": "pone UNO de los resultados que la app encontró (la lista numerada del resumen): por su número, su nombre o su autor",
       "payload": {
         "item": "número, nombre o autor del resultado"
       },
@@ -351,7 +351,7 @@
       }
     },
     "refresh": {
-      "desc": "refresca la tarjeta con el estado real de reproducción",
+      "desc": "refresca la app con el estado real de reproducción",
       "payload": {}
     },
     "ended": {
@@ -360,7 +360,7 @@
       "payload": {}
     },
     "enrich_art": {
-      "desc": "interno: lo dispara la propia tarjeta para pedir la portada de una canción sin foto — nunca una orden de voz, no invocar",
+      "desc": "interno: lo dispara la propia app para pedir la portada de una canción sin foto — nunca una orden de voz, no invocar",
       "internal": true,
       "payload": {
         "title": "SOLO el título",
@@ -368,7 +368,7 @@
       }
     },
     "played": {
-      "desc": "interno: lo dispara la propia tarjeta al ver sonar una canción, para Recientes — nunca una orden de voz, no invocar",
+      "desc": "interno: lo dispara la propia app al ver sonar una canción, para Recientes — nunca una orden de voz, no invocar",
       "internal": true,
       "payload": {
         "title": "título",
@@ -386,7 +386,7 @@
       }
     },
     "player_audio": {
-      "desc": "Internal: the page player reports whether the browser really lets it be heard (IFrame API). Fired by the card itself, never by voice — sound wanted but kept silent becomes audio_blocked.",
+      "desc": "Internal: the page player reports whether the browser really lets it be heard (IFrame API). Fired by the app itself, never by voice — sound wanted but kept silent becomes audio_blocked.",
       "internal": true,
       "payload": {
         "muted": "true | false — silent, as the player reports it",

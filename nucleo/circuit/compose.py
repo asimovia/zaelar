@@ -100,8 +100,8 @@ def ignored_note(wid: str, action: str, res) -> str:
     lost = [str(k) for k in (res.get("ignored") or []) if str(k).strip()]
     if not lost:
         return ""
-    return (f"[SISTEMA] «{action}» sobre «{wid}» SÍ se guardó, pero SIN estos datos, que la tarjeta no sabe "
+    return (f"[SISTEMA] «{action}» sobre «{wid}» SÍ se guardó, pero SIN estos datos, que la app no sabe "
             f"guardar: {', '.join(lost[:8])}. Si le dijiste que quedaba con eso, corrígelo en tu PRÓXIMA "
-            f"respuesta — lo que está guardado es lo que dice la tarjeta, no lo que mandaste."
+            f"respuesta — lo que está guardado es lo que dice la app, no lo que mandaste."
             + (f" Sus campos son: {', '.join(fields)}; si hay que rehacerlo, usa ESOS."
                if (fields := declared_fields(wid, action)) else ""))

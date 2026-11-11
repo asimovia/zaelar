@@ -61,14 +61,14 @@ def model(monkeypatch):
 
 def test_a_read_of_the_card_the_verdict_names_carries_the_op_out(brief):
     from nucleo.turn import brief as tb
-    assert repair_after_lookup.same_card_order_after_read({"x": 1}, "agenda", "Let me check what's on the card.") == "cancel_meeting"
+    assert repair_after_lookup.same_card_order_after_read({"x": 1}, "agenda", "Let me check what's on the app.") == "cancel_meeting"
     brief[tb.REQUEST_KEY] = "question"
     assert repair_after_lookup.same_card_order_after_read({"x": 1}, "agenda") == "", "a question is answered by the read"
     brief[tb.REQUEST_KEY] = "comment"
     assert repair_after_lookup.same_card_order_after_read({"x": 1}, "agenda", "I'll cancel it.") == "", \
         "no sure order: our words decide nothing (refactor2710-03)"
     brief[tb.REQUEST_KEY] = "order"
-    assert repair_after_lookup.same_card_order_after_read({"x": 1}, "mensajeria") == "", "another card is not this repair"
+    assert repair_after_lookup.same_card_order_after_read({"x": 1}, "mensajeria") == "", "another app is not this repair"
     brief[tb.TARGET_KEY], brief[tb.REQUEST_KEY] = "agenda:show_day", "comment"
     assert repair_after_lookup.same_card_order_after_read({"x": 1}, "agenda") == "", "a view verdict changes nothing"
 

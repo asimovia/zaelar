@@ -85,7 +85,7 @@ async def _drain_fetch(mb) -> None:
         logger.info(f"Email: fetch de {hours:.0f}h → {total} mensajes en {len(by_chat)} conversación(es)")
         from nucleo.events import task_event      # his ordered fetch, said once out of turn (V2-851 F4)
         task_event.told(f"Mail fetched: {total} message(s) from the last {hours:.0f} h in {len(by_chat)} "
-                        "conversation(s), already in the messaging card." if total else
+                        "conversation(s), already in the messaging app." if total else
                         f"Mail fetched: no (non-automatic) mail in the last {hours:.0f} h.",
                         key=f"email:fetch:{int(hours)}:{total}")
 

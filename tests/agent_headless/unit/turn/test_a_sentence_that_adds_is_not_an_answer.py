@@ -26,7 +26,7 @@ from nucleo.turn import confirm_gates as gates
 NOTES = ("[SISTEMA] Aviso para el operador (zaelar): Esto mueve dinero («Elaborar un informe…») y no hago ningún "
          "cargo sin tu OK. ¿Sigo? Díselo con tus palabras DESPUÉS de contestar a lo que te ha pedido — todavía no "
          "lo sabe.\n[SISTEMA] Aviso para el operador (zaelar): Si no te he entendido mal, me pides que te CONSTRUYA "
-         "una tarjeta nueva («Construir un widget de un juego…»). ¿La hago?")
+         "una app nueva («Construir un widget de un juego…»). ¿La hago?")
 
 
 def _brief(kind: str, p: float = 0.95):
@@ -46,7 +46,7 @@ def parked(monkeypatch):
     dc._PENDING_CONFIRM["7"] = {
         "request": "Construir un widget de un juego de plataformas tipo Super Mario", "kind": "code",
         "trusted": True, "context": {}, "question": "Si no te he entendido mal, me pides que te CONSTRUYA una "
-        "tarjeta nueva. ¿La hago?", "sheet": "", "code_change": "create", "ts": time.time()}
+        "app nueva. ¿La hago?", "sheet": "", "code_change": "create", "ts": time.time()}
     return relaunched
 
 

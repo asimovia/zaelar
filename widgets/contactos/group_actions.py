@@ -168,7 +168,7 @@ def _a_message_group(action, payload, q, db, contacts, now) -> dict:
     from widgets import provenance
     from i18n import langs
     if provenance.who(_d.WIDGET_ID) != "user":
-        return {"ok": False, "error": "message_group es un gesto de la tarjeta: la voz manda con mensajeria"}
+        return {"ok": False, "error": "message_group es un gesto de la app: la voz manda con mensajeria"}
     g = _group_of(db, payload)
     if not g:
         return _no_group(db, payload)

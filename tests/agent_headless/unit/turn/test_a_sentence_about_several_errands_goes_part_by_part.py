@@ -88,7 +88,7 @@ def test_the_voice_turn_end_routes_and_holds_the_repair(injected):
     assert all(m != HIS for _w, m in injected), "his whole sentence went to one errand"
     assert sorted(w for w, _m in injected) == ["3", "6"], injected
     assert "hdmi" in dict(injected)["3"] and "game" not in dict(injected)["3"], injected
-    assert S.holds_the_repair("On it.", HIS), "the voice card repair is held for a routed sentence"
+    assert S.holds_the_repair("On it.", HIS), "the voice app repair is held for a routed sentence"
     from pathlib import Path
     from tests import voice_turn_source as _vts
     src = _vts.read(Path(__file__).resolve().parents[4] / "nucleo/turn/pipeline_close.py")

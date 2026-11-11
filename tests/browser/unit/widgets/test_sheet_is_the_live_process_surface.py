@@ -81,7 +81,7 @@ def test_encargar_abre_SU_hoja_y_la_anterior_no_se_toca(monkeypatch):
 
     assert ("widget", "show", "results::" + dispatch.sheet_id_for("t1")) in shown, (
         "la hoja tiene que ABRIRSE al encargar, no al entregar — y con el id de SU instancia, que es lo que hace "
-        "que el canvas pinte una tarjeta nueva en vez de reusar la de la búsqueda anterior")
+        "que el canvas pinte una app nueva en vez de reusar la de la búsqueda anterior")
     nueva = sheet.view_data(dispatch.sheet_id_for("t1"))
     assert nueva["items"] == [], "la hoja del encargo nuevo empieza en blanco"
     assert nueva["title"] == "Busca hoteles de 4 estrellas en Sevilla"
@@ -177,7 +177,7 @@ def test_al_terminar_el_loader_para_y_la_historia_se_queda():
     dispatch._sheet_close(rec)
 
     pr = sheet.view_data(dispatch.sheet_id_for("t1"))["progress"]
-    assert pr["alive"] is False, "nadie más avisa del final: sin esta escritura la tarjeta sigue «Trabajando…»"
+    assert pr["alive"] is False, "nadie más avisa del final: sin esta escritura la app sigue «Trabajando…»"
     assert pr["phases"] == ["entrando en booking.com…", "lanzando la búsqueda…"]
 
 

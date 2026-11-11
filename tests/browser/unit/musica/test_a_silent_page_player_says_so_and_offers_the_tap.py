@@ -130,7 +130,7 @@ def test_the_card_reports_a_silent_player_after_the_grace(_page):
 def test_a_blocked_player_shows_the_tap_and_a_heard_one_does_not(_page):
     _mount(_page, _data(audio_blocked=True))
     tap = _page.query_selector(".hb-mus2-tapsound")
-    assert tap is not None and tap.is_visible(), "the card says the browser keeps it silent and offers the tap"
+    assert tap is not None and tap.is_visible(), "the app says the browser keeps it silent and offers the tap"
     tap.click()
     _mount(_page, _data())
     assert _page.query_selector(".hb-mus2-tapsound") is None

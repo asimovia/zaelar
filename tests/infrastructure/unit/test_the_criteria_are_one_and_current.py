@@ -103,7 +103,7 @@ def test_the_diary_declares_itself_history():
 READING_TEST = {
     "what do I say after a short order?": "V1",
     "when do I ask before acting?": "C1",
-    "who decides which card an order goes to?": "K1",
+    "who decides which app an order goes to?": "K1",
     "may a backstop overrule a verdict?": "K2",
     "does a delete on the agenda ask?": "C3",
     "what happens to a send the verdict does not back?": "C5",

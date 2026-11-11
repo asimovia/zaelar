@@ -170,9 +170,9 @@ def test_the_two_shipped_languages_are_the_first_rows_and_look_different(playwri
 
 def test_forty_rows_scroll_inside_the_card_instead_of_running_off_the_screen(playwright_available):
     m = _run()
-    assert m["listScrolls"], "40 rows must scroll — a list that grows the card pushes it off screen"
+    assert m["listScrolls"], "40 rows must scroll — a list that grows the app pushes it off screen"
     assert m["listInsideCard"], "the list must stay inside the card"
-    assert m["cardOnScreen"], "the card must fit the viewport"
+    assert m["cardOnScreen"], "the app must fit the viewport"
 
 
 def test_it_fits_a_phone(playwright_available):
@@ -465,7 +465,7 @@ def test_the_language_being_ready_does_not_snatch_the_question_away(playwright_a
                                      window.__store.requestLangOnboardClose(); }""")
     m = _run_folder([ready])
     assert m["showing"], "«ready» must not remove an unanswered question"
-    assert not m["gone"], "and must not fade the card out from under it"
+    assert not m["gone"], "and must not fade the app out from under it"
 
 
 def test_skip_is_a_real_way_out(playwright_available):

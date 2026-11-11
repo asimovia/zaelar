@@ -97,4 +97,4 @@ def test_a_reader_on_the_loop_never_asks(jev_calls):
         return brief_screen.named_to_close(bare), bulk_close.spare_for(OPEN, BULK["en"], brief=bare)
     (picks, spare), ticks = asyncio.run(_loop_ticks_while(_read))
     assert jev_calls == [] and picks == [], "the loop asked a blocking verdict"
-    assert spare == ["documento"], "with no answer the verdict stands: the card in use is spared"
+    assert spare == ["documento"], "with no answer the verdict stands: the app in use is spared"

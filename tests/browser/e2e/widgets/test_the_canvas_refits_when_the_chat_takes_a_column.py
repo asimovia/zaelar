@@ -165,7 +165,7 @@ def test_a_card_behind_the_new_chat_column_is_brought_out(playwright_available):
     assert before["results"]["left"] == 80, before["results"]
     assert after["__desk"]["left"] == 600, after["__desk"]
     assert _inside(after["results"], after["__desk"]), \
-        f"the card is not inside the visible desk: {after['results']} vs desk {after['__desk']}"
+        f"the app is not inside the visible desk: {after['results']} vs desk {after['__desk']}"
     assert after["errors"] == [], after["errors"]
 
 
@@ -221,7 +221,7 @@ def test_undocking_does_not_drag_the_cards_back(playwright_available):
     docked, freed = steps[1], steps[2]
     # Compared in DESK coordinates: the desk itself moves back left when the column is released, so the whole
     # stage translates with it — that is CSS doing its job, not the refit moving anything.
-    assert freed["results"]["styleLeft"] == docked["results"]["styleLeft"], "a legal card must not be moved again"
+    assert freed["results"]["styleLeft"] == docked["results"]["styleLeft"], "a legal app must not be moved again"
     assert freed["navegador"]["styleLeft"] == docked["navegador"]["styleLeft"], freed["navegador"]
 
 
@@ -345,7 +345,7 @@ def test_grabbing_a_card_with_a_column_docked_does_not_TELEPORT_it(playwright_av
     docked, dragged = steps[1], steps[2]
     dx = dragged["results"]["left"] - docked["results"]["left"]
     dy = dragged["results"]["top"] - docked["results"]["top"]
-    assert 90 <= dx <= 150, f"the card did not follow the pointer: moved {dx}px for a 120px drag"
+    assert 90 <= dx <= 150, f"the app did not follow the pointer: moved {dx}px for a 120px drag"
     assert 40 <= dy <= 90, f"vertical drift: {dy}"
     assert _inside(dragged["results"], dragged["__desk"]), dragged["results"]
 

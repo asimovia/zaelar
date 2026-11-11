@@ -88,7 +88,7 @@ def test_a_card_brought_back_over_another_retiles():
             page.evaluate("() => window.__desk.show('uno', {data: {ok: true}})")
             page.wait_for_timeout(500)
             assert not page.evaluate("() => document.querySelector(\"[data-wid='uno']\").classList.contains('hb-minned')")
-            assert not _overlaps(page), f"the card came back over another one: {_overlaps(page)}"
+            assert not _overlaps(page), f"the app came back over another one: {_overlaps(page)}"
             assert not errors, errors
             browser.close()
     finally:

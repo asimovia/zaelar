@@ -89,7 +89,7 @@ def test_a_correction_of_the_last_card_act_is_never_steered_to_the_errand(text, 
     brief = _brief(stop_errand=("steer", 0.95), corrects_last=("corrects_last", 0.95),
                    errand_target=("running_errand", 0.9))
     assert sd.steer(brief, text, worker_acted=acted) == ""
-    assert errand["injected"] == [], "his correction of the card reached the errand"
+    assert errand["injected"] == [], "his correction of the app reached the errand"
     assert acted["v"] is None, "an unrelayed correction must not mark the turn as acted (`inject`)"
 
 

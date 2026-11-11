@@ -140,7 +140,7 @@ def forward_without_files(db: dict, payload: dict) -> dict | None:
     if attachments_of(db, src):
         return None
     # What is forwarded is what HE pointed at, never a stand-in from another sender that has files.
-    return {"ok": False, "error": "el mensaje que él señaló no está en la tarjeta con sus adjuntos todavía — ábrelo "
+    return {"ok": False, "error": "el mensaje que él señaló no está en la app con sus adjuntos todavía — ábrelo "
                                   "(open con su remitente) y vuelve a intentarlo, o dile que aún no lo tienes a mano; "
                                   "NUNCA reenvíes el mensaje de otro remitente en su lugar"}
 

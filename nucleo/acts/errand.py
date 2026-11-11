@@ -77,7 +77,7 @@ def escalate_to_slowbrain(request: str, *, context: dict | None = None, task_id:
         from nucleo.flash import capability_gap as _gap
         if _gap.refuses(req, ctx0):
             _gap.refuse(req)
-            logger.info(f"escalate: NOT started — asks for a capability no card declares: {req[:80]}")
+            logger.info(f"escalate: NOT started — asks for a capability no app declares: {req[:80]}")
             return 0
     except Exception as e:  # noqa: BLE001 — the gate may never break the portal
         logger.debug(f"escalate: capability gate skipped: {e!r}")

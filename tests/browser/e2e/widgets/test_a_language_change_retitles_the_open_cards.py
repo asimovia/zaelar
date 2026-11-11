@@ -105,7 +105,7 @@ def test_an_open_cards_title_follows_the_language(playwright_available):
     assert not errors, errors
     assert out["before"] == "Mensajería"
     assert out["after"] == "Messages", \
-        "the card kept the title of the language the operator just left — the registry is cached and nothing dropped it"
+        "the app kept the title of the language the operator just left — the registry is cached and nothing dropped it"
     assert out["renders"] >= 1, "…and the widget's own body still re-renders (the V2-613 half must not regress)"
 
 

@@ -38,7 +38,7 @@ def test_no_request_is_an_empty_card_and_fetches_nothing(monkeypatch):
     d, calls = _no_network(monkeypatch)
     out = d.view_data("")
     assert out["kind"] == "empty" and not out["sources"] and not out["conclusion"], out
-    assert calls == [], f"a card opened with no request searched something: {calls}"
+    assert calls == [], f"an app opened with no request searched something: {calls}"
 
 
 @pytest.mark.parametrize("state, place", [({}, ""), ({"location": "Porto"}, "Porto"),
@@ -102,7 +102,7 @@ def test_the_header_ends_when_the_sources_have_answered(page):
     page.evaluate("(d) => window.__render(d)", {"kind": "web", "query": "coffee", "conclusion": "Found two.",
                   "sources": [{"title": "a.example", "status": "ok", "lines": ["x"]},
                               {"title": "b.example", "status": "fail", "lines": ["y"]}]})
-    assert _state(page)["spinning"], "while the sources resolve, the card says it is working"
+    assert _state(page)["spinning"], "while the sources resolve, the app says it is working"
     page.wait_for_timeout(2400)
     v = _state(page)
     assert "done" in v["cls"] and not v["spinning"] and "Searching" not in v["text"], v

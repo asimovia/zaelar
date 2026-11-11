@@ -81,8 +81,8 @@ def test_the_grammar_still_reads_his_sentence_as_a_create():
 def test_the_verdict_refuses_the_generator_over_a_card_we_already_have():
     brief = _brief({_tb.CATALOG_KEY: ("youtube", 0.98), _bd.BUILD_KEY: ("use_existing", 0.78)})
     build, why = _bd.decide(HIS_WORDS, brief=brief)
-    assert build is False, "the generator was reached over a card that already exists"
-    assert "youtube" in why, "the refusal has to SAY which card it recognised"
+    assert build is False, "the generator was reached over an app that already exists"
+    assert "youtube" in why, "the refusal has to SAY which app it recognised"
 
 
 def test_the_card_may_be_named_by_either_twin(monkeypatch):
@@ -209,9 +209,9 @@ def test_the_card_is_certain_even_when_the_action_is_not(monkeypatch):
                                                 "none": 0.18, "agenda:add_task": 0.04}
     assert _bd.named_card(brief) == "agenda"
     brief["result"][_tb.TARGET_KEY]["probs"] = {"agenda:update_meeting": 0.30, "youtube:play": 0.30, "none": 0.40}
-    assert _bd.named_card(brief) == "", "mass split across cards names nobody"
+    assert _bd.named_card(brief) == "", "mass split across apps names nobody"
     brief["result"][_tb.TARGET_KEY]["probs"] = {"youtube:play": 0.9, "none": 0.1}
-    assert _bd.named_card(brief) == "", "a card no longer open is no card"
+    assert _bd.named_card(brief) == "", "a app no longer open is no card"
 
 
 def test_a_stop_aimed_at_a_card_never_kills_the_errands(monkeypatch):
@@ -262,13 +262,13 @@ def test_a_show_that_names_a_card_we_have_beats_the_worker_and_an_undone_order_o
     from nucleo.flash import direct_action as _da
     assert _da.order_over_a_card_left_undone(_brief({_tb.REQUEST_KEY: ("order", 0.59), _tb.CATALOG_KEY: ("documento", 0.86)}))
     assert not _da.order_over_a_card_left_undone(_brief({_tb.REQUEST_KEY: ("question", 0.9), _tb.CATALOG_KEY: ("agenda", 0.9)})), "a question is not work owed"
-    assert not _da.order_over_a_card_left_undone(_brief({_tb.REQUEST_KEY: ("order", 0.9), _tb.CATALOG_KEY: ("none", 0.8)})), "no card named: the other gates decide"
+    assert not _da.order_over_a_card_left_undone(_brief({_tb.REQUEST_KEY: ("order", 0.9), _tb.CATALOG_KEY: ("none", 0.8)})), "no app named: the other gates decide"
     assert not _da.order_over_a_card_left_undone(_brief({_tb.REQUEST_KEY: ("order", 0.3), _tb.CATALOG_KEY: ("documento", 0.9)})), "unsure"
     src = _vts.read(_ENGINE / "voice/engine/llm/providers/nucleo.py")
     # V2-776: the show also wakes on a sure `canvas = show` verdict (`verdict_shows`), not only the verb table.
     i_show = src.index('_pw = ((_named_by_verdict or _identify(_op_text))')   # 5a572275: the verdict's card first
     assert "if _show_target.show_proposed(_brief, _router, _op_text)" in src[i_show:i_show + 200]   # V2-807 T-06
     i_esc = src.index("🧭 escalada por backstop (prometió crear/gestionar sin escalar)", i_show)
-    assert src.index("🪟 show por backstop de promesa", i_show) < i_esc, "a named card is shown BEFORE the worker gate"
+    assert src.index("🪟 show por backstop de promesa", i_show) < i_esc, "a named app is shown BEFORE the worker gate"
     assert "or _direct_action.order_over_a_card_left_undone(_brief))" in src[i_show:i_esc]
     assert "and not _eg.keeps_it_inline(_brief, _op_text" in src[i_show:i_esc], "a sure inline still decides (2.996)"

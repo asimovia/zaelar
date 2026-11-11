@@ -60,8 +60,8 @@ def test_a_wizard_install_error_names_the_installer_in_the_instance_language(lan
 
 
 @pytest.mark.parametrize("code, failed, done", [
-    ("sw", "Could not connect", "You can go back to your zaelar card."),
-    ("es", "No se pudo conectar", "Ya puedes volver a la tarjeta de zaelar."),
+    ("sw", "Could not connect", "You can go back to your zaelar app."),
+    ("es", "No se pudo conectar", "Ya puedes volver a la app de zaelar."),
 ])
 def test_the_oauth_page_carries_the_active_language(lang, code, failed, done):
     from connectors import oauth_callback

@@ -135,7 +135,7 @@ def test_a_video_LEAVING_takes_him_back_to_the_catalogue(_page):
     _mount(_page, _watching_with_a_catalogue_behind(_page))
     assert "hb-yt-t-player" in _cls(_page)
     _remount(_page, _data(search_results=_RESULTS, search_query="Apolo 11"))    # close: the video is gone
-    assert "hb-yt-t-inicio" in _cls(_page), "the card stayed on an empty player"
+    assert "hb-yt-t-inicio" in _cls(_page), "the app stayed on an empty player"
     nums = _page.eval_on_selector_all(".hb-yt-rnum", "els => els.map(e => e.textContent)")
     assert nums == ["1", "2", "3"], "…and the catalogue he wanted back has to still be there"
 
@@ -172,7 +172,7 @@ def test_a_video_SWAPPING_while_he_is_on_the_catalogue_shows_it(_page):
     swapped["videoId"] = "AAAAAAAAAA3"                      # the SIXTH result takes the player
     _remount(_page, swapped)
     assert "hb-yt-t-player" in _cls(_page), (
-        "the order ran and the card did not move — that is «No lo estás poniendo»")
+        "the order ran and the app did not move — that is «No lo estás poniendo»")
 
 
 def test_a_STALE_order_never_parks_him_on_an_EMPTY_player(_page):
@@ -229,7 +229,7 @@ def test_an_order_ALREADY_OBEYED_does_not_fight_his_hands(_page):
     _mount(_page, _watching_with_a_catalogue_behind(_page, seq=1, tab="inicio"))
     _page.click(".hb-yt-tab[data-tab=cola]")
     _remount(_page, _watching_with_a_catalogue_behind(_page, seq=1, tab="inicio"))
-    assert "hb-yt-t-cola" in _cls(_page), "the card re-obeyed an order it had already obeyed"
+    assert "hb-yt-t-cola" in _cls(_page), "the app re-obeyed an order it had already obeyed"
 
 
 def test_every_declared_face_is_reachable(_page):
@@ -259,7 +259,7 @@ def test_the_navigation_is_DECLARED_or_the_voice_cannot_see_it():
     well the card renders it."""
     spec = (_manifest().get("actions") or {}).get("show_tab")
     assert spec, "the card's faces are not declared: the voice cannot name one"
-    assert spec.get("view") is True, "navigating a card is a VIEW: a bare show order may run it"
+    assert spec.get("view") is True, "navigating an app is a VIEW: a bare show order may run it"
     assert not spec.get("confirm"), "changing tab must not ask permission"
 
 

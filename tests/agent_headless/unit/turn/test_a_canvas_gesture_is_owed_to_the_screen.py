@@ -88,4 +88,4 @@ def test_youtubes_own_close_declares_the_player_emptied_never_the_card_closed():
     examples = [x.casefold() for x in re.findall(r"«([^»]+)»", close["desc"])]
     assert examples, "the descriptor gives examples of its own order"
     assert not [x for x in examples if any(n in x for n in names)], (
-        f"an example calls the card by its name and steals the canvas close: {examples}")
+        f"an example calls the app by its name and steals the canvas close: {examples}")

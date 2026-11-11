@@ -88,7 +88,7 @@ _PHASES = ["Buscando la empresa en einforma", "NIF B16713539 confirmado", "Revis
 
 def _no_process_view(pg):
     assert pg.locator(".hbd-tab, .hbd-tabs, .hbd-prow, .hbd-pstep").count() == 0, \
-        "the card shows no process view of its own: the steps live in the processes panel"
+        "the app shows no process view of its own: the steps live in the processes panel"
 
 
 def test_a_working_report_is_the_document_being_created(page):
@@ -104,7 +104,7 @@ def test_once_the_body_grows_the_document_leads_under_a_live_band(page):
     _mount(page, _view(body="# Informe\n\nPrimera sección.", process={"alive": True, "phases": _PHASES, "title": ""}))
     _no_process_view(page)
     assert page.locator(".hbd-sheet").count() == 1, "with a document growing, he reads the document"
-    assert page.locator(".hbd-liveband .hbd-mkspin").count() == 1, "…and the card still says it is being written"
+    assert page.locator(".hbd-liveband .hbd-mkspin").count() == 1, "…and the app still says it is being written"
 
 
 def test_the_delivered_document_is_a_white_page_whatever_the_theme(page):

@@ -122,7 +122,7 @@ def test_beyond_five_apps_the_row_collapses_with_a_counter_and_sits_outside_ever
     assert g["n"] == 7 and g["pips"] == 6, f"home + five, never a row of seven dots: {g}"
     assert g["counter"] == "6/7" and g["lit"], g
     assert g["cardBottom"] <= g["rowTop"] + 0.5 and abs(g["rowBottom"] - g["dockTop"]) <= 1, \
-        f"the pips are their own band between the card and the dock: {g}"
+        f"the pips are their own band between the app and the dock: {g}"
     shot(phone, "pr3-pips-collapsed")
     phone.evaluate("() => window.__deck.closeAll({ by: 'hand' })")
     phone.wait_for_timeout(300)

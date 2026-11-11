@@ -57,7 +57,7 @@ class WorkResult:
       - `ok`       — la tarea se resolvió (o arrancó, en el caso async del navegador).
       - `summary`  — texto operator-facing: lo que se dice por voz+UI y se guarda en memoria.
       - `deliver`  — ¿el dispatcher entrega `summary` por `proactive.notify` + `[SISTEMA]`? **False** para el
-                     agente web: su tarjeta/owner reporta el resultado real cuando termina (async), no aquí.
+                     agente web: su app/owner reporta el resultado real cuando termina (async), no aquí.
       - `error`    — motivo si `ok=False` (para el brain, no necesariamente para el operador).
       - `meta`     — extras (id de widget/tarea creada, `needs_confirm`, …).
     """

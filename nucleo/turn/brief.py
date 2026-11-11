@@ -230,7 +230,7 @@ def _threads() -> list:
         return _ne.known(with_finished=True)
     except Exception as e:  # noqa: BLE001 — the cards unread: the brief asks with none
         from loguru import logger
-        logger.debug(f"brief: the open errands' cards unread — {type(e).__name__}: {e}")
+        logger.debug(f"brief: the open errands' apps unread — {type(e).__name__}: {e}")
         return []
 
 

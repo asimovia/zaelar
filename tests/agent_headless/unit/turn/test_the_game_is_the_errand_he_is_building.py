@@ -31,7 +31,7 @@ def _brief(**verdicts):
 @pytest.fixture
 def live(monkeypatch):
     monkeypatch.setattr(dispatch, "pending_summaries", lambda: [
-        {"id": "8", "request": "Construct a side-scrolling platformer card with coins and a higher jump",
+        {"id": "8", "request": "Construct a side-scrolling platformer app with coins and a higher jump",
          "phase": "creating a widget", "waiting_on": ""}])
     monkeypatch.setattr(dispatch, "get_record", lambda tid: types.SimpleNamespace(
         label="", title="Super Mario-style platformer game"))

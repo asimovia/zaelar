@@ -201,7 +201,7 @@ def _player_says(page, muted: bool):
 
 def test_the_hint_stays_while_an_ordered_sound_is_blocked(_page):
     _mount(_page, _data(audio_blocked=True))
-    assert _hint_shown(_page), "sound ordered and kept silent: the card must say how to get it"
+    assert _hint_shown(_page), "sound ordered and kept silent: the app must say how to get it"
     _remount(_page, _data(audio_blocked=False))
     assert not _hint_shown(_page)
 

@@ -84,7 +84,7 @@ def test_an_engine_without_the_relay_hides_the_card(server):
         show(pg, "link")
         pg.wait_for_selector(".dsx-ovl.on .dsx-pair-get", timeout=5000)
         pg.click(".dsx-pair-get")
-        until_sync(lambda: not read(pg)["pairCard"], "the pairing card to hide", timeout_s=5)
+        until_sync(lambda: not read(pg)["pairCard"], "the pairing app to hide", timeout_s=5)
         r = read(pg)
         assert r["cards"] == [] and r["pairNone"] == BUNDLES["es"]["daemon.remote.limit"], "the tab says why, no dead card"
         assert not pg._errors, pg._errors

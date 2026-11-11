@@ -77,7 +77,7 @@ const limpia = pintar({pages: 3, rows: 40, repeated: 0, unnamed: 0, hollow: 0, k
 const etiquetas = limpia.map(c => c.label);
 for (const descarte of ["repetidas", "sin nombre", "sin precio ni tel."]) {
   assert.ok(!etiquetas.includes(descarte),
-    `«0 ${descarte}» ocupa el mismo sitio que una cifra que dice algo, y en una tarjeta estrecha ese sitio es ` +
+    `«0 ${descarte}» ocupa el mismo sitio que una cifra que dice algo, y en una app estrecha ese sitio es ` +
     "lo único que hay");
 }
 assert.deepEqual(etiquetas, ["páginas miradas", "fichas leídas", "candidatos", "en la conversación"]);

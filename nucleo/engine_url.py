@@ -6,7 +6,7 @@ of entorno, and quien the needs —the `env` that is le pasa al worker— only n
 
 Vive aparte also because es the response a V2-152, that costo a tanda whole: the seis bridges resuelven
 `ZAELAR_BASE` with a `localhost:43917` cableado by defecto and NADIE ponia esa variable, so that a motor in
-any another puerto lanzaba workers that conducian the browser, the memory and the tarjetas of OTRO motor.
+any another puerto lanzaba workers that conducian the browser, the memory and the apps of OTRO motor.
 """
 from __future__ import annotations
 

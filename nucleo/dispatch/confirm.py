@@ -317,10 +317,10 @@ def confirm_line() -> str:
         # dangerous, and the brain must not dress the question up as a warning. What it MUST not do is
         # say it is under way: measured in session f84f91ef, the turn answered «lo dejo estar y sigo con
         # los ajustes del widget» while nothing of his had been touched.
-        _what = ("CONSTRUIR una tarjeta nueva" if p["code_change"] == "create"
-                 else "MODIFICAR una tarjeta suya")
+        _what = ("CONSTRUIR una app nueva" if p["code_change"] == "create"
+                 else "MODIFICAR una app suya")
         return (f"LE HAS PREGUNTADO SI {_what} y AÚN NO ha contestado: «{p['request'][:120]}». No has "
-                f"tocado NI UNA LÍNEA de esa tarjeta, así que no digas que estás con ello ni que va en "
+                f"tocado NI UNA LÍNEA de esa app, así que no digas que estás con ello ni que va en "
                 f"marcha. Si dice que SÍ, arranca; si dice que NO, olvídalo y confírmaselo.")
     if p.get("offered"):
         # V2-655: no es una acción irreversible, es algo que TÚ te ofreciste a hacer. Decirle «irreversible» a

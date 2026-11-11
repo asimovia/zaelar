@@ -142,7 +142,7 @@ def block() -> str:
     lines.append(
         "LO QUE ERES, para elegir esos ejemplos (el catálogo REAL de widgets y herramientas lo tienes arriba "
         "en este mismo prompt — úsalo, no te inventes capacidades ni lo repitas entero): hablas con él por "
-        "voz y por texto; llevas tarjetas en su escritorio (agenda con avisos, música, vídeo, fotos, "
+        "voz y por texto; llevas apps en su escritorio (agenda con avisos, música, vídeo, fotos, "
         "documentos, un navegador de verdad, sus archivos); le pones un vídeo o música cuando te lo pide; "
         "investigas de verdad y le traes el RESULTADO en vez de una lista de enlaces — un piso, un coche de "
         "segunda mano, unas vacaciones para unas fechas y una zona con las opciones comparadas, o "

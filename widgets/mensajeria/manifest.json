@@ -217,7 +217,7 @@
         "key": "opcional: la clave exacta del borrador (la usa el botón Enviar del borrador abierto)"
       },
       "confirm": true,
-      "usage": "El botón «Enviar» de la propia tarjeta hace exactamente esto. Por voz: primero 'draft' (con contact si es nuevo), él lo revisa, y su «envíalo» llama a 'send_draft'.",
+      "usage": "El botón «Enviar» de la propia app hace exactamente esto. Por voz: primero 'draft' (con contact si es nuevo), él lo revisa, y su «envíalo» llama a 'send_draft'.",
       "consent_class": "messaging.send_new",
       "done_when": {
         "any": [
@@ -268,10 +268,10 @@
         "subject": "opcional, solo email",
         "objective": "opcional: si esto abre una gestión que habrá que seguir («organizar una reunión esta tarde»), para qué, con las palabras del operador",
         "attach_from": "opcional: el mensaje cuyos ADJUNTOS van en el envío — su `n` en la lista, {\"messageId\": …}, o {} para el que está ABIERTO; por cualquier canal",
-        "files": "opcional: ficheros que el operador adjuntó en la tarjeta (sus nombres); una foto sola también es un mensaje"
+        "files": "opcional: ficheros que el operador adjuntó en la app (sus nombres); una foto sola también es un mensaje"
       },
       "confirm": false,
-      "usage": "Si no tienes su canal guardado, guárdalo antes con contactos/set_channel. A QUIÉN y por QUÉ CANAL lo resuelve esta acción, no tú: llámala con el nombre y el canal TAL COMO LOS DIJO, aunque conozcas a varios con ese nombre o no sepas si tiene ese canal. Si hay duda, la tarjeta le pregunta cuál (con los candidatos) y la petición ESPERA su respuesta; no le preguntes tú «¿cuál?» antes de llamarla, y nunca escojas tú a uno por parecido. NO se pide confirmación para esto (V2-692): quien la llama está ejecutando una orden que el operador acaba de dar, y su permiso ya viene con la orden — preguntarle otra vez es hacerle dar el mismo permiso dos veces. `reply` SÍ la sigue pidiendo: contestar a algo que llegó no es una orden suya.",
+      "usage": "Si no tienes su canal guardado, guárdalo antes con contactos/set_channel. A QUIÉN y por QUÉ CANAL lo resuelve esta acción, no tú: llámala con el nombre y el canal TAL COMO LOS DIJO, aunque conozcas a varios con ese nombre o no sepas si tiene ese canal. Si hay duda, la app le pregunta cuál (con los candidatos) y la petición ESPERA su respuesta; no le preguntes tú «¿cuál?» antes de llamarla, y nunca escojas tú a uno por parecido. NO se pide confirmación para esto (V2-692): quien la llama está ejecutando una orden que el operador acaba de dar, y su permiso ya viene con la orden — preguntarle otra vez es hacerle dar el mismo permiso dos veces. `reply` SÍ la sigue pidiendo: contestar a algo que llegó no es una orden suya.",
       "effects": [
         "present.mount",
         "external.send"
@@ -301,7 +301,7 @@
         "present.mount",
         "external.send"
       ],
-      "done_when_unreadable": "no collection of this card lists the groups it created; the connector reports the creation itself"
+      "done_when_unreadable": "no collection of this app lists the groups it created; the connector reports the creation itself"
     },
     "forward": {
       "ref": "from",
@@ -485,7 +485,7 @@
       "worker": false
     },
     "mail_open": {
-      "desc": "Abre un mensaje de la carpeta de correo en pantalla por su `uid` (lo usa la propia tarjeta al tocar una fila). Para «ábrelo» tras hablar de un correo usa `open`.",
+      "desc": "Abre un mensaje de la carpeta de correo en pantalla por su `uid` (lo usa la propia app al tocar una fila). Para «ábrelo» tras hablar de un correo usa `open`.",
       "internal": true,
       "payload": {
         "uid": "string",
@@ -503,8 +503,8 @@
       "worker": false
     },
     "open_draft": {
-      "desc": "Abre un BORRADOR que está a medias ocupando toda la tarjeta: «abre el borrador», «enséñame el correo que tenía pendiente para X». Sin `contact` abre el más reciente.",
-      "how": "La tarjeta enseña destinatario, asunto, texto y los botones Enviar / Guardar / Descartar.",
+      "desc": "Abre un BORRADOR que está a medias ocupando toda la app: «abre el borrador», «enséñame el correo que tenía pendiente para X». Sin `contact` abre el más reciente.",
+      "how": "La app enseña destinatario, asunto, texto y los botones Enviar / Guardar / Descartar.",
       "row_verb": true,
       "payload": {
         "contact": "opcional: a quién va el borrador",
@@ -557,7 +557,7 @@
         "external.send"
       ],
       "slots": {"channel": {"key": "channel", "from": "reading"}, "text": {"key": "text", "from": "composed"}},
-      "done_when_unreadable": "the card's own Send button: its outcome is answered on the card by card_send (sent, or not and why), not by a voice turn"
+      "done_when_unreadable": "the card's own Send button: its outcome is answered on the app by card_send (sent, or not and why), not by a voice turn"
     }
   },
   "entry": "widget.js",
@@ -583,7 +583,7 @@
     "conversación con",
     "chat with"
   ],
-  "usage": "Para VER mensajes basta con mostrar la tarjeta. Para NAVEGARLA por voz: «vuelve a la lista principal / enséñame la lista general» → show_view {platform:'all'}; «ábreme/muéstrame/enséñame el WhatsApp | el Telegram | el correo» (lleve o no «solo los mensajes de») → show_view con esa plataforma: WhatsApp, Telegram y el correo NO son tarjetas, son VISTAS de ésta, así que mostrar el widget otra vez NO cambia nada (contesta con los chats que casan en result.chats); «abre el chat de X» → open {name:'X'}; «vuelve atrás» desde un chat → close. Marcar leído (read/readchat/clear) o dejarlo SIN LEER (unread: «leave it as unread», funciona con un correo ya abierto) PROPAGA a la app real. Para CONECTAR un canal («conéctame el correo», «vincula mi Gmail», «añade WhatsApp») usa show_panel(panel='conectores', connector='email'|'whatsapp'|'telegram'): abre el asistente de ESE conector en la sección Conectores. Email cubre Gmail, Outlook/Hotmail y cualquier otro por IMAP — el asistente pregunta cuál, así que no lo preguntes tú.",
+  "usage": "Para VER mensajes basta con mostrar la app. Para NAVEGARLA por voz: «vuelve a la lista principal / enséñame la lista general» → show_view {platform:'all'}; «ábreme/muéstrame/enséñame el WhatsApp | el Telegram | el correo» (lleve o no «solo los mensajes de») → show_view con esa plataforma: WhatsApp, Telegram y el correo NO son apps, son VISTAS de ésta, así que mostrar el widget otra vez NO cambia nada (contesta con los chats que casan en result.chats); «abre el chat de X» → open {name:'X'}; «vuelve atrás» desde un chat → close. Marcar leído (read/readchat/clear) o dejarlo SIN LEER (unread: «leave it as unread», funciona con un correo ya abierto) PROPAGA a la app real. Para CONECTAR un canal («conéctame el correo», «vincula mi Gmail», «añade WhatsApp») usa show_panel(panel='conectores', connector='email'|'whatsapp'|'telegram'): abre el asistente de ESE conector en la sección Conectores. Email cubre Gmail, Outlook/Hotmail y cualquier otro por IMAP — el asistente pregunta cuál, así que no lo preguntes tú.",
   "collections": {
     "items": {
       "id": "n",

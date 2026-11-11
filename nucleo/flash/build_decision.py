@@ -70,14 +70,14 @@ from __future__ import annotations
 BUILD_KEY = "build_or_use"
 
 BUILD_INSTRUCTIONS = (
-    "The operator gave an order. Does it ask us to BUILD A NEW card that does not exist yet, or to "
-    "use a card that already exists in the catalogue? Answer 'build_new' only when he is asking for "
-    "something to be made. Answer 'use_existing' when a card in the catalogue already does it. "
-    "Answer 'none' when the order is not about a card at all.")
+    "The operator gave an order. Does it ask us to BUILD A NEW app that does not exist yet, or to "
+    "use an app that already exists in the catalogue? Answer 'build_new' only when he is asking for "
+    "something to be made. Answer 'use_existing' when an app in the catalogue already does it. "
+    "Answer 'none' when the order is not about an app at all.")
 
 BUILD_CHOICE = {
-    "build_new": "he asks us to create/generate/program a NEW card that does not exist yet",
-    "use_existing": "a card that already exists in the catalogue can serve this order",
+    "build_new": "he asks us to create/generate/program a NEW app that does not exist yet",
+    "use_existing": "a app that already exists in the catalogue can serve this order",
     "none": "the order is not about opening or building a card",
 }
 

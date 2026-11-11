@@ -43,7 +43,7 @@ def _another_errands_card(card: str, operator_text: str) -> bool:
         return False
     try:
         from voice.observer import emit as _emit
-        _emit("brain", "🧭 card declined: his words name another errand", role="system",
+        _emit("brain", "🧭 app declined: his words name another errand", role="system",
               extra={"cat": "flash", "card": card, "text": (operator_text or "")[:80]})
     except Exception as e:  # noqa: BLE001
         logger.debug(f"card_commission: emit failed — {type(e).__name__}: {e}")
@@ -368,7 +368,7 @@ async def before_worker(escalate_req: dict, read_req: dict, *, brief, operator_t
         if _tool:
             images_req["v"] = _tool
             escalate_req["v"], escalate_req["more"] = None, []
-            emit("brain", "🎯 la herramienta del turno en vez de un worker (la tarjeta del catálogo)",
+            emit("brain", "🎯 la herramienta del turno en vez de un worker (la app del catálogo)",
                  text=f"{got['widget_id']} ← show_images «{_tool['query'][:100]}»", role="system",
                  extra={"cat": "flash", "widget": got["widget_id"], "tool": "show_images"})
             return "call"
@@ -379,7 +379,7 @@ async def before_worker(escalate_req: dict, read_req: dict, *, brief, operator_t
             _cvis.present_for_call(got["widget_id"], got["action"], brief=brief, src="flash", emit=emit)
             apply_widget_data(got["widget_id"], got["action"], got["payload"])
             escalate_req["v"], escalate_req["more"] = None, []
-            emit("brain", "🎯 acción declarada en vez de un worker (la tarjeta del catálogo)",
+            emit("brain", "🎯 acción declarada en vez de un worker (la app del catálogo)",
                  text=f"{got['widget_id']}:{got['action']}", role="system",
                  extra={"cat": "flash", "widget": got["widget_id"], "action": got["action"]})
             return "call"
@@ -398,7 +398,7 @@ async def before_worker(escalate_req: dict, read_req: dict, *, brief, operator_t
             if read_req.get("v") is None:
                 read_req["v"] = {"widget_id": got["widget_id"], "question": got["question"]}
             escalate_req["v"], escalate_req["more"] = None, []
-            emit("brain", "🎯 lectura de la tarjeta en vez de un worker",
+            emit("brain", "🎯 lectura de la app en vez de un worker",
                  text=f"{got['widget_id']} ← {got['question'][:100]}", role="system",
                  extra={"cat": "flash", "widget": got["widget_id"], "question": got["question"][:200]})
             return "read"
@@ -439,7 +439,7 @@ async def voice_instead_of_a_search(search_req: dict, read_req: dict, *, brief, 
     got = await instead_of_a_search(search_req["v"], brief=brief, operator_text=operator_text, spec=spec, window=window)
     if not got:
         return ""
-    emit("brain", "🎯 la tarjeta responde lo que el modelo iba a buscar en la web", role="system",
+    emit("brain", "🎯 la app responde lo que el modelo iba a buscar en la web", role="system",
          text=f"{got['widget_id']}:{got.get('action') or 'read'} ← {str(search_req['v'])[:100]}",
          extra={"cat": "flash", "widget": got["widget_id"]})
     search_req["v"] = None

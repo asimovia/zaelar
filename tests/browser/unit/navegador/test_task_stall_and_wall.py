@@ -201,7 +201,7 @@ def test_and_the_card_is_opened_so_the_capture_can_be_seen():
 
 def test_but_it_is_announced_ONCE_not_on_every_capture():
     """El hotel hizo 13 revisiones de captura sobre la MISMA página del muro. Un aviso por captura sería la
-    tarjeta gritando trece veces lo mismo."""
+    app gritando trece veces lo mismo."""
     tid = tasks.create("Reservar habitación")
     tasks.set_status(tid, "working")
     for rev in range(1, 14):
@@ -803,7 +803,7 @@ def test_the_body_reason_is_also_said_in_words_the_operator_can_hear():
 
 
 def test_the_task_carries_a_body_served_wall_like_any_other():
-    """La prueba que importa: el estado del turno tiene que enterarse. Antes de esto la tarjeta no se abría y
+    """La prueba que importa: el estado del turno tiene que enterarse. Antes de esto la app no se abría y
     el operador no veía nada, aunque el worker sí lo supiera."""
     tid = tasks.create("conseguir entradas para El Rey León")
     tasks.set_status(tid, "working")

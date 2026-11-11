@@ -3,7 +3,7 @@
 #
 #     jev turn-brief   request_type=order · catalog_widget=contactos (1.00)
 #     widget data      contactos:add_contact {name: Rowan …}
-#     brain            🔁 la orden era sobre otra tarjeta — la llamada, en una segunda pasada  ['contactos'] → mensajeria:send_to
+#     brain            🔁 la orden era sobre otra app — la llamada, en una segunda pasada  ['contactos'] → mensajeria:send_to
 #     widget data      mensajeria:send_to {contact: Quinn, channel: email,
 #                        text: "Hi Quinn, just confirming your email address on my side: quinn@example.com. Best, Sam"}
 #

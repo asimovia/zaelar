@@ -61,7 +61,7 @@
       "payload": {}
     },
     "reset": {
-      "desc": "Cancel the countdown and clear the card.",
+      "desc": "Cancel the countdown and clear the app.",
       "payload": {}
     }
   }

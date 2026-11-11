@@ -45,7 +45,7 @@ def _every_action():
 # ── the measured action ──────────────────────────────────────────────────────────────────────────────────
 def test_searching_for_a_video_asks_nobody_for_permission():
     spec = _manifest("youtube")["actions"]["search"]
-    assert spec.get("view") is True, "searching only changes what the card DISPLAYS"
+    assert spec.get("view") is True, "searching only changes what the app DISPLAYS"
     assert A.classify(spec, "search") == A.FAST, "this is the modal that covered his loaded video"
 
 

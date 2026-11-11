@@ -56,7 +56,7 @@ def test_deck_show_never_switches_to_a_background_card():
     assert "if (!background) this._goTo" in body
     bare = [l for l in body.splitlines()
             if "this._goTo(" in l and "if (!background)" not in l]
-    assert not bare, f"Deck.show() switches cards past the guard: {bare}"
+    assert not bare, f"Deck.show() switches apps past the guard: {bare}"
 
 
 def test_worker_provenance_is_detected_by_prefix_not_a_list():

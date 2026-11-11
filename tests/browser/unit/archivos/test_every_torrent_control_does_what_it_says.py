@@ -100,7 +100,7 @@ def test_the_catalogue_is_a_cinema_of_cards_each_with_download(card):
         n: c.dataset.n, t: c.querySelector('.arx-film-t').textContent,
         btn: !!c.querySelector('.arx-dl'), w: c.getBoundingClientRect().width}))""")
     assert [c["n"] for c in cards] == ["1", "2"] and all(c["btn"] for c in cards)
-    assert all(c["w"] > 150 for c in cards), f"the cards did not lay out as a grid: {cards}"
+    assert all(c["w"] > 150 for c in cards), f"the apps did not lay out as a grid: {cards}"
     card.click(".arx-film[data-n='2'] .arx-dl")
     assert _all_calls(card)[-1] == ["torrent_download", {"item": 2}]
 

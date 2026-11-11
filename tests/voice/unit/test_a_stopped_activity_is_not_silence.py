@@ -55,4 +55,4 @@ def test_a_stop_beside_other_words_still_asks_the_screen(monkeypatch):
     _verdict(monkeypatch, "youtube:pause")
     assert _handle(line) == line
     _verdict(monkeypatch, "none")
-    assert _handle(line) == hard_turn.remainder(line, "stop"), "no card named: the remainder goes on, as before"
+    assert _handle(line) == hard_turn.remainder(line, "stop"), "no app named: the remainder goes on, as before"

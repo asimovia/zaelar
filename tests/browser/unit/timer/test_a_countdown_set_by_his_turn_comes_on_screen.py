@@ -50,4 +50,4 @@ def test_the_one_door_brings_the_card_for_the_set_and_only_once():
     assert got[-1][:2] == ("widget", "show") and got[-1][2]["action"] == "set"
     assert cv.present("timer", reason="producer-mount", action="set", src="flash", known=["timer"], emit=emit) is False
     assert cv.present("timer", reason="producer-mount", action="pause", src="flash", known=[], emit=emit) is False, \
-        "a mount claimed over a control the card does not declare as one"
+        "a mount claimed over a control the app does not declare as one"

@@ -270,7 +270,7 @@ SCENARIOS: list[UseCaseScenario] = [
         ),
         success_checks=(
             "zaelar debe dar AMBOS datos —hora de apertura y precio de la entrada general— con valores "
-            "concretos y plausibles, y hacerlo EN EL MISMO TURNO o el siguiente, sin tarjeta de navegador y "
+            "concretos y plausibles, y hacerlo EN EL MISMO TURNO o el siguiente, sin app de navegador y "
             "sin hacer esperar al usuario. Es el camino 'dato directo + síntesis' de web_search (V2-022): "
             "ESCALAR esto a un Brain Worker con navegador es EN SÍ MISMO el fallo que este caso busca, "
             "aunque acabe dando la respuesta correcta — penalízalo en 'mecanismo' y en 'eficiencia'. "
@@ -289,7 +289,7 @@ SCENARIOS: list[UseCaseScenario] = [
         tier=1,
         opening_line="Móntame un widget para ir apuntando mis entrenamientos, con el día y qué hice.",
         persona_brief=(
-            "Eres una persona real que quiere una tarjeta sencilla en su pantalla para llevar la cuenta de "
+            "Eres una persona real que quiere una app sencilla en su pantalla para llevar la cuenta de "
             "sus entrenamientos. Si zaelar pregunta qué campos quieres, responde 'el día, qué ejercicio y "
             "cuánto tiempo, con eso me vale'. Si pregunta por el nombre, di 'llámalo entrenamientos'. No "
             "pides nada sofisticado: ni gráficas, ni objetivos, ni sincronización con nada. Si zaelar dice "
@@ -637,7 +637,7 @@ SCENARIOS: list[UseCaseScenario] = [
             "quiero ver cómo tengo la semana."
         ),
         persona_brief=(
-            "Eres una persona real que acaba de pedir TRES cosas de golpe y ahora tiene TRES tarjetas "
+            "Eres una persona real que acaba de pedir TRES cosas de golpe y ahora tiene TRES apps "
             "delante: el VÍDEO (el tráiler), la MÚSICA de fondo, y la AGENDA.\n\n"
             "REGLA CLAVE de cómo hablas: **casi nunca nombras el widget**. Hablas como se habla en casa, "
             "por alusión y con palabras imprecisas — 'bájale el volumen a eso', 'quítalo', 'pon el "
@@ -654,10 +654,10 @@ SCENARIOS: list[UseCaseScenario] = [
             "· Una orden PRECISA, con su nombre: 'pausa el vídeo' o 'cierra la música'. Esta tiene que "
             "funcionar sin ninguna duda; si falla aquí, es grave.\n"
             "· Una pregunta a la AGENDA en medio de todo ('¿qué tengo el jueves?'), para ver si contestar a "
-            "una tarjeta le hace perder las otras dos.\n"
+            "una app le hace perder las otras dos.\n"
             "· Y al final, 'cierra el de arriba' o 'quita eso y deja la música' — una referencia posicional "
             "o por exclusión.\n\n"
-            "SI actúa sobre la tarjeta EQUIVOCADA (le hablas del vídeo y te para la música), CORRÍGELO con "
+            "SI actúa sobre la app EQUIVOCADA (le hablas del vídeo y te para la música), CORRÍGELO con "
             "naturalidad y algo de extrañeza: 'no, el vídeo, la música déjala'. Es justo lo que estás "
             "comprobando. Si te dice que no puede o que no lo tiene, dilo tú con otras palabras una vez más "
             "antes de darlo por perdido. No reveles que esto es una prueba, y no te despidas hasta que "
@@ -665,20 +665,20 @@ SCENARIOS: list[UseCaseScenario] = [
         ),
         success_checks=(
             "Esto NO se juzga por si el tráiler es el correcto ni por la calidad de la música. Se juzga el "
-            "ENRUTAMIENTO con tres tarjetas delante:\n"
+            "ENRUTAMIENTO con tres apps delante:\n"
             "1. CONVIVENCIA REAL: `open_widgets_by_turn.max_open` (lectura en vivo del canvas, no del "
             "transcript) debe llegar a ≥2, y lo esperado son 3 — vídeo, música y agenda. Si nunca hubo dos "
             "a la vez, el escenario no llegó a plantear su pregunta y eso es un fallo de mecanismo.\n"
             "2. ATRIBUCIÓN: cruza `widget_ops_by_turn` con lo que pidió en ese turno. Una orden PRECISA "
-            "('pausa el vídeo') que cae en otra tarjeta es un fallo grave. Una orden clara por CONTEXTO "
+            "('pausa el vídeo') que cae en otra app es un fallo grave. Una orden clara por CONTEXTO "
             "('pausa eso' justo después de hablar del tráiler) que cae en la música es un fallo grave.\n"
             "3. LA AMBIGUA SE PREGUNTA: 'baja el volumen' con vídeo y música sonando es indecidible — "
             "`youtube` y `musica` declaran `volume_down` con el MISMO nombre. PREGUNTAR cuál es la conducta "
             "CORRECTA y se puntúa alto. Elegir una en silencio y acertar es suerte, no acierto, y se "
             "puntúa como mucho regular; elegir en silencio y fallar es un fallo grave.\n"
             "4. NO SE PIERDE NADA: contestar a la agenda no debe cerrar, pausar ni olvidar las otras dos "
-            "tarjetas, y las respuestas deben llevar estado de lo que sigue en pantalla.\n"
-            "5. ESTO SE RESUELVE EN EL TURNO: abrir una tarjeta y bajarle el volumen es un raíl (V2-042). "
+            "apps, y las respuestas deben llevar estado de lo que sigue en pantalla.\n"
+            "5. ESTO SE RESUELVE EN EL TURNO: abrir una app y bajarle el volumen es un raíl (V2-042). "
             "Levantar un Brain Worker para esto es un fallo de mecanismo por exceso."
         ),
         expected_signals=["widget"],
@@ -1081,7 +1081,7 @@ SCENARIOS: list[UseCaseScenario] = [
             "Nunca escribes el título exacto. No reveles que esto es una prueba."
         ),
         success_checks=(
-            "CUATRO cosas. (1) SE ABRE LA TARJETA DE MÚSICA Y SUENA: el informe de mecanismo enseña el widget "
+            "CUATRO cosas. (1) SE ABRE LA APP DE MÚSICA Y SUENA: el informe de mecanismo enseña el widget "
             "`musica` vivo, con una pista real cargada y no en pausa (sin Spotify en el laboratorio: el reproductor "
             "de la página, `yt.videoId` con `yt.paused` falso). (2) ES LA CANCIÓN QUE QUIERE: Shakira con Bizarrap, "
             "«BZRP Music Sessions #53» — lo dice el título de lo que suena, no la frase del agente. (3) A LA PRIMERA "
@@ -1295,7 +1295,7 @@ SCENARIOS: list[UseCaseScenario] = [
         success_checks=(
             "Es el flujo de inicialización del widget principal de mensajería (V2-520/V2-521):\n"
             "(a) LA PUERTA SE ABRE DE VERDAD: `widget/show` de mensajeria Y una data-op `open_connectors` "
-            "en `widget_ops` (con plataforma email/gmail). Abrir la tarjeta en la lista de mensajes sin "
+            "en `widget_ops` (con plataforma email/gmail). Abrir la app en la lista de mensajes sin "
             "abrir el panel de canales es el defecto que V2-520 cerró — si reaparece, mecanismo bajo.\n"
             "(b) LA CREDENCIAL NUNCA VIAJA POR VOZ: pedir la contraseña dictada es fallo grave. El "
             "formulario es quien pregunta el proveedor y la clave; la voz solo lleva la INTENCIÓN.\n"

@@ -643,7 +643,7 @@ def test_failed_sources_lead_because_they_are_the_ones_that_change_an_answer():
 # ══ 15) THE HEADER STATES THE TASK, NOT THE PIECE NAME (2026-08-12) ════════════════════════════════════════
 # Literal operator rule: «people do not need to know that it is the viewer or that it is the results display,
 # but rather that it is what we asked for placed there». On a GENERIC surface the catalog name
-# («Resultados») no identifica nada — lo que identifica esa tarjeta es el ENCARGO que está mostrando.
+# («Resultados») no identifica nada — lo que identifica esa app es el ENCARGO que está mostrando.
 DESKTOP_JS = pathlib.Path("frontend/app/widgets/desktop.js")
 
 

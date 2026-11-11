@@ -80,7 +80,7 @@ def test_a_shipped_card_keeps_his_words_in_the_overlay_never_in_its_manifest(wor
     assert ov["contactos"]["add"] == ["mi libreta"]
     # every reader of the catalog hears it: the catalog, the registry (collisions) and identify (opening)
     assert "mi libreta" in (runtime.get("contactos") or {}).get("aliases", [])
-    assert aliases.add("notas", "mi libreta").get("owner") == "contactos", "another card could take his word"
+    assert aliases.add("notas", "mi libreta").get("owner") == "contactos", "another app could take his word"
     assert (runtime.identify("abre mi libreta") or {}).get("match") == "contactos"
     # removing a SHIPPED word is his overlay too, and the manifest still does not move
     r = aliases.remove("contactos", "directorio")

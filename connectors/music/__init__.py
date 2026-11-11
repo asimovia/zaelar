@@ -267,7 +267,7 @@ def _card_changed() -> None:
         from voice.observer import emit
         emit("widget", "data", extra={"id": placement._WID, "src": "music"})
     except Exception as e:  # noqa: BLE001 — a missed refresh never breaks the act
-        logger.debug(f"music: card refresh not sent: {e!r}")
+        logger.debug(f"music: app refresh not sent: {e!r}")
 
 
 def _refreshes_card(fn):

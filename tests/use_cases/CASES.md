@@ -271,7 +271,7 @@ also why full transcripts are safe there and never in the committed scoreboard.
   its context window limit."`** — the Claude Code worker session itself ran out of context mid-task.
 
   ⚠️ **New, deeper finding: repeated "how's it going?" check-ins re-launch the SAME worker session
-  via V2-032's continuation ("las aclaraciones re-lanzan en la MISMA tarjeta"), and each `look()`
+  via V2-032's continuation ("las aclaraciones re-lanzan en la MISMA app"), and each `look()`
   screenshot cycle is vision-token-heavy — across 4 continuations in one scenario, context grew
   until the session errored out.** This is a different class of problem than the previous two
   (those were "the worker does the wrong thing"; this is "the worker was doing the RIGHT thing and

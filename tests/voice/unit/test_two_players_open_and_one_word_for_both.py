@@ -111,7 +111,7 @@ def test_a_verdict_naming_a_card_that_is_no_longer_open_is_stale(monkeypatch):
     monkeypatch.setattr(memapi, "state", lambda: {"open_widgets": ["musica"]})
     kind, _ = fe.which_card("musica", "play", open_ids=BOTH, brief=_brief("youtube:play"))
     assert kind in ("ask", "keep"), kind
-    assert kind != "card", "a verdict about a card that is gone must never move an order onto it"
+    assert kind != "card", "a verdict about an app that is gone must never move an order onto it"
 
 
 # ── and the question it asks is the one the system already asks ─────────────────────────────────────────
@@ -150,7 +150,7 @@ def test_the_voice_rail_asks_WHOSE_order_before_dispatching_it():
     order. The call has to sit above `_apply_widget_data`, in the same function."""
     call = _VOICE.index("card_decision(")
     dispatch = _VOICE.index("_apply_widget_data(_cd[\"card\"], action_name, res.payload, ref)")
-    assert call < dispatch, "the card is decided BEFORE the op is dispatched, or it decides nothing"
+    assert call < dispatch, "the app is decided BEFORE the op is dispatched, or it decides nothing"
     assert "_apply_widget_data(wid," not in _VOICE, (
         "the dispatch still takes the widget the MODEL named — the decision changes nothing")
     assert "ask_which_item" in _VOICE, "the ASK branch has to reach a phrase the operator hears"

@@ -162,7 +162,7 @@ def request(action: str, widget_id: str, question: str = "", op: dict | None = N
     if _old and _old.get("trace_id") and _old["trace_id"] != _trace_id:
         _close_flow(_old["trace_id"], "confirm_superseded")
     if _old and _old.get("ask_id"):
-        _end_row(_old, False, outcome="a newer question on the same card replaced it")
+        _end_row(_old, False, outcome="a newer question on the same app replaced it")
     _PENDING[wid] = {"action": (action or "delete").strip(), "question": (question or "").strip(),
                      "op": op if isinstance(op, dict) else None, "ts": time.time(), "trace_id": _trace_id}
     _PENDING[wid].update(_on_its_row(wid, _PENDING[wid]))

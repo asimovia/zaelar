@@ -60,7 +60,7 @@ Si SÍ lo es, devuelve:
 }
 
 `parts` son ETIQUETAS CORTAS (1-3 palabras) del ROL de cada pieza que hay que conseguir por separado. Se pintan como
-una INSIGNIA en la tarjeta, así que tienen que caber en una: «Alojamiento», «Transporte», «Equipo», «Fuente»,
+una INSIGNIA en la app, así que tienen que caber en una: «Alojamiento», «Transporte», «Equipo», «Fuente»,
 «Capítulo», «Servidor». Una frase descriptiva («Tarifa del transporte para 4 pasajeros detallando los cargos») NO es
 un rol: eso es el CONTENIDO de la pieza y va en sus datos, no en su nombre. Ejemplos de cuándo aplica: un viaje se
 compone de alojamiento + transporte; un trabajo escrito, de fuentes + capítulos; una arquitectura, de sus

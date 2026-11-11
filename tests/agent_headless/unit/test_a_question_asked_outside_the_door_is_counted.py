@@ -65,4 +65,4 @@ def test_the_turn_end_measures_it_and_the_kind_has_a_family():
 def test_the_send_declares_that_the_door_asks_which():
     spec = json.loads((ROOT / "widgets/mensajeria/manifest.json").read_text())["actions"]["send_to"]
     assert "PREGÚNTASELO" not in spec["usage"], "the declaration no longer tells the model to ask on its own"
-    assert "la tarjeta le pregunta" in spec["usage"]
+    assert "la app le pregunta" in spec["usage"]

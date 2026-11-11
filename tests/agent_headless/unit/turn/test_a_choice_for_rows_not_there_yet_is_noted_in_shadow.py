@@ -40,7 +40,7 @@ def test_the_models_own_send_to_the_errand_is_noted_too(world, monkeypatch, lang
     monkeypatch.setattr(tb, "of_this_turn", lambda: brief("act", SAID[lang]))
     relayed = "Operator wants to open the best deal as soon as possible."   # the model's own paraphrase
     assert dispatch.relay_his_words("k6", relayed) is True and world["injected"] == [("k6", relayed)]
-    assert ledger.card(uid)["pick_pending"]["heard"] == SAID[lang], "the card kept the model's words, not his"
+    assert ledger.card(uid)["pick_pending"]["heard"] == SAID[lang], "the app kept the model's words, not his"
 
 
 def test_a_question_or_rows_already_there_note_nothing(world, monkeypatch):

@@ -161,7 +161,7 @@ def test_a_lens_on_a_closed_card_brings_the_card():
     body = src[i:src.index("\n        def ", i + 10)]
     assert re.search(r"elif \(?_fx\.carries\(wid, action_name, _fx\.DATA_READ\) and not _cvis\.is_open\(wid\)"
                      r"[\s\S]{0,240}?_cvis\.present\(wid, reason=\"turn-order\"", body), \
-        "a view-op on a closed card must bring it"
+        "a view-op on a closed app must bring it"
     from widgets import effects as fx
     assert fx.carries("agenda", "show_day", fx.DATA_READ) and not fx.carries("agenda", "add_meeting", fx.DATA_READ)
 

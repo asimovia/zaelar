@@ -108,7 +108,7 @@ def _get(url: str, timeout: float = _CARD_TIMEOUT_S) -> dict | None:
                             lambda: _status_and_body(urllib.request.urlopen(req, timeout=timeout))[1])
         return json.loads(raw.decode("utf-8") or "null")
     except Exception as e:  # noqa: BLE001 — reported by the outcome door; no card is no agent
-        logger.debug(f"mesh: card {url} unreadable: {e!r}")
+        logger.debug(f"mesh: app {url} unreadable: {e!r}")
         return None
 
 

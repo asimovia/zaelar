@@ -118,7 +118,7 @@ TOOLS: list[dict] = [
             "description": (
                 "ABRE/MUESTRA un widget del canvas, incluidos los JUEGOS ('juega al snake'). `widget_id` = id exacto "
                 "del catálogo de RECURSOS, o el nombre natural si no lo sabes. No reproduce (play_music/play_video) "
-                "ni cambia datos (widget_data). Algo DE DENTRO de la tarjeta (un chat o mensaje concreto, su "
+                "ni cambia datos (widget_data). Algo DE DENTRO de la app (un chat o mensaje concreto, su "
                 "lista) es widget_data — repetir show no cambia nada. Solo para un widget que YA existe; CREAR "
                 "uno nuevo es escalate_to_slowbrain."
             ),
@@ -141,7 +141,7 @@ TOOLS: list[dict] = [
         "type": "function",
         "function": {
             "name": "close_widget",
-            "description": ("CIERRA una tarjeta del canvas, o la APARTA (mode=minimize: «quítala de en medio», "
+            "description": ("CIERRA una app del canvas, o la APARTA (mode=minimize: «quítala de en medio», "
                             "«mientras trabajas»). No borra el widget (delete_widget) ni toca sus datos "
                             "(widget_data). widget_id vacío = la de delante."),
             "parameters": {
@@ -193,7 +193,7 @@ TOOLS: list[dict] = [
         "function": {
             "name": "manage_widget_alias",
             "description": (
-                "Añade o quita un NOMBRE por el que se abre una TARJETA (nunca el apodo de una PERSONA: ese es "
+                "Añade o quita un NOMBRE por el que se abre una APP (nunca el apodo de una PERSONA: ese es "
                 "contactos `set_alias`). Ni su código ni sus datos. `widget_id` = id o nombre natural; `op` = "
                 "'add' (por defecto) o 'remove'."
             ),
@@ -340,7 +340,7 @@ TOOLS: list[dict] = [
             # and the marketplace→escalate boundary (bug from confusing fact lookup with store navigation).
             "description": (
                 "Un dato factual del mundo que cambia y no tienes (precio, tiempo, resultado, noticia, cotización): "
-                "vuelve en este turno y lo dices tú, sin tarjeta. DOS datos en una pregunta: la MISMA `query`. Solo TEXTO "
+                "vuelve en este turno y lo dices tú, sin app. DOS datos en una pregunta: la MISMA `query`. Solo TEXTO "
                 "(VER una foto es show_images). NUNCA datos PROPIOS del operador (agenda, mensajes, ficheros: "
                 "read_widget/tu ESTADO) ni la hora/fecha LOCALES (ESTADO); la hora de OTRO sitio SÍ, nunca a ojo. "
                 "No es para ANUNCIOS en venta/alquiler (search_listings), ni un INFORME a fondo ni HACER algo en una "
@@ -375,7 +375,7 @@ TOOLS: list[dict] = [
                 "Consulta tu memoria sobre el OPERADOR y su vida (gustos, familia, planes, lo que te contó hace "
                 "días u HOY antes de esta ventana, literal) cuando la necesitas para responder o preparar algo y no "
                 "está en tu ESTADO ni en la ventana. Vuelve en este "
-                "turno, sin tarjeta ni espera. `query` = qué necesitas recordar, autocontenido. No es para datos del "
+                "turno, sin app ni espera. `query` = qué necesitas recordar, autocontenido. No es para datos del "
                 "mundo (web_search) ni lo que GUARDA un widget —citas, contactos, ficheros— (read_widget). Jamás digas "
                 "«memoria» ni «base de datos»: hablas como quien simplemente se acuerda."
             ),
@@ -444,7 +444,7 @@ TOOLS: list[dict] = [
         "function": {
             "name": "delete_widget",
             "description": (
-                "Borra un widget PARA SIEMPRE (cerrarlo es [[close:id]]). Abre una confirmación en la tarjeta y el "
+                "Borra un widget PARA SIEMPRE (cerrarlo es [[close:id]]). Abre una confirmación en la app y el "
                 "borrado solo ocurre si el operador confirma; en el mismo turno di una pregunta corta de "
                 "confirmación. Es cosa tuya, no la escales."
             ),
@@ -466,7 +466,7 @@ TOOLS: list[dict] = [
             "name": "reopen_task",
             "description": (
                 "Recupera el RESULTADO de un encargo que YA TERMINÓ, por lo que era: «lo del piso que te "
-                "dije», «la búsqueda del dentista». No busca nada nuevo (web_search) ni abre una tarjeta que "
+                "dije», «la búsqueda del dentista». No busca nada nuevo (web_search) ni abre una app que "
                 "está en pantalla (show_widget). Si hay varios parecidos devuelve la lista: PREGUNTA cuál."
             ),
             "parameters": {
@@ -534,8 +534,8 @@ TOOLS: list[dict] = [
             "name": "set_style_directive",
             "description": (
                 "Sus REGLAS permanentes: cómo responder, qué hacer sin preguntar o preguntando antes, la regla de "
-                "una tarjeta; QUITAR o LISTAR reglas. TU NOMBRE también: si te pide llamarte de otra forma, PUEDES "
-                "(`name`). Una orden puntual o un filtro de tarjeta (youtube block_channel) NO lo es."
+                "una app; QUITAR o LISTAR reglas. TU NOMBRE también: si te pide llamarte de otra forma, PUEDES "
+                "(`name`). Una orden puntual o un filtro de app (youtube block_channel) NO lo es."
             ),
             "parameters": {
                 "type": "object",
@@ -566,7 +566,7 @@ TOOLS: list[dict] = [
                 "INICIAR SESIÓN, o PASAR UN CAPTCHA que BLOQUEÓ una tarea. Si se ofrece a pasar un muro "
                 "('ábreme el navegador y te confirmo el captcha') es esto, NO show_widget. `site` = el sitio que "
                 "bloqueó, según el aviso. Con verbo de TAREA no es login → escalate. EXCLUSIÓN DURA: MÚSICA y "
-                "MENSAJERÍA se conectan desde su TARJETA, JAMÁS por el navegador. Nunca tecleas claves."
+                "MENSAJERÍA se conectan desde su APP, JAMÁS por el navegador. Nunca tecleas claves."
             ),
             "parameters": {
                 "type": "object",

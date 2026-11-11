@@ -49,7 +49,7 @@ def relay_his_words(which: str, words: str) -> bool:
     from nucleo import dispatch
     if not his_words_may_reach_an_errand():
         __import__("voice.observer", fromlist=["emit"]).emit(
-            "brain", "🃏 his words stay with the card that owns the turn — not relayed to the errand", role="system",
+            "brain", "🃏 his words stay with the app that owns the turn — not relayed to the errand", role="system",
             text=f"{which}: {words}"[:160], extra={"cat": "flash", "kind_diag": "relay_refused", "to": which})
         return False
     dispatch.inject_soon(which, words)

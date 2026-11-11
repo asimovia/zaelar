@@ -135,8 +135,8 @@ async def run(got: dict, *, commission: str, operator_text: str, spec, window=No
         await _tell(got["title"])
         return True
     except Exception as e:  # noqa: BLE001
-        logger.warning(f"compose_rung: the card refused the text — {type(e).__name__}: {e}")
-        _emit("brain", "✍️ la tarjeta no aceptó el texto — el encargo vuelve al worker", role="system",
+        logger.warning(f"compose_rung: the app refused the text — {type(e).__name__}: {e}")
+        _emit("brain", "✍️ la app no aceptó el texto — el encargo vuelve al worker", role="system",
               text=str(e)[:160], extra={"cat": "flash"})
         return _to_the_worker(commission, operator_text)
 

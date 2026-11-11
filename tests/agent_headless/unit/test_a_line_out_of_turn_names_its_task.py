@@ -66,5 +66,5 @@ def test_a_line_painted_on_the_screen_he_is_at_is_shown_not_owed(events, monkeyp
     async def unsaid(title, text, **kw):
         return False
     monkeypatch.setattr(proactive, "notify", unsaid)
-    r = asyncio.run(notices.notify("zaelar", "Still building the card.", task_id="w-1", push_=False))
+    r = asyncio.run(notices.notify("zaelar", "Still building the app.", task_id="w-1", push_=False))
     assert r["state"] == "shown", "voice if quiet, else the screen: a line on his screen is not owed to the next one"

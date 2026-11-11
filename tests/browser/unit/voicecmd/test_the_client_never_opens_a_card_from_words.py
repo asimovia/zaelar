@@ -26,5 +26,5 @@ def test_no_frontend_module_reads_words_to_pick_a_card():
         src = p.read_text("utf-8", errors="ignore")
         if "identifyWidget(" in src.replace("export async function identifyWidget(", ""):
             offenders.append(str(p.relative_to(ENGINE)))
-    assert offenders == [], f"a client module maps words to a card again: {offenders}"
+    assert offenders == [], f"a client module maps words to an app again: {offenders}"
     assert not (ENGINE / "frontend/app/services/voiceCommands.js").exists()

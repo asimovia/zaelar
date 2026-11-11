@@ -66,25 +66,25 @@ cada mensaje a su tarea, independencia entre tareas, y fluidez del hilo."""
 # pair on purpose — it is the same question, «did the message reach the right thing» — but the thing is a
 # CARD ON SCREEN, not a background errand, and the evidence is a different reading of the mechanism report.
 MULTIWIDGET_RUBRIC = """
-- atribucion: con VARIAS tarjetas abiertas, ¿cada petición fue a la CORRECTA? Cuenta sobre todo cuando el
+- atribucion: con VARIAS apps abiertas, ¿cada petición fue a la CORRECTA? Cuenta sobre todo cuando el
   usuario habla por ALUSIÓN y sin nombrar el widget («bájale el volumen a ese», «ese quítalo», «ahora el
-  otro», «ponlo en pausa»). Cruza lo que dijo con `open_widgets_by_turn` (qué tarjetas había ese turno) y
-  con `widget_ops_by_turn` (en qué widget cayó la acción de ese turno): actuar sobre la tarjeta equivocada,
+  otro», «ponlo en pausa»). Cruza lo que dijo con `open_widgets_by_turn` (qué apps había ese turno) y
+  con `widget_ops_by_turn` (en qué widget cayó la acción de ese turno): actuar sobre la app equivocada,
   actuar sobre DOS, o tragarse la orden sin acusar recibo = fallo grave. PREGUNTAR «¿cuál de los dos?»
   cuando es genuinamente ambiguo NO es fallo: es la conducta correcta y se puntúa BIEN.
 - fluidez: ¿la conversación mantiene ESTADO de lo que hay en pantalla («el vídeo sigue en pausa, la música
   la bajé»), o cada turno trata la pantalla como si acabara de llegar? Penaliza aquí perder de vista una
-  tarjeta que sigue abierta, aunque el mecanismo del turno sea correcto.
+  app que sigue abierta, aunque el mecanismo del turno sea correcto.
 - ⚠️ Una palabra IMPRECISA no es una petición inválida. «Quita eso», «ponme otra», «el de la lista» son
   cómo habla la gente: si zaelar resuelve la referencia bien, eso es un ACIERTO grande, no lo normal. Y si
   no puede resolverla, lo correcto es preguntar — nunca elegir una al azar y seguir."""
 
 MULTIWIDGET_NOTE = """
 ⚠️ ESTE ES UN ESCENARIO MULTI-WIDGET. Lo que se juzga NO es que complete una tarea larga, sino el
-ENRUTAMIENTO con varias tarjetas delante: que cada frase caiga en la tarjeta que tocaba, que una no pise a
+ENRUTAMIENTO con varias apps delante: que cada frase caiga en la app que tocaba, que una no pise a
 la otra, y que la conversación mantenga el estado de la pantalla.
-· `open_widgets_by_turn.max_open` es una lectura EN VIVO de cuántas tarjetas llegaron a estar abiertas a la
-  vez. Si es <2, las tarjetas nunca convivieron y eso SÍ es un fallo de mecanismo — el escenario no llegó a
+· `open_widgets_by_turn.max_open` es una lectura EN VIVO de cuántas apps llegaron a estar abiertas a la
+  vez. Si es <2, las apps nunca convivieron y eso SÍ es un fallo de mecanismo — el escenario no llegó a
   plantear la pregunta que existe para hacer.
 · `widget_ops_by_turn` dice en qué widget cayó cada acción, turno a turno. Es la evidencia de la atribución:
   no la deduzcas del transcript, que es justo lo que está bajo prueba."""
@@ -393,7 +393,7 @@ def mechanism_facts(mech: dict) -> str:
     gw = mech.get("ghost_widgets") or {}
     if gw.get("ghosts"):
         which = ", ".join(g["id"] for g in gw["ghosts"])
-        lines.append(f"· ⚠️ SE ABRIÓ UNA TARJETA QUE NADIE PIDIÓ: {which} — la pieza BASE apareció encima de su "
+        lines.append(f"· ⚠️ SE ABRIÓ UNA APP QUE NADIE PIDIÓ: {which} — la pieza BASE apareció encima de su "
                      f"propia instancia, vacía, tapando a la que estaba trabajando de verdad. Cuéntalo en "
                      f"MECANISMO: la pantalla enseñó una ventana en blanco sobre el trabajo real. No lo "
                      f"cuentes contra las respuestas de zaelar, que no lo abrió él.")
@@ -593,7 +593,7 @@ def mechanism_facts(mech: dict) -> str:
     if rr.get("n"):
         cuando = ", ".join(f"{x}s" for x in (rr.get("at_s") or [])[:3])
         lines.append(f"· ♻️ ALGUIEN RESETEÓ EL MOTOR a mitad de la ronda ({rr['n']} vez/veces: {cuando}). Un "
-                     f"reset cierra TODAS las tarjetas, y cerrar una tarjeta con su tarea viva deja la "
+                     f"reset cierra TODAS las apps, y cerrar una app con su tarea viva deja la "
                      f"pestaña del navegador en «cancelada» sin que nadie haya cancelado nada. Si la "
                      f"búsqueda se cortó DESPUÉS de ese segundo, la cortó el reset y no el producto.")
     wd = mech.get("worker_deaths") or {}
@@ -732,7 +732,7 @@ def mechanism_facts(mech: dict) -> str:
                          f"forma concreta, ÉSTE es el sitio donde se comprueba que existe y qué tiene dentro.")
     for _w, _s in sorted(((k, (v or {}).get("search")) for k, v in (_ml.get("widgets") or {}).items() if (v or {}).get("search"))):
         lines.append(f"· 🔎 BÚSQUEDA EN PANTALLA en `{_w}` («{_s.get('query')}»): «{'», «'.join(_s.get('titles') or [])}». "
-                     f"Son resultados numerados que la tarjeta ENSEÑA: un título dicho que esté aquí NO es inventado.")
+                     f"Son resultados numerados que la app ENSEÑA: un título dicho que esté aquí NO es inventado.")
     if _ml.get("read") and not _ml.get("n_items") and not _ml.get("n_search"):
         lines.append("· ▶️ LISTA DEL REPRODUCTOR: VACÍA. En un encargo de vídeo o música esto sí es no haber "
                      "entregado — es la superficie donde tenía que aparecer (V2-402).")
@@ -1029,7 +1029,7 @@ def mechanism_facts(mech: dict) -> str:
                      f"widget: si ahí sale `agenda (data×1)`, la cita se escribió, digan lo que digan los "
                      f"disparadores.")
         # V2-463 — ESCRIBIR no es ENSEÑAR. La ronda que lo fijó: 12 fotos en el almacén del visor y el
-        # operador mirando un canvas donde la tarjeta nunca llegó a abrirse — el canal probe no emitía el
+        # operador mirando un canvas donde la app nunca llegó a abrirse — el canal probe no emitía el
         # `show` y el informe traía la familia `widget` contenta. Un widget con escrituras y CERO `show` en
         # una ronda que empieza con el canvas en blanco es un widget que nadie vio; el juez tiene que poder
         # decirlo con el hecho delante, no deducirlo del transcript.
@@ -1065,7 +1065,7 @@ def mechanism_facts(mech: dict) -> str:
                      f"cae en el turno donde el operador lo PIDIÓ («ponla», «pasa al siguiente») es una "
                      f"orden suya, no un autoplay de `add`: compara el turno de la op con lo que el "
                      f"operador dijo en ESE turno antes de archivar una violación de diseño.")
-    # V2-739 — y QUÉ TARJETAS había delante en cada turno. Sin esto, la atribución solo se puede deducir
+    # V2-739 — y QUÉ APPS había delante en cada turno. Sin esto, la atribución solo se puede deducir
     # del transcript, que es exactamente lo que el escenario multi-widget pone a prueba: un juez al que se
     # le da una conclusión que no puede contrastar contra nada, desconfía de la conclusión (medido tres
     # rondas seguidas en `play-music-and-build-playlist`).
@@ -1074,14 +1074,14 @@ def mechanism_facts(mech: dict) -> str:
         _vista = " · ".join(f"{t}: {', '.join(v) or '(nada)'}" for t, v in sorted(
             _abi["by_turn"].items(), key=lambda kv: int(kv[0][1:]) if kv[0][1:].isdigit() else 0))
         lines.append(
-            f"· 🗂 TARJETAS ABIERTAS POR TURNO (lectura EN VIVO del canvas, no del transcript): {_vista}. "
+            f"· 🗂 APPS ABIERTAS POR TURNO (lectura EN VIVO del canvas, no del transcript): {_vista}. "
             f"Máximo a la vez: {_abi.get('max_open', 0)} ({', '.join(_abi.get('kinds') or []) or 'ninguna'}). "
             f"Cruza esto con las OPS POR TURNO de arriba para juzgar la ATRIBUCIÓN: qué había delante cuando "
-            f"habló, y en qué tarjeta cayó lo que pidió. ⚠️ `youtube` y `musica` declaran NUEVE acciones con "
+            f"habló, y en qué app cayó lo que pidió. ⚠️ `youtube` y `musica` declaran NUEVE acciones con "
             f"el MISMO nombre (play, pause, next, previous, volume_up/down, set_volume, play_local, ended), "
             f"así que con los dos abiertos una orden de transporte sin dueño es INDECIDIBLE por el nombre: "
             f"preguntar cuál es la conducta correcta, y acertar en silencio es suerte, no acierto. "
-            f"`panel:<nombre>` es un PANEL NATIVO abierto (conectores, procesos…): no es una tarjeta del canvas, "
+            f"`panel:<nombre>` es un PANEL NATIVO abierto (conectores, procesos…): no es una app del canvas, "
             f"y abrirlo SÍ es mostrarlo.")
     # V2-463 — las BÚSQUEDAS DE IMÁGENES son viajes reales al mundo exterior (un Chromium caliente carga
     # Google/Bing y parsea el payload vivo), y hasta hoy el juez no las veía: la ronda que entregó 12 fotos

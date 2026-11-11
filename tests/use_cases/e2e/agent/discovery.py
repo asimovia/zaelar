@@ -150,7 +150,7 @@ SCENARIOS: list[UseCaseScenario] = [
             "zaelar debe traer la cartelera REAL de teatro en Sevilla para ESTE fin de semana, priorizando "
             "obras de texto/clásicas y funciones de tarde, y descartando musicales. Las fuentes adecuadas son "
             "las carteleras de los teatros sevillanos o un portal de entradas, no un buscador genérico. "
-            "⚠️ Cerrar la COMPRA de entradas exige cuenta y tarjeta, así que NO se juzga: el resultado que se "
+            "⚠️ Cerrar la COMPRA de entradas exige cuenta y app, así que NO se juzga: el resultado que se "
             "espera es el catálogo con enlaces, y quedarse ahí diciéndolo con claridad es lo correcto. "
             + _CATALOGO_ES
         ),

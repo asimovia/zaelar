@@ -67,7 +67,7 @@ def ran(tasks=()) -> list[tuple[str, str]]:
         from nucleo import canvas_focus
         out += [(str(c), str(a)) for c, _k, a in canvas_focus.this_turn_acts()]
     except Exception as e:  # noqa: BLE001
-        logger.debug(f"acts_asked: card acts unread — {e!r}")
+        logger.debug(f"acts_asked: app acts unread — {e!r}")
     seen: list[tuple[str, str]] = []
     for pair in out:
         if pair[0] and pair not in seen:

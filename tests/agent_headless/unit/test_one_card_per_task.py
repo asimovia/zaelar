@@ -72,8 +72,8 @@ def test_another_live_tasks_card_is_refused_at_the_door(world, src):
     widget = []
     assert canvas.apply("show", "results::b7-4", src=src, request=NOTHING,
                         emit=lambda kind, label, extra=None, **k: widget.append(label)) is False
-    assert widget == [], "a refused show must not put the card on his screen"
-    assert arb.decide("show", "results::b7-9", "worker:9").allow, "…and its own card is never refused"
+    assert widget == [], "a refused show must not put the app on his screen"
+    assert arb.decide("show", "results::b7-9", "worker:9").allow, "…and its own app is never refused"
 
 
 def test_his_hands_the_turn_and_the_lifecycle_are_never_refused_by_the_owner_rule(world):
@@ -88,7 +88,7 @@ def test_a_new_task_takes_over_the_card_of_an_ended_one(world):
     world["ledger"]["b7-2"] = {"id": "b7-2", "sheet": "b7-2", "state": "cancelled"}   # ended: a record, not a holder
     world["sessions"]["3"] = Rec("3", "b7-3", sheet="b7-2")                               # inherited its box
     v = arb.decide("show", "results::b7-2", "worker:3")
-    assert v.allow, f"a new task of the same widget was refused the card it inherits: {v}"
+    assert v.allow, f"a new task of the same widget was refused the app it inherits: {v}"
     so.on_show("results::b7-2", "worker:3")
     assert "non_owner_show" not in _owner_rules(world["rows"])
 

@@ -76,4 +76,4 @@ def test_every_host_gives_every_member_a_card_uses():
         have = _members(_ctx_literal((ENGINE / rel).read_text(encoding="utf-8"), nth))
         if used - have:
             missing[host] = sorted(used - have)
-    assert not missing, f"a host leaves out ctx members cards call (a TypeError on tap): {missing}"
+    assert not missing, f"a host leaves out ctx members apps call (a TypeError on tap): {missing}"

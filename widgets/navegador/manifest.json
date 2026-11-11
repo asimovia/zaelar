@@ -9,7 +9,7 @@
   "owner": "Zaelar",
   "licence": "SUL-1.0",
   "title": "Navegador",
-  "description": "Un navegador web dentro de zaelar: abre cualquier página, la renderiza en vivo con un Chromium propio y reproduce vídeos de YouTube embebidos. Su tarjeta es el MONITOR de lo que ese navegador está haciendo ahora mismo —la captura de la página y dos o tres líneas de estado—, no el sitio donde se enseñan los hallazgos: eso es la hoja `results`. Un encargo puede tener VARIOS navegadores abiertos a la vez, cada uno con su tarjeta; los resultados de todos se concentran en una sola hoja.",
+  "description": "Un navegador web dentro de zaelar: abre cualquier página, la renderiza en vivo con un Chromium propio y reproduce vídeos de YouTube embebidos. Su app es el MONITOR de lo que ese navegador está haciendo ahora mismo —la captura de la página y dos o tres líneas de estado—, no el sitio donde se enseñan los hallazgos: eso es la hoja `results`. Un encargo puede tener VARIOS navegadores abiertos a la vez, cada uno con su app; los resultados de todos se concentran en una sola hoja.",
   "whenToUse": "Cuando el operador quiere VER una página web EN VIVO: buscar en la web (Bing), abrir una web concreta (Wallapop, una tienda, la RAE), enseñarle una página o un vídeo de YouTube. FRONTERA: los hallazgos van a `results`, nunca aquí; y si lo que quiere es LEER el texto o la receta EN SÍ, a `documento`.",
   "keywords": [
     "navegador",
@@ -216,7 +216,7 @@
       "escalate": true
     },
     "automate": {
-      "desc": "cumple un objetivo navegando la web por sí solo (buscar, filtrar, entrar en resultados). Lo que encuentre va a la hoja `results`; esta tarjeta solo enseña por dónde va",
+      "desc": "cumple un objetivo navegando la web por sí solo (buscar, filtrar, entrar en resultados). Lo que encuentre va a la hoja `results`; esta app solo enseña por dónde va",
       "payload": {
         "goal": "string — objetivo en lenguaje natural, p.ej. 'en Wallapop, motos de menos de 5000€ del 2020 en adelante'"
       },

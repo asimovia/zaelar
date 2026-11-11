@@ -18,7 +18,7 @@ def denies_the_act(spoken: str) -> bool:
 
 #: What the card holds, so a relative order («move it 30 minutes later») becomes a call (demo run 2026-09-26:
 #: the turn had the digest and computed 2:00 PM; this pass had only his words and returned nothing).
-_CARD = "\n\nWHAT THE CARD «{wid}» HOLDS NOW:\n{digest}"
+_CARD = "\n\nWHAT THE APP «{wid}» HOLDS NOW:\n{digest}"
 
 
 def conversation(window, n: int = 6) -> str:
@@ -89,11 +89,11 @@ _DENIED_RE = re.compile(
 
 _SYS_REPEAT = (
     "You are the brain of a voice assistant. The operator gave an order and your only call was "
-    "`{repeated}` on the card «{wid}» — it only LOOKED (a view or a query that was already there or "
+    "`{repeated}` on the app «{wid}» — it only LOOKED (a view or a query that was already there or "
     "that changes nothing): it fulfilled nothing. The order, read separately, is `{verdict}` on "
     "«{wid}». If his words ask for that, make NOW exactly the `widget_data` call with widget_id "
     "«{wid}» and action «{verdict}», with the payload taken from his words, from the conversation "
-    "and from what the card holds (a note he dictates is written by you; a person is named as he "
+    "and from what the app holds (a note he dictates is written by you; a person is named as he "
     "said it). If his words do NOT ask for that, call nothing. Write any text you put in the payload "
     "(a note, a message, a title) in the OPERATOR's language, as he said it.\n\nActions of "
     "«{wid}»:\n{actions}{card}"
@@ -101,8 +101,8 @@ _SYS_REPEAT = (
 
 
 _SYS_AFTER_READ = (
-    "You are the brain of a voice assistant. The operator gave an ORDER on the card «{wid}». To "
-    "fulfil it you first read the card «{read}» — this is what it holds:\n{block}\n\nNow fulfil the "
+    "You are the brain of a voice assistant. The operator gave an ORDER on the app «{wid}». To "
+    "fulfil it you first read the app «{read}» — this is what it holds:\n{block}\n\nNow fulfil the "
     "order: make the `widget_data` call with widget_id «{wid}», one of its declared actions and the "
     "payload taken from his words and from what you just read (a message is written by you; a person "
     "is named as he said it). If his sentence does not ask for anything on «{wid}», call nothing. "
@@ -112,7 +112,7 @@ _SYS_AFTER_READ = (
 
 
 _SYS_AFTER_SEARCH = (
-    "You are the brain of a voice assistant. The operator's turn asked for a FACT and an ORDER on the card "
+    "You are the brain of a voice assistant. The operator's turn asked for a FACT and an ORDER on the app "
     "«{wid}». You searched the web for the fact and answered:\n«{answer}»\n\nNow fulfil the order: make the "
     "`widget_data` call with widget_id «{wid}», one of its declared actions and the payload taken from his "
     "words and from what you found (a date you found is written as YYYY-MM-DD). If his sentence does not ask "
@@ -122,7 +122,7 @@ _SYS_AFTER_SEARCH = (
 
 
 _SYS_AFTER_RECALL = (
-    "You are the brain of a voice assistant. The operator's turn gave an ORDER on the card «{wid}» that needed "
+    "You are the brain of a voice assistant. The operator's turn gave an ORDER on the app «{wid}» that needed "
     "something said earlier in your conversation. You recalled it and answered:\n«{answer}»\n\nNow fulfil the "
     "order: make the `widget_data` call with widget_id «{wid}», one of its declared actions and the payload taken "
     "from his words and from what you recalled (a name, a title, a date as YYYY-MM-DD). If his sentence does not "
@@ -132,23 +132,23 @@ _SYS_AFTER_RECALL = (
 
 
 _SYS_COMMISSION = (
-    "You are the brain of a voice assistant. The operator gave an ORDER that names the card «{wid}», "
+    "You are the brain of a voice assistant. The operator gave an ORDER that names the app «{wid}», "
     "and the turn was about to send it to a background process of SEVERAL MINUTES. Before spending "
-    "them, decide with what the card holds: (1) if a declared action of «{wid}» fulfils the order, "
-    "call `widget_data` with it; (2) if the ANSWER is in what the card keeps (its appointments and "
+    "them, decide with what the app holds: (1) if a declared action of «{wid}» fulfils the order, "
+    "call `widget_data` with it; (2) if the ANSWER is in what the app keeps (its appointments and "
     "free slots, its contacts, its files…), call `read_widget` with widget_id «{wid}» and the "
     "concrete question to resolve against it (with the absolute date and the time range he said) — "
     "only if that tool is offered to you; (3) only if the outside world is needed — the web, booking "
     "on an external site, searching products — call nothing. A message to a contact is the card's "
     "send action, with the text written by you from what he wants to say, and `contact` is the "
-    "person's NAME as he said it («Rowan»), never their @user, phone or email: the card resolves it "
+    "person's NAME as he said it («Rowan»), never their @user, phone or email: the app resolves it "
     "in its directory. An order to DO something (send, write, note down, move) is fulfilled with its "
-    "action even if it depends on a fact the card keeps: the card checks it when it runs and says if "
+    "action even if it depends on a fact the app keeps: the app checks it when it runs and says if "
     "it is missing — reading to check first does not fulfil the order. But FINDING, searching or "
     "telling him something (a free slot, a date, a fact) is KNOWING it: it is read, and nothing he "
     "did not ask for is noted down or sent — «find me a slot to talk with Rowan» is neither booking "
     "nor writing to Rowan. The COMMISSION was written by another step and may carry a miscopied "
-    "fact: a time, a date or a name that a card on his screen holds is taken from the CARD, not from "
+    "fact: a time, a date or a name that an app on his screen holds is taken from the APP, not from "
     "the commission. Write any text you put in the payload (a note, a message, a title) in the "
     "OPERATOR's language, as he said it.\n\nActions of «{wid}»:\n{actions}{card}"
 )

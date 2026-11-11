@@ -130,7 +130,7 @@ def test_the_brief_enumerates_the_end_states_of_the_screen_and_of_the_specs_stil
     assert {"results:view", "results:layout", "none"} <= set(q["criteria"])   # more since 2026-11-08 (choose, tab…)
     spec.open({"desktop": "wallpaper", "expect": "changed", "baseline": {}}, text="find me the wallpaper cosmic eye", source="voice")
     q = spec.end_state_question(["results"])
-    assert "desktop:wallpaper" in q["criteria"], "a closed card whose end state is still owed is an option (B2)"
+    assert "desktop:wallpaper" in q["criteria"], "a closed app whose end state is still owed is an option (B2)"
 
 
 def test_a_name_match_reads_the_name_not_the_address_beside_it():

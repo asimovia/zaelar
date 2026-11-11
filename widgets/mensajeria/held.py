@@ -136,9 +136,9 @@ def prompt_lines(db: dict, now: float | None = None, *, drafts: bool = True) -> 
     for d in (held(db)[:3] if drafts else []):
         subj = f" «{d['subject']}»" if d["subject"] else ""
         out.append(f"· BORRADOR esperando su OK para {d['to']}{subj}: «{d['text'][:120]}» — ya está escrito y lo ha "
-                   f"visto en la tarjeta; se envía con send_draft (contact: {d['to']!r}), ahora o con `at`/`in_minutes` "
+                   f"visto en la app; se envía con send_draft (contact: {d['to']!r}), ahora o con `at`/`in_minutes` "
                    "para más tarde. Su orden explícita de mandarlo ES su confirmación. «Ábrelo / enséñamelo» = "
-                   f"open_draft (contact: {d['to']!r}): ocupa la tarjeta entera para revisarlo.")
+                   f"open_draft (contact: {d['to']!r}): ocupa la app entera para revisarlo.")
     for o in scheduled(db, now)[:3]:
         hhmm = datetime.fromtimestamp(float(o.get("not_before") or 0)).strftime("%d/%m %H:%M")
         out.append(f"· PROGRAMADO para el {hhmm} a {o.get('name') or o.get('to')}: «{str(o.get('text') or '')[:80]}» "

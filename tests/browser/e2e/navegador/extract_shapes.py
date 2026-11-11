@@ -206,7 +206,7 @@ def main():
         if got:
             check("1a · el precio se lee ENTERO, con sus céntimos",
                   got[0]["price"].startswith("169,00"), f"price={got[0]['price']!r} (era «00 €»)")
-            check("1b · el nombre sale del encabezado de la tarjeta",
+            check("1b · el nombre sale del encabezado de la app",
                   got[0]["title"].startswith("LG 27US500-W"), f"title={got[0]['title']!r} (era «»)")
 
         # ── 2 · the classic shape does not change ──
@@ -230,7 +230,7 @@ def main():
               len(got) == 1 and not (got[0]["title"] or "").strip().isdigit(),
               f"title={got and got[0]['title']!r} — «169» no es el nombre de nada")
         if got:
-            check("5a · el nombre sale de la tarjeta y el importe no se pierde",
+            check("5a · el nombre sale de la app y el importe no se pierde",
                   got[0]["title"].startswith("Monitor Alurin") and "169" in got[0]["price"],
                   str(got[0]))
 
@@ -318,7 +318,7 @@ def main():
     if fails:
         print(f"✗ {len(fails)} sin cumplir: {', '.join(fails)}")
         return 1
-    print("✓ el extractor lee el precio entero y saca el nombre de la tarjeta sin inventarlo")
+    print("✓ el extractor lee el precio entero y saca el nombre de la app sin inventarlo")
     return 0
 
 

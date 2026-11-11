@@ -32,7 +32,7 @@ async def _open_music_search(mq: dict, *, emit, text, brief) -> None:
         await _pst.asyncio.to_thread(_mbrowse.begin_search, q)
         _pst._cvis.present("musica", reason="turn-order", action="play", src="flash", emit=emit, text=text, brief=brief)
     except Exception as e:  # noqa: BLE001 — the card's look never stops the act
-        _pst.logger.debug(f"music card not opened on its search: {e!r}")
+        _pst.logger.debug(f"music app not opened on its search: {e!r}")
 
 
 async def _keep_music_findings(mq: dict, res) -> None:
@@ -45,7 +45,7 @@ async def _keep_music_findings(mq: dict, res) -> None:
         from widgets.musica import browse as _mbrowse
         await _pst.asyncio.to_thread(_mbrowse.after_play, q, res)
     except Exception as e:  # noqa: BLE001
-        _pst.logger.debug(f"music card findings not kept: {e!r}")
+        _pst.logger.debug(f"music app findings not kept: {e!r}")
 
 
 async def run_the_light_lanes(*, FastClient, _apply_widget_data, _brief, _buf_add, _buf_reset, _cardc, _close_target, _cover_work, _identify, _identify_system, _named_by_verdict, _no_tool, _op_text, _prompt_mod, _router, _rv, _say, _show_target_instance, _shown_ids, _t, _tag_emit, _tool_fired, _turn_op_tasks, acted, attention, brain, clarify, data_done, emit, escalate_req, images_req, listing_req, music_req, operator_text, read_req, recall_req, reopen_req, reveal_req, search_req, send, speak, spec, speech, spoken, spoken_text, take, text, with_also_named) -> dict:
@@ -108,7 +108,7 @@ async def run_the_light_lanes(*, FastClient, _apply_widget_data, _brief, _buf_ad
             if _fill:
                 _apply_widget_data(_fill["widget_id"], _fill["action"], _fill["payload"])
                 data_done["v"] = True
-                emit("brain", "🔎 la tarjeta estaba vacía — su búsqueda, con su frase", role="system",
+                emit("brain", "🔎 la app estaba vacía — su búsqueda, con su frase", role="system",
                      text=f"{_fill['widget_id']}:{_fill['action']} ← {_op_text[:80]}", extra={"cat": "flash"})
         elif ((_wt == "go" or _win_goal
                 or _pst._direct_action.verdict_escalates(_brief, answered=bool(spoken_text))
@@ -141,7 +141,7 @@ async def run_the_light_lanes(*, FastClient, _apply_widget_data, _brief, _buf_ad
             emit("brain", "🧭 escalada por backstop (devolvió la búsqueda al operador)", text=_op_text[:80], role="system")
 
     # BACKSTOP DETERMINISTA de CIERRE corto (sesión 22:40 2026-07-16): «Vale, ciérralo» → el modelo respondió
-    # "Listo, cerrado" SIN emitir [[close]] ni tool alguna — la tarjeta quedó abierta y el operador tuvo que
+    # "Listo, cerrado" SIN emitir [[close]] ni tool alguna — la app quedó abierta y el operador tuvo que
     # repetirlo (T10 muteó, luego "no se está cerrando nada"). Orden CORTA que es claramente CERRAR (verbo de
     # cerrar, sin verbo de borrar, ≤5 palabras — `looks_like_close`, mismo guard que cerrar≠borrar) y el turno
     # NO cerró nada → cerramos AQUÍ: el widget que nombre el texto, o el ÚNICO abierto. Con varios abiertos y
@@ -211,12 +211,12 @@ async def run_the_light_lanes(*, FastClient, _apply_widget_data, _brief, _buf_ad
                    or _pst._closeg.the_card_he_means(text, _openw, brief=_brief))
             if not _cw and (_q := _pst._closeg.which_card_question(text, _openw, brief=_brief, say=_say)):
                 clarify["msg"] = _q           # an unnamed close over several cards, none recent: it asks, never claims
-                emit("brain", "❓ cerrar: varias tarjetas abiertas, ninguna reciente", text=", ".join(_openw), role="system")
+                emit("brain", "❓ cerrar: varias apps abiertas, ninguna reciente", text=", ".join(_openw), role="system")
         if _cw := _pst._closeg.unless_a_row(_cw, text, _idc):   # V2-781: «quita el tercero» is a row
             _t = _close_target(_cw, text)
             if _t["ask"]:                           # V2-259 F3
                 clarify["msg"] = _t["ask"]
-                emit("brain", "❓ cerrar: varias tarjetas abiertas", text=_cw, role="system",
+                emit("brain", "❓ cerrar: varias apps abiertas", text=_cw, role="system",
                      extra={"options": _t["options"]})
                 if escalate_req["v"] is not None:
                     escalate_req["v"] = None
@@ -255,7 +255,7 @@ async def run_the_light_lanes(*, FastClient, _apply_widget_data, _brief, _buf_ad
     # LECTURA DE UN WIDGET por tool (V2-668): la ruta LIGERA hermana de recall — lo que el widget GUARDA, leído
     # por las costuras que ya publica para el prompt (`widget_read.read`) + 2º pase con ese contenido como
     # ÚNICA fuente. Sesión 53de97d4: la hora de la cita con Hacienda estaba en la agenda y el modelo no tenía
-    # ninguna puerta para leerla con la tarjeta cerrada. Solo si el turno no escaló ni buscó ni reveló.
+    # ninguna puerta para leerla con la app cerrada. Solo si el turno no escaló ni buscó ni reveló.
     if read_req["v"] is not None and escalate_req["v"] is None and search_req["v"] is None \
             and reveal_req["v"] is None:
         from nucleo.flash import widget_read as _wread

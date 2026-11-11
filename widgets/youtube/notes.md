@@ -63,7 +63,7 @@
   videoId/title/url/channel/published/latest, fuerza `paused=true`/`muted=true`, `_bump` con `cmd="close"`) +
   entrada `"close"` en `manifest.json` `actions` (+ mención en `usage` + keywords "cierra el vídeo"/"cierra el
   video"/"quita el vídeo"/"detén el vídeo"). NO hizo falta tocar `widget.js`: al vaciarse `videoId`, `render()`
-  ya detecta `st.id !== id` y RECONSTRUYE la tarjeta sin `<iframe>` (el elemento del reproductor se destruye →
+  ya detecta `st.id !== id` y RECONSTRUYE la app sin `<iframe>` (el elemento del reproductor se destruye →
   el vídeo deja de reproducirse de verdad, no un efecto solo local) y pinta el estado vacío ya existente ("No hay
   ningún vídeo cargado. Dime qué quieres ver."). Mismo mecanismo que "arranque en blanco" de más arriba, ahora
   accesible como acción explícita en cualquier momento, no solo como semilla inicial.

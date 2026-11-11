@@ -68,7 +68,7 @@ def test_a_commission_that_names_a_card_is_read_or_called_before_it_costs_a_work
     assert got == {"kind": "read", "widget_id": "agenda", "question": "What is free on 2026-09-27 between 12:00 and 18:00?"}
     offered = [t["function"]["name"] for t in _Client.calls[-1]["tools"]]
     assert offered == ["widget_data", "read_widget"], offered
-    assert "citas próximas (3)" in _Client.calls[-1]["messages"][0]["content"], "the card rides the pass"
+    assert "citas próximas (3)" in _Client.calls[-1]["messages"][0]["content"], "the app rides the pass"
     # demo v4, C5: the pass sent `contact: "@northfunddemo"` — a handle from memory, misspelt — and the card
     # answered «no tengo a @northfunddemo en el directorio»; the contact is the NAME he said.
     assert "person's NAME" in _Client.calls[-1]["messages"][0]["content"]
@@ -93,4 +93,4 @@ def test_a_card_that_cannot_answer_still_takes_the_call(client, monkeypatch):
                                        "payload": {"contact": "Rowan", "channel": "telegram", "text": "16:30"}})]
     got = _run_cr("Message Rowan on Telegram and tell him the new meeting time.", "send Rowan…", "mensajeria")
     assert got and got["kind"] == "call" and got["action"] == "send_to", got
-    assert [t["function"]["name"] for t in _Client.calls[-1]["tools"]] == ["widget_data"], "no read for a card that cannot answer"
+    assert [t["function"]["name"] for t in _Client.calls[-1]["tools"]] == ["widget_data"], "no read for an app that cannot answer"

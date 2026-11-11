@@ -35,7 +35,7 @@ def _done_when() -> dict:
 def test_a_timer_set_in_another_vocabulary_is_refused_and_names_its_slot(payload):
     res = asyncio.run(server_api._dispatch("timer", "set", payload))
     assert res["ok"] is False and res["error"] == contract.SLOTS_UNFILLED, res
-    assert "seconds" in res["unmet"], "the refusal does not name the slot the card reads"
+    assert "seconds" in res["unmet"], "the refusal does not name the slot the app reads"
     assert timer.view_data()["running"] is False, "the refused act still touched the card"
     assert verify.check(_done_when()) is False, "the declared end state reads as met over a timer that never ran"
 

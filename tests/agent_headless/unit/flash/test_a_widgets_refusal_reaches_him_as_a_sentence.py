@@ -73,7 +73,7 @@ def _says_spanish_or_debug(text: str) -> bool:
 
 def test_a_refusal_with_only_an_internal_reason_is_a_plain_generic_line(english):
     line = asyncio.run(RL.said("results", {"ok": False, "error": "falta 'index' (1-based)"}))
-    assert line == "the Results card didn't take it.", line
+    assert line == "the Results app didn't take it.", line
 
 
 def test_the_results_refusal_reads_right_in_both_languages(monkeypatch):
@@ -87,7 +87,7 @@ def test_the_results_refusal_reads_right_in_both_languages(monkeypatch):
 
 def test_a_spanish_message_that_cannot_be_translated_falls_back_to_the_generic_line(english):
     res = {"ok": False, "error": "end_of_list", "message": "No hay más vídeos en la lista."}
-    assert asyncio.run(RL.said("youtube", res)) == "the YouTube card didn't take it."
+    assert asyncio.run(RL.said("youtube", res)) == "the YouTube app didn't take it."
 
 
 def test_a_spanish_message_stays_whole_in_a_spanish_session(spanish):

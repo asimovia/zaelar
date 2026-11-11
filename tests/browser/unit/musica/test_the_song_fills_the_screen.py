@@ -142,7 +142,7 @@ def test_the_widget_draws_no_second_box_inside_the_window(_page):
     assert box["border"] in ("0px", ""), "a border of our own is the second frame he saw"
     assert box["radius"] in ("0px", ""), "and so is a rounded corner inside a rounded window"
     assert box["bg"] in ("rgba(0, 0, 0, 0)", "transparent"), \
-        "a background of our own paints a card on top of the card"
+        "a background of our own paints an app on top of the card"
 
 
 def test_the_bar_never_repeats_what_the_window_already_says(_page):

@@ -131,5 +131,5 @@ def test_the_root_tracks_a_wide_card_instead_of_capping_itself(wid, widths):
     width = m.get("width") or 0
     floor = CARD_WIDTH * MIN_FRACTION
     assert width >= floor, (
-        f"{wid}'s root measured {width:.0f}px on a {CARD_WIDTH}px card (needs >= {floor:.0f}px) — it is "
+        f"{wid}'s root measured {width:.0f}px on a {CARD_WIDTH}px app (needs >= {floor:.0f}px) — it is "
         f"capping itself instead of using the width the operator gave it")

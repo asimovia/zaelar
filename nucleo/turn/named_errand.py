@@ -115,7 +115,7 @@ def _carded(e: dict) -> dict:
         from nucleo.circuit import ledger
         c = ledger.card(_uid_of(str(e.get("id") or "")))
     except Exception as ex:  # noqa: BLE001 — a reader never breaks a turn
-        logger.debug(f"named_errand: card unreadable — {type(ex).__name__}: {ex}")
+        logger.debug(f"named_errand: app unreadable — {type(ex).__name__}: {ex}")
         c = {}
     state = c.get("state") or ("waiting" if e.get("parked") else "done" if e.get("ended") else
                                "starting" if e.get("starting") else "running")

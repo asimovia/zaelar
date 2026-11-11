@@ -77,7 +77,7 @@ def test_continuation_finished_task_reopens():
     nt.set_status(tid, "working")
     nt.set_status(tid, "done")            # finished a moment ago
     cont = nt.find_continuation("las motos no eran de enduro, quiero enduro 300 4T")
-    assert cont == (tid, "done"), "un follow-up del mismo tema re-lanza la tarea recién terminada en su tarjeta"
+    assert cont == (tid, "done"), "un follow-up del mismo tema re-lanza la tarea recién terminada en su app"
 
 
 def test_continuation_expired_does_not_reopen():

@@ -101,7 +101,7 @@ def on_screen(monkeypatch):
 def test_the_screen_question_does_not_behead_the_routing_sentence():
     """The measured defect: the clause that says «vuelve al catálogo» never reached the decision."""
     q = _tb.target_question(["youtube"])
-    assert q, "the card is open — there is a screen question"
+    assert q, "the app is open — there is a screen question"
     show_tab = q["criteria"]["youtube:show_tab"]
     assert "catálogo" in show_tab, (
         "`show_tab` declares that it answers «vuelve al catálogo» and the cut threw that away — "
@@ -195,7 +195,7 @@ def test_a_close_verb_needs_no_verdict_at_all():
     ({}, "no verdict at all — V2-635's "),
     ({_tb.TARGET_KEY: ("youtube:pause", 0.99)}, "another action of the SAME card: «pausa el vídeo» "
                                                 "must stay a pause, not become an emptied player"),
-    ({_tb.TARGET_KEY: ("musica:close", 0.99)}, "another card entirely"),
+    ({_tb.TARGET_KEY: ("musica:close", 0.99)}, "another app entirely"),
     ({_tb.TARGET_KEY: ("youtube:close", 0.31)}, "a verdict under the gate is a shrug"),
 ])
 def test_without_a_verdict_for_THIS_action_nothing_is_licensed(on_screen, brief_answers, why):
@@ -270,7 +270,7 @@ def test_the_pure_show_gate_asks_the_verdict_too(on_screen):
     lic = _call_licence(PURE_SHOW, None)
     assert (lic.verdict, lic.clause, lic.card) == (card.SHOW, "pure-show", "youtube"), "no verdict: today's show"
     other = _call_licence(PURE_SHOW, _brief({_tb.TARGET_KEY: ("youtube:pause", 0.99)}))
-    assert other.verdict == card.SHOW, "a verdict for ANOTHER action of the card licenses nothing"
+    assert other.verdict == card.SHOW, "a verdict for ANOTHER action of the app licenses nothing"
 
 
 def test_the_disarm_a_pure_show_gate_that_ignores_the_verdict_eats_the_close(on_screen, monkeypatch):

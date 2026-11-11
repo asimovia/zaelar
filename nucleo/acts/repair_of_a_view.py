@@ -102,7 +102,7 @@ def _verdict_hint(action: str, manifest: dict) -> str:
     a = str(action or "").strip()
     if not a or a not in (manifest.get("actions") or {}):
         return ""
-    return (f"\nThe engine's reading of this order names the action «{a}» on this card — use it, with every value "
+    return (f"\nThe engine's reading of this order names the action «{a}» on this app — use it, with every value "
             f"the conversation already gave (dates, names), unless it clearly cannot do what he asked.")
 
 
@@ -167,7 +167,7 @@ async def call_or_read_for_commission(operator_text: str, commission: str, widge
             if name == "widget_data" and str(args.get("action") or "").strip() in declared:
                 payload = args.get("payload") if isinstance(args.get("payload"), dict) else {}
                 return {"kind": "call", "widget_id": wid, "action": str(args["action"]).strip(), "payload": payload}
-        _cp.note(wid, "el encargo sigue su camino al worker" if not got else "la llamada no era de esta tarjeta")
+        _cp.note(wid, "el encargo sigue su camino al worker" if not got else "la llamada no era de esta app")
         return None
     except Exception:  # noqa: BLE001 — never take down a live turn
         return None

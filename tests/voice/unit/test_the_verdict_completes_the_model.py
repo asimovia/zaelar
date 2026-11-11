@@ -126,7 +126,7 @@ def test_T4_a_VALID_model_call_is_not_overruled_by_a_confident_wrong_verdict(on_
     b = _brief({_tb.TARGET_KEY: ("youtube:restart", 0.99)})
     assert _da.completes(b, "youtube", model_action="show_tab") == "restart", "the disagreement is named"
     assert _da.completes(b, "youtube", model_action="restart") == "", "agreement is not a disagreement"
-    assert _da.completes(b, "musica", model_action="pause") == "", "another card is nobody's business"
+    assert _da.completes(b, "musica", model_action="pause") == "", "another app is nobody's business"
 
 
 @pytest.mark.parametrize("kind,why", [

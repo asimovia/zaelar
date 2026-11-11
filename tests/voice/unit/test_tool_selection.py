@@ -141,7 +141,7 @@ def test_pedir_una_FOTO_conserva_la_tool_que_ensena_fotos():
     una**. Pedir MÚSICA la conservaba; pedir una FOTO no.
 
     Y la escotilla no pudo absorberlo, que es lo que hay que recordar: `need_capability` funciona cuando el
-    modelo NOTA que le falta algo, y aquí le quedaban `show_widget` y `widget_data` sobre la tarjeta `imagenes`
+    modelo NOTA que le falta algo, y aquí le quedaban `show_widget` y `widget_data` sobre la app `imagenes`
     —tools que PARECEN hacer el trabajo—. Las usó, abrió el visor vacío y dijo «Aquí lo tienes». Un fallo de
     recuperación es invisible precisamente cuando sobrevive al recorte un vecino plausible."""
     for phrase in ("Enséñame la foto de un Ferrari F cuarenta.", "show me a ferrari f40 picture",

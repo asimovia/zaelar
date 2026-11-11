@@ -19,16 +19,16 @@ FROZEN_PAIRS = {
     ("brain", "🔁 replace: the stopped errand's place is taken by the one he named"),
     ("task", "linear_rerun"), ("task", "sheet_inherited"),
     ("task", "🎯 objetivo declarado — así se medirá si está hecho"),
-    ("widget", "🚫 a card that is not the deliverable stays closed"),
+    ("widget", "🚫 an app that is not the deliverable stays closed"),
 }
 #: First literal arguments: the kinds themselves, and the labels a kind-fixing helper takes first.
 FROZEN_FIRST = {
     "brain", "spec", "task", "verdict", "widget",
     "🎯 spec: nace con la petición", "✅ spec: cumplida", "❌ spec: sin cumplir todavía",
-    "❌ spec: SIN cumplir tras el plazo — se le dice al modelo", "🫥 spec: no verificable — la tarjeta no lo declara",
+    "❌ spec: SIN cumplir tras el plazo — se le dice al modelo", "🫥 spec: no verificable — la app no lo declara",
     "🫥 spec: el encargo no acaba en nada que un widget pueda atestiguar",
     "🎯 arnés: objetivo abierto", "✅ arnés: objetivo conseguido", "🕰 arnés: objetivo caducado sin verificar",
-    "🫥 arnés: objetivo NO verificable — la tarjeta no declara si está vacía",
+    "🫥 arnés: objetivo NO verificable — la app no declara si está vacía",
     # the two claim-harness labels («afirmó entrega…», «afirmó que estaba en pantalla…») went with the claim grammar
     # read over our own reply (V2-851 F5): the turn end no longer reads its reply for a claim
 }

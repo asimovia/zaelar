@@ -42,7 +42,7 @@ def test_every_oauth_door_returns_the_SAME_page(door):
     """Five copies drifted into two behaviours — a popup in the agenda, a whole tab in contacts — and all
     five shared one defect. One builder is what stops the next one from drifting too."""
     html = _page_of(door)(True, "")
-    assert "postMessage" in html, f"{door}'s callback tells the card nothing"
+    assert "postMessage" in html, f"{door}'s callback tells the app nothing"
     assert "window.opener" in html
 
 

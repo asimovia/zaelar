@@ -131,7 +131,7 @@ def test_the_default_skin_is_grafito_and_a_token_consumer_wears_it(playwright_av
             return m, errors
     m, errors = asyncio.run(go())
     assert m["canvas"] == "#16191E", f"default canvas must be grafito: {m}"
-    assert m["probeBg"] == _rgb("1F242B"), f"a var(--hb-bg) consumer must wear the card surface: {m}"
+    assert m["probeBg"] == _rgb("1F242B"), f"a var(--hb-bg) consumer must wear the app surface: {m}"
     assert m["probeColor"] == _rgb("AE90FF"), f"the accent is the heliotrope: {m}"
     assert not errors, errors
 
@@ -150,7 +150,7 @@ def test_switching_to_clasico_repaints_a_real_consumer(playwright_available):
             await b.close()
             return m, back, errors
     m, back, errors = asyncio.run(go())
-    assert m["probeBg"] == _rgb("141d29"), f"clasico's card surface: {m}"
+    assert m["probeBg"] == _rgb("141d29"), f"clasico's app surface: {m}"
     assert m["canvas"] == "#0a0f16" and m["profile"] == "clasico" and m["lsProfile"] == "clasico", m
     assert m["metaColor"] == "#0a0f16", f"the browser-chrome color must follow the profile: {m}"
     # and BACK: grafito is «no overrides», so the swap must REMOVE clasico's inline vars — a profile that

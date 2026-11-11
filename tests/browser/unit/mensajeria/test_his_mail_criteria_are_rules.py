@@ -59,7 +59,7 @@ def test_a_spoken_route_is_a_row_of_his_rules_and_the_provider_lists_by_it(said)
     assert {c["key"]: c["unread"] for c in page["categories"]} == {
         "primary": 2, "social": 0, "promotions": 3, "updates": 1, "forums": 0}
     promos = folders.list_page(_Mb(_Gmail()), "INBOX", None, 30, category="promotions", routes=order["routes"])
-    assert "104" not in [r["uid"] for r in promos["rows"]], "it left Promotions on the card, not in his mailbox"
+    assert "104" not in [r["uid"] for r in promos["rows"]], "it left Promotions on the app, not in his mailbox"
 
 
 def test_it_survives_a_restart_and_a_second_route_for_the_same_sender_replaces_the_first():

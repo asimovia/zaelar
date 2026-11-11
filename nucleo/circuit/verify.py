@@ -215,7 +215,7 @@ def _name(c: dict) -> str:
     if k == "desktop":
         return "el fondo de escritorio"
     if k == "canvas":
-        return f"la tarjeta «{c.get('canvas')}»"
+        return f"la app «{c.get('canvas')}»"
     if k == "field":
         return f"«{str(c.get('widget')).split('::', 1)[0]}.{c.get('field')}»"
     return f"«{c.get('widget', '?')}.{c.get('collection', '')}»"

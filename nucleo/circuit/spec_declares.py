@@ -21,7 +21,7 @@ def said_of(base: str) -> str:
     """One card's sentence: unknown, declares nothing, or its collections with their declared fields."""
     from widgets import rows as _rows, runtime as _rt
     if _rt.get(base) is None:
-        return f"«{base}» is not a card"
+        return f"«{base}» is not an app"
     cols = _rows.declared(base)
     if not cols:
         return f"«{base}» declares no collection a row clause can read"
@@ -50,5 +50,5 @@ def said(done_when, sheet: str = "") -> str:
             said.append("your sheet " + said_of("results"))
         return (" — " + " · ".join(said)) if said else ""
     except Exception as e:  # noqa: BLE001
-        logger.debug(f"spec: what the named cards declare could not be read: {e!r}")
+        logger.debug(f"spec: what the named apps declare could not be read: {e!r}")
         return ""

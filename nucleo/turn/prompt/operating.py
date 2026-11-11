@@ -124,7 +124,7 @@ def _flash_parts(open_ids: set[str], recent_ids: list[str] | None = None,
         # capacidad: la escalada salió bien y el worker fue a TheFork — lo que falló fue lo que dijo.
         "Y ABRIRLE la web para que lo haga él es lo mismo: «te abro la página y reservas tú» sobre algo que te "
         "acaba de encargar es devolverle la acción. Abrir una página es una forma de TRABAJAR tú, no de "
-        "delegarle a él. Si de verdad hay un muro que no puedes pasar (una cuenta, una tarjeta, una llamada), "
+        "delegarle a él. Si de verdad hay un muro que no puedes pasar (una cuenta, una app, una llamada), "
         "llega hasta ahí y dilo entonces — no antes de haberlo intentado. "
         # V2-144 — turno 1 de `book-barber-slot`: «necesito el nombre Y EL TELÉFONO de tu peluquería». Un
         # teléfono es justo lo que se busca; pedirlo bloquea la tarea por un dato que tú puedes encontrar. Lo
@@ -241,7 +241,7 @@ def _flash_parts(open_ids: set[str], recent_ids: list[str] | None = None,
         "de lo que hay DENTRO: \"muéstrame/abre/enséñame X\" siendo X un WIDGET del catálogo = [[show:X]]; pero "
         "abrir o ver UN ELEMENTO DE DENTRO (un chat o mensaje concreto, una ficha, volver a su "
         "lista) = widget_data con la acción que ese widget declara en su línea «datos» (p.ej. mensajería: open "
-        "{name:'Francisco'} · show_view {platform:'all'}) — ahí [[show]] no hace NADA nuevo si la tarjeta ya "
+        "{name:'Francisco'} · show_view {platform:'all'}) — ahí [[show]] no hace NADA nuevo si la app ya "
         "está a la vista. Vale en CUALQUIER idioma: \"show me / open\" = [[show:ID]] igual. Si tu "
         "respuesta acaba preguntándole algo, termina con [[ask]] (no se dice).\n"
         "Un JUEGO del catálogo (Snake/serpiente, etc.) es un WIDGET: \"abre/saca/muéstrame el juego de X\", "
@@ -267,7 +267,7 @@ def _flash_parts(open_ids: set[str], recent_ids: list[str] | None = None,
         "ÚLTIMO que hablasteis (mira «DE QUÉ ÍBAIS HABLANDO»), NO a un item de un widget que no está en pantalla ni "
         "has nombrado — no metas mano en un widget ausente solo para encajar el verbo. Y un «sí/vale/hazlo» a una "
         "OFERTA que TÚ acabas de hacer («¿quieres que lo abra?») es la orden de ejecutar ESA acción concreta YA "
-        "(la tool o data-op ofrecida), no de volver a enseñar la tarjeta ni de re-preguntar. Y si lo que hay que "
+        "(la tool o data-op ofrecida), no de volver a enseñar la app ni de re-preguntar. Y si lo que hay que "
         "cancelar/cambiar es un COMPROMISO real (una cita o reserva hecha en algún sitio, una suscripción, un "
         "pedido), es una acción del MUNDO → escalate_to_slowbrain (el widget/agenda es solo su espejo), no un simple "
         "cambio de datos local.\n"
@@ -287,7 +287,7 @@ def _flash_parts(open_ids: set[str], recent_ids: list[str] | None = None,
         "aclaración de \"a qué te refieres\" para algo que una búsqueda resuelve sola.\n"
         "navegador (Chromium real, se ESCALA al cerebro lento): para NAVEGAR/operar una web — marketplaces "
         "(Wallapop/Amazon…), login, o una tarea dentro de un sitio. Tú NO lo abres con [[show]]: al escalar, la "
-        "tarjeta de la tarea se abre SOLA (UNA sola, aunque el operador la refine varios turnos). Buscar "
+        "app de la tarea se abre SOLA (UNA sola, aunque el operador la refine varios turnos). Buscar "
         "CONTENIDO para ver u oír (vídeos, música, un podcast) NO va aquí: es play_video/play_music — su "
         "reproductor es el destino, la hoja de resultados es para INFORMACIÓN.\n"
         "play_music (tool): ESCUCHAR música — 'pon música', 'ponme a X', 'sube/baja la música', 'siguiente', "

@@ -192,7 +192,7 @@ def card_decision(widget_id: str, action: str, *, brief=None, ask_phrase: str = 
                             operator_text=operator_text)
     if route == "card":
         return {"card": str(alt), "ask": "",
-                "label": "🎯 la orden era de OTRA tarjeta — la reubica el veredicto de pantalla",
+                "label": "🎯 la orden era de OTRA app — la reubica el veredicto de pantalla",
                 "text": f"{wid}→{alt}:{action}",
                 "extra": {"id": str(alt), "from": wid, "action": action, "src": "jev"}}
     if route == "ask":
@@ -211,7 +211,7 @@ def card_decision(widget_id: str, action: str, *, brief=None, ask_phrase: str = 
         names = [_receipt.display_label(str(c), code) for c in (alt or [])]
         return {"card": wid,
                 "ask": (ask_phrase or "").format(cands=", ".join(names[:3])) or "",
-                "label": "❓ varias tarjetas pueden hacer eso — pregunto en cuál",
+                "label": "❓ varias apps pueden hacer eso — pregunto en cuál",
                 "text": f"{wid}:{action}",
                 "extra": {"id": wid, "action": action, "cands": names[:4]}}
     return {"card": wid, "ask": "", "label": "", "text": "", "extra": {}}

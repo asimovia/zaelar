@@ -20,7 +20,7 @@ INSTRUCTIONS = (
     "offered, says he keeps what he already has, or says he no longer needs it because the matter is decided — a "
     "decision about its subject, not an order to stop it. Answer 'keep' for anything else: a "
     "complaint or comment about something earlier, a question about the task, an unrelated new request, or an order "
-    "about a card on screen, a video, music or the assistant's voice.")
+    "about an app on screen, a video, music or the assistant's voice.")
 
 #: The answers, named once (V2-820 added `replace` and `steer`, V2-831 T-29 `settled`).
 STOP, STOP_ALL, REPLACE, STEER, SETTLED, KEEP = "stop", "stop_all", "replace", "steer", "settled", "keep"
@@ -188,7 +188,7 @@ def card_owns_the_turn(brief, *, acted: dict | None = None, data_done: dict | No
             return True
         return bool(__import__("nucleo.turn.card_act", fromlist=["x"]).named(brief)) or bool(corrected_card(brief))   # V2-879 O1
     except Exception as e:  # noqa: BLE001 — unreadable: the errand's reading stands as before
-        return logger.debug(f"stop_decision: card verdicts unreadable: {e!r}") or False
+        return logger.debug(f"stop_decision: app verdicts unreadable: {e!r}") or False
 
 
 def corrected_card(brief) -> str:

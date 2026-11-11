@@ -105,16 +105,16 @@ def _geom(pg):
 
 def test_the_card_opens_with_the_strip_on_screen_without_scrolling(viewer):
     g = _geom(viewer)
-    assert g["cardBottom"] <= g["vh"] and g["cardH"] <= g["vh"], f"the card runs off a laptop screen: {g}"
+    assert g["cardBottom"] <= g["vh"] and g["cardH"] <= g["vh"], f"the app runs off a laptop screen: {g}"
     assert g["stripBottom"] <= g["cardBottom"] - 4, f"the thumbnails are below the card's edge: {g}"
-    assert not g["cardScrolls"], f"he has to scroll the card to find the thumbnails: {g}"
+    assert not g["cardScrolls"], f"he has to scroll the app to find the thumbnails: {g}"
     assert g["stageH"] >= 140, f"the photo was squeezed to nothing to make room: {g}"
 
 
 def test_twelve_thumbnails_never_widen_the_card(viewer):
     """The strip is as wide as the card and scrolls — the card is not as wide as the strip."""
     g = _geom(viewer)
-    assert g["cardW"] <= 560 and g["cardRight"] <= g["vw"], f"the card grew to fit the thumbnails: {g}"
+    assert g["cardW"] <= 560 and g["cardRight"] <= g["vw"], f"the app grew to fit the thumbnails: {g}"
     assert g["stripScrollW"] > g["stripW"] + 10, f"twelve thumbnails did not overflow into a scroll: {g}"
 
 

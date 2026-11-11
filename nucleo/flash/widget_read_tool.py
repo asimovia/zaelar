@@ -12,8 +12,8 @@ TOOL_DEF = {
         "name": "read_widget",
         "description": (
             "CONTESTA una PREGUNTA sobre lo que un widget GUARDA (a qué hora es una cita, el teléfono de "
-            "alguien, qué ficheros hay), aunque la tarjeta esté CERRADA. Vuelve en este turno, sin abrir nada. "
-            "SOLO responde: ELEGIR, abrir o tocar algo de dentro es widget_data, y enseñar la tarjeta es "
+            "alguien, qué ficheros hay), aunque la app esté CERRADA. Vuelve en este turno, sin abrir nada. "
+            "SOLO responde: ELEGIR, abrir o tocar algo de dentro es widget_data, y enseñar la app es "
             "show_widget. No es su vida (recall) ni el mundo (web_search)."
         ),
         "parameters": {

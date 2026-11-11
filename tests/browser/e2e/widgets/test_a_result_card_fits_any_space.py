@@ -195,7 +195,7 @@ def test_the_whole_title_is_one_click_away(m, size):
 def test_every_card_keeps_its_plate_and_a_missing_photo_says_what_it_is(m, size):
     r = m[size]
     assert r["layout"] in ("split", "gallery"), r["layout"]
-    assert all(r["plates"]), f"a card lost its plate: {r['plates']}"
+    assert all(r["plates"]), f"an app lost its plate: {r['plates']}"
     assert r["monos"][1] and r["monos"][2], f"no monogram for the missing / dead photo: {r['monos']}"
     for row in r["rowPlateH"]:
         assert max(row) - min(row) <= 1, f"plates of one row differ: {row}"
@@ -209,7 +209,7 @@ def test_meta_chips_are_one_line_each(m, size):
 def test_the_cards_of_a_row_are_the_same_box(m):
     r = m["wide"]
     for hs, fs in zip(r["rowCardH"], r["rowFoot"]):
-        assert max(hs) - min(hs) <= 1, f"cards of one row differ in height: {hs}"
+        assert max(hs) - min(hs) <= 1, f"apps of one row differ in height: {hs}"
         assert max(fs) - min(fs) <= 1, f"footers do not line up: {fs}"
 
 

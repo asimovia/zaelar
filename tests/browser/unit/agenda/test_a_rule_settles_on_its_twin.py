@@ -97,7 +97,7 @@ def test_finding_free_time_is_an_action_that_books_nothing(ag, monkeypatch):
     assert got["ok"] and got["booked"] is False
     assert got["free"][0]["first_fit"] == "15:30-16:15", got
     assert len(ag.load_db()["meetings"]) == before, "a question wrote a meeting"
-    assert ag.load_db()["view"]["sel"] == "2026-10-06", "the card shows the day he asked about"
+    assert ag.load_db()["view"]["sel"] == "2026-10-06", "the app shows the day he asked about"
     from widgets import effects as fx
     assert fx.carries("agenda", "find_free", fx.DATA_READ) and not fx.carries("agenda", "find_free", fx.DATA_WRITE)
 

@@ -190,7 +190,7 @@ def _found_lately() -> list[str]:
     if not lf:
         return []
     what = f"«{lf.get('subject')}» de {lf.get('name')}" if lf.get("subject") else f"el correo de {lf.get('name')}"
-    return [f"LO ÚLTIMO QUE ENCONTRASTE EN EL ARCHIVO: {what} — está en esta tarjeta aunque no salga en la bandeja; "
+    return [f"LO ÚLTIMO QUE ENCONTRASTE EN EL ARCHIVO: {what} — está en esta app aunque no salga en la bandeja; "
             "«ábrelo» es `open` sin nada (abre ESE), y reenviarlo o marcarlo actúan sobre él."]
 
 
@@ -212,7 +212,7 @@ def prompt_digest() -> str:
             + _u.NOTE)
     rows = [_row(it, _MAX_BODY_DIGEST) for it in items[:_MAX_DIGEST_ROWS]]
     if len(items) > _MAX_DIGEST_ROWS:
-        rows.append(f"· … y {len(items) - _MAX_DIGEST_ROWS} más (la tarjeta los enseña todos).")
+        rows.append(f"· … y {len(items) - _MAX_DIGEST_ROWS} más (la app los enseña todos).")
     rows += tail
     return "\n".join([head] + rows)
 

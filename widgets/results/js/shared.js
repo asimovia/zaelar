@@ -3,7 +3,7 @@
 
 // V2-822 — there is no PROCESS tab any more. The sheet is the errand's DELIVERABLE and shows only that; what the
 // errand is doing while it works lives in ONE place, the running process's entry in the processes panel (operator,
-// 2026-10-27: «simplificar las tarjetas y mover la información del proceso al rail de procesos»). While it works,
+// 2026-10-27: «simplificar las apps y mover la información del proceso al rail de procesos»). While it works,
 // the Results tab carries the loader, and an empty list says where the steps are.
 // The LABELS are resolved per paint (`tabLabel`), never stored in this table: a module-level constant is built
 // once, at IMPORT time, so its text would freeze in whatever language happened to be active the first time this

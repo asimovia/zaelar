@@ -131,7 +131,7 @@ def test_the_box_is_born_at_the_single_door_and_closed_where_the_sheets_close():
         "the errand's end closes its box"
     assert any(c.endswith("chat_refs.closed") for c in _calls("nucleo/dispatch/session.py")), \
         "an errand stopped before it ran closes its box too"
-    assert "note_show" in (ROOT / "nucleo/acts/canvas.py").read_text(), "the canvas door tells it which card it showed"
+    assert "note_show" in (ROOT / "nucleo/acts/canvas.py").read_text(), "the canvas door tells it which app it showed"
 
 
 def test_the_event_kind_is_declared_for_the_audit_and_for_every_screen():

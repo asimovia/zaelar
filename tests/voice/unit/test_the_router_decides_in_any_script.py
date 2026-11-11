@@ -193,7 +193,7 @@ def test_HIS_sentence_never_builds_a_widget_in_any_language(measured, lang):
     card not happening again."""
     r = next(x for x in measured if x["case"] == "show-video-filler" and x["lang"] == lang)
     assert r["decided"] is False, f"{lang}: still routed to the generator ({r})"
-    assert r["cat"] == "youtube", f"{lang}: the card was not even recognised ({r})"
+    assert r["cat"] == "youtube", f"{lang}: the app was not even recognised ({r})"
 
 
 @pytest.mark.parametrize("lang", LANGS)

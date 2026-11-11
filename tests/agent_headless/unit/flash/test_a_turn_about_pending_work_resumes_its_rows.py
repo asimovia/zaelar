@@ -242,7 +242,7 @@ def _web_card(monkeypatch, title: str):
 def test_a_browser_card_is_born_with_the_errands_name_and_renamed_with_it(monkeypatch):
     born, renamed, rec = _web_card(monkeypatch, "Mesa en Soria")
     assert born == "Mesa en Soria", "born with the errand's name, never the utterance or the summariser's refusal"
-    assert renamed == "Table for two in Soria" == rec.title, "the namer's name reaches the card the errand opened"
+    assert renamed == "Table for two in Soria" == rec.title, "the namer's name reaches the app the errand opened"
 
 
 def test_an_unnamed_errand_card_is_born_with_the_provisional_name_never_the_utterance(monkeypatch):
@@ -261,7 +261,7 @@ def test_the_prompt_carries_pending_rows_only_when_there_are_any():
     pending_work.forget_cache()
     lines = pending_work.prompt_lines()
     assert lines[0].startswith("PENDIENTE") and any("b00t01-1" in l and "Reservar mesa en Soria" in l for l in lines)
-    assert any(l.startswith("· mensajeria:") for l in lines), "a row the mail card holds for his word is listed"
+    assert any(l.startswith("· mensajeria:") for l in lines), "a row the mail app holds for his word is listed"
     from nucleo.turn.prompt import live_history
     from nucleo.turn.prompt import live_state
     assert live_history.pending_work_lines() == lines

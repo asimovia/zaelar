@@ -289,7 +289,7 @@ def close_dispatch(args: dict, tag_emit, emit, text: str = "", done=None, clarif
     if not rid:
         return ""
     if (_b := __import__("nucleo.turn.brief", fromlist=["x"])).names_elsewhere(_b.of_this_turn(), against_a_call=True):
-        emit("brain", "🚫 close vetoed: he named no card on screen", text=rid, role="system")
+        emit("brain", "🚫 close vetoed: he named no app on screen", text=rid, role="system")
         return ""
     # Several cards of the piece open and no word to tell them apart: the close ASKS which (node 2.645). `rid` is
     # returned so the turn counts the call as handled — its answer is the question in `clarify`, never a close.
@@ -449,23 +449,23 @@ def fullscreen_exit_backstop(text: str, *, fired: bool, tag_emit, emit) -> bool:
 # and a confident verb never opens/closes anything by itself — the existing executor does that,
 # through the same tags, license and guards as today's path.
 CANVAS_INSTRUCTIONS = ("Does the user's turn ask to change what is visible on the widget canvas? "
-                        "SHOW means putting a widget or card on screen; CLOSE means taking one off; the other "
-                        "gestures change how big a card is, or lay all the cards out. Anything else — questions, chatter, orders that act "
-                        "inside a card — is neither.")
+                        "SHOW means putting a widget or app on screen; CLOSE means taking one off; the other "
+                        "gestures change how big an app is, or lay all the apps out. Anything else — questions, chatter, orders that act "
+                        "inside an app — is neither.")
 CANVAS_VERBS = {
     "show": "the turn asks to show, open, display or bring up a widget or card",
     # V2-781: «remove the third one in the list» read `close` at 0.98 and shut the video card — removing a ROW
     # of a card is an order inside it. Measured with the real verdict before and after this wording.
-    "close": "the turn asks to close, hide or take a whole widget or card off the screen",
+    "close": "the turn asks to close, hide or take a whole widget or app off the screen",
     # demo pass 2026-09-28 (human script): «can you make it bigger, like full screen» → «There you go — it's full
     # screen now» with no call, and the verdict could only say `neither`. The gestures that change a card's size
     # are canvas gestures too.
-    "fullscreen": "the turn asks to make a card full screen or bigger",
+    "fullscreen": "the turn asks to make an app full screen or bigger",
     "exit_fullscreen": "the turn asks to leave full screen / go back to the normal size",
-    "minimize": "the turn asks to put a card away, minimise it or tuck it aside without closing it",
+    "minimize": "the turn asks to put an app away, minimise it or tuck it aside without closing it",
     # demo pass 2026-09-28 (full21 C5b): «tidy up the screen a bit» → «screen's sorted» with no call, and the verdict
     # could only say `neither`. Laying out every card is a canvas gesture too.
-    "arrange": "the turn asks to tidy, arrange, organise or lay out the cards on the screen (all of them)",
+    "arrange": "the turn asks to tidy, arrange, organise or lay out the apps on the screen (all of them)",
     "neither": "the turn asks for nothing about showing, closing, resizing or arranging widgets — removing, "
                "skipping or moving ONE ITEM of a card's list (the third video, the one by X, a row) is neither",
 }

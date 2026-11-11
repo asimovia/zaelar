@@ -230,7 +230,7 @@ def _player_on_screen() -> bool:
         from nucleo.flash import canvas_visibility as _cv    # the engine's own «is it open» (state + canvas report)
         return bool(_cv.is_open("youtube"))
     except Exception as _e:  # noqa: BLE001
-        _log.debug(f"canvas_license: open cards unreadable: {_e!r}")
+        _log.debug(f"canvas_license: open apps unreadable: {_e!r}")
         return True
 
 

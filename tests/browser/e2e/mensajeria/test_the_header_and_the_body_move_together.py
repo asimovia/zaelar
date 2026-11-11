@@ -195,4 +195,4 @@ def test_the_same_channel_from_its_detail_lands_on_that_channels_list(result):
 def test_the_plug_opens_the_connectors_section_on_the_channel_on_screen(result):
     m = result["plug"]
     assert ["openConnector", "telegram"] in m["acts"], m["acts"]
-    assert m["onSetupScreen"] is False and m["pendingConfirm"] is False, "the card holds no connector screen"
+    assert m["onSetupScreen"] is False and m["pendingConfirm"] is False, "the app holds no connector screen"

@@ -25,7 +25,7 @@ from nucleo.circuit.spec_declares import SHAPE as _SHAPE   # one shape, the brie
 
 _GOAL_HELP = (
     "forma: " + _SHAPE + "\n"
-    "  · el estado final es lo que ÉL pidió, leído en la tarjeta que tú rellenas — nunca una condición que ya se cumple\n"
+    "  · el estado final es lo que ÉL pidió, leído en la app que tú rellenas — nunca una condición que ya se cumple\n"
     "  · `where` es la misma expresión de `python -m nucleo.cli.widget rows`: campo · campo~ (contiene) · campo>= <= > < · campo!\n"
     "  · «all» exige todas; «any» con una basta; `count` admite un número o {\"min\": n, \"max\": m}; "
     "`expect` dice present|absent|changed\n"

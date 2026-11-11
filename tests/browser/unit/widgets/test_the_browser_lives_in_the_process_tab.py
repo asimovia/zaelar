@@ -127,7 +127,7 @@ def test_an_errand_with_a_sheet_does_not_open_the_browser_card(monkeypatch):
     rec = _live("86")
     seen = _capture_emits(monkeypatch)
     tid = _run_prepare_web(rec, monkeypatch)
-    assert tid, "the tab itself must still be created — only its CARD is retired"
+    assert tid, "the tab itself must still be created — only its APP is retired"
     shows = [e for k, lbl, e in seen if k == "widget" and lbl == "show"]
     assert not any(e.get("id", "").startswith("navegador::") for e in shows), shows
     assert navtasks.get(tid).get("sheet") == rec.sheet
@@ -155,7 +155,7 @@ def test_a_task_change_refreshes_the_sheet_card_too(monkeypatch):
     navtasks.update_view(tid, url="https://example.com", shot_rev=1)
     datas = [e.get("id") for k, lbl, e in seen if k == "widget" and lbl == "data"]
     assert sheet.instance_id(rec.sheet) in datas, datas
-    assert navtasks.inst_id(tid) in datas, "the task's own card event stays — sheetless tasks still need it"
+    assert navtasks.inst_id(tid) in datas, "the task's own app event stays — sheetless tasks still need it"
 
 
 def test_a_sheetless_task_does_not_touch_the_default_sheet(monkeypatch):

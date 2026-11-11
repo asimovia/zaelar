@@ -162,7 +162,7 @@ def _keep_card(rec, card: str) -> None:
         from nucleo.circuit import ledger as _tasks
         _tasks.store().artifact_put(uid, "card", {"instance": card, "surface": str(getattr(rec, "surface", "") or "")})
     except Exception as e:  # noqa: BLE001
-        logger.debug(f"chat_refs: card not kept: {e!r}")
+        logger.debug(f"chat_refs: app not kept: {e!r}")
 
 
 def note_show(src: str, wid: str) -> None:

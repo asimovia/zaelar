@@ -163,7 +163,7 @@ def test_every_basic_field_is_present_even_when_it_is_empty(_page):
     _open_card(_page)
     labels = [t.strip() for t in _page.locator(".ctdsec .ctfr .ctfk").all_inner_texts()]
     for expected in ("Ciudad", "Dirección", "Notas"):
-        assert expected in labels, f"{expected} has to be on the card of a contact who has no {expected}"
+        assert expected in labels, f"{expected} has to be on the app of a contact who has no {expected}"
     # V2-715 — phones and e-mails became SECTIONS of their own (a contact may have several of each),
     # and the rule survives the move: the section is there, showing «—», on a contact who has none.
     heads = [t.strip() for t in _page.locator(".ctdsec h4").all_inner_texts()]
@@ -394,7 +394,7 @@ def test_a_connected_source_offers_MANAGE_and_an_unlinked_one_offers_CONNECT_bot
     assert _page.locator(".ctsrc .ctbtn", has_text="Conectar").count() == 1
     _page.locator(".ctsrc .ctbtn", has_text="Conectar").click()
     assert ["openConnector", "google-contacts"] in _page.evaluate("() => window.__calls")
-    assert not [c for c in _page.evaluate("() => window.__calls") if c[0] != "openConnector"], "the card connects nothing itself"
+    assert not [c for c in _page.evaluate("() => window.__calls") if c[0] != "openConnector"], "the app connects nothing itself"
 
 
 def test_a_source_we_have_not_built_offers_no_button_at_all(_page):
@@ -426,7 +426,7 @@ def test_the_sync_panel_lives_INSIDE_the_account_it_belongs_to(_page):
     _mount(_page, _data())
     _page.locator(".ctplug").click()
     boxes = _page.locator(".ctsrcbox")
-    assert boxes.count() == 3, "one card per source, and the card is the box"
+    assert boxes.count() == 3, "one app per source, and the app is the box"
     assert boxes.first.locator(".ctsync").count() == 1, "the sync panel belongs to Google's own card"
     assert _page.locator(".ctconnscreen > .ctsync").count() == 0, "never a sibling floating beside it"
     # …and it is a SECTION of that card, not a box drawn inside a box.

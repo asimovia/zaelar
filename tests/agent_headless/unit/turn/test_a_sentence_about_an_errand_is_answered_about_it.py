@@ -55,7 +55,7 @@ def errands(monkeypatch):
     monkeypatch.setattr(dispatch, "get_record", lambda tid: types.SimpleNamespace(label="Investigando…"))
     monkeypatch.setattr(dc, "_PENDING_CONFIRM", {"9": {
         "request": GAME, "kind": "code", "trusted": True, "context": {}, "sheet": "", "ts": time.time(),
-        "question": "If I've got this right, you're asking me to BUILD you a new card. Shall I?",
+        "question": "If I've got this right, you're asking me to BUILD you a new app. Shall I?",
         "refinements": ["sweet. btw on the game one, can you make the jump a bit higher?"]}})
     monkeypatch.setattr("nucleo.acts.errand.escalate_to_slowbrain", lambda req, context=None: 1)
 

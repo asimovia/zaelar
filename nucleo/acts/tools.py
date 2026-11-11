@@ -56,7 +56,7 @@ def web_search(args: dict, c) -> None:
     # Demo pass 89, F2: beside the right documento:goto the model searched «proveedores de internet…» — not
     # one word of his turn. A search sharing NOTHING with his words, on a sure card order, is dropped.
     if not _x.a_search_is_his(q, c.operator_text or c.text, c._brief, c._word_overlap):
-        c.emit("brain", "🔎 búsqueda descartada: no comparte ni una palabra con su frase (orden sobre una tarjeta)",
+        c.emit("brain", "🔎 búsqueda descartada: no comparte ni una palabra con su frase (orden sobre una app)",
              text=q[:120], role="system", extra={"cat": "flash", "query": q[:200]})
         return
     # TURN-BLEED: the previous turn's search re-emitted; keep the query closest to THIS turn.

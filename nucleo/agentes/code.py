@@ -24,7 +24,7 @@ from loguru import logger
 
 from .base import WorkResult
 
-# ¿la petición pide un widget? (crear/modificar una tarjeta del canvas)
+# ¿la petición pide un widget? (crear/modificar una app del canvas)
 _WIDGET_RE = re.compile(r"\b(widget|tarjeta|panel|cuadro)\b", re.I)
 # intención de MODIFICAR algo existente vs crear (stems con frontera SOLO por delante — deben pillar conjugaciones:
 # "modifica", "cambia", "añade", "actualízalo"…).
@@ -158,7 +158,7 @@ async def run(task) -> WorkResult:
                               summary="No encuentro ese widget para borrarlo; ¿de cuál hablas?")
         # V2-781 T531 — a worker never deletes a card: that is a confirmed act (`pending_confirm`).
         return WorkResult(ok=False, deliver=True, meta={"widget_id": existing, "deleted": False},
-                          summary=f"No he borrado «{existing}»: borrar una tarjeta se confirma aparte.")
+                          summary=f"No he borrado «{existing}»: borrar una app se confirma aparte.")
 
     if existing and _MODIFY_RE.search(req):
         logger.info(f"code: MODIFY widget '{existing}'")
@@ -205,7 +205,7 @@ async def run(task) -> WorkResult:
 
 
 def _show(wid: str) -> None:
-    """Abre la tarjeta del widget en el canvas (best-effort). V2-039: procedencia worker (agente de código)."""
+    """Abre la app del widget en el canvas (best-effort). V2-039: procedencia worker (agente de código)."""
     try:
         from nucleo.acts import canvas
         canvas.apply("show", wid, src=f"worker:{os.getenv('ZAELAR_TASK_ID', '') or 'code'}")

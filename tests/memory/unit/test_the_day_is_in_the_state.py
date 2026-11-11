@@ -65,7 +65,7 @@ def test_the_day_is_folded_into_episodes_without_the_kickoff_or_the_live_window(
     h = 3600
     # Episode 1, ten hours ago, opened by a flagged kickoff row.
     _turn("Es el primer turno.", "Buenos días", 10 * h + 60, kickoff=True)
-    _turn("put the weather card on screen", "There it is", 10 * h)
+    _turn("put the weather app on screen", "There it is", 10 * h)
     _turn("and tomorrow?", "Rain tomorrow", 10 * h - 60)
     # Episode 2, six hours ago, opened by the ENGLISH kickoff text with no flag.
     _turn(_kickoff_text("en"), "Hello again", 6 * h + 60)
@@ -78,7 +78,7 @@ def test_the_day_is_folded_into_episodes_without_the_kickoff_or_the_live_window(
 
     eps = memapi.day_ledger()
     openers = [e["u"] for e in eps]
-    assert openers[:3] == ["put the weather card on screen", "find me a song by the artist from that show",
+    assert openers[:3] == ["put the weather app on screen", "find me a song by the artist from that show",
                            "open my agenda"], openers
     assert [e["turns"] for e in eps[:3]] == [2, 2, 1]
     assert eps[1]["a"] == "That would be the lead singer, here it is" and eps[1]["last_a"] == "Done"
@@ -147,7 +147,7 @@ def test_a_busy_evening_fits_the_mornings_day(fresh_db):
     h = 3600
     for k in range(7):
         _turn(f"episode {k}: find me something to listen to by the singer from that series, the second season",
-              f"episode {k}: here is a song by the lead singer of that series, playing it on the music card",
+              f"episode {k}: here is a song by the lead singer of that series, playing it on the music app",
               (9 - k) * h)
     _live_thread(5)
     _block, _op, stats = memapi.compose_state(mission_fallback="m")

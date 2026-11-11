@@ -10,14 +10,14 @@ muerto por este cambio (ya no lo invoca el flujo web; solo lo tocaría el antigu
 agente de trabajo WEB del SlowBrain (V2-007 · T84).
 
 Conduce una tarea de navegador (widget `navegador`/Chromium). **Absorbe la orquestación** que en el cerebro viejo
-vivía en `duo._orchestrate_automation`: dedup de refinamientos del STT → crear la TAREA y abrir SU tarjeta →
+vivía en `duo._orchestrate_automation`: dedup de refinamientos del STT → crear la TAREA y abrir SU app →
 PLANIFICAR el objetivo → encolar la acción `automate` al owner del navegador.
 
 La única diferencia con el flujo viejo es QUIÉN planifica: antes Hermes (`_hermes_ask`), ahora el **SlowBrain**
 (un `CodeAgent` barato, modelo por invocación de config `code_agent.model_web`). El **bucle barato DOM→visión**
 (`widgets/navegador/agent.py` + `owner.py`) se conserva intacto — sigue EJECUTANDO y sigue REPORTANDO el
 resultado real por `proactive`+`[SISTEMA]` cuando termina. Por eso este agente devuelve `deliver=False`: la tarea
-es async y su tarjeta/owner entrega el desenlace; aquí solo confirmamos que arrancó.
+es async y su app/owner entrega el desenlace; aquí solo confirmamos que arrancó.
 
 El confirm-gate de acciones irreversibles NO se aplica al OBJETIVO (un "buscar y comprar" debe poder empezar a
 navegar): lo aplica el owner por-acción, justo antes del clic de compra/pago (`owner.py::_DANGER_RE`). Ver `danger.py`.
@@ -81,7 +81,7 @@ async def _plan(goal: str, task) -> str:
 
 
 async def _synthesize_goal(goal: str) -> str:
-    """ESENCIA del objetivo para MOSTRAR en la tarjeta: objetivo + criterios en UNA línea (≤140 car), sin el
+    """ESENCIA del objetivo para MOSTRAR en la app: objetivo + criterios en UNA línea (≤140 car), sin el
     volcado en primera persona. Modelo RÁPIDO/barato (FastClient), off-hot-path, best-effort. Una petición puede
     ser larga y con criterios ('...cerca de donde vive Ricardo. Necesito anuncios activos, modelos populares...') →
     se destila a «Moto de enduro para principiante · Wallapop · cerca · precio razonable». El `goal` operativo
@@ -136,7 +136,7 @@ async def run(task) -> WorkResult:
 
     # (0) CONTINUIDAD (control de estado, 2026-07-12): una MISMA búsqueda NUNCA abre un segundo navegador. Las
     # ACLARACIONES del operador ("no, enduro", "sube el precio") MODIFICAN la tarea que ya está en curso —o la
-    # recién terminada— en su MISMA tarjeta, en vez de spawnear un gemelo. Dos temas distintos (moto vs piso) no
+    # recién terminada— en su MISMA app, en vez de spawnear un gemelo. Dos temas distintos (moto vs piso) no
     # se fusionan. Ver navtasks.find_continuation.
     try:
         cont = None if _force_new else navtasks.find_continuation(goal)
@@ -163,12 +163,12 @@ async def run(task) -> WorkResult:
                   text=f"{tid}: {goal}", role="system", extra={"id": navtasks.inst_id(tid)})
             return WorkResult(ok=True, summary=f"Ajusto la búsqueda que ya tenía en marcha ({goal[:60]}).",
                               deliver=False, meta={"task_id": tid, "refined": True})
-        # TERMINADA hace poco → RE-LANZA en la MISMA tarjeta con el objetivo afinado (no una tarjeta nueva).
+        # TERMINADA hace poco → RE-LANZA en la MISMA app con el objetivo afinado (no una app nueva).
         try:
             navtasks.milestone(tid, f"🔁 retomo esta búsqueda con tus aclaraciones: {goal[:100]}")
         except Exception:
             pass
-        _emit("brain", "🔁 aclaración → re-lanzo la MISMA tarea (misma tarjeta)", text=f"{tid}: {goal}",
+        _emit("brain", "🔁 aclaración → re-lanzo la MISMA tarea (misma app)", text=f"{tid}: {goal}",
               role="system", extra={"id": navtasks.inst_id(tid)})
         plan, summary = await asyncio.gather(_plan(goal, task), _synthesize_goal(goal))
         if summary:
@@ -184,7 +184,7 @@ async def run(task) -> WorkResult:
         return WorkResult(ok=True, summary=f"Retomo la búsqueda con tus aclaraciones ({goal[:60]}).",
                           deliver=False, meta={"task_id": tid, "rerun": True})
 
-    # (1) crea la TAREA y abre su tarjeta YA (una tarjeta arrastrable por tarea; varias en paralelo).
+    # (1) crea la TAREA y abre su app YA (una app arrastrable por tarea; varias en paralelo).
     task_id = navtasks.create(goal)
     inst = navtasks.inst_id(task_id)
     from nucleo.acts import canvas
@@ -200,7 +200,7 @@ async def run(task) -> WorkResult:
     plan, summary = await asyncio.gather(_plan(goal, task), _synthesize_goal(goal))
     if summary:
         try:
-            navtasks.set_goal_summary(task_id, summary)   # la tarjeta muestra la ESENCIA, no el crudo
+            navtasks.set_goal_summary(task_id, summary)   # la app muestra la ESENCIA, no el crudo
         except Exception:
             pass
     try:

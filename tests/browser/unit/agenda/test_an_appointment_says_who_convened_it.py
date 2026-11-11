@@ -147,7 +147,7 @@ def test_an_external_invitation_says_WHO_convened_it(_page):
     assert "Laura Vidal" in _page.locator(".agpanel").inner_text()
     rows = _page.locator(".agprow").all_inner_texts()
     assert any("Laura Vidal" in r and ("invit" in r.lower()) for r in rows), \
-        "«a veces es una invitación externa» — the card has to say so"
+        "«a veces es una invitación externa» — the app has to say so"
 
 
 def test_an_appointment_WE_created_does_not_name_an_organizer(_page):

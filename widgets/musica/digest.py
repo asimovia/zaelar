@@ -56,7 +56,7 @@ def prompt_digest() -> str:
         playing = not blk.get("paused")
     vol = _player.volume(live, db)
     level = "?" if vol.get("level") is None else f"{vol['level']}%"
-    lines = [f"MUSIC CARD — NOW: «{cur.get('title') or '?'}"
+    lines = [f"MUSIC APP — NOW: «{cur.get('title') or '?'}"
              + (f" — {cur.get('artist')}" if cur.get("artist") else "") + f"» · source: {where} · "
              + ("playing" if playing else "paused") + f" · volume {level}" + (" (MUTED)" if vol.get("muted") else "")]
     if (snd := _sound.digest_line(live)):
@@ -77,7 +77,7 @@ def _found_lines(db: dict) -> list:
         return []
     chosen = str(srch.get("chosen") or "")
     from search.media import SPOKEN_KIND
-    out = [f"MUSIC SEARCH ON THE CARD («{str(srch.get('query') or '')[:60]}», {len(rows)} numbered, ▶ = the one "
+    out = [f"MUSIC SEARCH ON THE APP («{str(srch.get('query') or '')[:60]}», {len(rows)} numbered, ▶ = the one "
            "started): pick one with play_result{item: number | name | owner}. «Not this one» / «which ones?» → say "
            "the others with their owners and let him choose; never search again (it renumbers)."]
     for i, r in enumerate(rows, 1):

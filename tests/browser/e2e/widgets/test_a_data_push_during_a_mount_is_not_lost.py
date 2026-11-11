@@ -118,10 +118,10 @@ def test_a_notice_during_a_mount_is_remembered_and_read_when_the_card_is_ready(p
     })()""")
     assert not errors, errors
     assert out["duringMount"] == {"fetched": 0, "pending": True}, \
-        "a card that is still mounting is not fetched from — but the notice has to be REMEMBERED"
-    assert out["asked"] == 1, "and re-read exactly once, as soon as the card can take it"
+        "a app that is still mounting is not fetched from — but the notice has to be REMEMBERED"
+    assert out["asked"] == 1, "and re-read exactly once, as soon as the app can take it"
     assert out["renders"] == [4], \
-        "the card ends up showing the change it was told about — this is the whole incident"
+        "the app ends up showing the change it was told about — this is the whole incident"
 
 
 def test_a_notice_while_a_fetch_is_IN_FLIGHT_is_read_again_afterwards(playwright_available):
@@ -162,4 +162,4 @@ def test_the_mount_FLUSHES_what_arrived_while_it_was_running(playwright_availabl
     assert "_refreshPending" in show, \
         "a mount that does not flush the notices it swallowed re-opens the operator's incident"
     assert show.index("w._mod = mod") < show.index("_refreshPending"), \
-        "the flush has to come AFTER the card is refreshable, or it hits the early return it is undoing"
+        "the flush has to come AFTER the app is refreshable, or it hits the early return it is undoing"

@@ -103,7 +103,7 @@ def task_ended(uid: str, state: str, *, emit=None) -> bool:
         __import__("nucleo.acts.surface_owner", fromlist=["x"]).orphan(sheet, "closed", emit=emit)
         return bool(sent)
     except Exception as e:  # noqa: BLE001
-        logger.debug(f"card_owner: card of the ended {uid} not closed — {type(e).__name__}: {e}")
+        logger.debug(f"card_owner: app of the ended {uid} not closed — {type(e).__name__}: {e}")
         return False
 
 

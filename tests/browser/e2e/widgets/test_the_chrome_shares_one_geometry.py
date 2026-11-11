@@ -262,7 +262,7 @@ def test_the_dock_names_the_ACTIVE_application(measured):
     marked = [c for c in m["chips"] if c["on"]]
     assert len(marked) == 1, f"exactly one application is active: {m['chips']}"
     assert marked[0]["label"].upper().startswith("AGEND"), \
-        f"the marked chip must be the focused card ({m['focusedWid']}): {m['chips']}"
+        f"the marked chip must be the focused app ({m['focusedWid']}): {m['chips']}"
     assert m["chipBg"] != m["chipRestBg"], "an active chip that looks like every other chip says nothing"
 
 

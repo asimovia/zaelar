@@ -182,7 +182,7 @@ def test_the_two_panes_fill_the_card_instead_of_hugging_their_rows(_page):
     to their content."""
     _mount(_page, _data(), card_h=620)
     side, main, body = _box(_page, ".agt-side"), _box(_page, ".agt-main"), _box(_page, ".agbody.tasks")
-    assert side["h"] > 400, f"the lists column is only {side['h']:.0f}px tall inside a 620px card"
+    assert side["h"] > 400, f"the lists column is only {side['h']:.0f}px tall inside a 620px app"
     assert abs(side["h"] - main["h"]) < 2, "the two panes are different heights"
     assert abs(side["h"] - body["h"]) < 2, "the panes do not fill the body"
 
