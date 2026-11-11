@@ -21,6 +21,25 @@ from bus import log as _log
 #: nowhere he could open them.
 ERROR_WHERE = "kind IN ('error', 'alert')"
 FAILED_TASK_WHERE = "kind = 'task' AND label = 'end' AND json_extract(payload, '$.ok') = 0"
+#: A PERSON was here (2026-11-11): what moves the engine's own activity clock (`identity.note_real_activity`) — never
+#: the system/pulse families, never work on the engine's own clock (`paced`: a widget's tick, a client state report),
+#: nor an older row of a client state report (`ui` from the frontend, stored before it was marked). Any reader of the
+#: stored events that asks the same question applies this same predicate — one rule.
+REAL_ACTIVITY_WHERE = ("cat NOT IN ('system', 'pulse') "
+                       "AND instr(payload, char(34) || 'paced' || char(34) || ': true') = 0 "
+                       "AND NOT (kind = 'ui' AND instr(payload, char(34) || 'src' || char(34) || ': ' || char(34) || 'frontend') > 0)")
+#: How long after the last real activity a session still counts as ACTIVE: the engine's own idle timeout.
+ACTIVE_WINDOW_MS = 5 * 60_000
+
+
+def is_active(row: dict, now_ms: float) -> bool:
+    """A session is ACTIVE while its voice room is up (`voice.up` after the last `voice.down`) or a person did
+    something within `ACTIVE_WINDOW_MS`. An open session with only background noise in it is not."""
+    up, down = float(row.get("voice_up_ms") or 0), float(row.get("voice_down_ms") or 0)
+    if up > down:
+        return True
+    real = float(row.get("last_real_ms") or 0)
+    return real > 0 and now_ms - real < ACTIVE_WINDOW_MS
 
 
 def _rows(sql: str, args: tuple) -> list[dict]:
@@ -140,6 +159,9 @@ def sessions(limit: int = 30, user_id: str = "") -> list[dict]:
                SUM(COALESCE(tokens_in, 0))        AS tokens_in,
                SUM(COALESCE(tokens_out, 0))       AS tokens_out,
                SUM(CASE WHEN {ERROR_WHERE} THEN 1 ELSE 0 END) AS errors,
+               MAX(CASE WHEN {REAL_ACTIVITY_WHERE} THEN ts_ms END) AS last_real_ms,
+               MAX(CASE WHEN kind = 'session' AND label = 'voice.up' THEN ts_ms END) AS voice_up_ms,
+               MAX(CASE WHEN kind = 'session' AND label = 'voice.down' THEN ts_ms END) AS voice_down_ms,
                -- V2-713 R2 — A TASK THAT DIED IS COUNTED AS A FAILURE, and it is counted APART.
                -- `errors` above asks «did something raise or alert»; a worker closing with ok=false is
                -- neither: `session.py::_finish` ends it as kind='task', label='end', ok=false, and `ok`

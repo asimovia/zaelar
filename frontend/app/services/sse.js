@@ -16,7 +16,7 @@ import { DEVICE, screensBring, screensPresent } from "./api.js?v=2";
 import { placement } from "./event-scope.js?v=1";
 import * as screens from "./screens.js?v=1";
 import * as asks from "../core/asks.js?v=1";
-import { wirePresence, presenceEvent, onStreamOpen, onStreamError } from "./presence.js?v=1";
+import { wirePresence, presenceEvent, onStreamOpen, onStreamError, syncRunState } from "./presence.js?v=1";
 
 // V2-464 — SHOWCASE mode: ?showcase=1 in the URL. The use-case recorder (recorder.py) uses it to keep the chat
 // open and the grid auto-arranged, so the video is readable without hands.
@@ -87,7 +87,7 @@ export function openSSE(desktop, { wake = false } = {}) {
   // V2-872: an open that presence.js decided is a person's gesture and says so (`wake=1`): the edge of a hosted
   // deployment starts a stopped engine for a person, never for a stream the browser retries on its own.
   es = new EventSource("/events?dev=" + encodeURIComponent(DEVICE) + (wake ? "&wake=1" : ""));
-  wirePresence({ open: (o) => openSSE(desktop, o), close: closeSSE, t, beat: screensPresent, dormant: store.setDormant });   // V2-872: no auto-reconnect; presence beat; the veil
+  wirePresence({ open: (o) => openSSE(desktop, o), close: closeSSE, t, beat: screensPresent, dormant: store.setDormant, comeBack: () => syncRunState(store) });   // V2-872: no auto-reconnect; presence beat; the veil
   // V2-038: on (re)connect, RECONCILE activity chips against the server's truth (GET /api/tasks reads the RAM
   // registry) → no more orphaned chips after a restart/crash. STATE leads; the UI is its mirror.
   es.onerror = () => { closeSSE(); onStreamError(); };   // reopening is presence.js's decision, never the browser's
@@ -102,6 +102,7 @@ export function openSSE(desktop, { wake = false } = {}) {
     sweepOnReopen(++_opens, () => takeoverOnReset(browserTakeoverArgs()));
     // V2-825 F5 — and the screen adopts the engine's list of cards: an orphan the engine cannot name goes.
     sweepOnReopen(_opens, () => desktop && desktop.reconcile && desktop.reconcile());
+    sweepOnReopen(_opens, () => syncRunState(store));   // the ⏻ it slept through: the server's, not the last it heard
   };
   es.onmessage = ev => {
     let d; try { d = JSON.parse(ev.data); } catch (_) { return; }

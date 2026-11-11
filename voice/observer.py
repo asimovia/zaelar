@@ -669,11 +669,10 @@ def stamp_identity(ev: dict) -> dict:
     # session clock — runs BEFORE resolving `sid` so that, if a rollover happens, this very event already gets
     # stamped with the NEW session. See `observability/identity.py::note_real_activity`.
     try:
-        if ev.get("cat") not in ("system", "pulse"):
-            from observability import identity as _ident
-            _ident.note_real_activity()
+        from observability import identity as _ident
+        paced = _ident.note_event(ev)   # engine-clock work is stored `paced`; anything else real moves the clock
     except Exception:
-        pass
+        paced = False
     if "uid" in ev and "sid" in ev:
         return ev
     try:
@@ -685,7 +684,7 @@ def stamp_identity(ev: dict) -> dict:
             stopped = _runstate.stopped()
         except Exception:
             pass
-        if ev.get("cat") in ("system", "pulse") or stopped:
+        if ev.get("cat") in ("system", "pulse") or stopped or paced:
             # Background noise NEVER fabricates a session: closing one emitted its own «end» and reopened a new one (2026-08-15),
             # and a page reload with the agent ⏻ stopped self-opened a «live» one (2026-08-16). «Stopped means stopped» (V2-092):
             # `session_info()` only reads; with none open the event goes out with no `sid`.

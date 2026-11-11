@@ -112,9 +112,8 @@ async def entrypoint(ctx: JobContext) -> None:
     except Exception:
         pass
 
-    # Prewarm reuse check (2026-07-08): a warm session reuses the idle executor's
-    # userdata (all True); if any is False the session is paying a cold rebuild → investigate
-    # prewarm (num_idle_processes exhausted, prewarm timed out, etc). Kept as a permanent probe.
+    # Prewarm reuse check (2026-07-08): a warm session reuses the idle executor's userdata (all True); any False means
+    # a cold rebuild → investigate prewarm (num_idle_processes exhausted, prewarm timed out). A permanent probe.
     _ud = ctx.proc.userdata
     logger.info("session on %s executor — vad_hit=%s stt_hit=%s tts_hit=%s",
                 "WARM" if _ud.get("stt") else "COLD",
@@ -448,6 +447,7 @@ async def entrypoint(ctx: JobContext) -> None:
     from .zaelar_agent import ZaelarAgent
 
     agent = ZaelarAgent(instructions=SETTINGS.system_prompt + " " + _lang.reply_directive)
+    _agent_events.bill_voice_room(ctx, session)   # transport is billed on the time this room is really up
     await session.start(room=ctx.room, agent=agent, **_session_start_opts())
     logger.info("Session started.")
     from voice import screens as _screens_door

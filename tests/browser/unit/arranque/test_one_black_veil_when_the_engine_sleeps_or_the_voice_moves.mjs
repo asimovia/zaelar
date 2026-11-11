@@ -23,7 +23,10 @@ globalThis.clearTimeout = () => {};
 const P = await import("../../../../frontend/app/services/presence.js?v=1");
 
 // ── 1. the pure pieces ───────────────────────────────────────────────────────────────────────────────────────────
-assert.equal(P.beatDue({ visible: true, open: true, asleep: false }), true);
+const T = 1_800_000_000_000;
+assert.equal(P.beatDue({ visible: true, open: true, asleep: false, lastGestureMs: T - 1000, nowMs: T }), true);
+assert.equal(P.beatDue({ visible: true, open: true, asleep: false }), false,
+             "visible and connected is not enough: a person touched it within tab_sleep_min (2026-11-11)");
 assert.equal(P.beatDue({ visible: false, open: true, asleep: false }), false, "a hidden tab is nobody");
 assert.equal(P.beatDue({ visible: true, open: false, asleep: false }), false, "no stream: nothing to keep up");
 assert.equal(P.beatDue({ visible: true, open: true, asleep: true }), false, "a sleeping tab sends nothing");
@@ -42,7 +45,7 @@ assert.equal(beats, 1, "a page that opened its stream says a person is here at o
 document.hidden = true; docListeners.visibilitychange[0]();
 assert.equal(beats, 1, "a hidden tab never beats");
 document.hidden = false; docListeners.visibilitychange[0]();
-assert.equal(beats, 2, "becoming visible with the stream open is presence again");
+assert.equal(beats, 2, "becoming visible with the stream open, touched recently (he opened the page), is presence again");
 
 P.presenceEvent({ kind: "session", label: "engine.sleep" });
 assert.deepEqual(last(), { face: "sleep", waking: false }, "the engine's goodnight darkens the screen");

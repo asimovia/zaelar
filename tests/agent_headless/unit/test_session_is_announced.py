@@ -22,7 +22,7 @@ def reported(monkeypatch):
     monkeypatch.setattr(identity, "_start_heartbeat", lambda info: None)
     monkeypatch.setattr(identity, "_stop_heartbeat", lambda: None)
     monkeypatch.setattr(identity, "_emit_session", lambda *a, **k: None)
-    monkeypatch.setattr(identity, "_bill_transport", lambda ms: None)
+    monkeypatch.setattr(identity, "_bill_transport", lambda *a, **k: None)
     monkeypatch.setattr(identity, "_agent_stopped", lambda: False)
     identity._session.update({"id": None, "started_ms": None, "source": ""})
     yield calls

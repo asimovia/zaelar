@@ -115,6 +115,11 @@ def _on_resume(wall: float, gap_s: float = 0.0) -> None:
                   hold_until=0.0, resumes=_state["resumes"] + 1)
     logger.info(f"idle stop: resumed after {gap_s:.0f} s ({'asked to sleep' if asked else 'not asked to sleep'})")
     try:
+        from observability import identity
+        identity.note_suspended(round(gap_s * 1000))     # a frozen host carries no voice: never billed as such
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"idle stop: voice clock not told of the freeze: {e!r}")
+    try:
         from nucleo.pulse import wake
         wake.note_changed()
     except Exception as e:  # noqa: BLE001 — the next schedule change marks it again
@@ -173,11 +178,12 @@ async def _go_to_sleep() -> None:
             _exit()
             return
         epoch = _state["resumes"]
+        asked_at = time.time()
         status = await _post_sleep(endpoint, token)
         if _state["resumes"] != epoch:
             return                                      # suspended and resumed meanwhile: awake, nothing to do
         if status == 200:
-            _on_resume(time.time())                     # suspended inline: this answer arrived after the resume
+            _on_resume(time.time(), time.time() - asked_at)   # suspended inline: this answer arrived after the resume
         elif status is not None and 200 <= status < 300:
             _state["sleep"] = {"deadline": time.monotonic() + SLEEP_CONFIRM_S}
             logger.info(f"idle stop: sleep accepted ({status}) — waiting to be suspended")

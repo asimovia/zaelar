@@ -95,4 +95,37 @@ const MIN = 60000, NOW = 1_800_000_000_000;
   assert.equal(P.asleep(), false);
 }
 
+// ── 5. a VISIBLE tab nobody touched is not a person (2026-11-11): it never beats, so it keeps nothing awake ───
+{
+  const up = { visible: true, open: true, asleep: false, nowMs: NOW };
+  assert.equal(P.beatDue({ ...up, lastGestureMs: NOW - 2 * MIN }), true, "a tab he touched two minutes ago beats");
+  assert.equal(P.beatDue({ ...up, lastGestureMs: 0 }), false,
+               "THE BUG: a tab that only came to the foreground beat, and a hosted engine stayed awake with nobody there");
+  assert.equal(P.beatDue({ ...up, lastGestureMs: NOW - 11 * MIN }), false, "a gesture older than tab_sleep_min is gone");
+  assert.equal(P.beatDue({ ...up, lastGestureMs: 0, sleepMin: 0 }), true, "no idle stop: any visible tab may beat");
+  assert.equal(P.beatDue({ ...up, visible: false, lastGestureMs: NOW }), false);
+  assert.equal(P.beatDue({ ...up, asleep: true, lastGestureMs: NOW }), false);
+  assert.equal(P.openedByPerson({ navType: "navigate" }), true, "he opened the page");
+  assert.equal(P.openedByPerson({ navType: "reload" }), true, "he reloaded it");
+  assert.equal(P.openedByPerson({ navType: "reload", wasDiscarded: true }), false, "the browser restored a discarded tab");
+  assert.equal(P.openedByPerson({ navType: "back_forward" }), false);
+  assert.equal(P.openedByPerson({ navType: "prerender" }), false);
+}
+
+// ── 6. a tab that comes back reads the ⏻ from the server, and never pushes its own ──────────────────────────
+{
+  const mk = (off, cmdAt = 0) => { const s = { off, cmdAt, powerOff: () => s.off, setPowerOff: (v) => { s.off = v; },
+                                               powerCmdAt: () => s.cmdAt }; return s; };
+  const s1 = mk(true);
+  assert.equal(P.reflectRunState({ running: true }, NOW, s1), false);
+  assert.equal(s1.off, false, "THE BUG: the tab said «stopped» while the server had the agent on for hours");
+  const s2 = mk(false);
+  P.reflectRunState({ running: false }, NOW, s2);
+  assert.equal(s2.off, true);
+  const s3 = mk(true, NOW + 1);
+  assert.equal(P.reflectRunState({ running: true }, NOW, s3), null, "a reply asked before his last ⏻ is history");
+  assert.equal(s3.off, true);
+  assert.equal(P.reflectRunState({}, NOW, mk(true)), null, "no answer changes nothing");
+}
+
 console.log("ok — a sleeping tab never reconnects on its own");

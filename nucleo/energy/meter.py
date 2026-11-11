@@ -67,11 +67,17 @@ async def _post_usage_cloud_account(energy: float, kind: str, meta: dict | None 
     headers = {"X-Service-Token": service_token} if service_token else {}
     payload = {"user_id": user_id, "energy": energy, "kind": kind}
     # The session id lets the ledger group usage (2026-08-09); no content, and events never leave this machine.
-    try:
-        from observability import identity as _ident
-        payload["session_id"] = _ident.session_id()
-    except Exception:
-        pass
+    # A charge that names its session (transport, reported after its session closed) keeps it.
+    meta = dict(meta) if meta else None
+    named = meta.pop("session_id", None) if meta else None
+    if named:
+        payload["session_id"] = named
+    else:
+        try:
+            from observability import identity as _ident
+            payload["session_id"] = _ident.session_id()
+        except Exception:
+            pass
     if meta:
         payload["meta"] = meta
     try:

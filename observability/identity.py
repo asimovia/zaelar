@@ -197,28 +197,94 @@ def end_session(reason: str = "frontend", *, cause: str = "", device: str = "") 
                                           "cause": (cause or reason or "unknown")[:40],
                                           **({"device": device[:48]} if device else {})})
         _report_to_control_plane("end", info)
-        _bill_transport(dur)
+        _bill_transport(_take_voice_ms(), info["id"])
     return info
 
 
 # Real-time transport (LiveKit) is billed per PARTICIPANT-minute and a voice session has TWO of them
-# (the user and the agent), so the session's wall-clock is doubled here. It is metered per SESSION
-# rather than per turn because the room is up — and costing — during the silences between turns too,
-# which is exactly the part no per-turn hook would ever see.
+# (the user and the agent), so the VOICE time is doubled here. It is metered on the voice connection rather than
+# per turn because the room is up — and costing — during the silences between turns too, which is exactly the
+# part no per-turn hook would ever see.
+#
+# WHAT is billed is the time the voice was really connected (`voice_connected` → `voice_disconnected`, called by the
+# voice pipeline), never the work session's wall-clock: a work session outlives its voice (the room closes, the
+# session stays open until the idle timeout), and a host that was frozen with a session open came back hours later
+# to a session whose clock had kept running through the freeze. A freeze is cut out of an open voice span too
+# (`note_suspended`). The charge carries the id of the session that produced it, never one opened lazily by the
+# charge itself after this one closed.
 #
 # Only the duration crosses this seam: whether that costs anything, and how much, is the tariff's
 # business (`nucleo/energy/tariffs.py` — it may legitimately be zero while the deployment sits inside
 # LiveKit's included quota). Failing to bill must never break closing a session, hence the guard.
 _TRANSPORT_PARTICIPANTS = 2
+#: Voice time of the CURRENT work session: closed spans summed in `ms`, open ones by token → their start (epoch ms).
+_voice: dict = {"ms": 0, "open": {}, "seq": 0}
 
 
-def _bill_transport(duration_ms: int) -> None:
-    if duration_ms <= 0:
+def _now_ms() -> int:
+    """The voice clock's wall time (epoch ms); its own seam, so a test never patches the process's `time.time`."""
+    return round(time.time() * 1000)
+
+
+def voice_connected() -> int:
+    """The voice pipeline's room is up. Returns the token `voice_disconnected` closes; two rooms may overlap for an
+    instant while the voice moves between screens, and each one is its own billed room."""
+    with _lock:
+        _voice["seq"] += 1
+        tok = _voice["seq"]
+        _voice["open"][tok] = _now_ms()
+    _voice_event("voice.up", tok)
+    return tok
+
+
+def _voice_event(label: str, token: int) -> None:
+    """`voice.up` / `voice.down` on the stream: the readers' «is the voice connected?» (`observability/flows.py`)."""
+    try:
+        from voice.observer import emit
+        emit("session", label, extra={"room": token})
+    except Exception as e:  # noqa: BLE001 — the clock is what bills; the event only shows it
+        logger.debug(f"identity: {label} not published: {e!r}")
+
+
+def voice_disconnected(token: int) -> None:
+    """The room `token` closed: its span joins the current session's voice time. Unknown tokens are ignored."""
+    now = _now_ms()
+    with _lock:
+        start = _voice["open"].pop(token, None)
+        if start is not None:
+            _voice["ms"] += max(0, now - start)
+    if start is not None:
+        _voice_event("voice.down", token)
+
+
+def note_suspended(gap_ms: int) -> None:
+    """The host was frozen for `gap_ms` (`nucleo/suspend.py` on resume): an open voice span does not count it. No
+    media flows through a frozen process, and the room it held is gone on the provider's side."""
+    gap = max(0, int(gap_ms))
+    now = _now_ms()
+    with _lock:
+        for tok, start in list(_voice["open"].items()):
+            _voice["open"][tok] = min(now, start + gap)
+
+
+def _take_voice_ms() -> int:
+    """The voice time owed by the session that is closing; spans still open carry on into the next one from now."""
+    now = _now_ms()
+    with _lock:
+        total = _voice["ms"] + sum(max(0, now - st) for st in _voice["open"].values())
+        _voice["ms"] = 0
+        for tok in _voice["open"]:
+            _voice["open"][tok] = now
+    return total
+
+
+def _bill_transport(voice_ms: int, session_id: str | None = None) -> None:
+    if voice_ms <= 0:
         return
     try:
         from nucleo.energy import meter as energy_meter
         energy_meter.report_transport_usage(
-            participant_seconds=(duration_ms / 1000.0) * _TRANSPORT_PARTICIPANTS)
+            participant_seconds=(voice_ms / 1000.0) * _TRANSPORT_PARTICIPANTS, session_id=session_id)
     except Exception as e:  # noqa: BLE001
         logger.warning(f"identity: could not bill the transport for this session: {e}")
 
@@ -240,6 +306,19 @@ def note_real_activity() -> None:
         _last_real_activity_ms["v"] = now
     if idle:
         end_session("idle_timeout")
+
+
+def note_event(ev: dict) -> bool:
+    """One event at the observer's gate (`voice/observer.py::stamp_identity`). Work on the engine's own clock (a
+    widget's tick, a client state report) is stored marked `paced` — a reader asking «was anybody here?» skips it
+    (`observability/flows.py::REAL_ACTIVITY_WHERE`) — and True is returned: it opens no session either.
+    Anything else outside the system/pulse families is real activity."""
+    if _PACED.get():
+        ev["paced"] = True
+        return True
+    if ev.get("cat") not in ("system", "pulse"):
+        note_real_activity()
+    return False
 
 
 def last_real_activity_ms() -> int | None:

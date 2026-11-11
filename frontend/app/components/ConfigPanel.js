@@ -262,7 +262,9 @@ export function ConfigPanel() {
     // Sitting them inside that card would put a Save button under two controls it does not save.
     const device = panel("voice_device", t("config.voice.device_title"), t("config.voice.device_sub"),
       row(t("config.voice.device"), `<select id="micsel"></select>`, esc(t("config.voice.device_hint"))) +
-      row(t("config.voice.capture"), `<select id="micmode"></select>`, esc(t("config.voice.capture_hint"))));
+      row(t("config.voice.capture"), `<select id="micmode"></select>`, esc(t("config.voice.capture_hint"))) +
+      // Honest about where the wake-word ear sends its audio (2026-11-11): it is the BROWSER's recogniser, not ours.
+      `<div class="cf-hint">${esc(t("config.voice.wakeword_privacy"))}</div>`);
     return panel("voice", t("config.voice.title"), t("config.voice.sub"),
       cloudNote + rows + `<div class="cf-foot"><button class="cf-save-voice">${t("config.voice.save")}</button></div>`)
       + device;

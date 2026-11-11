@@ -391,6 +391,18 @@ def _speech_of_this_task():
     return _SpeechHandleContextVar.get(None)
 
 
+def bill_voice_room(ctx, session) -> None:
+    """Transport is billed on the time this room is really up (`observability/identity.py::voice_connected`): from
+    here — the room connected, the session about to start — to the session's close or the job's shutdown, the first."""
+    from observability import identity
+    token = identity.voice_connected()
+
+    async def _down(*_a) -> None:
+        identity.voice_disconnected(token)
+    ctx.add_shutdown_callback(_down)
+    session.on("close", lambda _ev: identity.voice_disconnected(token))
+
+
 def _on_close(ev, *, _account_limits, _close_account_session, _emit, _proactive, _speak, boot, _typed=None) -> None:
     # V2-837 G7 — WHY the voice session closed and WHICH screen held it: the room's own close reason (a participant
     # leaving, an error, the job shutting down…), else whether it died on an error.

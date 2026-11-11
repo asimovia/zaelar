@@ -15,10 +15,13 @@
 // Every open this module decides carries `wake=1`: it is a person, and a deployment whose edge lets only a person
 // start a stopped engine (a navigation or this mark) tells it apart from a stream the browser would retry on its own.
 //
-// PRESENCE IS CONNECTION (operator, 2026-11-10): a VISIBLE tab with its stream open is a person, even if he never
-// speaks. It says so to the engine (`h.beat`, `POST /api/screens/beat {present}`) when the stream opens, when it
-// becomes visible, and every `PRESENCE_BEAT_MS` — never while hidden or asleep — and the idle stop keeps the engine
-// up for its whole window after the last one (`nucleo/idle_stop.py`).
+// PRESENCE IS A GESTURE (operator, 2026-11-11 — replaces «presence is connection» of 2026-11-10): a tab that is
+// merely VISIBLE is not a person. A tab that comes to the foreground, or that the browser itself reloads (a discarded
+// tab restored, a session restore, a back/forward or prerender load), kept a hosted engine awake with nobody using
+// it. So the beat (`h.beat`, `POST /api/screens/beat {present}`) goes out only while the tab is visible, awake, with
+// its stream open AND had a GESTURE within `tab_sleep_min`: a pointer, a key, his spoken turn, or a page he opened
+// himself (`openedByPerson`). Never while hidden or asleep. The idle stop keeps the engine up for its whole window
+// after the last beat (`nucleo/idle_stop.py`).
 //
 // No imports on purpose: the decision is driven by a node test, and the shell hands in what it needs.
 // ============================================================================
@@ -42,14 +45,52 @@ export function sleepDue({ lastInputMs, nowMs, sleepMin = TAB_SLEEP_MIN }) {
   return sleepMin > 0 && nowMs - lastInputMs >= sleepMin * 60000;
 }
 
-/** Whether a presence beat is owed now: a visible tab, awake, with its stream open. Pure. */
-export function beatDue({ visible, open, asleep }) {
-  return !!(visible && open && !asleep);
+/** Whether a presence beat is owed now: a visible tab, awake, with its stream open, touched by a person within
+ *  `sleepMin` (0 = no idle stop: an open stream costs nothing, any visible tab may beat). Pure. */
+export function beatDue({ visible, open, asleep, lastGestureMs = 0, nowMs = 0, sleepMin = TAB_SLEEP_MIN }) {
+  const touched = sleepMin <= 0 || (lastGestureMs > 0 && nowMs - lastGestureMs < sleepMin * 60000);
+  return !!(visible && open && !asleep && touched);
+}
+
+/** Whether this page load was a person opening it: a navigation or a reload he made — not a tab the browser
+ *  restored on its own (`wasDiscarded`), a back/forward or a prerender. Pure: the shell hands in the document's
+ *  `wasDiscarded` and the navigation entry's `type`. Unknown counts as a person (an old browser loses nothing). */
+export function openedByPerson({ wasDiscarded = false, navType = "" } = {}) {
+  if (wasDiscarded) return false;
+  return !navType || navType === "navigate" || navType === "reload";
+}
+
+/** The server's ⏻ truth (`GET /api/run`), REFLECTED and never propagated: a tab that slept or sat hidden missed the
+ *  `run` events, so it reads the switch again when it comes back. A reply asked before the operator's last command is
+ *  history (main.js's boot probe has the same rule). `s` is the store's power API. Returns the state applied. */
+export function reflectRunState(r, askedAt, s) {
+  if (!r || typeof r.running !== "boolean" || !s) return null;
+  if (s.powerCmdAt() > askedAt) return null;
+  const off = !r.running;
+  if (off !== s.powerOff()) s.setPowerOff(off);
+  return off;
+}
+
+/** The tab came back (its stream reopened, or it became visible awake): read the ⏻ instead of trusting what it last
+ *  heard. A background request: a hosted edge answers it without waking anything. */
+export function syncRunState(s, fetchFn = globalThis.fetch) {
+  if (_p.asleep) return;
+  const askedAt = Date.now();
+  fetchFn("/api/run", { cache: "no-store" }).then((r) => (r.ok ? r.json() : null))
+    .then((r) => reflectRunState(r, askedAt, s)).catch(() => {});
+}
+
+function _navNow() {
+  try {
+    const n = performance.getEntriesByType("navigation")[0];
+    return { wasDiscarded: !!document.wasDiscarded, navType: (n && n.type) || "" };
+  } catch (_) { return {}; }
 }
 
 // A page load is someone opening it: the first stream, and its retries while visible, are allowed for one window.
 // `why` is what put the tab to sleep: "tab" (its own timer, a failed reconnect) or "engine" (`engine.sleep`).
-const _p = { lastInput: Date.now(), asleep: false, why: "", waking: false, open: false, sleepMin: TAB_SLEEP_MIN,
+// `lastInput` keeps a just-loaded tab's stream (its retries, its own sleep timer); `lastGesture` is what a beat needs.
+const _p = { lastInput: Date.now(), lastGesture: openedByPerson(_navNow()) ? Date.now() : 0, asleep: false, why: "", waking: false, open: false, sleepMin: TAB_SLEEP_MIN,
              attempt: 0, timer: null, h: null, pill: null };
 
 export const asleep = () => _p.asleep;
@@ -57,7 +98,8 @@ export const asleep = () => _p.asleep;
 const _visible = () => { try { return !document.hidden; } catch (_) { return true; } };
 
 function _beat() {
-  if (!beatDue({ visible: _visible(), open: _p.open, asleep: _p.asleep })) return;
+  if (!beatDue({ visible: _visible(), open: _p.open, asleep: _p.asleep, lastGestureMs: _p.lastGesture,
+                 nowMs: Date.now(), sleepMin: _p.sleepMin })) return;
   try { _p.h && _p.h.beat && _p.h.beat(); } catch (_) {}
 }
 
@@ -70,14 +112,26 @@ function _dormant() {
 export function wirePresence(h) {
   if (_p.h) return;
   _p.h = h;
-  const input = () => { _p.lastInput = Date.now(); if (_p.asleep) wake(); };
+  // A hosted edge's «wake» button lands here with `?wake=1`: drop it, so a later restore of this address by the
+  // browser is not read as a gesture again.
+  try {
+    const u = new URL(location.href);
+    if (u.searchParams.has("wake")) { u.searchParams.delete("wake"); history.replaceState(history.state, "", u.pathname + u.search + u.hash); }
+  } catch (_) {}
+  const input = () => { _p.lastInput = _p.lastGesture = Date.now(); if (_p.asleep) wake(); };
   for (const ev of ["pointerdown", "keydown"]) window.addEventListener(ev, input, { capture: true, passive: true });
   const iv = setInterval(() => { if (!_p.asleep && sleepDue({ lastInputMs: _p.lastInput, nowMs: Date.now(), sleepMin: _p.sleepMin })) sleep(); }, 30000);
   if (iv && iv.unref) iv.unref();   // a node harness that mounts sse.js must still exit; a browser returns a number
   const bv = setInterval(_beat, PRESENCE_BEAT_MS);
   if (bv && bv.unref) bv.unref();
-  // Becoming visible is not a GESTURE (it never reopens a stream), but a visible tab whose stream is open is a person.
-  try { document.addEventListener("visibilitychange", _beat); } catch (_) {}
+  // Becoming visible is not a GESTURE: it reopens nothing and beats only for a tab a person touched recently. It
+  // does read the ⏻ again (`h.comeBack`, a background request a hosted edge answers without waking anything).
+  try {
+    document.addEventListener("visibilitychange", () => {
+      _beat();
+      if (_visible() && !_p.asleep) { try { _p.h && _p.h.comeBack && _p.h.comeBack(); } catch (_) {} }
+    });
+  } catch (_) {}
 }
 
 /** What the stream itself says about presence: the hello's `tab_sleep_min`, `engine.sleep`, and his spoken turn. */
@@ -85,7 +139,7 @@ export function presenceEvent(d) {
   if (!d) return;
   if (d.kind === "session" && d.tab_sleep_min !== undefined && Number(d.tab_sleep_min) >= 0) _p.sleepMin = Number(d.tab_sleep_min);
   else if (d.kind === "session" && d.label === "engine.sleep") sleep("engine");
-  else if (d.kind === "transcript" && d.role === "user") _p.lastInput = Date.now();
+  else if (d.kind === "transcript" && d.role === "user") _p.lastInput = _p.lastGesture = Date.now();
 }
 
 /** The stream answered: the engine is awake. The veil lifts, and a visible tab says a person is here. */
@@ -132,7 +186,7 @@ function wake() {
 
 /** The veil's Reactivate: a gesture, like any other — it wakes the tab, and the tab's `wake=1` wakes the engine. */
 export function reactivate() {
-  _p.lastInput = Date.now();
+  _p.lastInput = _p.lastGesture = Date.now();
   if (_p.asleep) wake();
 }
 
