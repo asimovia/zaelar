@@ -6968,7 +6968,7 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_whose_words_are_decided_or_asked.py"]},
         # V2-878 §5 (SHADOW) — disarmed 2026-11-11 (the portal notes nothing / the first rows report nothing / the
         # arbiter never sees the errand) → red, each in its own file.
-        {"id": "2.1679", "title": "A choice about rows that do not exist yet is kept on the errand's card, in SHADOW (V2-878 §5): an inject/steer into an errand with no rows from a turn that does not ask to be told writes `pick_pending` (his words, when), emits it and reaches the commission's shadow; the relay is unchanged; a question or rows already there note nothing — es, en",
+        {"id": "2.1679", "title": "A choice about rows that do not exist yet is kept on the errand's card, in SHADOW (V2-878 §5): his words reaching an errand with no rows through the one relay door (the portal's inject, a steer, the model's own `send_to_worker`) from a turn that does not ask to be told write `pick_pending` (his words, when), emits it and reaches the commission's shadow; the relay is unchanged; a question or rows already there note nothing — es, en",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_a_choice_for_rows_not_there_yet_is_noted_in_shadow.py"]},
         {"id": "2.1686", "title": "The first rows of an errand holding a deferred choice report what WOULD be relayed to its worker (V2-878 §5, shadow): once per errand, with how long it was held; nothing is injected",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_first_rows_would_relay_the_deferred_choice.py"]},

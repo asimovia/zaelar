@@ -53,6 +53,7 @@ def relay_his_words(which: str, words: str) -> bool:
             text=f"{which}: {words}"[:160], extra={"cat": "flash", "kind_diag": "relay_refused", "to": which})
         return False
     dispatch.inject_soon(which, words)
+    __import__("nucleo.turn.pick_pending", fromlist=["x"]).noted(which, words)   # V2-878 §5, shadow
     return True
 
 
