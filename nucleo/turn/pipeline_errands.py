@@ -15,6 +15,7 @@ from nucleo.request import send_task_turn as _send_turn   # a send the verdict i
 from nucleo.request import stop as _stop_decision   # V2-820: a replace stops X and starts Y in one act
 from nucleo.turn import brief as _tb   # the turn's reading travels with the errand it commissions (V2-852)
 from nucleo.turn import commission as _commission   # V2-874: who wins the commission, in shadow
+from nucleo.turn import named_errand as _named   # V2-878 §1: a request routed into an errand is a mention of it
 from nucleo.turn import his_spec_to_sheet as _his_spec   # a spec he stated about one errand reaches its sheet
 from nucleo.turn import reply as _reply   # the turn's one mouth: a door's start line on a silent turn (V2-851 F1)
 from nucleo.turn import routed_sends as _routed_sends   # a send the turn routed leaves it as a commission (V2-852)
@@ -46,6 +47,7 @@ async def launch_the_errands(*, motor, send, speech, emit, brain, _brief, _op_te
         # route, settled here before the first launch — no second yardstick in this branch any more.
         from nucleo.turn import flow_of as _flow
         _settled = await _flow.settled()
+        _named.mentioned(str((_settled or {}).get("flow") or ""))   # V2-878 §1: he named that errand again
         _commission.shadow(emit, at="close", brief=_brief, escalate_req=escalate_req, launched=True,
                            model_calls=getattr(brain, "_turn_calls", None) or (),
                            flow_as=str((_settled or {}).get("as") or ""), words_said=bool(spoken_text), text=req)
@@ -56,7 +58,12 @@ async def launch_the_errands(*, motor, send, speech, emit, brain, _brief, _op_te
             brain._escalated_trace_id = _trace5.current()
         except Exception:
             pass
-        _heard = "" if escalate_req.get("more") else _request.heard()
+        # V2-878 §1: his whole sentence rides with EVERY errand it commissions (`said`, on the row's card, with `part`
+        # when there are several); the sheet's row door still hears it only for the ONE errand (`heard`), since a
+        # sentence about three hunts would judge each hunt's rows by the other two's words.
+        from nucleo.acts.errand_birth import whole_request as _whole
+        _said = _whole(_request.heard())
+        _heard = "" if escalate_req.get("more") else _said
         _started = _escalate_mod.escalate_to_slowbrain(
             req, context={"src": "voice", "surface": motor._surfaces_mod.pick(escalate_req["surface"].get(req, ""),
                                                                        motor._surfaces_mod.from_brief(_brief)),
@@ -65,6 +72,7 @@ async def launch_the_errands(*, motor, send, speech, emit, brain, _brief, _op_te
                           # …and a SURE «none» from it, so the errand's birth never re-infers one from his words
                           _spec_mod.END_KEY: _spec_mod.end_state_declared(_brief),   # (T-19 R6)
                           "heard": _heard,     # his sentence, to the ONE errand it commissions (two: neither)
+                          "said": _said,       # …and to every errand's card, with its `part`
                           "errand_class": _escalate_mod.class_verdict(_brief),   # the consent class it carries
                           "reading": _tb.carried(_brief),   # V2-852: the turn's verdicts ride with its task
                           "asked": spoken_text,   # V2-655: si el turno pidió permiso, se APARCA
@@ -112,7 +120,12 @@ async def launch_the_errands(*, motor, send, speech, emit, brain, _brief, _op_te
                     _escalate_mod.escalate_to_slowbrain(
                         _extra_req,
                         context={"src": "voice", "surface": escalate_req["surface"].get(_extra_req, ""),
-                                 "asked": spoken_text, "part": _n})   # V2-844: one request of several, its own errand
+                                 "asked": spoken_text, "part": _n,   # V2-844: one request of several, its own errand
+                                 # V2-878 §1: the same reading as the first errand — his sentence, its end state,
+                                 # its consent class and the turn's verdicts (they used to ride with the first only)
+                                 "said": _said, "reading": _tb.carried(_brief),
+                                 "errand_class": _escalate_mod.class_verdict(_brief),
+                                 "done_when": (escalate_req.get("done_when") or {}).get(_extra_req) or {}})
                     emit("brain", "🧭 Flash → Brain Worker (tarea adicional del mismo turno)",
                          text=_extra_req, role="system")
                 _launched.append({"request": _extra_req})
@@ -125,6 +138,7 @@ async def launch_the_errands(*, motor, send, speech, emit, brain, _brief, _op_te
 
     else:   # V2-874: a turn that launches nothing is in the shadow too — the rule may have opened what it did not
         from nucleo.turn import flow_of as _flow
+        _named.mentioned(str((_flow.peek() or {}).get("flow") or ""))   # V2-878 §1: a refinement names its errand
         _commission.shadow(emit, at="close", brief=_brief, escalate_req=escalate_req, words_said=bool(spoken_text),
                            model_calls=getattr(brain, "_turn_calls", None) or (),
                            flow_as=str((_flow.peek() or {}).get("as") or ""), worker=str(worker_acted["v"] or ""),
