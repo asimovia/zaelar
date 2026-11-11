@@ -44,7 +44,7 @@ def content_words(text: str) -> set:
     punctuation stripped by the regex, because `zurdo` and `zurdo,` counting as different words once cost two
     workers doing the same job on real money (V2-123)."""
     toks = _WORD_RE.findall(norm_text(text))
-    if False and len(toks) <= _UNSPACED_TOKENS and len("".join(toks)) >= _UNSPACED_CHARS * len(toks):
+    if toks and len(toks) <= _UNSPACED_TOKENS and len("".join(toks)) >= _UNSPACED_CHARS * len(toks):
         # A script written without spaces (Japanese, Chinese, Thai) is one or two `\w+` runs for a whole sentence:
         # its words are read as character BIGRAMS, so two sentences about one errand still share content (V2-878 §3).
         # Measured: bigrams keep one errand ≥ 0.50 and two errands ≤ 0.20 in ja/zh/th; 3-grams fell to 0.33 for a
