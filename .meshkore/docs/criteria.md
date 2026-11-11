@@ -883,6 +883,10 @@ Flash keeps the conversation; the row is what both brains read.
   shapes; a scrubber failure withholds, never passes); the full prompt capture is scrubbed, under the
   workspace, capped per session, and OFF when `ZAELAR_USER_ID` is set unless `ZAELAR_LOG_PROMPTS=1`. — since 2026-10-01 ·
   nodes 7.61 · `observability/scrub.py`, `server/feedback_api.py`, `voice/observer.py`.
+- **CRIT-R34 · The server log wears the same mask as the stored events.** While his `obfuscate` switch is on, every
+  loguru record passes `pii.tag` through ONE patcher installed at boot (`observability/log_mask.py`): an email, a phone,
+  a known name leave as tags; off, the line is untouched; the masker never raises and never recurses. — since 2026-11-11 ·
+  nodes 7.131 · `observability/log_mask.py`, `server/__main__.py`.
 - **CRIT-R8 · Paid work asks the usage lease BEFORE it starts.** If a usage lease is configured and exhausted, a
   paid call is refused (`OutOfEnergy`, never a provider failure: no relay, no light), the fuse stops the agent, and
   the UI shows the exhausted state with a link to `ZAELAR_ACCOUNT_URL` when set; with no lease configured, every

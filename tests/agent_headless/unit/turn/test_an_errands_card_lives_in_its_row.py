@@ -44,6 +44,7 @@ def db(tmp_path, monkeypatch):
     memdb.reset_db()
     monkeypatch.setattr(dispatch, "_SESSIONS", {})
     yield
+    request_model._TURN.set(None)   # the turn this test began ends with it: a later file's question lands on ITS row
     memdb.reset_db()
 
 

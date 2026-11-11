@@ -28,8 +28,11 @@ MARGIN = 64
 # contract (`how`): the composing model never filled `criteria.excluded` because it never saw the field. Measured.
 #: V2-854: +76/+141 — the contacts card's five group actions (create/rename/delete_group, add_to_group, set_agent) in the
 #: always-on action catalogue; names only, their text stays in the card's pack
-CEILINGS = {(): 24_608, ("agenda", "mensajeria"): 29_403,
-            ("agenda", "mensajeria", "youtube", "contactos", "results", "musica"): 36_585}   # V2-795: musica usage trimmed
+#: 2026-11-11 V2-876/V2-877 (#294, #295): +85 — the timer DECLARES its data API (`· datos: set, start, pause, reset`, so a
+#: spoken timer is the card's own act) and markets answers a PRICE question as well as a chart; measured by diff of the
+#: composed prompt before and after the merge (nothing else moved; the agenda lines only changed place).
+CEILINGS = {(): 24_608, ("agenda", "mensajeria"): 29_538,
+            ("agenda", "mensajeria", "youtube", "contactos", "results", "musica"): 36_720}   # V2-795: musica usage trimmed
 TARGET_EVERYDAY = 30_000
 
 

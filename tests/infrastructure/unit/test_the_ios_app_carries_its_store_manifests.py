@@ -67,7 +67,7 @@ def test_the_privacy_manifest_declares_no_tracking_and_the_store_labels() -> Non
                                                "NSPrivacyAccessedAPITypeReasons": ["CA92.1"]}]
     kinds = {d["NSPrivacyCollectedDataType"].removeprefix("NSPrivacyCollectedDataType"): d
              for d in p["NSPrivacyCollectedDataTypes"]}
-    assert set(kinds) == {"EmailAddress", "Name", "PreciseLocation", "Contacts", "AudioData", "OtherUserContent",
+    assert set(kinds) == {"EmailAddress", "Name", "CoarseLocation", "Contacts", "AudioData", "OtherUserContent",
                           "CustomerSupport", "SearchHistory", "UserID", "ProductInteraction", "OtherDiagnosticData"}
     for name, d in kinds.items():
         assert d["NSPrivacyCollectedDataTypeLinked"] is True, name
