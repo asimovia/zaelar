@@ -52,6 +52,42 @@ def known(*, with_finished: bool = False) -> list[dict]:
     return [_carded(e) for e in out + (finished(out) if with_finished else [])]
 
 
+#: How each card's state is said to a reader (the flow judge, the brief) — the row's own states, in English for the
+#: classifiers' prompts.
+_STATE = {"running": "running", "pending": "starting", "starting": "starting", "waiting": "waiting for his answer",
+          "done": "finished", "failed": "failed", "cancelled": "stopped"}
+CARD_WORDS = 160
+
+
+def card_line(e: dict) -> str:
+    """One errand as every reader sees it (V2-878 §2): his words (or its request when none were heard) · its state ·
+    when he last named it. The ONE description of an errand handed to a judge."""
+    import time
+    words = " ".join(str(e.get("heard") or e.get("request") or "").split())[:CARD_WORDS]
+    bits = [f"«{words}»", _STATE.get(str(e.get("state") or ""), str(e.get("state") or "open"))]
+    if (ts := int(e.get("last_mention_ts") or 0)):
+        bits.append(f"last named {max(0, int(time.time()) - ts) // 60} min ago")
+    return " · ".join(bits)
+
+
+def by_mention(pool: list[dict], k: int | None = None) -> list[dict]:
+    """The pool, the errand he named last first (live ones before ended ones on a tie)."""
+    out = sorted(pool or [], key=lambda e: (-int(e.get("last_mention_ts") or 0), bool(e.get("ended") or e.get("delivered"))))
+    return out[:k] if k else out
+
+
+def as_target(ctx) -> dict:
+    """`errand_target`'s «running_errand» choice naming its candidates — the open errands' cards, running, parked,
+    starting or just finished, the one he named last first; {} with none (the choice keeps its own words). The four
+    choices every arm reads stay the same. `ctx`: the brief's context (its `threads`)."""
+    threads = (ctx or {}).get("threads") if isinstance(ctx, dict) else None
+    if not threads:
+        return {}
+    cards = "; ".join(f"{i + 1}) {card_line(e)}" for i, e in enumerate(by_mention(list(threads), 6)))
+    return {"running_errand": "his words are for one of the errands he has open — a correction, a detail, a «yes» it "
+                              f"asked for, a question about it: {cards}"}
+
+
 def _uid_of(eid: str) -> str:
     from nucleo import dispatch as _d
     from nucleo.circuit import ledger

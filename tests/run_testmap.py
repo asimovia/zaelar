@@ -1292,9 +1292,8 @@ DOMAINS: list[dict] = [
         {"id": "2.44", "title": "La cara de anuncios NOMBRA lo que ya tiene (y una sola cara para los dos "
                                 "canales)", "ch": UNIT,
             "paths": ["tests/agent_headless/unit/flash/test_listing_face_names_what_it_already_has.py"]},
-        {"id": "2.45", "title": "La orden de ESTADO se bifurca sobre lo ya entregado (y un atasco necesita que "
-                                "el bloque lo diga)", "ch": UNIT,
-            "paths": ["tests/agent_headless/unit/flash/test_the_status_order_names_what_was_delivered.py"]},
+        # 2.45 retired 2026-11-11 (V2-878 §2): it asserted the wording of the running-errands block's status ORDER; the
+        # block is facts only now, and the delivered/stalled faces stay tested as facts (2.1674, V2-222/354 files).
         # 2026-08-20: `websearch.search()` devuelve `results: []` con `source: "none"` cuando TODA la cadena
         # falla — indistinguible de «busqué y no hay nada», y el único rastro era un `logger.warning`. Medido en
         # `cheapest-monitor`: veinte búsquedas, cero candidatos, diez turnos de «te aviso en cuanto lo tenga»
@@ -3882,6 +3881,14 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_an_errands_card_lives_in_its_row.py"]},
         {"id": "2.1672", "title": "One sentence, three errands, three cards (V2-878 §1): every errand of the sentence carries his whole sentence (`said`) and its `part`, and the second and third carry the turn's reading and consent class like the first; the sheet's row door still hears only a single errand's sentence — es, en, ca",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_an_errands_card_lives_in_its_row.py"]},
+        # V2-878 §2 — disarmed 2026-11-11 (target gate back to has_workers / the menu back to goal[:160] / the title beside his
+        # words / a constant skip / the first three goals) → red.
+        {"id": "2.1673", "title": "One menu (V2-878 §2): the flow judge's menu and `errand_target`'s candidates are the errands' CARDS — his words, state, last mention — of a parked and of a just-finished errand too; `errand_target` and the stop are asked with ANY errand open, not only with a worker running; the escalate question carries the three he named last — es, en",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_one_menu_for_every_reader.py"]},
+        {"id": "2.1674", "title": "An errand appears ONCE in the prompt (V2-878 §2): his words or its title, never both, and the running-errands block is facts only — the ~900-token imperative paragraph is gone (−990 tokens with one live errand)",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_one_menu_for_every_reader.py"]},
+        {"id": "2.1675", "title": "The recall's conversation lane skips the turns the window REALLY holds (V2-878 §2): a seeded window of 3 turns skips 3, never the constant 5",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_one_menu_for_every_reader.py"]},
         {"id": "2.728", "title": "A turn that acted on a card and also escalated, read inline, launches no worker — on the text channel as on the voice",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_an_inline_act_settles_the_commission_on_both_channels.py"]},
         {"id": "2.729", "title": "An ordered act that leaves, sure at the operator's 70%, runs when the model only drafted it — both channels",
