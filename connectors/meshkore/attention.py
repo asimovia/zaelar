@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from connectors.meshkore import store
 
-_FLAG = {"addressed": "addressed_to_me", "general": "general_messages", "content": "generated_content"}
+_FLAG = dict(addressed="addressed_to_me", general="general_messages", content="generated_content")   # kind → flag id
 
 
 def classify(ev: dict) -> str:

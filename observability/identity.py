@@ -37,7 +37,7 @@ from nucleo import workspace as _workspace
 
 _lock = threading.Lock()
 _user: dict = {"id": None}
-_session: dict = {"id": None, "started_ms": None, "source": ""}
+_session: dict = dict(id=None, started_ms=None, source="")   # a state record, not a word table
 
 # REAL INACTIVITY ceiling (operator, 2026-08-13): without this, a session lives in RAM until ⏻/the tab
 # EXPLICITLY closes it, and if that signal never arrives (network cut, tab killed without `pagehide`) it stays alive
@@ -218,7 +218,7 @@ def end_session(reason: str = "frontend", *, cause: str = "", device: str = "") 
 # LiveKit's included quota). Failing to bill must never break closing a session, hence the guard.
 _TRANSPORT_PARTICIPANTS = 2
 #: Voice time of the CURRENT work session: closed spans summed in `ms`, open ones by token → their start (epoch ms).
-_voice: dict = {"ms": 0, "open": {}, "seq": 0}
+_voice: dict = dict(ms=0, open={}, seq=0)   # a state record, not a word table
 
 
 def _now_ms() -> int:
