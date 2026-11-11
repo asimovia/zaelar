@@ -1,5 +1,5 @@
 """The dialog window is cut by the same silence as the day, and what was said is in it as it was said (V2-878 §3 (b)(c),
-node 2.1677).
+node 2.1676).
 
   · The window kept its last ten messages whatever their age: after a night, last evening's exchange was still «the
     conversation» the model answered inside. Now ONE reader (`dialog.live_slice`) cuts it: the last ten AND nothing

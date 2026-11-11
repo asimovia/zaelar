@@ -1,4 +1,4 @@
-"""An errand said in a language written without spaces is still ONE errand (V2-878 §3 (d), node 2.1678).
+"""An errand said in a language written without spaces is still ONE errand (V2-878 §3 (d), node 2.1677).
 
 The «same errand?» yardstick (`matching.content_words` + `containment`) counted words of four letters or more out of
 `\\w+` runs. A Japanese or Chinese sentence is ONE run — one «word» — so two sentences about the same monitor shared
