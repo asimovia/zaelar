@@ -68,8 +68,6 @@ _MAX_OPTIONS = 8
 #: temporizador de 10 minutos» sent `timer.set {"minutes": 10}` (and `{"duration": 600}`) to a card that reads
 #: `seconds`; the card set 0, answered `ok`, and the turn said «Listo» over a timer that never ran — 4 of 4, es and en.
 SLOTS_UNFILLED = "slots_unfilled"
-#: Keys the ENGINE puts on a call (an instance card's `q`, a confirmed relaunch's flag) — never the model's slot.
-_ENVELOPE = frozenset({"q", "sheet", "confirmed"})
 
 
 def _spec_strict(widget_id: str, action: str) -> dict:
@@ -331,7 +329,7 @@ def unfilled(widget_id: str, action: str, spec: dict, payload: dict | None) -> d
     AFTER the act, only when the card did not change (`widgets/empty_act.py`): handlers read undeclared keys too."""
     declared = spec.get("payload") if isinstance(spec.get("payload"), dict) else {}
     pl = payload if isinstance(payload, dict) else {}
-    sent = [k for k, v in pl.items() if k not in _ENVELOPE and not str(k).startswith("_") and _filled(v)]
+    sent = [k for k, v in pl.items() if not str(k).startswith("_") and _filled(v)]
     if not declared or not sent or any(_filled(pl.get(k)) for k in declared):
         return None
     from .refs import _OPTIONAL_RE

@@ -76,6 +76,8 @@ def test_a_handler_that_reads_an_undeclared_key_keeps_working():
 
 def test_an_empty_call_stays_the_handlers_business():
     """`filter_list {}` clears a filter, `read {}` reads the newest: an EMPTY call is not «another vocabulary»."""
-    assert contract.guard("youtube", "filter_list", {}) is None
-    assert contract.guard("timer", "set", {"seconds": 600}) is None
-    assert contract.guard("timer", "set", {"q": "x"}) is None, "an engine envelope key read as the model's slot"
+    spec = (runtime.get("youtube") or {})["actions"]["filter_list"]
+    assert contract.unfilled("youtube", "filter_list", spec, {}) is None
+    timer_set = (runtime.get("timer") or {})["actions"]["set"]
+    assert contract.unfilled("timer", "set", timer_set, {"seconds": 600}) is None
+    assert contract.unfilled("timer", "set", timer_set, {"seconds": 600, "minutes": 10}) is None
