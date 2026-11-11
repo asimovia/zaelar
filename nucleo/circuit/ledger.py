@@ -18,8 +18,7 @@ from loguru import logger
 from memory import tasks_store as _ts
 from nucleo.circuit import progress as _progress   # every door that moves a row says what it changed (`task_progress`)
 from nucleo.runtime_ids import boot_id as _boot_id
-#: The states a row ENDS in — the store's own, never a second copy.
-ENDINGS = _ts.DONE_STATES
+ENDINGS = _ts.DONE_STATES   # the states a row ENDS in — the store's own, never a second copy
 # What a task waits for, and the pulse's reads of the waits that are due, live in their own file (V2-851 §3).
 from nucleo.circuit.waits import (ANSWER_WAIT_DAYS, ANSWER_WAIT_KEY, USER_ANSWER, WORKER,  # noqa: F401
                                   WORKER_DEATHS_RESUMED, WORKER_RESUME_AFTER_S, answer_wait_s, expired_waits,
