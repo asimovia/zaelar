@@ -98,14 +98,52 @@ def test_the_same_errand_appears_once_in_the_prompt(live, heard):
 
 
 def test_the_recall_lane_skips_the_turns_the_window_really_holds(monkeypatch):
+    import asyncio
+    from nucleo.turn import recall_budget
     seeded = [{"role": "user", "content": "a"}, {"role": "assistant", "content": "b"},
               {"role": "user", "content": "c"}, {"role": "assistant", "content": "d"},
               {"role": "user", "content": "e"}]
-    assert recall.note_window(seeded) == 3
+    assert recall.live_turns(seeded) == 3
+    assert recall.live_turns([{"role": "user", "content": str(i)} for i in range(12)]) == recall.LIVE_WINDOW_TURNS
     seen = []
     from memory import api as memory
     monkeypatch.setattr(memory, "conversation", lambda **k: seen.append(k["skip_newest"]) or [])
-    recall.conversation_lines("the artist I asked about")
-    assert seen == [3], f"the lane skipped {seen} turns, the window holds 3"
-    recall.note_window([{"role": "user", "content": str(i)} for i in range(12)])
-    assert recall.live_turns() == recall.LIVE_WINDOW_TURNS
+    monkeypatch.setattr(memory, "query", lambda *a, **k: [], raising=False)
+    asyncio.run(recall_budget.compose("the artist I asked about", {"live_turns": recall.live_turns(seeded)}))
+    assert seen and set(seen) == {3}, f"the lane skipped {seen} turns, the window holds 3"
+    src = __import__("inspect").getsource(__import__("voice.engine.llm.providers.turn_prompt", fromlist=["x"]))
+    assert 'timings["live_turns"] = _recall_lane.live_turns(brain._window' in src, "the voice turn does not hand its window down"
+
+
+@pytest.mark.parametrize("heard", ["búscame un monitor bueno para trabajar, que no sea carísimo",
+                                   "find me a good monitor for work that isn't too pricey"])
+def test_the_whole_prompt_says_a_live_errand_once_and_the_state_block_does_not_move_with_its_phase(
+        live, tmp_path, monkeypatch, heard):
+    """The memory STATE block rendered the live session too (`PROCESOS DE FONDO en marcha ahora: [1] «…» — fase: …`),
+    in the middle of the shared prompt: the errand was said twice, and its changing phase broke the prompt cache for
+    everything after it every turn (measured on cheapest-monitor: the cache hit stuck at ~6.4k of ~15k tokens)."""
+    from memory import api as memapi, db as memdb
+    from nucleo.flash import memory_cache
+    from nucleo.turn.prompt import builder
+    monkeypatch.setenv("ZAELAR_DB", str(tmp_path / "zaelar.db"))
+    memdb.reset_db()
+    memory_cache.reset()
+    try:
+        rec = dispatch.SessionRecord(task_id="1", goal="Buscar monitores para trabajar baratos", kind="web", heard=heard)
+        rec.status, rec.phase = "running", "comparando precios"
+        rec.started = rec.last_event_at = time.time() - 30
+        dispatch._SESSIONS["1"] = rec
+        memapi.set_state({"sessions": [{"id": "1", "goal": rec.goal, "phase": "comparando precios"}]})
+        system, _ = builder.build_flash_system()
+        assert system.count(heard[:40]) == 1, "the live errand said more than once in the prompt"
+        assert "Buscar monitores para trabajar baratos" not in system, "the errand said under a second name"
+        assert "[1] «" in system, "the running-errands line lost the id an order to it names"
+        memapi.set_state({"sessions": [{"id": "1", "goal": rec.goal, "phase": "abriendo fichas"}]})
+        memory_cache.reset()
+        state_a = memapi.compose_state()
+        memapi.set_state({"sessions": [{"id": "1", "goal": rec.goal, "phase": "verificando precios"}]})
+        memory_cache.reset()
+        assert memapi.compose_state() == state_a, "the shared state block moves with a worker's phase"
+    finally:
+        memory_cache.reset()
+        memdb.reset_db()

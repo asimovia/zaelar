@@ -48,8 +48,6 @@ async def compose_the_prompt(*, brain, emit, operator_text, self, text) -> dict:
     # A reference to the recent interaction («I did ask you some time ago…») fires it too (V2-865): the
     # conversation lane of the recall is what answers it, and the expanded buffer below is recency only.
     timings["recall_fired"] = _rh.needs_recall(operator_text) or _rh.needs_recent(operator_text)
-    from nucleo.turn.prompt import recall as _recall_lane     # V2-878 §2: the lane skips the turns the window REALLY has
-    _recall_lane.note_window(brain._window[-_p._WINDOW_MAX:])
     if timings["recall_fired"]:
         # TIME-BOX del recall (regla dura "nunca lento"): el retriever suele cerrar en ~0.4-1.5s, pero en el
         # turno vivo puede dispararse a 4s+ (recarga del modelo de embedding tras un desalojo por el CORAZÓN
@@ -66,6 +64,8 @@ async def compose_the_prompt(*, brain, emit, operator_text, self, text) -> dict:
         # el de texto no, y una protección que existe en un canal y no en el otro no se distingue de no
         # tenerla — el fallo sale por el canal que nadie recordó.
         from nucleo.turn import recall_budget as _recall
+        from nucleo.turn.prompt import recall as _recall_lane    # V2-878 §2: skip the turns the window REALLY has
+        timings["live_turns"] = _recall_lane.live_turns(brain._window[-_p._WINDOW_MAX:])
         recall_block, recall_ids = await _recall.compose(operator_text, timings)
     # 2º PASE DE CORTO PLAZO (C, 2026-07-14): si el turno referencia la interacción RECIENTE ("de qué
     # hablábamos", "lo que te dije antes", "repite eso"), inyectamos el buffer conversacional AMPLIADO

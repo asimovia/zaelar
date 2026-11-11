@@ -42,9 +42,10 @@ def name_of(t: dict) -> str:
     pulgadas con resolución 4K (UHD) con ») and «abre el que sea mejor oferta» found nothing to refer to. His words
     travel with the errand whatever the window holds; the worker's title is no longer said beside them."""
     heard = " ".join(str(t.get("heard") or "").split())
+    tag = f'[{t["id"]}] ' if t.get("id") else ""        # the id an order to it names (send_to_worker / stop_worker)
     if heard:
-        return f"«{_short_note(heard, ASKED_MAX)}» (lo pidió así)"
-    return f'«{_short_note(str(t.get("request") or ""), 60)}»'
+        return f"{tag}«{_short_note(heard, ASKED_MAX)}» (lo pidió así)"
+    return f'{tag}«{_short_note(str(t.get("request") or ""), 60)}»'
 
 
 def pending_task_lines() -> list[str]:
