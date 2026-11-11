@@ -767,6 +767,18 @@
    "holder": "a nombre de quién"
   }
  },
+ "navegador": {
+  "_comment": "V2-877 #10 — what the agent SAYS when a browser task ends (a proactive notice, spoken as-is). {summary} is the task's user-facing summary.",
+  "done": "Listo. {summary}",
+  "done_on_sheet": "Listo, lo tienes en la hoja de resultados.",
+  "partial": "No pude terminarla del todo. {summary}",
+  "partial_on_sheet": "No pude terminarla del todo; lo que saqué está en la hoja de resultados."
+ },
+ "vault_rule": {
+  "_comment": "V2-877 #10 — the confirmation when he sets whether his secrets may be read aloud.",
+  "voice_on": "Vale, te leeré los secretos en voz alta cuando me los pidas.",
+  "voice_off": "Hecho: no diré tus secretos en voz alta, solo te los mostraré en pantalla."
+ },
  "apps": {
   "photos_offer": "Google Photos no está conectado. Puedo conectarlo en Conectores, enseñarte las imágenes guardadas en este equipo, o abrir tu carpeta de imágenes en Archivos. ¿Qué prefieres?",
   "files_cloud_fallback": "«{provider}» no está conectado, así que te enseño tu biblioteca local. Para volver a ese servicio, conéctalo en Conectores."

@@ -137,16 +137,7 @@ def apply_rule(cmd: tuple[str, object]) -> str:
         _state.set_security_flag(key, value)
     except Exception as e:  # noqa: BLE001
         logger.warning(f"acts.memory: the vault rule was not stored ({e!r})")
-    try:
-        from i18n import langs as _lg
-        es = _lg.current_language().code == "es"
-    except Exception as e:  # noqa: BLE001
-        _note(f"no language ({e!r})")
-        es = True
+    from i18n import langs as _lg          # his language, then English — never a Castilian constant (V2-877 #10)
     if key == "secrets_voice":
-        if value:
-            return "Vale, te leeré los secretos en voz alta cuando me los pidas." if es \
-                else "Alright, I'll read secrets aloud when you ask."
-        return "Hecho: no diré tus secretos en voz alta, solo te los mostraré en pantalla." if es \
-            else "Done: I won't say your secrets aloud, I'll only show them on screen."
-    return "Hecho." if es else "Done."
+        return str(_lg.words("vault_rule.voice_on" if value else "vault_rule.voice_off", default="") or "")
+    return str(_lg.words("data_ack", default="") or "")

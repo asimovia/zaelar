@@ -2168,6 +2168,16 @@ DOMAINS: list[dict] = [
             "ch": UNIT,
             "paths": ["tests/infrastructure/unit/core/"
                       "test_the_guardrails_speak_the_operators_language.py"]},
+        # V2-877 #10 — the App Review account, interface in English, heard «Un segundo…» / «Te aviso…». The pickers already
+        # read the session's language; what no test saw were SHORT spoken lines frozen as constants in code (the 3.39
+        # ratchet reads 25+ characters only). Pack: every wait/filler/ack key in every pack, EN ≠ ES. Pickers: an EN
+        # session answers from the EN pack (RED with `spec()`/`words()` pinned). Ratchet: a literal equal to a Spanish
+        # pack line, or a literal fallback of a pack field, only shrinks.
+        {"id": "3.187", "title": "A wait line, a filler or a one-word ack is said in the SESSION's language — "
+                                 "never a constant of one language",
+            "ch": UNIT,
+            "paths": ["tests/infrastructure/unit/core/"
+                      "test_a_wait_line_is_said_in_the_sessions_language.py"]},
         # V2-776 D — THE BRAIN WORKER'S STATE IS DURABLE AND SUPERVISED. Measured 2026-09-27 (session 3a9a082c):
         # two accountancy-widget rows sat «pending» for hours after the widget gate asked and the «Yes» launched a
         # fresh commission; every normal errand read «pending» for its whole run. The pulse and FlashBrain read

@@ -439,11 +439,8 @@ def _which(etiquetas: list[str]) -> str:
 
 
 def _ask(kind: str, n: int, which: str) -> str:
-    try:
-        from i18n import langs as _lg
-        tmpl = getattr(_lg.current_language(), f"instances_which_{kind}")
-    except Exception:  # noqa: BLE001
-        tmpl = "Tienes {n} abiertas: ¿cuál te enseño, {which}?" if kind == "show" else "Tienes {n} abiertas: ¿cuál cierro, {which}?"
+    from i18n import langs as _lg      # his language, then English — never a Castilian constant (V2-877 #10)
+    tmpl = str(_lg.words("instances_which_show" if kind == "show" else "instances_which_close", default="") or "")
     return tmpl.format(n=n, which=which)
 
 
