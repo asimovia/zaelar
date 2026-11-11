@@ -13,7 +13,7 @@ stranger?» — so the card now DECLARES its slots and where each must come from
 a new card that leaves needs no new code here:
 
   · `his_words` — the value must be in his words for this errand (`message.is_his`); one the worker swapped for a
-    name he never said goes back to HIS word (`message.his_recipient`), so the card asks «which one»;
+    name he never said is asked on his behalf, never rewritten (V2-887);
   · `reading`   — the commissioning turn's reading names it (`message_channel.his_channel`): his sure reading
     replaces the call's own;
   · `held`      — the row he saw and surely ordered (`message.confirmed`): his order over it is the yes;
@@ -88,10 +88,9 @@ def _his_words(ctx: dict, out: Reading, slot: str, key: str) -> None:
         out.sources[slot] = "card"
         return
     from nucleo.acts import message
-    mine = message.his_recipient(ctx["wid"], ctx["act"], out.inner, ctx["said"], key=key,
-                                 emit=lambda _k, label, text="", **kw: ctx["emit"](label, text, kw.get("extra") or {}))
-    if isinstance(mine, dict):
-        out.inner = mine
+    # V2-887: the recipient is READ, never rewritten — swapping the model's name for a word of his sentence turned
+    # «Raquel Salvador» into «nombre» («te dije su nombre y su apellido»). A name he never said is the agent's and is
+    # asked as such; the card asks «which one» among the people the name reaches.
     v = out.inner.get(key)
     his = isinstance(v, str) and v.strip() and message.is_his(v, [ctx["said"]])
     out.sources[slot] = "his" if his else _own(ctx, v)

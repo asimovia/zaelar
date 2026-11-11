@@ -59,7 +59,7 @@ def test_a_turn_that_answers_no_waiting_task_keeps_its_errand(waiting, choice, c
 def test_the_guard_runs_before_any_rung_can_turn_the_errand_into_an_act():
     src = inspect.getsource(post_stream_acts.complete_the_acts)
     guard = src.index("no_new_errand_for_a_bound_answer(")
-    for rung in ("_show_guard_target(", "take_rung(", "before_worker("):
+    for rung in ("take_rung(", "before_worker("):
         assert guard < src.index(rung), f"{rung} runs before the bound answer is read"
 
 

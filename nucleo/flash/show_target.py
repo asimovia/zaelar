@@ -492,31 +492,3 @@ def _resolve_canvas_verb_single(handle: dict | None, *, min_confidence: float | 
     from nucleo import jev as _jev
     mc = _jev.MIN_CONFIDENCE if min_confidence is None else min_confidence
     return _jev.resolve_choice(handle, "neither", min_confidence=mc)
-
-
-def show_from_verb(text: str, canvas_handle: dict | None = None) -> tuple[str | None, str]:
-    """The ONE Jev show-license reader for both channels' show backstops (voice provider guard +
-    probe escalate/search backstop — never a second implementation).
-
-    Grammar already missed (the caller read its own guard first and got nothing): a confident Jev
-    "show" verdict LICENSES resolving the target through the existing `runtime.identify`
-    (open > recent > catalogue, same narrowing as `_show_target`). A verb WITHOUT a resolvable
-    target executes nothing — (None, "none") — and so do the vetoes (create / negated show),
-    an unsure verdict, and a missing handle (Jev off/slow/failed, `ZAELAR_JEV=0` included):
-    every one of those keeps today's path bit-for-bit. Returns `(widget_id_or_None, source)`
-    with source "jev" | "none" — the emit trail says which reader moved, so a misfire is
-    attributable. Grammar hits never reach this function (the caller returns those as "grammar").
-    """
-    verb, info = resolve_canvas_verb(canvas_handle)
-    if verb != "show" or not (info or {}).get("used"):
-        return None, "none"
-    if _vetoed_show(text):
-        return None, "none"
-    try:
-        from widgets import runtime as _rt
-        wid = _identify_ctx(_rt, text)
-        if wid and _rt.get(wid) is not None:
-            return wid, "jev"
-    except Exception:
-        pass
-    return None, "none"

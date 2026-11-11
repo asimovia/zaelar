@@ -24,54 +24,9 @@ async def complete_the_acts(*, _apply_widget_data, _brief, _data_ops_hechas, _ha
     # V2-854 F4 — a turn that answers a waiting task's question opens nothing of its own: no errand, no card act.
     from nucleo.flash import post_stream_settle as _pss
     _pss.no_new_errand_for_a_bound_answer(escalate_req, _brief, worker_acted=worker_acted, emit=emit)
-    # DETERMINISTIC pure-SHOW guard (V2-023): «show me the messaging card» that the fast model escalated (→ junk widget)
-    # or turned into a web_search is a show of a card that EXISTS: `_show_guard_target` needs a show verb, no create verb
-    # and a real `runtime.identify` hit. The model's tool is swapped ONLY when the card is on screen afterwards — a show
-    # the canvas refuses (`verdict-against`) once nulled a search for nothing (cloud, «me pones algo de ella»). Its
-    # «pon/ver» verbs collide with «pon música»/«a ver si…» in chat, so it is never widened there (2026-07-19).
+    # V2-887: no word guard turns the model's tool into a «show» — a regex read «pone» as «pon» and swapped a search
+    # for «Aquí lo tienes» with nothing done. A show is the model's call or the brief's sure canvas verdict.
     _routed = _route.owns(escalate_req)   # a sure escalate verdict decided: nothing below swaps or drops it
-    # A sure «no canvas verb» verdict outranks the word guard: the brief read the whole sentence, the guard read «abre».
-    from nucleo.acts import canvas_verdict as _cverdict
-    _no_canvas = _cverdict.sure_no_canvas(_brief)
-    if (escalate_req["v"] is not None or search_req["v"] is not None) and not acted["widget"] and not _routed:
-        _guard_wid = None if _no_canvas else _show_guard_target(text, brain._window, brain._last_action)
-        if _no_canvas:
-            emit("brain", "🪟 show guard silent — the brief surely has no canvas verb; the model's tool stands",
-                 text=(search_req["v"] or {}).get("query", "") if isinstance(search_req["v"], dict) else "", role="system")
-        _guard_src = "grammar" if _guard_wid else "none"
-        if not _guard_wid:
-            # Jev show license (`show_target.show_from_verb`): a confident «show» + a real identify hit rescues a
-            # grammar miss (English «show me X»); vetoed, unsure, unresolvable or Jev off keeps the path untouched.
-            try:
-                _guard_wid, _guard_src = _pst._show_target.show_from_verb(text, canvas_h)
-            except Exception:
-                _guard_wid, _guard_src = None, "none"
-        _shown = bool(_guard_wid) and (
-            _pst._cvis.present(_guard_wid, reason="turn-order", src="flash", emit=emit, text=operator_text, brief=_brief)
-            or _pst._cvis.card_is_open(_guard_wid) is True)   # THIS card, not another of its kind
-        if _guard_wid and not _shown:
-            emit("brain", "🪟 show guard refused by the canvas — the model's tool stands", text=_guard_wid, role="system")
-        if _shown:
-            _was_search = search_req["v"] is not None
-            if not escalate_req.get("leaves"):    # V2-852 M2: a routed send survives the show
-                escalate_req["v"] = None
-            search_req["v"] = None
-            acted["widget"] = True
-            acted["widget_id"] = acted.get("widget_id") or _guard_wid
-            emit("brain", "🪟 show por guard determinista (tool espuria evitada)",
-                 text=f"{_guard_wid} ({'search' if _was_search else 'escalate'}→show"
-                      f"{', licencia Jev' if _guard_src == 'jev' else ''})", role="system")
-            if not spoken_text:
-                try:
-                    # V2-209 (impl PARALELA — cablear en AMBOS): abrir una tarjeta no es entregar un
-                    # resultado. La decisión vive en `router_guards` para que los dos canales no puedan
-                    # divergir.
-                    from i18n import langs as _langs   # same object as the voice.engine.core shim
-                    from nucleo.flash import router_guards as _rg_show
-                    spoken_text = _rg_show.show_ack(_langs.current_language(), _guard_wid)
-                except Exception:
-                    spoken_text = "Aquí lo tienes."
-                send(speech.sanitize(spoken_text, drop_metadata=False))
 
     # Demo pass 69, B1 — his words NAME the (empty) picture viewer: the picture search, whatever tool the model used.
     from nucleo.flash import card_commission as _cardc_pic

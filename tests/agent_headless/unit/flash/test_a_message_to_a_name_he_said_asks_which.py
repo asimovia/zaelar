@@ -8,7 +8,7 @@ a closed card while the reply said «ya lo tienes en la tarjeta, míralo». On t
 the contacts card, got NOTHING back for «Raquel» (ten hits read as «a common word») and said «Raquel isn't listed».
 
 One door each:
-  · the contact a card receives is HIS word when the call swapped it for one he never said (`message.his_recipient`);
+  · a contact his words never named is asked on his behalf, never swapped for a word of his (V2-887);
   · a draft held for his review brings its card (`present.mount`), like `send_to`;
   · a question about a first name many people share answers «which one», closest first (`contactos.read_query`).
 """
@@ -48,42 +48,21 @@ def world(tmp_path, monkeypatch):
     directory._WINDOW.clear(); directory._ASKED.clear()
 
 
-# ── his word goes back in ─────────────────────────────────────────────────────────────────────────────────────
+# ── a name he never said is ASKED, never rewritten (V2-887) ───────────────────────────────────────────────────
 
-def test_a_name_he_never_said_becomes_his_word_and_the_card_asks(world):
-    events = []
-    out = gate.his_recipient("mensajeria", "draft", {"contact": "Rakel Karó", "text": "¿Qué tal va?"}, RAQUEL,
-                             emit=lambda *a, **k: events.append(k.get("extra")))
-    assert out["contact"] == "raquel" and out["text"] == "¿Qué tal va?"
-    assert events and events[0]["was"] == "Rakel Karó"
-    from widgets.mensajeria import data as ms
-    asked = ms.apply_action("draft", out)
-    assert asked["ok"] is False and len(asked["candidates"]) == 3, "five Raquels: «which one?», never a pick"
-
-
-def test_the_same_in_english(world):
-    out = gate.his_recipient("mensajeria", "send_to", {"contact": "Rowan Ferrell", "text": "running late"},
-                             "text rowan that I'm running late")
-    assert out["contact"] == "rowan"
-
-
-def test_a_name_under_a_synonym_key_is_read_as_the_card_will_read_it(world):
-    """V2-851 F2e, measured: «Send Rachel a message…» became `send_to {name: "Rachel Green"}` — this reader looked
-    only at `contact`, the card folded `name` into it later, and the message left to a Rachel he never chose."""
-    out = gate.his_recipient("mensajeria", "send_to", {"name": "Rowan Ferrer", "message": "running late"},
-                             "text rowan that I'm running late")
-    assert out["contact"] == "rowan", "the synonym is the same call: his word goes back and the card asks which"
-
-
-def test_a_recipient_his_words_do_name_is_untouched(world):
-    p = {"contact": "Raquel Salvador Esteban", "text": "x"}
-    assert gate.his_recipient("mensajeria", "send_to", p, "escríbele a Raquel Salvador Esteban") is p
-    p = {"contact": "Raquel Salvador Esteban", "text": "x"}
-    assert gate.his_recipient("mensajeria", "send_to", p, "la Salvador") is p, "his answer to «which one?»"
-    p = {"contact": "Carmen López", "relation": "mother", "text": "x"}
-    assert gate.his_recipient("mensajeria", "send_to", p, "dile a mamá que ya está") is p, "a relation is his word"
-    p = {"contact": "Rakel Karó", "text": "x"}
-    assert gate.his_recipient("mensajeria", "send_to", p, "envíaselo") is p, "no person in his words: nothing to put back"
+def test_a_name_he_never_said_is_kept_and_asked_never_swapped_for_a_word_of_his(world):
+    """Measured 2026-11-11 (local): «te dije su nombre y su apellido» turned the model's «Raquel Salvador» into
+    «nombre» and three contacts named «Nombre …». The recipient is read, never rewritten: a name his words never
+    named is a question on behalf («¿a Rakel Karó?»), a name they did name passes as it is."""
+    from widgets import actions as wa
+    assert not hasattr(gate, "his_recipient"), "the recipient rewriter is gone"
+    asked = gate.asked_if_leaving(wa.FAST, None, "mensajeria", "send_to",
+                                  payload={"contact": "Rakel Karó", "text": "¿Qué tal va?"}, said=RAQUEL)
+    assert asked == wa.CONFIRM
+    kept = gate.asked_if_leaving(wa.FAST, None, "mensajeria", "send_to",
+                                 payload={"contact": "Raquel Salvador", "text": "x"},
+                                 said="te dije su nombre y su apellido · mándale un mensaje a Raquel Salvador")
+    assert kept == wa.FAST
 
 
 def test_the_door_runs_on_every_data_op():
@@ -91,7 +70,7 @@ def test_the_door_runs_on_every_data_op():
     phase 5 as the rule of each recipient slot a leaving card DECLARES (`exit_slots`), never as a reader by name."""
     workers = pathlib.Path(gate.__file__).parents[1] / "workers"
     assert "exit_slots.read(" in (workers / "exit_gate.py").read_text()
-    assert "message.his_recipient(" in (workers / "exit_slots.py").read_text()
+    assert "his_recipient" not in (workers / "exit_slots.py").read_text().split("def _his_words", 1)[1][:800]
     from nucleo.workers import exit_slots
     for act in ("send_to", "send_draft", "forward"):
         assert exit_slots.declared("mensajeria", act)["recipient"] == {"key": "contact", "from": "his_words"}, act

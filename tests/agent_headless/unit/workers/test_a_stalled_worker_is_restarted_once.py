@@ -115,7 +115,7 @@ def test_the_pulse_decisions_reach_the_observer_timeline(fresh_db, escalations, 
     rec = SessionRecord(task_id="5", goal="búscame piso", status="running", backend="claude_code")
     rec.started = time.time() - dispatch.STUCK_SECS - 30
     rec.last_event_at = time.time() - dispatch.STUCK_SECS - 10
-    rec.session = type("I", (), {"inject": staticmethod(lambda t: asyncio.sleep(0))})()
+    rec.session = type("I", (), {"inject": staticmethod(lambda t, **k: asyncio.sleep(0))})()
     monkeypatch.setattr(dispatch, "_SESSIONS", {"5": rec})
 
     async def _noop(*a, **k):
