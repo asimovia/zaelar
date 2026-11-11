@@ -142,7 +142,8 @@ def shadow(emit, *, at: str, brief, escalate_req: dict | None, model_calls=(), f
                  "worker": str(worker or ""),
                  "would": w, "did": d, "changes": sorted(k for k in w if w[k] != d[k]),
                  "would_b": wb, "changes_b": sorted(k for k in wb if wb[k] != d[k]),
-                 "promise": promise(brief, model_calls=model_calls, model_wrote=wrote)}
+                 "promise": promise(brief, model_calls=model_calls, model_wrote=wrote),
+                 "pick_pending": __import__("nucleo.turn.pick_pending", fromlist=["x"]).of_turn()}   # V2-878 §5
         emit("brain", LABEL, role="system", text=str(text or "")[:160], extra=extra)
         return extra
     except Exception as e:  # noqa: BLE001 — a shadow never breaks a turn
