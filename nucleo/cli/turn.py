@@ -98,6 +98,8 @@ def _action(decision: dict, events: list[dict], ledger: list[dict], tags: list[d
     if "read_widget" in names:
         return "read_widget"
     for e in events:
+        if e.get("kind") == "controls":                       # his own 🔊 / ⏻ (nucleo/acts/self_controls.py)
+            return f"controls:{e.get('act') or e.get('label') or ''}"
         if e.get("kind") == "panel":
             return f"panel:{e.get('id') or e.get('label') or ''}"
     if decision.get("clarify"):

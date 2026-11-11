@@ -19,6 +19,9 @@ export const ORIGIN_SCOPED = {
   widget: ["show", "create", "fullscreen", "move", "resize", "arrange", "minimize"],
   // The native panel (chat, processes, connectors): «abre el chat» on the phone does not open the desktop's.
   panel: "*",
+  // The agent's OWN controls by voice (🔊 mute/unmute, ⏻ off): the screen that heard him presses its button.
+  // «Apágate» said to the phone switches the phone's session off, never the desktop he walked away from.
+  controls: "*",
 };
 
 // Every other kind the stream carries, declared on purpose: the conversation and the agent's state are the same on
