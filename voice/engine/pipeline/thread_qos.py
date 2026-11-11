@@ -13,6 +13,8 @@ import ctypes
 import ctypes.util
 import sys
 
+from loguru import logger
+
 QOS_CLASS_USER_INTERACTIVE = 0x21
 
 
@@ -28,7 +30,8 @@ def interactive() -> bool:
         fn = _libc().pthread_set_qos_class_self_np
         fn.argtypes, fn.restype = [ctypes.c_uint, ctypes.c_int], ctypes.c_int
         return fn(QOS_CLASS_USER_INTERACTIVE, 0) == 0
-    except Exception:  # noqa: BLE001 — a priority hint never stops the voice
+    except Exception as e:  # noqa: BLE001 — a priority hint never stops the voice
+        logger.debug(f"thread_qos: interactive class not set: {e!r}")
         return False
 
 
@@ -44,5 +47,6 @@ def current() -> int | None:
         if lib.pthread_get_qos_class_np(lib.pthread_self(), ctypes.byref(qos), ctypes.byref(rel)) != 0:
             return None
         return qos.value
-    except Exception:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"thread_qos: class unreadable: {e!r}")
         return None

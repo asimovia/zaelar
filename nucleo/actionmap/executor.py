@@ -223,10 +223,8 @@ def execute(action: dict, emit, phrase: str = "") -> bool:
         _bulk_close().close_all(emit, src=src["src"], text=phrase or "", said=said, extra=dict(src),
                                 scope=_grammar.close_scope(phrase or ""))   # V2-807 T-08
         return True
-    if do == "controls":
-        # The agent's own speaker / ⏻: the SAME door the model's `agent_controls` call goes through, and that door
-        # hands the act to the screen that heard him, which runs its button (`nucleo/acts/self_controls.py`).
-        from nucleo.acts import self_controls
+    if do == "controls":                    # his own 🔊/⏻: the SAME door as the model's `agent_controls` call, which
+        from nucleo.acts import self_controls   # hands the act to the screen that heard him (`acts/self_controls.py`)
         return self_controls.apply(action.get("act"), emit, src=src["src"], said=said)
     if do == "arrange":
         # V2-588: same emit as POST /api/canvas/arrange and the arrange_canvas tool — one rail, three doors.

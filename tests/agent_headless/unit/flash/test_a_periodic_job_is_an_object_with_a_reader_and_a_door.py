@@ -148,9 +148,19 @@ class _Model:
 
 
 def _turn(monkeypatch, tag: str, words: str) -> dict:
-    model = type("M", (_Model,), {"tag": tag})
-    monkeypatch.setattr("nucleo.llm.fast_client.FastClient", model)
-    return asyncio.run(turn.run_turn(words, sid="v883", ingest=False, execute=True))
+    return _run_with(type("M", (_Model,), {"tag": tag}), words)
+
+
+def _run_with(model, words: str) -> dict:
+    """The model stub lives exactly as long as the turn. A `monkeypatch` here restored the harness's fake AFTER the
+    `jobs` fixture had put the real client back (monkeypatch is set up first, by the root conftest, so it undoes
+    last), and every later test in the process ran against `RecordedModel`."""
+    from nucleo.llm import fast_client
+    old, fast_client.FastClient = fast_client.FastClient, model
+    try:
+        return asyncio.run(turn.run_turn(words, sid="v883", ingest=False, execute=True))
+    finally:
+        fast_client.FastClient = old
 
 
 def test_a_miss_is_not_spoken_as_done(jobs, monkeypatch):
@@ -189,8 +199,7 @@ class _ToolModel:
 
 @pytest.mark.parametrize("job, gone", [("riego del balcón", "water"), ("the email digest", None)])
 def test_the_tool_cancels_by_label_and_a_miss_is_said(jobs, monkeypatch, job, gone):
-    monkeypatch.setattr("nucleo.llm.fast_client.FastClient", type("T", (_ToolModel,), {"job": job}))
-    res = asyncio.run(turn.run_turn(f"borra {job}", sid="v883", ingest=False, execute=True))
+    res = _run_with(type("T", (_ToolModel,), {"job": job}), f"borra {job}")
     head = langs.spec("es").cron_no_match.split("{")[0]
     if gone:
         assert jobs[gone] not in _listed() and head not in res["reply"], res["reply"]

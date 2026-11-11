@@ -115,9 +115,7 @@ _CAT = {
     # ── Widgets, second batch: NATIVE surfaces that the brain opens like a card (`panel` = ChatWall tab via
     # `show_panel`; `secret` = vault modal). To the operator, “open the chat” and “open the
     # agenda” are the same gesture against the canvas, so they belong to the same family.
-    "panel": "widget", "secret": "widget",
-    # `controls`: his own 🔊 / ⏻ ordered by voice (`nucleo/acts/self_controls.py`) — the twin of `ui` (his taps).
-    "controls": "widget",
+    "panel": "widget", "secret": "widget", "controls": "widget",   # `controls`: his own 🔊/⏻ by voice, twin of `ui`
     # ── System / Code (OFF) — plumbing: voice transport, state, raw metrics, cluster, perf.
     # `metric` MOVED DOWN from the main view to here (2026-08-09, operator complaint): these are the RAW metrics from the
     # LiveKit plugin, and with streaming STT (Deepgram) the metric does NOT depend on anyone speaking — its

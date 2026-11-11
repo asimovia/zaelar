@@ -48,7 +48,7 @@ def norm(s) -> str:
     return re.sub(r"\s+", " ", re.sub(r"[^\w\s]", " ", s.casefold())).strip()
 
 
-_known_cache: dict = {"at": 0.0, "val": {}, "words": frozenset()}
+_known_cache: dict = dict(at=0.0, val={}, words=frozenset())   # a state record (when, names, pieces), not a word table
 _places: set[str] = set()
 
 
