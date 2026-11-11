@@ -51,6 +51,27 @@ def keep(uid: str, entry: dict) -> None:
         _note(e)
 
 
+#: What a durable question IS (V2-886 D1): `consent` — an act waits for his yes (a card with ✕, the only kind drawn);
+#: `clarify` — a fact or a choice the work needs; it waits on the row the same way but is DIALOGUE, said in the
+#: conversation, never a card (operator, 2026-11-11: «a clarification is part of the dialogue, not a card»).
+KIND_CONSENT, KIND_CLARIFY = "consent", "clarify"
+
+
+def kind_of(entry) -> str:
+    """The kind of a question, from what its producer already declared — never from its wording. A door's verdict
+    (`consent`: `ask_consent` vs `ask_fact`/`ask_which`) decides; a worker's held act (anything but `ask_user`, with
+    the act retained for his yes) is consent; everything else (a worker's own question, a reminder, a missing slot)
+    is clarify."""
+    e = entry if isinstance(entry, dict) else {}
+    if str(e.get("kind") or "") in (KIND_CONSENT, KIND_CLARIFY):
+        return str(e["kind"])
+    if e.get("consent"):
+        return KIND_CONSENT if str(e["consent"]) == "ask_consent" else KIND_CLARIFY
+    if not e.get("inline") and str(e.get("action") or "ask_user") != "ask_user" and e.get("retained"):
+        return KIND_CONSENT
+    return KIND_CLARIFY
+
+
 def _row(task_id) -> dict:
     try:
         from memory import tasks_store
@@ -73,11 +94,13 @@ def trace_of(task_id) -> str:
     return str(_row(task_id).get("trace_id") or "")
 
 
-def emit_ask(*, task_id: str, ask_id: str, text: str, session: str = "", options=None, among=None) -> None:
+def emit_ask(*, task_id: str, ask_id: str, text: str, session: str = "", options=None, among=None,
+             kind: str = KIND_CLARIFY) -> None:
     """The `ask` event the screen reads. `options` only when the asker declared them, `among` only for ASK_WHICH."""
     extra = {"task_id": str(task_id or ""), "ask_id": str(ask_id or ""), "text": str(text or ""),
              "session": str(session or ""), "title": title_of(task_id),
-             "trace": trace_of(task_id)}
+             "trace": trace_of(task_id),
+             "ask_kind": kind if kind in (KIND_CONSENT, KIND_CLARIFY) else KIND_CLARIFY}
     if options:
         extra["options"] = [str(o) for o in options]
     if among:
@@ -95,7 +118,8 @@ def _on_bus(ev: dict) -> None:
         return
     p = ev.get("payload") if isinstance(ev.get("payload"), dict) else {}
     emit_ask(task_id=p.get("task_id") or "", ask_id=p.get("ask_id") or p.get("corr_id") or "",
-             text=p.get("question") or "", session=p.get("session") or "", options=p.get("options"))
+             text=p.get("question") or "", session=p.get("session") or "", options=p.get("options"),
+             kind=str(p.get("kind") or KIND_CLARIFY))
 
 
 def _subscribe() -> None:
@@ -159,7 +183,8 @@ def ask(uid: str, entry: dict, *, bus_id: str = "") -> str:
         import bus
         bus.emit_sync("worker.ask", {"id": bus_id or uid, "task_id": uid or bus_id, "ask_id": ask_id,
                                      "corr_id": ask_id, "question": str(entry.get("question") or ""),
-                                     "session": str(entry.get("session") or ""), **({"options": opts} if opts else {})})
+                                     "session": str(entry.get("session") or ""), "kind": kind_of(entry),
+                                     **({"options": opts} if opts else {})})
     except Exception as e:  # noqa: BLE001
         _note(e)
     return ask_id
@@ -171,6 +196,6 @@ def reshow(asks) -> int:
     for a in asks or []:
         art = artefact(a["task_id"])
         emit_ask(task_id=a["task_id"], ask_id=a["ask_id"], text=a.get("question") or art.get("question") or "",
-                 session=str(art.get("session") or ""), options=art.get("options"))
+                 session=str(art.get("session") or ""), options=art.get("options"), kind=kind_of(art))
         n += 1
     return n

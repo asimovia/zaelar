@@ -29,6 +29,7 @@ const _list = (...xs) => {
 /** The open question a task row carries, or null when the row is not waiting on his answer. */
 export function askOfRow(r) {
   if (!r || r.state !== "waiting" || r.waiting_for !== "user_answer" || !r.ask_id) return null;
+  if (r.ask_kind === "clarify") return null;      // V2-886 D1: a clarification is dialogue, said in the chat — no card
   const a = r.ask && typeof r.ask === "object" ? r.ask : {};
   return { task_id: _str(r.id), session: _str(r.session), ask_id: _str(r.ask_id), text: _textOf(r.ask),
            title: _str(r.title || r.goal), trace: _str(r.trace_id),
@@ -40,6 +41,7 @@ export function askOfRow(r) {
 export function onAsk(d) {
   const task_id = _str(d && d.task_id), ask_id = _str(d && d.ask_id);
   if (!task_id || !ask_id) return;
+  if (d.ask_kind === "clarify") return;               // V2-886 D1: only a question that asks his consent is a card
   setOpenAsks(xs => {
     const prev = xs.find(a => a.task_id === task_id);
     if (prev && prev.ask_id === ask_id) return xs;                 // the same question told twice

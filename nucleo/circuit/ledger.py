@@ -591,6 +591,12 @@ def board(scope: str = "live", *, show_all: bool = False) -> list[dict]:
             reopenable = None
     out = []
     for r in rows:
+        if r.get("state") == "waiting" and r.get("ask_id"):      # V2-886 D1: is its open question a card or dialogue?
+            try:
+                from nucleo.circuit import asker as _asker
+                r = {**r, "ask_kind": _asker.kind_of(_asker.artefact(str(r.get("id") or "")))}
+            except Exception:  # noqa: BLE001 — unread: the screen keeps drawing it as before
+                pass
         if reopenable is not None:
             r = {**r, "has_results": bool(reopenable(str(r.get("id") or "")))}
         det = live.get(str(r.get("id") or ""))

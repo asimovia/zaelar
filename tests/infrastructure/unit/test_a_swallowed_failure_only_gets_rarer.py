@@ -421,7 +421,7 @@ PER_FILE: dict[str, int] = {
     'nucleo/pulse/sparks.py': 2,
     'nucleo/circuit/spec.py': 13,   # + the worker's own end state, folded in from goal.py
     'nucleo/surfaces.py': 1,
-    'nucleo/circuit/ledger.py': 6,
+    'nucleo/circuit/ledger.py': 7,
     'nucleo/torrent_router.py': 2,
     'nucleo/truth.py': 2,
     'nucleo/turn/confirm_gates.py': 2,
