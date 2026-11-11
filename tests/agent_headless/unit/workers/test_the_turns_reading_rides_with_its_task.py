@@ -44,7 +44,6 @@ def door(monkeypatch):
     monkeypatch.setattr(playbook, "checkpoint_one", lambda rec: "")
     monkeypatch.setattr(contract, "would_refuse", lambda *a: None)
     monkeypatch.setattr(card, "licence", lambda *a, **k: SimpleNamespace(verdict=card.RUN))
-    monkeypatch.setattr(message, "his_recipient", lambda wid, act, inner, said, **k: inner)
     monkeypatch.setattr(taint, "tainted", lambda rec: False)
     from nucleo.acts import message_channel
     monkeypatch.setattr(message_channel, "_declares_channel", lambda *a: True)

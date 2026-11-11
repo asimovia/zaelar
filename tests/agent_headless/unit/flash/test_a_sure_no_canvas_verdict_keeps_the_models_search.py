@@ -1,11 +1,14 @@
-"""A sure «no canvas verb» verdict outranks the word guard that turns the model's tool into a show.
+"""No word guard turns the model's tool into a show (V2-887; was: a sure «no canvas verb» verdict outranks it).
 
 Measured on the operator's engine (2026-11-07, trace T1·b0e8): «Busca en la web a qué hora abre hoy el Museo del Prado
 y dímelo». The model called `web_search`. The deterministic show guard read «abre» (the museum OPENS) as an order to
 open a card and «la web» as the browser's alias, nulled the search and showed the browser card — while the brief had
 read the whole sentence as `canvas = neither` at 1.00. The card was then read back (it only shows its controls) and
-the turn answered «I can't see the opening hours». A sure `neither` now keeps the model's tool; below the veto floor
-the guard works as before.
+the turn answered «I can't see the opening hours». Measured again 2026-11-11 (T5·71ab): «busca cuál es el partido y
+pone el nombre ahí» — `\bpon` matched «pone», the open agenda counted as shown, the search was nulled and the turn
+said «Aquí lo tienes» with nothing done. The guard is gone: whatever the verdict, the model's search stands.
+
+SAID_T5 = the measured sentence.
 """
 from __future__ import annotations
 
@@ -20,6 +23,7 @@ from nucleo.flash import post_stream_acts as A
 from nucleo.acts import canvas_verdict
 from nucleo.turn import brief as tb
 
+SAID_T5 = "Bueno, busca cuál es el partido, el equipo de baloncesto, y pone el nombre exacto ahí."
 SAID = {"es": "Busca en la web a qué hora abre hoy el Museo del Prado y dímelo.",
         "en": "Look up on the web what time the Prado opens today and tell me."}
 
@@ -40,7 +44,6 @@ def _run(monkeypatch, said, brief):
     monkeypatch.setattr(post_stream_settle, "no_new_errand_for_a_bound_answer", lambda *a, **k: None)
     monkeypatch.setattr(route_by_verdict, "owns", lambda *a, **k: False)
     monkeypatch.setattr(card_commission, "picture_named_by", lambda *a, **k: None)
-    monkeypatch.setattr(P._show_target, "show_from_verb", lambda *a, **k: (None, "none"))
     presented: list = []
     monkeypatch.setattr(P._cvis, "present", lambda wid, **k: presented.append(wid) or True)   # the canvas would accept
     monkeypatch.setattr(P._cvis, "card_is_open", lambda wid, **k: False)
@@ -68,13 +71,13 @@ def test_a_sure_neither_keeps_the_search_and_shows_no_card(monkeypatch, lang):
     search_req, acted, presented, guard_calls, events = _run(monkeypatch, SAID[lang], _brief("neither", 1.0))
     assert search_req["v"] is not None, "the model's search was nulled against a sure «no canvas verb»"
     assert not acted["widget"] and presented == [] and guard_calls == []
-    assert any("tool stands" in str(e[1]) for e in events if len(e) > 1)
 
 
 @pytest.mark.parametrize("brief", [None, ("neither", 0.6), ("show", 1.0)])
-def test_without_a_sure_neither_the_guard_still_swaps(monkeypatch, brief):
-    search_req, acted, presented, _, _ = _run(monkeypatch, SAID["es"], _brief(*brief) if brief else None)
-    assert search_req["v"] is None and acted["widget"] and presented == ["navegador"]
+@pytest.mark.parametrize("said", [SAID["es"], SAID["en"], SAID_T5])
+def test_whatever_the_verdict_no_word_guard_swaps_the_search(monkeypatch, brief, said):
+    search_req, acted, presented, guard_calls, _ = _run(monkeypatch, said, _brief(*brief) if brief else None)
+    assert search_req["v"] is not None and not acted["widget"] and presented == [] and guard_calls == []
 
 
 def test_sure_no_canvas_reads_the_veto_floor():
