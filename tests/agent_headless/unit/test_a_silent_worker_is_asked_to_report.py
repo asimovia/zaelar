@@ -20,7 +20,7 @@ class _Inbox:
     def __init__(self):
         self.said: list[str] = []
 
-    async def inject(self, text):
+    async def inject(self, text, source="operator"):
         self.said.append(text)
 
 

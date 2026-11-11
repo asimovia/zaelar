@@ -137,26 +137,26 @@ class WorkerSession(SessionNotes):
     _finish = _sfin._finish
 
     # ── injection (↓) ───────────────────────────────────────────────────────────────────────────────────────
-    async def inject(self, text: str) -> None:
+    async def inject(self, text: str, source: str = "operator") -> None:
         """Queues an instruction for the worker (§v3·H). PRIMARY delivery = piggyback (worker_api serves it on the
         bridge's next contact); SECONDARY = backend stdin (conversational engines)."""
         text = (text or "").strip()
         if not text:
             return
-        self._rec.injects.append(Inject(text=text, ts=time.time()))
+        self._rec.injects.append(Inject(text=text, ts=time.time(), source=source))
         try:
             await self._b.send(text)     # secondary path; if the backend queues until the turn ends, nothing happens
         except Exception:
             pass
 
-    def take_pending_injects(self) -> list[str]:
+    def take_pending_injects(self) -> list[dict]:
         """Returns pending injections and marks them `delivered` (idempotent, no double delivery). Called by
         worker_api when responding to a bridge (piggyback)."""
         out = []
         for inj in self._rec.injects:
             if inj.state == "pending":
                 inj.state = "delivered"
-                out.append(inj.text)
+                out.append({"text": inj.text, "source": getattr(inj, "source", "operator")})
         return out
 
     # ── courteous shutdown ─────────────────────────────────────────────────────────────────────────────────

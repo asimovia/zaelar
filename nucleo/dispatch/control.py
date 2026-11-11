@@ -51,7 +51,7 @@ async def inject(which: str, message: str) -> list[str]:
     return done
 
 
-def take_pending_injects(tid) -> list[str]:
+def take_pending_injects(tid) -> list[dict]:
     """Piggyback: worker_api the calls al responder a a bridge → entrega the inyecciones pending (§v3·H).
     Lee the RECORD (no the session): also entrega it inyectado mientras the task esperaba in the cola of the pool."""
     r = _d._SESSIONS.get(str(tid))
@@ -61,7 +61,7 @@ def take_pending_injects(tid) -> list[str]:
     for inj in r.injects:
         if inj.state == "pending":
             inj.state = "delivered"
-            out.append(inj.text)
+            out.append({"text": inj.text, "source": getattr(inj, "source", "operator")})   # its author (V2-886 fila 9)
     return out
 
 

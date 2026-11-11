@@ -20,6 +20,7 @@ class Inject:
     text: str
     ts: float
     state: str = "pending"        # pending | delivered
+    source: str = "operator"      # V2-886 fila 9: who wrote it — `operator` (his refinement) or `system` (the harness)
     trace: str = field(default_factory=_trace.current)   # the turn that sent it: his steer, or our own note (V2-831)
 
 
