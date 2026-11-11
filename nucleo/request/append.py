@@ -10,6 +10,7 @@
 #
 import asyncio
 import re
+import time
 
 from loguru import logger
 
@@ -128,6 +129,16 @@ def about_a_live_errand(request: str, live: list[tuple[str, str]]) -> str:
     """
     if not request.strip() or not live:
         return ""
+    t0 = time.monotonic()
+    answer, outcome = _judge(request, live)
+    from nucleo.turn import thread_event
+    thread_event.judged(request, live, answer, ms=(time.monotonic() - t0) * 1000.0, outcome=outcome)   # V2-878 §6
+    return answer
+
+
+def _judge(request: str, live: list[tuple[str, str]]) -> tuple[str, str]:
+    """`(tid or "", outcome)` — the model's answer and how it ended: about · separate · out_of_range · unreadable ·
+    error."""
     menu = "\n".join(f"{i + 1}. {str(goal or '')[:160]}" for i, (_tid, goal) in enumerate(live))
     try:
         from nucleo.memory_agent.processor import llm
@@ -135,16 +146,16 @@ def about_a_live_errand(request: str, live: list[tuple[str, str]]) -> str:
                                f"RUNNING ERRANDS:\n{menu}\n\nNEW REQUEST:\n{request[:400]}",
                                max_tokens=32, temperature=0.0, timeout=12.0)
     except Exception:  # noqa: BLE001
-        return ""
-    if not raw:
-        return ""
-    m = re.search(r'"about"\s*:\s*(\d+)', raw)
+        return "", "error"
+    m = re.search(r'"about"\s*:\s*(\d+)', raw or "")
     if not m:
-        return ""
+        return "", "unreadable"
     n = int(m.group(1))
     # Out of range is NOT "the last one": a number nobody offered is a model that did not answer the question,
     # and picking a neighbour would attach the operator's request to an errand chosen at random.
-    return live[n - 1][0] if 1 <= n <= len(live) else ""
+    if 1 <= n <= len(live):
+        return live[n - 1][0], "about"
+    return "", "separate" if n == 0 else "out_of_range"
 
 
 def continues_ended(request: str, kind: str, ended: list[dict]) -> tuple[str, dict]:

@@ -316,7 +316,8 @@
    "emits": [
     "trace",
     "rail",
-    "flow"
+    "flow",
+    "thread"
    ]
   },
   {
@@ -852,6 +853,7 @@
  ],
  "emitters": {
   "_doc": "Which piece an observability event comes from (`piece`), for modules the pieces' `paths` do not name. Read by observability/pieces.py: an exact file here beats a piece's own path; otherwise the deepest folder (here or in a piece's paths) wins. A value is a piece id, or {kind: piece, '*': default} where one module hosts several pieces. A module drawn nowhere stamps piece='unmapped' with its path — never a guess.",
+  "nucleo/turn/thread_event.py": "f_admit",
   "voice/engine/pipeline/agent.py": {
    "vad": "f_ear",
    "worker_start": "t_dispatch",
