@@ -8,6 +8,8 @@ cache. Stdlib only. The card draws the tiles itself as plain images (widgets/map
 """
 from __future__ import annotations
 
+from loguru import logger
+
 import json
 import re
 import time
@@ -161,7 +163,8 @@ def _his_area() -> dict | None:
     try:
         from memory import api as memory
         here = (memory.state() or {}).get("here")
-    except Exception:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001 — the state unread: the world
+        logger.debug(f"map: his area unread — {type(e).__name__}: {e}")
         return None
     if isinstance(here, dict) and isinstance(here.get("lat"), (int, float)) and isinstance(here.get("lon"), (int, float)):
         return {"lat": round(float(here["lat"]), 2), "lon": round(float(here["lon"]), 2)}

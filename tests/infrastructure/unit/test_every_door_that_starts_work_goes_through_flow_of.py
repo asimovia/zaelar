@@ -32,6 +32,7 @@ DECLARED: dict[tuple[str, str], str] = {
     ("nucleo/acts/search_sheet.py", "_hand_on"): "the first rung's hand-on, under the errand it was born as",
     ("nucleo/acts/tools.py", "<module>"): "the model's call is RECORDED into the turn's request; `close_the_turn` launches it",
     ("nucleo/turn/pipeline_errands.py", "launch_the_errands"): "ROUTED: `flow_of.settled` before it launches; " + PORTAL,
+    ("nucleo/turn/pipeline_errands.py", "_launch_the_rest"): CONTINUES + " (called inside `launch_the_errands` once `flow_of.settled` routed the sentence: its other errands, each through the dispatcher's dedup)",
     ("nucleo/flash/compose_rung.py", "_to_the_worker"): PORTAL,
     ("nucleo/flash/cluster.py", "_on_tool_call"): PORTAL + " (a peer's turn has no trace of his: the dispatcher decides)",
     ("nucleo/cli/worker_api_exec.py", "_not_mine"): "the worker handed words back: an errand of their own, never refolded",

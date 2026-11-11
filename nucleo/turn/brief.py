@@ -228,7 +228,9 @@ def _threads() -> list:
     try:
         from nucleo.turn import named_errand as _ne
         return _ne.known(with_finished=True)
-    except Exception:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001 — the cards unread: the brief asks with none
+        from loguru import logger
+        logger.debug(f"brief: the open errands' cards unread — {type(e).__name__}: {e}")
         return []
 
 
