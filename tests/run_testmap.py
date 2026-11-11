@@ -5998,11 +5998,14 @@ DOMAINS: list[dict] = [
         # V2-823 phone. Disarmed (the Deck deaf to hb:open-card; a tap on a row opens instead of showing the page; the
         # shared page painting an undeclared owner; «Open» leaving the menu up; the ☰ without its entry; the dock's
         # `.zm-menu` rule unscoped so the sheet falls out of the screen) → each red.
-        {"id": "4.317", "title": "The phone's apps launcher lives in the ☰ menu: its «Apps» entry lists the apps (System · "
-                                 "Custom), a tap shows the app's page with only the declared fields (the desk's page "
-                                 "module), «Open» puts the app on the deck through hb:open-card and closes the menu; "
-                                 "every control ≥ 44px — RENDERED at 375px (V2-823)",
-            "ch": UNIT, "paths": ["tests/browser/unit/mobile/test_the_menu_holds_the_apps_launcher.py"]},
+        {"id": "4.317", "title": "Every phone shell surface is a full-screen PAGE (V2-876 D-A/D-C/D-D, superseding V2-823's "
+                                 "launcher in the ☰): chat, menu, apps, settings, feedback and the AI question run from the "
+                                 "status bar to the dock with one header (‹ · title · ×, 44px), their last row reachable, "
+                                 "one open at a time, settings and feedback replace the menu and ‹ returns to it, no "
+                                 ".zm-sheet anywhere; the dock is six 44px targets (≡ · chat · apps | orb | mic · speaker); "
+                                 "the apps page is a 3-column grid where no two apps share an icon and a tap opens the app "
+                                 "through hb:open-card; typing in the chat page lays it over the keyboard — RENDERED at 393×852",
+            "ch": UNIT, "paths": ["tests/browser/unit/mobile/test_every_shell_surface_is_a_page.py"]},
         {"id": "4.318", "title": "After a reconnect the screen adopts the engine's list of cards: an orphan it cannot "
                                  "name goes, an unlisted card closes, a listed one opens beside, and the drift is a "
                                  "widget/reconcile event (V2-825 F5, refactor2710-04 T-04) — RENDERED",

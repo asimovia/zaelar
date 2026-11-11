@@ -75,6 +75,8 @@ def open_phone(setup_js: str, *, lang: str = "es", routes=(), width: int = W, he
             pg.goto(f"http://127.0.0.1:{port}/", wait_until="domcontentloaded")
             pg.evaluate("""async ([css, lang, setup]) => {
                 document.body.innerHTML = '';
+                const vp = document.createElement('meta'); vp.name = 'viewport';
+                vp.content = 'width=device-width, initial-scale=1, viewport-fit=cover'; document.head.append(vp);
                 for (const h of css) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = h;
                                        document.head.append(l); }
                 await new Promise(r => setTimeout(r, 300));

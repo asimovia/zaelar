@@ -5,16 +5,13 @@ import { h } from "../../../app/core/dom.js?v=2";
 import { createEffect } from "../../../app/core/reactive.js?v=2";
 import { t } from "../../../app/core/i18n.js?v=1";
 import * as consent from "./ai-consent.js?v=1";
+import { Page } from "./Page.js?v=1";
 
 export function AiConsentSheet() {
   // The orb and the send button look disabled while the yes is missing (they still open this sheet when tapped).
   createEffect(() => document.documentElement.classList.toggle("zm-consent-pending", consent.pending()));
-  return h("section", {
-    class: () => "zm-sheet zm-consent" + (consent.sheetOpen() ? " open" : ""),
-    role: "dialog", "aria-modal": "true", "aria-labelledby": "zm-consent-t",
-    "aria-hidden": () => (consent.sheetOpen() ? "false" : "true"),
-  },
-    h("header", { class: "zm-sheet-h" }, h("h2", { id: "zm-consent-t" }, () => t("consent.title"))),
+  return Page({ id: "consent", open: consent.sheetOpen, title: () => t("consent.title"), close: () => consent.setSheetOpen(false),
+    attrs: { role: "dialog", "aria-modal": "true" } },
     h("div", { class: "zm-consent-b" },
       h("p", null, () => t("consent.body")),
       h("p", null, () => t("consent.what")),

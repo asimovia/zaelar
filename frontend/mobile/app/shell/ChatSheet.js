@@ -1,4 +1,4 @@
-// ChatSheet.js — the chat on the phone. Mobile counterpart of components/ChatWall.js; the SHELL is new, the CONTENT is
+// ChatSheet.js — the chat on the phone, a full-screen page (Page.js). Mobile counterpart of components/ChatWall.js; the SHELL is new, the CONTENT is
 // not forked: the rows are store.chatMsgs() (the desktop wall's signal) and sending is ChatWall's submitChat(), the ONE
 // path from a typed sentence to the agent — a local copy would be a second path, and a second path is how one shell
 // starts recording messages the other never sees. One tab only: processes and crons live in the menu, clusters are
@@ -11,6 +11,7 @@ import { chatRefView } from "../../../app/components/ChatRef.js?v=1";
 import { renderMarkdownLite } from "../../../app/lib/markdown-lite.js?v=1";
 import { t } from "../../../app/core/i18n.js?v=1";
 import * as consent from "./ai-consent.js?v=1";
+import { Page } from "./Page.js?v=1";
 
 const SEND = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>`;
 
@@ -31,14 +32,7 @@ export function ChatSheet() {
     inputEl.focus();
   };
 
-  const sheet = h("section", {
-    class: () => "zm-sheet zm-chat" + (store.chatOpen() ? " open" : ""),
-    "aria-hidden": () => (store.chatOpen() ? "false" : "true"),
-  },
-    h("header", { class: "zm-sheet-h" },
-      h("h2", null, () => t("chat.title")),
-      h("button", { class: "zm-sheet-x", "aria-label": () => t("desktop.close"), onClick: () => store.setChatOpen(false) }, "×"),
-    ),
+  const sheet = Page({ id: "chat", open: store.chatOpen, title: () => t("chat.title"), close: () => store.setChatOpen(false), scroll: false },
     h("div", { class: "zm-msgs", ref: (el) => (listEl = el),
       // Following the newest line is a STATE of the list, read from his last scroll — measured after a render it
       // is already wrong (the new line made the list taller), which is why the list never followed (V2-877 #10).

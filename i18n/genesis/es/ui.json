@@ -738,6 +738,8 @@
  "mobile.account": "Mi cuenta",
  "mobile.account_sub": "Plan, energía, facturación, renovación y cerrar sesión",
  "mobile.chat_off": "Tu agente está apagado: enciéndelo con ⏻ y te responderá.",
+ "mobile.wake_word": "Palabra de activación «{name}»",
+ "mobile.apps_mine": "Tuyas",
  "mobile.close_all": "Cerrar todo",
  "mobile.dashboards": "Paneles",
  "mobile.desktop": "Versión de escritorio",
