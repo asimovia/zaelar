@@ -686,8 +686,7 @@ TOOLS: list[dict] = [
             "description": (
                 "Inyecta una instrucción a un Brain Worker YA EN MARCHA (mira «BRAIN WORKERS EN MARCHA» en tu "
                 "estado) cuando el operador refina, amplía o corrige una tarea EN CURSO. Para un refinamiento NO "
-                "abras otra con escalate: inyecta aquí. `which` = referencia natural al worker ('la búsqueda de la "
-                "moto', 'todos'); `message` = la instrucción nueva, autocontenida."
+                "abras otra con escalate: inyecta aquí."
             ),
             "parameters": {
                 "type": "object",
@@ -704,9 +703,8 @@ TOOLS: list[dict] = [
         "function": {
             "name": "stop_worker",
             "description": (
-                "MATA un Brain Worker EN MARCHA ('para eso', 'deja de buscar', 'cancela el widget que estás "
-                "creando', 'para todo'). No es cerrar un widget ([[close]]) ni borrarlo (delete_widget): detiene un "
-                "proceso de fondo. `which` = referencia natural ('el widget', 'la búsqueda', 'todo')."
+                "MATA un Brain Worker EN MARCHA ('deja de buscar'): no un widget ni una tarea programada "
+                "(cancel_scheduled). `which` = referencia natural ('todo')."
             ),
             "parameters": {
                 "type": "object",
@@ -714,6 +712,18 @@ TOOLS: list[dict] = [
                     "which": {"type": "string", "description": "qué worker parar (natural; 'todo' = todos)"},
                 },
                 "required": ["which"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "cancel_scheduled",
+            "description": "Borra una tarea programada suya («Ya programado»): `job` = su nombre.",
+            "parameters": {
+                "type": "object",
+                "properties": {"job": {"type": "string"}},
+                "required": ["job"],
             },
         },
     },

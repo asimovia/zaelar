@@ -3644,7 +3644,8 @@ DOMAINS: list[dict] = [
         # de una que no (V2-690), y la primera versión de este test contaba NODOS: pasaba con cuatro etiquetas
         # en blanco, que es exactamente lo que produce una clave i18n que falta.
         {"id": "4.193", "title": "La pestaña Tareas se PINTA con sus cuatro listas, el numerito cuenta los encargos "
-                                 "del operador — y el panel NUNCA pinta su propio código fuente (V2-738)",
+                                 "del operador — y el panel NUNCA pinta su propio código fuente (V2-738); no draws "
+                                 "a hand-filled form to create a job, each job row keeps its delete button (V2-883)",
             "ch": UNIT, "paths": ["tests/browser/e2e/widgets/test_the_tasks_tab_renders_its_four_lists.py"]},
         # V2-738 — «no se transcribe el texto en el chat» (operador, 2026-09-21 02:22). El motor era inocente:
         # los ocho turnos emitieron su `transcript` y su veredicto `ambient`, y los ocho decían `directed: true`.
@@ -6251,6 +6252,22 @@ DOMAINS: list[dict] = [
                                   "session empties the pool, an errand born before the clean never enters it, and how "
                                   "long each end stays reopenable is declared by how it ended (`REOPEN_GRACE_S`)",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_a_cleaned_session_leaves_no_errand_to_reopen.py"]},
+        # V2-883 — a periodic job is an OBJECT: one reader, one door by reference, an honest result, no form.
+        {"id": "4.484", "title": "A periodic job is addressed by REFERENCE and its result is the truth (V2-883): the "
+                                  "scheduler's one reader is the card shape (`{id, label, field, hint}`, short label); "
+                                  "a spoken label, a whole name or an id resolves through the cards' resolver, a stale "
+                                  "id is no row (never a position); `cron.cancel` answers «no longer listed», and a miss "
+                                  "is said in his language with the jobs that exist (es/en), never «cancelled»",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/"
+                                  "test_a_periodic_job_is_an_object_with_a_reader_and_a_door.py"]},
+        {"id": "4.485", "title": "An order over a periodic job is a TURN act, not an errand (V2-883): the scheduler "
+                                  "declares its turn acts once and both the escalate question and the capability-gap "
+                                  "question read that declaration",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_a_periodic_job_order_is_not_an_errand.py"]},
+        {"id": "4.486", "title": "A worker holding an order over a periodic job has its reader and door (V2-883): "
+                                  "`act schedules` lists the jobs by reference, `act unschedule` cancels ONE and a miss "
+                                  "is not ok, and «no such card» names them",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/workers/test_a_worker_reads_and_cancels_periodic_jobs.py"]},
     ]},
     {"id": "5", "name": "CONECTORES", "nodes": [
         # V2-559 — el operador siguió la guía, creó la contraseña de aplicación y pegó el ENLACE de esa

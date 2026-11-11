@@ -68,7 +68,9 @@ CX_PACT_RE    = re.compile(r"\[\[\s*cluster\.pact\s*:\s*([a-zA-Z0-9_-]+)\s*\]\](
 CX_CTRL_RE    = re.compile(r"\[\[\s*cluster\.(done|disconnect)\s*(?::\s*([a-zA-Z0-9_-]+))?\s*\]\]", re.I)
 # Native cron: create carries a JSON body; cancel is self-closing with an optional :NAME.
 CRON_CREATE_RE = re.compile(r"\[\[\s*cron\.create\s*\]\](.*?)\[\[\s*/\s*cron\.create\s*\]\]", re.S | re.I)
-CRON_CANCEL_RE = re.compile(r"\[\[\s*cron\.cancel\s*(?::\s*([a-zA-Z0-9_-]+))?\s*\]\]", re.I)
+#: The reference is an id or a job's NAME as he says it (V2-883): spaces and accents included — a narrower class left
+#: «[[cron.cancel:seguimiento del paquete]]» unmatched, dropped as a malformed tag, and the turn's «deleted» stood.
+CRON_CANCEL_RE = re.compile(r"\[\[\s*cron\.cancel\s*(?::\s*([^\[\]]*?))?\s*\]\]", re.I)
 # Two-speed: the fast brain escalates a turn to Hermes. Block form only (always carries the request body); the
 # body may be empty (the duo processor then falls back to the raw user utterance). Never spoken.
 DEEP_RE = re.compile(r"\[\[\s*deep\s*\]\](.*?)\[\[\s*/\s*deep\s*\]\]", re.S | re.I)

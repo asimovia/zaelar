@@ -77,7 +77,8 @@ def create(prompt: str, schedule: str, name: str = "", repeat: str = "",
               "origin": (origin or "cron").strip().lower() or "cron"}
     jid = _journal.add(title, status="pending", detail=detail)
     _board(jid)
-    return {"ok": True, "id": jid, "schedule": sch, "error": None, "display": sch.get("display", "")}
+    return {"ok": True, "id": jid, "schedule": sch, "error": None, "display": sch.get("display", ""),
+            "label": label_of(title)}       # V2-883: the reference the job is addressed by from now on
 
 
 def _scheduled(entries: list[dict]) -> list[dict]:
@@ -227,19 +228,22 @@ def mark_fired(entry: dict, now: float | None = None) -> dict | None:
 
 @_consequence.door("cron.cancel", neutral=True)
 def cancel(ref: str) -> bool:
-    """Cancel a task by name (or numeric id). Return True if any task was canceled."""
+    """Cancel a task by its numeric id or exact name. True only when a job it targeted is no longer pending (V2-883: a
+    miss is never answered as a cancel). A spoken label is resolved BEFORE this door, by `unschedule` — never here,
+    where a stale id must hit nothing rather than whatever reads closest."""
     ref = (ref or "").strip()
     if not ref:
         return False
-    hit = False
+    targeted = []
     for e in _scheduled(_journal.list_entries(status="pending")):
         d = e["detail"]
         if str(e["id"]) == ref or (d.get("name") or "").strip().lower() == ref.lower() \
                 or (e.get("title") or "").strip().lower() == ref.lower():
-            _journal.update(e["id"], status="done", detail=d)
-            _board(e["id"])
-            hit = True
-    return hit
+            targeted.append(e)
+    for e in targeted:
+        _journal.update(e["id"], status="done", detail=e["detail"])
+        _board(e["id"])
+    return any(is_pending(e["id"]) is False for e in targeted)
 
 
 from nucleo.pulse.scheduler_cron import (  # noqa: E402,F401 — moved by concern (refactor2710-10b)
@@ -248,3 +252,5 @@ from nucleo.pulse.scheduler_notices import (  # noqa: E402,F401 — moved by con
     _refresh_loose_notice, create_unless_ringing, supersede_loose_notices)
 from nucleo.pulse.scheduler_when import (  # noqa: E402,F401 — moved by concern (refactor2710-10b)
     _day_and_month, _strip_accents_sched, dated_mentions, parse_when)
+from nucleo.pulse.scheduler_refs import (  # noqa: E402,F401 — a job as an object: its reader and door (V2-883)
+    FIELD, LABEL_CHARS, TURN_ACTS, _lang_line, find, label_of, ref_index, unschedule)

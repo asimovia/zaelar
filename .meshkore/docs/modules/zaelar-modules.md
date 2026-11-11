@@ -196,11 +196,12 @@ frontend/
       theme.js            dark/light mode — applies the `theme` signal to `<html data-theme>` + persists it
       audio.js  vad.js  stt.js  sse.js  status.js  visualizer.js  api.js
     components/           function components (read store, build DOM via h(), run effects) — map 1:1 to Solid
-      Orb · CameraUnit · TopBar · SettingsModal · ConnStatus · Alert · ChatWall · StatusPanel · CronPanel · MemoryMap
+      Orb · CameraUnit · TopBar · SettingsModal · ConnStatus · Alert · ChatWall · StatusPanel · MemoryMap
       (ChatWall = text channel: type/paste → session.sendText → data channel → server ClientTextInjector → user turn;
-       Ctrl/Cmd+V anywhere feeds it. CronPanel = the `/api/cron` view onto the `nucleo/` scheduler.)
+       Ctrl/Cmd+V anywhere feeds it. Its Tasks tab lists the `nucleo/` scheduler's periodic and scheduled jobs with their
+       next run and a delete button; jobs are created by asking the agent — no hand-filled form, V2-883.)
       Orb = zaelar PERSONIFIED; it owns a BOWL (concave semicircle) of FIVE frameless controls UNDER the orb —
-      L→R: ⏰ cron (opens CronPanel; MOVED here from the TopBar) · 🧠 memory (opens the MemoryMap visualizer,
+      L→R: ⏰ cron (opens the Tasks tab's scheduled jobs) · 🧠 memory (opens the MemoryMap visualizer,
       store.memOpen) · 🔊 mute zaelar's voice (CENTRE, lowest) · 📝 toggle LIVE CAPTIONS · 🤖 attention gate
       (blue/ON = `wakeword`, only acts on "zaelar/harvis"; grey/OFF = `always`, listens+answers to everything,
       default) which flips `attention_mode` LIVE via the SAME settings seam the ⚙ uses (POST /api/settings;

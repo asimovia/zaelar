@@ -265,8 +265,6 @@ export const spkHealth = () => deviceHealth("spk");
 
 // ---- proactive notifications (orchestrator loop / scheduled task fired → zaelar reaches out) ----
 // No floating toast: a proactive push surfaces as a live caption over the orb + a chat-wall entry (see sse.js).
-export const [cronOpen, setCronOpen]   = createSignal(false);  // cron manager panel visible?
-export const [cronJobs, setCronJobs]   = createSignal([]);     // [{id,name,schedule,state,paused,...}]
 
 // ---- background activity indicators (liquid blobs FLANKING the orb, left & right) ----
 // Every in-flight SlowBrain task (widget build/modify, web task, memory, deep reasoning) becomes ONE liquid blob +
