@@ -130,6 +130,11 @@ class LangSpec:
     # …and a refinement passed to a running errand is confirmed NAMING that errand: the report's refinement got
     # the holding line, and he had to ask three more times whether it had landed (ES round 20:00).
     errand_refined: str = ""
+    # …and when the flow judge cannot say in time whose his words are, he is ASKED, never guessed (V2-878 §3 e):
+    # «{what}» is the errand he named last; the two answers are the question's declared options.
+    which_errand: str = ""
+    which_errand_that: str = ""
+    which_errand_new: str = ""
     # his words on a live errand's progress note go to its worker: say what happens next (search-buy-watch, 2026-10-14)
     errand_relayed_next: str = ("")
     # …and ONE sentence about several errands is answered errand by errand (three-tasks-at-once EN, 2026-10-14:

@@ -133,7 +133,7 @@ def test_a_judge_past_the_turns_budget_is_counted(door, monkeypatch):
     monkeypatch.setattr(flow_of, "JUDGE_S", 0.05)
     monkeypatch.setattr("nucleo.request.append._judge", lambda text, live: time.sleep(0.3) or ("5", "about"))
     r = _route("T6", "anything new yet?")
-    assert r["as"] == flow_of.NEW
+    assert r["as"] == flow_of.UNDECIDED and r["flow"] == "5", "V2-878 §3 e: out of time with an errand open, he is asked"
     (to,) = _thread(door, "judge_timeout")
     assert to["menu"] == ["5"] and to["caller"] == "flow_of" and to["budget_s"] == 0.05
     assert thread_event.counts()["judge_timeout"] == 1

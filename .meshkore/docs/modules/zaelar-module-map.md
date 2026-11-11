@@ -25,7 +25,8 @@ start with `make run` → `python -m server`.
 - `nucleo/` — **the engine's own brain, «Colmena»**: a FlashBrain that owns the conversation and Brain Workers that do
   the work, one per task. **`nucleo/turn/`** = the ONE turn pipeline for every channel (`pipeline.py` + its stages
   `pipeline_gate`/`_admit`/`_state`/`_stream`/`_failure`/`_close`/`_errands`), the router (`flow_of.py`, for requests
-  and — through `flow_events.py` — events), the turn brief (`brief.py`, the one Jev trip), the in-turn mouth
+  and — through `flow_events.py` — events; its model judge `flow_judge.py`, and when that runs out of time with an
+  errand open the route is `undecided` and `which_flow.py` asks him «for X, or something new?» on a row — V2-878 §3), the turn brief (`brief.py`, the one Jev trip), the in-turn mouth
   (`reply.py`, `mouth.py`) and `route_by_verdict.py` (a sure escalate routes before the model is trusted). The voice
   engine reaches it through its provider adapter (`voice/engine/llm/providers/nucleo.py`, `BRAIN=nucleo` = default),
   the typed channel through `voice/typed_turn.py`. `nucleo/flash/` = **FlashBrain**'s reflexes and tools (`router.py`
