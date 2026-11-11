@@ -141,12 +141,20 @@ def shadow(emit, *, at: str, brief, escalate_req: dict | None, model_calls=(), f
                  **reading(brief), "flow_as": str(flow_as or ""), "model_calls": calls, "words_said": bool(words_said), "model_wrote": wrote,
                  "worker": str(worker or ""),
                  "would": w, "did": d, "changes": sorted(k for k in w if w[k] != d[k]),
-                 "would_b": wb, "changes_b": sorted(k for k in wb if wb[k] != d[k])}
+                 "would_b": wb, "changes_b": sorted(k for k in wb if wb[k] != d[k]),
+                 "promise": promise(brief, model_calls=model_calls, model_wrote=wrote)}
         emit("brain", LABEL, role="system", text=str(text or "")[:160], extra=extra)
         return extra
     except Exception as e:  # noqa: BLE001 — a shadow never breaks a turn
         logger.debug(f"commission: shadow not emitted — {e!r}")
         return None
+
+
+def promise(brief, *, model_calls=(), model_wrote: bool = False) -> dict:
+    """What a «promise with no act» needs counted (V2-879 starts from these numbers, V2-878 §6): the screen verdict the
+    brief paid (`screen_action`, its confidence), whether the model called anything, and whether it wrote words."""
+    act, conf = _answer(brief, "screen_action")
+    return {"screen_action": act, "confidence": round(conf, 3), "called": bool(model_calls), "wrote": bool(model_wrote)}
 
 
 def _peek(brief):
