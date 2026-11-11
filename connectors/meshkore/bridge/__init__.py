@@ -116,7 +116,9 @@ class ClusterBridge(_EventsMixin, _TurnMixin, _OutboundMixin, _HeartbeatMixin):
         startup autoreconnect path, which connects saved clusters directly (bypassing the [[cluster.connect]] tag).
         v1 caveat: a task concluded with [[cluster.done]] before a restart re-engages here (mission state isn't
         persisted yet) — the operator can just say 'stop'."""
-        self._engaged[name] = active
+        # ATTENTION: a standing objective is general attention to the cluster — a public one (general_messages off)
+        # is not engaged by being subscribed, so the heartbeat never nudges it on its own.
+        self._engaged[name] = bool(active) and self._attends(name, "general")
         self._last_activity[name] = self._now()
 
     def _notify_registry(self):

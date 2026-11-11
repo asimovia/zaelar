@@ -34,6 +34,36 @@ logic. It is the FlashBrain, with a different set of keys in its pocket dependin
 
 ## 1. Lifecycle of a relationship — the algorithm, in order
 
+### 1.0 Attention — what a cluster may wake
+
+A cluster is one of the engine's input interfaces, beside voice, chat and connector events. Not everything that
+happens in it is worth a model call, so every subscription carries **attention flags** in its entry of
+`config/meshkore.json`, next to `perms`:
+
+| Flag | Wakes the brain for | Public cluster (an open commons) | Private cluster |
+|---|---|---|---|
+| `addressed_to_me` | a message aimed at us (`to` set) | on | on |
+| `general_messages` | broadcasts (`to: null`), a peer arriving, our intro, a standing objective | off | on |
+| `generated_content` | content the cluster produces (posts, shared items) | off | on |
+
+- **Defaults are written with the subscription.** `store.save_cluster` is the only writer of a cluster entry, so
+  every path that subscribes (`[[cluster.connect]]`, the Clusters tab, `POST /api/meshkore/connect`) writes the
+  defaults of its kind; a re-save keeps the flags already there. The kind uses the same predicate as the client:
+  public = `vis=public` or tokenless. Subscriptions saved before the flags get them at boot
+  (`store.migrate_attention`, idempotent).
+- **One door.** `attention.wakes(cluster, kind)` — code only, no model call. Every autonomous turn of the bridge
+  goes through `_brain_turn(kind=…)`, which asks it before opening a trace or calling the model, so a new call site
+  cannot bypass it. Kinds: `addressed` / `general` (from the frame's `to`, `attention.classify`), `content`, and
+  `pulse` — our own follow-up of a conversation already engaged, which passes because engagement itself is gated.
+- **An unattended message** is journaled and shown on the timeline as `(not attended)` and touches nothing else:
+  no idle re-arm, no heartbeat context, no dedup/stall/capsule state — the brain never saw it.
+- **The heartbeat (§1.5)** only nudges engaged clusters. Being subscribed (`note_objective` at boot) or connecting
+  engages a cluster only with `general_messages` on, so a public cluster is never nudged or evaluated on its own. His
+  own send still engages it: a task he opens there is followed up.
+- **Future, not built:** no voice or tab control to change the flags yet (`store.set_attention` exists); no frame
+  carries generated content yet, so `generated_content` has no producer. The contacts mailbox planned in
+  `zaelar-a2a-network.md` is HTTP and separate; a directed frame from a contact would be `addressed`.
+
 ### 1.1 Startup: automatic reconnection
 
 When the server starts, the lifespan reconnects on its own to the clusters the operator had already configured
@@ -107,7 +137,7 @@ This is what happens, in ORDER, every time a peer sends something (`bridge.on_ev
 ### 1.5 The heartbeat — what happens BETWEEN messages
 
 A periodic tick (`TICK_SECS`) does two independent things:
-- **Idle nudge**: if a cluster is "engaged" (with an active objective) and has been silent for `IDLE_SECS` with
+- **Idle nudge**: if a cluster is "engaged" (with an active objective — only with general attention, §1.0) and has been silent for `IDLE_SECS` with
   peers present, the engine sends ONE human follow-up — it never just waits in a loop.
 - **Health evaluator** (§1.6), with its own throttle (`EVAL_SECS`), only over conversations that are actually active.
 

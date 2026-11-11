@@ -49,9 +49,10 @@ def last_exchange(cluster: str, peer: str) -> dict:
     on reconnect/presence, not per turn)."""
     last_in_ts = last_out_ts = None
     last_in_text = ""
+    last_in_to = None
     peer_l = (peer or "").strip().lower()
     if not peer_l:
-        return {"last_in_ts": None, "last_in_text": "", "last_out_ts": None}
+        return {"last_in_ts": None, "last_in_text": "", "last_out_ts": None, "last_in_to": None}
     try:
         with LOG_FILE.open("r", encoding="utf-8", errors="replace") as f:
             for line in f:
@@ -70,7 +71,7 @@ def last_exchange(cluster: str, peer: str) -> dict:
                     if frm == peer_l and (last_in_ts is None or ts > last_in_ts):
                         payload = ev.get("payload")
                         text = payload if isinstance(payload, str) else (payload or {}).get("text", "")
-                        last_in_ts, last_in_text = ts, text or ""
+                        last_in_ts, last_in_text, last_in_to = ts, text or "", ev.get("to")
                 elif ev.get("chan") == "out" and ev.get("action") == "cluster.send":
                     extra = ev.get("extra") or {}
                     if extra.get("name") != cluster:
@@ -80,4 +81,5 @@ def last_exchange(cluster: str, peer: str) -> dict:
                         last_out_ts = ts
     except Exception:
         pass
-    return {"last_in_ts": last_in_ts, "last_in_text": last_in_text, "last_out_ts": last_out_ts}
+    return {"last_in_ts": last_in_ts, "last_in_text": last_in_text, "last_out_ts": last_out_ts,
+            "last_in_to": last_in_to}

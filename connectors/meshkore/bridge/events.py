@@ -1,13 +1,14 @@
 """Inbound side of the cluster bridge: every peer frame lands in `on_event` (see `__init__.py`)."""
 import json
 
-from connectors.meshkore import store, journal, security, mem_ingest, capsule
+from connectors.meshkore import store, journal, security, mem_ingest, capsule, attention
 
 
 class _EventsMixin:
-    def _catch_up_context(self, cluster: str, peer: str) -> str | None:
+    def _catch_up_context(self, cluster: str, peer: str) -> tuple[str, str] | None:
         """Was `peer`'s last MESSAGE to us ever answered? None if answered/never messaged/already nudged for
-        this exact message. Operator report (2026-07-25): 'I start this up 3 days later and there are messages
+        this exact message, or when the subscription does not attend to that kind of message. Returns
+        (text, attention kind). Operator report (2026-07-25): 'I start this up 3 days later and there are messages
         we never replied to' — a MeshKore cluster has NO server-side unread count (client.py: no message
         history, relay-only), so catching up is OUR job, reconstructed from the durable journal (survives a
         restart, unlike the /debug timeline). Deduped by exact message timestamp so a flaky reconnect loop
@@ -26,8 +27,11 @@ class _EventsMixin:
         key = (cluster, peer, ts)
         if key in self._caught_up:
             return None
+        kind = attention.classify({"to": ex.get("last_in_to")})
+        if not self._attends(cluster, kind):
+            return None
         self._caught_up.add(key)
-        return ex.get("last_in_text") or ""
+        return ex.get("last_in_text") or "", kind
 
     # ── inbound: manager sink ──────────────────────────────────────────────────────────────────────────────
     async def on_event(self, ev: dict):
@@ -48,6 +52,10 @@ class _EventsMixin:
             # ourselves again would be absurd). If there is a real active task (`self._engaged`), that comes from an
             # explicit operator instruction, not this presence event.
             if st == "online" and not mem_ingest.known_peer(cluster, ag):
+                # ATTENTION: a peer arriving is the cluster's general traffic — no intro where we don't attend it.
+                if not self._attends(cluster, "general"):
+                    self._notify_registry()
+                    return
                 self._nudged.discard(cluster)
                 ag_s = security.neutralize_identity(ag)             # peer-chosen handle → neutralize before the prompt (V2)
                 self._spawn(self._brain_turn(
@@ -56,13 +64,15 @@ class _EventsMixin:
                     f"Send a SHORT self-introduction — your name and a one-line generic description of your "
                     f"capabilities. Do NOT propose an objective or a specific task (that's the operator's call). "
                     f"You MAY briefly propose WORKING NORMS for how you two communicate and, if it agrees, record "
-                    f"them with [[cluster.pact:{cluster}]]{{\"to\":\"{ag_s}\",...}}[[/cluster.pact]]. {capsule.PACT_DEFAULT_PROPOSAL}"))
+                    f"them with [[cluster.pact:{cluster}]]{{\"to\":\"{ag_s}\",...}}[[/cluster.pact]]. {capsule.PACT_DEFAULT_PROPOSAL}",
+                    kind="general"))
                 capsule.patch(cluster, ag, greeted=True)   # V2-069: presentado → no repetirlo (fase avanza a sondeo)
             elif st == "online":
                 # known -> no intro, but may have an unanswered message from when we were offline (operator request
                 # 2026-07-25: "there are messages they sent us that we have not answered").
-                pending = self._catch_up_context(cluster, ag)
-                if pending is not None:
+                caught = self._catch_up_context(cluster, ag)
+                if caught is not None:
+                    pending, kind = caught
                     self._last_activity[cluster] = self._now()
                     self._nudged.discard(cluster)
                     ag_s = security.neutralize_identity(ag)
@@ -71,7 +81,7 @@ class _EventsMixin:
                         f"[cluster:{cluster} · event] agent '{ag_s}' is back online. Their LAST message to you was "
                         f"never answered (you were offline): {security.fence_untrusted(pending)}\nDecide: reply now "
                         f"if it still needs one, or note it's stale/no longer relevant — your call.",
-                        peer=ag, peer_text=pending))
+                        peer=ag, peer_text=pending, kind=kind))
             self._notify_registry()
         elif t == "ready":
             online = ev.get("online") or []
@@ -80,7 +90,8 @@ class _EventsMixin:
                 # never open a "collaboration" or propose an objective on our own. If EVERYONE present is already
                 # known, stay silent (avoids an absurd "hello again" on every reconnection).
             unknown = [p for p in online if not mem_ingest.known_peer(cluster, p)]
-            if unknown:
+            # ATTENTION: introducing ourselves is general traffic — not where the subscription doesn't attend it.
+            if unknown and self._attends(cluster, "general"):
                 self._last_activity[cluster] = self._now()
                 self._nudged.discard(cluster)
                 unknown_s = ", ".join(security.neutralize_identity(h) for h in unknown)   # peer handles → neutralize (V2)
@@ -91,7 +102,7 @@ class _EventsMixin:
                     f"description of your capabilities. Do NOT propose an objective or a specific task (that's the "
                     f"operator's call). You MAY briefly propose WORKING NORMS for how you communicate and, if they "
                     f"agree, record them with [[cluster.pact:{cluster}]]{{\"to\":\"<agent>\",...}}[[/cluster.pact]]. "
-                    f"{capsule.PACT_DEFAULT_PROPOSAL}"))
+                    f"{capsule.PACT_DEFAULT_PROPOSAL}", kind="general"))
                 for _p in unknown:
                     capsule.patch(cluster, _p, greeted=True)   # V2-069: presentado → fase avanza, no re-presentarse
                 # CATCH-UP (operator request 2026-07-25): an ALREADY KNOWN peer may have written while we were
@@ -99,9 +110,10 @@ class _EventsMixin:
                 # connected NOW), so if no one picks those messages up on reconnect, they are silently lost forever.
                 # One per known peer, each with its own context/trace.
             for p in (peer for peer in online if peer not in unknown):
-                pending = self._catch_up_context(cluster, p)
-                if pending is None:
+                caught = self._catch_up_context(cluster, p)
+                if caught is None:
                     continue
+                pending, kind = caught
                 self._last_activity[cluster] = self._now()
                 self._nudged.discard(cluster)
                 p_s = security.neutralize_identity(p)
@@ -110,7 +122,7 @@ class _EventsMixin:
                     f"[cluster:{cluster} · event] you just (re)connected. Agent '{p_s}' messaged you while you "
                     f"were offline and it was never answered: {security.fence_untrusted(pending)}\nDecide: reply "
                     f"now if it still needs one, or note it's stale/no longer relevant — your call.",
-                    peer=p, peer_text=pending))
+                    peer=p, peer_text=pending, kind=kind))
             self._notify_registry()
         elif t == "status":
             # the WHY travels with it (demo pass 30: «meshcore: error» with an empty text — the client knew the
@@ -153,6 +165,15 @@ class _EventsMixin:
                 text = json.dumps(payload, ensure_ascii=False)   # unknown structured shape → give the brain the raw
         else:
             text = str(payload) if payload is not None else ""
+        # ATTENTION: the subscription decides whether this message is worth a brain turn. One it does not attend to
+        # (a broadcast in a public cluster) is journaled and shown, and touches nothing else — no idle re-arm, no
+        # heartbeat context, no dedup/stall/capsule state: the brain never saw it.
+        kind = attention.classify(ev)
+        if not self._attends(cluster, kind):
+            _b._emit("cluster", f"⇠ {cluster}·{peer_h} (not attended)", text=store.redact(text), role="peer",
+                     extra={"cluster": cluster, "peer": peer_h, "dir": "in", "attention": kind, "attended": False})
+            self._notify_registry()
+            return
         self._last_activity[cluster] = self._now()
         self._nudged.discard(cluster)
         self._last_peer_msg[cluster] = text     # idle-nudge context (found bug 2026-07-25: see _heartbeat)
@@ -185,7 +206,7 @@ class _EventsMixin:
                     f"[SITUACIÓN] Este agente repite lo mismo y no avanzáis. Manda UN mensaje directo y breve, "
                     f"anclado al objetivo: señala que seguís igual y pide el siguiente paso CONCRETO; si no hay "
                     f"avance, di con cortesía que lo dejáis aquí. Nada de más cortesías ni de presentarte.",
-                    peer=frm_s0, peer_text=_txt))
+                    peer=frm_s0, peer_text=_txt, kind=kind))
             elif verdict == "callar":
                 if not st["alerted"]:
                     st["alerted"] = True
@@ -235,7 +256,7 @@ class _EventsMixin:
             return
         self._spawn(self._brain_turn(
             cluster, f"[cluster:{cluster} · message from agent '{frm_lbl}']\n{security.fence_untrusted(note)}",
-            peer=frm_lbl, peer_text=text))
+            peer=frm_lbl, peer_text=text, kind=kind))
         self._notify_registry()
 
 

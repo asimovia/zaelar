@@ -4,13 +4,22 @@ import time
 from loguru import logger
 
 from voice.tag_protocol import strip_tags
-from connectors.meshkore import brief, store, journal, security, mem_ingest, capsule
+from connectors.meshkore import brief, store, journal, security, mem_ingest, capsule, attention
 
 
 class _TurnMixin:
+    def _attends(self, cluster: str, kind: str) -> bool:
+        """The subscription's attention flags decide (`attention.wakes`); the live connection gives the kind of a
+        cluster whose subscription is not saved yet."""
+        return attention.wakes(cluster, kind, getattr(self._manager.get(cluster), "public", None))
+
     # ── the brain turn (off the voice pipeline) ──────────────────────────────────────────────────────────────
     async def _brain_turn(self, cluster: str, event_text: str, peer: str | None = None,
-                          peer_text: str | None = None, origin: str = "cluster"):
+                          peer_text: str | None = None, origin: str = "cluster", kind: str = "general"):
+        # ATTENTION: the one door. Nothing opens (no trace, no model call) for a frame this subscription does not
+        # attend to — a public cluster's chatter, a peer arriving there. `kind` says what woke us (attention.py).
+        if not self._attends(cluster, kind):
+            return "", []
         # TRACEABILITY (V2-044): a peer message is also a stimulus -> it starts with its trace. `origin` defaults
         # to "cluster" (a REAL inbound peer message/reconnect) but `_heartbeat_nudge` passes "pulso" — WE decided
         # to check in, nothing came in from the peer, and that distinction is what lets a flow viewer

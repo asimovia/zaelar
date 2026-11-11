@@ -158,6 +158,10 @@ def meshkore(app) -> None:
         if os.getenv("MESHKORE_AUTORECONNECT", "1") == "1":
 
             async def _meshkore_autoreconnect():
+                try:
+                    store.migrate_attention()       # subscriptions saved before the attention flags get their defaults
+                except Exception as e:
+                    logger.warning(f"MeshKore attention migration failed: {e}")
                 for name, cfg in store.load_clusters().items():
                     try:
                         # `vis` (V2-086): a PUBLIC cluster reconnects without a token — if this is not propagated

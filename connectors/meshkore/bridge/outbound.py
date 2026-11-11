@@ -63,7 +63,9 @@ class _OutboundMixin:
                 # Connecting = there's an active objective on this cluster. Marking it engaged NOW means a peer
                 # arriving later (presence:online) wakes the brain to open the collaboration, even if we joined an
                 # empty channel and haven't sent anything yet. Cleared by [[cluster.done]]/[[cluster.disconnect]].
-                self._engaged[name] = True
+                # ATTENTION: only a cluster we attend to in general (a private one by default) is engaged by connecting;
+                # a public one waits for a message addressed to us or for HIS send.
+                self._engaged[name] = self._attends(name, "general")
                 self._last_activity[name] = self._now()
                 _b._emit("cluster", f"→ connecting {name}", extra={"cluster": name})
             elif action == "cluster.send":
