@@ -140,9 +140,9 @@ def _dead_record() -> SessionRecord:
 def test_the_handoff_carries_the_goal_and_what_was_already_done():
     brief = context_handoff(_dead_record())
     assert "guitarra zurda" in brief
-    assert "2 de 4" in brief                      # progress through the plan
+    assert "2 of 4" in brief                      # progress through the plan
     assert "thomann.es" in brief and "amazon.es" in brief
-    assert "7 candidatos" in brief
+    assert "7 candidates" in brief
 
 
 def test_the_handoff_NEVER_pastes_the_dead_workers_error_as_a_finding():
@@ -163,7 +163,7 @@ def test_the_handoff_survives_a_record_that_reported_nothing():
 
 def test_the_handoff_tells_it_not_to_repeat_and_to_deliver_early():
     brief = context_handoff(_dead_record())
-    assert "NO repitas" in brief and "ENTREGA" in brief
+    assert "Do NOT repeat" in brief and "DELIVER" in brief
 
 
 # ── 5. the confined workdir — the 85% of the incident ─────────────────────────────────────────────────────────
@@ -434,8 +434,9 @@ def test_a_blown_context_is_retaken_with_what_was_learned_and_delivers_no_error(
     assert rec.context_retried is True
     assert escalations, "the task was dropped instead of being retaken"
     req, ctx = escalations[0]
-    assert "RETOMA" in req and "guitarra zurda" in req
-    assert "API Error" not in req
+    assert req == "Busca una guitarra zurda", "the relaunch's request is HIS goal, never the worker's brief (V2-877)"
+    assert "RESUME" in ctx["worker_brief"] and "guitarra zurda" in ctx["worker_brief"]
+    assert "API Error" not in req and "API Error" not in ctx["worker_brief"]
     assert ctx.get("src") == "context_handoff"
     assert not delivered, "nothing is spoken: the fresh worker delivers, without noise in between"
 

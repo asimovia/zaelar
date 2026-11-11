@@ -3875,6 +3875,8 @@ DOMAINS: list[dict] = [
         # V2-874 rule 4 — disarmed 2026-11-10 (every launch labelled an escalation) → red.
         {"id": "2.1669", "title": "The launch's event says what happened (V2-874): a request flow_of joined to a live errand is labelled as that join (inject, steer, absorb, reopen, join), never «escalada registrada», which stays the label of a NEW errand; the event carries `as`",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_the_launch_says_whether_it_joined_or_escalated.py"]},
+        {"id": "2.1670", "title": "A relay's brief never reaches him (V2-877 #1): a context handoff or stall restart relaunches with HIS goal as the request and the worker brief in `context.worker_brief`; a retried errand shows his goal and the answer and no piece of the brief, the worker prompt starts with it, and the key has one reader",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/workers/test_a_relay_brief_never_reaches_him.py"]},
         {"id": "2.728", "title": "A turn that acted on a card and also escalated, read inline, launches no worker — on the text channel as on the voice",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_an_inline_act_settles_the_commission_on_both_channels.py"]},
         {"id": "2.729", "title": "An ordered act that leaves, sure at the operator's 70%, runs when the model only drafted it — both channels",
