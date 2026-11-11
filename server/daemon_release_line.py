@@ -14,10 +14,12 @@ The daemon tags come from `git/matching-refs/tags/daemon-v`, so no daemon releas
 from __future__ import annotations
 
 import json
+import logging
 import re
 from typing import Callable
 
 DAEMON_TAG = re.compile(r"^daemon-v(\d+)\.(\d+)\.(\d+)$")
+_log = logging.getLogger(__name__)
 _MAX_TAGS_TRIED = 5     # newest first; a daemon release without this file is rare, five in a row is a broken line
 
 
@@ -64,7 +66,8 @@ def resolve(fetch: Callable[[str], bytes], repo: str, asset: str) -> dict | None
     for tag in tags[:_MAX_TAGS_TRIED]:
         try:
             release = json.loads(fetch(f"{api}/releases/tags/{tag}").decode("utf-8"))
-        except Exception:   # noqa: BLE001 — a tag without a published release (yet): the next one
+        except Exception as e:   # noqa: BLE001 — a tag without a published release (yet): the next one
+            _log.info("release line: %s has no readable release (%s: %s) — trying the next tag", tag, type(e).__name__, e)
             continue
         if _published(release) and asset_url(release, asset):
             return release
