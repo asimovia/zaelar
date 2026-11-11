@@ -62,7 +62,7 @@ def test_the_judge_and_errand_target_read_the_cards_of_a_parked_and_an_ended_err
     assert all(c["heard"][:40] in desc for c in pool) and "waiting for his answer" in desc
     assert set(target["criteria"]) == {"running_errand", "cluster_peer", "cluster_objective", "none"}, \
         "the choices every arm reads changed"
-    assert "stop_errand" in qs, "the stop is not asked with an errand open"
+    assert "stop_errand" not in qs, "the stop (it ACTS: it kills a worker) is asked with no worker running"
     assert not tb.build(SAID[lang], has_workers=False, threads=[]).get("errand_target"), "asked with nothing open"
 
 

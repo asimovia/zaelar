@@ -107,11 +107,7 @@ def _end_state(ctx):
 
 def _stop(ctx):
     from nucleo.request import stop as _stop_d
-    goals = ctx.get("running_goals") or ()
-    if ctx.get("threads"):        # V2-878 §2: the same cards every reader gets, the one he named last first
-        from nucleo.turn import named_errand as _ne
-        goals = [_ne.card_line(e) for e in _ne.by_mention(ctx["threads"], 3)]
-    return _stop_d.question(ctx.get("last_reply") or "", goals)
+    return _stop_d.question(ctx.get("last_reply") or "", ctx.get("running_goals") or ())
 
 
 def _gap(ctx):
@@ -144,7 +140,9 @@ QUESTIONS = (
     (("search.route", "SEARCH_KEY"), None, _search),
     (("nucleo.flash.redo_decision", "REDO_KEY"), None, _redo),                 # None when nothing is behind us
     (("nucleo.circuit.spec", "END_KEY"), None, _end_state),
-    (("nucleo.request.stop", "KEY"), lambda c: _threads_open(c), _stop),   # V2-878 §2: with ANY errand open
+    # The stop stays asked only while a worker runs, with its goals (V2-878 §2 bank: asked with the cards it read «that
+    # one is fine» as `settled` twice in 15 runs and killed a worker the model had not stopped). It acts; the target reads.
+    (("nucleo.request.stop", "KEY"), lambda c: bool(c.get("has_workers")), _stop),
     (("nucleo.acts.errand", "TARGET_KEY"), lambda c: _threads_open(c),   # same gate as the stop
      lambda c: __import__("nucleo.acts.errand", fromlist=["x"]).target_question(c)),
     (("nucleo.acts.errand", "CLASS_KEY"), None, lambda c: __import__("nucleo.acts.errand", fromlist=["x"]).class_question(c)),
