@@ -135,7 +135,8 @@ def test_without_a_clear_winner_the_closest_come_first(world):
 def test_a_word_of_a_compound_name_and_a_whole_name(world):
     d, dr = world
     _put(d, SPANISH)
-    assert set(_names(dr.resolve("Raquel Salinas"))) == {"Raquel Salinas Ortega", "raquel.salinasortega"}
+    # V2-887 step 6: the address-named row spells her full name — one person, one candidate
+    assert _names(dr.resolve("Raquel Salinas")) == ["Raquel Salinas Ortega"]
     assert _names(dr.resolve("Raquel Salinas Ortega")) == ["Raquel Salinas Ortega"], "the whole name wins"
     assert _names(dr.resolve("Interiorismo")) == ["Raquel Caro Interiorismo"], "a company is found by its words"
     assert _names(dr.resolve("600 200 001")) == ["Raquel Salinas Ortega"], "a number said"

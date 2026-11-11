@@ -64,10 +64,10 @@ def test_his_raquel_is_asked_once_and_never_again(world):
          {"name": "Raquel Salinas Ortega", "channels": _wa(3)}, {"name": "raquel.salinasortega", "channels": _wa(4)})
     first = _send(ms, contact="Raquel")
     assert first["ok"] is False and len(first["candidates"]) == 3, "several Raquels: a question, never a pick"
-    narrower = _send(ms, contact="Raquel Salinas")
-    assert narrower["ok"] is False, "his answer still matches two rows: asked again, narrower"
-    sent = _send(ms, contact="Raquel Salinas Ortega")
-    assert sent["ok"] is True and sent["result"]["learned"] == {"alias": "Raquel", "contact": "Raquel Salinas Ortega"}
+    # V2-887 step 6: «raquel.salinasortega» is her own address row, so «Raquel Salinas» is ONE person and sends
+    sent = _send(ms, contact="Raquel Salinas")
+    assert sent["ok"] is True and sent["result"]["to"] == "Raquel Salinas Ortega"
+    assert sent["result"]["learned"] == {"alias": "Raquel", "contact": "Raquel Salinas Ortega"}
     assert _row(ct, "c2")["aliases"] == ["Raquel"], "the word he FIRST used is the one he will say again"
     again = _send(ms, contact="Raquel")
     assert again["ok"] is True and again["result"]["to"] == "Raquel Salinas Ortega" and "learned" not in again["result"]
