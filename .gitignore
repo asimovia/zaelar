@@ -30,8 +30,9 @@ config/elevenlabs_voices.json
 # lleva el token de la API, y quien pueda leerlo puede leer todas las carpetas que el operador haya permitido.
 # `audit.jsonl` es el registro de qué ficheros SUYOS se han abierto. Ninguno de los dos sale de su máquina.
 config/daemon/
-config/genome/          # the install's last good genome generation (per machine)
-/TMP/                   # session scratch
+# the install's last good genome generation (per machine) and the session scratch folder
+config/genome/
+/TMP/
 # `engine/.meshkore/` es una CARPETA REAL (2026-07-28, revierte la decisión 2026-07-24 de excluirla entera).
 # engine es el repo PÚBLICO OSS y DEBE llevar su contexto MeshKore Standard — arquitectura, convenciones,
 # módulos, seguridad, roadmap del MOTOR, roles de agente (team/), public/cluster.yaml y STANDARD_VERSION —
