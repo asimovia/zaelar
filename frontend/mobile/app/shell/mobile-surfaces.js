@@ -9,8 +9,9 @@
 //     activity honeycomb behind the canvas, the 35 KB configuration panel and the debug/observability panel.
 //     Those are not "not ported yet": a phone is for USING the agent, and each of them exists for setting one up
 //     or for auditing one, both of which the operator does at a desk.
-//   · the chat's four tabs collapse to one (see ChatSheet.js), the seven-icon eye collapses to a five-control
-//     dock (DockBar.js: chat · desk | ORB | mic · config), and N draggable cards collapse to one deck of full-screen cards (Deck.js).
+//   · the chat's four tabs collapse to one (see ChatSheet.js), the seven-icon eye collapses to a six-target dock
+//     (DockBar.js: ≡ · chat · apps | ORB | mic · speaker), N draggable cards collapse to one deck of full-screen cards
+//     (Deck.js), and every other surface is a full-screen PAGE (Page.js, V2-876 D-A) — no bottom sheets.
 //   · three surfaces are REUSED VERBATIM from the desktop, because they are modal and full-bleed already and a
 //     phone changes nothing about them: BootOverlay, LanguageOnboarding, Alert. Reusing them is not laziness —
 //     forking a first-run gate is how two shells end up disagreeing about whether onboarding happened. Their CSS
@@ -44,19 +45,21 @@ import { InstallBanner } from "./InstallBanner.js?v=1";
 import { FeedbackSheet } from "./FeedbackSheet.js?v=2";
 import { EnergyLine } from "./EnergyLine.js?v=1";
 import { AiConsentSheet } from "./AiConsentSheet.js?v=1";
+import { AppsPane } from "./AppsPane.js?v=2";
 
 export const MOBILE_SURFACES = [
   // ── the bar that owns every control ──
-  { id: "dock",     comp: DockBar,     target: "body", phase: "scaffold", label: "Bottom dock (chat · desk · ORB · mic · config)", shared: false },
+  { id: "dock",     comp: DockBar,     target: "body", phase: "scaffold", label: "Bottom dock (≡ · chat · apps · ORB · mic · speaker)", shared: false },
   // NO CAPTIONS BAND (V2-573, operator: «deactivate subtitles. dont want icon for that»). It was the second
   // scaffold surface and it is GONE from the phone, together with its 📝 button in the dock. Deleting the LINE is
   // the whole removal — which is the point of this file existing: a surface nobody mounts cannot half-exist.
   // The desktop's captions are untouched.
-  // ── sheets: they slide up from the bottom edge, over the deck ──
-  { id: "chat",     comp: ChatSheet,      target: "body", phase: "overlay", label: "Chat (bottom sheet)", shared: false },
-  { id: "menu",     comp: MenuSheet,      target: "body", phase: "overlay", label: "☰ Menu: account · energy · apps · settings · voice · desktop", shared: false },
-  { id: "settings", comp: SettingsSheet,  target: "body", phase: "overlay", label: "Small settings sheet (language · theme · captions · speaker)", shared: false },
-  { id: "feedback", comp: FeedbackSheet,  target: "body", phase: "overlay", label: "Feedback (its own sheet, from the dock's button)", shared: false },
+  // ── PAGES: full screen from the status bar to the dock, one open at a time (main.js), never stacked ──
+  { id: "chat",     comp: ChatSheet,      target: "body", phase: "overlay", label: "Chat page", shared: false },
+  { id: "menu",     comp: MenuSheet,      target: "body", phase: "overlay", label: "☰ page: processes · account · energy · settings · feedback · voice · desktop", shared: false },
+  { id: "apps",     comp: AppsPane,       target: "body", phase: "overlay", label: "Apps page: every app, its icon, name and one line", shared: false },
+  { id: "settings", comp: SettingsSheet,  target: "body", phase: "overlay", label: "Settings page (language · theme · speaker · wake word · notifications · permissions)", shared: false },
+  { id: "feedback", comp: FeedbackSheet,  target: "body", phase: "overlay", label: "Feedback page (a row of the ☰ page)", shared: false },
   // ── V2-870 — inside the native app: the yes to the AI services, asked before the first turn ──
   { id: "ai-consent", comp: AiConsentSheet, target: "body", phase: "overlay", label: "AI services consent (native app only)", shared: false },
   // ── the Energy left, a thin line along the top edge (cloud only) ──

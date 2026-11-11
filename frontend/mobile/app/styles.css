@@ -26,9 +26,6 @@
      and every card ends at the bar's top edge. */
   --dock-h: 54px;                        /* the bar's own height; the safe-area pad is added on top of it */
   --zm-safe-b: max(6px, calc(env(safe-area-inset-bottom) - 12px));
-  /* Sheet height, measured from ON TOP OF the dock (see .zm-sheet). Leaves the deck visible above it, so the
-     card you were reading never disappears entirely behind a sheet (the chat is a full screen instead). */
-  --zm-sheet-max: calc(78vh - var(--dock-h));
   --zm-r: 18px;                          /* one corner radius for every surface in this shell */
 }
 
@@ -36,7 +33,7 @@
 /* INSIDE THE NATIVE APP (V2-870 §10: the app marks <html class="in-app"> from native code at document start). Controls
    behave like native ones: no text selection, no long-press callout or link preview on a button. Text stays
    selectable where it is content — messages, cards, inputs. */
-html.in-app button, html.in-app .zm-dock, html.in-app .zm-sheet-h, html.in-app .zm-pips {
+html.in-app button, html.in-app .zm-dock, html.in-app .zm-page-h, html.in-app .zm-pips {
   -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 html, body { height: 100%; margin: 0; }
 body {
@@ -144,12 +141,10 @@ body {
 html.zm-kbd .zm-dock, html.zm-kbd .zm-pips, html.zm-kbd .zm-banner { display: none; }
 html.zm-kbd[data-kbd="deck"] .zm-deck { top: var(--zm-vvt, 0px); bottom: auto; height: var(--zm-vvh, 100%); }
 html.zm-kbd[data-kbd="deck"] .zm-card, html.zm-kbd[data-kbd="deck"] .zm-home { bottom: 0; }
-/* Typing in a SHEET (the chat, 2026-10-26, iPhone 14): the sheet sat on top of the dock and the dock on top of the
-   keyboard — composer, a whole bar of controls nobody can use while typing, the keyboard's own accessory row, then
-   the keys: half the screen of chrome. With the keyboard up the open sheet IS the visible part of the screen, its
-   composer directly on the keyboard, and the dock is gone until the keyboard is. */
-html.zm-kbd[data-kbd="sheet"] .zm-sheet.open { top: var(--zm-vvt, 0px); bottom: auto; height: var(--zm-vvh, 100%);
-  max-height: none; border-radius: 0; }
+/* Typing in a PAGE (the chat, 2026-10-26, iPhone 14: composer · dock · the keyboard's accessory row · keys — half the
+   screen of chrome): with the keyboard up the open page IS the visible part of the screen, its composer directly on
+   the keyboard, and the dock is gone until the keyboard is. */
+html.zm-kbd[data-kbd="page"] .zm-page.open { top: var(--zm-vvt, 0px); bottom: auto; height: var(--zm-vvh, 100%); }
 /* `stalled` = "should be on and is not". It has to be impossible to mistake for `live`, because mistaking them is
    exactly what cost a whole session once: a red ring, and it blinks. `pausing` is AMBER, deliberately not red —
    the agent is genuinely still finishing a turn, that is not a fault (V2-092 addenda). */
@@ -231,51 +226,34 @@ html.zm-kbd[data-kbd="sheet"] .zm-sheet.open { top: var(--zm-vvt, 0px); bottom: 
 }
 .zm-cap.show { opacity: 1; transform: none; }
 
-/* ---------- SHEETS (chat · menu · settings) ----------
-   They slide up and STOP ON TOP OF THE DOCK, never over it — `bottom` is the dock's own height, not 0. That is
-   deliberate and it was a real correction: at bottom:0 a 78vh sheet buries the bar on a 390x844 screen (caught in a
-   phone-sized browser render, not by reading the CSS). Burying it would mean that while the chat is open the
-   operator cannot mute the mic, cannot see the orb's state and cannot press ⏻ — the one control that must never be
-   more than one tap away. Every control at the bottom is the whole premise of this shell; a sheet does not get to
-   suspend it.
-   main.js also makes the sheets mutually exclusive, and the Android back button closes the top-most one. */
-.zm-sheet {
-  position: fixed; left: 0; right: 0; z-index: 70;
+/* ---------- PAGES (V2-876 D-A/D-D) ----------
+   Every shell surface — chat, menu, apps, settings, feedback, the AI-services question — is a FULL-SCREEN PAGE: from
+   the status bar (padded by the safe area) to the dock's top edge, which stays, so ⏻, the orb and the mic are never
+   more than one tap away. Fixed geometry: no handle, no half height, nothing rises from below or can be minimised; it
+   fades in place. One header (‹ · title · ×, 44px targets, the card header's shape) and a body that scrolls, so the
+   last row of every page is reachable. main.js keeps ONE open; the Android back closes it (or goes back to the ☰). */
+.zm-page {
+  position: fixed; left: 0; right: 0; top: 0; z-index: 70;
   bottom: calc(var(--dock-h) + var(--zm-safe-b));
-  max-height: var(--zm-sheet-max);
-  display: flex; flex-direction: column;
-  background: var(--hb-bg); border-top: 1px solid var(--hb-line);
-  border-radius: var(--zm-r) var(--zm-r) 0 0;
-  box-shadow: var(--hb-shadow-2);
-  /* Slid down by its own height PLUS the dock it sits on, or its lower edge would peek above the bar while closed. */
-  transform: translateY(calc(101% + var(--dock-h) + var(--zm-safe-b)));
-  transition: transform .26s cubic-bezier(.22, .9, .3, 1);
+  display: flex; flex-direction: column; padding-top: env(safe-area-inset-top);
+  background: var(--hb-bg);
+  opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .18s, visibility 0s .18s;
 }
-.zm-sheet.open { transform: none; }
-.zm-settings { z-index: 72; }             /* opened FROM the menu, so it must sit above it */
-.zm-sheet-h {
-  position: relative; flex: 0 0 auto;
-  display: flex; align-items: center; gap: 10px; padding: 16px 14px 10px;
-  border-bottom: 1px solid var(--hb-line);
+.zm-page.open { opacity: 1; visibility: visible; pointer-events: auto; transition: opacity .18s; }
+.zm-page-h {
+  flex: 0 0 auto; display: flex; align-items: center; gap: 4px; padding: 2px 4px;
+  border-bottom: 1px solid var(--hb-line); background: var(--hb-bg-soft);
 }
-.zm-sheet-grab {
-  position: absolute; top: 7px; left: 50%; transform: translateX(-50%);
-  width: 38px; height: 4px; border-radius: 2px; background: var(--hb-neutral);
-}
-.zm-sheet-h h2 { flex: 1 1 auto; margin: 0; font: 600 16px/1.2 var(--sans); color: var(--hb-ink); }
-.zm-sheet-x {
-  flex: 0 0 auto; width: 44px; height: 44px; border: none; border-radius: 13px;
-  background: var(--hb-bubble); color: var(--hb-muted); font-size: 20px; line-height: 1;
-}
+.zm-page-h h2 { flex: 1 1 auto; min-width: 0; margin: 0; text-align: center; font: 600 16px/1.25 var(--sans);
+  color: var(--hb-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.zm-page-btn { flex: 0 0 auto; width: 44px; height: 44px; padding: 0; border: none; border-radius: 12px;
+  background: transparent; color: var(--hb-muted); display: flex; align-items: center; justify-content: center; }
+.zm-page-btn svg { width: 22px; height: 22px; }
+button.zm-page-btn:active { background: var(--hb-bubble); }
+.zm-page-b { flex: 1 1 auto; min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain; padding-bottom: 16px; }
 
-/* ---------- CHAT sheet ---------- */
-/* The chat is a SCREEN, not a sheet (operator, 2026-11-10: «toda la pantalla dedicada al chat como si fuera una
-   pantalla única»): from the top edge (under the status bar, padded by the safe area) down to the dock, which stays
-   — the orb and ⏻ are never more than one tap away. It fades in place instead of sliding up from the bottom. */
-.zm-chat { top: 0; max-height: none; border: 0; border-radius: 0; box-shadow: none;
-  padding-top: env(safe-area-inset-top); transform: none; opacity: 0; visibility: hidden; pointer-events: none;
-  transition: opacity .18s, visibility 0s .18s; }
-.zm-chat.open { opacity: 1; visibility: visible; pointer-events: auto; transition: opacity .18s; }
+/* ---------- CHAT page ---------- */
 .zm-msgs {
   flex: 1 1 auto; min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain; padding: 12px; display: flex; flex-direction: column; gap: 9px;
@@ -302,7 +280,7 @@ html.zm-kbd[data-kbd="sheet"] .zm-sheet.open { top: var(--zm-vvt, 0px); bottom: 
 }
 
 /* ---------- MENU / SETTINGS rows ---------- */
-.zm-rows { flex: 1 1 auto; min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch; padding: 6px 0 14px; }
+.zm-rows { padding: 6px 0 0; }
 .zm-row {
   width: 100%; min-height: 58px; padding: 12px 16px;
   display: flex; align-items: center; gap: 12px; text-align: left;
@@ -568,42 +546,34 @@ html.zm-kbd[data-kbd="sheet"] .zm-sheet.open { top: var(--zm-vvt, 0px); bottom: 
 /* V2-822 — the live process count rides the ☰ (the menu is the phone's processes view): ProcessCount.js, its look in
    core/shared-surfaces.css (`.pcount`). Placed on the button's top-right corner so the dock's seven controls keep
    their geometry; it takes no tap of its own — tapping it is tapping ☰. */
-/* Scoped to the DOCK on purpose: the ☰ sheet carries `zm-menu` too (`zm-sheet zm-menu`), and an unscoped
-   `.zm-menu { position: relative }` turned the fixed sheet into a block in the page flow, below the screen. */
+/* Scoped to the DOCK on purpose: the ☰ page carries `zm-menu` too (`zm-page zm-menu`), and an unscoped
+   `.zm-menu { position: relative }` turns the fixed page into a block in the flow, below the screen. */
 .zm-dock .zm-menu { position: relative; }
 .zm-dock .zm-menu .pcount { position: absolute; top: 1px; right: -3px; gap: 3px; padding: 0 2px; cursor: inherit;
   pointer-events: none; }
 .zm-dock .zm-menu .pcount-n { font-size: 0.75rem; }
 .zm-dock .zm-menu .pcount-bar { height: 11px; }
 
-/* V2-823 — the apps launcher inside the ☰ menu (shell/AppsPane.js). The rows and the app's page are drawn by
-   app/components/apps-catalog.js and styled ONCE in core/shared-surfaces.css; this is only the sheet's layout and
-   the phone's touch floor: every control here is ≥ 44px (CRIT-K31) — a row is the whole tap target. One screen at a
-   time (the list, then a page), so the menu's own rows step aside while the pane is up. */
-.zm-rows.is-off, .zm-apps.is-off { display: none; }
-.zm-apps { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
-.zm-apps-h { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; padding: 6px 10px;
-  border-bottom: 1px solid var(--hb-line-subtle); }
-.zm-apps-h .zm-apps-back { width: 44px; height: 44px; min-width: 44px; }
-.zm-apps-t { font: 600 15px/1.25 var(--sans); color: var(--hb-ink); }
-.zm-apps-list, .zm-apps-page { flex: 1 1 auto; min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain; }
-.zm-apps-list { padding: 8px 10px 14px; display: flex; flex-direction: column; gap: 2px; }
-.zm-apps-list .aw-group { margin: 12px 6px 4px; }
-.zm-apps-list .aw-group:first-child { margin-top: 2px; }
-.zm-apps-list .aw-row { min-height: 52px; font-size: 15px; }
-.zm-apps-list:empty, .zm-apps-page:empty { display: none; }
-.zm-apps-page { padding: 16px; }
-/* Name and «Open» share the head when they fit; a long name pushes «Open» to its own line, never off the sheet. */
-.zm-apps-page .aw-pagehead { flex-wrap: wrap; }
-.zm-apps-page .aw-open { min-height: 44px; min-width: 96px; font-size: 15px; }
-.zm-apps-page .aw-facts { grid-template-columns: max-content minmax(0, 1fr); }
-.zm-apps-page .aw-factv, .zm-apps-page .aw-about { overflow-wrap: anywhere; }
+/* V2-876 D-C — the APPS page (shell/AppsPane.js): a grid of every app, its icon on its own colour (the deck home's
+   tile), its name and one line of what it does. A tile is the whole tap target (≥ 44px); three across at 393px. */
+.zm-apps-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 18px 8px;
+  padding: 18px 12px 8px; align-content: start; }
+.zm-app { display: flex; flex-direction: column; align-items: center; gap: 4px; min-height: 44px; padding: 6px 2px;
+  border: none; border-radius: 16px; background: transparent; color: var(--hb-ink); text-align: center; }
+.zm-app:active { background: var(--hb-bubble); }
+.zm-app-ic { width: 60px; height: 60px; border-radius: 17px; margin-bottom: 4px; display: flex; align-items: center;
+  justify-content: center; font: 700 26px/1 var(--sans); color: #fff; background: var(--tile, var(--hb-accent));
+  box-shadow: inset 0 -14px 22px rgba(0, 0, 0, .18), 0 2px 8px rgba(0, 0, 0, .25); }
+.zm-app b { max-width: 100%; font: 600 14px/1.25 var(--sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.zm-app small { font: 13px/1.3 var(--sans); color: var(--hb-muted); overflow: hidden;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.zm-apps-sec { grid-column: 1 / -1; margin: 6px 4px 0; font: 700 11px/1.2 var(--sans); letter-spacing: .04em;
+  text-transform: uppercase; color: var(--hb-muted-2); }
 
 /* ---------- V2-870 — the AI services question (native app only, shell/AiConsentSheet.js) ----------
-   Above every other sheet: it is asked before anything else can happen. While the yes is missing the controls that
-   would reach the AI services look disabled; a tap on them opens this sheet again (ai-consent.js `gate`). */
-.zm-consent { z-index: 76; max-height: none; }
+   A page above every other page: it is asked before anything else can happen. While the yes is missing the controls
+   that would reach the AI services look disabled; a tap on them opens this page again (ai-consent.js `gate`). */
+.zm-consent { z-index: 76; }
 .zm-consent-b { padding: 14px 16px 4px; overflow: auto; }
 .zm-consent-b p { margin: 0 0 12px; font: 15px/1.5 var(--sans); color: var(--hb-ink); }
 .zm-consent-b .zm-consent-note { color: var(--hb-muted); font-size: 14px; }
@@ -611,5 +581,5 @@ html.zm-kbd[data-kbd="sheet"] .zm-sheet.open { top: var(--zm-vvt, 0px); bottom: 
 .zm-consent-a button { height: 48px; border-radius: 14px; font: 600 16px/1 var(--sans); }
 html.zm-consent-pending .zm-orb-btn, html.zm-consent-pending .zm-pwr, html.zm-consent-pending .zm-send { opacity: .45; }
 
-/* V2-875 — the Permissions heading inside the Settings sheet, aligned with its rows. */
+/* V2-875 — the Permissions heading inside the Settings page, aligned with its rows. */
 .zm-settings .zm-procs-t { padding: 16px 16px 6px; }

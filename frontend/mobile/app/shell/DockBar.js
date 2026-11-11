@@ -8,26 +8,20 @@
 // cover the last line of a widget. On iOS it also pads itself with env(safe-area-inset-bottom), or it would sit
 // under the home indicator and every tap would be a swipe-up instead.
 //
-// ── THE COMPOSITION (2026-10-24, operator): SEVEN controls around the orb, three a side plus feedback.
+// ── THE COMPOSITION (V2-876 D-C, operator 2026-11-11): ≡ · chat · apps | ORB | mic · speaker.
 //
-//   ☰ menu     → store.mobileMenuOpen              running processes · account · energy · settings · voice
-//                                                 (+ the live process count on the ☰, V2-822)
-//   💬 chat    → store.chatOpen                    the conversation
-//   🤖 wake    → attention_mode                    the wake word, the desktop orb's 🤖
-//   ◉  ORB     → the switch (below), 74px, mic INSIDE
+//   ☰ menu     → store.mobileMenuOpen    processes · account · energy · settings · feedback · voice (+ the live
+//                                        process count on the ☰, V2-822)
+//   💬 chat    → store.chatOpen          the conversation
+//   ▦ apps     → AppsPane.appsOpen       every app, full screen (feedback left for a row of the ☰ page; the wake word
+//                                        for a row of Settings)
+//   ◉  ORB     → the switch (below)
 //   🎤 mic     → session.openMicHere / mic.toggle  opening it takes the voice to this device
 //   🔊 speaker → session.openSpeakerHere / toggle  same rule
-//   ⚠ feedback → store.mobileFeedbackOpen          its own sheet (FeedbackSheet.js)
 //
-// The 2026-09-04 dashboards button is gone: the deck's own navigation is the PIPS above this bar and the side
-// swipe. The speaker, moved to the config sheet in V2-573, is back here because the voice now belongs to ONE device
-// and the hand that opens mic or speaker is what takes it there. Captions stay out (V2-573).
-//
-// WHY THE MIC STAYED WHEN THE SPEAKER DID NOT — the operator asked «and want some other?» and this is the answer:
-// silencing your own microphone is a PRIVACY gesture, and a privacy gesture that takes two taps and a sheet is not
-// one. The mic glyph inside the orb is the STATE (level while listening, slashed while muted); this button is the
-// CONTROL. Same relationship the desktop has between its orb and its arc, so neither shell teaches a second
-// vocabulary. If the operator wants four icons instead of five, deleting this block is the whole change.
+// The speaker sits in the dock because the voice belongs to ONE device and the hand that opens mic or speaker is what
+// takes it there. The mic stays because silencing your own microphone is a PRIVACY gesture, and one that takes two
+// taps is not one; the mic button is the ONE mic indicator (the orb's colour is the agent's state).
 //
 // THE ORB IS THE CENTRE, AND IT IS ALSO THE SWITCH (operator, 2026-08-18: «when stopped there is only the
 // on/off button, and when we start it the orb appears; or we touch the orb and it stops»). One slot, two faces:
@@ -58,17 +52,16 @@ import { OrbMini } from "./OrbMini.js?v=3";
 import * as power from "../../../app/services/power.js?v=1";
 import { ProcessCount } from "../../../app/components/ProcessCount.js?v=1";
 import * as consent from "./ai-consent.js?v=1";   // V2-870: in the app the voice asks first
+import { appsOpen, setAppsOpen } from "./AppsPane.js?v=2";
+import { APPS_ICON } from "../../../app/lib/icons.js?v=2";
 
 const SW = `viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"`;
 const MIC_ON  = `<svg ${SW}><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>`;
 const MIC_OFF = `<svg ${SW}><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/><path d="M4 4l16 16"/></svg>`;
 const CHAT    = `<svg ${SW}><path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.4 9.06 9.06 0 0 1-4-.9L3 21l1.9-4.5a8.38 8.38 0 0 1-.9-4A8.5 8.5 0 0 1 12.5 4 8.38 8.38 0 0 1 21 11.5z"/></svg>`;
-// SPEAKER and the WAKE WORD (2026-10-24) are the desktop's drawings, byte for byte (Orb.js SPK_ON/SPK_OFF/BOT_ICON).
+// SPEAKER is the desktop's drawing, byte for byte (Orb.js SPK_ON/SPK_OFF); APPS is the desk's launcher glyph (lib/icons.js).
 const SPK_ON  = `<svg ${SW}><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>`;
 const SPK_OFF = `<svg ${SW}><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="m22 9-6 6"/><path d="m16 9 6 6"/></svg>`;
-// FEEDBACK — a SQUARE bubble with «!», so it never reads as the round chat bubble beside it.
-const FB      = `<svg ${SW}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M12 7v4"/><path d="M12 14h.01"/></svg>`;
-const BOT     = `<svg ${SW}><path d="M12 8V4H8"/><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M9 13v2"/><path d="M15 13v2"/></svg>`;
 // MENU (2026-10-25, operator): the main menu is the classic three bars — a gear promised «settings» and opened the
 // account, the energy and everything else; settings are now one row inside it.
 const MENU    = `<svg ${SW}><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/></svg>`;
@@ -84,17 +77,6 @@ const cls = (on) => "zm-ic" + (on ? " on" : " off");
 // (`app/services/power.js`). This file used to start the voice session BEFORE the server had the switch on, so the
 // server refused it and the phone sat «off» over a running agent (2026-10-25 22:40:17).
 
-// THE WAKE WORD, same switch as the desktop orb's 🤖 (Orb.js): ON = `smart` (say the name once, keep talking),
-// OFF = `always`. Written through the same /api/settings seam; the SSE `orb:attention` event keeps both shells in step.
-const wakeOn = () => store.attentionMode() === "smart" || store.attentionMode() === "wakeword";
-function toggleWake() {
-  const prev = store.attentionMode();
-  const next = wakeOn() ? "always" : "smart";
-  store.setAttentionMode(next);
-  api.saveSettings({ attention_mode: next }).catch(() => store.setAttentionMode(prev));
-  api.uiEvent("mobile:attention", { state: next });
-}
-
 export function DockBar() {
   // The wake-word state and the name are read once here, as the desktop orb does; SSE keeps them live afterwards.
   api.getSettings().then((cfg) => {
@@ -106,15 +88,12 @@ export function DockBar() {
   const ORB = OrbMini();
   return h("nav", { class: "zm-dock", "aria-label": () => t("mobile.dock_label") },
 
-    // ── LEFT of the orb: the menu, the conversation, and the wake word ──
-    // 2026-10-24 (operator): the dashboards button is gone — «I do not know what it is». The deck already has its own
-    // navigation, the PIPS above this bar (one per open card, the current one lit) and the side swipe; closing the
-    // chat or a sheet is what shows the cards. Its slot went to the WAKE WORD, which the phone did not have.
+    // ── LEFT of the orb: the menu, the conversation, the apps ──
     h("div", { class: "zm-side" },
       // V2-822 — the ☰ also carries the live count of RUNNING PROCESSES (ProcessCount.js, the same component and the
       // same number as the desktop's bar): the menu is the phone's processes view, so tapping the count is tapping ☰.
       h("button", {
-        class: () => cls(store.mobileMenuOpen()) + " zm-menu",
+        class: () => cls(store.mobileMenuOpen() || store.mobileSettingsOpen() || store.mobileFeedbackOpen()) + " zm-menu",
         "aria-label": () => (store.liveProcessCount() > 0
           ? t("mobile.menu_processes", { n: store.liveProcessCount() }) : t("mobile.menu")),
         onClick: () => { const v = !store.mobileMenuOpen(); store.setMobileMenuOpen(v); api.uiEvent("mobile:menu", { state: v ? "open" : "close" }); },
@@ -127,10 +106,10 @@ export function DockBar() {
       }, raw(CHAT)),
 
       h("button", {
-        class: () => cls(wakeOn()),
-        "aria-label": () => (wakeOn() ? t("orb.wake_on", { name: store.assistantName() }) : t("orb.wake_off", { name: store.assistantName() })),
-        onClick: toggleWake,
-      }, raw(BOT)),
+        class: () => cls(appsOpen()), "data-ctl": "apps",
+        "aria-label": () => t("mobile.apps"),
+        onClick: () => { const v = !appsOpen(); setAppsOpen(v); api.uiEvent("mobile:apps", { state: v ? "open" : "close" }); },
+      }, raw(APPS_ICON)),
     ),
 
     // ── CENTRE: the orb, which is also the switch. Stopped → a ⏻ and nothing else; running → zaelar's face. ──
@@ -197,17 +176,6 @@ export function DockBar() {
         },
       }, () => raw(store.botMuted() ? SPK_OFF : SPK_ON)),
 
-      // FEEDBACK (operator, 2026-10-24): right of everything. Since 2026-10-25 it opens its OWN sheet
-      // (FeedbackSheet.js): it has a button of its own, so the menu no longer carries a second copy of it.
-      h("button", {
-        class: () => cls(store.mobileFeedbackOpen()),
-        "aria-label": () => t("feedback.title"),
-        onClick: () => {
-          const v = !store.mobileFeedbackOpen();
-          store.setMobileFeedbackOpen(v);
-          api.uiEvent("mobile:feedback", { state: v ? "open" : "close" });
-        },
-      }, raw(FB)),
     ),
   );
 }
