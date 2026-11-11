@@ -18,11 +18,17 @@ import time
 
 #: How long after an agent order a late failure is still «what you just told him would happen».
 WINDOW_S = 30.0
+#: How long a late tell waits before it is spoken, so the card's CONTRARY report can withdraw it (V2-886 fila 6:
+#: «the video is playing silently» was said 2.5 s after the player had reported sound, 1.3 s after the transient
+#: silence; a browser reports a muted start and then its sound). A settling window, not a tuning: `retract` reads it.
+SETTLE_S = 2.0
 
 _last_agent_order: dict[str, float] = {}
 #: The request row the agent's order on each card opened (`nucleo/request/model`): its late failure is a line of it.
 _order_row: dict[str, str] = {}
 _pending: set = set()
+#: The late tell of each card still inside its settling window (`retract` withdraws it).
+_settling: dict = {}
 #: When the card last reported that an agent order did NOT happen (V2-791). The anti-drag guard reads it: an op
 #: the card itself falsified left no effect, so its re-emit is a retry, never a drag.
 _falsified: dict[str, float] = {}
@@ -63,14 +69,35 @@ def deliver(wid: str, res) -> bool:
         emit("widget", "🩹 lo que el agente acababa de empezar no ocurrió — se dice", text=said[:160],
              extra={"id": _base(wid), "is_error": True})
         row = _order_row.get(_base(wid)) or ""
-        task = asyncio.get_running_loop().create_task(notices.notify(
-            _base(wid), said, task_id=row, key="" if row else f"late:{_base(wid)}:{_last_agent_order.get(_base(wid))}",
-            kind="info"))
+        key = "" if row else f"late:{_base(wid)}:{_last_agent_order.get(_base(wid))}"
+
+        async def _after_settle():
+            await asyncio.sleep(SETTLE_S)
+            await notices.notify(_base(wid), said, task_id=row, key=key, kind="info")
+        task = asyncio.get_running_loop().create_task(_after_settle())
         _pending.add(task)                       # a bare task can be collected before it runs
+        _settling[_base(wid)] = task
         task.add_done_callback(_pending.discard)
         return True
     except Exception:  # noqa: BLE001
         return False
+
+
+def retract(wid: str) -> bool:
+    """The card reported the CONTRARY before its late tell was spoken (V2-886 fila 6): the tell is withdrawn, said by
+    its own event. True when one was withdrawn."""
+    task = _settling.pop(_base(wid), None)
+    if task is None or task.done():
+        return False
+    task.cancel()
+    _falsified.pop(_base(wid), None)
+    try:
+        from voice.observer import emit
+        emit("widget", "🩹 the card reported the contrary before it was said — withdrawn", text=_base(wid),
+             extra={"id": _base(wid)})
+    except Exception:  # noqa: BLE001 — the withdrawal stands; only its event is lost
+        pass
+    return True
 
 
 def falsified_since(wid: str, ts: float) -> bool:

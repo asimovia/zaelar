@@ -161,9 +161,12 @@ def prompt_digest() -> str:
     if db.get("videoId") and str(db.get("channel") or "").strip():
         # V2-791 — and WHEN it was published: «is this today's?» is answered from here, never from the title
         pub = str(db.get("published") or "").strip()
-        lines.append(f"EN EL REPRODUCTOR: «{str(db.get('title') or '')[:70]}» — canal «{str(db['channel'])[:40]}»"
+        # V2-886 fila 6: ONE line, one state — the loaded video and whether it plays were two lines, and the model
+        # fused «en pausa» with the loaded title into «está en pausa: suena X».
+        _st = _sound.state_line(db).removeprefix("ESTADO DEL REPRODUCTOR: ")
+        lines.append(f"EN EL REPRODUCTOR ({_st}): «{str(db.get('title') or '')[:70]}» — canal «{str(db['channel'])[:40]}»"
                      + (f" — publicado «{pub[:30]}»" if pub else ""))
-    if (_state := _sound.state_line(db)):
+    elif (_state := _sound.state_line(db)):
         lines.append(_state)
     if (_snd := _sound.digest_line(db)):
         lines.append(_snd)

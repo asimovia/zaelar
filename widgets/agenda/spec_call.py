@@ -12,19 +12,15 @@ from __future__ import annotations
 from . import edit
 from .when import _resolve_date, _resolve_time
 
-_DATES = ("date", "newDate")
-_TIMES = ("startTime", "newTime", "endTime", "newEndTime")
-
-
 def spec_call(action: str, payload: dict) -> tuple[str, dict]:
     p = dict(payload or {})
     if action == "update_meeting" and any(str(p.get(k) or "").strip() for k in edit.TIME_KEYS):
         action = "move_meeting"
-    for k in _TIMES:
+    for k in ("startTime", "newTime", "endTime", "newEndTime"):     # the act's own fields
         if isinstance(p.get(k), str) and p[k].strip():
             p[k] = _resolve_time(p[k])
     at = str(p.get("newTime") or p.get("startTime") or "")
-    for k in _DATES:
+    for k in ("date", "newDate"):
         if isinstance(p.get(k), str) and p[k].strip():
             p[k] = _resolve_date(p[k], at=at)
     return action, p
