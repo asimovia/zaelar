@@ -1,1 +1,9 @@
-{"remaining": 0, "target_seconds": 0, "label": "", "running": false, "finished": false}
+{
+  "view_data_shape": {
+    "finished": "bool",
+    "label": "str",
+    "remaining": "int",
+    "running": "bool",
+    "target_seconds": "int"
+  }
+}
