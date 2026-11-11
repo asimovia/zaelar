@@ -72,6 +72,10 @@ async def compose_the_prompt(*, brain, emit, operator_text, self, text) -> dict:
     # lleva → cero tokens extra en charla normal; solo se carga bajo demanda.
     recent_block = ""
     timings["recent_fired"] = _rh.needs_recent(text)
+    from nucleo.turn import thread_event as _thread_event      # V2-878 §6: which shortcut fired, in which language
+    _needs_recall = bool(timings["recall_fired"]) and _rh.needs_recall(operator_text)   # µs: a regex, read again
+    _thread_event.recall_fired(operator_text, recall=_needs_recall,
+                               recent=bool(timings["recent_fired"] or (timings["recall_fired"] and not _needs_recall)))
     if timings["recent_fired"]:
         try:
             recent_block = await _p.asyncio.wait_for(

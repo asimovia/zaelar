@@ -7463,6 +7463,12 @@ DOMAINS: list[dict] = [
                                 "scrubbed prompt and answer, field NAMES, never the bearer), and a mediated egress route "
                                 "(`gateway`: family and path, never a credential; nothing in self-host)",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/test_what_the_engine_asks_outside_is_one_row.py"]},
+        {"id": "7.130", "title": "Every thread decision is ONE `thread` event (V2-878 §6): the route of a request (new · "
+                                 "continue · correct · close · evict · conversation · list) with the menu it was weighed "
+                                 "against and whether a live errand was open; the model judge's menu, answer and caller; a "
+                                 "judge past the turn's budget counted; the recall shortcuts with their language; a clause "
+                                 "that would stand alone measured without splitting; the commission shadow's `promise`",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_every_thread_decision_is_one_event.py"]},
     ]},
     {"id": "8", "name": "ENERGÍA / CONFIG", "nodes": [
         {"id": "8.1", "title": "Medidor de energía y límites de cuenta", "ch": UNIT, "paths": [
