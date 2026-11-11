@@ -360,9 +360,50 @@ def resolve_confirm(ok: bool, task_id: str = "") -> dict | None:
     return {**_relaunch(p), "ok": True}
 
 
+#: The row's artefact slot that holds HIS yes to the errand's start (V2-877 #2). The confirmation is a fact of the ROW,
+#: not a flag of one worker's context: every relaunch of the same row — a stall restart, a provider or context relay,
+#: a resume by id — continues the errand he already confirmed, and the gate reads it here instead of asking again.
+CONFIRMED_SLOT = "confirmed"
+
+
+def confirmed_on_row(uid: str) -> None:
+    """Record on row `uid` that he confirmed its start. Never raises: the relaunch's own `confirmed` still holds."""
+    if not uid:
+        return
+    try:
+        from nucleo.circuit import ledger
+        ledger.store().artifact_put(str(uid), CONFIRMED_SLOT, {"at": time.time()})
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"confirmed_on_row: his yes is not on row {uid} ({e!r})")
+
+
+def passed(context: dict | None) -> None:
+    """The start gates let a launch through on HIS yes (`confirmed`): written on its row — the ONE writer of the fact."""
+    if (context or {}).get("confirmed"):
+        confirmed_on_row(str((context or {}).get("task_uid") or ""))
+
+
+def confirmed(context: dict | None) -> bool:
+    """Has the errand this context continues already been confirmed? Its own `confirmed`, or its ROW's
+    (`CONFIRMED_SLOT`) — the one reading both start gates (`dispatch/session.py`) make. An unreadable row asks."""
+    ctx = context or {}
+    if ctx.get("confirmed"):
+        return True
+    uid = str(ctx.get("task_uid") or "")
+    if not uid:
+        return False
+    try:
+        from nucleo.circuit import ledger
+        return bool(ledger.store().artifact_get(uid, CONFIRMED_SLOT))
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"confirmed: row {uid} unreadable ({e!r}) — the gate asks")
+        return False
+
+
 def _relaunch(p: dict) -> dict:
     """His yes to a parked errand: the SAME request through the same door, `confirmed`, on its OWN row (V2-857 P0-1:
-    the row was kept and waited on his answer, so «how is it going?» and a restart both find it)."""
+    the row was kept and waited on his answer, so «how is it going?» and a restart both find it). The gate it crosses
+    writes the yes on the row (`confirmed_on_row`), so no later relay of it asks him again (V2-877 #2)."""
     ctx = {**p["context"], "confirmed": True, "kind": p["kind"]}
     if p.get("uid"):
         ctx["task_uid"] = str(p["uid"])
@@ -402,7 +443,10 @@ def make_durable(task_id: str, rec) -> str:
     try:
         from nucleo.circuit import asker
         from observability import identity
-        ask_id = f"{uid}-start"
+        from nucleo.runtime_ids import boot_id, next_seq
+        # One id per ASK, never per row (V2-877 #2): a re-ask under the row's old id was a spent question — his
+        # every later yes was «bound» and refused, and the row waited a week. Unique across restarts (`boot_id`).
+        ask_id = f"{uid}-start-{boot_id()}-{next_seq('confirm.start')}"
         keep = json.loads(json.dumps({k: p.get(k) for k in ("request", "kind", "trusted", "context", "sheet",
                                                              "refinements")}, default=str))
         entry = {"ask_id": ask_id, "corr_id": ask_id, "uid": uid, "task_id": str(task_id), "inline": True,
@@ -412,6 +456,10 @@ def make_durable(task_id: str, rec) -> str:
         entry["candidates"] = entry["options"] = yes_no()   # the two DECLARED answers the brief picks (`#0` is yes)
         asker.ask(uid, entry, bus_id=str(task_id))
         p.update(uid=uid, ask_id=ask_id)
+        # The notice that SAID it (`_deliver_confirm`, keyed before the ask existed) is the question's: once it is
+        # answered the notice settles instead of being painted on the next screen (V2-877 #2 N2).
+        from nucleo.pulse import notice_ask as _notice_ask
+        _notice_ask.bind_ask(f"approval:{task_id}", ask_id)
         return ask_id
     except Exception as e:  # noqa: BLE001 — the in-memory gate still holds it; the row is the part that failed
         logger.warning(f"make_durable: the parked errand's question is not on its row ({e!r})")

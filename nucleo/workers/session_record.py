@@ -46,6 +46,7 @@ class SessionRecord:
     ask_corr: str = ""            # corr_id of the active ask
     result_seen: bool = False     # V2-851: the backend's `result` arrived — an ending without it is a DEATH
     parked: bool = False          # V2-851: it ASKED — its process ends, the row waits, an answer resumes it by id
+    stop_reason: str = ""         # V2-877 #2: why `stop()` stopped it — `ended.his_cancel` decides if it is an ending
     # V2-851 F2 §4a — the grant a session runs under (`{may: [...], channels: [...]}`, `nucleo/errands/mandate.py`):
     # an exit it covers does not ask after an untrusted read. Empty for an errand of his own: every such exit asks.
     mandate: dict = field(default_factory=dict)

@@ -297,6 +297,8 @@ class LangSpec:
     #: about WHICH waiting task they answer is asked, naming the tasks ({among}).
     answer_taken: str = ""
     answer_which_task: str = ""
+    #: V2-877 #2 — his answer named a question that was already answered: said once, never «passed on».
+    answer_already_given: str = ""
     #: A send task that lacks ONE slot asks for it on its row (`nucleo/request/send_task`): the words, the person.
     send_missing_text: str = ""
     send_missing_recipient: str = ""

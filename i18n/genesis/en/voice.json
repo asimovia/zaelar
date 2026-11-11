@@ -142,6 +142,7 @@
  "objective_which_peer": "Which agent, and on which cluster, is that objective for?",
  "stop_which_worker": "I have several different tasks running — which one exactly am I stopping?",
  "answer_taken": "Okay, I'm passing that on to the task.",
+ "answer_already_given": "You already answered that question; there's nothing new to pass on to the task.",
  "send_missing_text": "What should I tell {who}?",
  "send_missing_recipient": "Who should I send it to?",
  "answer_which_task": "Which of these tasks is your answer for: {among}?",
