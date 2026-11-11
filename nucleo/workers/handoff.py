@@ -1,18 +1,8 @@
-"""nucleo/workers/handoff.py — lo que se le CUENTA al operador y al worker siguiente cuando algo falla (V2-276).
+"""nucleo/workers/handoff.py — what the OPERATOR and the NEXT worker are told when a worker fails (V2-276).
 
-Extraído de `session.py` el 2026-08-24 para pagar el trinquete de arquitectura, que llevaba rojo desde la
-noche anterior por mis propios commits. Los dos son constructores de TEXTO PUROS sobre un `SessionRecord`
-—cero I/O, cero estado del pool, cero contacto con el proceso del worker— y esa es toda la razón de que la
-frontera sea limpia: `session.py` gobierna el ciclo de vida de una sesión viva, y estas dos funciones solo
-redactan.
-
-Son hermanas a propósito y por eso viajan juntas: las dos existen porque el mismo incidente (2026-08-18)
-enseñó que un texto interno entregado tal cual miente en las dos direcciones — hacia el OPERADOR, que oyó
-«API Error: The model has reached its context window limit.» donde esperaba una guitarra, y hacia el worker
-SIGUIENTE, al que ese mismo texto le habría dicho que el error de su predecesor era un hallazgo.
-
-Se re-exportan desde `session` porque los tests y `providers.py` los nombran desde allí: es una mudanza, no
-un cambio de interfaz.
+Pure text builders over a `SessionRecord` (no I/O, no pool state), moved out of `session.py` and re-exported there.
+Sisters on purpose: one incident (2026-08-18) showed an internal text delivered as-is lies both ways — to him
+(«API Error: …context window limit.» read aloud) and to the next worker (its predecessor's error as a finding).
 """
 from __future__ import annotations
 
@@ -65,22 +55,31 @@ def operator_safe_summary(summary: str) -> str:
     return t
 
 
+#: What the next WORKER is told rides here, never in the request: the request is his goal and is rendered (V2-877).
+BRIEF_KEY = "worker_brief"
+
+
+def with_worker_brief(prompt: str, context: dict | None) -> str:
+    """The worker's prompt with the relay's brief in front of it — the ONE reader of `BRIEF_KEY` (V2-877)."""
+    brief = str((context or {}).get(BRIEF_KEY) or "").strip()
+    return f"{brief}\n\n{prompt}" if brief else prompt
+
+
 def context_handoff(rec: "SessionRecord") -> str:
     """The brief a fresh worker inherits when the previous one ran out of context (incident 2026-08-18).
 
-    Built ONLY from what we already hold in the record — plan, steps taken, last narrated note, breadth reported.
-    No LLM call: compacting must not depend on a model being reachable at the exact moment one just failed, and this
-    runs on the failure path.
-
-    What it deliberately does NOT carry is the dead worker's `result_summary`: on this path that field holds the raw
-    provider error, and pasting it in would tell the new worker its predecessor's error message was a finding."""
-    parts = [f"RETOMA esta tarea, que se quedó a medias porque el worker anterior agotó su contexto: {rec.goal}"]
+    WORKER-FACING: it rides in `context[BRIEF_KEY]` beside his ORIGINAL goal (V2-877 — sent as the request it became
+    the goal, and «RETOMA esta tarea…» reached his chat). Instruction text for the model like every prompt, so English
+    and NOT in i18n: he never sees it, and the goal it continues is his own words. Built only from the record (no LLM
+    on the failure path), and never from `result_summary`, which here holds the raw provider error."""
+    parts = ["RESUME this errand: the previous worker ran out of context before finishing it. The errand is the "
+             f"request below; its words were: {rec.goal}"]
     if rec.plan:
         done = max(0, min(int(rec.done or 0), len(rec.plan)))
-        parts.append("Su plan era: " + " · ".join(str(p) for p in rec.plan[:8])
-                     + f" (llevaba {done} de {len(rec.plan)} pasos).")
+        parts.append("Its plan was: " + " · ".join(str(p) for p in rec.plan[:8])
+                     + f" ({done} of {len(rec.plan)} steps done).")
     if rec.note:
-        parts.append(f"Lo último que dijo: {str(rec.note)[:300]}")
+        parts.append(f"The last thing it said: {str(rec.note)[:300]}")
     if rec.steps:
         seen: list[str] = []
         for s in rec.steps[-8:]:
@@ -88,9 +87,9 @@ def context_handoff(rec: "SessionRecord") -> str:
             if bit and bit not in seen:
                 seen.append(bit)
         if seen:
-            parts.append("Ya había mirado: " + " · ".join(seen)[:600] + ".")
+            parts.append("Already looked at: " + " · ".join(seen)[:600] + ".")
     if int(rec.considered or -1) > 0:
-        parts.append(f"Había revisado {rec.considered} candidatos y se quedaba con {max(0, int(rec.kept or 0))}.")
-    parts.append("NO repitas lo ya mirado: sigue desde ahí y ENTREGA en cuanto tengas algo presentable, "
-                 "aunque sea parcial. Ve al grano — el contexto es limitado.")
+        parts.append(f"It had reviewed {rec.considered} candidates and was keeping {max(0, int(rec.kept or 0))}.")
+    parts.append("Do NOT repeat what was already looked at: continue from there and DELIVER as soon as you have "
+                 "something presentable, even if partial. Be brief — the context is limited.")
     return "\n".join(parts)

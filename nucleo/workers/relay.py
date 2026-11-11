@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from loguru import logger
 
-from .handoff import context_handoff
+from .handoff import BRIEF_KEY, context_handoff
 
 def _say():
     """The language table (V2-682). These endings are SPOKEN, and they were Spanish literals inline — a
@@ -42,8 +42,9 @@ def relay_out_of_fuel(rec, relay_cap: int) -> None:
         rec.context_retried = True
         try:
             from nucleo.acts import errand as _esc
-            _esc.escalate_to_slowbrain(context_handoff(rec), context={
+            _esc.escalate_to_slowbrain(rec.goal, context={      # V2-877: his goal, never the worker's brief
                 "src": "context_handoff", "kind": rec.kind, "trace": rec.trace_id,
+                BRIEF_KEY: context_handoff(rec),
                 "sheet": str(getattr(rec, "sheet", "") or ""),   # the sheet belongs to the ERRAND, not the session
                 # V2-698 — and so does the SURFACE. Without it the relaunch was born with the default one
                 # and opened a results sheet over a «voz» errand (measured 2026-09-15, provider relay ×2).
@@ -149,8 +150,8 @@ def restart_stalled(rec) -> None:
         row = _tasks.get(uid)
         _tasks.store().task_patch(uid, attempts=int(row.get("attempts") or 0) + 1)
         from nucleo.acts import errand as _esc
-        _esc.escalate_to_slowbrain(context_handoff(rec), context={
-            "src": "stall_restart", "kind": rec.kind, "trace": rec.trace_id,
+        _esc.escalate_to_slowbrain(rec.goal, context={      # V2-877: his goal, never the worker's brief
+            "src": "stall_restart", "kind": rec.kind, "trace": rec.trace_id, BRIEF_KEY: context_handoff(rec),
             "sheet": str(getattr(rec, "sheet", "") or ""),
             "surface": str(getattr(rec, "surface", "") or ""),
             "task_uid": uid,
