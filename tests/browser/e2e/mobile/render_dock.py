@@ -153,14 +153,13 @@ def run(url):
         check("the orb is centred on the screen",
               box["centre"] and abs(box["centre"]["cx"] - W / 2) <= 1.5,
               f"centre x={box['centre'] and round(box['centre']['cx'], 1)}, screen centre={W / 2}")
-        # THREE controls per side since 2026-10-24 (operator): ☰ menu · chat · wake word | ORB | mic · speaker ·
-        # feedback. Measured on the RENDERED bar rather than trusted from the source, because "the icon is
+        # V2-876 D-C (2026-11-11): ☰ menu · chat · apps | ORB | mic · speaker. Measured on the RENDERED bar rather than trusted from the source, because "the icon is
         # declared" and "the icon is on screen at a reachable size" are different claims, and this shell has
         # already paid for the difference once (the unpainted orb).
         left = [x["label"] for x in box["btns"] if x["x"] + x["w"] / 2 < box["centre"]["cx"] - 5]
         right = [x["label"] for x in box["btns"] if x["x"] + x["w"] / 2 > box["centre"]["cx"] + 5]
-        check("three controls left of the orb, three right",
-              len(left) == 3 and len(right) == 3,
+        check("three controls left of the orb, two right",
+              len(left) == 3 and len(right) == 2,
               f"left={left} right={right}")
 
         small = [(x["label"], x["w"], x["h"]) for x in box["btns"] if min(x["w"], x["h"]) < MIN_TAP]
@@ -190,13 +189,13 @@ def run(url):
                   if s and "." in s and " " not in s and s.split(".")[0] in NS]
         check("no label rendered as a raw i18n key", not keyish, str(keyish[:6]))
 
-        # ── a sheet must never bury the dock: no mic and no power switch while chatting ──
+        # ── a page must never bury the dock: no mic and no power switch while chatting ──
         pg.evaluate("""() => { const b = [...document.querySelectorAll('.zm-dock button')]
             .find(e => /hat|onversa/i.test(e.getAttribute('aria-label') || '')); if (b) b.click(); }""")
         pg.wait_for_timeout(700)
         sheet = pg.evaluate("""() => {
           const d = document.querySelector('.zm-dock').getBoundingClientRect();
-          const sh = document.querySelector('.zm-sheet.open');
+          const sh = document.querySelector('.zm-page.open');
           const s = sh && sh.getBoundingClientRect();
           const mic = [...document.querySelectorAll('.zm-dock button')]
             .filter(e => e.offsetParent !== null)[0].getBoundingClientRect();
@@ -204,8 +203,8 @@ def run(url):
           return { open: !!sh, dockTop: d.y, sheetBottom: s ? s.y + s.height : null,
                    micReachable: !!(hit && hit.closest('.zm-dock')) };
         }""")
-        check("the chat button opens a sheet", sheet["open"])
-        check("the sheet stops ON TOP of the dock, never over it",
+        check("the chat button opens a page", sheet["open"])
+        check("the page stops ON TOP of the dock, never over it",
               sheet["sheetBottom"] is None or sheet["sheetBottom"] <= sheet["dockTop"] + 1,
               json.dumps(sheet))
         check("the mic is still tappable with the chat open", sheet["micReachable"], json.dumps(sheet))

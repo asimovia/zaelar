@@ -10,9 +10,9 @@
 // accessory row, and the keys came under that — composer, a bar of seven controls nobody can press while typing,
 // the «^ v Done» row, then the keyboard. Half the screen of chrome around one text field.
 //
-// So one rule, here and not in sixteen widgets: while a text field INSIDE A CARD or INSIDE A SHEET has focus and
+// So one rule, here and not in sixteen widgets: while a text field INSIDE A CARD or INSIDE A PAGE has focus and
 // the visual viewport is clearly shorter than the screen, the root wears `zm-kbd` with `data-kbd` naming which
-// (`deck` | `sheet`), the surface that holds the field is laid over the visible part only (`--zm-vvh`/`--zm-vvt`),
+// (`deck` | `page`), the surface that holds the field is laid over the visible part only (`--zm-vvh`/`--zm-vvt`),
 // the dock and the pips step aside, and the focused field is brought into view. The iOS accessory row is the
 // system's and cannot be removed from a web page; what can be removed is everything of ours around it.
 
@@ -26,11 +26,11 @@ function editable(el) {
   return !/^(checkbox|radio|range|button|submit|reset|file|color)$/i.test(el.type || "");
 }
 
-/** Which surface the focused field belongs to: "deck", "sheet", or "" (none of ours). */
+/** Which surface the focused field belongs to: "deck", "page" (a shell page: the chat, feedback…), or "" (none of ours). */
 export function surfaceOf(el) {
   if (!editable(el)) return "";
   if (el.closest(".zm-deck")) return "deck";
-  if (el.closest(".zm-sheet")) return "sheet";
+  if (el.closest(".zm-page")) return "page";
   return "";
 }
 

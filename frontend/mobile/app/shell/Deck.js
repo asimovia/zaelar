@@ -196,7 +196,7 @@ function injectStyles() {
 }
 
 // A stable colour per app, from its id: the same app wears the same tile on every phone and after every reload.
-function tileHue(base) {
+export function tileHue(base) {
   let h = 0;
   for (const ch of String(base || "")) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
   return h % 360;

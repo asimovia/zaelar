@@ -738,6 +738,8 @@
  "mobile.account": "My account",
  "mobile.account_sub": "Plan, Energy, billing, renewal and sign out",
  "mobile.chat_off": "Your agent is off — turn it on with ⏻ and it will answer.",
+ "mobile.wake_word": "Wake word «{name}»",
+ "mobile.apps_mine": "Yours",
  "mobile.close_all": "Close all",
  "mobile.dashboards": "Dashboards",
  "mobile.desktop": "Desktop version",

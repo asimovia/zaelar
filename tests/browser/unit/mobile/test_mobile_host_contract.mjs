@@ -231,7 +231,7 @@ check("the centre slot swaps its two faces by visibility, not by rebuilding",
 // read. MIC_ICON is checked under the dock's own name for it (MIC_ON), the one rename this pairing needs.
 const GLYPH_PAIRS = [["MIC_ICON", "MIC_ON"], ["SPK_ON", "SPK_ON"], ["SPK_OFF", "SPK_OFF"],
                      ["CAP_ICON", "CAP"], ["CHAT_ICON", "CHAT"], ["PWR_ICON", "PWR"],
-                     ["BOT_ICON", "BOT"]];
+                     ["BOT_ICON", "BOT"]];   // BOT: the wake word left the dock (V2-876 D-C); kept for the pairing rule
 let sharedGlyphs = 0;
 for (const [orbName, dockName] of GLYPH_PAIRS) {
   const m = ORB_JS.match(new RegExp(`const ${orbName}\\s*=\\s*\`([^\`]*)\``));
@@ -258,23 +258,24 @@ check("the dock carries no captions control", !/toggleCaptions/.test(DOCKBAR),
 check("the captions BAND is not mounted either",
   !/CaptionBand/.test(read("frontend", "mobile", "app", "shell", "mobile-surfaces.js")),
   "mobile-surfaces.js still mounts CaptionBand — the icon went but the band stayed");
-// 2026-10-24 (operator): the dashboards button is retired — the pips and the swipe are the deck's navigation — and
-// the phone gains the wake word and the speaker, the desktop orb's own switches.
+// 2026-10-24 (operator): the dashboards button is retired — the pips and the swipe are the deck's navigation.
+// V2-876 D-C (2026-11-11): dock = ≡ · chat · apps | orb | mic · speaker; the wake word moved to a row of Settings
+// (the same attention_mode seam, shell/wake.js) and feedback to a row of the ☰ page, with its own page.
 check("the dock carries no dashboards button", !/showDesk|const DESK\b/.test(DOCKBAR),
   "the deck is navigated by its pips and the swipe; a dashboards button came back");
-check("the dock carries the wake word and the speaker",
-  /onClick:\s*toggleWake\b/.test(DOCKBAR) && /attention_mode:\s*next/.test(DOCKBAR) && /session\.openSpeakerHere\(/.test(DOCKBAR),
-  "the wake-word switch must write attention_mode like the desktop orb, and the speaker must claim the voice");
-// 2026-10-25 (operator): feedback has its own dock button, so it has its own SHEET — and the menu no longer
-// carries a second copy of it. The menu button is the classic ☰, and its sheet leads with the account.
+const SETTINGS = read("frontend", "mobile", "app", "shell", "SettingsSheet.js");
+const WAKE = read("frontend", "mobile", "app", "shell", "wake.js");
+check("the dock carries the apps and the speaker; Settings carries the wake word",
+  /setAppsOpen\(v\)/.test(DOCKBAR) && /session\.openSpeakerHere\(/.test(DOCKBAR)
+  && /wake\.toggle/.test(SETTINGS) && /attention_mode:\s*next/.test(WAKE),
+  "the apps button must open the apps page, the speaker must claim the voice, and the wake-word row must write attention_mode like the desktop orb");
 const MENUSHEET = read("frontend", "mobile", "app", "shell", "MenuSheet.js");
 const SURFACES = read("frontend", "mobile", "app", "shell", "mobile-surfaces.js");
-check("the dock's feedback button opens its own sheet, never the menu",
-  /store\.setMobileFeedbackOpen\(v\)/.test(DOCKBAR) && !/store\.setMobileFeedbackOpen\(v\)[\s\S]{0,80}store\.setMobileMenuOpen\(v\)/.test(DOCKBAR)
+check("feedback is a row of the ☰ page that opens its own page, and not a dock button",
+  /go\(store\.setMobileFeedbackOpen\)/.test(MENUSHEET) && !/setMobileFeedbackOpen/.test(DOCKBAR)
   && /comp: FeedbackSheet/.test(SURFACES) && /FeedbackForm\(/.test(read("frontend", "mobile", "app", "shell", "FeedbackSheet.js")),
-  "the ⚠ button must open FeedbackSheet (mounted from mobile-surfaces.js), not the menu");
-check("the menu carries no feedback", !/FeedbackForm|feedback\.title/.test(MENUSHEET),
-  "feedback came back into the ☰ menu — it already has its own button and sheet");
+  "the ☰ page must carry a feedback row opening FeedbackSheet (mounted from mobile-surfaces.js)");
+check("the menu does not embed the form", !/FeedbackForm/.test(MENUSHEET), "the form lives on its own page");
 check("the menu button is ☰ and the menu leads with the account and the Energy",
   /raw\(MENU\)/.test(DOCKBAR) && !/const CFG\b/.test(DOCKBAR)
   && MENUSHEET.indexOf('t("mobile.account")') > 0 && MENUSHEET.indexOf('t("mobile.account")') < MENUSHEET.indexOf('"zm-energy"')

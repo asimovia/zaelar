@@ -28,6 +28,8 @@ import * as push from "../../../app/services/push.js?v=1";
 import * as consent from "./ai-consent.js?v=1";
 import * as privacy from "../../../app/services/privacy.js?v=1";
 import { inNativeApp } from "../../../app/core/native.js?v=1";
+import { Page } from "./Page.js?v=1";
+import * as wake from "./wake.js?v=1";
 
 function Toggle(label, get, onToggle) {
   return h("button", { class: () => "zm-row zm-toggle" + (get() ? " on" : ""), onClick: onToggle },
@@ -74,16 +76,9 @@ export function SettingsSheet() {
   // desktop tab on the same account — speaking the old one.
   const pick = (code) => { fetch("/api/i18n/choose/" + encodeURIComponent(code), { method: "POST" }).catch(() => {}); };
 
-  return h("section", {
-    class: () => "zm-sheet zm-settings" + (store.mobileSettingsOpen() ? " open" : ""),
-    "aria-hidden": () => (store.mobileSettingsOpen() ? "false" : "true"),
-  },
-    h("header", { class: "zm-sheet-h" },
-      h("div", { class: "zm-sheet-grab" }),
-      h("h2", null, () => t("mobile.settings")),
-      h("button", { class: "zm-sheet-x", "aria-label": () => t("desktop.close"), onClick: () => store.setMobileSettingsOpen(false) }, "×"),
-    ),
-
+  const close = () => store.setMobileSettingsOpen(false);
+  return Page({ id: "settings", open: store.mobileSettingsOpen, title: () => t("mobile.settings"), close,
+    back: () => { close(); store.setMobileMenuOpen(true); } },
     h("div", { class: "zm-rows" },
       // ── LANGUAGE. `available()` is whatever bundles this install actually has, never a hardcoded list: a
       //    language the operator generated (V2-089/V2-101) has to appear here without anyone editing this file.
@@ -110,6 +105,9 @@ export function SettingsSheet() {
       Toggle(() => t("orb.speaker_unmuted"),
         () => !store.botMuted(),
         () => (store.botMuted() && session.openSpeakerHere ? session.openSpeakerHere("settings") : session.toggleBotMute())),
+
+      // ── THE WAKE WORD (V2-876 D-C: its dock slot went to Apps). The desktop orb's 🤖, the same seam (wake.js).
+      Toggle(() => t("mobile.wake_word", { name: store.assistantName() }), wake.on, wake.toggle),
 
       // ── V2-796 — can this phone be reached when zaelar is closed? Tapping asks (a gesture, as iOS requires);
       //    once on, the same row sends a test notice so «is it working?» has an answer.
