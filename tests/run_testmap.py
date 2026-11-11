@@ -3523,7 +3523,8 @@ DOMAINS: list[dict] = [
         # dos barras, los iconos de cada fuente y el botón Conectores que abre su pantalla. El contrato del
         # estándar vive en `.meshkore/docs/conventions/zaelar-widget-header-standard.md`.
         {"id": "4.176", "title": "Una ficha de contacto parece una ficha, y el widget lleva la cabecera "
-                                 "estándar con su tira de conectores y su caja de sincronización",
+                                 "estándar con su tira de conectores y su caja de sincronización"
+                                 " · The contacts source icons are STATUS, never a control (V2-887 step 9): lit = connected, dimmed = not, no hand and no button; clicking one moves nothing — the contacts are always all and the plug is the one door to the sources",
             "ch": UNIT, "paths": [
                 "tests/browser/unit/contactos/test_a_contact_card_looks_like_a_contact_card.py"]},
         {"id": "4.175", "title": "Una cita dice quién la convoca: enlace de Meet, organizador, invitados con "
@@ -4225,7 +4226,8 @@ DOMAINS: list[dict] = [
                                  "became musica:play_playlist «Favoritos»; a repair never selects a list nobody said (V2-781)",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_a_bare_play_belongs_to_the_open_player.py"]},
         {"id": "2.331", "title": "A play the agent just started that the player then refuses is SAID — «Voy con ella» over "
-                                 "two 150s and an exhausted list nobody heard about (V2-781)",
+                                 "two 150s and an exhausted list nobody heard about (V2-781) · a late tell waits "
+                                 "`late_report.SETTLE_S` and the card's contrary report withdraws it (V2-886 fila 6)",
             "ch": UNIT, "paths": ["tests/browser/unit/youtube/test_a_late_player_error_is_told.py"]},
         {"id": "2.332", "title": "«Unmute it and skip to the next one» runs BOTH controls when the verdict heard both — "
                                  "`next` was dropped as an enumeration and «Te paso al siguiente» was said over nothing (V2-781)",
@@ -6843,8 +6845,7 @@ DOMAINS: list[dict] = [
         {"id": "2.1695", "title": "An end state is rendered over what the app stores (V2-886 fila 5): `spec.render` reads the card's `spec_call(action, payload)` — agenda resolves his «jueves»/«8 pm» with the act's own resolvers, so a move or an add that landed is judged met (es/en), and an edit that carries a WHEN owes the move's end state",
             "ch": UNIT, "paths": ["tests/browser/unit/agenda/test_the_end_state_reads_what_the_row_stores.py"]},
         {"id": "2.1696", "title": "The player state the brain reads is the player's REPORT for the loaded video, never the order, in ONE line with the loaded video (V2-886 fila 6); a card's late tell waits `late_report.SETTLE_S` and the card's contrary report withdraws it (youtube and musica)",
-            "ch": UNIT, "paths": ["tests/browser/unit/youtube/test_the_player_state_the_brain_reads_is_the_report.py",
-                                  "tests/browser/unit/youtube/test_a_late_player_error_is_told.py"]},
+            "ch": UNIT, "paths": ["tests/browser/unit/youtube/test_the_player_state_the_brain_reads_is_the_report.py"]},
         {"id": "2.1697", "title": "A harness note rides after an answer that worked, never inside a failure, signed by its author (V2-886 fila 9): a failed act carries no note and the note stays pending; the CLIs print it after the result, ⟦AVISO DEL SISTEMA⟧ for the harness and ⟦NUEVAS INSTRUCCIONES DEL OPERADOR⟧ only for his; the step's evidence drops it",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/workers/test_a_harness_note_rides_after_an_answer_never_inside_a_failure.py"]},
         {"id": "2.1698", "title": "What observability keeps stays readable (V2-887 step 1): a lowercase word that is only a PIECE of a known name passes untagged («nombre», «que», «con»), the whole name and the capitalised piece are still tagged; one brief call's tokens ride its first read only, never once per question",
@@ -6855,8 +6856,6 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_a_clear_request_is_done_and_never_called_done_before_its_result.py"]},
         {"id": "2.1701", "title": "One person is one candidate (V2-887 step 6): a contact named by its handle («raquel.salvadoresteban», «pedrosalvador12») whose letters spell another matched contact's full name is that person — «Raquel Salvador» resolves to one; a plain one-word name stays its own",
             "ch": UNIT, "paths": ["tests/memory/unit/contacts/test_one_person_is_one_candidate.py"]},
-        {"id": "2.1702", "title": "The contacts source icons are STATUS, never a control (V2-887 step 9): lit = connected, dimmed = not, no hand and no button; clicking one moves nothing — the contacts are always all and the plug is the one door to the sources",
-            "ch": UNIT, "paths": ["tests/browser/unit/contactos/test_a_contact_card_looks_like_a_contact_card.py"]},
         {"id": "2.1703", "title": "A send the model called in silence is said as a start, never as «I lost that» (V2-887): the routed send is the turn's act — the typed channel names it `widget_data:mensajeria:send_to` and the mouth says `done_just_started`, ES and EN",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_a_send_the_model_called_in_silence_is_said_as_a_start.py"]},
         {"id": "2.1704", "title": "A declared act of one of our apps that does not leave the machine runs under a sure «escalate», like a player call (V2-887): «impórtame todos los contactos» runs `contactos:sync_contacts` instead of a worker; a leaving act (a send) is still routed, ES and EN",

@@ -771,3 +771,20 @@ def namer(people: list[dict] | None = None):
         return {"name": name, "photo": "", "contactId": ""}
 
     return resolve
+
+
+def one_per_spelling(rows: list[dict]) -> list[dict]:
+    """Tied rows counted once per THING (V2-887 step 6, the card's side of `directory._one_row_per_person`): a row
+    labelled by a handle — one word, with separators or digits («raquel.salvadoresteban») — whose letters spell
+    another tied row's label is that row. Measured 2026-11-11: «ponle el alias…» asked «¿cuál exactamente? Raquel
+    Salvador Esteban, raquel.salvadoresteban» — one person, two rows."""
+    named = {_spelled(i.get("label")) for i in rows if " " in str(i.get("label") or "").strip()}
+    named.discard("")
+    out = []
+    for i in rows:
+        lb = str(i.get("label") or "").strip()
+        sp = _spelled(lb)
+        if lb and " " not in lb and sp and sp != _norm(lb) and sp in named:
+            continue
+        out.append(i)
+    return out or rows

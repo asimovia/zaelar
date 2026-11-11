@@ -17,8 +17,24 @@ no order to obey, so nothing fires.
 """
 from __future__ import annotations
 
-#: The closed vocabulary. `mute`/`unmute` = the 🔊 (reversible, the agent keeps listening); `off` = the ⏻.
-ACTS: tuple[str, ...] = ("mute", "unmute", "off", "voice_male", "voice_female", "voice_list", "voice_settings", "language")  # + his voice / the locked language
+from enum import Enum
+
+
+class Act(str, Enum):
+    """The closed vocabulary of act ids (not words of a language: his words reach them through the model's call).
+    `mute`/`unmute` = the 🔊 (reversible, the agent keeps listening); `off` = the ⏻; then his voice and the locked
+    language."""
+    MUTE = "mute"
+    UNMUTE = "unmute"
+    OFF = "off"
+    VOICE_MALE = "voice_male"
+    VOICE_FEMALE = "voice_female"
+    VOICE_LIST = "voice_list"
+    VOICE_SETTINGS = "voice_settings"
+    LANGUAGE = "language"
+
+
+ACTS: tuple[str, ...] = tuple(a.value for a in Act)
 
 #: The event kind the screens obey (`event-scope.js` scopes it to the origin screen; `sse.js` runs the button's door).
 KIND = "controls"

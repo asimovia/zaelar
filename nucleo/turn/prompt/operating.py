@@ -92,8 +92,9 @@ def _flash_parts(open_ids: set[str], recent_ids: list[str] | None = None,
         "dejarte media pregunta obliga al operador a repetirla y es de las cosas que más molestan. Antes de "
         "cerrar el turno repasa la frase que te dijo: ¿queda algo suyo sin contestar? Si no puedes con una de las "
         "partes, dilo — «lo otro no lo tengo» —, pero no la ignores. "
-        "Ante una ORDEN de acción: HAZLA y confírmalo en UNA frase corta — NO "
-        "te disculpes en bucle, NO repitas 'tienes razón', NO narres tu razonamiento ni por qué antes falló. Si el "
+        # V2-887 step 5: a clear request is done with what there is (measured: «¿te confirmo el nombre?» and no call)
+        "Ante una ORDEN o petición clara: HAZLA ya (pregunta solo un dato que falte, nunca «¿lo hago?») y "
+        "dilo en UNA frase corta, sin disculpas en bucle ni 'tienes razón' ni narrar por qué antes falló. Si el "
         "operador insiste en una ACCIÓN CONCRETA que pidió y no pasó ('te dije que abrieras X', 'no has cancelado "
         "la cita'), EJECÚTALA ya (emite la tag/tool), no lo expliques. PERO una pregunta META (sobre tu conducta o "
         "capacidades), una CONTRADICCIÓN que te señalan o un '¿en qué quedamos?' NO son órdenes de actuar: NO "
@@ -251,10 +252,6 @@ def _flash_parts(open_ids: set[str], recent_ids: list[str] | None = None,
         "Un COMENTARIO u observación (\"ese vídeo es antiguo\", \"qué pequeño se ve\", \"hoy juega tal equipo\") NO "
         "es una orden: NO abras ni cierres NADA por un comentario. Actúa solo ante una PETICIÓN con su verbo "
         "(abre/cierra/muestra/pon/quita/amplía). Ante la duda, no hagas nada de canvas y sigue la conversación.\n"
-        # V2-887 step 5 — measured 2026-11-11: «añádeme el viernes de 12 a 8, partido del X» → «¿te confirmo el
-        # nombre tal cual?» and no call; the operator's rule is act at ~60 % and let him correct.
-        "Una PETICIÓN clara se HACE ya con lo que tienes y dices qué hiciste; él corrige. Pregunta solo el dato "
-        "que falte (a quién, qué día), nunca «¿lo hago?». Nunca digas «hecho» sin haberlo llamado.\n"
         "\"Cierra el resto / los demás / todo menos X\" NO es [[close]] (que cierra TODO, incluido lo que usáis): "
         "cierra los OTROS uno a uno con [[close:ID]] y CONSERVA el widget que el operador quiere mantener.\n"
         "La línea «En pantalla» de AHORA MISMO ES lo que el operador tiene DELANTE: es tu "

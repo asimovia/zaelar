@@ -27,5 +27,6 @@ def test_a_thread_that_asks_is_served_as_interactive():
 
 def test_the_voice_entrypoint_asks_before_it_connects():
     from voice.engine.pipeline import agent
+    assert "thread_qos.interactive()" in inspect.getsource(agent._before_connect)
     src = inspect.getsource(agent.entrypoint)
-    assert src.index("thread_qos.interactive()") < src.index("_before_connect()")
+    assert src.index("_before_connect()") < src.index("ctx.connect()")

@@ -17,17 +17,19 @@ from nucleo.turn.prompt import operating
 
 def test_the_prompt_says_act_and_ask_only_a_missing_fact():
     src = inspect.getsource(operating)
-    assert "Una PETICIÓN clara se HACE ya" in src and "nunca «¿lo hago?»" in src
+    assert "petición clara: HAZLA ya" in src and "nunca «¿lo hago?»" in src
 
 
 def test_a_send_that_left_as_a_task_is_a_start_never_the_short_done():
-    src = inspect.getsource(post_stream_settle)
-    start = src.index('if escalate_req.get("send_task") and data_done["v"] and not spoken_text:')
-    assert "routed_send_started" in src[start:start + 300]
     from nucleo.turn import reply
+    speech = type("S", (), {"sanitize": staticmethod(lambda t, **k: t)})
     said = []
-    assert reply.routed_send_started(said.append, type("S", (), {"sanitize": staticmethod(lambda t, **k: t)})) \
-        and said and "Hecho" not in said[0]
+    line = reply.routed_send_line("", True, True, said.append, speech)
+    assert line and said and "Hecho" not in said[0]
+    assert reply.routed_send_line("", False, True, said.append, speech) == ""      # no send: nothing of its own
+    assert reply.routed_send_line("ya va", True, True, said.append, speech) == "ya va"   # the model spoke: kept
+    src = inspect.getsource(post_stream_settle)
+    assert "routed_send_line(" in src
     ack = src.index('if data_done["v"] and not spoken_text and _ack_allowed')
     assert 'not escalate_req.get("send_task")' in src[ack:ack + 200], "the short «Hecho.» still covers a routed send"
 

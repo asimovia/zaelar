@@ -275,14 +275,14 @@ def say_started(line: str, said: str, send, speech) -> str:
     return text
 
 
-def routed_send_started(send, speech) -> str:
-    """V2-887 step 5 — an act that LEFT as a task has no result in this turn: its line is the START («I'm on it — it
-    isn't done yet»), never the short «Done.» (measured: «Hecho.» at 4.19 s, the send failed at 4.37 s)."""
+def routed_send_line(spoken: str, send_task, data_done, send, speech) -> str:
+    """V2-887 — a send that LEFT as a task, said in silence: its line is the START, never the short «Done.»."""
+    if not (send_task and data_done and not spoken):
+        return spoken
     try:
-        return say_started(str(getattr(_lang(), "done_just_started", "") or ""), "", send, speech)
+        return say_started(str(getattr(_lang(), "done_just_started", "") or ""), "", send, speech) or spoken
     except Exception as e:  # noqa: BLE001
-        logger.debug(f"reply: the start line was not said — {e!r}")
-        return ""
+        return logger.debug(f"reply: the start line was not said — {e!r}") or spoken
 
 
 async def after_acts(tasks, said: str, send, speech, timeout: float = WAIT_S, *, prior: str = "",

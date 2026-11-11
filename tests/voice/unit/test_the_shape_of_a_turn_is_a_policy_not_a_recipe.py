@@ -138,4 +138,4 @@ def test_el_bloque_ops_NO_se_ha_vaciado_de_golpe():
     Un vaciado en una tanda cambiaría treinta comportamientos medidos a la vez y sin forma de atribuir nada."""
     src = _operating()
     assert "CÓMO OPERAS" in src
-    assert "te disculpes en bucle" in src, "esta aún no tiene política; sigue siendo prosa, y se dice"
+    assert "disculpas en bucle" in src, "esta aún no tiene política; sigue siendo prosa, y se dice"

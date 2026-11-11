@@ -84,13 +84,13 @@ def _before_connect() -> None:
     """What has to exist before the room connects. Voice isolation (V2-812 T-08): the plugin must be registered
     BEFORE the connection, or the FFI never initialises it for it and the filter fails with code 209. Fails open."""
     setup_console_logging()
+    from . import thread_qos
+    thread_qos.interactive()                   # V2-887: this is the voice job's thread; ask the OS to serve it first
     from .voice_isolation import preload as _preload_isolation
     _preload_isolation(SETTINGS.voice_isolation, SETTINGS.livekit_url)
 
 
 async def entrypoint(ctx: JobContext) -> None:
-    from voice.engine.pipeline import thread_qos
-    thread_qos.interactive()                   # V2-887: this thread is the voice; ask the OS to serve it first
     _before_connect()
     await ctx.connect()
 

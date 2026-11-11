@@ -27,6 +27,7 @@ import threading
 import unicodedata
 
 from . import ref_day, runtime
+from .directory import one_per_spelling
 
 
 def _norm(s: str) -> str:
@@ -635,11 +636,8 @@ def resolve(widget_id: str, action: str, ref: str, payload: dict | None = None,
             return RefResult(True, payload)
         return RefResult(False, needs="no_match", candidates=_qualified(idx)[:6])
     if len(scored) > 1 and (best_score - second) < 0.5:       # tie → do not guess, ask
-        close = _one_per_spelling([i for s, i in scored if best_score - s < 0.5])[:4]
-        if len(close) == 1:                                   # the tie was one thing under two labels (V2-887)
-            payload[field] = close[0]["id"]
-            return RefResult(True, payload)
-        options = _qualified(close)
+        close = one_per_spelling([i for s, i in scored if best_score - s < 0.5])[:4]
+        best, options = close[0], _qualified(close)       # a tie may be ONE thing under two labels (V2-887)
         # …unless the tied rows are INDISTINGUISHABLE, in which case there is no question to ask and
         # nothing he could answer. Measured (V2-709, session `234457a3`): two identical duplicates of
         # «Cita Agencia Tributaria…», and eight turns of «Which one exactly? I have Cita Agencia
@@ -650,24 +648,6 @@ def resolve(widget_id: str, action: str, ref: str, payload: dict | None = None,
             return RefResult(False, needs="ambiguous", candidates=options)
     payload[field] = best["id"]
     return RefResult(True, payload)
-
-
-def _one_per_spelling(rows: list[dict]) -> list[dict]:
-    """Tied rows counted once per THING (V2-887 step 6, the card's side of `directory._one_row_per_person`): a row
-    labelled by a handle — one word, with separators or digits («raquel.salvadoresteban») — whose letters spell
-    another tied row's label is that row. Measured 2026-11-11: «ponle el alias…» asked «¿cuál exactamente? Raquel
-    Salvador Esteban, raquel.salvadoresteban» — one person, two rows."""
-    from widgets.directory import _spelled
-    named = {_spelled(i.get("label")) for i in rows if " " in str(i.get("label") or "").strip()}
-    named.discard("")
-    out = []
-    for i in rows:
-        lb = str(i.get("label") or "").strip()
-        sp = _spelled(lb)
-        if lb and " " not in lb and sp and sp != _norm(lb) and sp in named:
-            continue
-        out.append(i)
-    return out or rows
 
 
 def _ranked(query: str, idx: list[dict]) -> list[tuple[float, dict]]:

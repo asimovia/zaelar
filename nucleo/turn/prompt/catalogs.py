@@ -46,7 +46,7 @@ def connector_facts(open_ids: set[str], turn_text: str = "") -> str:
         try:
             from connectors.google import brain as _gb
             # V2-887: the cards that READ an account are the ones whose manifest declares connector families — never
-            # a fixed set (with Contacts open the prompt said «GOOGLE conectado: no» and the model promised an import)
+            # a fixed set (with Contacts open the prompt said Google was not connected and the model promised an import)
             if sources or not _gb.connected_services():
                 if (gstate := _gb.brain_state()):
                     out = (out + "\n\n" + gstate) if out else gstate
@@ -64,7 +64,7 @@ def _sources_of_open_cards(open_ids) -> str:
     is connected — the same reader the app's page uses (`widgets.about._connectors`). "" when no open card has one."""
     try:
         from widgets import about, runtime
-    except Exception as e:  # noqa: BLE001 — no widget runtime: no line
+    except Exception as e:  # noqa: BLE001 — without the widget runtime there is nothing to state
         __import__("loguru").logger.debug(f"catalogs: the widget runtime is unreadable — {e!r}")
         return ""
     lines = []
