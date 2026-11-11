@@ -71,7 +71,7 @@ would start up over a stopped agent.
 
 ```
 frontend/mobile/
-├─ index.html               own shell: own preboot splash, PWA meta, service-worker registration
+├─ index.html               own shell: the one loader's host (#preboot, shared CSS), PWA meta, service-worker registration
 ├─ manifest.webmanifest     PWA identity — scope/start_url at /m, standalone, icons
 ├─ sw.js                    service worker, deliberately almost empty (see below)
 ├─ offline.html             the only page the worker serves from its cache
@@ -99,7 +99,7 @@ frontend/mobile/
 | `app/core/reactive.js` · `dom.js` · `i18n.js` | Primitives. A fork breaks reactivity across the shared store. |
 | `app/services/*` | `session.js` (→ `session-lk.js` via the route in `livekit_api.py`), `sse.js`, `api.js`, `visualizer.js`, `feedback-api.js`. None of them knows about layout. |
 | `app/core/palette.css` | The `--hb-*` color contract both shells and every widget read. Extracted from `app/styles.css` for exactly this reason: a second copy of the tokens would not fail loudly, it would make a widget paint wrong colors in one shell only. |
-| `app/core/shared-surfaces.css` | The CSS of the three components both shells mount verbatim — `BootOverlay`, `LanguageOnboarding`, `Alert`. Forking a first-run gate is how two shells end up disagreeing about whether onboarding happened. |
+| `app/core/shared-surfaces.css` | The CSS of the three components both shells mount verbatim — the one loader (`#preboot` + `BootOverlay`), the one veil (`Veil`), `LanguageOnboarding`, `Alert`. Forking a first-run gate is how two shells end up disagreeing about whether onboarding happened. |
 
 `MemoryMap` is the one shareable component deliberately left out: the component would import fine, but its styling
 is a panel UI keyed to a wide window, and re-fitting it is its own piece of work.
@@ -356,7 +356,7 @@ conversation but what a request does to a screen. The rules, and where each one 
 
 | Rule | Mechanism |
 |---|---|
-| **Voice in and out on ONE screen.** | `server/livekit_api.py`: one live session per machine (heartbeat ~4 s, 12 s TTL). Taking it is an explicit gesture: opening the mic or the speaker on a screen (`session.openMicHere` / `openSpeakerHere`), the phone's load, or the shared full-screen veil's «use it here» (`app/components/DormantVeil.js`, face "moved" — the same veil both shells show when the engine sleeps) → `session.claimVoice` → `POST /api/session/steal`. |
+| **Voice in and out on ONE screen.** | `server/livekit_api.py`: one live session per machine (heartbeat ~4 s, 12 s TTL). Taking it is an explicit gesture: opening the mic or the speaker on a screen (`session.openMicHere` / `openSpeakerHere`), the phone's load, or the shared veil's «use it here» (`app/components/Veil.js`, face "moved" — the one veil both shells show when the agent is stopped, the engine sleeps or the voice is elsewhere, V2-881) → `session.claimVoice` → `POST /api/session/steal`. |
 | **The loser stands down at once.** | Every change of hands emits `session · voice held by <dev>` with `voice_sid` (the new holder's tab). `sse.js` re-dispatches it as `hb:voice-held`; `session-lk.js` stands down on it (mic and speaker off, the blue «voice elsewhere» orb), instead of waiting up to 4 s for its next heartbeat. |
 | **Typed chat from ANY screen.** | Only the holder has a LiveKit room. Every other screen sends its typed line over `POST /api/chat`; the live session registered a typed door (`voice/screens.register_typed`) and injects it as a turn exactly like the data channel does (`agent_events.receive_typed`). `reason:"no_session"` means nobody holds a session — only then does the typing screen bring the voice up. |
 | **Every event names the screen that asked.** | `voice/screens.py` stamps `origin_dev` at the stream's single gate (`observer.stamp_identity`). A spoken turn → the voice holder; a typed turn → the screen that typed it (a context var set around the injection, so the reply task inherits it); a background errand → the screen that commissioned it (`note_task`, read from the escalation's context); within a turn the `trace` keeps it even if another turn starts meanwhile. |

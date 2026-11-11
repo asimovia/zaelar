@@ -9,19 +9,41 @@
    NOT here: MemoryMap. Its component is shared-able but its CSS is a whole panel UI (mm-head/mm-modes/graph/lists,
    ~200 lines keyed to a wide window). The mobile shell does not mount it — see V2-124's open items. */
 
-/* ---------- BOOT OVERLAY — “Synaptic Hive” splash while zaelar comes up on first load ----------
-   A full-screen canvas (components/boot-anim.js) where a neural constellation assembles itself in parts, one
-   cluster per boot phase, then implodes into the orb on "listo". z-index above EVERYTHING else (upd-ovl is
-   100002) — the first thing the user sees. Visible by default; `.gone` (set on store.bootReady) lifts the veil
-   as the mesh collapses. Themed via --hb-* (dark/light). See BootOverlay.js. */
-.boot-ovl{position:fixed;inset:0;z-index:100010;overflow:hidden;
-  background:radial-gradient(120% 90% at 50% 46%, var(--hb-bg-soft) 0%, var(--hb-bg) 70%);
-  opacity:1;transition:opacity .72s ease}
+/* ---------- THE ONE LOADER (V2-881) — from the first byte to «ready», one screen on both shells ----------
+   `#preboot.boot-ovl` is in the HTML: the neurons' first ring (`.pb-ring`, eight dots turning) paints with the first
+   frame, because this stylesheet is render-blocking in both shells' <head>. core/preboot.js narrates on it
+   (`.pb-cap`) before any module exists; components/BootOverlay.js takes over the SAME element, prepends the canvas
+   that grows the mesh (boot-anim.js) and adds `.anim` (the canvas draws the ring now). `.gone` lifts it once the
+   burst is over. z-index above everything else (upd-ovl is 100002) — the first thing the user sees. */
+.boot-ovl{position:fixed;inset:0;z-index:100010;overflow:hidden;color:var(--hb-ink,#e6e8ee);
+  font:15px/1.5 -apple-system,system-ui,sans-serif;
+  background:radial-gradient(120% 90% at 50% 46%, var(--hb-bg-soft,#111a26) 0%, var(--hb-bg,#0a0f16) 70%);
+  opacity:1;transition:opacity .3s ease}
 .boot-ovl.gone{opacity:0;pointer-events:none}
 .boot-canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
-.boot-caption{position:absolute;left:50%;top:70%;transform:translateX(-50%);
-  color:var(--hb-muted);font-size:0.8125rem;font-weight:600;letter-spacing:.04em;
-  white-space:nowrap;transition:opacity .4s ease;text-shadow:0 1px 12px var(--hb-bg)}
+.pb-ring{position:absolute;left:50%;top:46%;width:0;height:0;animation:pb-turn 2.4s linear infinite}
+.pb-ring i{position:absolute;width:5px;height:5px;margin:-2.5px;border-radius:50%;background:#f0f4ff;
+  box-shadow:0 0 8px var(--hb-accent,#3D6FE0)}
+.pb-ring i:nth-child(1){transform:rotate(0deg) translateX(22px)}
+.pb-ring i:nth-child(2){transform:rotate(45deg) translateX(22px)}
+.pb-ring i:nth-child(3){transform:rotate(90deg) translateX(22px)}
+.pb-ring i:nth-child(4){transform:rotate(135deg) translateX(22px)}
+.pb-ring i:nth-child(5){transform:rotate(180deg) translateX(22px)}
+.pb-ring i:nth-child(6){transform:rotate(225deg) translateX(22px)}
+.pb-ring i:nth-child(7){transform:rotate(270deg) translateX(22px)}
+.pb-ring i:nth-child(8){transform:rotate(315deg) translateX(22px)}
+.boot-ovl.anim .pb-ring{display:none}
+@keyframes pb-turn{to{transform:rotate(360deg)}}
+.pb-cap{position:absolute;left:0;right:0;top:calc(46% + 60px);display:flex;flex-direction:column;align-items:center;
+  gap:4px;padding:0 24px;text-align:center;text-shadow:0 1px 12px var(--hb-bg,#0a0f16)}
+.pb-cap p{margin:0}
+.pb-title{font-weight:650;opacity:.95}
+/* The step line is the only thing that moves every couple of seconds, so it gets the fade — a label that swaps
+   abruptly reads as a glitch, and on a slow boot the user sees this happen fifteen times. */
+.pb-step{opacity:.62;font-size:13.5px;min-height:1.3em;transition:opacity .28s}
+.pb-step.swap{opacity:0}
+.pb-slow{opacity:.5;font-size:12px}
+@media (prefers-reduced-motion:reduce){.pb-ring{animation:none}}
 
 /* ── Language onboarding (V2-101): first-run blocking modal, ABOVE the boot veil (100010) so it follows it —
    two veils in a row, never one rebuilt. `.open` shows it; `.gone` (set once the "ready" SSE phase lands)
@@ -111,28 +133,35 @@
 .en-btn:focus-visible{outline:2px solid var(--hb-accent);outline-offset:2px}
 .en-btn[hidden]{display:none}   /* V2-801 — the paused notice has no Top up */
 
-/* ---------- DORMANT VEIL (2026-11-10) — ONE black veil over the WHOLE screen: the engine went to sleep, or the voice
-   moved to another screen. Both shells mount it (components/DormantVeil.js). Above every panel, the chat wall and a
-   card in cinema (100500); only the feedback button (101000) stays above it, never hidden; a notice under it (Energy, a fault) is
-   shown again once the engine is awake. Black on purpose in both themes, so its text and button carry their own
-   light colours. ---------- */
-.dz-veil{position:fixed;inset:0;z-index:100900;display:none;align-items:center;justify-content:center;padding:16px;
-  box-sizing:border-box;background:#000;color:#f2f4ff}
-.dz-veil.on{display:flex}
-.dz-box{width:min(420px,100%);text-align:center}
-.dz-mark{font-size:2.25rem;line-height:1;opacity:.85;margin-bottom:14px}
-.dz-title{margin:0 0 10px;font-size:1.125rem;font-weight:700;color:#f2f4ff}
-.dz-sub{margin:0 0 22px;font-size:0.875rem;line-height:1.55;color:#c9cee6}
-.dz-actions{display:flex;flex-direction:column;gap:10px;align-items:stretch}
-.dz-btn{min-height:44px;border-radius:10px;padding:10px 18px;font-size:0.9375rem;font-weight:600;cursor:pointer;
+/* ---------- THE ONE VEIL (V2-881) — this screen cannot use the agent; one face at a time (components/Veil.js).
+   Both shells mount it. Two heights, as each face had before it was one component:
+   · `off` / `pausing` / `starting` (the agent is stopped or in transit) shade the desk at 9000: on the desktop it
+     lives inside #desk, under the bottom rail (9002), the top bar (9001) and the orb (100000), which stay usable;
+   · `sleep` / `moved` (the engine went to sleep, the voice is on another screen) are BLACK over the whole screen at
+     100900 — above every panel, the chat wall and a card in cinema; only the feedback button (101000) stays above.
+     #desk drops its containing block and rises for it, as it does for a card in cinema (styles.css, V2-759).
+   Its text and buttons carry their own light colours: black/shaded in both themes. ---------- */
+.zv{position:fixed;inset:0;z-index:9000;display:none;align-items:center;justify-content:center;padding:16px;
+  box-sizing:border-box;background:rgba(6,8,14,.72);color:#f2f4ff}
+.zv.on{display:flex}
+.zv.sleep,.zv.moved{z-index:100900;background:#000}
+body:has(.zv.on.sleep,.zv.on.moved) #desk{transform:none;z-index:100900}
+.zv-box{width:min(420px,100%);text-align:center}
+.zv-mark{font-size:2.25rem;line-height:1;opacity:.85;margin-bottom:14px}
+.zv-mark:empty{display:none}
+.zv-title{margin:0 0 10px;font-size:1.125rem;font-weight:700;color:#f2f4ff}
+.zv-sub{margin:0 0 22px;font-size:0.875rem;line-height:1.55;color:#c9cee6}
+.zv-sub:empty{display:none}
+.zv-actions{display:flex;flex-direction:column;gap:10px;align-items:stretch}
+.zv-btn{min-height:44px;border-radius:10px;padding:10px 18px;font-size:0.9375rem;font-weight:600;cursor:pointer;
   border:1px solid rgba(242,244,255,.28);background:transparent;color:#f2f4ff}
-.dz-btn.primary{background:var(--hb-accent,#5b8cff);border-color:var(--hb-accent,#5b8cff);color:#fff}
-.dz-btn.hidden{display:none}
-.dz-btn:disabled{cursor:progress;opacity:.75}
-.dz-btn:focus-visible{outline:2px solid #f2f4ff;outline-offset:2px}
-.dz-veil.waking .dz-mark{animation:dz-pulse 1.4s ease-in-out infinite}
-@keyframes dz-pulse{0%,100%{opacity:.35}50%{opacity:1}}
-@media (prefers-reduced-motion:reduce){.dz-veil.waking .dz-mark{animation:none}}
+.zv-btn.primary{background:var(--hb-accent,#5b8cff);border-color:var(--hb-accent,#5b8cff);color:#fff}
+.zv-btn.hidden{display:none}
+.zv-btn:disabled{cursor:progress;opacity:.75}
+.zv-btn:focus-visible{outline:2px solid #f2f4ff;outline-offset:2px}
+.zv.waking .zv-mark{animation:zv-pulse 1.4s ease-in-out infinite}
+@keyframes zv-pulse{0%,100%{opacity:.35}50%{opacity:1}}
+@media (prefers-reduced-motion:reduce){.zv.waking .zv-mark{animation:none}}
 
 /* ── ELSEWHERE CHIPS (V2-792): «📄 Report · on the phone — Open here». Quiet by design: a chip never covers the
    work on this screen, sits above the bottom edge (the desktop's widget rail, the phone's dock via --dock-h) and

@@ -85,14 +85,7 @@ for (const s of SYSTEM_SURFACES.filter(s => s.phase === "overlay")) {
 // config/profiles.DEFAULT). The panel stays reachable from the TopBar's 🧭 for someone who deliberately
 // wants to move their models onto their own machine. ----
 
-// The inline splash (#preboot in index.html) has served its purpose (loader from the FIRST byte); the modules have
-// loaded and BootOverlay (neuron veil) takes over → remove it to avoid overlapping two loaders. If main.js
-// had failed to load, #preboot remains (a loader is better than a black screen).
-// V2-558 — the ring closes on a FACT, not on a clock: `__zaelarPrebootDone` paints it full and says
-// "Ready", and only then does the splash go. Guarded because preboot.js is a separate file and a shell that
-// failed to load it must still be able to get rid of its own splash.
-try { window.__zaelarPrebootDone?.(); } catch { /* noop */ }
-try { document.getElementById("preboot")?.remove(); } catch { /* noop */ }
+// V2-881 — no splash to remove here: #preboot IS the loader, and BootOverlay (mounted above) took it over.
 
 // ---- CLOUD profile: /api/config exposes `cloud_profile` (= ZAELAR_USER_ID set in the
 // environment). In cloud the header is reduced to PROFILE + theme (TopBar gates it); in self-host it is false and nothing changes.

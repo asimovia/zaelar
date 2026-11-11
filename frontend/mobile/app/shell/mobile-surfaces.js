@@ -8,11 +8,11 @@
 // = load-bearing order | "overlay") · label · shared (the desktop's component, imported as-is).
 
 import { Alert } from "../../../app/components/Alert.js?v=2";
-import { BootOverlay } from "../../../app/components/BootOverlay.js?v=2";
+import { BootOverlay } from "../../../app/components/BootOverlay.js?v=3";
 import { LanguageOnboarding } from "../../../app/components/LanguageOnboarding.js?v=1";
 import { UpdateSurface } from "../../../app/update/UpdateSurface.js?v=1";
 import { EnergyNotice } from "../../../app/components/EnergyNotice.js?v=1";
-import { DormantVeil } from "../../../app/components/DormantVeil.js?v=1";
+import { Veil } from "../../../app/components/Veil.js?v=1";
 import { ElsewhereChips } from "../../../app/components/ElsewhereChips.js?v=1";
 import { ChatSheet } from "./ChatSheet.js?v=1";
 import { DockBar } from "./DockBar.js?v=4";
@@ -45,7 +45,7 @@ export const MOBILE_SURFACES = [
   { id: "install",    comp: InstallBanner,   target: "body", phase: "overlay", label: "Install the PWA, then allow notifications", shared: false },
   // ── SHARED WITH THE DESKTOP, imported verbatim (their CSS lives in app/core/shared-surfaces.css) ──
   { id: "alert",           comp: Alert,             target: "body", phase: "overlay", label: "Hard notice banner", shared: true },
-  { id: "boot",            comp: BootOverlay,       target: "body", phase: "overlay", label: "Startup veil", shared: true },
+  { id: "boot",            comp: BootOverlay,       target: "body", phase: "overlay", label: "Startup loader (the one loader, V2-881)", shared: true },
   { id: "lang-onboarding", comp: LanguageOnboarding, target: "body", phase: "overlay", label: "First-run language onboarding", shared: true },
   // V2-553 — the update bar. An installed PWA is the surface most likely to be running code from days ago,
   // so it is the one that most needs to be told. `UpdateSurface` is bar-only now (V2-666 retired the
@@ -54,9 +54,10 @@ export const MOBILE_SURFACES = [
   { id: "update",          comp: UpdateSurface, target: "body", phase: "overlay", label: "«New version — reload» bar", shared: true },
   // V2-785 — out of Energy, on screen, with the top-up button (the voice alone used to say it).
   { id: "energy-notice",   comp: EnergyNotice,  target: "body", phase: "overlay", label: "Out of Energy + top up", shared: true },
-  // 2026-11-10 — the engine asleep, or the voice on another device: one black veil (it replaced the phone's own
-  // «your voice is on the computer» notice), with the gesture that fixes each.
-  { id: "dormant",         comp: DormantVeil,   target: "body", phase: "overlay", label: "Asleep / voice on another device — full-screen veil", shared: true },
+  // V2-881 — ONE veil: the agent stopped, the engine asleep, or the voice on another device — one face at a time, and
+  // its one button wakes, switches on and brings the voice here (it replaced the phone's own «your voice is on the
+  // computer» notice, and the desktop's separate stopped-agent veil).
+  { id: "veil",            comp: Veil,          target: "body", phase: "overlay", label: "Stopped / asleep / voice on another device — one veil", shared: true },
   // V2-792 — what the agent did on the OTHER screen, one tap away (a report opened on the computer, a video there).
   { id: "elsewhere",       comp: ElsewhereChips, target: "body", phase: "overlay", label: "Opened on another screen — open here", shared: true },
 ];

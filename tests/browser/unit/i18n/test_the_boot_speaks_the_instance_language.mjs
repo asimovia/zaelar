@@ -8,7 +8,8 @@ import vm from "node:vm";
 
 const [, , lang, browser] = process.argv;
 const el = () => ({ className: "", textContent: "", innerHTML: "", classList: { add() {}, remove() {} },
-  appendChild() {}, insertBefore() {}, replaceWith() {}, setAttribute() {}, querySelector: () => null });
+  appendChild() {}, insertBefore() {}, replaceWith() {}, setAttribute() {}, getAttribute: () => null,
+  querySelector: () => null });
 const made = [];
 const mem = new Map();
 if (lang) {

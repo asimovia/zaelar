@@ -8,7 +8,7 @@
 //     AND had input (pointer, key, his spoken turn) within `tab_sleep_min`, with a 2 s → 60 s backoff;
 //   · a tab with no input for `tab_sleep_min` sleeps on its own (the orb dims, a line under it says so), and the
 //     first gesture wakes it;
-//   · on the engine's `engine.sleep` the WHOLE screen goes dark (`DormantVeil.js`, face "sleep") with a Reactivate
+//   · on the engine's `engine.sleep` the WHOLE screen goes dark (`Veil.js`, face "sleep") with a Reactivate
 //     button; any gesture wakes it, and the veil shows that it is waiting until the stream answers;
 //   · a hidden tab never reconnects, and becoming visible again is not a gesture.
 // While asleep the tab sends nothing: pollers and voice retries ask `asleep()` before they reach the server.

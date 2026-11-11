@@ -26,7 +26,7 @@
 import { Alert } from "../components/Alert.js?v=2";
 import { AppsWindow } from "../components/AppsWindow.js?v=1";
 import { BenchmarksPanel } from "../components/BenchmarksPanel.js?v=1";
-import { BootOverlay } from "../components/BootOverlay.js?v=2";
+import { BootOverlay } from "../components/BootOverlay.js?v=3";
 import { ChatWall } from "../components/ChatWall.js?v=6";
 import { ConfigPanel } from "../components/ConfigPanel.js?v=8";
 import { DaemonSetup } from "../components/DaemonSetup.js?v=1";
@@ -35,16 +35,15 @@ import { FeedbackWidget } from "../components/FeedbackWidget.js?v=2";
 import { FaultModal } from "../components/FaultModal.js?v=1";
 import { EnergyNotice } from "../components/EnergyNotice.js?v=1";
 import { ElsewhereChips } from "../components/ElsewhereChips.js?v=1";
-import { DormantVeil } from "../components/DormantVeil.js?v=1";
 import { LanguageOnboarding } from "../components/LanguageOnboarding.js?v=1";
 import { MemoryMap } from "../components/MemoryMap.js?v=6";
 import { Orb } from "../components/Orb.js?v=3";
-import { PowerVeil } from "../components/PowerVeil.js?v=1";
 import { StatusPanel } from "../components/StatusPanel.js?v=2";
 import { TopBar } from "../components/TopBar.js?v=4";
 import { VaultModal } from "../components/VaultModal.js?v=1";
 import { WizardModal } from "../components/WizardModal.js?v=1";
 import { WidgetRail } from "../components/WidgetRail.js?v=2";
+import { Veil } from "../components/Veil.js?v=1";
 import { UpdateSurface } from "../update/UpdateSurface.js?v=1";
 
 // The ORDER is the actual DOM mount order (it matters for stacking). Scaffold first, then overlay.
@@ -175,19 +174,16 @@ export const SYSTEM_SURFACES = [
   { id: "elsewhere",  comp: ElsewhereChips, target: "body", phase: "overlay", kind: "transient",
     toggle: "store.elsewhere() (services/screens.js)", label: "Opened on another screen — open here",
     name: null, aliases: null },
-  // 2026-11-10 — ONE black veil over the whole screen: the engine went to sleep (Reactivate wakes it) or the voice
-  // moved to another screen (bring it here). Shared with the phone; CSS in `core/shared-surfaces.css`. Not
-  // voice-addressable: while it shows, this screen has no voice to say anything with.
-  { id: "dormant",    comp: DormantVeil,  target: "body", phase: "overlay", kind: "modal",
-    toggle: "store.dormant().face (engine.sleep, services/presence.js) · store.remoteHeld() (session-lk.js)",
-    label: "Asleep / moved to another device — full-screen veil",
-    name: null, aliases: null },
-  // The desktop locked while the agent is stopped (operator, 2026-11-08): one state, never half on / half off.
-  { id: "power-veil", comp: PowerVeil,    target: "desk", phase: "overlay", kind: "transient",
-    toggle: "store.agentState() off / pausing / starting", label: "Stopped-agent veil over the desktop",
+  // V2-881 — ONE veil for «this screen cannot use the agent»: stopped (or stopping/starting), asleep, or the voice on
+  // another screen — one face at a time, and its one button wakes, switches on and brings the voice here. Shared with
+  // the phone; CSS in `core/shared-surfaces.css`. Mounted inside #desk: the stopped face shades the cards under the
+  // rail, the top bar and the orb; the black faces lift #desk above everything. Not voice-addressable.
+  { id: "veil",       comp: Veil,         target: "desk", phase: "overlay", kind: "modal",
+    toggle: "store.agentState() off/pausing/starting · store.dormant().face (engine.sleep) · store.remoteHeld()",
+    label: "Stopped / asleep / voice on another device — one veil",
     name: null, aliases: null },
   { id: "boot",       comp: BootOverlay,  target: "body", phase: "overlay", kind: "transient",
-    toggle: "store.bootReady (startup veil)", label: "Startup splash",
+    toggle: "store.bootReady (the one loader, from the first byte)", label: "Startup loader",
     name: null, aliases: null },
   // V2-553 — the UPDATE CHANNEL: the «there is a new version, click to reload» bar (top, above everything).
   // Self-contained in `app/update/`: this line is the ONLY place the app knows it exists, which is the

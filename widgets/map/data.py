@@ -17,7 +17,6 @@ import urllib.parse
 import urllib.request
 
 from .. import store
-from . import sheet as _sheet
 from connectors import outcome as _outcome   # every provider call reports what happened (V2-833)
 
 WID = "map"
@@ -254,27 +253,10 @@ def apply_action(action: str, payload: dict = None) -> dict:
             return {"ok": False, "error": "'places' must be a LIST with one entry per place — e.g. "
                                           "[{\"name\": \"Griffith Observatory\"}, {\"name\": \"Mount Baldy\"}] — "
                                           "a single text could be one place or several"}
-        # V2-879 O1 — WHERE the places come from (`sheet.py`): the rows of the sheet, resolved here, or a free place
-        # that is a row of the sheet on screen, or one he named; never the model's own over a sheet he is reading.
-        ref, sheet, extra = p.get("rows"), _sheet.referent(p.get("sheet")), {}
-        if ref not in (None, "", []):
-            src = sheet if sheet and (sheet["items"] or sheet["live"]) else (_sheet.newest_with_rows() or sheet)
-            got, unknown = _sheet.pick_rows(ref, src) if src else ([], [])
-            if not got:
-                return _sheet.refusal(src or {"title": "", "items": [], "live": False}, unknown)
-            incoming = [_sheet.as_place(r) for r in got][:_MAX_PLACES]
-            extra = {"from_sheet": src["title"] or "results", "unknown_rows": unknown,
-                     "rows_not_pinned": max(0, len(got) - _MAX_PLACES)}
-        else:
-            incoming = _places_in(p)
-            if not incoming:
-                return {"ok": False, "error": "no places arrived — send 'places' as a list of {name, address} "
-                                              "(the address can be just the city: «Griffith Observatory, Los Angeles»), "
-                                              "or 'rows' for places on the results sheet"}
-            incoming, refused = _sheet.judge_free(incoming, sheet)
-            if not incoming:
-                return _sheet.refusal(sheet, refused)
-            extra = {"refused": refused} if refused else {}
+        incoming = _places_in(p)
+        if not incoming:
+            return {"ok": False, "error": "no places arrived — send 'places' as a list of {name, address} "
+                                          "(the address can be just the city: «Griffith Observatory, Los Angeles»)"}
         near = str(p.get("near") or p.get("city") or "").strip()
         placed, missed = _locate(incoming, near, deadline)
         if not placed:
@@ -287,7 +269,7 @@ def apply_action(action: str, payload: dict = None) -> dict:
             db["selected"] = 0
         db["misses"], db["updated"] = missed, _stamp(db.get("updated"))
         store.save(WID, db)
-        out = {"ok": True, "places": _numbered(db), "not_found": missed, **{k: v for k, v in extra.items() if v}}
+        out = {"ok": True, "places": _numbered(db), "not_found": missed}
         links = _source_links(p.get("source"), db["places"])
         if links is not None:
             out["links"] = links

@@ -201,8 +201,8 @@ the process on demand can switch it on; every piece is a seam that does nothing 
   closes its stream and sends nothing until a gesture; the open that gesture makes carries `wake=1`, the only mark a
   front door should start a stopped engine for (CRIT-R28).
 - **The act** (`nucleo/suspend.py`, CRIT-R31). First the wake report is flushed (a report that fails keeps the
-  engine up and the stop is retried later), then the goodnight (`engine.sleep` on every open stream: one black veil,
-  `DormantVeil.js`, with Reactivate). Then, if a sleep endpoint is set (`ZAELAR_SLEEP_URL`, else `CONTROL_PLANE_URL`
+  engine up and the stop is retried later), then the goodnight (`engine.sleep` on every open stream: the one veil,
+  `Veil.js`, face `sleep`, whose one press wakes, switches on and brings the voice here — V2-881). Then, if a sleep endpoint is set (`ZAELAR_SLEEP_URL`, else `CONTROL_PLANE_URL`
   + `/sleep` when `CONTROL_PLANE_SERVICE_TOKEN` is set too), the engine POSTs there to be SUSPENDED: `202` = accepted,
   wait `SLEEP_CONFIRM_S` and exit cleanly if still not suspended; `200` = already resumed; anything else or no answer
   = clean exit. With no endpoint it is the clean exit (status 0, through the server's graceful shutdown).

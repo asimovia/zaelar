@@ -32,34 +32,16 @@
 <!-- palette.css FIRST and as its own <link> (V2-124): it holds the --hb-* color contract that BOTH shells and
      every widget read. A separate parallel request, not a CSS @import, so it does not serialize behind styles.css. -->
 <link rel="stylesheet" href="/static/app/core/palette.css?v=1"/>
-<link rel="stylesheet" href="/static/app/core/shared-surfaces.css?v=1"/>
+<link rel="stylesheet" href="/static/app/core/shared-surfaces.css?v=2"/>
 <link rel="stylesheet" href="/static/app/core/components.css?v=2"/>
 <link rel="stylesheet" href="/static/app/styles.css?v=12"/>
-<style>
-  /* PREBOOT splash — deliberately inline in the HTML: paints on the FIRST byte, BEFORE ES modules load.
-     On a cold-started instance, modules take tens of seconds; without this the user saw a BLACK screen
-     until BootOverlay (the neural veil, painted by JS) mounted. Its sole purpose is to entertain from
-     second 1. `main.js` removes it as soon as the app mounts. Zero dependency on /static (inline colors). */
-  #preboot { position:fixed; inset:0; z-index:9998; display:flex; flex-direction:column; align-items:center;
-             justify-content:center; gap:18px; background:#0a0f16; color:#e6e8ee;
-             font:15px/1.5 -apple-system, system-ui, sans-serif; }
-  #preboot .ring { width:46px; height:46px; border-radius:50%;
-             background:conic-gradient(from 0deg, #10b981, #7ad0ff, #8b7bff, #10b981);
-             -webkit-mask:radial-gradient(farthest-side, transparent calc(100% - 4px), #000 0);
-             mask:radial-gradient(farthest-side, transparent calc(100% - 4px), #000 0);
-             animation:pbspin 1s linear infinite; }
-  #preboot .lbl { opacity:.72; letter-spacing:.02em; }
-  @keyframes pbspin { to { transform:rotate(360deg); } }
-</style>
 </head>
 <body>
-<div id="preboot"><div class="ring"></div><div class="lbl">Starting up zaelar…</div></div>
-<!-- The boot NARRATION (V2-558) upgrades the splash above in place: outer progress arc, a line that
-     says what is happening, and the wake-up story when the engine is not answering yet. Classic
-     script, ONE definition for both shells. It is deliberately loaded AFTER the markup so the ring
-     and the first label still paint on the first byte if this file is slow — a silent splash beats a
-     black screen, which is the same reason #preboot is inline in the first place. -->
-<script src="/static/app/core/preboot.js?v=2"></script>
+<div id="preboot" class="boot-ovl" data-stage="0"><div class="pb-ring" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+<!-- THE ONE LOADER (V2-881): the HTML paints the neurons' first ring, turning, on the first byte (its CSS is in
+     core/shared-surfaces.css, render-blocking above); preboot.js narrates the cold start on it before any module
+     exists, and BootOverlay takes over this SAME element to grow the mesh. One screen, never three. -->
+<script src="/static/app/core/preboot.js?v=3"></script>
 <!-- The interface is built entirely by the ES-module app under /static/app/.
      index.html is just the bootstrap: styles + the vendored browser-VAD scripts
      (they attach window.vad / window.ort) + the module entry point. -->

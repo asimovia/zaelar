@@ -263,18 +263,21 @@ below). `styles.css §WIDGET KIT` also has optional `hbk-*` helper classes (`hbk
 "no build/no npm" architecture above, or a CDN/runtime JIT, breaking widgets' "self-contained/no CDN" rule; a
 plain CSS variable is also simply less code than a `dark:` utility pair per element.)
 
-**Boot sequence + splash (INIT → BARRIER → greet).** First load is gated by a full-screen splash
-(`components/BootOverlay.js` + the `boot-anim.js` render engine) that plays the **«Colmena sináptica»**: a neural
-constellation which ASSEMBLES ITSELF IN PARTS — one cluster of nodes lights up per boot phase — then, on `listo`,
-IMPLODES into the orb, handing off to the live voice visualiser. Pure `<canvas>`, no deps, themed via `--hb-*`
-(dark/light), honours `prefers-reduced-motion`. Phases are a single source of truth in the store
-(`store.BOOT_PHASES` = `encendiendo → voz → memoria → reflejo → listo`, signal `bootPhase`) and are advanced by
-**REAL milestones**, never timers: the frontend reports `voz` (mic granted in `session-lk.js`); the agent reports
-`memoria`/`reflejo` over the "vl2" data channel (`{type:"boot",phase}`); `listo` = init done (`{type:"ready"}`),
-with `store.bootReady` lifting the veil. **The ordering barrier is in the backend** (`voice/engine/pipeline/agent.py`):
+**Boot sequence + the ONE loader (INIT → BARRIER → greet; V2-881).** First load is gated by ONE full-screen loader,
+from the first byte to «ready», on both shells: the HTML paints `#preboot.boot-ovl` (the neurons' first ring, eight
+dots turning; CSS in `core/shared-surfaces.css`), `core/preboot.js` narrates the cold start on it before any module
+exists (the cached bundle with an inline English floor — never `/api/i18n/bundle`, which needs the engine being waited
+for), and `components/BootOverlay.js` takes over that SAME element with the canvas of `boot-anim.js` — the **«Colmena
+sináptica»** — which GROWS outwards in discrete steps, one per stage (ring · `/healthz` answered · interface loaded ·
+`voz` · `memoria` · `reflejo`). The growth is the progress bar (`role=progressbar`, `aria-valuenow`). Stages come
+from `data-stage` (preboot) and the store (`store.BOOT_PHASES` = `encendiendo → voz → memoria → reflejo → listo`,
+signal `bootPhase`), advanced by **REAL milestones**, never timers: the frontend reports `voz` (mic granted in `session-lk.js`); the agent reports
+`memoria`/`reflejo` over the "vl2" data channel (`{type:"boot",phase}`); `listo` = init done (`{type:"ready"}`).
+Only `store.bootReady` completes the growth: whatever stage it reached, the rest bursts out within `BURST_MS` and the
+loader is gone in under a second. **The ordering barrier is in the backend** (`voice/engine/pipeline/agent.py`):
 after `session.start` the agent emits the phase milestones and then `ready` **BEFORE** dispatching the kickoff
 greeting — so the voice never runs *under* the splash.
-INIT (voice live + central memory composed via `memory_cache.prime` + STT/TTS warm) completes → splash implodes →
+INIT (voice live + central memory composed via `memory_cache.prime` + STT/TTS warm) completes → the loader bursts →
 THEN zaelar greets. A 60s safety timeout in `session-lk.js` unblocks a stuck boot; later reconnects never re-lock.
 
 ## Widgets module (`widgets/`) — the dynamic widget OS

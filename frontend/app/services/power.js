@@ -13,7 +13,8 @@ import * as api from "./api.js?v=2";
 import * as mic from "./mic.js?v=1";
 import * as session from "./session.js?v=3";
 
-/** Switch the agent off (`off` true) or on. `where` names the control, for the audit. */
+/** Switch the agent off (`off` true) or on. `where` names the control, for the audit. Returns a promise that settles
+ *  once the server has answered (and, switching on, the voice session was asked for) — the veil chains on it (V2-881). */
 export function setPower(off, where = "orb") {
   // V2-627, the operator's own request: say it on every press, with the state it was in.
   console.info("[zaelar] ⏻ " + (off ? "OFF" : "ON") + " — agent was " + store.agentState());
@@ -21,6 +22,7 @@ export function setPower(off, where = "orb") {
   store.markPowerCommand();
   store.clearPowerOnPending();          // a newer press supersedes an older one, hand-off included (V2-627)
   store.setPowerOff(off);
+  let landed;
   if (off) {
     // ⏻ blocks EVERYTHING (V2-066): the session (mic tracks, speaker), the work session, and the server's GLOBAL
     // switch, which freezes workers, suspends producing widgets, cuts crons and blocks new work (V2-092).
@@ -29,7 +31,7 @@ export function setPower(off, where = "orb") {
     mic.setMuted(true, "power-off");    // V2-654: through the door — icon, storage, track and engine together
     store.setBotMuted(true); try { localStorage.setItem("hb_bot_muted", "1"); } catch (_) {}
     try { store.fetchTasks(); } catch (_) {}
-    api.runStop("button").then(() => store.fetchTasks());
+    landed = api.runStop("button").then(() => store.fetchTasks());
   } else {
     mic.setMuted(false, "power-on");
     store.setBotMuted(false); try { localStorage.setItem("hb_bot_muted", "0"); } catch (_) {}
@@ -38,7 +40,7 @@ export function setPower(off, where = "orb") {
     // hand-off stamp keeps every other road (main.js's «power came back» effect, the phone's ensureVoice) shut
     // until the server answered; it expires on its own, so a reply that never comes cannot wedge the voice.
     store.markPowerOnPending();
-    api.runStart("button").then(() => {
+    landed = api.runStart("button").then(() => {
       store.clearPowerOnPending();
       store.fetchTasks();
       try { session.start(); } catch (_) {}
@@ -47,6 +49,7 @@ export function setPower(off, where = "orb") {
   // The phone's first touch is also the gesture a mobile browser needs to play audio (V2-573).
   try { session.unlockAudio && session.unlockAudio(); } catch (_) {}
   api.uiEvent(where === "dock" ? "mobile:power" : "orb:power", { state: off ? "off" : "on" });
+  return landed;
 }
 
 export function togglePower(where = "orb") { setPower(!store.powerOff(), where); }

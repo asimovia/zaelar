@@ -53,30 +53,15 @@ export function available() { return Object.keys(BUNDLES); }
 })();
 
 // t(key, params?) — localized string. Reads store.lang() (reactive dependency).
-// V2-481 — THE COLD-START FLOOR.
-//
-// `t()` falls back to the English bundle and, if that is missing too, shows the KEY—intentionally visible, because
-// a missing string must be seen. This works on an already-loaded screen and fails where it matters most: during a
-// cold start, `/api/i18n/bundle` has not answered yet, so the FIRST screen someone who just installed the
-// PWA sees is `boot.encendiendo`. The product's first impression.
-//
-// The floor is DELIBERATELY narrow: only strings rendered BEFORE the engine answers. It is not a second vocabulary—
-// that would be two copies of a rule, which this codebase has already paid for—and a test requires every key here
-// to exist in the base bundle: if someone renames one, this turns red instead of serving an orphaned string forever.
-const BOOT_FLOOR = {
-  "boot.encendiendo": "Starting up zaelar…",
-  "boot.voz": "Connecting voice…",
-  "boot.memoria": "Composing memory…",
-  "boot.reflejo": "Tuning the reflex…",
-};
-
+// The cold start has no bundle yet. Nothing rendered by a module is on screen then: the one loader (V2-881) is
+// narrated by core/preboot.js, which reads the cached bundle with its own English floor — so `t()` keeps a single
+// fallback chain and a missing string stays visible as its key.
 export function t(key, params) {
   const code = store.lang();
   bundleRev();                            // reactive dependency: re-renders when bundle content changes
   const dict = BUNDLES[code] || BUNDLES.en || {};
   let s = dict[key];
   if (s == null) s = (BUNDLES.en || {})[key];
-  if (s == null) s = BOOT_FLOOR[key];     // V2-481: cold start has no bundle yet
   if (s == null) s = key;                 // last resort: show the key (visible = "needs a string")
   if (params) for (const k in params) s = s.split("{" + k + "}").join(String(params[k]));
   return s;
