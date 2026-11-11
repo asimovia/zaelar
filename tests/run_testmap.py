@@ -7540,6 +7540,12 @@ DOMAINS: list[dict] = [
                                  "judge past the turn's budget counted; the recall shortcuts with their language; a clause "
                                  "that would stand alone measured without splitting; the commission shadow's `promise`",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_every_thread_decision_is_one_event.py"]},
+        # V2-875 / INI-063 D13 — disarmed 2026-11-11 (the masker returns its input / the boot drops the patcher) → red.
+        {"id": "7.131", "title": "The server log wears the same mask as the stored events: while his `obfuscate` switch is on, "
+                                 "every loguru record passes `pii.tag` through ONE patcher (`observability/log_mask.py`, installed "
+                                 "at boot) — an email, a phone, a known name leave as tags; off, the line is untouched; the masker "
+                                 "never raises and never recurses",
+            "ch": UNIT, "paths": ["tests/infrastructure/unit/test_the_server_log_wears_the_same_mask.py"]},
     ]},
     {"id": "8", "name": "ENERGÍA / CONFIG", "nodes": [
         {"id": "8.1", "title": "Medidor de energía y límites de cuenta", "ch": UNIT, "paths": [

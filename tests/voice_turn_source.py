@@ -156,7 +156,8 @@ _PROVIDER_CALLS = (
 _PIPELINE_FILES = {fn: ENGINE / "nucleo" / "turn" / f"{mod}.py" for mod, fn in (
     ("pipeline_gate", "open_the_turn"), ("pipeline_admit", "admit_the_turn"), ("pipeline_state", "open_the_mouth"),
     ("pipeline_stream", "stream_the_reply"), ("pipeline_failure", "say_the_turn_failed"),
-    ("pipeline_close", "close_the_turn"), ("pipeline_errands", "launch_the_errands"))}
+    ("pipeline_close", "close_the_turn"), ("pipeline_errands", "launch_the_errands"),
+    ("pipeline_errands", "_launch_the_rest"))}
 
 
 #: Other files F1 split, and the modules their code moved to. A guard that reads the old file reads them all,
@@ -198,7 +199,10 @@ _PROBE_CALLS = (
 
 def _body_of(src: str, fname: str) -> str:
     if (path := _PIPELINE_FILES.get(fname)) is not None:      # V2-851 F5: the pipeline's stages, read by AST
-        return _fn_body(path, fname)
+        body = _fn_body(path, fname)
+        if fname == "launch_the_errands":                      # its helper for the sentence's other errands, read with it
+            body += "\n" + _fn_body(path, "_launch_the_rest")
+        return body
     i = src.find(f"async def {fname}(")
     i = i if i >= 0 else src.index(f"\ndef {fname}(") + 1     # a sync block (V2-778 F1)
     i = src.index(") -> dict:\n", i) + len(") -> dict:\n")

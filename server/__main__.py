@@ -39,6 +39,12 @@ from nucleo import workspace as _workspace  # noqa: E402
 
 _workspace.ensure()
 
+# The process log wears the same mask as the stored events while his `obfuscate` switch is on (V2-875, INI-063 D13):
+# one patcher over every record, never sixteen edited lines. After the workspace, since the switch lives in config/.
+from observability import log_mask as _log_mask  # noqa: E402
+
+logger.configure(patcher=_log_mask.patch)
+
 # NO PROVIDER KEY IS READ IN A MEDIATED DEPLOYMENT — decided here, before any module caches one (`llm_egress`).
 from nucleo.energy import egress as _egress  # noqa: E402
 
