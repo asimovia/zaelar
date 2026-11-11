@@ -121,7 +121,10 @@ def run(only: str = "", repeat: int = 1) -> int:
             with _GoogleLinked():
                 out = th.run_case(case, live=True, timeout_s=90)
             why = out.failures(case)
-            missing = [w for w in spec[5] if w not in _payload_text(out)]
+            # A card op runs DRY here (the `widget.data` door is closed), so a view op brings no content back: the words
+            # are checked only where the turn READ the card or wrote the act's own payload.
+            dry_view = out.decision.startswith("data-op ") and out.decision.endswith(":show_view")
+            missing = [] if dry_view else [w for w in spec[5] if w not in _payload_text(out)]
             if missing and not why:
                 why.append(f"the act does not carry {missing}")
             ok = not why
