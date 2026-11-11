@@ -6206,6 +6206,24 @@ DOMAINS: list[dict] = [
                                   "card's own, its empty page runs `show` by hand, 44pt tabs; the map always draws its "
                                   "base map (his area or the world), corner zoom, one-finger pan as [data-hpan] (V2-877 #8)",
             "ch": UNIT, "paths": ["tests/browser/unit/phone_apps/test_markets_and_map_show_their_subject.py"]},
+        # V2-879 — a card act that did nothing is never reported done. Disarmed 2026-11-11 (the funnel keeps the card's
+        # answer / the catalogue names acts only / the timer's end state reads `present`) → red, each in its own file.
+        {"id": "4.472", "title": "A card act whose call fills none of its declared slots and changes nothing is NOT done "
+                                  "(V2-879): `timer.set {minutes}` / `{duration}` come back as `slots_unfilled` naming "
+                                  "`seconds`, the turn says the refusal in his language (es/en; ja on the base pack), "
+                                  "never «Listo»; `{seconds}` starts it and meets its declared end state (`running`); a "
+                                  "running timer zeroed by another vocabulary fails that end state; a handler that reads "
+                                  "an undeclared key (`documento.append {text}`) keeps working; an empty call is the "
+                                  "handler's business",
+            "ch": UNIT, "paths": ["tests/browser/unit/timer/test_an_act_that_fills_no_slot_is_not_done.py"]},
+        {"id": "4.473", "title": "The card his words name carries each act's declared slots on its own line — `[timer] "
+                                  "campos: set: seconds·label` — from the one declaration, never inside an act's name "
+                                  "(V2-879, V2-838): names only elsewhere; idle turn +0 tokens, timer turn +12",
+            "ch": UNIT, "paths": ["tests/browser/unit/widgets/test_the_catalogue_names_the_slots_of_the_card_he_names.py"]},
+        {"id": "4.474", "title": "The empty act is a class (V2-879): `imagenes.add {images}` (declared `items`) answered "
+                                  "ok over an unchanged card and now comes back `slots_unfilled`; the declared key adds "
+                                  "and stands",
+            "ch": UNIT, "paths": ["tests/browser/unit/imagenes/test_an_add_in_another_vocabulary_is_not_done.py"]},
     ]},
     {"id": "5", "name": "CONECTORES", "nodes": [
         # V2-559 — el operador siguió la guía, creó la contraseña de aplicación y pegó el ENLACE de esa
