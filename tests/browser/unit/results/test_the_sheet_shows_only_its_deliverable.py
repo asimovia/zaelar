@@ -91,7 +91,8 @@ def _paint(pg, data):
 
 def test_the_sheet_has_no_process_tab_and_opens_on_its_results(page):
     v = _paint(page, _ALIVE)
-    assert v["tabs"] == ["results", "summary", "sources", "criteria"], v["tabs"]
+    # V2-877 #9: a tab with nothing he can read is not offered, so an errand with nothing yet shows only its list.
+    assert v["tabs"] == ["results"], v["tabs"]
     assert v["on"] == "results", "the deliverable is what the sheet shows, even before its first row"
     assert v["spinning"], "while the errand works, the Results tab carries the loader — and it MOVES"
     assert "Procesos" in v["text"] and "pccomponentes" not in v["text"], \

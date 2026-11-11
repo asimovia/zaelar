@@ -123,7 +123,9 @@ export const CSS_RECORD = `
   /* Logbook: a timeline with the CURRENT milestone marked — reading "where it is" should not require counting. */
   .hb-results .hr-steps{list-style:none;margin:var(--s2) 0 0;padding:0;display:grid}
   .hb-results .hr-steps li{position:relative;padding:0 0 var(--s3) var(--s4);color:var(--hb-muted,#5f6b7c)}
-  .hb-results .hr-steps li::before{content:"";position:absolute;left:2px;top:6px;width:6px;height:6px;
+  /* The dot sits on the CENTRE of the first line (half the line box, minus half the dot), whatever the type scale:
+     a fixed 6px left it riding the top of a 16px line (V2-876 P-40). */
+  .hb-results .hr-steps li::before{content:"";position:absolute;left:2px;top:calc(.81em - 3px);width:6px;height:6px;
     border-radius:50%;background:var(--hb-neutral,#c2ccda)}
   .hb-results .hr-steps li::after{content:"";position:absolute;left:4.5px;top:var(--s3);bottom:0;width:1px;
     background:var(--hb-line,#e3e8f0)}
@@ -134,6 +136,8 @@ export const CSS_RECORD = `
   /* V2-728 — the rejected pile. Deliberately DIM and dense: it is an audit trail, not a second results list,
      and it is long (the cap is 120). The reason is the load-bearing half, so it gets its own line rather
      than a parenthesis after the name, which is unreadable once a name wraps. */
+  /* A section title after a list opens a new block: it never sits glued to the list's last line. */
+  .hb-results .hr-cgt-next{margin-top:var(--s4)}
   .hb-results .hr-rejected{list-style:none;margin:var(--s2) 0 0;padding:0;display:grid;gap:var(--s2)}
   .hb-results .hr-rejected li{display:flex;flex-direction:column;gap:1px;padding-left:var(--s3);
     border-left:2px solid var(--hb-line,#e3e8f0)}
@@ -205,8 +209,16 @@ export const CSS_RECORD = `
   .hb-results .hr-clist{list-style:none;margin:0;padding:0;display:grid;gap:5px}
   .hb-results .hr-clist li{position:relative;padding-left:var(--s3);line-height:1.5;color:var(--hb-ink,#0d1622);
     overflow-wrap:break-word}
-  .hb-results .hr-clist li::before{content:"";position:absolute;left:0;top:7px;width:4px;height:4px;
+  .hb-results .hr-clist li::before{content:"";position:absolute;left:0;top:calc(.75em - 2px);width:4px;height:4px;
     border-radius:50%;background:var(--hb-neutral,#c2ccda)}
   .hb-results .hr-cgrp.hard .hr-clist li::before{background:var(--hb-accent,#3D6FE0)}
   .hb-results .hr-cgrp.changes .hr-clist li::before{background:var(--hb-accent2,#16B8A6)}
-  `;
+  
+  /* ── ON THE PHONE (V2-876 P-40) ── inside the phone shell's card ('.zm-scroll'), never on the desk: one result per
+     row, the title at 16px and its source at 14px whatever the root scale, and the record's buttons a 44px target. */
+  .zm-scroll .hb-results .hr-grid{grid-template-columns:minmax(0,1fr) !important}
+  .zm-scroll .hb-results .hr-card .hr-t,.zm-scroll .hb-results .hr-t{font-size:16px}
+  .zm-scroll .hb-results .hr-card .hr-host,.zm-scroll .hb-results .hr-card .hr-s{font-size:14px}
+  .zm-scroll .hb-results .hr-more,.zm-scroll .hb-results .hr-open{min-height:44px;box-sizing:border-box;
+    display:inline-flex;align-items:center}
+`;

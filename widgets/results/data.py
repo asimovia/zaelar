@@ -81,6 +81,26 @@ from widgets.results.live import (  # noqa: E402,F401 — re-export
 from .derived import _counts, _identity, _save, _tab_words  # noqa: E402,F401 — re-export
 
 
+def _rejected_for_him(rows) -> list:
+    """The rejected pile as HIS screen reads it (V2-877 #9). A row the ENGINE filed (provenance, the category gate)
+    carries a `why` addressed to the worker — «no url and no known source — a result says where it was found» is a
+    rule of the sheet's door, in the engine's English. The card paints `reason` instead: one line per FILER, in his
+    language. A row the worker filed keeps its own words. Keyed by the filer id the gates stamp, never by the text."""
+    from . import category_gate as _gate, provenance as _prov
+    lines = {_prov.FILED_BY: ("rej_unsourced", "No link or source to check it against"),
+             _gate.FILED_BY: ("rej_off_category", "Not the kind of thing you asked for")}
+    out = []
+    for r in rows if isinstance(rows, list) else []:
+        if not isinstance(r, dict):
+            continue
+        filer = lines.get(str(r.get("source") or ""))
+        if filer:
+            key, default = ("rej_your_rule", "Ruled out by one of your rules") if r.get("rule") else filer
+            r = {**r, "reason": note_text(key, default)}
+        out.append(r)
+    return out
+
+
 def view_data(q: str = "") -> dict:
     """The LAST result set pushed here. Nothing pushed → an empty sheet. `q` is the INSTANCE (`results::<q>`, V2-259)."""
     db = store.load(sheet_key(q), _empty())
@@ -92,6 +112,8 @@ def view_data(q: str = "") -> dict:
     data["sources"] = _clean_sources(data.get("sources"))
     data["summary"] = _clean_summary(data.get("summary"))
     data["criteria"] = _clean_criteria(data.get("criteria"))
+    if data.get("rejected"):
+        data["rejected"] = _rejected_for_him(data.get("rejected"))
     if data.get("tab") not in _TABS:
         data.pop("tab", None)                    # without a valid tab, results wins (the widget decides)
     # V2-591: a scroll request EXPIRES (120 s, the voice round-trip with margin): a stale one would move his reading.
