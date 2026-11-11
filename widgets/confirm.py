@@ -12,8 +12,13 @@ Without a yes, or after TTL expiry, nothing is executed. Two pending classes exi
     `nucleo/danger.py`). On confirmation, the provider dispatches the mutation (`op` = {action, payload}) through
     the same `apply_action`, without escalating to code. That is the point: irreversible does not mean code work.
 
-Process-memory registry, one confirmation per widget. The provider/endpoint execute on resolve in a loop-agnostic
-way; `resolve()` is only bookkeeping plus SSE signal.
+V2-878 §4 — the question WAITS ON A ROW, always: `request()` writes it through the one asker
+(`nucleo/request/consent_ask`, a `waiting_for=user_answer` row with its `ask_id` and two declared answers). The registry
+below is this process's INDEX of those rows — what the voice's early answer and the brain's line read — never the truth:
+an entry whose row no longer waits on its `ask_id` is dropped, and an entry on a row never expires by the wall clock
+(a suspension's frozen hours are not his silence; the row's own `deadline` ends it). Only an entry no row could be
+written for keeps the old in-memory TTL. Which of several questions a reply answers is the brief's binding verdict
+(`nucleo/cli/worker_api_bind`), never «the most recent».
 """
 from __future__ import annotations
 
@@ -21,8 +26,8 @@ import re
 import time
 import unicodedata
 
-_PENDING: dict[str, dict] = {}     # widget_id -> {action, question, ts, trace_id}
-_TTL = 90.0                        # a confirmation expires after 90s; it must not hang forever
+_PENDING: dict[str, dict] = {}     # widget_id -> {action, question, ts, trace_id, uid?, ask_id?} — an index of rows
+_TTL = 90.0                        # only an entry with NO row expires in memory (no store could hold its question)
 
 # Queue of confirmations that JUST expired unanswered, awaiting a proactive notice to the operator (2026-08-16,
 # operator request after a real diagnosed incident: two turns for the same "delete all my agenda" instruction —
@@ -61,9 +66,14 @@ def _close_flow(trace_id: str, reason: str) -> None:
 
 def _sweep() -> None:
     now = time.time()
-    for k in [k for k, v in _PENDING.items() if now - v["ts"] > _TTL]:
-        v = _PENDING.pop(k, None)
-        if v:
+    for k, v in list(_PENDING.items()):
+        if v.get("ask_id"):
+            from nucleo.circuit import asker
+            if not asker.row_waits(str(v.get("uid") or ""), str(v["ask_id"])):
+                _PENDING.pop(k, None)          # answered on its row (the brief's pick, the card's button) or ended there
+            continue
+        if now - v["ts"] > _TTL:
+            _PENDING.pop(k, None)
             _close_flow(v.get("trace_id", ""), "confirm_expired")
             _EXPIRED_QUEUE.append({"widget_id": k, **v})
 
@@ -153,11 +163,44 @@ def request(action: str, widget_id: str, question: str = "", op: dict | None = N
     _old = _PENDING.get(wid)
     if _old and _old.get("trace_id") and _old["trace_id"] != _trace_id:
         _close_flow(_old["trace_id"], "confirm_superseded")
+    if _old and _old.get("ask_id"):
+        _end_row(_old, False, outcome="a newer question on the same card replaced it")
     _PENDING[wid] = {"action": (action or "delete").strip(), "question": (question or "").strip(),
                      "op": op if isinstance(op, dict) else None, "ts": time.time(), "trace_id": _trace_id}
+    _PENDING[wid].update(_on_its_row(wid, _PENDING[wid]))
     if notify_ui:
         _emit("confirm", wid, {"action": _PENDING[wid]["action"], "question": _PENDING[wid]["question"]})
     return wid
+
+
+def _on_its_row(wid: str, p: dict) -> dict:
+    """The question on a ROW through the one asker (V2-878 §4): `{uid, ask_id}`, or {} when no row could be written —
+    then, and only then, this registry holds it alone. What his yes runs is retained on the row exactly as the
+    consent door retains it, so an answer after a restart runs the same act (`inline_ask.rerun`)."""
+    try:
+        from nucleo.request import consent_ask as _ca
+        op = p.get("op") if isinstance(p.get("op"), dict) else {}
+        action, question = str(p.get("action") or ""), str(p.get("question") or "")
+        if action in ("delete", "restore"):
+            row, ask_id = _ca.ask_consent(wid, action, {}, question, kind=action)
+        elif _cluster_op(op):
+            row, ask_id = _ca.ask_consent(wid, "cluster", {}, question, kind="cluster", op=op)
+        elif str(op.get("action") or "").strip():
+            row, ask_id = _ca.ask_consent(wid, str(op["action"]), op.get("payload") or {}, question)
+        else:
+            return {}                                 # no act declared: nothing a yes could run, nothing to keep
+        return {"uid": row, "ask_id": ask_id} if row and ask_id else {}
+    except Exception as e:  # noqa: BLE001 — the in-memory entry still holds the question
+        __import__("loguru").logger.warning(f"confirm: the question of {wid} is not on a row ({e!r})")
+        return {}
+
+
+def _cluster_op(op: dict) -> bool:
+    try:
+        from connectors.meshkore import send_gate
+        return send_gate.confirmed_tag(op) is not None
+    except Exception:  # noqa: BLE001
+        return False
 
 
 def pending() -> dict[str, dict]:
@@ -183,10 +226,11 @@ def pending_line() -> str:
 
 
 def resolve(widget_id: str = "", ok: bool = True) -> dict | None:
-    """Resolve one pending confirmation: the one for `widget_id`, or, if no id is provided, the only/latest pending
-    confirmation because voice does not always name the widget. Returns {'widget_id', 'action', ...} or None when
-    none existed. Bookkeeping only: the caller performs execution in its own loop. If `ok` is False, notify the card
-    to remove the overlay."""
+    """Resolve one pending confirmation: the one for `widget_id`, or, with no id, the ONLY one. With several and no id
+    nothing is resolved here: which one his reply answers is the brief's binding verdict over their rows (V2-878 §4) —
+    «the most recent» answered the wrong question. Returns {'widget_id', 'action', ...} or None. Bookkeeping only: the
+    caller performs execution in its own loop; the row is ended here, once (`inline_ask.take`), so its own answer path
+    never runs the act a second time. If `ok` is False, notify the card to remove the overlay."""
     _sweep()
     wid = (widget_id or "").strip().lower()
     p = None
@@ -194,18 +238,52 @@ def resolve(widget_id: str = "", ok: bool = True) -> dict | None:
         p = _PENDING.pop(wid)
     elif not wid and len(_PENDING) == 1:
         wid, p = _PENDING.popitem()
-    elif not wid and _PENDING:                        # several pending, no id -> the most recent
-        wid = max(_PENDING, key=lambda k: _PENDING[k]["ts"])
-        p = _PENDING.pop(wid)
     if p is None:
         return None
+    if p.get("ask_id") and not _end_row(p, ok):
+        return None                                   # its row's own answer already ran it
     if not ok:
         _emit("confirm-cancel", wid)
     return {"widget_id": wid, **p}
 
 
+def _end_row(p: dict, ok: bool, *, outcome: str = "") -> bool:
+    """The answer read here ends the question's row — once: False when the row's answer was already taken."""
+    try:
+        from nucleo.request import inline_ask
+        if not inline_ask.take(str(p["ask_id"])):
+            return False
+        from nucleo import circuit
+        circuit.settle(row=str(p.get("uid") or ""), state="done" if ok else "cancelled",
+                       outcome=outcome or ("he confirmed it" if ok else "he did not confirm it"))
+    except Exception as e:  # noqa: BLE001 — the act is still his answer; the row is the part that failed
+        __import__("loguru").logger.warning(f"confirm: the row of the answered question not ended ({e!r})")
+    return True
+
+
+def bound_by_brief(brief) -> bool:
+    """The turn's brief read the binding question over the open rows (`worker_api_bind`): its pick answers the one it
+    names (or none, or asks which), so no reading of his words here answers a question that waits on a row."""
+    if brief is None or not any(v.get("ask_id") for v in _PENDING.values()):
+        return False
+    try:
+        from nucleo.cli import worker_api_bind as _bind
+        from nucleo.turn import verdicts as _v
+        choice, info = _v.read(brief, _bind.KEY, None, min_confidence=0.0)
+        return bool(info) and choice is not None
+    except Exception as e:  # noqa: BLE001
+        __import__("loguru").logger.debug(f"confirm: binding verdict unreadable — {e!r}")
+        return False
+
+
+def only_pending() -> tuple[str, dict]:
+    """The one confirmation waiting, or ("", {}) when none or several — several are told apart by the brief only."""
+    items = list(pending().items())
+    return items[0] if len(items) == 1 else ("", {})
+
+
 # Deterministic yes/no detection (es/en); does not depend on the LLM, same spirit as attention.hard_interrupt.
-_YES_RE = re.compile(r"\b(si|sip|claro|vale|venga|dale|adelante|hazlo|hazla|borralo|borrala|"
+_YES_RE = re.compile(r"\b(si|sip|claro|vale|venga|dale|adelante|hazlo|hazla|borralo|borrala|"  # V2-878 §4b: declared answers
                      r"confirmo|confirmado|ok|okey|okay|perfecto|yes|yeah|yep|do it|go ahead|confirm)\b")
 _NO_RE = re.compile(r"\b(no|nop|cancela|cancelar|cancelalo|dejalo|dejala|para|olvidalo|mejor no|"
                     r"nada|cancel|stop|nevermind|never mind|dont|do not)\b")
@@ -303,27 +381,23 @@ def answers_pending(text: str, brief=None) -> str | None:
     Demo pass 45 (2026-09-29), C2→C3: the model asked «I'll write to Rowan on Telegram: … Shall I send it?» for a
     message nobody had asked for, and the next turn — «ok book it, call it catch up with rowan», an order about the
     CALENDAR — matched `ok` and sent it. A bare yes/no is an answer and resolves at once, as before. One that
-    carries more words may be a different request that happens to start with «ok»: the turn reader is asked
-    whether it answers THIS question, with the question named; «something else» is not an answer. If the reader
-    cannot be asked, the word-level reading stands (today's behaviour)."""
+    carries more words may be a different request that happens to start with «ok»: it never sends on that word.
+    V2-878 §4 — when the brief read the binding question over the rows, its pick is the reader and this returns None
+    (no second model call: the hot-path judge that used to be asked here is gone); with several questions waiting
+    and no pick, none is answered here."""
     v = classify_reply(text)
-    if v is None:
+    if v is None or bound_by_brief(brief):
         return None
     if is_plain_answer(text, v):
         return v
-    items = sorted(pending().items(), key=lambda kv: kv[1].get("ts", 0))
-    wid, p = items[-1] if items else ("", {})
+    wid, p = only_pending()
+    if not wid:
+        return None
     # Demo pass 134 (2026-10-15), E3→C3: «ok book it, call it catch up with rowan» answered the pending forward to
     # Quinn — the verdict SURELY named `agenda:add_meeting`, an order on another card; the meeting was never booked.
     if _orders_another_card(brief, wid):
         return None
-    question = str(p.get("question") or "").strip()
-    if not question:
-        return v
-    judged = _judge(question, text)
-    if judged is None:      # no reader: a longer sentence never sends on a word («ok …»); elsewhere the words stand
-        return None if _leaves(wid, p) else v
-    return None if judged == "other" else judged
+    return None if _leaves(wid, p) else v      # a longer sentence never sends on a word («ok …»)
 
 
 def _orders_another_card(brief, wid: str) -> bool:
@@ -353,58 +427,16 @@ def backs_a_yes(text: str) -> bool:
     act keeps the model's reading (True). Demo pass 133 (2026-10-15), E3→E4: the forward to Quinn asked «Shall I send
     it?», the next turn was «oh and leave that inworld one as unread», and the model answered the question itself —
     `confirm_widget_delete(confirmed=true)` — so the mail went out on a sentence that never said yes. Same reading as
-    the early door (`answers_pending`): a plain yes, or the judge's YES; with the judge out, the words alone."""
-    items = sorted(pending().items(), key=lambda kv: kv[1].get("ts", 0))
-    if not items:
+    the early door (`answers_pending`). Several waiting: none is resolved by a word (`resolve`), so nothing to back."""
+    wid, p = only_pending()
+    if not wid or not _leaves(wid, p):
         return True
-    wid, p = items[-1]
-    if not _leaves(wid, p):
-        return True
-    v = classify_reply(text)
-    if v == "no":
-        return False
-    if v == "yes" and is_plain_answer(text, v):
-        return True
-    judged = _judge(str(p.get("question") or ""), text)
-    return v == "yes" if judged is None else judged == "yes"
-
-
-_JUDGE_SYS = ("You check whether a user's reply answers a confirmation question. The assistant asked: «{q}». "
-              "Reply with exactly one word: YES if the reply agrees to exactly that pending action, NO if it declines "
-              "it, OTHER if it does neither — it asks for a different action instead, or is about something else. "
-              "A reply that agrees or declines AND also talks about other things is still YES or NO.")
-
-
-#: False inside the test suite (root conftest) — see `nucleo.workers.spoken_delivery.LIVE`.
-_JUDGE_LIVE = True
-
-
-def _judge(question: str, reply: str, timeout: float = 4.0) -> str | None:
-    """'yes' | 'no' | 'other' from the fast model, or None when it cannot be asked. The turn reader (Jev) was
-    measured first on the C3 sentence and read it as a yes (0.85): «book» against «send» is a comparison of two
-    actions, which a classifier over fixed labels does not make and the conversation model does (4/4 live)."""
-    if not _JUDGE_LIVE:
-        return None
-    try:
-        import asyncio
-        import concurrent.futures as _cf
-
-        from nucleo.request.title import spec_for_naming
-        from nucleo.llm.fast_client import FastClient
-        spec = spec_for_naming()
-        if spec is None:
-            return None
-        msgs = [{"role": "system", "content": _JUDGE_SYS.format(q=question[:300])},
-                {"role": "user", "content": reply[:300]}]
-        with _cf.ThreadPoolExecutor(max_workers=1) as ex:
-            out = ex.submit(asyncio.run, FastClient().complete(msgs, spec=spec, max_tokens=5,
-                                                               no_thinking=True)).result(timeout=timeout)
-        word = str(out or "").strip().split()[0].strip(".,!").lower() if str(out or "").strip() else ""
-        return word if word in ("yes", "no", "other") else None
-    except Exception:  # noqa: BLE001
-        return None
+    return classify_reply(text) == "yes"
 
 
 def reset() -> None:
-    """Clear the registry for tests."""
+    """Clear the registry for tests — and end the rows it indexed, so no question outlives the test that asked it."""
+    for p in list(_PENDING.values()):
+        if p.get("ask_id"):
+            _end_row(p, False, outcome="reset")
     _PENDING.clear()

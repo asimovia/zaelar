@@ -47,7 +47,6 @@ def parked(monkeypatch):
     monkeypatch.setattr(dc, "_PENDING_CONFIRM", {"2": {"request": GAME, "kind": "code", "trusted": True,
                                                        "context": {}, "sheet": "", "ts": time.time(),
                                                        "code_change": "create", "question": Q}})
-    monkeypatch.setattr(wconfirm, "_judge", lambda q, r, timeout=4.0: "other")     # what the live judge said
     return out
 
 
