@@ -215,13 +215,20 @@ each — not a scaled-down desktop on the phone. Everything new is PRESENTATION;
   the flag is per-viewer `localStorage`; queue panel beside the song), `compact` 700-1099 (icon rail; the queue is a
   drawer), `narrow` <700 (the destinations as a tab strip in the one bar; a small desktop card cannot spend 50 px on
   a bottom bar — measured: the cover fell under 88 px at 360x400), `mobile` = inside the phone shell (`.zm-scroll`)
-  or a small coarse-pointer screen (bottom navigation, a 64 px mini-player, the expanded player, the queue as a
-  bottom sheet; `land` puts the navigation on a left rail). A tablet-sized shell card (both sides ≥700) is
+  or a small coarse-pointer screen (V2-876: segmented tabs on TOP of the card with the mini-player folded in as a
+  play/pause and a progress line under «Now Playing» — the shell's dock is the only bar at the foot; the expanded
+  player; the queue as a page of its own with a back to the song). A tablet-sized shell card (both sides ≥700) is
   `compact`. A resize never asks the server for anything and never touches the player hosts.
 - **Destinations**: Home = `library` (continue listening · your lists · recently played · favourites; an empty
   shelf is not drawn), Search = `search`, Your music = `collection` (NEW face, card-internal: `id` = the open tab,
   playlists/favorites/top/recent; deliberately NOT declared to the model — a sentence reaches the same lists through
   `library` and `playlist`), Playing = `now`. `home` stays ADAPTIVE (V2-717) and lights the tab it is showing.
+- **The phone pass (V2-876 P-20…P-23)**: YouTube's `hqdefault` thumbnail bakes black bars into a 4:3 file, so
+  `object-fit: cover` alone kept them — `shared.js artImg` marks it `lb` and the stylesheet zooms the bars out of
+  the frame (every layout). On the phone the video slot takes the video's 16:9 and a paused embed hands the slot back
+  to the cover (the embed's own pause glyph and logo painted over the art). A missing artist is no line (never
+  «Unknown artist», every layout). The title truncates in the middle on the phone (two spans; desktop reads the same
+  text). A search the agent ran to PLAY something is not shown on the Search tab once it sounds (`shownSearch`).
 - **The queue off the wide card is a LAYER** (`kind: queue` → the player underneath + `queueOverlay`); its close is
   `open_view {kind: now}`. Reorder works three ways: HTML5 drag (mouse), a pointer drag on the grip (touch — HTML5
   drag never starts from a finger) and «up»/«down» in the row's ⋯ menu (no dragging at all).

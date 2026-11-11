@@ -8,12 +8,12 @@
 //   wide     ≥1100 px desktop       sidebar (collapsible) · content · queue panel beside the song · full bar
 //   compact  700-1099 px desktop    icon rail · content · queue as a drawer · full bar
 //   narrow   <700 px desktop        a tab strip in the one bar · content · full bar · queue as a sheet
-//   mobile   the phone shell        bottom navigation · mini-player · expanded player · queue as a sheet
+//   mobile   the phone shell        top tabs (the mini-player folded in) · expanded player · queue as a page
 // A card inside the phone shell (`.zm-scroll`) or on a coarse-pointer small screen is `mobile`; a tablet-sized one
 // (both sides ≥700) gets `compact` — the touch rules still apply there through `(hover:none)`.
 import { nowPlaying } from "./controls.js";
-import { ICON_HOME, ICON_LIBRARY, ICON_NEXT, ICON_NOTE, ICON_PAUSE, ICON_PLAY, ICON_QUEUE, ICON_SEARCH,
-  ICON_SIDEBAR, artNode, fire, h, svgEl, tt, takenBy } from "./shared.js";
+import { ICON_HOME, ICON_LIBRARY, ICON_NOTE, ICON_PAUSE, ICON_PLAY, ICON_QUEUE, ICON_SEARCH,
+  ICON_SIDEBAR, eqIcon, fire, h, svgEl, tt, takenBy } from "./shared.js";
 
 export function inShell(el){ return !!(el && el.closest && el.closest(".zm-scroll")); }
 
@@ -60,15 +60,6 @@ function navBtn(d, active, ctx, cls){
   if(active) b.setAttribute("aria-current", "page");
   b.onclick = () => fire(ctx, "open_view", {kind: d.kind});
   return b;
-}
-
-// The phone's (and the narrow window's) navigation: four destinations at the foot, each a 44 px target at least.
-export function bottomNav(data, ctx, kind){
-  const nav = h("nav", "hb-mus2-bnav");
-  nav.setAttribute("aria-label", tt("nav_label", null, "Música"));
-  const tab = tabOf(kind, data);
-  DESTS.forEach(d => nav.appendChild(navBtn(d, tab === d.id, ctx, "hb-mus2-bnavb")));
-  return nav;
 }
 
 // The narrow window's navigation: the same destinations as a one-row strip in the card's one bar (a small desktop
@@ -134,39 +125,37 @@ export function sidebar(el, data, ctx, kind, mode){
   return side;
 }
 
-// ── THE MINI-PLAYER (phone): art, title, artist, play/pause, next — and a thin progress line on its top edge.
-// Tapping it opens the expanded player. No volume, modes or queue here on purpose: those live in the big one.
-export function miniPlayer(el, data, ctx, playback){
-  const np = nowPlaying(data);
-  if(!np) return null;
-  const mini = h("div", "hb-mus2-mini");
-  mini.setAttribute("role", "button");
-  mini.setAttribute("aria-label", tt("open_player", null, "Abrir el reproductor"));
-  const line = h("div", "hb-mus2-miniprog"); const fill = h("b"); line.appendChild(fill);
-  mini.appendChild(line);
-  mini.appendChild(artNode(np.art, ICON_NOTE));
-  const meta = h("div", "hb-mus2-minimeta");
-  meta.appendChild(h("div", "hb-mus2-minit", np.title || tt("music_fb", null, "Música")));
-  if(np.artist) meta.appendChild(h("div", "hb-mus2-minia", np.artist));
-  mini.appendChild(meta);
-  const playing = !!np.playing;
-  const mk = (svg, action, label, cls) => {
-    const b = h("button", "hb-mus2-minib" + (cls ? " " + cls : ""));
-    b.appendChild(svgEl(svg)); b.title = label; b.setAttribute("aria-label", label);
-    b.onclick = (e) => { e.stopPropagation(); fire(ctx, action); };
-    return b;
-  };
-  if(takenBy(data)){
-    mini.appendChild(h("span", "hb-mus2-barlock", tt("away_short", {device: takenBy(data)}, "En «{device}»")));
-  } else {
-    mini.appendChild(mk(playing ? ICON_PAUSE : ICON_PLAY, playing ? "pause" : "resume",
-                        playing ? tt("pause", null, "Pausa") : tt("play", null, "Reproducir"), "main"));
-    mini.appendChild(mk(ICON_NEXT, "next", tt("next", null, "Siguiente")));
-  }
-  mini.onclick = () => fire(ctx, "open_view", {kind: "now"});
-  el._hbTickers.push(() => {
-    const pb = playback(el, data, ctx);
-    fill.style.width = (pb && pb.dur ? Math.max(0, Math.min(1, pb.pos / pb.dur)) * 100 : 0) + "%";
+// ── THE PHONE (V2-876 rule 1): the shell's dock is the ONE bar at the foot, so the four destinations are segmented
+// tabs at the TOP of the card. The mini-player folds into this row instead of stacking as a strip: «Now Playing»
+// carries the sounding bars and a progress line, and a play/pause sits at the row's end while the face is not the
+// player itself. Every target is 44 px tall.
+export function phoneTabs(el, data, ctx, kind, playback){
+  const row = h("div", "hb-mus2-ptabs");
+  const seg = h("nav", "hb-mus2-pseg");
+  seg.setAttribute("aria-label", tt("nav_label", null, "Música"));
+  seg.setAttribute("role", "tablist");
+  const tab = tabOf(kind, data), np = nowPlaying(data);
+  DESTS.forEach(d => {
+    const on = tab === d.id;
+    const b = h("button", "hb-mus2-psegb" + (on ? " on" : ""));
+    b.setAttribute("role", "tab"); b.setAttribute("aria-selected", on ? "true" : "false");
+    if(d.id === "now" && np && np.playing) b.appendChild(eqIcon());
+    b.appendChild(h("span", null, d.label()));
+    b.onclick = () => fire(ctx, "open_view", {kind: d.kind});
+    if(d.id === "now" && np){
+      const line = h("i", "hb-mus2-psegp"), fill = h("b"); line.appendChild(fill); b.appendChild(line);
+      el._hbTickers.push(() => { const pb = playback(el, data, ctx);
+        fill.style.width = (pb && pb.dur ? Math.max(0, Math.min(1, pb.pos / pb.dur)) * 100 : 0) + "%"; });
+    }
+    seg.appendChild(b);
   });
-  return mini;
+  row.appendChild(seg);
+  if(np && tab !== "now" && !takenBy(data)){
+    const playing = !!np.playing, label = playing ? tt("pause", null, "Pausa") : tt("play", null, "Reproducir");
+    const pp = h("button", "hb-mus2-ptabpp");
+    pp.appendChild(svgEl(playing ? ICON_PAUSE : ICON_PLAY)); pp.title = label; pp.setAttribute("aria-label", label);
+    pp.onclick = () => fire(ctx, playing ? "pause" : "resume");
+    row.appendChild(pp);
+  }
+  return row;
 }

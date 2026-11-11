@@ -1,7 +1,7 @@
 // musica — the one bar (crumb, search, source chip), the screen shell, and the catalogue screens: search, artist
 // and album (refactor2710-12 T-03).
 import { maybeEnrich, nowPlaying, playback, playbackBar, reportPlayed } from "./controls.js";
-import { bottomNav, miniPlayer, navTabs, sidebar } from "./layout.js";
+import { navTabs, phoneTabs, sidebar } from "./layout.js";
 import { soundRow } from "./players.js";
 import { panel, pill, trackRow } from "./playlist.js";
 import { ICON_ADDLIST, ICON_BACK, ICON_CLOSE, ICON_LIST, ICON_NOTE, ICON_PLAY, ICON_SEARCH,
@@ -83,7 +83,7 @@ export function searchBox(el, data, ctx, kind){
   const inp = h("input", "hb-mus2-sinp");
   inp.type = "search";
   inp.placeholder = tt("search_ph", null, "Canciones, artistas o álbumes");
-  const last = ((data.browse || {}).search || {}).query || "";
+  const last = shownSearch(data).query || "";
   // The last query belongs to the search screen; elsewhere the always-there desktop field starts empty.
   inp.value = el._hbDraft != null ? el._hbDraft : (kind === "search" ? last : "");
   inp.addEventListener("input", () => { el._hbDraft = inp.value; });
@@ -115,6 +115,7 @@ export function shell(el, data, ctx, kind, opts){
   const body = h("div", "hb-mus2-body");
   if(L.mode === "wide" || L.mode === "compact") body.appendChild(sidebar(el, data, ctx, kind, L.mode));
   const main = h("div", "hb-mus2-main");
+  if(L.mode === "mobile") main.append(...[phoneTabs(el, data, ctx, kind, playback), soundRow(el, data)].filter(Boolean));
   const head = headerBar(el, data, ctx, kind, opts, L);
   if(head) main.appendChild(head);
   const away = elsewhereBanner(el, data, ctx);
@@ -124,18 +125,9 @@ export function shell(el, data, ctx, kind, opts){
   body.appendChild(main);
   wrap.appendChild(body);
   return {wrap, scroll, main, body, L, done: () => {
-    if(L.mode === "mobile"){
-      const np = nowPlaying(data);
-      if(np){ maybeEnrich(np, ctx); reportPlayed(np, ctx); }
-      const tap = soundRow(el, data);
-      if(tap) wrap.appendChild(tap);
-      // The expanded player carries the full controls; a mini-player under it would say the same thing twice.
-      const expanded = kind === "now" || kind === "queue" || (kind === "home" && np);
-      if(!expanded){ const m = miniPlayer(el, data, ctx, playback); if(m) wrap.appendChild(m); }
-      wrap.appendChild(bottomNav(data, ctx, kind));
-    } else {
-      wrap.appendChild(playbackBar(el, data, ctx));
-    }
+    const np = L.mode === "mobile" && nowPlaying(data);   // the phone draws nothing at the foot (V2-876)
+    if(np){ maybeEnrich(np, ctx); reportPlayed(np, ctx); }
+    else if(L.mode !== "mobile") wrap.appendChild(playbackBar(el, data, ctx));
     el._viewHost.appendChild(wrap);
   }};
 }
@@ -177,10 +169,19 @@ const FILTERS = [["all", () => tt("f_all", null, "Todo")], ["tracks", () => tt("
                  ["playlists", () => tt("playlists_found", null, "Listas")],
                  ["shows", () => tt("podcasts_found", null, "Podcasts")]];
 
+// V2-876 — a search the agent ran to PLAY something is not one he made: once it sounds, the Search tab opens blank
+// (never his words prefilled, never «Nothing for X» while X is playing). One still pending or one that failed stays.
+export function shownSearch(data){
+  const res = (data.browse || {}).search || {};
+  if(res.pending || res.failed || !nowPlaying(data)) return res;
+  const any = ["tracks", "artists", "albums", "playlists", "shows"].some(k => (res[k] || []).length);
+  return ("chosen" in res || "candidates" in res || !any) ? {} : res;
+}
+
 export function searchView(el, data, ctx){
   const L = el._hbLayout || {};
   const s = shell(el, data, ctx, "search", {search: true});
-  const res = (data.browse || {}).search || {};
+  const res = shownSearch(data);
   const has = k => (res[k] || []).length;
   // The phone and the narrow window have no room for it in a bar: the field is the first thing in the screen.
   if(L.mode === "mobile" || L.mode === "narrow"){
