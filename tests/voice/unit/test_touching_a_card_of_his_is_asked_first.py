@@ -98,7 +98,7 @@ def test_the_brain_is_told_NOTHING_has_been_touched():
     not see was rewriting his card. The live state is what stops the turn narrating that."""
     dispatch.remember_code_change("7", THE_REAL_COMMISSION, _Task())
     line = dispatch.confirm_line()
-    assert "MODIFICAR una tarjeta suya" in line
+    assert "MODIFICAR una app suya" in line
     assert "NI UNA LÍNEA" in line and "no digas que estás con ello" in line
     assert "IRREVERSIBLE" not in line, "that is the other gate, and it frightens him for nothing"
 
