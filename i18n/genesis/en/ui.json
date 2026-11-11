@@ -2523,6 +2523,8 @@
  "veil.starting": "Starting the agent…",
  "dormant.sleep_title": "Zaelar went to sleep",
  "dormant.sleeping": "Sleeping",
+ "controls.language_locked": "The system language can't be changed once it is set.",
+ "controls.voices": "Voices",
  "dormant.sleep_sub": "Nobody was using it for a while, so it went to sleep. Reactivate it to carry on where you left off.",
  "dormant.reactivate": "Reactivate",
  "dormant.waking": "Waking up — this takes a moment…",
