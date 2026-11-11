@@ -141,7 +141,10 @@ def test_a_host_on_the_floor_is_one_episode_not_a_flapping_alert(world, monkeypa
         wd._state["beat"] = 1000.0 + 2 * i
         seen.append(wd.tick(_Frozen(), now=1000.0 + 2 * i))
     assert seen == ["shed"] * 7 + ["recovered"], seen
-    assert [label for label, _ in world["events"]] == ["engine_shedding", "engine_recovered"]
+    # V2-887: the loop answered every tick — the HOST was short of memory, so the one alert names the machine, and
+    # its end is not news (no «the engine has recovered» for an engine that never stopped)
+    assert [label for label, _ in world["events"]] == ["machine_short_of_memory"]
+    assert world["events"][0][1].get("cause") == "machine"
 
 
 def test_a_supervised_host_in_the_band_is_never_restarted_for_it(world, monkeypatch):
@@ -160,3 +163,41 @@ def test_a_supervised_host_in_the_band_is_never_restarted_for_it(world, monkeypa
             seen.append(wd.tick(_Frozen(), now=1000.0 + 2 * i))
         assert ("exit" in seen) is want_exit, (floor, seen)
     wd._state.update(since=0.0, shed=False, exiting=False, code=0)
+
+
+def test_a_frozen_loop_is_still_the_engines_alert_and_its_recovery_is_said(world, monkeypatch):
+    """V2-887 control: a loop that stopped answering (beat older than `freeze_s`) is the ENGINE — its shed and its
+    recovery are both said, as before."""
+    from nucleo.workers import envelope
+    monkeypatch.delenv("ZAELAR_SUPERVISED", raising=False)
+    monkeypatch.setattr(envelope, "policy", lambda: {"pause_free_ratio": 0.1, "admit_free_ratio": 0.2})
+    monkeypatch.setattr(envelope, "measured", lambda: (8 * GB, int(8 * GB * 0.5)))
+    wd._state["beat"] = 900.0                     # the loop last answered 100 s ago
+    assert wd.tick(_Frozen(), now=1000.0) == "shed"
+    wd._state["beat"] = 1002.0
+    assert wd.tick(_Frozen(), now=1002.0) == "recovered"
+    assert [label for label, _ in world["events"]] == ["engine_shedding", "engine_recovered"]
+    assert world["events"][0][1].get("cause") == "engine"
+
+
+def test_the_machine_notice_is_said_once_per_window_not_once_per_episode(world, monkeypatch):
+    """V2-887 — host pressure comes and goes every few minutes; each episode still sheds, but the machine notice is
+    said once per `machine_notice_s`. A frozen loop (the engine's own alert) is never held by that window."""
+    from nucleo.workers import envelope
+    monkeypatch.delenv("ZAELAR_SUPERVISED", raising=False)
+    monkeypatch.setattr(envelope, "policy", lambda: {"pause_free_ratio": 0.1, "admit_free_ratio": 0.2})
+    monkeypatch.setattr(wd, "policy", lambda: {**POL, "machine_notice_s": 600.0})
+    ratio = {"r": 0.05}
+    monkeypatch.setattr(envelope, "measured", lambda: (8 * GB, int(8 * GB * ratio["r"])))
+    sheds = 0
+    for start in (1000.0, 1300.0, 1700.0):                    # three episodes: 0 s, +300 s (inside), +700 s (outside)
+        for r, dt in ((0.05, 0.0), (0.3, 2.0)):
+            ratio["r"] = r
+            wd._state["beat"] = start + dt
+            sheds += wd.tick(_Frozen(), now=start + dt) == "shed"
+    assert sheds == 3, "every episode still sheds"
+    assert [label for label, _ in world["events"]] == ["machine_short_of_memory"] * 2
+    wd._state["beat"] = 1700.0                                 # control: the loop itself stops answering
+    ratio["r"] = 0.3
+    wd.tick(_Frozen(), now=1760.0)
+    assert world["events"][-1][0] == "engine_shedding"

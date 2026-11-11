@@ -89,6 +89,8 @@ def _before_connect() -> None:
 
 
 async def entrypoint(ctx: JobContext) -> None:
+    from voice.engine.pipeline import thread_qos
+    thread_qos.interactive()                   # V2-887: this thread is the voice; ask the OS to serve it first
     _before_connect()
     await ctx.connect()
 
