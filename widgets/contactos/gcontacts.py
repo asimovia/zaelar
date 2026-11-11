@@ -113,6 +113,7 @@ def sync_state(db: dict) -> dict:
         "last": float(s.get("last") or 0.0),
         "lastResult": s.get("lastResult") or {},
         "auto": bool(s.get("auto", False)),   # off until he asks — an import nobody asked for is not ours to start
+        "running": running(),
         # Said out loud so the card can promise the interval it actually runs at instead of a number
         # somebody typed into a label and nobody kept in step with the scheduler.
         "every": int(PERIOD),
@@ -120,7 +121,24 @@ def sync_state(db: dict) -> dict:
     }
 
 
+_RUNNING = {"since": 0.0}
+
+
+def running() -> bool:
+    """A pass is under way right now — the card keeps «Sincronizando…» across tabs and re-renders until it ends."""
+    return bool(_RUNNING["since"]) and (_time.time() - _RUNNING["since"]) < 600
+
+
 def sync(db: dict, *, merge, since: float = 0.0, remove=None) -> dict:
+    """ONE pass (see `_sync`), marked as running while it lasts."""
+    _RUNNING["since"] = _time.time()
+    try:
+        return _sync(db, merge=merge, since=since, remove=remove)
+    finally:
+        _RUNNING["since"] = 0.0
+
+
+def _sync(db: dict, *, merge, since: float = 0.0, remove=None) -> dict:
     """ONE pass, both directions. `merge` is `data.py`'s own merger — this module never writes the store.
 
     Order matters and is deliberate: PUSH first, then PULL. Pushing our newer rows before reading means

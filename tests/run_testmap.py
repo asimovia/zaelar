@@ -6478,7 +6478,7 @@ DOMAINS: list[dict] = [
         # pasada tranquila es UNA petición, y además dice qué ha cambiado), el reloj que impide reenviar
         # lo ya enviado, y el espejo completo — un borrado viaja en los dos sentidos, con un tope que se
         # niega a creerse un borrado masivo.
-        {"id": "5.29", "title": "La sincronización de contactos se queda encendida y es un espejo",
+        {"id": "5.29", "title": "V2-887 step 9: a pass under way is said (`sync.running`) until it ends, so the card keeps «Sincronizando…» across tabs; La sincronización de contactos se queda encendida y es un espejo",
             "ch": UNIT, "paths": ["tests/connectors/unit/contacts/test_a_sync_that_stays_on.py"]},
         {"id": "5.28", "title": "Una cuenta conectada avisa a la tarjeta de que ha conectado",
             "ch": UNIT, "paths": [
@@ -6848,6 +6848,8 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_a_clear_request_is_done_and_never_called_done_before_its_result.py"]},
         {"id": "2.1701", "title": "One person is one candidate (V2-887 step 6): a contact named by its handle («raquel.salvadoresteban», «pedrosalvador12») whose letters spell another matched contact's full name is that person — «Raquel Salvador» resolves to one; a plain one-word name stays its own",
             "ch": UNIT, "paths": ["tests/memory/unit/contacts/test_one_person_is_one_candidate.py"]},
+        {"id": "2.1702", "title": "The contacts source icons are STATUS, never a control (V2-887 step 9): lit = connected, dimmed = not, no hand and no button; clicking one moves nothing — the contacts are always all and the plug is the one door to the sources",
+            "ch": UNIT, "paths": ["tests/browser/unit/contactos/test_a_contact_card_looks_like_a_contact_card.py"]},
         {"id": "2.1692", "title": "Every question card has a ✕ (V2-886 D7): `POST /api/tasks/<row>/asks/<ask_id>/dismiss` on the row's open question ends that row through his cancel door and records `ask_dismissed`; a question that is not the open one is 409 and changes nothing; the card's ✕ and its label exist in es and en",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/test_a_question_card_can_be_dismissed.py"]},
         {"id": "2.1150", "title": "A worker's Claude Code never reads the host user's config (V2-851 F3, §15e): the spawn passes --setting-sources project,local + --strict-mcp-config and disables auto-memory; a routed tier also gets the engine's own CLAUDE_CONFIG_DIR (stable, for resume by id); the licence tier keeps its login; a dev worker keeps it after its env allowlist; the widget generator and the code agent share the helper",

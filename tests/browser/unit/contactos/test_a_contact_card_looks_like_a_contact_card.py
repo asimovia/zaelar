@@ -331,8 +331,9 @@ def test_the_subheader_shows_every_contact_source(_page):
     _mount(_page, _data())
     icons = _page.locator(".ctconnicons .ctconnicon")
     assert icons.count() == 3, "Google, iCloud and CardDAV — what we have and what we do not"
-    assert icons.nth(1).is_disabled(), "a source with no connector is visible but INERT"
-    assert icons.nth(2).is_disabled()
+    assert "off" in _classes(icons.nth(1)), "a source with no connector is visible but marked off"
+    assert "off" in _classes(icons.nth(2))
+    assert _page.locator("button.ctconnicon").count() == 0, "V2-887: a status icon is never a button"
 
 
 def test_a_connected_source_is_shown_IN_COLOUR_and_the_rest_dimmed(_page):
@@ -349,7 +350,8 @@ def test_a_source_that_is_not_linked_does_not_read_as_linked(_page):
     _mount(_page, _data(providers=_providers(google="off")))
     g = _page.locator(".ctconnicons .ctconnicon").first
     assert "on" not in _classes(g)
-    assert not g.is_disabled(), "not linked is still a DOOR — it is «we have not built it» that is inert"
+    assert _page.evaluate("getComputedStyle(document.querySelector('.ctconnicon')).cursor") == "default", \
+        "V2-887: no hand over an icon that does nothing — the plug is the door"
 
 
 def test_there_is_no_import_button_in_the_sidebar_any_more(_page):

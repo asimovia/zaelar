@@ -453,3 +453,22 @@ def test_the_widget_declares_the_cycle_or_nothing_ever_calls_tick():
     assert background_period(m), "no background cycle: the permanent sync would never happen"
     from widgets.contactos import data as d
     assert callable(getattr(d, "tick", None)), "the scheduler's contract needs `tick` in data.py"
+
+
+def test_a_pass_under_way_is_said_until_it_ends(monkeypatch):
+    """V2-887 step 9 — measured 2026-11-11: «sincronizar ahora» pressed, he changed tab, came back and the button
+    could be pressed again while the pass still ran. The engine says a pass is RUNNING while it lasts, so the card
+    keeps «Sincronizando…» across re-renders, and stops saying it when the pass ends — failed or not."""
+    from widgets.contactos import gcontacts
+    seen = []
+
+    def _pass(db, **kw):
+        seen.append(gcontacts.sync_state(db)["running"])
+        raise RuntimeError("google down")
+    monkeypatch.setattr(gcontacts, "_sync", _pass)
+    assert gcontacts.sync_state({})["running"] is False
+    try:
+        gcontacts.sync({}, merge=None)
+    except RuntimeError:
+        pass
+    assert seen == [True] and gcontacts.sync_state({})["running"] is False

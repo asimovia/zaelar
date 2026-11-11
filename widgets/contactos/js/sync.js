@@ -3,35 +3,28 @@
 import { ICO_PEOPLE, ICO_SYNC, IMPORT_SOURCES, LIVE_SOURCES, SRC_SVG, _LANG, el2, hooks, srcKey,
   svgEl, tt } from "./shared.js";
 
-// ── THE PROVIDER ICONS — a FILTER for a linked source, a door for one that is not (V2-715) ─────────────
-// The operator's correction, 2026-09-17: «cuando entramos en Telegram quiero ver solo los contactos de
-// Telegram… ya tenemos el botón de conectores para manejar la sincronización». So the icon stopped being
-// a second door to the connectors screen — which is what V2-699 made it, and what made two controls on
-// this row do one thing — and became the platform filter. It still opens the screen when the source is
-// LINKABLE but not linked, because there is nothing to filter and «conéctalo» is the only useful answer.
-//
-// Three states remain three different sentences (the house standard): full colour = linked, dimmed = built
-// and not linked, `.off` + disabled = no connector exists at all.
+// ── THE PROVIDER ICONS — STATUS, never a control (V2-887 step 9) ───────────────────────────────────────
+// The operator's rule, 2026-11-11: «los contactos siempre aparecen todos; se filtra por grupos, por favoritos…
+// estos botones solo se quedan apagados si no están conectados, y cuando están conectados se iluminan, pero no
+// aparece la manita». So the icon says ONE thing — lit = connected, dimmed = not — and is not clickable: the
+// plug button beside them is the one door to the sources. (V2-715 had made it a per-platform filter; a filter
+// with no visible scope read as a dead button.) A source filter pushed by voice (`show_view source`) still lands
+// and still shows its chip in the rail, where it can be removed.
 export function renderProviderIcons(providers, el, data, ctx){
   const wrap = el2("div","ctconnicons");
   (providers||[]).forEach(p=>{
     const live = !!LIVE_SOURCES[p.id];
     const on = p.status === "connected";
-    const sel = !!el._ctSource && srcKey(el._ctSource) === srcKey(p.id);
-    const btn = el2("button","ctconnicon" + (on?" on":"") + (live?"":" off") + (sel?" sel":""));
+    const ico = el2("span","ctconnicon" + (on?" on":"") + (live?"":" off"));
     const spec = SRC_SVG[p.id];
-    if(spec){ btn.style.color = spec.color; btn.appendChild(svgEl(spec.path, {fill:true})); }
-    else { btn.appendChild(svgEl(ICO_PEOPLE)); }
-    btn.title = (p.label || p.id) + " — " + (!live ? tt("src_soon", null, "aún no disponible")
-                                                   : !on ? tt("src_off_connect", null, "sin conectar — pulsa para conectarlo")
-                                                   : sel ? tt("src_filter_off", null, "quitar el filtro")
-                                                         : tt("src_filter_on", null, "ver solo estos contactos"));
-    if(!live){ btn.disabled = true; }
-    else if(!on){ btn.onclick = ()=>ctx.openConnector(p.id); }   // linking is the ⚙ Conectores section's job
-    else { btn.onclick = ()=>{
-      el._ctSource = sel ? "" : p.id;
-      el._ctDetail = null; el._ctScreen = null; el._ctShown = 0; hooks.render(el,data,ctx); }; }
-    wrap.appendChild(btn);
+    if(spec){ ico.style.color = spec.color; ico.appendChild(svgEl(spec.path, {fill:true})); }
+    else { ico.appendChild(svgEl(ICO_PEOPLE)); }
+    ico.title = (p.label || p.id) + " — " + (!live ? tt("src_soon", null, "aún no disponible")
+                                                   : on ? tt("src_connected", null, "conectado")
+                                                        : tt("src_off", null, "sin conectar"));
+    ico.setAttribute("role", "img");
+    ico.setAttribute("aria-label", ico.title);
+    wrap.appendChild(ico);
   });
   return wrap;
 }
@@ -174,10 +167,15 @@ export function renderSyncBox(el, data, ctx, sync, redraw){
   const foot = el2("div","ctsyncfoot");
   // «Sincronizar ahora» is impatience, not the feature: the switch above is what keeps them in step. It is
   // still a BUTTON, the same `ctbtn` as «Gestionar» above it — one look for every action on this panel.
-  const go = el2("button","ctbtn", tt("sync_now", null, "Sincronizar ahora"));
+  // V2-887 step 9: a pass under way survives a tab switch and a re-render — the element keeps it until the action
+  // answers, and the engine says so too (`sync.running`); pressed once, it cannot be pressed twice.
+  const busy = !!el._ctSyncing || !!sync.running;
+  const go = el2("button","ctbtn", busy ? tt("syncing", null, "Sincronizando…") : tt("sync_now", null, "Sincronizar ahora"));
+  go.disabled = busy;
   go.onclick = async()=>{
-    go.disabled = true; go.textContent = tt("syncing", null, "Sincronizando…");
-    redraw(await ctx.action("sync_contacts", {}));
+    el._ctSyncing = true; go.disabled = true; go.textContent = tt("syncing", null, "Sincronizando…");
+    try { const nd = await ctx.action("sync_contacts", {}); el._ctSyncing = false; redraw(nd); }
+    catch(e){ el._ctSyncing = false; redraw(null); }
   };
   foot.appendChild(go);
   const when = el2("div","ctsyncwhen");

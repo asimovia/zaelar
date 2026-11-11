@@ -30,15 +30,10 @@ export const CSS = `
     .hb-contactos .ctsearch{flex:1 1 100%;max-width:none}}
   .hb-contactos .ctconnicons{display:flex;align-items:center;gap:4px}
   .hb-contactos .ctconnicon{width:var(--hb-icon-h,28px);height:var(--hb-icon-h,28px);border-radius:var(--hb-r-s,8px);
-    border:0;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:.72}
+    border:0;background:none;cursor:default;display:flex;align-items:center;justify-content:center;opacity:.35}
   .hb-contactos .ctconnicon svg{width:15px;height:15px;display:block}
-  .hb-contactos .ctconnicon:hover:not(:disabled){opacity:1;background:var(--hb-bg-soft,#f4f7fb)}
   .hb-contactos .ctconnicon.on{opacity:1}
-  .hb-contactos .ctconnicon.off{opacity:.4;cursor:default}
-  /* SELECTED — the directory is showing only this platform. The accent ring is the same «this is the one
-     on screen» language the tabs used to wear, moved to the control that now owns that job. */
-  .hb-contactos .ctconnicon.sel{opacity:1;background:color-mix(in srgb,var(--hb-accent,#AE90FF) 18%,transparent);
-    box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--hb-accent,#AE90FF) 55%,transparent)}
+  .hb-contactos .ctconnicon.off{opacity:.2}
   /* The plug is an ICON, not a labelled button: the operator's «ocupa mucho espacio», and with the icons
      beside it already saying «sources», the word was the third time this row said the same thing. */
   .hb-contactos .ctplug{width:var(--hb-ctl-h-sm,32px);height:var(--hb-ctl-h-sm,32px);flex:0 0 auto;
