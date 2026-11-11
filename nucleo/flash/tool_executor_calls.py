@@ -412,10 +412,6 @@ def _t_stop_worker(*, args, _norm_nfkd, _say, clarify, emit, text, worker_acted,
              extra={"cat": "flash", "kind_diag": "stop_without_order", "which": which or "todo",
                     **_stop_decision.reading(brief, "call:stop_worker")})
         return
-    if _may != "run":     # refactor2710-07: an unsure verdict against the model's stop is asked, never refused silently
-        clarify["msg"], worker_acted["v"] = _say().stop_doubt, "stop"
-        return emit("brain", "❓ stop_worker en duda — se pregunta", text=(text or "")[:120], role="system",
-                    extra={"cat": "flash", "kind_diag": "stop_asked", "which": which or "todo"})
     try:
         from nucleo import dispatch as _d
         # GUARD stop-ALL (T49): «todo» over distinct goals needs a SURE `stop_all` (`stop.all_ordered`); else the

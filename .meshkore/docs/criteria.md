@@ -173,6 +173,11 @@ below is the first kind, or it names the mechanism that replaced the second.
   notice that Google Calendar alarms itself is `covered` (read at fire time); an asked one is always ours. ⏻ silences
   the voice, never the push. — since 2026-10-25 · nodes 2.800, 2.801, 2.802, 4.271 · `nucleo/pulse/notices.py`,
   `nucleo/pulse/webpush.py`, `nucleo/pulse/wake.py`.
+- **CRIT-C4e · A named weekday that is today is TODAY** while the hour he said is still ahead (or he said none);
+  otherwise the next one. One rule, `widgets/agenda/when.coming_offset`, read by the widget's date resolver with the
+  act's own hour (add and move); the prompt's day list starts today, marked. A «next»/«que viene» weekday keeps its
+  strict rule in the said-day guard. — since 2026-11-11 (V2-886 0c) · node 2.1694 · `widgets/agenda/when.py`,
+  `nucleo/turn/prompt/live_state.py`.
 - **CRIT-C4b · A worker never deletes a card.** Deleting is a confirmed act (`pending_confirm`, the UI's Yes/No);
   the first verb of a request names its act, so a build that mentions deleting its own entries builds. — since
   2026-10-09 · nodes 2.246.

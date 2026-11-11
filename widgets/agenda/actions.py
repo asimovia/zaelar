@@ -65,7 +65,7 @@ def _a_add_meeting(action, payload, db, _extra) -> dict:
         _rawdate = _m.group(1)
         if not _rawtime.strip():
             _rawtime = _m.group(2)
-    date = _d._resolve_date(_rawdate)
+    date = _d._resolve_date(_rawdate, at=_d._resolve_time(_rawtime) if _rawtime.strip() else "")
     if not _rawtime.strip():
         # V2-652 — a missing hour is a FACT, never a slot for a default. The old `default="17:00"`
         # dressed absence up as an afternoon appointment: the promise backstop wrote title+date, the
@@ -304,7 +304,8 @@ def _a_move_meeting(action, payload, db, _extra) -> dict:
             return {"ok": False, "error": f"«{m.get('title')}» no cae el {_day} — dime qué día es"}
         _d.gcal.patch_google(m)
         m = _d.gcal.commit_meeting(db, _one)
-    new_date = _d._resolve_date(_rawnew) if _rawnew else str(m.get("date") or _d._today())
+    new_date = (_d._resolve_date(_rawnew, at=_d._resolve_time(_rawtime) if _rawtime else "") if _rawnew
+                else str(m.get("date") or _d._today()))
     new_start = _d._resolve_time(_rawtime) if _rawtime else str(m.get("startTime") or "17:00")
     _end = _d.edit.end_of(m, payload, new_start)
     _d._cancel_reminder(m)

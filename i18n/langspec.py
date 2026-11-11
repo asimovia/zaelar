@@ -308,7 +308,6 @@ class LangSpec:
     send_missing_text: str = ""
     send_missing_recipient: str = ""
     #: refactor2710-07 — the model stopped the errand and the brief, unsure, read otherwise: asked, never refused silently.
-    stop_doubt: str = ""
     #: refactor2710-99 — the stop backstop stopped an errand the model did not: said alone, or after the model's words.
     stopped_now: str = ""
     stopped_also: str = ""

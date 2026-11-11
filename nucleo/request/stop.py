@@ -4,7 +4,6 @@ REPLACE stops it and starts what he named (V2-820); STEER relays his correction;
 it as MET — his decision answered what it was for, so the row is done with his pick (V2-831 T-29)."""
 from __future__ import annotations
 
-import time
 
 from loguru import logger
 
@@ -77,25 +76,6 @@ def verdict(brief) -> str | None:
     return choice if info is not None and (choice in CHOICES or choice == "decline_step") else None
 
 
-#: When we offered to stop (the gate's `ask_which`): the next turn may take it (refactor2710-99).
-_OFFER, OFFER_TTL_S = {"at": 0.0}, 300.0
-
-
-def offer_taken(brief, *, the_model_stops: bool = False) -> bool:
-    """His turn TAKES our open offer: the brief reads it as his answer (not a question, comment or complaint) and the
-    model's `stop_worker` or the verdict's DIRECTION points at stopping — our question is the licence, not the bar."""
-    if not _OFFER["at"] or time.time() - _OFFER["at"] > OFFER_TTL_S:
-        return False
-    try:
-        from nucleo.turn import brief as _tb, verdicts
-        kind, _i = _tb.read(brief, _tb.REQUEST_KEY, "")
-        choice, info = verdicts.read(brief, KEY, None, min_confidence=0.0)
-        return (bool(kind) and str(kind) not in ("question", "comment", "complaint")
-                and (the_model_stops or (info is not None and ends(choice))))
-    except Exception as e:  # noqa: BLE001 — a classifier may never break a turn
-        return logger.debug(f"stop_decision: offer unreadable: {e!r}") or False
-
-
 def reading(brief, source: str) -> dict:
     """What a stop decision says it read, for its event: `verdict` (the brief's `stop_errand` choice, "" when unread),
     its `confidence`, and `source` (`call:stop_worker` · `verdict` · `offer`). Never raises."""
@@ -109,29 +89,23 @@ def reading(brief, source: str) -> dict:
 
 
 def model_stop(brief) -> str:
-    """The MODEL called `stop_worker`: `run` · `veto` · `ask_which` (an ask is our offer). With no verdict the model's
-    own call is the order and runs (V2-857 phase 8): no word list over his sentence vetoes it."""
+    """The MODEL called `stop_worker`: `run` · `veto` (a sure verdict reads no stop). With no verdict, or an unsure one,
+    the model's own call is the order and runs (V2-857 phase 8; V2-886 D2: a doubt below the veto is recorded, never
+    asked — the «do you want me to stop it?» offer and its next-turn «yes» went with it)."""
     from nucleo.turn import verdicts
-    out = verdicts.against_the_model(brief, KEY, ends)
-    if out != verdicts.VETOED and offer_taken(brief, the_model_stops=True):
-        out, _OFFER["at"] = verdicts.RUN, 0.0
-    elif out != verdicts.RUN:
-        _OFFER["at"] = time.time() if out != verdicts.VETOED else _OFFER["at"]
-    return out
+    return verdicts.against_the_model(brief, KEY, ends)
 
 
 def repair(brief, text: str, *, escalating: bool, acted: dict | None = None, card_acts: dict | None = None) -> list:
     """Stop the errand for a turn whose model did not call `stop_worker`: a sure verdict (an escalation it started
-    still starts) or a taken offer — with neither nothing stops (V2-857 phase 8: no word list over his sentence, the
+    still starts) — without one nothing stops (V2-857 phase 8: no word list over his sentence, the
     model's own call is the other way a stop runs). Returns the cancelled ids. A turn
     a card or lane served (`card_acts`) stops nothing, a replace included: its request was answered (V2-831 T-19)."""
-    v, taken = verdict(brief), offer_taken(brief)
-    _OFFER["at"] = 0.0                              # an offer is answered by the turn after it, taken or not
+    v = verdict(brief)
     if v == "decline_step":                         # V2-852 T03: the stop of a step declines the step, never the row
         return __import__("nucleo.request.stop_row", fromlist=["x"]).decline_parked(acted)
     from nucleo import dispatch as _dispatch
-    if (v is None and escalating and not taken) or not _dispatch.has_active() \
-            or not (taken or (v is not None and ends(v))):
+    if (v is None and escalating) or not _dispatch.has_active() or not (v is not None and ends(v)):
         return []
     if card_owns_the_turn(brief, **(card_acts or {})):
         return []
