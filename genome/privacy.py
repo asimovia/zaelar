@@ -13,23 +13,9 @@ that another agent will learn on its own; letting one name through cannot be tak
 """
 from __future__ import annotations
 
-import re
-import unicodedata
-
 from loguru import logger
 
-_SHAPES = (
-    ("email", re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")),
-    ("url", re.compile(r"(?:https?://|www\.)\S+|\b[\w-]+\.[a-z]{2,}/\S*", re.I)),
-    ("phone", re.compile(r"\+?\d[\d\s().-]{5,}\d")),
-    ("date", re.compile(r"\b\d{1,4}[/.-]\d{1,2}(?:[/.-]\d{1,4})?\b")),
-    ("number", re.compile(r"\d{3,}")),
-)
-
-
-def _norm(s) -> str:
-    s = unicodedata.normalize("NFKD", str(s or "")).encode("ascii", "ignore").decode("ascii")
-    return re.sub(r"\s+", " ", re.sub(r"[^\w\s]", " ", s.casefold())).strip()
+from observability.pii import SHAPES as _SHAPES, norm as _norm   # one set of shapes for every privacy filter
 
 
 def known() -> set[str]:

@@ -31,6 +31,7 @@ import { Deck } from "./shell/Deck.js?v=5";
 import { initKeyboard } from "./shell/keyboard.js?v=2";
 import { MOBILE_SURFACES } from "./shell/mobile-surfaces.js?v=4";
 import * as consent from "./shell/ai-consent.js?v=1";
+import * as privacy from "../../app/services/privacy.js?v=1";   // V2-875: his switches; location → the state
 
 // ---- theme + language before mounting anything, so nothing flashes the wrong palette or the wrong words ----
 initTheme();
@@ -86,7 +87,7 @@ try { document.getElementById("preboot")?.remove(); } catch { /* noop */ }
   for (let i = 0; i < 45; i++) {
     try {
       const cfg = await api.getConfig();
-      if (cfg) { store.setCloudProfile(!!cfg.cloud_profile); store.setAccountUrl(cfg.account_url || ""); consent.loadFrom(cfg); return; }
+      if (cfg) { store.setCloudProfile(!!cfg.cloud_profile); store.setAccountUrl(cfg.account_url || ""); consent.loadFrom(cfg); privacy.loadFrom(cfg, () => !consent.pending()); return; }
     }
     catch { /* 503 while the instance boots: retry */ }
     await new Promise((r) => setTimeout(r, 2000));

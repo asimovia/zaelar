@@ -288,7 +288,7 @@ def _full_prompt_record(system: str, window: list, user: str, decision: dict) ->
     the fact reached the model. Kept out of the event stream on purpose: ~40 KB a turn is a file's job, not
     the viewer's. Scrubbed, under the workspace, capped per session, and OFF by default in a hosted account
     (`prompt_capture_on`) — V2-778 F4-37. Never raises."""
-    if not prompt_capture_on():        # V2-778 F4-37 — the FILE is off by default in a hosted account
+    if not prompt_capture_on() or not _persist.storing():   # V2-778 F4-37; V2-875 the person's switch
         return
     try:
         import time
@@ -297,10 +297,10 @@ def _full_prompt_record(system: str, window: list, user: str, decision: dict) ->
         from voice import trace as _trace
         pdir = _prompts_dir()
         os.makedirs(pdir, exist_ok=True)
-        rec = scrub_obj({"t": round(time.time(), 3), "trace": _trace.current() or "", "user": user,
+        rec = _persist.tagged(scrub_obj({"t": round(time.time(), 3), "trace": _trace.current() or "", "user": user,
                          "system": system,
                          "window": [{"role": m.get("role"), "content": m.get("content")} for m in window],
-                         "decision": decision})
+                         "decision": decision}))
         path = os.path.join(pdir, f"{_session_file.get('sid') or 'nosid'}.jsonl")
         if os.path.exists(path) and os.path.getsize(path) >= PROMPTS_MAX_BYTES:
             return                     # the cap: a session's capture stops growing, the turn does not care
@@ -446,6 +446,7 @@ _dedup: dict = {}                  # (kind,label) -> last ts, to collapse high-f
 # orders them). SSE remains synchronous (safely crosses loops through the bus). Fail-open: full queue → drop the line.
 import queue as _queue
 import threading as _threading
+from observability import persist as _persist  # noqa: E402 — V2-875: what of an event may be stored
 
 _write_q: "_queue.Queue" = _queue.Queue(maxsize=20000)
 
@@ -468,10 +469,12 @@ def _writer_loop():
         try:
             if item is None:
                 continue
-            path, line = item
+            paths, ev = item
+            line = _persist.line(ev)       # V2-875: None = not stored (privacy switches); tagged when obfuscating
             try:
-                with open(path, "a") as f:
-                    f.write(line)
+                for path in (paths if line else ()):
+                    with open(path, "a") as f:
+                        f.write(line)
             except Exception:
                 _lost["write_failed"] += 1
         finally:
@@ -577,14 +580,11 @@ def emit(kind: str, label: str, text: str = "", role: str = "", extra: dict | No
     _events.append(ev)
     if len(_events) > 5000:
         del _events[:1000]
-    line = json.dumps(ev, ensure_ascii=False) + "\n"
-    for path in (os.path.join(LOG_DIR, "timeline-latest.jsonl"), _session_path(ev.get("sid"))):
-        if not path:
-            continue
-        try:
-            _write_q.put_nowait((path, line))   # OFF-THREAD: does not block the voice/uvicorn thread (see above)
-        except _queue.Full:
-            _lost["queue_full"] += 1
+    paths = tuple(p for p in (os.path.join(LOG_DIR, "timeline-latest.jsonl"), _session_path(ev.get("sid"))) if p)
+    try:   # OFF-THREAD: serialising, the privacy switches and tagging never block the voice/uvicorn thread
+        _write_q.put_nowait((paths, dict(ev)))
+    except _queue.Full:
+        _lost["queue_full"] += 1
     # Fan out to SSE subscribers over the Sistema Nervioso (bus/, V2-001). emit() runs on BOTH loops (uvicorn
     # + the LiveKit job-thread); the bus's emit_sync crosses to each subscriber's loop safely (call_soon_
     # threadsafe) — this replaces the old put_nowait-across-loops the observer used to do by hand.

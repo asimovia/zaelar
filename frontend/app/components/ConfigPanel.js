@@ -9,8 +9,9 @@ import { createEffect } from "../core/reactive.js?v=2";
 import * as store from "../core/store.js?v=2";
 import * as api from "../services/api.js?v=2";
 import * as session from "../services/session.js?v=3";
-import { GEAR_ICON, BRAIN_ICON, CPU_ICON, DATABASE_ICON, MIC_ICON, SEARCH_ICON, MUSIC_ICON, SERVER_ICON, BELL_ICON, MOON_ICON, LINK_ICON, WIDGETS_ICON, LIST_ICON } from "../lib/icons.js?v=2";
+import { GEAR_ICON, BRAIN_ICON, CPU_ICON, DATABASE_ICON, MIC_ICON, SEARCH_ICON, MUSIC_ICON, SERVER_ICON, BELL_ICON, MOON_ICON, LINK_ICON, WIDGETS_ICON, LIST_ICON, LOCK_ICON } from "../lib/icons.js?v=2";
 import { mountRules } from "./RulesSection.js?v=1";   // V2-806 — his rules and preferences, one table
+import { mountPermissions } from "./PermissionsSection.js?v=1";   // V2-875 — his permission switches
 import * as push from "../services/push.js?v=1";
 import { t } from "../core/i18n.js?v=1";
 import { THEMES, FONT_SIZES, FONT_STACKS } from "../core/themes.js?v=1";
@@ -45,20 +46,17 @@ const SECTIONS = [
   { id: "apis", icon: SERVER_ICON },
   { id: "notices", icon: BELL_ICON },     // V2-796 — Web Push on this browser
   { id: "rules", icon: LIST_ICON },       // V2-806 — his standing rules and preferences
+  { id: "permissions", icon: LOCK_ICON }, // V2-875 — location, files, observability kept, data tagged
 ];
 
-// Sections that PICK a provider/model — hidden in the cloud profile, where the deployment sets them (V2-043 area
-// stays intact for self-host; see server/config_api.py's
-// matching _CLOUD_LOCKED_V2_SECTIONS backend gate). `apis` (balance/status) stays visible either way —
-// it's read-only information, not a choice.
+// Sections that PICK a provider/model — hidden in the cloud profile, where the deployment sets them (V2-043; the
+// backend gate is _CLOUD_LOCKED_V2_SECTIONS in server/config_api.py). `apis` stays visible: information, no choice.
 const CLOUD_LOCKED_NAV_SECTIONS = new Set(["fast", "code", "memory"]);
 // voice_api's STT/TTS provider knobs specifically (the rest of `voice` — language, VAD, etc. — stays editable).
 const CLOUD_LOCKED_VOICE_KEYS = new Set(["stt_provider", "tts_provider"]);
 
-// The panel's top-level areas. Since 2026-10-25 they are the groups of ONE left menu, not a row of tabs on top
-// (operator: «un menú a la izquierda… que se vea Ajustes y debajo sus sub-items, y luego los demás»): «settings»
-// carries its sections as sub-items under it; the others are single entries. On a phone the menu is the first
-// page and a section opens over it, with «← Menú» to go back.
+// The panel's top-level areas: the groups of ONE left menu since 2026-10-25 (operator: «un menú a la izquierda…»);
+// «settings» carries its sections as sub-items. On a phone the menu is the first page, a section opens over it.
 const TABS = [
   { id: "settings", icon: GEAR_ICON },
   { id: "apariencia", icon: MOON_ICON },   // V2-617: design profiles + custom knobs — the whole desktop's skin
@@ -107,6 +105,7 @@ export function ConfigPanel() {
       apis: () => sec_apis(),
       notices: () => sec_notices(),
       rules: () => `<div id="cf_rules_host"></div>`,   // filled from /api/rules once on screen (wire)
+      permissions: () => `<div id="cf_perm_host"></div>`,   // V2-875, filled once on screen (wire)
     };
     if (!builders[activeSec] || (cloudProfile && CLOUD_LOCKED_NAV_SECTIONS.has(activeSec))) activeSec = visibleSections[0].id;
     // ONE left menu: each area a row; «settings» lists its sections under it, always visible.
@@ -330,6 +329,7 @@ export function ConfigPanel() {
   // ---- wiring ----
   function wire() {
     if (activeTab === "settings" && activeSec === "rules") mountRules(document.getElementById("cf_rules_host"), msg);
+    if (activeTab === "settings" && activeSec === "permissions") mountPermissions(document.getElementById("cf_perm_host"), msg, cfg);
     // V2-083: pestañas principales (settings/conectores/widgets)
     // The menu: an area row opens that area (Settings on its current section); a sub-item opens that section.
     // Re-clicking the open area on a phone still has to leave the menu, so it always renders.

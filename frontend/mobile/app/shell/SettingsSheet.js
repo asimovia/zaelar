@@ -26,6 +26,7 @@ import { toggleTheme } from "../../../app/services/theme.js?v=2";
 import { t } from "../../../app/core/i18n.js?v=1";
 import * as push from "../../../app/services/push.js?v=1";
 import * as consent from "./ai-consent.js?v=1";
+import * as privacy from "../../../app/services/privacy.js?v=1";
 import { inNativeApp } from "../../../app/core/native.js?v=1";
 
 function Toggle(label, get, onToggle) {
@@ -118,6 +119,10 @@ export function SettingsSheet() {
       // button both. `store.captionsOn` still exists and still drives the DESKTOP; adding a phone control for a
       // surface this shell does not render would be a switch that does nothing visible.
 
+      // ── V2-875 — PERMISSIONS, the agent's (every device of it shares them): location into its state, reading
+      //    files, keeping its events for debugging, tagging personal data in what is kept. services/privacy.js.
+      h("div", { class: "zm-procs-t" }, () => t("config.sec.permissions")),
+      ...privacy.KEYS.map((k) => Toggle(() => t(`config.perm.${k}`), () => !!privacy.values()[k], () => privacy.set(k, !privacy.values()[k]))),
       // ── V2-870, NATIVE APP ONLY: the yes to the AI services, withdrawable here (withdrawing ends this screen's
       //    voice; nothing reaches the AI services again until a new yes).
       () => inNativeApp() ? Toggle(() => t("consent.settings_label"), () => consent.accepted(),

@@ -216,6 +216,14 @@ _DEFAULTS: dict[str, dict] = {
     "consent": {
         "ai_providers": False,
     },
+    # V2-875 — the person's permission switches, per agent (every device of this agent shares them). Read on hot
+    # paths through `config.privacy` (cached on the file's stamp), never parsed per event.
+    "privacy": {
+        "location": True,          # a screen whose platform permission is granted reports where it is → state `here`
+        "files": True,             # the engine may use the daemon's granted folders (the folder grants stay the daemon's)
+        "observability": True,     # the agent's events are STORED for debugging (capture and live screens never stop)
+        "obfuscate": True,         # stored events carry tags instead of personal data ([PERSON], [PLACE], [PHONE] …)
+    },
     # v2 deployment flags. After Hermes' burial (V2-009), the default brain is «Colmena» itself.
     "flags": {
         "brain": "nucleo",                                  # active brain: 'nucleo' (own) · 'direct'/'local' (baselines)

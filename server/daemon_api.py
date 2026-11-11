@@ -253,9 +253,16 @@ async def daemon_status(request: Request):
     return JSONResponse(payload)
 
 
+def _files_off():
+    """V2-875 — the person's `privacy.files` switch is the master key above the daemon's folder grants: off, no folder
+    can be added (revoking always works)."""
+    from config import privacy
+    return None if privacy.files() else JSONResponse({"ok": False, "reason": "files_off"}, status_code=403)
+
+
 @router.post("/api/daemon/permissions/grant")
 async def daemon_grant(request: Request, body: dict = Body(default={})):
-    if (refusal := _refused(request)) is not None:
+    if (refusal := _refused(request) or _files_off()) is not None:   # V2-875: the person's «read files» switch
         return refusal
     return await _permissions(request, "/permissions/grant", body)
 
@@ -271,7 +278,7 @@ async def daemon_revoke(request: Request, body: dict = Body(default={})):
 async def daemon_pick(request: Request, body: dict = Body(default={})):
     """The system's folder dialog, opened by the daemon on this desktop; what the person picks is granted through
     the daemon's own boundary. The wait is the person browsing, so the timeout is theirs, not a network one."""
-    if (refusal := _refused(request)) is not None:
+    if (refusal := _refused(request) or _files_off()) is not None:   # V2-875: the person's «read files» switch
         return refusal
     return await _permissions(request, "/permissions/pick", body, timeout=_PICK_TIMEOUT_S)
 

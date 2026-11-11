@@ -36,6 +36,28 @@ view (⛓).
 - **`.meshkore/logs/timeline-latest.jsonl`** (rolling) and **`.meshkore/logs/sessions/<session_id>.jsonl`** (per
   work session) — the raw dump, for `jq`.
 
+### What the person decides about it (V2-875)
+
+Two switches in the agent's Permissions (`config/v2` section `privacy`, read through `config/privacy.py`), both ON by
+default, both per agent:
+
+- **`observability`** — whether any of this is STORED. Off: the timeline and session files, the `events` table and
+  the prompt capture receive nothing (`observability/persist.py`, applied on the writers' threads, never on the voice
+  thread). Capture itself never stops — the live screens (SSE), the in-memory ring of the open debug view and the
+  product subscribers of the bus keep their feed. What reads the TABLE back (the viewer's history, a recall's session
+  labels, any remote reader) sees nothing for that period, by the person's choice.
+- **`obfuscate`** — whether what is stored carries tags instead of personal data (`observability/pii.py`): emails,
+  URLs, phones, numeric dates, numbers of three digits or more → `[EMAIL] [URL] [PHONE] [DATE] [NUMBER]`; names this
+  agent knows → `[PERSON]` (contacts), `[PLACE]` (the state's places and every place the location door resolved),
+  `[NAME]` (memory concept hubs); any other capitalised word that does not open a sentence → `[NAME]`. Deterministic,
+  no model, no vocabulary. Structural fields (kind, ids, device, timestamps, engine labels) are never rewritten, and
+  `evidence` (what the outside world brought back) is kept whole for auditing. Limit, stated: a name never seen that
+  opens a sentence or is written in lowercase passes. Secrets keep their stronger scrub first (`observability/scrub.py`).
+
+The voice is never recorded: the only audio writer is the opt-in debugging tap (`ZAELAR_RECORD_MIC`). Transcripts are
+text; the conversation's own memory (`conv` rows, pills) is memory, not observability, and these switches do not
+touch it.
+
 `GET /api/observability/*` reads it: `flows` (a summary per flow: real end-to-end duration, families, actors,
 tokens, errors), `flow/{corr_id}` (chronological detail), `sessions`, `catalog` (the map of what can be filtered),
 `identity` and `stats` (coverage of the axes themselves). Read-only.
