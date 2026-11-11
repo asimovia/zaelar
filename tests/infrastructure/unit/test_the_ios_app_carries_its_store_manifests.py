@@ -19,6 +19,10 @@ INFO = APP / "App" / "Info.plist"
 PRIVACY = APP / "App" / "PrivacyInfo.xcprivacy"
 ENTITLEMENTS = APP / "App" / "App.entitlements.template"
 PBXPROJ = APP / "App.xcodeproj" / "project.pbxproj"
+# The location plugin links the "always" API even though the app only asks while in use: without that purpose
+# string App Store Connect flags the upload (ITMS-90683).
+PURPOSE_KEYS = ("NSMicrophoneUsageDescription", "NSLocationWhenInUseUsageDescription",
+                "NSLocationAlwaysAndWhenInUseUsageDescription")
 
 
 def _plist(p: Path) -> dict:
@@ -40,7 +44,7 @@ def test_info_plist_answers_what_review_asks() -> None:
     assert info["UIRequiresFullScreen"] is True
     assert info["LSApplicationCategoryType"] == "public.app-category.productivity"
     assert info["UISupportedInterfaceOrientations"] == ["UIInterfaceOrientationPortrait"]
-    for key in ("NSMicrophoneUsageDescription", "NSLocationWhenInUseUsageDescription"):
+    for key in PURPOSE_KEYS:
         assert info.get(key, "").strip(), f"{key} is missing: iOS kills the app when the permission is first asked"
     assert "NSCameraUsageDescription" not in info, "nothing uses the camera: review asks why a permission is declared"
     assert info["CFBundleShortVersionString"] == "$(MARKETING_VERSION)"
@@ -76,3 +80,10 @@ def test_the_entitlements_are_a_template_without_push_yet() -> None:
     assert e["com.apple.developer.associated-domains"] == ["applinks:__APP_LINKS_HOST__",
                                                            "webcredentials:__APP_LINKS_HOST__"]
     assert "aps-environment" not in e, "native push brings its own entitlement with its own step"
+
+
+def test_every_purpose_string_is_translated() -> None:
+    for lang in ("en", "es"):
+        strings = (APP / "App" / f"{lang}.lproj" / "InfoPlist.strings").read_text()
+        for key in PURPOSE_KEYS:
+            assert f'"{key}" = "' in strings, f"{key} has no {lang} sentence"
