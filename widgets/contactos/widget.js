@@ -12,6 +12,7 @@ import { renderRail } from "./js/rail.js";
 import { ICO_PLUG, bindI18n, el2, hooks, svgEl, tt } from "./js/shared.js";
 import { CSS } from "./js/style.js";
 import { renderConnectors, renderProviderIcons } from "./js/sync.js";
+import { bar as hbBar } from "/frontend/app/lib/toolbar.js";
 
 hooks.render = render;      // the parts re-render the whole card through this (see js/shared.js)
 
@@ -61,7 +62,7 @@ export function render(el, data, ctx){
 
   // ── THE ONE BAR — search, the sources, and the door to them ───────────────────────────────────────────
   const bar=el2("div","ctbar");
-  const sb=el2("div","ctsearch");
+  const sb=el2("div","ctsearch hb-bar-lead");   // V2-882: the house bar — search leads, the sources fold into ⋯ on a phone
   sb.appendChild(el2("span",null,"\u{1F50D}"));
   const q=document.createElement("input");
   q.placeholder=tt("search_ph", null, "Buscar…");
@@ -72,7 +73,7 @@ export function render(el, data, ctx){
     if(nq){ nq.focus(); nq.setSelectionRange(keep.length,keep.length); } };
   sb.appendChild(q);
   bar.appendChild(sb);
-  const right=el2("div","ctviewsright");
+  const right=el2("div","ctviewsright hb-bar-aux");
   right.appendChild(renderProviderIcons(data.providers||[], el, data, ctx));
   const connBtn=el2("button","ctplug"+(el._ctScreen?" on":""));
   connBtn.appendChild(svgEl(ICO_PLUG));
@@ -80,8 +81,8 @@ export function render(el, data, ctx){
   connBtn.setAttribute("aria-label", tt("sources_title", null, "Fuentes y sincronización"));
   connBtn.onclick=()=>{ el._ctScreen = el._ctScreen ? null : "conn"; el._ctDetail=null; render(el,data,ctx); };
   right.appendChild(connBtn);
-  bar.appendChild(right);
-  el.appendChild(bar);
+  const tray=el2("div","hb-bar-tray"); tray.appendChild(right); bar.appendChild(tray);
+  el.appendChild(hbBar(bar, {more: tt("more", null, "Más")}));
 
   if(el._ctScreen === "conn"){
     renderConnectors(el, el, data, ctx);

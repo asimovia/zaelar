@@ -6244,6 +6244,22 @@ DOMAINS: list[dict] = [
                                   "on screen or filling are refused (es/en), a free place that is a row becomes it, one "
                                   "he named stays, and with no sheet on screen free places work as before",
             "ch": UNIT, "paths": ["tests/browser/unit/map/test_a_those_order_pins_the_sheet_rows.py"]},
+        # V2-882 — disarmed 2026-11-11 (`fit()` never stepping → 3 red; the step-3 grid rule removed → red; the gate's
+        # bar check off → red; the tooltip box appended to <body> → red).
+        {"id": "4.497", "title": "A widget's bar is ONE line, then a second row, then a ⋯ menu (V2-882): the house bar "
+                                  "(`core/components.css` `.hb-bar` + `lib/toolbar.js`) keeps lead · title · views · aux in "
+                                  "order on one line at 1400px, takes declared steps measured on the bar itself at 560px "
+                                  "(compact faces, aux on a second row on the right edge), folds the tray into one menu "
+                                  "with the title on its own row at 366px, never a third row; a content tooltip is drawn "
+                                  "inside its scroller; the generator's gate rejects a `…bar` of its own that wraps",
+            "ch": UNIT, "paths": ["tests/browser/unit/widgets/test_a_bar_is_one_line_then_rows_then_a_menu.py"]},
+        # V2-882 — disarmed 2026-11-11 (`bar()` never measuring → 2 red; `tip()` writing a `title` → red; the band back
+        # to `display:flex;flex-wrap:wrap` → 2 red).
+        {"id": "4.498", "title": "The agenda's band is the house bar (V2-882): switch · ‹ Today › · range · views · account, "
+                                  "providers, plug on ONE line in a wide card, two declared rows in a card dragged narrow, "
+                                  "switch · ‹ Today › · ⋯ and the week on its own row on the phone (a view chosen in the "
+                                  "menu lands); a grid cell's tooltip stays inside the calendar, never over the band",
+            "ch": UNIT, "paths": ["tests/browser/unit/agenda/test_the_agenda_band_takes_its_steps.py"]},
     ]},
     {"id": "5", "name": "CONECTORES", "nodes": [
         # V2-559 — el operador siguió la guía, creó la contraseña de aplicación y pegó el ENLACE de esa

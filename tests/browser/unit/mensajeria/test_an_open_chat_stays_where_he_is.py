@@ -171,5 +171,5 @@ def test_the_chat_list_search_keeps_its_focus_through_a_repaint(_page):
     s.click()
     s.type("Mar")
     _repaint(_page, d)
-    assert _page.evaluate("() => document.activeElement && document.activeElement.className") == "cxsearch"
+    assert _page.evaluate("() => !!document.activeElement && document.activeElement.classList.contains('cxsearch')")
     assert _page.locator(".cxsearch").input_value() == "Mar"

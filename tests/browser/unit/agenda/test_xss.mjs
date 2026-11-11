@@ -1,4 +1,10 @@
 // S-04: agenda widget must render brain-pushed data via textContent, never as HTML.
+// The app-shell modules a widget imports (`/frontend/app/lib/…`, served by the engine at that path) resolve to the
+// engine tree here, as the browser resolves them against the engine's origin.
+import { registerHooks } from "node:module";
+const ENGINE = new URL("../../../../", import.meta.url);
+registerHooks({ resolve: (spec, ctx, next) => next(spec.startsWith("/frontend/") ? new URL("." + spec, ENGINE).href : spec, ctx) });
+globalThis.ResizeObserver = class { observe(){} disconnect(){} };   // the house bar measures itself (V2-882)
 let innerHTMLWrites = [];
 const mkEl = () => {
   const e = {

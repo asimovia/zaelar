@@ -1,7 +1,7 @@
 ---
 title: The widget header standard — two bars, and the door to the connectors
 category: conventions
-updated: 2026-09-29
+updated: 2026-11-11
 owner: ricart
 status: current
 ---
@@ -82,6 +82,53 @@ the tabs are still the map of where you are, so "unavailable" must not read as "
 
 **The tabs go quiet while the connectors screen is open.** No view is the one on screen, so none is lit and none
 is clickable (`disabled`). The chosen view survives underneath and comes back when the screen closes.
+
+## One line, then rows, then menus (V2-882)
+
+The operator, on a calendar whose band had wrapped into two misaligned lines at full desk width: *"order the data
+in the desktop version, ideally ONE header line. Careful when we shrink the width by hand, and with the responsive
+versions for mobile. When we need 2 rows, we use 2; when we need menus that unfold, we add them. This must be so for
+ALL widgets."* A bar laid out as a loose `flex-wrap` puts each control where it happens to run out of room. The
+house bar declares an ORDER and the STEPS it takes when that order does not fit.
+
+**The three widths every bar is checked at:** the phone (~366px of content, the widget IS the screen), a narrow
+desk card (~560px, dragged down by hand), and maximized (~1400px and up).
+
+**The order of importance** — the bar's parts, left to right, and the order in which they give way:
+
+| Part | Class | What goes there |
+|---|---|---|
+| Lead | `.hb-bar-lead` | The primary control and the navigation: a section switch, ‹ Today ›, a search box. **Always visible.** |
+| Title | `.hb-bar-title` | The content's title — a date range, a folder trail. **Always visible** (its own row at step 3). |
+| Views | `.hb-bar-tray > .hb-bar-views` | The view switcher (Day · Week · Month · List). |
+| Aux | `.hb-bar-tray > .hb-bar-aux` | The least important: an account picker, the provider icons, the plug. |
+
+The bar is a GRID of these areas (`core/components.css`), not a flex row, so nothing lands anywhere but its own
+column. A bar with no title gives the lead the free room (a search box grows).
+
+**The steps**, taken in order and MEASURED on the bar itself by `frontend/app/lib/toolbar.js` (`bar(el, {more})`,
+re-measured on every change of its width) — never a breakpoint of the widget's own, because «Semana» and «Week»
+are not the same width and one provider more is another 28px:
+
+0. **One line** at the width its content needs.
+1. **Compact faces**: an element marked `.hb-wide` hides and its `.hb-narrow` twin shows (the four view tabs become
+   one `<select>`), and a `.hb-bar-label` beside a `.hb-bar-icon` gives way to the icon.
+2. **A second row** for `.hb-bar-aux`, on the bar's right edge — a declared row, never a ragged wrap.
+3. **One ⋯ menu that unfolds** (`.hb-bar-more`, added by the helper) holding the whole tray; the title takes the
+   second row. Under 480px (`PHONE`) a bar with a tray goes straight to this step.
+
+Never a third row. Steps 2 and 3 are only taken by a bar that has something to move (an aux group, a tray).
+
+**Tooltips never escape.** A `title` is drawn by the operating system, outside the page: a grid cell's «New
+appointment at 11:00» was painted over the bar's ‹ Today ›. A CONTENT tooltip is `data-hb-tip` + `aria-label`,
+and `tips(scroller)` from the same module draws ONE `.hb-tipbox` inside the content's scroller, under the element
+and clipped by it — so a header never shows a tooltip of the content. (A control's own `title` in the bar — the
+plug's word — is the control's label and stays.)
+
+**Enforced:** the generator's template teaches it (`widgets/generator.py`, `widgets/AGENTS.md`) and the validation
+gate (`widgets/validator_js.py`) REJECTS a widget whose class named `…bar` declares `flex-wrap:wrap`. Rendered tests:
+`tests/browser/unit/widgets/test_a_bar_is_one_line_then_rows_then_a_menu.py` (the kit) and
+`tests/browser/unit/agenda/test_the_agenda_band_takes_its_steps.py` (the agenda at the three widths, the tooltip).
 
 ## The provider icons — three states, and they are different sentences
 

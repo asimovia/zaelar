@@ -4,6 +4,7 @@ import { _chatKind, _chatQuery, _newForm, tt } from "./state.js";
 import { actionIcon, el, iconButton, markBusy, platformChip, splitBody } from "./dom.js";
 import { displayBody, fmtWhen } from "./media.js";
 import { attachControls } from "./compose.js";
+import { bar as hbBar } from "/frontend/app/lib/toolbar.js";
 
 // CHAT list (simple profile, default): one item per conversation instead of per message. Shows name, pending
 // count, and the last message as preview. Click, or [[msg.open:N]] by voice, enters the full thread.
@@ -19,20 +20,21 @@ export function fmtWindow(h){
 }
 
 export function criteriaBar(platform, crit, ctx, rerender){
-  const bar = el("div","critbar");
-  bar.appendChild(el("span","critlbl",tt("activity_", null, "Actividad · ") + fmtWindow(crit.window_h)));
+  const bar = el("div","critbar");   // a house bar (V2-882): the criterion leads, its buttons step aside
+  const acts = el("div","hb-bar-aux");
+  bar.appendChild(el("span","critlbl hb-bar-lead",tt("activity_", null, "Actividad · ") + fmtWindow(crit.window_h)));
   if(platform === "telegram" || platform === "email"){
     const fetchBtn = el("button","bt bt-ghost critfetch",tt("fetch_connector", null, "⟳ Traer del conector"));
     fetchBtn.title = tt("fetch_connector_hint", null, "Pedirle al conector las conversaciones con actividad en ese período");
     fetchBtn.onclick = ()=>{ fetchBtn.textContent = tt("fetch_asked", null, "⟳ Pedido…"); fetchBtn.disabled = true;
       ctx.action("fetch_now", {platform: platform, since_hours: crit.window_h}); };
-    bar.appendChild(fetchBtn);
+    acts.appendChild(fetchBtn);
   }
   const off = el("button","critoff","✕");
   off.title = tt("clear_criteria", null, "Quitar el criterio (volver a la vista de pendientes)");
   off.onclick = ()=> ctx.action("show_view", {platform: platform, window_h: 0});
-  bar.appendChild(off);
-  return bar;
+  acts.appendChild(off); bar.appendChild(acts);
+  return hbBar(bar);
 }
 
 export function activityList(rows, ctx){
@@ -196,7 +198,10 @@ export function platformChats(platform, v, ctx){
   search.value = _chatQuery[platform] || "";
   search.dataset.keep = "chatsearch:" + platform;
   search.oninput = ()=>{ _chatQuery[platform] = search.value; fill(); };
-  bar.append(search, chips, nb);
+  // V2-882 — the house bar: the search leads, the kind chips and the new chat/group icons fold into ⋯ on a phone.
+  search.classList.add("hb-bar-lead"); chips.classList.add("hb-bar-views"); nb.classList.add("hb-bar-aux");
+  const tray = el("div","hb-bar-tray"); tray.append(chips, nb);
+  bar.append(search, tray); hbBar(bar, {more: tt("more", null, "Más")});
   box.append(bar, formSlot);
   box.appendChild(listBox);
   fill();

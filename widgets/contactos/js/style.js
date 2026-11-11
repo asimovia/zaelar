@@ -20,14 +20,11 @@ export const CSS = `
      mark, so a brand disc and a title under it were the same sentence twice; the kind tabs moved into the
      rail, where they are DERIVED from what the directory holds instead of being four fixed words. What is
      left is the one row that could not live anywhere else: search, the sources, and the door to them. */
-  .hb-contactos .ctbar{display:flex;align-items:center;gap:var(--sp-2,8px);flex:0 0 auto;min-width:0;
-    border-bottom:1px solid var(--hb-line-subtle,rgba(255,255,255,.06));
+  .hb-contactos .ctbar{flex:0 0 auto;border-bottom:1px solid var(--hb-line-subtle,rgba(255,255,255,.06));
     padding:0 0 var(--sp-2,8px);margin-bottom:var(--sp-3,12px)}
-  .hb-contactos .ctviewsright{margin-left:auto;display:flex;align-items:center;gap:8px;flex:0 0 auto}
-  /* A phone: the search gets the whole row and the sources go under it — five 44px icons and a search box do not
-     fit 366px, and the plug was cut off the edge (V2-813). */
-  @media (max-width:520px){.hb-contactos .ctbar{flex-wrap:wrap;row-gap:var(--sp-2,8px)}
-    .hb-contactos .ctsearch{flex:1 1 100%;max-width:none}}
+  /* A phone: five 44px icons and a search box do not fit 366px (V2-813) — the house bar (V2-882) keeps the
+     search on the row and folds the sources and the plug into its ⋯ menu. */
+  .hb-contactos .ctbar[data-step="3"] .ctsearch{max-width:none}
   .hb-contactos .ctconnicons{display:flex;align-items:center;gap:4px}
   .hb-contactos .ctconnicon{width:var(--hb-icon-h,28px);height:var(--hb-icon-h,28px);border-radius:var(--hb-r-s,8px);
     border:0;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:.72}

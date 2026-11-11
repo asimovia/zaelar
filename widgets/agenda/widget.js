@@ -15,6 +15,7 @@ import { renderGrid, renderMonth } from "./js/calendar.js";
 import { renderList, renderTasks } from "./js/list.js";
 import { renderAdd, renderDetail } from "./js/detail.js";
 import { renderProviderIcons, renderDefaultCalendar, renderProposals } from "./js/bands.js";
+import { bar as hbBar, tips } from "/frontend/app/lib/toolbar.js";
 
 function injectStyles(){
   const prev = document.getElementById("hb-agenda-css");
@@ -87,16 +88,20 @@ export function render(el, data, ctx){
   // consistente. Por si hay que crear algo más ahí». The band spans the card and closes on a rule, and it
   // carries a right-hand slot that the tasks half fills with its counts and the calendar leaves empty. The
   // slot is the point of the change: whatever goes there next does not need a second band invented for it.
+  // V2-882 — the band is the house BAR: its parts in order of importance (the section switch and ‹ Today › ·
+  // the range · the views · account, providers, plug), one line while they fit, then the declared steps.
   const sub = el2("div","agsub");
+  const lead = el2("div","hb-bar-lead");
   const secs = el2("div","agsec");
   [["agenda", tt("sec_agenda", null, "Agenda")], ["tasks", tt("sec_tasks", null, "Tareas")]].forEach(([id,label])=>{
     const b = el2("button","agsecb" + (S.sec === id ? " on" : ""));
-    b.appendChild(svgEl(id === "agenda" ? ICO_CAL : ICO_CHECK)); b.appendChild(el2("span", null, label));   // a phone shows the mark
+    const ico = svgEl(id === "agenda" ? ICO_CAL : ICO_CHECK); ico.setAttribute("class", "hb-bar-icon");
+    b.appendChild(ico); b.appendChild(el2("span", "hb-bar-label", label)); b.setAttribute("aria-label", label);
     b.dataset.sec = id;
     b.onclick = ()=>{ S.sec = id; S.sel = null; S.tlAsk = ""; render(el, data, ctx); };
     secs.appendChild(b);
   });
-  sub.appendChild(secs);
+  lead.appendChild(secs); sub.appendChild(lead);
   el.appendChild(sub);
 
   if(S.sec === "tasks"){
@@ -105,7 +110,7 @@ export function render(el, data, ctx){
     const _T0 = (data && data.tasks) || {};
     const _ls = Array.isArray(_T0.lists) ? _T0.lists : [];
     const _open = _ls.reduce((n,l)=> n + Math.max(0, (l.total|0) - (l.done|0)), 0);
-    const meta = el2("div","agsub-meta");
+    const meta = el2("div","agsub-meta hb-bar-aux");
     meta.dataset.meta = "tasks";
     const _b1 = el2("b", null, String(_ls.length));
     meta.appendChild(_b1);
@@ -116,7 +121,7 @@ export function render(el, data, ctx){
     meta.appendChild(_b2);
     meta.appendChild(el2("span", null, _open === 1 ? tt("tasks_open_one", null, "pendiente")
                                                    : tt("tasks_open_many", null, "pendientes")));
-    sub.appendChild(meta);
+    sub.appendChild(meta); hbBar(sub);
 
     const tbody = el2("div","agbody tasks");
     renderTasks(tbody, data, ctx, S, redraw);
@@ -126,7 +131,7 @@ export function render(el, data, ctx){
 
   // ── the toolbar lives INSIDE the band (2026-10-28, the operator: all the chrome in two lines, the window's
   // bar and this one): ‹ Hoy › · the range · the views, then the slot with the sources and the plug.
-  const bar = el2("div","agbar");
+  lead.classList.add("agbar");
   let rangeTxt = "", dates = [];
   if(S.view === "week"){
     const s = startOfWeek(anchor);
@@ -159,24 +164,25 @@ export function render(el, data, ctx){
   if(S.view !== "list"){ nav.appendChild(prev); }
   nav.appendChild(now);
   if(S.view !== "list"){ nav.appendChild(next); }
-  bar.appendChild(nav); bar.appendChild(el2("div","agrange", rangeTxt));
+  lead.appendChild(nav); sub.appendChild(el2("div","agrange hb-bar-title", rangeTxt));
 
-  // ── the views: four tabs, and the SAME four as a <select> for a narrow card (the stylesheet shows one
-  // or the other by the card's width, so a 400px card keeps every view reachable without a scroll strip)
-  const views = el2("div","agviews"); views.setAttribute("role","tablist");
+  // ── the views: four tabs (`hb-wide`), and the SAME four as a <select> (`hb-narrow`) — the bar's step 1 shows
+  // the second when the first does not fit, and step 3 lists the four tabs in its ⋯ menu.
+  const tray = el2("div","hb-bar-tray");
+  const views = el2("div","agviews hb-bar-views"); views.setAttribute("role","tablist");
   const VIEWS = [["day", tt("day", null, "Día")], ["week", tt("week", null, "Semana")],
                  ["month", tt("month", null, "Mes")], ["list", tt("list", null, "Lista")]];
   VIEWS.forEach(([id,label])=>{
-    const t = el2("button","agtab" + (S.view===id ? " on" : ""), label);
+    const t = el2("button","agtab hb-wide" + (S.view===id ? " on" : ""), label);
     t.dataset.view = id;
     t.onclick = ()=>{ S.view = id; S.sel = null; render(el, data, ctx); };
     views.appendChild(t);
   });
-  const vsel = document.createElement("select"); vsel.className = "agviewsel"; vsel.title = tt("view", null, "Vista");
+  const vsel = document.createElement("select"); vsel.className = "agviewsel hb-narrow"; vsel.title = tt("view", null, "Vista");
   VIEWS.forEach(([id,label])=>{ const o = document.createElement("option"); o.value = id; o.textContent = label;
     o.selected = S.view === id; vsel.appendChild(o); });
-  vsel.onchange = ()=>{ S.view = vsel.value; S.sel = null; render(el, data, ctx); }; views.appendChild(vsel); bar.appendChild(views); sub.appendChild(bar);
-  const right = el2("div","agviewsright");
+  vsel.onchange = ()=>{ S.view = vsel.value; S.sel = null; render(el, data, ctx); }; views.appendChild(vsel); tray.appendChild(views);
+  const right = el2("div","agviewsright hb-bar-aux");
   const defCal = renderDefaultCalendar(data, ctx);
   if(defCal) right.appendChild(defCal);
   right.appendChild(renderProviderIcons(data.calendars || [], ctx));
@@ -186,10 +192,10 @@ export function render(el, data, ctx){
   calBtn.appendChild(svgEl(ICO_PLUG)); calBtn.setAttribute("aria-label", tt("connectors", null, "Conectores"));
   calBtn.title = tt("calendars_hint", null, "Qué calendarios están conectados");
   calBtn.onclick = ()=>ctx.openConnector("google");
-  // On the phone the plug leaves the control row (V2-876 P-30): the row is ‹ Today › and the view picker, the
-  // connection lives in the app's settings. The stylesheet hides `.agviewsright` inside the phone card.
+  // On the phone the plug leaves the control row (V2-876 P-30): under the phone width the bar is a ⋯ menu.
   right.appendChild(calBtn);
-  sub.appendChild(right);
+  tray.appendChild(right); sub.appendChild(tray);
+  hbBar(sub, {more: tt("more", null, "Más")});
 
   // ── proposals ──────────────────────────────────────────────────────────────────────────────────────
   // V2-697 — appointments somebody ELSE asked for. Above the calendar and visually apart from it, because
@@ -197,7 +203,7 @@ export function render(el, data, ctx){
   renderProposals(el, data, ctx, redraw);
 
   // ── body ───────────────────────────────────────────────────────────────────────────────────────────
-  const body = el2("div","agbody");
+  const body = tips(el2("div","agbody"));
   const pick = e => { S.sel = e.key; S.confirmDel = false; render(el, data, ctx); };
   const pickDay = ds => { S.view = "day"; S.anchor = ds; S.sel = null; render(el, data, ctx); };
   const pickSlot = (ds, m) => { S.add = {date: ds, start: m, title: ""}; S.sel = null; render(el, data, ctx); };

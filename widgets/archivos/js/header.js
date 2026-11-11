@@ -2,12 +2,14 @@
 
 import { S, el, tt } from "./common.js";
 import { torrentCrumbs, torrentTools } from "./torrents.js";
+import { bar as hbBar } from "/frontend/app/lib/toolbar.js";
 
 export function header(d, act, ui) {
   const bar = el("div", "arx-bar");
   const isLocal = d.provider === "local";
 
-  const chips = el("div", "arx-chips");
+  // V2-882 — the house bar: the storage chips lead, the trail is its title, the tools fold into ⋯ on a phone.
+  const chips = el("div", "arx-chips hb-bar-lead");
   const onTor = d.section === "torrents";
   const local = el("button", "arx-pchip" + (isLocal && !onTor ? " on" : ""), "💻");
   local.title = tt("device_lib", null, "Este dispositivo — tu biblioteca");
@@ -39,17 +41,14 @@ export function header(d, act, ui) {
     };
     chips.appendChild(chip);
   });
+  chips.appendChild(el("div", "arx-divider"));
   bar.appendChild(chips);
-  bar.appendChild(el("div", "arx-divider"));
-
-  if (onTor) {
-    bar.appendChild(torrentCrumbs(d, act));
-    bar.appendChild(torrentTools(d, act));
-  } else {
-    bar.appendChild(crumbsRow(d, ui, act));
-    bar.appendChild(toolsRow(d, act));
-  }
-  return bar;
+  const trail = onTor ? torrentCrumbs(d, act) : crumbsRow(d, ui, act);
+  const tools = onTor ? torrentTools(d, act) : toolsRow(d, act);
+  trail.classList.add("hb-bar-title"); tools.classList.add("hb-bar-views");
+  const tray = el("div", "hb-bar-tray"); tray.appendChild(tools);
+  bar.appendChild(trail); bar.appendChild(tray);
+  return hbBar(bar, { more: tt("more", null, "Más") });
 }
 
 // The breadcrumb ALWAYS shows the real place (never a "search results" placeholder that repeats the query —

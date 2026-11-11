@@ -138,6 +138,13 @@ def _scan_widget_js(js: str) -> str | None:
                     f"({_PHONE_SAFE_MIN_WIDTH_PX}px is the limit). Let the layout be FLUID (%, minmax, flex-wrap); "
                     f"if the content is genuinely wide (a table), keep it in its own overflow-x:auto wrapper so "
                     f"it scrolls INSIDE the card instead of pushing the card sideways")
+    bar = _own_wrapping_bar(style_text)
+    if bar:
+        return (f"widget.js lets its bar .{bar} wrap with flex-wrap — a wrapping toolbar puts each control wherever "
+                f"it runs out of room (V2-882). A bar is the HOUSE bar: class `hb-bar` with its parts `hb-bar-lead` · "
+                f"`hb-bar-title` · `hb-bar-tray` > `hb-bar-views` + `hb-bar-aux`, made live with "
+                f"`import {{ bar }} from \"/frontend/app/lib/toolbar.js\"` — one line, then a second row, then a ⋯ "
+                f"menu, measured on the bar itself (widgets/AGENTS.md)")
     # A ROOT THAT REFUSES A WIDE CARD (V2-615). The desktop host mounts a widget's root directly into a fully
     # fluid card, and drag-resize sets that card's width directly — so a hardcoded CAP on the root is not a
     # safety net, it is the operator dragging a card wider and nothing inside using the extra room. Measured
@@ -190,6 +197,23 @@ def _scan_widget_js(js: str) -> str | None:
             return (f"widget.js declares z-index:{m.group(1)} — above the widget's own stacking room "
                     f"(the ceiling is {_WIDGET_Z_CEILING}). The desk's chrome lives above that: the dock at "
                     f"9002, the chat at 9001. Stack INSIDE your card (widgets/AGENTS.md)")
+    return None
+
+
+# V2-882 — a widget's own BAR never wraps. The subject of a rule (the last class of each selector) named `…bar`
+# that declares `flex-wrap:wrap` is a toolbar laid out as a loose wrap: the shape the operator found on the agenda,
+# two ragged lines at full desk width. The house classes (`hb-`) are the kit itself and are not this widget's bar.
+_WRAP = re.compile(r"flex-wrap\s*:\s*wrap\b", re.I)
+
+
+def _own_wrapping_bar(css: str) -> str | None:
+    for m in re.finditer(r"([^{}]+)\{([^{}]*)\}", css):
+        if not _WRAP.search(m.group(2)):
+            continue
+        for sel in m.group(1).split(","):
+            last = (re.findall(r"\.([A-Za-z_][\w-]*)", sel) or [""])[-1]
+            if last.lower().endswith("bar") and not last.startswith(("hb-", "hbk-")):
+                return last
     return None
 
 

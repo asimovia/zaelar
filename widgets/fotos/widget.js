@@ -7,11 +7,12 @@
 // other widget: no fetch/WebSocket here (the Picker session and paging go through `ctx.action`, never a
 // direct call), and every string that came from Google (a filename) is untrusted — textContent only.
 
+import { bar as hbBar } from "/frontend/app/lib/toolbar.js";   // V2-882: the house bar
 const STYLE_ID = "hb-fotos-style";
 
 const CSS = `
 .fts{display:flex;flex-direction:column;height:100%;min-height:0;font:13px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;color:var(--hb-ink,#0d1622)}
-.fts-bar{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--hb-line,#eef1f6);flex:0 0 auto;flex-wrap:wrap}
+.fts-bar{padding:8px 10px;border-bottom:1px solid var(--hb-line,#eef1f6);flex:0 0 auto}
 .fts-find{display:flex;align-items:center;gap:4px;background:var(--hb-bg-soft,#f5f7fb);border:1px solid var(--hb-line,#eef1f6);border-radius:8px;padding:3px 6px;flex:1 1 200px;min-width:120px}
 .fts-find input{border:0;background:none;outline:none;font:inherit;color:var(--hb-ink,#0d1622);width:100%}
 .fts-btn{border:1px solid var(--hb-line,#eef1f6);background:var(--hb-bg,#fff);color:var(--hb-ink,#0d1622);border-radius:8px;padding:3px 8px;cursor:pointer;font:inherit;line-height:1.6}
@@ -119,24 +120,25 @@ function connectPanel(d, act, ctx) {
 }
 
 function toolbar(d, act, ctx) {
-  const bar = el("div", "fts-bar");
+  const bar = el("div", "fts-bar");   // the search leads; the batch actions and the count step aside (V2-882)
+  const lead = el("div", "hb-bar-lead"), aux = el("div", "hb-bar-aux"), tray = el("div", "hb-bar-tray");
   const find = el("div", "fts-find");
   const input = document.createElement("input");
   input.type = "text";
   input.placeholder = tt("search_ph", null, "fotos del año pasado, o de un viaje…");
   input.value = (d.active_filter && d.active_filter.query) || "";
   find.appendChild(input);
-  bar.appendChild(find);
+  lead.appendChild(find);
 
   const searchBtn = el("button", "fts-btn", tt("search", null, "Buscar"));
   searchBtn.onclick = () => { const q = input.value.trim(); if (q) act("search", { query: q }); };
   input.addEventListener("keydown", (e) => { if (e.key === "Enter") searchBtn.click(); });
-  bar.appendChild(searchBtn);
+  lead.appendChild(searchBtn);
 
   if (d.active_filter && Object.keys(d.active_filter).length) {
     const clearBtn = el("button", "fts-btn", tt("clear_filter", null, "Quitar filtro"));
     clearBtn.onclick = () => act("clear_search", {});
-    bar.appendChild(clearBtn);
+    aux.appendChild(clearBtn);
   }
 
   const labelBtn = el("button", "fts-btn", tt("label_batch", null, "Etiquetar última tanda"));
@@ -144,7 +146,7 @@ function toolbar(d, act, ctx) {
     const label = window.prompt(tt("label_prompt", null, "¿Qué nombre le pongo a la última tanda importada?"), "");
     if (label && label.trim()) act("label_batch", { label: label.trim() });
   };
-  bar.appendChild(labelBtn);
+  aux.appendChild(labelBtn);
 
   const addBtn = el("button", "fts-btn", tt("pick_more", null, "Elegir más fotos"));
   // `ctx.connect` opens Google's picker window INSIDE the click (one opened after an await is blocked in
@@ -154,10 +156,11 @@ function toolbar(d, act, ctx) {
     await ctx.connect("pick", {}, {family: "fotos", onDone: () => { addBtn.disabled = false; }});
     addBtn.disabled = false;
   };
-  bar.appendChild(addBtn);
+  aux.appendChild(addBtn);
 
-  bar.appendChild(el("span", "fts-count", tt("count", {n: d.total || 0}, `${d.total || 0} fotos`)));
-  return bar;
+  aux.appendChild(el("span", "fts-count", tt("count", {n: d.total || 0}, `${d.total || 0} fotos`)));
+  bar.appendChild(lead); tray.appendChild(aux); bar.appendChild(tray);
+  return hbBar(bar, { more: tt("more", null, "Más") });
 }
 
 function gallery(d, act) {
