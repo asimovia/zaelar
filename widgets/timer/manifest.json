@@ -43,6 +43,11 @@
       "payload": {
         "seconds": 600,
         "label": "pasta"
+      },
+      "done_when": {
+        "widget": "timer",
+        "field": "running",
+        "is": true
       }
     },
     "start": {

@@ -59,6 +59,8 @@ class LangSpec:
     #: internal error, so a destructive action whose contract could not be read ran with an empty selector —
     #: the exact pre-V2-705 state, in silence. It now fails CLOSED for anything destructive, and this is what
     #: the operator hears: the action did not run, and it is worth saying again rather than doing it blind.
+    #: V2-879 — a card act whose call filled none of its declared slots: nothing was done, and the turn says so.
+    widget_slots_unfilled: str = ""
     widget_guard_error: str = ("")
     #: The TITLE an errand writes on the meeting it just agreed with a third party (V2-692). It lands in
     #: the operator's agenda and, through the connector, in his real Google Calendar — a row only HE can
