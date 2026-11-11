@@ -22,6 +22,8 @@ import asyncio
 
 from loguru import logger
 
+from nucleo.turn import thread_event as _thread     # V2-878 §6: one event per thread decision
+
 #: The model judge runs INSIDE a turn here (the dispatcher's copy runs after it), so it gets a turn-sized budget;
 #: past it the answer is «no flow» — the dispatcher's dedup still stands behind, as an alarm (V2-784 F4).
 JUDGE_S = 3.0
@@ -63,8 +65,8 @@ def lexical(text: str, pool: list[dict]) -> dict | None:
     return hits[0] if hits else None
 
 
-async def flow_of(text: str, *, emit=None) -> dict | None:
-    """The open flow `text` belongs to, or None (a new flow). Never raises; costs nothing with no flow open."""
+async def flow_of(text: str, *, emit=None, by_out: list | None = None) -> dict | None:
+    """The open flow `text` belongs to, or None (a new flow); `by_out` gets which judge answered. Never raises."""
     text = str(text or "").strip()
     pool = candidates() if text else []
     if not pool:
@@ -76,12 +78,18 @@ async def flow_of(text: str, *, emit=None) -> dict | None:
         # (absorb, reopen) is decided by the model judge, so «a hotel in Paris» never reopens the finished Rome one.
         try:
             from nucleo.request import append as _dedup
-            tid = await asyncio.wait_for(asyncio.to_thread(
-                _dedup.about_a_live_errand, text, [(str(c["id"]), str(c["request"])) for c in pool]), JUDGE_S)
+            with _thread.judging("flow_of"):           # the judge's own event names who asked
+                tid = await asyncio.wait_for(asyncio.to_thread(
+                    _dedup.about_a_live_errand, text, [(str(c["id"]), str(c["request"])) for c in pool]), JUDGE_S)
+        except asyncio.TimeoutError:
+            logger.warning(f"flow_of: the judge did not answer within {JUDGE_S}s, treating as a new flow")
+            _thread.judge_timeout(text, pool, budget_s=JUDGE_S)
+            tid = ""
         except Exception as e:  # noqa: BLE001 — fail-open: no flow, the door opens a new one
             logger.warning(f"flow_of: the judge failed, treating as a new flow — {type(e).__name__}: {e}")
             tid = ""
         hit, by = next((c for c in pool if str(c["id"]) == tid), None), "model"
+    by_out is not None and by_out.append(by)
     from nucleo.acts import surface_owner as _own
     _own.flow_said(text, str((hit or {}).get("id") or ""))   # V2-844 F0: compared with the dispatcher's answer
     if hit is not None and emit is not None:
@@ -182,6 +190,7 @@ def not_mine(words: str, flow: str) -> None:
     """A worker handed `words` back: they were not its errand. They never fold into it again."""
     _NOT_MINE.append((" ".join(str(words or "").split()).lower(), str(flow)))
     del _NOT_MINE[:-64]
+    _thread.evicted(words, flow)
 
 
 def _was_handed_back(words: str, flow: dict) -> bool:
@@ -206,16 +215,20 @@ async def route(text: str = "", *, brief=None, emit=None, event: dict | None = N
         brief = brief if brief is not None else _tb.of_this_turn()
         whole = whole_request(text)
         if no_content(whole):
-            return {"as": CONVERSATION, "text": whole}
+            return _thread.decided({"as": CONVERSATION, "text": whole}, (), "none")
         pool = candidates()
         from nucleo.turn import split_by_errand as _sbe
         ps = _sbe.parts(whole, pool) if pool else []
+        pool and _thread.would_split(whole, pool)          # measured, never acted on here
         if len({str(p["errand"].get("id")) for p in ps}) > 1:
-            return {"as": LIST, "text": whole, "parts": [_of(p["errand"], p["words"], brief) for p in ps]}
-        flow = await flow_of(whole, emit=emit)
+            return _thread.decided({"as": LIST, "text": whole, "parts": [_of(p["errand"], p["words"], brief) for p in ps]},
+                                   pool, "containment")
+        flow = await flow_of(whole, emit=emit, by_out=(by := []))
         if flow is None or _was_handed_back(whole, flow):
-            return {"as": CONVERSATION if chat(brief) else NEW, "text": whole}   # chat no flow claims: nothing to commission
-        return {**_of(flow, whole, brief), "text": whole}
+            talk = chat(brief)                              # chat no flow claims: nothing to commission
+            return _thread.decided({"as": CONVERSATION if talk else NEW, "text": whole}, pool,
+                                   "handed_back" if flow is not None else "verdict" if talk else (by or ["none"])[0])
+        return _thread.decided({**_of(flow, whole, brief), "text": whole}, pool, (by or ["none"])[0])
     except Exception as e:  # noqa: BLE001
         logger.warning(f"flow_of: route unreadable, a new flow — {type(e).__name__}: {e}")
         return {"as": NEW, "text": str(text or "")}
