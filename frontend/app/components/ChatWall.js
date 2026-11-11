@@ -26,7 +26,7 @@ import { renderMarkdownLite } from "../lib/markdown-lite.js?v=1";
 import { t } from "../core/i18n.js?v=1";
 import { groupGoogle } from "./ConnectorWizard.js?v=6";
 import { ProcessEntry } from "./ProcessEntry.js?v=1";
-import { AskWall } from "./TaskAsk.js?v=1";
+import { AskWall, placeAsks } from "./TaskAsk.js?v=1";
 import { chatRefView } from "./ChatRef.js?v=1";
 
 // V2-561/V2-526 — stable family order, matching connectors/registry.py's descriptors() order; any family
@@ -959,11 +959,12 @@ export function ChatWall() {
     const say = store.voicedLine();
     // The cap trims from the OLDEST end, so the restored block can only shrink, never move.
     if (restoredLeft > msgs.length) restoredLeft = msgs.length;
-    const rows = [];
+    const rows = [], lastRow = new Map();   // V2-886 D6: trace → index after that turn's last row (`placeAsks` reads the asks)
     msgs.forEach((m, i) => {
       // The divider goes AFTER the last restored line — it says «what is above this was said earlier»,
       // so with nothing restored (a fresh session, or a reset) it is never drawn at all.
       if (restoredLeft > 0 && i === restoredLeft) rows.push(h("div", { class: "cw-earlier" }, _whenLabel()));
+      if (m && m.trace) lastRow.set(m.trace, rows.length + 1);   // every branch below pushes exactly one row
       if (m.role === "ref") { rows.push(chatRefView(m)); return; }   // V2-862: an errand's reference box
       const cls =m.role === "peer" ? "peer" : m.role === "agent" ? "agent" : m.role === "sys" ? "sys" : "you";
       const bubble = h("div", { class: "cw-msg " + cls });
@@ -1016,7 +1017,7 @@ export function ChatWall() {
       b.appendChild(h("div", { class: "cw-msg-body" }, live));
       rows.push(b);
     }
-    listEl.replaceChildren(...rows);
+    listEl.replaceChildren(...placeAsks(rows, lastRow));
     pinToLatest();
   });
 

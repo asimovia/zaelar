@@ -51,22 +51,33 @@ def keep(uid: str, entry: dict) -> None:
         _note(e)
 
 
+def _row(task_id) -> dict:
+    try:
+        from memory import tasks_store
+        return (tasks_store.task_get(str(task_id or "").strip()) if task_id else None) or {}
+    except Exception as e:  # noqa: BLE001
+        _note(e)
+        return {}
+
+
 def title_of(task_id) -> str:
     """The card's heading (V2-886 D5): the row's title, else its goal — every row, inline ones too, which the live
     board hides (the screen used to fall back to «a process»). "" when the row is unknown."""
-    try:
-        from memory import tasks_store
-        row = tasks_store.task_get(str(task_id or "").strip()) if task_id else None
-        return str((row or {}).get("title") or (row or {}).get("goal") or "").strip()[:120]
-    except Exception as e:  # noqa: BLE001
-        _note(e)
-        return ""
+    row = _row(task_id)
+    return str(row.get("title") or row.get("goal") or "").strip()[:120]
+
+
+def trace_of(task_id) -> str:
+    """Where the card sits (V2-886 D6): the trace of the turn that opened its row — the chat puts the question under
+    that turn's lines. "" when the row has none (the card stays at the foot of the chat)."""
+    return str(_row(task_id).get("trace_id") or "")
 
 
 def emit_ask(*, task_id: str, ask_id: str, text: str, session: str = "", options=None, among=None) -> None:
     """The `ask` event the screen reads. `options` only when the asker declared them, `among` only for ASK_WHICH."""
     extra = {"task_id": str(task_id or ""), "ask_id": str(ask_id or ""), "text": str(text or ""),
-             "session": str(session or ""), "title": title_of(task_id)}
+             "session": str(session or ""), "title": title_of(task_id),
+             "trace": trace_of(task_id)}
     if options:
         extra["options"] = [str(o) for o in options]
     if among:

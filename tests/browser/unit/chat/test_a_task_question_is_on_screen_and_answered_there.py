@@ -243,3 +243,28 @@ def test_a_final_task_state_removes_the_line(open_wall):
     pg.evaluate("() => window.__route({kind: 'task_state', task_id: 'T2', state: 'cancelled', writer: 'settle'})")
     _until_lines(pg, lambda xs: xs == [], "the cancelled task's line to go")
     assert not pg._errors, pg._errors
+
+
+def test_a_question_sits_under_the_turn_that_caused_it_and_has_a_close(open_wall):
+    """V2-886 D6/D7 — a question whose row was opened by a turn in the conversation is drawn right after that turn's
+    last line, never pinned at the foot; a question with no anchor stays in the foot block. Each card has its ✕.
+    Disarm: `placeAsks` returning the rows untouched → the anchored card is missing from the list → red."""
+    eng = _Engine()
+    pg = open_wall(eng)
+    pg.evaluate("""() => window.__store.setChatMsgs([
+        {role: 'you', text: 'cierra todo', trace: 'tr-1'}, {role: 'agent', text: 'Voy.', trace: 'tr-1'},
+        {role: 'you', text: 'pon música', trace: 'tr-2'}, {role: 'agent', text: 'Suena.', trace: 'tr-2'}])""")
+    pg.evaluate("""() => window.__route({kind: 'ask', task_id: 'T9', ask_id: 'Z1', text: '¿Se lo mando a Zarina?',
+                                        title: 'Enviar borrador', trace: 'tr-1'})""")
+    pg.evaluate("""() => window.__route({kind: 'ask', task_id: 'T8', ask_id: 'Z2', text: '¿Qué día?',
+                                        title: 'Cita', trace: 'tr-none'})""")
+    order = until_sync(lambda: (lambda xs: (xs,) if 'tq:Z1' in xs else None)(pg.evaluate(
+        """() => [...document.querySelectorAll('#chatwall .cw-list > *')].map(n =>
+               n.classList.contains('tq') ? 'tq:' + n.dataset.ask : (n.innerText || '').trim())""")),
+        "the anchored question inside the list", timeout_s=10)[0]
+    assert order.index('tq:Z1') == order.index('Voy.') + 1, order
+    assert order.index('tq:Z1') < order.index('pon música'), "the question was not placed under its own turn"
+    foot = [x["ask"] for x in _lines(pg)]
+    assert foot == ["Z2"], f"only the question with no anchor stays at the foot: {foot}"
+    assert pg.evaluate("() => document.querySelectorAll('#chatwall .tq .tq-close').length") == 2
+    assert not pg._errors, pg._errors

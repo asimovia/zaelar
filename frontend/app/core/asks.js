@@ -15,7 +15,7 @@
 
 import { createSignal } from "./reactive.js?v=2";
 
-// [{task_id, session, ask_id, text, title, options, among, since, sent, error, busy}] — `session` is the per-process
+// [{task_id, session, ask_id, text, title, trace, options, among, since, sent, error, busy}] — `session` is the per-process
 // id a live chip may be keyed by instead of the row id.
 export const [openAsks, setOpenAsks] = createSignal([]);
 
@@ -31,7 +31,7 @@ export function askOfRow(r) {
   if (!r || r.state !== "waiting" || r.waiting_for !== "user_answer" || !r.ask_id) return null;
   const a = r.ask && typeof r.ask === "object" ? r.ask : {};
   return { task_id: _str(r.id), session: _str(r.session), ask_id: _str(r.ask_id), text: _textOf(r.ask),
-           title: _str(r.title || r.goal),
+           title: _str(r.title || r.goal), trace: _str(r.trace_id),
            options: _list(a.options, r.ask_options), among: _list(a.among, r.ask_among),
            since: Number(r.waiting_since) || 0, sent: "", error: false, busy: false };
 }
@@ -44,7 +44,7 @@ export function onAsk(d) {
     const prev = xs.find(a => a.task_id === task_id);
     if (prev && prev.ask_id === ask_id) return xs;                 // the same question told twice
     const next = { task_id, session: _str(d.session) || (prev ? prev.session : ""), ask_id, text: _str(d.text),
-                   title: _str(d.title) || (prev ? prev.title : ""),
+                   title: _str(d.title) || (prev ? prev.title : ""), trace: _str(d.trace) || (prev ? prev.trace : ""),
                    options: _list(d.options), among: _list(d.among), since: Date.now() / 1000,
                    sent: "", error: false, busy: false };
     return [...xs.filter(a => a.task_id !== task_id), next];
