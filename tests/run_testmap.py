@@ -6236,6 +6236,12 @@ DOMAINS: list[dict] = [
         # V2-881 — disarmed 2026-11-11: Veil.js served without its `setPower` call → red.
         {"id": "4.481", "title": "ONE veil, one face at a time, both shells (V2-881): stopped by him over asleep over moved, transits as before; one press wakes the engine, and once it answers switches the agent on and brings the voice here (presence.reactivate → power.setPower → session.claimVoice); the stopped face shades the cards under the rail, the top bar and the orb, the black faces cover everything but the feedback button; every line in the ui pack (ES/EN)",
             "ch": UNIT, "paths": ["tests/browser/unit/arranque/test_one_veil_one_face_one_press.py"]},
+        # V2-879 O3 — disarmed 2026-11-11 (`fast_pass` reports the ladder's own list again) → red.
+        {"id": "4.478", "title": "A reader of the sheet tells what the sheet KEPT (V2-879 O3): a listing pass whose every "
+                                  "row the sheet's door filed in Rejected reports 0 findings, is not delivered and is "
+                                  "handed on, and its face names no row; a mixed pass reports only the kept rows; one "
+                                  "declared reading `results.holding` (kept · rejected · none)",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_a_sheet_that_rejected_every_row_holds_no_findings.py"]},
     ]},
     {"id": "5", "name": "CONECTORES", "nodes": [
         # V2-559 — el operador siguió la guía, creó la contraseña de aplicación y pegó el ENLACE de esa

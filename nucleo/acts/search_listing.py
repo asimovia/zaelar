@@ -199,7 +199,7 @@ def compose_face(res: dict, operator_text: str) -> str:
                 "HABLADAS: cuántos hay, el rango de precios y lo más prometedor, y que los tiene en la hoja. "
                 "Natural, sin markdown, sin emojis, sin leer URLs. No inventes NADA que no esté en la lista; "
                 "si un dato que pidió no está (kilómetros, estado), dilo.\n\n"
-                f"PETICIÓN DEL OPERADOR: {ask}\n\nANUNCIOS ENCONTRADOS:\n{ctx}")
+                f"PETICIÓN DEL OPERADOR: {ask}\n\nANUNCIOS ENCONTRADOS:\n{ctx}" + _held_line(res))
     tiene = bool(res.get("n")) and bool(ctx)
     return (head
             + "\nEl operador pidió BUSCAR anuncios/productos. La pasada rápida no encontró SUFICIENTE y una "
@@ -211,7 +211,16 @@ def compose_face(res: dict, operator_text: str) -> str:
                "su pantalla — tenerlos y no nombrarlos es negarle una entrega que ya tiene."
                if tiene else "")
             + f"\n\nPETICIÓN DEL OPERADOR: {ask}"
-            + (f"\n\nANUNCIOS PROVISIONALES YA EN SU HOJA ({res.get('n')}):\n{ctx}" if tiene else ""))
+            + (f"\n\nANUNCIOS PROVISIONALES YA EN SU HOJA ({res.get('n')}):\n{ctx}" if tiene else "")
+            + _held_line(res))
+
+
+def _held_line(res: dict) -> str:
+    """What his sheet holds, as a FACT (V2-879 O3): rows its door filed in Rejected are not findings."""
+    rejected = int(res.get("rejected") or 0)
+    return (f"\n\nLO QUE GUARDA SU HOJA: {int(res.get('n') or 0)} en su lista · {rejected} DESCARTADOS (no eran lo que "
+            "pidió; pestaña Descartados). Los descartados NO son resultados: ni los cuentes ni digas que los tiene."
+            if rejected else "")
 
 
 def _born(asked: str) -> tuple[int, str]:
