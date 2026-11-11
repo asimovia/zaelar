@@ -1093,7 +1093,7 @@ _FINDINGS_BAR_A = {
 
 def deliverable_findings(bar: str = "comparar") -> str:
     return (
-        "✅ ESTE CASO SE PUEDE COMPLETAR DE INICIO A FIN. No hay ningún muro de cuenta, app ni teléfono: lo que "
+        "✅ ESTE CASO SE PUEDE COMPLETAR DE INICIO A FIN. No hay ningún muro de cuenta, tarjeta ni teléfono: lo que "
         "el operador pide se entrega entero, así que **se juzga el RESULTADO COMPLETO** y no hay nada que "
         "descontar. Lo que tiene que traer una respuesta buena:\n"
         + _FINDINGS_BAR_A.get(bar, _FINDINGS_BAR_A["comparar"])

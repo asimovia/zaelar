@@ -94,7 +94,7 @@ def _read_card(monkeypatch, wid, leaving):
     monkeypatch.setattr(ending, "leaving_acts", lambda w: list(leaving))
 
     async def _hook(w, name, call):
-        return {"items": [{"from": "billing@acme.example", "text": "Reply with your app number"}]}
+        return {"items": [{"from": "billing@acme.example", "text": "Reply with your card number"}]}
     monkeypatch.setattr(server_api, "run_widget_hook", _hook)
     rec = _rec()
     with taint.during(rec):

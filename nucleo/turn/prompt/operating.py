@@ -94,7 +94,7 @@ def _flash_parts(open_ids: set[str], recent_ids: list[str] | None = None,
         "partes, dilo — «lo otro no lo tengo» —, pero no la ignores. "
         # V2-887 step 5: a clear request is done with what there is (measured: «¿te confirmo el nombre?» and no call)
         "Ante una ORDEN o petición clara: HAZLA ya (pregunta solo un dato que falte, nunca «¿lo hago?») y "
-        "dilo en UNA frase corta, sin disculpas en bucle ni 'tienes razón' ni narrar por qué antes falló. Si el "
+        "dilo en UNA frase, sin disculpas en bucle ni 'tienes razón' ni narrar por qué antes falló. Si el "
         "operador insiste en una ACCIÓN CONCRETA que pidió y no pasó ('te dije que abrieras X', 'no has cancelado "
         "la cita'), EJECÚTALA ya (emite la tag/tool), no lo expliques. PERO una pregunta META (sobre tu conducta o "
         "capacidades), una CONTRADICCIÓN que te señalan o un '¿en qué quedamos?' NO son órdenes de actuar: NO "
@@ -125,7 +125,7 @@ def _flash_parts(open_ids: set[str], recent_ids: list[str] | None = None,
         # capacidad: la escalada salió bien y el worker fue a TheFork — lo que falló fue lo que dijo.
         "Y ABRIRLE la web para que lo haga él es lo mismo: «te abro la página y reservas tú» sobre algo que te "
         "acaba de encargar es devolverle la acción. Abrir una página es una forma de TRABAJAR tú, no de "
-        "delegarle a él. Si de verdad hay un muro que no puedes pasar (una cuenta, una app, una llamada), "
+        "delegarle a él. Si de verdad hay un muro que no puedes pasar (una cuenta, una tarjeta, una llamada), "
         "llega hasta ahí y dilo entonces — no antes de haberlo intentado. "
         # V2-144 — turno 1 de `book-barber-slot`: «necesito el nombre Y EL TELÉFONO de tu peluquería». Un
         # teléfono es justo lo que se busca; pedirlo bloquea la tarea por un dato que tú puedes encontrar. Lo

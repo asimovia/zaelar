@@ -14,7 +14,7 @@ _JS_EXTRACT_HELPERS = r"""
   const out=[], seen=new Map();   // listing key → ITS ROW (V2-324: keep the second complete anchor)
   // La COMA es el separador decimal en media Europa, y faltaba de la clase de caracteres: sobre «169,00 €» el
   // patrón viejo empezaba a casar en «00» y devolvía «00 €», o sea un monitor de 169 € anunciado como de 0 €.
-  // Medido el 2026-08-21 sobre una app con la forma de Amazon (precio partido en spans, con el importe
+  // Medido el 2026-08-21 sobre una tarjeta con la forma de Amazon (precio partido en spans, con el importe
   // completo repetido en un nodo fuera de pantalla): title:"" price:"00 €" en las dos filas.
   // …y el ENTERO y los CÉNTIMOS pueden venir en nodos distintos, que `innerText` separa con un salto de línea
   // («169\n00 €»): sin el grupo opcional, el patrón empezaba a casar en «00» y se dejaba fuera el 169.
@@ -28,19 +28,19 @@ _JS_EXTRACT_HELPERS = r"""
   const priceRe=/(\d[\d.,]{0,12}(?:\s\d{1,2})?\s*[€£])|([€£$]\s*\d[\d.,]{0,12})|(\d[\d.,]{0,12}\s?(EUR|eur|USD|usd|GBP|gbp)\b)/;
   const hasLetter=s=>/[a-zA-ZÀ-ÿ\u0100-\u024f\u0370-\u1fff\u3040-\u9fff]/.test(s||'');
   // El NOMBRE de lo que se anuncia cuando el propio enlace no lo lleva dentro. Un listado es una rejilla de
-  // APPS y el nombre de cada cosa es el encabezado de su app: vale para un producto, un piso, un hotel
-  // o una entrada, y no nombra ningún sitio. Se sube como mucho cinco niveles —más arriba ya no es la app,
+  // TARJETAS y el nombre de cada cosa es el encabezado de su tarjeta: vale para un producto, un piso, un hotel
+  // o una entrada, y no nombra ningún sitio. Se sube como mucho cinco niveles —más arriba ya no es la tarjeta,
   // es la sección, y devolvería «Resultados» para todas— y se prefiere el encabezado que apunta a ESTA misma
   // ficha, que es la señal fuerte de que la nombra a ella y no a la vecina.
-  // QUÉ ES LA APP, definido UNA vez y leído por los dos que la necesitan (el nombre y el teléfono). Se sube
+  // QUÉ ES LA TARJETA, definido UNA vez y leído por los dos que la necesitan (el nombre y el teléfono). Se sube
   // como mucho cinco niveles y solo mientras el ancestro siga siendo UNA ficha: en cuanto abarca varias es la
   // REJILLA, y lo que hay ahí vale para todas — un dato que nombra a todas no nombra a ninguna. Tenerlo en dos
-  // sitios sería tener dos definiciones de «app» que se separan sin avisar.
-  // `maxPaths` — cuántos listados DISTINTOS puede abarcar el ancestro y seguir contando como la app. El
-  // nombre y el teléfono admiten 4 (una app puede enlazar al vendedor, a su tienda, a una categoría) y el
+  // sitios sería tener dos definiciones de «tarjeta» que se separan sin avisar.
+  // `maxPaths` — cuántos listados DISTINTOS puede abarcar el ancestro y seguir contando como la tarjeta. El
+  // nombre y el teléfono admiten 4 (una tarjeta puede enlazar al vendedor, a su tienda, a una categoría) y el
   // encabezado se desempata además por el enlace que apunta a ESTA misma ficha. El PRECIO no tiene ese
   // desempate y no puede permitirse el error, así que pide 1: solo el nivel en el que todos los enlaces son de
-  // este mismo listado. Medido 2026-08-23 con dos apps: con el margen de 4, una ficha SIN precio se subía a
+  // este mismo listado. Medido 2026-08-23 con dos tarjetas: con el margen de 4, una ficha SIN precio se subía a
   // la rejilla y se traía el de la vecina. Un nombre de la vecina se ve; un precio de la vecina se lee como un
   // hallazgo.
   const cardWalk=(a, read, maxPaths, itemBound)=>{
@@ -143,11 +143,11 @@ _JS_EXTRACT_HELPERS = r"""
   //
   // The FIRST price in the card wins on purpose: a discounted card shows the old and the new one, and the new
   // one comes first in reading order. Choosing by size would be guessing which of the two the operator pays.
-  // Se lee de UN NODO, nunca del texto concatenado de la app, y esa es la mitad que no se ve venir: el
+  // Se lee de UN NODO, nunca del texto concatenado de la tarjeta, y esa es la mitad que no se ve venir: el
   // grupo opcional de céntimos («169\n00 €») también salta un salto de línea entre DOS datos distintos, así que
   // sobre «Monitor Samsung 24⏎50 €» el patrón devuelve «24 50 €» — un precio inventado a partir del final del
   // nombre. Medido. Por eso el texto del nodo tiene que ser casi solo el importe: un nodo que dice «150 €» es un
-  // precio, uno que dice el nombre y el precio es una app.
+  // precio, uno que dice el nombre y el precio es una tarjeta.
   // UN SUPERÍNDICE NO ES PARTE DEL NÚMERO (V2-326). `textContent` pega TODOS los descendientes, y las fichas
   // cuelgan del precio una llamada a nota al pie en `<sup>`: medido en autoscout24 (2026-08-25), las hojas del
   // DOM eran `<span>€ 399</span>` y `<sup>1</sup>`, y salía `€ 3991` — un error de MAGNITUD (×10) en el dato

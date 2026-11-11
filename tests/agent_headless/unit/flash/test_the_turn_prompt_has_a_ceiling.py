@@ -36,9 +36,10 @@ MARGIN = 64
 # V2-887 step 3+4 (2.1699): +146 / +372 — each open card that reads an account names its sources, connected or not
 # («GOOGLE conectado: no» with Contacts open), and the card-alias tool says it is never a person's alias
 # V2-887 (2.1704): +195 with Contacts open — importing from a linked account is the card's own act, never an errand
+# +4 2026-11-11: «una tarjeta» (a payment card) back in the wall line the app rename had turned into «una app»
 # V2-887 step 5 (2.1700): +193 everywhere — a clear request is DONE with what there is, only a missing fact is asked
-CEILINGS = {(): 24_857, ("agenda", "mensajeria"): 29_913,
-            ("agenda", "mensajeria", "youtube", "contactos", "results", "musica"): 37_488}   # V2-795: musica usage trimmed
+CEILINGS = {(): 24_861, ("agenda", "mensajeria"): 29_917,
+            ("agenda", "mensajeria", "youtube", "contactos", "results", "musica"): 37_492}   # V2-795: musica usage trimmed
 TARGET_EVERYDAY = 30_000
 
 

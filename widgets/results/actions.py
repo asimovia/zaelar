@@ -221,7 +221,7 @@ def _a_layout(action, payload, sheet) -> dict:
     lay = str(payload.get("layout") or payload.get("view") or "").strip().lower()
     if lay not in _d._LAYOUTS:
         return {"ok": False, "error": "layout needs one of: tile (side by side, with photos) · row (a dense "
-                                      "list) · app (photo left) · compare (composite proposals)"}
+                                      "list) · card (photo left) · compare (composite proposals)"}
     data = _d.view_data(sheet)
     data["layout"] = lay
     data["tab"] = "results"

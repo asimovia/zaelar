@@ -27,7 +27,7 @@ from tests import voice_turn_source as _vts   # V2-778 F1: a moved body is read 
     "revisa que los rails o canalizaciones de esas acciones directamente vayan a parar aquí",
     "Revisar y reconfigurar el FLUJO PRIORITARIO de resolución de peticiones de VER o DESCARGAR una "
     "película/serie, para que las acciones vayan al widget correcto",
-    "cambia el enrutado del motor para que abra la app buena",
+    "cambia el enrutado del motor para que abra la tarjeta buena",
     "cambia el prompt del dispatcher",
     "quiero que modifiques el motor de voz",
     "toca el núcleo para que vaya más rápido",
@@ -44,7 +44,7 @@ def test_an_order_to_change_ZAELAR_ITSELF_is_recognised(req):
     "créame un widget del tiempo",                       # lo que SÍ se permite
     "modifica el widget de la agenda para que muestre la semana",
     "cambia el flujo de trabajo del widget de música",   # nombra un widget: el trabajo permitido
-    "cambia la app de música para que muestre el artista",
+    "cambia la tarjeta de música para que muestre el artista",
     "modifícame el panel de contactos",
     "arregla el widget del tiempo, que no carga",
     "búscame un hotel en Soria",
@@ -140,7 +140,7 @@ def _gateway(monkeypatch):
     return gw, seen
 
 
-ENGINE_ORDER = "cambia el enrutado del motor para que abra la app buena"
+ENGINE_ORDER = "cambia el enrutado del motor para que abra la tarjeta buena"
 
 
 def test_the_refusal_comes_before_the_errand_exists(monkeypatch):
