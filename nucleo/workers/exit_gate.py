@@ -201,7 +201,7 @@ def gate(rec, payload: dict) -> Exit:
         out["payload"] = inner = {**inner, "playbook": named}
     from nucleo.workers import taint
     from widgets import actions as _wa
-    who = ", ".join(_ob.who_of(wid, act, inner)) or wid
+    who = _ob.shown_who(wid, act, inner) or wid       # V2-886 D5: his contact's name, never a raw id
     channel = str(inner.get("platform") or inner.get("channel") or "")
     # The taint asks about WHAT leaves: a slot whose value the worker wrote after reading a stranger's text
     # (`stranger`). A send whose every declared slot is his, the turn's reading, the card's or the held row's carries
