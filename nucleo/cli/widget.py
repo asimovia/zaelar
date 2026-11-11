@@ -61,12 +61,21 @@ def _act(action: str, payload: dict) -> dict:
 
 
 def _emit_injections(res: dict) -> None:
-    for msg in (res or {}).get("injections") or []:
-        print(f"⟦NUEVAS INSTRUCCIONES DEL OPERADOR⟧ {msg}")
+    """Notes to the worker, printed AFTER the result and signed by their author (V2-886 fila 9)."""
+    for m in (res or {}).get("injections") or []:
+        text, src = (m.get("text"), m.get("source")) if isinstance(m, dict) else (m, "operator")
+        label = "⟦AVISO DEL SISTEMA⟧" if src == "system" else "⟦NUEVAS INSTRUCCIONES DEL OPERADOR⟧"
+        print(f"{label} {text}")
 
 
 def _report(res: dict) -> int:
-    _emit_injections(res)
+    try:
+        return _report_result(res)
+    finally:
+        _emit_injections(res)
+
+
+def _report_result(res: dict) -> int:
     if res.get("denied"):
         print("DENEGADO: " + str(res.get("error") or "acción no permitida (¿no está declarada en el manifest?)"))
         return 1

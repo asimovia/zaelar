@@ -82,15 +82,16 @@ async def worker_act(task_id: str = Body(..., embed=True), token: str = Body("",
     """The worker requests an action. Verify token → policy → execute (immediate ALLOW), park (ask/CONFIRM), or
     deny. Always carries the injection piggyback."""
     rec = _verify(task_id, token)
-    inj = _piggyback(task_id)
     if rec is None:
-        return JSONResponse({"ok": False, "error": "task/token no válido", "injections": inj}, status_code=403)
+        return JSONResponse({"ok": False, "error": "task/token no válido", "injections": []}, status_code=403)
 
     res = await _one_act(rec, action, payload)
     from nucleo.workers import task_files      # every act leaves its artefact on its task, at the door (§3 P1-2)
     task_files.record(rec, action, payload, res)
     task_files.said(rec, action, payload, res)
-    res["injections"] = inj
+    # V2-886 fila 9: a note to the worker rides AFTER an answer that worked, never inside a failure — read in front of an
+    # error it was taken as the answer («run report» for «read the widget»); unserved, it stays pending for the next.
+    res["injections"] = _piggyback(task_id) if res.get("ok") is not False and not res.get("denied") else []
     return JSONResponse(res)
 
 

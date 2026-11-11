@@ -40,9 +40,11 @@ def _post(path: str, payload: dict) -> dict:
 
 
 def _emit_injections(res: dict) -> None:
-    inj = (res or {}).get("injections") or []
-    for msg in inj:
-        print(f"⟦NUEVAS INSTRUCCIONES DEL OPERADOR⟧ {msg}")
+    """Notes to the worker, printed AFTER the result and signed by their author (V2-886 fila 9)."""
+    for m in (res or {}).get("injections") or []:
+        text, src = (m.get("text"), m.get("source")) if isinstance(m, dict) else (m, "operator")
+        label = "⟦AVISO DEL SISTEMA⟧" if src == "system" else "⟦NUEVAS INSTRUCCIONES DEL OPERADOR⟧"
+        print(f"{label} {text}")
 
 
 #: What the worker is told once its question is recorded (V2-851 §3): its process ends here and the task resumes
@@ -104,7 +106,13 @@ def _cmd_act(action: str, payload_json: str) -> int:
             print(f"payload JSON inválido ({_src}): {_perr}", file=sys.stderr)
             return 1
     res = _post("/api/worker/act", {"task_id": tid, "token": tok, "action": action, "payload": payload})
-    _emit_injections(res)
+    try:
+        return _print_act(res)
+    finally:
+        _emit_injections(res)                    # after the result, never in front of it (V2-886 fila 9)
+
+
+def _print_act(res: dict) -> int:
     if res.get("denied"):
         print(f"ACCIÓN DENEGADA: {res.get('error')}")
         return 0

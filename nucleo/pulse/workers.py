@@ -193,7 +193,7 @@ class WorkersPulse:
                 try:
                     rec = dispatch.get_record(tid)
                     if rec is not None and rec.session is not None:
-                        await rec.session.inject(REPORT_DEMAND)
+                        await rec.session.inject(REPORT_DEMAND, source="system")   # the harness, never «his»
                         _emit("worker.report_demanded", {"id": tid, "unreported_s": s.get("unreported_s")})
                         _observe("📋 informe de estado exigido", s.get("title") or s.get("goal") or "",
                                  id=tid, unreported_s=s.get("unreported_s"))

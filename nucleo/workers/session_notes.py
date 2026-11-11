@@ -156,7 +156,8 @@ class SessionNotes:
         receive an answer."""
         try:
             from voice.observer import emit
-            body = str(d.get("text") or "").strip()
+            # V2-886 fila 9: a harness note printed after a result (⟦…⟧) is not the tool's answer — it has its own event
+            body = "\n".join(ln for ln in str(d.get("text") or "").splitlines() if not ln.lstrip().startswith("⟦")).strip()
             if not body:
                 return
             where = (d.get("where") or "sistema")
