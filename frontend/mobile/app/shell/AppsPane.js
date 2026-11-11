@@ -1,50 +1,54 @@
-// ============================================================================
-// AppsPane.js — the apps launcher on the phone, inside the ☰ menu (V2-823). Operator's decision (2026-10-27):
-// «En el móvil, el lanzador de aplicaciones va dentro del menú ☰.»
-//
-// SAME LAUNCHER, PHONE CHROME. Everything an app's page says, the list it comes from and the way an app is opened
-// are `app/components/apps-catalog.js` — the module the desk's apps window is built on — so the two shells cannot
-// disagree about what an app's page declares (CRIT-K39). What this file adds is only what a phone does differently:
-//   · ONE screen at a time: the list (System · Custom), then the tapped app's page, with ‹ back to the list. A
-//     window's two columns do not fit 375px, and a page squeezed beside a list would truncate both.
-//   · A TAP selects and shows the page — there is no double click on a touch screen (CRIT-K31: one tap opens what a
-//     double click opens; here the page's «Open» is that one tap, because the tap on the row is spent on the page).
-//   · «Open» hands the app to the deck through `hb:open-card` (the Deck listens on it like the desktop host) and
-//     closes the menu, so he lands on the app.
-// Every control respects the shell's 44px touch floor (mobile/app/styles.css, `.zm-apps`).
-// ============================================================================
-
-import { h, raw } from "../../../app/core/dom.js?v=2";
-import { createEffect } from "../../../app/core/reactive.js?v=2";
+// AppsPane.js — the APPS page (V2-876 D-C, operator 2026-11-11: «un icono abajo para acceder a las apps, con todos los
+// iconos»): the dock's Apps button opens a full-screen grid of every app — ITS icon, its name, one line of what it does
+// — and a tap opens it on the deck through `hb:open-card`, the door every opener uses. The list is the registry's user
+// apps (apps-catalog.js reads the same); the line is the app's own `widgets.<id>.about` string in his language, absent
+// for an app that has none. An app's icon is its manifest's `icon` when the registry carries one, else its monogram on
+// its own colour — the same tile the deck's home draws, so an app looks the same on both screens. Never one glyph for all.
+import { h } from "../../../app/core/dom.js?v=2";
+import { createSignal, createEffect } from "../../../app/core/reactive.js?v=2";
 import * as store from "../../../app/core/store.js?v=2";
+import * as api from "../../../app/services/api.js?v=2";
 import { t } from "../../../app/core/i18n.js?v=1";
-import { appsCatalog } from "../../../app/components/apps-catalog.js?v=1";
+import { tileHue } from "./Deck.js?v=5";
+import { Page } from "./Page.js?v=1";
 
-const BACK = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>`;
+export const [appsOpen, setAppsOpen] = createSignal(false);
 
-// `active` — a signal accessor: true while the menu shows this pane. `onBack` returns the menu to its rows.
-export function AppsPane({ active, onBack }) {
-  const cat = appsCatalog({ onOpened: () => store.setMobileMenuOpen(false) });
+const line = (id) => { const k = "widgets." + id + ".about", s = t(k); return s === k ? "" : s; };
 
-  // Each time the pane comes up, the list is read afresh (an app generated a minute ago belongs on it) and the
-  // first screen is the list, never the page he looked at last time.
-  let was = false;
+export function AppsPane() {
+  const [rows, setRows] = createSignal(null);
+  // Read afresh each time the page comes up: an app generated a minute ago belongs on it.
   createEffect(() => {
-    const on = !!active();
-    if (on && !was) cat.load({ pick: false });
-    if (!on && was) cat.clear();
-    was = on;
+    if (!appsOpen()) return;
+    api.getWidgetsRegistry().then((r) => setRows(((r && r.registry) || [])
+      .filter((w) => w && w.surface === "user" && w.id)
+      .sort((a, b) => String(a.name || a.id).localeCompare(String(b.name || b.id))))).catch(() => setRows([]));
   });
+  const open = (id) => {
+    try { document.dispatchEvent(new CustomEvent("hb:open-card", { detail: { id, by: "hand" } })); } catch (_) {}
+    setAppsOpen(false);
+    api.uiEvent("mobile:app_open", { id });
+  };
+  // Two apps never wear the same tile: the same letter on the same colour moves that colour on (rare: a hash clash).
+  let used = new Set();
+  const tile = (w) => {
+    const glyph = w.icon ? String(w.icon) : String(w.name || w.id).trim().charAt(0).toUpperCase();
+    let hue = tileHue(w.id);
+    while (used.has(glyph + hue)) hue = (hue + 47) % 360;
+    used.add(glyph + hue);
+    return h("button", { class: "zm-app", "data-app": w.id, onClick: () => open(w.id) },
+    h("span", { class: "zm-app-ic", style: { "--tile": `hsl(${hue} 62% 46%)` } }, glyph),
+    h("b", null, w.name || w.id),
+    line(w.id) ? h("small", null, line(w.id)) : null);
+  };
 
-  const row = (w) => h("button", { class: "aw-row", "data-app": w.id, onClick: () => cat.select(w.id) },
-    ...cat.rowFace(w));
-
-  const back = () => (cat.sel() ? cat.clear() : onBack());
-
-  return h("div", { class: () => "zm-apps" + (active() ? "" : " is-off"), "data-view": () => (cat.sel() ? "page" : "list") },
-    h("div", { class: "zm-apps-h" },
-      h("button", { class: "hb-iconbtn zm-apps-back", "aria-label": () => t("mobile.back"), onClick: back }, raw(BACK)),
-      h("b", { class: "zm-apps-t" }, () => t("mobile.apps"))),
-    h("div", { class: "zm-apps-list", role: "list" }, () => (cat.sel() ? null : cat.listBody(row))),
-    h("article", { class: "zm-apps-page" }, () => cat.pageBody()));
+  return Page({ id: "apps", open: appsOpen, title: () => t("mobile.apps"), close: () => setAppsOpen(false) },
+    h("div", { class: "zm-apps-grid", role: "list" }, () => {
+      const all = rows(); used = new Set();
+      if (!all) return h("div", { class: "hb-empty-state" }, t("appsWin.loading"));
+      if (!all.length) return h("div", { class: "hb-empty-state" }, t("appsWin.empty"));
+      const sys = all.filter((w) => w.origin === "builtin"), mine = all.filter((w) => w.origin !== "builtin");
+      return [...sys.map(tile), ...(mine.length ? [h("div", { class: "zm-apps-sec" }, t("mobile.apps_mine")), ...mine.map(tile)] : [])];
+    }));
 }
