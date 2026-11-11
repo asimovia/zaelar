@@ -40,6 +40,11 @@ def rig(monkeypatch):
     _ended._LISTING_DELIVERIES.clear()
     monkeypatch.setattr(sheet, "apply_action", lambda action, payload=None: calls["present"].append(
         {"action": action, "payload": payload or {}}) or {"ok": True, "shown": len((payload or {}).get("items", []))})
+    # The recorded sheet holds what was last presented, every row kept (V2-879 O3: the pass reads the sheet back).
+    def _holding(s=""):
+        rows = list(calls["present"][-1]["payload"].get("items") or []) if calls["present"] else []
+        return {"state": "kept" if rows else "none", "kept": len(rows), "rejected": 0, "rows": rows}
+    monkeypatch.setattr(sheet, "holding", _holding)
     monkeypatch.setattr(sheet, "prune_sheets", lambda *a, **k: 0)
     monkeypatch.setattr(sheet, "instance_id", lambda s="": f"results::{s}" if s else "results")
     monkeypatch.setattr(esc, "escalate_to_slowbrain",
@@ -101,7 +106,8 @@ def test_a_search_that_explodes_never_reaches_the_turn(rig, monkeypatch):
 
 
 def test_compose_context_speaks_rows_without_urls():
-    ctx = search_listing.compose_context({"items": _items(3)})
+    from nucleo.acts.search_sheet import _to_row
+    ctx = search_listing.compose_context([_to_row(i) for i in _items(3)])   # the rows as the sheet holds them
     assert "Anuncio 0" in ctx and "Madrid" in ctx
     assert "https://" not in ctx, "the spoken context must never carry URLs — the voice would read them"
 
