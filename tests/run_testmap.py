@@ -6960,6 +6960,10 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_one_wait_is_the_row.py"]},
         {"id": "2.1685", "title": "No reader of a yes or a no exists outside the row's declared answers or the brief's pick (V2-878 §4b): the yes/no word tables and every reader built on them went (widget gate, task gate, browser click, durable answer, the model's tool guard, the voice's early path); without a pick only a reply that IS one of the question's two declared answers in his language decides (`consent_ask.declared_answer`); no pattern in product code reads answer words of both sides; disarmed (a yes/no regex back in any product module) red",
             "ch": UNIT, "paths": ["tests/infrastructure/unit/test_no_yes_no_reader_outside_the_row.py"]},
+        {"id": "2.1676", "title": "The dialog window is cut by the day's silence and holds what was said as it was said (V2-878 §3 (b)(c)): one reader (`dialog.live_slice`) keeps the last ten AND nothing before the last silence of LIVE_GAP_MIN; the model reads role and words only; a reply he cut stays marked and ends open «…»; a line said out of turn reaches the conversation record with its notice",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_the_window_is_cut_by_the_days_silence.py"]},
+        {"id": "2.1677", "title": "An errand said in a language without spaces is still ONE errand (V2-878 §3 (d), JA/ZH/TH): the same-errand yardstick reads character bigrams when a sentence is one or two long runs; spaced languages untouched; task recall reads words in any alphabet",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_an_errand_in_a_language_without_spaces_is_still_one_errand.py"]},
         {"id": "7.14", "title": "Aislamiento del motor desechable: el timeline del operador nunca es el destino",
             "ch": UNIT, "paths": ["tests/platform/tests/test_sandbox_isolation.py"]},
         {"id": "7.2", "title": "Observer SSE", "ch": HTTP, "paths": [
