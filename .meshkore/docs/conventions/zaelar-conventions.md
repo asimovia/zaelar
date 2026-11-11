@@ -48,7 +48,7 @@ reference look) follows a few explicit rules so no component invents its own. Th
   chrome/button icon (header, toggle, close) is the bar for converting.
 - **Two icon-button sizes, not six.** `.ic` (34×34, radius 9 — TopBar's own project controls) and `.hb-icbtn`
   (30×30, radius 9 — the shared utility button for close/refresh/delete/zoom-style controls inside panels and
-  modals: StatusPanel, CronPanel, ChatWall, MemoryMap, DebugPanel, VaultModal). Add the `hb-icbtn` class alongside
+  modals: StatusPanel, ChatWall, MemoryMap, DebugPanel, VaultModal). Add the `hb-icbtn` class alongside
   a component's own class (e.g. `class="cw-x hb-icbtn"`) so state modifiers (`.danger`, `.on`, `.mm-close`) still
   layer on top. The orb's own `.orbic` (frameless, 22px svg) is a THIRD, deliberate exception — it's the eye, leave
   it alone.
@@ -67,7 +67,7 @@ reference look) follows a few explicit rules so no component invents its own. Th
   same as a real terminal does. Don't theme-follow these; don't hardcode fresh hex for them either — use the tokens.
 - **Widget kit** (`hbk-*` in `styles.css §WIDGET KIT`, documented in `widgets/AGENTS.md`): when a widget is
   touched, migrate its hand-rolled card/badge/button CSS to the kit as part of that change.
-- **Scope**: these rules govern the app shell (TopBar, StatusPanel, CronPanel, ChatWall, ConfigPanel,
+- **Scope**: these rules govern the app shell (TopBar, StatusPanel, ChatWall, ConfigPanel,
   SettingsModal, WizardModal, VaultModal, MemoryMap, DebugPanel). Widgets adopt the shared icons widget by widget,
   as each is touched, rather than in a big-bang rewrite.
 

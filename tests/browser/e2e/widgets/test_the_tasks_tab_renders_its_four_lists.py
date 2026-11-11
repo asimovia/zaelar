@@ -107,11 +107,10 @@ READ = """() => {
     resultBtns: [...document.querySelectorAll('.cw-tasklist .cw-proc-row.hist .cron-b')].map(e => e.textContent.trim()),
     reopened: window.__reopened || [],
     opened: window.__opened || [],
-    // V2-738 — the form for creating one BY HAND lives under these two sub-tabs, and it is the one piece of
-    // this panel that is not a list. Counted rather than assumed: it is built by a conditional whose two
-    // branches look identical from the source.
-    cronInputs: document.querySelectorAll('.cw-tasks .cron-add .cron-in').length,
-    cronButton: !!document.querySelector('.cw-tasks .cron-create'),
+    // V2-883 — no form to create one BY HAND: every field, button or text box the panel draws is counted, so a
+    // form under any class name is seen, and the delete button each row keeps is the one control it may have.
+    formFields: document.querySelectorAll('.cw-tasks input, .cw-tasks textarea, .cw-tasks select').length,
+    rowDeletes: document.querySelectorAll('.cw-tasklist .cw-proc-row.sched .cron-b.danger').length,
     // …and the failure mode that put this here: a function handed to the DOM layer where a node was expected
     // is converted with String(), so the panel paints its SOURCE CODE. Nothing throws, so `errors` stays
     // empty and every list above still passes — the operator is the one who finds it, on screen.
@@ -332,13 +331,13 @@ def test_the_panel_never_paints_its_own_source(seen):
             "A function reached the DOM layer where a node was expected and was String()-ed.")
 
 
-def test_creating_a_periodic_task_BY_HAND_is_reachable(seen):
-    """And the other half of the same defect: what the stringified function was SUPPOSED to build. The form
-    is offered only under the two sub-tabs that have a clock, which is why «it is drawn» and «it is drawn in
-    the right place» are one assertion and not two."""
+def test_the_panel_has_no_form_to_create_a_job_by_hand(seen):
+    """V2-883 — a periodic or scheduled job is created by ASKING the agent, which can read it back by reference and
+    cancel it through one door; the hand-filled «when / name / what to do / Schedule» form is gone. Each row keeps
+    its next run (above) and its delete button."""
+    for scope in ("live", "done", "recurring", "scheduled", "blank"):
+        assert seen[scope]["formFields"] == 0, f"«{scope}» still draws {seen[scope]['formFields']} form fields"
     for scope in ("recurring", "scheduled"):
-        assert seen[scope]["cronInputs"] == 3, (
-            f"«{scope}» must offer when / name / prompt, got {seen[scope]['cronInputs']} fields")
-        assert seen[scope]["cronButton"], f"«{scope}» draws no button to create it"
-    for scope in ("live", "done"):
-        assert seen[scope]["cronInputs"] == 0, f"«{scope}» has no clock and must not offer a schedule form"
+        assert seen[scope]["rowDeletes"] == len(seen[scope]["rowTitles"]) > 0, (
+            f"«{scope}»: every job row keeps its delete button — {seen[scope]['rowDeletes']} for "
+            f"{seen[scope]['rowTitles']}")

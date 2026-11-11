@@ -115,6 +115,9 @@ async def _exec_allow(action: str, payload: dict, rec) -> dict:
                                            "ref": f"cron:{out.get('id')}"}}
         except Exception as e:  # noqa: BLE001
             return {"ok": False, "error": f"no pude programarlo: {e}"}
+    if action in ("schedules", "unschedule"):    # V2-883: the jobs' one reader and one door by reference
+        from nucleo.pulse import scheduler_refs
+        return await asyncio.to_thread(scheduler_refs.worker_act, action, payload)
     if action == "read_widget":
         wid = str(payload.get("id") or payload.get("widget_id") or "")
         try:
@@ -127,8 +130,8 @@ async def _exec_allow(action: str, payload: dict, rec) -> dict:
                 _id, _varios = _nm.resolve(wid)
                 if _id:
                     wid, man = _id, runtime.get(_id)
-                if not man:
-                    return {"ok": False, "error": _nm.not_found(wid, _varios)}
+                if not man:   # V2-883: not a card — and his scheduled jobs, which are not cards, have their reader
+                    return {"ok": False, "error": _nm.not_found(wid, _varios) + " " + _m._NOT_A_CARD}
 
             def _call(view_data):
                 try:

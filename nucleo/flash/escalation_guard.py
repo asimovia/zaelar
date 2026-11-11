@@ -59,6 +59,25 @@ def declared_tasks() -> str:
     return " ".join(DECLARED_TASKS)
 
 
+#: The doors that are acts of the TURN although no card declares them (V2-883), each declaring its own sentence:
+#: `module:NAME` → read at question time, so the door that does the act is the one that says it is done on the spot.
+TURN_ACT_DOORS = ("nucleo.pulse.scheduler:TURN_ACTS",)
+
+
+def declared_turn_acts() -> str:
+    """The turn acts the doors outside the cards declare — the escalate question's «done on the spot» beyond the cards.
+    An order over a periodic job was opened as a worker's errand that had no door to it (V2-883); declared here, the
+    brief reads it as `handle_inline` and the route opens nothing. "" when a declaration cannot be read."""
+    out = []
+    for ref in TURN_ACT_DOORS:
+        try:
+            mod, name = ref.split(":", 1)
+            out.append(str(getattr(__import__(mod, fromlist=[name]), name) or "").strip())
+        except Exception as e:  # noqa: BLE001 — a door that cannot declare itself just isn't listed
+            __import__("logging").getLogger(__name__).debug(f"escalation_guard: {ref} unreadable: {e!r}")
+    return " ".join(x for x in out if x)
+
+
 # V2-831 T-26 — ONE text from ONE known source is inline: «a one page summary of the bitcoin whitepaper, in a
 # document» read `escalate` (the old wording sent every «summary» to a worker) and took 274-629 s for what one
 # look-up and one written answer do (`compose_rung`).

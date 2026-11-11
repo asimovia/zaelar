@@ -70,7 +70,7 @@ class Decision:
     payload: dict[str, Any] = field(default_factory=dict)
 from nucleo.acts.tools import CATALOG   # refactor2710-05: the doors the schemas below are offered for
 from nucleo.flash.router_catalog import TOOLS   # V2-556: el catálogo (dato puro) vive aparte
-
+from nucleo.pulse.scheduler_refs import any_scheduled   # V2-883: the state that offers `cancel_scheduled`
 
 
 # ── tool FAMILIES + situational gating ─────────────────────────────────────────────────────────────────────
@@ -81,7 +81,7 @@ FAMILIES: dict[str, tuple[str, ...]] = {
     "core":      ("escalate_to_slowbrain", "set_style_directive", "not_understood"),
     "widgets":   ("show_widget", "close_widget", "widget_data", "delete_widget", "restore_widget", "confirm_widget_delete",
                   "fullscreen_widget", "manage_widget_alias", "show_panel", "arrange_canvas"),
-    "workers":   ("send_to_worker", "stop_worker", "answer_worker", "resume_task"),
+    "workers":   ("send_to_worker", "stop_worker", "answer_worker", "resume_task", "cancel_scheduled"),
     "cluster":   ("connect_cluster", "set_cluster_objective", "cluster_send"),
     "messaging": ("reply_message",),
     "media":     ("play_music", "play_video", "show_images"),
@@ -125,7 +125,7 @@ _SITUATIONAL = {
     "send_to_worker":        lambda ctx: ctx.get("has_workers", False),
     "stop_worker":           lambda ctx: ctx.get("has_workers", False),
     "answer_worker":         lambda ctx: ctx.get("ask_pending", False),
-    "resume_task":           lambda ctx: ctx.get("has_pending", False),   # V2-799: only when something is pending
+    "resume_task":           lambda ctx: ctx.get("has_pending", False), "cancel_scheduled": lambda ctx: ctx.get("has_scheduled", False),   # V2-799 / V2-883: only when something is pending / scheduled
     # V2-085 — three NEW gates, all based on REAL SYSTEM CAPABILITY (if it does not exist, the tool cannot work and
     # offering it only invites the model to promise something impossible):
     "reply_message":         lambda ctx: ctx.get("messaging_on", True),   # without a messaging connector, there is no recipient
@@ -163,7 +163,7 @@ def tool_context(*, open_widgets=None, has_catalog: bool = True,
                  cluster_widget_open: bool = True, messaging_on: bool = True,
                  has_vault: bool = True, has_video_widget: bool = True, has_image_widget: bool = True,
                  cluster_connected: bool = False, has_pending: bool = False,
-                 allow_auth: bool | None = None) -> dict:
+                 allow_auth: bool | None = None, has_scheduled: bool | None = None) -> dict:
     """Builds the `tools()` `context` from inexpensive state signals. `has_widgets` = a widget catalog exists
     (there is always one today) OR one is open. `has_workers` = live Brain Workers exist (→ send/stop_worker).
     `ask_pending` = a worker awaits a response (→ answer_worker). `messaging_on`/`has_vault`/`has_video_widget`
@@ -179,7 +179,8 @@ def tool_context(*, open_widgets=None, has_catalog: bool = True,
             "cluster_widget_open": bool(cluster_widget_open), "messaging_on": bool(messaging_on),
             "has_vault": bool(has_vault), "has_video_widget": bool(has_video_widget),
             "has_image_widget": bool(has_image_widget),
-            "cluster_connected": bool(cluster_connected), "has_pending": bool(has_pending)}
+            "cluster_connected": bool(cluster_connected), "has_pending": bool(has_pending),
+            "has_scheduled": any_scheduled() if has_scheduled is None else bool(has_scheduled)}
 
 
 def tools_report(offered: list[dict]) -> dict:

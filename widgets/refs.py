@@ -627,7 +627,7 @@ def resolve(widget_id: str, action: str, ref: str, payload: dict | None = None,
                     payload[field] = idx[_got[0] - 1]["id"]
                     return RefResult(True, payload)
 
-    scored = sorted(((_score(query, _norm(i["label"])), i) for i in idx), key=lambda s: -s[0])
+    scored = _ranked(query, idx)
     best_score, best = scored[0]
     second = scored[1][0] if len(scored) > 1 else 0.0
     if best_score < 1.0:
@@ -647,6 +647,44 @@ def resolve(widget_id: str, action: str, ref: str, payload: dict | None = None,
             return RefResult(False, needs="ambiguous", candidates=options)
     payload[field] = best["id"]
     return RefResult(True, payload)
+
+
+def _ranked(query: str, idx: list[dict]) -> list[tuple[float, dict]]:
+    """Every row scored against the reference, best first — the one ranking `resolve` and `match` read."""
+    return sorted(((_score(query, _norm(i["label"])), i) for i in idx), key=lambda s: -s[0])
+
+
+def match(ref: str, idx: list[dict]) -> RefResult:
+    """The row a spoken reference names in an index that is NOT a card's (V2-883: the scheduler's jobs), read the way
+    `resolve` reads a card's: its id as given, an exact label, a position («the first one»), then the same scorer and
+    the same tie rule — one resolver, so a job and a card row answer «which one» alike. `ok` → `payload["id"]`;
+    otherwise `needs` (`ref` · `no_match` · `ambiguous`) with the candidates to ask about. Never guesses, never raises."""
+    try:
+        rows = [i for i in (idx or []) if isinstance(i, dict) and i.get("id") and i.get("label")]
+        given = str(ref or "").strip()
+        query = _norm(given)
+        if not query:
+            return RefResult(False, needs="ref", candidates=_qualified(rows)[:6])
+        if not rows:
+            return RefResult(False, needs="no_match")
+        for pick in ([i for i in rows if str(i["id"]) == given], [i for i in rows if _norm(i["label"]) == query]):
+            if len(pick) == 1:
+                return RefResult(True, {"id": pick[0]["id"]})
+        if given.isdigit():   # a number here is an id the index printed: one it does not hold is no row, not a position
+            return RefResult(False, needs="no_match", candidates=_qualified(rows)[:6])
+        pos = _position_ref(query, len(rows))
+        if pos is not None:
+            return RefResult(True, {"id": rows[pos]["id"]})
+        scored = _ranked(query, rows)
+        best_score, best = scored[0]
+        if best_score < 1.0:
+            return RefResult(False, needs="no_match", candidates=_qualified(rows)[:6])
+        close = [i for s, i in scored if best_score - s < 0.5]
+        if len(close) > 1 and len(_qualified(close)) > 1:
+            return RefResult(False, needs="ambiguous", candidates=_qualified(close[:4]))
+        return RefResult(True, {"id": best["id"]})
+    except Exception:  # noqa: BLE001 — an unreadable index names nothing: ask, never act
+        return RefResult(False, needs="no_match")
 
 
 def _one_name_lens(widget_id: str, action: str, rows: list[dict]) -> bool:

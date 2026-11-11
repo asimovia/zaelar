@@ -25,4 +25,4 @@ def test_an_appointments_alert_names_the_appointments_own_time(monkeypatch):
         {"name": "water the plants", "schedule": "2026-09-29 18:00", "prompt": "water the plants"}])
     line = live_record._cron_line()
     assert "la cita es el 2026-09-29 a las 09:00; el aviso suena 2026-09-29 07:00" in line, line
-    assert "water the plants (el aviso suena 2026-09-29 18:00)" in line
+    assert "«water the plants» (el aviso suena 2026-09-29 18:00)" in line   # V2-883: listed by reference

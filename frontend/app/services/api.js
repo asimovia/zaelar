@@ -187,9 +187,7 @@ export const memoryViewer = (path, params = {}) => {
 };
 
 // ---- proactive tasks/reminders (loop orquestador propio, nucleo/pulse/scheduler.py) ----
-export const cronList = () => fetch("/api/cron").then(json).catch(() => ({ jobs: [] }));
 export const cronAction = (action, ref) => postJSON("/api/cron/" + action, { ref }).then(json).catch(() => ({ ok: false }));
-export const cronCreate = (body) => postJSON("/api/cron/create", body).then(json).catch(() => ({ ok: false }));
 
 // ---- el TABLERO DE PROCESOS (V2-728 · V2-744) — «ver resultados» de un proceso terminado ----
 // The board itself is fetched by `core/store.js` (it owns the four scopes and the ⚙ switch); this is the one
