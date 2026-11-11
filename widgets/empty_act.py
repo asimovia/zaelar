@@ -10,9 +10,11 @@ of the declared slots» alone would refuse calls that work today. The handler is
 card's own data says whether anything happened. So, at the single funnel (`server_api._dispatch`): a call that carries
 keys of its own and fills none of the act's declared slots (`contract.unfilled`) runs; if the card answered ok and its
 data is exactly what it was before, the answer becomes the refusal (`slots_unfilled`, naming the declared slots) — the
-turn's one mouth says it in his language, never «done». An act that DID change the card keeps its answer, and what it
-changed is judged by the act's declared end state (`done_when`), not here. A backed card (queued to its owner) and an
-unreadable view are left as they are: this never invents a failure it cannot see.
+turn's one mouth says it in his language, never «done». An act whose content is a subset of its slots declares it
+(`fills`, V2-879 O1): a call that fills only its modifiers (`title`, `near`) fills nothing. An act that DID change
+the card keeps its answer, and what it changed is judged by the act's declared end state (`done_when`), not here.
+A backed card (queued to its owner) and an unreadable view are left as they are: this never invents a failure it
+cannot see.
 """
 from __future__ import annotations
 
@@ -36,12 +38,25 @@ async def _view(wid: str, payload: dict):
         return None
 
 
+def what_it_fills(spec: dict) -> dict:
+    """The act's spec with its payload narrowed to the slots it FILLS, when the manifest declares them (`fills`).
+
+    A modifier is a slot too — `map.show {"title": "cafés", "places": []}` sent `title` and filled a declared key, so
+    the call read as filled while it carried nothing to paint (V2-879 O1, measured: an empty map). An act whose
+    content is a subset of its slots names that subset once in its manifest; the funnel judges the call by it."""
+    fills = (spec or {}).get("fills")
+    declared = (spec or {}).get("payload")
+    if not isinstance(fills, list) or not isinstance(declared, dict):
+        return spec
+    return {**spec, "payload": {k: v for k, v in declared.items() if k in fills} or declared}
+
+
 async def run(wid: str, action: str, payload: dict, act):
     """`await act(wid, action, payload)`, with its answer turned into the `slots_unfilled` refusal when the call
     filled none of the act's declared slots and the card did not change. Never raises beyond what `act` raises."""
     from . import contract
     try:
-        probe = contract.unfilled(wid, action, contract._spec(wid, action), payload)
+        probe = contract.unfilled(wid, action, what_it_fills(contract._spec(wid, action)), payload)
     except Exception as e:  # noqa: BLE001
         logger.debug(f"empty_act: {wid}:{action} unreadable — {e!r}")
         probe = None
