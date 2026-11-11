@@ -251,6 +251,10 @@ def _flash_parts(open_ids: set[str], recent_ids: list[str] | None = None,
         "Un COMENTARIO u observación (\"ese vídeo es antiguo\", \"qué pequeño se ve\", \"hoy juega tal equipo\") NO "
         "es una orden: NO abras ni cierres NADA por un comentario. Actúa solo ante una PETICIÓN con su verbo "
         "(abre/cierra/muestra/pon/quita/amplía). Ante la duda, no hagas nada de canvas y sigue la conversación.\n"
+        # V2-887 step 5 — measured 2026-11-11: «añádeme el viernes de 12 a 8, partido del X» → «¿te confirmo el
+        # nombre tal cual?» and no call; the operator's rule is act at ~60 % and let him correct.
+        "Una PETICIÓN clara se HACE ya con lo que tienes y dices qué hiciste; él corrige. Pregunta solo el dato "
+        "que falte (a quién, qué día), nunca «¿lo hago?». Nunca digas «hecho» sin haberlo llamado.\n"
         "\"Cierra el resto / los demás / todo menos X\" NO es [[close]] (que cierra TODO, incluido lo que usáis): "
         "cierra los OTROS uno a uno con [[close:ID]] y CONSERVA el widget que el operador quiere mantener.\n"
         "La línea «En pantalla» de AHORA MISMO ES lo que el operador tiene DELANTE: es tu "

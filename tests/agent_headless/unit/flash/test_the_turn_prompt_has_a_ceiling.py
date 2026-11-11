@@ -35,8 +35,9 @@ MARGIN = 64
 #: used to start tomorrow, so «wednesday» said on a Wednesday could only be read as next week. Measured by diff.
 # V2-887 step 3+4 (2.1699): +146 / +372 — each open card that reads an account names its sources, connected or not
 # («GOOGLE conectado: no» with Contacts open), and the card-alias tool says it is never a person's alias
-CEILINGS = {(): 24_680, ("agenda", "mensajeria"): 29_756,
-            ("agenda", "mensajeria", "youtube", "contactos", "results", "musica"): 37_164}   # V2-795: musica usage trimmed
+# V2-887 step 5 (2.1700): +193 everywhere — a clear request is DONE with what there is, only a missing fact is asked
+CEILINGS = {(): 24_873, ("agenda", "mensajeria"): 29_949,
+            ("agenda", "mensajeria", "youtube", "contactos", "results", "musica"): 37_357}   # V2-795: musica usage trimmed
 TARGET_EVERYDAY = 30_000
 
 

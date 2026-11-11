@@ -227,8 +227,9 @@ async def settle_what_is_pending(*, _ans, _ask_waiting, _auth_pending, _brief, _
                                               quiet=not (acted["widget"] or data_done["v"] or style_fired["v"]
                                                          or music_req["v"] is not None or worker_acted["v"]),
                                               held=bool(confirm_state.get("opened") or clarify["msg"]))
-    if data_done["v"] and not spoken_text and _ack_allowed \
-            and escalate_req["v"] is None and search_req["v"] is None:
+    if escalate_req.get("send_task") and data_done["v"] and not spoken_text:   # V2-887: a routed send is a START
+        spoken_text = __import__("nucleo.turn.reply", fromlist=["x"]).routed_send_started(send, speech) or spoken_text
+    if data_done["v"] and not spoken_text and _ack_allowed and not escalate_req.get("send_task") and escalate_req["v"] is None and search_req["v"] is None:
         try:
             from i18n import langs as _langs   # same object as the voice.engine.core shim
             _lg = _langs.current_language()
@@ -243,7 +244,6 @@ async def settle_what_is_pending(*, _ans, _ask_waiting, _auth_pending, _brief, _
         spoken_text = _receipts.bare_ack(spoken_text, {str(w).split("::", 1)[0] for w, _a in (data_done.get("ops") or [])},
                                          turn=__import__("voice.trace", fromlist=["x"]).current())
         send(speech.sanitize(spoken_text, drop_metadata=False))
-
 
     # Regla de usuario fijada/retirada SIN frase hablada → ack corto (V2-046 A1, visto en el probe: la
     # RETIRADA dejaba el turno MUDO). Nunca mudo al aceptar/quitar una regla.
