@@ -88,11 +88,14 @@ def _search_id(q: str, blocked: list = None, blocked_ids: set = None) -> dict:
     channel he told us to filter out."""
     q = (q or "").strip()
     out = {"videoId": "", "title": "", "channel": "", "published": "", "latest": bool(_LATEST_RE.search(q))}
-    hits = _search_many(q, 6 if (blocked or blocked_ids) else 1)
+    hits = _search_many(q, 6 if (blocked or blocked_ids) else 3)
     if blocked:
         hits, _ = _drop_blocked(hits, blocked)
     if blocked_ids:   # V2-634: a video the player already refused is never offered again
         hits = [h for h in hits if h["videoId"] not in blocked_ids]
+    from . import embed_check   # V2-877 #6: nor one whose owner refuses the embed (the first hits, checked at once)
+    bad = embed_check.refused([h["videoId"] for h in hits[:3]])
+    hits = [h for h in hits if h["videoId"] not in bad]
     if hits:
         h = hits[0]
         out.update({"videoId": h["videoId"], "title": h["title"] or q,
