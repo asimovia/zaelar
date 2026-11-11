@@ -23,6 +23,7 @@ import pytest
 from memory import db as memdb
 from memory import embeddings as mememb
 from memory import tasks_store as ts
+from tests.waiting import until
 
 SPEC = "hazme una app que me diga la hora en Tokio"
 
@@ -93,10 +94,7 @@ def _build_then_stop(monkeypatch, reason: str):
 
     async def _go():
         run = asyncio.create_task(s.run(SPEC))
-        for _ in range(500):                                 # until the agent is running
-            if "g9" in generator._PROCS:
-                break
-            await asyncio.sleep(0.01)
+        await until(lambda: "g9" in generator._PROCS, "the headless agent to be running", timeout_s=5)
         await asyncio.sleep(0.05)
         if reason == ended.SHUTDOWN:                         # the lifespan's ORDERLY shutdown: the real door
             from nucleo.dispatch import control
