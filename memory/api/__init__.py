@@ -42,7 +42,7 @@ from .reads import (  # noqa: F401
 from .sleep import concept_names, fold_concepts, register_sleep_phase, same_person_records  # noqa: F401 — V2-854 F3, V2-858 T549
 from .._prompt import (  # noqa: E402,F401 — the PRESENTATION (what is painted for a model) lives in `_prompt.py`
     compose_state, critical_facts, day_block, day_ledger, recent_short, recent_window, salient_long, seconds_since_last_conv)
-from ..history import conversation, provenance  # noqa: E402,F401 — V2-802 T-06 / V2-803 T-01
+from ..history import LIVE_GAP_MIN, conversation, provenance  # noqa: E402,F401 — V2-802 T-06 / V2-803 T-01; V2-878 §3: the silence that cuts the window
 # ── playbook routes (V2-594, renamed V2-859): `nucleo/routes/` reaches the table only through the facade ──
 from ..routes_store import route_forget, route_hit, route_upsert, routes_for, routes_learned  # noqa: E402,F401
 

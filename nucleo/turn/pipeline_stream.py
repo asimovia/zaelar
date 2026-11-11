@@ -123,7 +123,11 @@ async def stream_the_reply(self, motor, *, FastClient, messages, spec, _turn_too
         # acababa de dar (ver dialog.push_user para el caso real de la piscina). Coalesce por prefijo, así los
         # trozos acumulativos del STT no duplican la frase.
         _dialog.push_user(brain._window, text)
-        del brain._window[:-motor._WINDOW_MAX]
+        if (_said := "".join(spoken).strip()):
+            # V2-878 §3 — what was SAID before the cut is in the window, marked: the next turn reads «I was saying X»
+            # instead of a reply that never existed (the partial used to vanish, and the model repeated it whole).
+            brain._window.append({"role": "assistant", "content": _dialog.sanitize_reply(_said), "cut": True})
+        _dialog.live_slice(brain._window, motor._WINDOW_MAX)
         if not "".join(spoken):
             _acc_mod.unanswered_by(brain, text)   # V2-776 D0 — cut before its first word
         # El relleno de ESTE turno se va con él: es audio DENTRO de la locución de la respuesta (V2-529),
