@@ -22,8 +22,11 @@ import time
 SILENT_GRACE_S = 4.0
 #: The longest a typed order is ever held, whatever the microphone is doing.
 CAP_S = 8.0
+#: Voice long enough to interrupt a reply (`ZAELAR_MIN_INTERRUPTION_SEC`, read by the voice pipeline too): the
+#: same length makes a turn superseded by his resumed voice (V2-888), so a cough is neither.
+MIN_VOICE_S = 0.6
 
-_state = {"onset": 0.0, "end": 0.0, "speaking": False, "committed": 0.0}
+_state = {"onset": 0.0, "end": 0.0, "speaking": False, "committed": 0.0, "last_onset": 0.0}
 
 
 def _now(now: float | None) -> float:
@@ -35,6 +38,7 @@ def note_onset(now: float | None = None) -> None:
     t = _now(now)
     if _state["onset"] <= _state["committed"]:
         _state["onset"] = t
+    _state["last_onset"] = t
     _state["speaking"] = True
 
 
@@ -66,5 +70,32 @@ def must_wait(since: float, now: float | None = None) -> bool:
     return t - since < CAP_S and _state["onset"] <= since and voice_open(t)
 
 
+def mark(now: float | None = None) -> float:
+    """The instant a reply began to be composed: what `resumed_since` measures against."""
+    return _now(now)
+
+
+def min_voice_s() -> float:
+    import os
+    try:
+        return float((os.getenv("ZAELAR_MIN_INTERRUPTION_SEC") or "").strip() or MIN_VOICE_S)
+    except ValueError:
+        return MIN_VOICE_S
+
+
+def resumed_since(since: float | None, now: float | None = None) -> bool:
+    """V2-888 — he started talking AFTER `since` and has voiced at least `min_voice_s()`: the reply composed from
+    `since` answers a sentence he went on with. Structural, like `_extends`, for an ear that gives every segment
+    as a turn of its own (Flux): «A ver…» [pause] «ponme un videoclip» never grows by prefix. No mark (a typed
+    turn) is never superseded by the microphone."""
+    if not since:
+        return False
+    t, on = _now(now), _state["last_onset"]
+    if on <= since:
+        return False
+    voiced = (t if _state["speaking"] else _state["end"]) - on
+    return voiced >= min_voice_s()
+
+
 def reset() -> None:
-    _state.update(onset=0.0, end=0.0, speaking=False, committed=0.0)
+    _state.update(onset=0.0, end=0.0, speaking=False, committed=0.0, last_onset=0.0)

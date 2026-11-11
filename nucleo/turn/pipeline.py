@@ -239,7 +239,7 @@ async def run(self, motor) -> None:
     _close = {**_scope, "motor": motor, "_acc_ms": g["_acc_ms"], "_amap_ms": g["_amap_ms"],
               "_busy_at_start": _busy_at_start, "_escalate_mod": _escalate_mod, "_gate_ms": g["_gate_ms"],
               "_op_text": _op_text, "_start_web_auth": _tx.start_web_auth, "_t_entry": g["_t_entry"],
-              "first_ms": m.first_ms(), "first_turn": first_turn,
+              "first_ms": m.first_ms(), "first_turn": first_turn, "_superseded": self._superseded,
               "spoken_text": spoken_text, "system": p['system'], "t0": t0, "timings": p['timings']}
     await _turn_after.close_the_turn(
         **_kw(_turn_after.close_the_turn, _close),

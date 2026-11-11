@@ -120,6 +120,7 @@ from voice.engine.llm.providers import acc_notices as _accn
 from voice.engine.llm.providers import attention_turn as _attention_turn
 from nucleo.flash import harness_turn as _ht   # V2-661: what a turn OWES (shared with the probe)
 from nucleo.input import stt as _acc_mod   # V2-776 D0: a turn that died unanswered is un-consumed
+from nucleo.input import typed as _typed_order   # V2-888: his resumed voice supersedes a reply begun before it
 from nucleo import surfaces as _surfaces_mod   # demo A1 2026-09-28: an errand nobody labelled takes the brief's surface
 
 _acc_notice_plan = _accn._acc_notice_plan
@@ -196,6 +197,9 @@ class NucleoLLM(llm.LLM):
 
 
 class NucleoLLMStream(llm.LLMStream):
+    def __init__(self, *a, **k) -> None:
+        super().__init__(*a, **k)
+        self._resume_mark = _typed_order.mark()   # V2-888: the voice he adds after this is a sentence going on
     # ── UN TURNO QUE MUERE DEJA RASTRO (2026-08-10) ───────────────────────────────────────────────────────────────
     # Incidente real (sesión 13:20:50): el operador dictó una petición larga —ferry Dénia→Ibiza, fechas, medidas del
     # coche, 4 pasajeros— y su turno (T6) se quedó SIN RESPUESTA. 13 ms después entró el turno siguiente
@@ -225,7 +229,9 @@ class NucleoLLMStream(llm.LLMStream):
         mine = getattr(self, "_turn_text", "")
         if not mine:
             return False
-        return _extends(mine, (getattr(self._llm, "_utterance", None) or {}).get("text", ""))
+        # V2-888: or he resumed talking after this reply began (Flux gives each segment as its own turn, no prefix).
+        return (_extends(mine, (getattr(self._llm, "_utterance", None) or {}).get("text", ""))
+                or _typed_order.resumed_since(getattr(self, "_resume_mark", None)))
 
     def _note_death(self, reason: str) -> None:
         """Conserva la frase del operador y registra DÓNDE murió el turno. Idempotente: el `except` del stream ya

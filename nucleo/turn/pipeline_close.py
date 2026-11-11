@@ -13,10 +13,11 @@ from loguru import logger
 from nucleo.request import ending as _ending   # a view whose ending is held is not an act on his request (C1)
 from nucleo.turn import mouth as _mouth   # V2-851 F5: what the turn's doors owe is said before it closes
 from nucleo.turn import pipeline_errands as _errands
+from nucleo.turn import resume_cut as _resume_cut   # V2-888
 from nucleo.turn import wait_lines as _wait_lines
 
 
-async def close_the_turn(*, motor, send, _acc_ms, _amap_ms, _brief, _busy_at_start, _dialog, _escalate_mod, _filler_audio, _gate_ms, _op_text, _prev_pending, _router, _shown_ids, _start_web_auth, _t_entry, _tool_fired, _turn_tools, acted, aside, attention, brain, clarify, confirm_state, data_done, deduped, emit, escalate_req, first_ms, first_turn, images_req, listing_req, llm_metrics, music_req, operator_text, read_req, recall_req, reopen_req, reveal_req, search_req, spec, speech, spoken_text, style_fired, system, t0, text, timings, worker_acted) -> dict:
+async def close_the_turn(*, motor, send, _acc_ms, _amap_ms, _brief, _busy_at_start, _dialog, _escalate_mod, _filler_audio, _gate_ms, _op_text, _prev_pending, _router, _shown_ids, _start_web_auth, _t_entry, _tool_fired, _turn_tools, acted, aside, attention, brain, clarify, confirm_state, data_done, deduped, emit, escalate_req, first_ms, first_turn, images_req, listing_req, llm_metrics, music_req, operator_text, read_req, recall_req, reopen_req, reveal_req, search_req, spec, speech, spoken_text, style_fired, system, t0, text, timings, worker_acted, _superseded=None) -> dict:
     _typed_turn = False
     try:
         _typed_turn = attention.was_typed()
@@ -48,7 +49,7 @@ async def close_the_turn(*, motor, send, _acc_ms, _amap_ms, _brief, _busy_at_sta
     # keeps HIS words (fix08): notes are one-shot, and kept in the window they read as pending news on every later
     # turn. The barge-in path above keeps the composed text: that turn never answered, so its notes stay visible.
     _dialog.push_user(brain._window, operator_text)
-    if spoken_text:
+    if spoken_text and not _resume_cut.reply_unheard(_superseded, _tool_handled, brain=brain, text=text, spoken_text=spoken_text, emit=emit):   # V2-888
         # Guarda la respuesta SANEADA (anti-degeneración V2-032): si el modelo empalmó/repitió, no reinyectamos
         # esa basura al turno siguiente → cortamos el bucle de realimentación que degrada al modelo pequeño.
         brain._window.append({"role": "assistant", "content": _dialog.sanitize_reply(spoken_text)})
