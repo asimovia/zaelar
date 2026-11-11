@@ -13,6 +13,8 @@ LK_CONTAINER="zaelar-livekit"
 : "${BRAIN:=nucleo}"
 export BRAIN
 
+# shellcheck source=lib/livekit-ownership.sh
+source "$HERE/scripts/lib/livekit-ownership.sh"
 AGENT_PID=""; WEB_PID=""; LK_PID=""; LK_MODE=""; DAEMON_PID=""
 cleanup() {
   echo; echo "shutting down…"
@@ -48,7 +50,10 @@ SELF_PID=$$
 for pid in $(pgrep -f "scripts/run-livekit.sh" 2>/dev/null || true); do
   [[ "$pid" != "$SELF_PID" ]] && kill "$pid" 2>/dev/null || true   # its EXIT trap tears down its children (livekit + web)
 done
-pkill -f "livekit-server --dev" 2>/dev/null || true   # OUR orphaned livekit-server (without its script; any node-ip)
+# OUR orphaned livekit-server (without its script; any node-ip). WAIT until it is really gone: it drains gracefully
+# and keeps 7881/7882 meanwhile, so a new one started now dies on "address already in use" while the probe answers
+# from the dying old one (measured 2026-11-11, reset left voice dead). SIGKILL past the deadline.
+lk_reap_old "livekit-server --dev" 8 4 || echo "⚠ an old livekit-server would not die — the new one may fail to bind"
 _web_pids="$(lsof -ti tcp:43917 -sTCP:LISTEN 2>/dev/null || true)"      # previous web server owning 43917
 [[ -n "$_web_pids" ]] && kill $_web_pids 2>/dev/null || true
 # SPLIT-BRAIN (fix 2026-07-16): the reap above only kills the OWNER of 43917. An ORPHANED `python -m server`
@@ -99,8 +104,11 @@ fi
 if command -v livekit-server >/dev/null 2>&1; then
   LK_MODE="native"
   echo "▶ servidor LiveKit dev (binario nativo, sin Docker) · node-ip=${ZAELAR_LIVEKIT_NODE_IP:-dinámico (auto-red)} ..."
-  livekit-server --dev --bind 127.0.0.1 $LK_NODE_IP_ARG >"$HERE/.meshkore/logs/livekit-dev.log" 2>&1 &
-  LK_PID=$!
+  start_livekit() {
+    livekit-server --dev --bind 127.0.0.1 $LK_NODE_IP_ARG >"$HERE/.meshkore/logs/livekit-dev.log" 2>&1 &
+    LK_PID=$!
+  }
+  start_livekit
 elif command -v docker >/dev/null 2>&1; then
   LK_MODE="docker"
   echo "▶ servidor LiveKit dev (Docker · fallback; instala el binario con 'make install-livekit' para evitarlo)…"
@@ -138,4 +146,14 @@ echo "▶ servidor web zaelar (worker LiveKit EMBEBIDO, BRAIN=$BRAIN)…"
 echo
 echo "  ➜  abre  http://localhost:43917"
 echo
-wait
+# SUPERVISE the LiveKit we own: if it dies while the web server lives, bring it back instead of leaving the
+# worker looping on "failed to connect to livekit" forever. (Docker mode is managed by Docker itself.)
+while kill -0 "$WEB_PID" 2>/dev/null; do
+  if [[ "$LK_MODE" == "native" ]] && ! lk_alive "$LK_PID"; then
+    echo "⚠ livekit-server (pid $LK_PID) is gone — relaunching it"
+    lk_reap_old "livekit-server --dev" 8 4 || true
+    start_livekit
+  fi
+  sleep 2
+done
+wait "$WEB_PID" 2>/dev/null || true
