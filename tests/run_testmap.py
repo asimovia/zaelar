@@ -7669,6 +7669,10 @@ DOMAINS: list[dict] = [
                                  "at boot) — an email, a phone, a known name leave as tags; off, the line is untouched; the masker "
                                  "never raises and never recurses",
             "ch": UNIT, "paths": ["tests/infrastructure/unit/test_the_server_log_wears_the_same_mask.py"]},
+        {"id": "7.132", "title": "A restart owns LiveKit's lifecycle (reset left voice dead, 2026-11-11): the old livekit-server "
+                                 "is reaped until it is really gone (SIGKILL past a deadline) before a new one starts, and the "
+                                 "launcher supervises the one it started and relaunches it if it dies",
+            "ch": UNIT, "paths": ["tests/infrastructure/unit/test_a_restart_owns_the_livekit_lifecycle.py"]},
     ]},
     {"id": "8", "name": "ENERGÍA / CONFIG", "nodes": [
         {"id": "8.1", "title": "Medidor de energía y límites de cuenta", "ch": UNIT, "paths": [
