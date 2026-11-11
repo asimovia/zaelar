@@ -6172,6 +6172,12 @@ DOMAINS: list[dict] = [
                                  "newest line in sight over the keyboard; the dock is 44pt targets 8pt apart and a long "
                                  "press says a control's name without toggling it — RENDERED at 393×852", "ch": UNIT,
             "paths": ["tests/browser/unit/mobile/test_the_shell_fits_the_hand.py"]},
+        {"id": "4.470", "title": "Music on the phone at 393x852 (V2-876 P-20…P-23): one bar at the foot (the shell's dock) — the "
+                                 "four destinations are segmented tabs on top with the mini-player folded in; artwork never "
+                                 "letterboxed (YouTube's barred thumbnail cropped, the video slot 16:9, a paused embed leaves "
+                                 "the art); no «Unknown artist»; middle-truncated title; the queue a page; Search never opens "
+                                 "on the playing query; 44 pt targets; the desktop geometry pinned unchanged",
+            "ch": UNIT, "paths": ["tests/browser/unit/musica/test_the_phone_card_fits_the_hand.py"]},
     ]},
     {"id": "5", "name": "CONECTORES", "nodes": [
         # V2-559 — el operador siguió la guía, creó la contraseña de aplicación y pegó el ENLACE de esa

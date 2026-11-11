@@ -51,13 +51,20 @@ export function eqIcon(){
   return wrap;
 }
 
+// YouTube's `hqdefault` (and its 4:3 siblings) bakes black bars into the file: marked `lb`, the stylesheet zooms them
+// out of the frame (V2-876 rule 3 — object-fit alone keeps them).
+export function artImg(src){
+  const img = h("img", /ytimg\.com\/vi(_webp)?\/[^/]+\/(hq|sd)?default\./.test(String(src)) ? "lb" : null); img.src = src; img.alt = "";
+  return img;
+}
+
 // Cover art: image (Spotify URL) or fallback emoji. URL goes into img.src, never innerHTML.
 export function artNode(art, fallback){
   const a = h("div", "hb-mus2-art");
   // Only the picture is replaced: a play button laid on the cover (a card's) stays where it is.
   const paintFallback = () => { a.querySelectorAll("img").forEach(i => i.remove()); a.prepend(svgEl(fallback || ICON_NOTE)); };
   if(art){
-    const img = document.createElement("img"); img.src = art; img.alt = "";
+    const img = artImg(art);
     // A dead or since-removed thumbnail (V2-629) degrades to the SAME placeholder a missing one gets,
     // instead of the browser's broken-image glyph — cheap, and it is what "a player nicer than the rest"
     // means for the one part of this that is a hotlink to somebody else's server (the V2-563 fact of life).

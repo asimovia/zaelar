@@ -499,7 +499,7 @@ def test_the_arrangement_follows_the_cards_real_width(_page):
     for w in (1280, 1000, 468):
         _mount(_page, _playing(view={"kind": "library", "id": ""}), w=w, h=700)
         assert _page.query_selector(".hb-mus2-bar") is not None, "every desktop size keeps the full transport"
-        assert _page.query_selector(".hb-mus2-mini, .hb-mus2-bnav") is None, "the phone's pieces stay on the phone"
+        assert _page.query_selector(".hb-mus2-ptabs") is None, "the phone's pieces stay on the phone"
 
 
 def test_a_resize_that_crosses_a_threshold_redraws_without_touching_the_music(_page):
@@ -526,22 +526,19 @@ def test_the_wide_song_shows_its_queue_beside_it_and_a_smaller_one_opens_it_as_a
     assert _calls(_page, "open_view") == [{"kind": "now"}]
 
 
-def test_the_phone_gets_bottom_navigation_and_a_mini_player_that_opens_the_player(_phone):
+def test_the_phone_gets_top_tabs_with_the_mini_player_folded_in(_phone):
+    # V2-876 rule 1: the shell's dock is the one bar at the foot — the card's navigation moved to its top, and the
+    # mini-player became a play/pause in that row (test_the_phone_card_fits_the_hand.py measures the geometry).
     page = _phone(390, 844)
     _mount_phone(page, _playing(view={"kind": "library", "id": ""}))
     assert _layout(page) == "mobile"
-    labels = page.eval_on_selector_all(".hb-mus2-bnavb span", "els => els.map(e => e.textContent)")
+    labels = page.eval_on_selector_all(".hb-mus2-psegb > span", "els => els.map(e => e.textContent)")
     assert labels == ["Inicio", "Buscar", "Tu música", "Sonando"]
-    assert page.query_selector(".hb-mus2-side, .hb-mus2-bar, .hb-mus2-headfix") is None, \
-        "no sidebar, no desktop bar, and no header of its own under the shell's"
-    mini = page.query_selector(".hb-mus2-mini")
-    assert mini is not None
-    box, nav = mini.bounding_box(), page.query_selector(".hb-mus2-bnav").bounding_box()
-    assert 56 <= box["height"] <= 72 and box["y"] + box["height"] <= nav["y"] + 1, "just above the navigation"
-    assert mini.query_selector(".hb-mus2-vol, .mode") is None, "no volume, shuffle or repeat in the small surface"
-    mini.click()
+    assert page.query_selector(".hb-mus2-side, .hb-mus2-bar, .hb-mus2-headfix, .hb-mus2-bnav, .hb-mus2-mini") is None, \
+        "no sidebar, no desktop bar, no header of its own under the shell's, nothing at the foot"
+    page.click(".hb-mus2-psegb:nth-child(4)")
     assert _calls(page, "open_view") == [{"kind": "now"}]
-    page.click(".hb-mus2-bnavb:nth-child(3)")
+    page.click(".hb-mus2-psegb:nth-child(3)")
     assert _calls(page, "open_view")[-1] == {"kind": "collection"}
 
 
@@ -549,7 +546,7 @@ def test_the_expanded_phone_player_keeps_play_on_screen_at_every_phone_size(_pho
     for w, h in ((320, 568), (390, 844), (430, 932), (844, 390)):
         page = _phone(w, h)
         _mount_phone(page, _playing(view={"kind": "now", "id": ""}))
-        assert page.query_selector(".hb-mus2-mini") is None, "expanded: the mini-player would repeat it"
+        assert page.query_selector(".hb-mus2-ptabpp") is None, "expanded: the folded play/pause would repeat it"
         btns = page.query_selector_all(".hb-mus2-now .hb-mus2-barc.big button")
         assert len(btns) == 5, "shuffle · previous · play · next · repeat"
         geo = page.evaluate("""() => { const r = document.querySelector('.hb-mus2-scroll').getBoundingClientRect();
@@ -563,14 +560,14 @@ def test_the_expanded_phone_player_keeps_play_on_screen_at_every_phone_size(_pho
         assert not geo["hs"], f"horizontal overflow at {w}x{h}"
 
 
-def test_the_phones_queue_is_a_sheet_over_the_player_with_up_and_down_for_every_row(_phone):
+def test_the_phones_queue_is_a_page_with_up_and_down_for_every_row(_phone):
+    # V2-876: the sheet half-covered the art; the phone gives the queue the card, with a way back to the song.
     page = _phone(390, 844)
     q = {"items": [_t("Next One", "A"), _t("Next Two", "B"), _t("Next Three", "C")], "editable": True, "source": "youtube"}
     _mount_phone(page, _playing(queue=q, view={"kind": "queue", "id": ""}))
-    assert page.query_selector(".hb-mus2-qlayer.sheet") is not None
-    assert page.inner_text(".hb-mus2-qtitle") == "A continuación"
-    assert page.query_selector(".hb-mus2-now") is not None, "the player is under the sheet, not replaced by it"
-    rows = page.query_selector_all(".hb-mus2-qsheet .hb-mus2-tr[data-idx]")
+    assert page.query_selector(".hb-mus2-qlayer") is None
+    assert page.query_selector(".hb-mus2-back") is not None
+    rows = page.query_selector_all(".hb-mus2-tr[data-idx]")
     rows[1].query_selector(".hb-mus2-trmore").click()
     items = page.eval_on_selector_all(".hb-mus2-menu button", "els => els.map(e => e.textContent)")
     assert "Subir" in items and "Bajar" in items, "reordering needs no dragging"

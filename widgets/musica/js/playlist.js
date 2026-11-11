@@ -341,7 +341,7 @@ export function queueBody(data, ctx, opts){
 }
 
 export function queueView(el, data, ctx){
-  const s = shell(el, data, ctx, "queue");
+  const s = shell(el, data, ctx, "queue", (el._hbLayout || {}).mode === "mobile" && nowPlaying(data) ? {back: "now"} : {});
   s.scroll.appendChild(queueBody(data, ctx));
   s.done();
 }
