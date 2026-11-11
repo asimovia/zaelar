@@ -33,6 +33,9 @@ from nucleo import dispatch
 from nucleo.turn.prompt import live_tasks
 
 
+# V2-878 §2 — the running-errands block is FACTS ONLY now. The tests here that asserted the wording of its imperative
+# paragraph (an order to tell, to deny, not to repeat) went with it; what each face reports stays tested as a fact.
+
 def _cara() -> str:
     """SOLO la parte que describe la tarea, no el imperativo que viene detrás.
 
@@ -142,9 +145,3 @@ def test_reportar_el_MISMO_done_no_rearma_nada():
     dispatch.session_progress("t1", "sigo en ello", done=0)
     assert "SIN AVANZAR" in _cara()
 
-
-def test_el_imperativo_dice_QUE_hacer_con_el_dato():
-    _tarea(total=4, done=0, sin_avanzar_s=331)
-    linea = " ".join(live_tasks.pending_task_lines())
-    assert "ENCALLADA o SIN AVANZAR" in linea
-    assert "no ha empezado" in linea, "el dato solo, sin la lectura, se lee como tranquilizador"

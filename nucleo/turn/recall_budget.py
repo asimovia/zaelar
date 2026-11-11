@@ -111,13 +111,15 @@ async def compose(query: str, timings: dict | None = None) -> tuple[str, list[in
     try:
         from nucleo.turn.prompt import recall as _prompt
         loop = asyncio.get_running_loop()
-        fut = loop.run_in_executor(None, _prompt.compose_recall, q, propias)
+        # V2-878 §2: the conversation lane skips the turns the window REALLY holds — the turn counts them (`live_turns`)
+        skip = {"skip_newest": int(timings["live_turns"])} if (timings or {}).get("live_turns") is not None else {}
+        fut = loop.run_in_executor(None, lambda: _prompt.compose_recall(q, propias, **skip))
         # V2-762 — THE LOCAL HALF, BESIDE IT. The full recall needs an embedding from a remote provider; live it
         # took 1-3.5 s on the operator's engine (2026-09-24) against 0.3-0.5 s measured alone, and every miss
         # left the turn with NO durable memory at all. The lexical channel (FTS5) lives on this machine: 3-27 ms
         # measured. It starts now, and it is what the turn carries when the full one is late — degraded recall,
         # never erased recall. A full one that finishes after the budget is nobody's memory: no turn reads it.
-        lex = loop.run_in_executor(None, _lexical, _prompt, q, lex_propias)
+        lex = loop.run_in_executor(None, lambda: _lexical(_prompt, q, lex_propias, **skip))
         got = await asyncio.wait_for(asyncio.shield(fut), timeout=budget_s())
         _reinforce_delivered(propias)     # delivered to the turn → THAT is using the memory
         if timings is not None:
@@ -144,10 +146,10 @@ async def compose(query: str, timings: dict | None = None) -> tuple[str, list[in
     return "", []
 
 
-def _lexical(prompt_mod, query: str, propias: dict) -> tuple[str, list[int]]:
+def _lexical(prompt_mod, query: str, propias: dict, **skip) -> tuple[str, list[int]]:
     """The FTS5-only recall (V2-762). Never raises: the local half must not be the thing that fails."""
     try:
-        return prompt_mod.compose_recall(query, propias, lexical_only=True)
+        return prompt_mod.compose_recall(query, propias, lexical_only=True, **skip)
     except Exception:  # noqa: BLE001
         return "", []
 

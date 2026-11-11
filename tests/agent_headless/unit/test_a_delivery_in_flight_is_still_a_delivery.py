@@ -28,6 +28,9 @@ from nucleo import dispatch
 from nucleo.turn.prompt import live_tasks
 from nucleo.turn.prompt import live_state as P
 
+# V2-878 §2 — the running-errands block is FACTS ONLY now. The tests here that asserted the wording of its imperative
+# paragraph (an order to tell, to deny, not to repeat) went with it; what each face reports stays tested as a fact.
+
 _NOTA = "Comparativa entregada en pantalla (hoja de resultados con los 3 finalistas)"
 
 
@@ -75,35 +78,6 @@ def test_una_nota_corta_no_se_toca():
 
 
 # ── 2. the block AUTHORIZES reporting it ─────────────────────────────────────────────────────────────────
-def test_el_bloque_dice_que_una_entrega_en_curso_SE_CUENTA():
-    _viva()
-    st = P.live_state()
-    low = st.lower()
-    # The ORDER, not an isolated word. The first version of this test searched for “already delivered” and was
-    # green for the wrong reason: that same phrase appears again in the clause closing the branch
-    # (“not what is already delivered”), so removing the entire branch did not make anything red. The teardown caught it.
-    assert "cuéntalo en este turno" in low, "el bloque no MANDA contarlo: describir el hecho no es una orden"
-    assert "qué falta" in low, "sin «di qué falta» la rama invita al fallo contrario: darlo por acabado"
-    # And it goes INSIDE the imperative for the empty case, not in a standalone sentence: two orders in a paragraph
-    # come down to a coin toss, so it must QUALIFY “YOU STILL DON’T KNOW” and therefore come after it.
-    i_vacio, i_rama = low.find("todavía no lo sabes"), low.find("pero lee el paso")
-    assert i_vacio != -1 and i_rama != -1
-    assert i_rama > i_vacio, "la rama no matiza al imperativo que la necesita: queda como orden suelta"
-
-
-def test_y_prohibe_explicitamente_el_sigo_con_ello_de_la_ronda_7():
-    _viva()
-    assert "sigo con ello" in P.live_state().lower()
-
-
-def test_la_prohibicion_de_decir_que_ACABO_sigue_en_pie():
-    """The new branch must not open the door to the opposite failure: delivering something is not having finished."""
-    _viva()
-    st = P.live_state()
-    assert "NO reinicies ni digas que ya está" in st
-    assert "no lo que ya está entregado" in st.lower() or "sigue EN CURSO es la tarea" in st
-
-
 def test_sin_ninguna_tarea_viva_no_hay_bloque_que_contradecir():
     """A notice that always appears is noise; here it would also talk about a nonexistent task."""
     assert "TAREAS DE FONDO EN CURSO" not in P.live_state()
@@ -160,40 +134,6 @@ def test_y_ese_era_el_agujero_la_fase_por_si_sola_dice_lo_contrario():
     assert "en cola" in st
 
 
-def test_los_candidatos_NO_van_en_la_rama_que_autoriza_contarlo():
-    """Rewritten 2026-08-28 (V2-444), NOT flipped—and here the property DOES change, with its measurement behind it.
-
-    This test claimed that “the delivered note and the candidates found are the SAME case.” They are not, and
-    the difference is where each comes from: a progress note says what the worker DELIVERED, and `kept` is the
-    count the worker SAYS it has. Measured in `best-pediatric-dentists__us` (2026-08-28): seven turns with
-    the block saying it had found candidates, zero rows in the prompt, and twenty in the sheet. The branch
-    ordered the agent to report a delivery that did not exist.
-
-    What remains intact is the form: the branching goes INSIDE the same imperative (V2-224), never as a
-    second order. What changes is which side the worker’s count falls on.
-    """
-    _con_candidatos()
-    low = P.live_state().lower()
-    assert "dice haber encontrado" in low, "el bloque ya no nombra el recuento del worker"
-    assert "su cuenta sin comprobar" in low, "no se atribuye: vuelve a leerse como un hecho nuestro"
-    assert "no lo cuentes como entrega" in low
-    i_vacio, i_rama = low.find("todavía no lo sabes"), low.find("pero lee el paso")
-    assert i_vacio != -1 and i_rama != -1 and i_rama > i_vacio
-
-
-def test_el_texto_del_bloque_y_el_de_la_rama_usan_las_MISMAS_palabras():
-    """If the block says “HAS ALREADY FOUND” and the branch names something else, the model cannot match them.
-
-    This is the lesson of V2-221: without the phrase inside it, the model has nothing against which to compare itself.
-    """
-    _con_candidatos()
-    st = P.live_state()
-    # V2-444—the property is the same (the block and branch must use THE SAME words or the model cannot match
-    # them, the lesson of V2-221); what changed is which words, by attributing the count to the worker.
-    assert "DICE haber encontrado" in st
-    assert "«DICE haber encontrado N»" in st
-
-
 def test_no_pisa_la_nota_entregada_las_dos_caras_conviven():
     """A task can have both: a progress note saying what it delivered AND counted candidates."""
     r = _con_candidatos()
@@ -230,14 +170,6 @@ def test_el_bloque_dice_CUANTOS_ha_encontrado_y_no_donde_estan():
     assert "en la hoja" not in st, "el bloque vuelve a afirmar la PANTALLA desde una señal de amplitud"
 
 
-def test_pero_SIGUE_mandando_contar_lo_que_encontro():
-    """The half that must not be lost: staying silent out of caution is the failure V2-222 has been closing across three faces."""
-    _con_candidatos()
-    low = P.live_state().lower()
-    assert "cuéntalo en este turno" in low
-    assert "sigo con ello" in low       # the prohibited phrase, named
-
-
 # ── 4. THE SYMMETRICAL FACE: a setback is also reported (V2-348) ─────────────────────────────────────
 #
 # Measured in `search-buy-used-car`, round 8 (2026-08-26, ES set). coches.net served an error page after the
@@ -264,31 +196,3 @@ def test_la_nota_de_un_fallo_llega_entera_al_prompt():
     st = P.live_state()
     assert "coches.net caído tras portada" in st, "el hecho del fallo no llega: sería fontanería, no conducta"
 
-
-def test_el_bloque_MANDA_contar_tambien_lo_que_falló():
-    _viva(_NOTA_FALLO)
-    st = P.live_state()
-    assert "ha FALLADO" in st, "sin rama para la mala noticia, el modelo relata solo la mitad que el bloque nombra"
-    assert "cuéntalo" in st and "TAMBIÉN en este turno" in st
-
-
-def test_y_prohibe_explicitamente_el_va_dando_pasos_de_la_ronda_8():
-    _viva(_NOTA_FALLO)
-    assert "«va dando pasos»" in P.live_state(), "la frase medida tiene que estar prohibida por su nombre"
-
-
-def test_la_rama_pide_NOMBRAR_lo_que_falló_y_el_plan_b():
-    """Saying “there has been a problem” is the same vagueness being corrected: the operator needs the site’s
-    name to decide whether to wait or change approach."""
-    _viva(_NOTA_FALLO)
-    st = P.live_state()
-    assert "el nombre de lo que falló" in st and "qué haces en su lugar" in st
-
-
-def test_las_dos_caras_del_imperativo_conviven():
-    """The old branch (delivery) and the new one (setback) are the SAME imperative with the sign changed, and both
-    must be present: leaving only one reintroduces the asymmetry on the other side."""
-    _viva(_NOTA_FALLO)
-    st = P.live_state()
-    assert "ENTREGADO" in st and "ha FALLADO" in st
-    assert st.index("ENTREGADO") < st.index("ha FALLADO"), "la simétrica va detrás de la que refleja"

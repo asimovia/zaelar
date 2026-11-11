@@ -20,6 +20,9 @@ from nucleo.workers.session import SessionRecord
 from widgets.navegador import tasks as T
 
 
+# V2-878 §2 — the running-errands block is FACTS ONLY now. The tests here that asserted the wording of its imperative
+# paragraph (an order to tell, to deny, not to repeat) went with it; what each face reports stays tested as a fact.
+
 @pytest.fixture(autouse=True)
 def _clean():
     T._tasks.clear()
@@ -50,17 +53,7 @@ def test_y_deja_de_contarse_como_ENTREGA():
     twenty rows in the sheet that never traveled to the prompt, that is asking it to name what it does not have."""
     _tarea_con_kept(20)
     st = "\n".join(live_tasks.pending_task_lines())
-    assert "es SU cuenta sin comprobar" in st
-    assert "NO lo cuentes como entrega ni nombres nada" in st
-
-
-def test_lo_que_SI_esta_entregado_sigue_ordenandose_contar():
-    """Sensitivity: without this, the fix breaks V2-222, which exists because denying a delivery that
-    the operator has in front of them is worse than not having made it."""
-    _tarea_con_kept(3)
-    st = "\n".join(live_tasks.pending_task_lines())
-    assert "si dice que algo ya está ENTREGADO, ESCRITO o EN PANTALLA" in st
-    assert "la tarea SÍ ha traído eso — cuéntalo en este turno" in st
+    assert "es SU cuenta sin comprobar" in st   # V2-878 §2: the fact stays; «no lo cuentes» went with the paragraph
 
 
 def test_sin_kept_el_bloque_no_dice_nada_de_candidatos():

@@ -64,6 +64,8 @@ async def compose_the_prompt(*, brain, emit, operator_text, self, text) -> dict:
         # el de texto no, y una protección que existe en un canal y no en el otro no se distingue de no
         # tenerla — el fallo sale por el canal que nadie recordó.
         from nucleo.turn import recall_budget as _recall
+        from nucleo.turn.prompt import recall as _recall_lane    # V2-878 §2: skip the turns the window REALLY has
+        timings["live_turns"] = _recall_lane.live_turns(brain._window[-_p._WINDOW_MAX:])
         recall_block, recall_ids = await _recall.compose(operator_text, timings)
     # 2º PASE DE CORTO PLAZO (C, 2026-07-14): si el turno referencia la interacción RECIENTE ("de qué
     # hablábamos", "lo que te dije antes", "repite eso"), inyectamos el buffer conversacional AMPLIADO

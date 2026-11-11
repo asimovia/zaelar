@@ -44,12 +44,16 @@ WORDS_CRITERIA = {
 
 
 def escalate_question(*, running_goals: list | None = None, has_workers: bool = False,
-                      ask_pending: bool = False) -> dict:
+                      ask_pending: bool = False, threads: list | None = None) -> dict:
     """The escalate pair. The state facts travel in THIS question's instructions (a brief has one shared state and
     per-question instructions); `has_workers`/`ask_pending` are read by `ask_for_turn` (A2: they were never passed,
     and «answer the worker» is the shape that must not become a second worker)."""
     from nucleo.flash import escalation_guard as _eg
-    goals = [str(g)[:120] for g in (running_goals or []) if str(g or "").strip()][:3]
+    if threads:      # V2-878 §2: the three he named last, as their cards — not the first three started
+        from nucleo.turn import named_errand as _ne
+        goals = [_ne.card_line(e) for e in _ne.by_mention(threads, 3)]
+    else:
+        goals = [str(g)[:120] for g in (running_goals or []) if str(g or "").strip()][:3]
     facts = ("Goals already in flight: " + ("; ".join(goals) if goals else "none")
              + f". Workers active now: {'yes' if has_workers else 'no'}."
              + f" A worker is waiting for the operator's answer: {'yes' if ask_pending else 'no'}.")
@@ -111,6 +115,12 @@ def _gap(ctx):
     return _gap_d.question(ctx.get("open_ids"))
 
 
+def _threads_open(ctx) -> bool:
+    """An errand is open he may be talking to: a live worker, or a card in the pool — parked, starting or just ended
+    (V2-878 §2: `errand_target` and the stop are asked with any open thread, not only with a worker running)."""
+    return bool(ctx.get("has_workers") or ctx.get("threads"))
+
+
 def _key(module: str, name: str) -> str:
     import importlib
     return str(getattr(importlib.import_module(module), name))
@@ -124,14 +134,16 @@ QUESTIONS = (
     (("nucleo.flash.build_decision", "BUILD_KEY"), None, _build),
     (ESCALATE_KEY, None, lambda c: escalate_question(running_goals=c.get("running_goals"),
                                                      has_workers=bool(c.get("has_workers")),
-                                                     ask_pending=bool(c.get("ask_pending")))),
+                                                     ask_pending=bool(c.get("ask_pending")), threads=c.get("threads"))),
     (WORDS_KEY, None, lambda c: {"instructions": WORDS_INSTRUCTIONS, "criteria": dict(WORDS_CRITERIA)}),
     (("nucleo.surfaces", "SURFACE_KEY"), None, _surface),
     (("search.route", "SEARCH_KEY"), None, _search),
     (("nucleo.flash.redo_decision", "REDO_KEY"), None, _redo),                 # None when nothing is behind us
     (("nucleo.circuit.spec", "END_KEY"), None, _end_state),
-    (("nucleo.request.stop", "KEY"), lambda c: bool(c.get("has_workers")), _stop),   # only while an errand runs
-    (("nucleo.acts.errand", "TARGET_KEY"), lambda c: bool(c.get("has_workers")),   # same gate as the stop
+    # The stop stays asked only while a worker runs, with its goals (V2-878 §2 bank: asked with the cards it read «that
+    # one is fine» as `settled` twice in 15 runs and killed a worker the model had not stopped). It acts; the target reads.
+    (("nucleo.request.stop", "KEY"), lambda c: bool(c.get("has_workers")), _stop),
+    (("nucleo.acts.errand", "TARGET_KEY"), lambda c: _threads_open(c),   # same gate as the stop
      lambda c: __import__("nucleo.acts.errand", fromlist=["x"]).target_question(c)),
     (("nucleo.acts.errand", "CLASS_KEY"), None, lambda c: __import__("nucleo.acts.errand", fromlist=["x"]).class_question(c)),
     (("nucleo.request.kind", "KEY"), None, lambda c: __import__("nucleo.request.kind", fromlist=["x"]).question(c)),
@@ -155,7 +167,7 @@ QUESTIONS = (
 
 
 def build(operator_text: str, *, open_ids=None, running_goals=None, has_workers: bool = False,
-          ask_pending: bool = False, last_reply: str = "", open_asks=None) -> dict:
+          ask_pending: bool = False, last_reply: str = "", open_asks=None, threads=None) -> dict:
     """The questions this turn will need after the model answers, from `QUESTIONS`. Empty dict = nothing to ask.
 
     `screen_action` and `catalog_widget` are never both asked: with cards open the ACTION disambiguates (0.94 vs 0.26
@@ -166,7 +178,7 @@ def build(operator_text: str, *, open_ids=None, running_goals=None, has_workers:
         return {}
     ctx = {"operator_text": operator_text, "open_ids": open_ids, "running_goals": running_goals,
            "has_workers": has_workers, "ask_pending": ask_pending or bool(open_asks), "last_reply": last_reply,
-           "open_asks": list(open_asks or [])}
+           "open_asks": list(open_asks or []), "threads": list(threads or [])}
     qs: dict[str, dict] = {}
     for key, asked_when, question in QUESTIONS:
         try:
@@ -207,7 +219,17 @@ def ask_for_turn(operator_text: str, *, running_goals=None, last_reply: str = ""
         open_ids = []
     has_workers, open_asks = _worker_state()
     return ask(operator_text, open_ids=open_ids, running_goals=running_goals, has_workers=has_workers,
-               ask_pending=bool(open_asks), open_asks=open_asks, last_reply=last_reply, turn_id=turn_id)
+               ask_pending=bool(open_asks), open_asks=open_asks, last_reply=last_reply, turn_id=turn_id,
+               threads=_threads())
+
+
+def _threads() -> list:
+    """The open errands' cards (`named_errand.known`, with the just-finished). Unknown reads as none. Never raises."""
+    try:
+        from nucleo.turn import named_errand as _ne
+        return _ne.known(with_finished=True)
+    except Exception:  # noqa: BLE001
+        return []
 
 
 def ask(operator_text: str, *, turn_id=None, **kw):

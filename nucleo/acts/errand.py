@@ -213,10 +213,10 @@ _ARM_TARGET = (("send_to_worker", "running_errand"), ("cluster_send", "cluster_p
                ("set_cluster_objective", "cluster_objective"))
 
 
-def target_question(_ctx=None) -> dict:
-    """The brief's question: which errand (if any) his words are for."""
+def target_question(ctx=None) -> dict:
+    """The brief's question: which errand (if any) his words are for — its candidates the open errands' CARDS (V2-878 §2)."""
     return {"instructions": "Which ongoing errand, if any, are the operator's words addressed to?",
-            "criteria": dict(_TARGETS)}
+            "criteria": {**dict(_TARGETS), **__import__("nucleo.turn.named_errand", fromlist=["x"]).as_target(ctx)}}
 
 
 def done_when_from_brief(brief) -> dict | None:
