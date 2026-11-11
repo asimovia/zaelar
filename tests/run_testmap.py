@@ -6207,6 +6207,11 @@ DOMAINS: list[dict] = [
         {"id": "4.464", "title": "The clock fills its page with no frame of its own and names the screen's zone (a zone "
                                   "the engine sends wins) (V2-877 #12)",
             "ch": UNIT, "paths": ["tests/browser/unit/phone_apps/test_the_clock_fits_the_hand.py"]},
+        # V2-877 #8 / V2-876 P-41/P-42 — markets and map opened as a sentence over black.
+        {"id": "4.465", "title": "Markets and map show their subject or an honest empty page: a quote is the markets "
+                                  "card's own, its empty page runs `show` by hand, 44pt tabs; the map always draws its "
+                                  "base map (his area or the world), corner zoom, one-finger pan as [data-hpan] (V2-877 #8)",
+            "ch": UNIT, "paths": ["tests/browser/unit/phone_apps/test_markets_and_map_show_their_subject.py"]},
     ]},
     {"id": "5", "name": "CONECTORES", "nodes": [
         # V2-559 — el operador siguió la guía, creó la contraseña de aplicación y pegó el ENLACE de esa
