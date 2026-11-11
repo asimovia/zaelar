@@ -50,7 +50,7 @@ def test_a_draft_under_a_sure_ordered_forward_becomes_the_forward():
 
 def test_under_the_bar_or_a_model_that_sends_or_a_question_nothing_changes():
     draft = {"text": "book it"}
-    assert ordered_send.ordered_instead(_brief("mensajeria:forward", 0.6), "mensajeria", "draft", draft, SAID) is None
+    assert ordered_send.ordered_instead(_brief("mensajeria:forward", 0.55), "mensajeria", "draft", draft, SAID) is None
     assert ordered_send.ordered_instead(_brief("mensajeria:forward", 0.9), "mensajeria", "send_to", draft, SAID) is None
     assert ordered_send.ordered_instead(_brief("mensajeria:forward", 0.9, kind="question"), "mensajeria", "draft", draft, SAID) is None
     assert ordered_send.ordered_instead(_brief("mensajeria:forward", 0.9), "mensajeria", "forward", draft, SAID) is None

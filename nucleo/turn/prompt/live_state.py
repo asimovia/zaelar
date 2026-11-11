@@ -59,8 +59,11 @@ def live_state() -> str:
     # small model silently errs — a misdated reminder only shows when it fails to fire. With this list, the absolute
     # date `[[cron.create]]` needs is a LOOKUP. ~90 chars/turn; computed without I/O.
     _now = _t.time()
+    # V2-886 0c: TODAY is in the list, marked — a weekday that is today is today (`agenda.when.coming_offset`).
     _days = "; ".join(f"{_t.strftime('%A', _t.localtime(_now + i * 86400)).lower()} "
-                      f"{_t.strftime('%Y-%m-%d', _t.localtime(_now + i * 86400))}" for i in range(1, 8))
+                      f"{_t.strftime('%Y-%m-%d', _t.localtime(_now + i * 86400))}"
+                      + (" (hoy)" if i == 0 else "")
+                      for i in range(0, 8))
     # V2-473 (round 4): the list TRANSLATES named days, but without that explanation the model treated it as the
     # calendar limit—"my upcoming-days list only reaches the 5th"—rejecting a valid appointment ten days away
     # and then asking "is it 2026?".

@@ -50,7 +50,17 @@ _TIME_OF_DAY = re.compile(r"\b(?:(?:por|de|a|en)\s+la\s+manana|esta\s+manana|(?:
                           r"at\s+night|tonight)\b", re.I)
 
 
-def _resolve_date(raw: str) -> str:
+def coming_offset(weekday: int, today_weekday: int, at: str = "", now_hm: str = "") -> int:
+    """ONE rule for a named weekday (V2-886 0c, measured 2026-11-11: «football game wednesday 12:00» said at 11:58 on a
+    Wednesday was written for the NEXT Wednesday): the day it names is TODAY when today is that weekday and the hour
+    said (`at`, HH:MM) is still ahead or none was said; otherwise the next one. Days from today, 0-7."""
+    delta = (int(weekday) - int(today_weekday)) % 7
+    if delta == 0 and at and now_hm and str(at).strip()[:5].zfill(5) <= str(now_hm)[:5]:
+        return 7
+    return delta
+
+
+def _resolve_date(raw: str, at: str = "") -> str:
     """Convert a spoken relative date (tomorrow, today, the day after tomorrow, a weekday, or already 'YYYY-MM-DD') into
     'YYYY-MM-DD'. Sensible default: today. This keeps a relative-date appointment correctly placed even when the
     model does not calculate the date itself."""
@@ -78,8 +88,7 @@ def _resolve_date(raw: str) -> str:
     for name, wd in _WEEKDAYS.items():
         nn = _strip_accents(name)
         if nn in n:
-            delta = (wd - today.tm_wday) % 7
-            delta = delta or 7                             # weekday references mean the next matching day, not today
+            delta = coming_offset(wd, today.tm_wday, at, _t.strftime("%H:%M", today))   # today is today (0c)
             return _t.strftime("%Y-%m-%d", _t.localtime(base + delta * day))
     return _today()
 

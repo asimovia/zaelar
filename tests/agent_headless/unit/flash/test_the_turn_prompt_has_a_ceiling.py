@@ -31,8 +31,10 @@ MARGIN = 64
 #: 2026-11-11 V2-876/V2-877 (#294, #295): +85 — the timer DECLARES its data API (`· datos: set, start, pause, reset`, so a
 #: spoken timer is the card's own act) and markets answers a PRICE question as well as a chart; measured by diff of the
 #: composed prompt before and after the merge (nothing else moved; the agenda lines only changed place).
-CEILINGS = {(): 24_608, ("agenda", "mensajeria"): 29_538,
-            ("agenda", "mensajeria", "youtube", "contactos", "results", "musica"): 36_720}   # V2-795: musica usage trimmed
+#: 2026-11-11 V2-886 0c: +72 — the day list starts TODAY, marked «(hoy)»: a weekday that is today is today; the list
+#: used to start tomorrow, so «wednesday» said on a Wednesday could only be read as next week. Measured by diff.
+CEILINGS = {(): 24_680, ("agenda", "mensajeria"): 29_610,
+            ("agenda", "mensajeria", "youtube", "contactos", "results", "musica"): 36_792}   # V2-795: musica usage trimmed
 TARGET_EVERYDAY = 30_000
 
 

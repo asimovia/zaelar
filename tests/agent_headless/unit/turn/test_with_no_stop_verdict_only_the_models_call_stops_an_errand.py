@@ -47,7 +47,7 @@ def _model_calls_stop(text, brief, monkeypatch):
     killed, events = [], []
     monkeypatch.setattr(dispatch, "cancel_soon", lambda w: killed.append(w) or ["t1"])
     _calls._t_stop_worker(args={"which": "the running errand"}, _norm_nfkd=lambda s: s.lower(),
-                          _say=lambda: SimpleNamespace(stop_which_worker="which?", stop_doubt="?"), clarify={},
+                          _say=lambda: SimpleNamespace(stop_which_worker="which?"), clarify={},
                           emit=lambda *a, **k: events.append((a, k)), text=text, worker_acted={"v": None}, brief=brief)
     return killed, events
 
