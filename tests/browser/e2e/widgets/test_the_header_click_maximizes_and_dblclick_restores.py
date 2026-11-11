@@ -136,7 +136,7 @@ def test_a_double_click_on_a_maximized_header_restores_it(playwright_available):
     """Same gesture, opposite direction — `maximize()` is already a toggle on `card._restore`, so wiring the
     SAME dblclick listener to it is what makes double-click undo itself."""
     out, errors = _run(f"""async () => {{
-      const {{app, head}} = window.__mk("archivos");
+      const {{card, head}} = window.__mk("archivos");
       card._restore = {{left:"10px", top:"10px", w:"400px", h:"300px"}};   // simulate already maximized
       ({_DBLCLICK})(head);
       return {{calls: window.__calls.slice()}};

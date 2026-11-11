@@ -8,7 +8,7 @@ seconds are the operator watching the engine do things nobody asked it for:
     +240.9     🧭 comisión → delegated · «Modificar el widget `youtube` del operador…»
     +284.6     «todo eso que me pides es un cambio de verdad en el widget, así que lo mando hacer»
     +297.0     «Olvídate de eso, no va por ti.»   → el worker siguió: «lleva 59s», «lleva 1 min»
-    +306.6     `act show --help` → una app ROTA llamada «--help» montada en su canvas
+    +306.6     `act show --help` → una tarjeta ROTA llamada «--help» montada en su canvas
     +348.2     «Hay un widget ahí que pone help… ha aparecido en pantalla ahora. Ciérralo inmediatamente»
     +366.3     «Lo de modificar el widget de YouTube ha sido un error, y no estaba hablando contigo.»
 
@@ -35,7 +35,7 @@ from nucleo.request import kind as errand_kind
 #: The commission the engine actually wrote and dispatched, verbatim from the session log.
 THE_REAL_COMMISSION = (
     "Modificar el widget `youtube` del operador (Paco) en dos cosas concretas: (1) rediseñar el "
-    "HEADER/encabezado de la app para que quede más bonito y limpio")
+    "HEADER/encabezado de la tarjeta para que quede más bonito y limpio")
 
 
 class _Task:
@@ -98,7 +98,7 @@ def test_the_brain_is_told_NOTHING_has_been_touched():
     not see was rewriting his card. The live state is what stops the turn narrating that."""
     dispatch.remember_code_change("7", THE_REAL_COMMISSION, _Task())
     line = dispatch.confirm_line()
-    assert "MODIFICAR una app suya" in line
+    assert "MODIFICAR una tarjeta suya" in line
     assert "NI UNA LÍNEA" in line and "no digas que estás con ello" in line
     assert "IRREVERSIBLE" not in line, "that is the other gate, and it frightens him for nothing"
 
@@ -187,7 +187,7 @@ def test_a_search_brings_the_catalogue_to_the_FRONT(yt, monkeypatch):
     _seed_band(yt, monkeypatch, "alunizaje 1969")
     db = store.load(yt.WID, {})
     assert db.get("goto_tab", {}).get("tab") == "inicio", (
-        "the results are on the app and he is looking at another face of that same card")
+        "the results are on the card and he is looking at another face of that same card")
 
 
 def test_the_same_search_answered_again_ALSO_shows_it(yt, monkeypatch):
@@ -286,7 +286,7 @@ def test_the_guard_sits_at_the_ONE_point_both_branches_converge_on():
     # and left the comment stayed green.
     body = "\n".join(l for l in body.splitlines() if not l.strip().startswith("#"))
     from nucleo.acts import card
-    assert card._a_fragment in card._LADDER[card.GATE], "the app door's GATE ladder holds the fragment rule"
+    assert card._a_fragment in card._LADDER[card.GATE], "the card door's GATE ladder holds the fragment rule"
     assert "at=_card.GATE" in body
     assert body.index("at=_card.GATE") < body.index("action_mode_now"), (
         "it has to decide BEFORE the call enters the consent gate")

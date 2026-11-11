@@ -134,7 +134,7 @@ def test_empty_input_is_not_recorded():
     # …and the SAME case with an INDEFINITE article (2026-08-18). The article list only contained the
     # definite articles, so these four slipped through to the generator. The first is verbatim from production.
     ("Monta el resultado en un widget del canvas para que el operador pueda VERLO en pantalla", False),
-    ("presenta los datos en una app", False),
+    ("presenta los datos en una tarjeta", False),
     ("vuelca el informe en unos paneles", False),
     ("render the findings into a widget", False),
     # NOTE: «añade una columna al widget de agenda» is NOT listed here. It is not a create (and `looks_like_create_widget`
@@ -183,7 +183,7 @@ def test_gather_and_show_never_reaches_the_widget_generator():
 
 @_pytest.mark.parametrize("text", [
     "monta esto en un widget nuevo",
-    "pon el informe en una app nueva",
+    "pon el informe en una tarjeta nueva",
 ])
 def test_an_explicit_new_widget_survives_the_destination_rule(text):
     """The ONLY real exception to the destination rule, which must be preserved: «en un widget NUEVO» does request a

@@ -77,18 +77,18 @@ SITE_CATALOG: dict[str, dict[str, SiteEntry]] = {
         "hotel_booking": SiteEntry(
             "Booking.com", "https://www.booking.com",
             "buscar/reservar alojamiento — filtra por ciudad, fechas, nº de personas, estrellas y precio. Cerrar "
-            "la reserva exige cuenta y app: trae las opciones con precio y condiciones y di qué falta.",
+            "la reserva exige cuenta y tarjeta: trae las opciones con precio y condiciones y di qué falta.",
             alts=(("Trivago", "https://www.trivago.es"), ("Google Hotels", "https://www.google.com/travel/hotels"))),
         "flight_search": SiteEntry(
             "Skyscanner", "https://www.skyscanner.es",
             "buscar/comparar vuelos — filtra por origen, destino, fechas y equipaje facturado si se pidió. "
-            "Comprar exige cuenta y app: trae las opciones con precio y horario y di qué falta.",
+            "Comprar exige cuenta y tarjeta: trae las opciones con precio y horario y di qué falta.",
             alts=(("Google Flights", "https://www.google.com/travel/flights"), ("Kayak", "https://www.kayak.es"))),
         "event_tickets": SiteEntry(
             "Entradas.com", "https://www.entradas.com",
             "entradas de teatro/musicales/conciertos — busca el espectáculo por nombre y filtra por fecha y "
             "sesión; si el espectáculo no aparece, mira la web del propio teatro. Comprarlas exige cuenta y "
-            "app: trae las opciones con precio y zona, di qué falta para cerrarlo y PARA ahí.",
+            "tarjeta: trae las opciones con precio y zona, di qué falta para cerrarlo y PARA ahí.",
             alts=(("Ticketmaster ES", "https://www.ticketmaster.es"), ("El Corte Inglés Entradas", "https://www.elcorteingles.es/entradas"))),
         "local_business": SiteEntry(
             "Google Maps", "https://www.google.com/maps",

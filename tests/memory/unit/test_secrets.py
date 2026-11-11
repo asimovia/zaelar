@@ -75,7 +75,7 @@ def test_iban():
 
 
 def test_card_luhn():
-    d = _one("guarda mi app 4111 1111 1111 1111")
+    d = _one("guarda mi tarjeta 4111 1111 1111 1111")
     assert d.kind == "card"
 
 

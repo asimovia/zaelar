@@ -197,6 +197,6 @@ def test_the_size_of_a_card_reads_the_paid_verdict_first(monkeypatch):
         return lambda handle, key, fallback, **k: ((verb, {"used": used}) if key == tb.CANVAS_KEY else (fallback, {}))
     for verb, want in (("minimize", "minimize"), ("exit_fullscreen", "minimize"), ("fullscreen", "fullscreen")):
         monkeypatch.setattr(tb, "read", reading(verb))
-        assert _door.size_ordered("haz eso con la app", brief=object()) == want, verb
+        assert _door.size_ordered("haz eso con la tarjeta", brief=object()) == want, verb
     monkeypatch.setattr(tb, "read", reading("fullscreen", used=False))
     assert _door.size_ordered("Johnny pausa el vídeo.", brief=object()) == ""
