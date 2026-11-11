@@ -26,6 +26,10 @@ def _clean():
     dc._PENDING_CONFIRM.clear()
     dc._EXPIRED_CONFIRM.clear()
     yield
+    from nucleo import circuit
+    for p in list(dc._PENDING_CONFIRM.values()):   # V2-878 §4: a parked offer waits on a ROW — end it with the test
+        if p.get("uid"):
+            circuit.settle(row=str(p["uid"]), state="cancelled", outcome="test ended")
     dc._PENDING_CONFIRM.clear()
     dc._EXPIRED_CONFIRM.clear()
 
