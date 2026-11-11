@@ -225,6 +225,8 @@ async def rerun(uid: str, entry: dict, text: str, choice: int | None = None):
         if take(str(entry.get("ask_id") or "")):
             ledger.resumed(uid)                  # the turn that bound it reads the answer off the row and acts
         return {"ok": True, "row": uid, "answered": True}
+    if retained.get("kind") == "notice":         # a scheduled notice's question (V2-878 §4): his answer ends it
+        return __import__("nucleo.pulse.notice_ask", fromlist=["x"]).answered(uid, entry, text)
     if retained.get("kind") == "send":           # a send task's slot (`nucleo/request/send_task`): his answer fills it
         from nucleo.request import send_task_answer
         return send_task_answer.answered(uid, entry, text, choice)

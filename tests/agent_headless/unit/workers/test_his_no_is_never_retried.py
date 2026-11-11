@@ -61,7 +61,6 @@ def asked(row, monkeypatch):
     from nucleo.cli import worker_api_answer as wa
     from widgets import confirm as wc
     ran, declined = [], []
-    monkeypatch.setattr(wc, "_judge", lambda q, r, timeout=4.0: None)
     monkeypatch.setattr(wa, "_declined", lambda uid, ret: declined.append(uid))
     monkeypatch.setattr(wa, "_keep", lambda uid, e: None)
     monkeypatch.setattr(wa, "_record_for", lambda e: None)
