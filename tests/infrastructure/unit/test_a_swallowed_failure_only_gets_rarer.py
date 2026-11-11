@@ -62,6 +62,7 @@ TOTAL = 1699   # refactor2710-06: measured with 04 and main merged
 PER_FILE: dict[str, int] = {
     # V2-872 W2 (2026-11-10): the CPU sampler's two best-effort reads — a sample that failed, a notice not delivered —
     # are logged and never raised: the heartbeat must not die of its own report. Only falls.
+    'nucleo/cli/worker_api_schedule.py': 1,
     'nucleo/pulse/scheduler_refs.py': 2,
     'nucleo/pulse/starvation.py': 2,
     # Landed uncounted on main with the desktop shell (V2-575, PR #254) and recorded here 2026-11-09 by V2-836, which

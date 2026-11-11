@@ -6231,6 +6231,20 @@ DOMAINS: list[dict] = [
                                   "that never name the card) and only once; `pause`/`reset` stay controls and a show "
                                   "on them is a drag",
             "ch": UNIT, "paths": ["tests/browser/unit/timer/test_a_countdown_set_by_his_turn_comes_on_screen.py"]},
+        # V2-879 O1 — disarmed 2026-11-11 (`what_it_fills` ignores `fills` / `judge_free` keeps every place / `rows`
+        # never read) → red, each in its own file.
+        {"id": "4.476", "title": "A map show that carries only its modifiers is NOT done (V2-879 O1): `show`/`add` "
+                                  "declare what they fill (`fills: rows, places`), so `{title, places: []}` answered ok "
+                                  "over an unchanged map comes back `slots_unfilled` naming rows and places at the one "
+                                  "funnel; a call that fills either is the handler's; an act with no `fills` is judged "
+                                  "by all its slots as before",
+            "ch": UNIT, "paths": ["tests/browser/unit/map/test_a_show_that_fills_only_its_modifiers_is_not_done.py"]},
+        {"id": "4.477", "title": "«Those» on the map are the SHEET's rows (V2-879 O1): `rows` (numbers, titles, \"all\") "
+                                  "resolve from the sheet's own data with each row's link; rows over an empty sheet "
+                                  "paint nothing and say its search is still going; the model's own places over a sheet "
+                                  "on screen or filling are refused (es/en), a free place that is a row becomes it, one "
+                                  "he named stays, and with no sheet on screen free places work as before",
+            "ch": UNIT, "paths": ["tests/browser/unit/map/test_a_those_order_pins_the_sheet_rows.py"]},
         # V2-881 — disarmed 2026-11-11: BootOverlay served with its `store.bootReady` hook cut → red.
         {"id": "4.480", "title": "ONE loader from the first byte to ready, both shells (V2-881): the HTML paints the neurons' first ring and preboot.js narrates it (cached bundle, English floor, never a key); BootOverlay takes over the SAME element; the growth (the progress bar and the lit canvas) advances only on a real phase, never on a timer; `store.bootReady` completes it and the loader is gone within one second",
             "ch": UNIT, "paths": ["tests/browser/unit/arranque/test_one_loader_grows_on_real_phases_and_bursts_on_ready.py"]},
