@@ -151,3 +151,22 @@ def _held(ctx: dict, out: Reading, slot: str, key: str) -> None:
 #: the rewriting rules first, the held row last, over the call as it will run. Adding a rule is writing its function
 #: and placing it here — the name a manifest writes IS the function's, so there is no second list of names to keep.
 RULES = {f.__name__.lstrip("_"): f for f in (_his_words, _reading, _card, _composed, _held)}
+
+
+#: The recipient sources that are the worker's own pick: neither his word, the turn's reading, the card nor the held row.
+_WORKERS_OWN = ("agent", "none")
+
+
+def unbacked_send(rec, turn, got, mandated: bool = False) -> str:
+    """CRIT-C5's second half at the worker's exit: a send whose recipient the WORKER chose, from an errand whose
+    reading does not ask for anything to be sent in his name, is dropped — never turned into a question (V2-886 D4).
+    Backed = the reading's errand class is `sends_for_him` or it names a message channel, or a mandate covers the
+    channel. No reading at all (an old row) keeps today's path: the leave rule asks. Returns the reason, "" when backed."""
+    if turn is None or got.released or (got.sources or {}).get("recipient") not in _WORKERS_OWN:
+        return ""
+    if mandated:          # the session's mandate covers this channel (`exit_gate.under_mandate`)
+        return ""
+    from nucleo.acts import message_channel
+    if message_channel.backs_a_send(turn):
+        return ""
+    return "nothing he asked for sends a message in his name, and the recipient is the worker's own pick"

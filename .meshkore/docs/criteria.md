@@ -178,8 +178,11 @@ below is the first kind, or it names the mechanism that replaced the second.
   recipient is never a doubt: one he did not name (this turn or his last 15 min) is asked «¿se lo mando a X?», a
   spelling-only near contact is named back, never written to, and the engine never turns a draft into a send to
   somebody he did not name. When it was asked, the yes is HIS words (a plain yes, or the judge's YES), never the
-  model's `confirmed=true` over a sentence about something else. — since 2026-09-29 ·
-  nodes 2.106, 2.168, 2.730, 2.740 · `nucleo/acts/message.py` (`asked_if_leaving`), `widgets/mensajeria/outbound.py`,
+  model's `confirmed=true` over a sentence about something else. The same holds for a WORKER (V2-886 D4): a send
+  whose recipient the worker picked, from an errand whose reading asks for no send (`message_channel.backs_a_send`, read by `exit_slots.unbacked_send`:
+  the class `sends_for_him` or a channel he named), is dropped at its exit with an event, and no send worker is born
+  from a lean alone. — since 2026-09-29 ·
+  nodes 2.106, 2.168, 2.730, 2.740, 2.1690 · `nucleo/acts/message.py` (`asked_if_leaving`), `widgets/mensajeria/outbound.py`,
   `widgets/confirm.py::backs_a_yes`.
 - **CRIT-C6 · An action does not manufacture permission for its own side effects**; the confirm gate asks
   SOMEONE, and its «yes» returns to the click it stopped. — since 2026-09-18 · nodes 4.21, 2.29.
