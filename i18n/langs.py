@@ -82,7 +82,9 @@ def words(path: str, code: str | None = None, default=None):
     (or `code`), then English, then `default`: a third language never inherits Spanish by accident.
 
     This is the door for every table that used to be `{"es": …, "en": …}` inside a module."""
-    c = (code or current_code() or DEFAULT_LANG).strip().lower()
+    # The active language through `current_language()`, the one seam every reader of the table shares (V2-877 #10:
+    # a module that moved from `current_language().<field>` to `words(...)` must not start reading another seam).
+    c = (code or getattr(current_language(), "code", "") or DEFAULT_LANG).strip().lower()
     for lang in (c, _packs.BASE):
         tree = _WORDS.get(lang)
         if tree is None:

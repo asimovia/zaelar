@@ -90,9 +90,7 @@ def propose(now: float | None = None) -> str | None:
             continue
         title = (e.get("title") or "").strip()
         if title:
-            try:
-                from voice.engine.core import langs
-                return langs.current_language().spark_pending.format(title=title)
-            except Exception:
-                return f"Sigo con una cosa pendiente: {title}. ¿Lo retomamos?"
+            from i18n import langs      # his language, then English — never a Castilian constant (V2-877 #10)
+            line = str(langs.words("spark_pending", default="") or "")
+            return line.format(title=title) if line else None
     return None
