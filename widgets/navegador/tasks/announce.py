@@ -164,7 +164,7 @@ def answer_from_turn(text: str) -> dict | None:
     if not (_f.get(tid) or {}).get("question"):
         return None
     from widgets import confirm as _confirm
-    verdict = _confirm.classify_reply(text or "")
+    verdict = _confirm.classify_reply(text or "")  # V2-878 §4b: declared answers
     if not verdict:
         return None
     _f.answer(tid, text or "")

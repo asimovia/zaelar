@@ -19,10 +19,10 @@ def decision(question: str, text: str, choice: int | None = None) -> str | None:
     if choice is not None:
         return {0: "yes", 1: "no"}.get(int(choice))
     from widgets import confirm as _wc
-    v = _wc.classify_reply(text)
+    v = _wc.classify_reply(text)  # V2-878 §4b: declared answers
     n = _wc._norm(text)
-    mixed = bool(_wc._YES_RE.search(n) and _wc._NO_RE.search(n))   # a yes and a no in one line is neither, bare
-    if v and not mixed and _wc.is_plain_answer(text, v):
+    mixed = bool(_wc._YES_RE.search(n) and _wc._NO_RE.search(n))   # a yes and a no in one line is neither, bare · V2-878 §4b: declared answers
+    if v and not mixed and _wc.is_plain_answer(text, v):  # V2-878 §4b: declared answers
         return v
     return "yes" if v == "yes" else None
 
@@ -52,7 +52,7 @@ def _declined(uid: str, retained: dict) -> None:
 
 def says_yes(question: str, text: str) -> bool:
     """The ONE reader of his yes to a retained act, public for the doors outside this package (the browser click)."""
-    return _says_yes(question, text)
+    return _says_yes(question, text)  # V2-878 §4b: declared answers
 
 
 def _record_for(entry: dict):
@@ -111,7 +111,7 @@ async def answer(corr_id: str, text: str, *, resume: bool = True, choice: int | 
             _keep(uid, e)
             return False
         return True
-    said = decision(str(e.get("question") or ""), text, choice) if retained.get("action") else None
+    said = decision(str(e.get("question") or ""), text, choice) if retained.get("action") else None  # V2-878 §4b: declared answers
     if retained.get("action") and said == "no":
         _declined(uid, retained)               # his no ends the act's goal: never a shortfall the circuit retries
     elif retained.get("action") and said is None:

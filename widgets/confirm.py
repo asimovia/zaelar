@@ -283,7 +283,7 @@ def only_pending() -> tuple[str, dict]:
 
 
 # Deterministic yes/no detection (es/en); does not depend on the LLM, same spirit as attention.hard_interrupt.
-_YES_RE = re.compile(r"\b(si|sip|claro|vale|venga|dale|adelante|hazlo|hazla|borralo|borrala|"
+_YES_RE = re.compile(r"\b(si|sip|claro|vale|venga|dale|adelante|hazlo|hazla|borralo|borrala|"  # V2-878 §4b: declared answers
                      r"confirmo|confirmado|ok|okey|okay|perfecto|yes|yeah|yep|do it|go ahead|confirm)\b")
 _NO_RE = re.compile(r"\b(no|nop|cancela|cancelar|cancelalo|dejalo|dejala|para|olvidalo|mejor no|"
                     r"nada|cancel|stop|nevermind|never mind|dont|do not)\b")
