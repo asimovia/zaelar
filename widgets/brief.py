@@ -213,9 +213,8 @@ def for_prompt(open_ids=None, recent_ids=None, query: str = "", stats: dict | No
         if isinstance(acts, dict) and acts:
             row += "  · datos: " + ", ".join(_offered_action_names(acts))
         lines.append(row)
-        if widl in named and widl not in opened and isinstance(acts, dict):   # V2-879: the card his words name
-            fields = _payload_keys(acts, every=True)
-            lines += [f"  [{wid}] campos: {fields}"] if fields else []
+        if widl in named and widl not in opened and isinstance(acts, dict) and (f := _payload_keys(acts, every=True)):
+            lines.append(f"  [{wid}] campos: {f}")   # V2-879: the card his words name, its acts' declared slots
         for _rule in (wrules.get(widl) or [])[:3]:
             lines.append(f"  [{wid}] regla del operador: {_rule[:120]}")
         # USAGE: V2-027 tersening had removed this entirely. A real 2026-07-23 bug with an open YouTube widget

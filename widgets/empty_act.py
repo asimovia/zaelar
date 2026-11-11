@@ -57,6 +57,6 @@ async def run(wid: str, action: str, payload: dict, act):
              extra={"id": wid, "action": str(action), "error": contract.SLOTS_UNFILLED,
                     "field": ",".join(probe.get("unmet") or []), "sent": ",".join(probe.get("sent") or []),
                     "is_error": True})
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as e:  # noqa: BLE001 — the refusal stands without its timeline line
+        logger.debug(f"empty_act: refusal of {wid}:{action} not emitted — {e!r}")
     return probe
