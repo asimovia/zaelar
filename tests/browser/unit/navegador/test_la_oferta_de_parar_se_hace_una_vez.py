@@ -20,6 +20,9 @@ from nucleo.turn.prompt import live_tasks
 from nucleo.workers.session import SessionRecord
 
 
+# V2-878 §2 — the running-errands block is FACTS ONLY now. The tests here that asserted the wording of its imperative
+# paragraph (an order to tell, to deny, not to repeat) went with it; what each face reports stays tested as a fact.
+
 @pytest.fixture(autouse=True)
 def _clean():
     D._SESSIONS.clear()
@@ -46,11 +49,11 @@ def test_la_PRIMERA_vez_se_ofrece_parar():
     assert "YA le ofreciste" not in st
 
 
-def test_la_SEGUNDA_vez_se_dice_que_NO_lo_vuelva_a_preguntar():
+def test_la_SEGUNDA_vez_se_dice_que_YA_se_ofrecio():
     _atascada()
     live_tasks.pending_task_lines()                        # turn 1: it carries the offer forward
     st = "\n".join(live_tasks.pending_task_lines())        # turn 2
-    assert "YA le ofreciste pararla" in st and "NO se lo vuelvas a preguntar" in st
+    assert "YA le ofreciste pararla" in st     # V2-878 §2: the FACT; the order not to repeat it went with the paragraph
 
 
 def test_pero_el_HECHO_se_sigue_diciendo():
@@ -80,10 +83,3 @@ def test_cada_tarea_lleva_su_propia_cuenta():
     live_tasks.pending_task_lines()
     assert D.stall_offered("w1") == 1 and D.stall_offered("w3") == 1
 
-
-def test_el_bloque_le_DICE_al_modelo_que_no_repita_la_pregunta():
-    """The instruction, not just the marker: without the phrase, the model has the fact and does not know what
-    to do with it."""
-    _atascada()
-    st = "\n".join(live_tasks.pending_task_lines())
-    assert "la pregunta NO se \nrepite" in st or "la pregunta NO se repite" in st.replace("\n", "")
