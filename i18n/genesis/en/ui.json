@@ -1730,6 +1730,8 @@
  "widgets.youtube.tab_player": "Player",
  "widgets.youtube.tab_queue": "Queue",
  "widgets.youtube.tab_subs": "Subscriptions",
+ "widgets.youtube.tab_subs_short": "Channels",
+ "widgets.youtube.now_playing": "Now playing",
  "widgets.youtube.tap_unmute": "Tap to turn the sound on",
  "widgets.youtube.to_queue": "+ queue",
  "widgets.youtube.to_queue_hint": "Add to the queue without playing",

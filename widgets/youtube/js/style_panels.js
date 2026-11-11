@@ -170,4 +170,12 @@ export const CSS_PANELS = `\
   .hb-win:fullscreen .hb-yt-conn,.hb-win:fullscreen .hb-yt-subs,.hb-win:fullscreen .hb-yt-mylists{display:none}
   /* Cinema: the video is the screen — the frame must show whatever tab was active. */
   .hb-win.hb-cinema .hb-yt-frame,.hb-win:fullscreen .hb-yt-frame{display:block}
+    /* THE PHONE (V2-876 P-24), inside the shell's scroller: one row of tabs (no plug: not a phone control), 16:9, 44 px */
+  .zm-scroll .hb-yt-nav{padding:4px 0} .zm-scroll .hb-yt-navright{display:none} .zm-scroll .hb-yt-tabs{flex:1 1 auto;overflow:visible}
+  .zm-scroll .hb-yt-tab{flex:1 1 auto;min-width:0;min-height:44px;padding:0 5px;font-size:12.5px;overflow:hidden;text-overflow:ellipsis}
+  .zm-scroll .hb-yt-tab[data-short]{font-size:0} .zm-scroll .hb-yt-tab[data-short]::after{content:attr(data-short);font-size:12.5px}
+  .zm-scroll .hb-yt.hb-yt-t-player:not(.hb-yt-connmode) .hb-yt-frame{flex:0 0 auto;aspect-ratio:16/9;min-height:0}
+  .zm-scroll .hb-yt-ctrls{justify-content:space-between} .zm-scroll .hb-yt-cbtn svg{width:22px;height:22px}
+  .zm-scroll .hb-yt-cbtn,.zm-scroll .hb-yt-sbtn,.zm-scroll .hb-yt-radd{min-width:44px;min-height:44px;align-items:center;justify-content:center}
+  .zm-scroll .hb-yt-radd{display:flex;padding:0 12px}
   `;

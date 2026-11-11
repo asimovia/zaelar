@@ -6178,6 +6178,13 @@ DOMAINS: list[dict] = [
                                  "the art); no «Unknown artist»; middle-truncated title; the queue a page; Search never opens "
                                  "on the playing query; 44 pt targets; the desktop geometry pinned unchanged",
             "ch": UNIT, "paths": ["tests/browser/unit/musica/test_the_phone_card_fits_the_hand.py"]},
+        {"id": "4.471", "title": "YouTube on the phone at 393x852 (V2-876 P-24, V2-877 #6): one row of 44 pt tabs with no sideways "
+                                 "scroll, Home reachable and showing what is loaded, the player 16:9 with 44 pt controls, the "
+                                 "swap notice legible and only for the video it swapped to, the embed in the card's language; "
+                                 "a video whose owner refuses the embed (oEmbed 401/404) is never offered and joins the "
+                                 "blocklist, fail-open; the desktop geometry pinned unchanged",
+            "ch": UNIT, "paths": ["tests/browser/unit/youtube/test_the_phone_player_fits_the_hand.py",
+                                  "tests/browser/unit/youtube/test_a_video_its_owner_refuses_is_never_offered.py"]},
     ]},
     {"id": "5", "name": "CONECTORES", "nodes": [
         # V2-559 — el operador siguió la guía, creó la contraseña de aplicación y pegó el ENLACE de esa

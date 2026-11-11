@@ -5,6 +5,7 @@ Queue editing lives in `list_actions.py`, playback in `player_actions.py`.
 from __future__ import annotations
 
 from . import data as _d
+from . import embed_check as _ec
 from widgets import result_refs as _rr
 
 
@@ -201,7 +202,8 @@ def _a_search(action, p, db) -> dict:
     # Fetch a few extra when a filter exists, so blocking a channel does not shrink every search.
     hits = _d._search_many(q, n + (4 if blocked else 0) + (4 if bids else 0))
     hits, n_blocked = _d._drop_blocked(hits, blocked)
-    hits = [h for h in hits if h["videoId"] not in bids][:n]   # V2-634: the refused never come back
+    hits = [h for h in hits if h["videoId"] not in bids]      # V2-634: the refused never come back
+    hits = _ec.keep_playable(db, hits)[:n]          # V2-877 #6: nor is one offered that the player would refuse
     db["last_query"] = q
     db["adding"] = ""
     if not hits:
