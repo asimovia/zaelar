@@ -30,12 +30,61 @@ JUST_ENDED_S = 300.0     # five minutes: how long the conversation lasts in whic
 DELIVERED_KEPT_S = 900.0
 
 
+#: V2-879 O2 — how long an ending stays a flow his next words can still be ABOUT (and reopen), by HOW it ended: a
+#: declared property of the row's state. An end not declared here is final the moment it happens.
+DELIVERED = "delivered"
+REOPEN_GRACE_S = {**dict.fromkeys(ENDED_SESSION_STATES, JUST_ENDED_S), DELIVERED: DELIVERED_KEPT_S}
+
+
+def end_of(row: dict) -> str:
+    """How an ended row ended, in `REOPEN_GRACE_S`'s terms: a `done` that delivered is `delivered`; a session that
+    ended still saying it was queued or running ended without its own state, which is a death (`error`)."""
+    status = str(row.get("status") or "")
+    if status not in ENDED_SESSION_STATES:
+        return "error"
+    return DELIVERED if status == "done" and bool(row.get("ok")) else status
+
+
 def _window(row: dict) -> float:
-    ok = bool(row.get("ok")) and str(row.get("status") or "") == "done"
-    return DELIVERED_KEPT_S if ok else JUST_ENDED_S
+    return REOPEN_GRACE_S.get(end_of(row), 0.0)
 
 
 _ENDED_SESSIONS: dict[str, dict] = {}
+
+# V2-879 O2 — the pool belongs to ONE conversation. It was keyed by the engine's lifetime: after a session clean (the
+# Reset, the demo's reset, the lab's `clean`) a new search of the same kind was routed `reopen` into the previous
+# session's ENDED errand — and a hard reset even fed it, since the errands it cancels end after it. So the pool is bound
+# to the observability session: a new session empties it, and an errand that STARTED before it never enters it.
+_POOL: dict = {"sid": "", "since": 0.0}
+
+
+def _conversation() -> tuple[str, float]:
+    """The current session's id and when it began (seconds), ("", 0.0) when there is none yet."""
+    try:
+        from observability import identity
+        info = identity.session_info()
+        return str(info.get("session_id") or ""), float(info.get("started_ms") or 0) / 1000.0
+    except Exception:  # noqa: BLE001 — no identity: the pool keeps the engine's lifetime, as before
+        return "", 0.0
+
+
+def _bound() -> None:
+    """Drop the pool when the conversation it belongs to has ended (a new session id)."""
+    sid, began = _conversation()
+    if sid and sid != _POOL["sid"]:
+        if _POOL["sid"]:
+            forget(since=began)
+        _POOL["sid"] = sid
+
+
+def forget(*, since: float | None = None) -> int:
+    """A new conversation (begun at `since`, default now): every just-ended errand and fast-pass delivery leaves the
+    pool, and one that started before it never enters it (its end lands after the clean). Returns how many left."""
+    n = len(_ENDED_SESSIONS) + len(_LISTING_DELIVERIES)
+    _ENDED_SESSIONS.clear()
+    _LISTING_DELIVERIES.clear()
+    _POOL["since"] = time.time() if since is None else float(since)
+    return n
 
 
 def _live_goals() -> set[str]:
@@ -71,6 +120,9 @@ def _remember_ended(rec, resuming: bool = False) -> None:
     """
     if resuming:
         return
+    _bound()
+    if float(getattr(rec, "started", None) or _POOL["since"]) < _POOL["since"]:
+        return          # V2-879 O2: born in a conversation that was cleaned — its end is not this one's to reopen
     try:
         from nucleo import surfaces
         from nucleo.sheets import sheet_of
@@ -136,6 +188,7 @@ def recently_ended_sessions(now: float | None = None, limit: int = 3) -> list[di
     only way two sessions carry one goal (a repeated escalation does it too), and the failure mode is a prompt
     that argues with itself — invisible unless someone reads it whole, as this one was read.
     """
+    _bound()
     now = time.time() if now is None else now
     _live = _live_goals()
     rows = [{**v, "ago_s": int(now - float(v.get("at") or now))}
@@ -163,6 +216,7 @@ def note_listing_delivery(goal: str, sheet: str, *, n: int = 0) -> None:
     s = str(sheet or "").strip()
     if not g or not s:
         return
+    _bound()
     _LISTING_DELIVERIES[f"listing:{s}"] = {"id": f"listing:{s}", "goal": g, "sheet": s,
                                            "n": int(n or 0), "at": time.time(), "refined": False}
     for k in [k for k, v in _LISTING_DELIVERIES.items()
@@ -174,6 +228,7 @@ def recent_listing_deliveries(now: float | None = None) -> list[dict]:
     """Fresh delivery snapshots, `{id, goal, sheet, n, at, refined}` — the same shape `continues_ended`
     consumes, so the V2-566 inheritance machinery covers them with zero new matching code. COPIES: the
     matcher pool must not be able to mutate the store (mutation goes through `consume_listing_refinement`)."""
+    _bound()
     now = time.time() if now is None else now
     return [dict(v) for v in _LISTING_DELIVERIES.values()
             if (now - float(v.get("at") or 0)) <= JUST_ENDED_S]

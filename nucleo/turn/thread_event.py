@@ -35,7 +35,7 @@ VERBS = (NEW, CONTINUE, CORRECT, CLOSE, EVICT, PICK_PENDING, UNDECIDED, CONVERSA
 #: How each `flow_of.route()["as"]` reads as a thread move — the route's values are not changed, only named.
 _VERB_OF = {"new": NEW, "conversation": CONVERSATION, "list": LIST, "undecided": UNDECIDED,
             "inject": CONTINUE, "absorb": CONTINUE, "reopen": CONTINUE, "join": CONTINUE,
-            "steer": CORRECT, "replace": CORRECT, "stop": CLOSE}
+            "steer": CORRECT, "replace": CORRECT, "stop": CLOSE, "card": CONVERSATION}   # a card's act moves no thread
 HEARD_MAX = 80
 
 #: Who is asking the model judge right now — set by the door that asks (`flow_of`), read inside the judge's thread
