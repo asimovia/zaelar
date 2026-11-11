@@ -1,22 +1,8 @@
-// ============================================================================
-// SettingsSheet.js — «a small configuration device» (operator's words), and small is the specification, not
-// a shortcut.
-//
-// The desktop's ConfigPanel.js is 35 KB and full-screen: API keys per piece, a model per module, provider balances,
-// voice providers, benchmarks. That panel is for SETTING UP an installation. A phone is for USING one, and the
-// difference is not screen size — it is that entering an API key on a phone keyboard, or choosing between eleven
-// models by their names, is worse on a phone than on a laptop no matter how it is laid out. So this sheet carries
-// only the settings whose value is highest exactly WHILE you are using the agent from your pocket:
-//
-//   · Language  — the whole UI switches live (V2-089), server-side, so BOTH shells follow
-//   · Theme     — dark/light. On a phone this is a real setting, not a preference: it is read outdoors
-//   · Captions  — subtitles on/off. The single most-used setting on a phone (silent rooms, loud streets)
-//   · Speaker   — zaelar's voice output on/off, independent of the mic (V2-088: the icon is the only owner of silence)
-//
-// Everything heavier is not hidden, it is DELEGATED, with a row that says so and opens the real thing in the
-// desktop shell. Pretending a 35 KB configuration panel fits here would produce a worse version of a thing that
-// already works, which is the most expensive kind of feature.
-// ============================================================================
+// SettingsSheet.js — the Settings PAGE: «a small configuration device» (operator), and small is the specification. The
+// desktop's ConfigPanel sets an installation UP (keys, a model per module, providers); a phone USES one. So this page
+// carries only what matters while using the agent from a pocket — language (server-side, both shells follow), theme,
+// the speaker, the wake word, notifications, the permissions — and DELEGATES the rest with a row that opens the
+// desktop version, instead of a worse copy of a panel that already works.
 
 import { h } from "../../../app/core/dom.js?v=2";
 import * as store from "../../../app/core/store.js?v=2";

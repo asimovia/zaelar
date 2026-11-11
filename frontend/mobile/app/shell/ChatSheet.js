@@ -62,6 +62,8 @@ export function ChatSheet() {
   const down = () => { if (listEl && stick) requestAnimationFrame(() => { listEl.scrollTop = listEl.scrollHeight; }); };
   createEffect(() => { if (store.chatOpen()) { stick = true; down(); } });
   createEffect(() => { store.chatMsgs(); offNote(); down(); });
+  // The keyboard coming up shortens the screen: the newest line stays in sight above the composer (P-12).
+  try { window.visualViewport.addEventListener("resize", down); } catch (_) { /* no visual viewport */ }
 
   return sheet;
 }
