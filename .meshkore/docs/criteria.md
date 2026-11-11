@@ -132,6 +132,12 @@ below is the first kind, or it names the mechanism that replaced the second.
   tool round is said inside its turn, a door's line
   through the turn's mouth while it is live and out of turn only with its key (`turn/mouth`), and no model runs after
   the main stream. — since 2026-11-01, narrowed 2026-11-05 · nodes 2.1191, 2.1071.
+- **CRIT-V19 · What a worker is told is never what he asked.** A relaunch (context handoff, stall restart) keeps his
+  own words as the errand's request and goal; the brief written for the next worker rides in
+  `context["worker_brief"]`, read by the worker prompt alone (`handoff.with_worker_brief`), so no title, chat box,
+  status line or report can render it. It is worker-facing prose, in English like every prompt, never in i18n
+  (V2-877 #1, the V2-652 rule on a new road). — since 2026-11-11 · nodes 2.1670 · `nucleo/workers/handoff.py`,
+  `nucleo/workers/relay.py`.
 
 ## 2 · Consent — act or ask
 

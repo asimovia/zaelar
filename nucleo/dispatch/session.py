@@ -173,14 +173,14 @@ async def _run_session(task: "Task") -> None:
             prompt = _d._web_prompt(req, ctx, brief, vision=_d._worker_sees(), playbook=_pb)
         else:
             prompt = _d._build_prompt(req, ctx, trusted, brief, playbook=_pb)
-        # V2-644 (a REPORT flips the delivery contract) + V2-661 (where the operator's FILES live): the blocks
-        # a trusted worker gets after the method block, composed in one place.
+        # V2-644 (a REPORT flips the delivery contract) + V2-661 (his FILES): a trusted worker's blocks, in one place.
         if trusted and not _dev:
             from nucleo.workers.prompts.surfaces import trusted_blocks
             prompt += trusted_blocks(getattr(rec, "surface", ""))
             from nucleo.request import send_task_words as _send_task   # a send row: its slots are the worker's data
             if (_sb := _send_task.brief_block(str(getattr(rec, "uid", "") or ""))):
                 prompt += "\n\n" + _sb
+        prompt = __import__("nucleo.workers.handoff", fromlist=["x"]).with_worker_brief(prompt, task.context)  # V2-877
         if resume and (kind == "web" and trusted):
             prompt = ("REANUDAS una gestión que YA empezaste (no arranques de cero): la pestaña sigue donde la "
                       "dejaste y los datos que ya reuniste están en memoria (consúltalos con cli.mem recall). Haz "
