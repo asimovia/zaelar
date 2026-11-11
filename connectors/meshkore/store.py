@@ -80,6 +80,9 @@ def save_cluster(name: str, cluster_id: str, token: str, handle: str = "zaelar",
         entry["vis"] = vis
     if prev.get("perms"):                       # do NOT overwrite the permission profile when re-saving creds (V2-076)
         entry["perms"] = prev["perms"]
+    # ATTENTION: every subscription carries its flags from the moment it exists — kept on a re-save, otherwise the
+    # defaults for its kind. This is the only writer of a cluster entry, so every path that subscribes gets them.
+    entry["attention"] = _clean_attention(prev.get("attention"), entry)
     d[name] = entry
     _write(d)
 
@@ -119,6 +122,63 @@ def set_perms(name: str, perms: dict) -> dict:
     d[name] = entry
     _write(d)
     return cur
+
+
+# ── per-CLUSTER ATTENTION — what may wake the brain from this subscription ────────────────────────────────────
+# A cluster is one of the engine's input interfaces; these flags decide which of its frames are worth a model call.
+# Judged in code by `connectors/meshkore/attention.py::wakes` (the one door). A public cluster (an open commons)
+# attends only to what is addressed to us; a private one attends to everything, as before.
+ATTENTION_DEFAULTS = {
+    "public": {"addressed_to_me": True, "general_messages": False, "generated_content": False},
+    "private": {"addressed_to_me": True, "general_messages": True, "generated_content": True},
+}
+ATTENTION_FLAGS = tuple(ATTENTION_DEFAULTS["private"])
+
+
+def is_public(cfg: dict) -> bool:
+    """Same predicate as `MeshKoreClient.public`: an open cluster is `vis=public` or tokenless."""
+    return (cfg or {}).get("vis", "") == "public" or not (cfg or {}).get("token")
+
+
+def attention_defaults(public: bool) -> dict:
+    return dict(ATTENTION_DEFAULTS["public" if public else "private"])
+
+
+def _clean_attention(stored, cfg: dict) -> dict:
+    """The complete flag set: the kind's defaults, overridden by the stored closed-vocabulary booleans."""
+    a = attention_defaults(is_public(cfg))
+    if isinstance(stored, dict):
+        a.update({k: bool(stored[k]) for k in stored if k in ATTENTION_FLAGS})
+    return a
+
+
+def get_attention(name: str) -> dict | None:
+    """The cluster's attention flags, or None when it has no saved subscription (the caller decides the kind)."""
+    cfg = _read().get(name)
+    return _clean_attention(cfg.get("attention"), cfg) if cfg else None
+
+
+def set_attention(name: str, flags: dict) -> dict:
+    """Merge closed-vocabulary flags into a saved subscription. Persists."""
+    d = _read()
+    entry = d.get(name) or {}
+    cur = _clean_attention(entry.get("attention"), entry)
+    cur.update({k: bool(v) for k, v in (flags or {}).items() if k in ATTENTION_FLAGS})
+    entry["attention"] = cur
+    d[name] = entry
+    _write(d)
+    return cur
+
+
+def migrate_attention() -> list:
+    """Write the kind's defaults into every saved subscription that has no flags yet. Idempotent; returns the names."""
+    d = _read()
+    done = [n for n, c in d.items() if isinstance(c, dict) and not isinstance(c.get("attention"), dict)]
+    for n in done:
+        d[n]["attention"] = _clean_attention(None, d[n])
+    if done:
+        _write(d)
+    return done
 
 
 def remove_cluster(name: str):

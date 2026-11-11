@@ -42,7 +42,7 @@ class _HeartbeatMixin:
             f"\"give me a second\"), do NOT conclude — stay silent (no tags at all) and keep waiting. Only send a "
             f"gentle follow-up if genuinely stuck with no signal either way, or emit [[cluster.done:{cluster}]] "
             f"if the objective is truly finished.")
-        _, sent = await self._brain_turn(cluster, event_text, origin="pulso")
+        _, sent = await self._brain_turn(cluster, event_text, origin="pulso", kind="pulse")
         if not sent and self._engaged.get(cluster):
             self._last_activity[cluster] = self._now()   # re-arm: check again after another idle stretch
             self._nudged.discard(cluster)
@@ -113,7 +113,7 @@ class _HeartbeatMixin:
             # same reasoning as _heartbeat_nudge below.
             self._spawn(self._brain_turn(
                 cluster, f"[cluster:{cluster} · evaluación de la conversación]\n{capsule.PACE_HANDBACK}", peer=peer,
-                origin="pulso"))
+                origin="pulso", kind="pulse"))
 
 
 # Shared state is read through the facade module object, so a patch of `connectors.meshkore.bridge.<name>` is seen here.

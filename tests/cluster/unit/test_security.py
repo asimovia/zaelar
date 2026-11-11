@@ -302,7 +302,7 @@ def _capture_bridge_prompt(ev):
     br._last_peer_msg = {}
     br._recent_inbound = {}; br._repeat = {}; br._stall = {}; br._window = {}; br._paced = {}; br._last_eval = {}
 
-    def _fake_turn(cluster, text, peer=None, peer_text=None):
+    def _fake_turn(cluster, text, peer=None, peer_text=None, **_k):
         captured["prompt"] = text
         return None                                           # not a coroutine; _spawn is a no-op below
 
@@ -415,7 +415,7 @@ def test_inbound_peer_text_redacted_on_sse_but_raw_for_brain(monkeypatch):
     br = bridge.ClusterBridge.__new__(bridge.ClusterBridge)
     br._manager = _Mgr()
     br._last_activity = {}; br._nudged = set(); br._engaged = {"arena": True}; br._last_peer_msg = {}; br._recent_inbound = {}; br._repeat = {}; br._stall = {}; br._window = {}; br._paced = {}; br._last_eval = {}
-    def _fake_turn(cluster, text, peer=None, peer_text=None): captured["prompt"] = text; return None
+    def _fake_turn(cluster, text, peer=None, peer_text=None, **_k): captured["prompt"] = text; return None
     br._brain_turn = _fake_turn
     br._spawn = lambda coro: None
     br._now = lambda: 0.0

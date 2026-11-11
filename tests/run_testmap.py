@@ -6864,6 +6864,11 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/voice/unit/test_the_ears_never_queue_behind_the_brain.py"]},
         {"id": "2.1706", "title": "The voice job's thread asks for interactive priority (V2-887): on macOS it raises itself to QoS USER_INTERACTIVE, asked in the entrypoint before connecting; a no-op elsewhere",
             "ch": UNIT, "paths": ["tests/voice/unit/test_the_voice_thread_asks_for_interactive_priority.py"]},
+        {"id": "2.1707", "title": "A cluster wakes the brain only for what its subscription attends to: every subscription "
+                                  "carries attention flags with the defaults of its kind (public: addressed only; private: "
+                                  "everything), migrated at boot; a Commons broadcast, intro or standing objective opens no "
+                                  "turn, a message addressed to us does",
+            "ch": UNIT, "paths": ["tests/cluster/unit/test_cluster_attention.py"]},
         {"id": "2.1692", "title": "Every question app has a ✕ (V2-886 D7): `POST /api/tasks/<row>/asks/<ask_id>/dismiss` on the row's open question ends that row through his cancel door and records `ask_dismissed`; a question that is not the open one is 409 and changes nothing; the card's ✕ and its label exist in es and en",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/test_a_question_card_can_be_dismissed.py"]},
         {"id": "2.1150", "title": "A worker's Claude Code never reads the host user's config (V2-851 F3, §15e): the spawn passes --setting-sources project,local + --strict-mcp-config and disables auto-memory; a routed tier also gets the engine's own CLAUDE_CONFIG_DIR (stable, for resume by id); the licence tier keeps its login; a dev worker keeps it after its env allowlist; the widget generator and the code agent share the helper",
