@@ -163,6 +163,9 @@ async def set_v2(payload: dict | None = None):
     try:
         from config import v2
         v2.set(section, patch)
+        if section == "privacy" and patch.get("location") is False:   # V2-875: off → the state forgets where he is
+            from nucleo import where
+            where.clear()
         return JSONResponse({"ok": True, "section": section, "config": v2.public(section)})
     except KeyError as e:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
