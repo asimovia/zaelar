@@ -176,12 +176,12 @@ below is the first kind, or it names the mechanism that replaced the second.
 - **CRIT-C4e · A named weekday that is today is TODAY** while the hour he said is still ahead (or he said none);
   otherwise the next one. One rule, `widgets/agenda/when.coming_offset`, read by the widget's date resolver with the
   act's own hour (add and move); the prompt's day list starts today, marked. A «next»/«que viene» weekday keeps its
-  strict rule in the said-day guard. — since 2026-11-11 (V2-886 0c) · node 2.1694 · `widgets/agenda/when.py`,
+  strict rule in the said-day guard. — since 2026-11-11 (V2-886 0c) · nodes 2.1694 · `widgets/agenda/when.py`,
   `nucleo/turn/prompt/live_state.py`.
 - **CRIT-C4f · An action's end state is rendered over what the card STORES**, never over the call's raw words: a card's
   data module may declare `spec_call(action, payload) → (action, payload)` — the act whose end state the call owes and
   its values normalised as the row keeps them — and `nucleo/circuit/spec.render` reads it (`circuit/card_call.py`). — since 2026-11-11
-  (V2-886 fila 5) · node 2.1695 · `nucleo/circuit/spec.py`, `widgets/agenda/spec_call.py`.
+  (V2-886 fila 5) · nodes 2.1695 · `nucleo/circuit/spec.py`, `widgets/agenda/spec_call.py`.
 - **CRIT-C4b · A worker never deletes a card.** Deleting is a confirmed act (`pending_confirm`, the UI's Yes/No);
   the first verb of a request names its act, so a build that mentions deleting its own entries builds. — since
   2026-10-09 · nodes 2.246.
