@@ -61,8 +61,7 @@ def kind(flow: dict) -> str:
 
 def lexical(text: str, pool: list[dict]) -> dict | None:
     from nucleo.turn.errands_of_a_turn import same_errand
-    hits = [c for c in pool if same_errand(text, str(c.get("request") or ""))]
-    return hits[0] if hits else None
+    return next((c for c in pool if same_errand(text, str(c.get("request") or ""))), None)
 
 
 async def flow_of(text: str, *, emit=None, by_out: list | None = None) -> dict | None:
@@ -76,19 +75,9 @@ async def flow_of(text: str, *, emit=None, by_out: list | None = None) -> dict |
     if hit is None or _settled_elsewhere(hit):
         # V2-844 F2 (M2): words alike only PROPOSE a parked or a finished errand — folding a request into one of those
         # (absorb, reopen) is decided by the model judge, so «a hotel in Paris» never reopens the finished Rome one.
-        try:
-            from nucleo.request import append as _dedup
-            with _thread.judging("flow_of"):           # the judge's own event names who asked
-                tid = await asyncio.wait_for(asyncio.to_thread(
-                    _dedup.about_a_live_errand, text, [(str(c["id"]), str(c["request"])) for c in pool]), JUDGE_S)
-        except asyncio.TimeoutError:
-            logger.warning(f"flow_of: the judge did not answer within {JUDGE_S}s, treating as a new flow")
-            _thread.judge_timeout(text, pool, budget_s=JUDGE_S)
-            tid = ""
-        except Exception as e:  # noqa: BLE001 — fail-open: no flow, the door opens a new one
-            logger.warning(f"flow_of: the judge failed, treating as a new flow — {type(e).__name__}: {e}")
-            tid = ""
-        hit, by = next((c for c in pool if str(c["id"]) == tid), None), "model"
+        from nucleo.turn import flow_judge
+        tid, late = await flow_judge.judge(text, pool)
+        hit, by = next((c for c in pool if str(c["id"]) == tid), None), TIMEOUT if late else "model"
     by_out is not None and by_out.append(by)
     from nucleo.acts import surface_owner as _own
     _own.flow_said(text, str((hit or {}).get("id") or ""))   # V2-844 F0: compared with the dispatcher's answer
@@ -139,8 +128,9 @@ def late_fold(target: str, ctx: dict) -> str:
 # part-by-part relay — and the dispatcher's dedup stays behind it as a backstop that folds AND warns.
 CONVERSATION, NEW, LIST = "conversation", "new", "list"
 INJECT, ABSORB, REOPEN, JOIN = "inject", "absorb", "reopen", "join"
+UNDECIDED, TIMEOUT = "undecided", "timeout"     # the judge ran out of time with an errand open: he is asked (V2-878 §3)
 _TURN: dict = {}          # trace -> the route task begun for that turn
-_NOT_MINE: list = []      # (words, flow id) a worker handed back: never folded there again (V2-784 F5)
+_NOT_MINE: list = []      # (words, flow id) a worker handed back: not folded there again while it runs (V2-784 F5)
 
 
 def joins_as(flow: dict, brief=None) -> str:
@@ -195,7 +185,9 @@ def not_mine(words: str, flow: str) -> None:
 
 def _was_handed_back(words: str, flow: dict) -> bool:
     from nucleo.turn.errands_of_a_turn import same_errand
-    return any(f == str(flow.get("id")) and same_errand(w, words) for w, f in _NOT_MINE)
+    fid, done = str(flow.get("id")), bool(flow.get("ended") or flow.get("delivered"))   # V2-878 §3: it ends with the row
+    _NOT_MINE[:] = [e for e in _NOT_MINE if not (done and e[1] == fid)]
+    return any(f == fid and same_errand(w, words) for w, f in _NOT_MINE)
 
 
 async def route(text: str = "", *, brief=None, emit=None, event: dict | None = None) -> dict:
@@ -219,11 +211,15 @@ async def route(text: str = "", *, brief=None, emit=None, event: dict | None = N
         pool = candidates()
         from nucleo.turn import split_by_errand as _sbe
         ps = _sbe.parts(whole, pool) if pool else []
-        pool and _thread.would_split(whole, pool)          # measured, never acted on here
+        pool and _thread.would_split(whole, pool)          # measured, never acted on here (§3 a waits on its numbers)
         if len({str(p["errand"].get("id")) for p in ps}) > 1:
             return _thread.decided({"as": LIST, "text": whole, "parts": [_of(p["errand"], p["words"], brief) for p in ps]},
                                    pool, "containment")
         flow = await flow_of(whole, emit=emit, by_out=(by := []))
+        if flow is None and by == [TIMEOUT]:              # unsure whose: ask, never guess a new errand (§3 e)
+            first = __import__("nucleo.turn.named_errand", fromlist=["x"]).by_mention(pool, 1)[0]
+            return _thread.decided({"as": UNDECIDED, "text": whole, "flow": str(first["id"])},
+                                   pool, TIMEOUT)
         if flow is None or _was_handed_back(whole, flow):
             talk = chat(brief)                              # chat no flow claims: nothing to commission
             return _thread.decided({"as": CONVERSATION if talk else NEW, "text": whole}, pool,
@@ -268,8 +264,7 @@ def peek() -> dict | None:
 
 
 def _flat(text: str) -> str:
-    from nucleo import matching
-    return " ".join(matching.norm_text(text).split())
+    return " ".join(__import__("nucleo.matching", fromlist=["x"]).norm_text(text).split())
 
 
 def for_request(req: str, brief=None, *, part: bool = False) -> dict:

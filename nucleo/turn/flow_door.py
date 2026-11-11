@@ -60,7 +60,17 @@ def at_the_portal(req: str, ctx: dict) -> bool:
             _emit("🧵 a discarded turn starts nothing — its chain carries the request", req, {"as": "discarded"})
             return False
         from nucleo.turn import brief as _tb, flow_of as _flow
-        r = _flow.for_request(req, _tb.of_this_turn(), part=ctx.get("part") is not None)
+        return obey(req, _flow.for_request(req, _tb.of_this_turn(), part=ctx.get("part") is not None), ctx)
+    except Exception as e:  # noqa: BLE001 — a route that cannot be read never blocks an errand
+        logger.warning(f"flow_door: route unreadable at the portal, the errand opens — {type(e).__name__}: {e}")
+        return True
+
+
+def obey(req: str, r: dict, ctx: dict) -> bool:
+    """The consequence of route `r` for `req`: True — the portal opens the errand (`ctx` may now name the flow's sheet);
+    False — the route took it. Also what his answer to «for X, or something new?» runs (`which_flow`)."""
+    from nucleo.turn import flow_of as _flow
+    try:
         ctx["routed"] = f"{r['as']}:{r.get('flow', '')}"
         how = r["as"]
         if how in (_flow.NEW, "replace"):
@@ -88,6 +98,10 @@ def at_the_portal(req: str, ctx: dict) -> bool:
             return False
         if how == "stop":
             _emit("🧵 the turn's stop covers this errand — nothing new is started", req, r)
+            return False
+        if how == _flow.UNDECIDED:     # the judge ran out of time with an errand open: he is asked (V2-878 §3 e)
+            __import__("nucleo.turn.which_flow", fromlist=["x"]).ask(req, r, ctx)
+            _emit("🧵 whose is it? — asked, nothing opened until he says", req, r)
             return False
         _emit("🧵 a route this portal does not know — the errand opens", req, r)
         return True                      # fail-open: an outcome nobody taught it never swallows an errand

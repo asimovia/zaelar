@@ -228,7 +228,7 @@ def test_the_text_channel_receipt_is_a_string_like_every_other_reply(monkeypatch
         finally:
             turn.reset("test-list-receipt")
     assert got["ok"] is True, got
-    assert window[-1] == {"role": "assistant", "content": "Got it."}
+    assert {k: window[-1][k] for k in ("role", "content")} == {"role": "assistant", "content": "Got it."}   # + its `ts`
     assert got["reply"] == "Got it.", got
 
 

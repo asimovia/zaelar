@@ -178,7 +178,7 @@ def _oldest_repeat(rows, query_words: set[str], match: dict | None) -> int | Non
         if oldest_match is None or key < oldest_match:
             oldest_match = key
         m = _meta(r["meta"])
-        u = (m.get("u") or "").strip() or (r["text"] or "").strip()
+        u = (m.get("u") or "").strip() or ("" if m.get("a") else (r["text"] or "").strip())   # ours: not his
         if _is_repeat(_words(u), query_words) and (oldest_rep is None or key < oldest_rep):
             oldest_rep = key
     return oldest_rep[1] if oldest_rep and oldest_rep == oldest_match else None

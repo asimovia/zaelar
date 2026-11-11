@@ -245,7 +245,7 @@ class NucleoLLMStream(llm.LLMStream):
             try:
                 from nucleo.flash import dialog as _dialog
                 _dialog.push_user(self._llm._window, text)
-                del self._llm._window[:-_WINDOW_MAX]
+                _dialog.live_slice(self._llm._window, _WINDOW_MAX)
                 kept = True
             except Exception:
                 pass

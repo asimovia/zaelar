@@ -206,7 +206,7 @@ async def small_talk(brain, text: str, emit, *, first_turn: bool, window_max: in
     from nucleo.flash import dialog as _dialog2
     _dialog2.push_user(brain._window, text)
     brain._window.append({"role": "assistant", "content": phrase})
-    del brain._window[:-window_max]
+    __import__("nucleo.flash.dialog", fromlist=["x"]).live_slice(brain._window, window_max)
     try:
         from memory import api as _memory2
         _memory2.write(f"Operador: {text[:200]} · zaelar: {phrase}",
@@ -246,7 +246,7 @@ async def task_list(brain, text: str, emit, *, first_turn: bool, window_max: int
     from nucleo.flash import dialog as _dialog_tl
     _dialog_tl.push_user(brain._window, text)
     brain._window.append({"role": "assistant", "content": phrase})
-    del brain._window[:-window_max]
+    __import__("nucleo.flash.dialog", fromlist=["x"]).live_slice(brain._window, window_max)
     from voice import proactive
     speak = proactive.speaker()
     if speak is None:
@@ -291,7 +291,7 @@ async def wall_tab(brain, text: str, emit, *, first_turn: bool, window_max: int)
     _dialog_wt.push_user(brain._window, text)
     from i18n import langs as _lg_wt
     _dialog_wt.record_silent_action(brain._window, _lg_wt.current_language().data_ack)   # words, never a [tag]
-    del brain._window[:-window_max]
+    __import__("nucleo.flash.dialog", fromlist=["x"]).live_slice(brain._window, window_max)
     try:
         from nucleo import style_policy as _style
         _ack_on = _style.confirm_short_actions()
@@ -370,7 +370,7 @@ async def presence(brain, text: str, emit, *, first_turn: bool, window_max: int)
     from nucleo.flash import dialog as _dialog
     _dialog.push_user(brain._window, text)
     brain._window.append({"role": "assistant", "content": phrase})
-    del brain._window[:-window_max]
+    __import__("nucleo.flash.dialog", fromlist=["x"]).live_slice(brain._window, window_max)
     try:
         from memory import api as _memory
         _memory.write(f"Operador: {text[:200]} · zaelar: {phrase}",
