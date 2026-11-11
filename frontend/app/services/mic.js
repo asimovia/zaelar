@@ -54,8 +54,18 @@ export function muted() { return store.micMuted(); }
 // The ONE write. `reason` is not decoration: it travels to the engine and lands
 // in the timeline, so «who closed this mic» is answerable — power button, boot
 // probe, the operator's own click or the heartbeat re-asserting.
+// ⏻ and 🎤 are two doors (V2-877 #4). A stop (his ⏻, the boot finding it stopped, another screen stopping it) closes
+// the mic and remembers the one it found; ⏻ on puts THAT back — never opens a mic he had closed. Any other write
+// while stopped is a newer decision and replaces the memory. Stored, so a reload between the two presses keeps it.
+const STOPS = new Set(["power-off", "boot-not-running", "server-stopped"]), KEPT = "hb_mic_before_power";
 export function setMuted(next, reason = "ui") {
-  const want = !!next;
+  let want = !!next;
+  try {
+    const was = localStorage.getItem(KEPT);
+    if (STOPS.has(reason)) { if (was === null) localStorage.setItem(KEPT, store.micMuted() ? "1" : "0"); }
+    else if (reason === "power-on") { want = was === null ? store.micMuted() : was === "1"; localStorage.removeItem(KEPT); }
+    else if (was !== null) localStorage.setItem(KEPT, want ? "1" : "0");
+  } catch (_) {}
   store.setMicMuted(want);
   try { localStorage.setItem("hb_mic_muted", want ? "1" : "0"); } catch (_) {}
   applyNow(reason);

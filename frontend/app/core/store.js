@@ -1197,7 +1197,7 @@ export const pushAgentChat = (text, opts) => {
         return _capChat([...xs.slice(0, -1), { role: "agent", text }]);
       }
     }
-    return _capChat([...xs, { role: "agent", text, trace: o.trace || "" }]);
+    return _capChat([...xs, { role: "agent", text, trace: o.trace || "", ...(o.kind ? { kind: o.kind } : {}) }]);
   });
 };
 

@@ -273,10 +273,14 @@ export class Deck {
     await this._load(w, baseId, q, providedData, fresh);
   }
 
-  /** After a reconnect the deck adopts the engine's list of cards (V2-825 F5): `core/reconcile.js`. */
+  /** After a reconnect (V2-825 F5) the orphans go and the deck re-reports itself. It does NOT adopt
+   *  `/api/canvas/layout`: that list is the desktop's geometry (this host sends none), so adopting it closed every
+   *  card his hand opened here — ⏻ on reopens the stream (V2-877 #11). Power is one door, the deck another. */
   async reconcile() {
-    const { reconcileScreen } = await import("../../../app/core/reconcile.js?v=1");
-    return reconcileScreen(this, { registry: this.cards, selector: ".zm-card[data-wid]", device: await _device() });
+    const orphans = [...this.stage.querySelectorAll(".zm-card[data-wid]")].filter((c) => (this.cards.get(c.dataset.wid) || {}).card !== c);
+    orphans.forEach((c) => c.remove());
+    this._reportOpen();
+    return { orphans: orphans.map((c) => c.dataset.wid), extra: [], missing: [] };
   }
 
   close(id, { by = "code" } = {}) {
@@ -868,16 +872,9 @@ export class Deck {
     let ids = [];
     try { ids = JSON.parse(localStorage.getItem("zaelar_mobile_deck") || "[]"); } catch (_) {}
     let items = (Array.isArray(ids) ? ids : []).map((id) => ({ id: String(id || ""), q: "" })).filter((it) => it.id);
-    // V2-351, the mobile half (2026-08-29). The desktop got these on 2026-08-26 and this host silently did not,
-    // and each one bites HARDER on a phone:
-    //   · SERVER FALLBACK — localStorage is per-browser, and a phone IS a new browser: a freshly installed PWA
-    //     opened on an empty deck even while the account had a desktop full of work. /api/canvas/layout is the
-    //     same endpoint the desktop consults, geometry ignored here (a deck has none).
-    //   · LIVE ERRANDS — the sheet/browser card of an errand running RIGHT NOW comes back even if this device
-    //     never saved it. That is the start-on-the-computer, follow-on-the-phone story, and it is `srv.live`.
-    //   · THE FOSSIL SWEEP — a bare BASE card next to its own instance is the pre-V2-261 ghost: every restore
-    //     resurrected an empty «Results» on top of the full sheet. A base card is legitimate ALONE.
-    //   · a browser card (base or ::tN) with no live task behind it has nothing to reload (process state).
+    // V2-351, the mobile half: a phone IS a new browser, so an empty localStorage falls back to the account's server
+    // layout (geometry ignored); the card of an errand running RIGHT NOW comes back (`srv.live`); a bare BASE card
+    // beside its own instance is the pre-V2-261 ghost and goes; a browser card with no live task has nothing to reload.
     let srv = { items: [], live: [] };
     try { srv = (await fetch("/api/canvas/layout?dev=" + encodeURIComponent(await _device())).then((r) => r.json())) || srv; } catch (_) {}
     if (!items.length && Array.isArray(srv.items) && srv.items.length) {

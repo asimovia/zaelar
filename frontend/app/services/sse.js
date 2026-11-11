@@ -260,7 +260,7 @@ export function routeEvent(desktop, d) {
       // instant it's decided (always BEFORE any real reply text exists), so it lands in the right order without
       // depending on LiveKit's own conversation-item timing — the exact mechanism that caused the original bug
       // (a filler showing up AFTER an already-resolved reply).
-      store.pushAgentChat("💬 " + d.text);
+      store.pushAgentChat("💬 " + d.text, { kind: "filler" });   // V2-877 #10: the phone draws no bubble for it
     } else if (d.kind === "interim" && d.text && d.role === "user") {
       // V2-743 — LIVE partial transcript → the wall's provisional line. This is the only thing in the chat
       // that does not wait for the attention gate, and it is allowed to because it is a CAPTION of the open
