@@ -61,9 +61,12 @@ CARD_WORDS = 160
 
 def card_line(e: dict) -> str:
     """One errand as every reader sees it (V2-878 §2): his words (or its request when none were heard) · its state ·
-    when he last named it. The ONE description of an errand handed to a judge."""
+    when he last named it. The ONE description of an errand handed to a judge. An errand that is one PART of a
+    sentence about several is described by its own request: the whole sentence names the other errands too, and a
+    judge handed it folds every one of them into the first (measured: three-tasks-at-once, the game into the report)."""
     import time
-    words = " ".join(str(e.get("heard") or e.get("request") or "").split())[:CARD_WORDS]
+    own = e.get("part") is not None or not str(e.get("heard") or "").strip()
+    words = " ".join(str((e.get("request") if own else e.get("heard")) or "").split())[:CARD_WORDS]
     bits = [f"«{words}»", _STATE.get(str(e.get("state") or ""), str(e.get("state") or "open"))]
     if (ts := int(e.get("last_mention_ts") or 0)):
         bits.append(f"last named {max(0, int(time.time()) - ts) // 60} min ago")
