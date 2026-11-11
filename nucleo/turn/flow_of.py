@@ -61,8 +61,7 @@ def kind(flow: dict) -> str:
 
 def lexical(text: str, pool: list[dict]) -> dict | None:
     from nucleo.turn.errands_of_a_turn import same_errand
-    hits = [c for c in pool if same_errand(text, str(c.get("request") or ""))]
-    return hits[0] if hits else None
+    return next((c for c in pool if same_errand(text, str(c.get("request") or ""))), None)
 
 
 async def flow_of(text: str, *, emit=None, by_out: list | None = None) -> dict | None:
@@ -140,7 +139,7 @@ def late_fold(target: str, ctx: dict) -> str:
 CONVERSATION, NEW, LIST = "conversation", "new", "list"
 INJECT, ABSORB, REOPEN, JOIN = "inject", "absorb", "reopen", "join"
 _TURN: dict = {}          # trace -> the route task begun for that turn
-_NOT_MINE: list = []      # (words, flow id) a worker handed back: never folded there again (V2-784 F5)
+_NOT_MINE: list = []      # (words, flow id) a worker handed back: not folded there again while it runs (V2-784 F5)
 
 
 def joins_as(flow: dict, brief=None) -> str:
@@ -195,7 +194,9 @@ def not_mine(words: str, flow: str) -> None:
 
 def _was_handed_back(words: str, flow: dict) -> bool:
     from nucleo.turn.errands_of_a_turn import same_errand
-    return any(f == str(flow.get("id")) and same_errand(w, words) for w, f in _NOT_MINE)
+    fid, done = str(flow.get("id")), bool(flow.get("ended") or flow.get("delivered"))   # V2-878 §3: it ends with the row
+    _NOT_MINE[:] = [e for e in _NOT_MINE if not (done and e[1] == fid)]
+    return any(f == fid and same_errand(w, words) for w, f in _NOT_MINE)
 
 
 async def route(text: str = "", *, brief=None, emit=None, event: dict | None = None) -> dict:
@@ -268,8 +269,7 @@ def peek() -> dict | None:
 
 
 def _flat(text: str) -> str:
-    from nucleo import matching
-    return " ".join(matching.norm_text(text).split())
+    return " ".join(__import__("nucleo.matching", fromlist=["x"]).norm_text(text).split())
 
 
 def for_request(req: str, brief=None, *, part: bool = False) -> dict:
