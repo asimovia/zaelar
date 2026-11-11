@@ -57,13 +57,15 @@ def flows(limit: int = 50, session_id: str = "", user_id: str = "") -> list[dict
     `t_ms` es la duración REAL del flujo (último evento − primero), no la suma de latencias: es lo que el
     operador esperó. `families`/`spans` responden «¿por dónde pasó?» sin abrir el detalle.
 
-    `origin` es el ARGUMENTO con el que nació el flujo (`voice/trace.py::begin(origin=...)`: `turno`/`kickoff`
-    para lo que dice el operador, `ui`/`cron`/`proactivo`/`cluster`/`probe` para lo que NO es una petición
-    suya, `pulso` para el latido/evaluador del cluster comprobando una conversación INACTIVA por su cuenta —
-    distinto de `cluster`, que es un peer diciendo algo de verdad) — hay como mucho UNA fila `kind='trace'` por
-    `corr_id` (el evento raíz), así que `MAX(CASE...)` la
-    aísla sin un JOIN. `title` es el texto de ESE mismo evento raíz (lo que disparó el flujo): deja que quien
-    lo muestra (el tablero de observabilidad) rotule la columna sin adivinar de qué iba mirando el resto de eventos."""
+    `initiator` (`user` | `system`) says WHO started it — his voice, typing or tap vs the system's own work; it is
+    declared by the root event (`voice/trace.py::initiator_of`), never guessed from the text.
+
+    `origin` is the ARGUMENT the flow was born with (`voice/trace.py::begin(origin=...)`: `turno`/`ui`/`probe` for
+    what the operator does, `kickoff`/`cron`/`proactivo`/`cluster` for what is NOT a request of his, `pulso` for the
+    cluster heartbeat/evaluator checking an IDLE conversation on its own timer — unlike `cluster`, a peer actually
+    saying something). There is at most ONE `kind='trace'` row per `corr_id` (the root event), so `MAX(CASE...)`
+    isolates it without a JOIN. `title` is the text of THAT root event (what triggered the flow), so whoever shows it
+    can label the column without guessing from the other events."""
     where = ["corr_id IS NOT NULL", "corr_id != ''"]
     args: list = []
     if session_id:
@@ -73,7 +75,7 @@ def flows(limit: int = 50, session_id: str = "", user_id: str = "") -> list[dict
         where.append("user_id = ?")
         args.append(user_id)
     args.append(int(limit))
-    return _rows(
+    rows = _rows(
         f"""
         SELECT corr_id,
                MIN(ts_ms)                         AS started_ms,
@@ -104,6 +106,9 @@ def flows(limit: int = 50, session_id: str = "", user_id: str = "") -> list[dict
                MAX(CASE WHEN kind = 'trace' AND label != 'merge' THEN label END) AS origin,
                MAX(CASE WHEN kind = 'trace' AND label != 'merge'
                         THEN json_extract(payload, '$.text') END) AS title,
+               -- WHO started it (`user` | `system`), declared by the root event (`voice/trace.py::initiator_of`).
+               MAX(CASE WHEN kind = 'trace' AND label != 'merge'
+                        THEN json_extract(payload, '$.initiator') END) AS initiator,
                -- WHICH flow this one was merged into, if any (`voice/trace.py::merge`). A reader needs it to show a
                -- merged pair as ONE thread instead of two: the merge machinery has existed since V2-105 but this
                -- projection never exposed the relation, so every consumer kept treating the absorbed trace as a
@@ -121,6 +126,20 @@ def flows(limit: int = 50, session_id: str = "", user_id: str = "") -> list[dict
         """,
         tuple(args),
     )
+    for r in rows:
+        r["initiator"] = _initiator(r)
+    return rows
+
+
+def _initiator(row: dict) -> str:
+    """The flow's `initiator` as its root event declared it. A root written before the flag existed carries only
+    its `origin` — also declared at birth — and gets the same derivation `begin()` applies (one table, `trace.
+    USER_ORIGINS`). A flow with no root event at all has no declared stimulus: `system` (nothing he said)."""
+    declared = str(row.get("initiator") or "")
+    if declared in ("user", "system"):
+        return declared
+    from voice.trace import initiator_of
+    return initiator_of(row.get("origin"))
 
 
 def flow(corr_id: str, limit: int = 500) -> list[dict]:

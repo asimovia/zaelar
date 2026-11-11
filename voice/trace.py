@@ -82,6 +82,28 @@ def reset_seq() -> None:
     _reset_named_seq("voice.trace")
 
 
+#: WHO STARTED A FLOW, declared once where it is born. `user` = the operator himself: his voice or typed turn
+#: (`turno`), a tap on the screen (`ui`), or a probe that stands in for his words (`probe`). Every other origin is
+#: `system`: the kickoff greeting, a cron, a proactive spark, a cluster peer (`cluster`), a cluster heartbeat
+#: (`pulso`), a rule reacting to a connector event. An origin missing from this set is `system` on purpose — a new
+#: background source must never be counted as something he asked for. Readers take `initiator` from the root
+#: event; they never re-derive it from the text.
+USER_ORIGINS = frozenset({"turno", "ui", "probe"})
+
+
+#: THE BEAT IS NOT A FLOW. The pulse is a continuous ~1 Hz process (`nucleo/pulse/loop.py`): its slow-tick and beat
+#: summaries (`pulse`) and the widgets' clock-driven refreshes (`background`) never start and never end, so
+#: `observer.emit` never stamps them with the ambient trace — a beat emitted inside a request's context would
+#: otherwise join that request's flow and stretch it over every beat after it. What the pulse FIRES (a cron, a spark,
+#: a cluster heartbeat turn) opens its own trace with its own origin, flagged `system`.
+BEAT_KINDS = frozenset({"pulse", "background"})
+
+
+def initiator_of(origin: str | None) -> str:
+    """`user` or `system` for a flow born with this `origin` (see `USER_ORIGINS`)."""
+    return "user" if str(origin or "") in USER_ORIGINS else "system"
+
+
 def begin(text: str, origin: str = "turno") -> str:
     """Nace un trace: id corto legible (`T<seq>·<hex4>`), se fija en el contexto y se emite el EVENTO RAÍZ
     (kind="trace", root=True) con la frase/motivo que lo inicia — es la raíz del árbol en la vista Trazas.
@@ -108,11 +130,11 @@ def begin(text: str, origin: str = "turno") -> str:
         # guard was meant to close, one `origin` short of complete. "pulso" (2026-08-16) is the SAME family —
         # the heartbeat/evaluator checking in on an idle conversation on its own timer, not a fresh peer message
         # (see bridge.py::_brain_turn) — and gets the identical treatment.
-        extra = {"trace": tid, "root": True, "origin": origin}
+        initiator = initiator_of(origin)
+        extra = {"trace": tid, "root": True, "origin": origin, "initiator": initiator}
         if origin in ("cluster", "pulso"):
             extra["cat"] = "system"
-        emit("trace", origin, text=(text or "")[:300], role="user" if origin in ("turno", "probe") else "system",
-             extra=extra)
+        emit("trace", origin, text=(text or "")[:300], role=initiator, extra=extra)
     return tid
 
 

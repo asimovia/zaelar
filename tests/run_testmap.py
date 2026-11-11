@@ -7173,7 +7173,9 @@ DOMAINS: list[dict] = [
         {"id": "7.7", "title": "Flujos por correlation ID + identidad de instalación + sesión de trabajo",
             "ch": UNIT, "paths": [
             # sin mapear hasta el 2026-08-21 (V2-158): un flujo SOLO nace de cuatro fuentes legítimas
-            "tests/cluster/unit/test_flow_origin.py","tests/infrastructure/unit/core/test_observability_flows.py"]},
+            "tests/cluster/unit/test_flow_origin.py","tests/infrastructure/unit/core/test_observability_flows.py",
+            # 2026-11-11: every flow says who started it (user/system), declared at birth; the pulse beat is no flow
+            "tests/infrastructure/unit/core/test_a_flow_says_who_started_it_and_the_beat_is_none.py"]},
         # 2026-08-12: por la RAÍZ del repo se escapó información personal del operador a un repo PÚBLICO — un
         # borrador de Brain Worker (`informe.json`) acabó versionado dos veces. El guarda no mira nombres: mira que
         # en la raíz no se versione nada que no sea del proyecto, se llame como se llame.

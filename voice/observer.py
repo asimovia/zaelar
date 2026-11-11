@@ -562,7 +562,7 @@ def emit(kind: str, label: str, text: str = "", role: str = "", extra: dict | No
     if "trace" not in ev:
         try:
             from voice import trace as _trace
-            _tid = _trace.current()
+            _tid = "" if kind in _trace.BEAT_KINDS else _trace.current()   # the pulse's beat is no flow
             if _tid:
                 ev["trace"] = _tid
                 _sp = _trace.current_span()
