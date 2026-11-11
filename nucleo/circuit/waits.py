@@ -12,8 +12,14 @@ import time
 
 from loguru import logger
 
-from memory import tasks_store as _ts
 from nucleo.circuit import progress as _progress
+
+
+def _store():
+    """The task table, read through the ledger's `store()` so `memory.tasks_store` keeps ONE production importer (the
+    memory boundary ratchet counts exactly that). Lazy: the ledger re-exports this module while it loads."""
+    from nucleo.circuit import ledger
+    return ledger.store()
 
 
 def _settle(**kw) -> None:
@@ -25,9 +31,6 @@ def _settle(**kw) -> None:
 #: What a task can wait for (V2-851 §3): `user_answer` (his answer), `worker`, `send_echo`, `time` or `event:<topic>`.
 #: The engine is the only writer of this field, so it is named by its writers, not filtered through a list here.
 USER_ANSWER = "user_answer"
-#: The states a row ENDS in — the store's own, read through the ledger (the memory boundary), never a second copy.
-ENDINGS = _ts.DONE_STATES
-
 
 def waiting(task_id: str, waiting_for: str, ask_id: str = "", ask: str = "", *, now: float | None = None,
             quiet: bool = False) -> bool:
@@ -38,14 +41,14 @@ def waiting(task_id: str, waiting_for: str, ask_id: str = "", ask: str = "", *, 
     uid, wf = str(task_id or "").strip(), str(waiting_for or "").strip()
     if not uid or not wf:
         return False
-    row = _ts.task_get(uid)
-    if row is None or str(row.get("state") or "") in _ts.DONE_STATES:
+    row = _store().task_get(uid)
+    if row is None or str(row.get("state") or "") in _store().DONE_STATES:
         return False
     now = time.time() if now is None else now
     same = (row.get("state") == "waiting" and row.get("waiting_for") == wf
             and (not ask_id or str(row.get("ask_id") or "") == ask_id))
     since = int(row.get("waiting_since") or 0) if same and row.get("waiting_since") else int(now)
-    _ts.task_patch(uid, state="waiting", waiting_for=wf, waiting_since=since,
+    _store().task_patch(uid, state="waiting", waiting_for=wf, waiting_since=since,
                    **({"deadline": since + int(answer_wait_s(now))} if wf == USER_ANSWER else {}),
                    **({"ask_id": ask_id} if ask_id else {}), **({"ask": ask[:600]} if ask else {}))
     if not quiet:                        # `quiet`: a caller that says the whole move itself (`worker_died`)
@@ -59,9 +62,9 @@ def resumed(task_id: str) -> None:
     """The wait is over and the task works again: `running`, nothing to wait for. The question and its id stay on the
     row as the record of what was last asked."""
     uid = str(task_id or "").strip()
-    row = _ts.task_get(uid) if uid else None
+    row = _store().task_get(uid) if uid else None
     if row and row.get("state") == "waiting" and row.get("waiting_for"):
-        _ts.task_patch(uid, state="running", waiting_for="", waiting_since=None, deadline=None)
+        _store().task_patch(uid, state="running", waiting_for="", waiting_since=None, deadline=None)
         _progress.changed(uid, "resumed", row)
         _wake_changed()
 
@@ -87,16 +90,16 @@ def worker_died(rec, *, now: float | None = None) -> bool:
     resumes it. Bounded by `attempts`: past `WORKER_DEATHS_RESUMED` it returns False and the ending fails it.
     True when the row now waits."""
     uid = str(getattr(rec, "uid", "") or "")
-    row = _ts.task_get(uid) if uid else None
+    row = _store().task_get(uid) if uid else None
     if not row or not str(row.get("session_id") or getattr(rec, "native_sid", "") or ""):
         return False
-    if int(row.get("attempts") or 0) >= WORKER_DEATHS_RESUMED or str(row.get("state") or "") in _ts.DONE_STATES:
+    if int(row.get("attempts") or 0) >= WORKER_DEATHS_RESUMED or str(row.get("state") or "") in _store().DONE_STATES:
         return False
     now = time.time() if now is None else now
-    _ts.task_patch(uid, phase=str(getattr(rec, "phase", "") or row.get("phase") or "")[:160],
+    _store().task_patch(uid, phase=str(getattr(rec, "phase", "") or row.get("phase") or "")[:160],
                    attempts=int(row.get("attempts") or 0) + 1)
     if ok := waiting(uid, WORKER, now=now, quiet=True):
-        _ts.task_patch(uid, deadline=int(now + WORKER_RESUME_AFTER_S))
+        _store().task_patch(uid, deadline=int(now + WORKER_RESUME_AFTER_S))
     _progress.changed(uid, "worker_died", row)
     return ok
 
@@ -105,7 +108,7 @@ def worker_resumes_due(now: float | None = None) -> list[dict]:
     """The rows whose died worker is due to be resumed now — each moved back to `running` here, ONCE."""
     now = time.time() if now is None else now
     out = []
-    for row in _ts.tasks_where(states=("waiting",), modes=("now",), visible_only=False, limit=100):
+    for row in _store().tasks_where(states=("waiting",), modes=("now",), visible_only=False, limit=100):
         if row.get("waiting_for") == WORKER and now >= int(row.get("deadline") or 0):
             resumed(row["id"])
             out.append(row)
@@ -133,7 +136,7 @@ def expired_waits(now: float | None = None) -> list[dict]:
     never silently). The period is read NOW: a rule he changes applies to the waits already open."""
     now = time.time() if now is None else now
     period, out = answer_wait_s(now), []
-    for row in _ts.tasks_where(states=("waiting",), modes=("now",), visible_only=False, limit=500):
+    for row in _store().tasks_where(states=("waiting",), modes=("now",), visible_only=False, limit=500):
         since = int(row.get("waiting_since") or 0)
         if row.get("waiting_for") != USER_ANSWER or not since or now < since + period:
             continue
