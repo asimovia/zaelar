@@ -98,7 +98,7 @@ def _widget_gate(brief=None):
 
     def _do(text):
         from widgets import confirm as _c
-        return _c.answers_pending(text, brief)      # the verdict on both channels (audit V2-783 P0-3) · V2-878 §4b: declared answers
+        return _c.answers_pending(text, brief)      # the verdict on both channels (audit V2-783 P0-3)
     return (_open, _do)
 
 
@@ -109,7 +109,7 @@ def _task_gate(brief=None):
 
     def _do(text):
         from nucleo import dispatch as _d
-        from widgets import confirm as _c
+        from nucleo.request import consent_ask as _ca
         words = operator_words(text)
         named = _named_parked(words)
         p = _d.pending_confirm(named) or {}
@@ -117,25 +117,21 @@ def _task_gate(brief=None):
             return None          # several parked and his words name none: the brief's pick over their rows decides
         tid = str(p.get("task_id") or "")
         if _the_binding_reads_it(brief, p):
-            return None          # its row's question is answered by the brief's pick (`bind_the_answer`), not here
-        said = _c.classify_reply(words)  # V2-878 §4b: declared answers
-        v = task_reply(words, said, str(p.get("question") or ""), brief=brief, parked=tid,
-                       names_it=bool(named) and named == tid)
-        if named and (v == "yes" or (v is None and not _names_another_errand(words, tid))):
+            # its row's question is answered by the brief's pick (`bind_the_answer`), not here — and when the brief read
+            # his turn as an ANSWER that answered none of the waiting questions, the errand keeps waiting and he is TOLD
+            # (V2-873: «yes, and close the video» left it waiting in silence, and he believed he had answered)
+            return {"still_waiting": str(p.get("request") or "")} if _answered_none(brief) else None
+        # With no pick, only a reply that IS one of the row's two declared answers decides (V2-878 §4b: the yes/no word
+        # tables went — a longer reply is the brief's to read, never a word inside it).
+        v = _ca.declared_answer(words, _row_options(p))
+        if named and v is None and not _names_another_errand(words, tid):
             # He is talking about THIS errand: what he adds travels with the «yes» (`resolve_confirm`), and the clock
             # restarts — an errand he keeps talking about has not been left unanswered (three-tasks-at-once ES,
-            # 2026-10-11: the game expired while he was asking for coins in it, and was then reported as never
-            # confirmed). A bare yes adds nothing. A sentence that ALSO talks about another errand is not folded
-            # in while it waits: the parked errand would then answer to that errand's words — EN 2026-10-11 02:58,
-            # «…btw for the monitor it has to be at least 27 inches» folded into the game made the next sentence
-            # about the monitors «name» the game, and its «no» cancelled it.
-            if not (v and _c.is_plain_answer(words, v)):  # V2-878 §4b: declared answers
-                _d.absorb_refinement(tid, words)
-        if v:
-            return _d.resolve_confirm(v == "yes", tid)
-        # V2-873 — a yes/no word that answered nothing: the errand keeps waiting, and he is TOLD so (a «yes, and close
-        # the video» used to leave it waiting in silence, and he believed he had answered).
-        return {"still_waiting": str(p.get("request") or "")} if said else None
+            # 2026-10-11: the game expired while he was asking for coins in it). A sentence that ALSO talks about
+            # another errand is not folded in while it waits (EN 2026-10-11 02:58: «…btw for the monitor it has to be
+            # at least 27 inches» folded into the game made the next sentence about the monitors «name» the game).
+            _d.absorb_refinement(tid, words)
+        return _d.resolve_confirm(v == "yes", tid) if v else None
     return (_open, _do)
 
 
@@ -190,61 +186,27 @@ def operator_words(text: str) -> str:
     return _esc.strip_system_notes(text) if "[SISTEMA]" in (text or "") else (text or "")
 
 
-def task_reply(words: str, v: str | None, question: str, *, brief=None, parked: str = "",
-               names_it: bool = False) -> str | None:
-    """'yes' | 'no' | None — does the operator's turn ANSWER the parked errand's question? (three-tasks-at-once)
-
-    Measured 2026-10-10 (sandbox 20261010-145227-es): with two errands parked, «Vale. Del monitor que no se te vaya
-    de presupuesto» built the game and «Y el juego no te olvides, ¿eh? Que son tres, no dos» dropped the report.
-    Neither answers anything: this gate counted bare yes/no WORDS, over a text that still carried our own notes
-    («sin tu OK», «Si no te he entendido mal»). Now the reading is the widget gate's (`answers_pending`): only the
-    operator's words count; a plain yes/no answers at once; a longer sentence answers only when the turn's verdict
-    reads it as an answer (V2-878 §4: no second model call is asked whether it does). Otherwise it
-    stays waiting: an ambiguous sentence is not an authorisation, and the parked errand can still absorb it."""
-    from widgets import confirm as _c
-    # The answer his reply OPENS with, when the reply names this errand, is his answer to it — whatever clauses
-    # follow. «Sí, justo eso, y ponle que salte más alto, que si no no hay quien pase» read as «no» (last word
-    # wins) and «yeah go ahead with the game… btw the monitor…» as OTHER (the judge saw the monitor), so both
-    # yeses of 2026-10-11 left the game parked and the agent asked again. A «no» keeps its stricter path below.
-    if names_it and _c.opening_answer(words) == "yes":  # V2-878 §4b: declared answers
-        return "yes"
-    if v is not None and not _c.answer_alone(words, v) and _c.orders_a_card(brief):  # V2-878 §4b: declared answers
-        # «vale cierra los resultados»: the «vale» opens an ORDER the brief surely read on a card — neither a yes nor
-        # a no to the parked errand, which keeps waiting (V2-873). A bare «vale» is still the answer.
-        return None
-    if v is None or _c.answer_alone(words, v):  # V2-878 §4b: declared answers
-        return v              # V2-873: the word reader is the fast path for a ONE-word answer; longer, the verdicts read it
-    if parked and _about_another_errand(words, parked):
-        return None
-    if parked and v == "no" and not names_it:
-        # A long «no» that never names the parked errand does not cancel it: «none of those work… no more than
-        # $150, keep looking» was about the monitor listings and dropped the parked game (EN 2026-10-11 02:58, the
-        # judge read it «no»). Cancelling needs the errand named or a bare «no»; the errand keeps waiting.
-        return None
-    from nucleo.turn import brief as _tb
-    kind, _info = _tb.read(brief, _tb.REQUEST_KEY, "") if brief is not None else ("", None)
-    if kind == "answer":
-        return v
-    # A «yes» that NAMES the parked errand answers it, whatever else the sentence adds (his «build it, and make the
-    # jump higher» read as an ORDER, so it was nobody's yes). A «no» keeps needing the judge or the verdict: a «no»
-    # beside the errand's name is as often about one of its details as about the errand.
-    return v if (v == "yes" and names_it) else None
-
-
-def _about_another_errand(words: str, parked: str) -> bool:
-    """A sentence that names OTHER errands and not the parked one does not answer the parked one's question.
-
-    three-tasks-at-once (EN, 2026-10-10 20:00): the game was parked on «shall I build it?», and «ah no those are
-    all too small — the monitor needs to be at least 27 inches… and did you get the jump change in?» CANCELLED it:
-    its «no» was about the monitor listings. The game was never built, and every later «did you get the jump in?»
-    had no errand to answer about. Bounded on the consequence: such a sentence leaves the errand parked — it can
-    still absorb the refinement — and a plain yes/no above is untouched."""
+def _answered_none(brief) -> bool:
+    """The brief read his turn as an ANSWER (`request_type`) and its binding pick answered none of the waiting rows."""
     try:
-        from nucleo.turn import named_errand as _ne
-        named = _ne.named(words)
-        return bool(named) and not any(e["parked"] and e["id"] == parked for e in named)
-    except Exception:  # noqa: BLE001
+        from nucleo.cli import worker_api_bind as _bind
+        from nucleo.turn import brief as _tb, verdicts as _v
+        kind, _info = _tb.read(brief, _tb.REQUEST_KEY, "")
+        choice, info = _v.read(brief, _bind.KEY, None, min_confidence=0.0)
+        return kind == "answer" and bool(info) and str(choice) == _bind.NONE
+    except Exception as e:  # noqa: BLE001
+        from loguru import logger
+        logger.debug(f"confirm_gates: answer verdict unreadable — {type(e).__name__}: {e}")
         return False
+
+
+def _row_options(p: dict):
+    """The two answers the parked errand's row declared (`make_durable`), or None for his language's own."""
+    try:
+        from nucleo.circuit import asker
+        return asker.artefact(str(p.get("uid") or "")).get("options") or None
+    except Exception:  # noqa: BLE001
+        return None
 
 
 def _browser_gate():
@@ -264,7 +226,7 @@ def resolve_all(text: str, *, widget: bool = False, brief=None, say=None) -> Ans
 
     `widget=True` includes the widget gate. Voice handles that one earlier in its turn (it has to speak the
     acknowledgement and return), so by default it is left out rather than resolved twice. `brief` is the turn's
-    verdict handle: the task gate reads it when a long reply cannot be judged (`task_reply`). `say(line)`, when given,
+    verdict handle: the task gate yields to its binding pick over the rows. `say(line)`, when given,
     says a yes/no word that answered nothing (V2-873: the parked errand keeps waiting, and he is told).
     """
     ans = resolve(text, widget=_widget_gate(brief) if widget else None,

@@ -86,7 +86,7 @@ def _resolve_and_end_the_turn(verdict: str, text: str) -> bool:
 
     Demo pass 129 (2026-10-14), C3: «ok book it, call it catch up with rowan» over a mail still pending from two
     turns before — the reader said NO, the mail was cancelled, and the turn ended on «Alright, I won't touch
-    anything.»: the meeting he asked for was never booked. A bare «no» is the whole answer; a «no» read from a
-    longer order cancels and leaves the turn to serve the order."""
-    resolved = _resolve_pending_confirm(verdict == "yes")
-    return resolved and not (verdict == "no" and not _p._wconfirm.is_plain_answer(text, "no"))  # V2-878 §4b: declared answers
+    anything.»: the meeting he asked for was never booked. The early verdict is now only ever a reply that IS one of
+    the row's declared answers (V2-878 §4b) — the whole answer; a longer reply is the brief's to read, and the turn
+    serves it."""
+    return _resolve_pending_confirm(verdict == "yes")

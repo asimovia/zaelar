@@ -44,9 +44,11 @@ def _entry(kind, wid="agenda", n=1):
             "retained": {"widget": wid, "action": kind, "payload": {}, "kind": kind, "op": {}}}
 
 
-@pytest.mark.parametrize("kind,yes", [("delete", "sí, bórrala"), ("restore", "yes, restore it")])
-def test_his_yes_runs_the_gesture_once(doors, kind, yes):
+@pytest.mark.parametrize("kind", ["delete", "restore"])
+def test_his_yes_runs_the_gesture_once(doors, kind):
+    """His reply IS the row's declared yes (V2-878 §4b): a longer one is the brief's pick, never a word read here."""
     ran, settled = doors
+    yes = consent_ask.yes_no()[0]
     e = _entry(kind)
     assert asyncio.run(inline_ask.rerun("r1", e, yes))["ok"] is True
     assert asyncio.run(inline_ask.rerun("r1", e, yes)) is None            # a second reader of the same yes: nothing
@@ -61,7 +63,7 @@ def test_the_brief_pick_is_the_yes(doors):
 
 def test_a_no_ends_the_row_and_runs_nothing(doors):
     ran, settled = doors
-    assert asyncio.run(inline_ask.rerun("r3", _entry("delete", n=3), "no, déjala"))["ok"] is False
+    assert asyncio.run(inline_ask.rerun("r3", _entry("delete", n=3), consent_ask.yes_no()[1]))["ok"] is False
     assert not ran and settled[-1]["state"] == "cancelled"
 
 

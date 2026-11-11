@@ -45,8 +45,8 @@ def test_the_question_is_durable_on_its_row(gate):
     assert entry["retained"]["kind"] == "start" and entry["retained"]["pending"]["request"] == "pay the electricity bill"
 
 
-@pytest.mark.parametrize("yes", ["sí, págala", "yes, go ahead"])
-def test_his_yes_relaunches_the_same_request_on_that_row(gate, yes):
+def test_his_yes_relaunches_the_same_request_on_that_row(gate):
+    yes = __import__("nucleo.request.consent_ask", fromlist=["x"]).yes_no()[0]                  # his declared yes (V2-878 §4b)
     dc.make_durable("k1", gate.rec)
     _uid, entry = gate.asked[0]
     assert dc.rerun_start("row-1", entry, yes)["ok"] is True
@@ -58,14 +58,14 @@ def test_after_a_restart_the_row_alone_relaunches_it(gate):
     dc.make_durable("k1", gate.rec)
     _uid, entry = gate.asked[0]
     dc._PENDING_CONFIRM.clear()                                    # the process that asked is gone
-    assert dc.rerun_start("row-1", entry, "yes")["ok"] is True
+    assert dc.rerun_start("row-1", entry, "", choice=0)["ok"] is True
     assert gate.launched and gate.launched[0][1]["task_uid"] == "row-1"
 
 
 def test_a_no_ends_the_row_and_starts_nothing(gate):
     dc.make_durable("k1", gate.rec)
     _uid, entry = gate.asked[0]
-    assert dc.rerun_start("row-1", entry, "no, déjalo")["ok"] is False
+    assert dc.rerun_start("row-1", entry, __import__("nucleo.request.consent_ask", fromlist=["x"]).yes_no()[1])["ok"] is False
     assert not gate.launched and gate.settled[0]["state"] == "cancelled"
 
 
@@ -73,7 +73,7 @@ def test_two_readers_of_the_yes_start_it_once(gate):
     dc.make_durable("k1", gate.rec)
     _uid, entry = gate.asked[0]
     dc.resolve_confirm(True, "k1")                                 # the in-memory gate took it first
-    dc.rerun_start("row-1", entry, "yes")                          # …and the bound durable ask arrives
+    dc.rerun_start("row-1", entry, "", choice=0)                   # …and the bound durable ask arrives
     assert len(gate.launched) == 1
 
 

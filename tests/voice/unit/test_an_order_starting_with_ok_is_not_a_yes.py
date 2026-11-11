@@ -42,10 +42,11 @@ def test_a_different_order_that_starts_with_ok_confirms_nothing(no_model):
     assert confirm.answers_pending("ok book it, call it catch up with rowan") is None
 
 
-def test_a_bare_answer_resolves_at_once(no_model):
-    assert confirm.answers_pending("yes") == "yes"
-    assert confirm.answers_pending("ok go ahead") == "yes"
-    assert confirm.answers_pending("no, cancel it") == "no"
+def test_a_declared_answer_resolves_at_once(no_model, monkeypatch):
+    monkeypatch.setenv("ZAELAR_LANGUAGE", "en")
+    assert confirm.answers_pending("Yes") == "yes"
+    assert confirm.answers_pending("no.") == "no"
+    assert confirm.answers_pending("ok go ahead") is None, "V2-878 §4b: a longer reply is the brief's pick"
 
 
 def test_a_long_yes_is_the_briefs_pick_never_a_second_model(no_model):

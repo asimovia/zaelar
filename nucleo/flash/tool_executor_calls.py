@@ -474,7 +474,7 @@ def _t_confirm(args: dict, said: str, _resolve_confirm, clarify, emit) -> bool:
         emit("brain", "🫥 el modelo contestó una confirmación que no existe — no es un acto", role="system",
              text=str(said or "")[:120], extra={"cat": "flash", "kind_diag": "confirm_nothing_pending"})
         return False
-    if bool(args.get("confirmed")) and not _wconfirm.backs_a_yes(said):  # V2-878 §4b: declared answers
+    if bool(args.get("confirmed")) and not _wconfirm.backs_a_yes(said):
         items = sorted(_wconfirm.pending().values(), key=lambda p: p.get("ts", 0))
         clarify["msg"] = str((items[-1] if items else {}).get("question") or "")
         emit("brain", "🛑 el modelo dio el sí a un acto que sale fuera y sus palabras no", role="system",

@@ -236,7 +236,7 @@ async def rerun(uid: str, entry: dict, text: str, choice: int | None = None):
     from nucleo.request import consent_ask as _ca
     if retained.get("kind") in _ca.ACTS:         # a card's delete/restore, a cluster connect or send (phase 3)
         from nucleo.cli.worker_api_answer import decision
-        said = decision(str(entry.get("question") or ""), text, choice)  # V2-878 §4b: declared answers
+        said = decision(str(entry.get("question") or ""), text, choice, entry.get("options"))
         if said is None:                         # not a decision: the question stays open, the row waits
             return {"ok": False, "row": uid, "unclear": True}
         if not take(str(entry.get("ask_id") or "")):
@@ -274,7 +274,7 @@ async def rerun(uid: str, entry: dict, text: str, choice: int | None = None):
             yes = int(choice) == 0
         else:
             from nucleo.cli.worker_api_answer import _says_yes
-            yes = _says_yes(str(entry.get("question") or ""), text)  # V2-878 §4b: declared answers
+            yes = _says_yes(str(entry.get("question") or ""), text, entry.get("options"))
         payload = dict(retained.get("payload") or {}) if yes else None
         if payload is None:
             from nucleo import circuit
