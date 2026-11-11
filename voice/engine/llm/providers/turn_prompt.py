@@ -47,8 +47,7 @@ async def compose_the_prompt(*, brain, emit, operator_text, self, text) -> dict:
     recall_ids: list = []
     # A reference to the recent interaction («I did ask you some time ago…») fires it too (V2-865): the
     # conversation lane of the recall is what answers it, and the expanded buffer below is recency only.
-    _needs_recall = _rh.needs_recall(operator_text)
-    timings["recall_fired"] = _needs_recall or _rh.needs_recent(operator_text)
+    timings["recall_fired"] = _rh.needs_recall(operator_text) or _rh.needs_recent(operator_text)
     if timings["recall_fired"]:
         # TIME-BOX del recall (regla dura "nunca lento"): el retriever suele cerrar en ~0.4-1.5s, pero en el
         # turno vivo puede dispararse a 4s+ (recarga del modelo de embedding tras un desalojo por el CORAZÓN
@@ -74,6 +73,7 @@ async def compose_the_prompt(*, brain, emit, operator_text, self, text) -> dict:
     recent_block = ""
     timings["recent_fired"] = _rh.needs_recent(text)
     from nucleo.turn import thread_event as _thread_event      # V2-878 §6: which shortcut fired, in which language
+    _needs_recall = bool(timings["recall_fired"]) and _rh.needs_recall(operator_text)   # µs: a regex, read again
     _thread_event.recall_fired(operator_text, recall=_needs_recall,
                                recent=bool(timings["recent_fired"] or (timings["recall_fired"] and not _needs_recall)))
     if timings["recent_fired"]:
