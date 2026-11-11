@@ -332,7 +332,7 @@ def _int_kwargs() -> dict:
             return None
     out["enabled"] = True
     dur = _f("ZAELAR_MIN_INTERRUPTION_SEC")
-    out["min_duration"] = dur if dur is not None else 0.6
+    out["min_duration"] = dur if dur is not None else __import__("nucleo.input.typed", fromlist=["x"]).MIN_VOICE_S
     words = _i("ZAELAR_MIN_INTERRUPTION_WORDS")
     if words is not None:
         out["min_words"] = words
