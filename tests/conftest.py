@@ -238,7 +238,7 @@ def _the_mouth_starts_unhushed():
 @pytest.fixture(autouse=True)
 def _composers_never_reach_the_network():
     """The two small model calls a turn can make after the fact — a finished errand's spoken line
-    (`spoken_delivery.line`) and the confirmation judge (`widgets.confirm._judge`) — stay off the network inside the
+    (`spoken_delivery.line`) — stay off the network inside the
     suite, for the reason on the Jev fixture above: measured 2026-09-29, `test_context_budget` passed alone and failed
     in a wide run, where an earlier test had left a model configured and the delivery was rewritten by a real call.
     Tests that exercise them turn them back on (or fake the client). `ZAELAR_TEST_LLM_LIVE=1` lets them through."""
@@ -249,14 +249,13 @@ def _composers_never_reach_the_network():
     his_spec_to_sheet.forget()             # his specs carried to a sheet are per conversation, so per test
     from nucleo.dispatch import confirm as dispatch_confirm
     dispatch_confirm._DECLINED_CONFIRM.clear()   # a «no» one test read must not be a fact in the next one's prompt
-    from widgets import confirm
-    saved = (spoken_delivery.LIVE, confirm._JUDGE_LIVE, outgoing_lang.LIVE)
+    saved = (spoken_delivery.LIVE, outgoing_lang.LIVE)
     if os.environ.get("ZAELAR_TEST_LLM_LIVE") != "1":
-        spoken_delivery.LIVE, confirm._JUDGE_LIVE, outgoing_lang.LIVE = False, False, False
+        spoken_delivery.LIVE, outgoing_lang.LIVE = False, False
     try:
         yield
     finally:
-        spoken_delivery.LIVE, confirm._JUDGE_LIVE, outgoing_lang.LIVE = saved
+        spoken_delivery.LIVE, outgoing_lang.LIVE = saved
 
 
 @pytest.fixture(autouse=True)

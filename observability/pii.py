@@ -83,8 +83,8 @@ def known(ttl_s: float = 60.0) -> dict[str, str]:
     except Exception as e:  # noqa: BLE001 — no memory: the rest still guards
         logger.debug(f"pii: concept names unreadable ({e!r})")
     try:
-        from memory import state
-        st = state.load() or {}
+        from memory import api as memory      # the facade: `memory.state` has no `load` (it raised, the guard never ran)
+        st = memory.state() or {}
         for v in (st.get("location"), (st.get("here") or {}).get("place"), (st.get("here") or {}).get("region")):
             for part in str(v or "").split(","):
                 add(part, "[PLACE]")

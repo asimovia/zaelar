@@ -9,10 +9,12 @@ The classes, each with its mechanism:
 
   1. The parked errand's question waits on its ROW (a durable ask with two declared answers). When the turn's brief
      read the binding question, its pick is the reader — the task gate's word reading yields (CRIT-C13).
-  2. With no pick, a «vale» that opens an order the brief SURELY read on a card (an action in one, or a canvas
-     gesture) is neither a yes nor a no: the errand keeps waiting. A bare «vale» is still the yes.
+  2. With no pick, only a reply that IS one of the row's declared answers decides (V2-878 §4b: the word tables went):
+     «vale cierra los resultados» is neither, whatever card order it opens. The declared yes is still the yes.
+  3. When the brief read his turn as an ANSWER and its pick answered none of the waiting rows, the errand keeps
+     waiting and he is TOLD so.
 
-Disarms (seen red): `_the_binding_reads_it` → False; `orders_a_card` → False.
+Disarms (seen red): `_the_binding_reads_it` → False; `_answered_none` → False.
 """
 from __future__ import annotations
 
@@ -26,7 +28,7 @@ from nucleo.turn import brief as tb
 from nucleo.turn import confirm_gates as gates
 
 ORDER = {"es": "vale cierra los resultados", "en": "ok close the results"}
-BARE = {"es": "vale", "en": "ok"}
+BARE = {"es": "Sí", "en": "Yes"}         # the declared yes of each language (`answer_yes`)
 
 
 def _brief(result: dict):
@@ -76,31 +78,38 @@ def test_a_yes_word_that_opens_a_sure_card_order_is_neither(parked, lang, verdic
 
 @pytest.mark.parametrize("lang", ["es", "en"])
 def test_a_bare_yes_still_answers(parked, lang, monkeypatch):
+    monkeypatch.setenv("ZAELAR_LANGUAGE", lang)
     monkeypatch.setattr(tb, "owner_still_open", lambda _b, _o: True)
     ans = gates.resolve_all(BARE[lang], brief=_brief({tb.CANVAS_KEY: _v("close")}))
     assert ans and ans.gate == "task" and ans.yes and parked
 
 
-# ── V2-873 · the words are the fast path for a ONE-word answer; a «neither» is SAID ─────────────────────────────
+# ── V2-873 · a «neither» is SAID; V2-878 §4b: only the declared answer is read without the brief ─────────────────
 
 NEITHER = {"es": ["sí, y cierra el vídeo", "vale para el vídeo y cierra youtube", "vale cierra los resultados"],
            "en": ["yes, and close the video", "ok stop the video and close youtube", "ok close the results"]}
 
 
+def _answered_none():
+    from nucleo.cli import worker_api_bind as bind
+    return _brief({tb.REQUEST_KEY: _v("answer"), bind.KEY: _v(bind.NONE, 0.9)})
+
+
 @pytest.mark.parametrize("lang", ["es", "en"])
 def test_a_yes_word_inside_a_longer_order_is_neither_and_is_said(parked, lang):
-    """No brief pick, no card verdict, no judge: the answer word alone does not decide a longer reply. «vale para el
-    vídeo» read «para» as the NO; «sí, y cierra el vídeo» left the errand waiting in silence. Now neither, and the
-    gate hands back the request still waiting, which the turn says (`errand_still_waiting`)."""
+    """The brief read an ANSWER and its pick answered none of the rows: neither, and the gate hands back the request
+    still waiting, which the turn says (`errand_still_waiting`). With no brief, a longer reply answers nothing."""
     for said in NEITHER[lang]:
-        ans = gates.resolve_all(said, brief=None)
+        ans = gates.resolve_all(said, brief=_answered_none())
         assert not ans, f"«{said}» answered the parked errand"
         assert ans.waiting == "abre el que sea mejor oferta", f"«{said}»: the waiting errand is not said"
+        assert not gates.resolve_all(said, brief=None), f"«{said}» answered by a word, with no brief"
     assert "9" in dc._PENDING_CONFIRM and not parked
 
 
 @pytest.mark.parametrize("lang,word", [("es", "sí"), ("en", "yes")])
-def test_a_one_word_answer_is_still_the_fast_path(parked, lang, word):
+def test_a_one_word_answer_is_still_the_fast_path(parked, lang, word, monkeypatch):
+    monkeypatch.setenv("ZAELAR_LANGUAGE", lang)
     ans = gates.resolve_all(word, brief=None)
     assert ans and ans.gate == "task" and ans.yes and parked
 
@@ -118,7 +127,7 @@ def test_the_waiting_line_exists_in_both_languages():
 def test_the_turn_says_the_errand_still_waits(parked, lang, said, monkeypatch):
     monkeypatch.setenv("ZAELAR_LANGUAGE", lang)
     heard: list = []
-    assert not gates.resolve_all(said, brief=None, say=heard.append)
+    assert not gates.resolve_all(said, brief=_answered_none(), say=heard.append)
     assert heard and "abre el que sea mejor oferta" in heard[0], heard
     heard.clear()
     gates.resolve_all("sí" if lang == "es" else "yes", brief=None, say=heard.append)

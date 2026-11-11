@@ -25,6 +25,25 @@ def yes_no() -> list[str]:
         return ["yes", "no"]
 
 
+def _flat(text) -> str:
+    import unicodedata
+    n = unicodedata.normalize("NFKD", str(text or ""))
+    return " ".join("".join(c for c in n if not unicodedata.combining(c)).casefold().split())
+
+
+def declared_answer(text: str, options=None) -> str | None:
+    """'yes' | 'no' | None — his reply IS one of the question's two DECLARED answers (`options`, default `yes_no()` in
+    his language): the whole reply, accents, case and punctuation aside. The one reader of a yes/no that is not the
+    brief's pick (V2-878 §4b) — a declared datum of the row, never a word table; anything longer is the brief's to read."""
+    import re
+    opts = [str(o) for o in (options or yes_no())][:2]
+    said = " ".join(re.findall(r"\w+", _flat(text)))
+    for verdict, opt in zip(("yes", "no"), opts):
+        if said and said == " ".join(re.findall(r"\w+", _flat(opt))):
+            return verdict
+    return None
+
+
 async def _delete(ret: dict) -> dict:
     from widgets import lifecycle
     return await lifecycle.delete_widget(str(ret.get("widget") or ""), "flash")
@@ -51,6 +70,21 @@ async def _cluster(ret: dict) -> dict:
 ACTS = {f.__name__.lstrip("_"): f for f in (_delete, _restore, _cluster)}   # keyed by its door's own name
 
 
+def _own_row(wid: str, action: str, text: str) -> str:
+    """No request of this turn to hang the question on (a card's endpoint, a gate reached outside a turn): the act gets
+    its own row through the asker, so the question still waits durably and never only in memory (V2-878 §4)."""
+    from nucleo.circuit import asker
+    from nucleo.request import model as _rq
+    row = asker.open_row(text, kind=_rq.KIND, surface=base(wid))
+    if row:
+        try:
+            from nucleo.circuit import ledger
+            ledger.store().task_patch(row, outcome=f"{wid}:{action}")
+        except Exception as e:  # noqa: BLE001
+            note(e)
+    return row
+
+
 def ask_consent(wid: str, action: str, payload: dict | None, question: str, *, text: str = "", kind: str = "",
                 op: dict | None = None) -> tuple[str, str]:
     """An irreversible act of a card (`confirm:true`, or the one consent rule's ASK_CONSENT) waits for his yes ON ITS
@@ -62,7 +96,8 @@ def ask_consent(wid: str, action: str, payload: dict | None, question: str, *, t
     `(row, ask_id)`, or `("", "")` when no row could be opened — the caller then keeps the act's old gate."""
     try:
         from nucleo.request import model as _rq
-        row = _rq.opened(wid, action, text=text)
+        row = (_rq.opened(wid, action, text=text) if text or _rq.current() else "") or _own_row(wid, action,
+                                                                                              text or question)
         if not row:
             return "", ""
         ask_id = held(row, wid, action, payload, {"ok": False, "consent": "ask_consent"}, question=question,

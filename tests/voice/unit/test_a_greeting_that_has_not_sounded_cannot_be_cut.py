@@ -189,11 +189,17 @@ def test_the_barrier_is_no_longer_published_before_the_greeting():
 
 
 def test_every_path_that_will_not_greet_lifts_the_veil_at_once():
-    """Three of them, and each one is a screen that would otherwise hang: a silent first run, a duplicate
-    job for the same room, and a reconnection to a conversation already in progress."""
+    """Four of them, and each one is a screen that would otherwise hang: a silent first run, a typed line that is
+    the session's first turn, a duplicate job for the same room, and a reconnection to a conversation already in
+    progress. Each anchor is the path's WHOLE log line, so two paths that share a prefix are never confused."""
     body = _body()
-    assert body.count("_air.lift()") == 3, "one per silent path: onboarding, duplicate job, resumed session"
+    assert body.count("_air.lift()") == 4, (
+        "one per silent path: onboarding, typed line waiting, duplicate job, resumed session")
     assert "on_air=_air.lift" in body, "…and the greeting's own, which fires on the first audio frame"
-    for anchor in ("kickoff en silencio", "kickoff duplicado evitado", "kickoff omitido"):
+    for anchor in ("kickoff en silencio — no hay idioma elegido",
+                   "kickoff omitido — hay una línea escrita esperando",
+                   "kickoff duplicado evitado (otra sesión ya saludó",
+                   "kickoff omitido — reconexión a sesión en curso"):
+        assert body.count(anchor) == 1, f"«{anchor}» must name exactly one path"
         i = body.index(anchor)
         assert "_air.lift()" in body[i:i + 420], f"«{anchor}» leaves the splash up for ever"

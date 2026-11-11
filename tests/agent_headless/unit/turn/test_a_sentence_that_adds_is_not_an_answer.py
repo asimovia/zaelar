@@ -10,9 +10,9 @@ Neither sentence answers either question. The task gate read the bare yes/no WOR
 «no» of «no te olvides» and «no dos» in the second — over the whole turn, and the whole turn included the
 [SISTEMA] notes, whose own «sin tu OK» / «Si no te he entendido mal» took part in the vote. The widget gate
 already had the right shape (V2 demo pass 45: a yes/no with more words is judged against the question it would
-answer); the task gate never got it. The same reading now governs both: a plain yes/no answers; a longer
-sentence answers only when the judge says it answers THIS question, or — with no judge — when the turn's verdict
-reads it as an answer. Otherwise it stays waiting: an ambiguous word is not an authorisation.
+answer); the task gate never got it. The same reading now governs both (V2-878 §4b): a reply that IS one of the
+row's declared answers answers at once; any longer sentence is the brief's binding pick over the row, never a word
+inside it. Otherwise it stays waiting: an ambiguous word is not an authorisation.
 """
 from __future__ import annotations
 
@@ -72,15 +72,23 @@ def test_the_notes_glued_in_front_never_vote(parked):
     assert "7" in dc._PENDING_CONFIRM
 
 
-@pytest.mark.parametrize("said, yes", [("Sí", True), ("Sí, hazlo", True), ("No, déjalo", False),
-                                       (NOTES + "\n\nsí", True), ("ok go ahead", True)])
-def test_a_plain_yes_or_no_still_answers_at_once(parked, said, yes):
-    ans = gates.resolve_all(said)
+def _yes_no():
+    from nucleo.request import consent_ask
+    return consent_ask.yes_no()
+
+
+@pytest.mark.parametrize("which, notes", [(0, ""), (1, ""), (0, NOTES + "\n\n")])
+def test_a_declared_yes_or_no_still_answers_at_once(parked, which, notes):
+    ans = gates.resolve_all(notes + _yes_no()[which])
+    yes = which == 0
     assert ans and ans.gate == "task" and ans.yes is yes
     assert "7" not in dc._PENDING_CONFIRM
     assert bool(parked) is yes
 
 
-def test_a_long_reply_the_verdict_reads_as_an_answer_answers(parked):
-    ans = gates.resolve_all("Sí, venga, adelante con eso que te he dicho", brief=_brief("answer"))
-    assert ans and ans.yes and parked
+@pytest.mark.parametrize("said", ["Sí, hazlo", "No, déjalo", "ok go ahead", "Sí, venga, adelante con eso"])
+def test_a_longer_reply_is_the_briefs_pick_never_a_word_in_it(parked, said):
+    """V2-878 §4b: «Sí, hazlo» used to be read by a word table; now only the brief's binding pick over the row reads
+    a reply that is more than the declared answer."""
+    assert not gates.resolve_all(said, brief=_brief("answer"))
+    assert "7" in dc._PENDING_CONFIRM and not parked

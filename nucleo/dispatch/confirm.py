@@ -52,6 +52,12 @@ _DECLINED_CONFIRM: dict[str, dict] = {}
 def _sweep_confirm(now: float | None = None) -> None:
     now = time.time() if now is None else now
     # A question on its row (`make_durable`) waits as every durable ask does (CRIT-T4): only the in-memory one expires.
+    # The entry is this process's INDEX of the row (V2-878 §4): once the row stops waiting on its question — answered on
+    # the screen, ended by its own `deadline` — the index lets it go; the wall clock never ends it.
+    from nucleo.circuit import asker
+    for k in [k for k, v in _PENDING_CONFIRM.items()
+              if v.get("ask_id") and not asker.row_waits(str(v.get("uid") or ""), str(v["ask_id"]))]:
+        _PENDING_CONFIRM.pop(k, None)
     for k in [k for k, v in _PENDING_CONFIRM.items() if now - v["ts"] > _CONFIRM_TTL and not v.get("ask_id")]:
         _EXPIRED_CONFIRM[k] = {**_PENDING_CONFIRM.pop(k), "expired_at": now}
     for k in [k for k, v in _EXPIRED_CONFIRM.items() if now - float(v.get("expired_at") or 0) > _EXPIRED_MEMORY_S]:
@@ -133,6 +139,13 @@ def remember_offer(request: str, *, context: dict, question: str) -> None:
         "request": request, "kind": str((context or {}).get("kind") or "generic"), "trusted": True,
         "context": {k: v for k, v in dict(context or {}).items() if k != "asked"},
         "question": question, "sheet": "", "offered": True, "ts": time.time()}
+    # V2-878 §4 — an offer has no errand row yet: it gets one through the asker, so it waits like every parked errand
+    # (no wall clock, a restart keeps it, the brief's pick answers it) instead of expiring in this process's memory.
+    from nucleo.circuit import asker
+    from types import SimpleNamespace
+    uid = asker.open_row(request, kind="offer", surface=str((context or {}).get("surface") or ""))
+    if uid:
+        make_durable(key, SimpleNamespace(uid=uid))
 
 
 def remember_unlicensed(task_id: str, request: str, task: "Task", *, question: str, sheet: str = "") -> None:
@@ -250,20 +263,32 @@ def adopt_sheet(task_id: str, sheet: str) -> str:
 
 
 def pending_confirm(task_id: str = "") -> dict | None:
-    """The confirmation still waiting for a yes/no, or None. Most recent wins — a second irreversible ask
-    supersedes the first, exactly like the widget gate — unless `task_id` names which one (the reply named it)."""
+    """The confirmation `task_id` names (the reply named it), else the ONLY one waiting; None otherwise. With several
+    waiting and none named, which one his reply answers is the brief's binding verdict over their rows (V2-878 §4) —
+    «the most recent wins» answered a question he was not answering."""
     _sweep_confirm()
+    if str(task_id or "") in _PENDING_CONFIRM:
+        tid = str(task_id)
+    elif len(_PENDING_CONFIRM) == 1:
+        tid = next(iter(_PENDING_CONFIRM))
+    else:
+        return None
+    return {"task_id": tid, **_PENDING_CONFIRM[tid]}
+
+
+def _newest() -> dict | None:
+    """The question asked last, for the brain's LINE only — saying what waits is not answering it."""
     if not _PENDING_CONFIRM:
         return None
-    tid = (str(task_id) if str(task_id or "") in _PENDING_CONFIRM
-           else max(_PENDING_CONFIRM, key=lambda k: _PENDING_CONFIRM[k]["ts"]))
+    tid = max(_PENDING_CONFIRM, key=lambda k: _PENDING_CONFIRM[k]["ts"])
     return {"task_id": tid, **_PENDING_CONFIRM[tid]}
 
 
 def confirm_line() -> str:
     """Line for the FlashBrain's live state. Without it the brain has NO idea a task is parked waiting on the
     operator — which is precisely how a gated task turned into narrated progress."""
-    p = pending_confirm()
+    _sweep_confirm()
+    p = _newest()
     if not p:
         # V2-190: nothing waiting — but maybe something EXPIRED waiting, and that is not the same as nothing.
         _sweep_confirm()
@@ -319,6 +344,11 @@ def resolve_confirm(ok: bool, task_id: str = "") -> dict | None:
     _PENDING_CONFIRM.pop(p["task_id"], None)
     if not ok:
         _DECLINED_CONFIRM[str(p["task_id"])] = {**p, "declined_at": time.time()}
+        if p.get("ask_id"):          # its row stops waiting too, once (V2-878 §4: a «no» here left it waiting a week)
+            from nucleo.request import inline_ask
+            if inline_ask.take(str(p["ask_id"])):
+                from nucleo import circuit
+                circuit.settle(row=str(p.get("uid") or ""), state="cancelled", outcome="he did not confirm it")
         return {**p, "ok": False}
     # Se re-lanza by the MISMA puerta that any escalada (`escalate.requested` → `run_listener`), no by a
     # atajo: so preserves the trace, the dedup and the record of tasks. Lo only distinto es `confirmed`, that es
@@ -394,7 +424,7 @@ def rerun_start(uid: str, entry: dict, text: str, choice: int | None = None):
     The brief's pick among the declared answers (`choice`, `#0` yes) decides; his words are read only with no pick."""
     from nucleo.request import inline_ask
     from nucleo.cli.worker_api_answer import decision
-    said = decision(str(entry.get("question") or ""), text, choice)
+    said = decision(str(entry.get("question") or ""), text, choice, entry.get("options"))
     if said is None:                             # not a decision: the question stays open, the errand stays parked
         return {"ok": False, "row": uid, "unclear": True}
     if not inline_ask.take(str(entry.get("ask_id") or "")):

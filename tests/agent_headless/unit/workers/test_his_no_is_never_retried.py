@@ -61,7 +61,6 @@ def asked(row, monkeypatch):
     from nucleo.cli import worker_api_answer as wa
     from widgets import confirm as wc
     ran, declined = [], []
-    monkeypatch.setattr(wc, "_judge", lambda q, r, timeout=4.0: None)
     monkeypatch.setattr(wa, "_declined", lambda uid, ret: declined.append(uid))
     monkeypatch.setattr(wa, "_keep", lambda uid, e: None)
     monkeypatch.setattr(wa, "_record_for", lambda e: None)
@@ -84,7 +83,7 @@ def asked(row, monkeypatch):
 
 
 @pytest.mark.parametrize("text, want", [
-    ("no", "declined"), ("no, no lo mandes", "declined"),
+    ("no", "declined"), ("no, no lo mandes", "neither"),   # V2-878 §4b: only the declared «no» decides; longer → the brief
     ("sí, mándalo, no tardes", "neither"),      # a «no» inside a yes is not his no (it was, and it killed the task)
     ("yes, send it, no rush", "neither"),
     ("espera, ¿a cuál Raquel?", "neither"),     # a question back is not a decision

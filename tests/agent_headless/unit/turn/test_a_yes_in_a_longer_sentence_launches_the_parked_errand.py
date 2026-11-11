@@ -9,7 +9,9 @@ three-tasks-at-once (2026-10-11 02:58), the game parked on «¿La hago?» / «Sh
   · ES «Vale, perfecto. Del monitor, que no pase de 150» → the model re-escalated the game and said «va en marcha»
     over an errand still parked.
 
-Mechanism pinned here: the answer a reply OPENS with answers the parked errand it names (`confirm.opening_answer`).
+Mechanism pinned here (V2-878 §4b): the parked errand waits on its ROW, and a yes inside a longer sentence is the
+brief's binding pick over that row — any wording, any language — never the word it opens with (`opening_answer` and the
+yes/no tables went). The gate yields to the pick; with no pick only the row's declared answer decides.
 """
 from __future__ import annotations
 
@@ -23,7 +25,6 @@ from nucleo import dispatch
 from nucleo.dispatch import confirm as dc
 from nucleo.turn import confirm_gates as gates
 from nucleo.turn import errands_of_a_turn as E
-from widgets import confirm as wconfirm
 
 GAME = "Build a playable platform game widget, Super Mario style: a side-scrolling platformer with a character"
 MONITOR = E.listing_errand({"query": "cheap used monitor"})
@@ -47,7 +48,6 @@ def parked(monkeypatch):
     monkeypatch.setattr(dc, "_PENDING_CONFIRM", {"2": {"request": GAME, "kind": "code", "trusted": True,
                                                        "context": {}, "sheet": "", "ts": time.time(),
                                                        "code_change": "create", "question": Q}})
-    monkeypatch.setattr(wconfirm, "_judge", lambda q, r, timeout=4.0: "other")     # what the live judge said
     return out
 
 
@@ -59,15 +59,20 @@ JUEGO = "Crear un widget nuevo para el canvas: un juego de plataformas tipo Supe
     (JUEGO, "Sí, justo eso, y ponle que el muñeco salte más alto, que si no no hay quien pase las plataformas. ¿El "
             "monitor cómo va?"),
 ])
-def test_the_yes_it_opens_with_launches_the_game(parked, game, said):
-    dc._PENDING_CONFIRM["2"]["request"] = game
-    ans = gates.resolve_all(said, brief=_brief(request_type="order"))
-    assert ans and ans.yes, said
-    assert len(parked) == 1 and parked[0].startswith(game)
+def test_the_yes_it_opens_with_is_the_briefs_pick_over_the_row(parked, game, said):
+    from nucleo.cli import worker_api_bind as bind
+    dc._PENDING_CONFIRM["2"].update(request=game, uid="row-2", ask_id="row-2-start")
+    asks = [{"task_id": "row-2", "ask_id": "row-2-start", "question": Q, "candidates": ["Yes", "No"]}]
+    brief = _brief(request_type="order", **{bind.KEY: "row-2-start#0"})
+    assert not gates.resolve_all(said, brief=brief), "the gate read the word over the brief's pick"
+    how, (a,) = bind.bind(brief, asks=asks)
+    assert how == bind.ANSWER and a["ask_id"] == "row-2-start" and a["choice"] == 0, said
+    assert not gates.resolve_all(said, brief=_brief(request_type="order")) and not parked, "a word decided it"
 
 
-def test_an_if_is_not_a_yes():
-    assert wconfirm.opening_answer("Si no te importa, espera un poco") is None
-    assert wconfirm.opening_answer("si, dale") == "yes" and wconfirm.opening_answer("Sí, venga") == "yes"
-    assert wconfirm.opening_answer("No, el juego déjalo") == "no"
-    assert wconfirm.opening_answer("Intenta reservarlo, mejor") is None
+def test_an_if_is_not_a_yes(monkeypatch):
+    from nucleo.request import consent_ask
+    monkeypatch.setenv("ZAELAR_LANGUAGE", "es")
+    assert consent_ask.declared_answer("Si no te importa, espera un poco") is None
+    assert consent_ask.declared_answer("Sí") == "yes" and consent_ask.declared_answer("no") == "no"
+    assert consent_ask.declared_answer("Sí, venga") is None          # longer: the brief's pick reads it

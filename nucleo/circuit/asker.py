@@ -83,6 +83,40 @@ def _subscribe() -> None:
         _note(e)
 
 
+def open_row(goal: str, *, kind: str, surface: str = "", origin: str = "voz", visible: bool = True) -> str:
+    """A row for a question that belongs to no request of this turn — asked from a card's endpoint, a gate with no turn
+    in scope, or a scheduled notice (V2-878 §4). Without it the question lived only in this process's memory and a
+    restart, or a suspension's wall clock, ended it. Returns the row id, "" when the store cannot write."""
+    try:
+        from nucleo.circuit import ledger
+        from nucleo.runtime_ids import boot_id, next_seq
+        uid = f"{boot_id()}-a{next_seq('asker.row')}"
+        now = int(time.time())
+        text = " ".join(str(goal or "").split())
+        ledger.store().task_put({"id": uid, "title": text[:80], "goal": text, "kind": kind, "mode": "now",
+                                 "state": "running", "visible": visible, "origin": origin, "surface": surface,
+                                 "created_at": now, "started_at": now})
+        return uid
+    except Exception as e:  # noqa: BLE001
+        _note(e)
+        return ""
+
+
+def row_waits(uid: str, ask_id: str) -> bool:
+    """Does row `uid` still wait on question `ask_id`? What a process's in-memory index of questions asks before it
+    believes itself (V2-878 §4): the row is the truth — a row that moved on (answered on the screen, ended by its own
+    `deadline`) no longer waits. A row it cannot read, or cannot find, waits (never a silent loss)."""
+    if not uid or not ask_id:
+        return False
+    try:
+        from nucleo.circuit import ledger
+        row = ledger.store().task_get(uid)
+    except Exception as e:  # noqa: BLE001
+        _note(e)
+        return True
+    return row is None or (row.get("state") == "waiting" and str(row.get("ask_id") or "") == str(ask_id))
+
+
 def ask(uid: str, entry: dict, *, bus_id: str = "") -> str:
     """Record the question `entry` ({ask_id, question, retained, options, session, …}) on row `uid`: the artefact
     keeps it, the row waits for his answer, and the question goes on screen. Returns its `ask_id`."""
