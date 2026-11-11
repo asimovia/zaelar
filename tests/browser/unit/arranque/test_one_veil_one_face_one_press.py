@@ -240,3 +240,17 @@ def test_the_sleep_face_is_a_blurred_veil_with_zs_and_one_click_wakes_it(browser
     pg.mouse.click(40, 40)    # anywhere on the screen, not only the button
     until_sync(lambda: pg.evaluate("() => window.__doors || []")[:1] == ["wake"], "the click to wake the engine", timeout_s=2)
     pg.close()
+
+
+def test_asleep_plain_speech_does_nothing_and_the_assistants_name_wakes_it(browser_and_port):
+    b, port = browser_and_port
+    pg = _page(b, port)
+    pg.evaluate("""async () => { window.__store.setAssistantName('Pepa');
+        window.__wk = await import('/frontend/app/services/wakeword.js?v=1');
+        window.__store.setDormant({ face: 'sleep', waking: false }); }""")
+    pg.evaluate("() => { window.__wk.offer('what is the weather like today'); window.__wk.offer('good night everybody'); }")
+    pg.wait_for_timeout(200)
+    assert pg.evaluate("() => window.__doors || []") == [], "plain speech must not wake it"
+    pg.evaluate("() => window.__wk.offer('hey Pepa wake up')")
+    until_sync(lambda: pg.evaluate("() => window.__doors || []")[:1] == ["wake"], "the name to run the click's wake path", timeout_s=2)
+    pg.close()

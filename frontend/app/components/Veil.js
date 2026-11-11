@@ -22,6 +22,7 @@ import * as session from "../services/session.js?v=3";
 import { reactivate } from "../services/presence.js?v=1";
 import { setPower } from "../services/power.js?v=1";
 import { t } from "../core/i18n.js?v=1";
+import * as wake from "../services/wakeword.js?v=1";
 
 /** Which face the veil shows, or "" when the screen is free. Pure: exported for the test. */
 export function veilFace(state, dormant, remoteHeld, bootReady, movedDismissed) {
@@ -61,7 +62,25 @@ const TITLE = { off: "veil.off_title", pausing: "veil.pausing", starting: "veil.
 const SUB = { off: "veil.off_sub", moved: "dormant.moved_sub" };
 const BTN = { off: "veil.on_btn", sleep: "dormant.reactivate", moved: "dormant.use_here" };
 
+// While the engine sleeps, the browser's own recogniser (services/wakeword.js — free, no engine, no stream) listens for
+// the assistant's NAME only; plain speech does nothing (`offer` ignores a sentence without it). Hearing it runs the SAME
+// `activateHere` as a click. Independent of the wake-word setting: the engine is off, so there is nothing else to hear.
+// Where the browser has no recogniser (`wake.supported()` false) or the microphone is refused, the click is the only way.
+let _sleepEar = false;
+export function sleepEar(on) {
+  if (on && !_sleepEar) {
+    wake.install({
+      getLang: () => { const l = String((store.lang && store.lang()) || "en"); return l === "es" ? "es-ES" : l; },
+      getNames: () => wake.wakeNames(store.assistantName && store.assistantName()),
+      onSpot: () => { activateHere("wakeword"); },
+      onArmed: () => {}, log: () => {},
+    });
+    _sleepEar = true; wake.start();
+  } else if (!on && _sleepEar) { _sleepEar = false; wake.stop(); }
+}
+
 export function Veil() {
+  createEffect(() => { sleepEar(store.dormant().face === "sleep" && store.agentState() !== "off"); });
   const [dismissed, setDismissed] = createSignal(false);
   createEffect(() => { if (!store.remoteHeld()) setDismissed(false); });   // the next change of hands shows it again
   const face = () => veilFace(store.agentState(), store.dormant(), store.remoteHeld(), store.bootReady(), dismissed());
