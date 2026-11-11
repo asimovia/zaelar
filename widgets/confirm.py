@@ -435,5 +435,8 @@ def backs_a_yes(text: str) -> bool:
 
 
 def reset() -> None:
-    """Clear the registry for tests."""
+    """Clear the registry for tests — and end the rows it indexed, so no question outlives the test that asked it."""
+    for p in list(_PENDING.values()):
+        if p.get("ask_id"):
+            _end_row(p, False, outcome="reset")
     _PENDING.clear()
