@@ -63,3 +63,4 @@ Sin construir a propósito; cuando se haga, nodo de RENDERIZADO (el layout solo 
 - A missing or dead photo keeps its plate with a monogram, so a row never mixes shapes.
 - Tokens: the local scale maps onto palette.css (`--sp-*`, `--fs-*`, `--hb-r-*`); a card is `--hb-bg-soft` on the
   sheet's `--hb-bg`. Rendered contract: `tests/browser/e2e/widgets/test_a_result_card_fits_any_space.py` (node 4.274).
+- 2026-11-11 V2-877 #9 / V2-876 P-40: the sheet paints only fields addressed to HIM — no `summary.state` (process status), no `quality_bar` / `min_candidates` (the worker's checklist and budget), an engine-filed rejection shows `reason` (one line per filer, i18n), worker ticks stripped, a tab with nothing to read hidden. Phone (`.zm-scroll`): one result per row, title 16 / source 14, 44px actions; a missing photo is a neutral tile, never an initial.

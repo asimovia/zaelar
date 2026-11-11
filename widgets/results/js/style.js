@@ -144,9 +144,13 @@ export const CSS = `
   /* Absolutely filling the plate with 'contain': a percentage max-height inside a grid plate never resolves (the
      track is content-sized), and a tall photo then overflowed the plate and was clipped. */
   .hb-results .hr-shot img{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:contain}
-  /* No photo, or a dead one: the plate stays and says WHAT it is, by its initial. */
-  .hb-results .hr-shot .hr-mono{font-size:clamp(18px,9cqi,40px);font-weight:700;letter-spacing:-.02em;
-    color:color-mix(in srgb,var(--hb-accent,#3D6FE0) 70%,var(--hb-muted,#5f6b7c));opacity:.75;user-select:none}
+  /* No photo, or a dead one: the plate stays and holds a NEUTRAL tile — a small picture frame in the muted ink
+     (V2-876 P-40). The old initial, accent-tinted and up to 40px, was the loudest thing on a card that had nothing
+     to show: a giant «S» read as content. */
+  .hb-results .hr-shot .hr-mono{width:clamp(20px,14cqi,36px);aspect-ratio:1/1;box-sizing:border-box;
+    border:1.5px solid color-mix(in srgb,var(--hb-muted,#5f6b7c) 45%,transparent);border-radius:var(--hb-r-s,8px);
+    background:linear-gradient(135deg,transparent 58%,color-mix(in srgb,var(--hb-muted,#5f6b7c) 30%,transparent) 58%);
+    user-select:none}
   .hb-results .hr-sec .hr-shot{margin-bottom:var(--s3)}
 
   /* ── THE FOUR LIST LAYOUTS ── variants of the SAME template, chosen by 'layoutFor()' from the content shape

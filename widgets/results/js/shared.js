@@ -21,9 +21,11 @@ export const SOURCE_STATUS = {
   pending: {cls: "idle"},
 };
 
+// The sections HE reads (V2-877 #9: a user surface renders only user-facing fields). `quality_bar` is not one of
+// them: it is the brief's checklist of what the WORKER must verify before a finalist counts — an instruction to the
+// executor, kept on the sheet for the worker and the digest, never painted on his screen.
 export const CRIT_SECTIONS = [
-  {key: "hard"}, {key: "soft"}, {key: "enrichments"},
-  {key: "assumed"}, {key: "quality_bar"}, {key: "changes"},
+  {key: "hard"}, {key: "soft"}, {key: "enrichments"}, {key: "assumed"}, {key: "changes"},
 ];
 
 // ── safe primitives ─────────────────────────────────────────────────────────────────────────────────────────
@@ -32,6 +34,12 @@ export function elem(tag, cls, text){
   if(cls) e.className=cls;
   if(text!=null && typeof text !== "object") e.textContent=String(text);   // an object is never painted as its repr (V2-831 R9)
   return e;
+}
+
+// Worker-written prose (a step, a note, a criterion) reaches his screen as TEXT: the inline-code ticks a model writes
+// around a field name are markup of the worker's channel, never characters he should read (V2-877 #9).
+export function prose(text){
+  return String(text == null ? "" : text).split("\u0060").join("").trim();
 }
 
 // ── i18n seam (V2-613 / V2-694): `ctx.t` for our own chrome, the literal as the FALLBACK ────────────────

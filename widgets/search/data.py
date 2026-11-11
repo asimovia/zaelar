@@ -12,7 +12,6 @@ import urllib.request
 from connectors import outcome as _outcome   # every provider call reports what happened (V2-833)
 
 UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
-DEFAULT_LOCATION = "Soria"
 WEATHER_KW = ("tiempo", "clima", "temperatura", "grados", "calor", "frío", "frio", "llueve", "lluvia", "weather", "sol")
 
 
@@ -23,9 +22,25 @@ def _get(url: str, timeout: float = 6.0) -> str:
                          measure=lambda b: {"bytes": len(b)}).decode("utf-8", "replace")
 
 
+def _his_place() -> str:
+    """Where HE is, from the agent's state: the place a screen of his reported (`here`, V2-875), else the home he said
+    (`location`). Empty when the engine knows neither — never a town of ours (V2-877 #12: a constant «Soria» answered
+    every operator's «what's the weather» with one person's town)."""
+    try:
+        from memory import api as memory
+        st = memory.state() or {}
+    except Exception:  # noqa: BLE001 — a card never dies because the state is unreadable
+        return ""
+    here = st.get("here") if isinstance(st.get("here"), dict) else {}
+    home = st.get("location")
+    if isinstance(home, dict):
+        home = home.get("place") or home.get("city") or ""
+    return str(here.get("place") or home or "").strip()[:60]
+
+
 def _location_from(q: str) -> str:
     m = re.search(r"\ben ([A-Za-zÁÉÍÓÚáéíóúñ .\-]{2,40})", q or "")
-    return (m.group(1).strip(" .?").title() if m else DEFAULT_LOCATION)
+    return (m.group(1).strip(" .?").title() if m else _his_place())
 
 
 # ---------- weather sources (each returns lines for the on-screen card) ----------
@@ -65,6 +80,9 @@ def _conclusion(loc: str, w: dict) -> str:
 def _weather(q: str) -> dict:
     """Consult BOTH weather sources (shown as parallel URL cards). Result/conclusion from the first that answers."""
     loc = _location_from(q)
+    if not loc:
+        # No place in the words and none in his state: an honest question, never a fetch for somebody's town.
+        return {"kind": "weather", "location": "", "sources": [], "result": None, "conclusion": "", "needs": "place"}
     sources, result, conclusion = [], None, ""
     for url, fn in ((f"https://wttr.in/{loc}", _src_wttr), ("https://api.open-meteo.com/v1/forecast", _src_open_meteo)):
         t0 = time.time()
@@ -109,8 +127,13 @@ def _web_search(q: str, n: int = 3) -> dict:
 
 
 def run(q: str = "") -> dict:
-    q = q or ""
-    is_weather = any(k in q.lower() for k in WEATHER_KW) or not q
+    q = (q or "").strip()
+    if not q:
+        # Opened from the catalog with no request (V2-877 #12): the card shows its EMPTY state — nothing is searched,
+        # no default place, no spinner. A search lives only while somebody asked for one.
+        return {"kind": "empty", "query": "", "location": "", "sources": [], "result": {}, "conclusion": "",
+                "at": time.strftime("%H:%M")}
+    is_weather = any(k in q.lower() for k in WEATHER_KW)
     out = _weather(q) if is_weather else _web_search(q)
     out.update({"query": q, "at": time.strftime("%H:%M")})
     return out
