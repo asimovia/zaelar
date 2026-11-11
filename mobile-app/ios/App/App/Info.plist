@@ -39,9 +39,18 @@
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Zaelar listens only while voice is on, when you talk to it.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>Zaelar uses your location only when an app on screen asks for it. It never tracks you in the background.</string>
+	<string>Zaelar uses your location during an activity you start, such as a ride or a walk, and while it runs iOS shows the blue location indicator. It stops when you end the activity.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Zaelar uses your location only when an app or a request of yours needs it.</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Zaelar connects to your heart rate strap or watch so it can tell you your heart rate during an activity you start.</string>
+	<key>NSMotionUsageDescription</key>
+	<string>Zaelar uses motion to know whether you are walking, cycling or driving during an activity you start, so it can keep the screen simple and talk to you hands-free.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+		<string>bluetooth-central</string>
+	</array>
 	<key>UIStatusBarStyle</key>
 	<string>UIStatusBarStyleLightContent</string>
 	<key>CFBundleLocalizations</key>

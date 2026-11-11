@@ -25,6 +25,10 @@ _JS_BANNED = [
     ("dynamic import()", re.compile(r"\bimport\s*\(")),
     ("eval()", re.compile(r"\beval\s*\(")),
     ("new Function()", re.compile(r"\bnew\s+Function\b")),
+    # the device's sensors only through `ctx.device` (V2-890): the shell's own code is the one caller of the native
+    # bridge, so a generated app never reaches a native API directly (and never a sensor the person did not start)
+    ("a native API (Capacitor / navigator.geolocation / navigator.bluetooth)",
+     re.compile(r"\bCapacitor\b|\bnavigator\s*\.\s*(?:geolocation|bluetooth)\b")),
     # self-contained: only the widget's own `js/` modules (`./js/x.js`, `./x.js`) and the app-shell modules the server
     # serves (`SHARED_CLIENT_MODULES`), as the EXACT string — a query, fragment, encoded or `..` form is refused.
     ("external import", re.compile(r'\bimport\b[^\n;]*\bfrom\b\s*["\'](?!\./(?:js/)?[\w-]+\.js["\']|(?:'
@@ -102,7 +106,7 @@ def _scan_widget_js(js: str) -> str | None:
     banned_scan = _FULL_LINE_COMMENT_RE.sub("", js)
     for label, rx in _JS_BANNED:
         if rx.search(banned_scan):
-            return f"widget.js uses banned {label} (widgets are self-contained; no network/dynamic code)"
+            return f"widget.js uses banned {label} (widgets are self-contained: no network, no dynamic code, the sensors only through ctx.device)"
     for m in _JS_HTML_SINK.finditer(js):
         rhs = m.groupdict().get("rhs")
         if rhs is None:                                    # insertAdjacentHTML / document.write → always flagged

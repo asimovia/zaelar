@@ -17,6 +17,7 @@
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
 		A1F0C0012ED1000000000001 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = A1F0C0022ED1000000000001 /* InfoPlist.strings */; };
 		A1F0C0052ED1000000000001 /* MainViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1F0C0062ED1000000000001 /* MainViewController.swift */; };
+		D3B1C0012ED2000000000001 /* DevicePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3B1C0022ED2000000000001 /* DevicePlugin.swift */; };
 		A1F0C0072ED1000000000001 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A1F0C0082ED1000000000001 /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
@@ -34,6 +35,7 @@
 		A1F0C0032ED1000000000001 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		A1F0C0042ED1000000000001 /* es */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = es; path = es.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		A1F0C0062ED1000000000001 /* MainViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainViewController.swift; sourceTree = "<group>"; };
+		D3B1C0022ED2000000000001 /* DevicePlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevicePlugin.swift; sourceTree = "<group>"; };
 		A1F0C0082ED1000000000001 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -72,6 +74,7 @@
 				50379B222058CBB4000EE86E /* capacitor.config.json */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
 				A1F0C0062ED1000000000001 /* MainViewController.swift */,
+				D3B1C0022ED2000000000001 /* DevicePlugin.swift */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
 				504EC30E1FED79650016851F /* Assets.xcassets */,
 				504EC3101FED79650016851F /* LaunchScreen.storyboard */,
@@ -170,6 +173,7 @@
 			files = (
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				A1F0C0052ED1000000000001 /* MainViewController.swift in Sources */,
+				D3B1C0012ED2000000000001 /* DevicePlugin.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

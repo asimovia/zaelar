@@ -68,6 +68,7 @@ Pending decisions (private roadmap): iPad in the iOS 1.x line and with which she
 | `html.in-app` + `data-platform` at document start | `mobile-app/www/in-app.js` → shell CSS | native companion only |
 | `window.Capacitor.isNativePlatform()` | `frontend/app/services/push.js installed()` and friends | hides «add to Home Screen», picks native plugins |
 | `ctx.device()` — location, motion, heading; failures as values | `frontend/app/services/device.js` | widgets on any screen; native plugin inside the app, Web API elsewhere |
+| `ctx.device().details()` / `.activity()` — what this screen has; a session that keeps reading with the screen locked (location, heart rate, motion, altitude) | `services/device.js` → `ZaelarDevice` (`mobile-app/ios/App/App/DevicePlugin.swift`) | native app only; a browser answers foreground location or `unsupported` (`docs/modules/zaelar-device-bridge.md`, V2-890) |
 | `origin_dev` / screens registry | `frontend/app/services/screens.js` (V2-792) | the brain knows which screen asked |
 | `POST /api/push/device` with `kind: web|apns|fcm` | `server/notices_api.py` (V2-796, V2-870 §2) | Web Push today; native push later |
 | `/api/daemon/*` + the relay | `server/daemon_api.py`, `daemon/` | desktop only; `browser_window.reach()` blocks `phone` |

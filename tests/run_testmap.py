@@ -5218,6 +5218,11 @@ DOMAINS: list[dict] = [
                                  "the native plugin only inside the app, the Web API in a browser, a refusal a value, "
                                  "stop() clears the native watch (V2-870)", "ch": UNIT,
             "paths": ["tests/browser/unit/mobile/test_the_screen_is_a_sensor.py"]},
+        {"id": "4.491", "title": "An activity the person starts keeps reading with the screen locked: the native device "
+                                 "bridge buffers location, heart rate, motion and altitude and the door hands each missed "
+                                 "sample over once on return; a browser runs location only, foreground; a generated app "
+                                 "reaches sensors only through ctx.device (the gate refuses Capacitor/geolocation/bluetooth) (V2-890)", "ch": UNIT,
+            "paths": ["tests/browser/unit/mobile/test_an_activity_keeps_reading_with_the_screen_locked.py"]},
         {"id": "4.439", "title": "The iOS app carries what App Review reads: Info.plist keys (encryption, category, "
                                  "full screen, permission sentences, versions from the build), the privacy manifest "
                                  "(no tracking, the data the shell sends) and the entitlements template (V2-870)", "ch": UNIT,

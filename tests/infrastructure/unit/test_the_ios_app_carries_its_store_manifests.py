@@ -22,7 +22,8 @@ PBXPROJ = APP / "App.xcodeproj" / "project.pbxproj"
 # The location plugin links the "always" API even though the app only asks while in use: without that purpose
 # string App Store Connect flags the upload (ITMS-90683).
 PURPOSE_KEYS = ("NSMicrophoneUsageDescription", "NSLocationWhenInUseUsageDescription",
-                "NSLocationAlwaysAndWhenInUseUsageDescription")
+                "NSLocationAlwaysAndWhenInUseUsageDescription", "NSBluetoothAlwaysUsageDescription",
+                "NSMotionUsageDescription")
 
 
 def _plist(p: Path) -> dict:
@@ -49,7 +50,9 @@ def test_info_plist_answers_what_review_asks() -> None:
     assert "NSCameraUsageDescription" not in info, "nothing uses the camera: review asks why a permission is declared"
     assert info["CFBundleShortVersionString"] == "$(MARKETING_VERSION)"
     assert info["CFBundleVersion"] == "$(CURRENT_PROJECT_VERSION)"
-    assert "UIBackgroundModes" not in info, "no background mode until background voice ships (review asks why)"
+    # V2-890: exactly the two modes an activity the person starts needs (route + heart-rate strap with the screen
+    # locked). Review asks what each mode is for; audio waits for background voice and brings its own reason.
+    assert info["UIBackgroundModes"] == ["location", "bluetooth-central"]
 
 
 def test_the_project_targets_the_iphone_and_is_versioned_by_the_script() -> None:
@@ -67,7 +70,7 @@ def test_the_privacy_manifest_declares_no_tracking_and_the_store_labels() -> Non
                                                "NSPrivacyAccessedAPITypeReasons": ["CA92.1"]}]
     kinds = {d["NSPrivacyCollectedDataType"].removeprefix("NSPrivacyCollectedDataType"): d
              for d in p["NSPrivacyCollectedDataTypes"]}
-    assert set(kinds) == {"EmailAddress", "Name", "CoarseLocation", "Contacts", "AudioData", "OtherUserContent",
+    assert set(kinds) == {"EmailAddress", "Name", "CoarseLocation", "PreciseLocation", "Health", "Fitness", "Contacts", "AudioData", "OtherUserContent",
                           "CustomerSupport", "SearchHistory", "UserID", "ProductInteraction", "OtherDiagnosticData"}
     for name, d in kinds.items():
         assert d["NSPrivacyCollectedDataTypeLinked"] is True, name
