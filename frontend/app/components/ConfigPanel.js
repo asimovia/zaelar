@@ -849,7 +849,7 @@ export function ConfigPanel() {
       const want = store.configInitialTab(), cxWant = store.configConnector(), from = store.configFrom();
       if (want && TABS.some(t => t.id === want)) { activeTab = want; store.setConfigInitialTab(null); }
       // …and the catalog row it was clicked on: that connector opens alone, on its first step (consumed once too).
-      store.setConfigFrom(null);
+      store.setConfigFrom(null); const wantSec = store.configInitialSection(); if (wantSec && SECTIONS.some(x => x.id === wantSec)) { activeTab = "settings"; activeSec = wantSec; store.setConfigInitialSection(null); }
       navOpen = !(want || cxWant);   // phone: a plain ⚙ opens on the menu; a request opens what it asked for
       if (cxWant) { activeTab = "conectores"; ({ focus: cxFocus, service: cxService } = focusOf(cxWant)); cxStep = 0; cxReturn = { from: from || "" }; store.setConfigConnector(null); }
       else { cxReturn = null; if (want) { cxFocus = null; cxService = ""; cxStep = 0; } }

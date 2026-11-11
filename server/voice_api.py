@@ -47,7 +47,8 @@ async def voices():
     from voice.engine.speech.voices import tts_provider, voices_for
     vs = voices_for()
     cur = S.STATE.get("voice", 0) % len(vs)
-    return JSONResponse({"provider": tts_provider(), "voices": [v["label"] for v in vs], "current": cur})
+    return JSONResponse({"provider": tts_provider(), "voices": [v["label"] for v in vs], "current": cur,
+                         "ids": [v["voice"] for v in vs], "genders": [v.get("gender", "") for v in vs]})
 
 
 @router.post("/api/test-voice")

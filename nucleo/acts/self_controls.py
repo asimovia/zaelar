@@ -18,7 +18,7 @@ no order to obey, so nothing fires.
 from __future__ import annotations
 
 #: The closed vocabulary. `mute`/`unmute` = the 🔊 (reversible, the agent keeps listening); `off` = the ⏻.
-ACTS: tuple[str, ...] = ("mute", "unmute", "off")
+ACTS: tuple[str, ...] = ("mute", "unmute", "off", "voice_male", "voice_female", "voice_list", "voice_settings", "language")  # + his voice / the locked language
 
 #: The event kind the screens obey (`event-scope.js` scopes it to the origin screen; `sse.js` runs the button's door).
 KIND = "controls"

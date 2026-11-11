@@ -2523,6 +2523,8 @@
  "veil.starting": "Encendiendo el agente…",
  "dormant.sleep_title": "Zaelar se ha dormido",
  "dormant.sleeping": "Durmiendo",
+ "controls.language_locked": "El idioma del sistema no se puede cambiar una vez elegido.",
+ "controls.voices": "Voces",
  "dormant.sleep_sub": "Nadie lo estaba usando desde hacía un rato y se ha dormido. Reactívalo para seguir donde lo dejaste.",
  "dormant.reactivate": "Reactivar",
  "dormant.waking": "Despertando — tarda un momento…",

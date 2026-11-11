@@ -129,7 +129,7 @@ def test_both_packs_seed_every_act_and_the_version_moved():
         d = json.loads((ENGINE / f"i18n/genesis/{lang}/actionmap.json").read_text(encoding="utf-8"))
         assert d["version"] >= 17, f"{lang}: new phrases in an old version reach no existing install"
         acts = {(e.get("action") or {}).get("act") for e in d["entries"] if (e.get("action") or {}).get("do") == "controls"}
-        assert acts == {"mute", "unmute", "off"}, (lang, acts)
+        assert acts == {"mute", "unmute", "off", "voice_male", "voice_female", "voice_list", "voice_settings", "language"}, (lang, acts)
 
 
 # ── the disarm ────────────────────────────────────────────────────────────────────────────────────────────
@@ -140,3 +140,64 @@ def test_the_disarmed_door_emits_nothing_and_the_order_falls_to_the_model(johnny
     out = H.run_case(case)
     assert _controls(out) == []
     assert out.failures(case), "with the door disarmed the order still read as the ⏻ — the test proves nothing"
+
+
+# ── his VOICE by voice (same door, same table): male · female · the catalog · the settings · the language ─────
+@pytest.mark.parametrize("lang,phrase,act", [
+    ("es", "Johnny, prueba otra voz masculina", "voice_male"),
+    ("es", "Johnny, prueba otra voz femenina", "voice_female"),
+    ("es", "Johnny, qué voces tienes", "voice_list"),
+    ("es", "Johnny, abre los ajustes de voz", "voice_settings"),
+    ("es", "Johnny, cambia el idioma", "language"),
+    ("en", "Johnny, try another male voice", "voice_male"),
+    ("en", "Johnny, try another female voice", "voice_female"),
+    ("en", "Johnny, what voices do you have", "voice_list"),
+    ("en", "Johnny, open the voice settings", "voice_settings"),
+    ("en", "Johnny, change the language", "language"),
+])
+def test_his_voice_orders_are_the_action_maps_without_the_model(johnny, lang, phrase, act):
+    case = _case(f"ctl-voice-{lang}-{act}", lang, phrase, f"controls:{act}")
+    out = H.run_case(case)
+    assert not out.failures(case), (out.as_dict(), out.events[-6:])
+    assert _controls(out) == [act]
+
+
+def test_the_screen_picks_a_random_other_voice_of_the_gender_and_saves_it_like_the_dropdown():
+    body = (ENGINE / "frontend/app/services/self-controls.js").read_text(encoding="utf-8")
+    assert "saveSettings({ assistant_voice:" in body, "the dropdown's own persistence door"
+    assert 'genders[i] === gender && i !== d.current' in body, "another voice, of that gender"
+    assert "rnd()" in body, "random"
+    assert 'controls.language_locked' in body and "setConfigInitialSection(\"voice\")" in body
+    api = (ENGINE / "server/voice_api.py").read_text(encoding="utf-8")
+    assert '"genders"' in api and '"ids"' in api
+    from voice.engine.speech.voices import voices_for
+    g = [v.get("gender") for v in voices_for("cartesia")]
+    assert "m" in g and "f" in g, "the catalog carries both genders"
+
+
+def test_the_language_refusal_is_a_string_in_both_languages_and_invents_no_reset():
+    import json
+    for lang in ("es", "en"):
+        ui = json.loads((ENGINE / f"i18n/genesis/{lang}/ui.json").read_text(encoding="utf-8"))
+        assert ui["controls.language_locked"] and ui["controls.voices"], lang
+    body = (ENGINE / "frontend/app/services/self-controls.js").read_text(encoding="utf-8")
+    seg = body[body.index('act === "language"'):body.index('act === "mute" || act === "unmute"')]
+    assert "reset" not in seg.lower() and "setLang" not in seg and "applyLang" not in seg
+
+
+@pytest.mark.parametrize("name", ["Zaelar", "Pepa"])
+def test_the_first_run_greeting_offers_a_new_name_and_a_voice_with_the_name_slot(name):
+    from voice import attention
+    from voice.engine.pipeline.first_air import greeting_prompt
+    before = attention._state.get("assistant_name")
+    try:
+        attention.set_assistant_name("" if name == "Zaelar" else name)
+        class L:  # the two languages the genesis ships; the instruction is language-agnostic, the model renders it
+            native, name = "Español", "Spanish"
+        txt = greeting_prompt(L)
+        assert f"default name is {name}" in txt and "any name I like" in txt and "male or a female voice" in txt
+        class E:
+            native, name = "English", "English"
+        assert "male or a female voice" in greeting_prompt(E)
+    finally:
+        attention._state["assistant_name"] = before

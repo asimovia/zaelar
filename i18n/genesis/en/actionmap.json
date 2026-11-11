@@ -1,6 +1,6 @@
 {
  "_comment": "Genesis seed pack (English) for the action map (V2-539). Same rules as es.json: unambiguous whole-utterance commands only; variants are separate entries; anything that could mean more than the mapped action stays out and goes to the model. · V2-682 — the possessive and the courtesy form were the whole hole. Measured on the operator's own English session (2026-09-12): «open the agenda» matched and «can you open MY agenda, please» did not, so a widget SHOW fell through to the model and from there to a Brain Worker that died on a provider 400. Spanish had the identical hole («abre mi agenda», «abreme la agenda»), which is why the fix lands in BOTH packs: this was never an English defect. Courtesy and modal forms are ENTRIES here, never something the matcher is allowed to understand (normalize.py doctrine). · V2-761 — the widget catalogue («Apps») joins as a panel tab; the operator calls it apps or widgets indifferently, so both words are entries. · V2-764 — the `torrent` widget merged into `archivos` (section Torrents): its names open that section. · v15 (demo pass 2026-09-28, V3) — «make it fullscreen» over the video had no entry, the model said «going fullscreen now» and called nothing: a pronoun fullscreen targets the app in front (`*`). · v17 — the agent's OWN controls: «silencia el altavoz» / «mute the speaker» (the 🔊, it keeps listening), «quita el mute» / «unmute», «apágate» / «turn yourself off» (the ⏻). One `controls` act each, run on the screen that heard him by that screen's own button door (`nucleo/acts/self_controls.py`). A bare «apaga»/«turn off» stays out: it names a device as often as the agent.",
- "version": 17,
+ "version": 18,
  "grids": [
   {
    "_comment": "VERB x OBJECT grid for mensajeria's LENSES (V2-545). «Abreme el Telegram» is not «show the app»: WhatsApp/Telegram/correo are VIEWS OF an app, and the model reads them as app names because they are also the widget's aliases - measured live, three turns of «Aqui lo tienes» over an unmoved app. Expanded into ordinary exact-match entries at import; a view op also brings the app up (executor), so one order gets both halves. `$` is filled with the value.",
@@ -2021,6 +2021,167 @@
    "action": {
     "do": "controls",
     "act": "off"
+   }
+  },
+  {
+   "phrase": "try another male voice",
+   "action": {
+    "do": "controls",
+    "act": "voice_male"
+   }
+  },
+  {
+   "phrase": "try a different male voice",
+   "action": {
+    "do": "controls",
+    "act": "voice_male"
+   }
+  },
+  {
+   "phrase": "switch to another male voice",
+   "action": {
+    "do": "controls",
+    "act": "voice_male"
+   }
+  },
+  {
+   "phrase": "use another male voice",
+   "action": {
+    "do": "controls",
+    "act": "voice_male"
+   }
+  },
+  {
+   "phrase": "give me another male voice",
+   "action": {
+    "do": "controls",
+    "act": "voice_male"
+   }
+  },
+  {
+   "phrase": "try another female voice",
+   "action": {
+    "do": "controls",
+    "act": "voice_female"
+   }
+  },
+  {
+   "phrase": "try a different female voice",
+   "action": {
+    "do": "controls",
+    "act": "voice_female"
+   }
+  },
+  {
+   "phrase": "switch to another female voice",
+   "action": {
+    "do": "controls",
+    "act": "voice_female"
+   }
+  },
+  {
+   "phrase": "use another female voice",
+   "action": {
+    "do": "controls",
+    "act": "voice_female"
+   }
+  },
+  {
+   "phrase": "give me another female voice",
+   "action": {
+    "do": "controls",
+    "act": "voice_female"
+   }
+  },
+  {
+   "phrase": "what voices do you have",
+   "action": {
+    "do": "controls",
+    "act": "voice_list"
+   }
+  },
+  {
+   "phrase": "which voices do you have",
+   "action": {
+    "do": "controls",
+    "act": "voice_list"
+   }
+  },
+  {
+   "phrase": "what voices are there",
+   "action": {
+    "do": "controls",
+    "act": "voice_list"
+   }
+  },
+  {
+   "phrase": "list your voices",
+   "action": {
+    "do": "controls",
+    "act": "voice_list"
+   }
+  },
+  {
+   "phrase": "show me the voices",
+   "action": {
+    "do": "controls",
+    "act": "voice_list"
+   }
+  },
+  {
+   "phrase": "open the voice settings",
+   "action": {
+    "do": "controls",
+    "act": "voice_settings"
+   }
+  },
+  {
+   "phrase": "open voice settings",
+   "action": {
+    "do": "controls",
+    "act": "voice_settings"
+   }
+  },
+  {
+   "phrase": "open the voice setting",
+   "action": {
+    "do": "controls",
+    "act": "voice_settings"
+   }
+  },
+  {
+   "phrase": "change the language",
+   "action": {
+    "do": "controls",
+    "act": "language"
+   }
+  },
+  {
+   "phrase": "change language",
+   "action": {
+    "do": "controls",
+    "act": "language"
+   }
+  },
+  {
+   "phrase": "change the system language",
+   "action": {
+    "do": "controls",
+    "act": "language"
+   }
+  },
+  {
+   "phrase": "switch to spanish",
+   "action": {
+    "do": "controls",
+    "act": "language"
+   }
+  },
+  {
+   "phrase": "switch to english",
+   "action": {
+    "do": "controls",
+    "act": "language"
    }
   }
  ]

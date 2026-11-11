@@ -512,7 +512,7 @@ export const [configOpen, setConfigOpen] = createSignal(false); // config area o
 // closure variable, not store-backed: there was no way from outside to say "open on Conectores"). Consumed
 // ONCE by ConfigPanel's own open-effect and cleared right after, so it never sticks past the request that
 // asked for it — a stale value here would keep re-forcing the tab on every later ⚙ click.
-export const [configInitialTab, setConfigInitialTab] = createSignal(null);
+export const [configInitialTab, setConfigInitialTab] = createSignal(null); export const [configInitialSection, setConfigInitialSection] = createSignal(null);   // the section: «open the voice settings»
 // The connector the ChatWall catalog was clicked on — ConfigPanel opens on that one alone (consumed once).
 export const [configConnector, setConfigConnector] = createSignal(null);
 // WHO sent the person to that connector (a card's name, e.g. «Contactos»), or "" when unnamed. Consumed with
