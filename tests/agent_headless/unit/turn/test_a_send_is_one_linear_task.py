@@ -250,3 +250,21 @@ def test_the_exit_door_reads_his_words_from_the_row_even_before_the_turn_recorde
 def _blind(rec):
     rec.heard = []
     return rec
+
+
+@pytest.mark.parametrize("lang", ["es", "en"])
+def test_a_new_order_for_the_same_act_replaces_the_row_that_waited(world, lang, monkeypatch):
+    """V2-887 step 7 — ONE row per intent. Measured 2026-11-11: each rephrasing of «send Raquel a message» opened
+    another row (four for one message) and the engine asked «which of these tasks is your answer?». A new call of
+    the same act that does not answer the waiting question ends that row: his new order is the task."""
+    monkeypatch.setenv("ZAELAR_LANGUAGE", lang)
+    w = WORDS[lang]
+    _say(w["bare"])
+    first = send_task.commission(WID, ACT, {"contact": "Raquel"}, w["bare"])
+    assert ts.task_get(first)["state"] == "waiting"
+    _say(w["full"])
+    second = send_task.commission(WID, ACT, {"contact": "Raquel", "text": w["text"], "channel": "whatsapp"}, w["full"])
+    assert second and second != first
+    assert ts.task_get(first)["state"] == "cancelled", "the row that waited is replaced, never a second task beside it"
+    assert [r["id"] for r in _rows() if r["state"] in ("waiting", "running", "done")] == [second]
+    assert any(str(e["label"]).startswith("🔁 send task") and e.get("superseded") == [first] for e in world["events"])

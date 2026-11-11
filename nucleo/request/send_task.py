@@ -230,6 +230,8 @@ def commission(wid: str, action: str, payload: dict | None, said: str, *, readin
     uid = retain(wid, action, payload, said, reading=reading, emit=emit)
     if not uid:
         return ""
+    from nucleo.request import one_row
+    one_row.superseded(uid, wid, action, emit=emit)
     art = artefact(uid)
     slot, key = missing(art)
     if slot:
