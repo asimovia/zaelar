@@ -91,6 +91,7 @@
  "chat.ref.partial": "A medias — se guarda lo escrito",
  "chat.ref.cancelled": "Parado — abrir lo guardado",
  "chat.ref.gone": "No se guardó nada que abrir",
+ "chat.ref.interrupted": "Interrumpida al parar el motor — se retoma sola",
  "chat.earlierAt": "· lo anterior, de {when} ·",
  "chat.fromCron": " · desde el cron «{name}»",
  "chat.messagePlaceholder": "Escribe al agente…",

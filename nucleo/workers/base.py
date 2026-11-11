@@ -109,6 +109,10 @@ class WorkerBackend(ABC):
         """Async iterator del stream de eventos normalizados hasta `done`/`error(fatal)`."""
         raise NotImplementedError
 
+    #: Why the session stopped this backend (V2-877 #2, set by `WorkerSession.stop` before `stop()`): a backend that
+    #: produces something on disk keeps it when it is not his cancel (`ended.his_cancel`).
+    stop_reason: str = ""
+
     @abstractmethod
     async def stop(self, *, grace: float = 3.0) -> None:
         """Cierre con cortesía: fin de entrada → SIGTERM al GRUPO → espera `grace` → SIGKILL al grupo. Nunca lanza."""

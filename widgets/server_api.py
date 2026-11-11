@@ -768,7 +768,7 @@ async def resume_interrupted_generations() -> None:
         logger.info("widgets: el agente está PARADO (⏻) — las generaciones interrumpidas siguen en el diario")
         return
 
-    for job in _generator_folders_m.take_pending_jobs():
+    for job in _generator_folders_m.left_to_their_rows(_generator_folders_m.take_pending_jobs()):   # V2-877 #2
         wid = str(job.get("id") or "")
         payload = job.get("payload") or {}
         if job.get("kind") == "create" and wid and payload.get("spec"):

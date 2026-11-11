@@ -7,6 +7,7 @@ import asyncio
 from loguru import logger
 
 from nucleo import dispatch as _d
+from nucleo.workers import ended as _ended
 
 
 def _schedule_auto_resume(req: str) -> None:
@@ -182,7 +183,7 @@ async def stop_all_async(*, grace: float = 2.0) -> int:
     for r in recs:
         if r.session:
             try:
-                await r.session.stop(grace=grace, reason="shutdown")
+                await r.session.stop(grace=grace, reason=_ended.SHUTDOWN)   # not his cancel (V2-877 #2)
             except Exception:
                 pass
         if r.task and not r.task.done():

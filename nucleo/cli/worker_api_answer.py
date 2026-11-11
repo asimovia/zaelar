@@ -74,23 +74,45 @@ def _record_for(entry: dict):
                            depth=0, parent_task_id="", kind=str(row.get("kind") or "generic"), goal=str(row.get("goal") or ""))   # checkpoint 1 is read from the row and its spec
 
 
+#: Why an answer to a question is NOT taken (V2-877 #2) — the one reading the bind door and the answer door share, so
+#: the turn never says «passed on» for an answer the answer door refuses.
+CLOSED, ANSWERED = "closed", "answered"
+
+
+def _entry(corr_id: str) -> dict | None:
+    """The question `corr_id` as the answer door reads it: this process's entry, else its row's artefact. None when no
+    open question has that id."""
+    e = _m._ACTS.get(corr_id)
+    if e is not None:
+        return e
+    a = next((a for a in open_asks() if a["ask_id"] == corr_id), None)
+    if a is None:
+        return None
+    uid = a["task_id"]
+    e = dict(_artefact(uid)) or {"corr_id": corr_id, "ask_id": corr_id, "uid": uid, "question": a["question"], "retained": {},
+                "task_id": ""}
+    e.setdefault("uid", uid)
+    return e
+
+
+def refusal(corr_id: str) -> str:
+    """"" when an answer to `corr_id` would be taken; else why not: `closed` (no open question has that id) or
+    `answered` (its question was already answered — a spent id the row still lists)."""
+    e = _entry(corr_id)
+    if e is None:
+        return CLOSED
+    return "" if e.get("state") in (None, "pending") else ANSWERED
+
+
 async def answer(corr_id: str, text: str, *, resume: bool = True, choice: int | None = None) -> bool:
     """Resolve the question `corr_id` with his `text`: the artefact records the answer, a retained act runs only on his
     yes (`_says_yes`), the row stops waiting and — when the asking session already ended — that session is resumed by
     id with the answer. An INLINE row's question (`nucleo/request/inline_ask`) re-runs its retained act instead, with
     the answer — or the candidate the binding verdict chose (`choice`) — bound. True if an open question was resolved."""
-    e = _m._ACTS.get(corr_id)
-    uid = str((e or {}).get("uid") or "")
-    if e is None:
-        a = next((a for a in open_asks() if a["ask_id"] == corr_id), None)
-        if a is None:
-            return False
-        uid = a["task_id"]
-        e = dict(_artefact(uid)) or {"corr_id": corr_id, "ask_id": corr_id, "uid": uid, "question": a["question"],
-                                     "retained": {}, "task_id": ""}
-        e.setdefault("uid", uid)
-    if e.get("state") not in (None, "pending"):
+    e = _entry(corr_id)
+    if e is None or refusal(corr_id):
         return False
+    uid = str(e.get("uid") or "")
     e["answer"] = text or ""
     e["state"] = "answered"
     e["answered_at"] = time.time()
@@ -164,9 +186,12 @@ async def answer_task(uid: str, ask_id: str, text: str) -> bool:
 @_consequence.door("worker.answer", neutral=False)
 def answer_soon(ask_id: str, text: str, choice: int | None = None) -> bool:
     """Fire-and-forget onto the server loop, from the FlashBrain's job thread: answer the question the turn's verdict
-    BOUND (`worker_api_bind`). True if the question was open."""
-    if not any(a["ask_id"] == ask_id for a in open_asks()) and not (
-            (_m._ACTS.get(ask_id) or {}).get("state") == "pending"):
+    BOUND (`worker_api_bind`). True if the question was open AND its answer will be taken — the same reading the
+    answer door makes (`refusal`): an answer it would refuse is never reported bound, and a spent question is said
+    so (`_refused`), never «passed on» (V2-877 #2)."""
+    why = refusal(ask_id)
+    if why:
+        _refused(ask_id, why)
         return False
     try:
         import asyncio
@@ -181,6 +206,37 @@ def answer_soon(ask_id: str, text: str, choice: int | None = None) -> bool:
     except Exception as e:  # noqa: BLE001
         _note(e)
         return False
+
+
+def _refused(ask_id: str, why: str) -> None:
+    """An answer the answer door would not take: recorded, and — when its question was already answered — said to him
+    once through the out-of-turn mouth, in his language (`answer_already_given`). A closed question says nothing: his
+    words were not an answer to anything open. Never raises."""
+    try:
+        from voice.observer import emit
+        emit("task", "🚫 answer not taken — its question is " + why, text=str(ask_id), role="system",
+             extra={"cat": "worker_api", "ask_id": str(ask_id), "why": why})
+    except Exception as e:  # noqa: BLE001
+        _note(e)
+    if why != ANSWERED:
+        return
+    try:
+        import asyncio
+
+        from i18n import langs as _l
+        from nucleo import dispatch
+        from nucleo.pulse import notices
+        line = str(getattr(_l.current_language(), "answer_already_given", "") or "")
+        if not line:
+            return
+        coro = notices.notify("zaelar", line, key=f"answer_refused:{ask_id}", kind="info", push_=False)
+        loop = getattr(dispatch, "_LOOP", None)
+        if loop is not None:
+            asyncio.run_coroutine_threadsafe(coro, loop)
+        else:
+            asyncio.ensure_future(coro)
+    except Exception as e:  # noqa: BLE001
+        _note(e)
 
 
 from nucleo.cli import worker_api as _m  # noqa: E402 — last, so importing this module first still resolves

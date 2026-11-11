@@ -21,6 +21,7 @@ from loguru import logger
 from . import progress as _progress
 from .session_notes import _PLACE, SessionNotes  # noqa: F401 — V2-778 F1: the session's notes; _PLACE re-exported
 from . import stall as _stall
+from . import ended as _ended
 from .base import WorkerBackend, WorkerSpec
 from nucleo.request import kind as _errand_kind
 from nucleo.circuit import close as _harness   # the circuit judges the ending, never the worker's word
@@ -118,7 +119,8 @@ class WorkerSession(SessionNotes):
                     break
         except asyncio.CancelledError:
             logger.info(f"worker[{rec.task_id}]: run CANCELADO")
-            rec.status = "cancelled"
+            if _ended.his_cancel(rec.stop_reason):   # a host stop is not his cancel (V2-877 #2): `_finish` keeps it
+                rec.status = "cancelled"
             raise
         except Exception as e:  # noqa: BLE001
             logger.warning(f"worker[{rec.task_id}]: run failed: {e}")
@@ -162,7 +164,10 @@ class WorkerSession(SessionNotes):
         if self._stopped:
             return
         self._stopped = True
-        self._rec.status = "cancelled"
+        self._rec.stop_reason = str(reason or _ended.OPERATOR)
+        if _ended.his_cancel(reason):
+            self._rec.status = "cancelled"
+        self._b.stop_reason = self._rec.stop_reason     # what the backend may keep (the generator's build)
         try:
             await self._b.stop(grace=grace)
         except Exception as e:  # noqa: BLE001
