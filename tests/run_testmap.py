@@ -6224,6 +6224,12 @@ DOMAINS: list[dict] = [
                                   "ok over an unchanged card and now comes back `slots_unfilled`; the declared key adds "
                                   "and stands",
             "ch": UNIT, "paths": ["tests/browser/unit/imagenes/test_an_add_in_another_vocabulary_is_not_done.py"]},
+        # V2-879 O6 — disarmed 2026-11-11 (the timer manifest without `present.mount`) → red.
+        {"id": "4.475", "title": "A countdown his turn sets comes on screen (V2-879 O6): `timer.set`/`start` declare "
+                                  "`present.mount`, so the turn's one door brings the card for them (es/en/ja words "
+                                  "that never name the card) and only once; `pause`/`reset` stay controls and a show "
+                                  "on them is a drag",
+            "ch": UNIT, "paths": ["tests/browser/unit/timer/test_a_countdown_set_by_his_turn_comes_on_screen.py"]},
     ]},
     {"id": "5", "name": "CONECTORES", "nodes": [
         # V2-559 — el operador siguió la guía, creó la contraseña de aplicación y pegó el ENLACE de esa
