@@ -122,3 +122,17 @@ def test_the_files_switch_refuses_a_new_folder(switches) -> None:
     assert daemon_api._files_off() is None
     switches(files=False)
     assert daemon_api._files_off().status_code == 403
+
+
+def test_the_place_he_is_in_is_a_known_place(monkeypatch) -> None:
+    """The state's place feeds the guard (V2-878 §0): it was read as `memory.state.load()`, which does not exist —
+    the error was swallowed and the place he is in was never tagged."""
+    from memory import api as memory
+    monkeypatch.setattr(memory, "state", lambda: {"location": "Zaragoza, Aragón", "here": {"place": "Huesca"}})
+    monkeypatch.setattr(memory, "concept_names", lambda n=200: [])
+    pii._known_cache.update(at=0.0, val={})
+    try:
+        known = pii.known()
+        assert known.get(pii.norm("Zaragoza")) == "[PLACE]" and known.get(pii.norm("Huesca")) == "[PLACE]", known
+    finally:
+        pii._known_cache.update(at=0.0, val={})
