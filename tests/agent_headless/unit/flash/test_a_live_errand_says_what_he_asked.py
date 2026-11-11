@@ -5,7 +5,7 @@ The prompt's running-errands block carried the errand only by the title the work
 the turn that commissioned it had left the last-ten-messages window — the model answered «No sé a qué me remites…
 no hay nada en pantalla con ofertas». His commissioning sentence (`SessionRecord.heard`) now rides on the errand's own
 line, bounded (`ASKED_MAX`, cut on a word and marked), so a reference to what is still to come can bind to it.
-Disarm: `asked_line` returns "" → red.
+Disarm: `name_of` ignores `heard` → red. Since V2-878 §2 his words REPLACE the title on the line (one name).
 """
 from __future__ import annotations
 
@@ -55,14 +55,15 @@ def test_the_errand_says_what_he_asked_although_his_turn_left_the_window(lang):
 def test_a_long_request_is_cut_on_a_word_and_marked(lang):
     long = (ASKED[lang] + " ") * 4
     _errand(lang, long)
-    line = live_tasks.asked_line(dispatch.pending_summaries()[0])
-    asked = line.split("«", 1)[1].rstrip("»")
+    line = live_tasks.name_of(dispatch.pending_summaries()[0])
+    asked = line.split("«", 1)[1].split("»", 1)[0]
     assert len(asked) <= live_tasks.ASKED_MAX + 1 and asked.endswith("…")
 
 
-def test_nothing_heard_or_the_title_already_says_it_adds_nothing(lang):
-    assert live_tasks.asked_line({"request": TITLE[lang], "heard": ""}) == ""
-    assert live_tasks.asked_line({"request": ASKED[lang], "heard": ASKED[lang]}) == ""
+def test_one_name_per_errand_his_words_or_the_title_never_both(lang):
+    assert live_tasks.name_of({"request": TITLE[lang], "heard": ""}).startswith("«" + TITLE[lang][:20])
+    named = live_tasks.name_of({"request": TITLE[lang], "heard": ASKED[lang]})
+    assert ASKED[lang][:40] in named and TITLE[lang][:30] not in named
 
 
 def test_every_live_errand_carries_its_own(lang):

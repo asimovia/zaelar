@@ -34,19 +34,17 @@ def _short_note(note: str, limit: int = 110) -> str:
 ASKED_MAX = 140
 
 
-def asked_line(t: dict) -> str:
-    """What he ASKED for, on the errand's own line: his commissioning sentence (`SessionRecord.heard`), bounded.
+def name_of(t: dict) -> str:
+    """The errand's ONE name on its line (V2-878 §2): his commissioning sentence when it was heard, bounded (`ASKED_MAX`,
+    cut on a word and marked), the errand's request otherwise — never both, so one errand is never said twice.
 
-    Measured (demo S3, 2026-11-10): the line carried only the errand's title as the worker wrote it, cut at 60
-    («Buscar monitores de 27 pulgadas con resolución 4K (UHD) con »), and the turn that commissioned it had left the
-    dialog window — «abre el que sea mejor oferta» found nothing to refer to («No sé a qué me remites»). The errand is
-    in the prompt every turn; what he asked for travels with it, whatever the window holds. "" when nothing was heard
-    or the title already says it."""
+    Measured (demo S3, 2026-11-10, V2-874): the line carried only the worker's title cut at 60 («Buscar monitores de 27
+    pulgadas con resolución 4K (UHD) con ») and «abre el que sea mejor oferta» found nothing to refer to. His words
+    travel with the errand whatever the window holds; the worker's title is no longer said beside them."""
     heard = " ".join(str(t.get("heard") or "").split())
-    title = " ".join(str(t.get("request") or "").split())
-    if not heard or heard.lower() == title.lower()[:len(heard)]:
-        return ""
-    return f" — lo pidió así: «{_short_note(heard, ASKED_MAX)}»"
+    if heard:
+        return f"«{_short_note(heard, ASKED_MAX)}» (lo pidió así)"
+    return f'«{_short_note(str(t.get("request") or ""), 60)}»'
 
 
 def pending_task_lines() -> list[str]:
@@ -76,7 +74,7 @@ def pending_task_lines() -> list[str]:
             _ofrecer: list[str] = []
             for t in _pend:
                 ph = (t.get("phase") or "").strip()
-                bit = f'«{(t.get("request") or "")[:60]}»' + asked_line(t) + (f' — {ph}' if ph else "")
+                bit = name_of(t) + (f' — {ph}' if ph else "")
                 # V2-059: progreso ESTRUCTURADO si el worker lo reporta (paso N/total, %, nota) → respuesta precisa
                 # a "¿cómo va?" en vez de una fase vaga.
                 pct, done, total = t.get("pct", -1), t.get("done", 0), t.get("total", 0)
@@ -130,7 +128,7 @@ def pending_task_lines() -> list[str]:
                 # V2-454 — LA OFERTA DE PARAR SE HACE UNA VEZ. El hecho se queda (V2-224).
                 if _atascada:
                     if _disp.stall_offered(t.get("id")):
-                        bit += " [YA le ofreciste pararla: NO se lo vuelvas a preguntar]"
+                        bit += " [YA le ofreciste pararla]"
                     else:
                         _ofrecer.append(str(t.get("id") or ""))
                 # V2-222, third face — measured on `search-secondhand-monitor__es` (2026-08-23 23:24). The
@@ -144,7 +142,7 @@ def pending_task_lines() -> list[str]:
                 # is already on the summary; the same signal the browser face reads (V2-200) is read here.
                 _kept = int(t.get("kept", 0) or 0)
                 if _kept > 0:
-                    bit += f" — DICE haber encontrado {_kept} candidato(s)"   # V2-444: SU cuenta, sin comprobar
+                    bit += f" — DICE haber encontrado {_kept} candidato(s) (es SU cuenta sin comprobar)"   # V2-444
                 _f = rows_of_sheet(str(t.get("sheet") or ""), 3) if t.get("sheet") else []   # V2-451
                 if _f:
                     bit += " — ENCONTRADO (en su hoja): " + "; ".join(_f)
@@ -157,8 +155,7 @@ def pending_task_lines() -> list[str]:
                     if _up is True:
                         bit += " [su hoja ESTÁ abierta ahora]"
                     elif _up is False:
-                        bit += (" [su hoja NO está en pantalla: la cerró — si pide verla, "
-                                "ÁBRELA; no digas que la tiene delante]")
+                        bit += " [su hoja NO está en pantalla: la cerró]"
                 # The errand's latest WEB LEAD (demo pass 30): it used to arrive as a note pushed into
                 # whatever the next turn was about. Here it sits next to its own task, and it is a lead.
                 try:
@@ -167,83 +164,16 @@ def pending_task_lines() -> list[str]:
                 except Exception:  # noqa: BLE001
                     _lead = ""
                 if _lead:
-                    bit += (f" — ÚLTIMA PISTA DE LA WEB (una página: artículo, listado o error, NO un candidato "
-                            f"salvo que ya traiga la cosa con su nombre y su precio): «{_lead}»")
+                    bit += f" — ÚLTIMA PISTA DE LA WEB (una página que miró, NO un candidato salvo que traiga su nombre y su precio): «{_lead}»"
                 bits.append(bit + f' (llevas {t.get("secs", 0)}s)')
             for _t in _ofrecer:
                 _disp.mark_stall_offered([_t])     # V2-454: este turno la lleva delante
-            lines.append("TAREAS DE FONDO EN CURSO (los brain workers las están resolviendo; NO reinicies ni digas "
-                         # V2-556 — LA BIFURCACIÓN VA DENTRO DEL IMPERATIVO, y es la tercera vez que esta
-                         # familia cuesta una ronda. El branch anti-negación de V2-222 ya estaba escrito, pero
-                         # QUINCE LÍNEAS más abajo, y esta orden —la primera que el modelo lee sobre «¿tienes
-                         # algo?»— solo hablaba del PASO. Medido en `search-buy-used-car__es` (2026-09-02,
-                         # run v3): el prompt del turno llevaba «ENCONTRADO (en su hoja): AUDI A3 — 10.990
-                         # EUR; AUDI Q5 — 9.590; BMW X3 — 9.980» y la respuesta fue «Sigo sin tener anuncios
-                         # concretos, la búsqueda va en el paso inicial». Tres coches con nombre y precio
-                         # delante, negados. Una orden que nombra solo una de las dos caras se obedece entera.
-                         "que ya está): " + "; ".join(bits) + ". Si el operador pregunta el estado o si YA "
-                         "TIENES ALGO, MIRA PRIMERO si esa tarea trae «ENCONTRADO (en su hoja)»: si lo trae, "
-                         "la respuesta EMPIEZA por eso —nómbralo con su precio, que es justo lo que te ha "
-                         "preguntado— y el paso va DESPUÉS; si NO lo trae, di el PASO concreto y el tiempo que "
-                         "lleva. Si lleva MUCHO en el mismo paso, sé honesto (va lento o puede haberse "
-                         "atascado, le ofreces pararlo), pero SOLO si aquí arriba pone ENCALLADA o SIN AVANZAR "
-                         "con esas letras: los segundos por sí solos NO son un atasco y decir que algo se ha "
-                         "atascado a los 37s es inventar una avería. NUNCA repitas la misma frase vaga. "
-                         "Lo que ves AQUÍ es TODO lo que sabes de esas tareas: si una sale «SIN paso reportado "
-                         "aún», di exactamente eso —que arrancó y todavía no ha dado señal—; JAMÁS te inventes en "
-                         "qué punto va («está en la fase de login», «la farmacia está consultando tu historial», "
-                         "«ya tengo la reserva en marcha»). Inventar un paso es MENTIR sobre lo único que el "
-                         "operador no puede comprobar por su cuenta, y se nota tarde y mal. "
-                         # V2-131 — lo que hay que hacer con el hecho, no solo el hecho.
-                         "Los SEGUNDOS que ves son la verdad: no digas que algo «se está demorando» ni «lleva "
-                         "un rato» si acaba de arrancar. Y si una tarea sale ENCALLADA o SIN AVANZAR, dilo con "
-                         "esas letras y ofrece pararla, salvo que ponga que YA se lo ofreciste: entonces el "
-                         "hecho se dice igual —sigue sin avanzar y desde cuándo— pero la pregunta NO se "
-                         "repite, porque ya te contestó. NO respondas "
-                         "«sigue en marcha» otra vez; «sin avanzar» NO es «no ha empezado»: está trabajando y "
-                         "no llega, y el operador merece decidir si espera. Si el operador te pide un resultado CONCRETO (¿hay o no hay?, ¿cuánto "
-                         "cuesta?, ¿está reservado?) y la tarea no lo ha traído, la respuesta es que TODAVÍA NO "
-                         "LO SABES y desde cuándo lleva sin dar señal — nunca una vuelta más de proceso. "
-                         # V2-222 again, and the same lesson as `recently_ended_sessions`: the block had a
-                         # prohibition («NO … digas que ya está») and an instruction for the empty case
-                         # («TODAVÍA NO LO SABES»), and NOTHING for the case in between — a step note saying
-                         # something already landed while the errand keeps running. With no branch licensing
-                         # it, the model resolved the collision the only way the block allowed and denied a
-                         # delivery that was on screen. The fork goes INSIDE the imperative rather than in a
-                         # separate sentence: two orders in one paragraph come out heads-or-tails.
-                         "PERO lee el PASO antes de decir eso: si dice que algo ya está ENTREGADO, ESCRITO o "
-                         "EN PANTALLA, entonces la tarea SÍ ha traído eso — cuéntalo en este turno, di qué hay y qué"
-                         " falta todavía, y NO contestes «sigo con ello». Un «DICE haber encontrado N» es SU cuenta sin"
-                         " comprobar: puedes decir que va sacando cosas y que aún no ha llegado nada que darle, pero NO"
-                         " lo cuentes como entrega ni nombres nada. Lo que sigue EN CURSO es "
-                         "la tarea, no lo que ya está entregado; negar una entrega que el operador tiene "
-                         "delante en la pantalla es peor que no haberla hecho. "
-                         # V2-348, cuarta cara y la SIMÉTRICA: solo las buenas noticias llevaban un «cuéntalo»,
-                         # así que el modelo relataba la mitad que el bloque nombraba. Medido en su iniciativa.
-                         "Y LO MISMO AL REVÉS, que es este mismo defecto con el signo cambiado: si el paso dice "
-                         "que algo ha FALLADO —un sitio caído, un filtro que no se aplicó, un plan B— cuéntalo "
-                         "TAMBIÉN en este turno, con el nombre de lo que falló y qué haces en su lugar; un "
-                         "contratiempo NO se resume en «va dando pasos». Tapar una mala noticia cuesta la "
-                         "confianza igual que negar una entrega, y es el operador quien decide si esperar o "
-                         "cambiar de enfoque. "
-                         # V2-130 — the list had no stated SCOPE, and a list in context becomes an answer
-                         # when the model has a hole. Asked which barber he always goes to, the brain had
-                         # nothing on barbers and offered these instead: «tengo varias tareas tuyas
-                         # pendientes: reservar mesa en Casa Lucio, renovar la cuota del gimnasio…».
-                         # Real items, real list — wrong KIND of thing. Naming what the list is NOT costs
-                         # one clause and closes the substitution.
-                         "Y esto es una lista de TRABAJO EN CURSO, no un registro de sus sitios, sus "
-                         "contactos ni sus costumbres: si te pregunta cuál es su peluquería, su médico o "
-                         "«el de siempre», estas tareas NO son candidatas — no se las ofrezcas. "
-                         # V2-142 — turno 1, con una tarea de OTRA petición todavía viva: «Tienes dos cosas:
-                         # primero necesito los datos del recibo de la luz para preparar la transferencia, y
-                         # segundo voy a pedir la reposición de tu receta». El operador solo había hablado de
-                         # la receta. El bloque decía qué HACER con la lista y (desde V2-130) una cosa que la
-                         # lista NO es; faltaba la que de verdad mordió: que no es parte de lo que te piden
-                         # ahora. Un modelo pequeño con una lista delante y una petición nueva las suma.
-                         "Y NO forman parte de lo que te pide AHORA: si te encarga algo nuevo, atiende ESO "
-                         "solo — no lo mezcles con una tarea vieja («tienes dos cosas: primero el recibo de la "
-                         "luz y segundo tu receta») ni le pidas datos que hacen falta para la otra.")
+            # V2-878 §2 — FACTS ONLY, like `recent_lines`. The ~900-token imperative paragraph that rode here every turn
+            # with a live errand (V2-130/131/142/222/348/354/444/454/556) is gone; each face it was written for stays as
+            # its FACT on the errand's own line (SIN paso · ENCALLADA · SIN AVANZAR · DICE · ENCONTRADO · hoja abierta o
+            # cerrada · ÚLTIMA PISTA). If a face regresses, the fact it lacked is added — never the sentence.
+            lines.append("TAREAS DE FONDO EN CURSO (hechos de cada una; lo que no figura aquí no se sabe): "
+                         + "; ".join(bits) + ".")
     except Exception:
         pass
     return lines

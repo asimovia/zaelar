@@ -99,14 +99,7 @@ def test_but_not_while_something_is_already_running(monkeypatch):
 
 
 # ── a running task is not part of the new request ───────────────────────────────────────────────────────────
-def test_a_live_task_is_context_not_part_of_the_new_request(monkeypatch):
-    from nucleo import dispatch as _disp
-    monkeypatch.setattr(_disp, "pending_summaries", lambda: [
-        {"id": "7", "request": "pagar la factura de la luz de Iberdrola", "secs": 40, "phase": "",
-         "pct": -1, "done": 0, "total": 0, "note": "", "silent_s": 5}])
-    live = prompt.live_state()
-    assert "NO forman parte de lo que te pide AHORA" in live
-    assert "tienes dos cosas" in live          # the exact shape it produced, named
+# test_a_live_task_is_context_not_part_of_the_new_request: retired by V2-878 §2 — it asserted an instruction of the running-errands block, which is facts only now.
 
 
 def test_the_prompt_says_who_does_the_searching(fresh_db):

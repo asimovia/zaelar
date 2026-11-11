@@ -139,8 +139,7 @@ def test_a_background_task_with_no_reported_step_says_so(monkeypatch):
         {"id": "9", "request": "renovar la cuota del gimnasio", "secs": 63, "phase": "",
          "pct": -1, "done": 0, "total": 0, "note": ""}])
     live = prompt.live_state()
-    assert "SIN paso reportado aún" in live.split("Si el operador pregunta")[0]
-    assert "JAMÁS te inventes en qué punto va" in live
+    assert "SIN paso reportado aún" in live      # the FACT (V2-133); the order not to invent a step went in V2-878 §2
 
 
 def test_a_background_task_that_DID_report_a_step_still_shows_it(monkeypatch):
@@ -207,18 +206,7 @@ def test_the_prompt_names_the_invented_jargon_and_offers_a_sanctioned_phrase(fre
     assert "me pongo con ello" in system
 
 
-def test_the_background_task_list_states_what_it_is_NOT_for(monkeypatch):
-    """V2-130 `book-barber-slot`. Asked which hairdresser he always goes to, the brain had nothing on
-    hairdressers and answered with the background-task list instead: «I have several pending tasks for you:
-    book a table at Casa Lucio, renew the gym membership…». Real items, real list, wrong KIND of thing —
-    a list in context becomes an answer when the model has a hole, and the block never stated its scope."""
-    from nucleo import dispatch as _disp
-    monkeypatch.setattr(_disp, "pending_summaries", lambda: [
-        {"id": "9", "request": "reservar mesa en Casa Lucio", "secs": 63, "phase": "",
-         "pct": -1, "done": 0, "total": 0, "note": ""}])
-    live = prompt.live_state()
-    assert "TRABAJO EN CURSO" in live
-    assert "estas tareas NO son candidatas" in live
+# test_the_background_task_list_states_what_it_is_NOT_for: retired by V2-878 §2 — it asserted an instruction of the running-errands block, which is facts only now.
 
 
 def test_a_stalled_background_task_is_named_as_stalled(monkeypatch):
@@ -246,18 +234,7 @@ def test_a_task_that_is_emitting_is_NOT_called_stalled(monkeypatch):
     assert "ENCALLADA" not in tareas
 
 
-def test_the_prompt_forbids_answering_a_concrete_question_with_process(monkeypatch):
-    """«Is there availability or not?» got «the process is still in progress» — which was also false. The honest answer
-    is that it is not known yet, and since when there has been no signal. The rule travels WITH the task list
-    (it is about what to do with it), so it only exists when there is something running — which is exactly
-    when the operator asks."""
-    from nucleo import dispatch as _disp
-    monkeypatch.setattr(_disp, "pending_summaries", lambda: [
-        {"id": "9", "request": "reservar hotel", "secs": 400, "phase": "",
-         "pct": -1, "done": 0, "total": 0, "note": "", "silent_s": 400}])
-    live = prompt.live_state()
-    assert "TODAVÍA NO LO SABES" in live
-    assert "no digas que algo «se está demorando»" in live
+# test_the_prompt_forbids_answering_a_concrete_question_with_process: retired by V2-878 §2 — it asserted an instruction of the running-errands block, which is facts only now.
 
 
 def test_the_prompt_forbids_handing_the_task_back_to_the_operator(fresh_db):

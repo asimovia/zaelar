@@ -139,7 +139,7 @@ def about_a_live_errand(request: str, live: list[tuple[str, str]]) -> str:
 def _judge(request: str, live: list[tuple[str, str]]) -> tuple[str, str]:
     """`(tid or "", outcome)` — the model's answer and how it ended: about · separate · out_of_range · unreadable ·
     error."""
-    menu = "\n".join(f"{i + 1}. {str(goal or '')[:160]}" for i, (_tid, goal) in enumerate(live))
+    menu = "\n".join(f"{i + 1}. {line}" for i, line in enumerate(_menu(live)))
     try:
         from nucleo.memory_agent.processor import llm
         raw = llm.chat_sync("errand_scope", SCOPE_SYSTEM,
@@ -156,6 +156,17 @@ def _judge(request: str, live: list[tuple[str, str]]) -> tuple[str, str]:
     if 1 <= n <= len(live):
         return live[n - 1][0], "about"
     return "", "separate" if n == 0 else "out_of_range"
+
+
+def _menu(live: list[tuple[str, str]]) -> list[str]:
+    """The judge's menu (V2-878 §2): each errand as its CARD — his words, state, last mention — where the pool knows it;
+    its goal otherwise. One description per errand, the same every reader gets (`named_errand.card_line`)."""
+    try:
+        from nucleo.turn import named_errand as _ne
+        cards = {str(e.get("id")): e for e in _ne.known(with_finished=True)}
+    except Exception:  # noqa: BLE001 — an unreadable pool leaves the goals
+        cards = {}
+    return [_ne.card_line(cards[str(t)]) if str(t) in cards else f"«{str(g or '')[:160]}»" for t, g in live]
 
 
 def continues_ended(request: str, kind: str, ended: list[dict]) -> tuple[str, dict]:
