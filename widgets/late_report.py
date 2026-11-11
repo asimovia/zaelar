@@ -95,8 +95,9 @@ def retract(wid: str) -> bool:
         from voice.observer import emit
         emit("widget", "🩹 the card reported the contrary before it was said — withdrawn", text=_base(wid),
              extra={"id": _base(wid)})
-    except Exception:  # noqa: BLE001 — the withdrawal stands; only its event is lost
-        pass
+    except Exception as e:  # noqa: BLE001 — the withdrawal stands; only its event is lost
+        from loguru import logger
+        logger.debug(f"late_report: withdrawal event not emitted ({e!r})")
     return True
 
 
