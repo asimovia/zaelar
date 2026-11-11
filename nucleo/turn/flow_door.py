@@ -94,6 +94,8 @@ def obey(req: str, r: dict, ctx: dict) -> bool:
         if how in (_flow.INJECT, "steer"):
             from nucleo import dispatch as _d
             _d.relay_his_words(str(r["flow"]), fold_note(req))
+            __import__("nucleo.turn.pick_pending", fromlist=["x"]).noted(   # V2-878 §5, shadow: a choice for later rows
+                req, r, __import__("nucleo.turn.brief", fromlist=["x"]).of_this_turn())
             _emit("🧵 the request reaches the live errand it belongs to", req, r)
             return False
         if how == "stop":

@@ -6966,6 +6966,14 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_an_errand_in_a_language_without_spaces_is_still_one_errand.py"]},
         {"id": "2.1678", "title": "A flow judge out of time with an errand open ASKS whose the words are (V2-878 §3 (e), ES/EN): the route answers `undecided` (never `new`), the portal opens nothing and asks «for X, or something new?» on a row through the one asker with two declared answers in his language; «for X» runs the route's consequence into X, «something new» opens it, anything else leaves the row waiting",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_whose_words_are_decided_or_asked.py"]},
+        # V2-878 §5 (SHADOW) — disarmed 2026-11-11 (the portal notes nothing / the first rows report nothing / the
+        # arbiter never sees the errand) → red, each in its own file.
+        {"id": "2.1679", "title": "A choice about rows that do not exist yet is kept on the errand's card, in SHADOW (V2-878 §5): an inject/steer into an errand with no rows from a turn that does not ask to be told writes `pick_pending` (his words, when), emits it and reaches the commission's shadow; the relay is unchanged; a question or rows already there note nothing — es, en",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_a_choice_for_rows_not_there_yet_is_noted_in_shadow.py"]},
+        {"id": "2.1686", "title": "The first rows of an errand holding a deferred choice report what WOULD be relayed to its worker (V2-878 §5, shadow): once per errand, with how long it was held; nothing is injected",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_first_rows_would_relay_the_deferred_choice.py"]},
+        {"id": "2.1687", "title": "The screen↔errand arbiter decides by consequence in SHADOW (V2-878 §5): rows on screen → card, a named errand with no rows and a deferred choice → errand, both → ask; emitted once per turn beside the owner rule's answer, which is unchanged — es, en",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_the_screen_errand_arbiter_decides_in_shadow.py"]},
         {"id": "7.14", "title": "Aislamiento del motor desechable: el timeline del operador nunca es el destino",
             "ch": UNIT, "paths": ["tests/platform/tests/test_sandbox_isolation.py"]},
         {"id": "7.2", "title": "Observer SSE", "ch": HTTP, "paths": [
