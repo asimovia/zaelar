@@ -6164,6 +6164,14 @@ DOMAINS: list[dict] = [
                                  "he scrolled up, his own line brings it down, a line sent with ⏻ off says the agent is "
                                  "off; every label the shell asks t() for exists in every pack", "ch": UNIT,
             "paths": ["tests/browser/unit/mobile/test_the_phone_chat_is_a_conversation.py"]},
+        {"id": "4.462", "title": "Phone: the shell fits the hand (V2-876 P-10..P-19) — a swipe moves one page and a vertical "
+                                 "scroll never pages; the pips are the switcher by tap and by drag, collapse beyond five "
+                                 "with a k/n counter and are their own band outside every card; the orb stays inside the "
+                                 "screen and the mic button is the one mic indicator; Home greets, lists the next three "
+                                 "appointments and what plays, the hint below; the chat composer is 44pt, 16px answers, the "
+                                 "newest line in sight over the keyboard; the dock is 44pt targets 8pt apart and a long "
+                                 "press says a control's name without toggling it — RENDERED at 393×852", "ch": UNIT,
+            "paths": ["tests/browser/unit/mobile/test_the_shell_fits_the_hand.py"]},
     ]},
     {"id": "5", "name": "CONECTORES", "nodes": [
         # V2-559 — el operador siguió la guía, creó la contraseña de aplicación y pegó el ENLACE de esa
