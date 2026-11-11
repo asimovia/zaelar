@@ -126,7 +126,8 @@ def test_asi_no_never_runs_the_retained_act(fresh, monkeypatch):
 
 def test_his_plain_yes_runs_it_once(fresh, monkeypatch):
     ran, ask_id = _retained(monkeypatch)
-    asyncio.run(worker_api.answer(ask_id, "sí, envíalo"))
+    from nucleo.request import consent_ask
+    asyncio.run(worker_api.answer(ask_id, consent_ask.yes_no()[0]))   # the declared yes (V2-878 §4b)
     assert ran == ["widget_data"]
     assert fresh.resumed[0][1]["result"] == {"ok": True}, "the resumed session is told the act ran"
 

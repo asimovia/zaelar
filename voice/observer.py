@@ -80,23 +80,19 @@ _CAT = {
     # no_card · child · event · cluster · no_row), `retitled`, `closed` (done · partial · cancelled, card, file).
     # The same event is what the wall receives; one query of this kind answers «was the box made, and why not».
     "artifact": "worker",
-    # `gene` (V2-859 T567, 2026-11-07): a change in the genome's learned layer — a playbook route learned, found empty
-    # or forgotten, a seed pack imported — with the row before and after. Family `memory`: it is what the agent
-    # keeps, not a step of a turn or of a task.
+    # `gene` (V2-859 T567): a change in the genome's learned layer (a playbook route learned, found empty or forgotten,
+    # a seed pack imported), with the row before and after. Family `memory`: what the agent keeps, not a turn step.
     "gene": "memory",
     "ask": "worker",          # V2-851: a task's question on screen {task_id, ask_id, text, session, options?, among?}
     "background": "worker", "backed": "worker",
     # `flow` = EXPLICIT flow closure (V2-090/observability): before this, "closed" was only ever INFERRED from the
     # absence of new events under its corr_id; this marks it for real when the worker that spawned it finishes.
     "flow": "worker",
-    # `thread` (V2-878 §6): ONE event per thread decision — the route a request got (new · continue · correct · close ·
-    # evict · conversation · list), the model judge's menu and answer, its timeouts, the recall shortcuts that fired and
-    # in which language, the clauses a cut would split. Written only by `nucleo/turn/thread_event.py`.
-    "thread": "worker",
-    # `errand` (V2-683) = an errand with a THIRD PARTY: born, woken, closed. Family `worker` because to the
-    # operator it is work being done for him, like a task; its OWN kind because it is the one piece here that
-    # is not a process — it survives restarts, it waits hours between moves, and «when did this wake and what
-    # did it decide» has to be countable apart from a worker's steps.
+    # `thread` (V2-878 §6): ONE event per thread decision (route verb, judge menu/answer, timeouts, recall, would-split);
+    "thread": "worker",   # written only by `nucleo/turn/thread_event.py`.
+    # `errand` (V2-683) = an errand with a THIRD PARTY: born, woken, closed. Family `worker` because to the operator it
+    # is work done for him, like a task; its OWN kind because it is not a process — it survives restarts, waits hours
+    # between moves, and «when did this wake and what did it decide» has to be countable apart from a worker's steps.
     "errand": "worker",
     # `spec` (V2-776 L1): a request's measurable end state — born, met, unmet, unreadable. Family `worker`, beside
     # `task` and `errand`, because it is the ledger those endings are judged against.

@@ -124,10 +124,8 @@ def test_HIS_OWN_RETRACTION_drops_it(monkeypatch):
     sent: list = []
     from nucleo.acts import errand as esc
     monkeypatch.setattr(esc, "escalate_to_slowbrain", lambda req, context=None: sent.append(req) or 1)
-    from widgets import confirm as _wc
     dispatch.remember_code_change("7", THE_REAL_COMMISSION, _Task())
-    assert _wc.classify_reply("Olvídate de eso, no va por ti.") == "no"
-    assert _wc.classify_reply("no estaba hablando contigo") == "no"
+    # V2-878 §4b: «Olvídate de eso, no va por ti» is the brief's pick (#1, the declared no) — the gate resolves it so
     assert dispatch.resolve_confirm(False)["ok"] is False
     assert sent == [] and dispatch.pending_confirm() is None
 

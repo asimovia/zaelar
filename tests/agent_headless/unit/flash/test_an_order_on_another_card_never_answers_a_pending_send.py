@@ -14,7 +14,6 @@ from widgets import confirm as C
 @pytest.fixture(autouse=True)
 def clean(monkeypatch):
     C._PENDING.clear()
-    monkeypatch.setattr(C, "_judge", lambda q, t, timeout=4.0: None)      # no reader, as in the suite
     yield
     C._PENDING.clear()
 
@@ -44,10 +43,13 @@ def test_with_no_reader_a_longer_sentence_never_sends(monkeypatch):
 def test_a_plain_yes_still_sends(monkeypatch):
     _pending_send()
     _verdict(monkeypatch, "agenda", "add_meeting")
-    assert C.answers_pending("yes", brief=object()) == "yes"
+    assert C.answers_pending(__import__("nucleo.request.consent_ask", fromlist=["x"]).yes_no()[0], brief=object()) == "yes"
 
 
-def test_a_pending_delete_keeps_the_words(monkeypatch):
+def test_a_pending_delete_reads_only_its_declared_answer(monkeypatch):
+    """V2-878 §4b: a longer yes is the brief's pick over the row, never a word read here; the declared yes answers."""
+    from nucleo.request import consent_ask
     C.request("delete", "agenda", "Delete the agenda?", notify_ui=False)
     _verdict(monkeypatch, "", "")
-    assert C.answers_pending("ok go ahead and do it now please", brief=object()) == "yes"
+    assert C.answers_pending("ok go ahead and do it now please", brief=object()) is None
+    assert C.answers_pending(consent_ask.yes_no()[0], brief=object()) == "yes"

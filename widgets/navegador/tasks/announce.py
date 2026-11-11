@@ -152,8 +152,8 @@ def answer_from_turn(text: str) -> dict | None:
 
     V2-202 — a confirm-gate hit during a voice/text errand needs a route back besides the card's button. The
     decision lives HERE with the state it resolves (like `dispatch.resolve_confirm` with `_PENDING_CONFIRM`): both
-    channels call this one function (V2-153). The yes/no classifier is the shared deterministic one — a gate is no
-    place to ask an LLM whether «come on, go ahead» meant yes.
+    channels call this one function (V2-153). Read as every waiting question is: a reply that IS one of the two declared
+    answers in his language (`consent_ask.declared_answer`, V2-878 §4b) — never a word table, never a model.
     """
     tid = _f.waiting_id()
     if not tid:
@@ -163,8 +163,8 @@ def answer_from_turn(text: str) -> dict | None:
     # thing distinguishing «waiting for your answer» from «waiting for you to act in another window».
     if not (_f.get(tid) or {}).get("question"):
         return None
-    from widgets import confirm as _confirm
-    verdict = _confirm.classify_reply(text or "")
+    from nucleo.request import consent_ask as _ca
+    verdict = _ca.declared_answer(text or "")
     if not verdict:
         return None
     _f.answer(tid, text or "")
