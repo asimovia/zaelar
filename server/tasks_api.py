@@ -122,6 +122,31 @@ async def task_answer(task_id: str, body: dict | None = None):
     return JSONResponse({"ok": True}, headers={"Cache-Control": "no-cache"})
 
 
+@router.post("/api/tasks/{task_id}/asks/{ask_id}/dismiss")
+async def task_ask_dismiss(task_id: str, ask_id: str):
+    """His ✕ on a question card (V2-886 D7): closing the question is his NO to the task that waits on it. 200 → the
+    row's open question was that one and the row ended through his cancel door (`control.cancel_row`, the same as the
+    cancel button: worker told, one line said, never re-asked); 409 → that question is not open (answered, replaced,
+    gone). An `ask_dismissed` event records it."""
+    try:
+        from nucleo.circuit import ledger
+        from nucleo.dispatch import control
+        row = ledger.store().task_get(task_id) or {}
+        if row.get("state") != "waiting" or str(row.get("ask_id") or "") != str(ask_id):
+            return JSONResponse({"ok": False, "error": "no open question with that ask_id"}, status_code=409)
+        state = control.cancel_row(task_id)
+        try:
+            from voice.observer import emit
+            emit("task", "✕ question dismissed", text=str(row.get("ask") or "")[:200], role="system",
+                 extra={"kind_diag": "ask_dismissed", "task_id": task_id, "ask_id": ask_id, "state": str(state or "")})
+        except Exception as e:  # noqa: BLE001 — the dismissal stands; only its event is lost
+            logger.debug(f"task_ask_dismiss: event not emitted ({e!r})")
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"task_ask_dismiss({task_id}) failed: {e}")
+        return JSONResponse({"ok": False, "error": "dismiss failed"}, status_code=500)
+    return JSONResponse({"ok": True, "state": str(state or "")}, headers={"Cache-Control": "no-cache"})
+
+
 @router.post("/api/tasks/{task_id}/cancel")
 async def task_cancel(task_id: str):
     """His cancel button (V2-852 T07, R2): `{ok, task_id (the ROW the key — row or session id — names), state}`. 200:

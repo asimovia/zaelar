@@ -39,7 +39,10 @@ function askNode(a, where) {
   const title = titleOf(a);
   const box = h("div", { class: "tq tq--" + where, "data-task": a.task_id, "data-ask": a.ask_id, "data-source": "ask",
                          role: "group", "aria-label": t("chat.askOf", { title }) });
-  box.appendChild(h("div", { class: "tq-task" }, t("chat.askOf", { title })));
+  box.appendChild(h("div", { class: "tq-task" }, t("chat.askOf", { title }),
+    h("button", { type: "button", class: "hb-iconbtn tq-close", "aria-label": t("chat.askDismiss"),
+                  title: t("chat.askDismiss"), disabled: a.busy,
+                  onClick: () => asks.dismiss(a.task_id, a.ask_id) }, "✕")));
   if (a.among.length) {
     const names = a.among.map(id => titleOf({ task_id: id, title: "" })).join(" · ");
     box.appendChild(h("div", { class: "tq-among" }, t("chat.askAmong", { titles: names })));

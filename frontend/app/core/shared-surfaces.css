@@ -233,7 +233,8 @@ body:has(.zv.on.sleep,.zv.on.moved) #desk{transform:none;z-index:100900}
 .tq{display:flex;flex-direction:column;gap:var(--sp-1);margin-top:var(--sp-2);padding:var(--sp-2) var(--sp-3);
   border:1px solid var(--hb-line);border-left:3px solid var(--hb-accent);border-radius:var(--hb-r-m);
   background:var(--hb-bg-soft);min-width:0;flex:none}
-.tq-task{font-size:var(--fs-caption);font-weight:600;color:var(--hb-accent);overflow-wrap:anywhere}
+.tq-task{font-size:var(--fs-caption);font-weight:600;color:var(--hb-accent);overflow-wrap:anywhere;display:flex;align-items:flex-start;gap:var(--sp-2)}
+.tq-close{margin-left:auto;flex:none}
 .tq-among{font-size:var(--fs-caption);color:var(--hb-muted);overflow-wrap:anywhere}
 .tq-text{font-size:var(--fs-ui);line-height:var(--hb-lh,1.55);color:var(--hb-ink);overflow-wrap:anywhere;white-space:pre-wrap}
 .tq-opts{display:flex;flex-wrap:wrap;gap:var(--sp-1)}
@@ -296,7 +297,7 @@ button.pcount:focus-visible{outline:none;box-shadow:var(--hb-focus-ring)}
 .aw-factv{margin:0;color:var(--hb-ink);font-size:var(--fs-ui)}
 .aw-sec{margin-top:var(--sp-5,24px)}
 .aw-about{margin:0;color:var(--hb-ink);font-size:var(--fs-ui);line-height:var(--hb-lh,1.55)}
-.aw-conns{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:var(--sp-2,8px)}
+.aw-conns{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:var(--sp-2)}
 .aw-conn{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3,12px);
   padding:var(--sp-2,8px) var(--sp-3,12px);border:1px solid var(--hb-line-subtle);border-radius:var(--hb-r-m);
   background:var(--hb-bg-soft)}
