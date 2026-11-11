@@ -1,6 +1,6 @@
 // Agenda widget — the overlays inside the card: the new-appointment composer and an event's detail panel.
 // Part of the client split out of widget.js (refactor2710-12 T-03); widget.js stays the entry with render().
-import { tt, repeatLabel, fmtDate, raf, parseYmd, mins, hhmm, el2, svgEl, ICO_BELL, ICO_USERS, ICO_PIN,
+import { tt, repeatLabel, fmtDate, fmtWhen, raf, parseYmd, mins, hhmm, el2, svgEl, ICO_BELL, ICO_USERS, ICO_PIN,
   ICO_NOTE, ICO_CHECK, ICO_CLOCK, ICO_CAM, ICO_HOST, RSVP_MARK, safeHttpUrl, hueOf, timeLabel } from "./shared.js";
 
 // ── DETAIL panel — what an event IS, and the few actions that are real ────────────────────────────────
@@ -135,7 +135,7 @@ export function renderDetail(root, ev, ctx, state, redraw){
     p.appendChild(r);
   }
   if(ev.remindAt){ const r=el2("div","agprow"); r.appendChild(svgEl(ICO_BELL));
-    r.appendChild(el2("span",null, tt("reminder_at",{at:ev.remindAt},"Aviso el {at}"))); p.appendChild(r); }
+    r.appendChild(el2("span",null, tt("reminder_at",{at:fmtWhen(ev.remindAt)},"Aviso el {at}"))); p.appendChild(r); }
   if(ev.notes){ const r=el2("div","agprow"); r.appendChild(svgEl(ICO_NOTE));
     r.appendChild(el2("span",null,ev.notes)); p.appendChild(r); }
 

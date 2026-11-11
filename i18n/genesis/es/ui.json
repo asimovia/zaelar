@@ -1637,6 +1637,7 @@
  "widgets.timer.name": "Temporizador",
  "widgets.timer.pause": "⏸ Pausar",
  "widgets.timer.paused": "⏸ Pausado",
+ "widgets.timer.preset": "{n} min",
  "widgets.timer.resume": "▶ Reanudar",
  "widgets.youtube.add": "＋ Añadir",
  "widgets.youtube.add_ph": "Pega un enlace de YouTube o escribe un título…",

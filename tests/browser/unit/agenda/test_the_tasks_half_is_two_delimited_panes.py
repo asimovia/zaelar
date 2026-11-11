@@ -246,7 +246,9 @@ def test_the_numeric_columns_LINE_UP_down_the_table(_page):
     mono = _page.evaluate(
         """() => { const c = getComputedStyle(document.querySelector('.agt-count'));
                    return {f: c.fontFamily, n: c.fontVariantNumeric}; }""")
-    assert "mono" in mono["f"].lower(), f"the count column is not monospaced: {mono['f']}"
+    # Tabular figures, in the house sans (V2-876 P-32: a monospace face read as code and slashed its zero) — the
+    # digits are still one width each, which is what lines the column up.
+    assert "tabular-nums" in mono["n"], f"the count column's digits are not tabular: {mono}"
 
 
 def test_a_rows_own_controls_share_ONE_column(_page):
