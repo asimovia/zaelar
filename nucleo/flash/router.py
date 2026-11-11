@@ -78,7 +78,7 @@ from nucleo.pulse.scheduler_refs import any_scheduled   # V2-883: the state that
 # family is living documentation and the unit used to reason about a turn's tool budget: it shows at a glance
 # which block enters and which stays out, instead of 22 separate gates. It is NOT an intent classifier.
 FAMILIES: dict[str, tuple[str, ...]] = {
-    "core":      ("escalate_to_slowbrain", "set_style_directive", "not_understood", "cancel_scheduled"),
+    "core":      ("escalate_to_slowbrain", "set_style_directive", "not_understood", "cancel_scheduled", "agent_controls"),
     "widgets":   ("show_widget", "close_widget", "widget_data", "delete_widget", "restore_widget", "confirm_widget_delete",
                   "fullscreen_widget", "manage_widget_alias", "show_panel", "arrange_canvas"),
     "workers":   ("send_to_worker", "stop_worker", "answer_worker", "resume_task"),

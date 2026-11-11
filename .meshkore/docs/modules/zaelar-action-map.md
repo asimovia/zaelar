@@ -108,6 +108,7 @@ classifier this module refuses to be.
 | `move` | `widget`, `where` | `left · right · center · top · bottom` |
 | `show_panel` | `tab` | `chat · procesos · crons · clusters`; optional `action: open\|close` |
 | `widget_data` | `widget`, `action` | only ops the widget declares **FAST**, checked at execute time |
+| `controls` | `act` | the agent's OWN 🔊 / ⏻: `mute` (it keeps listening) · `unmute` · `off`. Through `nucleo/acts/self_controls.py`, the door the model's `agent_controls` tool also takes: one `controls` event scoped to the screen that heard him (`origin_dev`), where `sse.js` runs that screen's own button (`session.toggleBotMute` / `openSpeakerHere`, `power.setPower`). Reversible: he presses ⏻ to come back. A bare «apaga» / «turn off» is not seeded — it names a device as often as the agent |
 
 Everything runs through the **same emit funnels the model's own output uses** — the `widget` / `panel` observer
 events the frontend already consumes — never a parallel executor. The vocabulary is idempotent or reversible by

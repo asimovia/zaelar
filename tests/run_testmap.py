@@ -801,6 +801,13 @@ DOMAINS: list[dict] = [
                                  "al recorte · action map con semillas es/en (pack v4) · cableado en AMBOS canales",
             "ch": UNIT,
             "paths": ["tests/agent_headless/unit/flash/test_arrange_is_voice_reachable.py"]},
+        # His OWN 🔊 / ⏻ by voice, from across the room: «Johnny, mutea el altavoz» (it keeps listening) and «Johnny,
+        # apágate» (the session ends as the ⏻ ends it). One `controls` act (nucleo/acts/self_controls.py) reached by the
+        # action map's seeds and by the model's `agent_controls`; the screen that heard him runs its own button.
+        {"id": "4.487", "title": "His own speaker (mute/unmute) and power-off by voice, ES+EN: action map and model "
+                                 "take the button's door on the origin screen · a remark does nothing",
+            "ch": UNIT,
+            "paths": ["tests/agent_headless/unit/actionmap/test_his_own_speaker_and_power_by_voice.py"]},
         # V2-591 — «haz scroll en la lista» recibió un cambio de pestaña, un re-present y un worker puesto a
         # MODIFICAR el código del widget («No, no toques nada»). El scroller es CROMO de la tarjeta (la regla
         # de ctx.top()): el servidor guarda una PETICIÓN con contador-testigo + caducidad (patrón V2-540) y el

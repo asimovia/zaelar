@@ -11,7 +11,7 @@ def test_tools_are_openai_functions():
                      "recall", "read_widget", "reopen_task", "resume_task",
                      "reveal_secret", "play_music", "play_video", "show_images", "reply_message", "connect_cluster",
                      "cluster_send", "set_cluster_objective", "send_to_worker", "stop_worker", "answer_worker",
-                     "cancel_scheduled"}
+                     "cancel_scheduled", "agent_controls"}
     for t in router.tools():
         assert t["type"] == "function"
         assert "parameters" in t["function"]
@@ -142,6 +142,8 @@ def test_tools_report_is_observable():
 # pass 60: 4 workers, 0 conditions declared) and PAID for it by compaction: its own description went from 527 to
 # ~260 chars and the escalate prose lost its glosses («el motor lo sigue», «a la vez», «Ante la duda, escala» —
 # the last one being the wording that sent one-step orders to 50-60 s workers, V2-776 E). Ceiling unchanged.
+# `agent_controls` (his own 🔊 / ⏻ by voice, +276) was PAID for by compaction: connect_cluster's parameter glosses and
+# set_cluster_objective's `peer` lost their repetitions («ver arriba», «sácalo de ahí», «por defecto»). Ceiling unchanged.
 MAX_CATALOG_CHARS = 23_600
 
 

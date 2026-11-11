@@ -28,6 +28,7 @@ _ALLOWED: dict[str, tuple[str, ...]] = {
     "unfullscreen": (),          # V2-773: the card at full screen, one step down («exit fullscreen»)
     "arrange": (),               # V2-588: snap the whole canvas to the aligned grid — no target, no data
     "widget_data": ("widget", "action"),   # FAST-classified declared ops only, checked at execute
+    "controls": ("act",),        # the agent's own 🔊 / ⏻ (`nucleo/acts/self_controls.py`): mute · unmute · off
     "presence": (), "address": (),   # refactor2710-07: spoken by `fast_lane.presence`; `execute` returns False
 }
 
@@ -52,6 +53,10 @@ def validate(action: dict) -> str:
             return f"show_panel: unknown tab {action.get('tab')!r}"
         if action.get("action", "open") not in ("open", "close"):
             return f"show_panel: bad action {action.get('action')!r}"
+    if do == "controls":
+        from nucleo.acts import self_controls
+        if not self_controls.canon(action.get("act")):
+            return f"controls: unknown act {action.get('act')!r}"
     if do == "move" and action.get("where") not in _MOVE_WHERE:
         return f"move: bad where {action.get('where')!r}"
     return ""
@@ -189,6 +194,8 @@ def describe(action: dict) -> str:
         return f"panel:{action.get('tab')}" + (f":{action['connector']}" if action.get("connector") else "")
     if do == "widget_data":
         return f"widget_data:{action.get('widget')}:{action.get('action')}"
+    if do == "controls":
+        return f"controls:{action.get('act')}"
     return f"canvas:{do}:{action.get('widget')}"
 
 
@@ -216,6 +223,11 @@ def execute(action: dict, emit, phrase: str = "") -> bool:
         _bulk_close().close_all(emit, src=src["src"], text=phrase or "", said=said, extra=dict(src),
                                 scope=_grammar.close_scope(phrase or ""))   # V2-807 T-08
         return True
+    if do == "controls":
+        # The agent's own speaker / ⏻: the SAME door the model's `agent_controls` call goes through, and that door
+        # hands the act to the screen that heard him, which runs its button (`nucleo/acts/self_controls.py`).
+        from nucleo.acts import self_controls
+        return self_controls.apply(action.get("act"), emit, src=src["src"], said=said)
     if do == "arrange":
         # V2-588: same emit as POST /api/canvas/arrange and the arrange_canvas tool — one rail, three doors.
         _canvas(emit, said, "arrange")

@@ -69,6 +69,11 @@ below is the first kind, or it names the mechanism that replaced the second.
   unsure → no rename). The brief's `identity_change` decides, sure at 0.85, and the new name is the model's declared
   `set_style_directive.name` — nothing is read from his words; a rename takes one model turn
   (`nucleo/turn/identity.py`, refactor2710-07). — since 2026-09-22 · nodes 2.56.
+- **CRIT-V8b · His own speaker and ⏻ are reachable by voice through their BUTTONS.** «Mute the speaker» (it keeps
+  listening), «unmute», «switch yourself off» are one `controls` act (`nucleo/acts/self_controls.py`) reached by the
+  action map's seeds or the model's `agent_controls` call — never a word table over his sentence, so a remark about the
+  speaker does nothing; the act lands only on the screen that heard him (`origin_dev`), which runs its own 🔊 / ⏻ door.
+  — since 2026-11-11 · nodes 4.487.
 - **CRIT-V9 · A phase pack rides only a FREE turn.** A question, an order or a long sentence gets its answer and
   no introduction block that turn (`nucleo/turn/prompt/packs/free_turn.py`, `packs.compose(turn_text)`).
   — since 2026-10-11 · nodes 2.474.

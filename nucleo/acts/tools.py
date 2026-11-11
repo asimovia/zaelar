@@ -180,6 +180,16 @@ def arrange_canvas(args: dict, c) -> None:
     return _x._t_arrange_canvas(_tool_fired=c._tool_fired, acted=c.acted, emit=c.emit)
 
 
+def agent_controls(args: dict, c) -> None:
+    # His own 🔊 / ⏻ by voice — the one door the action map's `controls` entries also take (self_controls.py).
+    if "agent_controls" in c._tool_fired:
+        return
+    from nucleo.acts import self_controls
+    if self_controls.apply(args.get("act"), c.emit, src="flash", said=c.operator_text or c.text):
+        c._tool_fired.add("agent_controls")
+        c.acted["widget"] = True     # a UI act: the turn is never mute about it and never escalates it
+
+
 def reply_message(args: dict, c) -> None:
     _x = _calls()
     # V2-778 F1 — the body lives in `nucleo/flash/tool_executor_calls.py`; this branch passes what it reads.
@@ -282,4 +292,5 @@ CATALOG = {f.__name__: f for f in (
     manage_widget_alias, close_widget, fullscreen_widget, arrange_canvas, reply_message, delete_widget,
     restore_widget, confirm_widget_delete, set_style_directive, authenticate_web, login_done, connect_cluster,
     cluster_send, set_cluster_objective, send_to_worker, stop_worker, answer_worker, cancel_scheduled,
+    agent_controls,
 )}
