@@ -33,6 +33,24 @@ def is_player(name: str) -> bool:
         logger.debug(f"route_by_verdict: players unreadable — {e!r}")
         return False
 
+def stays_home(name: str, args) -> bool:
+    """The call is one of OUR cards' declared acts that does not LEAVE the machine (`widgets.effects.leaves`): the
+    card is the executor, and a sure escalate has nothing to protect there — the same reason a player call runs
+    (V2-887). Measured on the kindergarten bench: «impórtame todos los contactos» with Contacts open and Google
+    linked — the model called `contactos:sync_contacts`, the verdict said `escalate` and a worker was sent to do
+    what one call does. A leaving act (a send) still routes: its consent lives in the task."""
+    if name != "widget_data" or not isinstance(args, dict):
+        return False
+    try:
+        from widgets import effects
+        from nucleo.request import base
+        wid, act = base(str(args.get("widget_id") or "")), str(args.get("action") or "")
+        return bool(wid and act) and not effects.leaves(wid, act)
+    except Exception as e:  # noqa: BLE001 — unreadable: the verdict routes, as before
+        logger.debug(f"route_by_verdict: card act unreadable — {e!r}")
+        return False
+
+
 def wait_s() -> float:
     """How long the model's words and calls wait for a brief in flight before they run on their own."""
     try:
@@ -98,7 +116,7 @@ def gate_calls(on_tool_call, *, brief, escalate_req: dict, operator_text: str, e
                     brief["event"].wait(left)
                 except Exception as e:  # noqa: BLE001 — an unawaitable brief reads as in flight
                     logger.debug(f"route_by_verdict: brief not awaited — {e!r}")
-        player = is_player(name)
+        player = is_player(name) or stays_home(name, args)
         if player and not escalate_req.get("routed"):
             _mark(brief, name)               # its words are said and no errand opens behind it (V2-860 T1.1)
             return on_tool_call(name, args)
