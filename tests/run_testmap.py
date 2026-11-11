@@ -6139,6 +6139,17 @@ DOMAINS: list[dict] = [
                                 "ending at the dock's edge, the producing badge and restore V2-351",
             "ch": UNIT, "live": True,
             "cmd": "./.venv/bin/python tests/browser/e2e/mobile/render_deck.py"},
+        # V2-876 P-30…P-33 — agenda, timer and clock RENDERED in the phone card at 393×852.
+        {"id": "4.462", "title": "The agenda fits the hand: one control row at 393pt with the title on its own line, week "
+                                  "titles that wrap, the first hour whole, the day opening on the earlier of now and the "
+                                  "first appointment, a localised reminder, a 44pt bell, no internal list id (V2-876)",
+            "ch": UNIT, "paths": ["tests/browser/unit/phone_apps/test_the_agenda_fits_the_hand.py"]},
+        {"id": "4.463", "title": "The timer fits the hand and declares its data API: sans tabular digits ≥40px, no dots, "
+                                  "its own starts with nothing set, pause/cancel at 44pt, set/start/pause/reset declared",
+            "ch": UNIT, "paths": ["tests/browser/unit/phone_apps/test_the_timer_fits_the_hand.py"]},
+        {"id": "4.464", "title": "The clock fills its page with no frame of its own and names the screen's zone (a zone "
+                                  "the engine sends wins) (V2-877 #12)",
+            "ch": UNIT, "paths": ["tests/browser/unit/phone_apps/test_the_clock_fits_the_hand.py"]},
     ]},
     {"id": "5", "name": "CONECTORES", "nodes": [
         # V2-559 — el operador siguió la guía, creó la contraseña de aplicación y pegó el ENLACE de esa

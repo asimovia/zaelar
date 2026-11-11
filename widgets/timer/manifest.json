@@ -35,5 +35,27 @@
   "min": {
     "w": 280,
     "h": 200
+  },
+  "usage": "A countdown on screen: «set a timer for 10 minutes» is `set` with the seconds; pause, resume and cancel are `pause`, `start`, `reset`.",
+  "actions": {
+    "set": {
+      "desc": "Start a countdown of N seconds on screen, with an optional short label (oven, pasta).",
+      "payload": {
+        "seconds": 600,
+        "label": "pasta"
+      }
+    },
+    "start": {
+      "desc": "Resume the paused countdown.",
+      "payload": {}
+    },
+    "pause": {
+      "desc": "Pause the running countdown.",
+      "payload": {}
+    },
+    "reset": {
+      "desc": "Cancel the countdown and clear the card.",
+      "payload": {}
+    }
   }
 }

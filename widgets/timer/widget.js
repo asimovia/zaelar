@@ -5,13 +5,14 @@
 function injectStyles() {
   if (document.getElementById("hb-timer-css")) return;
   const s = document.createElement("style"); s.id = "hb-timer-css"; s.textContent = `
-  .hb-timer{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
-            width:100%;box-sizing:border-box;background:var(--hb-bg,#fff);border:1px solid var(--hb-line,#eef1f6);
-            border-radius:18px;padding:28px 24px;text-align:center;
-            display:flex;flex-direction:column;align-items:center;gap:8px}
+  /* The card's chrome is the host's (V2-876 P-33): no frame of our own; the countdown fills the page and sits
+     in its middle. Figures in the house sans with TABULAR digits — a monospace face drew the zero slashed. */
+  .hb-timer{font-family:var(--sans,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif);
+            width:100%;min-height:100%;box-sizing:border-box;padding:var(--sp-5,24px) var(--sp-4,16px);text-align:center;
+            display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
   .hb-timer .ht-label{font-size:14px;font-weight:500;color:var(--hb-muted,#5b6b82);text-transform:uppercase;
                       letter-spacing:.06em;margin-bottom:2px}
-  .hb-timer .ht-digits{font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:600;
+  .hb-timer .ht-digits{font-family:inherit;font-weight:600;
                        color:var(--hb-ink,#0d1622);line-height:1;letter-spacing:.02em;font-variant-numeric:tabular-nums;
                        transition:color .3s}
   .hb-timer .ht-digits.lg{font-size:76px}
@@ -21,7 +22,7 @@ function injectStyles() {
   .hb-timer .ht-digits .unit{font-size:30%;color:var(--hb-muted-2,#9aa7b8);vertical-align:super;margin-left:2px}
   .hb-timer .ht-sub{font-size:13px;color:var(--hb-muted,#5b6b82);min-height:1.4em}
   .hb-timer .ht-actions{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;justify-content:center}
-  .hb-timer .ht-btn{font-family:inherit;font-size:13px;font-weight:500;padding:8px 22px;border-radius:40px;
+  .hb-timer .ht-btn{font-family:inherit;font-size:15px;font-weight:500;padding:8px 22px;border-radius:40px;min-height:44px;
                     border:1px solid var(--hb-line,#eef1f6);background:var(--hb-bg,#fff);
                     color:var(--hb-ink,#0d1622);cursor:pointer;transition:all .15s;min-width:72px}
   .hb-timer .ht-btn:hover{background:var(--hb-bg-soft,#f0f3f8);border-color:var(--hb-accent,#3D6FE0);color:var(--hb-accent,#3D6FE0)}
@@ -30,7 +31,8 @@ function injectStyles() {
   .hb-timer .ht-btn.danger{color:var(--hb-risk,#e5484d);border-color:var(--hb-risk,#e5484d)}
   .hb-timer .ht-btn.danger:hover{background:var(--hb-risk,#e5484d);color:var(--canvas,#101216)}
   .hb-timer .ht-empty{color:var(--hb-muted-2,#9aa7b8);font-size:14px;padding:20px 0;font-style:italic}
-  @media(max-width:480px){.hb-timer .ht-digits.lg{font-size:56px}.hb-timer .ht-digits.md{font-size:44px}.hb-timer .ht-digits.sm{font-size:34px}}
+  .hb-timer .ht-presets{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+  @media(max-width:480px){.hb-timer .ht-digits.lg{font-size:64px}.hb-timer .ht-digits.md{font-size:56px}.hb-timer .ht-digits.sm{font-size:48px}}
   `; document.head.appendChild(s);
 }
 
@@ -208,8 +210,7 @@ export function render(el, data, ctx) {
     digits.innerHTML = fmtDigitsHTML(parts, showS);
 
     if (!state.running && state.remaining > 0) sub.textContent = tr("widgets.timer.paused");
-    else if (state.remaining > 0) sub.textContent = "";
-    else sub.textContent = "· · ·";
+    else sub.textContent = "";      // nothing set → no placeholder dots under the zero (V2-876 P-33)
 
     renderActions();
   }
@@ -220,6 +221,21 @@ export function render(el, data, ctx) {
       const empty = document.createElement("div"); empty.className = "ht-empty";
       empty.textContent = tr("widgets.timer.empty");
       acts.appendChild(empty);
+      // The card's own controls exist with nothing set too (V2-876 P-33): three starts by hand, the same `set` the
+      // voice uses — the countdown then shows its pause and cancel.
+      const pre = document.createElement("div"); pre.className = "ht-presets";
+      [1, 5, 10].forEach((m) => {
+        const b = document.createElement("button"); b.className = "ht-btn"; b.dataset.min = String(m);
+        b.textContent = tr("widgets.timer.preset", { n: m });
+        b.addEventListener("click", async () => {
+          const r = ctx && ctx.action ? await ctx.action("set", { seconds: m * 60 }) : null;
+          if (r && typeof r === "object" && r.ok === false) return;
+          Object.assign(state, { remaining: m * 60, target: m * 60, running: true, finished: false });
+          render(el, { remaining: m * 60, target_seconds: m * 60, running: true, label: state.label }, ctx);
+        });
+        pre.appendChild(b);
+      });
+      acts.appendChild(pre);
       return;
     }
     if (state.finished) {

@@ -1621,6 +1621,7 @@
  "widgets.timer.name": "Timer",
  "widgets.timer.pause": "⏸ Pause",
  "widgets.timer.paused": "⏸ Paused",
+ "widgets.timer.preset": "{n} min",
  "widgets.timer.resume": "▶ Resume",
  "widgets.youtube.add": "＋ Add",
  "widgets.youtube.add_ph": "Paste a YouTube link or type a title…",

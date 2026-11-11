@@ -366,3 +366,4 @@ de 2027» was stored as one Tuesday. The model DID send `recurrence: "weekly", r
 - **Google.** A series goes up as ONE recurring event (RRULE + IANA zone) and stays our row
   (`googleSeriesId`); the sync skips its instances. Not mirrored yet: a skipped single day and later edits
   of the rule stay local.
+- 2026-11-11 V2-876 P-30…P-32 (phone, `.zm-scroll` only): one control row (switch · ‹ Today › · view picker), the range on its own line, the plug leaves the phone row; week/month titles wrap (never «De…»); first hour label below its line; Day/Week open on the EARLIER of the current hour and the first appointment on screen; «Now» without dashes when nothing is active; reminders via `fmtWhen` (never raw ISO); the BUILT-IN list hides its slug id (his lists keep theirs — operator wants ids shareable); list rows 44pt with the bell as a button.
