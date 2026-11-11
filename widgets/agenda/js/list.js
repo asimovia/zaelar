@@ -26,7 +26,12 @@ export function renderList(host, anchor, all, data, onPick){
       if(e.location) meta.push(e.location);
       if((e.attendees||[]).length) meta.push(tt("n_people",{n:e.attendees.length},"{n} personas"));
       if(meta.length) r.appendChild(el2("div","agrowm", meta.join(" · ")));
-      r.appendChild(badges(e));
+      const bx = badges(e);
+      // The bell is a TARGET, not decoration (V2-876 P-31): it opens the appointment, where the reminder is said
+      // and changed. Its tap reaches the row's own handler; the button only gives it a name and a 44pt box.
+      const bell = bx.querySelector(".agbadge");
+      if(bell){ bell.setAttribute("role","button"); bell.tabIndex = 0; bell.setAttribute("aria-label", bell.title); }
+      r.appendChild(bx);
       r.onclick = ev => { ev.stopPropagation(); onPick(e); };
       evs.appendChild(r);
     });  row.appendChild(evs);  wrap.appendChild(row);
@@ -130,13 +135,17 @@ export function renderTasks(host, data, ctx, S, redraw){
       raf(() => { try{ inp.focus(); inp.select(); }catch(_){} });
     } else {
       const nm = (cur.builtin && String(cur.name) === "General") ? tt("tasks_general", null, "General") : String(cur.name || "");
-      head.appendChild(el2("div","agt-title", nm));  const id = el2("span","agt-id", cur.id);
-      id.title = tt("tasks_share_id", null, "Identificador de la lista — para compartirla");
-      // No clipboard permission, no network: selecting the text is what a widget is allowed to do, and it
-      // is enough for him to read it out or copy it by hand.
-      id.onclick = () => { try{ const r = document.createRange(); r.selectNodeContents(id);
-                                const s = window.getSelection(); s.removeAllRanges(); s.addRange(r); }catch(_){} };
-      head.appendChild(id);
+      head.appendChild(el2("div","agt-title", nm));
+      // The BUILT-IN list's id is the engine's slug («general»), not an identifier of his to share: it is not
+      // painted (V2-876 P-32). A list he made keeps its id on screen — he hands it to another agent.
+      if(!cur.builtin){
+        const id = el2("span","agt-id", cur.id);
+        id.title = tt("tasks_share_id", null, "Identificador de la lista — para compartirla");
+        // No clipboard permission, no network: selecting the text is what a widget is allowed to do.
+        id.onclick = () => { try{ const r = document.createRange(); r.selectNodeContents(id);
+                                  const s = window.getSelection(); s.removeAllRanges(); s.addRange(r); }catch(_){} };
+        head.appendChild(id);
+      }
     }  const acts = el2("div","agt-acts");
     const ren = el2("button","agt-b", tt("tasks_rename", null, "Renombrar"));
     ren.dataset.a2 = "rename"; ren.onclick = () => { S.tlEdit = true; redraw(); };
