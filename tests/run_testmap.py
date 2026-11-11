@@ -6964,6 +6964,8 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_the_window_is_cut_by_the_days_silence.py"]},
         {"id": "2.1677", "title": "An errand said in a language without spaces is still ONE errand (V2-878 §3 (d), JA/ZH/TH): the same-errand yardstick reads character bigrams when a sentence is one or two long runs; spaced languages untouched; task recall reads words in any alphabet",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_an_errand_in_a_language_without_spaces_is_still_one_errand.py"]},
+        {"id": "2.1678", "title": "A flow judge out of time with an errand open ASKS whose the words are (V2-878 §3 (e), ES/EN): the route answers `undecided` (never `new`), the portal opens nothing and asks «for X, or something new?» on a row through the one asker with two declared answers in his language; «for X» runs the route's consequence into X, «something new» opens it, anything else leaves the row waiting",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_whose_words_are_decided_or_asked.py"]},
         {"id": "7.14", "title": "Aislamiento del motor desechable: el timeline del operador nunca es el destino",
             "ch": UNIT, "paths": ["tests/platform/tests/test_sandbox_isolation.py"]},
         {"id": "7.2", "title": "Observer SSE", "ch": HTTP, "paths": [
