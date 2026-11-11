@@ -187,3 +187,14 @@ def test_a_notice_that_asks_is_a_flow_of_candidate(clean, quiet_notice):
     q = "¿Has llamado a tu madre?"
     asyncio.run(quiet_notice.notify("aviso", q, key="job:9:1", kind="reminder"))
     assert any(q in str(c.get("request") or c.get("title") or "") for c in flow_of.candidates())
+
+
+def test_a_no_through_the_task_gate_ends_the_row_it_waited_on(clean):
+    """His «no» read by the in-memory gate ends the parked errand's row too — it left it waiting until its deadline."""
+    task = SimpleNamespace(kind="generic", trusted=True, context={})
+    dc.remember_confirm("k9", "paga la factura del gas", task)
+    ask_id = dc.make_durable("k9", SimpleNamespace(uid=asker.open_row("paga la factura del gas", kind="generic")))
+    assert any(a["ask_id"] == ask_id for a in worker_api.open_asks())
+    assert dc.resolve_confirm(False, "k9")["ok"] is False
+    assert not any(a["ask_id"] == ask_id for a in worker_api.open_asks()), "the row still waits on a «no»"
+    assert not clean

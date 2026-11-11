@@ -344,6 +344,11 @@ def resolve_confirm(ok: bool, task_id: str = "") -> dict | None:
     _PENDING_CONFIRM.pop(p["task_id"], None)
     if not ok:
         _DECLINED_CONFIRM[str(p["task_id"])] = {**p, "declined_at": time.time()}
+        if p.get("ask_id"):          # its row stops waiting too, once (V2-878 §4: a «no» here left it waiting a week)
+            from nucleo.request import inline_ask
+            if inline_ask.take(str(p["ask_id"])):
+                from nucleo import circuit
+                circuit.settle(row=str(p.get("uid") or ""), state="cancelled", outcome="he did not confirm it")
         return {**p, "ok": False}
     # Se re-lanza by the MISMA puerta that any escalada (`escalate.requested` → `run_listener`), no by a
     # atajo: so preserves the trace, the dedup and the record of tasks. Lo only distinto es `confirmed`, that es
