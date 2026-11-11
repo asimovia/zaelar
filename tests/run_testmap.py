@@ -3877,17 +3877,11 @@ DOMAINS: list[dict] = [
         {"id": "2.1670", "title": "A relay's brief never reaches him (V2-877 #1): a context handoff or stall restart relaunches with HIS goal as the request and the worker brief in `context.worker_brief`; a retried errand shows his goal and the answer and no piece of the brief, the worker prompt starts with it, and the key has one reader",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/workers/test_a_relay_brief_never_reaches_him.py"]},
         # V2-878 §1 — disarmed 2026-11-11 (no card written / the beat wipes it / the extras lose his sentence) → red.
-        {"id": "2.1671", "title": "An errand's card lives in its ROW (V2-878 §1): his sentence (`heard`), how it was born (`verb`) and when he last named it (`last_mention_ts`) are in `progress.card`; the 15-second status beat keeps it, a restart reads it back, the rehydrate returns it, the pool (`named_errand.known`) exposes heard/state/last mention, and his first words are never overwritten — es, en, ca",
-            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_an_errands_card_lives_in_its_row.py"]},
-        {"id": "2.1672", "title": "One sentence, three errands, three cards (V2-878 §1): every errand of the sentence carries his whole sentence (`said`) and its `part`, and the second and third carry the turn's reading and consent class like the first; the sheet's row door still hears only a single errand's sentence — es, en, ca",
+        {"id": "2.1671", "title": "An errand's card lives in its ROW (V2-878 §1): his sentence (`heard`), how it was born (`verb`) and when he last named it (`last_mention_ts`) are in `progress.card`; the 15-second status beat keeps it, a restart reads it back, the rehydrate returns it, the pool (`named_errand.known`) exposes heard/state/last mention, and his first words are never overwritten — es, en, ca — one file, one node: the cases planned as 2.1672 live here (2026-11-11)",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_an_errands_card_lives_in_its_row.py"]},
         # V2-878 §2 — disarmed 2026-11-11 (target gate back to has_workers / the menu back to goal[:160] / the title beside his
         # words / a constant skip / the first three goals) → red.
-        {"id": "2.1673", "title": "One menu (V2-878 §2): the flow judge's menu and `errand_target`'s candidates are the errands' CARDS — his words, state, last mention — of a parked and of a just-finished errand too; `errand_target` and the stop are asked with ANY errand open, not only with a worker running; the escalate question carries the three he named last — es, en",
-            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_one_menu_for_every_reader.py"]},
-        {"id": "2.1674", "title": "An errand appears ONCE in the prompt (V2-878 §2): his words or its title, never both, and the running-errands block is facts only — the ~900-token imperative paragraph is gone (−990 tokens with one live errand)",
-            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_one_menu_for_every_reader.py"]},
-        {"id": "2.1675", "title": "The recall's conversation lane skips the turns the window REALLY holds (V2-878 §2): a seeded window of 3 turns skips 3, never the constant 5",
+        {"id": "2.1673", "title": "One menu (V2-878 §2): the flow judge's menu and `errand_target`'s candidates are the errands' CARDS — his words, state, last mention — of a parked and of a just-finished errand too; `errand_target` and the stop are asked with ANY errand open, not only with a worker running; the escalate question carries the three he named last — es, en — one file, one node: the cases planned as 2.1674/2.1675 live here (2026-11-11)",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_one_menu_for_every_reader.py"]},
         {"id": "2.728", "title": "A turn that acted on a card and also escalated, read inline, launches no worker — on the text channel as on the voice",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_an_inline_act_settles_the_commission_on_both_channels.py"]},
@@ -6189,15 +6183,15 @@ DOMAINS: list[dict] = [
         # worker and the brief's checklist as the answer. Fixed by FIELD: state, quality_bar and min_candidates are not
         # painted, an engine-filed rejection shows one line per filer in his language, ticks never reach the screen,
         # an empty tab is not offered; on the phone one result per row, 16/14px, 44px actions, a neutral photo tile.
-        {"id": "4.460", "title": "The results sheet paints only what HE reads (no status line, no door rule, no worker "
+        {"id": "4.466", "title": "The results sheet paints only what HE reads (no status line, no door rule, no worker "
                                   "checklist, no ticks, no empty tab) and its list fits the hand on the phone (V2-877 #9)",
             "ch": UNIT, "paths": ["tests/browser/unit/results/test_the_sheet_paints_only_what_he_reads.py"]},
         # V2-877 #12 — Search opened from the catalog showed one operator's town under an endless «Searching…».
-        {"id": "4.461", "title": "A search card shows its own state or an empty one: no request fetches nothing, no "
+        {"id": "4.467", "title": "A search card shows its own state or an empty one: no request fetches nothing, no "
                                   "place reads his state or asks, and the header ends (V2-877 #12)",
             "ch": UNIT, "paths": ["tests/browser/unit/search/test_a_search_card_shows_its_own_state.py"]},
         # V2-876 P-30…P-33 — agenda, timer and clock RENDERED in the phone card at 393×852.
-        {"id": "4.462", "title": "The agenda fits the hand: one control row at 393pt with the title on its own line, week "
+        {"id": "4.468", "title": "The agenda fits the hand: one control row at 393pt with the title on its own line, week "
                                   "titles that wrap, the first hour whole, the day opening on the earlier of now and the "
                                   "first appointment, a localised reminder, a 44pt bell, no internal list id (V2-876)",
             "ch": UNIT, "paths": ["tests/browser/unit/phone_apps/test_the_agenda_fits_the_hand.py"]},
@@ -6938,11 +6932,7 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/voice/bench/test_the_acts_asked_question_against_the_real_api.py"]},
         {"id": "2.1556", "title": "A contacts group is mirrored to WhatsApp from its members' ids (V2-854 F4, writer d's «V2-854 gap»): an entry that is a contact's id goes by that row's own channel and never through its name again, a contacts group's id is its members, a member by id with no WhatsApp refuses the whole group, a name is still resolved (and asked) by the send door",
             "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_a_group_is_mirrored_from_its_members_ids.py"]},
-        {"id": "2.1680", "title": "Two open questions and a «yes» answer the one the brief NAMES (V2-878 §4, ES/EN/JA): every gate question (a card's delete or data-op, a parked errand) waits on a row through the one asker; with several waiting no word picks one — the brief's binding pick over the rows answers it, the in-memory index drops what its row no longer waits on, and no model is asked; disarmed («the most recent» back) the last one asked answers",
-            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_one_wait_is_the_row.py"]},
-        {"id": "2.1681", "title": "A parked offer survives ten minutes of a frozen clock and a restart (V2-878 §4): an offer waits on its own row with its two declared answers; nothing on a row expires by the wall clock on wake (only the row's deadline ends it), and after a restart the row alone relaunches it on his yes; disarmed (no row) it expires as «CADUCÓ»",
-            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_one_wait_is_the_row.py"]},
-        {"id": "2.1682", "title": "A scheduled notice that ASKS is a waiting row (V2-878 §4, ES/EN/JA): a reminder whose last sentence is a question (by the character's Unicode name, never a word list) opens a `waiting_for=user_answer` row with its ask_id before it is delivered — once per firing — the brief's binding sees it and his bound answer ends it; a notice that only tells opens none",
+        {"id": "2.1680", "title": "Two open questions and a «yes» answer the one the brief NAMES (V2-878 §4, ES/EN/JA): every gate question (a card's delete or data-op, a parked errand) waits on a row through the one asker; with several waiting no word picks one — the brief's binding pick over the rows answers it, the in-memory index drops what its row no longer waits on, and no model is asked; disarmed («the most recent» back) the last one asked answers — one file, one node: the cases planned as 2.1681/2.1682 live here (2026-11-11)",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_one_wait_is_the_row.py"]},
         {"id": "2.1685", "title": "No reader of a yes or a no exists outside the row's declared answers or the brief's pick (V2-878 §4b): the yes/no word tables and every reader built on them went (widget gate, task gate, browser click, durable answer, the model's tool guard, the voice's early path); without a pick only a reply that IS one of the question's two declared answers in his language decides (`consent_ask.declared_answer`); no pattern in product code reads answer words of both sides; disarmed (a yes/no regex back in any product module) red",
             "ch": UNIT, "paths": ["tests/infrastructure/unit/test_no_yes_no_reader_outside_the_row.py"]},
