@@ -6139,6 +6139,11 @@ DOMAINS: list[dict] = [
                                 "ending at the dock's edge, the producing badge and restore V2-351",
             "ch": UNIT, "live": True,
             "cmd": "./.venv/bin/python tests/browser/e2e/mobile/render_deck.py"},
+        # V2-877 #8 / V2-876 P-41/P-42 — markets and map opened as a sentence over black.
+        {"id": "4.465", "title": "Markets and map show their subject or an honest empty page: a quote is the markets "
+                                  "card's own, its empty page runs `show` by hand, 44pt tabs; the map always draws its "
+                                  "base map (his area or the world), corner zoom, one-finger pan as [data-hpan] (V2-877 #8)",
+            "ch": UNIT, "paths": ["tests/browser/unit/phone_apps/test_markets_and_map_show_their_subject.py"]},
     ]},
     {"id": "5", "name": "CONECTORES", "nodes": [
         # V2-559 — el operador siguió la guía, creó la contraseña de aplicación y pegó el ENLACE de esa
