@@ -48,11 +48,13 @@
         "widget": "timer",
         "field": "running",
         "is": true
-      }
+      },
+      "effects": ["present.mount"]
     },
     "start": {
       "desc": "Resume the paused countdown.",
-      "payload": {}
+      "payload": {},
+      "effects": ["present.mount"]
     },
     "pause": {
       "desc": "Pause the running countdown.",
