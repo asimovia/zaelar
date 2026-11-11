@@ -9,6 +9,7 @@ class MainViewController: CAPBridgeViewController {
 
     override func capacitorDidLoad() {
         super.capacitorDidLoad()
+        bridge?.registerPluginInstance(DevicePlugin())   // the device bridge (V2-890): sensors for the shell
         guard let url = Bundle.main.url(forResource: "in-app", withExtension: "js", subdirectory: "public"),
               let glue = try? String(contentsOf: url, encoding: .utf8) else {
             NSLog("[zaelar] in-app.js missing from the bundle")

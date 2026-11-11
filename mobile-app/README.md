@@ -23,8 +23,8 @@ target (device family `1,2`), with the shell it gets (`/m` or the desktop `/`) s
 | Native (the app) | Web (the engine's `/m` shell) |
 |---|---|
 | `AVAudioSession` `playAndRecord` + `voiceChat`, speaker by default, Bluetooth allowed; set at launch and on every foreground (`AppDelegate.swift`) | Everything you see and touch: dock, orb, deck, sheets, chat |
-| Plugins: Keyboard (`resize: native`, dark keys, no form accessory bar), Haptics, App, Geolocation | Voice v1: the LiveKit WebRTC client inside the WebView, foreground only |
-| Permission sentences (EN + ES `InfoPlist.strings`) for microphone and location; iOS asks on first use, never at launch (no camera: nothing uses it) | Safe-area layout (`viewport-fit=cover` + `env(safe-area-inset-*)`) |
+| Plugins: Keyboard (`resize: native`, dark keys, no form accessory bar), Haptics, App, Geolocation, and the app's own `ZaelarDevice` (`DevicePlugin.swift`: device capabilities + an activity session — location with the screen locked, Bluetooth heart rate, motion activity, altitude; `docs/modules/zaelar-device-bridge.md`) | Voice v1: the LiveKit WebRTC client inside the WebView, foreground only |
+| Permission sentences (EN + ES `InfoPlist.strings`) for microphone, location, Bluetooth and motion; iOS asks on first use, never at launch (no camera: nothing uses it). Background modes: `location`, `bluetooth-central`, only used inside an activity the person starts | Safe-area layout (`viewport-fit=cover` + `env(safe-area-inset-*)`) |
 | `www/in-app.js`, the app's glue (below); light status bar; portrait on iPhone | Sign-in, session, i18n strings — all served by the engine |
 | `www/index.html`, shown only when the origin cannot be loaded, with a retry button | |
 

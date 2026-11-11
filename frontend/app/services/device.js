@@ -76,3 +76,57 @@ export async function heading(onHeading) {
   addEventListener("deviceorientation", h);
   return { stop: () => removeEventListener("deviceorientation", h) };
 }
+
+// ── The native device bridge (V2-890): the app's own `ZaelarDevice` plugin. Only in the native app; elsewhere every
+// call answers `unsupported`, so an app written once runs everywhere and says what this screen cannot do.
+const bridge = () => native("ZaelarDevice");
+
+/** What this screen is and has, in full: {platform, form, sensors: {name: {available, permission, …}}, background}.
+ *  In a browser: the Web APIs above, foreground only. Apps read it to adapt (no strap → no heart-rate panel). */
+export async function details() {
+  const b = bridge();
+  if (b) { try { return await b.capabilities(); } catch (_) { /* an older app build: fall through */ } }
+  const has = capabilities();
+  const s = (k) => ({ available: has.includes(k), permission: "ask_on_use" });
+  return { platform: "web", form: typeof matchMedia !== "undefined" && matchMedia("(pointer: coarse)").matches ? "phone" : "desktop",
+    background_sessions: false, sensors: { location: s("location"), motion: s("motion"), heading: s("heading") } };
+}
+
+/** An ACTIVITY the person started (a ride, a run, a walk, a drive): `sensors` ⊂ location · heart_rate ·
+ *  motion_activity · altitude. Samples `{kind, t, …}` reach `onSample` while the screen is on; with the screen locked
+ *  the native app keeps reading and hands the missed samples over when it comes back. Returns {stop} or {error}.
+ *  In a browser only `location` runs, and only while the screen is on. */
+export async function activity({ sensors = ["location"], label = "", kind = "fitness" } = {}, onSample = () => {}) {
+  const b = bridge();
+  if (!b) {
+    if (!sensors.includes("location")) return { error: "unsupported" };
+    const stop = watchLocation((f) => { if (!f.error) onSample({ kind: "location", t: f.at, lat: f.lat, lon: f.lon, accuracy_m: f.accuracy, speed_mps: f.speed }); });
+    return { stop, background: false };
+  }
+  let last = -1, live = true;
+  const take = (x) => { if (x && x.seq > last) { last = x.seq; onSample(x); } };
+  const drain = async () => {
+    for (let more = true; more && live;) {
+      const r = await b.drain({ after: last }).catch(() => ({ samples: [] }));
+      (r.samples || []).forEach(take); more = !!r.more && (r.samples || []).length > 0;
+    }
+  };
+  try { await b.startSession({ sensors, label, activity: kind, background: true }); } catch (e) { return why(e); }
+  const subs = [await b.addListener("sample", take)];
+  const back = () => { if (document.visibilityState === "visible") drain(); };
+  document.addEventListener("visibilitychange", back);
+  return { background: true, stop: async () => {
+    await drain(); live = false;
+    document.removeEventListener("visibilitychange", back);
+    subs.forEach((s) => s && s.remove && s.remove());
+    await b.stopSession().catch(() => {});
+  } };
+}
+
+/** Heart-rate straps and watches in range (Bluetooth Heart Rate Service): [{id, name}]; `pick(id)` remembers one. */
+export async function heartRateStraps(seconds = 6) {
+  const b = bridge();
+  if (!b) return { error: "unsupported", straps: [] };
+  try { return { straps: (await b.scanHeartRate({ seconds })).straps || [], pick: (id) => b.scanHeartRate({ pick: id }) }; }
+  catch (e) { return { ...why(e), straps: [] }; }
+}
