@@ -44,11 +44,44 @@ def _left_its_place(rec) -> bool:
     return False
 
 
+def interrupted(rec) -> bool:
+    """Was this session stopped by the HOST stopping (`ended.SHUTDOWN`), not by him, before it finished (V2-877 #2)?
+    Then it is not cancelled: it leaves its place the way a crash does (`_kept_for_restart`)."""
+    from nucleo.workers import ended
+    reason = str(getattr(rec, "stop_reason", "") or "")
+    return bool(reason) and not ended.his_cancel(reason) and not getattr(rec, "result_seen", False)
+
+
+def _kept_for_restart(rec) -> bool:
+    """A worker the host stopped mid-task: its row WAITS on the worker with a deadline, its phase and what it produced
+    kept — the state a died worker leaves (`ledger.worker_died`), so the pulse resumes it BY ID when the engine is
+    back. Not a death: no `attempts` is spent and no session id is required (a build resumes from its row's goal).
+    False when the row cannot wait (gone, or already ended): the ending then runs as before."""
+    import time
+    from nucleo.circuit import ledger
+    uid = str(getattr(rec, "uid", "") or "")
+    try:
+        now = time.time()
+        if not uid or not ledger.waiting(uid, ledger.WORKER, now=now, quiet=True):
+            return False
+        ledger.store().task_patch(uid, deadline=int(now + ledger.WORKER_RESUME_AFTER_S),
+                                  phase=str(getattr(rec, "phase", "") or "")[:160])
+        rec.waiting_on, rec.parked = ledger.WORKER, True
+        ledger.kept_result(rec)
+        return True
+    except Exception as e:  # noqa: BLE001 — a row that could not wait ends as before
+        logger.warning(f"worker[{rec.task_id}]: stopped by the host, its row could not wait — {e!r}")
+        return False
+
+
 async def _finish(self) -> None:
     rec = self._rec
     if parked(rec):
         rec.phase = "waiting"
         self._bus("worker.parked", {"id": rec.task_id, "ask_id": str(getattr(rec, "ask_corr", "") or "")})
+    elif interrupted(rec) and _kept_for_restart(rec):
+        self._bus("worker.interrupted", {"id": rec.task_id, "uid": str(getattr(rec, "uid", "") or ""),
+                                         "reason": str(rec.stop_reason)})
     elif died(rec) and _left_its_place(rec):
         self._bus("worker.died", {"id": rec.task_id, "uid": str(getattr(rec, "uid", "") or "")})
     else:

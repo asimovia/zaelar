@@ -110,16 +110,22 @@ _PROCS_LOCK = threading.Lock()
 #: Tokens whose build is WAITING OUT a rate limit (no subprocess alive), and tokens stopped meanwhile.
 _WAITING: set = set()
 _CANCELLED: set = set()
+#: Tokens stopped by the HOST stopping, not by him (V2-877 #2): their build keeps its folder and its journal entry, so
+#: its row's resume by id (or the boot's journal) rebuilds it — a shutdown is not a cancellation.
+_KEPT: set = set()
 
 
-def kill(token: str) -> bool:
+def kill(token: str, *, keep: bool = False) -> bool:
     """Kill the generation subprocess associated with `token`, politely via terminate then kill. Idempotent.
-    A build that is waiting out a rate limit has no process: it is marked, and the wait gives up."""
+    A build that is waiting out a rate limit has no process: it is marked, and the wait gives up. `keep`: the host
+    is stopping (not his cancel) — the interrupted build is kept for its resume instead of discarded."""
     with _PROCS_LOCK:
         p = _PROCS.get(str(token))
         waiting = str(token) in _WAITING
         if p is not None or waiting:
             _CANCELLED.add(str(token))
+            if keep:
+                _KEPT.add(str(token))
     if p is None:
         return waiting
     try:
@@ -330,9 +336,19 @@ def failure_class(error: str) -> str:
     return m.group(1) if m else ""
 
 
-def generate_widget(spec: str, wid: str = "", title: str = "", token: str = "") -> dict:
-    """Build a NEW widget folder with the atomic agent. Returns {ok, id, existed?, error?}. `token` (V2-038) =
-    Brain Worker ID → the subprocess can be TERMINATED with generator.kill(token)."""
+def _kept(token: str) -> bool:
+    """Was this build stopped by the host (`kill(keep=True)`)? Read once."""
+    with _PROCS_LOCK:
+        if token and str(token) in _KEPT:
+            _KEPT.discard(str(token))
+            return True
+    return False
+
+
+def generate_widget(spec: str, wid: str = "", title: str = "", token: str = "", row: str = "") -> dict:
+    """Build a NEW widget folder with the atomic agent. Returns {ok, id, existed?, error?, interrupted?}. `token`
+    (V2-038) = Brain Worker ID → the subprocess can be TERMINATED with generator.kill(token). `row` = the task row the
+    build belongs to, kept in the journal: an interrupted build is resumed by that row's id (V2-877 #2)."""
     wid = _generator_folders.safe_id(wid) or _generator_folders.safe_id(title) or _generator_folders._concise_id(spec)
     if not wid:
         return {"ok": False, "error": "could not derive a widget id"}
@@ -340,10 +356,13 @@ def generate_widget(spec: str, wid: str = "", title: str = "", token: str = "") 
         return {"ok": False, "error": f"reserved id '{wid}'"}
     if not (spec or "").strip():
         return {"ok": False, "error": "empty spec"}
+    if _generator_folders.interrupted_job(wid):     # a build the host stopped: its half-written folder is rebuilt clean
+        _generator_folders._discard(wid)
     if _generator_folders.exists(wid):                                    # never re-create — the circuit shows the existing one
         return {"ok": True, "id": wid, "existed": True}
     logger.info(f"widget-agent: CREATE '{wid}' (atomic, headless)…")
-    _generator_folders._job_start("create", wid, {"spec": spec.strip(), "title": title})
+    _generator_folders._job_start("create", wid, {"spec": spec.strip(), "title": title, **({"row": row} if row else {})})
+    kept = False
     try:
         with _lock:                                    # one agent at a time
             dst = paths.new_dir(wid)
@@ -351,6 +370,12 @@ def generate_widget(spec: str, wid: str = "", title: str = "", token: str = "") 
             ran, err = _run_agent(
                 _CREATE_PROMPT.format(wid=wid, spec=spec.strip(), folder=_generator_folders._folder_ref(dst)),
                 token=token, target=dst)
+        if not ran and _kept(token):
+            # The HOST stopped (V2-877 #2), not him: folder and journal stay, marked interrupted, for the resume.
+            kept = True
+            _generator_folders._job_interrupted(wid)
+            logger.info(f"widget-agent: CREATE '{wid}' interrupted by the host stopping — kept for its resume")
+            return {"ok": False, "id": wid, "error": err, "interrupted": True}
         if not ran:
             _generator_folders._discard(wid)                              # a killed/timed-out agent may leave a half-written folder
             return {"ok": False, "id": wid, "error": err, "error_class": failure_class(err)}
@@ -369,7 +394,8 @@ def generate_widget(spec: str, wid: str = "", title: str = "", token: str = "") 
         logger.info(f"widget-agent: '{wid}' created + validated ✓" + (" (after one repair pass)" if repaired else ""))
         return {"ok": True, "id": wid, **({"repaired": True} if repaired else {})}
     finally:
-        _generator_folders._job_end(wid)
+        if not kept:
+            _generator_folders._job_end(wid)
 
 
 _REPAIR_PROMPT = (

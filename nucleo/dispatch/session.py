@@ -49,7 +49,8 @@ async def _run_session(task: "Task") -> None:
     # context, the money vocabulary only when there is none (refactor2710-06 T-03) — before anything starts.
     from nucleo.acts import errand as _errand
     _cls = _errand.class_of(task.context.get("errand_class"), req)
-    if trusted and _errand.asks_first(_cls, confirmed=bool(task.context.get("confirmed")),
+    _confirmed = _dconf.confirmed(task.context)     # a fact of the ROW (V2-877 #2): a relay is never asked again
+    if trusted and _errand.asks_first(_cls, confirmed=_confirmed,
                                       verdict=task.context.get("errand_class")):
         _d.logger.info(f"dispatch: tarea {key} PARA por confirm-gate: {req[:80]}")
         rec = _d._SESSIONS.get(key)
@@ -71,7 +72,7 @@ async def _run_session(task: "Task") -> None:
     # he said it (session f84f91ef: a design brief dictated to ANOTHER conversation started a worker rewriting his
     # YouTube card). Here because `_run_session` is the ONE door that starts a worker, with `kind == "code"` already
     # decided by the brief's `errand_kind`. The cluster dev worker (V2-076) is out of scope: it brings its own repo and licence.
-    if (kind == "code" and not bool(task.context.get("confirmed"))
+    if (kind == "code" and not _confirmed
             and not _d._dev_worker_params(task.context)):
         from nucleo.request import kind as _ek_gate
         _d.logger.info(f"dispatch: task {key} STOPPED by the widget confirm-gate: {req[:80]}")
@@ -86,6 +87,7 @@ async def _run_session(task: "Task") -> None:
             _d.sync_state()
         return
 
+    _dconf.passed(task.context)          # the start gates passed on HIS yes: a fact of the row from now on (V2-877 #2)
     if await _dconf.unlicensed_gate(task, key, req):   # V2-812 T-03: a line that was not a request asks first
         return
 

@@ -54,7 +54,7 @@ class GeneratorBackend(WorkerBackend):
                 res = await asyncio.to_thread(generator.modify_widget, existing, req, self._task_id)
             else:
                 await self._emit("phase", label="creando un widget…")
-                res = await asyncio.to_thread(generator.generate_widget, req, "", "", self._task_id)
+                res = await asyncio.to_thread(generator.generate_widget, req, "", "", self._task_id, self._row())
             if res.get("ok"):
                 wid = res.get("id") or ""
                 verb = "actualizado" if action == "modify" else "creado"
@@ -144,11 +144,23 @@ class GeneratorBackend(WorkerBackend):
             if ev.type == "done":
                 return
 
+    def _row(self) -> str:
+        """The task row this build belongs to (kept in the generator's journal for its resume by id)."""
+        try:
+            from nucleo import dispatch
+            return str(getattr(dispatch.get_record(self._task_id), "uid", "") or "")
+        except Exception as e:  # noqa: BLE001
+            logger.debug(f"generator worker[{self._task_id}]: no row for the journal ({e!r})")
+            return ""
+
     async def stop(self, *, grace: float = 3.0) -> None:
         self._done = True
         try:
+            from nucleo.workers import ended
             from widgets import generator
-            generator.kill(self._task_id)        # mata el subproceso `claude` del generador (to_thread no cancelable)
+            # kills the generator's `claude` subprocess (to_thread is not cancellable); the host stopping keeps the
+            # interrupted build for its resume, his cancel discards it (V2-877 #2)
+            generator.kill(self._task_id, keep=not ended.his_cancel(self.stop_reason))
         except Exception:
             pass
         if self._run_task and not self._run_task.done():

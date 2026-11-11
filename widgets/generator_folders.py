@@ -62,6 +62,36 @@ def _job_end(wid: str) -> None:
             _jobs_write(jobs)
 
 
+def _job_interrupted(wid: str) -> None:
+    """The host stopped this build (V2-877 #2): its journal entry stays, marked, for the resume — never ended."""
+    with _jobs_lock:
+        jobs = _jobs_read()
+        if wid in jobs:
+            jobs[wid] = {**jobs[wid], "interrupted": True}
+            _jobs_write(jobs)
+
+
+def interrupted_job(wid: str) -> dict | None:
+    """The journal entry of a build of `wid` the host stopped, or None."""
+    with _jobs_lock:
+        job = _jobs_read().get(wid)
+    return job if isinstance(job, dict) and job.get("interrupted") else None
+
+
+def left_to_their_rows(jobs: list[dict]) -> list[dict]:
+    """The drained journal minus the builds whose ROW waits on its worker (the host stopped it, V2-877 #2): those go
+    back in the journal for that row's resume by id — relaunching them at boot too would build the card twice."""
+    from nucleo.workers import ended
+    owned = [j for j in jobs if ended.resumes_by_id(str((j.get("payload") or {}).get("row") or ""))]
+    if owned:
+        with _jobs_lock:
+            cur = _jobs_read()
+            cur.update({str(j["id"]): j for j in owned if j.get("id")})
+            _jobs_write(cur)
+        logger.info(f"widget-agent: {len(owned)} interrupted build(s) resume with their task rows")
+    return [j for j in jobs if j not in owned]
+
+
 def take_pending_jobs() -> list[dict]:
     """Drain the journal (boot-time): return jobs a previous process left in flight and clear the file."""
     with _jobs_lock:
