@@ -44,6 +44,24 @@ function tabCount(id, data){
   return null;
 }
 
+// Does a tab have anything HE can read? (V2-877 #9: a user surface renders only user-facing fields, and a tab with
+// none is not offered.) Results is the sheet itself and always stays; the others go when they would only say «nothing
+// yet» — the errand's progress lives in the processes panel (V2-822), not in an empty tab.
+function hasContent(id, data){
+  if(id === "results") return true;
+  if(id === "sources") return Array.isArray(data.sources) && data.sources.length > 0;
+  if(id === "criteria"){
+    const crit = data.criteria || {};
+    return !!crit.goal || CRIT_SECTIONS.some(x => (crit[x.key] || []).length);
+  }
+  if(id === "summary"){
+    const s = data.summary || {}, c = data.counts || {};
+    return s.explored != null || !!s.note || (s.steps || []).length > 0 || (data.rejected || []).length > 0
+      || !!c.sources_failed;
+  }
+  return false;
+}
+
 export function render(el, data, ctx){
   I18N.t = (ctx && typeof ctx.t === "function") ? ctx.t : null;
   injectStyles();
@@ -74,7 +92,8 @@ export function render(el, data, ctx){
 
   // ACTIVE TAB — the one he chose (`data.tab`, persisted, it RULES), else Results: the deliverable is what the sheet
   // shows; the work behind it is in the processes panel (V2-822).
-  let cur = TABS.some(t=>t.id===data.tab) ? data.tab : "results";
+  const shown = TABS.filter(t => hasContent(t.id, data));
+  let cur = shown.some(t=>t.id===data.tab) ? data.tab : "results";
   const bar = elem("div","hr-tabs");
   bar.setAttribute("role","tablist");     // a strip that scrolls sideways — the phone never wraps it
   const panel = elem("div","hr-panel");
@@ -97,7 +116,7 @@ export function render(el, data, ctx){
     paint(navigated(el, data, cur));
   }
 
-  TABS.forEach(t=>{
+  shown.forEach(t=>{
     const b=elem("button","hr-tab"); b.type="button"; b.dataset.tab=t.id;
     b.appendChild(document.createTextNode(tabLabel(t.id)));
     const c=tabCount(t.id, data);
