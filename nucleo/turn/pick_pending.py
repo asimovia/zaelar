@@ -83,7 +83,10 @@ def noted(which: str, words: str, brief=None) -> dict | None:
         if _wants(brief) == "tell":
             return None
         uid = str(getattr(rec, "uid", "") or "") or _uid(tids[0])
-        heard = " ".join(str(words or "").split("\n\n(If this is NOT")[0].split())[:300]
+        # HIS sentence (the brief's `judged`), not the relayed text: the model's own `send_to_worker` carries its paraphrase
+        # («Operator wants to open the best deal…», measured in the sandbox), and the card keeps what he said.
+        mine = str((brief or {}).get("judged") or "") if isinstance(brief, dict) else ""
+        heard = " ".join((mine or str(words or "").split("\n\n(If this is NOT")[0]).split())[:300]
         if not uid or not heard:
             return None
         pick = {"heard": heard, "at": int(time.time())}

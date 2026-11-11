@@ -38,8 +38,9 @@ def test_an_order_over_rows_still_to_come_is_kept_on_the_card(world, monkeypatch
 def test_the_models_own_send_to_the_errand_is_noted_too(world, monkeypatch, lang):
     uid = world["errand"]("k6", "buscar monitores baratos", "k6")
     monkeypatch.setattr(tb, "of_this_turn", lambda: brief("act", SAID[lang]))
-    assert dispatch.relay_his_words("k6", SAID[lang]) is True and world["injected"] == [("k6", SAID[lang])]
-    assert ledger.card(uid)["pick_pending"]["heard"] == SAID[lang]
+    relayed = "Operator wants to open the best deal as soon as possible."   # the model's own paraphrase
+    assert dispatch.relay_his_words("k6", relayed) is True and world["injected"] == [("k6", relayed)]
+    assert ledger.card(uid)["pick_pending"]["heard"] == SAID[lang], "the card kept the model's words, not his"
 
 
 def test_a_question_or_rows_already_there_note_nothing(world, monkeypatch):
