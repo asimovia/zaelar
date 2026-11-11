@@ -343,6 +343,10 @@ These are the rules. Everything else in this file is a pointer to where the deta
   batch waits for the orchestrator's gate), or closed with the reason. No PR stays open overnight: a PR nobody
   merges rots against a `main` that keeps moving (operator, 2026-11-09, after finding twelve open PRs from the
   previous two weeks — eight already contained in `main`, four to re-judge).
+- **One living branch: `main` (trunk-based development, short-lived branches).** A branch exists only for the change
+  that opens it; once its PR is merged the branch is DELETED — local, remote and its worktree. Old branches and their
+  history are not kept: a branch unmerged for three days is stale and is deleted, not archived (operator, 2026-11-11).
+  A batch is closed only when `git branch -a` shows `main` alone, no PR is open and `git worktree list` has one line.
 - **Visual changes are agreed first.** No unrequested redesign passes.
 - **English everywhere inside `engine/`.** This is a PUBLIC repository: comments, docstrings, test names, log
   messages, documentation under `.meshkore/` and commit messages are English. Spanish that is **product data**
