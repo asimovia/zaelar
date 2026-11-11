@@ -122,7 +122,7 @@ async def run(self, motor) -> None:
     # A CLEAR yes/no is resolved here, deterministically, before the model; an ambiguous one goes to the backstop.
     if not first_turn and had_pending_confirm:
         try:
-            _verdict_early = _wconfirm.answers_pending(text, _brief)
+            _verdict_early = _wconfirm.answers_pending(text, _brief)  # V2-878 §4b: declared answers
         except Exception:
             _verdict_early = None
         if _verdict_early:

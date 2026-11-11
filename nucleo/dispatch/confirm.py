@@ -419,7 +419,7 @@ def rerun_start(uid: str, entry: dict, text: str, choice: int | None = None):
     The brief's pick among the declared answers (`choice`, `#0` yes) decides; his words are read only with no pick."""
     from nucleo.request import inline_ask
     from nucleo.cli.worker_api_answer import decision
-    said = decision(str(entry.get("question") or ""), text, choice)
+    said = decision(str(entry.get("question") or ""), text, choice)  # V2-878 §4b: declared answers
     if said is None:                             # not a decision: the question stays open, the errand stays parked
         return {"ok": False, "row": uid, "unclear": True}
     if not inline_ask.take(str(entry.get("ask_id") or "")):
