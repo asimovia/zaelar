@@ -1,3 +1,4 @@
 - 2026-07-07: Creado por petición de Ricard: quiere poder poner un "horno" (temporizador) en la pantalla, grande y clarísimo, que cuente atrás. No necesita widget de horno real — solo un cronómetro visual.
 - UX: números enormes (72px+), sin segundos cuando quedan >5 min, segundos visibles cuando <5 min. Botón de pausa/reanudar/reiniciar. El brain puede fijar el tiempo mediante `apply_action("set", {"seconds": N, "label": "..."})`.
 - Almacena estado en store persistente para que sobreviva a refrescos del navegador.
+- 2026-11-11 V2-876 P-33: no frame of its own, centred in its page; house sans with tabular digits (monospace slashed the zero), ≥40px; no «· · ·»; with nothing set it offers 1/5/10 min starts (`set`); buttons 44pt. The manifest now DECLARES set/start/pause/reset — before, the voice had no data API to set a timer.

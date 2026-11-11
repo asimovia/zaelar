@@ -186,6 +186,8 @@ export function render(el, data, ctx){
   calBtn.appendChild(svgEl(ICO_PLUG)); calBtn.setAttribute("aria-label", tt("connectors", null, "Conectores"));
   calBtn.title = tt("calendars_hint", null, "Qué calendarios están conectados");
   calBtn.onclick = ()=>ctx.openConnector("google");
+  // On the phone the plug leaves the control row (V2-876 P-30): the row is ‹ Today › and the view picker, the
+  // connection lives in the app's settings. The stylesheet hides `.agviewsright` inside the phone card.
   right.appendChild(calBtn);
   sub.appendChild(right);
 
@@ -236,9 +238,12 @@ export function render(el, data, ctx){
     const card = el2("div","agcard");
     if(isToday){
       card.appendChild(el2("div","agk", tt("now", null, "Ahora")));
-      card.appendChild(el2("div","agtask", active ? active.label : "—"));
-      const cnt = el2("div","agcount", active ? fmtCount(active.remaining_min||0) : "—");
-      cnt.id = "hb-count"; card.appendChild(cnt);
+      // Nothing active → the label and its one line, never a «—» task over a «—» countdown (V2-876 P-32).
+      if(active){
+        card.appendChild(el2("div","agtask", active.label));
+        const cnt = el2("div","agcount", fmtCount(active.remaining_min||0));
+        cnt.id = "hb-count"; card.appendChild(cnt);
+      }
       const taskId = active && active.taskId;
       if(taskId){
         const acts = el2("div","agacts");
@@ -293,8 +298,15 @@ export function render(el, data, ctx){
   if(S.view === "day" || S.view === "week"){
     const scroller = el.querySelector(".agday-grid") || el.querySelector(".agbody");
     if(scroller){
-      const [lo] = hourRange(dates.flatMap(d=>eventsOn(all, d)));
-      const target = Math.max(0, (mins(isFinite(mins(data.now))&&S.anchor===today ? data.now : "08:00") - lo - 60)/60*HOUR_PX);
+      const shown = dates.flatMap(d=>eventsOn(all, d));
+      const [lo] = hourRange(shown);
+      // The grid opens on what he needs to see first (V2-876 P-31): the EARLIER of the current hour (today on
+      // screen) and the first timed appointment on screen; neither → the working morning. Opening on «now − 1 h»
+      // hid a 09:00 appointment under a 14:00 start.
+      const firstEv = shown.filter(e => !e.allDay && isFinite(e.start)).reduce((m, e) => Math.min(m, e.start), Infinity);
+      const nowM = (isFinite(mins(data.now)) && dates.includes(today)) ? Math.floor(mins(data.now)/60)*60 : Infinity;
+      const at = Math.min(firstEv, nowM);
+      const target = Math.max(0, ((isFinite(at) ? at : 8*60) - lo)/60*HOUR_PX - 8);
       raf(()=>{ try{ scroller.scrollTop = target; }catch(_){} });
     }
   }

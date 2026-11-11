@@ -69,6 +69,14 @@ export function repeatLabel(r){
 }
 export function intl(opts){ try{ return new Intl.DateTimeFormat(I18N.LANG, opts); }catch(_){ return null; } }
 export function fmtDate(d, opts, fb){ const f=intl(opts); return f ? f.format(d) : fb; }
+// A stored moment («2026-11-11 08:00», the shape the data layer writes) said the way his language says a date —
+// never the raw ISO on screen (V2-876 P-32). Unreadable → the raw text, untouched.
+export function fmtWhen(at){
+  const [day, time] = String(at||"").trim().split(/[ T]/);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(day||"")) return String(at||"");
+  const d = parseYmd(day), hm = (time||"").slice(0,5);
+  return (fmtDate(d, {weekday:"short", day:"numeric", month:"short"}, day) + (hm ? " · " + hm : "")).trim();
+}
 
 // ── date helpers (local time, no libraries) ───────────────────────────────────────────────────────────
 // Optional browser surface — a widget must render (and a headless DOM stub must be able to drive it) even
@@ -197,7 +205,7 @@ export function eventsOn(all, dateStr){ return all.filter(e=>e.date===dateStr).s
 export function badges(ev){
   const box = el2("span","agbadges");
   if(ev.remindAt){
-    const b=el2("span","agbadge"); b.title=tt("has_reminder",{at:ev.remindAt},"Aviso programado: {at}");
+    const b=el2("span","agbadge"); b.title=tt("has_reminder",{at:fmtWhen(ev.remindAt)},"Aviso programado: {at}");
     b.appendChild(svgEl(ICO_BELL)); box.appendChild(b);
   }
   const n = (ev.attendees||[]).length;

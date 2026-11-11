@@ -160,7 +160,7 @@ export const CSS_PANELS = `\
   /* Monospace and right-aligned so «1/3» sits under «12/40» on the slash. The brighter ink is deliberate:
      this is a column of the table now, not a caption, and V2-691 measured the tertiary ink losing a point
      on every step above surface-1 — which is exactly where the zebra puts half these cells. */
-  .hb-agenda .agt-count{text-align:right;font:600 12px/1 ui-monospace,SFMono-Regular,Menlo,monospace;
+  .hb-agenda .agt-count{text-align:right;font:600 13px/1 var(--sans,system-ui);font-variant-numeric:tabular-nums;
     color:var(--hb-muted,#BAC2CE);font-variant-numeric:tabular-nums;
     overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
   /* The meter. Two pixels and not three: five of these stacked in a column were the loudest thing on the
@@ -279,4 +279,38 @@ export const CSS_PANELS = `\
   @container (max-width:560px){ .hb-agenda .agsecb span,.hb-agenda .agconnicons,.hb-agenda .agmev .agmh{display:none}
     .hb-agenda .agsecb svg{display:block} .hb-agenda .agsecb{padding:7px 9px}
     .hb-agenda .agsub,.hb-agenda .agbar{gap:var(--sp-1,4px)} .hb-agenda .agnav button{min-width:28px;padding:0 6px} }
-  `;
+  
+  /* ── THE PHONE CARD (V2-876 P-30…P-32) ── inside the phone shell ('.zm-scroll'), never on the desk.
+     ONE control row that fits 393pt: the section switch · ‹ Today › · the view picker; the range title on its own
+     line under it, wrapping, never cut by the picker; the plug leaves the row (the connection lives in the app's
+     settings). Event titles WRAP inside a narrow column instead of ending in «De…»; the first hour label sits
+     below its line instead of under the day header; day numbers are tabular. */
+  .zm-scroll .hb-agenda .agsub{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;
+    column-gap:var(--sp-2,8px);row-gap:var(--sp-1,4px);padding-left:var(--sp-2,8px);padding-right:var(--sp-2,8px)}
+  .zm-scroll .hb-agenda .agbar{display:contents}
+  .zm-scroll .hb-agenda .agsec{grid-column:1;grid-row:1}
+  .zm-scroll .hb-agenda .agnav{grid-column:2;grid-row:1;justify-self:start;gap:var(--sp-1,4px)}
+  .zm-scroll .hb-agenda .agviews{grid-column:3;grid-row:1;margin-left:0}
+  .zm-scroll .hb-agenda .agrange{grid-column:1 / -1;grid-row:2;white-space:normal;overflow:visible;
+    font-size:16px;padding:0 var(--sp-1,4px)}
+  .zm-scroll .hb-agenda .agviewsright{display:none}
+  .zm-scroll .hb-agenda .agsub-meta{grid-column:2 / -1;grid-row:1;justify-self:end}
+  .zm-scroll .hb-agenda .agsecb{padding:0;width:44px;height:44px;justify-content:center}
+  .zm-scroll .hb-agenda .agnav button{min-width:44px;height:44px;font-size:14px}
+  .zm-scroll .hb-agenda .agviewsel{height:44px;font-size:16px}
+  .zm-scroll .hb-agenda .agevt{white-space:normal;overflow-wrap:anywhere;text-overflow:clip;font-size:12px;
+    line-height:1.1;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3}
+  .zm-scroll .hb-agenda .agev.tight .agevt{-webkit-line-clamp:1}
+  .zm-scroll .hb-agenda .agev{padding:2px 3px 2px 4px}
+  .zm-scroll .hb-agenda .agev .agevh{display:none}
+  .zm-scroll .hb-agenda .agmt{white-space:normal;overflow-wrap:anywhere;text-overflow:clip;line-height:1.15;
+    display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+  .zm-scroll .hb-agenda .agmev{align-items:flex-start}  .zm-scroll .hb-agenda .agmev .agmdot{display:none}
+  .zm-scroll .hb-agenda .aghour:first-child{transform:none}
+  .zm-scroll .hb-agenda .agdn,.zm-scroll .hb-agenda .aghour{font-variant-numeric:tabular-nums}
+  .zm-scroll .hb-agenda .agrow{min-height:44px;box-sizing:border-box;align-items:center}
+  .zm-scroll .hb-agenda .agrow .agbadge[role=button]{min-width:44px;min-height:44px;display:inline-flex;
+    align-items:center;justify-content:center;margin:-8px -6px -8px 0}
+  .zm-scroll .hb-agenda .agrow .agbadge svg{width:18px;height:18px}
+  .zm-scroll .hb-agenda .agdaydate,.zm-scroll .hb-agenda .agrowh{font-variant-numeric:tabular-nums}
+`;
