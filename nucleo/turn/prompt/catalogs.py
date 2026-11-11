@@ -42,16 +42,42 @@ def connector_facts(open_ids: set[str], turn_text: str = "") -> str:
                     out = (out + "\n\n" + vstate) if out else vstate
         except Exception:  # noqa: BLE001 — no video fact is better than a broken turn
             pass
+        sources = _sources_of_open_cards(open_ids)
         try:
             from connectors.google import brain as _gb
-            if open_ids & {"agenda", "mensajeria", "fotos", "archivos", "youtube"} or not _gb.connected_services():
+            # V2-887: the cards that READ an account are the ones whose manifest declares connector families — never
+            # a fixed set (with Contacts open the prompt said «GOOGLE conectado: no» and the model promised an import)
+            if sources or not _gb.connected_services():
                 if (gstate := _gb.brain_state()):
                     out = (out + "\n\n" + gstate) if out else gstate
         except Exception:  # noqa: BLE001
             pass
+        if sources:
+            out = (out + "\n\n" + sources) if out else sources
         return out
     except Exception:  # noqa: BLE001
         return ""
+
+
+def _sources_of_open_cards(open_ids) -> str:
+    """One line per open card that declares `connector_families`: the live connectors that feed it and whether each
+    is connected — the same reader the app's page uses (`widgets.about._connectors`). "" when no open card has one."""
+    try:
+        from widgets import about, runtime
+    except Exception as e:  # noqa: BLE001 — no widget runtime: no line
+        __import__("loguru").logger.debug(f"catalogs: the widget runtime is unreadable — {e!r}")
+        return ""
+    lines = []
+    for wid in sorted(open_ids or ()):
+        try:
+            conns = about._connectors((runtime.get(wid) or {}).get("connector_families"))
+        except Exception as e:  # noqa: BLE001 — one unreadable card never hides the others
+            __import__("loguru").logger.debug(f"catalogs: {wid}'s sources unreadable — {e!r}")
+            conns = None
+        if conns:
+            lines.append(f"[{wid}] sources: " + ", ".join(
+                f"{c['label']} ({'connected' if c['connected'] else 'not connected'})" for c in conns))
+    return "\n".join(lines)
 
 
 def _names_a_channel(turn_text: str) -> bool:
