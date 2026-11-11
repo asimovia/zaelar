@@ -351,7 +351,7 @@ body.chatdock-r .statuspanel{right:calc(18px + var(--chatdock-r))}
 .ap-customized .ap-name{color:var(--hb-muted)}
 .ap-badge{position:absolute;inset:auto 0 auto 0;top:50%;transform:translateY(-50%);margin:0 auto;width:max-content;
   padding:1px 5px;border-radius:999px;border:1px solid var(--hb-line);background:var(--hb-bubble);color:var(--hb-ink);
-  font-size:.55rem;font-weight:800;letter-spacing:.03em;text-transform:uppercase}
+  font-size:.625rem;font-weight:800;letter-spacing:.03em;text-transform:uppercase}
 /* V2-728 — the four sub-tabs of «Procesos». A quieter row than the top tabs on purpose: they divide ONE
    subject, so they must not compete with the four that divide the panel. */
 .cw-subtabs{display:flex;gap:2px;padding:8px 10px 0;flex:0 0 auto;align-items:center}
@@ -542,7 +542,8 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .rc-check{display:flex;align-items:flex-start;gap:8px;font-size:0.7812rem;line-height:1.4;color:var(--hb-muted);
   margin:0 0 10px;cursor:pointer}
 .rc-check input{margin-top:2px;flex:none;cursor:pointer}
-.rc-hint{margin:0 0 14px;font-size:var(--fs-micro);color:var(--hb-muted-2)}
+.rc-sep{border:0;border-top:1px solid var(--hb-line,rgba(255,255,255,.14));margin:14px 0 12px}
+.rc-hint{margin:0 0 14px;font-size:0.7812rem;color:var(--hb-muted-2)}
 /* BLOCKING FAULT (V2-676) — the agent cannot work. Covers the screen on purpose: the operator walked past
    the banner version of this for two minutes while the model had no credit. Risk colours, not the theme's
    quiet ones, and a hard ground so nothing behind it reads as usable. */

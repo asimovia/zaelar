@@ -49,7 +49,7 @@ export const CSS = `
   .hb-msg .picon.on:hover{opacity:1;background:var(--hb-hover,#eef3f9)}
   .hb-msg .picon.filt{background:color-mix(in srgb,currentColor 18%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,currentColor 55%,transparent)}
   .hb-msg .pdot{width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
-    font-size:9.5px;font-weight:700;color:#fff;background:var(--hb-neutral,#3a4a5c);opacity:.5;flex:0 0 auto}
+    font-size:10px;font-weight:700;color:#fff;background:var(--hb-neutral,#3a4a5c);opacity:.5;flex:0 0 auto}
   .hb-msg .pdot.on{opacity:1;background:var(--hb-accent2,#16B8A6)}
   .hb-msg .hdbtn{border:0;background:transparent;color:var(--hb-muted,#3a4757)}
   .hb-msg .hdbtn:hover,.hb-msg .hdbtn.active{background:var(--hb-hover,#eef3f9);color:var(--hb-accent,#3D6FE0)}
@@ -169,7 +169,7 @@ export const CSS = `
     .hb-msg .mrail{padding-right:6px;align-items:center}
     .hb-msg .mnav,.hb-msg .mnav.sub{justify-content:center;padding:0;width:40px;min-height:36px}
     .hb-msg .mnav .mnl,.hb-msg .mcompose .mnl{display:none}
-    .hb-msg .mnav .mfn{position:absolute;top:0;right:-4px;min-width:14px;height:14px;font-size:9.5px;padding:0 3px}
+    .hb-msg .mnav .mfn{position:absolute;top:0;right:-4px;min-width:14px;height:14px;font-size:10px;padding:0 3px}
     .hb-msg .mcompose{width:40px;padding:0;justify-content:center;align-self:center}
     .hb-msg .mrules{display:none}
   }
