@@ -48,8 +48,9 @@ async def run(action: str, payload: dict, rec) -> dict:
                      text=f"{out.get('display') or when} — {what[:120]}",
                      extra={"id": tid, "src": f"worker:{tid}", "cron_id": out.get("id"),
                             "when": out.get("display") or when})
-            except Exception:  # noqa: BLE001
-                pass
+            except Exception as e:  # noqa: BLE001 — the reminder exists; only its visible row failed
+                from loguru import logger
+                logger.debug(f"worker_api_schedule: the scheduled-notice event was not emitted ({e!r})")
             return {"ok": True, "result": {"id": out.get("id"), "cuando": out.get("display") or when,
                                            "que": what,
                                            "ref": f"cron:{out.get('id')}"}}
