@@ -10,7 +10,8 @@ def test_tools_are_openai_functions():
                      "confirm_widget_delete", "authenticate_web", "login_done", "web_search", "search_listings",
                      "recall", "read_widget", "reopen_task", "resume_task",
                      "reveal_secret", "play_music", "play_video", "show_images", "reply_message", "connect_cluster",
-                     "cluster_send", "set_cluster_objective", "send_to_worker", "stop_worker", "answer_worker"}
+                     "cluster_send", "set_cluster_objective", "send_to_worker", "stop_worker", "answer_worker",
+                     "cancel_scheduled"}
     for t in router.tools():
         assert t["type"] == "function"
         assert "parameters" in t["function"]

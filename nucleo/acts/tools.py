@@ -89,6 +89,12 @@ def resume_task(args: dict, c) -> None:
                               apply_widget_data=c._apply_widget_data, emit=c.emit, acted=c.acted)
 
 
+def cancel_scheduled(args: dict, c) -> None:
+    """V2-883: one of his scheduled jobs, by its reference — the same door as the `cron.cancel` tag."""
+    from nucleo.flash.tool_executor_widget_calls import cron_cancel
+    cron_cancel(str(args.get("job") or "").strip() or c.operator_text or c.text, c.emit)
+
+
 def reopen_task(args: dict, c) -> None:
     if c.reopen_req["v"] is None:
         c.reopen_req["v"] = (args.get("query") or "").strip() or c.text
@@ -275,5 +281,5 @@ CATALOG = {f.__name__: f for f in (
     resume_task, reopen_task, reveal_secret, play_music, play_video, show_images, show_widget, show_panel,
     manage_widget_alias, close_widget, fullscreen_widget, arrange_canvas, reply_message, delete_widget,
     restore_widget, confirm_widget_delete, set_style_directive, authenticate_web, login_done, connect_cluster,
-    cluster_send, set_cluster_objective, send_to_worker, stop_worker, answer_worker,
+    cluster_send, set_cluster_objective, send_to_worker, stop_worker, answer_worker, cancel_scheduled,
 )}

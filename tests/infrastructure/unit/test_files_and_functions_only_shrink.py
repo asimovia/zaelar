@@ -72,7 +72,7 @@ FUNCTIONS = {
     'nucleo/pulse/workers.py::WorkersPulse._supervise_workers': 172,
     'nucleo/memory_agent/ingest_steps.py::file_the_atoms': 141,
     'nucleo/memory_agent/ingest_steps.py::gate_the_utterance': 164,
-    'nucleo/cli/worker_api_exec.py::_exec_allow': 216,   # V2-851 trim B: the spawn act went
+    'nucleo/cli/worker_api_exec.py::_exec_allow': 175,   # V2-883 merge: the scheduler's acts left for worker_api_schedule.run; V2-851 trim B: the spawn act went
     'nucleo/workers/providers/claude_map.py::_map': 126,   # V2-851 trim B: re-measured
     'nucleo/workers/providers/claude_start.py::start': 130,   # V2-851 trim B: re-measured
     'server/voice_status.py::brain_and_voice': 140,
@@ -102,7 +102,6 @@ BRANCHES = {
     'nucleo/flash/probe.py::run_turn': 124,
     'nucleo/flash/probe_decide.py::name_the_action': 106,
     'nucleo/flash/probe_mirrors.py::mirror_the_voice_backstops': 106,
-    'nucleo/cli/worker_api_exec.py::_exec_allow': 104,   # V2-851 trim B: the spawn act went
     'widgets/agenda/tasklists.py::apply': 115,
     'widgets/youtube/library.py::apply': 101,
 }

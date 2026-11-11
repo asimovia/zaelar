@@ -89,6 +89,11 @@ def _declarations(open_ids) -> str:
         except Exception as e:  # noqa: BLE001
             _note('catalogue declarations', e)
             pass
+    if lines:   # V2-883: a door outside the cards declares its turn acts too — an order over a job is not «missing»
+        from nucleo.flash import escalation_guard as _eg
+        acts = _eg.declared_turn_acts()
+        if acts:
+            lines.append(f"Also declared, outside the cards: {acts}")
     return "\n".join(lines)
 
 

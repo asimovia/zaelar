@@ -145,7 +145,7 @@ canvas#viz{position:absolute;left:0;right:0;bottom:0;width:100%;height:30px;disp
    video. */
 body:has(.hb-win.hb-cinema, .hb-win.hb-fullwide) #desk{transform:none;z-index:9300}
 /* panels/overlays live OUTSIDE #desk (top-right) → move them away from the right dock manually */
-body.chatdock-r .statuspanel,body.chatdock-r .cronpanel{right:calc(18px + var(--chatdock-r))}
+body.chatdock-r .statuspanel{right:calc(18px + var(--chatdock-r))}
 /* V2-689 — the wall's header IS the Toolbar component's geometry (44px, 12px padding, hairline under it) and
    carries its own ground, so the column reads as «header | content» instead of one undifferentiated panel. */
 .cw-head{display:flex;align-items:center;gap:var(--sp-2);min-height:44px;padding:0 var(--sp-3);flex:0 0 auto;
@@ -851,29 +851,10 @@ canvas#orb.frozen{opacity:.32;filter:grayscale(1)}
 /* widget desktop styling lives in app/widgets/desktop.js (the independent canvas module) */
 /* (The bottom-left connection line is gone — V2-542. Health is the ◉ up top, mic level is the orb.) */
 /* (Proactive pushes no longer float a toast — they surface as a live caption over the orb + a chat-wall entry.) */
-/* CRON PANEL — manage zaelar's proactive tasks (native Hermes crons). */
-.cronpanel{position:fixed;top:64px;right:18px;z-index:9001;width:360px;max-width:92vw;height:min(64vh,560px);
-  background:var(--hb-bg);border:1px solid var(--hb-line);border-radius:var(--hb-r-l);box-shadow:var(--hb-shadow-2);
-  display:none;flex-direction:column;overflow:hidden}
-.cronpanel.open{display:flex}
-.cron-list{flex:1 1 auto;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+/* Rows the periodic/scheduled tasks share with the status list (the old ⏰ panel and its form are gone, V2-883). */
 .cron-empty{color:var(--hb-muted-2);font-size:0.75rem;line-height:1.4;padding:6px 2px}
-.cron-row{display:flex;gap:8px;align-items:flex-start;background:var(--hb-bg-soft);
-  border:1px solid var(--hb-line-subtle);border-radius:var(--hb-r-m);padding:var(--sp-2) var(--sp-3)}
-.cron-main{flex:1 1 auto;min-width:0}
-.cron-name{font-weight:700;font-size:0.8125rem;color:var(--hb-ink)}
-.cron-meta{font-family:var(--mono);font-size:var(--fs-micro);color:var(--hb-muted);margin-top:1px}
-.cron-prompt{font-size:0.75rem;color:var(--hb-muted);margin-top:4px;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .cron-btns{display:flex;gap:5px;flex:0 0 auto}
 .cron-b.danger{color:var(--hb-risk);border-color:rgba(229,72,77,.4)}
-/* The slot exists so the form can be a reactive child of its own element (V2-738). It must not be the
-   flex item that gives way when the list is long: the list scrolls, the form stays whole. */
-.cron-slot{flex:0 0 auto}
-.cron-add{border-top:1px solid var(--hb-line);padding:10px 12px;display:flex;flex-direction:column;gap:7px}
-.cron-in{width:100%;border:1px solid var(--hb-line);border-radius:9px;padding:7px 9px;font-size:0.7812rem;font-family:var(--sans);background:var(--hb-bg);color:var(--hb-ink);resize:none}
-.cron-in:focus{border-color:var(--hb-accent);outline:none}
-.cron-create{background:var(--hb-accent);color:var(--canvas);border:none;border-radius:9px;padding:8px;font-size:0.8125rem;font-weight:600;cursor:pointer}
-@media(max-width:640px){ .cronpanel{left:12px;right:12px;width:auto;top:auto;bottom:12px;height:min(70vh,520px)} }
 /* STATUS — the ◉ toolbar icon colors by overall health; red BLINKS to grab attention. */
 .statusBtn{position:relative}
 /* V2-690 — the beacon stays a STATE indicator and stops being the one member of the tray with a frame of
@@ -1504,7 +1485,7 @@ body.dbg-resizing{cursor:ew-resize;user-select:none}
 /* when the column is open, offset the fixed layout by its width so nothing hides under it */
 body.dbg-open .canvas{right:var(--dbg-w)}
 body.dbg-open .trw{right:calc(18px + var(--dbg-w))}
-body.dbg-open .statuspanel,body.dbg-open .cronpanel{right:calc(18px + var(--dbg-w))}
+body.dbg-open .statuspanel{right:calc(18px + var(--dbg-w))}
 body.dbg-open .orbwrap{left:calc(50% - var(--dbg-w) / 2)}
 
 /* ── Apps window (V2-823): a WINDOW over the desk, never a full screen — the desk stays visible around it and the
