@@ -15,6 +15,9 @@ from search import asked as _asked
 from search import excluded as _excluded
 from search import row_fit as _fit
 
+#: Who filed a row this gate ruled out, on the rejected row (`provenance.FILED_BY` is the other engine filer).
+FILED_BY = "category gate"
+
 _MAX_ASKED = 900
 _HEAD_ASKED = 240            # the commissioning sentence, kept whole when `asked` has to be cut
 _MAX_RELAYED = 6
@@ -152,7 +155,7 @@ def _file(data: dict, off: list[dict]) -> None:
     cur = list(data.get("rejected") or [])
     seen = {(x.get("url") or x.get("title") or "").strip().lower() for x in cur}
     for r in off:
-        r = {**r, "source": "category gate"}            # the reason is ours (English), not the worker's words
+        r = {**r, "source": FILED_BY}                   # the reason is ours (English), not the worker's words
         key = (r.get("url") or r.get("title") or "").strip().lower()
         if key and key not in seen:
             seen.add(key)

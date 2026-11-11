@@ -105,10 +105,10 @@ export function favicon(host){
   return box;
 }
 
-// The first letter or digit of a name, as the stand-in for its missing photo. Any script: \p{L} / \p{N}.
-export function monogram(name){
-  const m = String(name||"").match(/[\p{L}\p{N}]/u);
-  const e = elem("span","hr-mono", m ? m[0].toLocaleUpperCase() : "·");
+// The stand-in for a missing photo: a NEUTRAL tile, no text (V2-876 P-40 — the initial it used to paint read as content).
+// `name` stays in the signature for the callers.
+export function monogram(_name){
+  const e = elem("span","hr-mono");
   e.setAttribute("aria-hidden","true");
   return e;
 }

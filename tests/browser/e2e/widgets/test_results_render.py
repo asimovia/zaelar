@@ -130,7 +130,8 @@ def test_the_header_stays_a_thin_band_and_results_start_high(results_tab):
 
 def test_the_four_tabs_are_there_and_the_results_still_paint(results_tab):
     # V2-822: no «process» tab — the errand's progress lives in the processes panel, not in its deliverable.
-    assert results_tab["tabs"] == ["results", "summary", "sources", "criteria"]
+    # V2-877 #9: a tab with nothing he can read is not offered — this sheet carries no criteria.
+    assert results_tab["tabs"] == ["results", "summary", "sources"]
     assert results_tab["cards"] == 2, "removing chrome must not remove content"
 
 

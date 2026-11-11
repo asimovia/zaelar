@@ -6185,6 +6185,17 @@ DOMAINS: list[dict] = [
                                  "blocklist, fail-open; the desktop geometry pinned unchanged",
             "ch": UNIT, "paths": ["tests/browser/unit/youtube/test_the_phone_player_fits_the_hand.py",
                                   "tests/browser/unit/youtube/test_a_video_its_owner_refuses_is_never_offered.py"]},
+        # V2-877 #9 / V2-876 P-40 — a phone showed the worker's status line, the sheet door's rule to the
+        # worker and the brief's checklist as the answer. Fixed by FIELD: state, quality_bar and min_candidates are not
+        # painted, an engine-filed rejection shows one line per filer in his language, ticks never reach the screen,
+        # an empty tab is not offered; on the phone one result per row, 16/14px, 44px actions, a neutral photo tile.
+        {"id": "4.460", "title": "The results sheet paints only what HE reads (no status line, no door rule, no worker "
+                                  "checklist, no ticks, no empty tab) and its list fits the hand on the phone (V2-877 #9)",
+            "ch": UNIT, "paths": ["tests/browser/unit/results/test_the_sheet_paints_only_what_he_reads.py"]},
+        # V2-877 #12 — Search opened from the catalog showed one operator's town under an endless «Searching…».
+        {"id": "4.461", "title": "A search card shows its own state or an empty one: no request fetches nothing, no "
+                                  "place reads his state or asks, and the header ends (V2-877 #12)",
+            "ch": UNIT, "paths": ["tests/browser/unit/search/test_a_search_card_shows_its_own_state.py"]},
     ]},
     {"id": "5", "name": "CONECTORES", "nodes": [
         # V2-559 — el operador siguió la guía, creó la contraseña de aplicación y pegó el ENLACE de esa

@@ -3,7 +3,7 @@
 
 import { findFocused, gridStyle, makeCard, renderDetail } from "./card.js";
 import { identityStrip, layoutFor } from "./parts.js";
-import { CRIT_SECTIONS, SOURCE_STATUS, critLabel, critNote, elem, sourceLabel, tt } from "./shared.js";
+import { CRIT_SECTIONS, SOURCE_STATUS, critLabel, critNote, elem, prose, sourceLabel, tt } from "./shared.js";
 
 // ── TAB 1 · RESULTS ─────────────────────────────────────────────────────────────────────────────────────────
 export function paintResults(panel, data, ctx, nav){
@@ -65,13 +65,9 @@ export function paintSummary(panel, data){
     panel.appendChild(identityStrip(data.identity));   // the audit ids belong to this tab now — see render()'s note (V2-538)
     return;
   }
-  if(s.state){
-    const row=elem("div","hr-state");
-    const done=/termin|complet|listo|entregad|finaliz/i.test(s.state);
-    row.appendChild(elem("span","hr-dot "+(done?"ok":"idle")));
-    row.appendChild(elem("span","", s.state));
-    panel.appendChild(row);
-  }
+  // `state` is NOT painted (V2-877 #9). It is the worker's status line for its own process («verifying the
+  // finalists», «delivered: 12 …») — what the errand is doing lives in the processes panel (V2-822), and a
+  // finished one is said by the sheet's own title and subtitle. On his screen it read as engine prose.
   const stats=elem("div","hr-stats");
   const add=(value, label, tone)=>{
     const box=elem("div","hr-stat"+(tone?" "+tone:""));
@@ -98,12 +94,12 @@ export function paintSummary(panel, data){
   if(s.round && s.round > 1) add(s.round, tt("round", null, "ronda"));
   panel.appendChild(stats);
 
-  if(s.note) panel.appendChild(elem("div","hr-why", s.note));
+  if(s.note) panel.appendChild(elem("div","hr-why", prose(s.note)));
 
   if(Array.isArray(s.steps) && s.steps.length){
     panel.appendChild(elem("div","hr-cgt",tt("what_was_done", null, "Lo que se ha hecho")));
     const ul=elem("ul","hr-steps");
-    s.steps.forEach(st=>ul.appendChild(elem("li","", st)));
+    s.steps.forEach(st=>ul.appendChild(elem("li","", prose(st))));
     panel.appendChild(ul);
   }
 
@@ -113,7 +109,7 @@ export function paintSummary(panel, data){
   // selection»: a rejected candidate on it would be exactly the confusion the worker guide forbids.
   const rej = Array.isArray(data.rejected) ? data.rejected : [];
   if(rej.length){
-    panel.appendChild(elem("div","hr-cgt", tt("discarded_title", null, "Descartados, y por qué")));
+    panel.appendChild(elem("div","hr-cgt hr-cgt-next", tt("discarded_title", null, "Descartados, y por qué")));
     const ul=elem("ul","hr-rejected");
     rej.forEach(r=>{
       const li=elem("li","");
@@ -124,7 +120,10 @@ export function paintSummary(panel, data){
       } else {
         li.appendChild(elem("span","hr-rej-t", name));
       }
-      if(r && r.why) li.appendChild(elem("span","hr-rej-w", String(r.why)));
+      // `reason` is the user-facing line `data.py` derives for a row the ENGINE filed (its `why` is addressed to the
+      // worker); a row the worker filed carries its own words in `why`.
+      const why = r && (r.reason || r.why);
+      if(why) li.appendChild(elem("span","hr-rej-w", prose(why)));
       ul.appendChild(li);
     });
     panel.appendChild(ul);
@@ -194,10 +193,11 @@ export function paintCriteria(panel, data){
       + tt("criteria_empty_3", null, "hablando.")));
     return;
   }
-  if(c.goal) panel.appendChild(elem("div","hr-goal", c.goal));
+  if(c.goal) panel.appendChild(elem("div","hr-goal", prose(c.goal)));
   const meta=[];
   if(c.domain) meta.push(c.domain);
-  if(c.min_candidates) meta.push(tt("min_breadth", {n:c.min_candidates}, `amplitud mínima: ${c.min_candidates} candidatos`));
+  // `min_candidates` is not painted: it is the worker's breadth FLOOR (how many to look at), a budget of the
+  // executor, not something he asked for or can check on the sheet (V2-877 #9).
   if(c.n_final) meta.push(tt("n_final", {n:c.n_final}, `entrega: ${c.n_final} finalistas`));
   if(meta.length) panel.appendChild(elem("div","hr-sub", meta.join(" · ")));
 
@@ -210,7 +210,7 @@ export function paintCriteria(panel, data){
     if(_note){ t.appendChild(document.createTextNode(" ")); t.appendChild(elem("em","","— "+_note)); }
     grp.appendChild(t);
     const ul=elem("ul","hr-clist");
-    list.forEach(x=>ul.appendChild(elem("li","", x)));
+    list.forEach(x=>ul.appendChild(elem("li","", prose(x))));
     grp.appendChild(ul);
     panel.appendChild(grp);
   });
