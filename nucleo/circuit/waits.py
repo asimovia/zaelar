@@ -15,11 +15,8 @@ from loguru import logger
 from nucleo.circuit import progress as _progress
 
 
-def _store():
-    """The task table, read through the ledger's `store()` so `memory.tasks_store` keeps ONE production importer (the
-    memory boundary ratchet counts exactly that). Lazy: the ledger re-exports this module while it loads."""
-    from nucleo.circuit import ledger
-    return ledger.store()
+def _store():   # the task table through the ledger (one importer of `memory.tasks_store`); lazy: the ledger loads us
+    return __import__("nucleo.circuit.ledger", fromlist=["x"]).store()
 
 
 def _settle(**kw) -> None:
