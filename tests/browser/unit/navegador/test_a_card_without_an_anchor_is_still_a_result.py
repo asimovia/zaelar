@@ -59,7 +59,7 @@ def _extract(page, html: str, limit: int = 20):
 
 def test_una_tarjeta_sin_ancla_sale_con_nombre_y_precio(_page):
     rows = _extract(_page, _KAYAK_SHAPED)
-    assert len(rows) == 3, f"tres tarjetas con precio son tres filas, no {len(rows)}"
+    assert len(rows) == 3, f"tres apps con precio son tres filas, no {len(rows)}"
     por_precio = {r["price"]: r for r in rows}
     assert set(por_precio) == {"22 €", "17 €", "31 €"}
     # The name is the card’s LONG accessible name, not the price’s short label («22 € en total»)

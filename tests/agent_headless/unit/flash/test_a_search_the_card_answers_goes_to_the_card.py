@@ -71,4 +71,4 @@ def test_the_turn_asks_before_it_searches():
     post = open("nucleo/flash/post_stream.py", encoding="utf-8").read()
     assert "voice_instead_of_a_search(" in words
     assert post.index("complete_the_acts(") < post.index("run_the_light_lanes("), \
-        "the card is asked BEFORE the web"
+        "the app is asked BEFORE the web"

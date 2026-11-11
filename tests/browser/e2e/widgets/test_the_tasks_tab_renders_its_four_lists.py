@@ -288,7 +288,7 @@ def test_and_clicking_it_asks_the_server_to_reopen_THAT_task(seen):
     # `hb:*` document event instead — asserted here, because a POST that opens nothing is a dead button
     # with a green network tab.
     assert seen["done"].get("opened") == ["results::b1"], (
-        f"the reply came back and no card was asked for: {seen['done'].get('opened')}")
+        f"the reply came back and no app was asked for: {seen['done'].get('opened')}")
 
 
 def test_a_recurring_task_shows_its_cadence_and_its_next_moment(seen):

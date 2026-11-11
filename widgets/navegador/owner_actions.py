@@ -133,7 +133,7 @@ async def _announce(task_id: str, goal: str, summary: str, ok: bool, success: bo
         # is not on screen is how it narrates a screen the operator cannot see).
         _sheet = str((tasks.get(task_id) or {}).get("sheet") or "")
         tail = ("the Process tab of that sheet shows where the browser went." if _sheet else
-                f"the card '{tasks.inst_id(task_id)}' only shows where the browser went.")
+                f"the app '{tasks.inst_id(task_id)}' only shows where the browser went.")
         task_event.told(f"Browser task: {head} «{goal}». {summary} What it found is on the results sheet; {tail}",
                         key=f"nav:{task_id}:end", ok=bool(ok and success), speak=False)
     except Exception as e:  # noqa: BLE001

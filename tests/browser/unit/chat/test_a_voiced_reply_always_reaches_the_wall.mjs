@@ -42,7 +42,7 @@ export const agentRows = () => msgs.filter(m => m.role === "agent").map(m => m.t
 const S = await import("data:text/javascript," + encodeURIComponent(shim));
 
 const T = "T6·2a8b";
-const REPLY = "…ya lo tienes redactado en la tarjeta de mensajería. Míralo y dime si lo envío.";
+const REPLY = "…ya lo tienes redactado en la app de mensajería. Míralo y dime si lo envío.";
 const TAIL = " Eso sí: no le he enviado nada a nadie, no ha salido ningún mensaje.";
 
 // ── 1 · the filler opened the utterance: the reply is written when it is owed ─────────────────────────────

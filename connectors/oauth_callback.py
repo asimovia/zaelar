@@ -66,8 +66,8 @@ def page(ok: bool, detail: str, *, family: str, provider: str = "", label: str =
     title = text("oauth.page.connected", "{label} connected", label=label) if ok else \
         text("oauth.page.failed", "Could not connect")
     icon = "✅" if ok else "⚠️"
-    body = (done or text("oauth.page.done", "You can go back to your zaelar card. This window closes by itself.")) \
-        if ok else text("oauth.page.detail", "Detail: {detail}. Close this window and try again from the card.",
+    body = (done or text("oauth.page.done", "You can go back to your zaelar app. This window closes by itself.")) \
+        if ok else text("oauth.page.detail", "Detail: {detail}. Close this window and try again from the app.",
                         detail=detail)
     msg = json.dumps({"zaelar": "connector", "family": family, "provider": provider, "ok": bool(ok)})
     return (

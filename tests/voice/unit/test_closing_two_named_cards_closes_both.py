@@ -37,7 +37,7 @@ def test_a_second_call_for_the_second_card_is_not_dropped_nor_doubled(canvas):
     for wid in ("agenda", "mensajeria"):
         st.close_dispatch({"widget_id": wid}, tag, lambda *a, **k: None, text="close the calendar and the messages",
                           done=done)
-    assert closed == ["agenda", "mensajeria"], "each card once"
+    assert closed == ["agenda", "mensajeria"], "each app once"
 
 
 def test_minimize_takes_only_the_card_it_names(canvas):

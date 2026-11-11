@@ -14,7 +14,7 @@ Un «abre la agenda» NO puede ejecutar una mutación que el operador no pidió:
 Lo que costó una segunda vuelta fue CÓMO reconocerlo. La primera versión preguntaba «¿es una acción de
 vista?», y eso veta de más: medido el 2026-09-16, «abre música y sigue con la pista» se lee como show puro —
 «sigue» está deliberadamente fuera de la tabla de activación porque el stem choca con «el siguiente» — así
-que un `resume` bien elegido se descartaba y el operador se quedaba mirando una tarjeta quieta.
+que un `resume` bien elegido se descartaba y el operador se quedaba mirando una app quieta.
 
 La salida NO era ampliar la tabla de verbos: es el movimiento que V2-712 acaba de retirar del
 consentimiento, crece un incidente cada vez y la frase siguiente se escribe de otra forma. Así que **lo

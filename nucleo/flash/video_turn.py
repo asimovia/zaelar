@@ -209,7 +209,7 @@ def voice_execute(args: dict, text: str, emit, apply_widget_data, deduped: dict,
     _cvis.present("youtube", reason="turn-order", src="flash", emit=emit, text=text, brief=brief)
     # V2-402 — a media SEARCH (action=list) fills the player's LIST, never the results sheet.
     op, lbl = voice_dispatch(args.get("action"))
-    # V2-756 — y si el veredicto nombraba OTRA acción de la misma tarjeta, que quede escrito. Sesión
+    # V2-756 — y si el veredicto nombraba OTRA acción de la misma app, que quede escrito. Sesión
     # 74be8e9a: «Ahora quiero que me pongas el vídeo número tres» sobre una banda ya numerada volvió como
     # `play_video(action=list)` —una búsqueda— tres turnos seguidos, con el brief diciendo
     # `youtube:play_result` a 0,95/0,90/0,86. La llamada del modelo corre igual (V2-754: una llamada

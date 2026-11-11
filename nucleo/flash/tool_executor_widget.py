@@ -37,7 +37,7 @@ def build(*, self, brain, emit, text, operator_text, _brief, canvas_h, aside, _s
         return _txw_calls._tag_emit(action, extra, _apply_widget_data=_apply_widget_data, _brief=_brief, _is_meta_widget_question=_is_meta_widget_question, _norm_nfkd=_norm_nfkd, _on_tool_call=_on_tool_call, _request_delete_confirm=_request_delete_confirm, _show_guard_target=_show_guard_target, _show_target_instance=_show_target_instance, _shown_ids=_shown_ids, _spawn=_spawn, acted=acted, aside=aside, brain=brain, canvas_h=canvas_h, deduped=deduped, emit=emit, escalate_req=escalate_req, text=text)
 
     def _request_delete_confirm(widget_id: str, turn_text: str) -> None:
-        """FlashBrain pide BORRAR un widget → abre la CONFIRMACIÓN (overlay Sí/No en la tarjeta); el borrado
+        """FlashBrain pide BORRAR un widget → abre la CONFIRMACIÓN (overlay Sí/No en la app); el borrado
         real solo ocurre al confirmar. Resuelve el id flojito contra el catálogo (el modelo/STT no siempre
         dan el id exacto)."""
         try:
@@ -52,9 +52,9 @@ def build(*, self, brain, emit, text, operator_text, _brief, canvas_h, aside, _s
             from nucleo.flash import router as _router
             if _router.looks_like_close(turn_text):
                 _t = _close_target(wid, turn_text)
-                if _t["ask"]:                       # V2-259 F3: varias tarjetas de esa pieza → se PREGUNTA
+                if _t["ask"]:                       # V2-259 F3: varias apps de esa pieza → se PREGUNTA
                     clarify["msg"] = _t["ask"]
-                    emit("brain", "❓ cerrar: varias tarjetas abiertas", text=wid, role="system",
+                    emit("brain", "❓ cerrar: varias apps abiertas", text=wid, role="system",
                          extra={"options": _t["options"]})
                     return
                 for _cid in with_also_named(_t.get("ids") or [_t["id"] or wid], turn_text):
@@ -89,7 +89,7 @@ def build(*, self, brain, emit, text, operator_text, _brief, canvas_h, aside, _s
 
     def _request_data_confirm(widget_id: str, action_name: str, payload: dict) -> None:
         """El FlashBrain quiere ejecutar una data-op IRREVERSIBLE (`confirm:true` en el manifest, V2-025) →
-        abre la CONFIRMACIÓN (overlay Sí/No en la tarjeta) guardando la MUTACIÓN; solo al decir "sí" se
+        abre la CONFIRMACIÓN (overlay Sí/No en la app) guardando la MUTACIÓN; solo al decir "sí" se
         despacha por `apply_action` — jamás se escala a código. Espejo de `_request_delete_confirm`.
 
         The VERDICT is `confirm_gate.decide` (V2-707 F6): a radius that contradicts the count in his

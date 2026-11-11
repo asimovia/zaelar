@@ -59,7 +59,7 @@ def test_chatter_and_complaints_still_license_nothing(txt):
     "Johnny, cierra todos los widgets.",      # the order he gave at 09:38:43, which DID work
     "cierra todo",
     "ciérralo todo ya",
-    "quita todas las tarjetas",
+    "quita todas las apps",
     "limpia la pantalla",
     "cierra las ventanas",
     "close everything",

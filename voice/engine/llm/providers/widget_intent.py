@@ -53,10 +53,10 @@ def _is_meta_widget_question(n: str) -> bool:
 
 
 def _show_target_instance(wid: str, text: str = "", last_spoken: str = "") -> dict:
-    """A QUÉ tarjeta va este «enséñamelo» (V2-300) — hermana de `_close_target`, mismo fail-soft: si no se
+    """A QUÉ app va este «enséñamelo» (V2-300) — hermana de `_close_target`, mismo fail-soft: si no se
     puede saber qué hay abierto, se muestra la base como siempre.
 
-    `text` es el turno del operador: con varias tarjetas abiertas, «las dos» resuelve a todas en vez de
+    `text` es el turno del operador: con varias apps abiertas, «las dos» resuelve a todas en vez de
     preguntar (V2-530).
 
     `last_spoken` es lo ÚLTIMO que dijimos (V2-605): si ya era esta misma pregunta, no se vuelve a hacer — se
@@ -70,7 +70,7 @@ def _show_target_instance(wid: str, text: str = "", last_spoken: str = "") -> di
 
 
 def _close_target(wid: str, text: str = "") -> dict:
-    """A QUÉ tarjeta va este cierre (V2-259 F3). Una sola decisión para los TRES puntos de este fichero que
+    """A QUÉ app va este cierre (V2-259 F3). Una sola decisión para los TRES puntos de este fichero que
     emiten `widget/close` con id — escribir la regla tres veces es cómo se llega a que falte en uno.
 
     Fail-soft hacia el comportamiento de SIEMPRE: si no se puede saber qué hay abierto, cierra como antes. Una
@@ -162,7 +162,7 @@ def _widget_fallback(text: str, emit, ask=None, last_spoken: str = "", brief=Non
             if _t["ask"]:
                 if ask:
                     ask(_t["ask"])
-                    emit("brain", "❓ cerrar: varias tarjetas abiertas", text=wid, role="system",
+                    emit("brain", "❓ cerrar: varias apps abiertas", text=wid, role="system",
                          extra={"options": _t["options"]})
                     return True
                 return False        # sin canal para preguntar, mejor no cerrar a ciegas
@@ -180,7 +180,7 @@ def _widget_fallback(text: str, emit, ask=None, last_spoken: str = "", brief=Non
             if _t["ask"]:
                 if ask:
                     ask(_t["ask"])
-                    emit("brain", "❓ mostrar: varias tarjetas abiertas", text=wid, role="system",
+                    emit("brain", "❓ mostrar: varias apps abiertas", text=wid, role="system",
                          extra={"options": _t["options"]})
                     return True
                 # No channel to ask through: SHOW the base, exactly as before. Staying silent here would

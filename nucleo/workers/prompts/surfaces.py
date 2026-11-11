@@ -44,7 +44,7 @@ def library_block() -> str:
             f"«sus archivos» (ni tu directorio de trabajo, ni el del navegador, ni Descargas del sistema). Para "
             f"GUARDAR un texto como fichero: escribe el JSON {{\"name\": \"…\", \"text\": \"…\"}} a `doc.json` y "
             f"`python -m nucleo.cli.widget data archivos save_document @doc.json` — lo deja en documents/ y abre esa "
-            f"carpeta en la tarjeta. Un fichero que ya tienes en disco (un PDF descargado) se copia dentro de "
+            f"carpeta en la app. Un fichero que ya tienes en disco (un PDF descargado) se copia dentro de "
             f"`{root}/<carpeta>/` y luego `python -m nucleo.cli.widget data archivos refresh`. Si el texto ya está "
             f"en la hoja `documento`, `python -m nucleo.cli.widget data documento save_to_library` lo guarda sin "
             f"volver a traerlo.")

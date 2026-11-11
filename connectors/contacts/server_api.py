@@ -18,7 +18,7 @@ router = APIRouter()
 DOOR = Door(prefix="/api/contacts", family="contactos", oauth=oauth, providers=providers,
             status=lambda: {"ok": True, "providers": oauth.status()},
             label="Google Contacts", provider="google-contacts",
-            done="Go back to the Contacts card and press «Sync contacts».", done_key="oauth.contacts.done",
+            done="Go back to the Contacts app and press «Sync contacts».", done_key="oauth.contacts.done",
             error_key="oauth.err.google", error_default="Google returned an error: {error}", error_status=400)
 status, connect, callback, disconnect = register(router, DOOR)
 _page = DOOR.page

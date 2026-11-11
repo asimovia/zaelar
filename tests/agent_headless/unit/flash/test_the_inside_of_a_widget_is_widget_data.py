@@ -47,7 +47,7 @@ def test_the_canvas_block_teaches_the_inside_with_a_concrete_example():
 def test_a_yes_to_your_own_offer_is_an_order_to_execute_it():
     """First failure of the night: «Sí.» after «¿Quieres que lo abra?» re-showed the card."""
     src = _prompt_src()
-    assert "OFERTA que TÚ acabas de hacer" in src and "no de volver a enseñar la tarjeta" in src
+    assert "OFERTA que TÚ acabas de hacer" in src and "no de volver a enseñar la app" in src
 
 
 # ── The tool descriptions carry the same map ────────────────────────────────────────────────────────────────
@@ -61,7 +61,7 @@ def test_widget_data_owns_in_widget_navigation():
 def test_show_widget_points_the_inside_at_widget_data():
     desc = _tool("show_widget")["description"]
     assert "DE DENTRO" in desc and "widget_data" in desc
-    assert "repetir show" in desc, "the uselessness of re-showing an on-screen card is the teachable fact"
+    assert "repetir show" in desc, "the uselessness of re-showing an on-screen app is the teachable fact"
 
 
 def test_the_catalogs_the_tool_cites_actually_exist_in_the_resources_block():

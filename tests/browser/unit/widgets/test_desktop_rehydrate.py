@@ -176,7 +176,7 @@ def test_interrupted_work_is_not_painted_as_a_success():
     assert '"done" : "cut"' in row, "an unrecognised ending still paints as a success"
 
 
-# ── 5. ESCALAR la tarjeta a mano y que el esfuerzo no se pierda (2026-08-12) ─────────────────────────────────
+# ── 5. ESCALAR la app a mano y que el esfuerzo no se pierda (2026-08-12) ─────────────────────────────────
 # Operator request for the results sheet, resolved in the CANVAS because it applies to every widget: "if
 # I want it full-screen it has to occupy a large part of the frontend, or I can move it manually by grabbing
 # the corners". Until now there was only NATIVE fullscreen (which covers the orb and chat, making it impossible
@@ -185,7 +185,7 @@ def test_every_card_can_be_grabbed_by_its_corners_and_edges():
     src = _desktop()
     for dir_ in ("nw", "ne", "sw", "se", "n", "s", "e", "w"):
         assert '"hb-rz hb-rz-"+dir' in src or f"hb-rz-{dir_}" in src
-    assert "_wireResize(card" in src and "MIN_W" in src, "con un mínimo: una tarjeta de 0px no se recupera"
+    assert "_wireResize(card" in src and "MIN_W" in src, "con un mínimo: una app de 0px no se recupera"
 
 
 def test_the_size_the_operator_chose_survives_a_refresh():
@@ -198,7 +198,7 @@ def test_the_size_the_operator_chose_survives_a_refresh():
     start = src.index("_layout()")
     layout = src[start:src.index("return items;", start)]
     assert "w:c.style.width" in layout.replace(" ", "") and "h:c.style.height" in layout.replace(" ", "")
-    assert "_applyGeom(card, pos.w, pos.h)" in src, "y se vuelve a aplicar al restaurar"
+    assert "_applyGeom(app, pos.w, pos.h)" in src, "y se vuelve a aplicar al restaurar"
 
 
 def test_fullscreen_keeps_the_voice_reachable_unless_the_widget_says_otherwise():

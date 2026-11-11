@@ -49,13 +49,13 @@ def build(*, self, brain, emit, text, operator_text, _brief, canvas_h, aside, _s
 
     def _finish_web_auth() -> None:
         """El operador dijo por voz que ya inició sesión → encola `auth_done` a la tarea que esperaba login
-        (mismo desenlace que el botón «Ya he iniciado sesión» de la tarjeta). Operator-only por construcción."""
+        (mismo desenlace que el botón «Ya he iniciado sesión» de la app). Operator-only por construcción."""
         from nucleo.flash import web_auth as _wa_f
         _wa_f.finish("voz")     # V2-176: un solo cuerpo, compartido con el canal de texto
 
     def _start_web_auth(site: str) -> bool:
         """Abre la ventana REAL del navegador para que el operador inicie sesión en `site` (operator-only por
-        construcción: es un tool del FlashBrain, y el canal de cluster no tiene tools). Crea la tarjeta de la
+        construcción: es un tool del FlashBrain, y el canal de cluster no tiene tools). Crea la app de la
         tarea, la muestra y encola `authenticate` al owner del navegador. El owner relanza headed y, al terminar
         (auth_done), vuelve a headless con la sesión en el perfil. NUNCA tecleamos credenciales aquí.
         Bug 2026-07-23: sin `site` (el backstop no reconoció ningún sitio en el texto) esto abría SIEMPRE

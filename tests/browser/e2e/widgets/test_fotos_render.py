@@ -109,7 +109,7 @@ def test_it_mounts_with_no_page_errors(playwright_available):
     m = _run([({**_BASE, "items": _items(3), "total": 3}, False)])[0]
     assert m["mounted"], "the gallery did not paint"
     assert m["errors"] == [], m["errors"]
-    assert m["nested"] == 0, "the card must re-render at its ROOT, never inside itself (V2-124)"
+    assert m["nested"] == 0, "the app must re-render at its ROOT, never inside itself (V2-124)"
 
 
 def test_a_thousand_photos_do_not_become_a_thousand_dom_nodes(playwright_available):
@@ -145,4 +145,4 @@ def test_the_search_box_is_present_when_connected(playwright_available):
 def test_an_empty_gallery_paints_a_note_not_a_silent_blank(playwright_available):
     m = _run([({**_BASE, "items": [], "total": 0}, False)])[0]
     assert m["tiles"] == 0
-    assert m["mounted"], "the card itself must still render"
+    assert m["mounted"], "the app itself must still render"

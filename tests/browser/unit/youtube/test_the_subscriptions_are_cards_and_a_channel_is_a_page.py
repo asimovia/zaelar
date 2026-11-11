@@ -136,7 +136,7 @@ def test_the_channels_are_cards_with_picture_subscribers_videos_and_the_count(_p
     assert "Buscando datos del canal" in cards.nth(1).inner_text()
     assert _page.locator(".hb-yt-subs .hb-yt-homecount").inner_text() == "2", "how many he follows, by the title"
     assert "no te suscribe en YouTube" in _page.locator(".hb-yt-secnote").inner_text()
-    assert "sync_channels" in _names(_page), "a card without its facts asks for them"
+    assert "sync_channels" in _names(_page), "a app without its facts asks for them"
 
 
 def test_a_card_click_opens_the_channel_and_its_buttons_do_not(_page):

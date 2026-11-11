@@ -121,7 +121,7 @@ def page():
                 const m = await import(`http://127.0.0.1:${port}/frontend/app/widgets/desktop.js?v=1`);
                 window.__desk = new m.Desktop(document.getElementById('wstage'));
             }""", [port, CHAT_W])
-            assert not errors, f"the canvas threw before a card was asked for: {errors}"
+            assert not errors, f"the canvas threw before an app was asked for: {errors}"
             pg._hb_errors = errors
             yield pg
             browser.close()
@@ -191,7 +191,7 @@ def test_full_screen_covers_the_docked_chat_and_the_rail(page, wid):
     _full(page, wid, False)
     assert at_chat.startswith(f"card:{wid}"), \
         f"the docked chat is still on top of a full-screen «{wid}» ({at_chat}) — #desk is still the containing block"
-    assert at_rail.startswith(f"card:{wid}"), f"the bottom band still belongs to «{at_rail}», not to the card"
+    assert at_rail.startswith(f"card:{wid}"), f"the bottom band still belongs to «{at_rail}», not to the app"
     assert (g["x"], g["y"], g["rw"], g["rh"]) == (0, 0, VW, VH), f"«{wid}» does not cover the screen: {g}"
 
 
@@ -272,7 +272,7 @@ def test_a_double_click_the_widget_OWNS_is_left_to_the_widget(page):
     own = page.evaluate("() => window.__ownDbl")
     _full(page, "hoja", False)
     assert own >= 1, "the widget's own double click did not run"
-    assert still, "a double click the widget handles itself ALSO threw the card out of full screen"
+    assert still, "a double click the widget handles itself ALSO threw the app out of full screen"
 
 
 def test_a_double_click_in_a_field_selects_a_word_and_nothing_else(page):
@@ -317,7 +317,7 @@ def test_asking_twice_for_full_screen_does_not_take_it_back_out(page):
     _full(page, "hoja", True)
     still = _is_full(page, "hoja")
     _full(page, "hoja", False)
-    assert still, "a second «on» toggled the card back out"
+    assert still, "a second «on» toggled the app back out"
 
 
 def test_leaving_a_card_that_is_not_full_screen_touches_nothing(page):
@@ -327,7 +327,7 @@ def test_leaving_a_card_that_is_not_full_screen_touches_nothing(page):
     before = _geom(page, "hoja")
     _full(page, "hoja", False)
     after = _geom(page, "hoja")
-    assert _same_place(before, after), f"leaving on a normal card moved it: {before} → {after}"
+    assert _same_place(before, after), f"leaving on a normal app moved it: {before} → {after}"
 
 
 def test_leaving_needs_no_name(page):

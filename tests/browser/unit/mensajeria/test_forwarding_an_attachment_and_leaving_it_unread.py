@@ -244,7 +244,7 @@ def test_a_description_finds_a_mail_that_only_lives_in_its_thread(box):
 
 
 # ── demo passes 38-53 (2026-09-29), E3: the mail on the card came WITHOUT its files ──────────────────────────────
-# Six passes ended «el mensaje que él señaló no está en la tarjeta con sus adjuntos todavía»: the receipt had been
+# Six passes ended «el mensaje que él señaló no está en la app con sus adjuntos todavía»: the receipt had been
 # brought back from the archive (a row, no bytes) and the forward's pre-check found nothing on disk. The archive
 # keeps the mailbox UID, so the files are ONE read-only IMAP fetch away — done in the turn, never a refusal that
 # sends the operator to «open it» again.

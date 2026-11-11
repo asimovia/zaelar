@@ -414,7 +414,7 @@ def test_route_video_adopts_the_id_shows_the_player_and_pauses_music(monkeypatch
     assert shown and shown[0]["id"] == "youtube"
     assert shown[0]["src"] != "user", (
         '`src` must never be "user" — sse.js discards a show event with that src as its own echo, '
-        "so the card this call exists to raise would never open (V2-658)")
+        "so the app this call exists to raise would never open (V2-658)")
 
 
 def test_route_video_never_shows_or_pauses_on_a_refusal(monkeypatch):
@@ -445,7 +445,7 @@ def test_route_audio_files_it_then_hands_the_relative_path_to_music(monkeypatch)
     assert shown and shown[0]["id"] == "musica"
     assert shown[0]["src"] != "user", (
         '`src` must never be "user" — sse.js discards a show event with that src as its own echo, '
-        "so the card this call exists to raise would never open (V2-658)")
+        "so the app this call exists to raise would never open (V2-658)")
 
 
 def test_route_audio_never_reaches_music_when_filing_fails(monkeypatch):

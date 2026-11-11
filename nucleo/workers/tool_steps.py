@@ -12,7 +12,7 @@ import re
 
 def _tool_phase(tool: str, tin: dict | None = None) -> str:
     """Etiqueta de fase humana a partir de la tool que el worker acaba de invocar. Para Bash mira el COMANDO
-    (demo 2026-07-14: un worker web emitía «ejecutando un paso…» perpetuo — la tarjeta/chip no contaban nada).
+    (demo 2026-07-14: un worker web emitía «ejecutando un paso…» perpetuo — la app/chip no contaban nada).
     Devuelve "" para NO emitir fase (hbnote: la fase legible la fija el propio reporte, no la pisamos).
 
     V2-227 ámbito B1 — la frase nombra AHORA el sitio concreto («entrando en booking.com», no «abriendo una

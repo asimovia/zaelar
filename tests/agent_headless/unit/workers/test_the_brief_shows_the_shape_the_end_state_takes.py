@@ -44,7 +44,7 @@ def test_the_playbook_carries_the_grammars_shape_and_what_its_card_declares(lang
     block = _block(name)
     assert spec_declares.SHAPE in block, f"[{lang}] the {name} playbook shows no shape for the end state"
     assert f"«{card}» declares:" in block and coll in block.split(f"«{card}» declares:", 1)[1][:160], \
-        f"[{lang}] the {name} playbook does not say what its deliverable card declares"
+        f"[{lang}] the {name} playbook does not say what its deliverable app declares"
     # the shape carries placeholders only — never a widget/value pair a worker could record as its own end state
     assert re.search(r'"widget": "<', spec_declares.SHAPE) and not re.search(r'"widget": "[a-z]', spec_declares.SHAPE)
 

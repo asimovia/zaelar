@@ -114,7 +114,7 @@ def test_the_list_grows_call_after_call_without_repeating_a_song(monkeypatch):
     assert counts == [3, 6, 8], "each batch is appended to the SAME list — he watches it grow"
     again = md.apply_action("add_tracks", {"playlist": "cumple 45-55", "tracks": SCENARIO[0]})
     assert again["added"] == 0 and again["count"] == 8
-    assert md._load_db()["view"] == {"kind": "playlist", "id": again["playlist"]}, "the card shows the list"
+    assert md._load_db()["view"] == {"kind": "playlist", "id": again["playlist"]}, "the app shows the list"
 
 
 def test_one_slow_provider_never_holds_the_card(monkeypatch):

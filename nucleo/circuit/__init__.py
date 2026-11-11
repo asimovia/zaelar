@@ -583,9 +583,9 @@ def refused(rec, action: str, payload: dict) -> str:
         return ""
     _refusal_event(rec, wid, own)
     if not own:
-        return (f"this errand delivers no card — its result is told (or simply done), so it opens nothing on his "
+        return (f"this errand delivers no app — its result is told (or simply done), so it opens nothing on his "
                 f"screen and «{wid}» stays closed. Read it with read_widget (nothing opens) and report your result.")
-    return (f"this errand's deliverable is the «{own}» card, and it is the only card the errand opens on his screen — "
+    return (f"this errand's deliverable is the «{own}» app, and it is the only app the errand opens on his screen — "
             f"«{wid}» stays closed. Read it with read_widget (nothing opens) and deliver your result into «{own}».")
 
 
@@ -603,7 +603,7 @@ def _end_state_cards(rec) -> set:
 def _refusal_event(rec, wid: str, own: str) -> None:
     try:
         from voice.observer import emit
-        emit("widget", "🚫 a card that is not the deliverable stays closed", role="system",
+        emit("widget", "🚫 an app that is not the deliverable stays closed", role="system",
              extra={"id": wid, "deliverable": own, "task": str(getattr(rec, "task_id", "") or "")})
     except Exception as e:  # noqa: BLE001 — an event that cannot be emitted never blocks the bridge
         __import__("logging").getLogger(__name__).debug("deliverable gate emit failed: %s", e)

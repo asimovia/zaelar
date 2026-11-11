@@ -4,7 +4,7 @@ Measured on a cloud session (2026-11-04), typed twice: «manda un mensaje a raqu
 llega». His directory holds ten Raquels. The model made no call, promised «te lo enseño antes de enviarlo», and the
 promise repair wrote `mensajeria:draft {contact: "Rakel Karó"}` — the name of a WhatsApp chat, a word nobody said.
 The card never asked «which Raquel?», the ask-once memory (V2-849) never started, and the draft was written behind
-a closed card while the reply said «ya lo tienes en la tarjeta, míralo». On the local engine the same sentence read
+a closed card while the reply said «ya lo tienes en la app, míralo». On the local engine the same sentence read
 the contacts card, got NOTHING back for «Raquel» (ten hits read as «a common word») and said «Raquel isn't listed».
 
 One door each:

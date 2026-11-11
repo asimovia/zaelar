@@ -57,7 +57,7 @@ def test_the_only_card_in_use_closes_when_he_says_close_everything(said):
     events, emit = _collect()
     kept = bulk_close.close_all(emit, src="flash", text=said, open_ids=["musica"])
     assert kept == []
-    assert _closed(events) == ["*ALL*"], "sparing the only card turned «close everything» into a no-op"
+    assert _closed(events) == ["*ALL*"], "sparing the only app turned «close everything» into a no-op"
 
 
 def test_the_spare_still_keeps_the_draft_among_other_cards():

@@ -196,5 +196,5 @@ def a_played(action: str, p: dict) -> dict:
         return {"ok": True, "counted": False}
     _d._push_recent(db, tr)
     _d._persist(db)
-    _log.debug(f"musica: recorded a play the card saw: {tr.get('title')!r}")
+    _log.debug(f"musica: recorded a play the app saw: {tr.get('title')!r}")
     return {"ok": True, "counted": True}

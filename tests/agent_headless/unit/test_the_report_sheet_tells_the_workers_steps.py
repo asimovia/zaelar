@@ -59,7 +59,7 @@ def _panel(emitted) -> list:
 def test_a_new_line_tells_the_processes_panel_and_no_card(surface, emitted):
     assert sheets.record_phase(_rec(surface=surface), "Leyendo tus mensajes enviados", 150)
     assert _panel(emitted) == ["t9"], "the panel must hear that this errand's process moved"
-    assert _cards(emitted) == [], "a card shows its deliverable, never the process (V2-822)"
+    assert _cards(emitted) == [], "a app shows its deliverable, never the process (V2-822)"
 
 
 @pytest.mark.parametrize("lang", sorted(PLANS))

@@ -163,4 +163,4 @@ def test_an_errand_that_is_one_part_of_a_sentence_is_judged_by_its_own_request(s
     for line, mine, others in ((lines[i], parts[i], parts[:i] + parts[i + 1:]) for i in range(3)):
         assert mine in line and said not in line and not any(o in line for o in others), line
     one = named_errand.card_line({"id": "9", "request": "x", "heard": said, "state": "running"})
-    assert said[:40] in one, "a single errand's card lost his words"
+    assert said[:40] in one, "a single errand's app lost his words"

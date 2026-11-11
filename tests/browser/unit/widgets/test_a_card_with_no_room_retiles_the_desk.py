@@ -82,7 +82,7 @@ def test_three_cards_on_a_small_desk_do_not_overlap():
                 page.wait_for_timeout(250)
             page.wait_for_timeout(400)
             assert page.evaluate("() => document.querySelectorAll('#stage .hb-win').length") == 3
-            assert not _overlaps(page), f"cards overlap after the third one found no room: {_overlaps(page)}"
+            assert not _overlaps(page), f"apps overlap after the third one found no room: {_overlaps(page)}"
             assert not errors, errors
             browser.close()
     finally:

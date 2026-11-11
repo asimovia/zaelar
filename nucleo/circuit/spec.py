@@ -391,7 +391,7 @@ def attest(e: dict | None, *, now: float | None = None) -> bool | None:
             _emit("❌ spec: sin cumplir todavía", e, missing=missing, checks=e["checks"])
         e["last_missing"] = missing
     elif e.get("last_seen") != "unreadable":
-        _emit("🫥 spec: no verificable — la tarjeta no lo declara", e)
+        _emit("🫥 spec: no verificable — la app no lo declara", e)
     e["last_seen"] = {True: "met", False: "unmet"}.get(out, "unreadable")
     if e.get("task_id"):
         persist(e["task_id"], e)
@@ -689,7 +689,7 @@ def _infer_messages(goal: str) -> list[dict]:
              + (f"The assistant is called {', '.join(sorted(_assistant_names()))}: when the errand addresses it by name, "
                 "that name is how he spoke to it, never a term to look for. " if _assistant_names() else "")
              + "Targets the widgets attest (target → widget:action):\n" + listing
-             + "\nWhat each card declares a clause may read (only these collections and fields):\n" + cards)},
+             + "\nWhat each app declares a clause may read (only these collections and fields):\n" + cards)},
         {"role": "user", "content": (goal or "").strip()[:1200]},
     ]
 
@@ -762,8 +762,8 @@ def session_goal(tid, done_when: dict) -> str:
         # THE DOOR TEACHES (V2-852 T10, C13): the worker wrote its goal in prose (`{"goal": "find the best…"}`) and it
         # was dropped in silence, so the row ended with no end state. Unreadable or only a card's presence → refused,
         # with why, so the worker writes it in the grammar against what the cards declare.
-        return ("unreadable end state: write what HE asked for in the grammar, on the card your work fills (prose, an "
-                "undeclared collection or only «the card has something» is not an end state)" + _spec_declares.said(done_when, str(getattr(r, "sheet", "") or "")))
+        return ("unreadable end state: write what HE asked for in the grammar, on the app your work fills (prose, an "
+                "undeclared collection or only «the app has something» is not an end state)" + _spec_declares.said(done_when, str(getattr(r, "sheet", "") or "")))
     r.done_when = dict(readable)
     r.last_event_at = time.time()
     _record_on_row(r)

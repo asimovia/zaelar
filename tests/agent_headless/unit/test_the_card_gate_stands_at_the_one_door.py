@@ -16,7 +16,7 @@ from nucleo import dispatch
 from nucleo.dispatch import confirm as _dconf
 from nucleo.workers.session_record import SessionRecord
 
-COMMISSION = ("Modificar el widget `youtube` del operador en dos cosas concretas: rediseñar el HEADER de la tarjeta "
+COMMISSION = ("Modificar el widget `youtube` del operador en dos cosas concretas: rediseñar el HEADER de la app "
               "para que quede más bonito y limpio")
 SURE = 0.95
 
@@ -55,7 +55,7 @@ def _run(req: str, verdict: str, monkeypatch) -> dict:
 
 def test_rewriting_a_card_of_his_parks_the_question_and_starts_no_worker(monkeypatch):
     seen = _run(COMMISSION, "change_card", monkeypatch)
-    assert not seen["passed"], "a card of his was going to be rewritten without asking"
+    assert not seen["passed"], "a app of his was going to be rewritten without asking"
     p = dispatch.pending_confirm()
     assert p and p["task_id"] == "c4" and p["code_change"] == "modify" and p["question"]
 

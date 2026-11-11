@@ -157,9 +157,9 @@ def test_a_long_playlist_never_pushes_the_header_or_footer_out_of_a_small_card(_
     assert geo["head"]["bottom"] <= geo["card"]["bottom"] + 1, "the header must stay inside the visible card"
     assert geo["bar"]["top"] >= geo["card"]["top"] - 1
     assert geo["bar"]["bottom"] <= geo["card"]["bottom"] + 1, \
-        "the playback bar must stay pinned at the foot of the card, never pushed off by a long list"
+        "the playback bar must stay pinned at the foot of the app, never pushed off by a long list"
     assert geo["midOverflowY"] == "auto" and geo["midOverflows"], \
-        "thirty tracks in a 420px card must overflow SOMEWHERE — the middle region is where"
+        "thirty tracks in a 420px app must overflow SOMEWHERE — the middle region is where"
     assert geo["outerOverflowY"] == "hidden", \
         "the card's own outer scroll must be switched off; an internal one owns the overflow instead"
 
@@ -186,4 +186,4 @@ def test_a_short_list_shows_everything_with_no_internal_scroll(_page):
     _mount(_page, _data(playlists=[pl], view={"kind": "playlist", "id": "short"}), card_w=440, card_h=900)
     mid_overflows = _page.evaluate(
         "() => { const m = document.querySelector('.hb-mus2-scroll'); return m.scrollHeight > m.clientHeight + 1; }")
-    assert not mid_overflows, "a single track in a 900px card has nothing to scroll"
+    assert not mid_overflows, "a single track in a 900px app has nothing to scroll"

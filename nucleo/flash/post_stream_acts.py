@@ -143,7 +143,7 @@ async def complete_the_acts(*, _apply_widget_data, _brief, _data_ops_hechas, _ha
                 _tag_emit("close", {"id": _cid})
             acted["widget"] = True
             _no_tool = False
-            emit("brain", "🔁 prometió cerrar sin tool — cierra la tarjeta", text=_ar_wid, role="system",
+            emit("brain", "🔁 prometió cerrar sin tool — cierra la app", text=_ar_wid, role="system",
                  extra={"cat": "flash", "widget": _ar_wid, "action": "close"})
             _ar_wid = ""
         from nucleo.acts import canvas_verdict as _cverdict
@@ -177,7 +177,7 @@ async def complete_the_acts(*, _apply_widget_data, _brief, _data_ops_hechas, _ha
             if _oc:
                 _pst._cvis.present_for_call(_oc["widget_id"], _oc["action"], brief=_brief, src="flash", emit=emit)   # V2-815
                 _apply_widget_data(_oc["widget_id"], _oc["action"], _oc["payload"])
-                emit("brain", "🔁 la orden era sobre otra tarjeta — la llamada, en una segunda pasada",
+                emit("brain", "🔁 la orden era sobre otra app — la llamada, en una segunda pasada",
                      role="system", text=f"{sorted(_ops_cards)} → {_oc['widget_id']}:{_oc['action']}",
                      extra={"cat": "flash", "widget": _oc["widget_id"], "action": _oc["action"]})
     if _repeat_repair["v"] and not clarify["msg"]:
@@ -206,7 +206,7 @@ async def complete_the_acts(*, _apply_widget_data, _brief, _data_ops_hechas, _ha
                                                  operator_text=_op_text)
         if _qlens:
             read_req["v"] = {"widget_id": _qlens, "question": _op_text}
-            emit("brain", "📖 una pregunta contestada solo con una vista — leo la tarjeta y contesto",
+            emit("brain", "📖 una pregunta contestada solo con una vista — leo la app y contesto",
                  text=f"{_qlens} ← {_op_text[:100]}", role="system", extra={"cat": "flash", "widget": _qlens})
     _out = locals()
     return {k: _out[k] for k in ('_named_by_verdict', '_no_tool', '_op_text', 'spoken_text', ) if k in _out}
@@ -241,7 +241,7 @@ async def speak_the_ops_answer(*, _brief, _op_text, _turn_op_tasks, data_done, r
     # The card of THIS turn already brought the answer: a web search next to it is the second-best source (full15
     # M1: «the search results only gave me quote pages, so I can't tell you»). The card answers; no search.
     if search_req["v"] is not None:
-        emit("brain", "🔎 la tarjeta ya trae la respuesta — la búsqueda web sobra", role="system",
+        emit("brain", "🔎 la app ya trae la respuesta — la búsqueda web sobra", role="system",
              text=f"{_op_answer[0]} ← {search_req['v'][:100]}", extra={"cat": "flash"})
         search_req["v"] = None
     from nucleo.flash import widget_read as _wread_oa

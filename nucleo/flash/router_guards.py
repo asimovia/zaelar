@@ -108,9 +108,9 @@ from .close_guards import (  # noqa: F401
 # Deterministic backstop (the same class as looks_like_close/stop): CREATE verb + 'widget', or 'NEW widget' →
 # it is a CREATE, not a show. Natural SYNONYMS for "widget" used by the operator (testing sea, 2026-07-21:
 # "créame un PANEL/GADGET" was not detected → the promise backstop did not escalate). ALWAYS gated by a create
-# verb → safe (does not capture "el panel de control del coche"). "tarjeta/cuadro/contador" require a preceding
+# verb → safe (does not capture "el panel de control del coche"). "app/cuadro/contador" require a preceding
 # create verb.
-_WIDGET_SYN = r"(?:widget|panel|gadget|tablero|contador|cuadro de mando|mini[- ]?app|tarjeta)"
+_WIDGET_SYN = r"(?:widget|panel|gadget|tablero|contador|cuadro de mando|mini[- ]?app|tarjeta|app)"
 _CREATE_WIDGET_RE = _re.compile(
     r"(\b(cre[ae](?!m(?:s|y)?\b)\w*|cr[eé][aá]me\w*|haz\w*|h[aá]zme\w*|hac[eé]\w*|hacer|hag\w*|gener\w*|mont\w*|dise[nñ]\w*|"
     r"constru\w*|prepar\w*|program\w*|make|build|create)\b[^.!?]{0,45}\b" + _WIDGET_SYN + r"\b)"
@@ -127,7 +127,7 @@ _CREATE_WIDGET_RE = _re.compile(
 # research: the failure was on the product's busiest path.
 #
 # The distinction is not an exception list ([[feedback_no_hardcoded_understand]]) but GRAMMAR: when the widget
-# follows a destination preposition («en el widget», «al panel», «dentro de la tarjeta», «into the widget»), it is
+# follows a destination preposition («en el widget», «al panel», «dentro de la app», «into the widget»), it is
 # WHERE the result goes, not the thing being built. The preceding verb describes what is placed there. These
 # mentions are neutralized BEFORE looking for the create pattern, so a sentence containing BOTH things
 # («créame un panel y entrégalo en el widget results») still detects the genuine create.
@@ -137,7 +137,7 @@ _CREATE_WIDGET_RE = _re.compile(
 #
 # THE INDEFINITE ARTICLE WAS THE GAP (2026-08-18, the same incident again). The article list contained only
 # DEFINITE articles, so «monta el resultado en UN widget del canvas» —the NATURAL way to say «ponlo en una
-# tarjeta», and what FlashBrain itself wrote when rephrasing the escalation— was not neutralized and fell into
+# app», and what FlashBrain itself wrote when rephrasing the escalation— was not neutralized and fell into
 # the generator again. Grammar does not change with the article: «en un widget» is still WHERE the result goes.
 # A genuine create has no preceding destination preposition («créame un widget», «build me a widget»), so
 # expanding the list takes nothing away from the create side.

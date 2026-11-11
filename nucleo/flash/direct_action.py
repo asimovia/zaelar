@@ -91,7 +91,7 @@ def resolve(commission: str, *, brief=None, swallowed=None, operator_text: str =
     p_card, p_action = _nt.parked_answer(operator_text or commission)
     if p_card:
         return {"widget": p_card, "action": p_action, "payload": {}, "key": "", "source": "parked-answer",
-                "label": f"{p_card}:{p_action} ← la tarjeta que nombra al contestar «¿cuál?»"}
+                "label": f"{p_card}:{p_action} ← la app que nombra al contestar «¿cuál?»"}
     wid, action = from_brief(brief)
     if not wid or not action:
         return {}

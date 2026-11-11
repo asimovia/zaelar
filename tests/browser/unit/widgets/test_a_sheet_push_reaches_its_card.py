@@ -73,7 +73,7 @@ def test_the_id_the_store_ANNOUNCES_is_the_id_the_canvas_looks_up(tmp_path, monk
     pushes = [s for s in seen if s[0] == "widget" and s[1] == "data"]
     assert pushes, "guardar una hoja no avisó al canvas"
     assert pushes[-1][2] == "results::7aadbb-1", (
-        f"el canvas indexa sus tarjetas por «results::7aadbb-1» y el aviso llegó como «{pushes[-1][2]}» — "
+        f"el canvas indexa sus apps por «results::7aadbb-1» y el aviso llegó como «{pushes[-1][2]}» — "
         "`refreshData` no encuentra ninguna ventana con ese id y se calla")
 
 
@@ -89,7 +89,7 @@ def test_the_canvas_really_does_index_by_the_double_colon():
         "separador equivocado")
     # …and it looks the card up by the COMPLETE id, which is what makes the spelling matter.
     assert re.search(r"async refreshData\(id\)\s*\{\s*const w = this\.wins\.get\(id\)", src), (
-        "refreshData ya no busca la tarjeta por su id completo")
+        "refreshData ya no busca la app por su id completo")
 
 
 def test_the_progress_path_and_the_data_path_now_agree():

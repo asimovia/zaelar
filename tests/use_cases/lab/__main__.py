@@ -220,7 +220,7 @@ def cmd_shot(args) -> int:
         print(f"  ✗ no pude capturar: {e}")
         return 1
     print(f"  ✓ {facts['path']}")
-    print(f"    velo puesto: {facts['veil']} · orbe: {facts['orb']} · tarjetas: {facts['cards']}")
+    print(f"    velo puesto: {facts['veil']} · orbe: {facts['orb']} · apps: {facts['cards']}")
     if facts["errors"]:
         print(f"    errores de página: {facts['errors']}")
     return 0

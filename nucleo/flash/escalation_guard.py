@@ -15,21 +15,21 @@ from __future__ import annotations
 
 ESCALATE_INSTRUCTIONS = (
     "Decide whether this turn needs a background worker. The assistant already does these ON THE SPOT, "
-    "with its own cards, in one step: play or pause music, play videos, show images, charts and maps, "
+    "with its own apps, in one step: play or pause music, play videos, show images, charts and maps, "
     "send or read a message, read or change the calendar, read a document already on screen, recall what "
-    "it remembers, open or close a card, and WRITE one text into a card from what it knows or from ONE known "
+    "it remembers, open or close an app, and WRITE one text into an app from what it knows or from ONE known "
     "source (summarise, explain or translate a named work, page or file; a letter, a draft) — one look-up and "
     "one written answer. Those are handle_inline even when phrased as orders. A worker costs minutes and money: "
     "escalate only real background work — researching or comparing things across several sources, navigating "
     "websites, a report that has to be GATHERED from many places, building a widget, a multi-step errand — and "
     "PUTTING TOGETHER a collection of several items chosen for him (a list of things picked to fit what he "
-    "describes), even when it will end up in one of its own cards. Adding ONE named item to a list is inline."
+    "describes), even when it will end up in one of its own apps. Adding ONE named item to a list is inline."
 )
 
 ESCALATE_CHOICE = {
-    "handle_inline": "Answerable or doable right now with the assistant's own cards and memory: a fragment, "
+    "handle_inline": "Answerable or doable right now with the assistant's own apps and memory: a fragment, "
                      "a reaction, chatter, a question, a one-step order to music, video, images, charts, "
-                     "maps, messages, the calendar or a card, or ONE text written into a card from what it knows "
+                     "maps, messages, the calendar or an app, or ONE text written into an app from what it knows "
                      "or from one known source",
     "escalate": "The turn commissions real background work: research or comparison across several sources, "
                 "navigation, a report gathered from many places, building, putting together a collection of "

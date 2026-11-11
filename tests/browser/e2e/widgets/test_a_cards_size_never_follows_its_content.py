@@ -126,7 +126,7 @@ def test_a_longer_song_title_no_longer_resizes_a_frozen_card(playwright_availabl
       return {{w0, w1, styleW: c.style.width, styleH: c.style.height, maxW: c.style.maxWidth}};
     }}""")
     assert not errors, errors
-    assert out["w1"] == out["w0"], f"the frozen card still tracked its title: {out}"
+    assert out["w1"] == out["w0"], f"the frozen app still tracked its title: {out}"
     assert out["styleW"].endswith("px") and out["styleH"].endswith("px")
     assert out["maxW"] == "none"
 

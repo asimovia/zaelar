@@ -54,7 +54,7 @@ def test_the_status_line_says_his_asks(errands, monkeypatch):
     assert "Find real marketplace" not in line and "(condit" not in line, line
     assert "monitor de ordenador usado" in line
     assert "tipo Sup:" not in line and "juego de plataformas" in line, "clipped on a word, never mid-word"
-    assert "«results»" not in line, "our card id is not a phase"
+    assert "«results»" not in line, "our app id is not a phase"
 
 
 def test_a_given_name_wins(errands, monkeypatch):

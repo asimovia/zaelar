@@ -93,7 +93,7 @@ def test_three_live_workers_are_three_tabs():
     for i, texto in enumerate((_ENCARGO, _REFORMULADO, "busca monitores 27\" segunda mano baratos en Wallapop"), 1):
         rec = _rec(str(i), texto)
         tabs.append(asyncio.run(dispatch._prepare_web(rec, texto)))
-    assert all(tabs), "ninguno se queda sin tarjeta"
+    assert all(tabs), "ninguno se queda sin app"
     assert len(set(tabs)) == 3, f"tres conductores vivos comparten pestaña: {tabs}"
 
 
@@ -107,7 +107,7 @@ def test_a_finished_worker_still_hands_its_tab_over():
 
     segundo = _rec("2", _REFORMULADO)
     t2 = asyncio.run(dispatch._prepare_web(segundo, _REFORMULADO))
-    assert t2 == t1, "sin nadie conduciendo, el follow-up sigue reabriendo la misma tarjeta"
+    assert t2 == t1, "sin nadie conduciendo, el follow-up sigue reabriendo la misma app"
 
 
 def test_the_worker_that_owns_the_tab_keeps_it():

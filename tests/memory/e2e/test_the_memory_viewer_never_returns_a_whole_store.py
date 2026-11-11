@@ -189,13 +189,13 @@ def test_the_cards_are_capped_and_cut(big):
         cards = body["layers"][layer]
         assert 0 < len(cards) <= CARDS_CAP, (layer, len(cards))
         assert all(len(c["text"]) <= CARD_TEXT for c in cards)
-        assert "meta" not in cards[0], "a card carries what it paints, not the row"
+        assert "meta" not in cards[0], "a app carries what it paints, not the row"
         assert len(body["concept_graph"][layer]["nodes"]) <= 24
     assert body["counts"]["short"] + body["counts"]["long"] == N, "the header's totals are COUNTs, not the page"
     newest = body["layers"]["long"][0]["updated"]
     assert all(c["updated"] <= newest for c in body["layers"]["long"]), "the newest come first"
     assert "edges" not in body
-    assert secs < 5, f"the cards took {secs:.2f}s"
+    assert secs < 5, f"the apps took {secs:.2f}s"
 
 
 def test_past_the_budget_only_the_top_level_is_drawn(monkeypatch):

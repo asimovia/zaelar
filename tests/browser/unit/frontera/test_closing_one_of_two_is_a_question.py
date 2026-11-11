@@ -212,7 +212,7 @@ def test_both_closes_every_card_instead_of_asking_again():
 
 @pytest.mark.parametrize("said", ["cierra las dos", "ciérralas ambas", "cierra todas", "close both of them"])
 def test_the_other_natural_ways_of_saying_it(said):
-    assert instances.wants_every(said), f"«{said}» quantifies over every card"
+    assert instances.wants_every(said), f"«{said}» quantifies over every app"
 
 
 def test_but_a_plain_close_still_asks():
@@ -244,7 +244,7 @@ def test_a_close_takes_every_card_the_sentence_names():
     open_ids = ["results::9194df-1", "map", "agenda"]
     assert instances.also_named("Close the map and the results.", open_ids, exclude=["map"]) == ["results::9194df-1"]
     assert instances.also_named("Cierra el mapa y los resultados", open_ids, exclude=["map"]) == ["results::9194df-1"]
-    assert instances.also_named("Close the map.", open_ids, exclude=["map"]) == [], "a card not named stays"
+    assert instances.also_named("Close the map.", open_ids, exclude=["map"]) == [], "a app not named stays"
     assert instances.also_named("", open_ids) == []
     src = _vts.read(Path(__file__).resolve().parents[4] / "voice/engine/llm/providers/nucleo.py")
     assert src.count("with_also_named(_t.get(\"ids\")") == 2, "both close sites must take the other named cards"

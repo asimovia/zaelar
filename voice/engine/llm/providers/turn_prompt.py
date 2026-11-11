@@ -101,7 +101,7 @@ async def compose_the_prompt(*, brain, emit, operator_text, self, text) -> dict:
     self._phase = "eligiendo qué hacer"
 
     # OBSERVABILIDAD DE MEMORIA (V2-014 Task 2): una fila por CAPA leída este turno, con módulo=memory,
-    # capa (state/short/slow), la petición y el resultado (nº de tarjetas/chars) + su tiempo. Alimenta la
+    # capa (state/short/slow), la petición y el resultado (nº de apps/chars) + su tiempo. Alimenta la
     # columna ◷ de logs; las tarjetas del mapa las sigue iluminando el pulso `memory.query`/`memory.updated`.
     try:
         from nucleo.flash import memory_cache as _mc
@@ -111,7 +111,7 @@ async def compose_the_prompt(*, brain, emit, operator_text, self, text) -> dict:
                    else "perfil del operador → vacío (sin poblar)"),
              extra={"layer": "state", "mem_ms": timings.get("mem_state_ms")})
         emit("memory", "corto", role="system",
-             text=f"working set entero → {ms.get('short_count', 0)} tarjetas · {ms.get('short_chars', 0)} chars",
+             text=f"working set entero → {ms.get('short_count', 0)} apps · {ms.get('short_chars', 0)} chars",
              extra={"layer": "short", "mem_ms": timings.get("mem_state_ms")})
         emit("memory", "día", role="system",       # V2-865: the day's schema the prompt carried this turn
              text=f"esquema del día → {ms.get('day_count', 0)} episodios · {ms.get('day_chars', 0)} chars",

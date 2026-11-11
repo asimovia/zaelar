@@ -62,13 +62,13 @@ def reconciled():
 
 
 def test_the_orphan_the_engine_cannot_name_goes_and_one_documento_is_left(reconciled):
-    assert reconciled["documentos"] == 1, "a ghost card stayed on screen beside the one the engine lists"
+    assert reconciled["documentos"] == 1, "a ghost app stayed on screen beside the one the engine lists"
     assert reconciled["got"]["orphans"] == ["documento"]
 
 
 def test_the_screen_takes_the_engines_list_not_the_reverse(reconciled):
-    assert reconciled["closed"] == [["agenda", "restore"]], "a card the engine does not list must close"
-    assert reconciled["shown"] == [["markets", True, "restore"]], "a card it lists opens beside, without focus"
+    assert reconciled["closed"] == [["agenda", "restore"]], "a app the engine does not list must close"
+    assert reconciled["shown"] == [["markets", True, "restore"]], "a app it lists opens beside, without focus"
 
 
 def test_the_drift_is_reported_for_the_timeline(reconciled):

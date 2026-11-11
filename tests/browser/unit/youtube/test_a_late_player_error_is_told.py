@@ -128,6 +128,6 @@ def test_a_tell_the_card_contradicts_before_it_is_said_is_withdrawn(told, monkey
             sound.player_audio("player_audio", {"muted": "false"}, {"videoId": "", "muted": False})
         await asyncio.sleep(0.12)
     asyncio.run(run(True))
-    assert told == [], "a tell the card had already contradicted was said"
+    assert told == [], "a tell the app had already contradicted was said"
     asyncio.run(run(False))
     assert told == ["El vídeo está sonando en silencio."]

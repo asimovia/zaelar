@@ -36,7 +36,7 @@ const ok = (name, cond, detail="") => { console.log((cond?"  ok   ":"  FAIL ")+n
 
 ok("pinta las tres líneas de estado", ["abrió google","5 fichas","extrayendo"].every(s=>txt.includes(s)), txt);
 ok("pinta la fase con spinner", cls.includes("hb-navt-spin") && txt.includes("conduciendo el navegador"));
-ok("NO repite el título de la tarea dentro de la tarjeta", !txt.includes("Fontaneros en Madrid centro"),
+ok("NO repite el título de la tarea dentro de la app", !txt.includes("Fontaneros en Madrid centro"),
    "la cabecera del chrome ya lo pone; repetirlo es lo que el operador señaló");
 ok("no queda ni una fila de resultados", !cls.some(c=>c.includes("hb-navt-item")||c.includes("hb-navt-results")));
 ok("no queda el feed de eventos", !cls.some(c=>c.includes("hb-navt-feed")||c.includes("hb-navt-ev")));

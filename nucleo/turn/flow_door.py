@@ -100,7 +100,7 @@ def obey(req: str, r: dict, ctx: dict) -> bool:
             _emit("🧵 the turn's stop covers this errand — nothing new is started", req, r)
             return False
         if how == _flow.CARD:          # V2-879 O1: the turn's one act is a card's — the errand is told nothing
-            _emit("🧵 a card's act — the card door serves it, no errand is told", req, r)
+            _emit("🧵 a card's act — the app door serves it, no errand is told", req, r)
             return False
         if how == _flow.UNDECIDED:     # the judge ran out of time with an errand open (V2-878 §3 e)
             # V2-886 D3: the likely reading wins — the words join the errand he named last, nothing new is opened,

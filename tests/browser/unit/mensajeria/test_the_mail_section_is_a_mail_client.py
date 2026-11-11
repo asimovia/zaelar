@@ -167,7 +167,7 @@ def test_an_inbox_row_that_is_waiting_on_the_home_is_marked_and_opens_without_as
     assert [r["pending"] for r in mailbox.view(db)["rows"]] == [True, False]
     db.pop("pending_mail", None)
     mailbox.open_message(db, "45")
-    assert not db.get("pending_mail"), "the card already holds this mail whole"
+    assert not db.get("pending_mail"), "the app already holds this mail whole"
     mailbox.open_message(db, "44")
     assert db["pending_mail"] == [{"platform": "email", "folder": "INBOX", "open": "44"}]
     mailbox.fold(db, {"platform": "email", "folder": "INBOX", "open": {"uid": "44", "subject": "s44", "body": "hola"}})

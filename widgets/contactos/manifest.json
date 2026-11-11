@@ -285,7 +285,7 @@
       }
     },
     "message_group": {
-      "desc": "interno: lo dispara la propia tarjeta cuando él pulsa «Mandar mensaje» o «WhatsApp: crear» en uno de sus grupos — escribe su orden en la conversación, nunca envía; nunca una orden de voz, no invocar",
+      "desc": "interno: lo dispara la propia app cuando él pulsa «Mandar mensaje» o «WhatsApp: crear» en uno de sus grupos — escribe su orden en la conversación, nunca envía; nunca una orden de voz, no invocar",
       "internal": true,
       "worker": false,
       "confirm": false,

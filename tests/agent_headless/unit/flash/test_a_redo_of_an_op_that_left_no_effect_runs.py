@@ -53,7 +53,7 @@ def test_a_turn_that_names_the_card_asks_for_the_op_again():
 
 
 def test_the_same_complaint_in_english_runs_too():
-    assert _bleed("You're not doing anything on the YouTube card, just do it") is False
+    assert _bleed("You're not doing anything on the YouTube app, just do it") is False
 
 
 def test_a_card_named_only_to_be_left_alone_licenses_nothing():
@@ -103,4 +103,4 @@ def test_the_call_site_hands_the_turn_brief_to_the_guard():
     i = src.index("is_context_bleed(")
     assert 'brief=(r or {}).get("brief")' in src[i:i + 300]
     assert '_req = {"brief": _brief, "text": text}' in inspect.getsource(_tw._apply_widget_data), \
-        "the gate hands the turn's brief to the card door"
+        "the gate hands the turn's brief to the app door"

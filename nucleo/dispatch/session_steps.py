@@ -23,7 +23,7 @@ async def build_what_it_runs_with(*, ctx, key, kind, rec, req, task, trusted) ->
     if kind == "web" and trusted:
         nav_tid = await _ds._d._prepare_web(rec, req, reuse_tid=str(resume.get("nav_task") or ""))
         if nav_tid:
-            env["ZAELAR_NAV_TASK"] = nav_tid       # las capturas/acciones de hbweb casan con ESTA tarjeta
+            env["ZAELAR_NAV_TASK"] = nav_tid       # las capturas/acciones de hbweb casan con ESTA app
     _dev = _ds._d._dev_worker_params(task.context)     # V2-076: escalada de cluster con permiso de código
     _dev_settings_path = ""
     if _dev:

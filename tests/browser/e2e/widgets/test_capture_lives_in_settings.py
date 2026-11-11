@@ -116,7 +116,7 @@ def test_the_panel_paints_without_a_single_error(voice_tab):
 def test_the_capture_controls_ARRIVED_and_are_usable(voice_tab):
     """The half that makes the deletion safe. Not «the HTML exists» — the selects have to be VISIBLE and
     actually FILLED, because the session fills them asynchronously and an empty select is a dead control."""
-    assert voice_tab["card"], "the capture card never rendered in Settings"
+    assert voice_tab["card"], "the capture app never rendered in Settings"
     assert voice_tab["mic_visible"] and voice_tab["mic_options"] > 0, json.dumps(voice_tab)
     assert voice_tab["mode_visible"], json.dumps(voice_tab)
     assert voice_tab["mode_values"] == ["isolate", "full", "raw"], voice_tab["mode_values"]
@@ -125,8 +125,8 @@ def test_the_capture_controls_ARRIVED_and_are_usable(voice_tab):
 def test_the_save_button_is_not_sitting_under_controls_it_does_not_save(voice_tab):
     """The server knobs above are written by «Guardar voz»; these two are applied the moment they change. In
     one card the button would claim both, so the capture card is a SEPARATE one that comes after it."""
-    assert not voice_tab["inside_server_card"], "the capture rows are inside the card the Save button owns"
-    assert voice_tab["after_save"], "the capture card must come after the server card, not before it"
+    assert not voice_tab["inside_server_card"], "the capture rows are inside the app the Save button owns"
+    assert voice_tab["after_save"], "the capture app must come after the server app, not before it"
 
 
 def test_and_they_are_NOT_on_the_desktop_any_more(voice_tab):

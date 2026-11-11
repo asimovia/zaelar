@@ -16,7 +16,7 @@ _ALL_RE = re.compile(r"\b(todo|todos|todas|all|everything|cualquier|lo que estas
 
 
 _KIND_HINTS = {
-    "code": ("widget", "tarjeta", "panel", "codigo", "code", "card"),
+    "code": ("widget", "tarjeta", "app", "panel", "codigo", "code", "card"),
     "web":  ("web", "navegador", "busqueda", "buscando", "wallapop", "amazon", "internet", "browser", "search"),
     "memory": ("memoria", "memory"),
     "research": ("estudio", "informe", "investiga", "research"),

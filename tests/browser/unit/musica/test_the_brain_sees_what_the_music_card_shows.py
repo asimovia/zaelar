@@ -65,7 +65,7 @@ def card(monkeypatch, tmp_path):
 def test_a_card_showing_a_song_with_no_lists_is_not_empty(card):
     from nucleo.flash import widget_read
     from widgets import refs
-    assert "VACÍA" not in refs.items_line("musica"), "no saved lists is not «nothing on the card»"
+    assert "VACÍA" not in refs.items_line("musica"), "no saved lists is not «nothing on the app»"
     block = widget_read.read("musica")
     assert "Dai Dai" in block and "Shakira" in block, "the song he sees reaches the brain"
     assert "volume 50%" in block and "playing" in block and "phone" in block
@@ -77,7 +77,7 @@ def test_a_card_with_nothing_on_it_is_still_said_empty(card):
     store.save("musica", {})
     md._np_last.update(at=0.0, np=None)
     card.now_playing = lambda: mb.NowPlaying(playing=False, provider="spotify")
-    assert "VACÍA" in refs.items_line("musica"), "a truly empty card keeps saying so"
+    assert "VACÍA" in refs.items_line("musica"), "a truly empty app keeps saying so"
 
 
 def test_volume_by_voice_and_by_slider_reaches_the_player_that_sounds(card):

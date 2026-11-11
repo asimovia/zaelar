@@ -202,7 +202,7 @@ def a_play_result(action: str, p: dict) -> dict:
     from widgets import result_refs as _rr
     rows = found_rows()
     if not rows:
-        return {"ok": False, "error": "no_results", "message": "There are no search results on the card right now."}
+        return {"ok": False, "error": "no_results", "message": "There are no search results on the app right now."}
     ref = p.get("item") if p.get("item") is not None else p.get("n")
     i = _rr.resolve([{"title": r.get("name", ""), "channel": r.get("owner", "")} for r in rows], ref)
     if i is None:

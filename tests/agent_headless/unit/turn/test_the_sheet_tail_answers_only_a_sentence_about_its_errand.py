@@ -38,7 +38,7 @@ def three(monkeypatch):
     monkeypatch.setattr(dispatch, "get_record", lambda tid: types.SimpleNamespace(label="Investigando…"))
     monkeypatch.setattr(dc, "_PENDING_CONFIRM", {"7": {
         "request": GAME, "kind": "code", "trusted": True, "context": {}, "sheet": "", "ts": time.time(),
-        "question": "Si no te he entendido mal, me pides que te CONSTRUYA una tarjeta nueva. ¿La hago?"}})
+        "question": "Si no te he entendido mal, me pides que te CONSTRUYA una app nueva. ¿La hago?"}})
     _rows(monkeypatch, ROWS)
 
 

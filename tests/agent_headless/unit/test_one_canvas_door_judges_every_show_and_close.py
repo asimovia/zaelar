@@ -31,7 +31,7 @@ def _sink(out):
 def test_a_vetoed_show_never_reaches_the_canvas_and_the_door_says_so(stream):
     widget = []
     assert canvas.apply("show", "agenda", src="flash", request=NOTHING, emit=_sink(widget)) is False
-    assert widget == [], "a veto must not put the card on screen"
+    assert widget == [], "a veto must not put the app on screen"
     v = [e for e in stream if e[0] == "arbiter"][-1]
     assert v[2]["allow"] is False and v[2]["shadow"] is False and v[2]["source"] == "flash"
 

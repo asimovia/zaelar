@@ -236,7 +236,7 @@ def add(widget_id: str, alias: str) -> dict:
     people = names_a_person(alias)
     if people:
         # His word for a PERSON is hers: the contacts card's door owns it, never a card's identity (V2-854 F4).
-        return {"ok": False, "error": f"«{alias}» names a contact — it belongs to {PERSON_DOOR}, not to a card",
+        return {"ok": False, "error": f"«{alias}» names a contact — it belongs to {PERSON_DOOR}, not to an app",
                 "person": True, "door": PERSON_DOOR,
                 "contacts": [str(c.get("id") or "") for c in people if c.get("id")][:3]}
     owner, surface = _owner_of(alias, wid)

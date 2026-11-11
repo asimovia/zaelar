@@ -139,7 +139,7 @@ def step(scenario, workspace: str) -> dict:
     except Exception as e:  # noqa: BLE001 — the data landed; the card may still be closed, and that is said
         got["open_error"] = str(e)[:200]
     got["maximized"] = str(getattr(scenario, "id", "")).split("__")[0] in MAXIMIZED
-    print(f"  ▸ tarjeta sembrada: {wid} · {json.dumps(got, ensure_ascii=False)[:120]}")
+    print(f"  ▸ app sembrada: {wid} · {json.dumps(got, ensure_ascii=False)[:120]}")
     return {"card": wid, "seeded": True, **got}
 
 
@@ -147,19 +147,19 @@ def judge_note(card: dict | None) -> str:
     if not card:
         return ""
     if card.get("seeded") and card.get("card") == "musica":
-        return (f"\n⚠️ AVISO DE ARNÉS — TARJETA SEMBRADA: antes de la primera frase la tarjeta de Música tenía sonando "
+        return (f"\n⚠️ AVISO DE ARNÉS — APP SEMBRADA: antes de la primera frase la app de Música tenía sonando "
                 f"«{card.get('title')}» de «{card.get('artist')}» (audio de YouTube). «Esta canción» es ESA: lo correcto "
                 f"es musica:favorite_current y que lo guardado lleve ese título y artista resueltos, no las palabras de "
                 f"la persona. Decir que no suena nada, o preguntar el título teniéndolo en pantalla, es FALLO.")
     if card.get("seeded") and card.get("maximized"):
-        return (f"\n⚠️ AVISO DE ARNÉS — TARJETA SEMBRADA A PANTALLA COMPLETA: antes de la primera frase el reproductor de "
+        return (f"\n⚠️ AVISO DE ARNÉS — APP SEMBRADA A PANTALLA COMPLETA: antes de la primera frase el reproductor de "
                 f"vídeo tenía sonando un vídeo de «{card.get('channel')}» y el canvas lo informaba MAXIMIZADO. «Sal de "
-                f"pantalla completa» es ESA tarjeta: lo correcto es sacarla de pantalla completa sin cerrarla. Decir que "
-                f"no hay nada a pantalla completa, o cerrar la tarjeta, es FALLO.")
+                f"pantalla completa» es ESA app: lo correcto es sacarla de pantalla completa sin cerrarla. Decir que "
+                f"no hay nada a pantalla completa, o cerrar la app, es FALLO.")
     if not card.get("seeded"):
-        return (f"\n⚠️ AVISO DE ARNÉS — la siembra de la tarjeta FALLÓ ({card.get('error', '?')}): el reproductor "
+        return (f"\n⚠️ AVISO DE ARNÉS — la siembra de la app FALLÓ ({card.get('error', '?')}): el reproductor "
                 "estaba vacío, así que «no veo ningún canal» no es un fallo del agente.")
-    return (f"\n⚠️ AVISO DE ARNÉS — TARJETA SEMBRADA: antes de la primera frase el reproductor tenía sonando un vídeo "
+    return (f"\n⚠️ AVISO DE ARNÉS — APP SEMBRADA: antes de la primera frase el reproductor tenía sonando un vídeo "
             f"de «{card.get('channel')}» y el inicio sugería más de ese canal. «Este canal» es ESE: lo correcto es "
             f"youtube:block_channel en línea (sin worker) y una confirmación que lo nombre. Una regla de estilo en su "
             f"lugar, o preguntar el nombre teniéndolo en pantalla, es FALLO.")

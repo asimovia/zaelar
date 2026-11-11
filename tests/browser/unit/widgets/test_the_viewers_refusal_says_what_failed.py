@@ -1,6 +1,6 @@
 """The viewer's refusals say WHAT failed, in his language (`show-real-photo-of-a-new-car__es`, 2026-10-14).
 
-Its refusals carried only the model-facing `error`, so `refusal_line` fell back to the generic «la tarjeta
+Its refusals carried only the model-facing `error`, so `refusal_line` fell back to the generic «la app
 Imágenes no lo ha aceptado» — said twice, word for word, with nothing about what went wrong. Each refusal now
 names an i18n key (`say`) that exists in every product language.
 """

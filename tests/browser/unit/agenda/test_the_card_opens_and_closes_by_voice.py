@@ -101,10 +101,10 @@ def test_open_shows_that_appointments_card_on_the_day_asked(page, views):
     assert page.locator(".agpanel").count() == 0
     _render(page, opened)
     panel = page.locator(".agpanel")
-    assert panel.count() == 1, "the card did not open"
+    assert panel.count() == 1, "the app did not open"
     text = panel.inner_text()
     assert "Piano de Abril" in text
-    assert str(WK3.day) in text, f"the card is not on {WK3}: {text}"
+    assert str(WK3.day) in text, f"the app is not on {WK3}: {text}"
 
 
 def test_a_refresh_with_the_same_push_does_not_reopen_a_card_he_closed_by_hand(page, views):
@@ -122,7 +122,7 @@ def test_close_takes_the_card_away_and_leaves_the_view(page, views):
     assert page.locator(".agpanel").count() == 1
     tab_before = page.locator(".agtab.on").inner_text()
     _render(page, {**closed, "view": {**closed["view"], "n": opened["view"]["n"] + 101}})
-    assert page.locator(".agpanel").count() == 0, "«cierra la ficha» left the card open"
+    assert page.locator(".agpanel").count() == 0, "«cierra la ficha» left the app open"
     assert page.locator(".agtab.on").inner_text() == tab_before
 
 

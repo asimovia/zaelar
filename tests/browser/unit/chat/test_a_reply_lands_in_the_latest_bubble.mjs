@@ -43,7 +43,7 @@ const CASES = [
     B: "Yep — one search, but two cards: one is a leftover from the cancelled run.",
     note: "🔔 The search has been running for a while.", ask: "Task 3 needs your OK to click «Clear filters». Shall I?" },
   { lang: "es", A: "Lo miro… no tenía que preguntarte y no lo volverá a hacer: le digo que siga.",
-    B: "Sí: una búsqueda y dos tarjetas, una es lo que quedó del intento cancelado.",
+    B: "Sí: una búsqueda y dos apps, una es lo que quedó del intento cancelado.",
     note: "🔔 La búsqueda lleva un rato en marcha.", ask: "La tarea necesita tu permiso para pulsar «Borrar filtros». ¿Lo hago?" },
 ];
 const TA = "T29·88e9", TB = "T27·e2da";

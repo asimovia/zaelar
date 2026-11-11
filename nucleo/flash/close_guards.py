@@ -171,7 +171,7 @@ def the_card_he_means(text: str, open_widgets, *, brief=None) -> str:
         from nucleo import canvas_focus
         return canvas_focus.last_turn_card_recent([str(w) for w in open_widgets])
     except Exception as e:  # noqa: BLE001
-        _logger.debug(f"close_guards: recent card unreadable: {e}")
+        _logger.debug(f"close_guards: recent app unreadable: {e}")
         return ""
 
 

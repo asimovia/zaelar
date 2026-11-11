@@ -265,7 +265,7 @@ def test_the_coverage_question_is_asked_of_the_DEDUP_and_not_re_derived():
     assert "dedup_scan(" in src, "the coverage check no longer goes through the dispatch dedup"
     assert '"web"' in src, (
         "the dedup is asked with a kind that unlocks the target-widget shortcut: two different "
-        "errands about the same card would read as one")
+        "errands about the same app would read as one")
 
 
 # ── E4 · a «Sí» to our own offer is an answer, not a fragment ───────────────────────────────────

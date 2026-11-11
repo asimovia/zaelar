@@ -221,7 +221,7 @@ def test_the_plug_and_the_google_icon_open_the_google_connector_in_settings(play
     m = _run([_BASE], clicks=[".agcalbtn", ".agconnicon:nth-child(1)", ".agconnicon:nth-child(2)"])[0]
     assert m["plug"] == 1, m
     assert m["opened"] == ["google", "google"], m["opened"]
-    assert m["in_card_panel"] == 0, "the card draws no connect panel of its own — that is ⚙ Conectores' job"
+    assert m["in_card_panel"] == 0, "the app draws no connect panel of its own — that is ⚙ Conectores' job"
     assert m["errors"] == [], m["errors"]
 
 

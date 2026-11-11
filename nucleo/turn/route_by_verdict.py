@@ -47,7 +47,7 @@ def stays_home(name: str, args) -> bool:
         wid, act = base(str(args.get("widget_id") or "")), str(args.get("action") or "")
         return bool(wid and act) and not effects.leaves(wid, act)
     except Exception as e:  # noqa: BLE001 — unreadable: the verdict routes, as before
-        logger.debug(f"route_by_verdict: card act unreadable — {e!r}")
+        logger.debug(f"route_by_verdict: app act unreadable — {e!r}")
         return False
 
 

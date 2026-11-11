@@ -45,7 +45,7 @@ async def call_after_read(operator_text: str, read_widget: str, widget_id: str, 
                 payload = args.get("payload") if isinstance(args.get("payload"), dict) else {}
                 from nucleo.flash import repair_grounding as _rg
                 if not _rg.send_backed_by_verdict(brief, wid, action):
-                    _cp.note(wid, "an act that leaves, with no verdict ordering it on this card — not sent",
+                    _cp.note(wid, "an act that leaves, with no verdict ordering it on this app — not sent",
                               action=action[:40], read=rid)
                     return None
                 if not _rg.recipient_was_named(wid, action, payload, operator_text, window):

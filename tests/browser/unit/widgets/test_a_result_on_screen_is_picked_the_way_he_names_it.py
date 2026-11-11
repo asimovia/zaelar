@@ -26,7 +26,7 @@ def test_the_sheet_chooses_a_row_by_its_number_or_words_and_keeps_its_real_title
     assert results.apply_action("present", {"title": "Hotels", "choosable": True, "items": [
         {"title": "Hotel Arts Barcelona"}, {"title": "Casa Fuster"}, {"title": "Hotel Neri"}]})["ok"]
     by_number = results.apply_action("choose", {"index": 2})
-    assert by_number["ok"] and results.view_data()["chosen"] == "Casa Fuster", "the card marks the row it is"
+    assert by_number["ok"] and results.view_data()["chosen"] == "Casa Fuster", "the app marks the row it is"
     by_words = results.apply_action("choose", {"title": "neri"})
     assert by_words["ok"] and by_words["chosen"] == "Hotel Neri"
     assert not results.apply_action("choose", {"title": "Ritz"})["ok"], "a row that is not there is refused"

@@ -17,7 +17,7 @@ def _body(name):
 def test_neither_tidy_brings_back_a_minimized_card():
     for g in ("arrange", "compact"):
         b = _body(g)
-        assert "revealAll" not in b, f"{g}() un-minimizes the cards he put away"
+        assert "revealAll" not in b, f"{g}() un-minimizes the apps he put away"
         assert "this._onScreen()" in b, f"{g}() must lay out only what is on screen"
 
 
@@ -45,7 +45,7 @@ def test_a_card_he_asks_for_wins_the_space_over_a_background_sheet():
     i = JS.index("\n  async show(rawId")
     show = JS[i:JS.index("\n  }\n", i)]
     assert "card._bg = !!background;" in show
-    assert "if(!background){ this._yieldBackground(card);" in show
+    assert "if(!background){ this._yieldBackground(app);" in show
     assert "w.card._bg = false;" in show, "his own show of a sheet makes it his"
     y = _body("_yieldBackground")
     assert "!c._bg" in y and 'c.classList.add("hb-minned")' in y and "0.2*" in y

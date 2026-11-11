@@ -168,7 +168,7 @@ def home(playwright_available):
 def test_it_mounts_on_the_local_shelves_by_default_with_no_page_errors(home):
     assert home["mounted"], "the explorer did not paint"
     assert home["errors"] == [], home["errors"]
-    assert home["nested"] == 0, "the card must re-render at its ROOT, never inside itself (V2-124)"
+    assert home["nested"] == 0, "the app must re-render at its ROOT, never inside itself (V2-124)"
     assert home["shelves"] == ["Vídeo", "Audio", "Documentos", "Imágenes", "Descargas"], home["shelves"]
 
 
@@ -302,7 +302,7 @@ def test_a_provider_without_its_app_registered_leads_to_its_connector_page(playw
 def test_a_narrow_card_hides_the_sidebar_and_a_wide_one_shows_the_shelves_and_every_service(playwright_available):
     narrow = _run([_BASE], host_w=500)[0]
     assert narrow["tier"] == "s", narrow["tier"]
-    assert narrow["side_visible"] is False, "a small card has no room for a sidebar — everything stays central"
+    assert narrow["side_visible"] is False, "a small app has no room for a sidebar — everything stays central"
 
     wide = _run([_BASE], host_w=1000)[0]
     assert wide["tier"] == "l", wide["tier"]

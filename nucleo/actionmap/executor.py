@@ -104,7 +104,7 @@ def _card_in_front() -> str:
         if _c:
             try:
                 from voice.observer import emit as _emit_that
-                _emit_that("actionmap", "🎯 «that» = la tarjeta del turno anterior", role="system", text=_c,
+                _emit_that("actionmap", "🎯 «that» = la app del turno anterior", role="system", text=_c,
                            extra={"open": ids, "minimised": sorted(_minned)})
             except Exception:  # noqa: BLE001
                 pass

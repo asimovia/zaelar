@@ -134,10 +134,10 @@ def _scan_widget_js(js: str) -> str | None:
     style_text = re.sub(r"/\*.*?\*/", "", style_text, flags=re.S)
     for m in re.finditer(r"min-width\s*:\s*(\d+(?:\.\d+)?)px", style_text, re.I):
         if float(m.group(1)) > _PHONE_SAFE_MIN_WIDTH_PX:
-            return (f"widget.js declares min-width:{m.group(1)}px — wider than a phone card can hold "
+            return (f"widget.js declares min-width:{m.group(1)}px — wider than a phone app can hold "
                     f"({_PHONE_SAFE_MIN_WIDTH_PX}px is the limit). Let the layout be FLUID (%, minmax, flex-wrap); "
                     f"if the content is genuinely wide (a table), keep it in its own overflow-x:auto wrapper so "
-                    f"it scrolls INSIDE the card instead of pushing the card sideways")
+                    f"it scrolls INSIDE the app instead of pushing the app sideways")
     # A ROOT THAT REFUSES A WIDE CARD (V2-615). The desktop host mounts a widget's root directly into a fully
     # fluid card, and drag-resize sets that card's width directly — so a hardcoded CAP on the root is not a
     # safety net, it is the operator dragging a card wider and nothing inside using the extra room. Measured
@@ -150,13 +150,13 @@ def _scan_widget_js(js: str) -> str | None:
     # across the whole catalog: the largest is 320px, and that one is a `max-width`).
     for m in re.finditer(r"(?<!-)width\s*:\s*min\(\s*(\d+(?:\.\d+)?)px\s*,\s*\d+(?:\.\d+)?vw\s*\)", style_text, re.I):
         return (f"widget.js declares width:min({m.group(1)}px,...) on its root — a card-width CAP that ignores "
-                f"how wide the operator's card actually is. The root must be width:100%;box-sizing:border-box; "
-                f"the CARD decides the size (widgets/AGENTS.md)")
+                f"how wide the operator's app actually is. The root must be width:100%;box-sizing:border-box; "
+                f"the APP decides the size (widgets/AGENTS.md)")
     for m in re.finditer(r"(?<!-)width\s*:\s*(\d+(?:\.\d+)?)px", style_text, re.I):
         if float(m.group(1)) >= _ROOT_WIDTH_CAP_PX:
             return (f"widget.js declares width:{m.group(1)}px — wide enough to be a card-width CAP, not a "
                     f"small fixed element. If this is your root, it must be width:100%;box-sizing:border-box "
-                    f"(the CARD decides the size, widgets/AGENTS.md); if it is a genuinely large fixed element, "
+                    f"(the APP decides the size, widgets/AGENTS.md); if it is a genuinely large fixed element, "
                     f"raise this threshold's exemption explicitly rather than silently passing it")
 
     # A WIDGET THAT ESCAPES ITS OWN WINDOW (V2-693). A widget lives INSIDE a card the host owns, and the card
@@ -175,10 +175,10 @@ def _scan_widget_js(js: str) -> str | None:
     # each of those widgets a real fill-the-card flex column, one widget at a time with its own render check —
     # a bounded follow-up, not something to fold into a gate that would simply turn the catalog red.
     for kw, why in ((r"position\s*:\s*fixed",
-                     "position:fixed pins to the VIEWPORT, not to the card — it stays put while the window "
+                     "position:fixed pins to the VIEWPORT, not to the app — it stays put while the window "
                      "that owns it moves, resizes and maximizes"),
                     (r"(?:width|height)\s*:\s*100v[wh]\b",
-                     "100vw/100vh sizes to the SCREEN, not to the card the widget was given — covering the "
+                     "100vw/100vh sizes to the SCREEN, not to the app the widget was given — covering the "
                      "viewport is the host's gesture (the header ⤢, the voice order, or fullscreen:native in "
                      "the manifest), never a style")):
         m = re.search(kw, style_text, re.I)
@@ -189,7 +189,7 @@ def _scan_widget_js(js: str) -> str | None:
         if int(m.group(1)) > _WIDGET_Z_CEILING:
             return (f"widget.js declares z-index:{m.group(1)} — above the widget's own stacking room "
                     f"(the ceiling is {_WIDGET_Z_CEILING}). The desk's chrome lives above that: the dock at "
-                    f"9002, the chat at 9001. Stack INSIDE your card (widgets/AGENTS.md)")
+                    f"9002, the chat at 9001. Stack INSIDE your app (widgets/AGENTS.md)")
     return None
 
 

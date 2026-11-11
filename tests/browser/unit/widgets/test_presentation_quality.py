@@ -115,7 +115,7 @@ def test_widening_the_sheet_uses_the_space_instead_of_wasting_it():
     are placed side by side. With a fixed number of columns, maximizing only stretched one column."""
     rich = [{"parts": [1, 2], "facts": [1] * 8}] * 3
     assert _columns_at(rich, 1600) == 2, "hay sitio para dos columnas de 400: úsalo"
-    assert _columns_at([{}] * 8, 1600) == 4, "tarjetas simples aprovechan más, pero con tope"
+    assert _columns_at([{}] * 8, 1600) == 4, "apps simples aprovechan más, pero con tope"
 
 
 def test_a_payload_hint_can_only_reduce_never_force():

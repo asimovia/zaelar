@@ -47,10 +47,10 @@ _STOPS = frozenset({"stop", "pause"})
 _POSITION_RE = (
     ("top", re.compile(r"\b(?:the\s+)?(?:top|upper|uppermost|topmost)(?:\s+(?:one|card|widget|window))\b"
                        r"|\bthe\s+one\s+(?:on|at)\s+(?:the\s+)?top\b|\b(?:el|la|lo)\s+de\s+arriba\b"
-                       r"|\b(?:tarjeta|ventana|widget)\s+(?:de\s+arriba|superior)\b")),
+                       r"|\b(?:tarjeta|app|ventana|widget)\s+(?:de\s+arriba|superior)\b")),
     ("bottom", re.compile(r"\b(?:the\s+)?(?:bottom|lower|lowest|bottommost)(?:\s+(?:one|card|widget|window))\b"
                           r"|\bthe\s+one\s+(?:on|at)\s+(?:the\s+)?bottom\b|\b(?:el|la|lo)\s+de\s+abajo\b"
-                          r"|\b(?:tarjeta|ventana|widget)\s+(?:de\s+abajo|inferior)\b")),
+                          r"|\b(?:tarjeta|app|ventana|widget)\s+(?:de\s+abajo|inferior)\b")),
     ("left", re.compile(r"\b(?:the\s+)?(?:leftmost|left-hand)(?:\s+(?:one|card|widget|window))?\b"
                         r"|\bthe\s+one\s+on\s+the\s+left\b|\bthe\s+left\s+(?:one|card|widget|window)\b"
                         r"|\b(?:el|la|lo)\s+de\s+la\s+izquierda\b")),
@@ -106,7 +106,7 @@ def kept(operator_text: str, open_ids=None) -> set[str]:
         ids = _open_now() if open_ids is None else [str(i) for i in open_ids or []]
         return {_base(w) for w in _inst.kept_named(operator_text, ids)}
     except Exception as e:  # noqa: BLE001
-        logger.debug(f"card_close: kept cards unread — {e}")
+        logger.debug(f"card_close: kept apps unread — {e}")
         return set()
 
 

@@ -141,7 +141,7 @@ def test_the_PARKED_fourth_copy_stays_parked():
 def test_the_card_no_longer_publishes_results(tarea):
     act_api._hand_over(tarea, [FILA])
     view = navdata.view_data(tarea)
-    assert "results" not in view, "la tarjeta volvió a ser una superficie de resultados"
+    assert "results" not in view, "la app volvió a ser una superficie de resultados"
 
 
 def test_the_card_titles_itself_with_the_TASK(tarea):
@@ -180,7 +180,7 @@ def test_the_web_worker_prompt_names_the_sheet():
     from nucleo.workers import prompts as dispatch_prompts
     p = dispatch_prompts._web_prompt("busca fontaneros en Madrid centro", "")
     assert "cli.widget data results present" in p, "el worker no tiene forma de saber que la hoja existe"
-    assert re.search(r"TARJETA[^.]*monitor", p), "…ni de saber que la tarjeta NO es donde se enseñan los hallazgos"
+    assert re.search(r"APP[^.]*monitor", p), "…ni de saber que la app NO es donde se enseñan los hallazgos"
     from nucleo.workers.prompts import catalog     # V2-851 F3: the sheet's presentation rides with the `results` family
     assert "  · results — " in p and "PRESENTACIÓN (control de calidad" in catalog.full("results"), (
         "naming the sheet hooks its presentation rules in by itself (`presentation.directive_for`); if this "

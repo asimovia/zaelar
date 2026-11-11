@@ -37,7 +37,7 @@ def test_a_cards_note_rides_in_its_row_only_while_the_card_is_in_play():
     from widgets import brief
     notes.add("en la agenda, las reuniones siempre de 30 minutos", "widget:agenda")
     row = "[agenda] regla del operador: en la agenda, las reuniones siempre de 30 minutos"
-    assert row not in brief.for_prompt([], [], query="¿qué tiempo hace?"), "a card nobody is using pays nothing"
+    assert row not in brief.for_prompt([], [], query="¿qué tiempo hace?"), "a app nobody is using pays nothing"
     assert row in brief.for_prompt(["agenda"], [], query=""), "on screen"
     assert row in brief.for_prompt([], ["agenda"], query=""), "recently used"
     assert row in brief.for_prompt([], [], query="pon una reunión en la agenda"), "named in the turn"

@@ -23,7 +23,7 @@ from nucleo.dispatch import confirm as dc
 from nucleo.acts import errand as esc
 
 GAME = "Crear un NUEVO widget de juego de plataformas tipo Super Mario (saltar, moverse, enemigos)"
-NOTE = ("[SISTEMA] Aviso para el operador (zaelar): Si no te he entendido mal, me pides que te CONSTRUYA una tarjeta "
+NOTE = ("[SISTEMA] Aviso para el operador (zaelar): Si no te he entendido mal, me pides que te CONSTRUYA una app "
         "nueva («" + GAME[:60] + "…»). Tarda unos minutos y se queda en tu catálogo. ¿La hago? Díselo con tus "
         "palabras DESPUÉS de contestar a lo que te ha pedido — todavía no lo sabe.")
 HIS = "Vale. Del informe quítame los híbridos, solo eléctricos puros. ¿Y el monitor qué tal lo llevas?"

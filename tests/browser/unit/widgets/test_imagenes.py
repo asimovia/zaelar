@@ -202,7 +202,7 @@ def test_las_flechas_pasan_fotos_y_no_roban_al_que_escribe():
     js = (pathlib.Path(__file__).resolve().parents[4] / "widgets" / "imagenes"
           / "widget.js").read_text(encoding="utf-8")
     assert "ArrowRight" in js and "ArrowLeft" in js
-    assert 'el.onkeydown' in js, "se escucha en la TARJETA, no en document: dos visores no se pelean"
+    assert 'el.onkeydown' in js, "se escucha en la APP, no en document: dos visores no se pelean"
     assert "INPUT" in js and "isContentEditable" in js, "no robar teclas a quien escribe"
 
 

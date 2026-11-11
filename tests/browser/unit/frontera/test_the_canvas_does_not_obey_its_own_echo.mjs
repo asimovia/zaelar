@@ -65,7 +65,7 @@ assert.deepEqual(llamadas, [["show", "navegador::t2"]]);
 // 2) the canvas's own ECHO is NOT. This is the exact event that painted the phantom card.
 llamadas.length = 0;
 push({ kind: "widget", label: "show", id: "navegador", src: "user" });
-assert.deepEqual(llamadas, [], "el canvas obedeció su propio informe: tarjeta BASE vacía encima de la real");
+assert.deepEqual(llamadas, [], "el canvas obedeció su propio informe: app BASE vacía encima de la real");
 
 // 3) …nor the close echo: if the operator closes a card manually, the canvas has ALREADY closed it. Closing it again
 //    is not idempotent when what arrives is the BASE of an instance — it would close something else.

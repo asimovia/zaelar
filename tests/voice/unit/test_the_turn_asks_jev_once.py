@@ -181,10 +181,10 @@ def test_a_verdict_about_another_card_is_not_a_repair_for_this_one(wire):
     act = shared[0]
     wire.answers[tb.TARGET_KEY] = (f"musica:{act}", 0.95)
     h = _settle(tb.ask("dale al play", open_ids=["musica", "youtube"]))
-    assert fe.repair_action_from_brief("musica", h) == act, "the addressed card gets its repair"
+    assert fe.repair_action_from_brief("musica", h) == act, "the addressed app gets its repair"
     assert fe.repair_action_from_brief("youtube", h) is None, (
         f"«musica:{act}» was read as a repair for youtube, which declares `{act}` too — the verdict "
-        f"names its own card and that is the whole disambiguation")
+        f"names its own app and that is the whole disambiguation")
 
 
 def test_none_is_not_a_repair(wire):
@@ -278,7 +278,7 @@ def test_a_verdict_about_a_card_that_CLOSED_is_not_a_repair(wire, monkeypatch):
     from memory import api as memapi
     monkeypatch.setattr(memapi, "state", lambda: {"open_widgets": ["agenda"]})
     assert fe.repair_action_from_brief("musica", h) is None, (
-        "a verdict about a card that is no longer open was used as a repair")
+        "a verdict about an app that is no longer open was used as a repair")
 
 
 def test_the_brief_says_which_turn_it_belongs_to(wire):
@@ -358,7 +358,7 @@ def test_a_verdict_names_its_own_instance_and_the_sibling_gets_nothing(wire):
     h = _settle(tb.ask("enséñame el tercero", open_ids=["results::t7", "results::t9"]))
     assert fe.repair_action_from_brief("results::t7", h) == act
     assert fe.repair_action_from_brief("results::t9", h) is None, (
-        "the verdict for one card was read as a repair for its sibling")
+        "the verdict for one app was read as a repair for its sibling")
 
 
 def test_each_candidate_carries_what_ITS_card_is_showing(wire, monkeypatch):
@@ -373,7 +373,7 @@ def test_each_candidate_carries_what_ITS_card_is_showing(wire, monkeypatch):
     crit = wire.calls[0]["questions"][tb.TARGET_KEY]["criteria"]
     blob = " ".join(crit.values())
     assert "sonando: Bohemian Rhapsody" in blob and "pausado: receta de paella" in blob, (
-        "the question cannot tell the two cards apart: it carries no live state for either")
+        "the question cannot tell the two apps apart: it carries no live state for either")
 
 
 def test_a_card_that_cannot_describe_itself_still_gets_its_candidates(wire, monkeypatch):

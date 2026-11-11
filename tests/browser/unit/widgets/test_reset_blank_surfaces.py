@@ -233,7 +233,7 @@ def test_wiping_a_widget_leaves_an_audit_row_and_repaints_the_canvas(data_dir, m
     labels = [(k, l) for k, l, _ in seen]
     assert ("widget", "blank") in labels, "sin fila de auditoría, vaciar un widget es indistinguible de perder datos"
     assert ("widget", "data") in labels, (
-        "sin la señal que escucha el canvas, la tarjeta abierta sigue mostrando lo que ya no está en disco")
+        "sin la señal que escucha el canvas, la app abierta sigue mostrando lo que ya no está en disco")
     blank = next(e for k, l, e in seen if l == "blank")
     assert blank["id"] == "hoja" and blank["how"] == "wiped"
 

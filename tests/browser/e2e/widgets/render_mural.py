@@ -393,7 +393,7 @@ def run(url):
               chrome["dot_present"] and chrome["dot_visible"] and "st-" in chrome["dot_classes"],
               json.dumps(chrome))
 
-        # ── V2-551: rejilla, apilado vertical y la garantía de que una tarjeta se vea ENTERA ────────────────
+        # ── V2-551: rejilla, apilado vertical y la garantía de que una app se vea ENTERA ────────────────
         # El operador: «que este escritorio tenga algún tipo de rejilla… ponle 5 píxeles», «colocados
         # verticalmente pegados unos a otros», y el fallo: «se abre un widget de imagen y medio widget está en
         # el área visible y medio aparece como si estuviera fuera de la pantalla».

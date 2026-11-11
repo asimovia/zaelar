@@ -77,7 +77,7 @@ def _restore_language():
 def test_the_card_is_titled_in_the_operators_language():
     registry, _ = _with_language("en")
     rows = {r["id"]: r["name"] for r in registry.registry()}
-    assert rows["mensajeria"] == "Messages", "an English session read «Mensajería» on the card — the whole report"
+    assert rows["mensajeria"] == "Messages", "an English session read «Mensajería» on the app — the whole report"
     assert rows["agenda"] == "Calendar"
     assert rows["timer"] == "Timer"   # V2-764: was the retired torrent widget
 
@@ -108,9 +108,9 @@ def test_a_widget_the_bundles_never_heard_of_keeps_its_manifest_name():
 def test_both_spellings_open_the_same_card_in_an_english_session():
     _, runtime = _with_language("en")
     for said in ("messages", "mensajería", "mensajeria"):
-        assert runtime.identify(said).get("match") == "mensajeria", f"«{said}» did not reach the card"
+        assert runtime.identify(said).get("match") == "mensajeria", f"«{said}» did not reach the app"
     for said in ("timer", "temporizador"):
-        assert runtime.identify(said).get("match") == "timer", f"«{said}» did not reach the card"
+        assert runtime.identify(said).get("match") == "timer", f"«{said}» did not reach the app"
 
 
 def test_the_castilian_name_is_still_an_alias_when_the_ui_is_english():
@@ -142,7 +142,7 @@ def test_the_lexical_index_follows_a_language_change_inside_one_process():
     i18n_runtime.invalidate()
 
     assert runtime.identify("messages").get("match") == "mensajeria", (
-        "after a live language change the voice still did not know the word on the card — the lexical index is "
+        "after a live language change the voice still did not know the word on the app — the lexical index is "
         "cached and nothing keyed it on the language")
     assert runtime.identify("mensajería").get("match") == "mensajeria", "…and the old word must still work"
 
@@ -203,6 +203,6 @@ def test_the_language_seam_drops_the_cached_names():
     # The CALL, not the words: the branch's own `logger.warning(f"update: i18n.invalidate failed …")` contains
     # both names, so a scan for them stayed green with the call deleted — this guard's own disarm found that.
     assert "_i18n.invalidate()" in window, \
-        "a language change must drop the cached bundle, or every card keeps its old name"
+        "a language change must drop the cached bundle, or every app keeps its old name"
     assert "_wreg.refresh_state()" in window, \
         "…and refresh the registry projection the prompt reads, for the same reason"

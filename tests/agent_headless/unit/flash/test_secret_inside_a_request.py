@@ -56,7 +56,7 @@ def fresh_db(tmp_path, monkeypatch):
 @pytest.mark.parametrize("text", [
     "mi contraseña de Netflix es Hunter2!x",
     SECRET_ONLY_TURN,
-    "apunta mi tarjeta 4539 1488 0343 6467",
+    "apunta mi app 4539 1488 0343 6467",
 ])
 def test_a_turn_that_is_only_a_secret_is_recognised_as_such(text):
     assert vc.secret_is_the_whole_turn(text, secrets.detect(text)) is True

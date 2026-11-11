@@ -222,8 +222,8 @@ def test_the_results_sit_in_ONE_horizontal_row(wide):
 def test_the_featured_result_is_MARKED_not_INFLATED(wide):
     """«Si un resultado solo ya ocupa toda la pantalla, ¿de qué me sirve la lista de resultados?»"""
     widths = {b["w"] for b in wide["boxes"]}
-    assert max(widths) - min(widths) <= 2, f"the cards are not the same width: {sorted(widths)}"
-    assert max(widths) < 600, f"a card in a three-result list is {max(widths)}px wide"
+    assert max(widths) - min(widths) <= 2, f"the apps are not the same width: {sorted(widths)}"
+    assert max(widths) < 600, f"an app in a three-result list is {max(widths)}px wide"
     assert any("primary" in c for c in wide["classes"]), "the featured one is still told apart, by its class"
 
 
@@ -231,7 +231,7 @@ def test_every_box_in_a_row_is_the_SAME_box(wide):
     """«Son cajitas bien puestas, plantilladas.» A template whose height depends on how talkative one result
     happens to be is not a template — and unequal cards put the buttons at three different heights."""
     hs = {b["h"] for b in wide["boxes"]}
-    assert len(hs) == 1, f"the cards are of different heights: {sorted(hs)}"
+    assert len(hs) == 1, f"the apps are of different heights: {sorted(hs)}"
     bottoms = set(wide["foot_bottoms"])
     assert len(bottoms) == 1, f"the «Ver detalle» buttons do not line up: {sorted(bottoms)}"
 
@@ -254,7 +254,7 @@ def test_the_way_out_to_the_SHOP_belongs_to_the_record(wide):
     """«El botón de ver en Amazon es el que aparece en la ficha. […] Ni siquiera el botón de ver en Amazon en la
     propia lista de resultados.» One way forward per row: open the record."""
     assert wide["out_links"] == 0, "the list is offering a second button"
-    assert wide["card_anchors"] == 0, "nor is the whole card quietly the outbound link"
+    assert wide["card_anchors"] == 0, "nor is the whole app quietly the outbound link"
     assert wide["detail_buttons"] == 3, "…and every result can still be opened"
 
 

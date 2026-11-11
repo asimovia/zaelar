@@ -56,7 +56,7 @@ def deny_reason(action: str, payload: dict) -> str:
         wid = str((payload or {}).get("widget_id") or (payload or {}).get("id") or "")
         return (f"«{(payload or {}).get('action')}» is one of the operator's own controls of «{wid}» (its manifest "
                 f"declares \"worker\": false): it changes his view or the card's settings, and a worker never "
-                f"reconfigures or navigates his cards. Read the card with read_widget if you need its data; if the "
+                f"reconfigures or navigates his apps. Read the app with read_widget if you need its data; if the "
                 f"errand needs that change, say so in your report — he makes it himself.")
     if a == "widget_data":
         # The route out has to be one the worker can actually take (the V2-710 T0.2 lesson, and the same one

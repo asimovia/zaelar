@@ -19,7 +19,7 @@ def _sheet_of_tab(nav_task_id: str) -> str:
       1. el SELLO de la pestaña — durable, sobrevive a que al worker le releven o se muera, que es justo cuando
          más falta hace (V2-281). Pero **se escribe una sola vez, en `tasks.create()`**: si el registro aún no
          tenía hoja sellada en ese instante, queda vacío PARA SIEMPRE, y el propio comentario de `create` lo
-         avisa. Ese cero es también la «tarjeta fantasma» que el arnés reporta: sin hoja resuelta, los hallazgos
+         avisa. Ese cero es también la «app fantasma» que el arnés reporta: sin hoja resuelta, los hallazgos
          caen en la caja `results` desnuda, la que no es de nadie.
       2. el REGISTRO de sesiones vivas — sabe contestar mientras el worker viva.
 

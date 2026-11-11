@@ -103,10 +103,10 @@ def build(results: list[dict], stamp: str, out_dir: Path) -> Path:
             if gw.get("ghosts"):
                 which = ", ".join(f"{g['id']} (junto a {', '.join(g.get('alongside') or [])})"
                                   for g in gw["ghosts"])
-                lines.append(f"⚠️ TARJETA(S) FANTASMA en el canvas: {which} — se abrió la pieza BASE encima de "
+                lines.append(f"⚠️ APP(S) FANTASMA en el canvas: {which} — se abrió la pieza BASE encima de "
                              f"su propia instancia, vacía. Último canvas: {', '.join(gw.get('last') or [])}")
             else:
-                lines.append(f"canvas limpio: {gw.get('max_cards', 0)} tarjeta(s) como mucho, ninguna sin dueño")
+                lines.append(f"canvas limpio: {gw.get('max_cards', 0)} app(s) como mucho, ninguna sin dueño")
         # THE MECHANISM NUMBERS, in the report that is READ and not only in the JSON. Until 2026-08-21, each
         # of these was extracted manually with a standalone script and pasted into a message: it worked while
         # someone was present to do it, and did not survive a handoff. The agent fixing the issue opens this

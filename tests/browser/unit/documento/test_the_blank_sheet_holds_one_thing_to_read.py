@@ -299,6 +299,6 @@ def test_an_empty_sheet_says_it_is_empty_instead_of_showing_nothing(page):
 
 def test_the_title_is_not_printed_twice_when_the_card_already_carries_it(page):
     _mount(page, _view(title="Tortilla", body="texto"), host_title=True)
-    assert page.locator(".hbd-title").count() == 0, "the card header already shows the title"
+    assert page.locator(".hbd-title").count() == 0, "the app header already shows the title"
     _mount(page, _view(title="Tortilla", body="texto"), host_title=False)
     assert page.locator(".hbd-title").inner_text() == "Tortilla"

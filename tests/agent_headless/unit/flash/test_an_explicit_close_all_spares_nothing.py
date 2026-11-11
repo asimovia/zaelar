@@ -60,7 +60,7 @@ class _Brain:
 
 # ── class 1 ─────────────────────────────────────────────────────────────────────────────────────────────────────
 TOTALS = ["close all", "Close all.", "close everything", "close all the widgets",
-          "Ciérralo todo.", "cierra todo", "cierra todas las tarjetas"]
+          "Ciérralo todo.", "cierra todo", "cierra todas las apps"]
 
 
 @pytest.mark.parametrize("said", TOTALS)

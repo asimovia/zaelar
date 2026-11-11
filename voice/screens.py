@@ -423,7 +423,7 @@ def slot_line() -> str:
         if e["dev"] != act and idle > 120:
             tags.append(f"idle {int(idle // 60)} min")
         parts.append(f"{e['surface'] or e['dev']} ({', '.join(tags) or 'open'})")
-    return "screens: " + " · ".join(parts) + " — one conversation; show_widget(screen=…) opens a card on another one."
+    return "screens: " + " · ".join(parts) + " — one conversation; show_widget(screen=…) opens an app on another one."
 
 
 # ── the typed door ──────────────────────────────────────────────────────────────────────────────────────────────

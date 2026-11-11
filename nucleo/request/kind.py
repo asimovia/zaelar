@@ -19,10 +19,10 @@ WEB, BUILD, CHANGE, GENERIC = "web", "build_card", "change_card", "generic"
 _KINDS = (
     (WEB, "it has to be DONE ON a website: navigate or sign in to a site, book a table, a room or a flight, buy, pay a "
          "bill, cancel or change a subscription or account on the provider's site"),
-    (BUILD, "build him a NEW card (a widget, an app on his screen)"),
-    (CHANGE, "change the CODE or the design of one of his existing cards, or work on one of his software projects"),
+    (BUILD, "build him a NEW app (a widget, an app on his screen)"),
+    (CHANGE, "change the CODE or the design of one of his existing apps, or work on one of his software projects"),
     (GENERIC, "anything else: research, comparing options, writing a document or a report, reading his own messages "
-             "or data, filling one of his cards with data"),
+             "or data, filling one of his apps with data"),
 )
 
 

@@ -28,7 +28,7 @@ from nucleo.turn import errands_of_a_turn as E
 
 GAME = "Build a playable platform game widget, Super Mario style: a side-scrolling platformer with a character"
 MONITOR = E.listing_errand({"query": "cheap used monitor"})
-Q = "If I've got this right, you're asking me to BUILD you a new card. Shall I?"
+Q = "If I've got this right, you're asking me to BUILD you a new app. Shall I?"
 
 
 def _brief(**verdicts):

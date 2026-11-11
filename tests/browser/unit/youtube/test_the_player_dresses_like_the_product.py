@@ -234,7 +234,7 @@ def test_grown_card_keeps_the_control_bar_visible_and_the_video_fills_the_rest(_
                    const sc = document.querySelector('.hb-scroll');
                    return {card, bar, frame, overflow: getComputedStyle(sc).overflowY}; }""")
     assert geo["bar"]["bottom"] <= geo["card"]["bottom"] + 1, \
-        "the operator grew the card and the buttons were clipped under its edge — never again"
+        "the operator grew the app and the buttons were clipped under its edge — never again"
     assert geo["bar"]["height"] > 0
     assert geo["frame"]["height"] > 300, "the video surface takes the spare space, not a fixed ratio"
     assert geo["overflow"] == "hidden", "the player tab fills; it does not scroll its bar out of view"

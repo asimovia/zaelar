@@ -66,7 +66,7 @@ def test_a_denial_of_a_close_does_not_license_one():
     """The verdict said `neither` on both of the measured turns. Now somebody reads it."""
     for text in DENIALS:
         assert not _door.close_ordered(text, brief=_brief("neither"))[0], (
-            f"the turn's own canvas verdict said this is not a close, and it closed his card anyway: {text!r}")
+            f"the turn's own canvas verdict said this is not a close, and it closed his app anyway: {text!r}")
 
 
 def test_a_real_close_order_still_closes():
@@ -125,7 +125,7 @@ def test_the_voice_turns_close_backstop_does_not_close_on_a_denial():
     above would have been invisible to the path that actually closed his card. Another of his denials here."""
     out, backstop = _voice_turn(DENIALS[1], _DENIED)
     assert backstop == [] and not any(d.startswith("close") for d in out.all_decisions), (
-        f"his card closed on a denial the turn's verdict had read as not a close: {out.all_decisions}")
+        f"his app closed on a denial the turn's verdict had read as not a close: {out.all_decisions}")
 
 
 def test_the_voice_turns_close_backstop_still_closes_without_a_verdict():

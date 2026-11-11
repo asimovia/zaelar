@@ -1,6 +1,6 @@
 """A show the canvas door refuses leaves a row, never silence; a show the verdict owes is made (refactor2710-99, J009).
 
-Journey J009 (2026-10-28): «Vale, pues muéstramelo y déjalo abierto.» — the model answered «te dejo abierta la tarjeta
+Journey J009 (2026-10-28): «Vale, pues muéstramelo y déjalo abierto.» — the model answered «te dejo abierta la app
 del tiempo» and called nothing, the sure `canvas = show` verdict named the card, and nothing opened: the show backstop
 ran only when the model had called a spurious tool. The verdict now completes a show the model only promised (bank case
 `journey-j009-show-it-and-leave-it-open`). And whatever the door refuses — the arbiter, an errand's step, a show with
@@ -25,7 +25,7 @@ def test_a_sure_show_verdict_owes_the_card_it_names():
     from nucleo.acts import canvas_verdict
     assert canvas_verdict.show_owed(_brief(canvas=("show", 0.95)), "search")
     assert not canvas_verdict.show_owed(_brief(canvas=("show", 0.6)), "search"), "an unsure verdict owes nothing"
-    assert not canvas_verdict.show_owed(_brief(canvas=("show", 0.95)), ""), "no card, nothing to show"
+    assert not canvas_verdict.show_owed(_brief(canvas=("show", 0.95)), ""), "no app, nothing to show"
     assert not canvas_verdict.show_owed(_brief(canvas=("close", 0.95)), "search")
 
 

@@ -669,11 +669,11 @@ async def _report_to_brain(kind: str, res: dict) -> None:
         if ok and res.get("existed"):
             return                                          # nothing built (already existed) → nothing to record
         if ok:
-            task_event.told(f"The card '{wid}' was {verb} and is in the catalogue (its exact id is '{wid}').",
+            task_event.told(f"The app '{wid}' was {verb} and is in the catalogue (its exact id is '{wid}').",
                             key=f"widget_gen:{wid}:ok", speak=False)
         else:
             err = str(res.get("error") or "error desconocido")
-            task_event.told(f"Could not {'build' if kind == 'create' else 'change'} the card '{wid}': {err}.",
+            task_event.told(f"Could not {'build' if kind == 'create' else 'change'} the app '{wid}': {err}.",
                             key=f"widget_gen:{wid}:failed", ok=False, speak=False)
             try:
                 import time as _t                      # a build has no tasks row: a keyed notice (V2-851 F2)
@@ -794,6 +794,6 @@ async def resume_interrupted_generations() -> None:
             await _report_to_brain("create", res)
         elif wid:
             from nucleo.events import task_event   # said once out of turn (V2-851 F4)
-            task_event.told(f"A restart interrupted the change to the card '{wid}': it may be half done and was not "
+            task_event.told(f"A restart interrupted the change to the app '{wid}': it may be half done and was not "
                             "re-applied. Ask for it again if he still wants it.", key=f"widget_gen:{wid}:restart",
                             ok=False)

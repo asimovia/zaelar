@@ -228,7 +228,7 @@ def test_the_photo_is_on_the_LEFT_and_the_data_on_the_right(wide):
     derecha. Eso como formato estándar de búsqueda»."""
     assert "split" in wide["card_classes"], wide["card_classes"]
     assert wide["photo_left_of_data"] is True, (
-        "la foto no está a la izquierda de los datos — la tarjeta sigue apilada")
+        "la foto no está a la izquierda de los datos — la app sigue apilada")
 
 
 def test_the_link_to_the_ORIGINAL_page_always_REACHES_the_operator(wide):

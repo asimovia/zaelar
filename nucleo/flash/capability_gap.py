@@ -33,18 +33,18 @@ KEY = "capability_gap"
 MISSING, DECLARED, WORK = "missing", "declared", "work"
 
 INSTRUCTIONS = (
-    "The operator asks the assistant for something. The assistant's own cards and connectors can do ONLY what they "
-    "declare (listed below). Answer 'missing' ONLY when he asks one of THOSE listed cards or connectors to behave in "
+    "The operator asks the assistant for something. The assistant's own apps and connectors can do ONLY what they "
+    "declare (listed below). Answer 'missing' ONLY when he asks one of THOSE listed apps or connectors to behave in "
     "a way none of their declared actions does: a feature, a setting, a filter, a sync or update mode, an "
-    "integration that existing card does not have. Answer 'declared' when a declared action does it, or when he "
+    "integration that existing app does not have. Answer 'declared' when a declared action does it, or when he "
     "only talks, asks or answers. Answer 'work' when it is real work: searching or comparing on the web, a "
-    "website, a booking, writing a document — and ALWAYS when he asks to build, create or program a NEW card or "
-    "widget, or to change how a card looks: building cards is work the assistant does.")
+    "website, a booking, writing a document — and ALWAYS when he asks to build, create or program a NEW app or "
+    "widget, or to change how an app looks: building apps is work the assistant does.")
 
 CRITERIA = {
-    MISSING: "he asks one of the assistant's own cards or connectors for a capability none of their declared "
+    MISSING: "he asks one of the assistant's own apps or connectors for a capability none of their declared "
              "actions provides — a change to the product itself",
-    DECLARED: "a declared action of a card does it, or the turn is talk, a question or an answer",
+    DECLARED: "a declared action of an app does it, or the turn is talk, a question or an answer",
     WORK: "real work: web research, a website, a booking, writing a document, or building a NEW card/widget or "
           "restyling one",
 }
@@ -70,7 +70,7 @@ def _declarations(open_ids) -> str:
                 desc = str((spec if isinstance(spec, dict) else {}).get("desc") or "").strip()
                 acts.append(f"{name}" + (f" ({desc[:MAX_DESC_CHARS]})" if desc else ""))
             if acts:
-                lines.append(f"Card «{wid}» declares: " + "; ".join(acts))
+                lines.append(f"App «{wid}» declares: " + "; ".join(acts))
     except Exception as e:  # noqa: BLE001
         _note('declared actions of open cards', e)
         pass
@@ -84,7 +84,7 @@ def _declarations(open_ids) -> str:
                 desc = str(w.get("description") or w.get("desc") or "").strip()
                 names = ", ".join(list((w.get("actions") or {}).keys())[:MAX_ACTIONS_PER_CARD]) \
                     if isinstance(w.get("actions"), dict) else ""
-                lines.append(f"Card «{wid}»" + (f" — {desc[:MAX_DESC_CHARS]}" if desc else "")
+                lines.append(f"App «{wid}»" + (f" — {desc[:MAX_DESC_CHARS]}" if desc else "")
                              + (f" — actions: {names}" if names else ""))
         except Exception as e:  # noqa: BLE001
             _note('catalogue declarations', e)

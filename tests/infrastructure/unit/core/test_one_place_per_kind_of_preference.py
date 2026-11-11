@@ -70,7 +70,7 @@ def test_a_widgets_preferences_are_rows_and_the_card_shows_the_table():
     assert rows["min_definition"]["value"] == 1080 and rows["note"]["text"] == "nada de vídeos de más de una hora"
     rules.set_value(rows["min_definition"]["id"], 720)               # edited from ⚙ Settings → Rules
     view = yt.view_data()
-    assert view["prefs"] == {"min_definition": 720}, "the card reads the table, not a copy of its own"
+    assert view["prefs"] == {"min_definition": 720}, "the app reads the table, not a copy of its own"
     assert [n["text"] for n in view["prefs_notes"]] == ["nada de vídeos de más de una hora"]
 
 

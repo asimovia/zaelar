@@ -28,7 +28,7 @@ SAID = "I don't see any photo — you just said here they are. Send the actual p
 
 def test_the_viewer_declares_that_its_show_fills_it():
     assert fx.PRESENT_MOUNT in fx.of("imagenes", "show")
-    assert fx.PRESENT_MOUNT not in fx.of("imagenes", "select"), "a lens over an open card mounts nothing"
+    assert fx.PRESENT_MOUNT not in fx.of("imagenes", "select"), "a lens over an open app mounts nothing"
     assert not fx._fills_the_card("youtube", {"widget": "youtube", "field": "videoId", "expect": "changed"}), \
         "`changed` is a different video, not content arriving (the player's mount rides its production instead)"
     assert not arb._lands_content("youtube", "load"), "production is judged by its own leaf, never twice"

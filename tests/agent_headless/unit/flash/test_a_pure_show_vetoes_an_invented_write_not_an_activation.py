@@ -8,7 +8,7 @@ con título y fecha que el operador no había dicho. Eso hay que pararlo y se si
 Lo que no funcionaba era CÓMO lo reconocía: preguntando «¿es una acción de vista?». Medido el 2026-09-16 —
 «abre música y sigue con la pista» se lee como show puro (no lleva verbo de cambio, y «sigue» está
 deliberadamente FUERA de `_ACTIVATE_VERB_RE` porque el stem choca con «el siguiente»), así que un `resume`
-bien elegido se descartaba y el operador se quedaba con una tarjeta que no hacía nada.
+bien elegido se descartaba y el operador se quedaba con una app que no hacía nada.
 
 Ampliar la lista de verbos es justo el movimiento que V2-712 acaba de retirar del consentimiento: crece un
 incidente cada vez y la frase siguiente se escribe de otra forma. El propio auditor lo dice: «no seguir
@@ -134,7 +134,7 @@ def test_the_voice_turn_passes_the_payload():
     passing it on both — the false green this guard once caused (V2-545) has no second copy to come from."""
     import inspect
     from nucleo.acts import card
-    assert card._pure_show in card._LADDER[card.CALL], "the card door reads the pure-show veto at the model's call"
+    assert card._pure_show in card._LADDER[card.CALL], "the app door reads the pure-show veto at the model's call"
     assert "show_request_blocks_data_action(text, wid, action, payload)" in inspect.getsource(card._pure_show)
 
 

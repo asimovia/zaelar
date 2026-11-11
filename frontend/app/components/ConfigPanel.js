@@ -32,7 +32,7 @@ const badge = st => `<span class="cf-badge cf-${esc(st || "off")}">${({ ok: t("c
 const row = (label, ctl, hint) =>
   `<div class="cf-row2"><label class="cf-row2-label">${esc(label)}</label><div class="cf-row2-ctl">${ctl}${hint ? `<span class="cf-hint">${hint}</span>` : ""}</div></div>`;
 
-// a sección = título + subtítulo + un grupo of filas (tarjeta with separadores, as un grupo of Ajustes).
+// a sección = título + subtítulo + un grupo of filas (app with separadores, as un grupo of Ajustes).
 const panel = (id, title, sub, inner) =>
   `<section class="cf-panel-sec" id="cf_${id}"><header class="cf-panel-head"><h4>${esc(title)}</h4>${sub ? `<p>${esc(sub)}</p>` : ""}</header><div class="cf-group">${inner}</div></section>`;
 

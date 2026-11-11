@@ -78,7 +78,7 @@ def working_card(open_ids, *, within_s: float = WORKING_S) -> str:
             if hit:
                 return hit
     except Exception as e:  # noqa: BLE001
-        logger.debug(f"bulk_close: working card unreadable — {e}")
+        logger.debug(f"bulk_close: working app unreadable — {e}")
     return ""
 
 
@@ -110,7 +110,7 @@ def spare_for(opened, text: str = "", *, emit=None, src: str = "", scope: str = 
         scope = "all"                        # the grammar read no total; the closed question did (Z2, pass 4)
     if spare and scope == "all":
         if emit is not None:
-            emit("brain", "🧷 bulk close: an explicit total — the card in use closes too", text=",".join(spare),
+            emit("brain", "🧷 bulk close: an explicit total — the app in use closes too", text=",".join(spare),
                  role="system", extra={"cat": "flash", "would_keep": spare, "src": src, "scope": scope})
         return []
     if spare and not [c for c in opened if c not in spare]:
@@ -143,8 +143,8 @@ def _closes_every_card(text: str, spare) -> bool:
     that card too? (pass 4 Z2: «clear everything off the screen» spared Images.) No answer keeps the spare."""
     try:
         from nucleo import jev
-        q = {"scope": {"instructions": f"The card he was using: «{', '.join(spare)}». Does he close that one too?",
-                       "criteria": {"every_card": "yes, every card off the screen", "spare": "no, only the others"}}}
+        q = {"scope": {"instructions": f"The app he was using: «{', '.join(spare)}». Does he close that one too?",
+                       "criteria": {"every_card": "yes, every app off the screen", "spare": "no, only the others"}}}
         got = jev.choose_many_sync(f"The operator said «{str(text).strip()[:300]}».", q, question_id="close_scope") if str(text or "").strip() else {}
         return float((((got or {}).get("scope") or {}).get("probs") or {}).get("every_card") or 0.0) >= jev.MIN_CONFIDENCE
     except Exception as e:  # noqa: BLE001 — unaskable: the spare stays
@@ -181,7 +181,7 @@ def close_all(emit, *, src: str, text: str = "", said: str = "", extra: dict | N
     for cid in opened:
         if cid not in spare:
             canvas.apply("close", cid, src=src, text=said, emit=emit, request=req, **base)
-    emit("brain", "🧷 bulk close: the card in use stays", text=",".join(spare), role="system",
+    emit("brain", "🧷 bulk close: the app in use stays", text=",".join(spare), role="system",
          extra={"cat": "flash", "kept": spare, "src": src})
     _note(closed=[c for c in opened if c not in spare], kept=spare, opened=opened)
     return spare

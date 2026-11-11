@@ -52,7 +52,7 @@ def test_a_card_the_question_picked_closes_alone_even_when_no_declared_name_matc
     from voice.engine.llm.providers import widget_intent
     events, emit = screen
     assert widget_intent._widget_fallback(said, emit, brief=_handle(said, ["agenda"])) is True
-    assert _closed(events) == ["agenda"], "a picked card became a bulk close"
+    assert _closed(events) == ["agenda"], "a picked app became a bulk close"
 
 
 def test_with_no_pick_the_declared_names_still_propose(screen):

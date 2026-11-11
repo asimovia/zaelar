@@ -87,7 +87,7 @@ def test_a_deleted_contact_comes_back_as_it_was(ct):
 def test_a_pushed_kind_is_the_one_the_card_filters_by(ct):
     ct.apply_action("add_contact", {"name": "Acme", "kind": "company"})
     ct.apply_action("show_view", {"kind": "empresa"})
-    assert ct.load_db()["view"]["sel"]["kind"] == "company", "the card compares kinds literally"
+    assert ct.load_db()["view"]["sel"]["kind"] == "company", "the app compares kinds literally"
 
 
 def test_the_members_of_a_group_are_a_view(ct):

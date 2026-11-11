@@ -101,6 +101,6 @@ def digest_line(live: dict) -> str:
         return (f"SOUND: the page player REFUSED this song (YouTube error {yt['player_error']}) — nothing is heard. "
                 "Do not say it is playing.")
     if live.get("mode") == "youtube" and yt.get("audio_blocked") and not yt.get("paused") and not yt.get("muted"):
-        return ("SOUND: BLOCKED by the browser of the screen the card is on — the song is loaded but nothing is heard. "
-                "Do not say it is playing; tell him to tap the card once and it will sound.")
+        return ("SOUND: BLOCKED by the browser of the screen the app is on — the song is loaded but nothing is heard. "
+                "Do not say it is playing; tell him to tap the app once and it will sound.")
     return ""

@@ -49,7 +49,7 @@ def test_a_question_makes_its_row_wait_with_the_question(row):
 
 def test_a_matter_without_a_row_is_keyed_and_a_silent_one_is_only_recorded(row):
     task_event.told("Could not send the Telegram to Ana.", key="telegram:1")
-    task_event.told("The card 'gym' was built.", key="widget_gen:gym:ok", speak=False)
+    task_event.told("The app 'gym' was built.", key="widget_gen:gym:ok", speak=False)
     assert len(task_event.drain()) == 2 and len(row) == 1, "speak=False is recorded in the flow, never said"
 
 

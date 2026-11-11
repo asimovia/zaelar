@@ -648,8 +648,8 @@ def _run_scenario(scenario, *, ran_before: list[str] | None = None, sandboxed: b
             # dijera más, sino porque había más hoja contra la que casar.
             if isinstance(mech.get("delivered_by_name"), dict):
                 mech["delivered_by_name"]["lower_bound"] = not _asentado
-            # …Y SI ALGUIEN RESETEÓ EL MOTOR A MITAD. Un reset cierra todas las tarjetas, y cerrar una
-            # tarjeta con la tarea viva deja la pestaña en `cancelled` sin tocar al worker — la firma exacta
+            # …Y SI ALGUIEN RESETEÓ EL MOTOR A MITAD. Un reset cierra todas las apps, y cerrar una
+            # app con la tarea viva deja la pestaña en `cancelled` sin tocar al worker — la firma exacta
             # de la familia archivada como «cancelación a mitad con el navegador en la página buena».
             mech["resets_during_round"] = verifymod.resets_during_round(config.SANDBOX_DB, since=started_at)
         except Exception as e:
@@ -959,9 +959,9 @@ def _run_batch(chosen: list, *, sandboxed: bool, args_no_file: bool = False,
             probe_client.hard_reset()
             st = probe_client.settle_after_reset()
             # …Y LA TERCERA SEÑAL, que faltaba (V2-328). `settle_after_reset` mira las sesiones de worker y las
-            # tarjetas del canvas; una pestaña del NAVEGADOR es un registro distinto y puede seguir conduciendo
+            # apps del canvas; una pestaña del NAVEGADOR es un registro distinto y puede seguir conduciendo
             # sin ninguna de las dos. Medido el 2026-08-25: tras matar una tanda con `hotel-under-15-days` a
-            # medias, la siguiente arrancó imprimiendo «motor limpio en 0.0s: sin trabajo vivo ni tarjetas»
+            # medias, la siguiente arrancó imprimiendo «motor limpio en 0.0s: sin trabajo vivo ni apps»
             # mientras el navegador abría booking.com de Sevilla, y las filas de hoteles se colaron en el prompt
             # de `search-buy-motorcycle__es`. Los veredictos culparon al producto de «no filtrar ruido
             # estructural» y de «distracción con resultados de otros contextos». Era trabajo nuestro.
@@ -972,14 +972,14 @@ def _run_batch(chosen: list, *, sandboxed: bool, args_no_file: bool = False,
                 st["items"] = list(st.get("items") or []) + [f"navegador ACTIVO hace {_nav['last_s']}s: "
                                                              f"{_nav.get('url', '')[:70]}"]
             if st["clean"]:
-                print(f"  ▸ motor limpio en {st['waited_s']}s: sin trabajo vivo ni tarjetas "
+                print(f"  ▸ motor limpio en {st['waited_s']}s: sin trabajo vivo ni apps "
                       f"(memoria y estado intactos)")
             else:
                 # No se para la tanda: un worker que tarda en morir cuesta menos que perder la medida. Pero
                 # se DICE lo que quedó vivo, con su nombre, para que el veredicto se pueda leer sabiéndolo.
                 print(f"  ⚠️ el motor NO quedó limpio tras {st['waited_s']}s — este caso arrastra: "
                       f"{'trabajo ' + str(st['tasks']) if st['tasks'] else ''}"
-                      f"{' tarjetas ' + str(st['items']) if st['items'] else ''}")
+                      f"{' apps ' + str(st['items']) if st['items'] else ''}")
         except Exception as e:
             # V2-860 T0.1 — a REFUSED reset means nothing is listening: wait, revive once, else ONE infra row
             # and stop. 44 of 51 INFRA rows were cases walked one after another against a dead engine.

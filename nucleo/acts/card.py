@@ -135,7 +135,7 @@ def _close_is_the_card(r, wid, action, payload, **_k):
     """E5 (demo passes 36/42): «close my mail» ran the card's `close` VIEW over a sure close verdict."""
     from nucleo.flash import direct_action as _da, show_target as _st
     if _da.close_op_is_the_card((r or {}).get("brief"), action):
-        return Licence(CLOSE, "close-is-the-card", "🔁 data-op «close» sobre un cierre seguro — cierra la tarjeta",
+        return Licence(CLOSE, "close-is-the-card", "🔁 data-op «close» sobre un cierre seguro — cierra la app",
                        wid, {"cat": "flash", "widget": wid, "action": "close"}, _st.close_target(wid))
     return None
 
@@ -161,7 +161,7 @@ def _leaves_for_another_card(r, wid, action, payload, **_k):
     # The note that told the NEXT turn's model «it was not sent» went with the mailbox (V2-851 F5): the drop's event
     # below is its record, and the act's absence is what the turn's verdict reads.
     return Licence(DROP, "leaves-for-another-card", "🛑 acto que sale fuera sin respaldo del veredicto — no se ejecuta",
-                   f"{wid}:{action} · veredicto en otra tarjeta", {"cat": "flash", "id": wid, "model": action})
+                   f"{wid}:{action} · veredicto en otra app", {"cat": "flash", "id": wid, "model": action})
 
 
 def _context_bleed(r, wid, action, payload, *, last_dataop=None, **_k):

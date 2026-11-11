@@ -69,7 +69,7 @@ def test_both_hosts_implement_ctx_scroll():
 def test_the_widget_applies_a_push_once_and_asks_its_host():
     src = (ENGINE / "widgets/results/widget.js").read_text(encoding="utf-8")
     assert "_hbScrollN" in src, "without the token guard, one order scrolls on EVERY refresh of a live sheet"
-    assert "ctx.scroll(" in src, "the widget must ASK its host — the scroller is card chrome, not the widget's"
+    assert "ctx.scroll(" in src, "the widget must ASK its host — the scroller is app chrome, not the widget's"
 
 
 def test_the_manifest_declares_scroll_as_a_view():

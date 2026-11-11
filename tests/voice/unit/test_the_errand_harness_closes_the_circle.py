@@ -121,10 +121,10 @@ def test_the_turn_records_its_shown_cards_and_reads_no_claim_from_its_reply():
     """V2-851 F5: the turn end no longer reads the reply for a CLAIM of delivery nor says a follow-up after it —
     shown cards stay goals the prompt carries; the claim grammar and `false_claim` are gone (disarm: either back → red)."""
     seam = _src("nucleo/flash/harness_turn.py")
-    assert "harness.note_goal(harness.KIND_WIDGET_CONTENT" in seam, "shown cards become goals"
+    assert "harness.note_goal(harness.KIND_WIDGET_CONTENT" in seam, "shown apps become goals"
     assert not hasattr(harness, "claims_done") and not hasattr(harness, "false_claim")
     prov = _src("voice/engine/llm/providers/nucleo.py")
-    assert "_ht.note_shown(_shown_ids" in prov, "the turn's shown cards must reach the ledger"
+    assert "_ht.note_shown(_shown_ids" in prov, "the turn's shown apps must reach the ledger"
     assert "_ht.rescue(" not in prov and "follow_up_line" not in prov
 
 

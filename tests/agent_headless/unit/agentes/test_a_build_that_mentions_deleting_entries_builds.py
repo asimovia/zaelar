@@ -56,6 +56,6 @@ def test_the_generator_worker_never_deletes_a_card(clock_exists, monkeypatch):
             out.append(b._q.get_nowait())
         return out
     events = asyncio.run(_go())
-    assert deleted == [], "a worker deleted a card with no confirmation of its own"
+    assert deleted == [], "a worker deleted an app with no confirmation of its own"
     result = [e for e in events if e.type == "result"]
     assert result and result[0].data.get("ok") is False, events

@@ -32,7 +32,7 @@ def resolve(card: str, text: str, open_ids=None) -> tuple[str, str]:
             open_ids = open_instances()
         out = _inst.resolve_close(card, list(open_ids or []), text)
     except Exception as e:  # noqa: BLE001 — unreadable screen: close as before, a spurious question is worse
-        logger.debug(f"close_which: open cards unreadable — {type(e).__name__}: {e}")
+        logger.debug(f"close_which: open apps unreadable — {type(e).__name__}: {e}")
         return card, ""
     if out.get("ask"):
         return card, str(out["ask"])
@@ -53,7 +53,7 @@ def probe_action(args: dict, card: str, text: str) -> tuple[str, str]:
 def _emit(card: str, question: str) -> None:
     try:
         from voice.observer import emit
-        emit("brain", "❓ close of a piece with several cards open — asking which", text=card, role="system",
+        emit("brain", "❓ close of a piece with several apps open — asking which", text=card, role="system",
              extra={"cat": "flash", "ask": question[:160]})
     except Exception as e:  # noqa: BLE001
         logger.debug(f"close_which: emit failed — {e}")

@@ -41,7 +41,7 @@ def _a_search_runs(monkeypatch):
 
 def test_the_route_gives_the_card_act_to_the_card_not_to_the_errand():
     assert flow_of.joins_as(FLOW, _brief(**MEASURED)) == flow_of.CARD, \
-        "an order the brief gives to the map card was joined to the coffee-shop search as a steer"
+        "an order the brief gives to the map app was joined to the coffee-shop search as a steer"
 
 
 def test_the_portal_tells_the_errand_nothing(monkeypatch):

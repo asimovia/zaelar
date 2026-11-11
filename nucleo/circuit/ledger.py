@@ -103,7 +103,7 @@ def card(uid: str) -> dict:
     try:
         row = _ts.task_get(str(uid or "").strip()) if uid else None
     except Exception as e:  # noqa: BLE001 — a reader never breaks a turn
-        logger.debug(f"ledger: card of {uid} unreadable — {type(e).__name__}: {e}")
+        logger.debug(f"ledger: app of {uid} unreadable — {type(e).__name__}: {e}")
         row = None
     if not row:
         return {}

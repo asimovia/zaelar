@@ -81,7 +81,7 @@ def test_save_document_writes_the_file_and_shows_its_folder(ws):
     assert r["ok"] and r["where"] == "Documentos" and r["folder_id"] == "shelf:documents"
     assert r["path"].endswith("Declaración de Independencia.md")
     v = mod.view_data()
-    assert v["folder_id"] == "shelf:documents", "the card lands on the shelf the file went to"
+    assert v["folder_id"] == "shelf:documents", "the app lands on the shelf the file went to"
     assert any(e["name"] == "Declaración de Independencia.md" for e in v["entries"])
     assert v["selected"] and v["selected"]["name"] == "Declaración de Independencia.md"
 

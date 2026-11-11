@@ -177,7 +177,7 @@ def read_query(question: str) -> str:
         top = found[:directory.CANDIDATES_MAX]
         return "\n".join([f"{len(found)} personas del directorio se llaman «{word}» — las más cercanas a él primero "
                            f"(y {len(found) - len(top)} más, menos cercanas). PREGÚNTALE cuál, o pásale «{word}» a la "
-                           "tarjeta que envía y ella pregunta:"] + [_full_row(c) for c in top])
+                           "app que envía y ella pregunta:"] + [_full_row(c) for c in top])
     if not hits:
         return ""
     head = ("Ficha COMPLETA de quien se pregunta (resuelto contra el directorio; esto SÍ es el registro):"

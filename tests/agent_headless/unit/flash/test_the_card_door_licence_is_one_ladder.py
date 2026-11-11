@@ -74,10 +74,10 @@ def test_a_close_verdict_closes_the_card_at_the_real_gate(screen, monkeypatch):
     from nucleo.flash import direct_action as da
     monkeypatch.setattr(da, "sure_canvas", lambda brief: "close")
     out = rig.run("mensajeria", "close", {}, said="close my mail", turn_brief=rig.brief(), monkeypatch=monkeypatch)
-    assert out.ran == [] and ("brain", "🔁 data-op «close» sobre un cierre seguro — cierra la tarjeta") in out.events
+    assert out.ran == [] and ("brain", "🔁 data-op «close» sobre un cierre seguro — cierra la app") in out.events
     monkeypatch.setitem(card._LADDER, card.GATE, (card._a_fragment,))
     out = rig.run("mensajeria", "close", {}, said="close my mail", turn_brief=rig.brief(), monkeypatch=monkeypatch)
-    assert ("brain", "🔁 data-op «close» sobre un cierre seguro — cierra la tarjeta") not in out.events
+    assert ("brain", "🔁 data-op «close» sobre un cierre seguro — cierra la app") not in out.events
 
 
 def test_a_fragment_moves_nothing_at_the_real_gate(screen, monkeypatch):

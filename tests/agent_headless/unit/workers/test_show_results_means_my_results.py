@@ -2,7 +2,7 @@
 
 The worker-facing verb takes the widget's NAME; the worker never knows its errand instance
 (`results::<sheet>`), and `show_widget` passed the bare id through — the frontend then opened the BASE card
-ON TOP of the errand's own sheet, empty: the intermittent «TARJETA(S) FANTASMA» the round reports keep naming
+ON TOP of the errand's own sheet, empty: the intermittent «APP(S) FANTASMA» the round reports keep naming
 (bilbao 08:38 and coche 08:03: base `results` beside its instances) — the live opener V2-351's restore-time
 sweep cannot reach. Same decision the voice channel took in 246007a: «my results» resolves to MY sheet.
 """

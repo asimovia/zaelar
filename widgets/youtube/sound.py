@@ -86,7 +86,7 @@ def digest_line(db: dict) -> str:
     """The brain must not say «it is playing with sound» over a player the browser keeps silent."""
     if db.get("videoId") and db.get("audio_blocked") and not db.get("muted"):
         return ("SONIDO DEL VÍDEO: BLOQUEADO por el navegador — el reproductor sigue en silencio aunque se pidió "
-                "sonido. No digas que ya se oye; dile que toque una vez el altavoz de la tarjeta (o cualquier "
+                "sonido. No digas que ya se oye; dile que toque una vez el altavoz de la app (o cualquier "
                 "punto de la página) y sonará.")
     return ""
 

@@ -44,7 +44,7 @@ def launched(monkeypatch):
     monkeypatch.setattr(dc, "_EXPIRED_CONFIRM", {})
     monkeypatch.setattr(dc, "_PENDING_CONFIRM", {
         "7": {"request": GAME, "kind": "code", "trusted": True, "context": {}, "sheet": "", "ts": now - 20,
-              "code_change": "create", "question": "Me pides que te CONSTRUYA una tarjeta nueva. ¿La hago?"},
+              "code_change": "create", "question": "Me pides que te CONSTRUYA una app nueva. ¿La hago?"},
         "offer:1": {"request": OTHER, "kind": "generic", "trusted": True, "context": {}, "sheet": "", "ts": now,
                     "offered": True, "question": "¿Quieres que lo haga?"}})
     return out

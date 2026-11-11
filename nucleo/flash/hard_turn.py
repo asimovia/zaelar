@@ -105,7 +105,7 @@ async def names_an_act_on_screen(text: str, emit) -> bool:
         choice, info = await brief.verdict_before_the_turn(text, brief.TARGET_KEY)
         if not (info and info.get("used") and choice and choice != "none"):
             return False
-        emit("brain", "✋ el stop nombra una acción de una tarjeta — sigue el turno", text=f"{choice} ← {text[:120]}",
+        emit("brain", "✋ el stop nombra una acción de una app — sigue el turno", text=f"{choice} ← {text[:120]}",
              role="system", extra={"cat": "flash", "reason": "stop_names_an_act", "verdict": choice})
         return True
     except Exception as e:  # noqa: BLE001 — an unreadable verdict keeps the stop as a stop

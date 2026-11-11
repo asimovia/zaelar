@@ -197,13 +197,13 @@ _TABLE = [
     *_rows("test_a_money_word_a_preposition_governs_is_a_topic::"
            "test_the_imperative_that_shares_the_spelling_keeps_stopping", True, [
                "Recarga el móvil con 20 euros",
-               "recarga la tarjeta del transporte",
+               "recarga la app del transporte",
                "transfiere 500 euros a la cuenta de Quinn",
                "Compra el pan",
                "paga por la compra del pedido",
                "confirma la compra",
                "finalizar compra",
-               "charge my card for the order",
+               "charge my app for the order",
                "Haz un informe del coste de recarga y recarga el móvil con 10 euros",
            ]),
 

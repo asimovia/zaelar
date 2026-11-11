@@ -147,7 +147,7 @@ def open_player_owns(card: str, operator_text: str, *, open_ids=None) -> str:
         from nucleo.flash import direct_action as _da
         return card if _da.named_cards(operator_text) else others[0]
     except Exception as e:  # noqa: BLE001
-        _note(f"named cards unreadable ({e!r})")
+        _note(f"named apps unreadable ({e!r})")
         return card
 
 
@@ -174,7 +174,7 @@ def outcome(card: str) -> dict:
             return {"state": "swapped", "title": str(bn.get("from") or ""), "to": str(bn.get("to") or title)}
         return {"state": "playing" if title else "", "title": title, "to": ""}
     except Exception as e:  # noqa: BLE001
-        _note(f"card unread — {e}")
+        _note(f"app unread — {e}")
         return empty
 
 

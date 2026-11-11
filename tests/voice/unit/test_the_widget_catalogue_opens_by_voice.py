@@ -65,7 +65,7 @@ def test_asking_for_HIS_widgets_opens_the_custom_sub_tab(phrase, tab):
 
 
 def test_the_models_catalogue_says_which_widgets_are_his():
-    """«Las tarjetas personalizadas que tengas tú hechas no me salen en la lista que veo» — the fact existed
+    """«Las apps personalizadas que tengas tú hechas no me salen en la lista que veo» — the fact existed
     (`origin`, `forked_from`) and never reached the model. The row now carries it."""
     from widgets import brief, selection
     cat = [{"id": "youtube", "whenToUse": "vídeo", "origin": "user", "forked_from": {"origin": "builtin"}},

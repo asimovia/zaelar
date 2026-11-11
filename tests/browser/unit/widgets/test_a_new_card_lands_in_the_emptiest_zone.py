@@ -34,15 +34,15 @@ def test_every_automatic_placement_goes_through_the_one_engine():
     src = DESKTOP.read_text(encoding="utf-8")
     assert 'from "./placement.js' in src
     assert "_largestGap" not in src, "a second placement scan survived"
-    place = src[src.index("_place(card, expected=null){"):src.index("_expected(baseId){")]
+    place = src[src.index("_place(app, expected=null){"):src.index("_expected(baseId){")]
     assert "bestSpot({" in place and 'mode: "free"' in place
     compact = src[src.index("  compact(){"):src.index("  arrange(){")]
     assert "bestSpot({" in compact and 'mode:"tight"' in compact
     arrange = src[src.index("  arrange(){"):src.index("  // Live rects to avoid")]
     assert "innerHeight" not in arrange, "the ⤢ button tiles against a private bottom, not the canvas"
     assert "this._minSize(" in arrange and "Math.max(320" not in arrange, "a private floor instead of the widget's"
-    assert "this._place(card, this._expected(baseId))" in src, "a fresh card is placed at a loading tile, not its size"
-    assert "this._settle(w.card, id)" in src, "nothing re-checks the spot once the card has its real size"
+    assert "this._place(app, this._expected(baseId))" in src, "a fresh app is placed at a loading tile, not its size"
+    assert "this._settle(w.card, id)" in src, "nothing re-checks the spot once the app has its real size"
 
 
 def _card_widgets() -> list[tuple[str, dict]]:
@@ -63,7 +63,7 @@ def test_every_card_widget_declares_a_size_and_a_minimum_that_fit_each_other():
             missing.append(wid); continue
         assert 240 <= mn["w"] <= size["w"] and 150 <= mn["h"] <= size["h"], (wid, size, mn)
         assert 0.45 <= size["w"] / size["h"] <= 1.7, f"{wid} opens as a strip or a sliver: {size}"
-    assert not missing, f"card widgets without a declared size+min: {missing}"
+    assert not missing, f"app widgets without a declared size+min: {missing}"
 
 
 # ── the real canvas ────────────────────────────────────────────────────────────────────────────────────────────

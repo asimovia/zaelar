@@ -14,6 +14,6 @@ WIDGET = ENGINE / "widgets" / "navegador" / "widget.js"
 def test_the_browser_card_paints_a_monitor_and_never_results() -> None:
     node = shutil.which("node")
     if not node:
-        pytest.skip("Node.js is required to mount the browser card render")
+        pytest.skip("Node.js is required to mount the browser app render")
     result = subprocess.run([node, str(SCRIPT), str(WIDGET)], capture_output=True, text=True, timeout=60)
     assert result.returncode == 0, result.stdout + result.stderr

@@ -40,7 +40,7 @@ def _open_sheets() -> set | None:
         from server.voice_api import open_instances
         inst = open_instances()
     except Exception as e:  # noqa: BLE001 — unknown, not «none open»
-        logger.debug(f"map.sheet: open cards unread — {type(e).__name__}: {e}")
+        logger.debug(f"map.sheet: open apps unread — {type(e).__name__}: {e}")
         return None
     if not inst:
         return None

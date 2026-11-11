@@ -130,7 +130,7 @@ def _tag_emit(action: str, extra: dict, *, _apply_widget_data, _brief, _is_meta_
             and not _txw._direct_action._says_the_name(text, str((extra or {}).get("id") or ""))
             and _txw._close_cancel.inside_or_cancelled(_brief, text, extra, lambda c: _apply_widget_data(c["widget_id"], c["action"], c["payload"]))):
         # V2-770 — the order is an action INSIDE the card («ciérrala» over a detail card): not this tag.
-        emit("brain", "🛡️ close ignorado — la orden es una acción DENTRO de la tarjeta",
+        emit("brain", "🛡️ close ignorado — la orden es una acción DENTRO de la app",
              text=(text or "")[:120], role="system", extra={"cat": "flash", "kind_diag": "close_inside_card"})
         deduped["v"] = True
         return False                  # V2-787: a refused close says so to its caller (`close_dispatch`)
@@ -162,7 +162,7 @@ def _tag_emit(action: str, extra: dict, *, _apply_widget_data, _brief, _is_meta_
     # GUARD anti-clutter (2026-07-12): [[show:navegador]] on a search opened an EMPTY browser beside the
     # task card; the search shows in ITS card (navegador::tN), so the bare one is ignored.
     if action == "show" and str(extra.get("id") or "").strip().lower() == "navegador":
-        emit("brain", "🚫 [[show:navegador]] ignorado (la tarjeta de la tarea es la superficie)", role="system")
+        emit("brain", "🚫 [[show:navegador]] ignorado (la app de la tarea es la superficie)", role="system")
         return
     # A META question on a past action («¿por qué abriste proyectos?») is no show order (bug 2026-07-12).
     # V2-776: HIS words only (V2-678) — our `[SISTEMA]` notes dropped «Show me the monitors».
@@ -179,7 +179,7 @@ def _tag_emit(action: str, extra: dict, *, _apply_widget_data, _brief, _is_meta_
         extra["reason"] = "turn-order"       # V2-723: the guards above ARE the turn's license
         # V2-770 — a show of an ALREADY open card whose verdict names an action INSIDE it is not the act.
         if _txw._direct_action.order_is_inside(_brief, _sid):
-            emit("brain", "🪟 show de una tarjeta ya abierta — la orden es una acción DENTRO",
+            emit("brain", "🪟 show de una app ya abierta — la orden es una acción DENTRO",
                  text=_sid, role="system", extra={"cat": "flash", "kind_diag": "show_inside_card"})
             _cross_the_door(action, extra, text=text, brief=_brief, emit=emit)
             return
@@ -339,7 +339,7 @@ def _handle_widget_data_tool(args: dict, *, _apply_widget_data, _brief, _fronten
     from nucleo.flash import router as _router
     if _router.is_pure_show_request(text) and runtime.get(wid) is not None:
         # V2-545 — a display-only action (`"view": true`) runs beside the card a pure show brings.
-        emit("brain", "🪟 'abrir/mostrar' puro + acción de VISTA → la tarjeta Y la vista",
+        emit("brain", "🪟 'abrir/mostrar' puro + acción de VISTA → la app Y la vista",
              text=f"{wid}:{action_name}", role="system",
              extra={"id": wid, "action": action_name, "payload": payload or {}})
         _tag_emit("show", {"id": wid})

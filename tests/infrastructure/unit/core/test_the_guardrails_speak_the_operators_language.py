@@ -248,7 +248,7 @@ def test_the_host_really_does_give_every_card_those_controls():
     fresh = src[i:src.index("this._watchSize(card)", i)]
     for piece in ('className="hb-x"', 'className="hb-max"', "_addHandles(card)",
                   "_wireDrag(card)", "_wireResize(card"):
-        assert piece in fresh, f"a fresh card stopped getting {piece}"
+        assert piece in fresh, f"a fresh app stopped getting {piece}"
 
 
 # ── I · Picking one of six pictures, in either language ───────────────────────────────────────────────────
@@ -337,7 +337,7 @@ def test_these_never_wipe_the_canvas(said):
 
 @pytest.mark.parametrize("said", [
     "close everything", "close all the widgets", "cierra todos los widgets",
-    "quita todas las tarjetas", "ciérralo todo", "limpia el escritorio",
+    "quita todas las apps", "ciérralo todo", "limpia el escritorio",
 ])
 def test_a_real_close_all_still_fires(said):
     """The counterweight — the guard errs toward not firing, it must not stop firing."""

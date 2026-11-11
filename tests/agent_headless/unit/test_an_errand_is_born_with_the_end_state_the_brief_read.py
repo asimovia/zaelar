@@ -37,5 +37,5 @@ def test_a_sure_end_verdict_becomes_the_errands_spec():
 def test_no_verdict_an_unsure_one_or_an_undeclared_target_gives_none():
     assert errand.done_when_from_brief(_brief(None)) is None
     assert errand.done_when_from_brief(_brief("notes:items", 0.3)) is None
-    assert errand.done_when_from_brief(_brief("agenda:meetings")) is None, "no card on screen declares it"
+    assert errand.done_when_from_brief(_brief("agenda:meetings")) is None, "no app on screen declares it"
     assert errand.done_when_from_brief(None) is None

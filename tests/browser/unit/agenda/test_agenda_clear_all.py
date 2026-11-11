@@ -104,7 +104,7 @@ def test_la_vista_refleja_el_vaciado(agenda):
     agenda.apply_action("clear_all", {})
     d = agenda.view_data()
     contenido = [b for b in d["plan"]["blocks"] if b.get("kind") != "break"]
-    assert not contenido, f"la tarjeta seguiría mostrando contenido: {contenido}"
+    assert not contenido, f"la app seguiría mostrando contenido: {contenido}"
 
 
 def test_esta_declarada_y_pide_confirmacion():

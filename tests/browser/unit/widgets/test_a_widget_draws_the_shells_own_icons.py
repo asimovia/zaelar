@@ -144,7 +144,7 @@ def _render(page, wid, data):
 
 def test_the_contacts_plug_is_the_shells_plug(page):
     err = _render(page, "contactos", {"contacts": [], "providers": [], "sync": {}})
-    assert err is None, f"the card did not load: {err}"
+    assert err is None, f"the app did not load: {err}"
     plug, shell = page.evaluate("""async u => {
         const t = document.createElement('template'); t.innerHTML = (await import(u)).PLUG_ICON;
         return [document.querySelector('.ctplug svg')?.innerHTML || '', t.content.firstElementChild.innerHTML]; }""",
@@ -154,5 +154,5 @@ def test_the_contacts_plug_is_the_shells_plug(page):
 
 def test_the_music_card_loads_on_the_shells_icons(page):
     err = _render(page, "musica", {})
-    assert err is None, f"the card did not load: {err}"
-    assert page.evaluate("() => document.querySelectorAll('#w svg').length") > 0, "the card painted no icon"
+    assert err is None, f"the app did not load: {err}"
+    assert page.evaluate("() => document.querySelectorAll('#w svg').length") > 0, "the app painted no icon"

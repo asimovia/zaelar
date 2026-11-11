@@ -124,9 +124,9 @@ def _attach_brief_followup(task: "_d.asyncio.Task", *, key: str, rec: "_d.Sessio
 
 # ── contrato WEB restaurado (demo 2026-07-14: the search corrio INVISIBLE) ────────────────────────────────
 # En the refactor V2-038 (P2) the flujo `kind=web` is unifico bajo the WorkerSession generico and is PERDIÓ the step
-# of `web_cc` that creaba the task+TARJETA of the browser and daba al worker the contrato of cierre → the worker of the
+# of `web_cc` that creaba the task+APP of the browser and daba al worker the contrato of cierre → the worker of the
 # demo navego 12+ min without superficie visible ni entrega. Se restaura AQUÍ, inside of the sustrato new:
-# a task = a tab = a tarjeta (continuidad V2-032 incluida) + prompt web with criterion of CIERRE.
+# a task = a tab = a app (continuidad V2-032 incluida) + prompt web with criterion of CIERRE.
 _FORCE_NEW_RE = _d.re.compile(
     r"\b(otro|otra|segundo|segunda|nuevo|nueva|aparte|adem[aá]s|en paralelo|a la vez)\b[^.]*"
     r"\b(navegador|pesta[ñn]a|ventana|b[uú]squeda|tarea)\b", _d.re.I)
@@ -134,9 +134,9 @@ _COEXIST_RE = _d.re.compile(r"\bsin (parar|detener|cerrar|tocar)\b", _d.re.I)
 
 
 async def _prepare_web(rec: "_d.SessionRecord", req: str, reuse_tid: str = "") -> str:
-    """kind=web: crea (or RE-USA, continuidad V2-032/V2-049) the task of the browser and ABRE su tarjeta ANTES of
+    """kind=web: crea (or RE-USA, continuidad V2-032/V2-049) the task of the browser and ABRE su app ANTES of
     start the worker. Devuelve the id of navtask ('' if the subsistema no esta). El id viaja al worker by
-    ZAELAR_NAV_TASK → sus capturas/actions casan with ESTA tarjeta (and su tab, that persiste in the owner)."""
+    ZAELAR_NAV_TASK → sus capturas/actions casan with ESTA app (and su tab, that persiste in the owner)."""
     try:
         from widgets.navegador import tasks as navtasks
     except Exception:
@@ -182,7 +182,7 @@ async def _prepare_web(rec: "_d.SessionRecord", req: str, reuse_tid: str = "") -
             navtasks.set_phase(tid, "conduciendo el navegador", True)
         except Exception:
             pass
-        try:  # esencia del objetivo en la cabecera de la tarjeta (sintetizador existente; best-effort)
+        try:  # esencia del objetivo en la cabecera de la app (sintetizador existente; best-effort)
             from nucleo.agentes.web import _synthesize_goal
             s = await _synthesize_goal(req)
             if s:
@@ -192,12 +192,12 @@ async def _prepare_web(rec: "_d.SessionRecord", req: str, reuse_tid: str = "") -
         rec.nav_task = tid
         return tid
     except Exception as e:  # noqa: BLE001
-        _d.logger.warning(f"dispatch: _prepare_web falló (la tarea corre sin tarjeta): {e}")
+        _d.logger.warning(f"dispatch: _prepare_web falló (la tarea corre sin app): {e}")
         return ""
 
 
 async def _finalize_web(rec: "_d.SessionRecord", keep_open: bool = False) -> None:
-    """Cierra the TARJETA of the browser with it encontrado: extrae the anuncios that quedaron in pantalla (the
+    """Cierra the APP of the browser with it encontrado: extrae the anuncios that quedaron in pantalla (the
     tab of the owner continues live although the worker haya dead/sido matado) and fija the state final. Best-effort.
     V2-049: if `keep_open` (operation web incompleta that is va a REANUDAR), NO the marca «failed» — the leaves in PAUSA
     (working) for that the tab and su pagina is conserven and the worker reanudado continue donde estaba."""

@@ -73,7 +73,7 @@ def send(payload: dict) -> dict:
     if refusal is not None:
         _sent.outbox_settle(db, ref, False, refusal["message"])
         _d.store.save(_d.WIDGET_ID, db)
-        logger.info(f"card send {ref} refused: {refusal['error']}")
+        logger.info(f"app send {ref} refused: {refusal['error']}")
         return refusal
     text = str(payload.get("text") or "")
     files = _d._media.local_paths(_d.store.data_dir(_d.WIDGET_ID), payload.get("files"))

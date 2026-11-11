@@ -39,7 +39,7 @@ def test_another_card_on_screen_shows_its_own_declared_fields():
 
 def test_a_card_off_screen_costs_nothing_and_no_key_joins_a_name():
     text = brief.for_prompt(open_ids=[], recent_ids=["results"])
-    assert not _fields_line(text, "results"), "payload fields paid for a card that is not on screen"
+    assert not _fields_line(text, "results"), "payload fields paid for an app that is not on screen"
     row = next(ln for ln in brief.for_prompt(open_ids=["results"]).splitlines() if ln.startswith("- results "))
     assert "excluded" not in row, "a key read as part of an action's name"
 

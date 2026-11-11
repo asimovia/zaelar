@@ -35,7 +35,7 @@ def test_the_commission_pass_sees_the_agenda_on_screen(seen):
     assert "16:30 «Catch up with Rowan»" in system, "the time on his screen never reached the pass"
     # live against the model, the digest alone was not enough (0/3): the brief's «17:00» won. Told which source
     # wins, 3/4 wrote 4:30 and the fourth called nothing (the errand keeps its path).
-    assert "is taken from the CARD, not from the commission" in system
+    assert "is taken from the APP, not from the commission" in system
     # full46 C5: with the agenda already at 4:30 and «move it half an hour later» in the window, 2/3 wrote 5:00 —
     # the move applied twice. Told the card is the state AFTER his changes: 4/5 wrote 4:30.
     assert "ALREADY APPLIED" in system

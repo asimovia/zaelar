@@ -46,7 +46,7 @@ def test_a_sure_missing_verdict_refuses_the_turn_born_errand(portal):
     G.remember(_brief(G.MISSING, 0.95), "T7·ab")
     for src in G.TURN_SOURCES:
         tid = E.escalate_to_slowbrain(REQ, context={"src": src, "trace": "T7·ab"})
-        assert tid == 0, f"an errand for a capability no card declares was started from {src}"
+        assert tid == 0, f"an errand for a capability no app declares was started from {src}"
     assert "escalate.requested" not in bus
     assert refused == [REQ, REQ], "the refusal must be SAID, not swallowed"
 

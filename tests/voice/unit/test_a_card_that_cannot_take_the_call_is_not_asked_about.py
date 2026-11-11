@@ -36,7 +36,7 @@ def test_an_op_on_a_blank_base_card_goes_to_its_only_sibling_with_content(monkey
     monkeypatch.setattr(truth, "widget_view", lambda w: views.get(w))
     assert fe.which_card("results", "layout", open_ids=["results", "results::a1", "results::b2"]) == ("card", "results::a1")
     views["results"] = {"empty": False, "items": [1]}
-    assert fe._the_sibling_with_content("results", ["results", "results::a1"]) == "", "a bare card with content is its own"
+    assert fe._the_sibling_with_content("results", ["results", "results::a1"]) == "", "a bare app with content is its own"
     views["results"] = {"empty": True, "items": []}
     views["results::b2"] = {"empty": False, "items": [9]}
     assert fe._the_sibling_with_content("results", ["results", "results::a1", "results::b2"]) == "", "two full: no guess"

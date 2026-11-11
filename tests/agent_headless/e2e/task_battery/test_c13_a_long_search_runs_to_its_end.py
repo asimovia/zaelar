@@ -167,7 +167,7 @@ def test_c13_a_long_search_runs_to_its_end(fresh_for, check, variant, rep):
     owner = [payload(e) for e in evs if str(e.get("kind") or "") == "owner"]
     non_owner = [o for o in owner if o.get("rule") == "non_owner_show" or str(o.get("allow")) in ("False", "false")]
     shown = {str(o.get("id") or o.get("text") or "") for o in owner if o.get("rule") == "show"}
-    check.that("one card for the task", not non_owner and len(shown) <= 1,
+    check.that("one app for the task", not non_owner and len(shown) <= 1,
                {"non_owner": non_owner[:3], "shown": sorted(shown)})
 
     # (6) the end state is the request's

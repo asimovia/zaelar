@@ -143,7 +143,7 @@ def test_all_blank_cards_still_ask_because_the_ambiguity_is_real():
     _tab("t1", "about:blank")
     _tab("t2", "about:blank")
     out = instances.resolve_show("navegador", ["navegador::t1", "navegador::t2"], "enséñame el navegador")
-    assert out["ask"], "eligió a ciegas entre dos tarjetas en blanco"
+    assert out["ask"], "eligió a ciegas entre dos apps en blanco"
 
 
 # ── 4) CLOSING keeps asking — same input, opposite risk ───────────────────────────────────────────────────────

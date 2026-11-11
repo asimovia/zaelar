@@ -25,7 +25,7 @@ def _close(monkeypatch, open_cards, widget="mapa"):
 
 def test_a_card_the_canvas_says_is_not_open_falls_through_to_the_model(monkeypatch):
     ok, seen = _close(monkeypatch, ["agenda", "youtube"])
-    assert ok is False and not seen, f"a close of a card not on screen was acted and acknowledged: {seen}"
+    assert ok is False and not seen, f"a close of an app not on screen was acted and acknowledged: {seen}"
 
 
 def test_a_card_on_screen_still_closes_in_the_fast_lane(monkeypatch):

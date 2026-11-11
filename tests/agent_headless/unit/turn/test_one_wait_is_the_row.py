@@ -82,7 +82,7 @@ def test_two_card_questions_and_a_yes_answer_the_one_the_brief_names(clean, no_m
         return {"ok": True}
     from widgets import lifecycle
     monkeypatch.setattr(lifecycle, "delete_widget", _delete)
-    wc.request("delete", "meteo", "¿Borro la tarjeta del tiempo?", notify_ui=False)
+    wc.request("delete", "meteo", "¿Borro la app del tiempo?", notify_ui=False)
     time.sleep(0.01)
     wc.request("delete", "agenda", "¿Borro la agenda?", notify_ui=False)
     first, second = wc.pending()["meteo"], wc.pending()["agenda"]
@@ -124,7 +124,7 @@ def test_two_parked_errands_and_a_yes_launch_the_one_the_brief_names(clean, no_m
 
 def test_a_parked_offer_survives_a_suspension_and_a_restart(clean, monkeypatch):
     dc.remember_offer("busca vuelos a Roma para el puente", context={"kind": "web"}, question="¿Te busco vuelos?")
-    wc.request("delete", "meteo", "¿Borro la tarjeta del tiempo?", notify_ui=False)
+    wc.request("delete", "meteo", "¿Borro la app del tiempo?", notify_ui=False)
     (key, offer), = dc._PENDING_CONFIRM.items()
     assert offer.get("ask_id"), "the offer is not on a row"
 

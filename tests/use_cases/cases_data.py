@@ -223,7 +223,7 @@ CASES: list[UseCase] = [
     # under the same name (play/pause/next/previous/volume_up/volume_down/set_volume/play_local/ended), so
     # «baja el volumen» with both playing is undecidable at the level of the action name.
     UseCase("tres-tarjetas-y-el-video-por-alusion", "es", 3,
-            "Tres tarjetas abiertas y órdenes sin nombrar cuál",
+            "Tres apps abiertas y órdenes sin nombrar cuál",
             "Ponme el tráiler de Dune, y de fondo algo de música tranquila. Ah, y ábreme la agenda que "
             "quiero ver cómo tengo la semana.",
             "Judged on ROUTING, never on which trailer came up. `open_widgets_by_turn.max_open` (live canvas "

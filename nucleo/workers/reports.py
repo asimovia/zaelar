@@ -64,7 +64,7 @@ def session_reported(tid) -> None:
 def session_alive(tid) -> str:
     """A LATIDO: the same fase, diciendo how much lleva. No touches the record (V2-227 ambito B2).
 
-    Una tarjeta congelada in «recorriendo the pagina» durante noventa segundos es indistinguible of a worker
+    Una app congelada in «recorriendo the pagina» durante noventa segundos es indistinguible of a worker
     dead, and esa ambiguedad es justo it that the operator pidio quitar: the silencio is reads como averia. Pero the
     remedio no can ser reescribir `r.phase` with the texto decorado — the latido siguiente decoraria the
     decoracion («… lleva 1 min — lleva 2 min»). Asi that is EMITE and no is guarda: the record preserves the fase

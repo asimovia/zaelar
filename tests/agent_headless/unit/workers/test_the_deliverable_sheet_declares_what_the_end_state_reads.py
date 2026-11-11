@@ -74,7 +74,7 @@ def test_the_end_state_is_read_on_the_errands_own_sheet_never_the_base_card(worl
     own = {"all": [{"widget": f"results::{SHEET}", "collection": "items", "where": {"title~": "sofá"}, "count": {"min": 3}}]}
     assert verify.check(own) is True, "the rows on the errand's sheet were not read"
     base = {"all": [{"widget": "results", "collection": "items", "where": {"title~": "sofá"}, "count": {"min": 3}}]}
-    assert verify.check(base) is False, "the bare card read as the sheet (or as unreadable)"
+    assert verify.check(base) is False, "the bare app read as the sheet (or as unreadable)"
     cheaper = {"all": [{"widget": f"results::{SHEET}", "collection": "items", "where": {"price<=": 150}, "count": 2}]}
     assert verify.check(cheaper) is True
     assert verify.check({"all": [{"widget": f"results::{SHEET}", "collection": "items", "where": {"title~": "mesa"}}]}) is False
@@ -87,7 +87,7 @@ def test_the_refusal_names_what_the_card_declares(world, monkeypatch):
     why = spec.session_goal("2", {"all": [{"widget": "results", "collection": "fichas", "where": {"title~": "x"}, "count": 3}]})
     assert why and "«results» declares: items" in why and "title" in why, why
     why = spec.session_goal("2", {"all": [{"widget": "nosuchcard", "collection": "x", "where": {"title~": "x"}}]})
-    assert "«nosuchcard» is not a card" in why, why
+    assert "«nosuchcard» is not an app" in why, why
     # prose names no card: the worker is told what ITS sheet declares (the hotel worker of 2026-11-06 wrote
     # {"task": …, "done_when": "The top options are on his results sheet…"} and got only the shape back)
     why = spec.session_goal("2", {"task": "find hotels", "done_when": "the top options are on his results sheet"})

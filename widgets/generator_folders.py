@@ -111,7 +111,7 @@ def safe_id(raw: str) -> str:
 # junk ids from the instruction text itself (2026-07-15 session). Bilingual es/en. Keep the first 3 content words.
 _ID_FILLER = {
     "crea", "crear", "cree", "creame", "haz", "hazme", "hacer", "genera", "generar", "generame", "monta", "montame",
-    "construye", "disena", "nuevo", "nueva", "widget", "tarjeta", "panel", "cuadro", "implementar", "implementa",
+    "construye", "disena", "nuevo", "nueva", "widget", "tarjeta", "app", "panel", "cuadro", "implementar", "implementa",
     "quiero", "necesito", "ponme", "dame", "un", "una", "el", "la", "los", "las", "de", "del", "que", "para", "por",
     "con", "en", "y", "o", "a", "al", "me", "mi", "su", "lo", "capacidad", "capaz", "poder", "pueda",
     "make", "create", "build", "new", "a", "an", "the", "of", "to", "for", "with", "that", "widget", "card",
