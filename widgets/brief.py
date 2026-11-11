@@ -188,6 +188,7 @@ def for_prompt(open_ids=None, recent_ids=None, query: str = "", stats: dict | No
     except Exception:
         maxw = ""
 
+    named = {str(p["w"].get("id") or "").lower() for p in picked if p.get("reason") == "named"}
     lines = ["Widgets del canvas (id — para qué; acciones = data-ops que haces TÚ con widget_data, nunca escalas). "
              "Para una orden de widget cuyo objetivo NO sea inequívoco, prefiere «EN PANTALLA», luego «usado hace "
              "poco»:"]
@@ -212,6 +213,8 @@ def for_prompt(open_ids=None, recent_ids=None, query: str = "", stats: dict | No
         if isinstance(acts, dict) and acts:
             row += "  · datos: " + ", ".join(_offered_action_names(acts))
         lines.append(row)
+        if widl in named and widl not in opened and isinstance(acts, dict) and (f := _payload_keys(acts, every=True)):
+            lines.append(f"  [{wid}] campos: {f}")   # V2-879: the card his words name, its acts' declared slots
         for _rule in (wrules.get(widl) or [])[:3]:
             lines.append(f"  [{wid}] regla del operador: {_rule[:120]}")
         # USAGE: V2-027 tersening had removed this entirely. A real 2026-07-23 bug with an open YouTube widget
@@ -292,19 +295,23 @@ def _on_screen_lines(wid, w: dict) -> list[str]:
     return ([f"  [{wid}] {usage}"] if usage else []) + ([f"  [{wid}] campos: {fields}"] if fields else [])
 
 
-def _payload_keys(acts: dict) -> str:
+def _payload_keys(acts: dict, *, every: bool = False) -> str:
     """The declared payload KEYS of each offered action — `criteria: changes·excluded` — for a card ON SCREEN only
     (V2-838). The turn that writes an op on the card he is looking at composes its payload from what it is shown, and
     a key it never saw is a field it never fills: «evita Flexicar» reached the sheet as a `changes` sentence because
     the `excluded` field existed only in the manifest. Keys, never values or prose: the declared field is the
     mechanism. Their own line, so no key can be read as part of an action's NAME. Only the actions whose manifest
     declares a `how` — the card's own statement that a field carries a contract the name does not show — because the
-    line is paid on every turn the card is on screen (the everyday screen has a ceiling)."""
+    line is paid on every turn the card is on screen (the everyday screen has a ceiling).
+
+    `every` (V2-879): EVERY offered act's keys, for the card his words NAME this turn and that is not on screen. The
+    row named the act only (`set`) and the model filled it in its own vocabulary — `{"minutes": 10}` on a timer that
+    reads `seconds`, 4 of 4. Every card's keys on every turn measured +917 tokens; this way an idle turn pays 0."""
     out = []
     for name, spec in acts.items():
         spec = spec if isinstance(spec, dict) else {}
         pay = spec.get("payload") if isinstance(spec.get("payload"), dict) else {}
-        if pay and spec.get("how") and spec.get("internal") is not True and spec.get("row_verb") is not True:
+        if pay and (every or spec.get("how")) and spec.get("internal") is not True and spec.get("row_verb") is not True:
             out.append(f"{name}: {'·'.join(pay)}")
     return " ; ".join(out)
 

@@ -15,6 +15,7 @@
  "widget_selector_missing": "No he entendido cuál dices, así que no he tocado nada. ¿Cuál de estos? {options}",
  "widget_selector_missing_bare": "No he entendido cuál dices, así que no he tocado nada. ¿Cuál?",
  "rule_kept_not_applied": "Lo he apuntado como nota, sin aplicarlo: si quieres que con esa persona pregunte o deje de preguntar antes de enviar, dímelo así.",
+ "widget_slots_unfilled": "No lo he hecho: la orden no llevaba los datos que esa tarjeta necesita, así que no lo doy por hecho. ¿Me lo repites?",
  "widget_guard_error": "No he podido comprobar esa acción antes de hacerla, así que no la he hecho. Dímelo otra vez y lo miro.",
  "errand_meeting_title": "Reunión con {name}",
  "search_blocked": "He buscado, pero el buscador me ha bloqueado con una verificación anti-robot. No es que no pueda mirar en internet: esta vez no me han dejado. ¿Lo intento a fondo con el navegador?",

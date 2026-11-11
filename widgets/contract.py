@@ -64,6 +64,10 @@ SELECTOR_MISSING = "selector_missing"
 GUARD_ERROR = "guard_error"
 
 _MAX_OPTIONS = 8
+#: An act whose call fills NONE of the slots it declares (V2-879): the call speaks its own vocabulary. Measured: «pon un
+#: temporizador de 10 minutos» sent `timer.set {"minutes": 10}` (and `{"duration": 600}`) to a card that reads
+#: `seconds`; the card set 0, answered `ok`, and the turn said «Listo» over a timer that never ran — 4 of 4, es and en.
+SLOTS_UNFILLED = "slots_unfilled"
 
 
 def _spec_strict(widget_id: str, action: str) -> dict:
@@ -310,6 +314,30 @@ def _fold_text_field(widget_id: str, action: str, declared: dict, pl: dict) -> d
         return {}
     loose = [k for k, v in pl.items() if k not in declared and isinstance(v, str) and v.strip()]
     return {field: pl[loose[0]]} if len(loose) == 1 else {}
+
+
+def _filled(value) -> bool:
+    if isinstance(value, str):
+        return bool(value.strip())
+    return value is not None and not (isinstance(value, (list, dict, tuple)) and not value)
+
+
+def unfilled(widget_id: str, action: str, spec: dict, payload: dict | None) -> dict | None:
+    """The refusal for a call that carries keys of its own and fills NONE of the slots its act declares; None
+    otherwise. An EMPTY call is not this rule's: `filter_list {}` clears a filter, `read {}` reads the newest — that
+    stays the handler's business, as before. One declared slot filled and the call is the handler's too. Applied
+    AFTER the act, only when the card did not change (`widgets/empty_act.py`): handlers read undeclared keys too."""
+    declared = spec.get("payload") if isinstance(spec.get("payload"), dict) else {}
+    pl = payload if isinstance(payload, dict) else {}
+    sent = [k for k, v in pl.items() if not str(k).startswith("_") and _filled(v)]
+    if not declared or not sent or any(_filled(pl.get(k)) for k in declared):
+        return None
+    from .refs import _OPTIONAL_RE
+    unmet = [k for k, v in declared.items() if not _OPTIONAL_RE.search(str(v))] or list(declared)
+    return {"ok": False, "error": SLOTS_UNFILLED, "widget": widget_id, "action": action, "unmet": unmet,
+            "sent": sent, "message": _spoken("", "widget_slots_unfilled"),
+            "detail": (f"`{action}` on `{widget_id}` takes {{{', '.join(declared)}}}; the call sent "
+                       f"{{{', '.join(sent)}}} — none of its slots. Nothing was done.")}
 
 
 def guard(widget_id: str, action: str, payload: dict | None) -> dict | None:
