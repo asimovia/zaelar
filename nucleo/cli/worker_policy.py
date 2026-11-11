@@ -22,7 +22,7 @@ _DENY_TOOLS = {"authenticate_web", "login_done", "confirm_widget_delete", "set_s
 #: `widget_data` on a messaging card, which crosses the message door (`nucleo/workers/exit_gate.py`); the cluster is
 #: Flash's `cluster_send`. Deleted rather than built: a second door for the same act is the parallel rail F0 measured.
 _KNOWN_ACTS = ("ask_user", "decide", "use_tool", "read_widget", "show_widget", "close_widget", "widget_data",
-               "schedule", "not_mine", "mesh_serve", "rules", "propose_rule",
+               "schedule", "schedules", "unschedule", "not_mine", "mesh_serve", "rules", "propose_rule",
                "file_put", "files", "verify")
 
 def deny_reason(action: str, payload: dict) -> str:
@@ -172,6 +172,12 @@ def classify_act(action: str, payload: dict) -> str:
     if a == "mesh_serve":
         # V2-851 F2 — the errand text leaving to a third-party agent: ALLOW here, decided at its exit gate
         # (`nucleo/workers/exit_gate.mesh`: outbound scan, the consent class, the session's taint).
+        return ALLOW
+    if a in ("schedules", "unschedule"):
+        # V2-883 — his scheduled jobs are an OBJECT with one reader and one door by reference: a worker holding an
+        # order over one (an old errand) reads them and cancels the ONE its reference names, through the same door the
+        # turn uses (`scheduler.unschedule`, which refuses a reference naming none or several). ALLOW for the reason
+        # `schedule` is: internal, visible in its panel, and the door never guesses which.
         return ALLOW
     if a == "schedule":
         # V2-249 — SCHEDULE A REMINDER. A worker tasked with «remind them on Wednesday» could not do it: the

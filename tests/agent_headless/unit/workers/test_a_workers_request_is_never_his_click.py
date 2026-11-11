@@ -22,7 +22,7 @@ FAMILIES = {
     "cluster send": ("POST", "/api/meshkore/send"),
     "contacts import": ("POST", "/api/contacts/connect"),
     "agenda lists": ("POST", "/api/lists"),
-    "agenda reminders": ("POST", "/api/cron/create"),
+    "scheduled jobs": ("POST", "/api/cron/remove"),
     "tasks": ("POST", "/api/tasks/reopen"),
     "settings": ("POST", "/api/settings"),
     "config credential": ("POST", "/api/config/credential"),

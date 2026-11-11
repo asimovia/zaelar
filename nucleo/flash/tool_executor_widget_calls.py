@@ -14,6 +14,24 @@ from nucleo.flash import tool_executor_widget as _txw
 from nucleo.turn.reply import settle_asked as _settle_asked
 
 
+def cron_cancel(ref, emit) -> dict:
+    """V2-883 — cancel ONE scheduled job by REFERENCE (its id, or the label he says) and tell the TRUTH afterwards: the
+    door's end state is «no longer listed»; a miss is said with what IS scheduled, never «cancelled». The `cron.cancel`
+    tag and the `cancel_scheduled` tool both land here."""
+    from nucleo.pulse import scheduler as _sched
+    from nucleo.turn import reply as _reply
+    r = _sched.unschedule(ref)
+    if r.get("ok"):
+        emit("cron", "🗑️ tarea cancelada", text=r.get("label") or "", role="system",
+             extra={"ok": True, "op": "cron.cancel", "id": r.get("id")})
+        _reply.note(_reply.Outcome("met", "cron", "cancel", object=f"«{r.get('label')}»"))
+    else:
+        emit("cron", "⚠️ job not found — nothing cancelled", text=str(ref or "")[:120], role="system",
+             extra={"ok": False, "op": "cron.cancel", "error": r.get("error"), "candidates": r.get("candidates") or []})
+        _reply.note(_reply.Outcome("unmet", "cron", "cancel", reason=r.get("message") or ""))
+    return r
+
+
 def _tag_emit(action: str, extra: dict, *, _apply_widget_data, _brief, _is_meta_widget_question, _norm_nfkd, _on_tool_call, _request_delete_confirm, _show_guard_target, _show_target_instance, _shown_ids, _spawn, acted, aside, brain, canvas_h, deduped, emit, escalate_req, text) -> "bool | None":
     if action in ("deep",):
         # legacy Hermes escalation tag — el cerebro v2 no lo enseña; si aparece, se trata como escalada.
@@ -88,16 +106,20 @@ def _tag_emit(action: str, extra: dict, *, _apply_widget_data, _brief, _is_meta_
         try:
             from nucleo.pulse import scheduler as _sched
             d = extra.get("data") or {}
+            from nucleo.turn import reply as _reply
             if action == "cron.create":
                 # refactor2710-06 T-06: the notice's slots decide; the agenda bounds the consequence, no words read
                 from widgets.agenda import notice as _notice
                 r, verdict = _notice.schedule(_sched.create, d)
                 emit("cron", "⏰ tarea programada" if r.get("ok") else "⚠️ schedule no reconocido",
                      text=r.get("display") or r.get("error") or "", role="system",
-                     extra={"ok": bool(r.get("ok")), "op": action, "verdict": verdict})
+                     extra={"ok": bool(r.get("ok")), "op": action, "verdict": verdict, "id": r.get("id"),
+                            "label": r.get("label") or ""})
+                if not r.get("ok") and verdict != "asked":   # V2-883: nothing scheduled is never left as «done»
+                    _reply.note(_reply.Outcome("unmet", "cron", "create",
+                                               reason=_sched._lang_line("cron_not_scheduled")))
             else:
-                _sched.cancel(extra.get("name") or d.get("name") or "")
-                emit("cron", "🗑️ tarea cancelada", role="system", extra={"ok": True, "op": action})
+                cron_cancel(extra.get("name") or d.get("name") or d.get("id") or "", emit)
         except Exception as e:  # noqa: BLE001
             _txw.logger.warning(f"nucleo cron {action} failed: {e}")
         return

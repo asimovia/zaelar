@@ -100,7 +100,9 @@ def _job_line(j: dict) -> str:
     # A date followed by a time, whatever words sit between them — the notice's text is in HIS language.
     m = _re.search(r"(\d{4}-\d{2}-\d{2})\D{1,16}?(\d{1,2}:\d{2})", str(j.get("prompt") or ""))
     when = f"la cita es el {m.group(1)} a las {m.group(2)}; " if m else ""
-    return f"{j.get('name')} ({when}el aviso suena {j.get('schedule')})"
+    # V2-883 — the job as a REFERENCE: its id and its short label (`scheduler.ref_index`), what `cron.cancel` takes.
+    from nucleo.pulse import scheduler as _sched
+    return f"id {j.get('id')} «{_sched.label_of(j.get('name') or j.get('prompt'))}» ({when}el aviso suena {j.get('schedule')})"
 
 
 def _cron_line() -> str:
@@ -114,7 +116,7 @@ def _cron_line() -> str:
     `scheduler.parse_schedule` already understands so a specific day can be EXPRESSED in one pass."""
     line = ('Proactividad (recordatorios/tareas programadas): [[cron.create]]'
             '{"schedule":"30m|every 2h|2026-08-19 09:00|0 9 * * *","prompt":"qué avisar","name":"…"}'
-            '[[/cron.create]] · [[cron.cancel:name]]. `schedule` admite un plazo relativo, una FECHA ABSOLUTA '
+            '[[/cron.create]] · borrar una: cancel_scheduled con su nombre. `schedule` admite un plazo relativo, una FECHA ABSOLUTA '
             '(YYYY-MM-DD HH:MM, para un aviso de una sola vez en un día concreto — la fecha la sacas de la lista '
             'de días de tu ESTADO, no la calcules a ojo) o un cron de 5 campos si es RECURRENTE. '
             'Una ORDEN con plazo NO es pedir un recordatorio: «paga la factura antes del día 5» es HACERLO (y si es irreversible, preguntar antes) — apuntarlo en su lugar es no atenderle. REGLA DURA: si el operador pide que le AVISES/RECUERDES algo en un momento dado, emite la tag EN '
@@ -138,7 +140,10 @@ def _cron_line() -> str:
             jobs = sorted(jobs, key=lambda j: str(j.get("next_run") or j.get("schedule") or ""))
             line += (" Ya programado (hora a la que SUENA el aviso, no la de la cita — una lista PARCIAL de avisos, "
                      "NO la agenda: lo que hay un día se lee en la agenda con read_widget, nunca de aquí): "
-                     + "; ".join(_job_line(j) for j in jobs[:6]) + ".")
+                     + "; ".join(_job_line(j) for j in jobs[:6])
+                     + (f"; +{len(jobs) - 6} más" if len(jobs) > 6 else "") + ".")
+        else:   # V2-883: «none» is a fact too — without it an order over a job that does not exist was promised
+            line += " Ya programado: nada."
     except Exception:
         pass
     return line

@@ -61,6 +61,11 @@ class LangSpec:
     #: the operator hears: the action did not run, and it is worth saying again rather than doing it blind.
     #: V2-879 — a card act whose call filled none of its declared slots: nothing was done, and the turn says so.
     widget_slots_unfilled: str = ""
+    #: V2-883 — a periodic job the order names and the scheduler does not hold (`{options}`: the ones it does), none
+    #: at all, or a schedule that never parsed: the mouth says it instead of «done».
+    cron_no_match: str = ""
+    cron_none: str = ""
+    cron_not_scheduled: str = ""
     widget_guard_error: str = ("")
     #: The TITLE an errand writes on the meeting it just agreed with a third party (V2-692). It lands in
     #: the operator's agenda and, through the connector, in his real Google Calendar — a row only HE can

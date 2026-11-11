@@ -145,7 +145,6 @@ function ago(ts) {
 
 export function ChatWall() {
   let listEl, inputEl, headEl, wallEl, previewEl = null;
-  let schedEl, cnameEl, cpromptEl;             // refs for the create-cron form (Crons tab)
   let dockSide = null;                         // null | "left" | "right"
   let dockW = DOCK_DEF_W;                      // the docked column's INTENDED width (see setReserve)
   let lastDockSide = (loadDock() || {}).side || "left";   // where the ⧉ toggle docks a floating box (V2-621)
@@ -422,35 +421,10 @@ export function ChatWall() {
                     onClick: () => { store.setTaskShowAll(!store.taskShowAll()); store.fetchTaskScope(store.taskScope()); } }, "⚙"),
     ),
     h("div", { class: "cw-tasklist" }, () => subBody(store.taskScope())),
-    // Creating a periodic task BY HAND stays available under the sub-tab it belongs to. The normal way is
-    // to say it out loud — the agent proposes the cadence and says it back — but a form the operator can
-    // reach is what makes an agent-proposed cadence correctable without a conversation.
-    // It is wrapped in a slot rather than returned as a bare function from this array: `dom.js` treats a
-    // function as a reactive binding only as a DIRECT child of `h()`. Inside an array it reaches `toNode`,
-    // which ends in `String(v)` — and the operator spent a session looking at this arrow's SOURCE CODE
-    // printed across the bottom of his panel (2026-09-21 02:22). The slot also keeps the re-render where it
-    // belongs: switching sub-tab rebuilds this form, not the list and the sub-tab bar above it.
-    h("div", { class: "cron-slot" },
-      () => (store.taskScope() === "recurring" || store.taskScope() === "scheduled"
-      ? h("div", { class: "cron-add" },
-          h("input", { ref: el => (schedEl = el), class: "cron-in", placeholder: () => t("chat.cronWhenPlaceholder") }),
-          h("input", { ref: el => (cnameEl = el), class: "cron-in", placeholder: () => t("chat.cronNamePlaceholder") }),
-          h("textarea", { ref: el => (cpromptEl = el), class: "cron-in", rows: 2,
-            placeholder: () => t("chat.cronPromptPlaceholder") }),
-          h("button", { class: "cron-create", onClick: cronAdd }, () => t("chat.scheduleBtn")),
-        )
-      : null)),
+    // No hand-filled form (V2-883): a periodic or scheduled job is created by ASKING the agent, which reads its jobs
+    // back by reference and cancels them through one door; each row here keeps its next run and its delete button.
   ];
 
-  // ── creating a PERIODIC/SCHEDULED task by hand (V2-728: the former Crons tab's form, under its sub-tab) ──
-  // `refreshCrons`/`cronRemove`/`cronRow` retired with the tab: the rows come from the task table now
-  // (`schedRow`), so there is one list and not a second one that could disagree with it.
-  const cronAdd = async () => {
-    const schedule = (schedEl.value || "").trim(); if (!schedule) return;
-    await api.cronCreate({ schedule, prompt: (cpromptEl.value || "").trim(), name: (cnameEl.value || "").trim() });
-    schedEl.value = cpromptEl.value = cnameEl.value = "";
-    await store.fetchTaskScope(store.taskScope());
-  };
   // A row in the CLUSTERS tab (V2-086). Shows only what the operator asked for: name, whether we are
   // inside, who is there, and how much has been said. cluster_id is shown because it is NOT secret (it travels in the
   // invitation URL) and is what identifies which cluster this is; the token never leaves the backend.

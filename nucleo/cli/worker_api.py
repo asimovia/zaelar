@@ -40,6 +40,12 @@ _CUANDO_VALE = ('Vale «mañana a las 9», «el miércoles a las 18:00», un dí
                 '«every 30m» para algo que se repite, o un cron de 5 campos «0 9 * * 3».')
 
 
+#: What `read_widget` adds to «no such card» (V2-883): measured, a worker holding an order over a periodic job asked
+#: `read_widget` four times for it and was refused with nothing to offer — the jobs have their own reader and door.
+_NOT_A_CARD = ("His reminders and periodic jobs are not cards: `act schedules` lists them ({id, label}) and "
+               "`act unschedule {\"job\": \"<id>\"}` cancels one.")
+
+
 def _new_corr(task_id: str, action: str) -> str:
     """UNPREDICTABLE corr_id: a screen answer carries no token, so the corr IS the capability (§v2·D)."""
     return f"{task_id}:{action}:{_next_seq('worker_api.corr')}:{secrets.token_urlsafe(8)}"
