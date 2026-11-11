@@ -99,6 +99,9 @@ def obey(req: str, r: dict, ctx: dict) -> bool:
         if how == "stop":
             _emit("🧵 the turn's stop covers this errand — nothing new is started", req, r)
             return False
+        if how == _flow.CARD:          # V2-879 O1: the turn's one act is a card's — the errand is told nothing
+            _emit("🧵 a card's act — the card door serves it, no errand is told", req, r)
+            return False
         if how == _flow.UNDECIDED:     # the judge ran out of time with an errand open: he is asked (V2-878 §3 e)
             __import__("nucleo.turn.which_flow", fromlist=["x"]).ask(req, r, ctx)
             _emit("🧵 whose is it? — asked, nothing opened until he says", req, r)
@@ -152,6 +155,8 @@ async def join(text: str) -> dict:
     sheet = str(r.get("sheet") or "")
     if how == "stop":     # the turn's stop covers it: nothing relaunched, nothing pretended
         return {"flow": fid, "sheet": sheet, "stopped": True}
+    if how == _f.CARD:    # V2-879 O1: a card's act starts nothing and relays nothing
+        return {"flow": fid, "sheet": sheet, "card": True}
     if how == _f.ABSORB:
         # V2-843 — an errand parked on his yes takes the words and is NOT relaunched: the same consequence as the
         # dispatcher's parked branch (`absorb_refinement`), decided here, before anything is opened.

@@ -212,7 +212,7 @@ def card_owns_the_turn(brief, *, acted: dict | None = None, data_done: dict | No
         from nucleo.flash import direct_action as _da, redo_decision as _redo, verdict_card as _vc
         if bool(_da.from_brief(brief)[1]) and _da._action_sure(brief, floor=_vc.SURE):
             return True
-        return bool(corrected_card(brief))
+        return bool(__import__("nucleo.turn.card_act", fromlist=["x"]).named(brief)) or bool(corrected_card(brief))   # V2-879 O1
     except Exception as e:  # noqa: BLE001 — unreadable: the errand's reading stands as before
         return logger.debug(f"stop_decision: card verdicts unreadable: {e!r}") or False
 

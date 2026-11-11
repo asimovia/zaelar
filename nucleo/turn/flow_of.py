@@ -129,6 +129,7 @@ def late_fold(target: str, ctx: dict) -> str:
 CONVERSATION, NEW, LIST = "conversation", "new", "list"
 INJECT, ABSORB, REOPEN, JOIN = "inject", "absorb", "reopen", "join"
 UNDECIDED, TIMEOUT = "undecided", "timeout"     # the judge ran out of time with an errand open: he is asked (V2-878 §3)
+CARD = "card"             # V2-879 O1: the turn's one act is a card's (`turn/card_act`): no errand is told
 _TURN: dict = {}          # trace -> the route task begun for that turn
 _NOT_MINE: list = []      # (words, flow id) a worker handed back: not folded there again while it runs (V2-784 F5)
 
@@ -136,7 +137,9 @@ _NOT_MINE: list = []      # (words, flow id) a worker handed back: not folded th
 def joins_as(flow: dict, brief=None) -> str:
     """How a request JOINS a flow it belongs to: a live worker takes it (`inject`, or the turn's paid stop verdict —
     `stop`, `steer`, `replace`), a parked errand absorbs it, an ended or delivered one reopens into its sheet, an
-    escalation or pass still starting is joined in its sheet."""
+    escalation or pass still starting is joined in its sheet — unless its one act is a card's (`card`, V2-879 O1)."""
+    if brief is not None and __import__("nucleo.turn.card_act", fromlist=["x"]).joins(flow, brief):
+        return CARD
     if flow.get("parked"):
         return ABSORB
     if flow.get("ended") or flow.get("delivered"):
@@ -250,10 +253,12 @@ async def settled() -> dict | None:
     if task is None:
         return None
     try:
-        return await asyncio.wait_for(asyncio.shield(task), JUDGE_S + 0.5)
+        r = await asyncio.wait_for(asyncio.shield(task), JUDGE_S + 0.5)
     except Exception as e:  # noqa: BLE001
         logger.debug(f"flow_of: the turn's route did not settle — {type(e).__name__}: {e}")
         return None
+    # Begun beside the model call, it may predate the brief: read again as the portal obeys it (V2-879 O1).
+    return _now(r, __import__("nucleo.turn.brief", fromlist=["x"]).of_this_turn()) if isinstance(r, dict) else r
 
 
 def peek() -> dict | None:
