@@ -192,8 +192,14 @@ def _an_order_nothing_served(brief, text: str, *, emit=None) -> int:
     words, _w = verdicts.read(brief, "wants_words", None)
     if not (info and str(kind or "") == "order") or str(words or "") == "tell":
         return 0
+    # V2-886 D4: the lean names WHICH act (any confidence); whether there is a send at all is the reading's —
+    # the errand class or a named channel (measured 2026-11-11: «close absolutely everything» with the mail card open
+    # leaned to a WhatsApp send, and the worker's exit asked him to send a draft he never asked for).
     leaned, _l = verdicts.read(brief, "screen_action", None, min_confidence=0.0)
     wid, _sep, act = str(leaned or "").partition(":")
+    from nucleo.acts import message_channel
+    if not message_channel.backs_a_send(brief):
+        return 0
     from widgets import effects
     from nucleo.request import base
     if not (wid and act and effects.leaves(base(wid), act)):

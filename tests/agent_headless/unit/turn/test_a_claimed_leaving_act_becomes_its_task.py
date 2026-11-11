@@ -73,7 +73,9 @@ def order(wired, monkeypatch):
     from nucleo.turn import verdicts
     v = {"screen_action": ("mensajeria:send_to", {"used": False, "confidence": 0.43}),
          "request_type": ("order", {"used": True, "confidence": 0.94}),
-         "wants_words": ("tell", {"used": False, "confidence": 0.08})}
+         "wants_words": ("tell", {"used": False, "confidence": 0.08}),
+         # V2-886 D4: the reading asks for a send — «ask Raquel» is a message in his name
+         "errand_class": ("sends_for_him", {"used": True, "confidence": 0.8})}
 
     def read(h, k, fb, min_confidence=None):
         floor = verdicts.LICENCE if min_confidence is None else min_confidence
@@ -105,4 +107,16 @@ def test_an_order_answered_by_words_or_a_question_is_not_routed(order):
     v["screen_action"] = ("agenda:close", {"used": False, "confidence": 0.4})
     v["_state"]["leaves"] = False          # an order about the screen stays the turn's
     assert aod.claimed({}, "Done.", "close the weekend", emit=emit) == 0
+    assert not seen["escalated"]
+
+
+@pytest.mark.parametrize("said", ["Cierra absolutamente todo.", "Close absolutely everything."])
+def test_a_lean_to_a_send_without_a_reading_that_sends_starts_no_worker(order, said):
+    """V2-886 D4 (2026-11-11): a sure order whose lean names a leaving act, while nothing in the reading asks for a
+    send (no `sends_for_him`, no channel named), is not a send: no message worker is born."""
+    seen, v, emit = order
+    v.pop("errand_class")
+    v["errand_class"] = ("none", {"used": True, "confidence": 0.9})
+    v["message_channel"] = ("none", {"used": True, "confidence": 0.9})
+    assert aod.claimed({}, "Done.", said, emit=emit) == 0
     assert not seen["escalated"]

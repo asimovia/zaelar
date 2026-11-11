@@ -192,6 +192,11 @@ def gate(rec, payload: dict) -> Exit:
                           call=out, emit=_emit)
     if got.inner != inner:
         out["payload"], inner = got.inner, got.inner
+    if (why := exit_slots.unbacked_send(rec, turn, got, under_mandate(
+            rec, "message", str(inner.get("platform") or inner.get("channel") or "")))):
+        _emit("🛑 unbacked send dropped", f"{wid}:{act} · {why}"[:200], {"id": str(getattr(rec, "task_id", "")),
+                                                                         "exit": f"{wid}:{act}", "clause": "unbacked"})
+        return Exit(payload, refused=f"{wid}:{act} not run (unbacked): {why}")
     if (named := _continues_as(rec, wid, act)):
         out["payload"] = inner = {**inner, "playbook": named}
     from nucleo.workers import taint

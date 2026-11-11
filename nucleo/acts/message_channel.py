@@ -78,3 +78,18 @@ def his_channel(wid: str, action: str, payload, brief, emit=None):
     out = {k: v for k, v in payload.items() if k != "platform"}
     out["channel"] = choice
     return out
+
+
+def backs_a_send(handle) -> bool:
+    """Does the turn's reading ask for something to be SENT in his name (V2-886 D4)? The errand class
+    `sends_for_him`, or a channel he named for a message, each at the licence. One reader for the two places that
+    would otherwise turn a stray lean into a message: the birth of a send worker and the worker's exit door."""
+    try:
+        from nucleo.acts import errand
+        from nucleo.turn import verdicts
+        cls, _c = verdicts.read(handle, errand.CLASS_KEY, None)
+        named, _n = verdicts.read(handle, KEY, None)
+        return str(cls or "") == "sends_for_him" or bool(named and named != NONE)
+    except Exception as e:  # noqa: BLE001 — unread is unbacked: the caller keeps its safe path
+        _note(e)
+        return False
