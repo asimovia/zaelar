@@ -105,7 +105,7 @@ def _widget_gate(brief=None):
 def _task_gate(brief=None):
     def _open():
         from nucleo import dispatch as _d
-        return bool(_d.pending_confirm())
+        return bool(_d.parked_errands())
 
     def _do(text):
         from nucleo import dispatch as _d
@@ -113,6 +113,8 @@ def _task_gate(brief=None):
         words = operator_words(text)
         named = _named_parked(words)
         p = _d.pending_confirm(named) or {}
+        if not p:
+            return None          # several parked and his words name none: the brief's pick over their rows decides
         tid = str(p.get("task_id") or "")
         if _the_binding_reads_it(brief, p):
             return None          # its row's question is answered by the brief's pick (`bind_the_answer`), not here
@@ -196,8 +198,8 @@ def task_reply(words: str, v: str | None, question: str, *, brief=None, parked: 
     de presupuesto» built the game and «Y el juego no te olvides, ¿eh? Que son tres, no dos» dropped the report.
     Neither answers anything: this gate counted bare yes/no WORDS, over a text that still carried our own notes
     («sin tu OK», «Si no te he entendido mal»). Now the reading is the widget gate's (`answers_pending`): only the
-    operator's words count; a plain yes/no answers at once; a longer sentence answers when the judge, shown THIS
-    question, says it does — and with no judge, only when the turn's verdict reads it as an answer. Otherwise it
+    operator's words count; a plain yes/no answers at once; a longer sentence answers only when the turn's verdict
+    reads it as an answer (V2-878 §4: no second model call is asked whether it does). Otherwise it
     stays waiting: an ambiguous sentence is not an authorisation, and the parked errand can still absorb it."""
     from widgets import confirm as _c
     # The answer his reply OPENS with, when the reply names this errand, is his answer to it — whatever clauses
@@ -219,9 +221,6 @@ def task_reply(words: str, v: str | None, question: str, *, brief=None, parked: 
         # $150, keep looking» was about the monitor listings and dropped the parked game (EN 2026-10-11 02:58, the
         # judge read it «no»). Cancelling needs the errand named or a bare «no»; the errand keeps waiting.
         return None
-    judged = _c._judge(question, words) if question else None
-    if judged is not None:
-        return None if judged == "other" else judged
     from nucleo.turn import brief as _tb
     kind, _info = _tb.read(brief, _tb.REQUEST_KEY, "") if brief is not None else ("", None)
     if kind == "answer":

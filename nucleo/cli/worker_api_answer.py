@@ -13,9 +13,9 @@ from nucleo.cli.worker_api_asks import _artefact, _keep, _note, open_ask, open_a
 
 def decision(question: str, text: str, choice: int | None = None) -> str | None:
     """THE reader of his answer to a durable yes/no question: 'yes' | 'no' | None (not a decision). The binding verdict's
-    pick of the declared answers wins (`consent_ask.yes_no`: #0 yes, #1 no); then a BARE yes/no; then the judge. A
-    «no» inside a longer line («sí, mándalo, no tardes»), a question back («¿a cuál?») or a correction is never a no
-    without the judge saying so: a no is a decision that ends the task, so it is recorded only when it was read as one."""
+    pick of the declared answers wins (`consent_ask.yes_no`: #0 yes, #1 no); then a BARE yes/no. A «no» inside a longer
+    line («sí, mándalo, no tardes»), a question back («¿a cuál?») or a correction is never a no: a no is a decision
+    that ends the task, so it is recorded only when it was read as one (V2-878 §4: no second model is asked)."""
     if choice is not None:
         return {0: "yes", 1: "no"}.get(int(choice))
     from widgets import confirm as _wc
@@ -24,10 +24,7 @@ def decision(question: str, text: str, choice: int | None = None) -> str | None:
     mixed = bool(_wc._YES_RE.search(n) and _wc._NO_RE.search(n))   # a yes and a no in one line is neither, bare
     if v and not mixed and _wc.is_plain_answer(text, v):
         return v
-    judged = _wc._judge(str(question or ""), str(text or ""))
-    if judged in ("yes", "no"):
-        return judged
-    return "yes" if (judged is None and v == "yes") else None
+    return "yes" if v == "yes" else None
 
 
 def _says_yes(question: str, text: str) -> bool:

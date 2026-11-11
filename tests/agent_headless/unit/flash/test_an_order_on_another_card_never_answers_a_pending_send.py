@@ -14,7 +14,6 @@ from widgets import confirm as C
 @pytest.fixture(autouse=True)
 def clean(monkeypatch):
     C._PENDING.clear()
-    monkeypatch.setattr(C, "_judge", lambda q, t, timeout=4.0: None)      # no reader, as in the suite
     yield
     C._PENDING.clear()
 
