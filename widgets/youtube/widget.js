@@ -160,6 +160,7 @@ export function render(root, data, ctx){
     Object.keys(root._hbYtTabBtns).forEach((k) => {
       const lab = tabLabel(k);
       root._hbYtTabBtns[k].textContent = (k === "cola" && nQ) ? (lab + " · " + nQ) : lab;
+      if(k === "subs") root._hbYtTabBtns[k].dataset.short = tt("tab_subs_short", null, "Canales");   // the phone's row
     });
     if(root._hbYtPaintTabs) root._hbYtPaintTabs();
   }

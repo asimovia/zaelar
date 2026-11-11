@@ -37,7 +37,8 @@ export function paintPlayer(E, data, ctx, id, PL){
   if(E.blockMsg){
     const bn = data.blocked_notice || {};
     let msg = "";
-    if(bn.kind === "swapped")
+    if(bn.kind === "swapped"     /* V2-877: a swap notice belongs to the video it swapped TO, nothing after it */ && !(bn.to && String(data.title || "").startsWith(bn.to))) msg = "";
+    else if(bn.kind === "swapped")
       msg = tt("blocked_swapped", {from: bn.from || "", to: bn.to || ""},
                "«{from}» está bloqueado por su propietario para reproducirse aquí — pongo el siguiente: «{to}».");
     else if(bn.kind === "explicit")

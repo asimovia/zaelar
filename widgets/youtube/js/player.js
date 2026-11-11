@@ -188,7 +188,8 @@ export function buildFrame(data, ctx, loading, isStream, src, id){
     // loaded before the player is ready can be ignored); the live toggle goes through applyCaptions.
     const cc = data.captions ? "&cc_load_policy=1" : "";
     const params = "enablejsapi=1&rel=0&modestbranding=1&playsinline=1&autoplay=" + auto + "&mute=1" + cc
-                   + "&origin=" + encodeURIComponent(location.origin);
+                   + "&origin=" + encodeURIComponent(location.origin)
+                   + (ctx && ctx.lang ? "&hl=" + encodeURIComponent(ctx.lang) : "");   // its own labels in his language
     iframe.src = "https://www.youtube.com/embed/" + encodeURIComponent(id) + "?" + params;
     const d0 = data, c0 = ctx;
     iframe.addEventListener("load", function(){
