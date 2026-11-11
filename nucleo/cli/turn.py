@@ -73,6 +73,10 @@ def _action(decision: dict, events: list[dict], ledger: list[dict], tags: list[d
     # opened (`play_video` loads the player it shows) is part of the show, which is what he saw.
     if data and "widget_data" in names:
         return f"widget_data:{data[0].get('id') or ''}:{data[0]['action']}"
+    # V2-887 — a leaving act the model called went to its send task (no inline data-op event): that call IS the act.
+    routed = next((e for e in events if str(e.get("label") or "").startswith("📨 send task")), None)
+    if routed is not None:
+        return f"widget_data:{routed.get('widget') or ''}:{routed.get('action') or ''}"
     if "music" in doors:
         return "music"
     # Several canvas steps in one turn name the one he asked for: a full screen is shown first, «close the messages

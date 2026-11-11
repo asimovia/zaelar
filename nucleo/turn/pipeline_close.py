@@ -30,6 +30,12 @@ async def close_the_turn(*, motor, send, _acc_ms, _amap_ms, _brief, _busy_at_sta
         images=images_req["v"] is not None,
         confirm=bool(confirm_state.get("opened") or confirm_state.get("handled")))
     _held = bool(escalate_req.get("routed") and worker_acted["v"])   # V2-874: held words, his turn reached a worker
+    if escalate_req.get("send_task") and not str(spoken_text or "").strip():
+        # V2-887 — the model called the send and said nothing; the send went to its task. Measured (live T15 and the
+        # kindergarten bench, 3 of 3): this turn fell to the mute line «Perdona, se me ha ido» while the send ran.
+        from nucleo.turn import reply as _reply_st
+        spoken_text = _reply_st.routed_send_started(send, speech) or spoken_text
+        _tool_handled = True
     if _wait_lines.owes_a_line(spoken_text, _tool_handled, _held):
         try:
             from i18n import langs                      # V2-603: the shared decision
