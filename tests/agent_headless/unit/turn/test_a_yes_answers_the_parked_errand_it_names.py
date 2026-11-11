@@ -3,7 +3,7 @@
 three-tasks-at-once (ES, 2026-10-11 02:04). Two things were parked on him: the platform game (the build gate's «¿La
 hago?») and, newer, a bogus offer. The task gate always answered the NEWEST, so «Sí, móntalo. Y ese ponle que salte
 más alto, que si no se quedan cortos los saltos entre plataformas» — the game's yes, by every word in it — was judged
-against the other one and launched nothing. Then «¿y al juego le puedes poner monedas?» passed by a parked game that
+against the other one and launched nothing. (V2-878 §4b: the yes itself is now the brief's pick over the row.) Then «¿y al juego le puedes poner monedas?» passed by a parked game that
 nobody refreshed, it expired at five minutes, and the agent told him «se quedó a medias porque nunca llegaste a
 confirmarlo».
 
@@ -50,9 +50,12 @@ def launched(monkeypatch):
     return out
 
 
-def test_with_no_judge_a_yes_naming_the_parked_errand_still_answers_it(launched):
+def test_a_yes_naming_the_parked_errand_is_the_briefs_pick_not_a_word(launched):
+    """V2-878 §4b: «Sí, venga, móntame el juego» names the game; with no pick no word inside it answers — the brief's
+    binding pick over the game's row does (2.1680). It still folds into the game it names, and nothing is launched."""
     ans = gates.resolve_all("Sí, venga, móntame el juego de plataformas.", brief=_brief(request_type="order"))
-    assert ans.yes and len(launched) == 1 and launched[0].startswith(GAME)
+    assert not ans and not launched
+    assert "7" in dc._PENDING_CONFIRM
 
 
 def test_a_sentence_about_the_parked_game_keeps_it_alive(launched):

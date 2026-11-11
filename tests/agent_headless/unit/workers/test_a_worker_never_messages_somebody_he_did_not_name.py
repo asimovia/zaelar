@@ -78,7 +78,8 @@ def test_his_yes_sends_it(door):
     _rec, ran = door
     his_words.note("necesito un fontanero hoy")
     corr = _act(_SEND)["corr_id"]
-    assert asyncio.run(worker_api.answer(corr, "sí, escríbele")) is True
+    yes = __import__("nucleo.request.consent_ask", fromlist=["x"]).yes_no()[0]   # his declared yes (V2-878 §4b)
+    assert asyncio.run(worker_api.answer(corr, yes)) is True
     assert ran and ran[0][0] == "widget_data" and ran[0][1]["payload"]["to"] == "683139819"
 
 

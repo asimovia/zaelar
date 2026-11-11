@@ -115,18 +115,6 @@ def test_an_expired_confirmation_closes_its_flow_and_queues_a_notice(monkeypatch
     assert confirm.drain_expired_notices() == [], "drain must consume, never re-deliver the same notice twice"
 
 
-def test_confirm_classify_reply_es_en():
-    assert confirm.classify_reply("sí, bórralo") == "yes"
-    assert confirm.classify_reply("vale adelante") == "yes"
-    assert confirm.classify_reply("no, déjalo") == "no"
-    assert confirm.classify_reply("cancela eso") == "no"
-    assert confirm.classify_reply("yes do it") == "yes"
-    assert confirm.classify_reply("¿qué tiempo hace?") is None     # not a yes/no response
-    # ambiguous "no, mejor sí" → the last one mentioned wins
-    assert confirm.classify_reply("no mejor si") == "yes"
-
-
-# ── lifecycle.delete_widget (integration: creates and deletes a temporary widget folder) ────────────────
 def test_delete_widget_unknown_is_safe():
     res = asyncio.run(lifecycle.delete_widget("no_existe_xyz"))
     assert res["ok"] is False

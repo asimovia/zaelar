@@ -6876,6 +6876,8 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_one_wait_is_the_row.py"]},
         {"id": "2.1682", "title": "A scheduled notice that ASKS is a waiting row (V2-878 §4, ES/EN/JA): a reminder whose last sentence is a question (by the character's Unicode name, never a word list) opens a `waiting_for=user_answer` row with its ask_id before it is delivered — once per firing — the brief's binding sees it and his bound answer ends it; a notice that only tells opens none",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_one_wait_is_the_row.py"]},
+        {"id": "2.1685", "title": "No reader of a yes or a no exists outside the row's declared answers or the brief's pick (V2-878 §4b): the yes/no word tables and every reader built on them went (widget gate, task gate, browser click, durable answer, the model's tool guard, the voice's early path); without a pick only a reply that IS one of the question's two declared answers in his language decides (`consent_ask.declared_answer`); no pattern in product code reads answer words of both sides; disarmed (a yes/no regex back in any product module) red",
+            "ch": UNIT, "paths": ["tests/infrastructure/unit/test_no_yes_no_reader_outside_the_row.py"]},
         {"id": "7.14", "title": "Aislamiento del motor desechable: el timeline del operador nunca es el destino",
             "ch": UNIT, "paths": ["tests/platform/tests/test_sandbox_isolation.py"]},
         {"id": "7.2", "title": "Observer SSE", "ch": HTTP, "paths": [

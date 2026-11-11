@@ -1,6 +1,6 @@
 """nucleo/cli/worker_api_answer.py — his answer to a task's DURABLE question (V2-851 §3/§3a), moved by concern out of
 `worker_api_asks` (which records the question). The answer is recorded on the question's artefact, a retained act runs
-only on his yes (the confirmation recogniser of `widgets.confirm`, never a substring list), the row stops waiting and
+only on his yes (the brief's pick or the row's declared answer, never a word list), the row stops waiting and
 the session that asked is resumed by id (`worker_api_resume`). Every name of the registry is read as `_m.<name>`.
 """
 from __future__ import annotations
@@ -11,25 +11,21 @@ from nucleo import consequence as _consequence
 from nucleo.cli.worker_api_asks import _artefact, _keep, _note, open_ask, open_asks
 
 
-def decision(question: str, text: str, choice: int | None = None) -> str | None:
+def decision(question: str, text: str, choice: int | None = None, options=None) -> str | None:
     """THE reader of his answer to a durable yes/no question: 'yes' | 'no' | None (not a decision). The binding verdict's
-    pick of the declared answers wins (`consent_ask.yes_no`: #0 yes, #1 no); then a BARE yes/no. A «no» inside a longer
-    line («sí, mándalo, no tardes»), a question back («¿a cuál?») or a correction is never a no: a no is a decision
-    that ends the task, so it is recorded only when it was read as one (V2-878 §4: no second model is asked)."""
+    pick of the declared answers wins (`consent_ask.yes_no`: #0 yes, #1 no); then a reply that IS one of the row's two
+    declared answers (`options`, in his language — the screen's buttons send exactly these). Anything else — a longer
+    yes, a «no» inside a line, a question back, a correction — is not a decision here: the brief's pick reads it, and a
+    no is recorded only when it was read as one (V2-878 §4b: no word table, no second model)."""
     if choice is not None:
         return {0: "yes", 1: "no"}.get(int(choice))
-    from widgets import confirm as _wc
-    v = _wc.classify_reply(text)  # V2-878 §4b: declared answers
-    n = _wc._norm(text)
-    mixed = bool(_wc._YES_RE.search(n) and _wc._NO_RE.search(n))   # a yes and a no in one line is neither, bare · V2-878 §4b: declared answers
-    if v and not mixed and _wc.is_plain_answer(text, v):  # V2-878 §4b: declared answers
-        return v
-    return "yes" if v == "yes" else None
+    from nucleo.request import consent_ask as _ca
+    return _ca.declared_answer(text, options)
 
 
-def _says_yes(question: str, text: str) -> bool:
+def _says_yes(question: str, text: str, options=None) -> bool:
     """His yes to a retained act (`decision` is 'yes')."""
-    return decision(question, text) == "yes"
+    return decision(question, text, options=options) == "yes"
 
 
 def _declined(uid: str, retained: dict) -> None:
@@ -50,9 +46,9 @@ def _declined(uid: str, retained: dict) -> None:
         _note(ex)
 
 
-def says_yes(question: str, text: str) -> bool:
+def says_yes(question: str, text: str, options=None) -> bool:
     """The ONE reader of his yes to a retained act, public for the doors outside this package (the browser click)."""
-    return _says_yes(question, text)  # V2-878 §4b: declared answers
+    return _says_yes(question, text, options)
 
 
 def _record_for(entry: dict):
@@ -111,7 +107,7 @@ async def answer(corr_id: str, text: str, *, resume: bool = True, choice: int | 
             _keep(uid, e)
             return False
         return True
-    said = decision(str(e.get("question") or ""), text, choice) if retained.get("action") else None  # V2-878 §4b: declared answers
+    said = decision(str(e.get("question") or ""), text, choice, e.get("options")) if retained.get("action") else None
     if retained.get("action") and said == "no":
         _declined(uid, retained)               # his no ends the act's goal: never a shortfall the circuit retries
     elif retained.get("action") and said is None:

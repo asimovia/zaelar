@@ -154,8 +154,8 @@ start with `make run` → `python -m server`.
   (`dispatch.has_live_trace`, the reverse of `trace_of`) — that worker owns the close instead.
   **A confirmation's "sí"/"no" is resolved BEFORE any slow work**: a clear yes/no is resolved right after the
   hard-interrupt check, before the model is even called, so a turn cancelled by barge-in can never lose the answer
-  and leave the confirmation pending; ambiguous replies fall through to the late-stage deterministic backstop
-  (`classify_reply` + resolve) after the model's response.
+  and leave the confirmation pending; that early read takes only a reply that IS one of the row's declared answers
+  (`consent_ask.declared_answer`), and anything longer is the brief's binding pick over the row (V2-878 §4).
   **A widget can opt out of the visual Sí/No overlay** (`"confirm_ui": false` in its manifest,
   `nucleo.py::_confirm_ui_paints`; e.g. `widgets/agenda/manifest.json`, a voice-only card): the confirmation
   itself, and voice resolution, are unchanged — only the SSE emit that paints the card overlay is skipped.

@@ -83,7 +83,7 @@ def asked(row, monkeypatch):
 
 
 @pytest.mark.parametrize("text, want", [
-    ("no", "declined"), ("no, no lo mandes", "declined"),
+    ("no", "declined"), ("no, no lo mandes", "neither"),   # V2-878 §4b: only the declared «no» decides; longer → the brief
     ("sí, mándalo, no tardes", "neither"),      # a «no» inside a yes is not his no (it was, and it killed the task)
     ("yes, send it, no rush", "neither"),
     ("espera, ¿a cuál Raquel?", "neither"),     # a question back is not a decision

@@ -74,7 +74,7 @@ def answered(uid: str, entry: dict, text: str, choice: int | None = None) -> dic
     ask_id = str(entry.get("ask_id") or entry.get("corr_id") or "")
     if str(entry.get("consent") or "") == consent.ASK_CONSENT:
         from nucleo.cli.worker_api_answer import decision
-        said = decision(str(entry.get("question") or ""), text, choice)  # V2-878 §4b: declared answers
+        said = decision(str(entry.get("question") or ""), text, choice, entry.get("options"))
         if said is None:
             return {"ok": False, "row": uid, "unclear": True}
         if not inline_ask.take(ask_id):
