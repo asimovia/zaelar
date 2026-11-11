@@ -66,8 +66,9 @@ function drawView(el, data, ctx){
   // threshold redraws from the same data, so nothing that is playing, queued or selected is touched by it.
   const L = el._hbLayout = layoutOf(el);
   el._hbLayoutKey = L.key;
-  if(kind === "queue" && L.mode !== "wide"){
-    // Off the wide desktop the queue is a layer over the player, never a page that hides it.
+  if(kind === "queue" && (L.mode === "compact" || L.mode === "narrow")){
+    // On a desktop window the queue is a layer over the player; the phone gives it the card (V2-876: a sheet there
+    // half-covered the art).
     if(nowPlaying(data)) nowView(el, data, ctx, {kind: "queue"});
     else libraryView(el, data, ctx, {kind: "queue"});
     queueOverlay(el, data, ctx, L.mode);

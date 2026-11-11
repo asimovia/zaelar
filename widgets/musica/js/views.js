@@ -4,7 +4,7 @@ import { provChip, shell, sourceLabel } from "./browse.js";
 import { maybeEnrich, nowPlaying, playback, seekRow, transport } from "./controls.js";
 import { addToListBtn, coverOf, favList, openMenu, panel, pill, queueBody, rowState, trackRow } from "./playlist.js";
 import { ICON_HEART, ICON_HEART_FILL, ICON_MORE, ICON_NOTE, ICON_PAUSE, ICON_PLAY, ICON_PLUS, ICON_QUEUE, ICON_SEARCH,
-  ICON_VOL_OFF, ICON_VOL_UP, _norm, artNode, eqIcon, fire, h, iconBtn, playOne, sourceOf, svgEl, takenBy, tt } from "./shared.js";
+  ICON_VOL_OFF, ICON_VOL_UP, _norm, artImg, artNode, eqIcon, fire, h, iconBtn, playOne, sourceOf, svgEl, takenBy, tt } from "./shared.js";
 
 // ── AHORA SUENA: the song IS the screen (V2-717) ─────────────────────────────────────────────────────────
 // Desktop: the ficha in the middle, the transport stays in the bar at the foot (his own ask), and a wide card shows
@@ -29,19 +29,20 @@ export function nowView(el, data, ctx, opts){
   const box = h("div", "hb-mus2-now" + (phone ? " m" : "") + (phone && L.land ? " land" : ""));
   const art = h("div", "hb-mus2-nowart");
   const fallback = () => { art.textContent = ""; art.appendChild(svgEl(ICON_NOTE)); };
-  if(np.art){ const img = document.createElement("img"); img.src = np.art; img.alt = ""; img.onerror = fallback; art.appendChild(img); }
+  if(np.art){ const img = artImg(np.art); img.onerror = fallback; art.appendChild(img); }
   else fallback();
   // YouTube asks for its player to be SEEN while it plays: on this face the (persistent, never reloaded) embed is laid
   // over the art slot by the tick below; anywhere else it stays the hidden one — the limitation the notes record.
+  // Phone (V2-876 rule 3): the slot takes the video's 16:9, and a paused embed hands it back to the cover.
   const video = !!((data.yt || {}).videoId && !(data.local || {}).src && data.mode !== "spotify");
   if(video) art.classList.add("video");
+  if(video && phone) art.classList.add("w169");
   box.appendChild(art);
   const info = h("div", "hb-mus2-nowinfo");
   const words = h("div", "hb-mus2-nowwords");
-  words.appendChild(h("div", "hb-mus2-nowt", np.title || tt("music_fb", null, "Música")));
-  const who = h("div", "hb-mus2-nowa" + (np.artist ? " link" : ""), np.artist || tt("unknown_artist", null, "Artista desconocido"));
-  if(np.artist) who.onclick = () => fire(ctx, "open_view", {kind: "artist", name: np.artist});
-  words.appendChild(who);
+  words.appendChild(midTitle(np.title || tt("music_fb", null, "Música")));
+  const who = np.artist && words.appendChild(h("div", "hb-mus2-nowa link", np.artist));   // no placeholder (V2-876)
+  if(who) who.onclick = () => fire(ctx, "open_view", {kind: "artist", name: np.artist});
   info.appendChild(words);
   const acts = h("div", "hb-mus2-nowacts");
   const fav = !!data.fav_current;
@@ -77,17 +78,24 @@ export function nowView(el, data, ctx, opts){
     if(!pb || !pb.dur || takenBy(data)){ if(slot.firstChild) slot.textContent = ""; }   // no seeking what is not ours
     else if(!slot.firstChild) slot.appendChild(seekRow(pb));
     else slot.firstChild.update(pb);
-    if(video) placeVideo(el, art);
+    if(video) placeVideo(el, art, phone && !np.playing);
   });
   return s;
 }
 
+// A long media title truncates in the MIDDLE (V2-876 rule 4): two inline spans, the head ellipsizes on the phone.
+function midTitle(text){
+  const t = h("div", "hb-mus2-nowt"), cut = text.length > 18 ? text.length - Math.min(10, Math.floor(text.length / 3)) : text.length;
+  t.append(h("span", "hb-mus2-nowth", text.slice(0, cut)), h("span", "hb-mus2-nowtt", text.slice(cut))); t.title = text;
+  return t;
+}
+
 // The embed is laid OVER the slot, never moved into it: re-parenting an iframe reloads it, and a reload restarts the
 // song (the oldest rule of this card).
-export function placeVideo(el, slot){
+export function placeVideo(el, slot, hide){
   const host = el._ytHost;
   if(!host || !el._hbFrame) return;
-  if(!slot.isConnected){ host.classList.remove("vis"); host.removeAttribute("style"); return; }
+  if(hide || !slot.isConnected){ host.classList.remove("vis"); host.removeAttribute("style"); return; }
   const r = slot.getBoundingClientRect(), rr = el.getBoundingClientRect();
   // YouTube's own floor for an embedded player is 200x200: below it the embed stays the hidden one and the cover
   // shows instead — a smaller visible player would be neither the cover nor a compliant player.

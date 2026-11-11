@@ -1,9 +1,9 @@
 // musica — the third part of the stylesheet: the four arrangements of js/layout.js (wide · compact · narrow · mobile),
-// the sidebar, the bottom navigation, the mini-player, the expanded phone player and the queue drawer/sheet.
+// the sidebar, the phone's top tabs, the expanded phone player and the queue drawer/sheet.
 // Joined to CSS in style.js. Same rule as the other two: no backtick anywhere in here, not even in a comment.
 
 export const CSS_LAYOUT = `
-  /* ── the frame: a body row (sidebar + main [+ queue panel]) over the foot (bar, mini-player, bottom nav) ── */
+  /* ── the frame: a body row (sidebar + main [+ queue panel]) over the foot (the desktop bar; nothing on the phone) ── */
   .hb-mus2-body{flex:1 1 auto;min-height:0;display:flex;min-width:0}
   .hb-mus2-main{flex:1 1 auto;min-width:0;min-height:0;display:flex;flex-direction:column}
   /* inside the phone shell the shell's own card already pads its content: the player uses the full width, and keeps
@@ -92,36 +92,30 @@ export const CSS_LAYOUT = `
   .hb-mus2-plmore:hover{background:rgba(0,0,0,.6);color:#fff}
   .hb-mus2-trmore{display:none}
 
-  /* ── BOTTOM NAVIGATION (narrow window, phone) ── */
-  .hb-mus2-bnav{flex:0 0 auto;display:flex;border-top:1px solid var(--mus-line);background:var(--hb-bg-soft,rgba(127,127,127,.06))}
-  .hb-mus2-root:not(.inshell) .hb-mus2-bnav{padding-bottom:env(safe-area-inset-bottom)}
-  .hb-mus2-bnavb{flex:1 1 0;min-width:0;min-height:54px;border:0;background:none;color:var(--hb-muted,#5b6b82);cursor:pointer;
-                 display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11px;
-                 font-weight:700;padding:4px 2px}
-  .hb-mus2-bnavb svg{width:22px;height:22px}
-  .hb-mus2-bnavb span{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .hb-mus2-bnavb.on{color:var(--hb-ink,#0d1622)}
-  .hb-mus2-bnavb.on svg{color:var(--sp-green)}
   /* the narrow window's tab strip: icon and word; when it gets tight only the tab you are on keeps its word */
   .L-narrow .hb-mus2-headfix{padding-top:4px;padding-bottom:4px}
   .L-narrow .hb-mus2-segb{min-height:24px}
   @container (width < 540px){ .L-narrow .hb-mus2-segb:not(.on) span{display:none}
                               .L-narrow .hb-mus2-segb:not(.on){padding:4px 8px} }
 
-  /* ── MINI-PLAYER (phone): 64 px, a progress line on its top edge ── */
-  .hb-mus2-mini{flex:0 0 auto;position:relative;display:flex;align-items:center;gap:10px;height:64px;padding:0 6px 0 10px;
-                margin:0 8px 6px;border-radius:12px;background:var(--mus-card);box-shadow:var(--mus-shadow);cursor:pointer;
-                overflow:hidden}
-  .hb-mus2-miniprog{position:absolute;left:0;right:0;top:0;height:2px;background:var(--hb-line,#e3e8f0)}
-  .hb-mus2-miniprog b{display:block;height:100%;width:0;background:var(--sp-green)}
-  .hb-mus2-mini .hb-mus2-art{width:44px;height:44px;border-radius:7px}
-  .hb-mus2-minimeta{flex:1 1 auto;min-width:0}
-  .hb-mus2-minit{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .hb-mus2-minia{font-size:12.5px;color:var(--hb-muted,#5b6b82);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .hb-mus2-minib{flex:0 0 auto;width:44px;height:44px;border:0;border-radius:50%;background:none;color:var(--hb-ink,#0d1622);
-                 cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
-  .hb-mus2-minib svg{width:22px;height:22px}
-  .hb-mus2-minib.main svg{width:24px;height:24px}
+  /* ── THE PHONE'S TOP TABS (V2-876 rule 1): segmented, 44 px, the mini-player folded in as a play/pause ── */
+  .hb-mus2-ptabs{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:4px 12px 2px}
+  .hb-mus2-pseg{flex:1 1 auto;min-width:0;display:flex;gap:2px;padding:2px;border-radius:12px;
+                background:var(--hb-bg-soft,rgba(127,127,127,.08));border:1px solid var(--mus-line)}
+  .hb-mus2-psegb{flex:1 1 0;min-width:0;min-height:44px;position:relative;display:flex;align-items:center;
+                 justify-content:center;padding:0 4px;border:0;border-radius:10px;background:none;cursor:pointer;
+                 color:var(--hb-muted,#5b6b82);font-size:clamp(12px,3.4cqw,13px);font-weight:700;overflow:hidden}
+  /* a long word («Now Playing», «Tu música») takes a second line rather than an ellipsis */
+  .hb-mus2-psegb > span{min-width:0;line-height:1.1;text-align:center;display:-webkit-box;-webkit-line-clamp:2;
+                        -webkit-box-orient:vertical;overflow:hidden}
+  .hb-mus2-psegb.on{background:var(--mus-card);color:var(--hb-ink,#0d1622);box-shadow:var(--mus-shadow)}
+  .hb-mus2-psegb .hb-mus2-eq{position:absolute;top:5px;right:6px;width:9px;height:9px}
+  .hb-mus2-psegp{position:absolute;left:8px;right:8px;bottom:3px;height:2px;border-radius:2px;background:var(--hb-line,#e3e8f0)}
+  .hb-mus2-psegp b{display:block;height:100%;width:0;background:var(--sp-green);border-radius:2px}
+  .hb-mus2-ptabpp{flex:0 0 auto;width:44px;height:44px;border:0;border-radius:50%;background:var(--hb-ink,#0d1622);
+                  color:var(--hb-bg,#fff);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+  .hb-mus2-ptabpp svg{width:20px;height:20px}
+  .hb-mus2-main > .hb-mus2-tapsound{margin:6px 12px 0;width:auto}
 
   /* ── THE PHONE: tighter middle, touch-size rows, no hover-only actions ── */
   .L-mobile .hb-mus2-scroll{padding:10px 12px;gap:12px}
@@ -133,7 +127,12 @@ export const CSS_LAYOUT = `
                 background:var(--hb-bg,#fff)}
   .hb-mus2-stop .hb-mus2-sbox{height:44px;font-size:16px}
   .hb-mus2-stop .hb-mus2-sinp{font-size:16px}
-  .L-mobile .hb-mus2-shelf > .hb-mus2-pl{flex-basis:calc((100% - 10px) / 2.15)}
+  .L-mobile .hb-mus2-shelf > .hb-mus2-pl{flex-basis:calc((100% - 10px) / 2.3)}
+  /* a shelf says it scrolls: the next card peeks in under a fade, and the last one can scroll clear of it */
+  .L-mobile .hb-mus2-shelf{padding-right:28px;-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 36px),transparent);
+                           mask-image:linear-gradient(to right,#000 calc(100% - 36px),transparent)}
+  .L-mobile .hb-mus2-shelf .hb-mus2-plname{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;
+                                           -webkit-box-orient:vertical}
   .L-mobile .hb-mus2-lists.two{grid-template-columns:repeat(2,minmax(0,1fr))}
   /* A touch screen has no hover: what a pointer reveals is always drawn, or reached by a tap. */
   @media (hover:none){
@@ -158,8 +157,11 @@ export const CSS_LAYOUT = `
                                  width:clamp(96px, calc(100cqh - 296px), min(82cqw, 420px))}
   .hb-mus2-now.m .hb-mus2-nowinfo{flex-direction:row;align-items:center;gap:8px;margin-top:clamp(10px,3cqh,22px);text-align:left}
   .hb-mus2-now.m .hb-mus2-nowwords{flex:1 1 auto;align-items:flex-start}
-  .hb-mus2-now.m .hb-mus2-nowt{margin-top:0;font-size:20px;-webkit-line-clamp:1;display:block;white-space:nowrap;
-                               text-overflow:ellipsis;max-width:100%}
+  .hb-mus2-now.m .hb-mus2-nowart.w169{aspect-ratio:16/9;width:min(100%, 520px, calc((100cqh - 296px) * 16 / 9))}
+  .hb-mus2-nowart.w169 img.lb{transform:none}
+  .hb-mus2-now.m .hb-mus2-nowt{margin-top:0;font-size:20px;display:flex;max-width:100%;white-space:nowrap}
+  .hb-mus2-now.m .hb-mus2-nowth{min-width:0;overflow:hidden;text-overflow:ellipsis}
+  .hb-mus2-now.m .hb-mus2-nowtt{flex:none;white-space:pre}
   .hb-mus2-now.m .hb-mus2-nowa{margin-top:2px;font-size:15px}
   .hb-mus2-now.m .hb-mus2-nowacts{margin-top:0}
   .hb-mus2-now.m .hb-mus2-seekslot{min-height:36px;display:flex;align-items:center}
@@ -195,20 +197,12 @@ export const CSS_LAYOUT = `
   .hb-mus2-now.m.land .hb-mus2-barc.big{max-width:none;margin-top:0}
   .hb-mus2-now.m.land .hb-mus2-barc.big .hb-mus2-cbtn.main{width:56px;height:56px}
   .hb-mus2-now.m.land .hb-mus2-nowxw{max-width:none;margin-top:0}
-  /* on its side a phone has width to spare and no height: the navigation becomes a rail on the left, so the content
-     keeps the height the bottom bar would have eaten */
-  .L-mobile.land{display:grid;grid-template-columns:76px minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto}
-  .L-mobile.land > .hb-mus2-body{grid-column:2;grid-row:1}
-  .L-mobile.land > .hb-mus2-mini,.L-mobile.land > .hb-mus2-tapsound{grid-column:2;grid-row:2;height:56px;margin-top:4px}
-  .L-mobile.land > .hb-mus2-bnav{grid-column:1;grid-row:1 / span 2;flex-direction:column;border-top:0;
-                                  border-right:1px solid var(--mus-line);justify-content:center}
-  .L-mobile.land .hb-mus2-bnavb{flex:0 0 auto;min-height:52px}
-  .L-mobile.land > .hb-mus2-qlayer{grid-column:1 / span 2;grid-row:1 / span 2}
-
   /* the YouTube embed, laid over the (square) art slot while the song is on screen and the slot is big enough */
   .hb-mus2-nowart.video{background:#000}
   .hb-mus2-audio.vis{opacity:1;z-index:4;border-radius:14px;overflow:hidden;pointer-events:none;width:auto;height:auto}
   .hb-mus2-audio.vis .hb-mus2-frame{width:100%;height:100%}
+  /* the baked-in bars of a 4:3 YouTube thumbnail are zoomed out of a square frame (shared.js artImg) */
+  .hb-mus2-art img.lb,.hb-mus2-nowart img.lb{transform:scale(1.34)}
 
   /* ── THE QUEUE as a layer: a drawer from the right (desktop window), a sheet from the bottom (narrow, phone) ── */
   .hb-mus2{position:relative}
