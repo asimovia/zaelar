@@ -424,9 +424,35 @@ def resolve(name: str, *, tolerant: bool = True, platform: str | None = None) ->
     if len(mine) == 1:
         return mine
     ranked = sorted(((_points(s, c, since, nats), _last_seen(c), c) for s, c in scored), key=lambda r: (-r[0], -r[1]))
+    ranked = _one_row_per_person(ranked)
     if len(ranked) == 1 or ranked[0][0] - ranked[1][0] >= clear_margin():
         return [ranked[0][2]]
     return [c for _p, _t, c in ranked]
+
+
+def _spelled(name) -> str:
+    """A name reduced to its letters, in order: «Raquel Salvador Esteban» and «raquel.salvadoresteban» both spell
+    «raquelsalvadoresteban». Digits and separators are a handle's decoration, never part of who it is."""
+    return re.sub(r"[^a-z]", "", _norm(name))
+
+
+def _one_row_per_person(ranked: list) -> list:
+    """The rows of one person counted once (V2-887 step 6): a contact NAMED BY ITS HANDLE («raquel.salvadoresteban»,
+    «pedrosalvador12» — one word, no space) whose letters spell the full name of another matched contact is that
+    person, so it leaves the candidates and its namesake stays. Measured 2026-11-11: «Raquel Salvador» matched the
+    Google contact «Raquel Salvador Esteban» and an address-named row of the same person, and the send asked «which
+    one?» between them. The directory's rows are untouched; only the question stops counting one person twice."""
+    named = {_spelled(c.get("name")) for _p, _t, c in ranked if " " in str(c.get("name") or "").strip()}
+    named.discard("")
+    out = []
+    for row in ranked:
+        nm = str(row[2].get("name") or "").strip()
+        sp = _spelled(nm)
+        if nm and " " not in nm and sp and sp != _norm(nm) and any(
+                n == sp or (len(sp) >= 8 and (n.startswith(sp) or sp.startswith(n))) for n in named):
+            continue
+        out.append(row)
+    return out or ranked
 
 
 def by_relation(relation: str) -> list[dict]:

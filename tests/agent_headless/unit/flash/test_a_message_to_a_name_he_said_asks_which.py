@@ -98,8 +98,9 @@ def test_a_draft_brings_its_card():
 def test_which_raquel_answers_which_one(world):
     from widgets.contactos import lookup
     ans = lookup.read_query("Which Raquel is in the contacts, and what channels do they have?")
-    assert "5 personas del directorio se llaman «Raquel»" in ans and "PREGÚNTALE cuál" in ans
-    assert ans.count("\n·") == 3, "the closest three, never twenty rows"
+    # V2-887 step 6: «raquel.salvadoresteban» is Raquel Salvador Esteban's own address row — four people, not five
+    assert "4 personas del directorio encajan" in ans and "PREGÚNTALE cuál" in ans
+    assert ans.count("·") >= 4, "every one of the four, each on its row"
 
 
 # ── our own «which one?» is a question, and his answer is remembered ────────────────────────────────────────
