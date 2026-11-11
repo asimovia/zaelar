@@ -102,11 +102,15 @@ def test_a_confirmation_nobody_answers_expires():
     dispatch._EXPIRED_CONFIRM.clear()
 
 
-def test_a_second_irreversible_ask_supersedes_the_first():
+def test_two_irreversible_asks_wait_side_by_side():
+    """V2-878 §4: a second ask no longer supersedes the first — «the most recent» answered a question he was not
+    answering. Both wait; with none named, no word picks one (the brief's pick over their rows does)."""
     dispatch.remember_confirm("9", "paga la factura de la luz", _Task())
     time.sleep(0.01)
     dispatch.remember_confirm("10", "cancela mi suscripción a Netflix", _Task())
-    assert dispatch.pending_confirm()["task_id"] == "10"
+    assert dispatch.pending_confirm() is None
+    assert dispatch.pending_confirm("9")["task_id"] == "9" and dispatch.pending_confirm("10")["task_id"] == "10"
+    assert "Netflix" in dispatch.confirm_line()        # the brain's line still says what was asked last
 
 
 # ── DINERO vs simplemente irreversible (V2-129, 2026-08-18) ──────────────────────────────────────────────

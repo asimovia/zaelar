@@ -89,4 +89,4 @@ def _resolve_and_end_the_turn(verdict: str, text: str) -> bool:
     anything.»: the meeting he asked for was never booked. A bare «no» is the whole answer; a «no» read from a
     longer order cancels and leaves the turn to serve the order."""
     resolved = _resolve_pending_confirm(verdict == "yes")
-    return resolved and not (verdict == "no" and not _p._wconfirm.is_plain_answer(text, "no"))
+    return resolved and not (verdict == "no" and not _p._wconfirm.is_plain_answer(text, "no"))  # V2-878 §4b: declared answers

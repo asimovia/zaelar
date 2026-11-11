@@ -225,6 +225,8 @@ async def rerun(uid: str, entry: dict, text: str, choice: int | None = None):
         if take(str(entry.get("ask_id") or "")):
             ledger.resumed(uid)                  # the turn that bound it reads the answer off the row and acts
         return {"ok": True, "row": uid, "answered": True}
+    if retained.get("kind") == "notice":         # a scheduled notice's question (V2-878 §4): his answer ends it
+        return __import__("nucleo.pulse.notice_ask", fromlist=["x"]).answered(uid, entry, text)
     if retained.get("kind") == "send":           # a send task's slot (`nucleo/request/send_task`): his answer fills it
         from nucleo.request import send_task_answer
         return send_task_answer.answered(uid, entry, text, choice)
@@ -234,7 +236,7 @@ async def rerun(uid: str, entry: dict, text: str, choice: int | None = None):
     from nucleo.request import consent_ask as _ca
     if retained.get("kind") in _ca.ACTS:         # a card's delete/restore, a cluster connect or send (phase 3)
         from nucleo.cli.worker_api_answer import decision
-        said = decision(str(entry.get("question") or ""), text, choice)
+        said = decision(str(entry.get("question") or ""), text, choice)  # V2-878 §4b: declared answers
         if said is None:                         # not a decision: the question stays open, the row waits
             return {"ok": False, "row": uid, "unclear": True}
         if not take(str(entry.get("ask_id") or "")):
@@ -272,7 +274,7 @@ async def rerun(uid: str, entry: dict, text: str, choice: int | None = None):
             yes = int(choice) == 0
         else:
             from nucleo.cli.worker_api_answer import _says_yes
-            yes = _says_yes(str(entry.get("question") or ""), text)
+            yes = _says_yes(str(entry.get("question") or ""), text)  # V2-878 §4b: declared answers
         payload = dict(retained.get("payload") or {}) if yes else None
         if payload is None:
             from nucleo import circuit

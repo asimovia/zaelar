@@ -51,6 +51,21 @@ async def _cluster(ret: dict) -> dict:
 ACTS = {f.__name__.lstrip("_"): f for f in (_delete, _restore, _cluster)}   # keyed by its door's own name
 
 
+def _own_row(wid: str, action: str, text: str) -> str:
+    """No request of this turn to hang the question on (a card's endpoint, a gate reached outside a turn): the act gets
+    its own row through the asker, so the question still waits durably and never only in memory (V2-878 §4)."""
+    from nucleo.circuit import asker
+    from nucleo.request import model as _rq
+    row = asker.open_row(text, kind=_rq.KIND, surface=base(wid))
+    if row:
+        try:
+            from nucleo.circuit import ledger
+            ledger.store().task_patch(row, outcome=f"{wid}:{action}")
+        except Exception as e:  # noqa: BLE001
+            note(e)
+    return row
+
+
 def ask_consent(wid: str, action: str, payload: dict | None, question: str, *, text: str = "", kind: str = "",
                 op: dict | None = None) -> tuple[str, str]:
     """An irreversible act of a card (`confirm:true`, or the one consent rule's ASK_CONSENT) waits for his yes ON ITS
@@ -62,7 +77,8 @@ def ask_consent(wid: str, action: str, payload: dict | None, question: str, *, t
     `(row, ask_id)`, or `("", "")` when no row could be opened — the caller then keeps the act's old gate."""
     try:
         from nucleo.request import model as _rq
-        row = _rq.opened(wid, action, text=text)
+        row = (_rq.opened(wid, action, text=text) if text or _rq.current() else "") or _own_row(wid, action,
+                                                                                              text or question)
         if not row:
             return "", ""
         ask_id = held(row, wid, action, payload, {"ok": False, "consent": "ask_consent"}, question=question,

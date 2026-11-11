@@ -6870,6 +6870,12 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/voice/bench/test_the_acts_asked_question_against_the_real_api.py"]},
         {"id": "2.1556", "title": "A contacts group is mirrored to WhatsApp from its members' ids (V2-854 F4, writer d's «V2-854 gap»): an entry that is a contact's id goes by that row's own channel and never through its name again, a contacts group's id is its members, a member by id with no WhatsApp refuses the whole group, a name is still resolved (and asked) by the send door",
             "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_a_group_is_mirrored_from_its_members_ids.py"]},
+        {"id": "2.1680", "title": "Two open questions and a «yes» answer the one the brief NAMES (V2-878 §4, ES/EN/JA): every gate question (a card's delete or data-op, a parked errand) waits on a row through the one asker; with several waiting no word picks one — the brief's binding pick over the rows answers it, the in-memory index drops what its row no longer waits on, and no model is asked; disarmed («the most recent» back) the last one asked answers",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_one_wait_is_the_row.py"]},
+        {"id": "2.1681", "title": "A parked offer survives ten minutes of a frozen clock and a restart (V2-878 §4): an offer waits on its own row with its two declared answers; nothing on a row expires by the wall clock on wake (only the row's deadline ends it), and after a restart the row alone relaunches it on his yes; disarmed (no row) it expires as «CADUCÓ»",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_one_wait_is_the_row.py"]},
+        {"id": "2.1682", "title": "A scheduled notice that ASKS is a waiting row (V2-878 §4, ES/EN/JA): a reminder whose last sentence is a question (by the character's Unicode name, never a word list) opens a `waiting_for=user_answer` row with its ask_id before it is delivered — once per firing — the brief's binding sees it and his bound answer ends it; a notice that only tells opens none",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_one_wait_is_the_row.py"]},
         {"id": "7.14", "title": "Aislamiento del motor desechable: el timeline del operador nunca es el destino",
             "ch": UNIT, "paths": ["tests/platform/tests/test_sandbox_isolation.py"]},
         {"id": "7.2", "title": "Observer SSE", "ch": HTTP, "paths": [

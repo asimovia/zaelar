@@ -9,7 +9,7 @@ confirmarlo».
 
 The gate reads which parked errand his words name (`named_errand`, the yardstick every door shares): a yes that names
 it launches THAT one with what he added; a sentence that names it without answering folds into it and restarts its
-clock. A plain «sí» still answers the most recent question, as before.
+clock. A plain «sí» that names neither answers neither: the brief's pick does (V2-878 §4).
 """
 from __future__ import annotations
 
@@ -67,7 +67,9 @@ def test_a_sentence_about_the_parked_game_keeps_it_alive(launched):
     assert "7" in dc._PENDING_CONFIRM, "it did not expire under him"
 
 
-def test_a_plain_yes_still_answers_the_newest_question(launched):
+def test_a_plain_yes_that_names_neither_answers_neither_by_itself(launched):
+    """V2-878 §4: with two parked, a bare «Sí» used to answer the newest. Which one it answers is the brief's binding
+    pick over their rows; the word alone answers neither, and both keep waiting."""
     ans = gates.resolve_all("Sí.")
-    assert ans.yes and launched == [OTHER]
-    assert "7" in dc._PENDING_CONFIRM
+    assert not ans and not launched
+    assert "7" in dc._PENDING_CONFIRM and "offer:1" in dc._PENDING_CONFIRM

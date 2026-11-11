@@ -157,7 +157,7 @@ class _StepsMixin:
                 # V2-857 phase 3: his yes is read by the ONE reader every retained act uses, never a word list here
                 from nucleo.cli import worker_api  # noqa: F401 — the package first: its answer module imports it back
                 from nucleo.cli.worker_api_answer import says_yes
-                aff = says_yes(_click_reason.card_question(label), ans)
+                aff = says_yes(_click_reason.card_question(label), ans)  # V2-878 §4b: declared answers
                 tasks.set_status(self.task_id, "working")
                 tasks.add_event(self.task_id, "✅ confirmado" if aff else "🚫 no confirmado")
                 return aff

@@ -91,9 +91,11 @@ def test_answering_the_same_widget_twice_in_a_row_does_not_close_its_own_live_fl
 
 def test_an_expired_confirmation_closes_its_flow_and_queues_a_notice(monkeypatch):
     """The 90s TTL sweep must not just vanish the entry: the flow closes (so the master stops showing it as
-    active) AND the expiry gets queued so `nucleo/pulse/loop.py` can tell the operator (2026-08-16)."""
+    active) AND the expiry gets queued so `nucleo/pulse/loop.py` can tell the operator (2026-08-16). Since V2-878 §4
+    only a question NO row could be written for expires in memory — one on its row waits for the row's deadline."""
     from voice import observer, trace
 
+    monkeypatch.setattr(confirm, "_on_its_row", lambda wid, p: {})     # no store could hold it
     trace.adopt("")
     tid = trace.begin("borra toda la agenda", origin="turno")
     confirm.request("data", "agenda", "¿Vacío la agenda entera?", op={"action": "clear_all", "payload": {}})
