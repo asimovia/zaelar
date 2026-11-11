@@ -47,9 +47,9 @@ def messages(text: str) -> tuple[str, str]:
     try:
         from voice.engine.core import langs as _lg
         sp = _lg.current_language()
-    except Exception:  # noqa: BLE001 — a broken table must never swallow a model failure
-        return ("⚠️ El modelo de lenguaje no responde ahora mismo.",
-                "Ahora mismo no puedo acceder al modelo. Probemos de nuevo en un momento.")
+    except Exception:  # noqa: BLE001 — a broken table never swallows a model failure: English, from its pack (V2-877 #10)
+        from i18n.langs import words as _w
+        return tuple(str(_w(k, code="en", default="⚠️")) for k in ("model_outage_banner", "model_outage_line"))
     if kind == "credit":
         return (sp.model_credit_banner, sp.model_credit_line)
     if kind == "auth":

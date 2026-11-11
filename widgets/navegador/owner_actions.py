@@ -115,6 +115,14 @@ async def _rich_results(goal: str, tb, task_id: str, agent, tasks):
     return results
 
 
+def ending_line(summary: str, done: bool) -> str:
+    """A browser task's spoken ending from the voice pack (`navegador.*`) in his language — it was a Castilian constant
+    heard in English sessions too (V2-877 #10)."""
+    from i18n import langs
+    tail, key = (summary or "").strip(), "done" if done else "partial"
+    return str(langs.words(f"navegador.{key}{'' if tail else '_on_sheet'}", default="")).format(summary=tail).strip()
+
+
 async def _announce(task_id: str, goal: str, summary: str, ok: bool, success: bool, tasks) -> None:
     """Tell the brain (a [SISTEMA] note) and the operator (a proactive notice) how the task ended."""
     try:
@@ -138,12 +146,7 @@ async def _announce(task_id: str, goal: str, summary: str, ok: bool, success: bo
         # houses...") — it used to say "I tried with «Alex wants to search...»: ...", exposing internals (judge finding,
         # browser convo). User-facing message = summary only (already user-facing); raw objective stays in the
         # [SYSTEM] note (brain context), not in voice.
-        tail_ = (summary or "").strip()
-        if (ok and success):
-            msg = f"Listo. {tail_}" if tail_ and tail_ != "sin resumen" else "Listo, lo tienes en la hoja de resultados."
-        else:
-            msg = (f"No pude terminarla del todo. {tail_}" if tail_ and tail_ != "sin resumen"
-                   else "No pude terminarla del todo; lo que saqué está en la hoja de resultados.")
+        msg = ending_line(summary, bool(ok and success))
         await notices.notify("navegador", msg, task_id=task_id, kind="done")
     except Exception:
         pass
