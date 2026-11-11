@@ -3877,6 +3877,11 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_the_launch_says_whether_it_joined_or_escalated.py"]},
         {"id": "2.1670", "title": "A relay's brief never reaches him (V2-877 #1): a context handoff or stall restart relaunches with HIS goal as the request and the worker brief in `context.worker_brief`; a retried errand shows his goal and the answer and no piece of the brief, the worker prompt starts with it, and the key has one reader",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/workers/test_a_relay_brief_never_reaches_him.py"]},
+        # V2-878 §1 — disarmed 2026-11-11 (no card written / the beat wipes it / the extras lose his sentence) → red.
+        {"id": "2.1671", "title": "An errand's card lives in its ROW (V2-878 §1): his sentence (`heard`), how it was born (`verb`) and when he last named it (`last_mention_ts`) are in `progress.card`; the 15-second status beat keeps it, a restart reads it back, the rehydrate returns it, the pool (`named_errand.known`) exposes heard/state/last mention, and his first words are never overwritten — es, en, ca",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_an_errands_card_lives_in_its_row.py"]},
+        {"id": "2.1672", "title": "One sentence, three errands, three cards (V2-878 §1): every errand of the sentence carries his whole sentence (`said`) and its `part`, and the second and third carry the turn's reading and consent class like the first; the sheet's row door still hears only a single errand's sentence — es, en, ca",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_an_errands_card_lives_in_its_row.py"]},
         {"id": "2.728", "title": "A turn that acted on a card and also escalated, read inline, launches no worker — on the text channel as on the voice",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_an_inline_act_settles_the_commission_on_both_channels.py"]},
         {"id": "2.729", "title": "An ordered act that leaves, sure at the operator's 70%, runs when the model only drafted it — both channels",

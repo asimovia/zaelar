@@ -246,6 +246,16 @@ def at_boot(*, now: float | None = None, schedule: bool = True, delay: float | N
     return plan
 
 
+def heard_of(uid: str) -> dict:
+    """His words for a resumed errand, from its row's card: `said` (the card) and `heard` (the sheet's — only for the
+    ONE errand of a sentence; a part of several hears nothing, as at birth). {} when the card has none."""
+    from nucleo.circuit import ledger as _ledger
+    c = _ledger.card(uid)
+    if not c.get("heard"):
+        return {}
+    return {"said": c["heard"], "heard": "" if "part" in c else c["heard"], **({"part": c["part"]} if "part" in c else {})}
+
+
 def _schedule(entries: list[dict], delay: float) -> None:
     """Re-escala en diferido. Diferido a propósito: el listener de escaladas tiene que estar suscrito (si no, el
     evento del bus se publica contra nadie) y el arranque tiene bastante con el prewarm. Mismo patrón que el
@@ -269,6 +279,7 @@ def _schedule(entries: list[dict], delay: float) -> None:
                             "resume": {"brief_task": str(ent.get("uid") or ent.get("id") or "")}}   # V2-868: its ROW
                     if ent.get("uid"):
                         _ctx["task_uid"] = ent["uid"]      # the resumed worker CONTINUES the same row (as a relay)
+                        _ctx.update(heard_of(ent["uid"]))   # V2-878 §1: his sentence comes back from its row
                     escalate.escalate_to_slowbrain(ent["goal"], context=_ctx)
                     logger.info(f"rehidratación: re-escalada «{ent['goal'][:70]}»")
                 except Exception as e:  # noqa: BLE001
