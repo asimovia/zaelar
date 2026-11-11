@@ -182,7 +182,9 @@ below is the first kind, or it names the mechanism that replaced the second.
   whose recipient the worker picked, from an errand whose reading asks for no send (`message_channel.backs_a_send`, read by `exit_slots.unbacked_send`:
   the class `sends_for_him` or a channel he named), is dropped at its exit with an event, and no send worker is born
   from a lean alone. — since 2026-09-29 ·
-  nodes 2.106, 2.168, 2.730, 2.740, 2.1690 · `nucleo/acts/message.py` (`asked_if_leaving`), `widgets/mensajeria/outbound.py`,
+  The question names the person as he knows her (`directory.shown_as`) and the card carries its row's title
+  (`asker.title_of`) — never a raw id, never «a process» (V2-886 D5). —
+  nodes 2.106, 2.168, 2.730, 2.740, 2.1690, 2.1691 · `nucleo/acts/message.py` (`asked_if_leaving`), `widgets/mensajeria/outbound.py`,
   `widgets/confirm.py::backs_a_yes`.
 - **CRIT-C6 · An action does not manufacture permission for its own side effects**; the confirm gate asks
   SOMEONE, and its «yes» returns to the click it stopped. — since 2026-09-18 · nodes 4.21, 2.29.

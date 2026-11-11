@@ -91,6 +91,15 @@ def who_of(wid: str, action: str, payload) -> list[str]:
     return out or _card_recipients(wid, action, p)
 
 
+def shown_who(wid: str, action: str, payload) -> str:
+    """`who_of` as he reads it in a question (V2-886 D5): each recipient by his contact's name, never a raw id."""
+    try:
+        from widgets import directory
+        return ", ".join(directory.shown_as(w) for w in who_of(wid, action, payload))
+    except Exception:  # noqa: BLE001 — unread: the values as the call carried them
+        return ", ".join(who_of(wid, action, payload))
+
+
 def _card_recipients(wid: str, action: str, payload: dict) -> list[str]:
     """The card's answer to «who does this reach?», or [] (no hook, or unreadable)."""
     try:
@@ -183,9 +192,9 @@ def worker_question(rec, action: str, payload) -> str:
                                                        "action": act, "who": who[:4], "said": len(said)})
     try:
         from i18n import langs as _lg
-        return _lg.current_language().worker_confirm_on_behalf.format(action=act, who=", ".join(who) or wid)
+        return _lg.current_language().worker_confirm_on_behalf.format(action=act, who=shown_who(wid, act, inner) or wid)
     except Exception:  # noqa: BLE001
-        return f"{act} · {', '.join(who) or wid}?"
+        return f"{act} · {shown_who(wid, act, inner) or wid}?"
 
 
 # ── the browser: a form that hands his identity to a site ───────────────────────────────────────────────

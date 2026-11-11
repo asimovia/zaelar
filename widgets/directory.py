@@ -245,6 +245,24 @@ def names(c: dict) -> list[str]:
     return [n for n in out if n.strip()]
 
 
+
+def shown_as(value) -> str:
+    """How a recipient is SHOWN to him (V2-886 D5): a raw handle, chat id, phone or address that is one of his
+    contacts' channels becomes that contact's name; anything else is shown as given. Never used to match — only to
+    say who a question is about, so a card never reads «…@lid»."""
+    v = str(value or "").strip()
+    if not v:
+        return v
+    d = _digits(v.split("@", 1)[0]) if "@" in v and not v.split("@", 1)[1].count(".") else _digits(v)
+    for c in _contacts():
+        for ch in channels(c):
+            keys = {str(ch.get("chatId") or ""), str(ch.get("handle") or ""), str(ch.get("lid") or "")}
+            if v in keys or (len(d) >= 7 and any(_digits(k) == d or _same_phone(k, d) for k in keys if k)):
+                return (names(c) or [v])[0]
+        if len(d) >= 7 and any(_same_phone(p, d) for p in _phones(c)):
+            return (names(c) or [v])[0]
+    return v
+
 # ── one ranking (V2-854) ─────────────────────────────────────────────────────────────────────────────────────
 #: How strongly a name matches a contact, strongest first. ALIAS: a word HE gave this person. EXACT: the whole name,
 #: or the number or address said. WORDS: every word said is a word of the name. PART: a word said sits inside a

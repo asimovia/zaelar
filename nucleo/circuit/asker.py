@@ -51,10 +51,22 @@ def keep(uid: str, entry: dict) -> None:
         _note(e)
 
 
+def title_of(task_id) -> str:
+    """The card's heading (V2-886 D5): the row's title, else its goal — every row, inline ones too, which the live
+    board hides (the screen used to fall back to «a process»). "" when the row is unknown."""
+    try:
+        from memory import tasks_store
+        row = tasks_store.task_get(str(task_id or "").strip()) if task_id else None
+        return str((row or {}).get("title") or (row or {}).get("goal") or "").strip()[:120]
+    except Exception as e:  # noqa: BLE001
+        _note(e)
+        return ""
+
+
 def emit_ask(*, task_id: str, ask_id: str, text: str, session: str = "", options=None, among=None) -> None:
     """The `ask` event the screen reads. `options` only when the asker declared them, `among` only for ASK_WHICH."""
     extra = {"task_id": str(task_id or ""), "ask_id": str(ask_id or ""), "text": str(text or ""),
-             "session": str(session or "")}
+             "session": str(session or ""), "title": title_of(task_id)}
     if options:
         extra["options"] = [str(o) for o in options]
     if among:
