@@ -154,7 +154,7 @@ def intent_act_at() -> float:
     question (2026-10-15, the operator's 70%). Genesis `intent_act_at`, overridable like every other knob here."""
     import rules
     try:
-        v = float(rules.value(_anchors(), "intent_act_at", 0.7))
+        v = float(rules.value(_anchors(), "intent_act_at", 0.6))
     except (TypeError, ValueError):
         v = 0.7
     return min(max(v, 0.5), 0.99)

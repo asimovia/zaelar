@@ -1,6 +1,6 @@
 {
   "_comment": "GENESIS RULES (V2-633) — the engine's shipped BASE conversational rules. This file is the factory default every install starts from; the operator overrides any of it by just SAYING so (set_style_directive -> style_policy.apply_directive persists the override in <workspace>/config/style.json, applied on the very next turn). Nothing here is per-user data: user overrides never live in this file.",
-  "generation": 1,
+  "generation": 2,
   "_generation": "V2-859 — the genome's GENERATION (was `version`). One integer for the whole genome (this file + i18n/genesis/<lang>/); `genome.identity()` names it with a hash of the canonical content, documentation keys stripped. A release that changes a gene bumps it; on boot a new generation absorbs the learned rows it now ships (`genome/absorb.py`).",
   "genome": {
     "_comment": "V2-859 T564 — what may cross from this agent to another: STRUCTURED genes only (alias · route · nothing_serves · threshold), each with the evidence it needs here. Prose is never learned. `thresholds` is the closed list of knobs a learned value may move, with its bounds; a knob not listed here is never a gene.",
@@ -16,8 +16,8 @@
   },
   "consent": {
     "_comment": "CONSENT (V2-712) — THE ONE RULE that decides act-or-ask, layered exactly like `style`: these are the factory defaults, the operator overrides any of them by SAYING so, and the override is a user row of the rules table (rules/, V2-806) applied on the very next decision. The rule itself is in nucleo/consent.py and asks four questions in order: is a FACT missing, is there DOUBT about what will be touched, does the RADIUS exceed what he named, and only then is the CLASS sensitive enough. Nothing here is hardcoded in code: a widget declares `security` (all shipped widgets: standard) and an action may declare `sensitivity`.",
-    "intent_act_at": 0.7,
-  "_intent_act_at": "DOUBT ABOUT WHAT HE WANTS, measured (2026-10-15). The turn's verdict says how sure it is of the order and of the action it names; at or above this the engine carries the order out even when the model's own words held it for a question, and below it the question stands. The operator's rule: «en un 70% continuamos, pero si nos quedamos en un 50%… nos obligaría a preguntar». Calibrated on 1188 demo turns (passes 110-131): the screen-action verdict was right 100% of 122 times in 0.7-0.8 and 99% above; 71-90% below 0.5. A question is asked only when the doubt changes the outcome — the shared-card rule (`frontend.which_card`) keeps its own higher bar.",
+    "intent_act_at": 0.6,
+  "_intent_act_at": "V2-886 D2 (2026-11-11): 0.7 → 0.6, the operator's figure — «if we are 60 % sure, we do it and he tells us otherwise»; the band 0.6-0.7 is not yet measured on the lab. DOUBT ABOUT WHAT HE WANTS, measured (2026-10-15). The turn's verdict says how sure it is of the order and of the action it names; at or above this the engine carries the order out even when the model's own words held it for a question, and below it the question stands. The operator's rule: «en un 70% continuamos, pero si nos quedamos en un 50%… nos obligaría a preguntar». Calibrated on 1188 demo turns (passes 110-131): the screen-action verdict was right 100% of 122 times in 0.7-0.8 and 99% above; 71-90% below 0.5. A question is asked only when the doubt changes the outcome — the shared-card rule (`frontend.which_card`) keeps its own higher bar.",
   "ask_at": "critical",
     "_ask_at": "The lowest level that asks for consent EVEN with a clear order, a resolved target and complete data. `critical` means only money leaving his accounts stops by class; everything else is decided by radius and by whether the engine has what it needs. Operator, 2026-09-16: «si le digo borra una cita de la agenda llamada tal, la borras y punto».",
     "_radius_rail": "Not a knob (V2-806): a call that does not name WHAT it acts on, or that will touch more than one thing, asks regardless of level — V2-707's rail, born from 147 DELETE requests against his real calendar: «vacía la agenda» is not «borra la cita del dentista». This is a rail on the CONSEQUENCE and does not bend for convenience.",
@@ -86,7 +86,8 @@
   "circuit": {
     "_comment": "V2-776 L3 — THE CIRCUIT: a request is born with its end state (nucleo/spec.py), the pulse re-verifies it, and a worker's ending is judged against it (nucleo/circuit.py). `retries` = how many times an UNMET end state is relaunched carrying what is missing before the truth is told («hemos probado dos o tres veces, no somos capaces» — the operator, 2026-09-29); `ask_on_give_up` = whether a gave-up ending parks ONE retry on his answer. Overridable per install in <workspace>/config/circuit.json.",
     "retries": 2,
-    "ask_on_give_up": true
+    "ask_on_give_up": false,
+    "_ask_on_give_up": "V2-886 D3 (2026-11-11): off — a gave-up ending is told as it is, never turned into «¿lo intento otra vez?»; he asks again if he wants. A per-install circuit.json can turn it back on."
   },
   "tasks": {
     "_comment": "V2-851 — how long a task WAITS for his answer before the pulse closes it (`circuit.settle` → cancelled) and says so in one line («I closed X because you did not answer»), never silently. A global rule with readers (`nucleo/circuit/ledger.answer_wait_s`), not a constant: a row of his own at scope `global`, key `answer_wait_days`, wins over this default (rules/, V2-806).",

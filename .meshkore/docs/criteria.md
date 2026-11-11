@@ -147,7 +147,9 @@ below is the first kind, or it names the mechanism that replaced the second.
   confirmación para los correos» → a gate at that channel's scope); every field is validated against declared data,
   removal is by id, and with no answer nothing is guessed into a gate. A question only clarifies WHAT he wants,
   never asks permission: when the verdict is sure of the order and its action at `consent.intent_act_at` (genesis
-  0.7), the engine acts even if the model asked — below it the question stands. A question asking for a datum or a
+  0.6 since V2-886 D2, the operator's figure), the engine acts even if the model asked — below it the question
+  stands. A verdict that disagrees with the model's call below the veto is a recorded doubt and the call runs
+  (`verdicts.against_the_model`), never a «which one?». A question asking for a datum or a
   choice is DIALOGUE: it waits on its row like any other but is said in the conversation and never drawn as a card;
   only a question of consent (an act waiting for his yes) is a card (`asker.kind_of`, V2-886 D1). — since 2026-10-26 ·
   nodes 4.188, 4.185, 2.174, 2.811, 2.431, 2.728, 2.729, 2.1693 · `nucleo/consent.py`, `rules/shape.py`, `nucleo/flash/undecided.py`.

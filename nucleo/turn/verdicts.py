@@ -37,8 +37,8 @@ def read(handle, key: str, fallback, *, min_confidence: float | None = None):
 
 def against_the_model(handle, key: str, agrees) -> str:
     """The model CALLED something this verdict is about: may it run? `agrees(choice)` says whether the verdict's choice
-    is what the model did. `run` · `veto` (a disagreeing verdict ≥ VETO) · `consent.ASK_WHICH` (a disagreeing verdict
-    between LICENCE and VETO). No verdict, or one below the licence, lets the call run (today's path)."""
+    is what the model did. `run` · `veto` (a disagreeing verdict ≥ VETO). A disagreeing verdict between LICENCE and VETO
+    is a recorded doubt and the call runs (V2-886 D2); no verdict, or one below the licence, lets the call run."""
     choice, info = read(handle, key, None, min_confidence=0.0)
     if not info or not choice:
         return RUN
@@ -52,8 +52,16 @@ def against_the_model(handle, key: str, agrees) -> str:
     if conf >= VETO:
         return VETOED
     if conf >= LICENCE:
-        from nucleo import consent
-        return consent.ASK_WHICH
+        # V2-886 D2: a disagreeing verdict below the veto is a DOUBT, not a question — the model's call runs and the
+        # doubt is recorded (operator, 2026-11-11: «at 60 % sure we do it, and he tells us if not»). It used to ask
+        # «which one?» here, interrupting him over the engine's own uncertainty.
+        try:
+            from voice.observer import emit
+            emit("brain", "🤔 a verdict doubts the call below the veto — the call runs", role="system",
+                 text=f"{key}: {choice}", extra={"cat": "flash", "kind_diag": "doubt", "key": key,
+                                                  "verdict": str(choice), "confidence": round(conf, 2)})
+        except Exception as e:  # noqa: BLE001 — the call runs either way; only the record is lost
+            logger.debug(f"verdicts: doubt not recorded — {e!r}")
     return RUN
 
 

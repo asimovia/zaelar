@@ -95,14 +95,14 @@ def test_a_named_card_or_a_sure_verdict_still_completes(screen):
 def test_a_question_the_verdict_is_sure_enough_to_answer_does_not_hold_the_order(screen):
     """2026-10-15, the operator's threshold («en un 70% continuamos»). Live bench E3: «…should I go ahead?» over an
     order read at 1.00 and `mensajeria:forward` at 0.77 — nothing was sent in 2 runs of 7. A question holds the rung
-    only while the verdict is under `consent.intent_act_at`; the 0.67 case above still asks."""
+    only while the verdict is under `consent.intent_act_at` (0.6 since V2-886 D2, the operator's figure)."""
     from nucleo.flash import undecided
     screen["open"] = ["mensajeria"]
     sure = _brief("mensajeria:forward", 0.77, canvas="neither", canvas_conf=1.0, open_ids=["mensajeria"])
     sure["result"]["request_type"] = {"choice": "order", "confidence": 1.0}
     asked = "Here's what I'd send Quinn — should I go ahead?"
     assert undecided.why(sure, "mensajeria", "forward", operator_text="send the invoice to quinn", model_words=asked) == ""
-    unsure = _brief("mensajeria:forward", 0.62, canvas="neither", canvas_conf=1.0, open_ids=["mensajeria"])
+    unsure = _brief("mensajeria:forward", 0.55, canvas="neither", canvas_conf=1.0, open_ids=["mensajeria"])
     unsure["result"]["request_type"] = {"choice": "order", "confidence": 1.0}
     assert undecided.why(unsure, "mensajeria", "forward", operator_text="send the invoice to quinn",
                          model_words=asked) == "asked"
