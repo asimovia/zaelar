@@ -33,6 +33,21 @@ function injectStyles(){
   .hb-mkt .mkttab.is-on{background:color-mix(in srgb,var(--hb-accent,#AE90FF) 18%,transparent);
           border-color:color-mix(in srgb,var(--hb-accent,#AE90FF) 55%,transparent);font-weight:700}
   .hb-mkt .mktempty,.hb-mkt .mkterr{font-size:var(--fs-caption,.86rem);color:var(--hb-muted,#A7B0BE);padding:var(--sp-4,16px) 0}
+  /* EMPTY is a page of its own, not a sentence over black (V2-877 #8): centred, the one request that fills it, and a
+     field to fill it by hand — the same 'show' the voice uses. */
+  .hb-mkt.is-empty{justify-content:center;align-items:center;text-align:center;padding:var(--sp-5,24px) var(--sp-4,16px)}
+  .hb-mkt .mktemptyt{font-size:var(--fs-title,1.06rem);font-weight:600;color:var(--hb-ink,#F2F4F7)}
+  .hb-mkt .mktempty.mktemptyh{padding:0;font-size:var(--fs-ui,.95rem);color:var(--hb-muted,#A7B0BE);max-width:32ch;line-height:var(--hb-lh,1.55)}
+  .hb-mkt .mktform{display:flex;gap:var(--sp-2,8px);width:min(100%,360px);margin-top:var(--sp-2,8px)}
+  .hb-mkt .mktform input{flex:1 1 auto;min-width:0;min-height:44px;box-sizing:border-box;font:inherit;font-size:16px;
+          padding:0 var(--sp-3,12px);border-radius:var(--hb-r-m,10px);border:1px solid var(--hb-line,rgba(255,255,255,.14));
+          background:var(--hb-bg-soft,#272D35);color:var(--hb-ink,#F2F4F7)}
+  .hb-mkt .mktform button{min-height:44px}
+  /* On the phone (the deck's card): the chart takes the page, the period tabs are 44pt targets. */
+  .zm-scroll .hb-mkt{min-height:100%}
+  .zm-scroll .hb-mkt .mktchart{min-height:min(52vh,420px)}
+  .zm-scroll .hb-mkt .mkttab{min-height:44px;min-width:44px;padding:0 12px;font-size:15px}
+  .zm-scroll .hb-mkt .mktprice{font-size:2.4rem}
   `; document.head.appendChild(s);
 }
 
@@ -91,7 +106,19 @@ export function render(el, data, ctx){
   el.textContent = "";
   const d = data || {};
   if(!d.symbol){
-    el.appendChild(txt("div", "mktempty", tt("empty", null, "Ask for a stock, an index or a coin — «a chart of Apple» — and it shows up here.")));
+    el.classList.add("is-empty");
+    el.appendChild(txt("div", "mktemptyt", tt("empty_title", null, "No quote on screen yet")));
+    el.appendChild(txt("div", "mktempty mktemptyh", tt("empty", null, "Ask for a stock, an index or a coin — «a chart of Apple» — and it shows up here.")));
+    const form = txt("form", "mktform");
+    const inp = txt("input");
+    inp.type = "text"; inp.name = "symbol"; inp.autocomplete = "off";
+    inp.placeholder = tt("symbol_ph", null, "Ticker or name — AAPL, Apple");
+    inp.setAttribute("aria-label", inp.placeholder);
+    const go = txt("button", "hb-btn hb-btn--primary", tt("show_btn", null, "Show"));
+    go.type = "submit";
+    form.onsubmit = (e) => { e.preventDefault(); const v = inp.value.trim();
+      if(v){ try{ ctx && ctx.action && ctx.action("show", { symbol: v }); }catch(_){} } };
+    form.appendChild(inp); form.appendChild(go); el.appendChild(form);
     return;
   }
   const pts = Array.isArray(d.points) ? d.points : [];

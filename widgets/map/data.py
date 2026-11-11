@@ -155,10 +155,25 @@ def _locate(places: list, near: str, deadline: float) -> tuple[list, list]:
     return placed, missed
 
 
+def _his_area() -> dict | None:
+    """Where the empty map opens (V2-877 #8): the area a screen of his reported (`here`, already rounded to ~1 km by
+    the engine), else nothing — the world. Never a place of ours. Read-only; a card never fails on the state."""
+    try:
+        from memory import api as memory
+        here = (memory.state() or {}).get("here")
+    except Exception:  # noqa: BLE001
+        return None
+    if isinstance(here, dict) and isinstance(here.get("lat"), (int, float)) and isinstance(here.get("lon"), (int, float)):
+        return {"lat": round(float(here["lat"]), 2), "lon": round(float(here["lon"]), 2)}
+    return None
+
+
 def view_data(q: str = "") -> dict:
     try:
         db = _load()
-        return {**{k: db.get(k) for k in _seed()}, "empty": not (db.get("places") or [])}   # V2-776 L2
+        empty = not (db.get("places") or [])
+        return {**{k: db.get(k) for k in _seed()}, "empty": empty,   # V2-776 L2
+                **({"area": _his_area()} if empty else {})}
     except Exception as e:  # noqa: BLE001 — never raise from the hot path
         return {**_seed(), "error": str(e)[:160]}
 

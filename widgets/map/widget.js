@@ -43,6 +43,26 @@ function injectStyles(){
   .hb-map .maprow span{font-size:var(--fs-caption,.86rem);font-weight:600}
   .hb-map .maprow small{display:block;font-size:var(--fs-micro,.8rem);color:var(--hb-muted,#A7B0BE);font-weight:400}
   .hb-map .mapempty{font-size:var(--fs-caption,.86rem);color:var(--hb-muted,#A7B0BE);padding:var(--sp-4,16px) 0}
+  /* The base map is ALWAYS drawn (V2-877 #8: a sentence over black read as broken): empty, it is the world or his
+     area, with the one request that fills it in a note over the top. One finger PANS the map — the view carries
+     [data-hpan], so the phone deck leaves that swipe to it and still pages from the screen's edge (V2-124). */
+  .hb-map .mapview{touch-action:none;cursor:grab}
+  .hb-map .mapview.is-drag{cursor:grabbing}
+  .hb-map .mapnote{position:absolute;left:var(--sp-3,12px);right:var(--sp-3,12px);top:var(--sp-3,12px);z-index:4;
+          padding:var(--sp-3,12px) var(--sp-4,16px);border-radius:var(--hb-r-l,12px);
+          background:color-mix(in srgb,var(--hb-bg,#1F242B) 92%,transparent);border:1px solid var(--hb-line,rgba(255,255,255,.14));
+          font-size:var(--fs-ui,.95rem);line-height:var(--hb-lh,1.55);color:var(--hb-ink,#F2F4F7);pointer-events:none}
+  .hb-map .mapctl{position:absolute;right:var(--sp-2,8px);bottom:var(--sp-5,24px);z-index:4;display:flex;flex-direction:column;
+          gap:var(--sp-1,4px)}
+  .hb-map .mapctl button{width:44px;height:44px;border-radius:var(--hb-r-m,10px);border:1px solid var(--hb-line,rgba(255,255,255,.14));
+          background:color-mix(in srgb,var(--hb-bg,#1F242B) 92%,transparent);color:var(--hb-ink,#F2F4F7);font:600 20px/1 var(--sans,system-ui);
+          cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+  .hb-map .mapctl button:focus-visible{outline:none;box-shadow:var(--hb-focus-ring,0 0 0 2px #AE90FF)}
+  /* On the phone the map takes the page above its list; rows are 44pt. */
+  .zm-scroll .hb-map{min-height:100%}
+  .zm-scroll .hb-map .mapview{min-height:min(60vh,520px)}
+  .zm-scroll .hb-map .maprow{min-height:44px;align-items:center}
+  .zm-scroll .hb-map .mappin b{min-width:30px;height:30px;border-radius:15px}
   `; document.head.appendChild(s);
 }
 
@@ -79,10 +99,20 @@ export function fit(places, w, h, pad = 48){
   return { z: 1, cx: p.x, cy: p.y };
 }
 
-function drawMap(view, places, selected, ctx){
-  view.textContent = "";
+// Where the camera starts: every pin fitted; with no pin, his area at city level, else the whole world.
+export function home(places, area, w, h){
+  if(places.length) return fit(places, w, h);
+  if(area && typeof area.lat === "number" && typeof area.lon === "number"){
+    const p = project(area.lat, area.lon, 11); return { z: 11, cx: p.x, cy: p.y };
+  }
+  const z = w > 700 ? 3 : 2, n = TILE * Math.pow(2, z);
+  return { z, cx: n / 2, cy: n / 2 };
+}
+
+function drawMap(view, places, selected, ctx, cam){
+  view.querySelectorAll(".maptile,.mappin,.mapattr").forEach(n => n.remove());
   const w = view.clientWidth || 600, h = view.clientHeight || 360;
-  const { z, cx, cy } = fit(places, w, h);
+  const { z, cx, cy } = cam;
   const ox = cx - w / 2, oy = cy - h / 2;             // world pixel at the view's top-left
   const max = Math.pow(2, z);
   const tx0 = Math.floor(ox / TILE), ty0 = Math.floor(oy / TILE);
@@ -96,7 +126,7 @@ function drawMap(view, places, selected, ctx){
       img.className = "maptile"; img.alt = ""; img.loading = "lazy"; img.decoding = "async";
       img.src = TILES.replace("{s}", subs[(wx + ty) % 4]).replace("{z}", z).replace("{x}", wx).replace("{y}", ty);
       img.style.left = Math.round(tx * TILE - ox) + "px"; img.style.top = Math.round(ty * TILE - oy) + "px";
-      view.appendChild(img);
+      view.insertBefore(img, view.firstChild);
     }
   }
   places.forEach((p, i) => {
@@ -112,7 +142,7 @@ function drawMap(view, places, selected, ctx){
     pin.onclick = () => { try{ ctx && ctx.action && ctx.action("select", { item: String(i + 1) }); }catch(_){} };
     view.appendChild(pin);
   });
-  view.appendChild(txt("div", "mapattr", "© OpenStreetMap © CARTO"));
+  view.appendChild(txt("div", "mapattr", "© OpenStreetMap"));
 }
 
 export function render(el, data, ctx){
@@ -122,32 +152,68 @@ export function render(el, data, ctx){
   el.textContent = "";
   const d = data || {};
   const places = (Array.isArray(d.places) ? d.places : []).filter(p => typeof p.lat === "number" && typeof p.lon === "number");
-  if(!places.length){
-    el.appendChild(txt("div", "mapempty", tt("empty", null, "Ask to see places on a map — «show them on a map» — and they are pinned here.")));
-    return;
-  }
-  if(d.title) el.appendChild(txt("div", "maptitle", String(d.title)));
+  if(d.title && places.length) el.appendChild(txt("div", "maptitle", String(d.title)));
   const view = txt("div", "mapview");
+  view.setAttribute("data-hpan", "");
   el.appendChild(view);
+  if(!places.length){
+    view.appendChild(txt("div", "mapnote", tt("empty", null, "Ask to see places on a map — «show them on a map» — and they are pinned here.")));
+  }
   const selected = Number(d.selected) || 0;
 
-  const list = txt("div", "maplist");
-  places.forEach((p, i) => {
-    const row = txt("button", "maprow" + (selected === i + 1 ? " is-on" : ""));
-    row.type = "button";
-    row.appendChild(txt("b", null, `${i + 1}.`));
-    const body = document.createElement("div");
-    body.appendChild(txt("span", null, p.name));
-    const sub = [p.address, p.note].filter(Boolean).join(" · ");
-    if(sub) body.appendChild(txt("small", null, sub));
-    row.appendChild(body);
-    row.onclick = () => { try{ ctx && ctx.action && ctx.action("select", { item: String(i + 1) }); }catch(_){} };
-    list.appendChild(row);
+  // The CAMERA: where the map looks and how close. It starts at `home` and is HIS once he pans or zooms — kept on
+  // the element across the re-renders a data push causes, dropped when the set of places changes.
+  const key = places.map(p => `${p.lat},${p.lon}`).join("|");
+  if(el._hbMapKey !== key){ el._hbMapKey = key; el._hbMapCam = null; }
+  const cam = () => el._hbMapCam || home(places, d.area, view.clientWidth || 600, view.clientHeight || 360);
+  const relayout = () => drawMap(view, places, selected, ctx, cam());
+
+  const ctl = txt("div", "mapctl");
+  const zoomBy = (dz) => {
+    const c = cam(), z = Math.max(1, Math.min(18, c.z + dz)), f = Math.pow(2, z - c.z);
+    el._hbMapCam = { z, cx: c.cx * f, cy: c.cy * f };
+    relayout();
+  };
+  [["+", 1, tt("zoom_in", null, "Zoom in")], [String.fromCharCode(0x2212), -1, tt("zoom_out", null, "Zoom out")]].forEach(([g, dz, label]) => {
+    const b = txt("button", null, g); b.type = "button"; b.title = label; b.setAttribute("aria-label", label);
+    b.onclick = (e) => { e.stopPropagation(); zoomBy(dz); };
+    b.onpointerdown = (e) => e.stopPropagation();
+    ctl.appendChild(b);
   });
-  el.appendChild(list);
+  view.appendChild(ctl);
+
+  // One-finger PAN (pointer events: mouse and touch alike). A tap still reaches a pin: under 6px it is no drag.
+  let drag = null;
+  view.onpointerdown = (e) => { if(e.target.closest(".mappin")) return; drag = { x: e.clientX, y: e.clientY, c: cam(), moved: false };
+    try{ view.setPointerCapture(e.pointerId); }catch(_){} };
+  view.onpointermove = (e) => {
+    if(!drag) return;
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if(!drag.moved && Math.hypot(dx, dy) < 6) return;
+    drag.moved = true; view.classList.add("is-drag");
+    el._hbMapCam = { z: drag.c.z, cx: drag.c.cx - dx, cy: drag.c.cy - dy };
+    relayout();
+  };
+  view.onpointerup = view.onpointercancel = () => { drag = null; view.classList.remove("is-drag"); };
+
+  if(places.length){
+    const list = txt("div", "maplist");
+    places.forEach((p, i) => {
+      const row = txt("button", "maprow" + (selected === i + 1 ? " is-on" : ""));
+      row.type = "button";
+      row.appendChild(txt("b", null, `${i + 1}.`));
+      const body = document.createElement("div");
+      body.appendChild(txt("span", null, p.name));
+      const sub = [p.address, p.note].filter(Boolean).join(" · ");
+      if(sub) body.appendChild(txt("small", null, sub));
+      row.appendChild(body);
+      row.onclick = () => { try{ ctx && ctx.action && ctx.action("select", { item: String(i + 1) }); }catch(_){} };
+      list.appendChild(row);
+    });
+    el.appendChild(list);
+  }
 
   // Lay out once the card has a size, and again whenever it changes shape.
-  const relayout = () => drawMap(view, places, selected, ctx);
   try{ if(el._hbMapRO) el._hbMapRO.disconnect(); }catch(_){}
   if(typeof ResizeObserver === "function"){
     let last = "";
