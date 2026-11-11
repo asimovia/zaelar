@@ -72,7 +72,8 @@ _MEASURE = """() => {
     plug: el.querySelectorAll('.ctbar .ctplug').length,
     icons: el.querySelectorAll('.ctbar .ctconnicon').length,
     icons_sel: [...el.querySelectorAll('.ctconnicon.sel')].map(b => b.title),
-    icons_dead: [...el.querySelectorAll('.ctconnicon')].filter(b => b.disabled).length,
+    icons_dead: [...el.querySelectorAll('.ctconnicon.off')].length,
+    icons_buttons: el.querySelectorAll('button.ctconnicon').length,
     crumb: [...el.querySelectorAll('.ctcrumb .ctcx')].map(b => b.textContent),
     rail_labels: [...el.querySelectorAll('.ctsidelbl')].map(n => n.textContent),
     more: (el.querySelector('.ctmore') || {}).textContent || '',
@@ -232,28 +233,18 @@ def test_the_widget_adds_ONE_bar_because_the_window_already_drew_the_other(plain
 
 
 def test_a_source_with_no_connector_is_VISIBLE_and_inert(plain):
-    """The house standard's three sentences survive the icons becoming a filter: iCloud has no connector,
-    so it is shown (there is a world in which you link it) and it does nothing."""
-    assert plain["icons_dead"] == 1, "iCloud has no connector — it must be visible and disabled"
+    """The house standard's three sentences: iCloud has no connector, so it is shown (there is a world in which
+    you link it), dimmed further than a connector not linked yet."""
+    assert plain["icons_dead"] == 1, "iCloud has no connector — it must be visible and marked off"
 
 
-def test_clicking_a_LINKED_platform_shows_only_its_contacts(playwright_available):
-    """His correction: «cuando entramos en Telegram quiero ver solo los contactos de Telegram». Belonging
-    is both halves — where the row came from AND where he can reach the person — so Juan, typed here and
-    matched to a Telegram account, is a Telegram contact; Telefónica, which came from Google, is not."""
+def test_the_source_icons_are_status_never_a_control(playwright_available):
+    """V2-887 step 9 — his rule (2026-11-11): «los contactos siempre aparecen todos… estos botones solo se quedan
+    apagados si no están conectados, y cuando están conectados se iluminan, pero no aparece la manita». Clicking
+    an icon moves nothing: no filter, no connector page; the plug is the one door to the sources."""
     m = _run([_BASE], clicks=[(0, ".ctconnicon:nth-child(2)")])[0]
-    assert m["rows"] == ["Juan"], m["rows"]
-    assert m["icons_sel"], "the icon must show that it is the one filtering"
-    assert m["crumb"] and "Telegram" in m["crumb"][0], m["crumb"]
-
-
-def test_clicking_a_platform_that_is_NOT_linked_opens_ITS_connector(playwright_available):
-    """There is nothing to filter by a source he has not connected, and «conéctalo» is the only useful
-    answer — so that icon opens THAT platform's page in ⚙ Conectores (`ctx.openConnector`, the one door since
-    2026-10-04), and the directory behind it does not move."""
-    m = _run([_BASE], clicks=[(0, ".ctconnicon:nth-child(3)")])[0]
-    assert m["opened"] == ["whatsapp"], m["opened"]
-    assert m["conn_screen"] == 0 and len(m["rows"]) == 4, "the card stays on the directory"
+    assert len(m["rows"]) == 4 and not m["icons_sel"] and m["opened"] == [] and m["conn_screen"] == 0, m
+    assert m["icons_buttons"] == 0, "an icon that does nothing is not a button"
 
 
 def test_the_plug_button_opens_the_same_screen_and_carries_no_word(playwright_available):
