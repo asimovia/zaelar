@@ -169,3 +169,28 @@ def would_split(text: str, pool) -> dict | None:
         return None
     extra = {"clauses": riders[:6], "menu": _menu(pool), "heard": str(text or "")[:HEARD_MAX]}
     return _send("would_split", f"✂️ thread: {len(riders)} clause(s) would stand alone", extra["heard"], extra)
+
+
+# ── V2-878 §5, in SHADOW: the deferred choice and the screen↔errand arbiter (`nucleo/turn/pick_pending.py`) ─────────
+
+def pick_pending(note: dict, *, shadow: bool = True) -> dict | None:
+    """A request routed into an errand with no rows yet, kept on its card as a choice to make when the rows arrive."""
+    extra = {"verb": PICK_PENDING, "as": "", "id": str(note.get("flow") or ""), "by": "verdict", "shadow": shadow,
+             "menu": [str(note.get("flow") or "")], "heard": str(note.get("heard") or "")[:HEARD_MAX],
+             "window_had_commission": True}
+    return _send("decided", f"🧵 thread: pick_pending → {extra['id']}", extra["heard"], extra)
+
+
+def would_relay(uid: str, sheet: str, pick: dict) -> dict | None:
+    """The first rows landed on an errand that holds a deferred choice: what WOULD be relayed to its worker."""
+    extra = {"uid": str(uid), "sheet": str(sheet), "heard": str(pick.get("heard") or "")[:HEARD_MAX],
+             "held_s": max(0, int(__import__("time").time()) - int(pick.get("at") or 0)), "shadow": True}
+    return _send("would_relay", "🧵 thread: first rows — would relay his deferred choice", extra["heard"], extra)
+
+
+def arbitrated(would: str, did: str, *, flow: str = "", heard: str = "") -> dict | None:
+    """Whose turn it would be by consequence (card · errand · ask · none) beside the owner rule's `did`."""
+    extra = {"would": would, "did": did, "changes": would not in (did, "none"), "id": str(flow),
+             "heard": str(heard or "")[:HEARD_MAX], "shadow": True}
+    return _send("arbiter", f"🧵 thread: arbiter would {would} (did {did})", extra["heard"], extra)
+

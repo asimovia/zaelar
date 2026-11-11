@@ -35,8 +35,11 @@ def his_words_may_reach_an_errand() -> bool:
     """The ONE owner rule (`stop.card_owns_the_turn`) for a door holding nothing of the turn: its brief by trace, and the
     card or music doors the turn already went through (`consequence.reached`)."""
     from nucleo.request import stop as _stop
-    from nucleo.turn import brief as _tb
-    return not _stop.card_owns_the_turn(_tb.of_this_turn(), acted={"widget": consequence.reached("widget.data", "music")})
+    from nucleo.turn import brief as _tb, pick_pending as _pp
+    brief = _tb.of_this_turn()
+    owns = _stop.card_owns_the_turn(brief, acted={"widget": consequence.reached("widget.data", "music")})
+    _pp.arbiter(brief, str((brief or {}).get("judged") or "") if isinstance(brief, dict) else "", card_owns=owns)  # shadow
+    return not owns
 
 
 def relay_his_words(which: str, words: str) -> bool:

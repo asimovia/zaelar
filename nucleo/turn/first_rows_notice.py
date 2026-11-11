@@ -178,6 +178,7 @@ def landed(sheet: str, items) -> bool:
     try:
         errand = _errand_of(sheet)
         eid = str((errand or {}).get("id") or "")
+        __import__("nucleo.turn.pick_pending", fromlist=["x"]).at_first_rows(sheet, errand)   # V2-878 §5, shadow
         with _LOCK:
             if not eid or eid in _TOLD or eid in _PENDING:
                 return False
