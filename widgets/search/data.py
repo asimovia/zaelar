@@ -9,6 +9,8 @@ import re
 import time
 import urllib.parse
 import urllib.request
+from loguru import logger
+
 from connectors import outcome as _outcome   # every provider call reports what happened (V2-833)
 
 UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
@@ -29,7 +31,8 @@ def _his_place() -> str:
     try:
         from memory import api as memory
         st = memory.state() or {}
-    except Exception:  # noqa: BLE001 — a card never dies because the state is unreadable
+    except Exception as e:  # noqa: BLE001 — a card never dies because the state is unreadable
+        logger.debug(f"search: his place unread — {type(e).__name__}: {e}")
         return ""
     here = st.get("here") if isinstance(st.get("here"), dict) else {}
     home = st.get("location")

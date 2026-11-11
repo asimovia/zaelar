@@ -32,7 +32,4 @@ def masked(message: str) -> str:
 
 def patch(record) -> None:
     """The loguru patcher (`logger.configure(patcher=patch)`): installed once at boot by `server/__main__`."""
-    try:
-        record["message"] = masked(record["message"])
-    except Exception:  # noqa: BLE001
-        pass
+    record["message"] = masked(record["message"])      # `masked` never raises
