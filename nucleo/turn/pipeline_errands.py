@@ -85,52 +85,9 @@ async def launch_the_errands(*, motor, send, speech, emit, brain, _brief, _op_te
         if _started:   # V2-852 T21 — a door that refused said why; «I'm on it» is a start's line, never a refusal's
             _reply.say_started(_say, spoken_text, send, speech)   # a silent start says so (V2-794)
 
-        # The extra errands of the same sentence (V2-118/V2-155) and the one the pool could not take (three-tasks):
-        # the second and third of one sentence, and the one it could not start (folded in from the voice provider's
-        # `turn_errands.launch_the_rest`, its only caller). An errand the worker pool could not take this turn
-        # (`escalate_req["dropped"]`, recorded by the executor's cap and by the listing that rides) is SAID, in his
-        # language (`nucleo/turn/errands_of_a_turn.not_started_line`) — the text channel says the same sentence.
-        #
-        # The ADDITIONAL errands of the same turn (V2-118). They go AFTER the main one and only if it survived: the
-        # guards above clear `v` when the turn turns out not to be an errand (a show, a close, an answer to a worker),
-        # and then the others were not errands either. Each goes through the SAME dedup as the main one — two similar
-        # requests are injected into the one already running instead of opening a second session of the same thing.
-        # CREATE-WIDGET BACKSTOP (V2-118 round 2, measured): of three errands, one was «móntame un widget de un juego»;
-        # the model called the tool once, for the report, and the task registry of that run held NO `code` task in 14
-        # turns while the turn said it was loading a platform game. The create-widget guard only covered a turn that
-        # fired NOTHING; here it covers the turn that escalated something else, with the same deterministic
-        # classifier, and only when none of the outgoing requests is already a create-widget one.
-        # V2-155: what is added is the CLAUSE that asks for the widget, never the whole turn — with «informe» inside,
-        # the dedup gave it the report's target widget and ate it by its strongest signal
-        # (`router_guards.create_widget_request` has the measurement).
-        _w_req = (_router.create_widget_request(_op_text)
-                  if not any(_router.looks_like_create_widget(r)
-                             for r in [req, *escalate_req["more"]]) else "")
-        if _w_req:
-            escalate_req["more"].append(_w_req)
-            emit("brain", "🏗️ crear-widget del mismo turno, sin lanzar → escalada añadida (backstop)",
-                 text=_w_req[:120], role="system", extra={"cat": "flash"})
-        _launched = list(_prev_pending) + [{"request": req}]
-        for _n, _extra_req in enumerate(escalate_req["more"], start=1):
-            try:
-                if motor._similar_pending(_extra_req, _launched):
-                    from nucleo import dispatch as _disp4
-                    _disp4.relay_his_words(_extra_req, _extra_req) and emit("brain", "↪️ tarea adicional → inyección a worker vivo", text=_extra_req, role="system")
-                else:
-                    _escalate_mod.escalate_to_slowbrain(
-                        _extra_req,
-                        context={"src": "voice", "surface": escalate_req["surface"].get(_extra_req, ""),
-                                 "asked": spoken_text, "part": _n,   # V2-844: one request of several, its own errand
-                                 # V2-878 §1: the same reading as the first errand — his sentence, its end state,
-                                 # its consent class and the turn's verdicts (they used to ride with the first only)
-                                 "said": _said, "reading": _tb.carried(_brief),
-                                 "errand_class": _escalate_mod.class_verdict(_brief),
-                                 "done_when": (escalate_req.get("done_when") or {}).get(_extra_req) or {}})
-                    emit("brain", "🧭 Flash → Brain Worker (tarea adicional del mismo turno)",
-                         text=_extra_req, role="system")
-                _launched.append({"request": _extra_req})
-            except Exception as _e_more:  # noqa: BLE001
-                logger.warning(f"an additional escalation failed (the others go on): {_e_more!r}")
+        _launch_the_rest(motor=motor, emit=emit, _router=_router, _op_text=_op_text, _escalate_mod=_escalate_mod,
+                         _prev_pending=_prev_pending, escalate_req=escalate_req, req=req, spoken_text=spoken_text,
+                         _said=_said, _brief=_brief)
         if (_not_started := _eot.not_started_line(escalate_req.get("dropped") or [])):
             send(speech.sanitize(_not_started, drop_metadata=False))
             emit("brain", "🚫 errands this turn did not start (worker pool)", text="; ".join(escalate_req["dropped"])[:200],
@@ -164,3 +121,55 @@ async def launch_the_errands(*, motor, send, speech, emit, brain, _brief, _op_te
     if (_each := _sbe.each_line(spoken_text, _op_text)):      # one sentence about several errands: each one said (2.643)
         send(speech.sanitize(_each, drop_metadata=False))
     return {}
+
+
+def _launch_the_rest(*, motor, emit, _router, _op_text, _escalate_mod, _prev_pending, escalate_req, req, spoken_text,
+                     _said, _brief) -> None:
+    """The ADDITIONAL errands of the sentence that just commissioned `req` (V2-118/V2-155): each through the same dedup
+    as the main one, each with the turn's whole reading (V2-878 §1). Split out of `launch_the_errands` (function ceiling)."""
+    # The extra errands of the same sentence (V2-118/V2-155) and the one the pool could not take (three-tasks):
+    # the second and third of one sentence, and the one it could not start (folded in from the voice provider's
+    # `turn_errands.launch_the_rest`, its only caller). An errand the worker pool could not take this turn
+    # (`escalate_req["dropped"]`, recorded by the executor's cap and by the listing that rides) is SAID, in his
+    # language (`nucleo/turn/errands_of_a_turn.not_started_line`) — the text channel says the same sentence.
+    #
+    # The ADDITIONAL errands of the same turn (V2-118). They go AFTER the main one and only if it survived: the
+    # guards above clear `v` when the turn turns out not to be an errand (a show, a close, an answer to a worker),
+    # and then the others were not errands either. Each goes through the SAME dedup as the main one — two similar
+    # requests are injected into the one already running instead of opening a second session of the same thing.
+    # CREATE-WIDGET BACKSTOP (V2-118 round 2, measured): of three errands, one was «móntame un widget de un juego»;
+    # the model called the tool once, for the report, and the task registry of that run held NO `code` task in 14
+    # turns while the turn said it was loading a platform game. The create-widget guard only covered a turn that
+    # fired NOTHING; here it covers the turn that escalated something else, with the same deterministic
+    # classifier, and only when none of the outgoing requests is already a create-widget one.
+    # V2-155: what is added is the CLAUSE that asks for the widget, never the whole turn — with «informe» inside,
+    # the dedup gave it the report's target widget and ate it by its strongest signal
+    # (`router_guards.create_widget_request` has the measurement).
+    _w_req = (_router.create_widget_request(_op_text)
+              if not any(_router.looks_like_create_widget(r)
+                         for r in [req, *escalate_req["more"]]) else "")
+    if _w_req:
+        escalate_req["more"].append(_w_req)
+        emit("brain", "🏗️ crear-widget del mismo turno, sin lanzar → escalada añadida (backstop)",
+             text=_w_req[:120], role="system", extra={"cat": "flash"})
+    _launched = list(_prev_pending) + [{"request": req}]
+    for _n, _extra_req in enumerate(escalate_req["more"], start=1):
+        try:
+            if motor._similar_pending(_extra_req, _launched):
+                from nucleo import dispatch as _disp4
+                _disp4.relay_his_words(_extra_req, _extra_req) and emit("brain", "↪️ tarea adicional → inyección a worker vivo", text=_extra_req, role="system")
+            else:
+                _escalate_mod.escalate_to_slowbrain(
+                    _extra_req,
+                    context={"src": "voice", "surface": escalate_req["surface"].get(_extra_req, ""),
+                             "asked": spoken_text, "part": _n,   # V2-844: one request of several, its own errand
+                             # V2-878 §1: the same reading as the first errand — his sentence, its end state,
+                             # its consent class and the turn's verdicts (they used to ride with the first only)
+                             "said": _said, "reading": _tb.carried(_brief),
+                             "errand_class": _escalate_mod.class_verdict(_brief),
+                             "done_when": (escalate_req.get("done_when") or {}).get(_extra_req) or {}})
+                emit("brain", "🧭 Flash → Brain Worker (tarea adicional del mismo turno)",
+                     text=_extra_req, role="system")
+            _launched.append({"request": _extra_req})
+        except Exception as _e_more:  # noqa: BLE001
+            logger.warning(f"an additional escalation failed (the others go on): {_e_more!r}")
