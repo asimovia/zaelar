@@ -138,7 +138,10 @@ def shadow(emit, *, at: str, brief, escalate_req: dict | None, model_calls=(), f
                 x.update(route=d["route"], open_new=d["open_new"])
         extra = {"cat": "flash", "at": at, "turn_id": str(_trace.current() or ""),
                  "call_id": str((brief or {}).get("_call_id") or ((_peek(brief) or {}).get("_call_id") or "")),
-                 **reading(brief), "flow_as": str(flow_as or ""), "model_calls": calls, "words_said": bool(words_said), "model_wrote": wrote,
+                 **reading(brief), "flow_as": str(flow_as or ""), "model_calls": calls,
+                 # the turn's decision record (V2-887 step 1): WHAT the model called, with its arguments, beside the
+                 # verdict that read the request — a rewritten recipient or a swapped tool is visible against it
+                 "model_call_args": [_args_of(c) for c in model_calls][:8], "words_said": bool(words_said), "model_wrote": wrote,
                  "worker": str(worker or ""),
                  "would": w, "did": d, "changes": sorted(k for k in w if w[k] != d[k]),
                  "would_b": wb, "changes_b": sorted(k for k in wb if wb[k] != d[k]),
@@ -149,6 +152,18 @@ def shadow(emit, *, at: str, brief, escalate_req: dict | None, model_calls=(), f
     except Exception as e:  # noqa: BLE001 — a shadow never breaks a turn
         logger.debug(f"commission: shadow not emitted — {e!r}")
         return None
+
+
+def _args_of(call) -> dict:
+    """One model call as kept on the decision record: its name and its arguments, cut to a readable size."""
+    c = call or {}
+    args = c.get("args") if isinstance(c.get("args"), dict) else c.get("arguments") or c.get("input") or {}
+    try:
+        import json
+        text = args if isinstance(args, str) else json.dumps(args, ensure_ascii=False, default=str)
+    except Exception:  # noqa: BLE001 — an unprintable argument is named, never raised
+        text = repr(args)
+    return {"name": str(c.get("name") or ""), "args": str(text)[:300]}
 
 
 def promise(brief, *, model_calls=(), model_wrote: bool = False) -> dict:

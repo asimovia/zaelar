@@ -475,9 +475,29 @@ def _emit_read(handle, key: str, *, used: bool, why: str, confidence: float, cho
              role="system",
              extra={"cat": "flash", "call_id": call_id, "turn_id": turn_id, "question": key,
                     "used": bool(used), "why": why, "confidence": round(confidence, 3),
-                    "choice": choice, **_read_usage(v)})
+                    "choice": choice, **_billed_once(call_id, _read_usage(v))})
     except Exception:  # noqa: BLE001 — observability may never break a turn
         pass
+
+
+_BILLED: set = set()             # call_ids whose tokens one read already carried
+
+
+def _billed_once(call_id: str, usage: dict) -> dict:
+    """ONE call answers every question of the brief, and each question is read as its own event: the call's tokens
+    ride the first read only. Carried on every read, the events table summed one 8k-token trip once per question
+    (a 15-minute session counted 2.87M input tokens). Later reads keep the sizes under names nobody sums."""
+    if not call_id or not usage or "prompt_tokens" not in usage:
+        return usage
+    if call_id not in _BILLED:
+        if len(_BILLED) >= _READ_SEEN_MAX:
+            _BILLED.clear()
+        _BILLED.add(call_id)
+        return usage
+    out = dict(usage)
+    out["call_prompt_tokens"] = out.pop("prompt_tokens", None)
+    out["call_completion_tokens"] = out.pop("completion_tokens", None)
+    return out
 
 
 def _read_usage(verdict: dict) -> dict:

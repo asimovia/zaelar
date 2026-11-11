@@ -48,7 +48,7 @@ def norm(s) -> str:
     return re.sub(r"\s+", " ", re.sub(r"[^\w\s]", " ", s.casefold())).strip()
 
 
-_known_cache: dict = {"at": 0.0, "val": {}}
+_known_cache: dict = {"at": 0.0, "val": {}, "words": frozenset()}
 _places: set[str] = set()
 
 
@@ -68,11 +68,13 @@ def known(ttl_s: float = 60.0) -> dict[str, str]:
     if now - _known_cache["at"] < ttl_s:
         return _known_cache["val"]
     out: dict[str, str] = {}
+    whole: set[str] = set()
 
     def add(name, tag):
         k = norm(name)
         if k:
             out.setdefault(k, tag)
+            whole.add(k)
             for w in k.split():
                 if len(w) >= 3:
                     out.setdefault(w, tag)
@@ -101,10 +103,13 @@ def known(ttl_s: float = 60.0) -> dict[str, str]:
                 k = norm(name)
                 if k:
                     out[k] = "[PERSON]"
+                    whole.add(k)
                     out.update({w: "[PERSON]" for w in k.split() if len(w) >= 3})
     except Exception as e:  # noqa: BLE001 — no address book: shapes and capitals still guard
         logger.debug(f"pii: contacts unreadable ({e!r})")
-    _known_cache.update(at=now, val=out)
+    for p in _places:
+        whole.add(p)
+    _known_cache.update(at=now, val=out, words=frozenset(set(out) - whole))
     return out
 
 
@@ -118,7 +123,12 @@ def tag(text: str, names: dict[str, str] | None = None) -> str:
     if not isinstance(text, str) or not text.strip():
         return text
     try:
-        names = known() if names is None else names
+        # A PIECE of a known name (one word of «Nombre Manuel Baeza», «Ana Que…») is tagged only where it is written
+        # as a name, capitalised. In lowercase it is any word of the sentence: tagging it stored «te dije su [PERSON]
+        # y su apellido» for «nombre», «[PERSON]» for «que» and «con», and the stored session could not be read.
+        mine = names is None
+        names = known() if mine else names
+        pieces = _known_cache.get("words", frozenset()) if mine else frozenset()
         for kind, pat in SHAPES:
             text = pat.sub(f"[{kind.upper()}]", text)
         out, opening, prev_tag = [], True, ""
@@ -127,7 +137,10 @@ def tag(text: str, names: dict[str, str] | None = None) -> str:
             t = ""
             already = "[" in tok and "]" in tok          # a tag the shapes already wrote
             if core and not already and core[0].isalpha():
-                t = names.get(norm(core), "")
+                key = norm(core)
+                t = names.get(key, "")
+                if t and key in pieces and not core[0].isupper():
+                    t = ""
                 if not t and core[0].isupper() and not opening and not (len(core) == 1):
                     t = "[NAME]"
             if t:
