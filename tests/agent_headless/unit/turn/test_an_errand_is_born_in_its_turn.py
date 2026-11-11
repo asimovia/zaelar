@@ -82,7 +82,15 @@ def test_a_request_with_words_of_its_own_is_kept(db):
 @pytest.fixture
 def pass_rig(db, monkeypatch):
     sent: list = []
-    monkeypatch.setattr(search_sheet, "_write_sheet", lambda *a, **k: None)
+    written: list = []
+
+    def _write(sid, title, items, *a, **k):
+        written[:] = items
+
+    # No sheet is written here, so the rig says what it would hold: every row kept (V2-879 O3 reads the sheet).
+    monkeypatch.setattr(search_sheet, "_write_sheet", _write)
+    monkeypatch.setattr(search_sheet, "_held", lambda sid: {"state": "kept" if written else "none",
+                                                           "kept": len(written), "rejected": 0, "rows": list(written)})
     monkeypatch.setattr(search_sheet, "_observe", lambda *a, **k: None)
     monkeypatch.setattr(errand, "_emit_bus", lambda topic, payload: sent.append(payload))
     monkeypatch.setattr("nucleo.consequence.passes", lambda *a, **k: True)

@@ -140,6 +140,19 @@ def view_data(q: str = "") -> dict:
     return data
 
 
+HELD_KEPT, HELD_REJECTED, HELD_NONE = "kept", "rejected", "none"     # what a sheet holds for him, as one word
+
+
+def holding(q: str = "") -> dict:
+    """What the sheet HOLDS for him, the one reading every in-turn counter uses (V2-879 O3): a producer's list is what
+    it WROTE, and the door files rows in `rejected` — those are not findings. `rows`: the kept rows with a name."""
+    data = view_data(q)
+    rows = [i for i in data.get("items") or [] if str((i or {}).get("title") or "").strip()]
+    rejected = len(data.get("rejected") or [])
+    return {"state": HELD_KEPT if rows else HELD_REJECTED if rejected else HELD_NONE, "kept": len(rows),
+            "rejected": rejected, "rows": rows}
+
+
 # ── THE TASK OPENS AND CLOSES THE SHEET (`lifecycle.py`): the errand's gates, never a worker's action.
 from widgets.results.lifecycle import (  # noqa: E402,F401 — re-export
     begin_task, end_task, rename_task)
