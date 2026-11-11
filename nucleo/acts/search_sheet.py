@@ -67,14 +67,23 @@ def _source_rows(sources: list[dict]) -> list[dict]:
     return out[:20]
 
 
-def compose_context(result: dict) -> str:
-    """What the composing pass READS: real rows, compactly, never URLs."""
+def compose_context(rows: list[dict]) -> str:
+    """What the composing pass READS: the rows the SHEET kept (V2-879 O3), compactly, never URLs."""
     lines = []
-    for it in (result.get("items") or [])[:8]:
-        bits = [str(it.get("title") or "")[:80], _fmt_price(it), str(it.get("location") or "").strip(),
-                str(it.get("source") or "").strip()]
+    for r in (rows or [])[:8]:
+        bits = [str(r.get("title") or "")[:80], str(r.get("price") or "").strip(), str(r.get("subtitle") or "").strip()]
         lines.append(" — ".join(b for b in bits if b))
     return "\n".join(f"· {ln}" for ln in lines)
+
+
+def _held(sid: str) -> dict:
+    """What the sheet kept after its door ran: the pass reports THIS, never the ladder's own list (V2-879 O3)."""
+    try:
+        from widgets.results import data as sheet_mod
+        return sheet_mod.holding(sid)
+    except Exception as e:  # noqa: BLE001 — an unreadable sheet holds nothing the turn may announce
+        logger.warning(f"acts.search_sheet: the sheet could not be read back ({e!r})")
+        return {"state": "none", "kept": 0, "rejected": 0, "rows": []}
 
 
 def _write_sheet(sid: str, title: str, items: list, res: dict, *, inherited: bool, delivered: bool,
@@ -173,10 +182,13 @@ def fast_pass(query: str, *, price_max=None, price_min=None, condition: str = ""
         errand_id, new_sheet = born(asked, {"surface": "lista", "kind": "web"})   # a new flow is an errand, born now
     sid = str(sheet or "").strip() or new_sheet
     uid = new_sheet if errand_id and new_sheet else ""          # a born errand's uid IS its sheet
-    out.update(n=len(items), reason=str(res.get("reason") or ""), ctx=compose_context(res), sheet=sid)
+    out.update(reason=str(res.get("reason") or ""), sheet=sid)
     _write_sheet(sid, " ".join(asked.split())[:80], items, res, inherited=inherited, delivered=delivered, asked=asked)
-    out["delivered"] = delivered
-    out["escalated"] = _hand_on(delivered, asked, sid, len(items), errand_id, uid)
+    # V2-879 O3 — the sheet's door may file every row in Rejected: what the turn tells is what the sheet KEPT.
+    held = _held(sid)
+    out.update(n=held["kept"], rejected=held["rejected"], held=held["state"], ctx=compose_context(held["rows"]))
+    out["delivered"] = delivered = delivered and held["kept"] > 0
+    out["escalated"] = _hand_on(delivered, asked, sid, held["kept"], errand_id, uid)
     if not delivered and not out["escalated"]:
         __import__("nucleo.acts.surface_owner", fromlist=["x"]).orphan(sid, "waiting")   # V2-844 F0: nobody behind it
     out["ms"] = round((time.time() - t0) * 1000)
@@ -187,7 +199,8 @@ def fast_pass(query: str, *, price_max=None, price_min=None, condition: str = ""
 def _observe(query: str, out: dict, items: list, res: dict) -> None:
     """The `search` family, like a web search: what came back and what was tried, so an audit tells «found nothing»
     from «never looked»."""
-    extra = {"tier": "listing", "n": len(items), "delivered": out["delivered"], "escalated": out["escalated"],
+    extra = {"tier": "listing", "n": len(items), "kept": out["n"], "rejected": out.get("rejected", 0),
+             "delivered": out["delivered"], "escalated": out["escalated"],
              "sheet": out["sheet"], "ms": out["ms"], **({"reason": out["reason"]} if out["reason"] else {}),
              "evidence": {"results": [{"title": str(i.get("title") or "")[:120], "url": str(i.get("url") or "")[:200],
                                        "price": _fmt_price(i)} for i in items[:8]],

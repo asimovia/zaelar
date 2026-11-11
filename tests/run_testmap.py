@@ -6230,6 +6230,12 @@ DOMAINS: list[dict] = [
                                   "that never name the card) and only once; `pause`/`reset` stay controls and a show "
                                   "on them is a drag",
             "ch": UNIT, "paths": ["tests/browser/unit/timer/test_a_countdown_set_by_his_turn_comes_on_screen.py"]},
+        # V2-879 O3 — disarmed 2026-11-11 (`fast_pass` reports the ladder's own list again) → red.
+        {"id": "4.476", "title": "A reader of the sheet tells what the sheet KEPT (V2-879 O3): a listing pass whose every "
+                                  "row the sheet's door filed in Rejected reports 0 findings, is not delivered and is "
+                                  "handed on, and its face names no row; a mixed pass reports only the kept rows; one "
+                                  "declared reading `results.holding` (kept · rejected · none)",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_a_sheet_that_rejected_every_row_holds_no_findings.py"]},
     ]},
     {"id": "5", "name": "CONECTORES", "nodes": [
         # V2-559 — el operador siguió la guía, creó la contraseña de aplicación y pegó el ENLACE de esa
