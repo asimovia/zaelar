@@ -25,6 +25,25 @@ def yes_no() -> list[str]:
         return ["yes", "no"]
 
 
+def _flat(text) -> str:
+    import unicodedata
+    n = unicodedata.normalize("NFKD", str(text or ""))
+    return " ".join("".join(c for c in n if not unicodedata.combining(c)).casefold().split())
+
+
+def declared_answer(text: str, options=None) -> str | None:
+    """'yes' | 'no' | None — his reply IS one of the question's two DECLARED answers (`options`, default `yes_no()` in
+    his language): the whole reply, accents, case and punctuation aside. The one reader of a yes/no that is not the
+    brief's pick (V2-878 §4b) — a declared datum of the row, never a word table; anything longer is the brief's to read."""
+    import re
+    opts = [str(o) for o in (options or yes_no())][:2]
+    said = " ".join(re.findall(r"\w+", _flat(text)))
+    for verdict, opt in zip(("yes", "no"), opts):
+        if said and said == " ".join(re.findall(r"\w+", _flat(opt))):
+            return verdict
+    return None
+
+
 async def _delete(ret: dict) -> dict:
     from widgets import lifecycle
     return await lifecycle.delete_widget(str(ret.get("widget") or ""), "flash")
