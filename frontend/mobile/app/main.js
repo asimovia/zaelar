@@ -1,17 +1,6 @@
-// ============================================================================
-// mobile/app/main.js — ENTRY POINT OF THE MOBILE SHELL (V2-124).
-//
-// The mobile counterpart of app/main.js. It boots the SAME engine through the SAME services and the SAME store;
-// what differs is the shape of the screen it builds. Read app/main.js for the desktop version — the two files are
-// deliberately parallel, and every place they diverge is commented with why.
-//
-// WHAT IS SHARED (imported, never forked): core/store.js · core/reactive.js · core/dom.js · core/i18n.js and all of
-// services/. One truth about the agent, two faces.
-// WHAT IS NEW (this folder only): the Deck host, the bottom dock, the sheets, the CSS, the PWA plumbing.
-//
-// ORDER MATTERS, same as on the desktop: the deck wrapper must exist before the Deck is constructed, and the dock
-// must be mounted before anything reads --dock-h.
-// ============================================================================
+// mobile/app/main.js — ENTRY POINT OF THE PHONE SHELL (V2-124), the counterpart of app/main.js: the SAME engine through
+// the SAME services and store (imported, never forked), a different screen — the Deck host, the dock, the pages, the
+// CSS, the PWA plumbing. Order matters as on the desktop: the deck wrapper before the Deck, the dock before --dock-h.
 
 import { h, mount, $ } from "../../app/core/dom.js?v=2";
 import { createEffect } from "../../app/core/reactive.js?v=2";
@@ -187,23 +176,11 @@ ensureVoice();
 // `pointerdown`, not `touchstart`: iOS requires a user gesture for the mic, and pointerdown fires for both.
 window.addEventListener("pointerdown", ensureVoice);
 
-// ---- AND THE OTHER HALF OF THE SAME GESTURE: UNLOCK PLAYBACK (V2-573) ---------------------------------------
-// `ensureVoice()` above solves the browser's rule about the MICROPHONE. There is a second rule, about the
-// SPEAKER, and this shell was only obeying the first one: a mobile browser will not start playing a remote audio
-// track either until the page has had a user gesture, and `ensureVoice()` runs at LOAD, before any tap exists.
-// LiveKit reports it as `room.canPlaybackAudio` and fixes it with `room.startAudio()` — which was never called
-// anywhere in this codebase, on either shell. The recovery therefore depended entirely on the operator noticing
-// a banner. Now the FIRST touch anywhere on the screen unlocks it, whatever that touch was for.
-//
-// Same listener, not a second one, and it must stay synchronous up to the SDK call: awaiting anything first
-// spends the user activation and the unlock silently fails.
+// ---- …and the same gesture UNLOCKS PLAYBACK (V2-573): a mobile browser plays no remote track before a user gesture,
+// and the voice connects at LOAD. Synchronous up to the SDK call — awaiting first spends the user activation. ----
 window.addEventListener("pointerdown", () => { try { session.unlockAudio(); } catch (_) {} });
 
-// ---- THE VOICE LOCK, SURFACED (server/livekit_api.py: one live voice session per machine) ------------------------
-// session.start() does NOT throw when the lock is held: it marks `store.remoteHeld` and retries itself every 3 s until
-// the other surface goes away (services/session-lk.js) — when the desktop tab closes, the phone picks the voice up on
-// its own. Between a phone and a laptop in another room a 🚫 ring on the orb says nothing, so the shared full-screen
-// veil (app/components/DormantVeil.js, face "moved") names the situation and offers the gesture that fixes it.
+// The voice lock (one live voice session per machine) is surfaced by the shared DormantVeil, face "moved".
 
 // ---- reconcile with the SERVER's truth about the global switch (V2-092), in the SAFE direction ----
 // Identical logic to app/main.js, including the timestamp guard: this reply is a SNAPSHOT of when it was asked, not

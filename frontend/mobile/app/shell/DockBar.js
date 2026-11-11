@@ -1,46 +1,14 @@
-// ============================================================================
-// DockBar.js — EVERY control, at the very bottom, ARRANGED AROUND THE ORB.  The mobile counterpart of the desktop's
-// «eye» (Orb.js: an arc of 7 icons above the orb) and of the TopBar.
-//
-// WHY BOTTOM, AND WHY THAT MATTERS FOR LAYOUT: a phone is held in one hand and the thumb reaches the bottom third.
-// So this bar is the ONLY chrome with a fixed position in this shell, and its height (--dock-h) is the ONE piece of
-// geometry the rest of the shell knows about: every card ends `--dock-h` above the bottom edge so the bar can never
-// cover the last line of a widget. On iOS it also pads itself with env(safe-area-inset-bottom), or it would sit
-// under the home indicator and every tap would be a swipe-up instead.
-//
-// ── THE COMPOSITION (V2-876 D-C, operator 2026-11-11): ≡ · chat · apps | ORB | mic · speaker.
-//
-//   ☰ menu     → store.mobileMenuOpen    processes · account · energy · settings · feedback · voice (+ the live
-//                                        process count on the ☰, V2-822)
-//   💬 chat    → store.chatOpen          the conversation
-//   ▦ apps     → AppsPane.appsOpen       every app, full screen (feedback left for a row of the ☰ page; the wake word
-//                                        for a row of Settings)
-//   ◉  ORB     → the switch (below)
-//   🎤 mic     → session.openMicHere / mic.toggle  opening it takes the voice to this device
-//   🔊 speaker → session.openSpeakerHere / toggle  same rule
-//
-// The speaker sits in the dock because the voice belongs to ONE device and the hand that opens mic or speaker is what
-// takes it there. The mic stays because silencing your own microphone is a PRIVACY gesture, and one that takes two
-// taps is not one; the mic button is the ONE mic indicator (the orb's colour is the agent's state).
-//
-// THE ORB IS THE CENTRE, AND IT IS ALSO THE SWITCH (operator, 2026-08-18: «when stopped there is only the
-// on/off button, and when we start it the orb appears; or we touch the orb and it stops»). One slot, two faces:
-//
-//   agentState() === "off"   →  a ⏻ button. Nothing else can be true about a stopped agent, so nothing else shows.
-//   anything else            →  the ORB, live, and tapping it STOPS (or, mid-«pausing», cancels the stop).
-//
-// That is the same `!store.powerOff()` seam the desktop ⏻ uses — NOT a second one. It matters more here than
-// anywhere: since V2-092 the switch is the SERVER's state, so a mobile-only power button that flipped a local
-// signal would show "stopped" on the phone while the agent kept working — the exact class of lying state this
-// codebase has already paid for once.
-//
-// THE GLYPHS ARE THE DESKTOP'S, BYTE FOR BYTE (operator: «as similar as possible to those already in the frontend of
-// the UI»): MIC/CHAT/PWR are copied from `app/components/Orb.js` so an operator who knows one shell reads the other
-// without learning a second vocabulary, and the host-contract test DERIVES that check from Orb.js itself. The two
-// additions are MIC_OFF (the desktop only greys a muted mic, which is legible next to six icons on a big screen and
-// ambiguous as a lone icon on a phone, so the slash is drawn over the SAME base glyph) and the two glyphs the
-// desktop has no twin for: MENU, drawn in the same vocabulary (24-box, 2px stroke, round caps).
-// ============================================================================
+// DockBar.js — every control, at the bottom, around the orb (the mobile counterpart of the desktop's «eye» and TopBar).
+// The thumb reaches the bottom third, so this bar is the ONLY fixed chrome and --dock-h the one geometry the shell
+// knows: every card and page ends at its top edge; on iOS it pads itself with the safe area (styles.css).
+// COMPOSITION (V2-876 D-C, 2026-11-11): ≡ menu · 💬 chat · ▦ apps | ORB | 🎤 mic · 🔊 speaker. Feedback is a row of the
+// ☰ page, the wake word a row of Settings. Mic and speaker stay here because the voice belongs to ONE device and the hand
+// that opens them takes it there, and muting your mic is a privacy gesture that must take one tap. The mic button is
+// the ONE mic indicator; the orb's colour is the agent's state (P-19). A long press on any control says its name (P-13).
+// THE ORB IS ALSO THE SWITCH (2026-08-18): stopped → a ⏻ and nothing else; running → the orb, and a tap stops it — the
+// same `!store.powerOff()` seam and the same `services/power.js` door as the desktop ⏻ (V2-092: the switch is the
+// SERVER's state; a local-only switch would paint «stopped» over a working agent). Glyphs are the desktop Orb.js's,
+// byte for byte (the host-contract test derives the check from Orb.js); MIC_OFF and MENU are drawn in the same style.
 
 import { h, raw } from "../../../app/core/dom.js?v=2";
 import * as store from "../../../app/core/store.js?v=2";
@@ -86,7 +54,16 @@ export function DockBar() {
   }).catch(() => {});
   // Built ONCE, outside the reactive tree, because the visualiser holds this canvas by reference.
   const ORB = OrbMini();
-  return h("nav", { class: "zm-dock", "aria-label": () => t("mobile.dock_label") },
+  // A LONG PRESS says the control's name (P-13: a phone has no hover); the tap it ends in is swallowed.
+  let lp = 0, said = false;
+  const tip = h("div", { class: "zm-tip", role: "status" });
+  const hold = (e) => { const b = e.target.closest && e.target.closest("button"); said = false; clearTimeout(lp);
+    if (b) lp = setTimeout(() => { const r = b.getBoundingClientRect(); tip.textContent = b.getAttribute("aria-label") || "";
+      tip.style.left = r.left + r.width / 2 + "px"; document.body.append(tip); tip.classList.add("show"); said = true; }, 450); };
+  const let_go = () => { clearTimeout(lp); setTimeout(() => tip.classList.remove("show"), 900); };
+  return h("nav", { class: "zm-dock", "aria-label": () => t("mobile.dock_label"), onPointerdown: hold, onPointerup: let_go,
+    onPointercancel: let_go, onContextmenu: (e) => e.preventDefault(),
+    ref: (el) => el.addEventListener("click", (e) => { if (said) { said = false; e.stopPropagation(); e.preventDefault(); } }, true) },
 
     // ── LEFT of the orb: the menu, the conversation, the apps ──
     h("div", { class: "zm-side" },
