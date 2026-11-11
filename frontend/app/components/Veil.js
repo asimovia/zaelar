@@ -57,8 +57,8 @@ export async function activateHere(where = "veil") {
 
 const MARK = { sleep: "☾", moved: "⇄", off: "⏻" };
 const TITLE = { off: "veil.off_title", pausing: "veil.pausing", starting: "veil.starting",
-                sleep: "dormant.sleep_title", moved: "dormant.moved_title" };
-const SUB = { off: "veil.off_sub", sleep: "dormant.sleep_sub", moved: "dormant.moved_sub" };
+                sleep: "dormant.sleeping", moved: "dormant.moved_title" };
+const SUB = { off: "veil.off_sub", moved: "dormant.moved_sub" };
 const BTN = { off: "veil.on_btn", sleep: "dormant.reactivate", moved: "dormant.use_here" };
 
 export function Veil() {
@@ -71,10 +71,11 @@ export function Veil() {
     class: () => "zv" + (face() ? " on " + face() : "") + (waking() ? " waking" : ""),
     "aria-hidden": () => (face() ? "false" : "true"),
     role: "alertdialog", "aria-live": "assertive", "aria-labelledby": "zv-title",
-    onpointerdown: swallow, onclick: swallow, ondblclick: swallow, onwheel: swallow,
+    onpointerdown: swallow, onclick: (e) => { e.stopPropagation(); if (face() === "sleep") activateHere("veil"); }, ondblclick: swallow, onwheel: swallow,
   },
     h("div", { class: "zv-box" },
       h("div", { class: "zv-mark", "aria-hidden": "true" }, () => MARK[face()] || ""),
+      h("div", { class: "zv-zs", "aria-hidden": "true" }, h("span", {}, "Z"), h("span", {}, "Z"), h("span", {}, "Z")),
       h("h2", { class: "zv-title", id: "zv-title" }, () => (TITLE[face()] ? t(TITLE[face()]) : "")),
       h("p", { class: "zv-sub" }, () => (waking() ? t("dormant.waking") : SUB[face()] ? t(SUB[face()]) : "")),
       h("div", { class: "zv-actions" },

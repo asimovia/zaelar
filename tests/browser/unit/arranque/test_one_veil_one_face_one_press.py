@@ -226,3 +226,17 @@ def test_every_line_of_the_veil_is_in_the_ui_pack(lang):
     assert len(used) >= 13, used
     missing = sorted(k for k in used if not pack.get(k))
     assert not missing, missing
+
+
+def test_the_sleep_face_is_a_blurred_veil_with_zs_and_one_click_wakes_it(browser_and_port):
+    b, port = browser_and_port
+    pg = _page(b, port)
+    pg.evaluate("() => window.__store.setDormant({ face: 'sleep', waking: false })")
+    st = pg.evaluate("""() => { const v = document.querySelector('.zv');
+        return { blur: getComputedStyle(v).backdropFilter, zs: v.querySelectorAll('.zv-zs span').length,
+                 title: v.querySelector('.zv-title').textContent, shown: getComputedStyle(v).display !== 'none' }; }""")
+    assert st["shown"] and "blur" in st["blur"] and st["zs"] == 3, st
+    assert st["title"] == _EN["dormant.sleeping"] == "Sleeping", st
+    pg.mouse.click(40, 40)    # anywhere on the screen, not only the button
+    until_sync(lambda: pg.evaluate("() => window.__doors || []")[:1] == ["wake"], "the click to wake the engine", timeout_s=2)
+    pg.close()

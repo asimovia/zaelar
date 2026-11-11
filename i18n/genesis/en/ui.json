@@ -2522,6 +2522,7 @@
  "veil.pausing": "Stopping the agent…",
  "veil.starting": "Starting the agent…",
  "dormant.sleep_title": "Zaelar went to sleep",
+ "dormant.sleeping": "Sleeping",
  "dormant.sleep_sub": "Nobody was using it for a while, so it went to sleep. Reactivate it to carry on where you left off.",
  "dormant.reactivate": "Reactivate",
  "dormant.waking": "Waking up — this takes a moment…",
