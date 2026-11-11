@@ -186,22 +186,13 @@ def _situation(st: dict, op: str) -> tuple[list[str], list[str]]:
 
 
 def _processes(st: dict) -> list[str]:
-    """The live worker sessions (V2-036) — id, goal, phase — so the orchestrator ties each order to the right one.
-    DATA only: how to steer workers is the FlashBrain's own layer. A task that WAITS for his answer is not here: its
-    ROW is read fresh into every turn (`nucleo/turn/prompt/live_tasks.waiting_lines`), and its parked session is
-    that row, said once."""
-    sessions = [s for s in (st.get("sessions") or []) if isinstance(s, dict) and (s.get("goal") or s.get("phase"))
-                and s.get("waiting_on") != "user"]
-    if not sessions:
-        activity = [str(a).strip() for a in (st.get("activity") or []) if str(a).strip()]
-        return ["Tareas en marcha ahora: " + "; ".join(a[:80] for a in activity[:6]) + "."] if activity else []
-    lines = []
-    for s in sessions[:6]:
-        sid = str(s.get("id") or "?")
-        goal = (str(s.get("goal") or "")).strip().replace("\n", " ")[:90]
-        phase = (str(s.get("phase") or "")).strip()[:40]
-        lines.append(f"  · [{sid}] «{goal}»" + (f" — fase: {phase}" if phase else ""))
-    return ["PROCESOS DE FONDO en marcha ahora:\n" + "\n".join(lines)]
+    """What runs, when no live worker session does (`activity`). A live session is NOT rendered here (V2-878 §2): the
+    turn's running-errands block says it once, with its id and its card, read fresh each turn — and its changing phase,
+    rendered here in the middle of the shared state, broke the prompt cache for everything after it every turn."""
+    if any(isinstance(s, dict) and (s.get("goal") or s.get("phase")) for s in (st.get("sessions") or [])):
+        return []
+    activity = [str(a).strip() for a in (st.get("activity") or []) if str(a).strip()]
+    return ["Tareas en marcha ahora: " + "; ".join(a[:80] for a in activity[:6]) + "."] if activity else []
 
 
 def _rails(st: dict) -> list[str]:

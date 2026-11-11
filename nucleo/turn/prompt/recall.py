@@ -22,19 +22,15 @@ def _observability_on() -> bool:
 #: Turns the live dialog window carries at most (10 messages of `_WINDOW_MAX`, 5 turns): the conversation lane of a
 #: recall leaves out the ones the model already has — keeping them buried the one that answered (V2-865).
 LIVE_WINDOW_TURNS = 5
-#: The turns the window REALLY holds this turn (V2-878 §2): a seeded or freshly cut window holds fewer than five, and
-#: skipping five then hid turns the model never saw. Written by the turn before it composes (`note_window`).
-_WINDOW = {"turns": LIVE_WINDOW_TURNS}
+#: The turns the window REALLY holds (V2-878 §2): a seeded or freshly cut window holds fewer than five, and skipping
+#: five then hid turns the model never saw. The turn counts its own window (`live_turns`) and hands the count down.
 
 
-def note_window(messages) -> int:
-    """Count the turns (his messages) the model's window carries this turn; the recall skips exactly those."""
-    _WINDOW["turns"] = min(LIVE_WINDOW_TURNS, sum(1 for m in messages or () if (m or {}).get("role") == "user"))
-    return _WINDOW["turns"]
+def live_turns(messages) -> int:
+    """The turns (his messages) the model's window carries this turn, at most `LIVE_WINDOW_TURNS`."""
+    return min(LIVE_WINDOW_TURNS, sum(1 for m in messages or () if (m or {}).get("role") == "user"))
 
 
-def live_turns() -> int:
-    return int(_WINDOW["turns"])
 #: How far back the conversation lane of a recall reads, in hours — the buffer's own reach (`ttl_days=2.0`).
 CONVERSATION_HOURS = 48.0
 #: Bounds of the conversation lane inside the recall block: turns, and characters of each side of a line as RENDERED
@@ -63,7 +59,7 @@ def conversation_lines(recall_query: str, *, skip_newest: int | None = None, his
                 continue
             for t in memory.conversation(hours=CONVERSATION_HOURS, query=q, limit=CONVERSATION_TURNS,
                                          max_chars=10 ** 6, by="relevance",
-                                         skip_newest=live_turns() if skip_newest is None else skip_newest):
+                                         skip_newest=LIVE_WINDOW_TURNS if skip_newest is None else skip_newest):
                 if len({x["id"] for x in turns} | {int(t["id"])}) > CONVERSATION_TURNS:
                     break
                 turns.append(t)
@@ -102,8 +98,7 @@ def compose_recall(recall_query: str = "", timings: dict | None = None,
     _tq = _t.perf_counter()
     lines: list[str] = []
     used_ids: list[int] = []
-    conv_lines = conversation_lines(recall_query, skip_newest=live_turns() if skip_newest is None else skip_newest,
-                                    his_words=his_words)
+    conv_lines = conversation_lines(recall_query, skip_newest=skip_newest, his_words=his_words)
     if timings is not None:
         timings["recall_conv_turns"] = len(conv_lines)
     try:
