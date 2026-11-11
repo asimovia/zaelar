@@ -45,7 +45,7 @@ def test_a_card_he_asks_for_wins_the_space_over_a_background_sheet():
     i = JS.index("\n  async show(rawId")
     show = JS[i:JS.index("\n  }\n", i)]
     assert "card._bg = !!background;" in show
-    assert "if(!background){ this._yieldBackground(app);" in show
+    assert "if(!background){ this._yieldBackground(card);" in show
     assert "w.card._bg = false;" in show, "his own show of a sheet makes it his"
     y = _body("_yieldBackground")
     assert "!c._bg" in y and 'c.classList.add("hb-minned")' in y and "0.2*" in y

@@ -198,7 +198,7 @@ def test_the_size_the_operator_chose_survives_a_refresh():
     start = src.index("_layout()")
     layout = src[start:src.index("return items;", start)]
     assert "w:c.style.width" in layout.replace(" ", "") and "h:c.style.height" in layout.replace(" ", "")
-    assert "_applyGeom(app, pos.w, pos.h)" in src, "y se vuelve a aplicar al restaurar"
+    assert "_applyGeom(card, pos.w, pos.h)" in src, "y se vuelve a aplicar al restaurar"
 
 
 def test_fullscreen_keeps_the_voice_reachable_unless_the_widget_says_otherwise():
