@@ -101,6 +101,22 @@ export function ensureAsks() {
 const _patch = (task_id, ask_id, fields) =>
   setOpenAsks(xs => xs.map(a => (a.task_id === task_id && a.ask_id === ask_id ? { ...a, ...fields } : a)));
 
+/** His ✕ (V2-886 D7): close the question — his no to the task waiting on it. Resolves to the HTTP status. */
+export async function dismiss(task_id, ask_id) {
+  const cur = openAsks().find(a => a.task_id === task_id && a.ask_id === ask_id);
+  if (!cur || cur.busy) return 0;
+  _patch(task_id, ask_id, { busy: true, error: false });
+  let status = 0;
+  try {
+    const r = await fetch("/api/tasks/" + encodeURIComponent(task_id) + "/asks/" + encodeURIComponent(ask_id) + "/dismiss",
+                          { method: "POST" });
+    status = r.status;
+  } catch (_) { status = 0; }
+  if (status === 200 || status === 409) setOpenAsks(xs => xs.filter(a => a.ask_id !== ask_id));
+  else _patch(task_id, ask_id, { busy: false, error: true });
+  return status;
+}
+
 /** Answer one question from the screen. Resolves to the HTTP status (0 = it never reached the engine). */
 export async function answer(task_id, ask_id, text) {
   const body = _str(text).trim();

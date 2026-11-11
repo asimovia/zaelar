@@ -252,8 +252,9 @@ below is the first kind, or it names the mechanism that replaced the second.
   once (`take`); his no cancels the row. A card's delete/restore, a cluster connect or held send and a parked errand's
   start ask the same way (`consent_ask.ACTS`, `dispatch.confirm.make_durable`); his words are read only when an answer
   arrives with no pick (`worker_api_answer.says_yes`), and `widgets/confirm.py` holds a question only when no row could
-  be opened (said by its own event). —
-  since 2026-11-06 · nodes 2.1613, 2.1616, 2.1624 · `nucleo/request/consent_ask.py`, `nucleo/request/inline_ask.py`,
+  be opened (said by its own event). Every question card carries a ✕: closing it is his no — the row ends through
+  his cancel door, once, never re-asked (V2-886 D7, `POST /api/tasks/<row>/asks/<ask_id>/dismiss`). —
+  since 2026-11-06 · nodes 2.1613, 2.1616, 2.1624, 2.1692 · `nucleo/request/consent_ask.py`, `nucleo/request/inline_ask.py`,
   `nucleo/flash/tool_executor_widget.py`, `widgets/confirm_answer.py`.
 - **CRIT-C14 · Consent is decided at the EXIT, never at an errand's birth from its words.** An errand's class is the
   brief's verdict alone (`errand.class_of`; the money vocabulary no longer fills it), said once as a `task` event; only a

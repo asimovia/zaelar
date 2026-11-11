@@ -2458,6 +2458,7 @@
  "chat.askTaskFallback": "a job",
  "chat.askAmong": "It is about: {titles}",
  "chat.askPlaceholder": "Your answer…",
+ "chat.askDismiss": "Close the question",
  "chat.askSend": "Answer",
  "chat.askSent": "Answered: {text}",
  "chat.askFailed": "The answer did not reach the agent. Try again.",

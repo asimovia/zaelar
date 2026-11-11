@@ -2458,6 +2458,7 @@
  "chat.askTaskFallback": "un proceso",
  "chat.askAmong": "Se refiere a: {titles}",
  "chat.askPlaceholder": "Tu respuesta…",
+ "chat.askDismiss": "Cerrar la pregunta",
  "chat.askSend": "Responder",
  "chat.askSent": "Respondido: {text}",
  "chat.askFailed": "La respuesta no ha llegado al agente. Inténtalo de nuevo.",
