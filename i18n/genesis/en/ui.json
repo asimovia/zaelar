@@ -87,6 +87,7 @@
  "chat.ref.partial": "Unfinished — what was written is kept",
  "chat.ref.cancelled": "Stopped — open what was kept",
  "chat.ref.gone": "Nothing was kept to open",
+ "chat.ref.interrupted": "Interrupted when the engine stopped — it resumes on its own",
  "chat.earlierAt": "· earlier, from {when} ·",
  "chat.fromCron": " · from cron «{name}»",
  "chat.messagePlaceholder": "Message the agent…",

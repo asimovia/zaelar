@@ -762,6 +762,21 @@ Flash keeps the conversation; the row is what both brains read.
   the dialog window. Nothing is added when nothing was heard or the title already says it (≈ 46 tokens per running
   errand). — since 2026-11-10 (V2-874) · nodes 2.1667 · `nucleo/turn/prompt/live_tasks.py`,
   `nucleo/dispatch/registry.py`.
+- **CRIT-T14 · A shutdown is not a cancellation.** Only HIS cancel (or a wait's deadline) ends a task `cancelled`.
+  The host stopping — the idle stop, a SIGTERM, a platform stop — is a declared stop reason (`nucleo/workers/ended.py`
+  `SHUTDOWN`, read by `ended.his_cancel`), never a string compared in two places: a worker it stops leaves its place
+  the way a crash does — its row waits on the worker with a deadline and no attempt spent, resumed by id by the pulse —
+  and what it produced stays (the generator's partial folder and journal entry, with its row, which the resumed build
+  rebuilds clean). The boot leaves that build to its row and never buries a row that waits on its worker; reopening it
+  says it was interrupted, never «nothing was kept». — since 2026-11-11 (V2-877 #2) · nodes 2.1689 ·
+  `nucleo/workers/session_finish.py`, `nucleo/dispatch/control.py::stop_all_async`, `widgets/generator.py`.
+- **CRIT-T15 · One question is one ask; a confirmed errand is never asked twice.** His yes to an errand's start is a
+  fact of its ROW (`dispatch.confirm.CONFIRMED_SLOT`, written by the start gate a confirmed launch crosses, read by both
+  start gates), so a relay of the same row is never asked again. Every ask has its own id; a re-ask is a new open
+  question. The bind door and the answer door read one refusal (`worker_api_answer.refusal`): an answer that would be
+  refused is never reported bound, and a spent question is said once in his language. The notice that said a question
+  settles when it is answered. — since 2026-11-11 (V2-877 #2) · nodes 2.1688 · `nucleo/dispatch/confirm.py`,
+  `nucleo/dispatch/session.py`, `nucleo/cli/worker_api_answer.py`, `nucleo/pulse/notices.py::bind_ask`.
 - **CRIT-M1 · Only the rules in play reach the model.** A sentence of his no code applies is a `note` row with a
   scope (`global`, `voice`, `widget:<id>`); the voice turn carries `global` + `voice` inside the budget of the block it
   replaced, a card's notes ride in its row only while it is on screen, named or recent, the worker never carries how

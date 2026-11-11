@@ -24,6 +24,35 @@ LIVE_SESSION_STATES = frozenset({"queued", "running"})
 # `error`, and with that the engine announced to the operator a death that had not happened while the relay
 # worked.
 ENDED_SESSION_STATES = frozenset({"done", "error", "cancelled", "relevada"})
+# V2-877 #2 — WHY a running worker was stopped, declared once and read by its ending (`session_finish`) and by the
+# generator's keep-or-discard. HIS cancel (the default reason) ends the row `cancelled`. The HOST stopping
+# (`SHUTDOWN`: the idle stop, a SIGTERM, a platform stop) is NOT his cancel: measured 2026-11-11, a clean stop
+# mid-build settled the row `cancelled` and wiped the build's journal and folder, so nothing resumed and the chat
+# box said «Nothing was kept to open». Such a worker is left the way a crash leaves it — its row waits on the
+# worker with a deadline, resumable by id — and only his cancel (or the deadline) ends it.
+OPERATOR, SHUTDOWN = "operator", "shutdown"
+NOT_HIS_CANCEL = frozenset({SHUTDOWN})
+
+
+def his_cancel(reason: str) -> bool:
+    """Is a stop for `reason` HIS cancellation (terminal)? Every reason is, except the declared host stops."""
+    return str(reason or OPERATOR) not in NOT_HIS_CANCEL
+
+
+def resumes_by_id(uid: str) -> bool:
+    """Does row `uid` wait on its WORKER (a death or a host stop): the pulse resumes it by id. Unreadable → False."""
+    if not uid:
+        return False
+    try:
+        from nucleo.circuit import ledger
+        row = ledger.store().task_get(str(uid)) or {}
+    except Exception as e:  # noqa: BLE001
+        import logging
+        logging.getLogger("zaelar.workers").debug(f"resumes_by_id: row {uid} unreadable ({e!r})")
+        return False
+    return row.get("state") == "waiting" and row.get("waiting_for") == ledger.WORKER
+
+
 JUST_ENDED_S = 300.0     # five minutes: how long the conversation lasts in which the operator still asks
 # three-tasks-at-once (ES, 2026-10-11 11:34): 333 s after delivery the turn said it had no data on the report
 # yet. A DELIVERED errand stays a fact; a death/stop keeps the short window (V2-221/224). The block cap stands.

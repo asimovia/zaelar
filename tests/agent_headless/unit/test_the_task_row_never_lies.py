@@ -76,7 +76,9 @@ def test_a_commission_stopped_at_the_widget_gate_leaves_one_row_waiting_on_its_q
     (row,) = ts.tasks_where(states=ts.LIVE_STATES, visible_only=False)
     from nucleo.circuit import asker
     assert row["state"] == "waiting", row
-    assert asker.artefact(row["id"]).get("ask_id") == f"{row['id']}-start", "the row waits on the gate's question"
+    ask_id = asker.artefact(row["id"]).get("ask_id") or ""
+    assert ask_id.startswith(f"{row['id']}-start-") and row["ask_id"] == ask_id, \
+        "the row waits on the gate's question, under an id of its own (one per ask, V2-877 #2)"
 
 
 def _row(uid, *, age_s=0.0, state="pending", **kw):

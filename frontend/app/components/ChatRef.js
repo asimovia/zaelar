@@ -28,11 +28,11 @@ const openCard = (id) => {
 async function reopen(m, el) {
   const r = await api.taskReopen(m.ref);
   if (r && r.ok && r.instance && openCard(r.instance)) return;
-  if (openCard(m.card)) return;
-  // Nothing was kept and no card is known: the box says so instead of opening a blank card.
-  if (!el) return;
-  el.classList.add("hb-ref--gone");
+  if (openCard(m.card) || !el) return;
   const st = el.querySelector(".hb-ref-state");
+  // The engine stopped mid-task (V2-877 #2): its row resumes by id — said, never «nothing kept».
+  if (r && r.interrupted) { if (st) st.textContent = t("chat.ref.interrupted"); return; }
+  el.classList.add("hb-ref--gone");   // nothing was kept and no card is known: said, never a blank card
   if (st) st.textContent = t("chat.ref.gone");
 }
 

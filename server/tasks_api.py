@@ -84,6 +84,11 @@ async def tasks_reopen(payload: dict | None = None):
     tid = str((payload or {}).get("id") or "").strip()
     if not tid:
         return JSONResponse({"ok": False, "error": "sin tarea"}, status_code=400)
+    from nucleo.workers import ended as _ended
+    if _ended.resumes_by_id(tid):
+        # V2-877 #2 — the host stopped it mid-task: nothing is LOST, it resumes by id. Saying «nothing was kept» here
+        # was the lie the review account read; the box says the truth instead (`chat.ref.interrupted`).
+        return JSONResponse({"ok": False, "interrupted": True, "resumes": True}, headers={"Cache-Control": "no-cache"})
     try:
         # V2-862 — the ONE reopen door the voice already used (`reopen_task`): the results sheet first, then a
         # report's document and a card the task kept. The chat wall's reference box calls here too.

@@ -7,6 +7,7 @@ with its `ask_id`, answered like every durable question, ended by its own `deadl
 """
 from __future__ import annotations
 
+import json
 import logging
 import unicodedata
 
@@ -56,6 +57,23 @@ def answered(uid: str, entry: dict, text: str) -> dict:
         from nucleo import circuit
         circuit.settle(row=uid, state="done", outcome=f"he answered: {' '.join(str(text or '').split())[:200]}")
     return {"ok": True, "row": uid, "answered": True}
+
+
+def bind_ask(key: str, ask_id: str) -> bool:
+    """The notice `key` said the question `ask_id`, which existed only after it was delivered (an errand's start
+    question is spoken first and made durable after): it is bound now, so an ANSWERED question settles it
+    (`closed_answered`) instead of leaving it owed and painted on the next screen (V2-877 #2 N2)."""
+    from nucleo.pulse import notices
+    row = notices.by_key(str(key or "")) if key and ask_id else None
+    if not row:
+        return False
+    try:
+        detail = {**(row.get("detail") or {}), "ask_id": str(ask_id)}
+        notices._set(row["id"], detail=json.dumps(detail, ensure_ascii=False))
+        return True
+    except Exception as e:  # noqa: BLE001 — the notice stays as it was: delivered or owed, never lost
+        logger.warning(f"notices: could not bind notice {key} to its question ({e!r})")
+        return False
 
 
 def closed_answered(row: dict) -> bool:
