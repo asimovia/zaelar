@@ -36,7 +36,8 @@ def _trace() -> str:
     try:
         from voice import trace
         return str(trace.current() or "")
-    except Exception:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"pick_pending: no trace — {e!r}")
         return ""
 
 
@@ -53,7 +54,8 @@ def _wants(brief) -> str:
     try:
         from nucleo.turn import brief as _tb
         return str(_tb.read(brief, _tb.WORDS_KEY, "")[0] or "") if brief is not None else ""
-    except Exception:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001 — an unreadable verdict reads as «not tell»: the shadow notes, nothing acts
+        logger.debug(f"pick_pending: wants_words unreadable — {e!r}")
         return ""
 
 
@@ -117,7 +119,8 @@ def _rows_on_screen(brief) -> bool:
         from widgets import refs
         open_ids = list((brief or {}).get("open_ids") or []) if isinstance(brief, dict) else []
         return any(refs._ref_index(str(w).split("::", 1)[0]) for w in open_ids)
-    except Exception:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"pick_pending: rows on screen unreadable — {e!r}")
         return False
 
 
