@@ -253,23 +253,7 @@ export function routeEvent(desktop, d) {
         store.setChatTab(d.tab);
         store.setChatOpen(true);
       }
-    } else if (d.kind === "controls") {                                           // his own 🔊 / ⏻, by voice (nucleo/acts/self_controls.py)
-      // THE BUTTON'S DOOR, not a copy of it: the 🔊 runs what the bar's speaker runs (bring the speaker here when it
-      // is muted, else the toggle) and «off» runs `power.setPower` — the ⏻'s own body, server first. Both modules
-      // import this one (session → sse), so they are reached lazily: a static import would close the cycle.
-      // Only on the screen that heard him (`event-scope.js` scopes `controls` to `origin_dev`).
-      const act = String(d.act || d.label || "");
-      if (act === "off") {
-        import("./power.js?v=1").then(p => { if (!store.powerOff()) p.setPower(true, "voice"); }).catch(() => {});
-      } else if (act === "mute" || act === "unmute") {
-        import("./session.js?v=3").then(session => {
-          const muted = store.botMuted();
-          if (act === "mute" && !muted) session.toggleBotMute();
-          else if (act === "unmute" && muted) {
-            if (session.openSpeakerHere) session.openSpeakerHere("voice"); else session.toggleBotMute();
-          }
-        }).catch(() => {});
-      }
+    } else if (d.kind === "controls") { import("./self-controls.js?v=1").then(m => m.applyControl(d)).catch(() => {});   // his 🔊/⏻ by voice
     } else if (d.kind === "filler" && d.text) {
       // Lead-in wait-filler (V2-093/V2-122): a real phrase the agent just said out loud, so it belongs in the
       // chat wall — but pushed with its own distinct marker, never as `kind:"transcript"`, so it can't be

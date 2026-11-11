@@ -275,7 +275,7 @@ TOOLS: list[dict] = [
         "type": "function",
         "function": {
             "name": "agent_controls",
-            "description": "TU 🔊/⏻ si te lo ORDENA: mute (sigues oyendo) · unmute · off (⏻).",
+            "description": "Tu altavoz o apagado, si te lo ORDENA.",
             "parameters": {
                 "type": "object",
                 "properties": {"act": {"type": "string", "enum": ["mute", "unmute", "off"]}},
@@ -382,10 +382,7 @@ TOOLS: list[dict] = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "query": {
-                        "type": "string",
-                        "description": "Qué necesitas recordar del operador, claro y autocontenido.",
-                    }
+                    "query": {"type": "string"}   # its gloss is the tool's own sentence: «`query` = qué…»
                 },
                 "required": ["query"],
             },
@@ -475,7 +472,7 @@ TOOLS: list[dict] = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "query": {"type": "string", "description": "lo que dijo el operador, con sus palabras"}
+                    "query": {"type": "string", "description": "sus palabras"}
                 },
                 "required": ["query"],
             },
@@ -655,8 +652,7 @@ TOOLS: list[dict] = [
                     "to": {"type": "string", "description": "Handle EXACTO del peer si el operador NOMBRA a "
                                                             "alguien (nunca lo inventes). Omítelo para hablar a "
                                                             "todos los presentes."},
-                    "cluster": {"type": "string", "description": "Nombre del cluster si hay VARIOS conectados "
-                                                                 "(opcional; con uno solo se resuelve solo)."},
+                    "cluster": {"type": "string", "description": "Nombre del cluster si hay VARIOS conectados."},
                 },
                 "required": ["text"],
             },

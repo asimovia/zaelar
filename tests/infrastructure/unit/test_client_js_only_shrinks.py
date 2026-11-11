@@ -27,7 +27,7 @@ JS_CEILINGS = {
     "frontend/app/components/ConfigPanel.js": 862,
     "frontend/app/components/DebugPanel.js": 737,
     "frontend/app/components/memory/graph-view.js": 554,
-    "frontend/app/services/sse.js": 537,  # +2 2026-11-10 V2-872 (edge wake gate): an open presence.js decided says it is a person (`wake=1`); +5 2026-11-10 V2-872: the stream error closes it and presence.js decides the reconnect, the hello and `engine.sleep` reach it; +1 V2-862 (2.1635/4.412/4.413): an errand's reference box on his chat wall — routes the kind; +2 V2-851 F1c (4.359): the task's question on screen (`ask`/`task_state` → core/asks.js); +1 V2-850 (4.357): the voice going idle
+    "frontend/app/services/sse.js": 538,  # +1 2026-11-11 (4.487): his own 🔊/⏻ by voice routes the `controls` kind to `services/self-controls.js`; +2 2026-11-10 V2-872 (edge wake gate): an open presence.js decided says it is a person (`wake=1`); +5 2026-11-10 V2-872: the stream error closes it and presence.js decides the reconnect, the hello and `engine.sleep` reach it; +1 V2-862 (2.1635/4.412/4.413): an errand's reference box on his chat wall — routes the kind; +2 V2-851 F1c (4.359): the task's question on screen (`ask`/`task_state` → core/asks.js); +1 V2-850 (4.357): the voice going idle
     "frontend/app/components/WidgetRail.js": 450,
     "frontend/app/components/Orb.js": 435,
     "frontend/app/main.js": 407,  # −7 2026-11-11 V2-881: main.js no longer removes a splash — the loader is one element

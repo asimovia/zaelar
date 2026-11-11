@@ -114,8 +114,8 @@ def test_the_act_is_scoped_to_the_screen_that_heard_him_and_runs_the_buttons_doo
     scope = (ENGINE / "frontend/app/services/event-scope.js").read_text(encoding="utf-8")
     assert 'controls: "*"' in scope, "a «controls» act must land only on the origin screen (origin_dev)"
     sse = (ENGINE / "frontend/app/services/sse.js").read_text(encoding="utf-8")
-    i = sse.index('d.kind === "controls"')
-    body = sse[i:sse.index('d.kind === "filler"', i)]
+    assert 'd.kind === "controls"' in sse and "self-controls.js" in sse, "the stream must hand `controls` to its module"
+    body = (ENGINE / "frontend/app/services/self-controls.js").read_text(encoding="utf-8")
     assert "setPower(true" in body, "«off» must run the ⏻'s own door (power.setPower), not a copy of it"
     assert "toggleBotMute" in body and "openSpeakerHere" in body, "the 🔊 must run the speaker button's own door"
     orb = (ENGINE / "frontend/app/components/Orb.js").read_text(encoding="utf-8")
