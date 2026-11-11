@@ -23,7 +23,8 @@ def _plain(ctx: dict) -> dict:
         try:
             json.dumps(v)
             out[k] = v
-        except (TypeError, ValueError):
+        except (TypeError, ValueError) as e:   # a value the row cannot carry is left out, and said
+            logger.debug(f"which_flow: context key {k!r} not kept on the row ({type(e).__name__})")
             continue
     return out
 
