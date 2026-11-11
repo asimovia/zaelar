@@ -80,6 +80,58 @@ def is_visible(kind: str = "", src: str = "", origin: str = "voz") -> bool:
 #: that delivers closes it, a launch folded into another errand forgets it, the reconciler forgets one nobody adopted.
 STARTING = "starting"
 
+#: The errand's CARD (V2-878 §1), kept in the row's `progress` JSON under this key: his words (`heard`, the whole
+#: sentence that commissioned it; `part` = which of several errands of that sentence, absent for one), how it was born
+#: (`verb`: new · continue · correct) and when he last named it (`last_mention_ts`). On the ROW, so a restart or a
+#: suspend keeps it and every reader — Flash, the flow judge, the worker — reads the same one. Its `state` is the row's
+#: own column, read beside it (`card`), never a second copy.
+CARD = "card"
+
+
+def card_of(ctx: dict | None, *, verb: str = "new", now: float | None = None) -> dict:
+    """The card an errand is born with, from its commission's context: `said` (his whole sentence) or `heard`."""
+    ctx = dict(ctx or {})
+    out = {"heard": " ".join(str(ctx.get("said") or ctx.get("heard") or "").split())[:600],
+           "verb": verb, "last_mention_ts": int(time.time() if now is None else now)}
+    if ctx.get("part") is not None:
+        out["part"] = int(ctx.get("part") or 0)
+    return out
+
+
+def card(uid: str) -> dict:
+    """The errand's card with its row's state (`state`, `waiting_for`); {} when there is no row. Never raises."""
+    try:
+        row = _ts.task_get(str(uid or "").strip()) if uid else None
+    except Exception as e:  # noqa: BLE001 — a reader never breaks a turn
+        logger.debug(f"ledger: card of {uid} unreadable — {type(e).__name__}: {e}")
+        row = None
+    if not row:
+        return {}
+    c = (row.get("progress") or {}).get(CARD) or {}
+    return {**c, "state": str(row.get("state") or ""), "waiting_for": str(row.get("waiting_for") or "")}
+
+
+def card_written(uid: str, *, keep_heard: bool = True, **fields) -> None:
+    """Merge `fields` into the row's card. `keep_heard`: a heard already there is his first word on it and stays."""
+    uid = str(uid or "").strip()
+    row = _ts.task_get(uid) if uid else None
+    if row is None:
+        return
+    progress = dict(row.get("progress") or {})
+    old = dict(progress.get(CARD) or {})
+    new = {k: v for k, v in fields.items() if v is not None and v != ""}
+    if keep_heard and old.get("heard"):
+        new.pop("heard", None)
+        new.pop("part", None)
+    if all(old.get(k) == v for k, v in new.items()):
+        return
+    _ts.task_patch(uid, progress={**progress, CARD: {**old, **new}})
+
+
+def mentioned(uid: str, *, now: float | None = None) -> None:
+    """He named this errand again (a refinement folded into it, an answer to it): its card's `last_mention_ts`."""
+    card_written(uid, last_mention_ts=int(time.time() if now is None else now))
+
 
 def born(task_id, request: str, ctx: dict | None = None) -> str:
     """Write the durable row of an errand born in the turn; its uid (which is also its sheet's id). Never raises."""
@@ -93,6 +145,7 @@ def born(task_id, request: str, ctx: dict | None = None) -> str:
     except Exception as e:  # noqa: BLE001 — the dispatcher still writes a row when it opens the errand
         logger.debug(f"ledger: errand {uid} not born durable — {type(e).__name__}: {e}")
     if before is None:                   # a row the dispatcher already moved on was not born here
+        card_written(uid, **card_of(ctx, now=now))
         _progress.changed(uid, "born", None, snapshot=True)
     return uid
 
@@ -138,6 +191,7 @@ def opened(rec, ctx: dict | None = None) -> str:
                        **({"sheet": _sh} if _sh else {}), **({"trace_id": _tr} if _tr else {}),
                        finished_at=None, outcome="")
         _born(rec, ctx)                  # V2-835 T4 — a relaunch takes the commission's end state from this row
+        card_written(inherited, **card_of(ctx, verb="correct" if ctx.get("replaces") else "continue", now=now))
         _progress.changed(inherited, "opened", before, snapshot=True, harness=True)
         return uid
     before = _ts.task_get(uid)
@@ -158,6 +212,8 @@ def opened(rec, ctx: dict | None = None) -> str:
         "created_at": int(getattr(rec, "started", now) or now),
         "started_at": now,
     })
+    card_written(uid, **card_of({**ctx, "heard": ctx.get("heard") or getattr(rec, "heard", "")},
+                                verb="correct" if ctx.get("replaces") else "new", now=now))
     _born(rec, ctx)
     _progress.changed(uid, "opened", before, snapshot=True, harness=True)
     return uid
@@ -206,6 +262,8 @@ def status_written(live: dict, *, now: float | None = None) -> None:
         return
     progress = {k: live.get(k) for k in ("done", "total", "pct", "note", "plan", "waiting_on", "ask", "backend")
                 if live.get(k) not in (None, "", [], -1)}
+    if (before.get("progress") or {}).get(CARD):                 # V2-878 §1: the beat never wipes the errand's card
+        progress[CARD] = before["progress"][CARD]
     _ts.task_patch(uid, phase=str(live.get("phase") or "")[:160], progress=progress,
                    heartbeat_at=int(live.get("heartbeat_at") or 0) or None,
                    reported_at=int(live.get("reported_at") or 0) or None)

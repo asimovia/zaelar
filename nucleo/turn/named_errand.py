@@ -41,13 +41,47 @@ def known(*, with_finished: bool = False) -> list[dict]:
         from nucleo.dispatch import confirm as _dc     # the gate's own store (`pending_confirm` reads this one)
         for tid, p in list((getattr(_dc, "_PENDING_CONFIRM", None) or {}).items()):
             refs = " ".join(str(r) for r in (p.get("refinements") or []))
+            ctx = p.get("context") or {}
             out.append({"id": str(tid), "label": "", "request": str(p.get("request") or "").strip(),
+                        "heard": str(ctx.get("said") or ctx.get("heard") or ""),
                         "extra": refs, "phase": "", "note": "", "waiting_on": "user", "parked": True,
                         "sheet": str(p.get("sheet") or ""), "surface": str((p.get("context") or {}).get("surface") or "")})
     except Exception as e:  # noqa: BLE001
         logger.debug(f"named_errand: parked errands unreadable — {type(e).__name__}: {e}")
     out += starting(out)
-    return out + (finished(out) if with_finished else [])
+    return [_carded(e) for e in out + (finished(out) if with_finished else [])]
+
+
+def _uid_of(eid: str) -> str:
+    from nucleo import dispatch as _d
+    from nucleo.circuit import ledger
+    rec = _d.get_record(eid) if eid else None
+    return str(getattr(rec, "uid", "") or "") or (ledger.task_uid(eid) if eid and ":" not in eid else "")
+
+
+def mentioned(flow_id: str) -> None:
+    """He named this errand again — a request routed into it: its card's `last_mention_ts` (V2-878 §1). Never raises."""
+    try:
+        from nucleo.circuit import ledger
+        if (uid := _uid_of(str(flow_id or ""))):
+            ledger.mentioned(uid)
+    except Exception as ex:  # noqa: BLE001
+        logger.debug(f"named_errand: mention of {flow_id} not written — {type(ex).__name__}: {ex}")
+
+
+def _carded(e: dict) -> dict:
+    """The entry with its errand's CARD from its row (V2-878 §1): `heard` (his sentence), `state`, `last_mention_ts` —
+    what every reader of the pool (the flow judge, Flash's block, the brief) reads from the one place. Never raises."""
+    try:
+        from nucleo.circuit import ledger
+        c = ledger.card(_uid_of(str(e.get("id") or "")))
+    except Exception as ex:  # noqa: BLE001 — a reader never breaks a turn
+        logger.debug(f"named_errand: card unreadable — {type(ex).__name__}: {ex}")
+        c = {}
+    state = c.get("state") or ("waiting" if e.get("parked") else "done" if e.get("ended") else
+                               "starting" if e.get("starting") else "running")
+    return {**e, "heard": str(c.get("heard") or e.get("heard") or ""), "state": state,
+            "last_mention_ts": int(c.get("last_mention_ts") or 0), **({"part": c["part"]} if "part" in c else {})}
 
 
 def _words(text: str) -> set[str]:
