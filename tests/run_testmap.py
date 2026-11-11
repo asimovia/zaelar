@@ -6242,6 +6242,15 @@ DOMAINS: list[dict] = [
                                   "handed on, and its face names no row; a mixed pass reports only the kept rows; one "
                                   "declared reading `results.holding` (kept · rejected · none)",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_a_sheet_that_rejected_every_row_holds_no_findings.py"]},
+        {"id": "4.482", "title": "An order whose one act the brief gives to a card is that card's, even with an errand on "
+                                  "its subject running (V2-879 O1): `wants_words=act` + catalogue at VETO + `acts_asked` "
+                                  "not several → route `card` (also when the route settled before the brief), the portal and the relay door tell the errand nothing; "
+                                  "a stop, two acts, a told answer, a process banner, the errand's own sheet or a card-building errand keep it",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_a_card_act_is_not_steered_into_the_errand_on_its_subject.py"]},
+        {"id": "4.483", "title": "The just-ended errands a request can reopen belong to ONE conversation (V2-879 O2): a new "
+                                  "session empties the pool, an errand born before the clean never enters it, and how "
+                                  "long each end stays reopenable is declared by how it ended (`REOPEN_GRACE_S`)",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_a_cleaned_session_leaves_no_errand_to_reopen.py"]},
     ]},
     {"id": "5", "name": "CONECTORES", "nodes": [
         # V2-559 — el operador siguió la guía, creó la contraseña de aplicación y pegó el ENLACE de esa

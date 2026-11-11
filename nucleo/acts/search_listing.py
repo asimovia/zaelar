@@ -127,10 +127,11 @@ async def listings(request: dict, args: dict, *, spec=None, on_delta=None, alrea
             on_delta(taken)
         return Outcome(True, V.STARTED.name, taken, {"delivered": False, "n": 0, "escalated": 0, "ctx": "",
                        "sheet": joined.get("sheet", ""), "pending": True, "joined": joined["flow"]})
-    if joined.get("stopped"):
+    if joined.get("stopped") or joined.get("card"):
         # V2-844 F2: the turn's stop covers this hunt — nothing is relaunched and nothing is promised.
         return Outcome(True, V.SKIPPED.name, "", {"delivered": False, "n": 0, "escalated": 0, "ctx": "",
-                       "sheet": joined.get("sheet", ""), "pending": False, "joined": joined["flow"], "stopped": True})
+                       "sheet": joined.get("sheet", ""), "pending": False, "joined": joined["flow"],
+                       "stopped": bool(joined.get("stopped")), "card": bool(joined.get("card"))})
     if joined.get("absorbed"):
         # V2-843 — his words joined an errand PARKED on his yes: nothing is relaunched, the question is asked again.
         said = str(joined.get("question") or "")
