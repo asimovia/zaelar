@@ -62,14 +62,7 @@ createEffect(() => { try { botAudio.muted = store.botMuted(); } catch (_) {} });
 for (const s of MOBILE_SURFACES.filter((s) => s.phase === "scaffold")) mount(s.comp(), s.target === "deck" ? wrap : undefined);
 for (const s of MOBILE_SURFACES.filter((s) => s.phase === "overlay")) mount(s.comp(), s.target === "deck" ? wrap : undefined);
 
-// The inline splash in mobile/index.html did its job (a loader from the FIRST byte, which on a cold-started instance
-// is tens of seconds); the BootOverlay takes over. If this module had failed to load, #preboot would stay — better
-// a loader than a black screen.
-// V2-558 — the ring closes on a FACT, not on a clock: `__zaelarPrebootDone` paints it full and says
-// "Ready", and only then does the splash go. Guarded because preboot.js is a separate file and a shell that
-// failed to load it must still be able to get rid of its own splash.
-try { window.__zaelarPrebootDone?.(); } catch { /* noop */ }
-try { document.getElementById("preboot")?.remove(); } catch { /* noop */ }
+// V2-881 — no splash to remove here: #preboot IS the loader, and BootOverlay (mounted above) took it over.
 
 // ---- CLOUD profile + Energy balance: same retry loop as the desktop, for the same reason. On the COLD START of an
 // instance these endpoints answer 503 until FastAPI finishes coming up; a single failed attempt would leave
@@ -180,7 +173,7 @@ window.addEventListener("pointerdown", ensureVoice);
 // and the voice connects at LOAD. Synchronous up to the SDK call — awaiting first spends the user activation. ----
 window.addEventListener("pointerdown", () => { try { session.unlockAudio(); } catch (_) {} });
 
-// The voice lock (one live voice session per machine) is surfaced by the shared DormantVeil, face "moved".
+// The voice lock (one live voice session per machine) is surfaced by the shared Veil, face "moved".
 
 // ---- reconcile with the SERVER's truth about the global switch (V2-092), in the SAFE direction ----
 // Identical logic to app/main.js, including the timestamp guard: this reply is a SNAPSHOT of when it was asked, not

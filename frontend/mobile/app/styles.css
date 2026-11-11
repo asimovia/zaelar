@@ -441,7 +441,6 @@ button.zm-page-btn:active { background: var(--hb-bubble); }
 .lang-onb-card { max-width: 100%; }
 /* 16px minimum, or iOS Safari zooms the page the moment this input takes focus — the same rule as .zm-compose. */
 .lang-onb-input { font-size: 16px; }
-.boot-caption { top: 64%; font-size: 14px; }
 
 /* ============================================================================================================
    TOUCH FLOOR FOR EVERY WIDGET (V2-574) — the host makes the catalog usable, one rule instead of fourteen.

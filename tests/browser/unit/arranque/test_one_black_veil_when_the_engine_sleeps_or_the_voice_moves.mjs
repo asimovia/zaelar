@@ -8,7 +8,6 @@
 // Run: node tests/browser/unit/arranque/test_one_black_veil_when_the_engine_sleeps_or_the_voice_moves.mjs
 // ============================================================================
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 
 const listeners = {};
 const timers = [];
@@ -29,17 +28,7 @@ assert.equal(P.beatDue({ visible: false, open: true, asleep: false }), false, "a
 assert.equal(P.beatDue({ visible: true, open: false, asleep: false }), false, "no stream: nothing to keep up");
 assert.equal(P.beatDue({ visible: true, open: true, asleep: true }), false, "a sleeping tab sends nothing");
 
-// `dormantFace` lives in a component that imports the whole shell; its body is pure, so it is read from the source.
-const src = readFileSync(new URL("../../../../frontend/app/components/DormantVeil.js", import.meta.url), "utf8");
-const body = src.match(/export function dormantFace\(([^)]*)\) \{([\s\S]*?)\n\}/);
-assert.ok(body, "dormantFace is exported from DormantVeil.js");
-const dormantFace = new Function(...body[1].split(",").map((a) => a.trim()), body[2]);
-assert.equal(dormantFace({ face: "sleep" }, false, false, false), "sleep");
-assert.equal(dormantFace({ face: "sleep" }, true, false, false), "sleep", "a sleeping engine has no voice anywhere");
-assert.equal(dormantFace({ face: "" }, true, false, false), "moved");
-assert.equal(dormantFace({ face: "" }, true, true, false), "", "a stopped agent has its own veil");
-assert.equal(dormantFace({ face: "" }, true, false, true), "", "«continue here with text» lifts it");
-assert.equal(dormantFace({ face: "" }, false, false, false), "");
+// The veil's faces and its one press are held by test_one_veil_one_face_one_press.py (V2-881).
 
 // ── 2. the wiring ────────────────────────────────────────────────────────────────────────────────────────────────
 let opens = 0, wakes = 0, beats = 0;

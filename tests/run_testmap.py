@@ -2875,7 +2875,7 @@ DOMAINS: list[dict] = [
         # the restart with every old card and re-reported them to the server as open — the ghosts were in the
         # server's canvas state before anyone typed. The SSE re-open IS the restart seen from the tab.
         {"id": "4.433", "title": "A tab sleeps on its own and never reconnects without a gesture (V2-872): a stream error CLOSES the EventSource and `presence.reconnectDecision` reopens it only while visible and touched within `tab_sleep_min` (the hello's value), with a 2 s → 60 s backoff; a hidden or untouched tab goes dormant (the orb dims, «Zaelar duerme — toca para despertar») and every poller asks `asleep()` before it reaches the server; `engine.sleep` puts it to sleep; the first gesture wakes it, and every open the tab decides says it is a person (`wake=1`, counted as input by the engine) so a hosted edge may start a stopped engine for it and never for a browser's own retry", "ch": UNIT, "paths": ["tests/browser/unit/arranque/test_a_sleeping_tab_never_reconnects_on_its_own.py"]},
-        {"id": "4.434", "title": "One black veil over the whole screen (both shells, the top layer above every panel and the chat wall) when the engine sleeps — Reactivate is a gesture that reopens the stream with `wake=1` and the veil says it is waiting until the stream answers — or when the voice is held by another screen («use it here», «continue here with text»); the agent's ⏻ is never touched; a visible, connected, awake tab tells the engine a person is there on open, on becoming visible and every minute; every line in the ui pack (ES/EN)", "ch": UNIT, "paths": ["tests/browser/unit/arranque/test_one_black_veil_when_the_engine_sleeps_or_the_voice_moves.py"]},
+        {"id": "4.434", "title": "(faces and the one press: 4.481) The engine's sleep darkens the whole screen — Reactivate is a gesture that reopens the stream with `wake=1` and the veil says it is waiting until the stream answers — or when the voice is held by another screen («use it here», «continue here with text»); the agent's ⏻ is never touched; a visible, connected, awake tab tells the engine a person is there on open, on becoming visible and every minute; every line in the ui pack (ES/EN)", "ch": UNIT, "paths": ["tests/browser/unit/arranque/test_one_black_veil_when_the_engine_sleeps_or_the_voice_moves.py"]},
         {"id": "4.435", "title": "A failed diagnostic report never reports itself: `api.clientLog` swallows its own failed POST (the page's `unhandledrejection` handler reports through it, so an uncaught rejection looped) and caps a storm of reports per minute", "ch": UNIT, "paths": ["tests/browser/unit/arranque/test_a_failed_client_log_never_reports_itself.py"]},
         {"id": "4.437", "title": "A refused microphone gives a chat-only session and never a loop: a capture the browser refuses (denied, no device, a policy, in use) brings the session up on a silent stream in both transports (`mic-denial.isRefusal`/`silentStream`, never parked for reuse), so a typed line reaches the engine instead of `no_session` forever; when even that cannot start, neither transport asks again until a click or a key — main.js re-enters start() from a reactive effect, so a refusal used to loop endlessly", "ch": UNIT, "paths": ["tests/browser/unit/mic/test_a_refused_mic_waits_for_a_gesture.py"]},
         {"id": "4.221", "title": "Un reset alcanza a la pestaña que se quedó abierta: al reconectar el "
@@ -3453,10 +3453,8 @@ DOMAINS: list[dict] = [
         {"id": "4.11", "title": "i18n de la UI: presets alineados + t() reactivo al CONTENIDO del bundle",
             "ch": UNIT, "paths": ["tests/browser/unit/i18n/test_bundles.py",
                                   "tests/browser/unit/i18n/test_bundle_reactivity.py",
-                                  # V2-481: el arranque en frío de una Machine no tiene bundle todavía, así
-                                  # que el primer pantallazo de una PWA recién instalada salía como
-                                  # `boot.encendiendo`. Suelo estrecho + la leyenda resuelta en cada pintado.
-                                  "tests/browser/unit/i18n/test_cold_start_floor.py",
+                                  # V2-481's cold-start floor in t() went with the caption it served (V2-881):
+                                  # the one loader is narrated by preboot.js, whose floor the next test holds.
                                   # The boot screen speaks the instance's language, never the browser's.
                                   "tests/browser/unit/i18n/test_the_boot_speaks_the_instance_language.py",
                                   "tests/browser/unit/i18n/test_dates_and_sorting_follow_the_instance_language.py",
@@ -5483,8 +5481,7 @@ DOMAINS: list[dict] = [
         # C13 — the notice is a derivative of its row: one writer, and a Google pass never saves a stale copy over it.
         {"id": "4.392", "title": "An appointment's notice follows its row (C13, ES/EN): moving the appointment moves its notice, cancelling it takes the notice along, asking to move only the notice moves THAT row's (never a neighbour's found by title overlap); the Google tick fetches without the lock and merges under the agenda's write lock, so a write landed during the round trip is never erased nor re-noticed as its «new» Google twin; a pending agenda notice no row carries is swept by the tick",
             "ch": UNIT, "paths": ['tests/browser/unit/agenda/test_a_notice_follows_its_appointment.py']},
-        {"id": "4.393", "title": "A stopped agent locks the desktop (operator, 2026-11-08): a shaded veil over the widget stage for off/pausing/starting, swallowing the cards' clicks, below the bottom rail and the orb, with its own ⏻ through the one power door; every line in the ui pack (ES/EN)",
-            "ch": UNIT, "paths": ["tests/browser/unit/arranque/test_a_stopped_agent_locks_the_desktop.py"]},
+        # 4.393 (the stopped-agent veil) was folded into 4.481 by V2-881: one veil.
         {"id": "4.394", "title": "A typed line is kept until the engine has it (operator, 2026-11-08): the browser's outbox sends every line over HTTP and keeps it in storage until `/api/chat` says ok — tried again while no session can take it and after a reload, in order, dropped only past its TTL; the typed door opens on a STARTED session; a page with undelivered lines says so for its room and a delivered line marks the moment, so the kickoff is that line, never a greeting",
             "ch": UNIT, "paths": ["tests/browser/unit/chat/test_a_typed_line_is_kept_until_the_engine_has_it.py"]},
         {"id": "4.395", "title": "(apps principles, operator 2026-11-08) An unmet end state runs the app's declared next step (`on_unmet`), bounded, before it is said unmet; the opened end state keeps the payload its steps render from; every step names an action its app has",
@@ -6126,14 +6123,7 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": [
                 "tests/browser/unit/fotos/test_the_gallery_answers_and_never_touches_the_network_to_read.py",
                 "tests/browser/e2e/widgets/test_fotos_render.py"]},
-        # 2026-09-03 (V2-558): el splash era un anillo girando y UNA frase fija hasta que main.js terminaba,
-        # que en una Machine fría son decenas de segundos. El operador se comió más de un minuto de eso en su
-        # primer arranque. Lo que se mide aquí solo lo puede contestar un navegador: que la narración AVANCE, y
-        # sobre todo que el arco NO se complete solo — un progreso que llega al final y se queda ahí es la
-        # mentira clásica de esta pantalla, y solo el aviso real de la app puede cerrarlo.
-        {"id": "4.105", "title": "Narración de ARRANQUE renderizada: el arco avanza, no se completa solo, y "
-                                "solo la app lo cierra", "ch": UNIT, "live": True,
-            "cmd": "./.venv/bin/python tests/browser/e2e/mobile/render_preboot.py"},
+        # 4.105 (the preboot's progress arc) was folded into 4.480 by V2-881: one loader, one rendered test.
         {"id": "4.19", "title": "Shell MÓVIL RENDERIZADO: el orbe centrado y PINTADO, la barra alcanzable",
             "ch": UNIT, "live": True,
             "cmd": "./.venv/bin/python tests/browser/e2e/mobile/render_dock.py"},
@@ -6230,20 +6220,12 @@ DOMAINS: list[dict] = [
                                   "that never name the card) and only once; `pause`/`reset` stay controls and a show "
                                   "on them is a drag",
             "ch": UNIT, "paths": ["tests/browser/unit/timer/test_a_countdown_set_by_his_turn_comes_on_screen.py"]},
-        # V2-879 O1 — disarmed 2026-11-11 (`what_it_fills` ignores `fills` / `judge_free` keeps every place / `rows`
-        # never read) → red, each in its own file.
-        {"id": "4.476", "title": "A map show that carries only its modifiers is NOT done (V2-879 O1): `show`/`add` "
-                                  "declare what they fill (`fills: rows, places`), so `{title, places: []}` answered ok "
-                                  "over an unchanged map comes back `slots_unfilled` naming rows and places at the one "
-                                  "funnel; a call that fills either is the handler's; an act with no `fills` is judged "
-                                  "by all its slots as before",
-            "ch": UNIT, "paths": ["tests/browser/unit/map/test_a_show_that_fills_only_its_modifiers_is_not_done.py"]},
-        {"id": "4.477", "title": "«Those» on the map are the SHEET's rows (V2-879 O1): `rows` (numbers, titles, \"all\") "
-                                  "resolve from the sheet's own data with each row's link; rows over an empty sheet "
-                                  "paint nothing and say its search is still going; the model's own places over a sheet "
-                                  "on screen or filling are refused (es/en), a free place that is a row becomes it, one "
-                                  "he named stays, and with no sheet on screen free places work as before",
-            "ch": UNIT, "paths": ["tests/browser/unit/map/test_a_those_order_pins_the_sheet_rows.py"]},
+        # V2-881 — disarmed 2026-11-11: BootOverlay served with its `store.bootReady` hook cut → red.
+        {"id": "4.480", "title": "ONE loader from the first byte to ready, both shells (V2-881): the HTML paints the neurons' first ring and preboot.js narrates it (cached bundle, English floor, never a key); BootOverlay takes over the SAME element; the growth (the progress bar and the lit canvas) advances only on a real phase, never on a timer; `store.bootReady` completes it and the loader is gone within one second",
+            "ch": UNIT, "paths": ["tests/browser/unit/arranque/test_one_loader_grows_on_real_phases_and_bursts_on_ready.py"]},
+        # V2-881 — disarmed 2026-11-11: Veil.js served without its `setPower` call → red.
+        {"id": "4.481", "title": "ONE veil, one face at a time, both shells (V2-881): stopped by him over asleep over moved, transits as before; one press wakes the engine, and once it answers switches the agent on and brings the voice here (presence.reactivate → power.setPower → session.claimVoice); the stopped face shades the cards under the rail, the top bar and the orb, the black faces cover everything but the feedback button; every line in the ui pack (ES/EN)",
+            "ch": UNIT, "paths": ["tests/browser/unit/arranque/test_one_veil_one_face_one_press.py"]},
     ]},
     {"id": "5", "name": "CONECTORES", "nodes": [
         # V2-559 — el operador siguió la guía, creó la contraseña de aplicación y pegó el ENLACE de esa

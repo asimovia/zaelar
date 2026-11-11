@@ -1,50 +1,56 @@
-// BootOverlay — the first-load splash. Blocks the UI while zaelar boots and plays the «Synaptic hive»
-// animation: a neural constellation that assembles ITSELF IN PARTS (one cluster per boot phase — voice → memory →
-// reflex) and then, on "ready", implodes into the orb. Phases are driven by REAL signals (store.bootPhase, set by
-// session-lk.js from mic/room milestones + the agent's "vl2" boot events); the veil lifts on store.bootReady.
-// Only the very first boot shows this — later reconnects never re-lock the UI (a safety timeout unblocks a stuck
-// boot; see session-lk.js). The render engine lives in boot-anim.js; this file owns the DOM + wiring.
-import { h } from "../core/dom.js?v=2";
+// BootOverlay — the ONE loader (V2-881). Both shells.
+//
+// It used to be the third of three: the inline splash (spinner + narration), then this overlay's own caption
+// («Starting up zaelar…»), then the neurons. Now there is one screen from the first byte to «ready»: the HTML paints
+// `#preboot` (the first ring of the neurons, turning), `core/preboot.js` narrates the cold start on it before any
+// module exists, and this component TAKES OVER THAT SAME ELEMENT — it adds the canvas that grows the mesh, never a
+// second overlay — so nothing flashes between them.
+//
+// The growth is the progress bar (`role=progressbar`, `aria-valuenow`). It advances on REAL phases only: the stage
+// preboot reached (`data-stage`: ring, /healthz), this module being mounted (the interface is loaded), and
+// `store.bootPhase` (voice, memory, reflex — session-lk.js, from mic/room milestones and the agent's boot events).
+// The ONLY thing that completes it is `store.bootReady`: then the rest bursts out within BURST_MS and the veil lifts.
 import { createEffect } from "../core/reactive.js?v=2";
 import * as store from "../core/store.js?v=2";
-import { startBootAnim } from "./boot-anim.js?v=2";
-import { t } from "../core/i18n.js?v=1";
+import { startBootAnim, STAGE_READY, BURST_MS } from "./boot-anim.js?v=3";
 
-// V2-481 — resolve the legend ON EVERY PAINT, not when importing the module.
-//
-// This used to be a literal object, so `t()` ran ONCE while loading the file — before the bundle
-// existed. When the engine finally responded, the legend still said `boot.encendiendo`: the correct
-// string arrived and nobody saw it. This is the same defect measured by V2-124 on mobile (a
-// `textContent = t()` during construction freezes whatever was available), and here it fails silently — by showing a key.
-const LABEL_KEYS = {
-  encendiendo: "boot.encendiendo",
-  voz: "boot.voz",
-  memoria: "boot.memoria",
-  reflejo: "boot.reflejo",
-  listo: "",
-};
-
-function labelFor(phase) {
-  const k = LABEL_KEYS[phase];
-  return k ? t(k) : "";
-}
+/** bootPhase → stage. Exported for the test. */
+export const PHASE_STAGE = { encendiendo: 2, voz: 3, memoria: 4, reflejo: 5 };
 
 export function BootOverlay() {
-  let canvas;
-  const ovl = h("div", { class: () => "boot-ovl" + (store.bootReady() ? " gone" : ""), "aria-hidden": "true" },
-    h("canvas", { class: "boot-canvas", ref: el => (canvas = el) }),
-    h("div", { class: "boot-caption" }, () => labelFor(store.bootPhase())),
-  );
+  let host = document.getElementById("preboot");
+  if (!host) {                       // a page without the inline host still gets the same loader
+    host = document.createElement("div");
+    host.id = "preboot"; host.className = "boot-ovl";
+  }
+  host.setAttribute("role", "progressbar");
+  host.setAttribute("aria-valuemin", "0");
+  host.setAttribute("aria-valuemax", "100");
+  const canvas = document.createElement("canvas");
+  canvas.className = "boot-canvas";
+  host.prepend(canvas);
+  const report = (f) => host.setAttribute("aria-valuenow", String(Math.round(f * 100)));
 
-  // Start the engine once the overlay is in the DOM (ref fires pre-mount, so getBoundingClientRect is 0 then).
+  // Start once the host is laid out (a canvas measured before mount is 0×0).
   requestAnimationFrame(() => {
-    if (!canvas) return;
-    const ctrl = startBootAnim(canvas, {
-      onDone: () => { ctrl.destroy(); if (ovl.parentNode) ovl.parentNode.removeChild(ovl); },
+    const ctrl = startBootAnim(canvas);
+    host.classList.add("anim");      // the canvas draws the ring now; the HTML one steps aside
+    ctrl.setStage(Math.max(2, Number(host.dataset.stage) || 0));
+    report(ctrl.shown());
+    createEffect(() => {
+      const s = PHASE_STAGE[store.bootPhase()];
+      if (s) { ctrl.setStage(s); report(ctrl.shown()); }
     });
-    // Feed every phase change to the animation (last one, "listo", triggers the implosion).
-    createEffect(() => ctrl.setPhase(store.bootPhase()));
+    createEffect(() => {
+      if (!store.bootReady()) return;
+      try { window.__zaelarBoot && window.__zaelarBoot.finish(); } catch (_) { /* the narration is optional */ }
+      ctrl.finish(() => {
+        host.classList.add("gone");
+        setTimeout(() => { ctrl.destroy(); host.remove(); }, BURST_MS);
+      });
+      report(1);
+      host.dataset.stage = String(STAGE_READY);
+    });
   });
-
-  return ovl;
+  return host;
 }

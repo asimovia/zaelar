@@ -85,7 +85,7 @@ export const [micBlocked, setMicBlocked]   = createSignal({ show: false, msg: ""
 // it is being CONTROLLED FROM ELSEWHERE, and the ⏻ says so in blue instead of the amber of a fault.
 export const [remoteHeld, setRemoteHeld] = createSignal(false);  // 🚫 ring over the orb
 // The engine went to sleep (`engine.sleep`, services/presence.js): `face` "sleep" darkens the whole screen
-// (components/DormantVeil.js) and `waking` says a gesture asked it back and the stream has not answered yet.
+// (components/Veil.js) and `waking` says a gesture asked it back and the stream has not answered yet.
 export const [dormant, setDormant] = createSignal({ face: "", waking: false });
 export const [micLevel, setMicLevel]       = createSignal(0);               // true mic RMS (0..1) for the meter
 
