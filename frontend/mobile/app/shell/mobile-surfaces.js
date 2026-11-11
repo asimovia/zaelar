@@ -1,34 +1,11 @@
-// ============================================================================
-// mobile-surfaces.js — THE CANONICAL LIST of the mobile shell's native surfaces. Same role, same discipline and
-// the same reason as app/core/system-surfaces.js on the desktop: main.js MOUNTS from here, so there is never a
-// second list to keep in sync. Adding a native mobile surface means adding a line here.
-//
-// It is a DIFFERENT list from the desktop's, not a subset of it, and the differences are the design:
-//
-//   · the desktop's 16 surfaces include four things a phone cannot carry — the draggable camera unit, the
-//     activity honeycomb behind the canvas, the 35 KB configuration panel and the debug/observability panel.
-//     Those are not "not ported yet": a phone is for USING the agent, and each of them exists for setting one up
-//     or for auditing one, both of which the operator does at a desk.
-//   · the chat's four tabs collapse to one (see ChatSheet.js), the seven-icon eye collapses to a six-target dock
-//     (DockBar.js: ≡ · chat · apps | ORB | mic · speaker), N draggable cards collapse to one deck of full-screen cards
-//     (Deck.js), and every other surface is a full-screen PAGE (Page.js, V2-876 D-A) — no bottom sheets.
-//   · three surfaces are REUSED VERBATIM from the desktop, because they are modal and full-bleed already and a
-//     phone changes nothing about them: BootOverlay, LanguageOnboarding, Alert. Reusing them is not laziness —
-//     forking a first-run gate is how two shells end up disagreeing about whether onboarding happened. Their CSS
-//     moved to app/core/shared-surfaces.css for the same reason.
-//   · MemoryMap is the one shareable component deliberately LEFT OUT of F1. The component would import fine; its
-//     styling is a ~200-line panel UI (mm-head / mm-modes / graph / three lists) keyed to a wide window, and
-//     re-fitting that is its own piece of work, not a line in this list. Declared as an open item in V2-124
-//     rather than half-mounted — a memory view that renders as an unstyled column is worse than one more tap.
-//
-// Fields per entry:
-//   id     — stable identifier of the surface
-//   comp   — the factory that builds it
-//   target — where it mounts: "deck" (inside #zm-deck-wrap, under the dock) | "body" (above everything)
-//   phase  — "scaffold" (load-bearing order) | "overlay" (the rest)
-//   label  — human-readable purpose
-//   shared — true when the component is the DESKTOP's, imported as-is
-// ============================================================================
+// mobile-surfaces.js — THE CANONICAL LIST of the phone shell's native surfaces (same role as app/core/system-surfaces.js):
+// main.js mounts from here, so there is never a second list. A different list from the desktop's, by design: a phone is
+// for USING the agent, so the camera unit, the activity honeycomb, the config and debug panels stay on the desk; the
+// eye collapses to a six-target dock (DockBar.js: ≡ · chat · apps | ORB | mic · speaker), N cards to one deck of
+// full-screen cards (Deck.js), and every other surface is a full-screen PAGE (Page.js, V2-876 D-A). Modal, full-bleed
+// desktop surfaces are REUSED verbatim (BootOverlay, LanguageOnboarding, Alert…): forking a first-run gate is how two
+// shells disagree about whether onboarding happened. Fields: id · comp · target ("deck" | "body") · phase ("scaffold"
+// = load-bearing order | "overlay") · label · shared (the desktop's component, imported as-is).
 
 import { Alert } from "../../../app/components/Alert.js?v=2";
 import { BootOverlay } from "../../../app/components/BootOverlay.js?v=2";

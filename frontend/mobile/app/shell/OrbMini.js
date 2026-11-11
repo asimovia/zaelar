@@ -25,17 +25,13 @@
 import { h, raw } from "../../../app/core/dom.js?v=2";
 import * as store from "../../../app/core/store.js?v=2";
 
-// THE MIC INSIDE THE ORB (V2-573, operator: «the orbe, bigger, with mic icon inside»). It is the STATE, never a
-// control — the orb's own tap is the power switch, and the mic BUTTON lives in the dock's right zone.
-//
-// Built ONCE with BOTH shapes in it and switched by CSS, not by a reactive child: this subtree sits next to the
-// two canvases the visualiser holds BY REFERENCE, and re-rendering around them is precisely how the orb ended up
-// painting into a detached node in August (see DockBar.js's centre-slot comment). The slash is the same shape the
-// dock's MIC_OFF draws, over the same base glyph the desktop's Orb.js defines.
-const MIC_IN_ORB = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-  stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"
-  ><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"
-  /><path class="zm-mic-slash" d="M4 4l16 16"/></svg>`;
+// ONE MIC INDICATOR (V2-876 P-19): the dock's mic button. The orb no longer wears a mic glyph for the mic's state —
+// two indicators said the same thing (audit 2026-11-11). It wears the slashed mic only on a screen whose voice is
+// ELSEWHERE (V2-792 §9), where it means «not here», not «muted». Built once, switched by CSS (the canvases beside it are
+// held by reference — see DockBar.js).
+const MIC_IN_ORB = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+  stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0
+  14 0"/><path d="M12 18v3"/><path class="zm-mic-slash" d="M4 4l16 16"/></svg>`;
 
 export function OrbMini() {
   return h("div", {
@@ -49,17 +45,9 @@ export function OrbMini() {
     // Both canvases are 1:1 with their CSS box; visualizer.js handles DPR itself.
     h("canvas", { id: "orb", class: "zm-orb-c", width: "96", height: "96" }),
     h("canvas", { id: "viz", class: "zm-viz-c", width: "96", height: "96" }),
-    // Slashed when the mic is closed — and ALWAYS on a screen whose voice is elsewhere: that is its whole face.
-    h("div", { class: () => "zm-orb-mic" + (store.micMuted() || store.screenState() === "secondary" ? " muted" : "") },
+    h("div", { class: () => "zm-orb-mic" + (store.screenState() === "secondary" ? " muted" : "") },
       raw(MIC_IN_ORB)),
     // The transient "🗣 <voice>" flash after cycling the voice from the menu — the only feedback that it took.
     h("div", { class: () => "zm-vflash" + (store.voiceFlash().show ? " show" : "") }, () => store.voiceFlash().text),
   );
 }
-
-// LIVE CAPTIONS — REMOVED FROM THIS SHELL (V2-573, operator: «deactivate subtitles. dont want icon for that»).
-// The band used to float just above the dock and had its own 📝 button in the bar; both are gone, and the entry
-// in `mobile-surfaces.js` with them. What is NOT touched is `store.captionsOn` / `store.captionSeg`: those are
-// the DESKTOP's captions, which still work exactly as before — this is a decision about the phone's screen, not
-// about the feature. Re-adding it later is one line in the surfaces list plus a component; the CSS (.zm-cap)
-// stays in styles.css, unused and harmless, for that reason.

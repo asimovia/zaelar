@@ -51,6 +51,8 @@ const _screens = () => import("../../../app/services/screens.js?v=1");
 const _device = () => import("../../../app/services/api.js?v=2").then((m) => m.DEVICE).catch(() => "");
 const _sensors = () => import("../../../app/services/device.js?v=1");   // V2-870 P2: ctx.device — the screen's sensors
 import { createEffect } from "../../../app/core/reactive.js?v=2";
+import { paintPips, wirePipDrag } from "./pips.js?v=1";
+import { HomeToday } from "./HomeToday.js?v=1";
 
 const CARD_ANIM_MS = 260;
 const EDGE_PX = 22;          // a one-finger swipe that starts this close to a screen edge always pages
@@ -65,7 +67,7 @@ const NEXT_ICO = `<svg ${SW}><path d="m9 5 7 7-7 7"/></svg>`;
 const X_ICO = `<svg ${SW}><path d="M6 6l12 12"/><path d="M18 6 6 18"/></svg>`;
 
 // Anything that drags or pans SIDEWAYS on its own: a one-finger swipe that starts on one of these is the widget's.
-const OWNS_SIDEWAYS = 'input[type="range"],[role="slider"],canvas,video,iframe,[data-hpan],[contenteditable="true"],'
+const OWNS_SIDEWAYS = '.zm-pips,input[type="range"],[role="slider"],canvas,video,iframe,[data-hpan],[contenteditable="true"],'
   + '[draggable="true"],.leaflet-container,.maplibregl-map,.mapboxgl-map,.gm-style';
 
 // V2-821 — which element scrolls a card: the region its widget declares, else the card's own scroller (desktop.js
@@ -468,26 +470,9 @@ export class Deck {
       this._home.classList.toggle("live", this.at === -1);
       this._home.setAttribute("aria-hidden", this.at === -1 ? "false" : "true");
       this._renderHome();
+      if (this.at === -1 && this._today) this._today.refresh(this);
     }
-    if (this._pips) {
-      this._pips.innerHTML = "";
-      if (n >= 1) {
-        const hp = document.createElement("button");
-        hp.className = "zm-pip home" + (this.at === -1 ? " on" : "");
-        hp.innerHTML = HOME_ICO;
-        hp.setAttribute("aria-label", tr("mobile.home"));
-        hp.onclick = () => this.home();
-        this._pips.appendChild(hp);
-        this.order.forEach((id, k) => {
-          const w = this.cards.get(id);
-          const d = document.createElement("button");
-          d.className = "zm-pip" + (k === this.at ? " on" : "") + (w && this._producing(w) ? " prod" : "");
-          d.setAttribute("aria-label", (w && w.titleEl.textContent) || id);
-          d.onclick = () => this._goTo(k, 0);
-          this._pips.appendChild(d);
-        });
-      }
-    }
+    if (this._pips) paintPips(this, this._pips, HOME_ICO);       // the page switcher (pips.js)
     if (this._empty) this._empty.classList.toggle("on", n === 0);
   }
 
@@ -517,11 +502,12 @@ export class Deck {
     createEffect(() => { title.textContent = tr("mobile.home"); });
     createEffect(() => { all.textContent = tr("mobile.close_all"); });
     e.append(h, p);
-    home.append(head, grid, e);
+    this._today = HomeToday();                              // greeting, next appointments, what plays (P-10)
+    home.append(head, this._today.el, grid, e);
     this.stage.appendChild(home);
     this._home = home; this._hgrid = grid; this._hcount = count; this._hall = all; this._empty = e;
     const pips = document.createElement("div"); pips.className = "zm-pips";
-    this.stage.appendChild(pips); this._pips = pips;
+    this.stage.appendChild(pips); this._pips = pips; wirePipDrag(this, pips);
     this._paint();
   }
 
