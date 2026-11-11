@@ -56,7 +56,8 @@ def _live_sheets() -> set:
     try:
         from widgets.results.sheet_names import _live_sheets as live
         return set(live())
-    except Exception:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"map: live sheets unread — {type(e).__name__}: {e}")
         return set()
 
 
@@ -87,7 +88,8 @@ def referent(sheet=None) -> dict | None:
     r = _r()
     try:
         have = r.sheets()
-    except Exception:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"map: sheets unread — {type(e).__name__}: {e}")
         have = []
     open_, live = _open_sheets(), _live_sheets()
     sid = _named_sheet(sheet, have) if sheet is not None and str(sheet).strip() else None
@@ -142,7 +144,8 @@ def _said_by_him(name: str) -> bool:
     try:
         from nucleo import his_words
         said = his_words.since(time.time() - _HIS_WORDS_S)
-    except Exception:  # noqa: BLE001 — his words unread: not his
+    except Exception as e:  # noqa: BLE001 — his words unread: not his
+        logger.debug(f"map: his words unread — {type(e).__name__}: {e}")
         return False
     return any(words <= set(_tm.fold(t).split(" ")) for t in said)
 
