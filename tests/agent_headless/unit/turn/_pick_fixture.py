@@ -31,8 +31,10 @@ def world(tmp_path, monkeypatch):
     real = observer.emit
     monkeypatch.setattr(observer, "emit", lambda k, label, *a, **kw: state["events"].append((k, label, kw.get("extra") or {}))
                         or real(k, label, *a, **kw))
-    monkeypatch.setattr(dispatch, "relay_his_words", lambda which, words: state["relayed"].append((which, words)) or True)
+    from nucleo.dispatch import soon
+    monkeypatch.setattr(soon, "his_words_may_reach_an_errand", lambda: True)   # the owner rule has its own test
     monkeypatch.setattr(dispatch, "inject_soon", lambda which, words: state["injected"].append((which, words)))
+    state["relayed"] = state["injected"]          # what the one relay door sent on, as the worker would get it
 
     def errand(tid: str, goal: str, sheet: str) -> str:
         uid = ledger.born(tid, goal, {"said": goal})

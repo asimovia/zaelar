@@ -6,10 +6,10 @@ it is relayed to the worker as a note and forgotten, so when the rows land nobod
 
 Three readings, each a cross of verdicts already paid — no vocabulary, no model call — and each only EMITTED here:
 
-  · `noted`        — at the portal (`flow_door.obey`), a request routed into an errand (`inject`/`steer`) whose sheet
-                     has no rows, from a turn that does not ask to be TOLD (`wants_words` is not `tell`), is a choice to
-                     make when the rows arrive: the card of that errand carries `pick_pending` (his words, when). The
-                     relay itself runs exactly as before.
+  · `noted`        — his words reaching an errand (`soon.relay_his_words`, the one door every route crosses: the
+                     portal's inject, a steer, the model's own `send_to_worker`) whose sheet has no rows, from a turn
+                     that does not ask to be TOLD (`wants_words` is not `tell`), are a choice to make when the rows
+                     arrive: that errand's card carries `pick_pending` (his words, when). The relay runs as before.
   · `at_first_rows`— when the first rows land on that errand's sheet (`first_rows_notice.landed`, the sheet's door),
                      what WOULD be relayed to the worker («the rows are here: choose by …»). Nothing is relayed.
   · `arbiter`      — whose turn is it, by consequence: rows on screen his reference can land on → the card; the
@@ -64,28 +64,39 @@ def _uid(flow_id: str) -> str:
     return named_errand._uid_of(str(flow_id or ""))
 
 
-def noted(req: str, r: dict, brief=None) -> dict | None:
-    """The portal routed `req` into errand `r["flow"]`: write the deferred choice on its card when it has no rows and the
-    turn does not ask to be told. Returns what was noted (None when nothing). The route's consequence is untouched."""
+def noted(which: str, words: str, brief=None) -> dict | None:
+    """His words reached errand `which` (`soon.relay_his_words`, the one door every route of his words crosses — the
+    portal's inject, a steer, the model's own `send_to_worker`): keep the deferred choice on its card when its sheet has
+    no rows and the turn does not ask to be told. Returns what was noted (None when nothing). The relay is untouched."""
     try:
-        if str((r or {}).get("as") or "") not in ("inject", "steer") or _rows(r.get("sheet") or "") > 0:
+        from nucleo import dispatch
+        tids = dispatch.resolve_sessions(str(which or ""))
+        if len(tids) != 1:
             return None
+        rec = dispatch.get_record(tids[0])
+        sheet = str(dispatch.sheet_of(rec) or "") if rec is not None else ""
+        if rec is None or _rows(sheet) > 0:
+            return None
+        if brief is None:
+            from nucleo.turn import brief as _tb
+            brief = _tb.of_this_turn()
         if _wants(brief) == "tell":
             return None
-        uid = _uid(r.get("flow") or "")
-        if not uid:
+        uid = str(getattr(rec, "uid", "") or "") or _uid(tids[0])
+        heard = " ".join(str(words or "").split("\n\n(If this is NOT")[0].split())[:300]
+        if not uid or not heard:
             return None
-        pick = {"heard": " ".join(str(req or "").split())[:300], "at": int(time.time())}
+        pick = {"heard": heard, "at": int(time.time())}
         from nucleo.circuit import ledger
         ledger.card_written(uid, **{KEY: pick})
-        note = {"flow": str(r.get("flow") or ""), "uid": uid, **pick}
+        note = {"flow": str(tids[0]), "uid": uid, **pick}
         _TURN[_trace()] = note
         while len(_TURN) > 32:
             _TURN.pop(next(iter(_TURN)))
         from nucleo.turn import thread_event
         thread_event.pick_pending(note, shadow=True)
         return note
-    except Exception as e:  # noqa: BLE001 — a shadow never breaks a portal
+    except Exception as e:  # noqa: BLE001 — a shadow never breaks a relay
         logger.debug(f"pick_pending: not noted — {type(e).__name__}: {e}")
         return None
 
