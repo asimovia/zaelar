@@ -680,6 +680,7 @@
  "alerts": {
   "engine_recovered": "El motor se ha recuperado — vuelve a responder.",
   "engine_shedding": "El motor no responde o va sin memoria — libero carga.",
+  "machine_short_of_memory": "Queda poca memoria libre en la máquina; el motor responde. Pauso el trabajo de fondo.",
   "engine_exit": "El motor sigue bloqueado — salgo limpio para que lo reinicien.",
   "voice_lag": "La voz va con retraso — pauso el trabajo de fondo.",
   "voice_dead": "El motor de voz se ha parado y no ha vuelto — sigo reiniciándolo; mientras, puedes escribirme.",

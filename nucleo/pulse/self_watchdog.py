@@ -27,8 +27,9 @@ from loguru import logger
 
 _PERIOD_S = 2.0
 EXIT_CODE = 75                                  # EX_TEMPFAIL: «try again» to a supervisor, never «stopped on purpose»
-_DEFAULTS = {"freeze_s": 15.0, "stuck_s": 120.0, "exit_grace_s": 15.0}
-_state: dict = {"beat": 0.0, "since": 0.0, "shed": False, "exiting": False, "code": 0, "thread": None, "stop": None}
+_DEFAULTS = {"freeze_s": 15.0, "stuck_s": 120.0, "exit_grace_s": 15.0, "machine_notice_s": 1800.0}
+_state: dict = {"beat": 0.0, "since": 0.0, "shed": False, "exiting": False, "code": 0, "thread": None, "stop": None,
+                "machine_said": None}
 _exit_hook: dict = {"fn": None}
 
 
@@ -78,7 +79,8 @@ def _shed(pol: dict) -> None:
     from nucleo.workers import envelope
     envelope.shed(pol["stuck_s"], "watchdog")    # V2-867: its own source — the voice recovering never releases it
     did = envelope.relieve(list(dispatch._SESSIONS.values()))
-    logger.warning(f"self_watchdog: shedding load ({did or 'nothing to pause'})")
+    if did:                                      # every `_PERIOD_S` while unhealthy: log what it paused, not the nothing
+        logger.warning(f"self_watchdog: shedding load ({did})")
 
 
 def _exit(pol: dict) -> None:
@@ -122,14 +124,25 @@ def tick(loop, now: float | None = None) -> str:
     if what == "exit" and age <= pol["freeze_s"] and not envelope.under_pressure(total, avail):
         what = "shed"       # the band holds the ALERT; only a frozen loop or real pressure restarts the engine
     facts = {"loop_age_s": round(age, 1), "free_ratio": round(avail / total, 3) if total else None}
+    # V2-887 — WHOSE fault, said apart: a loop that answers while the HOST is short of memory is the machine, not the
+    # engine — the notice says only what was measured (free memory low, engine answering). Host pressure comes and goes
+    # in minutes, so the machine notice is said at most once per `machine_notice_s`; the shedding itself still runs.
+    machine = age <= pol["freeze_s"]
+    facts["cause"] = "machine" if machine else "engine"
     if what == "recovered":
         _state["since"], _state["shed"] = 0.0, envelope.unshed("watchdog") or False   # V2-867: its hold ends now
-        _emit("engine_recovered", **facts)
+        if _state.get("cause") != "machine":
+            _emit("engine_recovered", **facts)
     elif what == "shed":
         _state["since"] = _state["since"] or now
         if not _state["shed"]:
-            _state["shed"] = True
-            _emit("engine_shedding", **facts, supervised=supervised())
+            _state["shed"], _state["cause"] = True, facts["cause"]
+            if not machine:
+                _emit("engine_shedding", **facts, supervised=supervised())
+            elif (_state.get("machine_said") is None
+                  or now - _state["machine_said"] >= pol.get("machine_notice_s", _DEFAULTS["machine_notice_s"])):
+                _state["machine_said"] = now
+                _emit("machine_short_of_memory", **facts, supervised=supervised())
         _shed(pol)
     elif what == "exit":
         _emit("engine_exit", **facts, code=EXIT_CODE)
