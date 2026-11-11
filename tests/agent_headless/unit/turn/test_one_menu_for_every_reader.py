@@ -147,3 +147,20 @@ def test_the_whole_prompt_says_a_live_errand_once_and_the_state_block_does_not_m
     finally:
         memory_cache.reset()
         memdb.reset_db()
+
+
+@pytest.mark.parametrize("said, parts", [
+    ("búscame un monitor barato, hazme un informe de coches eléctricos y móntame un juego de plataformas",
+     ["buscar un monitor barato de segunda mano", "informe sobre coches eléctricos", "juego de plataformas"]),
+    ("find me a cheap monitor, write a report on electric cars and build me a platform game",
+     ["find a cheap second-hand monitor", "report on electric cars", "platform game"])])
+def test_an_errand_that_is_one_part_of_a_sentence_is_judged_by_its_own_request(said, parts, monkeypatch):
+    """Measured (three-tasks-at-once, V2-878 §2 bank): the card of each of three errands carried the WHOLE sentence; the
+    judge's menu showed it, and the game's escalation was folded into the report, then every later turn routed there."""
+    cards = [{"id": str(i + 1), "request": r, "heard": said, "part": i, "state": "running"} for i, r in enumerate(parts)]
+    monkeypatch.setattr(named_errand, "known", lambda with_finished=False: [dict(c) for c in cards])
+    lines = append._menu([(c["id"], c["request"]) for c in cards])
+    for line, mine, others in ((lines[i], parts[i], parts[:i] + parts[i + 1:]) for i in range(3)):
+        assert mine in line and said not in line and not any(o in line for o in others), line
+    one = named_errand.card_line({"id": "9", "request": "x", "heard": said, "state": "running"})
+    assert said[:40] in one, "a single errand's card lost his words"
