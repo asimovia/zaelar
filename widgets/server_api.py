@@ -396,7 +396,7 @@ async def _dispatch(wid: str, action: str, payload: dict):
             return denied
     except Exception:
         pass
-    res = await dispatch_raw(wid, action, payload)
+    res = await __import__("widgets.empty_act", fromlist=["x"]).run(wid, action, payload, dispatch_raw)   # V2-879
     # V2-707 F6 — AND THE LEDGER OF WHAT HAPPENED. Every mutation crosses this funnel, so this is the one
     # place that can tell the NEXT turn what the engine actually did to his data. It records nothing when the
     # door refused, exactly like F0's anti-drag seal: a refusal is not an event. See `nucleo/done_ops.py` for
