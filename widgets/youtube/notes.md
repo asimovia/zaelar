@@ -154,3 +154,19 @@ markers wear `#f03`, hint only over an empty player, volume readout «NN%»/«�
 Related, same session (V2-635, engine side): `player_error`-class context-bleed guards — a turn without
 the operator's words can no longer close this widget, reload its video, or toggle fullscreen; «minimiza»
 rides the new canvas `minimize` order (`desktop.shrink`).
+
+## V2-876 P-24 / V2-877 #6 (2026-11-11) — the phone, and a refused video is never offered
+
+- **Never offered**: `embed_check.py` asks YouTube's public oEmbed endpoint about the search hits before they reach
+  the catalog (`search`) or a «play X» (`_search_id`, first three hits, in parallel). 401/403 = the owner refuses the
+  embed → code `150`; 404 = removed/private → `100`. The refused join the player's own blocklist (`availability`),
+  so the swap path and every later search see them too. Fail-open: no answer keeps the hit, the player's swap still
+  covers it. The suite stays off the network with `ZAELAR_EMBED_CHECK=0` (root `conftest.py`).
+- **The swap notice** shows only while the video it swapped TO is the one on the card; it reads in the card's ink on
+  a faint amber wash (the amber-on-amber text was illegible).
+- **Home with a video loaded** shows it as «Now playing» (a tap goes back to the player) instead of «No video loaded».
+- **The embed speaks the card's language** (`hl=ctx.lang`): its own «Watch on YouTube» label followed the device.
+- **The phone** (rules under `.zm-scroll`, the shell's card scroller): the five tabs share one row with no sideways
+  scroll (the subscriptions tab wears `tab_subs_short`), the plug and source dots leave the row (rule 5), the player
+  keeps 16:9, controls and the home head's buttons are 44 px. The desktop geometry is pinned by
+  `test_the_phone_player_fits_the_hand.py::test_the_desktop_card_is_unchanged`.

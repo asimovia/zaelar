@@ -99,6 +99,11 @@ export function paintHome(root, E, data, ctx){
     };
     const goPlayer = () => { if(root._hbYtSelectTab) root._hbYtSelectTab("player"); };
 
+    if(data.videoId || data.src){     // 0 — what is loaded (V2-876): Home never says «no video» over one playing
+      const tile = mkTile({videoId: data.videoId, title: data.title, channel: data.channel}); tile.classList.add("hb-yt-nowtile");
+      tile.addEventListener("click", goPlayer);
+      E.home.append(el("div", "hb-yt-schead", tt("now_playing", null, "Sonando ahora")), tile, el("div", "hb-yt-catch"));
+    }
     // 1 — SEARCH RESULTS (V2-632): the dashboard's top band. Numbered so voice and eye share one index.
     const res = Array.isArray(data.search_results) ? data.search_results : [];
     if(data.adding){
@@ -189,7 +194,8 @@ export function paintHome(root, E, data, ctx){
     notes.forEach((n) => { const t = String(n && n.text || "").trim(); if(t) pbits.push(tt("note", {text: t}, "nota: {text}")); });
     if(pbits.length) E.home.appendChild(el("div", "hb-yt-libp", pbits.join(" · ")));
 
-    if(!res.length && !hist.length && !sug.length && !connectedAny && !data.adding && !data.suggesting){
+    if(!res.length && !hist.length && !sug.length && !connectedAny && !data.adding && !data.suggesting
+       && !data.videoId && !data.src){
       E.home.appendChild(el("div", "hb-yt-homemsg",
         tt("home_empty", null, "No hay ningún vídeo cargado. Dime qué quieres ver, o «búscame vídeos de…» y elige de aquí.")));
     }

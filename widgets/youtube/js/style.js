@@ -23,8 +23,8 @@ const CSS_PLAYER = `
   .hb-yt-meta{font-size:12px;color:var(--hb-muted,#5b6b82);line-height:1.3;flex:0 1 auto;
               white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .hb-yt-meta .hb-yt-latest{color:var(--hb-accent,#3D6FE0);font-weight:600}
-  .hb-yt-blockmsg{font-size:12px;line-height:1.35;color:#8a5a00;background:rgba(240,170,20,.12);
-    border:1px solid rgba(240,170,20,.35);border-radius:8px;padding:6px 9px;margin:2px 0 4px}
+  .hb-yt-blockmsg{font-size:13px;line-height:1.4;color:var(--hb-ink,#0d1622);background:rgba(240,170,20,.10);
+    border:1px solid rgba(240,170,20,.30);border-left:3px solid #F0AA14;border-radius:8px;padding:7px 10px;margin:2px 0 4px}
   .hb-yt-frame{position:relative;width:100%;aspect-ratio:16/9;border-radius:12px;overflow:hidden;
                background:#000;flex:0 0 auto}
   /* V2-638 - a library or torrent row plays in a plain <video>, filling the same frame the embed does so

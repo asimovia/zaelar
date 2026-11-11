@@ -29,6 +29,8 @@ import tempfile
 
 os.environ.setdefault("ZAELAR_LOG_DIR", tempfile.mkdtemp(prefix="zaelar-test-logs-"))
 os.environ.setdefault("ZAELAR_RESEARCH", "0")
+# ZAELAR_EMBED_CHECK=0 — the youtube card asks oEmbed whether a search hit can be embedded (V2-877 #6); no network here.
+os.environ.setdefault("ZAELAR_EMBED_CHECK", "0")
 # FORCED, not `setdefault`: with a default, `ZAELAR_LANGUAGE=es` in the suite runner's shell would again
 # change what «green» means, which is exactly the problem. A test's language is declared by THE TEST (monkeypatch),
 # and both languages are tested INSIDE the case —as with the memory-layer guard—, rather than running the suite twice

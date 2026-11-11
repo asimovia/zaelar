@@ -1730,6 +1730,8 @@
  "widgets.youtube.tab_player": "Reproductor",
  "widgets.youtube.tab_queue": "Cola",
  "widgets.youtube.tab_subs": "Suscripciones",
+ "widgets.youtube.tab_subs_short": "Canales",
+ "widgets.youtube.now_playing": "Sonando ahora",
  "widgets.youtube.tap_unmute": "Toca para activar el sonido",
  "widgets.youtube.to_queue": "+ cola",
  "widgets.youtube.to_queue_hint": "Añadir a la cola sin reproducir",
