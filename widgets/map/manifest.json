@@ -37,15 +37,17 @@
     "w": 400,
     "h": 320
   },
-  "usage": "To pin places use 'show' with 'places': a list of {name, address, note, url} — the address may be just the city («Griffith Observatory, Los Angeles»); 'near' adds a city to every place that has none. 'show' replaces what is on the map, 'add' adds to it. 'select' with 'item' (number on the map or name) highlights one. Places are geocoded here: never invent coordinates. The result lists the numbered places and any that could not be found. Say source 'google' only when he names Google Maps: each place then carries its Google Maps link.",
+  "usage": "Places on the results sheet («put those on the map», «show them on a map») go as 'rows': their numbers or titles on the sheet, or \"all\" — they are read from the sheet here, never retyped. A place he names himself («show me Retiro on the map») goes in 'places': a list of {name, address, note, url} — the address may be just the city; 'near' adds a city to every place that has none. Places of your own are never a stand-in for rows the sheet does not have yet: the map refuses them and says what the sheet holds. 'show' replaces what is on the map, 'add' adds to it. 'select' with 'item' (number on the map or name) highlights one. Places are geocoded here: never invent coordinates. The result lists the numbered places painted and any that could not be found. Say source 'google' only when he names Google Maps: each place then carries its Google Maps link.",
   "actions": {
     "show": {
-      "desc": "PUTS PLACES ON A MAP («show them on a map», «where are those three»): places by name + address or city, numbered on the map",
+      "desc": "PUTS PLACES ON A MAP («show them on a map», «where are those three»): the sheet's rows, or places he named, numbered on the map",
       "payload": {
-        "places": "list of {name, address, note, url}",
+        "rows": "rows of the results sheet: their numbers or titles, or \"all\" — for «those» / «them»",
+        "places": "list of {name, address, note, url} — places HE named",
         "near": "optional city for places without an address",
         "title": "optional",
-        "source": "optional: 'google' adds a Google Maps link per place to the result (this call only)"
+        "source": "optional: 'google' adds a Google Maps link per place to the result (this call only)",
+        "sheet": "optional: which results sheet, when several are open"
       },
       "view": true,
       "effects": [
@@ -55,14 +57,20 @@
         "widget": "map",
         "field": "updated",
         "expect": "changed"
-      }
+      },
+      "fills": [
+        "rows",
+        "places"
+      ]
     },
     "add": {
       "desc": "adds more places to the map on screen, keeping the ones there",
       "payload": {
-        "places": "list of {name, address, note, url}",
+        "rows": "rows of the results sheet: their numbers or titles, or \"all\" — for «those» / «them»",
+        "places": "list of {name, address, note, url} — places HE named",
         "near": "optional city",
-        "source": "optional: 'google' adds a Google Maps link per place to the result (this call only)"
+        "source": "optional: 'google' adds a Google Maps link per place to the result (this call only)",
+        "sheet": "optional: which results sheet, when several are open"
       },
       "view": true,
       "effects": [
@@ -72,7 +80,11 @@
         "widget": "map",
         "field": "updated",
         "expect": "changed"
-      }
+      },
+      "fills": [
+        "rows",
+        "places"
+      ]
     },
     "select": {
       "desc": "HIGHLIGHTS one place of the map («the second one», «the observatory»): by its number or its name",
