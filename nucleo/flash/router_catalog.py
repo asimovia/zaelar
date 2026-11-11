@@ -193,11 +193,9 @@ TOOLS: list[dict] = [
         "function": {
             "name": "manage_widget_alias",
             "description": (
-                "Añade o quita un nombre por el que se reconoce y abre una TARJETA (una app del lienzo: «llama "
-                "a la agenda calendario»). NUNCA el alias o apodo de una PERSONA: ese es un dato de la tarjeta "
-                "de contactos (`widget_data` contactos `set_alias`). Solo la lista de nombres de la tarjeta: ni "
-                "su código (escalate) ni sus datos (widget_data). `widget_id` = id exacto o nombre natural; `op` "
-                "= 'add' (por defecto) o 'remove'."
+                "Añade o quita un NOMBRE por el que se abre una TARJETA (nunca el apodo de una PERSONA: ese es "
+                "contactos `set_alias`). Ni su código ni sus datos. `widget_id` = id o nombre natural; `op` = "
+                "'add' (por defecto) o 'remove'."
             ),
             "parameters": {
                 "type": "object",

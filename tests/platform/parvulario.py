@@ -63,6 +63,17 @@ CASES = [
      ("data-op agenda:add_meeting",), ("partido",)),
     ("meeting-en", "en", "Put the basketball game on Friday from noon to 8 pm in my calendar", [],
      ("data-op agenda:add_meeting",), ("basketball",)),
+    # His session of 2026-11-11, the orders that failed there
+    ("alias-es", "es", "Ponle el alias Raquel a Raquel Salvador Esteban", ["contactos"],
+     ("data-op contactos:set_alias",), ("raquel",)),
+    ("alias-en", "en", "Give Raquel Salvador Esteban the nickname Rachel", ["contactos"],
+     ("data-op contactos:set_alias",), ("rachel",)),
+    ("import-es", "es", "Tengo conectado Google, impórtame todos los contactos", ["contactos"],
+     ("data-op contactos:sync_contacts", "data-op contactos:sync_source"), ()),
+    ("import-en", "en", "Google is connected, import all my contacts", ["contactos"],
+     ("data-op contactos:sync_contacts", "data-op contactos:sync_source"), ()),
+    ("search-add-es", "es", "Busca a qué hora juega el Real Madrid de baloncesto este viernes", [],
+     ("search", "escalate"), ()),
 ]
 
 
@@ -70,6 +81,29 @@ def _case(cid, lang, phrase, open_cards, _accept, _words) -> dict:
     return {"id": cid, "lang": lang, "phrase": phrase, "screen": {"open": list(open_cards)},
             "widgets": {"contactos": json.loads(json.dumps(DIRECTORY)), "mensajeria": json.loads(json.dumps(INBOX))},
             "connectors": ["whatsapp", "email"], "expect": _accept[0], "accept": list(_accept[1:])}
+
+
+class _GoogleLinked:
+    """Google Calendar and Google Contacts read as CONNECTED for the turn (the bench's install has no tokens; his has
+    them). Only the link state is faked — every act still stops at the closed consequence doors."""
+
+    def __enter__(self):
+        import importlib
+        self._saved = []
+        for mod, pid, label in (("connectors.contacts.oauth", "google-contacts", "Google Contacts"),
+                                ("connectors.calendar.oauth", "google", "Google Calendar")):
+            m = importlib.import_module(mod)
+            row = {"id": pid, "label": label, "connected": True, "app_configured": True}
+            for name, fake in (("status", lambda *a, _r=row, **k: [dict(_r)]),
+                               ("tokens_present", lambda *a, **k: True)):
+                if hasattr(m, name):
+                    self._saved.append((m, name, getattr(m, name)))
+                    setattr(m, name, fake)
+        return self
+
+    def __exit__(self, *_e):
+        for m, name, old in reversed(self._saved):
+            setattr(m, name, old)
 
 
 def _payload_text(out) -> str:
@@ -84,7 +118,8 @@ def run(only: str = "", repeat: int = 1) -> int:
             continue
         for _ in range(repeat):
             case = _case(*spec)
-            out = th.run_case(case, live=True, timeout_s=90)
+            with _GoogleLinked():
+                out = th.run_case(case, live=True, timeout_s=90)
             why = out.failures(case)
             missing = [w for w in spec[5] if w not in _payload_text(out)]
             if missing and not why:
