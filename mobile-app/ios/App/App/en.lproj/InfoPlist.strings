@@ -1,6 +1,6 @@
 /* Permission sentences. iOS shows them the first time the shell asks for the microphone or location, never at launch. */
 "NSMicrophoneUsageDescription" = "Zaelar listens only while voice is on, when you talk to it.";
-"NSLocationWhenInUseUsageDescription" = "Zaelar uses your location only when an app or a request of yours needs it.";
+"NSLocationWhenInUseUsageDescription" = "Zaelar uses your location only when something you ask for needs it: what is near you, or an activity you start.";
 "NSLocationAlwaysAndWhenInUseUsageDescription" = "Zaelar uses your location during an activity you start, such as a ride or a walk, and while it runs iOS shows the blue location indicator. It stops when you end the activity.";
 "NSBluetoothAlwaysUsageDescription" = "Zaelar connects to your heart rate strap or watch so it can tell you your heart rate during an activity you start.";
 "NSMotionUsageDescription" = "Zaelar uses motion to know whether you are walking, cycling or driving during an activity you start, so it can keep the screen simple and talk to you hands-free.";
