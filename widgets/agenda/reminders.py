@@ -9,6 +9,8 @@ part of every erase path (`sweep.py`).
 """
 from __future__ import annotations
 
+import contextlib
+
 
 def _schedule_reminder(title: str, date: str, start: str, at: str = "", before_minutes: int = 120) -> tuple:
     """Schedule the appointment's notice. Returns (job_id, display) — ("", reason) when nothing was scheduled.
@@ -171,28 +173,26 @@ def _same_row(a: dict, b: dict) -> bool:
 _ROWS: dict = {"db": None}
 
 
-class rows_in_hand:
+@contextlib.contextmanager
+def rows_in_hand(db: dict | None):
     """`with reminders.rows_in_hand(db): …` — the cancels inside read these rows for twins, never the store."""
-    def __init__(self, db: dict | None) -> None:
-        self.db, self._prev = db, None
-
-    def __enter__(self):
-        self._prev, _ROWS["db"] = _ROWS["db"], self.db
-        return self
-
-    def __exit__(self, *a) -> bool:
-        _ROWS["db"] = self._prev
-        return False
+    prev, _ROWS["db"] = _ROWS["db"], db
+    try:
+        yield
+    finally:
+        _ROWS["db"] = prev
 
 
 def _shared(ref: str, meeting: dict, db: dict | None) -> bool:
-    """Does ANOTHER row of the agenda carry this notice? Read from `db` (the rows the caller holds), else the store."""
+    """Does ANOTHER row of the agenda carry this notice? In the rows the caller HOLDS a row is itself by identity —
+    twin local rows are equal dicts, and one read as the other took the job the survivor rings by; read back from the
+    store (nobody holds rows) the meeting's own copy is the one equal row (`_same_row`)."""
     try:
-        if db is None:
+        if not (held := db is not None):
             from . import data as _d
             db = _d.load_db()
-        return any(str(m.get("reminder_id") or "") == ref and not _same_row(m, meeting)
-                   for m in (db or {}).get("meetings", []))
+        rows = [m for m in (db or {}).get("meetings", []) if str(m.get("reminder_id") or "") == ref]
+        return len(rows) > int(any((m is meeting) if held else _same_row(m, meeting) for m in rows))
     except Exception:  # noqa: BLE001 — unreadable: cancel as before
         __import__("logging").getLogger("zaelar.agenda").warning(f"agenda rows unreadable, notice {ref} cancelled as before", exc_info=True)
         return False

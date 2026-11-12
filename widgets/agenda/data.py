@@ -222,7 +222,7 @@ def apply_action(action: str, payload: dict | None = None) -> dict:
     not through `server_api`, and the tick's orphan sweep must never see a notice scheduled whose row is not saved."""
     tok = writes.ASKED.set(str((payload or {}).get("title") or "")) if writes.ASKED.get() is None else None
     try:
-        with store.mutating(WIDGET_ID):
+        with store.mutating(WIDGET_ID), reminders.rows_in_hand(None):
             return _apply_action(action, payload)
     finally:
         if tok is not None:
@@ -249,7 +249,7 @@ def _apply_action(action: str, payload: dict | None = None) -> dict:
         payload = {k: v for k, v in payload.items() if k not in edit.TIME_KEYS}
         if _moved.get("ok") is False or not (set(payload) - {"title", "date", "whole"}):
             return _moved
-    db = load_db()
+    db = reminders._ROWS["db"] = load_db()      # the action's rows are in hand for every cancel inside it: a twin is told by identity
     _extra: dict = {}
 
     # Every TASK verb belongs to `tasklists.py`, in ONE branch: «done» on a shopping item and on a project task is
