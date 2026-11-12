@@ -1,0 +1,100 @@
+{
+  "id": "activity",
+  "screens": "shared",
+  "version": "0.1.0",
+  "owner": "Zaelar",
+  "licence": "SUL-1.0",
+  "title": "Activity",
+  "description": "A ride, a run, a walk or a drive the person starts: live heart rate from their own strap or watch, distance, speed, time and climb, the route drawn as it grows. In the phone app it keeps recording with the screen locked; every screen shows the same activity live.",
+  "whenToUse": "A ride, run or walk he records: heart rate, distance.",
+  "keywords": [
+    "activity",
+    "actividad",
+    "ride",
+    "bike",
+    "bici",
+    "bicicleta",
+    "pedalear",
+    "run",
+    "correr",
+    "carrera",
+    "walk",
+    "caminar",
+    "paseo",
+    "heart rate",
+    "pulso",
+    "pulsaciones",
+    "workout",
+    "entreno",
+    "ruta",
+    "distance",
+    "distancia"
+  ],
+  "entry": "widget.js",
+  "name": "Activity",
+  "aliases": [
+    "Activity",
+    "Actividad",
+    "my ride",
+    "mi salida",
+    "entreno",
+    "workout"
+  ],
+  "security": "standard",
+  "size": {
+    "w": 420,
+    "h": 460
+  },
+  "min": {
+    "w": 300,
+    "h": 320
+  },
+  "usage": "A recorded activity: «start my ride» is `start` with kind cycling (running, walking, driving for the others); «stop», «I'm done» is `stop`. While one runs, its heart rate, distance and time are in this app's state.",
+  "actions": {
+    "start": {
+      "desc": "Start recording an activity the person begins now: kind cycling, running, walking or driving, optional short label.",
+      "payload": {
+        "kind": "cycling",
+        "label": "morning ride"
+      },
+      "done_when": {
+        "widget": "activity",
+        "field": "status",
+        "is": "running"
+      },
+      "effects": [
+        "present.mount"
+      ]
+    },
+    "stop": {
+      "desc": "End the activity being recorded and keep its summary.",
+      "payload": {},
+      "done_when": {
+        "widget": "activity",
+        "field": "status",
+        "is": "idle"
+      }
+    },
+    "claim": {
+      "desc": "The screen that reads the sensors claims the running activity (sent by the app itself).",
+      "payload": {
+        "owner": "screen-token"
+      },
+      "internal": true
+    },
+    "samples": {
+      "desc": "A batch of sensor samples from the screen that owns the activity (sent by the app itself).",
+      "payload": {
+        "owner": "screen-token",
+        "samples": []
+      },
+      "internal": true
+    }
+  },
+  "kinds": [
+    "cycling",
+    "running",
+    "walking",
+    "driving"
+  ]
+}

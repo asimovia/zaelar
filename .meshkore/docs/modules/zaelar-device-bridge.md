@@ -69,10 +69,21 @@ The door is the contract; each platform only implements the plugin behind it. Wh
    screen that renders the app — the same app opens on a desktop, a phone browser and the native app.
 4. Storage is the app's: a track the app keeps goes through `ctx.action` into its `data.py`.
 
+## The first consumer: the `activity` app
+
+`widgets/activity/` (V2-890 F1) records a ride, a run, a walk or a drive. `start`/`stop` are its declared actions
+(a tap or his request); ONE screen reads the sensors — the screen that `claim`s: the phone app (it carries the
+background session) or the screen where he tapped Start; a desktop browser never starts reading because of a
+request made elsewhere. The owning screen sends batches every 5 s (`samples`, deduplicated by `seq`); data.py keeps
+the track and derives distance (fixes worse than 50 m and steps under 2 m are not distance), speed, climb and heart
+rate (`None` without a strap, never zero). Every other screen shows the same figures live; `prompt_digest()` gives
+the voice the running figures with the card open.
+
 ## Not built yet
 
-Camera, native push, Live Activity / lock-screen display, background voice, Android build, the engine-side
-`activity` app that drives a session by voice, and a per-screen capability line for the voice brain (V2-870 P2b).
+Camera, native push, Live Activity / lock-screen display, background voice, Android build, and a per-screen
+capability line for the voice brain (V2-870 P2b).
 
 Tests: `tests/browser/unit/mobile/test_an_activity_keeps_reading_with_the_screen_locked.py` (node 4.491),
+`tests/browser/unit/activity/test_an_activity_is_recorded_by_the_screen_that_owns_it.py` (4.493),
 `test_the_screen_is_a_sensor.py` (4.438), the store-manifest guard (4.439).
