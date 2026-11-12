@@ -11,14 +11,13 @@ So each of those questions belongs to a DOOR (`DOORS`), and the door asks it whe
 always something the engine DID — a model call, a launch, an act that leaves, a parked directive — never his words.
 The trip runs on its own thread (`fire`, never on the voice loop) and its verdicts are MERGED into the same brief
 handle, so every reader keeps reading `verdicts.read(brief, key, …)` exactly as before: a door verdict still in
-flight reads as the reader's fallback and says so (`jev read … in_flight`). A door that can wait (an async close, a
-worker's exit thread) waits for it boundedly (`landed`, `landed_sync`); the voice loop never does.
+flight reads as the reader's fallback and says so (`jev read … in_flight`). A door that can wait awaits it boundedly,
+off the loop (`landed`). A carried copy's trip lands into its reading, however late (`keep`): never paid twice.
 """
 from __future__ import annotations
 
 import importlib
 import threading
-import time
 
 from loguru import logger
 
@@ -40,6 +39,8 @@ DOORS = dict(
 )
 #: The default bound a door that can wait gives its trip (the same budget the route gives the brief, `route_by_verdict`).
 WAIT_S = 1.5
+_LOCK = threading.RLock()   # fire's check-and-set and a landing's merge: two doors of one handle never undo each other
+_DOOR_OF: dict = {}
 
 
 def keys(door: str | None = None) -> list[str]:
@@ -50,7 +51,9 @@ def keys(door: str | None = None) -> list[str]:
 
 def door_of(key: str) -> str:
     """The door that asks `key`, "" when the turn's brief asks it."""
-    return next((d for d in DOORS if key in keys(d)), "")
+    if not _DOOR_OF:
+        _DOOR_OF.update({k: d for d in DOORS for k in keys(d)})
+    return _DOOR_OF.get(key, "")
 
 
 def _questions(handle: dict, door: str) -> dict:
@@ -80,19 +83,17 @@ def fire(handle, door: str, *, by_read: bool = False):
     try:
         if not isinstance(handle, dict) or door not in DOORS or (by_read and (handle.get("carried") or door == "call")):
             return None
-        doors = handle.setdefault("_doors", {})
-        if door in doors:
-            return doors[door]
         said = str(handle.get("judged") or "").strip()
         from nucleo import jev
         if not said or not jev.enabled():
             return None
-        qs = _questions(handle, door)
-        if not qs:
-            return None
-        ev = threading.Event()
-        doors[door] = ev
-        handle["_pending"] = set(handle.get("_pending") or ()) | set(qs)
+        with _LOCK:
+            if door in (doors := handle.setdefault("_doors", {})):
+                return doors[door]
+            if not (qs := _questions(handle, door)):
+                return None
+            doors[door] = ev = threading.Event()
+            handle["_pending"] = set(handle.get("_pending") or ()) | set(qs)
         threading.Thread(target=_ask, args=(handle, door, said, qs, ev), name=f"jev-door-{door}", daemon=True).start()
         return ev
     except Exception as e:  # noqa: BLE001 — a classifier may never break a turn
@@ -110,14 +111,16 @@ def _ask(handle: dict, door: str, said: str, qs: dict, ev: threading.Event) -> N
             main.wait(jev._timeout_s() + 1.0)
     except Exception as e:  # noqa: BLE001
         logger.debug(f"brief_doors: {door} trip failed — {e!r}")
-    try:
-        if got:
-            base = handle.get("result") if isinstance(handle.get("result"), dict) else {}
-            # a NEW dict: a reader iterating the old one never sees it change under it
-            handle["result"] = {**base, **{k: v for k, v in got.items() if k in qs}}
-    finally:
-        handle["_pending"] = set(handle.get("_pending") or ()) - set(qs)
-        ev.set()
+    with _LOCK:
+        try:
+            if got:
+                base = handle.get("result") if isinstance(handle.get("result"), dict) else {}
+                # a NEW dict: a reader iterating the old one never sees it change under it
+                handle["result"] = {**base, **{k: v for k, v in got.items() if k in qs}}
+                keep(handle, handle.get("_reading"))   # a carried copy's landing is the reading's, however late
+        finally:
+            handle["_pending"] = set(handle.get("_pending") or ()) - set(qs)
+            ev.set()
 
 
 async def landed(handle, door: str, wait_s: float = WAIT_S, *, ask: bool = True) -> bool:
@@ -135,20 +138,17 @@ async def landed(handle, door: str, wait_s: float = WAIT_S, *, ask: bool = True)
     return ev.is_set()
 
 
-def landed_sync(handle, *doors: str, wait_s: float = WAIT_S) -> bool:
-    """For doors that run on their own thread (a worker's exit): fired together, awaited at most `wait_s` in all. On an
-    event loop it only fires, never on a carried copy (its trip would land unread). True when every one fired landed."""
-    loop = _on_the_loop()
-    evs = [] if loop and isinstance(handle, dict) and handle.get("carried") else [fire(handle, d) for d in doors]
-    evs, end = [ev for ev in evs if ev is not None], time.monotonic() + max(0.0, wait_s)
-    for ev in () if loop else evs:
-        ev.wait(max(0.0, end - time.monotonic()))
-    return bool(evs) and all(ev.is_set() for ev in evs)
+def unanswered(handle, key: str) -> bool:
+    """A door key this handle could answer (a judged sentence, Jev on) and has not: UNKNOWN, never «none» (K2b R1)."""
+    from nucleo import jev
+    from nucleo.turn import verdicts
+    return (isinstance(handle, dict) and bool(str(handle.get("judged") or "").strip()) and jev.enabled()
+            and verdicts.sure(handle, key, verdicts.LICENCE)[0] == verdicts.UNKNOWN)
 
 
 def keep(handle, reading) -> None:
-    """Copy the door verdicts a revived handle gathered back into the carried reading it was revived from, so the
-    next exit of the same task reads them without a second trip."""
+    """Copy the door verdicts a revived handle gathered back into the carried reading it was revived from (`_ask` does,
+    on landing), so the next exit of the same task reads them without a second trip."""
     try:
         res = (handle or {}).get("result") if isinstance(handle, dict) else None
         if isinstance(reading, dict) and isinstance(reading.get("result"), dict) and isinstance(res, dict):
@@ -158,7 +158,3 @@ def keep(handle, reading) -> None:
     except Exception as e:  # noqa: BLE001
         logger.debug(f"brief_doors: reading not kept — {e!r}")
 
-
-def _on_the_loop() -> bool:
-    import asyncio
-    return asyncio._get_running_loop() is not None

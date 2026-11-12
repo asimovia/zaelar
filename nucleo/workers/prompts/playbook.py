@@ -187,3 +187,15 @@ def record(rec, name: str) -> None:
             progress.changed(uid, "playbook", before)
     except Exception as e:  # noqa: BLE001 — a row without its playbook is the row it was
         _note("record", e)
+
+
+def continues_as(rec, wid: str, act: str) -> str:
+    """The playbook a send CONTINUES as (`meeting`/`booking`, the name the task gave) when the act declares a
+    follow-through (`objective`); the errand born from it inherits that, never its words (V2-859 T562). '' else."""
+    from widgets import contract as _contract
+    try:
+        name = str(getattr(rec, "playbook_chosen", "") or "") or _durable(rec)[0]
+        return name if name in WITH_A_PARTY and "objective" in _contract._declared(wid, act) else ""
+    except Exception as e:  # noqa: BLE001 — an unstamped send opens what it opened before: nothing new
+        _note("the playbook a send continues as", e)
+        return ""

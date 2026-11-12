@@ -7,7 +7,7 @@ nothing. The net that closed it was a word table over the message (`kind_for(tex
 verbs is not a router (V2-750), and its words were mostly Spanish.
 
 Now the worker names its playbook at checkpoint 1, the exit door stamps it on the message that leaves
-(`exit_gate._continues_as`), and the errand inherits it: `meeting`/`booking` open a follow-through in any
+(`playbook.continues_as`), and the errand inherits it: `meeting`/`booking` open a follow-through in any
 language; a message under `message` (or none) opens nothing, whatever it says.
 """
 from __future__ import annotations
@@ -82,18 +82,17 @@ class _Rec:
 @pytest.mark.parametrize("chosen,expected", [("meeting", "meeting"), ("booking", "booking"),
                                              ("message", ""), ("errand", ""), ("", "")])
 def test_the_exit_door_stamps_a_continuing_playbook_on_an_act_that_can_open_one(chosen, expected, monkeypatch):
-    from nucleo.workers import exit_gate
     from nucleo.workers.prompts import playbook as pb
     monkeypatch.setattr(pb, "_durable", lambda rec: ("", {}))
-    assert exit_gate._continues_as(_Rec(chosen), "mensajeria", "send_to") == expected
+    assert pb.continues_as(_Rec(chosen), "mensajeria", "send_to") == expected
 
 
 def test_an_act_that_declares_no_follow_through_is_never_stamped(monkeypatch):
     """Read from the manifest (an `objective` it declares), never from the widget's name."""
-    from nucleo.workers import exit_gate
+    from nucleo.workers.prompts import playbook as pb
     from widgets import contract
     monkeypatch.setattr(contract, "_declared", lambda wid, act: {"text": "the message"})
-    assert exit_gate._continues_as(_Rec("meeting"), "mensajeria", "send_to") == ""
+    assert pb.continues_as(_Rec("meeting"), "mensajeria", "send_to") == ""
 
 
 # ── …but an errand's OWN voice opens nothing (V2-705) ───────────────────────────────────────────────────

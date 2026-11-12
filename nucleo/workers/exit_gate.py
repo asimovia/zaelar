@@ -24,6 +24,7 @@ to a third-party agent) and the browser's submit (`widgets/navegador/click_gate.
 """
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass, field
 
 from loguru import logger
@@ -72,6 +73,17 @@ def leave(rec, action: str, payload: dict | None) -> Exit | None:
            "subject": subject, "who": who[:3], "verdict": ex.verdict, "slots": dict(ex.slots),
            "why": (ex.refused or ex.question or ("his order over the row" if ex.released else ""))[:160]})
     return ex
+
+
+async def cross(rec, action: str, payload: dict | None) -> "Exit | None":
+    """`leave` for its callers (all on the loop): an act that leaves has its doors — `send`, `portal` — asked into the
+    task's reading and awaited OFF the loop, up to Jev's own timeout (CRIT-K2b R1: what is irreversible waits)."""
+    from nucleo import jev, on_his_behalf as _ob
+    from nucleo.turn import brief as _tb, brief_doors
+    wid, act, _inner = _ob._resolve(payload or {}) if str(action or "") == "widget_data" else ("", "", None)
+    if wid and act and leaves(wid, act) and (turn := _tb.revived(getattr(rec, "reading", None))) is not None:
+        await asyncio.gather(*(brief_doors.landed(turn, d, jev._timeout_s() + 1.0) for d in ("send", "portal")))
+    return leave(rec, action, payload)
 
 
 def _event_of(spec: "ExitSpec", payload: dict) -> tuple[str, str, list[str], str]:
@@ -143,19 +155,6 @@ def taint_question(rec, kind: str, action: str, target: str, channel: str = "") 
         return f"{action} → {target}?"
 
 
-def _continues_as(rec, wid: str, act: str) -> str:
-    """The playbook a send CONTINUES as (`meeting`/`booking`, the name the task gave) when the act declares a
-    follow-through (`objective`); the errand born from it inherits that, never its words (V2-859 T562). '' else."""
-    from nucleo.workers.prompts import playbook as _pbk
-    from widgets import contract as _contract
-    try:
-        name = str(getattr(rec, "playbook_chosen", "") or "") or _pbk._durable(rec)[0]
-        return name if name in _pbk.WITH_A_PARTY and "objective" in _contract._declared(wid, act) else ""
-    except Exception as e:  # noqa: BLE001 — an unstamped send opens what it opened before: nothing new
-        logger.debug(f"exit_gate: playbook not stamped ({e!r})")
-        return ""
-
-
 def gate(rec, payload: dict) -> Exit:
     """The message door for one `widget_data` call of a worker. A call that does not leave passes untouched."""
     from nucleo import on_his_behalf as _ob
@@ -176,11 +175,8 @@ def gate(rec, payload: dict) -> Exit:
     # His turns since the errand began, plus the words the row itself kept (a send task runs before the turn that
     # commissioned it has recorded his sentence, so the ring alone may not hold them yet).
     said = " ".join([*_ob.errand_words(rec), *(getattr(rec, "heard", None) or [])])
-    from nucleo.turn import brief as _tb
-    turn = _tb.revived(getattr(rec, "reading", None))   # the commissioning turn's reading (V2-852), or None
-    from nucleo.turn import brief_doors   # V2-887 step 8: the channel he named is asked here, where the act leaves,
-    if brief_doors.landed_sync(turn, "send", "portal"):   # with the errand class `backs_a_send` reads (off the loop only)
-        brief_doors.keep(turn, getattr(rec, "reading", None))
+    from nucleo.turn import brief as _tb   # the commissioning turn's reading (V2-852), its doors awaited by `cross`
+    turn = _tb.revived(getattr(rec, "reading", None))
     from nucleo.acts import card, message
     for at in (card.LEAVES, card.FAST):
         lic = card.licence({"text": said, "brief": None}, wid, act, inner, at=at)
@@ -200,7 +196,7 @@ def gate(rec, payload: dict) -> Exit:
         _emit("🛑 unbacked send dropped", f"{wid}:{act} · {why}"[:200], {"id": str(getattr(rec, "task_id", "")),
                                                                          "exit": f"{wid}:{act}", "clause": "unbacked"})
         return Exit(payload, refused=f"{wid}:{act} not run (unbacked): {why}")
-    if (named := _continues_as(rec, wid, act)):
+    if (named := _pbk.continues_as(rec, wid, act)):
         out["payload"] = inner = {**inner, "playbook": named}
     from nucleo.workers import taint
     from widgets import actions as _wa
@@ -214,7 +210,7 @@ def gate(rec, payload: dict) -> Exit:
         not got.sources or "stranger" in got.sources.values())
     mode = message.asked_if_leaving(_wa.FAST, None, wid, act, payload=inner, said=said, stranger=stranger)
     q = taint_question(rec, "message", act, who, channel) if stranger else ""
-    if not q and mode == _wa.CONFIRM:
+    if not q and (mode == _wa.CONFIRM or "unknown" in got.sources.values()):   # an unread slot asks (K2b R1)
         # the leave rule's question: a recipient his words do not name (with the taint: one only a stranger named)
         try:
             from i18n import langs as _lg

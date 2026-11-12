@@ -164,21 +164,36 @@ async def claimed(brief, reply: str, said: str, *, emit=None) -> int:
     if not text or ends_asking(reply):
         return 0                                   # a question is `measure`/`held`'s, never a claim
     try:
-        from nucleo.turn import brief_doors, verdicts
-        from widgets import effects
+        from nucleo.turn import brief_doors
         from nucleo.acts.message_channel import backs_a_send as _backs
-        if verdicts.to_act(brief, "request_type", "")[0] == "order" and _leans_out(brief)[0]:   # both branches need it
+        wid, act = _sure_leaving_act(brief)
+        if wid or _unserved_order(brief)[0]:   # the two branches' own preconditions — no other close waits or pays
             await asyncio.gather(brief_doors.landed(brief, "portal"), brief_doors.landed(brief, "send"))
-        target, info = verdicts.read(brief, "screen_action", None, min_confidence=verdicts.act_floor())
-        wid, _sep, act = str(target or "").partition(":")
         # A7 audit: the order AND the act at the floor, and a reading backing a send («¿le mandaste…?» is no send)
-        if not (info and wid and act and effects.leaves(base(wid), act) and verdicts.sure_order(brief, wid, act)
-                and _backs(brief)):
+        if not (wid and _backs(brief)):
             return _an_order_nothing_served(brief, text, emit=emit)
         return to_message_task(wid, act, said, src="unreached", emit=emit)
     except Exception as e:  # noqa: BLE001 — never takes the turn down; the line stands as it was
         note(e)
         return 0
+
+
+def _sure_leaving_act(brief) -> tuple[str, str]:
+    """The first branch's precondition: `(card, act)` of an act that LEAVES, sure at the act floor with its order."""
+    from nucleo.turn import verdicts
+    from widgets import effects
+    target, info = verdicts.read(brief, "screen_action", None, min_confidence=verdicts.act_floor())
+    wid, _sep, act = str(target or "").partition(":")
+    sure = info and wid and act and effects.leaves(base(wid), act) and verdicts.sure_order(brief, wid, act)
+    return (wid, act) if sure else ("", "")
+
+
+def _unserved_order(brief) -> tuple[str, str]:
+    """The second branch's precondition: a SURE order (VETO) not answered by words, leaning to an act that leaves."""
+    from nucleo.turn import verdicts
+    kind, info = verdicts.read(brief, "request_type", None, min_confidence=verdicts.VETO)
+    words, _w = verdicts.read(brief, "wants_words", None)
+    return _leans_out(brief) if info and str(kind or "") == "order" and str(words or "") != "tell" else ("", "")
 
 
 def _leans_out(brief) -> tuple[str, str]:
@@ -221,15 +236,10 @@ def _an_order_nothing_served(brief, text: str, *, emit=None) -> int:
     request whose act the turn could not make: when the act it leaned to (any confidence) LEAVES the machine, it goes to
     a Brain Worker with the `message` playbook (§2b — the worker resolves the facts or asks). An order about the screen
     stays the turn's. Returns the worker id or 0."""
-    from nucleo.turn import verdicts
-    kind, info = verdicts.read(brief, "request_type", None, min_confidence=verdicts.VETO)
-    words, _w = verdicts.read(brief, "wants_words", None)
-    if not (info and str(kind or "") == "order") or str(words or "") == "tell":
-        return 0
     # V2-886 D4: the lean names WHICH act (any confidence); whether there is a send at all is the reading's —
     # the errand class or a named channel (measured 2026-11-11: «close absolutely everything» with the mail card open
     # leaned to a WhatsApp send, and the worker's exit asked him to send a draft he never asked for).
-    wid, act = _leans_out(brief)
+    wid, act = _unserved_order(brief)
     from nucleo.acts import message_channel
     if not (wid and message_channel.backs_a_send(brief)):
         return 0          # an order about the screen stays the turn's: a card act is never a worker's 15 s

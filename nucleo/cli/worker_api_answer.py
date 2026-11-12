@@ -143,7 +143,7 @@ async def answer(corr_id: str, text: str, *, resume: bool = True, choice: int | 
             from nucleo.workers import exit_gate
             # his yes answers the question, never the door: an act that leaves crosses it again (checkpoint 1, the
             # act's own refusal, his recipient) before it runs; the question it would ask is the one he answered
-            if rec is not None and (_ex := exit_gate.leave(rec, str(retained["action"]), payload)) is not None:
+            if rec is not None and (_ex := await exit_gate.cross(rec, str(retained["action"]), payload)) is not None:
                 payload = _ex.payload
                 refused = _ex.refused
             if refused:

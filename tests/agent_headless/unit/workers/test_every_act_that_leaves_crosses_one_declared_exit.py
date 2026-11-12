@@ -77,7 +77,7 @@ def test_the_bridge_and_the_answer_ask_the_one_door_and_nothing_by_name():
     from nucleo.cli import worker_api, worker_api_answer
     for mod in (worker_api, worker_api_answer):
         src = inspect.getsource(mod)
-        assert "exit_gate.leave(" in src
+        assert "await exit_gate.cross(" in src   # `leave` behind its doors, awaited off the loop (L1b)
         assert "exit_gate.gate if" not in src and '("widget_data", "mesh_serve")' not in src
     assert {s.action for s in exit_gate.EXITS} == {"widget_data", "mesh_serve"}
 

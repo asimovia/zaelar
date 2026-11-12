@@ -22,9 +22,9 @@ a new card that leaves needs no new code here:
 
 Each slot's SOURCE is what the door records: `his`, `reading`, `held`, `card`, `agent` (the worker's own, with no
 stranger's text read this session), `stranger` (the worker's own after the session read a stranger's text — what the
-taint question then asks about) or `none` (empty). A call through the generic `rows.*` door fills the card's own row:
-its slots are the card's and no rule rewrites them. A card that declares no `slots` gets the defaults its payload
-declaration implies (`DEFAULTS`), so a fork of a card keeps the door it had.
+taint question then asks about), `unknown` (unread: the exit asks) or `none` (empty). A call through the generic
+`rows.*` door fills the card's own row: its slots are the card's and no rule rewrites them. A card that declares no
+`slots` gets the defaults its payload declaration implies (`DEFAULTS`), so a fork of a card keeps the door it had.
 """
 from __future__ import annotations
 
@@ -73,7 +73,7 @@ def read(rec, wid: str, act: str, inner: dict, *, said: str, turn, call: dict, e
             if str(d.get("from") or "") == rule:
                 apply(ctx, out, slot, str(d.get("key") or slot))
     if out.released:   # the row he saw and ordered carries the rest of what leaves
-        out.sources = {s: ("held" if v in ("agent", "stranger") else v) for s, v in out.sources.items()}
+        out.sources = {s: ("held" if v in ("agent", "stranger", "unknown") else v) for s, v in out.sources.items()}
     return out
 
 
@@ -106,7 +106,9 @@ def _reading(ctx: dict, out: Reading, slot: str, key: str) -> None:
     named = theirs is not out.inner or _named_by_reading(ctx["turn"], out.inner.get(key))
     if isinstance(theirs, dict):
         out.inner = theirs
-    out.sources[slot] = "reading" if named else _own(ctx, out.inner.get(key) or out.inner.get("platform"))
+    from nucleo.turn import brief_doors   # his channel still unread is UNKNOWN, never «none named»: the exit asks
+    out.sources[slot] = "unknown" if not named and brief_doors.unanswered(ctx["turn"], message_channel.KEY) else \
+        "reading" if named else _own(ctx, out.inner.get(key) or out.inner.get("platform"))
 
 
 def _named_by_reading(turn, value) -> bool:
@@ -162,6 +164,6 @@ def unbacked_send(rec, turn, got, mandated: bool = False) -> str:
     if mandated:          # the session's mandate covers this channel (`exit_gate.under_mandate`)
         return ""
     from nucleo.acts import message_channel
-    if message_channel.backs_a_send(turn):
+    if message_channel.backs_a_send(turn) is not False:   # unknown is no drop: the leave rule asks (K2b R1)
         return ""
     return "nothing he asked for sends a message in his name, and the recipient is the worker's own pick"
