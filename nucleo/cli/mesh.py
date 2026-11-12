@@ -36,9 +36,11 @@ import os
 import sys
 
 
-_USAGE = ['hbmesh find "<errand>"                       # who can serve it (asks nobody)',
+from nucleo.cli import mesh_converse as _converse  # noqa: E402 — the forms of `call` and `reply` live with them
+
+_USAGE = ['hbmesh find "<errand>"                       # who can serve it, with each agent\'s skills (asks nobody)',
           'hbmesh serve "<errand>" [--prompt "…"] [--field k=v] [--agent <agent_id>]   # find AND ask; '
-          '--agent asks THAT one of the agents `find` returned first']
+          '--agent asks THAT one of the agents `find` returned first', *_converse.USAGE]
 _HINT = ("the errand is ONE quoted argument, and nothing but the flags shown follows it (no bare words after the "
          "errand). Copy a form above.")
 
@@ -73,6 +75,8 @@ def main(argv: list[str] | None = None) -> int:
     # pass that refused it): the natural shape is declared, and it only reorders what the network returned.
     p_serve.add_argument("--agent", default="", help="the agent_id from `find` to ask first")
 
+    _converse.add_parsers(sub)
+
     a = ap.parse_args(argv)
     try:
         from nucleo import mesh_agents
@@ -80,15 +84,26 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps({"ok": False, "reason": f"la red no está disponible: {e}"}, ensure_ascii=False))
         return 0
 
+    if a.cmd in ("call", "reply"):
+        from nucleo import untrusted as _u
+        res = getattr(_converse, a.cmd)(a)
+        print(json.dumps(_u.fence_tree(res) if isinstance(res, dict) else res, ensure_ascii=False, default=str))
+        return 0
+
     if a.cmd == "find":
         res = mesh_agents.find(a.errand, limit=a.limit)
+        from nucleo import mesh_call
+        mesh_call.remember_seen(res.get("agents") or [])
+        skills = _converse.skills_for(res.get("agents") or [])
         # Only what the worker needs to decide, not the Oracle's full record: an agent id, where it serves and
         # what it says it does. Dumping the raw result would put ~20 scoring fields into the worker's context
         # on every errand, and V2-117 is what that costs.
         print(json.dumps({"ok": bool(res.get("agents")), "intent": res.get("intent"),
                           "agents": [{"agent_id": x.get("agent_id"), "endpoint": x.get("endpoint"),
-                                      "capabilities": x.get("capabilities") or []}
-                                     for x in res.get("agents") or []]}, ensure_ascii=False))
+                                      "capabilities": x.get("capabilities") or [],
+                                      "skills": skills.get(str(x.get("agent_id"))) or []}
+                                     for x in res.get("agents") or []],
+                          **_known_skill(a.errand)}, ensure_ascii=False))
         return 0
 
     campos: dict = {}
@@ -116,6 +131,15 @@ def main(argv: list[str] | None = None) -> int:
     _to_the_sheet(res)
     print(json.dumps(res, ensure_ascii=False, default=str))
     return 0
+
+
+def _known_skill(errand: str) -> dict:
+    """The skill this kind of errand was last served by (the learned route, `<agent>/<skill>`), when there is one."""
+    from nucleo import routes as _routes            # `routes.plan` never raises
+    plan = _routes.plan(errand)
+    row = next((c for c in plan.channels
+                if c.get("channel") == _routes.store.CH_MESH and "/" in str(c.get("target") or "")), None)
+    return {"served_before_by": row["target"], "call_with": "hbmesh call <agent_id> <skill> --json @request.json"} if row else {}
 
 
 def _leave_gate(errand: str, prompt: str, agent: str) -> dict:
