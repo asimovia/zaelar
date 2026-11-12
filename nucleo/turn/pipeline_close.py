@@ -1,5 +1,4 @@
-"""The turn's CLOSE — the dialog window, the fallbacks, the reply event and its verdict (V2-851 F5: stage of
-`nucleo/turn/pipeline`).
+"""The turn's CLOSE — the dialog window, the fallbacks, the reply event and its verdict (V2-851 F5, `turn/pipeline`).
 
 Moved out of `voice/engine/llm/providers/turn_after.py` with no change of behaviour, less what F5 removed (the hollow
 repairs). The errands the close launches live in `pipeline_errands`. Every name the block read from the provider
@@ -18,10 +17,11 @@ from nucleo.turn import wait_lines as _wait_lines
 from nucleo.turn import whisper as _whisper   # V2-889 F2: `turn.closed`, read between turns
 
 
-def _host_stall_s(t_entry_wall: float) -> float:
-    """Seconds the body's loop was stopped by stalls that ended after the turn entered (`nucleo/pulse/loop_lag`)."""
+def _host_stall_s(t_entry_wall: float) -> dict:
+    """The seconds the body's loop was stopped inside the turn, the host's apart from our own work's (E3 audit)."""
     from nucleo.pulse import loop_lag   # in-memory and total: nothing to swallow
-    return loop_lag.stalled_since(wall=float(t_entry_wall))
+    return {k: loop_lag.stalled_since(wall=float(t_entry_wall), who=w) for k, w in (("host_stall_s", "host"),
+                                                                                   ("own_stall_s", "engine"))}
 
 
 async def close_the_turn(*, motor, send, _acc_ms, _amap_ms, _brief, _busy_at_start, _dialog, _escalate_mod, _filler_audio, _gate_ms, _op_text, _prev_pending, _router, _shown_ids, _start_web_auth, _t_entry, _tool_fired, _turn_tools, acted, aside, attention, brain, clarify, confirm_state, data_done, deduped, emit, escalate_req, first_ms, first_turn, images_req, listing_req, llm_metrics, music_req, operator_text, read_req, recall_req, reopen_req, reveal_req, search_req, spec, speech, spoken_text, style_fired, system, t0, text, timings, worker_acted, _superseded=None, _apply_widget_data=None) -> dict:
@@ -135,7 +135,7 @@ async def close_the_turn(*, motor, send, _acc_ms, _amap_ms, _brief, _busy_at_sta
         # could not see. gate = attention judge (0 inside the active window), acc = fragment/completeness
         # judge (0 on the lexical fast path), the rest is recall wait + prompt build + bookkeeping.
         "pre_ms": round((t0 - _t_entry) * 1000, 1), "gate_ms": _gate_ms, "acc_ms": _acc_ms,
-        "amap_ms": _amap_ms, "host_stall_s": _host_stall_s(_t_entry),   # miss-path lookup (V2-539) · E0 host seconds
+        "amap_ms": _amap_ms, **_host_stall_s(_t_entry),   # miss-path lookup (V2-539) · E0 host seconds
         "mem_query_ms": timings.get("mem_query_ms"), "briefs_ms": timings.get("briefs_ms"),
         "live_ms": timings.get("live_ms"),
         # TOTALIZADORES de tamaño (premisa del operador)

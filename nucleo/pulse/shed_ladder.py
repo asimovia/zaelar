@@ -1,9 +1,8 @@
 """nucleo/pulse/shed_ladder.py — how the engine gives memory back, one declared rung at a time (V2-891).
 
-Measured on the operator's machine (a 48 GB host with 33 of 35 GB of swap in use and a 31.7 GB local model resident):
-the self watchdog said «shedding load (nothing to pause)» 279 times in one session. It had ONE lever — pause the
-newest Brain Worker while another runs — and with no worker running it had nothing, while the voice went deaf. The
-pressure was not ours, and the engine still had things to give back.
+Measured (a 48 GB host, 33 of 35 GB of swap in use, a 31.7 GB local model resident): «shedding load (nothing to
+pause)» 279 times in one session — ONE lever (pause the newest worker while another runs), nothing with no worker
+running, while the voice went deaf. The pressure was not ours, and the engine still had things to give back.
 
 So the levers are a LADDER, in a declared order (`config/resources.default.json` → `shed_ladder`), each rung a name
 with an actuator registered by the body:
@@ -14,15 +13,10 @@ with an actuator registered by the body:
     close_browser        the idle search Chromium is closed (it starts again on the next search)
     trim_caches          the body collects garbage and hands freed pages back to the OS
 
-The rule, pure (no I/O — `step` reads a reading and returns one action):
-  · under pressure (free memory under the floor, or a lag over its bound — the body loop's only when it stalled in
-    two beats running, a lone hiccup is the envelope's quiet hold, never the ladder's) → ENGAGE the next rung, one per
-    step, whatever the cause: `cause` says whose it is — `engine` when our own processes are over their declared
-    budgets or our own work held the loop, `machine` when we are within them and the host is short anyway — and the
-    event names it, but the ladder descends for both, because the voice suffers the same either way;
-  · recovered WITH MARGIN (free ≥ floor × `shed_recover_ratio` and the lag under its bound) → RELEASE the last rung
-    engaged, one per step, in reverse order;
-  · in between → hold where it is (no flapping on the floor).
+The rule, pure (`step` reads a reading, returns one action): under pressure (free memory under the floor, or the body
+loop stalled in two beats running) → ENGAGE the next rung, one per step, whatever `cause` names (the voice suffers the
+same); recovered WITH MARGIN (free ≥ floor × `shed_recover_ratio`, no stall this beat) → RELEASE the last one, in
+reverse; in between → hold (no flapping on the floor).
 """
 from __future__ import annotations
 
@@ -37,27 +31,26 @@ def ladder_of(pol: dict | None) -> tuple:
     return tuple(str(r) for r in declared) if isinstance(declared, (list, tuple)) else ()
 
 
-def cause(engine_mb: float, engine_budget_mb: float, loop_ours_s: float = 0.0, loop_host_s: float = 0.0) -> str:
-    """`engine` when our processes hold more than their declared budgets or our own work held the body's loop longer
-    than the host did (E3: `loop_lag` measures whose each stall was); `machine` when the host is short anyway."""
-    return "engine" if engine_mb > engine_budget_mb or float(loop_ours_s) > float(loop_host_s) else "machine"
-
-
-def _lag(reading: dict) -> tuple[float, float]:
-    """The body loop's persisting stall (E0) and its bound — the voice's own lag sheds through `voice/lag`."""
-    return float(reading.get("loop_lag_s", 0) or 0), float(reading.get("lag_bound_s", 0) or 0)
+def cause(engine_mb: float, engine_budget_mb: float, loop_ours_s: float = 0.0, loop_host_s: float = 0.0,
+          loop_unknown_s: float = 0.0) -> str:
+    """`engine`: our processes over their budgets, or our own work held the loop longest (E3); `unknown`: unattributed
+    stalls dominate (never named the host's); `machine`: the host is short anyway."""
+    if engine_mb > engine_budget_mb or loop_ours_s > max(loop_host_s, loop_unknown_s):
+        return "engine"
+    return "unknown" if loop_unknown_s > loop_host_s else "machine"
 
 
 def pressure(reading: dict) -> bool:
-    free, floor_mb = float(reading.get("free_mb", 0)), float(reading.get("floor_mb", 0))
-    lag, bound = _lag(reading)
-    return free < floor_mb or (bound > 0 and lag >= bound)
+    """Free memory under the floor, or the body loop's PERSISTING stall over its bound (E0; the voice sheds itself)."""
+    lag, bound = float(reading.get("loop_lag_s", 0) or 0), float(reading.get("lag_bound_s", 0) or 0)
+    return float(reading.get("free_mb", 0)) < float(reading.get("floor_mb", 0)) or (bound > 0 and lag >= bound)
 
 
 def recovered(reading: dict, recover_ratio: float = DEFAULT_RECOVER) -> bool:
+    """Free memory over floor × margin and NO stall in THIS beat (`loop_lag_now_s`, else the persisting one)."""
     free, floor_mb = float(reading.get("free_mb", 0)), float(reading.get("floor_mb", 0))
-    lag, bound = _lag(reading)
-    return free >= floor_mb * recover_ratio and not (bound > 0 and lag >= bound)
+    now = float(reading.get("loop_lag_now_s", reading.get("loop_lag_s", 0)) or 0)
+    return free >= floor_mb * recover_ratio and now <= 0
 
 
 @dataclass

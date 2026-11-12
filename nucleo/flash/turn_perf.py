@@ -113,6 +113,17 @@ def _pre_turn(m: dict) -> tuple:
     return pre, gate_ms, acc_ms, amap_ms, mem_ms, gap, host
 
 
+def _loop_stall(host: float, own: float, total: float, pre: float, ptok: float) -> tuple | None:
+    """E0: the body's loop was stopped for a share of the turn — the HOST's seconds name the host (a host out of
+    memory, 2026-11-12: 12–31 s), our own work's name ours (E3 audit); neither the model nor the provider is blamed."""
+    if host >= HOST_STALL_S and host * 1000 >= HOST_DOMINATES * (total + pre):
+        return "host", (f"⏱ SLOW turn {int(total)} ms — HOST STALLED {host:.1f} s: the engine's loop did not run; "
+                        f"neither the prompt ({int(ptok)} tok) nor the provider explains it")
+    if own >= HOST_STALL_S and own * 1000 >= HOST_DOMINATES * (total + pre):
+        return "own_stall", f"⏱ SLOW turn {int(total)} ms — the engine's OWN work held its loop {own:.1f} s"
+    return None
+
+
 def verdict(m: dict) -> dict:
     """Diagnose the turn from the metrics ALREADY collected. Returns `{slow, cause, label, …}`.
 
@@ -156,12 +167,8 @@ def verdict(m: dict) -> dict:
     if not slow:
         cause = "ok"
         label = f"⏱ turno {int(total)} ms · prompt {int(ptok)} tok · TTFT {int(ttft)} ms"
-    elif host >= HOST_STALL_S and host * 1000 >= HOST_DOMINATES * (total + pre):
-        # E0: the body's OWN loop was stopped (a host out of memory, measured 2026-11-12: 12–31 s): the time went
-        # nowhere the model or the provider can answer for. Named FIRST — a stall also looks cold and pre-token.
-        cause = "host"
-        label = (f"⏱ SLOW turn {int(total)} ms — HOST STALLED {host:.1f} s: the engine's loop did not run; "
-                 f"neither the prompt ({int(ptok)} tok) nor the provider explains it")
+    elif stall := _loop_stall(host, _num(m, "own_stall_s", default=0) or 0, total, pre, ptok):
+        cause, label = stall           # named FIRST: a stopped loop also looks cold and pre-token
     elif cold:
         cause = "frio"
         label = (f"⏱ turno LENTO {int(total)} ms — ARRANQUE EN FRÍO "
