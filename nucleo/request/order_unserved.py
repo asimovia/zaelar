@@ -7,8 +7,7 @@ when the model served «mándale un whatsapp a Raquel diciendo que llego tarde»
 the mouth's `unserved` line says «not done» without doing it. The only reader that crossed model≠verdict on the same
 card was a second model pass (`repair_of_a_view`), kept as a fallback.
 
-THE MECHANISM, at the turn's close, read off verdicts the turn already paid for and off what its doors RAN — never
-off his words:
+THE MECHANISM, at the turn's close, read off verdicts already paid for and what its doors RAN — never his words:
 
   · the brief is SURE of an order and of its act (`verdicts.sure_order`: `request_type = order` and
     `screen_action = card:act`, both at the one act floor), the order owes no words (`wants_words` ≠ tell), the turn
@@ -17,10 +16,10 @@ off his words:
     declared effects beyond reading (a write for a write, a send for a send), and the model never called it itself
     — by `widget_data`, or through the dedicated tool that drives the card (`play_music` is the music card's door:
     its lane runs the act and no data-op records it) — a call it made is its door's: it ran, asked, or was vetoed on
-    purpose. The model's valid call is never overruled (2.73): an order that only READS is the turn's to serve its
-    way, and an act that stays on the card yields to the model's own call that RAN on that card — when that call
-    only LOOKED where the turn surely asks to act (`_beyond_looks`) the order still owes its QUESTION, never a second act: what
-    is left is a consequence the turn did not produce;
+    purpose (or its completion ran re-aimed to another card, `direct_action.reaimed`). The model's valid call is never
+    overruled (2.73): an order that only READS is the turn's to serve, and an act that stays on the card yields to the
+    model's call that RAN there; one that only LOOKED where the turn surely asks to act (`_beyond_looks`) owes its
+    QUESTION, never a second act;
   · then the order opens ITS row — the turn's while that is open, a new one when the model's other act already
     ended it (an ended row is never re-opened). An act that LEAVES becomes a send task
     (`send_task_words.from_verdict`: the person his word names, the text the model quoted of his words — it runs, or
@@ -79,7 +78,8 @@ def served(wid: str, act: str, ops=(), model_calls=()) -> bool:
     from nucleo.acts.media import CARD_OF_TOOL
     from widgets import effects
     card, ran = base(wid), _ran(ops)
-    if any(c == card and (a == act or _same_effect(card, act, a)) for c, a in ran):
+    if __import__("nucleo.flash.direct_action", fromlist=["x"]).reaimed(card, act) or any(   # re-aimed, or ran here
+            c == card and (a == act or _same_effect(card, act, a)) for c, a in ran):
         return True
     calls = [c for c in model_calls or () if isinstance(c, dict) and isinstance(c.get("args"), dict)]
     called = [(base(c["args"].get("widget_id")), str(c["args"].get("action") or "")) for c in calls
