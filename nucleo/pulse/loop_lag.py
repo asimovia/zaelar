@@ -101,8 +101,8 @@ async def _probe(period_s: float = _PERIOD_S) -> None:
 
 
 def _major_faults() -> int:
-    """Major page faults so far (pages read back from disk); 0 off POSIX — a stall is then never the host's."""
-    return resource.getrusage(resource.RUSAGE_SELF).ru_majflt if resource else 0
+    """The loop thread's major page faults (Linux; macOS: the process's, not its compressor: residual); 0 off POSIX."""
+    return resource.getrusage(getattr(resource, "RUSAGE_THREAD", resource.RUSAGE_SELF)).ru_majflt if resource else 0
 
 
 def watch() -> bool:

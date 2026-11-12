@@ -87,6 +87,8 @@ def test_the_stream_waits_through_a_host_stall_instead_of_cutting_the_turn(meter
     assert out["stalled"] is False and out["errored"] is False, out
     host = [e for e in events if e[2].get("kind") == "host_stall"]
     assert len(host) == 1 and 0.25 <= host[0][2]["host_stall_s"] <= 0.3 and "not blamed" in host[0][1], events
+    ev = host[0][2]      # E3 audit P2: the event splits the stopped seconds by origin, as the close does
+    assert ev["stall_s"] == ev["host_stall_s"] and ev["own_stall_s"] == 0 and ev["unknown_stall_s"] == 0, ev
     assert not [e for e in events if "ATASCADO" in e[1]]
 
 

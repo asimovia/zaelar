@@ -32,12 +32,12 @@ def ladder_of(pol: dict | None) -> tuple:
 
 
 def cause(engine_mb: float, engine_budget_mb: float, loop_ours_s: float = 0.0, loop_host_s: float = 0.0,
-          loop_unknown_s: float = 0.0) -> str:
-    """`engine`: our processes over their budgets, or our own work held the loop longest (E3); `unknown`: unattributed
-    stalls dominate (never named the host's); `machine`: the host is short anyway."""
-    if engine_mb > engine_budget_mb or loop_ours_s > max(loop_host_s, loop_unknown_s):
+          loop_unknown_s: float = 0.0, short: bool = False) -> str:
+    """`engine`: ours over budget, or our own work held the loop longest (E3); `machine`: memory `short` (read BEFORE
+    the loop) or the host's stalls; `unknown`: unattributed stalls dominate (never named the host's)."""
+    if engine_mb > engine_budget_mb or (not short and loop_ours_s > max(loop_host_s, loop_unknown_s)):
         return "engine"
-    return "unknown" if loop_unknown_s > loop_host_s else "machine"
+    return "unknown" if not short and loop_unknown_s > loop_host_s else "machine"
 
 
 def pressure(reading: dict) -> bool:

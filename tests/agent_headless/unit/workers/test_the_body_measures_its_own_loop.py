@@ -206,3 +206,24 @@ def test_heavy_work_gives_way_every_n_rows_and_paces_only_while_the_loop_stalls(
     assert loop_lag.give_way(100) is True and slept[-1] == 0.05
     assert loop_lag.give_way(101) is False and len(slept) == 3
 
+
+def test_memory_under_the_floor_is_the_machines_before_the_loop_is_read():
+    """(j) E3 audit P2: with free memory under the floor and our processes within budget, an unattributed or own stall
+    in the same beat named the cause `unknown`/`engine` — the shortage is the machine's, read first."""
+    assert shed_ladder.cause(200, 900, loop_ours_s=0, loop_host_s=0, loop_unknown_s=5, short=True) == "machine"
+    assert shed_ladder.cause(200, 900, loop_ours_s=5, loop_host_s=0, loop_unknown_s=0, short=True) == "machine"
+    assert shed_ladder.cause(1000, 900, short=True) == "engine", "over our budgets it is still ours"
+    assert shed_ladder.cause(200, 900, loop_unknown_s=5) == "unknown"
+
+
+def test_the_page_faults_are_the_loop_threads_where_the_os_counts_them(monkeypatch):
+    """(k) E3 audit P2: the process-wide count made another thread's fault inside a stall read `host`. Where the OS
+    counts per thread (Linux `RUSAGE_THREAD`) the probe reads the loop thread's own."""
+    import types
+    asked = []
+    fake = types.SimpleNamespace(RUSAGE_SELF=0, RUSAGE_THREAD=1,
+                                 getrusage=lambda who: asked.append(who) or types.SimpleNamespace(ru_majflt=7))
+    monkeypatch.setattr(loop_lag, "resource", fake)
+    assert loop_lag._major_faults() == 7 and asked == [1]
+    monkeypatch.setattr(loop_lag, "resource", None)
+    assert loop_lag._major_faults() == 0, "off POSIX: no evidence of paging, never the host's"
