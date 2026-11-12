@@ -225,3 +225,75 @@ def test_a_resumed_send_absorbs_its_own_turns_call_and_no_later_turns(world):
         assert inline_ask.claim("mensajeria", "send_to", {"contact": "Thaddeus Wrenfield", "text": "hola"}) == ("", False)
     assert inline_ask.claim("mensajeria", "send_to", {"contact": "Thaddeus Wrenfield", "text": "hola"}) == ("", False), \
         "outside any turn (a screen answer has none) nothing is absorbed either"
+
+
+# ── audit 2026-11-12, A8 — the composed act crosses the card's consent rule before it runs (CRIT-C13) ────────────────
+# «Empty my calendar» → «Everything, or just this week?» → «everything»: the bounded pass composed `agenda:clear_all`
+# and it went straight to the card's door. His answer composed the act; it never said yes to it. The one rule every
+# data-op of the turn asks (`action_mode_now`) is asked for THIS call too: an act it would ask about waits for his yes
+# on the row, with the card's declared question and its two declared answers.
+
+IRREVERSIBLE = {
+    "es": {"said": "Vacía la agenda", "q": "¿Todo, o solo esta semana?", "answer": "Todo", "act": "clear_all", "payload": {}},
+    "en": {"said": "Drop the garden project", "q": "The whole project, tasks included?", "answer": "Yes, all of it",
+           "act": "drop_project", "payload": {"projectId": "garden"}},
+}
+
+
+def _offer_about(w: dict):
+    model._TURN.set(None)
+    model.begin(w["said"], trace="t-1")
+    his_words.note(w["said"])
+    measured = aod.measure(_brief(target=f"{WID}:{w['act']}"), w["q"], did_act=False)
+    assert measured and measured["actions"] == [w["act"]]
+    assert aod.held(measured, w["q"], w["said"])
+    (row,) = [r for r in _rows() if r["state"] == "waiting"]
+    return row["id"], dict(asker.artefact(row["id"]), state="pending")
+
+
+@pytest.mark.parametrize("lang", ["es", "en"])
+def test_an_irreversible_act_composed_from_his_answer_waits_for_his_yes_on_the_row(world, monkeypatch, lang):
+    monkeypatch.setenv("ZAELAR_LANGUAGE", lang)
+    w = IRREVERSIBLE[lang]
+
+    async def _composed(wid, act, **kw):
+        return dict(w["payload"])
+    monkeypatch.setattr(answered_offer, "compose", _composed)
+    uid, entry = _offer_about(w)
+    res = asyncio.run(inline_ask.rerun(uid, entry, w["answer"]))
+    assert world["sent"] == [], "nothing runs on an answer that only composed the act"
+    assert res == {"ok": False, "row": uid, "asked": True}
+    row, art = ts.task_get(uid), asker.artefact(uid)
+    assert row["state"] == "waiting" and row["ask_id"] == art["ask_id"] != entry["ask_id"]
+    assert art["consent"] == "ask_consent" and art["options"] == consent_ask.yes_no()
+    assert (art["retained"]["widget"], art["retained"]["action"], art["retained"]["payload"]) == (WID, w["act"], w["payload"])
+    assert art["question"] == row["ask"] == consent_ask.question(WID, w["act"], w["payload"]), "the card's declared question"
+    assert "?" in art["question"] and "{item}" not in art["question"] and str(w["payload"].get("projectId", "")) in art["question"]
+    asyncio.run(inline_ask.rerun(uid, dict(art, state="pending"), "", choice=0))          # his yes, the declared #0
+    (s,) = world["sent"]
+    assert (s["widget"], s["action"], s["payload"], s["row"]) == (WID, w["act"], w["payload"], uid)
+
+
+def test_his_no_to_the_consent_question_ends_the_row_and_nothing_runs(world, monkeypatch):
+    w = IRREVERSIBLE["es"]
+
+    async def _composed(wid, act, **kw):
+        return {}
+    monkeypatch.setattr(answered_offer, "compose", _composed)
+    uid, entry = _offer_about(w)
+    asyncio.run(inline_ask.rerun(uid, entry, w["answer"]))
+    asyncio.run(inline_ask.rerun(uid, dict(asker.artefact(uid), state="pending"), "", choice=1))
+    assert world["sent"] == [] and ts.task_get(uid)["state"] == "cancelled"
+
+
+def test_disarmed_the_composed_irreversible_act_runs_on_his_answer_alone(world, monkeypatch):
+    from nucleo.flash import frontend
+    monkeypatch.setattr(frontend, "action_mode_now", lambda *a, **k: "fast")
+    w = IRREVERSIBLE["es"]
+
+    async def _composed(wid, act, **kw):
+        return {}
+    monkeypatch.setattr(answered_offer, "compose", _composed)
+    uid, entry = _offer_about(w)
+    asyncio.run(inline_ask.rerun(uid, entry, w["answer"]))
+    assert [(s["action"], s["row"]) for s in world["sent"]] == [("clear_all", uid)], "the defect: no consent door crossed"
