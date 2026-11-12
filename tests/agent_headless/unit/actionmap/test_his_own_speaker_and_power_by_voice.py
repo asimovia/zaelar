@@ -189,7 +189,8 @@ def test_the_language_refusal_is_a_string_in_both_languages_and_invents_no_reset
 def test_the_first_run_greeting_offers_a_new_name_and_a_voice_with_the_name_slot(name, monkeypatch):
     """The offer lives in the INTRODUCTION phase's first-turn block (A7): one text for the first turn — the i18n
     kickoff note that `greeting_prompt` hands the voice — and the block the kickoff makes the phase compose, with
-    the assistant-name SLOT, never a literal. The offer is told once: with the flag set, the block drops it."""
+    the assistant-name SLOT, never a literal. The offer is told once: with the flag set, the block drops it — and it
+    is moot once he renamed us (3.206): with the name slot set, no name or voice offer is made."""
     from i18n import langs
     from voice import attention
     from nucleo.turn import kickoff
@@ -205,6 +206,9 @@ def test_the_first_run_greeting_offers_a_new_name_and_a_voice_with_the_name_slot
             note = greeting_prompt(langs.spec(code))
             assert note == kickoff.text(langs.spec(code)) and kickoff.is_kickoff(note), code
             block = introduction.block(note)
+            if name != "Zaelar":           # he renamed us: the offer is moot (3.206)
+                assert "nombre que quiera" not in block and "masculina o femenina" not in block, block
+                continue
             assert f"te llamas {name}" in block and "nombre que quiera" in block, block
             assert "masculina o femenina" in block, "the voice offer is part of the first turn"
         store["intro_offer_told"] = True
