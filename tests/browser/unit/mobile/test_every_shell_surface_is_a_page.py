@@ -158,6 +158,20 @@ def test_the_dock_is_six_targets_of_44(phone):
     assert d["sides"] == [3, 2] and d["apps"], d
 
 
+def test_every_dock_glyph_is_drawn_at_its_size(phone):
+    """A glyph with no width/height of its own has no size inside the flex button: iOS paints it at nothing."""
+    _only(phone, "chat")
+    phone.evaluate("() => window.__store.setChatOpen(false)")
+    sizes = phone.evaluate("""() => [...document.querySelectorAll('.zm-dock .zm-ic')]
+        .filter(b => b.getBoundingClientRect().width > 0)
+        .map(b => { const g = b.querySelector('svg'), r = g ? g.getBoundingClientRect() : null;
+                    return [b.getAttribute('data-ctl') || b.className, r ? r.width : 0, r ? r.height : 0,
+                            g ? g.getAttribute('width') : null]; })""")
+    assert len(sizes) >= 4, sizes
+    assert any(given is None for *_, given in sizes), "the fixture of this test is gone: every glyph carries its own size"
+    assert all(w == 24 and h == 24 for _, w, h, _ in sizes), sizes
+
+
 def test_the_apps_page_is_a_grid_where_every_app_wears_its_own_icon(phone):
     _only(phone, "apps")
     phone.wait_for_selector(".zm-apps-grid .zm-app", timeout=5000)
