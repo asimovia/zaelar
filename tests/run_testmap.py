@@ -2296,7 +2296,7 @@ DOMAINS: list[dict] = [
                                  "client event, clears by itself — and a deliberate mute is not red",
             "ch": UNIT,
             "paths": ["tests/browser/unit/voice/test_a_device_problem_turns_its_icon_red.py"]},
-        {"id": "3.120", "title": "A word table never turns an empty promise into a worker over a confident handle_inline — both channels (V2-802 T-07, CRIT-K1)",
+        {"id": "3.120", "title": "A word table never turns an empty promise into a worker — both channels (V2-802 T-07, CRIT-K1; A7: never at all — the promise lane's word tables, its window lookback and the hand-back reader of our own reply went, an errand opens by the model's call or a verdict at the act floor; an act is owed (`reply.owes_an_act`), routed (`route_by_verdict`), bound to a waiting task, repaired after a read or a search, claimed by a reply or shown at ONE floor, `verdicts.act_floor` = `consent.intent_act_at`; disarmed (the `_wt == \"go\"` branch back, or `owes_an_act` at the licence) → red)",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_a_word_table_never_overrules_a_confident_inline.py"]},
         # V2-807 T-16 — a request for a capability no card declares is answered «not yet» at the errand portal (the
         # brief's verdict over the DECLARED actions), a widget declares its operator-only controls and a worker is
@@ -4559,8 +4559,6 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ['tests/browser/unit/agenda/test_a_move_said_for_one_week_moves_one_occurrence.py']},
         {"id": "2.587", "title": "A [[close]] of the agenda over «quita el piano entero, toda la serie» cancels the series even with no verdict (decision model at 529): a removal naming one of its rows and not the app is that row's cancel_meeting, both channels",
             "ch": UNIT, "paths": ['tests/agent_headless/unit/flash/test_a_close_over_a_row_removal_cancels_the_row.py']},
-        {"id": "2.588", "title": "A request whose WRITE already landed is not a window errand: «Apúntame dos cosas…» written in turn 0 started a Brain Worker three turns later off an onboarding offer read as a promise",
-            "ch": UNIT, "paths": ['tests/agent_headless/unit/flash/test_a_landed_write_is_not_a_window_errand.py']},
         {"id": "2.551", "title": 'A sentence about errands that just FINISHED is not a new list: «me sacas un LG de 24… ¿y el Fujitsu? …¿y el informe?» with all three done is an ordinary turn, never «me pongo con ellas» (three-tasks ES 2026-10-11)',
             "ch": UNIT, "paths": ['tests/agent_headless/unit/test_a_sentence_about_finished_errands_is_not_a_list.py']},
         {"id": "2.552", "title": 'A DELIVERED errand stays in «YA ACABADAS» for the conversation (15 min), a death keeps five, the block keeps its cap of three — the report 333 s old was gone and the turn said «del informe no me consta nada» (three-tasks ES)',

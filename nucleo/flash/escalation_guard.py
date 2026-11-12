@@ -102,22 +102,6 @@ def judge_escalation_from_brief(brief) -> str:
     return "handle_inline" if choice == "handle_inline" else "escalate"
 
 
-def word_tables(router, brief, *texts, emit=None) -> str:
-    """What the WORD TABLES (`looks_like_escalate_task`, `looks_like_create_widget`, the window lookback) may do
-    with an empty promise: "go" (they matched and nothing refuses), "" (no match: the lookback may still try) or
-    "refused" — a confident `handle_inline` the brief already paid for (CRIT-K1, V2-802 T-07).
-
-    V2-753 installed this in `promise_backstop` and the post-stream promise branch kept escalating on the words
-    alone: «Ayer te pedí hacer una reserva en un restaurante… ¿todo eso ya debería estar en tu memoria?» — a
-    question about our own past, brief `handle_inline` 1.00 — met «reserva» in the table, and a web worker went
-    to look for restaurants. Grammar proposes; the verdict decides. An unsure, missing or in-flight verdict keeps
-    today's path, because a missed errand is still worse than a wasted question. Both channels ask this."""
-    hit = any(router.looks_like_create_widget(t) or router.looks_like_escalate_task(t) for t in texts if t)
-    if not keeps_it_inline(brief, str(texts[0]) if texts else "", emit=emit if hit else None, by="word_table"):
-        return "go" if hit else ""
-    return "refused"
-
-
 def keeps_it_inline(brief, text: str = "", *, emit=None, by: str = "") -> bool:
     """The turn's SURE `handle_inline`: the ONE reader every route that would open a worker for this turn asks
     (T-19 R6c). Demo pass 7, INIT: «Remember these… even when they are not on the calendar» — `handle_inline` 0.96,

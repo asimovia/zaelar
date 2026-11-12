@@ -93,7 +93,7 @@ def test_a_turn_whose_inline_pass_acted_owes_no_worker(monkeypatch, lang):
 #: Every module where the TURN (not the model's own tool call) forces an escalation — `post_stream_acts`' marketplace /
 #: modify-widget guard (V2-057) joined in V2-831 audit A11.
 FORCED = ("nucleo/flash/post_stream_lanes.py", "nucleo/flash/post_stream_acts.py")
-READERS = {"keeps_it_inline", "word_tables"}
+READERS = {"keeps_it_inline"}
 #: A sink that does not ask, with why — and nothing else.
 EXEMPT = {("nucleo/flash/post_stream_lanes.py", "reopen"): "he asked to bring back a finished errand (task_recall)"}
 

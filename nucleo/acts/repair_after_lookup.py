@@ -74,13 +74,13 @@ def same_card_order_after_read(brief, read_widget: str, reply: str = "") -> str:
     order on it when a SURE verdict names a real op there and the brief reads an order — never for a
     question, which a read answers."""
     try:
-        from nucleo.turn import brief as _tb
-        target, t_info = _tb.read(brief, _tb.TARGET_KEY, "", min_confidence=0.85)
+        from nucleo.turn import brief as _tb, verdicts as _v
+        target, t_info = _tb.read(brief, _tb.TARGET_KEY, "", min_confidence=_v.act_floor())
         owner, _sep, act = str(target or "").rpartition(":")
         rid = str(read_widget or "").split("::")[0].strip().lower()
         if not (t_info and owner and act) or owner.split("::")[0].lower() != rid:
             return ""
-        kind, k_info = _tb.read(brief, _tb.REQUEST_KEY, "")
+        kind, k_info = _tb.read(brief, _tb.REQUEST_KEY, "", min_confidence=_v.act_floor())
         sure_order = str(kind or "") == "order" and bool(k_info)
         if str(kind or "") == "question" or (_is_view(rid, act) and not sure_order):   # p124 F2: «go to» is a sure lens
             return ""
@@ -125,8 +125,8 @@ def order_card_after_search(brief, answer: str = "") -> str:
     answered with its fact never reaches here."""
     try:
         from nucleo.flash import build_decision as _bd
-        from nucleo.turn import brief as _tb
-        kind, info = _tb.read(brief, _tb.REQUEST_KEY, "", min_confidence=0.8)
+        from nucleo.turn import brief as _tb, verdicts as _v
+        kind, info = _tb.read(brief, _tb.REQUEST_KEY, "", min_confidence=_v.act_floor())
         if not ((str(kind or "") == "order" and info) or _cp.denies_the_act(answer)):
             return ""
         return str(_bd.named_card(brief) or "").split("::")[0]

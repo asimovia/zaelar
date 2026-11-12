@@ -57,29 +57,6 @@ async def run_the_light_lanes(*, FastClient, _apply_widget_data, _brief, _buf_ad
             and (_reply.owes_an_act(_brief)
                  or _pst._direct_action.verdict_escalates(_brief, answered=bool(spoken_text))
                  or _pst._direct_action.verdict_shows(_brief))):
-        _win_goal = ""
-        if (_wt := _eg.word_tables(_router, _brief, _op_text, emit=emit)) == "":   # V2-802 T-07 (CRIT-K1)
-            # V2-132 — la petición puede ser de HACE UNOS TURNOS: zaelar pidió el dato que faltaba (correcto),
-            # el operador se lo dio, y la promesa cayó en un turno cuyo texto por sí solo no describe tarea
-            # ninguna («vale, avísame»). El backstop miraba solo ESTE turno, así que no podía dispararse — y
-            # la corrida se fue en ocho turnos narrando una búsqueda que nunca arrancó. Solo con NADA vivo:
-            # con una tarea en marcha, «sigo con ello» es honesto y re-escalar haría el trabajo dos veces.
-            #
-            # V2-176: «nada vivo» era la pregunta equivocada — la que decide es «nada vivo PARA ESTO».
-            # Medido en `book-hotel-night-known__es`: el encargo del hotel no escaló porque seguía vivo un
-            # worker del encargo ANTERIOR, y zaelar pasó cuatro turnos diciendo «la reserva sigue en marcha»
-            # sobre una tarea de Ticketmaster ya cancelada. Espejo exacto del canal de texto; el predicado es
-            # compartido (`router_guards.nothing_running_for`) y es CONSERVADOR: ante la duda, se comporta
-            # como antes.
-            try:
-                from nucleo import dispatch as _disp_wg
-                _cand = _router.escalate_goal_from_window(brain._window, _op_text)
-                if _cand:
-                    _live = [str(r.get("request") or "") for r in _disp_wg.pending_summaries()]
-                    if not _disp_wg.has_active() or _router.nothing_running_for(_cand, _live):
-                        _win_goal = _cand
-            except Exception:
-                _win_goal = ""
         # V2-773 — …or the brief's own verdict said this order needs a worker (kickoff A1: «On it — I'll show
         # you the options» over nothing; the verb tables know «búscame», not every way of asking).
         # V2-773 (demo S1) — a «show me X» that NAMES a card we have (open, or a closed sheet) is a show, before
@@ -110,13 +87,14 @@ async def run_the_light_lanes(*, FastClient, _apply_widget_data, _brief, _buf_ad
                 data_done["v"] = True
                 emit("brain", "🔎 la app estaba vacía — su búsqueda, con su frase", role="system",
                      text=f"{_fill['widget_id']}:{_fill['action']} ← {_op_text[:80]}", extra={"cat": "flash"})
-        elif ((_wt == "go" or _win_goal
-                or _pst._direct_action.verdict_escalates(_brief, answered=bool(spoken_text))
+        # A7: an errand opens by the model's call or the brief's sure verdict, never by a word table over his words or a
+        # lookback over the window (CRIT-C16) — the marketplace table and the window goal went with that rule.
+        elif ((_pst._direct_action.verdict_escalates(_brief, answered=bool(spoken_text))
                 or _pst._direct_action.order_over_a_card_left_undone(_brief))
               and not _eg.keeps_it_inline(_brief, _op_text, emit=emit, by="promise_lane")):   # T-19 R6c
-            escalate_req["v"] = _win_goal or _op_text   # crear widget = código; marketplace/informe = navegador
-            emit("brain", "🧭 escalada por backstop (prometió crear/gestionar sin escalar)",
-                 text=(_win_goal or _op_text)[:80], role="system")
+            escalate_req["v"] = _op_text
+            emit("brain", "🧭 escalation by the promise backstop (a sure verdict, nothing called)",
+                 text=_op_text[:80], role="system")
         elif _router.looks_like_show_strict(_op_text):    # it named no card: a TAB of the wall, or nothing
             _wtab = _pst._wall_tab_for(_identify_system(_op_text), _op_text)
             if _wtab:
@@ -126,19 +104,8 @@ async def run_the_light_lanes(*, FastClient, _apply_widget_data, _brief, _buf_ad
                 emit("brain", "🗂️ panel por backstop de promesa (prometió abrirlo sin tool)", text=_wtab,
                      role="system")
 
-    # WORK HANDED BACK (V2-142): the model sends HIM to search for what he just asked (`reorder-prescription`) — the
-    # search is done instead. Only when NOTHING runs (with a live task it may be a suggestion, V2-123).
-    if (_no_tool and spoken_text and escalate_req["v"] is None
-            and _router.hands_public_lookup_back(spoken_text)
-            and not _eg.keeps_it_inline(_brief, _op_text, emit=emit, by="handed_back")):
-        try:
-            from nucleo import dispatch as _disp_hb
-            _busy = _disp_hb.has_active()
-        except Exception:
-            _busy = False
-        if not _busy:
-            escalate_req["v"] = _router.escalate_goal_from_window(brain._window, _op_text) or _op_text
-            emit("brain", "🧭 escalada por backstop (devolvió la búsqueda al operador)", text=_op_text[:80], role="system")
+    # WORK HANDED BACK (V2-142) went with A7: our reply sending him to search is our words, and our words open no
+    # errand (CRIT-K1); a sure `escalate` verdict on his request already routes it above.
 
     # BACKSTOP DETERMINISTA de CIERRE corto (sesión 22:40 2026-07-16): «Vale, ciérralo» → el modelo respondió
     # "Listo, cerrado" SIN emitir [[close]] ni tool alguna — la app quedó abierta y el operador tuvo que

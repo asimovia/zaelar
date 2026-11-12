@@ -74,11 +74,11 @@ def verdict_shows(brief) -> bool:
     said «Bringing the monitor comparison back up» and called nothing. The promise backstop that shows the named
     card gated on a verb table that knows «te lo abro», not «bringing it back up»; the verdict was already paid for."""
     try:
-        from nucleo.turn import brief as _tb
-        verb, info = _tb.read(brief, _tb.CANVAS_KEY, "")
+        from nucleo.turn import brief as _tb, verdicts as _v
+        verb, info = _tb.read(brief, _tb.CANVAS_KEY, "", min_confidence=_v.act_floor())
         if info is None or str(verb or "") != "show":
             return False
-        kind, k = _tb.read(brief, _tb.REQUEST_KEY, "")
+        kind, k = _tb.read(brief, _tb.REQUEST_KEY, "", min_confidence=_v.act_floor())
         return k is not None and str(kind) == "order"
     except Exception:  # noqa: BLE001
         return False
@@ -134,11 +134,11 @@ def order_over_a_card_left_undone(brief) -> bool:
     pass got no call, the escalation verdict was unsure (0.15), the reply said «on its way» and nothing was on
     its way. The caller supplies «nothing called, nothing asked»; this reads only the verdicts."""
     try:
-        from nucleo.turn import brief as _tb
-        kind, k = _tb.read(brief, _tb.REQUEST_KEY, "")
+        from nucleo.turn import brief as _tb, verdicts as _v
+        kind, k = _tb.read(brief, _tb.REQUEST_KEY, "", min_confidence=_v.act_floor())
         if k is None or str(kind) != "order":
             return False
-        card, c = _tb.read(brief, _tb.CATALOG_KEY, "")
+        card, c = _tb.read(brief, _tb.CATALOG_KEY, "", min_confidence=_v.act_floor())
         return c is not None and bool(card) and str(card) != "none"
     except Exception:  # noqa: BLE001
         return False
@@ -217,8 +217,8 @@ def order_card_after_read(brief, operator_text: str, read_widget: str) -> str:
     """The card an ORDER is on when the turn read a DIFFERENT card for it, or "": the brief is sure it is an order
     and his words name exactly one other card (by its name, an alias or a word it declares)."""
     try:
-        from nucleo.turn import brief as _tb
-        kind, info = _tb.read(brief, _tb.REQUEST_KEY, "", min_confidence=0.8)
+        from nucleo.turn import brief as _tb, verdicts as _v
+        kind, info = _tb.read(brief, _tb.REQUEST_KEY, "", min_confidence=_v.act_floor())
         if str(kind or "") != "order" or not info:
             return ""
         # Demo pass 62, C2: verdict `agenda:find_free` 0.91, the model ran it, and this still sent the order to the

@@ -13,11 +13,8 @@ de Sevilla», and NOTHING fired: 0 searches, 0 browser tasks. The promise backst
 """
 from __future__ import annotations
 
-import asyncio
-
 import pytest
 
-from memory import db as memdb
 from memory import embeddings as mememb
 from nucleo.flash import dialog
 from nucleo.flash import router_guards as g
@@ -50,15 +47,6 @@ def _hash_backend(monkeypatch):
     mememb.reset()
     yield
     mememb.reset()
-
-
-@pytest.fixture
-def fresh_db(tmp_path, monkeypatch):
-    monkeypatch.setenv("ZAELAR_DB", str(tmp_path / "zaelar.db"))
-    memdb.reset_db()
-    memdb.get_db()
-    yield
-    memdb.reset_db()
 
 
 # ── the loop the word-overlap detector cannot see ───────────────────────────────────────────────────────────
@@ -113,36 +101,3 @@ def test_these_need_someone_to_actually_go_and_do_it(text):
 ])
 def test_and_these_are_resolved_in_the_turn_itself(text):
     assert g._needs_real_work(text) is False
-
-
-def test_the_goal_survives_across_the_turns_that_were_only_asking():
-    win = [{"role": "user", "content": "Renueva mi cuota del gimnasio de este mes."},
-           {"role": "assistant", "content": "¿Qué gimnasio?"},
-           {"role": "user", "content": "el mío, el de siempre"},
-           {"role": "assistant", "content": "¿Nombre o ciudad?"}]
-    goal = g.escalate_goal_from_window(win, "Vivo en Sevilla.")
-    assert "cuota del gimnasio" in goal      # the request…
-    assert "Sevilla" in goal                 # …and the datum that unblocked it
-
-
-class _PromisesToSearch:
-    async def stream(self, *_a, **_kw):
-        yield "Perfecto, gracias. Ahora me pongo con ello — busco los gimnasios de Sevilla y vemos cuál es el tuyo."
-
-
-def test_the_promise_to_search_now_actually_starts_something(fresh_db, monkeypatch):
-    from nucleo.cli import turn
-    monkeypatch.setattr("nucleo.llm.fast_client.FastClient", _PromisesToSearch)
-    monkeypatch.setattr("nucleo.dispatch.has_active", lambda: False)
-    monkeypatch.setattr("nucleo.turn.reply.owes_an_act", lambda brief: "escalate")   # the brief owes it (refactor2710-03)
-    brain = turn._brain("t-v143")
-    brain._seeded = True
-    brain._window[:] = [{"role": "user", "content": "Renueva mi cuota del gimnasio de este mes."},
-                        {"role": "assistant", "content": "¿Qué gimnasio?"},
-                        {"role": "user", "content": "el mío, el de siempre"},
-                        {"role": "assistant", "content": "¿Nombre o ciudad?"}]
-    try:
-        res = asyncio.run(turn.run_turn("Vivo en Sevilla.", sid="t-v143", ingest=False))
-    finally:
-        turn.reset("t-v143")
-    assert res["action"] == "escalate", res

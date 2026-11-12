@@ -257,9 +257,6 @@ def _newest_inbound(platform, chat_id, since: float) -> tuple[str, float]:
     return "", 0.0
 
 
-_DONE_STATES = ("closed", "abandoned", "blocked")
-
-
 def _watched(now: float) -> list[dict]:
     """The errands the DURABLE half reconciles: every live one, plus the finished ones whose commitment has
     not happened yet (V2-705).
@@ -274,7 +271,7 @@ def _watched(now: float) -> list[dict]:
     rows = list(live(now))
     seen = {str(r.get("id") or "") for r in rows}
     try:
-        for raw in (_e._memory().errands_where(_DONE_STATES) or []):
+        for raw in (_e._memory().errands_where(_e.DONE) or []):
             row = _e._parse(raw)
             if row and str(row.get("id") or "") not in seen and commitment_ahead(row, now):
                 rows.append(row)
@@ -301,7 +298,7 @@ def _reconcile(now: float) -> None:
     if now - _last_reconcile < RECONCILE_S:
         return
     _last_reconcile = now
-    from . import commitment_ahead, live, reopen, threads
+    from . import DONE, commitment_ahead, live, reopen, threads
     for row in _watched(now):
         eid = str(row.get("id") or "")
         if not eid or eid in _pending_wakes:
@@ -313,7 +310,7 @@ def _reconcile(now: float) -> None:
             if mid and mid != seen:
                 logger.info(f"errands: {eid} tiene una respuesta sin atender en "
                             f"{t.get('platform')} — la recojo de la conversación")
-                if str(row.get("state") or "") in _DONE_STATES:
+                if str(row.get("state") or "") in DONE:
                     reopen(eid, "hay una respuesta sin atender y la cita no ha pasado", now=now)
                 _pending_wakes[eid] = {"at": now, "inbound": mid}
                 break

@@ -128,7 +128,7 @@ def _deterministic_close() -> str:
     without a single extra call."""
     st = _known()
     if str(st.get("operator_name") or "").strip() and offer_told():
-        return "ya sabemos su nombre y le hemos contado cómo cambiarte"
+        return "his name is known and he was told how to change ours"
     return ""
 
 

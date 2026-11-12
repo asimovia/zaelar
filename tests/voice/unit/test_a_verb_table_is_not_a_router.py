@@ -260,7 +260,9 @@ def test_a_show_that_names_a_card_we_have_beats_the_worker_and_an_undone_order_o
     a one-page summary … in a document» — the catalogue named `documento` (0.86), nothing was called, the
     escalation verdict was unsure (0.15), and «on its way» was on its way nowhere."""
     from nucleo.flash import direct_action as _da
-    assert _da.order_over_a_card_left_undone(_brief({_tb.REQUEST_KEY: ("order", 0.59), _tb.CATALOG_KEY: ("documento", 0.86)}))
+    assert _da.order_over_a_card_left_undone(_brief({_tb.REQUEST_KEY: ("order", 0.61), _tb.CATALOG_KEY: ("documento", 0.86)}))
+    assert not _da.order_over_a_card_left_undone(_brief({_tb.REQUEST_KEY: ("order", 0.59), _tb.CATALOG_KEY: ("documento", 0.86)})), \
+        "A7: under the act floor (0.6) an order launches nothing"
     assert not _da.order_over_a_card_left_undone(_brief({_tb.REQUEST_KEY: ("question", 0.9), _tb.CATALOG_KEY: ("agenda", 0.9)})), "a question is not work owed"
     assert not _da.order_over_a_card_left_undone(_brief({_tb.REQUEST_KEY: ("order", 0.9), _tb.CATALOG_KEY: ("none", 0.8)})), "no app named: the other gates decide"
     assert not _da.order_over_a_card_left_undone(_brief({_tb.REQUEST_KEY: ("order", 0.3), _tb.CATALOG_KEY: ("documento", 0.9)})), "unsure"
@@ -268,7 +270,7 @@ def test_a_show_that_names_a_card_we_have_beats_the_worker_and_an_undone_order_o
     # V2-776: the show also wakes on a sure `canvas = show` verdict (`verdict_shows`), not only the verb table.
     i_show = src.index('_pw = ((_named_by_verdict or _identify(_op_text))')   # 5a572275: the verdict's card first
     assert "if _show_target.show_proposed(_brief, _router, _op_text)" in src[i_show:i_show + 200]   # V2-807 T-06
-    i_esc = src.index("🧭 escalada por backstop (prometió crear/gestionar sin escalar)", i_show)
+    i_esc = src.index("🧭 escalation by the promise backstop (a sure verdict, nothing called)", i_show)
     assert src.index("🪟 show por backstop de promesa", i_show) < i_esc, "a named app is shown BEFORE the worker gate"
     assert "or _direct_action.order_over_a_card_left_undone(_brief))" in src[i_show:i_esc]
     assert "and not _eg.keeps_it_inline(_brief, _op_text" in src[i_show:i_esc], "a sure inline still decides (2.996)"

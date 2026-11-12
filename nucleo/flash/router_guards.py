@@ -205,48 +205,6 @@ def looks_like_escalate_task(text: str) -> bool:
         return False
 
 
-# HANDING THE LOOKUP BACK (V2-142). Measured on `reorder-prescription__es`: the operator wrote «¿puedes buscar
-# tú el teléfono de esa, por favor? Para eso te pido ayuda» and got «la forma más rápida es que busques
-# "farmacia Plaza de Chamberí" en Google Maps y me pasas el teléfono». That is the whole job handed back, on a
-# turn where zaelar has `web_search` and a browser.
-#
-# The distinction that makes this SAFE, and it is the whole design: telling the operator to look in HIS OWN
-# private things — his inbox, his contract, the paper receipt in a drawer — is CORRECT behaviour when zaelar has
-# no connector for it, and `pay-known-bill` earns points for exactly that («abre tu correo, busca la factura de
-# la luz y dime cuál es»). What is never acceptable is sending him to look up PUBLIC information he asked US to
-# find. So the pattern requires a public destination (Google, Maps, internet, a search engine), never a private
-# one — the same reason the rest of this module pairs a verb with its object instead of trusting the verb alone.
-_PUBLIC_LOOKUP_RE = _re.compile(
-    r"\b(google|maps|internet|la red|un buscador|el buscador|paginas amarillas|paginas blancas|"
-    r"yelp|tripadvisor)\b", _re.I)
-_LOOKUP_VERB_RE = _re.compile(
-    r"\b(busca\w*|buscar\w*|busques|busque|mira\w*|mires|consulta\w*|consultes|"
-    r"look\s+(?:it\s+)?up|search\w*|check)\b", _re.I)
-# zaelar SAYING IT IS DOING IT is the opposite of handing it back, and the same words appear in both. First
-# person (and the past tense of having already looked) is what tells them apart.
-_FIRST_PERSON_LOOKUP_RE = _re.compile(
-    r"\b(busco|buscare|he buscado|estoy buscando|voy a buscar|miro|mirare|he mirado|estoy mirando|"
-    r"voy a mirar|consulto|he consultado|te paso|te traigo|te digo|"
-    r"i(?:'| a)?m (?:looking|searching)|i (?:will |'ll )?(?:look|search|check)|i (?:looked|searched|checked))\b",
-    _re.I)
-
-
-def hands_public_lookup_back(reply: str) -> bool:
-    """True when zaelar's own reply sends the operator off to look up PUBLIC information himself.
-
-    Deliberately NOT true for his private material (inbox, contract, the paper bill in a drawer): there, asking
-    him is the correct move — zaelar genuinely has no connector — and `pay-known-bill__es` scores it as such
-    («abre tu correo, busca la factura de la luz y dime cuál es»). The line is the DESTINATION, not the verb.
-
-    Nor is it true when zaelar says it is doing the looking itself: «busco yo el teléfono», «he mirado en Google
-    Maps y la más cercana es esta». Same words, opposite meaning, told apart by the person of the verb.
-    """
-    n = _norm_txt(reply)
-    if not _PUBLIC_LOOKUP_RE.search(n) or not _LOOKUP_VERB_RE.search(n):
-        return False
-    return not _FIRST_PERSON_LOOKUP_RE.search(n)
-
-
 # Prepositions and fillers that carry no TOPIC. `_content_words` keeps them (it was written for the agenda,
 # where the cost of an extra word is different) and it also keeps punctuation attached, so «Hotel Palacio de la
 # Merced para el 30 de agosto.» and «entradas para El Rey León» overlapped on «para» — one function word was
@@ -402,14 +360,11 @@ _EN_DIRECTIVE_RE = _re.compile(
 
 # V2-778 F1 — the commission readers live in `nucleo/flash/commission_guards.py`; their names stay here, resolved
 # on first use (a module `__getattr__`), because that module reads this one's names and a load-time import in both
-# directions breaks whichever is imported first. Nothing left in this file calls them by bare name.
-_MOVED_TO_COMMISSION = frozenset({"_needs_real_work", "_topic_words", "create_widget_request",
-                                  "escalate_goal_from_window", "nothing_running_for",
-                                  "too_thin_to_commission"})
-
-
+# directions breaks whichever is imported first. The functions that module DEFINES are the list (A7: no copy of it).
 def __getattr__(name: str):
-    if name in _MOVED_TO_COMMISSION:
+    if not name.startswith("__"):
         from nucleo.flash import commission_guards as _cg
-        return getattr(_cg, name)
+        fn = vars(_cg).get(name)
+        if callable(fn) and getattr(fn, "__module__", "") == _cg.__name__:
+            return fn
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

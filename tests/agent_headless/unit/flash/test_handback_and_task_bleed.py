@@ -54,50 +54,6 @@ def fresh_db(tmp_path, monkeypatch):
     memdb.reset_db()
 
 
-# ── handing a PUBLIC lookup back ────────────────────────────────────────────────────────────────────────────
-@pytest.mark.parametrize("reply", [
-    HANDBACK,
-    'la forma más rápida es buscar "farmacia Plaza de Chamberí" en Google Maps o llamar al 010',
-    "puedes buscarlo tú en Google Maps y me pasas el teléfono",
-    "lo más rápido es que busques el número en internet",
-    "you can look it up on Google Maps and send me the number",
-])
-def test_sending_him_to_look_it_up_himself_is_handing_the_job_back(reply):
-    assert g.hands_public_lookup_back(reply) is True
-
-
-@pytest.mark.parametrize("reply", [
-    # His OWN material: zaelar has no connector for it, and asking is the right move.
-    "abre tu correo tú mismo, busca cualquier factura de luz reciente y dime cuál es",
-    "mira el recibo cuando puedas y dame el número de factura",
-    # Same words, first person — zaelar doing the looking.
-    "busco yo el teléfono y te lo digo",
-    "voy a buscar en Google el horario y te digo",
-    "estoy buscando la farmacia en Google Maps",
-    "he mirado en Google Maps y la más cercana es esta",
-    "te paso las opciones que he encontrado en Google",
-    "hola, qué tal",
-])
-def test_and_these_are_not(reply):
-    assert g.hands_public_lookup_back(reply) is False
-
-
-def test_the_backstop_does_the_search_instead_of_just_forbidding_it(monkeypatch):
-    monkeypatch.setattr("nucleo.dispatch.has_active", lambda: False)
-    out = _typed_turn("¿puedes buscar tú el teléfono de esa, por favor? Para eso te pido ayuda.")
-    assert not out.error, out.error
-    assert out.action == "escalate", (out.action, out.reply)
-
-
-def test_but_not_while_something_is_already_running(monkeypatch):
-    """With a live task the same sentence can be a suggestion while the work happens, and re-escalating would
-    run it twice — the cost V2-123 measured."""
-    monkeypatch.setattr("nucleo.dispatch.has_active", lambda: True)
-    out = _typed_turn("¿puedes buscar tú el teléfono de esa, por favor?")
-    assert not out.error, out.error
-    assert out.action != "escalate", (out.action, out.reply)
-
-
 # ── a running task is not part of the new request ───────────────────────────────────────────────────────────
 # test_a_live_task_is_context_not_part_of_the_new_request: retired by V2-878 §2 — it asserted an instruction of the running-errands block, which is facts only now.
 

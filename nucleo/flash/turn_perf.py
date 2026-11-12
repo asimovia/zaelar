@@ -160,8 +160,8 @@ def verdict(m: dict) -> dict:
         # E0: the body's OWN loop was stopped (a host out of memory, measured 2026-11-12: 12–31 s): the time went
         # nowhere the model or the provider can answer for. Named FIRST — a stall also looks cold and pre-token.
         cause = "host"
-        label = (f"⏱ turno LENTO {int(total)} ms — HOST PARADO {host:.1f} s: el bucle del motor no corrió; "
-                 f"ni el prompt ({int(ptok)} tok) ni el proveedor lo explican")
+        label = (f"⏱ SLOW turn {int(total)} ms — HOST STALLED {host:.1f} s: the engine's loop did not run; "
+                 f"neither the prompt ({int(ptok)} tok) nor the provider explains it")
     elif cold:
         cause = "frio"
         label = (f"⏱ turno LENTO {int(total)} ms — ARRANQUE EN FRÍO "

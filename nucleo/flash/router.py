@@ -291,7 +291,6 @@ from nucleo.flash.router_guards import (  # noqa: F401 — re-export, not a loca
     is_music_service, looks_like_close,
     looks_like_create_widget, asks_for_missing_detail,
     looks_like_show_strict, looks_like_escalate_task,
-    escalate_goal_from_window, hands_public_lookup_back,
     create_widget_request,
     looks_like_bare_ref,
     is_messaging_service, looks_like_stop_work, login_site, nothing_running_for, too_thin_to_commission,
