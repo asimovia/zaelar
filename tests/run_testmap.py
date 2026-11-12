@@ -5225,6 +5225,11 @@ DOMAINS: list[dict] = [
                                  "sample over once on return; a browser runs location only, foreground; a generated app "
                                  "reaches sensors only through ctx.device (the gate refuses Capacitor/geolocation/bluetooth) (V2-890)", "ch": UNIT,
             "paths": ["tests/browser/unit/mobile/test_an_activity_keeps_reading_with_the_screen_locked.py"]},
+        {"id": "4.493", "title": "An activity he starts is recorded by ONE screen: the phone app claims a voice-started "
+                                 "ride, a desktop only reflects it unless he tapped Start there; a stranger's batch is "
+                                 "refused, a batch sent twice counts once, jitter is not distance, no strap is no reading "
+                                 "(never a zero), stop keeps the summary (V2-890 F1)", "ch": UNIT,
+            "paths": ["tests/browser/unit/activity/test_an_activity_is_recorded_by_the_screen_that_owns_it.py"]},
         {"id": "4.439", "title": "The iOS app carries what App Review reads: Info.plist keys (encryption, category, "
                                  "full screen, permission sentences, versions from the build), the privacy manifest "
                                  "(no tracking, the data the shell sends) and the entitlements template (V2-870)", "ch": UNIT,
