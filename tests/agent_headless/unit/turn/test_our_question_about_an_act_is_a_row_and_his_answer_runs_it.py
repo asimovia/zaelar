@@ -192,3 +192,36 @@ def test_disarmed_without_the_row_his_answer_has_nowhere_to_go(world, monkeypatc
     from nucleo.cli import worker_api
     assert worker_api.open_asks() == [], "nothing waits: his «a las siete» binds to nothing and nothing runs"
     assert world["sent"] == []
+
+
+# ── audit 2026-11-12, A2 — the answer's resumption absorbs the ANSWERING turn's call, never a later turn's ───────────
+# After «yes» resumed the offer's row, «and note the dentist on Thursday» — a new turn, the same act — was counted as
+# already done for 120 s: nothing ran and the turn said ok. «The answering turn» is a fact (its trace), not a clock.
+
+@pytest.mark.parametrize("lang", ["es", "en"])
+def test_a_call_of_the_same_act_in_a_later_turn_is_a_new_order_never_the_answers(world, lang):
+    from voice import trace
+    w = WORDS[lang]
+    uid, entry = _ask(w, "offer_q")
+    other = {"title": "Dentista" if lang == "es" else "Dentist", "date": "2026-11-19", "startTime": "10:00"}
+    with trace.scope("t-answer"):
+        asyncio.run(inline_ask.rerun(uid, entry, w["yes"]))
+        (s,) = world["sent"]
+        assert s["row"] == uid and uid in inline_ask._RESUMING
+        assert inline_ask.claim(WID, ACT, dict(PAYLOAD)) == (uid, True), "the answering turn's own call is that answer"
+    with trace.scope("t-next"):
+        assert inline_ask.claim(WID, ACT, other) == ("", False), "a later turn's call is his new order: it runs"
+
+
+def test_a_resumed_send_absorbs_its_own_turns_call_and_no_later_turns(world):
+    """The same rule for every answer that resumes a row — here a send task's (`send_task_answer`): two turns later
+    «…and write to Thaddeus Wrenfield too» is a send of its own."""
+    from voice import trace
+    kept = {"widget": "mensajeria", "action": "send_to", "candidates": []}
+    with trace.scope("t-answer"):
+        inline_ask.resuming("row-odalys", kept)
+        assert inline_ask.claim("mensajeria", "send_to", {"contact": "Odalys Brezmes", "text": "voy"}) == ("row-odalys", True)
+    with trace.scope("t-next"):
+        assert inline_ask.claim("mensajeria", "send_to", {"contact": "Thaddeus Wrenfield", "text": "hola"}) == ("", False)
+    assert inline_ask.claim("mensajeria", "send_to", {"contact": "Thaddeus Wrenfield", "text": "hola"}) == ("", False), \
+        "outside any turn (a screen answer has none) nothing is absorbed either"
