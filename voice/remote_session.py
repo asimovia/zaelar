@@ -29,9 +29,14 @@ from types import SimpleNamespace
 
 from loguru import logger
 
-#: The env this process gave the voice process at spawn names it (`ZAELAR_VOICE_*`, its body and worker addresses):
-#: those are the voice's own and are never pushed as «settings».
-_OWN_PREFIXES = ("ZAELAR_VOICE_", "ZAELAR_BODY_", "ZAELAR_WORKER_")
+
+
+
+def _own(key: str) -> bool:
+    """The env this body gave the voice process at spawn names THAT process (`voice/child_process.VoiceChild._env`):
+    it is the voice's own and is never pushed as a «setting»."""
+    from voice import child_process
+    return key in child_process.SPAWN_KEYS or key.startswith("ZAELAR_VOICE_")
 
 
 class ChildClient:
@@ -61,14 +66,14 @@ class ChildClient:
 
     def env_diff(self) -> dict:
         """The `ZAELAR_*` settings that changed since the last push (the language he picked, a mode)."""
-        now = {k: v for k, v in os.environ.items() if k.startswith("ZAELAR_") and not k.startswith(_OWN_PREFIXES)}
+        now = {k: v for k, v in os.environ.items() if k.startswith("ZAELAR_") and not _own(k)}
         out = {k: v for k, v in now.items() if self._env_sent.get(k) != v}
         out.update({k: "" for k in self._env_sent if k not in now})
         self._env_sent = now
         return out
 
     def mark_env_sent(self, env: dict) -> None:
-        self._env_sent = {k: v for k, v in env.items() if k.startswith("ZAELAR_") and not k.startswith(_OWN_PREFIXES)}
+        self._env_sent = {k: v for k, v in env.items() if k.startswith("ZAELAR_") and not _own(k)}
 
     async def post(self, path: str, payload: dict | None = None, timeout_s: float = 3.0) -> dict:
         self.stats["calls"] += 1
