@@ -41,7 +41,7 @@
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Zaelar uses your location during an activity you start, such as a ride or a walk, and while it runs iOS shows the blue location indicator. It stops when you end the activity.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Zaelar uses your location only when an app or a request of yours needs it.</string>
+	<string>Zaelar uses your location only when something you ask for needs it: what is near you, or an activity you start.</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Zaelar connects to your heart rate strap or watch so it can tell you your heart rate during an activity you start.</string>
 	<key>NSMotionUsageDescription</key>

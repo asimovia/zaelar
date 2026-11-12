@@ -49,7 +49,7 @@
     "preboot.boot.2": "Connecting to the engine",
     "preboot.boot.3": "Opening your session",
     "preboot.boot.4": "Preparing the voice stack",
-    "preboot.boot.5": "Loading the app catalogue",
+    "preboot.boot.5": "Loading the catalogue",
     "preboot.boot.6": "Connecting to the models",
     "preboot.boot.7": "Opening your memory",
     "preboot.boot.8": "Restoring your desktop",
