@@ -37,6 +37,11 @@ _LOCK = threading.Lock()
 #: Rows an answer is resuming (`answered_task.start`): {row: (widget, actions, candidates, at)}. The
 #: answering turn's model calling the same act is that same answer — never a second send.
 _RESUMING: dict = {}
+#: What `ask_outside_door.held` retains for our own question: his request, the card and its acts.
+UTTERANCE = "utterance"
+#: How long our own question about an act of a card takes the model's call of that act as his answer (`claim`): the
+#: conversation (`send_task_answer.RECENT_S`), not for ever — a call days later is a new order.
+OFFER_S = 600.0
 
 
 def verdict_of(res) -> dict | None:
@@ -183,6 +188,8 @@ def claim(wid: str, action: str, payload: dict | None) -> tuple[str, bool]:
             if not art.get("inline") or base(ret.get("widget")) != base(wid) or action not in acts_of(ret):
                 continue
             got = _named(payload, ret)
+            if not got and ret.get("kind") == UTTERANCE and not ret.get("candidates") and _offer_open(a, art):
+                got = "call"              # A5: the answering turn's own call of the act our question was about
             if got:
                 if not take(a["ask_id"]):
                     return a["task_id"], True     # another trigger already ran this answer's act
@@ -199,101 +206,11 @@ def claim(wid: str, action: str, payload: dict | None) -> tuple[str, bool]:
     return "", False
 
 
-def bound(retained: dict, text: str, choice: int | None) -> dict | None:
-    """The retained payload with his answer in its slot: the candidate the verdict chose, else his text (a fact, or
-    the screen's option). None when there is nothing to bind."""
-    slot = str(retained.get("slot") or "")
-    cands = list(retained.get("candidates") or [])
-    payload = dict(retained.get("payload") or {})
-    if not slot:
-        return payload                           # ASK_CONSENT: the act as it was, on his yes
-    if choice is not None and 0 <= int(choice) < len(cands):
-        payload[slot] = cands[int(choice)]
-    elif str(text or "").strip():
-        payload[slot] = " ".join(str(text).split())
-    else:
-        return None
-    return payload
+def _offer_open(ask: dict, art: dict) -> bool:
+    """Was our question about an act of the card asked within the conversation (`OFFER_S`)? Read off the row's own
+    clock (`since`, else the artefact's `created`), never off his words."""
+    at = float(ask.get("since") or art.get("created") or 0)
+    return bool(at) and time.time() - at <= OFFER_S
 
 
-async def rerun(uid: str, entry: dict, text: str, choice: int | None = None):
-    """Resume inline row `uid`: the retained act through the same door with the answer bound. The door's echo settles
-    the row through `circuit.settle`; a door that asks again makes the SAME row wait on a new question."""
-    from nucleo.circuit import ledger
-    retained = entry.get("retained") or {}
-    if retained.get("kind") == "matter":         # a task matter's question (V2-857 P0-2): his answer is on the row
-        if take(str(entry.get("ask_id") or "")):
-            ledger.resumed(uid)                  # the turn that bound it reads the answer off the row and acts
-        return {"ok": True, "row": uid, "answered": True}
-    if retained.get("kind") == "notice":         # a scheduled notice's question (V2-878 §4): his answer ends it
-        return __import__("nucleo.pulse.notice_ask", fromlist=["x"]).answered(uid, entry, text)
-    if retained.get("kind") == "send":           # a send task's slot (`nucleo/request/send_task`): his answer fills it
-        return __import__("nucleo.request.send_task_answer", fromlist=["x"]).answered(uid, entry, text, choice)
-    if retained.get("kind") == "which":          # «for X, or something new?» (V2-878 §3 e): his answer routes it
-        return __import__("nucleo.turn.which_flow", fromlist=["x"]).answered(uid, entry, text, choice)
-    if retained.get("kind") == "start":          # a parked errand's question (V2-857 P0-1): its yes relaunches it
-        from nucleo.dispatch import confirm as _dc
-        return _dc.rerun_start(uid, entry, text, choice)
-    from nucleo.request import consent_ask as _ca
-    if retained.get("kind") in _ca.ACTS:         # a card's delete/restore, a cluster connect or send (phase 3)
-        from nucleo.cli.worker_api_answer import decision
-        said = decision(str(entry.get("question") or ""), text, choice, entry.get("options"))
-        if said is None:                         # not a decision: the question stays open, the row waits
-            return {"ok": False, "row": uid, "unclear": True}
-        if not take(str(entry.get("ask_id") or "")):
-            return None
-        yes = said == "yes"
-        from nucleo import circuit
-        if not yes:
-            circuit.settle(row=uid, state="cancelled", outcome="he did not confirm it")
-            return {"ok": False, "row": uid}
-        ledger.resumed(uid)
-        res = await _ca.ACTS[str(retained["kind"])](retained)
-        ok = bool(isinstance(res, dict) and res.get("ok", True))
-        circuit.settle(row=uid, state="done" if ok else "failed",
-                       outcome=f"{retained['kind']} {'ran' if ok else 'failed'} on his yes")
-        return {"ok": ok, "row": uid, "result": res}
-    from nucleo.request import answered_task
-    try:   # is this kept question about an act that leaves the machine? Read off the card's declared effects
-        from widgets import effects
-        card = base(retained.get("widget"))
-        leaves = bool(card) and any(effects.leaves(card, a) for a in acts_of(retained))
-    except Exception as e:  # noqa: BLE001
-        note(e)
-        leaves = False
-    if leaves and not answered_task.deterministic(entry, choice):
-        # F2e — an answer that needs composing (our own question, a fact, a free answer) about an act that LEAVES is
-        # an identified task: a worker takes it on this row. A plain pick or a yes re-runs the kept act below.
-        return {"ok": True, "worker": answered_task.start(uid, entry, text, choice), "row": uid}
-    wid, action = str(retained.get("widget") or ""), str(retained.get("action") or "")
-    if not take(str(entry.get("ask_id") or entry.get("corr_id") or "")):
-        return None                              # this answer's act already ran (the model's own call took it)
-    if entry.get("consent") == "ask_consent":
-        # his answer is the candidate the brief (or the screen) chose — `#0` yes, `#1` no; only with no choice at
-        # all are his words read by the confirmation recogniser
-        if choice is not None:
-            yes = int(choice) == 0
-        else:
-            from nucleo.cli.worker_api_answer import _says_yes
-            yes = _says_yes(str(entry.get("question") or ""), text, entry.get("options"))
-        payload = dict(retained.get("payload") or {}) if yes else None
-        if payload is None:
-            from nucleo import circuit
-            circuit.settle(row=uid, state="cancelled", outcome="he did not confirm it")
-            return None
-    else:
-        payload = bound(retained, text, choice)
-    if not (wid and action) or payload is None:
-        return None
-    slot = str(retained.get("slot") or "")
-    if slot and (dup := _recent(wid, action, payload, slot)) and dup != uid:
-        # The same turn's own act already REACHED exactly this candidate on another row: one answer, one act.
-        from nucleo import circuit
-        circuit.settle(row=uid, state="done", outcome=f"the same act already left on row {dup}")
-        return {"ok": True, "already": True, "row": dup}
-    ledger.resumed(uid)
-    _remember(wid, action, slot, str(payload.get(slot) or "") if slot else "", uid)
-    row = ledger.get(uid) or {}
-    from nucleo.flash import data_ops
-    return await data_ops.dispatch_and_report(wid, action, payload, row=uid,
-                                              text=str(row.get("goal") or row.get("title") or ""))
+from nucleo.request.inline_answer import bound, rerun  # noqa: E402,F401 — moved (A5), imported back under their names

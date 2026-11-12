@@ -23,7 +23,8 @@ from loguru import logger
 
 #: The brief's question (V2-833 F8): can what he wants be read from the sentence as it stands? Measured 2026-11-01 over the
 #: bench's garbled, clear and remark lines, ×3: the garbled Shakira line `garbled` 0.82–0.85, stray syllables `noise`
-#: 0.92–0.98, every clear order, question and remark `clear` — never a false `garbled`.
+#: 0.92–0.98, every clear order, question and remark `clear` — never a false `garbled`. Read at the VETO floor since
+#: 2026-11-12 (`verdict`): a garbled line under 0.85 keeps the model's words.
 KEY = "readable"
 CLEAR, GARBLED, NOISE = "clear", "garbled", "noise"
 INSTRUCTIONS = ("This is a live speech-to-text transcript of what the operator just said to his voice assistant. Can "
@@ -46,12 +47,15 @@ def question(ctx: dict) -> dict:
 
 
 def verdict(brief) -> str:
-    """`garbled` / `noise` when the brief read the sentence as unreadable, sure enough to license a pass the model did
-    not make (`verdicts.LICENCE`); "" otherwise — unsure, in flight, off or clear: today's path."""
+    """`garbled` / `noise` when the brief read the sentence as unreadable SURELY ENOUGH TO VETO what the model said
+    (`verdicts.VETO`): holding the model's words unsaid refuses what it did, and a weaker reader never overrules a
+    stronger one in silence (group A5, 2026-11-12: a 0.5 reading ate the model's answer to his «sí» and the turn said
+    «I didn't understand» — the measured garbled line reads 0.82-0.85, stray syllables 0.92-0.98). "" otherwise —
+    unsure, in flight, off or clear: the model's words stand."""
     try:
         from nucleo import jev
         from nucleo.turn import verdicts as _v
-        choice, _info = jev.read(brief, KEY, "", min_confidence=_v.LICENCE)
+        choice, _info = jev.read(brief, KEY, "", min_confidence=_v.VETO)
         return choice if choice in (GARBLED, NOISE) else ""
     except Exception as e:  # noqa: BLE001
         logger.debug(f"unclear_turn: no verdict read ({e!r})")
