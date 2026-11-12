@@ -160,6 +160,9 @@
     "el widget del navegador": "navegador",
     "el widget de busqueda": "search",
     "el widget del reloj": "clock",
+    "la actividad": "activity",
+    "mi actividad": "activity",
+    "el widget de actividad": "activity",
     "el widget del temporizador": "timer",
     "el widget del documento": "documento"
    },
@@ -246,6 +249,9 @@
     "el widget del navegador": "navegador",
     "el widget de busqueda": "search",
     "el widget del reloj": "clock",
+    "la actividad": "activity",
+    "mi actividad": "activity",
+    "el widget de actividad": "activity",
     "el widget del temporizador": "timer",
     "el widget del documento": "documento"
    },

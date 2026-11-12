@@ -1,8 +1,8 @@
 """Which errand his words are for is the brief's `errand_target`, read asymmetrically (refactor2710-06 T-03).
 
 `cluster_send`, `send_to_worker` and `set_cluster_objective` read no verdict before. Now, through the catalogue's own
-arms: the verdict naming the arm's target runs it; a sure contrary verdict (≥ VETO) drops it; an unsure one asks which;
-and no verdict — an old brief, nothing running — keeps today's route, never a new question.
+arms: the verdict naming the arm's target runs it; a sure contrary verdict (≥ VETO) drops it; an unsure one is a doubt
+and the call runs, never a «which one?» (V2-886 D2); and no verdict — an old brief, nothing running — keeps today's route, never a new question.
 """
 from __future__ import annotations
 
@@ -55,8 +55,9 @@ def test_an_agreeing_verdict_runs_and_no_verdict_keeps_todays_route(arm):
     assert ran[-1] == "cluster_send" and not ask, "no verdict: today's route, never a new question"
 
 
-def test_a_sure_contrary_verdict_drops_it_and_an_unsure_one_asks(arm):
+def test_a_sure_contrary_verdict_drops_it_and_an_unsure_one_is_a_doubt_that_runs(arm):
     ran, ask = arm("cluster_send", _brief("running_errand", 0.9))
     assert "cluster_send" not in ran and not ask
     ran, ask = arm("set_cluster_objective", _brief("none", 0.6))
-    assert "set_cluster_objective" not in ran and ask == "Which one?"
+    assert ran[-1] == "set_cluster_objective" and not ask, (
+        "a contrary verdict below the veto is a doubt (V2-886 D2): the model's call runs, he is never asked «which one?»")

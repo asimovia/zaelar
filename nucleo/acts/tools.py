@@ -238,7 +238,7 @@ def connect_cluster(args: dict, c) -> None:
 
 def _errand_target_lets(tool: str, c) -> bool:
     """The brief's `errand_target` over this arm: True runs it; a sure contrary verdict drops it (said on the
-    timeline), an unsure one asks which. No verdict runs it, as today (`acts.errand.target_allows`)."""
+    timeline), an unsure one is a recorded doubt and runs (V2-886 D2). No verdict runs it, as today (`acts.errand.target_allows`)."""
     from nucleo import consent
     from nucleo.acts import errand as _errand
     v = _errand.target_allows(c._brief, tool)
