@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import importlib
 import threading
+import time
 
 from loguru import logger
 
@@ -71,12 +72,13 @@ def _questions(handle: dict, door: str) -> dict:
     return qs
 
 
-def fire(handle, door: str):
+def fire(handle, door: str, *, by_read: bool = False):
     """Ask the door's questions about the sentence the brief judged, on their own thread, merged into `handle` when
     they land. Returns the door's event (set when merged), or None when there is nothing to ask (no brief, no
-    sentence, Jev off, every answer already there). Never blocks, never raises; a door fires once per handle."""
+    sentence, Jev off, every answer already there, or a READ that cannot stand for the door: on a carried copy its trip
+    lands unread; the `call` door's precondition is a model call). Never blocks, never raises; fires once per handle."""
     try:
-        if not isinstance(handle, dict) or door not in DOORS:
+        if not isinstance(handle, dict) or door not in DOORS or (by_read and (handle.get("carried") or door == "call")):
             return None
         doors = handle.setdefault("_doors", {})
         if door in doors:
@@ -133,15 +135,15 @@ async def landed(handle, door: str, wait_s: float = WAIT_S, *, ask: bool = True)
     return ev.is_set()
 
 
-def landed_sync(handle, door: str, wait_s: float = WAIT_S) -> bool:
-    """For a door that runs on its own thread (a worker's exit): fire it and wait at most `wait_s`. On an event loop
-    it only fires — a blocking wait would stall it."""
-    ev = fire(handle, door)
-    if ev is None:
-        return False
-    if not ev.is_set() and not _on_the_loop():
-        ev.wait(max(0.0, wait_s))
-    return ev.is_set()
+def landed_sync(handle, *doors: str, wait_s: float = WAIT_S) -> bool:
+    """For doors that run on their own thread (a worker's exit): fired together, awaited at most `wait_s` in all. On an
+    event loop it only fires, never on a carried copy (its trip would land unread). True when every one fired landed."""
+    loop = _on_the_loop()
+    evs = [] if loop and isinstance(handle, dict) and handle.get("carried") else [fire(handle, d) for d in doors]
+    evs, end = [ev for ev in evs if ev is not None], time.monotonic() + max(0.0, wait_s)
+    for ev in () if loop else evs:
+        ev.wait(max(0.0, end - time.monotonic()))
+    return bool(evs) and all(ev.is_set() for ev in evs)
 
 
 def keep(handle, reading) -> None:

@@ -73,19 +73,20 @@ def at_escalation(brief, said: str, spoken_text: str, escalate_req: dict, worker
     return {}
 
 
-def at_close(brief, said: str, spoken_text: str, escalate_req: dict, worker_acted: dict, emit, escalate_mod) -> str:
+async def at_close(brief, said: str, spoken_text: str, escalate_req: dict, worker_acted: dict, emit, escalate_mod) -> str:
     """A send the brief identified, with no call and no escalation (a promise, a question in prose), is its task: run,
     or waiting on the one slot it lacks (the question the mouth already said becomes the row's). A sure «escalate»
     verdict says the text is work (composed from somewhere): the worker composes it ON the send row. The row's uid,
     or '' when the turn holds no send task."""
     from nucleo.request import send_task_words as _stw
-    from nucleo.turn import brief as _tb
+    from nucleo.turn import brief as _tb, brief_doors
     esc, esc_info = _tb.read(brief, _tb.ESCALATE_KEY, "")
     uid, how = _stw.by_verdict(brief, said=said, model_text=spoken_text, escalate_req=escalate_req,
                                worker_acted=worker_acted, emit=emit,
                                on_missing="worker" if (esc_info is not None and esc == "escalate") else "ask",
                                asked_line=spoken_text if _stw.ends_asking(spoken_text) else "")
     if uid and how == "worker":
+        await brief_doors.landed(brief, "portal")     # its consent class is a PORTAL key: asked and awaited (K2b R1)
         escalate_mod.escalate_to_slowbrain(said, context={"src": "voice", "kind": "generic", "task_uid": uid,
                                                           "playbook": "message", "surface": "voz",
                                                           "errand_class": escalate_mod.class_verdict(brief),

@@ -35,6 +35,8 @@ re-run turn said «sending it now» and called nothing in 6 of 14 runs). One ans
 """
 from __future__ import annotations
 
+import asyncio
+
 from nucleo.request import base, ends_asking, event, note
 from nucleo.request.ending import leaving_acts
 from voice import trace as _trace
@@ -149,22 +151,24 @@ def held(measured: dict, reply: str, said: str) -> str:
         return ""
 
 
-def claimed(brief, reply: str, said: str, *, emit=None) -> int:
+async def claimed(brief, reply: str, said: str, *, emit=None) -> int:
     """The verdict names a LEAVING act surely and no call reached its door, yet the turn did not ask: its words stand
     for an act nobody made (measured on his engine, 2026-11-05: «manda un mensaje a pablo diciendo hola» → verdicts
     `screen_action = mensajeria:send_to` 0.98, `end_state = mensajeria:sent`, `wants_words = act`; reply «Sending
     "hola" to Pablo now…» with ZERO calls — the line claimed a send that would never happen). An identified act the
     turn did not make is an IDENTIFIED TASK (§2b): the request goes to a Brain Worker on its own row with the `message`
     playbook (the same hand-off as an answered send, `answered_task`), so the start the line announced is real. Not a
-    re-run after the stream: one routing decision at the close, read off verdicts the turn already paid for. Returns
-    the worker's task id, or 0 when nothing qualified or started."""
+    re-run after the stream: one routing decision at the close. An order leaning out awaits first, off the loop, the
+    doors that back a send (`portal`, `send`; CRIT-K2b R1). Returns the worker's task id, or 0."""
     text = " ".join(str(said or "").split())
     if not text or ends_asking(reply):
         return 0                                   # a question is `measure`/`held`'s, never a claim
     try:
-        from nucleo.turn import verdicts
+        from nucleo.turn import brief_doors, verdicts
         from widgets import effects
         from nucleo.acts.message_channel import backs_a_send as _backs
+        if verdicts.to_act(brief, "request_type", "")[0] == "order" and _leans_out(brief)[0]:   # both branches need it
+            await asyncio.gather(brief_doors.landed(brief, "portal"), brief_doors.landed(brief, "send"))
         target, info = verdicts.read(brief, "screen_action", None, min_confidence=verdicts.act_floor())
         wid, _sep, act = str(target or "").partition(":")
         # A7 audit: the order AND the act at the floor, and a reading backing a send («¿le mandaste…?» is no send)
@@ -175,6 +179,15 @@ def claimed(brief, reply: str, said: str, *, emit=None) -> int:
     except Exception as e:  # noqa: BLE001 — never takes the turn down; the line stands as it was
         note(e)
         return 0
+
+
+def _leans_out(brief) -> tuple[str, str]:
+    """`(card, act)` the turn leans to at any confidence when that act LEAVES the machine, else `("", "")`."""
+    from nucleo.turn import verdicts
+    from widgets import effects
+    leaned, _l = verdicts.read(brief, "screen_action", None, min_confidence=0.0)
+    wid, _sep, act = str(leaned or "").partition(":")
+    return (wid, act) if wid and act and effects.leaves(base(wid), act) else ("", "")
 
 
 def to_message_task(wid: str, act: str, said: str, *, src: str, why: str = "", emit=None) -> int:
@@ -216,21 +229,16 @@ def _an_order_nothing_served(brief, text: str, *, emit=None) -> int:
     # V2-886 D4: the lean names WHICH act (any confidence); whether there is a send at all is the reading's —
     # the errand class or a named channel (measured 2026-11-11: «close absolutely everything» with the mail card open
     # leaned to a WhatsApp send, and the worker's exit asked him to send a draft he never asked for).
-    leaned, _l = verdicts.read(brief, "screen_action", None, min_confidence=0.0)
-    wid, _sep, act = str(leaned or "").partition(":")
+    wid, act = _leans_out(brief)
     from nucleo.acts import message_channel
-    if not message_channel.backs_a_send(brief):
-        return 0
-    from widgets import effects
-    from nucleo.request import base
-    if not (wid and act and effects.leaves(base(wid), act)):
+    if not (wid and message_channel.backs_a_send(brief)):
         return 0          # an order about the screen stays the turn's: a card act is never a worker's 15 s
     from nucleo.request.answered_task import PLAYBOOK
     ctx = {"src": "unserved", "kind": "generic", "surface": "voz", "playbook": PLAYBOOK}
     from nucleo.acts.errand import escalate_to_slowbrain
     tid = int(escalate_to_slowbrain(text, context=ctx) or 0)
     event(emit, "🚪 a sure order no door served → its task", text,
-          {"cat": "flash", "worker": tid, "leaned": str(leaned or ""), "playbook": ctx.get("playbook", "")})
+          {"cat": "flash", "worker": tid, "leaned": f"{wid}:{act}", "playbook": ctx.get("playbook", "")})
     return tid
 
 

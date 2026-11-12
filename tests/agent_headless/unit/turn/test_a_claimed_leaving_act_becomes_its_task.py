@@ -10,6 +10,8 @@ Disarm: make `claimed` return 0 before it escalates and the first test goes red.
 """
 from __future__ import annotations
 
+import asyncio
+
 import pytest
 
 from nucleo.request import ask_outside_door as aod
@@ -47,7 +49,7 @@ def wired(monkeypatch):
 
 def test_a_claimed_send_with_no_call_becomes_a_message_task(wired):
     seen, _state, emit = wired
-    tid = aod.claimed({}, 'Sending "hola" to Pablo now.', "manda un mensaje a pablo diciendo hola", emit=emit)
+    tid = asyncio.run(aod.claimed({}, 'Sending "hola" to Pablo now.', "manda un mensaje a pablo diciendo hola", emit=emit))
     assert tid == 7
     (text, ctx), = seen["escalated"]
     assert text == "manda un mensaje a pablo diciendo hola"
@@ -57,17 +59,17 @@ def test_a_claimed_send_with_no_call_becomes_a_message_task(wired):
 
 def test_a_question_is_never_a_claim(wired):
     seen, _state, emit = wired
-    assert aod.claimed({}, "¿A qué Pablo se lo mando?", "manda un mensaje a pablo", emit=emit) == 0
+    assert asyncio.run(aod.claimed({}, "¿A qué Pablo se lo mando?", "manda un mensaje a pablo", emit=emit)) == 0
     assert not seen["escalated"]
 
 
 def test_an_unsure_verdict_or_an_act_that_stays_routes_nothing(wired):
     seen, state, emit = wired
     state["target"] = ("mensajeria:send_to", {"used": True, "confidence": 0.55})   # A7: under the act floor (0.6)
-    assert aod.claimed({}, "Sending it now.", "manda un mensaje a pablo", emit=emit) == 0
+    assert asyncio.run(aod.claimed({}, "Sending it now.", "manda un mensaje a pablo", emit=emit)) == 0
     state["target"] = ("mensajeria:send_to", {"used": True, "confidence": 0.98})
     state["leaves"] = False
-    assert aod.claimed({}, "Done.", "abre mensajería", emit=emit) == 0
+    assert asyncio.run(aod.claimed({}, "Done.", "abre mensajería", emit=emit)) == 0
     assert not seen["escalated"]
 
 
@@ -94,7 +96,7 @@ def order(wired, monkeypatch):
 def test_a_sure_order_no_door_served_becomes_its_task(order, said):
     """V2-852 — «I'll try again — let me get a message to Raquel now» with zero calls and no task."""
     seen, _v, emit = order
-    assert aod.claimed({}, "I'll try again — let me get a message to her now.", said, emit=emit) == 7
+    assert asyncio.run(aod.claimed({}, "I'll try again — let me get a message to her now.", said, emit=emit)) == 7
     (text, ctx), = seen["escalated"]
     assert text == said and ctx["playbook"] == "message" and ctx["kind"] == "generic"
 
@@ -102,15 +104,15 @@ def test_a_sure_order_no_door_served_becomes_its_task(order, said):
 def test_an_order_answered_by_words_or_a_question_is_not_routed(order):
     seen, v, emit = order
     v["wants_words"] = ("tell", {"used": True, "confidence": 0.9})
-    assert aod.claimed({}, "It is 5 pm.", "dime la hora", emit=emit) == 0
+    assert asyncio.run(aod.claimed({}, "It is 5 pm.", "dime la hora", emit=emit)) == 0
     v["wants_words"] = ("act", {"used": False, "confidence": 0.1})
-    assert aod.claimed({}, "¿A cuál de las dos?", "pregúntale a Raquel", emit=emit) == 0
+    assert asyncio.run(aod.claimed({}, "¿A cuál de las dos?", "pregúntale a Raquel", emit=emit)) == 0
     v["request_type"] = ("question", {"used": True, "confidence": 0.95})
-    assert aod.claimed({}, "Sure.", "¿qué tiempo hace?", emit=emit) == 0
+    assert asyncio.run(aod.claimed({}, "Sure.", "¿qué tiempo hace?", emit=emit)) == 0
     v["request_type"] = ("order", {"used": True, "confidence": 0.94})
     v["screen_action"] = ("agenda:close", {"used": False, "confidence": 0.4})
     v["_state"]["leaves"] = False          # an order about the screen stays the turn's
-    assert aod.claimed({}, "Done.", "close the weekend", emit=emit) == 0
+    assert asyncio.run(aod.claimed({}, "Done.", "close the weekend", emit=emit)) == 0
     assert not seen["escalated"]
 
 
@@ -122,7 +124,7 @@ def test_a_lean_to_a_send_without_a_reading_that_sends_starts_no_worker(order, s
     v.pop("errand_class")
     v["errand_class"] = ("none", {"used": True, "confidence": 0.9})
     v["message_channel"] = ("none", {"used": True, "confidence": 0.9})
-    assert aod.claimed({}, "Done.", said, emit=emit) == 0
+    assert asyncio.run(aod.claimed({}, "Done.", said, emit=emit)) == 0
     assert not seen["escalated"]
 
 
@@ -132,10 +134,10 @@ def test_a_question_about_a_send_launches_no_send(wired):
     seen, state, emit = wired
     state["target"] = ("mensajeria:send_to", {"used": True, "confidence": 0.62})
     state["kind"] = ("question", {"used": True, "confidence": 0.9})
-    assert aod.claimed({}, "Sí, ayer.", "¿le mandaste el mensaje a pablo?", emit=emit) == 0
+    assert asyncio.run(aod.claimed({}, "Sí, ayer.", "¿le mandaste el mensaje a pablo?", emit=emit)) == 0
     state["kind"] = ("order", {"used": True, "confidence": 0.7})
     state["backs"] = False
-    assert aod.claimed({}, "Sending it now.", "manda un mensaje a pablo", emit=emit) == 0, "an unbacked lean sent"
+    assert asyncio.run(aod.claimed({}, "Sending it now.", "manda un mensaje a pablo", emit=emit)) == 0, "an unbacked lean sent"
     assert not seen["escalated"]
 
 
@@ -143,4 +145,4 @@ def test_a_claimed_send_is_read_at_the_act_floor_not_the_veto(wired):
     """A7: the same send asked 0.85 with no call and 0.6 with a view — one floor for an act the turn launches."""
     seen, state, emit = wired
     state["target"] = ("mensajeria:send_to", {"used": True, "confidence": 0.7})
-    assert aod.claimed({}, "Sending it now.", "manda un mensaje a pablo", emit=emit) == 7
+    assert asyncio.run(aod.claimed({}, "Sending it now.", "manda un mensaje a pablo", emit=emit)) == 7

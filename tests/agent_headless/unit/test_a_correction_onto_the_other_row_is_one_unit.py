@@ -108,14 +108,17 @@ def turn(monkeypatch):
     monkeypatch.setattr(done_ops, "his_last", lambda *a, **k: {"wid": "agenda", "action": "move_meeting",
                                                                "payload": FIRST, "trace": "t-before", "at": 1.0})
     monkeypatch.setattr(_trace, "current", lambda: "t-now")
-    monkeypatch.setattr(brief_doors, "fire", lambda h, door: st.setdefault("fired", door) and None)
+    monkeypatch.setattr(brief_doors, "fire", lambda h, door, **_k: st.setdefault("fired", door) and None)
 
     async def landed(*_a, **_k):
         return True
     monkeypatch.setattr(brief_doors, "landed", landed)
-    monkeypatch.setattr(verdicts, "read", lambda h, key, fb, min_confidence=None:
-                        (st["choice"], {"confidence": st["conf"]})
-                        if key == cu.KEY and st["conf"] >= (min_confidence or verdicts.LICENCE) else (fb, None))
+    def read(h, key, fb, min_confidence=None):     # as jev: a doubt keeps its info, `used: False` (CRIT-K2b R1)
+        if key != cu.KEY:
+            return fb, None
+        used = st["conf"] >= (min_confidence or verdicts.LICENCE)
+        return (st["choice"] if used else fb), {"confidence": st["conf"], "used": used}
+    monkeypatch.setattr(verdicts, "read", read)
     ran = []
 
     def door(wid, act, pl):
