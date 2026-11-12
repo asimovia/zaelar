@@ -113,15 +113,21 @@ def _pre_turn(m: dict) -> tuple:
     return pre, gate_ms, acc_ms, amap_ms, mem_ms, gap, host
 
 
-def _loop_stall(host: float, own: float, total: float, pre: float, ptok: float) -> tuple | None:
-    """E0: the body's loop was stopped for a share of the turn — the HOST's seconds name the host (a host out of
-    memory, 2026-11-12: 12–31 s), our own work's name ours (E3 audit); neither the model nor the provider is blamed."""
-    if host >= HOST_STALL_S and host * 1000 >= HOST_DOMINATES * (total + pre):
-        return "host", (f"⏱ SLOW turn {int(total)} ms — HOST STALLED {host:.1f} s: the engine's loop did not run; "
-                        f"neither the prompt ({int(ptok)} tok) nor the provider explains it")
-    if own >= HOST_STALL_S and own * 1000 >= HOST_DOMINATES * (total + pre):
-        return "own_stall", f"⏱ SLOW turn {int(total)} ms — the engine's OWN work held its loop {own:.1f} s"
-    return None
+def _loop_stall(m: dict, total: float, pre: float, ptok: float) -> tuple | None:
+    """E0: the body's loop was stopped for a share of the turn, WHATEVER stopped it (E3 audit: an unattributed stall
+    fell to `pre_token` and counted against the provider) — named by its largest origin: the host (a host out of
+    memory, 2026-11-12: 12–31 s), our own work, or unknown. A cause that never counts as the provider's slowness."""
+    by = {c: _num(m, f"{k}_stall_s", default=0) or 0 for c, k in (("host", "host"), ("own_stall", "own"),
+                                                                     ("loop_stall", "unknown"))}
+    stopped = sum(by.values())
+    if stopped < HOST_STALL_S or stopped * 1000 < HOST_DOMINATES * (total + pre):
+        return None
+    cause = max(by, key=by.get)
+    return cause, {"host": f"⏱ SLOW turn {int(total)} ms — HOST STALLED {by['host']:.1f} s: the engine's loop did not "
+                           f"run; neither the prompt ({int(ptok)} tok) nor the provider explains it",
+                   "own_stall": f"⏱ SLOW turn {int(total)} ms — the engine's OWN work held its loop {by['own_stall']:.1f} s",
+                   "loop_stall": f"⏱ SLOW turn {int(total)} ms — the engine's loop was stopped {stopped:.1f} s "
+                                 f"(cause not measured)"}[cause]
 
 
 def verdict(m: dict) -> dict:
@@ -167,7 +173,7 @@ def verdict(m: dict) -> dict:
     if not slow:
         cause = "ok"
         label = f"⏱ turno {int(total)} ms · prompt {int(ptok)} tok · TTFT {int(ttft)} ms"
-    elif stall := _loop_stall(host, _num(m, "own_stall_s", default=0) or 0, total, pre, ptok):
+    elif stall := _loop_stall(m, total, pre, ptok):
         cause, label = stall           # named FIRST: a stopped loop also looks cold and pre-token
     elif cold:
         cause = "frio"

@@ -88,11 +88,28 @@ def test_words_wait_for_a_brief_that_lands_inside_the_wait():
     h = FP.Hold(late, sent.append, route_wait_s=2.0)
     h.say("Ya le he ")
     assert sent == [] and h.routed is None
-    late["result"] = {"_call_id": "t", tb.ESCALATE_KEY: {"choice": "escalate", "confidence": 0.55, "probs": {}}}
+    late["result"] = {"_call_id": "t", tb.ESCALATE_KEY: {"choice": "escalate", "confidence": 0.65, "probs": {}}}
     late["event"].set()
     h.say("contestado.")
     asyncio.run(h.release([], (), lambda *a, **k: None))
     assert sent == [] and h.routed
+
+
+def test_words_and_a_call_that_stays_are_never_overruled_under_the_act_floor():
+    """A7 audit (K2): the licence (0.5) holds only a call that LEAVES — «how much is X?» lost its `web_search` to an
+    escalate at 0.52. Words alone and a call that stays run under the act floor; the send is still held (C9)."""
+    call, ran, req, _ = _gate(_brief("escalate", 0.52))
+    assert call("web_search", {"query": "precio X"}) == "ran" and req["v"] is None
+    assert call("reply_message", {"text": "Hola Raquel"}) is None and req["routed"], "a send under C9's band ran"
+    late = _brief(ready=False)
+    sent = []
+    h = FP.Hold(late, sent.append, route_wait_s=2.0)
+    h.say("Cuesta ")
+    late["result"] = {"_call_id": "t", tb.ESCALATE_KEY: {"choice": "escalate", "confidence": 0.55, "probs": {}}}
+    late["event"].set()
+    h.say("unos 30 euros.")
+    asyncio.run(h.release([], (), lambda *a, **k: None))
+    assert "".join(sent) == "Cuesta unos 30 euros." and not h.routed
 
 
 def test_the_pipeline_wires_the_route_and_runs_no_model_for_it():

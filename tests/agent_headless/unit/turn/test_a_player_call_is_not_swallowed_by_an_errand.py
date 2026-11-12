@@ -96,7 +96,8 @@ def test_the_phone_turn_replayed_records_the_play_and_opens_no_errand():
     from nucleo.flash.tool_executor_calls import _t_play_music
     for conf in (fx["escalate_confidence"], fx["escalate_confidence_reread"]):
         brief = _brief(conf=conf)
-        assert R.sure_escalate(brief), "the replayed verdict is sure, as it was then"
+        from nucleo.turn import verdicts
+        assert R.sure_escalate(brief, verdicts.LICENCE), "the replayed verdict is sure at the licence, as it was then"
         music_req, req = {"v": None}, {"v": None, "more": [], "surface": {}}
         call = R.gate_calls(lambda n, a: _t_play_music(args=a, music_req=music_req, _brief=brief, esc=req,
                                                         text=fx["operator_text"]),

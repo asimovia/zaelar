@@ -99,7 +99,7 @@ def test_a_sure_escalate_verdict_opens_it_with_the_class_the_brief_read(lang, mo
 
 @pytest.mark.parametrize("lang", ["es", "en"])
 def test_disarmed_the_paid_verdict_commissions_nothing(lang, monkeypatch):
-    monkeypatch.setattr(R, "sure_escalate", lambda _b: False)
+    monkeypatch.setattr(R, "sure_escalate", lambda _b, floor=None: False)
     text = ORDERS[lang]
     brief = _brief("escalate", 0.8, "moves_money", 0.9)
     ran, req, _ = _turn(text, brief)

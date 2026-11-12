@@ -4,7 +4,7 @@ While tasks wait for his answer, the brief carries ONE more declared question �
 open questions?» — whose choices are the open questions by `ask_id`, plus `none`. Read asymmetrically
 (`nucleo/turn/verdicts`):
 
-  · an `ask_id` at or above the act floor (`verdicts.act_floor`, A7: the bound task acts on it) binds the utterance;
+  · an `ask_id` binds at the act floor (A7) when the verdict binds ALONE, at the LICENCE when the model answered (K2);
   · `none` at or above the VETO (0.85) binds nothing — it was a new request, a correction, a comment;
   · any other verdict is a doubt, and a doubt is ASKED: ASK_WHICH among the waiting tasks (an `ask` naming them) —
     with two or more waiting, `several` is the reader's own way to say the answer fits more than one;
@@ -88,10 +88,10 @@ def bind(brief, *, model_answered: bool = False, asks=None) -> tuple[str, list]:
             if not model_answered:
                 return NOTHING, []
             return (ANSWER, asks) if len(asks) == 1 and not asks[0].get("candidates") else (ASK_WHICH, asks)
-        conf = float(info.get("confidence") or 0.0)
+        conf, floor = float(info.get("confidence") or 0), verdicts.LICENCE if model_answered else verdicts.act_floor()
         by_id = {str(a["ask_id"]): a for a in asks}
         ask_id, _, idx = str(choice).partition(PICK)
-        if ask_id in by_id and conf >= verdicts.act_floor():
+        if ask_id in by_id and conf >= floor:
             a = by_id[ask_id]
             if not idx:
                 return (ANSWER, [a]) if not a.get("candidates") else (ASK_WHICH, asks)
@@ -101,7 +101,7 @@ def bind(brief, *, model_answered: bool = False, asks=None) -> tuple[str, list]:
             return NOTHING, []
         if str(choice) == SEVERAL:
             return ASK_WHICH, asks
-        if str(choice) != NONE and ask_id not in by_id and conf >= verdicts.act_floor():
+        if str(choice) != NONE and ask_id not in by_id and conf >= floor:
             return NOTHING, []
         return ASK_WHICH, asks
     except Exception:  # noqa: BLE001 — a classifier may never break a turn; nothing is bound blind

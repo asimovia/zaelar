@@ -104,3 +104,18 @@ def test_disarmed_a_sure_choice_outside_the_open_questions_binds_nothing(monkeyp
     monkeypatch.setattr(bind, "SEVERAL", "-unset-")
     _verdict(monkeypatch, "several", 0.8)
     assert bind.bind({}, asks=[C1, C2]) == (bind.NOTHING, [])
+
+
+def test_a_verdict_binding_alone_reads_the_act_floor(monkeypatch):
+    """A7: a verdict that binds his words ALONE makes the task act — the act floor (0.6), not the licence."""
+    _verdict(monkeypatch, "a-new", 0.55)
+    assert bind.bind({}, asks=[A1, A2]) == (bind.ASK_WHICH, [A1, A2]), "0.55 alone bound a task"
+    _verdict(monkeypatch, "a-new", 0.65)
+    assert bind.bind({}, asks=[A1, A2]) == (bind.ANSWER, [A2])
+
+
+def test_the_verdict_completes_the_models_own_answer_at_the_licence(monkeypatch):
+    """A7 audit P1 (K2): «¿Lo envío?» waits, he says «sí, venga», the model calls `answer_worker` and the verdict names
+    THAT question at 0.55 — the act floor turned it into «which task?» with one task waiting. The model answered."""
+    _verdict(monkeypatch, "a-old", 0.55)
+    assert bind.bind({}, model_answered=True, asks=[A1]) == (bind.ANSWER, [A1])
