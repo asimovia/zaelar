@@ -523,12 +523,9 @@ _HOST_STALL_WINDOW_S = 60.0   # E0: a body-loop stall this recent explains a sta
 
 
 def _host_stalled_s() -> float:
-    """Seconds the body's own loop was stopped within `_HOST_STALL_WINDOW_S` (`nucleo/pulse/loop_lag`); 0 if unreadable."""
-    try:
-        from nucleo.pulse import loop_lag
-        return loop_lag.stalled_recently(_HOST_STALL_WINDOW_S)
-    except Exception:  # noqa: BLE001 — an unreadable meter changes nothing
-        return 0.0
+    """Seconds the body's own loop was stopped within `_HOST_STALL_WINDOW_S` (`nucleo/pulse/loop_lag`: in-memory, total)."""
+    from nucleo.pulse import loop_lag
+    return loop_lag.stalled_recently(_HOST_STALL_WINDOW_S)
 
 
 def note_stall(*, role: str = ROLE_VOICE, tier: dict | None = None) -> dict | None:

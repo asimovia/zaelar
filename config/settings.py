@@ -366,10 +366,9 @@ def update(payload: dict) -> dict:
     # V2-675 — the introduction phase, once over. It had no branch here, so `update` dropped it with «sin
     # cambios» and the phase «closed» on every turn without ever persisting: 79 closes in one demo pass, and
     # after forty turns the agent was still asking «since we've only just started talking…» (2026-09-28, S4).
-    for k in ("intro_done", "intro_offer_told"):   # A7: the offer told once is the phase's second fact
-        if k in payload:
-            d[k] = bool(payload[k])
-            applied.append(k)
+    for k in (k for k in ("intro_done", "intro_offer_told") if k in payload):   # A7: the offer told once is the phase's second fact
+        d[k] = bool(payload[k])
+        applied.append(k)
     # Boolean knobs (apply live, without reconnecting): e.g. memory_observability.
     for k in BOOL_DEFAULTS:
         if k in payload:

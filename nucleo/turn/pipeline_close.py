@@ -20,15 +20,11 @@ from nucleo.turn import whisper as _whisper   # V2-889 F2: `turn.closed`, read b
 
 def _host_stall_s(t_entry_wall: float) -> float:
     """Seconds the body's loop was stopped by stalls that ended after the turn entered (`nucleo/pulse/loop_lag`)."""
-    try:
-        from nucleo.pulse import loop_lag
-        return loop_lag.stalled_since(wall=float(t_entry_wall))
-    except Exception:  # noqa: BLE001 — an unreadable meter blames nobody
-        return 0.0
+    from nucleo.pulse import loop_lag   # in-memory and total: nothing to swallow
+    return loop_lag.stalled_since(wall=float(t_entry_wall))
 
 
 async def close_the_turn(*, motor, send, _acc_ms, _amap_ms, _brief, _busy_at_start, _dialog, _escalate_mod, _filler_audio, _gate_ms, _op_text, _prev_pending, _router, _shown_ids, _start_web_auth, _t_entry, _tool_fired, _turn_tools, acted, aside, attention, brain, clarify, confirm_state, data_done, deduped, emit, escalate_req, first_ms, first_turn, images_req, listing_req, llm_metrics, music_req, operator_text, read_req, recall_req, reopen_req, reveal_req, search_req, spec, speech, spoken_text, style_fired, system, t0, text, timings, worker_acted, _superseded=None, _apply_widget_data=None) -> dict:
-    _typed_turn = False
     try:
         _typed_turn = attention.was_typed()
     except Exception:

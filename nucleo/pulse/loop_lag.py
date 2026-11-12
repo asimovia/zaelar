@@ -9,7 +9,7 @@ One probe on the server loop (`watch`), the same shape as the voice's: a sleep t
 `loop_lag_s` (declared beside the envelope in `config/resources.default.json`) is a STALL. A stall is
   · recorded with its end (monotonic and wall clock), so a turn can ask «was the loop stopped while I waited?»
     (`stalled_since`) and a verdict can say «host stalled N s» instead of blaming a provider;
-  · one `health` event («host stalled N s») — the fact, on the timeline, where the mis-attributions used to be;
+  · one `homeostasis` event («host stalled N s») — the fact, on the timeline, where the mis-attributions used to be;
   · a quiet shed through `voice/lag.note(…, BODY)`: the worker envelope holds new workers; no words are spoken,
     because a stopped loop is never the audio path;
   · pressure for the shed ladder (`shed_actuators.reading` → `loop_lag_s`), which descends with `cause=machine` when
@@ -39,7 +39,7 @@ def bound_s() -> float:
 
 def note(lag_s: float, *, mono: float | None = None, wall: float | None = None) -> bool:
     """One reading of how late the loop woke. True when it was a stall (≥ `loop_lag_s`): recorded, said once as a
-    `health` event, and shed quietly through the lag reader; under the bound the reader releases its hold."""
+    `homeostasis` event, and shed quietly through the lag reader; under the bound the reader releases its hold."""
     lag_s = float(lag_s)
     _state["last"] = lag_s
     _state["worst"] = max(_state["worst"], lag_s)
@@ -67,7 +67,7 @@ def _shed(lag_s: float) -> None:
 def _say(lag_s: float) -> None:
     try:
         from voice.observer import emit
-        emit("health", f"host stalled {lag_s:.1f} s — the engine's loop did not run", role="system",
+        emit("homeostasis", f"host stalled {lag_s:.1f} s — the engine's loop did not run", role="system",
              extra={"cat": "health", "kind_diag": "loop_lag", "lag_s": round(lag_s, 2), "source": BODY,
                     "bound_s": bound_s()})
     except Exception as e:  # noqa: BLE001 — a stall that cannot be said is still recorded

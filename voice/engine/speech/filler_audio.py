@@ -54,6 +54,7 @@ import time
 import unicodedata
 
 from voice.engine.speech.echo_cut import EchoCut, first_word
+from voice.engine.speech.filler_pace import _FAST_WINDOW, _RECENT_TTFT, _note_stranded, answering_fast as _answering_fast, note_latency, stranded  # noqa: F401 — this module's names
 
 _ARM_TTL_S = 20.0
 _ARM_GRACE_S = 0.8       # how long the node polls for this turn to ARM (prompt build + the bounded wait for the
@@ -90,58 +91,10 @@ def enabled() -> bool:
     return delay_ms() > 0
 
 
-# ── The engine is answering fast right now: stop arming (V2-716) ──────────────────────────────────────────
-# The operator's second rule, 2026-09-17: «si las latencias de las contestaciones se están reduciendo a menos
-# de un segundo, y esa es la media de las últimas frases, quizás no haga falta meterlas de relleno; si las una,
-# dos o tres últimas se van más lejos de un segundo, entonces sí hay que volver a activar ese flag».
-#
-# The per-turn race (`delay_ms`) already silences a fast turn, so this does NOT change what the operator hears
-# on a turn that beats the deadline. What it removes is the other half of arming, which the race cannot: the
-# `[SISTEMA]` note `arm()` appends to the last user message, promising the model a cover phrase to continue.
-# On an engine that is answering in well under a second that note is pure prompt noise steering replies into
-# «Got it — …» continuations of a phrase that will never sound.
-#
-# Re-arming is deliberately TWITCHY in the slow direction: one recent turn over the deadline brings the cover
-# back. A missing cover on a slow turn is dead air, which is the failure this whole module exists to prevent;
-# an extra cover on a fast turn is one short word. Asymmetric on purpose.
-_RECENT_TTFT: list[int] = []
-_FAST_WINDOW = 3          # how many recent turns must ALL be fast before arming stops
-_stranded = False         # V2-716: the last generation sounded a cover and the model answered nothing
-
-
-def note_latency(ttft_ms) -> None:
-    """One turn's measured time-to-first-spoken-token. Called by the voice provider once the turn's own
-    metrics exist. `None` — a turn that produced no speakable text at all — is NOT a fast turn and is not a
-    slow one either: it is no evidence, and recording it either way would be a lie the next turn acts on."""
-    global _RECENT_TTFT
-    try:
-        v = int(ttft_ms)
-    except (TypeError, ValueError):
-        return
-    if v <= 0:
-        return
-    _RECENT_TTFT.append(v)
-    del _RECENT_TTFT[:-8]
-
-
-def _note_stranded(value: bool) -> None:
-    global _stranded
-    _stranded = bool(value)
-
-
-def stranded() -> bool:
-    """The previous generation's cover was the ONLY thing the operator heard on that turn."""
-    return _stranded
-
-
+# ── The engine is answering fast right now: stop arming (V2-716) — the memory lives in `filler_pace` ───────
 def answering_fast() -> bool:
-    """True when the last `_FAST_WINDOW` measured turns ALL beat the cover deadline — the engine is fast
-    enough right now that the cover has nothing to cover. False until that much evidence exists, so a fresh
-    process, a reconnect or a model swap arms normally rather than guessing."""
-    d = delay_ms()
-    if d <= 0 or len(_RECENT_TTFT) < _FAST_WINDOW:
-        return False
-    return all(v < d for v in _RECENT_TTFT[-_FAST_WINDOW:])
+    """True when the last measured turns ALL beat THIS module's cover deadline (`filler_pace.answering_fast`)."""
+    return _answering_fast(delay_ms())
 
 
 # ── What kind of turn is being covered (V2-572) ───────────────────────────────────────────────────────────
@@ -387,7 +340,7 @@ async def settle_brief(brief, max_s: float = 0.35) -> bool:
     ev = brief["event"]
     if ev.is_set():
         return True
-    if not enabled() or answering_fast() or _stranded or max_s <= 0:
+    if not enabled() or answering_fast() or stranded() or max_s <= 0:
         return False
     try:
         await asyncio.wait_for(asyncio.to_thread(ev.wait, max_s), timeout=max_s + 0.25)
@@ -426,7 +379,7 @@ def arm(brain, text: str = "", messages: list | None = None, brief=None, typed: 
     if answering_fast():
         _arm = None                       # the engine is beating the deadline on its own — V2-716
         return ""
-    if _stranded:
+    if stranded():
         _note_stranded(False)             # one turn of silence, then covers resume — V2-716
         _arm = None
         return ""

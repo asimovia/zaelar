@@ -49,7 +49,7 @@ def test_a_stalled_loop_is_recorded_said_once_and_shed_quietly(world):
         time.sleep(1.2)                      # the loop is held — the host, in the measured case
         await asyncio.sleep(0.3)
     asyncio.run(session())
-    health = [e for e in world["events"] if e[0] == "health" and e[2].get("kind_diag") == "loop_lag"]
+    health = [e for e in world["events"] if e[0] == "homeostasis" and e[2].get("kind_diag") == "loop_lag"]
     assert len(health) == 1 and health[0][2]["lag_s"] >= 0.6 and health[0][2]["source"] == "body_loop", world["events"]
     assert "body_loop" in world["shed"] and "voice_loop" not in world["shed"]
     assert loop_lag.stalled_since(mono=t0) >= 0.6 and loop_lag.stalled_since(mono=time.monotonic()) == 0.0

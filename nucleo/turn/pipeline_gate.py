@@ -14,6 +14,7 @@ import time
 
 from loguru import logger
 
+from nucleo.turn import kickoff as _kickoff
 from nucleo.turn import mouth as _mouth
 
 
@@ -43,7 +44,6 @@ async def open_the_turn(self, motor) -> dict | None:
     # GATE DE ATENCIÓN (V2-015): el micro está SIEMPRE abierto — un turno que no va DIRIGIDO a zaelar no
     # produce acción ni respuesta (solo se registra como `ambient`, visible en /debug). El kickoff
     # (`nucleo/turn/kickoff.is_kickoff`) y el chat/paste (marcados `note_directed()` en agent.py) sí van dirigidos.
-    from nucleo.turn import kickoff as _kickoff
     from voice import attention, mic_input
     first_turn = _kickoff.is_kickoff(text)
 
