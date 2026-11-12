@@ -135,6 +135,9 @@
     "the browser widget": "navegador",
     "the search widget": "search",
     "the clock widget": "clock",
+    "the activity": "activity",
+    "my activity": "activity",
+    "the activity widget": "activity",
     "the timer widget": "timer",
     "the document widget": "documento"
    },
@@ -218,6 +221,9 @@
     "the browser widget": "navegador",
     "the search widget": "search",
     "the clock widget": "clock",
+    "the activity": "activity",
+    "my activity": "activity",
+    "the activity widget": "activity",
     "the timer widget": "timer",
     "the document widget": "documento"
    },

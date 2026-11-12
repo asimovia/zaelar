@@ -74,8 +74,8 @@ def kind_of(entry) -> str:
 
 def _row(task_id) -> dict:
     try:
-        from memory import tasks_store
-        return (tasks_store.task_get(str(task_id or "").strip()) if task_id else None) or {}
+        from nucleo.circuit import ledger
+        return (ledger.store().task_get(str(task_id or "").strip()) if task_id else None) or {}
     except Exception as e:  # noqa: BLE001
         _note(e)
         return {}
