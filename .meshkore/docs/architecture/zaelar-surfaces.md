@@ -66,6 +66,7 @@ Pending decisions (private roadmap): iPad in the iOS 1.x line and with which she
 | Seam | Where | Who uses it |
 |---|---|---|
 | `html.in-app` + `data-platform` at document start | `mobile-app/www/in-app.js` → shell CSS | native companion only |
+| `<key>@app` siblings in the UI bundle | `frontend/app/core/i18n.js` `t()` reads the sibling when `<html>` carries `in-app`; the wording lives in `i18n/genesis/<lang>/ui.json` | native companion only; a browser reads the plain key |
 | `window.Capacitor.isNativePlatform()` | `frontend/app/services/push.js installed()` and friends | hides «add to Home Screen», picks native plugins |
 | `ctx.device()` — location, motion, heading; failures as values | `frontend/app/services/device.js` | widgets on any screen; native plugin inside the app, Web API elsewhere |
 | `ctx.device().details()` / `.activity()` — what this screen has; a session that keeps reading with the screen locked (location, heart rate, motion, altitude) | `services/device.js` → `ZaelarDevice` (`mobile-app/ios/App/App/DevicePlugin.swift`) | native app only; a browser answers foreground location or `unsupported` (`docs/modules/zaelar-device-bridge.md`, V2-890) |

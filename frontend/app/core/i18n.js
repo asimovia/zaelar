@@ -52,6 +52,13 @@ export function available() { return Object.keys(BUNDLES); }
   }
 })();
 
+// SURFACE VARIANT. The native companion marks <html class="in-app"> at document start (mobile-app/www/in-app.js).
+// Inside it, a key that has a `<key>@app` sibling in the bundle reads the sibling — the wording a store build needs
+// is DATA in the bundle, per language, and every other surface keeps the plain key. No sibling = the plain string.
+const SURFACE = (() => {
+  try { return document.documentElement.classList.contains("in-app") ? "@app" : ""; } catch (_) { return ""; }
+})();
+
 // t(key, params?) — localized string. Reads store.lang() (reactive dependency).
 // The cold start has no bundle yet. Nothing rendered by a module is on screen then: the one loader (V2-881) is
 // narrated by core/preboot.js, which reads the cached bundle with its own English floor — so `t()` keeps a single
@@ -60,8 +67,10 @@ export function t(key, params) {
   const code = store.lang();
   bundleRev();                            // reactive dependency: re-renders when bundle content changes
   const dict = BUNDLES[code] || BUNDLES.en || {};
-  let s = dict[key];
-  if (s == null) s = (BUNDLES.en || {})[key];
+  const en = BUNDLES.en || {};
+  let s = SURFACE ? (dict[key + SURFACE] ?? en[key + SURFACE]) : null;
+  if (s == null) s = dict[key];
+  if (s == null) s = en[key];
   if (s == null) s = key;                 // last resort: show the key (visible = "needs a string")
   if (params) for (const k in params) s = s.split("{" + k + "}").join(String(params[k]));
   return s;
