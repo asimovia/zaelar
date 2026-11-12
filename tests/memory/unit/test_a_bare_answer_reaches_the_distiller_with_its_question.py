@@ -51,3 +51,10 @@ def test_an_old_question_is_no_longer_the_conversation_s_last_word(monkeypatch):
     monkeypatch.setattr(_mem, "recent_window", lambda limit=1: [
         {"role": "assistant", "content": ASKED_EN, "ts": time.time() - 5}])
     assert "where are you based?" in AF.asked_before()
+
+
+def test_the_frame_is_conditional_never_an_assertion():
+    """A7 audit: «hold on» after «what's your name?» reached the distiller as «answering the assistant's question» —
+    the answer rule is a reading, so the frame says it MAY answer it."""
+    out = AF.framed("hold on", asked="What's your name?")
+    assert out.startswith("(perhaps answering") and out.endswith("hold on")
