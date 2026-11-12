@@ -7,7 +7,7 @@ sends — resources, never a script.
 """
 from __future__ import annotations
 
-from nucleo.request import base, note
+from nucleo.request import base, ends_asking, note  # noqa: F401 — `ends_asking` is read here by name
 from nucleo.request.send_task import KIND, NONE, _question, _schedule, artefact, missing, retain
 from nucleo.request.send_task_turn import identified
 
@@ -232,12 +232,6 @@ def by_verdict(brief, *, said: str, model_text: str, escalate_req: dict, worker_
     except Exception as e:  # noqa: BLE001 — never takes the turn down; the model's own route stands
         note(e)
         return "", ""
-
-
-def ends_asking(reply: str) -> bool:
-    """Does the reply close on a question? Punctuation, not vocabulary (the same mark `ask_outside_door` reads)."""
-    last = str(reply or "").rstrip().rstrip("»\"'”)")[-1:]
-    return bool(last) and last in "?？؟"
 
 
 def new_send(brief, said: str, asks) -> bool:

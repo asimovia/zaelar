@@ -1,8 +1,8 @@
 """nucleo/request/ — the Request is born once: its words, its row, what it is about (refactor2710-02).
 
 The helpers its modules share live here once: `note` (a step that could not be read is said, never swallowed),
-`base` (the card a widget or sheet id names), `acts_of` (the acts a retained question is about) and `event` (one
-`brain` event on the stream the caller holds, or the observer's)."""
+`base` (the card a widget or sheet id names), `acts_of` (the acts a retained question is about), `event` (one
+`brain` event on the stream the caller holds, or the observer's) and `ends_asking` (a reply that closes on a question)."""
 from __future__ import annotations
 
 import sys
@@ -34,3 +34,9 @@ def event(emit, label: str, text: str, extra: dict) -> None:
         emit("brain", label, text=str(text or "")[:300], role="system", extra=extra)
     except Exception as e:  # noqa: BLE001
         note(e)
+
+
+def ends_asking(reply: str) -> bool:
+    """Does the reply close on a question? Its last mark — punctuation, never vocabulary."""
+    last = str(reply or "").rstrip().rstrip("»\"'”)")[-1:]
+    return bool(last) and last in "?？؟"

@@ -35,13 +35,12 @@ re-run turn said «sending it now» and called nothing in 6 of 14 runs). One ans
 """
 from __future__ import annotations
 
-from nucleo.request import event, note
+from nucleo.request import ends_asking, event, note
 from nucleo.request.ending import leaving_acts
+from voice import trace as _trace
 
 #: The observer kind (family `flash`): {trace, widget, leaves, text}.
 KIND = "ask_outside_door"
-#: A reply whose last character is one of these closes on a question. Punctuation, not vocabulary.
-_QUESTION_MARKS = "?？؟"
 
 
 def named_act(brief) -> tuple[str, str]:
@@ -65,8 +64,7 @@ def measure(brief, reply: str, *, did_act: bool, asked_which: bool = False, emit
     """Emit `ask_outside_door` when this turn asked about a declared act without reaching its door — a card whose acts
     leave (`catalog_widget`), or the act the brief names at the act floor (`named_act`). The event's extra
     ({trace, widget, leaves, actions, which_person}) when emitted — what `held` makes durable — else False."""
-    last = str(reply or "").rstrip().rstrip("»\"'”)")[-1:]
-    if did_act or not (asked_which or (last and last in _QUESTION_MARKS)):
+    if did_act or not (asked_which or ends_asking(reply)):
         return False
     try:   # the card the brief named
         from nucleo.turn import verdicts
@@ -83,13 +81,8 @@ def measure(brief, reply: str, *, did_act: bool, asked_which: bool = False, emit
             return False
         from widgets import effects
         actions, leaves = [act], ([act] if effects.leaves(wid.split("::", 1)[0].lower(), act) else [])
-    try:
-        trace = ""
-        from voice import trace as _trace
-        trace = str(_trace.current() or "")
-    except Exception as e:  # noqa: BLE001
-        note(e)
-    extra = {"trace": trace, "widget": wid, "leaves": leaves, "actions": actions, "which_person": bool(asked_which)}
+    extra = {"trace": str(_trace.current() or ""), "widget": wid, "leaves": leaves, "actions": actions,
+             "which_person": bool(asked_which)}
     try:
         if emit is None:
             from voice.observer import emit as _emit
@@ -165,9 +158,8 @@ def claimed(brief, reply: str, said: str, *, emit=None) -> int:
     playbook (the same hand-off as an answered send, `answered_task`), so the start the line announced is real. Not a
     re-run after the stream: one routing decision at the close, read off verdicts the turn already paid for. Returns
     the worker's task id, or 0 when nothing qualified or started."""
-    last = str(reply or "").rstrip().rstrip("»\"'”)")[-1:]
     text = " ".join(str(said or "").split())
-    if not text or (last and last in _QUESTION_MARKS):
+    if not text or ends_asking(reply):
         return 0                                   # a question is `measure`/`held`'s, never a claim
     try:
         from nucleo.turn import verdicts
