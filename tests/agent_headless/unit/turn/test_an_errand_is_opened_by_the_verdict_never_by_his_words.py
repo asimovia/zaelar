@@ -66,8 +66,7 @@ def _launch(text, brief, escalate_req, monkeypatch):
 def _turn(text, brief):
     """The model answers with an inline reminder; its call crosses the verdict's gate. Returns (ran, req, events)."""
     ran, events, req = [], [], {"v": None, "more": [], "surface": {}}
-    call = R.gate_calls(lambda n, a: ran.append(n) or "ran", brief=brief, escalate_req=req, operator_text=text,
-                        emit=lambda *a, **k: events.append((a, k)), t0=time.monotonic(), wait=0.0)
+    call = R.Turn(brief=brief, escalate_req=req, operator_text=text, emit=lambda *a, **k: events.append((a, k)), t0=time.monotonic(), wait=0.0).gate(lambda n, a: ran.append(n) or "ran")
     call("add_reminder", {"title": text})
     return ran, req, events
 

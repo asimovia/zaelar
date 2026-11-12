@@ -73,8 +73,7 @@ def test_a_model_call_fires_the_call_door_once_and_merges_into_the_brief(wire):
     h = _admitted()
     wire.answers[acts_asked.KEY] = ("several", 0.96)
     ran = []
-    call = route.gate_calls(lambda n, a: ran.append(n), brief=h, escalate_req={"v": None}, operator_text="x",
-                            emit=lambda *a, **k: None, t0=time.monotonic(), wait=0.0)
+    call = route.Turn(brief=h, escalate_req={"v": None}, operator_text="x", emit=lambda *a, **k: None, t0=time.monotonic(), wait=0.0).gate(lambda n, a: ran.append(n))
     call("set_timer", {})
     call("set_timer", {})            # a second call of the same turn: the door already fired
     _door(h, "call")
@@ -91,8 +90,7 @@ def test_an_escalation_call_fires_the_portal_with_its_three_questions(wire):
     h = _admitted("búscame un piso en Madrid y resérvame una visita")
     wire.answers[errand.CLASS_KEY] = ("sends_for_him", 0.9)
     wire.answers[kind.KEY] = ("web", 0.9)
-    call = route.gate_calls(lambda n, a: None, brief=h, escalate_req={"v": None}, operator_text="x",
-                            emit=lambda *a, **k: None, t0=time.monotonic(), wait=0.0)
+    call = route.Turn(brief=h, escalate_req={"v": None}, operator_text="x", emit=lambda *a, **k: None, t0=time.monotonic(), wait=0.0).gate(lambda n, a: None)
     call("escalate_to_slowbrain", {"request": "x"})
     _door(h, "portal")
     asked = wire.calls[1]["questions"]

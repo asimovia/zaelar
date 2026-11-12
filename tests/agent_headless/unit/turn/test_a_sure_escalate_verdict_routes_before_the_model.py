@@ -2,7 +2,7 @@
 
 Battery C9 «the send waits for his consent», measured before this: the brief's `escalate_or_inline` flipped to
 escalate at 0.52-0.62 and Flash still answered inline and sent. Now the one pipeline reads the verdict where the
-model's output is held anyway — its first word (the Hold) and each call it makes (`route_by_verdict.gate_calls`) — and
+model's output is held anyway — its first word (the Hold) and each call it makes (`route_by_verdict.Turn.gate`) — and
 under a sure «escalate» (≥ the licence) the inline call, tags and words do not run; the request is the commission the
 close launches through the errand portal (`flow_of.route`), and the turn's one line is the start line. Not a re-run:
 nothing calls the model again. Disarm: `sure_escalate` returning False → red.
@@ -31,8 +31,7 @@ def _brief(choice=None, conf=0.0, ready=True):
 
 def _gate(brief, wait=0.0):
     ran, events, req = [], [], {"v": None, "more": [], "surface": {}}
-    call = R.gate_calls(lambda n, a: ran.append(n) or "ran", brief=brief, escalate_req=req, operator_text=ORDER,
-                        emit=lambda *a, **k: events.append(a), t0=__import__("time").monotonic(), wait=wait)
+    call = R.Turn(brief=brief, escalate_req=req, operator_text=ORDER, emit=lambda *a, **k: events.append(a), t0=__import__("time").monotonic(), wait=wait).gate(lambda n, a: ran.append(n) or "ran")
     return call, ran, req, events
 
 
@@ -52,15 +51,17 @@ def test_an_inline_unsure_or_absent_verdict_lets_the_model_act(choice, conf):
 
 
 def test_a_brief_in_flight_is_waited_for_at_most_the_route_wait():
-    late = _brief(ready=False)
+    late = _brief(ready=False)                  # decided at the stream's end (`Turn.settle`), off the loop (V2-893 L2)
 
     def _land():
         __import__("time").sleep(0.1)
         late["result"] = {"_call_id": "t", tb.ESCALATE_KEY: {"choice": "escalate", "confidence": 0.6, "probs": {}}}
         late["event"].set()
     threading.Thread(target=_land, daemon=True).start()
-    call, ran, req, _ = _gate(late, wait=2.0)
-    assert call("reply_message", {}) is None and ran == [] and req["v"] == ORDER
+    ran, req = [], {"v": None, "more": [], "surface": {}}
+    turn = R.Turn(late, req, ORDER, lambda *a, **k: None, __import__("time").monotonic(), 2.0)
+    assert turn.gate(lambda n, a: ran.append(n) or "ran")("web_search", {}) is None and ran == []
+    assert asyncio.run(turn.settle()) and ran == [] and req["v"] == ORDER
 
 
 def _hold(brief, pieces=("Ya le he contestado a Raquel.",), route_wait=0.0):
@@ -115,8 +116,8 @@ def test_words_and_a_call_that_stays_are_never_overruled_under_the_act_floor():
 def test_the_pipeline_wires_the_route_and_runs_no_model_for_it():
     import inspect
     src = open("nucleo/turn/pipeline.py", encoding="utf-8").read()
-    assert "_route.gate_calls(_tx.on_tool_call" in src and "_route.route(req[\"escalate_req\"]" in src
-    assert "_route.sure_escalate(_brief) else _tx.tag_emit" in src, "an inline tag does not run either"
+    assert "_decision.gate(_tx.on_tool_call)" in src and "_route.route(req[\"escalate_req\"]" in src
+    assert "_decision.tags(_tx.tag_emit)" in src, "an inline tag does not run either"
     assert "route_wait_s=_route.wait_s()" in open("nucleo/turn/pipeline_stream.py", encoding="utf-8").read()
     mod = inspect.getsource(R)
     assert "FastClient" not in mod and "choose_sync" not in mod and "ask_many" not in mod

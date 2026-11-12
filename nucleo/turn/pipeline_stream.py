@@ -51,7 +51,7 @@ def say_unread(*, hold, marked: bool, errored: bool, window, send, emit, spoken)
 
 async def stream_the_reply(self, motor, *, FastClient, messages, spec, _turn_tools, _on_tool_call, llm_metrics, _brief,
                            send, take, _buf_add, speech, emit, brain, text, spoken, first_ms, t0, _dialog, data_done,
-                           _turn_op_tasks, _filler_audio) -> dict:
+                           _turn_op_tasks, _filler_audio, _decision=None) -> dict:
     """The main stream of ONE turn. Returns `{errored, stalled, err_text, err_exc, _hold}`; a barge-in raises."""
     errored = False
     stalled = False          # se atascó UN turno (≠ el cerebro está caído) — cambia lo que se le cuenta al operador
@@ -82,7 +82,8 @@ async def stream_the_reply(self, motor, *, FastClient, messages, spec, _turn_too
         _pump_task = asyncio.create_task(_pump(), name="flash-stream-pump")
         # R16: under a sure ANSWER verdict the first words wait for the call; V2-833 F8: under an unreadable one too,
         # waiting for a brief in flight at most the lead-in filler's deadline (`turn_unclear.hold_deadline_s`)
-        _hold = _fup.Hold(_brief, send, wait_s=hold_deadline_s(_filler_audio), route_wait_s=_route.wait_s())
+        _hold = _fup.Hold(_brief, send, wait_s=hold_deadline_s(_filler_audio), route_wait_s=_route.wait_s(),
+                          decision=_decision)
         _wait_t0 = time.monotonic()      # when the wait for the next chunk began (E0: a host stall inside it is not silence)
         _left_s = _quiet_ms / 1000.0     # what is left of the deadline, counted only while the loop ran
         try:
@@ -135,6 +136,7 @@ async def stream_the_reply(self, motor, *, FastClient, messages, spec, _turn_too
                 _pump_task.cancel()
         if not errored:
             _hold.say(speech.sanitize(take(True), drop_metadata=False))
+        await _hold.decision.settle()   # its held calls run first: the ops they start are the release's to see
         await _hold.release(getattr(brain, "_turn_calls", None), data_done.get("ops"), emit, _turn_op_tasks)
     except asyncio.CancelledError:
         # BARGE-IN / turno superpuesto: el stream se cancela. NO reinyectamos la respuesta parcial a la ventana

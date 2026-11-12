@@ -58,13 +58,15 @@ class Hold:
     before the pause ran, and when the connector refused it the turn said «Paused. I couldn't get that done…»
     (live 2026-11-08). Its words are said only if the control happened; a refused one leaves the refusal alone."""
 
-    def __init__(self, brief, send, wait_s: float = 0.0, route_wait_s: float = 0.0):
+    def __init__(self, brief, send, wait_s: float = 0.0, route_wait_s: float = 0.0, decision=None):
         self.brief, self.card, self.send, self.held, self.deferred = brief, None, send, [], ""
         # V2-851 F5 — the third holder: a SURE «escalate» verdict routes the request to its task, and the model's
         # words of that turn are never said (`nucleo/turn/route_by_verdict`). None until known; `route_wait_s` = 0
-        # (a caller that hands no wait) decides at once from what is ready.
-        self.routed, self.route_pending, self.route_wait_s = None, [], float(route_wait_s or 0.0)
-        self.dropped = ""
+        # (a caller that hands no wait) decides at once from what is ready. V2-893 L2: the turn's ONE decision
+        # (`route_by_verdict.Turn`) releases them, the same object that holds the model's calls.
+        from nucleo.turn import route_by_verdict as _route
+        self.decision = decision or _route.Turn(brief, wait=float(route_wait_s or 0.0))
+        self.routed, self.route_pending, self.dropped = None, [], ""
         # V2-833 F8 — the second holder: a sentence the brief read as UNREADABLE. Undecided (None) until the first
         # word finds the verdict, or `wait_s` passes — the lead-in filler's own deadline, handed in by the channel
         # (the time the engine already treats as «he is fine without words»); `unread` is what the turn answers with.
@@ -74,9 +76,8 @@ class Hold:
         self.stop_held, self.stop_pending, self.stop_words = None, [], ""
 
     def say(self, piece: str) -> None:
-        if piece and self.routed is None:
-            from nucleo.turn import route_by_verdict as _route
-            self.routed = _route.decided(self.brief, self.t0, self.route_wait_s)
+        if self.routed is None:              # an empty piece re-reads too: the words go out when it lands
+            self.routed = self.decision.words()
         if self.routed is None or self.routed:        # V2-874: the stream's last, EMPTY piece released them all
             if piece:
                 self.route_pending.append(piece)      # in flight: wait for the verdict · routed: never said
@@ -163,17 +164,11 @@ class Hold:
             self.send(text)
 
     async def _release_routed(self, emit) -> bool:
-        """The stream ended: decide the route if the first word did not (waiting what is left of the wait). True when
-        the turn is routed to its task — its held words are dropped, unsaid."""
+        """The stream ended: the turn's decision settles (its held calls decided, waiting what is left of the wait).
+        True when the turn is routed to its task — its held words are dropped, unsaid."""
         from nucleo.turn import route_by_verdict as _route
-        if self.routed is None:
-            left = self.route_wait_s - (time.monotonic() - self.t0)
-            if left > 0 and self.brief and not _route.ready(self.brief):
-                try:
-                    await asyncio.to_thread(self.brief["event"].wait, left)
-                except Exception as e:  # noqa: BLE001 — an unawaitable brief reads as in flight
-                    logger.debug(f"follow_up_pass: the brief was not awaited — {e!r}")
-            self.routed = _route.sure_escalate(self.brief)
+        routed = await self.decision.settle()      # words already said stay said: only an undecided Hold is routed
+        self.routed = routed if self.routed is None else self.routed
         if self.routed and _route.player_ran(self.brief):
             self.routed = False          # a player took the turn after its first word: its words are said (V2-860 F3)
         if self.routed:
