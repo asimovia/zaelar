@@ -1,6 +1,12 @@
-// youtube widget — the Inicio face: its head with the search box and the dashboard bands.
-// Part of the client split out of widget.js (refactor2710-12 T-03); widget.js stays the entry with render().
-import { ICON_SEARCH, ICON_CLEAR, svgEl, el, tt } from "./shared.js";
+// youtube widget — the Inicio face: the search box on top, then EITHER the results OR the catalogue (V2-885).
+//
+// Operator, 2026-11-11: «si estoy buscando, lo PRIMERO que se ve son los resultados… sin búsqueda, una pantalla de
+// introducción como un catálogo de Netflix — lo visto hace poco, mis canales favoritos… En ningún caso tiene sentido
+// buscar y que la línea siguiente sea un recuadro diciéndome qué suena ahora». What plays lives in the mini-player at
+// the card's foot (mini.js), so Inicio never repeats it. Text + <img> elements only; the thumbs come from YouTube's
+// public CDN, never a fetch from our JS.
+import { ICON_SEARCH, ICON_CLEAR, svgEl, el, emptyState, tt } from "./shared.js";
+import { avatar, chAct } from "./channel.js";
 
 export function fmtAge(ts){
   if(!ts) return "";
@@ -11,11 +17,9 @@ export function fmtAge(ts){
 }
 
 export function buildHomeHead(root, ctx, body){
-  // INICIO's head (2026-09-29): the title of what the grid holds + a real search box. Built once here and
-  // only its TEXT refreshed per render, so a repaint mid-typing never eats the words (see the CSS note).
+  // The search box, full width on top of Inicio (the music card's Home). Built ONCE and only its value refreshed
+  // per render, so a repaint mid-typing never eats the words.
   const homeHead = el("div", "hb-yt-homehead");
-  const homeTitle = el("div", "hb-yt-hometitle");
-  homeHead.appendChild(homeTitle);
   const sForm = el("form", "hb-yt-search");
   sForm.setAttribute("role", "search");
   const sInp = el("input", "");
@@ -54,150 +58,175 @@ export function buildHomeHead(root, ctx, body){
   });
   homeHead.appendChild(sForm);
   body.appendChild(homeHead);
-  const home = el("div", "hb-yt-home");             // populated on every render, like the list below
+  const home = el("div", "hb-yt-home");             // populated on every render
   body.appendChild(home);
   const blockedLine = el("div", "hb-yt-blocked", "");
   body.appendChild(blockedLine);
   const conn = el("div", "hb-yt-conn");             // connect screens (V2-597), rebuilt per render
   body.appendChild(conn);
-  return {homeTitle, sInp, sClr, home, blockedLine, conn};
+  return {sInp, sClr, home, blockedLine, conn};
 }
 
 export function paintHomeHead(E, data){
-  // INICIO's head: the title says what the grid holds; the box carries the question being answered —
-  // unless he is typing in it right now, in which case his words win over the repaint.
-  if(E.homeTitle){
-    const nR = Array.isArray(data.search_results) ? data.search_results.length : 0;
-    E.homeTitle.textContent = "";
-    E.homeTitle.appendChild(el("span", "", (nR || data.adding) ? tt("results", null, "Resultados")
-                                                               : tt("home_title", null, "Inicio")));
-    if(nR) E.homeTitle.appendChild(el("span", "hb-yt-homecount", String(nR)));
-  }
+  // The box carries the question being answered — unless he is typing in it right now: his words win.
   if(E.sInp && document.activeElement !== E.sInp){
     E.sInp.value = String(data.adding || data.search_query || "");
     if(E.sClr) E.sClr.style.display = E.sInp.value ? "" : "none";
   }
 }
 
-export function paintHome(root, E, data, ctx){
-  // DASHBOARD (V2-596 → V2-632): the Inicio tab. Order is the operator's: the SEARCH band on top when a
-  // search is live (numbered — «reproduce el tercero» steers by voice), then what he watched recently, then
-  // the suggestions band (account-fed), then the enforced preferences line. The queue moved to its own tab.
-  // Text + <img> elements only; the thumb host is YouTube's public CDN, never a fetch from our JS.
-  if(E.home){
-    E.home.textContent = "";
-    const mkTile = (it, extras) => {
-      const tile = el("div", "hb-yt-tile");
-      const img = document.createElement("img");
-      img.loading = "lazy"; img.alt = "";
-      if(it.videoId) img.src = "https://i.ytimg.com/vi/" + encodeURIComponent(it.videoId) + "/mqdefault.jpg";
-      tile.appendChild(img);
-      (extras || []).forEach((x) => tile.appendChild(x));
-      tile.appendChild(el("div", "hb-yt-tilet", it.title || "—"));
-      if(it.channel) tile.appendChild(el("div", "hb-yt-tilec", it.channel));
-      return tile;
-    };
-    const goPlayer = () => { if(root._hbYtSelectTab) root._hbYtSelectTab("player"); };
+function thumbUrl(vid){ return vid ? "https://i.ytimg.com/vi/" + encodeURIComponent(vid) + "/mqdefault.jpg" : ""; }
 
-    if(data.videoId || data.src){     // 0 — what is loaded (V2-876): Home never says «no video» over one playing
-      const tile = mkTile({videoId: data.videoId, title: data.title, channel: data.channel}); tile.classList.add("hb-yt-nowtile");
-      tile.addEventListener("click", goPlayer);
-      E.home.append(el("div", "hb-yt-schead", tt("now_playing", null, "Sonando ahora")), tile, el("div", "hb-yt-catch"));
-    }
-    // 1 — SEARCH RESULTS (V2-632): the dashboard's top band. Numbered so voice and eye share one index.
-    const res = Array.isArray(data.search_results) ? data.search_results : [];
-    if(data.adding){
-      const sh = el("div", "hb-yt-schead");
-      sh.appendChild(el("span", "", tt("searching_q", {q: data.adding}, "Buscando «{q}»…")));
-      E.home.appendChild(sh);
-    }
-    if(res.length){
-      // The query and its ✕ live in the search box of the head above (2026-09-29): the grid is only tiles.
-      res.forEach((it, i) => {
-        const addB = el("button", "hb-yt-radd", tt("to_queue", null, "+ cola"));
-        addB.title = tt("to_queue_hint", null, "Añadir a la cola sin reproducir");
-        addB.addEventListener("click", (e) => {
-          e.stopPropagation();
-          if(ctx && ctx.action) ctx.action("add_results", {items: String(i + 1)});
-        });
-        const tile = mkTile(it, [el("span", "hb-yt-rnum", String(i + 1)), addB]);
-        tile.addEventListener("click", () => {
-          if(ctx && ctx.action) ctx.action("play_result", {item: String(i + 1)});
-          goPlayer();
-        });
-        E.home.appendChild(tile);
-      });
-      E.home.appendChild(el("div", "hb-yt-catch"));
-    }
+function mkTile(it, extras){
+  const tile = el("div", "hb-yt-tile");
+  const img = document.createElement("img");
+  img.loading = "lazy"; img.alt = "";
+  const src = thumbUrl(it.videoId);
+  if(src) img.src = src;
+  tile.appendChild(img);
+  (extras || []).forEach((x) => tile.appendChild(x));
+  tile.appendChild(el("div", "hb-yt-tilet", it.title || "—"));
+  if(it.channel) tile.appendChild(el("div", "hb-yt-tilec", it.channel));
+  return tile;
+}
 
-    // 2 — RECENTLY WATCHED: the library's history is ours (V2-604); the dashboard shows the last few.
-    const hist = Array.isArray(data.history) ? data.history : [];
-    if(hist.length){
-      const hh = el("div", "hb-yt-schead");
-      hh.appendChild(el("span", "", tt("recent", null, "Vistos hace poco")));
-      const all = el("span", "hb-yt-chip", tt("all_history", null, "⏱ todo el historial → cola"));
-      all.title = tt("all_history_hint", null, "Carga el historial completo en la cola");
-      all.addEventListener("click", () => {
-        if(ctx && ctx.action) ctx.action("show_history", {});
-        if(root._hbYtSelectTab) root._hbYtSelectTab("cola");
-      });
-      hh.appendChild(all);
-      E.home.appendChild(hh);
-      hist.slice(0, 6).forEach((h) => {
-        const tile = mkTile(h);
-        tile.addEventListener("click", () => {
-          if(ctx && ctx.action) ctx.action("load", {videoId: h.videoId, title: h.title || ""});
-          goPlayer();
-        });
-        E.home.appendChild(tile);
-      });
-      E.home.appendChild(el("div", "hb-yt-catch"));
-    }
-
-    // 3 — SUGGESTIONS band (V2-597): account-fed, pulled only when asked. Unconnected, a quiet pointer to
-    // the shelf instead of an empty band pretending to be one.
-    const sug = Array.isArray(data.suggested) ? data.suggested : [];
-    const connectedAny = (Array.isArray(data.platforms) ? data.platforms : []).some((r) => r.connected);
-    if(sug.length || connectedAny || data.suggesting){
-      const sh = el("div", "hb-yt-sughead");
-      sh.appendChild(el("span", "", tt("subs_suggestions", null, "Sugerencias de tus suscripciones")));
-      const bits = [];
-      if(data.suggested_at) bits.push(fmtAge(data.suggested_at));
-      if(data.suggested_channels) bits.push(tt("n_channels", {n: data.suggested_channels}, "{n} canales"));
-      if(bits.length) sh.appendChild(el("span", "hb-yt-sugsub", "· " + bits.join(" · ")));
-      const rf = el("span", "hb-yt-chip", data.suggesting ? tt("loading", null, "buscando…") : tt("refresh", null, "↻ refrescar"));
-      rf.title = tt("refresh_hint", null, "Traer los vídeos recientes de tus suscripciones");
-      rf.addEventListener("click", () => { if(ctx && ctx.action && !data.suggesting) ctx.action("suggest", {}); });
-      sh.appendChild(rf);
-      E.home.appendChild(sh);
-      if(!sug.length && !data.suggesting)
-        E.home.appendChild(el("div", "hb-yt-homemsg",
-          tt("subs_empty", null, "Toca «refrescar» para traer los vídeos recientes de tus suscripciones.")));
-      sug.forEach((it) => {
-        const tile = mkTile(it);
-        tile.addEventListener("click", () => {
-          if(ctx && ctx.action) ctx.action("load", {videoId: it.videoId, title: it.title || ""});
-          goPlayer();
-        });
-        E.home.appendChild(tile);
-      });
-    }
-
-    // 4 — the enforced preferences, spelled out (V2-604): a filter he cannot SEE is one he cannot trust.
-    const prefs = data.prefs || {};
-    const notes = Array.isArray(data.prefs_notes) ? data.prefs_notes : [];
-    const pbits = [];
-    if(prefs.min_definition) pbits.push(tt("min_def", {n: prefs.min_definition}, "mínimo {n}p"));
-    if(prefs.captions === true) pbits.push(tt("cc_on", null, "subtítulos siempre"));
-    if(prefs.captions === false) pbits.push(tt("cc_off", null, "sin subtítulos"));
-    if(prefs.volume != null) pbits.push(tt("volume_n", {n: prefs.volume}, "volumen {n}"));
-    notes.forEach((n) => { const t = String(n && n.text || "").trim(); if(t) pbits.push(tt("note", {text: t}, "nota: {text}")); });
-    if(pbits.length) E.home.appendChild(el("div", "hb-yt-libp", pbits.join(" · ")));
-
-    if(!res.length && !hist.length && !sug.length && !connectedAny && !data.adding && !data.suggesting
-       && !data.videoId && !data.src){
-      E.home.appendChild(el("div", "hb-yt-homemsg",
-        tt("home_empty", null, "No hay ningún vídeo cargado. Dime qué quieres ver, o «búscame vídeos de…» y elige de aquí.")));
-    }
+// One catalogue row: a title, an optional «ver todo» that opens the tab, and a horizontal strip of cards.
+function shelf(id, title, seeAll, items, extra){
+  const sec = el("section", "hb-yt-shelf");
+  sec.dataset.shelf = id;
+  const head = el("div", "hb-yt-shelfh");
+  head.appendChild(el("h3", "hb-yt-shelft", title));
+  (extra || []).forEach((x) => head.appendChild(x));
+  if(seeAll){
+    const b = el("button", "hb-yt-seeall", seeAll.label || tt("see_all", null, "Ver todo"));
+    b.type = "button";
+    if(seeAll.title) b.title = seeAll.title;
+    b.addEventListener("click", seeAll.run);
+    head.appendChild(b);
   }
+  sec.appendChild(head);
+  const row = el("div", "hb-yt-shrow");
+  items.forEach((x) => row.appendChild(x));
+  sec.appendChild(row);
+  return sec;
+}
+
+function paintResults(home, root, data, ctx, res){
+  const goPlayer = () => { if(root._hbYtSelectTab) root._hbYtSelectTab("player"); };
+  const head = el("div", "hb-yt-hometitle hb-yt-reshead");
+  head.appendChild(el("span", "", tt("results", null, "Resultados")));
+  head.appendChild(el("span", "hb-yt-homecount", String(res.length)));
+  home.appendChild(head);
+  if(data.adding) home.appendChild(el("div", "hb-yt-note", tt("searching_q", {q: data.adding}, "Buscando «{q}»…")));
+  const grid = el("div", "hb-yt-rgrid");
+  res.forEach((it, i) => {
+    // Numbered so voice and eye share one index («reproduce el tercero»).
+    const addB = el("button", "hb-yt-radd", tt("to_queue", null, "+ cola"));
+    addB.title = tt("to_queue_hint", null, "Añadir a la cola sin reproducir");
+    addB.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if(ctx && ctx.action) ctx.action("add_results", {items: String(i + 1)});
+    });
+    const tile = mkTile(it, [el("span", "hb-yt-rnum", String(i + 1)), addB]);
+    tile.addEventListener("click", () => {
+      if(ctx && ctx.action) ctx.action("play_result", {item: String(i + 1)});
+      goPlayer();
+    });
+    grid.appendChild(tile);
+  });
+  home.appendChild(grid);
+}
+
+function paintCatalogue(home, root, data, ctx){
+  const go = (tab) => { if(root._hbYtSelectTab) root._hbYtSelectTab(tab); };
+  const act = (n, p) => { if(ctx && ctx.action) ctx.action(n, p || {}); };
+  const loadTile = (it) => {
+    const t = mkTile(it);
+    t.addEventListener("click", () => { act("load", {videoId: it.videoId, title: it.title || ""}); go("player"); });
+    return t;
+  };
+  let shown = 0;
+  // 1 — RECENTLY WATCHED: the library's history is ours (V2-604).
+  const hist = Array.isArray(data.history) ? data.history : [];
+  if(hist.length){
+    home.appendChild(shelf("history", tt("recent", null, "Vistos hace poco"),
+      {label: tt("all_history", null, "⏱ todo el historial → cola"),
+       title: tt("all_history_hint", null, "Carga el historial completo en la cola"), run: () => { act("show_history"); go("cola"); }}, hist.slice(0, 12).map(loadTile)));
+    shown++;
+  }
+  // 2 — NEW FROM HIS CHANNELS (V2-597): account-fed, pulled only when asked.
+  const sug = Array.isArray(data.suggested) ? data.suggested : [];
+  const connectedAny = (Array.isArray(data.platforms) ? data.platforms : []).some((r) => r.connected);
+  if(sug.length || connectedAny || data.suggesting){
+    const bits = [];
+    if(data.suggested_at) bits.push(fmtAge(data.suggested_at));
+    if(data.suggested_channels) bits.push(tt("n_channels", {n: data.suggested_channels}, "{n} canales"));
+    const sub = el("span", "hb-yt-sugsub", bits.length ? "· " + bits.join(" · ") : "");
+    const rf = el("button", "hb-yt-seeall", data.suggesting ? tt("loading", null, "buscando…") : tt("refresh", null, "↻ refrescar"));
+    rf.type = "button";
+    rf.title = tt("refresh_hint", null, "Traer los vídeos recientes de tus suscripciones");
+    rf.addEventListener("click", () => { if(!data.suggesting) act("suggest"); });
+    const sec = shelf("suggested", tt("subs_suggestions", null, "Sugerencias de tus suscripciones"), null, sug.map(loadTile), [rf]);
+    sec.querySelector(".hb-yt-shelft").appendChild(sub);
+    if(!sug.length && !data.suggesting)
+      sec.appendChild(el("div", "hb-yt-note", tt("subs_empty", null, "Toca «refrescar» para traer los vídeos recientes de tus suscripciones.")));
+    home.appendChild(sec);
+    shown++;
+  }
+  // 3 — HIS CHANNELS: the authors he follows (ours, V2-632); a tap opens the channel's own page.
+  const cards = Array.isArray(data.channel_cards) ? data.channel_cards
+    : (Array.isArray(data.channels) ? data.channels : []).filter((c) => c && c.name).map((c) => ({name: String(c.name)}));
+  if(cards.length){
+    home.appendChild(shelf("channels", tt("your_channels", null, "Tus canales"),
+      {run: () => go("subs")}, cards.map((c) => {
+        const b = el("button", "hb-yt-chtile");
+        b.type = "button";
+        b.title = tt("open_channel", {name: c.name}, "Abrir el canal {name}");
+        b.append(avatar(c.avatar, c.name, true), el("span", "hb-yt-chtname", c.name));
+        b.addEventListener("click", () => { go("subs"); chAct(root, ctx, "open_channel", {channel: c.name}, "refresh"); });
+        return b;
+      })));
+    shown++;
+  }
+  // 4 — SAVED LISTS: one card per list, its first video's face; a tap opens it into the queue.
+  const saved = (Array.isArray(data.lists) ? data.lists : []).filter((L) => L && String(L.name || "").trim());
+  if(saved.length){
+    home.appendChild(shelf("lists", tt("tab_lists", null, "Listas"), {run: () => go("listas")}, saved.map((L) => {
+      const items = Array.isArray(L.items) ? L.items : [];
+      const first = items.find((x) => x && x.videoId) || {};
+      const t = mkTile({videoId: first.videoId, title: String(L.name).trim(),
+                        channel: tt("n_videos", {n: items.length}, "{n} vídeos")});
+      t.addEventListener("click", () => { act("open_list", {name: String(L.name).trim()}); go("cola"); });
+      return t;
+    })));
+    shown++;
+  }
+  // The enforced preferences, spelled out (V2-604): a filter he cannot SEE is one he cannot trust.
+  const prefs = data.prefs || {};
+  const notes = Array.isArray(data.prefs_notes) ? data.prefs_notes : [];
+  const pbits = [];
+  if(prefs.min_definition) pbits.push(tt("min_def", {n: prefs.min_definition}, "mínimo {n}p"));
+  if(prefs.captions === true) pbits.push(tt("cc_on", null, "subtítulos siempre"));
+  if(prefs.captions === false) pbits.push(tt("cc_off", null, "sin subtítulos"));
+  if(prefs.volume != null) pbits.push(tt("volume_n", {n: prefs.volume}, "volumen {n}"));
+  notes.forEach((n) => { const t = String(n && n.text || "").trim(); if(t) pbits.push(tt("note", {text: t}, "nota: {text}")); });
+  if(pbits.length) home.appendChild(el("div", "hb-yt-libp", pbits.join(" · ")));
+  // Nothing at all: ONE honest empty state with the two ways in. Never «no video loaded» — a video may be playing
+  // (its mini-player says so), the catalogue is simply still empty.
+  if(!shown){
+    home.appendChild(emptyState(tt("home_empty2", null, "Aún no hay nada en tu catálogo. Busca un vídeo, o conecta tu cuenta para traer tus suscripciones."), [
+      {id: "search", label: tt("search_open", null, "Buscar vídeos"), run: () => { if(root._hbYtFocusSearch) root._hbYtFocusSearch(); }},
+      {id: "connect", label: tt("connect_account", null, "Conectar la cuenta"),
+       run: () => { const p = root.querySelector(".hb-yt-plug"); if(p) p.click(); }}]));
+  }
+}
+
+export function paintHome(root, E, data, ctx){
+  if(!E.home) return;
+  E.home.textContent = "";
+  const res = Array.isArray(data.search_results) ? data.search_results : [];
+  // A live search IS Inicio: its results come first and alone; the catalogue returns when the ✕ clears it
+  // (a search that found nothing leaves the previous band in the store, so «no results» is never a state here).
+  if(res.length || data.adding) paintResults(E.home, root, data, ctx, res);
+  else paintCatalogue(E.home, root, data, ctx);
 }

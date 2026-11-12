@@ -87,16 +87,24 @@ def phone(_browser):
 
 
 def test_the_tabs_share_one_row_with_no_sideways_scroll_and_44_points(phone):
+    """V2-885: on the phone the bar is Inicio, the face on screen, the search and «⋯» (the other tabs) — one row."""
     _mount(phone, _playing())
     geo = phone.evaluate("""() => { const s = document.querySelector('.hb-yt-tabs');
-        const tabs = [...document.querySelectorAll('.hb-yt-tab')].map(t => { const r = t.getBoundingClientRect();
-            return {h: r.height, cut: t.scrollWidth > t.clientWidth + 1, right: r.right}; });
+        const vis = (e) => !!e && e.getClientRects().length > 0;
+        const tabs = [...document.querySelectorAll('.hb-yt-tab')].filter(vis).map(t => { const r = t.getBoundingClientRect();
+            return {id: t.dataset.tab, h: r.height, cut: t.scrollWidth > t.clientWidth + 1, right: r.right, top: r.top}; });
+        const f = document.querySelector('.hb-yt-find').getBoundingClientRect();
         return {scrolls: s.scrollWidth > s.clientWidth + 1, tabs, edge: document.querySelector('.hb-yt').getBoundingClientRect().right,
-                plug: !!document.querySelector('.hb-yt-plug').getClientRects().length}; }""")
+                find: {h: f.height, top: f.top}, more: vis(document.querySelector('.hb-yt-menubtn')),
+                plug: vis(document.querySelector('.hb-yt-plug'))}; }""")
     assert not geo["scrolls"], "every tab in sight — no strip to scroll"
+    assert [t["id"] for t in geo["tabs"]] == ["inicio", "player"], geo["tabs"]
     assert all(t["h"] >= 44 and not t["cut"] and t["right"] <= geo["edge"] + 1 for t in geo["tabs"]), geo["tabs"]
+    assert geo["find"]["h"] >= 44 and abs(geo["find"]["top"] - geo["tabs"][0]["top"]) < 8 and geo["more"]
     assert not geo["plug"], "the connector is not a phone control (rule 5)"
-    assert phone.evaluate("() => getComputedStyle(document.querySelector('[data-tab=subs]'), '::after').content") \
+    phone.tap(".hb-yt-menubtn")
+    phone.tap(".hb-yt-mitem[data-tab=subs]")
+    assert phone.evaluate("() => getComputedStyle(document.querySelector('.hb-yt-tab[data-tab=subs]'), '::after').content") \
         == '"Channels"', "the long tab wears its short label, from the bundle"
 
 
@@ -104,10 +112,10 @@ def test_home_is_reachable_and_shows_what_plays(phone):
     _mount(phone, _playing(search_results=[], search_query=""))
     phone.tap(".hb-yt-tab[data-tab=inicio]")
     assert "hb-yt-t-inicio" in phone.get_attribute(".hb-yt", "class")
-    home = phone.inner_text(".hb-yt-home")
-    assert "No hay ningún vídeo" not in home, "never «No video loaded» over a video that is loaded"
-    assert "Sonando ahora" in home and "Golden Gate" in home
-    phone.tap(".hb-yt-nowtile")
+    assert "No hay ningún vídeo" not in phone.inner_text(".hb-yt-home"), "never «No video loaded» over a video that is loaded"
+    # V2-885: what plays is the mini-player at the foot, not a tile in Home
+    assert phone.is_visible(".hb-yt-mini") and "Golden Gate" in phone.inner_text(".hb-yt-mini")
+    phone.tap(".hb-yt-mini .hb-yt-minfo")
     assert "hb-yt-t-player" in phone.get_attribute(".hb-yt", "class"), "and the way back to the player is one tap"
 
 

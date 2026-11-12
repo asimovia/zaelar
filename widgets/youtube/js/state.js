@@ -35,4 +35,5 @@ export const Y = {
   chEntered: "",        // id of the channel page refreshed since he last walked in
   chBusy: "",           // "" | "refresh" | "more" | "tab" — drives the loader lines
   chSyncAsked: 0,
+  newList: false,       // V2-885 — the «Nueva lista» field is open (module-lived: a repaint keeps it open)
 };

@@ -6281,8 +6281,9 @@ DOMAINS: list[dict] = [
                                  "the art); no «Unknown artist»; middle-truncated title; the queue a page; Search never opens "
                                  "on the playing query; 44 pt targets; the desktop geometry pinned unchanged",
             "ch": UNIT, "paths": ["tests/browser/unit/musica/test_the_phone_card_fits_the_hand.py"]},
-        {"id": "4.471", "title": "YouTube on the phone at 393x852 (V2-876 P-24, V2-877 #6): one row of 44 pt tabs with no sideways "
-                                 "scroll, Home reachable and showing what is loaded, the player 16:9 with 44 pt controls, the "
+        {"id": "4.471", "title": "YouTube on the phone at 393x852 (V2-876 P-24, V2-877 #6): one row with no sideways scroll "
+                                 "(V2-885: Inicio, the face on screen, 🔍 and ⋯ at 44 pt), Home reachable with what is "
+                                 "loaded in the mini-player, the player 16:9 with 44 pt controls, the "
                                  "swap notice legible and only for the video it swapped to, the embed in the card's language; "
                                  "a video whose owner refuses the embed (oEmbed 401/404) is never offered and joins the "
                                  "blocklist, fail-open; the desktop geometry pinned unchanged",
@@ -6393,6 +6394,15 @@ DOMAINS: list[dict] = [
                                   "`act schedules` lists the jobs by reference, `act unschedule` cancels ONE and a miss "
                                   "is not ok, and «no such app» names them",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/workers/test_a_worker_reads_and_cancels_periodic_jobs.py"]},
+        {"id": "4.495", "title": "The video app works like the music app (V2-885): with a search the results are the "
+                                  "first thing under the search box (no «now playing», no catalogue); without, a "
+                                  "catalogue of rows with «see all» and empty rows omitted; a mini-player at the card's "
+                                  "foot off the player tab (never fixed) that drives play/next and opens the player; "
+                                  "queue rows with a 120 px face, channel · date and named ↑ ↓ ✕ ▶ controls calling "
+                                  "move/remove/play_item; every empty tab offers its options; a new list prefilled with "
+                                  "today's date that a repaint never eats; the bar at three widths (one line with the "
+                                  "search closing it ~30 px from the plug, two right-aligned rows, phone Inicio + 🔍 + ⋯)",
+            "ch": UNIT, "paths": ["tests/browser/unit/youtube/test_the_video_app_works_like_the_music_app.py"]},
     ]},
     {"id": "5", "name": "CONECTORES", "nodes": [
         # V2-559 — el operador siguió la guía, creó la contraseña de aplicación y pegó el ENLACE de esa

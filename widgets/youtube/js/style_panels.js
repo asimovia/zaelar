@@ -65,8 +65,6 @@ export const CSS_PANELS = `\
   .hb-yt-chmsg{color:var(--hb-muted,#A9B1BD);font-size:var(--fs-caption,13.8px);padding:var(--sp-5,24px) 0;
                text-align:center;display:flex;align-items:center;justify-content:center;gap:var(--sp-2,8px)}
   .hb-yt-chmsg .hb-yt-spin{width:16px;height:16px;border-width:2px}
-  .hb-yt-secmsg{color:var(--hb-muted-2,#9aa7b8);font-size:12.5px;padding:14px 6px;text-align:center}
-  .hb-yt-saverow{display:flex;gap:6px;margin-top:6px}
   /* Connector SHELF (V2-632): the messaging igrid visual language, local copy (V2-557 isolation). */
   .hb-yt-igrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:12px}
   .hb-yt-ibox{display:flex;flex-direction:column;align-items:center;gap:7px;padding:16px 10px;cursor:pointer;
@@ -83,16 +81,13 @@ export const CSS_PANELS = `\
   .hb-yt-isub{font-size:11px;color:var(--hb-muted-2,#9aa7b8);text-align:center}
   .hb-yt-shnote{font-size:12px;color:var(--hb-muted,#5b6b82);line-height:1.45;border:1px solid
                 var(--hb-line,#eef1f6);border-radius:10px;padding:10px 12px;background:var(--hb-bg-soft,#fbfdff)}
-  .hb-yt-home{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+  .hb-yt-home{display:flex;flex-direction:column;gap:var(--sp-5,24px);min-width:0}
   .hb-yt-tile{position:relative;display:flex;flex-direction:column;gap:5px;cursor:pointer;border-radius:10px;padding:4px;min-width:0}
-  .hb-yt-tilex{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.5);color:#fff;border-radius:6px}
   .hb-yt-tile:hover{background:var(--hb-bg-soft,#fbfdff)}
   .hb-yt-tile img{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:8px;background:var(--hb-bg-soft,#0d1622)}
   .hb-yt-tilet{font-size:12.5px;font-weight:600;color:var(--hb-ink,#0d1622);line-height:1.25;
                display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-  .hb-yt-tile.playing .hb-yt-tilet{color:#f03}
   .hb-yt-tilec{font-size:11px;color:var(--hb-muted,#5b6b82);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .hb-yt-homemsg{grid-column:1/-1;color:var(--hb-muted-2,#9aa7b8);font-size:13px;text-align:center;padding:26px 12px}
   .hb-yt-blocked{font-size:11px;color:var(--hb-muted-2,#9aa7b8);padding:2px 2px}
   /* ACCOUNT layer (V2-597): platform icons in the nav row — bright = connected (click: its status screen),
      dimmed = not connected (click: its step wizard). The messaging .dots pattern: every channel always
@@ -111,16 +106,7 @@ export const CSS_PANELS = `\
   /* V2-603 — secondary actions under the primary button: the manual check (now a fallback, not the way the
      flow completes) and the escape hatch to one's own OAuth app. Links, not buttons: a second button next to
      «Conectar» reads as an equal choice, and neither of these is one. */
-  /* HOME suggestions band (V2-597): section header spanning the grid; tiles reuse .hb-yt-tile. */
-  .hb-yt-sughead{grid-column:1/-1;display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;
-                 color:var(--hb-ink,#0d1622);margin-top:2px}
-  .hb-yt-sugsub{font-weight:400;color:var(--hb-muted-2,#9aa7b8)}
-  /* V2-604 — the operator's OWN library, above everything that depends on a connector. */
-  .hb-yt-lib{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:2px 0 6px}
-  .hb-yt-libh{font-size:12px;font-weight:700;color:var(--hb-fg,#0f1720);margin-right:2px}
-  .hb-yt-libp{grid-column:1/-1;font-size:11px;color:var(--hb-muted-2,#9aa7b8);padding:0 0 8px}
-  .hb-yt-catch{grid-column:1/-1;border-top:1px solid var(--hb-line-subtle,rgba(255,255,255,.09));margin-top:4px}
-  .hb-yt-catch:last-child{display:none}              /* a divider with nothing after it divides nothing */
+  .hb-yt-libp{font-size:11px;color:var(--hb-muted-2,#9aa7b8);padding:0 0 8px}
   /* View switching is CLASS-driven, never inline display (an inline style would beat the cinema rules
      below). V2-632: one class per TAB — every face hidden by default, each tab shows its own with the
      right display value. Cinema and connmode are declared AFTER and win by order at equal specificity. */
@@ -128,7 +114,7 @@ export const CSS_PANELS = `\
   .hb-yt .hb-yt-frame,.hb-yt .hb-yt-tline,.hb-yt .hb-yt-ctrls,.hb-yt .hb-yt-hint,
   .hb-yt .hb-yt-list,.hb-yt .hb-yt-addrow,.hb-yt .hb-yt-home,.hb-yt .hb-yt-blocked,.hb-yt .hb-yt-subs,
   .hb-yt .hb-yt-mylists{display:none}
-  .hb-yt.hb-yt-t-inicio .hb-yt-home{display:grid}
+  .hb-yt.hb-yt-t-inicio .hb-yt-home{display:flex}
   .hb-yt.hb-yt-t-inicio .hb-yt-homehead{display:flex}
   .hb-yt.hb-yt-t-inicio .hb-yt-blocked{display:block}
   .hb-yt.hb-yt-t-player .hb-yt-frame{display:block}
@@ -170,8 +156,8 @@ export const CSS_PANELS = `\
   .hb-win:fullscreen .hb-yt-conn,.hb-win:fullscreen .hb-yt-subs,.hb-win:fullscreen .hb-yt-mylists{display:none}
   /* Cinema: the video is the screen — the frame must show whatever tab was active. */
   .hb-win.hb-cinema .hb-yt-frame,.hb-win:fullscreen .hb-yt-frame{display:block}
-    /* THE PHONE (V2-876 P-24), inside the shell's scroller: one row of tabs (no plug: not a phone control), 16:9, 44 px */
-  .zm-scroll .hb-yt-nav{padding:4px 0} .zm-scroll .hb-yt-navright{display:none} .zm-scroll .hb-yt-tabs{flex:1 1 auto;overflow:visible}
+    /* THE PHONE (V2-876 P-24), inside the shell's scroller: one row of tabs (V2-885: Inicio · search · ⋯), 16:9, 44 px */
+  .zm-scroll .hb-yt-nav{padding:4px 0} .zm-scroll .hb-yt-tabs{flex:1 1 auto;overflow:visible}
   .zm-scroll .hb-yt-tab{flex:1 1 auto;min-width:0;min-height:44px;padding:0 5px;font-size:12.5px;overflow:hidden;text-overflow:ellipsis}
   .zm-scroll .hb-yt-tab[data-short]{font-size:0} .zm-scroll .hb-yt-tab[data-short]::after{content:attr(data-short);font-size:12.5px}
   .zm-scroll .hb-yt.hb-yt-t-player:not(.hb-yt-connmode) .hb-yt-frame{flex:0 0 auto;aspect-ratio:16/9;min-height:0}

@@ -137,15 +137,17 @@ def test_the_bar_has_no_brand_of_its_own_and_the_active_tab_is_the_house_chip(_p
 
 def test_the_sources_and_the_plug_are_pinned_to_the_RIGHT_edge(_page):
     """The header standard: tabs left, then the source icons and the plug — the SAME plug every connector
-    widget wears — flush right. They used to split the free space and float in the middle of the bar."""
+    widget wears — on the right. V2-885 (operator, 2026-11-11): the SEARCH closes the bar at the right edge,
+    with ~30 px between it and the connector icons."""
     _mount(_page, {**_VID, "accounts_enabled": True,
                    "platforms": [{"id": "youtube", "label": "YouTube", "connected": False}]}, card_w=900)
     geo = _page.evaluate(
         """() => { const r = (s) => document.querySelector(s).getBoundingClientRect();
                    return {nav: r('.hb-yt-nav'), plug: r('.hb-yt-plug'), icon: r('.hb-yt-picon'),
-                           tabs: r('.hb-yt-tabs')}; }""")
-    assert geo["nav"]["right"] - geo["plug"]["right"] <= 16, "the plug closes the bar at its right edge"
-    assert 0 <= geo["plug"]["left"] - geo["icon"]["right"] <= 12, "the source icon sits right beside it"
+                           tabs: r('.hb-yt-tabs'), find: r('.hb-yt-find')}; }""")
+    assert geo["nav"]["right"] - geo["find"]["right"] <= 16, "the search closes the bar at its right edge"
+    assert 28 <= geo["find"]["left"] - geo["plug"]["right"] <= 36, "~30 px between the plug and the search"
+    assert 0 <= geo["plug"]["left"] - geo["icon"]["right"] <= 12, "the source icon sits right beside the plug"
     assert geo["icon"]["left"] > geo["tabs"]["right"] + 40, "…with the free space BETWEEN tabs and sources"
     assert _page.locator(".hb-yt-plug svg").count() == 1
     assert _page.locator(".hb-yt-plug").inner_text().strip() == "", "an icon, no word and no emoji"

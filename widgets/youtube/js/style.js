@@ -1,6 +1,7 @@
 // youtube widget — stylesheet, first half: the box, header line, frame, tabs, bar, home head, search, queue.
 // `CSS` is both halves in their original order (refactor2710-12 T-03).
 import { CSS_PANELS } from "./style_panels.js";
+import { CSS_CARDS } from "./style_cards.js";
 
 const CSS_PLAYER = `
   /* ONE BOX (V2-717 applied here, 2026-09-29). The canvas window IS the frame: the root draws no border,
@@ -22,7 +23,6 @@ const CSS_PLAYER = `
                white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1 1 auto;min-width:0}
   .hb-yt-meta{font-size:12px;color:var(--hb-muted,#5b6b82);line-height:1.3;flex:0 1 auto;
               white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .hb-yt-meta .hb-yt-latest{color:var(--hb-accent,#3D6FE0);font-weight:600}
   .hb-yt-blockmsg{font-size:13px;line-height:1.4;color:var(--hb-ink,#0d1622);background:rgba(240,170,20,.10);
     border:1px solid rgba(240,170,20,.30);border-left:3px solid #F0AA14;border-radius:8px;padding:7px 10px;margin:2px 0 4px}
   .hb-yt-frame{position:relative;width:100%;aspect-ratio:16/9;border-radius:12px;overflow:hidden;
@@ -73,7 +73,7 @@ const CSS_PLAYER = `
                 font-weight:600;padding:6px 12px;border-radius:999px;cursor:pointer}
   .hb-yt-unmute:hover{background:rgba(0,0,0,.75)}
   /* No rule above the list: the bar's hairline already closes the band, and a second one drew a double line. */
-  .hb-yt-list{display:flex;flex-direction:column;gap:2px}
+  .hb-yt-list{display:flex;flex-direction:column;gap:var(--sp-3,12px)}
   .hb-yt-listh{display:flex;align-items:center;gap:8px;font-size:var(--fs-ui,14px);font-weight:600;
                color:var(--hb-ink,#0d1622);padding-bottom:4px}
   .hb-yt-chip{font-size:11px;color:var(--hb-accent,#3D6FE0);border:1px solid var(--hb-line,#eef1f6);
@@ -134,12 +134,12 @@ const CSS_PLAYER = `
   /* INICIO's own head: what the grid below is, and a search box that carries the question on screen —
      so the card works by hand as well as by voice (operator, 2026-09-29). Built ONCE, outside the grid
      that is rebuilt per render, or an SSE repaint would eat what he is typing. */
-  .hb-yt-homehead{display:none;align-items:center;gap:var(--sp-3,12px);flex-wrap:wrap;min-width:0}
+  .hb-yt-homehead{display:none;align-items:center;min-width:0}
   .hb-yt-hometitle{font-size:var(--fs-ui,14px);font-weight:600;color:var(--hb-ink,#F2F4F7);white-space:nowrap;
                    display:flex;align-items:center;gap:var(--sp-2,8px)}
   .hb-yt-homecount{font-weight:400;color:var(--hb-muted,#A9B1BD);font-variant-numeric:tabular-nums}
-  .hb-yt-search{margin-left:auto;flex:1 1 220px;max-width:420px;min-width:0;display:flex;align-items:center;
-                gap:var(--sp-2,8px);height:var(--hb-ctl-h-sm,32px);box-sizing:border-box;padding:0 4px 0 var(--sp-3,12px);
+  .hb-yt-search{flex:1 1 auto;min-width:0;display:flex;align-items:center;   /* full width on top (V2-885) */
+                gap:var(--sp-2,8px);height:40px;box-sizing:border-box;padding:0 6px 0 var(--sp-4,16px);
                 border:1px solid var(--hb-line,rgba(255,255,255,.14));border-radius:999px;
                 background:var(--hb-bg-soft,#272D35)}
   .hb-yt-search:focus-within{border-color:var(--hb-accent,#AE90FF)}
@@ -154,9 +154,7 @@ const CSS_PLAYER = `
   .hb-yt-sbtn.go{color:var(--hb-ink,#F2F4F7)}
   /* Placeholder (V2-632): with no video, the player tab still SHOWS where the video will live. */
   .hb-yt-empt-ico{font-size:34px;opacity:.5;line-height:1}
-  /* Search band on the dashboard (V2-632): numbered result tiles + a per-tile «a la cola» button. */
-  .hb-yt-schead{grid-column:1/-1;display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;
-                color:var(--hb-ink,#0d1622)}
+  /* Search band on Inicio (V2-632): numbered result tiles + a per-tile «a la cola» button. */
   .hb-yt-rnum{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.62);color:#fff;font-size:11px;
               font-weight:700;border-radius:6px;padding:2px 6px;font-family:ui-monospace,Menlo,monospace}
   .hb-yt-radd{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.55);color:#fff;border:0;
@@ -166,7 +164,7 @@ const CSS_PLAYER = `
   .hb-yt-rimg{width:62px;aspect-ratio:16/9;object-fit:cover;border-radius:6px;flex:0 0 auto;
               background:var(--hb-bg-soft,#0d1622)}
   /* Subscriptions and saved lists get their own tabs (V2-632). */
-  .hb-yt-mylists{display:flex;flex-direction:column;gap:4px}
+  .hb-yt-mylists{display:flex;flex-direction:column;gap:var(--sp-3,12px)}
 `;
 
-export const CSS = CSS_PLAYER + CSS_PANELS;
+export const CSS = CSS_PLAYER + CSS_PANELS + CSS_CARDS;

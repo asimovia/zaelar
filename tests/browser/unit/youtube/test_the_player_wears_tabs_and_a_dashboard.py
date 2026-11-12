@@ -109,7 +109,8 @@ def test_the_five_tabs_exist_and_empty_defaults_to_the_dashboard(_page):
     tabs = _page.eval_on_selector_all(".hb-yt-tab", "els => els.map(e => e.dataset.tab)")
     assert tabs == ["inicio", "player", "cola", "subs", "listas"]
     assert "hb-yt-t-inicio" in _cls(_page)
-    assert "No hay ningún vídeo cargado" in _page.locator(".hb-yt-homemsg").inner_text()
+    # V2-885: an empty Inicio is ONE empty state that offers the ways in (search, the account)
+    assert "Busca un vídeo" in _page.locator(".hb-yt-home .hb-empty-state").inner_text()
 
 
 def test_the_player_tab_shows_a_placeholder_where_the_video_will_live(_page):
@@ -137,7 +138,7 @@ def test_a_video_arriving_jumps_to_the_player_tab(_page):
 def test_search_results_render_numbered_on_the_dashboard_and_steer_by_click(_page):
     _mount(_page, _data(search_results=_RESULTS, search_query="gatitos"))
     # 2026-09-29 — the head names the band and the search box CARRIES the question being answered
-    assert "Resultados" in _page.locator(".hb-yt-homehead .hb-yt-hometitle").inner_text()
+    assert "Resultados" in _page.locator(".hb-yt-home .hb-yt-hometitle").inner_text()   # V2-885: the band's own head
     assert _page.locator(".hb-yt-search input").input_value() == "gatitos"
     nums = _page.eval_on_selector_all(".hb-yt-rnum", "els => els.map(e => e.textContent)")
     assert nums == ["1", "2", "3"], "the numbers ARE the voice index («reproduce el tercero»)"
@@ -168,8 +169,10 @@ def test_the_lists_tab_opens_and_saves(_page):
     assert ["open_list", {"name": "vela"}] in _page.evaluate("window.__calls")
     assert "hb-yt-t-cola" in _cls(_page)
     _page.click(".hb-yt-tab[data-tab=listas]")
-    inp = _page.locator(".hb-yt-saverow .hb-yt-addinp")
+    _page.click(".hb-yt-mylists .hb-yt-newbtn")               # V2-885: «＋ Nueva lista» opens the name field
+    inp = _page.locator(".hb-yt-newlist .hb-yt-addinp")
     inp.fill("tarde")
+    _remount(_page, _data(list=[{"videoId": "x", "title": "X"}], lists=[{"name": "vela", "items": [{"videoId": "x"}]}]))
     inp.press("Enter")
     assert ["save_list", {"name": "tarde"}] in _page.evaluate("window.__calls")
 
