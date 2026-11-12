@@ -2,9 +2,10 @@
 
 The phase's state (flags, the watcher, the three exits) stays in `introduction.py`; this module composes its prose,
 reading the turn: on the kickoff it IS the first turn's instruction (a system block, never a line in his voice), and
-on a turn where he just answered our question the goal he answered leaves «what you do not know» and enters «he
-just told you» — the state block still shows it empty, because the memory agent writes it after the turn, and a
-model told «you do not know his name» beside «pepe» confirmed it (measured 2026-11-12).
+on a turn where he just answered our question the block names THAT question — never a goal guessed from the order
+(I1: «sí, claro» to «¿te cuento qué puedo hacer?» was read as his name) — because the state block still shows the
+fact empty until the memory agent writes it after the turn, and a model told «you do not know his name» beside «pepe»
+confirmed it (measured 2026-11-12). Which fact the answer is stays the model's reading.
 """
 from __future__ import annotations
 
@@ -32,25 +33,27 @@ def _own_name() -> str:
         return "Zaelar"
 
 
-def _answered_ours(turn_text: str) -> bool:
-    """Did he just answer a question of OURS, this turn? Read from the turn, never from the state the memory agent
-    writes two seconds later (A7, step 3): the one answer rule the distiller uses (`answer_frame.answers_ours`) —
-    a short line asking nothing, after a reply of ours that ended on a question — or, when the turn's brief has
-    landed and is sure at the acting floor, its `answer` verdict. No word of his is matched here."""
+def _answered_ours(turn_text: str) -> str:
+    """The question of OURS he just answered, this turn ("" when none) — read from the turn, never from the state the
+    memory agent writes two seconds later (A7, step 3): the one answer rule the distiller uses
+    (`answer_frame.answers_ours`), or, when the turn's brief is sure at the acting floor that he answered, the
+    question our last reply ended on. No word of his is matched here."""
     try:
         from nucleo.memory_agent import answer_frame as _af
-        if _af.answers_ours(turn_text):
-            return True
-    except Exception as e:  # noqa: BLE001
-        logger.debug(f"introduction: the answer rule could not be read ({e!r})")
-    try:
+        if asked := _af.answers_ours(turn_text):
+            return asked
         from nucleo.turn import brief as _tb
         from nucleo.turn import verdicts as _v
         choice, _info = _v.to_act(_tb.of_this_turn(), _tb.REQUEST_KEY, "")
-        return choice == "answer"
+        return _af.asked_before() if choice == "answer" else ""
     except Exception as e:  # noqa: BLE001
-        logger.debug(f"introduction: the turn's brief could not be read ({e!r})")
-        return False
+        logger.debug(f"introduction: the answer could not be read ({e!r})")
+        return ""
+
+
+def _this_turn() -> str:
+    from voice import trace     # the turn's own id (a context variable): a compose outside any turn has none
+    return trace.current()
 
 
 def _goals() -> list[tuple[str, str]]:
@@ -88,13 +91,9 @@ def block(turn_text: str = "") -> str:
     missing = [label for label, key in _goals()
                if not str(st.get(key) or "").strip() and not (_here and key == "location")]
     first = _kickoff.is_kickoff(turn_text)
-    just_told = ""
-    if missing and not first and _answered_ours(turn_text):
-        # The goal he answered: the first missing one — the block asks ONE thing per turn, in this order, so the
-        # question he is answering is the first one still open.
-        just_told = missing.pop(0)
+    asked = "" if first else _answered_ours(turn_text)
     tell_offer = not ph.offer_told()
-    ph._offer_pending = tell_offer
+    ph._offer_pending = _this_turn() if tell_offer else ""      # the turn that carries it, never a compose outside one
     if first:
         lines = [
             "ES TU PRIMER TURNO CON ÉL y acaba de conectarse: salúdale en 1-2 frases, cálido y breve. Si por tu "
@@ -116,13 +115,14 @@ def block(turn_text: str = "") -> str:
         "solo si cabe con naturalidad. Si te contesta con evasivas o cambia de tema, lo dejas estar: no se "
         "insiste ni se vuelve a preguntar lo mismo dos veces.",
     ]
-    if just_told:
-        lines.append(f"ACABA DE DECÍRTELO en este mismo turno ({just_told}): úsalo con naturalidad, sin confirmarlo "
-                     "ni repetírselo como pregunta, y sigue. Se guarda solo.")
+    if asked:
+        lines.append(f"ACABA DE CONTESTAR a tu pregunta «{asked}»: lo que te ha dicho ya lo sabes aunque tu ESTADO aún "
+                     "no lo recoja (se guarda solo al acabar el turno); úsalo con naturalidad, sin confirmarlo ni "
+                     "repetírselo como pregunta, y sigue.")
     if missing:
         lines.append("LO QUE TODAVÍA NO SABES de él, por orden de importancia: " + " · ".join(missing)
                      + ". Cuando te lo diga, se guarda solo — tú no tienes que hacer nada para recordarlo.")
-    elif not just_told:
+    else:
         lines.append("Ya sabes quién es. Lo que falta es que él sepa quién eres tú y para qué le sirves.")
     if name:
         lines.append(f"Se llama {name}: úsalo con naturalidad, ni en cada frase ni nunca.")
