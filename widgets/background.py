@@ -225,6 +225,18 @@ async def _tick_once(wid: str, kind: str) -> None:
         await _tick_once_paced(wid, kind)
 
 
+#: V2-891 — the shed ladder's `pause_background` rung: while held, no cycle runs (the loops stay up, counting).
+_held = {"on": False}
+
+
+def hold(on: bool) -> None:
+    _held["on"] = bool(on)
+
+
+def held() -> bool:
+    return _held["on"]
+
+
 async def _tick_once_paced(wid: str, kind: str) -> None:
     # V2-092: when the agent is stopped, cycles do not run. A "stopped agent" that keeps polling connectors and
     # writing to memory is not really stopped. The loop is NOT cancelled; it stays awake counting, so starting
@@ -235,6 +247,8 @@ async def _tick_once_paced(wid: str, kind: str) -> None:
             return
     except Exception:
         pass
+    if _held["on"]:                          # the host is short of memory: background work gives it back first
+        return
     if wid in _inflight:                    # previous cycle is still running -> skip this one; do not queue slow work
         _emit("skip", wid, "previous tick in progress")
         return

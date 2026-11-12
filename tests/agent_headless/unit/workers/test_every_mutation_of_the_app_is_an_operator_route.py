@@ -21,6 +21,9 @@ EXPECTED_WORKER_DOORS = {
     "/api/search/find": "the search service",
     "/api/search/route": "the search service",
     "/api/scrape/read": "reading a public page (V2-846): no account data, paid rungs metered like search",
+    "/api/voice/child/events": "the voice's own process (V2-891): the spawn token, loopback only, no worker has it",
+    "/api/voice/child/kickoff": "the voice's own process (V2-891): the spawn token, loopback only",
+    "/api/turn/stream": "the voice's own process (V2-891): the spawn token, loopback only",
 }
 
 

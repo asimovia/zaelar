@@ -37,7 +37,21 @@
     "screen open a passive widget's background tick runs at most this often, whatever its declared `every`.",
     "LISTENING WHILE ASLEEP (V2-872 F2): an engine that reports when to be woken (`nucleo/pulse/wake.py`) asks for a",
     "pass every `listen_every_min` only while something reacts to an inbound channel that can be caught up (a rule, a",
-    "waiting task, an errand, his notify preference — `nucleo/pulse/listeners.py`); with nothing listening, no pass."
+    "waiting task, an errand, his notify preference — `nucleo/pulse/listeners.py`); with nothing listening, no pass.",
+    "THE VOICE IN ITS OWN PROCESS (V2-891). The voice (`python -m voice.engine`: LiveKit, the VAD, the ear, the mouth),",
+    "the body (`python -m server`), a Brain Worker and the browser each have a memory `budgets.<deployment>.<piece>`:",
+    "`mb` (what it should hold) and `ceiling_mb` (past it the voice process is recycled BETWEEN sessions). The deployment",
+    "is `cloud` when the engine serves a hosted account (ZAELAR_USER_ID) and `local` otherwise (ZAELAR_DEPLOYMENT names",
+    "it). `free_floor` is the free memory the host keeps — the larger of `ratio`×total and `mb` — and replaces",
+    "`admit_free_ratio`/`voice_reserve_mb` as the worker floor wherever this block is declared: a laptop shares its host",
+    "with other programs and a model server; a small hosted machine runs only the engine.",
+    "`priorities.<role>`: nice and OOM score per process (the voice served first and killed last, the browser killed",
+    "first); raising either needs no privilege, lowering one does, so an unprivileged host keeps what it could set.",
+    "`shed_ladder`: the rungs the engine gives memory back with, in order, one per heartbeat under pressure (free memory",
+    "under the floor), released in reverse once free memory is back over floor × `shed_recover_ratio`.",
+    "`embed_budget_ms`: how long a recall waits for a LOCAL embedding (a model on this machine, which pages in from",
+    "swap on a host short of memory) before it reads the lexical channel alone; a remote embedder keeps the turn's own",
+    "recall budget (ZAELAR_RECALL_BUDGET_MS)."
   ],
   "worker_nice": 10,
   "admit_free_ratio": 0.2,
@@ -63,5 +77,13 @@
   "wake_grace_min": 1,
   "prewarm_browser": true,
   "background_idle_every_s": 300,
-  "listen_every_min": 10
+  "listen_every_min": 10,
+  "budgets": {
+    "local": {"voice": {"mb": 300, "ceiling_mb": 400}, "body": {"mb": 900, "ceiling_mb": 1200}, "worker": {"mb": 300, "ceiling_mb": 600}, "chromium": {"mb": 250, "ceiling_mb": 500}, "free_floor": {"ratio": 0.2, "mb": 768}},
+    "cloud": {"voice": {"mb": 300, "ceiling_mb": 400}, "body": {"mb": 700, "ceiling_mb": 900}, "worker": {"mb": 300, "ceiling_mb": 450}, "chromium": {"mb": 250, "ceiling_mb": 400}, "free_floor": {"ratio": 0.0, "mb": 200}}
+  },
+  "priorities": {"voice": {"nice": 0, "oom_score_adj": -500}, "body": {"nice": 5, "oom_score_adj": 0}, "worker": {"nice": 10, "oom_score_adj": 500}, "chromium": {"nice": 10, "oom_score_adj": 800}},
+  "shed_ladder": ["hold_workers", "pause_newest_worker", "pause_background", "close_browser", "trim_caches"],
+  "shed_recover_ratio": 1.15,
+  "embed_budget_ms": 300
 }

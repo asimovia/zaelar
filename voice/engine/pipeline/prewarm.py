@@ -61,7 +61,8 @@ def prewarm(proc: JobProcess) -> None:
     _warm = []  # (ollama_v1_url, model)
     if SETTINGS.llm_provider == "local":
         _warm.append((SETTINGS.local_llm_url, SETTINGS.local_llm_model))
-    if SETTINGS.llm_provider == "nucleo":
+    from . import body_link as _bl
+    if SETTINGS.llm_provider == "nucleo" and not _bl.active():   # V2-891: the voice process has no brain to warm
         try:
             from nucleo.llm.fast_client import spec_from_config
             spec = spec_from_config()

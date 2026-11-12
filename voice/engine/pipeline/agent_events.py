@@ -441,19 +441,22 @@ def _on_close(ev, *, _account_limits, _close_account_session, _emit, _proactive,
     boot.close()
 
 
-def _on_item(ev, *, _emit) -> None:
+def _on_item(ev, *, _emit, speech_id: str | None = None, surfaced: bool | None = None) -> None:
+    """`speech_id`/`surfaced`: given when the voice runs in its own process (V2-891) — read THERE, where the speech
+    task and the reply-wall tee live; read here otherwise."""
     item = ev.item
     role, text = getattr(item, "role", None), getattr(item, "text_content", None)
     if role == "user":
         from nucleo.input import typed as _order
         _order.note_committed()   # whatever he was saying is a turn now: a typed order held behind it may go
     # V2-773 — already on the wall (reply_wall.surface): not twice.
-    if role == "assistant" and text and not _ag._reply_wall.already_surfaced(text):
+    _surfaced = surfaced if surfaced is not None else (bool(text) and _ag._reply_wall.already_surfaced(text))
+    if role == "assistant" and text and not _surfaced:
         # V2-831 T-23 — the trace of the turn that CREATED these words: the item lands when the PLAYOUT ends,
         # often inside the next turn, so `active()` alone named the wrong one (pass 7: M3's NASDAQ line as M4's).
         from voice import trace as _trace
-        _h = _speech_of_this_task()
-        _tid = _trace.of_speech(getattr(_h, "id", "")) or _trace.active()
+        _sid = speech_id if speech_id is not None else getattr(_speech_of_this_task(), "id", "")
+        _tid = _trace.of_speech(_sid) or _trace.active()
         _emit("transcript", "zaelar", text=text, role="assistant",
               extra=({"trace": _tid} if _tid else None), piece="f_mouth")   # what the mouth said
         # The finished reply sizes the wake-word window it re-anchors (2026-09-09, dynamic 4-15s).
@@ -478,3 +481,22 @@ def _on_transcript(ev, *, _emit, _wake) -> None:
                 _attn_spot.note_wakeword_spotted()
         except Exception:
             pass
+
+
+def on_false_interruption(resumed: bool, *, _emit) -> None:
+    """Noise/backchannel cut speech but was NOT a real interruption. `resumed` says whether LiveKit resumed speech (the
+    audio output must support pause; the room does) — a systematic False is the «everything stopped» bug. SAFE to
+    label with active(): it describes speech that was ALREADY playing, not a turn about to begin."""
+    from voice import trace as _trace
+    _tid = _trace.active()
+    _emit("vad", "🤫 falsa interrupción (ruido) — reanudo la locución" if resumed
+          else "🤫 falsa interrupción (ruido) — NO reanudo (audio sin pause)",
+          role="system", extra={"resumed": bool(resumed), **({"trace": _tid} if _tid else {})})
+
+
+def on_overlap(is_int: bool, *, _emit) -> None:
+    """Overlapping voice while zaelar speaks: interruption vs backchannel (only with the ML interruption detector)."""
+    from voice import trace as _trace
+    _tid = _trace.active()
+    _emit("vad", "🔊 voz solapada — interrupción" if is_int else "🔊 voz solapada — backchannel (ignorada)",
+          role="user", extra={"is_interruption": bool(is_int), **({"trace": _tid} if _tid else {})})

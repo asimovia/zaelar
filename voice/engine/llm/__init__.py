@@ -16,13 +16,15 @@ registry = Registry("LLM")
 
 
 def build_llm(provider: str, model: str = "") -> LLM:
+    from . import providers  # noqa: F401 — registers the builders (V2-891: on first use, never on import)
     return registry.create(provider, model=model)  # type: ignore[return-value]
 
 
 def available() -> list[str]:
+    from . import providers  # noqa: F401
     return registry.names()
 
-
-from . import providers  # noqa: E402,F401  (import side effect: register builders)
+# V2-891 — the providers are imported on FIRST USE, not with this package: the `nucleo` provider pulls the whole
+# brain (memory, widgets, the turn), and the voice's own process imports this package without ever building it.
 
 __all__ = ["build_llm", "available", "registry"]

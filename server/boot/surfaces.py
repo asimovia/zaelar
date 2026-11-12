@@ -82,21 +82,24 @@ def widgets(app) -> None:
 
 
 def voice_worker(app) -> None:
-    # LiveKit engine: run the AgentServer EMBEDDED in this process (job_executor_type=THREAD), so the
-    # voice job shares the bus/observer-SSE queue, the central memory, the orchestrator loop and brain_notes with
-    # the «Colmena» brain (nucleo/). Gated by ZAELAR_ENGINE=livekit.
+    # LiveKit engine (gated by ZAELAR_ENGINE=livekit). V2-891: the voice runs in its OWN process
+    # (`python -m voice.engine`, `voice/child_process.py`) — the ear, the VAD and the mouth never share a heap or a
+    # GIL with this body, so the body's memory faults never reach them; the turn still runs HERE, behind
+    # `/api/turn/stream`. `ZAELAR_VOICE_EMBEDDED=1` keeps the pre-V2-891 shape: the AgentServer EMBEDDED in this
+    # process (job_executor_type=THREAD). Either way it is `app.state.lk_server`/`lk_task` for the heartbeat.
     if os.getenv("ZAELAR_ENGINE", "livekit").lower() == "livekit":
         try:
-            from voice.engine.pipeline.agent import make_server
-            _lk = make_server()
+            from voice import child_process
+            _lk = child_process.factory()()
             app.state.lk_server = _lk
             _devmode = os.getenv("ZAELAR_ENV", "dev").lower() != "prod"
             app.state.lk_task = asyncio.create_task(_lk.run(devmode=_devmode))
             from nucleo.pulse import voice_recycle as _vr
             _vr.use_app(app)          # V2-873: the token door asks whether this worker is registered yet
-            logger.info("LiveKit agent worker started EMBEDDED (job_executor_type=THREAD)")
+            logger.info("LiveKit voice worker started " + ("EMBEDDED (job_executor_type=THREAD)"
+                        if child_process.embedded() else "in its OWN process (python -m voice.engine)"))
         except Exception as e:
-            logger.warning(f"LiveKit embedded worker start failed: {e}")
+            logger.warning(f"LiveKit voice worker start failed: {e}")
 
 
 def prewarm_and_seams(app, active_brain) -> None:

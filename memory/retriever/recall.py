@@ -16,6 +16,71 @@ from .graph import graph_expand
 _WRONG_SPACE_GAP_S = 60.0
 _wrong_space_last = 0.0
 
+# ── a LOCAL embedding is waited for within a budget (V2-891) ────────────────────────────────────────────────────
+# A local embedder (Ollama, fastembed) runs on THIS host. On a host short of memory its weights are the pages the OS
+# compressed or swapped out, and one query embedding took seconds while the operator waited for an answer. The
+# lexical channel (FTS5) lives in the same database and answers in milliseconds, so past `embed_budget_ms` the read
+# goes on with it alone — a worse recall, never a turn that waits. The embedding keeps running in its own small pool
+# (its result warms nothing, and the pool is bounded so abandoned ones cannot pile up). A REMOTE embedder is not
+# bounded here: the turn's own recall budget (`nucleo/turn/recall_budget.py`) already runs the lexical lane beside it.
+_LOCAL_BACKENDS = ("ollama", "fastembed")
+_EMBED_POOL = None
+_budget_cache = {"at": 0.0, "s": 0.3}
+
+
+def _embed_budget_s() -> float:
+    import json
+    import os
+    env = (os.getenv("ZAELAR_EMBED_BUDGET_MS") or "").strip()
+    if env:
+        try:
+            return max(0.0, float(env) / 1000.0)
+        except ValueError:
+            pass
+    now = time.monotonic()
+    if now - _budget_cache["at"] < 30.0:
+        return _budget_cache["s"]
+    ms = 300.0
+    cfg = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "config")
+    for name in ("resources.default.json", "resources.json"):
+        try:
+            with open(os.path.join(cfg, name), encoding="utf-8") as fh:
+                ms = float(json.load(fh).get("embed_budget_ms", ms))
+        except (OSError, ValueError, TypeError):
+            continue
+    _budget_cache.update(at=now, s=max(0.0, ms / 1000.0))
+    return _budget_cache["s"]
+
+
+def _embed_query(prompt: str):
+    """`(vector or None, over_budget)`. A local embedder is waited for at most `_embed_budget_s()`."""
+    global _EMBED_POOL
+    try:
+        local = _emb.active_backend() in _LOCAL_BACKENDS
+    except Exception:  # noqa: BLE001
+        local = False
+    budget = _embed_budget_s() if local else 0.0
+    if not local or budget <= 0:
+        return _emb.embed(prompt), False
+    if _EMBED_POOL is None:
+        from concurrent.futures import ThreadPoolExecutor
+        _EMBED_POOL = ThreadPoolExecutor(max_workers=2, thread_name_prefix="local-embed")
+    fut = _EMBED_POOL.submit(_emb.embed, prompt)
+    try:
+        return fut.result(timeout=budget), False
+    except Exception:  # noqa: BLE001 — a timeout, or an embedder that failed: the lexical channel carries the read
+        return None, True
+
+
+def _note_embed_over_budget(ms: float) -> None:
+    try:
+        from voice.observer import emit
+        emit("memory", "embedding local fuera de presupuesto — recall por el canal léxico", role="system",
+             extra={"module": "memory.retriever", "reason": "embed_over_budget", "budget_ms": round(ms),
+                    "backend": str(getattr(_emb, "_backend", "") or "")})
+    except Exception:  # noqa: BLE001 — observability NEVER breaks a read
+        pass
+
 
 def _warn_wrong_space() -> None:
     """State that can deceive has to be VISIBLE and fixable in one gesture — this read is running on the lexical
@@ -81,7 +146,10 @@ def search(
     if lexical_only:
         rerank = False
     t0 = time.perf_counter()
-    qvec = None if lexical_only else _emb.embed(prompt)
+    qvec, over = (None, False) if lexical_only else _embed_query(prompt)
+    if over:                                # V2-891: the read never waits on a local embedding past its budget
+        lexical_only, rerank = True, False
+        _note_embed_over_budget(_embed_budget_s() * 1000)
     ms = {"embed_ms": _ms_since(t0), "lexical_ms": 0.0, "vector_ms": 0.0, "rerank_ms": 0.0}
     lanes = (LANE_OWN, LANE_MESSAGES) if lane == LANE_ALL else (lane,)
     out: list[dict] = []

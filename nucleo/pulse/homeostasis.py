@@ -67,8 +67,21 @@ _MARKERS = (
 )
 
 
+def note_mark(at: float | None = None) -> None:
+    """One degraded-engine mark — from this process's `livekit` logger, or from the voice's own process (V2-891),
+    whose SDK logs are its own and reach the body as events."""
+    _marks.append(float(at) if at else time.time())
+    if len(_marks) > 256:                  # bound memory (a probe, not a history)
+        del _marks[:128]
+
+
 class _LKWatcher(logging.Handler):
-    """Listens to the `livekit` logger (and children): stamps a mark on each degraded-engine message. Emits nothing."""
+    """Listens to the `livekit` logger (and children): stamps a mark on each degraded-engine message. Emits nothing.
+    `sink` is where the mark goes (`note_mark` here; the voice process hands it to the body)."""
+
+    def __init__(self, sink=None) -> None:
+        super().__init__()
+        self._sink = sink
 
     def emit(self, record: logging.LogRecord) -> None:  # noqa: D401
         try:
@@ -76,9 +89,15 @@ class _LKWatcher(logging.Handler):
         except Exception:
             return
         if any(m in msg for m in _MARKERS):
-            _marks.append(time.time())
-            if len(_marks) > 256:          # bound memory (a probe, not a history)
-                del _marks[:128]
+            (self._sink or note_mark)(time.time())
+
+
+def watch_into(sink) -> logging.Handler:
+    """The voice process's half (V2-891): its `livekit` marks go to `sink(at)` instead of this process's window."""
+    h = _LKWatcher(sink)
+    h.setLevel(logging.WARNING)
+    logging.getLogger("livekit").addHandler(h)
+    return h
 
 
 _watcher = _LKWatcher()
@@ -147,9 +166,9 @@ async def _recycle_livekit(app) -> bool:
     global _last_recycle
     _last_recycle = time.time()              # the cooldown counts an attempt, not only a success
     try:
-        from voice.engine.pipeline.agent import make_server
+        from voice import child_process     # V2-891: the voice's own process, or the embedded worker
         devmode = os.getenv("ZAELAR_ENV", "dev").lower() != "prod"
-        ok = await voice_recycle.recycle(app, make_server, devmode)
+        ok = await voice_recycle.recycle(app, child_process.factory(), devmode)
     except Exception as e:  # noqa: BLE001
         log.warning("homeostasis: reciclado del motor falló: %s", e)
         ok = False
@@ -213,8 +232,18 @@ async def _tick(app) -> None:
                                  "para no cortarte. Si notas cortes, dime y lo reinicio.")
             # 1c) V2-871: a worker that gave up or never came back after a session was asked for is never quiet
             await voice_recycle.check_dead(app, _recycle_livekit, now)
+            # 1d) V2-891: the voice's own process over its RSS ceiling is recycled between sessions
+            if now - _last_recycle >= _RECYCLE_COOLDOWN_S:
+                await voice_recycle.check_ceiling(app, _recycle_livekit)
     except Exception as e:  # noqa: BLE001
         log.warning("homeostasis: chequeo del motor falló: %s", e)
+
+    # 1e) V2-891: the shed ladder — one rung per beat, down under pressure, back up in reverse once it recovers
+    try:
+        from nucleo.pulse import shed_actuators
+        shed_actuators.step(lambda step, text, extra=None: _emit(step, text, extra))
+    except Exception as e:  # noqa: BLE001
+        log.warning("homeostasis: escalera de descarga falló: %s", e)
 
     # 2) LOGS
     try:
