@@ -29,7 +29,7 @@ log = logging.getLogger(__name__)
 
 _DEFAULTS = {"recycle_close_s": 10.0, "recycle_verify_s": 30.0, "recycle_attempts": 3, "recycle_backoff_s": 5.0,
              "recycle_retry_s": 120.0, "voice_dead_s": 120.0, "boot_grace_s": 300.0}
-_state: dict = {"requested": 0.0, "gave_up": False, "told": False, "retry_at": 0.0}
+_state: dict = {"requested": 0.0, "alive_at": 0.0, "gave_up": False, "told": False, "retry_at": 0.0}
 
 
 def policy() -> dict:
@@ -49,8 +49,13 @@ def in_boot_grace(now: float | None = None) -> bool:
 
 
 def note_session_requested(now: float | None = None) -> None:
-    """A voice session was asked for (a room token was minted): from now on a missing worker is a dead voice."""
-    _state["requested"] = time.time() if now is None else now
+    """A voice session was asked for (a room token was minted): from now on a missing worker is a dead voice.
+
+    The clock starts at the FIRST ask the worker has not been seen alive since: a page that keeps asking while the
+    voice is dead (a 503 `voice_starting` answered every few hundred ms) must not restart it, or `voice_dead_s` is
+    never reached and a worker that gave up stays dead for as long as someone is trying to talk to it."""
+    if _state["requested"] <= _state.get("alive_at", 0.0):
+        _state["requested"] = time.time() if now is None else now
 
 
 _app: dict = {"app": None}
@@ -177,7 +182,7 @@ async def check_dead(app, recycle_fn, now: float | None = None) -> str:
     now = time.time() if now is None else now
     st = app.state
     if worker_alive(getattr(st, "lk_server", None), getattr(st, "lk_task", None)):
-        _state.update(gave_up=False, told=False, retry_at=0.0)
+        _state.update(gave_up=False, told=False, retry_at=0.0, alive_at=now)
         return "ok"
     pol = policy()
     asked = _state["requested"] and now - _state["requested"] >= pol["voice_dead_s"] and not in_boot_grace(now)

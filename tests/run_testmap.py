@@ -1710,6 +1710,12 @@ DOMAINS: list[dict] = [
                 "tests/voice/unit/test_a_closed_microphone_feeds_no_audio_to_stt.py"]},
         {"id": "3.185", "title": "A voice room is given only once this engine's worker is REGISTERED, and the page is ready only with the agent in it (V2-873): `/api/token` answers 503 `voice_starting` while the embedded worker has no LiveKit id (a room born before it is never dispatched an agent); the page waits and asks again, leaves a room no agent joined within its bound and asks for a new one, never says «ready» without the agent, and says it is unavailable past the bound; a typed line never waits on the token door",
             "ch": UNIT, "paths": ["tests/voice/unit/test_a_room_is_given_only_once_the_worker_is_registered.py"]},
+        {"id": "3.198", "title": "A dead voice is recycled `voice_dead_s` after the FIRST ask it left unanswered, however often it is asked: a page asking every 150 ms while the worker gave up no longer re-stamps `note_session_requested` and holds `check_dead` off; an ask after a live reading starts a fresh clock (`voice_recycle.alive_at`)",
+            "ch": UNIT, "paths": ["tests/voice/unit/test_a_dead_voice_is_not_kept_dead_by_its_callers.py"]},
+        {"id": "3.199", "title": "A voice start that fails is retried by its bounded retry, never by the ⏻ effect: main.js's power-back-ON effect runs `ensureVoice` untracked, so a 503 `voice_starting` that drops `started`/`starting` does not re-fire it (a desktop opened and closed a session every ~150 ms); ⏻ and the language veil still bring the voice up",
+            "ch": UNIT, "paths": ["tests/browser/unit/voice/test_a_failed_start_is_not_restarted_by_the_power_effect.py"]},
+        {"id": "3.200", "title": "A TTS prewarm runs on the session's loop (`tts.start_prewarm`): never called where no loop runs (the `setup_fnc` built an orphan coroutine and opened nothing), an awaitable it returns is scheduled, the failover warms every voice, and both entrypoints (embedded and the voice's own process) start it before the room connects",
+            "ch": UNIT, "paths": ["tests/voice/unit/test_the_tts_is_warmed_on_the_sessions_loop.py"]},
         # V2-831 T-19 R7+R8 (V2-747 class) — disarmed 2026-10-29 (the correction reader, the backstop's rule, the
         # settle's card acts) → red each. R7b (pass 2): the owner fact never says card / ignores the errand's acts → red.
         # R7c (pass 3): worker-span writes count, errand by timestamps, Inject or done_ops without trace, inject_soon

@@ -7,7 +7,7 @@
 // restores the user's open widgets into #activity.
 // ============================================================================
 import { h, mount, $ } from "./core/dom.js?v=2";
-import { createEffect } from "./core/reactive.js?v=2";
+import { createEffect, untrack } from "./core/reactive.js?v=2";
 import * as session from "./services/session.js?v=3";
 import * as mic from "./services/mic.js?v=1";
 import * as screens from "./services/screens.js?v=1";
@@ -276,10 +276,10 @@ document.addEventListener("hb:blocking-fault", () => {
 // `session.start()` again. Voice waited for the NEXT `pointerdown`, the other path to `ensureVoice()`: ⏻ stayed
 // amber until the operator touched anything else, and RELOADING the page fixed it instantly
 // (startup seeding does call `ensureVoice()`). A state fixed only by reloading is exactly the state that lies.
-// `ensureVoice()` is idempotent: if it is already running, it does nothing.
+// UNTRACKED: the effect follows ⏻ and the veil only — a start that fails must never re-fire it (node 3.199).
 createEffect(() => {
   if (store.powerOff() || store.langOnboardOpen()) return;   // the veil closing is a way back to voice too
-  ensureVoice();
+  untrack(ensureVoice);
 });
 
 // V2-765 — the picker lifted the language gate: undo what the boot probe did on its way to «stopped» (mic and

@@ -64,7 +64,7 @@ def seen(monkeypatch):
     monkeypatch.setattr(notices, "notify", notify)
     monkeypatch.setattr(VR, "policy", lambda: dict(POL))
     monkeypatch.setattr(VR, "grace_end", lambda: 0.0)            # past the cold start
-    monkeypatch.setattr(VR, "_state", {"requested": 0.0, "gave_up": False, "told": False, "retry_at": 0.0})
+    monkeypatch.setattr(VR, "_state", {"requested": 0.0, "alive_at": 0.0, "gave_up": False, "told": False, "retry_at": 0.0})
     monkeypatch.setattr(self_watchdog, "_exit", lambda pol: got["exits"].append(pol))
     monkeypatch.setitem(self_watchdog._state, "exiting", False)
     return got
