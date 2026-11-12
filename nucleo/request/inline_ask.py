@@ -23,6 +23,7 @@ import threading
 import time
 
 from nucleo.request import acts_of, base, note
+from voice import trace as _trace
 
 #: How long a re-run's slot value is remembered, so the same act the model ALSO calls on the answer turn is not sent
 #: twice (the answer already sent it). Not a matcher: the key is the declared slot value, exact.
@@ -34,8 +35,8 @@ _RECENT: dict = {}
 #: ran on a NEW row, then the verdict re-ran the retained act — two sends to the same person 12 ms apart).
 _TAKEN: dict = {}
 _LOCK = threading.Lock()
-#: Rows an answer is resuming (`answered_task.start`): {row: (widget, actions, candidates, at)}. The
-#: answering turn's model calling the same act is that same answer — never a second send.
+#: Rows an answer is resuming (`answered_task.start`): {row: (widget, actions, candidates, at, turn)}. The answering
+#: TURN's model calling the same act is that same answer — never a second send; a later turn's call is a new order.
 _RESUMING: dict = {}
 #: What `ask_outside_door.held` retains for our own question: his request, the card and its acts.
 UTTERANCE = "utterance"
@@ -153,11 +154,12 @@ def _named(payload: dict | None, retained: dict) -> str:
 
 
 def resuming(uid: str, retained: dict) -> None:
-    """An answer resumes row `uid` with a new turn: the same act called elsewhere meanwhile is that answer's."""
+    """An answer resumes row `uid` in this turn (its trace): the same act this turn calls meanwhile is that answer's."""
     now = time.time()
     for k in [k for k, v in _RESUMING.items() if now - v[3] > RECENT_S]:
         _RESUMING.pop(k, None)
-    _RESUMING[uid] = (base(retained.get("widget")), acts_of(retained), list(retained.get("candidates") or []), now)
+    _RESUMING[uid] = (base(retained.get("widget")), acts_of(retained), list(retained.get("candidates") or []), now,
+                      _trace.current())
 
 
 def claim(wid: str, action: str, payload: dict | None) -> tuple[str, bool]:
@@ -174,10 +176,11 @@ def claim(wid: str, action: str, payload: dict | None) -> tuple[str, bool]:
         payload = dict(payload or {})
     try:
         # The row an answer is already resuming with this act (same card, a declared act, a declared candidate when
-        # the question named some), within `RECENT_S`: an answer already resumes this request with its own turn.
+        # the question named some) IN THIS TURN: the answering turn's own call. The turn is a fact (its trace), not
+        # the clock — a later turn calling the same act is his new order, and it runs.
         now = time.time()
-        for uid, (w, acts, cands, at) in list(_RESUMING.items()):
-            if now - at <= RECENT_S and w == base(wid) and action in acts and (
+        for uid, (w, acts, cands, at, turn) in list(_RESUMING.items()):
+            if now - at <= RECENT_S and turn == _trace.current() and w == base(wid) and action in acts and (
                     not cands or _named(payload, {"candidates": cands})):
                 return uid, True
         from nucleo.circuit import asker, ledger

@@ -775,7 +775,8 @@ Flash keeps the conversation; the row is what both brains read.
   with his request retained; his answer binds through `answers_open_question` → `inline_answer.rerun` →
   `answered_offer.run`: a declared no cancels, a yes or a fact composes the payload by ONE bounded pass over his
   request, our question and his answer and runs it through the card's door on that row; the answering turn's own
-  call of the act is the same answer (`inline_ask.claim`); no call leaves the row failed, never a guess. — since
+  call of the act is the same answer (`inline_ask.claim` — the turn is its trace: a later turn's call of that act
+  is a new order, for every answer that resumes a row); no call leaves the row failed, never a guess. — since
   2026-11-12 · nodes 2.1730 · `nucleo/request/answered_offer.py`, `nucleo/request/inline_answer.py`.
 - **CRIT-T2 · `circuit.settle` is the only writer of an ending.** `done | failed | cancelled` is written for every row
   — worker, inline, list, mirror — by `nucleo/circuit.settle` and nothing else; the move is said ONCE as a `task_state`
