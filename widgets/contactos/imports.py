@@ -151,11 +151,8 @@ GIVE_WAY_EVERY = 50     # rows between two yields of the interpreter while a mer
 def give_way(i: int) -> bool:
     """Between batches of a merge the thread yields the interpreter and, while the body's loop is stalling, paces
     itself (`nucleo/pulse/loop_lag.give_way`): a 2 700-row import must never hold the loop. True when it paced."""
-    try:
-        from nucleo.pulse import loop_lag
-        return loop_lag.give_way(i, every=GIVE_WAY_EVERY)
-    except Exception:  # noqa: BLE001 — the merge still lands without the meter
-        return False
+    from nucleo.pulse import loop_lag   # in-memory and total: nothing to swallow
+    return loop_lag.give_way(i, every=GIVE_WAY_EVERY)
 
 
 def merge_contacts(db: dict, rows: list[dict], *, source: str) -> dict:

@@ -499,7 +499,7 @@ PER_FILE: dict[str, int] = {
     'voice/engine/pipeline/instrument.py': 4,
     'voice/engine/pipeline/session_health.py': 4,
     'voice/engine/speech/elevenlabs_voices.py': 7,
-    'voice/engine/speech/filler_audio.py': 13,
+    'voice/engine/speech/filler_audio.py': 12,
     'voice/engine/speech/say_numbers.py': 1,
     'voice/engine/speech/stt/gazetteer.py': 2,
     'voice/engine/speech/stt/whisper_local.py': 1,

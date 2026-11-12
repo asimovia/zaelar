@@ -190,8 +190,7 @@ async def run(self, motor) -> None:
     try:
         _filler_audio = motor._filler_audio_mod()
         if _filler_audio.enabled() and not first_turn:
-            await _filler_audio.decide_and_arm(brain, text, messages=messages, brief=_brief,   # V2-640/726/863
-                                               typed=attention.typed_line(text))               # A7: no cover on text
+            await _filler_audio.decide_and_arm(brain, text, messages=messages, brief=_brief, typed=attention.typed_line(text))  # V2-640/726/863 · A7: no cover on text
     except Exception:
         pass
     self._phase = "generando la respuesta"

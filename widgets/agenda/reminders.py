@@ -151,6 +151,7 @@ def _twin(name: str, stamp: str) -> str:
                     and str((d.get("schedule") or {}).get("display") or "") == stamp):
                 return str(e.get("id") or "")
     except Exception:  # noqa: BLE001 — unreadable: a second alarm is better than a lost one
+        __import__("logging").getLogger("zaelar.agenda").warning(f"pending notices unreadable, «{name}» may ring twice", exc_info=True)
         return ""
     return ""
 
@@ -193,6 +194,7 @@ def _shared(ref: str, meeting: dict, db: dict | None) -> bool:
         return any(str(m.get("reminder_id") or "") == ref and not _same_row(m, meeting)
                    for m in (db or {}).get("meetings", []))
     except Exception:  # noqa: BLE001 — unreadable: cancel as before
+        __import__("logging").getLogger("zaelar.agenda").warning(f"agenda rows unreadable, notice {ref} cancelled as before", exc_info=True)
         return False
 
 
