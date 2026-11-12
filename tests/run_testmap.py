@@ -3805,6 +3805,8 @@ DOMAINS: list[dict] = [
         {"id": "2.202", "title": "The voice has a stand-in: a TTS without its key or out of credit hands over to the table's failover",
             "ch": UNIT,
             "paths": ["tests/voice/unit/test_the_voice_has_a_stand_in.py"]},
+        {"id": "3.189", "title": "The ear and the voice each have a REMOTE stand-in (OpenAI, the table's failover rows): LiveKit's FallbackAdapter switches, every switch is an alert, the session keeps the titular's capabilities, a stand-in that cannot be built is said at boot, the stand-in voice keeps his gender (V2-889 row 10)",
+            "ch": VOICE, "paths": ["tests/voice/unit/test_the_ear_and_the_voice_have_a_remote_stand_in.py"]},
         {"id": "2.727", "title": "A turn the engine had to cut asks again in the session's language, never a fixed Spanish line",
             "ch": UNIT,
             "paths": ["tests/voice/unit/test_a_stalled_turn_says_so_in_the_session_language.py"]},
