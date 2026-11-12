@@ -101,15 +101,12 @@ def _known() -> dict:
         return {}
 
 
-def _own_name() -> str:
-    from .introduction_block import _own_name as _n
-    return _n()
-
-
 def offer_told() -> bool:
+    """Told once — or moot: he already renamed us (the name slot is set), so he knows it is his to change."""
     try:
         from config import settings
-        return bool(settings.get(OFFER_FLAG))
+        from voice import attention
+        return bool(settings.get(OFFER_FLAG)) or bool(attention.assistant_name())
     except Exception as e:  # noqa: BLE001
         logger.debug(f"introduction: {OFFER_FLAG} unreadable ({e!r})")
         return False
@@ -201,9 +198,8 @@ def _settle_offer(payload) -> None:
         return
     _offer_pending = ""
     win = (payload or {}).get("window") if isinstance(payload, dict) else None
-    reply = next((str(m.get("text") or "") for m in (win or [])[-1:] if (m or {}).get("role") == "assistant"), "")
-    if _own_name().lower() not in reply.lower():   # A7 audit: our reply names us (the slot): necessary, not enough
-        return
+    if not any((m or {}).get("role") == "assistant" and (m or {}).get("text") for m in (win or [])[-1:]):
+        return                          # the turn ended without a reply: the offer was not heard, it rides again
     try:
         from config import settings
         if not settings.get(OFFER_FLAG):

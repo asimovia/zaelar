@@ -115,7 +115,7 @@ def block(turn_text: str = "", asked: str | None = None) -> str:
         "solo si cabe con naturalidad. Si te contesta con evasivas o cambia de tema, lo dejas estar: no se "
         "insiste ni se vuelve a preguntar lo mismo dos veces.",
     ]
-    if answered:      # conditional: the answer rule is a reading; the close already quotes what we asked
+    if answered:      # conditional: the answer rule is a reading (the close quotes our question when we ended on one)
         lines.append("SI LO QUE ACABA DE DECIR CONTESTA a lo que le preguntaste, ya lo sabes aunque tu ESTADO aún no lo "
                      "recoja (se guarda solo al acabar el turno): úsalo con naturalidad, sin confirmarlo ni "
                      "repetírselo como pregunta, y sigue.")
