@@ -124,10 +124,9 @@ def answered(uid: str, entry: dict, text: str, choice: int | None) -> dict:
 def _post_answers(t: dict, cancel: bool = False) -> dict:
     from nucleo import mesh_agents
     from nucleo.circuit import ledger
-    url, bearer, headers = _url(t, "/answers")
+    url, bearer = _url(t, "/answers")
     body = {"cancel": True} if cancel else {"answers": t["job"].get("answers") or []}
-    status, _data = mesh_agents._post(url, body, timeout=_TIMEOUT_S, bearer=bearer or None,
-                                      **({"headers": headers} if headers else {}))
+    status, _data = mesh_agents._post(url, body, timeout=_TIMEOUT_S, bearer=bearer or None)
     if status == 0 and not cancel:                     # never reached it: kept, sent again at the next beat
         t["job"]["unsent"] = True
     else:
@@ -187,24 +186,21 @@ def _row_ended(uid: str) -> bool:
     return bool(row) and str(row.get("state") or "") in ledger.ENDINGS
 
 
-def _url(t: dict, tail: str = "") -> tuple[str, str, dict]:
-    """Where this job is reached: `(url, bearer, headers)`. Direct, with the job's own token; through the relay when it
-    was bought there, with the account's credential AND the job's own token beside it (`X-Job-Token`) — the relay
-    reaches the job with that token, so one account never reads another's. Never a client credential."""
+def _url(t: dict, tail: str = "") -> tuple[str, str]:
+    """Where this job is reached: `(url, bearer)` — through the relay when it was bought there, with the account's own
+    credential (the relay checks the job is this account's); direct, with the job's own token."""
     from nucleo import mesh_call
     poll = t["job"].get("poll") or f"/v1/jobs/{t['job']['id']}"
     path = (poll if poll.startswith("/") else "/" + poll.split("/", 3)[-1]) + tail
-    token = t["job"].get("token") or ""
     if t.get("via") == mesh_call.RELAY:
-        url, credential = mesh_call.relay_url(t["endpoint"], path)
-        return url, credential, ({"X-Job-Token": token} if token else {})
-    return t["endpoint"].rstrip("/") + path, token, {}
+        return mesh_call.relay_url(t["endpoint"], path)
+    return t["endpoint"].rstrip("/") + path, t["job"].get("token") or ""
 
 
 def _get(t: dict) -> dict | None:
     from nucleo import mesh_agents
-    url, bearer, headers = _url(t)
-    return mesh_agents._get(url, timeout=_TIMEOUT_S, bearer=bearer or None, **({"headers": headers} if headers else {}))
+    url, bearer = _url(t)
+    return mesh_agents._get(url, timeout=_TIMEOUT_S, bearer=bearer or None)
 
 
 def _open_row(t: dict) -> str:

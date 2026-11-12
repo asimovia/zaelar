@@ -8,8 +8,8 @@
     question with options (P3), and only then are its values kept as his (P1-4/P2-1); the request is sent again whole
     and the worker that asked is resumed with what came of it;
   · a job (`202`) gets a row born from the worker's, waiting `remote_job`; its END is read FIRST and only from the
-    agent's own `final` (P1-2, P2-5); reached through the relay with the account's credential AND the job's own token
-    (the real `_get`/`_post`, only the socket replaced); its result is bounded leaf by leaf, so a long transcript never
+    agent's own `final` (P1-2, P2-5); reached through the relay with the account's credential (the relay checks the job
+    is that account's) or directly with the job's own token (the real `_get`, only the socket replaced); its result is bounded leaf by leaf, so a long transcript never
     drops the fact that a booking MAY exist (P2-3); with no session to tell, the row ends FAILED, not done; a job given
     up is told as UNKNOWN; a row he ended releases a question it held (P2-7); a relayed job debits the lease once.
 
@@ -173,7 +173,7 @@ def test_an_answer_that_never_reached_the_agent_is_sent_again(world, monkeypatch
     assert not mesh_dialog.thread(world["thread"])["job"]["unsent"]
 
 
-def test_a_relayed_job_debits_the_lease_once_and_is_reached_with_both_tokens(world, monkeypatch):
+def test_a_relayed_job_debits_the_lease_once_and_is_reached_with_the_accounts_credential(world, monkeypatch):
     t = {**mesh_dialog.thread(world["thread"]), "via": mesh_call.RELAY, "id": None, "job": None}
     mesh_jobs.opened(t, {"jobId": "j2", "poll": "/v1/jobs/j2", "jobToken": "jt2"})
     assert world["charged"] == [{"provider": "dining-agent.book-by-phone", "ref": "j2"}]
@@ -192,11 +192,12 @@ def test_a_relayed_job_debits_the_lease_once_and_is_reached_with_both_tokens(wor
             return False
     monkeypatch.setattr(urllib.request, "urlopen", lambda req, timeout=0: seen.append(req) or _Resp(b'{"final": false}'))
     from nucleo import mesh_agents                                          # the real `_get`, only the socket faked
-    url, bearer, headers = mesh_jobs._url(mesh_dialog.thread(t["id"]))
-    assert mesh_agents._get(url, bearer=bearer, headers=headers) == {"final": False}
+    url, bearer = mesh_jobs._url(mesh_dialog.thread(t["id"]))
+    assert mesh_agents._get(url, bearer=bearer) == {"final": False}
     req = seen[-1]
     assert req.full_url == "https://egress.example.test/p/mesh/dining.example.test/v1/jobs/j2"
-    assert req.get_header("Authorization") == "Bearer account-credential" and req.get_header("X-job-token") == "jt2"
+    assert req.get_header("Authorization") == "Bearer account-credential"     # the relay checks the job is this account's
+    assert mesh_jobs._url({**mesh_dialog.thread(t["id"]), "via": mesh_call.DIRECT})[1] == "jt2"   # direct: its own token
 
 
 def test_a_question_asked_at_once_goes_on_the_workers_row_and_his_option_resends_and_resumes(world, monkeypatch):
