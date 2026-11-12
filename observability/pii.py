@@ -3,7 +3,9 @@
 Before a persisted event is written (when the person's `privacy.obfuscate` switch is on, the default), every
 free-text value is rewritten:
 
-  · SHAPES only a particular thing has → [EMAIL] [URL] [PHONE] [DATE] [NUMBER];
+  · SHAPES only a particular thing has → [EMAIL] [URL] [PHONE] [DATE] [NUMBER] — each recognised by its own shape
+    (a phone by its digit count, a date by its fields in range), so a date or a time is never a [PHONE] and a time
+    or a year is kept as said;
   · names THIS agent knows → [PERSON] (every name of every contact), [PLACE] (the places of the state — home and
     where a screen is now — and every place the location door resolved), [NAME] (the memory's concept hubs);
   · any other word that starts with a capital and does not open a sentence → [NAME].
@@ -23,12 +25,49 @@ import unicodedata
 
 from loguru import logger
 
+class _Shape:
+    """A pattern plus the test its match must pass to BE that thing (`search` and `sub`, like a compiled pattern)."""
+
+    def __init__(self, pattern: str, ok=None, flags: int = 0):
+        self._re, self._ok = re.compile(pattern, flags), ok or (lambda m: True)
+
+    def search(self, text: str):
+        return next((m for m in self._re.finditer(text) if self._ok(m)), None)
+
+    def sub(self, repl: str, text: str) -> str:
+        return self._re.sub(lambda m: repl if self._ok(m) else m.group(0), text)
+
+
+def _a_date(m) -> bool:
+    """A day by its own shape: Y-M-D, D/M[/Y] or M/D[/Y] in range; a two-part «12.11» or «12-11» only with two digits
+    on each side and a month second — «17.30» is a time and «1.5» a decimal, neither is a date."""
+    parts, seps = re.split(r"[/.-]", m.group(0)), set(re.findall(r"[/.-]", m.group(0)))
+    n = [int(x) for x in parts]
+    if len(parts[0]) == 4:
+        return len(n) == 3 and 1 <= n[1] <= 12 and 1 <= n[2] <= 31
+    if len(n) == 2 and seps != {"/"}:
+        return len(parts[0]) == len(parts[1]) == 2 and 1 <= n[0] <= 31 and 1 <= n[1] <= 12
+    a, b = n[0], n[1]
+    return (1 <= a <= 31 and 1 <= b <= 12) or (1 <= a <= 12 and 1 <= b <= 31)
+
+
+def _a_phone(m) -> bool:
+    """A phone by its own shape: 9 to 15 digits (8 with an international «+»), whatever the grouping. A date has at most
+    eight and a time carries «:», so neither is ever read as one."""
+    digits = sum(c.isdigit() for c in m.group(0))
+    return (8 if m.group(0).startswith("+") else 9) <= digits <= 15
+
+
 SHAPES = (
-    ("email", re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")),
-    ("url", re.compile(r"(?:https?://|www\.)\S+|\b[\w-]+\.[a-z]{2,}/\S*", re.I)),
-    ("phone", re.compile(r"\+?\d[\d\s().-]{5,}\d")),
-    ("date", re.compile(r"\b\d{1,4}[/.-]\d{1,2}(?:[/.-]\d{1,4})?\b")),
-    ("number", re.compile(r"\d{3,}")),
+    ("email", _Shape(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")),
+    ("url", _Shape(r"(?:https?://|www\.)\S+|\b[\w-]+\.[a-z]{2,}/\S*", flags=re.I)),
+    # A date or a time is never a phone: the date is read first, by its own shape and range, and a time («10:30»,
+    # «17.30», «17h30») matches no shape at all — it names no one, and a stored session must say when things happened.
+    ("date", _Shape(r"(?<![\d/.-])(?:\d{4}-\d{1,2}-\d{1,2}|\d{1,2}[/.-]\d{1,2}(?:[/.-](?:\d{4}|\d{2}))?)(?![\d]|[/.-]\d)",
+                    _a_date)),
+    ("phone", _Shape(r"(?<![\w+])\+?\(?\d[\d\s().-]{5,}\d(?![\w:]|[.-]\d)", _a_phone)),
+    # A run of three or more digits, except a year standing alone (it names no one).
+    ("number", _Shape(r"(?<!\d)(?!(?:19|20)\d\d(?!\d))\d{3,}")),
 )
 _PUNCT = "\"'«»“”‘’()[]{}¿?¡!.,;:…"
 _ENDS = ".!?…\n"
