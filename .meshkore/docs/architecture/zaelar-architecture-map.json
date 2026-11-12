@@ -1,7 +1,7 @@
 {
  "_doc": "The canonical map of the agent's architecture, measured on the code. Source: the code. This map is the one representation the others (the web's Technology pages, the operator's session player, the observability events) are aligned to. A test (tests/infrastructure/unit/test_the_architecture_map_matches_the_code.py) fails when a path stops existing, a model id leaves config/models.default.json, or a flow names a piece that is not here.",
  "version": 1,
- "measured": "2026-11-07",
+ "measured": "2026-11-12",
  "blocks": [
   {
    "id": "origins",
@@ -157,6 +157,31 @@
     "ui",
     "client"
    ]
+  },
+  {
+   "id": "u_child",
+   "zone": "you",
+   "name": "Voice process",
+   "paths": [
+    "voice/child_process.py",
+    "voice/engine/pipeline/child.py",
+    "voice/engine/pipeline/child_session.py",
+    "voice/engine/pipeline/body_link.py",
+    "voice/engine/pipeline/remote_brain.py"
+   ],
+   "emits": [],
+   "_doc": "`python -m voice.engine`, started and supervised by the body (V2-891): the LiveKit session (ear, VAD, STT, TTS) lives here; its brain is the body, reached over loopback. `ZAELAR_VOICE_EMBEDDED=1` keeps it a thread of the body."
+  },
+  {
+   "id": "u_loop",
+   "zone": "you",
+   "name": "Body ↔ voice loopback",
+   "paths": [
+    "server/voice_child_api.py",
+    "voice/remote_session.py"
+   ],
+   "emits": [],
+   "_doc": "The two loopback routes: `POST /api/turn/stream` (one voice turn, NDJSON lines the voice process speaks as they arrive) and `POST /api/voice/child/events` (the session's facts, in order, replayed through the same handlers an embedded session registers)."
   },
   {
    "id": "b_pulse",
@@ -332,15 +357,36 @@
    ]
   },
   {
+   "id": "f_bdoors",
+   "zone": "flash",
+   "name": "Door trips",
+   "paths": [
+    "nucleo/turn/brief_doors.py"
+   ],
+   "emits": [],
+   "_doc": "A question only one door reads is asked AT that door, after the model (a model call, an errand's portal, a leaving act's exit, a parked directive), on its own thread and merged into the turn's brief; the turn's one tier-1 trip, before the model, asks only what the turn reads (V2-887 step 8)."
+  },
+  {
    "id": "f_prompt",
    "zone": "flash",
-   "name": "Prompt",
+   "name": "Prompt · cached prefix",
    "paths": [
     "nucleo/turn/prompt/builder.py"
    ],
    "emits": [
     "perf"
-   ]
+   ],
+   "_doc": "The byte-stable system prefix, then the tools (always-offered before state-gated): what the provider caches, identical whatever he says or has open (V2-889 F1)."
+  },
+  {
+   "id": "f_state",
+   "zone": "flash",
+   "name": "Turn state message",
+   "paths": [
+    "nucleo/turn/prompt/live_state.py"
+   ],
+   "emits": [],
+   "_doc": "What is true THIS turn (screen, clock, errands, record), sent as a second system message just before his line (`builder.split_state`), so the cached prefix never moves (V2-889 F1)."
   },
   {
    "id": "f_model",
@@ -393,6 +439,18 @@
    "emits": [
     "brain"
    ]
+  },
+  {
+   "id": "f_whisper",
+   "zone": "flash",
+   "name": "Whisperer (shadow)",
+   "paths": [
+    "nucleo/turn/whisper"
+   ],
+   "emits": [
+    "whisper"
+   ],
+   "_doc": "Between turns, once a turn is closed (`turn.closed`): a deterministic gate over verdicts the turn already paid for, then a typed slot with no instruction field. In shadow it is only measured — `whisper` events, wired into no prompt (V2-889 F2)."
   },
   {
    "id": "f_mouth",
@@ -854,7 +912,7 @@
  "emitters": {
   "_doc": "Which piece an observability event comes from (`piece`), for modules the pieces' `paths` do not name. Read by observability/pieces.py: an exact file here beats a piece's own path; otherwise the deepest folder (here or in a piece's paths) wins. A value is a piece id, or {kind: piece, '*': default} where one module hosts several pieces. A module drawn nowhere stamps piece='unmapped' with its path — never a guess.",
   "nucleo/turn/thread_event.py": "f_admit",
-  "nucleo/turn/whisper": "f_close",
+  "nucleo/turn/whisper": "f_whisper",
   "voice/engine/pipeline/agent.py": {
    "vad": "f_ear",
    "worker_start": "t_dispatch",
@@ -999,6 +1057,24 @@
    "service": "tts",
    "called_from": [
     "voice/engine/speech/tts/inworld.py"
+   ]
+  },
+  {
+   "id": "x_stt_oa",
+   "zone": "voice",
+   "name": "OpenAI STT (stand-in)",
+   "service": "stt",
+   "called_from": [
+    "voice/engine/speech/stt/openai_stt.py"
+   ]
+  },
+  {
+   "id": "x_tts_oa",
+   "zone": "voice",
+   "name": "OpenAI TTS (stand-in)",
+   "service": "tts",
+   "called_from": [
+    "voice/engine/speech/tts/openai_tts.py"
    ]
   },
   {
@@ -1186,6 +1262,48 @@
    "label": "voice"
   },
   {
+   "id": "audio_in_fb",
+   "a": "u_voice",
+   "b": "x_stt_oa",
+   "label": "audio (stand-in)"
+  },
+  {
+   "id": "stt_fb",
+   "a": "x_stt_oa",
+   "b": "f_ear",
+   "label": "text (stand-in)"
+  },
+  {
+   "id": "tts_fb",
+   "a": "f_mouth",
+   "b": "x_tts_oa",
+   "label": "tts (stand-in)"
+  },
+  {
+   "id": "audio_out_fb",
+   "a": "x_tts_oa",
+   "b": "u_voice",
+   "label": "speech (stand-in)"
+  },
+  {
+   "id": "voiceproc",
+   "a": "u_voice",
+   "b": "u_child",
+   "label": "the session runs in the voice process"
+  },
+  {
+   "id": "loopback",
+   "a": "u_child",
+   "b": "u_loop",
+   "label": "/api/turn/stream · /api/voice/child/events"
+  },
+  {
+   "id": "bodyturn",
+   "a": "u_loop",
+   "b": "f_gate",
+   "label": "the voice turn enters the body"
+  },
+  {
    "id": "typed",
    "a": "u_chat",
    "b": "f_gate",
@@ -1234,6 +1352,12 @@
    "label": "brief"
   },
   {
+   "id": "statemsg",
+   "a": "f_state",
+   "b": "f_prompt",
+   "label": "this turn's state, after the cached prefix"
+  },
+  {
    "id": "model",
    "a": "f_prompt",
    "b": "f_model",
@@ -1274,6 +1398,42 @@
    "a": "f_jev",
    "b": "x_jev",
    "label": "System One"
+  },
+  {
+   "id": "doortrip",
+   "a": "f_doors",
+   "b": "f_bdoors",
+   "label": "a door reached asks its question"
+  },
+  {
+   "id": "doorjev",
+   "a": "f_bdoors",
+   "b": "x_jev",
+   "label": "the door's own trip, merged into the turn's brief"
+  },
+  {
+   "id": "exittrip",
+   "a": "w_exit",
+   "b": "f_bdoors",
+   "label": "a leaving act's channel"
+  },
+  {
+   "id": "turnclosed",
+   "a": "f_close",
+   "b": "f_whisper",
+   "label": "turn.closed"
+  },
+  {
+   "id": "whisperllm",
+   "a": "f_whisper",
+   "b": "x_dspro",
+   "label": "whisper"
+  },
+  {
+   "id": "whisper_fb",
+   "a": "f_whisper",
+   "b": "x_gpt",
+   "label": "whisper (fallback)"
   },
   {
    "id": "llm",

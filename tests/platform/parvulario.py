@@ -8,6 +8,7 @@ opens a card instead of acting is red.
 
     ./.venv/bin/python -m tests.platform.parvulario            # every case, live
     ./.venv/bin/python -m tests.platform.parvulario --only send-es --repeat 3
+    ./.venv/bin/python -m tests.platform.parvulario --multi        # the multi-turn cases (`parvulario_turns.py`)
 
 Not part of the unit gate: it spends model calls. Isolated: never the operator's directory, agenda or connectors.
 """
@@ -143,7 +144,12 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--only", default="")
     ap.add_argument("--repeat", type=int, default=1)
+    ap.add_argument("--multi", action="store_true", help="the multi-turn cases, judged by their end state")
+    ap.add_argument("--json", default="", help="with --multi: write the rows here")
     a = ap.parse_args(argv)
+    if a.multi:
+        from tests.platform import parvulario_turns
+        return parvulario_turns.run(a.only, a.repeat, a.json)
     return run(a.only, a.repeat)
 
 
