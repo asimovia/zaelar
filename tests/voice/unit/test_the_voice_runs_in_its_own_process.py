@@ -233,7 +233,6 @@ def test_a_lost_body_is_said_slow_never_silence(monkeypatch):
 
     monkeypatch.setattr(body_link, "get", lambda: _Down([]))
     monkeypatch.setattr(remote_brain, "RETRY_S", 0.01)
-    monkeypatch.setitem(remote_brain._LOST, "text", "")
     monkeypatch.setattr(remote_brain, "_line", {"say_again": "Perdona, ¿me lo repites?",
                                                 "brain_slow": "Un momento, el sistema va lento."}.get)
     ctx = SimpleNamespace(items=[SimpleNamespace(role="user", text_content="hola")])
