@@ -1,15 +1,15 @@
-"""An agent of the network that ASKS its user something is heard, and his answer goes back to it (the class).
+"""An agent of the network that ASKS its user is heard, and only HIS option — with its values — goes back (the class).
 
 Measured before the fix: a skill that answered `422 {"status": "NEEDS_MANDATE", "questions": [...]}` reached the
-worker as «the agents did not answer» — the error reader only knew `need`/`error`/`detail` keys, and a `questions`
-list matched none. The same shape arrives as a `200` (a venue that needs a decision) and, from a job, minutes later.
-`nucleo/mesh_dialog` reads it by SHAPE (never by status words), applies his answer by the agent's own contract (a
-choice's `set` of dotted paths, a question's `field`, or `{id, choice}` for a job), and keeps a fully specified choice
-as HIS standing preference — applied only when the same question comes back in the same shape.
+worker as «the agents did not answer». `nucleo/mesh_dialog` reads a question by SHAPE (never status words); offers
+only options he can pick as they stand (one that needs a value of his is not offered); applies his option by the
+agent's own contract (a choice's `set`, a question's `field`, or `{id, choice}` for a job — a question with options
+never takes words); and keeps the VALUES he picked as his standing answer, applied only when the agent offers exactly
+those values again — so an agent cannot redefine what he chose (audit P1-4).
 
-The fixture is the real contract, trimmed: two of the eleven questions a live dry-run returned on 2026-11-12.
+The fixtures are the documented shapes of a network booking agent (trimmed).
 
-Disarm: return [] from `questions_in` → red; drop the shape check in `prefill` → red.
+Disarm: return [] from `questions_in` → red; match a standing answer by position instead of values → red.
 """
 from __future__ import annotations
 
@@ -22,17 +22,15 @@ from nucleo import mesh_dialog as d
 MANDATE = {"status": "NEEDS_MANDATE", "questions": [
     {"id": "when.exact", "text": "Si no hay mesa a las 21:00, ¿qué otra hora se puede aceptar?",
      "choices": [{"label": "Solo a las 21:00", "set": {"when.exact": True}},
-                 {"label": "Entre las 20:45 y las 21:15", "set": {"when.earliest": "20:45", "when.latest": "21:15"}},
                  {"label": "Otra franja (indica desde y hasta)", "set": {"when.earliest": None, "when.latest": None},
-                  "needsValue": "time"}],
-     "default_suggestion": {"label": "±15 min: 20:45–21:15", "set": {"when.earliest": "20:45"}}},
-    {"id": "seating.any", "text": "¿Hay alguna mesa imprescindible?",
-     "choices": [{"label": "Cualquier mesa vale", "set": {"seating.any": True}},
-                 {"label": "Sí (indica cuáles)", "set": {"seating.must": None}, "needsValue": "seating"}]}]}
-JOB_ASKS = {"jobId": "j1", "status": "NEEDS_INPUT", "result": {"answerBy": "2026-11-27T19:00:00Z", "questions": [
-    {"id": "q1", "topic": "time", "required": True, "restaurantSaid": "…", "freeText": False, "offers": ["21:30"],
-     "choices": [{"id": "accept", "label": "Sí, a las 21:30", "value": "21:30"}, {"id": "decline", "label": "No, déjalo"}],
-     "ask": "No hay mesa a las 21:00. Ofrecen las 21:30. ¿La aceptas?"}]}}   # the agent's own example, 2026-11-12
+                  "needsValue": "time"},
+                 {"label": "Entre las 20:45 y las 21:15", "set": {"when.earliest": "20:45", "when.latest": "21:15"}}]},
+    {"id": "constraints.maxPenalty", "text": "¿Cuánto se puede comprometer como señal?",
+     "choices": [{"label": "Nada", "set": {"constraints.maxPenalty": 0}},
+                 {"label": "Hasta 20", "set": {"constraints.maxPenalty": 20}}]}]}
+JOB_ASKS = {"status": "NEEDS_INPUT", "result": {"questions": [
+    {"id": "q1", "topic": "time", "ask": "No hay mesa a las 21:00. Ofrecen las 21:30. ¿La aceptas?",
+     "choices": [{"id": "accept", "label": "Sí, a las 21:30", "value": "21:30"}, {"id": "decline", "label": "No"}]}]}}
 BODY = {"restaurant": {"name": "Casa"}, "date": "2026-11-27", "time": "21:00", "party_size": 2}
 
 
@@ -48,50 +46,47 @@ def db(tmp_path, monkeypatch):
     rules._reset_for_tests()
 
 
-def test_a_question_is_read_by_its_shape_wherever_it_sits():
+def test_a_question_is_read_by_its_shape_and_offers_only_what_he_can_pick():
     qs = d.questions_in(MANDATE)
-    assert [q["id"] for q in qs] == ["when.exact", "seating.any"]
-    assert qs[0]["choices"][2]["needs_value"] == "time" and qs[0]["suggestion"].startswith("±15")
-    job = d.questions_in(JOB_ASKS)
-    assert job[0]["id"] == "q1" and "21:30" in job[0]["text"]
-    assert [c["label"] for c in job[0]["choices"]] == ["Sí, a las 21:30", "No, déjalo"]
-    a2a = d.questions_in({"id": "t1", "status": {"state": "input-required",
-                                                 "message": {"parts": [{"text": "¿Para cuántos?"}]}}})
-    assert a2a and a2a[0]["free_text"] and "cuántos" in a2a[0]["text"]
-    assert d.questions_in({"status": "CONFIRMED_API", "result": {"confirmed": {"id": "r1"}}}) == []
+    assert [q["id"] for q in qs] == ["when.exact", "constraints.maxPenalty"]
+    assert [(c["n"], c["label"]) for c in qs[0]["choices"]] == [(0, "Solo a las 21:00"), (1, "Entre las 20:45 y las 21:15")]
+    job = d.questions_in(JOB_ASKS)[0]
+    assert job["id"] == "q1" and "21:30" in job["text"]
+    a2a = d.questions_in({"status": {"state": "input-required", "message": {"parts": [{"text": "¿Para cuántos?"}]}}})
+    assert a2a == [{"id": "input", "text": "¿Para cuántos?", "choices": []}]
+    assert d.questions_in({"status": "CONFIRMED", "result": {"confirmed": {"id": "r1"}}}) == []
 
 
-def test_his_choice_is_written_where_the_agent_said():
+def test_his_option_is_written_where_the_agent_said_and_nothing_else_is_taken():
     q = d.questions_in(MANDATE)[0]
     body, job, why = d.apply(BODY, q, 1)
-    assert not why and job is None
-    assert body["when"] == {"earliest": "20:45", "latest": "21:15"} and BODY.get("when") is None   # copy, not mutate
-    body, _j, why = d.apply(BODY, q, 2)
-    assert body is None and "needs a value" in why                         # a hole is never filled with a guess
-    body, _j, _w = d.apply(BODY, q, 2, ["20:00", "22:00"])
-    assert body["when"] == {"earliest": "20:00", "latest": "22:00"}
+    assert not why and job is None and body["when"] == {"earliest": "20:45", "latest": "21:15"} and "when" not in BODY
+    assert d.apply(BODY, q, None, "a las ocho")[2]                         # words never answer a question with options
     _b, job, _w = d.apply({}, d.questions_in(JOB_ASKS)[0], 0)
-    assert job == {"id": "q1", "choice": "accept"}                         # the choice's ID, never its value
+    assert job == {"id": "q1", "choice": "accept"}                         # the option's ID, never its value
+    _b, job, _w = d.apply({}, {"id": "input", "text": "?", "choices": []}, None, "cuatro")
+    assert job == {"id": "input", "value": "cuatro"}
 
 
-def test_a_standing_answer_is_his_and_applies_only_to_the_same_shape(db):
+def test_his_standing_answer_is_its_values_and_the_agent_cannot_redefine_it(db):
     q = d.questions_in(MANDATE)
-    assert d.remember("tablescout", "book-by-phone", q[1], 0)               # «any table» stands
-    assert not d.remember("tablescout", "book-by-phone", q[0], 2)           # needs a value: never kept
-    assert not d.remember("tablescout", "book-by-phone", d.questions_in(JOB_ASKS)[0], 0)   # about that day only
-    body, still, applied = d.prefill("tablescout", "book-by-phone", q, BODY)
-    assert body["seating"] == {"any": True} and [x["id"] for x in still] == ["when.exact"] and len(applied) == 1
-    reshaped = copy.deepcopy(MANDATE)
-    reshaped["questions"][1]["choices"][0]["set"] = {"seating.must": ["terrace"]}
-    _b, still, applied = d.prefill("tablescout", "book-by-phone", d.questions_in(reshaped), BODY)
-    assert not applied and len(still) == 2                                  # another shape: asked again
-    _b, still, applied = d.prefill("another-agent", "book-by-phone", q, BODY)
-    assert not applied                                                      # his answer was to THAT agent
+    assert d.remember("dining-agent", "book-by-phone", q[1], 0)            # «nada»: maxPenalty 0
+    assert not d.remember("dining-agent", "book-by-phone", d.questions_in(JOB_ASKS)[0], 0)   # about that day only
+    body, still, applied = d.prefill("dining-agent", "book-by-phone", q, BODY)
+    assert body["constraints"] == {"maxPenalty": 0} and [x["id"] for x in still] == ["when.exact"] and len(applied) == 1
+    moved = copy.deepcopy(MANDATE)                                         # same position, other value
+    moved["questions"][1]["choices"][0]["set"] = {"constraints.maxPenalty": 50}
+    body, still, applied = d.prefill("dining-agent", "book-by-phone", d.questions_in(moved), BODY)
+    assert not applied and "constraints" not in body and len(still) == 2
+    swapped = copy.deepcopy(MANDATE)                                       # his values at another position still apply
+    swapped["questions"][1]["choices"].reverse()
+    body, _s, applied = d.prefill("dining-agent", "book-by-phone", d.questions_in(swapped), BODY)
+    assert body["constraints"] == {"maxPenalty": 0} and applied
+    assert not d.prefill("another-agent", "book-by-phone", q, BODY)[2]
 
 
 def test_a_thread_binds_a_job_by_its_id(db):
     tid = d.save({"agent": "a", "skill": "s", "job": {"id": "j-9"}})
-    assert d.thread(tid)["agent"] == "a" and d.with_job("j-9")["id"] == tid
-    assert [t["id"] for t in d.open_jobs()] == [tid]
+    assert d.with_job("j-9")["id"] == tid and [t["id"] for t in d.open_jobs()] == [tid]
     d.save({**d.thread(tid), "job": {"id": "j-9", "done": True}})
-    assert d.open_jobs() == []
+    assert d.open_jobs() == [] and d.with_job("j-9") is None

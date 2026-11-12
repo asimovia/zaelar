@@ -76,7 +76,7 @@ DEFAULT_TRANSPORT_USD_PER_MIN: dict[str, float] = {
 # The catch-all per family: an unmapped provider bills at the MOST EXPENSIVE known rate and says so
 # once. Same stance as `_FALLBACK_RATE_USD` and the `""` row of `_SEARCH_USD_PER_REQUEST` in
 # `energy_meter`: under-metering is silent, over-metering a rare provider is visible and gets corrected.
-# $ per CALL of a priced skill of a network agent, keyed `<agent_id>.<skill_id>` (`nucleo/mesh_relay.py`). NO
+# $ per CALL of a priced skill of a network agent, keyed `<agent_id>.<skill_id>` (`nucleo/mesh_call.py`). NO
 # defaults, on purpose: the engine names no agent (no catalogue), so a price can only arrive with the lease. And
 # no catch-all either — `has_rate` is how a caller learns that a skill is UNPRICED here, and an unpriced skill is
 # never called: unlike a voice second, a skill call can be left undone, so it never needs a guessed price.

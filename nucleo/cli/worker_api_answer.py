@@ -130,10 +130,11 @@ async def answer(corr_id: str, text: str, *, resume: bool = True, choice: int | 
             return False
         return True
     if e.get("remote"):                        # a network agent's job asked it: his answer goes back to THAT job
+        import asyncio
+
         from nucleo import mesh_jobs
-        _keep(uid, e)
-        e["result"] = mesh_jobs.answered(uid, e, text, choice)
-        _keep(uid, e)
+        _keep(uid, e)                          # recorded as answered; what follows may put the NEXT question there
+        e["result"] = await asyncio.to_thread(mesh_jobs.answered, uid, e, text, choice)   # it may call the agent
         return True
     said = decision(str(e.get("question") or ""), text, choice, e.get("options")) if retained.get("action") else None
     if retained.get("action") and said == "no":
