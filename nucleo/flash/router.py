@@ -147,14 +147,14 @@ def tools(context: dict | None = None) -> list[dict]:
     gating. It does not grow with the widget catalog, so it is NOT the scalability bottleneck (that is the catalog,
     see `widgets/selection.py`); it is fixed cost and noise per turn, which is why it is pruned by state."""
     # refactor2710-05: only a tool with a DOOR in `acts.tools.CATALOG` is offered — a schema nobody runs is not a tool.
-    ctx = context or {}
-    out = []
+    # V2-889: always-offered first, state-gated last — a gated tool mid-list would void the cached schemas after it.
+    ctx, always, gated = context or {}, [], []
     for t in TOOLS:
         name = t.get("function", {}).get("name", "")
         gate = _SITUATIONAL.get(name)
         if name in CATALOG and (not context or gate is None or gate(ctx)):
-            out.append(t)
-    return out
+            (always if gate is None else gated).append(t)
+    return always + gated
 
 
 def tool_context(*, open_widgets=None, has_catalog: bool = True,

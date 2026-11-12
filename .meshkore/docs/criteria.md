@@ -68,7 +68,7 @@ below is the first kind, or it names the mechanism that replaced the second.
 - **CRIT-V20 · A pause that was a start is not a turn.** A reply is superseded when his voice resumes after it
   began, for as long as an interruption (`ZAELAR_MIN_INTERRUPTION_SEC`), or a longer version of his sentence arrives;
   a superseded turn runs no tool, and one that did nothing leaves his words in the window, not its reply, and owes
-  them to the next turn. Structural, never a reading of his words (V2-888). — since 2026-11-11 · node 3.188 ·
+  them to the next turn. Structural, never a reading of his words (V2-888). — since 2026-11-11 · nodes 3.188 ·
   `nucleo/input/typed.py`, `nucleo/turn/resume_cut.py`.
 - **CRIT-V8 · The assistant's own name changes by a verdict, never by a regex, and fails CLOSED** (absent or
   unsure → no rename). The brief's `identity_change` decides, sure at 0.85, and the new name is the model's declared

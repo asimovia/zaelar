@@ -21,7 +21,7 @@ def _iso(days: int) -> str:
 
 def _next(wd: int) -> str:
     today = _dt.date.today()
-    delta = (wd - today.weekday()) % 7 or 7
+    delta = (wd - today.weekday()) % 7          # V2-886 0c: a weekday that is today is today (red every Thursday)
     return (today + _dt.timedelta(days=delta)).isoformat()
 
 

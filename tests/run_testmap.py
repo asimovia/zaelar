@@ -4214,6 +4214,8 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_the_turn_prompt_has_a_ceiling.py",
             # 2026-10-24 — an op the card fires by itself (`"internal": true`) is never offered to the model.
             "tests/agent_headless/unit/flash/test_an_internal_op_is_not_offered_to_the_model.py"]},
+        {"id": "2.889", "title": "The part of the voice turn the provider caches (system prefix, then tools) is byte-identical whatever he says or has open: this turn's facts travel as a second system message before his line, the always-offered tools precede the state-gated ones (V2-889 F1)",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_the_cached_prefix_does_not_move.py"]},
         # V2-809 — disarmed 2026-10-26 (live-block wiring, image as a content part, PDF page cap, pixel cap, detach) → each red.
         {"id": "2.814", "title": "The turn sees what he just attached to the chat as STATE — name, kind, size and the reading made at upload, within one budget, nothing without one — the image read by a model that receives it, the readers bounded (V2-809)",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_the_turn_sees_what_he_attached.py"]},
