@@ -110,7 +110,7 @@ def test_the_end_is_read_first_kept_whole_and_told_by_the_worker_that_started_it
     uid, entry, src = world["resumed"][0]
     assert src == "remote_job" and '"bookingMayExist": true' in entry["remote_result"] and "jt" not in entry["remote_result"]
     from nucleo.cli import worker_api_resume
-    assert "never that it did not happen" in worker_api_resume.rebrief(world["ledger"].store().task_get(uid), entry)
+    assert "never as done or as not done" in worker_api_resume.rebrief(world["ledger"].store().task_get(uid), entry)
 
 
 def test_a_job_that_does_not_say_it_ended_has_not_ended(world):
