@@ -33,11 +33,14 @@ async def settle(brain, brief, emit) -> None:
     if not call:
         return
     directive, name, text = call
-    from nucleo.turn import brief as _brief, identity
+    from nucleo.turn import brief as _brief, brief_doors, identity
     handle = brief if brief is not None else _brief.of_this_turn()
     ev = handle.get("event") if isinstance(handle, dict) else None
     if ev is not None:
         await asyncio.to_thread(ev.wait, 1.5)        # read AFTER the model: the verdict usually landed already
+    # V2-887 step 8: `identity_change` is the rename door's question, fired at the call (`acts/tools`); a call that
+    # did not fire it (another channel's executor) asks it here — off the loop, bounded, failing closed
+    await brief_doors.landed(handle, "rename")
     if await identity.settle(handle, name, emit, text=text):
         if getattr(brain, "_directive", None) == directive:
             brain._directive = ""

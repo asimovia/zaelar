@@ -66,10 +66,12 @@ def test_the_attention_mode_is_a_verdict_too(world):
     assert asyncio.run(identity.settle(_brief("attention_always", 0.9), "", emit)) == "always"
 
 
-def test_the_question_rides_every_brief():
-    from nucleo.turn import brief
-    assert identity.KEY in brief.keys()
-    assert brief.build("llámate Johnny", open_ids=[])[identity.KEY]["criteria"] == identity.CHOICES
+def test_the_question_rides_the_rename_door():
+    """V2-887 step 8: asked when the model calls `set_style_directive` (the rename door), into the turn's brief."""
+    from nucleo.turn import brief, brief_doors
+    assert identity.KEY in brief.keys() and identity.KEY not in brief.build("llámate Johnny", open_ids=[])
+    assert brief_doors.door_of(identity.KEY) == "rename"
+    assert brief_doors._questions({"judged": "llámate Johnny"}, "rename")[identity.KEY]["criteria"] == identity.CHOICES
 
 
 # ── a long step dilutes the verdict about one of its sentences ───────────────────────────────────────────

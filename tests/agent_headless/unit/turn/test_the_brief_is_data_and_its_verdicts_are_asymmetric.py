@@ -26,7 +26,9 @@ def _brief(**answers) -> dict:
 
 def test_every_question_is_a_declared_row_and_the_keys_derive_from_it():
     keys = brief.keys()
-    assert len(keys) == len(set(keys)) == len(brief.QUESTIONS)
+    from nucleo.turn import brief_doors   # V2-887 step 8: the brief's own rows, then what its doors merge into it
+    assert len(keys) == len(set(keys)) == len(brief.QUESTIONS) + len(brief_doors.keys())
+    assert brief.asked_keys() == keys[:len(brief.QUESTIONS)]
     for k in (brief.REQUEST_KEY, brief.ESCALATE_KEY, brief.TARGET_KEY, brief.CATALOG_KEY, stop.KEY):
         assert k in keys, k
 

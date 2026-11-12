@@ -1406,7 +1406,7 @@ DOMAINS: list[dict] = [
         # BLOQUEANTE dentro del `async def` del proveedor (hasta 900 ms de event loop congelado, compartido con
         # STT/TTS/barge-in) pasan a LEER. Nadie espera nunca: `peek`, nunca `wait` — 56 de 87 turnos dirigidos
         # reales mueren por barge-in antes de acabar.
-        {"id": "3.64", "title": "El turno pregunta a Jev UNA vez, y el camino de voz no bloquea: brief en t0, lectores que hacen peek",
+        {"id": "3.64", "title": "The turn asks Jev ONCE before the model and each door it reaches once more (V2-887 step 8), and the voice path never blocks: brief at t0, readers peek",
             "ch": UNIT, "paths": ["tests/voice/unit/test_the_turn_asks_jev_once.py"]},
         # V2-726 F4+F5 — la capacidad que pidió el operador («mándale los 100 resultados parseados y los
         # criterios y que diga cuáles encajan»): medido en vivo, 100 candidatos en UNA petición, 1.161 ms,
@@ -3807,6 +3807,10 @@ DOMAINS: list[dict] = [
             "paths": ["tests/voice/unit/test_the_voice_has_a_stand_in.py"]},
         {"id": "3.189", "title": "The ear and the voice each have a REMOTE stand-in (OpenAI, the table's failover rows): LiveKit's FallbackAdapter switches, every switch is an alert, the session keeps the titular's capabilities, a stand-in that cannot be built is said at boot, the stand-in voice keeps his gender (V2-889 row 10)",
             "ch": VOICE, "paths": ["tests/voice/unit/test_the_ear_and_the_voice_have_a_remote_stand_in.py"]},
+        {"id": "3.196", "title": "The turn's one Jev trip asks only what the turn reads (V2-887 step 8): 10 questions with nothing open (was 16), the screen questions with cards open, the stop and target with an errand running, the answer binding with a task waiting — the KEY SETS pinned on four contexts; no question a single door reads rides the turn trip",
+            "ch": UNIT, "paths": ["tests/voice/unit/test_the_common_path_asks_ten.py"]},
+        {"id": "3.197", "title": "A question only one door reads is asked AT that door, into the turn's brief (V2-887 step 8): a model call fires the acts-asked question, an escalation the portal's class/kind/capability gap, a leaving act's exit his channel, the directive call a rename — once per handle, merged so every reader reads it as before, `in_flight` while flying, never awaited on the voice loop; admission asks none",
+            "ch": UNIT, "paths": ["tests/voice/unit/test_a_door_asks_its_own_question.py"]},
         {"id": "2.727", "title": "A turn the engine had to cut asks again in the session's language, never a fixed Spanish line",
             "ch": UNIT,
             "paths": ["tests/voice/unit/test_a_stalled_turn_says_so_in_the_session_language.py"]},

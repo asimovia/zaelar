@@ -110,11 +110,6 @@ def _stop(ctx):
     return _stop_d.question(ctx.get("last_reply") or "", ctx.get("running_goals") or ())
 
 
-def _gap(ctx):
-    from nucleo.flash import capability_gap as _gap_d
-    return _gap_d.question(ctx.get("open_ids"))
-
-
 def _threads_open(ctx) -> bool:
     """An errand is open he may be talking to: a live worker, or a card in the pool — parked, starting or just ended
     (V2-878 §2: `errand_target` and the stop are asked with any open thread, not only with a worker running)."""
@@ -127,7 +122,9 @@ def _key(module: str, name: str) -> str:
 
 
 #: Every question a turn may ask: `(key, asked_when, question)`. A key given as `(module, name)` is the owner's own
-#: constant, read when the table is used, so the owner stays the one place that names it.
+#: constant, read when the table is used, so the owner stays the one place that names it. A question only ONE door
+#: reads is not here: that door asks it when it is reached, into this same handle (`nucleo/turn/brief_doors`, V2-887
+#: step 8 — acts asked, the errand's class, kind and capability gap, his channel, a rename).
 QUESTIONS = (
     (CANVAS_KEY, None, _canvas),
     (REQUEST_KEY, None, lambda c: request_question(c.get("last_reply") or "")),
@@ -145,22 +142,14 @@ QUESTIONS = (
     (("nucleo.request.stop", "KEY"), lambda c: bool(c.get("has_workers")), _stop),
     (("nucleo.acts.errand", "TARGET_KEY"), lambda c: _threads_open(c),   # same gate as the stop
      lambda c: __import__("nucleo.acts.errand", fromlist=["x"]).target_question(c)),
-    (("nucleo.acts.errand", "CLASS_KEY"), None, lambda c: __import__("nucleo.acts.errand", fromlist=["x"]).class_question(c)),
-    (("nucleo.request.kind", "KEY"), None, lambda c: __import__("nucleo.request.kind", fromlist=["x"]).question(c)),
     (("nucleo.request.login", "KEY"), None,              # V2-857 phase 8: a pure sign-in order (paid every turn, K9)
      lambda c: __import__("nucleo.request.login", fromlist=["x"]).question(c)),
-    (("nucleo.acts.message_channel", "KEY"), None,       # V2-851 F2c: the channel HE named reaches the send door
-     lambda c: __import__("nucleo.acts.message_channel", fromlist=["x"]).question(c)),
-    (("nucleo.flash.capability_gap", "KEY"), None, _gap),
     (TARGET_KEY, lambda c: bool(c.get("open_ids")), lambda c: target_question(c.get("open_ids"))),
     (CATALOG_KEY, lambda c: not target_question(c.get("open_ids")), lambda _c: catalog_question()),
     (CATALOG_CLOSED_KEY, lambda c: bool(target_question(c.get("open_ids"))), lambda _c: catalog_question()),
     (NAMES_KEY, lambda c: bool(c.get("open_ids")), lambda c: names_question(c.get("open_ids"))),
     (ITEM_REF_KEY, lambda c: bool(c.get("open_ids")), lambda c: item_ref_question(c.get("open_ids"))),
-    (("nucleo.turn.identity", "KEY"), None, lambda c: __import__("nucleo.turn.identity", fromlist=["x"]).question(c)),
     (("nucleo.flash.unclear_turn", "KEY"), None, lambda c: __import__("nucleo.flash.unclear_turn", fromlist=["x"]).question(c)),   # V2-833 F8: readable at all?
-    (("nucleo.turn.acts_asked", "KEY"), None,            # V2-854 F4: how many acts his words ask — the rest is said
-     lambda c: __import__("nucleo.turn.acts_asked", fromlist=["x"]).question(c)),
     (("nucleo.cli.worker_api_bind", "KEY"), lambda c: bool(c.get("open_asks")),   # V2-851 §3a: only while a task waits
      lambda c: __import__("nucleo.cli.worker_api_bind", fromlist=["x"]).question(c.get("open_asks"), c.get("last_reply") or "")),
 )
@@ -194,7 +183,15 @@ def build(operator_text: str, *, open_ids=None, running_goals=None, has_workers:
 
 
 def keys() -> list[str]:
-    """Every key the brief may carry, in table order — what the tests and the readers enumerate."""
+    """Every key the brief may carry, in table order, then the keys its doors merge into it (`brief_doors`) — what the
+    tests and the readers enumerate. `asked_keys()` is the brief's own trip alone."""
+    from nucleo.turn import brief_doors
+    own = asked_keys()
+    return own + [k for k in brief_doors.keys() if k not in own]
+
+
+def asked_keys() -> list[str]:
+    """The keys the turn's one trip asks (`QUESTIONS`), in table order."""
     return [_key(*k) if isinstance(k, tuple) else k for k, _w, _q in QUESTIONS]
 
 
@@ -274,7 +271,8 @@ def carried(handle) -> dict:
         if not isinstance(verdict, dict) or not verdict:
             return {}
         return {"result": {k: v for k, v in verdict.items() if isinstance(v, dict) and "choice" in v},
-                "open_ids": list((handle or {}).get("open_ids") or []), "turn_id": (handle or {}).get("turn_id")}
+                "open_ids": list((handle or {}).get("open_ids") or []), "turn_id": (handle or {}).get("turn_id"),
+                "judged": str((handle or {}).get("judged") or "")}   # a door at the exit asks about these words
     except Exception as e:  # noqa: BLE001 — a reading that cannot travel leaves the worker's door as it was
         from loguru import logger
         logger.debug(f"brief: the turn's reading did not travel — {type(e).__name__}: {e}")
@@ -289,4 +287,4 @@ def revived(reading) -> dict | None:
     ev = threading.Event()
     ev.set()
     return {"event": ev, "result": dict(reading["result"]), "open_ids": list(reading.get("open_ids") or []),
-            "turn_id": reading.get("turn_id"), "carried": True}
+            "turn_id": reading.get("turn_id"), "carried": True, "judged": str(reading.get("judged") or "")}

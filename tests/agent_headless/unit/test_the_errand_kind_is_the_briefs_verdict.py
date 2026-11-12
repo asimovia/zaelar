@@ -36,7 +36,8 @@ def test_an_unsure_or_missing_verdict_is_generic():
 def test_the_question_is_declared_and_the_brief_asks_it():
     q = K.question()
     assert set(q["criteria"]) == {K.WEB, K.BUILD, K.CHANGE, K.GENERIC}
-    assert K.KEY in tb.build(SAME_WORDS)
+    from nucleo.turn import brief_doors   # V2-887 step 8: the portal asks it into the turn's brief, not every turn
+    assert K.KEY not in tb.build(SAME_WORDS) and brief_doors.door_of(K.KEY) == "portal"
 
 
 def test_the_portal_carries_the_turn_verdict(monkeypatch):

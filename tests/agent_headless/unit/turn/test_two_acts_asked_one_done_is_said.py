@@ -52,7 +52,10 @@ def _say(tasks, said="Done."):
 
 
 def test_the_brief_asks_how_many_acts():
-    assert acts_asked.KEY in brief.keys() and acts_asked.KEY in brief.build("hola")
+    """V2-887 step 8: asked at the CALL door into the same brief, never in the turn's own trip."""
+    from nucleo.turn import brief_doors
+    assert acts_asked.KEY in brief.keys() and acts_asked.KEY not in brief.build("hola")
+    assert brief_doors.door_of(acts_asked.KEY) == "call"
 
 
 @pytest.mark.parametrize("lang, word", [("en", "part"), ("es", "parte")])

@@ -77,7 +77,12 @@ def test_the_question_is_asked_over_what_the_cards_declare():
     declared = list(fe.declared_actions("agenda"))
     assert declared and all(name in q["instructions"] for name in declared[:5]), \
         "the verdict must be over the card's DECLARED actions, not over words"
-    assert G.KEY in tb.build("Can the music player crossfade between songs from now on?", open_ids=["musica"])
+    # V2-887 step 8: asked at the errand PORTAL into the turn's brief, over the cards the brief recorded open
+    from nucleo.turn import brief_doors
+    said = "Can the music player crossfade between songs from now on?"
+    assert G.KEY not in tb.build(said, open_ids=["musica"])
+    at_portal = brief_doors._questions({"judged": said, "open_ids": ["musica"]}, "portal")
+    assert at_portal[G.KEY] == G.question(["musica"])
 
 
 def test_the_not_yet_line_exists_in_both_shipped_languages():

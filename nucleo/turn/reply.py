@@ -294,6 +294,6 @@ async def after_acts(tasks, said: str, send, speech, timeout: float = WAIT_S, *,
     outcomes = (taken() + _notice_moved(said) + _errands_that_died(said)
                 + (await of_ops(tasks, timeout) if tasks else [])
                 + await _receipts.player(said) + await _receipts.blocked_channel()
-                + _acts_asked.left_undone(tasks)    # V2-854 F4: several asked, one done — the rest is said undone
+                + await _acts_asked.owed(tasks)    # V2-854 F4: several asked, one done — the rest is said undone
                 + _unserved.outcomes(tasks, model_calls, said=said, quiet=quiet, held=held))   # a claim nobody ran
     return speak(outcomes, said, send, speech, prior) if outcomes else said
