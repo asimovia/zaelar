@@ -104,6 +104,10 @@ def test_the_explicit_replay_order_v2_650_exists_for_still_passes(monkeypatch):
 #
 # The three words that satisfied the guard were ALL OURS: «añade» from «añade en una frase lo que sigue»,
 # «fondo» from «La tarea de fondo…», and «panel» from «Lo tienes en el panel de estado».
+#
+# 2026-11-12 (group A, CRIT-C16, node 2.1728): the guard itself went — no word reader opens an errand at the close
+# any more, so the composed turn has nothing left to fool. What this section keeps is the rule the incident taught,
+# where it is still read: `router.operator_words` strips our notes before any reader sees his words.
 _KICKOFF = ("Es el primer turno. Salúdame en 1-2 frases, cálido y breve; si por tu MEMORIA ya sabes mi "
             "nombre, úsalo y NO preguntes quién soy; si no, preséntate en una línea y pregúntame el "
             "nombre. Luego para.")
@@ -117,25 +121,30 @@ _MEASURED_TURN = _KICKOFF + (
     "ha MUERTO sin resultado y no se va a reintentar sola.")
 
 
-def test_our_own_system_notes_can_never_become_an_errand():
-    assert eg.escalation_text(_KICKOFF, _MEASURED_TURN) == "", (
-        "a `[SISTEMA]` note satisfied the guard and spawned a real worker off a greeting")
+def test_our_own_system_notes_are_never_his_words():
+    from nucleo.flash import router
+    words = router.operator_words(_KICKOFF, _MEASURED_TURN)
+    for ours in ("añade", "fondo", "panel", "[SISTEMA]"):
+        assert ours not in words, f"a `[SISTEMA]` note's word «{ours}» reached a reader of his words"
 
 
-def test_the_guard_still_fires_on_what_the_operator_actually_says():
-    """The counterweight: V2-057's two real failure modes must keep escalating."""
-    assert eg.escalation_text("cámbiale el color de fondo al widget de la agenda", "")
-    assert eg.escalation_text("búscame una moto de segunda mano en Wallapop", "")
+def test_the_word_guard_that_opened_an_errand_is_gone():
+    """CRIT-C16: an errand is the model's call or the brief's sure `escalate`. The regex pair went (node 2.1728)."""
+    from nucleo.flash import router, router_guards
+    assert not hasattr(eg, "escalation_text")
+    assert not hasattr(router_guards, "looks_like_marketplace_nav") and not hasattr(router, "looks_like_marketplace_nav")
+    assert not hasattr(router_guards, "looks_like_modify_widget") and not hasattr(router, "looks_like_modify_widget")
 
 
-def test_the_turn_calls_the_shared_function_and_never_reads_the_composed_turn():
-    """V2-252: this decision existed twice. A copy is how the two halves drift apart."""
+def test_the_turn_reads_no_word_guard_for_an_errand():
+    """V2-252: this decision existed twice. A copy is how the two halves drift apart — and since 2026-11-12 neither
+    half reads his words for an errand at all."""
     from tests import voice_turn_source     # V2-778 F1: the voice turn is read whole, moved blocks included
     path = "voice/engine/llm/providers/nucleo.py"
     src = voice_turn_source.read(path)
-    assert "escalation_guard" in src, f"{path} stopped going through the shared guard"
-    assert "looks_like_modify_widget(text)" not in src, (
-        f"{path} reads the composed turn again — that is the kickoff bug")
+    assert "escalation_guard" in src, f"{path} stopped going through the shared guard (fragments, settle)"
+    for name in ("looks_like_modify_widget", "looks_like_marketplace_nav", "escalation_text"):
+        assert name not in src, f"{path} reads his words through {name} again — that is the kickoff bug"
 
 
 # ── E · The model denied three capabilities it HAS, and had just used ─────────────────────────────────────

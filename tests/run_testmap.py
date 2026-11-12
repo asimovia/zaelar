@@ -4275,6 +4275,8 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/agent_headless/unit/test_two_appointments_of_one_title_on_one_day_are_two_rows.py"]},
         {"id": "2.1726", "title": "A bench case's world outlives the threads its turns started: `Isolated` waits for the whisperer's threads (bounded by its own clock) before giving the keys and the database back — the last turn's whisper once resolved its key after the restore and got a 401",
             "ch": UNIT, "paths": ["tests/platform/tests/test_a_case_waits_for_the_turns_own_threads.py"]},
+        {"id": "2.1728", "title": "Marketplace words with an unsure `handle_inline` open no worker (CRIT-C16, ES/EN): «Búscame en Amazon un monitor de 27 pulgadas» / «Find me a 27 inch monitor on Amazon» with the model calling nothing and the brief unsure or absent ends in words — the marketplace / modify-widget regex pair that made the sentence an errand went (its three regexes off the ratchet, node 7.73); a sure `escalate` still routes the same words to their errand; no word reader of an errand is left in the voice turn",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_marketplace_words_open_no_errand_without_a_sure_verdict.py"]},
         {"id": "2.1727", "title": "A correction onto the OTHER row is one unit: the corrected act is recorded at the door, a door question (`correction_kind`, only on that turn) reads another item / a different change / undo only, and after the turn's acts landed the card's end state (`correction_owed`) says what is still owed — the move back, the same move on the other row (from wherever a wrong call left it); a sure «another item» runs it through the same door, two candidates or a verdict short of sure say «only part was done», an undo-only or a different change owes nothing, a move already put back is never undone again",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/test_a_correction_onto_the_other_row_is_one_unit.py"]},
         # V2-809 — disarmed 2026-10-26 (live-block wiring, image as a content part, PDF page cap, pixel cap, detach) → each red.
@@ -5169,7 +5171,10 @@ DOMAINS: list[dict] = [
             "paths": ["tests/voice/unit/test_an_order_to_play_shows_the_player.py"]},
         {"id": "2.73", "title": "El veredicto COMPLETA al modelo, nunca lo desmiente — un turno vacío o "
                                 "una llamada que no resuelve la rellena la acción declarada que el brief "
-                                "nombró, por la misma puerta; y una cara del reproductor se acepta por su alias",
+                                "nombró, por la misma puerta; y una cara del reproductor se acepta por su alias; "
+                                "a verdict ACTS at ONE floor (`verdicts.to_act` = `consent.intent_act_at`): the screen "
+                                "action, the request type and `corrects_last` — an unsure request type (0.4 / screen "
+                                "0.6) completes nothing, a 0.55 correction relaunches nothing (2026-11-12)",
             "ch": UNIT,
             "paths": ["tests/voice/unit/test_the_verdict_completes_the_model.py"]},
         {"id": "2.72", "title": "«Páralo, y vuelve al inicio» ES una orden sobre el reproductor — la "

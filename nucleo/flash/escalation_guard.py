@@ -131,27 +131,10 @@ def keeps_it_inline(brief, text: str = "", *, emit=None, by: str = "") -> bool:
     return True
 
 
-def escalation_text(operator_text: str, turn_text: str) -> str:
-    """The errand to escalate, or "" — read from the OPERATOR'S WORDS, never the composed turn.
-
-    V2-677. `turn_text` carries the `[SISTEMA]` notes glued on by `brain_notes.compose_turn`, and MEASURED
-    live (session e896f596, 23:16:36) that was enough to spawn a real `claude_code` worker off the KICKOFF
-    GREETING: the three words that satisfied `looks_like_modify_widget` were «añade» (from our own «añade
-    en una frase lo que sigue»), «fondo» (from «La tarea de fondo…») and «panel» (from «Lo tienes en el
-    panel de estado») — not one of them the operator's. That worker ran for fifty seconds and came back
-    with a Spanish greeting into an English session.
-
-    A high-precision guard reading the wrong text is a coin flip, and this one spends money. `operator_
-    words` exists for exactly this, and its own docstring tells the same story one backstop over: a late
-    recall note became the errand, and an appointment with a traumatologist came back as a PLUMBER
-    (V2-534). The rule is not about any one note — **a system note is context; it can never be the thing
-    to go and do.**
-    """
-    from . import router as _router
-    words = _router.operator_words(operator_text, turn_text)
-    if _router.looks_like_marketplace_nav(words) or _router.looks_like_modify_widget(words):
-        return words
-    return ""
+# `escalation_text` — the marketplace / modify-widget regex pair that made his sentence an errand when the model called
+# nothing — went on 2026-11-12 (CRIT-C16, node 2.1728): an errand is opened by the model's call or the brief's sure
+# `escalate`, never by a word backstop over his words. Its lesson stays where it is still read: `router.operator_words`
+# — a system note is context; it can never be the thing to go and do (V2-677, V2-534).
 
 
 def is_a_fragment(operator_text: str, *, brief=None, last_reply: str = "") -> bool:
