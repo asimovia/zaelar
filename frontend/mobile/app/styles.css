@@ -107,6 +107,9 @@ body {
   border: none; border-radius: 15px; background: transparent;
   transition: color .18s, background .18s, transform .12s;
 }
+/* Every dock glyph is 24pt, said here: one drawn without its own width/height has no size of its own inside the
+   flex button, and iOS paints it at nothing — a control that works and cannot be seen. */
+.zm-ic svg { width: 24px; height: 24px; flex: 0 0 auto; }
 /* BLUE = on/live, pale GREY = off/closed — the same language as the desktop's lid icons, so an operator who knows
    one shell can read the other without learning a second vocabulary. */
 .zm-ic.on { color: var(--hb-accent); }
