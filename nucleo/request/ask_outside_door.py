@@ -35,7 +35,7 @@ re-run turn said «sending it now» and called nothing in 6 of 14 runs). One ans
 """
 from __future__ import annotations
 
-from nucleo.request import ends_asking, event, note
+from nucleo.request import base, ends_asking, event, note
 from nucleo.request.ending import leaving_acts
 from voice import trace as _trace
 
@@ -164,10 +164,12 @@ def claimed(brief, reply: str, said: str, *, emit=None) -> int:
     try:
         from nucleo.turn import verdicts
         from widgets import effects
-        from nucleo.request import base
+        from nucleo.acts.message_channel import backs_a_send as _backs
         target, info = verdicts.read(brief, "screen_action", None, min_confidence=verdicts.act_floor())
         wid, _sep, act = str(target or "").partition(":")
-        if not (info and wid and act and effects.leaves(base(wid), act)):
+        # A7 audit: the order AND the act at the floor, and a reading backing a send («¿le mandaste…?» is no send)
+        if not (info and wid and act and effects.leaves(base(wid), act) and verdicts.sure_order(brief, wid, act)
+                and _backs(brief)):
             return _an_order_nothing_served(brief, text, emit=emit)
         return to_message_task(wid, act, said, src="unreached", emit=emit)
     except Exception as e:  # noqa: BLE001 — never takes the turn down; the line stands as it was

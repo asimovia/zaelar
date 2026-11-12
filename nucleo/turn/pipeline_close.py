@@ -1,9 +1,8 @@
 """The turn's CLOSE — the dialog window, the fallbacks, the reply event and its verdict (V2-851 F5, `turn/pipeline`).
 
-Moved out of `voice/engine/llm/providers/turn_after.py` with no change of behaviour, less what F5 removed (the hollow
-repairs). The errands the close launches live in `pipeline_errands`. Every name the block read from the provider
-module is read through `motor` (the channel's module, handed in), so a patch on the provider still governs it and
-nothing here imports the motor.
+Moved out of `voice/engine/llm/providers/turn_after.py` unchanged, less what F5 removed (the hollow repairs); its
+errands live in `pipeline_errands`. Every provider name is read through `motor` (the channel's module, handed in), so a
+patch on the provider still governs it and nothing here imports the motor.
 """
 from __future__ import annotations
 
@@ -18,10 +17,10 @@ from nucleo.turn import whisper as _whisper   # V2-889 F2: `turn.closed`, read b
 
 
 def _host_stall_s(t_entry_wall: float) -> dict:
-    """The seconds the body's loop was stopped inside the turn, the host's apart from our own work's (E3 audit)."""
+    """The seconds the body's loop was stopped inside the turn, by origin: host · our own work · unknown (E3 audit)."""
     from nucleo.pulse import loop_lag   # in-memory and total: nothing to swallow
-    return {k: loop_lag.stalled_since(wall=float(t_entry_wall), who=w) for k, w in (("host_stall_s", "host"),
-                                                                                   ("own_stall_s", "engine"))}
+    return {f"{k}_stall_s": loop_lag.stalled_since(wall=float(t_entry_wall), who=w)
+            for k, w in (("host", "host"), ("own", "engine"), ("unknown", "unknown"))}
 
 
 async def close_the_turn(*, motor, send, _acc_ms, _amap_ms, _brief, _busy_at_start, _dialog, _escalate_mod, _filler_audio, _gate_ms, _op_text, _prev_pending, _router, _shown_ids, _start_web_auth, _t_entry, _tool_fired, _turn_tools, acted, aside, attention, brain, clarify, confirm_state, data_done, deduped, emit, escalate_req, first_ms, first_turn, images_req, listing_req, llm_metrics, music_req, operator_text, read_req, recall_req, reopen_req, reveal_req, search_req, spec, speech, spoken_text, style_fired, system, t0, text, timings, worker_acted, _superseded=None, _apply_widget_data=None) -> dict:

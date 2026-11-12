@@ -92,7 +92,7 @@ def would(brief, *, model_calls=(), flow_as: str = "", model_wrote: bool = False
     r = reading(brief)
     (esc, esc_c), (target, target_c), (stop, stop_c) = r["escalate"], r["errand_target"], r["stop_errand"]
     names = [str((c or {}).get("name") or "") for c in model_calls or ()]
-    by_verdict = esc == "escalate" and esc_c >= _v.LICENCE
+    by_verdict = esc == "escalate" and esc_c >= _v.LICENCE   # the shadow keeps the licence: a send is held there
     sure = esc == "escalate" and esc_c >= _v.VETO
     called = any(n in HANDS_OVER for n in names)
     sends = by_verdict and any(leaves(c) for c in model_calls or ())

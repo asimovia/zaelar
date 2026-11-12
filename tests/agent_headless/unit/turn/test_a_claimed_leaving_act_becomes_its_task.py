@@ -24,10 +24,14 @@ def wired(monkeypatch):
     from nucleo.circuit import ledger
     from nucleo.acts import errand
 
-    state = {"target": ("mensajeria:send_to", {"used": True, "confidence": 0.98}), "leaves": True}
-    monkeypatch.setattr(verdicts, "read", lambda h, k, fb, min_confidence=None: state["target"]
-                        if k == "screen_action" and state["target"][1]["confidence"] >= (min_confidence or 0)
-                        else (fb, None))
+    state = {"target": ("mensajeria:send_to", {"used": True, "confidence": 0.98}), "leaves": True,
+             "kind": ("order", {"used": True, "confidence": 0.7}), "backs": True}   # an order under the veto
+
+    def _read(h, k, fb, min_confidence=None):
+        got = {"screen_action": state["target"], "request_type": state["kind"],
+               "errand_class": ("sends_for_him", {"used": True, "confidence": 0.9}) if state["backs"] else None}.get(k)
+        return got if got and got[1]["confidence"] >= (min_confidence or 0) else (fb, None)
+    monkeypatch.setattr(verdicts, "read", _read)
     monkeypatch.setattr(effects, "leaves", lambda card, act: state["leaves"])
     monkeypatch.setattr(model, "opened", lambda wid, act, text="": "row-1")
 
@@ -119,6 +123,19 @@ def test_a_lean_to_a_send_without_a_reading_that_sends_starts_no_worker(order, s
     v["errand_class"] = ("none", {"used": True, "confidence": 0.9})
     v["message_channel"] = ("none", {"used": True, "confidence": 0.9})
     assert aod.claimed({}, "Done.", said, emit=emit) == 0
+    assert not seen["escalated"]
+
+
+def test_a_question_about_a_send_launches_no_send(wired):
+    """A7 audit P1: «¿Le mandaste el mensaje a Pablo?» → `send_to` 0.62 and the reply «Sí, ayer» with no call. A
+    launched send needs the ORDER at the floor and a reading that backs a send, not one lean at 0.6."""
+    seen, state, emit = wired
+    state["target"] = ("mensajeria:send_to", {"used": True, "confidence": 0.62})
+    state["kind"] = ("question", {"used": True, "confidence": 0.9})
+    assert aod.claimed({}, "Sí, ayer.", "¿le mandaste el mensaje a pablo?", emit=emit) == 0
+    state["kind"] = ("order", {"used": True, "confidence": 0.7})
+    state["backs"] = False
+    assert aod.claimed({}, "Sending it now.", "manda un mensaje a pablo", emit=emit) == 0, "an unbacked lean sent"
     assert not seen["escalated"]
 
 

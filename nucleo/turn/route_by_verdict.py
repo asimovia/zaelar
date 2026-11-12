@@ -10,8 +10,8 @@ start line the close already says for an escalation with no words («on it»).
 Not a re-run after the stream: the verdict is read where the model's output is held anyway — at its first word
 (`follow_up_pass.Hold`) and at each call it makes (`gate_calls`) — waiting for a brief in flight at most `wait_s()`.
 Measured on battery C9 before this (2026-11-05): the verdict flipped to escalate at 0.52-0.62 and Flash still answered
-inline, sending what should have waited for his consent inside a task. Read at the LICENCE, not the act floor, by
-declared reason (A7): it first HOLDS the model's inline call (the side that sends nothing), and C9's band straddles it.
+inline, sending what should have waited. Read at the act floor (A7, K2); a call that LEAVES the machine is held from
+the LICENCE by declared exception — holding a send sends nothing, and C9's band (0.52-0.62) straddles the floor.
 """
 from __future__ import annotations
 
@@ -80,11 +80,11 @@ def _mark(brief, name: str) -> None:
         logger.debug(f"route_by_verdict: player not marked — {e!r}")
 
 
-def sure_escalate(brief) -> bool:
-    """The brief's escalate verdict is SURE (≥ the licence) — never waits, never raises."""
+def sure_escalate(brief, floor: float | None = None) -> bool:
+    """The brief's escalate verdict is SURE (≥ `floor`, by default the act floor) — never waits, never raises."""
     try:
         from nucleo.turn import brief as _tb, verdicts as _v
-        choice, info = _tb.read(brief, _tb.ESCALATE_KEY, "", min_confidence=_v.LICENCE)
+        choice, info = _tb.read(brief, _tb.ESCALATE_KEY, "", min_confidence=_v.act_floor() if floor is None else floor)
         return bool(info) and bool(info.get("used", True)) and choice == "escalate"
     except Exception as e:  # noqa: BLE001
         logger.debug(f"route_by_verdict: unreadable verdict — {e!r}")
@@ -124,7 +124,8 @@ def gate_calls(on_tool_call, *, brief, escalate_req: dict, operator_text: str, e
         if player and not escalate_req.get("routed"):
             _mark(brief, name)               # its words are said and no errand opens behind it (V2-860 T1.1)
             return on_tool_call(name, args)
-        if name not in PASS and sure_escalate(brief):
+        from nucleo.turn import commission as _c, verdicts as _v   # a call that LEAVES is held from the licence
+        if name not in PASS and sure_escalate(brief, _v.LICENCE if _c.leaves({"name": name, "args": args}) else None):
             _mark(brief, "")                 # a routed send after a player: the turn's words are the errand's
             escalate_req.setdefault("held_calls", []).append({"name": name, "args": dict(args or {})})   # V2-874
             route(escalate_req, operator_text, emit, why=f"call:{name}", brief=brief)

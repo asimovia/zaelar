@@ -163,6 +163,12 @@ def test_the_verdict_names_the_host_before_cold_or_pre_token(meter, monkeypatch)
     assert tp.verdict({**m, "host_stall_s": 0.4})["cause"] == "frio", "a stall under HOST_STALL_S names nobody new"
     own = tp.verdict({**m, "own_stall_s": 13.2})
     assert own["cause"] == "own_stall" and "HOST" not in own["label"], "our own block was named the host's"
+    unknown = tp.verdict({**m, "unknown_stall_s": 13.0})          # Fly's stolen CPU, macOS's compressor: unattributed
+    assert unknown["cause"] == "loop_stall" and "HOST" not in unknown["label"], unknown
+    monkeypatch.setattr(pc, "_slow_streak", {"titular": 1})
+    monkeypatch.setattr(pc, "pick", lambda role=None: {"name": "titular"})
+    assert pc.note_slow(unknown, role=pc.ROLE_VOICE) is None and pc._slow_streak == {}, \
+        "an unattributed loop stall counted as the provider's slowness (E3 audit P1)"
     monkeypatch.setattr(pc, "_slow_streak", {"titular": 1})
     monkeypatch.setattr(pc, "pick", lambda role=None: {"name": "titular"})
     assert pc.note_slow(v, role=pc.ROLE_VOICE) is None and pc._slow_streak == {}
@@ -175,5 +181,6 @@ def test_the_close_hands_the_verdict_the_hosts_seconds(meter):
     assert pipeline_close._host_stall_s(t_entry)["host_stall_s"] == 0.0
     loop_lag.note(2.0, faults=1)
     loop_lag.note(3.0, cpu_s=3.0)
-    assert pipeline_close._host_stall_s(t_entry) == {"host_stall_s": 2.0, "own_stall_s": 3.0}, "one origin each"
+    assert pipeline_close._host_stall_s(t_entry) == {"host_stall_s": 2.0, "own_stall_s": 3.0,
+                                                      "unknown_stall_s": 0.0}, "one origin each"
     assert pipeline_close._host_stall_s(time.time() + 1)["host_stall_s"] == 0.0, "a stall that ended before the turn is not its own"
