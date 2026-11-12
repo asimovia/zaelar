@@ -224,7 +224,7 @@ def test_the_prompt_carries_the_packs_after_the_operators_own_directive(monkeypa
     from nucleo.flash import memory_cache
     from nucleo.turn.prompt import builder
     monkeypatch.setattr(memory_cache, "get", lambda: ("", ""))
-    monkeypatch.setattr(builder._packs, "compose", lambda turn_text="": "\n\nPACK-MARK")
+    monkeypatch.setattr(builder._packs, "compose", lambda turn_text="", asked=None: "\n\nPACK-MARK")
     built = builder.build_flash_system(directive="DIRECTIVE-MARK", turn_text="hola")[0]
     assert "PACK-MARK" in built, "build_flash_system does not compose the context packs"
     assert built.index("DIRECTIVE-MARK") < built.index("PACK-MARK"), "a pack is read before the operator's own directive"

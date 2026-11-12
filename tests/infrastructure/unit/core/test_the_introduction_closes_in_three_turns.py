@@ -102,7 +102,7 @@ def test_a_session_closes_the_phase_in_three_turns(world, monkeypatch):
             await _turn(q)                                        # T1 closes: the offer was told
             assert store.get(introduction.OFFER_FLAG) is True
             t2 = CP.compose("pepe")                               # T2: he answers; the state is still empty
-            assert "ACABA DE CONTESTAR a tu pregunta «¿Cómo te llamas?»" in t2
+            assert "SI LO QUE ACABA DE DECIR CONTESTA" in t2
             await _turn(q, reply="Encantado, Pepe.")
             state["operator_name"] = "Pepe"                        # the memory agent, ~2 s later
             assert CP.compose("vale") and store.get("intro_done") is not True, "T3 still runs, the name just landed"
@@ -132,7 +132,40 @@ def test_the_offer_is_not_told_by_a_turn_that_said_nothing(world):
     introduction._settle_offer({"window": [], "trace": "T"})
     assert store.get(introduction.OFFER_FLAG) is None, "a mute first turn told him nothing"
     CP.compose(langs.spec("es").kickoff_prompt)
-    introduction._settle_offer({"window": [{"role": "assistant", "text": "Hola."}], "trace": "T"})
+    introduction._settle_offer({"window": [{"role": "assistant", "text": "Hola, soy Zaelar."}], "trace": "T"})
+    assert store.get(introduction.OFFER_FLAG) is True
+
+
+def test_a_reply_that_does_not_carry_our_name_did_not_tell_the_offer(world):
+    """A7 audit (c): 1 of 9 greetings skipped the offer and the flag still landed. Our reply must carry our own name
+    slot — a structural condition on what WE said, never on his words: necessary, not sufficient."""
+    store, _state = world
+    store["stt_language"] = "es"
+    CP.compose(langs.spec("es").kickoff_prompt)
+    introduction._settle_offer({"window": [{"role": "assistant", "text": "Hola, ¿cómo te llamas?"}], "trace": "T"})
+    assert store.get(introduction.OFFER_FLAG) is None, "a reply without our name told the offer"
+    CP.compose(langs.spec("es").kickoff_prompt)
+    introduction._settle_offer({"window": [{"role": "assistant", "text": "Ahora me llamo ZAELAR, cámbialo."}],
+                                "trace": "T"})
+    assert store.get(introduction.OFFER_FLAG) is True
+
+
+def test_the_offer_settles_by_the_real_trace_of_its_turn(world, monkeypatch):
+    """A7 audit (d): `voice.trace` itself, not a mocked `_this_turn` — the compose inside a turn's scope binds it."""
+    from voice import trace
+    store, _state = world
+    store["stt_language"] = "es"
+    monkeypatch.undo()       # back to the real `_this_turn`; the world's stores are set again below
+    monkeypatch.setattr("config.settings.get", lambda k, d=None: store.get(k, d))
+    monkeypatch.setattr("config.settings.update", lambda patch: store.update(patch))
+    monkeypatch.setattr(introduction, "_known", lambda: {})
+    monkeypatch.setattr("nucleo.turn.brief.of_this_turn", lambda: None)
+    with trace.scope("T77·real"):
+        CP.compose(langs.spec("es").kickoff_prompt)
+    assert introduction._offer_pending == "T77·real"
+    introduction._settle_offer({"window": [{"role": "assistant", "text": "Soy Zaelar."}], "trace": "T78·other"})
+    assert store.get(introduction.OFFER_FLAG) is None
+    introduction._settle_offer({"window": [{"role": "assistant", "text": "Soy Zaelar."}], "trace": "T77·real"})
     assert store.get(introduction.OFFER_FLAG) is True
 
 
@@ -142,13 +175,13 @@ def test_the_offer_is_told_only_by_the_turn_whose_prompt_carried_it(world, monke
     store["stt_language"] = "es"
     monkeypatch.setattr("nucleo.turn.prompt.packs.introduction_block._this_turn", lambda: "")
     CP.compose(langs.spec("es").kickoff_prompt)
-    introduction._settle_offer({"window": [{"role": "assistant", "text": "Hola."}], "trace": ""})
+    introduction._settle_offer({"window": [{"role": "assistant", "text": "Hola, soy Zaelar."}], "trace": ""})
     assert store.get(introduction.OFFER_FLAG) is None, "a compose outside any turn told him the offer"
     monkeypatch.setattr("nucleo.turn.prompt.packs.introduction_block._this_turn", lambda: "T1")
     CP.compose(langs.spec("es").kickoff_prompt)
-    introduction._settle_offer({"window": [{"role": "assistant", "text": "Hola."}], "trace": "T0"})
+    introduction._settle_offer({"window": [{"role": "assistant", "text": "Hola, soy Zaelar."}], "trace": "T0"})
     assert store.get(introduction.OFFER_FLAG) is None, "another turn's close settled this turn's offer"
-    introduction._settle_offer({"window": [{"role": "assistant", "text": "Hola."}], "trace": "T1"})
+    introduction._settle_offer({"window": [{"role": "assistant", "text": "Hola, soy Zaelar."}], "trace": "T1"})
     assert store.get(introduction.OFFER_FLAG) is True
 
 
@@ -159,37 +192,55 @@ def test_an_answer_to_our_question_leaves_the_unknowns_this_turn(world, monkeypa
     store["stt_language"] = "es"
     monkeypatch.setattr("nucleo.memory_agent.answer_frame.asked_before", lambda **k: "¿Cómo te llamas?")
     b = introduction.block("pepe")
-    assert "ACABA DE CONTESTAR a tu pregunta «¿Cómo te llamas?»" in b and "sin confirmarlo" in b, b
+    assert "SI LO QUE ACABA DE DECIR CONTESTA" in b and "sin confirmarlo" in b and "¿Cómo te llamas?" not in b, "the close already quotes it"
     monkeypatch.setattr("nucleo.memory_agent.answer_frame.asked_before", lambda **k: "")
     b = introduction.block("pepe")
-    assert "ACABA DE CONTESTAR" not in b and "su nombre" in b, "without a question of ours, nothing was answered"
+    assert "SI LO QUE ACABA DE DECIR CONTESTA" not in b and "su nombre" in b, "without a question of ours, nothing was answered"
 
 
 def test_an_answer_to_another_question_of_ours_is_never_read_as_his_name(world, monkeypatch):
     """I1: «sí, claro» to «¿quieres que te cuente qué puedo hacer?» was told to the model as «he just told you (his
     name)» — the block guessed WHICH goal from the order. Now it names the question asked; the fact stays unknown."""
     store, _state = world
-    store["stt_language"] = "es"
-    asked = "¿Quieres que te cuente qué puedo hacer por ti?"
-    monkeypatch.setattr("nucleo.memory_agent.answer_frame.asked_before", lambda **k: asked)
-    b = introduction.block("sí, claro")
-    assert f"«{asked}»" in b and "(su nombre)" not in b, b
-    assert "su nombre" in b.split("LO QUE TODAVÍA NO SABES")[-1][:60], "his name was dropped from the unknowns"
+    for code, asked, said in (("es", "¿Quieres que te cuente qué puedo hacer por ti?", "sí, claro"),
+                              ("es", "¿De dónde eres?", "Madrid"),
+                              ("en", "Do you want me to tell you what I can do?", "yes, sure"),
+                              ("en", "Where are you based?", "Madrid")):
+        store["stt_language"] = code
+        monkeypatch.setattr("nucleo.memory_agent.answer_frame.asked_before", lambda **k: asked)
+        b = introduction.block(said)
+        assert "SI LO QUE ACABA DE DECIR CONTESTA" in b and "(su nombre)" not in b and "ACABA DE DECÍRTELO" not in b, (code, said, b)
+        unknown = b.split("LO QUE TODAVÍA NO SABES")[-1][:60]
+        assert "su nombre" in unknown, (code, said, "his name was dropped from the unknowns")
 
 
 def test_a_sure_answer_verdict_also_counts(world, monkeypatch):
     import threading
     store, _state = world
     store["stt_language"] = "es"
-    monkeypatch.setattr("nucleo.memory_agent.answer_frame.asked_before", lambda **k: "¿Cómo te llamas?")
+    monkeypatch.setattr("nucleo.memory_agent.answer_frame.asked_before", lambda **k: "")
     ev = threading.Event()
     ev.set()
     brief = {"event": ev, "result": {"request_type": {"choice": "answer", "confidence": 0.95, "probs": {}}}}
     monkeypatch.setattr("nucleo.turn.brief.of_this_turn", lambda: brief)
     long = "me llamo pepe, encantado de conocerte hoy"         # over the bare-answer length: only the verdict reads it
-    assert "ACABA DE CONTESTAR a tu pregunta «¿Cómo te llamas?»" in introduction.block(long)
+    # A7 audit (a): our reply did not END on the question (the kickoff asks, then tells the offer) — the verdict alone
+    assert "SI LO QUE ACABA DE DECIR CONTESTA" in introduction.block(long)
     brief["result"]["request_type"]["confidence"] = 0.4
-    assert "ACABA DE CONTESTAR" not in introduction.block(long)
+    assert "SI LO QUE ACABA DE DECIR CONTESTA" not in introduction.block(long)
+
+
+def test_the_builders_question_is_read_once_and_passed(world, monkeypatch):
+    """A7 audit (e): `asked_before` (a SQLite read) ran up to 3 times per composition. The builder reads it and hands
+    it to the pack; a caller without it makes the pack read it once."""
+    store, _state = world
+    store["stt_language"] = "es"
+    reads = []
+    monkeypatch.setattr("nucleo.memory_agent.answer_frame.asked_before",
+                        lambda **k: reads.append(1) or "¿Cómo te llamas?")
+    assert "SI LO QUE ACABA DE DECIR CONTESTA" in CP.compose("pepe", "¿Cómo te llamas?") and reads == []
+    CP.compose("pepe")
+    assert len(reads) == 1
 
 
 def test_the_recheck_never_asks_the_judge_again(world, monkeypatch):

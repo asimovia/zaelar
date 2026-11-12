@@ -92,9 +92,12 @@ below is the first kind, or it names the mechanism that replaced the second.
   turn's text is the i18n `kickoff_prompt`, one line per language (`nucleo/turn/kickoff.py`): recognised by catalog at
   the gate, never substituted, never kept in the window or the short-term buffer as his words; the greeting's content
   is the introduction block, a system section carrying the name-and-voice offer. The phase's watcher subscribes at
-  boot whatever the language, and reads its condition per turn; the block reads THE TURN — his answer to our question
-  moves that goal to «he just told you» before memory writes it; it closes on his name AND the offer told
-  (`intro_offer_told`, written by a turn that replied), and then the block is gone. On ANY turn after a reply of ours
+  boot whatever the language, and reads its condition per turn; the block reads THE TURN — when he just answered something we asked (the answer rule, or a sure `answer` verdict
+  even if our reply did not end on the question) it says, CONDITIONALLY, that what he said is known before memory
+  writes it, never guessing which goal it was (I1); it closes on his name AND the offer told (`intro_offer_told`,
+  written by the close of the very turn whose prompt carried it — bound by trace — and only when our reply carries
+  our own name slot: a NECESSARY, not sufficient, condition, declared residual — a greeting that names itself and
+  skips the offer still passes), and then the block is gone. On ANY turn after a reply of ours
   that ended on a question, the state's closing line says what we asked (`build_flash_system` ← `answer_frame.asked_before`,
   the memory agent's own frame) instead of «the request that follows»: a bare answer reaches the model as an answer,
   and nothing of his line is read. — since 2026-11-12 · nodes 2.1734,
