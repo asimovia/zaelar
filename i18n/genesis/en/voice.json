@@ -149,6 +149,7 @@
  "send_missing_text": "What should I tell {who}?",
  "send_missing_recipient": "Who should I send it to?",
  "send_which_recipient": "Which {who}? I have {names}.",
+ "act_needs_facts": "To do that on {card} I still need: {facts}. What should it be?",
  "answer_which_task": "Which of these tasks is your answer for: {among}?",
  "stopped_now": "Okay, I'm stopping it.",
  "stopped_also": "I've stopped that task.",

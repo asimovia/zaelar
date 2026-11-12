@@ -13,6 +13,7 @@ from nucleo.circuit import spec as _spec_mod   # the brief's END verdict travels
 from nucleo.request import model as _request   # his words travel with the ONE errand his sentence commissions
 from nucleo.request import send_task_turn as _send_turn   # a send the verdict identified is its task (2026-11-06)
 from nucleo.request import stop as _stop_decision   # V2-820: a replace stops X and starts Y in one act
+from nucleo.request import order_unserved as _order   # the order the brief identified, served with another tool (A2)
 from nucleo.turn import brief as _tb   # the turn's reading travels with the errand it commissions (V2-852)
 from nucleo.turn import commission as _commission   # V2-874: who wins the commission, in shadow
 from nucleo.turn import named_errand as _named   # V2-878 §1: a request routed into an errand is a mention of it
@@ -34,7 +35,7 @@ def launch_label(joins_as: str) -> str:
 
 async def launch_the_errands(*, motor, send, speech, emit, brain, _brief, _op_text, _escalate_mod, _prev_pending,
                              _router, _did_act, _acted_elsewhere, acted, escalate_req,
-                             spoken_text, worker_acted) -> dict:
+                             spoken_text, worker_acted, ops=(), _apply_widget_data=None) -> dict:
     # V2-857 phase 8: no backstop reads his words for an order the model did not escalate — the turn's commission
     # is the model's call or the brief's sure «escalate» (`route_by_verdict`), and the errand carries the brief's class.
     # Escalates after the TTS; not when the turn addressed a live worker (inject/answer/stop) — save a REPLACE (V2-820).
@@ -121,6 +122,15 @@ async def launch_the_errands(*, motor, send, speech, emit, brain, _brief, _op_te
             _aod.held(_asked_out, spoken_text, _op_text)   # F2d — and it is durable: the row waits on it
         elif escalate_req["v"] is None:                    # a sure leaving act its words claimed: it is a task
             _aod.claimed(_brief, spoken_text, _op_text, emit=emit)
+    else:
+        # A2 (2026-11-12): the turn ACTED, but not the order the brief surely read — the model served it with another
+        # tool (a view, a read, another card's act). The order opens ITS row: a send task, a card act completed, or ONE
+        # fact question — read off the verdicts and the acts that ran, never off his words.
+        from nucleo.flash import canvas_visibility as _cvis
+        _order.open_the_order(_brief, said=_op_text, reply=spoken_text, ops=ops,
+                              model_calls=getattr(brain, "_turn_calls", None) or (), escalate_req=escalate_req,
+                              worker_acted=worker_acted, emit=emit, present=_cvis.present,
+                              apply_widget_data=_apply_widget_data)
     _ending.close_turn()               # the endings a view held are written now, unless the row waits on our question
     if (_each := _sbe.each_line(spoken_text, _op_text)):      # one sentence about several errands: each one said (2.643)
         send(speech.sanitize(_each, drop_metadata=False))
