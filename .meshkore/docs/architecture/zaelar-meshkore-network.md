@@ -142,10 +142,12 @@ family `agent`, keyed `<agent_id>.<skill_id>`, delivered with the lease. Otherwi
 agents a relay covers and how it books them is the relay's business; the engine only debits its lease when a job is
 born. A `402` is never paid. A served skill teaches the playbook route `<agent>/<skill>` (genome learned layer).
 
-**One order, one key, one step at a time.** The request key (`idempotency_key`, only where the skill's own examples
-use one) is the engine's, derived from the task and the request — never taken from the body or the card — so a retry of
-an order whose answer never came carries the same key. While an order has a step whose outcome is unknown (no answer,
-an open job, a handed-back step not reported) no OTHER skill of that agent is called for it.
+**One order, one thread, one key; one effect at a time.** A call of the same skill for the same task reuses its open
+thread (`sys_kv mesh:thread:<id>`, one row each), and the request key (`idempotency_key`, only where the skill's own
+examples use one) is that thread's — never the body's or the card's. A retry after an answer that never came carries
+the same key; a new order after a closed one is a new thread, a new key. While a step of the task may have taken
+effect unseen (a KEYED send with no answer, an open job, a handed-back step not reported) no OTHER skill of that agent
+is called for it, and the refusal names the way out; a send without a key is a read, and its silence blocks nothing.
 
 **An agent that asks is not an agent that failed — and it asks ONE way** (`nucleo/mesh_dialog.py`, `mesh_jobs.py`). An
 answer whose SHAPE is a question (a `questions` list, or A2A `input-required`) — at once, or later from a job — goes on a
@@ -170,13 +172,16 @@ the agent's own `final` (a job that does not say it ended has not; 48 h bound it
 with the account's credential AND the job's own token (`X-Job-Token`): one account can never read another's job. Its
 result is bounded leaf by leaf (a fact at its tail is never cut away) and fenced; the rebrief never says «it did not
 happen» for an outcome the agent calls uncertain, and a job given up is told as UNKNOWN. With no session to tell it, the
-row ends FAILED. A row he ended releases the question it held.
+row ends FAILED. A row he ended releases the question it held, and the job is still followed to its end (so a relay
+can settle it). A question left open never stops the watch: a `final` retires it.
 
 **A step handed back is a stranger's DATA** (`nucleo/mesh_handoff.py`). An agent that cannot finish answers with a
-`handoff`. `call` keeps what can be checked (the link and its domain, the phone, what the link carries, the NAMES of the
-fields the form asks, the agent's own outcomes) and puts its prose under `agent_says`, fenced; its VALUES are dropped —
-a form is filled from the order he gave (`your_order`), a field it lacks is asked to him. The rules are ours alone; the
-agent's note can only make the worker do less. `hbmesh report` answers in the agent's own `reportOutcome` shape.
+`handoff` (at the top, or under a job's `result`). `call` keeps what can be checked, CHECKED by shape (an `https` link
+and its domain, an E.164 phone, plain field names and outcomes — anything else is dropped), and puts its prose under
+`agent_says`, fenced; its VALUES are dropped — a form is filled from the order he gave (`your_order`). Before his data
+goes to that page, CODE asks him on his row, naming the domain; the worker is resumed with `allowed`. The rules are ours
+alone and ride outside the fence; the agent's note can only make the worker do less. `hbmesh report` answers in the
+agent's own `reportOutcome` shape.
 
 ---
 

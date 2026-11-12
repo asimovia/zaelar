@@ -13,7 +13,8 @@
     drops the fact that a booking MAY exist (P2-3); with no session to tell, the row ends FAILED, not done; a job given
     up is told as UNKNOWN; a row he ended releases a question it held (P2-7); a relayed job debits the lease once.
 
-Disarm: drop the `ask_id` check in `answered` → red; read questions before `final` in `_tick` → red.
+Disarm: drop the `ask_id` check in `answered` → red; read questions before `final` in `_tick` → red; stop polling
+while a question is open → red.
 """
 from __future__ import annotations
 
@@ -130,13 +131,46 @@ def test_without_a_session_to_tell_it_the_row_ends_failed_and_a_given_up_job_is_
     assert "UNKNOWN" in brief and "MAY exist" in brief
 
 
-def test_a_row_he_ended_releases_the_question_it_held(world):
+def test_a_row_he_ended_releases_its_question_and_the_job_is_still_followed_to_its_end(world):
     world["polls"].append(Q_JOB)
     mesh_jobs.sweep(now=_later())
     from nucleo import circuit
     circuit.settle(row=_row(world)["id"], state="cancelled", outcome="he stopped it")
+    world["polls"].append({"status": "PENDING", "final": False})
     mesh_jobs.sweep(now=_later() + 60)
-    assert world["posts"][-1][1] == {"cancel": True} and mesh_dialog.thread(world["thread"])["job"]["done"]
+    t = mesh_dialog.thread(world["thread"])
+    assert world["posts"][-1][1] == {"cancel": True} and t["job"]["orphan"] and not t["job"].get("done")
+    world["polls"].append({"status": "NO_AVAILABILITY", "final": True})
+    mesh_jobs.sweep(now=_later() + 600)
+    t = mesh_dialog.thread(world["thread"])
+    assert t["job"]["done"] and t["job"]["result"]["status"] == "NO_AVAILABILITY" and not world["resumed"]
+
+
+def test_an_open_question_does_not_stop_the_watch_and_a_final_retires_it(world):
+    world["polls"].append(Q_JOB)
+    mesh_jobs.sweep(now=_later())
+    assert mesh_dialog.thread(world["thread"])["asking"]
+    world["polls"].append({"status": "FAILED", "final": True, "result": {"bookingMayExist": True}})
+    mesh_jobs.sweep(now=_later() + 600)
+    t = mesh_dialog.thread(world["thread"])
+    assert t["job"]["done"] and t["asking"] is None and len(world["resumed"]) == 1
+
+
+def test_an_answer_that_never_reached_the_agent_is_sent_again(world, monkeypatch):
+    world["polls"].append(Q_JOB)
+    mesh_jobs.sweep(now=_later())
+    from nucleo import mesh_agents
+    monkeypatch.setattr(mesh_agents, "_post", lambda url, body, timeout=0, bearer=None, headers=None:
+                        world["posts"].append((url, body, bearer)) or (0, None))
+    art = __import__("nucleo.circuit.asker", fromlist=["x"]).artefact(_row(world)["id"])
+    assert not mesh_jobs.answered(art["uid"], art, "Sí", 0)["ok"]
+    assert mesh_dialog.thread(world["thread"])["job"]["unsent"]
+    monkeypatch.setattr(mesh_agents, "_post", lambda url, body, timeout=0, bearer=None, headers=None:
+                        world["posts"].append((url, body, bearer)) or (202, {}))
+    before = len(world["posts"])
+    mesh_jobs.sweep(now=_later() + 600)
+    assert world["posts"][before:][0][1] == {"answers": [{"id": "q1", "choice": "accept"}]}
+    assert not mesh_dialog.thread(world["thread"])["job"]["unsent"]
 
 
 def test_a_relayed_job_debits_the_lease_once_and_is_reached_with_both_tokens(world, monkeypatch):
