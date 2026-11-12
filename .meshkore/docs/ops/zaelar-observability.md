@@ -400,7 +400,10 @@ kept for the FlashBrain's «PROCESOS DE FONDO» prompt, but does not duplicate t
   the body did to it and to the host: **`voice_process_start`** / **`voice_process_exit`** (pid, exit code),
   **`voice_over_ceiling`** (its RSS over `budgets.<deployment>.voice.ceiling_mb`: recycled between sessions, or said
   once and held while a session is live) and **`shed_ladder`** (one rung of the declared ladder engaged ↓ or released
-  ↑, with `cause` engine|machine, `free_mb`, `floor_mb`, `engine_mb`, `budget_mb` and what the hand did).
+  ↑, with `cause` engine|machine, `free_mb`, `floor_mb`, `engine_mb`, `budget_mb` and what the hand did). The body's own
+  loop stall is one more: **«host stalled N s»** (`kind_diag: loop_lag`, `lag_s`, `source: body_loop`,
+  `nucleo/pulse/loop_lag.py`), and a turn that waited through one says `⏱ host stalled` (family `perf`, kind
+  `host_stall`) instead of blaming the provider.
 - **The voice process's lines are the body's record.** The voice process records nothing itself: every observer line
   it emits travels to the body (`voice/engine/pipeline/body_link.py` → `POST /api/voice/child/events`), with its
   `piece` read where it was emitted, and the session's facts are REPLAYED in the body through the same handlers — so
