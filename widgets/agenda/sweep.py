@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 from . import gcal
+from . import reminders as _rem
 
 
 def keep_list(payload: dict) -> list[dict]:
@@ -168,9 +169,10 @@ def clear_range(db: dict, payload: dict) -> tuple[dict, list[dict]]:
             skipped += 1
     doomed = [m for m in doomed if not m.get("seriesDate")]
     gone, stuck = gcal.delete_many(doomed)
-    for m in gone:
-        _data._cancel_reminder(m)
     db["meetings"] = [m for m in db.get("meetings", []) if m not in gone]
+    with _rem.rows_in_hand(db):              # E0: a notice a surviving twin still carries stays
+        for m in gone:
+            _data._cancel_reminder(m)
     for b in list(db.get("blocks", [])):
         if lo <= str(b.get("date") or "") <= hi:
             db["blocks"].remove(b)
@@ -255,7 +257,8 @@ def dedupe_meetings(db: dict, payload: dict) -> tuple[dict, list[dict]]:
     gone, stuck = [], []
     for m in extra:                                        # the same order as `cancel_meeting`: Google first
         if gcal.delete_google(m):
-            _data._cancel_reminder(m)
+            with _rem.rows_in_hand(db):      # E0: the surviving row keeps the one job the twins shared
+                _data._cancel_reminder(m)
             gone.append(m)
         else:
             stuck.append(m)
@@ -286,10 +289,11 @@ def cancel_every(db: dict, hits: list[dict], *, plural: bool = False) -> tuple[d
     entry holds the set (`restore_meeting` brings it all back); a row Google refuses STAYS (the `clear_range` lesson)."""
     from . import data as _data, meeting_trash
     gone, stuck = gcal.delete_many(hits)                 # one Google client for the whole set (node 2.918)
-    for m in gone:
-        _data._cancel_reminder(m)
     meeting_trash.put(db, "delete", gone)
     db["meetings"] = [m for m in db.get("meetings", []) if m not in gone]
+    with _rem.rows_in_hand(db):                          # E0: a notice a surviving twin still carries stays
+        for m in gone:
+            _data._cancel_reminder(m)
     dates = sorted({str(m.get("date") or "") for m in gone})
     res = {"ok": True, "removed": len(gone), "title": str((gone or hits)[0].get("title") or ""),
            "date": dates[0] if dates else str(hits[0].get("date") or "")}
@@ -356,8 +360,9 @@ def cancel_meeting(db: dict, payload: dict) -> tuple[dict, list[dict]]:
         for m in [m for m in hits if (s := series_days.series_of(m, _ser)) is not None
                   and str(m.get("date") or "") > s["repeat"]["until"]]:
             if gcal.delete_google(m):                  # a day moved out of it, past the new end, ends with it
-                _data._cancel_reminder(m)
                 db["meetings"] = [x for x in db.get("meetings", []) if x is not m]
+                with _rem.rows_in_hand(db):
+                    _data._cancel_reminder(m)
         return {"ok": True, "removed": 0, "title": str(_ser[0].get("title") or ""),
                 "until": _ser[0]["repeat"]["until"], "series_kept": True}, []
     # A SERIES named with no day and no `whole` is a QUESTION, never the whole series (V2-769). Measured in the

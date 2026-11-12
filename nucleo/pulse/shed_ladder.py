@@ -41,15 +41,22 @@ def cause(engine_mb: float, engine_budget_mb: float) -> str:
     return "engine" if engine_mb > engine_budget_mb else "machine"
 
 
+def _lag(reading: dict) -> tuple[float, float]:
+    """The worst lag the reading carries — the voice's or the body loop's (E0: a host that stops the body's loop is
+    the same pressure on the same voice) — and the bound it is read against."""
+    lag = max(float(reading.get("voice_lag_s", 0) or 0), float(reading.get("loop_lag_s", 0) or 0))
+    return lag, float(reading.get("lag_bound_s", 0) or 0)
+
+
 def pressure(reading: dict) -> bool:
     free, floor_mb = float(reading.get("free_mb", 0)), float(reading.get("floor_mb", 0))
-    lag, bound = float(reading.get("voice_lag_s", 0) or 0), float(reading.get("lag_bound_s", 0) or 0)
+    lag, bound = _lag(reading)
     return free < floor_mb or (bound > 0 and lag >= bound)
 
 
 def recovered(reading: dict, recover_ratio: float = DEFAULT_RECOVER) -> bool:
     free, floor_mb = float(reading.get("free_mb", 0)), float(reading.get("floor_mb", 0))
-    lag, bound = float(reading.get("voice_lag_s", 0) or 0), float(reading.get("lag_bound_s", 0) or 0)
+    lag, bound = _lag(reading)
     return free >= floor_mb * recover_ratio and not (bound > 0 and lag >= bound)
 
 

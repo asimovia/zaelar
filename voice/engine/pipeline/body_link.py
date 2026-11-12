@@ -6,7 +6,10 @@ BODY must hold, because the body runs the turn. This module carries those facts 
 
   · `send(event)` queues one event; ONE sender drains the queue in order, in batches, to `POST /api/voice/child/events`.
     A batch that does not land within `timeout_s` is DROPPED and counted, never retried into a backlog: the ear
-    must never wait on the body (a body paging in from swap is exactly the case this process exists for).
+    must never wait on the body (a body paging in from swap is exactly the case this process exists for). The facts
+    the body must not lose — a session's start/close, his transcripts, the items — are asked ONCE more (E0).
+  · while the body does not answer, the sender opens at most ONE connection per `RETRY_GAP_S` (E0): measured
+    2026-11-12, a batch per failure filled a stopped body's TCP backlog in 31 s and the turn found it «unreachable».
   · `flush(max_s)` — a turn waits, bounded, for the events queued before it, so the body reads «he stopped
     talking» before it reads the turn that followed (the order a single process gave for free).
   · `post()` / `stream()` — the request/response calls (the kickoff decision, the turn's stream).
@@ -36,6 +39,8 @@ from loguru import logger
 TOKEN_ENV = "ZAELAR_VOICE_TOKEN"
 HEADER = "x-zaelar-voice-token"
 EVENTS_PATH = "/api/voice/child/events"
+RETRY_GAP_S = 1.0                                 # one connection a second while the body does not answer (E0)
+RETRIED = ("session", "transcript", "item")       # the facts asked once more at the front of the queue
 
 
 def body_url() -> str:
@@ -59,6 +64,8 @@ class BodyLink:
         self._idle.set()
         self._task: asyncio.Task | None = None
         self._sessions: dict = {}             # id(loop) → (loop, aiohttp session): one per loop
+        self._fail_streak = 0                 # batches failed in a row: >0 paces the sender to one try per gap
+        self._last_try = 0.0
         self.stats = {"sent": 0, "dropped": 0, "batches": 0, "failed_batches": 0}
 
     # ── lifecycle ────────────────────────────────────────────────────────────────────────────────────────────
@@ -151,13 +158,22 @@ class BodyLink:
                     batch = [self._q.popleft() for _ in range(min(self.max_batch, len(self._q)))]
                 if not batch:
                     break
+                await self._pace()
                 await self._deliver(batch)
             with self._lock:
                 if not self._q:
                     self._idle.set()
 
+    async def _pace(self) -> None:
+        """While the body is failing, wait out the gap since the last try: one connection per `RETRY_GAP_S`."""
+        if self._fail_streak:
+            wait = RETRY_GAP_S - (time.monotonic() - self._last_try)
+            if wait > 0:
+                await asyncio.sleep(wait)
+
     async def _deliver(self, batch: list) -> None:
         self.stats["batches"] += 1
+        self._last_try = time.monotonic()
         try:
             import aiohttp
             async with self._http().post(self.base + EVENTS_PATH, data=json.dumps({"events": batch}, default=str),
@@ -166,11 +182,13 @@ class BodyLink:
                 if r.status >= 300:
                     raise RuntimeError(f"HTTP {r.status}")
             self.stats["sent"] += len(batch)
+            self._fail_streak = 0
         except asyncio.CancelledError:
             raise
         except Exception as e:  # noqa: BLE001 — dropped and counted: the ear never waits on the body
-            again = [ev for ev in batch if ev.get("k") == "session" and not ev.get("_retried")]
-            if again:                       # a session's start/close decides what the body registers: once more
+            self._fail_streak += 1
+            again = [ev for ev in batch if ev.get("k") in RETRIED and not ev.get("_retried")]
+            if again:                       # a session's start/close, his words, the items: asked once more
                 with self._lock:
                     for ev in reversed(again):
                         self._q.appendleft({**ev, "_retried": True})

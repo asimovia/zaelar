@@ -217,7 +217,9 @@ def test_the_voice_process_speaks_the_cover_as_its_own_segment(monkeypatch):
     monkeypatch.delenv("ZAELAR_LANGUAGE", raising=False)
 
 
-def test_a_lost_body_is_asked_again_never_silence(monkeypatch):
+def test_a_lost_body_is_said_slow_never_silence(monkeypatch):
+    """E0: a body that cannot be reached is tried once more and then said SLOW — his words were heard, the host did
+    not run — never «say that again» (node 3.203 holds the retry, the pacing and the kept line)."""
     from voice.engine.pipeline import body_link, remote_brain
 
     class _Down(_FakeLink):
@@ -226,12 +228,15 @@ def test_a_lost_body_is_asked_again_never_silence(monkeypatch):
             yield  # pragma: no cover
 
     monkeypatch.setattr(body_link, "get", lambda: _Down([]))
+    monkeypatch.setattr(remote_brain, "RETRY_S", 0.01)
+    monkeypatch.setitem(remote_brain._LOST, "text", "")
     monkeypatch.setattr(remote_brain, "_say_again", lambda: "Perdona, ¿me lo repites?")
+    monkeypatch.setattr(remote_brain, "_slow_line", lambda: "Un momento, el sistema va lento.")
     ctx = SimpleNamespace(items=[SimpleNamespace(role="user", text_content="hola")])
 
     async def _run():
         return [x async for x in remote_brain.remote_llm_node(None, ctx, [], None)]
-    assert asyncio.run(_run()) == ["Perdona, ¿me lo repites?"]
+    assert asyncio.run(_run()) == ["Un momento, el sistema va lento."]
 
 
 # ── (e) the session's facts replayed through the same handlers ──────────────────────────────────────────────────

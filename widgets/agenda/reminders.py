@@ -57,12 +57,15 @@ def _schedule_reminder(title: str, date: str, start: str, at: str = "", before_m
     # an all-day item has no hour to say (the 23:59 above is only the «already over» line)
     prompt = (_langs.words("agenda.remind_prompt_at", default="").format(title=title, date=date, time=said) if said
               else _langs.words("agenda.remind_prompt", default="").format(title=title, date=date))
+    name = f"aviso: {title[:80]}"
+    if (twin := _twin(name, stamp)):
+        return twin, stamp               # E0: identical twins (same words, same instant) ring ONCE, as one job
     try:
         from nucleo.pulse import scheduler as _sched
         # `origin="agenda"` keeps this notice OUT of the calendar's system-task band (V2-728): it already
         # has a place on screen — the appointment it belongs to — and painting it again would show the
         # operator two things where he wrote one.
-        r = _sched.create(prompt, stamp, name=f"aviso: {title[:80]}", origin="agenda")
+        r = _sched.create(prompt, stamp, name=name, origin="agenda")
     except Exception as e:  # noqa: BLE001 — the scheduler must never lose the agenda WRITE
         return "", str(e)
     if not (r or {}).get("ok"):
@@ -134,10 +137,70 @@ def ring_as_asked(m: dict, raw, resolve_date) -> str:
     return ""
 
 
-def _cancel_reminder(meeting: dict) -> None:
-    """Cancel the meeting's scheduled notice, if it has one. Best-effort: an orphan alarm fires a ghost."""
+def _twin(name: str, stamp: str) -> str:
+    """The id of a PENDING agenda notice that already says these words at this instant, "" when none does.
+
+    E0 (measured 2026-11-12): one boot scheduled 723 notices for 154 distinct (title, instant) pairs — a calendar
+    holding the same appointment many times over got one alarm per row, and the alarm said the same words at the
+    same minute up to 24 times. Twins share one job; `_cancel_reminder` keeps it while any row still carries it."""
+    try:
+        from nucleo.pulse import scheduler as _sched
+        for e in _sched.pending_carrying("origin"):
+            d = e.get("detail") or {}
+            if (d.get("origin") == "agenda" and str(d.get("name") or "") == name
+                    and str((d.get("schedule") or {}).get("display") or "") == stamp):
+                return str(e.get("id") or "")
+    except Exception:  # noqa: BLE001 — unreadable: a second alarm is better than a lost one
+        return ""
+    return ""
+
+
+def _same_row(a: dict, b: dict) -> bool:
+    """The same appointment, in memory or read back from the store: by `id` or `googleId` when either carries one,
+    else by what it says and when (a local row has no id of its own)."""
+    if a is b:
+        return True
+    keys = [k for k in ("id", "googleId") if a.get(k) not in (None, "") or b.get(k) not in (None, "")]
+    if keys:
+        return any(a.get(k) == b.get(k) for k in keys)
+    return all(a.get(k) == b.get(k) for k in ("title", "date", "startTime"))
+
+
+#: The rows a bulk sweep holds while it cancels (`rows_in_hand`): `_cancel_reminder` reads them instead of the store.
+_ROWS: dict = {"db": None}
+
+
+class rows_in_hand:
+    """`with reminders.rows_in_hand(db): …` — the cancels inside read these rows for twins, never the store."""
+    def __init__(self, db: dict | None) -> None:
+        self.db, self._prev = db, None
+
+    def __enter__(self):
+        self._prev, _ROWS["db"] = _ROWS["db"], self.db
+        return self
+
+    def __exit__(self, *a) -> bool:
+        _ROWS["db"] = self._prev
+        return False
+
+
+def _shared(ref: str, meeting: dict, db: dict | None) -> bool:
+    """Does ANOTHER row of the agenda carry this notice? Read from `db` (the rows the caller holds), else the store."""
+    try:
+        if db is None:
+            from . import data as _d
+            db = _d.load_db()
+        return any(str(m.get("reminder_id") or "") == ref and not _same_row(m, meeting)
+                   for m in (db or {}).get("meetings", []))
+    except Exception:  # noqa: BLE001 — unreadable: cancel as before
+        return False
+
+
+def _cancel_reminder(meeting: dict, db: dict | None = None) -> None:
+    """Cancel the meeting's scheduled notice, if it has one and no other row shares it (E0: twins ring as one job).
+    Best-effort: an orphan alarm fires a ghost."""
     ref = str((meeting or {}).get("reminder_id") or "").strip()
-    if not ref:
+    if not ref or _shared(ref, meeting or {}, db if db is not None else _ROWS["db"]):
         return
     try:
         from nucleo.pulse import scheduler as _sched

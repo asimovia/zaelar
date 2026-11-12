@@ -523,6 +523,14 @@ async def turn_lines(payload: dict):
         yield {"t": "env", "env": env}
     text = str(payload.get("text") or "")
     brain = _brain()
+    if (prior := str(payload.get("prior") or "").strip()) and prior != text:
+        # E0: his line a lost turn never delivered (the body could not be reached): it enters the window as HIS words
+        # before this turn, so the reply answers both — never «say that again» for words he already said.
+        try:
+            from nucleo.flash import dialog as _dialog
+            _dialog.push_user(brain._window, prior)
+        except Exception as e:  # noqa: BLE001 — the turn still runs on what he said now
+            logger.warning(f"voice child: the prior line was not kept — {e!r}")
     ctx = ChatContext.empty()
     ctx.add_message(role="user", content=text)
     origin = str(payload.get("origin") or "")

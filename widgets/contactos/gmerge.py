@@ -96,7 +96,9 @@ def merge_imported(db: dict, rows: list[dict], *, authoritative: bool = False) -
     contacts = db.setdefault("contacts", [])
     now = time.strftime("%Y-%m-%d")
     added = updated_n = unchanged = 0
-    for inc in rows or []:
+    from .imports import give_way
+    for i, inc in enumerate(rows or []):
+        give_way(i)                      # E0: a thousand rows in the widget thread give the loop its turn
         c = match_imported(contacts, inc)
         if c is None:
             cid = f"c{db.get('next_id', 1)}"

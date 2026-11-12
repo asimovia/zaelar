@@ -33,8 +33,11 @@ def _rss_mb(pid: int | None = None) -> float:
         return 0.0
 
 
+LAG_WINDOW_S = 60.0     # a body-loop stall within the last beat is pressure; a beat without one lets the ladder recover
+
+
 def reading() -> dict:
-    """The host now: free memory, the floor, and whose memory it is (`cause`)."""
+    """The host now: free memory, the floor, whose memory it is (`cause`), and the body loop's recent stalls."""
     from nucleo.pulse import budgets, shed_ladder
     from nucleo.workers import envelope
     total, avail = envelope.measured()
@@ -51,8 +54,11 @@ def reading() -> dict:
     except Exception as _swallowed:  # noqa: BLE001
         logger.debug(f"{__name__}: {_swallowed!r}")   # said, never silent (the ratchet)
         pass
+    # E0: the body's own loop stalls are pressure too — within our budgets they are the HOST's (`cause=machine`)
+    from nucleo.pulse import loop_lag
     return {"free_mb": avail / 2 ** 20, "floor_mb": floor_mb, "engine_mb": round(engine, 1),
-            "budget_mb": budget, "cause": shed_ladder.cause(engine, budget)}
+            "budget_mb": budget, "cause": shed_ladder.cause(engine, budget),
+            "loop_lag_s": loop_lag.stalled_recently(LAG_WINDOW_S), "lag_bound_s": loop_lag.bound_s()}
 
 
 def _workers():

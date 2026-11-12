@@ -323,6 +323,8 @@ class LangSpec:
     #: raised. Found by the same ratchet pass, in the same file, in an English session.
     still_on_it: str = ""
     say_again: str = ""
+    #: E0 — the body could not be reached from the voice process: the host is slow, his words were heard.
+    brain_slow: str = ""
     # The FIRST TURN, spoken in the operator's own voice into the model's window. It is not an internal note
     # like the system prompt: it impersonates HIM, so a Spanish one primes a Spanish reply on turn one.
     kickoff_prompt: str = ("")
