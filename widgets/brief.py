@@ -224,50 +224,8 @@ def for_prompt(open_ids=None, recent_ids=None, query: str = "", stats: dict | No
         if widl in opened:
             lines += _on_screen_lines(wid, w)
 
-    # Live items + coach: only for open widgets, so existing items can be referenced by natural language in `item`.
-    item_lines: list[str] = []
-    for w in cat:
-        wid = str(w.get("id") or "").strip().lower()
-        if wid not in opened:
-            continue
-        try:
-            # A widget can publish a content digest (`refs.prompt_digest`), which takes precedence because
-            # `items_line` only provides label/hint pairs. That lets the brain name what's on screen, but not
-            # answer about it. Without a digest, keep the usual items line.
-            digest = refs.prompt_digest(w.get("id"))
-            if digest:
-                item_lines.append(f"- {w.get('id')} (contenido en pantalla):\n{digest}")
-                continue
-            items = refs.items_line(w.get("id"))
-            if items:
-                item_lines.append(f"- {w.get('id')}: {items}")
-        except Exception:
-            pass
-    if item_lines:
-        lines.append("")
-        lines.append("items ahora (de lo ABIERTO — referéncialos por lenguaje natural en `item`, no inventes ids):")
-        lines += item_lines
-
-    if "agenda" in opened:
-        try:
-            from .agenda import data as agenda
-            ctx = agenda.coach_context()
-            if ctx:
-                lines += ["", "AGENDA (abierta) — contexto de coaching:", ctx]
-        except Exception:
-            pass
-    else:
-        # V2-668b — TODAY's agenda rides in the state with the card CLOSED too. Measured on the live re-run of the
-        # Hacienda incident (2026-09-11 11:33): `read_widget` was offered and the model still answered from a
-        # memory pill that said 11:00 over an agenda that said 11:30 — a recollection IN the prompt beats a tool
-        # call away. The block names the precedence; an empty day adds nothing (`today_line` returns "").
-        try:
-            from .agenda import data as agenda
-            today = agenda.today_line()
-            if today:
-                lines += ["", today]
-        except Exception:
-            pass
+    # Live items + coach: only for open widgets; TODAY's agenda with the card closed too (V2-668b) — `_live_lines`.
+    lines += _live_lines(cat, opened)
 
     # HIDDEN CATALOG (V2-085): the list above is a top-K, not the inventory. Saying this matters for two opposite
     # and real reasons: without the notice, the model denies capabilities that do exist when we merely did not list
@@ -366,3 +324,122 @@ def _registry_origin(w: dict) -> str:
         return _registry.origin_of(w)
     except Exception:  # noqa: BLE001 — an unreadable origin simply adds no mark
         return "builtin"
+
+
+def for_prompt_split(open_ids=None, recent_ids=None, query: str = "", stats: dict | None = None) -> tuple[str, str]:
+    """`for_prompt` cut in two for the provider's prefix cache (V2-889 F1): `(shelf, state)`.
+
+    The SHELF is byte-identical from turn to turn: the first `MAX_WIDGETS` of the catalogue in CATALOGUE order, each
+    row its mission, its custom mark and its action names — no «on screen», no «named», no items. Before, the
+    per-turn order (open → named → recent → fill) and the tags lived in the same rows, so naming a card or opening one
+    rewrote the middle of the system message and the provider re-read everything after it, tools included.
+
+    The STATE is what is true THIS turn, written as facts about rows the shelf already carries: which cards are on
+    screen, full screen, named in his sentence or used lately; a promoted card the shelf does not list (with its
+    mission and actions, so the model can still route to it); the slots of the card he names, his notes for a card
+    in play, an open card's usage, its live items, today's agenda. Same content as `for_prompt`, other place."""
+    from . import refs, selection  # noqa: F401 — refs read by `_live_lines`
+    opened = {str(w).strip().lower() for w in (open_ids or []) if str(w).strip()}
+    recent = [str(w).strip().lower() for w in (recent_ids or []) if str(w).strip() and str(w).strip().lower() not in opened]
+    try:
+        catalogue = [w for w in runtime.catalog() if w.get("id")]
+    except Exception:
+        catalogue = []
+    shelf_ws = catalogue[:selection.MAX_WIDGETS]
+    on_shelf = {str(w.get("id")).strip().lower() for w in shelf_ws}
+    sel_stats: dict = {}
+    picked = selection.candidates(query, open_ids, recent_ids, stats=sel_stats)
+    in_play = [p for p in picked if p.get("reason") != selection.FILL]
+
+    def _row(w) -> str:
+        wid = w.get("id")
+        purpose = _purpose(str(w.get("whenToUse") or w.get("title") or "").strip().replace("\n", " "))
+        tag = (" · custom (su copia de la de sistema)" if w.get("forked_from")
+               else " · custom (creada por él)" if _registry_origin(w) == "user" else "")
+        row = f"- {wid} — {purpose}{tag}"
+        acts = w.get("actions")
+        if isinstance(acts, dict) and acts:
+            row += "  · datos: " + ", ".join(_offered_action_names(acts))
+        return row
+
+    shelf = ["Widgets del canvas (id — para qué; acciones = data-ops que haces TÚ con widget_data, nunca escalas). "
+             "Para una orden de widget cuyo objetivo NO sea inequívoco, prefiere «EN PANTALLA», luego «usado hace "
+             "poco»:"] + [_row(w) for w in shelf_ws]
+    hidden = max(0, len(catalogue) - len(shelf_ws))
+    if hidden:
+        shelf += ["", f"(La lista es un EXTRACTO: hay {hidden} widgets más que no caben aquí. Si el operador nombra "
+                      "uno que no ves, NO digas que no existe ni inventes un id: llama a show_widget / widget_data "
+                      "con el NOMBRE tal y como él lo dijo — se resuelve contra el catálogo completo. Si ni así "
+                      "sabes cuál es, PREGÚNTALE.)"]
+
+    wrules: dict = {}
+    maxw = ""
+    try:
+        from memory import api as _memapi
+        maxw = str(((_memapi.state() or {}).get("maximized_widget") or "")).strip().lower()
+        import rules.notes as _rnotes
+        ids_in_play = {str(p["w"].get("id") or "").lower() for p in in_play}
+        wrules = {w: n for w, n in _rnotes.by_widget().items() if w in ids_in_play}
+    except Exception:
+        pass
+    state: list[str] = []
+    for p in in_play:
+        w = p["w"]
+        wid = w.get("id")
+        widl = str(wid or "").strip().lower()
+        tag = {"open": "◀ EN PANTALLA", "named": "lo nombra en su frase", "recent": "usado hace poco"}.get(
+            p.get("reason"), "")
+        if widl and widl == maxw:
+            tag += " · A PANTALLA COMPLETA ahora (para salir: fullscreen_widget, es un interruptor)"
+        state.append((_row(w) if widl not in on_shelf else f"- {wid}") + f"  {tag}")
+        acts = w.get("actions")
+        if p.get("reason") == "named" and widl not in opened and isinstance(acts, dict) and (
+                f := _payload_keys(acts, every=True)):
+            state.append(f"  [{wid}] campos: {f}")
+        for _rule in (wrules.get(widl) or [])[:3]:
+            state.append(f"  [{wid}] regla del operador: {_rule[:120]}")
+        if widl in opened:
+            state += _on_screen_lines(wid, w)
+    state += _live_lines([p["w"] for p in picked], opened)
+    if stats is not None:
+        stats.update(sel_stats)
+        stats["sz_widgets"] = sum(len(x) + 1 for x in shelf) + sum(len(x) + 1 for x in state)
+    head = ["Widgets en juego este turno (filas del catálogo de arriba):"] if in_play else []
+    return "\n".join(shelf), "\n".join(head + state).strip()
+
+
+def _live_lines(cat: list[dict], opened: set[str]) -> list[str]:
+    """Live items of the OPEN cards and the agenda's context — the per-turn tail `for_prompt` writes (V2-889)."""
+    from . import refs
+    lines: list[str] = []
+    item_lines: list[str] = []
+    for w in cat:
+        wid = str(w.get("id") or "").strip().lower()
+        if wid not in opened:
+            continue
+        try:
+            digest = refs.prompt_digest(w.get("id"))
+            if digest:
+                item_lines.append(f"- {w.get('id')} (contenido en pantalla):\n{digest}")
+                continue
+            items = refs.items_line(w.get("id"))
+            if items:
+                item_lines.append(f"- {w.get('id')}: {items}")
+        except Exception:
+            pass
+    if item_lines:
+        lines += ["", "items ahora (de lo ABIERTO — referéncialos por lenguaje natural en `item`, no inventes ids):"]
+        lines += item_lines
+    try:
+        from .agenda import data as agenda
+        if "agenda" in opened:
+            ctx = agenda.coach_context()
+            if ctx:
+                lines += ["", "AGENDA (abierta) — contexto de coaching:", ctx]
+        else:
+            today = agenda.today_line()
+            if today:
+                lines += ["", today]
+    except Exception:
+        pass
+    return lines

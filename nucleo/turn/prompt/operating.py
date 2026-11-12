@@ -59,7 +59,7 @@ def _flash_layer(open_ids: set[str], recent_ids: list[str] | None = None,
 
 
 def _flash_parts(open_ids: set[str], recent_ids: list[str] | None = None,
-                 turn_text: str = "", stats: dict | None = None) -> tuple[str, str, str]:
+                 turn_text: str = "", stats: dict | None = None, shelf: str | None = None) -> tuple[str, str, str]:
     """`(operating, resources, connectors)` — the RESOURCE LAYER (D), CONCISE (V2-027). Replaces the ~75-line `_FAST_RULES`: essential VOICE
     rules fit in 3–4 sentences; "how each tool is used" does NOT go here (it lives in `router.TOOLS`, the single
     source per tool). RESOURCES (widgets/web/browser) are data-driven, not hard-coded prose.
@@ -269,7 +269,8 @@ def _flash_parts(open_ids: set[str], recent_ids: list[str] | None = None,
         "pedido), es una acción del MUNDO → escalate_to_slowbrain (el widget/agenda es solo su espejo), no un simple "
         "cambio de datos local.\n"
     )
-    res = "── QUÉ TIENES (recursos) ──\n" + _widgets(open_ids, recent_ids, query=turn_text, stats=stats) + (
+    res = "── QUÉ TIENES (recursos) ──\n" + (_widgets(open_ids, recent_ids, query=turn_text, stats=stats)
+                                          if shelf is None else shelf) + (   # V2-889: the caller's fixed shelf
         "\n\nweb_search (tool): un DATO factual y actual del mundo (resultado, tiempo, precio, noticia); "
         "NO para navegar tiendas/marketplaces. Un dato ligado a un LUGAR (el tiempo, tráfico…) sin ciudad "
         # V2-127 — the clause ORDERED use of "the operator's city" without allowing for STATE to omit it. In

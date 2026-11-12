@@ -122,11 +122,12 @@ async def compose_the_prompt(*, brain, emit, operator_text, self, text) -> dict:
                  extra={"layer": "slow", "mem_ms": timings.get("mem_query_ms")})
     except Exception:
         pass
-    messages = [{"role": "system", "content": system}]
+    # V2-889: cached prefix first, THIS turn's state last (its own system message); `system` stays whole for readers
+    messages = [{"role": "system", "content": (_ss := _prompt_mod.split_state(system))[0]}]
     _dialog.drain_spoken(brain._window)      # what we said on our own since the last turn (a list's end, a report)
     from nucleo.flash import prior_line as _prior_line
     _prior_line.snapshot(brain, brain._window)   # the line this turn answers, frozen before the reply streams
     messages += _dialog.prune_window(brain._window)[-_p._WINDOW_MAX:]   # colapsa turnos gemelos (anti-degeneración)
-    messages.append({"role": "user", "content": text})
+    messages += [{"role": "system", "content": _ss[1]}] * bool(_ss[1]) + [{"role": "user", "content": text}]
     _out = locals()
     return {k: _out[k] for k in ('FastClient', '_dialog', '_escalate_mod', '_frontend', '_prompt_mod', '_router', 'messages', 'spec', 'system', 'timings') if k in _out}

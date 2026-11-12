@@ -107,6 +107,7 @@ BLOCKS: tuple[tuple[str, str], ...] = (
     ("language", "i18n.langs"),
     ("operating", "NONE · hard-coded prose"),
     ("resources", "widgets.brief + tool prose"),
+    ("widgets_now", "widgets.brief, this turn's rows"),
     ("connectors", "catalogs.connector_facts"),
     ("memory", "memory.compose_state, cached"),
     ("recent", "recall_heuristics, episodic"),
@@ -119,6 +120,20 @@ BLOCKS: tuple[tuple[str, str], ...] = (
     ("live", "live_state: canvas, clock, ledger"),
     ("close", "NONE · the closing line"),
 )
+
+
+#: Where the byte-stable prefix ends and THIS turn's state begins (V2-889 F1). Everything before it is identical
+#: from turn to turn (the provider caches it, tools included, since they follow the system message); everything
+#: after it is sent as a second system message just before his line (`split_state`). Measured 2026-11-12 on the
+#: fast model: the clock inside the system message → 51 % of the prompt cached; the same facts in a system message
+#: before his line → 98-99 %, a mid-conversation system message is not hoisted by the template.
+STATE_HEAD = "\n\n── ESTADO DE ESTE TURNO (lo que es verdad ahora; se reescribe en cada turno) ──"
+
+
+def split_state(system: str) -> tuple[str, str]:
+    """`(stable_prefix, state)` of a composed voice prompt; `state` is "" for a prompt with no state head."""
+    i = system.find(STATE_HEAD)
+    return (system, "") if i < 0 else (system[:i], system[i + 2:])
 
 
 def build_flash_system(directive: str = "", recall_query: str = "", recall_block: str = "",
@@ -144,7 +159,9 @@ def build_flash_system(directive: str = "", recall_query: str = "", recall_block
         recall_block, used_ids = compose_recall(recall_query, timings=timings)
     _tb = _t.perf_counter()
     _wstats: dict = {}       # V2-085: the widget top-K's selection breakdown, for /debug
-    ops, res, conn = _flash_parts(_open_widget_ids(), _recent_widget_ids(), turn_text=turn_text, stats=_wstats)
+    from widgets.brief import for_prompt_split
+    shelf, w_now = for_prompt_split(_open_widget_ids(), _recent_widget_ids(), query=turn_text, stats=_wstats)
+    ops, res, conn = _flash_parts(_open_widget_ids(), _recent_widget_ids(), turn_text=turn_text, shelf=shelf)
     if timings is not None:
         timings["briefs_ms"] = round((_t.perf_counter() - _tb) * 1000, 1)
         for _k, _v in _wstats.items():
@@ -155,7 +172,7 @@ def build_flash_system(directive: str = "", recall_query: str = "", recall_block
         timings["live_ms"] = round((_t.perf_counter() - _tl) * 1000, 1)
     sep = lambda text: ("\n\n" + text) if text else ""   # noqa: E731
     parts = (("language", _lang_lock()), ("operating", "\n\n" + ops), ("resources", "\n\n" + res),
-             ("connectors", sep(conn)), ("memory", sep(memory_block)), ("recent", sep(recent_block)),
+             ("widgets_now", STATE_HEAD + sep(w_now)), ("connectors", sep(conn)), ("memory", sep(memory_block)), ("recent", sep(recent_block)),
              ("recall", sep(recall_block)), ("people", _people_block(turn_text)), ("rules", _rules_prompt.voice_block()),
              ("directive", _directive_block(directive)), ("packs", _packs.compose(turn_text)),
              ("proactive", sep(proactive())), ("live", "\n\n── AHORA MISMO ──\n" + live),

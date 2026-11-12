@@ -12,6 +12,8 @@ keeps its reply: what it did is real and the window must say so.
 """
 from __future__ import annotations
 
+from loguru import logger
+
 
 def reply_unheard(superseded, acted: bool, *, brain, text: str, spoken_text: str, emit) -> bool:
     """True when the reply must stay out of the window. `superseded` is the stream's check (None on a channel with
@@ -21,13 +23,14 @@ def reply_unheard(superseded, acted: bool, *, brain, text: str, spoken_text: str
     try:
         if not superseded():
             return False
-    except Exception:  # noqa: BLE001 — no signal is the old behaviour: the reply stays
+    except Exception as e:  # noqa: BLE001 — no signal is the old behaviour: the reply stays
+        logger.debug(f"resume_cut: superseded check failed, the reply stays: {e!r}")
         return False
     from nucleo.input import stt as _acc
     _acc.unanswered_by(brain, text)
     try:
         emit("brain", "🧩 fragmento descartado — la frase seguía", text=str(text or "")[:200], role="system",
              extra={"cat": "flash", "phase": "close", "spent_model": True, "dropped_reply": str(spoken_text)[:200]})
-    except Exception:  # noqa: BLE001 — the trace is best-effort; the window is not
-        pass
+    except Exception as e:  # noqa: BLE001 — the trace is best-effort; the window is not
+        logger.debug(f"resume_cut: the trace was not emitted: {e!r}")
     return True
