@@ -35,7 +35,7 @@ under another name with the same effect.
 """
 from __future__ import annotations
 
-from nucleo.request import base, event as _emit, model, note
+from nucleo.request import base, ends_asking, event as _emit, model, note
 
 #: The retained kind on the row's `ask` artefact: his answer fills a payload key of THIS act (`inline_ask.rerun`).
 KIND = "act"
@@ -60,12 +60,8 @@ def _ran(ops) -> list[tuple[str, str]]:
         card = base(w)
         if card and (card, str(a or "")) not in out:
             out.append((card, str(a or "")))
-    try:
-        from nucleo import canvas_focus
-        out += [(base(c), str(a)) for c, _k, a in canvas_focus.this_turn_acts() if (base(c), str(a)) not in out]
-    except Exception as e:  # noqa: BLE001
-        note(e)
-    return out
+    from nucleo import canvas_focus
+    return out + [(base(c), str(a)) for c, _k, a in canvas_focus.this_turn_acts() if (base(c), str(a)) not in out]
 
 
 def _same_effect(card: str, act: str, other: str) -> bool:
@@ -114,7 +110,6 @@ def open_the_order(brief, *, said: str, reply: str, ops=(), model_calls=(), esca
     act}` — `how` ∈ run · asked · worker · completed — or {} when the order was served, doubted, or is a question's.
     Never raises; never runs a model."""
     try:
-        from nucleo.request.send_task_words import ends_asking
         esc, wa = escalate_req or {}, worker_acted or {}
         text = " ".join(str(said or "").split())
         if not text or esc.get("send_task") or esc.get("v") is not None or wa.get("v") or ends_asking(reply):
@@ -148,12 +143,8 @@ def _leaving(brief, wid: str, act: str, said: str, reply: str, emit) -> dict:
     """An act that leaves: the send task from his words (run, or one slot asked on its row), else a worker on its row."""
     from nucleo.request import ask_outside_door, send_task_words
     from nucleo.turn import brief as _tb
-    reading = None
-    try:
-        reading = _tb.carried(brief) or None
-    except Exception as e:  # noqa: BLE001
-        note(e)
-    uid, how = send_task_words.from_verdict(wid, act, said, reply, reading=reading, emit=emit, on_missing="ask")
+    uid, how = send_task_words.from_verdict(wid, act, said, reply, reading=_tb.carried(brief) or None, emit=emit,
+                                            on_missing="ask")
     if uid:
         return {"row": uid, "how": how, "widget": wid, "act": act}
     tid = ask_outside_door.to_message_task(wid, act, said, src="served_elsewhere", emit=emit)
