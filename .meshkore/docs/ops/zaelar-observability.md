@@ -408,6 +408,13 @@ kept for the FlashBrain's «PROCESOS DE FONDO» prompt, but does not duplicate t
   dropped, never queued behind it (the ear never waits); the count is `/voice/status` → `link.dropped`. A memory read
   that left a LOCAL embedding over `embed_budget_ms` says `embedding local fuera de presupuesto` (`reason:
   embed_over_budget`, family `memory`).
+- **`whisper`** (family `flash`, V2-889 F2) — the whisperer between turns (`nucleo/turn/whisper/`), in shadow: per
+  closed turn a **`gate`** event (`score`, `fired`, `reasons`, `vetoed`, `thread_id`, `why_not`: below · vetoed ·
+  in_flight · unchanged · no_route, `mode`); when it fired, a **`slot`** event (`outcome`: ok · empty · unparseable ·
+  no_answer · error, `latency_ms`, the typed `slot`, what it would render — `rendered`, `rendered_chars` — and the call's
+  `usage`); and on the NEXT closed turn a **`use`** event (`verdict`: fresh · stale · expired · late · empty,
+  `landed_before_next_turn`, `age_s`). The same close publishes `turn.closed` on the bus (`turn_id`, `started_at`,
+  `closed_at`). Nothing else is written: the slot reaches no prompt yet.
 - **`actionmap`** (family `flash`) — the deterministic layer in FRONT of the FlashBrain (`nucleo/actionmap/`, doc
   `.meshkore/docs/modules/zaelar-action-map.md`). It answers **which layer resolved this turn**, so the viewer never
   attributes a map-served turn to the model. Labels: **`⚡ action map: direct action (no model)`**

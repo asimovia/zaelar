@@ -762,6 +762,13 @@ Flash keeps the conversation; the row is what both brains read.
   the voice provider and the typed channel are its adapters) makes ONE main model call; a tool the model called is said
   by its own round inside the turn, and nothing after the stream re-runs the model over a reply already given — an
   unreadable sentence is answered with one line that asks him. — since 2026-11-05 · nodes 2.1191, 3.175.
+- **CRIT-T7b · A whisper is a typed slot filled BETWEEN turns, never a voice.** The whisperer (`nucleo/turn/whisper/`)
+  starts only off `turn.closed` (the last line of `pipeline_close.close_the_turn`), on its own thread; a deterministic gate
+  over the verdicts the turn already paid for decides whether it is worth one reasoning call (`whisperer` row of the
+  model table, metered); its output is a slot with declared, sourced fields and no instruction field, judged against the
+  next turn (fresh · stale · expired · late) and dropped past 90 s. In `shadow` (the default; `off` available,
+  `ZAELAR_WHISPER`) it writes nothing but `whisper` events — no prompt, memory, task, brief or reply. — since 2026-11-12 ·
+  nodes 2.1721, 2.1191.
 - **CRIT-T8 · A worker gets its method and the headlines, never the whole catalogue.** The brief is composed in the
   session's language as a stable prefix (the shell's rules, the playbook's nine checkpoints with `done_when`, one
   headline per family of the catalogue) followed by what changes per task, under a measured ceiling; a family's full
