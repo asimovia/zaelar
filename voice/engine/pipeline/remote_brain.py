@@ -63,7 +63,7 @@ def last_user_text(chat_ctx) -> str:
     return ""
 
 
-def turn_payload(chat_ctx) -> dict:
+def turn_payload(chat_ctx, lost: str = "") -> dict:
     speech_id = ""
     try:
         from livekit.agents.voice.agent_activity import _SpeechHandleContextVar
@@ -71,8 +71,8 @@ def turn_payload(chat_ctx) -> dict:
     except Exception as _swallowed:  # noqa: BLE001
         logger.debug(f"{__name__}: {_swallowed!r}")   # said, never silent (the ratchet)
     out = {"text": last_user_text(chat_ctx), "speech_id": speech_id, "origin": CHILD_ORIGIN.get()}
-    if _LOST["text"] and _LOST["text"] != out["text"]:
-        out["prior"] = _LOST["text"]              # E0: his line the lost turn never delivered — the body reads it first
+    if lost and lost != out["text"]:
+        out["prior"] = lost                       # E0: his line the lost turn never delivered — the body reads it first
     return out
 
 
@@ -104,16 +104,18 @@ def _line(key: str) -> str:
 
 
 RETRY_S = 1.0           # E0: a body that cannot be reached is asked ONCE more, a second later — never a storm
-#: His line a lost turn could not deliver (E0): it rides with the next turn as `prior`, so the body still reads it.
-_LOST: dict = {"text": ""}
+#: His line a lost turn could not deliver (E0) is kept ON the session that lost it — its agent (or its LLM, when the
+#: SDK asks the LLM directly) — under this name: it rides THAT session's next turn as `prior` and ends with it.
+LOST = "zaelar_lost_line"
 
 
 async def remote_llm_node(agent, chat_ctx, tools, model_settings):
     """`Agent.llm_node` in the voice process: the reply's text, read from the body as it is written.
 
     A body that cannot be reached is tried once more after `RETRY_S`; still unreachable with nothing said, he hears
-    the slow line and his words are kept for the next turn (`_LOST`). A turn the body itself failed asks him again."""
-    payload = turn_payload(chat_ctx)
+    the slow line and his words are kept for this session's next turn (`LOST`, on `agent`). A turn the body itself
+    failed asks him again."""
+    payload = turn_payload(chat_ctx, getattr(agent, LOST, ""))
     link = body_link.get()
     t0, said, heard = time.monotonic(), False, False
     for attempt in (0, 1):
@@ -123,7 +125,7 @@ async def remote_llm_node(agent, chat_ctx, tools, model_settings):
             async for piece, is_text in _pieces(agen):
                 said, heard = said or is_text, True
                 yield piece
-            _LOST["text"] = ""
+            getattr(agent, "__dict__", {})[LOST] = ""      # a caller that names no session keeps nothing
             return
         except RuntimeError as e:
             logger.warning(f"remote brain: turn failed after {time.monotonic() - t0:.2f}s — {e!r}")
@@ -140,7 +142,7 @@ async def remote_llm_node(agent, chat_ctx, tools, model_settings):
         finally:
             await agen.aclose()
     if not said:
-        _LOST["text"] = str(payload.get("text") or "")
+        getattr(agent, "__dict__", {})[LOST] = str(payload.get("text") or "")
         if (line := _line("brain_slow")):     # «it's running slow», never «say that again»: his words were heard,
             yield line                            # it is the host that did not run (E0)
 
@@ -189,7 +191,7 @@ class RemoteBrainLLM(llm.LLM):
 
 class _RemoteStream(llm.LLMStream):
     async def _run(self) -> None:
-        async for piece in remote_llm_node(None, self._chat_ctx, [], None):
+        async for piece in remote_llm_node(self._llm, self._chat_ctx, [], None):
             if isinstance(piece, str):
                 self._event_ch.send_nowait(ChatChunk(id=utils.shortuuid(),
                                                      delta=ChoiceDelta(role="assistant", content=piece)))

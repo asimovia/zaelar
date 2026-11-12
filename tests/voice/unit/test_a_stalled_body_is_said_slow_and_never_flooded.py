@@ -10,11 +10,13 @@ transcripts, and told him «say that again?» for words it had heard perfectly. 
   (d) the ORDER is the request's own: a turn (and the kickoff) TAKES the facts still queued before it and carries
       them, and the body replays them before it runs the turn. Until 2026-11-12 the turn waited 0.2 s for a sender
       that, after one failure, paces itself a full second: the body read the turn before the final transcript that
-      came before it. A batch already in the sender's hands is waited for its own POST, and said when overtaken.
+      came before it. A batch already in the sender's hands is waited for its own POST, and said when overtaken;
+  (e) his line a lost turn could not deliver belongs to the SESSION that lost it (kept on its agent): it rides that
+      session's next turn and no other's — it was one holder for the whole process, read by any session, any time.
 
 Disarms (each seen red): `"brain_slow"` → `"say_again"` in `remote_llm_node` → (a); drop `await self._pace()` → (b);
 `RETRIED = ("session",)` → (c); `ahead = []` in `remote_llm_node`, `_pace()` after the batch left the queue, no
-`handle_batch` in `turn_lines` → (d).
+`handle_batch` in `turn_lines` → (d); the lost line written on the module instead of on `agent` → (e).
 """
 from __future__ import annotations
 
@@ -52,37 +54,57 @@ class _Down:
 @pytest.fixture
 def lines(monkeypatch):
     monkeypatch.setattr(remote_brain, "RETRY_S", 0.01)
-    monkeypatch.setitem(remote_brain._LOST, "text", "")
     monkeypatch.setattr(remote_brain, "_line", {"say_again": "REPEAT?", "brain_slow": "SLOW"}.get)
     monkeypatch.setattr(remote_brain, "last_user_text", lambda ctx: ctx)
     return None
 
 
-def _node(link, text):
+def _node(link, text, session=None):
     async def _run():
-        return [x async for x in remote_brain.remote_llm_node(None, text, [], None)]
+        return [x async for x in remote_brain.remote_llm_node(session, text, [], None)]
     return asyncio.run(_run())
 
 
 def test_an_unreachable_body_is_tried_once_more_then_said_slow_and_his_line_kept(lines, monkeypatch):
     final = {"k": "transcript", "text": "hola", "final": True}
-    link = _Down(queued=[final])
+    link, session = _Down(queued=[final]), SimpleNamespace()
     monkeypatch.setattr(body_link, "get", lambda: link)
-    assert _node(link, "hola") == ["SLOW"]
+    assert _node(link, "hola", session) == ["SLOW"]
     assert link.calls == 2, "one retry, never a storm"
     assert link.payload["events"] == [final] and link.returned == [[final], [final]] and link.queued == [final], \
         "the facts a turn carried and the body never read go back to the front of the line, each time"
-    assert remote_brain._LOST["text"] == "hola"
-    assert remote_brain.turn_payload("y qué tal")["prior"] == "hola", "his lost line rides with the next turn"
-    assert "prior" not in remote_brain.turn_payload("hola"), "the same line is not said twice"
+    assert getattr(session, remote_brain.LOST) == "hola"
+    assert remote_brain.turn_payload("y qué tal", "hola")["prior"] == "hola", "his lost line rides with the next turn"
+    assert "prior" not in remote_brain.turn_payload("hola", "hola"), "the same line is not said twice"
 
 
 def test_a_body_back_on_the_second_try_answers_and_forgets_the_lost_line(lines, monkeypatch):
     link = _Down([{"t": "c", "text": "Cuatro."}, {"t": "end"}], fail_times=1)
     monkeypatch.setattr(body_link, "get", lambda: link)
-    remote_brain._LOST["text"] = "hola"
-    assert _node(link, "¿dos más dos?") == ["Cuatro."] and link.calls == 2
-    assert remote_brain._LOST["text"] == ""
+    session = SimpleNamespace(**{remote_brain.LOST: "hola"})
+    assert _node(link, "¿dos más dos?", session) == ["Cuatro."] and link.calls == 2
+    assert link.payload["prior"] == "hola" and getattr(session, remote_brain.LOST) == ""
+
+
+def test_a_lost_line_rides_the_next_turn_of_its_own_session_and_no_other(lines, monkeypatch):
+    """(e) session A loses «hola»; session B (another room, or the next conversation) asks something: B's turn must
+    not carry A's line as his words. A's own next turn does, and a caller that names no session keeps nothing."""
+    down, up = _Down(), _Down([{"t": "c", "text": "Vale."}, {"t": "end"}], fail_times=0)
+    a, b = SimpleNamespace(), SimpleNamespace()
+    monkeypatch.setattr(body_link, "get", lambda: down)
+    assert _node(down, "hola", a) == ["SLOW"] and _node(down, "nobody's line", None) == ["SLOW"]
+    monkeypatch.setattr(body_link, "get", lambda: up)
+    assert _node(up, "what time is it", b) == ["Vale."] and "prior" not in up.payload, up.payload
+    assert _node(up, "what time is it", None) == ["Vale."] and "prior" not in up.payload, up.payload
+    assert _node(up, "y qué tal", a) == ["Vale."] and up.payload["prior"] == "hola"
+    assert _node(up, "¿sigues ahí?", a) == ["Vale."] and "prior" not in up.payload, "delivered once"
+
+    class _Llm:
+        pass
+    stream = SimpleNamespace(_llm=_Llm(), _chat_ctx="hola", _event_ch=SimpleNamespace(send_nowait=lambda c: None))
+    monkeypatch.setattr(body_link, "get", lambda: down)
+    asyncio.run(remote_brain._RemoteStream._run(stream))
+    assert getattr(stream._llm, remote_brain.LOST) == "hola", "the SDK's direct path keeps it on that session's LLM"
 
 
 def test_a_turn_the_body_itself_failed_still_asks_him_again(lines, monkeypatch):
