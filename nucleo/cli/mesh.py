@@ -40,7 +40,8 @@ from nucleo.cli import mesh_converse as _converse  # noqa: E402 — the forms of
 
 _USAGE = ['hbmesh find "<errand>"                       # who can serve it, with each agent\'s skills (asks nobody)',
           'hbmesh serve "<errand>" [--prompt "…"] [--field k=v] [--agent <agent_id>]   # find AND ask; '
-          '--agent asks THAT one of the agents `find` returned first', *_converse.USAGE]
+          '--agent asks THAT one of the agents `find` returned first', *_converse.USAGE,
+          _converse.REPORT_USAGE]
 _HINT = ("the errand is ONE quoted argument, and nothing but the flags shown follows it (no bare words after the "
          "errand). Copy a form above.")
 
@@ -84,7 +85,7 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps({"ok": False, "reason": f"la red no está disponible: {e}"}, ensure_ascii=False))
         return 0
 
-    if a.cmd in ("call", "reply"):
+    if a.cmd in ("call", "reply", "report"):
         from nucleo import untrusted as _u
         res = getattr(_converse, a.cmd)(a)
         print(json.dumps(_u.fence_tree(res) if isinstance(res, dict) else res, ensure_ascii=False, default=str))
@@ -92,8 +93,6 @@ def main(argv: list[str] | None = None) -> int:
 
     if a.cmd == "find":
         res = mesh_agents.find(a.errand, limit=a.limit)
-        from nucleo import mesh_call
-        mesh_call.remember_seen(res.get("agents") or [])
         skills = _converse.skills_for(res.get("agents") or [])
         # Only what the worker needs to decide, not the Oracle's full record: an agent id, where it serves and
         # what it says it does. Dumping the raw result would put ~20 scoring fields into the worker's context

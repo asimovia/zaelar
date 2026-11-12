@@ -18,6 +18,7 @@ import sys
 #: The two forms, as the bridge's usage prints them (`nucleo/cli/mesh._USAGE`).
 USAGE = ('hbmesh call <agent_id> <skill> --json @request.json [--errand "<his words>"]   # ONE declared skill',
          'hbmesh reply <thread> --answer <question id>=<n> [--value "<his words>"] [--cancel]   # his answers back')
+REPORT_USAGE = 'hbmesh report <thread> <outcome>   # how a step the agent handed back ended (one of its `report_as`)'
 
 
 def _body(raw: str) -> tuple[dict | None, str]:
@@ -73,6 +74,11 @@ def reply(a) -> dict:
     return mesh_call.reply(a.thread, answers, cancel=bool(a.cancel))
 
 
+def report(a) -> dict:
+    from nucleo import mesh_handoff
+    return mesh_handoff.report(a.thread, a.outcome)
+
+
 def add_parsers(sub) -> None:
     p = sub.add_parser("call", help="put a request to ONE declared skill of an agent `find` returned")
     p.add_argument("agent_id")
@@ -84,6 +90,9 @@ def add_parsers(sub) -> None:
     r.add_argument("--answer", action="append", default=[], metavar="QID=N", help="repeatable")
     r.add_argument("--value", action="append", default=[], help="his words for a choice with `needs_value`, in order")
     r.add_argument("--cancel", action="store_true", help="withdraw the request instead")
+    o = sub.add_parser("report", help="how a step the agent handed back ended")
+    o.add_argument("thread")
+    o.add_argument("outcome")
 
 
 def skills_for(agents: list[dict]) -> dict:

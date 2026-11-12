@@ -1,28 +1,20 @@
 """nucleo/mesh_dialog.py — when an agent of the network ASKS its user something, and his answer goes back to it.
 
-A live agent is not always a vending machine. Asked to book a table it may answer with a question instead of a
-result: «if 21:00 is taken, which other time?», «you are eight: one table or two?», «the venue asks for a 20 € deposit
-— accept?». Before this module every one of those was LOST: the reader of an error body looked for `need`/`error`/
-`detail` keys, an agent's `questions` list matched none of them, and the worker was told «the agents did not answer».
+A live agent may answer a request with a question instead of a result («21:00 is taken: which other time?», «eight of
+you: one table or two?»). Before this module every one of those was LOST: the error reader looked for `need`/`error`
+keys, an agent's `questions` list matched none, and the worker was told «the agents did not answer». The CLASS, for
+any agent (nothing here names one):
 
-This is the CLASS, not a booking feature — nothing here knows restaurants, and no agent is named:
+  · **Reading** (`questions_in`) is by SHAPE: a `questions` list (id + text, at the top or under `result`) or an A2A
+    task in `input-required`. Status words are never read.
+  · **Answering** (`apply`) is the agent's own contract: a choice's `set` (dotted paths) rewrites the request, sent
+    again whole; a question's `field` takes the value; else `{id, choice}` goes to the job that asked.
+  · **His standing answers** (`remember`/`prefill`): a fully specified choice that sets fields is HIS preference, kept
+    as his rules row (personal layer, never the genome) and applied only to the same question in the same shape. A
+    question about one job («accept 15:15?») is never kept.
+  · **Binding** is by IDENTITY: one THREAD (`mt_…`) per exchange, named by his answer. Never a confidence floor.
 
-  · **Reading** (`questions_in`) is STRUCTURAL: an answer that carries a list of `questions`, each with an id and a
-    text (at the top or under `result`), or an A2A task in state `input-required`, is the agent asking its user.
-    Status words are never read: what makes it a question is its shape.
-  · **Answering** (`apply`) is the agent's own contract: a choice that declares the fields it `set`s (dotted paths)
-    is written into the request, which is sent again whole; a question with a `field` takes the choice's value
-    there; anything else is an answer `{id, choice}` to the job that asked (`mesh_call.reply`).
-  · **His standing answers** (`remember`/`prefill`): a fully specified choice of a question that sets fields IS a
-    preference («any table», «±15 min») — it is kept as HIS row of the rules table (personal layer, never in the
-    genome), keyed by agent, skill and question, and applied the next time that agent asks the same question in the
-    same shape. A question about one job («accept 15:15?») is never kept: it is about that day, not about him.
-  · **Binding** is by IDENTITY: every open exchange is a THREAD (`mt_…`) that holds the agent, the skill, the request
-    and the questions; his answer names the thread (and, for a job, the job id). Never a confidence floor, never
-    «the latest question».
-
-What an agent writes is a stranger's text: it is fenced by the caller before a worker reads it, and only a choice's
-LABEL ever reaches his rules row.
+What an agent writes is a stranger's text: fenced by the caller; only a choice's LABEL reaches his rules row.
 """
 from __future__ import annotations
 
@@ -69,7 +61,7 @@ def _choice(c, i: int) -> dict | None:
 def _question(q, i: int) -> dict | None:
     if not isinstance(q, dict):
         return None
-    text = _text(q.get("text") or q.get("question") or q.get("prompt"), _TEXT_MAX)
+    text = _text(q.get("text") or q.get("ask") or q.get("question") or q.get("prompt"), _TEXT_MAX)
     qid = str(q.get("id") or q.get("field") or f"q{i + 1}").strip()
     if not text:
         return None
@@ -155,14 +147,19 @@ def apply(body: dict, question: dict, n: int | None, value=None) -> tuple[dict |
         for path, v in fields.items():
             set_path(out, path, v)
         return out, None, ""
-    picked = (choice or {}).get("value", (choice or {}).get("id", (choice or {}).get("label"))) if choice else value
-    if picked in (None, ""):
+    if choice is None and value in (None, ""):
         return None, None, f"question {question.get('id')} needs a choice or a value"
-    if question.get("field"):
+    if question.get("field"):                       # the field takes the choice's VALUE (else its id, else his words)
         out = copy.deepcopy(body or {})
-        set_path(out, question["field"], picked)
+        set_path(out, question["field"], next(v for v in ((choice or {}).get("value"), (choice or {}).get("id"),
+                                                         (choice or {}).get("label"), value) if v not in (None, "")))
         return out, None, ""
-    return None, {"id": question.get("id"), ("choice" if choice else "value"): picked}, ""
+    answer = {"id": question.get("id")}             # a job is answered by the choice's ID; his words ride as `value`
+    if choice:
+        answer["choice"] = choice.get("id") or choice.get("label")
+    if value not in (None, ""):
+        answer["value"] = value
+    return None, answer, ""
 
 
 # ── his standing answers (the personal layer: HIS rules rows, never the genome) ─────────────────────────────
@@ -230,13 +227,9 @@ def prefill(agent_id: str, skill_id: str, questions: list[dict], body: dict) -> 
 
 # ── threads: one open exchange with one agent, bound by its id ───────────────────────────────────────────────
 def _threads() -> dict:
-    try:
-        from memory import api as memory
-        got = memory.kv_get(_KV_THREADS, {}) or {}
-        return got if isinstance(got, dict) else {}
-    except Exception as e:  # noqa: BLE001
-        _note(e)
-        return {}
+    from memory import api as memory                 # the KV doors never raise (an unreadable row is the default)
+    got = memory.kv_get(_KV_THREADS, {}) or {}
+    return got if isinstance(got, dict) else {}
 
 
 def save(thread: dict) -> str:
@@ -248,11 +241,8 @@ def save(thread: dict) -> str:
     all_ = {k: v for k, v in _threads().items()
             if isinstance(v, dict) and now - float(v.get("updated") or 0) < _THREAD_TTL_S}
     all_[tid] = thread
-    try:
-        from memory import api as memory
-        memory.kv_set(_KV_THREADS, all_)
-    except Exception as e:  # noqa: BLE001
-        _note(e)
+    from memory import api as memory
+    memory.kv_set(_KV_THREADS, all_)
     return tid
 
 
@@ -270,7 +260,11 @@ def with_job(job_id: str) -> dict | None:
     return None
 
 
+def all_threads() -> list[dict]:
+    """Every live thread (copies)."""
+    return [dict(t) for t in _threads().values() if isinstance(t, dict)]
+
+
 def open_jobs() -> list[dict]:
     """Every thread whose job has not ended — what the pulse's sweep advances."""
-    return [dict(t) for t in _threads().values()
-            if isinstance(t, dict) and (t.get("job") or {}).get("id") and not t["job"].get("done")]
+    return [t for t in all_threads() if (t.get("job") or {}).get("id") and not t["job"].get("done")]

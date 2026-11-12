@@ -29,9 +29,10 @@ MANDATE = {"status": "NEEDS_MANDATE", "questions": [
     {"id": "seating.any", "text": "¿Hay alguna mesa imprescindible?",
      "choices": [{"label": "Cualquier mesa vale", "set": {"seating.any": True}},
                  {"label": "Sí (indica cuáles)", "set": {"seating.must": None}, "needsValue": "seating"}]}]}
-JOB_ASKS = {"jobId": "j1", "status": "NEEDS_INPUT",
-            "result": {"questions": [{"id": "q1", "text": "No hay a las 21:00; ¿os vale a las 21:30?",
-                                      "choices": ["accept", "decline"]}], "answerBy": "2026-11-27T19:00:00Z"}}
+JOB_ASKS = {"jobId": "j1", "status": "NEEDS_INPUT", "result": {"answerBy": "2026-11-27T19:00:00Z", "questions": [
+    {"id": "q1", "topic": "time", "required": True, "restaurantSaid": "…", "freeText": False, "offers": ["21:30"],
+     "choices": [{"id": "accept", "label": "Sí, a las 21:30", "value": "21:30"}, {"id": "decline", "label": "No, déjalo"}],
+     "ask": "No hay mesa a las 21:00. Ofrecen las 21:30. ¿La aceptas?"}]}}   # the agent's own example, 2026-11-12
 BODY = {"restaurant": {"name": "Casa"}, "date": "2026-11-27", "time": "21:00", "party_size": 2}
 
 
@@ -52,7 +53,8 @@ def test_a_question_is_read_by_its_shape_wherever_it_sits():
     assert [q["id"] for q in qs] == ["when.exact", "seating.any"]
     assert qs[0]["choices"][2]["needs_value"] == "time" and qs[0]["suggestion"].startswith("±15")
     job = d.questions_in(JOB_ASKS)
-    assert job[0]["id"] == "q1" and [c["label"] for c in job[0]["choices"]] == ["accept", "decline"]
+    assert job[0]["id"] == "q1" and "21:30" in job[0]["text"]
+    assert [c["label"] for c in job[0]["choices"]] == ["Sí, a las 21:30", "No, déjalo"]
     a2a = d.questions_in({"id": "t1", "status": {"state": "input-required",
                                                  "message": {"parts": [{"text": "¿Para cuántos?"}]}}})
     assert a2a and a2a[0]["free_text"] and "cuántos" in a2a[0]["text"]
@@ -69,7 +71,7 @@ def test_his_choice_is_written_where_the_agent_said():
     body, _j, _w = d.apply(BODY, q, 2, ["20:00", "22:00"])
     assert body["when"] == {"earliest": "20:00", "latest": "22:00"}
     _b, job, _w = d.apply({}, d.questions_in(JOB_ASKS)[0], 0)
-    assert job == {"id": "q1", "choice": "accept"}
+    assert job == {"id": "q1", "choice": "accept"}                         # the choice's ID, never its value
 
 
 def test_a_standing_answer_is_his_and_applies_only_to_the_same_shape(db):
