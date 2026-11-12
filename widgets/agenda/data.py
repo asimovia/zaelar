@@ -126,7 +126,7 @@ def view_data(q: str = "") -> dict:
 # The two views the brain reads of this card — WHAT CAN BE NAMED and WHAT IS INSIDE — live in
 # `index.py` and must agree on what comes next (V2-707 F0). Re-exported: `refs` reads them here.
 from .index import prompt_digest, ref_index  # noqa: F401,E402 — re-export
-from .edit import undo_of  # noqa: F401,E402 — the card's undo for a correction onto another row
+from .edit import correction_owed, undo_of  # noqa: F401,E402 — the card's undo, and what a correction onto another row still owes
 
 
 # A QUESTION is answered by SEARCHING, not by the summary below (`query.py`, V2-704).

@@ -291,8 +291,8 @@ async def after_acts(tasks, said: str, send, speech, timeout: float = WAIT_S, *,
     what the data-ops ended in, after `said`. `model_calls`: what the model asked for this turn, verbatim; `quiet`:
     no door of the turn ran anything; `held`: an act waits for his yes or the turn asks which row (`unserved`)."""
     from nucleo.turn import acts_asked as _acts_asked, reply_receipts as _receipts, unserved as _unserved
-    outcomes = (taken() + _notice_moved(said) + _errands_that_died(said)
-                + (await of_ops(tasks, timeout) if tasks else [])
+    outcomes = (await __import__("nucleo.acts.correction_undo", fromlist=["x"]).complete(tasks)   # first: joins `tasks`
+                + taken() + _notice_moved(said) + _errands_that_died(said) + (await of_ops(tasks, timeout) if tasks else [])
                 + await _receipts.player(said) + await _receipts.blocked_channel()
                 + await _acts_asked.owed(tasks)    # V2-854 F4: several asked, one done — the rest is said undone
                 + _unserved.outcomes(tasks, model_calls, said=said, quiet=quiet, held=held))   # a claim nobody ran

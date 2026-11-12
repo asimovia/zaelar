@@ -181,6 +181,13 @@ below is the first kind, or it names the mechanism that replaced the second.
   `no_change`; a moved row's line says where it was. A sure `corrects_last` onto ANOTHER row of the card's last act
   runs the card's own undo first (`undo_of`), once. — since 2026-11-12 · nodes 2.1725 · `widgets/agenda/edit.py`,
   `widgets/agenda/sweep.py`, `widgets/ref_day.py`, `nucleo/acts/correction_undo.py`.
+- **CRIT-C3c · A correction onto the other row is ONE unit, whatever the model emitted.** The card's last act being
+  corrected is recorded at the door and one door question asks which kind of correction it is (`correction_kind`:
+  another item · a different change · undo only, asked only on that turn); once the turn's acts landed the card's END
+  STATE says what is still owed (`correction_owed`: the move back, the same move on the other row). A sure «another
+  item» runs it through the same door; a card that cannot name the other row, or a verdict not sure enough to act,
+  says only part was done — never a completion nobody attested. A move already put back is never undone again. —
+  since 2026-11-12 · nodes 2.1727 · `nucleo/acts/correction_undo.py`, `widgets/agenda/edit.py`, `nucleo/turn/reply.py`.
 - **CRIT-C4 · Building or rewriting a card of his asks first**, at the one door a worker is lit
   (`dispatch._run_session`, `kind == code`); the cluster dev-worker is exempt. — since 2026-09-23 · nodes 2.76.
 - **CRIT-C4c · Every appointment he writes carries its notice**: a timed one ~2 h before, an all-day one at 09:00 that

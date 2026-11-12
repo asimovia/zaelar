@@ -91,13 +91,16 @@ def test_the_whole_brief_is_one_call(wire, monkeypatch):
     from nucleo.turn import brief_doors as _doors
     assert not asked & set(_doors.keys()), asked & set(_doors.keys())
     assert {_gap.KEY, _errand.CLASS_KEY, "errand_kind", "message_channel", "acts_asked",
-            "identity_change"} == set(_doors.keys())
+            "identity_change", "correction_kind"} == set(_doors.keys())   # + the kind of a correction, at its act
 
 
-def test_before_the_model_once_and_each_door_once_more(wire):
+def test_before_the_model_once_and_each_door_once_more(wire, monkeypatch):
     """V2-887 step 8 restates the rule: the turn asks ONCE before the model; a door it reaches asks its own questions
     once more, into the same handle — one trip per door reached, never per reader and never twice."""
+    from nucleo.flash import redo_decision
     from nucleo.turn import brief_doors
+    # the correction door asks only about an act we just did: there is one here
+    monkeypatch.setattr(redo_decision, "last_op", lambda *a, **k: {"wid": "agenda", "action": "move_meeting", "payload": {}})
     h = _settle(tb.ask("búscame vuelos a Tokio y mándaselos a Raquel", open_ids=[]))
     assert len(wire.calls) == 1
     for door in brief_doors.DOORS:
