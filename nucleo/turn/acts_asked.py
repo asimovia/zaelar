@@ -41,7 +41,26 @@ CRITERIA = {
 
 
 def question(_ctx=None) -> dict:
+    """Asked at the CALL door (`brief_doors.DOORS["call"]`, V2-887 step 8): the turn's first model call fires it into
+    the brief, since only a turn whose doors ran an act reads it."""
     return {"instructions": INSTRUCTIONS, "criteria": dict(CRITERIA)}
+
+
+#: How long the reply waits, off the loop, for the verdict a call fired before it says what was left undone.
+WAIT_S = 1.0
+
+
+async def owed(tasks=(), *, brief=None) -> list:
+    """`left_undone`, after waiting off the loop (at most `WAIT_S`) for the verdict a model call fired. It never fires
+    one itself: a turn that called nothing reads «not sure», and nothing is said."""
+    try:
+        from nucleo.turn import brief_doors, brief_turn
+        brief = brief if brief is not None else brief_turn.of_this_turn()
+        if tasks:
+            await brief_doors.landed(brief, "call", WAIT_S, ask=False)
+    except Exception as e:  # noqa: BLE001 — unread is «not sure»: nothing is said
+        logger.debug(f"acts_asked: not awaited — {e!r}")
+    return left_undone(tasks, brief=brief)
 
 
 def several(brief) -> bool:

@@ -212,6 +212,8 @@ def confirm_widget_delete(args: dict, c) -> None:
 
 def set_style_directive(args: dict, c) -> None:
     _x = _calls()
+    from nucleo.turn import brief_doors   # V2-887 step 8: the call is the rename door — its question flies now
+    brief_doors.fire(c._brief, "rename")
     # V2-778 F1 — the body lives in `nucleo/flash/tool_executor_calls.py`; this branch passes what it reads.
     return _x._t_set_style_directive(
         args=args, _spawn=c._spawn, brain=c.brain, emit=c.emit, style_fired=c.style_fired, text=c.text)

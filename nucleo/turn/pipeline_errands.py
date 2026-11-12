@@ -63,6 +63,10 @@ async def launch_the_errands(*, motor, send, speech, emit, brain, _brief, _op_te
         # sentence about three hunts would judge each hunt's rows by the other two's words.
         from nucleo.acts.errand_birth import whole_request as _whole
         _said = _whole(_request.heard())
+        # V2-887 step 8: an errand is launched — the portal's own questions (its consent class, its kind of worker, a
+        # capability no card declares) are asked NOW into the turn's brief, awaited off the loop, bounded
+        from nucleo.turn import brief_doors as _doors
+        await _doors.landed(_brief, "portal")
         _heard = "" if escalate_req.get("more") else _said
         _started = _escalate_mod.escalate_to_slowbrain(
             req, context={"src": "voice", "surface": motor._surfaces_mod.pick(escalate_req["surface"].get(req, ""),

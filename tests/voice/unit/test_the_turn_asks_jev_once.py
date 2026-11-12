@@ -83,11 +83,30 @@ def test_the_whole_brief_is_one_call(wire, monkeypatch):
     from nucleo.flash import unclear_turn as _unclear  # V2-833 F8: can the sentence be read at all — same trip
     assert asked == {tb.CANVAS_KEY, tb.REQUEST_KEY, tb.ESCALATE_KEY, tb.TARGET_KEY,
                      _bd.BUILD_KEY, _sf.SURFACE_KEY, tb.WORDS_KEY, _spec.END_KEY, _search_route.SEARCH_KEY,
-                     _gap.KEY, tb.NAMES_KEY, "identity_change", _errand.CLASS_KEY, "errand_kind", _unclear.KEY,
-                     "message_channel", tb.CATALOG_CLOSED_KEY,
-                     "login_only",   # V2-857 phase 8 (2.1620): the login fallback reads a pure sign-in order here
-                     "acts_asked"}, asked   # V2-854 F4: how many acts he asked. V2-851 F2c: the channel he named reaches
-    # the send door; V2-851 F5: the catalogue over the closed cards rides the same trip (it was a late second one)
+                     tb.NAMES_KEY, _unclear.KEY, tb.CATALOG_CLOSED_KEY,
+                     "login_only"}, asked   # V2-857 phase 8 (2.1620): the login fallback reads a pure sign-in order here
+    # V2-851 F5: the catalogue over the closed cards rides the same trip (it was a late second one). V2-887 step 8:
+    # the questions only ONE door reads are asked at that door, never here — the capability gap and the errand's
+    # class and kind at the portal, his channel at the exit, the acts he asked at a call, a rename at its call
+    from nucleo.turn import brief_doors as _doors
+    assert not asked & set(_doors.keys()), asked & set(_doors.keys())
+    assert {_gap.KEY, _errand.CLASS_KEY, "errand_kind", "message_channel", "acts_asked",
+            "identity_change"} == set(_doors.keys())
+
+
+def test_before_the_model_once_and_each_door_once_more(wire):
+    """V2-887 step 8 restates the rule: the turn asks ONCE before the model; a door it reaches asks its own questions
+    once more, into the same handle — one trip per door reached, never per reader and never twice."""
+    from nucleo.turn import brief_doors
+    h = _settle(tb.ask("búscame vuelos a Tokio y mándaselos a Raquel", open_ids=[]))
+    assert len(wire.calls) == 1
+    for door in brief_doors.DOORS:
+        for _again in range(2):
+            ev = brief_doors.fire(h, door)
+            assert ev is not None and ev.wait(2.0), door
+    assert len(wire.calls) == 1 + len(brief_doors.DOORS), [sorted(c["questions"]) for c in wire.calls]
+    asked = [set(c["questions"]) for c in wire.calls[1:]]
+    assert all(a == set(brief_doors.keys(d)) for a, d in zip(asked, brief_doors.DOORS))
 
 
 def test_the_canvas_verb_travels_in_the_brief_and_reads_the_same(wire):

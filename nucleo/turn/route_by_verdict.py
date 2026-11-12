@@ -109,6 +109,9 @@ def gate_calls(on_tool_call, *, brief, escalate_req: dict, operator_text: str, e
     """The model's calls through the verdict: under a sure «escalate» an inline call is not run and the request is
     the commission. A brief still in flight is waited for, at most what is left of `wait` since `t0`."""
     def _call(name, args):
+        if brief:   # V2-887 step 8: a call was made — the doors it reaches ask their own questions, on their own
+            from nucleo.turn import brief_doors   # thread, merged into the brief: how many acts his words asked, and
+            brief_doors.fire(brief, "portal" if name == "escalate_to_slowbrain" else "" if name in PASS else "call")
         if name not in PASS and brief and not ready(brief):
             left = wait - (time.monotonic() - t0)
             if left > 0:
@@ -144,6 +147,8 @@ def route(escalate_req: dict, operator_text: str, emit, *, why: str, brief=None,
     if held:
         escalate_req["held_words"] = held   # V2-874: what the model wrote and the Hold kept unsaid (nothing called)
     escalate_req["routed"] = True
+    from nucleo.turn import brief_doors   # V2-887 step 8: the request is a commission — the portal's questions fly now
+    brief_doors.fire(brief, "portal")
     if escalate_req.get("v") is None:
         escalate_req["v"] = operator_text
     if first:

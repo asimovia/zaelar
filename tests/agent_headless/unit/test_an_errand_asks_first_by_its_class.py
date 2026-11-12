@@ -37,8 +37,8 @@ def test_his_standing_never_refuses_even_after_a_yes(monkeypatch):
 
 
 def test_the_brief_asks_it_and_the_voice_carries_it():
-    keys = {k if isinstance(k, str) else tb._key(*k) for k, _w, _q in tb.QUESTIONS}
-    assert errand.CLASS_KEY in keys
+    from nucleo.turn import brief_doors   # V2-887 step 8: the portal asks it, into the turn's brief
+    assert brief_doors.door_of(errand.CLASS_KEY) == "portal" and errand.CLASS_KEY in tb.keys()
     import threading
     ev = threading.Event()
     ev.set()

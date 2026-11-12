@@ -178,6 +178,9 @@ def gate(rec, payload: dict) -> Exit:
     said = " ".join([*_ob.errand_words(rec), *(getattr(rec, "heard", None) or [])])
     from nucleo.turn import brief as _tb
     turn = _tb.revived(getattr(rec, "reading", None))   # the commissioning turn's reading (V2-852), or None
+    from nucleo.turn import brief_doors   # V2-887 step 8: the channel he named is asked here, where the act leaves
+    if brief_doors.landed_sync(turn, "send"):   # (off the loop only; on it the exit reads «none named»)
+        brief_doors.keep(turn, getattr(rec, "reading", None))
     from nucleo.acts import card, message
     for at in (card.LEAVES, card.FAST):
         lic = card.licence({"text": said, "brief": None}, wid, act, inner, at=at)

@@ -425,7 +425,9 @@ def read(handle: dict | None, key: str, fallback, *, min_confidence: float = MIN
     """
     verdict = peek(handle)
     if not verdict or key not in verdict:
-        why = "in_flight" if (handle and not _is_ready(handle)) else ("absent" if handle else "off")
+        # a question a DOOR asks into this handle (`nucleo/turn/brief_doors`) may still be flying after the brief landed
+        flying = bool(handle) and (not _is_ready(handle) or key in (handle.get("_pending") or ()))
+        why = "in_flight" if flying else ("absent" if handle else "off")
         _emit_read(handle, key, used=False, why=why, confidence=0.0, choice="")
         return fallback, None
     ans = verdict[key] or {}
