@@ -22,7 +22,6 @@ export const ICON_SEARCH   = `<svg ${_SW}><circle cx="11" cy="11" r="7"/><line x
 export const ICON_CLEAR    = `<svg ${_SW}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
 export const ICON_UP       = `<svg ${_SW}><polyline points="6 15 12 9 18 15"/></svg>`;
 export const ICON_DOWN     = `<svg ${_SW}><polyline points="6 9 12 15 18 9"/></svg>`;
-export const ICON_MORE     = `<svg ${_SF}><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>`;
 
 export function svgEl(markup){
   const t = document.createElement("template");

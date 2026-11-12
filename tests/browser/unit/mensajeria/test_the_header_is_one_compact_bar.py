@@ -26,6 +26,7 @@ _ENGINE = pathlib.Path(__file__).resolve().parents[4]
 # ground it is actually drawn on.
 _HOST = """<!doctype html><html><head><meta charset="utf-8">
 <link rel="stylesheet" href="/frontend/app/core/palette.css">
+<link rel="stylesheet" href="/frontend/app/core/components.css">
 <style>body{margin:0;padding:0;background:var(--canvas)}
   .hb-win{background:var(--hb-bg);display:flex;flex-direction:column;width:760px;height:640px;box-sizing:border-box}
   .hb-scroll{flex:1 1 auto;min-height:0;overflow:auto;padding:16px}</style></head><body>

@@ -105,7 +105,8 @@ def _agenda_data():
 STUB_JS = ('export function render(el, data){ el.style.minHeight = "240px";'
            ' el.textContent = "W:" + ((data && data.title) || "?"); }')
 ROUTE_RE = re.compile(
-    r"^https?://[^/]+/(widgets(/.*)?|api/(canvas/.*|desktop/epoch|client-log|run|status|ui-event|connectors))(\?.*)?$")
+    r"^https?://[^/]+/(widgets(/.*)?|frontend/app/lib/[\w-]+\.js|api/(canvas/.*|desktop/epoch|client-log|run|status|"
+    r"ui-event|connectors))(\?.*)?$")
 
 # The inventory `GET /api/connectors` answers (the registry's descriptor shape), one of each state the ⚙
 # Conectores screen draws: a linked Google account with one service on and one off, a linked and an unlinked
@@ -226,7 +227,7 @@ def _route(r):
         return j(_CONNECTORS)
     if path == "/api/run":
         return j({"state": "running", "running": True})
-    if path.startswith("/widgets/agenda/js/"):
+    if path.startswith("/widgets/agenda/js/") or path.startswith("/frontend/app/lib/"):   # + the shell modules it imports
         return r.fulfill(**widget_client.served(r.request.url))
     m = re.match(r"^/widgets/([^/]+)/(data|manifest|widget\.js)$", path)
     if m:

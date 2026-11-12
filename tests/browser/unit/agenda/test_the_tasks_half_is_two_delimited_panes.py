@@ -105,6 +105,7 @@ def _mount(page, data, *, card_w=1080, card_h=620):
     page.goto(page._hb_origin)
     page.set_content(
         f"<link rel='stylesheet' href='http://127.0.0.1:{page._hb_port}/frontend/app/core/palette.css'>"
+        f"<link rel='stylesheet' href='http://127.0.0.1:{page._hb_port}/frontend/app/core/components.css'>"
         f"<style>html,body{{margin:0;background:var(--canvas)}}"
         f".card{{width:{card_w}px;height:{card_h}px;background:var(--hb-bg);padding:16px;"
         f"box-sizing:border-box;display:flex;flex-direction:column}}</style>"

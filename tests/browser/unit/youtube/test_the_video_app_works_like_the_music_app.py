@@ -67,7 +67,8 @@ def page(_browser):
 def _mount(page, data, width=660, height=600):
     port = page._hb_port
     page.goto(f"http://127.0.0.1:{port}/widgets/youtube/")
-    page.set_content(f"<div id='w' style='width:{width}px;height:{height}px'></div>")
+    page.set_content("<link rel='stylesheet' href='/frontend/app/core/components.css'>"   # the house bar's grid, as both shells
+                     f"<div id='w' style='width:{width}px;height:{height}px'></div>")
     page.evaluate(
         """async ([src, data]) => {
              window.__calls = [];
@@ -246,11 +247,11 @@ def test_a_new_list_over_an_empty_queue_says_why_it_cannot_save(page):
 
 # ── The bar at three widths ───────────────────────────────────────────────────────────────────────────────────────
 
-_BAR = """() => { const r = (s) => { const e = document.querySelector(s); const b = e.getBoundingClientRect();
-    return e.getClientRects().length ? {l: b.left, r: b.right, t: b.top, b: b.bottom} : null; };
+_BAR = """() => { const r = (s) => { const e = document.querySelector(s); if(!e || !e.getClientRects().length) return null;
+    const b = e.getBoundingClientRect(); return {l: b.left, r: b.right, t: b.top, b: b.bottom}; };
     const tabs = [...document.querySelectorAll('.hb-yt-tab')].filter(t => t.getClientRects().length).map(t => t.dataset.tab);
     return {nav: r('.hb-yt-nav'), tabs, tabsBox: r('.hb-yt-tabs'), plug: r('.hb-yt-plug'), find: r('.hb-yt-find'),
-            more: r('.hb-yt-menubtn'), wraps: [...document.querySelectorAll('.hb-yt-tab')].some(t => t.getClientRects().length > 1)}; }"""
+            more: r('.hb-bar-more'), wraps: [...document.querySelectorAll('.hb-yt-tab')].some(t => t.getClientRects().length > 1)}; }"""
 
 
 def test_wide_the_bar_is_one_line_with_the_search_closing_it(page):
@@ -276,7 +277,7 @@ def test_on_the_phone_inicio_and_the_search_stay_and_the_rest_goes_behind_the_me
     g = page.evaluate(_BAR)
     assert g["tabs"] == ["inicio"] and g["plug"] is None and g["find"] and g["more"]
     assert abs(g["find"]["t"] - g["tabsBox"]["t"]) < 8, "one row"
-    page.click(".hb-yt-menubtn")
+    page.click(".hb-bar-more")
     items = page.eval_on_selector_all(".hb-yt-menu .hb-yt-mitem", "els => els.map(e => e.dataset.tab)")
     assert items == ["player", "cola", "subs", "listas"]
     page.click(".hb-yt-menu .hb-yt-mitem[data-tab=cola]")

@@ -71,7 +71,8 @@ async def widget_js_part(wid: str, name: str, v: str = ""):
 
 # The app-shell modules a widget may import (V2-831 T-12) — the house gate (`validator_js.py`) reads this SAME tuple.
 # Each is served at its on-disk path as that one exact file: read-only, no folder, no sibling.
-SHARED_CLIENT_MODULES = ("/frontend/app/lib/icons.js",)
+SHARED_CLIENT_MODULES = ("/frontend/app/lib/icons.js",
+                         "/frontend/app/lib/toolbar.js")   # V2-882: the one-line bar's fit (it imports icons.js)
 
 
 def _shared_route(url: str):

@@ -5,7 +5,8 @@ week and month titles cut to two letters («De…», «Cal…»); the first hour
 view opened at 14:00 with a 09:00 appointment above it; «NOW —» over a lone dash; a reminder as raw «2026-11-11
 08:00»; the built-in task list's internal id «general» printed next to its name; a decorative bell.
 
-Disarm: drop `.agbar{display:contents}` from the phone rules → red (the row stops fitting one line).
+V2-882: the band is the house bar, so on the phone the view picker and the plug sit in its ⋯ menu and the row is
+the switch · ‹ Today › · ⋯. Disarm: `lib/toolbar.js` never measuring (the band stays one line) → red.
 """
 from __future__ import annotations
 
@@ -38,7 +39,7 @@ def test_the_control_row_is_one_line_and_the_title_is_whole(page):
     m = page.evaluate("""() => {
         const top = el => Math.round(el.getBoundingClientRect().top);
         const sec = document.querySelector('.agsec'), nav = document.querySelector('.agnav'),
-              views = document.querySelector('.agviews'), range = document.querySelector('.agrange'),
+              views = document.querySelector('.agsub .hb-bar-more'), range = document.querySelector('.agrange'),
               plug = document.querySelector('.agcalbtn');
         const r = range.getBoundingClientRect();
         return {tops: [top(sec), top(nav), top(views)], rightEdge: Math.round(views.getBoundingClientRect().right),
@@ -47,7 +48,7 @@ def test_the_control_row_is_one_line_and_the_title_is_whole(page):
                 small: [...document.querySelectorAll('.agsub button, .agsub select')]
                          .filter(b => b.getBoundingClientRect().width > 0 && b.getBoundingClientRect().height < 44).length};
     }""")
-    assert max(m["tops"]) - min(m["tops"]) <= 4, f"switch, ‹ Today › and the picker on ONE line: {m}"
+    assert max(m["tops"]) - min(m["tops"]) <= 4, f"switch, ‹ Today › and the ⋯ menu on ONE line: {m}"
     assert m["rightEdge"] <= 393, m
     assert m["rangeBelow"] and not m["rangeCut"], f"the title has its own line and is never cut: {m}"
     assert not m["plugShown"], "the connector leaves the phone's row"

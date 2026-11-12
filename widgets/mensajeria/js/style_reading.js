@@ -186,30 +186,31 @@ export const READING_CSS = `  /* V2-680 retired .mdsubj/.mdmeta/.mdfrom/.mdwhen/
 
   /* ACTIVITY criterion bar (V2-624): the per-platform view criterion the operator set, always visible with
      its own off switch — a lens in a mode he cannot see is a lens that lies. */
-  .hb-msg .critbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:2px 0 8px;
+  .hb-msg .critbar{margin:2px 0 8px;
     padding:6px 10px;border:1px solid var(--hb-line,#e3e8f0);border-radius:8px;
     background:var(--hb-hover,#eef3f9)}
   .hb-msg .critlbl{font-size:12px;font-weight:600;color:var(--hb-ink,#26313d)}
-  .hb-msg .critfetch{margin-left:auto;font-size:12px;padding:3px 8px}
+  .hb-msg .critfetch{font-size:12px;padding:3px 8px}
   .hb-msg .critoff{flex:0 0 auto;border:0;background:transparent;cursor:pointer;font-size:13px;
     color:var(--hb-muted-2,#9aa7b8);padding:2px 4px}
   .hb-msg .critoff:hover{color:var(--hb-risk,#e5484d)}
 
   /* CHAT LIST of a platform: what the real app shows first — every conversation, newest first, a kind filter,
      a name search and «Cargar más». */
-  /* V2-831 T-04 — ONE toolbar row: search pill · kind chips · new chat/group icons; wraps only on a narrow card. */
-  .hb-msg .cxbar{display:flex;align-items:center;flex-wrap:wrap;gap:var(--sp-2,8px);margin:0 0 var(--sp-2,8px)}
+  /* V2-831 T-04 — ONE toolbar row: search · kind chips · new chat/group; a house bar that steps, never wraps (V2-882) */
+  .hb-msg .cxbar{margin:0 0 var(--sp-2,8px)}
+  .hb-msg .cxbar[data-step="3"] .cxchips{flex-direction:row;flex-wrap:wrap}
   .hb-msg .cxsearch{flex:1 1 180px;min-width:140px;max-width:300px;box-sizing:border-box;height:var(--hb-ctl-h-sm,32px);
     border:1px solid var(--hb-line,#e3e8f0);border-radius:999px;padding:0 var(--sp-3,12px);font-size:var(--fs-caption,13px);
     background:var(--hb-bg-soft,#fbfdff);color:var(--hb-ink,#26313d)}
   .hb-msg .cxsearch:focus{outline:none;border-color:var(--hb-accent,#3D6FE0)}  /* selected chip: accent tint + ring */
-  .hb-msg .cxchips{display:flex;gap:var(--sp-1,4px);flex-wrap:wrap}
+  .hb-msg .cxchips{display:flex;gap:var(--sp-1,4px)}
   .hb-msg .cxchip{border:1px solid var(--hb-line,#e3e8f0);background:transparent;color:var(--hb-muted,#6b7b92);
     border-radius:999px;font-size:var(--fs-micro,12px);height:var(--hb-icon-h,28px);padding:0 var(--sp-3,12px);cursor:pointer}
   .hb-msg .cxchip:hover{color:var(--hb-ink,#26313d)}
   .hb-msg .cxchip.on{background:color-mix(in srgb,var(--hb-accent,#3D6FE0) 18%,transparent);border-color:transparent;
     box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--hb-accent,#3D6FE0) 55%,transparent);color:var(--hb-ink,#26313d)}
-  .hb-msg .cxnew{display:flex;gap:var(--sp-1,4px);margin-left:auto}
+  .hb-msg .cxnew{display:flex;gap:var(--sp-1,4px)}
   .hb-msg .cxnewbt{display:inline-flex;align-items:center;justify-content:center;width:var(--hb-icon-h,28px);
     height:var(--hb-icon-h,28px);padding:0;border:0;border-radius:var(--hb-r-s,8px);background:transparent;color:var(--hb-muted,#3a4757);cursor:pointer}
   .hb-msg .cxnewbt svg{width:calc(var(--hb-icon-h,28px) - var(--sp-3,12px));height:calc(var(--hb-icon-h,28px) - var(--sp-3,12px));display:block}

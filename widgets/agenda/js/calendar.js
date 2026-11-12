@@ -1,6 +1,6 @@
 // Agenda widget — the time grid (day + week) and the month — and the lane packing they share.
 // Part of the client split out of widget.js (refactor2710-12 T-03); widget.js stays the entry with render().
-import { tt, fmtDate, raf, ymd, parseYmd, addDays, startOfWeek, mins, hhmm, el2, hueOf, eventsOn, badges,
+import { tip, tt, fmtDate, raf, ymd, parseYmd, addDays, startOfWeek, mins, hhmm, el2, hueOf, eventsOn, badges,
   chipClasses, timeLabel, HOUR_PX, GUTTER, hourRange } from "./shared.js";
 
 // Side-by-side layout for events sharing a slot — what turns a list into a calendar. Overlapping events are
@@ -73,7 +73,7 @@ export function renderGrid(host, dates, all, data, onPick, onDayPick, onSlot, on
     const h = el2("div","agdh" + (d===today?" today":"") + (dates.length>1?" pick":""));
     h.appendChild(el2("div","agdw", fmtDate(dt,{weekday:"short"},"").replace(/\.$/,"")));
     h.appendChild(el2("div","agdn", String(dt.getDate())));
-    if(dates.length>1){ h.onclick=()=>onDayPick(d); h.title=fmtDate(dt,{weekday:"long",day:"numeric",month:"long"},d); }
+    if(dates.length>1){ h.onclick=()=>onDayPick(d); tip(h, fmtDate(dt,{weekday:"long",day:"numeric",month:"long"},d)); }
     head.appendChild(h);
   });
   host.appendChild(head);
@@ -100,7 +100,7 @@ export function renderGrid(host, dates, all, data, onPick, onDayPick, onSlot, on
       const a = Math.max(0, dates.indexOf(e.date)), b = e.lastDay > dN ? dates.length-1 : dates.indexOf(e.lastDay);
       const bar = el2("div","agev allday agspan" + (e.date<d0?" cl":"") + (e.lastDay>dN?" cr":""));
       bar.style.gridColumn = `${a+2} / ${b+3}`; bar.style.marginTop = (3 + lane*24)+"px"; bar.style.setProperty("--evc", hueOf(e));
-      bar.appendChild(el2("div","agevt", e.title)); bar.title = `${timeLabel(e)} · ${e.title}`;
+      bar.appendChild(el2("div","agevt", e.title)); tip(bar, `${timeLabel(e)} · ${e.title}`);
       bar.onclick = ev => { ev.stopPropagation(); onPick(e); }; band.appendChild(bar);
     });
     host.appendChild(band);
@@ -126,7 +126,7 @@ export function renderGrid(host, dates, all, data, onPick, onDayPick, onSlot, on
       const slot = el2("div","agslot");
       slot.style.top = ((m-lo)/60*HOUR_PX)+"px";
       slot.style.height = (HOUR_PX/2 - 1)+"px";
-      slot.title = tt("add_at", {at: hhmm(m)}, "Nueva cita a las {at}");
+      tip(slot, tt("add_at", {at: hhmm(m)}, "Nueva cita a las {at}"));
       slot.onclick = ev => { ev.stopPropagation(); onSlot(d, m); };
       col.appendChild(slot);
     }
@@ -134,7 +134,7 @@ export function renderGrid(host, dates, all, data, onPick, onDayPick, onSlot, on
       const nowM = mins(data.now);
       if(nowM>=lo && nowM<=hi){
         const n = el2("div","agnow"); n.style.top = ((nowM-lo)/60*HOUR_PX)+"px";
-        n.title = tt("now", null, "Ahora"); col.appendChild(n);
+        tip(n, tt("now", null, "Ahora")); col.appendChild(n);
       }
     }
     const packed = lanes(layoutColumn(eventsOn(all, d)), laneBudget(dates.length));
@@ -154,7 +154,7 @@ export function renderGrid(host, dates, all, data, onPick, onDayPick, onSlot, on
       chip.appendChild(el2("div","agevt", e.title));
       const hr = el2("div","agevh", hhmm(e.start));
       hr.appendChild(badges(e)); chip.appendChild(hr);
-      chip.title = `${timeLabel(e)} · ${e.title}`;
+      tip(chip, `${timeLabel(e)} · ${e.title}`);
       chip.onclick = ev => { ev.stopPropagation(); onPick(e); };
       col.appendChild(chip);
     });
@@ -165,7 +165,7 @@ export function renderGrid(host, dates, all, data, onPick, onDayPick, onSlot, on
       chip.style.left = (m.col*100/m.of)+"%";
       chip.style.width = `calc(${100/m.of}% - 3px)`;
       chip.appendChild(el2("div","agevt", "+" + m.n));
-      chip.title = tt("more_n", {n: m.n}, "{n} citas más — ábrelas en el día");
+      tip(chip, tt("more_n", {n: m.n}, "{n} citas más — ábrelas en el día"));
       chip.onclick = ev => { ev.stopPropagation(); onOverflow(d); };
       col.appendChild(chip);
     });
@@ -205,7 +205,7 @@ export function renderMonth(host, anchor, all, data, onPick, onDayPick){
       const bar = el2("div","agmev allday agspan" + (e.date<w0?" cl":"") + (e.lastDay>w1?" cr":""));
       bar.style.gridArea = `${w+1} / ${a1+1} / auto / ${b1+2}`; bar.style.marginTop = (30 + lane*22)+"px";
       bar.style.setProperty("--evc", hueOf(e)); bar.appendChild(el2("span","agmt", e.title));
-      bar.title = `${timeLabel(e)} · ${e.title}`; bar.onclick = ev => { ev.stopPropagation(); onPick(e); }; bars.push(bar);
+      tip(bar, `${timeLabel(e)} · ${e.title}`); bar.onclick = ev => { ev.stopPropagation(); onPick(e); }; bars.push(bar);
     });
     const evs = eventsOn(all, ds).filter(e=>!e.lastDay);
     evs.forEach(e=>{
@@ -214,7 +214,7 @@ export function renderMonth(host, anchor, all, data, onPick, onDayPick){
       row.appendChild(el2("span","agmdot"));
       if(!e.allDay) row.appendChild(el2("span","agmh", hhmm(e.start)));
       row.appendChild(el2("span","agmt", e.title));
-      row.title = `${timeLabel(e)} · ${e.title}`; row.onclick = ev => { ev.stopPropagation(); onPick(e); };
+      tip(row, `${timeLabel(e)} · ${e.title}`); row.onclick = ev => { ev.stopPropagation(); onPick(e); };
       cell.appendChild(row);
     });
     cell.appendChild(el2("div","agmore"));
