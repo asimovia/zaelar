@@ -2,15 +2,16 @@
 
 The operator (2026-11-11): a visitor saw THREE loaders in a row — the inline splash («starting up…» with a progress
 arc), then the neurons' own caption («Starting up zaelar…»), then the neurons. He wants one: the neurons. It starts as
-a small ring of dots turning in the centre; the neurons GROW outwards in discrete steps («pa, pa, pa»); the growth is
-the progress bar; and it ALWAYS finishes — when the system is ready the rest bursts out in under a second and the
-veil lifts.
+a small ring of dots turning in the centre; the neurons GROW outwards; the growth is the progress bar; and it ALWAYS
+finishes — when the system is ready the rest bursts out in under a second and the veil lifts. Since 2026-11-12 the
+growth is continuous on its own clock (one neuron at a time, never in batches; schedule: node 4.492) and a phase may
+only pull it forward.
 
 What this file holds, against the REAL `frontend/index.html` (and the phone's) in Chromium, with the app module held
 back — «the modules have not arrived yet» is exactly the moment the first ring exists for:
   * the HTML paints the first ring and `core/preboot.js` narrates on it (cached bundle, English floor, never a key);
   * BootOverlay takes over that SAME element (one `.boot-ovl`, the same node) instead of mounting a second screen;
-  * the growth (`aria-valuenow`, and the lit pixels of the canvas) advances on a PHASE signal and never on a timer;
+  * the growth (`aria-valuenow`, and the lit pixels of the canvas) keeps advancing while no phase arrives;
   * `store.bootReady` completes it and the loader is gone within one second of it.
 
 Disarm (in this file, `test_a_loader_that_does_not_hear_ready_is_caught`): BootOverlay is served with its
@@ -82,7 +83,7 @@ def _page(browser, port, shell="/index.html", overlay_src: str | None = None, vi
 MOUNT = """async () => {
   window.__host = document.getElementById('preboot');
   window.__store = await import('/static/app/core/store.js?v=2');
-  const m = await import('/static/app/components/BootOverlay.js?v=3');
+  const m = await import('/static/app/components/BootOverlay.js?v=4');
   document.body.append(m.BootOverlay());
 }"""
 
@@ -93,7 +94,7 @@ STATE = """() => {
   const c = h.querySelector('canvas'); let lit = 0;
   if (c && c.width) {
     const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
-    for (let i = 3; i < d.length; i += 16) if (d[i] > 40) lit++;
+    for (let i = 0; i < d.length; i += 16) if (Math.max(d[i], d[i + 1], d[i + 2]) > 150) lit++;
   }
   return { gone: false, now: Number(h.getAttribute('aria-valuenow') || -1), stage: h.dataset.stage, lit,
            same: h === window.__host, count: document.querySelectorAll('.boot-ovl').length,
@@ -132,27 +133,27 @@ def test_the_first_byte_paints_the_ring_and_narrates_in_the_floor(browser_and_po
 
 
 @pytest.mark.parametrize("shell, viewport", [("/index.html", (1280, 800)), ("/mobile/index.html", (390, 844))])
-def test_the_growth_follows_real_phases_and_ready_completes_it_within_a_second(browser_and_port, shell, viewport):
+def test_the_growth_keeps_going_while_it_waits_and_ready_completes_it_within_a_second(browser_and_port, shell, viewport):
     b, port = browser_and_port
     pg = _page(b, port, shell, viewport=viewport)
     _mounted(pg)
     s0 = pg.evaluate(STATE)
     assert s0["same"] and s0["count"] == 1, f"one screen: BootOverlay took the inline loader over, never a second: {s0}"
-    assert s0["now"] == 24, f"the interface loaded is the third step of the bar: {s0}"
+    assert 0 <= s0["now"] <= 30, f"the bar starts near the ring: {s0}"
     pg.wait_for_timeout(600)
-    lit0 = pg.evaluate(STATE)["lit"]
-    assert lit0 > 50, f"the canvas paints the mesh it reports: {lit0}"
+    a = pg.evaluate(STATE)
+    assert a["lit"] > 20, f"the canvas paints the ring and the first neurons: {a['lit']}"
 
-    pg.wait_for_timeout(3000)                                   # no phase arrives: a wait shows as a wait
+    pg.wait_for_timeout(3000)                                   # no phase arrives: the mesh still composes itself
     s1 = pg.evaluate(STATE)
-    assert s1["now"] == 24, f"the bar moved on a timer alone: {s0['now']} -> {s1['now']}"
-    assert s1["lit"] < lit0 * 1.4, f"the mesh GREW with no phase: {lit0} -> {s1['lit']}"
+    assert s1["now"] > a["now"] + 10, f"the bar stood still while it waited: {a['now']} -> {s1['now']}"
+    assert s1["now"] < 100, f"only ready completes the bar: {s1}"
+    assert s1["lit"] > a["lit"] * 1.3, f"the mesh did not grow on screen: {a['lit']} -> {s1['lit']}"
 
-    pg.evaluate("() => window.__store.setBootPhase('voz')")    # a real phase: one step, «pa»
-    pg.wait_for_timeout(600)
+    pg.evaluate("() => window.__store.setBootPhase('voz')")    # a real phase may pull it forward, never back
+    pg.wait_for_timeout(300)
     s2 = pg.evaluate(STATE)
-    assert s2["now"] == 42, s2
-    assert s2["lit"] > s1["lit"] * 1.15, f"the step did not grow the mesh on screen: {s1['lit']} -> {s2['lit']}"
+    assert s1["now"] <= s2["now"] < 100, s2
 
     took = pg.evaluate(READY)
     assert 0 <= took < 1000, f"ready must complete the loader and lift it within one second; took {took} ms"

@@ -26,7 +26,7 @@
 import { Alert } from "../components/Alert.js?v=2";
 import { AppsWindow } from "../components/AppsWindow.js?v=1";
 import { BenchmarksPanel } from "../components/BenchmarksPanel.js?v=1";
-import { BootOverlay } from "../components/BootOverlay.js?v=3";
+import { BootOverlay } from "../components/BootOverlay.js?v=4";
 import { ChatWall } from "../components/ChatWall.js?v=6";
 import { ConfigPanel } from "../components/ConfigPanel.js?v=8";
 import { DaemonSetup } from "../components/DaemonSetup.js?v=1";

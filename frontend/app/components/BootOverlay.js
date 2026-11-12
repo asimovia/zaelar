@@ -6,13 +6,13 @@
 // module exists, and this component TAKES OVER THAT SAME ELEMENT — it adds the canvas that grows the mesh, never a
 // second overlay — so nothing flashes between them.
 //
-// The growth is the progress bar (`role=progressbar`, `aria-valuenow`). It advances on REAL phases only: the stage
-// preboot reached (`data-stage`: ring, /healthz), this module being mounted (the interface is loaded), and
-// `store.bootPhase` (voice, memory, reflex — session-lk.js, from mic/room milestones and the agent's boot events).
-// The ONLY thing that completes it is `store.bootReady`: then the rest bursts out within BURST_MS and the veil lifts.
+// The growth is the progress bar (`role=progressbar`, `aria-valuenow`). It grows continuously on its own clock
+// (boot-anim.js), never past a ceiling below the whole mesh; a real phase — the stage preboot reached (`data-stage`),
+// this module being mounted, `store.bootPhase` (voice, memory, reflex) — may pull it forward. The ONLY thing that
+// completes it is `store.bootReady`: then the rest develops within GROW.FINISH_S and the veil lifts.
 import { createEffect } from "../core/reactive.js?v=2";
 import * as store from "../core/store.js?v=2";
-import { startBootAnim, STAGE_READY, BURST_MS } from "./boot-anim.js?v=3";
+import { startBootAnim, STAGE_READY, BURST_MS } from "./boot-anim.js?v=4";
 
 /** bootPhase → stage. Exported for the test. */
 export const PHASE_STAGE = { encendiendo: 2, voz: 3, memoria: 4, reflejo: 5 };
@@ -33,13 +33,13 @@ export function BootOverlay() {
 
   // Start once the host is laid out (a canvas measured before mount is 0×0).
   requestAnimationFrame(() => {
-    const ctrl = startBootAnim(canvas);
+    const ctrl = startBootAnim(canvas, { onProgress: report });
     host.classList.add("anim");      // the canvas draws the ring now; the HTML one steps aside
     ctrl.setStage(Math.max(2, Number(host.dataset.stage) || 0));
     report(ctrl.shown());
     createEffect(() => {
       const s = PHASE_STAGE[store.bootPhase()];
-      if (s) { ctrl.setStage(s); report(ctrl.shown()); }
+      if (s) ctrl.setStage(s);
     });
     createEffect(() => {
       if (!store.bootReady()) return;

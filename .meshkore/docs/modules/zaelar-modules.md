@@ -269,12 +269,15 @@ from the first byte to «ready», on both shells: the HTML paints `#preboot.boot
 dots turning; CSS in `core/shared-surfaces.css`), `core/preboot.js` narrates the cold start on it before any module
 exists (the cached bundle with an inline English floor — never `/api/i18n/bundle`, which needs the engine being waited
 for), and `components/BootOverlay.js` takes over that SAME element with the canvas of `boot-anim.js` — the **«Colmena
-sináptica»** — which GROWS outwards in discrete steps, one per stage (ring · `/healthz` answered · interface loaded ·
-`voz` · `memoria` · `reflejo`). The growth is the progress bar (`role=progressbar`, `aria-valuenow`). Stages come
+sináptica»** (the original elliptical hive, restored 2026-11-12) — which GROWS continuously on its own clock around the
+turning ring, one neuron at a time, several fronts taking turns outwards (`growStep`, `growthOrder`; node 4.492), up to
+a ceiling below the whole mesh; a stage (ring · `/healthz` answered · interface loaded · `voz` · `memoria` · `reflejo`)
+only raises a floor it catches up to at a bounded rate. The growth is the progress bar (`role=progressbar`,
+`aria-valuenow`). Stages come
 from `data-stage` (preboot) and the store (`store.BOOT_PHASES` = `encendiendo → voz → memoria → reflejo → listo`,
 signal `bootPhase`), advanced by **REAL milestones**, never timers: the frontend reports `voz` (mic granted in `session-lk.js`); the agent reports
 `memoria`/`reflejo` over the "vl2" data channel (`{type:"boot",phase}`); `listo` = init done (`{type:"ready"}`).
-Only `store.bootReady` completes the growth: whatever stage it reached, the rest bursts out within `BURST_MS` and the
+Only `store.bootReady` completes the growth: whatever it reached, the rest develops within `GROW.FINISH_S` and the
 loader is gone in under a second. **The ordering barrier is in the backend** (`voice/engine/pipeline/agent.py`):
 after `session.start` the agent emits the phase milestones and then `ready` **BEFORE** dispatching the kickoff
 greeting — so the voice never runs *under* the splash.

@@ -8,7 +8,7 @@
 // = load-bearing order | "overlay") · label · shared (the desktop's component, imported as-is).
 
 import { Alert } from "../../../app/components/Alert.js?v=2";
-import { BootOverlay } from "../../../app/components/BootOverlay.js?v=3";
+import { BootOverlay } from "../../../app/components/BootOverlay.js?v=4";
 import { LanguageOnboarding } from "../../../app/components/LanguageOnboarding.js?v=1";
 import { UpdateSurface } from "../../../app/update/UpdateSurface.js?v=1";
 import { EnergyNotice } from "../../../app/components/EnergyNotice.js?v=1";
