@@ -8,7 +8,7 @@ sends — resources, never a script.
 from __future__ import annotations
 
 from nucleo.request import base, note
-from nucleo.request.send_task import NONE, _question, _schedule, artefact, missing, retain
+from nucleo.request.send_task import KIND, NONE, _question, _schedule, artefact, missing, retain
 from nucleo.request.send_task_turn import identified
 
 
@@ -257,13 +257,10 @@ def new_send(brief, said: str, asks) -> bool:
         his = set(TOK.findall(fold(said)))
         for a in asks or []:
             ret = asker.artefact(str(a.get("task_id") or "")).get("retained") or {}
-            if ret.get("kind") == KIND_SEND and his & set(TOK.findall(fold(" ".join(
+            if ret.get("kind") == KIND and his & set(TOK.findall(fold(" ".join(
                     str(v) for v in dict(ret.get("payload") or {}).values() if isinstance(v, str))))):
                 return False                 # a send to someone his words name waits: this may be its answer
         return True
     except Exception as e:  # noqa: BLE001
         note(e)
         return False
-
-
-KIND_SEND = "send"

@@ -18,8 +18,9 @@ off his words:
     — by `widget_data`, or through the dedicated tool that drives the card (`play_music` is the music card's door:
     its lane runs the act and no data-op records it) — a call it made is its door's: it ran, asked, or was vetoed on
     purpose. The model's valid call is never overruled (2.73): an order that only READS is the turn's to serve its
-    way, and an act that stays on the card yields to the model's own call that RAN on that card — what is left is a
-    consequence the turn did not produce;
+    way, and an act that stays on the card yields to the model's own call that RAN on that card — unless that call
+    only LOOKED where the turn surely asks to act (`_beyond_looks`, the reading the call's own door makes): what is
+    left is a consequence the turn did not produce;
   · then the order opens ITS row — the turn's while that is open, a new one when the model's other act already
     ended it (an ended row is never re-opened). An act that LEAVES becomes a send task
     (`send_task_words.from_verdict`: the person his word names, the text the model quoted of his words — it runs, or
@@ -41,20 +42,15 @@ KIND = "act"
 
 
 def identified(brief) -> tuple[str, str]:
-    """`(card, act)` the brief surely ORDERS at the act floor and does not answer with words; ("", "") otherwise."""
-    try:
-        from nucleo.turn import brief as _tb, verdicts
-        target, _info = verdicts.to_act(brief, _tb.TARGET_KEY, "")
-        wid, _sep, act = str(target or "").partition(":")
-        if not (wid and act) or str(target) == "none" or not verdicts.sure_order(brief, wid, act):
-            return "", ""
-        words, _w = verdicts.read(brief, _tb.WORDS_KEY, None)
-        if str(words or "") == "tell":
-            return "", ""
-        return wid, act
-    except Exception as e:  # noqa: BLE001 — an unreadable brief orders nothing
-        note(e)
+    """`(card, act)` the brief surely ORDERS at the act floor and does not answer with words; ("", "") otherwise. An
+    unreadable brief orders nothing: the close's reader, its one caller, says so and opens nothing."""
+    from nucleo.turn import brief as _tb, verdicts
+    target, _info = verdicts.to_act(brief, _tb.TARGET_KEY, "")
+    wid, _sep, act = str(target or "").partition(":")
+    if not (wid and act) or str(target) == "none" or not verdicts.sure_order(brief, wid, act):
         return "", ""
+    words, _w = verdicts.read(brief, _tb.WORDS_KEY, None)
+    return ("", "") if str(words or "") == "tell" else (wid, act)
 
 
 def _ran(ops) -> list[tuple[str, str]]:
@@ -99,6 +95,19 @@ def served(wid: str, act: str, ops=(), model_calls=()) -> bool:
     return not effects.leaves(card, act) and any(c == card and (c, a) in ran for c, a in called)
 
 
+def _beyond_looks(brief, wid: str, act: str, model_calls) -> list:
+    """The model's calls without the LOOKS at the order's card where the turn asks to ACT there — the reading the
+    call's own door makes (`data_ops.a_view_where_the_verdict_acts`: a lens, an order that is no lens, a sure
+    `wants_words = act`). A look is no serving call of that order: its completion, or its question, is still owed.
+    Without that verdict the model's valid call stands, whatever the order (2.73, T4)."""
+    from nucleo.flash import data_ops
+    from nucleo.turn import brief as _tb, verdicts
+    wants, card = str(verdicts.read(brief, _tb.WORDS_KEY, None)[0] or ""), base(wid)
+    return [c for c in model_calls or () if not (isinstance(c, dict) and isinstance(a := c.get("args"), dict)
+            and base(a.get("widget_id")) == card
+            and data_ops.a_view_where_the_verdict_acts(card, str(a.get("action") or ""), act, wants))]
+
+
 def open_the_order(brief, *, said: str, reply: str, ops=(), model_calls=(), escalate_req=None, worker_acted=None,
                    emit=None, present=None, apply_widget_data=None) -> dict:
     """The close's reader: the sure order the turn served with another tool opens its row. Returns `{row, how, widget,
@@ -117,7 +126,7 @@ def open_the_order(brief, *, said: str, reply: str, ops=(), model_calls=(), esca
         except Exception as e:  # noqa: BLE001
             note(e)
         wid, act = identified(brief)
-        if not wid or served(wid, act, ops, model_calls):
+        if not wid or served(wid, act, ops, _beyond_looks(brief, wid, act, model_calls)):
             return {}
         from widgets import effects
         model.past_an_ended_row()                          # the model's other act ended the turn's row: ITS row is new
@@ -165,14 +174,10 @@ def _of_the_card(brief, wid: str, act: str, said: str, reply: str, emit, present
 
 def needed(wid: str, act: str, payload: dict | None = None) -> list[str]:
     """The required payload keys of `wid:act` that `payload` leaves empty, in the manifest's order."""
-    try:
-        from nucleo.flash import payload_fill
-        spec = payload_fill._payload_spec(wid, act)
-        have = {k for k, v in (payload or {}).items() if str(v or "").strip()}
-        return [str(k) for k, d in spec.items() if not payload_fill._optional(d) and k not in have]
-    except Exception as e:  # noqa: BLE001
-        note(e)
-        return []
+    from nucleo.flash import payload_fill
+    spec = payload_fill._payload_spec(wid, act)
+    have = {k for k, v in (payload or {}).items() if str(v or "").strip()}
+    return [str(k) for k, d in spec.items() if not payload_fill._optional(d) and k not in have]
 
 
 def _ask_the_facts(wid: str, act: str, said: str) -> dict:
