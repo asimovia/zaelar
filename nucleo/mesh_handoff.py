@@ -1,18 +1,14 @@
 """nucleo/mesh_handoff.py — an agent that cannot do it itself HANDS IT BACK: «your agent should do it».
 
-A network agent may resolve everything about an errand except the last step — a booking engine it holds no access to,
-a restaurant's own form, a phone it does not dial — and answer with a `handoff` object instead of a result: why, the
-link (prefilled where the platform allows), the phone, the fields with the operator's values (null = ask him), the
-platform's own published restrictions (`providerNote`), the exact client action, and how to report the outcome. This
-module is that class, for any agent (nothing here names one, and no platform rule is coded here):
+An agent may resolve an errand except its last step (an engine it holds no access to, a place's own form, a phone it
+does not dial) and answer with a `handoff`: why, the link (prefilled where the platform allows), the phone, the fields
+with his values (null = ask him), the platform's own restrictions, the client action, how to report. The class, for
+any agent — nothing here names one, no platform rule is coded here:
 
-  · `of(answer)` reads it by SHAPE — a `handoff` object that names an action, a link or a phone — into what a worker
-    needs, with the agent's phone step (`next`) when it offers one;
-  · the exchange keeps it on its THREAD, so the outcome is bound to that order by identity, and an order identical to
-    one whose handed-back step has no reported outcome yet is refused (`duplicate`): an unknown submit counts as
-    possibly made, so the same restaurant, day, time and party is never sent twice blindly;
-  · `report(thread, outcome)` sends the outcome the agent asked for, in its own `reportOutcome` shape, with the
-    placeholders filled from its own answer (never personal data of ours).
+  · `of(answer)` reads it by SHAPE, with the agent's own way to do it (`next`) when it offers one;
+  · it stays on the exchange's THREAD: the same order is refused while that step has no reported outcome (an unknown
+    submit counts as possibly made), so the same place, day, time and party is never sent twice blindly;
+  · `report(thread, outcome)` answers in the agent's own `reportOutcome` shape, placeholders from its own answer.
 """
 from __future__ import annotations
 

@@ -1,15 +1,9 @@
 """nucleo/mesh_skills.py — what an agent's own A2A card says it can do, ONE skill at a time.
 
-`mesh_agents.serve` puts an errand to an agent's FIRST declared skill. That is right for an agent that does one
-thing, and blind for one that does several: an agent whose card declares `search`, `book` and `book-by-phone`
-answered every booking errand with a search, because the reader never looked past the first entry. The skill is
-the caller's choice, made from what the card declares — this module reads the declaration and nothing else.
-
-Price is per SKILL. A card may publish a free tier for the agent and a price on one of its skills; the skill's own
-`pricing` decides, and a skill that declares none inherits the card's. Unknown is not free (the rule of
-`mesh_agents._is_free`, read through its tier reader so the two can never disagree).
-
-No catalogue: no agent and no skill is named here. Pure functions over a card the caller already holds.
+`mesh_agents.serve` asks an agent's FIRST declared skill: an agent declaring `search`, `book` and `book-by-phone`
+answered every booking errand with a search. The skill is the caller's choice from what the card declares. Price is
+per SKILL: its own `pricing`, else the card's; unknown is not free (read through `mesh_agents._tier_is_free`, so the
+two rules cannot disagree). No agent and no skill is named here: pure functions over a card the caller holds.
 """
 from __future__ import annotations
 

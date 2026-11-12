@@ -1,12 +1,8 @@
-"""nucleo/cli/mesh_converse.py — `hbmesh call` and `hbmesh reply`: a structured exchange with ONE skill of an agent.
+"""nucleo/cli/mesh_converse.py — `hbmesh call`, `reply` and `report`: a structured exchange with ONE skill of an agent.
 
-    hbmesh call <agent_id> <skill> --json '<request>' [--errand "<his words>"]
-    hbmesh reply <thread> --answer <question id>=<n> [--value <what he said>] [--cancel]
-
-`call` puts a request to a skill the agent's card declares (`find` lists them); `reply` sends his answers to the
-questions that exchange left open. Both cross the session's exit gate first, like `serve`, and print JSON. The request
-is the agent's own schema — nothing here knows any of its fields. `--json` takes the object inline, `@file` (a path
-relative to the working directory: the worker's shell refuses braces with quotes in an argument) or `-` (stdin).
+The forms are `USAGE`. Each crosses the session's exit gate first, like `serve`, and prints JSON; the request is the
+agent's own schema. `--json` takes the object inline, `@file` (relative: the worker's shell refuses braces with quotes
+in an argument) or `-` (stdin).
 """
 from __future__ import annotations
 
