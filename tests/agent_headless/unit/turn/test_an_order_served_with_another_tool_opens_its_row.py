@@ -242,3 +242,52 @@ def test_the_close_reads_the_order_when_the_turn_acted_and_hands_it_what_ran():
     assert "only_held" in ast.unparse(outer.test), "it runs exactly where the turn ACTED (the else of the acted check)"
     close = _vts_read(ROOT / "nucleo/turn/pipeline_close.py")
     assert 'ops=data_done.get("ops")' in close and "_apply_widget_data=_apply_widget_data" in close
+
+
+# ── audit 2026-11-12, A1 — an order served through the card's OWN tool ───────────────────────────────────────────────
+# «add … to the queue» with the music card open: the model called `play_music {action: queue}` (the music card's door:
+# its lane runs the act, no data-op records it), the brief read `musica:queue`, and the close ran the completion BESIDE
+# it — the queue played, and `musica:queue` ran again with his whole sentence as its query.
+
+def _order(target: str, *open_ids: str) -> dict:
+    """A brief that surely orders `target` with these cards on screen (the completion reads the open set)."""
+    b = _brief(target=target)
+    b["open_ids"] = list(open_ids)
+    return b
+
+
+_OWN_TOOL = [
+    ("musica:queue", "add the wrenfield tapes to the queue",
+     {"name": "play_music", "args": {"action": "queue", "query": "the wrenfield tapes"}}),
+    ("musica:play", "ponme algo de Los Brezales", {"name": "play_music", "args": {"query": "Los Brezales"}}),
+    ("youtube:restart", "empieza el vídeo otra vez", {"name": "play_video", "args": {"action": "restart"}}),
+]
+
+
+@pytest.mark.parametrize("target, said, call", _OWN_TOOL)
+def test_an_order_the_model_served_through_the_cards_own_tool_runs_no_second_act(world, target, said, call):
+    card, act = target.split(":")
+    ran = []
+    doors = dict(present=lambda *a, **k: True, apply_widget_data=lambda w, a, p: ran.append((w, a, p)))
+    _say(said)
+    assert ou.served(card, act, ops=[], model_calls=[call]), "the card's own tool is its door: the model called it"
+    assert _open(_order(target, card), said, "Hecho.", ops=[], calls=[call], **doors) == {}
+    assert ran == [] and _rows() == [] and world["workers"] == [], "no second act beside the model's call"
+    # the control: a tool that drives ANOTHER surface serves nothing of this card — the order still opens (it
+    # completes, or asks the fact it lacks)
+    other = [{"name": "show_images", "args": {"query": said}}]
+    assert not ou.served(card, act, ops=[], model_calls=other)
+    got = _open(_order(target, card), said, "Hecho.", ops=[], calls=other, **doors)
+    assert (got["widget"], got["act"]) == (card, act) and got["how"] in ("completed", "asked"), got
+    assert [(w, a) for w, a, _p in ran] == ([(card, act)] if got["how"] == "completed" else []), ran
+
+
+def test_disarmed_a_tool_that_drives_no_card_lets_the_order_act_beside_the_models_call(world, monkeypatch):
+    from nucleo.acts import media
+    monkeypatch.setattr(media, "CARD_OF_TOOL", {})
+    target, said, call = _OWN_TOOL[0]
+    ran = []
+    _say(said)
+    got = _open(_order(target, "musica"), said, "Queued.", ops=[], calls=[call], present=lambda *a, **k: True,
+                apply_widget_data=lambda w, a, p: ran.append((w, a, p)))
+    assert got["how"] == "completed" and ran == [("musica", "queue", {"query": said})], "the double act, as audited"
