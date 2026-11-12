@@ -67,7 +67,9 @@ def open_question(view: dict) -> dict | None:
         return None
     from i18n import langs
     from nucleo.request import consent_ask
-    text = str(getattr(langs.current_language(), "mesh_open_link", "") or "{domain}?").format(domain=view["domain"])
+    text = str(langs.words("mesh_open_link") or "").format(domain=view["domain"])
+    if not text:
+        return None
     return {"id": "open_link", "consent": True, "text": text,
             "choices": [{"n": n, "id": label, "label": label} for n, label in enumerate(consent_ask.yes_no())]}
 
