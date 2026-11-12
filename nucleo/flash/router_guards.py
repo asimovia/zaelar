@@ -272,41 +272,13 @@ _DATA_OP_RE = _re.compile(r"\b(de\s+(?:la\s+|mi\s+)?agenda|del\s+calendario|de\s
                           r"de\s+(?:la\s+|mis\s+)?tareas|from\s+(?:the\s+)?(?:agenda|calendar|list))\b", _re.I)
 
 
-# SEARCH/NAVIGATION verbs for the marketplace guard (busca/mira/enséñame/encuentra/ver/ojea). A NAMED resale
-# site + one of these = ENTER and browse the catalog (not a one-off fact, not an "I can't").
+# SEARCH/NAVIGATION verbs (busca/mira/enséñame/encuentra/ver/ojea): one of the directive shapes
+# `commission_guards.too_thin_to_commission` recognises so a short turn with one of them is not a fragment. The
+# marketplace guard that paired these with a site name to OPEN a worker went on 2026-11-12 (CRIT-C16, node 2.1728),
+# with the modify-widget guard beside it: an errand is the model's call or the brief's sure `escalate`.
 _MKT_VERB_RE = _re.compile(
     r"\b(busc\w*|b[uú]scame|mir[ae]\w*|ense[nñ]\w*|ens[eé][nñ]\w*|muestr\w*|encuentr\w*|encu[eé]ntr\w*|"
     r"ojea\w*|vistazo|quiero ver|ver si|encontrar)\b", _re.I)
-
-
-def looks_like_marketplace_nav(text: str) -> bool:
-    """True if the turn asks to BROWSE a named marketplace (site + search/view verb). High-precision deterministic
-    guard: a passing mention ('me encanta comprar en Amazon') does not trigger it — search intent is required.
-    → escalate to the browser even if the model chose web_search / chat / show."""
-    n = _norm_txt(text)
-    return bool(_MARKETPLACE_RE.search(n) and _MKT_VERB_RE.search(n))
-
-
-# MODIFYING a widget's CODE/appearance = generator work (escalate), NOT a data-op or an "I can't". RELIABLE
-# non-reasoning failure mode (testing sea 2026-07-21, modify 1-7/8 depending on run: declines, performs
-# widget_data, or shows). High-precision deterministic guard: change verb + CODE/style/structure property + the
-# word widget (or synonym). Does not capture a VALUE data-op (mark done, change a title/value) — only
-# color/background/style/design/column/field/section/button/size…, which are CODE.
-_MODIFY_VERB_RE = _re.compile(
-    r"\b(cambi\w*|modific\w*|edit\w*|a[nñ]ad\w*|agreg\w*|incorpor\w*|met\w*|pon\w*|p[oó]n\w*|quit\w*|"
-    r"actualiz\w*|redise[nñ]\w*|reestructur\w*|reorganiz\w*)\b", _re.I)
-_CODE_PROP_RE = _re.compile(
-    r"\b(color\w*|fondo|estilo\w*|dise[nñ]o|apariencia|columna\w*|campo\w*|secci[oó]n\w*|tama[nñ]o|"
-    r"bot[oó]n\w*|layout|formato|encabezad\w*|fuente|tipograf\w*|borde\w*|margen\w*|tema)\b", _re.I)
-_WIDGET_SYN_RE = _re.compile(r"\b" + _WIDGET_SYN + r"\b", _re.I)
-
-
-def looks_like_modify_widget(text: str) -> bool:
-    """True if the turn asks to CHANGE a widget's CODE/appearance (color/column/style… + 'widget') → escalate to
-    the generator. It is not a data-op (mark/move an item) or an 'I can't'. High-precision deterministic guard."""
-    n = _norm_txt(text)
-    return bool(_MODIFY_VERB_RE.search(n) and _CODE_PROP_RE.search(n) and _WIDGET_SYN_RE.search(n)
-                and not looks_like_create_widget(text))
 
 
 # EMPTY item reference or a BARE DEICTIC PRONOUN ("lo", "eso", "esto", "it", "that"…) — with no anchoring noun.

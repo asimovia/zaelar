@@ -85,21 +85,9 @@ async def complete_the_acts(*, _apply_widget_data, _brief, _data_ops_hechas, _ha
             anything_running=bool(_has_workers), emit=emit)
         _keep_unanswered(_settled, _kept, escalate_req, spoken, emit)
 
-    # BACKSTOP PROMESA-SIN-ACCIÓN UNIFICADO 2026-07-19 (mar de testing): ante fraseo CORTÉS/subjuntivo
-    # («¿podrías…?», «deberías…», «sería genial que hicieras…», «me haría falta…») el modelo CHARLA una promesa
-    # («me pongo con ello», «te lo abro», «voy a poner…») SIN llamar a la tool → causa nº1 de "dice que lo hace y
-    # no lo hace". Gated por la promesa en la RESPUESTA (zaelar se comprometió) → re-derivamos la intención con
-    # los clasificadores DETERMINISTAS. GENERALIZA sobre todas las conjugaciones (no se parchea verbo a verbo).
-    # V2-556: elegir la pasada rápida de anuncios YA es actuar (see `acts.search.listings`).
-    # The two guards themselves, and WHY they read the operator's words, live in `escalation_guard`.
-    if (escalate_req["v"] is None and listing_req["v"] is None and not acted["widget"]
-            and not data_done["v"] and not music_req["v"]):
-        _guard_text = _pst._eguard.escalation_text(operator_text, text)
-        if _guard_text and not _pst._eguard.keeps_it_inline(_brief, _guard_text, emit=emit, by="marketplace_guard"):
-            search_req["v"] = None
-            escalate_req["v"] = _guard_text
-            emit("brain", "🧭 escalada por guard (marketplace→navegar / modificar-widget→generador)",
-                 text=_guard_text[:80], role="system")
+    # No word backstop opens an errand here (CRIT-C16, 2026-11-12): the marketplace / modify-widget regex pair that
+    # used to turn his sentence into a worker when the model called nothing went — an errand is the model's call or
+    # the brief's sure `escalate` (`route_by_verdict`), and its class is the brief's reading (`request/kind.py`).
 
     # EVERY tool the model can answer with counts — demo pass 2026-09-28, I1: «show me a red ferari f40» called
     # show_images, the pictures came up, and the verdict «completed» the «empty» turn with a YouTube search too.

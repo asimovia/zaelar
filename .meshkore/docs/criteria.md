@@ -308,8 +308,11 @@ below is the first kind, or it names the mechanism that replaced the second.
   close reads his sentence for an order the model did not escalate (the money vocabulary did): the turn commissions an
   errand only when the model calls `escalate_to_slowbrain` or the brief's `escalate_or_inline` is a sure `escalate`
   (`route_by_verdict`, CRIT-E27), and the errand carries the class the brief read. The route's `brain` event names its
-  `verdict`, `confidence` and `source`. No question was added for it. — since 2026-11-06 · nodes 2.1618 ·
-  `nucleo/turn/pipeline_errands.py`, `nucleo/turn/route_by_verdict.py`.
+  `verdict`, `confidence` and `source`. No question was added for it. The last word backstop at the close — the
+  marketplace / modify-widget regex pair that made his sentence a worker when the model called nothing, unless the
+  brief was SURE `handle_inline` — went on 2026-11-12: marketplace words with an unsure or absent verdict end in
+  words. — since 2026-11-06, last word reader gone 2026-11-12 · nodes 2.1618, 2.1728 ·
+  `nucleo/turn/pipeline_errands.py`, `nucleo/turn/route_by_verdict.py`, `nucleo/flash/post_stream_acts.py`.
 - **CRIT-C17 · A sign-in the model forgot is opened by the brief's verdict, never by his words.** The close's login
   fallback (the model called nothing) opens the browser login only on a sure `login_only` = `login` — one declared
   question of the brief, asked every turn (a K9 price, paid because the fallback exists exactly when the model called
@@ -372,9 +375,14 @@ below is the first kind, or it names the mechanism that replaced the second.
   overrules the stronger one; a polite order measured action-first still completes). Two exceptions: a verdict VIEW at
   ≥ 0.95 on the card in front beats a model VIEW on ANOTHER card; a player's one-shot `play` on a turn the brief
   reads as a SURE commission (`escalate` ≥ `player_control.COMMISSION_SURE` on an order) is that errand, not his
-  description played as a title (`player_control.commissioned`, both channels). — since 2026-10-24, narrowed
-  2026-11-06 · nodes 2.73, 2.121, 2.244, 2.797, 2.908, 2.1628 · `nucleo/flash/direct_action.complete`,
-  `nucleo/acts/card.question_keeps_unwritten`, `nucleo/flash/verdict_card.py`.
+  description played as a title (`player_control.commissioned`, both channels). A verdict LAUNCHES or RELAUNCHES an
+  act at ONE floor, the operator's `consent.intent_act_at` (`verdicts.to_act`): the screen action, the request type
+  and `corrects_last` alike — a request type not read as an order at that floor (unsure, `comment`, `greeting`)
+  completes nothing, so a remark never travels as the payload of the act it would relaunch; a `complaint` is an order
+  to redo (K12); a correction below the floor redoes and undoes nothing. — since 2026-10-24, narrowed 2026-11-06, one
+  floor 2026-11-12 · nodes 2.73, 2.121, 2.244, 2.797, 2.908, 2.1628 · `nucleo/flash/direct_action.complete`,
+  `nucleo/flash/direct_action.an_order`, `nucleo/turn/verdicts.to_act`, `nucleo/acts/card.question_keeps_unwritten`,
+  `nucleo/flash/verdict_card.py`.
 - **CRIT-K3 · The verdict's action lands on the LIVE card**, never a bare phantom; with several cards of one type
   «close» goes to the one his last turn touched; «it» / «that» is the card his last turn acted on. — since
   2026-09-29 · nodes 2.167, 2.169, 2.85 · `nucleo/flash/show_target.py`, `nucleo/canvas_focus.py`.

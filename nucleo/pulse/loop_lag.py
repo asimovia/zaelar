@@ -28,8 +28,8 @@ from loguru import logger
 _PERIOD_S = 0.5
 _DEFAULT_BOUND_S = 1.0
 BODY = "body_loop"       # the shed source and the reading's name: the body's loop, never the audio path
-_state: dict = {"loops": set(), "last": 0.0, "worst": 0.0, "n": 0, "total_s": 0.0, "stalls": deque(maxlen=64),
-                "last_stall": None}
+_state: dict = dict(loops=set(), last=0.0, worst=0.0, n=0, total_s=0.0, stalls=deque(maxlen=64),
+                    last_stall=None)      # a state record, not a table (node 7.73)
 
 
 def bound_s() -> float:

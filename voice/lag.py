@@ -27,7 +27,7 @@ from loguru import logger
 
 _PERIOD_S = 0.5
 _COOLDOWN_S = 60.0
-_state = {"last_act": -1e9, "loops": set(), "worst": 0.0, "episode": False}
+_state = dict(last_act=-1e9, loops=set(), worst=0.0, episode=False)   # a state record, not a table (node 7.73)
 
 
 def bound_s() -> float:
