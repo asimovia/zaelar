@@ -148,6 +148,7 @@
  "answer_already_given": "Esa pregunta ya la contestaste; no hay nada nuevo que pasarle a la tarea.",
  "send_missing_text": "¿Qué le digo a {who}?",
  "send_missing_recipient": "¿A quién se lo mando?",
+ "send_which_recipient": "¿A qué {who}? Tengo a {names}.",
  "answer_which_task": "¿Para cuál de estas tareas es tu respuesta: {among}?",
  "stopped_now": "Vale, lo paro.",
  "stopped_also": "He parado esa tarea.",

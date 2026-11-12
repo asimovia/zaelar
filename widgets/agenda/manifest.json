@@ -182,6 +182,7 @@
       "payload": {
         "title": "string",
         "date": "YYYY-MM-DD (opcional, filtra por fecha)",
+        "currentTime": "HH:MM (opcional: la hora a la que EMPIEZA AHORA la cita que nombra, cuando hay varias con ese título ese día — «la de las cinco» = 17:00; nunca la hora nueva)",
         "whole": "true = todo lo que el título nombra: la serie entera, o todas las citas sueltas con ese título (opcional)",
         "from": "YYYY-MM-DD o «enero» — desde cuándo deja de repetirse (opcional)"
       },
@@ -222,7 +223,8 @@
       "view": true,
       "payload": {
         "title": "string (título de la cita, aunque sea parcial)",
-        "date": "YYYY-MM-DD o «el martes» (opcional; en una que se repite, ese día)"
+        "date": "YYYY-MM-DD o «el martes» (opcional; en una que se repite, ese día)",
+        "currentTime": "HH:MM (opcional: la hora a la que EMPIEZA AHORA la cita que nombra, cuando hay varias con ese título ese día — «la de las cinco» = 17:00; nunca la hora nueva)"
       }
     },
     "close_meeting": {
@@ -333,6 +335,7 @@
       "payload": {
         "title": "string (título de la cita, aunque sea parcial)",
         "date": "YYYY-MM-DD (opcional: el día que se mueve; en una cita que se repite, SOLO ese día)",
+        "currentTime": "HH:MM (opcional: la hora a la que EMPIEZA AHORA la cita que nombra, cuando hay varias con ese título ese día — «la de las cinco» = 17:00; nunca la hora nueva)",
         "newDate": "«mañana», un día de la semana o YYYY-MM-DD (opcional — conserva el día si no viene)",
         "newTime": "HH:MM de inicio (opcional — conserva la hora si no viene)",
         "endTime": "HH:MM de fin, o `duration` en minutos (opcional — conserva la duración si no viene)"
@@ -367,6 +370,7 @@
       "payload": {
         "title": "su título ACTUAL (vale parcial)",
         "date": "YYYY-MM-DD (opcional, si hay varias con ese título)",
+        "currentTime": "HH:MM (opcional: la hora a la que EMPIEZA AHORA la cita que nombra, cuando hay varias con ese título ese día — «la de las cinco» = 17:00; nunca la hora nueva)",
         "status": "confirmed | pending (o dilo como él: «ya me lo confirmaron», «sigue sin confirmar»)",
         "attendees": "lista de nombres, «Ana y Luis», o un número",
         "location": "dónde",

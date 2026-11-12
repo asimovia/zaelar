@@ -63,8 +63,15 @@ def test_a_move_without_a_new_day_needs_THIS_move(ag):
     ag.apply_action("add_meeting", {"title": "Yoga", "date": AHEAD, "startTime": "18:00"})
     dw = _born("move_meeting", {"title": "Yoga", "newTime": "18:00"})
     assert _met(dw) is False, "a Yoga already at 18:00 met the end state of a move that has not run"
+    # A move to where the row already is moves nothing (2.1725): refused `no_change`, and its end state stays unmet —
+    # never «Done.» over a row that was already there.
+    assert ag.apply_action("move_meeting", {"title": "Yoga", "newTime": "18:00"}).get("error") == "no_change"
+    assert _met(dw) is False
+    ag.apply_action("move_meeting", {"title": "Yoga", "newTime": "18:30"})
+    dw2 = _born("move_meeting", {"title": "Yoga", "newTime": "18:00"})
+    assert _met(dw2) is False
     ag.apply_action("move_meeting", {"title": "Yoga", "newTime": "18:00"})
-    assert _met(dw) is True
+    assert _met(dw2) is True, "THIS move ran and its end state is met"
 
 
 def test_a_cancel_is_met_when_the_occurrence_is_gone_and_only_then(ag):

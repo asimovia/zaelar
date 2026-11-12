@@ -21,6 +21,7 @@ widget's `data` module by contract) need no change.
 from __future__ import annotations
 
 from .details import stated
+from .edit import where_it_was
 
 
 
@@ -145,6 +146,8 @@ def prompt_digest() -> str:
             row += f" (aviso {m['remindAt']})"
         if m.get("notes"):
             row += f" — {str(m['notes'])[:120]}"
+        if (_was := where_it_was(m)):      # «leave the other one as it was» needs the hour it was at
+            row += f" · MOVIDA hace un momento (antes: {_was.get('date')} {_was.get('startTime')}-{_was.get('endTime')})"
         lines.append(row)
     if len(meets) > 12:
         lines.append(f"  · … y {len(meets) - 12} citas más")

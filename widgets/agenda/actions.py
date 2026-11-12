@@ -278,6 +278,8 @@ def _a_move_meeting(action, payload, db, _extra) -> dict:
     _hits = _d.edit.find(db, payload)
     if not _hits:
         return {"ok": False, "error": _d.edit.missing(db, payload)}
+    if (_ask := _d.edit.which(db, _hits, payload)):
+        return _ask
     _rawnew = str(payload.get("newDate") or payload.get("new_date") or payload.get("day")
                   or payload.get("to") or "").strip()
     # `newStartTime` because its END twin `newEndTime` was already read (`edit._END_KEYS`) and the start
@@ -308,6 +310,9 @@ def _a_move_meeting(action, payload, db, _extra) -> dict:
                 else str(m.get("date") or _d._today()))
     new_start = _d._resolve_time(_rawtime) if _rawtime else str(m.get("startTime") or "17:00")
     _end = _d.edit.end_of(m, payload, new_start)
+    if (_same := _d.edit.unchanged(m, new_date, new_start, _end)):
+        return _same
+    _d.edit.remember_where(m)
     _d._cancel_reminder(m)
     if _rawnew and (m.get("repeat") or {}).get("freq") == "weekly":   # V2-769: a series moves every week
         m["repeat"]["days"] = [_d.series.weekday(new_date)]
@@ -351,6 +356,8 @@ def _a_update_meeting(action, payload, db, _extra) -> dict:
         payload = {"newTitle": payload["title"]}    # V2-781 pair 5: a bare title naming no row is the new name
     if not _hits:
         return {"ok": False, "error": _d.edit.missing(db, payload)}
+    if (_ask := _d.edit.which(db, _hits, payload)):
+        return _ask
     _fields = ("notes", "details", "location", "place", "category", "attendees", "people", "with",
                "status", "confirmed", "allDay", "all_day", "newTitle") + _d.recur.ALL_KEYS
     if not any(k in payload for k in _fields):

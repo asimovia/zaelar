@@ -10,15 +10,18 @@ at all: whatever is not on the handle counts 0, never «unknown, so fire».
 """
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
+from pathlib import Path
 
 #: The score at which the whisper fires.
 FIRE_AT = 2
-#: The kinds of sentence that never need a whisper when they are sure and no thread is in play.
-QUIET_KINDS = ("greeting", "comment", "answer")
-#: Card states (`named_errand._STATE` keys) that are open, and the ones that wait on him.
-OPEN_STATES = ("running", "starting", "pending", "waiting")
-WAITING_STATES = ("waiting",)
+#: The whisperer's declared names (`schema.json`): the kinds of sentence that never need a whisper when they are sure
+#: and no thread is in play, and the card states (`named_errand._STATE` keys) that are open and that wait on him.
+SCHEMA = json.loads((Path(__file__).with_name("schema.json")).read_text(encoding="utf-8"))
+QUIET_KINDS = tuple(SCHEMA["quiet_kinds"])
+OPEN_STATES = tuple(SCHEMA["open_states"])
+WAITING_STATES = tuple(SCHEMA["waiting_states"])
 #: A live errand silent this long reads as stalled — the dispatcher's own `STUCK_SECS` when it can be read.
 STALLED_S_DEFAULT = 180
 

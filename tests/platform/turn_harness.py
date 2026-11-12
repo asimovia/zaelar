@@ -332,6 +332,19 @@ def _forget_what_the_turns_did() -> None:
     done_ops.reset()
 
 
+def _await_the_turns_own_threads() -> bool:
+    """The threads a turn starts AFTER it closes (the whisperer, off `turn.closed`, V2-889 F2) end inside the case's
+    world: they read the keys and the database this case lent. Measured 2026-11-12 on the multi-turn bench: the last
+    turn's whisper resolved its key after the case had given the operator's keys back, so DeepSeek answered 401 to a
+    `local` sentinel — and its event would have landed in the install's database. Bounded by the whisperer's own clock:
+    its two rungs and the brief it may wait for. True when they all ended."""
+    try:
+        from nucleo.turn.whisper import run as whisper
+    except Exception:  # noqa: BLE001 — no whisperer, nothing to wait for
+        return True
+    return whisper.wait(2 * whisper.DEFAULT_TIMEOUT_S + whisper.BRIEF_WAIT_S)
+
+
 class Isolated:
     """Everything a bank turn can reach, redirected to a temp dir, and put back afterwards."""
 
@@ -420,6 +433,7 @@ class Isolated:
         self._set(v2, "_PATH", copy)
 
     def __exit__(self, *_exc) -> None:
+        _await_the_turns_own_threads()
         try:
             from nucleo.cli import turn as cli_turn
             cli_turn.reset()
@@ -475,6 +489,14 @@ class Isolated:
             res = agenda.apply_action("add_meeting", {k: v for k, v in payload.items() if v})
             if res.get("ok") is False:
                 raise RuntimeError(f"{case['id']}: agenda fixture refused: {res}")
+        if memory.get("agenda"):
+            # The fixture is the calendar as it STANDS, not a conversation about its last row: seeding writes through
+            # `add_meeting`, which marks the row it wrote as the one the conversation is on (`edit.touch`).
+            from widgets import store as _store
+            from widgets.agenda import data as agenda
+            _db = agenda.load_db()
+            _db.pop("focus", None)
+            _store.save(agenda.WIDGET_ID, _db)
         from widgets import store
         for wid, doc in (case.get("widgets") or {}).items():
             store.save(wid, json.loads(json.dumps(doc)))

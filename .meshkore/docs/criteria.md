@@ -175,6 +175,12 @@ below is the first kind, or it names the mechanism that replaced the second.
   the row back in its slot (an appointment: `restore_meeting`, also for one skipped day or a series cut short); sweeps (clear or delete a list, clear all or a range) still ask. A row's content is
   never an order («add a task: buy bread» buys nothing) — the danger gate is repaired by SUBTRACTING, never by
   adding a pattern. — since 2026-09-21 · nodes 4.206, 4.188, 2.67, 2.238 · `widgets/agenda/data.py`, `nucleo/danger.py`.
+- **CRIT-C3b · Two appointments of one title on one day are two rows.** Every verb that finds a row narrows by
+  `currentTime` (its hour NOW), carried from an `item` that names its hour; still two at different hours with no
+  conversation on one → the act asks with the hours, never the first in the list; a move that changes nothing refuses
+  `no_change`; a moved row's line says where it was. A sure `corrects_last` onto ANOTHER row of the card's last act
+  runs the card's own undo first (`undo_of`), once. — since 2026-11-12 · nodes 2.1725 · `widgets/agenda/edit.py`,
+  `widgets/agenda/sweep.py`, `widgets/ref_day.py`, `nucleo/acts/correction_undo.py`.
 - **CRIT-C4 · Building or rewriting a card of his asks first**, at the one door a worker is lit
   (`dispatch._run_session`, `kind == code`); the cluster dev-worker is exempt. — since 2026-09-23 · nodes 2.76.
 - **CRIT-C4c · Every appointment he writes carries its notice**: a timed one ~2 h before, an all-day one at 09:00 that
@@ -715,6 +721,11 @@ Flash keeps the conversation; the row is what both brains read.
   becomes the row's; a bound answer is the quoted text. — since 2026-11-06 · nodes 2.1657, 2.1629, 2.1619, 2.1140 · `nucleo/request/send_task.py`, `nucleo/flash/tool_executor_widget_calls.py`,
   `nucleo/request/ask_outside_door.py`, `nucleo/request/inline_ask.py`, `nucleo/workers/exit_slots.py`,
   `nucleo/workers/exit_gate.py`.
+- **CRIT-T2f · A send reaches whom he named, or asks ONE «which?».** A person slot whose value — his word or the
+  model's pick from it — reaches several people alike (no one leads by `clear_margin`) is one question on the send's
+  row with them as candidates, before anything runs; a row-reference act (`reply {n}`, a bare reply reaching nobody)
+  whose person he did not name becomes the card's primary act to the person he named. — since 2026-11-12 · nodes
+  2.1724 · `nucleo/request/send_task_who.py`.
 - **CRIT-T2 · `circuit.settle` is the only writer of an ending.** `done | failed | cancelled` is written for every row
   — worker, inline, list, mirror — by `nucleo/circuit.settle` and nothing else; the move is said ONCE as a `task_state`
   event {task_id, state, writer, trace}

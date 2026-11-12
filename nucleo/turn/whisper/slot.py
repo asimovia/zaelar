@@ -23,8 +23,10 @@ WHY_CHARS = 120
 HEARD_CHARS = 80
 #: Where a fact came from. A fact with another source is dropped: an unsourced datum is the confabulation the slot
 #: exists to keep out of the prompt.
-SOURCES = ("his_words", "our_reply", "task", "verdict", "world")
-CERTAINTY = ("clear", "ambiguous", "contradicted")
+#: Both read from the whisperer's declared names (`schema.json`), the file the gate reads too.
+from nucleo.turn.whisper.gate import SCHEMA as _SCHEMA  # noqa: E402
+SOURCES = tuple(_SCHEMA["fact_sources"])
+CERTAINTY = tuple(_SCHEMA["task_certainty"])
 
 
 @dataclass

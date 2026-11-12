@@ -1,0 +1,8 @@
+{
+  "_": "The whisperer's declared vocabulary (V2-889 F2): closed sets of NAMES it reads and writes — never words of a language. The gate and the slot read them from here, so a name added is a line of data, not a table in code.",
+  "quiet_kinds": ["greeting", "comment", "answer"],
+  "open_states": ["running", "starting", "pending", "waiting"],
+  "waiting_states": ["waiting"],
+  "fact_sources": ["his_words", "our_reply", "task", "verdict", "world"],
+  "task_certainty": ["clear", "ambiguous", "contradicted"]
+}
