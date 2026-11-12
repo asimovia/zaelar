@@ -34,6 +34,8 @@ DOORS = dict(
     send=(("nucleo.acts.message_channel", "KEY", lambda m, _c: m.question()),),
     # the model called `set_style_directive`: whether he renames the assistant or changes when it listens
     rename=(("nucleo.turn.identity", "KEY", lambda m, _c: m.question()),),
+    # a sure correction's act on the card that did the last act is at its door: which kind of correction it is
+    correct=(("nucleo.acts.correction_undo", "KEY", lambda m, _c: m.question()),),
 )
 #: The default bound a door that can wait gives its trip (the same budget the route gives the brief, `route_by_verdict`).
 WAIT_S = 1.5

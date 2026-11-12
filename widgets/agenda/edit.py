@@ -132,8 +132,8 @@ def undo_of(action: str, last: dict, nxt: dict) -> tuple[str, dict] | None:
     rows = [m for m in load_db().get("meetings") or [] if where_it_was(m)]
     title = str((last or {}).get("title") or "").strip().lower()
     rows = [m for m in rows if not title or title in str(m.get("title") or "").lower()]
-    if not rows:
-        return None
+    if not rows or _put_back(last):
+        return None                          # nothing moved, or that move's row is already back (the model's own undo)
     m = max(rows, key=lambda r: float(where_it_was(r).get("at") or 0))
     at = str((nxt or {}).get("currentTime") or "").strip()
     if not at:
@@ -144,6 +144,56 @@ def undo_of(action: str, last: dict, nxt: dict) -> tuple[str, dict] | None:
     return "move_meeting", {"title": str(m.get("title") or ""), "date": str(m.get("date") or ""),
                             "currentTime": str(m.get("startTime") or ""), "newDate": was.get("date") or "",
                             "newTime": was.get("startTime") or "", "endTime": was.get("endTime") or ""}
+
+
+def _put_back(last: dict) -> bool:
+    """A row of the last move's title sits again where that move took it from: the move is already undone. A move
+    back rewrites `movedFrom`, so the newest moved row is no longer «the row that move wrote» — the record is."""
+    got = correction_owed("move_meeting", last)
+    return bool(got) and not any(c[1].get("newTime") == _resolve_time(str((last or {}).get("currentTime") or ""))
+                                 for c in got["calls"])
+
+
+def correction_owed(action: str, last: dict) -> dict | None:
+    """The card's END STATE read against «that move went to the wrong row» (`nucleo/acts/correction_undo.complete`):
+    what is still owed for the correction to be whole — the row the last move wrote back where it was, and the OTHER
+    row of that title, from that day, where the last move put its row (left where it was, or sent somewhere else by a
+    wrong call: it is moved from where it sits now). `{"calls": [(action, payload), …], "open": [hours]}`: `open` lists
+    the candidates when more than one row could be «the other» — nothing is guessed. None when the act is not a move or
+    its record no longer reads against the calendar."""
+    if action != "move_meeting":
+        return None
+    from .data import load_db
+    last = dict(last or {})
+    title = str(last.get("title") or "").strip().lower()
+    day = _resolve_date(str(last["date"])) if str(last.get("date") or "").strip() else ""
+    was = _resolve_time(str(last.get("currentTime") or "")) or ""
+    to_day = _resolve_date(str(last["newDate"])) if str(last.get("newDate") or "").strip() else day   # "" is today
+    to = _resolve_time(str(last.get("newTime") or "")) or ""
+    if not (title and day and was and to) or (day, was) == (to_day, to):
+        return None
+    rows = [m for m in load_db().get("meetings") or [] if title in str(m.get("title") or "").lower()
+            and not isinstance(m.get("repeat"), dict)]
+    place = lambda m: (str(m.get("date") or ""), str(m.get("startTime") or ""))  # noqa: E731
+    came = lambda m: ((w.get("date"), w.get("startTime")) if (w := where_it_was(m)) else place(m))  # noqa: E731
+    back = [m for m in rows if place(m) == (day, was)]
+    moved = [m for m in rows if place(m) == (to_day, to) and came(m) == (day, was)]
+    mine = (back or moved or [None])[0]
+    if mine is None:
+        return None                            # nothing reads as that move's row any more
+    calls: list = []
+    if not back:
+        w = where_it_was(mine)
+        calls.append(("move_meeting", {"title": str(mine.get("title") or ""), "date": to_day, "currentTime": to,
+                                       "newDate": day, "newTime": was, "endTime": w.get("endTime") or ""}))
+    others = [m for m in rows if m is not mine and came(m)[0] == day and came(m)[1] not in (was, to)]
+    if len(others) != 1:
+        return {"calls": calls, "open": sorted(came(m)[1] for m in others)}
+    o = others[0]
+    if place(o) != (to_day, to):
+        calls.append(("move_meeting", {"title": str(o.get("title") or ""), "date": place(o)[0],
+                                       "currentTime": place(o)[1], "newDate": to_day, "newTime": to}))
+    return {"calls": calls, "open": []}
 
 
 def unchanged(m: dict, date: str, start: str, end: str) -> dict | None:
