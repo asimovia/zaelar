@@ -5317,8 +5317,8 @@ DOMAINS: list[dict] = [
             "paths": ["tests/infrastructure/unit/test_the_ios_app_carries_its_store_manifests.py"]},
         {"id": "4.443", "title": "Inside the native app the shell passes review: no purchase path (account page without "
                                  "#buy, no top-up wording), nothing reaches the AI services before a yes kept in the "
-                                 "engine's config, Settings can withdraw it and open account deletion; a browser is "
-                                 "unchanged (V2-870)", "ch": UNIT,
+                                 "engine's config and the question is never asked behind the loader, Settings can "
+                                 "withdraw it and open account deletion; a browser is unchanged (V2-870)", "ch": UNIT,
             "paths": ["tests/browser/unit/mobile/test_the_app_passes_review.py"]},
         {"id": "4.445", "title": "The person owns what is kept: a screen's location becomes the state (~1 km, named) only "
                                  "with the switch on and is forgotten when it goes off; the prompt says where he is now; "

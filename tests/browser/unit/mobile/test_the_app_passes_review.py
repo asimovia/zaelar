@@ -28,6 +28,12 @@ PAGE = """<!doctype html><meta charset="utf-8"><meta name="viewport" content="wi
   window.open = (u) => { window.__opened.push(String(u)); return null; };
 </script>
 <button class="zm-orb-btn" id="orb">orb</button>
+<script>
+  // `?boot=1`: the page still shows the real loader (its stylesheet and its host), as the shell does at load.
+  window.__boot = new URLSearchParams(location.search).get("boot") === "1";
+  if (window.__boot) document.write('<link rel="stylesheet" href="/static/app/core/shared-surfaces.css">'
+    + '<div id="preboot" class="boot-ovl" data-stage="0"></div>');
+</script>
 <script type="module">
   // The SAME ?v= the shell uses: a module imported with another query string is a second instance.
   import { mount } from "/static/app/core/dom.js?v=2";
@@ -37,9 +43,11 @@ PAGE = """<!doctype html><meta charset="utf-8"><meta name="viewport" content="wi
   import { EnergyNotice } from "/static/app/components/EnergyNotice.js?v=1";
   import { MenuSheet } from "/static/mobile/app/shell/MenuSheet.js?v=2";
   import { SettingsSheet } from "/static/mobile/app/shell/SettingsSheet.js?v=2";
+  import { BootOverlay } from "/static/app/components/BootOverlay.js?v=4";
   store.setCloudProfile(true);
   store.setAccountUrl("%s");
-  store.setEnergy({ cloud: true, known: true, balance: 0, capacity: 400, exhausted: { reason: "balance_depleted" } });
+  if (window.__boot) mount(BootOverlay());   // the real loader, over everything until the boot is ready
+  else store.setEnergy({ cloud: true, known: true, balance: 0, capacity: 400, exhausted: { reason: "balance_depleted" } });
   mount(AiConsentSheet()); mount(EnergyNotice()); mount(MenuSheet()); mount(SettingsSheet());
   const cfg = await fetch("/api/config").then((r) => r.json());
   consent.loadFrom(cfg);
@@ -84,8 +92,8 @@ def browser_page():
 
         pg.route("**/*", route)
 
-        def open_(app: bool):
-            pg.goto("http://phone.test/page" + ("?app=1" if app else ""))
+        def open_(app: bool, boot: bool = False):
+            pg.goto("http://phone.test/page?app=" + ("1" if app else "0") + ("&boot=1" if boot else ""))
             pg.wait_for_function("window.__ready === true", timeout=15000)
             return pg
 
@@ -131,6 +139,27 @@ def test_nothing_reaches_the_ai_services_before_a_yes_and_the_yes_survives_a_rel
     pg = open_(True)                                     # reload: the engine remembers
     assert not pg.locator(".zm-consent").get_attribute("class").endswith(" open")
     assert not pg.evaluate("document.documentElement.classList.contains('zm-consent-pending')")
+
+
+def test_the_question_is_never_asked_behind_the_loader(browser_page) -> None:
+    """The voice does not start before the yes, and the loader waits for the voice: so the question ends the wait."""
+    open_, engine = browser_page
+    pg = open_(True, boot=True)                          # in the app, no yes yet, and no voice will ever come up
+    pg.wait_for_function("!document.getElementById('preboot')", timeout=8000)
+    accept = pg.locator(".zm-consent .zm-primary")
+    box = accept.bounding_box()
+    on_top = pg.evaluate("([x, y]) => document.elementFromPoint(x, y).className",
+                         [box["x"] + box["width"] / 2, box["y"] + box["height"] / 2])
+    assert on_top == "zm-primary", f"Accept is not the element under the finger: {on_top!r}"
+
+    engine["ai_providers"] = True                        # a yes already given: the loader keeps waiting for the voice
+    pg = open_(True, boot=True)
+    pg.wait_for_timeout(1500)
+    assert pg.evaluate("!!document.getElementById('preboot')"), "with nothing to ask, only a ready boot ends the loader"
+    engine["ai_providers"] = False
+    pg = open_(False, boot=True)                         # a browser is never asked: same wait
+    pg.wait_for_timeout(1500)
+    assert pg.evaluate("!!document.getElementById('preboot')")
 
 
 def test_a_browser_is_never_asked(browser_page) -> None:
