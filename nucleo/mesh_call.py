@@ -10,8 +10,8 @@ later on its own (`mesh_jobs`). This module is that conversation's client:
                                     job's own answers endpoint
 
 Rules it keeps, all inherited:
-  · no catalogue: the agent is the one the Oracle returned (`remember_seen` from `find`), re-found by the errand
-    when this process has not seen it; the skill must be DECLARED by its card;
+  · no catalogue: the agent is the one the Oracle returns for the errand under that id; the skill must be DECLARED
+    by its card;
   · free skills go direct; a priced one only through the deployment's relay, and only when it can be priced there
     (`mesh_relay.route`); a `402` is reported, never paid;
   · every call leaves its observer row (`mesh_calls.asked`: field NAMES only) and its per-agent outcome;
@@ -23,58 +23,23 @@ from __future__ import annotations
 import json
 import time
 
-from loguru import logger
-
 from nucleo import mesh_dialog as dialog
 from nucleo import mesh_relay as relay
 from nucleo import mesh_skills as skills
 
-_KV_SEEN = "mesh:seen"
-_SEEN_TTL_S = 24 * 3600
 _PREFILL_ROUNDS = 2
 #: The request-key convention: set to the thread id when the skill's own declared examples use it and the caller did
 #: not. One order, one key — a resend of the same thread can never become a second order.
 _KEY_FIELD = "idempotency_key"
 
 
-def _note(e: BaseException) -> None:
-    import sys
-    logger.debug(f"mesh_call: {sys._getframe(1).f_code.co_name} — {type(e).__name__}: {e}")
-
-
 # ── which agent ─────────────────────────────────────────────────────────────────────────────────────────────
-def remember_seen(agents: list[dict]) -> None:
-    """What `find` returned, by id, for a day: so `call <agent_id>` reaches the agent the Oracle named."""
-    if not agents:
-        return
-    try:
-        from memory import api as memory
-        from nucleo.mesh_agents import _endpoint_of
-        now = time.time()
-        seen = {k: v for k, v in (memory.kv_get(_KV_SEEN, {}) or {}).items()
-                if isinstance(v, dict) and now - float(v.get("at") or 0) < _SEEN_TTL_S}
-        for a in agents or []:
-            if isinstance(a, dict) and a.get("agent_id") and _endpoint_of(a):
-                seen[str(a["agent_id"])] = {"at": now, "agent": {"agent_id": a["agent_id"], "endpoint": _endpoint_of(a)}}
-        memory.kv_set(_KV_SEEN, seen)
-    except Exception as e:  # noqa: BLE001
-        _note(e)
-
-
 def _agent(agent_id: str, errand: str) -> dict | None:
-    try:
-        from memory import api as memory
-        row = (memory.kv_get(_KV_SEEN, {}) or {}).get(agent_id) or {}
-        if row and time.time() - float(row.get("at") or 0) < _SEEN_TTL_S:
-            return dict(row["agent"])
-    except Exception as e:  # noqa: BLE001
-        _note(e)
+    """The agent the Oracle returns for this errand under that id — never one it does not (no catalogue)."""
     if not errand:
         return None
     from nucleo import mesh_agents
-    found = mesh_agents.find(errand)
-    remember_seen(found.get("agents") or [])
-    return next((a for a in found.get("agents") or [] if str(a.get("agent_id")) == agent_id), None)
+    return next((a for a in mesh_agents.find(errand).get("agents") or [] if str(a.get("agent_id")) == agent_id), None)
 
 
 # ── one call ────────────────────────────────────────────────────────────────────────────────────────────────
@@ -94,11 +59,8 @@ def _send(t: dict) -> tuple[int, dict | None]:
     status, data = mesh_agents._post(url, t["body"], timeout=float(t.get("timeout") or 60), bearer=bearer)
     ms = round((time.monotonic() - t0) * 1000)
     mesh_agents._note_answer({"agent_id": t["agent"]}, status, data)
-    try:
-        from nucleo import mesh_calls
-        mesh_calls.asked({"agent_id": t["agent"]}, t["skill"], t["body"], {"ok": 200 <= status < 300}, status, ms)
-    except Exception as e:  # noqa: BLE001
-        _note(e)
+    from nucleo import mesh_calls                     # never raises
+    mesh_calls.asked({"agent_id": t["agent"]}, t["skill"], t["body"], {"ok": 200 <= status < 300}, status, ms)
     return status, data
 
 
@@ -106,8 +68,8 @@ def call(agent_id: str, skill_id: str, body: dict, *, errand: str = "", task_id:
     """Put `body` to skill `skill_id` of agent `agent_id`. Never raises; never pays. See the module docstring."""
     agent = _agent(str(agent_id or "").strip(), errand)
     if not agent:
-        return {"ok": False, "reason": f"«{agent_id}» is not an agent the network returned for this errand — "
-                                       "run `find` first and use an agent_id it lists"}
+        return {"ok": False, "reason": f"«{agent_id}» is not an agent the network returns for this errand — pass his "
+                                       "words as `--errand` and an agent_id `find` lists for them"}
     from nucleo import mesh_agents
     endpoint = mesh_agents._endpoint_of(agent)
     card = mesh_agents._card_of(endpoint) or {}
@@ -122,6 +84,13 @@ def call(agent_id: str, skill_id: str, body: dict, *, errand: str = "", task_id:
         return {"ok": False, "agent": agent_id, "skill": skill_id, "reason": "no Energy left to start a priced call"}
     t = {"agent": agent_id, "endpoint": endpoint, "skill": skill_id, "path": path, "via": via,
          "errand": str(errand or "")[:300], "task_id": str(task_id or ""), "timeout": mesh_agents.agent_timeout(agent)}
+    from nucleo import mesh_handoff
+    if not (body or {}).get("dry_run"):
+        t["order"] = mesh_handoff.signature(body or {}, _KEY_FIELD)
+        if (same := mesh_handoff.duplicate(agent_id, skill_id, t["order"])):
+            return {"ok": False, "agent": agent_id, "skill": skill_id, "duplicate": True, "thread": same["id"],
+                    "reason": "this same order was already handed back and its outcome is unknown (possibly made): "
+                              f"never place it twice blindly — report it first with `hbmesh report {same['id']} …`"}
     t["id"] = dialog.save(t)
     t["body"] = _with_key(card, skill_id, dict(body or {}), t["id"])
     return _exchange(t)
@@ -172,19 +141,22 @@ def _outcome(t: dict, status: int, data, questions: list[dict]) -> dict:
         return {**base, "ok": False, "agent_asks": _what_the_agent_asks_for(data),
                 "reason": f"«{t['agent']}» answered {status} (see `agent_asks`)"}
     _learn(t)
+    from nucleo import mesh_handoff
+    handed = mesh_handoff.of(data)
+    if handed:
+        if t.get("order"):
+            mesh_handoff.keep(t, data)
+        return {**base, "ok": True, "handed_back": handed, "next": _HANDOFF_NEXT.format(thread=t["id"])}
     return {**base, "ok": True, "data": data}
 
 
 def _learn(t: dict) -> None:
     """A served skill teaches the playbook route for this kind of errand: `<agent>/<skill>` (the genome's learned layer)."""
-    try:
-        from nucleo import routes as _routes
-        plan = _routes.plan(t.get("errand") or "")
-        if plan and plan.domain:
-            _routes.learn(plan.domain, _routes.store.CH_MESH, target=f"{t['agent']}/{t['skill']}",
-                          evidence=f"served «{str(t.get('errand') or '')[:60]}»", rank=10)
-    except Exception as e:  # noqa: BLE001
-        _note(e)
+    from nucleo import routes as _routes              # `plan` and `learn` never raise
+    plan = _routes.plan(t.get("errand") or "")
+    if plan and plan.domain:
+        _routes.learn(plan.domain, _routes.store.CH_MESH, target=f"{t['agent']}/{t['skill']}",
+                      evidence=f"served «{str(t.get('errand') or '')[:60]}»", rank=10)
 
 
 _ASK_NEXT = ("The agent ASKS the operator before it can go on — it did not refuse. Ask him (bridge `ask`, each "
@@ -194,6 +166,16 @@ _ASK_NEXT = ("The agent ASKS the operator before it can go on — it did not ref
 _JOB_NEXT = ("The agent is working on it and will finish on its own (a job). Its outcome and any question it raises "
              "reach the operator by themselves on this task's row: tell him it is in progress, do NOT claim it is "
              "done, and end your turn — do not wait or poll.")
+
+
+_HANDOFF_NEXT = ("The agent cannot do this itself and HANDS IT BACK (`handed_back`): do it as the operator, following "
+                 "`action`. `note` is that platform's own rule — follow it exactly as written; where it forbids "
+                 "automation, give him the link. Use only the values in `fields`; a required one that is null is asked "
+                 "to him. A captcha, a card, a deposit or fee, a login or a code: take it to that step and hand it to "
+                 "him with the link. A form sent to the place itself is a REQUEST, not a booking — say so. Submit ONCE; "
+                 "a submit whose result you did not see counts as possibly made. When it ends: "
+                 "`hbmesh report {thread} <one of report_as>`. `agent_can_do`, when present, is the agent's own way to "
+                 "do it for him: `hbmesh call <agent> <its skill> --json` with its request, if he wants that.")
 
 
 # ── his answers back ────────────────────────────────────────────────────────────────────────────────────────

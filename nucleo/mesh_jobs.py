@@ -1,24 +1,18 @@
 """nucleo/mesh_jobs.py — a network agent's JOB, owned by a durable task row until it ends.
 
-Some skills do not answer at once: they accept the work (`202` with a job id) and finish minutes later — a phone call
-placed by the agent's own voice assistant, for instance. A worker session must not sit polling for that (its process
-is minutes of a model's time, and a restart buries it), so the job is handed to the pulse:
+A skill may accept the work (`202` with a job id) and finish minutes later — a phone call placed by the agent itself. A
+worker must not sit polling for that (a restart buries it), so the job is the pulse's:
 
-  · `opened(thread, answer)` records the job on its thread (`mesh_dialog`): id, where to poll, its own token;
-  · `sweep()` (the pulse, every reconcile beat) gives each open job a ROW of its own the first time it sees it — a
-    task the operator sees on his board, born from the worker's row with its session — then polls it, backing off;
-  · a job that ASKS (its answer carries `questions`, `mesh_dialog.questions_in`) puts each question on that row
-    through THE asker (`nucleo/circuit/asker.ask`, kind `clarify`: dialogue, never a card), one at a time, bound to
-    the job by identity (`remote: {thread, question}` on the question's artefact). His answer — a declared option is
-    its index, never a reading of words — goes back to the job's own answers endpoint (`answered`), with no model;
-  · a job that ENDS resumes the worker session that started it, re-briefed with the job's own result, so the
-    outcome is told to him by the session that knows the errand. A result the agent marks as uncertain is said as
-    uncertain — the rebrief says so (`worker_api_resume.rebrief`);
-  · a job bought through the relay is booked by the relay when it is CREATED (the engine may not be trusted to
-    report it); here it only debits the local lease, once, at its tariff row (`report_agent_usage`).
+  · `opened` records the job on its thread (id, where to poll, its own token); `sweep()` (every reconcile beat) gives
+    it a ROW of its own, born from the worker's row with its session, and polls it with back-off;
+  · a job that ASKS puts each question on that row through THE asker (`clarify`: dialogue, never a card), bound by
+    identity (`remote: {thread, question}`); his option goes back to the job's answers endpoint by INDEX, no model;
+  · a job that ENDS resumes the worker that started it with its result (`worker_api_resume.rebrief`: an outcome the
+    agent calls uncertain is said as uncertain);
+  · a job bought through the relay is booked by the relay; here it only debits the local lease, once, when born.
 
-What «ended» means is read from the job's SHAPE, never from its status words: an explicit `final: true` (the A2A
-flag), or a `result` object that carries no question.
+«Ended» is read from the job's SHAPE, never its status words: `final: true` (the A2A flag), or a `result` with no
+question.
 """
 from __future__ import annotations
 
@@ -80,7 +74,7 @@ def _tick(t: dict, now: float) -> int:
         return 0
     if job.get("waiting_answer") or now < float(job.get("next_at") or 0):
         return 0
-    status, data = _get(t)
+    data = _get(t)
     if now - float(job.get("since") or now) > GIVE_UP_S:
         return _end(t, data if isinstance(data, dict) else {}, gave_up=True)
     questions = dialog.questions_in(data)
@@ -88,7 +82,7 @@ def _tick(t: dict, now: float) -> int:
         job["pending"] = questions
         job["answers"] = []
         return _ask_next(t)
-    if status == 200 and _is_final(data):
+    if _is_final(data):
         return _end(t, data)
     job["polls"] = int(job.get("polls") or 0) + 1
     job["next_at"] = now + min(POLL_MAX_S, POLL_EVERY_S * (1 + job["polls"] // 4))
@@ -112,42 +106,23 @@ def _is_final(data) -> bool:
     return isinstance(data.get("result"), dict) and bool(data["result"]) and not dialog.questions_in(data)
 
 
-def _url(t: dict, tail: str = "") -> tuple[str, str]:
-    """Where this job is reached, and with which bearer: through the relay when it was bought there, else direct with
-    the job's own token (never a client credential)."""
+def _url(t: dict, tail: str = "") -> tuple[str, str, dict]:
+    """Where this job is reached: `(url, bearer, headers)`. Direct, with the job's own token as the bearer; through the
+    relay when it was bought there, with the account's credential AND the job's own token beside it (`X-Job-Token`) —
+    the relay reaches the job with that token, so one account can never read another's. Never a client credential."""
     poll = t["job"].get("poll") or f"/v1/jobs/{t['job']['id']}"
     path = (poll if poll.startswith("/") else "/" + poll.split("/", 3)[-1]) + tail
+    token = t["job"].get("token") or ""
     if t.get("via") == relay.RELAY:
-        return relay.url(t["endpoint"], path)
-    return t["endpoint"].rstrip("/") + path, t["job"].get("token") or ""
+        url, credential = relay.url(t["endpoint"], path)
+        return url, credential, ({"X-Job-Token": token} if token else {})
+    return t["endpoint"].rstrip("/") + path, token, {}
 
 
-def _get(t: dict) -> tuple[int, dict | None]:
-    import json
-    import urllib.error
-    import urllib.parse
-    import urllib.request
-
-    from connectors import outcome as _outcome
-    from nucleo.mesh_agents import USER_AGENT
-    url, bearer = _url(t)
-    headers = {"user-agent": USER_AGENT, **({"authorization": f"Bearer {bearer}"} if bearer else {})}
-    req = urllib.request.Request(url, headers=headers)
-    try:
-        def _go():
-            with urllib.request.urlopen(req, timeout=_GET_TIMEOUT_S) as r:
-                return r.status, r.read()
-        status, raw = _outcome.call(f"mesh:{urllib.parse.urlsplit(url).netloc}", "job", _go,
-                                    measure=lambda sb: {"status": sb[0]})
-        return status, json.loads(raw.decode("utf-8") or "null")
-    except urllib.error.HTTPError as e:
-        try:
-            return e.code, json.loads(e.read().decode("utf-8") or "null")
-        except Exception:  # noqa: BLE001 — a body that is not JSON is just a status
-            return e.code, None
-    except Exception as e:  # noqa: BLE001 — a poll that failed is retried at the next beat
-        _note(e)
-        return 0, None
+def _get(t: dict) -> dict | None:
+    from nucleo import mesh_agents
+    url, bearer, headers = _url(t)
+    return mesh_agents._get(url, timeout=_GET_TIMEOUT_S, bearer=bearer or None, **({"headers": headers} if headers else {}))
 
 
 # ── the row that owns the job ────────────────────────────────────────────────────────────────────────────────
@@ -227,9 +202,10 @@ def _post_answers(t: dict, cancel: bool) -> dict:
     from nucleo import mesh_agents
     from nucleo.circuit import ledger
     job = t["job"]
-    url, bearer = _url(t, "/answers")
+    url, bearer, headers = _url(t, "/answers")
     body = {"cancel": True} if cancel else {"answers": job.get("answers") or []}
-    status, data = mesh_agents._post(url, body, timeout=_GET_TIMEOUT_S, bearer=bearer or None)
+    status, data = mesh_agents._post(url, body, timeout=_GET_TIMEOUT_S, bearer=bearer or None,
+                                     **({"headers": headers} if headers else {}))
     job.update(pending=[], answers=[], next_at=time.time() + POLL_FIRST_S)
     if t.get("row"):
         ledger.waiting(t["row"], WAIT)
@@ -270,23 +246,7 @@ def _tell(t: dict, data: dict, gave_up: bool) -> None:
 
 
 def _say_ended(t: dict, uid: str) -> None:
-    try:
-        import asyncio
-
-        from i18n import langs as _l
-        from nucleo import circuit, dispatch
-        from nucleo.pulse import notices
-        if uid:
-            circuit.settle(row=uid, state="done", outcome=f"{t['agent']} · {t['skill']}: job ended")
-        line = str(getattr(_l.current_language(), "mesh_job_ended", "") or "").format(
-            goal=str(t.get("errand") or t["skill"])[:80], agent=t["agent"])
-        if not line:
-            return
-        coro = notices.notify("zaelar", line, key=f"mesh_job:{t['job']['id']}", kind="info")
-        loop = getattr(dispatch, "_LOOP", None)
-        if loop is not None:
-            asyncio.run_coroutine_threadsafe(coro, loop)
-        else:
-            asyncio.run(coro)
-    except Exception as e:  # noqa: BLE001
-        _note(e)
+    """No session to tell it (started outside a managed worker): the row ends, its outcome on the board."""
+    if uid:
+        from nucleo import circuit
+        circuit.settle(row=uid, state="done", outcome=f"{t['agent']} · {t['skill']}: job ended")

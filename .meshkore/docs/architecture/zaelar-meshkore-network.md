@@ -133,6 +133,7 @@ blind for an agent that does several things. A booking is a different shape, and
 hbmesh find "<errand>"                                  → agents, each with its card's skills {id, free, describes}
 hbmesh call <agent_id> <skill> --json @request.json     → the answer · a question (thread) · a job being watched
 hbmesh reply <thread> --answer <question id>=<n>        → his answers back to the SAME exchange
+hbmesh report <thread> <outcome>                        → how a step the agent handed back ended
 ```
 
 **One skill, chosen from the card** (`nucleo/mesh_skills.py`). The worker calls a skill the card DECLARES; price is
@@ -177,7 +178,20 @@ waiting `remote_job`, and polls it with back-off. A question the job raises goes
 `answers` endpoint by INDEX, with the job's own token and no model. When the job ends (read by shape: `final: true`,
 or a `result` with no question) the worker session that started it is resumed with the result, and the rebrief
 forbids telling him «it did not happen» for an outcome the agent calls uncertain. A `409` (the agent refusing to
-repeat or to act) is said as what it is and never retried.
+repeat or to act) is said as what it is and never retried. A job bought through the relay is reached through it with
+the account's credential AND the job's own token (`X-Job-Token`), so the relay can reach a job only for the account
+that holds its token; a direct job is reached with its token alone.
+
+**A step the agent hands back** (`nucleo/mesh_handoff.py`). An agent that resolves an errand but cannot finish it — an
+engine it holds no access to, a place's own form, a phone it does not dial — answers with a `handoff` object
+(«your agent should do it»). `call` returns it as `handed_back`: the reason, the link and what it already carries,
+the phone, the fields with HIS values (null = ask him), the platform's own `note` verbatim, the action, the agent's
+own outcomes (`report_as`) and its own way to do it (`agent_can_do`) when it offers one. The rules ride in the bridge's
+output, not in a platform table of ours: follow the note as written (where it forbids automation, he gets the link);
+a captcha, a card, a fee, a login or a code is his step; a form sent to a place is a request, not a booking; submit
+once. The handed-back step stays on its thread: the SAME order (the request without its key) is refused while that
+step has no reported outcome — an unknown submit counts as possibly made — and `hbmesh report` sends the outcome in
+the agent's own `reportOutcome` shape, placeholders filled from its answer. A dry run guards nothing.
 
 ---
 
@@ -218,4 +232,5 @@ operator data, and a peer can never spend the operator's money.
 | One declared skill per call (`hbmesh call`), its questions and his answers (`hbmesh reply`) | §1.8 · `nucleo/mesh_call.py`, `mesh_dialog.py` |
 | A priced skill through a deployment's relay, priced by an `agent` tariff row | §1.8 · `nucleo/mesh_relay.py` |
 | An agent's job owned by a durable row (poll, ask, end) | §1.8 · `nucleo/mesh_jobs.py` |
+| A step an agent hands back: done once, its outcome reported | §1.8 · `nucleo/mesh_handoff.py` |
 | Cluster channel (public + private, UNTRUSTED profile) | `zaelar-cluster-channel.md` |

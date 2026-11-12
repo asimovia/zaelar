@@ -39,7 +39,7 @@ def world(tmp_path, monkeypatch):
                              "created_at": 1, "started_at": 1})
     ledger.store().task_patch(parent, session_id="sess-1", cwd="/tmp/w")
     polls, posts, charged, resumed = [], [], [], []
-    monkeypatch.setattr(mesh_jobs, "_get", lambda t: polls.pop(0) if polls else (200, {"status": "PENDING_CALL"}))
+    monkeypatch.setattr(mesh_jobs, "_get", lambda t: polls.pop(0) if polls else {"status": "PENDING_CALL"})
     from nucleo import mesh_agents
     monkeypatch.setattr(mesh_agents, "_post", lambda url, body, timeout=0, bearer=None:
                         posts.append((url, body, bearer)) or (202, {"status": "CALLING_BACK"}))
@@ -69,17 +69,19 @@ def test_the_job_gets_a_row_born_from_the_workers_that_waits_for_it(world):
 
 def test_its_question_is_dialogue_on_the_row_and_his_option_goes_back_by_index(world):
     import time
-    world["polls"].append((200, {"status": "NEEDS_INPUT", "result": {"questions": [
-        {"id": "q1", "text": "No hay a las 21:00; ¿os vale a las 21:30?", "choices": ["accept", "decline"]}]}}))
+    world["polls"].append({"status": "NEEDS_INPUT", "result": {"questions": [
+        {"id": "q1", "topic": "time", "ask": "No hay mesa a las 21:00. Ofrecen las 21:30. ¿La aceptas?",
+         "choices": [{"id": "accept", "label": "Sí, a las 21:30", "value": "21:30"},
+                     {"id": "decline", "label": "No, déjalo"}]}]}})
     mesh_jobs.sweep(now=time.time() + 60)
     row = _row(world)
     assert row["state"] == "waiting" and row["waiting_for"] == "user_answer"
     from nucleo.circuit import asker
     art = asker.artefact(row["id"])
-    assert asker.kind_of(art) == "clarify" and art["options"] == ["accept", "decline"]
+    assert asker.kind_of(art) == "clarify" and art["options"] == ["Sí, a las 21:30", "No, déjalo"]
     assert art["remote"] == {"thread": world["thread"], "question": "q1"}
     from nucleo.cli import worker_api
-    assert asyncio.run(worker_api.answer(art["ask_id"], "accept", choice=0))
+    assert asyncio.run(worker_api.answer(art["ask_id"], "Sí, a las 21:30", choice=0))
     url, body, bearer = world["posts"][-1]
     assert url == f"{EP}/v1/jobs/j1/answers" and body == {"answers": [{"id": "q1", "choice": "accept"}]}
     assert bearer == "jt"                                           # the job's own token, never a client credential
@@ -95,7 +97,7 @@ def test_a_relayed_job_debits_the_lease_once_when_it_is_born(world):
 
 def test_the_end_is_told_by_the_worker_that_started_it_and_never_charged_again(world):
     import time
-    world["polls"].append((200, {"status": "FAILED", "result": {"bookingMayExist": True}}))
+    world["polls"].append({"status": "FAILED", "result": {"bookingMayExist": True}})
     mesh_jobs.sweep(now=time.time() + 60)
     mesh_jobs.sweep(now=time.time() + 600)                          # ended: never polled or told again
     assert world["charged"] == []
@@ -108,6 +110,16 @@ def test_the_end_is_told_by_the_worker_that_started_it_and_never_charged_again(w
 
 def test_a_job_still_working_is_not_ended_by_any_status_word(world):
     import time
-    world["polls"].append((200, {"status": "COMPLETED_SOON", "eta": 30}))
+    world["polls"].append({"status": "COMPLETED_SOON", "eta": 30})
     mesh_jobs.sweep(now=time.time() + 60)
     assert not world["resumed"] and not mesh_dialog.thread(world["thread"])["job"].get("done")
+
+
+def test_a_relayed_job_is_reached_with_the_accounts_credential_and_its_own_token(world, monkeypatch):
+    monkeypatch.setenv("ZAELAR_GATEWAY_URL", "https://egress.example.test/v1")
+    monkeypatch.setenv("CONTROL_PLANE_SERVICE_TOKEN", "account-credential")
+    t = {**mesh_dialog.thread(world["thread"]), "via": mesh_relay.RELAY}
+    url, bearer, headers = mesh_jobs._url(t)
+    assert url == "https://egress.example.test/p/mesh/dining.example.test/v1/jobs/j1"
+    assert bearer == "account-credential" and headers == {"X-Job-Token": "jt"}
+    assert mesh_jobs._url({**t, "via": mesh_relay.DIRECT})[1:] == ("jt", {})

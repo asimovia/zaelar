@@ -304,8 +304,6 @@ class LangSpec:
     answer_which_task: str = ""
     #: V2-877 #2 — his answer named a question that was already answered: said once, never «passed on».
     answer_already_given: str = ""
-    #: A network agent's job ended and no worker session could be resumed to tell it ({goal}, {agent}).
-    mesh_job_ended: str = ""
     #: A send task that lacks ONE slot asks for it on its row (`nucleo/request/send_task`): the words, the person.
     send_missing_text: str = ""
     send_missing_recipient: str = ""
