@@ -299,14 +299,24 @@ def test_the_guard_sits_at_the_ONE_point_both_branches_converge_on():
 # haces.»
 
 def test_a_question_is_no_longer_a_veto():
-    assert "question" not in direct_action.NOT_AIMED_AT_THE_SCREEN
-    assert set(direct_action.NOT_AIMED_AT_THE_SCREEN) == {"comment", "greeting"}
+    """2026-11-12: the refusal list became `an_order` — read at the act floor, a `question` is still an order when the
+    screen action outranks it (0.85 over 0.64 here), and a comment or a greeting never is."""
+    sure = {"confidence": 0.64}
+    import threading
+    ev = threading.Event()
+    ev.set()
+    b = {"event": ev, "turn_id": "t", "open_ids": ["youtube"],
+         "result": {"screen_action": {"choice": "youtube:show_tab", "confidence": 0.85},
+                    "request_type": {"choice": "question", "confidence": 0.64}}}
+    assert direct_action.an_order("question", b, sure)
+    assert direct_action.an_order("order") and direct_action.an_order("answer") and direct_action.an_order("complaint")
+    assert not direct_action.an_order("comment") and not direct_action.an_order("greeting")
+    assert not direct_action.an_order(""), "an unsure reading is not an order"
 
 
 def test_the_measurement_that_removed_it_is_written_down():
-    """Every entry of this list costs a real order when it is wrong. The numbers stay beside it."""
-    src = inspect.getsource(direct_action)
-    block = src[:src.index("NOT_AIMED_AT_THE_SCREEN = ")]
+    """Every kind this reader admits costs a real order when it is wrong. The numbers stay beside it."""
+    block = inspect.getsource(direct_action.an_order)
     for phrase in ("¿Puedes enseñarme el catálogo?", "¿Me pones el siguiente?",
                    "¿el siguiente es de la NASA?"):
         assert phrase in block, phrase

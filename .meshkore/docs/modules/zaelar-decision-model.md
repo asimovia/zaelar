@@ -126,14 +126,16 @@ is closed by NAMING it, not by listing more synonyms: «para» is also a preposi
 vídeo.» can read as «OK, for the video.» — a description that says «here «para» is the verb, not the
 preposition» resolves it within the same 200 characters.
 
-⚠️ **An UNSURE answer has no opinion; an ABSENT one still fails closed.** The gate that lets the verdict
-complete an empty turn must not read «unsure» the same as «no answer»: otherwise a torn reader (say,
-`request_type` split between answer and comment) vetoes a near-certain one (`screen_action =
-youtube:pause` with high confidence), and an order like «Para el vídeo» goes unexecuted.
-
-So it is a REFUSAL list (`direct_action.NOT_AIMED_AT_THE_SCREEN`), and the reason is that the SCREEN
-question already answers `none` with high confidence for ambient remarks, so the two guards agree exactly
-where it matters:
+⚠️ **A verdict ACTS at one floor** (2026-11-12). The gate that lets the verdict complete an empty turn reads
+the screen action, the request type and `corrects_last` at the operator's `consent.intent_act_at`
+(`nucleo/turn/verdicts.to_act`), never at the 0.5 licence a guard may read at. A request type the brief
+cannot read as an ORDER at that floor — unsure, `comment`, `greeting` — completes nothing
+(`direct_action.an_order`): the licence floor let a remark about what was playing travel as the payload
+of the act it relaunched. The price is written down: a torn reader (`request_type` split answer 0.49 /
+comment 0.39 on «Para el vídeo», `screen_action = youtube:pause` 0.95) no longer completes by verdict and
+relies on the model's own call. `complaint` is an order to redo; `question` is an order only when the
+screen action is read more surely than it. The SCREEN question already answers `none` with high
+confidence for ambient remarks, so the two readers agree exactly where it matters:
 
     «¿el siguiente es de la NASA?»   question  · screen_action none
     «ese vídeo es antiguo»           comment   · screen_action none

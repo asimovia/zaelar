@@ -23,6 +23,8 @@ def brief(monkeypatch):
                                                          "payload": {}, "label": "agenda:close_meeting",
                                                          "source": "verdict"})
     monkeypatch.setattr(_tb, "read", lambda b, key, d="", **k: ("order", {"confidence": 1.0}))
+    from nucleo.turn import verdicts as _v                 # the completion reads the request type at the act floor
+    monkeypatch.setattr(_v, "to_act", lambda b, key, d="": ("order", {"confidence": 1.0}))
     return st
 
 

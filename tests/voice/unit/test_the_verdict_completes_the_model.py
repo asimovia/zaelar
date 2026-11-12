@@ -169,15 +169,56 @@ def test_without_a_request_verdict_at_all_the_empty_turn_is_left_alone(on_screen
     assert fired == ""
 
 
-def test_an_UNSURE_request_type_is_not_a_veto(on_screen):
-    """V2-756 — this used to read the same as «absent» and fail closed, which let an unsure reader
-    veto a near-certain one: «Para el vídeo» measured `screen_action = youtube:pause` 0.95 with
-    `request_type` torn (answer 0.49 / comment 0.39), nothing fired, and he had to say «He dicho que
-    pares el vídeo. Que no me has oído.». An answer below the bar has NO opinion; an answer that never
-    came still fails closed (the test above)."""
+def test_an_UNSURE_request_type_completes_nothing(on_screen):
+    """ONE floor to act by verdict (operator, 2026-11-12; group A, A3·1). An unsure `request_type` used to pass
+    (V2-756: «Para el vídeo», pause 0.95 with request_type torn answer 0.49 / comment 0.39, fired) — and the same
+    door let a REMARK travel as the payload of the act it relaunched: «qué bien suena esto» with music playing read
+    `request_type` «» (unsure) and a 0.6 screen action, and the comment went out as the query. A reading the brief
+    cannot make at `consent.intent_act_at` is not an order; that torn turn now relies on the model's own call."""
+    fired, s = _complete(_brief({_tb.TARGET_KEY: ("youtube:search", 0.6),
+                                 _tb.REQUEST_KEY: ("order", 0.4)}), "qué bien suena esto")
+    assert fired == "" and s.applied == [], "request_type 0.4 / screen_action 0.6 → nothing"
     fired, _s = _complete(_brief({_tb.TARGET_KEY: ("youtube:pause", 0.97),
                                   _tb.REQUEST_KEY: ("comment", 0.3)}), "Para el vídeo")
-    assert fired == "pause"
+    assert fired == "", "an unsure request type no longer fires, however sure the screen action"
+
+
+def test_the_disarm_a_gate_that_lets_an_unsure_kind_through_relaunches_on_a_remark(on_screen, monkeypatch):
+    """The refusal list put back («only comment and greeting refuse»): the 0.4 reading passes and the remark fires."""
+    monkeypatch.setattr(_da, "an_order", lambda kind, *a, **k: kind not in ("comment", "greeting"))
+    assert _da.an_order("") is True, "the mutation landed"
+    fired, s = _complete(_brief({_tb.TARGET_KEY: ("youtube:search", 0.6),
+                                 _tb.REQUEST_KEY: ("order", 0.4)}), "qué bien suena esto")
+    assert fired == "search" and s.applied == [("youtube", "search", {"query": "qué bien suena esto"})]
+
+
+def test_the_act_floor_is_the_operators_one_threshold(on_screen):
+    """`consent.intent_act_at` (0.6) is where a verdict starts to act — for the screen action AND the request type.
+    0.6 acts; 0.55 is a shrug on either side. No second constant (the licence 0.5 is what a GUARD may read)."""
+    from nucleo import consent
+    assert consent.intent_act_at() == 0.6
+    assert _complete(_brief({_tb.TARGET_KEY: ("youtube:pause", 0.6), _tb.REQUEST_KEY: ("order", 0.9)}), "páralo")[0] == "pause"
+    assert _complete(_brief({_tb.TARGET_KEY: ("youtube:pause", 0.55), _tb.REQUEST_KEY: ("order", 0.9)}), "páralo")[0] == ""
+    assert _complete(_brief({_tb.TARGET_KEY: ("youtube:pause", 0.97), _tb.REQUEST_KEY: ("order", 0.55)}), "páralo")[0] == ""
+    assert _da.from_brief(_brief({_tb.TARGET_KEY: ("youtube:pause", 0.55)})) == ("", ""), "the rung reads the same floor"
+
+
+def test_the_disarm_the_floor_back_at_the_licence_acts_on_a_0_55(on_screen, monkeypatch):
+    from nucleo import consent
+    monkeypatch.setattr(consent, "intent_act_at", lambda: 0.5)
+    assert consent.intent_act_at() == 0.5, "the mutation landed"
+    assert _complete(_brief({_tb.TARGET_KEY: ("youtube:pause", 0.55), _tb.REQUEST_KEY: ("order", 0.9)}), "páralo")[0] == "pause"
+
+
+def test_a_correction_below_the_act_floor_relaunches_nothing(monkeypatch):
+    """A3·2: `corrects_last` licensed a redo (and an undo — `correction_undo`) at the licence. A correction RELAUNCHES
+    a mutation, so it is read at the same act floor as everything else: 0.55 → no redo; 0.6 → redo."""
+    from nucleo import consent
+    from nucleo.flash import redo_decision as _redo
+    assert _redo.corrects(_brief({_redo.REDO_KEY: ("corrects_last", 0.55)})) is False
+    assert _redo.corrects(_brief({_redo.REDO_KEY: ("corrects_last", 0.6)})) is True
+    monkeypatch.setattr(consent, "intent_act_at", lambda: 0.5)
+    assert _redo.corrects(_brief({_redo.REDO_KEY: ("corrects_last", 0.55)})) is True, "disarm: the licence floor redoes"
 
 
 def test_an_unsure_or_absent_screen_verdict_completes_nothing(on_screen):
@@ -401,9 +442,10 @@ def test_V7_the_close_backstop_takes_the_verdicts_card_even_when_it_is_already_c
     assert _da.verdict_card(b) == "youtube"
 
 
-#: V2-781: «Close the music» over `youtube:close` (0.54) — his words call ANOTHER open card by its name.
+#: V2-781: «Close the music» over `youtube:close` (measured 0.54; written at the act floor 0.6 since 2026-11-12, where
+#: a verdict is still read as naming a card) — his words call ANOTHER open card by its name.
 _MUSIC = ("ok stop the trailer, and close the music for me now", ["youtube", "musica"],
-          {"screen_action": ["youtube:close", 0.54], "canvas": ["close", 0.98], "request_type": ["order", 1.0]})
+          {"screen_action": ["youtube:close", 0.6], "canvas": ["close", 0.98], "request_type": ["order", 1.0]})
 
 
 def test_V7_the_verdicts_card_yields_to_the_card_he_names():

@@ -67,8 +67,9 @@ REDO_CHOICE = {
     "unrelated": "he is not talking about what we just did",
 }
 
-#: Same gate as every other verdict reader. A shrug keeps today's path.
-MIN_CONFIDENCE = 0.5
+#: The gate is the one every reader that ACTS by verdict uses — `nucleo.turn.verdicts.to_act`, the operator's
+#: `consent.intent_act_at`: a correction relaunches (or undoes) a mutation, so it is read at the act floor, never at
+#: the licence a guard reads at. A shrug keeps today's path.
 
 #: How far back a mutation is still «what we just did» for this question. Much shorter than
 #: `done_ops.WINDOW_S` (30 min), which answers a different question — whether a destructive op already
@@ -109,7 +110,7 @@ def question(within_s: float = WINDOW_S) -> dict | None:
 
 
 def corrects(brief, widget: str = "") -> bool:
-    """True when this turn is a confident correction of an op on `widget` (or on anything, if "").
+    """True when this turn is a correction of an op on `widget` (or on anything, if ""), read at the ACT floor.
 
     The widget check is what stops a complaint about the agenda from licensing a video load: a
     correction grants the licence of the op it corrects, and only that one.
@@ -117,11 +118,11 @@ def corrects(brief, widget: str = "") -> bool:
     if not brief:
         return False
     try:
-        from nucleo.turn import brief as _tb
-        # `read` applies the confidence gate itself and returns the fallback below it, so reaching this
+        from nucleo.turn import verdicts as _v
+        # `to_act` applies the confidence gate itself and returns the fallback below it, so reaching this
         # value at all means it was READY and SURE. `info` is the attribution trail, not a second gate —
         # treating it as one would make an unsure verdict and a used one indistinguishable here.
-        choice, _info = _tb.read(brief, REDO_KEY, "")
+        choice, _info = _v.to_act(brief, REDO_KEY, "")
         if str(choice or "") != "corrects_last":
             return False
         if not widget:

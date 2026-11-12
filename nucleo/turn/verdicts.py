@@ -2,7 +2,9 @@
 
 A verdict and the model can disagree. Who wins depends on the direction:
 
-  · LICENCE (≥ `LICENCE`, Jev's own floor): a verdict may license or complete an act the model did not make;
+  · LICENCE (≥ `LICENCE`, Jev's own floor): a verdict is readable — a guard may consult it;
+  · ACT (≥ `consent.intent_act_at`, `to_act`): a verdict may launch, complete or relaunch an act the model did not
+    make — the screen action, the request type and `corrects_last` are all read at this one floor;
   · VETO (≥ `VETO`): a verdict may refuse what the model CALLED only when it is this sure — a weaker reader never
     silently overrules a stronger one (CRIT-K1/K2);
   · between the two, a disagreement with the model's call is a DOUBT, and a doubt about what will be touched is asked
@@ -33,6 +35,20 @@ def read(handle, key: str, fallback, *, min_confidence: float | None = None):
         return _jev.read(handle, key, fallback, min_confidence=LICENCE if min_confidence is None else min_confidence)
     except Exception:  # noqa: BLE001
         return fallback, None
+
+
+def to_act(handle, key: str, fallback):
+    """A verdict read to LAUNCH or RELAUNCH an act — the screen action that completes an empty turn, the request type
+    that says the turn is an order, `corrects_last` that redoes or undoes what we just did. ONE floor for all of them:
+    the operator's `consent.intent_act_at` (his «at 60 % we do it»), never `LICENCE`. Below it the verdict is a shrug
+    for acting, whatever a guard may still read at the licence. `(choice, info)` as `read`; never waits, never raises."""
+    try:
+        from nucleo import consent
+        floor = consent.intent_act_at()
+    except Exception as e:  # noqa: BLE001 — an unreadable knob never lowers the floor
+        logger.debug(f"verdicts: intent_act_at unreadable — {e!r}")
+        floor = 0.6
+    return read(handle, key, fallback, min_confidence=max(floor, LICENCE))
 
 
 def against_the_model(handle, key: str, agrees) -> str:
@@ -93,11 +109,9 @@ def sure_order(handle, widget_id: str, action: str) -> bool:
     """Is the turn read as an ORDER, and its action as exactly `widget_id:action`, both at or above the operator's
     `consent.intent_act_at`? The one place a doubt is weighed against his threshold. Never raises."""
     try:
-        from nucleo import consent
         from nucleo.turn import brief
-        floor = consent.intent_act_at()
-        kind, k_info = read(handle, brief.REQUEST_KEY, "", min_confidence=floor)
-        target, t_info = read(handle, brief.TARGET_KEY, "", min_confidence=floor)
+        kind, k_info = to_act(handle, brief.REQUEST_KEY, "")
+        target, t_info = to_act(handle, brief.TARGET_KEY, "")
         owner, _sep, name = str(target or "").rpartition(":")
         return bool(k_info and t_info) and str(kind) == "order" and name == action \
             and owner.split("::", 1)[0].lower() == str(widget_id or "").split("::", 1)[0].lower()

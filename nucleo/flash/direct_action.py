@@ -62,8 +62,8 @@ def from_brief(brief) -> tuple:
         # brief there is no verdict, and asking printed `jev read screen_action → off` noise on every video turn.
         return ("", "")
     try:
-        from nucleo.turn import brief as _tb
-        choice, _info = _tb.read(brief, _tb.TARGET_KEY, "")
+        from nucleo.turn import brief as _tb, verdicts as _v
+        choice, _info = _v.to_act(brief, _tb.TARGET_KEY, "")   # an action launched by verdict: the act floor
         raw = str(choice or "").strip()
         if not raw or raw == "none":
             return ("", "")
@@ -175,19 +175,25 @@ def no_payload(widget_id: str, action: str) -> bool:
         return False
 
 
-#: Request types that REFUSE to let the verdict complete an EMPTY turn. It used to be the mirror (only a
-#: confident `order`/`answer` passed), so an UNSURE reader vetoed a near-certain one: «Para el vídeo» →
-#: `youtube:pause` 0.95 with request_type split answer 0.49 / comment 0.39, nothing happened, and he said
-#: «He dicho que pares el vídeo. Que no me has oído.» (live session 74be8e9a, 2026-09-23).
-#: A REFUSAL list, not an allow list: measured on that session, the screen question already answers `none`
-#: for everything not aimed at it («¿el siguiente es de la NASA?» none 0.95, «hoy juega el Barça» none 0.87);
-#: «Bórrame los tres últimos…» → remove 0.98; «Para el vídeo» comment  0.45 ← unsure, and the turn IS an order.
-#: `complaint` is NOT here: a complaint about what was just done IS an order to redo it (V2-750, node 2.70).
-#: V2-757 — NEITHER IS `question` (session f84f91ef, 2026-09-23, +95.2 s): «¿Puedes enseñarme el catálogo?»
-#: → show_tab 0.85, question 0.64, refused, and the turn only PROMISED it. A polite Spanish order IS shaped
-#: like a question (47 candidates: «¿Me pones el siguiente?» next 0.75, «¿Puedes parar el vídeo?» pause       1.00;
-#: every real question → none 0.78-0.94), so it could never save a turn. What stays: the two with no addressee.
-NOT_AIMED_AT_THE_SCREEN = ("comment", "greeting")
+def an_order(kind: str, brief=None, info: dict | None = None) -> bool:
+    """Is a `request_type` READ AT THE ACT FLOOR one that lets the verdict complete an EMPTY turn?
+
+    `order` and `answer` are. A `complaint` about what was just done IS an order to redo it (V2-750, node 2.70).
+    A `question` only when the screen action is read more surely than it (`a_question_outranks_the_action`): a polite
+    Spanish order is shaped like a question — «¿Puedes enseñarme el catálogo?» show_tab 0.85 / question 0.64 (V2-757,
+    session f84f91ef); «¿Me pones el siguiente?» next 0.75 — while a genuine question answers `none` on the screen side
+    («¿el siguiente es de la NASA?» none 0.95). Anything else moves nothing: a `comment` or a `greeting` has no
+    addressee, and an UNSURE reading («», below `consent.intent_act_at`) is not an order — so his remark about what is
+    playing can never travel as the payload of the act it relaunches.
+
+    This used to be a REFUSAL list (`comment`, `greeting`) so that an unsure reader could not veto a near-certain one:
+    «Para el vídeo» → `youtube:pause` 0.95 with request_type torn answer 0.49 / comment 0.39 (session 74be8e9a). The
+    operator's rule now (2026-11-12) is ONE floor to act by verdict: a turn the brief cannot read as an order at that
+    floor is not completed, and that torn turn relies on the model's own call.
+    """
+    if kind in ("order", "answer", "complaint"):
+        return True
+    return kind == "question" and not a_question_outranks_the_action(brief, info)
 
 #: A turn made of NOTHING BUT A NUMBER: a closed class (tens, units, scales, glue words), not a verb table —
 #: numerals never grow, so it is not what CLAUDE.md forbids. Digits count too (the STT writes «69»).
@@ -314,21 +320,18 @@ def complete(brief, *, operator_text: str, emit, present, apply_widget_data,
         `apply_widget_data`, i.e. the same `action_mode_now` gate (FAST / CONFIRM / ESCALATE) every
         model call goes through. Nothing new executes; something declared stops going unrun.
 
-    `require_order`: for the empty-turn site, a turn the brief reads CONFIDENTLY as not aimed at the
-    screen is refused — see `NOT_AIMED_AT_THE_SCREEN`. The unresolved-call site skips the gate: the
-    model had already decided this was an order on this card. Returns the action fired, or "".
-    Never raises.
+    `require_order`: for the empty-turn site, a turn the brief does not read as an ORDER at the act floor
+    is refused — see `an_order`. The unresolved-call site skips the gate: the model had already decided
+    this was an order on this card. Returns the action fired, or "". Never raises.
     """
     try:
-        from nucleo.turn import brief as _tb
+        from nucleo.turn import brief as _tb, verdicts as _v
         if require_order:
-            kind, _info = _tb.read(brief, _tb.REQUEST_KEY, "")
+            kind, _info = _v.to_act(brief, _tb.REQUEST_KEY, "")
             if _info is None:
                 return ""                       # no answer at all → fail closed, as V2-754 promised
-            if kind in NOT_AIMED_AT_THE_SCREEN:
-                return ""                       # a CONFIDENT remark moves nothing (see the constant)
-            if kind == "question" and a_question_outranks_the_action(brief, _info):
-                return ""                       # the stronger reader wins — see the function
+            if not an_order(str(kind or ""), brief, _info):
+                return ""                       # unsure, a remark, a greeting, a real question: nothing moves
         wid, name = from_brief(brief)
         if not wid or not name:
             return ""
@@ -362,7 +365,7 @@ def complete(brief, *, operator_text: str, emit, present, apply_widget_data,
 def a_question_outranks_the_action(brief, question_info: dict | None) -> bool:
     """An EMPTY turn the brief reads as a QUESTION more surely than it reads an action on screen is not completed: a
     weaker reader never silently overrules a stronger one (`nucleo.turn.verdicts`), and the model called nothing.
-    `question` is not in `NOT_AIMED_AT_THE_SCREEN` because a polite order is measured action-first («¿Puedes enseñarme
+    `question` is not refused outright by `an_order` because a polite order is measured action-first («¿Puedes enseñarme
     el catálogo?» show_tab 0.85 / question 0.64, V2-757); a genuine question is measured the other way round («¿Eso va
     solo pasando al siguiente?» question 0.80 / `youtube:next` 0.54 skipped a video he only asked about — node 2.1628).
     No constant: two confidences the turn paid for, compared; the action's is peeked, since a read at a 0.0 bar would
