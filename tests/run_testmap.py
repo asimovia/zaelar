@@ -1954,6 +1954,10 @@ DOMAINS: list[dict] = [
             "ch": UNIT,
             "paths": ["tests/infrastructure/unit/core/"
                       "test_a_phase_of_the_relationship_has_its_own_prompt.py"]},
+        # A7 (2026-11-12) — disarmed the same day (start() returns before the language · the block ignores the turn · the
+        # close needs the name only · the offer is never persisted: 4 reds).
+        {"id": "3.206", "title": "The introduction is one phase, run once, and it closes (A7): the watcher subscribes at boot BEFORE the language is locked and reads the condition per turn; the block reads THE TURN — his answer to our question (`answer_frame.answers_ours`, or a sure `answer` verdict) moves that goal from «unknown» to «he just told you» while the state is still empty; the deterministic close needs his name AND the offer told (`intro_offer_told`, persisted by a turn that replied, never by a mute one); a fresh session ES and EN closes in three turns and the fourth prompt carries no block",
+            "ch": UNIT, "paths": ["tests/infrastructure/unit/core/test_the_introduction_closes_in_three_turns.py"]},
         # V2-683 — EL ENCARGO CON UN TERCERO. Ninguna de las cuatro formas de «en marcha» que había podía
         # sostener «contacta con Iván y organiza una reunión esta tarde»: el turno dura segundos, la sesión de
         # worker vive en RAM y un reinicio la entierra, un cron no lleva estado y el objetivo del arnés caduca
@@ -6858,6 +6862,10 @@ DOMAINS: list[dict] = [
         # V2-865 — disarmed 2026-11-09 (stamp never written · stamp on every turn: 2 reds).
         {"id": "2.1645", "title": "The first turn is stamped as a kickoff (V2-865): `close_the_turn` writes `meta.kickoff=True` on the conversation row of a first turn — the engine speaking in his voice — and no stamp on a normal turn's row",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_the_first_turn_is_stamped_as_a_kickoff.py"]},
+        # A7 (2026-11-12) — disarmed the same day (the admission substitutes again · the close pushes the note as his words ·
+        # the recent block keeps the kickoff row · the seed keeps the note · the kickoff is not free for the packs: 5 reds).
+        {"id": "2.1734", "title": "The first turn is ONE system note, never his words (A7): the voice hands the body the i18n `kickoff_prompt` and `nucleo/turn/kickoff.is_kickoff` recognises it at the gate by catalog (nothing he can say matches); the admission substitutes no second text; the close keeps the greeting in the window and not the note; `recent_short` and the window seed skip the kickoff row's note; the kickoff opens the introduction block — with the name-and-voice offer on the assistant-name slot — as a system section of the first prompt, ES and EN",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_the_first_turn_is_one_system_note.py"]},
         # V2-865 second cut — disarmed 2026-11-09 (chain ignores the gap · window gap ignored · seed without gap ·
         # ledger skips the newest n · two silences: 5 reds).
         {"id": "2.1646", "title": "The live window is the live chain (V2-865): `live_conv_ids(n)` takes the newest n `conv` rows only while they chain to now under `LIVE_GAP_MIN` (empty after a night's silence, `gap_min=None` the plain newest n); `recent_window(gap_min=…)` returns only the live episode and the turn's window seed passes that gap; `day_ledger` skips the live chain only, so a midnight request is in the morning's day; the day and the window are cut by ONE silence",

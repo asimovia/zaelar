@@ -55,12 +55,19 @@ def asked_before(*, now: float | None = None) -> str:
     return _last_question(str(last.get("content") or ""))
 
 
-def framed(text: str, *, asked: str | None = None) -> str:
-    """`text` as the distiller should read it: unchanged, or prefixed with the question it answers."""
+def answers_ours(text: str, *, asked: str | None = None) -> str:
+    """The question of OURS this turn answers — "" when it answers none. ONE rule, read by the distiller (`framed`)
+    and by the introduction phase (A7): a short line that asks nothing, right after a reply of ours that ended on
+    a question. No word of his is matched; what the answer means stays the reader's."""
     t = str(text or "").strip()
     if not t or "?" in t or len(t.split()) > _MAX_ANSWER_WORDS:
-        return text
-    q = asked_before() if asked is None else _last_question(asked)
+        return ""
+    return asked_before() if asked is None else _last_question(asked)
+
+
+def framed(text: str, *, asked: str | None = None) -> str:
+    """`text` as the distiller should read it: unchanged, or prefixed with the question it answers."""
+    q = answers_ours(text, asked=asked)
     if not q:
         return text
-    return f"(answering the assistant's question «{q}») {t}"
+    return f"(answering the assistant's question «{q}») {str(text or '').strip()}"

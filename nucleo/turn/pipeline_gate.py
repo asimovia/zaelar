@@ -42,9 +42,10 @@ async def open_the_turn(self, motor) -> dict | None:
 
     # GATE DE ATENCIÓN (V2-015): el micro está SIEMPRE abierto — un turno que no va DIRIGIDO a zaelar no
     # produce acción ni respuesta (solo se registra como `ambient`, visible en /debug). El kickoff
-    # ("I just connected") y el chat/paste (marcados `note_directed()` en agent.py) sí van dirigidos.
+    # (`nucleo/turn/kickoff.is_kickoff`) y el chat/paste (marcados `note_directed()` en agent.py) sí van dirigidos.
+    from nucleo.turn import kickoff as _kickoff
     from voice import attention, mic_input
-    first_turn = "I just connected" in text
+    first_turn = _kickoff.is_kickoff(text)
 
     # TRAZABILIDAD (V2-044): cada frase del operador nace con un trace id — ANTES del gate, así los descartes
     # (ambient/eco/interrupción dura) también quedan encadenados a su frase y son evaluables. Todo lo que este

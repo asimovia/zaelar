@@ -65,8 +65,8 @@ async def admit_the_turn(*, motor, attention, brain, emit, first_turn, text) -> 
     text, _clipped = attention.clamp_input(text, _max_in)
     if _clipped:
         emit("brain", "✂️ input recortado (comando preservado)", text=f"→{_max_in} chars")
-    if first_turn:
-        text = motor._say().kickoff_prompt   # V2-682 — it impersonates HIM, so it is in HIS language
+    # The first turn's line is already the one i18n note (`nucleo/turn/kickoff`, A7): nothing is substituted here —
+    # the substitution this stage made (V2-682) left two texts for one turn, and the second was kept as his words.
 
     # V2-1xx: la petición REAL del operador, capturada ANTES de que se le antepongan notas del sistema —
     # el recall semántico (más abajo) tiene que buscar por ESTO, nunca por el turno completo. Confirmado en

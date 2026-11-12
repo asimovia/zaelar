@@ -51,7 +51,10 @@ class Pack:
     title: str                      # human name, for observability and the state endpoint
     order: int                      # lower goes first; explicit so registration order cannot decide it
     active: Callable[[], bool]
-    block: Callable[[], str]
+    block: Callable[..., str]
+    #: A7 — a pack that reads THIS turn's words (the introduction: is this the kickoff, did he just answer our
+    #: question) is handed `turn_text`; the others keep their no-argument `block()`.
+    wants_turn: bool = False
 
 
 _REGISTRY: list[Pack] = []
@@ -81,14 +84,14 @@ def active_ids() -> list[str]:
     return out
 
 
-def blocks() -> list[str]:
+def blocks(turn_text: str = "") -> list[str]:
     """The text every active pack contributes, in order. Empty list is the normal steady state."""
     out: list[str] = []
     for p in _REGISTRY:
         try:
             if not p.active():
                 continue
-            text = (p.block() or "").strip()
+            text = ((p.block(turn_text) if p.wants_turn else p.block()) or "").strip()
             if text:
                 out.append(text)
         except Exception as e:  # noqa: BLE001
@@ -103,8 +106,10 @@ def compose(turn_text: str = "") -> str:
     The header is not decoration: without it the model reads a phase instruction as a permanent rule about
     who it is, which is the one thing a pack must never become."""
     try:
+        from nucleo.turn import kickoff as _kickoff
         from nucleo.turn.prompt.packs import free_turn as _free
-        parts = blocks() if _free.is_free(turn_text) else []
+        # The first turn is a system note, not his request (A7): a phase rides it whatever its length.
+        parts = blocks(turn_text) if (_kickoff.is_kickoff(turn_text) or _free.is_free(turn_text)) else []
     except Exception as e:  # noqa: BLE001 — the registry already catches per pack; this is the second net,
         logger.warning(f"context_packs: no phase context this turn: {e!r}")   # and it is on the hot path
         return ""

@@ -162,7 +162,7 @@
  "still_on_it": "Sigo con ello.",
  "say_again": "Perdona, ¿me lo repites?",
  "brain_slow": "Un momento, el sistema va lento.",
- "kickoff_prompt": "Es el primer turno. Salúdame en 1-2 frases, cálido y breve; si por tu MEMORIA ya sabes mi nombre, úsalo y NO preguntes quién soy; si no, preséntate en una línea y pregúntame el nombre. Luego para.",
+ "kickoff_prompt": "[Nota del sistema: el operador acaba de conectarse; es el primer turno de la sesión. Salúdale breve y cálido, por su nombre si lo sabes por tu memoria, y espera.]",
  "kickoff_fallback": "Hola, ya estoy aquí.",
  "worker_context_lost": "Me he quedado sin espacio de contexto en esa tarea y no he podido retomarla. Si me la pides otra vez, la parto en trozos más pequeños.",
  "worker_relay_failed": "Me he quedado sin cuota en el proveedor de los procesos de fondo y no he podido relevarlo. Míralo en el panel de estado.",

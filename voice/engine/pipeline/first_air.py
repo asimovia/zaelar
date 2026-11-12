@@ -88,26 +88,14 @@ def silent_first_run() -> bool:
         return False
 
 
-def _own_name() -> str:
-    """The assistant-name slot (never a literal): what it is called right now."""
-    try:
-        from voice.attention import assistant_name
-        return assistant_name() or "Zaelar"
-    except Exception:                                 # noqa: BLE001 — an unreadable slot greets with the default
-        return "Zaelar"
-
-
 def greeting_prompt(lang) -> str:
-    """The memory-aware FIRST-TURN instruction. V2-027: the verbose capabilities brief is NOT re-injected
-    here — the per-turn system prompt already carries the state and the concise resources, and dumping it
-    again bloated the most latency-sensitive turn of the session."""
-    return (f"[The operator's selected interface language is {lang.native} — SPEAK {lang.name}.]\n"
-            "I just connected. FIRST turn — SHORT and warm. CHECK YOUR MEMORY first: if you "
-            "already know me (my name), greet me BY NAME and pick up naturally — do NOT ask my "
-            "name again. If you do NOT know me yet, introduce yourself in one line and ask my name; and say, in "
-            f"natural words, that for now your default name is {_own_name()} but I can give you any name I like, "
-            "and that I can also give you a male or a female voice. "
-            f"Reply in {lang.name}. Three sentences max. Then stop and wait for me.")
+    """The FIRST-TURN note, in his language — ONE text for the whole engine (A7, 2026-11-12): `nucleo/turn/kickoff`
+    reads the i18n `kickoff_prompt` here, at the gate that recognises a first turn, and in the window that must not
+    keep it as his words. What the greeting SAYS (who the agent is, that its name and voice can change, his name) is
+    the introduction phase's block, a system section — not a second instruction composed here. V2-027: the verbose
+    capabilities brief is not re-injected either; the per-turn system prompt already carries the state."""
+    from nucleo.turn import kickoff as _kickoff
+    return _kickoff.text(lang)
 
 
 #: How long the veil may wait for a first audio frame before giving up on it. Generous against the cold
