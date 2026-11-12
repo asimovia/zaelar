@@ -105,3 +105,12 @@ def opened(widget: str, action: str, *, text: str = "") -> str:
         return ""
     turn["uid"] = uid
     return uid
+
+
+def past_an_ended_row() -> None:
+    """An ended row is never re-opened (`circuit.waits.waiting`): when another act of the turn already wrote its row's
+    end, what the turn opens next — an order's question, a send task — gets a row of its own."""
+    turn = _TURN.get() or {}
+    from nucleo.circuit import ledger as _tasks
+    if turn.get("uid") and str((_tasks.get(turn["uid"]) or {}).get("state") or "") in _tasks.store().DONE_STATES:
+        turn.pop("uid")

@@ -291,3 +291,54 @@ def test_disarmed_a_tool_that_drives_no_card_lets_the_order_act_beside_the_model
     got = _open(_order(target, "musica"), said, "Queued.", ops=[], calls=[call], present=lambda *a, **k: True,
                 apply_widget_data=lambda w, a, p: ran.append((w, a, p)))
     assert got["how"] == "completed" and ran == [("musica", "queue", {"query": said})], "the double act, as audited"
+
+
+# ── audit 2026-11-12, A3 — the order's row is its OWN when the model's other act already ended the turn's ────────────
+# The model's other act (a view of another card) opened the turn's row and its echo ended it `done`; the order's
+# question was then asked on THAT row — an ended row is never re-opened, so the question was spoken and nothing waited.
+
+def _the_other_act_ended_the_turns_row(card: str, action: str) -> str:
+    from nucleo import circuit
+    row = model.opened(card, action)
+    circuit.settle(row=row, state="done", outcome=f"{card}:{action}")
+    assert ts.task_get(row)["state"] == "done"
+    return row
+
+
+@pytest.mark.parametrize("said, target, needs", [
+    ("Apúntame el dentista", "agenda:add_meeting", "title"),
+    ("Save Thaddeus Wrenfield as a favourite", "contactos:set_favorite", "contactId"),
+])
+def test_a_question_of_the_order_waits_on_a_row_of_its_own_when_the_turns_row_has_ended(world, said, target, needs):
+    card, act = target.split(":")
+    _say(said)
+    ended = _the_other_act_ended_the_turns_row("musica", "open_view")
+    got = _open(_brief(target=target), said, "Vale.", ops=[("musica", "open_view")], calls=[],
+                present=lambda *a, **k: True, apply_widget_data=lambda *a, **k: None)
+    assert got["how"] == "asked" and got["row"] != ended, "an ended row is never re-opened: the order has its own"
+    row = ts.task_get(got["row"])
+    assert row["state"] == "waiting" and row["waiting_for"] == "user_answer" and row["ask_id"] == got["ask_id"]
+    assert asker.artefact(row["id"])["retained"]["needs"][0] == needs
+    assert ts.task_get(ended)["state"] == "done", "the other act's row keeps its end"
+    from nucleo.cli import worker_api
+    assert [a["task_id"] for a in worker_api.open_asks()] == [row["id"]], "his answer has a row to bind to"
+
+
+def test_a_send_task_of_the_order_is_born_on_a_row_of_its_own_when_the_turns_row_has_ended(world, monkeypatch):
+    from widgets.contactos import data as cd
+    cd.apply_action("add_contact", {"name": "Odalys Brezmes", "phone": "600 555 0142"})
+    said = "Mándale un whatsapp a Odalys"
+    _say(said)
+    ended = _the_other_act_ended_the_turns_row("contactos", "show_contact")
+    got = _open(_brief(), said, "Aquí la tienes.", ops=[("contactos", "show_contact")], calls=[])
+    assert got["how"] == "asked" and got["row"] != ended
+    assert ts.task_get(got["row"])["state"] == "waiting", "the slot it lacks waits for his answer"
+
+
+def test_a_turns_row_still_open_is_the_orders_row(world):
+    said = "Apúntame el dentista"
+    _say(said)
+    live = model.opened("musica", "open_view")
+    got = _open(_brief(target="agenda:add_meeting"), said, "Vale.", ops=[("musica", "open_view")], calls=[],
+                present=lambda *a, **k: True, apply_widget_data=lambda *a, **k: None)
+    assert got["row"] == live, "one request, one row — while it is open"
