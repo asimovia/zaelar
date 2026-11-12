@@ -10,6 +10,9 @@ leaving act becomes its send task (run, or ONE slot asked on its row; a worker w
 act of the card is completed by the empty turn's completion or asks ONE fact question on the order's row, and his
 answer fills THAT row. A question, a doubted order, an order answered by words, an escalation or a turn that reached a
 worker open nothing. Disarm: make `served` read «something ran» as served → the first test goes red.
+
+The model's valid call is never overruled (node 2.73): an order that only reads is served by what the turn chose to
+do, and an act that stays on the card yields to the model's own call that ran on that card.
 """
 from __future__ import annotations
 
@@ -196,6 +199,26 @@ def test_an_act_of_the_card_the_completion_can_fill_runs_and_asks_nothing(world,
     assert got["how"] == "completed" and got["act"] == "set_alias"
     assert ran[0]["widget_id"] == "contactos" and ran[0]["require_order"] is False
     assert _rows() == []
+
+
+def test_the_models_valid_call_is_never_overruled_by_the_order(world, monkeypatch):
+    """Node 2.73 inside A2 (measured live, session 3afe34a8 T4 and the demo pass I1): the order's act never runs
+    BESIDE a valid call the model made. Disarm: drop the two last rules of `served` → both go red, and the turn
+    restarts the video he was leaving / searches the video card beside the pictures he asked for."""
+    tab = [{"name": "widget_data", "args": {"widget_id": "youtube", "action": "show_tab", "payload": {"tab": "inicio"}}}]
+    pictures = [{"name": "show_images", "args": {"query": "red ferrari f40"}}]
+    assert ou.served("youtube", "search", ops=[], model_calls=pictures), "a view he ordered: the turn chose its view"
+    assert ou.served("youtube", "restart", ops=[("youtube", "show_tab")], model_calls=tab), "its own call ran there"
+    assert not ou.served("youtube", "search"), "an empty turn served nothing — the completion's case"
+    assert not ou.served("youtube", "restart", ops=[], model_calls=tab), "a call that did not run served nothing"
+    assert not ou.served("youtube", "restart", ops=[("agenda", "show_view")], model_calls=pictures), "another surface"
+    assert not ou.served(WID, ACT, ops=VIEW_OPS, model_calls=VIEW_CALLS), "A2 stands: a send served with a view opens"
+    from widgets import effects
+    sends = {effects.DATA_WRITE, effects.EXTERNAL_SEND}          # the same two orders, declared as acts that leave
+    monkeypatch.setattr(effects, "of", lambda card, act: sends if act in ("search", "restart") else {effects.DATA_READ})
+    monkeypatch.setattr(effects, "leaves", lambda card, act: act in ("search", "restart"))
+    assert not ou.served("youtube", "search", ops=[], model_calls=pictures), "the rule reads the declared effect"
+    assert not ou.served("youtube", "restart", ops=[("youtube", "show_tab")], model_calls=tab), "an act that leaves opens"
 
 
 def test_disarmed_served_reads_anything_that_ran_as_served_and_the_order_is_lost(world, monkeypatch):
