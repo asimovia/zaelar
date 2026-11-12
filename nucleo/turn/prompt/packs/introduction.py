@@ -115,10 +115,10 @@ def offer_told() -> bool:
         return False
 
 
-def block(turn_text: str = "") -> str:
+def block(turn_text: str = "", asked: str | None = None) -> str:
     """The phase's instructions for THIS turn — composed in `introduction_block.py`, reading the turn (A7)."""
     from .introduction_block import block as _block
-    return _block(turn_text)
+    return _block(turn_text, asked)
 
 
 # ── closing it ──────────────────────────────────────────────────────────────────────────────────────────
@@ -201,9 +201,9 @@ def _settle_offer(payload) -> None:
         return
     _offer_pending = ""
     win = (payload or {}).get("window") if isinstance(payload, dict) else None
-    said = bool(win) and (win[-1] or {}).get("role") == "assistant" and bool((win[-1] or {}).get("text"))
-    if win is not None and not said:
-        return                          # the turn ended without a reply: the offer was not heard, it rides again
+    reply = next((str(m.get("text") or "") for m in (win or [])[-1:] if (m or {}).get("role") == "assistant"), "")
+    if _own_name().lower() not in reply.lower():   # A7 audit: our reply names us (the slot): necessary, not enough
+        return
     try:
         from config import settings
         if not settings.get(OFFER_FLAG):

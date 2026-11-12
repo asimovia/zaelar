@@ -84,14 +84,14 @@ def active_ids() -> list[str]:
     return out
 
 
-def blocks(turn_text: str = "") -> list[str]:
+def blocks(turn_text: str = "", asked: str | None = None) -> list[str]:
     """The text every active pack contributes, in order. Empty list is the normal steady state."""
     out: list[str] = []
     for p in _REGISTRY:
         try:
             if not p.active():
                 continue
-            text = ((p.block(turn_text) if p.wants_turn else p.block()) or "").strip()
+            text = ((p.block(turn_text, asked) if p.wants_turn else p.block()) or "").strip()
             if text:
                 out.append(text)
         except Exception as e:  # noqa: BLE001
@@ -99,7 +99,7 @@ def blocks(turn_text: str = "") -> list[str]:
     return out
 
 
-def compose(turn_text: str = "") -> str:
+def compose(turn_text: str = "", asked: str | None = None) -> str:
     """The whole contribution as ONE prompt section, or "" when no phase is running — or when THIS turn is not
     free (`free_turn.is_free`): a question or an order gets its answer, never our introduction on top of it.
 
@@ -109,7 +109,7 @@ def compose(turn_text: str = "") -> str:
         from nucleo.turn import kickoff as _kickoff
         from nucleo.turn.prompt.packs import free_turn as _free
         # The first turn is a system note, not his request (A7): a phase rides it whatever its length.
-        parts = blocks(turn_text) if (_kickoff.is_kickoff(turn_text) or _free.is_free(turn_text)) else []
+        parts = blocks(turn_text, asked) if (_kickoff.is_kickoff(turn_text) or _free.is_free(turn_text)) else []
     except Exception as e:  # noqa: BLE001 — the registry already catches per pack; this is the second net,
         logger.warning(f"context_packs: no phase context this turn: {e!r}")   # and it is on the hot path
         return ""

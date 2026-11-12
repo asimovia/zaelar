@@ -33,22 +33,22 @@ def _own_name() -> str:
         return "Zaelar"
 
 
-def _answered_ours(turn_text: str) -> str:
-    """The question of OURS he just answered, this turn ("" when none) — read from the turn, never from the state the
-    memory agent writes two seconds later (A7, step 3): the one answer rule the distiller uses
-    (`answer_frame.answers_ours`), or, when the turn's brief is sure at the acting floor that he answered, the
-    question our last reply ended on. No word of his is matched here."""
+def _answered_ours(turn_text: str, asked: str | None = None) -> bool:
+    """Did he just answer something WE asked, this turn? Read from the turn, never from the state the memory agent
+    writes two seconds later (A7, step 3): the one answer rule the distiller uses (`answer_frame.answers_ours`, over the
+    question the builder already read — `asked`, read here only when no builder passed it), or the brief sure at the
+    acting floor that he answered — even when our reply did not END on the question (the kickoff asks his name, then
+    tells the offer). No word of his is matched here."""
     try:
         from nucleo.memory_agent import answer_frame as _af
-        if asked := _af.answers_ours(turn_text):
-            return asked
+        if _af.answers_ours(turn_text, asked=_af.asked_before() if asked is None else asked):
+            return True
         from nucleo.turn import brief as _tb
         from nucleo.turn import verdicts as _v
-        choice, _info = _v.to_act(_tb.of_this_turn(), _tb.REQUEST_KEY, "")
-        return _af.asked_before() if choice == "answer" else ""
+        return _v.to_act(_tb.of_this_turn(), _tb.REQUEST_KEY, "")[0] == "answer"
     except Exception as e:  # noqa: BLE001
         logger.debug(f"introduction: the answer could not be read ({e!r})")
-        return ""
+        return False
 
 
 def _this_turn() -> str:
@@ -74,7 +74,7 @@ def _offer_line() -> str:
             "no se repite.")
 
 
-def block(turn_text: str = "") -> str:
+def block(turn_text: str = "", asked: str | None = None) -> str:
     """The phase's instructions. Written as what to DO this turn, never as what the agent IS — a permanent
     fact would survive the phase in the model's reading of itself even after the text stops being sent.
 
@@ -91,7 +91,7 @@ def block(turn_text: str = "") -> str:
     missing = [label for label, key in _goals()
                if not str(st.get(key) or "").strip() and not (_here and key == "location")]
     first = _kickoff.is_kickoff(turn_text)
-    asked = "" if first else _answered_ours(turn_text)
+    answered = not first and _answered_ours(turn_text, asked)
     tell_offer = not ph.offer_told()
     ph._offer_pending = _this_turn() if tell_offer else ""      # the turn that carries it, never a compose outside one
     if first:
@@ -115,9 +115,9 @@ def block(turn_text: str = "") -> str:
         "solo si cabe con naturalidad. Si te contesta con evasivas o cambia de tema, lo dejas estar: no se "
         "insiste ni se vuelve a preguntar lo mismo dos veces.",
     ]
-    if asked:
-        lines.append(f"ACABA DE CONTESTAR a tu pregunta «{asked}»: lo que te ha dicho ya lo sabes aunque tu ESTADO aún "
-                     "no lo recoja (se guarda solo al acabar el turno); úsalo con naturalidad, sin confirmarlo ni "
+    if answered:      # conditional: the answer rule is a reading; the close already quotes what we asked
+        lines.append("SI LO QUE ACABA DE DECIR CONTESTA a lo que le preguntaste, ya lo sabes aunque tu ESTADO aún no lo "
+                     "recoja (se guarda solo al acabar el turno): úsalo con naturalidad, sin confirmarlo ni "
                      "repetírselo como pregunta, y sigue.")
     if missing:
         lines.append("LO QUE TODAVÍA NO SABES de él, por orden de importancia: " + " · ".join(missing)

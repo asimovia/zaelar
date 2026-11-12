@@ -178,7 +178,7 @@ def build_flash_system(directive: str = "", recall_query: str = "", recall_block
     parts = (("language", _lang_lock()), ("operating", "\n\n" + ops), ("resources", "\n\n" + res),
              ("widgets_now", STATE_HEAD + sep(w_now)), ("connectors", sep(conn)), ("memory", sep(memory_block)), ("recent", sep(recent_block)),
              ("recall", sep(recall_block)), ("people", _people_block(turn_text)), ("rules", _rules_prompt.voice_block()),
-             ("directive", _directive_block(directive)), ("packs", _packs.compose(turn_text)),
+             ("directive", _directive_block(directive)), ("packs", _packs.compose(turn_text, _asked)),
              ("proactive", sep(proactive())), ("live", "\n\n── AHORA MISMO ──\n" + live),
              ("close", (f"\n\nAcabas de preguntarle «{_asked}». Atiende ahora lo que dice a continuación: su respuesta, o una "
                         "petición nueva." if _asked else "\n\nAtiende ahora la petición del operador que viene a continuación.")))
