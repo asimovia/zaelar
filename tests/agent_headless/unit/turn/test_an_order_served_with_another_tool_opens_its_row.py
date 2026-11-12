@@ -392,6 +392,34 @@ def test_a_look_still_serves_when_the_turn_does_not_surely_ask_for_an_act(world)
     assert ran == [] and _rows() == []
 
 
+@pytest.mark.parametrize("said, sure", [("Venga, vuelve al inicio del widget de vídeo", 0.99), ("Come on, back to the start", 0.62)])
+def test_no_act_of_the_verdict_runs_beside_a_look_that_ran_even_when_the_turn_surely_asks_to_act(world, said, sure):
+    """T4 with `wants_words = act` (node 2.73, measured live: the model's `show_tab` was right, the 0.99 `restart` was
+    wrong): the look RAN and stands — the close completes nothing beside it. `restart` needs no fact, so nothing is
+    asked either. Disarm: let the close complete after a look → `restart` runs and this goes red."""
+    ran = []
+    ops, calls = _looked("youtube", "show_tab", {"tab": "inicio"})
+    brief = _order("youtube:restart", "youtube")
+    brief["result"]["wants_words"] = {"choice": "act", "confidence": sure}
+    _say(said)
+    got = _open(brief, said, "Hecho.", ops=ops, calls=calls, present=lambda *a, **k: True,
+                apply_widget_data=lambda w, a, p: ran.append((w, a, p)))
+    assert got == {} and ran == [] and _rows() == [], (got, ran)
+
+
+def test_a_look_is_weighed_at_the_act_floor_and_what_it_owes_is_a_question_never_the_act(world):
+    """`wants_words = act` under the one act floor is a shrug: the look serves. Over it, the order that needs facts
+    asks them on its row — and the completion is not called, whatever his words could fill."""
+    ran, said = [], "Ponle el alias Oda a Odalys Brezmes"
+    doors = dict(present=lambda *a, **k: True, apply_widget_data=lambda w, a, p: ran.append((w, a, p)))
+    ops, calls = _looked("contactos", "show_contact")
+    _say(said)
+    shrug = _brief(target="contactos:set_alias", words=("act", 0.55))
+    assert _open(shrug, said, "Aquí la tienes.", ops=ops, calls=calls, **doors) == {} and _rows() == []
+    got = _open(_brief(target="contactos:set_alias", words=("act", 0.9)), said, "Aquí la tienes.", ops=ops, calls=calls, **doors)
+    assert got["how"] == "asked" and ran == [], (got, ran)
+
+
 def test_disarmed_a_look_counts_as_serving_and_the_order_is_dropped_in_silence(world, monkeypatch):
     monkeypatch.setattr(ou, "_beyond_looks", lambda brief, wid, act, model_calls: model_calls)
     ops, calls = _looked("contactos", "show_contact")

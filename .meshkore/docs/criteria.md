@@ -754,7 +754,9 @@ Flash keeps the conversation; the row is what both brains read.
   asked on THAT row (`send_task_anchor.to_waiting`): his words fill the one declared candidate they name by identity,
   the question is asked for the slot still lacking — one row per intention, and an intention is the card, the act
   AND the person (`one_row.people`: the row's person value, its candidates, his word that names people): a send
-  to somebody else opens its own row and replaces nothing, and every birth of a send row (`send_task.retain`) ends
+  to somebody else opens its own row and replaces nothing — also when his words name nobody of his and the turn is
+  surely a NEW order (`request_type = order` at the act floor): its question never lands on the row of another
+  person — and every birth of a send row (`send_task.retain`) ends
   the row of that act and person that still waited. — since 2026-11-06, the question's half
   2026-11-12 · nodes 2.1657, 2.1629, 2.1619, 2.1140, 2.1731 · `nucleo/request/send_task.py`, `nucleo/flash/tool_executor_widget_calls.py`,
   `nucleo/request/ask_outside_door.py`, `nucleo/request/inline_ask.py`, `nucleo/workers/exit_slots.py`,
@@ -770,8 +772,10 @@ Flash keeps the conversation; the row is what both brains read.
   (runs, or ONE slot asked; a worker on its row when his words name nobody of his); a card act runs by the empty
   turn's completion or asks ONE `ASK_FACT` question on that row — never a worker for an app act. The model's valid
   call is never overruled (K2): an order that only reads is served by what the turn did, an act that stays on the
-  card by the model's own call that ran there — not by a LENS it called where the turn surely asks to act
-  (`wants_words = act`, read as the call's door reads it: `data_ops.a_view_where_the_verdict_acts`) — and any act
+  card by the model's own call that ran there. A LENS it called where the turn surely asks to act (`wants_words =
+  act` at the act floor, read as the call's door reads it: `data_ops.a_view_where_the_verdict_acts`) ran and stands
+  too — no act of the verdict runs beside it; the order then owes only its QUESTION (the facts the act needs, on its
+  row), and an act that needs none owes nothing — and any act
   of a card by the model's call of the tool that drives it (`acts/media.CARD_OF_TOOL`: its lane is that card's
   door). The order's row is the turn's while that is open;
   when another act of the turn already ended it, the order gets a row of its own (an ended row is never
@@ -783,7 +787,8 @@ Flash keeps the conversation; the row is what both brains read.
   `answered_offer.run`: a declared no cancels, a yes or a fact composes the payload by ONE bounded pass over his
   request, our question and his answer and runs it through the card's door on that row — an act the one consent
   rule asks about for that call (`action_mode_now`) waits there for his yes first, with the card's declared
-  question (`consent_ask.question`) and its two declared answers (C13); the answering turn's own
+  question (`consent_ask.question`) and its two declared answers (C13), and one the rule hands to an errand is not
+  run by this door (the row ends failed); the answering turn's own
   call of the act is the same answer (`inline_ask.claim` — the turn is its trace: a later turn's call of that act
   is a new order, for every answer that resumes a row); no call leaves the row failed, never a guess. — since
   2026-11-12 · nodes 2.1730 · `nucleo/request/answered_offer.py`, `nucleo/request/inline_answer.py`.

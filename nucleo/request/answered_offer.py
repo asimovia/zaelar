@@ -63,8 +63,7 @@ async def compose(wid: str, act: str, *, request: str, question: str, answer: st
             on_tool_call=lambda name, args: got.append((name, args if isinstance(args, dict) else {})))
         for name, args in got:
             if name == "widget_data" and base(args.get("widget_id")) == card and str(args.get("action") or "") == act:
-                payload = args.get("payload") if isinstance(args.get("payload"), dict) else {}
-                return dict(payload)
+                return dict(args["payload"]) if isinstance(args.get("payload"), dict) else {}
         _cp.note(card, "the pass made no call for the offer", action=act)
         return None
     except Exception as e:  # noqa: BLE001 — a pass that failed composes nothing; the row says so
@@ -99,12 +98,13 @@ async def run(uid: str, entry: dict, text: str, choice: int | None = None) -> di
     payload = await compose(wid, act, request=request, question=question, answer=answer)
     event(None, "↩ his answer to our offer composes its act", f"{wid}:{act}", {"cat": "flash", "task_id": uid,
           "ask_id": ask_id, "composed": payload is not None, "answer": answer[:120]})
-    if payload is None:
-        circuit.settle(row=uid, state="failed", outcome="the offer's act could not be composed from his answer")
-        return {"ok": False, "row": uid}
     from nucleo.flash import data_ops, frontend
     from widgets import actions as _wa
-    if frontend.action_mode_now(wid, act, payload) != _wa.CONFIRM:
+    mode = frontend.action_mode_now(wid, act, payload) if payload is not None else ""
+    if mode not in (_wa.FAST, _wa.CONFIRM):   # not composed, or an act this door does not run (an errand's): no guess
+        circuit.settle(row=uid, state="failed", outcome="the offer's act could not be composed and run from his answer")
+        return {"ok": False, "row": uid}
+    if mode == _wa.FAST:
         return await data_ops.dispatch_and_report(wid, act, payload, row=uid, text=request)
     # CRIT-C13 — his answer composed the act, it never said yes to it: the card's declared question waits on this row
     from nucleo.request import consent_ask, send_task

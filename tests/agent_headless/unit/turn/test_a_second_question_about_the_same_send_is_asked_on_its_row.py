@@ -202,6 +202,30 @@ def test_a_question_about_a_send_to_somebody_else_waits_on_a_row_of_its_own(inve
     assert "contact" not in send_task.artefact(first["id"])["payload"]
 
 
+@pytest.mark.parametrize("said, q2", [("Mándale a Bartolomeu la dirección", "¿Por WhatsApp o por Telegram?"),
+                                      ("Send Bartholomew the address", "On WhatsApp or on Telegram?")])
+def test_a_new_order_that_names_nobody_of_his_never_lands_on_the_row_of_somebody_else(invented, monkeypatch, said, q2):
+    """With one send waiting «which Odalys?», a NEW order about a person who is not among his contacts ended asking,
+    and its question was put on the Odalys row: his answer would have filled HER send. His words resolve nobody, so
+    the reading is the turn's: a sure order is a new intention. A turn that is no order (his vague answer) still
+    anchors. Disarm: `to_waiting` blind to the order → the question lands on the Odalys row."""
+    from nucleo.turn import brief as _tb
+    w = ODALYS["es"]
+    _turn_ends_asking(w["said"], w["q"], "t-1")
+    (first,) = _rows()
+    monkeypatch.setattr(_tb, "of_this_turn", lambda: {})                            # no order read: his vague answer
+    ask2 = _turn_ends_asking("la de siempre", "¿Cuál de las dos?", "t-2")
+    assert ask2 and ts.task_get(first["id"])["ask_id"] == ask2, "an answer that names nobody stays on the row that waits"
+    order = _brief()
+    order["result"]["request_type"] = {"choice": "order", "confidence": 0.9}
+    monkeypatch.setattr(_tb, "of_this_turn", lambda: order)                          # this turn: a sure order
+    ask3 = _turn_ends_asking(said, q2, "t-3")
+    assert ask3 != ask2 and ts.task_get(first["id"])["ask_id"] == ask2 and ts.task_get(first["id"])["ask"] == "¿Cuál de las dos?"
+    assert "contact" not in send_task.artefact(first["id"])["payload"], "nothing of the other send reached her row"
+    (new,) = [r for r in _waiting() if r["id"] != first["id"]]
+    assert new["ask_id"] == ask3 and new["ask"] == q2, "the new order asks on a row of its own"
+
+
 @pytest.mark.parametrize("lang", ["es", "en"])
 def test_the_same_order_twice_to_a_name_two_people_share_is_one_waiting_row(invented, lang):
     from nucleo.request import send_task_words
