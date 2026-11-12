@@ -90,8 +90,17 @@ operator asked for, dropped if he deflects. It lists what is still unknown (`ope
 `treatment`) so the phase narrows as it goes, and it caps the self-description at two or three capabilities —
 because a self-introduction should never turn into a four-minute monologue.
 
-Exits: knowing his name (free — the memory writes it on its own) · a judge after 4 turns, then one call every
-4 · a cap at 30.
+Exits: knowing his name AND having told him, once, that the agent's name and voice are his to change
+(`intro_offer_told`, persisted by a turn that replied) · a judge after 4 turns, then one call every 4 · a cap at 30.
+
+**It is one phase of genesis, and it owns the first turn** (CRIT-V21). The first turn's text is ONE i18n line,
+`kickoff_prompt`, read through `nucleo/turn/kickoff.py` by every piece that needs it (the voice that triggers the
+greeting, the gate that recognises a first turn by catalog, the window and the day ledger that must not keep it as
+his words); what the greeting SAYS is this pack's block, a system section carrying the name-and-voice offer. The
+watcher subscribes at boot whether or not a language is locked yet and reads the condition per turn. The block
+(`introduction_block.py`) reads THE TURN as well as the state: his answer to our question (`answer_frame.answers_ours`,
+or a sure `answer` verdict) moves that goal to «he just told you» before memory has written it, and a turn that ends
+with the name still unknown is read again a few seconds later, so the phase closes on the turn he said it.
 
 **The phrasebook stands aside while any pack is active.** During the introduction «hola» is not small
 talk — it is the first move of a conversation that has somewhere to go. The gate lives in the LANE, not in the

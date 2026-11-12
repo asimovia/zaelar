@@ -452,14 +452,16 @@ Each is one line in `.meshkore/docs/criteria.md`, with its node; read the sectio
   doesn't enter the task list; the agenda goes DIRECT and a delete doesn't ask, with a bin and `restore`.
 - **Which card an order goes to (§3):** a verb table is not a router — grammar PROPOSES, the decision model
   chooses among what is DECLARED, and a backstop never overrules a verdict already paid for (K1); the verdict
-  COMPLETES the model, never contradicts it (K2); a descriptor is written under the cut and measured against its
+  COMPLETES the model, never contradicts it, and acts at ONE floor, `consent.intent_act_at` (K2); an order the model
+  served with another tool opens the ORDER's row (T2g); a descriptor is written under the cut and measured against its
   neighbours (K7); a classifier in front of the model is a PRICE paid only where the decision can't be read
   afterwards (K9). Read `.meshkore/docs/architecture/zaelar-architecture.md` §«ALERTS» before writing a rule
   that reads the operator's WORDS. A polite question is an order; a turn that is ONLY a number moves nothing.
 - **Building or rewriting one of the user's cards is asked first (§2-3):** at the single door a worker is started
   through (`dispatch._run_session`, `kind == code`), with the whole confirm gate; the cluster dev-worker is exempt (C4).
 - **Our failure is not a provider outage (§6):** the exception decides whose fault it is (an HTTP status is theirs,
-  a bare Python error is ours), the SAME request hands over to the fallback, and embeddings have no fallback (R1, R3).
+  a bare Python error is ours), the SAME request hands over to the fallback, and embeddings have no fallback (R1, R3);
+  a stalled HOST is not a stalled provider either — the body measures its own loop and says so (R40).
 - **The chat column is the conversation (§1):** a voice line is OWED when the mouth starts it, its identity is
   the turn's `trace`, and a held fragment only joins the next one if the next one continues it (V7); a complaint
   about what was just done is an order to redo it; the assistant's name changes by verdict and fails CLOSED (V8).

@@ -127,7 +127,10 @@ native name from the picker catalog — a bare name would hide the voice's accen
 ### 6 · The greeting
 
 `onboarding.confirmSpoken`, in the chosen language, spoken by `server/i18n_api.py` after the lock. On a
-normal (non-first) start the kickoff is the memory-aware greeting in `voice/engine/pipeline/agent.py`.
+normal (non-first) start the kickoff is decided by `first_air.decide_kickoff` (the voice process asks the body for
+the same decision) and its text is ONE i18n note, `kickoff_prompt`, read through `nucleo/turn/kickoff.py` — a system
+note, never his words. While the introduction phase runs, what the greeting says (its name, that its name and voice
+can change, his name) is that pack's block (`.meshkore/docs/architecture/zaelar-context-packs.md` §4, CRIT-V21).
 
 ## What any reset puts back
 

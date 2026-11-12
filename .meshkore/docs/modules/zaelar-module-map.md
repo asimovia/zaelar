@@ -264,6 +264,12 @@ user-visible build number and the reload signal), `daemon/` (the LOCAL daemon, n
 - `nucleo/circuit/asker.py` — THE asker: a worker's question, a door's consent ASK, a card's irreversible act waiting for his yes (`request/consent_ask.ask_consent`, V2-857) and Flash's own question about a
   door's act make the row wait with an `ask_id` and one `ask` event; `nucleo/cli/worker_api_bind.py` binds a spoken
   answer by the brief's verdict, `POST /api/tasks/{id}/answer` a screen one (criteria §4b).
+- The order and the question own their row (CRIT-T2e, T2g, T2h): `nucleo/request/order_unserved.py` — at the close, a
+  sure order no door served opens ITS row (a send task, the card act's completion, or one `ASK_FACT` question), yielding
+  to the model's valid call; `ask_outside_door.named_act` — our own question about a declared act makes its row wait;
+  `nucleo/request/inline_answer.py` — the one `rerun` door every bound answer crosses (split from `inline_ask.py`, which
+  keeps the ask and `claim`), reaching `answered_offer.py` (his answer to our offer composes and runs the act on that
+  row); `nucleo/request/send_task_anchor.py` — a second question about a waiting send is asked on that row.
 - `nucleo/workers/prompts/playbook.py` + `catalog.py` — the worker's method (nine checkpoints), the playbook catalogue
   the WORKER chooses from (`errand | message | document | lista`; `which` only suggests) with `checkpoint_one`, and
   the two-layer bridge catalogue (headlines in the brief, a family's full set through the bridge).

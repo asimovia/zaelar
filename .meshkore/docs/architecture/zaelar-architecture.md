@@ -130,6 +130,17 @@ The body supervises the voice process like it supervised the embedded worker: `v
 the process (bounded close, verified registration), and over its RSS ceiling it is recycled BETWEEN sessions. The voice
 process exits when its parent does. `ZAELAR_VOICE_EMBEDDED=1` restores the single-process shape.
 
+**The body measures its own loop** (`nucleo/pulse/loop_lag.py`). The voice's lag watcher (`voice/lag.watch`) runs where
+the voice runs, so with two processes the body needs its own: a probe on the server loop reads every late wake, and
+one over `loop_lag_s` is a host STALL — recorded with its end (`stalled_since`, `stalled_recently`), one `homeostasis`
+event, a quiet shed through `voice/lag.note(…, BODY)`, and pressure the shed ladder reads beside the voice's lag
+(`shed_actuators.reading`). The readers that would otherwise blame a provider ask it first: the turn's silence
+deadline (`pipeline_stream`), the provider circuit's stall streak (`provider_chain._host_stalled_s`, no relay inside a
+stopped window) and the perf verdict (`turn_perf`, `host_stall_s`). `GET /api/debug/loop` shows the last and worst
+reading. Across the seam, a body that does not answer is tried once more and then said «running slow»
+(`remote_brain`), and `body_link` opens at most one connection per `RETRY_GAP_S` while it waits — a stopped body
+never fills its listen backlog with retries.
+
 **Role of the brain (`nucleo/`):** it is zaelar's OWN brain — memory, cron/proactivity, tools, reasoning — no
 external agent. **FlashBrain** owns the hard-realtime turn (~sub-second): the conversation, the reflexes (one
 declared action, one call), the router, the mouth and the screen. Work that does not fit a turn becomes a **task**:
