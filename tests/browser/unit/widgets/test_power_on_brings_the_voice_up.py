@@ -91,7 +91,8 @@ def test_power_coming_back_ON_brings_the_voice_up_without_a_click():
     pointer that may never come."""
     code = _code(MAIN)
     # V2-765: the same effect also waits for the language picker to close — the veil is a way back too.
-    assert "if (store.powerOff() || store.langOnboardOpen()) return;" in code and "ensureVoice();\n});" in code, \
+    # 2026-11-12: through `untrack` — the effect tracks ⏻ and the veil, never the start it fires (node 3.199).
+    assert "if (store.powerOff() || store.langOnboardOpen()) return;" in code and "untrack(ensureVoice);\n});" in code, \
         "an effect has to watch `powerOff` going FALSE and re-arm the voice (ensureVoice is idempotent)"
 
 
