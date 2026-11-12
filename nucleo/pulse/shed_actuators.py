@@ -28,7 +28,8 @@ def _rss_mb(pid: int | None = None) -> float:
     try:
         import psutil
         return psutil.Process(pid).memory_info().rss / 2 ** 20 if pid else psutil.Process().memory_info().rss / 2 ** 20
-    except Exception:  # noqa: BLE001
+    except Exception as _swallowed:  # noqa: BLE001
+        logger.debug(f"{__name__}: {_swallowed!r}")   # said, never silent (the ratchet)
         return 0.0
 
 
@@ -47,7 +48,8 @@ def reading() -> dict:
         if child is not None and not child_process.embedded():
             engine += child.rss_mb()
             budget += budgets.budget("voice", pol)["mb"]
-    except Exception:  # noqa: BLE001
+    except Exception as _swallowed:  # noqa: BLE001
+        logger.debug(f"{__name__}: {_swallowed!r}")   # said, never silent (the ratchet)
         pass
     return {"free_mb": avail / 2 ** 20, "floor_mb": floor_mb, "engine_mb": round(engine, 1),
             "budget_mb": budget, "cause": shed_ladder.cause(engine, budget)}
@@ -57,7 +59,8 @@ def _workers():
     try:
         from nucleo import dispatch
         return list(dispatch._SESSIONS.values())
-    except Exception:  # noqa: BLE001
+    except Exception as _swallowed:  # noqa: BLE001
+        logger.debug(f"{__name__}: {_swallowed!r}")   # said, never silent (the ratchet)
         return []
 
 

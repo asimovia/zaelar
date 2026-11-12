@@ -29,14 +29,14 @@ from types import SimpleNamespace
 
 from loguru import logger
 
-#: The keys of the env that are this process's own, never pushed to the voice process.
-_OWN_ENV = frozenset({"ZAELAR_VOICE_TOKEN", "ZAELAR_VOICE_ROLE", "ZAELAR_VOICE_PARENT", "ZAELAR_BODY_URL",
-                      "ZAELAR_WORKER_PORT", "ZAELAR_VOICE_EMBEDDED"})
+#: The env this process gave the voice process at spawn names it (`ZAELAR_VOICE_*`, its body and worker addresses):
+#: those are the voice's own and are never pushed as «settings».
+_OWN_PREFIXES = ("ZAELAR_VOICE_", "ZAELAR_BODY_", "ZAELAR_WORKER_")
 
 
 class ChildClient:
-    """Body → voice process. Async calls from the body's loop; `post_soon` from anywhere; `post_sync` for the one
-    caller that is synchronous (re-pointing the live voice from a settings save)."""
+    """Body → voice process. Async calls from the body's loop; `post_soon` from anywhere (also the synchronous
+    callers: re-pointing the live voice from a settings save never blocks on the voice process)."""
 
     def __init__(self, base: str, token: str) -> None:
         self.base = base.rstrip("/")
@@ -61,14 +61,14 @@ class ChildClient:
 
     def env_diff(self) -> dict:
         """The `ZAELAR_*` settings that changed since the last push (the language he picked, a mode)."""
-        now = {k: v for k, v in os.environ.items() if k.startswith("ZAELAR_") and k not in _OWN_ENV}
+        now = {k: v for k, v in os.environ.items() if k.startswith("ZAELAR_") and not k.startswith(_OWN_PREFIXES)}
         out = {k: v for k, v in now.items() if self._env_sent.get(k) != v}
         out.update({k: "" for k in self._env_sent if k not in now})
         self._env_sent = now
         return out
 
     def mark_env_sent(self, env: dict) -> None:
-        self._env_sent = {k: v for k, v in env.items() if k.startswith("ZAELAR_") and k not in _OWN_ENV}
+        self._env_sent = {k: v for k, v in env.items() if k.startswith("ZAELAR_") and not k.startswith(_OWN_PREFIXES)}
 
     async def post(self, path: str, payload: dict | None = None, timeout_s: float = 3.0) -> dict:
         self.stats["calls"] += 1
@@ -93,17 +93,6 @@ class ChildClient:
         elif loop is not None and not loop.is_closed():
             asyncio.run_coroutine_threadsafe(self.post(path, payload), loop)
 
-    def post_sync(self, path: str, payload: dict, timeout_s: float = 1.0) -> dict:
-        import urllib.request
-        req = urllib.request.Request(self.base + path, data=json.dumps(payload).encode(), method="POST",
-                                     headers={**self.headers(), "content-type": "application/json"})
-        try:
-            with urllib.request.urlopen(req, timeout=timeout_s) as r:
-                return json.loads(r.read() or b"{}")
-        except Exception as e:  # noqa: BLE001
-            logger.warning(f"body→voice {path}: {e!r}")
-            return {"ok": False}
-
     async def say_stream(self, payload: dict):
         """`/voice/say` as it plays: the speech id at once, then `done` when it has sounded."""
         async with self._http().stream("POST", self.base + "/voice/say", json=payload, headers=self.headers(),
@@ -116,7 +105,8 @@ class ChildClient:
         if self._client is not None:
             try:
                 await self._client.aclose()
-            except Exception:  # noqa: BLE001
+            except Exception as _swallowed:  # noqa: BLE001
+                logger.debug(f"{__name__}: {_swallowed!r}")   # said, never silent (the ratchet)
                 pass
             self._client = None
 
@@ -203,15 +193,15 @@ class RemoteSession:
 
 
 class RemoteTTS:
-    """What `live_tts` holds in the body: re-pointing it re-points the voice process's live TTS."""
+    """What `live_tts` holds in the body: re-pointing it re-points the voice process's live TTS. Fire and forget — the
+    settings save never waits on the voice; the voice process logs a voice it could not take, and the persisted
+    setting applies on its next session either way (the pre-V2-733 behaviour)."""
 
     def __init__(self, client: ChildClient) -> None:
         self._client = client
 
     def update_options(self, voice_id: str | None = None, language: str | None = None) -> None:
-        r = self._client.post_sync("/voice/tts", {"voice_id": voice_id or "", "lang": language or ""})
-        if not r.get("took"):
-            raise RuntimeError("the voice process did not take the voice")
+        self._client.post_soon("/voice/tts", {"voice_id": voice_id or "", "lang": language or ""})
 
 
 class _SpeechRef:
@@ -245,10 +235,11 @@ class _NoBoot:
 
 # ── the mirror of the live session ──────────────────────────────────────────────────────────────────────────────
 
-_M: dict = {"client": None, "session": None, "brain": None, "busy": {"bot": False, "user": False},
-            "onset": {"voice_ended": 0.0}, "wake": {"last_user_final": 0.0, "spot_at": 0.0}, "typed": None,
-            "speak": None, "closer": None, "id_token": None, "room": "", "tts": None, "events": 0}
-_STATE_TRACE_SAFE = {"speaking", "listening", "interrupted"}
+_M: dict = dict(client=None, session=None, brain=None, busy=dict(bot=False, user=False),
+               onset=dict(voice_ended=0.0), wake=dict(last_user_final=0.0, spot_at=0.0), typed=None,
+               speak=None, closer=None, id_token=None, room="", tts=None, events=0)
+#: room → the handles its session registered (several may overlap for an instant while the voice moves screens)
+_ROOMS: dict = {}
 _ONSET_MAX_S = 30.0
 _lock = threading.Lock()
 
@@ -295,17 +286,21 @@ def _started(ev: dict) -> None:
     from voice.engine.pipeline import agent_events as _ae
     from voice.engine.pipeline.session_health import on_session_alive
     from voice.engine.core.config import SETTINGS
-    if _M["session"] is not None:
-        _closed({"cause": "replaced"})
+    room = str(ev.get("room") or "")
+    if room in _ROOMS:                          # the same room dispatched again: the old one is gone
+        _closed({"cause": "replaced", "room": room})
     cl = _M["client"]
     cl.bind(asyncio.get_running_loop())
     remote = RemoteSession(cl)
-    _M.update(session=remote, room=str(ev.get("room") or ""), brain=None)
+    # Another room may still be closing (the voice moving between screens): its handles stay in `_ROOMS` and its own
+    # close clears only what is still its own, exactly as the embedded sessions do.
+    _M.update(session=remote, room=room, brain=None)
     _M["busy"].update(bot=False, user=False)
     _brain()
     try:
         attention.reset()
-    except Exception:  # noqa: BLE001
+    except Exception as _swallowed:  # noqa: BLE001
+        logger.debug(f"{__name__}: {_swallowed!r}")   # said, never silent (the ratchet)
         pass
     if SETTINGS.llm_provider == "nucleo":
         async def _prime():
@@ -336,7 +331,8 @@ def _started(ev: dict) -> None:
         if _line := _account_limits.spoken_line(reason):
             try:
                 await remote.say(_line, allow_interruptions=True)
-            except Exception:  # noqa: BLE001
+            except Exception as _swallowed:  # noqa: BLE001
+                logger.debug(f"{__name__}: {_swallowed!r}")   # said, never silent (the ratchet)
                 pass
         for _ in range(50):
             if not busy["bot"]:
@@ -364,38 +360,51 @@ def _started(ev: dict) -> None:
         live_tts.attach(_M["tts"], str(ev.get("tts") or SETTINGS.tts_provider))
     except Exception as e:  # noqa: BLE001
         logger.debug(f"remote live_tts not attached: {e!r}")
+    _ROOMS[room] = dict(session=_M["session"], typed=_M["typed"], speak=_M["speak"], closer=_M["closer"],
+                        id_token=_M["id_token"], tts=_M["tts"])
 
 
-def _transport_down(_ev: dict | None = None) -> None:
-    tok, _M["id_token"] = _M["id_token"], None
+def _transport_down(ev: dict | None = None) -> None:
+    room = str((ev or {}).get("room") or _M["room"])
+    h = _ROOMS.get(room)
+    if h is None:
+        return
+    tok, h["id_token"] = h.get("id_token"), None
+    if room == _M["room"]:
+        _M["id_token"] = None
     if tok is not None:
         try:
             from observability import identity
             identity.voice_disconnected(tok)
-        except Exception:  # noqa: BLE001
+        except Exception as _swallowed:  # noqa: BLE001
+            logger.debug(f"{__name__}: {_swallowed!r}")   # said, never silent (the ratchet)
             pass
 
 
 def _closed(ev: dict) -> None:
-    remote = _M["session"]
-    if remote is None:
+    room = str(ev.get("room") or _M["room"])
+    h = _ROOMS.get(room)
+    if h is None:
         return
     from voice import proactive
     from voice.engine.pipeline import agent_events as _ae
     from nucleo.energy import limits as _account_limits
     err = str(ev.get("error") or "") or None
     _ae._on_close(SimpleNamespace(reason=str(ev.get("cause") or ""), error=err), _account_limits=_account_limits,
-                  _close_account_session=_M["closer"], _emit=_obs(), _proactive=proactive, _speak=_M["speak"],
-                  boot=_NoBoot(), _typed=_M["typed"])
-    remote.fire_close(ev)
-    _transport_down()
+                  _close_account_session=h["closer"], _emit=_obs(), _proactive=proactive, _speak=h["speak"],
+                  boot=_NoBoot(), _typed=h["typed"])
+    h["session"].fire_close(ev)
+    _transport_down({"room": room})
     try:
         from voice.engine.speech import live_tts
-        live_tts.detach(_M["tts"])
-    except Exception:  # noqa: BLE001
+        live_tts.detach(h["tts"])               # only if it is still the attached one
+    except Exception as _swallowed:  # noqa: BLE001
+        logger.debug(f"{__name__}: {_swallowed!r}")   # said, never silent (the ratchet)
         pass
-    _M.update(session=None, typed=None, speak=None, closer=None, tts=None)
-    _M["busy"].update(bot=False, user=False)
+    _ROOMS.pop(room, None)
+    if room == _M["room"]:
+        _M.update(session=None, typed=None, speak=None, closer=None, tts=None, id_token=None)
+        _M["busy"].update(bot=False, user=False)
 
 
 def _metric(ev: dict):
@@ -447,7 +456,7 @@ def handle(ev: dict) -> None:
         return                                  # a fact about a session the body never saw start
     if k == "state":
         _ae.on_state_change(SimpleNamespace(value=str(ev.get("state") or "")), _ONSET_MAX_S=_ONSET_MAX_S,
-                            _STATE_TRACE_SAFE=_STATE_TRACE_SAFE, _air=_NoAir(), _busy=_M["busy"], _emit=_obs(),
+                            _STATE_TRACE_SAFE=_ae.STATE_TRACE_SAFE, _air=_NoAir(), _busy=_M["busy"], _emit=_obs(),
                             _onset=_M["onset"])
     elif k == "user_state":
         _ae._on_user_state(SimpleNamespace(new_state=str(ev.get("state") or "")), _busy=_M["busy"], _emit=_obs(),
@@ -468,7 +477,8 @@ def handle(ev: dict) -> None:
     elif k == "data":
         try:
             raw = base64.b64decode(str(ev.get("data") or ""))
-        except Exception:  # noqa: BLE001
+        except Exception as _swallowed:  # noqa: BLE001
+            logger.debug(f"{__name__}: {_swallowed!r}")   # said, never silent (the ratchet)
             return
         _ae._on_data(SimpleNamespace(topic=ev.get("topic"), data=raw), _emit=_obs(), _json=json, _wake=_M["wake"],
                      session=remote)
@@ -552,11 +562,13 @@ async def turn_lines(payload: dict):
             _SpeechHandleContextVar.reset(tok_s)
             if tok_o is not None:
                 screens.ORIGIN.reset(tok_o)
-        except ValueError:                       # a generator closed from another context: the vars die with it
+        except ValueError as _swallowed:                       # a generator closed from another context: the vars die with it
+            logger.debug(f"{__name__}: {_swallowed!r}")   # said, never silent (the ratchet)
             pass
 
 
 def reset_for_tests() -> None:
+    _ROOMS.clear()
     _M.update(client=None, session=None, brain=None, typed=None, speak=None, closer=None, id_token=None, room="",
               tts=None, events=0)
     _M["busy"].update(bot=False, user=False)

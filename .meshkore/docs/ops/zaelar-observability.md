@@ -395,7 +395,19 @@ kept for the FlashBrain's «PROCESOS DE FONDO» prompt, but does not duplicate t
   `timeline-latest.jsonl`/`meshkore.jsonl` by size + prunes old files), **`evict`** (evicts concluded/stale
   capsules, `sys_kv` `capsule:*`) and **`alert`** (a single notice to the operator when it detects degradation but
   it is NOT safe to act). It exists so that a long-running embedded worker that degrades recovers by itself instead
-  of leaving voice/chat silent until a manual restart.
+  of leaving voice/chat silent until a manual restart. With the voice in its OWN process (V2-891,
+  `zaelar-architecture.md` §0b) the same labels govern that process — `recycle` restarts it, and three more say what
+  the body did to it and to the host: **`voice_process_start`** / **`voice_process_exit`** (pid, exit code),
+  **`voice_over_ceiling`** (its RSS over `budgets.<deployment>.voice.ceiling_mb`: recycled between sessions, or said
+  once and held while a session is live) and **`shed_ladder`** (one rung of the declared ladder engaged ↓ or released
+  ↑, with `cause` engine|machine, `free_mb`, `floor_mb`, `engine_mb`, `budget_mb` and what the hand did).
+- **The voice process's lines are the body's record.** The voice process records nothing itself: every observer line
+  it emits travels to the body (`voice/engine/pipeline/body_link.py` → `POST /api/voice/child/events`), with its
+  `piece` read where it was emitted, and the session's facts are REPLAYED in the body through the same handlers — so
+  the viewer and the Master read one `zaelar.db`, exactly as before. A batch the body did not take within 200 ms is
+  dropped, never queued behind it (the ear never waits); the count is `/voice/status` → `link.dropped`. A memory read
+  that left a LOCAL embedding over `embed_budget_ms` says `embedding local fuera de presupuesto` (`reason:
+  embed_over_budget`, family `memory`).
 - **`actionmap`** (family `flash`) — the deterministic layer in FRONT of the FlashBrain (`nucleo/actionmap/`, doc
   `.meshkore/docs/modules/zaelar-action-map.md`). It answers **which layer resolved this turn**, so the viewer never
   attributes a map-served turn to the model. Labels: **`⚡ action map: direct action (no model)`**

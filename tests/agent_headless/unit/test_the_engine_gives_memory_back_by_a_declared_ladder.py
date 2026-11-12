@@ -64,8 +64,9 @@ def test_whose_memory_it_is():
 def test_the_order_is_data_and_every_rung_has_a_hand():
     root = Path(__file__).resolve().parents[3]
     declared = json.loads((root / "config/resources.default.json").read_text())
-    assert tuple(declared["shed_ladder"]) == SL.DEFAULT_LADDER
+    assert declared["shed_ladder"][0] == "hold_workers", "the cheapest, fully reversible rung goes first"
     assert SL.from_policy(declared).rungs == tuple(declared["shed_ladder"])
+    assert SL.from_policy({}).rungs == (), "a ladder nobody declared gives nothing back"
     from nucleo.pulse import shed_actuators as A
     src = (root / "nucleo/pulse/shed_actuators.py").read_text()
     for rung in declared["shed_ladder"]:

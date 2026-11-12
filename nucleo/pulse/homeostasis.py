@@ -37,8 +37,6 @@ _REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 _LOG_DIR = os.getenv("ZAELAR_LOG_DIR") or os.path.join(_REPO_ROOT, ".meshkore", "logs")
 _ROTATABLE = ("timeline-latest.jsonl", "meshkore.jsonl")
 
-# LiveKit degradation marks (timestamps), filled by the in-process logging watcher
-_marks: list[float] = []
 _last_recycle: float = 0.0
 _alerted: set[str] = set()      # operator alerts already given (once per incident)
 _recycle_requested: str = ""    # explicit recycle request (reason) — see request_recycle()
@@ -57,51 +55,8 @@ def enabled() -> bool:
     return os.getenv("ZAELAR_HOMEOSTASIS", "1").lower() not in ("0", "false", "off", "no")
 
 
-# ── LiveKit engine DETECTION — in-process signal from the SDK logging ────────────────────────────────────────────
-_MARKERS = (
-    "wait_pc_connection timed out",
-    "entrypoint did not exit",
-    # The job executor missed its health ping (a voice worker once went dead for hours after it). A blocked
-    # thread can fire it transiently, so it counts in the same window+threshold and the same safety gate.
-    "job executor is unresponsive",
-)
-
-
-def note_mark(at: float | None = None) -> None:
-    """One degraded-engine mark — from this process's `livekit` logger, or from the voice's own process (V2-891),
-    whose SDK logs are its own and reach the body as events."""
-    _marks.append(float(at) if at else time.time())
-    if len(_marks) > 256:                  # bound memory (a probe, not a history)
-        del _marks[:128]
-
-
-class _LKWatcher(logging.Handler):
-    """Listens to the `livekit` logger (and children): stamps a mark on each degraded-engine message. Emits nothing.
-    `sink` is where the mark goes (`note_mark` here; the voice process hands it to the body)."""
-
-    def __init__(self, sink=None) -> None:
-        super().__init__()
-        self._sink = sink
-
-    def emit(self, record: logging.LogRecord) -> None:  # noqa: D401
-        try:
-            msg = record.getMessage().lower()
-        except Exception:
-            return
-        if any(m in msg for m in _MARKERS):
-            (self._sink or note_mark)(time.time())
-
-
-def watch_into(sink) -> logging.Handler:
-    """The voice process's half (V2-891): its `livekit` marks go to `sink(at)` instead of this process's window."""
-    h = _LKWatcher(sink)
-    h.setLevel(logging.WARNING)
-    logging.getLogger("livekit").addHandler(h)
-    return h
-
-
-_watcher = _LKWatcher()
-_watcher.setLevel(logging.WARNING)
+# ── LiveKit engine DETECTION — the SDK's degraded marks, read from its logger (`nucleo/pulse/lk_marks.py`) ──────────
+from nucleo.pulse.lk_marks import _MARKERS, _LKWatcher, _marks, _watcher, note_mark, watch_into  # noqa: E402,F401
 
 
 # ── heals (IO; each fail-open) ─────────────────────────────────────────────────────────────────────────────────

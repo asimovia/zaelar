@@ -29,7 +29,9 @@ import time
 from loguru import logger
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-_STATE: dict = {"token": "", "child": None, "body_niced": False}
+_STATE: dict = dict(token="", child=None, body_niced=False)
+#: The header the voice process presents its token in (the same name `body_link.HEADER` carries; one value).
+HEADER = "x-zaelar-voice-token"
 
 
 def embedded() -> bool:
@@ -55,7 +57,8 @@ def _reap_orphan(path: str) -> None:
     """A voice process left by a body that died hard still holds the worker port: end it before starting ours."""
     try:
         pid = int(open(path, encoding="ascii").read().strip() or 0)
-    except (OSError, ValueError):
+    except (OSError, ValueError) as _swallowed:
+        logger.debug(f"{__name__}: {_swallowed!r}")   # said, never silent (the ratchet)
         return
     if pid <= 0 or pid == os.getpid():
         return
@@ -67,7 +70,8 @@ def _reap_orphan(path: str) -> None:
         logger.warning(f"voice process: ending an orphan voice process {pid} (its body is gone)")
         p.terminate()
         p.wait(timeout=5)
-    except Exception:  # noqa: BLE001 — gone already, or not ours
+    except Exception as _swallowed:  # noqa: BLE001 — gone already, or not ours
+        logger.debug(f"{__name__}: {_swallowed!r}")   # said, never silent (the ratchet)
         pass
 
 
@@ -117,7 +121,8 @@ class VoiceChild:
             os.makedirs(os.path.dirname(pidfile), exist_ok=True)
             with open(pidfile, "w", encoding="ascii") as fh:
                 fh.write(str(self._proc.pid))
-        except OSError:
+        except OSError as _swallowed:
+            logger.debug(f"{__name__}: {_swallowed!r}")   # said, never silent (the ratchet)
             pass
         _STATE["token"], _STATE["child"] = self.token, self
         from voice import remote_session
@@ -149,7 +154,8 @@ class VoiceChild:
             while not waiter.done():
                 try:
                     await self._read_status()
-                except Exception:  # noqa: BLE001 — not up yet, or busy: the next reading says
+                except Exception as _swallowed:  # noqa: BLE001 — not up yet, or busy: the next reading says
+                    logger.debug(f"{__name__}: {_swallowed!r}")   # said, never silent (the ratchet)
                     pass
                 await asyncio.wait({waiter}, timeout=self.status_s)
         finally:
@@ -174,7 +180,8 @@ class VoiceChild:
             logger.warning(f"voice process {proc.pid} did not stop in {self.stop_s:g}s — killing it")
             proc.kill()
             await proc.wait()
-        except ProcessLookupError:
+        except ProcessLookupError as _swallowed:
+            logger.debug(f"{__name__}: {_swallowed!r}")   # said, never silent (the ratchet)
             pass
         await self.client.aclose()
 
@@ -182,7 +189,8 @@ class VoiceChild:
         try:
             from voice import observer
             observer.emit("homeostasis", step, extra={"cat": "voice", "kind_diag": step, **extra})
-        except Exception:  # noqa: BLE001
+        except Exception as _swallowed:  # noqa: BLE001
+            logger.debug(f"{__name__}: {_swallowed!r}")   # said, never silent (the ratchet)
             pass
 
 

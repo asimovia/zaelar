@@ -85,13 +85,50 @@ NOT the browser UI — the user-facing audio I/O lives in `frontend/`.
 | Piece | Side | Role |
 |---|---|---|
 | `frontend/` | **client** (browser) | The whole UI: captures mic + camera, draws the orb (agent voice) and the mic spectrum, shows widgets on the canvas, text chat wall, ☾/☀ dark/light theme (dark default, one `--hb-*` CSS variable namespace shared with widgets). No business logic — a thin reactive shell (ES modules, no build). |
-| `server/` | server | FastAPI transport: serves the frontend, the WebRTC offer/ICE, `/events` SSE, settings, the widgets HTTP API, the first-run wizard (`/api/wizard/*`), the music connector control plane (`/api/spotify/*` OAuth + `/api/music/state`) and the **full-screen config area** (`/api/config*`: per-piece API/model + API balances). Composition root + entrypoint (`python -m server`); its lifespan also starts the LiveKit agent worker (embedded), the `nucleo/` loop, the widgets supervisor and the memory queue consumer. |
+| `server/` | server | FastAPI transport: serves the frontend, the WebRTC offer/ICE, `/events` SSE, settings, the widgets HTTP API, the first-run wizard (`/api/wizard/*`), the music connector control plane (`/api/spotify/*` OAuth + `/api/music/state`) and the **full-screen config area** (`/api/config*`: per-piece API/model + API balances). Composition root + entrypoint (`python -m server`); its lifespan also starts the voice in its OWN process (`python -m voice.engine`, §0b; `ZAELAR_VOICE_EMBEDDED=1` keeps the LiveKit worker embedded), the `nucleo/` loop, the widgets supervisor and the memory queue consumer. |
 | `voice/` | server | The voice **engine** (`voice/engine/`, LiveKit AgentSession): receives mic audio → STT → brain → TTS → back to the client. Turn-taking/VAD/barge-in are governed by LiveKit (VAD Silero + `allow_interruptions`). With the default ear, Deepgram Flux (V2-863), the END OF TURN IS THE STT's own (`turn_detection="stt"`, ~260 ms after the last word, with an EAGER end of turn before it that fires the turn brief and the model early); with nova-3 or a local ear, a lexical semantic layer is the turn-detector (closes a turn on SENTENCE END, not just acoustic silence — most turns need no model call at all) and a fragment accumulator (`nucleo/input/stt.py`) that holds a still-growing sentence across a pause of ANY length instead of acting on a half-finished thought. When the lexical layer can't confidently call a fragment complete, a fast LLM judge (`nucleo/flash/segmenter.py::judge`, any language, no per-language word list) gives a second opinion — resolving to act, a spoken clarifying question, or (still) accumulate. Top level = brain-agnostic contract: observer (SSE), prompt, `tag_protocol`, `proactive` (the speaking primitive the out-of-turn mouth uses), TTS/STT backends. |
 | `nucleo/` | server | zaelar's **own brain** (default `BRAIN=nucleo`). Two speeds: **FlashBrain** (`nucleo/flash/` + `nucleo/turn/`, the one turn pipeline: conversation, reflexes, the router, the mouth; non-reasoning model per-invocation) + **Brain Workers** (`nucleo/dispatch/` + `nucleo/workers/` + `nucleo/agentes/`, one resumable Claude Code / Codex session per task behind a `CodeAgent` interface, reaching the agent through the bridge `nucleo/cli/`). Pulse `nucleo/pulse/loop.py` (~1 Hz) + own cron `nucleo/pulse/scheduler.py` + panel `nucleo/pulse/cron_api.py` + `nucleo/pulse/sparks.py`; events `nucleo/events/`. The voice engine reaches the pipeline through its adapter `voice/engine/llm/providers/nucleo.py`; the typed channel through `voice/typed_turn.py`. |
 | `memory/` | server | **Central memory** — SQLite `zaelar.db` (sqlite-vec + FTS5 + RRF + graph + forgetting). Includes an episodic layer for files. |
 | `bus/` | server | In-process **event bus** (pub/sub, generalization of `voice/observer.py`) + durable SQLite log + SSE bridge. |
 | `widgets/` | server + client | Full-stack widgets: `widget.js` renders in the client, `data.py` serves data on the server, per-widget JSON store. Isolated from the voice core. |
 | `config/` | server | Runtime settings. `config/settings.py` = STT/TTS/voice/language; `config/v2.py` = model routing (fast + code_agent + memory) + `active_brain()`; `config/credentials.py` = single writer of the credential store; `config/profiles.py`+`doctor.py` = coordinated profiles + capability detector (first-run wizard); **`config/balances.py`** = external-API balances (proactive where exposed — ElevenLabs — + reactive from the last classified error). The **⚙ full-screen config area** (choose API/model per piece) is served by `server/config_api.py` (`/api/config*`); its balance alerts surface in the ◉ status dialog. |
+
+## 0b. Process topology — the voice in its own process (V2-891)
+
+Measured on a host short of memory (a 48 GB laptop with 33 of 35 GB of swap in use and a 31.7 GB local model
+resident): with the LiveKit job a THREAD of the server, 86 % of the engine's pages were compressed and the ear stopped
+— «job executor is unresponsive» ×8, seven Deepgram 1011s (a sentence arriving in pieces) in one session. The ear
+shared one interpreter and one heap with everything the server holds. So the engine is TWO processes:
+
+| Process | Holds | Priority (declared, `priorities`) |
+|---|---|---|
+| **the voice** — `python -m voice.engine` (`voice/engine/pipeline/child.py`) | the LiveKit `AgentServer` (THREAD executor, inside this process), Silero VAD, the ear, the mouth, turn detection, the first-air veil, the boot channel. Budget 300 MB, ceiling 400 MB (`budgets`). None of the brain: no memory, widgets, turn or server module is imported. | nice 0, OOM score −500 (as far as the host allows) |
+| **the body** — `python -m server` | FastAPI, the brain (`nucleo/`), memory, the pulse, widgets, connectors and listeners, the browser bridge | nice 5 once its first voice is up; a Brain Worker 10 (absolute), the browser OOM +800 |
+
+The seam, one direction each, loopback only, with a per-spawn token (`ZAELAR_VOICE_TOKEN`, in the voice's env only —
+no worker inherits it):
+
+- **voice → body, the session's facts** — `voice/engine/pipeline/body_link.py`: one ordered sender, batches to
+  `POST /api/voice/child/events` (200 ms; a late batch is dropped and counted, a session's start/close retried once).
+  The body REPLAYS them (`voice/remote_session.py`) through the same `agent_events` handlers the embedded session
+  registers, handed a session that answers over HTTP — VAD edges, transcripts, the derived state, conversation items
+  (with the speech id), the room's data packets (PTT, wake word, 🔊, typed text), metrics (the energy meter is the
+  body's), the preflight end of turn (the brief fires in the body), lag readings and LiveKit's degraded marks. Every
+  observer line of the voice process travels the same way, its piece read where it was emitted.
+- **voice → body, the turn** — `POST /api/turn/stream` (NDJSON, `voice/engine/pipeline/remote_brain.py`): the agent's
+  `llm_node` sends his last line, the LiveKit speech id and the screen that typed it; the body runs the voice provider
+  (`NucleoLLM`, one per voice session) inside the lead-in cover (`filler_audio.llm_node_with_filler`) and streams
+  `filler` (its own segment there: text + FlushSentinel) and `c` lines; closing the stream cancels the turn. A turn
+  waits at most 200 ms for the facts queued before it.
+- **body → voice** — the voice process's control routes on its worker port (app port + 1000): `/voice/say` (awaited
+  until played), `/voice/reply` (a typed line, with its screen), `/voice/audio`, `/voice/clear_turn`, `/voice/tts`
+  (re-point the live voice), `/voice/env` (the live `ZAELAR_*` settings, also piggybacked on each turn), `/voice/close`,
+  `/voice/status`.
+
+The body supervises the voice process like it supervised the embedded worker: `voice/child_process.VoiceChild` has the
+`AgentServer` shape the heartbeat reads (`run`, `aclose`, `id`, `_closed`, `_connecting`), so `voice_recycle` restarts
+the process (bounded close, verified registration), and over its RSS ceiling it is recycled BETWEEN sessions. The voice
+process exits when its parent does. `ZAELAR_VOICE_EMBEDDED=1` restores the single-process shape.
 
 **Role of the brain (`nucleo/`):** it is zaelar's OWN brain — memory, cron/proactivity, tools, reasoning — no
 external agent. **FlashBrain** owns the hard-realtime turn (~sub-second): the conversation, the reflexes (one
@@ -943,8 +980,8 @@ half-up server.
    is which operations `await` vs. which ones get wrapped in a task.
 
 **Verification method (repeatable):** grep `await ` inside `_lifespan` before `yield` — that list is exactly
-`memapi.start()` and nothing else. The boot log (`.meshkore/logs/run-*.log`) shows `LiveKit agent worker started
-EMBEDDED` right after `Memoria v2 montada`, **concurrently with**, not after, the MeshKore cluster connects.
+`memapi.start()` and nothing else. The boot log (`.meshkore/logs/run-*.log`) shows `LiveKit voice worker started in
+its OWN process` (or `EMBEDDED` under `ZAELAR_VOICE_EMBEDDED=1`) right after `Memoria v2 montada`, **concurrently with**, not after, the MeshKore cluster connects.
 
 **Scales to more connectors:** any connector (a new cluster type, a new messaging platform) that reconnects
 saved credentials on boot must follow pattern 2 — wrap its reconnect loop in its own `asyncio.create_task`, never

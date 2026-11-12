@@ -79,7 +79,8 @@ class BodyLink:
             if loop is here:
                 try:
                     await sess.close()
-                except Exception:  # noqa: BLE001
+                except Exception as _swallowed:  # noqa: BLE001
+                    logger.debug(f"{__name__}: {_swallowed!r}")   # said, never silent (the ratchet)
                     pass
             self._sessions.pop(key, None)
 

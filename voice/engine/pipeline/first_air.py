@@ -83,7 +83,8 @@ def silent_first_run() -> bool:
     try:
         from i18n.init import detect as _d
         return bool(_d.should_detect())
-    except Exception:                                 # noqa: BLE001 — unreadable state greets, never mutes
+    except Exception as _swallowed:                                 # noqa: BLE001 — unreadable state greets, never mutes
+        logger.debug(f"{__name__}: {_swallowed!r}")   # said, never silent (the ratchet)
         return False
 
 
@@ -158,7 +159,8 @@ def decide_kickoff(room: str, emit) -> str:
         from voice import attention as _attn
         if _attn._has_wake_recovery():
             _attn.note_addressed_speech()
-    except Exception:                                 # noqa: BLE001
+    except Exception as _swallowed:                                 # noqa: BLE001
+        logger.debug(f"{__name__}: {_swallowed!r}")   # said, never silent (the ratchet)
         pass
     return text
 

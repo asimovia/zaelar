@@ -254,10 +254,6 @@ class _FakeClient:
         self.calls.append((path, payload or {}))
         return {"ok": True}
 
-    def post_sync(self, path, payload, timeout_s=1.0):
-        self.calls.append((path, payload))
-        return {"ok": True, "took": True}
-
     async def say_stream(self, payload):
         self.calls.append(("/voice/say", payload))
         yield {"id": "speech_lk1"}
@@ -310,6 +306,23 @@ def test_the_typed_door_sends_the_screen_that_typed_it(monkeypatch):
     replies = [p for path, p in client.calls if path == "/voice/reply"]
     assert replies and replies[0]["text"] == "¿y tres por tres?" and replies[0]["origin"] == "phone-1"
     assert not screens.has_session(), "the typed door closes with the session"
+
+
+def test_a_room_closing_late_never_unregisters_the_room_that_replaced_it(monkeypatch):
+    from voice import screens
+    client = _FakeClient()
+
+    async def _run():
+        _start(monkeypatch, client)
+        remote_session.handle_batch([{"k": "session", "what": "started", "room": "zaelar-a"}])
+        remote_session.handle_batch([{"k": "session", "what": "started", "room": "zaelar-b"}])
+        remote_session.handle_batch([{"k": "session", "what": "closed", "room": "zaelar-a"}])
+        alive = remote_session.live() and screens.has_session()
+        remote_session.handle_batch([{"k": "session", "what": "closed", "room": "zaelar-b"}])
+        return alive, remote_session.live()
+    alive, after = asyncio.run(_run())
+    assert alive, "the screen the voice moved to lost its session when the old room closed"
+    assert after is False
 
 
 # ── (f) what the body asks of the voice ─────────────────────────────────────────────────────────────────────────

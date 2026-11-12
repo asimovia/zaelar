@@ -18,15 +18,13 @@ from fastapi.responses import JSONResponse, StreamingResponse
 
 router = APIRouter()
 
-_LOOPBACK = {"127.0.0.1", "::1", "localhost"}
-
 
 def _allowed(request: Request) -> bool:
+    from server import api_guard
     from voice import child_process
-    from voice.engine.pipeline import body_link
     want = child_process.token()
     host = getattr(request.client, "host", "") if request.client is not None else ""
-    return bool(want) and host in _LOOPBACK and request.headers.get(body_link.HEADER, "") == want
+    return bool(want) and api_guard._is_loopback(host) and request.headers.get(child_process.HEADER, "") == want
 
 
 def _deny() -> JSONResponse:

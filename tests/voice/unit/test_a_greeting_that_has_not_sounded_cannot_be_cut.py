@@ -180,26 +180,55 @@ def test_the_speaking_edge_is_what_releases_it():
 
 
 def test_the_barrier_is_no_longer_published_before_the_greeting():
-    """The regression that would restore the whole defect in one line."""
+    """The regression that would restore the whole defect in one line — in the embedded session and in the voice's
+    own process (V2-891), which asks the body for the same decision."""
     body = _body()
     assert "boot.ready()" not in body, (
         "the barrier must go through `_air.lift()`, which is what ties it to the first audio frame")
-    assert body.index("_air.arm_safety_net()") < body.index("kickoff_text = greeting_prompt(_lang)"), (
+    assert body.index("_air.arm_safety_net()") < body.index("decide_kickoff("), (
         "the net has to be armed before the greeting is attempted, or a failure strands the splash")
+    child = _vts.read(SRC.parent / "child_session.py")
+    assert "boot.ready()" not in child
+    assert child.index("air.arm_safety_net()") < child.index("/api/voice/child/kickoff")
 
 
-def test_every_path_that_will_not_greet_lifts_the_veil_at_once():
+def test_every_path_that_will_not_greet_lifts_the_veil_at_once(monkeypatch):
     """Four of them, and each one is a screen that would otherwise hang: a silent first run, a typed line that is
     the session's first turn, a duplicate job for the same room, and a reconnection to a conversation already in
-    progress. Each anchor is the path's WHOLE log line, so two paths that share a prefix are never confused."""
+    progress. Since V2-891 the decision is ONE function (`first_air.decide_kickoff`): each path answers no greeting
+    and names itself, and both callers lift the veil on that answer before anything can be generated."""
+    from voice import screens
+    from voice.engine.pipeline import first_air as fa
+
+    def _said(**patch):
+        for k, v in patch.items():
+            monkeypatch.setattr(fa, k, v)
+        lines = []
+        out = fa.decide_kickoff(f"zaelar-room-{len(patch)}-{id(patch)}", lambda kind, label, **k: lines.append(label))
+        return out, " ".join(lines)
+    screens._reset_for_tests()
+    out, said = _said(silent_first_run=lambda: True)
+    assert out == "" and "kickoff en silencio — no hay idioma elegido" in said
+    monkeypatch.setattr(fa, "silent_first_run", lambda: False)
+    screens.note_waiting()
+    out, said = fa.decide_kickoff("zaelar-w", lambda kind, label, **k: None), ""
+    assert out == ""
+    screens._reset_for_tests()
+    fa.mark_kickoff("zaelar-dup")
+    lines = []
+    assert fa.decide_kickoff("zaelar-dup", lambda kind, label, **k: lines.append(label)) == ""
+    assert any("kickoff duplicado evitado (otra sesión ya saludó" in x for x in lines)
+    from memory import api as _mem
+    monkeypatch.setattr(_mem, "seconds_since_last_conv", lambda: 30.0)
+    lines = []
+    assert fa.decide_kickoff("zaelar-resume", lambda kind, label, **k: lines.append(label)) == ""
+    assert any("kickoff omitido — reconexión a sesión en curso" in x for x in lines)
+    monkeypatch.setattr(_mem, "seconds_since_last_conv", lambda: None)
+    assert fa.decide_kickoff("zaelar-fresh", lambda *a, **k: None), "a fresh room with nothing waiting greets"
     body = _body()
-    assert body.count("_air.lift()") == 4, (
-        "one per silent path: onboarding, typed line waiting, duplicate job, resumed session")
+    i = body.index("if not kickoff_text:")
+    assert "_air.lift()" in body[i:body.index("return", i)], "no greeting must lift the veil at once"
     assert "on_air=_air.lift" in body, "…and the greeting's own, which fires on the first audio frame"
-    for anchor in ("kickoff en silencio — no hay idioma elegido",
-                   "kickoff omitido — hay una línea escrita esperando",
-                   "kickoff duplicado evitado (otra sesión ya saludó",
-                   "kickoff omitido — reconexión a sesión en curso"):
-        assert body.count(anchor) == 1, f"«{anchor}» must name exactly one path"
-        i = body.index(anchor)
-        assert "_air.lift()" in body[i:i + 420], f"«{anchor}» leaves the splash up for ever"
+    child = _vts.read(SRC.parent / "child_session.py")
+    i = child.index("if not text:")
+    assert "air.lift()" in child[i:child.index("return", i)] and "on_air=air.lift" in child

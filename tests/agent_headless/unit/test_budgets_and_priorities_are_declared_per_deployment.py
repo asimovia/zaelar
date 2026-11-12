@@ -36,7 +36,7 @@ GB = 2 ** 30
 def test_both_deployments_declare_every_piece(monkeypatch):
     for which in ("local", "cloud"):
         row = DECLARED["budgets"][which]
-        for piece in budgets.PIECES:
+        for piece in ("voice", "body", "worker", "chromium"):
             assert row[piece]["mb"] > 0 and row[piece]["ceiling_mb"] >= row[piece]["mb"], (which, piece)
     monkeypatch.delenv("ZAELAR_USER_ID", raising=False)
     monkeypatch.delenv("ZAELAR_DEPLOYMENT", raising=False)

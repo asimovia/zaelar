@@ -12,6 +12,10 @@ from loguru import logger
 from voice.engine.pipeline import agent as _ag
 
 
+#: The states whose trace is safe to read from `trace.active()` (see `agent.py::entrypoint`), named by the state machine.
+STATE_TRACE_SAFE = frozenset(s.value for s in (_ag.State.SPEAKING, _ag.State.LISTENING, _ag.State.INTERRUPTED))
+
+
 def _on_data(packet, *, _emit, _json, _wake, session) -> None:
     try:
         topic = getattr(packet, "topic", None)

@@ -67,7 +67,8 @@ def turn_payload(chat_ctx) -> dict:
     try:
         from livekit.agents.voice.agent_activity import _SpeechHandleContextVar
         speech_id = str(getattr(_SpeechHandleContextVar.get(None), "id", "") or "")
-    except Exception:  # noqa: BLE001
+    except Exception as _swallowed:  # noqa: BLE001
+        logger.debug(f"{__name__}: {_swallowed!r}")   # said, never silent (the ratchet)
         pass
     return {"text": last_user_text(chat_ctx), "speech_id": speech_id, "origin": CHILD_ORIGIN.get()}
 
@@ -94,7 +95,8 @@ def _say_again() -> str:
     try:
         from voice.engine.core import langs
         return str(getattr(langs.current_language(), "say_again", "") or "")
-    except Exception:  # noqa: BLE001
+    except Exception as _swallowed:  # noqa: BLE001
+        logger.debug(f"{__name__}: {_swallowed!r}")   # said, never silent (the ratchet)
         return ""
 
 
@@ -128,7 +130,7 @@ async def remote_llm_node(agent, chat_ctx, tools, model_settings):
             elif t == "end":
                 break
     except RuntimeError as e:
-        logger.warning(f"remote brain: turn failed after {time.monotonic() - t0:.2f}s — {e}")
+        logger.warning(f"remote brain: turn failed after {time.monotonic() - t0:.2f}s — {e!r}")
         if not said and (line := _say_again()):
             yield line                             # a lost turn asks him again; it never goes silent
     except OSError as e:                           # the body is not answering at all
