@@ -5314,6 +5314,11 @@ DOMAINS: list[dict] = [
                                  "full screen, permission sentences, versions from the build), the privacy manifest "
                                  "(no tracking, the data the shell sends) and the entitlements template (V2-870)", "ch": UNIT,
             "paths": ["tests/infrastructure/unit/test_the_ios_app_carries_its_store_manifests.py"]},
+        {"id": "4.494", "title": "The Android app carries what Google Play reads: exactly the permissions the app uses (no "
+                                 "notifications, background location, Bluetooth or camera ahead of their features), the "
+                                 "session kept off cloud backups, the fixed app id, target API at Play's floor, a "
+                                 "release signed only from the environment and the glue on the engine's origin only (V2-870)",
+            "ch": UNIT, "paths": ["tests/infrastructure/unit/test_the_android_app_carries_its_store_manifest.py"]},
         {"id": "4.443", "title": "Inside the native app the shell passes review: no purchase path (account page without "
                                  "#buy, no top-up wording), nothing reaches the AI services before a yes kept in the "
                                  "engine's config and the question is never asked behind the loader, Settings can "

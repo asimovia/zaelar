@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Zaelar</string>
+    <string name="title_activity_main">Zaelar</string>
+    <string name="package_name">com.zaelar.app</string>
+    <string name="custom_url_scheme">com.zaelar.app</string>
+</resources>

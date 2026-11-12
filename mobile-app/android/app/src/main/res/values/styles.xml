@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- The shell is dark: the window behind the WebView (and behind the system bars) is the shell's background. -->
+    <style name="AppTheme" parent="Theme.AppCompat.NoActionBar">
+        <item name="colorPrimary">@color/zaelar_background</item>
+        <item name="colorPrimaryDark">@color/zaelar_background</item>
+        <item name="colorAccent">@color/zaelar_accent</item>
+        <item name="android:windowBackground">@color/zaelar_background</item>
+        <item name="android:statusBarColor">@color/zaelar_background</item>
+        <item name="android:navigationBarColor">@color/zaelar_background</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+
+    <style name="AppTheme.NoActionBar" parent="AppTheme">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+        <item name="android:background">@null</item>
+    </style>
+
+    <!-- Android 12+ splash: the mark on the dark background, then the app theme. -->
+    <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/zaelar_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_mark</item>
+        <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
+    </style>
+</resources>
