@@ -31,7 +31,7 @@ under another name with the same effect.
 """
 from __future__ import annotations
 
-from nucleo.request import base, note
+from nucleo.request import base, event as _emit, note
 
 #: The retained kind on the row's `ask` artefact: his answer fills a payload key of THIS act (`inline_ask.rerun`).
 KIND = "act"
@@ -149,7 +149,7 @@ def _of_the_card(brief, wid: str, act: str, said: str, reply: str, emit, present
     """An act of the card: the completion the empty turn uses, else ONE fact question on the order's row."""
     if present is not None and apply_widget_data is not None:
         from nucleo.flash import direct_action
-        done = direct_action.complete(brief, operator_text=said, emit=emit or _quiet, present=present,
+        done = direct_action.complete(brief, operator_text=said, emit=emit or (lambda *a, **k: None), present=present,
                                       apply_widget_data=apply_widget_data, widget_id=wid, require_order=False,
                                       model_words=reply)
         if done:
@@ -217,17 +217,3 @@ def _spell(key: str) -> str:
     """A payload key as words: `startTime` → «start time»."""
     import re
     return re.sub(r"(?<=[a-z])(?=[A-Z])", " ", str(key or "")).replace("_", " ").lower()
-
-
-def _quiet(*_a, **_k) -> None:
-    return None
-
-
-def _emit(emit, label: str, text: str, extra: dict) -> None:
-    try:
-        if emit is None:
-            from voice.observer import emit as _e
-            emit = _e
-        emit("brain", label, text=str(text or "")[:300], role="system", extra=extra)
-    except Exception as e:  # noqa: BLE001
-        note(e)

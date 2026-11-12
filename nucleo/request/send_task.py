@@ -27,7 +27,7 @@ from a stranger — the protection that matters (`exit_slots`, `exit_gate.gate`)
 """
 from __future__ import annotations
 
-from nucleo.request import base, note, send_task_who
+from nucleo.request import base, event as _emit, note, send_task_who
 
 #: The retained kind on the row's `ask` artefact: his answer fills a slot of THIS task (`inline_ask.rerun`).
 KIND = "send"
@@ -281,13 +281,3 @@ def _schedule(uid: str) -> None:
         asyncio.run(run(uid))
         return
     loop.create_task(run(uid))
-
-
-def _emit(emit, label: str, text: str, extra: dict) -> None:
-    try:
-        if emit is None:
-            from voice.observer import emit as _e
-            emit = _e
-        emit("brain", label, text=str(text or "")[:300], role="system", extra=extra)
-    except Exception as e:  # noqa: BLE001
-        note(e)

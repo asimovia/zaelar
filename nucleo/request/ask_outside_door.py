@@ -35,7 +35,7 @@ re-run turn said «sending it now» and called nothing in 6 of 14 runs). One ans
 """
 from __future__ import annotations
 
-from nucleo.request import note
+from nucleo.request import event, note
 from nucleo.request.ending import leaving_acts
 
 #: The observer kind (family `flash`): {trace, widget, leaves, text}.
@@ -201,11 +201,8 @@ def to_message_task(wid: str, act: str, said: str, *, src: str, why: str = "", e
     from nucleo.acts.errand import escalate_to_slowbrain
     tid = int(escalate_to_slowbrain(text, context={"src": src, "kind": "generic", "task_uid": row,
                                                    "playbook": PLAYBOOK, "surface": "voz"}) or 0)
-    if emit is None:
-        from voice.observer import emit as _emit
-        emit = _emit
-    emit("brain", "🚪 a leaving act the turn could not make → its task", text=text[:300], role="system",
-         extra={"cat": "flash", "task_id": row, "widget": wid, "act": act, "worker": tid, "src": src, "why": why})
+    event(emit, "🚪 a leaving act the turn could not make → its task", text,
+          {"cat": "flash", "task_id": row, "widget": wid, "act": act, "worker": tid, "src": src, "why": why})
     return tid
 
 
@@ -238,11 +235,8 @@ def _an_order_nothing_served(brief, text: str, *, emit=None) -> int:
     ctx = {"src": "unserved", "kind": "generic", "surface": "voz", "playbook": PLAYBOOK}
     from nucleo.acts.errand import escalate_to_slowbrain
     tid = int(escalate_to_slowbrain(text, context=ctx) or 0)
-    if emit is None:
-        from voice.observer import emit as _emit
-        emit = _emit
-    emit("brain", "🚪 a sure order no door served → its task", text=text[:300], role="system",
-         extra={"cat": "flash", "worker": tid, "leaned": str(leaned or ""), "playbook": ctx.get("playbook", "")})
+    event(emit, "🚪 a sure order no door served → its task", text,
+          {"cat": "flash", "worker": tid, "leaned": str(leaned or ""), "playbook": ctx.get("playbook", "")})
     return tid
 
 

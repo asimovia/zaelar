@@ -21,7 +21,7 @@ A leaving act keeps its path: `answered_task` (a worker on the row), never this.
 """
 from __future__ import annotations
 
-from nucleo.request import acts_of, base, note
+from nucleo.request import acts_of, base, event, note
 
 #: The pass's brief: the offer, his request and his answer; the card's declared actions; one call or none.
 _SYS_OFFER = (
@@ -96,18 +96,10 @@ async def run(uid: str, entry: dict, text: str, choice: int | None = None) -> di
     ledger.resumed(uid)
     inline_ask.resuming(uid, retained)                # the same act called elsewhere meanwhile is this answer's
     payload = await compose(wid, act, request=request, question=question, answer=answer)
-    _emit("↩ his answer to our offer composes its act", f"{wid}:{act}", {"cat": "flash", "task_id": uid, "ask_id": ask_id,
-          "composed": payload is not None, "answer": answer[:120]})
+    event(None, "↩ his answer to our offer composes its act", f"{wid}:{act}", {"cat": "flash", "task_id": uid,
+          "ask_id": ask_id, "composed": payload is not None, "answer": answer[:120]})
     if payload is None:
         circuit.settle(row=uid, state="failed", outcome="the offer's act could not be composed from his answer")
         return {"ok": False, "row": uid}
     from nucleo.flash import data_ops
     return await data_ops.dispatch_and_report(wid, act, payload, row=uid, text=request)
-
-
-def _emit(label: str, text: str, extra: dict) -> None:
-    try:
-        from voice.observer import emit
-        emit("brain", label, text=str(text or "")[:300], role="system", extra=extra)
-    except Exception as e:  # noqa: BLE001
-        note(e)
