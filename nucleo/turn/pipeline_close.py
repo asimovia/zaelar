@@ -27,7 +27,7 @@ def _host_stall_s(t_entry_wall: float) -> float:
         return 0.0
 
 
-async def close_the_turn(*, motor, send, _acc_ms, _amap_ms, _brief, _busy_at_start, _dialog, _escalate_mod, _filler_audio, _gate_ms, _op_text, _prev_pending, _router, _shown_ids, _start_web_auth, _t_entry, _tool_fired, _turn_tools, acted, aside, attention, brain, clarify, confirm_state, data_done, deduped, emit, escalate_req, first_ms, first_turn, images_req, listing_req, llm_metrics, music_req, operator_text, read_req, recall_req, reopen_req, reveal_req, search_req, spec, speech, spoken_text, style_fired, system, t0, text, timings, worker_acted, _superseded=None) -> dict:
+async def close_the_turn(*, motor, send, _acc_ms, _amap_ms, _brief, _busy_at_start, _dialog, _escalate_mod, _filler_audio, _gate_ms, _op_text, _prev_pending, _router, _shown_ids, _start_web_auth, _t_entry, _tool_fired, _turn_tools, acted, aside, attention, brain, clarify, confirm_state, data_done, deduped, emit, escalate_req, first_ms, first_turn, images_req, listing_req, llm_metrics, music_req, operator_text, read_req, recall_req, reopen_req, reveal_req, search_req, spec, speech, spoken_text, style_fired, system, t0, text, timings, worker_acted, _superseded=None, _apply_widget_data=None) -> dict:
     _typed_turn = False
     try:
         _typed_turn = attention.was_typed()
@@ -235,7 +235,7 @@ async def close_the_turn(*, motor, send, _acc_ms, _amap_ms, _brief, _busy_at_sta
         motor=motor, send=send, speech=speech, emit=emit, brain=brain, _brief=_brief, _op_text=_op_text,
         _escalate_mod=_escalate_mod, _prev_pending=_prev_pending, _router=_router, _did_act=_did_act,
         _acted_elsewhere=_acted_elsewhere, acted=acted, escalate_req=escalate_req, spoken_text=spoken_text,
-        worker_acted=worker_acted,
+        worker_acted=worker_acted, ops=data_done.get("ops") or (), _apply_widget_data=_apply_widget_data,
     )
     # V2-889 F2 — the turn is over: `turn.closed`, which the whisperer reads on its own thread (shadow)
     return _whisper.turn_closed(brief=_brief, text=_op_text or text, reply=spoken_text, started_at=t0)

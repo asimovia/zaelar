@@ -27,10 +27,6 @@ from a stranger — the protection that matters (`exit_slots`, `exit_gate.gate`)
 """
 from __future__ import annotations
 
-import time
-
-from loguru import logger
-
 from nucleo.request import base, note, send_task_who
 
 #: The retained kind on the row's `ask` artefact: his answer fills a slot of THIS task (`inline_ask.rerun`).
@@ -252,10 +248,12 @@ def commission(wid: str, action: str, payload: dict | None, said: str, *, readin
 
 
 def _said_asked(wid: str, action: str, q: str) -> None:
+    """The row's question is SAID: by the turn's mouth while it is open, out of turn once the turn has closed (a send
+    the close commissions asks after the reply — a line noted then was never heard)."""
     try:
         from nucleo.circuit import verdict as V
-        from nucleo.turn import reply
-        reply.note(reply.Outcome(V.ASKED.name, base(wid), action, reason=q))
+        from nucleo.turn import mouth
+        mouth.say(q, verdict=V.ASKED.name, door=base(wid), key=f"{base(wid)}:{action}:{abs(hash(q)) % 10**8}")
     except Exception as e:  # noqa: BLE001
         note(e)
 
