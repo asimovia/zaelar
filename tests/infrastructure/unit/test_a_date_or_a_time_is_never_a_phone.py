@@ -41,13 +41,36 @@ def test_a_small_count_and_a_decimal_are_kept_and_a_lone_year_is_a_number() -> N
 
 
 @pytest.mark.parametrize("said", ["mi teléfono es 12 34 56 78", "llama al 91 12 34 56", "call 12 34 56 78 now",
-                                  "el código es 12 34 56", "son el 1234 5678", "ring 22-33-44-55"])
+                                  "el código es 12 34 56", "son el 1234 5678", "ring 22-33-44-55",
+                                  "612 34 56 78 699 11 22 33", "apunta 91 123 45 67 y 93 765 43 21, y el 600 11 22 33",
+                                  "card 4111 1111 1111 1111 22 33", "+34 612 34 56 78 +44 20 7946 0958"])
 def test_a_number_said_in_groups_is_never_kept(said: str) -> None:
     """Measured 2026-11-12: phones said in pairs (eight digits, as in several countries) and codes said in groups were
-    stored as said. Disarm: the phone's floor back at nine digits → the first three go red."""
+    stored as said; two phones in one breath made one run past fifteen digits, the shape refused it and the pairs of
+    each were kept. Disarm: the floor back at nine digits → the pairs go red; a ceiling of fifteen → the long runs."""
     kept = pii.tag(said, NAMES)
     assert "[PHONE]" in kept or "[NUMBER]" in kept, kept
     assert sum(c.isdigit() for c in kept) == 0, kept          # not one digit of it survives
+
+
+def test_no_digit_of_a_grouped_number_survives_whatever_surrounds_it() -> None:
+    """The class, swept: every grouping (pairs, threes, two phones in one breath, eighteen digits by pairs), every
+    separator, glued to what comes before («nº», «tel:», «(», «+») and after («:», «)», «.», «/3»). Seeded, so it is
+    the same sweep every run. Disarms seen red: a ceiling of fifteen digits; the tail refusing a bare «:»; the head
+    refusing to start after a letter («nº612…»)."""
+    import random
+    rnd, leaks = random.Random(7), []
+    for sizes in ((3, 2, 2, 2), (2, 2, 2, 2), (3, 3, 3), (4, 4), (3, 3, 4), (9,), (1, 3, 3, 4),
+                  (3, 2, 2, 2, 3, 2, 2, 2), (2,) * 9):
+        for sep in (" ", "-", ".", "  ", " - "):
+            for pre in ("", "al ", "(", "tel:", "tel: ", "+", "+34 ", "nº", "n.º ", "tlf"):
+                for suf in ("", ".", ",", ":", ";", ")", " y luego", "?", " h", "/3", "-", ": apunta"):
+                    digits = iter("".join(rnd.choice("123456789") for _ in range(sum(sizes))))
+                    said = pre + sep.join("".join(next(digits) for _ in range(n)) for n in sizes) + suf
+                    kept = pii.tag(f"llama {said} hoy", NAMES)
+                    if sum(c.isdigit() for c in kept) > sum(c.isdigit() for c in pre + suf):
+                        leaks.append((said, kept))
+    assert not leaks, leaks[:5]
 
 
 def test_the_genome_drops_what_these_shapes_name() -> None:

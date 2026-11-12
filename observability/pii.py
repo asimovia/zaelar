@@ -52,10 +52,10 @@ def _a_date(m) -> bool:
 
 
 def _a_phone(m) -> bool:
-    """A phone — or a code said in groups — by its own shape: 6 to 15 digits, whatever the grouping («12 34 56 78» is a
-    phone where numbers have eight digits). A date is read before it and a time carries «:», so neither reaches here;
-    what does is a doubt, and every doubt tags."""
-    return 6 <= sum(c.isdigit() for c in m.group(0)) <= 15
+    """A phone — or a code said in groups — by its own shape: six digits or more, whatever the grouping («12 34 56 78»
+    is a phone where numbers have eight digits) and with no ceiling: two phones said in one breath are one run. A date
+    is read before it and a time carries «:», so neither reaches here; what does is a doubt, and every doubt tags."""
+    return sum(c.isdigit() for c in m.group(0)) >= 6
 
 
 SHAPES = (
@@ -65,7 +65,7 @@ SHAPES = (
     # «17.30», «17h30») matches no shape at all — it names no one, and a stored session must say when things happened.
     ("date", _Shape(r"(?<![\d/.-])(?:\d{4}-\d{1,2}-\d{1,2}|\d{1,2}[/.-]\d{1,2}(?:[/.-](?:\d{4}|\d{2}))?)(?![\d]|[/.-]\d)",
                     _a_date)),
-    ("phone", _Shape(r"(?<![\w+])\+?\(?\d[\d\s().-]{5,}\d(?![\w:]|[.-]\d)", _a_phone)),
+    ("phone", _Shape(r"(?<![\d+])\+?\(?\d[\d\s().-]{5,}\d(?!\w|:\d)", _a_phone)),
     # A run of three or more digits — a year standing alone too: by its shape it cannot be told from a PIN.
     ("number", _Shape(r"(?<!\d)\d{3,}")),
 )
