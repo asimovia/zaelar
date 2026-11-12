@@ -95,11 +95,11 @@
         "base_url": "https://api.openai.com/v1",
         "key_env": "OPENAI_API_KEY"
       },
-      "mode": "shadow",
+      "mode": {"local": "shadow", "cloud": "off"},
       "reasoning_budget": 3200,
       "max_tokens": 3800,
       "timeout_s": 45,
-      "why": "V2-889 F2. Runs only BETWEEN turns, off the voice loop, after a deterministic gate over the verdicts the turn already paid for; never speaks, never acts. A reasoner, so `max_tokens` is the reasoning budget plus the answer's headroom (>= +400): a reasoner that eats `max_tokens` returns an empty 200 with no error, which reads as «no whisper». `mode`: `shadow` (compute and emit `whisper` events, write nothing) or `off`; `ZAELAR_WHISPER` overrides it.",
+      "why": "V2-889 F2. Runs only BETWEEN turns, off the voice loop, after a deterministic gate over the verdicts the turn already paid for; never speaks, never acts. A reasoner, so `max_tokens` is the reasoning budget plus the answer's headroom (>= +400): a reasoner that eats `max_tokens` returns an empty 200 with no error, which reads as «no whisper». `mode` per deployment: `shadow` (compute and emit `whisper` events, write nothing) or `off`; a hosted deployment is `off`, because a shadow call costs a model call and serves nobody yet; `ZAELAR_WHISPER` overrides it.",
       "failover_why": "OpenAI `gpt-4.1-mini` — the ONE stand-in, same choice and same two rules as §voice_brain (operator, 2026-09-22). Non-reasoning: its answer fits the same budget."
     },
     "memory_writer": {

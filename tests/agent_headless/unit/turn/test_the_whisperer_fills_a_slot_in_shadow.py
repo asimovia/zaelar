@@ -273,3 +273,31 @@ def test_the_rendering_is_wired_into_no_prompt():
         if "whisper import render" in src or "whisper.render" in src or "whisper import slot" in src:
             offenders.append(str(f.relative_to(ENGINE)))
     assert not offenders, offenders
+
+
+# ── a hosted deployment runs no shadow call by default ───────────────────────────────────────────────────────────────────
+
+@pytest.mark.parametrize("where, user, expected", [("", "", "shadow"), ("", "u-123", "off"),
+                                                    ("cloud", "", "off"), ("local", "u-123", "shadow")])
+def test_the_default_mode_follows_the_deployment(monkeypatch, where, user, expected):
+    monkeypatch.delenv("ZAELAR_WHISPER", raising=False)
+    monkeypatch.setenv("ZAELAR_DEPLOYMENT", where)
+    monkeypatch.setenv("ZAELAR_USER_ID", user)
+    assert run.mode() == expected
+
+
+def test_the_env_still_overrides_the_deployment(monkeypatch):
+    monkeypatch.setenv("ZAELAR_USER_ID", "u-123")
+    monkeypatch.delenv("ZAELAR_DEPLOYMENT", raising=False)
+    monkeypatch.setenv("ZAELAR_WHISPER", "shadow")
+    assert run.mode() == "shadow"
+
+
+def test_an_unreadable_row_still_keeps_a_hosted_deployment_off(monkeypatch):
+    monkeypatch.delenv("ZAELAR_WHISPER", raising=False)
+    monkeypatch.delenv("ZAELAR_DEPLOYMENT", raising=False)
+    monkeypatch.setenv("ZAELAR_USER_ID", "u-123")
+    monkeypatch.setattr(run, "_row", lambda: {})
+    assert run.mode() == "off"
+    monkeypatch.setenv("ZAELAR_USER_ID", "")
+    assert run.mode() == "shadow"
