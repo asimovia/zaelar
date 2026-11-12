@@ -9,6 +9,7 @@ from nucleo.flash import prior_line as _prior_line
 from nucleo.flash import resume_turn as _resume_turn   # V2-799
 from nucleo.flash import tool_executor as _tx
 from nucleo.turn import errands_of_a_turn as _eot
+from nucleo.turn import resume_cut as _resume_cut   # V2-888: the act is timed for the superseded-turn count
 from nucleo.acts import tools as _acts   # refactor2710-05: the tool catalogue as a dict
 from nucleo.turn import split_by_errand as _sbe   # a send beside a status question is said (2.644)
 
@@ -32,6 +33,7 @@ def _on_tool_call(name: str, args: dict, *, _apply_widget_data, _brief, _closed_
     try:
         brain._turn_tools.add(name)
         brain._turn_calls.append({"name": name, "args": dict(args or {})})
+        _resume_cut.note_act(brain)   # V2-888: when it acted, if he then went on with the sentence
     except Exception:
         pass
 
