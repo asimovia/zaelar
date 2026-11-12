@@ -4,12 +4,15 @@
 import { h } from "../../../app/core/dom.js?v=2";
 import { createEffect } from "../../../app/core/reactive.js?v=2";
 import { t } from "../../../app/core/i18n.js?v=1";
+import * as store from "../../../app/core/store.js?v=2";
 import * as consent from "./ai-consent.js?v=1";
 import { Page } from "./Page.js?v=1";
 
 export function AiConsentSheet() {
   // The orb and the send button look disabled while the yes is missing (they still open this sheet when tapped).
   createEffect(() => document.documentElement.classList.toggle("zm-consent-pending", consent.pending()));
+  // The voice does not start before the yes and the loader waits for the voice: the question ends that wait.
+  createEffect(() => { if (consent.sheetOpen()) store.setBootReady(true); });
   return Page({ id: "consent", open: consent.sheetOpen, title: () => t("consent.title"), close: () => consent.setSheetOpen(false),
     attrs: { role: "dialog", "aria-modal": "true" } },
     h("div", { class: "zm-consent-b" },
