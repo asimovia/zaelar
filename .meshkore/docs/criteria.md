@@ -403,6 +403,24 @@ below is the first kind, or it names the mechanism that replaced the second.
   floor 2026-11-12 · nodes 2.73, 2.121, 2.244, 2.797, 2.908, 2.1628 · `nucleo/flash/direct_action.complete`,
   `nucleo/flash/direct_action.an_order`, `nucleo/turn/verdicts.to_act`, `nucleo/acts/card.question_keeps_unwritten`,
   `nucleo/flash/verdict_card.py`.
+- **CRIT-K2b · A verdict's bar comes from the COST of what its reader causes, and lives in four helpers, never in a
+  literal per reader.** (1) A reading has THREE states — sure, doubt, unknown (in flight, absent, its door not fired) —
+  read through ONE `verdicts.sure(handle, key, floor)`; «info is not None» is never «sure»; unknown falls on the cheap
+  side (an irreversible act waits or asks, a reversible one lets the model run). A key a brief DOOR asks
+  (`brief_doors.keys()`) is never read without its door: reading it fires the door, and a reader that can wait awaits
+  it off the loop — save where a read cannot stand for the door: on a carried copy (`brief.revived`) the holder of the
+  reading asks and KEEPS the answer in it, and the `call` door fires only on a model call. (2) A verdict that LAUNCHES alone reads the act floor (`act_floor` = `consent.intent_act_at`) and
+  never runs an irreversible act directly — it opens the act's row, where consent lives. (3) A verdict that COMPLETES a
+  model call aimed at the same thing reads the LICENCE; no verdict, the call runs. (4) A verdict that VETOES or
+  SUBSTITUTES a model call reads VETO (between the licence and VETO: a recorded doubt, `against_the_model`) — always when
+  what enters in its place leaves the machine or deletes. (5) HOLDING a call that LEAVES reads the LICENCE (holding
+  sends nothing; the worst case is a question — battery C9); holding a reversible call reads VETO. (6) Binding an answer
+  or choosing a card or row goes by IDENTITY — the id of the row that asked, the card from the same key as the act —
+  never by a bar; two candidates → ASK_WHICH. Corollary: the words follow the act — one decision object releases the
+  call, its words and its tags, never a second reading at another bar. Declared exceptions, measured: annulling an
+  escalation stays at the licence (11/11 escalated orders); canvas verdicts keep node 2.930. The inventory, one row per
+  reader with the rule that applies, is V2-893's table. — since 2026-11-12 · nodes 2.1736 · `nucleo/turn/verdicts.py`,
+  `nucleo/turn/brief_doors.py`.
 - **CRIT-K3 · The verdict's action lands on the LIVE card**, never a bare phantom; with several cards of one type
   «close» goes to the one his last turn touched; «it» / «that» is the card his last turn acted on. — since
   2026-09-29 · nodes 2.167, 2.169, 2.85 · `nucleo/flash/show_target.py`, `nucleo/canvas_focus.py`.

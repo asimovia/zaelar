@@ -97,8 +97,10 @@ def _reading_names(reading, value) -> bool:
         return False
     try:
         from nucleo.acts import message_channel
-        from nucleo.turn import brief as _tb, verdicts
+        from nucleo.turn import brief as _tb, brief_doors, verdicts
         turn = _tb.revived(reading) if isinstance(reading, dict) else reading
+        if brief_doors.landed_sync(turn, "send"):     # a door key is read with its door (CRIT-K2b R1), kept in the
+            brief_doors.keep(turn, reading)           # reading so the task's next read does not pay the trip again
         choice, _info = verdicts.read(turn, message_channel.KEY, None)
         return choice not in (None, message_channel.NONE) and str(choice) == str(value).strip().lower()
     except Exception as e:  # noqa: BLE001

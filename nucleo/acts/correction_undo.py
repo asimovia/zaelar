@@ -160,7 +160,7 @@ async def complete(tasks=()) -> list:
         choice, info = verdicts.read(st["brief"], KEY, None)
         if not info or choice != ANOTHER:
             return []
-        sure = verdicts.read(st["brief"], KEY, None, min_confidence=verdicts.VETO)[1] is not None
+        sure = verdicts.sure(st["brief"], KEY, verdicts.VETO)[0] == verdicts.SURE   # a doubt read «not None» (K2b)
         if sure and owed.get("calls") and not owed.get("open"):
             from voice.observer import emit
             emit("brain", "↩️ a correction onto another row — what it still owed runs at the door", role="system",

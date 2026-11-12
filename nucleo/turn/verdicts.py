@@ -25,16 +25,26 @@ VETO = 0.85
 HEARD_FLOOR = 0.15
 
 RUN, VETOED = "run", "veto"
+SURE, DOUBT, UNKNOWN = "sure", "doubt", "unknown"   # a reading's three states (CRIT-K2b R1)
 
 
 def read(handle, key: str, fallback, *, min_confidence: float | None = None):
     """One verdict out of the brief: `(choice, info)` when ready and at least `min_confidence` (default the licence),
-    else `(fallback, info-or-None)`. Never waits, never raises."""
+    else `(fallback, info-or-None)` — a DOUBT carries its info too (`sure` reads it). A DOOR's key fires its door. Never waits."""
     try:
+        from nucleo.turn import brief_doors
+        brief_doors.fire(handle, brief_doors.door_of(key), by_read=True)        # CRIT-K2b R1
         from nucleo import jev as _jev
         return _jev.read(handle, key, fallback, min_confidence=LICENCE if min_confidence is None else min_confidence)
     except Exception:  # noqa: BLE001
         return fallback, None
+
+
+def sure(handle, key: str, floor: float) -> tuple[str, object]:
+    """`(SURE, choice)` · `(DOUBT, None)` · `(UNKNOWN, None)` — the ONE reading of a verdict's state (CRIT-K2b R1)."""
+    choice, info = read(handle, key, None, min_confidence=floor)
+    state = UNKNOWN if info is None else SURE if info.get("used") and choice is not None else DOUBT
+    return state, (choice if state == SURE else None)
 
 
 def act_floor() -> float:

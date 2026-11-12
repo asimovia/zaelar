@@ -116,12 +116,12 @@ async def launch_the_errands(*, motor, send, speech, emit, brain, _brief, _op_te
                                                     else "") or _op_text)   # no judged text yet: his own words
         # V2-851 F2c — a question about a door's act that no door asked is counted (never repaired)
         from nucleo.request import ask_outside_door as _aod
-        if _send_turn.at_close(_brief, _op_text, spoken_text, escalate_req, worker_acted, emit, _escalate_mod):
+        if await _send_turn.at_close(_brief, _op_text, spoken_text, escalate_req, worker_acted, emit, _escalate_mod):
             pass                                               # the send task owns the request's row now
         elif (_asked_out := _aod.measure(_brief, spoken_text, did_act=False, asked_which=_which, emit=emit)):
             _aod.held(_asked_out, spoken_text, _op_text)   # F2d — and it is durable: the row waits on it
         elif escalate_req["v"] is None:                    # a sure leaving act its words claimed: it is a task
-            _aod.claimed(_brief, spoken_text, _op_text, emit=emit)
+            await _aod.claimed(_brief, spoken_text, _op_text, emit=emit)
     else:
         # A2 (2026-11-12): the turn ACTED, but not the order the brief surely read — the model served it with another
         # tool (a view, a read, another card's act). The order opens ITS row: a send task, a card act completed, or ONE
