@@ -6,9 +6,12 @@ block rode every turn. On the turn he gave his name the pack still said «you do
 agent writes it two seconds after the turn), and the model confirmed what it had just read.
 
 Three facts, each with its red disarm: the watcher is always subscribed and reads the condition per turn; the
-block reads THE TURN (he just answered our question → that goal is «he just told you», not «unknown»); the phase
-closes on two facts — his name known AND the offer told — and a fresh session, Spanish or English, closes it in
-three turns, so the fourth prompt carries no block.
+block reads THE TURN (he just answered our question → the block names THAT question, never a goal guessed from the
+order — I1: «sí, claro» to the tour offer was read as his name); the phase closes on two facts — his name known AND
+the offer told by the turn that carried it — and a fresh session, Spanish or English, closes it in three turns.
+Also (A7 P2): the recheck after the memory agent is deterministic only (the judge ran twice), `turn.completed` is
+published with the prompt capture off (the phase never closed), and the wake-word line forbids asking his name only
+when it is in the state.
 """
 from __future__ import annotations
 
@@ -26,7 +29,7 @@ def _fresh():
     introduction.install()
     introduction._turns = 0
     introduction._judging = False
-    introduction._offer_pending = False
+    introduction._offer_pending = ""
     introduction._tasks = []
     yield
     introduction._tasks = []
@@ -42,6 +45,7 @@ def world(monkeypatch):
     monkeypatch.setattr(introduction, "_known", lambda: dict(state))
     monkeypatch.setattr(introduction, "_RECHECK_S", 0)
     monkeypatch.setattr("nucleo.turn.brief.of_this_turn", lambda: None)
+    monkeypatch.setattr("nucleo.turn.prompt.packs.introduction_block._this_turn", lambda: "T")
     return store, state
 
 
@@ -55,7 +59,7 @@ class _Q:
 
 async def _turn(q: _Q, *, reply: str = "Hola, soy Zaelar. ¿Cómo te llamas?") -> None:
     """One `turn.completed` delivered to the watcher, with the window the observer publishes."""
-    await q.items.put({"window": [{"role": "assistant", "text": reply}]})
+    await q.items.put({"window": [{"role": "assistant", "text": reply}], "trace": "T"})
     for _ in range(4):
         await asyncio.sleep(0)
 
@@ -98,7 +102,7 @@ def test_a_session_closes_the_phase_in_three_turns(world, monkeypatch):
             await _turn(q)                                        # T1 closes: the offer was told
             assert store.get(introduction.OFFER_FLAG) is True
             t2 = CP.compose("pepe")                               # T2: he answers; the state is still empty
-            assert "ACABA DE DECÍRTELO" in t2 and "su nombre" not in t2.split("LO QUE TODAVÍA NO SABES")[-1][:60]
+            assert "ACABA DE CONTESTAR a tu pregunta «¿Cómo te llamas?»" in t2
             await _turn(q, reply="Encantado, Pepe.")
             state["operator_name"] = "Pepe"                        # the memory agent, ~2 s later
             assert CP.compose("vale") and store.get("intro_done") is not True, "T3 still runs, the name just landed"
@@ -125,10 +129,26 @@ def test_the_offer_is_not_told_by_a_turn_that_said_nothing(world):
     store["stt_language"] = "es"
     CP.compose(langs.spec("es").kickoff_prompt)
     assert introduction._offer_pending
-    introduction._settle_offer({"window": []})
+    introduction._settle_offer({"window": [], "trace": "T"})
     assert store.get(introduction.OFFER_FLAG) is None, "a mute first turn told him nothing"
     CP.compose(langs.spec("es").kickoff_prompt)
-    introduction._settle_offer({"window": [{"role": "assistant", "text": "Hola."}]})
+    introduction._settle_offer({"window": [{"role": "assistant", "text": "Hola."}], "trace": "T"})
+    assert store.get(introduction.OFFER_FLAG) is True
+
+
+def test_the_offer_is_told_only_by_the_turn_whose_prompt_carried_it(world, monkeypatch):
+    """A7 P2: a block composed outside a turn (a prompt warmed ahead) or another turn's close settles nothing."""
+    store, _state = world
+    store["stt_language"] = "es"
+    monkeypatch.setattr("nucleo.turn.prompt.packs.introduction_block._this_turn", lambda: "")
+    CP.compose(langs.spec("es").kickoff_prompt)
+    introduction._settle_offer({"window": [{"role": "assistant", "text": "Hola."}], "trace": ""})
+    assert store.get(introduction.OFFER_FLAG) is None, "a compose outside any turn told him the offer"
+    monkeypatch.setattr("nucleo.turn.prompt.packs.introduction_block._this_turn", lambda: "T1")
+    CP.compose(langs.spec("es").kickoff_prompt)
+    introduction._settle_offer({"window": [{"role": "assistant", "text": "Hola."}], "trace": "T0"})
+    assert store.get(introduction.OFFER_FLAG) is None, "another turn's close settled this turn's offer"
+    introduction._settle_offer({"window": [{"role": "assistant", "text": "Hola."}], "trace": "T1"})
     assert store.get(introduction.OFFER_FLAG) is True
 
 
@@ -139,24 +159,72 @@ def test_an_answer_to_our_question_leaves_the_unknowns_this_turn(world, monkeypa
     store["stt_language"] = "es"
     monkeypatch.setattr("nucleo.memory_agent.answer_frame.asked_before", lambda **k: "¿Cómo te llamas?")
     b = introduction.block("pepe")
-    assert "ACABA DE DECÍRTELO en este mismo turno (su nombre)" in b, b
-    unknown = b.split("LO QUE TODAVÍA NO SABES")[-1] if "LO QUE TODAVÍA NO SABES" in b else ""
-    assert "su nombre" not in unknown, "the goal he just answered is still listed as unknown"
-    assert "sin confirmarlo" in b
+    assert "ACABA DE CONTESTAR a tu pregunta «¿Cómo te llamas?»" in b and "sin confirmarlo" in b, b
     monkeypatch.setattr("nucleo.memory_agent.answer_frame.asked_before", lambda **k: "")
     b = introduction.block("pepe")
-    assert "ACABA DE DECÍRTELO" not in b and "su nombre" in b, "without a question of ours, nothing was answered"
+    assert "ACABA DE CONTESTAR" not in b and "su nombre" in b, "without a question of ours, nothing was answered"
+
+
+def test_an_answer_to_another_question_of_ours_is_never_read_as_his_name(world, monkeypatch):
+    """I1: «sí, claro» to «¿quieres que te cuente qué puedo hacer?» was told to the model as «he just told you (his
+    name)» — the block guessed WHICH goal from the order. Now it names the question asked; the fact stays unknown."""
+    store, _state = world
+    store["stt_language"] = "es"
+    asked = "¿Quieres que te cuente qué puedo hacer por ti?"
+    monkeypatch.setattr("nucleo.memory_agent.answer_frame.asked_before", lambda **k: asked)
+    b = introduction.block("sí, claro")
+    assert f"«{asked}»" in b and "(su nombre)" not in b, b
+    assert "su nombre" in b.split("LO QUE TODAVÍA NO SABES")[-1][:60], "his name was dropped from the unknowns"
 
 
 def test_a_sure_answer_verdict_also_counts(world, monkeypatch):
     import threading
     store, _state = world
     store["stt_language"] = "es"
-    monkeypatch.setattr("nucleo.memory_agent.answer_frame.asked_before", lambda **k: "")
+    monkeypatch.setattr("nucleo.memory_agent.answer_frame.asked_before", lambda **k: "¿Cómo te llamas?")
     ev = threading.Event()
     ev.set()
     brief = {"event": ev, "result": {"request_type": {"choice": "answer", "confidence": 0.95, "probs": {}}}}
     monkeypatch.setattr("nucleo.turn.brief.of_this_turn", lambda: brief)
-    assert "ACABA DE DECÍRTELO" in introduction.block("me llamo pepe, encantado de conocerte hoy")
+    long = "me llamo pepe, encantado de conocerte hoy"         # over the bare-answer length: only the verdict reads it
+    assert "ACABA DE CONTESTAR a tu pregunta «¿Cómo te llamas?»" in introduction.block(long)
     brief["result"]["request_type"]["confidence"] = 0.4
-    assert "ACABA DE DECÍRTELO" not in introduction.block("me llamo pepe, encantado de conocerte hoy")
+    assert "ACABA DE CONTESTAR" not in introduction.block(long)
+
+
+def test_the_recheck_never_asks_the_judge_again(world, monkeypatch):
+    """A7 P2: the turn's close asks the judge on its turn; the recheck 4 s later read the same turn count and asked
+    it again. Now the recheck is the deterministic read only."""
+    store, state = world
+    store["stt_language"] = "es"
+    introduction._turns = introduction._JUDGE_AFTER
+    asked = []
+    monkeypatch.setattr(introduction, "_judge_sync", lambda t: asked.append(t) or False)
+    monkeypatch.setattr(introduction, "_recent", lambda limit=14: "PERSON: hola")
+    asyncio.run(introduction._maybe_close())
+    asyncio.run(introduction._recheck())
+    assert len(asked) == 1, "the judge ran twice for one turn"
+    state["operator_name"], store[introduction.OFFER_FLAG] = "Pepe", True
+    asyncio.run(introduction._recheck())
+    assert store.get("intro_done") is True
+
+
+def test_the_turn_topic_is_published_with_the_prompt_capture_off(monkeypatch):
+    """A7 P2: with `ZAELAR_LOG_PROMPTS=0` nothing published `turn.completed` and the phase never closed."""
+    import bus
+    from voice import observer
+    monkeypatch.setenv("ZAELAR_LOG_PROMPTS", "0")
+    got, emitted = [], []
+    monkeypatch.setattr(bus, "emit_sync", lambda topic, payload: got.append(topic))
+    monkeypatch.setattr(observer, "emit", lambda *a, **k: emitted.append(a))
+    observer.turn_detail(system="s", window=[{"role": "assistant", "content": "hola"}], user="pepe")
+    assert got == ["turn.completed"] and not emitted, "the capture switch also switched the topic off"
+
+
+def test_the_wake_word_line_forbids_asking_his_name_only_when_it_is_known():
+    """I1 (row 5, observed c): the line said «never ask the operator's name: it is in your STATE» before it was."""
+    from nucleo.flash import style_directive
+    unknown = style_directive.prompt_lines({"assistant_name": "Zaelar"})[0]
+    assert "cómo se llama el operador" not in unknown and "Zaelar" in unknown
+    known = style_directive.prompt_lines({"assistant_name": "Zaelar", "operator_name": "Pepe"})[0]
+    assert "ni cómo se llama el operador: ambos están en tu ESTADO" in known

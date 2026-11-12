@@ -49,8 +49,9 @@ _turns = 0              # process-lived on purpose: a restart mid-introduction r
 #                         safe direction — the cap is a backstop, and the other two exits are the real ones.
 _judging = False
 _tasks: list = []
-#: A7 — the block of the turn being composed carried the name-and-voice offer; the turn's close persists it.
-_offer_pending = False
+#: A7 — the TRACE of the turn whose block carried the name-and-voice offer; that turn's close persists it (a compose
+#: outside a turn — a prompt warmed ahead — carries no trace and settles nothing).
+_offer_pending = ""
 #: A7 — the memory agent writes his name ~2 s AFTER the turn closes (measured 2026-11-12, +2.1 s): a turn that ends
 #: with the name still unknown is read again after this many seconds, so the phase closes on the turn he said it.
 _RECHECK_S = 4.0
@@ -196,9 +197,9 @@ async def _maybe_close() -> None:
 def _settle_offer(payload) -> None:
     """The turn whose block carried the offer closed with a reply: the offer is told, for good (A7)."""
     global _offer_pending
-    if not _offer_pending:
+    if not _offer_pending or (payload or {}).get("trace") != _offer_pending:
         return
-    _offer_pending = False
+    _offer_pending = ""
     win = (payload or {}).get("window") if isinstance(payload, dict) else None
     said = bool(win) and (win[-1] or {}).get("role") == "assistant" and bool((win[-1] or {}).get("text"))
     if win is not None and not said:
@@ -213,10 +214,11 @@ def _settle_offer(payload) -> None:
 
 
 async def _recheck() -> None:
-    """One more deterministic read after the memory agent has had time to write his name (A7)."""
+    """One more DETERMINISTIC read after the memory agent has had time to write his name (A7) — never the judge, which
+    the turn's own close already asked (it ran twice every `_JUDGE_EVERY` turns)."""
     await asyncio.sleep(_RECHECK_S)
-    if is_active():
-        await _maybe_close()
+    if is_active() and (why := _deterministic_close()):
+        close(why)
 
 
 async def _consume_turns(q) -> None:

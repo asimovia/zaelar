@@ -151,10 +151,13 @@ def prompt_lines(mstate: dict) -> list[str]:
         att_name = (mstate.get("assistant_name") or "Zaelar").strip() or "Zaelar"
         att_now = ("ACTIVADO (solo atiendes los turnos que dicen tu nombre, o los que siguen a uno reciente)"
                    if att_mode in ("smart", "wakeword") else "desactivado (escuchas siempre)")
+        # I1: «ni cómo se llama el operador» only when his name IS in the state — said before it was, it forbade asking
+        known = (" ni cómo se llama el operador: ambos están" if str(mstate.get("operator_name") or "").strip()
+                 else ": está")
         lines.append(
             f"MODO WAKE WORD — el modo en el que solo respondes cuando dicen tu palabra de activación, que ES "
-            f"tu nombre («{att_name}»; nunca preguntes cuál es la palabra ni cómo se llama el operador: ambos "
-            f"están en tu ESTADO). Ahora está {att_now}. Si el operador pide activarlo o desactivarlo («activa "
+            f"tu nombre («{att_name}»; nunca preguntes cuál es la palabra{known} en tu ESTADO). Ahora está "
+            f"{att_now}. Si el operador pide activarlo o desactivarlo («activa "
             f"el modo wake word», «escúchame/respóndeme solo cuando diga tu nombre», «vuelve a escucharme "
             f"siempre»), LLAMA a set_style_directive con esa orden tal cual — el sistema lo aplica al instante; "
             f"no pidas ningún dato más y nunca digas que está hecho sin haber llamado a la tool.")

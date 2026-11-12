@@ -318,10 +318,10 @@ def turn_detail(*, system: str, window: list | None = None, tools: list | None =
 
     It goes in the `system` category (OFF by default in the viewer → it does not flood the main view), but IS
     persisted to the file, so it remains available for later diagnosis (e.g. “why did it re-escalate during an
-    ambient turn?” = inspect the window/prompt it saw). `ZAELAR_LOG_PROMPTS` gate (default ON); it can be disabled
-    on sensitive machines. Never raises."""
-    if (os.getenv("ZAELAR_LOG_PROMPTS", "1") or "1").strip().lower() in ("0", "false", "no", "off"):
-        return
+    ambient turn?” = inspect the window/prompt it saw). `ZAELAR_LOG_PROMPTS` gates the CAPTURE (default ON); it can be
+    disabled on sensitive machines — the `turn.completed` topic is published either way (A7: with the capture off the
+    introduction never closed, its watcher reads that topic). Never raises."""
+    capture = (os.getenv("ZAELAR_LOG_PROMPTS", "1") or "1").strip().lower() not in ("0", "false", "no", "off")
     try:
         win = [{"role": m.get("role"), "text": (m.get("content") or "")[:600]} for m in (window or [])]
         tool_names = [t.get("function", {}).get("name") if isinstance(t, dict) and "function" in t
@@ -332,9 +332,10 @@ def turn_detail(*, system: str, window: list | None = None, tools: list | None =
                    "user": (user or "")[:600], "decision": decision or {}}
         if extra:
             payload.update(extra)
-        emit("perf", "🧾 turno (prompt+ventana+tools+decisión)", role="system", text=(user or "")[:120],
-             extra=payload)
-        _full_prompt_record(system or "", window or [], user or "", decision or {})
+        if capture:
+            emit("perf", "🧾 turno (prompt+ventana+tools+decisión)", role="system", text=(user or "")[:120],
+                 extra=payload)
+            _full_prompt_record(system or "", window or [], user or "", decision or {})
         # V2-053: SEMANTIC end-of-turn topic on the bus—the modularity connection point for programmatic
         # consumers (the action map, the context packs). turn_detail is the ONLY place BOTH paths close (voice provider and probe), so a
         # subscriber receives the complete turn without coupling to either one.
