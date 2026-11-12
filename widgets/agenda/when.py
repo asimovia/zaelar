@@ -152,3 +152,21 @@ def _resolve_time(raw: str, default: str = "17:00") -> str:
 WEEKDAYS = _WEEKDAYS
 calendar_date = _calendar_date
 strip_accents = _strip_accents
+
+
+#: The payload key that names a row by the hour it is AT NOW — two «Reunión con Marta» on one day are two rows, and
+#: title + date cannot tell them apart (multi-turn bench 2026-11-12: «no, la otra» moved the row it had just moved).
+CURRENT_TIME = "currentTime"
+
+
+def by_current_time(rows: list[dict], payload: dict) -> list[dict]:
+    """`rows` narrowed to the one(s) starting at `payload[CURRENT_TIME]`; untouched when the key is absent. It only
+    ever NARROWS: an hour no row starts at is a reference that names nothing (the caller says what does)."""
+    raw = str((payload or {}).get(CURRENT_TIME) or "").strip()
+    if not raw:
+        return rows
+    try:
+        want = _resolve_time(raw)
+    except Exception:  # noqa: BLE001 — an unreadable hour narrows nothing
+        return rows
+    return [m for m in rows if str(m.get("startTime") or "")[:5] == str(want or "")[:5]]

@@ -15,7 +15,7 @@ import re
 
 _ISO = re.compile(r"\b(\d{4}-\d{2}-\d{2})\b")
 _HOUR = re.compile(r"(?<![\d:])(\d{1,2}:\d{2})(?![\d:])")
-#: The payload key a row's CURRENT hour travels in (`widgets/agenda/sweep.CURRENT_TIME`): two rows of one title on one
+#: The payload key a row's CURRENT hour travels in (`widgets/agenda/when.CURRENT_TIME`): two rows of one title on one
 #: day are told apart by it, so a reference that names its hour keeps it the way it keeps its day.
 CURRENT_TIME = "currentTime"
 
