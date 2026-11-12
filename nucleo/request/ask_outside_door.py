@@ -121,8 +121,13 @@ def held(measured: dict, reply: str, said: str) -> str:
         # A card whose leaving act declares its slots keeps the question on a SEND TASK: his words resolved into the
         # act's slots (the person his word names), the question about the one slot the turn lacks, and his answer
         # fills that slot on that row (`send_task.answered`) — no worker, no re-run turn.
-        if leaves and (ask_id := send_task_words.hold(wid, leaves, said, q, brief=None)):
-            return ask_id
+        if leaves:
+            # ONE row per intention (A6): a send of this card already waiting on its row takes this question too
+            from nucleo.request import send_task_anchor
+            if (ask_id := send_task_anchor.to_waiting(wid, said, q)):
+                return ask_id
+            if (ask_id := send_task_words.hold(wid, leaves, said, q, brief=None)):
+                return ask_id
         row = model.opened(wid, acts[0], text=said)
         if not row:
             return ""
