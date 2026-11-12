@@ -15,7 +15,9 @@ off his words:
     did not end asking, did not escalate and did not address a live worker;
   · the turn did not SERVE it (`served`): no door ran that act, nor an act of that card with one of the same
     declared effects beyond reading (a write for a write, a send for a send), and the model never called it itself
-    (a call it made is its door's — it ran, asked, or was vetoed on purpose);
+    (a call it made is its door's — it ran, asked, or was vetoed on purpose). The model's valid call is never
+    overruled (2.73): an order that only READS is the turn's to serve its way, and an act that stays on the card
+    yields to the model's own call that RAN on that card — what is left is a consequence the turn did not produce;
   · then the order opens ITS row. An act that LEAVES becomes a send task (`send_task_words.from_verdict`: the
     person his word names, the text the model quoted of his words — it runs, or asks the ONE slot it lacks on that
     row); when his words resolve no person of his, or the act declares no slots, a Brain Worker takes it on its row
@@ -76,23 +78,20 @@ def _same_effect(card: str, act: str, other: str) -> bool:
 
 def served(wid: str, act: str, ops=(), model_calls=()) -> bool:
     """Did the turn serve `wid:act`? A door ran it, or ran an act of that card with the same declared effect, or the
-    model CALLED it itself (then its door owns it, whatever became of the call)."""
-    card = base(wid)
-    for c, a in _ran(ops):
-        if c == card and (a == act or _same_effect(card, act, a)):
-            return True
-    for call in model_calls or ():
-        if not isinstance(call, dict) or call.get("name") != "widget_data":
-            continue
-        args = call.get("args") if isinstance(call.get("args"), dict) else {}
-        if base(args.get("widget_id")) == card and str(args.get("action") or "") == act:
-            return True
-    return False
-
-
-def _ends_asking(reply: str) -> bool:
-    from nucleo.request.send_task_words import ends_asking
-    return ends_asking(reply)
+    model CALLED it itself (then its door owns it, whatever became of the call) — and the model's valid call is never
+    overruled (node 2.73, measured live: the two last rules, stated in this module's docstring)."""
+    from widgets import effects
+    card, ran = base(wid), _ran(ops)
+    if any(c == card and (a == act or _same_effect(card, act, a)) for c, a in ran):
+        return True
+    called = [(base(a.get("widget_id")), str(a.get("action") or "")) for a in
+              (c.get("args") for c in model_calls or () if isinstance(c, dict) and c.get("name") == "widget_data")
+              if isinstance(a, dict)]
+    if (card, act) in called:
+        return True
+    if not effects.of(card, act) - {effects.DATA_READ, effects.PRESENT_MOUNT}:
+        return bool(ran or model_calls)          # a view he ordered, and the turn showed or did something: its choice
+    return not effects.leaves(card, act) and any(c == card and (c, a) in ran for c, a in called)
 
 
 def open_the_order(brief, *, said: str, reply: str, ops=(), model_calls=(), escalate_req=None, worker_acted=None,
@@ -101,9 +100,10 @@ def open_the_order(brief, *, said: str, reply: str, ops=(), model_calls=(), esca
     act}` — `how` ∈ run · asked · worker · completed — or {} when the order was served, doubted, or is a question's.
     Never raises; never runs a model."""
     try:
+        from nucleo.request.send_task_words import ends_asking
         esc, wa = escalate_req or {}, worker_acted or {}
         text = " ".join(str(said or "").split())
-        if not text or esc.get("send_task") or esc.get("v") is not None or wa.get("v") or _ends_asking(reply):
+        if not text or esc.get("send_task") or esc.get("v") is not None or wa.get("v") or ends_asking(reply):
             return {}
         try:
             from nucleo.turn import reply as _reply
