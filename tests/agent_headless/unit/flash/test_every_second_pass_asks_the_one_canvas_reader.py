@@ -155,3 +155,13 @@ def test_the_veto_takes_only_a_close_where_nothing_named_is_on_screen(monkeypatc
     got = show_target.close_dispatch({"widget_id": "agenda"}, lambda *a, **k: tags.append(a), lambda *a, **k: None,
                                      text=C6["en"])
     assert bool(got) is closed and bool(tags) is closed
+
+
+@pytest.mark.parametrize("phrase,order", [
+    ("cierra la agenda y los mensajes", ["agenda", "mensajeria"]), ("cierra los mensajes y la agenda", ["mensajeria", "agenda"]),
+    ("close the calendar and the messages", ["agenda", "mensajeria"]), ("close the messages and the calendar", ["mensajeria", "agenda"])])
+def test_the_cards_he_names_come_in_the_order_he_names_them(phrase, order):
+    """The first card closed is the first he named — never the alias that scored higher (es: «los mensajes» > «la
+    agenda»), which the act floor (2.73) stopped masking with an unsure `screen_action` toward the agenda."""
+    from nucleo.flash import direct_action
+    assert direct_action.named_cards(phrase) == order

@@ -1,13 +1,11 @@
 """Which card his words NAME and which card is in front of him NOW — read from his words and the screen, never from
-the verdict. Split by concern out of `nucleo/acts/canvas_verdict.py` (2026-11-09) so the canvas door stays the door;
-`nucleo/flash/direct_action.py` re-exports these names, as before."""
+the verdict (split out of `nucleo/acts/canvas_verdict.py`; `nucleo/flash/direct_action.py` re-exports these names)."""
 from __future__ import annotations
-
 
 
 def named_cards(operator_text: str) -> list[str]:
     """Every card his words NAME (alias or name, never context): «the calendar and the messages» is two, and so is
-    «cierra la agenda y los mensajes», whose second card is called by its catalogue NAME (sandbox 2026-10-29 C6)."""
+    «cierra la agenda y los mensajes», whose second card is called by its catalogue NAME (C6) — in his ORDER (aliases)."""
     try:
         from widgets import naming as _naming, runtime as _rt
         if (res := _rt.identify(operator_text or "") or {}).get("by_context"):
@@ -16,7 +14,9 @@ def named_cards(operator_text: str) -> list[str]:
         top = max((float(c.get("score") or 0) for c in cands), default=0.0)
         out = [str(res["match"])] if res.get("match") else [
             str(c["id"]) for c in cands if top > 0 and float(c.get("score") or 0) == top] if res.get("ambiguous") else []
-        return out + [str(c["id"]) for c in cands if str(c["id"]) not in out and _naming.says_the_name(operator_text, c["id"])]
+        out += [str(c["id"]) for c in cands if str(c["id"]) not in out and _naming.says_the_name(operator_text, c["id"])]
+        said, aliases = f" {_rt._norm(operator_text or '')} ", {r["w"].get("id"): r["aliases"] for r in _rt._identify_index()}
+        return sorted(out, key=lambda w: min([said.find(f" {a} ") for a in aliases.get(w, ()) if f" {a} " in said] or [len(said)]))
     except Exception:  # noqa: BLE001
         return []
 
