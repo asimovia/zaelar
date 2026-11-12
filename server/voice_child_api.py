@@ -53,7 +53,7 @@ async def child_kickoff(request: Request):
         body = await request.json()
     except Exception:  # noqa: BLE001
         body = {}
-    return {"ok": True, **remote_session.kickoff(str(body.get("room") or ""))}
+    return {"ok": True, **remote_session.kickoff(str(body.get("room") or ""), body.get("events"))}
 
 
 @router.post("/api/turn/stream")

@@ -10,14 +10,16 @@ BODY must hold, because the body runs the turn. This module carries those facts 
     the body must not lose — a session's start/close, his transcripts, the items — are asked ONCE more (E0).
   · while the body does not answer, the sender opens at most ONE connection per `RETRY_GAP_S` (E0): measured
     2026-11-12, a batch per failure filled a stopped body's TCP backlog in 31 s and the turn found it «unreachable».
-  · `flush(max_s)` — a turn waits, bounded, for the events queued before it, so the body reads «he stopped
-    talking» before it reads the turn that followed (the order a single process gave for free).
+  · `ahead()` — a request that must follow the facts queued before it (the turn, the kickoff) TAKES them off the
+    line and carries them (`events`): the body replays them first, so it reads «he stopped talking» before the turn
+    that followed (the order a single process gave for free) whatever the sender was waiting for; `back()` returns
+    them to the front when the request never reached the body.
   · `post()` / `stream()` — the request/response calls (the kickoff decision, the turn's stream).
 
 TWO LOOPS. The LiveKit job runs on its own thread and loop (the THREAD executor), the worker and the control routes
-on the main one: the sender lives on the loop that `start()`ed it, `send()` and `flush()` are safe from either (a
-thread-safe queue and idle flag), and every loop gets its own HTTP session — an aiohttp session is bound to the loop
-that made it, and using it from the other one fails every turn with «attached to a different loop» (measured).
+on the main one: the sender lives on the loop that `start()`ed it, `send()`, `ahead()` and `back()` are safe from
+either (one lock over the queue and the in-flight mark), and every loop gets its own HTTP session — an aiohttp
+session is bound to the loop that made it; from the other one every turn fails with «attached to a different loop».
 
 A batch that carries a session's start or close is retried once at the front of the queue: those two facts decide
 what the body registers, and a body still warming up at boot answered the first batch late (measured).
@@ -60,13 +62,12 @@ class BodyLink:
         self._lock = threading.Lock()
         self._loop: asyncio.AbstractEventLoop | None = None
         self._wake: asyncio.Event | None = None
-        self._idle = threading.Event()
-        self._idle.set()
+        self._flying = False                  # a batch is in the sender's hands (out of the queue, not yet answered)
         self._task: asyncio.Task | None = None
         self._sessions: dict = {}             # id(loop) → (loop, aiohttp session): one per loop
         self._fail_streak = 0                 # batches failed in a row: >0 paces the sender to one try per gap
         self._last_try = 0.0
-        self.stats = {"sent": 0, "dropped": 0, "batches": 0, "failed_batches": 0}
+        self.stats = {"sent": 0, "dropped": 0, "batches": 0, "failed_batches": 0, "overtaken": 0}
 
     # ── lifecycle ────────────────────────────────────────────────────────────────────────────────────────────
     def start(self) -> None:
@@ -75,7 +76,7 @@ class BodyLink:
         if self._loop is loop and self._task is not None and not self._task.done():
             return
         self._loop = loop
-        self._wake = asyncio.Event()
+        self._wake, self._flying = asyncio.Event(), False
         self._task = loop.create_task(self._run(), name="voice-body-link")
 
     async def aclose(self) -> None:
@@ -88,7 +89,6 @@ class BodyLink:
                     await sess.close()
                 except Exception as _swallowed:  # noqa: BLE001
                     logger.debug(f"{__name__}: {_swallowed!r}")   # said, never silent (the ratchet)
-                    pass
             self._sessions.pop(key, None)
 
     def _headers(self) -> dict:
@@ -116,7 +116,6 @@ class BodyLink:
                 if len(self._q) == self._q.maxlen:
                     self.stats["dropped"] += 1      # the oldest falls off: a body that cannot keep up loses the oldest
                 self._q.append(ev)
-                self._idle.clear()
             loop = self._loop
             if loop is None or loop.is_closed():
                 return
@@ -135,34 +134,44 @@ class BodyLink:
         if self._wake is not None:
             self._wake.set()
 
-    def pending(self) -> int:
-        with self._lock:
-            return len(self._q)
-
-    async def flush(self, max_s: float = 0.2, step_s: float = 0.003) -> bool:
-        """Wait, at most `max_s`, until every event queued so far has been handed to the body. True if it emptied.
-        Polled on the CALLER's loop (the session's), so it never touches the sender's loop."""
-        deadline = time.monotonic() + max_s
-        while not self._idle.is_set():
-            if self._task is None or time.monotonic() >= deadline:
-                return self._idle.is_set()
+    async def ahead(self, step_s: float = 0.003) -> list:
+        """Every fact queued so far, TAKEN off the line for the caller's request to carry: the order is kept by the
+        request itself, never by a wait that happens to outlast the sender's. A batch already in the sender's hands
+        is waited for as long as its own POST may take (`timeout_s`, twice: the POST, then its hand-back); past that
+        the request goes ahead of it and says so (`stats["overtaken"]`). Polled on the CALLER's loop."""
+        deadline = time.monotonic() + 2 * self.timeout_s
+        while True:
+            with self._lock:
+                if not self._flying or time.monotonic() >= deadline:
+                    out, late = list(self._q), self._flying
+                    self._q.clear()
+                    break
             await asyncio.sleep(step_s)
-        return True
+        if late:
+            self.stats["overtaken"] += 1
+            logger.warning("voice→body: a batch in flight was not back by its own deadline — the request overtakes it")
+        return out
+
+    def back(self, events: list) -> None:
+        """The request that carried `events` never reached the body: they return to the FRONT of the line, in order."""
+        with self._lock:
+            self._q.extendleft(reversed(events))
+        if events and self._loop is not None and not self._loop.is_closed():
+            self._loop.call_soon_threadsafe(self._kick)
 
     async def _run(self) -> None:
         while True:
             await self._wake.wait()
             self._wake.clear()
             while True:
+                await self._pace()                # BEFORE the batch leaves the queue: a paced fact is still on the line
                 with self._lock:
                     batch = [self._q.popleft() for _ in range(min(self.max_batch, len(self._q)))]
+                    self._flying = bool(batch)
                 if not batch:
                     break
-                await self._pace()
                 await self._deliver(batch)
-            with self._lock:
-                if not self._q:
-                    self._idle.set()
+                self._flying = False              # delivered, or its retried facts are back at the front
 
     async def _pace(self) -> None:
         """While the body is failing, wait out the gap since the last try: one connection per `RETRY_GAP_S`."""

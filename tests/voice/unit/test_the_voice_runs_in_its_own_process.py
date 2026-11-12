@@ -175,11 +175,14 @@ def test_a_turn_that_fails_in_the_body_says_so_on_the_stream():
 
 class _FakeLink:
     def __init__(self, lines):
-        self.lines, self.flushed, self.sent = lines, 0, []
+        self.lines, self.sent, self.queued, self.returned = lines, [], [{"k": "user_state", "state": "listening"}], []
 
-    async def flush(self, _max_s=0.2):
-        self.flushed += 1
-        return True
+    async def ahead(self):
+        out, self.queued = self.queued, []
+        return out
+
+    def back(self, events):
+        self.returned.append(list(events))
 
     async def stream(self, _path, payload):
         self.payload = payload
@@ -210,7 +213,8 @@ def test_the_voice_process_speaks_the_cover_as_its_own_segment(monkeypatch):
     out = asyncio.run(_run())
     assert out[0] == "Un segundo… " and isinstance(out[1], FlushSentinel) and out[2] == "Cuatro."
     assert fa.strip_if_filler("Un segundo…"), "the cover is marked for the transcript node to strip"
-    assert link.flushed == 1, "the turn waits (bounded) for the facts queued before it"
+    assert link.payload["events"] == [{"k": "user_state", "state": "listening"}] and not link.returned, \
+        "the turn carries the facts queued before it (node 3.203 holds the order)"
     assert link.payload["text"] == "¿cuánto es dos más dos?" and link.payload["origin"] == "phone"
     import os
     assert os.environ.get("ZAELAR_LANGUAGE") == "es", "the body's live settings reach the voice before it speaks"
@@ -230,8 +234,8 @@ def test_a_lost_body_is_said_slow_never_silence(monkeypatch):
     monkeypatch.setattr(body_link, "get", lambda: _Down([]))
     monkeypatch.setattr(remote_brain, "RETRY_S", 0.01)
     monkeypatch.setitem(remote_brain._LOST, "text", "")
-    monkeypatch.setattr(remote_brain, "_say_again", lambda: "Perdona, ¿me lo repites?")
-    monkeypatch.setattr(remote_brain, "_slow_line", lambda: "Un momento, el sistema va lento.")
+    monkeypatch.setattr(remote_brain, "_line", {"say_again": "Perdona, ¿me lo repites?",
+                                                "brain_slow": "Un momento, el sistema va lento."}.get)
     ctx = SimpleNamespace(items=[SimpleNamespace(role="user", text_content="hola")])
 
     async def _run():

@@ -30,8 +30,6 @@ from types import SimpleNamespace
 from loguru import logger
 
 
-
-
 def _own(key: str) -> bool:
     """The env this body gave the voice process at spawn names THAT process (`voice/child_process.VoiceChild._env`):
     it is the voice's own and is never pushed as a «setting»."""
@@ -112,7 +110,6 @@ class ChildClient:
                 await self._client.aclose()
             except Exception as _swallowed:  # noqa: BLE001
                 logger.debug(f"{__name__}: {_swallowed!r}")   # said, never silent (the ratchet)
-                pass
             self._client = None
 
 
@@ -306,7 +303,6 @@ def _started(ev: dict) -> None:
         attention.reset()
     except Exception as _swallowed:  # noqa: BLE001
         logger.debug(f"{__name__}: {_swallowed!r}")   # said, never silent (the ratchet)
-        pass
     if SETTINGS.llm_provider == "nucleo":
         async def _prime():
             try:
@@ -338,7 +334,6 @@ def _started(ev: dict) -> None:
                 await remote.say(_line, allow_interruptions=True)
             except Exception as _swallowed:  # noqa: BLE001
                 logger.debug(f"{__name__}: {_swallowed!r}")   # said, never silent (the ratchet)
-                pass
         for _ in range(50):
             if not busy["bot"]:
                 break
@@ -383,7 +378,6 @@ def _transport_down(ev: dict | None = None) -> None:
             identity.voice_disconnected(tok)
         except Exception as _swallowed:  # noqa: BLE001
             logger.debug(f"{__name__}: {_swallowed!r}")   # said, never silent (the ratchet)
-            pass
 
 
 def _closed(ev: dict) -> None:
@@ -405,7 +399,6 @@ def _closed(ev: dict) -> None:
         live_tts.detach(h["tts"])               # only if it is still the attached one
     except Exception as _swallowed:  # noqa: BLE001
         logger.debug(f"{__name__}: {_swallowed!r}")   # said, never silent (the ratchet)
-        pass
     _ROOMS.pop(room, None)
     if room == _M["room"]:
         _M.update(session=None, typed=None, speak=None, closer=None, tts=None, id_token=None)
@@ -489,7 +482,7 @@ def handle(ev: dict) -> None:
                      session=remote)
 
 
-def handle_batch(events: list) -> int:
+def handle_batch(events) -> int:
     n = 0
     for ev in events or ():
         try:
@@ -502,9 +495,11 @@ def handle_batch(events: list) -> int:
 
 # ── the kickoff and the turn ────────────────────────────────────────────────────────────────────────────────────
 
-def kickoff(room: str) -> dict:
-    """The first-turn decision for a session the voice process just started: the instruction to greet, or none."""
+def kickoff(room: str, events=None) -> dict:
+    """The first-turn decision for a session the voice process just started: the instruction to greet, or none. The
+    facts the question carried («session started») are replayed first."""
     from voice.engine.pipeline import first_air
+    handle_batch(events)
     text = first_air.decide_kickoff(room, _obs())
     cl = _M["client"]
     return {"greet": text, "env": cl.env_diff() if cl is not None else {}}
@@ -517,6 +512,7 @@ async def turn_lines(payload: dict):
     from livekit.agents.voice.agent_activity import _SpeechHandleContextVar
     from voice import screens
     from voice.engine.speech import echo_cut, filler_audio as _fa
+    handle_batch(payload.get("events"))         # the facts queued before this turn: replayed first, in order
     cl = _M["client"]
     env = cl.env_diff() if cl is not None else {}
     if env:
@@ -577,7 +573,6 @@ async def turn_lines(payload: dict):
                 screens.ORIGIN.reset(tok_o)
         except ValueError as _swallowed:                       # a generator closed from another context: the vars die with it
             logger.debug(f"{__name__}: {_swallowed!r}")   # said, never silent (the ratchet)
-            pass
 
 
 def reset_for_tests() -> None:
