@@ -94,7 +94,10 @@ below is the first kind, or it names the mechanism that replaced the second.
   is the introduction block, a system section carrying the name-and-voice offer. The phase's watcher subscribes at
   boot whatever the language, and reads its condition per turn; the block reads THE TURN — his answer to our question
   moves that goal to «he just told you» before memory writes it; it closes on his name AND the offer told
-  (`intro_offer_told`, written by a turn that replied), and then the block is gone. — since 2026-11-12 · nodes 2.1734,
+  (`intro_offer_told`, written by a turn that replied), and then the block is gone. On ANY turn after a reply of ours
+  that ended on a question, the state's closing line says what we asked (`build_flash_system` ← `answer_frame.asked_before`,
+  the memory agent's own frame) instead of «the request that follows»: a bare answer reaches the model as an answer,
+  and nothing of his line is read. — since 2026-11-12 · nodes 2.1734,
   3.206 · `nucleo/turn/prompt/packs/introduction.py`, `nucleo/turn/prompt/packs/introduction_block.py`.
 - **CRIT-V10 · The microphone is only parked over an ear that has HEARD.** In a wake-word mode the browser's
   recogniser may close the paid tap only after it has returned a result; its `onstart` proves nothing, and

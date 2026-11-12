@@ -171,12 +171,17 @@ def build_flash_system(directive: str = "", recall_query: str = "", recall_block
     if timings is not None:
         timings["live_ms"] = round((_t.perf_counter() - _tl) * 1000, 1)
     sep = lambda text: ("\n\n" + text) if text else ""   # noqa: E731
+    # After a reply of ours that ENDED on a question the close says what we asked — a fact of the turn, the frame the
+    # memory agent gives a bare answer; framed as «a request», one word after our own question was answered as noise.
+    from nucleo.memory_agent import answer_frame
+    _asked = answer_frame.asked_before()
     parts = (("language", _lang_lock()), ("operating", "\n\n" + ops), ("resources", "\n\n" + res),
              ("widgets_now", STATE_HEAD + sep(w_now)), ("connectors", sep(conn)), ("memory", sep(memory_block)), ("recent", sep(recent_block)),
              ("recall", sep(recall_block)), ("people", _people_block(turn_text)), ("rules", _rules_prompt.voice_block()),
              ("directive", _directive_block(directive)), ("packs", _packs.compose(turn_text)),
              ("proactive", sep(proactive())), ("live", "\n\n── AHORA MISMO ──\n" + live),
-             ("close", "\n\nAtiende ahora la petición del operador que viene a continuación."))
+             ("close", (f"\n\nAcabas de preguntarle «{_asked}». Atiende ahora lo que dice a continuación: su respuesta, o una "
+                        "petición nueva." if _asked else "\n\nAtiende ahora la petición del operador que viene a continuación.")))
     prompt = "".join(text for _name, text in parts)
     if timings is not None:
         from nucleo.llm.fast_client import est_tokens
