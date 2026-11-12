@@ -155,18 +155,22 @@ def on_screen(monkeypatch):
     _nt._PARKED.clear()
 
 
-#: (his words, question confidence, screen action, its confidence)
+#: (his words, question confidence, screen action, its confidence). The action confidences were measured at 0.54 /
+#: 0.61 / 0.52; since 2026-11-12 a verdict acts at `consent.intent_act_at` (0.6), so the two below it are written AT
+#: that floor — the point of the case is that the action verdict is readable to act and the question still outranks it.
 GENUINE_QUESTIONS = [
     ("Jaja clásico, Rickroll de aperitivo. ¿Eso va solo pasando al siguiente o se queda parado al terminar?",
-     0.80, "youtube:next", 0.54),                                          # the measured ES turn
+     0.80, "youtube:next", 0.60),                                          # the measured ES turn (0.54)
     ("does it move on to the next one by itself or stop at the end?", 0.86, "youtube:next", 0.61),
-    ("¿la lista se repite cuando acaba el último?", 0.78, "youtube:restart", 0.52),
+    ("¿la lista se repite cuando acaba el último?", 0.78, "youtube:restart", 0.60),   # measured 0.52
 ]
 
 
 @pytest.mark.parametrize("said,q_conf,action,a_conf", GENUINE_QUESTIONS)
 def test_a_question_read_more_surely_than_the_action_completes_nothing(on_screen, said, q_conf, action, a_conf):
-    assert a_conf >= verdicts.LICENCE, "the action verdict is at the licence bar — the completion WOULD have fired"
+    from nucleo import consent
+    assert a_conf >= consent.intent_act_at() >= verdicts.LICENCE, (
+        "the action verdict is at the act floor — the completion WOULD have fired")
     fired, s = _complete(_brief({_tb.TARGET_KEY: (action, a_conf), _tb.REQUEST_KEY: ("question", q_conf)}), said)
     assert fired == "" and s.applied == [], f"a turn that only asks about the queue moved it: {s.applied}"
 

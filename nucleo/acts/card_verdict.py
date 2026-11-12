@@ -115,13 +115,13 @@ def verdict_escalates(brief, *, answered: bool = False) -> bool:
     nothing, and the promise backstop only knew the verb tables («hazme/búscame…»), so no errand was born.
     The verdict was paid for; it is the evidence the backstop was missing."""
     try:
-        from nucleo.turn import brief as _tb
-        esc, info = _tb.read(brief, _tb.ESCALATE_KEY, "")
+        from nucleo.turn import brief as _tb, verdicts as _v
+        esc, info = _v.to_act(brief, _tb.ESCALATE_KEY, "")      # a worker launched by verdict: the act floor
         if info is None or str(esc or "") != "escalate":
             return False
-        kind, _k = _tb.read(brief, _tb.REQUEST_KEY, "")
-        if _k is None or kind in _da.NOT_AIMED_AT_THE_SCREEN:
-            return False
+        kind, _k = _v.to_act(brief, _tb.REQUEST_KEY, "")
+        if _k is None or str(kind or "") in ("comment", "greeting"):
+            return False                      # a remark or a greeting is not work; an unsure kind keeps the verdict
         return not (answered and str(kind) == "question")
     except Exception:  # noqa: BLE001
         return False

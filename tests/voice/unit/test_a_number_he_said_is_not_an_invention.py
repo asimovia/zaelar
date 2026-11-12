@@ -58,9 +58,9 @@ made «Pausa el vídeo. Vuelve al catálogo.» name two faces at once.
 
 The request-type gate required a confident `order`/`answer`. «Para el vídeo» is an order, and its
 request type measured comment 0.45 — unsure — while the screen question answered `pause` 0.95. The
-gate is now a REFUSAL list, and the measurement that chose it is in `NOT_AIMED_AT_THE_SCREEN`: every
-ambient remark tested answers `none` 0.87-0.99 on the screen question, so the guard that matters was
-never this one.
+gate became a REFUSAL list for a while; since 2026-11-12 it is `direct_action.an_order`, read at the
+ONE act floor (`verdicts.to_act`): the measurement that chose its kinds is in its docstring — every
+ambient remark tested answers `none` 0.87-0.99 on the screen question.
 
 Run: .venv/bin/pytest tests/voice/unit/test_a_number_he_said_is_not_an_invention.py
 """
@@ -233,11 +233,15 @@ def _fire(brief, said):
     return done, seen
 
 
-def test_an_UNSURE_request_type_no_longer_vetoes_a_near_certain_screen_verdict(on_screen):
-    """His «Para el vídeo»: pause 0.95 on the screen question, comment 0.45 on the other one."""
+def test_an_UNSURE_request_type_is_not_an_order(on_screen):
+    """His «Para el vídeo»: pause 0.95 on the screen question, comment 0.45 on the other one. V2-756 let the unsure
+    reading pass; since 2026-11-12 (group A, one floor to act by verdict) a turn the brief cannot read as an ORDER at
+    `consent.intent_act_at` is not completed — the same door let a remark travel as the payload of the act it
+    relaunched. This torn turn relies on the model's own call; the one read as an order still completes."""
     brief = _brief({_tb.TARGET_KEY: ("youtube:pause", 0.95), _tb.REQUEST_KEY: ("comment", 0.45)})
-    done, seen = _fire(brief, "Para el vídeo")
-    assert done == "pause" and seen == [("youtube", "pause", {})]
+    assert _fire(brief, "Para el vídeo") == ("", [])
+    brief = _brief({_tb.TARGET_KEY: ("youtube:pause", 0.95), _tb.REQUEST_KEY: ("order", 0.6)})
+    assert _fire(brief, "Para el vídeo") == ("pause", [("youtube", "pause", {})])
 
 
 @pytest.mark.parametrize("kind", ["comment", "greeting"])

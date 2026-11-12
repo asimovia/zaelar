@@ -111,10 +111,15 @@ def test_a_correction_of_ANOTHER_card_does_not_license_a_video_load():
 
 
 def test_an_unsure_correction_licenses_nothing():
-    """The gate is the same one every verdict reader uses. A shrug keeps today's path."""
+    """The gate is the one every reader that ACTS by verdict uses — `consent.intent_act_at`, 0.6 (2026-11-12): a
+    correction relaunches the op it corrects. A shrug keeps today's path; 0.55 is a shrug, 0.6 is not."""
     done_ops.note("youtube", "search", {"query": "vídeos del Apolo"})
     brief = _brief({redo_decision.REDO_KEY: ("corrects_last", 0.31)})
     assert not canvas_license.video_license("He dicho, Apollo once.", "", brief=brief)
+    brief = _brief({redo_decision.REDO_KEY: ("corrects_last", 0.55)})
+    assert not canvas_license.video_license("He dicho, Apollo once.", "", brief=brief)
+    brief = _brief({redo_decision.REDO_KEY: ("corrects_last", 0.6)})
+    assert canvas_license.video_license("He dicho, Apollo once.", "", brief=brief)
 
 
 def test_a_NEW_request_is_not_a_correction():

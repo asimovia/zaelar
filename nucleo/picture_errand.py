@@ -64,8 +64,8 @@ def from_screen(brief, reading: str) -> str:
     if reading not in ("", _s.LIST, _s.ITEM):
         return reading
     try:
-        from nucleo.turn import brief as _tb
-        verdict, info = _tb.read(brief, "corrects_last", "")
+        from nucleo.turn import verdicts as _v
+        verdict, info = _v.to_act(brief, "corrects_last", "")   # a correction is read at the act floor, everywhere
     except Exception:  # noqa: BLE001
         return reading
     if info is not None and verdict == "corrects_last" and viewer_holds_pictures():
