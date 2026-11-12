@@ -17,8 +17,9 @@ Line types the body sends (`server/voice_child_api.py` writes them):
 Closing the iterator (a barge-in, a preemptive draft LiveKit throws away) closes the HTTP response, and the body
 cancels the turn the same way LiveKit cancels an in-process stream — `_note_death` keeps his words either way.
 
-What travels with the turn: his last line, the LiveKit speech id the reply belongs to (the body binds the turn's
-trace to it, `voice/trace.bind_speech`), and the screen that typed it (`CHILD_ORIGIN`, set around `generate_reply`
+What travels with the turn: his last line, the session's facts still queued before it (`body_link.ahead` — the body
+replays them first, in order), the LiveKit speech id the reply belongs to (the body binds the turn's trace to it,
+`voice/trace.bind_speech`), and the screen that typed it (`CHILD_ORIGIN`, set around `generate_reply`
 by the body's typed door) so every card the turn opens goes back to that screen.
 """
 from __future__ import annotations
@@ -35,7 +36,6 @@ from loguru import logger
 from . import body_link
 
 TURN_PATH = "/api/turn/stream"
-FLUSH_S = 0.2           # the bounded wait for the events queued before this turn (see `body_link.flush`)
 
 #: The screen that typed the line this reply answers — set by the body's `/voice/reply`, inherited by the reply task.
 CHILD_ORIGIN: contextvars.ContextVar[str] = contextvars.ContextVar("zaelar_child_origin", default="")
@@ -70,7 +70,6 @@ def turn_payload(chat_ctx) -> dict:
         speech_id = str(getattr(_SpeechHandleContextVar.get(None), "id", "") or "")
     except Exception as _swallowed:  # noqa: BLE001
         logger.debug(f"{__name__}: {_swallowed!r}")   # said, never silent (the ratchet)
-        pass
     out = {"text": last_user_text(chat_ctx), "speech_id": speech_id, "origin": CHILD_ORIGIN.get()}
     if _LOST["text"] and _LOST["text"] != out["text"]:
         out["prior"] = _LOST["text"]              # E0: his line the lost turn never delivered — the body reads it first
@@ -104,16 +103,6 @@ def _line(key: str) -> str:
         return ""
 
 
-def _say_again() -> str:
-    return _line("say_again")
-
-
-def _slow_line() -> str:
-    """What he hears when the body cannot be reached at all (E0): «it's running slow», never «say that again» — his
-    words were heard; it is the host that did not run."""
-    return _line("brain_slow")
-
-
 RETRY_S = 1.0           # E0: a body that cannot be reached is asked ONCE more, a second later — never a storm
 #: His line a lost turn could not deliver (E0): it rides with the next turn as `prior`, so the body still reads it.
 _LOST: dict = {"text": ""}
@@ -126,23 +115,25 @@ async def remote_llm_node(agent, chat_ctx, tools, model_settings):
     the slow line and his words are kept for the next turn (`_LOST`). A turn the body itself failed asks him again."""
     payload = turn_payload(chat_ctx)
     link = body_link.get()
-    await link.flush(FLUSH_S)
-    t0, said = time.monotonic(), False
+    t0, said, heard = time.monotonic(), False, False
     for attempt in (0, 1):
-        agen = link.stream(TURN_PATH, payload)
+        ahead = await link.ahead()                 # the facts queued before this turn ride WITH it, in order
+        agen = link.stream(TURN_PATH, {**payload, "events": ahead})
         try:
             async for piece, is_text in _pieces(agen):
-                said = said or is_text
+                said, heard = said or is_text, True
                 yield piece
             _LOST["text"] = ""
             return
         except RuntimeError as e:
             logger.warning(f"remote brain: turn failed after {time.monotonic() - t0:.2f}s — {e!r}")
-            if not said and (line := _say_again()):
+            if not said and (line := _line("say_again")):
                 yield line                         # a lost turn asks him again; it never goes silent
             return
         except OSError as e:                       # the body is not answering at all
             logger.warning(f"remote brain: the body is unreachable ({e!r}), attempt {attempt + 1}")
+            if not heard:
+                link.back(ahead)                   # the body never read them: back at the front of the line
             if said or attempt:
                 break
             await asyncio.sleep(RETRY_S)
@@ -150,8 +141,8 @@ async def remote_llm_node(agent, chat_ctx, tools, model_settings):
             await agen.aclose()
     if not said:
         _LOST["text"] = str(payload.get("text") or "")
-        if (line := _slow_line()):
-            yield line
+        if (line := _line("brain_slow")):     # «it's running slow», never «say that again»: his words were heard,
+            yield line                            # it is the host that did not run (E0)
 
 
 async def _pieces(agen):

@@ -146,8 +146,10 @@ async def entrypoint(ctx: JobContext) -> None:
     # The kickoff is the BODY's decision (memory, the typed line waiting, a room greeted seconds ago): it answers
     # with the instruction to greet, or nothing. No answer → no greeting: a greeting built without the memory is the
     # «hello, what do you need?» in the middle of a conversation that the decision exists to prevent.
-    await link.flush(0.5)                    # the body has read «session started» before it decides
-    decision = await link.post("/api/voice/child/kickoff", {"room": ctx.room.name}, timeout_s=8.0)
+    ahead = await link.ahead()               # «session started» rides WITH the question: the body reads it first
+    decision = await link.post("/api/voice/child/kickoff", {"room": ctx.room.name, "events": ahead}, timeout_s=8.0)
+    if not decision:
+        link.back(ahead)                     # the body never answered: the facts return to the front of the line
     from .remote_brain import apply_env
     apply_env(decision.get("env"))
     text = str(decision.get("greet") or "")
