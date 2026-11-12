@@ -3,11 +3,12 @@
 Measured 2026-11-12: with the body's loop stopped 12–31 s by a host out of memory, the turn's silence deadline fired
 («turno ATASCADO»), the provider circuit relayed a healthy titular to the stand-in, and the perf verdict said «hidden
 reasoning or provider queue». Three HTTP calls ended the same instant the loop woke — a slow provider does not
-synchronise three answers. Now the stream asks the body's own meter before declaring a stall, the provider circuit
-counts no stall while the loop was stopped, and the verdict names the HOST first.
+synchronise three answers. Now the stream gives the deadline back the seconds the loop was stopped (and only those),
+so a stall that reaches the provider circuit is the provider's, and the verdict names the HOST first.
 
-Disarms (each seen red): drop the `stalled_since` branch in `pipeline_stream` → (a) cuts the turn; drop the host guard
-in `provider_chain.note_stall` → (b) counts the streak; drop the `host` branch in `turn_perf.verdict` → (c).
+Disarms (each seen red): drop the `stalled_since` branch in `pipeline_stream` → (a) cuts the turn; restart the whole
+deadline on every stall → (b) never cuts; the 60 s host guard back in `provider_chain.note_stall` → (c) counts no
+streak; drop the `host` branch in `turn_perf.verdict` → (d).
 """
 from __future__ import annotations
 
@@ -29,7 +30,7 @@ def meter(monkeypatch):
     monkeypatch.setattr(envelope, "policy", lambda: {**envelope._DEFAULTS, "loop_lag_s": 1.0})
     monkeypatch.setattr(loop_lag, "_state", {"loops": set(), "last": 0.0, "worst": 0.0, "n": 0, "total_s": 0.0,
                                              "stalls": deque(maxlen=64), "last_stall": None})
-    monkeypatch.setattr(loop_lag, "_say", lambda s: None)
+    monkeypatch.setattr(loop_lag, "_say", lambda s, who="host": None)
     monkeypatch.setattr(loop_lag, "_shed", lambda s: None)
     return loop_lag
 
@@ -92,20 +93,51 @@ def test_a_real_silence_is_still_a_stall(meter, monkeypatch):
     assert out["stalled"] is True and any("ATASCADO" in lbl for _, lbl in events)
 
 
-def test_the_provider_circuit_counts_no_stall_while_the_body_loop_was_stopped(meter, monkeypatch):
-    """(b) no streak, no relay: the silence was the host's, never the titular's."""
+def test_a_loop_that_keeps_stalling_does_not_hold_a_dead_provider_forever(meter, monkeypatch):
+    """(b) P2: every stall used to restart the deadline whole — with the loop stalling every few hundred ms over a
+    provider that never answers, the turn waited for ever. Only the stopped seconds are given back: the silence
+    measured while the loop RAN still reaches the deadline."""
+    monkeypatch.setattr(ps._fup, "Hold", _Hold)
+    monkeypatch.setattr(ps._route, "wait_s", lambda: 0.0)
+    from nucleo.workers import envelope
+    monkeypatch.setattr(envelope, "policy", lambda: {**envelope._DEFAULTS, "loop_lag_s": 0.01})
+    events = []
+
+    async def hiccups():
+        while True:
+            await asyncio.sleep(0.1)
+            loop_lag.note(0.04)
+
+    import time
+    t0 = time.monotonic()
+    real_run = asyncio.run
+
+    def run_with_hiccups(coro):
+        async def both():
+            h = asyncio.ensure_future(hiccups())
+            try:
+                return await coro
+            finally:
+                h.cancel()
+        return real_run(both())
+    monkeypatch.setattr(asyncio, "run", run_with_hiccups)
+    out = _stream(lambda kind, label, **k: events.append((kind, label)), stall_at=None, chunk_at=3.0)
+    assert out["stalled"] is True, "a dead provider under a stalling loop was never cut"
+    assert time.monotonic() - t0 < 1.5
+
+
+def test_the_provider_circuit_counts_a_stall_whose_loop_seconds_were_already_taken_out(meter, monkeypatch):
+    """(c) a stall that reaches the circuit is net of the loop's stopped seconds, so it counts even when the loop
+    hiccuped within the last minute (P2: one hiccup used to switch the relay off for 60 s)."""
     monkeypatch.setattr(pc, "_slow_streak", {})
     monkeypatch.setattr(pc, "pick", lambda role=None: {"name": "titular"})
     loop_lag.note(13.0)
-    assert pc.note_stall(role=pc.ROLE_VOICE) is None and pc.note_stall(role=pc.ROLE_VOICE) is None
-    assert pc._slow_streak == {}, "a stall with the loop stopped must not count against the provider"
-    loop_lag._state["stalls"].clear()
     pc.note_stall(role=pc.ROLE_VOICE)
-    assert pc._slow_streak == {"titular": 1}, "with the loop running, a stall counts as before"
+    assert pc._slow_streak == {"titular": 1}
 
 
 def test_the_verdict_names_the_host_before_cold_or_pre_token(meter, monkeypatch):
-    """(c) a turn whose time went to a stopped loop blames neither the prompt nor the provider — and `note_slow` reads
+    """(d) a turn whose time went to a stopped loop blames neither the prompt nor the provider — and `note_slow` reads
     it as a cause that breaks the slow streak."""
     m = {"total_ms": 14000, "ttft_ms": 13500, "prompt_tokens": 3000, "tok_per_s": 30, "gap_since_last_s": 200}
     v = tp.verdict({**m, "host_stall_s": 13.2})

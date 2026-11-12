@@ -28,7 +28,7 @@ FLOOR = 1000.0
 
 
 def _r(free, cause="machine", lag=0.0):
-    return {"free_mb": free, "floor_mb": FLOOR, "voice_lag_s": lag, "lag_bound_s": 0.5, "cause": cause}
+    return {"free_mb": free, "floor_mb": FLOOR, "loop_lag_s": lag, "lag_bound_s": 0.5, "cause": cause}
 
 
 def test_under_pressure_the_rungs_engage_in_the_declared_order_whoever_is_short():
@@ -41,7 +41,7 @@ def test_under_pressure_the_rungs_engage_in_the_declared_order_whoever_is_short(
     assert lad2.step(_r(500, cause="engine"))["cause"] == "engine"
 
 
-def test_the_voices_own_lag_is_pressure_too():
+def test_a_persisting_loop_stall_is_pressure_too():
     lad = SL.Ladder(rungs=("a",))
     assert lad.step(_r(5000, lag=0.8)) == {"engage": "a", "cause": "machine", "depth": 1}
 

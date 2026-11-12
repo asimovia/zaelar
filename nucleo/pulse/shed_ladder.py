@@ -15,10 +15,11 @@ with an actuator registered by the body:
     trim_caches          the body collects garbage and hands freed pages back to the OS
 
 The rule, pure (no I/O — `step` reads a reading and returns one action):
-  · under pressure (free memory under the floor, or the voice's lag over its bound) → ENGAGE the next rung, one per
-    step, whatever the cause: `cause` says whose memory it is — `engine` when our own processes are over their
-    declared budgets, `machine` when we are within them and the host is short anyway — and the event names it, but
-    the ladder descends for both, because the voice suffers the same either way;
+  · under pressure (free memory under the floor, or a lag over its bound — the body loop's only when it stalled in
+    two beats running, a lone hiccup is the envelope's quiet hold, never the ladder's) → ENGAGE the next rung, one per
+    step, whatever the cause: `cause` says whose it is — `engine` when our own processes are over their declared
+    budgets or our own work held the loop, `machine` when we are within them and the host is short anyway — and the
+    event names it, but the ladder descends for both, because the voice suffers the same either way;
   · recovered WITH MARGIN (free ≥ floor × `shed_recover_ratio` and the lag under its bound) → RELEASE the last rung
     engaged, one per step, in reverse order;
   · in between → hold where it is (no flapping on the floor).
@@ -36,16 +37,15 @@ def ladder_of(pol: dict | None) -> tuple:
     return tuple(str(r) for r in declared) if isinstance(declared, (list, tuple)) else ()
 
 
-def cause(engine_mb: float, engine_budget_mb: float) -> str:
-    """`engine` when our processes hold more than their declared budgets, `machine` when the host is short anyway."""
-    return "engine" if engine_mb > engine_budget_mb else "machine"
+def cause(engine_mb: float, engine_budget_mb: float, loop_ours_s: float = 0.0, loop_host_s: float = 0.0) -> str:
+    """`engine` when our processes hold more than their declared budgets or our own work held the body's loop longer
+    than the host did (E3: `loop_lag` measures whose each stall was); `machine` when the host is short anyway."""
+    return "engine" if engine_mb > engine_budget_mb or float(loop_ours_s) > float(loop_host_s) else "machine"
 
 
 def _lag(reading: dict) -> tuple[float, float]:
-    """The worst lag the reading carries — the voice's or the body loop's (E0: a host that stops the body's loop is
-    the same pressure on the same voice) — and the bound it is read against."""
-    lag = max(float(reading.get("voice_lag_s", 0) or 0), float(reading.get("loop_lag_s", 0) or 0))
-    return lag, float(reading.get("lag_bound_s", 0) or 0)
+    """The body loop's persisting stall (E0) and its bound — the voice's own lag sheds through `voice/lag`."""
+    return float(reading.get("loop_lag_s", 0) or 0), float(reading.get("lag_bound_s", 0) or 0)
 
 
 def pressure(reading: dict) -> bool:

@@ -6,8 +6,9 @@ found the body «unreachable». Now `nucleo/pulse/loop_lag` probes the server lo
 STALL — recorded with its end, one `health` event, a quiet shed through the lag reader (`BODY` source), pressure for
 the shed ladder as `cause=machine`, and `GET /api/debug/loop` answers from the process.
 
-Disarms (each seen red): `note()` never appends to `_state["stalls"]` → (a) and (c); `shed_ladder._lag` reads only
-`voice_lag_s` → (c); `give_way` never sleeps while the loop stalls → (e).
+Disarms (each seen red): `note()` never appends to `_state["stalls"]` → (a) and (c); `shed_ladder._lag` drops
+`loop_lag_s` → (c); `give_way` never sleeps while the loop stalls → (e); the ladder reading the last 60 s instead of
+the persisting beat → (f); `whose` always `host` → (g) and (h).
 """
 from __future__ import annotations
 
@@ -60,26 +61,84 @@ def test_a_stalled_loop_is_recorded_said_once_and_shed_quietly(world):
 def test_a_loop_on_time_records_nothing_and_releases_the_hold(world):
     assert loop_lag.note(0.05) is False
     assert not world["events"] and not world["shed"] and world["unshed"] == ["body_loop"]
-    assert loop_lag.stalled_recently(60.0) == 0.0 and loop_lag.status()["stalls"] == 0
+    assert loop_lag.stalled_since() == 0.0 and loop_lag.status()["stalls"] == 0
 
 
-def test_the_ladder_reads_the_body_loops_stalls_as_the_machines_pressure(world, monkeypatch):
-    """(c) within our budgets, a stalled body loop descends the ladder with `cause=machine`; a beat without a stall
-    lets it recover."""
+@pytest.fixture
+def host_with_memory(world, monkeypatch):
     from nucleo.workers import envelope
     gb = 2 ** 30
     monkeypatch.setattr(envelope, "measured", lambda: (16 * gb, 12 * gb))     # plenty of memory: only the lag acts
     monkeypatch.setattr(shed_actuators, "_rss_mb", lambda pid=None: 200.0)
     monkeypatch.setattr(shed_actuators, "_workers", lambda: [])
+    monkeypatch.setattr(shed_actuators, "_L", {"ladder": None, "beat_at": None, "beat_lag": None})
+    return world
+
+
+def test_the_ladder_reads_a_loop_the_host_keeps_stopping_as_the_machines_pressure(host_with_memory):
+    """(c) within our budgets, a body loop stalled beat after beat descends the ladder with `cause=machine`; a beat
+    without a stall lets it recover."""
     quiet = shed_actuators.reading()
     assert quiet["loop_lag_s"] == 0.0 and not shed_ladder.pressure(quiet)
     loop_lag.note(2.5)
+    shed_actuators.reading()
+    loop_lag.note(1.5)
     r = shed_actuators.reading()
-    assert r["loop_lag_s"] == 2.5 and r["lag_bound_s"] == 0.3 and r["cause"] == "machine"
+    assert r["loop_lag_s"] == 1.5 and r["lag_bound_s"] == 0.3 and r["cause"] == "machine"
     assert shed_ladder.pressure(r) and not shed_ladder.recovered(r)
     assert shed_ladder.Ladder(rungs=("a",)).step(r) == {"engage": "a", "cause": "machine", "depth": 1}
-    later = {**r, "loop_lag_s": 0.0}
-    assert shed_ladder.recovered(later), "a beat without a stall, over the floor with margin: the ladder climbs back"
+    later = shed_actuators.reading()
+    assert later["loop_lag_s"] == 0.0 and shed_ladder.recovered(later), \
+        "a beat without a stall, over the floor with margin: the ladder climbs back"
+
+
+def test_a_lone_hiccup_is_never_the_ladders_pressure(host_with_memory):
+    """(f) E3: one 1 s stall used to count as pressure for the whole next minute — the ladder went down rung by rung
+    with memory to spare. A stall is counted in ONE beat, and only a stall in two beats running is pressure."""
+    shed_actuators.reading()
+    loop_lag.note(1.0)
+    r = shed_actuators.reading()
+    assert r["loop_lag_s"] == 0.0 and not shed_ladder.pressure(r), "one hiccup descended the ladder"
+    again = shed_actuators.reading()
+    assert again["loop_lag_s"] == 0.0, "a stall was counted again in the next beat"
+
+
+def test_whose_stall_it_was_is_measured_never_assumed(host_with_memory):
+    """(g) E3: a stall while the process ran on the CPU is the engine's own work holding its loop — said so, and
+    named `cause=engine` by the ladder, never «host stalled»."""
+    for cpu, who in ((1.1, "engine"), (0.05, "host"), (None, "host")):
+        loop_lag.note(1.2, cpu_s=cpu)
+        assert loop_lag.status()["last_stall"]["whose"] == who
+    loop_lag._state["stalls"].clear()
+    host_with_memory["events"].clear()
+    shed_actuators.reading()
+    loop_lag.note(1.2, cpu_s=1.2)
+    shed_actuators.reading()
+    loop_lag.note(1.4, cpu_s=1.3)
+    r = shed_actuators.reading()
+    assert shed_ladder.pressure(r) and r["cause"] == "engine"
+    said = [e for e in host_with_memory["events"] if e[2].get("kind_diag") == "loop_lag"]
+    assert said and all(e[2]["whose"] == "engine" and e[2]["cause"] == "engine" for e in said)
+    assert not any("host stalled" in e[1] for e in said), said
+    assert loop_lag.stalled_since(who="engine") == 2.6 and loop_lag.stalled_since(who="host") == 0.0
+
+
+def test_the_probe_measures_the_processs_cpu_across_the_wake(world):
+    """(h) a loop held by our own CPU work reads as the engine's; held while the process sleeps, as the host's."""
+    async def session(hold):
+        loop_lag.watch()
+        await asyncio.sleep(0.05)
+        hold()
+        await asyncio.sleep(0.3)
+
+    def spin():
+        end = time.monotonic() + 0.8
+        while time.monotonic() < end:
+            pass
+    asyncio.run(session(spin))
+    asyncio.run(session(lambda: time.sleep(0.8)))
+    said = [e[2]["whose"] for e in world["events"] if e[2].get("kind_diag") == "loop_lag"]
+    assert said == ["engine", "host"], said
 
 
 def test_the_bound_is_declared_beside_the_envelope():

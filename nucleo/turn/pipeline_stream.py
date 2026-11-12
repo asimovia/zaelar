@@ -84,22 +84,30 @@ async def stream_the_reply(self, motor, *, FastClient, messages, spec, _turn_too
         # waiting for a brief in flight at most the lead-in filler's deadline (`turn_unclear.hold_deadline_s`)
         _hold = _fup.Hold(_brief, send, wait_s=hold_deadline_s(_filler_audio), route_wait_s=_route.wait_s())
         _wait_t0 = time.monotonic()      # when the wait for the next chunk began (E0: a host stall inside it is not silence)
+        _left_s = _quiet_ms / 1000.0     # what is left of the deadline, counted only while the loop ran
         try:
             while True:
                 try:
-                    _kind, _val = await asyncio.wait_for(_chunks.get(), timeout=_quiet_ms / 1000.0)
+                    _kind, _val = await asyncio.wait_for(_chunks.get(), timeout=_left_s)
                 except asyncio.TimeoutError:
                     # ¿Llega algo por debajo (argumentos de una tool-call)? Entonces NO es un atasco.
                     if motor.stream_advancing(llm_metrics, _quiet_ms):
+                        _wait_t0, _left_s = time.monotonic(), _quiet_ms / 1000.0
                         continue
-                    # E0: the BODY's loop was stopped while the deadline ran — the model's silence was never measured
-                    # (measured 2026-11-12: a host out of memory stopped the loop 12–31 s and the turn blamed the
-                    # provider, relaying to the stand-in). The wait goes on; the fact is said, nobody is blamed.
-                    if (_host := _loop_lag.stalled_since(mono=_wait_t0)) > 0:
-                        emit("perf", f"⏱ host stalled {_host:.1f} s during the turn — the wait goes on, the model "
+                    # E0: the BODY's loop was stopped while the deadline ran — that stretch of the model's silence was
+                    # never measured (a host out of memory stopped the loop 12–31 s and the turn blamed the provider).
+                    # The deadline gets back exactly the stopped seconds, never a fresh window (P2: a loop stalling
+                    # every few seconds over a dead provider would otherwise wait forever): the silence measured
+                    # while the loop RAN still reaches the deadline.
+                    _stopped = _loop_lag.stalled_since(mono=_wait_t0)
+                    _silent = max(0.0, time.monotonic() - _wait_t0 - _stopped)
+                    if _stopped > 0 and _silent < _quiet_ms / 1000.0:
+                        emit("perf", f"⏱ loop stopped {_stopped:.1f} s during the turn — the wait goes on, the model "
                                      "is not blamed", role="system",
-                             extra={"cat": "flash", "kind": "host_stall", "host_stall_s": _host, "quiet_ms": _quiet_ms})
-                        _wait_t0 = time.monotonic()
+                             extra={"cat": "flash", "kind": "host_stall", "host_stall_s": _stopped,
+                                    "own_stall_s": _loop_lag.stalled_since(mono=_wait_t0, who="engine"),
+                                    "quiet_ms": _quiet_ms})
+                        _left_s = _quiet_ms / 1000.0 - _silent
                         continue
                     # Atasco de verdad: ni texto ni chunks. Se trata como fallo del cerebro (rama `errored`):
                     # frase corta y honesta + aviso — nunca un minuto de silencio que parece un cuelgue.
@@ -120,6 +128,7 @@ async def stream_the_reply(self, motor, *, FastClient, messages, spec, _turn_too
                 _wait_t0 = time.monotonic()
                 if delta:
                     _quiet_ms = motor._turn_budget_ms()      # hay avance real → el plazo se renueva
+                _left_s = _quiet_ms / 1000.0
                 _hold.say(speech.inline(take(False)))
         finally:
             if not _pump_task.done():
