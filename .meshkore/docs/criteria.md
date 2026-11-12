@@ -1012,7 +1012,7 @@ Flash keeps the conversation; the row is what both brains read.
   loguru record passes `pii.tag` through ONE patcher installed at boot (`observability/log_mask.py`): an email, a phone,
   a known name leave as tags; off, the line is untouched; the masker never raises and never recurses. A phone, a date
   and a time are each read by their own shape (`observability/pii.py`): a date or a time is never a phone and a time or
-  a small count is kept; a number said in groups (6-15 digits) is a phone and a lone four-digit number is tagged — a
+  a small count is kept; a number said in groups (six digits or more, no ceiling) is a phone and a lone four-digit number is tagged — a
   year cannot be told from a PIN. — since 2026-11-11, shapes 2026-11-12 ·
   nodes 7.131, 2.1733 · `observability/log_mask.py`, `server/__main__.py`.
 - **CRIT-R8 · Paid work asks the usage lease BEFORE it starts.** If a usage lease is configured and exhausted, a
