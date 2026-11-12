@@ -12,12 +12,12 @@ import os
 ENG = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 
 
-def test_the_table_names_inworld_first_and_a_free_local_voice_second():
+def test_the_table_names_inworld_first_and_a_remote_stand_in_second():
     t = json.load(open(os.path.join(ENG, "config/models.default.json")))["services"]["tts"]
     assert t["titular"]["provider"] == "inworld"
     assert t["titular"]["key_env"] == "INWORLD_API_KEY"
-    assert t["failover"]["provider"] == "kokoro_local", "the stand-in is free and local, never a paid account (2026-11-06)"
-    assert not t["failover"]["key_env"]
+    # Operator, 2026-11-12 (V2-889 row 10): OpenAI, where we always have credit — Kokoro cannot sound in a container.
+    assert t["failover"]["provider"] == "openai" and t["failover"]["key_env"] == "OPENAI_API_KEY"
 
 
 def test_the_engine_can_build_it():

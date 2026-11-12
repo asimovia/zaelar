@@ -111,6 +111,6 @@ def available() -> list[str]:
     return registry.names()
 
 
-from . import cartesia, elevenlabs, inworld, kokoro  # noqa: E402,F401
+from . import cartesia, elevenlabs, inworld, kokoro, openai_tts  # noqa: E402,F401
 
 __all__ = ["build_tts", "available", "registry", "active_provider"]

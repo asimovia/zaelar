@@ -159,7 +159,16 @@ def default_voice_for(provider: str | None = None, lang: str | None = None,
         return inworld_default_voice(lang, region)
     if p == "cartesia":
         return cartesia_default_voice(lang, region)
+    if p == "openai":
+        return openai_default_voice(lang)
     return ""
+
+
+def openai_default_voice(lang: str | None = None) -> str:
+    """The OpenAI stand-in's voice: the GENDER of the voice he chose for the titular (V2-889 row 10)."""
+    av = _picked_voice()
+    gender = next((v.get("gender") for v in voices_for(tts_provider(), lang) if v.get("voice") == av), "")
+    return "ash" if gender == "m" else "coral"
 
 
 def describe_voice(v: dict) -> str:

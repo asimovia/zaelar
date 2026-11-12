@@ -148,12 +148,13 @@
         "key_env": "DEEPGRAM_API_KEY"
       },
       "failover": {
-        "provider": "voxtral",
+        "provider": "openai",
         "model": "",
         "base_url": "",
-        "key_env": "MISTRAL_API_KEY"
+        "key_env": "OPENAI_API_KEY"
       },
-      "why": "Both are cloud services and serve a container. Local Whisper is out by the same rule as Ollama."
+      "why": "Both are cloud services and serve a container. Local Whisper is out by the same rule as Ollama.",
+      "failover_why": "Operator, 2026-11-12 (V2-889 row 10): OpenAI, where we always have credit — Mistral's free tier answered 429 in September, and a stand-in that is rate-limited is no stand-in. Pay per use (~$0.003/min), not streaming: the failover adapter wraps it with the session's VAD. Every switch is an alert event, so the relay never hides an outage of the titular."
     },
     "tts": {
       "label": "Voice · TTS (text to speech)",
@@ -164,13 +165,13 @@
         "key_env": "INWORLD_API_KEY"
       },
       "failover": {
-        "provider": "kokoro_local",
+        "provider": "openai",
         "model": "",
         "base_url": "",
-        "key_env": ""
+        "key_env": "OPENAI_API_KEY"
       },
       "why": "Operator, 2026-09-26: Inworld first; 2026-11-06: Inworld is the first and only paid voice, the stand-in is free and local. Measured through the engine's own LiveKit plugins (V2-774): inworld-tts-2 first audio 185/168 ms (es/en) vs 194/175 for eleven_turbo_v2_5, at half the price ($25 vs ~$50 per 1M chars). The model is chosen by the builder (`voice/engine/speech/tts/inworld.py`, env ZAELAR_INWORLD_TTS_MODEL) and billed per CHARACTER by `energy_tariffs`, not per token, so it is not named here. Cartesia was ruled out on cost and Kokoro is local.",
-      "failover_why": "Kokoro, local and free (operator, 2026-11-06: no ElevenLabs account any more, and its key answered 401 in the speech bench, so the stand-in was mute). Measured in `tests.voice.bench.speech_bench`: round-trip WER 0.0-0.08, first audio 0.14-0.84 s on Metal. Where Kokoro cannot sound (no Metal, no Kokoro server, no kokoro-onnx — a cloud container today) its builder refuses, so no dead stand-in is offered and Inworld serves alone. Since V2-778 F0-7 the engine fails over on its own: a titular that cannot be built (no key) is replaced by this row at boot, and when both build LiveKit's FallbackAdapter switches to it when a synthesis fails for good (a 402 out of credit). The switch raises an `alert` event; the meter bills the provider that spoke."
+      "failover_why": "OpenAI gpt-4o-mini-tts (operator, 2026-11-12, V2-889 row 10: we always have OpenAI credit; Kokoro cannot sound in a container, so a cloud agent went mute on the titular's first outage). It keeps the gender of his chosen voice and is told the language. Before: Kokoro, local and free (operator, 2026-11-06: no ElevenLabs account any more, and its key answered 401 in the speech bench, so the stand-in was mute). Measured in `tests.voice.bench.speech_bench`: round-trip WER 0.0-0.08, first audio 0.14-0.84 s on Metal. Where Kokoro cannot sound (no Metal, no Kokoro server, no kokoro-onnx — a cloud container today) its builder refuses, so no dead stand-in is offered and Inworld serves alone. Since V2-778 F0-7 the engine fails over on its own: a titular that cannot be built (no key) is replaced by this row at boot, and when both build LiveKit's FallbackAdapter switches to it when a synthesis fails for good (a 402 out of credit). The switch raises an `alert` event; the meter bills the provider that spoke."
     },
     "triage": {
       "label": "Messaging · triage of what arrives",
