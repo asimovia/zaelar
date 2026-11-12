@@ -342,3 +342,60 @@ def test_a_turns_row_still_open_is_the_orders_row(world):
     got = _open(_brief(target="agenda:add_meeting"), said, "Vale.", ops=[("musica", "open_view")], calls=[],
                 present=lambda *a, **k: True, apply_widget_data=lambda *a, **k: None)
     assert got["row"] == live, "one request, one row — while it is open"
+
+
+# ── audit 2026-11-12, A6 — a LOOK at the order's card is no serving call when the turn asks to ACT there ─────────────
+# «Give Odalys the alias Oda» → the model called `contactos:show_contact` (a lens), the brief read `set_alias`, and
+# the lens counted as «the model's own call that ran on that card»: zero acts and no question. T4 (node 2.73) has the
+# same shape with the opposite right answer — there the verdict was the wrong one. What tells them apart is a verdict
+# the turn already paid for, read as the call's own door reads it (`data_ops.a_view_where_the_verdict_acts`): a lens,
+# an order that is no lens, and a sure `wants_words = act`.
+
+def _looked(card: str, lens: str, payload: dict | None = None):
+    return [(card, lens)], [{"name": "widget_data", "args": {"widget_id": card, "action": lens, "payload": payload or {}}}]
+
+
+@pytest.mark.parametrize("said, target, lens", [
+    ("Ponle el alias Oda a Odalys Brezmes", "contactos:set_alias", "show_contact"),
+    ("Add buying stamps to my tasks for Friday at ten", "agenda:add_task", "show_tasks"),
+])
+def test_a_look_at_the_orders_card_leaves_the_order_owed_and_it_asks_on_its_row(world, said, target, lens):
+    card, act = target.split(":")
+    ops, calls = _looked(card, lens)
+    _say(said)
+    assert ou.served(card, act, ops=ops, model_calls=calls), "with no reading of the turn the model's call stands (2.73)"
+    got = _open(_brief(target=target), said, "Aquí lo tienes.", ops=ops, calls=calls, present=lambda *a, **k: True,
+                apply_widget_data=lambda *a, **k: None)
+    assert got["how"] == "asked" and (got["widget"], got["act"]) == (card, act), got
+    (row,) = [r for r in _rows() if r["state"] == "waiting"]
+    assert row["id"] == got["row"] and asker.artefact(row["id"])["retained"]["action"] == act
+    assert world["sent"] == [] and world["workers"] == []
+
+
+def test_a_look_still_serves_when_the_turn_does_not_surely_ask_for_an_act(world):
+    """T4's side: `youtube:show_tab` against a 0.99 `restart` with no `wants_words = act` — the model's valid call is
+    never overruled; and a call that did more than look serves whatever the turn wants."""
+    ran = []
+    doors = dict(present=lambda *a, **k: True, apply_widget_data=lambda w, a, p: ran.append((w, a, p)))
+    ops, calls = _looked("youtube", "show_tab", {"tab": "inicio"})
+    for words in (None, ("tell", 0.4), ("act", 0.3)):
+        brief = _order("youtube:restart", "youtube")
+        brief["result"].pop("wants_words")
+        if words:
+            brief["result"]["wants_words"] = {"choice": words[0], "confidence": words[1]}
+        _say("Venga, vuelve al inicio")
+        assert _open(brief, "Venga, vuelve al inicio", "Hecho.", ops=ops, calls=calls, **doors) == {}, words
+    wrote = _looked("contactos", "set_favorite")
+    _say("Ponle el alias Oda a Odalys Brezmes")
+    assert _open(_brief(target="contactos:set_alias"), "Ponle el alias Oda a Odalys Brezmes", "Hecho.",
+                 ops=wrote[0], calls=wrote[1], **doors) == {}, "its own WRITE on that card: the model's choice"
+    assert ran == [] and _rows() == []
+
+
+def test_disarmed_a_look_counts_as_serving_and_the_order_is_dropped_in_silence(world, monkeypatch):
+    monkeypatch.setattr(ou, "_beyond_looks", lambda brief, wid, act, model_calls: model_calls)
+    ops, calls = _looked("contactos", "show_contact")
+    _say("Ponle el alias Oda a Odalys Brezmes")
+    assert _open(_brief(target="contactos:set_alias"), "Ponle el alias Oda a Odalys Brezmes", "Aquí la tienes.",
+                 ops=ops, calls=calls, present=lambda *a, **k: True, apply_widget_data=lambda *a, **k: None) == {}
+    assert _rows() == [], "the defect: zero acts and no question"
