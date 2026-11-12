@@ -50,8 +50,7 @@ def reading() -> dict:
     """The host now: free memory, the floor, whose memory it is (`cause`), and the body loop's persisting stalls."""
     from nucleo.pulse import budgets, shed_ladder
     from nucleo.workers import envelope
-    total, avail = envelope.measured()
-    pol = envelope.policy()
+    (total, avail), pol = envelope.measured(), envelope.policy()
     engine = _rss_mb()
     budget = budgets.budget("body", pol)["mb"]
     try:
@@ -65,7 +64,8 @@ def reading() -> dict:
     beat = _loop_beat()                     # E0: the body's own loop stalls, named by whose they were (E3)
     return {"free_mb": avail / 2 ** 20, "floor_mb": envelope.floor(total, pol) / 2 ** 20,
             "engine_mb": round(engine, 1), "budget_mb": budget, "lag_bound_s": loop_lag.bound_s(),
-            "cause": shed_ladder.cause(engine, budget, beat["engine"], beat["host"], beat["unknown"]),
+            "cause": shed_ladder.cause(engine, budget, beat["engine"], beat["host"], beat["unknown"],
+                                       avail < envelope.floor(total, pol)),
             "loop_lag_s": beat["loop_lag_s"], "loop_lag_now_s": beat["loop_lag_now_s"]}
 
 

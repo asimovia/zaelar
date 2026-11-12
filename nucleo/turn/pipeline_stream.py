@@ -104,9 +104,9 @@ async def stream_the_reply(self, motor, *, FastClient, messages, spec, _turn_too
                     if _stopped > 0 and _silent < _quiet_ms / 1000.0:
                         emit("perf", f"⏱ loop stopped {_stopped:.1f} s during the turn — the wait goes on, the model "
                                      "is not blamed", role="system",
-                             extra={"cat": "flash", "kind": "host_stall", "host_stall_s": _stopped,
-                                    "own_stall_s": _loop_lag.stalled_since(mono=_wait_t0, who="engine"),
-                                    "quiet_ms": _quiet_ms})
+                             extra={"cat": "flash", "kind": "host_stall", "stall_s": _stopped, "quiet_ms": _quiet_ms,
+                                    **{f"{k}_stall_s": _loop_lag.stalled_since(mono=_wait_t0, who=w)
+                                       for k, w in (("host", "host"), ("own", "engine"), ("unknown", "unknown"))}})
                         _left_s = _quiet_ms / 1000.0 - _silent
                         continue
                     # Atasco de verdad: ni texto ni chunks. Se trata como fallo del cerebro (rama `errored`):
