@@ -76,9 +76,9 @@ _KV_ROUTES = "mesh:routes"
 
 
 def _post(url: str, body: dict, timeout: float = _TIMEOUT_S,
-          bearer: str | None = None, headers: dict | None = None) -> tuple[int, dict | None]:
+          bearer: str | None = None) -> tuple[int, dict | None]:
     """POST JSON, return (status, parsed). Never raises: a mesh that is down must degrade to the browser."""
-    headers = {"content-type": "application/json", "user-agent": USER_AGENT, **(headers or {})}
+    headers = {"content-type": "application/json", "user-agent": USER_AGENT}
     if bearer:
         headers["authorization"] = f"Bearer {bearer}"
     req = urllib.request.Request(
@@ -101,9 +101,8 @@ def _post(url: str, body: dict, timeout: float = _TIMEOUT_S,
         return 0, ({"transport": "timeout"} if timed_out else None)
 
 
-def _get(url: str, timeout: float = _CARD_TIMEOUT_S, bearer: str | None = None,
-         headers: dict | None = None) -> dict | None:
-    headers = {"user-agent": USER_AGENT, **({"authorization": f"Bearer {bearer}"} if bearer else {}), **(headers or {})}
+def _get(url: str, timeout: float = _CARD_TIMEOUT_S, bearer: str | None = None) -> dict | None:
+    headers = {"user-agent": USER_AGENT, **({"authorization": f"Bearer {bearer}"} if bearer else {})}
     req = urllib.request.Request(url, headers=headers)
     try:
         raw = _outcome.call(f"mesh:{urllib.parse.urlsplit(url).netloc}", "card",

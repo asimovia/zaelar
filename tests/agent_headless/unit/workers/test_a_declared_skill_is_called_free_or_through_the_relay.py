@@ -113,9 +113,10 @@ def test_a_retry_of_an_unanswered_order_carries_its_key_and_another_skill_waits(
     answers.append((0, {"transport": "timeout"}))
     first = mesh_call.call("dining-agent", "book-by-phone", {"date": "2026-11-27"}, errand="x", task_id="41")
     assert not first["ok"] and "same key" in first["reason"]
-    answers.append((202, {"jobId": "j1", "poll": "/v1/jobs/j1"}))
-    mesh_call.call("dining-agent", "book-by-phone", {"date": "2026-11-27"}, errand="x", task_id="41")
+    answers.append((200, {"jobId": "j1", "poll": "/v1/jobs/j1", "duplicate": True}))   # the agent's answer to a retry
+    again = mesh_call.call("dining-agent", "book-by-phone", {"date": "2026-11-27"}, errand="x", task_id="41")
     assert sent[0]["body"]["idempotency_key"] == sent[1]["body"]["idempotency_key"]
+    assert again["pending"] and again["job"] == "j1" and again["thread"] == first["thread"]   # a job, not a result
     other = mesh_call.call("dining-agent", "book", {"date": "2026-11-27"}, errand="x", task_id="41")
     assert other["duplicate"] and len(sent) == 2                          # not retried blindly on another channel
     mesh_call.call("dining-agent", "book-by-phone", {"date": "2026-11-28"}, errand="x", task_id="42")

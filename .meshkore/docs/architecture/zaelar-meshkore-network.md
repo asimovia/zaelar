@@ -169,7 +169,8 @@ call → questions → prefill (his values) → on the worker's row (asker) → 
 
 **A job is owned by a row, not by a worker.** The pulse polls it with back-off and reads its END first and only from
 the agent's own `final` (a job that does not say it ended has not; 48 h bound it). A job reached through the relay goes
-with the account's credential AND the job's own token (`X-Job-Token`): one account can never read another's job. Its
+with the account's own credential, and the relay checks the job is that account's; a direct job goes with its own
+token. A retry under the same key answered with the same job (`200`) is that job, never a result. Its
 result is bounded leaf by leaf (a fact at its tail is never cut away) and fenced; the rebrief never says «it did not
 happen» for an outcome the agent calls uncertain, and a job given up is told as UNKNOWN. With no session to tell it, the
 row ends FAILED. A row he ended releases the question it held, and the job is still followed to its end (so a relay

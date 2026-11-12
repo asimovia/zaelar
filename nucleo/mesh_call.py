@@ -172,7 +172,8 @@ def _outcome(t: dict, status: int, data, questions: list[dict]) -> dict:
     from nucleo import mesh_handoff
     base = {"agent": t["agent"], "skill": t["skill"], "thread": t["id"], "status": status}
     data = {k: v for k, v in data.items() if k not in ("jobToken", "token")} if isinstance(data, dict) else data
-    t["closed"] = status not in (0, 202) and not questions and mesh_handoff.of(data) is None
+    t["closed"] = status != 0 and not (isinstance(data, dict) and (data.get("jobId") or data.get("job_id"))) \
+        and status != 202 and not questions and mesh_handoff.of(data) is None
     if status == 0:
         return {**base, "ok": False, "reason": f"«{t['agent']}» did not answer: "
                 + ("calling the SAME skill again for this order carries the same key, so it is not done twice"
@@ -182,7 +183,9 @@ def _outcome(t: dict, status: int, data, questions: list[dict]) -> dict:
     if questions:
         t["pending"] = questions
         return {**base, "ok": False, "agent_asks_user": [q["text"] for q in questions]}
-    if status == 202 and isinstance(data, dict):
+    # A job: a `202` that names one, or any 2xx naming a `jobId` — the agent answers a retry under the same key with the
+    # SAME job (measured contract: `200`, `duplicate: true`), which is that job, never a result.
+    if isinstance(data, dict) and (status == 202 or (200 <= status < 300 and (data.get("jobId") or data.get("job_id")))):
         from nucleo import mesh_jobs
         job = mesh_jobs.opened(t, data)
         if job:
