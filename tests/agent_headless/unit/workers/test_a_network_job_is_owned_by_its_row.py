@@ -123,3 +123,9 @@ def test_a_relayed_job_is_reached_with_the_accounts_credential_and_its_own_token
     assert url == "https://egress.example.test/p/mesh/dining.example.test/v1/jobs/j1"
     assert bearer == "account-credential" and headers == {"X-Job-Token": "jt"}
     assert mesh_jobs._url({**t, "via": mesh_relay.DIRECT})[1:] == ("jt", {})
+
+
+def test_the_agents_own_final_flag_decides_when_it_states_it():
+    assert mesh_jobs._is_final({"status": "ANY", "final": True})
+    assert not mesh_jobs._is_final({"status": "NEEDS_INPUT", "final": False, "result": {"answerBy": "x"}})
+    assert mesh_jobs._is_final({"status": "ANY", "result": {"confirmed": {}}})          # silent: read by shape

@@ -101,8 +101,8 @@ def _row_ended(uid: str) -> bool:
 def _is_final(data) -> bool:
     if not isinstance(data, dict):
         return False
-    if data.get("final") is True:                # the A2A status event's own flag
-        return True
+    if isinstance(data.get("final"), bool):      # the A2A flag, when the agent states it, is the answer
+        return data["final"]
     return isinstance(data.get("result"), dict) and bool(data["result"]) and not dialog.questions_in(data)
 
 
