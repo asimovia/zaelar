@@ -155,6 +155,13 @@ the backend and localStorage-cached. `initI18n()` reconciles the UI language wit
 boot. All UI keys live in `i18n/genesis/en/ui.json` (+ es.json); the parity test
 `tests/browser/unit/i18n/test_bundles.py` guards en/es key/placeholder alignment.
 
+**Surface wording (`<key>@app`).** Inside the native companion (`<html class="in-app">`, set at document start by
+`mobile-app/www/in-app.js`) `t(key)` reads `<key>@app` when the bundle has it — active language first, then the
+English sibling — and the plain key otherwise. A browser never reads a sibling. The sibling is one more string of
+the manifest: it is translated into a generated language like any other key. Node 4.11
+(`tests/browser/unit/i18n/test_the_native_app_reads_its_own_wording.py`) holds the runtime contract and the data:
+every phone-shell string (`mobile.*`) that names the screens as apps carries a sibling that does not.
+
 ## Multilingual MATCHING vocab (aliases / router / wake-words) — the strategy
 
 Voice-match vocabulary is a **cross-cutting concern with a clear rule**:

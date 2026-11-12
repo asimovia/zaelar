@@ -3517,6 +3517,9 @@ DOMAINS: list[dict] = [
                                   # The boot screen speaks the instance's language, never the browser's.
                                   "tests/browser/unit/i18n/test_the_boot_speaks_the_instance_language.py",
                                   "tests/browser/unit/i18n/test_dates_and_sorting_follow_the_instance_language.py",
+                                  # Inside the native companion a key reads its `<key>@app` sibling (data in
+                                  # the bundle); a browser never does.
+                                  "tests/browser/unit/i18n/test_the_native_app_reads_its_own_wording.py",
                                   "tests/infrastructure/unit/core/test_every_language_is_one_folder_of_packs.py",
                                   "tests/infrastructure/unit/test_every_word_lives_in_a_language_pack.py",
                                   "tests/infrastructure/unit/core/test_the_status_and_settings_speak_the_instance_language.py",
