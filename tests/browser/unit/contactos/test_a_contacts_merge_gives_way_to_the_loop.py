@@ -23,7 +23,7 @@ def meter(monkeypatch):
     monkeypatch.setattr(envelope, "policy", lambda: {**envelope._DEFAULTS, "loop_lag_s": 1.0})
     monkeypatch.setattr(loop_lag, "_state", {"loops": set(), "last": 0.0, "worst": 0.0, "n": 0, "total_s": 0.0,
                                              "stalls": deque(maxlen=64), "last_stall": None})
-    monkeypatch.setattr(loop_lag, "_say", lambda s: None)
+    monkeypatch.setattr(loop_lag, "_say", lambda s, who="host": None)
     monkeypatch.setattr(loop_lag, "_shed", lambda s: None)
     slept: list = []
     monkeypatch.setattr(loop_lag.time, "sleep", slept.append)

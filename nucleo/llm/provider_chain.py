@@ -519,15 +519,6 @@ def note_slow(verdict: dict, *, role: str = ROLE_VOICE, tier: dict | None = None
     return nxt if (nxt and nxt["name"] != name) else None
 
 
-_HOST_STALL_WINDOW_S = 60.0   # E0: a body-loop stall this recent explains a stalled turn (a turn's quiet budget ×6)
-
-
-def _host_stalled_s() -> float:
-    """Seconds the body's own loop was stopped within `_HOST_STALL_WINDOW_S` (`nucleo/pulse/loop_lag`: in-memory, total)."""
-    from nucleo.pulse import loop_lag
-    return loop_lag.stalled_recently(_HOST_STALL_WINDOW_S)
-
-
 def note_stall(*, role: str = ROLE_VOICE, tier: dict | None = None) -> dict | None:
     """A turn STALLED (it was cut off because the provider was silent). Return the relay if it is time, or None.
 
@@ -549,12 +540,8 @@ def note_stall(*, role: str = ROLE_VOICE, tier: dict | None = None) -> dict | No
     if not t:
         return None
     name = t["name"]
-    if (host := _host_stalled_s()) > 0:
-        # E0: the BODY's loop was stopped within the window — the silence was the host's, never «name»'s. Measured
-        # 2026-11-12: a stall of the loop relayed a healthy titular to the stand-in. No streak, no relay.
-        logger.info(f"provider_chain({role}): the body's loop was stopped {host:.1f} s — the stall is the host's, "
-                    f"not «{name}»'s: no streak, no relay")
-        return None
+    # E0/E3: the seconds the body's loop was stopped are already out of the stall — the turn's deadline counts only
+    # the silence measured while the loop ran (`pipeline_stream`) — so a stall that reaches here is the provider's.
     _slow_streak[name] = _slow_streak.get(name, 0) + 1
     streak = _slow_streak[name]
     if streak < _SLOW_STREAK:

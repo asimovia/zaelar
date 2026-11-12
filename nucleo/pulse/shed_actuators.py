@@ -10,10 +10,13 @@ from __future__ import annotations
 import asyncio
 import gc
 import sys
+import time
 
 from loguru import logger
 
-_L: dict = {"ladder": None}
+from nucleo.pulse import loop_lag
+
+_L: dict = {"ladder": None, "beat_at": None, "beat_lag": None}   # the previous beat: when, and its stalls
 
 
 def ladder():
@@ -33,16 +36,21 @@ def _rss_mb(pid: int | None = None) -> float:
         return 0.0
 
 
-LAG_WINDOW_S = 60.0     # a body-loop stall within the last beat is pressure; a beat without one lets the ladder recover
+def _loop_beat() -> tuple[float, float, float]:
+    """`(persisting, host, ours)`: the loop's stalls since the last beat, each counted once; `persisting` is the lesser
+    of this beat's and the last one's — a lone hiccup (E3) is the envelope's quiet hold, never the ladder's."""
+    now, since, prev = time.monotonic(), _L["beat_at"], _L["beat_lag"]
+    host, ours = loop_lag.stalled_since(mono=since, who="host"), loop_lag.stalled_since(mono=since, who="engine")
+    _L["beat_at"], _L["beat_lag"] = now, host + ours
+    return (min(prev, host + ours) if prev is not None else 0.0), host, ours
 
 
 def reading() -> dict:
-    """The host now: free memory, the floor, whose memory it is (`cause`), and the body loop's recent stalls."""
+    """The host now: free memory, the floor, whose memory it is (`cause`), and the body loop's persisting stalls."""
     from nucleo.pulse import budgets, shed_ladder
     from nucleo.workers import envelope
     total, avail = envelope.measured()
     pol = envelope.policy()
-    floor_mb = envelope.floor(total, pol) / 2 ** 20
     engine = _rss_mb()
     budget = budgets.budget("body", pol)["mb"]
     try:
@@ -53,12 +61,10 @@ def reading() -> dict:
             budget += budgets.budget("voice", pol)["mb"]
     except Exception as _swallowed:  # noqa: BLE001
         logger.debug(f"{__name__}: {_swallowed!r}")   # said, never silent (the ratchet)
-        pass
-    # E0: the body's own loop stalls are pressure too — within our budgets they are the HOST's (`cause=machine`)
-    from nucleo.pulse import loop_lag
-    return {"free_mb": avail / 2 ** 20, "floor_mb": floor_mb, "engine_mb": round(engine, 1),
-            "budget_mb": budget, "cause": shed_ladder.cause(engine, budget),
-            "loop_lag_s": loop_lag.stalled_recently(LAG_WINDOW_S), "lag_bound_s": loop_lag.bound_s()}
+    lag, host, ours = _loop_beat()          # E0: the body's own loop stalls, named by whose they were (E3)
+    return {"free_mb": avail / 2 ** 20, "floor_mb": envelope.floor(total, pol) / 2 ** 20,
+            "engine_mb": round(engine, 1), "budget_mb": budget, "cause": shed_ladder.cause(engine, budget, loop_ours_s=ours, loop_host_s=host),
+            "loop_lag_s": lag, "lag_bound_s": loop_lag.bound_s()}
 
 
 def _workers():
@@ -129,8 +135,7 @@ def step(emit=None) -> dict | None:
     except Exception as e:  # noqa: BLE001
         logger.debug(f"shed ladder: no reading ({e!r})")
         return None
-    act = ladder().step(r)
-    if act is None:
+    if (act := ladder().step(r)) is None:
         return None
     try:
         did = _engage(act["engage"]) if "engage" in act else _release(act["release"])
