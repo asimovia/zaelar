@@ -34,6 +34,9 @@ def read(handle, key: str, fallback, *, min_confidence: float | None = None):
     try:
         from nucleo.turn import brief_doors
         brief_doors.fire(handle, brief_doors.door_of(key), by_read=True)        # CRIT-K2b R1
+    except Exception as e:  # noqa: BLE001 — a door that cannot fire never blinds the reading of what is there
+        logger.debug(f"verdicts: {key}'s door not fired — {e!r}")
+    try:
         from nucleo import jev as _jev
         return _jev.read(handle, key, fallback, min_confidence=LICENCE if min_confidence is None else min_confidence)
     except Exception:  # noqa: BLE001

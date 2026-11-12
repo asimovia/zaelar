@@ -42,10 +42,9 @@ async def run(uid: str) -> dict:
     from nucleo import circuit
     from nucleo.circuit import ledger
     from nucleo.workers import exit_gate
-    await _his_channel_asked(art.get("reading"))
     rec = _rec(uid, art)
-    try:
-        ex = exit_gate.leave(rec, "widget_data", {"widget_id": wid, "action": action, "payload": payload})
+    try:   # the doors its exit reads (the channel he named, the errand's class) are awaited off the loop (`cross`)
+        ex = await exit_gate.cross(rec, "widget_data", {"widget_id": wid, "action": action, "payload": payload})
     except Exception as e:  # noqa: BLE001 — a door that could not be read sends nothing, and says so
         logger.warning(f"send_task: the exit door failed for {uid} — {e!r}")
         circuit.settle(row=uid, verdict="cannot", outcome=f"the exit door could not be read ({type(e).__name__})")
@@ -66,15 +65,3 @@ async def run(uid: str) -> dict:
     from nucleo.flash import data_ops
     res = await data_ops.dispatch_and_report(wid, action, inner, row=uid, text=_words_of(uid))
     return res if isinstance(res, dict) else {"ok": True, "result": res}
-
-
-async def _his_channel_asked(reading) -> None:
-    """V2-887 step 8: the channel he named is asked HERE, where the act leaves (`brief_doors.DOORS["send"]`), into the
-    task's carried reading — awaited off the loop, bounded; unanswered, the exit reads «none named»."""
-    try:
-        from nucleo.turn import brief as _tb, brief_doors
-        turn = _tb.revived(reading)
-        if turn is not None and await brief_doors.landed(turn, "send"):
-            brief_doors.keep(turn, reading)
-    except Exception as e:  # noqa: BLE001 — unasked: the exit door reads the reading as it was
-        note(e)

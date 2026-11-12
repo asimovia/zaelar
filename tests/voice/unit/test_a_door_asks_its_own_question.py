@@ -129,17 +129,17 @@ def test_the_rename_door_is_the_directive_call(wire, monkeypatch):
 
 def test_the_exit_asks_his_channel_into_the_carried_reading(wire):
     from nucleo.acts import message_channel as mc
-    from nucleo.request import send_task_run
     h = _admitted()
     reading = tb.carried(h)
     assert mc.KEY not in reading["result"] and reading["judged"]
     plats = list(mc.question()["criteria"])
     wire.answers[mc.KEY] = (plats[0], 0.95)
-    asyncio.run(send_task_run._his_channel_asked(reading))
+    turn = tb.revived(reading)                # the exit's revived handle (`exit_gate.cross`): its landing is kept
+    assert asyncio.run(brief_doors.landed(turn, "send"))
     assert reading["result"][mc.KEY]["choice"] == plats[0], "kept for the task's next exit"
     n = len(wire.calls)
-    turn = tb.revived(reading)
-    assert brief_doors.landed_sync(turn, "send") is False and len(wire.calls) == n, "answered once: never re-asked"
+    assert asyncio.run(brief_doors.landed(tb.revived(reading), "send")) is False and len(wire.calls) == n, \
+        "answered once: never re-asked"
 
 
 def test_no_door_waits_on_the_voice_loop(wire):
@@ -148,9 +148,6 @@ def test_no_door_waits_on_the_voice_loop(wire):
     wire.slow[acts_asked.KEY] = 0.5
 
     async def _turn():
-        t0 = time.monotonic()
-        assert brief_doors.landed_sync(h, "call") is False     # on the loop a sync door only fires
-        assert time.monotonic() - t0 < 0.2
         ticks = 0
 
         async def _ticker():

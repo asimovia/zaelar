@@ -287,4 +287,5 @@ def revived(reading) -> dict | None:
     ev = threading.Event()
     ev.set()
     return {"event": ev, "result": dict(reading["result"]), "open_ids": list(reading.get("open_ids") or []),
-            "turn_id": reading.get("turn_id"), "carried": True, "judged": str(reading.get("judged") or "")}
+            "turn_id": reading.get("turn_id"), "carried": True, "judged": str(reading.get("judged") or ""),
+            "_reading": reading}   # a door's landing is kept into it (`brief_doors._ask`)
