@@ -1,6 +1,6 @@
 ---
 title: Glossary
-updated: 2026-11-06
+updated: 2026-11-12
 status: stable
 ---
 
@@ -10,6 +10,10 @@ status: stable
 - **FlashBrain** (`nucleo/flash/` + `nucleo/turn/`): the conversation, the reflexes, the router, the mouth and the screen; one turn pipeline for voice and text, one non-reasoning model call chosen per invocation.
 - **Router** (`nucleo/turn/flow_of.route`): the one door every request — and every event — goes through before anything is opened.
 - **Event type** (`nucleo/events/vocabulary.py`): `<family>.<act>`, declared once with its direction (in · out · task); an instance adds its channel (`@<channel>`) and its subject. The consent class of a leaving act, a rule's subscription topic, a mandate's grant and a manifest's effect are readings of it.
+- **Request**: what the operator asks in one turn. It may need zero, one or several acts; when it is work it becomes a task. Its kind (`request_type`: order · question · answer · chat) is a verdict of the turn.
+- **Order**: a request whose kind is `order` — he asks the agent to DO something (as opposed to asking, answering or chatting).
+- **Act** (`<app>:<action>` + payload, e.g. `musica:next`, `mensajeria:send_to`, `agenda:create`): ONE declared action of an app run through its door — the unit that has an effect. Not the request (which may need several acts) and not the task (a worker's work, with its row). A **leaving act** has an effect outside the machine (a send, a booking) and cannot be undone; the model calls acts as tools, and the turn's verdicts may launch, complete, hold or veto them.
+- **Verdict** (`nucleo/turn/verdicts.py`, the turn's brief): a classifier's reading of the turn with a confidence. Three floors: LICENCE (0.5, may complete what the model called), ACT (`consent.intent_act_at`, 0.6, may launch an act the model did not call), VETO (0.85, may refuse what the model called).
 - **Task**: a request that is work. One row, one Brain Worker, one writer of its ending (`circuit.settle`).
 - **Task row** (`tasks`, `nucleo/circuit/ledger.py`): the task's state — `state`, `waiting_for`, `waiting_since`, `deadline`, `ask_id`/`ask`, `session_id`, `cwd`, `playbook`, trace, artefacts. The row is the truth; the worker session is a cache.
 - **Session id**: the harness's resumable id of a worker session, kept on the row with its cwd; an answer or an event resumes that session by id, re-briefed from the row.
