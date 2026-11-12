@@ -20,20 +20,21 @@ off his words:
     purpose. The model's valid call is never overruled (2.73): an order that only READS is the turn's to serve its
     way, and an act that stays on the card yields to the model's own call that RAN on that card — what is left is a
     consequence the turn did not produce;
-  · then the order opens ITS row. An act that LEAVES becomes a send task (`send_task_words.from_verdict`: the
-    person his word names, the text the model quoted of his words — it runs, or asks the ONE slot it lacks on that
-    row); when his words resolve no person of his, or the act declares no slots, a Brain Worker takes it on its row
-    with the `message` playbook (`ask_outside_door.to_message_task`). An act of the CARD runs by the same completion
-    the empty turn uses (`direct_action.complete`, a payload his words can fill honestly), else ONE `ASK_FACT`
-    question through the one asker on the order's row, naming the facts the act still needs — never a worker for an
-    app act.
+  · then the order opens ITS row — the turn's while that is open, a new one when the model's other act already
+    ended it (an ended row is never re-opened). An act that LEAVES becomes a send task
+    (`send_task_words.from_verdict`: the person his word names, the text the model quoted of his words — it runs, or
+    asks the ONE slot it lacks on that row); when his words resolve no person of his, or the act declares no slots,
+    a Brain Worker takes it on its row with the `message` playbook (`ask_outside_door.to_message_task`). An act of
+    the CARD runs by the same completion the empty turn uses (`direct_action.complete`, a payload his words can fill
+    honestly), else ONE `ASK_FACT` question through the one asker on the order's row, naming the facts the act
+    still needs — never a worker for an app act.
 
 What stays the model's: a question (`ask_outside_door.held` owns it), an order the brief doubts, an act the turn made
 under another name with the same effect.
 """
 from __future__ import annotations
 
-from nucleo.request import base, event as _emit, note
+from nucleo.request import base, event as _emit, model, note
 
 #: The retained kind on the row's `ask` artefact: his answer fills a payload key of THIS act (`inline_ask.rerun`).
 KIND = "act"
@@ -119,6 +120,7 @@ def open_the_order(brief, *, said: str, reply: str, ops=(), model_calls=(), esca
         if not wid or served(wid, act, ops, model_calls):
             return {}
         from widgets import effects
+        model.past_an_ended_row()                          # the model's other act ended the turn's row: ITS row is new
         if effects.leaves(base(wid), act):
             got = _leaving(brief, wid, act, text, reply, emit)
         else:
@@ -181,7 +183,6 @@ def _ask_the_facts(wid: str, act: str, said: str) -> dict:
         return {}
     from nucleo import consent
     from nucleo.circuit import asker, ledger
-    from nucleo.request import model
     from nucleo.runtime_ids import next_seq
     from observability import identity
     row = model.opened(wid, act, text=said)
