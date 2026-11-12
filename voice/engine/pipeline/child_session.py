@@ -66,6 +66,7 @@ async def entrypoint(ctx: JobContext) -> None:
 
     link = body_link.get()
     _ag._before_connect()
+    _ag._warm_tts(ctx)                         # the TTS handshake overlaps the room connect, not the greeting
     await ctx.connect()
     session_id = time.strftime("%Y%m%d-%H%M%S", time.localtime())
     boot = BootChannel(ctx.room, session_id)

@@ -44,13 +44,10 @@ def prewarm(proc: JobProcess) -> None:
         logger.warning("STT prewarm skipped: %s", e)
     try:
         proc.userdata["tts"] = build_tts()  # warms the Metal Kokoro model in the idle executor
-        # Remote TTS plugins (Cartesia) keep a websocket ConnectionPool that is only opened on the FIRST
-        # synthesis — so the session's first utterance (the kickoff greeting) paid a fresh TLS+WS handshake
-        # (2026-09-01 latency audit). Plugins that expose prewarm() get their pool opened here, in the idle
-        # executor; local TTS (Kokoro) has no such method and is already warmed by build_tts() itself.
-        _pw = getattr(proc.userdata["tts"], "prewarm", None)
-        if callable(_pw):
-            _pw()
+        # Remote TTS plugins keep a connection pool that is only opened on the FIRST synthesis, so the kickoff
+        # greeting paid a fresh TLS+WS handshake (2026-09-01 latency audit). Their `prewarm()` schedules on the
+        # RUNNING loop and none runs here: calling it built a coroutine that was never awaited and opened nothing.
+        # The entrypoint opens it (`start_prewarm`), on the session's loop, before the room connects.
     except Exception as e:  # noqa: BLE001
         logger.warning("TTS prewarm skipped: %s", e)
 
