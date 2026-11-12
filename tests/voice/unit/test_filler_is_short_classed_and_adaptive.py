@@ -159,3 +159,38 @@ def test_the_promise_to_the_model_never_rides_a_turn_that_was_not_armed():
         messages = [{"role": "user", "content": text}]
         assert fa.arm(_Brain(), text, messages=messages) == ""
         assert "[SISTEMA]" not in messages[-1]["content"], refuse
+
+
+# ── 5. THE CHANNEL. A typed line has no silence to cover; a social turn has no work behind it (A7) ────────
+
+def test_a_typed_turn_arms_no_cover_at_all(monkeypatch):
+    """Measured 2026-11-12 (his first dialogue, typed): «¿es que no te lo acabo de decir?» got a «💬 Es que…»
+    bubble of its own, 1.1 s before a reply that took 1.5 s — a cover for dead air that the wall never has."""
+    monkeypatch.setattr("nucleo.style_policy.filler_allowed", lambda k: True)
+    assert fa.arm(_Brain(), "¿me buscas un hotel en Soria?", typed=True) == ""
+    assert fa._consume_arm() is None, "a typed turn left a cover armed"
+    assert fa.arm(_Brain(), "¿me buscas un hotel en Soria?") != "", "the same words spoken keep their cover"
+    import asyncio
+    fa._reset_for_tests()
+    assert asyncio.run(fa.decide_and_arm(_Brain(), "¿me buscas un hotel en Soria?", typed=True)) == ""
+
+
+def test_smart_covers_no_social_turn(monkeypatch, tmp_path):
+    """The social pool's openers («Es que…», «Te cuento…») read as the start of an excuse after a complaint, and
+    a complaint, a comment or a greeting has nothing to look up. The pool is untouched: the rule is the class."""
+    monkeypatch.setenv("ZAELAR_WORKSPACE", str(tmp_path))
+    from nucleo import style_policy as sp
+    sp._reset_for_tests()
+    try:
+        assert sp.filler_mode() == "smart"
+        assert sp.filler_allowed("social") is False
+        assert sp.filler_allowed("neutral") is True and sp.filler_allowed("ack") is True
+        import threading
+        ev = threading.Event()
+        ev.set()
+        complaint = {"event": ev, "result": {"request_type": {"choice": "complaint", "confidence": 0.84, "probs": {}}}}
+        assert fa.arm(_Brain(), "¿es que no te lo acabo de decir?", brief=complaint) == "", "his turn, verbatim"
+        assert fa.arm(_Brain(), "Hello? I'm talking to you.") == "", "social by the regex class, same silence"
+        assert fa.arm(_Brain(), "¿me buscas un hotel en Soria?") != "", "a question that takes work keeps its cover"
+    finally:
+        sp._reset_for_tests()
