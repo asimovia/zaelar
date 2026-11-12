@@ -1,7 +1,7 @@
 """A call to a PLAYER is served by its catalogue, never swallowed by an errand (V2-860 T1.1).
 
 Measured on a phone (2026-11-07): «busca cuentos de Elena…, Sueña cuentos se llama el podcast» → the model called
-`play_music`; the brief's `escalate_or_inline` said escalate at 0.62 (≥ the licence), so `gate_calls` dropped the call
+`play_music`; the brief's `escalate_or_inline` said escalate at 0.62 (≥ the licence), so `Turn.gate` dropped the call
 and routed the request to a generic errand. The worker filled a results sheet by driving a headless browser at
 open.spotify.com for seven minutes and found nothing, while the connected music catalogue answers in 350 ms.
 
@@ -36,8 +36,7 @@ def _brief(conf=0.62):
 
 def _gate(brief):
     ran, events, req = [], [], {"v": None, "more": [], "surface": {}}
-    call = R.gate_calls(lambda n, a: ran.append(n) or "ran", brief=brief, escalate_req=req, operator_text=ORDER,
-                        emit=lambda *a, **k: events.append(a), t0=time.monotonic(), wait=0.0)
+    call = R.Turn(brief=brief, escalate_req=req, operator_text=ORDER, emit=lambda *a, **k: events.append(a), t0=time.monotonic(), wait=0.0).gate(lambda n, a: ran.append(n) or "ran")
     return call, ran, req
 
 
@@ -99,10 +98,8 @@ def test_the_phone_turn_replayed_records_the_play_and_opens_no_errand():
         from nucleo.turn import verdicts
         assert R.sure_escalate(brief, verdicts.LICENCE), "the replayed verdict is sure at the licence, as it was then"
         music_req, req = {"v": None}, {"v": None, "more": [], "surface": {}}
-        call = R.gate_calls(lambda n, a: _t_play_music(args=a, music_req=music_req, _brief=brief, esc=req,
-                                                        text=fx["operator_text"]),
-                            brief=brief, escalate_req=req, operator_text=fx["operator_text"],
-                            emit=lambda *a, **k: None, t0=time.monotonic(), wait=0.0)
+        call = R.Turn(brief=brief, escalate_req=req, operator_text=fx["operator_text"], emit=lambda *a, **k: None, t0=time.monotonic(), wait=0.0).gate(lambda n, a: _t_play_music(args=a, music_req=music_req, _brief=brief, esc=req,
+                                                        text=fx["operator_text"]))
         call(fx["call"]["name"], fx["call"]["args"])
         assert music_req["v"] == {"query": "Sueña cuentos", "action": "play"}, "the act's road records it"
         assert not req.get("routed") and req["v"] is None, "no errand"

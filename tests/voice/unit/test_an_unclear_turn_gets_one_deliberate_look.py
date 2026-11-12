@@ -110,7 +110,10 @@ def test_a_clear_verdict_holds_nothing():
     assert "".join(sent) == "No te he pillado, ¿me lo repites?" and not h.unread
 
 
-def test_a_brief_in_flight_at_the_first_word_waits_at_most_the_filler_deadline(monkeypatch):
+def test_a_brief_in_flight_holds_the_first_words_until_it_lands_or_the_stream_ends(monkeypatch):
+    """The words wait for the verdict, never for a clock (V2-893 L2, CRIT-K2b corollary — replaces V2-833 F8's «past
+    the lead-in filler's deadline nothing is held»): a call that leaves may still come, and the words follow it. Past
+    the deadline, or on a channel with none, they are said once the brief lands or the stream ends."""
     late = _handle(ready=False)
     sent = []
     h = FP.Hold(late, sent.append, wait_s=1.1)
@@ -121,14 +124,15 @@ def test_a_brief_in_flight_at_the_first_word_waits_at_most_the_filler_deadline(m
     h.say("pillado.")
     asyncio.run(h.release([], (), lambda *a, **k: None))
     assert sent == [] and h.unread == U.GARBLED
-    gone = _handle(ready=False)
-    h2 = FP.Hold(gone, sent.append, wait_s=1.1)
-    h2.t0 -= 5.0                                  # past the lead-in filler's deadline: nothing is held
+    h2 = FP.Hold(_handle(ready=False), sent.append, wait_s=1.1)
+    h2.t0 -= 5.0                                  # past the lead-in filler's deadline: still held while in flight
     h2.say("Hola")
-    assert sent == ["Hola"] and h2.unclear == ""
-    h3 = FP.Hold(_handle(ready=False), sent.append)   # a channel that hands no deadline in: nothing waits
+    h3 = FP.Hold(_handle(ready=False), sent.append)   # a channel that hands no deadline in: held the same
     h3.say("Hey")
-    assert sent == ["Hola", "Hey"] and h3.unclear == ""
+    assert sent == [], "words went out on a verdict still on its way"
+    asyncio.run(h2.release([], (), lambda *a, **k: None))
+    asyncio.run(h3.release([], (), lambda *a, **k: None))
+    assert sent == ["Hola", "Hey"] and h2.unclear == "" and h3.unclear == "", "the stream's end did not release them"
 
 
 def test_a_reply_that_ends_before_the_brief_lands_waits_for_it_up_to_the_deadline():

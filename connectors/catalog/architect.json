@@ -11,5 +11,13 @@
     "codigo",
     "proyectos",
     "agentes de codigo"
-  ]
+  ],
+  "tags": {
+    "architect.ask": [
+      "external.send"
+    ],
+    "architect.new": [
+      "external.send"
+    ]
+  }
 }

@@ -1,7 +1,7 @@
 """A declared act of one of OUR cards that does not leave the machine runs under a sure «escalate» (V2-887).
 
 Measured on the kindergarten bench (2026-11-11, 3 of 3): «Tengo conectado Google, impórtame todos los contactos» with
-Contacts open and Google linked — the model called `contactos:sync_contacts`, the brief said `escalate`, `gate_calls`
+Contacts open and Google linked — the model called `contactos:sync_contacts`, the brief said `escalate`, `Turn.gate`
 held the call and a Brain Worker was sent to do what one call does. The class is the player's (V2-860 T1.1): the
 routing gate protects SENDS; a card act that stays home is its card's to run. A leaving act is still routed. Disarm:
 `stays_home` answering False → the import is held and routed again (red).
@@ -25,8 +25,7 @@ def _gate(lang):
     brief = {"event": ev, "turn_id": "t",
              "result": {"_call_id": "t", tb.ESCALATE_KEY: {"choice": "escalate", "confidence": 0.9, "probs": {}}}}
     ran, req = [], {"v": None, "more": [], "surface": {}}
-    call = R.gate_calls(lambda n, a: ran.append((n, a.get("action"))) or "ran", brief=brief, escalate_req=req,
-                        operator_text=ORDER[lang], emit=lambda *a, **k: None, t0=time.monotonic(), wait=0.0)
+    call = R.Turn(brief=brief, escalate_req=req, operator_text=ORDER[lang], emit=lambda *a, **k: None, t0=time.monotonic(), wait=0.0).gate(lambda n, a: ran.append((n, a.get("action"))) or "ran")
     return call, ran, req
 
 

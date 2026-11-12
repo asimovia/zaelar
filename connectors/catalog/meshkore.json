@@ -12,5 +12,18 @@
     "cluster",
     "equipo",
     "red de agentes"
-  ]
+  ],
+  "tags": {
+    "cluster.connect": [
+      "external.send"
+    ],
+    "cluster.send": [
+      "external.send"
+    ],
+    "cluster.pact": [
+      "external.send"
+    ],
+    "cluster.done": [],
+    "cluster.disconnect": []
+  }
 }

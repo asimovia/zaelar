@@ -416,11 +416,19 @@ below is the first kind, or it names the mechanism that replaced the second.
   what enters in its place leaves the machine or deletes. (5) HOLDING a call that LEAVES reads the LICENCE (holding
   sends nothing; the worst case is a question — battery C9); holding a reversible call reads VETO. (6) Binding an answer
   or choosing a card or row goes by IDENTITY — the id of the row that asked, the card from the same key as the act —
-  never by a bar; two candidates → ASK_WHICH. Corollary: the words follow the act — one decision object releases the
-  call, its words and its tags, never a second reading at another bar. Declared exceptions, measured: annulling an
+  never by a bar; two candidates → ASK_WHICH. Corollary: the words follow the act — one decision object
+  (`route_by_verdict.Turn`) releases the call, its words and its tags on ONE state, never a second reading at another
+  bar: while the escalate verdict is in flight or in the band (licence to act floor) the words and tags wait with the
+  calls until the brief lands or the stream ends, never for a clock (this replaced the lead-in filler deadline of
+  V2-833 F8; cost, only when the brief is late at the first word: first token → stream end, median 242 ms, max 539 ms
+  on 9 measured turns; in the band the whole reply waits for its generation, ~386 chars/s measured — a 600-char reply
+  starts ~1.6 s later, unfilled); what waits runs in the order the model wrote it, as soon as the verdict lands; no
+  call is awaited inside the stream, and a call leaked as JSON text crosses the same gate; a tag leaves as DECLARED —
+  its owner in `voice/tag_protocol.json`, a card's manifest or a connector catalog's `tags` (`nucleo/flash/tag_effects`),
+  never a list in the router; words already said are never routed after them. Declared exceptions, measured: annulling an
   escalation stays at the licence (11/11 escalated orders); canvas verdicts keep node 2.930. The inventory, one row per
-  reader with the rule that applies, is V2-893's table. — since 2026-11-12 · nodes 2.1736 · `nucleo/turn/verdicts.py`,
-  `nucleo/turn/brief_doors.py`.
+  reader with the rule that applies, is V2-893's table. — since 2026-11-12 · nodes 2.1736, 2.1737, 3.175 ·
+  `nucleo/turn/verdicts.py`, `nucleo/turn/brief_doors.py`, `nucleo/turn/route_by_verdict.py`.
 - **CRIT-K3 · The verdict's action lands on the LIVE card**, never a bare phantom; with several cards of one type
   «close» goes to the one his last turn touched; «it» / «that» is the card his last turn acted on. — since
   2026-09-29 · nodes 2.167, 2.169, 2.85 · `nucleo/flash/show_target.py`, `nucleo/canvas_focus.py`.

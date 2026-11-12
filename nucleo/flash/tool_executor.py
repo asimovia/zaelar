@@ -65,5 +65,5 @@ def build(*, self, brain, emit, text, operator_text, _brief, canvas_h, aside, _s
         from nucleo.flash import web_auth as _wa_s
         return bool(_wa_s.start(site))   # V2-176: un solo cuerpo, compartido con el canal de texto
     _late["on_tool_call"] = _on_tool_call
-    return SimpleNamespace(tag_emit=_tag_emit, apply_widget_data=_apply_widget_data, on_tool_call=_on_tool_call, resolve_confirm=_resolve_confirm, start_web_auth=_start_web_auth)
+    return SimpleNamespace(late=_late, tag_emit=_tag_emit, apply_widget_data=_apply_widget_data, on_tool_call=_on_tool_call, resolve_confirm=_resolve_confirm, start_web_auth=_start_web_auth)
 from nucleo.flash import tool_executor_calls as _tx_calls  # noqa: E402 — V2-778 F1, reads this module back

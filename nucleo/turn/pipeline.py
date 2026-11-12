@@ -156,12 +156,11 @@ async def run(self, motor) -> None:
              "_brief": _brief, "canvas_h": canvas_h, "_frontend": p['_frontend'], "_router": _router}
     _tx = _tool_executor.build(**_kw(_tool_executor.build, _seams, req, _turn))
     _apply_widget_data = _tx.apply_widget_data
-    # CRIT-E27 (V2-851 F5) — a SURE «escalate» verdict routes the request to its task before the model is trusted:
-    # its calls and its inline tags do not run, its words are held unsaid (`route_by_verdict`, the Hold).
-    _routing = time.monotonic()
-    _on_tool_call = _route.gate_calls(_tx.on_tool_call, brief=_brief, escalate_req=req["escalate_req"],
-                                      operator_text=operator_text, emit=emit, t0=_routing, wait=_route.wait_s())
-    m.late["tag_emit"] = lambda *a, **k: None if _route.sure_escalate(_brief) else _tx.tag_emit(*a, **k)
+    # CRIT-E27 (V2-851 F5) — a SURE «escalate» verdict routes the request to its task before the model is trusted. ONE
+    # decision (V2-893 L2) releases its calls — a call leaked as JSON text too — its inline tags and its words (the Hold).
+    _decision = _route.Turn(_brief, req["escalate_req"], operator_text, emit, time.monotonic(), _route.wait_s())
+    _on_tool_call = _tx.late["on_tool_call"] = _decision.gate(_tx.on_tool_call)
+    m.late["tag_emit"] = _decision.tags(_tx.tag_emit)
 
     llm_metrics: dict = {}   # totalizadores de tamaño/tokens/latencia del modelo (observabilidad, FASE 0)
     # SET CONTEXTUAL DE TOOLS (V2-035): omite las situacionales que no aplican este turno (confirmar-borrado sin
@@ -201,7 +200,7 @@ async def run(self, motor) -> None:
         _on_tool_call=_on_tool_call, llm_metrics=llm_metrics, _brief=_brief, send=send, take=take,
         _buf_add=m._buf_add, speech=speech, emit=emit, brain=brain, text=text, spoken=spoken, first_ms=m.first_ms,
         t0=t0, _dialog=_dialog, data_done=req['data_done'], _turn_op_tasks=req['_turn_op_tasks'],
-        _filler_audio=_filler_audio,
+        _filler_audio=_filler_audio, _decision=_decision,
     )
     errored, _hold = s["errored"], s["_hold"]
     if getattr(_hold, "routed", False) and not _route.player_ran(_brief):
