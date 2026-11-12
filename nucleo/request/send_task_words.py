@@ -166,7 +166,8 @@ def from_verdict(wid: str, act: str, said: str, model_text: str, *, reading=None
     waits on its question, `asked_line` when the mouth already said one), `worker` (`on_missing="worker"`: a Brain
     Worker composes what lacks on this row), or ("", "") when the act declares no slots."""
     from nucleo.request import send_task
-    text_key = next((str(d.get("key") or s) for s, d in send_task_slots(wid, act).items()
+    from nucleo.workers import exit_slots
+    text_key = next((str(d.get("key") or s) for s, d in exit_slots.declared(base(wid), act).items()
                      if d.get("rule" if "rule" in d else "from") == "composed"), "")
     quoted = quoted_his(said, model_text) if text_key else ""
     payload = dict(payload_from_words(wid, act, said, quoted))     # the person, never from the dictated words
@@ -200,11 +201,6 @@ def from_verdict(wid: str, act: str, said: str, model_text: str, *, reading=None
     if not uid:
         return "", ""
     return uid, ("asked" if missing(artefact(uid))[0] else "run")
-
-
-def send_task_slots(wid: str, act: str) -> dict:
-    from nucleo.workers import exit_slots
-    return exit_slots.declared(base(wid), act)
 
 
 def by_verdict(brief, *, said: str, model_text: str, escalate_req: dict, worker_acted: dict, replacing: bool = False,

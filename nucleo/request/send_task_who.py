@@ -19,7 +19,7 @@ multi-turn bench (2026-11-12) with two Raquels on WhatsApp:
 """
 from __future__ import annotations
 
-from nucleo.request import base, note
+from nucleo.request import base, event as _emit, note
 
 RECIPIENT, TEXT, CHANNEL = "recipient", "text", "channel"
 
@@ -147,13 +147,3 @@ def which_line(word_said: str, names: list[str]) -> str:
     except Exception as e:  # noqa: BLE001
         note(e)
     return f"{word_said}? ({', '.join(names)})"
-
-
-def _emit(emit, label: str, text: str, extra: dict) -> None:
-    try:
-        if emit is None:
-            from voice.observer import emit as _e
-            emit = _e
-        emit("brain", label, text=str(text or "")[:300], role="system", extra=extra)
-    except Exception as e:  # noqa: BLE001
-        note(e)
