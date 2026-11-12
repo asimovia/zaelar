@@ -1,22 +1,15 @@
 """nucleo/pulse/loop_lag.py — the body measures its own event loop and names the host that stopped it (V2-891, E0).
 
-Measured on the operator's machine (2026-11-12): with the host out of memory the body's loop stopped in stretches of
-12–31 s. Nothing in the body read it — the lag watcher runs where the voice runs (`voice/lag.watch`, in the voice
-process since V2-891) — so the engine blamed what it could see: the model («turn STALLED», a relay to the stand-in),
-the provider's queue («hidden reasoning or provider queue»), and the voice process found a body «unreachable».
+Measured (2026-11-12): with the host out of memory the body's loop stopped 12–31 s and nothing in the body read it
+(the lag watcher runs in the voice process since V2-891), so the engine blamed the model («turn STALLED», a relay to
+the stand-in), the provider's queue, and the voice process found a body «unreachable».
 
-One probe on the server loop (`watch`), the same shape as the voice's: a sleep that wakes late by more than
-`loop_lag_s` (declared beside the envelope in `config/resources.default.json`) is a STALL. A stall is
-  · recorded with its end (monotonic and wall clock), so a turn can ask «was the loop stopped while I waited?»
-    (`stalled_since`) and a verdict can say «host stalled N s» instead of blaming a provider;
-  · one `homeostasis` event («host stalled N s») — the fact, on the timeline, where the mis-attributions used to be;
-  · a quiet shed through `voice/lag.note(…, BODY)`: the worker envelope holds new workers; no words are spoken,
-    because a stopped loop is never the audio path;
-  · pressure for the shed ladder (`shed_actuators.reading`) when the loop stalls beat after beat.
-WHOSE it was is measured (E3): the process's CPU over the probe — `engine` if we ran (our own work held the loop),
-else `host`; a stall blocked in a syscall is off-CPU too and reads as `host` (the residual this cannot split).
-`give_way` is the seam heavy work in a thread calls between batches: it yields the interpreter and, while the loop is
-stalling, paces itself so the host has room to let the loop run.
+One probe on the server loop (`watch`): a sleep that wakes later than `loop_lag_s` (beside the envelope) is a STALL —
+recorded with its span (`stalled_since`: «was the loop stopped while I waited?»), one `homeostasis` event, a quiet
+shed through `voice/lag.note(…, BODY)` (never words: not the audio path), and ladder pressure beat after beat.
+WHOSE it was is measured (E3), never assumed: the LOOP THREAD's CPU over it — `engine` when it ran; `host` only when
+the process paged (major faults grew); else `unknown` (a syscall, the GIL, descheduled).
+`give_way` is the seam heavy work in a thread calls between batches: it yields, and paces itself while the loop stalls.
 """
 from __future__ import annotations
 
@@ -26,9 +19,14 @@ from collections import deque
 
 from loguru import logger
 
+try:
+    import resource
+except ImportError:  # not POSIX: no page-fault evidence
+    resource = None
+
 _PERIOD_S = 0.5
 _DEFAULT_BOUND_S = 1.0
-_OURS_CPU_SHARE = 0.5    # the process ran at least half the stalled stretch → its own work held the loop
+_OURS_CPU_SHARE = 0.5    # the loop thread ran at least half the stalled stretch → its own work held the loop
 BODY = "body_loop"       # the shed source and the reading's name: the body's loop, never the audio path
 _state: dict = {"loops": set(), "last": 0.0, "worst": 0.0, "n": 0, "total_s": 0.0, "stalls": deque(maxlen=64),
                 "last_stall": None}       # a state record
@@ -39,18 +37,17 @@ def bound_s() -> float:
     return float(envelope.policy().get("loop_lag_s", _DEFAULT_BOUND_S))
 
 
-def note(lag_s: float, *, cpu_s: float | None = None, mono: float | None = None, wall: float | None = None) -> bool:
-    """One reading of how late the loop woke (`cpu_s`: the process's CPU over it). True when a stall (≥ `loop_lag_s`):
-    recorded with whose it was, said once as a `homeostasis` event, shed quietly; under the bound the hold ends."""
+def note(lag_s: float, *, cpu_s=None, faults: int = 0, mono=None, wall=None) -> bool:
+    """One reading of how late the loop woke (`cpu_s`: the loop thread's CPU over it, `faults`: major page faults).
+    True when a stall (≥ `loop_lag_s`): recorded with whose it was, said once, shed quietly; else the hold ends."""
     lag_s = float(lag_s)
     _state["last"] = lag_s
     _state["worst"] = max(_state["worst"], lag_s)
     stalled = lag_s >= bound_s()
     if stalled:
         mono, wall = (time.monotonic() if mono is None else mono), (time.time() if wall is None else wall)
-        _state["n"] += 1
-        _state["total_s"] += lag_s
-        who = "engine" if cpu_s is not None and cpu_s >= _OURS_CPU_SHARE * lag_s else "host"
+        _state.update(n=_state["n"] + 1, total_s=_state["total_s"] + lag_s)
+        who = "engine" if (cpu_s or 0) >= _OURS_CPU_SHARE * lag_s else ("host" if faults > 0 else "unknown")
         _state["stalls"].append((mono, wall, lag_s, who))
         _state["last_stall"] = {"at": wall, "s": round(lag_s, 2), "whose": who}
         _say(lag_s, who)
@@ -70,18 +67,21 @@ def _say(lag_s: float, who: str = "host") -> None:
     try:
         from voice.observer import emit
         emit("homeostasis", f"host stalled {lag_s:.1f} s — the engine's loop did not run" if who == "host" else
-             f"the engine's own work held its loop {lag_s:.1f} s", role="system",
+             f"the engine's loop was held {lag_s:.1f} s ({'its own work' if who == 'engine' else 'cause unknown'})",
+             role="system",
              extra={"cat": "health", "kind_diag": "loop_lag", "lag_s": round(lag_s, 2), "source": BODY,
-                    "bound_s": bound_s(), "whose": who, "cause": "machine" if who == "host" else "engine"})
+                    "bound_s": bound_s(), "whose": who, "cause": {"host": "machine"}.get(who, who)})
     except Exception as e:  # noqa: BLE001 — a stall that cannot be said is still recorded
         logger.debug(f"loop_lag: event not emitted: {e!r}")
 
 
 def stalled_since(mono: float | None = None, wall: float | None = None, who: str | None = None) -> float:
-    """Seconds the loop was stopped by the stalls that ENDED after `mono` (monotonic) or `wall` — a wait that began
-    during a stall could not begin, so a stall that ends inside the window counts whole; `who` keeps one origin."""
-    return round(sum(s for m, w, s, o in list(_state["stalls"])
-                     if (mono is None or m > mono) and (wall is None or w > wall) and (who is None or o == who)), 3)
+    """Seconds the loop was stopped INSIDE the window opening at `mono` / `wall`: a stall counts only its overlap (E3
+    audit: a block that ended just as a wait began was handed back whole). `who` keeps one origin."""
+    def inside(end: float, since, s: float) -> float:
+        return s if since is None else max(0.0, min(s, end - since))
+    return round(sum(min(inside(m, mono, s), inside(w, wall, s)) for m, w, s, o in list(_state["stalls"])
+                     if who is None or o == who), 3)
 
 
 def status() -> dict:
@@ -95,9 +95,14 @@ def status() -> dict:
 async def _probe(period_s: float = _PERIOD_S) -> None:
     loop = asyncio.get_running_loop()
     while True:
-        t0, c0 = loop.time(), time.process_time()
+        t0, c0, f0 = loop.time(), time.thread_time(), _major_faults()
         await asyncio.sleep(period_s)
-        note(max(0.0, loop.time() - t0 - period_s), cpu_s=time.process_time() - c0)
+        note(max(0.0, loop.time() - t0 - period_s), cpu_s=time.thread_time() - c0, faults=_major_faults() - f0)
+
+
+def _major_faults() -> int:
+    """Major page faults so far (pages read back from disk); 0 off POSIX — a stall is then never the host's."""
+    return resource.getrusage(resource.RUSAGE_SELF).ru_majflt if resource else 0
 
 
 def watch() -> bool:

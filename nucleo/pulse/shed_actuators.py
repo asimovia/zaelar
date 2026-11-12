@@ -36,13 +36,14 @@ def _rss_mb(pid: int | None = None) -> float:
         return 0.0
 
 
-def _loop_beat() -> tuple[float, float, float]:
-    """`(persisting, host, ours)`: the loop's stalls since the last beat, each counted once; `persisting` is the lesser
-    of this beat's and the last one's — a lone hiccup (E3) is the envelope's quiet hold, never the ladder's."""
+def _loop_beat() -> dict:
+    """The loop's stalls since the last beat by origin: pressure reads the PERSISTING one (the lesser of this beat's and
+    the last: a lone hiccup is the envelope's hold, E3), recovery THIS beat's (E3 audit)."""
     now, since, prev = time.monotonic(), _L["beat_at"], _L["beat_lag"]
-    host, ours = loop_lag.stalled_since(mono=since, who="host"), loop_lag.stalled_since(mono=since, who="engine")
-    _L["beat_at"], _L["beat_lag"] = now, host + ours
-    return (min(prev, host + ours) if prev is not None else 0.0), host, ours
+    by = {who: loop_lag.stalled_since(mono=since, who=who) for who in ("host", "engine", "unknown")}
+    beat = sum(by.values())
+    _L["beat_at"], _L["beat_lag"] = now, beat
+    return {"loop_lag_s": min(prev, beat) if prev is not None else 0.0, "loop_lag_now_s": beat, **by}
 
 
 def reading() -> dict:
@@ -61,10 +62,11 @@ def reading() -> dict:
             budget += budgets.budget("voice", pol)["mb"]
     except Exception as _swallowed:  # noqa: BLE001
         logger.debug(f"{__name__}: {_swallowed!r}")   # said, never silent (the ratchet)
-    lag, host, ours = _loop_beat()          # E0: the body's own loop stalls, named by whose they were (E3)
+    beat = _loop_beat()                     # E0: the body's own loop stalls, named by whose they were (E3)
     return {"free_mb": avail / 2 ** 20, "floor_mb": envelope.floor(total, pol) / 2 ** 20,
-            "engine_mb": round(engine, 1), "budget_mb": budget, "cause": shed_ladder.cause(engine, budget, loop_ours_s=ours, loop_host_s=host),
-            "loop_lag_s": lag, "lag_bound_s": loop_lag.bound_s()}
+            "engine_mb": round(engine, 1), "budget_mb": budget, "lag_bound_s": loop_lag.bound_s(),
+            "cause": shed_ladder.cause(engine, budget, beat["engine"], beat["host"], beat["unknown"]),
+            "loop_lag_s": beat["loop_lag_s"], "loop_lag_now_s": beat["loop_lag_now_s"]}
 
 
 def _workers():
