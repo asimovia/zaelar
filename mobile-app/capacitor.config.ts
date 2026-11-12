@@ -5,13 +5,14 @@
  * the desktop app, so a copy inside the app would be a second origin with no API behind it. Packaging the shell
  * (V2-870 §1) needs an API-base seam first; until then the WebView simply opens the engine.
  *
- * The origin is chosen at BUILD time (this file is read by `cap sync`, which writes `ios/App/App/capacitor.config.json`):
+ * The origin is chosen at BUILD time (this file is read by `cap sync`, which writes `ios/App/App/capacitor.config.json`
+ * and `android/app/src/main/assets/capacitor.config.json`):
  *
  *   ZAELAR_ORIGIN=http://localhost:43917 npx cap sync ios     # default: a self-hosted engine on this Mac
  *   ZAELAR_ORIGIN=https://engine.example.org npx cap sync ios # any other origin
  *
  * Optional: ZAELAR_ALLOW_NAVIGATION="auth.example.org,*.example.org" — extra hosts the WebView may navigate to
- * in-page (e.g. a sign-in page on another host). Any host not listed opens in Safari instead.
+ * in-page (e.g. a sign-in page on another host). Any host not listed opens in the system browser instead.
  */
 import type { CapacitorConfig } from '@capacitor/cli';
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -49,9 +50,19 @@ const config: CapacitorConfig = {
     // A hint, never a credential: lets the engine tell the app from a browser (admission stays the session).
     appendUserAgent: `ZaelarApp/${version} (ios)`,
   },
+  android: {
+    backgroundColor: '#0a0f16',
+    // Same hint as iOS: the engine can tell the app from a browser (admission stays the session).
+    appendUserAgent: `ZaelarApp/${version} (android)`,
+    // WebView debugging (chrome://inspect) follows the build type: on for debug builds, off for the store build.
+    // The insets (system bars, cutout, keyboard) are the app's own job: MainActivity.java.
+    adjustMarginsForEdgeToEdge: 'disable',
+  },
   plugins: {
-    // The WebView shrinks above the keyboard (no document scroll under the status bar); dark keys; the form
-    // accessory bar (‹ › ✓) is hidden by the plugin's default.
+    // Android: Back is MainActivity's (history, then to the background); the plugin's handler would stop at the start.
+    App: { disableBackButtonHandler: true },
+    // iOS: the WebView shrinks above the keyboard (no document scroll under the status bar); dark keys; the form
+    // accessory bar (‹ › ✓) is hidden by the plugin's default. Android ignores these: MainActivity does the same.
     Keyboard: { resize: 'native', style: 'DARK' },
   },
 };

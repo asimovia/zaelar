@@ -1,0 +1,83 @@
+apply plugin: 'com.android.application'
+
+import groovy.json.JsonSlurper
+
+// Versions, read at build time (the Android twin of scripts/version.sh, which stamps the Xcode project):
+//   versionName = package.json "version"               (what the store shows; ANDROID_VERSION_NAME overrides it while
+//                 Android trails iOS — its first release is 1.0.0, iOS 1.0's feature set)
+//   versionCode = the engine's update/BUILD × 10       (Play refuses a second upload with the same code; to ship a
+//                 second build on the same engine build, set ANDROID_VERSION_CODE, e.g. 1331 after 1330)
+def appVersion = System.getenv('ANDROID_VERSION_NAME') ?: new JsonSlurper().parse(file('../../package.json')).version
+def engineBuild = file('../../../update/BUILD').text.trim()
+def versionCodeFromEnv = System.getenv('ANDROID_VERSION_CODE')
+def appVersionCode = versionCodeFromEnv ? versionCodeFromEnv.toInteger() : (engineBuild.toBigDecimal() * 10).intValue()
+
+// Release signing with the UPLOAD key (Play App Signing keeps the app's signing key). The keystore never lives in a
+// repository: its path and passwords come from the environment (scripts/android-bundle.sh). Without them a release
+// build is left unsigned and Play refuses it — never signed with a debug key.
+def uploadKeystore = System.getenv('ANDROID_UPLOAD_KEYSTORE')
+
+android {
+    namespace "com.zaelar.app"
+    compileSdk rootProject.ext.compileSdkVersion
+    defaultConfig {
+        applicationId "com.zaelar.app"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode appVersionCode
+        versionName appVersion
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        aaptOptions {
+             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
+             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
+            ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    signingConfigs {
+        if (uploadKeystore) {
+            upload {
+                storeFile file(uploadKeystore)
+                storePassword System.getenv('ANDROID_UPLOAD_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('ANDROID_UPLOAD_KEY_ALIAS') ?: 'upload'
+                keyPassword System.getenv('ANDROID_UPLOAD_KEY_PASSWORD') ?: System.getenv('ANDROID_UPLOAD_KEYSTORE_PASSWORD')
+            }
+        }
+    }
+    buildTypes {
+        release {
+            if (uploadKeystore) signingConfig signingConfigs.upload
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+repositories {
+    flatDir{
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation "androidx.webkit:webkit:$androidxWebkitVersion"
+    implementation project(':capacitor-android')
+    testImplementation "junit:junit:$junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    implementation project(':capacitor-cordova-android-plugins')
+}
+
+apply from: 'capacitor.build.gradle'
+
+try {
+    def servicesJSON = file('google-services.json')
+    if (servicesJSON.text) {
+        apply plugin: 'com.google.gms.google-services'
+    }
+} catch(Exception e) {
+    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}

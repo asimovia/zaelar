@@ -7,7 +7,7 @@ the device's hands. Where it sits among the other surfaces: `.meshkore/docs/arch
 ```
 mobile-app/
 ├─ ios/       iPhone (first) — iPad later in the same target
-├─ android/   Android, added later in this same project with `npx cap add android` — not yet
+├─ android/   Android phones — the same app, the same shell, parity with iOS 1.0 (below)
 ├─ www/       the app's own glue (`in-app.js`) and the page shown when the engine cannot be reached — never a copy of the shell
 └─ scripts/   version, icons, simulator, device, archive, upload
 ```
@@ -196,10 +196,71 @@ personal team.
 ## Not here yet
 
 Background voice, native push, the share target, deep links and App Intents (V2-870 §2–§6), runtime server
-switching, the apple-app-site-association file on the engine host, Android.
+switching, the apple-app-site-association file on the engine host; on Android also the device bridge (`ZaelarDevice`:
+activities with the screen locked, heart-rate straps — iOS 1.1) and App Links.
+
+## Android
+
+The same app: one WebView on `<origin>/m`, the same `www/` (glue + offline page), the same `capacitor.config.ts`.
+Minimum Android 6 (API 23), target and compile API 36 (Google Play's floor for new apps since 2026-08-31; Capacitor 7's
+template says 35), Java 21. What the native side adds, file by file
+(`android/app/src/main/java/com/zaelar/app/`):
+
+| File | What it does | iOS twin |
+|---|---|---|
+| `InAppPlugin.java` | injects `www/in-app.js` at document start on the engine's origin only (`WebViewCompat.addDocumentStartJavaScript`; it passes `ZAELAR_APP_PLATFORM`, since it runs before Capacitor's bridge); a plugin because plugins load before the first page. Hosts in `ZAELAR_ALLOW_NAVIGATION` get a marker answering `Capacitor.isNativePlatform()` — on iOS they get Capacitor's whole bridge, on Android only the engine's origin does, and a site such as the sign-in page uses that answer to drop its cookie bar | the `WKUserScript` in `MainViewController.swift` |
+| `ExternalWindowChromeClient.java` | Capacitor's chrome client (microphone and location prompts) + every new window (`window.open`, `target="_blank"`, also `window.open("")` whose location is set later) goes to the system browser — the account page, never inside the app | WKWebView's default for a new window |
+| `MainActivity.java` | edge-to-edge on every version; the WebView between the system bars and above the keyboard (an Android WebView reads `env(safe-area-inset-*)` as 0, so the margins are native); light bar icons on the dark background; Back = the WebView's history, then the app to the background (the App plugin's own handler, which stops at the start, is off) | `contentInset: never`, Keyboard `resize: native`, light status bar |
+
+- **Voice**: WebRTC inside the WebView. Chromium switches the audio to communication mode (echo cancellation,
+  speaker by default, Bluetooth headsets) by itself; the manifest gives it `RECORD_AUDIO` + `MODIFY_AUDIO_SETTINGS`,
+  and the system asks for the microphone the first time the page wants it.
+- **Permissions** (`AndroidManifest.xml`): internet, microphone, audio settings, coarse + fine location (Android 12+
+  lets the person grant only approximate). Asked on first use, never at launch. Nothing for notifications, background
+  location, Bluetooth or camera until a feature uses them. `allowBackup` is off: the session cookie stays on the device.
+- **Look**: portrait; Android 12+ splash = the mark on `#0a0f16`; adaptive icon (mark on black, as on iOS) with a
+  monochrome layer for themed icons — all from `npm run icons -- --android --source brand/icon-source.png`, which also
+  writes `build/store/play-icon-512.png` for the listing.
+- **User agent** ends in `ZaelarApp/<version> (android)`; `<html class="in-app" data-platform="android">`.
+
+### Run in the emulator against a local engine
+
+Needs a JDK 21 (`JAVA_HOME`) and the Android SDK (`ANDROID_HOME`) with platform-tools,
+`platforms;android-36`, `build-tools;35.0.0`, the emulator and a system image, and an emulator running (`emulator -avd <name>`).
+
+```bash
+cd mobile-app
+npm install
+npm run android:run   # ZAELAR_ORIGIN defaults to http://localhost:43917; adb reverse maps it to this Mac
+```
+
+`localhost` inside the emulator is the emulator itself: `scripts/android-run.sh` runs `adb reverse` for a localhost
+origin so the engine on the Mac answers, and a localhost origin stays a secure context (the microphone works). A phone
+by USB works the same way. Voice does not connect in the emulator against a local engine: `adb reverse` carries TCP
+only and Chromium drops loopback ICE candidates, so the WebRTC media never flows — the screen, the sign-in, the
+keyboard, location and the external windows are measurable there; voice is measured on a phone against an https
+engine (as on iOS, where the simulator has no real microphone). `npm run android:open` opens the project in Android Studio.
+
+### The store bundle
+
+Versions are read by `android/app/build.gradle` at build time: `versionName` = `package.json` `version`,
+`versionCode` = the engine's `update/BUILD` × 10 (`ANDROID_VERSION_CODE` for a second upload on the same engine build).
+
+```bash
+ZAELAR_ORIGIN=https://… ZAELAR_ALLOW_NAVIGATION=… \
+ANDROID_UPLOAD_KEYSTORE=/path/outside/the/repo/upload.jks ANDROID_UPLOAD_KEYSTORE_PASSWORD=… \
+npm run android:bundle    # → build/aab/Zaelar-<version>-<code>.aab, signed with the upload key; --dry-run to check
+```
+
+Play App Signing keeps the key that signs what people install; the upload key only proves the bundle is ours (a lost
+one is reset in the console). The keystore and its passwords never enter a repository (`android/.gitignore` refuses
+`*.jks`/`*.keystore`). The first bundle of a new app is uploaded in the Play Console by hand; later ones can go through
+the Play Developer API with a service account.
 
 ## Generated (not tracked)
 
 `node_modules/`, `package-lock.json` (`package.json` pins exact versions instead), `www/origin.js` (written by
 `capacitor.config.ts` at sync), `ios/App/App/public/`, `ios/App/App/capacitor.config.json`, `ios/App/App/config.xml`,
-`ios/capacitor-cordova-ios-plugins/`, build outputs and `DerivedData/`.
+`ios/capacitor-cordova-ios-plugins/`, build outputs and `DerivedData/`; on Android `android/app/src/main/assets/public/`,
+the generated `capacitor.config.json`/`capacitor.plugins.json`/`config.xml`, `android/capacitor-cordova-android-plugins/`,
+`android/local.properties` and `build/` folders.

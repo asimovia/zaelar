@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The shell's background (capacitor.config.ts backgroundColor) -->
+    <color name="zaelar_background">#0A0F16</color>
+    <color name="zaelar_accent">#7AA2FF</color>
+</resources>
