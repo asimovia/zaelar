@@ -39,12 +39,14 @@ def meeting(*words: str, day: str = "", start: str = "", end: str = "") -> dict:
 #: `has` / `lacks` (agenda rows), `after` ({turn index: has}) for a state a middle turn must have reached,
 #: `sent` (words the message act must carry) and `not_sent` (words no message act may carry).
 CASES = [
-    # 1 · the answer to its own «¿cuál?» — two Raquels with WhatsApp; he names one after the first turn. The act names
-    #     the recipient (the exit door resolves the handle), so the judge reads names: none may go to the other Raquel.
-    ("cual-es", "es", "answer to «¿cuál?»", {},
+    # 1 · the answer to its own «¿cuál?» — two Raquels with WhatsApp, BOTH talked to this week (`TWO_RAQUELS`), so his
+    #     «Raquel» reaches two people alike and the send must ask (with the bench's own directory one of them leads by a
+    #     recent conversation, and CRIT-M12 sends to her without asking — a different class). He names one after the
+    #     first turn; the judge reads who each send ROW went to: none may go to the other Raquel.
+    ("cual-es", "es", "answer to «¿cuál?»", {"directory": "two_raquels"},
      ["Mándale un whatsapp a Raquel diciéndole que llego tarde", "A Raquel Jofre"],
      {"sent": ["jofre", "tarde"], "not_sent": ["salvador"]}),
-    ("cual-en", "en", "answer to «which one?»", {},
+    ("cual-en", "en", "answer to «which one?»", {"directory": "two_raquels"},
      ["Send Raquel a WhatsApp saying I'm running late", "Raquel Jofre"],
      {"sent": ["jofre", "late"], "not_sent": ["salvador"]}),
     # 2 · «no, la otra» — the first turn moved the 10:00, the second says it was the 17:00 one
@@ -159,6 +161,35 @@ def agenda_failures(meetings: list, has=(), lacks=(), today: _dt.date | None = N
     return why
 
 
+def two_raquels() -> dict:
+    """The bench's directory with Raquel Jofre talked to as recently as Raquel Salvador: «Raquel» names both alike."""
+    import time as _t
+    from tests.platform import parvulario as p
+    d = json.loads(json.dumps(p.DIRECTORY))
+    for c in d["contacts"]:
+        if c["id"] == "c3":
+            c["channels"][0].update(volume=5, last_seen=_t.time() - 2 * 86400)
+    return d
+
+
+DIRECTORIES = {"two_raquels": two_raquels}
+
+
+def send_rows() -> list[dict]:
+    """The send tasks the case's turns opened (`nucleo/request/send_task`), as the act each one HOLDS now — its card,
+    action and payload after any answer filled it — and whether it went: a row still waiting on its question, or
+    cancelled, sent nothing. This is the message's end state; the model's call is only what it proposed."""
+    from memory import tasks_store as ts
+    out = []
+    for r in ts.tasks_where(states=ts.LIVE_STATES + ts.DONE_STATES, visible_only=False, limit=200):
+        art = (ts.artifacts_of(str(r.get("id") or "")) or {}).get("send")
+        if not isinstance(art, dict) or not art.get("action"):
+            continue
+        out.append({"widget": art.get("widget"), "action": art.get("action"), "payload": art.get("payload") or {},
+                    "went": str(r.get("state") or "") in ("running", "done")})
+    return out
+
+
 def _sends(calls: list) -> list[str]:
     """The message acts the turns decided (dry), as text: a `send_to` on the messages card, or a reply to an inbox row
     (`reply_message`, whose recipient is that row's sender, so a reply never carries a name he did not get mail from)."""
@@ -170,7 +201,12 @@ def _sends(calls: list) -> list[str]:
     return out
 
 
-def message_failures(calls: list, sent=(), not_sent=()) -> list[str]:
+def message_failures(calls: list, sent=(), not_sent=(), rows=None) -> list[str]:
+    """`rows` (the send tasks, `send_rows`) when the turns opened any: what WENT is judged, a row waiting on its «which?»
+    sent nothing. Without rows, the turns' own message calls are the evidence (a worker-route send never runs dry)."""
+    if rows:
+        calls = [{"name": "widget_data", "args": {"widget_id": r["widget"], "action": r["action"], "payload": r["payload"]}}
+                 for r in rows if r.get("went")]
     sends, why = _sends(calls), []
     if sent and not any(all(_fold(w) in _fold(s) for w in sent) for s in sends):
         why.append(f"no message act carries {list(sent)} ({len(sends)} send act(s))")
@@ -180,9 +216,10 @@ def message_failures(calls: list, sent=(), not_sent=()) -> list[str]:
     return why
 
 
-def end_state_failures(end: dict, meetings: list, calls: list, today: _dt.date | None = None) -> list[str]:
+def end_state_failures(end: dict, meetings: list, calls: list, today: _dt.date | None = None,
+                       rows=None) -> list[str]:
     return (agenda_failures(meetings, end.get("has", ()), end.get("lacks", ()), today)
-            + message_failures(calls, end.get("sent", ()), end.get("not_sent", ())))
+            + message_failures(calls, end.get("sent", ()), end.get("not_sent", ()), rows))
 
 
 # ── the run ─────────────────────────────────────────────────────────────────────────────────────────────────
@@ -214,7 +251,9 @@ def _seed_case(cid: str, lang: str, seed: dict) -> dict:
     from tests.platform import parvulario as p
     return {"id": cid, "lang": lang, "phrase": "", "screen": {"open": list(seed.get("open") or [])},
             "memory": {"agenda": list(seed.get("agenda") or [])} if seed.get("agenda") else {},
-            "widgets": {"contactos": json.loads(json.dumps(p.DIRECTORY)), "mensajeria": json.loads(json.dumps(p.INBOX))},
+            "widgets": {"contactos": (DIRECTORIES[seed["directory"]]() if seed.get("directory")
+                                      else json.loads(json.dumps(p.DIRECTORY))),
+                        "mensajeria": json.loads(json.dumps(p.INBOX))},
             "connectors": ["whatsapp", "email"], "expect": "talk", "source": "parvulario"}
 
 
@@ -253,7 +292,10 @@ def run_one(spec, timeout_s: float = 90.0) -> dict:
                     why = agenda_failures(agenda.load_db().get("meetings") or [], has=[want_has])
                     row["why"] += [f"after turn {i + 1}: {w}" for w in why]
             meetings = list(agenda.load_db().get("meetings") or [])
-            row["why"] += end_state_failures(end, meetings, calls)
+            sends = send_rows()
+            row["why"] += end_state_failures(end, meetings, calls, rows=sends)
+            row["sends"] = [f"{'→' if r['went'] else '…'} {r['action']} {json.dumps(r['payload'], ensure_ascii=False)[:120]}"
+                            for r in sends]
             row["agenda"] = [f"{m.get('date')} {m.get('startTime')}-{m.get('endTime')} {m.get('title')}" for m in meetings]
         finally:
             cli_turn.reset(sid)
@@ -274,7 +316,7 @@ def run(only: str = "", repeat: int = 1, as_json: str = "") -> int:
             for t in r["turns"]:
                 print(f"     » {t['say'][:70]}\n       « {t['reply'][:110]}" + (f"  ⚠ {t['error']}" if t["error"] else ""))
             if not r["ok"]:
-                print(f"     ↳ {'; '.join(r['why'])[:400]}\n     agenda: {r.get('agenda')}")
+                print(f"     ↳ {'; '.join(r['why'])[:400]}\n     agenda: {r.get('agenda')}\n     sends: {r.get('sends')}")
     green = sum(r["ok"] for r in rows)
     print(f"\n{green}/{len(rows)} green (multi-turn)")
     if as_json:

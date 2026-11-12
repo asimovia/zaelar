@@ -228,6 +228,7 @@ def _apply_widget_data(wid: str, action_name: str, payload: dict, ref: str='', *
     if _leaving_is_a_task(wid, action_name, text, escalate_req, emit, payload=payload, brief=_brief):   # V2-852 M2
         return
     action_name, payload = _txw._row_lens.retarget(wid, action_name, _txw._said_day.payload(wid, action_name, payload, text), text)   # the day he said; the row he named, on ITS day (pass 140)
+    if __import__("nucleo.acts.correction_undo", fromlist=["x"]).undo_first(wid, action_name, payload, _brief, apply=_apply_widget_data, emit=emit) == "already": return   # noqa: E701 — «no, la otra»: the first goes back, once
     # His recipient and his channel (V2-850, V2-851 F2c) are read at the worker's exit door, where a send now runs.
     # V2-712. A held row's release (V2-800) is not read here any more: every act that delivers one leaves, and an act
     # that leaves is a task (above) — its release is read at the worker's exit door from the order recorded on routing.
@@ -495,7 +496,8 @@ def _leaving_is_a_task(wid: str, action: str, text: str, escalate_req: dict, emi
     # The hand-off keeps what he said (`nucleo/request/send_task`): the call's slots and their origin go on the
     # request's row and the task runs there, or asks for the ONE slot it lacks. A turn answering that task's question
     # with the same act fills the waiting row. Only a card whose act declares no slots keeps the worker route below.
-    from nucleo.request import send_task, send_task_answer
+    from nucleo.request import send_task, send_task_answer, send_task_who
+    wid, action, payload = send_task_who.readdressed(wid, action, payload, text, emit=emit)   # V2-847: whom he named
     if send_task_answer.take_call(wid, action, payload, text) or send_task.commission(
             wid, action, payload, text, reading=_reading_of(brief), emit=emit):
         escalate_req["send_task"] = True

@@ -181,7 +181,7 @@ def _a_samples(action: str, p: dict) -> dict:
     return {"ok": True, "taken": taken}
 
 
-ACTIONS = {"start": _a_start, "stop": _a_stop, "claim": _a_claim, "samples": _a_samples}
+ACTIONS = dict(start=_a_start, stop=_a_stop, claim=_a_claim, samples=_a_samples)   # the manifest's action names
 
 
 def apply_action(action: str, payload: dict) -> dict:

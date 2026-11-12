@@ -307,6 +307,8 @@ class LangSpec:
     #: A send task that lacks ONE slot asks for it on its row (`nucleo/request/send_task`): the words, the person.
     send_missing_text: str = ""
     send_missing_recipient: str = ""
+    #: …and a person his word reaches several of alike is ONE «which?» naming them (`send_task_who.which`).
+    send_which_recipient: str = ""
     #: refactor2710-07 — the model stopped the errand and the brief, unsure, read otherwise: asked, never refused silently.
     #: refactor2710-99 — the stop backstop stopped an errand the model did not: said alone, or after the model's words.
     stopped_now: str = ""

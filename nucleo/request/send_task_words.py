@@ -71,8 +71,13 @@ def hold(wid: str, leaves: list, said: str, question: str, *, brief=None) -> str
     it reaches when several), the words are asked when they are the slot that lacks. The `ask_id`, or "" when the
     card's acts declare no slots (the caller keeps its utterance)."""
     from nucleo.workers import exit_slots
-    act = next((a for a in leaves if any(d.get("from") == "his_words"
-                                          for d in exit_slots.declared(base(wid), a).values())), "")
+    from widgets import effects
+    acts = effects._manifest(base(wid)).get("actions") or {}
+    # the card's PRIMARY act first: `leaves` is alphabetical, and «¿a cuál Raquel?» once opened a `forward` with
+    # nothing to forward (multi-turn bench 2026-11-12) because «forward» sorts before «send_to»
+    ordered = sorted(leaves, key=lambda a: not bool((acts.get(a) or {}).get("primary")))
+    act = next((a for a in ordered if any(d.get("from") == "his_words"
+                                           for d in exit_slots.declared(base(wid), a).values())), "")
     if not act:
         return ""
     word, rows = his_word_for_people(said)

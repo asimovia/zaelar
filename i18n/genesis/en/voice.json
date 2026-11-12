@@ -148,6 +148,7 @@
  "answer_already_given": "You already answered that question; there's nothing new to pass on to the task.",
  "send_missing_text": "What should I tell {who}?",
  "send_missing_recipient": "Who should I send it to?",
+ "send_which_recipient": "Which {who}? I have {names}.",
  "answer_which_task": "Which of these tasks is your answer for: {among}?",
  "stopped_now": "Okay, I'm stopping it.",
  "stopped_also": "I've stopped that task.",

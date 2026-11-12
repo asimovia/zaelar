@@ -51,7 +51,7 @@ SYSTEM = (
     "wording for the reply.")
 
 _LOCK = threading.Lock()
-_S: dict = {"in_flight": False, "last": None, "threads": []}
+_S: dict = dict(in_flight=False, last=None, threads=[])     # a state record
 
 
 def mode() -> str:

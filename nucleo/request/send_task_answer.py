@@ -152,6 +152,16 @@ def _spec_of(uid: str) -> dict | None:
     return spec.of_task(uid)
 
 
+def _folded(wid: str, action: str, payload: dict | None) -> dict:
+    """The call's payload under the card's own keys (`contract.fold_aliases`, as `send_task.retain` keeps it)."""
+    try:
+        from widgets import contract
+        return contract.fold_aliases(base(wid), action, dict(payload or {}))
+    except Exception as e:  # noqa: BLE001
+        note(e)
+        return dict(payload or {})
+
+
 def take_call(wid: str, action: str, payload: dict | None, said: str) -> str:
     """The same act Flash calls on a turn that answers this task's question (the model heard his answer and called
     the door with it): its slots fill the waiting row, nothing new opens. The row's uid, or "" when no send task
@@ -168,6 +178,7 @@ def take_call(wid: str, action: str, payload: dict | None, said: str) -> str:
             uid = str(a["task_id"])
             keep = artefact(uid)
             said = f"{_words_of(uid)} {said}".strip()     # his words on this task: the request and this answer
+            payload = _folded(wid, action, payload)          # `name`/`platform` are the card's `contact`/`channel`
             got = sources(wid, action, dict(payload or {}), said, reading=keep.get("reading"))
             slot = str(ret.get("slot_name") or ret.get("slot") or "")
             if got.get(slot, {}).get("source", NONE) == NONE:

@@ -71,3 +71,17 @@ def test_only_the_local_cards_door_opens_inside_the_dry_turn():
         assert consequence.passes("worker.spawn") is False
         assert consequence.passes("cron.create") is False
     assert consequence.passes is real
+
+
+def test_a_send_row_waiting_on_its_which_question_sent_nothing():
+    """The judge reads the send ROWS when the turns opened any: the model's call to the wrong Raquel that the row turned
+    into «which Raquel?» went nowhere; the row his answer filled is what went."""
+    asked = {"widget": "mensajeria", "action": "send_to", "payload": {"contact": "Raquel Salvador Esteban",
+                                                                       "text": "llego tarde"}, "went": False}
+    filled = {"widget": "mensajeria", "action": "send_to", "payload": {"contact": "Raquel Jofre", "text": "llego tarde"},
+              "went": True}
+    wrong_call = {"name": "widget_data", "args": {"widget_id": "mensajeria", "action": "send_to",
+                                                  "payload": {"contact": "Raquel Salvador Esteban", "text": "llego tarde"}}}
+    assert pt.message_failures([wrong_call], ["jofre", "tarde"], ["salvador"], rows=[asked, filled]) == []
+    assert pt.message_failures([], ["jofre"], (), rows=[asked]), "a row still asking is no send"
+    assert pt.two_raquels()["contacts"][2]["channels"][0]["last_seen"] > 0

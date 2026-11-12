@@ -31,7 +31,7 @@ import time
 
 from loguru import logger
 
-from nucleo.request import base, note
+from nucleo.request import base, note, send_task_who
 
 #: The retained kind on the row's `ask` artefact: his answer fills a slot of THIS task (`inline_ask.rerun`).
 KIND = "send"
@@ -234,9 +234,13 @@ def commission(wid: str, action: str, payload: dict | None, said: str, *, readin
     one_row.superseded(uid, wid, action, emit=emit)
     art = artefact(uid)
     slot, key = missing(art)
+    cands: list = []
+    if not slot and (who := send_task_who.which(art, said)):   # his word reaches several alike: ONE «which?»
+        slot, key, cands = who
     if slot:
-        q = " ".join(str(asked_line or "").split()) or _missing_line(art, slot)
-        ask_id = _question(uid, art, slot, key, q)
+        q = " ".join(str(asked_line or "").split()) or (
+            send_task_who.which_line(send_task_who.said_word(art, slot, said), cands) if cands else _missing_line(art, slot))
+        ask_id = _question(uid, art, slot, key, q, cands)
         if not asked_line:
             _said_asked(wid, action, q)
         _emit(emit, "❓ send task: one slot has no value — asked on its row", q, {"cat": "flash", "task_id": uid,

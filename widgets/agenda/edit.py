@@ -47,7 +47,8 @@ def find(db: dict, payload: dict) -> list[dict]:
     f = db.get("focus") or {}
     if not f.get("title") or _t.time() - float(f.get("at") or 0) > FOCUS_TTL_S:
         return []
-    return _matches(db, {"title": f["title"], **({"date": payload["date"]} if payload.get("date") else {})})
+    return _matches(db, {"title": f["title"], **({"date": payload["date"]} if payload.get("date") else {}),
+                         **({"currentTime": f["startTime"]} if f.get("startTime") else {})})
 
 
 def _likeliest_first(db: dict, hits: list[dict]) -> list[dict]:
@@ -63,7 +64,8 @@ def _likeliest_first(db: dict, hits: list[dict]) -> list[dict]:
 
     def _key(m: dict):
         day = (recur.next_occurrence(m, today) if isinstance(m.get("repeat"), dict) else "") or str(m.get("date") or "")
-        on_focus = fresh and str(m.get("title") or "") == f["title"] and (not f.get("date") or f["date"] == m.get("date"))
+        on_focus = (fresh and str(m.get("title") or "") == f["title"] and (not f.get("date") or f["date"] == m.get("date"))
+                    and (not f.get("startTime") or f["startTime"] == str(m.get("startTime") or "")))
         try:
             gap = (_date.fromisoformat(day) - _date.fromisoformat(today)).days
         except ValueError:
@@ -76,7 +78,82 @@ def touch(db: dict, m: dict | None) -> None:
     """Remember which appointment the conversation is on (see `find`) — its day too, so two rows of one title are
     told apart."""
     if isinstance(m, dict) and m.get("title"):
-        db["focus"] = {"title": str(m["title"]), "date": str(m.get("date") or ""), "at": _t.time()}
+        db["focus"] = {"title": str(m["title"]), "date": str(m.get("date") or ""),
+                       "startTime": str(m.get("startTime") or ""), "at": _t.time()}
+
+
+def which(db: dict, hits: list[dict], payload: dict) -> dict | None:
+    """The refusal that ASKS, when the rows a reference finds are two appointments of one title on the SAME day at
+    different hours and nothing tells them apart: no `currentTime`, and the appointment this conversation is on is
+    not one of them. None when the first row is the one meant. Multi-turn bench 2026-11-12: «mueve la reunión con
+    Marta de mañana a las diez» over a 10:00 and a 17:00 took whichever the list held first, and «no, la otra» moved
+    the row it had just moved."""
+    if len(hits) < 2 or str(payload.get("currentTime") or "").strip():
+        return None
+    day = str(hits[0].get("date") or "")
+    same = [m for m in hits if str(m.get("date") or "") == day and not isinstance(m.get("repeat"), dict)]
+    if len({str(m.get("startTime") or "") for m in same}) < 2:
+        return None
+    f = db.get("focus") or {}
+    if (f.get("startTime") and _t.time() - float(f.get("at") or 0) <= FOCUS_TTL_S
+            and str(hits[0].get("startTime") or "") == f["startTime"] and str(hits[0].get("title") or "") == f.get("title")):
+        return None
+    opts = sorted(f"«{m.get('title')}» {day} {m.get('startTime') or ''}".strip() for m in same)
+    return {"ok": False, "error": "ambiguous", "options": opts[:8],
+            "detail": "several appointments with that title on that day — call again with `currentTime` (the hour "
+                      "the one he means starts at now)"}
+
+
+#: How long «where it was before the move» stays on the row's line in the digest: the conversation about it.
+MOVED_FROM = "movedFrom"
+
+
+def remember_where(m: dict) -> None:
+    """Keep where the row was BEFORE this move on the row itself, so «leave the other one as it was» has the old hour in
+    front of the model (the digest says it while `FOCUS_TTL_S` lasts) and a move back is one ordinary move."""
+    m[MOVED_FROM] = {"date": str(m.get("date") or ""), "startTime": str(m.get("startTime") or ""),
+                     "endTime": str(m.get("endTime") or ""), "at": _t.time()}
+
+
+def where_it_was(m: dict) -> dict:
+    """The row's place before its last move, while the conversation about it lasts; {} otherwise."""
+    w = m.get(MOVED_FROM) if isinstance(m.get(MOVED_FROM), dict) else {}
+    return w if w and _t.time() - float(w.get("at") or 0) <= FOCUS_TTL_S else {}
+
+
+def undo_of(action: str, last: dict, nxt: dict) -> tuple[str, dict] | None:
+    """The card's answer to «undo your last act, he is correcting it onto ANOTHER row» (`nucleo/acts/correction_undo`):
+    for a move, the move back of the row that move wrote, to where it was (`where_it_was`). None when the act is not a
+    move, nothing was moved in this conversation, or the correcting act is about that very row (he is moving it again,
+    not another one)."""
+    if action != "move_meeting":
+        return None
+    from .data import load_db
+    rows = [m for m in load_db().get("meetings") or [] if where_it_was(m)]
+    title = str((last or {}).get("title") or "").strip().lower()
+    rows = [m for m in rows if not title or title in str(m.get("title") or "").lower()]
+    if not rows:
+        return None
+    m = max(rows, key=lambda r: float(where_it_was(r).get("at") or 0))
+    at = str((nxt or {}).get("currentTime") or "").strip()
+    if not at:
+        return None                          # nothing says the correcting act is about ANOTHER row
+    if _resolve_time(at) == str(m.get("startTime") or ""):
+        return None
+    was = where_it_was(m)
+    return "move_meeting", {"title": str(m.get("title") or ""), "date": str(m.get("date") or ""),
+                            "currentTime": str(m.get("startTime") or ""), "newDate": was.get("date") or "",
+                            "newTime": was.get("startTime") or "", "endTime": was.get("endTime") or ""}
+
+
+def unchanged(m: dict, date: str, start: str, end: str) -> dict | None:
+    """The refusal for a move that would leave the row where it already is: nothing changed, so nothing is «done»
+    (the mouth never claims an act that changed nothing). None when the move changes the day, the start or the end."""
+    if (str(m.get("date") or ""), str(m.get("startTime") or ""), str(m.get("endTime") or "")) != (date, start, end):
+        return None
+    return {"ok": False, "error": "no_change",
+            "detail": f"«{m.get('title')}» is already on {date} at {start}-{end}: nothing moved — if he meant another "
+                      "appointment, call again with its `currentTime`"}
 
 
 def missing(db: dict, payload: dict) -> str:
