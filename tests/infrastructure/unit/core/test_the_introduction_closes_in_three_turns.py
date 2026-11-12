@@ -136,18 +136,20 @@ def test_the_offer_is_not_told_by_a_turn_that_said_nothing(world):
     assert store.get(introduction.OFFER_FLAG) is True
 
 
-def test_a_reply_that_does_not_carry_our_name_did_not_tell_the_offer(world):
-    """A7 audit (c): 1 of 9 greetings skipped the offer and the flag still landed. Our reply must carry our own name
-    slot — a structural condition on what WE said, never on his words: necessary, not sufficient."""
+def test_a_reply_without_our_name_still_tells_the_offer_and_a_rename_makes_it_moot(world, monkeypatch):
+    """A7 audit P1: requiring our own name in the reply kept the offer riding every turn after «Encantado, Pepe. Puedes
+    cambiarme el nombre y la voz» — the deterministic close never fired. The traced turn that replied tells it; and
+    once he renamed us (the name slot set) it is moot."""
     store, _state = world
     store["stt_language"] = "es"
-    CP.compose(langs.spec("es").kickoff_prompt)
-    introduction._settle_offer({"window": [{"role": "assistant", "text": "Hola, ¿cómo te llamas?"}], "trace": "T"})
-    assert store.get(introduction.OFFER_FLAG) is None, "a reply without our name told the offer"
-    CP.compose(langs.spec("es").kickoff_prompt)
-    introduction._settle_offer({"window": [{"role": "assistant", "text": "Ahora me llamo ZAELAR, cámbialo."}],
-                                "trace": "T"})
+    CP.compose("pepe")
+    introduction._settle_offer({"window": [{"role": "assistant", "text": "Encantado, Pepe. Puedes cambiarme el "
+                                                                         "nombre y la voz."}], "trace": "T"})
     assert store.get(introduction.OFFER_FLAG) is True
+    store.pop(introduction.OFFER_FLAG)
+    from voice import attention
+    monkeypatch.setitem(attention._state, "assistant_name", "Lola")
+    assert introduction.offer_told() and "masculina o femenina" not in CP.compose("hola"), "renamed, offered again"
 
 
 def test_the_offer_settles_by_the_real_trace_of_its_turn(world, monkeypatch):
@@ -160,12 +162,25 @@ def test_the_offer_settles_by_the_real_trace_of_its_turn(world, monkeypatch):
     monkeypatch.setattr("config.settings.update", lambda patch: store.update(patch))
     monkeypatch.setattr(introduction, "_known", lambda: {})
     monkeypatch.setattr("nucleo.turn.brief.of_this_turn", lambda: None)
+    import bus
+    from voice import observer
+    monkeypatch.setattr(observer, "emit", lambda *a, **k: None)
+    monkeypatch.setattr(bus, "emit_sync", lambda topic, payload: introduction._settle_offer(payload))
+
+    def close(tid):      # the turn's close as it publishes: `observer.turn_detail` → `turn.completed` on the bus
+        with trace.scope(tid):
+            observer.turn_detail(system="s", window=[{"role": "assistant", "content": "Hola."}], user="hola")
+    with trace.scope(""):
+        CP.compose(langs.spec("es").kickoff_prompt)       # a prompt warmed outside any turn
+    close("T78·other")
+    assert store.get(introduction.OFFER_FLAG) is None, "a compose outside any turn was settled by another turn's close"
     with trace.scope("T77·real"):
         CP.compose(langs.spec("es").kickoff_prompt)
-    assert introduction._offer_pending == "T77·real"
-    introduction._settle_offer({"window": [{"role": "assistant", "text": "Soy Zaelar."}], "trace": "T78·other"})
-    assert store.get(introduction.OFFER_FLAG) is None
-    introduction._settle_offer({"window": [{"role": "assistant", "text": "Soy Zaelar."}], "trace": "T77·real"})
+    close("T78·other")
+    assert store.get(introduction.OFFER_FLAG) is None, "another turn's close settled this turn's offer"
+    with trace.scope("T77·real"):
+        CP.compose(langs.spec("es").kickoff_prompt)
+    close("T77·real")
     assert store.get(introduction.OFFER_FLAG) is True
 
 
