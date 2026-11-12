@@ -37,11 +37,12 @@ def to_waiting(wid: str, said: str, question: str, *, emit=None) -> str:
     question now on that row ("" when no send of this card waits — the caller opens the row as before)."""
     try:
         from nucleo.acts.message_names import fold
-        from nucleo.request import one_row, send_task
-        from nucleo.request.send_task_words import his_word_for_people
-        word, people = his_word_for_people(said)
-        # a send to SOMEBODY ELSE is another intention: its question never lands on this row (`one_row.people`)
-        rows = [r for r in _waiting_sends(wid) if not (word and (held := one_row.people(r[0])) and word not in held)]
+        from nucleo.request import one_row, send_task, send_task_words
+        from nucleo.turn import brief as _tb, verdicts
+        word, people = send_task_words.his_word_for_people(said)
+        order = verdicts.to_act(_tb.of_this_turn(), _tb.REQUEST_KEY, "")[0] == "order"
+        # a send to SOMEBODY ELSE never lands on this row: his word names other people, or nobody of his in a sure NEW order
+        rows = [r for r in _waiting_sends(wid) if not ((held := one_row.people(r[0])) and (word not in held if word else order))]
         if not rows:
             return ""
         named = str(people[0].get("name") or "") if word and len(people) == 1 else ""

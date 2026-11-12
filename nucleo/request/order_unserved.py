@@ -18,9 +18,9 @@ off his words:
     — by `widget_data`, or through the dedicated tool that drives the card (`play_music` is the music card's door:
     its lane runs the act and no data-op records it) — a call it made is its door's: it ran, asked, or was vetoed on
     purpose. The model's valid call is never overruled (2.73): an order that only READS is the turn's to serve its
-    way, and an act that stays on the card yields to the model's own call that RAN on that card — unless that call
-    only LOOKED where the turn surely asks to act (`_beyond_looks`, the reading the call's own door makes): what is
-    left is a consequence the turn did not produce;
+    way, and an act that stays on the card yields to the model's own call that RAN on that card — when that call
+    only LOOKED where the turn surely asks to act (`_beyond_looks`) the order still owes its QUESTION, never a second act: what
+    is left is a consequence the turn did not produce;
   · then the order opens ITS row — the turn's while that is open, a new one when the model's other act already
     ended it (an ended row is never re-opened). An act that LEAVES becomes a send task
     (`send_task_words.from_verdict`: the person his word names, the text the model quoted of his words — it runs, or
@@ -92,13 +92,13 @@ def served(wid: str, act: str, ops=(), model_calls=()) -> bool:
 
 
 def _beyond_looks(brief, wid: str, act: str, model_calls) -> list:
-    """The model's calls without the LOOKS at the order's card where the turn asks to ACT there — the reading the
-    call's own door makes (`data_ops.a_view_where_the_verdict_acts`: a lens, an order that is no lens, a sure
-    `wants_words = act`). A look is no serving call of that order: its completion, or its question, is still owed.
-    Without that verdict the model's valid call stands, whatever the order (2.73, T4)."""
+    """The model's calls without the LOOKS at the order's card where the turn surely asks to ACT there (the reading the
+    call's own door makes, `data_ops.a_view_where_the_verdict_acts`, with `wants_words = act` at the ACT floor). A look
+    is no serving call — and it RAN and stands (2.73): no act of the verdict runs beside it. What the order still owes
+    is its QUESTION, the facts the act needs, on its row; an act that needs none owes nothing."""
     from nucleo.flash import data_ops
     from nucleo.turn import brief as _tb, verdicts
-    wants, card = str(verdicts.read(brief, _tb.WORDS_KEY, None)[0] or ""), base(wid)
+    wants, card = str(verdicts.to_act(brief, _tb.WORDS_KEY, "")[0] or ""), base(wid)
     return [c for c in model_calls or () if not (isinstance(c, dict) and isinstance(a := c.get("args"), dict)
             and base(a.get("widget_id")) == card
             and data_ops.a_view_where_the_verdict_acts(card, str(a.get("action") or ""), act, wants))]
@@ -114,21 +114,18 @@ def open_the_order(brief, *, said: str, reply: str, ops=(), model_calls=(), esca
         text = " ".join(str(said or "").split())
         if not text or esc.get("send_task") or esc.get("v") is not None or wa.get("v") or ends_asking(reply):
             return {}
-        try:
-            from nucleo.turn import reply as _reply
-            if _reply.asked():
-                return {}                                  # the turn ended on a question through a door
-        except Exception as e:  # noqa: BLE001
-            note(e)
+        from nucleo.turn import reply as _reply
+        if _reply.asked():
+            return {}                                      # the turn ended on a question through a door
         wid, act = identified(brief)
-        if not wid or served(wid, act, ops, _beyond_looks(brief, wid, act, model_calls)):
+        if not wid or served(wid, act, ops, rest := _beyond_looks(brief, wid, act, model_calls)):
             return {}
         from widgets import effects
         model.past_an_ended_row()                          # the model's other act ended the turn's row: ITS row is new
         if effects.leaves(base(wid), act):
             got = _leaving(brief, wid, act, text, reply, emit)
         else:
-            got = _of_the_card(brief, wid, act, text, reply, emit, present, apply_widget_data)
+            got = _of_the_card(brief, wid, act, text, reply, emit, present, apply_widget_data, len(rest) != len(model_calls or ()))
         if got:
             _emit(emit, "🚪 the order the brief identified was served with another tool → its row",
                   f"{wid}:{act} · {got['how']}", {"cat": "flash", "task_id": got.get("row", ""), "widget": wid,
@@ -151,9 +148,9 @@ def _leaving(brief, wid: str, act: str, said: str, reply: str, emit) -> dict:
     return {"row": "", "how": "worker", "worker": tid, "widget": wid, "act": act} if tid else {}
 
 
-def _of_the_card(brief, wid: str, act: str, said: str, reply: str, emit, present, apply_widget_data) -> dict:
-    """An act of the card: the completion the empty turn uses, else ONE fact question on the order's row."""
-    if present is not None and apply_widget_data is not None:
+def _of_the_card(brief, wid: str, act: str, said: str, reply: str, emit, present, apply_widget_data, looked=False) -> dict:
+    """An act of the card: the completion the empty turn uses — not beside a look that ran — else ONE fact question."""
+    if not looked and present is not None and apply_widget_data is not None:
         from nucleo.flash import direct_action
         done = direct_action.complete(brief, operator_text=said, emit=emit or (lambda *a, **k: None), present=present,
                                       apply_widget_data=apply_widget_data, widget_id=wid, require_order=False,

@@ -274,6 +274,24 @@ def test_an_irreversible_act_composed_from_his_answer_waits_for_his_yes_on_the_r
     assert (s["widget"], s["action"], s["payload"], s["row"]) == (WID, w["act"], w["payload"], uid)
 
 
+def test_an_act_the_rule_sends_to_an_errand_is_not_run_by_this_door(world, monkeypatch):
+    """The one consent rule answers FAST, CONFIRM or ESCALATE for a call. Only FAST runs here and CONFIRM asks; an
+    act it would hand to an errand is not dispatched by the answer's door — the row ends failed, never a guess.
+    Disarm: «anything but CONFIRM runs» → the act is dispatched."""
+    from nucleo.flash import frontend
+    from widgets import actions as wa
+    w = IRREVERSIBLE["es"]
+
+    async def _composed(wid, act, **kw):
+        return dict(w["payload"])
+    monkeypatch.setattr(answered_offer, "compose", _composed)
+    monkeypatch.setattr(frontend, "action_mode_now", lambda wid, act, payload=None: wa.ESCALATE)
+    uid, entry = _offer_about(w)
+    res = asyncio.run(inline_ask.rerun(uid, entry, w["answer"]))
+    assert world["sent"] == [] and res == {"ok": False, "row": uid}
+    assert ts.task_get(uid)["state"] == "failed"
+
+
 def test_his_no_to_the_consent_question_ends_the_row_and_nothing_runs(world, monkeypatch):
     w = IRREVERSIBLE["es"]
 
