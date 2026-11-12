@@ -5,9 +5,11 @@
 
 import { CSS } from "./js/style.js";
 import { Y } from "./js/state.js";
-import { ICON_PLUG, svgEl, el, _TABS, tabLabel, applyTabClass, tt } from "./js/shared.js";
+import { el, _TABS, applyTabClass, tt } from "./js/shared.js";
 import { applyCmd, buildFrame, bindReporters } from "./js/player.js";
-import { renderConn, paintAccount } from "./js/conn.js";
+import { paintAccount } from "./js/conn.js";
+import { buildNav, paintNav } from "./js/nav.js";
+import { buildMini, paintMini } from "./js/mini.js";
 import { buildHomeHead, paintHomeHead, paintHome } from "./js/home.js";
 import { renderSubs } from "./js/channel.js";
 import { buildQueueBoxes, paintQueue, paintSavedLists } from "./js/lists.js";
@@ -42,56 +44,7 @@ function buildCard(root, data, ctx, v){
   if(!hasVid && st && st.key.slice(2) && !loading && Y.tab === "player") Y.tab = "inicio";
   applyTabClass(root);
 
-  const nav = el("div", "hb-yt-nav");
-  const tabsBox = el("div", "hb-yt-tabs");
-  tabsBox.setAttribute("role", "tablist");              // a strip that scrolls sideways — the phone never wraps it
-  nav.appendChild(tabsBox);
-  const tabBtns = {};
-  const selectTab = (tid) => {
-    Y.tab = tid;
-    Y.screen = null; Y.connErr = "";                       // choosing a tab is ONE transition (V2-626)
-    applyTabClass(root);
-    paintTabs();
-    const cb = root.querySelector(".hb-yt-plug"); if(cb) cb.classList.remove("on");
-    root.classList.remove("hb-yt-connmode");
-    const connBox = root._hbYtEls && root._hbYtEls.conn; if(connBox) connBox.textContent = "";
-    if(ctx && ctx.top) ctx.top();
-    const bd = root._hbYtEls && root._hbYtEls.body; if(bd) bd.scrollTop = 0;
-  };
-  // The tabs' lit state has ONE painter: the chosen face wears .on, and while the connectors screen is open
-  // no face is on screen, so none is lit. Every tab stays a way OUT: a tap leaves the shelf and lands on that
-  // face at once (operator, 2026-10-26 — disabled tabs left him stuck until he found «Volver»).
-  const paintTabs = () => {
-    Object.keys(tabBtns).forEach((k) => tabBtns[k].classList.toggle("on", !Y.screen && k === Y.tab));
-  };
-  _TABS.forEach((tid) => {
-    const b = el("button", "hb-yt-tab" + (tid === Y.tab ? " on" : ""), tabLabel(tid));
-    b.dataset.tab = tid;
-    b.addEventListener("click", () => selectTab(tid));
-    tabBtns[tid] = b;
-    tabsBox.appendChild(b);
-  });
-  root._hbYtSelectTab = selectTab;
-  root._hbYtTabBtns = tabBtns;
-  root._hbYtPaintTabs = paintTabs;
-  // RIGHT cluster (the header standard): the source icons, then the plug, pinned to the right edge.
-  const right = el("div", "hb-yt-navright");
-  const dots = el("div", "hb-yt-dots");
-  right.appendChild(dots);
-  const connBtn = el("button", "hb-yt-plug");
-  connBtn.appendChild(svgEl(ICON_PLUG));
-  connBtn.title = tt("sources_title", null, "Fuentes de vídeo / conectores");
-  connBtn.setAttribute("aria-label", tt("connectors", null, "Conectores"));
-  connBtn.addEventListener("click", () => {
-    if(Y.screen){ selectTab(Y.tab); return; }              // toggle off → back to the active tab
-    Y.screen = {view: "shelf"}; Y.connErr = "";
-    connBtn.classList.add("on");
-    paintTabs();
-    renderConn(root._hbYtEls || {}, root, root._hbYtData || {}, ctx);
-  });
-  right.appendChild(connBtn);
-  nav.appendChild(right);
-  root.appendChild(nav);
+  const {dots} = buildNav(root, ctx);                   // the bar: tabs · platform icons · plug · search (nav.js)
   // Everything under the bar lives in ONE scroll region, so the bar never scrolls away with the content.
   const body = el("div", "hb-yt-body");
   root.appendChild(body);
@@ -110,9 +63,10 @@ function buildCard(root, data, ctx, v){
 
   const {frame, iframe, video, unmuteHint} = buildFrame(data, ctx, loading, isStream, src, id);
   body.appendChild(frame);
-  const {homeTitle, sInp, sClr, home, blockedLine, conn} = buildHomeHead(root, ctx, body);
+  const {sInp, sClr, home, blockedLine, conn} = buildHomeHead(root, ctx, body);
   const {playBtn, muteBtn, vol} = buildControls(ctx, body);
-  const {listBox, subsBox, listsBox} = buildQueueBoxes(ctx, body);
+  const {listBox, subsBox, listsBox, addInp, newList, nlNote, nlSave} = buildQueueBoxes(root, ctx, body);
+  const mini = buildMini(root, ctx);                    // V2-885: the foot bar while a video is current off the player
 
   root._hbYt = { id: id, key: pkey, seq: seq, loading: loading };   // "load" is already covered by new src → do not re-post as command
   root._hbYtBuilt = true;
@@ -120,7 +74,8 @@ function buildCard(root, data, ctx, v){
                     muteBtn: muteBtn, playBtn: playBtn, unmuteHint: unmuteHint,
                     listBox: listBox, home: home, blockedLine: blockedLine, dots: dots, conn: conn,
                     subsBox: subsBox, listsBox: listsBox, body: body,
-                    homeTitle: homeTitle, sInp: sInp, sClr: sClr };
+                    sInp: sInp, sClr: sClr, addInp: addInp, newList: newList, nlNote: nlNote, nlSave: nlSave,
+                    mini: mini };
 }
 
 export function render(root, data, ctx){
@@ -152,21 +107,11 @@ export function render(root, data, ctx){
   // V2-638 — the control sites below address whichever player is mounted: a <video> for a library or
   // torrent row, the YouTube embed otherwise. `post` speaks both, so nothing else has to branch.
   const PL = E.video || E.iframe;
-  // Tab chrome per render: the Cola tab wears its count, the active tab wears .on (V2-632).
-  if(root._hbYtTabBtns){
-    // Every label is re-read per paint from the bundle (V2-694): the Cola tab used to fall back to a
-    // hardcoded «Cola» whenever the queue was empty, so an English card said «Cola» (2026-09-29).
-    const nQ = Array.isArray(data.list) ? data.list.length : 0;
-    Object.keys(root._hbYtTabBtns).forEach((k) => {
-      const lab = tabLabel(k);
-      root._hbYtTabBtns[k].textContent = (k === "cola" && nQ) ? (lab + " · " + nQ) : lab;
-      if(k === "subs") root._hbYtTabBtns[k].dataset.short = tt("tab_subs_short", null, "Canales");   // the phone's row
-    });
-    if(root._hbYtPaintTabs) root._hbYtPaintTabs();
-  }
+  paintNav(root, data);                                 // labels re-read per paint (V2-694), Cola wears its count
   paintHomeHead(E, data);
   paintAccount(root, E, data, ctx);
   paintPlayer(E, data, ctx, id, PL);
+  paintMini(E.mini, data, ctx, PL);
   bindReporters(data, ctx, id, PL);
   paintQueue(root, E, data, ctx);
   paintHome(root, E, data, ctx);

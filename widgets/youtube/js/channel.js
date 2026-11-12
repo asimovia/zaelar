@@ -1,7 +1,7 @@
 // youtube widget — SUBSCRIPTIONS: the channel cards and a channel's own page.
 // Part of the client split out of widget.js (refactor2710-12 T-03); widget.js stays the entry with render().
 import { Y } from "./state.js";
-import { el, tt } from "./shared.js";
+import { el, emptyState, tt } from "./shared.js";
 
 // ── SUBSCRIPTIONS: cards and the channel page (2026-09-29) ─────────────────────────────────────────────────
 export const DAY = 86400;
@@ -73,8 +73,13 @@ export function renderSubs(box, root, data, ctx){
   head.appendChild(el("span", "hb-yt-secnote", tt("subs_ours", null, "Solo en Zaelar — no te suscribe en YouTube")));
   box.appendChild(head);
   if(!cards.length){
-    box.appendChild(el("div", "hb-yt-secmsg", tt("subs_none", null,
-      "No sigues a nadie todavía. Con un vídeo puesto, di «sigue a este canal» y guardo al autor — sin tocar ninguna cuenta.")));
+    // V2-885 — the sentence AND the two ways in: connect the account, or find a channel by searching.
+    box.appendChild(emptyState(tt("subs_none", null,
+      "No sigues a nadie todavía. Con un vídeo puesto, di «sigue a este canal» y guardo al autor — sin tocar ninguna cuenta."), [
+      {id: "connect", label: tt("connect_account", null, "Conectar la cuenta"),
+       run: () => { const p = root.querySelector(".hb-yt-plug"); if(p) p.click(); }},
+      {id: "search", label: tt("search_channels", null, "Buscar canales"),
+       run: () => { if(root._hbYtFocusSearch) root._hbYtFocusSearch(); }}]));
     return;
   }
   // Card facts are fetched once, lazily, for the channels that do not have them yet (bounded server-side).

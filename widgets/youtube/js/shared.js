@@ -20,6 +20,9 @@ export const ICON_MUTED    = `<svg ${_SW}><path d="M11 5 6 9H2v6h4l5 4V5z"/><lin
 export const ICON_PLUG     = `<svg ${_SW}><path d="M9 2v6"/><path d="M15 2v6"/><path d="M6 8h12v3a6 6 0 0 1-12 0z"/><path d="M12 17v5"/></svg>`;
 export const ICON_SEARCH   = `<svg ${_SW}><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.2" y2="16.2"/></svg>`;
 export const ICON_CLEAR    = `<svg ${_SW}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+export const ICON_UP       = `<svg ${_SW}><polyline points="6 15 12 9 18 15"/></svg>`;
+export const ICON_DOWN     = `<svg ${_SW}><polyline points="6 9 12 15 18 9"/></svg>`;
+export const ICON_MORE     = `<svg ${_SF}><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>`;
 
 export function svgEl(markup){
   const t = document.createElement("template");
@@ -49,6 +52,33 @@ export function tabLabel(id){
 }
 export function applyTabClass(root){
   _TABS.forEach((id) => root.classList.toggle("hb-yt-t-" + id, Y.tab === id));
+}
+
+// An icon-only button: the label is the tooltip AND the accessible name, so a screen reader hears what a hand sees.
+export function iconBtn(cls, markup, label, onClick){
+  const b = el("button", cls);
+  b.type = "button";
+  b.appendChild(svgEl(markup));
+  b.title = label; b.setAttribute("aria-label", label);
+  if(onClick) b.addEventListener("click", (e) => { e.stopPropagation(); onClick(e); });
+  return b;
+}
+
+// V2-885 — an EMPTY face says one sentence and offers what to do next as buttons (the kit's hb-empty-state):
+// a tab that only says «nothing here» leaves him to guess the way out.
+export function emptyState(text, options){
+  const box = el("div", "hb-empty-state hb-yt-emptystate");
+  box.appendChild(el("div", "hb-yt-emptytxt", text));
+  const row = el("div", "hb-yt-emptyopts");
+  (options || []).forEach((o, i) => {
+    const b = el("button", "hb-btn hb-btn--sm " + (i ? "hb-btn--secondary" : "hb-btn--primary"), o.label);
+    b.type = "button";
+    if(o.id) b.dataset.opt = o.id;
+    b.addEventListener("click", (e) => { e.stopPropagation(); o.run(); });
+    row.appendChild(b);
+  });
+  if(row.childNodes.length) box.appendChild(row);
+  return box;
 }
 
 export function halted(ctx){ return !!(ctx && ctx.running === false); }
