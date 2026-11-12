@@ -15,9 +15,11 @@ off his words:
     did not end asking, did not escalate and did not address a live worker;
   · the turn did not SERVE it (`served`): no door ran that act, nor an act of that card with one of the same
     declared effects beyond reading (a write for a write, a send for a send), and the model never called it itself
-    (a call it made is its door's — it ran, asked, or was vetoed on purpose). The model's valid call is never
-    overruled (2.73): an order that only READS is the turn's to serve its way, and an act that stays on the card
-    yields to the model's own call that RAN on that card — what is left is a consequence the turn did not produce;
+    — by `widget_data`, or through the dedicated tool that drives the card (`play_music` is the music card's door:
+    its lane runs the act and no data-op records it) — a call it made is its door's: it ran, asked, or was vetoed on
+    purpose. The model's valid call is never overruled (2.73): an order that only READS is the turn's to serve its
+    way, and an act that stays on the card yields to the model's own call that RAN on that card — what is left is a
+    consequence the turn did not produce;
   · then the order opens ITS row. An act that LEAVES becomes a send task (`send_task_words.from_verdict`: the
     person his word names, the text the model quoted of his words — it runs, or asks the ONE slot it lacks on that
     row); when his words resolve no person of his, or the act declares no slots, a Brain Worker takes it on its row
@@ -78,16 +80,18 @@ def _same_effect(card: str, act: str, other: str) -> bool:
 
 def served(wid: str, act: str, ops=(), model_calls=()) -> bool:
     """Did the turn serve `wid:act`? A door ran it, or ran an act of that card with the same declared effect, or the
-    model CALLED it itself (then its door owns it, whatever became of the call) — and the model's valid call is never
-    overruled (node 2.73, measured live: the two last rules, stated in this module's docstring)."""
+    model CALLED it itself — by `widget_data`, or through the tool that drives that card (`acts/media.CARD_OF_TOOL`,
+    the one ownership declaration) — then its door owns it, whatever became of the call; and the model's valid call is
+    never overruled (node 2.73, measured live: the two last rules, stated in this module's docstring)."""
+    from nucleo.acts.media import CARD_OF_TOOL
     from widgets import effects
     card, ran = base(wid), _ran(ops)
     if any(c == card and (a == act or _same_effect(card, act, a)) for c, a in ran):
         return True
-    called = [(base(a.get("widget_id")), str(a.get("action") or "")) for a in
-              (c.get("args") for c in model_calls or () if isinstance(c, dict) and c.get("name") == "widget_data")
-              if isinstance(a, dict)]
-    if (card, act) in called:
+    calls = [c for c in model_calls or () if isinstance(c, dict) and isinstance(c.get("args"), dict)]
+    called = [(base(c["args"].get("widget_id")), str(c["args"].get("action") or "")) for c in calls
+              if c.get("name") == "widget_data"]
+    if (card, act) in called or card in (CARD_OF_TOOL.get(c.get("name")) for c in calls):
         return True
     if not effects.of(card, act) - {effects.DATA_READ, effects.PRESENT_MOUNT}:
         return bool(ran or model_calls)          # a view he ordered, and the turn showed or did something: its choice

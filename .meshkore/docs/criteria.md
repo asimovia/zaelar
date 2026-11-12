@@ -766,9 +766,10 @@ Flash keeps the conversation; the row is what both brains read.
   tell) that no door SERVED (`order_unserved.served`) opens its row: a leaving act becomes its send task from his words
   (runs, or ONE slot asked; a worker on its row when his words name nobody of his); a card act runs by the empty
   turn's completion or asks ONE `ASK_FACT` question on that row — never a worker for an app act. The model's valid
-  call is never overruled (K2): an order that only reads is served by what the turn did, and an act that stays on the
-  card by the model's own call that ran there. A question, a doubted order, words owed, an escalation or a live worker
-  open nothing. — since 2026-11-12 · nodes 2.1729, 2.73 · `nucleo/request/order_unserved.py`.
+  call is never overruled (K2): an order that only reads is served by what the turn did, an act that stays on the
+  card by the model's own call that ran there, and any act of a card by the model's call of the tool that drives
+  it (`acts/media.CARD_OF_TOOL`: its lane is that card's door). A question, a doubted order, words owed, an
+  escalation or a live worker open nothing. — since 2026-11-12 · nodes 2.1729, 2.73 · `nucleo/request/order_unserved.py`.
 - **CRIT-T2h · Our own question about an act of a card is a ROW, and his answer runs that act on it.** A turn that
   ends asking while the brief names a declared act at the act floor (`ask_outside_door.named_act`) makes its row wait
   with his request retained; his answer binds through `answers_open_question` → `inline_answer.rerun` →
