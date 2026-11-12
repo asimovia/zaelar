@@ -35,7 +35,7 @@ _t0 = {"v": None}
 _CAT = {
     # ── FlashBrain (ON) — the TURN: what was said, decided by the orchestrator, or searched.
     "brain": "flash", "transcript": "flash", "ambient": "flash", "search": "flash",
-    "rail": "flash", "trace": "flash",
+    "rail": "flash", "trace": "flash", "whisper": "flash",   # whisper: V2-889 F2, the slot between turns (gate·slot·use)
     # `filler` (V2-122 addenda, 2026-08-18): the lead-in wait-filler ("Un segundo…"), explicitly PUSHED to the
     # chat wall (see `voice/engine/speech/filler_audio.py`) — same family as the turn that spoke it, but its own kind so the
     # frontend can mark it distinctly (never confused with a real LLM-generated reply).

@@ -15,6 +15,7 @@ from nucleo.turn import mouth as _mouth   # V2-851 F5: what the turn's doors owe
 from nucleo.turn import pipeline_errands as _errands
 from nucleo.turn import resume_cut as _resume_cut   # V2-888
 from nucleo.turn import wait_lines as _wait_lines
+from nucleo.turn import whisper as _whisper   # V2-889 F2: `turn.closed`, read between turns
 
 
 async def close_the_turn(*, motor, send, _acc_ms, _amap_ms, _brief, _busy_at_start, _dialog, _escalate_mod, _filler_audio, _gate_ms, _op_text, _prev_pending, _router, _shown_ids, _start_web_auth, _t_entry, _tool_fired, _turn_tools, acted, aside, attention, brain, clarify, confirm_state, data_done, deduped, emit, escalate_req, first_ms, first_turn, images_req, listing_req, llm_metrics, music_req, operator_text, read_req, recall_req, reopen_req, reveal_req, search_req, spec, speech, spoken_text, style_fired, system, t0, text, timings, worker_acted, _superseded=None) -> dict:
@@ -227,8 +228,8 @@ async def close_the_turn(*, motor, send, _acc_ms, _amap_ms, _brief, _busy_at_sta
         _acted_elsewhere=_acted_elsewhere, acted=acted, escalate_req=escalate_req, spoken_text=spoken_text,
         worker_acted=worker_acted,
     )
-    _out = {}
-    return _out
+    # V2-889 F2 — the turn is over: `turn.closed`, which the whisperer reads on its own thread (shadow)
+    return _whisper.turn_closed(brief=_brief, text=_op_text or text, reply=spoken_text, started_at=t0)
 
 
 def _with_usage(extra: dict, spec) -> dict:

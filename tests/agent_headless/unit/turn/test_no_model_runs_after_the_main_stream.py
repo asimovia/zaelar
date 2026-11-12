@@ -89,3 +89,32 @@ def test_a_turn_calls_no_model_after_its_main_stream(turn, text, reply, call):
 def test_the_counter_sees_a_rerun():
     """The disarm of the counter itself: a call after the line is reported."""
     assert _after_the_main_stream([("stream", True), ("stream_end", True), ("complete", None)]) == [("complete", None)]
+
+
+def test_the_whisperer_calls_its_model_only_after_the_turn_closed(turn, monkeypatch):
+    """V2-889 F2 — the whisperer is the one model that may run after a turn, and only OUTSIDE it: off `turn.closed`, on
+    its own thread. Its gate forced to fire, a driven turn makes zero whisper calls before `turn.closed`, and the one
+    whisper call lands after it (so the counter can see it). Disarm: run the whisperer before publishing `turn.closed`."""
+    import bus
+    from nucleo.memory_agent.processor import llm
+    from nucleo.turn.whisper import gate, run
+    monkeypatch.setenv("ZAELAR_WHISPER", "shadow")
+    run.reset()
+    monkeypatch.setattr(gate, "score", lambda *a, **k: gate.Gate(score=9, fired=True, reasons=["forced"]))
+    monkeypatch.setattr(llm, "chat_sync", lambda *a, **k: LOG.append(("whisper", None)) or '{"facts": []}')
+
+    def sink(rec):
+        if rec.get("topic") == "turn.closed":
+            LOG.append(("turn.closed", None))
+    bus.add_sink(sink)
+    try:
+        turn("¿Sigues con la tarea del viaje?", _client("Sigo con ella."))
+        assert run.wait(5.0), "the whisper thread did not end"
+    finally:
+        bus.remove_sink(sink)
+        run.reset()
+    log = list(LOG)
+    closed = [i for i, (k, _t) in enumerate(log) if k == "turn.closed"]
+    whispers = [i for i, (k, _t) in enumerate(log) if k == "whisper"]
+    assert len(closed) == 1 and whispers, f"the forced whisper should have run once the turn closed: {log}"
+    assert all(i > closed[0] for i in whispers), f"a whisper call ran inside the turn: {log}"

@@ -81,6 +81,27 @@
       "why": "Asks for the answer, not the deliberation (`no_thinking`). If the model CANNOT turn reasoning off, it retries WITH reasoning and a 3200 budget (V2-488) — before that, every directed search ran blind, in silence.",
       "failover_why": "OpenAI `gpt-4.1-mini` — the ONE stand-in, same choice and same two rules as §voice_brain (operator, 2026-09-22)."
     },
+    "whisperer": {
+      "label": "Whisperer — between turns, fills a typed slot for the next one (shadow)",
+      "titular": {
+        "provider": "deepseek",
+        "model": "deepseek-v4-pro",
+        "base_url": "https://api.deepseek.com",
+        "key_env": "DEEPSEEK_API_KEY"
+      },
+      "failover": {
+        "provider": "openai",
+        "model": "gpt-4.1-mini",
+        "base_url": "https://api.openai.com/v1",
+        "key_env": "OPENAI_API_KEY"
+      },
+      "mode": "shadow",
+      "reasoning_budget": 3200,
+      "max_tokens": 3800,
+      "timeout_s": 45,
+      "why": "V2-889 F2. Runs only BETWEEN turns, off the voice loop, after a deterministic gate over the verdicts the turn already paid for; never speaks, never acts. A reasoner, so `max_tokens` is the reasoning budget plus the answer's headroom (>= +400): a reasoner that eats `max_tokens` returns an empty 200 with no error, which reads as «no whisper». `mode`: `shadow` (compute and emit `whisper` events, write nothing) or `off`; `ZAELAR_WHISPER` overrides it.",
+      "failover_why": "OpenAI `gpt-4.1-mini` — the ONE stand-in, same choice and same two rules as §voice_brain (operator, 2026-09-22). Non-reasoning: its answer fits the same budget."
+    },
     "memory_writer": {
       "label": "Memory · HEART — distils every turn into pills",
       "titular": {

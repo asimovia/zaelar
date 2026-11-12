@@ -48,12 +48,33 @@ def verb_of(route_as: str) -> str:
     return _VERB_OF.get(str(route_as or ""), str(route_as or ""))
 
 
+#: The decisions each trace (turn) carried, newest traces last and bounded — read after the turn by the whisperer's
+#: gate (`nucleo/turn/whisper/gate.py`), which only weighs what the turn already decided and never asks again.
+_BY_TRACE: dict[str, list[str]] = {}
+_TRACE_MAX = 64
+
+
 def counts() -> dict:
     return dict(_COUNTS)
 
 
+def of_trace(tid: str) -> list[str]:
+    """The `event` or `event:verb` names this trace's thread decisions emitted, in order ([] for an unknown trace)."""
+    return list(_BY_TRACE.get(str(tid or ""), ()))
+
+
 def reset() -> None:
     _COUNTS.clear()
+    _BY_TRACE.clear()
+
+
+def _note_trace(name: str) -> None:
+    from voice import trace as _trace
+    tid = _trace.current()
+    if tid:
+        _BY_TRACE.setdefault(tid, []).append(name)
+        while len(_BY_TRACE) > _TRACE_MAX:
+            _BY_TRACE.pop(next(iter(_BY_TRACE)))
 
 
 def _send(event: str, label: str, text: str, extra: dict) -> dict | None:
@@ -61,6 +82,7 @@ def _send(event: str, label: str, text: str, extra: dict) -> dict | None:
         _COUNTS[event] += 1
         if extra.get("verb"):
             _COUNTS[f"{event}:{extra['verb']}"] += 1
+        _note_trace(f"{event}:{extra['verb']}" if extra.get("verb") else event)
         from voice import observer
         payload = {"cat": "worker", "event": event, **extra}
         observer.emit(KIND, label, text=str(text or "")[:200], role="system", extra=payload)

@@ -62,3 +62,18 @@ def has_credential(url: str, key: str) -> bool:
     if key and key != "local":
         return True
     return any(h in (url or "").lower() for h in ("localhost", "127.0.0.1", "11434"))
+
+
+def _from_the_table(service: str) -> tuple[tuple[str, str, bool], tuple[tuple[str, str], ...]]:
+    """A task whose row lives in the model table (`config/models.default.json`): its titular, reasoning ON, and its one
+    stand-in — read from the table, never copied here, so the two cannot drift."""
+    from config import models as _models
+    t, f = _models.titular(service), _models.failover(service)
+    return (t["base_url"], t["model"], False), (((f["base_url"], f["model"]),) if f else ())
+
+
+# whisperer (V2-889 F2) — between turns, off the voice loop: a reasoner with its own budget (`nucleo/turn/whisper/`).
+try:
+    _DEFAULTS["whisperer"], _FAILOVER["whisperer"] = _from_the_table("whisperer")
+except Exception as _e:  # noqa: BLE001 — a missing row leaves the task unrouted; `whisper.run` then never calls
+    __import__("loguru").logger.warning(f"llm_routes: no `whisperer` row in the model table ({_e!r})")
