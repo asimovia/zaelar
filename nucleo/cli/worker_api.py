@@ -104,6 +104,11 @@ async def _one_act(rec, action: str, payload: dict) -> dict:
     if action == "ask_user":
         q = (payload or {}).get("question") or (payload or {}).get("text") or ""
         opts = (payload or {}).get("options")
+        if isinstance((payload or {}).get("remote"), dict):     # an exchange with a network agent: its text, not ours
+            from nucleo import mesh_jobs
+            corr = mesh_jobs.ask_for_worker(rec, str(payload["remote"].get("thread") or ""))
+            return {"ok": bool(corr), "status": "pending", "corr_id": corr} if corr else {"ok": False,
+                    "error": "no open exchange of this task asks anything"}
         corr = _register_ask(rec, str(q), options=opts if isinstance(opts, list) else None)
         return {"ok": True, "status": "pending", "corr_id": corr}
 

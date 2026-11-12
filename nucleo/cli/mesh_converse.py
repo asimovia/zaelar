@@ -1,8 +1,9 @@
-"""nucleo/cli/mesh_converse.py — `hbmesh call`, `reply` and `report`: a structured exchange with ONE skill of an agent.
+"""nucleo/cli/mesh_converse.py — `hbmesh call` and `hbmesh report`: a structured exchange with ONE skill of an agent.
 
-The forms are `USAGE`. Each crosses the session's exit gate first, like `serve`, and prints JSON; the request is the
+The forms are `USAGE`. `call` crosses the session's exit gate first, like `serve`, and prints JSON; the request is the
 agent's own schema. `--json` takes the object inline, `@file` (relative: the worker's shell refuses braces with quotes
-in an argument) or `-` (stdin).
+in an argument) or `-` (stdin). When the agent ASKS, the question goes on this task's row in the agent's own words (the
+server reads them from the exchange, never from here) and the worker's turn ends; his answer resumes it.
 """
 from __future__ import annotations
 
@@ -10,11 +11,9 @@ import json
 import os
 import sys
 
-
-#: The two forms, as the bridge's usage prints them (`nucleo/cli/mesh._USAGE`).
-USAGE = ('hbmesh call <agent_id> <skill> --json @request.json [--errand "<his words>"]   # ONE declared skill',
-         'hbmesh reply <thread> --answer <question id>=<n> [--value "<his words>"] [--cancel]   # his answers back')
-REPORT_USAGE = 'hbmesh report <thread> <outcome>   # how a step the agent handed back ended (one of its `report_as`)'
+#: The forms, as the bridge's usage prints them (`nucleo/cli/mesh._USAGE`).
+USAGE = ('hbmesh call <agent_id> <skill> --json @request.json --errand "<his words>"   # ONE declared skill',
+         'hbmesh report <thread> <outcome>   # how a step the agent handed back ended (one of its `report_as`)')
 
 
 def _body(raw: str) -> tuple[dict | None, str]:
@@ -31,43 +30,24 @@ def _body(raw: str) -> tuple[dict | None, str]:
     return (got, "") if isinstance(got, dict) else (None, "`--json` must be a JSON object")
 
 
-def _answers(pairs: list[str], values: list[str]) -> tuple[list, str]:
-    from nucleo.mesh_dialog import parse_value
-    out = []
-    for i, p in enumerate(pairs or []):
-        qid, sep, n = str(p).partition("=")
-        if not sep or not qid.strip() or not n.strip().lstrip("-").isdigit():
-            return [], f"`--answer {p}` is not <question id>=<n> (the choice's `n`)"
-        value = parse_value(values[i]) if i < len(values or []) and values[i] != "" else None
-        out.append((qid.strip(), int(n), value))
-    return out, ""
-
-
 def call(a) -> dict:
     body, why = _body(a.json)
     if body is None:
         return {"ok": False, "reason": why}
-    from nucleo.cli.mesh import _leave_gate, _not_cleared
+    from nucleo.cli.mesh import _bridge_end_turn, _leave_gate, _not_cleared
     cleared = _leave_gate(a.errand or a.skill, json.dumps(body, ensure_ascii=False), a.agent_id)
     if not cleared.get("ok") or cleared.get("status") == "pending":
         return _not_cleared(cleared)
     from nucleo import mesh_call
-    return mesh_call.call(a.agent_id, a.skill, body, errand=a.errand, task_id=os.getenv("ZAELAR_TASK_ID", ""))
-
-
-def reply(a) -> dict:
-    answers, why = _answers(a.answer, a.value)
-    if why or (not answers and not a.cancel):
-        return {"ok": False, "reason": why or "nothing to send: give one `--answer` per question, or `--cancel`"}
-    from nucleo import mesh_dialog
-    t = mesh_dialog.thread(a.thread) or {}
-    from nucleo.cli.mesh import _leave_gate, _not_cleared
-    cleared = _leave_gate(t.get("errand") or a.thread, json.dumps(answers, ensure_ascii=False, default=str),
-                          str(t.get("agent") or ""))
-    if not cleared.get("ok") or cleared.get("status") == "pending":
-        return _not_cleared(cleared)
-    from nucleo import mesh_call
-    return mesh_call.reply(a.thread, answers, cancel=bool(a.cancel))
+    out = mesh_call.call(a.agent_id, a.skill, body, errand=a.errand, task_id=os.getenv("ZAELAR_TASK_ID", ""))
+    if out.get("agent_asks_user") and os.getenv("ZAELAR_TASK_ID"):
+        from nucleo.cli import bridge
+        tid, tok = bridge._tid_token()
+        asked = bridge._post("/api/worker/act", {"task_id": tid, "token": tok, "action": "ask_user",
+                                                 "payload": {"remote": {"thread": out["thread"]}}})
+        out["next"] = ("The agent ASKS him first (it did not refuse); the question is on his row in its words. "
+                       + _bridge_end_turn(asked)) if asked.get("ok") else f"(could not ask him: {asked.get('error')})"
+    return out
 
 
 def report(a) -> dict:
@@ -81,11 +61,6 @@ def add_parsers(sub) -> None:
     p.add_argument("skill")
     p.add_argument("--json", default="{}", help="the request object: inline, @file or -")
     p.add_argument("--errand", default="", help="his words for the errand (the exit gate and the learned route)")
-    r = sub.add_parser("reply", help="send his answers to the questions an exchange left open")
-    r.add_argument("thread")
-    r.add_argument("--answer", action="append", default=[], metavar="QID=N", help="repeatable")
-    r.add_argument("--value", action="append", default=[], help="his words for a choice with `needs_value`, in order")
-    r.add_argument("--cancel", action="store_true", help="withdraw the request instead")
     o = sub.add_parser("report", help="how a step the agent handed back ended")
     o.add_argument("thread")
     o.add_argument("outcome")
@@ -95,10 +70,6 @@ def skills_for(agents: list[dict]) -> dict:
     """`{agent_id: [skills]}` read from each agent's own card (cached per origin), for `find`'s answer."""
     if not agents:
         return {}
-    from nucleo import mesh_agents, mesh_skills
-    out = {}
-    for x in agents or []:
-        ep = mesh_agents._endpoint_of(x)
-        if ep and x.get("agent_id"):
-            out[str(x["agent_id"])] = mesh_skills.skills_of(mesh_agents._card_of(ep))
-    return out
+    from nucleo import mesh_agents, mesh_call
+    return {str(x["agent_id"]): mesh_call.skills_of(mesh_agents._card_of(mesh_agents._endpoint_of(x)))
+            for x in agents if x.get("agent_id") and mesh_agents._endpoint_of(x)}

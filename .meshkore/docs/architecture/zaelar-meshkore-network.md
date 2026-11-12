@@ -124,74 +124,59 @@ Network down, no agent, a mute agent, a malformed answer — every one of them d
 `mesh_agents` never raises; a failure is `{"ok": false, "reason": …}` and the reason is written to be said out
 loud.
 
-### 1.8 A conversation with an agent — one skill, its questions, its jobs (V2-895)
+### 1.8 A conversation with an agent — one skill, its questions, its jobs, a step handed back (V2-895)
 
-`serve` is discovery plus one free-text ask of an agent's FIRST declared skill: right for «who has hotels in Madrid»,
-blind for an agent that does several things. A booking is a different shape, and it has its own two verbs:
-
-```
-hbmesh find "<errand>"                                  → agents, each with its card's skills {id, free, describes}
-hbmesh call <agent_id> <skill> --json @request.json     → the answer · a question (thread) · a job being watched
-hbmesh reply <thread> --answer <question id>=<n>        → his answers back to the SAME exchange
-hbmesh report <thread> <outcome>                        → how a step the agent handed back ended
-```
-
-**One skill, chosen from the card** (`nucleo/mesh_skills.py`). The worker calls a skill the card DECLARES; price is
-per skill (its own `pricing`, else the card's; unknown is not free). A served skill teaches the playbook route of
-that kind of errand as `<agent>/<skill>` (the genome's learned layer, V2-859), and the next `find` names it.
-
-**Free, or through the relay — never paid by the engine** (`nucleo/mesh_relay.py`). A free skill goes direct. A
-priced one goes only through a deployment's mediated egress (`<egress>/p/mesh/<agent host><path>`, with the
-account's own egress credential), and only when the account holds a price for it — a row of the tariff family
-`agent`, keyed `<agent_id>.<skill_id>`, that arrives with the lease like every other tariff. No relay, or no price:
-refused before anything leaves, said in one line. Which agents a relay covers and how it books them is the relay's
-business; the engine only debits its local lease when such a job is born. A `402` is still never paid.
-
-**An agent that asks is not an agent that failed** (`nucleo/mesh_dialog.py` — the class). An answer whose SHAPE is a
-question — a `questions` list at the top or under `result` (`{id, text, choices: [{label, set?}]}`), or an A2A task in
-`input-required` — comes back as `agent_asks_user` with a thread id. Status words are never read. Before this, a
-`422` carrying questions reached the worker as «the agents did not answer».
+`serve` is discovery plus a free-text ask of an agent's FIRST declared skill: blind for an agent that does several
+things. A booking is a different shape, with its own two verbs:
 
 ```
-agent asks ──► hbmesh: agent_asks_user + thread ──► worker: bridge ask (choices as options), ends its turn
-                                                                │
-he answers ──► worker resumed with his answer ──► hbmesh reply <thread> --answer qid=n ──► request rewritten
-               (THE asker: dialogue, never a card)                                          and sent again WHOLE
+hbmesh find "<errand>"                                   → agents, each with its card's skills {id, free, describes}
+hbmesh call <agent_id> <skill> --json @req.json --errand "<his words>"   → result · question · job · step handed back
+hbmesh report <thread> <outcome>                         → how a step the agent handed back ended
 ```
 
-  · **Applying** an answer is the agent's own contract: a choice that `set`s dotted paths writes them into a copy of
-    the request; a needed value (`needsValue`) fills only the choice's open slots, never a guess; a question with a
-    `field` takes the value there; anything else is `{id, choice}` for a job.
-  · **His standing answers.** A fully specified choice of a question that sets fields («any table», «±15 min») is a
-    preference: kept as HIS rules row (scope `errand/mesh/mesh_serve`, key `mesh.mandate:<agent>/<skill>/<question>`,
-    personal layer — never in the genome) and applied the next time that agent asks the same question in the SAME
-    shape (same position, same fields). A question about one job («accept 15:15?») is never kept. What was applied
-    from his standing answers is listed in the outcome (`applied_his_standing_answers`).
-  · **Binding is by identity**: the thread (`mt_…`, `sys_kv mesh:threads`) holds the agent, skill, request, questions
-    and job; his answer names it. The request key (`idempotency_key`, when the skill's own examples use one) IS the
-    thread id: a resend can never become a second order.
+**One skill, its price** (`nucleo/mesh_call.py`). The skill must be DECLARED by the card; price is per skill (its own
+`pricing`, else the card's; unknown is not free). Free → direct. Priced → only through a deployment's mediated egress
+(`<egress>/p/mesh/<agent host><path>`, the account's own credential) AND only with a price for it: a row of the tariff
+family `agent`, keyed `<agent_id>.<skill_id>`, delivered with the lease. Otherwise refused before anything leaves. Which
+agents a relay covers and how it books them is the relay's business; the engine only debits its lease when a job is
+born. A `402` is never paid. A served skill teaches the playbook route `<agent>/<skill>` (genome learned layer).
 
-**A job is owned by a row, not by a worker** (`nucleo/mesh_jobs.py`). A `202` that names a job is recorded on its
-thread; the pulse (every reconcile beat) gives it a row of its own — born from the worker's row, with its session —
-waiting `remote_job`, and polls it with back-off. A question the job raises goes on that row through THE asker
-(`clarify`), its options declared, bound by `remote: {thread, question}`; his option goes back to the job's own
-`answers` endpoint by INDEX, with the job's own token and no model. When the job ends (read by shape: `final: true`,
-or a `result` with no question) the worker session that started it is resumed with the result, and the rebrief
-forbids telling him «it did not happen» for an outcome the agent calls uncertain. A `409` (the agent refusing to
-repeat or to act) is said as what it is and never retried. A job bought through the relay is reached through it with
-the account's credential AND the job's own token (`X-Job-Token`), so the relay can reach a job only for the account
-that holds its token; a direct job is reached with its token alone.
+**One order, one key, one step at a time.** The request key (`idempotency_key`, only where the skill's own examples
+use one) is the engine's, derived from the task and the request — never taken from the body or the card — so a retry of
+an order whose answer never came carries the same key. While an order has a step whose outcome is unknown (no answer,
+an open job, a handed-back step not reported) no OTHER skill of that agent is called for it.
 
-**A step the agent hands back** (`nucleo/mesh_handoff.py`). An agent that resolves an errand but cannot finish it — an
-engine it holds no access to, a place's own form, a phone it does not dial — answers with a `handoff` object
-(«your agent should do it»). `call` returns it as `handed_back`: the reason, the link and what it already carries,
-the phone, the fields with HIS values (null = ask him), the platform's own `note` verbatim, the action, the agent's
-own outcomes (`report_as`) and its own way to do it (`agent_can_do`) when it offers one. The rules ride in the bridge's
-output, not in a platform table of ours: follow the note as written (where it forbids automation, he gets the link);
-a captcha, a card, a fee, a login or a code is his step; a form sent to a place is a request, not a booking; submit
-once. The handed-back step stays on its thread: the SAME order (the request without its key) is refused while that
-step has no reported outcome — an unknown submit counts as possibly made — and `hbmesh report` sends the outcome in
-the agent's own `reportOutcome` shape, placeholders filled from its answer. A dry run guards nothing.
+**An agent that asks is not an agent that failed — and it asks ONE way** (`nucleo/mesh_dialog.py`, `mesh_jobs.py`). An
+answer whose SHAPE is a question (a `questions` list, or A2A `input-required`) — at once, or later from a job — goes on a
+task row through THE asker (`clarify`: dialogue, never a card), one question at a time, with its declared options;
+options that need a value of his own are not offered. The exchange (thread `mt_…`) records WHICH question it waits on
+(its `ask_id`); an answer to any other is refused, words never answer a question with options (it is asked again). His
+option is applied by the agent's own contract (a choice's `set` into a copy of the request, sent again whole; a
+`field`; or `{id, choice}` to a job's `answers`), with no model, and the worker that asked is resumed with what came of
+it. Only then are its VALUES kept as his standing answer (his rules row, scope `errand/mesh/mesh_serve`, key
+`mesh.mandate:<agent>/<skill>/<question>`, personal layer): applied next time only when the agent offers exactly those
+values — an agent cannot redefine what he chose.
+
+```
+call → questions → prefill (his values) → on the worker's row (asker) → worker ends its turn
+     → his option (screen or voice, bound by ask_id) → request rewritten + sent whole → worker resumed with the outcome
+202  → job: own row (born from the worker's) waiting remote_job → pulse polls → final? → worker resumed with the result
+                                                                   → question? → asker on that row → job's answers
+```
+
+**A job is owned by a row, not by a worker.** The pulse polls it with back-off and reads its END first and only from
+the agent's own `final` (a job that does not say it ended has not; 48 h bound it). A job reached through the relay goes
+with the account's credential AND the job's own token (`X-Job-Token`): one account can never read another's job. Its
+result is bounded leaf by leaf (a fact at its tail is never cut away) and fenced; the rebrief never says «it did not
+happen» for an outcome the agent calls uncertain, and a job given up is told as UNKNOWN. With no session to tell it, the
+row ends FAILED. A row he ended releases the question it held.
+
+**A step handed back is a stranger's DATA** (`nucleo/mesh_handoff.py`). An agent that cannot finish answers with a
+`handoff`. `call` keeps what can be checked (the link and its domain, the phone, what the link carries, the NAMES of the
+fields the form asks, the agent's own outcomes) and puts its prose under `agent_says`, fenced; its VALUES are dropped —
+a form is filled from the order he gave (`your_order`), a field it lacks is asked to him. The rules are ours alone; the
+agent's note can only make the worker do less. `hbmesh report` answers in the agent's own `reportOutcome` shape.
 
 ---
 
@@ -229,8 +214,8 @@ operator data, and a peer can never spend the operator's money.
 | «Ask the network before the browser» in every web errand | `nucleo/workers/prompts/` |
 | Learned route cache (7-day TTL, never on `general`) | `mesh_agents.route_for` |
 | Paid agents: reported, never paid without authorisation | §1.4 |
-| One declared skill per call (`hbmesh call`), its questions and his answers (`hbmesh reply`) | §1.8 · `nucleo/mesh_call.py`, `mesh_dialog.py` |
-| A priced skill through a deployment's relay, priced by an `agent` tariff row | §1.8 · `nucleo/mesh_relay.py` |
+| One declared skill per call (`hbmesh call`), priced only through a relay with an `agent` tariff row | §1.8 · `nucleo/mesh_call.py` |
+| An agent's question on his row, his option back, his standing answers | §1.8 · `nucleo/mesh_dialog.py`, `mesh_jobs.py` |
 | An agent's job owned by a durable row (poll, ask, end) | §1.8 · `nucleo/mesh_jobs.py` |
 | A step an agent hands back: done once, its outcome reported | §1.8 · `nucleo/mesh_handoff.py` |
 | Cluster channel (public + private, UNTRUSTED profile) | `zaelar-cluster-channel.md` |

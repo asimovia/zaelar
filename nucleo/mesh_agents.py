@@ -412,27 +412,30 @@ def _names_missing_fields(asks: dict) -> bool:
     return any(isinstance(asks.get(k), str) and _MISSING_WORDING.search(asks[k]) for k in _DIAG_KEYS)
 
 
-def ask(agent: dict, prompt: str, fields: dict | None = None, timeout: float | None = None) -> dict:
+def ask(agent: dict, prompt: str, fields: dict | None = None, timeout: float | None = None, *, path: str = "",
+        to: tuple[str, str] | None = None) -> dict:
     """Put the errand to one agent. Returns `{ok, data|error|payment_required}` — never raises, never pays.
 
     `prompt` must carry ABSOLUTE dates and the concrete details: an agent's own resolution of «esta noche» is
     not something to rely on (measured: it answered with a check-in from the previous year and zero results).
 
     `fields` are the agent's OWN structured parameters, straight through. Nothing here knows what any of them
-    mean, and that is the point — see the note above `_HINT_KEYS`.
+    mean, and that is the point — see the note above `_HINT_KEYS`. `path` names ONE declared skill (V2-895,
+    `mesh_call`), and `to` = `(url, bearer)` sends it through a deployment's relay instead of the agent's origin.
     """
     t0 = time.monotonic()
-    out, status = _ask(agent, prompt, fields, timeout)
+    out, status = _ask(agent, prompt, fields, timeout, path, to)
     from nucleo import mesh_calls                     # capture gaps 2026-11-06: what was asked, of whom, what came
     mesh_calls.asked(agent, prompt, fields, out, status, round((time.monotonic() - t0) * 1000))
     return out
 
 
-def _ask(agent: dict, prompt: str, fields: dict | None, timeout: float | None) -> tuple[dict, int]:
+def _ask(agent: dict, prompt: str, fields: dict | None, timeout: float | None, path: str = "",
+         to: tuple[str, str] | None = None) -> tuple[dict, int]:
     endpoint = _endpoint_of(agent)
     if not endpoint:
         return {"ok": False, "error": "el agente no publica un endpoint HTTP"}, 0
-    url = endpoint.rstrip("/") + _skill_path(endpoint)
+    url = to[0] if to else endpoint.rstrip("/") + (path or _skill_path(endpoint))
     # Either free text OR fields, NEVER both — measured against `roomrover` on 2026-08-29. With `prompt` present
     # the agent takes its natural-language path and **discards the fields**: the same body that returns ten
     # hotels without `prompt` returns `parse_failed` with it included. "Explicit data wins over free text" was
@@ -440,7 +443,7 @@ def _ask(agent: dict, prompt: str, fields: dict | None, timeout: float | None) -
     body = {str(k): v for k, v in (fields or {}).items()} or {"prompt": prompt, "query": prompt}
     # Bearer only when the store holds one for THIS agent — passed as keyword and only then, so callers (and
     # test doubles) that know nothing about auth keep their `(url, body)` shape working unchanged.
-    bearer = _bearer_for(agent, endpoint)
+    bearer = to[1] if to else _bearer_for(agent, endpoint)
     wait = float(timeout) if timeout else agent_timeout(agent)
     status, data = (_post(url, body, timeout=wait, bearer=bearer) if bearer else _post(url, body, timeout=wait))
     _note_answer(agent, status, data)
@@ -454,10 +457,10 @@ def _ask(agent: dict, prompt: str, fields: dict | None, timeout: float | None) -
         return {"ok": False, "payment_required": True, "challenge": data, "agent": agent.get("agent_id")}, status
     if status != 200:
         asks = _what_the_agent_asks_for(data)
-        return {"ok": False, "status": status, "asks": asks,
+        return {"ok": False, "status": status, "asks": asks, "data": data,
                 "error": f"{agent.get('agent_id') or url} respondió {status or 'nada'}",
                 "agent": agent.get("agent_id")}, status
-    return {"ok": True, "agent": agent.get("agent_id"), "endpoint": url, "data": data}, status
+    return {"ok": True, "status": status, "agent": agent.get("agent_id"), "endpoint": url, "data": data}, status
 
 
 def _note_answer(agent: dict, status: int, data) -> None:

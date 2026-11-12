@@ -6,24 +6,22 @@ keys, an agent's `questions` list matched none, and the worker was told «the ag
 any agent (nothing here names one):
 
   · **Reading** (`questions_in`) is by SHAPE: a `questions` list (id + text, at the top or under `result`) or an A2A
-    task in `input-required`. Status words are never read.
+    task in `input-required`. Status words are never read. A choice that needs a value of his own is not offered:
+    he is answered by a declared option, never by words a program would have to interpret.
   · **Answering** (`apply`) is the agent's own contract: a choice's `set` (dotted paths) rewrites the request, sent
-    again whole; a question's `field` takes the value; else `{id, choice}` goes to the job that asked.
-  · **His standing answers** (`remember`/`prefill`): a fully specified choice that sets fields is HIS preference, kept
-    as his rules row (personal layer, never the genome) and applied only to the same question in the same shape. A
-    question about one job («accept 15:15?») is never kept.
-  · **Binding** is by IDENTITY: one THREAD (`mt_…`) per exchange, named by his answer. Never a confidence floor.
+    again whole; a question's `field` takes the choice's value; else `{id, choice}` goes to the job that asked.
+  · **His standing answers** (`remember`/`prefill`): the VALUES of a choice HE picked on his row (the asker binds it)
+    are kept as his rules row — personal layer, never the genome — and applied only when the agent offers exactly
+    those values again. A question about one job («accept 15:15?») is never kept.
+  · **Binding** is by IDENTITY: one THREAD (`mt_…`) per exchange; the question it waits on is named by its `ask_id`.
 
-What an agent writes is a stranger's text: fenced by the caller; only a choice's LABEL reaches his rules row.
+What an agent writes is a stranger's text: neutralised before a person or a worker reads it.
 """
 from __future__ import annotations
 
 import copy
-import json
 import secrets
 import time
-
-from loguru import logger
 
 _TEXT_MAX, _LABEL_MAX, _MAX_QUESTIONS, _MAX_CHOICES = 400, 160, 12, 12
 _KV_THREADS = "mesh:threads"
@@ -31,49 +29,35 @@ _THREAD_TTL_S = 14 * 24 * 3600
 _RULE_CLASS, _RULE_CHANNEL = "errand.mesh_serve", "mesh"
 
 
-def _note(e: BaseException) -> None:
-    import sys
-    logger.debug(f"mesh_dialog: {sys._getframe(1).f_code.co_name} — {type(e).__name__}: {e}")
-
-
 # ── reading ───────────────────────────────────────────────────────────────────────────────────────────────
 def _text(v, n: int) -> str:
-    return " ".join(str(v or "").split())[:n]
+    from nucleo import untrusted
+    return untrusted.neutralize(" ".join(str(v or "").split())[:n])
 
 
-def _choice(c, i: int) -> dict | None:
+def _choice(c) -> dict | None:
+    """One declared option, or None when it is not one he can pick as it stands (it asks for a value of his)."""
     if isinstance(c, (str, int, float)) and str(c).strip():
-        return {"n": i, "id": str(c), "label": _text(c, _LABEL_MAX)}
-    if not isinstance(c, dict):
+        return {"id": str(c), "label": _text(c, _LABEL_MAX)}
+    if not isinstance(c, dict) or c.get("needsValue") or None in (c.get("set") or {}).values():
         return None
-    label = _text(c.get("label") or c.get("text") or c.get("title") or c.get("id") or c.get("value"), _LABEL_MAX)
-    if not label:
-        return None
-    out = {"n": i, "label": label}
-    if isinstance(c.get("set"), dict):
-        out["set"] = dict(c["set"])
-    for k in ("id", "value", "needsValue"):
-        if c.get(k) not in (None, ""):
-            out["needs_value" if k == "needsValue" else k] = c[k]
-    return out
+    label = _text(c.get("label") or c.get("text") or c.get("id") or c.get("value"), _LABEL_MAX)
+    return {"label": label, **{k: c[k] for k in ("set", "id", "value") if c.get(k) not in (None, "")}} if label else None
 
 
 def _question(q, i: int) -> dict | None:
     if not isinstance(q, dict):
         return None
     text = _text(q.get("text") or q.get("ask") or q.get("question") or q.get("prompt"), _TEXT_MAX)
-    qid = str(q.get("id") or q.get("field") or f"q{i + 1}").strip()
     if not text:
         return None
     raw = q.get("choices") or q.get("options") or []
-    choices = [c for c in (_choice(c, n) for n, c in enumerate(raw if isinstance(raw, list) else []))
-               if c][:_MAX_CHOICES]
-    out = {"id": qid, "text": text, "choices": choices}
+    choices = [c for c in (_choice(c) for c in (raw if isinstance(raw, list) else [])) if c][:_MAX_CHOICES]
+    for n, c in enumerate(choices):
+        c["n"] = n                                   # the index he picks is the index in what he was shown
+    out = {"id": str(q.get("id") or q.get("field") or f"q{i + 1}").strip(), "text": text, "choices": choices}
     if q.get("field"):
         out["field"] = str(q["field"])
-    sug = q.get("default_suggestion")
-    if isinstance(sug, dict) and sug.get("label"):
-        out["suggestion"] = _text(sug["label"], _LABEL_MAX)
     return out
 
 
@@ -91,7 +75,7 @@ def questions_in(data) -> list[dict]:
     if str(status.get("state") or "") == "input-required":            # the A2A task state, a protocol name
         parts = ((status.get("message") or {}).get("parts") or []) if isinstance(status.get("message"), dict) else []
         text = " ".join(_text(p.get("text"), _TEXT_MAX) for p in parts if isinstance(p, dict) and p.get("text"))
-        return [{"id": "input", "text": text[:_TEXT_MAX] or "?", "choices": [], "free_text": True}]
+        return [{"id": "input", "text": text[:_TEXT_MAX] or "?", "choices": []}]
     return []
 
 
@@ -107,59 +91,28 @@ def set_path(body: dict, dotted: str, value) -> None:
         node[keys[-1]] = value
 
 
-def _filled(choice: dict, value) -> dict | None:
-    """A choice's `set` with the operator's VALUE in its open (null) slots; None when the value does not fit them."""
-    fields = dict(choice.get("set") or {})
-    holes = [k for k, v in fields.items() if v is None]
-    if not holes:
-        return fields
-    if isinstance(value, dict):
-        fields.update({k: value[k] for k in holes if k in value})
-    elif isinstance(value, list) and len(value) == len(holes):
-        fields.update(dict(zip(holes, value)))
-    elif len(holes) == 1 and value not in (None, ""):
-        fields[holes[0]] = value
-    return None if any(v is None for v in fields.values()) else fields
-
-
-def parse_value(raw: str):
-    """A value as typed: JSON when it parses (an object, a list, a number, true), else the text itself."""
-    try:
-        return json.loads(raw)
-    except Exception:  # noqa: BLE001 — plain text is a legitimate value
-        return raw
-
-
-def apply(body: dict, question: dict, n: int | None, value=None) -> tuple[dict | None, dict | None, str]:
-    """His answer to `question` (choice `n`, and/or a free `value`) → `(new_body, job_answer, why_not)`.
-
-    A choice that SETS fields rewrites the request (`new_body`); a question with a `field` takes the value there; any
-    other answer is `{id, choice|value}` for the job that asked (`job_answer`). `why_not` says what is missing."""
+def apply(body: dict, question: dict, n: int | None, words: str = "") -> tuple[dict | None, dict | None, str]:
+    """His answer to `question` → `(new_body, job_answer, why_not)`. A question with options takes ONLY an option (`n`);
+    one without options takes his words. A choice's `set` rewrites a copy of the request; a `field` takes the value
+    there; anything else is `{id, choice|value}` for the job that asked."""
     choices = question.get("choices") or []
-    choice = choices[n] if n is not None and 0 <= n < len(choices) else None
-    if n is not None and choice is None:
-        return None, None, f"question {question.get('id')} has no choice {n}"
-    if choice is not None and choice.get("set") is not None:
-        fields = _filled(choice, value)
-        if fields is None:
-            return None, None, f"choice {n} of {question.get('id')} needs a value ({choice.get('needs_value') or 'value'})"
+    choice = choices[n] if choices and n is not None and 0 <= n < len(choices) else None
+    if choices and choice is None:
+        return None, None, f"question {question.get('id')} is answered by one of its options"
+    if not choices and not str(words or "").strip():
+        return None, None, f"question {question.get('id')} needs his words"
+    if choice is not None and choice.get("set"):
         out = copy.deepcopy(body or {})
-        for path, v in fields.items():
+        for path, v in choice["set"].items():
             set_path(out, path, v)
         return out, None, ""
-    if choice is None and value in (None, ""):
-        return None, None, f"question {question.get('id')} needs a choice or a value"
-    if question.get("field"):                       # the field takes the choice's VALUE (else its id, else his words)
+    if question.get("field"):
         out = copy.deepcopy(body or {})
-        set_path(out, question["field"], next(v for v in ((choice or {}).get("value"), (choice or {}).get("id"),
-                                                         (choice or {}).get("label"), value) if v not in (None, "")))
+        set_path(out, question["field"], choice.get("value", choice.get("id", choice["label"])) if choice else words)
         return out, None, ""
-    answer = {"id": question.get("id")}             # a job is answered by the choice's ID; his words ride as `value`
-    if choice:
-        answer["choice"] = choice.get("id") or choice.get("label")
-    if value not in (None, ""):
-        answer["value"] = value
-    return None, answer, ""
+    if choice is not None:
+        return None, {"id": question.get("id"), "choice": choice.get("id") or choice["label"]}, ""
+    return None, {"id": question.get("id"), "value": str(words).strip()[:_TEXT_MAX]}, ""
 
 
 # ── his standing answers (the personal layer: HIS rules rows, never the genome) ─────────────────────────────
@@ -167,60 +120,32 @@ def _rule_key(agent_id: str, skill_id: str, qid: str) -> str:
     return f"mesh.mandate:{agent_id}/{skill_id}/{qid}".lower()
 
 
-def _signature(choice: dict) -> list[str]:
-    return sorted((choice.get("set") or {}).keys())
-
-
-def standing(choice: dict | None) -> bool:
-    """Is this a choice that can stand as his preference? It sets fields and needs nothing from him."""
-    return bool(choice and choice.get("set") and not choice.get("needs_value")
-                and all(v is not None for v in choice["set"].values()))
-
-
 def remember(agent_id: str, skill_id: str, question: dict, n: int) -> bool:
-    """Keep his answer `n` to `question` as his standing preference for this agent and skill. True when kept."""
+    """Keep the VALUES of the choice he picked (a `set`) as his standing answer for this agent, skill and question."""
     choices = question.get("choices") or []
     choice = choices[n] if 0 <= n < len(choices) else None
-    if not standing(choice):
+    if not choice or not choice.get("set"):
         return False
-    try:
-        import rules
-        rules.add(rules.class_scope(_RULE_CLASS, _RULE_CHANNEL), "pref", _rule_key(agent_id, skill_id, question["id"]),
-                  {"n": n, "keys": _signature(choice), "label": choice["label"]},
-                  text=choice["label"][:_LABEL_MAX], source="user", origin="mesh")
-        return True
-    except Exception as e:  # noqa: BLE001 — not kept is asked again next time; never a wrong preference
-        _note(e)
-        return False
-
-
-def _kept(agent_id: str, skill_id: str, qid: str) -> dict | None:
-    try:
-        import rules
-        v = rules.value(rules.path(cls=_RULE_CLASS, channel=_RULE_CHANNEL), _rule_key(agent_id, skill_id, qid))
-        return v if isinstance(v, dict) else None
-    except Exception as e:  # noqa: BLE001
-        _note(e)
-        return None
+    import rules
+    rules.add(rules.class_scope(_RULE_CLASS, _RULE_CHANNEL), "pref", _rule_key(agent_id, skill_id, question["id"]),
+              {"set": dict(choice["set"])}, text=choice["label"][:_LABEL_MAX], source="user", origin="mesh")
+    return True
 
 
 def prefill(agent_id: str, skill_id: str, questions: list[dict], body: dict) -> tuple[dict, list[dict], list[str]]:
-    """Answer from his standing preferences every question asked in the SAME shape he answered before (same id, a
-    choice at the same position setting the same fields) → `(body, still_open, labels_applied)`."""
+    """Answer from his standing answers every question whose options include EXACTLY the values he chose before →
+    `(body, still_open, labels_applied)`. The agent's option is only used when its values are his."""
+    import rules
     out, still, applied = copy.deepcopy(body or {}), [], []
+    anchors = rules.path(cls=_RULE_CLASS, channel=_RULE_CHANNEL)
     for q in questions:
-        kept = _kept(agent_id, skill_id, q.get("id") or "")
-        choices = q.get("choices") or []
-        n = kept.get("n") if kept else None
-        choice = choices[n] if isinstance(n, int) and 0 <= n < len(choices) else None
-        if choice is None or not standing(choice) or _signature(choice) != list(kept.get("keys") or []):
+        kept = rules.value(anchors, _rule_key(agent_id, skill_id, q.get("id") or ""))
+        mine = kept.get("set") if isinstance(kept, dict) else None
+        choice = next((c for c in q.get("choices") or [] if mine and c.get("set") == mine), None)
+        if choice is None:
             still.append(q)
             continue
-        new, _ans, why = apply(out, q, n)
-        if new is None:
-            still.append(q)
-            continue
-        out = new
+        out, _j, _w = apply(out, q, choice["n"])
         applied.append(f"{q['id']}: {choice['label']}")
     return out, still, applied
 
@@ -252,17 +177,15 @@ def thread(tid: str) -> dict | None:
     return dict(t) if isinstance(t, dict) else None
 
 
-def with_job(job_id: str) -> dict | None:
-    """The thread that owns job `job_id` — how a job's later question finds its way back to the same exchange."""
-    for t in _threads().values():
-        if isinstance(t, dict) and str((t.get("job") or {}).get("id") or "") == str(job_id or "") and job_id:
-            return dict(t)
-    return None
-
-
 def all_threads() -> list[dict]:
     """Every live thread (copies)."""
     return [dict(t) for t in _threads().values() if isinstance(t, dict)]
+
+
+def with_job(job_id: str) -> dict | None:
+    """The open thread that owns job `job_id` — a retry the agent answered with the same job reuses it."""
+    return next((t for t in all_threads() if job_id and str((t.get("job") or {}).get("id") or "") == str(job_id)
+                 and not t["job"].get("done")), None)
 
 
 def open_jobs() -> list[dict]:

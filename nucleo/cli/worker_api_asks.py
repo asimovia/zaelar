@@ -42,16 +42,17 @@ from nucleo.circuit.asker import (  # noqa: E402,F401 — one asker for the work
 
 
 def _register_ask(rec, question: str, action: str = "ask_user", retained: dict | None = None,
-                  options: list | None = None) -> str:
+                  options: list | None = None, remote: dict | None = None, ask_id: str = "") -> str:
     """Record a question (ask_user or an act's CONFIRM, §v3·K): the row WAITS, the retained act is an artefact, and
     `worker.ask` is emitted. The session is marked parked: its process ends and an answer resumes it by id."""
     _m._prune()
-    corr = _m._new_corr(rec.task_id, action)
+    corr = ask_id or _m._new_corr(rec.task_id, action)
     uid = str(getattr(rec, "uid", "") or "")
     opts = [str(o) for o in (options or []) if str(o or "").strip()]
     entry = {"corr_id": corr, "ask_id": corr, "task_id": str(rec.task_id), "uid": uid, "action": action,
              "question": question, "state": "pending", "answer": "", "result": None, "retained": retained or {},
-             "options": opts, "session": str(getattr(rec, "native_sid", "") or ""), "created": time.time()}
+             "options": opts, "session": str(getattr(rec, "native_sid", "") or ""), "created": time.time(),
+             **({"remote": remote, "kind": "clarify"} if remote else {})}   # a network agent asks (`mesh_jobs`)
     _m._ACTS[corr] = entry
     rec.waiting_on = "user"
     rec.ask = question
