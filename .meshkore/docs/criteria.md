@@ -752,7 +752,10 @@ Flash keeps the conversation; the row is what both brains read.
   worker, one that lacks them keeps the worker on the row; a promise with no call runs; the model's prose question
   becomes the row's; a bound answer is the quoted text. A second prose question about a send that already waits is
   asked on THAT row (`send_task_anchor.to_waiting`): his words fill the one declared candidate they name by identity,
-  the question is asked for the slot still lacking — one row per intention. — since 2026-11-06, the question's half
+  the question is asked for the slot still lacking — one row per intention, and an intention is the card, the act
+  AND the person (`one_row.people`: the row's person value, its candidates, his word that names people): a send
+  to somebody else opens its own row and replaces nothing, and every birth of a send row (`send_task.retain`) ends
+  the row of that act and person that still waited. — since 2026-11-06, the question's half
   2026-11-12 · nodes 2.1657, 2.1629, 2.1619, 2.1140, 2.1731 · `nucleo/request/send_task.py`, `nucleo/flash/tool_executor_widget_calls.py`,
   `nucleo/request/ask_outside_door.py`, `nucleo/request/inline_ask.py`, `nucleo/workers/exit_slots.py`,
   `nucleo/workers/exit_gate.py`.
