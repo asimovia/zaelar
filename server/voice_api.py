@@ -127,6 +127,14 @@ async def debug_stacks():
     return JSONResponse(_stacks.collect())
 
 
+@router.get("/api/debug/loop")
+async def debug_loop():
+    """The body's own event loop as it measures itself (`nucleo/pulse/loop_lag`): the last reading, the worst, the
+    last stall and the seconds lost to stalls — «was it the host that stopped?» answered by the process (E0)."""
+    from nucleo.pulse import loop_lag as _loop_lag
+    return JSONResponse(_loop_lag.status())
+
+
 @router.get("/api/status")
 async def status():
     """SYSTEM STATUS for the ⓘ panel: is Hermes up, is voice live, are the external APIs (LLM/STT/TTS) healthy or

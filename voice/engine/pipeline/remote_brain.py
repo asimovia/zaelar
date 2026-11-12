@@ -23,6 +23,7 @@ by the body's typed door) so every card the turn opens goes back to that screen.
 """
 from __future__ import annotations
 
+import asyncio
 import contextvars
 import os
 import time
@@ -70,7 +71,10 @@ def turn_payload(chat_ctx) -> dict:
     except Exception as _swallowed:  # noqa: BLE001
         logger.debug(f"{__name__}: {_swallowed!r}")   # said, never silent (the ratchet)
         pass
-    return {"text": last_user_text(chat_ctx), "speech_id": speech_id, "origin": CHILD_ORIGIN.get()}
+    out = {"text": last_user_text(chat_ctx), "speech_id": speech_id, "origin": CHILD_ORIGIN.get()}
+    if _LOST["text"] and _LOST["text"] != out["text"]:
+        out["prior"] = _LOST["text"]              # E0: his line the lost turn never delivered — the body reads it first
+    return out
 
 
 def apply_env(env) -> int:
@@ -91,54 +95,87 @@ def apply_env(env) -> int:
     return moved
 
 
-def _say_again() -> str:
+def _line(key: str) -> str:
     try:
         from voice.engine.core import langs
-        return str(getattr(langs.current_language(), "say_again", "") or "")
+        return str(getattr(langs.current_language(), key, "") or "")
     except Exception as _swallowed:  # noqa: BLE001
         logger.debug(f"{__name__}: {_swallowed!r}")   # said, never silent (the ratchet)
         return ""
 
 
+def _say_again() -> str:
+    return _line("say_again")
+
+
+def _slow_line() -> str:
+    """What he hears when the body cannot be reached at all (E0): «it's running slow», never «say that again» — his
+    words were heard; it is the host that did not run."""
+    return _line("brain_slow")
+
+
+RETRY_S = 1.0           # E0: a body that cannot be reached is asked ONCE more, a second later — never a storm
+#: His line a lost turn could not deliver (E0): it rides with the next turn as `prior`, so the body still reads it.
+_LOST: dict = {"text": ""}
+
+
 async def remote_llm_node(agent, chat_ctx, tools, model_settings):
-    """`Agent.llm_node` in the voice process: the reply's text, read from the body as it is written."""
-    from livekit.agents.types import FlushSentinel
-    from voice.engine.speech import filler_audio as _fa
+    """`Agent.llm_node` in the voice process: the reply's text, read from the body as it is written.
+
+    A body that cannot be reached is tried once more after `RETRY_S`; still unreachable with nothing said, he hears
+    the slow line and his words are kept for the next turn (`_LOST`). A turn the body itself failed asks him again."""
     payload = turn_payload(chat_ctx)
     link = body_link.get()
     await link.flush(FLUSH_S)
     t0, said = time.monotonic(), False
-    agen = link.stream(TURN_PATH, payload)
-    try:
-        async for line in agen:
-            t = line.get("t")
-            if t == "c":
-                txt = str(line.get("text") or "")
-                if txt:
-                    said = True
-                    yield txt
-            elif t == "filler":
-                phrase = str(line.get("text") or "").strip()
-                if phrase:
-                    _fa.mark_for_strip(phrase)
-                    yield phrase + " "
-                    yield FlushSentinel()          # its own segment: it sounds now, the reply is segment two
-            elif t == "env":
-                apply_env(line.get("env"))
-            elif t == "err":
-                raise RuntimeError(str(line.get("msg") or "the body's turn failed"))
-            elif t == "end":
+    for attempt in (0, 1):
+        agen = link.stream(TURN_PATH, payload)
+        try:
+            async for piece, is_text in _pieces(agen):
+                said = said or is_text
+                yield piece
+            _LOST["text"] = ""
+            return
+        except RuntimeError as e:
+            logger.warning(f"remote brain: turn failed after {time.monotonic() - t0:.2f}s — {e!r}")
+            if not said and (line := _say_again()):
+                yield line                         # a lost turn asks him again; it never goes silent
+            return
+        except OSError as e:                       # the body is not answering at all
+            logger.warning(f"remote brain: the body is unreachable ({e!r}), attempt {attempt + 1}")
+            if said or attempt:
                 break
-    except RuntimeError as e:
-        logger.warning(f"remote brain: turn failed after {time.monotonic() - t0:.2f}s — {e!r}")
-        if not said and (line := _say_again()):
-            yield line                             # a lost turn asks him again; it never goes silent
-    except OSError as e:                           # the body is not answering at all
-        logger.warning(f"remote brain: the body is unreachable ({e!r})")
-        if not said and (line := _say_again()):
+            await asyncio.sleep(RETRY_S)
+        finally:
+            await agen.aclose()
+    if not said:
+        _LOST["text"] = str(payload.get("text") or "")
+        if (line := _slow_line()):
             yield line
-    finally:
-        await agen.aclose()
+
+
+async def _pieces(agen):
+    """The body's lines → `(piece, is_text)`: a chunk's text, or the cover as its own segment (text + FlushSentinel)."""
+    from livekit.agents.types import FlushSentinel
+    from voice.engine.speech import filler_audio as _fa
+    async for line in agen:
+        t = line.get("t")
+        if t == "c":
+            txt = str(line.get("text") or "")
+            if txt:
+                yield txt, True
+        elif t == "filler":
+            phrase = str(line.get("text") or "").strip()
+            if phrase:
+                _fa.mark_for_strip(phrase)
+                yield phrase + " ", False
+                yield FlushSentinel(), False       # its own segment: it sounds now, the reply is segment two
+        elif t == "env":
+            apply_env(line.get("env"))
+        elif t == "err":
+            raise RuntimeError(str(line.get("msg") or "the body's turn failed"))
+        elif t == "end":
+            return
 
 
 class RemoteBrainLLM(llm.LLM):

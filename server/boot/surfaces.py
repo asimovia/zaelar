@@ -207,6 +207,12 @@ def guardians(app, first_lifespan_entry: bool) -> None:
         self_watchdog.start()
     except Exception as e:
         logger.warning(f"self watchdog start failed (voice/chat unaffected): {e}")
+    # E0: the body measures its OWN loop — a host that stops it is named as such, never as the model or the provider.
+    try:
+        from nucleo.pulse import loop_lag
+        loop_lag.watch()
+    except Exception as e:
+        logger.warning(f"loop lag watch start failed (voice/chat unaffected): {e}")
     # V2-836: an engine away from his computer offers his daemon the outbound tunnel (a no-op on a self-hosted one).
     try:
         from nucleo.daemon_egress import link as egress_link

@@ -145,6 +145,19 @@ def match(contacts: list[dict], inc: dict) -> dict | None:
 _FILLABLE = ("city", "address", "phone", "email", "notes", "avatar")
 
 
+GIVE_WAY_EVERY = 50     # rows between two yields of the interpreter while a merge runs in the widget thread (E0)
+
+
+def give_way(i: int) -> bool:
+    """Between batches of a merge the thread yields the interpreter and, while the body's loop is stalling, paces
+    itself (`nucleo/pulse/loop_lag.give_way`): a 2 700-row import must never hold the loop. True when it paced."""
+    try:
+        from nucleo.pulse import loop_lag
+        return loop_lag.give_way(i, every=GIVE_WAY_EVERY)
+    except Exception:  # noqa: BLE001 — the merge still lands without the meter
+        return False
+
+
 def merge_contacts(db: dict, rows: list[dict], *, source: str) -> dict:
     """Fold imported people in. Returns counts; NEVER overwrites a value that is already here.
 
@@ -155,7 +168,8 @@ def merge_contacts(db: dict, rows: list[dict], *, source: str) -> dict:
     contacts = db.setdefault("contacts", [])
     today = time.strftime("%Y-%m-%d")
     added = filled = unchanged = 0
-    for inc in rows or []:
+    for i, inc in enumerate(rows or []):
+        give_way(i)                      # E0: a thousand rows in the widget thread give the loop its turn
         name = str(inc.get("name") or "").strip()
         if not name:
             continue                        # a row with no name cannot be referenced, listed or spoken
@@ -225,7 +239,8 @@ def merge_groups(db: dict, rows: list[dict], *, source: str) -> dict:
     contacts = db.setdefault("contacts", [])
     today = time.strftime("%Y-%m-%d")
     added = filled = unchanged = 0
-    for inc in rows or []:
+    for i, inc in enumerate(rows or []):
+        give_way(i)                      # E0: a thousand rows in the widget thread give the loop its turn
         name = str(inc.get("name") or "").strip()
         if not name:
             continue

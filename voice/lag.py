@@ -36,7 +36,13 @@ def bound_s() -> float:
 
 
 LOOP = "voice_loop"     # the session loop's own lag: our turns' work, never the audio path
+BODY = "body_loop"      # the BODY's loop (`nucleo/pulse/loop_lag`): a host that stopped it — quiet, like LOOP (E0)
 AUDIO = "voice_audio"   # the SDK's audio signals (VAD vs real time, the executor's ping): the shed source they name
+
+
+def _body_bound_s() -> float:
+    from nucleo.pulse import loop_lag
+    return loop_lag.bound_s()
 
 
 def _audio_flows() -> bool:
@@ -57,11 +63,12 @@ def note(lag_s: float, source: str) -> bool:
     he is talking (said again only after the lag has recovered and come back)."""
     now = time.monotonic()
     from nucleo.workers import envelope
-    if source == LOOP:
-        if lag_s >= bound_s():
-            envelope.shed(_COOLDOWN_S, LOOP)    # quietly: neither an event nor a spoken line
+    if source in (LOOP, BODY):
+        bound = bound_s() if source == LOOP else _body_bound_s()
+        if lag_s >= bound:
+            envelope.shed(_COOLDOWN_S, source)  # quietly: neither an event nor a spoken line
         else:
-            envelope.unshed(LOOP)               # V2-867 T591: the hold ends with its cause, the minute is a ceiling
+            envelope.unshed(source)             # V2-867 T591: the hold ends with its cause, the minute is a ceiling
         return False
     _state["worst"] = max(_state["worst"], lag_s)
     if lag_s < bound_s():

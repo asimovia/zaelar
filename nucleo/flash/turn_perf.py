@@ -59,6 +59,8 @@ _BLOCKS = (
 # waiting for its first token. Inline passes note themselves under the turn's trace; the verdict names a dominant one.
 _PASSES: dict[str, list[dict]] = {}
 PASS_DOMINATES = 0.5      # share of a slow turn spent in its inline second passes required to blame them
+HOST_STALL_S = 1.0        # E0: a body-loop stall of at least this, …
+HOST_DOMINATES = 0.3      # …covering this share of the whole turn (pre + total), names the HOST — nobody else
 
 
 def note_pass(what: str, ms: int, *, prompt_tokens: int = 0, ttft_ms=None, detached: bool = False) -> dict:
@@ -97,6 +99,20 @@ def biggest_block(m: dict) -> tuple[str, int]:
     return best, best_n
 
 
+def _pre_turn(m: dict) -> tuple:
+    """The segments spent OUTSIDE the model's own generation: `(pre, gate, acc, amap, mem, gap, host)` in ms, s, s —
+    the pre-turn judges and recall (2026-09-01), the gap since the last turn, the seconds the HOST stopped the body's
+    loop (E0, `host_stall_s` from the close)."""
+    pre = _num(m, "pre_ms", default=0) or 0
+    gate_ms = _num(m, "gate_ms", default=0) or 0
+    acc_ms = _num(m, "acc_ms", default=0) or 0
+    amap_ms = _num(m, "amap_ms", default=0) or 0   # action-map lookup, miss path (V2-539); sub-ms by design
+    mem_ms = _num(m, "mem_query_ms", default=0) or 0
+    gap = _num(m, "gap_since_last_s", default=0) or 0
+    host = _num(m, "host_stall_s", default=0) or 0
+    return pre, gate_ms, acc_ms, amap_ms, mem_ms, gap, host
+
+
 def verdict(m: dict) -> dict:
     """Diagnose the turn from the metrics ALREADY collected. Returns `{slow, cause, label, …}`.
 
@@ -121,12 +137,7 @@ def verdict(m: dict) -> dict:
     # the provider 1.5 s used to be reported as "TTFT 1544 ms — blame the provider". `pre_ms` makes our share a
     # named number; `total_ms`/SLOW_MS keep their meaning on purpose (provider_chain.note_slow relays on them,
     # and relaying a provider over OUR preflight would punish the wrong party).
-    pre = _num(m, "pre_ms", default=0) or 0
-    gate_ms = _num(m, "gate_ms", default=0) or 0
-    acc_ms = _num(m, "acc_ms", default=0) or 0
-    amap_ms = _num(m, "amap_ms", default=0) or 0   # action-map lookup, miss path (V2-539); sub-ms by design
-    mem_ms = _num(m, "mem_query_ms", default=0) or 0
-    gap = _num(m, "gap_since_last_s", default=0) or 0
+    pre, gate_ms, acc_ms, amap_ms, mem_ms, gap, host = _pre_turn(m)
     cold = bool(m.get("cold_estimate")) or gap >= COLD_GAP_S
     # A turn that ESCALATES or SEARCHES makes a 2nd pass: it is slow because of WORK, not a failure.
     worked = bool(m.get("escalated") or m.get("searched"))
@@ -145,6 +156,12 @@ def verdict(m: dict) -> dict:
     if not slow:
         cause = "ok"
         label = f"⏱ turno {int(total)} ms · prompt {int(ptok)} tok · TTFT {int(ttft)} ms"
+    elif host >= HOST_STALL_S and host * 1000 >= HOST_DOMINATES * (total + pre):
+        # E0: the body's OWN loop was stopped (a host out of memory, measured 2026-11-12: 12–31 s): the time went
+        # nowhere the model or the provider can answer for. Named FIRST — a stall also looks cold and pre-token.
+        cause = "host"
+        label = (f"⏱ turno LENTO {int(total)} ms — HOST PARADO {host:.1f} s: el bucle del motor no corrió; "
+                 f"ni el prompt ({int(ptok)} tok) ni el proveedor lo explican")
     elif cold:
         cause = "frio"
         label = (f"⏱ turno LENTO {int(total)} ms — ARRANQUE EN FRÍO "
@@ -195,6 +212,7 @@ def verdict(m: dict) -> dict:
         label += f" · previo {int(pre)} ms (juez {int(gate_ms)} · frase {int(acc_ms)} · memoria {int(mem_ms)})"
     return {"slow": slow, "cause": cause, "label": label, "total_ms": int(total), "ttft_ms": int(ttft),
             "pre_ms": int(pre), "gate_ms": int(gate_ms), "acc_ms": int(acc_ms), "amap_ms": amap_ms,
+            "host_stall_s": round(float(host), 2),
             "turn_full_ms": int(total + pre),
             "cache_hit_tokens": (int(cache_hit) if cache_hit is not None else None),
             "cache_hit_frac": cache_frac,

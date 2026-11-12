@@ -16,6 +16,7 @@ from loguru import logger
 
 from nucleo.flash import follow_up_pass as _fup
 from nucleo.input import stt as _acc_mod
+from nucleo.pulse import loop_lag as _loop_lag
 from nucleo.turn import pipeline_failure as _turn_failure
 from nucleo.turn import route_by_verdict as _route
 
@@ -82,6 +83,7 @@ async def stream_the_reply(self, motor, *, FastClient, messages, spec, _turn_too
         # R16: under a sure ANSWER verdict the first words wait for the call; V2-833 F8: under an unreadable one too,
         # waiting for a brief in flight at most the lead-in filler's deadline (`turn_unclear.hold_deadline_s`)
         _hold = _fup.Hold(_brief, send, wait_s=hold_deadline_s(_filler_audio), route_wait_s=_route.wait_s())
+        _wait_t0 = time.monotonic()      # when the wait for the next chunk began (E0: a host stall inside it is not silence)
         try:
             while True:
                 try:
@@ -89,6 +91,15 @@ async def stream_the_reply(self, motor, *, FastClient, messages, spec, _turn_too
                 except asyncio.TimeoutError:
                     # ¿Llega algo por debajo (argumentos de una tool-call)? Entonces NO es un atasco.
                     if motor.stream_advancing(llm_metrics, _quiet_ms):
+                        continue
+                    # E0: the BODY's loop was stopped while the deadline ran — the model's silence was never measured
+                    # (measured 2026-11-12: a host out of memory stopped the loop 12–31 s and the turn blamed the
+                    # provider, relaying to the stand-in). The wait goes on; the fact is said, nobody is blamed.
+                    if (_host := _loop_lag.stalled_since(mono=_wait_t0)) > 0:
+                        emit("perf", f"⏱ host stalled {_host:.1f} s during the turn — the wait goes on, the model "
+                                     "is not blamed", role="system",
+                             extra={"cat": "flash", "kind": "host_stall", "host_stall_s": _host, "quiet_ms": _quiet_ms})
+                        _wait_t0 = time.monotonic()
                         continue
                     # Atasco de verdad: ni texto ni chunks. Se trata como fallo del cerebro (rama `errored`):
                     # frase corta y honesta + aviso — nunca un minuto de silencio que parece un cuelgue.
@@ -106,6 +117,7 @@ async def stream_the_reply(self, motor, *, FastClient, messages, spec, _turn_too
                     break
                 delta = _val
                 _buf_add(delta)
+                _wait_t0 = time.monotonic()
                 if delta:
                     _quiet_ms = motor._turn_budget_ms()      # hay avance real → el plazo se renueva
                 _hold.say(speech.inline(take(False)))
