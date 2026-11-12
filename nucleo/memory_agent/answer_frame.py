@@ -66,8 +66,8 @@ def answers_ours(text: str, *, asked: str | None = None) -> str:
 
 
 def framed(text: str, *, asked: str | None = None) -> str:
-    """`text` as the distiller should read it: unchanged, or prefixed with the question it answers."""
+    """`text` as the distiller reads it: as is, or after the question it MAY answer (conditional: the rule is a reading)."""
     q = answers_ours(text, asked=asked)
     if not q:
         return text
-    return f"(answering the assistant's question «{q}») {str(text or '').strip()}"
+    return f"(perhaps answering the assistant's question «{q}») {str(text or '').strip()}"
