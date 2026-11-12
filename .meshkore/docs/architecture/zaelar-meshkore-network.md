@@ -79,7 +79,8 @@ publisher adds. The engine needs no change to use a new agent — see §1.5.
 `_is_free` reads the price the Oracle or the agent's own card reports and **treats unknown as not free**.
 Skipping a free agent we could not price costs one fallback; calling a paid one would spend money nobody
 authorised. A `402 Payment Required` challenge is reported to the caller as a fact — never paid, never
-retried. `nucleo/mesh_agents.py` is the single file that owns this rule.
+retried. `nucleo/mesh_agents.py` owns this rule for `serve`; for one declared skill (§1.8) the rule reads «free,
+or priced through a deployment's relay that can put its cost on the account» — still never paid by the engine.
 
 ### 1.5 There is no catalogue, and that is the design
 
@@ -123,6 +124,61 @@ Network down, no agent, a mute agent, a malformed answer — every one of them d
 `mesh_agents` never raises; a failure is `{"ok": false, "reason": …}` and the reason is written to be said out
 loud.
 
+### 1.8 A conversation with an agent — one skill, its questions, its jobs (V2-895)
+
+`serve` is discovery plus one free-text ask of an agent's FIRST declared skill: right for «who has hotels in Madrid»,
+blind for an agent that does several things. A booking is a different shape, and it has its own two verbs:
+
+```
+hbmesh find "<errand>"                                  → agents, each with its card's skills {id, free, describes}
+hbmesh call <agent_id> <skill> --json @request.json     → the answer · a question (thread) · a job being watched
+hbmesh reply <thread> --answer <question id>=<n>        → his answers back to the SAME exchange
+```
+
+**One skill, chosen from the card** (`nucleo/mesh_skills.py`). The worker calls a skill the card DECLARES; price is
+per skill (its own `pricing`, else the card's; unknown is not free). A served skill teaches the playbook route of
+that kind of errand as `<agent>/<skill>` (the genome's learned layer, V2-859), and the next `find` names it.
+
+**Free, or through the relay — never paid by the engine** (`nucleo/mesh_relay.py`). A free skill goes direct. A
+priced one goes only through a deployment's mediated egress (`<egress>/p/mesh/<agent host><path>`, with the
+account's own egress credential), and only when the account holds a price for it — a row of the tariff family
+`agent`, keyed `<agent_id>.<skill_id>`, that arrives with the lease like every other tariff. No relay, or no price:
+refused before anything leaves, said in one line. Which agents a relay covers and how it books them is the relay's
+business; the engine only debits its local lease when such a job is born. A `402` is still never paid.
+
+**An agent that asks is not an agent that failed** (`nucleo/mesh_dialog.py` — the class). An answer whose SHAPE is a
+question — a `questions` list at the top or under `result` (`{id, text, choices: [{label, set?}]}`), or an A2A task in
+`input-required` — comes back as `agent_asks_user` with a thread id. Status words are never read. Before this, a
+`422` carrying questions reached the worker as «the agents did not answer».
+
+```
+agent asks ──► hbmesh: agent_asks_user + thread ──► worker: bridge ask (choices as options), ends its turn
+                                                                │
+he answers ──► worker resumed with his answer ──► hbmesh reply <thread> --answer qid=n ──► request rewritten
+               (THE asker: dialogue, never a card)                                          and sent again WHOLE
+```
+
+  · **Applying** an answer is the agent's own contract: a choice that `set`s dotted paths writes them into a copy of
+    the request; a needed value (`needsValue`) fills only the choice's open slots, never a guess; a question with a
+    `field` takes the value there; anything else is `{id, choice}` for a job.
+  · **His standing answers.** A fully specified choice of a question that sets fields («any table», «±15 min») is a
+    preference: kept as HIS rules row (scope `errand/mesh/mesh_serve`, key `mesh.mandate:<agent>/<skill>/<question>`,
+    personal layer — never in the genome) and applied the next time that agent asks the same question in the SAME
+    shape (same position, same fields). A question about one job («accept 15:15?») is never kept. What was applied
+    from his standing answers is listed in the outcome (`applied_his_standing_answers`).
+  · **Binding is by identity**: the thread (`mt_…`, `sys_kv mesh:threads`) holds the agent, skill, request, questions
+    and job; his answer names it. The request key (`idempotency_key`, when the skill's own examples use one) IS the
+    thread id: a resend can never become a second order.
+
+**A job is owned by a row, not by a worker** (`nucleo/mesh_jobs.py`). A `202` that names a job is recorded on its
+thread; the pulse (every reconcile beat) gives it a row of its own — born from the worker's row, with its session —
+waiting `remote_job`, and polls it with back-off. A question the job raises goes on that row through THE asker
+(`clarify`), its options declared, bound by `remote: {thread, question}`; his option goes back to the job's own
+`answers` endpoint by INDEX, with the job's own token and no model. When the job ends (read by shape: `final: true`,
+or a `result` with no question) the worker session that started it is resumed with the result, and the rebrief
+forbids telling him «it did not happen» for an outcome the agent calls uncertain. A `409` (the agent refusing to
+repeat or to act) is said as what it is and never retried.
+
 ---
 
 ## 2 · Clusters — the mesh as conversation
@@ -159,4 +215,7 @@ operator data, and a peer can never spend the operator's money.
 | «Ask the network before the browser» in every web errand | `nucleo/workers/prompts/` |
 | Learned route cache (7-day TTL, never on `general`) | `mesh_agents.route_for` |
 | Paid agents: reported, never paid without authorisation | §1.4 |
+| One declared skill per call (`hbmesh call`), its questions and his answers (`hbmesh reply`) | §1.8 · `nucleo/mesh_call.py`, `mesh_dialog.py` |
+| A priced skill through a deployment's relay, priced by an `agent` tariff row | §1.8 · `nucleo/mesh_relay.py` |
+| An agent's job owned by a durable row (poll, ask, end) | §1.8 · `nucleo/mesh_jobs.py` |
 | Cluster channel (public + private, UNTRUSTED profile) | `zaelar-cluster-channel.md` |

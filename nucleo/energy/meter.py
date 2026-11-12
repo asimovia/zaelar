@@ -61,7 +61,7 @@ async def _post_usage_cloud_account(energy: float, kind: str, meta: dict | None 
     # DOUBLE BILLING (2026-08-13, T303): with mediated egress the upstream already booked what it saw. The lease
     # deduction happens earlier (`_fire_and_forget`). Search joined 2026-10-23, decision 2026-10-24; voice stays here.
     from nucleo.energy import egress as llm_egress
-    if kind in ("llm", "worker", "search", "decision") and llm_egress.bills_upstream():
+    if kind in ("llm", "worker", "search", "decision", "agent") and llm_egress.bills_upstream():
         return
     service_token = (os.getenv("CONTROL_PLANE_SERVICE_TOKEN") or "").strip()
     headers = {"X-Service-Token": service_token} if service_token else {}
@@ -175,11 +175,11 @@ def _reset_for_tests() -> None:
 
 
 from nucleo.energy.meter_price import (  # noqa: E402,F401 — moved by concern (refactor2710-10b)
-    _cached_rate_for, _is_local_endpoint, _rate_for, _resolve_tokens, decision_cost_to_energy,
+    _cached_rate_for, _is_local_endpoint, _rate_for, _resolve_tokens, agent_cost_to_energy, decision_cost_to_energy,
     llm_cost_to_energy, search_cost_to_energy, stt_cost_to_energy, transport_cost_to_energy, tts_cost_to_energy,
 )
 from nucleo.energy.meter_report import (  # noqa: E402,F401 — moved by concern (refactor2710-10b)
-    _fire_and_forget, _never_raises, _observe_charge, meter_openai_response, report_decision_usage,
+    _fire_and_forget, _never_raises, _observe_charge, meter_openai_response, report_agent_usage, report_decision_usage,
     report_llm_usage, report_search_usage, report_stt_usage, report_transport_usage, report_tts_usage,
     report_worker_usage,
 )

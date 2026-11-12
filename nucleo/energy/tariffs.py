@@ -76,10 +76,17 @@ DEFAULT_TRANSPORT_USD_PER_MIN: dict[str, float] = {
 # The catch-all per family: an unmapped provider bills at the MOST EXPENSIVE known rate and says so
 # once. Same stance as `_FALLBACK_RATE_USD` and the `""` row of `_SEARCH_USD_PER_REQUEST` in
 # `energy_meter`: under-metering is silent, over-metering a rare provider is visible and gets corrected.
+# $ per CALL of a priced skill of a network agent, keyed `<agent_id>.<skill_id>` (`nucleo/mesh_relay.py`). NO
+# defaults, on purpose: the engine names no agent (no catalogue), so a price can only arrive with the lease. And
+# no catch-all either — `has_rate` is how a caller learns that a skill is UNPRICED here, and an unpriced skill is
+# never called: unlike a voice second, a skill call can be left undone, so it never needs a guessed price.
+DEFAULT_AGENT_USD_PER_CALL: dict[str, float] = {}
+
 _FAMILIES: dict[str, dict[str, float]] = {
     "stt": DEFAULT_STT_USD_PER_MIN,
     "tts": DEFAULT_TTS_USD_PER_1K_CHARS,
     "transport": DEFAULT_TRANSPORT_USD_PER_MIN,
+    "agent": DEFAULT_AGENT_USD_PER_CALL,
 }
 
 _KV_KEY = "energy:tariffs"
@@ -179,6 +186,13 @@ def rate_for(family: str, provider: str | None) -> float:
         )
     pool = table or defaults
     return max(pool.values()) if pool else 0.0
+
+
+def has_rate(family: str, provider: str | None) -> bool:
+    """Is there an explicit rate for this provider — delivered or bundled? Never the catch-all. Pure."""
+    _load_once()
+    fam, key = (family or "").lower(), (provider or "").lower().strip()
+    return bool(key) and (key in (_tariffs.get(fam) or {}) or key in (_FAMILIES.get(fam) or {}))
 
 
 def snapshot() -> dict:

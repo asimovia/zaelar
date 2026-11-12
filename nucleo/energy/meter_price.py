@@ -137,6 +137,14 @@ def search_cost_to_energy(*, provider: str) -> float:
     return (raw_usd * _m.MARGIN_MULTIPLIER) / _m.EUR_PER_ENERGY_UNIT
 
 
+def agent_cost_to_energy(*, provider: str) -> float:
+    """Pure given the tariff table. Energy for one priced skill call of a network agent: its `agent` tariff row
+    (`<agent_id>.<skill_id>`). No row → 0: such a call is never started (`nucleo/mesh_relay.route`)."""
+    if not _m.energy_tariffs.has_rate("agent", provider):
+        return 0.0
+    return (_m.energy_tariffs.rate_for("agent", provider) * _m.MARGIN_MULTIPLIER) / _m.EUR_PER_ENERGY_UNIT
+
+
 def decision_cost_to_energy(*, provider: str = "typesafe") -> float:
     """Pure. Energy units for ONE round trip of the decision model."""
     raw_usd = _m._DECISION_USD_PER_REQUEST.get((provider or "").lower(), _m._DECISION_USD_PER_REQUEST[""])

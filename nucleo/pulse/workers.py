@@ -35,6 +35,7 @@ class WorkersPulse:
         said, ONE line by the out-of-turn mouth, keyed per task so a restart never says it twice. The other wait the
         pulse ends is a died worker's pause (`_resume_died_workers`)."""
         self._resume_died_workers(now)
+        await self._advance_remote_jobs(now)
         try:
             from nucleo.circuit import ledger as _tasks
             from nucleo.pulse import notices
@@ -44,6 +45,16 @@ class WorkersPulse:
                                      key=f"task:{row['id']}:expired", kind="info")
         except Exception as e:  # noqa: BLE001 — the pulse never breaks on a sweep; it says it
             _emit("task.expired_waits_failed", {"error": repr(e)[:160]})
+
+    async def _advance_remote_jobs(self, now: float) -> None:
+        """A network agent's job (`nucleo/mesh_jobs`) is polled, asked about and ended here, off the loop's thread."""
+        try:
+            import asyncio
+
+            from nucleo import mesh_jobs
+            await asyncio.to_thread(mesh_jobs.sweep, now)
+        except Exception as e:  # noqa: BLE001 — the pulse never breaks on a sweep; it says it
+            _emit("task.remote_jobs_failed", {"error": repr(e)[:160]})
 
     def _next_relay(self, worker_api, now: float):
         """The oldest open question nobody has SAID yet — an inline door's was said by the turn's own mouth (V2-851)

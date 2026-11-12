@@ -44,7 +44,7 @@ def _observe_charge(energy: float, kind: str, meta: dict | None) -> None:
         extra = {"charge": kind, "energy": round(e, 4),
                  "raw_usd": round(e * _m.EUR_PER_ENERGY_UNIT / _m.MARGIN_MULTIPLIER, 8), "margin": _m.MARGIN_MULTIPLIER}
         upstream = False
-        if kind in ("llm", "worker", "search"):
+        if kind in ("llm", "worker", "search", "agent"):
             from nucleo.energy import egress as llm_egress
             upstream = llm_egress.bills_upstream()
         extra["billed_by"] = "egress" if upstream else "engine"
@@ -181,6 +181,20 @@ def report_decision_usage(*, provider: str = "typesafe", questions: int = 1) -> 
         return
     _m._fire_and_forget(_m.decision_cost_to_energy(provider=provider), "decision",
                      {"provider": provider, "questions": int(questions)})
+
+
+@_never_raises
+def report_agent_usage(*, provider: str, ref: str = "") -> float:
+    """Call ONCE when a priced skill's job is created (`nucleo/mesh_jobs.opened`): `provider` is its tariff key
+    (`<agent_id>.<skill_id>`), `ref` the job. Through mediated egress the egress books it (this only debits the lease).
+    Returns the Energy counted (0 when nothing was)."""
+    if not _m.enabled():
+        return 0.0
+    energy = _m.agent_cost_to_energy(provider=provider)
+    if energy <= 0:
+        return 0.0
+    _m._fire_and_forget(energy, "agent", {"provider": provider, **({"ref": str(ref)[:80]} if ref else {})})
+    return energy
 
 
 @_never_raises
