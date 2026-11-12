@@ -8,7 +8,7 @@ speech when his voice came back, so he never heard it — but it entered the dia
 The signal is the stream's own `_superseded` (a longer prefix, or his voice resumed after the reply began —
 `nucleo.input.typed.resumed_since`). At the close, a superseded turn that did NOTHING leaves his words in the window
 (they happened) but not its reply, and the words are owed to the next turn (`stt.unanswered_by`). A turn that acted
-keeps its reply: what it did is real and the window must say so — but it is counted (`🧩 turno superado que actuó`:
+keeps its reply: what it did is real and the window must say so — but it is counted (`🧩 a superseded turn that acted`:
 the act, his fragment, ms from the act to his resumption), so whether an act on half a sentence is undone is decided
 on data. Nothing is undone here.
 """
@@ -32,7 +32,7 @@ def _acted_on_a_fragment(brain, text: str, emit) -> None:
     ok, back = calls is getattr(brain, "_turn_calls", None), _typed._state.get("last_onset") or 0.0
     acts = [f"{(c.get('args') or {}).get('widget') or c['name']}:{(c.get('args') or {}).get('action') or c['name']}"
             for c in (calls if ok else None) or ()]
-    emit("brain", "🧩 turno superado que actuó — la frase seguía", text=str(text or "")[:200], role="system",
+    emit("brain", "🧩 a superseded turn that acted — the sentence went on", text=str(text or "")[:200], role="system",
          extra={"cat": "flash", "phase": "close", "acts": acts[:6], "fragment": str(text or "")[:200],
                 "act_to_resume_ms": round((back - at) * 1000) if ok and at and back else None,
                 "trace_id": _trace.current()})

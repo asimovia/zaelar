@@ -1,7 +1,7 @@
 """Whether a request is WORK to commission, and what that work is (V2-778 F1, 2026-10-01).
 
 Moved out of `nucleo/flash/router_guards.py`, which had grown past its size ceiling: the readers that decide a
-request deserves a worker (`create_widget_request`, `escalate_goal_from_window`,
+request deserves a worker (`create_widget_request`,
 `too_thin_to_commission`, `nothing_running_for` and their helpers). The code is the SAME; every name it read from
 `router_guards` is read through the module (`_rg.<name>`), so a caller or a test that patches
 `router_guards.<name>` still governs it, and `router_guards` re-exports every function here under its old name.
@@ -81,43 +81,6 @@ def create_widget_request(text: str) -> str:
         if part and _rg.looks_like_create_widget(part):
             return part
     return text
-
-
-def escalate_goal_from_window(window, current_text: str = "", max_back: int = 6) -> str:
-    """The operator's request that a promise refers to, which is NOT always in this turn's text.
-
-    V2-132, measured on `find-theatre-tickets__es`: the task was described across TWO turns — «consígueme dos
-    entradas para el musical de El Rey León» and then, after zaelar correctly asked for the missing data,
-    «este sábado, la sesión de tarde». zaelar answered the second one with «dame un momento que lo miro» and
-    called no tool at all. The promise backstop looked only at THIS turn's text, which on its own describes no
-    task, so it could not fire — and the run became eight turns of narrating a search that never started.
-
-    Returns the goal to escalate (this turn's text appended, since it carries the detail that completes it), or
-    "" if nothing in the window describes a task that needs a worker. Same lookback shape as the window the
-    brain already sees; the caller still gates on "no tool fired AND nothing is running".
-    """
-    if current_text and _rg._needs_real_work(current_text):
-        return current_text
-    # V2-147: `max_back` counts the operator's OWN turns, not window ENTRIES. It used to slice the raw window,
-    # so every exchange cost two of the budget and three «¿alguna novedad?» were enough to push the request out
-    # of reach. Measured on the run: the task was named in the first turn, `_needs_real_work` recognised it, and
-    # the lookback simply could not see that far — the promise «dame un momento que lo miro» came back with no
-    # goal and nothing escalated. Counting assistant turns against a budget meant for the operator's history
-    # punishes a conversation for the very thing that makes it normal: asking how it is going.
-    seen = 0
-    for msg in reversed(list(window or [])):
-        if (msg or {}).get("role") != "user":
-            continue
-        seen += 1
-        if seen > max_back:
-            break
-        content = str((msg or {}).get("content") or "").strip()
-        if content and _rg._needs_real_work(content):
-            from nucleo.flash import served_writes as _served
-            if _served.served(content):
-                continue           # its write already landed in the light path (2026-10-14): nothing to start
-            return f"{content} — {current_text}".strip(" —") if current_text else content
-    return ""
 
 
 def _needs_real_work(text: str) -> bool:

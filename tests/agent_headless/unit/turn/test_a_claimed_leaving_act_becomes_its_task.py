@@ -59,7 +59,7 @@ def test_a_question_is_never_a_claim(wired):
 
 def test_an_unsure_verdict_or_an_act_that_stays_routes_nothing(wired):
     seen, state, emit = wired
-    state["target"] = ("mensajeria:send_to", {"used": True, "confidence": 0.6})
+    state["target"] = ("mensajeria:send_to", {"used": True, "confidence": 0.55})   # A7: under the act floor (0.6)
     assert aod.claimed({}, "Sending it now.", "manda un mensaje a pablo", emit=emit) == 0
     state["target"] = ("mensajeria:send_to", {"used": True, "confidence": 0.98})
     state["leaves"] = False
@@ -120,3 +120,10 @@ def test_a_lean_to_a_send_without_a_reading_that_sends_starts_no_worker(order, s
     v["message_channel"] = ("none", {"used": True, "confidence": 0.9})
     assert aod.claimed({}, "Done.", said, emit=emit) == 0
     assert not seen["escalated"]
+
+
+def test_a_claimed_send_is_read_at_the_act_floor_not_the_veto(wired):
+    """A7: the same send asked 0.85 with no call and 0.6 with a view — one floor for an act the turn launches."""
+    seen, state, emit = wired
+    state["target"] = ("mensajeria:send_to", {"used": True, "confidence": 0.7})
+    assert aod.claimed({}, "Sending it now.", "manda un mensaje a pablo", emit=emit) == 7

@@ -49,11 +49,11 @@ def owes_an_act(brief) -> str:
     try:
         if _voice_trace.is_kickoff():      # OUR turn (the session's greeting) answers no order of his
             return ""
-        from nucleo.turn import brief as tb
-        esc, e_info = tb.read(brief, tb.ESCALATE_KEY, "")
+        from nucleo.turn import brief as tb, verdicts
+        esc, e_info = tb.read(brief, tb.ESCALATE_KEY, "", min_confidence=verdicts.act_floor())
         if e_info is not None and esc == "escalate":
             return "escalate"
-        kind, k_info = tb.read(brief, tb.REQUEST_KEY, "")
+        kind, k_info = tb.read(brief, tb.REQUEST_KEY, "", min_confidence=verdicts.act_floor())
         return "order" if (k_info is not None and kind == "order") else ""
     except Exception as e:  # noqa: BLE001
         logger.debug(f"reply: the brief was not read — {e!r}")

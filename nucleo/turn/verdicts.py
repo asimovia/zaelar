@@ -37,18 +37,21 @@ def read(handle, key: str, fallback, *, min_confidence: float | None = None):
         return fallback, None
 
 
-def to_act(handle, key: str, fallback):
-    """A verdict read to LAUNCH or RELAUNCH an act — the screen action that completes an empty turn, the request type
-    that says the turn is an order, `corrects_last` that redoes or undoes what we just did. ONE floor for all of them:
-    the operator's `consent.intent_act_at` (his «at 60 % we do it»), never `LICENCE`. Below it the verdict is a shrug
-    for acting, whatever a guard may still read at the licence. `(choice, info)` as `read`; never waits, never raises."""
+def act_floor() -> float:
+    """The ACT floor: the operator's `consent.intent_act_at` (his «at 60 % we do it»), never under `LICENCE`."""
     try:
         from nucleo import consent
-        floor = consent.intent_act_at()
+        return max(consent.intent_act_at(), LICENCE)
     except Exception as e:  # noqa: BLE001 — an unreadable knob never lowers the floor
         logger.debug(f"verdicts: intent_act_at unreadable — {e!r}")
-        floor = 0.6
-    return read(handle, key, fallback, min_confidence=max(floor, LICENCE))
+        return 0.6
+
+
+def to_act(handle, key: str, fallback):
+    """A verdict read to LAUNCH or RELAUNCH an act (the screen action that completes an empty turn, an order, a redo, a
+    binding to a waiting task's question): ONE floor, `act_floor`, never `LICENCE` nor a reader's own higher bar (A7;
+    `route_by_verdict` declares why it reads the licence). `(choice, info)` as `read`."""
+    return read(handle, key, fallback, min_confidence=act_floor())
 
 
 def against_the_model(handle, key: str, agrees) -> str:

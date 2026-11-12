@@ -150,7 +150,7 @@ def _unheard(superseded, *, acted: bool, act_at: float | None, resumed_at: float
     events = []
     out = resume_cut.reply_unheard(superseded, acted, brain=brain, text="en el año", spoken_text="Volumen al 69.",
                                    emit=lambda *a, **k: events.append((a, k)))
-    return out, [k for a, k in events if "superado que actuó" in a[1]]
+    return out, [k for a, k in events if "superseded turn that acted" in a[1]]
 
 
 def test_a_superseded_turn_that_acted_is_counted_with_its_act_and_the_gap():

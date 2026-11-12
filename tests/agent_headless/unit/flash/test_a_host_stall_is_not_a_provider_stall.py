@@ -141,7 +141,7 @@ def test_the_verdict_names_the_host_before_cold_or_pre_token(meter, monkeypatch)
     it as a cause that breaks the slow streak."""
     m = {"total_ms": 14000, "ttft_ms": 13500, "prompt_tokens": 3000, "tok_per_s": 30, "gap_since_last_s": 200}
     v = tp.verdict({**m, "host_stall_s": 13.2})
-    assert v["cause"] == "host" and "HOST PARADO 13.2 s" in v["label"] and v["host_stall_s"] == 13.2
+    assert v["cause"] == "host" and "HOST STALLED 13.2 s" in v["label"] and v["host_stall_s"] == 13.2
     assert tp.verdict(m)["cause"] == "frio", "without host time the verdict reads as before"
     assert tp.verdict({**m, "gap_since_last_s": 0})["cause"] == "pre_token"
     assert tp.verdict({**m, "host_stall_s": 0.4})["cause"] == "frio", "a stall under HOST_STALL_S names nobody new"

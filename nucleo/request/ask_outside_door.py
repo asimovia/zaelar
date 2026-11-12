@@ -165,7 +165,7 @@ def claimed(brief, reply: str, said: str, *, emit=None) -> int:
         from nucleo.turn import verdicts
         from widgets import effects
         from nucleo.request import base
-        target, info = verdicts.read(brief, "screen_action", None, min_confidence=verdicts.VETO)
+        target, info = verdicts.read(brief, "screen_action", None, min_confidence=verdicts.act_floor())
         wid, _sep, act = str(target or "").partition(":")
         if not (info and wid and act and effects.leaves(base(wid), act)):
             return _an_order_nothing_served(brief, text, emit=emit)

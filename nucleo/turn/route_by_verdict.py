@@ -10,7 +10,8 @@ start line the close already says for an escalation with no words («on it»).
 Not a re-run after the stream: the verdict is read where the model's output is held anyway — at its first word
 (`follow_up_pass.Hold`) and at each call it makes (`gate_calls`) — waiting for a brief in flight at most `wait_s()`.
 Measured on battery C9 before this (2026-11-05): the verdict flipped to escalate at 0.52-0.62 and Flash still answered
-inline, sending what should have waited for his consent inside a task.
+inline, sending what should have waited for his consent inside a task. Read at the LICENCE, not the act floor, by
+declared reason (A7): it first HOLDS the model's inline call (the side that sends nothing), and C9's band straddles it.
 """
 from __future__ import annotations
 

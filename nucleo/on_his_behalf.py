@@ -41,7 +41,6 @@ import time
 import unicodedata
 
 LOOKBACK_S = 900.0
-_RECIPIENT_KEYS = ("to", "contact", "recipient", "chat")
 
 
 def _fold(v) -> str:
@@ -80,7 +79,8 @@ def who_of(wid: str, action: str, payload) -> list[str]:
     `reply {n: 1}` names a list number, and «nobody» read as «no doubt» sent a message to whoever was first."""
     p = payload if isinstance(payload, dict) else {}
     field = _spec(wid, action).get("on_his_behalf")
-    keys = (field,) if isinstance(field, str) and field.strip() else _RECIPIENT_KEYS
+    from nucleo.acts.message import RECIPIENT_KEYS     # A7: one list of a send's recipient keys, the act's own
+    keys = (field,) if isinstance(field, str) and field.strip() else RECIPIENT_KEYS
     out: list[str] = []
     for k in keys:
         v = p.get(k)

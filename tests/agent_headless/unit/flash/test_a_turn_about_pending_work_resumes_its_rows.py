@@ -172,7 +172,7 @@ def test_both_doors_ask_the_rows_before_annulling_or_gluing():
     assert words.index("_resume_turn.before_fragment_guard(") < words.index("_pst._eguard.drop_if_fragment(")
     lanes = (ROOT / "nucleo/flash/post_stream_lanes.py").read_text(encoding="utf-8")
     i = lanes.index("_no_tool = await _pst._resume_turn.before_backstops(")
-    assert i < lanes.index('escalate_req["v"] = _win_goal or _op_text') and i < lanes.index("hands_public_lookup_back")
+    assert i < lanes.index('escalate_req["v"] = _op_text')
 
 
 def test_a_resumed_turn_leaves_no_backstop_to_rebuild_a_brief(monkeypatch):
