@@ -7318,6 +7318,9 @@ DOMAINS: list[dict] = [
         {"id": "7.17", "title": "Un test fuera del mapa no es un test (trinquete de las TRES formas de desaparecer)",
          "ch": UNIT,
          "paths": ["tests/infrastructure/unit/test_a_test_outside_the_map_is_not_a_test.py"]},
+        # 2026-11-12: two writers took the same free id on their own branches and both landed, twice in one evening.
+        {"id": "7.133", "title": "A node id names ONE node of the map: an id used twice, in any domain, is refused",
+         "ch": UNIT, "paths": ["tests/infrastructure/unit/test_a_node_id_names_one_node.py"]},
         # 2026-09-20: del 15 al 20 de septiembre una pasada ancha de pytest estuvo PROHIBIDA aquí porque le
         # colgaba la máquina al operador — con la causa sin diagnosticar, que era lo honesto entonces y dejaba
         # al motor sin poder contestar «¿sigue pasando todo?». Corrección del operador: se cuelgan ALGUNOS
