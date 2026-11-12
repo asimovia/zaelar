@@ -13,7 +13,8 @@ card and the act), his answer binds to it through the brief's `answers_open_ques
   · a yes, or a fact («a las siete»), is his answer to the offer: the act's payload is COMPOSED from his request, our
     question and his answer — a bounded pass with the card's declared actions and nothing else (the fallback the
     operator kept, 2026-11-12: a payload only a model can write) — and the act runs through the card's own door on
-    THIS row (`data_ops.dispatch_and_report`), whose echo settles it;
+    THIS row (`data_ops.dispatch_and_report`), whose echo settles it — unless the one consent rule asks about this
+    call (`action_mode_now`, CRIT-C13): then the card's declared question waits on the row and his yes runs it;
   · the answering turn's own call of that act is the same answer (`inline_ask.claim` takes the question first): one
     answer, one act, whoever triggers it.
 
@@ -101,5 +102,13 @@ async def run(uid: str, entry: dict, text: str, choice: int | None = None) -> di
     if payload is None:
         circuit.settle(row=uid, state="failed", outcome="the offer's act could not be composed from his answer")
         return {"ok": False, "row": uid}
-    from nucleo.flash import data_ops
-    return await data_ops.dispatch_and_report(wid, act, payload, row=uid, text=request)
+    from nucleo.flash import data_ops, frontend
+    from widgets import actions as _wa
+    if frontend.action_mode_now(wid, act, payload) != _wa.CONFIRM:
+        return await data_ops.dispatch_and_report(wid, act, payload, row=uid, text=request)
+    # CRIT-C13 — his answer composed the act, it never said yes to it: the card's declared question waits on this row
+    from nucleo.request import consent_ask, send_task
+    q = consent_ask.question(wid, act, payload)
+    inline_ask.held(uid, wid, act, payload, {"ok": False, "consent": "ask_consent"}, question=q, options=consent_ask.yes_no())
+    send_task._said_asked(wid, act, q)
+    return {"ok": False, "row": uid, "asked": True}

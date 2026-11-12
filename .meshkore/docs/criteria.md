@@ -781,7 +781,9 @@ Flash keeps the conversation; the row is what both brains read.
   ends asking while the brief names a declared act at the act floor (`ask_outside_door.named_act`) makes its row wait
   with his request retained; his answer binds through `answers_open_question` → `inline_answer.rerun` →
   `answered_offer.run`: a declared no cancels, a yes or a fact composes the payload by ONE bounded pass over his
-  request, our question and his answer and runs it through the card's door on that row; the answering turn's own
+  request, our question and his answer and runs it through the card's door on that row — an act the one consent
+  rule asks about for that call (`action_mode_now`) waits there for his yes first, with the card's declared
+  question (`consent_ask.question`) and its two declared answers (C13); the answering turn's own
   call of the act is the same answer (`inline_ask.claim` — the turn is its trace: a later turn's call of that act
   is a new order, for every answer that resumes a row); no call leaves the row failed, never a guess. — since
   2026-11-12 · nodes 2.1730 · `nucleo/request/answered_offer.py`, `nucleo/request/inline_answer.py`.

@@ -25,6 +25,16 @@ def yes_no() -> list[str]:
         return ["yes", "no"]
 
 
+def question(wid: str, action: str, payload: dict | None = None) -> str:
+    """An irreversible act's question asked outside a turn: the card's declared `confirm_q` in his language, its item named."""
+    from i18n import runtime as _rt
+    from widgets import effects, refs
+    card = base(wid)
+    raw = str(((effects._manifest(card).get("actions") or {}).get(action) or {}).get("confirm_q") or "")
+    item = str((payload or {}).get(field := refs.id_field_for_action(card, action) or "") or "")
+    return _rt.text(f"widgets.{card}.confirm.{action}", raw).replace("{item}", refs.label_for(card, field, item) or item)
+
+
 def _flat(text) -> str:
     import unicodedata
     n = unicodedata.normalize("NFKD", str(text or ""))
