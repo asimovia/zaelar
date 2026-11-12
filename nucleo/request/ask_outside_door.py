@@ -44,9 +44,27 @@ KIND = "ask_outside_door"
 _QUESTION_MARKS = "?？؟"
 
 
+def named_act(brief) -> tuple[str, str]:
+    """`(card, act)` the brief names at the ACT floor (`screen_action`), when the card declares that act; ("", "")
+    otherwise. Our question about it is a question with a row (A5, 2026-11-12): «apúntame el gimnasio» → «¿a qué
+    hora?» read `agenda:add_meeting` 0.89, and his «a las siete» had no row to fill."""
+    try:
+        from nucleo.turn import brief as _tb, verdicts
+        from widgets import effects
+        target, _info = verdicts.to_act(brief, _tb.TARGET_KEY, "")
+        wid, _sep, act = str(target or "").partition(":")
+        if wid and act and str(target) != "none" and act in (effects._manifest(wid.split("::", 1)[0].lower())
+                                                            .get("actions") or {}):
+            return wid, act
+    except Exception as e:  # noqa: BLE001
+        note(e)
+    return "", ""
+
+
 def measure(brief, reply: str, *, did_act: bool, asked_which: bool = False, emit=None) -> dict | bool:
-    """Emit `ask_outside_door` when this turn asked about a door's act without reaching the door. The event's extra
-    ({trace, widget, leaves, which_person}) when emitted — what `held` makes durable — else False."""
+    """Emit `ask_outside_door` when this turn asked about a declared act without reaching its door — a card whose acts
+    leave (`catalog_widget`), or the act the brief names at the act floor (`named_act`). The event's extra
+    ({trace, widget, leaves, actions, which_person}) when emitted — what `held` makes durable — else False."""
     last = str(reply or "").rstrip().rstrip("»\"'”)")[-1:]
     if did_act or not (asked_which or (last and last in _QUESTION_MARKS)):
         return False
@@ -58,15 +76,20 @@ def measure(brief, reply: str, *, did_act: bool, asked_which: bool = False, emit
         note(e)
         wid = ""
     leaves = leaving_acts(wid) if wid else []
-    if not leaves:
-        return False
+    actions: list[str] = []
+    if not leaves:                       # the ACT the brief names: the question is about that one, leaving or not
+        wid, act = named_act(brief)
+        if not act:
+            return False
+        from widgets import effects
+        actions, leaves = [act], ([act] if effects.leaves(wid.split("::", 1)[0].lower(), act) else [])
     try:
         trace = ""
         from voice import trace as _trace
         trace = str(_trace.current() or "")
     except Exception as e:  # noqa: BLE001
         note(e)
-    extra = {"trace": trace, "widget": wid, "leaves": leaves, "which_person": bool(asked_which)}
+    extra = {"trace": trace, "widget": wid, "leaves": leaves, "actions": actions, "which_person": bool(asked_which)}
     try:
         if emit is None:
             from voice.observer import emit as _emit
@@ -77,8 +100,8 @@ def measure(brief, reply: str, *, did_act: bool, asked_which: bool = False, emit
         note(e)
         return False
 
-#: What the row retains: his request, to be said again with his answer.
-UTTERANCE = "utterance"
+#: What the row retains: his request, to be said again with his answer (one name, `inline_ask.UTTERANCE`).
+from nucleo.request.inline_ask import UTTERANCE  # noqa: E402
 
 
 def held(measured: dict, reply: str, said: str) -> str:
@@ -86,8 +109,9 @@ def held(measured: dict, reply: str, said: str) -> str:
     on that question. Returns the `ask_id`, or "" when nothing could be made durable."""
     wid = str((measured or {}).get("widget") or "")
     leaves = [str(a) for a in (measured or {}).get("leaves") or []]
+    acts = [str(a) for a in (measured or {}).get("actions") or []] or leaves
     q = " ".join(str(reply or "").split())
-    if not (wid and leaves and q and str(said or "").strip()):
+    if not (wid and acts and q and str(said or "").strip()):
         return ""
     try:
         from nucleo.circuit import asker, ledger
@@ -97,9 +121,9 @@ def held(measured: dict, reply: str, said: str) -> str:
         # A card whose leaving act declares its slots keeps the question on a SEND TASK: his words resolved into the
         # act's slots (the person his word names), the question about the one slot the turn lacks, and his answer
         # fills that slot on that row (`send_task.answered`) — no worker, no re-run turn.
-        if (ask_id := send_task_words.hold(wid, leaves, said, q, brief=None)):
+        if leaves and (ask_id := send_task_words.hold(wid, leaves, said, q, brief=None)):
             return ask_id
-        row = model.opened(wid, leaves[0], text=said)
+        row = model.opened(wid, acts[0], text=said)
         if not row:
             return ""
         ask_id = f"{row}-q{next_seq('inline.ask')}"
@@ -117,8 +141,9 @@ def held(measured: dict, reply: str, said: str) -> str:
                  "question": q, "answer": "", "result": None, "session": session,
                  "consent": "ask_which" if cands else "ask_fact", "candidates": cands, "options": cands,
                  "said": True,
+                 # an act of the CARD: his answer (a yes, a fact) composes the act on this row (`answered_offer`)
                  "retained": {"kind": UTTERANCE, "text": " ".join(str(said).split()), "widget": wid,
-                              "actions": leaves, "slot": "", "candidates": cands}}
+                              "actions": acts, "slot": "", "candidates": cands}}
         ledger.store().task_patch(row, session_id=session)
         return asker.ask(row, entry)
     except Exception as e:  # noqa: BLE001 — a question that could not be made durable stays counted, as before

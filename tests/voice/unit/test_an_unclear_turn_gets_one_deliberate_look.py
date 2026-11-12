@@ -74,8 +74,10 @@ def test_the_brief_asks_whether_the_sentence_can_be_read():
     assert "¿Qué te pongo?" in q["instructions"], "our previous reply rides along, as in request_type"
 
 
-@pytest.mark.parametrize("choice, conf, want", [(U.GARBLED, 0.82, U.GARBLED), (U.NOISE, 0.95, U.NOISE),
-                                                (U.GARBLED, 0.40, ""), (U.CLEAR, 0.99, "")])
+# A5 (2026-11-12): holding the model's words is a VETO of what it said — read at `verdicts.VETO`, never the licence
+@pytest.mark.parametrize("choice, conf, want", [(U.GARBLED, 0.90, U.GARBLED), (U.NOISE, 0.95, U.NOISE),
+                                                (U.GARBLED, 0.82, ""), (U.NOISE, 0.70, ""), (U.GARBLED, 0.40, ""),
+                                                (U.CLEAR, 0.99, "")])
 def test_only_a_sure_unreadable_verdict_counts(choice, conf, want):
     assert U.verdict(_handle(choice, conf)) == want
     assert U.verdict(None) == "" and U.verdict(_handle(ready=False)) == ""
