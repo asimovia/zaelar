@@ -153,3 +153,44 @@ def test_the_built_first_prompt_carries_the_offer_as_a_system_section(phase, mon
     system = builder.build_flash_system(turn_text=langs.spec("en").kickoff_prompt)[0]
     assert "masculina o femenina" in system and "CONTEXTO DE FASE" in system
     assert "I just connected" not in system
+
+
+# ── his answer to our question reaches the model AS an answer (the turn after the greeting) ──────────────
+
+@pytest.mark.parametrize("asked", ["¿Cómo te llamas?", "What should I call you?", "¿A qué hora te viene bien?"])
+def test_the_close_says_what_we_asked_when_our_reply_ended_on_a_question(monkeypatch, asked):
+    """Measured 2026-11-12 on a sandbox, first dialogue after a reset: «pepe» after «¿Cómo te llamas?» was answered
+    «No te he entendido» in 2 of 3 Spanish runs — the state closed on «attend to the REQUEST that follows» and a bare
+    word is no request. The close now states the question we asked; nothing of his line is read."""
+    from nucleo.flash import memory_cache
+    from nucleo.memory_agent import answer_frame
+    from nucleo.turn.prompt import builder
+    monkeypatch.setattr(memory_cache, "get", lambda: ("", ""))
+    monkeypatch.setattr(answer_frame, "asked_before", lambda **k: asked)
+    system = builder.build_flash_system(turn_text="pepe")[0]
+    _prefix, state = builder.split_state(system)
+    assert state.rstrip().endswith("su respuesta, o una petición nueva."), state[-200:]
+    assert f"«{asked}»" in state[-300:] and asked not in _prefix, "the question rides the turn's state, never the cached prefix"
+    assert "Atiende ahora la petición del operador" not in system
+
+
+def test_the_close_is_the_request_line_when_we_asked_nothing(monkeypatch):
+    from nucleo.flash import memory_cache
+    from nucleo.memory_agent import answer_frame
+    from nucleo.turn.prompt import builder
+    monkeypatch.setattr(memory_cache, "get", lambda: ("", ""))
+    monkeypatch.setattr(answer_frame, "asked_before", lambda **k: "")
+    system = builder.build_flash_system(turn_text="pon música")[0]
+    assert system.rstrip().endswith("Atiende ahora la petición del operador que viene a continuación.")
+    assert "Acabas de preguntarle" not in system
+
+
+def test_the_question_is_read_from_the_last_reply_only_while_it_is_the_last_word(fresh_db):
+    """The reader the close uses, on the real store: a reply that ended asking frames the next turn; one that ended
+    on a statement, or an old one, frames nothing."""
+    from nucleo.memory_agent import answer_frame
+    _conv("hola", "Hola, soy Zaelar. ¿Cómo te llamas?")
+    assert answer_frame.asked_before() == "¿Cómo te llamas?"
+    assert answer_frame.asked_before(now=time.time() + 16 * 60) == ""
+    _conv("pepe", "Encantado, Pepe.")
+    assert answer_frame.asked_before() == ""
