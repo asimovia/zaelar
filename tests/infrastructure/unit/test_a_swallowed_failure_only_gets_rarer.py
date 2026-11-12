@@ -386,7 +386,10 @@ PER_FILE: dict[str, int] = {
     'nucleo/cli/git.py': 1,
     'nucleo/circuit/harness.py': 2,
     'nucleo/his_words.py': 1,
-    'nucleo/pulse/homeostasis.py': 13,
+    'nucleo/pulse/homeostasis.py': 12,
+    # V2-891: moved, not added — the LiveKit log watcher left homeostasis.py with its one silent `except` (a log
+    # record it cannot read is not a mark; logging from inside a logging handler would recurse).
+    'nucleo/pulse/lk_marks.py': 1,
     'nucleo/jev/__init__.py': 5,
     'nucleo/library_router.py': 2,
     'nucleo/pulse/loop.py': 5,

@@ -32,6 +32,8 @@ _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _STATE: dict = dict(token="", child=None, body_niced=False)
 #: The header the voice process presents its token in (the same name `body_link.HEADER` carries; one value).
 HEADER = "x-zaelar-voice-token"
+#: The env keys `_env` sets for the process it spawns besides the `ZAELAR_VOICE_*` ones (they name that process).
+SPAWN_KEYS = frozenset(("ZAELAR_BODY_URL", "ZAELAR_WORKER_PORT"))
 
 
 def embedded() -> bool:
@@ -105,9 +107,10 @@ class VoiceChild:
     def _env(self) -> dict:
         from voice.engine.pipeline import body_link
         env = dict(os.environ)
-        env.update({"ZAELAR_VOICE_ROLE": "child", body_link.TOKEN_ENV: self.token,
-                    "ZAELAR_BODY_URL": f"http://127.0.0.1:{self.app_port}", "ZAELAR_VOICE_PARENT": str(os.getpid()),
-                    "ZAELAR_WORKER_PORT": str(self.port), "PORT": str(self.app_port)})
+        env.update(dict(ZAELAR_VOICE_ROLE="child", ZAELAR_BODY_URL=f"http://127.0.0.1:{self.app_port}",
+                        ZAELAR_VOICE_PARENT=str(os.getpid()), ZAELAR_WORKER_PORT=str(self.port),
+                        PORT=str(self.app_port)))
+        env[body_link.TOKEN_ENV] = self.token
         env.pop("ZAELAR_VOICE_EMBEDDED", None)
         return env
 
