@@ -70,6 +70,11 @@ def test_the_typed_door_opens_only_on_a_started_session():
     assert src.index("await session.start(") < src.index("register_typed(_typed_from_screen)")
 
 
-def test_a_waiting_line_is_checked_before_any_greeting():
+def test_a_waiting_line_is_checked_before_any_greeting(monkeypatch):
+    # V2-891: the decision is `first_air.decide_kickoff`, shared by the embedded session and the voice's own process.
+    from voice.engine.pipeline import first_air
+    monkeypatch.setattr(first_air, "silent_first_run", lambda: False)
+    screens.note_waiting()
+    assert first_air.decide_kickoff("zaelar-test-waiting", lambda *a, **k: None) == "", "greeted over a waiting line"
     src = Path("voice/engine/pipeline/agent.py").read_text(encoding="utf-8")
-    assert src.index("typed_waiting()") < src.index("session.generate_reply(user_input=kickoff_text")
+    assert src.index("decide_kickoff(") < src.index("session.generate_reply(user_input=kickoff_text")

@@ -13,6 +13,7 @@ from .channels import (
 )
 from .graph import graph_expand
 
+_LOG = logging.getLogger("zaelar.memory.retriever")
 _WRONG_SPACE_GAP_S = 60.0
 _wrong_space_last = 0.0
 
@@ -35,7 +36,8 @@ def _embed_budget_s() -> float:
     if env:
         try:
             return max(0.0, float(env) / 1000.0)
-        except ValueError:
+        except ValueError as _swallowed:
+            _LOG.debug(f"{__name__}: {_swallowed!r}")   # said, never silent (the ratchet)
             pass
     now = time.monotonic()
     if now - _budget_cache["at"] < 30.0:
@@ -46,7 +48,8 @@ def _embed_budget_s() -> float:
         try:
             with open(os.path.join(cfg, name), encoding="utf-8") as fh:
                 ms = float(json.load(fh).get("embed_budget_ms", ms))
-        except (OSError, ValueError, TypeError):
+        except (OSError, ValueError, TypeError) as _swallowed:
+            _LOG.debug(f"{__name__}: {_swallowed!r}")   # said, never silent (the ratchet)
             continue
     _budget_cache.update(at=now, s=max(0.0, ms / 1000.0))
     return _budget_cache["s"]
@@ -78,7 +81,8 @@ def _note_embed_over_budget(ms: float) -> None:
         emit("memory", "embedding local fuera de presupuesto — recall por el canal léxico", role="system",
              extra={"module": "memory.retriever", "reason": "embed_over_budget", "budget_ms": round(ms),
                     "backend": str(getattr(_emb, "_backend", "") or "")})
-    except Exception:  # noqa: BLE001 — observability NEVER breaks a read
+    except Exception as _swallowed:  # noqa: BLE001 — observability NEVER breaks a read
+        _LOG.debug(f"{__name__}: {_swallowed!r}")   # said, never silent (the ratchet)
         pass
 
 
@@ -112,12 +116,14 @@ def _warn_wrong_space() -> None:
     try:
         from voice import health_state
         health_state.record("memory", "degraded", detail)
-    except Exception:  # noqa: BLE001
+    except Exception as _swallowed:  # noqa: BLE001
+        _LOG.debug(f"{__name__}: {_swallowed!r}")   # said, never silent (the ratchet)
         pass            # observability NEVER breaks a read
     try:
         from voice.observer import emit
         emit("memory", "espacio vectorial descuadrado", text=detail, extra={"module": "memory.retriever"})
-    except Exception:  # noqa: BLE001
+    except Exception as _swallowed:  # noqa: BLE001
+        _LOG.debug(f"{__name__}: {_swallowed!r}")   # said, never silent (the ratchet)
         pass
 
 
@@ -161,7 +167,8 @@ def search(
         try:
             import bus  # lazy: keeps memory from coupling to the bus at import time
             bus.emit_sync("memory.reinforce", {"ids": [r["id"] for r in out]})
-        except Exception:
+        except Exception as _swallowed:
+            _LOG.debug(f"{__name__}: {_swallowed!r}")   # said, never silent (the ratchet)
             pass
     return out
 
@@ -250,7 +257,8 @@ def _search_lane(prompt: str, qvec, lane: str, *, k: int, limit: int, expand: bo
             from .. import rerank as _rr
             if _rr.enabled():
                 results = _rr.rerank(prompt, results)
-        except Exception:
+        except Exception as _swallowed:
+            _LOG.debug(f"{__name__}: {_swallowed!r}")   # said, never silent (the ratchet)
             pass  # the reranker NEVER breaks the recall
     ms["rerank_ms"] = ms.get("rerank_ms", 0.0) + _ms_since(t0)
 

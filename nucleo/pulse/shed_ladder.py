@@ -27,15 +27,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-DEFAULT_LADDER = ("hold_workers", "pause_newest_worker", "pause_background", "close_browser", "trim_caches")
 DEFAULT_RECOVER = 1.15
 
 
 def ladder_of(pol: dict | None) -> tuple:
+    """The declared rungs, in order. Undeclared → none: a ladder nobody declared gives nothing back."""
     declared = (pol or {}).get("shed_ladder")
-    if isinstance(declared, (list, tuple)) and declared:
-        return tuple(str(r) for r in declared)
-    return DEFAULT_LADDER
+    return tuple(str(r) for r in declared) if isinstance(declared, (list, tuple)) else ()
 
 
 def cause(engine_mb: float, engine_budget_mb: float) -> str:
@@ -57,7 +55,7 @@ def recovered(reading: dict, recover_ratio: float = DEFAULT_RECOVER) -> bool:
 
 @dataclass
 class Ladder:
-    rungs: tuple = DEFAULT_LADDER
+    rungs: tuple = ()
     recover_ratio: float = DEFAULT_RECOVER
     engaged: list = field(default_factory=list)
 

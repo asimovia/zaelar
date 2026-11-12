@@ -43,23 +43,22 @@ def _code_only(path: Path) -> str:
 
 # ── the mouth stays shut ──────────────────────────────────────────────────────────────────────────────────
 
-def test_the_first_run_branch_returns_before_it_can_generate_a_reply():
-    """Structural, because the branch lives inside a per-session closure with no importable unit (the same
-    shape the V2-101 module records). What is asserted is the only thing that matters: on the onboarding
-    path control leaves the function before `session.generate_reply` is reachable."""
-    src = _vts.read(AGENT)
-    # V2-745 moved the DECISION to `first_air.silent_first_run()` (with the operator's own words behind it)
-    # and left the branch here; the guard follows it, which is what its own message asked for.
-    head, _, tail = src.partition("if silent_first_run():")
-    assert tail, "the first-run branch is gone — if it moved, move this guard with it"
-    branch, _, rest = tail.partition("\n    kickoff_text =")
-    assert branch.strip().endswith("return"), (
-        "the first-run branch must RETURN: nothing may be spoken before a language exists")
-    assert "generate_reply" not in branch, "the first-run branch must not generate anything"
-    assert "generate_reply" in rest, "the normal kickoff must still greet"
-    # …and the boot veil must come down on that path too, or a first run stares at the splash for ever
-    # while the picker it is supposed to be using sits underneath it (V2-745).
-    assert "_air.lift()" in branch, "a silent first run must lift the veil: nothing is going to sound"
+def test_the_first_run_branch_returns_before_it_can_generate_a_reply(monkeypatch):
+    """V2-891 moved the DECISION into `first_air.decide_kickoff` (one decision for the embedded session and for the
+    voice's own process, which asks the body for it). On the onboarding path it answers no greeting, and the caller
+    — here, and in the voice process — lifts the veil and returns before `session.generate_reply` is reachable."""
+    from voice.engine.pipeline import first_air
+    monkeypatch.setattr(first_air, "silent_first_run", lambda: True)
+    said = []
+    assert first_air.decide_kickoff("zaelar-first-run", lambda *a, **k: said.append(a)) == ""
+    assert said, "a silent first run says why on the timeline"
+    for path in (AGENT, AGENT.parent / "child_session.py"):
+        src = _vts.read(path)
+        assert "decide_kickoff(" in src or "/api/voice/child/kickoff" in src, path.name
+        branch = src[src.index("if not kickoff_text" if "kickoff_text" in src else "if not text"):]
+        branch = branch[:branch.index("return") + len("return")]
+        assert "generate_reply" not in branch and "lift()" in branch, (
+            f"{path.name}: no greeting must lift the veil and RETURN before anything can be generated")
 
 
 def test_no_utterance_is_composed_in_a_language_nobody_chose():

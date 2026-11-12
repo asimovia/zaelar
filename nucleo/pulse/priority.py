@@ -16,10 +16,6 @@ import sys
 
 from loguru import logger
 
-_FALLBACK = {"voice": {"nice": 0, "oom_score_adj": -500}, "body": {"nice": 5, "oom_score_adj": 0},
-             "worker": {"nice": 10, "oom_score_adj": 500}, "chromium": {"nice": 10, "oom_score_adj": 800}}
-
-
 def targets(role: str, pol: dict | None = None) -> dict:
     if pol is None:
         try:
@@ -28,7 +24,7 @@ def targets(role: str, pol: dict | None = None) -> dict:
         except Exception:  # noqa: BLE001
             pol = {}
     declared = ((pol or {}).get("priorities") or {}).get(role)
-    row = declared if isinstance(declared, dict) else _FALLBACK.get(role, {})
+    row = declared if isinstance(declared, dict) else {}       # undeclared: the host's default, nothing changed
     return {"nice": int(row.get("nice", 0)), "oom_score_adj": int(row.get("oom_score_adj", 0))}
 
 
@@ -64,7 +60,8 @@ def set_oom(pid: int, value: int) -> bool | None:
         with open(path, "w", encoding="ascii") as fh:
             fh.write(str(int(value)))
         return True
-    except OSError:
+    except OSError as _swallowed:
+        logger.debug(f"{__name__}: {_swallowed!r}")   # said, never silent (the ratchet)
         return False
 
 
@@ -91,7 +88,8 @@ def preexec(role: str, pol: dict | None = None):
             cur = os.getpriority(os.PRIO_PROCESS, 0)
             if t["nice"] > cur:
                 os.nice(t["nice"] - cur)
-        except OSError:
+        except OSError as _swallowed:
+            logger.debug(f"{__name__}: {_swallowed!r}")   # said, never silent (the ratchet)
             pass
         set_oom(0, t["oom_score_adj"])
     return _apply

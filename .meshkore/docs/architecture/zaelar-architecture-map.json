@@ -1943,6 +1943,7 @@
  },
  "relays": [
   "voice/observer.py",
+  "voice/observer_link.py",
   "bus/__init__.py",
   "bus/sse.py",
   "bus/log.py",

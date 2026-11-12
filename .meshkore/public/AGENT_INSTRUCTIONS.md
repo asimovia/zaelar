@@ -282,7 +282,7 @@ memory (`memory/`) and the proactivity are **part of this repo**. For the outsid
 events and thousands of other services — it orchestrates **external services**: the agents on the MeshKore
 network, external MCP servers and third-party APIs.
 
-**Run it:** `make run` (= `BRAIN=nucleo`) → native LiveKit stack (no Docker) + web app with the embedded worker,
+**Run it:** `make run` (= `BRAIN=nucleo`) → native LiveKit stack (no Docker) + web app + the voice in its own process,
 at http://localhost:43917 (plain HTTP: a local install carries no certificate). `make restart` picks up `.py`
 changes; `make status` tells you whether it is up. Full install for a fresh clone: `README.md`. Other starts:
 `BRAIN=direct` / `BRAIN=local` are bare-model baselines (no memory, no tools); `make lk-server` and
@@ -434,7 +434,7 @@ start-up is `make run` → `python -m server`. The detail — which pieces form 
 | `observability/` | **WHO · WHEN · in which FLOW**: install and session identity, reads by `corr_id`. Read-only — the only writer of `events` is the bus sink. |
 | `bus/` | **Nervous system**: in-process pub/sub + durable event log + SSE bridge to the frontend. No Kafka. |
 | `frontend/` | The interface, ES modules **with no build step**. `frontend/app/` (desktop) and `frontend/mobile/` (PWA). NATIVE surfaces are declared in `core/system-surfaces.js`; everything else on screen is a widget. |
-| `server/` | FastAPI app + routers + entrypoint. Runs the LiveKit agent worker EMBEDDED and starts the loop, the widget supervisor and the memory queue in its lifespan. |
+| `server/` | FastAPI app + routers + entrypoint (the body). Starts the voice process (`python -m voice.engine`; `ZAELAR_VOICE_EMBEDDED=1` keeps it a thread), the loop, the widget supervisor and the memory queue in its lifespan. |
 | `widgets/` | Full-stack widgets (`manifest.json` + `data.py` + `widget.js` per folder), generator, catalogue and runtime. Two kinds: `passive` and `backed` (own supervised process). `widgets/_user/<id>/` SHADOWS the built-in and is gitignored: before diagnosing a widget, check **which file runs**. |
 | `config/` | Runtime settings managed by the UI (gitignored): `settings.json`, `connectors.json`, `v2.json` (model routing). Each with its owner module and a redacted public view. |
 | `connectors/` | The outside world: WhatsApp, Telegram, email, Google (one OAuth client for Calendar/Meet/Drive/Photos/YouTube), cloud files, the native MeshKore channel, Architect. |

@@ -15,8 +15,6 @@ from __future__ import annotations
 
 import os
 
-PIECES = ("voice", "body", "worker", "chromium")
-
 #: Used only when the declared file lacks the block (a broken or old deployment file): the same numbers it declares.
 _FALLBACK = {
     "local": {"voice": {"mb": 300, "ceiling_mb": 400}, "body": {"mb": 900, "ceiling_mb": 1200},

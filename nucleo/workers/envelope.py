@@ -111,7 +111,8 @@ def preexec(also=None):
             try:
                 with open("/proc/self/oom_score_adj", "w", encoding="ascii") as fh:
                     fh.write(str(oom))
-            except OSError:
+            except OSError as _swallowed:
+                logger.debug(f"{__name__}: {_swallowed!r}")   # said, never silent (the ratchet)
                 pass
     return _apply
 
