@@ -23,9 +23,13 @@ def recent_short(limit: int = 30, max_chars: int = 1800) -> list[dict]:
     # With a connector live, email and group chatter outnumber the turns and pushed the conversation out of the
     # few lines this block keeps (yesterday's errand gone, marketing email in its place).
     # They remain readable by their own door (`recent_by_source`) and their own recall lane (`retriever.LANE_*`).
+    # THE KICKOFF ROW OUT (A7, 2026-11-12): the first turn's row holds the engine's own note («introduce yourself, ask
+    # his name») — read here as «what we were talking about», it told the model to introduce itself a second time,
+    # on the turn he had just given his name.
     rows = db.query(
         "SELECT id, text, created FROM memories WHERE level='short' AND valid=1 AND kind != 'msg' "
         "AND (json_extract(meta,'$.trust') IS NULL OR json_extract(meta,'$.trust') != 'untrusted') "
+        "AND json_extract(meta,'$.kickoff') IS NULL "
         "ORDER BY updated DESC, id DESC LIMIT ?", (int(limit),)
     )
     out, used = [], 0
@@ -72,7 +76,8 @@ def recent_window(limit: int = 6, max_chars: int = 1600, *, gap_min: float | Non
         u = a = ""
         try:
             meta = _json.loads(r["meta"]) if r["meta"] else {}
-            u = (meta.get("u") or "").strip()
+            # A7: the first turn's `u` is the engine's own note, never his words — the seed keeps the greeting alone.
+            u = "" if meta.get("kickoff") else (meta.get("u") or "").strip()
             a = (meta.get("a") or "").strip()
         except Exception:
             meta = {}

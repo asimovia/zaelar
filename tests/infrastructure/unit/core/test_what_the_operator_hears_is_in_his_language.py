@@ -231,12 +231,17 @@ def test_the_confirmation_ack_comes_from_the_table():
 
 
 def test_the_first_turn_is_spoken_in_his_language():
-    """The kickoff is the one injected turn that impersonates the OPERATOR, so a Spanish one primes a Spanish
-    reply on turn one. It was a literal in the provider."""
+    """The kickoff is the one injected line that opens a session — a system note in HIS language (A7), so a
+    Spanish one primes a Spanish reply on turn one. It was a literal in the provider; now it is i18n data read
+    through `nucleo/turn/kickoff`, and the gate recognises it by that catalog, not by an English marker."""
     from i18n import langs as L
-    assert L.LANGUAGES["en"].kickoff_prompt.startswith("This is the first turn")
+    from nucleo.turn import kickoff
+    assert L.LANGUAGES["en"].kickoff_prompt != L.LANGUAGES["es"].kickoff_prompt
+    assert kickoff.text(L.LANGUAGES["es"]) == L.LANGUAGES["es"].kickoff_prompt
     src = _vts.read(ENGINE / "voice/engine/llm/providers/nucleo.py")
-    assert "kickoff_prompt" in src and "Es el primer turno" not in src
+    assert "I just connected" not in src and "Es el primer turno" not in src
+    gate = (ENGINE / "nucleo/turn/pipeline_gate.py").read_text(encoding="utf-8")
+    assert "_kickoff.is_kickoff(text)" in gate and "I just connected" not in gate.split("first_turn =")[1][:80]
 
 
 def test_a_worker_that_dies_says_so_in_his_language(monkeypatch):

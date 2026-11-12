@@ -186,18 +186,28 @@ def test_the_language_refusal_is_a_string_in_both_languages_and_invents_no_reset
 
 
 @pytest.mark.parametrize("name", ["Zaelar", "Pepa"])
-def test_the_first_run_greeting_offers_a_new_name_and_a_voice_with_the_name_slot(name):
+def test_the_first_run_greeting_offers_a_new_name_and_a_voice_with_the_name_slot(name, monkeypatch):
+    """The offer lives in the INTRODUCTION phase's first-turn block (A7): one text for the first turn — the i18n
+    kickoff note that `greeting_prompt` hands the voice — and the block the kickoff makes the phase compose, with
+    the assistant-name SLOT, never a literal. The offer is told once: with the flag set, the block drops it."""
+    from i18n import langs
     from voice import attention
+    from nucleo.turn import kickoff
+    from nucleo.turn.prompt.packs import introduction
     from voice.engine.pipeline.first_air import greeting_prompt
+    store = {"stt_language": "es"}
+    monkeypatch.setattr("config.settings.get", lambda k, d=None: store.get(k, d))
+    monkeypatch.setattr(introduction, "_known", lambda: {})
     before = attention._state.get("assistant_name")
     try:
         attention.set_assistant_name("" if name == "Zaelar" else name)
-        class L:  # the two languages the genesis ships; the instruction is language-agnostic, the model renders it
-            native, name = "Español", "Spanish"
-        txt = greeting_prompt(L)
-        assert f"default name is {name}" in txt and "any name I like" in txt and "male or a female voice" in txt
-        class E:
-            native, name = "English", "English"
-        assert "male or a female voice" in greeting_prompt(E)
+        for code in ("es", "en"):
+            note = greeting_prompt(langs.spec(code))
+            assert note == kickoff.text(langs.spec(code)) and kickoff.is_kickoff(note), code
+            block = introduction.block(note)
+            assert f"te llamas {name}" in block and "nombre que quiera" in block, block
+            assert "masculina o femenina" in block, "the voice offer is part of the first turn"
+        store["intro_offer_told"] = True
+        assert "masculina o femenina" not in introduction.block(greeting_prompt(langs.spec("es"))), "told once"
     finally:
         attention._state["assistant_name"] = before

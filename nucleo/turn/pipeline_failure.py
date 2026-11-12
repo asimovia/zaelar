@@ -60,7 +60,8 @@ def _keep_his_words(brain, text: str, err_text: str, spec=None) -> None:
         return
     brain._turn_failed = str(err_text or "turn failed")[:300]
     brain._turn_failed_spec = f"{getattr(spec, 'provider', '')}/{getattr(spec, 'model', '')}" if spec else ""
-    if not (text or "").strip() or "I just connected" in text:
+    from nucleo.turn import kickoff as _kickoff
+    if not (text or "").strip() or _kickoff.is_kickoff(text):
         return
     try:
         from nucleo.flash import dialog as _dialog

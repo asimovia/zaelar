@@ -328,8 +328,9 @@ class LangSpec:
     say_again: str = ""
     #: E0 — the body could not be reached from the voice process: the host is slow, his words were heard.
     brain_slow: str = ""
-    # The FIRST TURN, spoken in the operator's own voice into the model's window. It is not an internal note
-    # like the system prompt: it impersonates HIM, so a Spanish one primes a Spanish reply on turn one.
+    # The FIRST TURN's note (A7, 2026-11-12): the user-role line that opens a session, written as a SYSTEM note in
+    # his language — never kept as his words (`nucleo/turn/kickoff.py`). A Spanish one primes a Spanish reply on
+    # turn one; what the greeting says is the introduction phase's block, not this line.
     kickoff_prompt: str = ("")
     #: What the FIRST TURN says when the model behind it failed. The greeting answers nothing the operator
     #: said, so the reply-shaped fallback («say that again?») asks him to repeat words he never spoke.

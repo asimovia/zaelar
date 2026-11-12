@@ -31,13 +31,15 @@ import asyncio
 from loguru import logger
 
 FLAG = "intro_done"
+#: A7 (2026-11-12) — the phase's second fact, persisted beside the first: he was told, once, that the agent's name
+#: and voice are his to change. The phase does not close until both are true (his name known, this told).
+OFFER_FLAG = "intro_offer_told"
 
 # V2-737 — the public guide, verified live (2026-09-20: both answer 200). The agent may leave it in the
 # chat, where a URL renders as a real link since V2-736 — before that it was text he had to copy by hand,
 # which is why this line did not exist. Kept here rather than in the sentence so the day a path moves
 # there is ONE place to change, and the test that checks they still answer has something to read.
-_GUIDE_URL = "https://zaelar.com/guide"
-_GUIDE_EXAMPLES_URL = "https://zaelar.com/guide/examples"
+from .introduction_block import _GUIDE_EXAMPLES_URL, _GUIDE_URL  # noqa: E402, F401 — the block's, read by its tests
 
 _JUDGE_AFTER = 4        # turns before the judge is worth a call at all — nothing is settled before then
 _JUDGE_EVERY = 4        # and then at most one call every N turns: this is off the hot path, not free
@@ -47,6 +49,11 @@ _turns = 0              # process-lived on purpose: a restart mid-introduction r
 #                         safe direction — the cap is a backstop, and the other two exits are the real ones.
 _judging = False
 _tasks: list = []
+#: A7 — the block of the turn being composed carried the name-and-voice offer; the turn's close persists it.
+_offer_pending = False
+#: A7 — the memory agent writes his name ~2 s AFTER the turn closes (measured 2026-11-12, +2.1 s): a turn that ends
+#: with the name still unknown is read again after this many seconds, so the phase closes on the turn he said it.
+_RECHECK_S = 4.0
 
 
 # ── is the phase running? ───────────────────────────────────────────────────────────────────────────────
@@ -93,71 +100,24 @@ def _known() -> dict:
         return {}
 
 
-def block() -> str:
-    """The phase's instructions. Written as what to DO this turn, never as what the agent IS — a permanent
-    fact would survive the phase in the model's reading of itself even after the text stops being sent."""
-    st = _known()
-    name = str(st.get("operator_name") or "").strip()
-    # V2-682 — the treatment goal is LANGUAGE-DEPENDENT and comes from the table: English has no T–V
-    # distinction, so asking is asking for an answer that does not exist (measured: three times in one
-    # English session). An empty row means the goal is simply not pursued.
-    from i18n import langs as _lg
-    _goals = [("su nombre", "operator_name"), ("dónde vive", "location")]
-    _treat = (_lg.current_language().treatment_question or "").strip()
-    if _treat:
-        _goals.append((_treat, "treatment"))
-    from nucleo.turn.prompt.packs import place_in_play as _place   # not beside an errand about a place (2026-10-14)
-    _here = _place.an_errand_names_a_place()
-    missing = [label for label, key in _goals
-               if not str(st.get(key) or "").strip() and not (_here and key == "location")]
-    lines = [
-        "ES EL PRINCIPIO DE VUESTRA RELACIÓN: todavía no os conocéis. Durante esta fase, además de atender "
-        "lo que te pida, te toca a ti llevar la conversación hacia conoceros.",
-        "CÓMO: **una sola cosa por turno**, encajada en lo que estéis hablando, nunca un cuestionario ni una "
-        "ristra de preguntas. Si te está pidiendo algo, primero se lo resuelves; la pregunta va después y "
-        "solo si cabe con naturalidad. Si te contesta con evasivas o cambia de tema, lo dejas estar: no se "
-        "insiste ni se vuelve a preguntar lo mismo dos veces.",
-    ]
-    if missing:
-        lines.append("LO QUE TODAVÍA NO SABES de él, por orden de importancia: " + " · ".join(missing)
-                     + ". Cuando te lo diga, se guarda solo — tú no tienes que hacer nada para recordarlo.")
-    else:
-        lines.append("Ya sabes quién es. Lo que falta es que él sepa quién eres tú y para qué le sirves.")
-    if name:
-        lines.append(f"Se llama {name}: úsalo con naturalidad, ni en cada frase ni nunca.")
-    # V2-737 — OFRECERLO es parte de la fase, no solo contestarlo. El operador (2026-09-20): *«también
-    # tiene que ayudar a informar al usuario de qué puede hacer con el agente… no que se las sueltes de
-    # golpe, sino que le digas al usuario si quiere saber qué puede hacer con el agente y que le vayas
-    # guiando. Pero siempre en textos cortos y que el propio operador vaya a interactuar.»* Antes esto
-    # era puramente reactivo («SI TE PREGUNTA»): alguien que no sabe qué preguntar no pregunta nunca.
-    lines.append(
-        "QUE SEPA PARA QUÉ SIRVES es la otra mitad de esta fase. No esperes a que pregunte: **ofrécelo una "
-        "vez**, en cuanto haya hueco («¿quieres que te cuente qué puedo hacer por ti?»), y si dice que sí "
-        "lo llevas TÚ, **de una cosa cada vez**: un ejemplo concreto, callas, y sigues solo si él sigue. "
-        "Si dice que no, se queda ofrecido y no se vuelve a sacar.")
-    lines.append(
-        "CÓMO SE CUENTA: frases cortas y un ejemplo que él podría pedirte HOY, elegido por lo que ya sepas "
-        "de él. NUNCA recites un catálogo ni encadenes capacidades: una lista larga no se recuerda y suena "
-        "a folleto. Mejor una frase con algo que podríais hacer ahora mismo que cinco enumerando.")
-    lines.append(
-        "LO QUE ERES, para elegir esos ejemplos (el catálogo REAL de widgets y herramientas lo tienes arriba "
-        "en este mismo prompt — úsalo, no te inventes capacidades ni lo repitas entero): hablas con él por "
-        "voz y por texto; llevas apps en su escritorio (agenda con avisos, música, vídeo, fotos, "
-        "documentos, un navegador de verdad, sus archivos); le pones un vídeo o música cuando te lo pide; "
-        "investigas de verdad y le traes el RESULTADO en vez de una lista de enlaces — un piso, un coche de "
-        "segunda mano, unas vacaciones para unas fechas y una zona con las opciones comparadas, o "
-        "simplemente sugerencias cuando no sabe ni por dónde empezar; te ocupas de encargos largos por tu "
-        "cuenta y le avisas al terminar; le lees y le contestas mensajes y correo si conecta sus cuentas; y "
-        "te acuerdas de lo que te cuenta, sesión tras sesión.")
-    lines.append(
-        f"SI QUIERE LEERLO CON CALMA, o te pide más detalle del que cabe hablando, déjale la guía pública "
-        f"en el chat: {_GUIDE_URL} (y {_GUIDE_EXAMPLES_URL} son ejemplos para copiar tal cual). Escribes la "
-        f"dirección y ya se ve como enlace; **no la leas en voz alta letra por letra** — dile que se la "
-        f"dejas ahí y sigue. Es un complemento de la conversación, nunca la respuesta a «¿qué sabes hacer?».")
-    lines.append(
-        "LO QUE NO HACES en esta fase: prometer nada que no puedas hacer, y hablar de cómo estás hecho por "
-        "dentro. Si te pregunta qué eres, eres su asistente — no un modelo, ni una lista de piezas.")
-    return "\n".join(f"· {ln}" if i else ln for i, ln in enumerate(lines))
+def _own_name() -> str:
+    from .introduction_block import _own_name as _n
+    return _n()
+
+
+def offer_told() -> bool:
+    try:
+        from config import settings
+        return bool(settings.get(OFFER_FLAG))
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"introduction: {OFFER_FLAG} unreadable ({e!r})")
+        return False
+
+
+def block(turn_text: str = "") -> str:
+    """The phase's instructions for THIS turn — composed in `introduction_block.py`, reading the turn (A7)."""
+    from .introduction_block import block as _block
+    return _block(turn_text)
 
 
 # ── closing it ──────────────────────────────────────────────────────────────────────────────────────────
@@ -166,8 +126,8 @@ def _deterministic_close() -> str:
     learn, and it is also the one the memory writes on its own — so in the common case this phase ends
     without a single extra call."""
     st = _known()
-    if str(st.get("operator_name") or "").strip():
-        return "ya sabemos su nombre"
+    if str(st.get("operator_name") or "").strip() and offer_told():
+        return "ya sabemos su nombre y le hemos contado cómo cambiarte"
     return ""
 
 
@@ -233,18 +193,47 @@ async def _maybe_close() -> None:
         close("el juez dice que ya os conocéis")
 
 
+def _settle_offer(payload) -> None:
+    """The turn whose block carried the offer closed with a reply: the offer is told, for good (A7)."""
+    global _offer_pending
+    if not _offer_pending:
+        return
+    _offer_pending = False
+    win = (payload or {}).get("window") if isinstance(payload, dict) else None
+    said = bool(win) and (win[-1] or {}).get("role") == "assistant" and bool((win[-1] or {}).get("text"))
+    if win is not None and not said:
+        return                          # the turn ended without a reply: the offer was not heard, it rides again
+    try:
+        from config import settings
+        if not settings.get(OFFER_FLAG):
+            settings.update({OFFER_FLAG: True})
+            logger.info("context_packs.introduction: the name-and-voice offer has been told")
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"context_packs.introduction: could not persist {OFFER_FLAG}: {e!r}")
+
+
+async def _recheck() -> None:
+    """One more deterministic read after the memory agent has had time to write his name (A7)."""
+    await asyncio.sleep(_RECHECK_S)
+    if is_active():
+        await _maybe_close()
+
+
 async def _consume_turns(q) -> None:
     global _turns
     while True:
         try:
-            await q.get()
+            payload = await q.get()
         except asyncio.CancelledError:
             return
         try:
             if not is_active():
                 continue
             _turns += 1
+            _settle_offer(payload)
             await _maybe_close()
+            if is_active() and _RECHECK_S > 0:
+                asyncio.get_event_loop().create_task(_recheck())
         except Exception as e:  # noqa: BLE001
             logger.warning(f"context_packs.introduction: {e!r}")
 
@@ -252,17 +241,21 @@ async def _consume_turns(q) -> None:
 def start() -> None:
     """Watch `turn.completed` — the Susurro/actionmap pattern (zero coupling with the voice provider, and it
     covers BOTH channels for free, because `observer.turn_detail` is where a voice turn and a probe turn
-    both close). Idempotent; never raises into the caller."""
+    both close). Idempotent; never raises into the caller.
+
+    ALWAYS subscribed (A7, 2026-11-12). It used to return when `is_active()` was false at boot — and at boot the
+    language is not locked yet (the ceremony runs AFTER the brain starts, and so does every reset), so on the
+    operator's first session the watcher never armed, the phase never closed, and its block rode every turn. The
+    condition is read per turn, in `_consume_turns`, where it is true when it matters."""
     global _tasks
     if _tasks:
         return
     try:
-        if not is_active():
-            return                      # no phase running → nothing to watch, and no subscription to pay for
         import bus
         loop = asyncio.get_event_loop()
         _tasks = [loop.create_task(_consume_turns(bus.subscribe("turn.completed")))]
-        logger.info("context_packs.introduction: phase OPEN — watching for when it is over")
+        logger.info("context_packs.introduction: watching the turns — phase "
+                    + ("OPEN" if is_active() else "not running yet (no language, or already over)"))
     except Exception as e:  # noqa: BLE001
         logger.warning(f"context_packs.introduction: watcher not started (conversation unaffected): {e!r}")
 
@@ -281,4 +274,4 @@ async def stop() -> None:
 
 def install() -> None:
     from . import Pack, register
-    register(Pack(id="introduction", title="Presentación", order=10, active=is_active, block=block))
+    register(Pack(id="introduction", title="Presentación", order=10, active=is_active, block=block, wants_turn=True))

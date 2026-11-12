@@ -58,7 +58,8 @@ async def close_the_turn(*, motor, send, _acc_ms, _amap_ms, _brief, _busy_at_sta
     # push_user, not a bare append: a turn cancelled by an overlap is replaced by its accumulated STT version. The window
     # keeps HIS words (fix08): notes are one-shot, and kept in the window they read as pending news on every later
     # turn. The barge-in path above keeps the composed text: that turn never answered, so its notes stay visible.
-    _dialog.push_user(brain._window, operator_text)
+    if not first_turn:   # A7: the kickoff is a system note, not his words — the window keeps the greeting alone
+        _dialog.push_user(brain._window, operator_text)
     if spoken_text and not _resume_cut.reply_unheard(_superseded, _tool_handled, brain=brain, text=text, spoken_text=spoken_text, emit=emit):   # V2-888
         # Guarda la respuesta SANEADA (anti-degeneración V2-032): si el modelo empalmó/repitió, no reinyectamos
         # esa basura al turno siguiente → cortamos el bucle de realimentación que degrada al modelo pequeño.

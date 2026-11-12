@@ -366,9 +366,10 @@ def update(payload: dict) -> dict:
     # V2-675 — the introduction phase, once over. It had no branch here, so `update` dropped it with «sin
     # cambios» and the phase «closed» on every turn without ever persisting: 79 closes in one demo pass, and
     # after forty turns the agent was still asking «since we've only just started talking…» (2026-09-28, S4).
-    if "intro_done" in payload:
-        d["intro_done"] = bool(payload["intro_done"])
-        applied.append("intro_done")
+    for k in ("intro_done", "intro_offer_told"):   # A7: the offer told once is the phase's second fact
+        if k in payload:
+            d[k] = bool(payload[k])
+            applied.append(k)
     # Boolean knobs (apply live, without reconnecting): e.g. memory_observability.
     for k in BOOL_DEFAULTS:
         if k in payload:
@@ -503,6 +504,7 @@ AGENT_KEYS = frozenset({
     # installation's own setup: it records something about the RELATIONSHIP, so a factory reset ("empezar de
     # cero, como si fuera la primera vez") correctly makes the agent introduce itself again.
     "intro_done",
+    "intro_offer_told",   # A7 — that he was told, once, that the name and the voice are his to change
 })
 
 

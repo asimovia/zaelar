@@ -89,26 +89,16 @@ def provenance(ids) -> dict[int, dict]:
 
 
 def is_kickoff(u: str) -> bool:
-    """Is this operator line the FIRST-TURN kickoff — the prompt the engine speaks in HIS voice so the model greets
-    him (`i18n` `kickoff_prompt`, every language)? It is written into the conversation buffer as his words, and it
-    is not something he said: a ledger of the day must not open an episode with it. Best-effort: without the
-    catalog, nothing is a kickoff."""
-    t = " ".join((u or "").split())
-    return bool(t) and t in _kickoff_prompts()
-
-
-def _kickoff_prompts() -> frozenset[str]:
-    global _KICKOFFS
-    if _KICKOFFS is None:
-        try:
-            from i18n import langs as _langs
-            _KICKOFFS = frozenset(" ".join(sp.kickoff_prompt.split()) for sp in _langs.supported() if sp.kickoff_prompt)
-        except Exception:  # noqa: BLE001 — the catalog is not memory's to require
-            _KICKOFFS = frozenset()
-    return _KICKOFFS
-
-
-_KICKOFFS: frozenset[str] | None = None
+    """Is this operator line the FIRST-TURN note (`i18n` `kickoff_prompt`, every language)? It is a system note in his
+    language, not something he said: a ledger of the day must not open an episode with it. One catalog for the whole
+    engine (`nucleo/turn/kickoff`, A7). Best-effort: without the catalog, nothing is a kickoff."""
+    try:
+        from nucleo.turn import kickoff as _kickoff
+        return _kickoff.is_kickoff(u)
+    except Exception as e:  # noqa: BLE001 — the catalog is not memory's to require
+        from loguru import logger
+        logger.debug(f"history.is_kickoff: catalog unreadable ({e!r})")
+        return False
 
 
 #: Silence that closes the LIVE episode, in minutes: the newest turns count as «in the dialog window» only while
