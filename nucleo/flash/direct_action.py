@@ -301,6 +301,22 @@ def subject_card(widget_id: str, action: str, operator_text: str) -> str:
     return widget_id
 
 
+_STOOD_FOR: dict = {}   # trace → the orders a completion RE-AIMED to another card served (`reaimed`)
+
+
+def _trace():
+    from voice import trace
+    return trace
+
+
+def reaimed(wid: str, act: str) -> bool:
+    """Did this turn's completion serve `wid:act` on ANOTHER card («next» on the music card for the verdict's
+    `youtube:next`)? By identity, for `order_unserved.served` — never by comparing names."""
+    while len(_STOOD_FOR) > 32:
+        _STOOD_FOR.pop(next(iter(_STOOD_FOR)))
+    return (_base_of(wid), str(act or "")) in _STOOD_FOR.get(_trace().current(), ())
+
+
 def complete(brief, *, operator_text: str, emit, present, apply_widget_data,
              widget_id: str = "", instead_of: str = "", require_order: bool = True, model_words: str = "") -> str:
     """THE ARBITER'S ONE RULE, spent (V2-754): the verdict COMPLETES the model, it never overrules it.
@@ -348,11 +364,14 @@ def complete(brief, *, operator_text: str, emit, present, apply_widget_data,
         return ""
     if not rung:
         return ""
+    ordered = rung["widget"]
     if rung.get("source") == "no-payload":           # a payload read from words belongs to the card it was read for
         rung = {**rung, "widget": subject_card(rung["widget"], rung["action"], operator_text)}
     try:
         present(card_to_present(rung["widget"], operator_text), reason="turn-order", src="flash", emit=emit)
         apply_widget_data(rung["widget"], rung["action"], rung["payload"])
+        if _base_of(ordered) != _base_of(rung["widget"]):   # re-aimed: the act that ran serves the verdict's order
+            _STOOD_FOR.setdefault(_trace().current(), set()).add((_base_of(ordered), rung["action"]))
         emit("brain", "🎯 el veredicto completa al modelo" + (" (su llamada no resolvía)" if instead_of else " (sin tool)"),
              text=rung["label"][:120], role="system",
              extra={"cat": "flash", "widget": rung["widget"], "action": rung["action"],
