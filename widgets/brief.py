@@ -340,7 +340,6 @@ def for_prompt_split(open_ids=None, recent_ids=None, query: str = "", stats: dic
     in play, an open card's usage, its live items, today's agenda. Same content as `for_prompt`, other place."""
     from . import refs, selection  # noqa: F401 — refs read by `_live_lines`
     opened = {str(w).strip().lower() for w in (open_ids or []) if str(w).strip()}
-    recent = [str(w).strip().lower() for w in (recent_ids or []) if str(w).strip() and str(w).strip().lower() not in opened]
     try:
         catalogue = [w for w in runtime.catalog() if w.get("id")]
     except Exception:

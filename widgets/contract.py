@@ -332,7 +332,6 @@ def unfilled(widget_id: str, action: str, spec: dict, payload: dict | None) -> d
     sent = [k for k, v in pl.items() if not str(k).startswith("_") and _filled(v)]
     if not declared or not sent or any(_filled(pl.get(k)) for k in declared):
         return None
-    from .refs import _OPTIONAL_RE
     unmet = [k for k, v in declared.items() if not _OPTIONAL_RE.search(str(v))] or list(declared)
     return {"ok": False, "error": SLOTS_UNFILLED, "widget": widget_id, "action": action, "unmet": unmet,
             "sent": sent, "message": _spoken("", "widget_slots_unfilled"),
