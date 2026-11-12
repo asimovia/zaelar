@@ -5,7 +5,7 @@ free-text value is rewritten:
 
   · SHAPES only a particular thing has → [EMAIL] [URL] [PHONE] [DATE] [NUMBER] — each recognised by its own shape
     (a phone by its digit count, a date by its fields in range), so a date or a time is never a [PHONE] and a time
-    or a year is kept as said;
+    is kept as said;
   · names THIS agent knows → [PERSON] (every name of every contact), [PLACE] (the places of the state — home and
     where a screen is now — and every place the location door resolved), [NAME] (the memory's concept hubs);
   · any other word that starts with a capital and does not open a sentence → [NAME].
@@ -52,10 +52,10 @@ def _a_date(m) -> bool:
 
 
 def _a_phone(m) -> bool:
-    """A phone by its own shape: 9 to 15 digits (8 with an international «+»), whatever the grouping. A date has at most
-    eight and a time carries «:», so neither is ever read as one."""
-    digits = sum(c.isdigit() for c in m.group(0))
-    return (8 if m.group(0).startswith("+") else 9) <= digits <= 15
+    """A phone — or a code said in groups — by its own shape: 6 to 15 digits, whatever the grouping («12 34 56 78» is a
+    phone where numbers have eight digits). A date is read before it and a time carries «:», so neither reaches here;
+    what does is a doubt, and every doubt tags."""
+    return 6 <= sum(c.isdigit() for c in m.group(0)) <= 15
 
 
 SHAPES = (
@@ -66,8 +66,8 @@ SHAPES = (
     ("date", _Shape(r"(?<![\d/.-])(?:\d{4}-\d{1,2}-\d{1,2}|\d{1,2}[/.-]\d{1,2}(?:[/.-](?:\d{4}|\d{2}))?)(?![\d]|[/.-]\d)",
                     _a_date)),
     ("phone", _Shape(r"(?<![\w+])\+?\(?\d[\d\s().-]{5,}\d(?![\w:]|[.-]\d)", _a_phone)),
-    # A run of three or more digits, except a year standing alone (it names no one).
-    ("number", _Shape(r"(?<!\d)(?!(?:19|20)\d\d(?!\d))\d{3,}")),
+    # A run of three or more digits — a year standing alone too: by its shape it cannot be told from a PIN.
+    ("number", _Shape(r"(?<!\d)\d{3,}")),
 )
 _PUNCT = "\"'«»“”‘’()[]{}¿?¡!.,;:…"
 _ENDS = ".!?…\n"

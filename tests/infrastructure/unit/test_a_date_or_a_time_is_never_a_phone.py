@@ -32,8 +32,30 @@ def test_a_date_or_a_time_is_never_a_phone(said: str) -> None:
             assert clock in kept                          # a time names no one: kept as said
 
 
-def test_a_year_and_a_small_count_are_kept() -> None:
-    assert pii.tag("en 2026 somos 4 y llevamos 1.5 kg", NAMES) == "en 2026 somos 4 y llevamos 1.5 kg"
+def test_a_small_count_and_a_decimal_are_kept_and_a_lone_year_is_a_number() -> None:
+    """A year standing alone cannot be told from a PIN by its shape (birth years are the commonest PINs): it is tagged."""
+    assert pii.tag("somos 4 y llevamos 1.5 kg a las 17.30 del 12", NAMES) == "somos 4 y llevamos 1.5 kg a las 17.30 del 12"
+    assert pii.tag("en 2026 somos 4", NAMES) == "en [NUMBER] somos 4"
+    for said, secret in (("PIN 2010", "2010"), ("el pin es 1987 y la clave 4821", "1987"), ("code 1999", "1999")):
+        assert secret not in pii.tag(said, NAMES), said
+
+
+@pytest.mark.parametrize("said", ["mi teléfono es 12 34 56 78", "llama al 91 12 34 56", "call 12 34 56 78 now",
+                                  "el código es 12 34 56", "son el 1234 5678", "ring 22-33-44-55"])
+def test_a_number_said_in_groups_is_never_kept(said: str) -> None:
+    """Measured 2026-11-12: phones said in pairs (eight digits, as in several countries) and codes said in groups were
+    stored as said. Disarm: the phone's floor back at nine digits → the first three go red."""
+    kept = pii.tag(said, NAMES)
+    assert "[PHONE]" in kept or "[NUMBER]" in kept, kept
+    assert sum(c.isdigit() for c in kept) == 0, kept          # not one digit of it survives
+
+
+def test_the_genome_drops_what_these_shapes_name() -> None:
+    """`genome/privacy` shares the shapes and DROPS: a gene carrying a grouped number or a four-digit code never leaves."""
+    from genome import privacy
+    for value in ("12 34 56 78", "PIN 2010", "91 12 34 56"):
+        assert privacy.reason({"key": "alias", "value": value}, set()), value
+    assert privacy.reason({"key": "alias", "value": "the kitchen light"}, set()) == ""
 
 
 @pytest.mark.parametrize("phone", ["+34 612 345 678", "612345678", "612-34-56-78", "91.123.45.67", "(555) 123-4567",
