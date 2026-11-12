@@ -87,7 +87,8 @@ def main(argv: list[str] | None = None) -> int:
     if a.cmd in ("call", "report"):
         from nucleo import untrusted as _u
         res = getattr(_converse, a.cmd)(a)
-        print(json.dumps(_u.fence_tree(res) if isinstance(res, dict) else res, ensure_ascii=False, default=str))
+        rules = res.pop("next", None)                 # OUR rules ride outside the fence that marks the stranger's data
+        print(json.dumps({**_u.fence_tree(res), **({"next": rules} if rules else {})}, ensure_ascii=False, default=str))
         return 0
 
     if a.cmd == "find":
@@ -100,8 +101,7 @@ def main(argv: list[str] | None = None) -> int:
                           "agents": [{"agent_id": x.get("agent_id"), "endpoint": x.get("endpoint"),
                                       "capabilities": x.get("capabilities") or [],
                                       "skills": skills.get(str(x.get("agent_id"))) or []}
-                                     for x in res.get("agents") or []],
-                          **_known_skill(a.errand)}, ensure_ascii=False))
+                                     for x in res.get("agents") or []]}, ensure_ascii=False))
         return 0
 
     campos: dict = {}
@@ -129,15 +129,6 @@ def main(argv: list[str] | None = None) -> int:
     _to_the_sheet(res)
     print(json.dumps(res, ensure_ascii=False, default=str))
     return 0
-
-
-def _known_skill(errand: str) -> dict:
-    """The skill this kind of errand was last served by (the learned route, `<agent>/<skill>`), when there is one."""
-    from nucleo import routes as _routes            # `routes.plan` never raises
-    plan = _routes.plan(errand)
-    row = next((c for c in plan.channels
-                if c.get("channel") == _routes.store.CH_MESH and "/" in str(c.get("target") or "")), None)
-    return {"served_before_by": row["target"], "call_with": "hbmesh call <agent_id> <skill> --json @request.json"} if row else {}
 
 
 def _leave_gate(errand: str, prompt: str, agent: str) -> dict:

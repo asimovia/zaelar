@@ -1,21 +1,15 @@
 """nucleo/mesh_dialog.py — when an agent of the network ASKS its user something, and his answer goes back to it.
 
-A live agent may answer a request with a question instead of a result («21:00 is taken: which other time?», «eight of
-you: one table or two?»). Before this module every one of those was LOST: the error reader looked for `need`/`error`
-keys, an agent's `questions` list matched none, and the worker was told «the agents did not answer». The CLASS, for
-any agent (nothing here names one):
+Before this, an agent's `questions` matched none of the error keys and the worker heard «the agents did not answer».
+The CLASS, for any agent (none is named here):
 
-  · **Reading** (`questions_in`) is by SHAPE: a `questions` list (id + text, at the top or under `result`) or an A2A
-    task in `input-required`. Status words are never read. A choice that needs a value of his own is not offered:
-    he is answered by a declared option, never by words a program would have to interpret.
-  · **Answering** (`apply`) is the agent's own contract: a choice's `set` (dotted paths) rewrites the request, sent
-    again whole; a question's `field` takes the choice's value; else `{id, choice}` goes to the job that asked.
-  · **His standing answers** (`remember`/`prefill`): the VALUES of a choice HE picked on his row (the asker binds it)
-    are kept as his rules row — personal layer, never the genome — and applied only when the agent offers exactly
-    those values again. A question about one job («accept 15:15?») is never kept.
-  · **Binding** is by IDENTITY: one THREAD (`mt_…`) per exchange; the question it waits on is named by its `ask_id`.
-
-What an agent writes is a stranger's text: neutralised before a person or a worker reads it.
+  · **Reading** by SHAPE: a `questions` list (id + text, top or under `result`) or an A2A task `input-required`; never
+    status words. An option that needs a value of his own is not offered: he answers by a declared option.
+  · **Answering** by the agent's contract: a choice's `set` (dotted paths) rewrites a copy of the request; a `field`
+    takes the value; else `{id, choice}` goes to the job that asked.
+  · **His standing answers**: the VALUES of an option HE picked on his row, kept as his rules row (personal, never the
+    genome) and applied only when the agent offers exactly those values again.
+  · **Threads**: one exchange, one row (`sys_kv mesh:thread:<id>`), bound by id.
 """
 from __future__ import annotations
 
@@ -24,7 +18,7 @@ import secrets
 import time
 
 _TEXT_MAX, _LABEL_MAX, _MAX_QUESTIONS, _MAX_CHOICES = 400, 160, 12, 12
-_KV_THREADS = "mesh:threads"
+_KV_THREAD = "mesh:thread:"
 _THREAD_TTL_S = 14 * 24 * 3600
 _RULE_CLASS, _RULE_CHANNEL = "errand.mesh_serve", "mesh"
 
@@ -37,21 +31,19 @@ def _text(v, n: int) -> str:
 
 def _choice(c) -> dict | None:
     """One declared option, or None when it is not one he can pick as it stands (it asks for a value of his)."""
-    if isinstance(c, (str, int, float)) and str(c).strip():
-        return {"id": str(c), "label": _text(c, _LABEL_MAX)}
     if not isinstance(c, dict) or c.get("needsValue") or None in (c.get("set") or {}).values():
         return None
-    label = _text(c.get("label") or c.get("text") or c.get("id") or c.get("value"), _LABEL_MAX)
+    label = _text(c.get("label") or c.get("id"), _LABEL_MAX)
     return {"label": label, **{k: c[k] for k in ("set", "id", "value") if c.get(k) not in (None, "")}} if label else None
 
 
 def _question(q, i: int) -> dict | None:
     if not isinstance(q, dict):
         return None
-    text = _text(q.get("text") or q.get("ask") or q.get("question") or q.get("prompt"), _TEXT_MAX)
+    text = _text(q.get("text") or q.get("ask"), _TEXT_MAX)
     if not text:
         return None
-    raw = q.get("choices") or q.get("options") or []
+    raw = q.get("choices") or []
     choices = [c for c in (_choice(c) for c in (raw if isinstance(raw, list) else [])) if c][:_MAX_CHOICES]
     for n, c in enumerate(choices):
         c["n"] = n                                   # the index he picks is the index in what he was shown
@@ -112,7 +104,7 @@ def apply(body: dict, question: dict, n: int | None, words: str = "") -> tuple[d
         return out, None, ""
     if choice is not None:
         return None, {"id": question.get("id"), "choice": choice.get("id") or choice["label"]}, ""
-    return None, {"id": question.get("id"), "value": str(words).strip()[:_TEXT_MAX]}, ""
+    return None, None, f"question {question.get('id')} has no option to send back"   # a job is answered by an option
 
 
 # ── his standing answers (the personal layer: HIS rules rows, never the genome) ─────────────────────────────
@@ -150,44 +142,36 @@ def prefill(agent_id: str, skill_id: str, questions: list[dict], body: dict) -> 
     return out, still, applied
 
 
-# ── threads: one open exchange with one agent, bound by its id ───────────────────────────────────────────────
-def _threads() -> dict:
-    from memory import api as memory                 # the KV doors never raise (an unreadable row is the default)
-    got = memory.kv_get(_KV_THREADS, {}) or {}
-    return got if isinstance(got, dict) else {}
+# ── threads: one open exchange with one agent, ONE row each (`sys_kv mesh:thread:<id>`) ───────────────────────
+def _key(tid: str) -> str:
+    return _KV_THREAD + str(tid or "").strip()
 
 
 def save(thread: dict) -> str:
-    """Store (or update) a thread; returns its id. Threads older than their TTL are dropped on the way."""
-    now = time.time()
-    tid = str(thread.get("id") or f"mt_{secrets.token_hex(5)}")
-    thread.update(id=tid, updated=now)
-    thread.setdefault("created", now)
-    all_ = {k: v for k, v in _threads().items()
-            if isinstance(v, dict) and now - float(v.get("updated") or 0) < _THREAD_TTL_S}
-    all_[tid] = thread
-    from memory import api as memory
-    memory.kv_set(_KV_THREADS, all_)
-    return tid
+    """Store (or update) ONE thread under its own key — two processes never rewrite each other's. Returns its id."""
+    from memory import api as memory                 # the KV doors never raise (an unreadable row is the default)
+    thread["id"] = thread.get("id") or f"mt_{secrets.token_hex(5)}"
+    thread.setdefault("created", time.time())
+    thread["updated"] = time.time()
+    memory.kv_set(_key(thread["id"]), thread)
+    return thread["id"]
 
 
 def thread(tid: str) -> dict | None:
-    """The open thread `tid`, or None."""
-    t = _threads().get(str(tid or "").strip())
+    """The thread `tid`, or None."""
+    from memory import api as memory
+    t = memory.kv_get(_key(tid)) if tid else None
     return dict(t) if isinstance(t, dict) else None
 
 
 def all_threads() -> list[dict]:
-    """Every live thread (copies)."""
-    return [dict(t) for t in _threads().values() if isinstance(t, dict)]
-
-
-def with_job(job_id: str) -> dict | None:
-    """The open thread that owns job `job_id` — a retry the agent answered with the same job reuses it."""
-    return next((t for t in all_threads() if job_id and str((t.get("job") or {}).get("id") or "") == str(job_id)
-                 and not t["job"].get("done")), None)
-
-
-def open_jobs() -> list[dict]:
-    """Every thread whose job has not ended — what the pulse's sweep advances."""
-    return [t for t in all_threads() if (t.get("job") or {}).get("id") and not t["job"].get("done")]
+    """Every live thread; one older than its TTL is deleted on the way."""
+    from memory import api as memory
+    out = []
+    for k in memory.kv_keys(_KV_THREAD):
+        t = memory.kv_get(k)
+        if isinstance(t, dict) and time.time() - float(t.get("updated") or 0) < _THREAD_TTL_S:
+            out.append(t)
+        else:
+            memory.kv_del(k)
+    return out

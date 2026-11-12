@@ -146,6 +146,7 @@
  "stop_which_worker": "Tengo varias tareas en marcha distintas — ¿cuál paro exactamente?",
  "answer_taken": "Vale, se lo paso a la tarea.",
  "answer_already_given": "Esa pregunta ya la contestaste; no hay nada nuevo que pasarle a la tarea.",
+ "mesh_open_link": "¿Abro {domain} con tus datos para terminarlo?",
  "send_missing_text": "¿Qué le digo a {who}?",
  "send_missing_recipient": "¿A quién se lo mando?",
  "send_which_recipient": "¿A qué {who}? Tengo a {names}.",

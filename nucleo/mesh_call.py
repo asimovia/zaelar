@@ -1,20 +1,16 @@
 """nucleo/mesh_call.py — put a structured request to ONE declared skill of a network agent, and carry the exchange.
 
-`mesh_agents.serve` is discovery plus a free-text ask of an agent's FIRST skill: an agent declaring `search`, `book`
-and `book-by-phone` answered every booking errand with a search. Here the caller names a skill its card DECLARES, and
-the answer may be a result, a question for the operator (`mesh_dialog`, asked on his row by `mesh_jobs`), a job that
-ends later (`mesh_jobs`) or a step handed back to us (`mesh_handoff`). Nothing here names an agent or a skill.
+`serve` asks an agent's FIRST skill (a booking came back as a search). Here the skill is named and DECLARED by the card,
+and the answer may be a result, a question for him (`mesh_dialog`, asked by `mesh_jobs`), a job, or a step handed back
+(`mesh_handoff`). No agent and no skill is named here.
 
-  · **Price is per skill** (its own `pricing`, else the card's; unknown is not free). A free skill goes direct. A priced
-    one only through a deployment's relay (`<egress>/p/mesh/<host><path>`, the account's own egress credential) and only
-    when the account can PRICE it — a tariff row `agent/<agent>.<skill>`, delivered with the lease. Otherwise refused
-    before anything leaves. A `402` is never paid. Self-host has no relay: byte-identical to the free-only rule.
-  · **One order, one key.** The request key (`idempotency_key`, set only where the skill's own examples use one) is
-    the ENGINE's: derived from the task and the request, never taken from the body or the card. A retry of the same
-    order (an answer that never came) carries the same key, so the agent never places it twice.
-  · **One order at a time.** While an order of the same task has a step whose outcome is unknown — a send that got no
-    answer, an open job, a handed-back step not reported — no OTHER skill of that agent is called for it (no blind
-    retry on another channel), and a handed-back step is never asked for twice.
+  · Price per skill (its own `pricing`, else the card's; unknown is not free). Free → direct. Priced → only through a
+    deployment's relay (`<egress>/p/mesh/<host><path>`, the account's credential) AND with a tariff row
+    `agent/<agent>.<skill>`; otherwise refused before anything leaves. A `402` is never paid.
+  · One order, one thread, one key: the same skill for the same task reuses its open thread and its key (never the
+    body's or the card's); a new order after a closed one is a new thread, a new key.
+  · One effect at a time: while a step of the task may have taken effect unseen (a KEYED send unanswered, an open job,
+    a handed-back step unreported) no OTHER skill is called for it, and the refusal names the way out.
 """
 from __future__ import annotations
 
@@ -77,24 +73,20 @@ def relay_url(endpoint: str, path: str) -> tuple[str, str]:
 
 
 # ── one order ───────────────────────────────────────────────────────────────────────────────────────────────
-def signature(body: dict) -> str:
-    """One request, whatever its key: the body without its key and its dry-run flag."""
-    rest = {k: v for k, v in (body or {}).items() if k not in (KEY_FIELD, "dry_run")}
-    return hashlib.sha256(json.dumps(rest, sort_keys=True, ensure_ascii=False, default=str).encode()).hexdigest()[:20]
-
-
 def _unknown(t: dict) -> bool:
-    """Has this thread a step whose outcome nobody knows? (no answer · an open job · a handed-back step unreported)"""
-    return (t.get("last_status") == 0 or bool((t.get("job") or {}).get("id") and not t["job"].get("done"))
+    """Has this thread a step that may have had an EFFECT nobody knows of? (a keyed send that got no answer · an open
+    job · a handed-back step not reported). A send that carried no key is a read: its silence blocks nothing."""
+    return ((t.get("last_status") == 0 and KEY_FIELD in (t.get("body") or {}))
+            or bool((t.get("job") or {}).get("id") and not t["job"].get("done"))
             or bool(t.get("handoff") and not t["handoff"].get("outcome")))
 
 
-def _blocking(agent_id: str, skill_id: str, order: str) -> dict | None:
-    for t in dialog.all_threads():
-        if (t.get("agent"), t.get("order")) == (agent_id, order) and _unknown(t) \
-                and (t.get("skill") != skill_id or t.get("handoff")):
-            return t
-    return None
+def _threads_of(agent_id: str, task_id: str) -> list[dict]:
+    return [t for t in dialog.all_threads() if task_id and (t.get("agent"), t.get("task_id")) == (agent_id, task_id)]
+
+
+_WAIT_FOR = ("an earlier step of this order may have taken effect and nobody knows yet: {exit} — it is not tried "
+             "again on another skill blindly")
 
 
 def _agent(agent_id: str, errand: str) -> dict | None:
@@ -121,20 +113,25 @@ def call(agent_id: str, skill_id: str, body: dict, *, errand: str = "", task_id:
     if via == REFUSED:
         return {"ok": False, "agent": agent_id, "skill": skill_id, "priced": True, "reason": why}
     body = {k: v for k, v in (body or {}).items() if k != KEY_FIELD}          # the key is never the caller's
-    order = str(task_id or "") or signature(body)
-    if not body.get("dry_run") and (other := _blocking(agent_id, skill_id, order)):
+    mine = [] if body.get("dry_run") else _threads_of(agent_id, str(task_id or ""))
+    if (other := next((t for t in mine if _unknown(t) and (t["skill"] != skill_id or t.get("handoff"))), None)):
+        way = ("its job is followed on its own row" if other.get("job") else f"`hbmesh report {other['id']} …`"
+               if other.get("handoff") else f"call «{other['skill']}» again with the same order to learn it")
         return {"ok": False, "agent": agent_id, "duplicate": True, "thread": other["id"],
-                "reason": "an earlier step of this same order has no known outcome (possibly done): it is not tried "
-                          "again blindly — report it first (`hbmesh report`) or wait for its job"}
+                "reason": _WAIT_FOR.format(exit=way)}
     if via == RELAY:
         from nucleo.energy import lease_gate
         if not lease_gate.check("agent"):
             return {"ok": False, "agent": agent_id, "skill": skill_id, "reason": "no Energy left to start a priced call"}
+    # A retry of the SAME skill for the same task reuses its open thread — and its key; a new order (that one closed)
+    # is a new thread, a new key. The key is the thread's: never the body's, never the card's example.
+    t = next((x for x in mine if x["skill"] == skill_id and not x.get("closed")), None) or {
+        "agent": agent_id, "endpoint": endpoint, "skill": skill_id, "path": f"/v1/{skill_id}", "via": via,
+        "task_id": str(task_id or ""), "timeout": mesh_agents.agent_timeout(agent)}
+    t.update(body=body, errand=str(errand or t.get("errand") or "")[:300])
+    dialog.save(t)
     if KEY_FIELD in json.dumps((_skill(card, skill_id) or {}).get("examples") or []):
-        body[KEY_FIELD] = hashlib.sha256(f"{order}|{signature(body)}|{agent_id}|{skill_id}".encode()).hexdigest()[:24]
-    t = {"agent": agent_id, "endpoint": endpoint, "skill": skill_id, "path": f"/v1/{skill_id}", "via": via,
-         "errand": str(errand or "")[:300], "task_id": str(task_id or ""), "body": body,
-         "order": "" if body.get("dry_run") else order, "timeout": mesh_agents.agent_timeout(agent)}
+        body[KEY_FIELD] = hashlib.sha256(f"order|{t['id']}".encode()).hexdigest()[:24]
     dialog.save(t)
     return exchange(t)
 
@@ -172,9 +169,14 @@ def _send(t: dict) -> tuple[int, dict | None]:
 
 
 def _outcome(t: dict, status: int, data, questions: list[dict]) -> dict:
+    from nucleo import mesh_handoff
     base = {"agent": t["agent"], "skill": t["skill"], "thread": t["id"], "status": status}
+    data = {k: v for k, v in data.items() if k not in ("jobToken", "token")} if isinstance(data, dict) else data
+    t["closed"] = status not in (0, 202) and not questions and mesh_handoff.of(data) is None
     if status == 0:
-        return {**base, "ok": False, "reason": f"«{t['agent']}» did not answer; asking again for the SAME order is safe"}
+        return {**base, "ok": False, "reason": f"«{t['agent']}» did not answer: "
+                + ("calling the SAME skill again for this order carries the same key, so it is not done twice"
+                   if KEY_FIELD in t["body"] else "its outcome is unknown — do not repeat it; tell him")}
     if status == 402:
         return {**base, "ok": False, "payment_required": True, "reason": f"«{t['agent']}» charges for this: not paid"}
     if questions:
@@ -192,14 +194,17 @@ def _outcome(t: dict, status: int, data, questions: list[dict]) -> dict:
         from nucleo.mesh_agents import _what_the_agent_asks_for
         return {**base, "ok": False, "agent_asks": _what_the_agent_asks_for(data),
                 "reason": f"«{t['agent']}» answered {status} (see `agent_asks`)"}
-    from nucleo import mesh_handoff, routes as _routes
+    from nucleo import routes as _routes
     plan = _routes.plan(t.get("errand") or "")          # a served skill teaches the playbook route (`plan`/`learn` never raise)
     if plan and plan.domain:
         _routes.learn(plan.domain, _routes.store.CH_MESH, target=f"{t['agent']}/{t['skill']}",
                       evidence=f"served «{str(t.get('errand') or '')[:60]}»", rank=10)
     if (handed := mesh_handoff.of(data)) is not None:
         mesh_handoff.keep(t, data)
-        return {**base, "ok": True, "handed_back": handed, "your_order": t["body"], "next": mesh_handoff.NEXT}
+        ask = mesh_handoff.open_question(handed)
+        t["pending"] = [ask] if ask else []
+        return {**base, "ok": True, "handed_back": handed, "your_order": t["body"], "next": mesh_handoff.NEXT,
+                **({"agent_asks_user": [ask["text"]]} if ask else {})}
     return {**base, "ok": True, "data": data}
 
 

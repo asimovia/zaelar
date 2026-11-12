@@ -9,7 +9,8 @@ those values again — so an agent cannot redefine what he chose (audit P1-4).
 
 The fixtures are the documented shapes of a network booking agent (trimmed).
 
-Disarm: return [] from `questions_in` → red; match a standing answer by position instead of values → red.
+Disarm: return [] from `questions_in` → red; match a standing answer by position instead of values → red; keep the
+threads in one shared value → red.
 """
 from __future__ import annotations
 
@@ -64,8 +65,9 @@ def test_his_option_is_written_where_the_agent_said_and_nothing_else_is_taken():
     assert d.apply(BODY, q, None, "a las ocho")[2]                         # words never answer a question with options
     _b, job, _w = d.apply({}, d.questions_in(JOB_ASKS)[0], 0)
     assert job == {"id": "q1", "choice": "accept"}                         # the option's ID, never its value
-    _b, job, _w = d.apply({}, {"id": "input", "text": "?", "choices": []}, None, "cuatro")
-    assert job == {"id": "input", "value": "cuatro"}
+    assert d.apply({}, {"id": "input", "text": "?", "choices": []}, None, "cuatro")[2]   # no option: nothing is sent
+    body, _j, _w = d.apply({}, {"id": "input", "text": "?", "choices": [], "field": "party_size"}, None, "4")
+    assert body == {"party_size": "4"}
 
 
 def test_his_standing_answer_is_its_values_and_the_agent_cannot_redefine_it(db):
@@ -85,8 +87,11 @@ def test_his_standing_answer_is_its_values_and_the_agent_cannot_redefine_it(db):
     assert not d.prefill("another-agent", "book-by-phone", q, BODY)[2]
 
 
-def test_a_thread_binds_a_job_by_its_id(db):
-    tid = d.save({"agent": "a", "skill": "s", "job": {"id": "j-9"}})
-    assert d.with_job("j-9")["id"] == tid and [t["id"] for t in d.open_jobs()] == [tid]
-    d.save({**d.thread(tid), "job": {"id": "j-9", "done": True}})
-    assert d.open_jobs() == [] and d.with_job("j-9") is None
+def test_each_thread_is_its_own_row_so_two_writers_never_erase_each_other(db):
+    a = d.save({"agent": "a", "skill": "s"})
+    stale = d.thread(a)                                      # one process holds this copy…
+    b = d.save({"agent": "a", "skill": "t", "job": {"id": "j-9"}})   # …while the other writes another thread
+    d.save({**stale, "note": "x"})
+    assert d.thread(b)["job"]["id"] == "j-9" and {t["id"] for t in d.all_threads()} == {a, b}
+    from memory import api as memory
+    assert sorted(memory.kv_keys("mesh:thread:")) == sorted(f"mesh:thread:{x}" for x in (a, b))   # one row each

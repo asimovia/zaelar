@@ -1,17 +1,12 @@
 """nucleo/mesh_jobs.py — the agent's questions on HIS row, and a network agent's JOB owned by a row until it ends.
 
-ONE way an agent's question reaches the operator, whether the agent asked at once (a `422`/`200` with questions) or
-minutes later from a job: THE asker, on a task row (`clarify`: dialogue, never a card), one question at a time, its
-declared options; the exchange remembers WHICH question it waits on (`asking` = the `ask_id`), and an answer to any
-other is refused. His option goes back by INDEX — never a reading of words, never a number a model chose — and only
-then are its values kept as his standing answer (`mesh_dialog.remember`). Then the request is sent again whole, or the
-job's own answers endpoint is told; with no model.
-
-A JOB (`202` with an id) is the pulse's, never a worker's: `sweep()` gives it a row of its own, born from the worker's
-row with its session, polls it with back-off and reads its end by the agent's own `final` flag — a job that does not
-say it ended has not ended (GIVE_UP bounds it). When it ends, the worker that started it is resumed with the result,
-fenced and never cut where it would lose a fact; a job given up is told as UNKNOWN (it may exist). A job bought through
-the relay is booked by the relay; here it only debits the local lease, once, when born.
+ONE way an agent's question reaches him — asked at once, from a job, or before his data goes to a page handed back:
+THE asker on a task row (`clarify`), one at a time, its declared options; the exchange remembers WHICH question it waits
+on (`asking` = its `ask_id`) and refuses any other. His option goes back by INDEX, with no model; only then are its
+values kept as his (`mesh_dialog.remember`). A JOB (`202`) is the pulse's: a row born from the worker's, polled with
+back-off (slower, never stopped, while a question is open), ended ONLY by the agent's own `final`; the worker that
+started it is resumed with the result, bounded leaf by leaf. A row he ended releases its question and the job is still
+followed to its end, so a relay can settle it. A relayed job only debits the local lease here, once, when born.
 """
 from __future__ import annotations
 
@@ -40,7 +35,9 @@ def opened(t: dict, data: dict) -> dict | None:
     jid = str(data.get("jobId") or data.get("job_id") or data.get("id") or "")
     if not jid:
         return None
-    if (same := dialog.with_job(jid)) and same["id"] != t.get("id"):
+    same = next((x for x in dialog.all_threads() if str((x.get("job") or {}).get("id") or "") == jid
+                 and not x["job"].get("done") and x["id"] != t.get("id")), None)
+    if same:
         return {"id": jid, "thread": same["id"]}
     now = time.time()
     t["job"] = {"id": jid, "poll": str(data.get("poll") or ""), "token": str(data.get("jobToken") or ""),
@@ -54,68 +51,73 @@ def opened(t: dict, data: dict) -> dict | None:
 
 
 # ── his row: the one way a question reaches him ──────────────────────────────────────────────────────────────
-def _entry(t: dict, uid: str, session: str) -> dict:
+def ask(t: dict, uid: str, rec=None) -> str:
+    """Put the exchange's next pending question on row `uid` through THE asker — through the live worker's own record
+    when there is one (its session parks and is resumed with what comes of his answer). Returns the ask id."""
     q = (t.get("pending") or [])[0]
     ask_id = f"{t['id']}:{q['id']}:{int(time.time() * 1000)}"
     t.update(row=uid, asking=ask_id)
-    return {"ask_id": ask_id, "corr_id": ask_id, "uid": uid, "task_id": "", "action": "ask_user", "kind": "clarify",
-            "question": q["text"], "options": [c["label"] for c in q["choices"]],
-            "remote": {"thread": t["id"], "question": q["id"]}, "session": session}
-
-
-def ask_on_row(t: dict, uid: str) -> str:
-    """Put the exchange's next pending question on row `uid` through THE asker. Returns its `ask_id`."""
-    from nucleo.circuit import asker, ledger
-    entry = _entry(t, uid, str((ledger.store().task_get(uid) or {}).get("session_id") or ""))
     dialog.save(t)
-    asker.ask(uid, entry)
-    return entry["ask_id"]
+    opts, remote = [c["label"] for c in q["choices"]], {"thread": t["id"], "question": q["id"]}
+    if rec is not None:
+        from nucleo.cli.worker_api_asks import _register_ask
+        return _register_ask(rec, q["text"], options=opts, remote=remote, ask_id=ask_id)
+    from nucleo.circuit import asker, ledger
+    session = str((ledger.store().task_get(uid) or {}).get("session_id") or "")
+    asker.ask(uid, {"ask_id": ask_id, "corr_id": ask_id, "uid": uid, "task_id": "", "action": "ask_user",
+                    "kind": "clarify", "question": q["text"], "options": opts, "remote": remote, "session": session})
+    return ask_id
 
 
 def ask_for_worker(rec, thread_id: str) -> str:
-    """The FIRST question of an exchange a worker's call opened, on that worker's row: its session parks and is resumed
-    with what comes of his answer. Only an exchange of THIS task, with a question pending. Returns the ask id or ""."""
+    """The first question of an exchange a worker's call opened — only an exchange of THIS task with one pending."""
     t = dialog.thread(thread_id)
     if not t or str(t.get("task_id")) != str(getattr(rec, "task_id", "")) or not t.get("pending"):
         return ""
-    from nucleo.cli.worker_api_asks import _register_ask
-    entry = _entry(t, str(getattr(rec, "uid", "") or ""), "")
-    dialog.save(t)
-    return _register_ask(rec, entry["question"], options=entry["options"], remote=entry["remote"], ask_id=entry["ask_id"])
+    return ask(t, str(getattr(rec, "uid", "") or ""), rec)
 
 
 def answered(uid: str, entry: dict, text: str, choice: int | None) -> dict:
     """His answer to the question the exchange waits on (from `worker_api_answer.answer`, off the loop's thread)."""
     remote = entry.get("remote") or {}
     t = dialog.thread(remote.get("thread") or "")
-    if not t or t.get("asking") != entry.get("ask_id"):
+    q = next((q for q in (t or {}).get("pending") or [] if q["id"] == remote.get("question")), None)
+    if not t or q is None or t.get("asking") != entry.get("ask_id"):
         return {"ok": False, "reason": "this is not the question that exchange waits on"}
-    q = next(q for q in t.get("pending") or [] if q["id"] == remote.get("question"))
-    body, job_answer, why = dialog.apply(t.get("body") or {}, q, choice, "" if choice is not None else text)
-    if why:                                            # not an option of a question that has options: ask it again
-        ask_on_row(t, uid)
+    if q.get("consent"):                               # may his details go to the page the agent handed back?
+        if choice is None:
+            ask(t, uid)
+            return {"ok": False, "asked_again": True}
+        t["handoff"]["allowed"], t["pending"], t["asking"] = choice == 0, [], None
+        dialog.save(t)
+        from nucleo import mesh_handoff
+        _tell(t, {"handed_back": t["handoff"].get("view"), "allowed": choice == 0, "your_order": t.get("body")},
+              rules=mesh_handoff.NEXT)
+        return {"ok": True, "allowed": choice == 0}
+    body, job_answer, why = dialog.apply(t.get("body") or {}, q, choice)
+    if why:                                            # not one of its options: asked again, nothing sent
+        ask(t, uid)
         return {"ok": False, "reason": why, "asked_again": True}
     t["pending"], t["asking"] = [x for x in t["pending"] if x["id"] != q["id"]], None
-    if choice is not None:
-        dialog.remember(t["agent"], t["skill"], q, choice)      # HIS option, bound by the row's ask id
+    dialog.remember(t["agent"], t["skill"], q, choice)          # HIS option, bound by the row's ask id
     if t.get("job"):
         t["job"]["answers"] = (t["job"].get("answers") or []) + [job_answer]
     elif body is not None:
         t["body"] = body
     if t["pending"]:
-        ask_on_row(t, uid)
+        ask(t, uid)
         return {"ok": True, "asked_next": True}
     if t.get("job"):
         return _post_answers(t)
     from nucleo import mesh_call
     out = mesh_call.exchange(t)
     if t.get("pending"):
-        ask_on_row(t, uid)
+        ask(t, uid)
     elif t.get("job"):                                 # it became a job: the row waits for it, the pulse follows it
         from nucleo.circuit import ledger
         ledger.waiting(uid, WAIT)
     else:
-        _tell(t, out, gave_up=False)
+        _tell(t, out)
     return out
 
 
@@ -124,15 +126,17 @@ def _post_answers(t: dict, cancel: bool = False) -> dict:
     from nucleo.circuit import ledger
     url, bearer, headers = _url(t, "/answers")
     body = {"cancel": True} if cancel else {"answers": t["job"].get("answers") or []}
-    status, data = mesh_agents._post(url, body, timeout=_TIMEOUT_S, bearer=bearer or None,
-                                     **({"headers": headers} if headers else {}))
-    t["job"].update(answers=[], next_at=time.time() + POLL_FIRST_S)
-    t["pending"] = []
+    status, _data = mesh_agents._post(url, body, timeout=_TIMEOUT_S, bearer=bearer or None,
+                                      **({"headers": headers} if headers else {}))
+    if status == 0 and not cancel:                     # never reached it: kept, sent again at the next beat
+        t["job"]["unsent"] = True
+    else:
+        t["job"].update(answers=[], unsent=False)
+    t["job"]["next_at"] = time.time() + POLL_FIRST_S
     if t.get("row") and not cancel:
         ledger.waiting(t["row"], WAIT)
     dialog.save(t)
-    return {"ok": 200 <= status < 300, "thread": t["id"], "status": status,
-            **({} if 200 <= status < 300 else {"reason": "the agent no longer takes this answer; the job says how it ends"})}
+    return {"ok": 200 <= status < 300, "thread": t["id"], "status": status}
 
 
 # ── the pulse's sweep ───────────────────────────────────────────────────────────────────────────────────────
@@ -140,11 +144,12 @@ def sweep(now: float | None = None) -> int:
     """Advance every open job once (blocking network: the pulse runs this in a thread). Returns how many it touched."""
     now = time.time() if now is None else now
     n = 0
-    for t in dialog.open_jobs():
-        try:
-            n += _tick(t, now)
-        except Exception as e:  # noqa: BLE001 — one job never stops the others
-            _note(e)
+    for t in dialog.all_threads():
+        if (t.get("job") or {}).get("id") and not t["job"].get("done"):
+            try:
+                n += _tick(t, now)
+            except Exception as e:  # noqa: BLE001 — one job never stops the others
+                _note(e)
     return n
 
 
@@ -152,26 +157,26 @@ def _tick(t: dict, now: float) -> int:
     job = t["job"]
     if not t.get("row"):
         t["row"] = _open_row(t)
-        dialog.save(t)
-    if _row_ended(t.get("row") or ""):                 # he ended it (or its wait expired): release what it held
+    if not job.get("orphan") and _row_ended(t.get("row") or ""):   # he ended it: release what it held, keep following
         if t.get("asking"):
             _post_answers(t, cancel=True)
-        job["done"] = True
+        job["orphan"], t["asking"], t["pending"] = True, None, []
+    if job.get("unsent"):
+        _post_answers(t)
+    if now < float(job.get("next_at") or 0):
         dialog.save(t)
-        return 1
-    if t.get("asking") or now < float(job.get("next_at") or 0):
         return 0
     data = _get(t)
+    if isinstance(data, dict) and data.get("final") is True:     # the END first; any question still open is history
+        return _end(t, data)
     if now - float(job.get("since") or now) > GIVE_UP_S:
         return _end(t, {}, gave_up=True)
-    if isinstance(data, dict) and data.get("final") is True:     # the end FIRST: a question in a final job is history
-        return _end(t, data)
-    if (questions := dialog.questions_in(data)):
+    if not t.get("asking") and not job.get("orphan") and (questions := dialog.questions_in(data)):
         t["pending"], job["answers"] = questions, []
-        ask_on_row(t, t["row"])
+        ask(t, t["row"])
         return 1
     job["polls"] = int(job.get("polls") or 0) + 1
-    job["next_at"] = now + min(POLL_MAX_S, POLL_EVERY_S * (1 + job["polls"] // 4))
+    job["next_at"] = now + (POLL_MAX_S if t.get("asking") else min(POLL_MAX_S, POLL_EVERY_S * (1 + job["polls"] // 4)))
     dialog.save(t)
     return 1
 
@@ -208,13 +213,10 @@ def _open_row(t: dict) -> str:
     parent = (ledger.store().task_get(ledger.task_uid(t["task_id"])) if t.get("task_id") else None) or {}
     uid = asker.open_row(str(t.get("errand") or parent.get("goal") or f"{t['agent']} · {t['skill']}"), kind=WAIT,
                          surface=str(parent.get("surface") or ""), origin=str(parent.get("origin") or "voz"))
-    if not uid:
-        return ""
-    ledger.store().task_patch(uid, session_id=str(parent.get("session_id") or ""), cwd=str(parent.get("cwd") or ""),
-                              trace_id=str(parent.get("trace_id") or ""), sheet=str(parent.get("sheet") or ""))
-    ledger.store().artifact_put(uid, "remote", {"thread": t["id"], "agent": t["agent"], "skill": t["skill"],
-                                                "job": t["job"]["id"]})
-    ledger.waiting(uid, WAIT)
+    if uid:
+        ledger.store().task_patch(uid, session_id=str(parent.get("session_id") or ""), cwd=str(parent.get("cwd") or ""),
+                                  trace_id=str(parent.get("trace_id") or ""), sheet=str(parent.get("sheet") or ""))
+        ledger.waiting(uid, WAIT)
     return uid
 
 
@@ -231,24 +233,32 @@ def _clip(v):
 
 
 def _end(t: dict, data: dict, *, gave_up: bool = False) -> int:
-    t["job"].update(done=True, gave_up=gave_up, ended_at=time.time())
+    t["job"].update(done=True, gave_up=gave_up, ended_at=time.time(), result=_clip(data or {}))
+    t.update(asking=None, pending=[], closed=True)
     from nucleo import mesh_handoff
     if mesh_handoff.of(data) is not None:              # a job that ends by handing the step back keeps its guard
         mesh_handoff.keep(t, data)
+        t["closed"] = False
+        if not t["job"].get("orphan") and (q := mesh_handoff.open_question(t["handoff"]["view"])):
+            t["pending"] = [q]
+            ask(t, t["row"])
+            return 1
     dialog.save(t)
-    _tell(t, data, gave_up)
+    if not t["job"].get("orphan"):
+        _tell(t, data, gave_up=gave_up)
     return 1
 
 
-def _tell(t: dict, data, gave_up: bool) -> None:
-    """The worker session that started it is resumed with the outcome, fenced; without one the row ends FAILED with the
-    outcome on it — it was never told to him, and that is not a success."""
+def _tell(t: dict, data, *, gave_up: bool = False, rules: str = "") -> None:
+    """The worker session that started it is resumed with the outcome, fenced (our rules beside it, outside the fence);
+    without one the row ends FAILED with the outcome on it — it was never told to him, and that is not a success."""
     from nucleo import untrusted
     from nucleo.circuit import ledger
     uid = t.get("row") or ""
     row = (ledger.store().task_get(uid) if uid else None) or {}
     result = untrusted.inline(json.dumps(_clip(data or {}), ensure_ascii=False, default=str))
-    entry = {"remote_result": result, "remote_agent": t["agent"], "remote_skill": t["skill"], "gave_up": gave_up}
+    entry = {"remote_result": result, "remote_agent": t["agent"], "remote_skill": t["skill"], "gave_up": gave_up,
+             "remote_rules": rules}
     if row.get("session_id"):
         from nucleo.cli import worker_api_resume as _res
         ledger.resumed(uid)
@@ -256,4 +266,4 @@ def _tell(t: dict, data, gave_up: bool) -> None:
             return
     if uid:
         from nucleo import circuit
-        circuit.settle(row=uid, state="failed", outcome=f"{t['agent']} · {t['skill']}: not told — {result[:300]}")
+        circuit.settle(row=uid, state="failed", outcome=f"{t['agent']} · {t['skill']}: not told — {result}")

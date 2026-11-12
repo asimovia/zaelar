@@ -112,7 +112,7 @@ def test_a_retry_of_an_unanswered_order_carries_its_key_and_another_skill_waits(
     _mediated(mp, priced=True)
     answers.append((0, {"transport": "timeout"}))
     first = mesh_call.call("dining-agent", "book-by-phone", {"date": "2026-11-27"}, errand="x", task_id="41")
-    assert not first["ok"] and "SAME order is safe" in first["reason"]
+    assert not first["ok"] and "same key" in first["reason"]
     answers.append((202, {"jobId": "j1", "poll": "/v1/jobs/j1"}))
     mesh_call.call("dining-agent", "book-by-phone", {"date": "2026-11-27"}, errand="x", task_id="41")
     assert sent[0]["body"]["idempotency_key"] == sent[1]["body"]["idempotency_key"]
@@ -156,3 +156,12 @@ def test_a_skill_price_is_a_tariff_row_that_travels_with_the_lease(net):
             0.25 * meter.MARGIN_MULTIPLIER / meter.EUR_PER_ENERGY_UNIT)
     finally:
         tariffs._reset_for_tests()
+
+
+def test_a_read_that_got_no_answer_blocks_nothing_and_an_unkeyed_silence_is_never_called_safe(net):
+    sent, answers, *_ = net
+    answers.append((0, {"transport": "timeout"}))
+    out = mesh_call.call("dining-agent", "search", {"city": "Madrid"}, errand="x", task_id="41")
+    assert "do not repeat it" in out["reason"]                            # no key: its outcome is unknown, not «safe»
+    assert mesh_call.call("dining-agent", "book", {"date": "2026-11-27"}, errand="x", task_id="41")["ok"]
+    assert len(sent) == 2
