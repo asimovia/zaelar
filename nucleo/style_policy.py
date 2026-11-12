@@ -86,17 +86,23 @@ def filler_mode() -> str:
     return m if m in _FILLER_MODES else "smart"
 
 
+#: The kinds «smart» never covers: an ORDER (V2-633, the operator's literal complaint about «one second» before a
+#: song) and a SOCIAL turn (A7, 2026-11-12: a complaint, a comment or a greeting has no work behind it to cover,
+#: and the social pool's openers read as the start of an excuse when they answer a complaint — measured on his
+#: typed complaint of 2026-11-12, answered by a filler bubble of its own).
+_SMART_SILENT = frozenset({"action", "social"})
+
+
 def filler_allowed(kind: str = "neutral") -> bool:
     """May the lead-in filler sound on a turn of this `filler_audio.filler_kind`? "smart" (genesis default)
-    keeps it for thinking turns (questions, requests that take real work) and drops it on ACTION turns —
-    the operator's literal complaint: «te digo reproduce esta canción y me dices vale, un segundo — me
-    molestas»."""
+    keeps it for thinking turns (questions, requests that take real work) and drops it on ACTION and SOCIAL
+    turns (`_SMART_SILENT`)."""
     m = filler_mode()
     if m == "off":
         return False
     if m == "on":
         return True
-    return kind != "action"
+    return kind not in _SMART_SILENT
 
 
 def retract(key: str) -> dict:

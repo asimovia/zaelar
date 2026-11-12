@@ -59,6 +59,7 @@ def test_genesis_ships_one_short_ack_and_smart_fillers():
     assert sp.filler_mode() == "smart"
     assert sp.filler_allowed("action") is False, "«reproduce el vídeo» must not get «un segundo…»"
     assert sp.filler_allowed("neutral") is True, "a question that takes real work keeps its cover"
+    assert sp.filler_allowed("social") is False, "a complaint or a greeting has no work to cover (A7)"
 
 
 def test_the_genesis_file_is_real_and_valid():

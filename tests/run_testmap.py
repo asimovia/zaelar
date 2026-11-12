@@ -1369,7 +1369,9 @@ DOMAINS: list[dict] = [
         # Telegram» (an answer to OUR question) and «I'll check that now…» answered «close everything». The
         # operator's rule: shorter words («one second, yes, checking, ok» / «vale, sí, ajá»), and stop adding
         # them at all while the engine is answering under the deadline on its own.
-        {"id": "3.51", "title": "El nexo es CORTO, de la clase correcta, y se calla cuando no tiene nada que cubrir",
+        # A7 (2026-11-12) — disarmed the same day (a typed turn is covered · smart covers social: 2 reds).
+        {"id": "3.51", "title": "El nexo es CORTO, de la clase correcta, y se calla cuando no tiene nada que cubrir — "
+                                "nada en un turno ESCRITO, y «smart» calla en `social` (queja, comentario, saludo), con las pools intactas (A7)",
             "ch": UNIT, "paths": ["tests/voice/unit/test_filler_is_short_classed_and_adaptive.py"]},
         {"id": "3.58", "title": "Jev names the request type before the deadline; the cover matches it or the regex stands",
             "ch": UNIT, "paths": ["tests/voice/unit/test_jev_request_type.py"]},

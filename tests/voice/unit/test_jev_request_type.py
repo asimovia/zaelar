@@ -187,17 +187,20 @@ def test_the_filler_opens_NO_socket_of_its_own(monkeypatch):
     assert kind == "action", "…and it still got its verdict, read from the brief at arm"
 
 
-def test_an_unsure_verdict_in_the_brief_keeps_the_regex_class():
+def test_an_unsure_verdict_in_the_brief_keeps_the_regex_class(monkeypatch):
     """The gate is where it always was: below MIN_CONFIDENCE the cover keeps the class the model was
-    promised. A wrong-class cover is the worse failure (the operator's «Good question» for an order)."""
+    promised. A wrong-class cover is the worse failure (the operator's «Good question» for an order).
+    The style rule is opened: «smart» covers no social turn since A7, and «is it done?» reads social."""
+    monkeypatch.setattr("nucleo.style_policy.filler_allowed", lambda k: True)
     fa.arm(_Brain(), "is it done?", brief=_ready_brief("order", confidence=0.3))
     _, kind, _ = fa._consume_arm()
     assert fa._consume_jev_kind(kind)[0] == kind
 
 
-def test_without_a_brief_the_fire_path_is_byte_identical():
+def test_without_a_brief_the_fire_path_is_byte_identical(monkeypatch):
     """Jev off, no key, an open breaker, a brief that failed to build: all of them arrive here as
-    `brief=None`, and all of them must be today's path."""
+    `brief=None`, and all of them must be today's path (the style rule opened, as above)."""
+    monkeypatch.setattr("nucleo.style_policy.filler_allowed", lambda k: True)
     fa.arm(_Brain(), "is it done?", brief=None)
     _, kind, phrase = fa._consume_arm()
     assert fa._consume_jev_kind(kind) == (kind, None)

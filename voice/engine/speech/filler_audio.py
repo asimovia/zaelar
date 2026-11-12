@@ -396,23 +396,30 @@ async def settle_brief(brief, max_s: float = 0.35) -> bool:
     return ev.is_set()
 
 
-async def decide_and_arm(brain, text: str = "", messages: list | None = None, brief=None) -> str:
+async def decide_and_arm(brain, text: str = "", messages: list | None = None, brief=None, typed: bool = False) -> str:
     """The pipeline's one call (V2-863): wait for the turn's brief, bounded (`settle_brief`), then decide the cover
-    (`arm`). Fired at the eager end of turn the brief has usually landed; fired at admission it lands ~250 ms later."""
+    (`arm`). Fired at the eager end of turn the brief has usually landed; fired at admission it lands ~250 ms later.
+    A TYPED turn waits for nothing: it gets no cover (`arm`)."""
+    if typed:
+        return arm(brain, text, messages=messages, brief=brief, typed=True)
     await settle_brief(brief)
     return arm(brain, text, messages=messages, brief=brief)
 
 
-def arm(brain, text: str = "", messages: list | None = None, brief=None) -> str:
+def arm(brain, text: str = "", messages: list | None = None, brief=None, typed: bool = False) -> str:
     """Called by the voice provider once per eligible turn, right where the model is about to be paid. DECIDES the
     cover (V2-863): `text` and the brief's verdict pick the pool (V2-572, V2-726 A2 — Jev's class when it landed sure,
     the regex class otherwise), the style rule says whether this kind of turn may be covered at all (V2-633), and a
-    SURE verdict about a card lets the cover say WHERE it is about to look («Lo miro en Agenda…»). A decided cover
+    SURE verdict about a card lets the cover say WHERE it is about to look («Lo miro en Agenda…»). `typed` is the
+    channel (A7): a typed line arms nothing — there is no dead air on the wall to fill. A decided cover
     sounds at once as the reply's first segment, and the model is told so WITHOUT a conditional on the LAST USER
     message of the local `messages` list — the stable prompt prefix (V2-536 cache) and the durable window never see
     it. A turn that decides no cover leaves no note: a promise of a phrase that cannot sound is prompt noise."""
     global _arm, _jev_brief
     _jev_brief = None
+    if typed:
+        _arm = None                       # a TYPED line has no silence to cover (A7, 2026-11-12): the wall already
+        return ""                         # shows «thinking», and the cover came out as a bubble of its own
     if _dangling_fragment(text):
         _arm = None                       # half a sentence gets no promise — V2-642
         return ""
