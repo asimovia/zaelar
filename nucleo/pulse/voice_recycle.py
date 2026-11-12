@@ -196,3 +196,30 @@ async def check_dead(app, recycle_fn, now: float | None = None) -> str:
     _state["retry_at"] = now + pol["recycle_retry_s"]
     await recycle_fn(app)
     return "retry"
+
+
+async def check_ceiling(app, recycle_fn) -> str:
+    """V2-891 — the voice's OWN process over its declared RSS ceiling (`budgets.<deployment>.voice.ceiling_mb`) is
+    recycled, but only BETWEEN sessions: a recycle in the middle of a conversation is the cut it exists to prevent.
+    `ok` · `in_session` (over, a session is live: it waits) · `recycled` · `n/a` (embedded: no process of its own)."""
+    srv = getattr(getattr(app, "state", None), "lk_server", None)
+    rss = getattr(srv, "rss_mb", None)
+    if not callable(rss):
+        return "n/a"
+    from nucleo.pulse import budgets
+    ceiling = budgets.budget("voice")["ceiling_mb"]
+    mb = float(rss() or 0.0)
+    if not mb or mb <= ceiling:
+        _state.pop("over_said", None)
+        return "ok"
+    if getattr(srv, "live", lambda: False)():
+        if not _state.get("over_said"):
+            _state["over_said"] = True
+            _emit("voice_over_ceiling", f"{mb:.0f} MB > {ceiling:.0f} MB — recycled when this session ends",
+                  rss_mb=mb, ceiling_mb=ceiling, live=True)
+        return "in_session"
+    _emit("voice_over_ceiling", f"{mb:.0f} MB > {ceiling:.0f} MB — recycling between sessions",
+          rss_mb=mb, ceiling_mb=ceiling, live=False)
+    _state.pop("over_said", None)
+    await recycle_fn(app)
+    return "recycled"

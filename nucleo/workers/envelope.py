@@ -76,6 +76,9 @@ def floor(total: int, pol: dict | None = None) -> float:
     """The free memory a new worker must leave: the LARGER of the ratio and the voice's absolute reserve (T593) — on
     a small host the ratio alone is under what one voice session needs."""
     pol = pol or policy()
+    from nucleo.pulse import budgets         # V2-891: a policy that declares per-deployment budgets names its floor
+    if budgets.declares_floor(pol):
+        return budgets.free_floor_mb(total, pol) * 2 ** 20
     return max(float(pol["admit_free_ratio"]) * total, float(pol.get("voice_reserve_mb", 0)) * 2 ** 20)
 
 
@@ -90,13 +93,26 @@ def under_pressure(total: int, available: int, pol: dict | None = None) -> bool:
 def preexec(also=None):
     """The worker's `preexec_fn`: lower scheduling priority than the voice, after `also` (a sandbox's own limits).
     Fail-soft (the child still runs)."""
-    nice = int(policy()["worker_nice"])
+    pol = policy()
+    nice = int(pol["worker_nice"])
+    oom = int(((pol.get("priorities") or {}).get("worker") or {}).get("oom_score_adj", 0))
 
     def _apply():
         if also is not None:
             also()
         if hasattr(os, "nice"):          # lowering one's own priority never needs a privilege on a Unix host
-            os.nice(nice)
+            try:                         # V2-891: an ABSOLUTE level — the body runs at 5, its worker at 10, not 15
+                cur = os.getpriority(os.PRIO_PROCESS, 0)
+            except (OSError, AttributeError):
+                cur = 0
+            if nice > cur:
+                os.nice(nice - cur)
+        if oom > 0:                      # V2-891: and so does RAISING one's OOM score — a worker dies before the voice
+            try:
+                with open("/proc/self/oom_score_adj", "w", encoding="ascii") as fh:
+                    fh.write(str(oom))
+            except OSError:
+                pass
     return _apply
 
 

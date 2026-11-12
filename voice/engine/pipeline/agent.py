@@ -39,7 +39,7 @@ from ..core.logging import setup_console_logging
 from ..core.state import State, StateMachine
 from ..llm import build_llm
 from ..speech import build_stt, build_tts, build_turn_detection, build_vad
-from .first_air import FirstAir, greeting_prompt, kickoff_recent, mark_kickoff, silent_first_run
+from .first_air import FirstAir, decide_kickoff, greeting_prompt, kickoff_recent, mark_kickoff, silent_first_run  # noqa: F401
 from .instrument import BootChannel, tapped_vad
 from .prewarm import prewarm  # noqa: E402,F401 — V2-778 F1: moved, imported back under its name
 
@@ -286,29 +286,13 @@ async def entrypoint(ctx: JobContext) -> None:
 
     @session.on("agent_false_interruption")
     def _on_false_interrupt(ev) -> None:
-        # Noise/backchannel cut speech but was NOT a real interruption (nor directed transcription).
-        # `resumed` says whether LiveKit resumed speech (the audio output must support pause; the room does).
-        # If `resumed=False` appears systematically, THAT is the bug where "everything stopped and did not continue".
-        # SAFE to label with active() (same case as _on_user_state's barge-in): it describes speech that was
-        # ALREADY playing, not a turn about to begin.
-        from voice import trace as _trace
-        _tid = _trace.active()
-        resumed = bool(getattr(ev, "resumed", False))
-        _emit("vad", "🤫 falsa interrupción (ruido) — reanudo la locución" if resumed
-              else "🤫 falsa interrupción (ruido) — NO reanudo (audio sin pause)",
-              role="system", extra={"resumed": resumed, **({"trace": _tid} if _tid else {})})
+        # V2-891 — the body lives in `agent_events.on_false_interruption` (the voice's own process replays it too).
+        _agent_events.on_false_interruption(bool(getattr(ev, "resumed", False)), _emit=_emit)
 
     @session.on("overlapping_speech")
     def _on_overlap(ev) -> None:
-        # Overlapping voice while zaelar speaks; the detector classifies it as interruption vs backchannel (background talk).
-        # Fires only with the ML interruption detector active; harmless when the turn uses pure VAD.
-        # SAFE to label with active(), for the same reason as above.
-        from voice import trace as _trace
-        _tid = _trace.active()
-        is_int = bool(getattr(ev, "is_interruption", False))
-        _emit("vad", "🔊 voz solapada — interrupción" if is_int
-              else "🔊 voz solapada — backchannel (ignorada)",
-              role="user", extra={"is_interruption": is_int, **({"trace": _tid} if _tid else {})})
+        # V2-891 — the body lives in `agent_events.on_overlap` (the voice's own process replays it too).
+        _agent_events.on_overlap(bool(getattr(ev, "is_interruption", False)), _emit=_emit)
 
     @session.on("metrics_collected")
     def _on_metrics(ev) -> None:
@@ -467,72 +451,17 @@ async def entrypoint(ctx: JobContext) -> None:
     # above has always ASSERTED a warmth the first model call does not have. Bounded; see `first_air.py`.
     _air.arm_safety_net()
 
-    # KICKOFF — and it is the LAST thing, after the phases and with the veil still up. What to say, and
-    # whether to say anything at all on a brand-new install, live in `first_air.py` with the operator's
-    # own words behind the decision.
-    if silent_first_run():
-        _mark_kickoff(ctx.room.name)
-        _emit("brain", "🤐 kickoff en silencio — no hay idioma elegido todavía (el selector manda)",
-              role="system")
-        _air.lift()              # nothing is going to sound: the language picker owns this screen
+    # KICKOFF — and it is the LAST thing, after the phases and with the veil still up. Whether to greet, and with
+    # what, is `first_air.decide_kickoff` (the voice's own process asks the body for the same decision, V2-891).
+    kickoff_text = decide_kickoff(ctx.room.name, _emit)
+    if not kickoff_text:
+        _air.lift()              # nothing is going to sound: the picker, a duplicate job or a resumed conversation
         return
-    kickoff_text = greeting_prompt(_lang)
-    # GUARD: only ONE kickoff per room (V2-047 F8, 23:15 session: TWO “voice engine up” events at 23:15:45 and :46 → two
-    # generated greetings). A quick frontend reconnection / LiveKit double dispatch starts two jobs for the SAME
-    # room; the second must NOT greet again (the operator heard the greeting repeated). Deterministic, per room,
-    # with a short window: if another job greeted this room <8s ago, this one skips it (the session remains alive
-    # and handles turns normally; only the duplicate greeting is avoided).
-    # CONTINUITY (2026-07-25 bug, operator: “I send it a message and it says ‘what do you need?’”): a RECONNECTION
-    # to an IN-PROGRESS conversation must not greet again. Each voice reconnection triggered the “first turn,
-    # introduce yourself” kickoff in the middle of an hour-long conversation → absurd “Hello, what do you need?”
-    # If the operator spoke recently (recent conversation buffer), do NOT greet: seed context and silently wait
-    # for their next turn.
-    _resume_window = float(os.getenv("ZAELAR_RESUME_WINDOW_S", "1800"))  # 30 min: reconnection = same session
-    _last_conv_age = None
-    try:
-        from memory import api as _mem
-        _last_conv_age = _mem.seconds_since_last_conv()
-    except Exception:
-        _last_conv_age = None
-    from voice import screens as _screens_kick
-    if _screens_kick.typed_waiting():
-        # A TYPED LINE IS WAITING (operator, 2026-11-08): the page held a request he typed while the engine could not
-        # take it, or one just arrived — that line is the session's first turn, and a greeting over it is the
-        # «good to have you» he got instead of an answer.
-        _mark_kickoff(ctx.room.name)
-        _emit("brain", "↩️ kickoff omitido — hay una línea escrita esperando, esa es el primer turno", role="system")
-        _air.lift()
-    elif _kickoff_recent(ctx.room.name):
-        _emit("brain", "🚫 kickoff duplicado evitado (otra sesión ya saludó esta sala)", role="system")
-        _air.lift()              # the other job is greeting; this one has nothing to wait for
-    elif _last_conv_age is not None and _last_conv_age < _resume_window:
-        # IN-PROGRESS session: resume without greeting (the operator is continuing the conversation; do not interrupt with a hello)
-        _mark_kickoff(ctx.room.name)
-        _emit("brain", f"↩️ kickoff omitido — reconexión a sesión en curso (último turno hace {int(_last_conv_age)}s), "
-                       "retomando en silencio", role="system")
-        _air.lift()              # a resumed conversation says nothing: there is no greeting to wait for
-    else:
-        _mark_kickoff(ctx.room.name)
-        _emit("brain", "kickoff (saludo memory-aware vía cerebro)", role="system")
-        # V2-749b — …AND IT IS NOT ASKED INTO A PARKED MICROPHONE. The greeting ends in a question
-        # («¿Quieres que te cuente en qué puedo ayudarte?») and `attention` deliberately kept the kickoff
-        # outside `note_addressed_speech`, so it opened no window: right for an always-open microphone,
-        # where a free window at boot means answering a whole room. With the wake-word tap PARKED it means
-        # something else entirely — the agent asks somebody who pressed Start one second ago, and then
-        # cannot hear the answer. Measured 2026-09-22 (session 5789bad4): greeting at +4 s, and the first
-        # thing the engine heard was at +33 s.
-        # Scoped to the modes that park: in `always` the microphone is open anyway and nothing changes.
-        try:
-            from voice import attention as _attn_kick
-            if _attn_kick._has_wake_recovery():
-                _attn_kick.note_addressed_speech()
-        except Exception:  # noqa: BLE001
-            pass
-        # UNINTERRUPTIBLE UNTIL IT SOUNDS (V2-745): the same edge hands interruption back and lifts the
-        # splash, so the veil lasts exactly as long as the cold handshake and lifts onto the agent talking.
-        _greeting = session.generate_reply(user_input=kickoff_text, allow_interruptions=False)
-        _air.park(_greeting, on_air=_air.lift)
-        await _greeting
+    # UNINTERRUPTIBLE UNTIL IT SOUNDS (V2-745): the same edge hands interruption back and lifts the splash, so the
+    # veil lasts exactly as long as the cold handshake and lifts onto the agent talking.
+    _greeting = session.generate_reply(user_input=kickoff_text, allow_interruptions=False)
+    _air.park(_greeting, on_air=_air.lift)
+    await _greeting
 
 
 async def request_fnc(req: JobRequest) -> None:
@@ -555,7 +484,7 @@ def worker_health_port() -> int:
     return int((os.getenv("PORT") or "43917").strip()) + 1000
 
 
-def make_server() -> AgentServer:
+def make_server(entry=None) -> AgentServer:
     """Build the embeddable ``AgentServer`` (zaelar runs this in-process).
 
     VERIFIED empirically against livekit-agents 1.6.4 (voice-lab-2 .venv):
@@ -603,7 +532,8 @@ def make_server() -> AgentServer:
     # on_request = request_fnc: only service zaelar's own rooms (room isolation when
     # a local LiveKit dev server is shared with other projects, e.g. voice-lab-2).
     from voice.engine.core.config import dispatch_agent_name
-    server.rtc_session(entrypoint, on_request=request_fnc, agent_name=dispatch_agent_name())
+    # `entry`: the voice's OWN process passes its session (`child_session.entrypoint`, V2-891); embedded, this one.
+    server.rtc_session(entry or entrypoint, on_request=request_fnc, agent_name=dispatch_agent_name())
     return server
 
 

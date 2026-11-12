@@ -96,12 +96,30 @@ def note(lag_s: float, source: str) -> bool:
     return True
 
 
+#: Where a reading goes: `note` here, or the body when the voice runs in its own process (V2-891) — the reading is
+#: taken where the voice runs, and read where the envelope it sheds lives.
+_ROUTE: dict = {"fn": None}
+
+
+def route_to(fn) -> None:
+    """`fn(lag_s, source)` receives every reading instead of `note` (None restores `note`)."""
+    _ROUTE["fn"] = fn
+
+
+def _reading(lag_s: float, source: str) -> None:
+    fn = _ROUTE["fn"]
+    if fn is None:
+        note(lag_s, source)
+    else:
+        fn(lag_s, source)
+
+
 async def _probe(period_s: float = _PERIOD_S) -> None:
     loop = asyncio.get_running_loop()
     while True:
         t0 = loop.time()
         await asyncio.sleep(period_s)
-        note(max(0.0, loop.time() - t0 - period_s), LOOP)
+        _reading(max(0.0, loop.time() - t0 - period_s), LOOP)
 
 
 def watch() -> None:
@@ -139,4 +157,4 @@ class _SdkDelays(logging.Handler):
         if not isinstance(delay, (int, float)):
             return
         src = str(getattr(record, "filename", "") or "")
-        note(float(delay) / (1000.0 if "executor" in src or "proc" in src else 1.0), src or "livekit")
+        _reading(float(delay) / (1000.0 if "executor" in src or "proc" in src else 1.0), src or "livekit")

@@ -875,6 +875,16 @@
    "*": "e_bus"
   },
   "voice/engine/pipeline/reply_wall.py": "f_mouth",
+  "voice/engine/pipeline/child_session.py": {
+   "vad": "f_ear",
+   "worker_start": "t_dispatch",
+   "*": "u_voice"
+  },
+  "voice/engine/pipeline/child.py": "u_voice",
+  "voice/engine/pipeline/first_air.py": "u_voice",
+  "voice/engine/pipeline/eager_brief.py": "f_ear",
+  "voice/remote_session.py": "u_voice",
+  "voice/child_process.py": "b_home",
   "voice/engine/speech/stt": "f_ear",
   "voice/engine/speech/turn": "f_ear",
   "voice/engine/speech/tts": "f_mouth",

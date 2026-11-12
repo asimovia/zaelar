@@ -112,6 +112,57 @@ def greeting_prompt(lang) -> str:
 #: How long the veil may wait for a first audio frame before giving up on it. Generous against the cold
 #: handshake measured above (~4.6 s from kickoff to synthesis) and short enough that a dead TTS costs a
 #: pause rather than a dead screen.
+def decide_kickoff(room: str, emit) -> str:
+    """The FIRST TURN of a session: the instruction to greet, or "" when nothing must sound. One decision for the
+    embedded session and for the voice's own process (which asks the body for it, V2-891). Marks the room and says why.
+
+      · no language chosen yet → silent: the picker owns this screen (V2-765);
+      · a TYPED LINE IS WAITING (operator, 2026-11-08) → that line is the session's first turn, and a greeting over
+        it is the «good to have you» he got instead of an answer;
+      · another job greeted this room seconds ago → skip (V2-047 F8: a quick reconnection or a double dispatch
+        starts two jobs for the SAME room, and he heard the greeting twice);
+      · he spoke recently (`ZAELAR_RESUME_WINDOW_S`, 30 min) → a RECONNECTION to a conversation in progress resumes
+        in silence (2026-07-25: «I send it a message and it says ‘what do you need?’»);
+      · otherwise greet — and, in the modes that PARK the microphone, the greeting opens the attention window it
+        asks into (V2-749b, session 5789bad4: greeting at +4 s, the first thing heard at +33 s).
+    """
+    import os
+    if silent_first_run():
+        mark_kickoff(room)
+        emit("brain", "🤐 kickoff en silencio — no hay idioma elegido todavía (el selector manda)", role="system")
+        return ""
+    from voice.engine.core import langs
+    text = greeting_prompt(langs.current_language())
+    resume_window = float(os.getenv("ZAELAR_RESUME_WINDOW_S", "1800"))
+    try:
+        from memory import api as _mem
+        last_conv_age = _mem.seconds_since_last_conv()
+    except Exception:                                 # noqa: BLE001
+        last_conv_age = None
+    from voice import screens as _screens
+    if _screens.typed_waiting():
+        mark_kickoff(room)
+        emit("brain", "↩️ kickoff omitido — hay una línea escrita esperando, esa es el primer turno", role="system")
+        return ""
+    if kickoff_recent(room):
+        emit("brain", "🚫 kickoff duplicado evitado (otra sesión ya saludó esta sala)", role="system")
+        return ""
+    if last_conv_age is not None and last_conv_age < resume_window:
+        mark_kickoff(room)
+        emit("brain", f"↩️ kickoff omitido — reconexión a sesión en curso (último turno hace {int(last_conv_age)}s), "
+                      "retomando en silencio", role="system")
+        return ""
+    mark_kickoff(room)
+    emit("brain", "kickoff (saludo memory-aware vía cerebro)", role="system")
+    try:
+        from voice import attention as _attn
+        if _attn._has_wake_recovery():
+            _attn.note_addressed_speech()
+    except Exception:                                 # noqa: BLE001
+        pass
+    return text
+
+
 READY_MAX_S = 12.0
 
 

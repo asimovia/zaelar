@@ -51,3 +51,18 @@ class ZaelarAgent(Agent):
         from . import reply_wall as _rw     # V2-773: what the voice is fed is what the wall gets if it fails
         return _sn.tts_node_speaking_figures(self, Agent.default.tts_node, _rw.tee(text), model_settings,
                                              langs.current_code())
+
+
+class ChildAgent(ZaelarAgent):
+    """The same agent in the voice's OWN process (V2-891): the reply's text comes from the body's turn stream, and the
+    eager end of turn is handed to the body, which fires the brief (`eager_brief.on_preflight` runs there)."""
+
+    def stt_node(self, audio, model_settings):
+        from . import body_link
+        from . import eager_brief as _eb
+        return _eb.stt_node_firing_the_brief(self, Agent.default.stt_node, audio, model_settings,
+                                             fire=lambda text: body_link.get().send({"k": "preflight", "text": text}))
+
+    def llm_node(self, chat_ctx, tools, model_settings):
+        from . import remote_brain as _rb
+        return _rb.remote_llm_node(self, chat_ctx, tools, model_settings)

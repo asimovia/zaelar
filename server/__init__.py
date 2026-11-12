@@ -97,6 +97,8 @@ def create_app() -> FastAPI:
     if os.getenv("ZAELAR_ENGINE", "livekit").lower() == "livekit":
         from .livekit_api import router as livekit_router
         routers.append(livekit_router)
+        from .voice_child_api import router as voice_child_router   # V2-891: the voice's own process ↔ the body
+        routers.append(voice_child_router)
     # FlashBrain headless TEST channel (V2-032, 3rd testing mode): POST /api/flash/say injects text and returns the
     # response + action + latencies, without voice or a room. Only with the «Colmena» brain (BRAIN=nucleo).
     #

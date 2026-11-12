@@ -493,6 +493,29 @@ def _merge(ev: dict, extra: dict | None) -> None:
         ev[f"extra_{k}" if k in ("i", "t_ms", "rel_ms", "kind", "label") else k] = v
 
 
+#: V2-891 — in the VOICE process (`python -m voice.engine`) this is set: an event is not recorded here (the body owns
+#: the record, the SSE stream and the database both surfaces read) but handed to it, with the piece read HERE, where
+#: the emitting module is still on the stack.
+_FORWARD: dict = {"fn": None}
+
+
+def forward_to(fn) -> None:
+    """`fn(event_dict)` receives every event instead of the local record; None restores the local record."""
+    _FORWARD["fn"] = fn
+
+
+def _forward(kind, label, text, role, extra, piece):
+    ev = {"kind": kind, "label": label, "text": text, "role": role, "extra": dict(extra or {})}
+    probe: dict = {"kind": kind}
+    _stamp_piece(probe, piece)                # read here: the emitting module is still on THIS stack
+    ev["piece"], ev["piece_src"] = probe.get("piece"), probe.get("piece_src")
+    try:
+        _FORWARD["fn"](ev)
+    except Exception as e:  # noqa: BLE001 — the stream never breaks the voice
+        logger.debug(f"observer._forward: {e!r}")
+    return ev
+
+
 def emit(kind: str, label: str, text: str = "", role: str = "", extra: dict | None = None,
          piece: str | None = None):
     """Record one debug event: in-memory ring + rolling buffer + per-session file + SSE subscribers.
@@ -502,6 +525,8 @@ def emit(kind: str, label: str, text: str = "", role: str = "", extra: dict | No
 
     `piece` = the architecture-map piece this event comes from. Leave it out: it is derived from the emitting
     module (`observability/pieces.py`). Pass it only where one module hosts several pieces."""
+    if _FORWARD["fn"] is not None:            # V2-891: the voice process hands every line to the body, which owns it
+        return _forward(kind, label, text, role, extra, piece)
     ts = now_ms()
     if kind == "widget" and label == "close":
         from nucleo import canvas_closes as _closes   # who closed what, and when — read by a worker's `show`

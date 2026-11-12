@@ -38,8 +38,10 @@ def on_preflight(text: str) -> None:
         logger.debug(f"eager brief: not fired — {e!r}")
 
 
-async def stt_node_firing_the_brief(agent, default_impl, audio, model_settings):
-    """`Agent.stt_node` with one ear on the preflight events. Every event passes through untouched."""
+async def stt_node_firing_the_brief(agent, default_impl, audio, model_settings, fire=None):
+    """`Agent.stt_node` with one ear on the preflight events. Every event passes through untouched. `fire` is where a
+    preflight goes — `on_preflight` here, or the body when the voice runs in its own process (V2-891)."""
+    fire = fire or on_preflight
     from livekit.agents import stt as _stt
     out = default_impl(agent, audio, model_settings)
     if hasattr(out, "__await__") and not hasattr(out, "__aiter__"):
@@ -49,7 +51,7 @@ async def stt_node_firing_the_brief(agent, default_impl, audio, model_settings):
     async for ev in out:
         try:
             if getattr(ev, "type", None) == _stt.SpeechEventType.PREFLIGHT_TRANSCRIPT:
-                on_preflight(_text_of(ev))
+                fire(_text_of(ev))
         except Exception as e:  # noqa: BLE001
             logger.debug(f"eager brief: event unread — {e!r}")
         yield ev

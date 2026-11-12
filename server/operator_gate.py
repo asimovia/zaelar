@@ -39,8 +39,10 @@ from server import api_guard, peer_process, ui_session
 
 #: Mutating routes a worker is MEANT to call — each verifies the worker on its own terms (per-task token, the act
 #: policy). Everything else that mutates is the operator's.
+#: V2-891: the voice's OWN process is a spawned peer too — its doors verify the token the body handed it at spawn
+#: (`server/voice_child_api.py`), a token no worker inherits.
 WORKER_DOORS = ("/api/worker/", "/api/agent/report", "/api/navegador/act", "/api/memory/recall",
-                "/api/memory/remember", "/api/search/", "/api/scrape/")
+                "/api/memory/remember", "/api/search/", "/api/scrape/", "/api/voice/child/", "/api/turn/stream")
 SHELLS = frozenset({"/", "/m"})
 
 
