@@ -1904,7 +1904,7 @@ DOMAINS: list[dict] = [
             "ch": VOICE, "paths": ["tests/voice/unit/test_tool_selection.py"]},
         {"id": "3.9", "title": "Frase partida en dos tiempos = UNA petición (el fragmento no genera nada)",
             "ch": VOICE, "paths": ["tests/voice/unit/test_accumulator.py"]},
-        {"id": "3.188", "title": "A pause that was a start is not a turn (V2-888): his voice resumed after the reply began, for as long as an interruption, supersedes it (Flux segments never grow by prefix); a cough does not; a superseded turn that did nothing leaves his words in the window, not its reply, and owes them to the next turn",
+        {"id": "3.188", "title": "A pause that was a start is not a turn (V2-888): his voice resumed after the reply began, for as long as an interruption, supersedes it (Flux segments never grow by prefix); a cough does not; a superseded turn that did nothing leaves his words in the window, not its reply, and owes them to the next turn; one that ACTED keeps its reply and is counted (`🧩 turno superado que actuó`: act, fragment, ms act→resumption), never undone",
             "ch": VOICE, "paths": ["tests/voice/unit/test_a_pause_that_was_a_start_is_not_a_turn.py"]},
         # 2026-08-21, encargo del operador: «seteamos un punto en el tiempo y le pasamos ese texto a partir de ahí
         # al modelo». Actuar era TODO-O-NADA (`clear()` en las cuatro salidas), así que un fragmento que cerraba la

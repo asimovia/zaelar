@@ -136,3 +136,42 @@ def test_the_turn_hands_its_superseded_check_to_the_close():
     from nucleo.turn import pipeline, pipeline_close
     assert "_superseded" in inspect.signature(pipeline_close.close_the_turn).parameters
     assert '"_superseded": self._superseded' in inspect.getsource(pipeline.run)
+
+
+# ── 4. A superseded turn that ACTED is counted, never undone (group A step 6: measure before deciding) ───────────
+
+def _unheard(superseded, *, acted: bool, act_at: float | None, resumed_at: float):
+    from types import SimpleNamespace
+    from nucleo.turn import resume_cut
+    brain = SimpleNamespace(_turn_calls=[{"name": "widget_data", "args": {"widget": "music", "action": "set_volume"}}])
+    if act_at is not None:
+        resume_cut.note_act(brain, now=act_at)
+    _voice(resumed_at, resumed_at + 0.8)
+    events = []
+    out = resume_cut.reply_unheard(superseded, acted, brain=brain, text="en el año", spoken_text="Volumen al 69.",
+                                   emit=lambda *a, **k: events.append((a, k)))
+    return out, [k for a, k in events if "superado que actuó" in a[1]]
+
+
+def test_a_superseded_turn_that_acted_is_counted_with_its_act_and_the_gap():
+    out, acted = _unheard(lambda: True, acted=True, act_at=100.0, resumed_at=100.25)
+    assert out is False                                  # the reply stays: nothing is undone
+    assert len(acted) == 1, acted
+    extra = acted[0]["extra"]
+    assert extra["acts"] == ["music:set_volume"] and extra["fragment"] == "en el año"
+    assert extra["act_to_resume_ms"] == 250 and "trace_id" in extra
+
+
+def test_a_superseded_turn_that_did_nothing_is_not_counted_as_acting():
+    out, acted = _unheard(lambda: True, acted=False, act_at=None, resumed_at=100.25)
+    assert out is True and acted == []
+
+
+def test_a_turn_that_acted_and_was_not_superseded_is_not_counted():
+    out, acted = _unheard(lambda: False, acted=True, act_at=100.0, resumed_at=100.25)
+    assert out is False and acted == []
+
+
+def test_the_executor_times_the_act_for_the_count():
+    from nucleo.flash import tool_executor_calls
+    assert "_resume_cut.note_act(brain)" in inspect.getsource(tool_executor_calls._on_tool_call)
