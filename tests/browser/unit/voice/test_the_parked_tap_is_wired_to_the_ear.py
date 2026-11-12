@@ -18,6 +18,8 @@ ROOT = Path(__file__).resolve().parents[4]
 SSE = ROOT / "frontend" / "app" / "services" / "sse.js"
 SESSION = ROOT / "frontend" / "app" / "services" / "session-lk.js"
 AGENT = ROOT / "voice" / "engine" / "pipeline" / "agent.py"
+#: The kickoff decision lives with the first air since the voice runs in its own process (V2-891).
+FIRST_AIR = ROOT / "voice" / "engine" / "pipeline" / "first_air.py"
 EAR = ROOT / "frontend" / "app" / "services" / "wakeword.js"
 
 
@@ -145,8 +147,8 @@ def test_the_greeting_is_not_asked_into_a_parked_microphone():
     # — right for an always-open microphone, wrong once the tap parks: the agent asks somebody who pressed
     # Start a second ago and then cannot hear the answer. Measured 2026-09-22 (session 5789bad4): greeting
     # at +4 s, first thing the engine heard at +33 s.
-    s = _src(AGENT)
-    block = s.split('_emit("brain", "kickoff (saludo memory-aware vía cerebro)", role="system")', 1)[1][:1200]
+    s = _src(FIRST_AIR)
+    block = s.split('emit("brain", "kickoff (saludo memory-aware vía cerebro)", role="system")', 1)[1][:1200]
     assert "note_addressed_speech()" in block, "an agent that asks has to be able to hear the answer"
     assert "_has_wake_recovery()" in block, \
         "scoped to the modes that park — in `always` the microphone is open anyway and nothing changes"

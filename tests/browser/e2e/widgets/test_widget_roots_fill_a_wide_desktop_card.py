@@ -96,7 +96,11 @@ def widths(playwright_available):
             res = page.evaluate(
                 """async ([wid, data]) => {
                      const host = document.getElementById('host');
-                     const ctx = { action: async () => ({}), close: () => {}, top: () => {}, running: true };
+                     // `device` is part of the host contract in both shells (desktop.js passes the screen's
+                     // sensors bridge, V2-870 P2); here it is a screen with no sensors.
+                     const device = async () => ({ details: async () => ({ sensors: {} }),
+                       activity: async () => ({ error: 'no_sensors' }), heartRateStraps: async () => ({ straps: [] }) });
+                     const ctx = { action: async () => ({}), close: () => {}, top: () => {}, running: true, device };
                      try {
                        const mod = await import(`/widgets/${wid}/widget.js`);
                        await mod.render(host, data, ctx);
@@ -116,7 +120,7 @@ def widths(playwright_available):
 
 
 def test_every_widget_renders_with_no_page_errors(widths):
-    broken = {wid: m["errors"][0][:160] for wid, m in widths.items() if m.get("threw") or m["errors"]}
+    broken = {wid: (m.get("threw") or m["errors"][0])[:160] for wid, m in widths.items() if m.get("threw") or m["errors"]}
     assert not broken, f"widgets that failed to render at all: {broken}"
 
 
