@@ -154,3 +154,78 @@ def test_disarmed_a_second_row_is_born_for_the_same_send(world, monkeypatch):
     _turn_ends_asking(w["said"], w["q1"], "t-1")
     _turn_ends_asking(w["pick"], w["q2"], "t-2")
     assert len(_rows()) == 2, "the defect: two rows for one send"
+
+
+# ── audit 2026-11-12, A4 + A5 — an intention is the card, the act AND the person ─────────────────────────────────────
+# A5: with one send waiting «which Odalys?», «send Thaddeus the address» ended asking too and its question was put on
+# the Odalys row — Thaddeus got no row. A4: the same order twice to a name two people share left TWO rows waiting «to
+# whom?» (that branch never ended the row that waited). One reader says whom a waiting send is about
+# (`one_row.people`): the same person → the same row; another person → a row of its own, and the first keeps waiting.
+
+ODALYS = {"es": {"said": "Mándale un whatsapp a Odalys diciendo que llego tarde", "q": "Hay dos Odalys. ¿A cuál?",
+                 "other": "Mándale a Thaddeus la dirección", "q2": "¿Qué dirección le mando?",
+                 "again": "Escríbele a Odalys por whatsapp"},
+          "en": {"said": "Send Odalys a WhatsApp saying I'm running late", "q": "There are two Odalys. Which one?",
+                 "other": "Send Thaddeus the address", "q2": "Which address should I send him?",
+                 "again": "Write to Odalys on WhatsApp"}}
+
+
+@pytest.fixture
+def invented(world):
+    from widgets import directory
+    from widgets.contactos import data as cd
+    for name, num in (("Odalys Brezmes", "600555014"), ("Odalys Quintanar", "600555015"), ("Thaddeus Wrenfield", "600555016")):
+        cd.apply_action("add_contact", {"name": name, "phone": num})
+        directory.note_inbound("whatsapp", {"chatId": f"34{num}@s.whatsapp.net", "senderId": f"34{num}@s.whatsapp.net",
+                                            "from": name.split()[0]})
+    return world
+
+
+def _waiting():
+    return [r for r in _rows() if r["state"] == "waiting"]
+
+
+@pytest.mark.parametrize("lang", ["es", "en"])
+def test_a_question_about_a_send_to_somebody_else_waits_on_a_row_of_its_own(invented, lang):
+    w = ODALYS[lang]
+    ask1 = _turn_ends_asking(w["said"], w["q"], "t-1")
+    (first,) = _rows()
+    assert set(asker.artefact(first["id"])["candidates"]) == {"Odalys Brezmes", "Odalys Quintanar"}
+    ask2 = _turn_ends_asking(w["other"], w["q2"], "t-2")
+    assert ask2 and ask2 != ask1
+    rows = {r["id"]: r for r in _waiting()}
+    assert len(rows) == 2 and rows[first["id"]]["ask_id"] == ask1 and rows[first["id"]]["ask"] == w["q"], \
+        "the Odalys send keeps ITS question"
+    (second,) = [r for r in rows.values() if r["id"] != first["id"]]
+    assert second["ask_id"] == ask2 and second["ask"] == w["q2"]
+    assert send_task.artefact(second["id"])["payload"]["contact"] == "thaddeus", "Thaddeus has his own send"
+    assert "contact" not in send_task.artefact(first["id"])["payload"]
+
+
+@pytest.mark.parametrize("lang", ["es", "en"])
+def test_the_same_order_twice_to_a_name_two_people_share_is_one_waiting_row(invented, lang):
+    from nucleo.request import send_task_words
+    w = ODALYS[lang]
+    rows = []
+    for n, said in enumerate((w["said"], w["again"])):
+        model._TURN.set(None)
+        model.begin(said, trace=f"t-{n}")
+        his_words.note(said)
+        uid, how = send_task_words.from_verdict(WID, ACT, said, "")
+        assert how == "asked" and set(asker.artefact(uid)["candidates"]) == {"Odalys Brezmes", "Odalys Quintanar"}
+        rows.append(uid)
+    assert rows[0] != rows[1] and [r["id"] for r in _waiting()] == [rows[1]], "his new order is the task: ONE row waits"
+    assert ts.task_get(rows[0])["state"] == "cancelled"
+
+
+def test_a_new_order_to_somebody_else_leaves_the_send_that_waits_alone(invented):
+    w = ODALYS["en"]
+    _turn_ends_asking(w["said"], w["q"], "t-1")
+    (first,) = _rows()
+    model._TURN.set(None)
+    model.begin(w["other"], trace="t-2")
+    his_words.note(w["other"])
+    second = send_task.commission(WID, ACT, {"contact": "Thaddeus"}, w["other"])
+    assert second and second != first["id"]
+    assert ts.task_get(first["id"])["state"] == "waiting", "another person is another intention: nothing is replaced"
+    assert {r["id"] for r in _waiting()} == {first["id"], second}

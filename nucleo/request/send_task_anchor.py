@@ -7,7 +7,8 @@ prose («¿qué le digo?») and the close opened a SECOND row for the same send:
 both, the binding read `several` and the engine asked «which task is your answer for?» — nothing left.
 
 ONE row per intention (V2-887 step 7 said it of a new CALL, `one_row.superseded`; this says it of a new QUESTION): a
-prose question about a card whose send already waits on its row is that row's question. His words of this turn fill
+prose question about a card whose send already waits on its row is that row's question — unless his words name
+SOMEBODY ELSE than the row is about (`one_row.people`): that is another send, and it opens its own row. His words of this turn fill
 what they resolve by IDENTITY — the one declared candidate they name (the same reading as `inline_ask._named`), never
 a reading of phrasing — and the question is asked for the slot that still lacks, on THAT row; when nothing lacks the
 question was the model's, not the task's, and the task runs. Never a second row.
@@ -35,13 +36,14 @@ def to_waiting(wid: str, said: str, question: str, *, emit=None) -> str:
     """Anchor the turn's prose question about `wid`'s send to the send row that already waits: the `ask_id` of the
     question now on that row ("" when no send of this card waits — the caller opens the row as before)."""
     try:
-        rows = _waiting_sends(wid)
-        if not rows:
-            return ""
         from nucleo.acts.message_names import fold
-        from nucleo.request import send_task
+        from nucleo.request import one_row, send_task
         from nucleo.request.send_task_words import his_word_for_people
         word, people = his_word_for_people(said)
+        # a send to SOMEBODY ELSE is another intention: its question never lands on this row (`one_row.people`)
+        rows = [r for r in _waiting_sends(wid) if not (word and (held := one_row.people(r[0])) and word not in held)]
+        if not rows:
+            return ""
         named = str(people[0].get("name") or "") if word and len(people) == 1 else ""
         uid, ask = next(((u, a) for u, a in rows
                          if named and fold(named) in {fold(c) for c in (a.get("retained") or {}).get("candidates") or []}),

@@ -161,6 +161,8 @@ def retain(wid: str, action: str, payload: dict | None, said: str, *, reading=No
     _emit(emit, "📨 send task: his data travel with their origin", f"{wid}:{action}",
           {"cat": "flash", "task_id": uid, "widget": wid, "action": action,
            "slots": {s: d["source"] for s, d in art["slots"].items()}})
+    from nucleo.request import one_row
+    one_row.superseded(uid, wid, action, emit=emit)      # every birth of a send row: ONE row per intention
     return uid
 
 
@@ -226,8 +228,6 @@ def commission(wid: str, action: str, payload: dict | None, said: str, *, readin
     uid = retain(wid, action, payload, said, reading=reading, emit=emit)
     if not uid:
         return ""
-    from nucleo.request import one_row
-    one_row.superseded(uid, wid, action, emit=emit)
     art = artefact(uid)
     slot, key = missing(art)
     cands: list = []
