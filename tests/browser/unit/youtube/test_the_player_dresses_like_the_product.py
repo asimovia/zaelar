@@ -87,16 +87,20 @@ def _page():
         srv.terminate()
 
 
+# The house stylesheet both shells load: the bar's grid (V2-882) lives there, not in the widget.
+_KIT = "<link rel='stylesheet' href='/frontend/app/core/components.css'>"
+
+
 def _mount(page, data, *, card_w=660, card_h=0):
     """Fresh document per mount; card_h > 0 mounts inside the real card chrome at that fixed size."""
     page.goto(page._hb_origin)
     if card_h:
         page.set_content(
-            f"<style>{_CARD_CSS}</style>"
+            f"{_KIT}<style>{_CARD_CSS}</style>"
             f"<div class='hb-win' style='width:{card_w}px;height:{card_h}px'>"
             f"<div class='hb-scroll'><div id='w'></div></div></div>")
     else:
-        page.set_content(f"<div id='w' style='width:{card_w}px'></div>")
+        page.set_content(f"{_KIT}<div id='w' style='width:{card_w}px'></div>")
     page.evaluate(
         """async ([src, data]) => {
              window.__calls = [];
@@ -144,7 +148,7 @@ def test_the_sources_and_the_plug_are_pinned_to_the_RIGHT_edge(_page):
     geo = _page.evaluate(
         """() => { const r = (s) => document.querySelector(s).getBoundingClientRect();
                    return {nav: r('.hb-yt-nav'), plug: r('.hb-yt-plug'), icon: r('.hb-yt-picon'),
-                           tabs: r('.hb-yt-tabs'), find: r('.hb-yt-find')}; }""")
+                           tabs: r('.hb-yt-tab:last-child'), find: r('.hb-yt-find')}; }""")   # the last tab: the lead box fills its column
     assert geo["nav"]["right"] - geo["find"]["right"] <= 16, "the search closes the bar at its right edge"
     assert 28 <= geo["find"]["left"] - geo["plug"]["right"] <= 36, "~30 px between the plug and the search"
     assert 0 <= geo["plug"]["left"] - geo["icon"]["right"] <= 12, "the source icon sits right beside the plug"

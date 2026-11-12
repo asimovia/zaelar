@@ -55,19 +55,17 @@ export const CSS_PANELS = `\
   /* 2026-10-28 — the band IS the toolbar now (the operator: all the chrome in two lines — the window's bar
      and this one). One strip on surface-2 holding the section switch, ‹ Hoy › · range · views (.agbar) and
      the slot; it wraps only when a phone leaves no other way. The switch sits one rung DOWN on the strip. */
-  .hb-agenda .agsub{display:flex;align-items:center;gap:var(--sp-2,8px);flex:0 0 auto;min-width:0;flex-wrap:wrap;
-    margin:0 0 var(--sp-3,12px);padding:var(--sp-1,4px) var(--sp-2,8px);background:var(--hb-bg-soft,#272D35);
+  .hb-agenda .agsub{flex:0 0 auto;margin:0 0 var(--sp-3,12px);padding:var(--sp-1,4px) var(--sp-2,8px);background:var(--hb-bg-soft,#272D35);
     border:1px solid var(--hb-line-subtle,rgba(255,255,255,.09));border-radius:var(--hb-r-m,10px);
     border-bottom-color:var(--hb-line,rgba(255,255,255,.14))}
   .hb-agenda .agsec{display:flex;gap:2px;flex:0 0 auto;padding:2px;border-radius:999px;
     background:var(--hb-bg,#1F242B);border:1px solid var(--hb-line-subtle,rgba(255,255,255,.09))}
   .hb-agenda .agsecb{border:0;background:none;color:var(--hb-muted,#5b6b82);border-radius:999px;display:inline-flex;
     align-items:center;gap:6px;padding:6px var(--sp-3,12px);font:600 13px/1.2 var(--sans,system-ui);cursor:pointer;white-space:nowrap}
-  .hb-agenda .agsecb svg{display:none;width:15px;height:15px}
+  .hb-agenda .agsecb svg{width:15px;height:15px}
   .hb-agenda .agsecb:hover{color:var(--hb-ink,#0d1622)}  .hb-agenda .agsecb.on{background:var(--hb-accent,#3D6FE0);color:var(--canvas,#fff)}
   /* The slot. "margin-left:auto" and not a spacer element, so an empty slot costs no node at all. */
-  .hb-agenda .agsub-meta{margin-left:auto;flex:0 1 auto;min-width:0;display:flex;align-items:center;
-    gap:var(--sp-2,8px);font:600 12px/1 var(--sans,system-ui);color:var(--hb-muted,#BAC2CE);
+  .hb-agenda .agsub-meta{font:600 12px/1 var(--sans,system-ui);color:var(--hb-muted,#BAC2CE);
     overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .hb-agenda .agsub-meta b{font-weight:700;color:var(--hb-ink,#F2F4F7)}
 
@@ -273,31 +271,19 @@ export const CSS_PANELS = `\
     .hb-agenda .agt-side{flex:0 0 auto;max-height:168px}
     .hb-agenda .agt-main{min-height:240px}
   }
-  /* The band's three widths — see style.js «THE VIEWS». Last on purpose: a tier has to beat the base rules. */
-  @container (max-width:1040px){ .hb-agenda .agcaldefsel{max-width:58px} }
-  @container (max-width:820px){ .hb-agenda .agtab,.hb-agenda .agcaldefsel{display:none} .hb-agenda .agviewsel{display:block} }
-  @container (max-width:560px){ .hb-agenda .agsecb span,.hb-agenda .agconnicons,.hb-agenda .agmev .agmh{display:none}
-    .hb-agenda .agsecb svg{display:block} .hb-agenda .agsecb{padding:7px 9px}
-    .hb-agenda .agsub,.hb-agenda .agbar{gap:var(--sp-1,4px)} .hb-agenda .agnav button{min-width:28px;padding:0 6px} }
+  /* A narrow app: the month's hours go, the arrows close ranks. The BAND's steps are the house bar's (V2-882). */
+  @container (max-width:560px){ .hb-agenda .agmev .agmh{display:none} .hb-agenda .agsecb{padding:7px 9px}
+    .hb-agenda .agnav button{min-width:28px;padding:0 6px} }
   
-  /* ── THE PHONE CARD (V2-876 P-30…P-32) ── inside the phone shell ('.zm-scroll'), never on the desk.
-     ONE control row that fits 393pt: the section switch · ‹ Today › · the view picker; the range title on its own
-     line under it, wrapping, never cut by the picker; the plug leaves the row (the connection lives in the app's
-     settings). Event titles WRAP inside a narrow column instead of ending in «De…»; the first hour label sits
-     below its line instead of under the day header; day numbers are tabular. */
-  .zm-scroll .hb-agenda .agsub{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;
-    column-gap:var(--sp-2,8px);row-gap:var(--sp-1,4px);padding-left:var(--sp-2,8px);padding-right:var(--sp-2,8px)}
-  .zm-scroll .hb-agenda .agbar{display:contents}
-  .zm-scroll .hb-agenda .agsec{grid-column:1;grid-row:1}
-  .zm-scroll .hb-agenda .agnav{grid-column:2;grid-row:1;justify-self:start;gap:var(--sp-1,4px)}
-  .zm-scroll .hb-agenda .agviews{grid-column:3;grid-row:1;margin-left:0}
-  .zm-scroll .hb-agenda .agrange{grid-column:1 / -1;grid-row:2;white-space:normal;overflow:visible;
-    font-size:16px;padding:0 var(--sp-1,4px)}
-  .zm-scroll .hb-agenda .agviewsright{display:none}
-  .zm-scroll .hb-agenda .agsub-meta{grid-column:2 / -1;grid-row:1;justify-self:end}
+  /* ── THE PHONE APP (V2-876 P-30…P-32, V2-882) ── inside the phone shell ('.zm-scroll'), never on the desk.
+     The band is the house bar at its phone step: the section switch · ‹ Today › · ⋯ on one row, the range on its
+     own row under it, the views and the plug in the ⋯ menu; every control a 44pt target. Event titles WRAP inside
+     a narrow column instead of ending in «De…»; the first hour label sits below its line; day numbers are tabular. */
+  .zm-scroll .hb-agenda .agsub{padding-left:var(--sp-2,8px);padding-right:var(--sp-2,8px)}
+  .zm-scroll .hb-agenda .agrange{font-size:16px;padding:0 var(--sp-1,4px)}
   .zm-scroll .hb-agenda .agsecb{padding:0;width:44px;height:44px;justify-content:center}
-  .zm-scroll .hb-agenda .agnav button{min-width:44px;height:44px;font-size:14px}
-  .zm-scroll .hb-agenda .agviewsel{height:44px;font-size:16px}
+  .zm-scroll .hb-agenda .agnav button,.zm-scroll .hb-agenda .hb-bar-more{min-width:44px;height:44px;font-size:14px}
+  .zm-scroll .hb-agenda .agtab,.zm-scroll .hb-agenda .agviewsel{min-height:44px;font-size:16px}
   .zm-scroll .hb-agenda .agevt{white-space:normal;overflow-wrap:anywhere;text-overflow:clip;font-size:12px;
     line-height:1.1;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3}
   .zm-scroll .hb-agenda .agev.tight .agevt{-webkit-line-clamp:1}

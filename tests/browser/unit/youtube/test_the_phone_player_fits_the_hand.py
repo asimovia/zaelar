@@ -66,7 +66,8 @@ def _open(browser, phone=True):
 def _mount(page, data, desk=False):
     port = page._hb_port
     page.goto(f"http://127.0.0.1:{port}/widgets/youtube/")
-    page.set_content("<div id='w' style='width:660px;height:600px'></div>" if desk else _SHELL)
+    kit = "<link rel='stylesheet' href='/frontend/app/core/components.css'>"   # the house bar's grid (V2-882), as both shells
+    page.set_content(kit + ("<div id='w' style='width:660px;height:600px'></div>" if desk else _SHELL))
     page.evaluate(
         """async ([src, data]) => {
              window.__calls = [];
@@ -95,14 +96,14 @@ def test_the_tabs_share_one_row_with_no_sideways_scroll_and_44_points(phone):
             return {id: t.dataset.tab, h: r.height, cut: t.scrollWidth > t.clientWidth + 1, right: r.right, top: r.top}; });
         const f = document.querySelector('.hb-yt-find').getBoundingClientRect();
         return {scrolls: s.scrollWidth > s.clientWidth + 1, tabs, edge: document.querySelector('.hb-yt').getBoundingClientRect().right,
-                find: {h: f.height, top: f.top}, more: vis(document.querySelector('.hb-yt-menubtn')),
+                find: {h: f.height, top: f.top}, more: vis(document.querySelector('.hb-bar-more')),
                 plug: vis(document.querySelector('.hb-yt-plug'))}; }""")
     assert not geo["scrolls"], "every tab in sight — no strip to scroll"
     assert [t["id"] for t in geo["tabs"]] == ["inicio", "player"], geo["tabs"]
     assert all(t["h"] >= 44 and not t["cut"] and t["right"] <= geo["edge"] + 1 for t in geo["tabs"]), geo["tabs"]
     assert geo["find"]["h"] >= 44 and abs(geo["find"]["top"] - geo["tabs"][0]["top"]) < 8 and geo["more"]
     assert not geo["plug"], "the connector is not a phone control (rule 5)"
-    phone.tap(".hb-yt-menubtn")
+    phone.tap(".hb-bar-more")
     phone.tap(".hb-yt-mitem[data-tab=subs]")
     assert phone.evaluate("() => getComputedStyle(document.querySelector('.hb-yt-tab[data-tab=subs]'), '::after').content") \
         == '"Channels"', "the long tab wears its short label, from the bundle"

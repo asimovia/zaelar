@@ -153,6 +153,21 @@ widgets feel polished and consistent with the rest. These are HARD rules — fol
   - **Toolbar** — `hb-toolbar` (+ `--sub` for a second band) with `hb-toolbar-title`, `hb-toolbar-sub`,
     `hb-toolbar-spacer`, `hb-toolbar-group` and `hb-toolbar-sep` (a separator has to mark a change of PURPOSE;
     it is not decoration between icons).
+  - **Your widget's BAR — one line, then rows, then a menu (V2-882).** The one bar a widget adds is the house
+    bar, never a `display:flex;flex-wrap:wrap` of your own (*the validation gate rejects a class named `…bar`
+    that wraps*). Mark its parts in ORDER OF IMPORTANCE — `hb-bar-lead` (the primary control and the navigation:
+    a section switch, ‹ Today ›, a search box) · `hb-bar-title` (the content's title: a date range, a folder
+    trail) · `hb-bar-tray` holding `hb-bar-views` (the view switcher) and `hb-bar-aux` (the least important:
+    account, provider icons, the plug) — and make it live with `import { bar } from "/frontend/app/lib/toolbar.js"`
+    → `bar(el, {more: tt("more", null, "More")})`. It is ONE line while everything fits; when it does not, it
+    takes the declared steps in order, measured on the bar itself (no breakpoint of yours): **(1)** the compact
+    faces — an element marked `hb-wide` hides and its `hb-narrow` twin shows (four tabs → one `<select>`), a
+    `hb-bar-label` beside a `hb-bar-icon` goes; **(2)** `hb-bar-aux` takes a second row on the bar's right edge;
+    **(3)** under 480px, or when two rows still do not fit, the tray folds into ONE ⋯ menu that unfolds, and the
+    title takes its own row. The lead and the title are always visible; there is never a third row. A content
+    tooltip is `data-hb-tip` + `aria-label` with `tips(scroller)` from the same module — a `title` is drawn by the
+    operating system and can land over the bar. Full rule: `.meshkore/docs/conventions/zaelar-widget-header-standard.md`
+    §«One line, then rows, then menus».
   - **Panel / Card** — `hb-panel` (+ `hb-panel-head`, `hb-panel-title`, `hb-panel-note`) and `hb-card`
     (+ `hb-card--interactive`, `.is-selected`). They already sit on the right rungs of the ladder.
   - **Tabs** — `hb-tabs` / `hb-tab` (+ `.is-on`). **Breadcrumbs** — `hb-crumbs` / `hb-crumb` / `hb-crumb-sep` /
@@ -182,7 +197,7 @@ widgets feel polished and consistent with the rest. These are HARD rules — fol
   does the moving: a widget never detects other screens itself. Policy: `widgets/screen_policy.py`. Before calling it
   done: `python -m tests.widget_harness --two-screens <id>` (a desktop and a phone browser) and the operator's manual pass
   (`--manual <id>`) — `.meshkore/docs/ops/zaelar-two-screen-test.md`.
-- **Self-contained**: no external libraries, no CDN, no network from `widget.js`. The ONE import from outside your folder is the app shell's icon set, written exactly `import * as I from "/frontend/app/lib/icons.js";` (any other spelling is refused by the gate) — use its glyphs instead of drawing your own. Inject your `<style>` once (id-guarded).
+- **Self-contained**: no external libraries, no CDN, no network from `widget.js`. The imports from outside your folder are the app shell's icon set, written exactly `import * as I from "/frontend/app/lib/icons.js";`, and its bar, `import { bar, tips } from "/frontend/app/lib/toolbar.js";` (any other spelling is refused by the gate) — use its glyphs instead of drawing your own, and its bar instead of a toolbar of your own. Inject your `<style>` once (id-guarded).
 - **Security**: any web/3rd-party/user text → build DOM with `textContent` (NEVER `innerHTML` for untrusted data).
 - **Class names must not collide with `frontend/app/styles.css`'s global classes** (checked by the generator's
   validation gate — see below). Scoping your rules under your own root wrapper (`.hb-msg .conn{...}`) does NOT

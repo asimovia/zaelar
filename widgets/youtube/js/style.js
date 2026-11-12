@@ -107,7 +107,7 @@ const CSS_PLAYER = `
      so the bar carries no brand of its own — view tabs on the left, then margin-left:auto and the source
      icons + the plug, pinned to the RIGHT edge (the red mark that used to lead the strip was that sentence
      said a second time). Flush under the window header, one hairline under it, never a box. */
-  .hb-yt-nav{display:flex;align-items:center;gap:var(--sp-2,8px);flex:0 0 auto;min-width:0;box-sizing:border-box;
+  .hb-yt-nav{flex:0 0 auto;min-width:0;box-sizing:border-box;   /* the house bar's grid (V2-882) lays it out */
              padding:var(--sp-2,8px) var(--sp-3,12px);border-bottom:1px solid var(--hb-line-subtle,rgba(255,255,255,.09))}
   .hb-yt-tabs{display:flex;align-items:center;gap:2px;min-width:0;flex:0 1 auto;overflow-x:auto;scrollbar-width:none}
   .hb-yt-tabs::-webkit-scrollbar{display:none}
@@ -124,7 +124,6 @@ const CSS_PLAYER = `
   .hb-yt-tab.on{background:color-mix(in srgb,var(--hb-accent,#AE90FF) 18%,transparent);
                 box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--hb-accent,#AE90FF) 55%,transparent);
                 color:var(--hb-ink,#F2F4F7);font-weight:700}
-  .hb-yt-navright{margin-left:auto;display:flex;align-items:center;gap:var(--sp-2,8px);flex:0 0 auto}
   /* The plug — the SAME control every connector widget wears (contactos' .ctplug): an icon, no word. */
   .hb-yt-plug{width:var(--hb-ctl-h-sm,32px);height:var(--hb-ctl-h-sm,32px);flex:0 0 auto;padding:0;
               border:1px solid var(--hb-line,rgba(255,255,255,.14));background:transparent;color:var(--hb-muted,#A9B1BD);

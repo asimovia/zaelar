@@ -1,6 +1,7 @@
 """widgets/validator_js.py — the static house-rules scan of a widget's CLIENT code: JS sinks, CSS classes, width and z caps (SEC-3)."""
 from __future__ import annotations
 
+import itertools
 import json
 import os
 import re
@@ -142,6 +143,11 @@ def _scan_widget_js(js: str) -> str | None:
                     f"({_PHONE_SAFE_MIN_WIDTH_PX}px is the limit). Let the layout be FLUID (%, minmax, flex-wrap); "
                     f"if the content is genuinely wide (a table), keep it in its own overflow-x:auto wrapper so "
                     f"it scrolls INSIDE the app instead of pushing the app sideways")
+    bar = _own_wrapping_bar(style_text)
+    if bar:
+        return (f"widget.js lets its bar .{bar} wrap with flex-wrap — each control lands where it runs out of room "
+                f"(V2-882). Use the HOUSE bar (`hb-bar`: lead · title · tray > views + aux) made live with `bar` from "
+                f"/frontend/app/lib/toolbar.js — one line, then a second row, then a ⋯ menu (widgets/AGENTS.md)")
     # A ROOT THAT REFUSES A WIDE CARD (V2-615). The desktop host mounts a widget's root directly into a fully
     # fluid card, and drag-resize sets that card's width directly — so a hardcoded CAP on the root is not a
     # safety net, it is the operator dragging a card wider and nothing inside using the extra room. Measured
@@ -194,6 +200,23 @@ def _scan_widget_js(js: str) -> str | None:
             return (f"widget.js declares z-index:{m.group(1)} — above the widget's own stacking room "
                     f"(the ceiling is {_WIDGET_Z_CEILING}). The desk's chrome lives above that: the dock at "
                     f"9002, the chat at 9001. Stack INSIDE your app (widgets/AGENTS.md)")
+    return None
+
+
+# V2-882 — a widget's own BAR never wraps. The subject of a rule (the last class of each selector) named `…bar`
+# that declares `flex-wrap:wrap` is a toolbar laid out as a loose wrap: the shape the operator found on the agenda,
+# two ragged lines at full desk width. The house classes (`hb-`) are the kit itself and are not this widget's bar.
+# Read as plain strings, no pattern: each rule's innermost selector and its body without blanks.
+def _own_wrapping_bar(css: str) -> str | None:
+    for rule in css.split("}"):
+        sel, _, body = rule.rpartition("{")
+        if "flex-wrap:wrap" not in "".join(body.split()).lower():
+            continue
+        for one in sel.split(","):
+            tail = one.rsplit(".", 1)[-1] if "." in one else ""
+            last = "".join(itertools.takewhile(lambda ch: ch.isalnum() or ch in "-_", tail))
+            if last.lower().endswith("bar") and not last.startswith(("hb-", "hbk-")):
+                return last
     return None
 
 

@@ -94,6 +94,9 @@ export function hhmm(m){ return `${_pad(Math.floor(m/60)%24)}:${_pad(Math.round(
 export function fmtCount(min){ const m=Math.max(0,Math.round(min)); return `${_pad(Math.floor(m/60))}:${_pad(m%60)}`; }
 
 // ── DOM builder — data-derived text ALWAYS via textContent (data is brain-pushable, i.e. UNTRUSTED) ───
+// A content tooltip is the house one (V2-882), drawn inside the scroller by lib/toolbar.js `tips` — never a `title`,
+// which the operating system paints wherever it likes, over the bar included.
+export function tip(e, text){ e.dataset.hbTip = text; e.setAttribute("aria-label", text); }
 export function el2(tag, cls, text){ const e=document.createElement(tag); if(cls)e.className=cls;
   if(text!=null)e.textContent=String(text); return e; }
 export function svgEl(paths, opts){

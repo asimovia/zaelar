@@ -59,8 +59,7 @@ export const CSS = `
 .arx-side-dot.conn{background:var(--hb-accent2,#12a594)}
 /* ONE header row — the storage chips, the breadcrumb and the tools live together so the chrome never reads
    as two half-empty bands with a void between them. */
-.arx-bar{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--hb-line,#eef1f6);
-  flex:0 0 auto;flex-wrap:wrap;row-gap:8px}
+.arx-bar{padding:10px 12px;border-bottom:1px solid var(--hb-line,#eef1f6);flex:0 0 auto}
 .arx-chips{display:flex;align-items:center;gap:6px;flex:0 0 auto}
 .arx-pchip{width:32px;height:32px;border-radius:10px;border:1px solid var(--hb-line,#eef1f6);
   background:var(--hb-bg,#fff);display:grid;place-items:center;font-size:16px;line-height:1;
@@ -72,7 +71,7 @@ export const CSS = `
 .arx-pchip.conn:not(.on){border-color:var(--hb-accent2,#12a594);color:var(--hb-accent2,#12a594)}
 .arx-pchip.off{opacity:.5}
 .arx-divider{width:1px;align-self:stretch;background:var(--hb-line,#eef1f6);flex:0 0 auto}
-.arx-crumbs{display:flex;align-items:center;gap:4px;flex:1 1 180px;min-width:0;overflow:hidden;flex-wrap:nowrap}
+.arx-crumbs{display:flex;align-items:center;gap:4px;min-width:0}
 .arx-crumb{background:none;border:0;padding:2px 6px;border-radius:6px;color:var(--hb-accent,#2f6df6);cursor:pointer;font:inherit;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:0 1 auto}
 .arx-crumb:hover{background:var(--hb-bg-soft,#f5f7fb)}
 .arx-crumb[disabled]{color:var(--hb-ink,#0d1622);cursor:default;font-weight:600}
@@ -83,9 +82,11 @@ export const CSS = `
 .arx-tools{display:flex;align-items:center;gap:6px;flex:0 0 auto}
 .arx-find{display:flex;align-items:center;gap:4px;background:var(--hb-bg-soft,#f5f7fb);border:1px solid var(--hb-line,#eef1f6);border-radius:8px;padding:3px 6px}
 .arx-find.active{border-color:var(--hb-accent,#2f6df6)}
-/* A phone: the search takes a row of its own and the buttons line up under it (V2-813 — at 44px a tap the five
-   buttons and the field could not share 366px, and the row broke wherever it ran out of room). */
-@media (max-width:520px){.arx-tools{flex:1 1 100%;flex-wrap:wrap}.arx-find{order:-1;flex:1 1 100%}
+/* In the bar's ⋯ menu (V2-882, a phone or a narrow app) the search takes a row of its own and the buttons line up
+   under it — five 44px buttons and the field cannot share 366px (V2-813). */
+.arx-bar[data-step="3"] .arx-tools{flex-direction:row;flex-wrap:wrap}
+.arx-bar[data-step="3"] .arx-find{order:-1;flex:1 1 100%}
+@media (max-width:520px){
   /* …the toolbar's glyphs read at a thumb's size inside their 44px boxes, and a file row puts its name on a line of
      its own — four 44px actions beside it left «Presu…» of a long name (V2-813). */
   .arx-btn{font-size:17px}

@@ -4,27 +4,26 @@
 // Operator, 2026-11-11: «la búsqueda también en la cabecera permanente… a la derecha del todo el botón de BUSCAR,
 // y unos 30 px a su izquierda los dos iconos de conectores/plataformas». Three widths, never a ragged wrap: one line
 // where it fits, the tools on a second aligned row when narrower, and on the phone a «⋯» menu for the secondary
-// tabs — Inicio and the search always in sight (the rules live in style_cards.js, keyed on the card's width).
+// tabs — Inicio and the search always in sight. It is the HOUSE bar (V2-882, lib/toolbar.js), which MEASURES the
+// step it needs instead of guessing from a breakpoint: lead = the tabs · tray = the secondary tabs (seen only in its
+// ⋯ menu) + the platform icons and the plug · the search pinned right in its own column (style_cards.js).
 import { Y } from "./state.js";
-import { ICON_PLUG, ICON_SEARCH, ICON_MORE, svgEl, el, _TABS, tabLabel, applyTabClass, iconBtn, tt } from "./shared.js";
+import { ICON_PLUG, ICON_SEARCH, svgEl, el, _TABS, tabLabel, applyTabClass, iconBtn, tt } from "./shared.js";
 import { renderConn } from "./conn.js";
+import { bar, fit } from "/frontend/app/lib/toolbar.js";
 
 export function buildNav(root, ctx){
   const nav = el("div", "hb-yt-nav");
-  const tabsBox = el("div", "hb-yt-tabs");
+  const tabsBox = el("div", "hb-yt-tabs hb-bar-lead");
   tabsBox.setAttribute("role", "tablist");
   nav.appendChild(tabsBox);
   const tabBtns = {};
-  const menu = el("div", "hb-yt-menu");
-  menu.hidden = true;
-  menu.setAttribute("role", "menu");
-  const closeMenu = () => { menu.hidden = true; moreBtn.setAttribute("aria-expanded", "false"); };
+  const menu = el("div", "hb-yt-menu hb-bar-views");
   const selectTab = (tid) => {
     Y.tab = tid;
     Y.screen = null; Y.connErr = "";                       // choosing a tab is ONE transition (V2-626)
     applyTabClass(root);
     paintTabs();
-    closeMenu();
     const cb = root.querySelector(".hb-yt-plug"); if(cb) cb.classList.remove("on");
     root.classList.remove("hb-yt-connmode");
     const connBox = root._hbYtEls && root._hbYtEls.conn; if(connBox) connBox.textContent = "";
@@ -47,12 +46,12 @@ export function buildNav(root, ctx){
     if(tid === "inicio") return;                           // Inicio never hides, so it is never in the menu
     const m = el("button", "hb-yt-mitem", tabLabel(tid));
     m.dataset.tab = tid;
-    m.setAttribute("role", "menuitem");
     m.addEventListener("click", () => selectTab(tid));
     menu.appendChild(m);
   });
   // RIGHT cluster: the platform icons and the plug, a --sp-6 gap, then the search pinned to the right edge.
-  const right = el("div", "hb-yt-navright");
+  const tray = el("div", "hb-bar-tray");
+  const right = el("div", "hb-yt-navright hb-bar-aux");
   const dots = el("div", "hb-yt-dots");
   right.appendChild(dots);
   const connBtn = el("button", "hb-yt-plug");
@@ -74,19 +73,9 @@ export function buildNav(root, ctx){
     if(inp){ inp.focus(); if(inp.select) inp.select(); }
   };
   const findBtn = iconBtn("hb-yt-find", ICON_SEARCH, tt("search_open", null, "Buscar vídeos"), focusSearch);
-  right.appendChild(findBtn);
-  const moreBtn = iconBtn("hb-yt-menubtn", ICON_MORE, tt("more_tabs", null, "Más secciones"), () => {
-    menu.hidden = !menu.hidden;
-    moreBtn.setAttribute("aria-expanded", menu.hidden ? "false" : "true");
-  });
-  moreBtn.setAttribute("aria-haspopup", "menu");
-  moreBtn.setAttribute("aria-expanded", "false");
-  right.appendChild(moreBtn);
-  right.appendChild(menu);
-  nav.addEventListener("focusout", (e) => { if(!nav.contains(e.relatedTarget)) closeMenu(); });
-  nav.addEventListener("keydown", (e) => { if(e.key === "Escape") closeMenu(); });
-  nav.appendChild(right);
-  root.appendChild(nav);
+  tray.append(menu, right);
+  nav.append(tray, findBtn);
+  root.appendChild(bar(nav, {more: tt("more_tabs", null, "Más secciones")}));
   root._hbYtSelectTab = selectTab;
   root._hbYtTabBtns = tabBtns;
   root._hbYtPaintTabs = paintTabs;
@@ -105,4 +94,5 @@ export function paintNav(root, data){
   });
   root.querySelectorAll(".hb-yt-menu .hb-yt-mitem").forEach((m) => { m.textContent = label(m.dataset.tab); });
   if(root._hbYtPaintTabs) root._hbYtPaintTabs();
+  fit(root.querySelector(".hb-yt-nav"));                  // a label that grew («Cola · 12») may need the next step
 }
