@@ -7,9 +7,16 @@ even be built (a missing key raises `ValueError` in the plugin) the stand-in ser
 `INWORLD_API_KEY` failed the prewarm and a 402 left the voice mute until someone switched the panel by hand.
 
 `active_provider()` names the backend that is producing audio NOW, so the metering hook bills the one that spoke.
+
+`start_prewarm()` opens a remote TTS's connection ahead of its first synthesis. Every plugin's `prewarm()` schedules
+its work on the RUNNING event loop (`asyncio.create_task`), and one may instead return the coroutine itself: called
+where no loop runs (the worker's `setup_fnc`) it builds the coroutine, raises, and the connection is never opened.
+So it is called only from the session's loop, and an awaitable it returns is scheduled, never dropped.
 """
 from __future__ import annotations
 
+import asyncio
+import inspect
 import logging
 
 from ...core.config import SETTINGS
@@ -74,18 +81,47 @@ def build_tts():
     return _with_failover([(primary, first), (backup, second)])
 
 
+_WARMING: set = set()   # strong refs: a scheduled prewarm task must not be garbage-collected mid-handshake
+
+
+def _settled(task) -> None:
+    _WARMING.discard(task)
+    if not task.cancelled() and task.exception() is not None:
+        logger.warning("TTS prewarm failed: %s", task.exception())
+
+
+def start_prewarm(tts) -> bool:
+    """Open `tts`'s connection now, in the running loop. True when a prewarm was started.
+
+    Without a running loop nothing is called (calling would build a coroutine that never runs); the session's loop
+    warms it instead. A `prewarm()` that returns an awaitable has it scheduled. A failure is logged, never raised."""
+    pw = getattr(tts, "prewarm", None)
+    if not callable(pw):
+        return False
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        logger.info("TTS prewarm deferred to the session's loop (no running loop here)")
+        return False
+    try:
+        res = pw()
+    except Exception as e:  # noqa: BLE001 — a prewarm is an optimisation; the first synthesis connects anyway
+        logger.warning("TTS prewarm failed (%s): %s", type(tts).__name__, e)
+        return False
+    if inspect.isawaitable(res):
+        task = asyncio.ensure_future(res)
+        _WARMING.add(task)
+        task.add_done_callback(_settled)
+    return True
+
+
 def _with_failover(pairs):
     from livekit.agents.tts import FallbackAdapter
 
     class _Adapter(FallbackAdapter):
         def prewarm(self) -> None:
-            for t in self._tts_instances:
-                pw = getattr(t, "prewarm", None)
-                if callable(pw):
-                    try:
-                        pw()
-                    except Exception:  # noqa: BLE001
-                        pass
+            for t in self._tts_instances:   # the stand-in too: a failover must not pay a cold handshake either
+                start_prewarm(t)
 
     names = [n for n, _ in pairs]
     adapter = _Adapter([t for _, t in pairs], max_retry_per_tts=1)

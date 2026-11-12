@@ -39,6 +39,7 @@ from ..core.logging import setup_console_logging
 from ..core.state import State, StateMachine
 from ..llm import build_llm
 from ..speech import build_stt, build_tts, build_turn_detection, build_vad
+from ..speech.tts import start_prewarm
 from .first_air import FirstAir, decide_kickoff, greeting_prompt, kickoff_recent, mark_kickoff, silent_first_run  # noqa: F401
 from .instrument import BootChannel, tapped_vad
 from .prewarm import prewarm  # noqa: E402,F401 — V2-778 F1: moved, imported back under its name
@@ -90,8 +91,16 @@ def _before_connect() -> None:
     _preload_isolation(SETTINGS.voice_isolation, SETTINGS.livekit_url)
 
 
+def _warm_tts(ctx) -> None:
+    """Open the warm TTS's connection on THIS loop, before the room connects: the handshake overlaps the connect
+    instead of the greeting (`setup_fnc` runs with no loop, so it cannot)."""
+    ud = getattr(getattr(ctx, "proc", None), "userdata", None) or {}
+    start_prewarm(ud.get("tts"))
+
+
 async def entrypoint(ctx: JobContext) -> None:
     _before_connect()
+    _warm_tts(ctx)
     await ctx.connect()
 
     session_id = time.strftime("%Y%m%d-%H%M%S", time.localtime())
