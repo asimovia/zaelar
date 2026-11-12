@@ -51,8 +51,10 @@ ENGINE = pathlib.Path(__file__).resolve().parents[3]
 #: EDIT DOWNWARD ONLY — converting one to `tests/waiting.until` is the celebration.
 MAX_ITERATION_BOUNDED_WAITS = 58
 
-#: Does this loop's body SLEEP? A `range()` loop that does not is an ordinary loop, not a wait.
-_SLEEPS = re.compile(r"\bsleep\s*\(")
+#: Does this loop's body SLEEP? A `range()` loop that does not is an ordinary loop, not a wait. `sleep(0)` is a
+#: YIELD to the event loop (let N scheduled callbacks run), not a wait: it never polls a precondition, so it cannot
+#: hang on one (2026-11-12: a five-step settle loop in the TTS prewarm test was counted as the 59th wait).
+_SLEEPS = re.compile(r"\bsleep\s*\((?!\s*0\s*\))")
 
 
 def _waits() -> list[tuple[str, int, int]]:
@@ -164,3 +166,8 @@ def test_a_wait_that_succeeds_returns_what_it_waited_for():
         return {"row": 1} if box["n"] > 2 else None
 
     assert until_sync(_tick, "the row", timeout_s=2) == {"row": 1}
+
+
+def test_a_yield_to_the_loop_is_not_a_wait():
+    assert not _SLEEPS.search("await asyncio.sleep(0)")
+    assert _SLEEPS.search("await asyncio.sleep(0.05)") and _SLEEPS.search("time.sleep(0.5)")

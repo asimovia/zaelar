@@ -55,12 +55,15 @@ _S: dict = {"in_flight": False, "last": None, "threads": []}
 
 
 def mode() -> str:
-    """`ZAELAR_WHISPER`, else the model table row's `mode`, else shadow."""
+    """`ZAELAR_WHISPER`, else the row's `mode` (one string, or `{"local", "cloud"}`) for the deployment the budgets
+    read, else shadow locally and off on a hosted deployment: a shadow call costs a model call and serves nobody yet."""
     env = (os.getenv(ENV) or "").strip().lower()
     if env in MODES:
         return env
-    m = str(_row().get("mode") or "").strip().lower()
-    return m if m in MODES else SHADOW
+    from nucleo.pulse import budgets
+    where, m = budgets.deployment(), _row().get("mode")
+    m = str((m.get(where) if isinstance(m, dict) else m) or "").strip().lower()
+    return m if m in MODES else (OFF if where == "cloud" else SHADOW)
 
 
 def _row() -> dict:
