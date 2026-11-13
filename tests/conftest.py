@@ -220,6 +220,23 @@ def _the_provider_chain_starts_rested():
 
 
 @pytest.fixture(autouse=True)
+def _the_assistant_starts_unrenamed():
+    """`voice.attention` caches the assistant's spoken name for the PROCESS (a rename reaches the wake word at once);
+    a test whose turn renamed it — or refreshed a state that held a name — left every later test talking to a renamed
+    agent, and since 3.206 a renamed agent is never offered the name and the voice — measured 2026-11-13, the three
+    first-turn offer tests red after `tests/agent_headless/unit/turn/test_one_menu_for_every_reader.py`, green alone."""
+    import sys
+
+    def _unrename():
+        st = getattr(sys.modules.get("voice.attention"), "_state", None)
+        if isinstance(st, dict):
+            st["assistant_name"] = ""
+    _unrename()
+    yield
+    _unrename()
+
+
+@pytest.fixture(autouse=True)
 def _the_mouth_starts_unhushed():
     """`voice.proactive.hush()` silences every out-of-band line for 20 s of WALL time (a stop order, V2-752); a test
     that hushed left the next tests in that window mute — measured 2026-11-07, `test_nucleo_speak_acc_drop` red after
