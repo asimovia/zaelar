@@ -49,8 +49,8 @@ export function stateReporter(baseId, instance, opts = {}) {
   const post = opts.fetch || ((u, init) => fetch(u, init));
   const url = `/widgets/${baseId}/state`;
   let mount = _newMount(), n = 0, full = true, timer = null, seen = null, ack = null, waiters = [];
-  let dead = false, flying = false, again = false, lastFacts = null, retaken = false, hand = false;
-  const last = {}, pending = {}, forgot = new Set();
+  let dead = false, flying = false, again = false, lastFacts = null, retaken = false, hand = false, cardSpoke = false;
+  const last = {}, pending = {}, forgot = new Set(), hostKeys = new Set();
 
   const body = (beacon) => {
     n += 1;
@@ -102,7 +102,9 @@ export function stateReporter(baseId, instance, opts = {}) {
       if (dead) return Promise.resolve(null);
       let changed = false;
       for (const k of o.forget || []) { if (k in last) { delete last[k]; delete pending[k]; forgot.add(k); changed = true; } }
+      if (!o.host) cardSpoke = true;
       for (const [k, v] of Object.entries(patch || {})) {
+        if (!o.host && hostKeys.has(k)) continue;         // a host fact is the host's, never the card's (C7)
         if (v === undefined || v === null || last[k] === v) continue;
         last[k] = v; pending[k] = v; changed = true;
       }
@@ -114,8 +116,16 @@ export function stateReporter(baseId, instance, opts = {}) {
       schedule();
       return p;
     },
-    // The host: a data push carried revision `rev` ({epoch, rev}); the card has not applied it yet.
-    seen(rev) { if (rev && rev.epoch && Number.isInteger(rev.rev)) seen = rev; },
+    // The host: a data push carried revision `rev` ({epoch, rev}); the card has not applied it yet. `host` = the
+    // fields the HOST shows from that data (`_host`, C7: a third-party page's address and title): said by the host
+    // itself, acking the revision only while the card has said nothing of its own on this mount.
+    seen(rev, host) {
+      if (rev && rev.epoch && Number.isInteger(rev.rev)) seen = rev;
+      if (host && typeof host === "object") {
+        Object.keys(host).forEach((k) => hostKeys.add(k));
+        rep.report(host, { host: true, applied: !cardSpoke });
+      }
+    },
     _snapshot(beacon, visibleAgain = false) {
       if (dead || !Object.keys(last).length) return;
       if (visibleAgain) retaken = false;
@@ -132,6 +142,6 @@ export function stateReporter(baseId, instance, opts = {}) {
 export function mountState(w, baseId, id, data) {
   if (w._rep) w._rep.dispose();
   w._rep = stateReporter(baseId, id);
-  w._rep.seen(data && data._rev);
+  w._rep.seen(data && data._rev, data && data._host);
   return w._rep;
 }

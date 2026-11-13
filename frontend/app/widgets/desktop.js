@@ -1143,7 +1143,7 @@ export class Desktop {
       const ww = this.wins.get(id);        // re-check: it may have been closed while the fetch was in flight
       if(ww && sig !== ww._dataSig){
         ww._dataSig = sig; ww._lastData = data;
-        if(ww._rep) ww._rep.seen(data._rev);          // V2-884: the revision this render brings
+        if(ww._rep) ww._rep.seen(data._rev, data._host);          // V2-884: the revision this render brings
         ww._mod.render(ww.body, data, ww._ctx);
         // Y la cabecera sigue a los datos: una búsqueda nueva cambia el título, y dejarlo con el de la anterior
         // sería un rótulo que MIENTE sobre lo que hay debajo.

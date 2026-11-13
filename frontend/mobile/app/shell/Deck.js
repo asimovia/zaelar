@@ -343,7 +343,7 @@ export class Deck {
       if (sig === w._dataSig) return;                 // nothing changed → no re-render, no flicker
       w._dataSig = sig;
       w._data = data;
-      if (w._rep) w._rep.seen(data._rev);            // V2-884: the revision this render brings
+      if (w._rep) w._rep.seen(data._rev, data._host);            // V2-884: the revision this render brings
       w._mod.render(w.body, data, w._ctx);
       this._applyTitle(w, data);
       this._paint();                                  // fresh data can flip the producing badge (V2-092)

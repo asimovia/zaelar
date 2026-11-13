@@ -53,6 +53,7 @@ def _task_view(t: dict) -> dict:
     a surface for it.
     """
     return {
+        "_host": _host(t.get("url"), t.get("page_title")),
         "kind": "task",
         # `title` drives the card's HEADER (`live_title` in the manifest): what is being searched for, not the
         # name of the piece. With several browsers open, all of them called «Navegador», the header identified
@@ -108,7 +109,8 @@ def view_data(q: str = "") -> dict:
         # a store written before a key existed still answers it: a key MISSING from the view reads «unverifiable»
         if str(db.get("error") or "").strip() and not db.get("failed"):   # an older store kept a page's failure in `error`
             db["failed"], db["error"] = db["error"], ""
-        return {**_SEED, **db, "empty": not str(db.get("url") or "")}     # V2-776 L2
+        return {**_SEED, **db, "empty": not str(db.get("url") or ""),     # V2-776 L2
+                "_host": _host(db.get("url"), db.get("title"))}
     except Exception as e:
         return {**_SEED, "error": f"no data: {e}"}
 
@@ -192,10 +194,24 @@ def card_face(instance: str = "") -> dict:
     # de…» — it drops «TheFork», the only half that identifies anything, because a page title is marketing prose
     # with the site's name LAST. The operator names a browser card the way anybody does: «el otro tiene la web
     # del Tenedor». `www.` goes, since it distinguishes nothing and costs a syllable out loud.
-    host = url.split("://", 1)[-1].split("/", 1)[0].strip()
-    if host.startswith("www."):
-        host = host[4:]
+    host = domain(url)
     # No host (a `file:`/`data:` tab, or a URL we cannot read): what the task is LOOKING FOR distinguishes it
     # just as well, and the page title is the last resort before giving up and letting the id fallback speak.
     label = host or str(view.get("title") or "").strip() or str(view.get("page_title") or "").strip()
     return {"label": label, "blank": False}
+
+
+def domain(url) -> str:
+    """The site a URL is on, as he names it: the host without `www.` (an empty tab: "")."""
+    host = str(url or "").strip().split("://", 1)[-1].split("/", 1)[0].strip()
+    return host[4:] if host.startswith("www.") else host
+
+
+def _host(url, title) -> dict:
+    """The page's site and title, said by the HOST that renders it, never by the card (V2-884 C7, `by: "host"`)."""
+    return {"host": domain(url)[:40], "title": str(title or "").strip()[:60]}
+
+
+def instance_exists(name: str) -> bool:
+    """A task tab (`navegador::<task>`) lives in the task registry, not in the store: the state door asks here."""
+    return bool(__import__("widgets.navegador.tasks", fromlist=["x"]).get(str(name or "")))
