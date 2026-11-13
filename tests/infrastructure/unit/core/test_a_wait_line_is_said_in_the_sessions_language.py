@@ -49,7 +49,6 @@ FILLER_KEYS = ("fillers", "fillers_action", "fillers_social", "fillers_ack", "co
 #: Files that still hold a spoken line of one language as a constant. MEASURED; edited DOWNWARD only.
 _STILL_HOLDING = {
     "nucleo/flash/post_stream_settle.py",  # «Hecho.» / «Aquí lo tienes.» in the except branches
-    "nucleo/turn/wait_lines.py",           # «Sigo con ello.» / «Perdona, ¿me lo repites?» fallbacks
 }
 
 
@@ -223,3 +222,18 @@ def test_no_new_spoken_line_is_frozen_in_one_language():
 def test_the_retired_ones_stay_retired():
     gone = _STILL_HOLDING - set(_measure())
     assert not gone, f"retired — take them out of _STILL_HOLDING so they cannot come back: {sorted(gone)}"
+
+
+def test_a_wait_line_with_no_session_pack_falls_back_to_the_base_pack(monkeypatch):
+    """`wait_lines` with the session's pack unreadable says the BASE pack's line, never a Spanish constant."""
+    from i18n import langs
+    from nucleo.turn import wait_lines as W
+
+    def _boom(lang=None):
+        raise RuntimeError("no pack")
+    monkeypatch.setattr(W, "_lang", _boom)
+    base = langs.spec(langs.DEFAULT_LANG)
+    assert W.holding_line([], None) == base.still_on_it
+    assert W.mute_line([], None) == base.say_again
+    assert W.holding_line_now([], prev_pending=True) == base.still_on_it
+    assert W.holding_line_now([], prev_pending=False) == base.filler_holding

@@ -1,21 +1,23 @@
-"""The lines the mouth says when a turn has nothing of its own to say (refactor2710-06 T-06, from `reminder_guards`).
-
-A turn whose only content is «the task is still running» (`holding_line`) and one that came back mute (`mute_backstop`)
-(the follow-up over a false delivery claim went in V2-851 F5). Each rotates instead of repeating — «Vale, dame un momento que lo miro.»
-was measured four times word for word, «Perdona, ¿me lo repites?» four times in ninety seconds — never claims a step,
-and never claims work that is not happening. Every sentence comes from the language table.
+"""The lines the mouth says when a turn has nothing of its own to say: «still running» (`holding_line`) or mute
+(`mute_backstop`). Each rotates (one line was measured four times in ninety seconds), never claims a step or work that
+is not happening; every sentence is the session's pack, a missing one the BASE pack's (`_base`, V2-877 #10).
 """
 from __future__ import annotations
 
 from loguru import logger
+
+from i18n import langs as _langs
 
 
 def _note(what: str) -> None:
     logger.debug(f"wait_lines: {what}")
 
 
+def _base(key: str) -> str:
+    return str(getattr(_langs.spec(_langs.DEFAULT_LANG), key, "") or "")
+
+
 def _lang(lang=None):
-    from i18n import langs as _langs
     return lang or _langs.current_language()
 
 
@@ -35,18 +37,17 @@ def _longest_pending_min() -> int:
 
 
 def holding_line(window, lang=None, after_filler: str = "") -> str:
-    """The wait line for a turn whose only content is «still running»: a fresh variant while there is one, and from
-    the third consecutive wait the one honest fact — how long it has been. A lead-in filler that already sounded
-    burns the opener, so the line CONTINUES it (session 2bdc67ee). The worker chain asleep: no wait line is true."""
+    """A fresh variant while there is one; from the third consecutive wait the one honest fact, how long it has been. A
+    lead-in filler that sounded burns the opener, so the line CONTINUES it. The worker chain asleep: no wait is true."""
     try:
         lang = _lang(lang)
     except Exception as e:  # noqa: BLE001
         _note(f"no language ({e!r})")
-        return "Sigo con ello."
+        return _base("still_on_it")
     from nucleo.workers import quota_wait as _qw
     if asleep := _qw.asleep_line(window, lang):
         return asleep
-    lines = tuple(getattr(lang, "holding_lines", ()) or (getattr(lang, "filler_holding", "Sigo con ello."),))
+    lines = tuple(getattr(lang, "holding_lines", ()) or (getattr(lang, "filler_holding", "") or _base("still_on_it"),))
     recent = _recent(window) + ([lines[0]] if after_filler else [])
     if sum(1 for t in recent if t in lines) >= 2 and (mins := _longest_pending_min()) >= 1:
         waited = str(getattr(lang, "filler_waited", "") or lines[-1]).format(min=mins)
@@ -57,14 +58,13 @@ def holding_line(window, lang=None, after_filler: str = "") -> str:
 
 
 def mute_line(window, lang=None) -> str:
-    """The line for a turn that came back EMPTY with nothing running: it owns the fault (the model returned nothing,
-    not him), rotates, and once every variant was said, says that this is not working (V2-603)."""
+    """An EMPTY turn with nothing running: owns the fault, rotates, then says this is not working (V2-603)."""
     try:
         lang = _lang(lang)
     except Exception as e:  # noqa: BLE001
         _note(f"no language ({e!r})")
-        return "Perdona, se me ha ido. ¿Me lo dices otra vez?"
-    lines = tuple(getattr(lang, "mute_lines", ()) or ("Perdona, ¿me lo repites?",))
+        return _base("say_again")
+    lines = tuple(getattr(lang, "mute_lines", ()) or (getattr(lang, "say_again", "") or _base("say_again"),))
     recent = _recent(window)
     return next((c for c in lines if c not in recent), None) or str(getattr(lang, "mute_stuck", "") or lines[-1])
 
@@ -72,7 +72,7 @@ def mute_line(window, lang=None) -> str:
 def _still_working(window, lang) -> str:
     """«Still on it» — unless the worker chain is asleep, where it would be a lie (2026-10-11)."""
     from nucleo.workers import quota_wait as _qw
-    return _qw.asleep_line(window, lang) or str(getattr(lang, "filler_still_working", "") or "Sigo con ello.")
+    return _qw.asleep_line(window, lang) or str(getattr(lang, "filler_still_working", "") or _base("still_on_it"))
 
 
 def owes_a_line(spoken: str, handled: bool, held_for_a_worker: bool) -> bool:
@@ -115,4 +115,4 @@ def holding_line_now(window, prev_pending: bool = False, *, after_filler: bool =
         return holding_line(window, lang, after_filler=after_filler)
     except Exception as e:  # noqa: BLE001
         _note(f"holding line failed ({e!r})")
-        return "Sigo con ello." if prev_pending else "Vale, dame un momento."
+        return _base("still_on_it") if prev_pending else _base("filler_holding")
