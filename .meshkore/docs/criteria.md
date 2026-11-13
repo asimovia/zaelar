@@ -181,8 +181,11 @@ below is the first kind, or it names the mechanism that replaced the second.
   stands. A verdict that disagrees with the model's call below the veto is a recorded doubt and the call runs
   (`verdicts.against_the_model`), never a «which one?». A question asking for a datum or a
   choice is DIALOGUE: it waits on its row like any other but is said in the conversation and never drawn as a card;
-  only a question of consent (an act waiting for his yes) is a card (`asker.kind_of`, V2-886 D1). — since 2026-10-26 ·
-  nodes 4.188, 4.185, 2.174, 2.811, 2.431, 2.728, 2.729, 2.1693 · `nucleo/consent.py`, `rules/shape.py`, `nucleo/flash/undecided.py`.
+  only a question of consent (an act waiting for his yes) is a card (`asker.kind_of`, V2-886 D1). A clarify ends with
+  its conversation: answered, it goes on; when his next turn surely answers none of the waiting questions (`none` at
+  VETO) a clarify our last reply put closes, by its id (`circuit.asked_last`); unanswered past `clarify_wait_minutes`
+  (30) the pulse closes it — each close cancels its row and says so in ONE `ask_closed` event, no line, never re-asked
+  (`request/clarify_end.py`). — since 2026-10-26 · nodes 4.188, 4.185, 2.174, 2.811, 2.431, 2.728, 2.729, 2.1693, 2.1740 · `nucleo/consent.py`, `rules/shape.py`, `nucleo/flash/undecided.py`.
 - **CRIT-C2 · A «yes» answers ONE proposal** and spends only that proposal's authority; an order that starts with
   «ok» is not a yes to a different pending action; every pending confirmation can be answered in words. A line
   that follows a question of OURS is his reply whether the verdict reads it as `answer` or `order` — the label only
