@@ -47,12 +47,10 @@ def _metric_fields(m) -> dict:
         v = getattr(m, attr, None)
         if isinstance(v, (int, float, str)):
             out[attr] = alias_of(v) if attr == "speech_id" else v
-    try:
-        from ..speech import tts as _tts
-        out["tts_provider"] = _tts.active_provider()
-    except Exception as _swallowed:  # noqa: BLE001
-        logger.debug(f"{__name__}: {_swallowed!r}")   # said, never silent (the ratchet)
-        pass
+    fam = {"STTMetrics": "stt", "TTSMetrics": "tts"}.get(out["type"])
+    if fam:   # V2-896 P1-1 — who produced it is known HERE (the adapter lives in this process); the body bills it
+        from ..speech import relay
+        out["provider"] = relay.provider_for(fam, m, getattr(SETTINGS, f"{fam}_provider"))
     return out
 
 
