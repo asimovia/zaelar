@@ -1,6 +1,14 @@
 {
   "id": "archivos",
   "screens": "shared",
+  "state": {
+    "order": {"section": "section", "folder": "folder_id", "provider": "provider"},
+    "report": {
+      "section": {"type": "enum:biblioteca|torrents", "follows": "section", "rest": "biblioteca"},
+      "folder": {"type": "text:40", "follows": ["folder", "provider", "section"], "rest": ""},
+      "open": {"type": "text:40", "rest": ""}
+    }
+  },
   "version": "0.4.0",
   "owner": "Zaelar",
   "created": "2026-09-02",
