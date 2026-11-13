@@ -88,14 +88,35 @@ def _is_single(card_id: str) -> bool:
 
 
 def note_playing(card_id, dev) -> str:
-    """A card now lives on `dev` (opened there by hand, or moved there). Returns where it lived before."""
+    """A card now lives on `dev` (opened there by hand, or moved there). Returns where it lived before; a move tells
+    the registered listeners (`on_moved`), so what the old screen reported of it stops speaking for it."""
     b, d = str(card_id or "").split("::", 1)[0].strip().lower(), clean(dev)
     if not (b and d):
         return ""
     with _mx:
         prev = _playing.get(b, "")
         _playing[b] = d
+    for fn in list(_moved) if prev and prev != d else []:
+        try:
+            fn(b, prev)
+        except Exception as e:  # noqa: BLE001 — a listener never stops a move
+            logger.debug(f"screens: move listener failed for {b}: {e!r}")
     return prev
+
+
+#: `fn(card, old_dev)` called when a one-screen card moves off `old_dev`.
+_moved: list = []
+
+
+def on_moved(fn) -> None:
+    if fn not in _moved:
+        _moved.append(fn)
+
+
+def playing_on(card_id) -> str:
+    """The screen a one-screen card lives on now, "" when none is known."""
+    with _mx:
+        return _playing.get(str(card_id or "").split("::", 1)[0].strip().lower(), "")
 
 
 def _canvas_report(src) -> bool:

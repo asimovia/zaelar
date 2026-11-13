@@ -39,6 +39,12 @@ def _decide_deadline(payload: dict) -> float | None:
     return max(0.5, min(d, 20.0)) if d > 0 else None
 
 
+def _state_of(wid: str) -> dict:
+    """V2-884: what a worker reads of an app's state is what the turn reads — its surface's report."""
+    from widgets import state_render
+    got = state_render.read(wid)
+    return {"state": got} if got["declared"] else {}
+
 async def _exec_allow(action: str, payload: dict, rec) -> dict:
     payload = payload or {}
     if action == "not_mine":
@@ -102,7 +108,7 @@ async def _exec_allow(action: str, payload: dict, rec) -> dict:
             from widgets import rows as _rows
             _schema = _rows.schema(wid)
             from nucleo.workers import widget_view as _wv
-            return {"ok": True, "result": {"manifest": man,
+            return {"ok": True, "result": {"manifest": man, **_state_of(wid),
                                            **({"collections": _schema} if _schema else {}),
                                            **_wv.bounded(wid, _stranger_text(wid, None if data is MISSING else data))}}
         except Exception as e:  # noqa: BLE001

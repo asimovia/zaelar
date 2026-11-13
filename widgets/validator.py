@@ -193,6 +193,9 @@ def _validate(wid: str, *, stamp_origin: bool = False) -> tuple[bool, str]:
     scr_bad = screen_policy.problem(man)                 # V2-792: a value, and never shared with an output channel
     if scr_bad:
         return False, scr_bad
+    from . import state_decl                             # V2-884: a declared state is well-formed, or none
+    if (st_bad := state_decl.problem(man)):
+        return False, st_bad
     init_p = os.path.join(d, "__init__.py")
     if not os.path.isfile(init_p):
         open(init_p, "w").close()

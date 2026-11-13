@@ -238,6 +238,10 @@ def for_prompt(open_ids=None, recent_ids=None, query: str = "", stats: dict | No
                       "con el NOMBRE tal y como él lo dijo — se resuelve contra el catálogo completo. Si ni así "
                       "sabes cuál es, PREGÚNTALE.)"]
 
+    from . import state_render                 # V2-884: how to read the app state lines `_live_lines` wrote
+    if state_render.any_declared(cat):
+        lines += ["", state_render.LEGEND]
+
     out = "\n".join(lines)
     if stats is not None:
         stats.update(sel_stats)
@@ -370,6 +374,9 @@ def for_prompt_split(open_ids=None, recent_ids=None, query: str = "", stats: dic
                       "uno que no ves, NO digas que no existe ni inventes un id: llama a show_widget / widget_data "
                       "con el NOMBRE tal y como él lo dijo — se resuelve contra el catálogo completo. Si ni así "
                       "sabes cuál es, PREGÚNTALE.)"]
+    from . import state_render                 # V2-884: how to read an app's state line — fixed, in the cached shelf
+    if state_render.any_declared(catalogue):
+        shelf += ["", state_render.LEGEND]
 
     wrules: dict = {}
     maxw = ""
@@ -409,8 +416,12 @@ def for_prompt_split(open_ids=None, recent_ids=None, query: str = "", stats: dic
 
 def _live_lines(cat: list[dict], opened: set[str]) -> list[str]:
     """Live items of the OPEN cards and the agenda's context — the per-turn tail `for_prompt` writes (V2-889)."""
-    from . import refs
+    from . import refs, state_render
     lines: list[str] = []
+    # V2-884: the ONE state line of each open app that declares one, digest or not — its report, never its order
+    states = [c for w in cat if str(w.get("id") or "").strip().lower() in opened and (c := state_render.clause(w.get("id")))]
+    if states:
+        lines += ["", "app state (reported):"] + [f"- {c}" for c in states]
     item_lines: list[str] = []
     for w in cat:
         wid = str(w.get("id") or "").strip().lower()
