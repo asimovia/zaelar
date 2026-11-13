@@ -185,15 +185,23 @@ def clause(app, dev=None) -> str:
         return ""
     if not r["surfaces"]:
         return f"{app}: state unreported"
-    spec, shown = decl.report_fields(decl.of(app)), r["surfaces"][:MAX_SURFACES]
-    more = len(r["surfaces"]) - len(shown)
+    spec, groups = decl.report_fields(decl.of(app)), []
+    for s in r["surfaces"]:                  # screens that report the same values are ONE clause (`app@phone+computer`)
+        key = (s["instance"], s["visible"], tuple(sorted(s["fields"].items())), tuple(s["pending"]), tuple(s["unknown"]),
+               tuple(s["facts"]))
+        next((g for g in groups if g[0] == key), None) or groups.append((key, []))
+        next(g for g in groups if g[0] == key)[1].append(s)
+    shown = [g[1] for g in groups[:MAX_SURFACES]]
+    more = len(groups) - len(shown)
     extra = f"; +{more} more" if more else ""
     left, parts = CLAUSE_MAX - len(extra) - 2 * (len(shown) - 1), []
-    words = [screens.surface(s["dev"]) or s["dev"] for s in shown]
-    for i, s in enumerate(shown):            # the first (this turn's screen) takes what it needs, the rest share
+    words = [screens.surface(s["dev"]) or s["dev"] for s in r["surfaces"]]
+    word = lambda s: (screens.surface(s["dev"]) or s["dev"]) + (          # noqa: E731 — two «computer»s: his is marked
+        "(here)" if words.count(screens.surface(s["dev"]) or s["dev"]) > 1 and s["dev"] == screens.current() else "")
+    for i, members in enumerate(shown):      # the first (this turn's screen) takes what it needs, the rest share
+        s = members[0]
         inst = s["instance"] if s["instance"] != app else app
-        here = "(here)" if words.count(words[i]) > 1 and s["dev"] == screens.current() else ""   # two «computer»s
-        head = f"{inst}@{words[i]}{here}" + ("" if s["visible"] else "(hidden)")
+        head = f"{inst}@{'+'.join(word(m) for m in members)}" + ("" if s["visible"] else "(hidden)")
         others = len(shown) - 1 - i
         room = left - others * OTHER_MIN if i == 0 else (left // (others + 1))
         parts.append(_fit(head, _bits(spec, s), list(s["facts"]), room))
@@ -201,8 +209,13 @@ def clause(app, dev=None) -> str:
     return "; ".join(parts) + extra
 
 
-def lines(apps) -> list[str]:
-    """The state lines of the open apps, in order, together ≤ `TOTAL_MAX` (what does not fit is counted, not cut)."""
+def lines(apps, named=()) -> list[str]:
+    """The state lines of the open apps, together ≤ `TOTAL_MAX` (what does not fit is counted, not cut): the apps this
+    turn NAMES first, then the ones on the turn's screen, then the rest in open order — what drops is never the app
+    the turn is about."""
+    from voice import screens
+    here, named = screens.current(), {decl.base(n) for n in named}
+    apps = sorted(apps, key=lambda a: (decl.base(a) not in named, not (here and _open_on(decl.base(a), here))))
     out, used, left = [], 0, 0
     for a in apps:
         c = clause(a)
