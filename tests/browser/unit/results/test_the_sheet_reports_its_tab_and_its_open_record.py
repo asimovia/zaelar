@@ -123,3 +123,19 @@ def test_the_rendered_sheet_says_its_tab_and_record_through_the_door(sheet, card
     deliver("results", sent)
     assert state_render.clause("results", dev=a).endswith(f': selected="{ROWS[1]["title"]}"'), \
         state_render.clause("results", dev=a)
+
+
+def test_a_record_whose_row_is_gone_is_reported_as_the_list_it_paints(sheet, card_page):
+    """Step-3 audit P2-2: the sheet on the detail of X, a new `present` replaces the rows and X is gone — the store still
+    holds `view=detail, focus=X`, the card paints the LIST, and the report said `selected="X"` (the order, A7). It
+    reports the record it painted."""
+    r, on = sheet
+    a, b = PAIRS[0]
+    on(a, b)
+    r.apply_action("detail", {"sheet": SHEET, "title": ROWS[1]["title"]})
+    data = _route_data(SHEET)
+    data["items"] = [{"title": "Taberna Nueva", "price": "20 €"}]          # the rows replaced under the open record
+    assert data.get("view") == "detail" and data.get("focus") == ROWS[1]["title"]
+    mount(card_page, "results", data, a, instance=INST)
+    sent = posts(card_page)
+    assert sent and sent[-1]["patch"] == {"tab": "results", "selected": ""}, f"the order was reported as painted: {sent}"
