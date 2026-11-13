@@ -38,6 +38,7 @@ if ROOT not in sys.path:
 from nucleo import workspace as _workspace  # noqa: E402
 
 _workspace.ensure()
+_workspace.db_wal()          # the shared db in WAL before any writer thread: a new file switched by three at once fails
 
 # The process log wears the same mask as the stored events while his `obfuscate` switch is on (V2-875, INI-063 D13):
 # one patcher over every record, never sixteen edited lines. After the workspace, since the switch lives in config/.
