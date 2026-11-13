@@ -1,6 +1,10 @@
 {
   "id": "mensajeria",
   "screens": "shared",
+  "state": {
+    "order": {"chat": "active_chat", "mail": "mailbox.open"},
+    "report": {"thread_open": {"type": "text:60", "follows": ["chat", "mail"], "rest": ""}}
+  },
   "claims_text": true,
   "size": {
     "w": 760,
