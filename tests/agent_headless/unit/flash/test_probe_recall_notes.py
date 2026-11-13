@@ -78,13 +78,13 @@ def test_recall_query_excludes_prepended_system_note(fresh_db, probe_session, mo
     # The query is monitored WHERE IT NOW TRAVELS: the budgeted guard. Spying on `build_flash_system` would still
     # pass with the contamination reintroduced, because only the composed block reaches it there.
     from nucleo.turn import recall_budget as _recall
-    _orig_start = _recall.start     # V2-903: the turn's recall starts here (beside the brief), then is delivered
+    _orig_compose = _recall.compose
 
-    def _spy_start(query, live_turns=None):
-        captured.setdefault("recall_query", query or "")
-        return _orig_start(query, live_turns)
+    async def _spy_compose(query, timings=None):
+        captured["recall_query"] = query or ""
+        return await _orig_compose(query, timings)
 
-    monkeypatch.setattr(_recall, "start", _spy_start)
+    monkeypatch.setattr(_recall, "compose", _spy_compose)
     monkeypatch.setattr(prompt_mod, "build_flash_system", _spy_build)
     monkeypatch.setattr("nucleo.llm.fast_client.FastClient", _NoNetworkFastClient)
 

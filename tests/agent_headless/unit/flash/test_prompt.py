@@ -4,7 +4,7 @@ import pytest
 from memory import api as memapi
 from memory import db as memdb
 from memory import embeddings as mememb
-from nucleo.flash import memory_cache
+from nucleo.flash import memory_cache, recall_heuristics as _rh
 from nucleo.turn.prompt import builder as prompt, live_record
 
 
@@ -57,6 +57,31 @@ def test_directive_block(fresh_db):
     system, _ = prompt.build_flash_system(directive="tutéame y sé breve")
     assert "tutéame y sé breve" in system
     assert "INSTRUCCIÓN DE ESTILO ACTIVA" in system
+
+
+@pytest.mark.parametrize("text", [
+    "where is my car",
+    "where's my car?",
+    "¿dónde está mi coche?",
+    "do you remember what I told you?",
+    "¿te acuerdas de mi cita del dentista?",
+    "what did I tell you about the meeting",
+    "recuérdame qué dije de la reunión",   # 'what I said about'
+])
+def test_needs_recall_true(text):
+    assert _rh.needs_recall(text) is True
+
+
+@pytest.mark.parametrize("text", [
+    "hola, buenos días",
+    "¿qué tal estás?",
+    "let's talk about my weekend plans",
+    "show me the clock please",
+    "cuéntame un chiste",
+    "¿me pones el tiempo en pantalla?",
+])
+def test_needs_recall_false(text):
+    assert _rh.needs_recall(text) is False
 
 
 @pytest.mark.parametrize("lang,needle", [("es", "corto o largo plazo"), ("en", "short/long-term memory")])

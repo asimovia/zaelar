@@ -276,7 +276,6 @@ real). Run the one that owns the module you changed:
 | task engine (the brain) | `pytest tests/agent_headless/e2e/task_battery` | C01–C15 over a sandbox through the headless chat: questions, resumption, settle, stop, rules, a killed worker |
 | browser extraction | `python -m tests.scrape.live.bench` (`tests/scrape/bank/pages.json`) | what the extractor gets out of recorded pages |
 | voice | `python -m tests.voice.e2e.mic.mic_selftest` · `tests/voice/bench/` | the microphone→STT path; the screen and acts questions against the real fast model |
-| turn latency | `python -m tests.voice.bench.pre_model_latency_bench` | end of his sentence → model call, ES/EN/JA, eager vs confirmed end of turn, brief and recall as fixed-delay doubles; how many prompts carried the recall |
 | prompt cost | `python -m tests.agent_headless.e2e.prompt_cost.bench_fast_model` · `…bench_tools` | tokens and latency per turn, with and without the tools |
 | personas | `python -m tests.agent_headless.harness.run` | a synthetic multi-turn dialogue scored by a judge |
 | connectors | `python -m tests.connectors.live.bench [--send]` | mail and Telegram through the card's own door on a running engine: fetch, read, search, summarise; with `--send`, one marked line to each private test contact and the read-back that proves it left |

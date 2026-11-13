@@ -84,8 +84,7 @@ def test_the_whole_brief_is_one_call(wire, monkeypatch):
     assert asked == {tb.CANVAS_KEY, tb.REQUEST_KEY, tb.ESCALATE_KEY, tb.TARGET_KEY,
                      _bd.BUILD_KEY, _sf.SURFACE_KEY, tb.WORDS_KEY, _spec.END_KEY, _search_route.SEARCH_KEY,
                      tb.NAMES_KEY, _unclear.KEY, tb.CATALOG_CLOSED_KEY,
-                     "login_only",          # V2-857 phase 8 (2.1620): the login fallback reads a pure sign-in order here
-                     "durable_memory"}, asked   # V2-903: whether the turn waits for the recall started beside it
+                     "login_only"}, asked   # V2-857 phase 8 (2.1620): the login fallback reads a pure sign-in order here
     # V2-851 F5: the catalogue over the closed cards rides the same trip (it was a late second one). V2-887 step 8:
     # the questions only ONE door reads are asked at that door, never here — the capability gap and the errand's
     # class and kind at the portal, his channel at the exit, the acts he asked at a call, a rename at its call
