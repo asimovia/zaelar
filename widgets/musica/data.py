@@ -220,7 +220,7 @@ from .player import (  # noqa: E402
     a_shuffle as _a_shuffle, a_repeat as _a_repeat, a_queue_remove as _a_queue_remove,
     a_queue_move as _a_queue_move, a_queue_clear as _a_queue_clear, a_played as _a_played)
 from .sound import player_error as _a_player_error  # noqa: E402 — V2-873: the page player refused the song
-from .sound import player_audio as _a_player_audio  # noqa: E402 — V2-812: what the page player really lets be heard
+from .sound import facts  # noqa: E402,F401 — V2-884: the facts the state door derives from the report
 
 
 # `apply_action` is a table lookup; the contract gate reads the table's keys (`widgets/validator._table_actions`).
@@ -278,7 +278,6 @@ ACTIONS = {
     "play_album": _a_play_album,
     "play_result": _a_play_result,
     "played": _a_played,
-    "player_audio": _a_player_audio,
     "player_error": _a_player_error,
 }
 

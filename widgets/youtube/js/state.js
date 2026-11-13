@@ -34,8 +34,6 @@ export const Y = {
   chBusy: "",           // "" | "refresh" | "more" | "tab" — drives the loader lines
   chSyncAsked: 0,
   newList: false,       // V2-885 — the «Nueva lista» field is open (module-lived: a repaint keeps it open)
-  // V2-884 1a — the ctx of the last render (the player's events have none of their own; a new ctx = a new mount),
-  // the facts the engine answered, the revision whose ack is pending and whether it waits for the current player.
-  // What was already REPORTED is the mount's memory (the host's reporter), never this module's.
-  ctx: null, facts: [], revSeen: "", ackTimer: null, ackWaits: false, paintHint: null, armUnlock: null, handAt: 0,
+  // V2-884 — the facts the engine answered (the protocol's own state lives in `/frontend/app/lib/player-report.js`).
+  facts: [], paintHint: null, armUnlock: null, handAt: 0,
 };
