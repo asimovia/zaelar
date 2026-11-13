@@ -3,6 +3,7 @@
     "can_back": "bool",
     "can_forward": "bool",
     "error": "str",
+    "failed": "str",
     "loading": "bool",
     "mode": "str",
     "query": "str",

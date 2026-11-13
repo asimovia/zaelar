@@ -83,6 +83,20 @@ def test_a_navigation_that_never_landed_is_not_met(browser):
     assert _run("open", {"url": "example.org"}) is not True, "the URL written before navigating is not arrival"
 
 
+def test_a_failed_navigation_is_a_fresh_outcome_that_reads_unmet(browser):
+    """V2-880 follow-up: a navigation that raised wrote `error` and left `rev` still — and a view carrying `error` is
+    one the verifier cannot read, so a failure read UNVERIFIABLE. The failure is an OUTCOME: it moves `rev`, lands
+    in `failed`, and the end state reads unmet at once."""
+    assert _run("open", {"url": "example.com"}) is True
+    before = nav.view_data()["rev"]
+    browser.fail = True
+    assert _run("open", {"url": "example.org"}) is False
+    view = nav.view_data()
+    assert view["rev"] != before and view["failed"] and not view["error"], view
+    browser.fail = False
+    assert _run("open", {"url": "example.net"}) is True, "the next landing clears the error"
+
+
 def test_an_older_store_still_answers_every_key():
     from widgets import store
     store.save(nav.WID, {"mode": "page", "url": "https://x.example", "rev": 4})
