@@ -410,6 +410,7 @@ def bill_voice_room(ctx, session) -> None:
 
 
 def _on_close(ev, *, _account_limits, _close_account_session, _emit, _proactive, _speak, boot, _typed=None) -> None:
+    _relay_bound.ear_reset()
     # V2-837 G7 — WHY the voice session closed and WHICH screen held it: the room's own close reason (a participant
     # leaving, an error, the job shutting down…), else whether it died on an error.
     _cause, _dev = "", ""

@@ -147,9 +147,9 @@ def _with_failover(pairs):
         async def _try_synthesize(self, *, tts, input_ch, conn_options, recovering=False):
             gen = super()._try_synthesize(tts=tts, input_ch=input_ch, conn_options=conn_options, recovering=recovering)
             ours = self._fallback_adapter._tts_instances
-            if not recovering and tts is ours[0] and len(ours) > 1:     # P1-4: a titular that hangs is bounded
+            if tts is ours[0] and len(ours) > 1:     # P1-4: a titular that hangs is bounded, its probe too
                 from .. import relay_bound
-                gen = relay_bound.first_audio(gen, self, relay.name_of("tts", tts))
+                gen = relay_bound.first_audio(gen, self, relay.name_of("tts", tts), probe=recovering)
             spoke = False
             try:
                 async for audio in gen:

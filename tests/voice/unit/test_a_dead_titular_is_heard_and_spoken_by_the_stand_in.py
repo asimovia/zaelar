@@ -299,6 +299,12 @@ class _Scripted(lk_tts.SynthesizeStream):
             raise APIConnectionError("connection refused")
         if self._mode == "bug":
             raise RuntimeError("a defect of ours")       # no APIError: the plugin's `error` event never fires
+        if self._mode == "hang":
+            self._mark_started()
+            await asyncio.sleep(3600)                    # connected, and mute for good
+        if self._mode.startswith("slow"):
+            self._mark_started()
+            await asyncio.sleep(float(self._mode[4:]))
         out.start_segment(segment_id="s")
         async for d in self._input_ch:
             if isinstance(d, str) and d.strip() and self._mode != "mute":
@@ -448,7 +454,8 @@ def test_the_real_plugins_refusal_is_named_in_the_switch(world, case):
     _real_inworld_against(None if case == "refused" else pay)
     causes = _alerts(said)
     assert causes and "no error reported" not in causes[0], said
-    assert ("402" in causes[0]) if case == "handshake_402" else ("onnect" in causes[0]), causes
+    assert ("402" in causes[0]) if case == "handshake_402" else ("refused" in causes[0]), causes
+    assert "127.0.0.1" not in causes[0], "the cause says what happened, never the endpoint (P3)"
 
 
 # ── a titular that HANGS (P1-4) ───────────────────────────────────────────────────────────────────────────────────
@@ -660,3 +667,54 @@ def test_in_shadow_a_titular_mute_mid_answer_is_said_once(world, monkeypatch, de
     assert len(would) == (1 if says else 0), would
     if says:
         assert "mid-answer" in would[0][1]
+
+
+# ── P3: the ear's count, the probe's bound, the armed cooldown ────────────────────────────────────────────────────
+def _ear_events() -> list:
+    return [e for e in EMITTED if e[0] == "provider" and e[2].get("extra", {}).get("cat") == "stt"]
+
+
+def test_a_stray_word_after_a_heard_span_is_no_strike_and_a_new_session_starts_counting_again(world, monkeypatch):
+    import time
+    rb = _bound(monkeypatch, stt_span_s=0.01, stt_answer_s=0.02, stt_strikes=2)
+    monkeypatch.setattr(rb, "_EAR", rb._Ear())
+    for _ in range(2):                                   # a healthy ear: a word inside the span, then a stray one late
+        rb.ear_state("speaking")
+        time.sleep(0.02)
+        rb.ear_heard()
+        rb.ear_state("listening")
+        time.sleep(0.05)
+        rb.ear_heard()
+    rb.ear_state("speaking")
+    assert not _ear_events(), "a span the ear answered was struck because a later word overwrote the clock"
+    time.sleep(0.02)
+    rb.ear_state("listening")                            # one silent span …
+    time.sleep(0.05)
+    rb.ear_state("speaking")                             # … judged: one strike
+    rb.ear_reset()                                       # the session ends
+    rb.ear_state("speaking")
+    time.sleep(0.02)
+    rb.ear_state("listening")                            # a silent span in the NEXT session
+    time.sleep(0.05)
+    rb.ear_state("speaking")
+    assert not _ear_events(), "two silent spans in two sessions are not «in a row»"
+
+
+def test_the_probe_of_a_hung_titular_is_bounded_so_the_next_one_runs(world, monkeypatch):
+    """Refused twice, then hung on the probe: unbounded, that probe held every later probe off and the titular never
+    came back; bounded, the next stream's probe finds it healthy."""
+    said, _ = world
+    _bound(monkeypatch, mode="shadow", tts_first_byte_s=0.2, tts_ready_s=0.2)
+    served = _sentences(["refuse", "refuse", "hang"], 4, said)
+    assert served[-1] == "titular", served
+
+
+def test_an_armed_bound_cools_down_after_its_switches(world, monkeypatch):
+    """Armed, a titular slow on every live answer and fast on every probe would flap: after `armed_jumps` switches in
+    the window it is only said, and the titular keeps the answer."""
+    said, _ = world
+    rb = _bound(monkeypatch, mode="armed", tts_first_byte_s=0.3, tts_ready_s=5.0, armed_jumps=2)
+    monkeypatch.setattr(rb, "_JUMPS", [])
+    served = _sentences(["slow0.6", "ok", "slow0.6", "ok", "slow0.6", "ok"], 3, said)
+    assert served[:2] == ["stand-in", "stand-in"] and served[2] == "titular", served
+    assert any("cooling down" in e[1] for e in EMITTED if e[0] == "provider")
