@@ -176,9 +176,11 @@ def clause(app, dev=None) -> str:
     more = len(r["surfaces"]) - len(shown)
     extra = f"; +{more} more" if more else ""
     left, parts = CLAUSE_MAX - len(extra) - 2 * (len(shown) - 1), []
+    words = [screens.surface(s["dev"]) or s["dev"] for s in shown]
     for i, s in enumerate(shown):            # the first (this turn's screen) takes what it needs, the rest share
         inst = s["instance"] if s["instance"] != app else app
-        head = f"{inst}@{screens.surface(s['dev']) or s['dev']}" + ("" if s["visible"] else "(hidden)")
+        here = "(here)" if words.count(words[i]) > 1 and s["dev"] == screens.current() else ""   # two «computer»s
+        head = f"{inst}@{words[i]}{here}" + ("" if s["visible"] else "(hidden)")
         others = len(shown) - 1 - i
         room = left - others * OTHER_MIN if i == 0 else (left // (others + 1))
         parts.append(_fit(head, _bits(spec, s), list(s["facts"]), room))

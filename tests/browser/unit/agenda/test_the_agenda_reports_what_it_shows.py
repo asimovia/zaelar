@@ -136,3 +136,25 @@ def test_the_rendered_card_says_its_face_through_the_door(agenda, card_page):
     click(card_page, ".agsecb[data-sec='tasks']")
     deliver("agenda", posts(card_page))
     assert state_render.clause("agenda", dev=a).endswith(": view=tasks"), state_render.clause("agenda", dev=a)
+
+
+def test_two_computers_mark_the_one_he_speaks_from_and_a_list_never_adopts(agenda):
+    """Step-3 audit P3: two desktops both read `agenda@computer` and only the order told them apart — the turn's screen
+    is marked `(here)` when the word is shared (a computer and a phone need no mark). And `adopt` over a `follows` list
+    is refused by the validator (one order key to adopt into)."""
+    _ag, on = agenda
+    a, b = PAIRS[1]
+    on(a, b)
+    _say(a, 1, view="week", date_shown="2026-11-09")
+    _say(b, 1, view="day", date_shown="2026-11-12")
+    token = screens.ORIGIN.set(b)
+    try:
+        line = state_render.clause("agenda")
+    finally:
+        screens.ORIGIN.reset(token)
+    assert line.startswith("agenda@computer(here): view=day") and line.count("(here)") == 1, line
+    on(*PAIRS[0])
+    assert "(here)" not in state_render.clause("agenda"), "a computer and a phone were marked"
+    bad = {"state": {"order": {"a": "a", "b": "b"}, "report": {"x": {"type": "bool", "follows": ["a", "b"],
+                                                                     "adopt": "act"}}}}
+    assert "adopt follows ONE order key" in state_decl.problem(bad)
