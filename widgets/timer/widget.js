@@ -1,6 +1,6 @@
 // Timer/countdown widget — large, crystal-clear countdown (Ricard's "oven" timer).
 // The brain sets time through the backend; the widget renders the live countdown.
-// Persists in browser localStorage so it survives refreshes.
+// The store is the truth: a reload or a voice order repaints from the server's own count.
 
 function injectStyles() {
   if (document.getElementById("hb-timer-css")) return;
@@ -99,62 +99,21 @@ function fmtDigitsHTML(parts, showSecsFlag) {
   return html;
 }
 
-// ── localStorage backup (survives page refreshes, syncs with server on render) ──
-
-function lsKey() { return "hb_timer_state"; }
-
-function lsSave(data) {
-  try { localStorage.setItem(lsKey(), JSON.stringify({
-    remaining: data.remaining,
-    running: data.running,
-    target_seconds: data.target_seconds,
-    label: data.label,
-    saved_at: Date.now()
-  })); } catch(_) {}
-}
-
-function lsLoad() {
-  try {
-    const raw = localStorage.getItem(lsKey());
-    if (!raw) return null;
-    const d = JSON.parse(raw);
-    const elapsed = (Date.now() - (d.saved_at || Date.now())) / 1000;
-    if (d.running) d.remaining = Math.max(0, d.remaining - elapsed);
-    return d;
-  } catch(_) { return null; }
-}
-
-function lsClear() { try { localStorage.removeItem(lsKey()); } catch(_) {} }
-
-// ── Poll the backend for fresh data ──
-function fetchData() {
-  // The data comes from the server on the initial render call. We keep ticking client-side.
-  // If we ever need a mid-life refresh, this could fetch via SSE or a simple GET.
-  // For now, the initial data + client tick + localStorage is enough.
-  return null;
-}
+// The STORE is the truth (V2-884 step-5 audit): the server computes what remains from its own clock on every read, so
+// a reload shows the right count with no copy in the browser — and a voice pause or cancel lands. A localStorage
+// backup used to win over the pushed data and kept counting a timer he had paused or cancelled.
 
 export function render(el, data, ctx) {
   injectStyles();
   if (el._timerTick) { clearInterval(el._timerTick); el._timerTick = null; }
   if (el._finishTimeout) { clearTimeout(el._finishTimeout); el._finishTimeout = null; }
 
-  // Merge server data + localStorage backup
   data = data || {};
   let remaining = data.remaining !== undefined ? data.remaining : 0;
   let running = !!data.running;
   let target = data.target_seconds !== undefined ? data.target_seconds : 0;
   let label = data.label || "";
   let finished = !!data.finished;
-
-  // If server says nothing running but localStorage has a running timer, use it
-  const ls = lsLoad();
-  if ((!target || !running) && ls && ls.remaining > 0 && !finished) {
-    remaining = Math.round(ls.remaining);
-    running = ls.running;
-    target = target || ls.target_seconds || remaining;
-    label = label || ls.label || "";
-  }
 
   // Build DOM
   el.className = "hb-timer";
@@ -185,8 +144,6 @@ export function render(el, data, ctx) {
   // ── State ──
   let state = { remaining, running, target, label, finished };
 
-  // Save initial state
-  if (state.remaining > 0) lsSave(state);
 
   function renderDisplay() {
     const s = state.remaining;
@@ -203,7 +160,6 @@ export function render(el, data, ctx) {
       state.running = false;
       state.finished = true;
       renderActions();
-      lsClear();
       reportPhase(ctx, state);
       return;
     }
@@ -253,7 +209,6 @@ export function render(el, data, ctx) {
       pause.addEventListener("click", () => {
         ctx.action("pause", {});
         state.running = false;
-        lsSave(state);
       });
       acts.appendChild(pause);
     } else {
@@ -263,7 +218,6 @@ export function render(el, data, ctx) {
         ctx.action("start", {});
         state.running = true;
         // Recalculate started_at from remaining
-        lsSave(state);
       });
       acts.appendChild(start);
     }
@@ -275,7 +229,6 @@ export function render(el, data, ctx) {
       state.running = false;
       state.target = 0;
       state.finished = false;
-      lsClear();
       renderDisplay();
     });
     acts.appendChild(reset);
@@ -293,7 +246,6 @@ export function render(el, data, ctx) {
         return;
       }
       state.remaining = Math.max(0, state.remaining - 1);
-      lsSave(state);
       if (state.remaining <= 0) {
         state.finished = true;
         state.running = false;
@@ -308,8 +260,8 @@ export function render(el, data, ctx) {
   }
 }
 
-// V2-884 — what the card SHOWS, through the host's one door: its own countdown runs here (and a page restored from
-// localStorage can differ from the store), so the phase is the screen's — finished the second it reaches zero.
+// V2-884 — what the card SHOWS, through the host's one door: its own countdown runs here between pushes, so the phase
+// is the screen's — finished the second it reaches zero.
 function reportPhase(ctx, st){
   if(!ctx || typeof ctx.state !== "function") return;
   const phase = st.finished ? "finished" : st.remaining > 0 ? (st.running ? "running" : "paused") : "idle";
