@@ -37,7 +37,7 @@ def _done_line(wid: str, res: dict) -> str:
     n = res.get("removed") if isinstance(res.get("removed"), int) else res.get("count")
     if isinstance(n, int) and n > 0:
         return _langs.words("data_done_count", default="Done — {n} items.").replace("{n}", str(n))
-    return str(getattr(_langs.current_language(), "data_ack", "") or "Done.")
+    return str(getattr(_langs.current_language(), "data_ack", "") or _langs.spec(_langs.DEFAULT_LANG).data_ack)
 
 
 async def still_running(wid: str, action: str, res: dict, *, seal=None, row: str = "") -> dict:

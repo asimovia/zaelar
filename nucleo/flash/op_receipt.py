@@ -146,13 +146,15 @@ def spoken_line(wid: str, action: str, res, outcome: str, lang) -> str:
     said = _rl.speakable(wid, res).strip()
     if said:
         return said
+    from i18n import langs as _lg                          # his language's line, else the base language's (3.187)
+    base = _lg.spec(_lg.DEFAULT_LANG)
     if outcome == "ok":
-        return str(getattr(lang, "data_ack", "") or "Hecho.")
+        return str(getattr(lang, "data_ack", "") or base.data_ack)
     if outcome == "failed":
         # demo pass 134: «I couldn't get that done. falta `text` en forward: … vuelve a llamar a forward» — the
         # model's retry instruction, in Spanish, read to him. The base line is what he hears.
-        return str(getattr(lang, "op_failed", "") or "No he podido completarlo.")
-    return str(getattr(lang, "op_unknown", "") or "Lo he lanzado, pero no he podido confirmar que quedara hecho.")
+        return str(getattr(lang, "op_failed", "") or base.op_failed)
+    return str(getattr(lang, "op_unknown", "") or base.op_unknown)
 
 
 async def settle(wid: str, action: str, res, *, before: str, row: str = "") -> str:
