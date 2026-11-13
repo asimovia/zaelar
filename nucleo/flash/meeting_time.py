@@ -125,29 +125,18 @@ def _meetings() -> list:
         return []
 
 
-def align_payload(wid: str, action: str, payload: dict) -> tuple[dict, str]:
-    """The payload a messaging send should run with. `(payload, why)`; `why` is empty when nothing changed."""
-    try:
-        if str(wid or "").split("::")[0].strip().lower() != "mensajeria" or str(action or "") not in _SEND_ACTIONS:
-            return payload, ""
-        text = str((payload or {}).get("text") or "")
-        if not text:
-            return payload, ""
-        new, why = align(text, _recent_ops(), _meetings())
-        if not why:
-            return payload, ""
-        return {**payload, "text": new}, why
-    except Exception:  # noqa: BLE001 — never take down a send over a courtesy
-        return payload, ""
-
-
 def at_composition(wid: str, action: str, payload: dict, said: str, emit=None) -> dict:
-    """V2-903 P1-A: the alignment runs ONCE, where the send is held — before it is asked, shown or run, so what he sees
-    is what leaves; never on HIS words (`send_task.his_text`), and never again after his yes."""
-    from nucleo.request import event, send_task
-    if send_task.his_text((payload or {}).get("text"), said):
+    """V2-903 P1-A: a messaging send's times follow the agenda ONCE, where it is held — before it is asked, shown or run,
+    so what he sees is what leaves; never on HIS words (`send_task.his_text`), never again after his yes."""
+    try:
+        from nucleo.request import event, send_task
+        text = str((payload or {}).get("text") or "")
+        if (str(wid or "").split("::")[0].strip().lower() != "mensajeria" or str(action or "") not in _SEND_ACTIONS
+                or not text or send_task.his_text(text, said)):
+            return payload
+        new, why = align(text, _recent_ops(), _meetings())
+        if why:
+            event(emit, "🕒 the message's time aligned with the agenda", why, {"cat": "flash", "id": wid, "action": action})
+        return {**payload, "text": new} if why else payload
+    except Exception:  # noqa: BLE001 — never take down a send over a courtesy
         return payload
-    aligned, why = align_payload(wid, action, payload)
-    if why:
-        event(emit, "🕒 the message's time aligned with the agenda", why, {"cat": "flash", "id": wid, "action": action})
-    return aligned

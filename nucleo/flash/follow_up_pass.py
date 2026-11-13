@@ -149,6 +149,7 @@ class Hold:
             return
         await self._release_unclear(model_calls, emit)
         self.stop_words, self.stop_pending = self.stop_words + "".join(self.stop_pending), []
+        self._release_unstopped(model_calls, emit)
         text, self.held[:] = "".join(self.held), []
         if text and not any(_card(w) == self.card for w, _a in ran_ops or ()):
             # no op of the stream touched the held card: its answer comes later (the verdict's completion), so these
@@ -162,6 +163,15 @@ class Hold:
                  role="system", text=text[:160], extra={"cat": "flash", "card": self.card})
         elif text:
             self.send(text)
+
+    def _release_unstopped(self, model_calls, emit) -> None:
+        """E3 b136: held for a stop «in play» that no door can run, an ack («Done.») stood in and they were dropped."""
+        if self.stop_words and not stop_may_run(self.brief, model_calls):
+            words, self.stop_words = self.stop_words, ""
+            emit("brain", "🗣 held words released — no stop can run this turn", role="system", text=words[:160],
+                 extra={"cat": "flash", "kind_diag": "stop_words_released"})
+            self.card = holds(self.brief) if self.card is None else self.card
+            (self.held.append if self.card else self.send)(words)
 
     async def _release_routed(self, emit) -> bool:
         """The stream ended: the turn's decision settles (its held calls decided, waiting what is left of the wait).
@@ -216,6 +226,13 @@ def drop_held(hold: "Hold | None", emit=None, why: str = "") -> int:
             emit("brain", "🗑 the stream failed — what waited for the verdict is dropped", role="system",
                  extra={"cat": "flash", "why": why, "dropped": n})
     return n
+
+
+def stop_may_run(brief, model_calls) -> bool:
+    """Can a stop still RUN after the stream? Only a `stop_worker` call or a SURE verdict that ends (C18, `stop.repair`)."""
+    from nucleo.request import stop as _stop, stop_row as _row
+    return any(str((c or {}).get("name") or "") == "stop_worker" for c in model_calls or ()) or (
+        (v := _stop.verdict(brief)) == _row.DECLINE_STEP or _stop.ends(v))
 
 
 def flush(hold: "Hold | None", spoken, emit, spoken_text: str = "") -> str:
