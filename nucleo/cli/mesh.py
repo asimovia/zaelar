@@ -60,11 +60,15 @@ def main(argv: list[str] | None = None) -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     p_find = sub.add_parser("find", help="quién puede servir este encargo (no lo pide)")
-    p_find.add_argument("errand")
+    p_find.add_argument("errand", nargs="?", default="")
     p_find.add_argument("--limit", type=int, default=5)
+    # One surface for the three verbs: `call` names his words with `--errand`, and a worker that learned that shape
+    # writes it on `find`/`serve` too — the flag is the same field as the positional, never a second meaning.
+    p_find.add_argument("--errand", dest="errand_flag", default="")
 
     p_serve = sub.add_parser("serve", help="buscar Y pedirlo, reutilizando la ruta ya aprendida")
-    p_serve.add_argument("errand")
+    p_serve.add_argument("errand", nargs="?", default="")
+    p_serve.add_argument("--errand", dest="errand_flag", default="")
     p_serve.add_argument("--prompt", default="", help="el encargo con FECHAS ABSOLUTAS y todos los datos")
     # V2-487 · repetible: `--field city=New York --field country_code=US`. Un agente que rechaza el texto libre
     # contesta 400 diciendo QUÉ campos quiere (`agent_asks`); esto es por dónde se le vuelve a preguntar. Aquí
@@ -78,6 +82,10 @@ def main(argv: list[str] | None = None) -> int:
     _converse.add_parsers(sub)
 
     a = ap.parse_args(argv)
+    if a.cmd in ("find", "serve"):
+        a.errand = (a.errand or getattr(a, "errand_flag", "") or "").strip()
+        if not a.errand:
+            ap.error("the errand is required: hbmesh %s \"<errand>\"" % a.cmd)
     try:
         from nucleo import mesh_agents
     except Exception as e:  # noqa: BLE001
