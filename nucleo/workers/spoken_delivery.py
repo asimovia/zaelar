@@ -94,7 +94,7 @@ async def line(goal: str, summary: str, *, ok: bool = True, verdict: str = "", t
                 FastClient().complete(_messages(goal, summary, ok, verdict), spec=spec, max_tokens=160, no_thinking=True),
                 timeout=timeout)
             said = " ".join(str(out or "").split())
-            from nucleo.flash import outgoing_lang as _ol   # «Ya está en tu pantalla…» to an English session (V2-781)
+            from nucleo.flash import spoken_lang as _ol   # «Ya está en tu pantalla…» to an English session (V2-781)
             if said and _ol.foreign_to_session(said):
                 said = await _ol.said_in_session_language(said)
             if said:

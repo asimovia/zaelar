@@ -269,10 +269,11 @@ async def dispatch_and_report(wid: str, action_name: str, payload: dict, *, seal
         row, _dup = _ia.claim(wid, action_name, payload or {})
         if _dup:
             return {"ok": True, "already": True, "row": row}    # his answer already ran exactly this act
-    from nucleo.flash import outgoing_lang as _olang, worker_note_relay as _relay
+    from nucleo.flash import worker_note_relay as _relay
     if (_to := _relay.relay(wid, action_name, text)):    # a worker's own note: his words go to it (2026-10-14)
         return {"ok": True, "relayed_to": _to}
-    payload = await _olang.in_session_language(wid, action_name, payload or {})   # demo pass 106, E3
+    # V2-903 P1-1 — what reaches the card's door is what he approved or dictated, byte for byte: nothing rewrites
+    # an act between his yes and its exit (CRIT-T2e). The language is the composer's job, before anything is shown.
     # V2-743 — the witness is read BEFORE the op, and only on the `receipt` (confirmed irreversible) path.
     before = await _receipt.read_signature(wid) if receipt else ""
     # V2-776 L1 — the declared postcondition (`done_when`) is opened BEFORE the op, attested after.
