@@ -93,7 +93,7 @@ def _figures(cur: dict, now: float) -> dict:
         "heart_rate": last_hr[1] if last_hr and now - last_hr[0] <= HR_RECENT_S else None,
         "hr_avg": round(sum(hrs) / len(hrs)) if hrs else None,
         "hr_max": max(hrs) if hrs else None,
-        "climb_m": round(cur["climb_m"]) if cur["last_alt"] is not None else None,   # no barometer: no climb, not 0
+        "climb_m": round(cur["climb_m"]) if cur["last_alt"] is not None else None,   # without a barometer: climb unknown (None)
         "moving": cur["last_mode"],
         "has_location": bool(cur["track"]),
         "has_heart_rate": bool(cur["hr"]),
