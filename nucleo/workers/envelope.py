@@ -25,7 +25,7 @@ import time
 
 from loguru import logger
 
-from nucleo.pulse import budgets
+from nucleo.pulse import budgets, loop_lag
 
 _HERE = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "config")
 _DEFAULTS = {"worker_nice": 10, "admit_free_ratio": 0.2, "pause_free_ratio": 0.1, "voice_reserve_mb": 768,
@@ -86,8 +86,28 @@ def admits(total: int, available: int, pol: dict | None = None) -> bool:
     return available >= floor(total, pol)
 
 
+def pressure_floor(total: int, pol: dict | None = None) -> float:
+    """Free memory under which the host is SHORT — the band the ladder and the watchdog open on (`budgets`)."""
+    return budgets.free_floor_mb(total, pol := pol or policy(), pressure=float(pol["pause_free_ratio"])) * 2 ** 20
+
+
+def pressure_band(total: int, pol: dict | None = None) -> tuple[float, float]:
+    """`(opens, closes)`: SHORT under the pressure floor, back only over it × `pressure_band_ratio`, never over the
+    admission floor — the one band the ladder and the watchdog answer to (a 2-3 GB laptop is not short for ever)."""
+    pol = pol or policy()
+    opens = pressure_floor(total, pol)
+    return opens, min(floor(total, pol), opens * float(pol.get("pressure_band_ratio", 2.0)))
+
+
 def under_pressure(total: int, available: int, pol: dict | None = None) -> bool:
-    return available < budgets.free_floor_mb(total, pol := pol or policy(), pressure=float(pol["pause_free_ratio"])) * 2 ** 20
+    return available < pressure_floor(total, pol)
+
+
+def host_stalled(pol: dict | None = None) -> bool:
+    """The body loop stopped inside the last `loop_hold_s`: a host that pages shows it there, not in «available»
+    (macOS keeps inactive pages until the end), so a new worker waits for the loop, not only for memory."""
+    hold = float((pol or policy()).get("loop_hold_s", 0) or 0)
+    return hold > 0 and loop_lag.stalled_since(mono=time.monotonic() - hold) > 0
 
 
 def preexec(also=None):
@@ -135,11 +155,14 @@ def released(key) -> None:
 
 
 def reason() -> str:
-    """Why a new worker cannot start NOW — `waiting_room` (under the memory floor), `waiting_voice` (a shed held),
+    """Why a new worker cannot start NOW — `waiting_room` (under the memory floor), `waiting_host` (the body loop
+    stalled within `loop_hold_s`), `waiting_voice` (a shed held),
     `queued_behind` (the worker admitted before it is not running yet) — or "" when it can. Memory is named only
     when `admits()` is false (V2-867 T590: a 60 s «waiting for free memory» was a voice shed on a 70 % free host)."""
     if not admits(*measured()):
         return "waiting_room"
+    if host_stalled():
+        return "waiting_host"
     if shedding():
         return "waiting_voice"
     if not settled():

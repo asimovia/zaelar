@@ -201,3 +201,25 @@ def test_the_machine_notice_is_said_once_per_window_not_once_per_episode(world, 
     ratio["r"] = 0.3
     wd.tick(_Frozen(), now=1760.0)
     assert world["events"][-1][0] == "engine_shedding"
+
+
+def test_a_roomy_laptop_closes_its_episode_inside_the_band(world, monkeypatch):
+    """2026-11-13 audit: on a 48 GB laptop the episode opened under the pressure floor (~1.2 GB) and closed only over the
+    ADMISSION floor (~3.4 GB) — one sitting at 2-3 GB kept it open, holding and pausing, for ever. It closes over the
+    band's top (`envelope.pressure_band`), the ladder's. Disarm (seen red): the closing side back to `admits()`."""
+    from nucleo.workers import envelope
+    monkeypatch.delenv("ZAELAR_SUPERVISED", raising=False)
+    monkeypatch.setattr(envelope, "policy", _declared)
+    frees = iter([0.9, 2.6, 0.9])
+    monkeypatch.setattr(envelope, "measured", lambda: (48 * GB, int(next(frees) * GB)))
+    seen = []
+    for i in range(3):
+        wd._state["beat"] = 1000.0 + 2 * i
+        seen.append(wd.tick(_Frozen(), now=1000.0 + 2 * i))
+    assert seen == ["shed", "recovered", "shed"], seen
+
+
+def _declared():
+    import json
+    from pathlib import Path
+    return json.loads((Path(__file__).resolve().parents[4] / "config/resources.default.json").read_text())

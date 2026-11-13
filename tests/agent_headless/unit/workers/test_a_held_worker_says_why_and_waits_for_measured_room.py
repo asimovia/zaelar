@@ -6,10 +6,11 @@ only words the wait had were the memory ones. The class, as mechanism:
   · the wait names its reason: `waiting_room` only while `admits()` is false, `waiting_voice` for a shed (T590);
   · a shed names its source and ends when THAT source recovers; another source's hold stands (T591);
   · there is no deadline start, and the next worker is measured only once the previous one RUNS (T592/T593);
-  · the floor is the larger of the ratio and the voice's absolute reserve (T593).
+  · the floor is the larger of the ratio and the voice's absolute reserve (T593);
+  · a body loop that stalled within `loop_hold_s` holds it as the host's (`waiting_host`, 2026-11-13 audit).
 
 Disarms (each seen red): the reason fixed to `waiting_room`; `unshed` clearing every source; the admitted worker not
-registered (no settle gate); the floor reduced to the ratio alone.
+registered (no settle gate); the floor reduced to the ratio alone; the `host_stalled()` check dropped.
 """
 from __future__ import annotations
 
@@ -143,3 +144,22 @@ def test_the_waiting_row_says_the_reason_it_was_given(monkeypatch):
             ds._say_held(d, "1", why)
     assert phases == ["waiting_voice", "waiting_room", "queued",
                       "waiting_voice", "queued_behind", "queued_behind"], phases
+
+
+def test_a_host_whose_loop_stalls_holds_the_worker_and_says_so(monkeypatch):
+    """2026-11-13 audit: a laptop paging hard (swap 41.8/43 GB, the body loop stopped up to 19 s) still showed 4.7 GB
+    «available» — macOS keeps inactive pages to the end — and the floor admitted. The loop is where it shows: a stall
+    inside `loop_hold_s` holds a new worker with its own reason; an older one, or no window declared, holds nothing.
+    Disarm (seen red): drop the `host_stalled()` check from `envelope.reason`."""
+    import time
+    from collections import deque
+    from nucleo.pulse import loop_lag
+    monkeypatch.setattr(envelope, "measured", lambda: (48 * GB, 20 * GB))      # room by any floor: memory is fine
+    monkeypatch.setattr(envelope, "policy", lambda: {**POL, "loop_hold_s": 60})
+    monkeypatch.setitem(loop_lag._state, "stalls", deque([(time.monotonic() - 10, time.time() - 10, 4.0, "host")]))
+    assert envelope.reason() == "waiting_host"
+    monkeypatch.setitem(loop_lag._state, "stalls", deque([(time.monotonic() - 300, time.time() - 300, 4.0, "host")]))
+    assert envelope.reason() == "", "a stall older than the window held the worker"
+    monkeypatch.setitem(loop_lag._state, "stalls", deque([(time.monotonic() - 10, time.time() - 10, 4.0, "host")]))
+    monkeypatch.setattr(envelope, "policy", lambda: dict(POL))
+    assert envelope.reason() == "", "no declared window holds nothing"

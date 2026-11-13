@@ -62,10 +62,11 @@ def reading() -> dict:
     except Exception as _swallowed:  # noqa: BLE001
         logger.debug(f"{__name__}: {_swallowed!r}")   # said, never silent (the ratchet)
     beat = _loop_beat()                     # E0: the body's own loop stalls, named by whose they were (E3)
-    return {"free_mb": avail / 2 ** 20, "floor_mb": envelope.floor(total, pol) / 2 ** 20,
+    short, back = envelope.pressure_band(total, pol)   # the pressure band, never the admission floor (2026-11-13 audit)
+    return {"free_mb": avail / 2 ** 20, "floor_mb": short / 2 ** 20, "release_mb": back / 2 ** 20,
             "engine_mb": round(engine, 1), "budget_mb": budget, "lag_bound_s": loop_lag.bound_s(),
             "cause": shed_ladder.cause(engine, budget, beat["engine"], beat["host"], beat["unknown"],
-                                       avail < envelope.floor(total, pol)),
+                                       avail < short),
             "loop_lag_s": beat["loop_lag_s"], "loop_lag_now_s": beat["loop_lag_now_s"]}
 
 

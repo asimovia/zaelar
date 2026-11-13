@@ -13,8 +13,11 @@ The pressure was the host's (a 31.7 GB local model resident), not ours, and the 
   (d) the hands move what they name and undo only their own: the hold is the ladder's own source, released by the
       ladder; the background hold stops the ticks and lets them run again.
 
+  (e) the reading hands the ladder the PRESSURE band (`envelope.pressure_band`), never the admission floor.
+
 Disarms (each seen red): `self.engaged.pop(0)` instead of `pop()` in `Ladder.step` → (b); drop the `recovered()`
-margin (release as soon as pressure ends) → (b) flaps; `return None` for `cause == "machine"` → (a).
+margin (release as soon as pressure ends) → (b) flaps; `return None` for `cause == "machine"` → (a);
+`reading()` back to the admission floor → (e).
 """
 from __future__ import annotations
 
@@ -105,3 +108,26 @@ def test_one_beat_reads_moves_and_says(monkeypatch):
     assert act["engage"] == "trim_caches" and act["did"].startswith("gc ")
     assert said and said[0][0] == "shed_ladder" and said[0][2]["cause"] == "machine"
     A._L["ladder"] = None
+
+
+def test_the_ladder_answers_to_the_pressure_band_never_the_admission_floor(monkeypatch):
+    """2026-11-13 audit: the reading handed the ladder the ADMISSION floor (3.4 GB on a 48 GB laptop), so at 3.3 GB free
+    four rungs fell in four beats — the browser closed — on a host that was not short. The reading carries the PRESSURE
+    band (`envelope.pressure_band`): opens under the pressure floor, releases over its top.
+    Disarm (seen red): `reading()` back to `envelope.floor` for `floor_mb`."""
+    from collections import deque
+    from nucleo.pulse import loop_lag, shed_actuators as A
+    from nucleo.workers import envelope
+    GB = 2 ** 30
+    monkeypatch.setitem(loop_lag._state, "stalls", deque())
+    monkeypatch.setattr(envelope, "measured", lambda: (48 * GB, int(3.3 * GB)))
+    r = A.reading()
+    opens, closes = envelope.pressure_band(48 * GB)
+    assert r["floor_mb"] == opens / 2 ** 20 < envelope.floor(48 * GB) / 2 ** 20, r
+    assert r["release_mb"] == closes / 2 ** 20 <= envelope.floor(48 * GB) / 2 ** 20, r
+    assert not SL.pressure(r), "3.3 GB free on a 48 GB laptop engaged the ladder"
+    monkeypatch.setattr(envelope, "measured", lambda: (48 * GB, int(0.9 * GB)))
+    assert SL.pressure(A.reading()), "0.9 GB free is short and the ladder stayed up"
+    lad = SL.Ladder(rungs=("hold_workers",), engaged=["hold_workers"])
+    assert lad.step({**r, "free_mb": closes / 2 ** 20 - 1}) is None and lad.step({**r, "free_mb": closes / 2 ** 20}) == {
+        "release": "hold_workers", "depth": 0}, "the ladder does not release at the band's top"

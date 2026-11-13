@@ -49,6 +49,8 @@ def free_floor_mb(total_bytes: int, pol: dict | None = None, which: str | None =
     reserve, cap = float(ff.get("mb", 0)), float(ratio) * total_bytes / 2 ** 20
     if not ff.get(key):
         return cap if pressure is not None else max(cap, reserve)
+    if unknown := [p for p in ff[key] if not isinstance(table(pol, which).get(str(p)), dict)]:
+        raise ValueError(f"free_floor.{key} names no declared piece: {unknown}")   # a typo never lowers the floor
     need = sum(budget(str(p), pol, which)["ceiling_mb"] for p in ff[key]) + reserve
     return min(need, cap) if pressure is not None else max(reserve, min(need, cap))
 
