@@ -40,3 +40,18 @@ def test_a_well_formed_call_still_runs(monkeypatch):
     with redirect_stdout(out):
         assert mesh_cli.main(["find", "warm trip to Puerto Vallarta"]) == 0
     assert seen["errand"] == "warm trip to Puerto Vallarta"
+
+
+def test_errand_flag_is_the_same_field_on_find_and_serve(monkeypatch):
+    """`call` names his words with `--errand`; a worker that learned that shape writes it on `find`/`serve` too.
+    The flag is the positional under another spelling — never a parse error that loses the round."""
+    seen = {}
+    import types
+    fake = types.SimpleNamespace(find=lambda errand, limit=5: seen.update(errand=errand) or {"agents": [], "intent": "x"})
+    monkeypatch.setitem(__import__("sys").modules, "nucleo.mesh_agents", fake)
+    out = io.StringIO()
+    with redirect_stdout(out):
+        assert mesh_cli.main(["find", "--errand", "a warm five-day trip"]) == 0
+    assert seen["errand"] == "a warm five-day trip"
+    got = _misuse(["find"])
+    assert got["ok"] is False
