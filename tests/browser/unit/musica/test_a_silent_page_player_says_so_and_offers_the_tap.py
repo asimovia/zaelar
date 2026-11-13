@@ -190,3 +190,56 @@ def test_a_message_from_another_frame_is_not_the_current_player(_page):
           {event: 'infoDelivery', id: 'hb-musica', info: {playerState: 1, muted: false}})})); }""")
     _page.wait_for_timeout(50)
     assert len(_page.evaluate("() => window.__states")) == n, "a replaced player's queued message spoke for the new one"
+
+
+_ECHO = ("<html><body><script>window.addEventListener('message', (e) => parent.postMessage(JSON.stringify("
+         "{id: 'probe', data: e.data}), '*'));</script></body></html>")
+
+
+def _mount_echoing(page, data):
+    """The card mounted with a page player whose frame answers every command it gets back to the page, so a test sees
+    what a tap sent (the frame is routed before it loads)."""
+    page.route("**/*youtube-nocookie*/**", lambda r: r.fulfill(status=200, content_type="text/html", body=_ECHO))
+    _mount(page, data)
+    page.evaluate("""() => { window.__echo = []; window.addEventListener('message', (e) => { try {
+        const d = JSON.parse(e.data); if (d.id === 'probe') window.__echo.push(JSON.parse(d.data).func); } catch (_) {} }); }""")
+    page.wait_for_timeout(2900)                         # past the player's own start-up nudges (`wake`, 1.2 s and 2.6 s)
+    page.evaluate("() => { window.__echo = []; }")
+    assert page.evaluate("() => { const f = document.querySelector('iframe.hb-mus2-frame'); "
+                         "f.contentWindow.postMessage(JSON.stringify({func: 'probe'}), '*'); return true; }")
+    page.wait_for_timeout(200)
+    assert page.evaluate("() => window.__echo.length") == 1, "the echoing frame did not load"
+
+
+def _tap_sends(page) -> list:
+    page.evaluate("() => { window.__echo = []; }")
+    page.mouse.click(5, 5)
+    page.wait_for_timeout(300)
+    return page.evaluate("() => window.__echo")
+
+
+def test_the_gesture_unlock_ends_with_the_fact(_page):
+    """Players audit P2-3: the unlock stayed armed after the sound came back; his next click anywhere played the song a
+    voice «pause» had stopped. It is armed while the fact holds, and a tap never starts what the order paused."""
+    _mount_echoing(_page, _data())
+    _page.evaluate("() => { window.__facts = ['audio_blocked']; }")
+    _player_says(_page, {"muted": True, "playerState": 1})
+    _page.wait_for_timeout(100)
+    _page.evaluate("() => { window.__facts = []; }")
+    _player_says(_page, {"muted": False, "playerState": 1})
+    _page.wait_for_timeout(100)
+    sent = _tap_sends(_page)
+    assert "playVideo" not in sent and "unMute" not in sent, f"a click after the sound came back still unlocked: {sent}"
+    _page.unroute("**/*youtube-nocookie*/**")
+
+
+def test_a_tap_gives_sound_never_a_start_the_order_paused(_page):
+    _mount_echoing(_page, _data())
+    _page.evaluate("() => { window.__facts = ['audio_blocked']; }")
+    _player_says(_page, {"muted": True, "playerState": 1})
+    _page.wait_for_timeout(100)
+    _page.evaluate("""async (d) => { const mod = await import('/widgets/musica/widget.js');
+                        mod.render(document.getElementById('w'), d, window.__ctx); }""", _data(paused=True))
+    sent = _tap_sends(_page)
+    assert "unMute" in sent and "playVideo" not in sent, sent
+    _page.unroute("**/*youtube-nocookie*/**")
