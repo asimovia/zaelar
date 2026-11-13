@@ -11,7 +11,7 @@ from fastapi import APIRouter, File, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from loguru import logger
 
-from . import runtime, state, state_decl
+from . import runtime, state, state_decl, store
 from .about import router as _about_router
 from .client_files import router as _client_router
 from .reading import router as _reading_router
@@ -263,7 +263,6 @@ async def widget_asset(wid: str, name: str):
     whatever a widget-app renders that isn't JSON. Added for the navegador (its live page screenshot). Path-safe
     on both ids (only the basename, [A-Za-z0-9._-]); `no-cache` so a fresh frame with the same filename never
     serves stale (the widget cache-busts with ?v=<rev> anyway). Never a way out of the widget's namespace."""
-    from . import store
     safe_name = "".join(c for c in os.path.basename(name or "") if c.isalnum() or c in "._-")
     p = os.path.join(store.data_dir(_safe(wid)), safe_name)
     if not safe_name or not os.path.isfile(p):
@@ -281,7 +280,9 @@ async def widget_data(wid: str, q: str = ""):
     res = await _run_widget(wid, "view_data", call)
     if res is _MISSING:
         return JSONResponse({"error": "no data module"}, status_code=404)
-    return JSONResponse({**res, "_rev": state.stamp(wid)} if isinstance(res, dict) and state_decl.of(wid) else res)  # V2-884
+    inst = f"{wid}::{str(q).removeprefix(wid + '::')}"            # an instance (`results::x`) acks ITS revision
+    cid = inst if q and store.exists(state.disk_id(inst)) else wid
+    return JSONResponse({**res, "_rev": state.stamp(cid)} if isinstance(res, dict) and state_decl.of(wid) else res)  # V2-884
 
 
 def _answer_backed(wid: str, action: str, payload: dict):

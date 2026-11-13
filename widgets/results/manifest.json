@@ -1,6 +1,13 @@
 {
   "id": "results",
   "screens": "shared",
+  "state": {
+    "order": {"tab": "tab", "view": "view", "focus": "focus"},
+    "report": {
+      "tab": {"type": "enum:results|summary|sources|criteria", "follows": "tab"},
+      "selected": {"type": "text:60", "follows": ["view", "focus"], "rest": ""}
+    }
+  },
   "version": "0.7.0",
   "owner": "Zaelar",
   "licence": "SUL-1.0",

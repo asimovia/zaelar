@@ -48,9 +48,6 @@ def head(data: dict) -> str:
     long criteria would push results out of the clipping — the brain would know what is being searched for but not
     what was found, which is exactly the opposite of useful."""
     L: list[str] = []
-    tab = data.get("tab") or "results"
-    if tab != "results":
-        L.append(_t("tab", "[the operator is looking at the «{tab}» tab]", tab=tab))
     s, c = data.get("summary") or {}, data.get("counts") or {}
     # Only REPORTED data opens the summary line. How many cards are on screen is already visible in the list right
     # below: announcing it separately bloated EVERY turn prompt while the sheet was open without saying anything new.
@@ -133,8 +130,6 @@ def one(data: dict) -> str:
     _gap = _unshown(items, data.get("criteria") or {})
     if _gap:
         lines.append(_t("gap", "[NO row carries data (price, rating, phone) for: {gap}. Tell him that was NOT found; do not present them as meeting it.]", gap=" · ".join(_gap)[:200]))
-    if data.get("view") == "detail" and data.get("focus"):
-        lines.append(_t("detail", "[looking at the DETAIL of «{focus}»]", focus=data["focus"]))
     for n, it in enumerate(items[:12], 1):
         fila = f"#{n} {it.get('title','')}"
         if it.get("price"):
