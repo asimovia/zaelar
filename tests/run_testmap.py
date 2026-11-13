@@ -6481,6 +6481,8 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/browser/unit/agenda/test_the_agenda_band_takes_its_steps.py"]},
         {"id": "4.519", "title": "The files card says the section, the folder and the file open on each screen (V2-884 C8 step 5): `section`, `folder` (following the folder, the storage and the section) and `open` (the file in the card's own viewer, his double-click) after every paint; a folder or storage change is `?ordered` on each screen until it acks; two screen pairs; disarmed → red",
             "ch": UNIT, "paths": ["tests/browser/unit/archivos/test_the_files_card_reports_where_he_is.py"]},
+        {"id": "4.520", "title": "The activity card says whether an activity runs, which one and whether THIS screen records it (V2-884 C8 step 5): `phase`, `kind` (`none` at rest) and `recording` (the screen that claimed the sensors) after every paint; a `start`/`stop` is `?ordered` on each screen until it acks; two screen pairs; disarmed → red",
+            "ch": UNIT, "paths": ["tests/browser/unit/activity/test_the_activity_reports_which_screen_records.py"]},
     ]},
     {"id": "5", "name": "CONECTORES", "nodes": [
         # V2-559 — el operador siguió la guía, creó la contraseña de aplicación y pegó el ENLACE de esa

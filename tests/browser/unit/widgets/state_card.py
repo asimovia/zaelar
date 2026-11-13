@@ -25,7 +25,8 @@ _NEW_MOUNT = """async ([app, dev, inst]) => {
       return {status: 200, json: async () => ({ok: true, facts: []})}; };
   window.__R = R; window.__w = {}; window.__opts = {device: dev, fetch: stub}; window.__app = [app, inst];
   window.__ctx = { action: () => Promise.resolve(null), state: (p, o) => window.__w._rep.report(p, o), close() {},
-                   top() {}, scroll() {}, openConnector() {}, lang: 'es', running: true, t: null };
+                   top() {}, scroll() {}, openConnector() {}, lang: 'es', running: true, t: null,
+                   device: async () => ({ details: async () => ({ sensors: {} }), activity: async () => ({ error: 'none' }) }) };
 }"""
 
 

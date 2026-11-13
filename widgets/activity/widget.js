@@ -158,6 +158,7 @@ export function render(el, data, ctx) {
       }
       el.appendChild(list);
     }
+    reportShown(ctx, d);
     return;
   }
 
@@ -190,4 +191,14 @@ export function render(el, data, ctx) {
     if (!el.isConnected) { clearInterval(el._acTick); return; }
     timeFig.firstChild.textContent = clock(Math.max(0, Math.floor((Date.now() - t0) / 1000)));
   }, 1000);
+  reportShown(ctx, d);
+}
+
+// V2-884 — what the card SHOWS, said through the host's one door after every paint with the revision it applied:
+// whether an activity runs, which, and whether THIS screen is the one reading the sensors.
+function reportShown(ctx, d) {
+  if (!ctx || typeof ctx.state !== "function") return;
+  const on = d.status === "running", kind = ["cycling", "running", "walking", "driving"].includes(d.kind) ? d.kind : "";
+  const shown = { phase: on ? "running" : "idle", kind: on && kind ? kind : "none", recording: !!(on && d.owner && d.owner === S.owner) };
+  try { Promise.resolve(ctx.state(shown, { applied: true })).catch(() => {}); } catch (_) {}
 }
