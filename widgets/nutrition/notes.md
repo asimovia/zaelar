@@ -1,5 +1,5 @@
 - 2026-11-13 V2-899: created by porting the nutrition area of the operator's previous single-user PWA, to work the
-  same inside the agent. Five screens on one card: Today (balance + capture + meals of the day, ‹ day ›), Weight
+  same inside the agent. Five screens in one widget: Today (balance + capture + meals of the day, ‹ day ›), Weight
   (log, 30-day chart, 30-day quality strip, editable history), Coach (photos of a restaurant menu → what to order),
   Evaluation (the week) and Profile (where the targets come from).
 - Kept 1:1 (and pinned by tests): targets = Mifflin-St Jeor × 1.55 × goal factor (gain 1+surplus, lose 1−surplus,
@@ -16,19 +16,19 @@
   targets and goal (the source hardcoded 3200 kcal and «gain muscle»); the menu coach uses the goal-aware targets
   (the source always applied the surplus); lunch/dinner windows are 12-16 / 19-23 LOCAL (the source counted
   11-15 / 18-22 UTC hours of a Madrid user, i.e. the same thing); delete goes to a bin with `restore` (the source
-  deleted for good); no in-card Web Speech mic — dictation is the agent's own voice (`log_meal` with his words);
+  deleted for good); no in-widget Web Speech mic — dictation is the agent's own voice (`log_meal` with his words);
   no live camera stream (`getUserMedia`) — the file input with `capture="environment"` opens the phone camera.
 - The model door: every model call (meal estimate, weekly evaluation, menu coach) goes through `data.estimate()`;
   `MODEL_DOOR` is None until phase I (V2-902 I4), so it answers `estimator_unavailable` and the meal is saved for
   him to fill. The prompts are DATA in `prompts.json`, generalised (no persona, no program or brand names, his
   language as `{lang}`), with the JSON shape each answer must have. Nothing here calls a provider or reads a key.
-  The estimate runs inside the action (synchronous); the source ran it in the background and the card polled.
+  The estimate runs inside the action (synchronous); the source ran it in the background and the widget polled.
 - Photos: `ctx.upload` (manifest `"uploads": true`; multipart to `/widgets/nutrition/upload`, 64 MB cap, a generated
   `up_<hex>_<name>` in `store.data_dir`), shrunk on the screen to ~1600 px over 1.5 MB, then the action names the
   file. Never base64 in state.json or in an action (the action route is a JSON body with no size cap of its own).
   A photo leaves the disk only when its meal falls off the bin (20 rows).
 - `screens: shared`; `state` reports screen · day (empty = today) · meal · pending; a voice `show` is adopted once
   per order (`view.n`), never over his own tap. No `background` cycle and no `runtime`: it produces nothing.
-- Known limits: "today" in `view_data`/`prompt_digest` is the HOST's local clock (the card uses the screen's);
+- Known limits: "today" in `view_data`/`prompt_digest` is the HOST's local clock (the widget uses the screen's);
   the day's burn (TDEE from a watch) has no source until the health ledger exists; the vocabulary of components
   covers ES + EN only; the estimate blocks the action while the model answers (phase I decides background or not).

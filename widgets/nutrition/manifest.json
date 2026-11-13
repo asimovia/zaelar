@@ -52,7 +52,7 @@
   "usage": "«I had two eggs and toast» → `log_meal` with his words in `text`; numbers he gives go in the fields. «I weigh 78.4» → `log_weight`. «show my weight» → `show` screen weight. A meal he names (the toast) is `meal_id`.",
   "actions": {
     "log_meal": {
-      "desc": "Log a meal he ate: his words (or a photo the card uploaded); estimated into calories and macros, or saved for him to fill if no estimate is possible.",
+      "desc": "Log a meal he ate: his words (or a photo the widget uploaded); estimated into calories and macros, or saved for him to fill if no estimate is possible.",
       "how": "`text` = his own words, untouched (portions, preparation, brand). `eaten_at` local `YYYY-MM-DDTHH:MM` only if he said when. Only if he GAVE numbers: `calories`, `protein_g`, `carbs_g`, `fat_g`, `fiber_g`, `grams`.",
       "payload": {"text": "two fried eggs and a slice of wholegrain toast", "eaten_at": "2026-11-13T09:30", "calories": 0},
       "done_when": {"widget": "nutrition", "collection": "meals", "expect": "added"},
@@ -110,12 +110,12 @@
       "payload": {"days": 7}
     },
     "coach_menu": {
-      "desc": "Recommend what to order from photos of a restaurant menu the card uploaded, given what he has eaten today and his targets.",
+      "desc": "Recommend what to order from photos of a restaurant menu the widget uploaded, given what he has eaten today and his targets.",
       "payload": {"photos": ["up_ab12cd_menu.jpg"], "context_text": "I trained this morning"},
       "internal": true
     },
     "show": {
-      "desc": "Show a screen of the card: today (meals and balance), weight, coach, evaluation or profile; a past day; or one meal's detail.",
+      "desc": "Show a screen of the widget: today (meals and balance), weight, coach, evaluation or profile; a past day; or one meal's detail.",
       "how": "`screen`: today|weight|coach|evaluation|profile. `day`: `YYYY-MM-DD` or `today`. `meal_id` opens that meal.",
       "payload": {"screen": "weight", "day": "2026-11-12", "meal_id": "m12"},
       "ref": "meal_id"
