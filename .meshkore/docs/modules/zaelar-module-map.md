@@ -16,7 +16,9 @@ start with `make run` → `python -m server`.
 
 - `voice/` — **LiveKit engine** in `voice/engine/`: `AgentSession` (streaming, turns, VAD, barge-in,
   preemptive generation) + provider registry + remote/local profiles (`core/`, `speech/`, `llm/`,
-  `pipeline/agent.py` with an embeddable `make_server()`, `speech/voices.py`). Turn-taking/VAD/barge-in are governed
+  `pipeline/agent.py` with an embeddable `make_server()`, `speech/voices.py`; `speech/relay.py` — STT and TTS each
+  titular → OpenAI stand-in, the switch alerts, each metric's producer; `speech/relay_bound.py` — a hung titular
+  bounded, shadow by default). Turn-taking/VAD/barge-in are governed
   by LiveKit (Silero VAD + `MultilingualModel` turn detector + `allow_interruptions`). The layer above is the brain
   contract, **pure and transport-agnostic**: `tag_protocol.py`, `speech.py`, `proactive.py` (the speaking primitive the
   out-of-turn mouth uses), `typed_turn.py` (the typed channel's adapter to the one turn pipeline),
@@ -193,7 +195,14 @@ start with `make run` → `python -m server`.
   `"background": {"every": "1m"}` and keeps working OFF-SCREEN at its period (minimum 1 s) — a passive widget's
   `data.py:tick(ctx)` run in a thread, or a `tick` command queued to a backed owner — to refresh data and **write to
   memory** what the operator may ask about by voice. `widgets/actions.py` = action semantics; `widgets/refs.py` =
-  resolving references to items.
+  resolving references to items. **The state door (V2-884)**: `widgets/state_decl.py` (what an app declares its face
+  shows — `state`, `static` with its reason, `by: host` facts; refused at the gate when missing), `widgets/state.py`
+  (`POST /widgets/{id}/state`: a store per mounted screen, the order ledger — an order pending until that screen acks
+  its revision —, host facts only the body writes, `forget` on close/move), `widgets/state_api.py` (the route and the
+  adoption of his hand), `widgets/state_adopt.py` (when an agreed field moves under his hand, the app's own action runs
+  as his order), `widgets/state_render.py` (ONE line per open app for the turn, its legend, a bounded budget), and the
+  client's one reporter (`frontend/app/widgets/state-reporter.js`, players through `lib/player-report.js`).
+  `nucleo/circuit/reported.py` reads an act's end state from the report: unconfirmed is never done.
 - `config/` — runtime settings managed by the UI (gitignored): `settings.json` (⚙ STT/TTS/voice/language),
   `connectors.json` (connector flags + credentials), `v2.json` (model routing `fast`/`code_agent` + **`memory`**
   [reranker + embedding] + `active_brain()`), `meshkore.json`. Each with its owner module
@@ -263,7 +272,10 @@ user-visible build number and the reload signal), `daemon/` (the LOCAL daemon, n
   deliverable is emitted as a `step` event (family `worker`) instead of a card (CRIT-E21).
 - `nucleo/circuit/asker.py` — THE asker: a worker's question, a door's consent ASK, a card's irreversible act waiting for his yes (`request/consent_ask.ask_consent`, V2-857) and Flash's own question about a
   door's act make the row wait with an `ask_id` and one `ask` event; `nucleo/cli/worker_api_bind.py` binds a spoken
-  answer by the brief's verdict, `POST /api/tasks/{id}/answer` a screen one (criteria §4b).
+  answer by the brief's verdict — with several rows waiting, only by IDENTITY (the row that asked, a row our «which?»
+  named, a candidate no other row declares) —, `POST /api/tasks/{id}/answer` a screen one (criteria §4b).
+  `nucleo/request/clarify_end.py` — a clarification ends with its conversation (moved on / expired), one `ask_closed`.
+  `nucleo/request/substitution.py` — a send made in the model's call's place (the verdict at VETO) is born asking.
 - The order and the question own their row (CRIT-T2e, T2g, T2h): `nucleo/request/order_unserved.py` — at the close, a
   sure order no door served opens ITS row (a send task, the card act's completion, or one `ASK_FACT` question), yielding
   to the model's valid call; `ask_outside_door.named_act` — our own question about a declared act makes its row wait;

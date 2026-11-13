@@ -98,7 +98,7 @@ One call, fired at the admitted sentence, carrying every question read after the
 | `errand_kind` | which kind of errand (`web · build_card · change_card · generic`), carried by the escalation portal (`nucleo/request/kind.py`) |
 | `message_channel` | which declared platform he named for a message, or none (`nucleo/acts/message_channel.py`) |
 | `readable` | can the sentence be read at all (`clear · garbled · noise`, `nucleo/flash/unclear_turn.py`) |
-| `answers_open_question` | (only while a task waits for his answer) which open question, by `ask_id`, this answers — or `none` (`nucleo/cli/worker_api_bind.py`: licence binds, veto binds nothing, a doubt asks which) |
+| `answers_open_question` | (only while a task waits for his answer) which open question, by `ask_id`, this answers — or `none` (`nucleo/cli/worker_api_bind.py`: one waiting row binds at the act floor; with several, only by identity — the row that asked him, a row our «which?» named, a candidate no other row declares; `none` at the veto binds nothing; a doubt asks which) |
 | `screen_action` | which declared action of which OPEN CARD, keyed by instance |
 | `catalog_widget` | (when nothing is open) which widget of the catalogue is NAMED |
 
@@ -125,6 +125,12 @@ actions that share vocabulary, before and after — never only the phrase being 
 is closed by NAMING it, not by listing more synonyms: «para» is also a preposition, so «Vale, para el
 vídeo.» can read as «OK, for the video.» — a description that says «here «para» is the verb, not the
 preposition» resolves it within the same 200 characters.
+
+⚠️ **At the VETO a verdict may TAKE the model's place** (2026-11-13). When what the model's call enters LEAVES the
+machine or deletes, and a verdict names another act of the same card at or above the VETO
+(`verdicts.substitutes`), the verdict's act runs instead; a send made in the model's place is born asking
+(`nucleo/request/substitution.py`). Below the VETO the model's call stands. A verdict that cannot be READ is said and
+marked — never a silent lifted veto.
 
 ⚠️ **A verdict ACTS at one floor** (2026-11-12). The gate that lets the verdict complete an empty turn reads
 the screen action, the request type and `corrects_last` at the operator's `consent.intent_act_at`

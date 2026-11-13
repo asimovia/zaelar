@@ -276,6 +276,13 @@ the wrong widget opens.
 | `widget · data` | `widgets/store.py::save()` | the EFFECT (the widget saved). Still marked as noise — it is a consequence, not an order |
 | `widget · action` | `widgets/server_api.py` | the operator pressing a button on the card (`src=user`) |
 | `widget · show\|close` | `nucleo/cli/worker_api.py` | the same, requested by a Brain Worker (`src=worker:<id>`) |
+| `widget · state` | `widgets/state.py` (V2-884) | what a screen REPORTED its face shows: `{id, dev, changed: {field: value≤60}}`, at most one per app and screen per `GROUP_S` (1 s) — the report, never the order. Two screens are two rows. Masked like any stored row (`observability/pii.py`) |
+| `widget · action` with `adopted: true` | `widgets/state_api.py` | his hand on a player adopted as his order, through the app's own action; `widget · adoption failed` `{id, action, error}` when the action raised |
+| `widget · 🩹 …` | `widgets/late_report.py` | an act the agent had just started that the app reports did NOT happen is said (`is_error`); and withdrawn when the app reported the contrary before it was said |
+| `spec · ⏳ spec: ordered — the app has not confirmed it yet` | `nucleo/circuit/reported.py` | an act on a card whose app has not acked it; `awaiting` = `pending` (inside the ack window) or `no_ack` (settles unverifiable — never «done») |
+
+The turn record (`perf · 🧾 turno`) keeps the open apps' state lines (from the legend of `widgets/state_render`) beside
+the on-screen band, so «what did the model believe each screen showed?» is read from the record.
 
 The trace chip on that same row jumps to the sentence's whole chain.
 
@@ -348,7 +355,8 @@ kept for the FlashBrain's «PROCESOS DE FONDO» prompt, but does not duplicate t
     errand, under its trace: «was the box made, why not, how did it end» is one query of this kind. The same event is
     what the wall draws. `.meshkore/docs/modules/zaelar-chat-refs.md`.
   - **`ask_outside_door`** (family `flash`) — `🚪 asked outside the door`: the turn ended on OUR question about a card
-    whose acts leave the machine and no call reached its door; `extra = {trace, widget, leaves, which_person}`. A
+    whose acts leave the machine — or a non-leaving act named at the act floor — and no call reached its door;
+    `extra = {trace, widget, leaves, which_person, actions}`. A
     measurement, never a repair (that question is also made durable on the turn's row).
   - **`worker_act`** — `🖐 worker act`: ONE per bridge act, whatever its outcome; `extra = {task_id, session, act,
     door, outcome, trace?, span?}` (`nucleo/workers/task_files.said`).
@@ -376,6 +384,14 @@ kept for the FlashBrain's «PROCESOS DE FONDO» prompt, but does not duplicate t
     `kind_diag` — the local one AND any remote panel reading the same `events` table — has to learn them.
   - **`task`** with `cat: circuit` — `🧭 brief of another errand ignored` (V2-868, `nucleo/circuit/breadth.py`): the
     judge found a brief stamped for another errand and refused it; `extra = {id, uid, errand}`.
+  - **`task`** with `kind_diag: ask_closed` — `🧹 clarification closed with its conversation`
+    (`nucleo/request/clarify_end.py`): `extra = {task_id, ask_id, reason: moved_on|expired, waited_s?}`; moved_on runs
+    under the turn that moved on, expired under the trace of the turn that asked (the pulse runs none). One per close.
+  - **`kind_diag: stop_words_released`** — `🗣 held words released…`: words held while a send waited for its exit door,
+    let out once it reported (a send is never called done before its door reports; a failure is said out of turn).
+  - **`brain`** `⚠️ verdict unreadable — its veto is lifted` (`nucleo/turn/verdicts.py`): a verdict that could not be
+    read is said and marked (`key`, `is_error`), never a silent lifted veto. `⚠️ a background task failed`
+    (`task = nucleo:<name>`): a task started through the one spawn helper that raised.
   - A viewer that filters by `kind_diag` must learn these values: one it does not know shows up EMPTY, never as an
     error.
   - **`notice`** / **`notify`** — the out-of-turn mouth (`nucleo/pulse/notices.py`): every line said outside a turn,
@@ -400,15 +416,32 @@ kept for the FlashBrain's «PROCESOS DE FONDO» prompt, but does not duplicate t
   the body did to it and to the host: **`voice_process_start`** / **`voice_process_exit`** (pid, exit code),
   **`voice_over_ceiling`** (its RSS over `budgets.<deployment>.voice.ceiling_mb`: recycled between sessions, or said
   once and held while a session is live) and **`shed_ladder`** (one rung of the declared ladder engaged ↓ or released
-  ↑, with `cause` engine|machine, `free_mb`, `floor_mb`, `engine_mb`, `budget_mb` and what the hand did). The body's own
-  loop stall is one more: **«host stalled N s»** (`kind_diag: loop_lag`, `lag_s`, `source: body_loop`,
-  `nucleo/pulse/loop_lag.py`), and a turn that waited through one says `⏱ host stalled` (family `perf`, kind
-  `host_stall`) instead of blaming the provider.
+  ↑, with `cause` engine|machine|unknown, `free_mb`, `floor_mb` — the pressure band's opening floor —, `engine_mb`,
+  `budget_mb` and what the hand did). The body's own loop stall is one more (`kind_diag: loop_lag`,
+  `nucleo/pulse/loop_lag.py`): **«host stalled N s»** when the machine stopped it, **«the engine's loop was held N s
+  (its own work | cause unknown)»** otherwise — `lag_s`, `bound_s`, `source: body_loop`, `whose` (host · engine ·
+  unknown) and `cause`. A turn that waited through stalls says `⏱ loop stopped N s during the turn` (family `perf`,
+  `extra_kind: host_stall`, `stall_s` and `host_/own_/unknown_stall_s`) instead of blaming the provider, and
+  `pipeline_close` carries the three seconds. A worker held for the host says it in its `task · phase` row with
+  `why: waiting_host` (the code beside the words in his language).
+- **The voice relay** (`voice/engine/speech/relay.py`, `relay_bound.py`). A switch is one **`alert`** with `cat: stt|tts`:
+  ««X» failed (cause) — speaking/hearing with «Y»», `extra = {provider, stand_in, cause, truncated?, none_left?}`;
+  the titular coming back is ««X» is back». A titular that HANGS is said by **`provider`** «🕳️ … would switch (shadow):
+  why» — `{cat, provider, would_switch, why, mode: shadow|armed_cooling}`, one per stream; a watcher that broke says
+  «⚠️ relay bound off at <where>» (`bound_broken`, `where`, `error`) once and stops watching. Every `metric` / `stt` /
+  `tts` row names the `provider` that PRODUCED it — the energy meter bills by it.
+- **The network** (`nucleo/mesh_calls.py`): `mesh · 🌐 oracle · find` and `mesh · 🌐 <agent> · ask · ✅|⚠️` — `{op,
+  agent, ok, status, ms, fields (names), answer|error}`; a non-200 keeps its bounded answer (a `202`'s job). A priced
+  job is `energy · agent` (`provider = <agent>.<skill>`, `ref = job id`). See `zaelar-meshkore-network.md` §1.9 for
+  what a job does not record yet.
 - **The voice process's lines are the body's record.** The voice process records nothing itself: every observer line
   it emits travels to the body (`voice/engine/pipeline/body_link.py` → `POST /api/voice/child/events`), with its
   `piece` read where it was emitted, and the session's facts are REPLAYED in the body through the same handlers — so
-  the viewer and the Master read one `zaelar.db`, exactly as before. A batch the body did not take within 200 ms is
-  dropped, never queued behind it (the ear never waits); the count is `/voice/status` → `link.dropped`. A memory read
+  the viewer and the Master read one `zaelar.db`, exactly as before. The session facts queued before a request ride
+  AHEAD of it (`body_link.ahead`); a batch the body did not take within 200 ms is dropped, never queued behind it (the
+  ear never waits) — except its `session`, `transcript` and `item` facts, asked once more at the front of the queue —
+  and while the body does not answer the sender opens at most one connection per `RETRY_GAP_S` (1 s). The count is
+  `/voice/status` → `link.dropped`; a dropped batch's metrics and observer lines are lost with it (known gap). A memory read
   that left a LOCAL embedding over `embed_budget_ms` says `embedding local fuera de presupuesto` (`reason:
   embed_over_budget`, family `memory`).
 - **`whisper`** (family `flash`, V2-889 F2) — the whisperer between turns (`nucleo/turn/whisper/`), in shadow: per

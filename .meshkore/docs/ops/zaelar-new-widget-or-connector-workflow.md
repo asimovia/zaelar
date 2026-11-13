@@ -122,9 +122,10 @@ connectors/<family>/
 
 ```
 widgets/<id>/
-├─ manifest.json   identity, declared actions, aliases, size
+├─ manifest.json   identity, declared actions, aliases, size, and its `state` (REQUIRED, V2-884: what the face
+│                  shows — order · report · facts — or `{"static": "<why>"}` for a face no order moves)
 ├─ data.py         view_data · apply_action · ref_index · prompt_digest
-├─ widget.js       render(el, data, ctx)
+├─ widget.js       render(el, data, ctx) — and after every paint `ctx.state(…, {applied: true})`: the face REPORTS
 ├─ notes.md        the decision log of THIS widget (read it before touching it, write it afterwards)
 ├─ golden.json     recorded by the harness itself — delete it if you change the shape of view_data on purpose
 └─ __init__.py     empty
