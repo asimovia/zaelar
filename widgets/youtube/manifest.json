@@ -1,6 +1,18 @@
 {
   "id": "youtube",
   "screens": "single",
+  "state": {
+    "order": {"video": "videoId", "paused": "paused", "muted": "muted", "volume": "volume"},
+    "report": {
+      "playing": {"type": "bool", "follows": "!paused", "rest": false},
+      "playing_id": {"type": "id", "follows": "video"},
+      "muted": {"type": "bool", "follows": "muted"},
+      "volume": {"type": "int:0-100", "follows": "volume"},
+      "view": {"type": "enum:inicio|player|cola|subs|listas", "rest": "inicio"},
+      "title": {"type": "text:60"}
+    },
+    "facts": {"audio_blocked": {"tell": "youtube.audio_blocked"}, "sound_on": {}}
+  },
   "fill": {"action": "search", "key": "query", "filled_by": "searched_at"},
   "version": "0.1.0",
   "owner": "Zaelar",

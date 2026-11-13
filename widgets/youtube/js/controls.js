@@ -3,6 +3,7 @@
 import { ICON_PREV, ICON_NEXT, ICON_PLAY, ICON_PAUSE, ICON_VOL_DOWN, ICON_VOL_UP, ICON_MUTED, svgEl, el,
   halted, tt } from "./shared.js";
 import { post } from "./player.js";
+import { Y } from "./state.js";
 
 export function buildControls(ctx, body){
   // Click controls (mirror of what can also be requested by voice) - ICON buttons since V2-636
@@ -80,8 +81,11 @@ export function paintPlayer(E, data, ctx, id, PL){
     };
   }
   if(E.unmuteHint){
-    // V2-791 — also while the browser keeps an ORDERED sound silent: the hint is the honest state of the player.
-    E.unmuteHint.style.display = (data.muted || (data.audio_blocked && data.videoId)) ? "flex" : "none";
+    // V2-791 — also while the browser keeps an ORDERED sound silent: the hint follows the engine's fact
+    // `audio_blocked`, derived from what the player reported (V2-884 1a), repainted when a report's answer brings it.
+    Y.paintHint = () => { E.unmuteHint.style.display =
+      (data.muted || (Y.facts.indexOf("audio_blocked") >= 0 && data.videoId)) ? "flex" : "none"; };
+    Y.paintHint();
     E.unmuteHint.onclick = () => {
       if(!halted(ctx)){ post(PL, "unMute", []); post(PL, "setVolume", [vol0]); }
       if(ctx && ctx.action) ctx.action("unmute");

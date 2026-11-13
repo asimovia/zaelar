@@ -46,6 +46,7 @@
 import { t as tr } from "../../../app/core/i18n.js?v=1";
 import { noteSent } from "../../../app/services/feedback-sent-note.js?v=1";
 import * as store from "../../../app/core/store.js?v=2";
+import { mountState } from "../../../app/widgets/state-reporter.js?v=1";
 // V2-792 — the screens service, loaded on first use (same as the desktop host: a host imports no service statically).
 const _screens = () => import("../../../app/services/screens.js?v=1");
 const _device = () => import("../../../app/services/api.js?v=2").then((m) => m.DEVICE).catch(() => "");
@@ -290,6 +291,7 @@ export class Deck {
     const w = this.cards.get(id); if (!w) return;
     const i = this.order.indexOf(id);
     try { w.card.classList.remove("live"); } catch (_) {}
+    if (w._rep) w._rep.dispose();                      // V2-884: a closed card reports nothing more
     setTimeout(() => { try { w.card.remove(); } catch (_) {} }, CARD_ANIM_MS);
     this.cards.delete(id);
     if (i >= 0) this.order.splice(i, 1);
@@ -341,6 +343,7 @@ export class Deck {
       if (sig === w._dataSig) return;                 // nothing changed → no re-render, no flicker
       w._dataSig = sig;
       w._data = data;
+      if (w._rep) w._rep.seen(data._rev);            // V2-884: the revision this render brings
       w._mod.render(w.body, data, w._ctx);
       this._applyTitle(w, data);
       this._paint();                                  // fresh data can flip the producing badge (V2-092)
@@ -700,7 +703,9 @@ export class Deck {
       if (w.load) { w.load.remove(); w.load = null; }
       if (!w.body.parentNode) w.scroll.appendChild(w.body);
       const deck = this;
+      const rep = mountState(w, baseId, w.id, data);   // V2-884: same door as the desktop
       const ctx = {
+        state: (patch, o) => rep.report(patch, o),
         action: async (name, payload) => {
           try {
             return await fetch(`/widgets/${baseId}/action`, { method: "POST", headers: { "Content-Type": "application/json" },

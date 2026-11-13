@@ -40,6 +40,8 @@ _COPY: dict[str, dict] = {}
 _EVENTS: dict[tuple, tuple] = {}
 #: (app, instance, dev) → the mounts a newer one replaced: they never report again (two tabs, a reload)
 _GONE: dict[tuple, list] = {}
+#: (app, instance, dev) → the facts that held after its last report (what turned on or off is a declared tell)
+_HELD: dict[tuple, list] = {}
 
 
 def disk_id(cid) -> str:
@@ -169,7 +171,20 @@ def report(app, body: dict) -> tuple[int, dict]:
         _SNAP[key] = {"mount": mount, "n": n, "at": time.time(), "fields": keep,
                       "visible": seen is not False if seen is not None else (cur or {}).get("visible", True)}
     _event(app, dev, moved)
-    return 200, {"ok": True, "facts": state_render.facts_for(app, instance, dev)}
+    facts = state_render.facts_for(app, instance, dev)
+    with _LOCK:
+        was, _HELD[key] = _HELD.get(key, []), list(facts)
+    return 200, {"ok": True, "facts": facts, "_on": [f for f in facts if f not in was],
+                 "_off": [f for f in was if f not in facts]}
+
+
+def tells(app, on, off) -> tuple[list[str], bool]:
+    """The declared tells of the facts that turned ON (their i18n sentences) and whether a told fact turned OFF."""
+    declared = (decl.of(app).get("facts") or {}) if isinstance(decl.of(app).get("facts"), dict) else {}
+    told = {f: str((spec or {}).get("tell") or "") for f, spec in declared.items() if isinstance(spec, dict)}
+    from i18n import langs
+    said = [s for f in on if told.get(f) and (s := str(langs.words(told[f], default="") or ""))]
+    return said, any(told.get(f) for f in off)
 
 
 def snapshots(app, instance=None) -> list[tuple[str, str, dict]]:
@@ -214,4 +229,5 @@ def _reset_for_tests() -> None:
         _COPY.clear()
         _EVENTS.clear()
         _GONE.clear()
+        _HELD.clear()
     decl.forget_cache()

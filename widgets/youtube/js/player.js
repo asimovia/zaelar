@@ -2,6 +2,7 @@
 // Part of the client split out of widget.js (refactor2710-12 T-03); widget.js stays the entry with render().
 import { Y } from "./state.js";
 import { el, halted, tt } from "./shared.js";
+import { reportState } from "./report.js";
 
 export const _SOUND_GRACE_MS = 1500;
 // The page may give a cross-origin player sound only after a real gesture (sticky user activation). Without one,
@@ -50,6 +51,13 @@ if(typeof window !== "undefined" && !window.__hbYtWidgetBound){
     if(d.event === "infoDelivery" && d.info && typeof d.info.muted === "boolean" && Y.ytAudio){
       Y.ytAudio(d.info.muted, String(d.info.videoData && d.info.videoData.video_id || ""));
     }
+    // V2-884 1a — the player's sound and volume as it reports them, on every change (never the order).
+    if(d.event === "infoDelivery" && d.info){
+      const p = {};
+      if(typeof d.info.muted === "boolean") p.muted = d.info.muted;
+      if(typeof d.info.volume === "number") p.volume = Math.max(0, Math.min(100, Math.round(d.info.volume)));
+      reportState(p);
+    }
   });
 }
 export function startListening(iframe){
@@ -83,11 +91,10 @@ export function post(target, func, args){
 }
 
 // V2-791 — sound ordered on a page that has had no gesture: unmuting an autoplaying cross-origin player now could
-// PAUSE it. It keeps playing muted, the card REPORTS the block (`player_audio` → `audio_blocked`), and the first
-// gesture anywhere on the page gives it sound. True when it is holding the player silent.
+// PAUSE it. It keeps playing muted (the player REPORTS it, and «blocked» is the engine's fact — V2-884 1a), and the
+// first gesture anywhere on the page gives it sound. True when it is holding the player silent.
 export function holdSilent(iframe, data){
   if(pageMayPlaySound() || !iframe || !iframe.contentWindow) return false;
-  if(Y.ytAudio) Y.ytAudio(true, "");
   armSoundUnlock(Number(data.volume != null ? data.volume : 70));
   return true;
 }
@@ -174,6 +181,9 @@ export function buildFrame(data, ctx, loading, isStream, src, id){
     // V2-873 — our own <video> reports what it plays too, as the embed does (`player_state`)
     video.addEventListener("playing", function(){ if(Y.ytState) Y.ytState(true, ""); });
     video.addEventListener("pause", function(){ if(Y.ytState) Y.ytState(false, ""); });
+    // V2-884 1a — our own <video> reports its sound and volume too
+    video.addEventListener("volumechange", function(){
+      reportState({muted: !!video.muted, volume: Math.round((video.volume || 0) * 100)}); });
     frame.appendChild(video);
   } else if(id){
     iframe = document.createElement("iframe");
@@ -229,6 +239,9 @@ export function bindReporters(data, ctx, id, PL){
       {code: String(code == null ? "unknown" : code), videoId: id || ""}); };
   Y.ytState = (playing, vid) => {
     if(!ctx || !ctx.action || !(data.videoId || data.src)) return;
+    // V2-884 1a — whether it plays, and WHICH video (an id; a stream of ours has none to say)
+    const shown = vid || data.videoId || "";
+    reportState(Object.assign({playing: !!playing}, /^[A-Za-z0-9_-]{1,40}$/.test(shown) ? {playing_id: shown} : {}));
     const key = (vid || data.videoId || data.src) + "|" + playing;
     if(key === Y.stateSent) return;              // the player repeats its state several times a second
     Y.stateSent = key;
@@ -237,24 +250,18 @@ export function bindReporters(data, ctx, id, PL){
   Y.ytQuality = (levels, vid) => {
     if(ctx && ctx.action) ctx.action("player_quality", {levels: Array.isArray(levels) ? levels : [], videoId: vid || ""});
   };
-  // V2-791 — the player's real sound against what the store says was ordered. Sound wanted and the player still
-  // muted past the grace → `audio_blocked` (the hint stays, the brain is told); heard → the flag clears.
+  // V2-884 1a — whether the player is silent is REPORTED (`reportState`, above) and «blocked» is the engine's fact.
+  // What stays an action is his HAND: the player's own control gave it sound while the card says muted — the card
+  // follows the player (`player_audio`, until 1b's declared adoption). A blocked sound arms the gesture unlock.
   Y.plNow = PL;
-  if(data.audio_blocked && !data.muted && data.videoId && !halted(ctx)) armSoundUnlock(vol0);
+  if(Y.facts.indexOf("audio_blocked") >= 0 && !data.muted && data.videoId && !halted(ctx)) armSoundUnlock(vol0);
   Y.ytAudio = (playerMuted, vid) => {
     if(!ctx || !ctx.action || halted(ctx) || !data.videoId) return;
     if(vid && vid !== data.videoId) return;
-    let report = null;
-    if(playerMuted && !data.muted && !data.audio_blocked){
-      if(Date.now() - Y.soundAsked < _SOUND_GRACE_MS && pageMayPlaySound()) return;
-      report = true;
-    } else if(!playerMuted && (data.audio_blocked || data.muted)){
-      report = false;
-    }
-    if(report === null) return;
-    const key = data.videoId + "|" + report + "|" + (data.cmd_seq || 0);
+    if(playerMuted || !data.muted) return;
+    const key = data.videoId + "|false|" + (data.cmd_seq || 0);
     if(key === Y.audioSent) return;
     Y.audioSent = key;
-    ctx.action("player_audio", {muted: report, videoId: data.videoId});
+    ctx.action("player_audio", {muted: false, videoId: data.videoId});
   };
 }

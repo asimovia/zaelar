@@ -36,4 +36,7 @@ export const Y = {
   chBusy: "",           // "" | "refresh" | "more" | "tab" — drives the loader lines
   chSyncAsked: 0,
   newList: false,       // V2-885 — the «Nueva lista» field is open (module-lived: a repaint keeps it open)
+  // V2-884 1a — what the card last REPORTED it shows (only changes are sent), the facts the engine answered, the
+  // revision whose ack is pending, and the ctx of the last render (the player's events have none of their own).
+  ctx: null, shown: {}, facts: [], revSeen: "", ackTimer: null, paintHint: null,
 };

@@ -7,6 +7,7 @@ import { CSS } from "./js/style.js";
 import { Y } from "./js/state.js";
 import { el, _TABS, applyTabClass, tt } from "./js/shared.js";
 import { applyCmd, buildFrame, bindReporters } from "./js/player.js";
+import { afterRender } from "./js/report.js";
 import { paintAccount } from "./js/conn.js";
 import { buildNav, paintNav } from "./js/nav.js";
 import { buildMini, paintMini } from "./js/mini.js";
@@ -113,6 +114,7 @@ export function render(root, data, ctx){
   paintPlayer(E, data, ctx, id, PL);
   paintMini(E.mini, data, ctx, PL);
   bindReporters(data, ctx, id, PL);
+  afterRender(data, ctx, Y.tab, hasVid);                // V2-884 1a: what the card shows, and the ack of its data
   paintQueue(root, E, data, ctx);
   paintHome(root, E, data, ctx);
 

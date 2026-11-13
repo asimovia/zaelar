@@ -41,7 +41,6 @@ _SEED = {
     "volume": 70,
     "muted": True,      # browser autoplay requires starting muted; "unmute" to hear it
     "mute_kept": False,     # V2-791: the last word on sound was HIS mute (survives the next video)
-    "audio_blocked": False, # V2-791: sound wanted, and the player REPORTS it is still silent (browser policy)
     "captions": False,  # V2-590: subtitles on/off — the player re-asserts it on every load
     "paused": True,
     "last_cmd": "",
@@ -258,7 +257,14 @@ def _bump(db: dict, cmd: str) -> dict:
             # V2-791 — the channel and the publication date are what lets «is this today's?» be answered
             "channel": db.get("channel"), "published": db.get("published"),
             "volume": db.get("volume"), "muted": db.get("muted"), "paused": db.get("paused"),
-            "audio_blocked": bool(db.get("audio_blocked"))}
+            "audio_blocked": _blocked_now()}
+
+
+def _blocked_now() -> bool:
+    """V2-884 1a: «blocked» is the fact derived from the surface's report, never a stored flag."""
+    from widgets import state_render
+    got = state_render.read(WID)["surfaces"]
+    return bool(got) and "audio_blocked" in got[0]["facts"]
 
 
 def _play_pos(db: dict, i: int, cmd: str, *, watch: bool = True) -> dict:

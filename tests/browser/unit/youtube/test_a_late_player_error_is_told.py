@@ -114,20 +114,5 @@ def test_the_window_closes():
     assert not late_report.agent_ordered_recently("youtube", now=1000.0 + late_report.WINDOW_S + 1)
 
 
-def test_a_tell_the_card_contradicts_before_it_is_said_is_withdrawn(told, monkeypatch):
-    """V2-886 fila 6 — «the video is playing silently» was said after the player had already reported sound: a late
-    tell waits `SETTLE_S`, and the card's contrary report withdraws it; with no contrary report it is said once.
-    Disarm: `retract` not called from `sound.player_audio` → said → red."""
-    monkeypatch.setattr(late_report, "SETTLE_S", 0.05)
-
-    async def run(contrary: bool):
-        late_report.note_agent_order("youtube")
-        late_report.deliver("youtube", {"tell": "El vídeo está sonando en silencio."})
-        if contrary:
-            from widgets.youtube import sound
-            sound.player_audio("player_audio", {"muted": "false"}, {"videoId": "", "muted": False})
-        await asyncio.sleep(0.12)
-    asyncio.run(run(True))
-    assert told == [], "a tell the app had already contradicted was said"
-    asyncio.run(run(False))
-    assert told == ["El vídeo está sonando en silencio."]
+# The tell a contrary report withdraws (V2-886 fila 6) moved with V2-884 1a: the contrary is now the surface's report
+# through the state door — `tests/browser/unit/youtube/test_the_player_reports_what_it_shows.py`.

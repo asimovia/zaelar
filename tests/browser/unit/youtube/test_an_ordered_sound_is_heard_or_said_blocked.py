@@ -7,10 +7,11 @@ embedded player obeyed: a cross-origin player can be unmuted from a voice order 
 gesture.
 
   · data: a video he asked to watch wants sound, unless the last word on sound was HIS mute;
-  · data: the player's own report (`player_audio`) separates what was ORDERED from what is HEARD — sound wanted and
-    the player silent is `audio_blocked`, with a `tell` for the late-report seam and a line for the brain;
-  · card (rendered): the hint stays while sound is blocked, and a voice `unmute` on a page with no gesture REPORTS
-    the block instead of letting the store claim a sound the player cannot have.
+  · data: what was ORDERED stays in the store; what is HEARD is the player's report through the card's state door, and
+    «blocked» is the fact derived from both (V2-884 1a — its server half is
+    `test_the_player_reports_what_it_shows.py`); `player_audio` only carries his hand on the player's own control;
+  · card (rendered): the player's sound, volume and play state reach `ctx.state` on every change, the hint follows the
+    facts the door answers, a new revision is acked by a full snapshot once applied, and his hand unmutes the card.
 """
 from __future__ import annotations
 
@@ -63,39 +64,12 @@ def test_a_queue_item_he_plays_wants_sound_too():
     assert yt.view_data()["muted"] is False
 
 
-# ── data: what the player lets be heard ─────────────────────────────────────────────────────────────────
+# ── data: what the player lets be heard (the fact itself: test_the_player_reports_what_it_shows.py) ──────────
 
-def test_sound_ordered_and_the_player_silent_is_blocked_and_told():
+def test_a_report_through_player_audio_stores_no_flag_and_tells_nothing():
     yt.apply_action("load", {"videoId": _V1})
-    yt.apply_action("unmute", {})
     r = yt.apply_action("player_audio", {"muted": True, "videoId": _V1})
-    assert r["audio_blocked"] is True and yt.view_data()["audio_blocked"] is True
-    assert "navegador" in r.get("tell", ""), r
-    assert "BLOQUEADO" in yt.prompt_digest(), "the brain must not say it is heard"
-    again = yt.apply_action("player_audio", {"muted": True, "videoId": _V1})
-    assert not again.get("tell"), "told once, not on every report"
-
-
-def test_an_english_session_hears_it_in_english(monkeypatch):
-    from i18n import langs
-    monkeypatch.setattr(langs, "current_code", lambda: "en")
-    yt.apply_action("load", {"videoId": _V1})
-    assert "browser" in yt.apply_action("player_audio", {"muted": True, "videoId": _V1}).get("tell", "")
-
-
-def test_the_player_heard_clears_the_block():
-    yt.apply_action("load", {"videoId": _V1})
-    yt.apply_action("player_audio", {"muted": True, "videoId": _V1})
-    yt.apply_action("player_audio", {"muted": False, "videoId": _V1})
-    assert yt.view_data()["audio_blocked"] is False
-    assert "BLOQUEADO" not in yt.prompt_digest()
-
-
-def test_a_muted_player_he_muted_is_not_blocked():
-    yt.apply_action("load", {"videoId": _V1})
-    yt.apply_action("mute", {})
-    r = yt.apply_action("player_audio", {"muted": True, "videoId": _V1})
-    assert not r.get("audio_blocked") and not r.get("tell")
+    assert not r.get("tell") and "audio_blocked" not in yt.view_data()
 
 
 def test_he_unmuted_from_the_players_own_control_and_the_card_follows():
@@ -107,8 +81,9 @@ def test_he_unmuted_from_the_players_own_control_and_the_card_follows():
 
 def test_a_report_about_another_video_is_stale():
     yt.apply_action("load", {"videoId": _V1})
-    assert yt.apply_action("player_audio", {"muted": True, "videoId": _V2}).get("stale")
-    assert yt.view_data()["audio_blocked"] is False
+    yt.apply_action("mute", {})
+    assert yt.apply_action("player_audio", {"muted": False, "videoId": _V2}).get("stale")
+    assert yt.view_data()["muted"] is True
 
 
 def test_the_report_is_declared_as_internal():
@@ -151,7 +126,7 @@ def _page():
 
 def _data(**over):
     d = {"videoId": _V1, "title": "Like a Prayer", "channel": "Madonna", "published": "hace 2 horas",
-         "volume": 70, "muted": False, "audio_blocked": False, "captions": False, "paused": False,
+         "volume": 70, "muted": False, "captions": False, "paused": False,
          "last_cmd": "load", "cmd_seq": 1, "loading": False, "loading_query": "", "list": [], "player_error": "",
          "pos": -1, "adding": "", "list_filter": "", "list_name": "", "blocked_channels": [], "platforms": [],
          "platforms_at": 0, "suggested": [], "search_results": [], "search_query": "", "channels": [],
@@ -166,10 +141,11 @@ def _mount(page, data):
     page.set_content("<div id='w' style='width:660px'></div>")
     page.evaluate(
         """async ([src, data]) => {
-             window.__calls = [];
+             window.__calls = []; window.__states = []; window.__facts = window.__facts || [];
              const mod = await import(src);
              window.__mod = mod; window.__ctx = {
                action: (n, p) => { window.__calls.push([n, p || {}]); return Promise.resolve({ok: true}); },
+               state: (p, o) => { window.__states.push([p || {}, o || {}]); return Promise.resolve(window.__facts); },
                top: () => {}, running: true };
              mod.render(document.getElementById('w'), data, window.__ctx);
            }""", [page._hb_url, data])
@@ -188,43 +164,54 @@ def _audio_reports(page):
     return page.evaluate("() => window.__calls.filter(c => c[0] === 'player_audio').map(c => c[1])")
 
 
-def _player_says(page, muted: bool):
+def _player_says(page, muted: bool, until="() => window.__states.some(s => 'muted' in s[0])"):
     """The real player repeats `infoDelivery` several times a second; so does this, until the card reports."""
     page.evaluate("""([vid, m]) => { window.__tick = setInterval(() => window.postMessage(JSON.stringify(
-                       {event: 'infoDelivery', id: 'hb-youtube', info: {muted: m, videoData: {video_id: vid}}}), '*'),
-                       200); }""", [_V1, muted])
+                       {event: 'infoDelivery', id: 'hb-youtube', info: {muted: m, volume: 64,
+                        videoData: {video_id: vid}}}), '*'), 200); }""", [_V1, muted])
     try:
-        page.wait_for_function("() => window.__calls.some(c => c[0] === 'player_audio')", timeout=5000)
+        page.wait_for_function(until, timeout=5000)
     finally:
         page.evaluate("() => clearInterval(window.__tick)")
 
 
-def test_the_hint_stays_while_an_ordered_sound_is_blocked(_page):
-    _mount(_page, _data(audio_blocked=True))
-    assert _hint_shown(_page), "sound ordered and kept silent: the app must say how to get it"
-    _remount(_page, _data(audio_blocked=False))
-    assert not _hint_shown(_page)
+def _states(page):
+    return page.evaluate("() => window.__states")
 
 
-def test_a_voice_unmute_on_a_page_with_no_gesture_reports_the_block(_page):
-    """No click has happened on this page (`navigator.userActivation.hasBeenActive` is false): the voice order
-    cannot give the player sound, and the card reports it instead of trusting the store. Playwright's own
-    `evaluate` counts as a gesture, so the page's activation state is pinned to «never active» here."""
-    _mount(_page, _data(muted=True, last_cmd="load", cmd_seq=1))
-    _page.evaluate("() => Object.defineProperty(navigator, 'userActivation', {configurable: true,"
-                   " value: {hasBeenActive: false, isActive: false}})")
-    assert not _page.evaluate("() => navigator.userActivation.hasBeenActive"), "precondition: no gesture yet"
-    _remount(_page, _data(muted=False, last_cmd="unmute", cmd_seq=2))
-    assert {"muted": True, "videoId": _V1} in _audio_reports(_page)
-
-
-def test_the_player_reporting_silence_past_the_grace_is_reported(_page):
+def test_the_players_sound_reaches_the_state_door_and_the_hint_follows_the_facts(_page):
     _mount(_page, _data())
+    _page.evaluate("() => { window.__facts = ['audio_blocked']; }")    # what the door answers (after the mount)
     _player_says(_page, True)
-    assert {"muted": True, "videoId": _V1} in _audio_reports(_page)
+    assert any(p.get("muted") is True and p.get("volume") == 64 for p, _o in _states(_page)), _states(_page)
+    _page.wait_for_function("() => { const h = document.querySelector('.hb-yt-unmute');"
+                            " return !!h && getComputedStyle(h).display !== 'none'; }", timeout=3000)
+    _page.evaluate("() => { window.__facts = []; }")
+    _player_says(_page, False, until="() => window.__states.some(s => s[0].muted === false)")
+    _page.wait_for_function("() => getComputedStyle(document.querySelector('.hb-yt-unmute')).display === 'none'",
+                            timeout=3000)
+    assert not _audio_reports(_page), "a silence was sent as an action, not reported"
 
 
-def test_the_player_heard_clears_a_stored_block(_page):
-    _mount(_page, _data(audio_blocked=True))
-    _player_says(_page, False)
+def test_a_repeated_report_is_sent_once(_page):
+    """The real player repeats the same `infoDelivery` several times a second: one report, not one per message."""
+    _mount(_page, _data())
+    _page.evaluate("""(vid) => { for (let i = 0; i < 5; i++) window.postMessage(JSON.stringify(
+                       {event: 'infoDelivery', id: 'hb-youtube', info: {muted: true, volume: 64,
+                        videoData: {video_id: vid}}}), '*'); }""", _V1)
+    _page.wait_for_timeout(500)
+    assert sum(1 for p, _o in _states(_page) if "muted" in p) == 1, _states(_page)
+
+
+def test_a_new_revision_is_acked_by_a_full_snapshot_once_applied(_page):
+    _mount(_page, _data(_rev={"epoch": "e1", "rev": 7}))
+    _player_says(_page, False, until="() => window.__states.some(s => s[0].muted === false)")
+    _page.wait_for_function("() => window.__states.some(s => s[1].applied)", timeout=4000)
+    full = next(p for p, o in _states(_page) if o.get("applied"))
+    assert {"view", "muted", "volume"} <= set(full), full
+
+
+def test_his_hand_on_the_players_own_control_unmutes_the_card(_page):
+    _mount(_page, _data(muted=True))
+    _player_says(_page, False, until="() => window.__calls.some(c => c[0] === 'player_audio')")
     assert {"muted": False, "videoId": _V1} in _audio_reports(_page)

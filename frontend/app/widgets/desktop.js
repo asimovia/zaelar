@@ -19,6 +19,7 @@ import { saneFootprint, preferredFootprint } from "./footprint.js?v=2";
 import { bestSpot, overlaps as _overlaps } from "./placement.js?v=1";
 import { t as tr } from "../core/i18n.js?v=1";
 import * as store from "../core/store.js?v=2";
+import { mountState } from "./state-reporter.js?v=1";
 // V2-792 — services load on first use: a host imports none statically (tests mount it with its core imports stubbed).
 const _screens = () => import("../services/screens.js?v=1");
 const _sensors = () => import("../services/device.js?v=1");   // V2-870 P2: ctx.device — the screen's sensors
@@ -873,8 +874,10 @@ export class Desktop {
       const el=Date.now()-t0; if(fresh && el<700) await new Promise(r=>setTimeout(r,700-el));
       clearTimeout(w.card._long); w.card.classList.remove("loading","long");
       const l=w.card.querySelector(".hb-load"); if(l)l.remove();
+      const rep = mountState(w, baseId, id, data);       // V2-884: what this card shows, through one door
       const ctx={ action:async(name,payload)=>{ try{return await fetch(`/widgets/${baseId}/action`,{method:"POST",
           headers:{"Content-Type":"application/json"},body:JSON.stringify({action:name,payload:{...(payload||{}),q}})}).then(r=>r.json());}catch(_){return null;} },
+        state:(patch, o)=>rep.report(patch, o),
         // V2-613 — a SYSTEM widget's own UI chrome (button labels, headers, empty states) can be translated the
         // same way the rest of the app is: `i18n/genesis/en/ui.json`+`es.json` under a `widgets.<id>.*` key, read
         // through this ONE synchronous, in-memory lookup — never a network call, never an import of frontend
@@ -998,7 +1001,8 @@ export class Desktop {
       const mod=await import(`/widgets/${id}/widget.js`+(this._ver[id]?`?v=${this._ver[id]}`:""));
       if(data.error){ if(this._actId===id){rail.innerHTML="";this._actId=null;} return; }
       mount.textContent="";
-      const ctx={ action:async(name,payload)=>{ try{return await fetch(`/widgets/${id}/action`,{method:"POST",
+      const rep = mountState(this._actHold = this._actHold || {}, id, id, data);   // V2-884: same door as a card
+      const ctx={ state:(patch, o)=>rep.report(patch, o), action:async(name,payload)=>{ try{return await fetch(`/widgets/${id}/action`,{method:"POST",
           headers:{"Content-Type":"application/json"},body:JSON.stringify({action:name,payload:{...(payload||{}),q}})}).then(r=>r.json());}catch(_){return null;} },
         close:()=>{ clearTimeout(this._actTimer); rail.innerHTML=""; this._actId=null; },
         t:tr, device:_sensors, get lang(){ return store.lang(); },             // V2-613: same contract as on a normal card
@@ -1139,6 +1143,7 @@ export class Desktop {
       const ww = this.wins.get(id);        // re-check: it may have been closed while the fetch was in flight
       if(ww && sig !== ww._dataSig){
         ww._dataSig = sig; ww._lastData = data;
+        if(ww._rep) ww._rep.seen(data._rev);          // V2-884: the revision this render brings
         ww._mod.render(ww.body, data, ww._ctx);
         // Y la cabecera sigue a los datos: una búsqueda nueva cambia el título, y dejarlo con el de la anterior
         // sería un rótulo que MIENTE sobre lo que hay debajo.
@@ -1311,6 +1316,7 @@ export class Desktop {
         body:JSON.stringify({action:"cancel_task",payload:{task_id:taskId}})}); }catch(_){}
     }
     this._unwatchSize(w.card);      // a closed card must not keep an observer alive
+    if(w._rep) w._rep.dispose();    // …nor a state reporter (V2-884)
     w.card.classList.remove("in");
     setTimeout(()=>w.card.remove(),220);
     this.wins.delete(id);
