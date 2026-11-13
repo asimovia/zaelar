@@ -423,6 +423,7 @@ WIDGET
 [ ] ref_index if there are ids · prompt_digest if relevant (bounded, and saying so)
 [ ] background: decided and written down · runtime{} if it produces
 [ ] screens: "shared" or "single" declared (single if it takes the device's sound/picture)
+[ ] `"state"` declared (V2-884, the gate requires it): what the face shows per screen — `order` · `report` · `facts`, or `{"static": "<why>"}` — and `widget.js` says it after every paint (`ctx.state(…, {applied: true})`); a test with two screens and its disarm
 [ ] two screens: `tests.widget_harness --two-screens <id>` green · the operator's manual pass (`--manual <id>`) done, written in notes.md
 [ ] widget.js: no fetch · no innerHTML · textContent · classes with their own prefix · theme via --hb-*
 

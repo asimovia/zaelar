@@ -74,7 +74,8 @@ def scratch_widget(monkeypatch, tmp_path):
     made = {}
 
     def make(wid, **extra):
-        man = {"id": wid, "title": "Screens probe", "keywords": [f"{wid}-kw"], "entry": "widget.js", **extra}
+        man = {"id": wid, "title": "Screens probe", "keywords": [f"{wid}-kw"], "entry": "widget.js",
+               "state": {"static": "a probe of the screens policy; nothing moves its face"}, **extra}
         _write_widget(tmp_path, wid, man)
         made[wid] = tmp_path / wid
         return wid

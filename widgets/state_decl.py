@@ -17,6 +17,8 @@ TEXT_MAX = 60
 ID_MAX = 40
 #: A static face (`{"static": "<why>"}`) says why it has nothing to report, in at least this many characters.
 STATIC_WHY = 12
+MISSING = ("state is required: declare what the card's face shows — `order` (the store keys the handlers write), "
+           "`report` (what the surface observes, typed) and `facts` — or `{\"static\": \"<why nothing moves it>\"}`")
 _ID_CHARS = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.:-")
 #: A field, order, fact name or enum value: it reaches the prompt unquoted, so it is an identifier.
 _NAME_CHARS = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_")
@@ -138,10 +140,11 @@ def order_value(data, path: str):
 
 
 def problem(man: dict) -> str | None:
-    """Why a manifest's `state` block is wrong, or None (no block is fine until the app migrates — V2-884 C8)."""
+    """Why a manifest's `state` block is wrong or missing, or None. REQUIRED since V2-884 C8 step 6: every app says what
+    its face shows, or that nothing moves it — a missing block can no longer mean «not migrated yet»."""
     st = (man or {}).get("state")
     if st is None:
-        return None
+        return MISSING
     if isinstance(st, dict) and set(st) == {"static"}:      # a face nothing moves, and WHY — never a silent omission
         ok = isinstance(st["static"], str) and len(st["static"].strip()) >= STATIC_WHY
         return None if ok else f"state.static says why the face never changes (≥ {STATIC_WHY} characters)"

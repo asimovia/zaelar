@@ -60,8 +60,24 @@ def catalog() -> list[dict]:
             out.append(_aliases.overlaid(json.load(open(os.path.join(folder, "manifest.json"), encoding="utf-8"))))
         except Exception:
             pass
+        else:
+            _undeclared(out[-1], folder, _mtime)
     _cache["sig"], _cache["list"] = sig, out
     return out
+
+
+_WARNED: set = set()
+
+
+def _undeclared(man: dict, folder: str, mtime) -> None:
+    """An app with no `state` (V2-884 step 6: required) is said LOUD, once per manifest version, never skipped in
+    silence: the gate refuses it when the generator builds or changes it; one that predates the rule (his own app,
+    never rewritten without asking) keeps loading, and the brain reads nothing of its face until it declares one."""
+    if "state" in man or (folder, mtime) in _WARNED:
+        return
+    _WARNED.add((folder, mtime))
+    logger.warning(f"widgets: «{man.get('id')}» declares no `state` — the brain reads nothing of its face; the gate "
+                   f"requires it the next time it is built or changed ({folder})")
 
 
 def get(widget_id: str) -> dict | None:
