@@ -5035,6 +5035,8 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_a_decorated_sender_still_finds_the_mail.py"]},
         {"id": "2.1744", "title": "A verdict that cannot be READ is never «no verdict» in silence — its veto lifts, an is_error event names the key and the engine health row turns red (V2-903 P2-7)",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_an_unreadable_verdict_is_never_silent.py"]},
+        {"id": "2.1746", "title": "One waiting row is never asked «which of these tasks?» — it is asked its own question; a turn read as a sure screen order that does not surely pick the row binds and asks nothing (V2-903 a5)",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_one_waiting_row_is_never_asked_which.py"]},
         {"id": "2.1745", "title": "The phone says which app is IN FRONT and the brain reads it — the deck reports `front` on every report and page change, the server stores it as maximized/minimized (and adopts it per screen), «that» never comes from the desktop geometry on a phone turn, the screen line and the brief focus name the front app first; a desktop turn reads as before (V2-903 phone UI §5a)",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/test_the_phone_says_which_app_is_in_front.py"]},
         {"id": "2.1742", "title": "A send is never called «Done.» before its exit door reports — held words are said once no stop can run, a routed send is a START, and a refusal after its turn closed is said out of turn (V2-903, demo E3 b136)",

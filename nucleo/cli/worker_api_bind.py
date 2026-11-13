@@ -90,11 +90,13 @@ def bind(brief, *, model_answered: bool = False, asks=None) -> tuple[str, list]:
             return NOTHING, []
         from nucleo.turn import verdicts
         choice, info = verdicts.read(brief, KEY, None, min_confidence=0.0)
+        conf, floor = float((info or {}).get("confidence") or 0), verdicts.LICENCE if model_answered else verdicts.act_floor()
+        if (not info or conf < floor) and _screen_order(brief):   # V2-903 a5: a sure order on screen is not his answer
+            return NOTHING, []
         if not info or choice is None:
             if not model_answered:
                 return NOTHING, []
-            return (ANSWER, asks) if len(asks) == 1 and not asks[0].get("candidates") else (ASK_WHICH, asks)
-        conf, floor = float(info.get("confidence") or 0), verdicts.LICENCE if model_answered else verdicts.act_floor()
+            return (ANSWER, asks) if len(asks) == 1 and not asks[0].get("candidates") else _which(asks)
         by_id = {str(a["ask_id"]): a for a in asks}
         ask_id, _, idx = str(choice).partition(PICK)
         if len(asks) > 1 and conf >= floor and (ask_id in by_id or str(choice) == SEVERAL):
@@ -108,7 +110,7 @@ def bind(brief, *, model_answered: bool = False, asks=None) -> tuple[str, list]:
         if ask_id in by_id and conf >= floor:
             a = by_id[ask_id]
             if not idx:
-                return (ANSWER, [a]) if not a.get("candidates") else (ASK_WHICH, asks)
+                return (ANSWER, [a]) if not a.get("candidates") else (REASK, [a])   # the row is picked: ITS question
             if idx.isdigit() and int(idx) < len(a.get("candidates") or []):
                 return ANSWER, [{**a, "choice": int(idx)}]
         if str(choice) == NONE and conf >= verdicts.VETO:
@@ -160,6 +162,18 @@ def reask(ask: dict) -> str:
                         options=art.get("options"), kind=asker.kind_of(art))
     asked_last.note(str(ask["ask_id"]))
     return str(ask.get("question") or "")
+
+
+def _which(asks: list) -> tuple[str, list]:
+    """V2-903 a5: «which of these tasks?» needs two — ONE waiting row is asked its own question again."""
+    return (REASK, asks[:1]) if len(asks) == 1 else (ASK_WHICH, asks)
+
+
+def _screen_order(brief) -> bool:
+    """The brief reads a sure order on what is on screen (a canvas close/show, or a card's act): not an answer."""
+    from nucleo.turn import brief as _tb, verdicts
+    canvas, act = verdicts.sure(brief, _tb.CANVAS_KEY, verdicts.act_floor()), verdicts.sure(brief, _tb.TARGET_KEY, verdicts.act_floor())
+    return canvas[1] in ("close", "show") or act[1] not in (None, "", "none")
 
 
 def answers_one(brief, *, model_answered: bool = False, asks=None) -> bool:
