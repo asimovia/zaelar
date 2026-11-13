@@ -1,6 +1,6 @@
 // archivos · the header (provider chips), the breadcrumb and the toolbar row.
 
-import { S, el, tt } from "./common.js";
+import { S, el, shelfLabel, tt } from "./common.js";
 import { torrentCrumbs, torrentTools } from "./torrents.js";
 import { bar as hbBar } from "/frontend/app/lib/toolbar.js";
 
@@ -81,7 +81,7 @@ export function crumbsRow(d, ui, act) {
   }
   visible.forEach((t, i) => {
     crumbs.appendChild(el("span", "arx-sep", "›"));
-    const b = el("button", "arx-crumb", t.name || "…");
+    const b = el("button", "arx-crumb", shelfLabel(t.id) || t.name || "…");
     const isLast = i === visible.length - 1;
     if (isLast) b.disabled = true;
     else b.onclick = () => act("open_folder", { folderId: t.id });

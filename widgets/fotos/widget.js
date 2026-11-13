@@ -112,7 +112,7 @@ export function render(root, data, ctx) {
 function connectPanel(d, act, ctx) {
   const box = el("div", "fts-cx");
   box.appendChild(el("p", "", tt("not_connected", null, "Google Photos no está conectado todavía.")));
-  const b = el("button", "fts-btn", tt("connect", null, "Conectar Google Photos"));
+  const b = el("button", "hb-btn hb-btn--primary", tt("connect", null, "Conectar Google Photos"));   // the one action here
   b.onclick = () => ctx.openConnector("google-photos");
   box.appendChild(b);
   if (d.error) box.appendChild(el("p", "fts-note bad", tt("action_failed", null, "No se ha podido hacer"))).title = String(d.error);

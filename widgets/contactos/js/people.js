@@ -3,11 +3,11 @@
 // reachable through (V2-854 F5). Every write is an action of this card; a message to a group is never sent from
 // here — `message_group` hands HIS order to the conversation, where the same send door as the voice decides.
 import { editable, section } from "./fields.js";
-import { el2, hooks, kindOf, memberOf, byRelation, normJs, selOf, tt } from "./shared.js";
+import { el2, hooks, kindOf, memberOf, byRelation, normJs, selOf, tt, svgEl, ICO_FAMILY, ICO_FRIENDS, ICO_PEOPLE } from "./shared.js";
 
 //: The mark of each native group in the rail. Presentation only — WHICH natives exist and which relation files a
 //: person in each is the manifest's `native_groups`, shipped in `data.native_groups`.
-const NATIVE_ICON = {family: "♥", friends: "☺", colleagues: "⚒"};
+const NATIVE_ICON = {family: ICO_FAMILY, friends: ICO_FRIENDS, colleagues: ICO_PEOPLE};   // the shell's stroke set: one style (V2-876)
 //: The kinds that may carry linked agents (mirrors `model.AGENT_HOLDERS`).
 const AGENT_HOLDERS = ["person", "company"];
 
@@ -224,7 +224,7 @@ function detailGroups(box, data, c, redraw, act){
   const rows=groupRows(data).filter(g=>!(g.native && g.groupId==="favorites"));
   rows.filter(g=>g.native).forEach(g=>{
     const on=memberOf(g,c,nats), rel=byRelation(g,c,nats);
-    const b=el2("button","cttag ctnat"+(on?" on":""), (NATIVE_ICON[g.groupId]||"")+" "+groupLabel(g));
+    const b=el2("button","cttag ctnat"+(on?" on":""), groupLabel(g)); if(NATIVE_ICON[g.groupId]) b.prepend(svgEl(NATIVE_ICON[g.groupId]));
     if(rel){ b.disabled=true; b.title=tt("group_by_relation", {rel:tt("rel_"+c.relation, null, c.relation)},
                                         "Por su relación ("+c.relation+"): cámbiala para sacarla"); }
     else b.onclick=()=>act("add_to_group",{groupId:g.groupId, contactId:c.id, ...(on?{remove:true}:{})});
