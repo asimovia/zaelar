@@ -10,11 +10,24 @@
 //   · a new mount (`rendered` with another ctx) starts with nothing of the old one's revision or facts;
 //   · the door's answer carries the engine's facts: `onFacts` paints them (a «tap for sound» hint).
 // `hand(patch)` says whether HIS hand moved the player for this change (only that may be adopted as his order).
+// `silentMs`: a new player that has not said a word by then says it does not play (a phone that holds the embed back,
+// a video its owner refuses), so the revision is acked and the engine reads «not playing», never «unknown» for ever;
+// `quiet()` true skips it (the agent stopped: nothing was meant to play).
 // Nothing here knows an app's fields beyond the names it is given.
 // ============================================================================
 
-export function playerReport({ fields = [], forget = [], graceMs = 1500, hand = null, onFacts = null } = {}) {
-  const S = { ctx: null, revSeen: "", facts: [], ackWaits: false, ackTimer: null };
+export function playerReport({ fields = [], forget = [], graceMs = 1500, hand = null, onFacts = null, silentMs = 0,
+                               quiet = null } = {}) {
+  const S = { ctx: null, revSeen: "", facts: [], ackWaits: false, ackTimer: null, silence: null };
+
+  const awaitWord = () => {                // the ack waits for the player's first word — or its silence, said
+    S.ackWaits = true;
+    clearTimeout(S.silence);
+    const ctx = S.ctx;
+    if (silentMs) S.silence = setTimeout(() => {
+      if (S.ctx === ctx && S.ackWaits && !(typeof quiet === "function" && quiet())) report({ playing: false });
+    }, silentMs);
+  };
 
   const ackLater = () => {
     clearTimeout(S.ackTimer);
@@ -44,7 +57,7 @@ export function playerReport({ fields = [], forget = [], graceMs = 1500, hand = 
     if (ctx) S.ctx = ctx;
     clearTimeout(S.ackTimer); S.ackWaits = false;
     report({ playing: false }, { forget });
-    if (waits) S.ackWaits = true;          // AFTER its own report: only the NEW player's first word starts the ack
+    if (waits) awaitWord();                // AFTER its own report: only the NEW player's first word starts the ack
     else if (S.revSeen) ackLater();
   }
 
@@ -52,7 +65,8 @@ export function playerReport({ fields = [], forget = [], graceMs = 1500, hand = 
   // once the current player has spoken (a player replaced later in the same render takes the ack over).
   function rendered(ctx, rev, hasPlayer, face, faceForget) {
     if (ctx !== S.ctx) {                   // a new mount: nothing of the old one's revision or facts carries over
-      clearTimeout(S.ackTimer); S.ctx = ctx; S.revSeen = ""; S.facts = []; S.ackWaits = !!hasPlayer;
+      clearTimeout(S.ackTimer); S.ctx = ctx; S.revSeen = ""; S.facts = []; S.ackWaits = false;
+      if (hasPlayer) awaitWord();
     }
     if (face) report(face, faceForget && faceForget.length ? { forget: faceForget } : {});
     const key = rev && rev.epoch ? rev.epoch + ":" + rev.rev : "";
