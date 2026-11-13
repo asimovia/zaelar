@@ -136,6 +136,21 @@ def revision(widget_id: str) -> int:
     return _rev.get(canvas_id(widget_id), 0)
 
 
+def _state_seed(widget_id: str, path: str) -> None:
+    try:
+        __import__("widgets.state", fromlist=["x"]).seed(canvas_id(widget_id), path)
+    except Exception as e:  # noqa: BLE001 — the save stands; the first order after a restart is just not pending
+        __import__("loguru").logger.debug(f"store: state seed skipped for {widget_id}: {e!r}")
+
+
+def _stamp(widget_id: str) -> dict:
+    """The revision the data event carries (V2-884) — {} rather than no event at all."""
+    try:
+        return __import__("widgets.state", fromlist=["x"]).stamp(canvas_id(widget_id))
+    except Exception as e:  # noqa: BLE001
+        __import__("loguru").logger.debug(f"store: no revision stamp for {widget_id}: {e!r}")
+        return {}
+
 def save(widget_id: str, data: dict) -> dict:
     p = _path(widget_id)
     # CHANGE-GATED: a connector's poll loop (e.g. messaging, _POLL=1s) re-saves the SAME content constantly. Writing
@@ -148,6 +163,7 @@ def save(widget_id: str, data: dict) -> dict:
         if _last_hash.get(widget_id) == h and os.path.exists(p):
             return data                                  # unchanged → skip write + skip emit (kills the poll flood)
         _snapshot(widget_id, p)                      # V2-705: what is about to be overwritten survives
+        _state_seed(widget_id, p)                    # V2-884: what its declared order keys WERE
         tmp = p + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
             f.write(body)
@@ -168,8 +184,7 @@ def save(widget_id: str, data: dict) -> dict:
         from widgets.provenance import who
         # The CANVAS id, not the disk key — see `canvas_id()`. Provenance keeps looking itself up by the disk
         # key, which is the name it is recorded under.
-        emit("widget", "data", extra={"id": canvas_id(widget_id), "src": who(widget_id),   # V2-039: WHO changed it
-                                      "rev": __import__("widgets.state", fromlist=["x"]).stamp(widget_id)})  # V2-884
+        emit("widget", "data", extra={"id": canvas_id(widget_id), "src": who(widget_id), "rev": _stamp(widget_id)})
     except Exception:
         pass
     return data

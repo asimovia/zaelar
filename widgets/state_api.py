@@ -16,6 +16,6 @@ screens.on_moved(lambda card, old_dev: state.forget(card, old_dev))
 
 
 @router.post("/widgets/{wid}/state")
-async def widget_state(wid: str, body: dict = Body(default_factory=dict)):
+def widget_state(wid: str, body: dict = Body(default_factory=dict)):   # sync: FastAPI runs it off the event loop
     code, out = state.report(wid, body)
     return JSONResponse(out, status_code=code)

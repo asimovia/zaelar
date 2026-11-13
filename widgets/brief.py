@@ -419,9 +419,9 @@ def _live_lines(cat: list[dict], opened: set[str]) -> list[str]:
     from . import refs, state_render
     lines: list[str] = []
     # V2-884: the ONE state line of each open app that declares one, digest or not — its report, never its order
-    states = [c for w in cat if str(w.get("id") or "").strip().lower() in opened and (c := state_render.clause(w.get("id")))]
+    states = state_render.lines([w.get("id") for w in cat if str(w.get("id") or "").strip().lower() in opened])
     if states:
-        lines += ["", "app state (reported):"] + [f"- {c}" for c in states]
+        lines += ["", "app state (reported):"] + states
     item_lines: list[str] = []
     for w in cat:
         wid = str(w.get("id") or "").strip().lower()

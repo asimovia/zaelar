@@ -156,7 +156,10 @@ def _counts(payload: dict) -> bool:
     from voice import screens as _screens
     dev = _screens.clean(payload.get("dev"))
     if dev:
+        gone = set(open_on(dev)) - set(payload.get("open") or [])
         _BY_DEV[dev] = {"open": list(payload.get("open") or [])[:60], "layout": payload.get("layout")}
+        for cid in gone:                     # V2-884: an app closed on this screen — its report stops speaking for it
+            __import__("widgets.state", fromlist=["x"]).forget(cid, dev, instance=str(cid))
         act = _screens.current()
         return not act or act == dev
     # A report with no `dev` is a tab older than V2-792: the voice holder's sid decides, as it did before.

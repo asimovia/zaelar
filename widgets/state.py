@@ -26,6 +26,8 @@ from loguru import logger
 from widgets import state_decl as decl
 
 GROUP_S = 1.0
+#: How many instances of one app one screen may report (an instanced sheet per search; a bound, never a crowd).
+MAX_INSTANCES = 4
 
 _LOCK = threading.Lock()
 #: (app, instance, dev) → {mount, n, at, visible, fields: {name: (value, ack)}}
@@ -36,6 +38,44 @@ _CHANGED: dict[str, dict] = {}
 _COPY: dict[str, dict] = {}
 #: (app, dev) → (last event time, changes not yet said)
 _EVENTS: dict[tuple, tuple] = {}
+#: (app, instance, dev) → the mounts a newer one replaced: they never report again (two tabs, a reload)
+_GONE: dict[tuple, list] = {}
+
+
+def disk_id(cid) -> str:
+    """The store key of an app or one of its instances (`results::t1` on screen is `results--t1` on disk)."""
+    return str(cid or "").replace("::", "--", 1)
+
+
+def _instance_ok(app: str, instance: str) -> bool:
+    """The app itself, or an instance of it the store already holds — never a name the client made up."""
+    from widgets import store
+    return instance == app or (decl.base(instance) == app and "::" in instance and store.exists(disk_id(instance)))
+
+
+def seed(cid, path) -> None:
+    """Before `store.save` overwrites `cid`, the ledger learns what its order keys WERE, so the first order after a
+    restart is a change like any other (it leaves the field pending until a report acks it)."""
+    app = decl.base(cid)
+    with _LOCK:
+        if str(cid) in _COPY:
+            return
+    order = decl.declared_order(app)
+    if not order:
+        return
+    import json
+    import os
+    try:
+        if os.path.exists(path):
+            with open(path, encoding="utf-8") as f:
+                data = json.load(f)
+        else:
+            data = {}
+    except (OSError, ValueError) as e:
+        logger.debug(f"state: no prior store for {cid} ({e!r})")
+        return
+    with _LOCK:
+        _COPY.setdefault(str(cid), {name: decl.order_value(data, p) for name, p in order.items()})
 
 
 def stamp(cid) -> dict:
@@ -48,13 +88,8 @@ def stamp(cid) -> dict:
 def note_save(widget_id, data) -> None:
     """`store.save` saved a REAL change of `widget_id`: note which declared order keys moved, at which revision."""
     cid = str(widget_id or "")
-    app = decl.base(cid)
-    try:
-        order = decl.of(app).get("order") or {}
-    except Exception as e:  # noqa: BLE001 — a manifest it cannot read declares nothing
-        logger.debug(f"state: no declaration for {app} ({e!r})")
-        return
-    if not isinstance(order, dict) or not order:
+    order = decl.declared_order(decl.base(cid))
+    if not order:
         return
     cur = {name: decl.order_value(data, path) for name, path in order.items()}
     s = stamp(cid)
@@ -98,8 +133,10 @@ def report(app, body: dict) -> tuple[int, dict]:
     dev, mount = screens.clean(body.get("dev")), str(body.get("mount") or "")[:40]
     n, full = body.get("n"), bool(body.get("full"))
     instance = str(body.get("instance") or app)[:80]
-    if not dev or not mount or not isinstance(n, int):
+    if not dev or not mount or not isinstance(n, int) or isinstance(n, bool):
         return _refused(400, "a report names its dev, its mount and its n")
+    if not _instance_ok(app, instance):
+        return _refused(400, "not an instance of this app")
     from widgets import runtime
     if screen_policy.of(runtime.get(app) or {}) == screen_policy.SINGLE and screens.playing_on(app) not in ("", dev):
         return _refused(409, "a one-screen app is reported by the screen it lives on")
@@ -115,15 +152,22 @@ def report(app, body: dict) -> tuple[int, dict]:
     ack, key = _ack(body), (app, instance, dev)
     with _LOCK:
         cur = _SNAP.get(key)
+        if mount in _GONE.get(key, ()):
+            return _refused(409, "a newer mount of this screen replaced this one")
+        if cur is None and sum(1 for k in _SNAP if k[0] == app and k[2] == dev) >= MAX_INSTANCES:
+            return _refused(409, "too many instances of this app on this screen")
         if cur and cur["mount"] != mount and not full:
             return _refused(409, "a new mount starts with a full snapshot")
         if cur and cur["mount"] == mount and n <= cur["n"]:
             return _refused(409, "n went back")
+        if cur and cur["mount"] != mount:
+            _GONE[key] = (_GONE.get(key, []) + [cur["mount"]])[-8:]
         keep = dict(cur["fields"]) if cur and cur["mount"] == mount else {}
         moved = {k: v for k, v in clean.items() if (keep.get(k) or (None,))[0] != v or k not in keep}
         keep.update({k: (v, ack) for k, v in clean.items()})
-        _SNAP[key] = {"mount": mount, "n": n, "at": time.time(), "visible": body.get("visible") is not False,
-                      "fields": keep}
+        seen = body.get("visible")
+        _SNAP[key] = {"mount": mount, "n": n, "at": time.time(), "fields": keep,
+                      "visible": seen is not False if seen is not None else (cur or {}).get("visible", True)}
     _event(app, dev, moved)
     return 200, {"ok": True, "facts": state_render.facts_for(app, instance, dev)}
 
@@ -136,11 +180,12 @@ def snapshots(app, instance=None) -> list[tuple[str, str, dict]]:
                 if k[0] == app and (instance is None or k[1] == instance)]
 
 
-def forget(app, dev=None) -> None:
-    """An explicit move or close: the screen's snapshot of `app` no longer speaks for it."""
+def forget(app, dev=None, instance=None) -> None:
+    """An explicit move or close: the screen's snapshot of `app` (or of one instance) no longer speaks for it."""
     app = decl.base(app)
     with _LOCK:
-        for k in [k for k in _SNAP if k[0] == app and (dev is None or k[2] == dev)]:
+        for k in [k for k in _SNAP if k[0] == app and (dev is None or k[2] == dev)
+                  and (instance is None or k[1] == instance)]:
             _SNAP.pop(k, None)
 
 
@@ -168,3 +213,5 @@ def _reset_for_tests() -> None:
         _CHANGED.clear()
         _COPY.clear()
         _EVENTS.clear()
+        _GONE.clear()
+    decl.forget_cache()
