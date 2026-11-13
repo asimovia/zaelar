@@ -85,7 +85,8 @@
     "search_files": {
       "desc": "BUSCA por nombre en el proveedor actual y CONTESTA: cambia lo que se ve y devuelve los que casan en `result.matches`",
       "payload": {
-        "query": "lo que se busca"
+        "query": "lo que se busca",
+        "provider": "opcional: DÓNDE busca solo esta vez («búscalo en Drive»: local | gdrive | onedrive); su elección no cambia"
       },
       "view": true,
       "done_when": {
