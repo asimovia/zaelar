@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+import pytest
+
 from tests.use_cases.e2e.agent import driver as D
 from tests.use_cases.e2e.agent.run import _screen_line
 
@@ -47,12 +49,47 @@ def test_the_screen_rides_with_what_zaelar_just_said():
     assert d.history[-1]["content"].startswith("Vale, hecho.") and "nada está a pantalla completa" in d.history[-1]["content"]
 
 
+@pytest.fixture(autouse=True)
+def _a_fresh_screen(monkeypatch):
+    """Each test starts with no screen and no report, and leaves none behind."""
+    from server import canvas_api
+    from voice import screens
+    from widgets import state
+    monkeypatch.setattr(canvas_api, "_BY_DEV", {})
+    state._reset_for_tests()
+    screens._reset_for_tests()
+    yield
+    state._reset_for_tests()
+    screens._reset_for_tests()
+
+
+def _as_the_player_reports(card: str, db: dict) -> None:
+    """V2-884 1a: whether a video plays and at what volume is what the PLAYER reports through the one state door, never
+    a store field — so the screen under test reports what it shows, as a mounted player does."""
+    from server import canvas_api
+    from voice import screens
+    from widgets import state
+    state._reset_for_tests()                 # a new screen each time: nothing reported before stays
+    if card != "youtube" or not db.get("videoId"):
+        return
+    screens.attach("desktop:tester")
+    canvas_api._BY_DEV["desktop:tester"] = {"open": [card]}
+    patch = {"playing": not db.get("paused", True), "playing_id": db["videoId"], "title": db.get("title")}
+    patch.update({k: db[k] for k in ("muted", "volume") if k in db})
+    code, got = state.report(card, {"dev": "desktop:tester", "mount": "m1", "n": 1, "full": True, "patch": patch,
+                                    "ack": state.stamp(card)})
+    assert code == 200, got
+
+
 def _seen(card: str, db: dict) -> str:
-    """Put `db` in the card's store, then read it the way the round does: the engine's reading → the tester's line."""
+    """Put `db` in the card's store and let its screen report it, then read it the way the round does: the engine's
+    reading → the tester's line."""
     from nucleo.flash import widget_read
     from tests.use_cases.e2e.agent.run import _what_it_shows
-    from widgets import store
+    from widgets import state, store
     store.save(card, db)
+    state.note_save(card, db)
+    _as_the_player_reports(card, db)
     return _what_it_shows(card, widget_read.read(card))
 
 
@@ -62,8 +99,8 @@ def test_the_screen_says_what_each_open_card_shows():
     the card. Each open card now says what it shows — the engine's own reading of it (S1 audit H8)."""
     playing = {"videoId": "x", "title": "Dune: Part Three | Final Trailer", "channel": "Warner", "paused": False}
     got = _seen("youtube", playing)
-    assert "Dune: Part Three | Final Trailer" in got and "reproduciéndose" in got, got
-    assert "en pausa" in _seen("youtube", dict(playing, paused=True))
+    assert "Dune: Part Three | Final Trailer" in got and ": playing," in got, got   # V2-884: the reported state line
+    assert "!playing" in _seen("youtube", dict(playing, paused=True))
     line = _screen_line(["youtube"], set(), "us", {"youtube": "«Dune: Part Three | Final Trailer», playing"})
     assert line == "open on the screen: youtube («Dune: Part Three | Final Trailer», playing) — nothing is at full screen"
     assert _screen_line(["youtube"], {"youtube"}, "es") == "abierto en la pantalla: youtube (a pantalla completa)"
@@ -82,9 +119,9 @@ def test_a_loaded_player_shows_its_volume():
     """V2-834 T28 — watch-a-video-not-listen-to-it__us: the volume was set to 30 and the tester, never shown it, said
     «still the same volume» for six turns; the brain's own reading had no volume either."""
     d = {"videoId": "x", "title": "Dune", "channel": "Warner", "paused": False, "volume": 30, "muted": False}
-    assert "volumen 30 %" in _seen("youtube", d)
-    assert "silenciado" in _seen("youtube", dict(d, muted=True))
-    assert "volumen" not in _seen("youtube", {"videoId": "", "volume": 70, "search_query": "q",
+    assert "volume=30" in _seen("youtube", d)
+    assert ", muted," in _seen("youtube", dict(d, muted=True))
+    assert "volume=" not in _seen("youtube", {"videoId": "", "volume": 70, "search_query": "q",
                                                "search_results": [{"title": "a"}]})
 
 
@@ -110,12 +147,15 @@ def test_the_reading_is_served_as_the_brain_reads_it():
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
     from nucleo.flash import widget_read
-    from widgets import server_api, store
-    store.save("youtube", {"videoId": "x", "title": "Dune", "channel": "Warner", "paused": True, "volume": 40})
+    from widgets import server_api, state, store
+    db = {"videoId": "x", "title": "Dune", "channel": "Warner", "paused": True, "volume": 40}
+    store.save("youtube", db)
+    state.note_save("youtube", db)
+    _as_the_player_reports("youtube", db)
     app = FastAPI()
     app.include_router(server_api.router)
     got = TestClient(app).get("/widgets/youtube/reading").json()["reading"]
-    assert got == widget_read.read("youtube") and "volumen 40 %" in got, got
+    assert got == widget_read.read("youtube") and "volume=40" in got, got
 
 
 def test_a_long_reading_keeps_what_the_card_shows():
