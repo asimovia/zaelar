@@ -5323,6 +5323,14 @@ DOMAINS: list[dict] = [
                                  "refused, a batch sent twice counts once, jitter is not distance, no strap is no reading "
                                  "(never a zero), stop keeps the summary (V2-890 F1)", "ch": UNIT,
             "paths": ["tests/browser/unit/activity/test_an_activity_is_recorded_by_the_screen_that_owns_it.py"]},
+        {"id": "4.530", "title": "Activity is a stable base app (V2-898): a screen whose sensors fail never claims the "
+                                 "activity and says why in words, a failed start is tried again only for a NEW activity, an "
+                                 "activity ended while its sensors start stops them, a reloaded tab still records its own; no "
+                                 "GPS / no barometer is «—», never 0 km or 0 m (view, summary, digest); numbers in the "
+                                 "person's locale; the heart-rate sparkline (last 10 min), the 7-day distance bars and a "
+                                 "row's summary come only from stored data; the strap in use is shown; at rest the digest "
+                                 "carries the last activities; disarmed → red", "ch": UNIT,
+            "paths": ["tests/browser/unit/activity/test_the_activity_card_is_a_stable_base_app.py"]},
         {"id": "4.439", "title": "The iOS app carries what App Review reads: Info.plist keys (encryption, category, "
                                  "full screen, permission sentences, versions from the build), the privacy manifest "
                                  "(no tracking, the data the shell sends) and the entitlements template (V2-870)", "ch": UNIT,

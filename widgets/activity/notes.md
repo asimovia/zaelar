@@ -9,3 +9,12 @@
   phone screen comes back). A sample batch sent twice counts once (`seq`).
 - Known limits: a voice «stop» while the phone is locked loses the last ≤5 s not yet sent; figures asked by voice
   while the phone is locked are as of its last batch; the route is a drawn trace, not a base map.
+- 2026-11-13 V2-898: made a stable base app, NO new scope (operator: «stable, don't evolve it»). What the voice can
+  ask: `start` (kind running · walking · cycling · driving — read from `kind`, `type` or a short word; with none the
+  app asks, never a default ride), `stop`, the running figures and, at rest, the last 3 activities (both through the
+  digest, card open). Settings made visible: the strap in use (name + Change; «forget» needs the device door, V2-902)
+  and numbers in the person's locale (km stays metric). Charts only from stored data: heart-rate sparkline (last
+  10 min), 7-day distance bars, a history row opens its summary. A reading we lack is «—»/`None`: no GPS keeps no
+  distance, no barometer no climb. Sensors start BEFORE the claim (a screen that cannot read never holds the
+  activity); a failure is per activity; the owner token lives per tab (`sessionStorage`) so a reload resumes. Rejected:
+  a redesign onto `hb-btn`/house bar (out of scope); `data.py` stays stdlib-only (stdlib `logging`, not loguru).

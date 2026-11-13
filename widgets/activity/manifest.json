@@ -57,7 +57,7 @@
     "w": 300,
     "h": 320
   },
-  "usage": "A recorded activity: «start my ride» is `start` with kind cycling (running, walking, driving for the others); «stop», «I'm done» is `stop`. While one runs, its heart rate, distance and time are in this app's state.",
+  "usage": "«start my ride» is `start` with kind cycling (running, walking, driving for the others); «stop», «I'm done» is `stop`. With the card open, the running activity's heart rate, distance and time — or at rest the last ones — are in its digest.",
   "actions": {
     "start": {
       "desc": "Start recording an activity the person begins now: kind cycling, running, walking or driving, optional short label.",
