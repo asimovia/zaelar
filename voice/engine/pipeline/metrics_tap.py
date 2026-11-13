@@ -37,21 +37,27 @@ def on_metrics(ev, emit) -> None:
     line = metric_line(ev.metrics)
     m = ev.metrics
     kind = type(m).__name__
+    # V2-896 — the provider that PRODUCED this metric (its plugin label), not the one the settings select: while a
+    # stand-in hears or speaks, its lines and its bill are its own, and the titular's recovery attempts stay the
+    # titular's. Before, an ear relayed to the stand-in was still labelled and billed as the titular.
+    from ..speech import relay as _relay
+    prov = (_relay.provider_for("stt", m, SETTINGS.stt_provider) if kind == "STTMetrics"
+            else _relay.provider_for("tts", m, SETTINGS.tts_provider) if kind == "TTSMetrics" else "")
     if "=" in line:
         # The PROVIDER as a field, not only in a label (capture gaps, 2026-11-06): the operator console and the ◷ viewer
         # read `provider`; the metric's audio length rides as a number too.
         extra = {}
         if kind == "STTMetrics":
-            extra = {"provider": SETTINGS.stt_provider, "audio_ms": _ms(getattr(m, "audio_duration", None))}
+            extra = {"provider": prov, "audio_ms": _ms(getattr(m, "audio_duration", None))}
         elif kind == "TTSMetrics":
-            extra = {"provider": SETTINGS.tts_provider, "audio_ms": _ms(getattr(m, "audio_duration", None))}
+            extra = {"provider": prov, "audio_ms": _ms(getattr(m, "audio_duration", None))}
         emit("metric", line, role="system", extra={k: v for k, v in extra.items() if v is not None})
     # Forward REMOTE STT/TTS latency into the observer stream too — Cartesia/Deepgram/Voxtral run entirely
     # inside their LiveKit plugin (no zaelar call site to instrument directly), so LiveKit's own per-provider
     # metric is the only place this ever surfaces. Local backends (Kokoro/whisper_local) already emit their
     # own tts_ms/stt_ms at the exact call site (more precise: text/backend attached) — skip here to avoid a
     # duplicate row for the same utterance.
-    if kind == "TTSMetrics" and SETTINGS.tts_provider != "kokoro_local":
+    if kind == "TTSMetrics" and prov != "kokoro_local":
         dur = getattr(m, "duration", None)
         if dur:
             # SAFE to label with active() (source audit 2026-08-16): a TTS metric describes audio synthesized
@@ -60,20 +66,16 @@ def on_metrics(ev, emit) -> None:
             # trace of the turn it will trigger.
             from voice import trace as _trace       # V2-831 T-23: the turn that created this speech, first
             _tid = _trace.of_speech(getattr(m, "speech_id", "")) or _trace.active()
-            emit("tts", f"🔊 {SETTINGS.tts_provider}", extra={"tts_ms": round(dur * 1000),
-                 "provider": SETTINGS.tts_provider, **({"trace": _tid} if _tid else {})})
+            emit("tts", f"🔊 {prov}", extra={"tts_ms": round(dur * 1000),
+                 "provider": prov, **({"trace": _tid} if _tid else {})})
         from nucleo.energy import meter as _energy
         # The PROVIDER is passed, not looked up inside the meter: the rate has to follow whatever
         # backend actually produced this audio, and this hook is the only place that knows it.
         # V2-778 F0-7 — the backend that SPOKE: after a failover it is the stand-in, not the selected one.
-        from ..speech import tts as _tts
-        _energy.report_tts_usage(characters=getattr(m, "characters_count", None),
-                                 provider=_tts.active_provider())
-    elif kind == "STTMetrics" and SETTINGS.stt_provider != "whisper_local":
+        _energy.report_tts_usage(characters=getattr(m, "characters_count", None), provider=prov)
+    elif kind == "STTMetrics" and prov != "whisper_local":
         dur = getattr(m, "duration", None)
         if dur:
-            emit("stt", f"👂 {SETTINGS.stt_provider}", extra={"stt_ms": round(dur * 1000),
-                 "provider": SETTINGS.stt_provider})
+            emit("stt", f"👂 {prov}", extra={"stt_ms": round(dur * 1000), "provider": prov})
         from nucleo.energy import meter as _energy
-        _energy.report_stt_usage(audio_seconds=getattr(m, "audio_duration", None),
-                                 provider=SETTINGS.stt_provider)
+        _energy.report_stt_usage(audio_seconds=getattr(m, "audio_duration", None), provider=prov)
