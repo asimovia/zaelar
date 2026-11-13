@@ -9,7 +9,10 @@ from __future__ import annotations
 
 import asyncio
 import dataclasses
+import functools
 import time
+
+from loguru import logger
 
 _TICK_S = 0.1
 
@@ -34,12 +37,35 @@ class _Ear:
 
 
 _EAR = _Ear()
+_BROKEN: set = set()
 
 
 def policy() -> Bound:
     from nucleo.workers import envelope       # reads the declared files; an unreadable one is said there
     declared = envelope.policy().get("relay_bound") or {}
     return Bound(**{f.name: declared[f.name] for f in dataclasses.fields(Bound) if f.name in declared})
+
+
+def _off(where: str, e: Exception) -> None:
+    """The watcher itself failed (P2-A): said once per place, and it stops watching — a shadow never harms the voice."""
+    if where in _BROKEN:
+        return logger.debug(f"relay_bound: {where} failed again ({type(e).__name__})")
+    _BROKEN.add(where)
+    logger.warning(f"relay_bound: {where} failed ({type(e).__name__}: {e}) — the bound stops watching there")
+    from voice.observer import emit
+    emit("provider", f"⚠️ relay bound off at {where}: {type(e).__name__}", role="system",
+         extra={"cat": "relay_bound", "bound_broken": True, "where": where, "error": type(e).__name__})
+
+
+def _fenced(fn):
+    """The ear's entries run inside the session's own handlers: a failure here is the bound's, never theirs."""
+    @functools.wraps(fn)
+    def run(*a, **k):
+        try:
+            return fn(*a, **k)
+        except Exception as e:  # noqa: BLE001 — said by `_off`; the handler that called goes on
+            _off(fn.__name__, e)
+    return run
 
 
 def _say(family: str, provider: str, why: str) -> None:
@@ -74,14 +100,23 @@ async def first_audio(gen, outer, provider: str):
     """`gen`'s audio, watched until its first frame. Armed: a late titular is closed and raised as a timeout (the
     adapter marks it down and the stand-in speaks the same text); shadow: said once, and nothing changes."""
     from livekit.agents import APITimeoutError
-    pol, clock, said = policy(), {}, False
+    clock, said = {}, False
+    try:
+        pol = policy()
+    except Exception as e:  # noqa: BLE001 — said by `_off`; the voice goes on unwatched
+        _off("policy", e)
+        pol, said = Bound(), True
     nxt = asyncio.ensure_future(gen.__anext__())
     try:
         while True:
             done, _ = await asyncio.wait({nxt}, timeout=_TICK_S)
             if nxt in done:
                 break
-            why = "" if said else _late(gen, outer, pol, clock)
+            try:
+                why = "" if said else _late(gen, outer, pol, clock)
+            except Exception as e:  # noqa: BLE001 — said by `_off`; this stream goes on unwatched
+                _off("tts_first_audio", e)
+                why, said = "", True
             if not why:
                 continue
             said = True
@@ -103,12 +138,14 @@ async def first_audio(gen, outer, provider: str):
         await gen.aclose()
 
 
+@_fenced
 def ear_heard() -> None:
     """Any STT event (an interim counts): the ear answered."""
     _EAR.heard_at = time.monotonic()
     _judge(_EAR.heard_at)
 
 
+@_fenced
 def ear_state(state: str) -> None:
     """The VAD's speech spans (read where the session's events are handled, the body in both topologies). A span of at
     least `stt_span_s` is judged once `stt_answer_s` passed after it — lazily, at the next event: no timer, no loop."""
