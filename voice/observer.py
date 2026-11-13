@@ -225,7 +225,7 @@ def _prompt_excerpt(system: str) -> str:
 #: What the operator has IN FRONT OF HIM, as `widgets/brief.for_prompt` writes it. It lives in the middle
 #: of the prompt, between the persona (head) and the live state (tail), and the head/tail excerpt dropped
 #: it whole.
-_ON_SCREEN_MARK = "items ahora (de lo ABIERTO"
+_ON_SCREEN_MARK, _STATE_MARK = "items ahora (de lo ABIERTO", "app state as each app REPORTS it"   # V2-884: the second is `state_render.LEGEND`'s head — the state lines open just before the band
 _ON_SCREEN_MAX = 2500
 
 
@@ -244,7 +244,7 @@ def _on_screen_block(middle: str) -> str:
     Bounded on purpose (`_ON_SCREEN_MAX`): this is the excerpt, not the prompt. A long screen is cut with
     its own marker rather than swallowing the budget of the head and the tail.
     """
-    i = middle.find(_ON_SCREEN_MARK)
+    i = min((j for j in (middle.find(_STATE_MARK), middle.find(_ON_SCREEN_MARK)) if j >= 0), default=-1)
     if i < 0:
         return ""
     block = middle[i:i + _ON_SCREEN_MAX]
@@ -532,8 +532,8 @@ def emit(kind: str, label: str, text: str = "", role: str = "", extra: dict | No
             _e = extra or {}
             # …and the ACTION and its payload: two different ops of one card within 150 ms are not a flood (a turn
             # of five calls lost its move of the whole piano series from the audit, 20261014-121305-en).
-            k = (kind, label, str(_e.get("id") or ""), str(_e.get("src") or ""), str(_e.get("action") or ""),
-                 repr(_e.get("payload"))[:240])
+            # V2-884: …and the screen, the instance and the state it reports — two screens are two reports, not a flood.
+            k = (kind, label, *(str(_e.get(f) or "") for f in ("id", "src", "action", "dev", "instance")), repr(_e.get("payload"))[:240], repr(_e.get("changed"))[:240])
         else:
             k = (kind, label)
         if ts - _dedup.get(k, -1e9) < 150:

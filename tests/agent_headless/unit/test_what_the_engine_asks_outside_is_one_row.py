@@ -76,6 +76,16 @@ def test_an_oracle_search_and_an_agent_errand_are_one_row_each(rows, monkeypatch
     assert all("secret-bearer-xyz" not in str(x) for x in rows), "the bearer never enters the record"
 
 
+def test_an_answer_that_is_not_a_200_keeps_what_the_agent_said(rows, monkeypatch):
+    """A 202 carries the job a later poll reads; a refusal carries its reason — the row keeps it, bounded, beside the
+    status, so the log alone says which job a call opened."""
+    monkeypatch.setattr(mesh_agents, "_post", lambda url, body, timeout=0, bearer=None: (202, {"job": "j-77"}))
+    monkeypatch.setattr(mesh_agents, "_bearer_for", lambda agent, endpoint: "")
+    mesh_agents.ask({"agent_id": "tablescout", "endpoint": "https://ts.example"}, "a table for two")
+    (a,) = [x for x in rows if x["kind"] == "mesh"]
+    assert a["status"] == 202 and "j-77" in a["answer"] and a["error"]
+
+
 def test_a_mediated_call_is_one_gateway_row_and_self_host_records_nothing(rows, monkeypatch):
     monkeypatch.setattr(egress, "mediated", lambda: False)
     url = egress.base_of(egress._UPSTREAMS[0][0]) + "/search?q=x"

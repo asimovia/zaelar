@@ -23,7 +23,7 @@ def is_clarify(task_id: str) -> bool:
     return asker.kind_of(asker.artefact(str(task_id or ""))) == asker.KIND_CLARIFY
 
 
-def close(task_id: str, ask_id: str, reason: str, emit=None) -> bool:
+def close(task_id: str, ask_id: str, reason: str, emit=None, waited_s: float | None = None) -> bool:
     """End the row that still waits on this clarify (its worker told), and say so in ONE event. True when closed."""
     try:
         from nucleo.circuit import asker
@@ -33,8 +33,8 @@ def close(task_id: str, ask_id: str, reason: str, emit=None) -> bool:
         control.cancel_row(str(task_id), outcome=f"the clarification closed: {reason}")
         if emit is None:
             from voice.observer import emit
-        emit("task", "🧹 clarification closed with its conversation", role="system", text=reason,
-             extra={"kind_diag": EV, "task_id": str(task_id), "ask_id": str(ask_id), "reason": reason})
+        emit("task", "🧹 clarification closed with its conversation", role="system", text=reason, extra={"kind_diag": EV, "task_id": str(task_id), "ask_id": str(ask_id), "reason": reason,   # expired: the pulse runs no turn, the close sits under the turn that asked
+             **({"waited_s": round(float(waited_s))} if waited_s is not None else {}), **({"trace": t} if reason == EXPIRED and (t := asker.trace_of(task_id)) else {})})
         return True
     except Exception as e:  # noqa: BLE001 — a close that failed leaves the wait to its own deadline
         note(e)
@@ -76,7 +76,7 @@ def expired(now: float | None = None) -> list[str]:
         for row in ledger.store().tasks_where(states=("waiting",), visible_only=False, limit=500):
             since = int(row.get("waiting_since") or 0)
             if (row.get("waiting_for") == ledger.USER_ANSWER and since and now >= since + period
-                    and is_clarify(row["id"]) and close(row["id"], str(row.get("ask_id") or ""), EXPIRED)):
+                    and is_clarify(row["id"]) and close(row["id"], str(row.get("ask_id") or ""), EXPIRED, waited_s=now - since)):
                 out.append(str(row["id"]))
         return out
     except Exception as e:  # noqa: BLE001

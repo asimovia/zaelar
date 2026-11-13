@@ -32,7 +32,7 @@ def _dispatch():
     return dispatch
 
 
-def session_phase(tid, phase: str) -> None:
+def session_phase(tid, phase: str, why: str = "") -> None:
     """Compat V2-036: reporte of fase EXPLÍCITO of the worker (hbnote). Actualiza the record RAM."""
     r = _dispatch()._SESSIONS.get(str(tid))
     if r is not None:
@@ -42,7 +42,7 @@ def session_phase(tid, phase: str) -> None:
         _dispatch().record_phase(tid, _p)   # V2-358: `sheets.record_phase` marca la afirmación sin respaldo
     try:
         from voice.observer import emit
-        extra = {"id": str(tid)}
+        extra = {"id": str(tid), **({"why": why} if why else {})}   # V2-892: a hold's reason as a code, the text is his language
         # V2-044: the handler HTTP of the CLI (hbnote) no has contexto of trace → sellar the of the session.
         if r is not None and r.trace_id:
             extra["trace"] = r.trace_id

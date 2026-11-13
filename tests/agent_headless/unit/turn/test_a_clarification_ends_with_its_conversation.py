@@ -76,6 +76,20 @@ def test_an_unanswered_clarify_expires_silently_and_a_consent_keeps_its_days(eve
     assert clar not in CE.expired(later), "an expired clarify closed twice"
 
 
+def test_an_expired_clarify_is_recorded_under_the_turn_that_asked_with_how_long_it_waited(events, monkeypatch):
+    """The pulse runs no turn: the close is stamped with the trace of the turn that asked, and says the wait."""
+    seen, emit = events
+    from voice import observer
+    monkeypatch.setattr(observer, "emit", emit)
+    monkeypatch.setattr(asker, "trace_of", lambda tid: "turn-that-asked")
+    clar, clar_ask = _row("¿Cuál de las dos?", "ask_which")
+    later = time.time() + CE.wait_s() + 5
+    assert clar in CE.expired(later)
+    got = [x for _l, x in seen if x.get("kind_diag") == CE.EV and x.get("task_id") == clar]
+    assert len(got) == 1 and got[0]["reason"] == CE.EXPIRED and got[0]["trace"] == "turn-that-asked"
+    assert got[0]["waited_s"] >= CE.wait_s()
+
+
 def test_an_answered_clarify_is_no_longer_waiting_and_nothing_closes_it(events):
     seen, emit = events
     clar, clar_ask = _row("¿Poner qué?", "ask_fact")

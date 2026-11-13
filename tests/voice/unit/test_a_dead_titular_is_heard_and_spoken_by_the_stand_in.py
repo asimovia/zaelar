@@ -529,6 +529,7 @@ def test_in_shadow_a_late_titular_is_said_and_still_speaks(world, monkeypatch, d
     assert len(would) == (1 if says else 0) and not _alerts(said), (would, said)   # ≥4 ticks late: ONE event
     if says:
         assert "no first audio 0.3 s" in would[0][1]
+        assert would[0][2]["extra"]["mode"] == "shadow"     # the record says which mode spoke, not only the label
 
 
 def test_in_shadow_an_ear_that_never_answers_two_spans_is_said(world, monkeypatch):
@@ -718,3 +719,5 @@ def test_an_armed_bound_cools_down_after_its_switches(world, monkeypatch):
     served = _sentences(["slow0.6", "ok", "slow0.6", "ok", "slow0.6", "ok"], 3, said)
     assert served[:2] == ["stand-in", "stand-in"] and served[2] == "titular", served
     assert any("cooling down" in e[1] for e in EMITTED if e[0] == "provider")
+    # the label still reads «(shadow)»: the record's `mode` says it was the armed bound cooling down
+    assert any(e[2].get("extra", {}).get("mode") == "armed_cooling" for e in EMITTED if e[0] == "provider")

@@ -17,7 +17,7 @@ from nucleo.workers import reports
 
 def test_a_commission_that_waits_names_what_it_waits_behind(monkeypatch):
     said: list = []
-    monkeypatch.setattr(reports, "session_phase", lambda tid, phase: said.append((tid, phase)))
+    monkeypatch.setattr(reports, "session_phase", lambda tid, phase, **_kw: said.append((tid, phase)))
     monkeypatch.setattr(dispatch, "active_sessions", lambda: [
         {"id": "1", "status": "running", "title": "Find three 27-inch 4K monitors"},
         {"id": "2", "status": "running", "title": "One-page Bitcoin summary"},
