@@ -33,6 +33,17 @@ export function render(root, data, ctx){
   const where = _captureWhere(root);
   _paint(root, data, ctx);
   _restoreWhere(root, where);
+  reportShown(root, ctx);
+}
+
+// V2-884 — what the card SHOWS, said through the host's one door after every paint with the revision it applied: the
+// conversation or letter open, as its header reads it, with its channel ("" = none open).
+function reportShown(root, ctx){
+  if(!ctx || typeof ctx.state !== "function") return;
+  const th = root.querySelector(".thread"), t = th && th.querySelector(".thdname, .mltrsubj");
+  const plat = th ? ((th.className.match(/plat-([a-z0-9_]+)/) || [])[1] || "") : "";
+  const thread_open = t ? `${String(t.textContent || "").trim().slice(0, 48)} (${plat})` : "";
+  try{ Promise.resolve(ctx.state({thread_open}, {applied: true})).catch(()=>{}); }catch(_){}
 }
 
 function _paint(root, data, ctx){
