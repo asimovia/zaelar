@@ -416,7 +416,19 @@ below is the first kind, or it names the mechanism that replaced the second.
   what enters in its place leaves the machine or deletes. (5) HOLDING a call that LEAVES reads the LICENCE (holding
   sends nothing; the worst case is a question — battery C9); holding a reversible call reads VETO. (6) Binding an answer
   or choosing a card or row goes by IDENTITY — the id of the row that asked, the card from the same key as the act —
-  never by a bar; two candidates → ASK_WHICH. Corollary: the words follow the act — one decision object
+  never by a bar; two candidates → ASK_WHICH. The id, never text: the one asker notes each question it puts to him
+  (`circuit.asked_last`), and the identity advances only on a NEW reply of ours (a dropped fragment or a barge-in never
+  spends it); with several rows waiting the row that asked ALONE among those still waiting binds, before any pick (a
+  pick of another row is asked); a row our «which?» named is identified as a ROW — a row with candidates is asked its
+  own question again (REASK), never a yes or no guessed for him; a declared candidate identifies its row only when no
+  other row declares it and every other row declares its own (an open question takes any answer), and a yes or no of
+  any language never does. Measured conduct that changed: two waiting rows and a «sí» are asked where the brief's pick
+  bound; asking which is attended (no new errand beside it, and it is asked whatever else the turn did). Our last «which?» rules over what was asked before it; a reply
+  cut before it asked anything never spends the identity. Declared: the identity is process memory (after a restart,
+  two waiting rows are asked which until one asks again; switching between voice and typing spends it, since each
+  channel's brain has its own window); a question asked out of turn is noted when it is registered, not when it is
+  heard (a turn of his in between spends it — it is asked which); a prose question about one of several sends anchors
+  to none (its answer is asked which). Corollary: the words follow the act — one decision object
   (`route_by_verdict.Turn`) releases the call, its words and its tags on ONE state, never a second reading at another
   bar: while the escalate verdict is in flight or in the band (licence to act floor) the words and tags wait with the
   calls until the brief lands or the stream ends, never for a clock (this replaced the lead-in filler deadline of

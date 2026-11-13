@@ -1,9 +1,6 @@
 """The post-stream chain SETTLES what is pending: a confirmation the model left unresolved, a worker that was waiting for an answer, a stop nobody called, and the question the turn owes (V2-778 F1, 2026-10-01).
 
-Moved out of `nucleo/flash/post_stream.py::run` (951 lines) with no behaviour change. Every name the block read
-from `post_stream` is read through it (`_pst.<name>`), so a patch on `post_stream` still governs it. The function
-takes the chain's locals it read as keyword arguments and returns the ones the rest of `run` reads, only when
-bound.
+Moved out of `post_stream.run`: every name it read there is read through it (`_pst.<name>`), so a patch still governs.
 """
 from __future__ import annotations
 
@@ -27,13 +24,14 @@ def settled_ack(spoken_text: str) -> str:
     return "" if spoken_text else __import__("i18n.langs", fromlist=["langs"]).current_language().errand_settled
 
 
-def answers_an_open_ask(brief, worker_acted: dict) -> bool:
-    """Does this turn surely answer a question a waiting task asked (the binding verdict, `worker_api_bind.bind`)?
-    The ONE reading both the early guard below and `bind_the_answer` use. Never raises."""
+def answers_an_open_ask(brief, worker_acted: dict, escalate_req=None) -> bool:
+    """Does this turn answer a waiting task's question — bound, or asked which (then `bind_the_answer` always asks)?"""
     try:
         from nucleo.cli import worker_api_bind as _bind
-        how, _asks = _bind.bind(brief, model_answered=bool(str((worker_acted or {}).get("model_answer") or "")))
-        return how == _bind.ANSWER
+        from nucleo.request import send_task_turn as _st
+        how, asks = _st.unbind(brief, str((brief or {}).get("judged") or ""), *_bind.bind(brief, model_answered=(
+            m := bool(str((worker_acted or {}).get("model_answer") or "")))), escalate_req or {}, lambda *a, **k: None)
+        return how == _bind.ANSWER or how in (_bind.ASK_WHICH, _bind.REASK) and _bind.answers_one(brief, model_answered=m)
     except Exception:  # noqa: BLE001 — an unreadable binding binds nothing, as before
         return False
 
@@ -44,7 +42,7 @@ def no_new_errand_for_a_bound_answer(escalate_req: dict, brief, *, worker_acted:
     the same turn's escalation went through the catalogue rung into a SECOND `send_to` that asked «Shall I send it?»
     again — the binding that clears the escalation ran after the rungs had turned it into an act. Read before the
     rungs, by the same verdict. True when it cleared something."""
-    if escalate_req.get("v") is None or not answers_an_open_ask(brief, worker_acted):
+    if escalate_req.get("v") is None or not answers_an_open_ask(brief, worker_acted, escalate_req):
         return False
     dropped = [escalate_req.get("v"), *(escalate_req.get("more") or [])]
     escalate_req["v"], escalate_req["more"] = None, []
@@ -108,8 +106,9 @@ def bind_the_answer(brief, text: str, *, model_answer: str, worker_acted: dict, 
             withdraw_the_turns_leaving_confirms(confirm_state, emit)
         if not spoken_text and (spoken_text := str(getattr(_l.current_language(), "answer_taken", "") or "")):
             send(speech.sanitize(spoken_text, drop_metadata=False))
-    elif how == _bind.ASK_WHICH and (model_answer or not (others_acted or escalate_req["v"] is not None)):
-        line = _bind.ask_which(asks, text=text)
+    elif how in (_bind.ASK_WHICH, _bind.REASK) and (model_answer or _bind.answers_one(brief, model_answered=bool(model_answer))
+                                                     or not (others_acted or escalate_req["v"] is not None)):
+        line = _bind.ask_which(asks, text=text) if how == _bind.ASK_WHICH else _bind.reask(asks[0])
         worker_acted["v"] = "answer"      # attended (asking), nothing bound blind
         escalate_req["v"] = None
         emit("brain", "❓ which waiting task does his answer belong to — asked", text=text[:120], role="system",

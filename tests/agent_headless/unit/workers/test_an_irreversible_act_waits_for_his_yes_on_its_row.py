@@ -80,6 +80,8 @@ def test_his_yes_bound_by_the_brief_runs_the_act_once_on_that_row(world, lang):
     from nucleo.circuit import ledger
     row, ask_id = _ask(world, lang)
     world["choice"] = f"{ask_id}#0"
+    from nucleo.circuit import asked_last
+    asked_last.turn_began()             # his answer comes in his next turn: this row asked him (K2b R6)
     how, asks = bind.bind(object())
     assert how == bind.ANSWER and asks[0]["ask_id"] == ask_id and asks[0]["choice"] == 0
     assert asyncio.run(worker_api.answer(ask_id, TURNS[lang][2], choice=0)) is True
