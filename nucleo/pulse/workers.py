@@ -39,6 +39,8 @@ class WorkersPulse:
         try:
             from nucleo.circuit import ledger as _tasks
             from nucleo.pulse import notices
+            from nucleo.request import clarify_end   # V2-886 D1: a clarify closes with its conversation, silently
+            clarify_end.expired(now)
             for row in _tasks.expired_waits(now):
                 goal = _errand_title.provisional(row.get("title") or row.get("goal") or self._lang().generic_task, 48)
                 await notices.notify("zaelar", self._say("task_wait_expired", goal=goal, days=f"{row['days']:g}"),

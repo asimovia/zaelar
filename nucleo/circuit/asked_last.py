@@ -42,6 +42,11 @@ def asked(ask: dict, waiting=None) -> bool:
     return set(_FROZEN["asks"]) & still == {str(ask.get("ask_id") or "")}
 
 
+def asked_since(ask: dict) -> bool:
+    """This row asked him since our last reply — alone or not (a clarify our last reply put)."""
+    return str(ask.get("ask_id") or "") in _FROZEN["asks"]
+
+
 def named_by_which(ask: dict) -> bool:
     """A row our «which task?» named — it identifies the ROW, never one of its candidates."""
     return str(ask.get("task_id") or "") in _FROZEN["among"]

@@ -120,7 +120,7 @@ def row_of(key: str) -> str:
     return k if k and ledger.store().task_get(k) is not None else str(getattr(_d._SESSIONS.get(k), "uid", "") or "")
 
 
-def cancel_row(uid: str) -> str:
+def cancel_row(uid: str, outcome: str = "stopped by him") -> str:
     """HIS stop from the screen (V2-852 T07, R2): the row's live workers are told to stop and the row ends `cancelled`
     through `circuit.settle`, a wait with no worker too. Returns the row's state now; "" when there is no such row."""
     from nucleo import circuit
@@ -131,7 +131,7 @@ def cancel_row(uid: str) -> str:
     for k, r in [(k, r) for k, r in _d._SESSIONS.items() if str(getattr(r, "uid", "") or "") == str(uid)]:
         r.status = "cancelled"          # its finish path closes the row as the cancel it is, never a failure
         _d.cancel_session(k, reason="operator")
-    circuit.settle(row=str(uid), state="cancelled", outcome="stopped by him")
+    circuit.settle(row=str(uid), state="cancelled", outcome=outcome)
     return "cancelled"
 
 
