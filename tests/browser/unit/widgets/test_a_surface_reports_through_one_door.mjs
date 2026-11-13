@@ -117,13 +117,13 @@ check("the phone builds one card ctx", deck.length === 1, String(deck.length));
 check("every ctx carries `state` from the one reporter",
   [...desk, ...deck].every((b) => /state\s*:\s*\(patch, o\)\s*=>\s*rep\.report\(patch, o\)/.test(b)));
 check("both host files import the one reporter",
-  /import \{ mountState \} from "\.\/state-reporter\.js/.test(DESKTOP)
-  && /import \{ mountState \} from "\.\.\/\.\.\/\.\.\/app\/widgets\/state-reporter\.js/.test(DECK));
+  /import \{ mountState, refreshed \} from "\.\/state-reporter\.js/.test(DESKTOP)
+  && /import \{ mountState, refreshed \} from "\.\.\/\.\.\/\.\.\/app\/widgets\/state-reporter\.js/.test(DECK));
 check("the event stream's reopening calls snapshotAll",
   /sweepOnReopen\(_opens, snapshotAll\)/.test(readFileSync(join(ENGINE, "frontend/app/services/sse.js"), "utf8")));
-check("a refresh tells the reporter the revision it brings and the host's own facts (C7)",
-  /_rep\.seen\(data\._rev, data\._host\)/.test(DESKTOP.slice(DESKTOP.indexOf("async refreshData")))
-  && /_rep\.seen\(data\._rev, data\._host\)/.test(DECK.slice(DECK.indexOf("async refreshData"))));
+check("a refresh hands its data to the reporter through the one line (`refreshed`: the revision and the host's facts)",
+  /refreshed\(ww, data\)/.test(DESKTOP.slice(DESKTOP.indexOf("async refreshData")))
+  && /refreshed\(w, data\)/.test(DECK.slice(DECK.indexOf("async refreshData"))));
 
 if (failures) { console.log(`\n${failures} failure(s)`); process.exit(1); }
 console.log("\nall ok");

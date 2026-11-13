@@ -1,7 +1,7 @@
 """The real card, the real reporter, the real door — one harness for the shared data apps' state tests (V2-884 step 3).
 
-A card is rendered in Chromium with `frontend/app/widgets/state-reporter.js` as its host builds it; only `fetch` is a
-stand-in that keeps each body. `deliver()` hands those bodies to `widgets.state.report` — the engine's door — so what
+A card is rendered in Chromium and mounted and refreshed through the same two functions the shells call
+(`mountState`, `refreshed` in `frontend/app/widgets/state-reporter.js`); only `fetch` is a stand-in that keeps each body. `deliver()` hands those bodies to `widgets.state.report` — the engine's door — so what
 the brain reads is what this card, through this reporter, would have said. Not a test file: the app suites import it.
 """
 from __future__ import annotations
@@ -19,13 +19,13 @@ ENGINE = pathlib.Path(__file__).resolve().parents[4]
 
 _NEW_MOUNT = """async ([app, dev, inst]) => {
   const R = await import('/frontend/app/widgets/state-reporter.js?v=1');
-  if (window.__rep) window.__rep.dispose();
+  if (window.__w && window.__w._rep) window.__w._rep.dispose();
   window.__posts = [];
   const stub = async (u, init) => { window.__posts.push(JSON.parse(init.body));
       return {status: 200, json: async () => ({ok: true, facts: []})}; };
-  const rep = window.__rep = R.stateReporter(app, inst, {device: dev, fetch: stub});
-  window.__ctx = { action: () => Promise.resolve(null), state: (p, o) => rep.report(p, o), close() {}, top() {},
-                   scroll() {}, openConnector() {}, lang: 'es', running: true, t: null };
+  window.__R = R; window.__w = {}; window.__opts = {device: dev, fetch: stub}; window.__app = [app, inst];
+  window.__ctx = { action: () => Promise.resolve(null), state: (p, o) => window.__w._rep.report(p, o), close() {},
+                   top() {}, scroll() {}, openConnector() {}, lang: 'es', running: true, t: null };
 }"""
 
 
@@ -54,15 +54,16 @@ def mount(page, app: str, data: dict, dev: str, instance: str = "") -> None:
     page.goto(f"{page._hb_origin}/widgets/{app}/")
     page.set_content("<div id='w' style='width:900px;height:700px'></div>")
     page.evaluate(_NEW_MOUNT, [app, dev, instance or app])
-    page.evaluate("""async ([src, d]) => { const mod = await import(src); window.__mod = mod;
-                       window.__rep.seen(d._rev, d._host); mod.render(document.getElementById('w'), d, window.__ctx); }""",
+    page.evaluate("""async ([src, d]) => { const mod = await import(src); window.__mod = mod;   // as the shells mount
+                       window.__R.mountState(window.__w, window.__app[0], window.__app[1], d, window.__opts);
+                       mod.render(document.getElementById('w'), d, window.__ctx); }""",
                   [f"{page._hb_origin}/widgets/{app}/widget.js", data])
     page.wait_for_timeout(200)
 
 
 def push(page, data: dict) -> None:
     """A data push, as the host does it: the reporter is told the revision, then the card renders."""
-    page.evaluate("(d) => { window.__rep.seen(d._rev, d._host); window.__mod.render(document.getElementById('w'), d, window.__ctx); }",
+    page.evaluate("(d) => { window.__R.refreshed(window.__w, d); window.__mod.render(document.getElementById('w'), d, window.__ctx); }",
                   data)
     page.wait_for_timeout(200)
 

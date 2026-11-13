@@ -49,7 +49,7 @@ export function stateReporter(baseId, instance, opts = {}) {
   const post = opts.fetch || ((u, init) => fetch(u, init));
   const url = `/widgets/${baseId}/state`;
   let mount = _newMount(), n = 0, full = true, timer = null, seen = null, ack = null, waiters = [];
-  let dead = false, flying = false, again = false, lastFacts = null, retaken = false, hand = false, cardSpoke = false;
+  let dead = false, flying = false, again = false, lastFacts = null, retaken = false, hand = false;
   const last = {}, pending = {}, forgot = new Set(), hostKeys = new Set();
 
   const body = (beacon) => {
@@ -59,6 +59,8 @@ export function stateReporter(baseId, instance, opts = {}) {
     const b = { instance: instance || baseId, dev, mount, n, full, ack, patch,
                 visible: !beacon && (typeof document === "undefined" || document.visibilityState !== "hidden") };
     if (hand) b.hand = true;                             // his hand was on the app's own control (V2-884 1b)
+    const hk = Object.keys(patch).filter((k) => hostKeys.has(k));
+    if (hk.length) b.host = hk;                          // the host's own facts, named: the door refuses them unnamed
     if (forgot.size) { b.forget = [...forgot]; forgot.clear(); }   // apart from the patch: a new value never hides it
     full = false; hand = false;
     return b;
@@ -101,8 +103,10 @@ export function stateReporter(baseId, instance, opts = {}) {
     report(patch, o = {}) {
       if (dead) return Promise.resolve(null);
       let changed = false;
-      for (const k of o.forget || []) { if (k in last) { delete last[k]; delete pending[k]; forgot.add(k); changed = true; } }
-      if (!o.host) cardSpoke = true;
+      for (const k of o.forget || []) {
+        if (!o.host && hostKeys.has(k)) continue;         // nor can the card make the host's fact forgotten
+        if (k in last) { delete last[k]; delete pending[k]; forgot.add(k); changed = true; }
+      }
       for (const [k, v] of Object.entries(patch || {})) {
         if (!o.host && hostKeys.has(k)) continue;         // a host fact is the host's, never the card's (C7)
         if (v === undefined || v === null || last[k] === v) continue;
@@ -117,13 +121,13 @@ export function stateReporter(baseId, instance, opts = {}) {
       return p;
     },
     // The host: a data push carried revision `rev` ({epoch, rev}); the card has not applied it yet. `host` = the
-    // fields the HOST shows from that data (`_host`, C7: a third-party page's address and title): said by the host
-    // itself, acking the revision only while the card has said nothing of its own on this mount.
+    // fields the HOST shows from that data (`_host`, C7: a third-party page's address and title, every declared key
+    // present): said by the host itself, never acking a revision for the card.
     seen(rev, host) {
       if (rev && rev.epoch && Number.isInteger(rev.rev)) seen = rev;
       if (host && typeof host === "object") {
         Object.keys(host).forEach((k) => hostKeys.add(k));
-        rep.report(host, { host: true, applied: !cardSpoke });
+        rep.report(host, { host: true });
       }
     },
     _snapshot(beacon, visibleAgain = false) {
@@ -139,9 +143,11 @@ export function stateReporter(baseId, instance, opts = {}) {
 }
 
 // A host's one line per mount: the card (or rail) `w` gets a fresh reporter that has seen the data's revision.
-export function mountState(w, baseId, id, data) {
+export function mountState(w, baseId, id, data, opts) {
   if (w._rep) w._rep.dispose();
-  w._rep = stateReporter(baseId, id);
-  w._rep.seen(data && data._rev, data && data._host);
+  w._rep = stateReporter(baseId, id, opts);
+  refreshed(w, data);
   return w._rep;
 }
+// A host's one line per data push: the reporter learns the revision it brings and the host's own facts in it.
+export function refreshed(w, data) { if (w && w._rep) w._rep.seen(data && data._rev, data && data._host); }

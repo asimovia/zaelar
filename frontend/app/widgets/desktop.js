@@ -19,7 +19,7 @@ import { saneFootprint, preferredFootprint } from "./footprint.js?v=2";
 import { bestSpot, overlaps as _overlaps } from "./placement.js?v=1";
 import { t as tr } from "../core/i18n.js?v=1";
 import * as store from "../core/store.js?v=2";
-import { mountState } from "./state-reporter.js?v=1";
+import { mountState, refreshed } from "./state-reporter.js?v=1";
 // V2-792 — services load on first use: a host imports none statically (tests mount it with its core imports stubbed).
 const _screens = () => import("../services/screens.js?v=1");
 const _sensors = () => import("../services/device.js?v=1");   // V2-870 P2: ctx.device — the screen's sensors
@@ -1143,7 +1143,7 @@ export class Desktop {
       const ww = this.wins.get(id);        // re-check: it may have been closed while the fetch was in flight
       if(ww && sig !== ww._dataSig){
         ww._dataSig = sig; ww._lastData = data;
-        if(ww._rep) ww._rep.seen(data._rev, data._host);          // V2-884: the revision this render brings
+        refreshed(ww, data);          // V2-884: the revision this render brings
         ww._mod.render(ww.body, data, ww._ctx);
         // Y la cabecera sigue a los datos: una búsqueda nueva cambia el título, y dejarlo con el de la anterior
         // sería un rótulo que MIENTE sobre lo que hay debajo.
