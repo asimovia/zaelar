@@ -146,6 +146,8 @@ def problem(man: dict) -> str | None:
     if st is None:
         return MISSING
     if isinstance(st, dict) and set(st) == {"static"}:      # a face nothing moves, and WHY — never a silent omission
+        if (man or {}).get("actions"):                      # structural: an order could move it, so it reports
+            return "state.static is for a face no order can move — this app declares actions: report what they change"
         ok = isinstance(st["static"], str) and len(st["static"].strip()) >= STATIC_WHY
         return None if ok else f"state.static says why the face never changes (≥ {STATIC_WHY} characters)"
     if not isinstance(st, dict) or not report_fields(st):
