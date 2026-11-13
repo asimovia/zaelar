@@ -82,14 +82,21 @@ def _surface(app="probe"):
 
 def test_the_door_takes_only_what_is_declared_from_the_screen_it_lives_on(probe):
     assert _snap(**FULL)[0] == 200
-    assert _snap(n=2, mood="happy")[0] == 400, "an undeclared field entered"
-    assert _snap(n=2, playing="yes")[0] == 400 and _snap(n=2, view="grid")[0] == 400, "a wrong type entered"
+    code, out = _snap(n=2, full=False, mood="happy", playing="yes", view="grid", title="kept")
+    assert code == 200 and sorted(out["refused"]) == ["mood", "playing", "view"], "a bad field entered, or took the report"
+    s = state.snapshots("probe")[0][2]["fields"]
+    assert s["playing"][0] is True and s["view"][0] == "player" and s["title"][0] == "kept"
+    _snap(n=3, full=False, title=None)
+    assert "title" not in state.snapshots("probe")[0][2]["fields"], "a field the surface forgot stayed"
+    _snap(n=4, full=True, playing=False)
+    assert set(state.snapshots("probe")[0][2]["fields"]) == {"playing"}, "a full snapshot kept fields it did not say"
     assert _snap(n=1, playing=False)[0] == 409, "n went back within a mount"
     assert state.report("probe", {"dev": A, "mount": "m1", "n": True, "patch": {}})[0] == 400, "a bool passed as n"
     assert _snap(n=1, mount="m2", full=False, playing=False)[0] == 409, "a new mount began with a patch"
     assert _snap(n=1, mount="m2", **FULL)[0] == 200, "a reload's full snapshot was refused"
     assert _snap(n=5, mount="m1", **FULL)[0] == 409, "a replaced mount (the other tab) took the screen back"
     assert _snap(n=1, dev=B, **FULL)[0] == 409, "another screen reported a one-screen app it does not hold"
+    assert state_decl.clean("a\u202eb\u200bc") == "a b c", "a format character reached the prompt"
 
 
 def test_an_instance_is_the_apps_own_and_a_screen_holds_few(probe):
@@ -112,7 +119,7 @@ def test_an_order_is_pending_until_a_report_acks_its_revision(probe, monkeypatch
     assert _surface()["pending"] == ["playing"], "an order unconfirmed read as the old report"
     state.report("probe", {"dev": A, "mount": "m1", "n": 2, "ack": old, "patch": {"playing": True}})
     assert _surface()["pending"] == ["playing"], "an older ack resolved it"
-    _snap(n=3, playing=False)
+    _snap(n=3, full=False, playing=False)
     assert _surface()["fields"]["playing"] is False and not _surface()["pending"]
     store.save("probe", {"videoId": "v1", "paused": True, "muted": False})       # an order with no effect
     assert not _surface()["pending"], "a no-op order left a pending"
@@ -151,6 +158,11 @@ def test_a_close_or_a_move_drops_the_old_report(probe, monkeypatch):
     canvas_api._counts({"dev": A, "open": ["probe"]})
     assert state_render.clause("probe") == "probe: state unreported", "a reopened app spoke with its old report"
     _snap(mount="m2", **FULL)
+    state._HELD[("probe", "probe", A)] = ["audio_blocked"]
+    canvas_api._counts({"dev": A, "open": []})
+    assert ("probe", "probe", A) not in state._HELD, "a closed app kept its held facts: reopened, its tell never rearms"
+    canvas_api._counts({"dev": A, "open": ["probe"]})
+    _snap(mount="m3", **FULL)
     screens.note_playing("probe", B)
     assert state.snapshots("probe") == [], "the old screen's report survived the move"
 
@@ -247,4 +259,4 @@ def test_the_route_is_the_door(probe):
     ok = c.post("/widgets/probe/state", json={"dev": A, "mount": "m1", "n": 1, "full": True,
                                                "ack": state.stamp("probe"), "patch": FULL})
     assert ok.status_code == 200 and ok.json() == {"ok": True, "facts": []}
-    assert c.post("/widgets/probe/state", json={"dev": A, "mount": "m1", "n": 2, "patch": {"x": 1}}).status_code == 400
+    assert c.post("/widgets/probe/state", json={"dev": A, "mount": "m1", "n": 2, "patch": {"x": 1}}).json()["refused"] == ["x"]

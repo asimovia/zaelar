@@ -54,9 +54,57 @@ check("applied: a FULL snapshot that acks the revision seen",
   third.full === true && third.ack && third.ack.rev === 3 &&
   third.patch.playing === true && third.patch.volume === 40 && third.patch.muted === false, JSON.stringify(third));
 
-a.dispose();
+await a.report({ muted: false });
 await sleep(150);
-check("a disposed reporter sends nothing more", posts.length === 3);
+check("a value already said is not said again (the mount remembers it)", posts.length === 3);
+
+await a.report({}, { forget: ["volume"] });
+check("a field it can no longer vouch for goes as null", posts[3].b.patch.volume === null, JSON.stringify(posts[3].b));
+
+a.dispose();
+const late = await a.report({ playing: false });
+await sleep(150);
+check("a closed card reports nothing more (report after dispose)", posts.length === 4 && late === null);
+
+// one POST in flight; a failed one makes the next a full snapshot; a replaced tab he looks at takes it back
+let gate, calls = [];
+const slow = (status, out) => async (url, init) => { calls.push(JSON.parse(init.body));
+  await new Promise((r) => { gate = r; }); return { status, json: async () => out }; };
+let mode = slow(200, { ok: true, facts: [] });
+const c = stateReporter("youtube", "youtube", { fetch: (u, i) => mode(u, i), device: "desktop:aaa" });
+c.report({ playing: true });
+await sleep(150);
+c.report({ volume: 10 });
+await sleep(150);
+check("one POST in flight at a time", calls.length === 1, String(calls.length));
+mode = slow(500, null);
+gate(); await sleep(20); gate(); await sleep(150);
+mode = slow(200, { ok: true, facts: [] });
+c.report({ volume: 11 });
+await sleep(150); gate(); await sleep(20);
+const afterFail = calls[calls.length - 1];
+check("after a failed POST the next one is a full snapshot",
+  afterFail.full === true && afterFail.patch.playing === true && afterFail.patch.volume === 11, JSON.stringify(afterFail));
+const m0 = c.mount;
+mode = slow(409, { ok: false, error: "a newer mount of this screen replaced this one" });
+c.report({ volume: 12 });
+await sleep(150); gate(); await sleep(20);
+mode = slow(200, { ok: true, facts: [] });
+await sleep(150); gate(); await sleep(20);
+const back = calls[calls.length - 1];
+check("a replaced mount he looks at takes the screen back with a new mount",
+  c.mount !== m0 && back.mount === c.mount && back.full === true && back.n === 1, JSON.stringify(back));
+c.dispose();
+
+const { snapshotAll } = await import(join(ENGINE, "frontend/app/widgets/state-reporter.js"));
+const d = stateReporter("youtube", "youtube", { fetch: fakeFetch, device: "desktop:aaa" });
+await d.report({ playing: true });
+const before = posts.length;
+snapshotAll();
+await sleep(150);
+check("a reopened event stream makes every live mount say everything again",
+  posts.length === before + 1 && posts[posts.length - 1].b.full === true);
+d.dispose();
 
 // ── the three hosts ──────────────────────────────────────────────────────────────────────────────────────────
 const DESKTOP = readFileSync(join(ENGINE, "frontend/app/widgets/desktop.js"), "utf8");
@@ -70,6 +118,8 @@ check("every ctx carries `state` from the one reporter",
 check("both host files import the one reporter",
   /import \{ mountState \} from "\.\/state-reporter\.js/.test(DESKTOP)
   && /import \{ mountState \} from "\.\.\/\.\.\/\.\.\/app\/widgets\/state-reporter\.js/.test(DECK));
+check("the event stream's reopening calls snapshotAll",
+  /sweepOnReopen\(_opens, snapshotAll\)/.test(readFileSync(join(ENGINE, "frontend/app/services/sse.js"), "utf8")));
 check("a refresh tells the reporter the revision it brings",
   /_rep\.seen\(data\._rev\)/.test(DESKTOP.slice(DESKTOP.indexOf("async refreshData")))
   && /_rep\.seen\(data\._rev\)/.test(DECK.slice(DECK.indexOf("async refreshData"))));

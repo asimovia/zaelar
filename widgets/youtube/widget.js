@@ -7,7 +7,7 @@ import { CSS } from "./js/style.js";
 import { Y } from "./js/state.js";
 import { el, _TABS, applyTabClass, tt } from "./js/shared.js";
 import { applyCmd, buildFrame, bindReporters } from "./js/player.js";
-import { afterRender } from "./js/report.js";
+import { afterRender, playerReplaced } from "./js/report.js";
 import { paintAccount } from "./js/conn.js";
 import { buildNav, paintNav } from "./js/nav.js";
 import { buildMini, paintMini } from "./js/mini.js";
@@ -99,7 +99,9 @@ export function render(root, data, ctx){
   // (Re)build the card when the video changes, or when entering/leaving "searching" state (real bug 2026-07-23:
   // without this the card looked COMPLETELY empty while load searched YouTube, with no signal).
   if(!st || st.key !== pkey || st.loading !== loading || !root._hbYtBuilt){
+    const replaced = !!st && st.key !== pkey;
     buildCard(root, data, ctx, {id, seq, loading, st, src, isStream, pkey, hasVid});
+    if(replaced){ Y.ctx = ctx; playerReplaced(); }       // V2-884 1a: the old player's state does not carry over
   }
 
   // Dynamic refresh on EVERY render (title, verifiable metadata, mute-toggle button, volume).
@@ -114,7 +116,6 @@ export function render(root, data, ctx){
   paintPlayer(E, data, ctx, id, PL);
   paintMini(E.mini, data, ctx, PL);
   bindReporters(data, ctx, id, PL);
-  afterRender(data, ctx, Y.tab, hasVid);                // V2-884 1a: what the card shows, and the ack of its data
   paintQueue(root, E, data, ctx);
   paintHome(root, E, data, ctx);
 
@@ -158,4 +159,5 @@ export function render(root, data, ctx){
     const stale = _goto.tab === "player" && !hasVid;
     if(_TABS.indexOf(_goto.tab) >= 0 && root._hbYtSelectTab && !stale) root._hbYtSelectTab(_goto.tab);
   }
+  afterRender(data, ctx, Y.tab, hasVid);                // V2-884 1a, LAST: the face after any change, the ack of its data
 }

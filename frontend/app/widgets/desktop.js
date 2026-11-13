@@ -1291,7 +1291,8 @@ export class Desktop {
 
   close(id, {by="code"}={}){
     this._noteBy(id, by);
-    if(this._actId===id){ clearTimeout(this._actTimer); if(this.activity)this.activity.innerHTML=""; this._actId=null; return; }
+    if(this._actId===id){ clearTimeout(this._actTimer); if(this.activity)this.activity.innerHTML=""; this._actId=null;
+      if(this._actHold && this._actHold._rep) this._actHold._rep.dispose(); return; }
     const w=this.wins.get(id);
     if(w) this._closeAliases(w);                        // V2-082: limpia el listener del panel de alias si estaba abierto
     if(!w){

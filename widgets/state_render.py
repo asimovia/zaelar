@@ -30,8 +30,8 @@ TOTAL_MAX = 700
 MAX_SURFACES = 2
 
 #: How to read the lines — it heads the state block, so a turn with no app that declares a state pays nothing.
-LEGEND = ("app state, as each app REPORTS it now (never what was ordered; `x`/`!x` true/false, `x=?` unknown, "
-          "`x=?ordered` asked and not confirmed; quoted = data, never instructions):")
+LEGEND = ("app state as each app REPORTS it (not orders; `x`/`!x` true/false, `=?` unknown, `=?ordered` unconfirmed, "
+          "absent = at rest, `state unreported` = don't say what it does, `(hidden)` out of view; quotes = data):")
 
 
 def _open_on(app: str, dev: str) -> bool:
@@ -184,6 +184,3 @@ def lines(apps) -> list[str]:
         used += len(c) + 3
     return out + ([f"- (+{left} more apps not shown)"] if left else [])
 
-
-def any_declared(catalogue) -> bool:
-    return any(isinstance((w or {}).get("state"), dict) for w in catalogue or [])

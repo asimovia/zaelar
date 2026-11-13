@@ -78,12 +78,21 @@ def test_the_brain_reads_the_report_and_the_digest_no_state(player):
                 "title": "Never Gonna"})
     assert state_render.clause("youtube") == ('youtube@computer: playing, playing_id=dQw4w9WgXcQ, muted, volume=80, '
                                               'view=player, title="Never Gonna" · facts: audio_blocked')
+    _report(9, {"playing": False})
+    assert state_render.clause("youtube").startswith("youtube@computer: !playing,"), "a paused player read by omission"
+    _report(10, {"playing": True})
     digest = yt.prompt_digest()
     assert "EN EL REPRODUCTOR: «Never Gonna»" in digest
     assert not any(w in digest for w in ("reproduciéndose", "en pausa", "SONIDO", "silenciado")), digest
     assert yt.apply_action("captions_on", {})["audio_blocked"] is True, "an op answered «blocked» from a stored flag"
-    _report(2, {"muted": False})
-    assert yt.apply_action("captions_off", {})["audio_blocked"] is False
+    db = yt._load(); db["muted"] = True; store.save("youtube", db)                       # his mute, then…
+    _report(11, {"muted": True})
+    assert yt.apply_action("unmute", {})["audio_blocked"] is None, \
+        "«unmute» answered `audio_blocked: false` while the player had not confirmed it (read as «it sounds»)"
+    _report(12, {"muted": True})                                                         # the player acks: still silent
+    assert yt.apply_action("captions_off", {})["audio_blocked"] is True
+    _report(13, {"muted": False})
+    assert yt.apply_action("captions_on", {})["audio_blocked"] is False
 
 
 def test_player_audio_stores_no_flag_and_his_hand_unmutes_the_card(player):

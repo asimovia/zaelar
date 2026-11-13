@@ -17,6 +17,8 @@ import { placement } from "./event-scope.js?v=1";
 import * as screens from "./screens.js?v=1";
 import * as asks from "../core/asks.js?v=1";
 import { wirePresence, presenceEvent, onStreamOpen, onStreamError, syncRunState } from "./presence.js?v=1";
+import { snapshotAll } from "../widgets/state-reporter.js?v=1";
+
 
 // V2-464 — SHOWCASE mode: ?showcase=1 in the URL. The use-case recorder (recorder.py) uses it to keep the chat
 // open and the grid auto-arranged, so the video is readable without hands.
@@ -103,6 +105,7 @@ export function openSSE(desktop, { wake = false } = {}) {
     // V2-825 F5 — and the screen adopts the engine's list of cards: an orphan the engine cannot name goes.
     sweepOnReopen(_opens, () => desktop && desktop.reconcile && desktop.reconcile());
     sweepOnReopen(_opens, () => syncRunState(store));   // the ⏻ it slept through: the server's, not the last it heard
+    sweepOnReopen(_opens, snapshotAll);                 // V2-884: every card says again what it shows (a restart forgot)
   };
   es.onmessage = ev => {
     let d; try { d = JSON.parse(ev.data); } catch (_) { return; }
