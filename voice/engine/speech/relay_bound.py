@@ -129,13 +129,44 @@ async def first_audio(gen, outer, provider: str):
         if isinstance(nxt.exception(), StopAsyncIteration):
             return                                  # the titular ended without a frame: LiveKit's own «no audio» follows
         yield nxt.result()
-        async for audio in gen:
-            yield audio
+        gap = {"said": said, "last": time.perf_counter(), "seen": _text_len(outer)}
+        watch = None if said else asyncio.create_task(_mid_answer(outer, pol, provider, gap))
+        try:
+            async for audio in gen:
+                gap.update(last=time.perf_counter(), seen=_text_len(outer), pending=0.0)
+                yield audio
+        finally:
+            if watch is not None:
+                watch.cancel()
     finally:
         if not nxt.done():
             nxt.cancel()
             await asyncio.wait({nxt})
         await gen.aclose()
+
+
+def _text_len(outer) -> int:
+    return len("".join(getattr(outer, "_pushed_tokens", ()) or ()))
+
+
+async def _mid_answer(outer, pol: Bound, provider: str, gap: dict) -> None:
+    """P2-C — the titular gone mute mid-answer, SHADOW always: one segment per answer means LiveKit's own clock is set
+    once, so the clock here is «text it has not voiced is ready»: a whole sentence pushed after the last audio, or
+    the input closed, and no audio `tts_first_byte_s` after that."""
+    while not gap["said"]:
+        await asyncio.sleep(_TICK_S)
+        try:
+            now, fb = time.perf_counter(), float(pol.tts_first_byte_s)
+            if not gap.get("pending"):
+                text = "".join(getattr(outer, "_pushed_tokens", ()) or ())[gap["seen"]:]
+                if outer._input_ch.closed or _two_sentences(text):
+                    gap["pending"] = now
+            if gap.get("pending") and now - gap["pending"] > fb:
+                gap["said"] = True
+                _say("tts", provider, f"no audio {fb:g} s after the next sentence was ready, mid-answer")
+        except Exception as e:  # noqa: BLE001 — said by `_off`; the answer goes on unwatched
+            _off("tts_mid_answer", e)
+            gap["said"] = True
 
 
 @_fenced

@@ -609,3 +609,54 @@ def test_a_broken_ear_watcher_never_breaks_the_sessions_handler(world, monkeypat
     rb.ear_state("listening")
     rb.ear_heard()
     assert len(_broken_events()) == 2, "once per place, never raised into the handler"
+
+
+# ── mute mid-answer (P2-C) ────────────────────────────────────────────────────────────────────────────────────────
+def _paced_titular(delays: list) -> lk_tts.TTS:
+    """One segment for the whole answer (Inworld's shape); the n-th sentence answers after `delays[n]` seconds."""
+    class _Paced(lk_tts.SynthesizeStream):
+        async def _run(self, out) -> None:
+            out.initialize(request_id="r", sample_rate=RATE, num_channels=1, mime_type="audio/pcm", stream=True)
+            out.start_segment(segment_id="s")
+            n = 0
+            async for d in self._input_ch:
+                if isinstance(d, str) and d.strip():
+                    self._mark_started()
+                    await asyncio.sleep(delays[min(n, len(delays) - 1)])
+                    n += 1
+                    out.push(_T * (RATE // 10))
+                    out.flush()
+            out.end_segment()
+
+    class _PacedVoice(_ScriptedVoice):
+        def stream(self, *, conn_options=lk_tts.tts.DEFAULT_API_CONNECT_OPTIONS):
+            return _Paced(tts=self, conn_options=conn_options)
+    return _PacedVoice([])
+
+
+@pytest.mark.parametrize("delays,says", [([0.02, 0.9], True), ([0.02, 0.05], False)])
+def test_in_shadow_a_titular_mute_mid_answer_is_said_once(world, monkeypatch, delays, says):
+    said, _ = world
+    _bound(monkeypatch, mode="shadow", tts_first_byte_s=0.3, tts_ready_s=5.0)
+    voice = T._with_failover([("inworld", _paced_titular(delays)), ("openai", _StandIn())])
+
+    async def speak() -> int:
+        got = 0
+        async with voice.stream() as s:
+            async def feed() -> None:
+                s.push_text("Una frase entera. ")
+                await asyncio.sleep(0.15)
+                s.push_text("Y otra frase más. ")
+                await asyncio.sleep(0.15)
+                s.push_text("Fin. ")
+                s.end_input()
+            task = asyncio.create_task(feed())
+            async for ev in s:
+                got += ev.frame.data.tobytes().count(_T)
+            await task
+        return got
+    assert asyncio.run(asyncio.wait_for(speak(), 10)) > 0 and not _alerts(said)
+    would = [e for e in EMITTED if e[0] == "provider" and e[2].get("extra", {}).get("would_switch")]
+    assert len(would) == (1 if says else 0), would
+    if says:
+        assert "mid-answer" in would[0][1]
