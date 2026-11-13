@@ -456,7 +456,8 @@
    "already": "Ya está sonando «{label}».",
    "queued": "Vale, después pongo «{label}».",
    "seek": "Ahí va.",
-   "seek_to": "En el {t}."
+   "seek_to": "En el {t}.",
+   "refused": "No he podido ponerte «{title}» aquí: su propietario solo deja oírla en YouTube, y las siguientes versiones también estaban bloqueadas. Si quieres, te la abro en YouTube."
   },
   "spotify": {
    "play": "Suena «{label}».",
