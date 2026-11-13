@@ -220,7 +220,7 @@ export function render(el, data, ctx){
     let last = "";
     el._hbMapRO = new ResizeObserver(() => {
       const k = `${view.clientWidth}x${view.clientHeight}`;
-      if(k !== last){ last = k; relayout(); }
+      if(k !== last){ last = k; relayout(); reportShown(ctx, places, selected, cam().z); }   // a resize can refit the zoom
     });
     el._hbMapRO.observe(view);
   }
