@@ -13,7 +13,8 @@ with an actuator registered by the body:
     close_browser        the idle search Chromium is closed (it starts again on the next search)
     trim_caches          the body collects garbage and hands freed pages back to the OS
 
-The rule, pure (`step` reads a reading, returns one action): under pressure (free memory under the floor, or the body
+The rule, pure (`step` reads a reading, returns one action): under pressure (free memory under the PRESSURE floor —
+`envelope.pressure_floor`, where the watchdog opens too, never the admission floor, which only holds new work — or the body
 loop stalled in two beats running) → ENGAGE the next rung, one per step, whatever `cause` names (the voice suffers the
 same); recovered WITH MARGIN (free ≥ floor × `shed_recover_ratio`, no stall this beat) → RELEASE the last one, in
 reverse; in between → hold (no flapping on the floor).
@@ -47,10 +48,10 @@ def pressure(reading: dict) -> bool:
 
 
 def recovered(reading: dict, recover_ratio: float = DEFAULT_RECOVER) -> bool:
-    """Free memory over floor × margin and NO stall in THIS beat (`loop_lag_now_s`, else the persisting one)."""
+    """Free memory over the band's top (`release_mb`, else floor × margin) and NO stall in THIS beat."""
     free, floor_mb = float(reading.get("free_mb", 0)), float(reading.get("floor_mb", 0))
     now = float(reading.get("loop_lag_now_s", reading.get("loop_lag_s", 0)) or 0)
-    return free >= floor_mb * recover_ratio and now <= 0
+    return free >= float(reading.get("release_mb") or floor_mb * recover_ratio) and now <= 0
 
 
 @dataclass

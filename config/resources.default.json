@@ -50,11 +50,17 @@
     "is a CAP, not the floor: 20 % of a 48 GB laptop (9.6 GB) held every errand with ordinary apps open, while the",
     "pieces need ~3.4 GB; on a 2-8 GB host the cap is what binds, so the older rule and the voice reserve hold there.",
     "`pressure_pieces` (+ `mb`), capped by `pause_free_ratio`×total, is where the host is SHORT: the newest worker",
-    "pauses and the watchdog sheds. Without `pieces`/`pressure_pieces` the older ratios hold.",
+    "pauses, the shed ladder engages and the watchdog opens; both close over that floor × `pressure_band_ratio`, never",
+    "over the admission floor (one band, so the episode neither flaps on one floor nor stays open on a roomy laptop).",
+    "Without `pieces`/`pressure_pieces` the older ratios hold (the `cloud` block names none: its floor is its reserve).",
+    "The `pieces` count the voice and the body, already running, as their room to GROW; a name no piece declares is",
+    "refused loudly. `loop_hold_s`: a new worker also waits while the body loop stalled within this many seconds — a",
+    "host that pages shows it in the loop, not in «available» (macOS keeps inactive pages until the very end).",
     "`priorities.<role>`: nice and OOM score per process (the voice served first and killed last, the browser killed",
     "first); raising either needs no privilege, lowering one does, so an unprivileged host keeps what it could set.",
     "`shed_ladder`: the rungs the engine gives memory back with, in order, one per heartbeat under pressure (free memory",
-    "under the floor), released in reverse once free memory is back over floor × `shed_recover_ratio`.",
+    "under the PRESSURE floor), released in reverse over the band's top (`pressure_band_ratio`; `shed_recover_ratio` only",
+    "where a reading names no band).",
     "`embed_budget_ms`: how long a recall waits for a LOCAL embedding (a model on this machine, which pages in from",
     "swap on a host short of memory) before it reads the lexical channel alone; a remote embedder keeps the turn's own",
     "recall budget (ZAELAR_RECALL_BUDGET_MS)."
@@ -65,6 +71,7 @@
   "voice_reserve_mb": 768,
   "voice_lag_s": 0.5,
   "loop_lag_s": 1.0,
+  "loop_hold_s": 60,
   "freeze_s": 15,
   "stuck_s": 120,
   "exit_grace_s": 15,
@@ -87,10 +94,11 @@
   "listen_every_min": 10,
   "budgets": {
     "local": {"voice": {"mb": 300, "ceiling_mb": 400}, "body": {"mb": 900, "ceiling_mb": 1200}, "worker": {"mb": 300, "ceiling_mb": 600}, "chromium": {"mb": 250, "ceiling_mb": 500}, "free_floor": {"ratio": 0.2, "mb": 768, "pieces": ["voice", "body", "worker", "chromium"], "pressure_pieces": ["voice"]}},
-    "cloud": {"voice": {"mb": 300, "ceiling_mb": 400}, "body": {"mb": 700, "ceiling_mb": 900}, "worker": {"mb": 300, "ceiling_mb": 450}, "chromium": {"mb": 250, "ceiling_mb": 400}, "free_floor": {"ratio": 0.0, "mb": 200, "pieces": ["voice", "body", "worker", "chromium"], "pressure_pieces": ["voice"]}}
+    "cloud": {"voice": {"mb": 300, "ceiling_mb": 400}, "body": {"mb": 700, "ceiling_mb": 900}, "worker": {"mb": 300, "ceiling_mb": 450}, "chromium": {"mb": 250, "ceiling_mb": 400}, "free_floor": {"ratio": 0.0, "mb": 200}}
   },
   "priorities": {"voice": {"nice": 0, "oom_score_adj": -500}, "body": {"nice": 5, "oom_score_adj": 0}, "worker": {"nice": 10, "oom_score_adj": 500}, "chromium": {"nice": 10, "oom_score_adj": 800}},
   "shed_ladder": ["hold_workers", "pause_newest_worker", "pause_background", "close_browser", "trim_caches"],
   "shed_recover_ratio": 1.15,
+  "pressure_band_ratio": 2.0,
   "embed_budget_ms": 300
 }

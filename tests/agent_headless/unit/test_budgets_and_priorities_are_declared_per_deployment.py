@@ -133,3 +133,15 @@ def test_the_voice_process_over_its_ceiling_is_recycled_only_between_sessions(mo
     assert recycled == [1]
     embedded = SimpleNamespace(state=SimpleNamespace(lk_server=SimpleNamespace(id="w")))
     assert asyncio.run(voice_recycle.check_ceiling(embedded, _recycle)) == "n/a"
+
+
+def test_a_misspelt_piece_is_refused_loudly_and_the_cloud_names_none():
+    """2026-11-13 audit: a name in `pieces` that no piece declares fell back to 0 and LOWERED the floor in silence; and
+    `pieces` in the `cloud` block were dead data (its ratio 0 caps them to nothing). Disarm (seen red): drop the
+    unknown-piece check in `budgets.free_floor_mb`."""
+    import pytest
+    typo = json.loads(json.dumps(DECLARED))
+    typo["budgets"]["local"]["free_floor"]["pieces"] = ["voice", "bdoy"]
+    with pytest.raises(ValueError, match="bdoy"):
+        budgets.free_floor_mb(48 * GB, typo, "local")
+    assert not {"pieces", "pressure_pieces"} & set(DECLARED["budgets"]["cloud"]["free_floor"])

@@ -117,8 +117,9 @@ def tick(loop, now: float | None = None) -> str:
         return "ok"
     pol = policy()
     total, avail = envelope.measured()
-    # V2-852 T15: the two floors are the episode's band (opens under pause, closes over admit) — one floor flapped 10×
-    pressure = (not envelope.admits(total, avail)) if _state["since"] else envelope.under_pressure(total, avail)
+    # V2-852 T15: a band, not one floor (one floor flapped 10×) — the ladder's (`envelope.pressure_band`): opens under the
+    # pressure floor, closes over its top; the admission floor as the top kept a 2-3 GB laptop's episode open for ever
+    pressure = avail < envelope.pressure_band(total)[1 if _state["since"] else 0]
     age = now - (_state["beat"] or now)
     what = decide(now, age, pressure, _state["since"], pol, supervised() and not _state["exiting"])
     if what == "exit" and age <= pol["freeze_s"] and not envelope.under_pressure(total, avail):

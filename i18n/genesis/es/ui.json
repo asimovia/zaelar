@@ -2051,6 +2051,7 @@
  "results.digest.more_results": "(+{n} resultados más en la hoja)",
  "task.phase.waiting_room": "esperando memoria libre en esta máquina",
  "task.phase.waiting_voice": "la voz va primero — el encargo arranca cuando se asiente",
+ "task.phase.waiting_host": "el ordenador va justo — el encargo arranca cuando se recupere",
  "task.phase.starting": "arrancando",
  "task.phase.label_web": "Buscando en la web…",
  "task.phase.label_code": "Trabajando en un widget…",
