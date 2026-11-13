@@ -73,7 +73,7 @@ def _facts(app: str, inst: str, st: dict, known: dict) -> list[str]:
         from widgets import store
         fn = getattr(importlib.import_module(f"widgets.{app}.data"), "facts", None)
         disk = state.disk_id(inst)
-        if not callable(fn) or not store.exists(disk):          # never a store it would have to create
+        if not callable(fn) or not store.has_state(disk):          # never a store it would have to create
             return []
         data = store.load(disk, {})
         order = {n: decl.order_value(data, p) for n, p in (st.get("order") or {}).items()}

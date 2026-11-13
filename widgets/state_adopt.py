@@ -52,7 +52,7 @@ def settle(app: str, instance: str, clean: dict, ack, prior: dict, *, hand: bool
     from nucleo.runtime_ids import boot_id
     from widgets import state, store
     disk = state.disk_id(instance)
-    if not store.exists(disk):
+    if not store.has_state(disk):
         return out, []
     data, changed, epoch = store.load(disk, {}), state.changed(instance), boot_id()
     adopt = []
