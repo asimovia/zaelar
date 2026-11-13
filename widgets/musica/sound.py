@@ -25,6 +25,7 @@ def facts(order: dict, report: dict) -> dict:
 
 
 #: The IFrame API's fatal codes (101/150 the owner refuses embedding, 100 removed, 2/5 broken) — the video card's set.
+from widgets.youtube import availability as _avail  # noqa: E402
 from widgets.youtube.availability import FATAL_CODES as FATAL  # noqa: E402
 
 
@@ -44,19 +45,38 @@ def player_error(action: str, p: dict) -> dict:
         _d._persist(db)
         return {"ok": True, "stale": True}
     nxt = ("", "")
-    if fatal and str(yt.get("query") or "").strip():
+    # The walk over our own picks is bounded per order (`availability.WALK_MAX`, shared with the video card): past
+    # it the content refuses embedding as a class, and the card stops and says so instead of walking in silence.
+    walk = _avail.walk_step(yt, vid, str(yt.get("title") or yt.get("query") or "")) if fatal else {}
+    if fatal and str(yt.get("query") or "").strip() and not _avail.walk_spent(walk):
         from connectors.music import youtube_audio as _ya
         from connectors.music import youtube_resolve as _yr
         nxt = _yr.resolve(str(yt["query"]), skip=_ya.refused_ids(yt))[:2]
+    out = {"ok": True}
     if nxt[0]:
         yt.update({"videoId": nxt[0], "title": nxt[1] or yt.get("query"), "player_error": "",
                    "paused": False, "last_cmd": "load", "cmd_seq": int(yt.get("cmd_seq") or 0) + 1})
         yt.pop("seek", None)
+        yt.pop("refused_at", None)
+        _avail.walk_put(yt, nxt[0])
     else:
         yt["player_error"] = code
+        if fatal:
+            # The declared fallback, as DATA: where it can still be heard (the site itself). The card's late tell
+            # says it only when an agent order is being contradicted (`widgets/late_report.py`).
+            yt["refused_at"] = f"https://www.youtube.com/watch?v={vid}"
+            out["tell"] = _refused_tell(str(walk.get("from") or yt.get("title") or yt.get("query") or ""))
+        else:
+            yt.pop("refused_at", None)
     db["yt"] = yt
     _d._persist(db)
-    return {"ok": True, "player_error": yt["player_error"], "swapped_to": nxt[0]}
+    return {**out, "player_error": yt["player_error"], "swapped_to": nxt[0]}
+
+
+def _refused_tell(title: str) -> str:
+    """The sentence he hears when the page player could not play what the agent just put on."""
+    from i18n import langs as _langs
+    return _langs.words("music.youtube.refused", default="").format(title=title[:100])
 
 
 def digest_line(live: dict) -> str:
@@ -64,6 +84,8 @@ def digest_line(live: dict) -> str:
     keeps it silent is the app's state line (`facts: audio_blocked`), never a stored flag."""
     yt = live.get("yt") or {}
     if live.get("mode") == "youtube" and yt.get("player_error"):
-        return (f"SOUND: the page player REFUSED this song (YouTube error {yt['player_error']}) — nothing is heard. "
-                "Do not say it is playing.")
+        site = f" It can still be heard on the site itself: {yt['refused_at']} — offer to open it there." \
+            if yt.get("refused_at") else ""
+        return (f"SOUND: the page player REFUSED this song (YouTube error {yt['player_error']}: its owner blocks "
+                f"playing it outside YouTube) — nothing is heard. Do not say it is playing.{site}")
     return ""

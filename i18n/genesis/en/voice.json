@@ -449,7 +449,8 @@
    "already": "«{label}» is already playing.",
    "queued": "Got it, I'll play «{label}» next.",
    "seek": "There you go.",
-   "seek_to": "At {t}."
+   "seek_to": "At {t}.",
+   "refused": "I couldn't play «{title}» here: its owner only lets it play on YouTube, and the next versions were blocked too. I can open it on YouTube if you like."
   },
   "spotify": {
    "play": "Now playing «{label}».",
