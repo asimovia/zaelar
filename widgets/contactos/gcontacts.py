@@ -110,7 +110,7 @@ def sync_state(db: dict) -> dict:
         "connected": connected,
         "twoWay": bool(sv and connected and sv.can_write("google-contacts")),
         "tier": (o.account("google-contacts").get("tier") if o and connected else "") or "",
-        "last": float(s.get("last") or 0.0),
+        "last": float(s.get("last") or 0.0), "lastManual": float(s.get("lastManual") or 0.0),
         "lastResult": s.get("lastResult") or {},
         "auto": bool(s.get("auto", False)),   # off until he asks — an import nobody asked for is not ours to start
         "running": running(),
