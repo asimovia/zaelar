@@ -150,12 +150,14 @@ def _with_failover(pairs):
             if not recovering and tts is ours[0] and len(ours) > 1:     # P1-4: a titular that hangs is bounded
                 from .. import relay_bound
                 gen = relay_bound.first_audio(gen, self, relay.name_of("tts", tts))
+            spoke = False
             try:
                 async for audio in gen:
+                    spoke = True
                     yield audio
             except Exception as e:  # noqa: BLE001 — recorded for the switch alert (P1-2), then the adapter's
                 if not recovering:
-                    relay.note("tts", tts, e)
+                    relay.note("tts", tts, e, cut=spoke)
                 raise
 
         def _probe_the_fallen(self) -> None:
@@ -178,20 +180,9 @@ def _with_failover(pairs):
     relay.track("tts", pairs)
 
     def _changed(ev) -> None:
-        try:
-            i = [t for _, t in pairs].index(ev.tts)
-        except ValueError:
-            return
-        if not ev.available and relay.active("tts", names[0]) == names[i]:
-            nxt = next((names[j] for j, s in enumerate(adapter._status) if s.available), names[i])
-            relay.set_active("tts", nxt)
-            cause = relay.take_cause("tts", names[i]) or "no error reported"
-            _note(f"🔇 TTS «{names[i]}» failed ({cause}) — speaking with «{nxt}»", provider=names[i], stand_in=nxt,
-                  cause=cause)
-        elif ev.available and i == 0:
-            relay.set_active("tts", names[0])
-            relay.take_cause("tts", names[0])
-            _note(f"🔊 TTS «{names[0]}» is back", provider=names[0])
+        if ev.tts in adapter._tts_instances:
+            relay.switched("tts", names, adapter._tts_instances.index(ev.tts), ev.available,
+                           [s.available for s in adapter._status], _note)
 
     adapter.on("tts_availability_changed", _changed)
     adapter._zaelar_providers = names   # live_tts re-points each voice in its own provider (2026-10-04)

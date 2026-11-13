@@ -74,20 +74,9 @@ def build_stt(vad=None):
     adapter._capabilities = dataclasses.replace(first.capabilities, streaming=True)
 
     def _changed(ev) -> None:
-        stt = getattr(ev, "stt", None)
-        i = 0 if stt is first else 1 if stt is second else None
-        if i is None:
-            return
-        if not ev.available:
-            if relay.active("stt", names[0]) == names[i]:
-                relay.set_active("stt", names[1 - i])
-            cause = relay.take_cause("stt", names[i]) or "no error reported"
-            _note(f"🙉 STT «{names[i]}» failed ({cause}) — hearing with «{names[1 - i]}»", provider=names[i],
-                  stand_in=names[1 - i], cause=cause)
-        elif i == 0:
-            relay.set_active("stt", names[0])
-            relay.take_cause("stt", names[0])
-            _note(f"👂 STT «{names[0]}» is back", provider=names[0])
+        if ev.stt in adapter._stt_instances:      # the stand-in is the adapter's own VAD wrapper of what we built
+            relay.switched("stt", names, adapter._stt_instances.index(ev.stt), ev.available,
+                           [s.available for s in adapter._status], _note)
 
     adapter.on("stt_availability_changed", _changed)
     adapter._zaelar_providers = names
