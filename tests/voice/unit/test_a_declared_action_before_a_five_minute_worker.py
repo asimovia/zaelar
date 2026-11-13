@@ -529,3 +529,40 @@ def test_finding_is_knowing_and_an_act_order_is_not_offered_a_read():
     assert "FINDING, searching or telling him something" in card_pass._SYS_COMMISSION and "may_read and _wr0.can_answer(wid)" in src
     cc = (Path(__file__).resolve().parents[3] / "nucleo/flash/card_commission.py").read_text("utf-8")
     assert "may_read = not (_wi is not None and str(_w or \"\") == \"act\")" in cc
+
+
+def test_an_action_declared_to_need_a_worker_never_takes_the_errand_from_it(monkeypatch):
+    """2026-11-13, live by text: «book me a table at <restaurant> on Tuesday at 14:00 for two» — the catalogue pass
+    named `navegador:automate`, declared `escalate: true`. Applying it asks for the worker (`_apply_widget_data`: an
+    ESCALATE act sets the commission when there is none), but the rung cleared the commission only AFTER, so the ask
+    was lost and the turn said «Done.» with nothing running. The rung clears it BEFORE the act: an act that asks for a
+    worker gives the worker the ORIGINAL commission and the rung declines — any card, any wording (a second card below,
+    invented for the test); an act that runs leaves no commission.
+    Disarm (seen red): move `escalate_req["v"] = None` back after `apply_widget_data` in `card_commission.before_worker`."""
+    import asyncio
+    from nucleo.flash import card_commission
+    answer = {}
+
+    async def call(*a, **k):
+        return dict(answer)
+    monkeypatch.setattr(card_commission, "commission_call", call)
+    needs_worker = {("navegador", "automate"), ("viajes", "book_trip")}
+    applied, seen = [], []
+    for wid, act, said in (("navegador", "automate", "Book me a table on Tuesday at 14:00 for two"),
+                           ("viajes", "book_trip", "Resérvame un vuelo a Lisboa el viernes"),
+                           ("agenda", "add_meeting", "put it in")):
+        esc = {"v": f"commission: {said}", "more": ["x"]}
+
+        def apply(w, a, p, _esc=esc, _said=said):     # the real door's rule: an ESCALATE act asks only when none is held
+            applied.append((w, a))
+            if (w, a) in needs_worker and _esc["v"] is None:
+                _esc["v"] = _said
+        answer.update(kind="call", widget_id=wid, action=act, payload={"goal": said})
+        got = asyncio.run(card_commission.before_worker(esc, {"v": None}, brief={"x": 1}, operator_text=said, spec=None,
+                                                        emit=lambda *a, **k: seen.append(a), present=lambda *a, **k: True,
+                                                        apply_widget_data=apply))
+        if (wid, act) in needs_worker:
+            assert got == "" and esc["v"] == f"commission: {said}", f"{wid}:{act} took the errand from the worker: {esc}"
+        else:
+            assert got == "call" and esc["v"] is None and esc["more"] == [], esc
+    assert applied == [("navegador", "automate"), ("viajes", "book_trip"), ("agenda", "add_meeting")]

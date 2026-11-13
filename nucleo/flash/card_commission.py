@@ -377,8 +377,14 @@ async def before_worker(escalate_req: dict, read_req: dict, *, brief, operator_t
             # it or the action's output only exists there (`canvas_visibility.present_for_call`).
             from nucleo.flash import canvas_visibility as _cvis
             _cvis.present_for_call(got["widget_id"], got["action"], brief=brief, src="flash", emit=emit)
-            apply_widget_data(got["widget_id"], got["action"], got["payload"])
-            escalate_req["v"], escalate_req["more"] = None, []
+            commission, escalate_req["v"] = escalate_req["v"], None   # cleared BEFORE: an act declared to need a worker
+            apply_widget_data(got["widget_id"], got["action"], got["payload"])   # asks for it again (2026-11-13: cleared
+            if escalate_req["v"] is not None:                         # after, `navegador:automate` said «Done.» for nothing)
+                escalate_req["v"] = commission
+                emit("brain", "🧭 the card's act asks for a worker — the worker keeps the errand", role="system",
+                     text=f"{got['widget_id']}:{got['action']}", extra={"cat": "flash"})
+                return ""
+            escalate_req["more"] = []
             emit("brain", "🎯 acción declarada en vez de un worker (la app del catálogo)",
                  text=f"{got['widget_id']}:{got['action']}", role="system",
                  extra={"cat": "flash", "widget": got["widget_id"], "action": got["action"]})
