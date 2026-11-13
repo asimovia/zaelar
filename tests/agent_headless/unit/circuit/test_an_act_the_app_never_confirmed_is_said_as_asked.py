@@ -76,6 +76,28 @@ def test_with_nothing_reporting_the_act_settles_no_ack_after_its_window(world):
     assert world.said == [], "asked and never confirmed is not a failure to correct out loud"
 
 
+def test_a_screen_that_speaks_gets_the_grace_not_the_ack_window(world, monkeypatch):
+    """Players audit P2-5: the new player spoke at 3 s, its ack came at 5.5 s, and the pulse at 5.2 s had closed the
+    start «not confirmed» while the video played. A screen that has spoken since the order waits for `INLINE_GRACE_S`;
+    a mute one closes at `PENDING_S` as before."""
+    import time
+    _screen(monkeypatch, world)
+    _report(1, playing=True, playing_id=V1, muted=False, volume=70)
+    born = time.time()
+    e = _act("pause", born)
+    monkeypatch.setattr(state_render, "PENDING_S", 0.0)     # the ack window already gone: the field reads unknown
+    code, got = state.report("youtube", {"dev": A, "mount": "m1", "n": 2, "patch": {"volume": 70},
+                                         "ack": {"epoch": "old", "rev": 0}})   # it speaks, acking nothing
+    assert code == 200, got
+    assert spec.attest(e) is None and e["awaiting"] == reported.NO_ACK
+    e["checked_at"] = 0
+    circuit.tick(now=born + 6)
+    assert world.settled == [], "a screen that speaks may still ack: it waits"
+    e["checked_at"] = 0
+    circuit.tick(now=born + circuit.INLINE_GRACE_S)
+    assert world.settled == [("unverifiable", verdict.REASONS["no_ack"])], "past the grace it is said as asked"
+
+
 def test_a_pending_act_waits_and_the_ack_meets_it(world, monkeypatch):
     _screen(monkeypatch, world)
     _report(1, playing=True, playing_id=V1, muted=False, volume=70)
