@@ -173,6 +173,7 @@ export function render(el, data, ctx){
     const c = cam(), z = Math.max(1, Math.min(18, c.z + dz)), f = Math.pow(2, z - c.z);
     el._hbMapCam = { z, cx: c.cx * f, cy: c.cy * f };
     relayout();
+    reportShown(ctx, places, selected, el._hbMapCam.z);
   };
   [["+", 1, tt("zoom_in", null, "Zoom in")], [String.fromCharCode(0x2212), -1, tt("zoom_out", null, "Zoom out")]].forEach(([g, dz, label]) => {
     const b = txt("button", null, g); b.type = "button"; b.title = label; b.setAttribute("aria-label", label);
@@ -224,4 +225,14 @@ export function render(el, data, ctx){
     el._hbMapRO.observe(view);
   }
   relayout();
+  reportShown(ctx, places, selected, cam().z);
+}
+
+// V2-884 — what the map SHOWS, said through the host's one door after every paint with the revision it applied: how
+// many places are pinned, the one picked (by name, "" = none) and how close it looks (his hand on +/−).
+function reportShown(ctx, places, selected, z){
+  if(!ctx || typeof ctx.state !== "function") return;
+  const pick = places[selected - 1], zoom = Math.max(1, Math.min(18, Math.round(Number(z) || 1)));
+  try{ Promise.resolve(ctx.state({places: Math.min(places.length, 99), selected: pick ? String(pick.name || "").slice(0, 40) : "",
+    zoom}, {applied: true})).catch(()=>{}); }catch(_){}
 }

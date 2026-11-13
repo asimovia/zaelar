@@ -1,6 +1,14 @@
 {
   "id": "map",
   "screens": "shared",
+  "state": {
+    "order": {"places": "places", "selected": "selected"},
+    "report": {
+      "places": {"type": "int:0-99", "follows": "places", "rest": 0},
+      "selected": {"type": "text:40", "follows": ["places", "selected"], "rest": ""},
+      "zoom": {"type": "int:1-18"}
+    }
+  },
   "version": "0.1.0",
   "owner": "Zaelar",
   "created": "2026-09-26",
