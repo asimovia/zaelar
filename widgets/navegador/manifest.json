@@ -5,7 +5,7 @@
     "order": {},
     "report": {
       "host": {"type": "text:40", "by": "host", "rest": ""},
-      "title": {"type": "text:60", "by": "host", "rest": ""}
+      "title": {"type": "text:40", "by": "host", "rest": ""}
     }
   },
   "kind": "backed",
