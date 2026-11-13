@@ -231,7 +231,9 @@ def test_the_exit_door_reads_his_words_from_the_row_even_before_the_turn_recorde
     the dictated text as the agent's. The row keeps his words and the door reads them; disarmed, the tainted send asks."""
     monkeypatch.setenv("ZAELAR_LANGUAGE", lang)
     w = WORDS[lang]
-    model.begin(w["full"], trace="t-1")                 # his sentence is NOT in the ring yet
+    model.begin(w["full"], trace="t-1")
+    from nucleo import his_words
+    his_words.reset()      # the ring is per process (lost on a restart, absent in a resumed row): only the ROW carries them
     uid = send_task.retain(WID, ACT, {"contact": "Raquel", "text": w["text"]}, w["full"])
     untrusted.seen(session_key=uid)
     asyncio.run(send_task_run.run(uid))

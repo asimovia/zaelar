@@ -1969,6 +1969,8 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/agent_headless/unit/workers/test_a_network_job_is_owned_by_its_row.py"]},
         {"id": "3.223", "title": "A step a network agent HANDS BACK is a stranger's DATA, done once and reported (V2-895): what can be checked kept (link and domain, phone, what it carries, the NAMES of the fields asked, the agent's own outcomes), its prose fenced under `agent_says`, its VALUES dropped — a form is filled from his order (`your_order`); our rules alone; the same order refused on ANY skill while the step has no reported outcome; `hbmesh report` answers in the agent's own `reportOutcome` shape; a dry run guards nothing",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/workers/test_a_step_an_agent_hands_back_is_done_once_and_reported.py"]},
+        {"id": "3.230", "title": "His words are his from the moment his turn is born: `request.model.begin` notes them in `his_words`, so a door that runs INSIDE that turn reads what he asked — the map keeps the places he named over a results sheet on screen (demo W1: all three refused, `not_a_sheet_row`, because his words were noted only at the close, after every tool had run); a place of the model's own is still refused",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/test_his_words_reach_the_doors_of_his_own_turn.py"]},
         # V2-683 — EL ENCARGO CON UN TERCERO. Ninguna de las cuatro formas de «en marcha» que había podía
         # sostener «contacta con Iván y organiza una reunión esta tarde»: el turno dura segundos, la sesión de
         # worker vive en RAM y un reinicio la entierra, un cron no lleva estado y el objetivo del arnés caduca
