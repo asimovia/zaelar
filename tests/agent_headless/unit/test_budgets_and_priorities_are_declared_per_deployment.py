@@ -7,14 +7,18 @@ and the priorities (nice, OOM score) are declared — `config/resources.default.
 
   (a) `local` and `cloud` both declare every piece, and the deployment is read from the environment (a hosted
       account, or `ZAELAR_DEPLOYMENT`);
-  (b) the worker floor is the deployment's own — the same max(20 % · total, 768 MB) as before on a laptop, 200 MB on
-      a hosted machine — and a policy with only the older flat keys keeps the older rule;
+  (b) the worker floor is the deployment's own and says what the PIECES need, never a share of the host: on a 48 GB
+      laptop the declared ceilings + the reserve (~3.4 GB), so 5 GB free admits an errand with ordinary apps open; on
+      a small host the ratio caps it — a 4 GB host at 600 MB free does not admit, a 2 GB host keeps the 768 MB voice
+      reserve; 200 MB on a hosted machine; the host is SHORT only under the voice's ceiling + reserve (capped by the
+      pause ratio), and a policy with only the older flat keys, or a block without `pieces`, keeps the older rule;
   (c) a worker runs at an ABSOLUTE nice (10, not the body's 5 + 10) and asks for its OOM score; raising never needs a
       privilege, so the actuator reports what the host allowed instead of raising;
   (d) the voice's own process over its ceiling is recycled only BETWEEN sessions — over the ceiling in a session,
       it waits and says so once.
 
-Disarms (each seen red): `deployment()` always `local` → (a)/(b); `os.nice(nice)` relative in `envelope.preexec`
+Disarms (each seen red): `deployment()` always `local` → (a)/(b); `free_floor_mb` back to max(ratio · total, mb)
+→ (b); `under_pressure` back to `pause_free_ratio` · total → (b); `os.nice(nice)` relative in `envelope.preexec`
 → (c); drop the `live()` check in `voice_recycle.check_ceiling` → (d).
 """
 from __future__ import annotations
@@ -56,8 +60,21 @@ def test_the_voice_budget_is_the_same_small_one_everywhere():
 def test_the_worker_floor_is_the_deployments_own(monkeypatch):
     monkeypatch.delenv("ZAELAR_USER_ID", raising=False)
     monkeypatch.delenv("ZAELAR_DEPLOYMENT", raising=False)
-    assert envelope.floor(48 * GB, DECLARED) == 0.2 * 48 * GB              # a big laptop: the ratio
-    assert envelope.floor(2 * GB, DECLARED) == 768 * 2 ** 20                # a small one: the reserve
+    need = (400 + 1200 + 600 + 500 + 768) * 2 ** 20                         # the pieces' ceilings + the reserve
+    assert envelope.floor(48 * GB, DECLARED) == need                        # a big laptop: what the pieces need
+    assert envelope.admits(48 * GB, 5 * GB, DECLARED), "5 GB free on a 48 GB laptop runs an errand"
+    assert not envelope.under_pressure(48 * GB, 4 * GB, DECLARED), "4 GB free on a 48 GB laptop is not short"
+    assert envelope.under_pressure(48 * GB, 1 * GB, DECLARED), "1 GB free is short: the voice's ceiling + reserve"
+    assert envelope.floor(4 * GB, DECLARED) == 0.2 * 4 * GB                 # a small host: the ratio caps the need
+    assert not envelope.admits(4 * GB, 600 * 2 ** 20, DECLARED), "600 MB free on a 4 GB host holds the errand"
+    assert envelope.under_pressure(4 * GB, 300 * 2 ** 20, DECLARED) and not envelope.under_pressure(
+        4 * GB, 500 * 2 ** 20, DECLARED), "on a small host the older pause share (10 %) still says short"
+    assert envelope.floor(2 * GB, DECLARED) == 768 * 2 ** 20                # a smaller one: the voice reserve
+    unnamed = json.loads(json.dumps(DECLARED))
+    for k in ("pieces", "pressure_pieces"):
+        unnamed["budgets"]["local"]["free_floor"].pop(k)
+    assert envelope.floor(48 * GB, unnamed) == 0.2 * 48 * GB, "a block without `pieces` keeps the older rule"
+    assert envelope.under_pressure(48 * GB, 4 * GB, unnamed)
     monkeypatch.setenv("ZAELAR_DEPLOYMENT", "cloud")
     assert envelope.floor(2 * GB, DECLARED) == 200 * 2 ** 20                # a hosted machine: its own floor
     flat = {"admit_free_ratio": 0.2, "voice_reserve_mb": 768}

@@ -482,7 +482,7 @@ Each is one line in `.meshkore/docs/criteria.md`, with its node; read the sectio
   durable question his answer fills on the same row, and the taint asks only about a slot a stranger wrote.
 - **Background work never starves the voice (§R, R18–R20):** a held worker names its TRUE reason (memory only under
   the floor, else the voice's shed, else what it queues behind), a shed ends when ITS source recovers, admission is a
-  limit with no deadline start, one worker at a time, floor = max(`admit_free_ratio`×total, `voice_reserve_mb`), and a
+  limit with no deadline start, one worker at a time, floor = what the declared pieces need, capped by a ratio of the host, never under the voice reserve, and a
   Chromium launches only through `nucleo/workers/room.py` (pause the newest worker, launch, resume only its own pauses;
   his window is never refused). `nucleo/workers/envelope.py`, `config/resources.default.json`.
 - **A voice recycle is bounded and verified (§R, R21):** the old worker's close is abandoned past `recycle_close_s`, the
