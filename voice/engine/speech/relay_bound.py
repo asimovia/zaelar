@@ -86,10 +86,10 @@ def _fenced(fn):
     return run
 
 
-def _say(family: str, provider: str, why: str) -> None:
+def _say(family: str, provider: str, why: str, mode: str = "shadow") -> None:
     from voice.observer import emit
     emit("provider", f"🕳️ {family.upper()} «{provider}» would switch (shadow): {why}", role="system",
-         extra={"cat": family, "provider": provider, "would_switch": True, "why": why})
+         extra={"cat": family, "provider": provider, "would_switch": True, "why": why, "mode": mode})
 
 
 def _late(gen, outer, pol: Bound, clock: dict) -> str:
@@ -140,7 +140,7 @@ async def first_audio(gen, outer, provider: str, *, probe: bool = False):
                 continue
             said = True
             if not probe and (pol.mode != "armed" or _cooling(pol)):
-                _say("tts", provider, why + ("" if pol.mode != "armed" else " — armed, cooling down after switching"))
+                _say("tts", provider, why + ("" if pol.mode != "armed" else " — armed, cooling down after switching"), "shadow" if pol.mode != "armed" else "armed_cooling")
                 continue
             nxt.cancel()
             await asyncio.wait({nxt})               # the attempt closes; the timeout below is the verdict

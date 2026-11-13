@@ -136,7 +136,7 @@ def test_the_waiting_row_says_the_reason_it_was_given(monkeypatch):
     from nucleo.dispatch import session as ds
     from nucleo.workers import progress, reports
     phases = []
-    monkeypatch.setattr(reports, "session_phase", lambda key, p: phases.append(p))
+    monkeypatch.setattr(reports, "session_phase", lambda key, p, **_kw: phases.append(p))
     monkeypatch.setattr(progress, "say", lambda key, default, **kw: key)
     for running in ([], [{"id": "9", "status": "running", "title": "the trip plan"}]):
         d = SimpleNamespace(active_sessions=lambda r=running: r, logger=SimpleNamespace(debug=print))
@@ -144,6 +144,10 @@ def test_the_waiting_row_says_the_reason_it_was_given(monkeypatch):
             ds._say_held(d, "1", why)
     assert phases == ["waiting_voice", "waiting_room", "queued",
                       "waiting_voice", "queued_behind", "queued_behind"], phases
+    whys = []                    # the record carries the reason as a CODE beside the words in his language
+    monkeypatch.setattr(reports, "session_phase", lambda key, p, why="": whys.append(why))
+    ds._say_held(SimpleNamespace(active_sessions=lambda: [], logger=SimpleNamespace(debug=print)), "1", "waiting_host")
+    assert whys == ["waiting_host"]
 
 
 def test_a_host_whose_loop_stalls_holds_the_worker_and_says_so(monkeypatch):

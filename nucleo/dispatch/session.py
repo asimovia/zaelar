@@ -256,10 +256,10 @@ def _say_held(_d, key, why: str) -> None:
         ahead = [n for n in (str(x.get("title") or x.get("goal") or "")[:60] for x in _d.active_sessions()
                              if str(x.get("id")) != str(key) and x.get("status") == "running") if n]
         if why in ("waiting_voice", "waiting_host") or (why == "waiting_room" and not ahead):
-            _rp.session_phase(key, _pg.say(why, why))
+            _rp.session_phase(key, _pg.say(why, why), why=why)
         else:
             _rp.session_phase(key, _pg.say("queued_behind", "queued — waiting for a free slot behind: {names}", names=" · ".join(ahead))
-                              if ahead else _pg.say("queued", "queued"))
+                              if ahead else _pg.say("queued", "queued"), why=why)
     except Exception as e:  # noqa: BLE001
         _d.logger.debug(f"dispatch: held phase not written for {key}: {e}")
 

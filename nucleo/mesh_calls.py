@@ -54,8 +54,8 @@ def asked(agent: dict, prompt: str, fields: dict | None, out: dict, status: int,
         if ok:
             extra["answer"] = _bounded(out.get("data"), ANSWER_MAX)
         else:
-            extra["error"] = _bounded(out.get("error") or ("payment required" if out.get("payment_required")
-                                                           else "failed"), 200)
+            extra["error"] = _bounded(out.get("error") or ("payment required" if out.get("payment_required") else "failed"), 200)
+            extra.update({"answer": _bounded(out.get("data"), ANSWER_MAX)} if out.get("data") is not None else {})   # a 202's job, a refusal
         emit("mesh", f"🌐 {aid} · ask · {'✅' if ok else '⚠️'}", text=_bounded(prompt if not fields else "", PROMPT_MAX),
              role="system", extra=extra)
     except Exception as e:  # noqa: BLE001

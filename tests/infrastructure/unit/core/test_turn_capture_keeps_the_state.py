@@ -41,6 +41,25 @@ def test_and_the_gap_is_NAMED_so_a_hole_is_not_read_as_an_absence():
     assert "OMITIDOS" in ex and "no se omiten" in ex.lower()
 
 
+def test_the_apps_reported_state_lines_reach_the_record_too():
+    """V2-884: the state lines sit just BEFORE the on-screen band, headed by the legend; the excerpt keeps them, so
+    «what did the model believe each screen showed?» is read from the record and not reconstructed."""
+    from widgets import state_render
+    assert state_render.LEGEND.startswith(observer._STATE_MARK)
+    middle = "y" * 9000 + "\n" + state_render.LEGEND + "\n- youtube: playing «x»\n\nitems ahora (de lo ABIERTO …)\n- a"
+    ex = observer._prompt_excerpt("PERSONA" + "x" * 6000 + middle + "z" * 7000 + "ESTADO")
+    assert "- youtube: playing «x»" in ex and "items ahora (de lo ABIERTO" in ex
+
+
+def test_two_screens_reporting_one_app_are_two_records():
+    """V2-884: the flood guard of `widget` events keeps the screen — the second screen's report within 150 ms is a
+    report of its own, not a repeat."""
+    observer.emit("widget", "state", extra={"id": "youtube", "dev": "phone", "changed": {"playing": "True"}})
+    second = observer.emit("widget", "state", extra={"id": "youtube", "dev": "desk", "changed": {"playing": "True"}})
+    again = observer.emit("widget", "state", extra={"id": "youtube", "dev": "desk", "changed": {"playing": "True"}})
+    assert second is not None and again is None
+
+
 def test_a_short_prompt_is_kept_whole():
     assert observer._prompt_excerpt("corto") == "corto"
 
