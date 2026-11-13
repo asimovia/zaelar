@@ -8,7 +8,7 @@ Pinned here:
   · `conversation_lines(query, his_words=…)` searches his words first and fills with the paraphrase, merged,
     chronological, at most `CONVERSATION_TURNS` turns, each side cut at `CONVERSATION_CHARS` as rendered;
   · the voice recall pass hands his sentence over (`recall_spoken` → `compose_recall(…, his_words=text)`);
-  · `recall_fired` is `needs_recall or needs_recent`.
+  · `recall_fired`: no word table gates the recall since V2-903 (`recall_ahead.take` on every sentence).
 """
 import ast
 import time
@@ -97,10 +97,11 @@ def test_the_voice_recall_hands_his_sentence_over():
 
 
 def test_a_reference_to_the_conversation_fires_the_recall():
+    """V2-903: no word table gates the recall any more — the turn takes it for EVERY sentence (`recall_ahead.take`),
+    so «I did ask you some time ago…» cannot fall through a gate. The take is not inside any condition."""
     tree = ast.parse((ENGINE / "voice/engine/llm/providers/turn_prompt.py").read_text(encoding="utf-8"))
-    fired = [n.value for n in ast.walk(tree) if isinstance(n, ast.Assign)
-             and any(isinstance(t, ast.Subscript) and getattr(t.slice, "value", None) == "recall_fired"
-                     for t in n.targets)]
-    assert fired, "recall_fired is no longer set here"
-    named = {getattr(c.func, "attr", "") for v in fired for c in ast.walk(v) if isinstance(c, ast.Call)}
-    assert {"needs_recall", "needs_recent"} <= named, f"«I did ask you some time ago…» fires nothing: {named}"
+    fn = next(n for n in ast.walk(tree) if isinstance(n, ast.AsyncFunctionDef) and n.name == "compose_the_prompt")
+    gated = [c for n in ast.walk(fn) if isinstance(n, (ast.If, ast.IfExp)) for c in ast.walk(n)
+             if isinstance(c, ast.Call) and getattr(c.func, "attr", "") == "take"]
+    taken = [c for c in ast.walk(fn) if isinstance(c, ast.Call) and getattr(c.func, "attr", "") == "take"]
+    assert taken and not gated, "the turn's recall is gated again"

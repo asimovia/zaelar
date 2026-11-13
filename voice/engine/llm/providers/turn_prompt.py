@@ -11,7 +11,7 @@ from __future__ import annotations
 from voice.engine.llm.providers import nucleo as _p
 
 
-async def compose_the_prompt(*, brain, emit, operator_text, self, text) -> dict:
+async def compose_the_prompt(*, brain, emit, operator_text, self, text, brief=None) -> dict:
     from nucleo.flash import dialog as _dialog
     from nucleo.acts import errand as _escalate_mod
     from nucleo.flash import frontend as _frontend
@@ -39,34 +39,16 @@ async def compose_the_prompt(*, brain, emit, operator_text, self, text) -> dict:
     self._phase = "montando el prompt"
     timings: dict = {}
     _t_prompt = _p.time.time()
-    # Semantic RECALL on demand and off the event loop (T115+T116; in the loop it was V2-004's regression): it fires
-    # only when the turn ASKS to recall (`needs_recall`), in a thread. The state block always comes from the cache (T114).
+    # The durable RECALL (V2-903): started beside the brief — at the eager end of turn, else at admission — and taken
+    # here if it arrived; the turn waits for it only while the brief has not said it needs none, never past its budget
+    # (`nucleo/turn/recall_ahead`). No word table decides it. The state block always comes from the cache (T114).
     from nucleo.flash import recall_heuristics as _rh
     from nucleo.turn.prompt import builder as _prompt_mod
-    recall_block = ""
-    recall_ids: list = []
-    # A reference to the recent interaction («I did ask you some time ago…») fires it too (V2-865): the
-    # conversation lane of the recall is what answers it, and the expanded buffer below is recency only.
-    timings["recall_fired"] = _rh.needs_recall(operator_text) or _rh.needs_recent(operator_text)
-    if timings["recall_fired"]:
-        # TIME-BOX del recall (regla dura "nunca lento"): el retriever suele cerrar en ~0.4-1.5s, pero en el
-        # turno vivo puede dispararse a 4s+ (recarga del modelo de embedding tras un desalojo por el CORAZÓN
-        # qwen2.5:14b, o contención de Metal con STT/TTS). El recall está en el CAMINO CRÍTICO del turno (su
-        # bloque alimenta el prompt), así que un pico lo paga el usuario en tiempo real. Lo acotamos: si no
-        # cierra dentro del presupuesto, el turno SIGUE SIN el bloque durable — el ESTADO (nombre/misión/
-        # conversación reciente) YA va en el prompt desde el caché (µs), así que la degradación es suave, no
-        # amnesia total. Presupuesto configurable (ZAELAR_RECALL_BUDGET_MS, def 800). 2026-07-13: bajado de
-        # 2000→800 tras medir en la sesión manual que el embedding en frío (desalojo por el CORAZÓN) hacía
-        # timeout SIEMPRE a 2000ms → +2s tirados por turno. Con 800ms, caliente entra (round-trip ~50-150ms) y
-        # en frío corta rápido (pierde 0.8s, no 2s). El fix DE RAÍZ (residencia de embeddinggemma) va por el
-        # workflow de memoria.
-        # La guarda vive en `nucleo/turn/recall_budget` desde F1: era la protección que ESTE canal tenía y
-        # el de texto no, y una protección que existe en un canal y no en el otro no se distingue de no
-        # tenerla — el fallo sale por el canal que nadie recordó.
-        from nucleo.turn import recall_budget as _recall
-        from nucleo.turn.prompt import recall as _recall_lane    # V2-878 §2: skip the turns the window REALLY has
-        timings["live_turns"] = _recall_lane.live_turns(brain._window[-_p._WINDOW_MAX:])
-        recall_block, recall_ids = await _recall.compose(operator_text, timings)
+    from nucleo.turn import recall_ahead as _recall_ahead
+    from nucleo.turn.prompt import recall as _recall_lane    # V2-878 §2: skip the turns the window REALLY has
+    timings["live_turns"] = _recall_lane.live_turns(brain._window[-_p._WINDOW_MAX:])
+    recall_block, recall_ids = await _recall_ahead.take(operator_text, brief, timings,
+                                                        live_turns=timings["live_turns"])
     # 2º PASE DE CORTO PLAZO (C, 2026-07-14): si el turno referencia la interacción RECIENTE ("de qué
     # hablábamos", "lo que te dije antes", "repite eso"), inyectamos el buffer conversacional AMPLIADO
     # (verbatim, más turnos que la ventana normal). Lectura DIRECTA µs, pero la corremos igualmente en un
@@ -75,9 +57,7 @@ async def compose_the_prompt(*, brain, emit, operator_text, self, text) -> dict:
     recent_block = ""
     timings["recent_fired"] = _rh.needs_recent(text)
     from nucleo.turn import thread_event as _thread_event      # V2-878 §6: which shortcut fired, in which language
-    _needs_recall = bool(timings["recall_fired"]) and _rh.needs_recall(operator_text)   # µs: a regex, read again
-    _thread_event.recall_fired(operator_text, recall=_needs_recall,
-                               recent=bool(timings["recent_fired"] or (timings["recall_fired"] and not _needs_recall)))
+    _thread_event.recall_fired(operator_text, recall=bool(recall_block), recent=bool(timings["recent_fired"]))
     if timings["recent_fired"]:
         try:
             recent_block = await _p.asyncio.wait_for(
@@ -116,7 +96,7 @@ async def compose_the_prompt(*, brain, emit, operator_text, self, text) -> dict:
         emit("memory", "día", role="system",       # V2-865: the day's schema the prompt carried this turn
              text=f"esquema del día → {ms.get('day_count', 0)} episodios · {ms.get('day_chars', 0)} chars",
              extra={"layer": "day", "mem_ms": timings.get("mem_state_ms")})
-        if timings.get("recall_fired"):
+        if recall_block:
             emit("memory", "recall", role="system",
                  text=f"«{text[:60]}» → {len(recall_ids)} tarjetas del largo plazo",
                  extra={"layer": "slow", "mem_ms": timings.get("mem_query_ms")})

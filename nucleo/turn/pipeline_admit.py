@@ -74,6 +74,16 @@ async def admit_the_turn(*, motor, attention, brain, emit, first_turn, text) -> 
     # 20-30%...") dominaba el vector de la query y enterraba los hechos de familia/coche que SÍ existían en
     # el largo plazo — el modelo respondió sin ningún dato delante y rellenó el hueco inventando uno.
     operator_text = text
+    # V2-903: the durable recall starts NOW beside the brief (or was started at the eager end of turn) — the prompt
+    # takes it if it arrived, waiting only while the brief has not said the turn needs none (`recall_ahead`).
+    try:
+        from nucleo.turn import recall_ahead as _recall_ahead
+        from nucleo.turn.prompt import recall as _recall_lane
+        _recall_ahead.launch(operator_text, live_turns=_recall_lane.live_turns(
+            brain._window[-int(getattr(motor, "_WINDOW_MAX", 10)):]))
+    except Exception as e:  # noqa: BLE001 — the prompt starts its own (`recall_ahead.take`)
+        from loguru import logger
+        logger.debug(f"admit: the recall did not start beside the brief — {e!r}")
 
     # The system notes mailbox (`brain_notes`) that glued pending [SISTEMA] lines under his words went in V2-851 F5:
     # a task's news is its task's event, a notice is the out-of-turn mouth's, and the turn reads his words alone.

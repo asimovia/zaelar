@@ -22,6 +22,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import time
 
 _LOG = logging.getLogger("zaelar.turn.recall")
 
@@ -92,12 +93,25 @@ def _reinforce_delivered(propias: dict) -> None:
         pass                                  # reinforcement is a signal, not a guarantee: it never breaks a turn
 
 
-async def compose(query: str, timings: dict | None = None) -> tuple[str, list[int]]:
-    """`(recall_block, ids)` for `build_flash_system(recall_block=...)`, or `("", [])` when there is nothing to
-    ask, the budget ran out, or the retriever failed. Never raises and never blocks the loop."""
+class Pending:
+    """A recall in flight: the full half and the local lexical half, started together, and WHEN — the budget runs from
+    the start, not from whoever waits (V2-903: started at the eager end of turn, it has spent most of it already)."""
+
+    def __init__(self, query: str, fut, lex, propias: dict, lex_propias: dict, at: float):
+        self.query, self.fut, self.lex, self.propias, self.lex_propias, self.at = query, fut, lex, propias, lex_propias, at
+
+    def left_s(self) -> float:
+        return max(0.0, budget_s() - (time.monotonic() - self.at))
+
+    def done(self) -> bool:
+        return self.fut is not None and self.fut.done()
+
+
+def start(query: str, live_turns: int | None = None) -> Pending | None:
+    """Start the recall NOW, both halves, off the loop. None with nothing to ask or no running loop. Never raises."""
     q = (query or "").strip()
     if not q:
-        return "", []
+        return None
     # The abandoned thread gets its OWN dict, and it is merged only if the recall ARRIVED. `wait_for` cancels
     # the WAIT, not the thread: `to_thread` keeps running to completion in the executor and then writes its
     # `mem_query_ms` into whatever dict it was handed — after the turn already gave up on it. Measured
@@ -107,12 +121,11 @@ async def compose(query: str, timings: dict | None = None) -> tuple[str, list[in
     # exactly the question that opened V2-311 — was reading the abandoned thread's number.
     propias: dict = {}
     lex_propias: dict = {}
-    lex = None
     try:
         from nucleo.turn.prompt import recall as _prompt
         loop = asyncio.get_running_loop()
         # V2-878 §2: the conversation lane skips the turns the window REALLY holds — the turn counts them (`live_turns`)
-        skip = {"skip_newest": int(timings["live_turns"])} if (timings or {}).get("live_turns") is not None else {}
+        skip = {"skip_newest": int(live_turns)} if live_turns is not None else {}
         fut = loop.run_in_executor(None, lambda: _prompt.compose_recall(q, propias, **skip))
         # V2-762 — THE LOCAL HALF, BESIDE IT. The full recall needs an embedding from a remote provider; live it
         # took 1-3.5 s on the operator's engine (2026-09-24) against 0.3-0.5 s measured alone, and every miss
@@ -120,19 +133,42 @@ async def compose(query: str, timings: dict | None = None) -> tuple[str, list[in
         # measured. It starts now, and it is what the turn carries when the full one is late — degraded recall,
         # never erased recall. A full one that finishes after the budget is nobody's memory: no turn reads it.
         lex = loop.run_in_executor(None, lambda: _lexical(_prompt, q, lex_propias, **skip))
-        got = await asyncio.wait_for(asyncio.shield(fut), timeout=budget_s())
-        _reinforce_delivered(propias)     # delivered to the turn → THAT is using the memory
+    except Exception as e:  # noqa: BLE001
+        _LOG.debug(f"recall not started: {e!r}")
+        return None
+    return Pending(q, fut, lex, propias, lex_propias, time.monotonic())
+
+
+async def deliver(pending: Pending | None, timings: dict | None = None, *, not_needed=None) -> tuple[str, list[int]]:
+    """`(recall_block, ids)` out of a started recall, waiting at most what is LEFT of its budget. `not_needed()`, polled
+    while waiting, ends the wait with nothing and no alarm: the turn learned it does not need durable memory (the
+    brief, V2-903), so a recall still flying is not a loss. Reinforcement follows delivery. Never raises."""
+    if pending is None:
+        return "", []
+    q, fut = pending.query, pending.fut
+    try:
+        while not fut.done():
+            left = pending.left_s()
+            if left <= 0:
+                raise asyncio.TimeoutError
+            if not_needed is not None and not_needed():
+                if timings is not None:
+                    timings["recall_not_needed"] = True
+                return "", []
+            await asyncio.wait({fut}, timeout=min(_POLL_S, left))
+        got = fut.result()
+        _reinforce_delivered(pending.propias)     # delivered to the turn → THAT is using the memory
         if timings is not None:
-            timings.update(propias)       # arrived on time → its cost IS the turn's cost
+            timings.update(pending.propias)       # arrived on time → its cost IS the turn's cost
         return got
     except asyncio.TimeoutError:
         if timings is not None:
             timings["recall_timeout"] = True
-        got_lex = await _lexical_result(lex)
+        got_lex = await _lexical_result(pending.lex)
         if got_lex and got_lex[0]:
             if timings is not None:
                 timings["recall_lexical"] = True
-            _reinforce_delivered(lex_propias)
+            _reinforce_delivered(pending.lex_propias)
             _publish_lexical(q)
             _LOG.info(f"recall over budget ({budget_s():.1f}s) — el turno lleva el recall LÉXICO")
             return got_lex
@@ -144,6 +180,16 @@ async def compose(query: str, timings: dict | None = None) -> tuple[str, list[in
         _publish("error", detalle, q)
         _LOG.warning(f"recall omitido (el turno sigue): {e}")
     return "", []
+
+
+#: How often a wait that may end early (`not_needed`) looks again. A read of a landed verdict is µs.
+_POLL_S = 0.01
+
+
+async def compose(query: str, timings: dict | None = None) -> tuple[str, list[int]]:
+    """`(recall_block, ids)` for `build_flash_system(recall_block=...)`, or `("", [])` when there is nothing to
+    ask, the budget ran out, or the retriever failed. Never raises and never blocks the loop."""
+    return await deliver(start(query, (timings or {}).get("live_turns")), timings)
 
 
 def _lexical(prompt_mod, query: str, propias: dict, **skip) -> tuple[str, list[int]]:
