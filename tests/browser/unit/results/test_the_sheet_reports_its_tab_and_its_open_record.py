@@ -152,3 +152,16 @@ def test_the_digest_names_each_sheet_by_the_id_its_state_line_says(sheet):
     _say(PAIRS[0][0], 1, tab="sources", selected="")
     assert f"({INST}) ──" in text and "(results::s2) ──" in text, text[:300]
     assert state_render.clause("results", dev=PAIRS[0][0]).startswith(f"{INST}@")
+
+
+def test_a_record_after_a_record_is_pending_on_its_second_key(sheet):
+    """Step-3 audit P3: `selected` follows `view` AND `focus`; detail A → detail B moves only `focus`, and a first-key
+    disarm left this green. B is `?ordered` until the screen acks it."""
+    r, on = sheet
+    a, b = PAIRS[0]
+    on(a, b)
+    r.apply_action("detail", {"sheet": SHEET, "title": ROWS[0]["title"]})
+    assert _say(a, 1, tab="results", selected=ROWS[0]["title"]) == 200
+    assert state_render.read("results", dev=a)["surfaces"][0]["pending"] == []
+    r.apply_action("detail", {"sheet": SHEET, "title": ROWS[1]["title"]})              # only the focus moves
+    assert "selected=?ordered" in state_render.clause("results", dev=a), state_render.clause("results", dev=a)

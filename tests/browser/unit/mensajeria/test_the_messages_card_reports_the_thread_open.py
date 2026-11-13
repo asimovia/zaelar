@@ -108,3 +108,36 @@ def test_the_rendered_card_says_which_thread_is_open_through_the_door(msg, card_
     push(card_page, {**data.view_data(), "_rev": state.stamp("mensajeria")})
     deliver("mensajeria", posts(card_page))
     assert state_render.clause("mensajeria", dev=a).endswith(": at rest"), state_render.clause("mensajeria", dev=a)
+
+
+def test_opening_a_letter_is_pending_on_its_second_key(msg):
+    """Step-3 audit P3: `thread_open` follows the chat AND the mailbox's open letter; a first-key disarm left this
+    green. Opening a letter (`mail_open`) moves only the mailbox, and the field is `?ordered` until the screen acks."""
+    data, on = msg
+    a, b = PAIRS[0]
+    on(a, b)
+    assert _say(a, 1, thread_open="") == 200
+    db = data.load_db()
+    db["platforms"]["email"] = {"status": "connected"}
+    store.save("mensajeria", db)
+    _say(a, 2, full=True, thread_open="")
+    data.apply_action("mail_open", {"uid": "77", "folder": "INBOX"})
+    assert "thread_open=?ordered" in state_render.clause("mensajeria", dev=a), state_render.clause("mensajeria", dev=a)
+
+
+def test_a_letter_with_no_subject_is_named_by_its_sender(msg, card_page):
+    """Step-3 audit P3: a letter with no subject renders no subject line, and the report read «at rest» over an open
+    letter. It reads the sender the envelope shows."""
+    data, on = msg
+    a, b = PAIRS[0]
+    on(a, b)
+    db = data.load_db()
+    db["platforms"]["email"] = {"status": "connected"}
+    db["items"].append({"messageId": "u1", "chatId": "irene@example.test", "platform": "email", "from": IRENE,
+                        "subject": "", "body": "", "ts": time.time() - 60, "urgencia": "media"})
+    db["mailbox"] = {"folder": "INBOX", "open": {"folder": "INBOX", "uid": "u1", "asked_at": time.time()}}
+    db["view"] = {"platform": "email", "n": 1, "at": time.time()}
+    store.save("mensajeria", db)
+    mount(card_page, "mensajeria", {**data.view_data(), "_rev": state.stamp("mensajeria")}, a)
+    sent = posts(card_page)
+    assert sent and IRENE in sent[-1]["patch"].get("thread_open", ""), f"an open letter read as nothing open: {sent}"
