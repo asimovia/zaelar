@@ -33,7 +33,7 @@ def _state_lines(st: dict) -> list[str]:
     # Exclude `mission`: it is the ASSISTANT's prompt (zaelar's identity), not the operator's profile — in a worker's
     # dossier it was 900-character noise (V2-056). `rules` is rendered separately by compose_context (a list, not a scalar).
     _canonical = {"assistant_name", "operator_name", "language", "treatment", "location", "recent", "topics",
-                  "mission", "rules", "open_widgets", "activity", "sessions", "rails"}
+                  "mission", "rules", "open_widgets", "activity", "sessions", "rails", "maximized_widget", "front_reported"}
     for k, v in st.items():
         if k in _canonical:
             continue

@@ -106,8 +106,8 @@ async def canvas_state(payload: dict):
                         _minw.append(_m)
         except Exception:  # noqa: BLE001
             _minw = []
-        _maxw, _minw = _front_of(payload, seen) if "front" in (payload or {}) else (_maxw, _minw)   # V2-903: a deck
-        memory.set_state({"open_widgets": seen, "maximized_widget": _maxw, "minimized_widgets": _minw})
+        _maxw, _minw = _front_of(payload, seen) if (_fr := "front" in (payload or {})) else (_maxw, _minw)   # a deck
+        memory.set_state({"open_widgets": seen, "maximized_widget": _maxw, "minimized_widgets": _minw, "front_reported": _fr})
         # V2-078: widgets that BECOME open enter the `recent_widgets` MRU (2nd scoping layer open>recent>catalog).
         # It persists after closing → "the one I used a moment ago" still has priority. Single hook: every show
         # (from the operator OR the brain via [[show]]) re-reports the canvas here.
@@ -201,7 +201,8 @@ def _adopt(dev: str) -> None:
         minw = [str(it.get("id") or "").split("::", 1)[0].lower() for it in layout if isinstance(it, dict) and it.get("min")]
         if "front" in rep:
             maxw, minw = _front_of(rep, seen)
-        memory.set_state({"open_widgets": seen, "maximized_widget": maxw, "minimized_widgets": minw})
+        memory.set_state({"open_widgets": seen, "maximized_widget": maxw, "minimized_widgets": minw,
+                          "front_reported": "front" in rep})
     except Exception as e:  # noqa: BLE001 — the brain keeps the previous canvas rather than none
         logger.debug(f"canvas: could not adopt the canvas of {dev}: {e!r}")
 

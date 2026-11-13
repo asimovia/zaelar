@@ -15,7 +15,8 @@ from __future__ import annotations
 from .. import state as _state
 
 _STATE_RENDERED = {"assistant_name", "operator_name", "language", "treatment", "location", "recent", "topics",
-                   "open_widgets", "activity", "sessions", "mission", "rails", "rules"}
+                   "open_widgets", "activity", "sessions", "mission", "rails", "rules",
+                   "maximized_widget", "front_reported"}   # V2-903: the screen is the live tail's, never this cache
 
 _RAIL_STATUS = {"searching": "buscando", "playing": "sonando", "paused": "en pausa",
                 "sin_resolver": "SIN RESOLVER"}

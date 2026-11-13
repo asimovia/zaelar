@@ -361,6 +361,17 @@ def fullscreen_dispatch(args: dict, text: str, tag_emit, emit, deduped: dict, br
     # whether the turn talks about screen size at all (a bleed stays discarded in either direction).
     mode = str(args.get("mode") or "").strip().lower()
     rid = fullscreen_target((args.get("widget_id") or "").strip(), text)
+    if mode == "off" and (_ph := __import__("nucleo.canvas_focus", fromlist=["x"]).phone_front()) is not None:
+        # V2-903: a phone's deck has no full screen — leaving it puts the front app away (the deck goes home)
+        if _ph:
+            tag_emit("minimize", {"id": _ph})
+            emit("brain", "⤵️ fullscreen_widget(off) en el teléfono → minimize de la app de delante", text=_ph,
+                 role="system")
+        else:                           # on his home nothing is in front: said, never a «done» over nothing
+            from nucleo.turn import reply as _reply
+            _reply.note(_reply.Outcome("cannot", "canvas", "unfullscreen", reason=str(__import__(
+                "i18n.langs", fromlist=["x"]).current_language().fullscreen_nothing)))
+        return
     if mode == "off":
         # Leaving never needs a name: an empty id means «whichever card covers the screen», and the desktop's
         # exit is idempotent — a card that is not full screen is left exactly as it is, never shrunk to the rail
@@ -404,7 +415,7 @@ def fullscreen_exit_due(text: str, *, fired: bool) -> str:
     """The DECISION behind `fullscreen_exit_backstop`, with no side effect: the card to bring back, or "".
     Separate so the text channel reads the same answer the voice acts on (V2-252 — one decision, both
     channels); the conditions are documented on the function below."""
-    if fired:
+    if fired or __import__("nucleo.canvas_focus", fromlist=["x"]).phone_front() is not None:   # a phone: no full screen
         return ""
     try:
         from nucleo.acts import canvas as _door

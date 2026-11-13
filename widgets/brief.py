@@ -189,6 +189,7 @@ def for_prompt(open_ids=None, recent_ids=None, query: str = "", stats: dict | No
         maxw = ""
 
     named = {str(p["w"].get("id") or "").lower() for p in picked if p.get("reason") == "named"}
+    _phone = _front_on_phone()
     lines = ["Widgets del canvas (id — para qué; acciones = data-ops que haces TÚ con widget_data, nunca escalas). "
              "Para una orden de widget cuyo objetivo NO sea inequívoco, prefiere «EN PANTALLA», luego «usado hace "
              "poco»:"]
@@ -197,7 +198,9 @@ def for_prompt(open_ids=None, recent_ids=None, query: str = "", stats: dict | No
         widl = str(wid or "").strip().lower()
         purpose = _purpose(str(w.get("whenToUse") or w.get("title") or "").strip().replace("\n", " "))
         tag = "  ◀ EN PANTALLA" if widl in opened else ("  · usado hace poco" if widl in recent else "")
-        if widl and widl == maxw:
+        if _phone is not None and widl in opened:   # V2-903: a phone shows ONE app — no full-screen toggle there
+            tag = "  ◀ DELANTE (teléfono)" if widl == _phone else "  · detrás, oculta (teléfono)"
+        elif widl and widl == maxw:
             tag += " · A PANTALLA COMPLETA ahora (para salir: fullscreen_widget, es un interruptor)"
         # V2-761 — WHOSE card it is. «¿Qué apps tengo customizadas?» got «las personalizadas no me salen en la
         # lista que veo»: the fact existed (`registry.origin_of`, the fork's `forked_from`) and never reached the
@@ -317,6 +320,14 @@ def for_brain() -> str:
     return "\n".join(lines)
 
 
+def _front_on_phone():
+    """The app in front of the phone this turn runs on («» on its home), or None off a phone (V2-903)."""
+    try:
+        return __import__("nucleo.canvas_focus", fromlist=["x"]).phone_front()
+    except Exception as e:  # noqa: BLE001 — unread: the desktop's labels, as before
+        return __import__("loguru").logger.debug(f"widgets.brief: the phone's front app unread: {e!r}")
+
+
 def _registry_origin(w: dict) -> str:
     """`builtin` | `user` for one catalogue row — the registry's own rule, read lazily (registry imports runtime)."""
     try:
@@ -382,13 +393,16 @@ def for_prompt_split(open_ids=None, recent_ids=None, query: str = "", stats: dic
     except Exception:
         pass
     state: list[str] = []
+    _phone = _front_on_phone()
     for p in in_play:
         w = p["w"]
         wid = w.get("id")
         widl = str(wid or "").strip().lower()
         tag = {"open": "◀ EN PANTALLA", "named": "lo nombra en su frase", "recent": "usado hace poco"}.get(
             p.get("reason"), "")
-        if widl and widl == maxw:
+        if _phone is not None and widl in opened:   # V2-903: a phone shows ONE app — no full-screen toggle there
+            tag = "◀ DELANTE (teléfono)" if widl == _phone else "detrás, oculta (teléfono)"
+        elif widl and widl == maxw:
             tag += " · A PANTALLA COMPLETA ahora (para salir: fullscreen_widget, es un interruptor)"
         state.append((_row(w) if widl not in on_shelf else f"- {wid}") + f"  {tag}")
         acts = w.get("actions")

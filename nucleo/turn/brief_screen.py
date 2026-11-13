@@ -46,18 +46,19 @@ def target_question(open_ids) -> dict | None:
         return None
     criteria["none"] = "the order is not aimed at anything on screen"
     instructions = TARGET_INSTRUCTIONS
-    if front and focus.split("::", 1)[0] == front:
-        instructions += (f" He is on his PHONE: «{focus}» is the app in front; the others are hidden behind it. An order "
-                         f"that points at what is on screen without naming an app («pause», «close it», «the next one») "
-                         f"goes to «{focus}» when it can do it.")
-    elif focus:
-        instructions += (f" His previous turn acted on «{focus}». An order that points at something ALREADY on "
-                         f"screen without naming it («it», «that», «this one», «the most important one», «pause») "
-                         f"continues on that app when it can do it. An order that names a kind of thing (a song, a "
-                         f"video, an email, a result, the calendar) goes to the app that holds that kind. An order "
-                         f"that asks for NEW content («show me a red car», «find flights») is NOT continued by this: "
-                         f"the previous turn never makes a search or a new lookup land on its app — judge such an "
-                         f"order exactly as if nothing had been acted on.")
+    if focus:   # the lead names whose app it is; the two counterweights hold on the phone too (V2-903 audit P2-5)
+        on_phone = bool(front) and focus.split("::", 1)[0] == front
+        instructions += ((f" He is on his PHONE: «{focus}» is the app in front; the others are hidden behind it. An order "
+                          f"that points at what is on screen without naming an app («pause», «close it», «the next "
+                          f"one») goes to «{focus}» when it can do it.") if on_phone else
+                         (f" His previous turn acted on «{focus}». An order that points at something ALREADY on "
+                          f"screen without naming it («it», «that», «this one», «the most important one», «pause») "
+                          f"continues on that app when it can do it.")) + (
+                         f" An order that names a kind of thing (a song, a video, an email, a result, the calendar) goes "
+                         f"to the app that holds that kind. An order that asks for NEW content («show me a red car», "
+                         f"«find flights») is NOT continued by this: the {'app in front' if on_phone else 'previous turn'} "
+                         f"never makes a search or a new lookup land on its app — judge such an order exactly as if "
+                         f"nothing had been acted on.")
     return {"instructions": instructions, "criteria": criteria}
 
 
