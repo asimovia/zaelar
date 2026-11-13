@@ -39,8 +39,27 @@ def read(handle, key: str, fallback, *, min_confidence: float | None = None):
     try:
         from nucleo import jev as _jev
         return _jev.read(handle, key, fallback, min_confidence=LICENCE if min_confidence is None else min_confidence)
-    except Exception:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001 — no verdict, never in silence: every veto it held is lifted (V2-903 P2-7)
+        _unreadable(key, e)
         return fallback, None
+
+
+_SAID: dict = {}   # (key, exception type) → when it was last said: once a minute, a broken classifier is not a flood
+
+
+def _unreadable(key: str, e: BaseException) -> None:   # V2-903 P2-7: an unread verdict lifts its veto — never silently
+    if __import__("time").monotonic() - _SAID.get((key, type(e).__name__), -60.0) < 60.0:
+        return
+    _SAID[(key, type(e).__name__)] = __import__("time").monotonic()
+    why = f"verdict {key} unreadable — {type(e).__name__}: {e}"[:200]
+    logger.warning(f"verdicts: {why}")
+    try:
+        from voice import health_state, observer
+        health_state.record("engine", "error", why)
+        observer.emit("brain", "⚠️ verdict unreadable — its veto is lifted", role="system", text=why[:160],
+                      extra={"cat": "flash", "key": key, "is_error": True})
+    except Exception as e2:  # noqa: BLE001 — the warning above already carries it
+        logger.debug(f"verdicts: the unreadable mark failed — {e2!r}")
 
 
 def sure(handle, key: str, floor: float) -> tuple[str, object]:
