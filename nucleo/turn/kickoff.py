@@ -12,12 +12,6 @@ introduction phase (`nucleo/turn/prompt/packs/introduction.py`) carries that, as
 """
 from __future__ import annotations
 
-_CATALOG: frozenset[str] | None = None
-
-
-def _norm(s: str) -> str:
-    return " ".join(str(s or "").split())
-
 
 def text(lang=None) -> str:
     """The kickoff note in the session's language (or `lang`'s): the user-role line that opens a session."""
@@ -32,24 +26,5 @@ def text(lang=None) -> str:
         return ""
 
 
-def catalog() -> frozenset[str]:
-    """Every language's kickoff note, whitespace-normalised, cached once per process."""
-    global _CATALOG
-    if _CATALOG is None:
-        try:
-            from i18n import langs as _langs
-            _CATALOG = frozenset(_norm(sp.kickoff_prompt) for sp in _langs.supported() if sp.kickoff_prompt)
-        except Exception:  # noqa: BLE001 — without the catalog nothing is a kickoff
-            _CATALOG = frozenset()
-    return _CATALOG
-
-
-def is_kickoff(line: str) -> bool:
-    """Is this line the first-turn note (any language)? Exact, whitespace-blind; nothing he can type matches it."""
-    t = _norm(line)
-    return bool(t) and t in catalog()
-
-
-def _reset_for_tests() -> None:
-    global _CATALOG
-    _CATALOG = None
+# The catalog is the language packs' (`i18n/kickoff`): the memory reads the same door without importing the brain.
+from i18n.kickoff import catalog, is_kickoff, reset_cache as _reset_for_tests  # noqa: E402,F401
