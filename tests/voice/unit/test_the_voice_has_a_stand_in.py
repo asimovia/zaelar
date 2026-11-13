@@ -39,6 +39,8 @@ def _no_key():
 def table(monkeypatch):
     builders = dict(T.registry._builders)
     monkeypatch.setattr(T.registry, "_builders", builders)
+    from voice.engine.speech import relay
+    monkeypatch.setattr(relay, "_STATE", {})     # a switch here must not leak who speaks into another test
     monkeypatch.setattr(T, "SETTINGS", dataclasses.replace(T.SETTINGS, tts_provider="inworld"))
     from config import models
     monkeypatch.setattr(models, "failover", lambda name: {"provider": "elevenlabs"} if name == "tts" else None)
@@ -75,9 +77,9 @@ def test_both_built_fail_over_at_synthesis(table):
     assert T.active_provider() == "elevenlabs", "after the titular gave up (a 402), the stand-in is the one speaking"
 
 
-def test_the_meter_reads_the_active_provider():
+def test_the_meter_bills_the_provider_that_produced_the_metric():
     src = (ENGINE / "voice" / "engine" / "pipeline" / "metrics_tap.py").read_text(encoding="utf-8")
-    assert "provider=_tts.active_provider()" in src
+    assert 'provider_for("tts", m,' in src and "report_tts_usage(characters=getattr(m, \"characters_count\", None), provider=prov)" in src
 
 
 _spec = __import__("importlib.util").util.find_spec

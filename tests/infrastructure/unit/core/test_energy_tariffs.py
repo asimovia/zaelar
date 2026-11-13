@@ -70,6 +70,19 @@ def test_every_provider_a_deployment_runs_has_its_own_rate(var, family):
     )
 
 
+@pytest.mark.parametrize("family", ["stt", "tts"])
+def test_every_voice_the_model_table_can_switch_to_has_its_own_rate(family):
+    """V2-896 — the same ratchet for the STAND-IN. A relay that hears or speaks without its own row is metered at
+    the catch-all (the dearest rate), so an outage of the titular would bill every turn at a price nobody chose."""
+    rows = json.loads((Path(__file__).resolve().parents[4] / "config" / "models.default.json").read_text("utf-8"))
+    row = rows.get("services", rows)[family]
+    table = {"stt": energy_tariffs.DEFAULT_STT_USD_PER_MIN, "tts": energy_tariffs.DEFAULT_TTS_USD_PER_1K_CHARS}[family]
+    for slot in ("titular", "failover"):
+        provider = str((row.get(slot) or {}).get("provider") or "")
+        if provider and not provider.endswith("_local"):
+            assert provider in table, f"{family} {slot} «{provider}» has no rate in energy_tariffs.py"
+
+
 def test_an_unknown_provider_is_never_free():
     """Under-metering is silent; over-metering a rare provider is visible and can be corrected. The
     default failure mode goes toward the visible side."""

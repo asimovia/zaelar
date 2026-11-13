@@ -6,7 +6,8 @@ synthesis fails for good (a 402 from a provider out of credit is exactly that), 
 even be built (a missing key raises `ValueError` in the plugin) the stand-in serves alone. Before this, a missing
 `INWORLD_API_KEY` failed the prewarm and a 402 left the voice mute until someone switched the panel by hand.
 
-`active_provider()` names the backend that is producing audio NOW, so the metering hook bills the one that spoke.
+`active_provider()` names the backend that is producing audio NOW; the metering hook bills each metric to the plugin
+that produced it (`relay.provider_for`), and every switch alert carries the titular's last error (V2-896).
 
 `start_prewarm()` opens a remote TTS's connection ahead of its first synthesis. Every plugin's `prewarm()` schedules
 its work on the RUNNING event loop (`asyncio.create_task`), and one may instead return the coroutine itself: called
@@ -21,11 +22,10 @@ import logging
 
 from ...core.config import SETTINGS
 from ...core.registry import Registry
+from .. import relay
 
 registry = Registry("TTS")
 logger = logging.getLogger("zaelar.tts")
-
-_ACTIVE: dict = {"name": ""}
 
 
 def _stand_in(primary: str) -> str:
@@ -41,7 +41,7 @@ def _stand_in(primary: str) -> str:
 
 def active_provider() -> str:
     """The provider producing audio now: the selected one until the adapter gave up on it."""
-    return _ACTIVE["name"] or SETTINGS.tts_provider
+    return relay.active("tts", SETTINGS.tts_provider)
 
 
 def _note(msg: str, **extra) -> None:
@@ -55,7 +55,7 @@ def _note(msg: str, **extra) -> None:
 
 def build_tts():
     primary = SETTINGS.tts_provider
-    _ACTIVE["name"] = primary
+    relay.forget("tts")
     backup = _stand_in(primary)
     try:
         first = registry.create(primary)
@@ -66,17 +66,19 @@ def build_tts():
             only = registry.create(backup)
         except Exception:  # noqa: BLE001
             raise e from None
-        _ACTIVE["name"] = backup
+        relay.track("tts", [(backup, only)])
         _note(f"🔇 TTS «{primary}» could not be built ({type(e).__name__}: {e}) — speaking with «{backup}»",
               provider=primary, stand_in=backup)
         return only
     if not backup:
+        relay.track("tts", [(primary, first)])
         return first
     try:
         second = registry.create(backup)
     except Exception as e:  # noqa: BLE001 — a stand-in that cannot sound here is not offered, and that is SAID at boot
         _note(f"⚠️ TTS has no stand-in here: «{backup}» cannot sound ({type(e).__name__}: {e}) — "
               f"an outage of «{primary}» silences the voice", provider=primary, stand_in=backup, standin_missing=True)
+        relay.track("tts", [(primary, first)])
         return first
     return _with_failover([(primary, first), (backup, second)])
 
@@ -115,28 +117,56 @@ def start_prewarm(tts) -> bool:
     return True
 
 
+class _PassThrough:
+    """The adapter's emitter, flushed after every push (V2-896): the adapter re-cut the serving voice's frames into
+    200 ms ones and never flushed mid-stream, so a sentence's tail waited for the next sentence's audio (~440 ms
+    measured with the stand-in unused). Flushing per push hands each frame on as the serving voice made it."""
+
+    def __init__(self, emitter) -> None:
+        self._emitter = emitter
+
+    def push(self, data: bytes) -> None:
+        self._emitter.push(data)
+        self._emitter.flush()
+
+    def __getattr__(self, name):
+        return getattr(self._emitter, name)
+
+
 def _with_failover(pairs):
     from livekit.agents.tts import FallbackAdapter
+    from livekit.agents.tts.fallback_adapter import DEFAULT_FALLBACK_API_CONNECT_OPTIONS, FallbackSynthesizeStream
+
+    class _Stream(FallbackSynthesizeStream):
+        async def _run(self, output_emitter) -> None:
+            await super()._run(_PassThrough(output_emitter))
 
     class _Adapter(FallbackAdapter):
         def prewarm(self) -> None:
             for t in self._tts_instances:   # the stand-in too: a failover must not pay a cold handshake either
                 start_prewarm(t)
 
+        def stream(self, *, conn_options=DEFAULT_FALLBACK_API_CONNECT_OPTIONS):
+            return _Stream(tts=self, conn_options=conn_options)
+
     names = [n for n, _ in pairs]
     adapter = _Adapter([t for _, t in pairs], max_retry_per_tts=1)
+    relay.track("tts", pairs)
 
     def _changed(ev) -> None:
         try:
             i = [t for _, t in pairs].index(ev.tts)
         except ValueError:
             return
-        if not ev.available and _ACTIVE["name"] == names[i]:
+        if not ev.available and relay.active("tts", names[0]) == names[i]:
             nxt = next((names[j] for j, s in enumerate(adapter._status) if s.available), names[i])
-            _ACTIVE["name"] = nxt
-            _note(f"🔇 TTS «{names[i]}» failed — speaking with «{nxt}»", provider=names[i], stand_in=nxt)
+            relay.set_active("tts", nxt)
+            cause = relay.cause_of("tts", names[i]) or "no error reported"
+            _note(f"🔇 TTS «{names[i]}» failed ({cause}) — speaking with «{nxt}»", provider=names[i], stand_in=nxt,
+                  cause=cause)
         elif ev.available and i == 0:
-            _ACTIVE["name"] = names[0]
+            relay.set_active("tts", names[0])
+            _note(f"🔊 TTS «{names[0]}» is back", provider=names[0])
 
     adapter.on("tts_availability_changed", _changed)
     adapter._zaelar_providers = names   # live_tts re-points each voice in its own provider (2026-10-04)

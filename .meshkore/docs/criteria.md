@@ -1074,8 +1074,12 @@ Flash keeps the conversation; the row is what both brains read.
   comes up listening. — since 2026-09-24 · nodes 4.217, 8.4.
 - **CRIT-R5 · The voice has a stand-in**: the models table's `tts.failover` is built beside the titular; a titular
   that cannot be built (no key) is replaced at boot, and LiveKit's `FallbackAdapter` switches on a synthesis that
-  fails for good (a 402); the meter bills the provider that spoke. — since 2026-09-30 · nodes 2.202 ·
-  `voice/engine/speech/tts/__init__.py`.
+  fails for good (a 402); the meter bills the provider that spoke. The ear has the same (`stt.failover`). Every
+  switch alert names the titular's last ERROR (a socket of ours closed on silence must not pass for an outage); each
+  STT/TTS metric is labelled and billed to the plugin that PRODUCED it; every provider the table can switch to has
+  its own rate; an unused relay holds no audio back (its emitter is flushed per push). — since 2026-09-30, both
+  families and the attribution since 2026-11-13 · nodes 2.202, 3.189, 3.231 · `voice/engine/speech/tts/__init__.py`,
+  `voice/engine/speech/stt/__init__.py`, `voice/engine/speech/relay.py`, `voice/engine/pipeline/metrics_tap.py`.
 - **CRIT-R6 · With `ZAELAR_USER_ID` set, no torrent client runs** unless `ZAELAR_TORRENT_IN_CLOUD=1` is also
   set; without it, the operator's switch decides. — since 2026-09-30 · nodes 5.61 · `connectors/torrent/service.py`.
 - **CRIT-R7 · What leaves the machine is scrubbed.** The feedback evidence never carries `system` events (the

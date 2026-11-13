@@ -43,6 +43,8 @@ class _Vad:
 def ears(monkeypatch):
     builders = dict(S.registry._builders)
     monkeypatch.setattr(S.registry, "_builders", builders)
+    from voice.engine.speech import relay
+    monkeypatch.setattr(relay, "_STATE", {})     # a switch here must not leak who hears into another test
     monkeypatch.setattr(S, "SETTINGS", dataclasses.replace(S.SETTINGS, stt_provider="deepgram"))
     from config import models
     monkeypatch.setattr(models, "failover", lambda name: {"provider": "openai"} if name == "stt" else None)

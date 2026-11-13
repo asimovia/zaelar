@@ -43,6 +43,9 @@ from loguru import logger
 #   cartesia  — cartesia.ai/pricing (Sonic, pay-as-you-go)
 #   inworld   — inworld.ai/pricing, verified 2026-09-26 (Realtime TTS-2 on-demand $25/1M chars; the engine
 #               runs `inworld-tts-2`. TTS-2 Flash is $15/1M — bill at the dearer model until a rate says so)
+#   openai    — the voice stand-ins (V2-896), openai.com/api/pricing: gpt-4o-mini-transcribe $0.003/min;
+#               gpt-4o-mini-tts ≈ $0.015 per minute of AUDIO, priced here per 1K chars at the measured pace of its
+#               slower language (2026-11-13: Spanish 791 chars/min, English 1,038) → $0.019, the dearer side
 #
 # LOCAL BACKENDS ARE DELIBERATELY ABSENT. `whisper_local`/`kokoro_local` are free, and free is a
 # PROPERTY OF THE PROVIDER, not a rate of zero somebody can later mistake for "unpriced". The caller
@@ -52,12 +55,14 @@ from loguru import logger
 DEFAULT_STT_USD_PER_MIN: dict[str, float] = {
     "voxtral": 0.006,
     "deepgram": 0.0048,
+    "openai": 0.003,
 }
 
 DEFAULT_TTS_USD_PER_1K_CHARS: dict[str, float] = {
     "elevenlabs": 0.05,
     "cartesia": 0.04,
     "inworld": 0.025,
+    "openai": 0.019,
 }
 
 # $ per PARTICIPANT-minute of real-time transport. Source: livekit.com/pricing, 2026-08-16 —
