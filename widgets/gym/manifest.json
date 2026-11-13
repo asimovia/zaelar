@@ -66,7 +66,7 @@
       "payload": {"equipment": ["dumbbells", "cables"], "preferences": "no barbell squats, knee issue", "age": 45}
     },
     "open_view": {
-      "desc": "Show a screen of the gym app: home, preview (today's workout before starting), calendar, muscles (recovery map), config, planner, program, summary of a session, exercise history, log.",
+      "desc": "Show a screen of the gym widget: home, preview (today's workout before starting), calendar, muscles (recovery map), config, planner, program, summary of a session, exercise history, log.",
       "how": "summary takes `sessionId`; exercise takes `exercise` (its key)",
       "payload": {"view": "muscles"},
       "view": true
@@ -175,17 +175,17 @@
       "payload": {}
     },
     "claim": {
-      "desc": "The screen that drives the session claims it: it reads the heart-rate strap, beeps and keeps the screen awake (sent by the app itself).",
+      "desc": "The screen that drives the session claims it: it reads the heart-rate strap, beeps and keeps the screen awake (sent by the widget itself).",
       "payload": {"owner": "screen-token"},
       "internal": true
     },
     "timer_done": {
-      "desc": "A screen saw the timer reach zero for the block and set it shows (sent by the app itself).",
+      "desc": "A screen saw the timer reach zero for the block and set it shows (sent by the widget itself).",
       "payload": {"i": 3, "set": 1, "resting": true},
       "internal": true
     },
     "hr": {
-      "desc": "The latest heart rate from the strap of the screen that drives the session (sent by the app itself).",
+      "desc": "The latest heart rate from the strap of the screen that drives the session (sent by the widget itself).",
       "payload": {"owner": "screen-token", "bpm": 120},
       "internal": true
     }

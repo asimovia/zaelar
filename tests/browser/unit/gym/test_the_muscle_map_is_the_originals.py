@@ -1,7 +1,7 @@
-"""V2-900 — the muscle recovery map is the original app's `muscle-state.js`, number for number: primary sets count 1, secondary
+"""V2-900 — the muscle recovery map is the original PWA's `muscle-state.js`, number for number: primary sets count 1, secondary
 0.5; building −5…+5 by days since and sets in 7 days; opportunity −5 (just trained) … 0 (the window) … +5 (never or
 12+ days); 21-day horizon; a name the map lacks is inferred from its words (ES and EN); an alternative credits the
-program exercise it stood in for. The card's colours follow the same thresholds and never say a state by colour alone.
+program exercise it stood in for. The widget's colours follow the same thresholds and never say a state by colour alone.
 """
 from __future__ import annotations
 

@@ -1,7 +1,7 @@
 """V2-900 — a workout done elsewhere and a recorded one corrected. The agent fills the structure itself (`log_workout`
-with exercises and sets, `edit_session` with the original app's six operations on E1/E1.1); a sentence goes through the app's
+with exercises and sets, `edit_session` with the original PWA's six operations on E1/E1.1); a sentence goes through the widget's
 ONE model seam, which today answers «not available» with the way to say it — and nothing is written. Invalid
-operations touch nothing. The seam is the only door to a model: no module of the app reaches the network.
+operations touch nothing. The seam is the only door to a model: no module of the widget reaches the network.
 """
 from __future__ import annotations
 

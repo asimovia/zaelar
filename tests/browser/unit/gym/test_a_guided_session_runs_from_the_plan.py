@@ -1,4 +1,4 @@
-"""V2-900 — the guided session is the original app's, and it lives in the app's store so every screen and the voice drive the
+"""V2-900 — the guided session is the original PWA's, and it lives in the widget's store so every screen and the voice drive the
 same one: a timed block runs its timer and «next» leaves it; a set is saved with what is on screen (the LAST real
 weight of that exercise first, the program's suggestion otherwise) and starts the rest; a timer that ran out is
 counted once and only against the cursor the screen saw; a rest that ends with the heart above 130 gets 30 s more,

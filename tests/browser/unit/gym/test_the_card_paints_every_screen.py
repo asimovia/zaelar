@@ -1,8 +1,8 @@
-"""V2-900 — the card paints every screen of the real view data (onboarding, today, preview, calendar, muscles, my
+"""V2-900 — the widget paints every screen of the real view data (onboarding, today, preview, calendar, muscles, my
 gym, trainer, program, a summary, an exercise's history, the log, and the session in a timed block, a set, a rest,
 with an alternative and at its end), in both languages, and says what it shows after every paint. ONE screen drives
 the session: a desktop that did not start it never claims it, the phone app does; only the driving screen reads the
-strap and beeps, and not with the agent stopped; a timer that runs out is reported once. The card's half is the .mjs.
+strap and beeps, and not with the agent stopped; a timer that runs out is reported once. The widget's half is the .mjs.
 """
 from __future__ import annotations
 
