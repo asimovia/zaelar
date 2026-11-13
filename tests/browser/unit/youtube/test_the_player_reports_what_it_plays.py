@@ -58,11 +58,12 @@ def _mount(pg, data: dict):
     pg.evaluate("""async ([src, data]) => {
         window.__calls = []; window.__posts = [];
         const R = await import('/frontend/app/widgets/state-reporter.js?v=1');
-        const rep = R.stateReporter('youtube', 'youtube', {device: 'desktop:aaa', fetch: async (u, init) => {
+        const rep = window.__rep = R.stateReporter('youtube', 'youtube', {device: 'desktop:aaa', fetch: async (u, init) => {
             window.__posts.push(JSON.parse(init.body)); return {status: 200, json: async () => ({ok: true, facts: []})}; }});
         window.__ctx = {action: (n, p) => { window.__calls.push([n, p || {}]); return Promise.resolve({ok: true}); },
                         state: (p, o) => rep.report(p, o), top: () => {}, running: true};
-        const mod = await import(src);
+        const mod = window.__mod = await import(src);
+        rep.seen(data._rev);
         mod.render(document.getElementById('w'), data, window.__ctx);
       }""", [src, data])
     pg.wait_for_timeout(250)
@@ -120,3 +121,30 @@ def test_our_own_video_says_the_same_fields_even_left_paused(browser_page):
     assert "playing_id" not in last, "a stream of ours has no video id to say"
     assert not [c for c in pg.evaluate("() => window.__calls") if c[0] == "player_state"]
 
+
+
+def _acked(pg, rev: int) -> list:
+    """The full snapshots that acked revision `rev` (what the engine takes as «applied»)."""
+    return [b for b in pg.evaluate("() => window.__posts") if b.get("full") and (b.get("ack") or {}).get("rev") == rev]
+
+
+def test_a_closed_video_is_acked_with_nothing_to_wait_for(browser_page):
+    """Players audit P2-4: «close» left the ack waiting for a player that no longer exists — the line read `playing=?`
+    until the next video. With no player, what was rendered is acked on its grace."""
+    pg = browser_page
+    _mount(pg, {**_DATA, "videoId": _V1, "_rev": {"epoch": "e1", "rev": 4}})
+    _post(pg, {"event": "infoDelivery", "id": "hb-youtube", "info": {"playerState": 1, "videoData": {"video_id": _V1}}})
+    pg.evaluate("""(d) => { window.__rep.seen(d._rev); window.__mod.render(document.getElementById('w'), d, window.__ctx); }""",
+                {**_DATA, "videoId": "", "_rev": {"epoch": "e1", "rev": 5}})
+    pg.wait_for_timeout(1900)
+    assert _acked(pg, 5), pg.evaluate("() => window.__posts")
+
+
+def test_an_embed_that_never_speaks_says_it_does_not_play(browser_page):
+    """A video its owner refuses, a phone that holds the embed back: no word ever comes, so the protocol says «not
+    playing» after its silence and the revision is acked — never `playing=?` for ever."""
+    pg = browser_page
+    _mount(pg, {**_DATA, "videoId": _V1, "_rev": {"epoch": "e1", "rev": 4}})
+    pg.wait_for_timeout(7900)
+    got = _acked(pg, 4)
+    assert got and got[-1]["patch"].get("playing") is False, pg.evaluate("() => window.__posts")

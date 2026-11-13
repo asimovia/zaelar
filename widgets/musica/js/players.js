@@ -35,11 +35,9 @@ function _paintFacts(facts){
   if(typeof _el._hbRedraw === "function") _el._hbRedraw();
 }
 const _P = playerReport({fields: ["playing", "playing_id", "muted", "volume"], forget: ["playing_id", "muted", "volume"],
-                         onFacts: _paintFacts});
+                         onFacts: _paintFacts, silentMs: 5000, quiet: () => !!_el && halted(_el._hbCtx)});
 const _sound = (a) => ({muted: !!a.muted, volume: Math.round((a.volume || 0) * 100)});
 export let _ytRefused = null;                 // per-render reporter: (code) → `player_error`, the player REFUSED the song (V2-873)
-export let _ytLoadedAt = 0;                   // when the current song's frame was mounted: a silence inside the grace is not a verdict
-export const _SOUND_GRACE_MS = 2500;
 export let _ytClock = {vid: "", t: 0, d: 0, at: 0};
 export function ytStartListening(iframe){
   try{ iframe.contentWindow.postMessage(JSON.stringify({event:"listening", id:"hb-musica", channel:"widget"}), "*"); }catch(_){}
@@ -239,11 +237,9 @@ export function syncYtPlayer(el, data, ctx){
     applyPendingSeek(el, yt, () => { const p = ytPosition(yt.videoId, true); return p ? p.pos : 0; },
                      (secs) => { ytPost(frame, "seekTo", [secs, true]); _ytClock.t = secs; _ytClock.at = Date.now(); });
   };
-  _ytLoadedAt = Date.now();
   _ytReady = wake;                                   // real onReady is the exact moment; timeouts back it up
   _ytEnded = () => { try{ ctx.action("ended"); }catch(_){} };   // F4: on end -> advance queue on the server
   setTimeout(wake, 1200); setTimeout(wake, 2600);
-  // A player that never says a word is silent too (2026-11-02: a phone held the embed back without one frame, so no tap row).
-  const vid = yt.videoId;
-  setTimeout(() => { if(el._hbVid === vid && !halted(ctx) && _ytClock.vid === vid && _ytClock.at < _ytLoadedAt) _P.report({playing: false}); }, _SOUND_GRACE_MS + 2500);
+  // A player that never says a word is silent too (2026-11-02: a phone held the embed back without one frame) — said by
+  // the shared protocol (`silentMs`).
 }

@@ -7,6 +7,7 @@ import { playerReport } from "/frontend/app/lib/player-report.js";
 import { Y } from "./state.js";
 
 export const APPLY_GRACE_MS = 1500;
+const SILENT_MS = 6000;                    // an embed's first word comes ~3 s after load (measured): twice that is silence
 const PLAYER_FIELDS = ["playing", "playing_id", "muted", "volume"];
 // HIS HAND on the player's own control (V2-884 1b). The player is a cross-origin iframe: a touch inside it gives it the
 // focus (the page blurs); a <video> of ours takes a pointerdown. A sound or volume change within `HAND_MS` of that,
@@ -32,13 +33,14 @@ function _paintFacts(facts){
 }
 
 const P = playerReport({fields: PLAYER_FIELDS, forget: ["playing_id", "muted", "volume"], graceMs: APPLY_GRACE_MS,
-                        hand: (p) => ("muted" in p || "volume" in p) && _hand(), onFacts: _paintFacts});
+                        hand: (p) => ("muted" in p || "volume" in p) && _hand(), onFacts: _paintFacts,
+                        silentMs: SILENT_MS});
 
 // What the card shows now; `applied` = the last pushed revision is applied (the whole snapshot with its ack).
 export function reportState(patch, opts){ P.report(patch, opts); }
 
-// A new player (another video, a stream, or none): it does not play yet and nothing the old one said stands.
-export function playerReplaced(ctx){ P.replaced(ctx); }
+// A new player (another video, a stream), or none (`hasVid` false: closed — what was rendered is acked, nothing waits).
+export function playerReplaced(ctx, hasVid = true){ P.replaced(ctx, hasVid); }
 
 // Every render, LAST (after any face change): the face and the title shown, and — when the data brought a new
 // revision — its ack, once the current player has spoken.
