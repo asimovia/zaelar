@@ -139,3 +139,15 @@ def align_payload(wid: str, action: str, payload: dict) -> tuple[dict, str]:
         return {**payload, "text": new}, why
     except Exception:  # noqa: BLE001 — never take down a send over a courtesy
         return payload, ""
+
+
+def at_composition(wid: str, action: str, payload: dict, said: str, emit=None) -> dict:
+    """V2-903 P1-A: the alignment runs ONCE, where the send is held — before it is asked, shown or run, so what he sees
+    is what leaves; never on HIS words (`send_task.his_text`), and never again after his yes."""
+    from nucleo.request import event, send_task
+    if send_task.his_text((payload or {}).get("text"), said):
+        return payload
+    aligned, why = align_payload(wid, action, payload)
+    if why:
+        event(emit, "🕒 the message's time aligned with the agenda", why, {"cat": "flash", "id": wid, "action": action})
+    return aligned
