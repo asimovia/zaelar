@@ -6,6 +6,7 @@
 import { CSS } from "./js/style.js";
 import { PAINT, paintBrowser, paintResults } from "./js/panels.js";
 import { CRIT_SECTIONS, I18N, TABS, elem, tabLabel, tt } from "./js/shared.js";
+import { findFocused } from "./js/card.js";
 
 function injectStyles(){
   if(document.getElementById("hb-results-css"))return;
@@ -152,9 +153,10 @@ export function render(el, data, ctx){
 }
 
 // V2-884 — what the sheet SHOWS, said through the host's one door after every paint with the revision it applied: the
-// tab on screen and the record open in it, by its title ("" = the list).
+// tab on screen and the record open in it, by its title ("" = the list — also when the focus names a row that is gone).
 function reportShown(ctx, tab, data){
   if(!ctx || typeof ctx.state !== "function") return;
-  const selected = tab === "results" && data.view === "detail" ? String(data.focus || "").slice(0, 60) : "";
+  const it = tab === "results" && data.view === "detail" ? findFocused(data.items || [], data.focus) : null;
+  const selected = it ? String(it.title || "").slice(0, 60) : "";      // the record PAINTED, never the stored focus
   try{ Promise.resolve(ctx.state({tab, selected}, {applied: true})).catch(()=>{}); }catch(_){}
 }
