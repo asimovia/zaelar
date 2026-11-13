@@ -20,7 +20,7 @@ _ACTS = ("show", "fullscreen", "maximize", "minimize", "action", "select")
 _OPERATOR = ("actionmap", "flash", "probe", "jev")
 _lock = threading.Lock()
 _state = {"current": [], "previous": [], "fs": "", "acts": [], "failed": [], "prev_failed": [],
-          "t_cur": 0.0, "t_prev": 0.0}
+          "t_cur": 0.0, "t_prev": 0.0, "writing": []}
 #: How long after his order an unprompted report still counts as crossing that exchange (`crossed_by`).
 CROSSING_S = 30.0
 #: An unnamed order («close the widget») means the card his previous turn acted on only while that turn is
@@ -49,6 +49,20 @@ def begin_turn() -> None:
         _state["t_prev"], _state["t_cur"] = _state["t_cur"], time.monotonic()
         _state["acts"] = []
         _state["failed"] = []
+        _state["writing"] = []
+
+
+def writing(card: str) -> None:
+    """An act of THIS turn is writing `card` in the background (a composed text lands seconds later): a later pass of
+    the same turn that cannot see the act must not deny it (demo sandbox 2026-11-13, F1). Read by `this_turn_writes`."""
+    base = str(card or "").split("::", 1)[0].strip()
+    with _lock:
+        _state["writing"] += [base] if base and base not in _state["writing"] else []
+
+
+def this_turn_writes() -> list[str]:
+    with _lock:
+        return list(_state["writing"])
 
 
 def note(kind: str, label: str, role: str = "", extra: dict | None = None) -> None:
@@ -187,5 +201,5 @@ def ordered_fullscreen() -> str:
 def _reset() -> None:                                   # tests
     with _lock:
         _state["current"], _state["previous"], _state["fs"] = [], [], ""
-        _state["acts"], _state["failed"] = [], []
+        _state["acts"], _state["failed"], _state["writing"] = [], [], []
         _state["t_cur"], _state["t_prev"] = 0.0, 0.0
