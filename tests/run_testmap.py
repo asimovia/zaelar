@@ -2548,6 +2548,9 @@ DOMAINS: list[dict] = [
         {"id": "4.237", "title": "«Open it» after an archive search opens the mail it found, and the digest says it is on "
                                  "the card",
             "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_open_it_opens_what_the_archive_found.py"]},
+        {"id": "4.531", "title": "The mail card's answering veto and its `open` resolve a conversation alike, and the "
+                                 "found mail an empty thread does not hold is asked back and kept open while it arrives",
+            "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_the_open_veto_and_the_action_resolve_alike.py"]},
         {"id": "4.236", "title": "A pasted YouTube link is parsed, never read: a watch link gets its title, a results "
                                  "link is its decoded query",
             "ch": UNIT, "paths": ["tests/browser/unit/youtube/test_a_pasted_link_is_parsed_never_read.py"]},

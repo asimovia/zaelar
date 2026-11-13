@@ -27,7 +27,10 @@ def test_the_found_mail_is_asked_back_just_below_its_uid(md):
 
 def test_a_mail_the_card_already_holds_is_not_asked_again(md):
     db = md.load_db()
-    db["threads"] = {"email|invoice@acme-cloud.example": {"name": "Acme Cloud", "msgs": []}}
+    # Holding means holding THAT message: an empty thread under the same key does not (live demo pass on b136, E2
+    # — `test_the_open_veto_and_the_action_resolve_alike.py`).
+    db["threads"] = {"email|invoice@acme-cloud.example": {"name": "Acme Cloud", "msgs": [
+        {"id": "100001", "dir": "in", "who": "Acme Cloud", "body": "receipt", "ts": 1.0}]}}
     md.store.save(md.WIDGET_ID, db)
     md.apply_action("search_archive", {"q": "acme"})
     assert md.load_db().get("pending_history") == []

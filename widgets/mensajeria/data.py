@@ -141,7 +141,7 @@ def view_data(q: str = "") -> dict:
 
 # What an archive search found (brought back, remembered for «open it») lives in found_mail.py.
 from .found_mail import (  # noqa: E402,F401 — re-exported under their names
-    _BRING_BACK_MAX, _bring_back_found_mail, FOUND_TTL_S, _remember_found, last_found)
+    _BRING_BACK_MAX, _bring_back_found_mail, FOUND_TTL_S, _remember_found, last_found, await_found)
 
 
 # The action handlers live in `actions/`, imported back under their names (that package reads this module).
