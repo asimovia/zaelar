@@ -144,13 +144,13 @@ def report(app, body: dict) -> tuple[int, dict]:
         return _refused(409, "a one-screen app is reported by the screen it lives on")
     patch = body.get("patch") if isinstance(body.get("patch"), dict) else {}
     clean: dict = {}
+    refused: list[str] = []          # a field that is not what it declares is dropped, never the whole report
     for name, value in patch.items():
-        if name not in fields:
-            return _refused(400, f"undeclared field: {name}")
-        ok, v = decl.coerce(fields[name], value)
-        if not ok:
-            return _refused(400, f"not a {decl.type_of(fields[name])[0]}: {name}")
-        clean[name] = v
+        ok, v = (False, None) if name not in fields else (True, None) if value is None else decl.coerce(fields[name], value)
+        if ok:
+            clean[name] = v              # None = the surface can no longer vouch for it: forgotten
+        else:
+            refused.append(str(name)[:40])
     ack, key = _ack(body), (app, instance, dev)
     with _LOCK:
         cur = _SNAP.get(key)
@@ -164,9 +164,11 @@ def report(app, body: dict) -> tuple[int, dict]:
             return _refused(409, "n went back")
         if cur and cur["mount"] != mount:
             _GONE[key] = (_GONE.get(key, []) + [cur["mount"]])[-8:]
-        keep = dict(cur["fields"]) if cur and cur["mount"] == mount else {}
+        keep = dict(cur["fields"]) if cur and cur["mount"] == mount and not full else {}   # full = everything
         moved = {k: v for k, v in clean.items() if (keep.get(k) or (None,))[0] != v or k not in keep}
-        keep.update({k: (v, ack) for k, v in clean.items()})
+        keep.update({k: (v, ack) for k, v in clean.items() if v is not None})
+        for k in [k for k, v in clean.items() if v is None]:
+            keep.pop(k, None)
         seen = body.get("visible")
         _SNAP[key] = {"mount": mount, "n": n, "at": time.time(), "fields": keep,
                       "visible": seen is not False if seen is not None else (cur or {}).get("visible", True)}
@@ -174,8 +176,8 @@ def report(app, body: dict) -> tuple[int, dict]:
     facts = state_render.facts_for(app, instance, dev)
     with _LOCK:
         was, _HELD[key] = _HELD.get(key, []), list(facts)
-    return 200, {"ok": True, "facts": facts, "_on": [f for f in facts if f not in was],
-                 "_off": [f for f in was if f not in facts]}
+    return 200, {"ok": True, "facts": facts, **({"refused": refused} if refused else {}),
+                 "_on": [f for f in facts if f not in was], "_off": [f for f in was if f not in facts]}
 
 
 def tells(app, on, off) -> tuple[list[str], bool]:
@@ -202,6 +204,7 @@ def forget(app, dev=None, instance=None) -> None:
         for k in [k for k in _SNAP if k[0] == app and (dev is None or k[2] == dev)
                   and (instance is None or k[1] == instance)]:
             _SNAP.pop(k, None)
+            _HELD.pop(k, None)           # reopened, a fact that holds again arms its tell again
 
 
 def _event(app: str, dev: str, moved: dict) -> None:

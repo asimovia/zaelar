@@ -42,9 +42,11 @@ MARGIN = 64
 # own («- agenda  ◀ EN PANTALLA») instead of a tag on its catalogue row; the catalogue rows no longer move, so the
 # ~20k-char prefix and the tools after it are cached every turn (51 % → 98 % measured). Nothing else moved.
 # V2-884 1a (4.502): +196 with the video card open — its ONE reported state line («youtube: state unreported» on a clean
-# install) headed by the legend that says how to read it; the legend rides only a turn that carries a state line
+# install) headed by the legend that says how to read it; the legend rides only a turn that carries a state line;
+# +74 after its audit: the legend says rest, «state unreported» and «(hidden)» again, and the usage says what an
+# `audio_blocked: null` (unconfirmed) means
 CEILINGS = {(): 24_861, ("agenda", "mensajeria"): 29_917,
-            ("agenda", "mensajeria", "youtube", "contactos", "results", "musica"): 37_754}   # V2-795: musica usage trimmed
+            ("agenda", "mensajeria", "youtube", "contactos", "results", "musica"): 37_828}   # V2-795: musica usage trimmed
 TARGET_EVERYDAY = 30_000
 
 

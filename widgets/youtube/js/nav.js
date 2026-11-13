@@ -8,6 +8,7 @@
 // step it needs instead of guessing from a breakpoint: lead = the tabs · tray = the secondary tabs (seen only in its
 // ⋯ menu) + the platform icons and the plug · the search pinned right in its own column (style_cards.js).
 import { Y } from "./state.js";
+import { reportState } from "./report.js";
 import { ICON_PLUG, ICON_SEARCH, svgEl, el, _TABS, tabLabel, applyTabClass, iconBtn, tt } from "./shared.js";
 import { renderConn } from "./conn.js";
 import { bar, fit } from "/frontend/app/lib/toolbar.js";
@@ -29,6 +30,7 @@ export function buildNav(root, ctx){
     const connBox = root._hbYtEls && root._hbYtEls.conn; if(connBox) connBox.textContent = "";
     if(ctx && ctx.top) ctx.top();
     const bd = root._hbYtEls && root._hbYtEls.body; if(bd) bd.scrollTop = 0;
+    reportState({view: tid});                              // V2-884 1a: the face he sees, the moment it changes
   };
   // The tabs' lit state has ONE painter: the chosen face wears .on, and while the connectors screen is open
   // no face is on screen, so none is lit. Every tab stays a way OUT (operator, 2026-10-26).

@@ -89,8 +89,9 @@ def type_of(spec) -> tuple:
 
 
 def clean(text) -> str:
-    """Text as data: control characters and line/paragraph separators gone, whitespace collapsed."""
-    s = "".join(" " if unicodedata.category(c) in ("Cc", "Zl", "Zp") else c for c in str(text or ""))
+    """Text as data: control and format characters (bidi overrides, zero-width) and line/paragraph separators gone,
+    whitespace collapsed."""
+    s = "".join(" " if unicodedata.category(c) in ("Cc", "Cf", "Zl", "Zp") else c for c in str(text or ""))
     return " ".join(s.split())
 
 

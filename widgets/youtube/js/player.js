@@ -254,7 +254,8 @@ export function bindReporters(data, ctx, id, PL){
   // What stays an action is his HAND: the player's own control gave it sound while the card says muted — the card
   // follows the player (`player_audio`, until 1b's declared adoption). A blocked sound arms the gesture unlock.
   Y.plNow = PL;
-  if(Y.facts.indexOf("audio_blocked") >= 0 && !data.muted && data.videoId && !halted(ctx)) armSoundUnlock(vol0);
+  Y.armUnlock = () => { if(!data.muted && data.videoId && !halted(ctx)) armSoundUnlock(vol0); };   // facts call it too
+  if(Y.facts.indexOf("audio_blocked") >= 0) Y.armUnlock();
   Y.ytAudio = (playerMuted, vid) => {
     if(!ctx || !ctx.action || halted(ctx) || !data.videoId) return;
     if(vid && vid !== data.videoId) return;

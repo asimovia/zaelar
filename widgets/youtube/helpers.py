@@ -260,11 +260,14 @@ def _bump(db: dict, cmd: str) -> dict:
             "audio_blocked": _blocked_now()}
 
 
-def _blocked_now() -> bool:
-    """V2-884 1a: «blocked» is the fact derived from the surface's report, never a stored flag."""
+def _blocked_now() -> bool | None:
+    """V2-884 1a: «blocked» is the fact derived from the surface's report, never a stored flag — and None while the
+    player has not confirmed its sound or its playing (no report, or the order just moved it): unconfirmed, never «no»."""
     from widgets import state_render
     got = state_render.read(WID)["surfaces"]
-    return bool(got) and "audio_blocked" in got[0]["facts"]
+    if not got or {"muted", "playing"} & set(got[0]["pending"] + got[0]["unknown"]):
+        return None
+    return "audio_blocked" in got[0]["facts"]
 
 
 def _play_pos(db: dict, i: int, cmd: str, *, watch: bool = True) -> dict:
