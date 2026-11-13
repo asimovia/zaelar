@@ -1,0 +1,659 @@
+{
+ "key": "functional-hypertrophy",
+ "name": {
+  "en": "Functional hypertrophy · 5 days",
+  "es": "Hipertrofia funcional · 5 días"
+ },
+ "summary": {
+  "en": "Functional hypertrophy, 5 days a week, 40 minutes at most. Weights + strength + joint health. Weights start from a suggested base and progress with what you actually lift.",
+  "es": "Hipertrofia funcional, 5 días por semana, 40 minutos como máximo. Pesas + fuerza + salud articular. Los pesos parten de una base sugerida y progresan según lo que levantas de verdad."
+ },
+ "level": {
+  "en": "intermediate",
+  "es": "intermedio"
+ },
+ "schedule": [
+  "push",
+  "legs",
+  "back",
+  "fullbody",
+  "upper-heavy"
+ ],
+ "phases": [
+  {
+   "name": {
+    "en": "Adaptation",
+    "es": "Adaptación"
+   },
+   "days": 10,
+   "session_min": 40,
+   "intensity": {
+    "en": "controlled · never to failure",
+    "es": "controlada · sin llegar al fallo"
+   },
+   "rpe_target": 7,
+   "note": {
+    "en": "Joints and tendons first. Do NOT go to failure. Effort 7/10 RPE.",
+    "es": "Articulaciones y tendones primero. NO ir al fallo. Sensación 7/10 RPE."
+   }
+  },
+  {
+   "name": {
+    "en": "Progression",
+    "es": "Progresión"
+   },
+   "days": null,
+   "session_min": 40,
+   "intensity": {
+    "en": "last set RPE 9 · close to failure",
+    "es": "última serie RPE 9 · cerca del fallo"
+   },
+   "rpe_target": 9,
+   "note": {
+    "en": "If you complete every rep: +2 kg dumbbells / +5 kg machines next time.",
+    "es": "Si completas todas las reps: +2 kg mancuernas / +5 kg máquinas la siguiente."
+   }
+  }
+ ],
+ "days": {
+  "push": {
+   "name": {
+    "en": "Push · chest · shoulders · triceps",
+    "es": "Empuje · pecho · hombro · tríceps"
+   },
+   "blocks": [
+    {
+     "type": "stretch",
+     "duration_sec": 120,
+     "name": {
+      "en": "Shoulder and chest mobility",
+      "es": "Movilidad hombro y pecho"
+     },
+     "cue": {
+      "en": "arm circles, t-spine",
+      "es": "círculos de brazos, t-spine"
+     }
+    },
+    {
+     "type": "cardio",
+     "duration_sec": 240,
+     "name": {
+      "en": "Easy bike warm-up",
+      "es": "Calentamiento bici suave"
+     },
+     "cue": "5/10 RPE"
+    },
+    {
+     "type": "transition",
+     "duration_sec": 90,
+     "name": {
+      "en": "To the bench with dumbbells",
+      "es": "Hacia el banco con mancuernas"
+     }
+    },
+    {
+     "type": "exercise",
+     "key": "db-bench",
+     "sets": 4,
+     "reps": "10",
+     "rest_sec": 90,
+     "weight_initial_kg": 18
+    },
+    {
+     "type": "transition",
+     "duration_sec": 60
+    },
+    {
+     "type": "exercise",
+     "key": "incline-db",
+     "sets": 3,
+     "reps": "10",
+     "rest_sec": 75,
+     "weight_initial_kg": 16
+    },
+    {
+     "type": "transition",
+     "duration_sec": 45
+    },
+    {
+     "type": "exercise",
+     "key": "machine-chest",
+     "sets": 3,
+     "reps": "12",
+     "rest_sec": 60,
+     "weight_initial_kg": 50
+    },
+    {
+     "type": "transition",
+     "duration_sec": 60
+    },
+    {
+     "type": "exercise",
+     "key": "db-shoulder-press",
+     "sets": 4,
+     "reps": "10",
+     "rest_sec": 90,
+     "weight_initial_kg": 14
+    },
+    {
+     "type": "transition",
+     "duration_sec": 45
+    },
+    {
+     "type": "exercise",
+     "key": "rope-pushdown",
+     "sets": 3,
+     "reps": "12",
+     "rest_sec": 60,
+     "weight_initial_kg": 30
+    },
+    {
+     "type": "transition",
+     "duration_sec": 60
+    },
+    {
+     "type": "cardio",
+     "duration_sec": 480,
+     "name": {
+      "en": "Easy assault bike",
+      "es": "Assault bike suave"
+     },
+     "cue": {
+      "en": "6/10 RPE steady",
+      "es": "6/10 RPE constante"
+     }
+    },
+    {
+     "type": "stretch",
+     "duration_sec": 180,
+     "name": {
+      "en": "Chest/shoulder/triceps stretch",
+      "es": "Estiramiento pecho/hombro/tríceps"
+     }
+    }
+   ]
+  },
+  "legs": {
+   "name": {
+    "en": "Legs · full lower body",
+    "es": "Pierna completa"
+   },
+   "blocks": [
+    {
+     "type": "stretch",
+     "duration_sec": 180,
+     "name": {
+      "en": "Hip and ankle mobility",
+      "es": "Movilidad cadera y tobillo"
+     }
+    },
+    {
+     "type": "cardio",
+     "duration_sec": 300,
+     "name": {
+      "en": "Bike warm-up",
+      "es": "Calentamiento bici"
+     },
+     "cue": {
+      "en": "build up gradually",
+      "es": "subir gradual"
+     }
+    },
+    {
+     "type": "transition",
+     "duration_sec": 60,
+     "name": {
+      "en": "Grab the goblet dumbbell",
+      "es": "Coger mancuerna goblet"
+     }
+    },
+    {
+     "type": "exercise",
+     "key": "goblet-squat",
+     "sets": 4,
+     "reps": "12",
+     "rest_sec": 90,
+     "weight_initial_kg": 20
+    },
+    {
+     "type": "transition",
+     "duration_sec": 90,
+     "name": {
+      "en": "To the leg press",
+      "es": "Hacia la prensa"
+     }
+    },
+    {
+     "type": "exercise",
+     "key": "leg-press",
+     "sets": 4,
+     "reps": "12",
+     "rest_sec": 90,
+     "weight_initial_kg": 120
+    },
+    {
+     "type": "transition",
+     "duration_sec": 60
+    },
+    {
+     "type": "exercise",
+     "key": "rdl-db",
+     "sets": 4,
+     "reps": "10",
+     "rest_sec": 90,
+     "weight_initial_kg": 20,
+     "weight_hint": {
+      "en": "kg per hand",
+      "es": "kg por mano"
+     }
+    },
+    {
+     "type": "transition",
+     "duration_sec": 60
+    },
+    {
+     "type": "exercise",
+     "key": "walking-lunges",
+     "sets": 3,
+     "reps": {
+      "en": "20 steps",
+      "es": "20 pasos"
+     },
+     "rest_sec": 75,
+     "weight_initial_kg": 12,
+     "weight_hint": {
+      "en": "kg per hand",
+      "es": "kg por mano"
+     }
+    },
+    {
+     "type": "transition",
+     "duration_sec": 45
+    },
+    {
+     "type": "exercise",
+     "key": "leg-curl-seat",
+     "sets": 3,
+     "reps": "12",
+     "rest_sec": 60,
+     "weight_initial_kg": 40
+    },
+    {
+     "type": "transition",
+     "duration_sec": 60
+    },
+    {
+     "type": "exercise",
+     "key": "plank",
+     "sets": 3,
+     "reps": "45s",
+     "rest_sec": 30
+    },
+    {
+     "type": "stretch",
+     "duration_sec": 240,
+     "name": {
+      "en": "Hamstring/quad/hip stretch",
+      "es": "Estiramiento isquios/cuádriceps/cadera"
+     }
+    }
+   ]
+  },
+  "back": {
+   "name": {
+    "en": "Back · biceps",
+    "es": "Espalda · bíceps"
+   },
+   "blocks": [
+    {
+     "type": "stretch",
+     "duration_sec": 120,
+     "name": {
+      "en": "Upper back and shoulder-blade mobility",
+      "es": "Movilidad dorsal y escapular"
+     }
+    },
+    {
+     "type": "cardio",
+     "duration_sec": 300,
+     "name": {
+      "en": "Rowing warm-up",
+      "es": "Calentamiento remo"
+     },
+     "cue": {
+      "en": "easy technique",
+      "es": "técnica suave"
+     }
+    },
+    {
+     "type": "transition",
+     "duration_sec": 60
+    },
+    {
+     "type": "exercise",
+     "key": "lat-pulldown",
+     "sets": 4,
+     "reps": "10",
+     "rest_sec": 90,
+     "weight_initial_kg": 55
+    },
+    {
+     "type": "transition",
+     "duration_sec": 45
+    },
+    {
+     "type": "exercise",
+     "key": "seated-row",
+     "sets": 4,
+     "reps": "10",
+     "rest_sec": 75,
+     "weight_initial_kg": 50
+    },
+    {
+     "type": "transition",
+     "duration_sec": 60
+    },
+    {
+     "type": "exercise",
+     "key": "chest-supported-row",
+     "sets": 3,
+     "reps": "12",
+     "rest_sec": 75,
+     "weight_initial_kg": 18,
+     "weight_hint": {
+      "en": "kg per hand",
+      "es": "kg por mano"
+     }
+    },
+    {
+     "type": "transition",
+     "duration_sec": 60,
+     "name": {
+      "en": "To the pull-up bar",
+      "es": "Hacia la barra de dominadas"
+     }
+    },
+    {
+     "type": "exercise",
+     "key": "pullup-assisted",
+     "sets": 3,
+     "reps": "8",
+     "rest_sec": 90,
+     "weight_hint": {
+      "en": "least assistance you need",
+      "es": "asistencia mínima necesaria"
+     }
+    },
+    {
+     "type": "transition",
+     "duration_sec": 45
+    },
+    {
+     "type": "exercise",
+     "key": "db-curl",
+     "sets": 3,
+     "reps": "12",
+     "rest_sec": 60,
+     "weight_initial_kg": 12
+    },
+    {
+     "type": "transition",
+     "duration_sec": 90
+    },
+    {
+     "type": "exercise",
+     "key": "farmer-carry",
+     "sets": 3,
+     "reps": "40 m",
+     "rest_sec": 75,
+     "weight_initial_kg": 24,
+     "weight_hint": {
+      "en": "kg per hand",
+      "es": "kg por mano"
+     }
+    },
+    {
+     "type": "stretch",
+     "duration_sec": 180,
+     "name": {
+      "en": "Back/biceps/forearm stretch",
+      "es": "Estiramiento dorsal/bíceps/antebrazo"
+     }
+    }
+   ]
+  },
+  "fullbody": {
+   "name": {
+    "en": "Full body · functional mass",
+    "es": "Cuerpo completo · masa funcional"
+   },
+   "blocks": [
+    {
+     "type": "stretch",
+     "duration_sec": 150,
+     "name": {
+      "en": "Full-body mobility",
+      "es": "Movilidad global"
+     }
+    },
+    {
+     "type": "cardio",
+     "duration_sec": 240,
+     "name": {
+      "en": "Air bike warm-up",
+      "es": "Calentamiento air bike"
+     },
+     "cue": {
+      "en": "building up slowly",
+      "es": "subiendo poco a poco"
+     }
+    },
+    {
+     "type": "transition",
+     "duration_sec": 60
+    },
+    {
+     "type": "exercise",
+     "key": "thrusters",
+     "sets": 4,
+     "reps": "10",
+     "rest_sec": 75,
+     "weight_initial_kg": 14,
+     "weight_hint": {
+      "en": "kg per hand",
+      "es": "kg por mano"
+     }
+    },
+    {
+     "type": "transition",
+     "duration_sec": 60
+    },
+    {
+     "type": "exercise",
+     "key": "kb-swing",
+     "sets": 4,
+     "reps": "15",
+     "rest_sec": 60,
+     "weight_initial_kg": 20
+    },
+    {
+     "type": "transition",
+     "duration_sec": 45
+    },
+    {
+     "type": "exercise",
+     "key": "pushups",
+     "sets": 4,
+     "reps": "15",
+     "rest_sec": 60
+    },
+    {
+     "type": "transition",
+     "duration_sec": 45
+    },
+    {
+     "type": "exercise",
+     "key": "ring-rows",
+     "sets": 4,
+     "reps": "12",
+     "rest_sec": 60
+    },
+    {
+     "type": "transition",
+     "duration_sec": 90,
+     "name": {
+      "en": "To the sled",
+      "es": "Hacia el trineo"
+     }
+    },
+    {
+     "type": "exercise",
+     "key": "sled-push",
+     "sets": 6,
+     "reps": "20 m",
+     "rest_sec": 60,
+     "weight_hint": {
+      "en": "moderate",
+      "es": "moderado"
+     }
+    },
+    {
+     "type": "transition",
+     "duration_sec": 60
+    },
+    {
+     "type": "cardio",
+     "duration_sec": 360,
+     "name": {
+      "en": "Air bike finisher",
+      "es": "Air bike final"
+     },
+     "cue": {
+      "en": "easy intervals",
+      "es": "intervalos suaves"
+     }
+    },
+    {
+     "type": "stretch",
+     "duration_sec": 180,
+     "name": {
+      "en": "Cool-down + mobility",
+      "es": "Enfriamiento + movilidad"
+     }
+    }
+   ]
+  },
+  "upper-heavy": {
+   "name": {
+    "en": "Upper heavy · upper-body strength",
+    "es": "Torso pesado · fuerza tren superior"
+   },
+   "blocks": [
+    {
+     "type": "stretch",
+     "duration_sec": 150,
+     "name": {
+      "en": "Shoulder/upper-back mobility",
+      "es": "Movilidad hombro/dorsal"
+     }
+    },
+    {
+     "type": "cardio",
+     "duration_sec": 300,
+     "name": {
+      "en": "Easy rowing warm-up",
+      "es": "Calentamiento remo suave"
+     }
+    },
+    {
+     "type": "transition",
+     "duration_sec": 90
+    },
+    {
+     "type": "exercise",
+     "key": "db-bench-heavy",
+     "sets": 5,
+     "reps": "6",
+     "rest_sec": 120,
+     "weight_initial_kg": 22
+    },
+    {
+     "type": "transition",
+     "duration_sec": 75
+    },
+    {
+     "type": "exercise",
+     "key": "weighted-pulldown",
+     "sets": 5,
+     "reps": "8",
+     "rest_sec": 105,
+     "weight_initial_kg": 60
+    },
+    {
+     "type": "transition",
+     "duration_sec": 60
+    },
+    {
+     "type": "exercise",
+     "key": "shoulder-press",
+     "sets": 4,
+     "reps": "8",
+     "rest_sec": 90,
+     "weight_initial_kg": 18,
+     "weight_hint": {
+      "en": "kg per hand",
+      "es": "kg por mano"
+     }
+    },
+    {
+     "type": "transition",
+     "duration_sec": 60
+    },
+    {
+     "type": "exercise",
+     "key": "cable-row",
+     "sets": 4,
+     "reps": "8",
+     "rest_sec": 90,
+     "weight_initial_kg": 60
+    },
+    {
+     "type": "transition",
+     "duration_sec": 45
+    },
+    {
+     "type": "exercise",
+     "key": "db-shrugs",
+     "sets": 4,
+     "reps": "12",
+     "rest_sec": 60,
+     "weight_initial_kg": 28,
+     "weight_hint": {
+      "en": "kg per hand",
+      "es": "kg por mano"
+     }
+    },
+    {
+     "type": "transition",
+     "duration_sec": 30
+    },
+    {
+     "type": "exercise",
+     "key": "hammer-curl",
+     "sets": 3,
+     "reps": "10",
+     "rest_sec": 60,
+     "weight_initial_kg": 14
+    },
+    {
+     "type": "stretch",
+     "duration_sec": 180,
+     "name": {
+      "en": "Cool-down",
+      "es": "Enfriamiento"
+     }
+    }
+   ]
+  }
+ }
+}
