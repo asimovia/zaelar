@@ -414,6 +414,7 @@ class LangSpec:
     # An asked notice whose hour had already gone today rings soon today instead — `nucleo/flash/notice_readback.py`.
     reminder_moved_soon: str = ""
     done_not_on_card: str = ""   # «Hecho.» over an unmet end state
+    done_asked: str = ""   # «Hecho.» over an act the app has not confirmed yet (V2-884 A6)
     done_just_started: str = ""              # «Hecho.» over an errand that just started
     data_ack: str = ""       # short "done" when a widget data-op ran with no spoken content of its own (V2-026)
     # Demo pass 50: the words ASKED («…want me to write that?») and the order was carried out anyway — «?Done.» read

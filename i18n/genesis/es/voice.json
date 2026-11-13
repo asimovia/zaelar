@@ -225,6 +225,7 @@
  "reminder_date_passed": "Ojo: esa fecha —{date}— ya ha pasado, así que no he puesto ningún aviso.",
  "reminder_moved_soon": "Las {asked} de hoy ya han pasado, así que te aviso hoy a las {at}.",
  "done_not_on_card": "Todavía no está en la app, así que no está hecho.",
+ "done_asked": "Pedido; la app todavía no lo ha confirmado.",
  "done_just_started": "Me pongo con ello; todavía no está hecho.",
  "data_ack": "Hecho.",
  "data_done_count": "Hecho: {n} elementos.",

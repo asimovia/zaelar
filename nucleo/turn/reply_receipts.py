@@ -195,12 +195,44 @@ def end_state_unmet(cards: set[str] | None = None, turn: str = "") -> dict | Non
 
 def bare_ack(ack: str, cards: set[str] | None, *, beside: bool = False, turn: str = "") -> str:
     """The bare acknowledgement WE are about to say over a turn's writes, or the true line instead: «just started» when
-    an errand runs beside it, «not on the card yet» when an end state THIS turn owes on those cards still reads unmet."""
+    an errand runs beside it, «not on the card yet» when an end state THIS turn owes on those cards reads unmet, and
+    «asked» while the app has not confirmed it (V2-884 A6: said as asked, never as done nor as failed)."""
     try:
         lang = _lang()
         if beside:
             return str(lang.done_just_started)
-        return str(lang.done_not_on_card) if end_state_unmet(cards, turn) else ack
+        e = end_state_unmet(cards, turn)
+        if not e:
+            return ack
+        from nucleo.circuit import reported, verify
+        asked = verify.check(e.get("done_when")) is None and reported.awaiting(e.get("done_when"))
+        return str(lang.done_asked if asked else lang.done_not_on_card)
     except Exception as e:  # noqa: BLE001 — an unreadable screen leaves the ack as it was
         logger.debug(f"reply_receipts: ack not checked — {e}")
         return ack
+
+
+#: The reason a `started` outcome carries when the act ran and its app has not confirmed it: the one `started` the mouth
+#: names (by its object, as asked); any other `started` adds no line.
+AWAITING = "awaiting"
+
+
+def unconfirmed(outcomes: list, turn: str = "") -> list:
+    """A `met` on a card whose end state, born in this turn, still waits for the app's confirmation is `started`: the
+    op's `ok` and what the store holds are the ORDER, and only the app's report confirms it (V2-884 A6) — the mouth
+    never says «Done: «title»» over it, whichever line (an op's object, the player's receipt) would have said it; it
+    says what was asked, by its object (`reply_started`)."""
+    try:
+        from nucleo.circuit import reported, spec
+        from nucleo.circuit import verdict as V
+        waiting = {str(e.get("target") or "").split(":", 1)[0] for e in spec.open_specs()
+                   if (not turn or str(e.get("trace") or "") == turn) and reported.awaiting(e.get("done_when"))}
+        if not waiting:
+            return outcomes
+        from nucleo.turn import reply
+        return [reply.Outcome(V.STARTED.name, o.card, o.action, object=o.object, reason=AWAITING)
+                if reply._value(o.verdict) == V.MET.name
+                and o.card in waiting else o for o in outcomes]   # what was asked is still named: «On it: «title».»
+    except Exception as e:  # noqa: BLE001 — unreadable: the outcomes stand as they were
+        logger.debug(f"reply_receipts: the wait was not read — {e!r}")
+        return outcomes

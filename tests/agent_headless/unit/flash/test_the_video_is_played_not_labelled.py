@@ -117,10 +117,7 @@ def test_a_mute_video_turn_names_what_it_loaded(monkeypatch, tmp_path):
     mememb.reset(); memdb.reset_db(); memdb.get_db()
 
     async def _brain_action(wid, action, payload):
-        # the player then reports it plays it (V2-873: the end state reads the player's report, not the order)
-        from widgets import store
-        store.save("youtube", {**store.load("youtube", {}), "videoId": "Way9Dexny3w", "playing_id": "Way9Dexny3w",
-                               "playing": True, "player_error": ""})
+        # no screen reports the player here: the turn names what it asked for, never that it plays (V2-884 A6)
         return {"ok": True, "videoId": "Way9Dexny3w", "title": "Dune: Part Two | Official Trailer"}
 
     import widgets.server_api as _sa

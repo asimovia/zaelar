@@ -225,6 +225,7 @@
  "reminder_date_passed": "Heads-up: that date — {date} — has already passed, so I haven't set a reminder.",
  "reminder_moved_soon": "{asked} today has already gone by, so I'll remind you today at {at}.",
  "done_not_on_card": "It isn't on the app yet, so it's not done.",
+ "done_asked": "Asked — the app hasn't confirmed it yet.",
  "done_just_started": "I'm on it — it isn't done yet.",
  "data_ack": "Done.",
  "data_done_count": "Done — {n} items.",
