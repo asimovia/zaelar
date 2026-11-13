@@ -57,14 +57,14 @@ def test_two_screens_each_its_folder_and_a_move_waits_for_each_ack(files, a, b):
     data, on = files
     on(a, b)
     assert state_render.clause("archivos") == "archivos: state unreported"
-    assert _say(a, 1, section="biblioteca", folder="Lisboa 2024", open="plano.pdf") == 200
-    assert _say(b, 1, section="torrents", folder="", open="") == 200
+    assert _say(a, 1, section="biblioteca", folder="Lisboa 2024", open="plano.pdf", search="", storage="local") == 200
+    assert _say(b, 1, section="torrents", folder="", open="", search="", storage="local") == 200
     assert state_render.clause("archivos", dev=a).endswith(': folder="Lisboa 2024", open="plano.pdf"')
     assert state_render.clause("archivos", dev=b).endswith(": section=torrents")
     db = data._load(); db["provider"] = "gdrive"; store.save("archivos", db)        # another storage
     for d in (a, b):
         assert "folder=?ordered" in state_render.clause("archivos", dev=d), f"a provider switch read as shown on {d}"
-    assert _say(a, 2, full=True, section="biblioteca", folder="", open="") == 200
+    assert _say(a, 2, full=True, section="biblioteca", folder="", open="", search="", storage="local") == 200
     assert state_render.clause("archivos", dev=a).endswith(": at rest")
     assert "folder=?ordered" in state_render.clause("archivos", dev=b), "one screen's ack confirmed the other"
 
@@ -76,7 +76,8 @@ def test_the_rendered_card_says_its_folder_and_the_file_he_opened(files, card_pa
     shown = {**data.view_data(), "needs_refresh": False, "providers_stale": False, "_rev": state.stamp("archivos")}
     mount(card_page, "archivos", shown, a)
     sent = posts(card_page)
-    assert sent and sent[0]["full"] and sent[0]["patch"] == {"section": "biblioteca", "folder": "Lisboa 2024", "open": ""}
+    assert sent and sent[0]["full"] and sent[0]["patch"] == {"section": "biblioteca", "folder": "Lisboa 2024", "open": "",
+                                                                "search": "", "storage": "local"}
     deliver("archivos", sent)
     card_page.evaluate("() => { document.getElementById('w')._arxUi.preview = {name: 'plano.pdf', kind: 'pdf', url: ''}; }")
     push(card_page, shown)                                                            # his double-click's repaint
@@ -87,3 +88,25 @@ def test_the_rendered_card_says_its_folder_and_the_file_he_opened(files, card_pa
     after = state_render.clause("archivos", dev=a)                       # the dust settles (step-5 audit P1-1)
     settle(card_page, "archivos")
     assert state_render.clause("archivos", dev=a) == after, "a previous paint spoke after the last one"
+
+
+def test_a_search_is_a_search_and_the_storage_is_the_chip_lit(files, card_page):
+    """Step-5 audit P2-3: after `search_files «factura»` the card shows a flat search listing and the line read «at rest»
+    — the top of his library. A search is its own field, following its order; and the storage is the chip lit (the top
+    of a cloud drive and the top of the local library read the same before)."""
+    data, on = files
+    a, b = PAIRS[0]
+    on(a, b)
+    shown = lambda: {**data.view_data(), "needs_refresh": False, "providers_stale": False,  # noqa: E731
+                     "_rev": state.stamp("archivos")}
+    mount(card_page, "archivos", shown(), a)
+    settle(card_page, "archivos")
+    db = data._load(); db.update(query="factura", entries=[]); store.save("archivos", db)    # the search lands
+    assert "search=?ordered" in state_render.clause("archivos", dev=a), state_render.clause("archivos", dev=a)
+    push(card_page, shown())
+    settle(card_page, "archivos")
+    assert 'search="factura"' in state_render.clause("archivos", dev=a), state_render.clause("archivos", dev=a)
+    db = data._load(); db.update(query="", provider="gdrive", trail=[], folder_id=""); store.save("archivos", db)
+    push(card_page, shown())
+    settle(card_page, "archivos")
+    assert state_render.clause("archivos", dev=a).endswith(": storage=gdrive"), state_render.clause("archivos", dev=a)

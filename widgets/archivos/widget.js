@@ -88,11 +88,14 @@ export function render(root, data, ctx) {
 }
 
 // V2-884 — what the card SHOWS, said through the host's one door after every paint with the revision it applied: the
-// section, the folder it stands in ("" = the top) and the file open in its viewer by his double-click ("" = none).
+// section, the storage whose chip is lit, the folder it stands in ("" = the top), the search it lists ("" = none) and
+// the file open in its viewer by his double-click ("" = none).
 function reportShown(ctx, d, ui, onTorrents) {
   if (!ctx || typeof ctx.state !== "function") return;
   const trail = Array.isArray(d.trail) ? d.trail : [], last = trail[trail.length - 1] || {};
   const shown = { section: onTorrents ? "torrents" : "biblioteca", folder: onTorrents ? "" : String(last.name || "").slice(0, 40),
-                  open: ui.preview && !onTorrents ? String(ui.preview.name || "").slice(0, 40) : "" };
+                  open: ui.preview && !onTorrents ? String(ui.preview.name || "").slice(0, 40) : "",
+                  search: onTorrents ? "" : String(d.query || "").slice(0, 40),         // a flat search listing, not a folder
+                  storage: /^[A-Za-z0-9_.:-]{1,40}$/.test(String(d.provider || "")) ? d.provider : "local" };   // the chip lit
   try { Promise.resolve(ctx.state(shown, { applied: true })).catch(() => {}); } catch (_) {}
 }
