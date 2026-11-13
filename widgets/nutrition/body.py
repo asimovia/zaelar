@@ -5,9 +5,6 @@ the scale. The profile takes only values in range; a field sent empty goes back 
 """
 from __future__ import annotations
 
-from . import data as _d
-from .actions import _find, _sync_profile_weight, _to_bin
-
 
 def _body_fields(p: dict) -> dict:
     lims = {"weight_kg": (20, 400), "body_fat_pct": (2, 70), "muscle_mass_kg": (5, 200), "waist_cm": (30, 250)}
@@ -93,3 +90,9 @@ def _a_set_profile(action: str, p: dict) -> dict:
     if changed:
         _d.save(db)
     return {"ok": not bad, "changed": changed, "invalid": bad, "targets": _d.targets(prof)}
+
+
+# Imported LAST on purpose: data.py imports these handlers back for its table, so whichever module is
+# imported first, every name the others need already exists when the cycle closes.
+from . import data as _d  # noqa: E402
+from .actions import _find, _sync_profile_weight, _to_bin  # noqa: E402

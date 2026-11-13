@@ -6,7 +6,6 @@ alias so the circular import (data imports these names back for its table) resol
 """
 from __future__ import annotations
 
-from . import data as _d
 
 REFINE_MARK = "[Refinement from the person]: "
 
@@ -242,3 +241,8 @@ def _a_show(action: str, p: dict) -> dict:
     db["view"] = v
     _d.save(db)
     return {"ok": True, "view": v}
+
+
+# Imported LAST on purpose: data.py imports these handlers back for its table, so whichever module is
+# imported first, every name the others need already exists when the cycle closes.
+from . import data as _d  # noqa: E402

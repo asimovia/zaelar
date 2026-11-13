@@ -119,3 +119,15 @@ def test_the_door_is_the_only_way_out():
         assert kind in nu.prompts()
     js = "\n".join(p.read_text() for p in APP.rglob("*.js"))
     assert not re.search(r"\b(fetch|XMLHttpRequest|WebSocket|EventSource)\b", js)
+
+
+@pytest.mark.parametrize("first", ["data", "day", "actions", "body", "advice"])
+def test_any_module_of_the_app_can_be_imported_first(first):
+    """The handlers and data.py import each other (data's table names them); a test, a tool or the runtime may import
+    any of them first, in a fresh interpreter, and the whole table must still load."""
+    import subprocess
+    import sys
+    code = f"import widgets.nutrition.{first}\nfrom widgets.nutrition import data\nprint(len(data.ACTIONS))"
+    r = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=60,
+                       cwd=str(APP.parents[1]))
+    assert r.returncode == 0 and r.stdout.strip() == "13", r.stderr[-600:]

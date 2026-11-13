@@ -7,8 +7,6 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
-from . import data as _d
-from .actions import _lang
 
 PHOTOS_MAX = 5              # the menu coach takes up to five photos of a menu (source limit)
 
@@ -120,3 +118,9 @@ def _a_coach_menu(action: str, p: dict) -> dict:
     db["view"] = {**(db.get("view") or {}), "screen": "coach"}
     _d.save(db)
     return {"ok": bool(text), "error": db["coach"]["error"]}
+
+
+# Imported LAST on purpose: data.py imports these handlers back for its table, so whichever module is
+# imported first, every name the others need already exists when the cycle closes.
+from . import data as _d  # noqa: E402
+from .actions import _lang  # noqa: E402
