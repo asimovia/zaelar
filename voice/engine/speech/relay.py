@@ -37,6 +37,10 @@ def note(family: str, inst, err) -> None:
         st["cause"][name] = _describe(err)
 
 
+def name_of(family: str, inst) -> str:
+    return (_STATE.get(family) or {}).get("insts", {}).get(id(inst), "") or str(getattr(inst, "label", ""))
+
+
 def _describe(err) -> str:
     """Type, status and message. LiveKit's own `APIError` quotes its payload after a colon (`… for text: <the
     sentence>`): only what comes before it is kept — no words the agent was about to say in an alert."""
