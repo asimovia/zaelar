@@ -125,5 +125,20 @@ check("a refresh hands its data to the reporter through the one line (`refreshed
   /refreshed\(ww, data\)/.test(DESKTOP.slice(DESKTOP.indexOf("async refreshData")))
   && /refreshed\(w, data\)/.test(DECK.slice(DECK.indexOf("async refreshData"))));
 
+// a report said FOR data the host no longer shows is dropped (V2-884 step-5 audit P1-1): an old paint's timer or observer
+const g = stateReporter("fotos", "fotos", { fetch: fakeFetch, device: "desktop:aaa" });
+const oldData = { _rev: { epoch: "e1", rev: 1 } }, newData = { _rev: { epoch: "e1", rev: 2 } };
+g.seen(oldData._rev, undefined, oldData);
+await g.report({ shown: 120 }, { applied: true, of: oldData });
+await sleep(150);
+const beforeG = posts.length;
+g.seen(newData._rev, undefined, newData);
+await g.report({ shown: 12 }, { applied: true, of: newData });
+await sleep(150);
+await g.report({ shown: 120 }, { of: oldData });                     // the previous paint speaks late
+await sleep(150);
+check("a report said for data the screen no longer shows is dropped",
+  posts.length === beforeG + 1 && posts[posts.length - 1].b.patch.shown === 12, JSON.stringify(posts.slice(beforeG).map(p => p.b.patch)));
+
 if (failures) { console.log(`\n${failures} failure(s)`); process.exit(1); }
 console.log("\nall ok");

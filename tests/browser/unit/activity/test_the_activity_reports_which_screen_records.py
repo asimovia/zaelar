@@ -15,7 +15,7 @@ import pytest
 
 from voice import screens
 from widgets import state, state_decl, state_render, store
-from tests.browser.unit.widgets.state_card import card_page, deliver, mount, posts, push  # noqa: F401
+from tests.browser.unit.widgets.state_card import card_page, deliver, mount, posts, push, settle  # noqa: F401
 
 ENGINE = pathlib.Path(__file__).resolve().parents[4]
 PAIRS = [("desktop:aaa", "mobile:bbb"), ("desktop:aaa", "desktop:bbb")]
@@ -83,3 +83,6 @@ def test_the_rendered_card_says_its_activity_through_the_door(act, card_page):
     push(card_page, {**data.view_data(), "_rev": state.stamp("activity")})
     deliver("activity", posts(card_page))
     assert state_render.clause("activity", dev=a).endswith(": at rest"), state_render.clause("activity", dev=a)
+    after = state_render.clause("activity", dev=a)                       # the dust settles (step-5 audit P1-1)
+    settle(card_page, "activity")
+    assert state_render.clause("activity", dev=a) == after, "a previous paint spoke after the last one"

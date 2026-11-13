@@ -301,6 +301,7 @@ export function render(root, data, ctx){
 // and when HE scrolls: the document on it ("" = blank) and the passage he is reading — the one `goto` marked, else the
 // last heading above the top of the page.
 function reportShown(root, d, ctx){
+  clearTimeout(root._hbdSay);                      // a paint invalidates the scroll report the previous one armed
   if(!ctx || typeof ctx.state !== "function") return;
   const say = (applied) => {
     const scroll = root.querySelector(".hbd-scroll"), mark = root.querySelector(".hbd-focus");
@@ -310,7 +311,7 @@ function reportShown(root, d, ctx){
     const at = mark && (applied || inView) ? mark : heads.pop();       // the paint scrolls to the mark it just drew
     const title = root.querySelector(".hbd-blank, .hbd-making") ? "" : String(d.title || "").trim().slice(0, 60);
     try{ Promise.resolve(ctx.state({title, at: at ? String(at.textContent || "").trim().slice(0, 40) : ""},
-      applied ? {applied: true} : {})).catch(()=>{}); }catch(_){}
+      {of: d, ...(applied ? {applied: true} : {})})).catch(()=>{}); }catch(_){}
   };
   say(true);
   const scroll = root.querySelector(".hbd-scroll");

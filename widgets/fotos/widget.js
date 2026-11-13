@@ -98,7 +98,9 @@ export function render(root, data, ctx) {
   const wrap = el("div", "fts");
   root.appendChild(wrap);
 
-  const say = reporter(ctx, d);
+  clearTimeout(root._ftsSay);                       // a paint invalidates what the previous one left armed
+  if (root._ftsRO) { root._ftsRO.disconnect(); root._ftsRO = null; }
+  const say = reporter(ctx, d, root);
   if (!d.connected) {
     wrap.appendChild(connectPanel(d, act, ctx));
     say("", true);
@@ -106,20 +108,20 @@ export function render(root, data, ctx) {
   }
 
   wrap.appendChild(toolbar(d, act, ctx));
-  wrap.appendChild(gallery(d, act, say));
+  wrap.appendChild(gallery(d, act, say, root));
 }
 
 // V2-884 — what the gallery SHOWS, said through the host's one door after every paint (with the revision it applied)
 // and as HE scrolls: the filter on it ("" = none), how many photos it holds and the year at the top of what he sees.
-function reporter(ctx, d) {
-  let timer = null, owed = false;           // an applied report is owed until sent: a scroll never cancels it
+function reporter(ctx, d, root) {
+  let owed = false;                         // an applied report is owed until sent: a scroll never cancels it
   const f = d.active_filter || {}, items = d.items || [];
   return (year, applied) => {
     if (!ctx || typeof ctx.state !== "function") return;
-    clearTimeout(timer); owed = owed || applied;
-    timer = setTimeout(() => { try {
+    clearTimeout(root._ftsSay); owed = owed || applied;
+    root._ftsSay = setTimeout(() => { try {
       Promise.resolve(ctx.state({ filter: String(f.query || f.label || "").slice(0, 40), shown: Math.min(items.length, 9999),
-        year: String(year || "").slice(0, 10) }, owed ? { applied: true } : {})).catch(() => {});
+        year: String(year || "").slice(0, 10) }, { of: d, ...(owed ? { applied: true } : {}) })).catch(() => {});
       owed = false;
     } catch (_) {} }, owed ? 0 : 300);
   };
@@ -179,7 +181,7 @@ function toolbar(d, act, ctx) {
   bar.append(lead, tray); return hbBar(bar, { more: tt("more", null, "Más") });   // V2-882: the search leads, the rest steps aside
 }
 
-function gallery(d, act, say) {
+function gallery(d, act, say, root) {
   const wrap = el("div", "fts-scroll");
   const items = d.items || [];
   if (d.session_pending) {
@@ -213,6 +215,7 @@ function gallery(d, act, say) {
   };
 
   const paint = () => {
+    if (!wrap.isConnected) return;          // a gallery the next paint replaced reads and says nothing
     const viewTop = wrap.scrollTop;
     const viewH = wrap.clientHeight || 400;
     const buffer = viewH;   // one screen of buffer above/below, so scrolling doesn't pop tiles in visibly
@@ -238,7 +241,7 @@ function gallery(d, act, say) {
   let said = false;
 
   wrap.addEventListener("scroll", () => requestAnimationFrame(paint));
-  const ro = new ResizeObserver(() => recompute());
+  const ro = root._ftsRO = new ResizeObserver(() => recompute());
   ro.observe(wrap);
   recompute();
   return wrap;

@@ -83,3 +83,10 @@ def deliver(app: str, bodies: list[dict]) -> list[int]:
     """The bodies through the engine's door, in order; the status of each."""
     from widgets import state
     return [state.report(app, b)[0] for b in bodies]
+
+
+def settle(page, app: str, ms: int = 1000) -> list[int]:
+    """After the dust settles: wait `ms` (every timer, observer and debounce a paint armed has fired) and hand what the
+    reporter sent to the door. A stale report from a previous paint shows up HERE (V2-884 step-5 audit P1-1)."""
+    page.wait_for_timeout(ms)
+    return deliver(app, posts(page))

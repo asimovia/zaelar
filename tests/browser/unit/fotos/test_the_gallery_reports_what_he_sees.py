@@ -16,7 +16,7 @@ import pytest
 
 from voice import screens
 from widgets import state, state_decl, state_render, store
-from tests.browser.unit.widgets.state_card import card_page, deliver, mount, posts  # noqa: F401
+from tests.browser.unit.widgets.state_card import card_page, deliver, mount, posts, push, settle  # noqa: F401
 
 ENGINE = pathlib.Path(__file__).resolve().parents[4]
 PAIRS = [("desktop:aaa", "mobile:bbb"), ("desktop:aaa", "desktop:bbb")]
@@ -84,3 +84,30 @@ def test_the_rendered_gallery_says_the_year_he_scrolls_to(fotos, card_page):
     card_page.wait_for_timeout(700)
     deliver("fotos", posts(card_page))
     assert state_render.clause("fotos", dev=a).endswith(': shown=120, year="2022"'), state_render.clause("fotos", dev=a)
+
+
+def test_a_search_then_a_page_reads_the_new_gallery_after_the_dust_settles(fotos, card_page):
+    """Step-5 audit P1-1: the previous paint's observer and timer spoke 300 ms after a re-render, with the OLD filter and
+    count, acked at the new revision — a search read as not applied, confirmed. A paint invalidates what the previous
+    one armed, and a report said for data the screen no longer shows is dropped."""
+    data, on = fotos
+    a, b = PAIRS[0]
+    on(a, b)
+    mount(card_page, "fotos", {**data.view_data(), "_rev": state.stamp("fotos")}, a)
+    settle(card_page, "fotos")
+    db = store.load("fotos", {}); db.update(active_filter={"query": "playa", "label": "playa"}, items=ITEMS[:12])
+    store.save("fotos", db)                                                           # a search lands
+    push(card_page, {**data.view_data(), "_rev": state.stamp("fotos")})
+    settle(card_page, "fotos")
+    assert state_render.clause("fotos", dev=a).endswith(': filter="playa", shown=12, year="2024"'), \
+        state_render.clause("fotos", dev=a)
+    db["items"] = ITEMS[:20]; store.save("fotos", db)                                 # a `more` page
+    push(card_page, {**data.view_data(), "_rev": state.stamp("fotos")})
+    settle(card_page, "fotos")
+    assert state_render.clause("fotos", dev=a).endswith(': filter="playa", shown=20, year="2024"'), \
+        state_render.clause("fotos", dev=a)
+
+
+def test_shown_follows_the_filter():
+    man = json.loads((ENGINE / "widgets/fotos/manifest.json").read_text())
+    assert man["state"]["report"]["shown"]["follows"] == "filter", "a new search would read the old count as confirmed"

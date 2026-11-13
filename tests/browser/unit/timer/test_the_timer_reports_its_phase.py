@@ -16,7 +16,7 @@ import pytest
 
 from voice import screens
 from widgets import state, state_decl, state_render, store
-from tests.browser.unit.widgets.state_card import card_page, deliver, mount, posts  # noqa: F401
+from tests.browser.unit.widgets.state_card import card_page, deliver, mount, posts, settle  # noqa: F401
 
 ENGINE = pathlib.Path(__file__).resolve().parents[4]
 PAIRS = [("desktop:aaa", "mobile:bbb"), ("desktop:aaa", "desktop:bbb")]
@@ -83,3 +83,6 @@ def test_the_rendered_countdown_says_finished_when_it_reaches_zero(timer, card_p
     assert any(p["patch"].get("phase") == "finished" for p in later), later
     assert state_render.clause("timer", dev=a).endswith(': phase=finished, label="pasta"'), \
         "the screen rang and the line still said running"
+    after = state_render.clause("timer", dev=a)                       # the dust settles (step-5 audit P1-1)
+    settle(card_page, "timer")
+    assert state_render.clause("timer", dev=a) == after, "a previous paint spoke after the last one"

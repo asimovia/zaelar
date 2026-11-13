@@ -21,7 +21,7 @@ import pytest
 
 from voice import screens
 from widgets import state, state_decl, state_render, store
-from tests.browser.unit.widgets.state_card import card_page, click, deliver, mount, posts, push  # noqa: F401
+from tests.browser.unit.widgets.state_card import card_page, click, deliver, mount, posts, push, settle  # noqa: F401
 
 ENGINE = pathlib.Path(__file__).resolve().parents[4]
 PAIRS = [("desktop:aaa", "mobile:bbb"), ("desktop:aaa", "desktop:bbb")]
@@ -136,6 +136,10 @@ def test_the_rendered_card_says_its_face_through_the_door(agenda, card_page):
     click(card_page, ".agsecb[data-sec='tasks']")
     deliver("agenda", posts(card_page))
     assert state_render.clause("agenda", dev=a).endswith(": view=tasks"), state_render.clause("agenda", dev=a)
+    after = state_render.clause("agenda", dev=a)                       # the dust settles (step-5 audit P1-1)
+    settle(card_page, "agenda")
+    assert state_render.clause("agenda", dev=a) == after, "a previous paint spoke after the last one"
+
 
 
 def test_two_computers_mark_the_one_he_speaks_from_and_a_list_never_adopts(agenda):

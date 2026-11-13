@@ -16,7 +16,7 @@ import pytest
 
 from voice import screens
 from widgets import state, state_decl, state_render, store
-from tests.browser.unit.widgets.state_card import card_page, deliver, mount, posts, push  # noqa: F401
+from tests.browser.unit.widgets.state_card import card_page, deliver, mount, posts, push, settle  # noqa: F401
 
 ENGINE = pathlib.Path(__file__).resolve().parents[4]
 PAIRS = [("desktop:aaa", "mobile:bbb"), ("desktop:aaa", "desktop:bbb")]
@@ -84,3 +84,6 @@ def test_the_rendered_card_says_its_folder_and_the_file_he_opened(files, card_pa
     assert sent and sent[-1]["patch"] == {"open": "plano.pdf"}, sent
     deliver("archivos", sent)
     assert state_render.clause("archivos", dev=a).endswith(': folder="Lisboa 2024", open="plano.pdf"')
+    after = state_render.clause("archivos", dev=a)                       # the dust settles (step-5 audit P1-1)
+    settle(card_page, "archivos")
+    assert state_render.clause("archivos", dev=a) == after, "a previous paint spoke after the last one"
