@@ -52,10 +52,10 @@ def _field(spec, held, moved: dict, now: float) -> tuple[str, object]:
     if held is None:
         return "unknown", None
     value, ack = held
-    key, _inv = decl.follows(spec)
-    ch = moved.get(key) if key else None
-    if ch and not (ack and ack[0] == ch[0] and ack[1] >= ch[1]):
-        return ("pending", None) if now - ch[2] < PENDING_S else ("unknown", None)
+    open_ = [ch for k in decl.follows_all(spec) if (ch := moved.get(k.lstrip("!")))
+             and not (ack and ack[0] == ch[0] and ack[1] >= ch[1])]      # an order this report has not acked
+    if open_:
+        return ("pending", None) if any(now - ch[2] < PENDING_S for ch in open_) else ("unknown", None)
     return "known", value
 
 

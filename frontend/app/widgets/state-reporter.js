@@ -106,7 +106,8 @@ export function stateReporter(baseId, instance, opts = {}) {
         if (v === undefined || v === null || last[k] === v) continue;
         last[k] = v; pending[k] = v; changed = true;
       }
-      if (o.applied && seen) { ack = seen; full = true; changed = true; }
+      // an applied revision is acked ONCE: a repaint over the revision already acked sends only what changed
+      if (o.applied && seen && !(ack && ack.epoch === seen.epoch && ack.rev === seen.rev)) { ack = seen; full = true; changed = true; }
       if (o.hand && changed) hand = true;
       if (!changed && !full) return Promise.resolve(lastFacts);
       const p = new Promise((res) => waiters.push(res));

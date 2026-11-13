@@ -1,6 +1,13 @@
 {
   "id": "agenda",
   "screens": "shared",
+  "state": {
+    "order": {"view": "view.n", "tasks": "tasksView.n"},
+    "report": {
+      "view": {"type": "enum:day|week|month|list|tasks", "follows": ["view", "tasks"]},
+      "date_shown": {"type": "text:10", "follows": ["view", "tasks"], "rest": ""}
+    }
+  },
   "version": "0.3.0",
   "owner": "Zaelar",
   "licence": "SUL-1.0",

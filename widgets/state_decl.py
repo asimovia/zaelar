@@ -114,9 +114,15 @@ def coerce(spec, value) -> tuple[bool, object]:
 
 
 def follows(spec) -> tuple[str, bool]:
-    """The order key a report field confirms, and whether it confirms it inverted (`"!paused"`)."""
-    f = str((spec or {}).get("follows") or "") if isinstance(spec, dict) else ""
+    """The (first) order key a report field confirms, and whether inverted (`"!paused"`) — what `adopt` reads."""
+    f = (follows_all(spec) or [""])[0]
     return (f[1:], True) if f.startswith("!") else (f, False)
+
+
+def follows_all(spec) -> list[str]:
+    """Every order key a field confirms: one face can be moved by several orders (the agenda's day and tasks pushes)."""
+    f = (spec or {}).get("follows") if isinstance(spec, dict) else None
+    return [k for k in (f if isinstance(f, list) else [f]) if isinstance(k, str) and k]
 
 
 def order_value(data, path: str):
@@ -148,9 +154,13 @@ def problem(man: dict) -> str | None:
             return f"state.report.{name}: enum values are names ([A-Za-z0-9_])"
         if not kind:
             return f"state.report.{name}: type must be bool, int:lo-hi, enum:a|b, id or text:N"
-        key, _inv = follows(spec)
-        if key and key not in order:
+        raw, keys = spec.get("follows") if isinstance(spec, dict) else None, follows_all(spec)
+        if raw not in (None, "") and len(keys) != (len(raw) if isinstance(raw, list) else 1) or raw == []:
+            return f"state.report.{name}: follows names an order key, or a list of them"
+        if (key := next((k.lstrip("!") for k in keys if k.lstrip("!") not in order), None)) is not None:
             return f"state.report.{name}: follows «{key}», which is not in state.order"
+        if isinstance(spec, dict) and spec.get("adopt") and len(keys) > 1:
+            return f"state.report.{name}: adopt follows ONE order key"
         if isinstance(spec, dict) and "rest" in spec and not coerce(spec, spec["rest"])[0]:
             return f"state.report.{name}: rest is not a value of its type"
         if isinstance(spec, dict) and spec.get("adopt"):
