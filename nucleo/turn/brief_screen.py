@@ -28,9 +28,12 @@ def target_question(open_ids) -> dict | None:
     # instructions it moved 3/3 (as a card label 0/3), with the named-kind counterweights still 4/4 on their own card.
     try:
         from nucleo import canvas_focus as _cf
-        focus = _cf.last_turn_card(ids)
+        focus, front = _cf.last_turn_card(ids), _cf.phone_front()
     except Exception:  # noqa: BLE001
-        focus = ""
+        focus, front = "", ""
+    if front:   # V2-903: on a phone the app IN FRONT is what he sees — it leads the list and is the focus
+        ids = sorted(ids, key=lambda i: i.split("::", 1)[0] != front)
+        focus = ids[0] if ids[0].split("::", 1)[0] == front else focus
     criteria: dict[str, str] = {}
     for wid in ids[:MAX_OPEN_CARDS]:
         face = _card_label(wid)
@@ -43,7 +46,11 @@ def target_question(open_ids) -> dict | None:
         return None
     criteria["none"] = "the order is not aimed at anything on screen"
     instructions = TARGET_INSTRUCTIONS
-    if focus:
+    if front and focus.split("::", 1)[0] == front:
+        instructions += (f" He is on his PHONE: «{focus}» is the app in front; the others are hidden behind it. An order "
+                         f"that points at what is on screen without naming an app («pause», «close it», «the next one») "
+                         f"goes to «{focus}» when it can do it.")
+    elif focus:
         instructions += (f" His previous turn acted on «{focus}». An order that points at something ALREADY on "
                          f"screen without naming it («it», «that», «this one», «the most important one», «pause») "
                          f"continues on that app when it can do it. An order that names a kind of thing (a song, a "

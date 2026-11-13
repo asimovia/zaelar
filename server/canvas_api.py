@@ -24,8 +24,7 @@ async def canvas_state(payload: dict):
     """The frontend (authoritative for the canvas) reports which widgets the operator has OPEN → stored in memory
     STATE (`open_widgets`), which ALWAYS travels in the prompt (memory_cache) and appears in the map. This lets the
     brain know "what the operator has in front of them" and resolve "modify the X widget" without asking.
-    Best-effort, fire-and-forget from `desktop._persist()`. Normalizes instance ids (navegador::t3 → navegador)
-    and dedupes."""
+    Best-effort, fire-and-forget from `desktop._persist()`. Normalizes instance ids (navegador::t3 → navegador)."""
     # THE SCREEN THE CONVERSATION IS ABOUT. Two tabs (or a phone and a desktop) report different canvases, and the
     # server used to take the last word: in the demo pass of 2026-09-28 the operator's watching tab, which had no
     # chart, «closed» Markets 268 ms into «ok close that», the verdict no longer saw the chart and the agenda was
@@ -107,6 +106,7 @@ async def canvas_state(payload: dict):
                         _minw.append(_m)
         except Exception:  # noqa: BLE001
             _minw = []
+        _maxw, _minw = _front_of(payload, seen) if "front" in (payload or {}) else (_maxw, _minw)   # V2-903: a deck
         memory.set_state({"open_widgets": seen, "maximized_widget": _maxw, "minimized_widgets": _minw})
         # V2-078: widgets that BECOME open enter the `recent_widgets` MRU (2nd scoping layer open>recent>catalog).
         # It persists after closing → "the one I used a moment ago" still has priority. Single hook: every show
@@ -142,6 +142,12 @@ async def canvas_state(payload: dict):
     return JSONResponse({"ok": True, "open_widgets": seen})
 
 
+def _front_of(payload: dict, seen: list) -> tuple[str, list]:
+    """`(maximized, minimized)` for a deck's report: the app in front («» on its home) and every other open app."""
+    front = str((payload or {}).get("front") or "").split("::", 1)[0].strip().lower()
+    return (front if front in seen else ""), [w for w in seen if w != front]
+
+
 #: The last report of every screen (V2-792), so a turn that starts on another screen finds its canvas in place.
 _BY_DEV: dict = {}
 
@@ -157,7 +163,8 @@ def _counts(payload: dict) -> bool:
     dev = _screens.clean(payload.get("dev"))
     if dev:
         gone = set(open_on(dev)) - set(payload.get("open") or [])
-        _BY_DEV[dev] = {"open": list(payload.get("open") or [])[:60], "layout": payload.get("layout")}
+        _BY_DEV[dev] = {"open": list(payload.get("open") or [])[:60], "layout": payload.get("layout"),
+                        **({"front": payload.get("front")} if "front" in payload else {})}
         for cid in gone:                     # V2-884: an app closed on this screen — its report stops speaking for it
             __import__("widgets.state", fromlist=["x"]).forget(cid, dev, instance=str(cid))
         act = _screens.current()
@@ -192,6 +199,8 @@ def _adopt(dev: str) -> None:
         maxw = next((str(it.get("id") or "").split("::", 1)[0].lower() for it in layout
                      if isinstance(it, dict) and it.get("max")), "")
         minw = [str(it.get("id") or "").split("::", 1)[0].lower() for it in layout if isinstance(it, dict) and it.get("min")]
+        if "front" in rep:
+            maxw, minw = _front_of(rep, seen)
         memory.set_state({"open_widgets": seen, "maximized_widget": maxw, "minimized_widgets": minw})
     except Exception as e:  # noqa: BLE001 — the brain keeps the previous canvas rather than none
         logger.debug(f"canvas: could not adopt the canvas of {dev}: {e!r}")
