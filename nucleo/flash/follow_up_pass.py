@@ -206,6 +206,18 @@ class Hold:
         return any(t.done() and not t.cancelled() and not t.exception() and data_ops.answer_of(t.result()) for t in mine)
 
 
+def drop_held(hold: "Hold | None", emit=None, why: str = "") -> int:
+    """A stream cut (barge-in) or failed leaves the turn's queue undecided: nothing it held runs, and it is said — by
+    the cut's own event (the count), or here (L2 P3-1). Returns how many were dropped."""
+    d, n = getattr(hold, "decision", None), 0
+    if d is not None and not d.settled and not d.cut:
+        n, d.cut, d.queue = len(d.queue), True, []   # cut, not settled: a late call after it is dropped too
+        if emit is not None:
+            emit("brain", "🗑 the stream failed — what waited for the verdict is dropped", role="system",
+                 extra={"cat": "flash", "why": why, "dropped": n})
+    return n
+
+
 def flush(hold: "Hold | None", spoken, emit, spoken_text: str = "") -> str:
     """The turn's chain has run: deferred words are said only if nothing else was — the card's answer, said later, is
     the turn's ONE answer (never a guess, a correction and a third line). The turn's words after it."""

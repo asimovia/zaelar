@@ -513,6 +513,7 @@ class LangSpec:
     worker_confirm_generic: str = ""
     # An act in HIS name toward somebody he never named in this errand (`nucleo/on_his_behalf.py`).
     worker_confirm_on_behalf: str = ("")
+    send_channel_which: str = ""   # V2-893 L3: his reading names another channel than the call — which one ({his}, {other})
     # V2-851 F2 §4a — an act that leaves after the worker read a stranger's text (`nucleo/workers/exit_gate.py`).
     worker_confirm_tainted: str = ""
     # V2-851 F2 §6 — a worker proposes a standing rule; it is written only on his yes (`nucleo/workers/rules_bridge.py`).

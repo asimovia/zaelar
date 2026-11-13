@@ -97,6 +97,12 @@ def against_the_model(handle, key: str, agrees) -> str:
     return RUN
 
 
+def substitutes(handle, model_action: str) -> bool:
+    """The screen-action verdict takes the PLACE of the model's call only at VETO (CRIT-K2b R4) — a doubt below runs it."""
+    from nucleo.turn import brief as _tb
+    return against_the_model(handle, _tb.TARGET_KEY, lambda c: str(c).rpartition(":")[2] == model_action) == VETOED
+
+
 def mass(handle, key: str, choice: str) -> float:
     """The probability the verdict's distribution gave `choice` (0 when it cannot say)."""
     try:
