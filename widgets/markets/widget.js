@@ -119,6 +119,7 @@ export function render(el, data, ctx){
     form.onsubmit = (e) => { e.preventDefault(); const v = inp.value.trim();
       if(v){ try{ ctx && ctx.action && ctx.action("show", { symbol: v }); }catch(_){} } };
     form.appendChild(inp); form.appendChild(go); el.appendChild(form);
+    reportShown(ctx, d);
     return;
   }
   const pts = Array.isArray(d.points) ? d.points : [];
@@ -164,4 +165,14 @@ export function render(el, data, ctx){
     tabs.appendChild(b);
   }
   el.appendChild(tabs);
+  reportShown(ctx, d);
+}
+
+// V2-884 — what the card SHOWS, said through the host's one door after every paint with the revision it applied: the
+// quote on screen ("" = none) and the period its chart covers.
+function reportShown(ctx, d){
+  if(!ctx || typeof ctx.state !== "function") return;
+  const shown = {symbol: String(d.symbol || "").slice(0, 20)};
+  if(d.symbol && /^(1d|5d|1mo|3mo|6mo|1y|5y)$/.test(String(d.range || ""))) shown.range = d.range;
+  try{ Promise.resolve(ctx.state(shown, {applied: true})).catch(()=>{}); }catch(_){}
 }

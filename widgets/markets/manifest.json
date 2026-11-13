@@ -1,6 +1,13 @@
 {
   "id": "markets",
   "screens": "shared",
+  "state": {
+    "order": {"symbol": "symbol", "range": "range"},
+    "report": {
+      "symbol": {"type": "text:20", "follows": "symbol", "rest": ""},
+      "range": {"type": "enum:1d|5d|1mo|3mo|6mo|1y|5y", "follows": ["symbol", "range"]}
+    }
+  },
   "version": "0.1.0",
   "owner": "Zaelar",
   "created": "2026-09-26",
