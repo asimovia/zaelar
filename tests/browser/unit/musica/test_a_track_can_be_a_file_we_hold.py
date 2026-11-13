@@ -92,7 +92,8 @@ def test_a_file_deleted_since_it_was_listed_refuses_out_loud(lib):
     t = local_audio.track_from_library("audio/a.mp3")
     (lib.dir_for("audio") / "a.mp3").unlink()
     r = local_audio.play({}, t)
-    assert r["ok"] is False and "biblioteca" in r["reason"]
+    from widgets.say import say
+    assert r["ok"] is False and r["reason"] == say("musica", "say_file_gone", "")   # in his language
 
 
 # ── the widget: dispatch, the bar's mode, and mixed playlists ──────────────────────────────────────────────
@@ -108,7 +109,8 @@ def test_the_bar_reports_a_third_mode(lib):
 def test_play_local_refuses_a_file_that_is_not_there(lib):
     from widgets.musica import data
     r = data.apply_action("play_local", {"path": "audio/nope.mp3"})
-    assert r["ok"] is False and "biblioteca" in r["error"]
+    from widgets.say import say
+    assert r["ok"] is False and r["error"] == say("musica", "say_not_in_library", "")
 
 
 def test_a_played_local_track_lands_in_recent(lib):

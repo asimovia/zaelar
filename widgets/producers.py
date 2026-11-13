@@ -55,6 +55,7 @@ import asyncio
 from loguru import logger
 
 from . import runtime
+from widgets.say import say
 
 # Default channel for a widget that declares `runtime` without saying which channel it produces on. `""` = competes
 # with nobody (it produces, but not on an exclusive resource: a process, a disk recording...). Only a NAMED channel is
@@ -243,7 +244,7 @@ def gate(wid: str, action: str) -> dict | None:
     except Exception:                            # without runstate there is no reason to block anyone
         return None
     return {"ok": False, "error": "agent_stopped", "id": wid, "action": action,
-            "message": "El agente está parado. Enciéndelo (⏻) para volver a reproducir."}
+            "message": say("producers", "say_agent_stopped", "The agent is stopped. Switch it on (⏻) to play again.")}
 
 
 async def enforce_exclusive(wid: str, action: str) -> list[str]:

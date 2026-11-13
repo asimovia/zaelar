@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from .. import store
 from .library import _ENFORCEABLE, WID, _norm
+from widgets.say import say
 
 
 # Spoken names for the enforceable keys («calidad mínima», not "min_definition"); one-way, the answer names the key.
@@ -74,7 +75,7 @@ def _apply_pref(action: str, p: dict, db: dict) -> dict:
             store.save(WID, db)
             return {"ok": True, "note": hit.get("text"), "prefs": dict(db["prefs"])}
         return {"ok": False, "error": "not_set", "key": raw_key, "prefs": dict(db["prefs"]),
-                "message": "No tengo esa preferencia guardada."}
+                "message": say("youtube", "say_no_such_pref", "I don't have that preference saved.")}
     value = p.get("value") if p.get("value") is not None else p.get("level")
     if not key:
         # Not enforceable — and that is said out loud rather than stored as if it were a rule. The brain
@@ -82,7 +83,7 @@ def _apply_pref(action: str, p: dict, db: dict) -> dict:
         text = " ".join(x for x in [raw_key, "" if value is None else str(value)] if x).strip()[:200]
         if not text:
             return {"ok": False, "error": "no_preference",
-                    "message": "Dime qué preferencia guardo.", "enforceable": sorted(_ENFORCEABLE)}
+                    "message": say("youtube", "say_which_pref", "Tell me which preference to save."), "enforceable": sorted(_ENFORCEABLE)}
         _prefs.add_note(db, text, _ENFORCEABLE)
         store.save(WID, db)
         return {"ok": True, "stored_as": "note", "note": text, "enforceable": sorted(_ENFORCEABLE),

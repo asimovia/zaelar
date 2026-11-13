@@ -8,6 +8,7 @@
 import time
 
 from .. import store
+from widgets.say import say
 
 WID = "youtube"
 
@@ -48,7 +49,7 @@ def _sync_platforms(db: dict) -> dict:
     db["platforms_at"] = int(time.time())
     if svc is None:
         db["platforms"] = []
-        return {"ok": False, "error": "conector de vídeo no disponible", "platforms": []}
+        return {"ok": False, "error": say("youtube", "say_connector_down", "the video connector isn't available"), "platforms": []}
     st = svc.status()
     rows = []
     for r in (st.get("providers") or []):
@@ -82,7 +83,7 @@ def apply(action: str, p: dict, db: dict) -> "dict | None":
         platform = str(p.get("platform") or "youtube").strip().lower()
         svc = _svc()
         if svc is None:
-            return {"ok": False, "error": "conector de vídeo no disponible"}
+            return {"ok": False, "error": say("youtube", "say_connector_down", "the video connector isn't available")}
         db["suggesting"] = True
         store.save(WID, db)                              # visible state while the network pull runs
         try:

@@ -91,7 +91,7 @@ async def navegador_act(task_id: str = Body(..., embed=True), action: str = Body
         # V2-851 F2 — the tab a worker drives answers only to THAT worker's per-task token (`nucleo/cli/nav.py` sends
         # it). A tab no live worker drives has no session to impersonate, and every act on it still crosses the
         # click gate, so it stays reachable: that is the browser tests' and a finished errand's tab.
-        return JSONResponse({"ok": False, "error": "task/token no válido para esta pestaña"}, status_code=403)
+        return JSONResponse({"ok": False, "error": "task/token not valid for this tab"}, status_code=403)
     try:
         return await _run_act(task_id, action, args)
     finally:
@@ -135,7 +135,7 @@ async def _run_act(task_id: str, action: str, args: dict):
     try:
         from widgets.navegador import owner
     except Exception as e:  # noqa: BLE001
-        return JSONResponse({"ok": False, "error": f"navegador no disponible: {e}"}, status_code=503)
+        return JSONResponse({"ok": False, "error": f"browser unavailable: {e}"}, status_code=503)
     try:
         tb = owner._task_browsers.get(task_id)
         if tb is None:
@@ -194,7 +194,7 @@ async def _run_act(task_id: str, action: str, args: dict):
             # Fresh PNG path; every action calls _capture, so the worker can Read the view after acting.
             return {"ok": bool(ok), "msg": msg, "shot": _f._shot_path(task_id),
                     **_f._with_stall(task_id, _f._with_wall(_f._with_url_change(_before, snap), task_id))}
-        return JSONResponse({"ok": False, "error": f"acción desconocida: {action}"}, status_code=400)
+        return JSONResponse({"ok": False, "error": f"unknown action: {action}"}, status_code=400)
     except Exception as e:  # noqa: BLE001
         return JSONResponse({"ok": False, "error": f"{type(e).__name__}: {_brief(e, 160)}"},
                             status_code=500)

@@ -15,6 +15,8 @@ report without the explanation of how it was reached accounts for half of what h
 """
 from __future__ import annotations
 
+from widgets.say import say
+
 _MAX_PHASES = 40           # the same ring retained by the live record (`dispatch.PHASES_KEPT`)
 _MAX_PHASE_CHARS = 160
 
@@ -108,7 +110,7 @@ def _harvest(data: dict, sheet: str = "") -> dict:
 def browser_down(task_id: str) -> dict:
     """`auth_done` with the browser down: not a dead stop (principle 1) but an OFFER in the reply. His login is not
     lost — it stays in the browser's persistent profile — and the same action is the retry."""
-    return {"ok": False, "error": "el navegador no está activo ahora mismo", "task_id": task_id,
+    return {"ok": False, "error": say("results", "browser_not_running", "the browser isn't running right now"), "task_id": task_id,
             "offer": "offer him to press «Ya he iniciado sesión» again in a moment, or to carry on now: the login he "
                      "did stays in the browser's persistent profile for when it is back",
             "retry": {"action": "auth_done", "payload": {"task_id": task_id}}}

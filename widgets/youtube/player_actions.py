@@ -4,6 +4,7 @@ from __future__ import annotations
 from . import data as _d
 from widgets import result_refs as _rr
 from .actions import _a_play_result
+from widgets.say import say
 
 
 def _a_play_item(action, p, db) -> dict:
@@ -17,7 +18,7 @@ def _a_play_item(action, p, db) -> dict:
         return _a_play_result(action, {"item": ref}, db)   # a band row he named, the queue holding others
     if idx is None:
         return {"ok": False, "error": "item_not_found", "item": p.get("item"),
-                "message": "No encuentro ese vídeo en la lista."}
+                "message": say("youtube", "say_not_in_list", "I can't find that video in the list.")}
     return _d._play_pos(db, idx, "play_item")
 
 
@@ -29,7 +30,7 @@ def _a_previous(action, p, db) -> dict:
     if db.get("videoId"):                           # at the start (or off-list): back = restart, like YouTube
         db["paused"] = False
         return _d._bump(db, "restart")
-    return {"ok": False, "error": "no_video", "message": "No hay nada sonando."}
+    return {"ok": False, "error": "no_video", "message": say("youtube", "say_nothing_playing", "Nothing is playing.")}
 
 
 def _a_ended(action, p, db) -> dict:
@@ -51,7 +52,7 @@ def _a_play(action, p, db) -> dict:
         if lst:
             nxt = int(db.get("pos", -1)) + 1
             return _d._play_pos(db, nxt if 0 <= nxt < len(lst) else 0, "play_item")
-        return {"ok": False, "error": "no_video", "message": "No hay ningún vídeo cargado ni lista."}
+        return {"ok": False, "error": "no_video", "message": say("youtube", "say_nothing_loaded", "No video or list is loaded.")}
     db["paused"] = False
     return _d._bump(db, "play")
 
@@ -123,7 +124,7 @@ def _a_set_volume(action, p, db) -> dict:
     try:
         lvl = int(p.get("level"))
     except (TypeError, ValueError):
-        return {"ok": False, "error": "bad_level", "message": "Dime un nivel entre 0 y 100."}
+        return {"ok": False, "error": "bad_level", "message": say("youtube", "say_level_range", "Tell me a level between 0 and 100.")}
     db["volume"] = max(0, min(100, lvl))
     db["muted"] = db["volume"] == 0
     _d._sound.kept_mute(db, db["muted"])

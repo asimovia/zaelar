@@ -15,6 +15,7 @@ replaced — his list is his, and a search must not wipe it.
 from __future__ import annotations
 
 from . import data as _d
+from widgets.say import say
 
 #: How many results «a few videos» queues — the search band's default size, so band and queue coincide.
 QUEUE_N = 5
@@ -45,7 +46,7 @@ def _a_queue_search(action, p, db) -> dict:
     if idx < 0:
         idx = next((i for i, it in enumerate(lst) if it.get("videoId") == first), -1)
     if idx < 0:
-        return {"ok": False, "error": "no_video", "message": "No encontré vídeos de eso."}
+        return {"ok": False, "error": "no_video", "message": say("youtube", "say_no_videos_for_that", "I couldn't find videos of that.")}
     r = _d._play_pos(db, idx, "play_item")
     r.update({"queued": [str(t.get("title") or "") for t in picks], "count": len(lst),
               "query": found.get("query") or ""})

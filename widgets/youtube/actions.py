@@ -7,6 +7,7 @@ from __future__ import annotations
 from . import data as _d
 from . import embed_check as _ec
 from widgets import result_refs as _rr
+from widgets.say import say
 
 
 # V2-638 — the player is where a film is WATCHED, so the two non-YouTube sources belong on this surface
@@ -63,7 +64,7 @@ def _a_load(action, p, db) -> dict:
     db["loading"], db["loading_query"] = False, ""
     if not vid:
         _d.store.save(_d.WID, db)                          # turn off loader even if nothing was found
-        return {"ok": False, "error": "no_video", "message": "No encontré ese vídeo."}
+        return {"ok": False, "error": "no_video", "message": say("youtube", "say_video_not_found", "I couldn't find that video.")}
     db["player_error"] = ""   # fresh video, clean slate (V2-401)
     db["blocked_notice"] = {}
     db["pick_explicit"] = explicit
@@ -122,7 +123,7 @@ def _a_add(action, p, db) -> dict:
     if not vid:                                     # not URL/id → search by name
         q = str(p.get("query") or p.get("q") or raw or "").strip()
         if not q:
-            return {"ok": False, "error": "no_video", "message": "Dime qué vídeo añado (enlace o nombre)."}
+            return {"ok": False, "error": "no_video", "message": say("youtube", "say_which_video_to_add", "Tell me which video to add (a link or a name).")}
         if (band := _rr.resolve(db.get("search_results") or [], q)) is not None:
             return _a_add_results(action, {"items": str(band + 1)}, db)   # a row he can SEE is not a new search
         db["adding"] = q                            # visible state while the network search runs
@@ -135,7 +136,7 @@ def _a_add(action, p, db) -> dict:
         channel, published = r["channel"], r["published"]
     if not vid:
         _d.store.save(_d.WID, db)                          # turn the "adding" state off even on failure
-        return {"ok": False, "error": "no_video", "message": "No encontré ese vídeo."}
+        return {"ok": False, "error": "no_video", "message": say("youtube", "say_video_not_found", "I couldn't find that video.")}
     lst = db.setdefault("list", [])
     for i, it in enumerate(lst):                    # dedup by videoId: a repeated add is almost always a retry
         if it.get("videoId") == vid:
@@ -167,7 +168,7 @@ def _a_search(action, p, db) -> dict:
     q = str(p.get("query") or p.get("q") or "").strip()
     q = _d._results_query(q) or q                       # a pasted results link is the query, decoded
     if not q:
-        return {"ok": False, "error": "no_query", "message": "Dime qué vídeos busco."}
+        return {"ok": False, "error": "no_query", "message": say("youtube", "say_which_videos", "Tell me which videos to look for.")}
     # V2-756 — THE NUMBERS UNDER HIS FEET. Live session 74be8e9a (2026-09-23): «Ahora quiero que me
     # pongas el vídeo número tres» came back as `play_video(action=list)` — a SEARCH — three turns
     # running, and each one re-fetched the same query and rebuilt the band. He said it himself:
@@ -189,7 +190,7 @@ def _a_search(action, p, db) -> dict:
         _d.store.save(_d.WID, db)
         return {"ok": True, "unchanged": True, "count": len(prev), "query": q,
                 "results": [r.get("title") for r in prev],
-                "message": "Esos resultados ya están en pantalla, numerados."}
+                "message": say("youtube", "say_results_on_screen", "Those results are already on screen, numbered.")}
     try:
         n = int(p.get("n") or 6)
     except Exception:
@@ -212,8 +213,8 @@ def _a_search(action, p, db) -> dict:
             # Results existed and the operator's own filter removed them — saying «no videos» would read
             # as a worse search and invite retries against a wall he built himself (V2-414's confound).
             return {"ok": False, "error": "all_blocked", "blocked_out": n_blocked,
-                    "message": "Había resultados pero todos eran de canales que tienes bloqueados."}
-        return {"ok": False, "error": "no_video", "message": "No encontré vídeos de eso."}
+                    "message": say("youtube", "say_all_blocked", "There were results, but all from channels you've blocked.")}
+        return {"ok": False, "error": "no_video", "message": say("youtube", "say_no_videos_for_that", "I couldn't find videos of that.")}
     db["search_results"] = [{"videoId": h["videoId"],
                              "title": h["title"] or ("youtu.be/" + h["videoId"]),
                              "channel": h["channel"], "published": h["published"],
@@ -242,7 +243,7 @@ def _a_play_result(action, p, db) -> dict:
     # V2-632 — «reproduce el tercero» over the dashboard's search band. 1-based, like every spoken number.
     res = db.get("search_results") or []
     if not res:
-        return {"ok": False, "error": "no_results", "message": "No hay resultados de búsqueda ahora mismo."}
+        return {"ok": False, "error": "no_results", "message": say("youtube", "say_no_results_now", "There are no search results right now.")}
     ref = p.get("item") if p.get("item") is not None else p.get("n")
     i = _rr.resolve(res, ref)          # a number, or the title/channel he named (2026-10-14, `result_refs`)
     if i is None:
@@ -265,12 +266,12 @@ def _a_add_results(action, p, db) -> dict:
     # keep working on them untouched.
     res = db.get("search_results") or []
     if not res:
-        return {"ok": False, "error": "no_results", "message": "No hay resultados de búsqueda ahora mismo."}
+        return {"ok": False, "error": "no_results", "message": say("youtube", "say_no_results_now", "There are no search results right now.")}
     raw = p.get("items", p.get("item", p.get("n", "")))
     idxs = _rr.indices(res, raw)        # numbers, «all», or the rows he named (2026-10-14, `result_refs`)
     if not idxs:
         return {"ok": False, "error": "no_items", "count": len(res),
-                "message": "Dime cuáles añado (números, o «todos»)."}
+                "message": say("youtube", "say_which_to_add", "Tell me which ones to add (numbers, or «all»).")}
     lst = db.setdefault("list", [])
     added, positions = [], []
     for i in idxs:
@@ -325,5 +326,5 @@ def _a_next(action, p, db) -> dict:
     lst = db.get("list") or []
     nxt = int(db.get("pos", -1)) + 1
     if not lst or nxt >= len(lst):
-        return {"ok": False, "error": "end_of_list", "message": "No hay más vídeos en la lista."}
+        return {"ok": False, "error": "end_of_list", "message": say("youtube", "say_list_ended", "There are no more videos in the list.")}
     return _d._play_pos(db, nxt, "next")

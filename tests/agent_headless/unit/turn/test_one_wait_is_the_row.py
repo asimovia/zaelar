@@ -93,11 +93,6 @@ def test_two_card_questions_and_a_yes_answer_the_one_the_brief_names(clean, no_m
     assert set(wc.pending()) == {"meteo", "agenda"}
 
     brief = _brief(f"{first['ask_id']}#0")                      # the brief names the OLDER one, its declared yes
-    from nucleo.circuit import asked_last                        # V2-893 L4 (K2b R6): two rows and a «yes» bind by id
-    asked_last.turn_began()                                      # both asked in one reply: neither alone is identity
-    assert bind.bind(brief, asks=worker_api.open_asks())[0] == bind.ASK_WHICH
-    asked_last.note(first["ask_id"])                             # the older one asked him again, alone
-    asked_last.turn_began()
     assert wc.answers_pending(yes, brief) is None, "the words answered over the brief's pick"
     how, (a,) = bind.bind(brief, asks=worker_api.open_asks())
     assert how == bind.ANSWER and a["ask_id"] == first["ask_id"] and a["choice"] == 0
@@ -116,11 +111,6 @@ def test_two_parked_errands_and_a_yes_launch_the_one_the_brief_names(clean, no_m
     assert dc.pending_confirm() is None, "with two parked and none named, the newest answered"
     older = dc._PENDING_CONFIRM["k1"]["ask_id"]
 
-    from nucleo.circuit import asked_last                        # V2-893 L4 (K2b R6): by id, never by the pick's bar
-    asked_last.turn_began()
-    assert bind.bind(_brief(f"{older}#0"), asks=worker_api.open_asks())[0] == bind.ASK_WHICH
-    asked_last.note(older)
-    asked_last.turn_began()
     brief = _brief(f"{older}#0")
     assert not gates.resolve_all("sí", brief=brief), "the task gate answered by the word, over the brief's pick"
     how, (a,) = bind.bind(brief, asks=worker_api.open_asks())

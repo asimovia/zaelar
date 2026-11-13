@@ -29,6 +29,7 @@ meeting's own guest list and the errand's `mandate.parties` — never from the w
 from __future__ import annotations
 
 import re
+from widgets.say import say
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[A-Za-z]{2,}$")
 
@@ -276,9 +277,9 @@ def run(db: dict, payload: dict) -> dict:
             added, already = res.get("added") or [], res.get("already") or []
             if not added:
                 return {"ok": True, "invited": [], "already": already, "how": "calendar",
-                        "message": f"{', '.join(already)} ya estaba invitado a esta reunión."}
+                        "message": say("agenda", "say_already_invited", "{who} was already invited to this meeting.", who=", ".join(already))}
             return {"ok": True, "invited": added, "already": already, "how": "calendar",
-                    "message": f"Invitación enviada a {', '.join(added)} desde el calendario."}
+                    "message": say("agenda", "say_invited_calendar", "Invitation sent to {who} from the calendar.", who=", ".join(added))}
         # A calendar that refused is not a reason to fall to the second rung SILENTLY — a separate .ics puts a
         # second, unlinked copy in the guest's calendar whose answer nobody would ever see — and not a dead stop
         # either: the second rung is OFFERED, and his yes is the same call with `via: email`. With no mail
@@ -384,7 +385,7 @@ def _mail_invitation(m: dict, guests: dict, note: str) -> dict:
                               "ics": text, "ics_method": "REQUEST"})
         sent.append(addr)
     return {"ok": True, "invited": sent, "already": [], "how": "email",
-            "message": f"Invitación enviada por correo a {', '.join(sent)}."}
+            "message": say("agenda", "say_invited_email", "Invitation emailed to {who}.", who=", ".join(sent))}
 
 
 def _offset_minutes() -> int:

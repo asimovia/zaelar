@@ -20,6 +20,7 @@ Extracted here rather than added to `data.py` because that file sits exactly on 
 source-shaped thing in it, so it moves and the per-item source logic joins it.
 """
 from __future__ import annotations
+from widgets.say import say
 
 YOUTUBE = "youtube"
 LOCAL = "local"
@@ -104,9 +105,9 @@ def play_local(db: dict, path: str) -> dict:
         from library import index
         rec = index.entry_for(path)
         if rec and not rec.get("playable"):
-            return {"ok": False, "error": "ese fichero no se puede reproducir en el navegador",
+            return {"ok": False, "error": say("youtube", "say_file_unplayable", "that file can't be played in the browser"),
                     "download_url": rec.get("download_url") or ""}
-        return {"ok": False, "error": "no encuentro ese vídeo en tu biblioteca"}
+        return {"ok": False, "error": say("youtube", "say_not_in_library", "I can't find that video in your library")}
     return {"ok": True, "item": it}
 
 

@@ -25,6 +25,7 @@ from __future__ import annotations
 import time
 
 from loguru import logger
+from widgets.say import say
 
 #: Sources this module can pull. `google-contacts` is NOT here: it has its own two-way sync in
 #: `gcontacts.py`, which is a different contract and stays that way.
@@ -133,11 +134,11 @@ def sync_now(source: str) -> dict:
         # He NAMED a source that is not linked: nothing is imported from another one on his behalf — the reply
         # OFFERS the sources that are connected, and he chooses.
         alts = connected_sources(but=source)
-        tail = (f" Ahora mismo puedo traerlos de {', '.join(_LABEL.get(a, a) for a in alts)}: dime si quieres."
-                if alts else "")
+        tail = (say("contactos", "say_can_import_from", " I can bring them from {sources} right now: tell me if you want.",
+                    sources=", ".join(_LABEL.get(a, a) for a in alts)) if alts else "")
         return {"ok": False, "error": "source_not_connected", "source": source, "offer": alts,
-                "message": f"{_LABEL.get(source, source)} no está conectado todavía — conéctalo y vuelve a "
-                           f"pedírmelo.{tail}"}
+                "message": say("contactos", "say_source_not_connected", "{source} isn't connected yet — connect it and ask me again.",
+                                source=_LABEL.get(source, source)) + tail}
     t0 = time.time()
     got = _payload(source)
     logger.info(f"contactos: {source} contestó en {time.time() - t0:.1f}s → ok={got.get('ok')} "

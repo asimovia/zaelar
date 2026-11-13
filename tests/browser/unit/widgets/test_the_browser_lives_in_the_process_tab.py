@@ -205,14 +205,16 @@ def test_auth_done_resolves_the_task_from_the_sheets_live_browser(monkeypatch):
 
 def test_auth_done_with_nothing_waiting_says_so():
     out = sheet.apply_action("auth_done", {"sheet": "nadie"})
-    assert out["ok"] is False and "navegador" in out["error"]
+    from widgets.say import say
+    assert out["ok"] is False and out["error"] == say("results", "no_login_waiting", "")   # in his language
 
 
 def test_auth_done_with_a_dead_owner_is_a_refusal_not_a_silence(monkeypatch):
     import widgets.supervisor as supervisor
     monkeypatch.setattr(supervisor, "enqueue", lambda *a: False)
     out = sheet.apply_action("auth_done", {"task_id": "t7"})
-    assert out["ok"] is False and "activo" in out["error"]
+    from widgets.say import say
+    assert out["ok"] is False and out["error"] == say("results", "browser_not_running", "")
 
 
 # ── set_sheet: a reused tab follows its new errand, and a stamp is never blanked ────────────────────────────
