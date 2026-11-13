@@ -204,6 +204,7 @@ export function render(el, data, ctx) {
       state.finished = true;
       renderActions();
       lsClear();
+      reportPhase(ctx, state);
       return;
     }
     digits.classList.remove("finished");
@@ -213,6 +214,7 @@ export function render(el, data, ctx) {
     else sub.textContent = "";      // nothing set → no placeholder dots under the zero (V2-876 P-33)
 
     renderActions();
+    reportPhase(ctx, state);
   }
 
   function renderActions() {
@@ -304,6 +306,14 @@ export function render(el, data, ctx) {
       }
     }, 1000);
   }
+}
+
+// V2-884 — what the card SHOWS, through the host's one door: its own countdown runs here (and a page restored from
+// localStorage can differ from the store), so the phase is the screen's — finished the second it reaches zero.
+function reportPhase(ctx, st){
+  if(!ctx || typeof ctx.state !== "function") return;
+  const phase = st.finished ? "finished" : st.remaining > 0 ? (st.running ? "running" : "paused") : "idle";
+  try{ Promise.resolve(ctx.state({phase, label: String(st.label || "").slice(0, 40)}, {applied: true})).catch(()=>{}); }catch(_){}
 }
 
 // Cleanup

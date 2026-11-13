@@ -1,6 +1,13 @@
 {
   "id": "timer",
   "screens": "shared",
+  "state": {
+    "order": {"running": "running", "target": "target_seconds", "label": "label"},
+    "report": {
+      "phase": {"type": "enum:idle|running|paused|finished", "follows": ["running", "target"], "rest": "idle"},
+      "label": {"type": "text:40", "follows": "label", "rest": ""}
+    }
+  },
   "version": "0.1.0",
   "owner": "Zaelar",
   "licence": "SUL-1.0",
