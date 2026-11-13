@@ -1,0 +1,25 @@
+{
+  "view_data_shape": {
+    "age": "NoneType",
+    "coach": "dict",
+    "equipment": "dict",
+    "exercises": "dict",
+    "images": "dict",
+    "last_weights": "dict",
+    "live": "NoneType",
+    "muscles": "list",
+    "next": "NoneType",
+    "now": "int",
+    "plan": "list",
+    "preferences": "str",
+    "program": "NoneType",
+    "programs": "list",
+    "sessions": "list",
+    "sessions_total": "int",
+    "status": "str",
+    "today": "str",
+    "view": "str",
+    "view_arg": "NoneType",
+    "view_n": "int"
+  }
+}
