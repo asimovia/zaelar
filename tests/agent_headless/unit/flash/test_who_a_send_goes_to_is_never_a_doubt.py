@@ -60,9 +60,11 @@ def test_the_meeting_invitation_leaves_and_its_guest_must_be_his(gate):
 
 def test_the_engine_never_turns_a_draft_into_a_send_to_somebody_he_did_not_name(gate, monkeypatch):
     from nucleo.acts import message_repair as ordered_send
-    from nucleo.flash import direct_action, payload_fill, undecided
+    from nucleo.flash import direct_action, payload_fill
+    from nucleo.turn import verdicts
     monkeypatch.setattr(direct_action, "completes", lambda *_a, **_k: "send_to")
-    monkeypatch.setattr(undecided, "sure_order", lambda *_a: True)
+    monkeypatch.setattr(verdicts, "sure_order", lambda *_a: True)
+    monkeypatch.setattr(verdicts, "substitutes", lambda *_a: True)
     monkeypatch.setattr(payload_fill, "person_fill", lambda *_a: {})
     pay = {"contact": "Quinn", "text": "the numbers are in"}
     assert ordered_send.ordered_instead({}, "mensajeria", "draft", pay, "send the numbers to the team") is None

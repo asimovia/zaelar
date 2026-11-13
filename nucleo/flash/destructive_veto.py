@@ -9,7 +9,7 @@ deleted from his queue and the reply said «Hecho.» over something he never ask
 The arbiter's rule stays the one `direct_action.complete` spends: the verdict completes the model, it never
 contradicts it. A removal is the one call where the model contradicting a sure verdict is the costly reading, so:
   · the model's call REMOVES something (`widgets.contract.is_destructive`, or a `clear` action);
-  · the verdict names ANOTHER action of the SAME card, that one not a removal, at ≥ `SURE`;
+  · the verdict names ANOTHER action of the SAME card, that one not a removal, at ≥ VETO (`verdicts.substitutes`);
   · and his own words name no removal (`contract.names_a_removal`) — when he did say «quita», the model's call
     may be half of a two-order sentence and keeps today's rule.
 Then the verdict's action runs instead, with the payload his words fill (`direct_action.resolve`: the move's two
@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import re
 
-SURE = 0.9
 _CLEAR = re.compile(r"\bclear\b")
 
 
@@ -45,7 +44,8 @@ def contradicted(brief, widget_id: str, action: str, said: str = "") -> tuple[st
         vwid, vact = _da.from_brief(brief)              # re-validated against what is still open
         if not vwid or not vact or vact == action or _da._base_of(vwid) != _da._base_of(widget_id):
             return "", ""
-        if removes(vwid, vact) or not _da._action_sure(brief, floor=SURE):
+        from nucleo.turn import verdicts as _v   # it SUBSTITUTES the model's removal: VETO (CRIT-K2b R4)
+        if removes(vwid, vact) or not _v.substitutes(brief, action):
             return "", ""
         if _ct.names_a_removal(said):
             return "", ""
