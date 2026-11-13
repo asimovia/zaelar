@@ -22,35 +22,18 @@ _search_id = None                 # injected by data.py (V2-632 seam pattern)
 # (the copyright case), 100 = removed/private, 2/5 = broken. Any of them means THIS surface cannot play it.
 FATAL_CODES = {"2", "5", "100", "101", "150"}
 
-#: How many refusals ONE order walks through before the card stops replacing its own pick and says so. Read by both
-#: page players (this card and the music card, `widgets/musica/sound.py`). Live demo pass on b136 (U1-U3): every
-#: candidate of a song came back 150 — label-owned music refuses embedding as a class — and the music card walked
-#: ~20 of them in 40 s, nothing sounding and nothing said, past the window in which a late tell still answers the
-#: order (`late_report.WINDOW_S`). Past this many, the refusal is the content's, not one video's.
+#: Refusals ONE order walks through before the card stops replacing its own pick and says so — both page players (demo
+#: b136 U1-U3: the music card walked ~20 refused uploads in 40 s, silent, past `late_report.WINDOW_S`).
 WALK_MAX = 3
 
 
 def walk_step(state: dict, dead: str, title: str) -> dict:
-    """Count one refusal into the walk it belongs to and return that walk (`n` refusals, `from` = the title the
-    ORDER put on). A refusal of the video a walk put on screen continues it; any other video starts a new one, so a
-    fresh order never inherits the previous order's count. Mutates `state`."""
-    w = state.get("walk") if isinstance(state.get("walk"), dict) else {}
-    if dead and w.get("at") == dead:
-        w = {"at": dead, "n": int(w.get("n") or 0) + 1, "from": w.get("from") or title}
-    else:
-        w = {"at": dead, "n": 1, "from": title}
-    state["walk"] = w
-    return w
-
-
-def walk_put(state: dict, vid: str) -> None:
-    """The walk replaced its refused video with `vid`: a refusal of `vid` continues the same walk."""
-    if isinstance(state.get("walk"), dict):
-        state["walk"]["at"] = str(vid or "")
-
-
-def walk_spent(walk: dict) -> bool:
-    return int((walk or {}).get("n") or 0) >= WALK_MAX
+    """One refusal counted into its order's walk (`n`, `from` = what the ORDER put on); the caller sets `at` to the
+    replacement, so a refusal of anything else starts a new walk."""
+    w = state.get("walk") or {}
+    same = bool(dead) and w.get("at") == dead
+    state["walk"] = {"at": dead, "n": w.get("n", 0) + 1 if same else 1, "from": w.get("from") if same else title}
+    return state["walk"]
 
 
 def blocked_ids(db: dict) -> set:
@@ -166,12 +149,12 @@ def on_player_error(db: dict, code: str, dead: str) -> "str | None":
         db["blocked_notice"] = {"kind": "explicit", "from": dead_title, "code": code}
         return "handled"
     walk = walk_step(db, dead, dead_title)
-    nxt = None if walk_spent(walk) else next_unblocked(db, dead)
+    nxt = None if walk["n"] >= WALK_MAX else next_unblocked(db, dead)
     if nxt is None:
-        db["blocked_notice"] = {"kind": "exhausted", "from": walk.get("from") or dead_title, "code": code}
+        db["blocked_notice"] = {"kind": "exhausted", "from": walk["from"] or dead_title, "code": code}
         return "handled"
     swap_to(db, nxt)
-    walk_put(db, str(nxt.get("videoId") or ""))
+    walk["at"] = str(nxt.get("videoId") or "")
     db["blocked_notice"] = {"kind": "swapped", "from": dead_title,
                             "to": str(db.get("title") or "")[:100], "code": code}
     return "handled"
