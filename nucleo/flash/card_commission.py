@@ -220,8 +220,8 @@ def picture_by_verdict(brief, operator_text: str) -> dict | None:
         return None
     try:
         from nucleo.flash import direct_action as _da
-        from nucleo.turn import brief as _tb, verdicts as _v   # it replaces the model's tool: VETO (CRIT-K2b R4)
-        _c, info = _tb.read(brief, _tb.TARGET_KEY, "", min_confidence=_v.VETO)
+        from nucleo.turn import brief as _tb
+        _c, info = _tb.read(brief, _tb.TARGET_KEY, "", min_confidence=0.9)
         wid, action = _da.from_brief(brief)
         if info is None or not info.get("used") or not _filled_by_pictures(wid):
             return None

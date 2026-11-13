@@ -60,14 +60,12 @@ def ordered_instead(brief, widget_id: str, model_action: str, payload: dict | No
                     said: str) -> tuple[str, dict] | None:
     """`(action, payload)` of the ordered act that leaves, to run in place of the model's call, or None."""
     try:
-        from nucleo.flash import direct_action as _da, frontend as _fe
-        from nucleo.turn import verdicts as _v
+        from nucleo.flash import direct_action as _da, frontend as _fe, undecided as _und
         verdict = _da.completes(brief, widget_id, model_action=model_action)
         if not verdict or not _fe.at_least_sensitive(widget_id, verdict) or _fe.at_least_sensitive(widget_id, model_action):
             return None
-        if not _v.sure_order(brief, widget_id, verdict) or not (
-                _v.sure(brief, "request_type", _v.VETO) == (_v.SURE, "order") or _v.substitutes(brief, model_action)):
-            return None   # in the call's place: VETO, or an order sure at VETO — its send task asks first (K2b, E3)
+        if not _und.sure_order(brief, widget_id, verdict):
+            return None
         from nucleo.flash import payload_fill as _pf
         keys = set(_pf._payload_spec(widget_id, verdict))
         pay = dict(payload or {})
@@ -93,7 +91,5 @@ def run_ordered(brief, widget_id: str, model_action: str, payload: dict | None, 
          text=f"{widget_id}: modelo={model_action} · veredicto={sent[0]}", role="system",
          extra={"cat": "flash", "id": widget_id, "model": model_action, "verdict": sent[0]})
     acted["widget"] = True
-    from nucleo.request import substitution
-    with substitution.in_the_models_place():        # a send in the model's call's place asks before it leaves
-        apply(widget_id, sent[0], sent[1])
+    apply(widget_id, sent[0], sent[1])
     return True

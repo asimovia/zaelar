@@ -130,7 +130,7 @@ class Turn:
     def __init__(self, brief, escalate_req=None, operator_text: str = "", emit=None, t0=None, wait: float = 0.0):
         self.brief, self.req, self.text = brief, {} if escalate_req is None else escalate_req, operator_text
         self.emit = emit or (lambda *a, **k: None)
-        self.t0, self.wait, self.settled, self.queue, self.cut = t0 or time.monotonic(), wait, False, [], False
+        self.t0, self.wait, self.settled, self.queue = t0 or time.monotonic(), wait, False, []
 
     def routed(self) -> bool:
         return owns(self.req) or sure_escalate(self.brief)
@@ -143,8 +143,6 @@ class Turn:
 
     def gate(self, on_tool_call):
         def _call(name, args):
-            if self.cut:
-                return None                  # a cut stream's late calls (the `finally` after a barge-in) never run
             if self.brief:   # V2-887 step 8: a call was made — the doors it reaches ask their own questions, on their
                 from nucleo.turn import brief_doors   # own thread, merged into the brief: how many acts his words asked
                 brief_doors.fire(self.brief, "portal" if name == "escalate_to_slowbrain" else "" if name in PASS else "call")
@@ -170,7 +168,7 @@ class Turn:
     def tags(self, tag_emit):
         """None runs on a routed turn; until the state is final they wait in the queue with the calls."""
         def _emit(*a, **k):
-            if self.cut or self.routed():
+            if self.routed():
                 return None
             if not self.settled and self.words() is None:   # a final state ran what waited first (`words`)
                 return self.queue.append(("tag", tag_emit, a, k))

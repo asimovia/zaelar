@@ -157,12 +157,12 @@ async def stream_the_reply(self, motor, *, FastClient, messages, spec, _turn_too
         # así que el barge-in que cancela el turno lo corta también — sin lifecycle propio que cancelar.
         self._death_logged = True   # ya se relata aquí, con métricas; la envoltura de `_run` no duplica
         emit("brain", "✂️ turno cancelado (barge-in/overlap)", role="system",
-             extra={"cat": "flash", "partial_chars": len("".join(spoken)), "dropped": _fup.drop_held(_hold),
+             extra={"cat": "flash", "partial_chars": len("".join(spoken)),
                     "ttft_ms": first_ms(), "cut_after_ms": round((time.time() - t0) * 1000)})
         raise  # barge-in
     except Exception as e:
-        errored, err_text = True, str(e)
+        errored = True
+        err_text = str(e)
         err_exc = e          # V2-758: the EXCEPTION, not only its text — see `provider_failure.is_engine_fault`
         _turn_failure.log_named("nucleo fast brain error (not spoken raw)", e)
-        _fup.drop_held(_hold, emit, "error")
     return {"errored": errored, "stalled": stalled, "err_text": err_text, "err_exc": err_exc, "_hold": _hold}

@@ -103,23 +103,12 @@ def _reading(ctx: dict, out: Reading, slot: str, key: str) -> None:
     from nucleo.acts import message_channel
     theirs = message_channel.his_channel(ctx["wid"], ctx["act"], out.inner, ctx["turn"],
                                          emit=lambda _k, label, text="", **kw: ctx["emit"](label, text, kw.get("extra") or {}))
-    named = theirs is not out.inner or _named_by_reading(ctx["turn"], out.inner.get(key) or out.inner.get("platform"))
+    named = theirs is not out.inner or _named_by_reading(ctx["turn"], out.inner.get(key))
     if isinstance(theirs, dict):
         out.inner = theirs
-    from nucleo.turn import brief_doors   # his channel unread, or read below VETO against the call's: UNKNOWN
-    doubt = len(channel_choices(ctx["turn"], out.inner)) == 2
-    out.sources[slot] = "unknown" if not named and (doubt or brief_doors.unanswered(ctx["turn"], message_channel.KEY)) else \
+    from nucleo.turn import brief_doors   # his channel still unread is UNKNOWN, never «none named»: the exit asks
+    out.sources[slot] = "unknown" if not named and brief_doors.unanswered(ctx["turn"], message_channel.KEY) else \
         "reading" if named else _own(ctx, out.inner.get(key) or out.inner.get("platform"))
-
-
-def channel_choices(turn, inner: dict) -> list[str]:
-    """`[his reading's channel, the call's channel]` when his reading (licence, below VETO) names ANOTHER channel than
-    the call carries — the doubt the exit asks as «which channel?» — else []. The call's `channel` or `platform` alike."""
-    from nucleo.acts import message_channel
-    from nucleo.turn import verdicts
-    said, _i = verdicts.read(turn, message_channel.KEY, None) if turn is not None else (None, None)
-    call = str((inner or {}).get("channel") or (inner or {}).get("platform") or "").strip().lower()
-    return [str(said), call] if said not in (None, message_channel.NONE) and call and str(said) != call else []
 
 
 def _named_by_reading(turn, value) -> bool:
