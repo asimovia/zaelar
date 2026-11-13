@@ -31,7 +31,7 @@ function _paintFacts(facts){
   const was = _blocked;
   _blocked = facts.indexOf("audio_blocked") >= 0;
   if(was === _blocked || !_el) return;
-  if(_blocked) armSoundUnlock(_el, _el._hbData);
+  if(_blocked) armSoundUnlock(_el, _el._hbData); else disarmSoundUnlock(_el);   // the tap is owed only while it lasts
   if(typeof _el._hbRedraw === "function") _el._hbRedraw();
 }
 const _P = playerReport({fields: ["playing", "playing_id", "muted", "volume"], forget: ["playing_id", "muted", "volume"],
@@ -167,17 +167,16 @@ export function unlockSound(el, data){
   const yt = data.yt || {};
   if(!el._hbFrame) return;
   ytEnsureAudible(el._hbFrame, yt.volume);
-  ytPost(el._hbFrame, "playVideo");
+  if(!yt.paused) ytPost(el._hbFrame, "playVideo");     // a tap gives sound, never a start the order paused
 }
 export function armSoundUnlock(el, data){
-  if(el._hbUnlockArmed || typeof document === "undefined") return;
-  el._hbUnlockArmed = true;
-  const go = () => {
-    el._hbUnlockArmed = false;
-    document.removeEventListener("pointerdown", go, true);
-    unlockSound(el, el._hbData || data);
-  };
-  document.addEventListener("pointerdown", go, true);
+  if(el._hbUnlockGo || typeof document === "undefined") return;
+  el._hbUnlockGo = () => { disarmSoundUnlock(el); unlockSound(el, el._hbData || data); };
+  document.addEventListener("pointerdown", el._hbUnlockGo, true);
+}
+export function disarmSoundUnlock(el){
+  if(el._hbUnlockGo) document.removeEventListener("pointerdown", el._hbUnlockGo, true);
+  el._hbUnlockGo = null;
 }
 export function soundRow(el, data){
   const yt = data.yt || {};
