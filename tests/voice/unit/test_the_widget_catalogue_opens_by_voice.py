@@ -140,8 +140,6 @@ def test_the_packs_were_versioned_so_existing_installs_import_them():
     ("Vale, ábreme la lista de widgets customizados.", "apps-custom"), ("O los widgets. Ábreme esa lista.", "apps"),
     ("Ábreme la lista de apps", "apps"), ("Johnny, ábreme las apps", "apps"),
     ("enséñame mis widgets personalizados", "apps-custom"),
-    # the catalogue is named only to look at it — his own list includes a question with no open verb:
-    ("¿Qué APPs tengo customizadas?", "apps-custom"), ("dime qué widgets tengo disponibles", "apps"),
     ("abre el chat", "chat"),
 ])
 def test_an_order_that_names_the_tab_is_decided_by_the_name(phrase, tab):
@@ -152,6 +150,10 @@ def test_an_order_that_names_the_tab_is_decided_by_the_name(phrase, tab):
 @pytest.mark.parametrize("phrase", [
     "abre la aplicación de música", "no quiero ver las apps", "te lo pongo en el chat", "ábreme el vídeo", "ábreme whatsapp", "abre el widget de música",
     "cierra las apps", "hazme un widget de recetas", "crea una app de notas", "no me abras las apps",
+    # V2-903 a6 — a noun is not an order: the cut tail of a close sentence (phone, 14:38) and a question with no open
+    # verb leave the lane; a question goes to the action map's seeds (door 1) or the model.
+    "…o los widgets en pantalla", "…or the widgets on the screen", "¿Qué APPs tengo customizadas?",
+    "dime qué widgets tengo disponibles",
 ])
 def test_the_lane_leaves_everything_else_to_the_model(phrase):
     from nucleo.acts.wall_tab import named_wall_tab
