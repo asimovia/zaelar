@@ -150,3 +150,21 @@ def test_the_host_says_the_page_and_the_card_cannot(nav, card_page):
     deliver("navegador", posts(card_page))
     assert state_render.clause("navegador", dev=a).endswith(': host="another.test", title="Another"'), \
         state_render.clause("navegador", dev=a)
+
+
+def test_a_page_title_is_capped_and_stored_only_through_the_masking_door(nav, monkeypatch):
+    """Step-4 audit P2-5 (decided: the title stays — it is what he sees on his own screen). A page's title is the first
+    third-party text in the state line: capped at 40, and every stored copy (the `widget/state` event the Master
+    pulls) goes through the masking door of stored events (V2-875), so a name or an address in a title is tagged."""
+    data, _on = nav
+    title = "Transferencia a Nadia Ferrer 1.250 € — banca online de tu banco"
+    store.save("navegador", {**data._SEED, **PAGE, "title": title, "rev": 6})
+    assert data.view_data()["_host"]["title"] == title[:40]
+    from config import privacy
+    from observability import persist, pii
+    monkeypatch.setattr(privacy, "obfuscate", lambda: True)
+    monkeypatch.setattr(privacy, "observability", lambda: True)
+    monkeypatch.setattr(pii, "known", lambda *a, **k: {pii.norm("Nadia Ferrer"): "[PERSON]"})
+    ev = {"family": "widget", "kind": "state", "extra": {"id": "navegador", "changed": {"title": title[:40]}}}
+    line = persist.line(ev)
+    assert line and "Nadia Ferrer" not in line and "1.250" not in line, line
