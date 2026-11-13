@@ -300,7 +300,7 @@ export function FeedbackWidget() {
             onClick: () => setKind("idea"),
           }, () => t("feedback.kindIdea")),
         ),
-        h("input", { type: "email", class: "fw-email", placeholder: () => t("feedback.emailPlaceholder"), ref: el => (emailEl = el) }),
+        () => (store.cloudProfile() ? null : h("input", { type: "email", class: "fw-email", placeholder: () => t("feedback.emailPlaceholder"), ref: el => (emailEl = el) })),   // an account has its address (V2-876)
         // The placeholder follows the option. Asking «what were you trying to do?» gets the one fact a
         // bug report needs and a wish never has.
         h("textarea", {

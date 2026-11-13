@@ -34,7 +34,7 @@ def _say():
 
 WID = "navegador"
 VIEWPORT = {"width": 1280, "height": 800}
-HOME = {"mode": "blank", "url": "", "title": "Nuevo navegador"}
+HOME = {"mode": "blank", "url": "", "title": ""}   # a blank card has no title of its own: the chrome shows its translated name
 _NAV_TIMEOUT = 15_000   # ms — goto cap; a slow website must not block the mailbox
 #: Cap for a DOM READ after an action. `page.evaluate` has no Playwright timeout: it waits for an execution context,
 #: and a page NAVIGATING (Enter in a search box) has none until the new document is ready — so an action that

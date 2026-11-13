@@ -88,7 +88,7 @@ export function SettingsSheet() {
       //    It reads and writes the same signal the desktop's 🔊 icon does (`session.toggleBotMute`, the single
       //    owner of silence since V2-087/V2-088), never a second switch — that seam is why the icon and the
       //    server's synthesis cannot disagree.
-      Toggle(() => t("orb.speaker_unmuted"),
+      Toggle(() => t("mobile.speaker"),          // a row's label, never the desktop's «click to…» tooltip (V2-876 P-14)
         () => !store.botMuted(),
         () => (store.botMuted() && session.openSpeakerHere ? session.openSpeakerHere("settings") : session.toggleBotMute())),
 

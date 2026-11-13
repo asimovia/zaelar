@@ -29,7 +29,7 @@ export const CSS = `
   .hb-msg.full > .thread > .tl{flex:1 1 auto;min-height:0;overflow:auto;max-height:none}
   .hb-msg.full > .thread > .compose{flex:0 0 auto}
   /* V2-611 — the header is its OWN band, separated from the content by a hairline; every icon a real button. */
-  .hb-msg .hd{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2,8px);margin:0 0 var(--sp-3,12px);
+  .hb-msg .hd{margin:0 0 var(--sp-3,12px);   /* the house bar's grid (V2-882) lays it out */
     padding:0 0 var(--sp-2,8px);border-bottom:1px solid var(--hb-line-subtle,#eef1f6)}
   /* V2-831 T-04 — the crumb is the CONTENT's title, one step under the window's own name (the header standard:
      14/600), not a 17 px headline competing with the card chrome above it. */

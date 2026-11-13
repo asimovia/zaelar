@@ -41,7 +41,7 @@ export function shelfGrid(d, act) {
   (d.entries || []).forEach(e => {
     const tile = el("div", "arx-shelf");
     tile.appendChild(el("span", "arx-ic", iconFor(e)));
-    tile.appendChild(el("b", null, e.name || ""));
+    tile.appendChild(el("b", null, shelfLabel(e.id) || e.name || ""));
     const n = typeof e.count === "number" ? e.count : 0;
     tile.appendChild(el("span", null, n === 1 ? tt("one_file", null, "1 archivo") : tt("n_files", {n}, `${n} archivos`)));
     tile.onclick = () => act("open_folder", { folderId: e.id });
@@ -63,7 +63,7 @@ export function gridView(d, entries, act) {
     } else {
       tile.appendChild(el("span", "arx-ic", iconFor(e)));
     }
-    const nm = el("span", "arx-nm", e.name || tt("unnamed", null, "(sin nombre)"));
+    const nm = el("span", "arx-nm", shelfLabel(e.id) || e.name || tt("unnamed", null, "(sin nombre)"));
     nm.title = e.name || "";
     tile.appendChild(nm);
     tile.onclick = () => isFolder ? act("open_folder", { folderId: e.id }) : openEntry(e, act, tile);
@@ -87,7 +87,7 @@ export function listView(d, entries, act, ui) {
 
     const click = el("div", "arx-clickable");
     click.appendChild(el("span", "arx-ic", iconFor(e)));
-    const nm = el("span", "arx-nm", e.name || tt("unnamed", null, "(sin nombre)"));
+    const nm = el("span", "arx-nm", shelfLabel(e.id) || e.name || tt("unnamed", null, "(sin nombre)"));
     nm.title = e.name || "";
     click.appendChild(nm);
     if (!isFolder) {

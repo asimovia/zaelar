@@ -145,6 +145,25 @@ def test_the_wake_word_is_a_row_of_settings(phone):
     assert any(r.startswith(ES["mobile.wake_word"].split("«")[0].strip()) for r in rows), rows
 
 
+def test_a_settings_row_is_named_for_a_finger(phone):
+    """V2-876 P-14: the speaker row read the desktop orb's tooltip, «Pulsa para silenciar…» / «Click to mute…»."""
+    _only(phone, "settings")
+    rows = phone.evaluate("() => [...document.querySelectorAll('.zm-page[data-page=\"settings\"] .zm-row b')].map(b => b.textContent)")
+    assert ES["mobile.speaker"] in rows, rows
+    assert not any(ES["orb.speaker_unmuted"] == r for r in rows), "a row's label is not a tooltip"
+
+
+def test_an_account_is_never_asked_its_email_in_feedback(phone):
+    """V2-876 P-14 (the audit: «asks the email of a signed-in user»): with an account — SETUP's cloud profile — the
+    form has no address field; an install with none still offers it."""
+    _only(phone, "feedback")
+    assert phone.locator(".zm-page[data-page='feedback'] .zm-fb-email").count() == 0
+    phone.evaluate("() => window.__store.setCloudProfile(false)")
+    phone.wait_for_timeout(100)
+    assert phone.locator(".zm-page[data-page='feedback'] .zm-fb-email").count() == 1
+    phone.evaluate("() => window.__store.setCloudProfile(true)")
+
+
 def test_the_dock_is_six_targets_of_44(phone):
     _only(phone, "chat")
     phone.evaluate("() => window.__store.setChatOpen(false)")

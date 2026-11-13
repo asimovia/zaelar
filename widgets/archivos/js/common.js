@@ -96,8 +96,8 @@ export function tt(key, params, fb){
 
 // Evaluated per paint, never a module-level table: one built at IMPORT time freezes its labels in whatever
 // language was active when the module first loaded, and survives every later switch (V2-694).
-export function shelfLabel(kind){
-  switch(String(kind || "")){
+export function shelfLabel(kind){   // a kind («video») or a shelf entry's id («shelf:video»): the server names it in one language
+  switch(String(kind || "").replace("shelf:", "")){
     case "video":     return tt("shelf_video", null, "Vídeo");
     case "audio":     return tt("shelf_audio", null, "Audio");
     case "documents": return tt("shelf_documents", null, "Documentos");

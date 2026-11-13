@@ -1,6 +1,6 @@
 // Contacts widget — the left rail and the filter crumb (refactor2710-12 T-03).
 import { KICON, KIND_ORDER, basePool, el2, flagLabel, hooks, kindOf, kindPlural, normJs, selEmpty,
-  selOf, srcKey, tt, unclassifiedOf } from "./shared.js";
+  selOf, srcKey, svgEl, tt, unclassifiedOf } from "./shared.js";
 import { groupById, groupLabel, railGroups } from "./people.js";
 
 // ── THE RAIL — the directory's own map, derived from what it holds (V2-715) ─────────────────────────────
@@ -46,7 +46,7 @@ export function renderRail(el, data, ctx){
              : (axis==="fav"||axis==="hidden"||axis==="unclassified") ? !!sel[axis]
              : String(sel[axis]||"")===String(value||"");
     const b = el2("button","ctg"+(on?" on":""));
-    if(icon) b.append(el2("span","ctgi", icon));
+    if(icon){ const i = el2("span","ctgi", icon.startsWith("<svg") ? "" : icon); if(!i.textContent) i.append(svgEl(icon)); b.append(i); }
     b.append(el2("span",null,label));
     if(count!=null) b.append(el2("span","ctgc",String(count)));
     // A CLICK means «show me this one thing», so it replaces the whole filter. Several axes at once is

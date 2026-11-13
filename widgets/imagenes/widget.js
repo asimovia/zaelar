@@ -104,7 +104,7 @@ export function render(el, data, ctx){
 
   // ── header: what we are looking at, and how many ──────────────────────────────────────────────
   const hd = txt("div","imghd");
-  hd.appendChild(txt("b", null, String(cur.title || d.title || d.query || tt("title_fb", null, "Imágenes"))));
+  const named = cur.title || d.title || d.query; if(named) hd.appendChild(txt("b", null, String(named)));   // its own name is the chrome's (V2-876)
   if(items.length) hd.appendChild(txt("span","imgcount", `${i+1} / ${items.length}`));
   el.appendChild(hd);
 

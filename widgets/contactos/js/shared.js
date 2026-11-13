@@ -41,7 +41,7 @@ export function svgEl(paths, opts){   // a provider mark's path data, or a share
   return svg;
 }
 
-export const ICO_PEOPLE = I.USERS_ICON, ICO_PLUG = I.PLUG_ICON, ICO_SYNC = I.REFRESH_ICON;
+export const ICO_PEOPLE = I.USERS_ICON, ICO_PLUG = I.PLUG_ICON, ICO_SYNC = I.REFRESH_ICON, ICO_FAMILY = I.HOME_ICON, ICO_FRIENDS = I.HEART_ICON;
 
 // The provider marks. Same source as the agenda's `CAL_SVG` so Google looks like Google in both.
 export const SRC_SVG = {

@@ -138,7 +138,7 @@ export function FeedbackForm(open, close = () => {}) {
         h("button", { class: () => "zm-fb-kind-b" + (kind() === "issue" ? " on" : ""), onClick: () => setKind("issue") }, () => t("feedback.kindIssue")),
         h("button", { class: () => "zm-fb-kind-b" + (kind() === "idea" ? " on" : ""), onClick: () => setKind("idea") }, () => t("feedback.kindIdea")),
       ),
-      h("input", { type: "email", class: "zm-fb-email", placeholder: () => t("feedback.emailPlaceholder"), ref: (el) => (emailEl = el) }),
+      () => (store.cloudProfile() ? null : h("input", { type: "email", class: "zm-fb-email", placeholder: () => t("feedback.emailPlaceholder"), ref: (el) => (emailEl = el) })),   // an account has its address (V2-876)
       h("textarea", { rows: "4", ref: (el) => (textEl = el),
         placeholder: () => t(kind() === "idea" ? "feedback.placeholderIdea" : "feedback.placeholderIssue") }),
       () => (shots().length

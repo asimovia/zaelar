@@ -6316,6 +6316,11 @@ DOMAINS: list[dict] = [
         {"id": "4.463", "title": "The timer fits the hand and declares its data API: sans tabular digits ≥40px, no dots, "
                                   "its own starts with nothing set, pause/cancel at 44pt, set/start/pause/reset declared",
             "ch": UNIT, "paths": ["tests/browser/unit/phone_apps/test_the_timer_fits_the_hand.py"]},
+        {"id": "4.499", "title": "The rest of the apps fit the hand (V2-876 T5): the messages header is one row with its "
+                                  "channels and plug folded into ⋯, Images never repeats its name, unconnected Photos has "
+                                  "one primary action, a blank Document offers the request that fills it, the contact "
+                                  "groups wear one icon style, a shelf is named in his language whatever the server sent",
+            "ch": UNIT, "paths": ["tests/browser/unit/phone_apps/test_the_rest_fits_the_hand.py"]},
         {"id": "4.464", "title": "The clock fills its page with no frame of its own and names the screen's zone (a zone "
                                   "the engine sends wins) (V2-877 #12)",
             "ch": UNIT, "paths": ["tests/browser/unit/phone_apps/test_the_clock_fits_the_hand.py"]},

@@ -127,7 +127,7 @@ export const CSS = `
   .hb-contactos .ctside .ctgmore{border:0;background:none;color:var(--hb-muted-2,#9aa7b8);font-size:11.5px;
     cursor:pointer;text-align:left;padding:3px 9px}
   .hb-contactos .ctside .ctgmore:hover{color:var(--hb-accent,#3D6FE0)}
-  .hb-contactos .ctg .ctgi{flex:0 0 auto;font-size:12px;opacity:.85}
+  .hb-contactos .ctg .ctgi{flex:0 0 auto;font-size:12px;opacity:.85} .hb-contactos .ctgi svg,.hb-contactos .cttag svg{width:13px;height:13px;display:block;flex:0 0 auto}
   .hb-contactos .ctg{display:flex;gap:6px;align-items:center;border:1px solid transparent;background:none;border-radius:8px;padding:6px 9px;font-size:12.5px;cursor:pointer;color:var(--hb-muted,#3a4757);text-align:left;width:100%;box-sizing:border-box}
   .hb-contactos .ctg:hover{background:var(--hb-bg,#fff);color:var(--hb-accent,#3D6FE0)}
   .hb-contactos .ctg.on{background:var(--hb-accent,#3D6FE0);border-color:var(--hb-accent,#3D6FE0);color:var(--canvas,#101216);font-weight:600}

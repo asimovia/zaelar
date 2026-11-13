@@ -275,7 +275,7 @@ function blank(root, ctx){
   box.appendChild(el("div","hbd-mark"));
   box.appendChild(el("b", null, tr(ctx,"blank_title","Hoja en blanco")));
   box.appendChild(el("span", null, tr(ctx,"blank_hint",
-    "Aquí va lo que sea para leer: una receta, un informe, unas instrucciones o un PDF.")));
+    "Aquí va lo que sea para leer. Dile «léeme la receta de las lentejas» o «abre el PDF del contrato».")));
 }
 
 // ── «being created» (V2-822) — what a commissioned report shows while the worker makes it ─────────────────────
