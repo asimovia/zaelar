@@ -2707,7 +2707,7 @@
  "widgets.cycling.pr_badge": "🏆 PR",
  "widgets.cycling.no_segs_in_ride": "You did not ride through any known segment on this ride.",
  "widgets.cycling.gaps": "GPS gaps",
- "widgets.cycling.gaps_help": "If the phone slept or the app was closed, the GPS has holes. This rebuilds the lost stretches along real roads.",
+ "widgets.cycling.gaps_help": "If the phone slept or its app was closed, the GPS has holes. This rebuilds the lost stretches along real roads.",
  "widgets.cycling.gaps_found": "{n} gap(s) over 30 s",
  "widgets.cycling.gap_line": "{t} without readings",
  "widgets.cycling.recon_done": "Rebuilt {f}/{n} · {p} virtual points · +{km} km",

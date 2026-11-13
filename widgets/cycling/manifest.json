@@ -131,14 +131,14 @@
       "confirm_q": "Throw this ride away? Its recording is deleted for good."
     },
     "claim": {
-      "desc": "The screen that reads the sensors claims the ride (sent by the app itself).",
+      "desc": "The screen that reads the sensors claims the ride (sent by the widget itself).",
       "payload": {
         "owner": "screen-token"
       },
       "internal": true
     },
     "samples": {
-      "desc": "A batch of sensor samples from the screen that owns the ride (sent by the app itself).",
+      "desc": "A batch of sensor samples from the screen that owns the ride (sent by the widget itself).",
       "payload": {
         "owner": "screen-token",
         "samples": []
@@ -156,7 +156,7 @@
       }
     },
     "show": {
-      "desc": "Open a screen of the app: menu, history (all rides), ride (one ride's page), segments, segment (one segment's page).",
+      "desc": "Open a screen of the widget: menu, history (all rides), ride (one ride's page), segments, segment (one segment's page).",
       "how": "ride names the ride (its name, town, date or «last»); segment names the segment.",
       "payload": {
         "view": "ride",
@@ -174,7 +174,7 @@
       ]
     },
     "ride_detail": {
-      "desc": "One ride's full page data (sent by the app itself).",
+      "desc": "One ride's full page data (sent by the widget itself).",
       "payload": {
         "ride": "12"
       },
@@ -182,7 +182,7 @@
       "internal": true
     },
     "segment_detail": {
-      "desc": "One segment's full page data (sent by the app itself).",
+      "desc": "One segment's full page data (sent by the widget itself).",
       "payload": {
         "segment": "3"
       },
@@ -274,7 +274,7 @@
       "ref": "ride"
     },
     "enrich": {
-      "desc": "Fill a ride's starting town and temperature (sent by the app itself).",
+      "desc": "Fill a ride's starting town and temperature (sent by the widget itself).",
       "payload": {
         "ride": "12",
         "lang": "en"

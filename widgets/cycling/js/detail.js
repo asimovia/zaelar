@@ -119,7 +119,7 @@ export function renderDetail(el, det, ctx, nav) {
     const p5 = txt("div", "hb-panel cy-panel");
     p5.appendChild(txt("div", "hb-panel-title", tt("gaps", null, "GPS gaps")));
     p5.appendChild(txt("div", "cy-note cy-left", tt("gaps_help", null,
-      "If the phone slept or the app was closed, the GPS has holes. This rebuilds the lost stretches along real roads.")));
+      "If the phone slept or its app was closed, the GPS has holes. This rebuilds the lost stretches along real roads.")));
     const gaps = det.gaps || [];
     p5.appendChild(txt("div", "cy-note cy-left", tt("gaps_found", { n: gaps.length }, "{n} gap(s) over 30 s")));
     for (const gp of gaps.slice(0, 5)) p5.appendChild(txt("div", "cy-muted", "· " + tt("gap_line", { t: fmtSec(gp.gap_sec) }, "{t} without readings")));

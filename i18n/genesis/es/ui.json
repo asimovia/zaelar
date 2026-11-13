@@ -2707,7 +2707,7 @@
  "widgets.cycling.pr_badge": "🏆 PR",
  "widgets.cycling.no_segs_in_ride": "No pasaste por ningún segmento conocido en esta ruta.",
  "widgets.cycling.gaps": "Huecos de GPS",
- "widgets.cycling.gaps_help": "Si el móvil se durmió o la app se cerró, el GPS tiene huecos. Esto reconstruye los tramos perdidos siguiendo caminos reales.",
+ "widgets.cycling.gaps_help": "Si el móvil se durmió o su app se cerró, el GPS tiene huecos. Esto reconstruye los tramos perdidos siguiendo caminos reales.",
  "widgets.cycling.gaps_found": "{n} hueco(s) de más de 30 s",
  "widgets.cycling.gap_line": "{t} sin lecturas",
  "widgets.cycling.recon_done": "Reconstruidos {f}/{n} · {p} puntos virtuales · +{km} km",

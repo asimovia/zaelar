@@ -1,4 +1,4 @@
-- 2026-11-13 V2-901: created by porting the person's previous cycling app so it works the same inside the agent:
+- 2026-11-13 V2-901: created by porting the cycling area of the person's previous product so it works the same inside the agent:
   heart-rate zone setup, ride recording (GPS + strap heart rate + altitude through the device bridge, 5-s countdown,
   pause/resume, save or discard), trackpoints per ride, stats and 1-km splits, ride history with names and the town,
   ride page (route, splits, heart-rate and elevation profiles, segments crossed, GPS gaps), segments (create from a
@@ -16,7 +16,7 @@
   - Maps are OSM tiles as plain `<img>` with an SVG overlay (approach copied from `widgets/map`, not imported). No
     network from widget.js: details come through internal read actions (`ride_detail`, `segment_detail`).
   - The ghost runs in data.py on every accepted fix (so every screen and the voice see the same race); the rivals'
-    per-second positions are computed in the card (`js/ghost.js`).
+    per-second positions are computed in the widget (`js/ghost.js`).
   - Network only in actions, bounded: Open-Meteo (ride temperature, readiness window), Nominatim (town, ≥ 1.1 s
     apart), OSRM (a blackout rebuilt along the road; one routed gap per batch, the rest counted straight).
 - Deliberate differences from the source (each one a bug or a host constraint):
@@ -26,8 +26,9 @@
   - The ride's temperature reads Open-Meteo's local hours with their UTC offset (the source compared them as UTC).
   - A heart rate older than 15 s is not «now» (the source kept showing the strap's last value).
   - No screen wake lock, no IndexedDB queue, no haptics: the native bridge keeps recording with the screen locked
-    and buffers what the card missed. Toasts are events said once on the screen that sees them.
-  - Discard is one action with `confirm` (the voice asks); on the card it is the source's two-step overlay.
-- Known limits / phase I (V2-902): legs and food lights need the core's model seam and the Nutrition app's meals
+    and buffers what the widget missed. Toasts are events said once on the screen that sees them.
+  - Discard is one action with `confirm` (the voice asks); on the widget it is the source's two-step overlay.
+- Known limits / phase I (V2-902): legs and food lights need the core's model seam and the Nutrition widget's meals
   (they say «not available yet»); not in the catalogue (`_BUILTINS`) and «ride» still routes to Activity; the
-  two catalogue ratchets that need a row for a new app; no Apple Health export of a ride.
+  two catalogue ratchets that need a row for a new widget; no Apple Health export of a ride.
+- 2026-11-13: naming (operator): in user-facing strings and docs this is a «widget», never «app», «card» or «tarjeta»; «phone app» is the native phone application and stays.
