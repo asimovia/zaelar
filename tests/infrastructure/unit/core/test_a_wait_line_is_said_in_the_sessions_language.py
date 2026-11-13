@@ -48,8 +48,6 @@ FILLER_KEYS = ("fillers", "fillers_action", "fillers_social", "fillers_ack", "co
 
 #: Files that still hold a spoken line of one language as a constant. MEASURED; edited DOWNWARD only.
 _STILL_HOLDING = {
-    "nucleo/flash/op_receipt.py",          # data_ack / op_failed / op_unknown fallbacks
-    "nucleo/flash/op_pending.py",          # an English «Done.» fallback — the same class, the other language
     "nucleo/flash/post_stream_settle.py",  # «Hecho.» / «Aquí lo tienes.» in the except branches
     "nucleo/turn/wait_lines.py",           # «Sigo con ello.» / «Perdona, ¿me lo repites?» fallbacks
 }
