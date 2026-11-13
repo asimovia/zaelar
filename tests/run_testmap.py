@@ -5323,6 +5323,20 @@ DOMAINS: list[dict] = [
                                  "refused, a batch sent twice counts once, jitter is not distance, no strap is no reading "
                                  "(never a zero), stop keeps the summary (V2-890 F1)", "ch": UNIT,
             "paths": ["tests/browser/unit/activity/test_an_activity_is_recorded_by_the_screen_that_owns_it.py"]},
+        {"id": "4.560", "title": "The cycling segment matcher finds every pass of a segment in a ride: the ends are met PERPENDICULAR to the route line (a sparse track still meets a 25 m tolerance), two crossings are two passes, the wrong way is none, the mean uses the canonical distance, rounding is JavaScript's half-up, a backfill ranks every ride idempotently (V2-901)", "ch": UNIT,
+            "paths": ["tests/browser/unit/cycling/test_the_segment_matcher_finds_every_pass.py"]},
+        {"id": "4.561", "title": "A ride's stats and splits are the source app's maths: moving time over 2 km/h, a gap over ten minutes left out, the climb on a 5-point median (one spike is not a hill), a split closes every km with its time, speed, climb and heart rate (V2-901)", "ch": UNIT,
+            "paths": ["tests/browser/unit/cycling/test_stats_and_splits_are_the_source_maths.py"]},
+        {"id": "4.562", "title": "A ride is recorded from the device bridge's batches as the source did on each fix: one owner screen, the countdown only calibrates, a bad fix or a jump is dropped, a retry counts once, a pause is judged by sample time, a trackpoint every 5 s with the heart rate of that moment (none without a strap), a blackout rebuilt along the road or counted straight — once — save keeps the summary, discard deletes the track (V2-901)", "ch": UNIT,
+            "paths": ["tests/browser/unit/cycling/test_a_ride_is_recorded_from_the_sensor_batches.py"]},
+        {"id": "4.563", "title": "Segments keep their PRs: one said in km along a ride lands on its real path and ranks every saved ride, a faster saved ride takes the PR, deleting that ride gives the PR back, rename/recalc/delete by the name he says (V2-901)", "ch": UNIT,
+            "paths": ["tests/browser/unit/cycling/test_segments_keep_their_prs.py"]},
+        {"id": "4.564", "title": "The ghost rider races earlier attempts live: enter within 35 m, finish within 35 m with the time against the PR, four fixes over 50 m off the real path void the segment (never on a straight line), an approach is said once, a rival is ahead when it had ridden less time at his progress (V2-901)", "ch": UNIT,
+            "paths": ["tests/browser/unit/cycling/test_the_ghost_races_earlier_attempts.py"]},
+        {"id": "4.565", "title": "«Ready to ride?» says the weather by the source's rule over the ride's usual length and the place of his last ride; legs and food wait for the model seam and say so, never a guessed green; the answer is kept 30 min (V2-901)", "ch": UNIT,
+            "paths": ["tests/browser/unit/cycling/test_readiness_says_the_weather_and_waits_for_the_model.py"]},
+        {"id": "4.566", "title": "The cycling card records on ONE screen: the phone app claims a voice-started ride and reads only the sensors it has, a desktop only reflects it unless tapped there, a saved ride stops the sensors, a pushed view opens that ride's page, the card reports what it shows, the ghost arithmetic (V2-901)", "ch": UNIT,
+            "paths": ["tests/browser/unit/cycling/test_the_card_records_on_one_screen.py"]},
         {"id": "4.439", "title": "The iOS app carries what App Review reads: Info.plist keys (encryption, category, "
                                  "full screen, permission sentences, versions from the build), the privacy manifest "
                                  "(no tracking, the data the shell sends) and the entitlements template (V2-870)", "ch": UNIT,
