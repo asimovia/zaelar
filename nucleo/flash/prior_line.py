@@ -17,13 +17,16 @@ from loguru import logger
 
 
 def snapshot(brain, window) -> str:
-    """Freeze the last assistant line of the window as the line this turn answers. Returns it."""
-    line = ""
+    """Freeze the last assistant line of the window as the line this turn answers — and, by id, the rows that asked him
+    since our last reply (`circuit.asked_last`: it advances only on a NEW reply line). Returns the line."""
+    line, last = "", None
     for m in reversed(list(window or [])):
         if isinstance(m, dict) and m.get("role") == "assistant":
-            line = str(m.get("content") or "").strip()
+            line, last = str(m.get("content") or "").strip(), m
             if line:
                 break
+    from nucleo.circuit import asked_last
+    asked_last.turn_began(last)
     try:
         brain._prior_line = line
     except Exception as e:  # noqa: BLE001 — a brain without attributes still runs its turn
