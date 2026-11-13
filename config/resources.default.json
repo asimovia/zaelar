@@ -44,9 +44,13 @@
     "the body (`python -m server`), a Brain Worker and the browser each have a memory `budgets.<deployment>.<piece>`:",
     "`mb` (what it should hold) and `ceiling_mb` (past it the voice process is recycled BETWEEN sessions). The deployment",
     "is `cloud` when the engine serves a hosted account (ZAELAR_USER_ID) and `local` otherwise (ZAELAR_DEPLOYMENT names",
-    "it). `free_floor` is the free memory the host keeps — the larger of `ratio`×total and `mb` — and replaces",
-    "`admit_free_ratio`/`voice_reserve_mb` as the worker floor wherever this block is declared: a laptop shares its host",
-    "with other programs and a model server; a small hosted machine runs only the engine.",
+    "it). `free_floor` is the free memory the host keeps before a new worker starts, and replaces",
+    "`admit_free_ratio`/`voice_reserve_mb` as the worker floor wherever this block is declared: what its `pieces` need",
+    "(their `ceiling_mb` summed, plus `mb` as the reserve), never more than `ratio`×total and never under `mb`. The ratio",
+    "is a CAP, not the floor: 20 % of a 48 GB laptop (9.6 GB) held every errand with ordinary apps open, while the",
+    "pieces need ~3.4 GB; on a 2-8 GB host the cap is what binds, so the older rule and the voice reserve hold there.",
+    "`pressure_pieces` (+ `mb`), capped by `pause_free_ratio`×total, is where the host is SHORT: the newest worker",
+    "pauses and the watchdog sheds. Without `pieces`/`pressure_pieces` the older ratios hold.",
     "`priorities.<role>`: nice and OOM score per process (the voice served first and killed last, the browser killed",
     "first); raising either needs no privilege, lowering one does, so an unprivileged host keeps what it could set.",
     "`shed_ladder`: the rungs the engine gives memory back with, in order, one per heartbeat under pressure (free memory",
@@ -82,8 +86,8 @@
   "background_idle_every_s": 300,
   "listen_every_min": 10,
   "budgets": {
-    "local": {"voice": {"mb": 300, "ceiling_mb": 400}, "body": {"mb": 900, "ceiling_mb": 1200}, "worker": {"mb": 300, "ceiling_mb": 600}, "chromium": {"mb": 250, "ceiling_mb": 500}, "free_floor": {"ratio": 0.2, "mb": 768}},
-    "cloud": {"voice": {"mb": 300, "ceiling_mb": 400}, "body": {"mb": 700, "ceiling_mb": 900}, "worker": {"mb": 300, "ceiling_mb": 450}, "chromium": {"mb": 250, "ceiling_mb": 400}, "free_floor": {"ratio": 0.0, "mb": 200}}
+    "local": {"voice": {"mb": 300, "ceiling_mb": 400}, "body": {"mb": 900, "ceiling_mb": 1200}, "worker": {"mb": 300, "ceiling_mb": 600}, "chromium": {"mb": 250, "ceiling_mb": 500}, "free_floor": {"ratio": 0.2, "mb": 768, "pieces": ["voice", "body", "worker", "chromium"], "pressure_pieces": ["voice"]}},
+    "cloud": {"voice": {"mb": 300, "ceiling_mb": 400}, "body": {"mb": 700, "ceiling_mb": 900}, "worker": {"mb": 300, "ceiling_mb": 450}, "chromium": {"mb": 250, "ceiling_mb": 400}, "free_floor": {"ratio": 0.0, "mb": 200, "pieces": ["voice", "body", "worker", "chromium"], "pressure_pieces": ["voice"]}}
   },
   "priorities": {"voice": {"nice": 0, "oom_score_adj": -500}, "body": {"nice": 5, "oom_score_adj": 0}, "worker": {"nice": 10, "oom_score_adj": 500}, "chromium": {"nice": 10, "oom_score_adj": 800}},
   "shed_ladder": ["hold_workers", "pause_newest_worker", "pause_background", "close_browser", "trim_caches"],

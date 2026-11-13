@@ -6,8 +6,8 @@ host freezes. The voice and the workers share the host, so the boundary between 
 
 The boundary, as mechanism and data (`config/resources.default.json`, every number a RATIO of what the host measures):
   · a worker process tree runs at a LOWER scheduling priority (`preexec`);
-  · a new worker is ADMITTED only while measured free memory is above the floor (`admits`, `wait_for_room`) — the
-    LARGER of a ratio and an absolute reserve for the voice (`floor`, V2-867 T593) — and one at a time: the next is
+  · a new worker is ADMITTED only while measured free memory is above the floor (`admits`, `wait_for_room`) — what
+    the declared pieces need, never under the voice reserve (`floor`, V2-867 T593) — and one at a time: the next is
     measured only once the previous one RUNS (`admitted`/`settled`), so on a tight host work runs one → one → one;
   · the wait has no clock (V2-867 T592): it lasts until there is room, and the operator's cancel is its exit; it says
     its TRUE reason (`reason`): the memory floor, the voice's shed, or the worker ahead still starting;
@@ -24,6 +24,8 @@ import os
 import time
 
 from loguru import logger
+
+from nucleo.pulse import budgets
 
 _HERE = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "config")
 _DEFAULTS = {"worker_nice": 10, "admit_free_ratio": 0.2, "pause_free_ratio": 0.1, "voice_reserve_mb": 768,
@@ -73,11 +75,9 @@ def measured() -> tuple[int, int]:
 
 
 def floor(total: int, pol: dict | None = None) -> float:
-    """The free memory a new worker must leave: the LARGER of the ratio and the voice's absolute reserve (T593) — on
-    a small host the ratio alone is under what one voice session needs."""
+    """The free memory a new worker must leave: what the declared pieces need, never under the voice reserve (T593)."""
     pol = pol or policy()
-    from nucleo.pulse import budgets         # V2-891: a policy that declares per-deployment budgets names its floor
-    if budgets.declares_floor(pol):
+    if budgets.declares_floor(pol):          # V2-891: a policy that declares per-deployment budgets names its floor
         return budgets.free_floor_mb(total, pol) * 2 ** 20
     return max(float(pol["admit_free_ratio"]) * total, float(pol.get("voice_reserve_mb", 0)) * 2 ** 20)
 
@@ -87,7 +87,7 @@ def admits(total: int, available: int, pol: dict | None = None) -> bool:
 
 
 def under_pressure(total: int, available: int, pol: dict | None = None) -> bool:
-    return available < float((pol or policy())["pause_free_ratio"]) * total
+    return available < budgets.free_floor_mb(total, pol := pol or policy(), pressure=float(pol["pause_free_ratio"])) * 2 ** 20
 
 
 def preexec(also=None):
