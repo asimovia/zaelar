@@ -6483,6 +6483,8 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/browser/unit/archivos/test_the_files_card_reports_where_he_is.py"]},
         {"id": "4.522", "title": "The activity card says whether an activity runs, which one and whether THIS screen records it (V2-884 C8 step 5): `phase`, `kind` (`none` at rest) and `recording` (the screen that claimed the sensors) after every paint; a `start`/`stop` is `?ordered` on each screen until it acks; two screen pairs; disarmed → red",
             "ch": UNIT, "paths": ["tests/browser/unit/activity/test_the_activity_reports_which_screen_records.py"]},
+        {"id": "4.521", "title": "A number in the passage he names is its IDENTITY, never noise: `goto «Paso 2»` marked «Paso 1» (the matcher dropped tokens under four letters). The numbers a target names — a digit, a digit with its ordinal mark, a spoken number from the one shared table (`refs.number_words`) — must all be carried by the block (`numbers_said.numbers_in`), on the exact-phrase path too («step 12» is not «step 120»); a number no block carries is not found. ES + EN; disarmed → red",
+            "ch": UNIT, "paths": ["tests/browser/unit/documento/test_a_passage_is_found_by_its_number.py"]},
     ]},
     {"id": "5", "name": "CONECTORES", "nodes": [
         # V2-559 — el operador siguió la guía, creó la contraseña de aplicación y pegó el ENLACE de esa
