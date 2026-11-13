@@ -285,7 +285,8 @@ async def run_the_light_lanes(*, FastClient, _apply_widget_data, _brief, _buf_ad
         # and read lanes): a words-only pass promised «let me put her on now» and nothing played. Its gate is its own.
         await _act_repair.voice_after_recall(_op_text, spoken_text, _brief, spec, window=list(brain._window),
                                              apply=_apply_widget_data, send=send, emit=emit, acted=acted,
-                                             done=data_done, recalled=_recall_empty_thread, music=music_req["v"])
+                                             done=data_done, recalled=_recall_empty_thread, music=music_req["v"],
+                                             images_req=images_req)
         if _recall_empty_thread == "empty_thread" and not acted["widget"] and not data_done["v"]:
             # fix02: the pills came back empty on a LIVE-thread question — the compose would have narrated
             # the void as no-access. The deterministic which-message question replaces it at the clarify
@@ -320,7 +321,8 @@ async def run_the_light_lanes(*, FastClient, _apply_widget_data, _brief, _buf_ad
             send(_fixed)
             spoken_text = _fixed
         await _act_repair.voice_after_search(_op_text, spoken_text, _brief, spec, window=list(brain._window),   # V2-781 T515
-                                             apply=_apply_widget_data, send=send, emit=emit, acted=acted, done=data_done)
+                                             apply=_apply_widget_data, send=send, emit=emit, acted=acted, done=data_done,
+                                             images_req=images_req)    # an empty viewer show is its search
         brain._last_action = "search"
 
     # BÚSQUEDA DE ANUNCIOS (V2-556): ruta LIGERA hermana de web_search. La pasada rápida corre FUERA del

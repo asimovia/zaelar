@@ -18,6 +18,7 @@ is. Pure reads; never writes the sheet.
 """
 from __future__ import annotations
 
+import re
 import time
 
 from loguru import logger
@@ -137,9 +138,31 @@ def pick_rows(ref, sheet: dict) -> tuple[list, list]:
     return got, missed
 
 
+def _words(text: str) -> list[str]:
+    return [t for t in _tm.fold(text).split(" ") if len(t) > 2 and t not in _tm._GENERIC]
+
+
+def _names_he_ended(said: str) -> set[tuple]:
+    """Every run of his words that ENDS where his phrase pauses (a comma, a filler word, the end): «…mount baldy and
+    the getty on a map» → «getty», «mount baldy», «baldy», …; «those coffee shops» → «shops», «coffee shops», never «coffee»."""
+    out: set[tuple] = set()
+    for piece in re.split(r"[,;:.!?¿¡()\[\]\n]+", str(said or "")):
+        run: list[str] = []
+        for t in _tm.fold(piece).split(" ") + [""]:          # the trailing "" ends the last run
+            if t and t not in _tm._GENERIC:
+                run.append(t)
+                continue
+            out.update(tuple(run[i:]) for i in range(len(run)))
+            run = []
+    return out
+
+
 def _said_by_him(name: str) -> bool:
-    words = {t for t in _tm.fold(name.split(",")[0]).split(" ") if len(t) > 2 and t not in _tm._GENERIC}
-    if not words:
+    """He named this place: every word of its name is his, or its name BEGINS with a name he said where his phrase
+    paused — the model completes it («the getty» → «The Getty Center»: demo sandbox 2026-11-13, W1, the third pin
+    refused as the model's own). «coffee» inside «those coffee shops» starts nothing («Coffee Bean» stays refused)."""
+    head = _words(name.split(",")[0])
+    if not head:
         return False
     try:
         from nucleo import his_words
@@ -147,7 +170,9 @@ def _said_by_him(name: str) -> bool:
     except Exception as e:  # noqa: BLE001 — his words unread: not his
         logger.debug(f"map: his words unread — {type(e).__name__}: {e}")
         return False
-    return any(words <= set(_tm.fold(t).split(" ")) for t in said)
+    if any(set(head) <= set(_tm.fold(t).split(" ")) for t in said):
+        return True
+    return any(tuple(head[:len(r)]) == r for t in said for r in _names_he_ended(t) if r and all(len(w) > 2 for w in r))
 
 
 def judge_free(places: list, sheet: dict | None) -> tuple[list, list]:
