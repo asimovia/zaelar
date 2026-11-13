@@ -139,7 +139,17 @@ def _with_failover(pairs):
 
     class _Stream(FallbackSynthesizeStream):
         async def _run(self, output_emitter) -> None:
-            await super()._run(_PassThrough(output_emitter))
+            try:
+                await super()._run(_PassThrough(output_emitter))
+            finally:
+                self._probe_the_fallen()
+
+        def _probe_the_fallen(self) -> None:
+            """P1-3: every voice marked down is probed with this stream's whole text once it ends. LiveKit probes a
+            down voice before any token arrived (skipped) and never after a mid-sentence cut: it never came back."""
+            for t, st in zip(self._fallback_adapter._tts_instances, self._fallback_adapter._status):
+                if not st.available:
+                    self._try_recovery(t)
 
     class _Adapter(FallbackAdapter):
         def prewarm(self) -> None:

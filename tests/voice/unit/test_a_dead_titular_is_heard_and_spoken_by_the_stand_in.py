@@ -241,3 +241,94 @@ def test_an_unused_relay_holds_no_audio_back(world):
 
     got = asyncio.run(asyncio.wait_for(first_sentence(), 10))
     assert got >= want, f"the session got {got} of {want} samples of the first sentence — the relay held its tail"
+
+
+# ── the titular comes back (P1-3) ─────────────────────────────────────────────────────────────────────────────────
+_T, _B = b"\x01\x00", b"\x02\x00"          # titular samples, stand-in samples
+
+
+class _Scripted(lk_tts.SynthesizeStream):
+    """A streaming titular that plays the next entry of its script per connection: refuse, cut mid-sentence, or ok."""
+
+    def __init__(self, *, tts, conn_options, mode):
+        super().__init__(tts=tts, conn_options=conn_options)
+        self._mode = mode
+
+    async def _run(self, out) -> None:
+        out.initialize(request_id="r", sample_rate=RATE, num_channels=1, mime_type="audio/pcm", stream=True)
+        if self._mode == "refuse":
+            raise APIConnectionError("connection refused")
+        out.start_segment(segment_id="s")
+        async for d in self._input_ch:
+            if isinstance(d, str) and d.strip():
+                self._mark_started()
+                out.push(_T * (RATE // 10))
+                out.flush()
+                if self._mode == "cut":
+                    await asyncio.sleep(0.02)
+                    raise APIConnectionError("socket closed mid-sentence")
+        out.end_segment()
+
+
+class _ScriptedVoice(lk_tts.TTS):
+    def __init__(self, script: list):
+        super().__init__(capabilities=lk_tts.TTSCapabilities(streaming=True), sample_rate=RATE, num_channels=1)
+        self._script = script
+        self._label = "doubles.scripted_voice.TTS"
+
+    def synthesize(self, text, **kw):  # pragma: no cover — the session streams
+        raise NotImplementedError
+
+    def stream(self, *, conn_options=lk_tts.tts.DEFAULT_API_CONNECT_OPTIONS):
+        return _Scripted(tts=self, conn_options=conn_options, mode=self._script.pop(0) if self._script else "ok")
+
+
+class _StandIn(lk_tts.TTS):
+    def __init__(self):
+        super().__init__(capabilities=lk_tts.TTSCapabilities(streaming=False), sample_rate=RATE, num_channels=1)
+
+    def synthesize(self, text, *, conn_options=lk_tts.tts.DEFAULT_API_CONNECT_OPTIONS):
+        tts = self
+
+        class _C(lk_tts.ChunkedStream):
+            async def _run(self, out) -> None:
+                out.initialize(request_id="r", sample_rate=RATE, num_channels=1, mime_type="audio/pcm")
+                out.push(_B * (RATE // 10))
+                out.flush()
+        return _C(tts=tts, input_text=text, conn_options=conn_options)
+
+
+def _sentences(script: list, n: int, said: list) -> list[str]:
+    voice = T._with_failover([("inworld", _ScriptedVoice(script)), ("openai", _StandIn())])
+
+    async def one() -> str:
+        heard: set = set()
+        async with voice.stream() as s:
+            s.push_text("Una frase entera. ")
+            s.end_input()
+            async for ev in s:
+                raw = ev.frame.data.tobytes()
+                heard |= {raw[i:i + 2] for i in range(0, len(raw), 2)} - {b"\x00\x00"}
+        await asyncio.sleep(0.2)                         # a probe runs in the background between turns
+        return "+".join(sorted({_T: "titular", _B: "stand-in"}[x] for x in heard))
+
+    async def all_of_them() -> list[str]:
+        return [await one() for _ in range(n)]
+    return asyncio.run(asyncio.wait_for(all_of_them(), 20))
+
+
+def test_a_voice_cut_mid_sentence_comes_back_at_the_next_turn(world):
+    """Before: the titular ran once, cut, and never again — the stand-in spoke until the process restarted."""
+    said, _ = world
+    served = _sentences(["cut"], 4, said)
+    assert served[0] == "titular" and served[-1] == "titular", served
+    assert any("is back" in m for m, _ in said) and T.active_provider() == "inworld"
+
+
+def test_a_voice_refused_three_times_is_back_once_it_answers(world):
+    """Two refusals on the first turn (an attempt and its retry), the third on the probe: the probe of the NEXT turn
+    finds it healthy, says so, and the turn after is the titular's."""
+    said, _ = world
+    served = _sentences(["refuse", "refuse", "refuse"], 4, said)
+    assert served[0] == "stand-in" and served[-1] == "titular", served
+    assert sum("is back" in m for m, _ in said) == 1
