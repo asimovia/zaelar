@@ -29,6 +29,9 @@ if(typeof window !== "undefined" && !window.__hbYtWidgetBound){
     if(typeof ev.data !== "string" || ev.data.indexOf("\"event\"") < 0) return;
     let d; try{ d = JSON.parse(ev.data); }catch(_){ return; }
     if(d.id !== "hb-youtube") return;
+    // a message still queued by a player that was replaced is not the current player's (V2-884 1b)
+    const cur = Y.plNow && Y.plNow.contentWindow;
+    if(cur && ev.source && ev.source !== window && ev.source !== cur) return;
     if(d.event === "onStateChange" && Number(d.info) === 0 && Y.ytEnded) Y.ytEnded();   // 0 = ENDED
     // V2-873 — what the PLAYER plays, reported from its own state (1 playing · 2 paused · 0 ended), with the id it
     // last delivered: the end states read this, never the order sent («Hecho» over a video that never changed).

@@ -9,6 +9,22 @@ import { Y } from "./state.js";
 
 export const APPLY_GRACE_MS = 1500;
 const PLAYER_FIELDS = ["playing", "playing_id", "muted", "volume"];
+// HIS HAND on the player's own control (V2-884 1b). The player is a cross-origin iframe: a touch inside it gives it the
+// focus (the page blurs); a <video> of ours takes a pointerdown. A sound or volume change within `HAND_MS` of that,
+// renewed while he keeps moving it, is his — the only change the engine may adopt as his order. An autoplay start or a
+// browser that reverts a sound on its own never comes with it.
+const HAND_MS = 4000;
+if(typeof window !== "undefined" && !window.__hbYtHandBound){
+  window.__hbYtHandBound = true;
+  const inPlayer = (n) => !!(n && n.closest && n.closest(".hb-yt-frame"));
+  window.addEventListener("blur", () => setTimeout(() => { if(inPlayer(document.activeElement)) Y.handAt = Date.now(); }, 0));
+  document.addEventListener("pointerdown", (e) => { if(inPlayer(e.target)) Y.handAt = Date.now(); }, true);
+}
+function _hand(){
+  const now = Date.now(), on = now - (Y.handAt || 0) < HAND_MS;
+  if(on) Y.handAt = now;                   // he keeps moving it (a volume drag): the window follows his hand
+  return on;
+}
 
 function _paintFacts(facts){
   if(!Array.isArray(facts)) return;
@@ -29,7 +45,9 @@ export function reportState(patch, opts){
   if(!ctx || typeof ctx.state !== "function") return;
   // the player spoke: a revision waiting for the CURRENT player is acked from here, after its grace
   if(Y.ackWaits && Object.keys(patch || {}).some((k) => PLAYER_FIELDS.indexOf(k) >= 0)){ Y.ackWaits = false; _ackLater(); }
-  try{ Promise.resolve(ctx.state(patch || {}, opts || {})).then(_paintFacts); }catch(_){}
+  const o = Object.assign({}, opts || {});
+  if(("muted" in (patch || {}) || "volume" in (patch || {})) && _hand()) o.hand = true;
+  try{ Promise.resolve(ctx.state(patch || {}, o)).then(_paintFacts); }catch(_){}
 }
 
 // A new player (another video, a stream, or none): it does not play yet and nothing the old one said stands.

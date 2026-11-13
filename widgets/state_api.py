@@ -23,8 +23,8 @@ screens.on_moved(lambda card, old_dev: state.forget(card, old_dev))
 async def widget_state(wid: str, body: dict = Body(default_factory=dict)):
     code, out = await asyncio.to_thread(state.report, wid, body)          # disk and the app's code, off the loop
     on, off, adopt = out.pop("_on", []), out.pop("_off", []), out.pop("_adopt", [])
-    for action, payload in adopt:               # his hand: the app's own action, attributed to him (C10 A1)
-        await _adopt(wid, action, payload)
+    for action, payload, _key in adopt:         # his hand: the app's own action, attributed to him (C10 A1);
+        await _adopt(wid, action, payload)      # a refused one is not lost: the field stays `hand` and adopts again
     if on or off:
         from widgets import late_report
         said, withdrawn = state.tells(wid, on, off)
@@ -35,10 +35,16 @@ async def widget_state(wid: str, body: dict = Body(default_factory=dict)):
     return JSONResponse(out, status_code=code)
 
 
-async def _adopt(wid: str, action: str, payload: dict) -> None:
-    """Run an adoption through the same funnel as his click on the card (`server_api._dispatch`), named as his."""
+async def _adopt(wid: str, action: str, payload: dict) -> bool:
+    """Run an adoption through the same funnel as his click on the card (`server_api._dispatch`), named as his.
+    True when the app took it."""
     from widgets import provenance, server_api
     from voice.observer import emit
     provenance.note(wid, "user")
     emit("widget", "action", extra={"id": wid, "action": action, "src": "user", "payload": payload, "adopted": True})
-    await server_api._dispatch(wid, action, payload)
+    try:
+        res = await server_api._dispatch(wid, action, payload)
+    except Exception as e:  # noqa: BLE001 — the agreement is given back; the next report adopts again
+        emit("widget", "adoption failed", extra={"id": wid, "action": action, "error": type(e).__name__})
+        return False
+    return isinstance(res, dict) and res.get("ok") is True

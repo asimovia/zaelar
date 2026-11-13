@@ -99,7 +99,7 @@ export function render(root, data, ctx){
   // (Re)build the card when the video changes, or when entering/leaving "searching" state (real bug 2026-07-23:
   // without this the card looked COMPLETELY empty while load searched YouTube, with no signal).
   if(!st || st.key !== pkey || st.loading !== loading || !root._hbYtBuilt){
-    const replaced = !!st && st.key !== pkey;
+    const replaced = !!st;                               // ANY rebuild destroys the player (a spinner, the same video)
     buildCard(root, data, ctx, {id, seq, loading, st, src, isStream, pkey, hasVid});
     if(replaced){ Y.ctx = ctx; playerReplaced(); }       // V2-884 1a: the old player's state does not carry over
   }
