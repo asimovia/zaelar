@@ -503,7 +503,7 @@ def _slow_titular(delay: float) -> list:
     return _SlowVoice([])
 
 
-@pytest.mark.parametrize("delay,says", [(0.6, True), (0.05, False)])
+@pytest.mark.parametrize("delay,says", [(0.8, True), (0.05, False)])
 def test_in_shadow_a_late_titular_is_said_and_still_speaks(world, monkeypatch, delay, says):
     said, _ = world
     _bound(monkeypatch, mode="shadow", tts_first_byte_s=0.3, tts_ready_s=5.0)
@@ -519,7 +519,7 @@ def test_in_shadow_a_late_titular_is_said_and_still_speaks(world, monkeypatch, d
         return got
     assert asyncio.run(asyncio.wait_for(speak(), 10)) > 0, "the titular still speaks in shadow"
     would = [e for e in EMITTED if e[0] == "provider" and e[2].get("extra", {}).get("would_switch")]
-    assert bool(would) is says and not _alerts(said), (would, said)
+    assert len(would) == (1 if says else 0) and not _alerts(said), (would, said)   # ≥4 ticks late: ONE event
     if says:
         assert "no first audio 0.3 s" in would[0][1]
 
