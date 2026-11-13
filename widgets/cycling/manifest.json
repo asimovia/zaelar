@@ -1,0 +1,286 @@
+{
+  "id": "cycling",
+  "screens": "shared",
+  "state": {
+    "order": {
+      "status": "status",
+      "view": "ui.n"
+    },
+    "report": {
+      "phase": {
+        "type": "enum:idle|countdown|running|paused",
+        "follows": "status",
+        "rest": "idle"
+      },
+      "recorder": {
+        "type": "enum:none|here|elsewhere",
+        "follows": "status",
+        "rest": "none"
+      },
+      "view": {
+        "type": "enum:menu|history|ride|segments|segment|editor|recording",
+        "follows": "view"
+      },
+      "shown": {
+        "type": "text:40",
+        "follows": "view",
+        "rest": ""
+      }
+    }
+  },
+  "version": "0.1.0",
+  "owner": "Zaelar",
+  "licence": "SUL-1.0",
+  "title": "Cycling",
+  "name": "Cycling",
+  "description": "Bike rides recorded with the phone's GPS and a heart-rate strap: speed, distance, climb and heart-rate zone live, a ghost rider racing his earlier attempts on each segment, the history of every ride with its route, splits and segments, and his segments with their PRs.",
+  "whenToUse": "His bike rides: record one, his routes and segments, PRs.",
+  "keywords": [
+    "cycling",
+    "ciclismo",
+    "cyclist",
+    "ciclista",
+    "segment",
+    "segmento",
+    "segmentos",
+    "ghost rider",
+    "fantasma",
+    "my rides",
+    "mis rutas",
+    "ride history",
+    "historial de rutas",
+    "salida en bici",
+    "heart rate zone",
+    "zona cardiaca",
+    "personal record",
+    "récord personal"
+  ],
+  "aliases": [
+    "Cycling",
+    "Ciclismo",
+    "Bici",
+    "my bike rides",
+    "mis salidas en bici",
+    "segments",
+    "segmentos"
+  ],
+  "entry": "widget.js",
+  "security": "standard",
+  "size": {
+    "w": 460,
+    "h": 620
+  },
+  "min": {
+    "w": 320,
+    "h": 380
+  },
+  "usage": "His bike rides. «Start my ride» is `start` (a 5-second GPS countdown first); «pause»/«resume»; «I'm done» or «save the ride» is `stop`; «throw this ride away» is `discard`. «Show my rides» / «yesterday's ride» / «the climb segment» is `show`. Segments are made from a ride (`create_segment`); a saved ride is matched against every segment and keeps its PRs.",
+  "actions": {
+    "start": {
+      "desc": "Start recording a bike ride now (GPS + heart-rate strap), after a 5-second GPS countdown. Optional heart-rate zone to hold.",
+      "how": "zone is z1..z5 (z2 endurance, z3 tempo, z4 threshold) or hr_zone_min/hr_zone_max in bpm; default the zone he set. name is optional.",
+      "payload": {
+        "zone": "z2",
+        "name": "morning loop"
+      },
+      "done_when": {
+        "widget": "cycling",
+        "field": "status",
+        "is": "running"
+      },
+      "effects": [
+        "present.mount"
+      ]
+    },
+    "pause": {
+      "desc": "Pause the ride being recorded: time and distance stop counting until he resumes.",
+      "payload": {},
+      "done_when": {
+        "widget": "cycling",
+        "field": "paused",
+        "is": "true"
+      }
+    },
+    "resume": {
+      "desc": "Resume the paused ride.",
+      "payload": {},
+      "done_when": {
+        "widget": "cycling",
+        "field": "paused",
+        "is": "false"
+      }
+    },
+    "stop": {
+      "desc": "End and SAVE the ride being recorded; it is matched against his segments (times, PRs).",
+      "payload": {},
+      "done_when": {
+        "widget": "cycling",
+        "field": "status",
+        "is": "idle"
+      }
+    },
+    "discard": {
+      "desc": "Throw away the ride being recorded without saving it: its track is deleted.",
+      "payload": {},
+      "confirm": true,
+      "done_when": {
+        "widget": "cycling",
+        "field": "status",
+        "is": "idle"
+      },
+      "confirm_q": "Throw this ride away? Its recording is deleted for good."
+    },
+    "claim": {
+      "desc": "The screen that reads the sensors claims the ride (sent by the app itself).",
+      "payload": {
+        "owner": "screen-token"
+      },
+      "internal": true
+    },
+    "samples": {
+      "desc": "A batch of sensor samples from the screen that owns the ride (sent by the app itself).",
+      "payload": {
+        "owner": "screen-token",
+        "samples": []
+      },
+      "internal": true
+    },
+    "set_zone": {
+      "desc": "Set the heart-rate zone he wants to ride in (a preset or two bpm values), or his age for the default zones.",
+      "how": "zone z1..z5 from HR max = 220 - age; or min and max in bpm; age 8-100.",
+      "payload": {
+        "zone": "z2",
+        "min": 120,
+        "max": 140,
+        "age": 40
+      }
+    },
+    "show": {
+      "desc": "Open a screen of the app: menu, history (all rides), ride (one ride's page), segments, segment (one segment's page).",
+      "how": "ride names the ride (its name, town, date or «last»); segment names the segment.",
+      "payload": {
+        "view": "ride",
+        "ride": "last",
+        "segment": ""
+      },
+      "ref": "ride",
+      "done_when": {
+        "widget": "cycling",
+        "field": "ui.view",
+        "is": "{view}"
+      },
+      "effects": [
+        "present.mount"
+      ]
+    },
+    "ride_detail": {
+      "desc": "One ride's full page data (sent by the app itself).",
+      "payload": {
+        "ride": "12"
+      },
+      "ref": "ride",
+      "internal": true
+    },
+    "segment_detail": {
+      "desc": "One segment's full page data (sent by the app itself).",
+      "payload": {
+        "segment": "3"
+      },
+      "ref": "segment",
+      "internal": true
+    },
+    "rename_ride": {
+      "desc": "Give a saved ride a name.",
+      "payload": {
+        "ride": "last",
+        "name": "Coastal loop"
+      },
+      "ref": "ride"
+    },
+    "delete_ride": {
+      "desc": "Delete a saved ride, its track and its segment times.",
+      "payload": {
+        "ride": "12"
+      },
+      "ref": "ride",
+      "confirm": true,
+      "confirm_q": "Delete the ride «{item}»? Its track and segment times go too."
+    },
+    "create_segment": {
+      "desc": "Make a segment (a stretch to race again) from a saved ride, between a start and an end on it; every earlier ride is ranked on it.",
+      "how": "ride names the ride; start/end as [lat, lng] marked on it, or from_km/to_km along it; name is required.",
+      "payload": {
+        "ride": "last",
+        "name": "The climb",
+        "from_km": 3.2,
+        "to_km": 5.0
+      },
+      "ref": "ride"
+    },
+    "redo_segment": {
+      "desc": "Redraw a segment's start and end on a ride and recompute all its times and the PR.",
+      "how": "segment names it; ride, start/end or from_km/to_km as in create_segment.",
+      "payload": {
+        "segment": "The climb",
+        "ride": "last",
+        "from_km": 3.0,
+        "to_km": 5.1
+      },
+      "ref": "segment"
+    },
+    "rename_segment": {
+      "desc": "Rename a segment.",
+      "payload": {
+        "segment": "The climb",
+        "name": "Hill to the village"
+      },
+      "ref": "segment"
+    },
+    "delete_segment": {
+      "desc": "Delete a segment and all its times.",
+      "payload": {
+        "segment": "The climb"
+      },
+      "ref": "segment",
+      "confirm": true,
+      "confirm_q": "Delete the segment «{item}» and all its times?"
+    },
+    "recalc_segment": {
+      "desc": "Recompute a segment's passes and PR over every saved ride.",
+      "payload": {
+        "segment": "The climb"
+      },
+      "ref": "segment"
+    },
+    "ghost_select": {
+      "desc": "During a ride, race the ghost on another of the segments he is inside now (they can overlap).",
+      "payload": {
+        "segment": "The climb"
+      },
+      "ref": "segment"
+    },
+    "readiness": {
+      "desc": "Is now a good time to ride? Weather over the ride's usual length (rain, heat, UV, cold); legs and food are not judged yet.",
+      "how": "lat/lng optional (else where his last ride started); force re-checks within the 30-minute cache.",
+      "payload": {
+        "force": false
+      }
+    },
+    "reconstruct_gaps": {
+      "desc": "Rebuild the stretches of a saved ride where the GPS lost signal over 30 s, along real roads.",
+      "payload": {
+        "ride": "last"
+      },
+      "ref": "ride"
+    },
+    "enrich": {
+      "desc": "Fill a ride's starting town and temperature (sent by the app itself).",
+      "payload": {
+        "ride": "12",
+        "lang": "en"
+      },
+      "ref": "ride",
+      "internal": true
+    }
+  }
+}

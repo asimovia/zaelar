@@ -1,0 +1,12 @@
+{
+  "view_data_shape": {
+    "paused": "bool",
+    "readiness": "NoneType",
+    "rides": "list",
+    "rides_total": "int",
+    "segments": "list",
+    "status": "str",
+    "ui": "dict",
+    "zone": "dict"
+  }
+}
