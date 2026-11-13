@@ -22,7 +22,9 @@ screens.on_moved(lambda card, old_dev: state.forget(card, old_dev))
 @router.post("/widgets/{wid}/state")
 async def widget_state(wid: str, body: dict = Body(default_factory=dict)):
     code, out = await asyncio.to_thread(state.report, wid, body)          # disk and the app's code, off the loop
-    on, off = out.pop("_on", []), out.pop("_off", [])
+    on, off, adopt = out.pop("_on", []), out.pop("_off", []), out.pop("_adopt", [])
+    for action, payload in adopt:               # his hand: the app's own action, attributed to him (C10 A1)
+        await _adopt(wid, action, payload)
     if on or off:
         from widgets import late_report
         said, withdrawn = state.tells(wid, on, off)
@@ -31,3 +33,12 @@ async def widget_state(wid: str, body: dict = Body(default_factory=dict)):
         for line in said:
             late_report.deliver(wid, {"tell": line})
     return JSONResponse(out, status_code=code)
+
+
+async def _adopt(wid: str, action: str, payload: dict) -> None:
+    """Run an adoption through the same funnel as his click on the card (`server_api._dispatch`), named as his."""
+    from widgets import provenance, server_api
+    from voice.observer import emit
+    provenance.note(wid, "user")
+    emit("widget", "action", extra={"id": wid, "action": action, "src": "user", "payload": payload, "adopted": True})
+    await server_api._dispatch(wid, action, payload)

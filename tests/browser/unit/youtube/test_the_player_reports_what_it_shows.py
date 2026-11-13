@@ -95,15 +95,9 @@ def test_the_brain_reads_the_report_and_the_digest_no_state(player):
     assert yt.apply_action("captions_on", {})["audio_blocked"] is False
 
 
-def test_player_audio_stores_no_flag_and_his_hand_unmutes_the_card(player):
-    db = yt._load()
-    db["muted"] = True
-    store.save("youtube", db)
-    db = yt._load()
-    assert sound.player_audio("player_audio", {"muted": "true", "videoId": VID}, db) == {"ok": True}
-    assert "audio_blocked" not in db and "audio_blocked" not in yt._load(), "a silence was stored as a flag"
-    sound.player_audio("player_audio", {"muted": "false", "videoId": VID}, yt._load())
-    assert yt._load()["muted"] is False, "his hand on the player's own control did not reach the card"
+def test_no_report_is_stored_as_a_flag(player):
+    _report(1, {"playing": True, "playing_id": VID, "muted": True})
+    assert "audio_blocked" not in yt._load(), "a silence was stored as a flag"
 
 
 @pytest.fixture

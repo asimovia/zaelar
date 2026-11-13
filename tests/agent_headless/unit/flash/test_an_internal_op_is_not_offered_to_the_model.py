@@ -1,6 +1,6 @@
 """An op the card fires by itself is never offered to the model.
 
-`ended`, `enrich_art`, `player_error`, `player_quality`, `player_audio` are reports a card sends about itself;
+`ended`, `enrich_art`, `player_error`, `player_quality`, `player_adopt` are reports a card sends about itself;
 the model must never call them, and listing them in every turn's prompt was paid on every turn — the same budget
 the turn-prompt ceiling guards. They are declared `"internal": true` in the card's manifest, and the catalog skips
 them. Declared data, not a reading of the description.
@@ -28,7 +28,7 @@ def _declared_internal() -> dict[str, list[str]]:
 def test_the_cards_that_report_on_themselves_declare_it():
     declared = _declared_internal()
     assert {"ended", "enrich_art"} <= set(declared.get("musica", []))
-    assert {"player_error", "player_quality", "player_audio"} <= set(declared.get("youtube", []))
+    assert {"player_error", "player_quality", "player_adopt"} <= set(declared.get("youtube", []))   # V2-884 1b
 
 
 def test_the_catalog_never_names_an_internal_op():

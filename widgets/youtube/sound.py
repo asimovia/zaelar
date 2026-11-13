@@ -33,20 +33,21 @@ def kept_mute(db: dict, muted: bool) -> None:
     db["mute_kept"] = bool(muted)
 
 
-def player_audio(action, p, db) -> dict:
-    """Internal, fired by widget.js when the player's OWN control gave it sound: his hand is his order, so the card's
-    `muted` follows the player (and his kept mute ends). Whether the player is silent is no longer stored here: it is
-    the surface's report (`widgets/state.py`), and «blocked» is the fact `audio_blocked` derived from it (V2-884 1a).
-    A report about another video than the current one is stale."""
-    vid = str(p.get("videoId") or "").strip()
-    if vid and vid != str(db.get("videoId") or ""):
-        return {"ok": True, "stale": True}
-    silent = str(p.get("muted")).strip().lower() in ("true", "1", "yes")
-    if not silent and db.get("muted"):
-        db["muted"] = False
-        db["mute_kept"] = False
-        store.save(WID, db)
-    return {"ok": True}
+def player_adopt(action, p, db) -> dict:
+    """Internal, run by the state door when his HAND moved the player's own control after the player had confirmed the
+    order (V2-884 C10 A1, `widgets/state_adopt.py`): the card follows, as his button would have — a mute by hand is
+    HIS mute (kept for the next video), a sound by hand ends it; a volume by hand is his volume. Never an autoplay
+    start, never a report that acked less than the current order: those never reach here."""
+    order, value = str(p.get("order") or ""), p.get("value")
+    if order == "muted" and isinstance(value, bool):
+        db["muted"] = value
+        kept_mute(db, value)
+    elif order == "volume" and isinstance(value, int) and not isinstance(value, bool) and 0 <= value <= 100:
+        db["volume"] = value
+    else:
+        return {"ok": False, "error": "not an adoptable field"}
+    store.save(WID, db)
+    return {"ok": True, "adopted": order}
 
 
 def player_state(action, p, db) -> dict:

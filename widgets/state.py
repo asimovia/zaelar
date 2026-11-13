@@ -153,6 +153,11 @@ def report(app, body: dict) -> tuple[int, dict]:
             refused.append(str(name)[:40])
     ack, key = _ack(body), (app, instance, dev)
     with _LOCK:
+        cur0 = _SNAP.get(key)
+    from widgets import state_adopt                      # his hand on the app's own control (C10 A1), per mount
+    settled, adopt = state_adopt.settle(app, instance, clean, ack,
+                                        cur0.get("settle", {}) if cur0 and cur0["mount"] == mount else {})
+    with _LOCK:
         cur = _SNAP.get(key)
         if mount in _GONE.get(key, ()):
             return _refused(409, "a newer mount of this screen replaced this one")
@@ -164,20 +169,21 @@ def report(app, body: dict) -> tuple[int, dict]:
             return _refused(409, "n went back")
         if cur and cur["mount"] != mount:
             _GONE[key] = (_GONE.get(key, []) + [cur["mount"]])[-8:]
-        keep = dict(cur["fields"]) if cur and cur["mount"] == mount and not full else {}   # full = everything
+        same = bool(cur) and cur["mount"] == mount
+        keep = dict(cur["fields"]) if same and not full else {}   # full = everything
         moved = {k: v for k, v in clean.items() if (keep.get(k) or (None,))[0] != v or k not in keep}
         keep.update({k: (v, ack) for k, v in clean.items() if v is not None})
         for k in [k for k, v in clean.items() if v is None]:
             keep.pop(k, None)
         seen = body.get("visible")
-        _SNAP[key] = {"mount": mount, "n": n, "at": time.time(), "fields": keep,
+        _SNAP[key] = {"mount": mount, "n": n, "at": time.time(), "fields": keep, "settle": settled,
                       "visible": seen is not False if seen is not None else (cur or {}).get("visible", True)}
     _event(app, dev, moved)
     facts = state_render.facts_for(app, instance, dev)
     with _LOCK:
         was, _HELD[key] = _HELD.get(key, []), list(facts)
     return 200, {"ok": True, "facts": facts, **({"refused": refused} if refused else {}),
-                 "_on": [f for f in facts if f not in was], "_off": [f for f in was if f not in facts]}
+                 "_on": [f for f in facts if f not in was], "_off": [f for f in was if f not in facts], "_adopt": adopt}
 
 
 def tells(app, on, off) -> tuple[list[str], bool]:

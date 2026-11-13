@@ -48,9 +48,6 @@ if(typeof window !== "undefined" && !window.__hbYtWidgetBound){
       const key = vid || "current";
       if(key !== Y.qSeen){ Y.qSeen = key; Y.ytQuality(d.info.availableQualityLevels, vid); }
     }
-    if(d.event === "infoDelivery" && d.info && typeof d.info.muted === "boolean" && Y.ytAudio){
-      Y.ytAudio(d.info.muted, String(d.info.videoData && d.info.videoData.video_id || ""));
-    }
     // V2-884 1a — the player's sound and volume as it reports them, on every change (never the order).
     if(d.event === "infoDelivery" && d.info){
       const p = {};
@@ -250,19 +247,10 @@ export function bindReporters(data, ctx, id, PL){
   Y.ytQuality = (levels, vid) => {
     if(ctx && ctx.action) ctx.action("player_quality", {levels: Array.isArray(levels) ? levels : [], videoId: vid || ""});
   };
-  // V2-884 1a — whether the player is silent is REPORTED (`reportState`, above) and «blocked» is the engine's fact.
-  // What stays an action is his HAND: the player's own control gave it sound while the card says muted — the card
-  // follows the player (`player_audio`, until 1b's declared adoption). A blocked sound arms the gesture unlock.
+  // V2-884 — whether the player is silent is REPORTED (`reportState`, above) and «blocked» is the engine's fact; his
+  // hand on the player's own control reaches the card through the state door's adoption (1b), never from here.
+  // A blocked sound arms the gesture unlock.
   Y.plNow = PL;
   Y.armUnlock = () => { if(!data.muted && data.videoId && !halted(ctx)) armSoundUnlock(vol0); };   // facts call it too
   if(Y.facts.indexOf("audio_blocked") >= 0) Y.armUnlock();
-  Y.ytAudio = (playerMuted, vid) => {
-    if(!ctx || !ctx.action || halted(ctx) || !data.videoId) return;
-    if(vid && vid !== data.videoId) return;
-    if(playerMuted || !data.muted) return;
-    const key = data.videoId + "|false|" + (data.cmd_seq || 0);
-    if(key === Y.audioSent) return;
-    Y.audioSent = key;
-    ctx.action("player_audio", {muted: false, videoId: data.videoId});
-  };
 }

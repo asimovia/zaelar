@@ -154,5 +154,7 @@ def problem(man: dict) -> str | None:
         if isinstance(spec, dict) and "rest" in spec and not coerce(spec, spec["rest"])[0]:
             return f"state.report.{name}: rest is not a value of its type"
         if isinstance(spec, dict) and spec.get("adopt"):
-            return f"state.report.{name}: adopt is not built yet (V2-884 C10 A1, step 1b)"
+            from widgets import state_adopt
+            if (bad := state_adopt.problem(man, name, spec)):
+                return bad
     return None
