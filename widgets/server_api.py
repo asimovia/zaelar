@@ -11,7 +11,7 @@ from fastapi import APIRouter, File, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from loguru import logger
 
-from . import runtime
+from . import runtime, state, state_decl
 from .about import router as _about_router
 from .client_files import router as _client_router
 from .reading import router as _reading_router
@@ -20,6 +20,7 @@ router = APIRouter()
 router.include_router(_about_router)   # V2-823 — GET /widgets/{wid}/about, the apps window's page
 router.include_router(_client_router)  # widget.js and its js/ modules
 router.include_router(_reading_router)  # what the brain reads of a card: /reading, /context
+router.include_router(__import__("widgets.state_api", fromlist=["x"]).router)  # V2-884: a surface's report, /state
 from widgets import paths as _paths
 
 HERE = _paths.BUILTIN_ROOT
@@ -280,7 +281,7 @@ async def widget_data(wid: str, q: str = ""):
     res = await _run_widget(wid, "view_data", call)
     if res is _MISSING:
         return JSONResponse({"error": "no data module"}, status_code=404)
-    return JSONResponse(res)
+    return JSONResponse({**res, "_rev": state.stamp(wid)} if isinstance(res, dict) and state_decl.of(wid) else res)  # V2-884
 
 
 def _answer_backed(wid: str, action: str, payload: dict):

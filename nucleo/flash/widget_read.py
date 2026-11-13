@@ -119,7 +119,9 @@ def read(wid: str) -> str:
         return ""
     parts: list[str] = []
     try:
-        from widgets import refs
+        from widgets import refs, state_render
+        if (st := state_render.clause(wid)):
+            parts.append(f"app state (reported): {st}")       # V2-884: the one reader the turn uses too
         digest = str(refs.prompt_digest(wid) or "").strip()
         if digest:
             parts.append(digest)

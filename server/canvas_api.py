@@ -146,6 +146,11 @@ async def canvas_state(payload: dict):
 _BY_DEV: dict = {}
 
 
+def open_on(dev) -> list:
+    """What `dev`'s last canvas report lists as open ([] when it never reported)."""
+    return list((_BY_DEV.get(str(dev or "")) or {}).get("open") or [])
+
+
 def _counts(payload: dict) -> bool:
     """Does this report speak for the screen the conversation is about? It is stored either way."""
     from voice import screens as _screens

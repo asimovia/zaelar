@@ -155,6 +155,10 @@ def save(widget_id: str, data: dict) -> dict:
         _last_hash[widget_id] = h
         _rev[canvas_id(widget_id)] = _rev.get(canvas_id(widget_id), 0) + 1
     __import__("nucleo.done_ops", fromlist=["x"]).touched(canvas_id(widget_id))   # his turn's change, by its trace
+    try:
+        __import__("widgets.state", fromlist=["x"]).note_save(canvas_id(widget_id), data)   # V2-884: which order moved
+    except Exception as e:  # noqa: BLE001 — the save stands; only the order ledger misses this change
+        __import__("loguru").logger.debug(f"store: state ledger skipped for {widget_id}: {e!r}")
     # THE single choke point for "this widget's data CHANGED" — every mutation path (a widget's own ctx.action,
     # Hermes via [[widget.data]], a connector writing directly, the generator seeding defaults) ends up here, so
     # this is the ONE place that needs to notify the canvas. The open widget (if any) gets pushed one SSE event and
@@ -164,8 +168,8 @@ def save(widget_id: str, data: dict) -> dict:
         from widgets.provenance import who
         # The CANVAS id, not the disk key — see `canvas_id()`. Provenance keeps looking itself up by the disk
         # key, which is the name it is recorded under.
-        emit("widget", "data",
-             extra={"id": canvas_id(widget_id), "src": who(widget_id)})   # V2-039: WHO changed the data
+        emit("widget", "data", extra={"id": canvas_id(widget_id), "src": who(widget_id),   # V2-039: WHO changed it
+                                      "rev": __import__("widgets.state", fromlist=["x"]).stamp(widget_id)})  # V2-884
     except Exception:
         pass
     return data
