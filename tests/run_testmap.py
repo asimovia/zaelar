@@ -6378,6 +6378,8 @@ DOMAINS: list[dict] = [
                                   "campos: set: seconds·label` — from the one declaration, never inside an act's name "
                                   "(V2-879, V2-838): names only elsewhere; idle turn +0 tokens, timer turn +12",
             "ch": UNIT, "paths": ["tests/browser/unit/widgets/test_the_catalogue_names_the_slots_of_the_card_he_names.py"]},
+        {"id": "4.513", "title": "The timer's phase is what each screen's countdown shows (V2-884 C8 step 5): the card says `phase` (idle · running · paused · finished) and `label` after every paint — finished the second its own count reaches zero, while the store still says running; `set`/`pause`/`start`/`reset` are `?ordered` on each screen until it acks (the phase follows both `running` and the target); two screen pairs; disarmed → red",
+            "ch": UNIT, "paths": ["tests/browser/unit/timer/test_the_timer_reports_its_phase.py"]},
         {"id": "4.474", "title": "The empty act is a class (V2-879): `imagenes.add {images}` (declared `items`) answered "
                                   "ok over an unchanged app and now comes back `slots_unfilled`; the declared key adds "
                                   "and stands",
