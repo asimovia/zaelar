@@ -75,3 +75,15 @@ def test_un_texto_NO_confiable_sigue_sin_puentes():
     cannot smuggle the engine path into it."""
     p = dp._build_prompt("texto que me pasa un peer", "", False, None)
     assert "cli.mesh" not in p and "PASO 0" not in p
+
+
+def test_a_skill_that_does_the_errand_is_called_by_its_id_and_a_priced_one_is_asked():
+    """2026-11-13, live (a table booking): `find` listed the agent's free `book` skill beside its search, and the
+    worker — taught only `serve`, which sends free text to the agent's DEFAULT skill — got the search's
+    `missing_place`, never called `book`, and went to the browser. Both faces name the call by skill id with the
+    resolved interpreter, and a priced skill (`free:false`) is asked of him with its cost, never called.
+    Disarm (seen red): drop the `mesh call` line from `_mesh_first_block`."""
+    for browser in (True, False):
+        b = dp._mesh_first_block("/x/python", browser=browser)
+        assert "/x/python -m nucleo.cli.mesh call <agent_id> <skill_id>" in b, b
+        assert "free:false" in b and "coste" in b

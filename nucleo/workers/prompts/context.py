@@ -152,6 +152,8 @@ def _mesh_first_block(py: str = "python", *, browser: bool, goal: str = "") -> s
         "Vuelve a pedírselo añadiendo esos campos, uno por `--field`, p. ej. "
         "`--field city=\"New York\" --field country_code=US --field checkin=2026-09-10`. Manda los campos SOLOS "
         "(sin `--prompt`): con texto libre delante, el agente lo interpreta a él y los ignora.\n"
+        + f"   · Si `find` lista una SKILL que hace justo lo pedido (reservar, comprar, pedir cita…), pídesela A ELLA — `serve` manda texto libre a la skill por defecto: `{py} -m nucleo.cli.mesh call "
+        "<agent_id> <skill_id> --json '<los campos de sus ejemplos, con sus datos>' --errand \"<sus palabras>\"`. Una skill `free:false` (p. ej. una llamada de teléfono) NO se llama: pregúntale a él antes, con su coste.\n"
         "   · Si `ok:true` y los datos SIRVEN, esa es tu respuesta: entrega eso y no sigas buscando. "
         + cola +
         "para lo que la red no cubra, el navegador sigue siendo el camino.\n"
