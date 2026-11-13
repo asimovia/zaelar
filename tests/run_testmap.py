@@ -6357,6 +6357,8 @@ DOMAINS: list[dict] = [
         {"id": "4.464", "title": "The clock fills its page with no frame of its own and names the screen's zone (a zone "
                                   "the engine sends wins) (V2-877 #12)",
             "ch": UNIT, "paths": ["tests/browser/unit/phone_apps/test_the_clock_fits_the_hand.py"]},
+        {"id": "4.512", "title": "A face nothing moves declares it, with the reason (V2-884 C8 step 5): `{\"static\": \"<why>\"}` gets no state line, no door and no revision to ack, the reason is checked (≥ 12 characters) and stands alone; the clock is the first (it shows the time every turn already carries); disarmed → red",
+            "ch": UNIT, "paths": ["tests/browser/unit/widgets/test_a_static_face_says_why.py"]},
         # V2-877 #8 / V2-876 P-41/P-42 — markets and map opened as a sentence over black.
         {"id": "4.465", "title": "Markets and map show their subject or an honest empty page: a quote is the markets "
                                   "card's own, its empty page runs `show` by hand, 44pt tabs; the map always draws its "
