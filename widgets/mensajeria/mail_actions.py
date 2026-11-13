@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from . import data as _d
 from . import mailbox as _mbx
+from .words import say as _say
 
 
 def _rows_answer(db: dict) -> dict:
@@ -99,8 +100,8 @@ def _a_open_draft(action, payload) -> dict:
     key = _draft_key(db, payload)
     if key is None:
         return {"ok": False, "error": "no_draft",
-                "message": "No hay ningún borrador guardado" + (f" para {payload['contact']}"
-                                                                 if payload.get("contact") else "") + ".",
+                "message": (_say("no_saved_draft_for", "There is no saved draft for {name}.", name=payload["contact"])
+                            if payload.get("contact") else _say("no_saved_draft", "There is no saved draft.")),
                 **_d.view_data()}
     d = db["drafts"][key]
     t = d.get("target") or {}
@@ -187,7 +188,7 @@ def _a_save_draft(action, payload) -> dict:
     db = _d.load_db()
     key = _draft_key(db, {"key": payload.get("key")}) if payload.get("key") else None
     if key is None:
-        return {"ok": False, "error": "no_draft", "message": "Ese borrador ya no existe.", **_d.view_data()}
+        return {"ok": False, "error": "no_draft", "message": _say("draft_gone", "That draft no longer exists."), **_d.view_data()}
     out = _edit(db, key, payload)
     if not out.get("ok"):
         _mbx.note(db, "not_saved", out.get("error") or "")
@@ -204,7 +205,7 @@ def _a_discard_draft(action, payload) -> dict:
     db = _d.load_db()
     key = _draft_key(db, payload)
     if key is None:
-        return {"ok": False, "error": "no_draft", "message": "No hay ningún borrador que descartar.",
+        return {"ok": False, "error": "no_draft", "message": _say("no_draft_to_discard", "There is no draft to discard."),
                 **_d.view_data()}
     t = (db["drafts"][key].get("target") or {})
     _d._drafts.forget(db, key)

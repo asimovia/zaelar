@@ -6,17 +6,19 @@ from __future__ import annotations
 import re
 import time
 
+from ..words import say as _say
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s.]+\.[^@\s]+$")
 
 #: Kept in step with `widgets/directory.PLATFORMS` — this widget's three channels.
 PLATFORMS = ("whatsapp", "telegram", "email")
 
-_LABEL = {"whatsapp": "WhatsApp", "telegram": "Telegram", "email": "correo"}
+_LABEL = {"whatsapp": "WhatsApp", "telegram": "Telegram"}
 
 
 def label(platform: str) -> str:
-    return _LABEL.get(str(platform or "").strip().lower(), str(platform or ""))
+    p = str(platform or "").strip().lower()
+    return _LABEL.get(p) or (_say("email_word", "email") if p == "email" else str(platform or ""))
 
 
 def _directory():
@@ -124,10 +126,11 @@ def alternatives(contact: dict, up: set[str] | None, d=None, *, but: str = "") -
 
 def channel_down(name: str, platform: str, alts: list[str]) -> dict:
     """The refusal of a send whose channel is down, with the OFFER of the contact's connected channels (no send)."""
-    tail = (f" Por {', '.join(label(p) for p in alts)} sí puedo escribirle: dime si lo mando por ahí."
-            if alts else " No tengo ningún otro canal suyo conectado ahora mismo.")
+    tail = (_say("channel_offer", " I can write to them on {channels}: tell me if I should send it that way.",
+                 channels=", ".join(label(p) for p in alts)) if alts else _say("channel_none", " I have no other channel of theirs connected right now."))
     return {"ok": False, "error": "channel_down", "channel": platform, "offer": list(alts),
-            "message": f"{label(platform)} no está conectado ahora mismo, así que no se ha enviado nada a {name}.{tail}"}
+            "message": _say("channel_down", "{channel} is not connected right now, so nothing was sent to {name}.",
+                            channel=label(platform), name=name) + tail}
 
 
 def _near_recipient(who: str) -> list[dict]:

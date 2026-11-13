@@ -6514,6 +6514,11 @@ DOMAINS: list[dict] = [
             "ch": UNIT, "paths": ["tests/connectors/unit/music/test_a_control_never_reaches_someone_elses_playback.py"]},
         {"id": "5.75", "title": "The music app shows only a session that is ours (operator, 2026-11-08): blank when the account plays on another device and it was never ours, that song with its controls LOCKED (take control / let it be) when our session was taken or a start waits for his choice, blank again after `release`; and a bare control's words are said only if it happened (the turn's Hold drops speculative words when its op was refused)",
             "ch": UNIT, "paths": ["tests/browser/unit/musica/test_the_card_shows_only_a_session_that_is_ours.py", "tests/voice/unit/test_a_bare_control_is_said_only_if_it_happened.py"]},
+        # V2-880 follow-up — the messages card's refusals and offers were Spanish literals in the code.
+        {"id": "5.76", "title": "The messages card answers in his language (V2-880): every refusal and offer it returns "
+                                "(a channel down and the contact's other channels, no draft, nothing scheduled…) is a key "
+                                "of the UI pack read through `words.say`, in both packs; no answer is a literal",
+            "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_the_cards_answers_speak_his_language.py"]},
         {"id": "5.66", "title": "Every connector family declares how far back it can see through one door — mail (the "
                                 "INBOX's oldest INTERNALDATE, read-only), cloud files (the root's date), messaging (the "
                                 "archive's oldest row); an undeclared family says so, a dead resource is a fact, not a "

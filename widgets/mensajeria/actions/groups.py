@@ -6,6 +6,7 @@ Every module-level name of `data` is read through it (`_d.<name>`), so a patch o
 from __future__ import annotations
 
 from .. import data as _d
+from ..words import say as _say
 
 
 # CREATE A GROUP («crea un grupo con Ana y Luis que se llame Viaje»). Every member resolves through the same
@@ -108,7 +109,7 @@ def _a_set_media_days(action, payload) -> dict:
 def _a_set_signature(action, payload) -> dict:
     lines = payload.get("lines")
     if not isinstance(lines, list):
-        return {"ok": False, "error": "bad_lines", "message": "Dame las líneas de la firma."}
+        return {"ok": False, "error": "bad_lines", "message": _say("signature_lines", "Give me the signature's lines.")}
     lines = [str(x).strip()[:200] for x in lines[:10]]
     while lines and not lines[-1]:
         lines.pop()
@@ -121,9 +122,9 @@ def _a_set_signature_line(action, payload) -> dict:
     try:
         i = int(payload.get("line"))
     except (TypeError, ValueError):
-        return {"ok": False, "error": "bad_line", "message": "Dime qué número de línea (1, 2, 3…)."}
+        return {"ok": False, "error": "bad_line", "message": _say("signature_which_line", "Tell me which line number (1, 2, 3…).")}
     if not 1 <= i <= 10:
-        return {"ok": False, "error": "bad_line", "message": "La firma admite hasta 10 líneas."}
+        return {"ok": False, "error": "bad_line", "message": _say("signature_max", "A signature takes up to 10 lines.")}
     text = str(payload.get("text") or "").strip()[:200]
     from config import connectors as _conn_store
     # RAW positional read, never `connectors.email.config.signature_lines()`: that reader drops blank lines, so

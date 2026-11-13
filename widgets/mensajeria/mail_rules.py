@@ -18,6 +18,8 @@ provider never returned is refused, not invented.
 """
 from __future__ import annotations
 
+from .words import say as _say
+
 SCOPE = "widget:mensajeria"
 ROUTE = "mail_route:"
 HIDE = "mail_hide:"
@@ -56,17 +58,6 @@ def sender(raw) -> str:
     return who if ok else ""
 
 
-def _say(key: str, default: str, **kw) -> str:
-    try:
-        from i18n import runtime as _rt
-        text = _rt.text(f"widgets.mensajeria.{key}", default)
-    except Exception as e:  # noqa: BLE001 — no language table: the English default stands
-        import logging
-        logging.getLogger("zaelar.mensajeria.mail_rules").info(f"mail rules: i18n unreadable ({e})")
-        text = default
-    for k, v in kw.items():
-        text = text.replace("{" + k + "}", str(v))
-    return text
 
 
 def _cat_name(key: str) -> str:

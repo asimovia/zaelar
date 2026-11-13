@@ -5,6 +5,7 @@ Every module-level name of `data` is read through it (`_d.<name>`), so a patch o
 from __future__ import annotations
 
 from .. import data as _d
+from ..words import say as _say
 
 
 # Reply to a message (V2-051): enqueue into pending_reply for the platform's connector; the CONFIRM gate (V2-025)
@@ -85,7 +86,7 @@ def _a_draft(action, payload) -> dict:
     target = _d._outbound.resolve_reply_target(db, payload.get("n"), payload.get("messageId"))
     if target is None:
         return {"ok": False, "error": "no_target",
-                 "message": "No sé a qué conversación o mensaje se refiere el borrador."}
+                 "message": _say("draft_no_target", "I don't know which conversation or message the draft is for.")}
     out = _d._drafts.write(db, target, str(payload.get("text") or ""), bool(payload.get("reply_all")),
                            files=payload.get("files"))
     _d.store.save(_d.WIDGET_ID, db)
@@ -112,7 +113,7 @@ def _draft_new(db: dict, payload: dict) -> dict:
     out = _d._drafts.write(db, target, str(payload.get("text") or ""), False, files=payload.get("files"))
     _d.store.save(_d.WIDGET_ID, db)
     return {**out, "held": True, "to": t.get("name"), "channel": t.get("platform"),
-            "message": "Ya está escrito: revísalo y confírmame si lo mando ya o cuándo."}
+            "message": _say("draft_ready", "It's written: check it and tell me whether to send it now or when.")}
 
 
 def _a_cancel_send(action, payload) -> dict:
@@ -131,7 +132,7 @@ def draft_named(db: dict, payload: dict) -> tuple:
     if str(payload.get("key") or "") in (db.get("drafts") or {}):
         key = str(payload["key"])         # the draft screen's own button names its draft exactly
     elif payload.get("contact") and key is None:
-        return key, {}, "", [], {"ok": False, "error": "no_draft", "message": "No tengo ningún borrador para esa persona."}
+        return key, {}, "", [], {"ok": False, "error": "no_draft", "message": _say("no_draft_for", "I have no draft for that person.")}
     if key is None and (payload.get("n") is not None or payload.get("messageId")):
         t = _d._outbound.resolve_reply_target(db, payload.get("n"), payload.get("messageId"))
         if t is not None:
@@ -140,7 +141,7 @@ def draft_named(db: dict, payload: dict) -> tuple:
     text = str(draft.get("text") or "").strip()
     files = _d._media.local_paths(_d.store.data_dir(_d.WIDGET_ID), draft.get("files"))
     if not text and not files:
-        return key, draft, text, files, {"ok": False, "error": "no_draft", "message": "No hay ningún borrador que enviar."}
+        return key, draft, text, files, {"ok": False, "error": "no_draft", "message": _say("no_draft_to_send", "There is no draft to send.")}
     return key, draft, text, files, None
 
 
@@ -172,7 +173,7 @@ def _a_send_draft(action, payload) -> dict:
     # message is named by its recipient (`contact`), and `at`/`in_minutes` schedule it (V2-800).
     not_before, bad = _d._held.when(payload)
     if bad:
-        return {"ok": False, "error": bad, "message": "No entiendo para cuándo: dime la hora o dentro de cuánto."}
+        return {"ok": False, "error": bad, "message": _say("when_unclear", "I don't understand when: tell me the time, or in how long.")}
     key, draft, text, files, refused = draft_named(db, payload)
     if refused:
         return refused
@@ -211,7 +212,7 @@ def _a_send_to(action, payload) -> dict:
         atts = _d._outbound.attachments_of(db, ref)
         if not atts:
             return {"ok": False, "error": "no_attachment",
-                    "message": "Ese mensaje no tiene adjuntos que pueda enviar — ábrelo o dime cuál es."}
+                    "message": _say("no_attachments", "That message has no attachments I can send — open it or tell me which one.")}
     # Files the operator picked in the card (uploads) travel the same way, on every platform.
     if payload.get("files"):
         atts += [p for p in _d._media.local_paths(_d.store.data_dir(_d.WIDGET_ID), payload.get("files"))

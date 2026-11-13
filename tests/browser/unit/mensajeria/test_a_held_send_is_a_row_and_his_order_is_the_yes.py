@@ -60,7 +60,8 @@ def _held_email():
 
 def test_a_new_message_held_for_his_word_is_a_draft_row_and_nothing_leaves():
     out = _held_email()
-    assert out["ok"] and out["held"] and "revísalo" in out["message"]
+    from widgets.mensajeria.words import say
+    assert out["ok"] and out["held"] and out["message"] == say("draft_ready", ""), out   # «check it», in his language
     db = data.load_db()
     assert not db.get("pending_send"), "writing the draft must not send it"
     rows = held.held(db)
