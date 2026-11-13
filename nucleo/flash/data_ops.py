@@ -243,6 +243,10 @@ def one_open_instance(wid: str) -> str:
         return wid
 
 
+def _mouth_closed() -> bool:  # E3 b136: the turn this op runs under has closed — none of its mouth is left to say it
+    return not __import__("nucleo.turn.mouth", fromlist=["x"]).is_open()
+
+
 def start_op(wid: str, action_name: str, payload: dict, *, seal, text, spawn):
     """Start a fast data-op detached, or SAY that it could not start (V2-778 F0-4). Returns the task, or None
     (= NOT done). Was `except: pass` at the call site, leaving «Done.» standing. `text` may be a callable."""
@@ -307,7 +311,7 @@ async def dispatch_and_report(wid: str, action_name: str, payload: dict, *, seal
         res = await _run(wid, action_name, payload)
     except Exception as e:  # noqa: BLE001 — V2-778 F0-4: an op that raised is said, never left behind «Done.»
         return await _say_it_did_not_run(wid, action_name, e, seal=seal, row=_row)
-    _late = time.monotonic() - _t0 > _MOUTH_WAIT_S        # the turn's mouth no longer waits for this answer
+    _late = time.monotonic() - _t0 > _MOUTH_WAIT_S or (bool(row) and _mouth_closed())   # a row's op, its turn gone
     _ia.reached(wid, action_name, res, _row)     # V2-851 — whom it reached: a waiting row's re-run never repeats it
     _outcome.remember(wid, action_name, text, res)
     _refused = bool(_receipt.failed(res)) if isinstance(res, dict) else False

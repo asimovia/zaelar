@@ -11,7 +11,7 @@ doors: the send task, his spoken yes, the card's Yes button and a worker's act. 
 rewriter would change: a time a recent agenda op contradicts, in Spanish, English and Japanese, in an English session.
 The time alignment still exists for a text the MODEL wrote, once, at composition — before it is held or shown.
 
-Disarm: put `align_payload` back in `widgets.dispatch_tag` → the send-task, spoken-yes and button cases go red, 10 of 14
+Disarm: put the agenda-time alignment back in `widgets.dispatch_tag` → the send-task, spoken-yes and button cases go red, 10 of 14
 (the worker's act never crossed it: that was the asymmetry).
 """
 from __future__ import annotations

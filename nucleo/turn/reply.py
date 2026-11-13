@@ -276,8 +276,8 @@ def say_started(line: str, said: str, send, speech) -> str:
 
 
 def routed_send_line(spoken: str, send_task, data_done, send, speech) -> str:
-    """V2-887 — a send that LEFT as a task, said in silence: its line is the START, never the short «Done.»."""
-    if not (send_task and data_done and not spoken):
+    """V2-887 · E3 b136 — a send that LEFT as a task, said in silence: its START line, never «Done.», data-op or not."""
+    if not (send_task and not spoken):
         return spoken
     try:
         return say_started(str(getattr(_lang(), "done_just_started", "") or ""), "", send, speech) or spoken

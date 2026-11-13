@@ -257,7 +257,7 @@ async def settle_what_is_pending(*, _ans, _ask_waiting, _auth_pending, _brief, _
     # SHOW/CLOSE de canvas por tag SIN frase hablada → ack corto (bug 2026-07-13: el modelo emitía [[show:agenda]]
     # sin decir nada → turno MUDO; el operador no oía NI veía nada y creía que estaba roto). Nunca mudo al abrir/
     # cerrar un widget.
-    if acted["widget"] and not spoken_text and _ack_allowed \
+    if acted["widget"] and not spoken_text and _ack_allowed and not escalate_req.get("send_task") \
             and escalate_req["v"] is None and search_req["v"] is None \
             and not confirm_state.get("opened") and not clarify["msg"]:
         try:

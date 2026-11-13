@@ -5033,6 +5033,8 @@ DOMAINS: list[dict] = [
         {"id": "2.233", "title": "A forward names its mail with decoration («Vendor AI (recibo #N)») and still finds it — the core "
                                  "of what he named is asked of the archive too (demo pass 107 E3, 2026-10-04)",
             "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_a_decorated_sender_still_finds_the_mail.py"]},
+        {"id": "2.1742", "title": "A send is never called «Done.» before its exit door reports — held words are said once no stop can run, a routed send is a START, and a refusal after its turn closed is said out of turn (V2-903, demo E3 b136)",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_a_send_is_never_called_done_before_its_exit.py"]},
         {"id": "2.232", "title": "What he approved leaves byte-identical through all four doors (send task, spoken yes, the "
                                  "card's button, a worker's act) — no translation, no agenda-time swap after his yes; the "
                                  "time is aligned once on the model's own text before it is held (V2-903 P1-1 + P1-A)",
