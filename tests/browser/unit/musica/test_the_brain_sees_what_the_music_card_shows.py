@@ -51,8 +51,7 @@ def card(monkeypatch, tmp_path):
     import widgets.store as store
     from connectors.music import youtube_audio as yta
     from connectors.spotify import auth
-    monkeypatch.setattr(store, "_path", lambda wid: str(tmp_path / f"{wid}.json"))
-    monkeypatch.setattr(store, "_legacy_path", lambda wid: str(tmp_path / f"{wid}_legacy.json"))
+    monkeypatch.setattr(store, "DATA_DIR", str(tmp_path))   # the store's own layout: `has_state` reads it too
     monkeypatch.setattr(auth, "status", lambda: {"logged_in": True, "can_connect": True})
     remote, page = _Remote(), yta.YouTubeAudioProvider()
     monkeypatch.setattr(registry, "available", lambda: [remote, page])
@@ -100,3 +99,40 @@ def test_a_start_recorded_on_the_device_sends_the_controls_there(card):
     assert ("volume", 20) in card.calls and "next" in card.calls
     assert "Home computer" in md.prompt_digest(), "the digest names the device it sounds on"
 
+
+
+def _state_lines(block: str) -> list:
+    return [ln for ln in block.splitlines() if "musica@" in ln or "musica: state" in ln]
+
+
+def test_with_spotify_playing_the_page_says_nothing_beside_it(card, monkeypatch):
+    """V2-884 audit P1: Spotify sounding on his device and the state block said `musica@computer: !playing` — or
+    `musica: state unreported` — beside «NOW … · Spotify · playing». The page player's report is the card's state only
+    while the page plays (`surface_acts`); a provider's device is the provider's line."""
+    from nucleo.flash import widget_read
+    from tests.browser.unit.musica.page_player import page_player
+    from widgets import store
+    store.save("musica", {"yt": {"videoId": "VID00000001", "title": "Dai Dai", "paused": True, "volume": 50},
+                          "source": {"provider": "spotify", "device_id": "pc", "live": True}})
+    md._np_last.update(at=0.0, np=None)
+    assert not _state_lines(widget_read.read("musica")), "no page line at all — not even «unreported»"
+    page_player(monkeypatch)(playing=False, playing_id="VID00000001", muted=False, volume=50)
+    block = widget_read.read("musica")
+    assert "Elsewhere" in block and "Spotify" in block and "playing" in block, block
+    assert not _state_lines(block), f"the page's stale report spoke beside Spotify: {block}"
+    store.save("musica", {"yt": {"videoId": "VID00000001", "title": "Dai Dai", "volume": 50},
+                          "source": {"provider": "youtube", "screen": "mobile:aa11"}})
+    assert _state_lines(widget_read.read("musica")), "a song in the page: its report is the state again"
+
+
+def test_disarm_a_page_line_beside_spotify_contradicts_it(card, monkeypatch):
+    """Disarm: `surface_acts` always True → the page's «!playing» rides beside Spotify's «playing»."""
+    from nucleo.flash import widget_read
+    from tests.browser.unit.musica.page_player import page_player
+    from widgets import store
+    monkeypatch.setattr(md, "surface_acts", lambda db: True)
+    store.save("musica", {"yt": {"videoId": "VID00000001", "title": "Dai Dai", "paused": True, "volume": 50},
+                          "source": {"provider": "spotify", "device_id": "pc", "live": True}})
+    md._np_last.update(at=0.0, np=None)
+    page_player(monkeypatch)(playing=False, playing_id="VID00000001", muted=False, volume=50)
+    assert _state_lines(widget_read.read("musica")), "the disarm did not land"

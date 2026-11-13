@@ -62,6 +62,18 @@ def _read_now_playing() -> "dict | None":
         return None
 
 
+def _in_page(db: dict, connected: bool) -> bool:
+    """The page player is what plays: a library file, or a song started in the page (or with no account elsewhere)."""
+    yt = db.get("yt") or {}
+    return bool(_local.display(db)) or bool(yt.get("videoId") and (
+        (db.get("source") or {}).get("provider") == "youtube" or not connected))
+
+
+def surface_acts(db: dict) -> bool:
+    """The page's report is the card's state only while the page plays (`state_render._surface_acts`, V2-884)."""
+    return _in_page(db, bool(_spotify_status().get("logged_in")))
+
+
 def _live_fields(db: dict, fresh_s: float = 0.0) -> dict:
     """Live state recomputed on each read: Spotify connection + card display mode + now_playing. `fresh_s` > 0 lets
     a reading that young stand in for a new one (the digest's per-turn read, V2-812)."""
@@ -73,9 +85,7 @@ def _live_fields(db: dict, fresh_s: float = 0.0) -> dict:
     # A library file wins over the connector modes: it plays IN the page, and `local_audio.play` clears the yt
     # block (V2-638). The bar shows the player that MAKES the sound: a page-player song beats a Spotify reading
     # of a device elsewhere (V2-812).
-    in_page = (db.get("source") or {}).get("provider") == "youtube" and yt.get("videoId")
-    mode = "local" if loc else ("youtube" if in_page else ("spotify" if connected else
-                                                           ("youtube" if yt.get("videoId") else "idle")))
+    mode = "local" if loc else ("youtube" if _in_page(db, connected) else ("spotify" if connected else "idle"))
     now = (None if mode != "spotify" else _fresh_now_playing(db, fresh_s) if fresh_s else _d._now_playing())
     away = _elsewhere(db, now) if mode == "spotify" else {}
     if away and not _ours_taken(db):

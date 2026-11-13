@@ -163,12 +163,25 @@ def _fit(head: str, bits: list[list], facts: list[str], room: int) -> str:
             return line[:max(0, room - 1)] + "…"
 
 
+def _surface_acts(app: str) -> bool:
+    """An app may declare `surface_acts(store)` when something else can be acting (music on a provider's own device):
+    False = no line at all — never a stale one nor «unreported» — and its content says what plays (V2-884 audit P1)."""
+    try:
+        import importlib
+        from widgets import store
+        fn, disk = getattr(importlib.import_module(f"widgets.{app}.data"), "surface_acts", None), state.disk_id(app)
+        return not callable(fn) or bool(fn(store.load(disk, {}) if store.has_state(disk) else {}))
+    except Exception as e:  # noqa: BLE001 — unreadable: the surface speaks, as for any app
+        logger.debug(f"state_render: {app} surface_acts unreadable ({e!r})")
+        return True
+
+
 def clause(app, dev=None) -> str:
     """The app's one state line for the prompt, "" when it declares no state. ≤ `CLAUSE_MAX` whatever it holds."""
     from voice import screens
     app = decl.base(app)
     r = read(app, dev=dev)
-    if not r["declared"]:
+    if not r["declared"] or not _surface_acts(app):
         return ""
     if not r["surfaces"]:
         return f"{app}: state unreported"
