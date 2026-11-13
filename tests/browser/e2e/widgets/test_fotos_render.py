@@ -19,6 +19,8 @@ import pytest
 ENG = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".."))
 _WIDGET = os.path.join(ENG, "widgets", "fotos", "widget.js")
 
+_BOOT = """<script type="module">import { render } from "/widgets/fotos/widget.js"; window.render = render;</script>"""
+
 _HTML = """<!doctype html><html data-theme="dark"><head><meta charset="utf-8"><style>
 :root{--hb-bg:#0f1720;--hb-bg-soft:#16202c;--hb-ink:#e8eef6;--hb-muted:#9fb0c4;--hb-muted-2:#6f8299;
       --hb-line:#243244;--hb-accent:#2F6FEB;--hb-accent2:#16B8A6;--hb-risk:#e05252}
@@ -52,7 +54,7 @@ _MEASURE = """() => {
     tiles: el.querySelectorAll('.fts-tile').length,
     years: [...el.querySelectorAll('.fts-year')].map(n => n.textContent),
     injected_imgs: document.querySelectorAll('img[onerror]').length,
-    connect_btn: !!el.querySelector('.fts-cx .fts-btn'),
+    connect_btn: !!el.querySelector('.fts-cx button'),
     has_find: !!el.querySelector('.fts-find input'),
   };
 }"""
@@ -72,13 +74,20 @@ def _run(steps):
             errors = []
             pg.on("pageerror", lambda e: errors.append(str(e)))
 
-            async def _page(route):
-                await route.fulfill(status=200, content_type="text/html", body=_HTML)
-            await pg.route("http://zaelar.test/", _page)
+            async def _serve(route):
+                # The widget is an ES module that imports the house's own modules (the bar, V2-882): it is loaded as
+                # one, its imports served from the tree it ships in — never pasted in as a classic script.
+                path = route.request.url.split("zaelar.test", 1)[1].split("?", 1)[0]
+                if path == "/":
+                    return await route.fulfill(status=200, content_type="text/html", body=_HTML + _BOOT)
+                file = os.path.join(ENG, path.lstrip("/"))
+                if os.path.isfile(file):
+                    return await route.fulfill(status=200, content_type="text/javascript",
+                                               body=open(file, encoding="utf-8").read())
+                return await route.fulfill(status=404, body="")
+            await pg.route("http://zaelar.test/**", _serve)
             await pg.goto("http://zaelar.test/")
-            src = open(_WIDGET, encoding="utf-8").read()
-            await pg.add_script_tag(
-                content=src.replace("export function render", "window.render = function render"))
+            await pg.wait_for_function("() => typeof window.render === 'function'")
             out = []
             for data, do_scroll in steps:
                 await pg.evaluate(
