@@ -293,6 +293,31 @@ function making(root, ctx, ended){
 }
 
 export function render(root, data, ctx){
+  paint(root, data, ctx);
+  reportShown(root, data || {}, ctx);
+}
+
+// V2-884 — what the sheet SHOWS, said through the host's one door after every paint (with the revision it applied)
+// and when HE scrolls: the document on it ("" = blank) and the passage he is reading — the one `goto` marked, else the
+// last heading above the top of the page.
+function reportShown(root, d, ctx){
+  if(!ctx || typeof ctx.state !== "function") return;
+  const say = (applied) => {
+    const scroll = root.querySelector(".hbd-scroll"), mark = root.querySelector(".hbd-focus");
+    const top = scroll ? scroll.scrollTop + 16 : 0;
+    const heads = scroll ? [...scroll.querySelectorAll("h1,h2,h3,h4")].filter(h => h.offsetTop <= top) : [];
+    const inView = mark && scroll && mark.offsetTop >= scroll.scrollTop - 4 && mark.offsetTop <= top + scroll.clientHeight;
+    const at = mark && (applied || inView) ? mark : heads.pop();       // the paint scrolls to the mark it just drew
+    const title = root.querySelector(".hbd-blank, .hbd-making") ? "" : String(d.title || "").trim().slice(0, 60);
+    try{ Promise.resolve(ctx.state({title, at: at ? String(at.textContent || "").trim().slice(0, 40) : ""},
+      applied ? {applied: true} : {})).catch(()=>{}); }catch(_){}
+  };
+  say(true);
+  const scroll = root.querySelector(".hbd-scroll");
+  if(scroll) scroll.addEventListener("scroll", () => { clearTimeout(root._hbdSay); root._hbdSay = setTimeout(() => say(false), 300); });
+}
+
+function paint(root, data, ctx){
   injectStyles();
   root.className = "hbd-doc";
   root.textContent = "";

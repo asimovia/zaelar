@@ -6446,6 +6446,8 @@ DOMAINS: list[dict] = [
                                   "declares its turn acts once and both the escalate question and the capability-gap "
                                   "question read that declaration",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_a_periodic_job_order_is_not_an_errand.py"]},
+        {"id": "4.517", "title": "The document card says which document each screen shows and the passage he is reading (V2-884 C8 step 5): `title` and `at` — the passage a `goto` marked, else the last heading above the top as HE scrolls — after every paint and on his scroll; a `show` or a `goto` is `?ordered` on each screen until it acks; two screen pairs; disarmed → red",
+            "ch": UNIT, "paths": ["tests/browser/unit/documento/test_the_sheet_reports_what_he_is_reading.py"]},
         {"id": "4.486", "title": "A worker holding an order over a periodic job has its reader and door (V2-883): "
                                   "`act schedules` lists the jobs by reference, `act unschedule` cancels ONE and a miss "
                                   "is not ok, and «no such app» names them",
