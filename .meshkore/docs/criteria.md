@@ -1083,9 +1083,13 @@ Flash keeps the conversation; the row is what both brains read.
   fails for good (a 402); the meter bills the provider that spoke. The ear has the same (`stt.failover`). Every
   switch alert names the titular's last ERROR (a socket of ours closed on silence must not pass for an outage); each
   STT/TTS metric is labelled and billed to the plugin that PRODUCED it; every provider the table can switch to has
-  its own rate; an unused relay holds no audio back (its emitter is flushed per push). — since 2026-09-30, both
+  its own rate; an unused relay holds no audio back (its emitter is flushed per push); the voice process names who
+  produced a metric before it crosses to the body; a voice marked down is probed with each stream's whole text, so a
+  blip never keeps the stand-in for good; a provider that HANGS is bounded on its own clock (`relay_bound` in
+  `config/resources.default.json`, shadow until the fleet's TTFB is measured). — since 2026-09-30, both
   families and the attribution since 2026-11-13 · nodes 2.202, 3.189, 3.231 · `voice/engine/speech/tts/__init__.py`,
-  `voice/engine/speech/stt/__init__.py`, `voice/engine/speech/relay.py`, `voice/engine/pipeline/metrics_tap.py`.
+  `voice/engine/speech/stt/__init__.py`, `voice/engine/speech/relay.py`, `voice/engine/speech/relay_bound.py`,
+  `voice/engine/pipeline/metrics_tap.py`, `voice/engine/pipeline/child_session.py`.
 - **CRIT-R6 · With `ZAELAR_USER_ID` set, no torrent client runs** unless `ZAELAR_TORRENT_IN_CLOUD=1` is also
   set; without it, the operator's switch decides. — since 2026-09-30 · nodes 5.61 · `connectors/torrent/service.py`.
 - **CRIT-R7 · What leaves the machine is scrubbed.** The feedback evidence never carries `system` events (the
