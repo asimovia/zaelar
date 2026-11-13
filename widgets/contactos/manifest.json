@@ -1,6 +1,10 @@
 {
   "id": "contactos",
   "screens": "shared",
+  "state": {
+    "order": {"view": "view.n"},
+    "report": {"selected": {"type": "text:40", "follows": "view", "rest": ""}}
+  },
   "version": "0.1.0",
   "owner": "Zaelar",
   "created": "2026-09-01",
