@@ -81,11 +81,12 @@ def build_stt(vad=None):
         if not ev.available:
             if relay.active("stt", names[0]) == names[i]:
                 relay.set_active("stt", names[1 - i])
-            cause = relay.cause_of("stt", names[i]) or "no error reported"
+            cause = relay.take_cause("stt", names[i]) or "no error reported"
             _note(f"🙉 STT «{names[i]}» failed ({cause}) — hearing with «{names[1 - i]}»", provider=names[i],
                   stand_in=names[1 - i], cause=cause)
         elif i == 0:
             relay.set_active("stt", names[0])
+            relay.take_cause("stt", names[0])
             _note(f"👂 STT «{names[0]}» is back", provider=names[0])
 
     adapter.on("stt_availability_changed", _changed)
