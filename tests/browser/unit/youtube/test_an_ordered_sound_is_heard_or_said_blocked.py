@@ -66,29 +66,13 @@ def test_a_queue_item_he_plays_wants_sound_too():
 
 # ── data: what the player lets be heard (the fact itself: test_the_player_reports_what_it_shows.py) ──────────
 
-def test_a_report_through_player_audio_stores_no_flag_and_tells_nothing():
-    yt.apply_action("load", {"videoId": _V1})
-    r = yt.apply_action("player_audio", {"muted": True, "videoId": _V1})
-    assert not r.get("tell") and "audio_blocked" not in yt.view_data()
-
-
-def test_he_unmuted_from_the_players_own_control_and_the_card_follows():
-    yt.apply_action("load", {"videoId": _V1})
-    yt.apply_action("mute", {})
-    yt.apply_action("player_audio", {"muted": False, "videoId": _V1})
-    assert yt.view_data()["muted"] is False
-
-
-def test_a_report_about_another_video_is_stale():
-    yt.apply_action("load", {"videoId": _V1})
-    yt.apply_action("mute", {})
-    assert yt.apply_action("player_audio", {"muted": False, "videoId": _V2}).get("stale")
-    assert yt.view_data()["muted"] is True
-
-
-def test_the_report_is_declared_as_internal():
+def test_no_card_action_reports_the_sound_any_more():
+    """V2-884 1b: the player's sound is its reported state, and his hand on the player is adopted by the state door
+    (`test_his_hand_on_the_player_is_the_order.py`) — no card action carries either."""
     man = json.loads((pathlib.Path(yt.__file__).parent / "manifest.json").read_text(encoding="utf-8"))
-    assert man["actions"]["player_audio"]["desc"].startswith("Internal:")
+    assert "player_audio" not in man["actions"] and man["actions"]["player_adopt"]["internal"] is True
+    yt.apply_action("load", {"videoId": _V1})
+    assert "audio_blocked" not in yt.view_data()
 
 
 # ── the card, rendered ──────────────────────────────────────────────────────────────────────────────────
@@ -281,10 +265,11 @@ def test_the_face_he_sees_is_reported_after_an_order_and_on_his_click(_page):
     _page.wait_for_function("() => window.__posts.some(b => b.patch.view === 'cola')", timeout=3000)
 
 
-def test_his_hand_on_the_players_own_control_unmutes_the_card(_page):
+def test_his_hand_on_the_player_is_reported_never_sent_as_an_action(_page):
     _mount(_page, _data(muted=True))
-    _player_says(_page, False, until="() => window.__calls.some(c => c[0] === 'player_audio')")
-    assert {"muted": False, "videoId": _V1} in _audio_reports(_page)
+    _player_says(_page, False, until="() => window.__posts.some(b => b.patch.muted === false)")
+    assert not _audio_reports(_page) and not _page.evaluate("() => window.__calls.length"), \
+        "his hand reached the card as an action instead of the state door's adoption"
 
 
 def test_the_card_the_reporter_and_the_door_together(_page, monkeypatch):

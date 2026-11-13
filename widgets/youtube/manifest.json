@@ -6,8 +6,8 @@
     "report": {
       "playing": {"type": "bool", "follows": "!paused"},
       "playing_id": {"type": "id", "follows": "video"},
-      "muted": {"type": "bool", "follows": "muted"},
-      "volume": {"type": "int:0-100", "follows": "volume"},
+      "muted": {"type": "bool", "follows": "muted", "adopt": "player_adopt", "settle_on": "video"},
+      "volume": {"type": "int:0-100", "follows": "volume", "adopt": "player_adopt", "settle_on": "video"},
       "view": {"type": "enum:inicio|player|cola|subs|listas", "rest": "inicio"},
       "title": {"type": "text:60"}
     },
@@ -402,12 +402,12 @@
         "videoId": "id the levels belong to (optional)"
       }
     },
-    "player_audio": {
-      "desc": "Internal: the player's own control gave it sound while the card says muted — the card follows his hand.",
+    "player_adopt": {
+      "desc": "Internal: his hand on the player's own control after it confirmed the order — the card follows.",
       "internal": true,
       "payload": {
-        "muted": "true | false, as the player reports it",
-        "videoId": "id the report belongs to (optional)"
+        "order": "muted | volume",
+        "value": "the value his hand set"
       }
     },
     "player_state": {

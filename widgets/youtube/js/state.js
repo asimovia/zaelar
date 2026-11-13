@@ -11,8 +11,6 @@ export const Y = {
   qSeen: "",       // last videoId whose levels were reported (infoDelivery repeats several times a second)
   // V2-791 — the SOUND the player really has. `muted` in the store is what was ORDERED; whether the browser let a
   // cross-origin player be unmuted without a gesture is only known from the player's own `infoDelivery.muted`.
-  ytAudio: null,   // per-render reporter: (playerMuted, videoId) → `player_audio` when it disagrees with the store
-  audioSent: "",   // last report sent, so a stream that repeats several times a second reports once
   soundAsked: 0,   // when an unMute was last posted: a player still muted inside this grace is not yet a verdict
   plNow: null,     // the current player element, for the one-shot gesture unlock
   unlockArmed: false,

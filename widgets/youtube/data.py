@@ -285,7 +285,7 @@ ACTIONS = {
     "set_volume": _a_set_volume,
     "restart": _a_restart,
     "close": _a_close,
-    "player_audio": _sound.player_audio,
+    "player_adopt": _sound.player_adopt,
     "player_state": _sound.player_state,
 }
 
