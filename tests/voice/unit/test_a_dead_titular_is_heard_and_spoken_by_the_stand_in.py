@@ -293,9 +293,11 @@ class _Scripted(lk_tts.SynthesizeStream):
         out.initialize(request_id="r", sample_rate=RATE, num_channels=1, mime_type="audio/pcm", stream=True)
         if self._mode == "refuse":
             raise APIConnectionError("connection refused")
+        if self._mode == "bug":
+            raise RuntimeError("a defect of ours")       # no APIError: the plugin's `error` event never fires
         out.start_segment(segment_id="s")
         async for d in self._input_ch:
-            if isinstance(d, str) and d.strip():
+            if isinstance(d, str) and d.strip() and self._mode != "mute":
                 self._mark_started()
                 out.push(_T * (RATE // 10))
                 out.flush()
@@ -367,3 +369,69 @@ def test_a_voice_refused_three_times_is_back_once_it_answers(world):
     served = _sentences(["refuse", "refuse", "refuse"], 4, said)
     assert served[0] == "stand-in" and served[-1] == "titular", served
     assert sum("is back" in m for m, _ in said) == 1
+
+
+# ── the cause of a switch (P1-2) ──────────────────────────────────────────────────────────────────────────────────
+def _alerts(said: list) -> list[str]:
+    return [x["cause"] for _, x in said if "cause" in x]
+
+
+def test_a_cause_is_one_episodes_and_never_carries_the_spoken_words(world):
+    """Episode 1 refused → back → episode 2 a defect of ours: the second alert names the defect, not the first
+    refusal. A titular that answers with no audio: LiveKit's error quotes the sentence — the alert must not."""
+    said, _ = world
+    _sentences(["refuse", "refuse", "ok", "bug"], 4, said)
+    causes = _alerts(said)
+    assert len(causes) == 2 and "connection refused" in causes[0] and "RuntimeError: a defect of ours" == causes[1], said
+    said.clear()
+    _sentences(["mute", "mute"], 1, said)
+    assert _alerts(said) and all("Una frase" not in c for c in _alerts(said)), _alerts(said)
+
+
+def _real_inworld_against(handler) -> list:
+    """The REAL Inworld plugin, pointed at a local server, as the titular; the stand-in a double."""
+    import aiohttp
+    from aiohttp import web
+    from livekit.plugins import inworld
+
+    said: list = []
+
+    async def run() -> None:
+        port = 9                                        # discard port: refused on loopback
+        runner = None
+        if handler is not None:
+            app = web.Application()
+            app.router.add_route("*", "/{tail:.*}", handler)
+            runner = web.AppRunner(app)
+            await runner.setup()
+            site = web.TCPSite(runner, "127.0.0.1", 0)
+            await site.start()
+            port = site._server.sockets[0].getsockname()[1]
+        async with aiohttp.ClientSession() as http:
+            titular = inworld.TTS(api_key="x", base_url=f"http://127.0.0.1:{port}/", ws_url=f"ws://127.0.0.1:{port}/",
+                                  http_session=http)
+            voice = T._with_failover([("inworld", titular), ("openai", _StandIn())])
+            async with voice.stream() as s:
+                s.push_text("Hola, sigo aquí. ")
+                s.end_input()
+                async for _ in s:
+                    pass
+        if runner is not None:
+            await runner.cleanup()
+    asyncio.run(asyncio.wait_for(run(), 15))
+    return said
+
+
+@pytest.mark.parametrize("case", ["refused", "handshake_402"])
+def test_the_real_plugins_refusal_is_named_in_the_switch(world, case):
+    """A refused socket or a 402 at the WebSocket upgrade comes up from aiohttp raw, with no `error` event: before,
+    the alert said «no error reported» for exactly the failures that motivate the relay."""
+    from aiohttp import web
+    said, _ = world
+
+    async def pay(_req):
+        return web.Response(status=402, text="payment required")
+    _real_inworld_against(None if case == "refused" else pay)
+    causes = _alerts(said)
+    assert causes and "no error reported" not in causes[0], said
+    assert ("402" in causes[0]) if case == "handshake_402" else ("onnect" in causes[0]), causes

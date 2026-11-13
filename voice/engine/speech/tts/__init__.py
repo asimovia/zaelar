@@ -144,6 +144,16 @@ def _with_failover(pairs):
             finally:
                 self._probe_the_fallen()
 
+        async def _try_synthesize(self, *, tts, input_ch, conn_options, recovering=False):
+            try:
+                async for audio in super()._try_synthesize(tts=tts, input_ch=input_ch, conn_options=conn_options,
+                                                           recovering=recovering):
+                    yield audio
+            except Exception as e:  # noqa: BLE001 — recorded for the switch alert (P1-2), then the adapter's
+                if not recovering:
+                    relay.note("tts", tts, e)
+                raise
+
         def _probe_the_fallen(self) -> None:
             """P1-3: every voice marked down is probed with this stream's whole text once it ends. LiveKit probes a
             down voice before any token arrived (skipped) and never after a mid-sentence cut: it never came back."""
@@ -171,11 +181,12 @@ def _with_failover(pairs):
         if not ev.available and relay.active("tts", names[0]) == names[i]:
             nxt = next((names[j] for j, s in enumerate(adapter._status) if s.available), names[i])
             relay.set_active("tts", nxt)
-            cause = relay.cause_of("tts", names[i]) or "no error reported"
+            cause = relay.take_cause("tts", names[i]) or "no error reported"
             _note(f"🔇 TTS «{names[i]}» failed ({cause}) — speaking with «{nxt}»", provider=names[i], stand_in=nxt,
                   cause=cause)
         elif ev.available and i == 0:
             relay.set_active("tts", names[0])
+            relay.take_cause("tts", names[0])
             _note(f"🔊 TTS «{names[0]}» is back", provider=names[0])
 
     adapter.on("tts_availability_changed", _changed)
