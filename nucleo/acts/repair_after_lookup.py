@@ -203,14 +203,36 @@ async def _call_the_order(system: str, operator_text: str, wid: str, manifest: d
     return None
 
 
+def as_picture_search(got: dict, operator_text: str, images_req: dict | None, *, brief, emit) -> bool:
+    """A repair's call on the picture viewer WITHOUT pictures is its SEARCH, as the model's own is (`acts.tools.
+    widget_data`). Demo sandbox 2026-11-13, B1: the web-search repair sent `imagenes:show {query}` with no items
+    straight to the card («no llegó ninguna imagen») and nothing was ever searched. True when queued."""
+    from nucleo.flash import card_commission as _cc
+    pic = images_req is not None and images_req.get("v") is None and _cc.picture_search_for_empty_show(
+        str(got.get("widget_id") or ""), str(got.get("action") or ""), got.get("payload"), operator_text)
+    if not pic:
+        return False
+    images_req["v"] = pic
+    from nucleo.flash import canvas_visibility as _cvis
+    _cvis.present("imagenes", reason="turn-order", src="flash", emit=emit, text=operator_text, brief=brief)
+    emit("brain", "🖼️ fotos → visor imagenes (la llamada de la reparación sin imágenes es la búsqueda)",
+         text=pic["query"][:80], role="system")
+    return True
+
+
+def _carry(got: dict, operator_text: str, images_req, *, brief, apply, emit) -> None:
+    if not as_picture_search(got, operator_text, images_req, brief=brief, emit=emit):
+        apply(got["widget_id"], got["action"], got["payload"])
+
+
 async def voice_after_search(operator_text: str, spoken_text: str, brief, spec, *, window, apply, send, emit,
-                             acted: dict, done: dict) -> bool:
+                             acted: dict, done: dict, images_req: dict | None = None) -> bool:
     """The VOICE channel's half of `call_after_search`: run the order, mark the turn as having acted and leave one
     timeline line. What it did is the turn's verdict (V2-851 F2 retired the tail said after the words)."""
     got = await call_after_search(operator_text, spoken_text, brief, spec, window=window)
     if not got:
         return False
-    apply(got["widget_id"], got["action"], got["payload"])
+    _carry(got, operator_text, images_req, brief=brief, apply=apply, emit=emit)
     acted["widget"] = done["v"] = True
     emit("brain", "🔁 buscó para una orden — la llamada, con lo encontrado", role="system",
          text=f"{got['widget_id']}:{got['action']}", extra={"cat": "flash", "widget": got["widget_id"],
@@ -219,7 +241,8 @@ async def voice_after_search(operator_text: str, spoken_text: str, brief, spec, 
 
 
 async def voice_after_recall(operator_text: str, spoken_text: str, brief, spec, *, window, apply, send, emit,
-                             acted: dict, done: dict, recalled: str | None = None, music=None) -> bool:
+                             acted: dict, done: dict, recalled: str | None = None, music=None,
+                             images_req: dict | None = None) -> bool:
     """`voice_after_search`'s twin for a turn that RECALLED (V2-865): the recall's answer pass has no tools, so
     «put on the artist I asked you about earlier» came back as «I've got her — let me put her on now» and
     nothing played (measured 2026-11-09). Same gate (a sure order on a card the brief names, or an answer that
@@ -230,7 +253,7 @@ async def voice_after_recall(operator_text: str, spoken_text: str, brief, spec, 
     got = await call_after_recall(operator_text, spoken_text, brief, spec, window=window)
     if not got:
         return False
-    apply(got["widget_id"], got["action"], got["payload"])
+    _carry(got, operator_text, images_req, brief=brief, apply=apply, emit=emit)
     acted["widget"] = done["v"] = True
     emit("brain", "🔁 recordó para una orden — la llamada, con lo recordado", role="system",
          text=f"{got['widget_id']}:{got['action']}", extra={"cat": "flash", "widget": got["widget_id"],

@@ -91,3 +91,31 @@ def test_the_voice_runs_it_and_adds_no_line_after_the_words(brief, model):
     assert ran and applied == [("agenda", "add_meeting", CALL[1]["payload"])]
     assert acted.get("widget") is True and done["v"] is True
     assert sent == [], "V2-851 F2: what it did is the turn's verdict — no tail said after the words"
+
+
+def test_an_empty_viewer_show_from_the_repair_is_the_picture_search(brief, model, monkeypatch):
+    """Demo sandbox 2026-11-13, B1 on b137: the model searched the web for «the wallpaper cosmic eye in the sky by tyler
+    young», the repair called `imagenes:show {query}` with NO items, and it went straight to the card, which refused
+    it («no llegó ninguna imagen»): no picture was ever searched. The model's own empty show is the picture search
+    (`acts.tools.widget_data`); the repair's is now too. Disarm: apply the call in `_carry` unconditionally → red."""
+    from nucleo.flash import build_decision as bd, canvas_visibility as cvis, card_commission as cc
+    monkeypatch.setattr(bd, "named_card", lambda b: "imagenes")
+    monkeypatch.setattr(cc, "_filled_by_pictures", lambda wid: wid == "imagenes")
+    monkeypatch.setattr(cvis, "present", lambda *a, **k: True)
+    q = "wallpaper cosmic eye in the sky by tyler young, helix nebula"
+    model([("widget_data", {"widget_id": "imagenes", "action": "show", "payload": {"query": q, "items": []}})])
+    applied, acted, done, images_req = [], {}, {"v": False}, {"v": None}
+    ran = asyncio.run(repair_after_lookup.voice_after_search(
+        "find me the wallpaper cosmic eye in the sky by tyler young", "I found Helix Nebula wallpapers.", {"x": 1},
+        None, window=[], apply=lambda *a: applied.append(a), send=lambda *a: None, emit=lambda *a, **k: None,
+        acted=acted, done=done, images_req=images_req))
+    assert ran and applied == [], "an empty viewer show never reaches the card as a data-op"
+    assert images_req["v"] and images_req["v"]["query"].startswith(q), images_req
+    # a show that carries its pictures is an ordinary data-op
+    model([("widget_data", {"widget_id": "imagenes", "action": "show",
+                            "payload": {"items": [{"src": "https://example.org/a.jpg"}]}})])
+    images_req["v"] = None
+    asyncio.run(repair_after_lookup.voice_after_search(
+        "show me these", "Here.", {"x": 1}, None, window=[], apply=lambda *a: applied.append(a),
+        send=lambda *a: None, emit=lambda *a, **k: None, acted={}, done={"v": False}, images_req=images_req))
+    assert len(applied) == 1 and images_req["v"] is None
