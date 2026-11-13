@@ -18,24 +18,16 @@ still needs an order.
 """
 from __future__ import annotations
 
-
-import re as _re
-
 from loguru import logger
-
-# The catalogue's own nouns, to ask the negation arithmetic whether THEY sit in a negated clause.
-_APPS_NOUN_RE = _re.compile(r"\b(apps?|widgets?|aplicacion\w*)\b")
 
 
 def named_wall_tab(text: str) -> str:
     """The wall tab (`apps`, `apps-custom`, `chat`) this utterance asks for, or "" — fail-closed.
 
-    Two strengths of evidence, one per kind of tab:
-      · the CATALOGUE is named only to look at it — his own list of phrases that must open it includes «dime qué
-        widgets tengo disponibles», a question with no open verb — so for `apps` the NAME is enough, unless the
-        clause naming it is negated or the order is to close or create;
-      · the CHAT is named in passing («te lo pongo en el chat»), so it still needs an unnegated open/show order.
-        (Conservative, not measured: an unwanted chat panel is the cost it avoids.)"""
+    The name resolver names the tab, and an unnegated open/show order asks for it — every tab alike. V2-903 a6
+    (phone, 14:38): the catalogue used to open on its NAME alone, and «…o los widgets en pantalla», a cut tail of a
+    close sentence, opened the wall. A noun is not an order; a question with no open verb («¿qué widgets tengo?»)
+    goes to the action map's seeds or the model, whose `show_panel` and the brief-read backstop serve it."""
     try:
         from nucleo.flash import router_guards as _rg
         from nucleo.flash.negation import unnegated_match
@@ -47,12 +39,9 @@ def named_wall_tab(text: str) -> str:
             return ""
         from nucleo.turn.prompt.catalogs import wall_tab_for
         tab = wall_tab_for(res.get("system"), text)
-        norm = _rg._norm_txt(text)
-        if tab.startswith("apps"):
-            return tab if unnegated_match(_APPS_NOUN_RE, norm) else ""
         # «No me abras el chat» carries the verb and names the tab; the clause arithmetic both promise gates
         # already share says the verb is negated.
-        ordered = _rg.looks_like_show_strict(text) and unnegated_match(_rg._SHOW_STRICT_RE, norm)
+        ordered = _rg.looks_like_show_strict(text) and unnegated_match(_rg._SHOW_STRICT_RE, _rg._norm_txt(text))
         return tab if (tab and ordered) else ""
     except Exception:  # noqa: BLE001 — a lane that cannot decide leaves the turn to the model
         return ""

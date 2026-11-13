@@ -3804,7 +3804,8 @@ DOMAINS: list[dict] = [
         # all three doors (action map, `show_panel`, and `show_widget` naming the system surface), while the
         # neighbours keep their words: «la aplicación de música», «vuelve al catálogo», «abre whatsapp».
         {"id": "2.80", "title": "El catálogo de widgets se abre por voz por las tres puertas — y no le roba la "
-                                "palabra a «la aplicación de música» ni al catálogo del vídeo",
+                                "palabra a «la aplicación de música» ni al catálogo del vídeo · a noun is not an order: "
+                                "every wall tab needs an unnegated open order (V2-903 a6)",
             "ch": UNIT,
             "paths": ["tests/voice/unit/test_the_widget_catalogue_opens_by_voice.py"]},
         # V2-764 — «voy a por la serie Sherlock en torrent y te enseño el catálogo», and no tool: the turn's verdict
