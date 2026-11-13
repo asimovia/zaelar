@@ -26,7 +26,7 @@ import re
 import threading
 import unicodedata
 
-from . import ref_day, runtime
+from . import numbers_said, ref_day, runtime
 from .directory import one_per_spelling
 
 
@@ -327,7 +327,7 @@ def _position_ref(query: str, n: int) -> "int | None":
     # «3o»/«1a» (NFKD decomposes the indicator into a letter before `_norm` strips anything), and typed
     # «2nd»/«3ro» count the same. The suffix set is closed and only ever follows digits, so it collides with
     # no word.
-    m = re.match(r"(\d+)(?:o|a|er|ro|do|to|mo|vo|no|st|nd|rd|th)?$", t)
+    m = numbers_said.DIGIT_ORD.fullmatch(t)
     if m:
         i = int(m.group(1)) - 1
         return i if 0 <= i < n else None
@@ -348,7 +348,7 @@ def _pos_token(toks: list[str]) -> "tuple[int, list[str]] | None":
     """
     found, rest = None, []
     for t in toks:
-        m = re.fullmatch(r"(\d+)(?:o|a|er|ro|do|to|mo|vo|no|st|nd|rd|th)?", t)
+        m = numbers_said.DIGIT_ORD.fullmatch(t)
         # A DIGIT IS ALREADY THE PRINTED NUMBER; a WORD comes out of `_ORDINALS`, which is 0-based because
         # its other reader indexes a list with it. Mixing the two conventions here made «la tarea número
         # tres» resolve to the row numbered 2 — the one place where being off by one is indistinguishable

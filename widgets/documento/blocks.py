@@ -74,18 +74,22 @@ def _blocks(body: str) -> list:
 
 
 def _best_block(body: str, query: str) -> str:
-    """The block that best matches: an exact phrase wins; else most query words, a heading winning a tie."""
+    """The block that best matches: an exact phrase wins; else most query words, a heading winning a tie. A NUMBER the
+    query names is the passage's identity — only a block that carries it can match («Paso 2» never lands on «Paso 1»,
+    «step 12» never on «step 120»), and no such block is no match rather than the nearest words."""
+    from widgets.numbers_said import numbers_in
     q = str(query or "").strip().lower()
     if not q:
         return ""
-    blocks = _blocks(body)
+    nums = numbers_in(q)
+    blocks = [b for b in _blocks(body) if nums <= numbers_in(b)]
     for b in blocks:
         if len(q) >= 8 and q in b.lower():
             return b.lstrip("# ").strip()
     words = {w.strip(".,;:«»\"'()?¿!¡") for w in q.split()}
     words = {w for w in words if len(w) >= 4 and w not in _STOP}
     if not words:
-        return ""
+        return next((b.lstrip("# ").strip() for b in blocks if b.startswith("#")), "") if nums else ""
     best, score = "", 0.0
     for i, b in enumerate(blocks):
         low = b.lower()
