@@ -35,9 +35,15 @@ def meter(monkeypatch):
     return loop_lag
 
 
+class _Decision:
+    """The turn's one decision (V2-893 L2, `route_by_verdict.Turn`): the stream settles it before the release."""
+    async def settle(self):
+        return None
+
+
 class _Hold:
     def __init__(self, *a, **k):
-        self.unread, self.said = "", []
+        self.unread, self.said, self.decision = "", [], _Decision()
 
     def say(self, text):
         if text:
