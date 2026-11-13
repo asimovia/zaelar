@@ -86,7 +86,7 @@ async def run(self, motor) -> None:
         emit=emit,
         operator_text=operator_text,
         self=self,
-        text=text, brief=_brief,
+        text=text,
     )
     FastClient, _dialog, _escalate_mod, _router = p['FastClient'], p['_dialog'], p['_escalate_mod'], p['_router']
     messages, spec = p['messages'], p['spec']
@@ -189,7 +189,7 @@ async def run(self, motor) -> None:
     try:
         _filler_audio = motor._filler_audio_mod()
         if _filler_audio.enabled() and not first_turn:
-            _filler_audio.cover_the_turn(brain, text, messages=messages, brief=_brief, typed=attention.typed_line(text), still_silent=lambda: m.first_ms() is None)  # V2-903: never waits · A7: no cover on text
+            await _filler_audio.decide_and_arm(brain, text, messages=messages, brief=_brief, typed=attention.typed_line(text))  # V2-640/726/863 · A7: no cover on text
     except Exception:
         pass
     self._phase = "generando la respuesta"

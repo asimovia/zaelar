@@ -133,8 +133,6 @@ QUESTIONS = (
                                                      has_workers=bool(c.get("has_workers")),
                                                      ask_pending=bool(c.get("ask_pending")), threads=c.get("threads"))),
     (WORDS_KEY, None, lambda c: {"instructions": WORDS_INSTRUCTIONS, "criteria": dict(WORDS_CRITERIA)}),
-    # V2-903: whether the turn waits for the durable recall started beside the brief (`recall_ahead`, no word table)
-    (("nucleo.turn.recall_ahead", "KEY"), None, lambda c: __import__("nucleo.turn.recall_ahead", fromlist=["x"]).question()),
     (("nucleo.surfaces", "SURFACE_KEY"), None, _surface),
     (("search.route", "SEARCH_KEY"), None, _search),
     (("nucleo.flash.redo_decision", "REDO_KEY"), None, _redo),                 # None when nothing is behind us

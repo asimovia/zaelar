@@ -4,8 +4,7 @@ Measured 2026-11-12: `brief.build()` asked 16 questions (21.6k chars) with nothi
 worker. Six of them were read by ONE door each, on a minority of turns: the acts his words asked (read after a door
 ran an act), the errand's consent class, its kind and the capability gap (read at the errand portal), the channel he
 named (read where a message leaves) and a rename (read after `set_style_directive`). They are asked at those doors now
-(`nucleo/turn/brief_doors`), into the same handle, and the common path asks ten — eleven since V2-903, whose
-`durable_memory` is read before the model on every turn (it replaced the recall's regex router).
+(`nucleo/turn/brief_doors`), into the same handle, and the common path asks ten.
 
 The KEY SETS are pinned on four contexts, not the count: a question that silently joins the per-turn trip is how the
 brief grew to 22, and one that silently leaves it is how `catalog_widget` was answered into a void for a month.
@@ -18,10 +17,7 @@ from nucleo.turn import brief, brief_doors
 
 #: Tier 1 (always) and the per-turn questions read before or by the model on every turn.
 COMMON = {"canvas", "request_type", "build_or_use", "escalate_or_inline", "wants_words", "errand_surface",
-          "search_module", "login_only", "catalog_widget", "readable",
-          # V2-903 (2.1742): read BEFORE the model on every turn — whether it waits for the recall started beside it.
-          # It replaced a ~150-expression regex router; inside the one trip a question costs no round trip.
-          "durable_memory"}
+          "search_module", "login_only", "catalog_widget", "readable"}
 #: What open cards add (the screen questions) and take away (the catalogue of nothing open).
 WITH_CARDS = (COMMON - {"catalog_widget"}) | {"screen_action", "catalog_closed", "names_a_card", "end_state"}
 

@@ -66,11 +66,6 @@ def fire_early(operator_text: str):
         logger.debug(f"brief: the eager brief did not fire — {e!r}")
         return None
     _remember_prefired(operator_text, handle)
-    try:     # V2-903: the durable recall starts beside the brief — the prompt takes it if it arrived (`recall_ahead`)
-        from nucleo.turn import recall_ahead
-        recall_ahead.launch(operator_text)
-    except Exception as e:  # noqa: BLE001 — the turn starts its own at admission
-        logger.debug(f"brief: the eager recall did not start — {e!r}")
     return handle
 
 

@@ -170,9 +170,9 @@ def test_a_typed_turn_arms_no_cover_at_all(monkeypatch):
     assert fa.arm(_Brain(), "¿me buscas un hotel en Soria?", typed=True) == ""
     assert fa._consume_arm() is None, "a typed turn left a cover armed"
     assert fa.arm(_Brain(), "¿me buscas un hotel en Soria?") != "", "the same words spoken keep their cover"
+    import asyncio
     fa._reset_for_tests()
-    assert fa.cover_the_turn(_Brain(), "¿me buscas un hotel en Soria?", typed=True) == ""
-    assert fa._consume_arm() is None, "the pipeline's door armed a cover on a typed turn"
+    assert asyncio.run(fa.decide_and_arm(_Brain(), "¿me buscas un hotel en Soria?", typed=True)) == ""
 
 
 def test_smart_covers_no_social_turn(monkeypatch, tmp_path):
