@@ -6428,6 +6428,8 @@ DOMAINS: list[dict] = [
                                   "not several → route `card` (also when the route settled before the brief), the portal and the relay door tell the errand nothing; "
                                   "a stop, two acts, a told answer, a process banner, the errand's own sheet or a card-building errand keep it",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_a_card_act_is_not_steered_into_the_errand_on_its_subject.py"]},
+        {"id": "4.516", "title": "The image viewer says which picture each screen shows and whether its slideshow runs (V2-884 C8 step 5): `shown` (1-based), `title` (both following the set and the index) and `slideshow` after every paint — the slideshow advances on each screen on its own; `select`/`next`/`previous` and a new set are `?ordered` on each screen until it acks; two screen pairs; disarmed → red",
+            "ch": UNIT, "paths": ["tests/browser/unit/imagenes/test_the_viewer_reports_the_picture_it_shows.py"]},
         {"id": "4.483", "title": "The just-ended errands a request can reopen belong to ONE conversation (V2-879 O2): a new "
                                   "session empties the pool, an errand born before the clean never enters it, and how "
                                   "long each end stays reopenable is declared by how it ended (`REOPEN_GRACE_S`)",
