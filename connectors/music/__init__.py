@@ -488,6 +488,9 @@ def _play(query: str, uri: str, prefer: str = "", kind: str = "") -> MusicResult
         res.extra = {**(res.extra or {}), **facts, "placed": "page" if getattr(prov, "plays_in_page", False) else "provider",
                      **({"looked_up": look_up} if look_up != query else {}),
                      **_found_extra(query, found, str(getattr(res.track, "uri", "") or ""))}
+        if prefer and prov.name != prefer and res.ok:   # he NAMED a provider whose app is not with this screen (V2-880)
+            res.message = " ".join(x for x in (_msg("named_not_here").format(provider=prefer.capitalize()), res.message) if x)
+            res.extra["named_not_here"] = prefer
         return res
     except Exception as e:  # noqa: BLE001 — a provider failure never breaks voice
         logger.warning(f"music.control(play) failed: {e!r}")

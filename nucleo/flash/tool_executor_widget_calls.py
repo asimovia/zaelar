@@ -450,12 +450,8 @@ def _verdict_instead(wid, action_name, payload, brief, text, emit, acted, apply,
     `leaving`, only a verdict whose own act stays on the machine takes the place of the leaving call."""
     from widgets import effects as _fx
     from nucleo.request import base as _base
-    from nucleo.turn import verdicts as _v   # it SUBSTITUTES the model's call (CRIT-K2b R4)
     _vdis = _txw._direct_action.completes(brief, wid, model_action=action_name)
     if not _vdis or (leaving and (not _fx.leaves(_base(wid), action_name) or _fx.leaves(_base(wid), _vdis))):
-        return None
-    from nucleo.flash import destructive_veto as _dv   # VETO only when what enters leaves or deletes (K2b R4)
-    if (_fx.leaves(_base(wid), _vdis) or _dv.removes(wid, _vdis)) and not _v.substitutes(brief, action_name):
         return None
     emit("brain", "🛑 acto que sale fuera y el veredicto dice otra cosa — corre el veredicto",
          text=f"{wid}: modelo={action_name} · veredicto={_vdis}", role="system",
@@ -465,17 +461,13 @@ def _verdict_instead(wid, action_name, payload, brief, text, emit, acted, apply,
     _vkeys = set(_txw._direct_action._payload_spec(wid, _vdis))
     _vpay = {k: v for k, v in (payload or {}).items() if k in _vkeys and str(v or "").strip()}
     _vpay.update(_txw._direct_action.person_fill(wid, _vdis, _vpay, text))
-    from nucleo.request import substitution
     if _vpay:
         acted["widget"] = True
-        with substitution.in_the_models_place():    # a send in the model's call's place asks before it leaves
-            apply(wid, _vdis, _vpay)
+        apply(wid, _vdis, _vpay)
         return True
-    with substitution.in_the_models_place():
-        done = _txw._direct_action.complete(brief, operator_text=text, emit=emit, present=_txw._cvis.present,
-                                            apply_widget_data=apply, widget_id=wid, instead_of=action_name,
-                                            require_order=False)
-    if done:
+    if _txw._direct_action.complete(brief, operator_text=text, emit=emit, present=_txw._cvis.present,
+                                    apply_widget_data=apply, widget_id=wid, instead_of=action_name,
+                                    require_order=False):
         acted["widget"] = True
         return True
     return False

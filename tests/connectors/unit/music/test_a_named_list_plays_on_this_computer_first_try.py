@@ -167,3 +167,17 @@ def test_an_episode_that_sounds_is_read_with_its_show(monkeypatch):
     np = sp_provider.SpotifyProvider().now_playing()
     assert "episode" in asked.get("additional_types", "")
     assert np.track is not None and np.track.title == "Polvo de hada" and np.track.artist == "Sueñacuentos"
+
+
+def test_a_named_spotify_with_no_app_on_this_screen_plays_here_and_says_so(world, monkeypatch):
+    """V2-880 follow-up: «play it on Spotify» with no Spotify app on the asking computer went to the page player in
+    silence — he heard music and believed Spotify played it. It still plays (a preference is not a gate), and the
+    reply SAYS the named provider is not open here."""
+    from i18n import langs
+    calls, state = world
+    state["devices"] = [SPEAKER]                       # Spotify connected, but not on this computer
+    monkeypatch.setattr(langs, "current_code", lambda: "en")
+    r = music.control("play", "Nana del caballo", prefer="spotify")
+    assert r.ok and calls["page"] and not calls["played"], r
+    assert r.extra.get("named_not_here") == "spotify"
+    assert r.message.startswith("Spotify isn't open on this device"), r.message

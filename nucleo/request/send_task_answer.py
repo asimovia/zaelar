@@ -95,9 +95,6 @@ def answered(uid: str, entry: dict, text: str, choice: int | None = None) -> dic
             return {"ok": True, "row": uid, "already": True}
         return {"ok": True, "row": uid, "worker": _worker(uid, artefact(uid), ask_id, " ".join(str(text).split()))}
     cands = list(retained.get("candidates") or [])
-    from nucleo.request import consent_ask
-    if choice is None and cands and (yn := consent_ask.declared_answer(text)):   # «sí» to «by X, as you said, or by Y?»
-        choice = 0 if yn == "yes" else 1 if len(cands) > 1 else None
     value = str(cands[int(choice)]) if choice is not None and 0 <= int(choice) < len(cands) else \
         " ".join(str(text or "").split())
     if not (key and value):
@@ -107,10 +104,6 @@ def answered(uid: str, entry: dict, text: str, choice: int | None = None) -> dic
     art = artefact(uid)
     art.setdefault("payload", {})[key] = value
     (art.setdefault("slots", {}).setdefault(slot or key, {"key": key, "rule": ""}))["source"] = HIS
-    if key == "channel" and cands:    # his answer to «which channel?» IS his reading of it: the exit never doubts it again
-        from nucleo.acts import message_channel
-        art["reading"] = rd = art.get("reading") if isinstance(art.get("reading"), dict) else {}
-        rd.setdefault("result", {})[message_channel.KEY] = {"choice": value.strip().lower(), "confidence": 1.0, "probs": {}}
     from nucleo import his_words
     his_words.note(value)                      # his answer is his naming of that value, for every door
     art.setdefault("heard", []).append(" ".join(str(text or value).split()))

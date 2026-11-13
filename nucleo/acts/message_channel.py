@@ -61,15 +61,15 @@ def his_channel(wid: str, action: str, payload, brief, emit=None):
     or none. Untouched otherwise (no reading, `none`, a doubt, an action without a channel slot). Never raises."""
     if not isinstance(payload, dict) or not _declares_channel(wid, action):
         return payload
-    got = str(payload.get("channel") or payload.get("platform") or "").strip().lower()
-    try:   # an empty slot is completed at the licence; the model's own channel is replaced only at VETO (K2b R4)
+    try:
         from nucleo.turn import verdicts
-        choice, _info = verdicts.read(brief, KEY, None, min_confidence=verdicts.VETO if got else verdicts.LICENCE)
+        choice, _info = verdicts.read(brief, KEY, None)
     except Exception as e:  # noqa: BLE001
         _note(e)
         return payload
     if choice not in _platforms():
         return payload
+    got = str(payload.get("channel") or payload.get("platform") or "").strip().lower()
     if got == choice:
         return payload
     if callable(emit):

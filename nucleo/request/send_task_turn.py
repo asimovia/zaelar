@@ -10,24 +10,23 @@ from __future__ import annotations
 from nucleo.request import base, note
 
 
-def identified(brief, floor: float | None = None) -> tuple[str, str]:
+def identified(brief) -> tuple[str, str]:
     """The send the turn's brief surely identifies: `(card, leaving act)` — the `screen_action` verdict naming an act
     that leaves, else the `end_state` verdict naming a card's `<collection>` that a leaving act's declared end state
-    fills (the send of that card: the act whose slots name his person). ("", "") when the brief names none. `floor`:
-    the licence, or VETO where the send takes the model's own call's place (`at_escalation`, CRIT-K2b R4)."""
+    fills (the send of that card: the act whose slots name his person). ("", "") when the brief names none."""
     try:
         from nucleo.circuit import spec as _spec
         from nucleo.turn import brief as _tb, verdicts
         from nucleo.workers import exit_slots
         from widgets import effects
-        choice, info = verdicts.read(brief, _tb.TARGET_KEY, None, min_confidence=floor)
+        choice, info = verdicts.read(brief, _tb.TARGET_KEY, None)
         wid, _sep, act = str(choice or "").partition(":")
         # only an act whose person comes from HIS words: one whose recipient the card picks (a `reply` to «the open
         # thread») could reach a stranger — measured live, a reply row with no person would have answered the last
         # inbound mail. Such an act keeps its own route (the worker, the exit door).
         if info and wid and act and effects.leaves(base(wid), act) and _his_person(wid, act):
             return wid, act
-        choice, info = verdicts.read(brief, _spec.END_KEY, None, min_confidence=floor)
+        choice, info = verdicts.read(brief, _spec.END_KEY, None)
         wid, _sep, coll = str(choice or "").partition(":")
         if not (info and wid and coll) or str(choice) == "none":
             return "", ""
@@ -63,10 +62,9 @@ def at_escalation(brief, said: str, spoken_text: str, escalate_req: dict, worker
         escalate_req["v"] = None
         escalate_req.pop("say", "")
     if escalate_req["v"] is not None and (not worker_acted["v"] or replacing):
-        from nucleo.turn import verdicts   # the send takes the model's escalation's place: VETO (CRIT-K2b R4)
         uid, how = _stw.by_verdict(brief, said=said, model_text=str(escalate_req["v"] or ""),
                                    escalate_req=escalate_req, worker_acted=worker_acted, replacing=replacing,
-                                   emit=emit, on_missing="worker", floor=verdicts.VETO)
+                                   emit=emit, on_missing="worker")
         if how == "run":
             escalate_req["v"] = None            # the task runs on its row: nothing is launched for it
             escalate_req.pop("say", "")
@@ -82,8 +80,6 @@ async def at_close(brief, said: str, spoken_text: str, escalate_req: dict, worke
     or '' when the turn holds no send task."""
     from nucleo.request import send_task_words as _stw
     from nucleo.turn import brief as _tb, brief_doors
-    if escalate_req.get("v") is not None:
-        return ""            # the model's escalation owns the turn (`at_escalation` did not take it): ONE owner
     esc, esc_info = _tb.read(brief, _tb.ESCALATE_KEY, "")
     uid, how = _stw.by_verdict(brief, said=said, model_text=spoken_text, escalate_req=escalate_req,
                                worker_acted=worker_acted, emit=emit,
