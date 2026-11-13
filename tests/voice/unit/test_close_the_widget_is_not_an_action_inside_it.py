@@ -45,3 +45,19 @@ def test_an_action_that_merely_contains_close_is_still_inside(on_screen):
     """V2-770: «ya la puedes cerrar» over a detail card → `agenda:close_meeting`; the canvas may lean to close."""
     b = _brief({_tb.TARGET_KEY: ("agenda:close_meeting", 0.99), _tb.CANVAS_KEY: ("close", 0.6)}, open_ids=("agenda",))
     assert card_verdict.order_is_inside(b, "agenda") is True
+
+
+
+@pytest.mark.parametrize("act", ["musica:release", "youtube:pause"])
+def test_a_close_of_the_whole_screen_is_never_an_act_inside_a_card(on_screen, act):
+    """V2-903 a4 (phone, 14:38): «…cierra todo y libera la pantalla» — canvas = close, `musica:release` at 0.80 — the model's
+    TOTAL close (no card id) was dropped for the in-card act, which ran and said «Hecho.». A close of the whole screen
+    names no card: no in-card act is its order while the canvas reader leans to close."""
+    b = _brief({_tb.TARGET_KEY: (act, 0.80), _tb.CANVAS_KEY: ("close", 0.7)}, open_ids=("musica", "youtube"))
+    assert card_verdict.order_is_inside(b, "") is False
+
+
+def test_a_bare_close_with_no_canvas_close_can_still_be_inside(on_screen):
+    """«ya la puedes cerrar» over a detail with the canvas reading neither: the in-card act keeps the order."""
+    b = _brief({_tb.TARGET_KEY: ("agenda:close_meeting", 0.95), _tb.CANVAS_KEY: ("neither", 0.9)}, open_ids=("agenda",))
+    assert card_verdict.order_is_inside(b, "") is True
