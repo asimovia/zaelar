@@ -105,6 +105,7 @@ export function render(el, data, ctx){
     (PAINT[cur] || paintResults)(panel, data, ctx, nav);
     bar.querySelectorAll(".hr-tab").forEach(b=>b.classList.toggle("on", b.dataset.tab===cur));
     if(moved && ctx && ctx.top) ctx.top();
+    reportShown(ctx, cur, data);
   };
 
   // LOCAL NAVIGATION between the list and a record: the view is persisted sheet state, but the item is already in
@@ -148,4 +149,12 @@ export function render(el, data, ctx){
     el._hbScrollN = scReq.n;
     try{ ctx.scroll(scReq.where || "down"); }catch(_){}
   }
+}
+
+// V2-884 — what the sheet SHOWS, said through the host's one door after every paint with the revision it applied: the
+// tab on screen and the record open in it, by its title ("" = the list).
+function reportShown(ctx, tab, data){
+  if(!ctx || typeof ctx.state !== "function") return;
+  const selected = tab === "results" && data.view === "detail" ? String(data.focus || "").slice(0, 60) : "";
+  try{ Promise.resolve(ctx.state({tab, selected}, {applied: true})).catch(()=>{}); }catch(_){}
 }
