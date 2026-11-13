@@ -101,7 +101,7 @@ export function render(root, data, ctx){
   if(!st || st.key !== pkey || st.loading !== loading || !root._hbYtBuilt){
     const replaced = !!st;                               // ANY rebuild destroys the player (a spinner, the same video)
     buildCard(root, data, ctx, {id, seq, loading, st, src, isStream, pkey, hasVid});
-    if(replaced){ Y.ctx = ctx; playerReplaced(); }       // V2-884 1a: the old player's state does not carry over
+    if(replaced) playerReplaced(ctx);                     // V2-884 1a: the old player's state does not carry over
   }
 
   // Dynamic refresh on EVERY render (title, verifiable metadata, mute-toggle button, volume).

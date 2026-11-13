@@ -24,9 +24,10 @@ def ref_index() -> list:
 
 
 def prompt_digest() -> str:
-    """What the OPEN card shows, for the brain (V2-812): the song, WHICH player makes the sound and where, playing or
-    paused, the volume, and whether the browser keeps it silent. Empty string when nothing plays: the lists line
-    (`refs.items_line`) is then the whole truth."""
+    """What the OPEN card shows, for the brain (V2-812): the song and WHICH player makes the sound and where; for a
+    provider's device, playing or paused and the volume as the provider says. The page player's own state is its
+    report (the app's state line, V2-884), never painted here from the order. Empty string when nothing plays: the
+    lists line (`refs.items_line`) is then the whole truth."""
     try:
         db = _d._load_db()
         live = _d._live_fields(db, fresh_s=_d._NP_FRESH_S)
@@ -49,16 +50,15 @@ def prompt_digest() -> str:
             # (`take_over`) or lets it go (`release`) — a pause or a skip would be refused.
             where += " — TAKEN by another device of the account: controls locked; take_over or release"
         playing = bool(np.get("playing"))
-    else:
-        blk = (live.get("yt") or {}) if mode == "youtube" else (live.get("local") or {})
+        vol = _player.volume(live, db)
+        level = "?" if vol.get("level") is None else f"{vol['level']}%"
+        heard = (" · playing" if playing else " · paused") + f" · volume {level}" + (" (MUTED)" if vol.get("muted") else "")
+    else:   # the page player: whether it plays, its sound and volume are what it REPORTS — the app's state line
         screen = _screen_word((db.get("source") or {}).get("screen", ""))
         where = "the page player of this card" + (f", on his {screen}" if screen else "")
-        playing = not blk.get("paused")
-    vol = _player.volume(live, db)
-    level = "?" if vol.get("level") is None else f"{vol['level']}%"
+        heard = ""
     lines = [f"MUSIC APP — NOW: «{cur.get('title') or '?'}"
-             + (f" — {cur.get('artist')}" if cur.get("artist") else "") + f"» · source: {where} · "
-             + ("playing" if playing else "paused") + f" · volume {level}" + (" (MUTED)" if vol.get("muted") else "")]
+             + (f" — {cur.get('artist')}" if cur.get("artist") else "") + f"» · source: {where}" + heard]
     if (snd := _sound.digest_line(live)):
         lines.append(snd)
     n = len((_player.queue_view(live, db) or {}).get("items") or [])

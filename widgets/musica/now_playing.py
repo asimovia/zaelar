@@ -105,15 +105,29 @@ def _here(mode: str, loc: dict, yt: dict, now: "dict | None", away: dict) -> dic
     on our side: another device of the account changing songs never satisfies it (live 2026-11-08: `now_playing`
     changed on a household speaker and the harness called a request met while nothing played here)."""
     # Nothing sounding is a VALUE ("" title), never a missing key: a missing key reads as «unverifiable», and a failed
-    # start must read unmet. A page player the browser keeps silent (`audio_blocked`) is not sounding.
-    if mode == "local" and loc.get("src") and not loc.get("paused"):
+    # start must read unmet. In the page, what sounds is what its player REPORTS (V2-884 C2d: the state door, never
+    # the order): playing and not silent — and, for a song, the song the page player says it plays.
+    heard = _page_reports()
+    if mode == "local" and loc.get("src") and heard.get("playing") is True and heard.get("muted") is not True:
         return {"title": loc.get("title") or loc.get("src", ""), "source": "local"}
-    if mode == "youtube" and yt.get("videoId") and not yt.get("paused") and not yt.get("audio_blocked") \
-            and not yt.get("player_error") and yt.get("sounding_id") == yt.get("videoId"):   # V2-873: the PLAYER says so
+    if mode == "youtube" and yt.get("videoId") and not yt.get("player_error") and heard.get("playing") is True \
+            and heard.get("muted") is False and heard.get("playing_id") == yt.get("videoId"):
         return {"title": yt.get("title") or yt.get("videoId", ""), "source": "youtube"}
     if mode == "spotify" and now and now.get("playing") and not away:
         return {"title": now.get("title") or "", "source": "spotify"}
     return {"title": "", "source": ""}
+
+
+def _page_reports() -> dict:
+    """What the card's page player last said it does, confirmed (`widgets/state_render.read`: pending or unknown fields
+    are absent) on the screen the card lives on; {} when no screen reports it."""
+    try:
+        from widgets import state_render
+        got = state_render.read(_d.WID)["surfaces"]
+        return dict(got[0]["fields"]) if got else {}
+    except Exception as _e:  # noqa: BLE001 — nothing reported is nothing heard
+        _log.debug("_page_reports: degraded, carrying on without it: %s", _e)
+        return {}
 
 
 def _ours_taken(db: dict) -> bool:

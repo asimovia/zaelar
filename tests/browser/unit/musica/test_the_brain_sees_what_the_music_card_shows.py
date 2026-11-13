@@ -7,7 +7,8 @@ slider, went to the first connected provider (Spotify, on a device elsewhere) wh
 else.
 
 Now emptiness is the widget's to say (`refs.items_line` defers to a published interior), the music card publishes
-its live state (song, which player and where, playing or paused, volume, a silent browser), and every control goes
+its live state (song, which player and where; whether the page player plays, its volume and a silent browser are
+what that player REPORTS — the app's state line, V2-884), and every control goes
 to the provider the last start was recorded on (`connectors.music.sounding_provider`).
 """
 from __future__ import annotations
@@ -62,13 +63,17 @@ def card(monkeypatch, tmp_path):
     return remote
 
 
-def test_a_card_showing_a_song_with_no_lists_is_not_empty(card):
+def test_a_card_showing_a_song_with_no_lists_is_not_empty(card, monkeypatch):
     from nucleo.flash import widget_read
     from widgets import refs
+    from tests.browser.unit.musica.page_player import page_player
     assert "VACÍA" not in refs.items_line("musica"), "no saved lists is not «nothing on the app»"
     block = widget_read.read("musica")
-    assert "Dai Dai" in block and "Shakira" in block, "the song he sees reaches the brain"
-    assert "volume 50%" in block and "playing" in block and "phone" in block
+    assert "Dai Dai" in block and "Shakira" in block and "phone" in block, "the song he sees reaches the brain"
+    assert "volume 50%" not in block, "V2-884: the page player's volume is what it REPORTS, never the order"
+    page_player(monkeypatch)(playing=True, playing_id="VID00000001", muted=False, volume=50)
+    block = widget_read.read("musica")
+    assert "volume=50" in block and "musica@phone: playing" in block, block
 
 
 def test_a_card_with_nothing_on_it_is_still_said_empty(card):

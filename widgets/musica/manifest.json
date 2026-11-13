@@ -1,6 +1,17 @@
 {
   "id": "musica",
   "screens": "single",
+  "state": {
+    "order": {"video": "yt.videoId", "paused": "yt.paused", "muted": "yt.muted", "volume": "yt.volume", "cmd": "yt.cmd_seq",
+              "refused": "yt.player_error", "file": "local.src", "file_paused": "local.paused"},
+    "report": {
+      "playing": {"type": "bool", "follows": ["!paused", "video", "!file_paused", "file"]},
+      "playing_id": {"type": "id", "follows": "video"},
+      "muted": {"type": "bool", "follows": "muted"},
+      "volume": {"type": "int:0-100", "follows": "volume"}
+    },
+    "facts": {"audio_blocked": {"tell": "music.audio_blocked"}}
+  },
   "version": "0.5.0",
   "owner": "Zaelar",
   "licence": "SUL-1.0",
@@ -383,14 +394,6 @@
       "payload": {
         "code": "the onError code (101/150 = embedding refused)",
         "videoId": "id the report belongs to"
-      }
-    },
-    "player_audio": {
-      "desc": "Internal: the page player reports whether the browser really lets it be heard (IFrame API). Fired by the app itself, never by voice — sound wanted but kept silent becomes audio_blocked.",
-      "internal": true,
-      "payload": {
-        "muted": "true | false — silent, as the player reports it",
-        "videoId": "id the report belongs to (optional)"
       }
     }
   },

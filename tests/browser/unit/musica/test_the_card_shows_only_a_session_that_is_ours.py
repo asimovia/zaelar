@@ -88,18 +88,24 @@ def test_letting_it_go_is_a_declared_action_that_ends_our_session(world):
     assert (store.load("musica", {}).get("source") or {}).get("live") is False and placement.held() == {}
 
 
-def test_here_is_what_our_player_sounds_never_another_device(world):
-    """The end state of a start is `here.title` changed: a song on another device of the account is not `here`."""
+def test_here_is_what_our_player_sounds_never_another_device(world, monkeypatch):
+    """The end state of a start is `here.title` changed: a song on another device of the account is not `here`, and in
+    the page it is what the page player REPORTS through the state door (V2-884 step 2), never the song picked."""
+    from widgets import store
+    from tests.browser.unit.musica.page_player import page_player
     assert _live(source={"provider": "spotify", "device_id": "mac", "live": True})["here"] == {"title": "", "source": ""}
-    yt = md._live_fields({"source": {"provider": "youtube"}, "yt": {"videoId": "abc", "title": "Creep",
-                                                                      "sounding_id": "abc"}})
-    assert yt["here"] == {"title": "Creep", "source": "youtube"}
-    picked = md._live_fields({"source": {"provider": "youtube"}, "yt": {"videoId": "abc", "title": "Creep"}})
-    assert picked["here"]["title"] == "", "V2-873: the song picked is not what sounds — the page player says that"
-    paused = md._live_fields({"source": {"provider": "youtube"}, "yt": {"videoId": "abc", "title": "Creep", "paused": True}})
-    assert paused["here"] == {"title": "", "source": ""}   # a value, never a missing key: a failed start reads unmet
-    blocked = md._live_fields({"source": {"provider": "youtube"}, "yt": {"videoId": "abc", "title": "Creep", "audio_blocked": True}})
-    assert blocked["here"]["title"] == "", "a page player the browser keeps silent is not sounding"
+    says = page_player(monkeypatch)
+    page = {"source": {"provider": "youtube"}, "yt": {"videoId": "abc", "title": "Creep"}}
+    store.save("musica", page)
+    assert md._live_fields(page)["here"]["title"] == "", "V2-873: the song picked is not what sounds — the page player says that"
+    says(playing=True, playing_id="abc", muted=False)
+    assert md._live_fields(page)["here"] == {"title": "Creep", "source": "youtube"}
+    says(muted=True)
+    assert md._live_fields(page)["here"] == {"title": "", "source": ""}, "a page player kept silent is not sounding"
+    says(muted=False, playing_id="xyz")
+    assert md._live_fields(page)["here"]["title"] == "", "another song than the one loaded is not it"
+    says(playing_id="abc", playing=False)
+    assert md._live_fields(page)["here"] == {"title": "", "source": ""}   # a value, never a missing key: a failed start reads unmet
 
 
 def test_every_start_declares_that_it_sounds_here():

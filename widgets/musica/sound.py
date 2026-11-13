@@ -1,62 +1,27 @@
-"""The page player's SOUND: what was ordered, and what the browser actually let through (V2-812).
+"""The page player's SOUND: what was ordered, and what the browser actually let through (V2-812, V2-884 step 2).
 
 Music that plays in the page (the hidden YouTube audio) starts muted, because muted autoplay is the only autoplay
 every browser allows, and is unmuted a moment later. A phone browser may refuse that unmute — or refuse to start at
 all — until a real tap on the page. The store said «playing», the card drew the song, the agent said «suena», and
 the phone was silent.
 
-So the card REPORTS what its player really does (widget.js reads the IFrame API's own `infoDelivery`): `player_audio`
-with `muted` = silent. Sound wanted (not paused, not muted by him) and the player silent is `audio_blocked`: the
-card shows a «tap for sound» row, the brain's digest says it, and when an agent order is being contradicted the
-card's `late_report` seam tells him. The first tap on the page gives it sound and the flag clears on the player's
-next report. Same mechanism as the video card (`widgets/youtube/sound.py`), on this card's own `yt` block.
+So the card's players REPORT what they really do through the card's one state door (`ctx.state`, `widgets/state.py`;
+the protocol shared with the video card, `/frontend/app/lib/player-report.js`), never into this store: whether the page
+player plays, which song, its sound and volume. Sound wanted (a song loaded, not paused, not muted by him, not refused)
+and the player reported silent or not playing is the fact `audio_blocked`, derived on every read (`facts` below): the
+card's «tap for sound» row follows it, the brain's state line says it, and the declared tell reaches him only when it
+contradicts an agent order and outlives `late_report.SETTLE_S`. Same class as the video card (`widgets/youtube/sound.py`).
 """
 from __future__ import annotations
 
 from . import data as _d
 
 
-def _flag(v) -> bool:
-    return str(v).strip().lower() in ("true", "1", "yes")
-
-
-def player_audio(action: str, p: dict) -> dict:
-    """Internal, fired by widget.js. A report about another song than the current one is stale."""
-    db = _d._load_db()
-    yt = dict(db.get("yt") or {})
-    vid = str(p.get("videoId") or "").strip()
-    if not yt.get("videoId") or (vid and vid != str(yt.get("videoId"))):
-        return {"ok": True, "stale": True}
-    silent = _flag(p.get("muted"))
-    if not silent:                                   # V2-886 fila 6: sound reported before a «silent» tell was said
-        from widgets import late_report
-        late_report.retract("musica")
-    if _flag(p.get("playing")) and not silent and yt.get("sounding_id") != yt.get("videoId"):
-        # V2-873 — the page player says it PLAYS this song: the one writer of «what sounds here» (`_here`)
-        yt.update(sounding_id=str(yt.get("videoId")), audio_blocked=False)
-        db["yt"] = yt
-        _d._persist(db)
-        return {"ok": True, "audio_blocked": False, "sounding": True}
-    wanted = not yt.get("paused") and not yt.get("muted") and not yt.get("player_error")   # V2-873: a refusal, not the browser
-    was = bool(yt.get("audio_blocked"))
-    if silent and wanted:
-        if was:
-            return {"ok": True, "audio_blocked": True}
-        yt["audio_blocked"] = True
-        db["yt"] = yt
-        _d._persist(db)
-        from i18n import langs as _langs
-        out = {"ok": True, "audio_blocked": True}
-        tell = str(_langs.words("music.audio_blocked", default="") or "")
-        if tell:
-            out["tell"] = tell          # said only if an agent order is being contradicted (`widgets/late_report.py`)
-        return out
-    if not silent and was:
-        yt["audio_blocked"] = False
-        db["yt"] = yt
-        _d._persist(db)
-        return {"ok": True, "audio_blocked": False}
-    return {"ok": True, "audio_blocked": was}
+def facts(order: dict, report: dict) -> dict:
+    """The derived facts the manifest declares, from what was ORDERED and what the page player REPORTS (V2-884 C1). A
+    refused song is not a blocked browser (`refused`), and a field not yet confirmed is absent — never a value."""
+    wanted = bool(order.get("video")) and not order.get("paused") and not order.get("muted") and not order.get("refused")
+    return {"audio_blocked": wanted and (report.get("muted") is True or report.get("playing") is False)}
 
 
 #: The IFrame API's fatal codes (101/150 the owner refuses embedding, 100 removed, 2/5 broken) — the video card's set.
@@ -84,7 +49,7 @@ def player_error(action: str, p: dict) -> dict:
         from connectors.music import youtube_resolve as _yr
         nxt = _yr.resolve(str(yt["query"]), skip=_ya.refused_ids(yt))[:2]
     if nxt[0]:
-        yt.update({"videoId": nxt[0], "title": nxt[1] or yt.get("query"), "player_error": "", "audio_blocked": False,
+        yt.update({"videoId": nxt[0], "title": nxt[1] or yt.get("query"), "player_error": "",
                    "paused": False, "last_cmd": "load", "cmd_seq": int(yt.get("cmd_seq") or 0) + 1})
         yt.pop("seek", None)
     else:
@@ -95,12 +60,10 @@ def player_error(action: str, p: dict) -> dict:
 
 
 def digest_line(live: dict) -> str:
-    """The brain must not say «it is playing» over a page player the browser keeps silent."""
+    """A song the page player REFUSED is the server's fact (its `player_error`): nothing is heard. Whether the browser
+    keeps it silent is the app's state line (`facts: audio_blocked`), never a stored flag."""
     yt = live.get("yt") or {}
     if live.get("mode") == "youtube" and yt.get("player_error"):
         return (f"SOUND: the page player REFUSED this song (YouTube error {yt['player_error']}) — nothing is heard. "
                 "Do not say it is playing.")
-    if live.get("mode") == "youtube" and yt.get("audio_blocked") and not yt.get("paused") and not yt.get("muted"):
-        return ("SOUND: BLOCKED by the browser of the screen the app is on — the song is loaded but nothing is heard. "
-                "Do not say it is playing; tell him to tap the app once and it will sound.")
     return ""

@@ -1,5 +1,6 @@
 // musica — the two players that sound IN this page: the hidden YouTube iframe (its clock and its sound report) and
 // the local <audio> (refactor2710-12 T-03).
+import { playerReport } from "/frontend/app/lib/player-report.js";
 import { h, tt } from "./shared.js";
 
 export function ytPost(iframe, func, args){
@@ -20,10 +21,22 @@ export function ytEnsureAudible(iframe, vol){
 // interpolate between frames instead of stepping, and thrown away whenever the video changes — a position
 // belonging to the PREVIOUS song, painted for a quarter of a second on the new one, is a lie the eye catches.
 export let _ytReady = null, _ytEnded = null;
-// V2-812 — what the page player REALLY does with the sound. A phone browser may keep a muted-autoplay start silent
-// (refuse the unmute, or never start) until a tap on the page. The embed says so in its own `infoDelivery`
-// (`muted`, `playerState`); the card reports it as `player_audio` and shows a tap row while it lasts.
-export let _ytSound = null;                   // per-render reporter: (info) → `player_audio` when it disagrees with the store
+// V2-812 / V2-884 step 2 — what the page players REALLY do: a phone browser may keep a muted-autoplay start silent
+// (refuse the unmute, or never start) until a tap on the page. The embed says it in its own `infoDelivery`
+// (`playerState`, `muted`, `volume`, the video it delivered) and our <audio> in its events; both are said through the
+// card's one state door with the protocol every card's player shares, and the engine answers the fact
+// `audio_blocked`: the tap row and the gesture unlock follow it.
+let _el = null, _frameNow = null, _blocked = false;
+function _paintFacts(facts){
+  const was = _blocked;
+  _blocked = facts.indexOf("audio_blocked") >= 0;
+  if(was === _blocked || !_el) return;
+  if(_blocked) armSoundUnlock(_el, _el._hbData);
+  if(typeof _el._hbRedraw === "function") _el._hbRedraw();
+}
+const _P = playerReport({fields: ["playing", "playing_id", "muted", "volume"], forget: ["playing_id", "muted", "volume"],
+                         onFacts: _paintFacts});
+const _sound = (a) => ({muted: !!a.muted, volume: Math.round((a.volume || 0) * 100)});
 export let _ytRefused = null;                 // per-render reporter: (code) → `player_error`, the player REFUSED the song (V2-873)
 export let _ytLoadedAt = 0;                   // when the current song's frame was mounted: a silence inside the grace is not a verdict
 export const _SOUND_GRACE_MS = 2500;
@@ -46,7 +59,14 @@ if (typeof window !== "undefined" && !window.__hbMusicaYtBound){
       const info = d.info;
       if (typeof info.currentTime === "number"){ _ytClock.t = info.currentTime; _ytClock.at = Date.now(); }
       if (typeof info.duration === "number" && info.duration > 0) _ytClock.d = info.duration;
-      if (_ytSound && (typeof info.muted === "boolean" || typeof info.playerState === "number")) _ytSound(info);
+      // a message still queued by a replaced player is not the current one's
+      if (_frameNow && ev.source && ev.source !== window && ev.source !== _frameNow.contentWindow) return;
+      const p = {}, st = info.playerState, vid = info.videoData && info.videoData.video_id;
+      if (typeof st === "number") p.playing = st === 1 || st === 3;   // 3 = buffering: on its way to sound
+      if (typeof info.muted === "boolean") p.muted = info.muted;
+      if (typeof info.volume === "number") p.volume = Math.max(0, Math.min(100, Math.round(info.volume)));
+      if (typeof vid === "string" && /^[A-Za-z0-9_-]{1,40}$/.test(vid)) p.playing_id = vid;
+      if (Object.keys(p).length) _P.report(p);
     }
   });
 }
@@ -95,7 +115,7 @@ export function syncLocalPlayer(el, data, ctx){
   const host = el._ytHost;
   const stopped = halted(ctx);
   if(!loc.src){
-    if(el._hbAudio){ host.textContent = ""; el._hbAudio = null; el._hbLocal = null; el._hbLocSeq = null; }
+    if(el._hbAudio){ host.textContent = ""; el._hbAudio = null; el._hbLocal = null; el._hbLocSeq = null; _P.replaced(ctx, false); }
     return false;
   }
   if(el._hbLocal === loc.src && el._hbAudio){        // same file -> only apply the new command
@@ -118,38 +138,26 @@ export function syncLocalPlayer(el, data, ctx){
   if(String(loc.src).startsWith("/api/library/")) a.src = loc.src;
   if(!(loc.paused || stopped)){ const q = a.play(); if(q && q.catch) q.catch(function(){}); }
   a.addEventListener("ended", function(){ try{ ctx.action("ended"); }catch(_){} });
+  // V2-884 step 2 — our <audio> says what the embed says (it has no song id): all once it can, then each change
+  _frameNow = null; _P.replaced(ctx);
+  a.addEventListener("loadedmetadata", () => _P.report({playing: !a.paused && !a.ended, ..._sound(a)}));
+  a.addEventListener("playing", () => _P.report({playing: true}));
+  a.addEventListener("pause", () => _P.report({playing: false}));
+  a.addEventListener("volumechange", () => _P.report(_sound(a)));
   host.appendChild(a);
   el._hbAudio = a; el._hbLocal = loc.src; el._hbLocSeq = loc.seq;
   return true;
 }
 
-// V2-812 — the page player's real sound against what the store wants. Silent = the player reports itself muted, or
-// not playing (state other than 1 playing / 3 buffering), past the grace, while sound is wanted. Heard clears it.
+// V2-873 — the player REFUSED the song (IFrame API onError): reported once per song, with the song it was about. Its
+// sound is not reported here: the embed's own `infoDelivery` says it through the state door (above).
 export function bindSoundReport(el, data, ctx){
   const yt = data.yt || {};
-  let sent = "";
-  // V2-873 — the player REFUSED the song (IFrame API onError): reported once per song, with the song it was about.
   _ytRefused = (code) => {
     const vid = el._hbVid || yt.videoId;
     if(!ctx || !ctx.action || !vid || el._hbRefused === vid + "|" + code) return;
     el._hbRefused = vid + "|" + code;
     try{ const q = ctx.action("player_error", {code: code, videoId: vid}); if(q && q.catch) q.catch(() => {}); }catch(_){}
-  };
-  _ytSound = (info) => {
-    if(!ctx || !ctx.action || halted(ctx) || !yt.videoId || yt.paused || yt.muted) return;
-    const state = Number(info.playerState);
-    const silent = info.muted === true || (typeof info.playerState === "number" && state !== 1 && state !== 3);
-    // V2-873 — what sounds here is what the PLAYER says it plays (state 1, not muted), told once per song: the card's
-    // «here» is written from this, never from the song that was picked.
-    const playing = !silent && state === 1;
-    if(!(playing && yt.sounding_id !== yt.videoId)){
-      if(silent && Date.now() - _ytLoadedAt < _SOUND_GRACE_MS) return;
-      if(silent === !!yt.audio_blocked) return;
-    }
-    const key = yt.videoId + "|" + silent + "|" + playing + "|" + (yt.cmd_seq || 0);
-    if(key === sent) return;
-    sent = key;
-    try{ const q = ctx.action("player_audio", {muted: silent, playing: playing, videoId: yt.videoId}); if(q && q.catch) q.catch(() => {}); }catch(_){}
   };
 }
 
@@ -173,7 +181,7 @@ export function armSoundUnlock(el, data){
 }
 export function soundRow(el, data){
   const yt = data.yt || {};
-  if(data.mode !== "youtube" || !yt.audio_blocked || yt.paused || yt.muted) return null;
+  if(data.mode !== "youtube" || !_blocked || yt.paused || yt.muted) return null;   // the engine's fact, from the report
   const b = h("button", "hb-mus2-tapsound", "🔈 " + tt("tap_sound", null, "Toca aquí para que suene en esta pantalla"));
   b.onclick = () => unlockSound(el, data);
   return b;
@@ -183,13 +191,17 @@ export function syncYtPlayer(el, data, ctx){
   const yt = data.yt || {};
   const host = el._ytHost;
   const stopped = halted(ctx);
-  el._hbData = data;
+  el._hbData = data; _el = el;
+  if(ctx !== _P.state.ctx) _blocked = false;        // a new mount: none of the old one's facts
+  // the ack of a new revision, once the current player has spoken (`/frontend/app/lib/player-report.js`)
+  _P.rendered(ctx, data._rev, !!(yt.videoId || (data.local || {}).src));
   bindSoundReport(el, data, ctx);
-  if(yt.audio_blocked && !yt.paused && !stopped) armSoundUnlock(el, data);
+  if(_blocked && !yt.paused && !stopped) armSoundUnlock(el, data);
   // A local file and a YouTube track can never sound at once: if one is mounted the other releases.
   if(syncLocalPlayer(el, data, ctx)) return;
   if(!yt.videoId){                                   // nothing playing through YouTube -> release the frame
-    if(el._hbFrame){ host.textContent = ""; el._hbFrame = null; el._hbVid = null; el._hbSeq = null; }
+    if(el._hbFrame){ host.textContent = ""; el._hbFrame = null; el._hbVid = null; el._hbSeq = null; _frameNow = null;
+                     _P.replaced(ctx, false); }
     return;
   }
   if(el._hbVid === yt.videoId && el._hbFrame){       // same video -> only apply the new command
@@ -220,6 +232,7 @@ export function syncYtPlayer(el, data, ctx){
   frame.addEventListener("load", () => ytStartListening(frame));
   host.appendChild(frame);
   el._hbFrame = frame; el._hbVid = yt.videoId; el._hbSeq = yt.cmd_seq;
+  _frameNow = frame; _P.replaced(ctx);               // a new song's player: the old one's word does not stand
   el._hbSeekN = 0;
   const wake = () => {
     if(halted(ctx)){ ytPost(frame, "pauseVideo"); return; }   // re-read because `wake` runs in timeouts up to 2.6s
@@ -233,5 +246,5 @@ export function syncYtPlayer(el, data, ctx){
   setTimeout(wake, 1200); setTimeout(wake, 2600);
   // A player that never says a word is silent too (2026-11-02: a phone held the embed back without one frame, so no tap row).
   const vid = yt.videoId;
-  setTimeout(() => { if(el._hbVid === vid && !halted(ctx) && _ytClock.vid === vid && _ytClock.at < _ytLoadedAt && _ytSound) _ytSound({muted: true}); }, _SOUND_GRACE_MS + 2500);
+  setTimeout(() => { if(el._hbVid === vid && !halted(ctx) && _ytClock.vid === vid && _ytClock.at < _ytLoadedAt) _P.report({playing: false}); }, _SOUND_GRACE_MS + 2500);
 }
