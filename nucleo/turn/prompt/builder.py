@@ -23,9 +23,8 @@ def _lang_lock() -> str:
     return (
         "── IDIOMA (REGLA ABSOLUTA, POR ENCIMA DE TODO) ──\n"
         # Demo pass 105, C5: «Oye Rowan…» — a Telegram written in Spanish in an English session.
-        # V2-903 P1-1: words he DICTATES for someone else are his, in his order (CRIT-T2e) — nothing translates them later.
-        f"Responde, y redacta mensajes y notas, SIEMPRE en {native} ({name}); lo que él DICTA, tal cual.\n"
-        f"COMPRENDES cualquier idioma (inglés, catalán…): un turno en OTRO idioma que se entiende se "
+        f"Responde, y redacta mensajes y notas, SIEMPRE y ÚNICAMENTE en {native} ({name}).\n"
+        f"COMPRENDES cualquier idioma (inglés, catalán, francés…): un turno en OTRO idioma que se entiende se "
         f"ATIENDE con normalidad, SIEMPRE en {native}. Si no sabes qué te pide (cortado, ruido, sin sentido), NO lo "
         f"digas tú: ni «¿me lo repites?» ni «no te he entendido». Llama a `not_understood` y no escribas nada; "
         f"venir en otro idioma nunca es motivo.\n"

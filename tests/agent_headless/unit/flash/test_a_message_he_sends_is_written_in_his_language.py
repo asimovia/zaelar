@@ -23,9 +23,12 @@ def test_the_spanish_lock_says_it_too(monkeypatch):
     assert "mensajes" in _lock(monkeypatch, "es")
 
 
-def test_his_dictated_words_are_not_the_locks_to_translate(monkeypatch):
-    """V2-903 P1-1: the lock names the session language for what the model COMPOSES; what he dictates for someone
-    else stays his words — the lock used to tell the model to translate «ya estamos…» in an English session."""
+def test_his_dictated_words_are_scoped_to_messaging_not_the_lock(monkeypatch):
+    """V2-903 P2-B: the lock keeps «ÚNICAMENTE» (the V2-452 leak); the dictation rule lives only where a text for another
+    person is written — the messaging block — and names that scope."""
+    from connectors.messaging import brief
     for code in ("en", "es"):
         lock = _lock(monkeypatch, code)
-        assert "DICTA" in lock and "tal cual" in lock.split("DICTA", 1)[1][:120], lock
+        assert "ÚNICAMENTE" in lock and "dicta" not in lock.lower(), lock
+        line = brief._platform_states()
+        assert "PARA OTRA PERSONA" in line and "sin traducir" in line, line
