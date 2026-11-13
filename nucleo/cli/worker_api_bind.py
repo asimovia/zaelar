@@ -7,7 +7,11 @@ open questions?» — whose choices are the open questions by `ask_id`, plus `no
   · an `ask_id` binds at the act floor (A7) when the verdict binds ALONE, at the LICENCE when the model answered (K2);
   · `none` at or above the VETO (0.85) binds nothing — it was a new request, a correction, a comment;
   · any other verdict is a doubt, and a doubt is ASKED: ASK_WHICH among the waiting tasks (an `ask` naming them) —
-    with two or more waiting, `several` is the reader's own way to say the answer fits more than one;
+    with two or more waiting, `several` is the reader's own way to say the answer fits more than one; with ONE
+    waiting, «which of these tasks?» is never asked: that row's own question is put again (REASK, V2-903 a5);
+  · a turn the brief reads as a SURE order on the screen (a canvas close/show, a card's act) that does not surely
+    pick a row is not an answer: nothing binds — but a pick of a row at the licence, or the model's `answer_worker`,
+    is a doubt and is asked (REASK of that row, or the waiting rows), never dropped (V2-903 a5);
   · no verdict at all (brief off, in flight, failed) binds only what the model itself routed (`answer_worker`), and
     only when one task waits — with several it is asked;
   · with SEVERAL waiting a pick binds only by IDENTITY (CRIT-K2b R6, V2-893 L4), never by its bar: the row that asked
@@ -91,14 +95,15 @@ def bind(brief, *, model_answered: bool = False, asks=None) -> tuple[str, list]:
         from nucleo.turn import verdicts
         choice, info = verdicts.read(brief, KEY, None, min_confidence=0.0)
         conf, floor = float((info or {}).get("confidence") or 0), verdicts.LICENCE if model_answered else verdicts.act_floor()
-        if (not info or conf < floor) and _screen_order(brief):   # V2-903 a5: a sure order on screen is not his answer
-            return NOTHING, []
+        by_id = {str(a["ask_id"]): a for a in asks}
+        ask_id, _, idx = str(choice).partition(PICK)
+        if (not info or str(choice) == NONE or conf < floor) and _screen_order(brief):   # V2-903 a5: a sure screen
+            row = by_id.get(ask_id) if info and conf >= verdicts.LICENCE else None      # order is not his answer, but
+            return (REASK, [row]) if row else _which(asks) if model_answered else (NOTHING, [])   # a doubt is never dropped
         if not info or choice is None:
             if not model_answered:
                 return NOTHING, []
             return (ANSWER, asks) if len(asks) == 1 and not asks[0].get("candidates") else _which(asks)
-        by_id = {str(a["ask_id"]): a for a in asks}
-        ask_id, _, idx = str(choice).partition(PICK)
         if len(asks) > 1 and conf >= floor and (ask_id in by_id or str(choice) == SEVERAL):
             if (how := _identified(by_id.get(ask_id), idx, asks)) != ANSWER:
                 return (how, [by_id[ask_id]]) if how == REASK else (how, asks)
@@ -116,10 +121,10 @@ def bind(brief, *, model_answered: bool = False, asks=None) -> tuple[str, list]:
         if str(choice) == NONE and conf >= verdicts.VETO:
             return NOTHING, []
         if str(choice) == SEVERAL:
-            return ASK_WHICH, asks
+            return _which(asks)
         if str(choice) != NONE and ask_id not in by_id and conf >= floor:
             return NOTHING, []
-        return ASK_WHICH, asks
+        return _which(asks)
     except Exception:  # noqa: BLE001 — a classifier may never break a turn; nothing is bound blind
         return NOTHING, []
 

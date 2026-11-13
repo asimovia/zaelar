@@ -112,8 +112,9 @@ def test_the_screen_line_names_the_front_app_first(on, monkeypatch, lang):
     memory.set_state({"maximized_widget": ""})
     from i18n import runtime
     home = live_state.screen_line()       # a2b: his home is a named screen, in his language, never «VACÍA»
-    assert runtime.text("mobile.home_screen", code=lang) in home and "VACÍA" not in home, home
-    assert ("próximas citas" if lang == "es" else "next events") in home, home
+    assert runtime.text("screen.phone_home", code=lang) in home and "VACÍA" not in home, home
+    assert ("próximas citas" if lang == "es" else "next events") in home and ";;" not in home.replace(" ", ""), home
+    assert home.count(";") <= 1, f"one clause separator, never two in a row: {home}"
     on(DESK)
     assert live_state.screen_line() == "En pantalla: agenda, musica, youtube."
 

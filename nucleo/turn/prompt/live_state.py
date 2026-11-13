@@ -25,7 +25,7 @@ def screen_line() -> str:
     ids = [str(w).strip() for w in (__import__("memory.api", fromlist=["x"]).state().get("open_widgets") or [])]
     if (front := __import__("nucleo.canvas_focus", fromlist=["x"]).phone_front()) is not None:   # V2-903: ONE app
         behind = [i for i in ids if i and i != front][:12]
-        home = __import__("i18n.runtime", fromlist=["x"]).text("mobile.home_screen", "home")   # a2b: a named screen
+        home = __import__("i18n.runtime", fromlist=["x"]).text("screen.phone_home", "home")   # a2b: a named screen
         return ("En pantalla (teléfono): " + (f"«{front}» delante" if front else home)
                 + (f"; detrás: {', '.join(behind)}" if behind else "") + ".")
     return "En pantalla: " + (", ".join([i for i in ids if i][:12]) or "nada (pantalla VACÍA)") + "."

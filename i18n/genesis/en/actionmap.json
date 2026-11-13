@@ -1,6 +1,6 @@
 {
  "_comment": "Genesis seed pack (English) for the action map (V2-539). Same rules as es.json: unambiguous whole-utterance commands only; variants are separate entries; anything that could mean more than the mapped action stays out and goes to the model. · V2-682 — the possessive and the courtesy form were the whole hole. Measured on the operator's own English session (2026-09-12): «open the agenda» matched and «can you open MY agenda, please» did not, so a widget SHOW fell through to the model and from there to a Brain Worker that died on a provider 400. Spanish had the identical hole («abre mi agenda», «abreme la agenda»), which is why the fix lands in BOTH packs: this was never an English defect. Courtesy and modal forms are ENTRIES here, never something the matcher is allowed to understand (normalize.py doctrine). · V2-761 — the widget catalogue («Apps») joins as a panel tab; the operator calls it apps or widgets indifferently, so both words are entries. · V2-764 — the `torrent` widget merged into `archivos` (section Torrents): its names open that section. · v15 (demo pass 2026-09-28, V3) — «make it fullscreen» over the video had no entry, the model said «going fullscreen now» and called nothing: a pronoun fullscreen targets the app in front (`*`). · v17 — the agent's OWN controls: «silencia el altavoz» / «mute the speaker» (the 🔊, it keeps listening), «quita el mute» / «unmute», «apágate» / «turn yourself off» (the ⏻). One `controls` act each, run on the screen that heard him by that screen's own button door (`nucleo/acts/self_controls.py`). A bare «apaga»/«turn off» stays out: it names a device as often as the agent.",
- "version": 18,
+ "version": 19,
  "grids": [
   {
    "_comment": "VERB x OBJECT grid for mensajeria's LENSES (V2-545). «Abreme el Telegram» is not «show the app»: WhatsApp/Telegram/correo are VIEWS OF an app, and the model reads them as app names because they are also the widget's aliases - measured live, three turns of «Aqui lo tienes» over an unmoved app. Expanded into ordinary exact-match entries at import; a view op also brings the app up (executor), so one order gets both halves. `$` is filled with the value.",
@@ -2188,6 +2188,78 @@
    "action": {
     "do": "controls",
     "act": "language"
+   }
+  },
+  {
+   "phrase": "bring up the apps",
+   "action": {
+    "do": "show_panel",
+    "tab": "apps",
+    "action": "open"
+   }
+  },
+  {
+   "phrase": "bring up the widgets",
+   "action": {
+    "do": "show_panel",
+    "tab": "apps",
+    "action": "open"
+   }
+  },
+  {
+   "phrase": "i want to see the apps",
+   "action": {
+    "do": "show_panel",
+    "tab": "apps",
+    "action": "open"
+   }
+  },
+  {
+   "phrase": "show me the widget list",
+   "action": {
+    "do": "show_panel",
+    "tab": "apps",
+    "action": "open"
+   }
+  },
+  {
+   "phrase": "open my custom widgets",
+   "action": {
+    "do": "show_panel",
+    "tab": "apps-custom",
+    "action": "open"
+   }
+  },
+  {
+   "phrase": "show me my custom widgets",
+   "action": {
+    "do": "show_panel",
+    "tab": "apps-custom",
+    "action": "open"
+   }
+  },
+  {
+   "phrase": "what custom widgets do i have",
+   "action": {
+    "do": "show_panel",
+    "tab": "apps-custom",
+    "action": "open"
+   }
+  },
+  {
+   "phrase": "what custom apps do i have",
+   "action": {
+    "do": "show_panel",
+    "tab": "apps-custom",
+    "action": "open"
+   }
+  },
+  {
+   "phrase": "open my custom apps",
+   "action": {
+    "do": "show_panel",
+    "tab": "apps-custom",
+    "action": "open"
    }
   }
  ]
