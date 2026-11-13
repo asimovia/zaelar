@@ -45,8 +45,11 @@ MARGIN = 64
 # install) headed by the legend that says how to read it; the legend rides only a turn that carries a state line;
 # +74 after its audit: the legend says rest, «state unreported» and «(hidden)» again, and the usage says what an
 # `audio_blocked: null` (unconfirmed) means
-CEILINGS = {(): 24_861, ("agenda", "mensajeria"): 29_917,
-            ("agenda", "mensajeria", "youtube", "contactos", "results", "musica"): 37_828}   # V2-795: musica usage trimmed
+# V2-884 step 3 (4.505/4.508) + its audit: +78 on the everyday screen — agenda and mensajeria declare their state, so a
+# clean install carries their two «state unreported» lines (A7: «I don't know» is said, never the order); the legend no
+# longer rides a block of unreported lines only (nothing in it to read), so six cards went DOWN (−93, lowered)
+CEILINGS = {(): 24_861, ("agenda", "mensajeria"): 29_995,
+            ("agenda", "mensajeria", "youtube", "contactos", "results", "musica"): 37_735}   # V2-795: musica usage trimmed
 TARGET_EVERYDAY = 30_000
 
 

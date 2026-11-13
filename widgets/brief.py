@@ -413,8 +413,8 @@ def _live_lines(cat: list[dict], opened: set[str]) -> list[str]:
     lines: list[str] = []
     # V2-884: the ONE state line of each open app that declares one, digest or not — its report, never its order
     states = state_render.lines([w.get("id") for w in cat if str(w.get("id") or "").strip().lower() in opened])
-    if states:
-        lines += ["", state_render.LEGEND] + states
+    if states:                  # the legend reads the marks: a block that is only `state unreported` has none to read
+        lines += [""] + [state_render.LEGEND] * any(not s.endswith(": state unreported") for s in states) + states
     item_lines: list[str] = []
     for w in cat:
         wid = str(w.get("id") or "").strip().lower()
