@@ -28,6 +28,9 @@ PENDING_S = 5.0
 CLAUSE_MAX = 160
 TOTAL_MAX = 700
 MAX_SURFACES = 2
+#: A text value is shortened to no less than this before a field is dropped; a second surface keeps at least `OTHER_MIN`.
+TEXT_MIN = 12
+OTHER_MIN = 56
 
 #: How to read the lines — it heads the state block, so a turn with no app that declares a state pays nothing.
 LEGEND = ("app state as each app REPORTS it (not orders; `x`/`!x` true/false, `=?` unknown, `=?ordered` unconfirmed, "
@@ -98,11 +101,14 @@ def read(app, instance=None, dev=None) -> dict:
         moved = state.changed(inst)
         marks = {f: _field(s, snap["fields"].get(f), moved, now) for f, s in spec.items()}
         known = {f: v for f, (m, v) in marks.items() if m == "known"}
-        out.append({"dev": d, "instance": inst, "visible": snap["visible"], "fields": known,
+        away = any(m != "known" or not (isinstance(spec[f], dict) and spec[f].get("rest", object()) == v)
+                   for f, (m, v) in marks.items())
+        out.append({"dev": d, "instance": inst, "visible": snap["visible"], "fields": known, "at": snap["at"],
                     "pending": [f for f, (m, _v) in marks.items() if m == "pending"],
                     "unknown": [f for f, (m, _v) in marks.items() if m == "unknown"],
-                    "facts": _facts(app, inst, st, known)})
-    out.sort(key=lambda s: s["dev"] != here)                   # this turn's screen first
+                    "facts": _facts(app, inst, st, known), "away": away})
+    # this turn's screen first, then what is away from rest (a record open), then the most recent report
+    out.sort(key=lambda s: (s["dev"] != here, not s["away"], -s["at"]))
     return {"declared": True, "surfaces": out}
 
 
@@ -115,33 +121,41 @@ def _quote(v) -> str:
     return '"' + decl.clean(v).replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
-def _bits(spec: dict, s: dict) -> list[str]:
+def _bits(spec: dict, s: dict) -> list[list]:
+    """`[name, rendered, text]` per field away from rest — `text` is the raw value of a text field (it can be shortened),
+    None for anything else."""
     bits = []
     for f, sp in spec.items():
         kind = decl.type_of(sp)[0]
         if f in s["pending"]:
-            bits.append(f"{f}=?ordered")
+            bits.append([f, f"{f}=?ordered", None])
         elif f in s["unknown"]:
-            bits.append(f"{f}=?")
+            bits.append([f, f"{f}=?", None])
         elif isinstance(sp, dict) and "rest" in sp and s["fields"][f] == sp["rest"]:
             continue
         elif kind == "bool":
-            bits.append(f if s["fields"][f] else f"!{f}")
+            bits.append([f, f if s["fields"][f] else f"!{f}", None])
         else:
             v = s["fields"][f]
-            bits.append(f"{f}={_quote(v) if kind == 'text' else v}")
+            bits.append([f, f"{f}={_quote(v) if kind == 'text' else v}", decl.clean(v) if kind == "text" else None])
     return bits
 
 
-def _fit(head: str, bits: list[str], facts: list[str], room: int) -> str:
-    """One surface in `room` characters: fields cut first (marked «…»), then facts, then the head itself."""
+def _fit(head: str, bits: list[list], facts: list[str], room: int) -> str:
+    """One surface in `room` characters: the longest text value shortened first (never below `TEXT_MIN`, marked «…»
+    inside its quotes) — it is the field that says WHICH record, letter or page — then fields cut from the end, then
+    facts, then the head itself."""
     cut = False
     while True:
         tail = f" · facts: {', '.join(facts)}" if facts else ""
-        line = f"{head}: {', '.join(bits + ['…'] * cut) or 'at rest'}{tail}"
+        line = f"{head}: {', '.join([b[1] for b in bits] + ['…'] * cut) or 'at rest'}{tail}"
         if len(line) <= room:
             return line
-        if bits:
+        long = max((b for b in bits if b[2] and len(b[2]) > TEXT_MIN), key=lambda b: len(b[2]), default=None)
+        if long:
+            long[2] = long[2][:max(TEXT_MIN, len(long[2]) - (len(line) - room) - 1)]
+            long[1] = f"{long[0]}={_quote(long[2] + '…')}"
+        elif bits:
             bits, cut = bits[:-1], True
         elif facts:
             facts = facts[:-1]
@@ -161,12 +175,14 @@ def clause(app, dev=None) -> str:
     spec, shown = decl.report_fields(decl.of(app)), r["surfaces"][:MAX_SURFACES]
     more = len(r["surfaces"]) - len(shown)
     extra = f"; +{more} more" if more else ""
-    room = (CLAUSE_MAX - len(extra) - 2 * (len(shown) - 1)) // len(shown)
-    parts = []
-    for s in shown:
+    left, parts = CLAUSE_MAX - len(extra) - 2 * (len(shown) - 1), []
+    for i, s in enumerate(shown):            # the first (this turn's screen) takes what it needs, the rest share
         inst = s["instance"] if s["instance"] != app else app
         head = f"{inst}@{screens.surface(s['dev']) or s['dev']}" + ("" if s["visible"] else "(hidden)")
+        others = len(shown) - 1 - i
+        room = left - others * OTHER_MIN if i == 0 else (left // (others + 1))
         parts.append(_fit(head, _bits(spec, s), list(s["facts"]), room))
+        left -= len(parts[-1])
     return "; ".join(parts) + extra
 
 

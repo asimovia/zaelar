@@ -4,7 +4,7 @@
   "state": {
     "order": {"tab": "tab", "view": "view", "focus": "focus"},
     "report": {
-      "tab": {"type": "enum:results|summary|sources|criteria", "follows": "tab"},
+      "tab": {"type": "enum:results|summary|sources|criteria", "follows": "tab", "rest": "results"},
       "selected": {"type": "text:60", "follows": ["view", "focus"], "rest": ""}
     }
   },

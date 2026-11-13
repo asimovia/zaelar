@@ -84,11 +84,11 @@ def test_two_screens_each_its_tab_and_record_and_an_order_waits_for_each_ack(she
     assert state_render.clause("results") == "results: state unreported"
     assert _say(a, 1, tab="results", selected=ROWS[0]["title"]) == 200
     assert _say(b, 1, tab="sources", selected="") == 200
-    assert state_render.clause("results", dev=a).endswith(f': tab=results, selected="{ROWS[0]["title"]}"')
+    assert state_render.clause("results", dev=a).endswith(f': selected="{ROWS[0]["title"]}"')
     assert state_render.clause("results", dev=b).endswith(": tab=sources")
     from nucleo.flash import widget_read
     both = widget_read.read(INST)
-    assert "tab=results" in both and "tab=sources" in both, "a worker read only one screen"
+    assert f'selected="{ROWS[0]["title"]}"' in both and "tab=sources" in both, "a worker read only one screen"
     assert r.apply_action("detail", {"sheet": SHEET, "title": ROWS[1]["title"]})["ok"]
     for d in (a, b):
         assert "selected=?ordered" in state_render.clause("results", dev=d), f"detail read as confirmed on {d}"
@@ -108,7 +108,7 @@ def test_the_rendered_sheet_says_its_tab_and_record_through_the_door(sheet, card
     assert len(sent) == 1 and sent[0]["full"] and sent[0]["instance"] == INST and sent[0]["ack"] == data["_rev"]
     assert sent[0]["patch"] == {"tab": "results", "selected": ""}, sent
     assert deliver("results", sent) == [200]
-    assert state_render.clause("results", dev=a).endswith(": tab=results")
+    assert state_render.clause("results", dev=a).endswith(": at rest"), "the list on its first tab is rest"
 
     click(card_page, ".hr-tab[data-tab='sources']")                                 # his click
     sent = posts(card_page)
@@ -121,5 +121,5 @@ def test_the_rendered_sheet_says_its_tab_and_record_through_the_door(sheet, card
     sent = posts(card_page)
     assert sent and sent[-1]["full"] and sent[-1]["patch"] == {"tab": "results", "selected": ROWS[1]["title"]}, sent
     deliver("results", sent)
-    assert state_render.clause("results", dev=a).endswith(f': tab=results, selected="{ROWS[1]["title"]}"'), \
+    assert state_render.clause("results", dev=a).endswith(f': selected="{ROWS[1]["title"]}"'), \
         state_render.clause("results", dev=a)
