@@ -117,9 +117,8 @@ def _open(payload: dict) -> dict | None:
     n, name = _d._open_ref(payload)
     if n is None and not name:
         return None
-    db = _d.load_db()
-    hit = next((c for c in _d._group_chats(_d._visible_items(db)) if c.get("n") == n), None) \
-        if n is not None else _d._find_chat_by_name(db, name)
+    from .actions.open import resolve_ref     # the same resolver the action asks: a veto never refuses what it opens
+    hit = resolve_ref(_d.load_db(), n, name)
     if hit is None:
         return {"ok": False,
                 "error": "no encuentro ese chat — vuelve a llamar a open con el `n` de la lista o con "
