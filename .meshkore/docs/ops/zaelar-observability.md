@@ -387,11 +387,12 @@ kept for the FlashBrain's «PROCESOS DE FONDO» prompt, but does not duplicate t
   - **`task`** with `kind_diag: ask_closed` — `🧹 clarification closed with its conversation`
     (`nucleo/request/clarify_end.py`): `extra = {task_id, ask_id, reason: moved_on|expired, waited_s?}`; moved_on runs
     under the turn that moved on, expired under the trace of the turn that asked (the pulse runs none). One per close.
-  - **`kind_diag: stop_words_released`** — `🗣 held words released…`: words held while a send waited for its exit door,
-    let out once it reported (a send is never called done before its door reports; a failure is said out of turn).
+  - **`kind_diag: stop_words_released`** — `🗣 held words released — no stop can run this turn`
+    (`nucleo/flash/follow_up_pass.py`): the words held for a stop are said once no stop can run; `⏳ held words wait`
+    while the card's answer has not run. A send is said as STARTED until its exit door reports; a row's refusal after
+    its turn closed is said out of turn.
   - **`brain`** `⚠️ verdict unreadable — its veto is lifted` (`nucleo/turn/verdicts.py`): a verdict that could not be
-    read is said and marked (`key`, `is_error`), never a silent lifted veto. `⚠️ a background task failed`
-    (`task = nucleo:<name>`): a task started through the one spawn helper that raised.
+    read is said and marked on the engine row (`key`, `is_error`), once a minute per key — never a silent lifted veto.
   - A viewer that filters by `kind_diag` must learn these values: one it does not know shows up EMPTY, never as an
     error.
   - **`notice`** / **`notify`** — the out-of-turn mouth (`nucleo/pulse/notices.py`): every line said outside a turn,
