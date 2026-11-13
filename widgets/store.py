@@ -252,6 +252,14 @@ def exists(widget_id: str) -> bool:
     return os.path.exists(_path(widget_id))
 
 
+def has_state(widget_id: str) -> bool:
+    """Whether `widget_id` holds a store, asked WITHOUT creating its folder or moving a legacy file (`exists` does
+    both): a free-text `?q=` or a client's instance name must leave nothing on disk (V2-884 step-3 audit P2-1)."""
+    sid = _safe_id(str(widget_id or ""))
+    return bool(sid) and (os.path.isfile(os.path.join(DATA_DIR, sid, "state.json"))
+                          or os.path.isfile(_legacy_path(widget_id)))
+
+
 def forget(widget_id: str) -> None:
     """Forget the last-save fingerprint. Must be called when `state.json` is touched OUTSIDE `save()` (today: reset
     deletes it to leave the surface blank) — otherwise `save` anti-flood thinks what is on disk is the last thing it

@@ -57,7 +57,7 @@ def _instance_ok(app: str, instance: str) -> bool:
         return instance == app
     try:
         hook = getattr(__import__(f"widgets.{app}.data", fromlist=["x"]), "instance_exists", None)
-        return store.exists(disk_id(instance)) or (callable(hook) and hook(instance.split("::", 1)[1]) is True)
+        return store.has_state(disk_id(instance)) or (callable(hook) and hook(instance.split("::", 1)[1]) is True)
     except Exception as e:  # noqa: BLE001 — an app that cannot answer holds no such instance
         logger.debug(f"state: {app} cannot say whether {instance} exists ({e!r})")
         return False
@@ -99,7 +99,7 @@ def served(app, q, data):
     """`data` stamped with the revision a surface acks (`_rev`) for an app that declares a state; an instance acks ITS."""
     inst, store = f"{app}::{str(q).removeprefix(app + '::')}", __import__("widgets.store", fromlist=["x"])
     ok = isinstance(data, dict) and decl.of(app)
-    return {**data, "_rev": stamp(inst if q and store.exists(disk_id(inst)) else app)} if ok else data
+    return {**data, "_rev": stamp(inst if q and store.has_state(disk_id(inst)) else app)} if ok else data
 
 
 def note_save(widget_id, data) -> None:
