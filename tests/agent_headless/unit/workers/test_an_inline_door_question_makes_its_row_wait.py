@@ -97,9 +97,12 @@ def test_the_verdict_chooses_the_candidate_never_his_words(fresh, monkeypatch):
 
 
 def test_a_bare_question_id_over_candidates_is_asked_which(fresh, monkeypatch):
+    """The row is picked but not its candidate: ITS question is put again (V2-903 a5 — never «which of these tasks?»
+    over the one row the verdict already named)."""
     ask_id = _held()
     monkeypatch.setattr(verdicts, "read", lambda h, key, fb, min_confidence=None: (ask_id, {"confidence": .9}))
-    assert bind.bind(None)[0] == bind.ASK_WHICH
+    how, asks = bind.bind(None)
+    assert how == bind.REASK and [a["ask_id"] for a in asks] == [ask_id]
 
 
 def test_the_same_act_naming_a_candidate_is_his_answer_on_that_row(fresh):
