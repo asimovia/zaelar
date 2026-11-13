@@ -40,37 +40,26 @@ def _bring_back_found_mail(payload: dict) -> int:
 
 
 def _held_mail(db: dict) -> set:
-    """(chatId, message id) of every mail the card HOLDS — a pending row or a message of a thread. A conversation
-    is not «held» by its key alone: a «load previous» that came back empty leaves an empty thread, and counting that
-    as holding the mail kept the found mail from ever being asked back (live demo pass on b136, E2/E3)."""
-    held = {(str(it.get("chatId")), str(it.get("messageId"))) for it in db.get("items", [])
-            if it.get("platform") == "email"}
-    for k, th in (db.get("threads") or {}).items():
-        if str(k).startswith("email|") and isinstance(th, dict):
-            chat = str(k).partition("|")[2]
-            held |= {(chat, str(m.get("id"))) for m in th.get("msgs") or []}
-    return held
+    """(chatId, message id) of every mail the card holds: an EMPTY thread under the address does not hold its mail
+    (demo b136, E2/E3: it kept the found mail from ever being asked back)."""
+    held = {(str(it.get("chatId")), str(it.get("messageId"))) for it in db.get("items", [])}
+    return held | {(str(k).partition("|")[2], str(m.get("id"))) for k, th in (db.get("threads") or {}).items()
+                   if isinstance(th, dict) for m in th.get("msgs") or []}
 
 
 def _ask_back(db: dict, chat: str, uid: str) -> None:
-    """Queue the card's own «load previous» order for exactly that mail (one message just below UID+1)."""
     db.setdefault("pending_history", []).append(
         {"platform": "email", "chatId": chat, "beforeTs": 0, "beforeId": str(int(uid) + 1), "limit": 1})
 
 
 def await_found(db: dict, platform, chat_id) -> bool:
-    """Opening the mail the card last found while the card does not hold it yet: ask it back and keep the
-    conversation open while it arrives (`opening`), instead of an open that auto-closes on an empty thread. True
-    when it is on its way. Mutates `db`; the caller saves."""
-    lf = last_found(db)
-    uid = str((lf or {}).get("uid") or "")
-    if (not lf or platform != "email" or (lf.get("platform"), str(lf.get("chatId"))) != (platform, str(chat_id))
-            or not uid.isdigit()):
+    """Opening the last find before the card holds it: asked back, and kept open while it arrives (`opening`)
+    instead of auto-closing on an empty thread. Mutates `db`; the caller saves."""
+    lf, uid = last_found(db) or {}, str((last_found(db) or {}).get("uid") or "")
+    if (lf.get("platform"), str(lf.get("chatId"))) != (platform, str(chat_id)) or not uid.isdigit():
         return False
     if (str(chat_id), uid) not in _held_mail(db):
-        if not any(o.get("chatId") == str(chat_id) and o.get("beforeId") == str(int(uid) + 1)
-                   for o in db.get("pending_history") or [] if isinstance(o, dict)):
-            _ask_back(db, str(chat_id), uid)
+        _ask_back(db, str(chat_id), uid)
     db["opening"] = {"key": f"{platform}|{chat_id}", "at": time.time()}
     return True
 
