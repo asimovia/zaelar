@@ -6,7 +6,12 @@ Mechanism only — this repo is public.
 ## The widget (`widgets/youtube/`)
 
 A REAL embedded YouTube player (`<iframe>`, IFrame API over postMessage — no library, no network from
-`widget.js`). `data.py` stores desired state/commands; the client applies them. Faces, all CLASS-switched
+`widget.js`). `data.py` stores desired state/commands; the client applies them — and the PLAYER REPORTS what it does
+through the state door (V2-884, `widgets/state.py`, the shared player protocol `frontend/app/lib/player-report.js`):
+what sounds, the face, the title, a derived `audio_blocked`. An act is done when the player reports it, an order it has
+not confirmed is said as asked, never as done; a closed video is acked with nothing to wait for; a player that never
+speaks says it does not play. His hand on the player (focus, a drag that stops) is adopted as his order through the
+app's own action (`state_adopt`) — never an autoplay start, never an order it did not obey. Faces, all CLASS-switched
 (never inline `display` — an inline style would beat the cinema rules):
 
 - **PLAYER**: frame (56.25% ratio), verifiable metadata (channel + published), controls, the linear

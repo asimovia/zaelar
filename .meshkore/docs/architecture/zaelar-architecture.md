@@ -90,7 +90,7 @@ NOT the browser UI — the user-facing audio I/O lives in `frontend/`.
 | `nucleo/` | server | zaelar's **own brain** (default `BRAIN=nucleo`). Two speeds: **FlashBrain** (`nucleo/flash/` + `nucleo/turn/`, the one turn pipeline: conversation, reflexes, the router, the mouth; non-reasoning model per-invocation) + **Brain Workers** (`nucleo/dispatch/` + `nucleo/workers/` + `nucleo/agentes/`, one resumable Claude Code / Codex session per task behind a `CodeAgent` interface, reaching the agent through the bridge `nucleo/cli/`). Pulse `nucleo/pulse/loop.py` (~1 Hz) + own cron `nucleo/pulse/scheduler.py` + panel `nucleo/pulse/cron_api.py` + `nucleo/pulse/sparks.py`; events `nucleo/events/`. The voice engine reaches the pipeline through its adapter `voice/engine/llm/providers/nucleo.py`; the typed channel through `voice/typed_turn.py`. |
 | `memory/` | server | **Central memory** — SQLite `zaelar.db` (sqlite-vec + FTS5 + RRF + graph + forgetting). Includes an episodic layer for files. |
 | `bus/` | server | In-process **event bus** (pub/sub, generalization of `voice/observer.py`) + durable SQLite log + SSE bridge. |
-| `widgets/` | server + client | Full-stack widgets: `widget.js` renders in the client, `data.py` serves data on the server, per-widget JSON store. Isolated from the voice core. |
+| `widgets/` | server + client | Full-stack widgets: `widget.js` renders in the client, `data.py` serves data on the server, per-widget JSON store. Every widget declares the state its face shows and REPORTS it through one door (`widgets/state.py`, `POST /widgets/{id}/state`: a store per mounted screen, an order pending until that screen acks it, host facts only the body writes); the turn reads ONE line per open widget (`state_render`). Isolated from the voice core. |
 | `config/` | server | Runtime settings. `config/settings.py` = STT/TTS/voice/language; `config/v2.py` = model routing (fast + code_agent + memory) + `active_brain()`; `config/credentials.py` = single writer of the credential store; `config/profiles.py`+`doctor.py` = coordinated profiles + capability detector (first-run wizard); **`config/balances.py`** = external-API balances (proactive where exposed — ElevenLabs — + reactive from the last classified error). The **⚙ full-screen config area** (choose API/model per piece) is served by `server/config_api.py` (`/api/config*`); its balance alerts surface in the ◉ status dialog. |
 
 ## 0b. Process topology — the voice in its own process (V2-891)
@@ -132,14 +132,36 @@ process exits when its parent does. `ZAELAR_VOICE_EMBEDDED=1` restores the singl
 
 **The body measures its own loop** (`nucleo/pulse/loop_lag.py`). The voice's lag watcher (`voice/lag.watch`) runs where
 the voice runs, so with two processes the body needs its own: a probe on the server loop reads every late wake, and
-one over `loop_lag_s` is a host STALL — recorded with its end (`stalled_since`, `stalled_recently`), one `homeostasis`
-event, a quiet shed through `voice/lag.note(…, BODY)`, and pressure the shed ladder reads beside the voice's lag
-(`shed_actuators.reading`). The readers that would otherwise blame a provider ask it first: the turn's silence
-deadline (`pipeline_stream`), the provider circuit's stall streak (`provider_chain._host_stalled_s`, no relay inside a
-stopped window) and the perf verdict (`turn_perf`, `host_stall_s`). `GET /api/debug/loop` shows the last and worst
-reading. Across the seam, a body that does not answer is tried once more and then said «running slow»
-(`remote_brain`), and `body_link` opens at most one connection per `RETRY_GAP_S` while it waits — a stopped body
-never fills its listen backlog with retries.
+one over `loop_lag_s` is a STALL — recorded with its span (`stalled_since`, which can ask by owner), one `homeostasis`
+event that names WHOSE stall it was (`whose`: `engine` when the loop thread's own CPU explains it, `host` when the
+machine stopped it — page faults, a paging laptop —, `unknown` otherwise), a quiet shed through
+`voice/lag.note(…, BODY)`, and pressure the shed ladder reads beside the voice's lag (`shed_actuators.reading`). The
+readers that would otherwise blame a provider ask it first: the turn's silence deadline (`pipeline_stream` gives back
+only the seconds the loop was stopped, split `host_/own_/unknown_stall_s`) and the perf verdict (`pipeline_close`,
+which names the dominant origin). `GET /api/debug/loop` shows the last and worst reading.
+
+**Memory and the host gate new work, not words** (`nucleo/workers/envelope.py`, `config/resources.default.json`). A new
+Brain Worker is admitted only while the free memory leaves the floor its declared PIECES need (voice, body, worker,
+chromium — per deployment), never under the voice reserve; the shed ladder and the watchdog share ONE pressure band
+(they open under the pressure floor and close only over it × `pressure_band_ratio`); and a worker is also held while
+the body loop stalled within `loop_hold_s` — a paging host shows it in the loop, not in «available». A held row says
+its reason (`waiting_room`, `waiting_host`, `waiting_voice`, `queued_behind`).
+
+Across the seam, the voice process sends the session facts queued before each request AHEAD of it
+(`body_link.ahead`), paces at most one connection per `RETRY_GAP_S` while the body does not answer, asks a failed
+batch's session/transcript/item facts once more, and says «running slow» after one retry (`remote_brain`); a line a
+lost turn could not deliver is kept on THAT session and rides only its next turn.
+
+**The voice and the ear run behind a relay** (`voice/engine/speech/relay.py`). STT and TTS are each a LiveKit
+`FallbackAdapter`: the titular (Deepgram Flux for the ear, Inworld for the voice), then an OpenAI stand-in. Every switch
+is one alert that names its cause (the exception the adapter caught: a refused socket, a 402 at the upgrade), who
+serves now, whether the titular cut a sentence it does not redo, and when nothing is left to speak or hear. A voice
+marked down is probed with the stream's whole text when each stream ends, so it comes back. Every STT/TTS metric
+names the provider that PRODUCED it before it crosses to the body, so billing follows the producer, not the titular.
+A titular that HANGS instead of failing is bounded by `relay_bound.py`, declared per deployment: the voice until its
+first audio (or mid-answer: a sentence ready and no audio), the ear by speech spans with no STT event. `shadow` (the
+default) only says what it would do — one `provider` event per stream; `armed` switches the voice (the ear stays
+shadow) and cools down after `armed_jumps` switches in a window.
 
 **Role of the brain (`nucleo/`):** it is zaelar's OWN brain — memory, cron/proactivity, tools, reasoning — no
 external agent. **FlashBrain** owns the hard-realtime turn (~sub-second): the conversation, the reflexes (one
@@ -152,7 +174,7 @@ resumable by id (§5h). The brain drives the canvas through a thin tag contract 
 ```
 ┌── VOICE + CANVAS (zaelar, this app · :43917) ─────────────────────────────┐
 │  The ONLY user-facing surface.                                           │
-│  • Mic → STT (Whisper LOCAL by default) → BRAIN → TTS  (voice/agent.py)   │
+│  • Mic → STT (Deepgram Flux, relay) → BRAIN → TTS (relay)  (voice/engine) │
 │  • Widget desktop run BY VOICE (frontend/app/widgets/desktop.js):        │
 │      draggable + position-persisted chrome, non-overlapping placement,   │
 │      activity rail above the orb. The frontend/ ES-module app is the front.│
@@ -602,11 +624,18 @@ through `nucleo/circuit/asker.py`: the row waits for `user_answer` with an `ask_
 `ask` artefact, and `worker.ask` becomes one observer `ask` event — the question on the chat wall and under its task in
 the processes panel, with a way to answer. A screen answer carries its `ask_id` (`POST /api/tasks/{id}/answer`); a
 spoken one is bound by a question of the turn's brief whose choices are the open `ask_id`s
-(`nucleo/cli/worker_api_bind.py`: licence 0.5 binds, `none` at veto 0.85 binds nothing, a doubt asks which) — never
-by length, a word list or «the oldest». The worker's process ENDS after asking; the answer resumes THAT session by
+(`nucleo/cli/worker_api_bind.py`): one waiting row binds at the act floor (at the licence when the model answered too);
+with SEVERAL waiting a pick binds only by IDENTITY — the row that asked him since his last turn, a row our «which?»
+named (`circuit.asked_last`, by id), or a candidate no other row declares; a row identified whose candidates his words
+do not pick has its own question put again (`reask`); `none` at the veto (0.85) binds nothing; any other verdict is a
+doubt, asked as «which?» — never by length, a word list, a bar or «the oldest». The worker's process ENDS after asking; the answer resumes THAT session by
 id in its stored cwd, re-briefed from the row (`nucleo/cli/worker_api_resume.py`). An answer about an act that leaves
 and needs composing hands the row to one Brain Worker with the `message` playbook (`nucleo/request/answered_task.py`).
-A `user_answer` wait ends at his rule (`answer_wait_days`, default 7) through `settle(cancelled)` with one line.
+A `user_answer` wait ends at his rule (`answer_wait_days`, default 7) through `settle(cancelled)` with one line. A
+CLARIFICATION (a fact or a choice the work needs) is dialogue, never a card, and ends with its conversation
+(`nucleo/request/clarify_end.py`): when his next turn surely answers none of the waiting questions (`none` at the veto)
+while it asked him in our last reply, by id, it closes; unanswered past `clarify_wait_minutes` (default 30) the pulse
+closes it — one `ask_closed` event either way, nothing said, never asked again.
 
 **The playbook.** A worker's brief (`nucleo/workers/prompts/build.py`) is a stable prefix in the session's language —
 the shell's rules, the method's nine checkpoints (understand · record · resolve the facts · choose channel and UI ·
@@ -756,10 +785,18 @@ adapters. The stages, each a module of its own:
 4. **The main stream** (`pipeline_stream.stream_the_reply`) — the ONE model call with the contextual tool set (tools in
    `nucleo/flash/tool_executor*.py`, consent in `nucleo/consent.py`), under a silence deadline, with the Hold and the
    barge-in. A SURE `escalate` verdict routes the request to its task before the model is trusted
-   (`nucleo/turn/route_by_verdict.py`): its inline calls, tags and words do not run. A turn the model did not answer
-   goes to `pipeline_failure`.
+   (`nucleo/turn/route_by_verdict.py`): its inline calls, tags and words do not run — the WORDS FOLLOW THE ACT: calls
+   and tags wait for the verdict before they are spoken or run. A turn the model did not answer goes to
+   `pipeline_failure`.
 5. **Post-stream chain** (`nucleo/flash/post_stream*.py`) — the acts the model called, their verdicts, the mouth's
-   lines; data ops open the row and the spec.
+   lines; data ops open the row and the spec. Every reader of a verdict reads ONE act floor (`verdicts.to_act`); at
+   the VETO a sure verdict takes the place of the model's call when what enters leaves or deletes
+   (`verdicts.substitutes`), and a send made in the model's place is born asking (`nucleo/request/substitution.py`).
+   An order served with another tool opens the order's row (`nucleo/request/`, one row per intention); his answer
+   binds to its row by identity (§5h). What he approved leaves byte-identical — no rewrite after his yes — and a send
+   is never said done before its exit door reports; a verdict that cannot be read is said and marked, never a silent
+   lifted veto. An act on a card is done when the APP reports it (`circuit/reported.py`): one it has not confirmed is
+   said as asked, never as done.
 6. **Close** (`pipeline_close.close_the_turn`) — the window, the fallbacks, the `reply` event; then
    `pipeline_errands.launch_the_errands` — the errand the turn commissions, through the escalation portal
    (`nucleo/acts/errand.py` → `nucleo/turn/flow_door.py` → `flow_of.route`). It opens only what the model called or

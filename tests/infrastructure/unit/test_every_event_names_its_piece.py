@@ -179,7 +179,7 @@ def test_an_explicit_piece_wins_and_an_unknown_one_says_so(observer):
 
 
 def test_an_unmapped_module_says_so_instead_of_guessing(observer):
-    rel = "nucleo/request/stop.py"
+    rel = "nucleo/danger.py"            # (nucleo/request/ is drawn since 2026-11-13: the order's row)
     assert pieces.piece_for(rel, "brain") == pieces.UNMAPPED, "pick a module the map does not draw"
     ev = _emit_from(rel, "ev = emit('brain', 'x')", emit=observer.emit)
     assert ev["piece"] == pieces.UNMAPPED

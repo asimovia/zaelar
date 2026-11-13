@@ -76,7 +76,8 @@ publisher adds. The engine needs no change to use a new agent — see §1.5.
 
 ### 1.4 Money — free only, enforced in code
 
-`_is_free` reads the price the Oracle or the agent's own card reports and **treats unknown as not free**.
+`mesh_agents._is_free` (for `serve`) and `mesh_call.is_free` (per declared skill: its own `pricing`, else the card's)
+read the price the Oracle or the agent's own card reports and **treat unknown as not free**.
 Skipping a free agent we could not price costs one fallback; calling a paid one would spend money nobody
 authorised. A `402 Payment Required` challenge is reported to the caller as a fact — never paid, never
 retried. `nucleo/mesh_agents.py` owns this rule for `serve`; for one declared skill (§1.8) the rule reads «free,
@@ -102,9 +103,15 @@ classify», because that bucket mixes unrelated errands.
 workers.prompts._web_prompt()    step 0 — before the browser, ask the network
         │
         └─ Brain Worker runs:  hbmesh find "<errand>"   /   hbmesh serve "<errand>" --prompt "<ISO dates>"
+                               hbmesh call <agent_id> <skill_id> --json @req.json     (a declared skill, §1.8)
                                        │
                      nucleo/cli/mesh.py ──> nucleo/mesh_agents.py ──> Oracle ──> the agent
+                     nucleo/cli/mesh_converse.py ──> nucleo/mesh_call.py ──> the agent (direct, or the relay)
+                                                        └─> mesh_jobs (a job: a remote_job row the pulse follows)
 ```
+
+The worker's network step (`nucleo/workers/prompts/context.py`) teaches calling the skill that does the errand BY ITS
+ID, and asking him before a skill the card does not mark free, with its cost.
 
 `hbmesh` is allowlisted for workers in `nucleo/workers/providers/claude.py::_BRIDGES`, alongside `hbmem`,
 `hbnote`, `hbweb` and `hbwidget`. It is a **worker** capability: a voice turn answers in under a second, and
@@ -184,6 +191,16 @@ goes to that page, CODE asks him on his row, naming the domain; the worker is re
 alone and ride outside the fence; the agent's note can only make the worker do less. `hbmesh report` answers in the
 agent's own `reportOutcome` shape.
 
+### 1.9 What the record shows
+
+Every `find` and `ask` is one `mesh` row (`nucleo/mesh_calls.py`: intent, coverage, agents; status, ms, a bounded
+answer — also on a non-200, so a `202`'s job is on the record — and the structured fields by NAME, never by value). A
+priced job leaves the `energy · agent` charge (`provider = <agent>.<skill>`, `ref = job id`) — the same id the
+deployment's relay keys its deposit and settlement by. An agent's question is one `ask` row under the row's trace.
+Known gaps, open: the job's polls, answers, cancel and end, the handed-back step and the refusals of `call` leave no
+row yet; and `hbmesh` runs in the worker's CLI process, which does not write the event store — its rows reach only the
+rolling timeline file until the call runs in, or forwards to, the body.
+
 ---
 
 ## 2 · Clusters — the mesh as conversation
@@ -216,7 +233,7 @@ operator data, and a peer can never spend the operator's money.
 | capability | where |
 |---|---|
 | Discovery through the Oracle (free agents only) | `nucleo/mesh_agents.py` |
-| Worker bridge `hbmesh` (`find` / `serve`) | `nucleo/cli/mesh.py` |
+| Worker bridge `hbmesh` (`find` / `serve` / `call` / `report`) | `nucleo/cli/mesh.py` · `nucleo/cli/mesh_converse.py` |
 | «Ask the network before the browser» in every web errand | `nucleo/workers/prompts/` |
 | Learned route cache (7-day TTL, never on `general`) | `mesh_agents.route_for` |
 | Paid agents: reported, never paid without authorisation | §1.4 |

@@ -71,6 +71,8 @@ Pending decisions (private roadmap): iPad in the iOS 1.x line and with which she
 | `ctx.device()` — location, motion, heading; failures as values | `frontend/app/services/device.js` | widgets on any screen; native plugin inside the app, Web API elsewhere |
 | `ctx.device().details()` / `.activity()` — what this screen has; a session that keeps reading with the screen locked (location, heart rate, motion, altitude) | `services/device.js` → `ZaelarDevice` (`mobile-app/ios/App/App/DevicePlugin.swift`) | native app only; a browser answers foreground location or `unsupported` (`docs/modules/zaelar-device-bridge.md`, V2-890) |
 | `origin_dev` / screens registry | `frontend/app/services/screens.js` (V2-792) | the brain knows which screen asked |
+| The card in FRONT (`state.maximized_widget`) | the canvas's report; on the phone the Deck reports the app in front as the full-screen card | «it», «this one», a show that targets what he sees — the same reader on every screen |
+| The state door (`POST /widgets/{id}/state`, V2-884) | `frontend/app/widgets/state-reporter.js` → `widgets/state.py` | every screen reports what each card's face shows; per mounted screen, an order pending until THAT screen acks |
 | `POST /api/push/device` with `kind: web|apns|fcm` | `server/notices_api.py` (V2-796, V2-870 §2) | Web Push today; native push later |
 | `/api/daemon/*` + the relay | `server/daemon_api.py`, `daemon/` | desktop only; `browser_window.reach()` blocks `phone` |
 | The voice lock: one live voice session per engine | `server/livekit_api.py` | every surface; the loser drops to chat + observer |

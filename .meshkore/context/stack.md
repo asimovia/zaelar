@@ -1,6 +1,6 @@
 ---
 title: Stack
-updated: 2026-10-28
+updated: 2026-11-13
 status: stable
 ---
 
@@ -12,11 +12,11 @@ each provider was retired. This page is the SHAPE — which layer exists and why
 | Layer | Choice | Why locked |
 |---|---|---|
 | Voice engine | LiveKit Agents (Python) + Silero VAD | Turn-taking/VAD/barge-in governed; no custom watchdog on the critical path |
-| STT / TTS | Hosted providers from the model table (today Deepgram STT, Inworld TTS), chosen per invocation | Latency and quality measured; the table decides, never a global env |
+| STT / TTS | Hosted providers from the model table (today Deepgram Flux STT, Inworld TTS), each behind a relay with an OpenAI stand-in; every metric billed to the provider that produced it | Latency and quality measured; the table decides, never a global env; a provider down or hung never silences the agent |
 | Brain | Own `nucleo/` («Colmena»): FlashBrain non-reasoning for the turn + Brain Workers (Claude Code / Codex agents) off the voice path; a decision model (Jev) answers closed questions the turn pays once | Sub-second voice turn; reasoning stays off the voice path; verdicts over text guards |
 | Memory | One SQLite `zaelar.db` (sqlite-vec + FTS5 + RRF + graph), embeddings from the table (OpenAI direct; never a relay) | Single-file, local, queryable; no external DB |
 | Search | `search/` service: one door (`find()`), providers declared once with a health probe | A fact is answered in the turn; a search never leaves the service |
 | Rules | `rules/` one scoped table (global → domain → widget → item) | Preferences are data the engine reads, never constants |
-| Server | FastAPI (`python -m server`): WebRTC audio + HTTP + SSE; LiveKit worker embedded | Composition root: frontend, ICE, events, widgets API, wizard |
+| Server | FastAPI (`python -m server`): WebRTC audio + HTTP + SSE; the LiveKit voice in its own process over loopback (`ZAELAR_VOICE_EMBEDDED=1` keeps it embedded) | Composition root: frontend, ICE, events, widgets API, wizard |
 | Frontend | Vanilla ES modules, no build; design-system tokens (`frontend/app/core/palette.css`, `components.css`, the elevation ladder, V2-689) | Thin shell; one visual language for native, generated and user widgets |
 | Runtime | Python 3.12, async-first; `http://localhost:43917`; LiveKit native binary, no Docker in the core | Matches LiveKit Agents; self-host in one command |

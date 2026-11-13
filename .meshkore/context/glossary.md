@@ -1,6 +1,6 @@
 ---
 title: Glossary
-updated: 2026-11-12
+updated: 2026-11-13
 status: stable
 ---
 
@@ -13,7 +13,12 @@ status: stable
 - **Request**: what the operator asks in one turn. It may need zero, one or several acts; when it is work it becomes a task. Its kind (`request_type`: order · question · answer · chat) is a verdict of the turn.
 - **Order**: a request whose kind is `order` — he asks the agent to DO something (as opposed to asking, answering or chatting).
 - **Act** (`<app>:<action>` + payload, e.g. `musica:next`, `mensajeria:send_to`, `agenda:create`): ONE declared action of an app run through its door — the unit that has an effect. Not the request (which may need several acts) and not the task (a worker's work, with its row). A **leaving act** has an effect outside the machine (a send, a booking) and cannot be undone; the model calls acts as tools, and the turn's verdicts may launch, complete, hold or veto them.
-- **Verdict** (`nucleo/turn/verdicts.py`, the turn's brief): a classifier's reading of the turn with a confidence. Three floors: LICENCE (0.5, may complete what the model called), ACT (`consent.intent_act_at`, 0.6, may launch an act the model did not call), VETO (0.85, may refuse what the model called).
+- **Verdict** (`nucleo/turn/verdicts.py`, the turn's brief): a classifier's reading of the turn with a confidence. Three floors: LICENCE (0.5, may complete what the model called), ACT (`consent.intent_act_at`, 0.6, may launch an act the model did not call), VETO (0.85, may refuse what the model called — and, when what enters leaves or deletes, take its place: a send made in the model's place is born asking). Every reader reads the act floor through one helper (`verdicts.to_act`).
+- **Binding by identity** (`nucleo/cli/worker_api_bind.py`): with several rows waiting on him, his answer binds only to the row that asked him since his last turn, a row our «which?» named, or a candidate no other row declares — never by a bar or by text; otherwise it asks which.
+- **Clarification** (`nucleo/request/clarify_end.py`): a question for a fact or a choice the work needs; dialogue, never a card, it ends with its conversation (moved on, or expired after `clarify_wait_minutes`) in one `ask_closed` event.
+- **Reported state** (`widgets/state.py`, V2-884): what a widget's face shows, reported by the screen through one door — per mounted screen, an order pending until that screen acks its revision, host facts (`by: host`) only the body writes, a `static` face for an app no order moves. The turn reads one line per open widget; his hand on a player is adopted as his order (`state_adopt`).
+- **Relay** (`voice/engine/speech/relay.py`): STT and TTS each run titular → OpenAI stand-in; `relay_bound.py` bounds a titular that hangs (shadow by default); every metric is billed to the provider that produced it.
+- **Mesh call** (`nucleo/mesh_call.py`, V2-895): asking a network agent's declared skill by its id — one order, one thread, one engine-made key; its questions reach him through the asker; a job it opens is followed by the pulse (`mesh_jobs`) under a `remote_job` row until its final.
 - **Task**: a request that is work. One row, one Brain Worker, one writer of its ending (`circuit.settle`).
 - **Task row** (`tasks`, `nucleo/circuit/ledger.py`): the task's state — `state`, `waiting_for`, `waiting_since`, `deadline`, `ask_id`/`ask`, `session_id`, `cwd`, `playbook`, trace, artefacts. The row is the truth; the worker session is a cache.
 - **Session id**: the harness's resumable id of a worker session, kept on the row with its cwd; an answer or an event resumes that session by id, re-briefed from the row.
@@ -50,6 +55,6 @@ status: stable
 - **/debug**: diagnostics surface (AudioProbe RMS, mic meter, client logs via `/api/client-log`).
 - **Personal Operating System**: the public positioning (zaelar.com) — one voice agent + a canvas of apps (widgets).
 - **Apps**: where generated widgets are kept; «describe it and it writes the widget» (beta).
-- **MeshKore network**: an open agent network Zaelar orchestrates; it finds external live agents (bookings, searches and many other services) through the **Oracle** (`nucleo/mesh_agents.py`) and talks to peers over **clusters** (`connectors/meshkore/`).
+- **MeshKore network**: an open agent network Zaelar orchestrates; it finds external live agents (bookings, searches and many other services) through the **Oracle** (`nucleo/mesh_agents.py`), calls their declared skills (`nucleo/mesh_call.py`) and talks to peers over **clusters** (`connectors/meshkore/`).
 - **Self-hosted / hosted**: the same engine run locally (`make run`, free, fair-code) or as the hosted version (see zaelar.com).
 - **PWA** (`frontend/mobile/`): the phone shell, installed from the browser; the voice lives on one device at a time.

@@ -1,7 +1,7 @@
 {
  "_doc": "The canonical map of the agent's architecture, measured on the code. Source: the code. This map is the one representation the others (the web's Technology pages, the operator's session player, the observability events) are aligned to. A test (tests/infrastructure/unit/test_the_architecture_map_matches_the_code.py) fails when a path stops existing, a model id leaves config/models.default.json, or a flow names a piece that is not here.",
  "version": 1,
- "measured": "2026-11-12",
+ "measured": "2026-11-13",
  "blocks": [
   {
    "id": "origins",
@@ -150,13 +150,18 @@
    "paths": [
     "server/canvas_api.py",
     "widgets/server_api.py",
-    "widgets/confirm.py"
+    "widgets/confirm.py",
+    "widgets/state.py",
+    "widgets/state_api.py",
+    "widgets/state_adopt.py",
+    "widgets/state_decl.py"
    ],
    "emits": [
     "widget",
     "ui",
     "client"
-   ]
+   ],
+   "_doc": "Every app declares the state its face shows and REPORTS it through one door (`POST /widgets/{id}/state`, `widgets/state.py`): a store per mounted screen, the order ledger (an order is pending until that screen acks its revision), host facts only the body may write (`by: host`), a `static` face for an app no order can move. A move under his hand is adopted as his order through the app's own action (`state_adopt`). Players share one reporter protocol."
   },
   {
    "id": "u_child",
@@ -214,12 +219,15 @@
    "name": "Homeostasis",
    "paths": [
     "nucleo/pulse/homeostasis.py",
-    "nucleo/pulse/self_watchdog.py"
+    "nucleo/pulse/self_watchdog.py",
+    "nucleo/pulse/loop_lag.py",
+    "nucleo/pulse/shed_actuators.py"
    ],
    "emits": [
     "homeostasis",
     "alert"
-   ]
+   ],
+   "_doc": "The body measures its own loop (`loop_lag`) and names whose stall it was (engine · host · unknown); the shed ladder and the watchdog share one pressure band, and a new worker is held while the host stalls (`waiting_host`)."
   },
   {
    "id": "b_notices",
@@ -316,7 +324,8 @@
     "interim",
     "stt",
     "state"
-   ]
+   ],
+   "_doc": "The ear runs behind a relay (`voice/engine/speech/relay.py`): the titular, then an OpenAI stand-in when it fails; a hung titular is watched by `relay_bound.py` (shadow by default — it says what it would do). Each metric is billed to the provider that produced it."
   },
   {
    "id": "f_gate",
@@ -336,14 +345,17 @@
    "name": "Admission · brief",
    "paths": [
     "nucleo/turn/pipeline_admit.py",
-    "nucleo/turn/brief.py"
+    "nucleo/turn/brief.py",
+    "nucleo/turn/verdicts.py",
+    "nucleo/turn/route_by_verdict.py"
    ],
    "emits": [
     "trace",
     "rail",
     "flow",
     "thread"
-   ]
+   ],
+   "_doc": "Every reader of the brief's verdicts reads one act floor (`verdicts.to_act`); at VETO a sure verdict takes the place of the model's call when what enters leaves or deletes, and a send in the model's place is born asking. The words follow the act: calls and tags wait for the verdict (`route_by_verdict`)."
   },
   {
    "id": "f_jev",
@@ -383,10 +395,11 @@
    "zone": "flash",
    "name": "Turn state message",
    "paths": [
-    "nucleo/turn/prompt/live_state.py"
+    "nucleo/turn/prompt/live_state.py",
+    "widgets/state_render.py"
    ],
    "emits": [],
-   "_doc": "What is true THIS turn (screen, clock, errands, record), sent as a second system message just before his line (`builder.split_state`), so the cached prefix never moves (V2-889 F1)."
+   "_doc": "What is true THIS turn (screen, clock, errands, record), sent as a second system message just before his line (`builder.split_state`), so the cached prefix never moves (V2-889 F1). The open apps' state lines ride here: ONE line per app as it REPORTS it, never as it was ordered (`widgets/state_render.py`, headed by its legend, a bounded budget; the apps the turn names lead)."
   },
   {
    "id": "f_model",
@@ -464,7 +477,8 @@
     "tts",
     "filler",
     "bot_speech"
-   ]
+   ],
+   "_doc": "The voice runs behind the same relay: titular, then the OpenAI stand-in; `relay_bound.py` bounds a titular that hangs (armed: switches the voice, with a cooldown; shadow: says so)."
   },
   {
    "id": "m_api",
@@ -594,25 +608,30 @@
    "zone": "tasks",
    "name": "Dispatch",
    "paths": [
-    "nucleo/dispatch/listener.py"
+    "nucleo/dispatch/listener.py",
+    "nucleo/workers/envelope.py"
    ],
    "emits": [
     "worker_start"
-   ]
+   ],
+   "_doc": "A worker is admitted under the memory floor its declared pieces need (`workers/envelope.py`) — held with its reason (`waiting_room`, `waiting_host`, `waiting_voice`) otherwise."
   },
   {
    "id": "t_row",
    "zone": "tasks",
    "name": "Task rows",
    "paths": [
-    "nucleo/circuit/ledger.py"
+    "nucleo/circuit/ledger.py",
+    "nucleo/request",
+    "nucleo/cli/worker_api_bind.py"
    ],
    "emits": [
     "task_state",
     "task_progress",
     "errand",
     "step"
-   ]
+   ],
+   "_doc": "The order's row (`nucleo/request/`): one row per intention; his answer binds to the row that asked him, by identity — never by text — and asks «which?» when two could take it (`worker_api_bind`). A clarification ends with its conversation (`request/clarify_end`). A send leaves byte-identical to what he approved, and is never said done before its exit door reports."
   },
   {
    "id": "t_circuit",
@@ -620,12 +639,14 @@
    "name": "Circuit",
    "paths": [
     "nucleo/circuit/spec.py",
-    "nucleo/circuit/verdict.py"
+    "nucleo/circuit/verdict.py",
+    "nucleo/circuit/reported.py"
    ],
    "emits": [
     "spec",
     "verdict"
-   ]
+   ],
+   "_doc": "An act on a card is done when the app REPORTS it (`circuit/reported.py`): an order the app has not confirmed waits, then settles unverifiable — never «done»."
   },
   {
    "id": "w_run",
@@ -793,6 +814,25 @@
     "gateway",
     "energy"
    ]
+  },
+  {
+   "id": "s_mesh",
+   "zone": "services",
+   "name": "Network agents · mesh call",
+   "paths": [
+    "nucleo/mesh_agents.py",
+    "nucleo/mesh_calls.py",
+    "nucleo/mesh_call.py",
+    "nucleo/mesh_dialog.py",
+    "nucleo/mesh_jobs.py",
+    "nucleo/mesh_handoff.py",
+    "nucleo/cli/mesh.py",
+    "nucleo/cli/mesh_converse.py"
+   ],
+   "emits": [
+    "mesh"
+   ],
+   "_doc": "Asking a live agent of the MeshKore network for an errand: find (the Oracle) and ask; a declared skill is CALLED by its id (`mesh_call`) — one order, one thread, one engine-made key; the agent's questions reach him through the asker and his answers go back; a job it opens is followed by the pulse (`mesh_jobs`) under a `remote_job` row until its final; a step it hands back (a page to open) is done only on his yes. Free agents only by default; a priced skill is a deposit the account settles."
   },
   {
    "id": "st_mem",
@@ -1044,7 +1084,7 @@
   {
    "id": "x_stt",
    "zone": "voice",
-   "name": "Deepgram nova-3",
+   "name": "Deepgram Flux",
    "service": "stt",
    "called_from": [
     "voice/engine/speech/stt/deepgram.py"
@@ -1212,7 +1252,10 @@
    "name": "MeshKore network",
    "called_from": [
     "connectors/meshkore/client.py",
-    "nucleo/mesh_agents.py"
+    "nucleo/mesh_agents.py",
+    "nucleo/mesh_call.py",
+    "nucleo/mesh_handoff.py",
+    "nucleo/mesh_jobs.py"
    ]
   },
   {
@@ -1356,6 +1399,18 @@
    "a": "f_state",
    "b": "f_prompt",
    "label": "this turn's state, after the cached prefix"
+  },
+  {
+   "id": "appstate",
+   "a": "u_canvas",
+   "b": "f_state",
+   "label": "each app's reported state, one line"
+  },
+  {
+   "id": "appack",
+   "a": "u_canvas",
+   "b": "t_circuit",
+   "label": "the app confirms the act"
   },
   {
    "id": "model",
@@ -1535,7 +1590,7 @@
   {
    "id": "meshlive",
    "a": "f_tools",
-   "b": "x_mesh",
+   "b": "s_mesh",
    "label": "live agents"
   },
   {
@@ -1835,8 +1890,26 @@
   {
    "id": "wmesh",
    "a": "w_tools",
+   "b": "s_mesh",
+   "label": "hbmesh call"
+  },
+  {
+   "id": "meshnet",
+   "a": "s_mesh",
    "b": "x_mesh",
-   "label": "network"
+   "label": "find · call · job · answers"
+  },
+  {
+   "id": "meshjob",
+   "a": "b_pulse",
+   "b": "s_mesh",
+   "label": "a job followed to its final"
+  },
+  {
+   "id": "meshrow",
+   "a": "s_mesh",
+   "b": "t_row",
+   "label": "remote_job row"
   },
   {
    "id": "wmem",
