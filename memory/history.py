@@ -90,15 +90,10 @@ def provenance(ids) -> dict[int, dict]:
 
 def is_kickoff(u: str) -> bool:
     """Is this operator line the FIRST-TURN note (`i18n` `kickoff_prompt`, every language)? It is a system note in his
-    language, not something he said: a ledger of the day must not open an episode with it. One catalog for the whole
-    engine (`nucleo/turn/kickoff`, A7). Best-effort: without the catalog, nothing is a kickoff."""
-    try:
-        from nucleo.turn import kickoff as _kickoff
-        return _kickoff.is_kickoff(u)
-    except Exception as e:  # noqa: BLE001 — the catalog is not memory's to require
-        from loguru import logger
-        logger.debug(f"history.is_kickoff: catalog unreadable ({e!r})")
-        return False
+    language, not something he said: a ledger of the day must not open an episode with it. The one catalog is the
+    language packs' (`i18n/kickoff`), read by the brain too."""
+    from i18n import kickoff as _kickoff
+    return _kickoff.is_kickoff(u)
 
 
 #: Silence that closes the LIVE episode, in minutes: the newest turns count as «in the dialog window» only while
