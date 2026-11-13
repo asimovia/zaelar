@@ -1,0 +1,18 @@
+{
+  "view_data_shape": {
+    "bin_n": "int",
+    "body": "list",
+    "coach": "NoneType",
+    "components_all": "list",
+    "days": "list",
+    "estimator": "dict",
+    "evaluating": "NoneType",
+    "evaluations": "list",
+    "meals": "list",
+    "profile": "dict",
+    "targets": "dict",
+    "today": "str",
+    "view": "dict",
+    "weight": "dict"
+  }
+}

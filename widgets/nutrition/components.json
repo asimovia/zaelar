@@ -1,0 +1,61 @@
+{
+  "_about": "The seven components of a healthy day (the 40 % variety part of the day score). A meal estimated by the model carries its own language-free tags (`components`), which win; this word list is only the fallback for meals typed by hand. Matching is on accent-folded lowercase words: a plain entry is a whole word or phrase (its plural with -s/-es too), an entry ending in `*` is a stem that matches the start of a word («lentej*» → lentejas). Whole words on purpose: the source's substring table read «agua» inside «aguacate». Ported from the source's Spanish word table; English added; another language adds its own list here.",
+  "components": [
+    {
+      "key": "veg",
+      "icon": "🥬",
+      "words": {
+        "es": ["verdur*", "brocol*", "espinaca", "lechuga", "tomate", "pimiento", "zanahoria", "calabac*", "berenjen*", "coliflor", "alcachof*", "judias verdes", "kale", "rucula", "champin*", "seta", "ensalada", "acelga", "escarol*", "crudites", "crucifer*"],
+        "en": ["vegetable*", "veggie", "broccoli", "spinach", "lettuce", "tomato", "pepper", "carrot", "courgette", "zucchini", "aubergine", "eggplant", "cauliflower", "artichoke", "green beans", "kale", "rocket", "arugula", "mushroom", "salad", "chard", "cabbage", "cucumber"]
+      }
+    },
+    {
+      "key": "leg",
+      "icon": "🫘",
+      "words": {
+        "es": ["legumbre*", "lentej*", "garbanz*", "alubia", "frijol", "judia", "haba", "soja", "tofu", "edamame", "hummus"],
+        "en": ["legume", "lentil", "chickpea", "bean", "soy", "tofu", "edamame", "hummus"]
+      }
+    },
+    {
+      "key": "prot",
+      "icon": "🍗",
+      "words": {
+        "es": ["pollo", "pavo", "ternera magra", "cerdo magro", "huevo", "pescado", "salmon", "atun", "merluza", "bacalao", "sardina", "gamba", "langostino", "requeson", "yogur griego", "skyr", "tofu", "seitan", "tempeh", "jamon cocido", "jamon iberico"],
+        "en": ["chicken", "turkey", "lean beef", "lean pork", "egg", "fish", "salmon", "tuna", "hake", "cod", "sardine", "prawn", "shrimp", "cottage cheese", "greek yogurt", "greek yoghurt", "skyr", "tofu", "seitan", "tempeh", "ham"]
+      }
+    },
+    {
+      "key": "fruit",
+      "icon": "🍎",
+      "words": {
+        "es": ["fruta", "manzana", "platano", "pera", "naranja", "fresa", "arandano", "mango", "kiwi", "pina", "sandia", "melon", "uva", "ciruela", "melocoton", "nectarin*", "cereza", "granad*", "higo", "paraguay"],
+        "en": ["fruit*", "apple", "banana", "pear", "orange", "strawberr*", "blueberr*", "mango", "kiwi", "pineapple", "watermelon", "melon", "grape", "plum", "peach", "nectarine", "cherr*", "pomegranate", "fig"]
+      }
+    },
+    {
+      "key": "grain",
+      "icon": "🌾",
+      "words": {
+        "es": ["integral", "avena", "quinoa", "trigo sarraceno", "cebada", "arroz integral", "pan integral", "copo", "espelta", "centeno", "bulgur"],
+        "en": ["wholegrain", "whole grain", "wholemeal", "whole wheat", "oat", "porridge", "quinoa", "buckwheat", "barley", "brown rice", "spelt", "rye", "bulgur"]
+      }
+    },
+    {
+      "key": "fat",
+      "icon": "🥑",
+      "words": {
+        "es": ["aguacate", "aceite de oliva", "nuez", "nueces", "almendra", "pistach*", "semilla", "aceituna", "avellana", "chia", "lino", "anacard*", "sesamo", "tahini"],
+        "en": ["avocado", "olive oil", "walnut", "almond", "pistachio", "seed", "olive", "hazelnut", "chia", "flax", "cashew", "sesame", "tahini", "nuts"]
+      }
+    },
+    {
+      "key": "water",
+      "icon": "💧",
+      "words": {
+        "es": ["agua", "te", "infusion", "caldo"],
+        "en": ["water", "tea", "infusion", "broth"]
+      }
+    }
+  ]
+}
