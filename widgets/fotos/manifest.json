@@ -1,6 +1,14 @@
 {
   "id": "fotos",
   "screens": "shared",
+  "state": {
+    "order": {"filter": "active_filter"},
+    "report": {
+      "filter": {"type": "text:40", "follows": "filter", "rest": ""},
+      "shown": {"type": "int:0-9999", "follows": "filter"},
+      "year": {"type": "text:10", "rest": ""}
+    }
+  },
   "version": "0.1.0",
   "owner": "Zaelar",
   "created": "2026-09-03",
