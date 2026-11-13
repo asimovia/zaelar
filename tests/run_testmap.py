@@ -5033,8 +5033,9 @@ DOMAINS: list[dict] = [
         {"id": "2.233", "title": "A forward names its mail with decoration («Vendor AI (recibo #N)») and still finds it — the core "
                                  "of what he named is asked of the archive too (demo pass 107 E3, 2026-10-04)",
             "ch": UNIT, "paths": ["tests/browser/unit/mensajeria/test_a_decorated_sender_still_finds_the_mail.py"]},
-        {"id": "2.232", "title": "What he approved leaves byte-identical — no door translates or rewrites a send between his "
-                                 "yes and the card, in any language (V2-903 P1-1 retired the demo-106 send-door translation)",
+        {"id": "2.232", "title": "What he approved leaves byte-identical through all four doors (send task, spoken yes, the "
+                                 "card's button, a worker's act) — no translation, no agenda-time swap after his yes; the "
+                                 "time is aligned once on the model's own text before it is held (V2-903 P1-1 + P1-A)",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_what_he_approved_leaves_byte_identical.py"]},
         {"id": "2.230", "title": "A message written FOR someone else goes in the session's language — the language lock names "
                                  "messages and notes, not only the reply (demo pass 105 C5, 2026-10-04)",

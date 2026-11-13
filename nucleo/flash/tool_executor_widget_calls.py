@@ -506,6 +506,8 @@ def _leaving_is_a_task(wid: str, action: str, text: str, escalate_req: dict, emi
     # with the same act fills the waiting row. Only a card whose act declares no slots keeps the worker route below.
     from nucleo.request import send_task, send_task_answer, send_task_who
     wid, action, payload = send_task_who.readdressed(wid, action, payload, text, emit=emit)   # V2-847: whom he named
+    from nucleo.flash import meeting_time    # V2-903 P1-A: the agenda's time, once, before the act is held or shown
+    payload = meeting_time.at_composition(wid, action, payload or {}, text, emit)
     if send_task_answer.take_call(wid, action, payload, text) or send_task.commission(
             wid, action, payload, text, reading=_reading_of(brief), emit=emit):
         escalate_req["send_task"] = True
