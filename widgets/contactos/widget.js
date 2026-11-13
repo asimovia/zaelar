@@ -86,6 +86,7 @@ export function render(el, data, ctx){
 
   if(el._ctScreen === "conn"){
     renderConnectors(el, el, data, ctx);
+    reportShown(ctx, null);
     return;
   }
 
@@ -117,4 +118,13 @@ export function render(el, data, ctx){
     w.title=String(data.error);
     el.appendChild(w);
   }
+  reportShown(ctx, detail);
+}
+
+// V2-884 — what the card SHOWS, said through the host's one door after every paint with the revision it applied: the
+// contact whose card is open, by the name it shows ("" = none).
+function reportShown(ctx, detail){
+  if(!ctx || typeof ctx.state !== "function") return;
+  const selected = detail ? String(detail.name || detail.id || "").slice(0, 40) : "";
+  try{ Promise.resolve(ctx.state({selected}, {applied: true})).catch(()=>{}); }catch(_){}
 }
