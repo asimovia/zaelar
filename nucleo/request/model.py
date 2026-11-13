@@ -55,6 +55,9 @@ def begin(text: str, *, parent: str = "", origin: str = "voz", trace: str = "") 
         trace = _trace.current()
     _TURN.set({"text": t[:600], "parent": str(parent or _PARENT.get() or ""), "origin": origin or "voz",
                "trace": str(trace or "")} if t else None)
+    if t:                                      # his words are his from the moment the turn is born — a door that runs
+        from nucleo import his_words           # INSIDE this turn (the map pinning places he named) reads them; the
+        his_words.note(t)                      # close only noted them after every tool of the turn had run
 
 
 def current() -> dict | None:
