@@ -307,7 +307,8 @@ async def run_the_light_lanes(*, FastClient, _apply_widget_data, _brief, _buf_ad
         res, ctx = _found.data["res"], _found.data["ctx"]
         from nucleo import canvas_focus as _cf_s
         sys2 = _st.compose_system(operator_text, query, res, ctx,
-                                  today=_pst.time.strftime("%A %d %b %Y (%Y-%m-%d)"), on_screen=_cf_s.this_turn_cards())
+                                  today=_pst.time.strftime("%A %d %b %Y (%Y-%m-%d)"), on_screen=_cf_s.this_turn_cards(),
+                                  writing=_cf_s.this_turn_writes())
         await speak(sys2, operator_text or query, _st.MAX_TOKENS, "web_search compose")
         spoken_text = "".join(spoken).strip()
         # THE BACKSTOP. The prompt above forbids the sentence; this catches it when the model says it

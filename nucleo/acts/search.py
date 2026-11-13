@@ -125,7 +125,7 @@ def _why_empty(res: dict) -> str:
 
 
 def compose_system(operator_text: str, query: str, res: dict, ctx: str, *, today: str = "",
-                   on_screen: list | None = None) -> str:
+                   on_screen: list | None = None, writing: list | None = None) -> str:
     """The system prompt for the pass that turns web results into one spoken answer. It answers HIS question, not
     the model's query (V2-135: «opening hours AND price» searched as «opening hours» lost its second half)."""
     from nucleo.turn.prompt import builder as _prompt
@@ -147,6 +147,12 @@ def compose_system(operator_text: str, query: str, res: dict, ctx: str, *, today
         # What THIS turn already put in front of him: the card answers the visual half, the results the spoken one.
         tail += (f"\nEN PANTALLA, abierto en este mismo turno: {', '.join(on_screen)}. Eso YA se le está "
                  "enseñando: no digas que no puedes mostrarlo; completa con el dato de los resultados.")
+    if writing:
+        # An act of THIS turn is writing the text he asked for onto a card; it lands there in seconds (F1, 2026-11-13).
+        tail += (f"\nEN MARCHA en este mismo turno: estás escribiendo en la app {', '.join(writing)} el texto que "
+                 "pidió, y aparecerá en su pantalla en unos segundos. Eso YA lo estás haciendo tú: no digas que no "
+                 "puedes crearlo, guardarlo ni enseñarlo; di en una frase que lo tiene en pantalla y completa con el "
+                 "dato de los resultados.")
     return (head + body + tail
             + f"\n\nPREGUNTA DEL OPERADOR: {operator_text}"
             + f"\nBÚSQUEDA REALIZADA: {query}\n\nRESULTADOS:\n{ctx or '(sin resultados)'}")

@@ -9,7 +9,7 @@ import time
 
 from .. import store
 from . import data as _d
-from .blocks import _best_block, _blocks
+from .blocks import _best_block, _blocks, lead
 
 
 def _a_show(action: str, p: dict) -> dict:
@@ -73,13 +73,14 @@ def _a_goto(action: str, p: dict) -> dict:
     hit = _best_block(body, str(p.get("text") or p.get("section") or p.get("query") or p.get("item") or ""))
     if not hit:
         heads = [b.lstrip("# ").strip() for b in _blocks(body) if b.startswith("#")][:12]
-        return {"ok": False, "error": "no encuentro ese pasaje — pásame un título o una frase suya",
-                "headings": heads}
+        return {"ok": False, "say": "widgets.documento.goto_not_found",
+                "error": "no encuentro ese pasaje — pásame un título o una frase suya", "headings": heads}
     # As the reader SEES it: the card matches against rendered text, without markdown marks or wraps (V2-773).
     plain = " ".join(re.sub(r"[*_`~>#\[\]]+", "", hit).split())
     db["focus"] = {"text": plain[:160], "at": time.time()}
     store.save(_d.WIDGET_ID, _d._stamp(db))
-    return {"ok": True, "found": plain[:200]}
+    # `title` names where the sheet now stands, so the turn's words follow the act that ran (`turn/reply.object_of`).
+    return {"ok": True, "found": plain[:200], "title": lead(hit)}
 
 
 def _a_clear(action: str, p: dict) -> dict:

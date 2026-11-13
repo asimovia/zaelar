@@ -1810,6 +1810,7 @@
  "widgets.contactos.flag_closed": "Closed",
  "widgets.contactos.flag_blocked": "Blocked",
  "widgets.contactos.flag_vip": "VIP",
+ "widgets.documento.goto_not_found": "that part isn't in the document — tell me a heading or a sentence from it.",
  "widgets.documento.refusal_empty": "the document came back empty, with nothing in it to show.",
  "widgets.documento.refusal_full": "the document is full — nothing more fits on it.",
  "widgets.imagenes.refusal_none": "no pictures came through for me to show you.",

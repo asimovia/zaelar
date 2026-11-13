@@ -171,6 +171,8 @@ async def call_after_recall(operator_text: str, answer: str, brief, spec=None, *
 def _order_with_a_fact(operator_text: str, answer: str, brief):
     """The card an order with a found fact is on, with what the pass needs — `(wid, manifest, card, said)` or None."""
     wid = order_card_after_search(brief, answer)
+    if wid and wid in __import__("nucleo.canvas_focus", fromlist=["x"]).this_turn_writes():
+        return None          # an act of this turn is already writing that card: a second pass would overwrite it
     if not wid or not (operator_text or "").strip() or not (answer or "").strip() or _cp.canvas_holds_the_turn(brief, operator_text, wid):
         return None
     from widgets import runtime as _rt

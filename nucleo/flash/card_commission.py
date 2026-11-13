@@ -394,6 +394,8 @@ async def before_worker(escalate_req: dict, read_req: dict, *, brief, operator_t
             from nucleo.flash import compose_rung as _compose
             _commission = str(escalate_req.get("v") or "")
             escalate_req["v"], escalate_req["more"] = None, []
+            from nucleo import canvas_focus as _cf
+            _cf.writing(got["widget_id"])       # the turn's later passes (a search's answer) must not deny it
             asyncio.ensure_future(_compose.run(got, commission=_commission, operator_text=operator_text, spec=spec,
                                                window=window, emit=emit))
             emit("brain", "✍️ se redacta en una sola petición en vez de un worker", role="system",

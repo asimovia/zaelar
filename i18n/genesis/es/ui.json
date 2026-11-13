@@ -1810,6 +1810,7 @@
  "widgets.contactos.flag_closed": "Cerrado",
  "widgets.contactos.flag_blocked": "Bloqueado",
  "widgets.contactos.flag_vip": "VIP",
+ "widgets.documento.goto_not_found": "esa parte no está en el documento — dime un título o una frase suya.",
  "widgets.documento.refusal_empty": "el documento ha llegado vacío, sin nada que enseñar.",
  "widgets.documento.refusal_full": "el documento está lleno: no cabe nada más.",
  "widgets.imagenes.refusal_none": "no me ha llegado ninguna foto que enseñarte.",

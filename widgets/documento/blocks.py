@@ -4,6 +4,8 @@ dispatcher's live record of a REPORT errand (V2-644).
 """
 from __future__ import annotations
 
+import re
+
 #: The process view keeps the same bounds as the results sheet's live view (`widgets/results/live.py`).
 _MAX_PHASES = 40
 _MAX_PHASE_CHARS = 160
@@ -73,28 +75,47 @@ def _blocks(body: str) -> list:
     return out
 
 
+_JOINED = re.compile(r"(?<=\w)[-\u2010\u2011](?=\w)")   # a hyphen joining two letters, never a spaced dash
+
+
+def _flat(text: str) -> str:
+    """Lowercase, a hyphen between two letters read as a space: «proof-of-work» and «proof of work» are one wording."""
+    return _JOINED.sub(" ", str(text or "").lower())
+
+
 def _best_block(body: str, query: str) -> str:
     """The block that best matches: an exact phrase wins; else most query words, a heading winning a tie. A NUMBER the
     query names is the passage's identity — only a block that carries it can match («Paso 2» never lands on «Paso 1»,
-    «step 12» never on «step 120»), and no such block is no match rather than the nearest words."""
+    «step 12» never on «step 120»), and no such block is no match rather than the nearest words. A word counts where a
+    word of the block BEGINS with its stem («work» is in «proof-of-work», never in «network»), and both sides read a
+    hyphen between letters as a space, so a passage is found by its body however he joins the compound."""
     from widgets.numbers_said import numbers_in
-    q = str(query or "").strip().lower()
+    q = _flat(str(query or "").strip())
     if not q:
         return ""
     nums = numbers_in(q)
     blocks = [b for b in _blocks(body) if nums <= numbers_in(b)]
     for b in blocks:
-        if len(q) >= 8 and q in b.lower():
+        if len(q) >= 8 and q in _flat(b):
             return b.lstrip("# ").strip()
     words = {w.strip(".,;:«»\"'()?¿!¡") for w in q.split()}
     words = {w for w in words if len(w) >= 4 and w not in _STOP}
     if not words:
         return next((b.lstrip("# ").strip() for b in blocks if b.startswith("#")), "") if nums else ""
+    stems = [re.compile(r"\b" + re.escape(w[:6])) for w in words]   # a stem: «colonies» finds «Colonies»
     best, score = "", 0.0
     for i, b in enumerate(blocks):
-        low = b.lower()
-        n = sum(1 for w in words if w[:6] in low)          # a stem, so «colonies» finds «Colonies», «grievance» «grievances»
+        n = sum(1 for st in stems if st.search(_flat(b)))
         sc = n + (0.5 if b.startswith("#") else 0) - i * 1e-4
         if n and sc > score:
             best, score = b.lstrip("# ").strip(), sc
     return best
+
+
+def lead(block: str) -> str:
+    """What a reader calls the passage `goto` landed on: its heading, its bold lead («The proposal»), or its first words."""
+    t = str(block or "").strip()
+    m = re.match(r"(?:#+\s*)?(?:\*\*|__)(.+?)(?:\*\*|__)", t)
+    name = m.group(1) if m else t.lstrip("# ")
+    name = " ".join(re.sub(r"[*_`~>#\[\]]+", "", name).split())
+    return (name if m or len(name) <= 60 else name[:60].rsplit(" ", 1)[0] + "…").rstrip(".:;, ")
