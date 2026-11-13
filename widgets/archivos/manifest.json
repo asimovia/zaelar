@@ -2,11 +2,13 @@
   "id": "archivos",
   "screens": "shared",
   "state": {
-    "order": {"section": "section", "folder": "folder_id", "provider": "provider"},
+    "order": {"section": "section", "folder": "folder_id", "provider": "provider", "query": "query"},
     "report": {
       "section": {"type": "enum:biblioteca|torrents", "follows": "section", "rest": "biblioteca"},
       "folder": {"type": "text:40", "follows": ["folder", "provider", "section"], "rest": ""},
-      "open": {"type": "text:40", "rest": ""}
+      "open": {"type": "text:40", "rest": ""},
+      "search": {"type": "text:40", "follows": "query", "rest": ""},
+      "storage": {"type": "id", "follows": "provider", "rest": "local"}
     }
   },
   "version": "0.4.0",
